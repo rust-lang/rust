@@ -20,8 +20,7 @@ use smallvec::SmallVec;
 
 use super::Permission;
 use super::diagnostics::{
-    self, AccessCause, NodeDebugInfo, TbError, TransitionError,
-    no_valid_exposed_references_error,
+    self, AccessCause, NodeDebugInfo, TbError, TransitionError, no_valid_exposed_references_error,
 };
 use super::foreign_access_skipping::IdempotentForeignAccess;
 use super::perms::PermTransition;
@@ -562,42 +561,43 @@ impl<'tcx> Tree {
             // Checks the tree containing `idx` for strong protector violations.
             // It does this in traversal order.
             let mut check_tree = |idx| {
-                TreeVisitor { nodes: &mut self.nodes, loc }.traverse_this_parents_children_other(
-                    idx,
-                    // Visit all children, skipping none.
-                    |_| ContinueTraversal::Recurse,
-                    |args: NodeAppArgs<'_>| {
-                        let node = args.nodes.get(args.idx).unwrap();
+                TreeVisitor { nodes: &mut self.nodes, data: loc }
+                    .traverse_this_parents_children_other(
+                        idx,
+                        // Visit all children, skipping none.
+                        |_| ContinueTraversal::Recurse,
+                        |args: NodeAppArgs<'_, _>| {
+                            let node = args.nodes.get(args.idx).unwrap();
 
-                        let perm = args
-                            .loc
-                            .perms
-                            .get(args.idx)
-                            .copied()
-                            .unwrap_or_else(|| node.default_location_state());
-                        if global.borrow().protected_tags.get(&node.tag)
-                        == Some(&ProtectorKind::StrongProtector)
-                        // Don't check for protector if it is a Cell (see `unsafe_cell_deallocate` in `interior_mutability.rs`).
-                        // Related to https://github.com/rust-lang/rust/issues/55005.
-                        && !perm.permission.is_cell()
-                        // Only trigger UB if the accessed bit is set, i.e. if the protector is actually protecting this offset. See #4579.
-                        && perm.accessed
-                        {
-                            Err(TbError {
-                                conflicting_info: &node.debug_info,
-                                access_cause: diagnostics::AccessCause::Dealloc,
-                                alloc_id,
-                                error_offset: loc_range.start,
-                                error_kind: TransitionError::ProtectedDealloc,
-                                accessed_info: start_idx
-                                    .map(|idx| &args.nodes.get(idx).unwrap().debug_info),
+                            let perm = args
+                                .data
+                                .perms
+                                .get(args.idx)
+                                .copied()
+                                .unwrap_or_else(|| node.default_location_state());
+                            if global.borrow().protected_tags.get(&node.tag)
+                                == Some(&ProtectorKind::StrongProtector)
+                                // Don't check for protector if it is a Cell (see `unsafe_cell_deallocate` in `interior_mutability.rs`).
+                                // Related to https://github.com/rust-lang/rust/issues/55005.
+                                && !perm.permission.is_cell()
+                                // Only trigger UB if the accessed bit is set, i.e. if the protector is actually protecting this offset. See #4579.
+                                && perm.accessed
+                            {
+                                Err(TbError {
+                                    conflicting_info: &node.debug_info,
+                                    access_cause: diagnostics::AccessCause::Dealloc,
+                                    alloc_id,
+                                    error_offset: loc_range.start,
+                                    error_kind: TransitionError::ProtectedDealloc,
+                                    accessed_info: start_idx
+                                        .map(|idx| &args.nodes.get(idx).unwrap().debug_info),
+                                }
+                                .build())
+                            } else {
+                                Ok(())
                             }
-                            .build())
-                        } else {
-                            Ok(())
-                        }
-                    },
-                )
+                        },
+                    )
             };
             // If we have a start index we first check its subtree in traversal order.
             // This results in us showing the error of the closest node instead of an
@@ -967,16 +967,16 @@ impl<'tcx> LocationTree {
         //
         // `loc_range` is only for diagnostics (it is the range of
         // the `RangeMap` on which we are currently working).
-        let node_skipper = |args: &NodeAppArgs<'_>| -> ContinueTraversal {
+        let node_skipper = |args: &NodeAppArgs<'_, LocationTree>| -> ContinueTraversal {
             let node = args.nodes.get(args.idx).unwrap();
-            let perm = args.loc.perms.get(args.idx);
+            let perm = args.data.perms.get(args.idx);
 
             let old_state = perm.copied().unwrap_or_else(|| node.default_location_state());
             old_state.skip_if_known_noop(access_kind, args.rel_pos)
         };
-        let node_app = |args: NodeAppArgs<'_>| {
+        let node_app = |args: NodeAppArgs<'_, LocationTree>| {
             let node = args.nodes.get_mut(args.idx).unwrap();
-            let mut perm = args.loc.perms.entry(args.idx);
+            let mut perm = args.data.perms.entry(args.idx);
 
             let state = perm.or_insert(node.default_location_state());
 
@@ -985,7 +985,7 @@ impl<'tcx> LocationTree {
                 .perform_transition(
                     args.idx,
                     args.nodes,
-                    &mut args.loc.wildcard_accesses,
+                    &mut args.data.wildcard_accesses,
                     access_kind,
                     access_cause,
                     access_range,
@@ -1007,7 +1007,7 @@ impl<'tcx> LocationTree {
                 })
         };
 
-        let visitor = TreeVisitor { nodes, loc: self };
+        let visitor = TreeVisitor { nodes, data: self };
         match visit_children {
             ChildrenVisitMode::VisitChildrenOfAccessed =>
                 visitor.traverse_this_parents_children_other(access_source, node_skipper, node_app),
@@ -1061,16 +1061,16 @@ impl<'tcx> LocationTree {
         // marked as having an exposed foreign node, but actually that foreign node cannot be
         // the source of the access due to `max_local_tag`. The wildcard tracking cannot know
         // about `max_local_tag` so we will incorrectly assume that this might be a foreign access.
-        TreeVisitor { loc: self, nodes }.traverse_children_this(
+        TreeVisitor { data: self, nodes }.traverse_children_this(
             root,
             |args| -> ContinueTraversal {
                 let node = args.nodes.get(args.idx).unwrap();
-                let perm = args.loc.perms.get(args.idx);
+                let perm = args.data.perms.get(args.idx);
 
                 let old_state = perm.copied().unwrap_or_else(|| node.default_location_state());
                 // If we know where, relative to this node, the wildcard access occurs,
                 // then check if we can skip the entire subtree.
-                if let Some(relatedness) = get_relatedness(args.idx, node, args.loc)
+                if let Some(relatedness) = get_relatedness(args.idx, node, args.data)
                     && let Some(relatedness) = relatedness.to_relatedness()
                 {
                     // We can use the usual SIFA machinery to skip nodes.
@@ -1084,7 +1084,7 @@ impl<'tcx> LocationTree {
 
                 let protected = global.borrow().protected_tags.contains_key(&node.tag);
 
-                let Some(wildcard_relatedness) = get_relatedness(args.idx, node, args.loc) else {
+                let Some(wildcard_relatedness) = get_relatedness(args.idx, node, args.data) else {
                     // There doesn't exist a valid exposed reference for this access to
                     // happen through.
                     // This can only happen if `root` is the main root: We set
@@ -1105,13 +1105,13 @@ impl<'tcx> LocationTree {
                     return Ok(());
                 };
 
-                let mut entry = args.loc.perms.entry(args.idx);
+                let mut entry = args.data.perms.entry(args.idx);
                 let perm = entry.or_insert(node.default_location_state());
                 // We know the exact relatedness, so we can actually do precise checks.
                 perm.perform_transition(
                     args.idx,
                     args.nodes,
-                    &mut args.loc.wildcard_accesses,
+                    &mut args.data.wildcard_accesses,
                     access_kind,
                     access_cause,
                     access_range,

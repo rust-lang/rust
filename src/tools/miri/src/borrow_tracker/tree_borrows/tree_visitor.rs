@@ -1,23 +1,25 @@
-use super::tree::{AccessRelatedness, LocationTree, Node};
+use std::marker::PhantomData;
+
+use super::tree::{AccessRelatedness, Node};
 use super::unimap::{UniIndex, UniValMap};
 
 /// Data given to the transition function
-pub struct NodeAppArgs<'visit> {
+pub struct NodeAppArgs<'visit, T> {
     /// The index of the current node.
     pub idx: UniIndex,
     /// Relative position of the access.
     pub rel_pos: AccessRelatedness,
     /// The node map of this tree.
     pub nodes: &'visit mut UniValMap<Node>,
-    /// The permissions map of this tree.
-    pub loc: &'visit mut LocationTree,
+    /// Additional data we want to be able to modify in f_propagate and read in f_continue.
+    pub data: &'visit mut T,
 }
 /// Internal contents of `Tree` with the minimum of mutable access for
 /// For soundness do not modify the children or parent indexes of nodes
 /// during traversal.
-pub struct TreeVisitor<'tree> {
+pub struct TreeVisitor<'tree, T> {
     pub nodes: &'tree mut UniValMap<Node>,
-    pub loc: &'tree mut LocationTree,
+    pub data: &'tree mut T,
 }
 
 /// Whether to continue exploring the children recursively or not.
@@ -41,7 +43,7 @@ enum RecursionState {
 /// Stack of nodes left to explore in a tree traversal.
 /// See the docs of `traverse_this_parents_children_other` for details on the
 /// traversal order.
-struct TreeVisitorStack<NodeContinue, NodeApp> {
+struct TreeVisitorStack<NodeContinue, NodeApp, T> {
     /// Function describing whether to continue at a tag.
     /// This is only invoked for foreign accesses.
     f_continue: NodeContinue,
@@ -56,36 +58,37 @@ struct TreeVisitorStack<NodeContinue, NodeApp> {
     /// This is just an artifact of how you hand-roll recursion,
     /// it does not have a deeper meaning otherwise.
     stack: Vec<(UniIndex, AccessRelatedness, RecursionState)>,
+    phantom: PhantomData<T>,
 }
 
-impl<NodeContinue, NodeApp, Err> TreeVisitorStack<NodeContinue, NodeApp>
+impl<NodeContinue, NodeApp, T, Err> TreeVisitorStack<NodeContinue, NodeApp, T>
 where
-    NodeContinue: Fn(&NodeAppArgs<'_>) -> ContinueTraversal,
-    NodeApp: FnMut(NodeAppArgs<'_>) -> Result<(), Err>,
+    NodeContinue: Fn(&NodeAppArgs<'_, T>) -> ContinueTraversal,
+    NodeApp: FnMut(NodeAppArgs<'_, T>) -> Result<(), Err>,
 {
     fn should_continue_at(
         &self,
-        this: &mut TreeVisitor<'_>,
+        this: &mut TreeVisitor<'_, T>,
         idx: UniIndex,
         rel_pos: AccessRelatedness,
     ) -> ContinueTraversal {
-        let args = NodeAppArgs { idx, rel_pos, nodes: this.nodes, loc: this.loc };
+        let args = NodeAppArgs { idx, rel_pos, nodes: this.nodes, data: this.data };
         (self.f_continue)(&args)
     }
 
     fn propagate_at(
         &mut self,
-        this: &mut TreeVisitor<'_>,
+        this: &mut TreeVisitor<'_, T>,
         idx: UniIndex,
         rel_pos: AccessRelatedness,
     ) -> Result<(), Err> {
-        (self.f_propagate)(NodeAppArgs { idx, rel_pos, nodes: this.nodes, loc: this.loc })
+        (self.f_propagate)(NodeAppArgs { idx, rel_pos, nodes: this.nodes, data: this.data })
     }
 
     /// Returns the root of this tree.
     fn go_upwards_from_accessed(
         &mut self,
-        this: &mut TreeVisitor<'_>,
+        this: &mut TreeVisitor<'_, T>,
         accessed_node: UniIndex,
         visit_children: ChildrenVisitMode,
     ) -> Result<UniIndex, Err> {
@@ -136,7 +139,7 @@ where
         Ok(last_node)
     }
 
-    fn finish_foreign_accesses(&mut self, this: &mut TreeVisitor<'_>) -> Result<(), Err> {
+    fn finish_foreign_accesses(&mut self, this: &mut TreeVisitor<'_, T>) -> Result<(), Err> {
         while let Some((idx, rel_pos, step)) = self.stack.last_mut() {
             let idx = *idx;
             let rel_pos = *rel_pos;
@@ -173,11 +176,11 @@ where
     }
 
     fn new(f_continue: NodeContinue, f_propagate: NodeApp) -> Self {
-        Self { f_continue, f_propagate, stack: Vec::new() }
+        Self { f_continue, f_propagate, stack: Vec::new(), phantom: PhantomData }
     }
 }
 
-impl<'tree> TreeVisitor<'tree> {
+impl<'tree, T> TreeVisitor<'tree, T> {
     /// Applies `f_propagate` to every vertex of the tree in a piecewise bottom-up way: First, visit
     /// all ancestors of `start_idx` (starting with `start_idx` itself), then children of `start_idx`, then the rest,
     /// going bottom-up in each of these two "pieces" / sections.
@@ -219,8 +222,8 @@ impl<'tree> TreeVisitor<'tree> {
     pub fn traverse_this_parents_children_other<Err>(
         mut self,
         start_idx: UniIndex,
-        f_continue: impl Fn(&NodeAppArgs<'_>) -> ContinueTraversal,
-        f_propagate: impl FnMut(NodeAppArgs<'_>) -> Result<(), Err>,
+        f_continue: impl Fn(&NodeAppArgs<'_, T>) -> ContinueTraversal,
+        f_propagate: impl FnMut(NodeAppArgs<'_, T>) -> Result<(), Err>,
     ) -> Result<UniIndex, Err> {
         let mut stack = TreeVisitorStack::new(f_continue, f_propagate);
         // Visits the accessed node itself, and all its parents, i.e. all nodes
@@ -245,8 +248,8 @@ impl<'tree> TreeVisitor<'tree> {
     pub fn traverse_nonchildren<Err>(
         mut self,
         start_idx: UniIndex,
-        f_continue: impl Fn(&NodeAppArgs<'_>) -> ContinueTraversal,
-        f_propagate: impl FnMut(NodeAppArgs<'_>) -> Result<(), Err>,
+        f_continue: impl Fn(&NodeAppArgs<'_, T>) -> ContinueTraversal,
+        f_propagate: impl FnMut(NodeAppArgs<'_, T>) -> Result<(), Err>,
     ) -> Result<UniIndex, Err> {
         let mut stack = TreeVisitorStack::new(f_continue, f_propagate);
         // Visits the accessed node itself, and all its parents, i.e. all nodes
@@ -271,8 +274,8 @@ impl<'tree> TreeVisitor<'tree> {
     pub fn traverse_children_this<Err>(
         mut self,
         start_idx: UniIndex,
-        f_continue: impl Fn(&NodeAppArgs<'_>) -> ContinueTraversal,
-        f_propagate: impl FnMut(NodeAppArgs<'_>) -> Result<(), Err>,
+        f_continue: impl Fn(&NodeAppArgs<'_, T>) -> ContinueTraversal,
+        f_propagate: impl FnMut(NodeAppArgs<'_, T>) -> Result<(), Err>,
     ) -> Result<(), Err> {
         let mut stack = TreeVisitorStack::new(f_continue, f_propagate);
 
