@@ -200,6 +200,9 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::sinf64
         | sym::sinf128
         | sym::size_of
+        | sym::amd_workitem
+        | sym::amd_workgroup_id
+        | sym::amd_workgroup_size
         | sym::sqrtf16
         | sym::sqrtf32
         | sym::sqrtf64
@@ -352,6 +355,10 @@ pub(crate) fn check_intrinsic_type(
             vec![Ty::new_mut_ptr(tcx, param(0)), tcx.types.u8, tcx.types.usize],
             tcx.types.unit,
         ),
+
+        sym::amd_workitem => (0, 0, vec![], tcx.types.i32),
+        sym::amd_workgroup_id => (0, 0, vec![], tcx.types.i32),
+        sym::amd_workgroup_size => (0, 0, vec![], tcx.types.i32),
 
         sym::sqrtf16 => (0, 0, vec![tcx.types.f16], tcx.types.f16),
         sym::sqrtf32 => (0, 0, vec![tcx.types.f32], tcx.types.f32),

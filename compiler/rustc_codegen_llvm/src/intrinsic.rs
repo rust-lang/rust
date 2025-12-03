@@ -41,6 +41,9 @@ fn call_simple_intrinsic<'ll, 'tcx>(
     args: &[OperandRef<'tcx, &'ll Value>],
 ) -> Option<&'ll Value> {
     let (base_name, type_params): (&'static str, &[&'ll Type]) = match name {
+        sym::amd_workitem => ("llvm.amdgcn.workitem.id.x", &[]),
+        sym::amd_workgroup_id => ("llvm.amdgcn.workgroup.id.x", &[]),
+        sym::amd_workgroup_size => ("llvm.amdgcn.workgroup.size.x", &[]),
         sym::sqrtf16 => ("llvm.sqrt", &[bx.type_f16()]),
         sym::sqrtf32 => ("llvm.sqrt", &[bx.type_f32()]),
         sym::sqrtf64 => ("llvm.sqrt", &[bx.type_f64()]),
