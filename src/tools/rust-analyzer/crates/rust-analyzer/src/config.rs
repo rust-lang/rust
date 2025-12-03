@@ -500,7 +500,7 @@ config_data! {
         /// }
         /// ```
         ///
-        /// ## On `DiscoverWorkspaceConfig::command`
+        /// ## Workspace Discovery Protocol
         ///
         /// **Warning**: This format is provisional and subject to change.
         ///
@@ -871,10 +871,18 @@ config_data! {
         /// (i.e., the folder containing the `Cargo.toml`). This can be overwritten
         /// by changing `#rust-analyzer.check.invocationStrategy#`.
         ///
-        /// If `$saved_file` is part of the command, rust-analyzer will pass
-        /// the absolute path of the saved file to the provided command. This is
-        /// intended to be used with non-Cargo build systems.
-        /// Note that `$saved_file` is experimental and may be removed in the future.
+        /// It supports two interpolation syntaxes, both mainly intended to be used with
+        /// [non-Cargo build systems](./non_cargo_based_projects.md):
+        ///
+        /// - If `{saved_file}` is part of the command, rust-analyzer will pass
+        ///   the absolute path of the saved file to the provided command.
+        ///   (A previous version, `$saved_file`, also works.)
+        /// - If `{label}` is part of the command, rust-analyzer will pass the
+        ///   Cargo package ID, which can be used with `cargo check -p`, or a build label from
+        ///   `rust-project.json`. If `{label}` is included, rust-analyzer behaves much like
+        ///   [`"rust-analyzer.check.workspace": false`](#check.workspace).
+        ///
+        ///
         ///
         /// An example command would be:
         ///
