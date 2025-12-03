@@ -83,6 +83,21 @@ impl<I: Interner, T: fmt::Debug> fmt::Debug for ty::Placeholder<I, T> {
     }
 }
 
+impl<I: Interner, U: Interner, T> Lift<U> for Placeholder<I, T>
+where
+    T: Lift<U>,
+{
+    type Lifted = Placeholder<U, T::Lifted>;
+
+    fn lift_to_interner(self, cx: U) -> Option<Self::Lifted> {
+        Some(Placeholder {
+            universe: self.universe,
+            bound: self.bound.lift_to_interner(cx)?,
+            _tcx: PhantomData,
+        })
+    }
+}
+
 impl<I: Interner, T: Eq> Eq for Placeholder<I, T> {}
 
 #[cfg(feature = "nightly")]
