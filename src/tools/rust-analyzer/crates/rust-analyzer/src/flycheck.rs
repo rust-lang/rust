@@ -38,8 +38,11 @@ pub(crate) enum InvocationStrategy {
     PerWorkspace,
 }
 
+/// Data needed to construct a `cargo` command invocation, e.g. for flycheck or running a test.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct CargoOptions {
+    /// The cargo subcommand to run, e.g. "check" or "clippy"
+    pub(crate) subcommand: String,
     pub(crate) target_tuples: Vec<String>,
     pub(crate) all_targets: bool,
     pub(crate) set_test: bool,
@@ -111,11 +114,16 @@ impl FlycheckConfigJson {
 ///
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) enum FlycheckConfig {
-    CargoCommand {
-        command: String,
-        options: CargoOptions,
+    /// Automatically use rust-project.json's flycheck runnable or just use cargo (the common case)
+    ///
+    /// We can't have a variant for ProjectJson because that is configured on the fly during
+    /// discoverConfig. We only know what we can read at config time.
+    Automatic {
+        /// If we do use cargo, how to build the check command
+        cargo_options: CargoOptions,
         ansi_color_output: bool,
     },
+    /// check_overrideCommand. This overrides both cargo and rust-project.json's flycheck runnable.
     CustomCommand {
         command: String,
         args: Vec<String>,
@@ -127,7 +135,7 @@ pub(crate) enum FlycheckConfig {
 impl FlycheckConfig {
     pub(crate) fn invocation_strategy(&self) -> InvocationStrategy {
         match self {
-            FlycheckConfig::CargoCommand { .. } => InvocationStrategy::PerWorkspace,
+            FlycheckConfig::Automatic { .. } => InvocationStrategy::PerWorkspace,
             FlycheckConfig::CustomCommand { invocation_strategy, .. } => {
                 invocation_strategy.clone()
             }
@@ -138,7 +146,9 @@ impl FlycheckConfig {
 impl fmt::Display for FlycheckConfig {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            FlycheckConfig::CargoCommand { command, .. } => write!(f, "cargo {command}"),
+            FlycheckConfig::Automatic { cargo_options, .. } => {
+                write!(f, "cargo {}", cargo_options.subcommand)
+            }
             FlycheckConfig::CustomCommand { command, args, .. } => {
                 // Don't show `my_custom_check --foo $saved_file` literally to the user, as it
                 // looks like we've forgotten to substitute $saved_file.
@@ -572,11 +582,11 @@ impl FlycheckActor {
                         CargoCheckParser,
                         sender,
                         match &self.config {
-                            FlycheckConfig::CargoCommand { options, .. } => {
+                            FlycheckConfig::Automatic { cargo_options, .. } => {
                                 let ws_target_dir =
                                     self.ws_target_dir.as_ref().map(Utf8PathBuf::as_path);
                                 let target_dir =
-                                    options.target_dir_config.target_dir(ws_target_dir);
+                                    cargo_options.target_dir_config.target_dir(ws_target_dir);
 
                                 // If `"rust-analyzer.cargo.targetDir": null`, we should use
                                 // workspace's target dir instead of hard-coded fallback.
@@ -818,7 +828,7 @@ impl FlycheckActor {
         target: Option<Target>,
     ) -> Option<(Command, FlycheckCommandOrigin)> {
         match &self.config {
-            FlycheckConfig::CargoCommand { command, options, ansi_color_output } => {
+            FlycheckConfig::Automatic { cargo_options, ansi_color_output } => {
                 // Only use the rust-project.json's flycheck config when no check_overrideCommand
                 // is configured. In the FlycheckConcig::CustomCommand branch we will still do
                 // label substitution, but on the overrideCommand instead.
@@ -835,15 +845,15 @@ impl FlycheckActor {
                 }
 
                 let mut cmd =
-                    toolchain::command(Tool::Cargo.path(), &*self.root, &options.extra_env);
+                    toolchain::command(Tool::Cargo.path(), &*self.root, &cargo_options.extra_env);
                 if let Some(sysroot_root) = &self.sysroot_root
-                    && !options.extra_env.contains_key("RUSTUP_TOOLCHAIN")
+                    && !cargo_options.extra_env.contains_key("RUSTUP_TOOLCHAIN")
                     && std::env::var_os("RUSTUP_TOOLCHAIN").is_none()
                 {
                     cmd.env("RUSTUP_TOOLCHAIN", AsRef::<std::path::Path>::as_ref(sysroot_root));
                 }
                 cmd.env("CARGO_LOG", "cargo::core::compiler::fingerprint=info");
-                cmd.arg(command);
+                cmd.arg(&cargo_options.subcommand);
 
                 match scope {
                     FlycheckScope::Workspace => cmd.arg("--workspace"),
@@ -887,11 +897,11 @@ impl FlycheckActor {
 
                 cmd.arg("--keep-going");
 
-                options.apply_on_command(
+                cargo_options.apply_on_command(
                     &mut cmd,
                     self.ws_target_dir.as_ref().map(Utf8PathBuf::as_path),
                 );
-                cmd.args(&options.extra_args);
+                cmd.args(&cargo_options.extra_args);
                 Some((cmd, FlycheckCommandOrigin::Cargo))
             }
             FlycheckConfig::CustomCommand { command, args, extra_env, invocation_strategy } => {
