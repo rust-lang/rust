@@ -375,7 +375,7 @@ fn parse_config(args: Vec<String>) -> Config {
         fail_fast: matches.opt_present("fail-fast")
             || env::var_os("RUSTC_TEST_FAIL_FAST").is_some(),
 
-        compile_lib_path: make_absolute(opt_path(matches, "compile-lib-path")),
+        host_compile_lib_path: make_absolute(opt_path(matches, "compile-lib-path")),
         run_lib_path: make_absolute(opt_path(matches, "run-lib-path")),
         rustc_path: opt_path(matches, "rustc-path"),
         cargo_path: matches.opt_str("cargo-path").map(Utf8PathBuf::from),

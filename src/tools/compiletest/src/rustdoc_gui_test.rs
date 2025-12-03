@@ -58,7 +58,7 @@ fn incomplete_config_for_rustdoc_gui_test() -> Config {
         edition: Default::default(),
         bless: Default::default(),
         fail_fast: Default::default(),
-        compile_lib_path: Utf8PathBuf::default(),
+        host_compile_lib_path: Utf8PathBuf::default(),
         run_lib_path: Utf8PathBuf::default(),
         rustc_path: Utf8PathBuf::default(),
         cargo_path: Default::default(),

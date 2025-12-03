@@ -252,10 +252,7 @@ pub struct Config {
     ///
     /// For example:
     /// - `/home/ferris/rust/build/x86_64-unknown-linux-gnu/stage1/bin/lib`
-    ///
-    /// FIXME: maybe rename this to reflect (1) which target platform (host, not target), and (2)
-    /// which `rustc` (the `rustc`-under-test, not the stage 0 `rustc` unless forced).
-    pub compile_lib_path: Utf8PathBuf,
+    pub host_compile_lib_path: Utf8PathBuf,
 
     /// Path to libraries needed to run the compiled executable for the **target** platform. This
     /// corresponds to the **target** sysroot libraries, including the **target** standard library.
@@ -1093,7 +1090,7 @@ fn query_rustc_output(config: &Config, args: &[&str], envs: HashMap<String, Stri
     let query_rustc_path = config.query_rustc_path.as_deref().unwrap_or(&config.rustc_path);
 
     let mut command = Command::new(query_rustc_path);
-    add_dylib_path(&mut command, iter::once(&config.compile_lib_path));
+    add_dylib_path(&mut command, iter::once(&config.host_compile_lib_path));
     command.args(&config.target_rustcflags).args(args);
     command.env("RUSTC_BOOTSTRAP", "1");
     command.envs(envs);
