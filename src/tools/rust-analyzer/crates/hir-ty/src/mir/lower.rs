@@ -25,7 +25,7 @@ use syntax::TextRange;
 use triomphe::Arc;
 
 use crate::{
-    Adjust, Adjustment, AutoBorrow, CallableDefId, TraitEnvironment,
+    Adjust, Adjustment, AutoBorrow, CallableDefId, ParamEnvAndCrate,
     consteval::ConstEvalError,
     db::{HirDatabase, InternedClosure, InternedClosureId},
     display::{DisplayTarget, HirDisplay, hir_display_with_store},
@@ -42,7 +42,7 @@ use crate::{
         TupleFieldId, Ty, UnOp, VariantId, return_slot,
     },
     next_solver::{
-        Const, DbInterner, ParamConst, Region, TyKind, TypingMode, UnevaluatedConst,
+        Const, DbInterner, ParamConst, ParamEnv, Region, TyKind, TypingMode, UnevaluatedConst,
         infer::{DbInternerInferExt, InferCtxt},
     },
     traits::FnTrait,
@@ -81,7 +81,7 @@ struct MirLowerCtx<'a, 'db> {
     infer: &'a InferenceResult<'db>,
     resolver: Resolver<'db>,
     drop_scopes: Vec<DropScope<'db>>,
-    env: Arc<TraitEnvironment<'db>>,
+    env: ParamEnv<'db>,
     infcx: InferCtxt<'db>,
 }
 
@@ -302,7 +302,7 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
         };
         let resolver = owner.resolver(db);
         let env = db.trait_environment_for_body(owner);
-        let interner = DbInterner::new_with(db, env.krate);
+        let interner = DbInterner::new_with(db, resolver.krate());
         // FIXME(next-solver): Is `non_body_analysis()` correct here? Don't we want to reveal opaque types defined by this body?
         let infcx = interner.infer_ctxt().build(TypingMode::non_body_analysis());
 
@@ -1462,7 +1462,11 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
     }
 
     fn lower_literal_to_operand(&mut self, ty: Ty<'db>, l: &Literal) -> Result<'db, Operand<'db>> {
-        let size = || self.db.layout_of_ty(ty, self.env.clone()).map(|it| it.size.bytes_usize());
+        let size = || {
+            self.db
+                .layout_of_ty(ty, ParamEnvAndCrate { param_env: self.env, krate: self.krate() })
+                .map(|it| it.size.bytes_usize())
+        };
         const USIZE_SIZE: usize = size_of::<usize>();
         let bytes: Box<[_]> = match l {
             hir_def::hir::Literal::String(b) => {
@@ -1799,7 +1803,7 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
             &self.infcx,
             self.infer[expr_id],
             self.owner.module(self.db),
-            self.env.clone(),
+            self.env,
         )
     }
 
@@ -2070,7 +2074,7 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
         span: MirSpan,
     ) {
         for &l in scope.locals.iter().rev() {
-            if !self.infcx.type_is_copy_modulo_regions(self.env.env, self.result.locals[l].ty) {
+            if !self.infcx.type_is_copy_modulo_regions(self.env, self.result.locals[l].ty) {
                 let prev = std::mem::replace(current, self.new_basic_block());
                 self.set_terminator(
                     prev,

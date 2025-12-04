@@ -1,4 +1,4 @@
-use hir_def::db::DefDatabase;
+use hir_def::{HasModule, db::DefDatabase};
 use hir_expand::EditionedFileId;
 use span::Edition;
 use syntax::{TextRange, TextSize};
@@ -40,7 +40,10 @@ fn eval_main(db: &TestDB, file_id: EditionedFileId) -> Result<(String, String), 
             .monomorphized_mir_body(
                 func_id.into(),
                 GenericArgs::new_from_iter(interner, []),
-                db.trait_environment(func_id.into()),
+                crate::ParamEnvAndCrate {
+                    param_env: db.trait_environment(func_id.into()),
+                    krate: func_id.krate(db),
+                },
             )
             .map_err(|e| MirEvalError::MirLowerError(func_id, e))?;
 

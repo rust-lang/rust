@@ -197,4 +197,22 @@ impl<T: Sized + Send + 'static> CommandHandle<T> {
             )))
         }
     }
+
+    pub(crate) fn has_exited(&mut self) -> bool {
+        match self.child.0.try_wait() {
+            Ok(Some(_exit_code)) => {
+                // We have an exit code.
+                true
+            }
+            Ok(None) => {
+                // Hasn't exited yet.
+                false
+            }
+            Err(_) => {
+                // Couldn't get an exit code. Assume that we've
+                // exited.
+                true
+            }
+        }
+    }
 }

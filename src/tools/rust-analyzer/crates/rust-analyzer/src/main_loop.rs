@@ -74,7 +74,7 @@ pub fn main_loop(config: Config, connection: Connection) -> anyhow::Result<()> {
 enum Event {
     Lsp(lsp_server::Message),
     Task(Task),
-    QueuedTask(QueuedTask),
+    DeferredTask(DeferredTask),
     Vfs(vfs::loader::Message),
     Flycheck(FlycheckMessage),
     TestResult(CargoTestMessage),
@@ -89,7 +89,7 @@ impl fmt::Display for Event {
             Event::Task(_) => write!(f, "Event::Task"),
             Event::Vfs(_) => write!(f, "Event::Vfs"),
             Event::Flycheck(_) => write!(f, "Event::Flycheck"),
-            Event::QueuedTask(_) => write!(f, "Event::QueuedTask"),
+            Event::DeferredTask(_) => write!(f, "Event::DeferredTask"),
             Event::TestResult(_) => write!(f, "Event::TestResult"),
             Event::DiscoverProject(_) => write!(f, "Event::DiscoverProject"),
             Event::FetchWorkspaces(_) => write!(f, "Event::SwitchWorkspaces"),
@@ -98,7 +98,7 @@ impl fmt::Display for Event {
 }
 
 #[derive(Debug)]
-pub(crate) enum QueuedTask {
+pub(crate) enum DeferredTask {
     CheckIfIndexed(lsp_types::Url),
     CheckProcMacroSources(Vec<FileId>),
 }
@@ -164,7 +164,7 @@ impl fmt::Debug for Event {
         match self {
             Event::Lsp(it) => fmt::Debug::fmt(it, f),
             Event::Task(it) => fmt::Debug::fmt(it, f),
-            Event::QueuedTask(it) => fmt::Debug::fmt(it, f),
+            Event::DeferredTask(it) => fmt::Debug::fmt(it, f),
             Event::Vfs(it) => fmt::Debug::fmt(it, f),
             Event::Flycheck(it) => fmt::Debug::fmt(it, f),
             Event::TestResult(it) => fmt::Debug::fmt(it, f),
@@ -279,7 +279,7 @@ impl GlobalState {
                 task.map(Event::Task),
 
             recv(self.deferred_task_queue.receiver) -> task =>
-                task.map(Event::QueuedTask),
+                task.map(Event::DeferredTask),
 
             recv(self.fmt_pool.receiver) -> task =>
                 task.map(Event::Task),
@@ -323,12 +323,12 @@ impl GlobalState {
                 lsp_server::Message::Notification(not) => self.on_notification(not),
                 lsp_server::Message::Response(resp) => self.complete_request(resp),
             },
-            Event::QueuedTask(task) => {
+            Event::DeferredTask(task) => {
                 let _p = tracing::info_span!("GlobalState::handle_event/queued_task").entered();
-                self.handle_queued_task(task);
-                // Coalesce multiple task events into one loop turn
+                self.handle_deferred_task(task);
+                // Coalesce multiple deferred task events into one loop turn
                 while let Ok(task) = self.deferred_task_queue.receiver.try_recv() {
-                    self.handle_queued_task(task);
+                    self.handle_deferred_task(task);
                 }
             }
             Event::Task(task) => {
@@ -530,6 +530,8 @@ impl GlobalState {
                 self.update_tests();
             }
         }
+
+        self.cleanup_discover_handles();
 
         if let Some(diagnostic_changes) = self.diagnostics.take_changes() {
             for file_id in diagnostic_changes {
@@ -806,33 +808,34 @@ impl GlobalState {
                 self.report_progress("Fetching", state, msg, None, None);
             }
             Task::DiscoverLinkedProjects(arg) => {
-                if let Some(cfg) = self.config.discover_workspace_config()
-                    && !self.discover_workspace_queue.op_in_progress()
-                {
+                if let Some(cfg) = self.config.discover_workspace_config() {
                     // the clone is unfortunately necessary to avoid a borrowck error when
                     // `self.report_progress` is called later
                     let title = &cfg.progress_label.clone();
                     let command = cfg.command.clone();
                     let discover = DiscoverCommand::new(self.discover_sender.clone(), command);
 
-                    self.report_progress(title, Progress::Begin, None, None, None);
-                    self.discover_workspace_queue
-                        .request_op("Discovering workspace".to_owned(), ());
-                    let _ = self.discover_workspace_queue.should_start_op();
+                    if self.discover_jobs_active == 0 {
+                        self.report_progress(title, Progress::Begin, None, None, None);
+                    }
+                    self.discover_jobs_active += 1;
 
                     let arg = match arg {
                         DiscoverProjectParam::Buildfile(it) => DiscoverArgument::Buildfile(it),
                         DiscoverProjectParam::Path(it) => DiscoverArgument::Path(it),
                     };
 
-                    let handle = discover.spawn(
-                        arg,
-                        &std::env::current_dir()
-                            .expect("Failed to get cwd during project discovery"),
-                    );
-                    self.discover_handle = Some(handle.unwrap_or_else(|e| {
-                        panic!("Failed to spawn project discovery command: {e}")
-                    }));
+                    let handle = discover
+                        .spawn(
+                            arg,
+                            &std::env::current_dir()
+                                .expect("Failed to get cwd during project discovery"),
+                        )
+                        .unwrap_or_else(|e| {
+                            panic!("Failed to spawn project discovery command: {e}")
+                        });
+
+                    self.discover_handles.push(handle);
                 }
             }
             Task::FetchBuildData(progress) => {
@@ -981,9 +984,9 @@ impl GlobalState {
         }
     }
 
-    fn handle_queued_task(&mut self, task: QueuedTask) {
+    fn handle_deferred_task(&mut self, task: DeferredTask) {
         match task {
-            QueuedTask::CheckIfIndexed(uri) => {
+            DeferredTask::CheckIfIndexed(uri) => {
                 let snap = self.snapshot();
 
                 self.task_pool.handle.spawn_with_sender(ThreadIntent::Worker, move |sender| {
@@ -1007,7 +1010,7 @@ impl GlobalState {
                     }
                 });
             }
-            QueuedTask::CheckProcMacroSources(modified_rust_files) => {
+            DeferredTask::CheckProcMacroSources(modified_rust_files) => {
                 let analysis = AssertUnwindSafe(self.snapshot().analysis);
                 self.task_pool.handle.spawn_with_sender(stdx::thread::ThreadIntent::Worker, {
                     move |sender| {
@@ -1036,25 +1039,43 @@ impl GlobalState {
             .expect("No title could be found; this is a bug");
         match message {
             DiscoverProjectMessage::Finished { project, buildfile } => {
-                self.discover_handle = None;
-                self.report_progress(&title, Progress::End, None, None, None);
-                self.discover_workspace_queue.op_completed(());
+                self.discover_jobs_active = self.discover_jobs_active.saturating_sub(1);
+                if self.discover_jobs_active == 0 {
+                    self.report_progress(&title, Progress::End, None, None, None);
+                }
 
                 let mut config = Config::clone(&*self.config);
                 config.add_discovered_project_from_command(project, buildfile);
                 self.update_configuration(config);
             }
             DiscoverProjectMessage::Progress { message } => {
-                self.report_progress(&title, Progress::Report, Some(message), None, None)
+                if self.discover_jobs_active > 0 {
+                    self.report_progress(&title, Progress::Report, Some(message), None, None)
+                }
             }
             DiscoverProjectMessage::Error { error, source } => {
-                self.discover_handle = None;
                 let message = format!("Project discovery failed: {error}");
-                self.discover_workspace_queue.op_completed(());
                 self.show_and_log_error(message.clone(), source);
-                self.report_progress(&title, Progress::End, Some(message), None, None)
+
+                self.discover_jobs_active = self.discover_jobs_active.saturating_sub(1);
+                if self.discover_jobs_active == 0 {
+                    self.report_progress(&title, Progress::End, Some(message), None, None)
+                }
             }
         }
+    }
+
+    /// Drop any discover command processes that have exited, due to
+    /// finishing or erroring.
+    fn cleanup_discover_handles(&mut self) {
+        let mut active_handles = vec![];
+
+        for mut discover_handle in self.discover_handles.drain(..) {
+            if !discover_handle.handle.has_exited() {
+                active_handles.push(discover_handle);
+            }
+        }
+        self.discover_handles = active_handles;
     }
 
     fn handle_cargo_test_msg(&mut self, message: CargoTestMessage) {

@@ -44,10 +44,9 @@ use rustc_type_ir::{
 use smallvec::SmallVec;
 use span::Edition;
 use stdx::never;
-use triomphe::Arc;
 
 use crate::{
-    CallableDefId, FnAbi, ImplTraitId, InferenceResult, MemoryMap, TraitEnvironment, consteval,
+    CallableDefId, FnAbi, ImplTraitId, InferenceResult, MemoryMap, ParamEnvAndCrate, consteval,
     db::{HirDatabase, InternedClosure, InternedCoroutine},
     generics::generics,
     layout::Layout,
@@ -55,14 +54,16 @@ use crate::{
     mir::pad16,
     next_solver::{
         AliasTy, Clause, ClauseKind, Const, ConstKind, DbInterner, EarlyBinder,
-        ExistentialPredicate, FnSig, GenericArg, GenericArgs, PolyFnSig, Region, SolverDefId, Term,
-        TraitRef, Ty, TyKind, TypingMode,
+        ExistentialPredicate, FnSig, GenericArg, GenericArgs, ParamEnv, PolyFnSig, Region,
+        SolverDefId, Term, TraitRef, Ty, TyKind, TypingMode,
         abi::Safety,
         infer::{DbInternerInferExt, traits::ObligationCause},
     },
     primitive,
     utils::{detect_variant_from_bytes, fn_traits},
 };
+
+pub type Result<T = (), E = HirDisplayError> = std::result::Result<T, E>;
 
 pub trait HirWrite: fmt::Write {
     fn start_location_link(&mut self, _location: ModuleDefId) {}
@@ -191,7 +192,7 @@ impl<'db> HirFormatter<'_, 'db> {
 }
 
 pub trait HirDisplay<'db> {
-    fn hir_fmt(&self, f: &mut HirFormatter<'_, 'db>) -> Result<(), HirDisplayError>;
+    fn hir_fmt(&self, f: &mut HirFormatter<'_, 'db>) -> Result;
 
     /// Returns a `Display`able type that is human-readable.
     fn into_displayable<'a>(
@@ -400,7 +401,7 @@ impl<'db> HirFormatter<'_, 'db> {
         &mut self,
         iter: impl IntoIterator<Item = T>,
         sep: &str,
-    ) -> Result<(), HirDisplayError> {
+    ) -> Result {
         let mut first = true;
         for e in iter {
             if !first {
@@ -419,7 +420,7 @@ impl<'db> HirFormatter<'_, 'db> {
     }
 
     /// This allows using the `write!` macro directly with a `HirFormatter`.
-    pub fn write_fmt(&mut self, args: fmt::Arguments<'_>) -> Result<(), HirDisplayError> {
+    pub fn write_fmt(&mut self, args: fmt::Arguments<'_>) -> Result {
         // We write to a buffer first to track output size
         self.buf.clear();
         fmt::write(&mut self.buf, args)?;
@@ -429,12 +430,12 @@ impl<'db> HirFormatter<'_, 'db> {
         self.fmt.write_str(&self.buf).map_err(HirDisplayError::from)
     }
 
-    pub fn write_str(&mut self, s: &str) -> Result<(), HirDisplayError> {
+    pub fn write_str(&mut self, s: &str) -> Result {
         self.fmt.write_str(s)?;
         Ok(())
     }
 
-    pub fn write_char(&mut self, c: char) -> Result<(), HirDisplayError> {
+    pub fn write_char(&mut self, c: char) -> Result {
         self.fmt.write_char(c)?;
         Ok(())
     }
@@ -542,7 +543,7 @@ pub enum ClosureStyle {
 }
 
 impl<'db, T: HirDisplay<'db>> HirDisplayWrapper<'_, 'db, T> {
-    pub fn write_to<F: HirWrite>(&self, f: &mut F) -> Result<(), HirDisplayError> {
+    pub fn write_to<F: HirWrite>(&self, f: &mut F) -> Result {
         let krate = self.display_target.krate;
         let interner = DbInterner::new_with(self.db, krate);
         self.t.hir_fmt(&mut HirFormatter {
@@ -595,21 +596,18 @@ where
 const TYPE_HINT_TRUNCATION: &str = "…";
 
 impl<'db, T: HirDisplay<'db>> HirDisplay<'db> for &T {
-    fn hir_fmt(&self, f: &mut HirFormatter<'_, 'db>) -> Result<(), HirDisplayError> {
+    fn hir_fmt(&self, f: &mut HirFormatter<'_, 'db>) -> Result {
         HirDisplay::hir_fmt(*self, f)
     }
 }
 
 impl<'db, T: HirDisplay<'db> + Internable> HirDisplay<'db> for Interned<T> {
-    fn hir_fmt(&self, f: &mut HirFormatter<'_, 'db>) -> Result<(), HirDisplayError> {
+    fn hir_fmt(&self, f: &mut HirFormatter<'_, 'db>) -> Result {
         HirDisplay::hir_fmt(self.as_ref(), f)
     }
 }
 
-fn write_projection<'db>(
-    f: &mut HirFormatter<'_, 'db>,
-    alias: &AliasTy<'db>,
-) -> Result<(), HirDisplayError> {
+fn write_projection<'db>(f: &mut HirFormatter<'_, 'db>, alias: &AliasTy<'db>) -> Result {
     if f.should_truncate() {
         return write!(f, "{TYPE_HINT_TRUNCATION}");
     }
@@ -666,7 +664,7 @@ fn write_projection<'db>(
 }
 
 impl<'db> HirDisplay<'db> for GenericArg<'db> {
-    fn hir_fmt(&self, f: &mut HirFormatter<'_, 'db>) -> Result<(), HirDisplayError> {
+    fn hir_fmt(&self, f: &mut HirFormatter<'_, 'db>) -> Result {
         match self {
             GenericArg::Ty(ty) => ty.hir_fmt(f),
             GenericArg::Lifetime(lt) => lt.hir_fmt(f),
@@ -676,7 +674,7 @@ impl<'db> HirDisplay<'db> for GenericArg<'db> {
 }
 
 impl<'db> HirDisplay<'db> for Const<'db> {
-    fn hir_fmt(&self, f: &mut HirFormatter<'_, 'db>) -> Result<(), HirDisplayError> {
+    fn hir_fmt(&self, f: &mut HirFormatter<'_, 'db>) -> Result {
         match self.kind() {
             ConstKind::Placeholder(_) => write!(f, "<placeholder>"),
             ConstKind::Bound(BoundVarIndexKind::Bound(db), bound_const) => {
@@ -715,11 +713,11 @@ fn render_const_scalar<'db>(
     b: &[u8],
     memory_map: &MemoryMap<'db>,
     ty: Ty<'db>,
-) -> Result<(), HirDisplayError> {
-    let trait_env = TraitEnvironment::empty(f.krate());
+) -> Result {
+    let param_env = ParamEnv::empty();
     let infcx = f.interner.infer_ctxt().build(TypingMode::PostAnalysis);
-    let ty = infcx.at(&ObligationCause::new(), trait_env.env).deeply_normalize(ty).unwrap_or(ty);
-    render_const_scalar_inner(f, b, memory_map, ty, trait_env)
+    let ty = infcx.at(&ObligationCause::new(), param_env).deeply_normalize(ty).unwrap_or(ty);
+    render_const_scalar_inner(f, b, memory_map, ty, param_env)
 }
 
 fn render_const_scalar_inner<'db>(
@@ -727,9 +725,10 @@ fn render_const_scalar_inner<'db>(
     b: &[u8],
     memory_map: &MemoryMap<'db>,
     ty: Ty<'db>,
-    trait_env: Arc<TraitEnvironment<'db>>,
-) -> Result<(), HirDisplayError> {
+    param_env: ParamEnv<'db>,
+) -> Result {
     use TyKind;
+    let param_env = ParamEnvAndCrate { param_env, krate: f.krate() };
     match ty.kind() {
         TyKind::Bool => write!(f, "{}", b[0] != 0),
         TyKind::Char => {
@@ -792,7 +791,7 @@ fn render_const_scalar_inner<'db>(
             TyKind::Slice(ty) => {
                 let addr = usize::from_le_bytes(b[0..b.len() / 2].try_into().unwrap());
                 let count = usize::from_le_bytes(b[b.len() / 2..].try_into().unwrap());
-                let Ok(layout) = f.db.layout_of_ty(ty, trait_env) else {
+                let Ok(layout) = f.db.layout_of_ty(ty, param_env) else {
                     return f.write_str("<layout-error>");
                 };
                 let size_one = layout.size.bytes_usize();
@@ -826,7 +825,7 @@ fn render_const_scalar_inner<'db>(
                 let Ok(t) = memory_map.vtable_ty(ty_id) else {
                     return f.write_str("<ty-missing-in-vtable-map>");
                 };
-                let Ok(layout) = f.db.layout_of_ty(t, trait_env) else {
+                let Ok(layout) = f.db.layout_of_ty(t, param_env) else {
                     return f.write_str("<layout-error>");
                 };
                 let size = layout.size.bytes_usize();
@@ -856,7 +855,7 @@ fn render_const_scalar_inner<'db>(
                         return f.write_str("<layout-error>");
                     }
                 });
-                let Ok(layout) = f.db.layout_of_ty(t, trait_env) else {
+                let Ok(layout) = f.db.layout_of_ty(t, param_env) else {
                     return f.write_str("<layout-error>");
                 };
                 let size = layout.size.bytes_usize();
@@ -868,7 +867,7 @@ fn render_const_scalar_inner<'db>(
             }
         },
         TyKind::Tuple(tys) => {
-            let Ok(layout) = f.db.layout_of_ty(ty, trait_env.clone()) else {
+            let Ok(layout) = f.db.layout_of_ty(ty, param_env) else {
                 return f.write_str("<layout-error>");
             };
             f.write_str("(")?;
@@ -880,7 +879,7 @@ fn render_const_scalar_inner<'db>(
                     f.write_str(", ")?;
                 }
                 let offset = layout.fields.offset(id).bytes_usize();
-                let Ok(layout) = f.db.layout_of_ty(ty, trait_env.clone()) else {
+                let Ok(layout) = f.db.layout_of_ty(ty, param_env) else {
                     f.write_str("<layout-error>")?;
                     continue;
                 };
@@ -891,7 +890,7 @@ fn render_const_scalar_inner<'db>(
         }
         TyKind::Adt(def, args) => {
             let def = def.def_id().0;
-            let Ok(layout) = f.db.layout_of_adt(def, args, trait_env.clone()) else {
+            let Ok(layout) = f.db.layout_of_adt(def, args, param_env) else {
                 return f.write_str("<layout-error>");
             };
             match def {
@@ -914,7 +913,7 @@ fn render_const_scalar_inner<'db>(
                     write!(f, "{}", f.db.union_signature(u).name.display(f.db, f.edition()))
                 }
                 hir_def::AdtId::EnumId(e) => {
-                    let Ok(target_data_layout) = f.db.target_data_layout(trait_env.krate) else {
+                    let Ok(target_data_layout) = f.db.target_data_layout(f.krate()) else {
                         return f.write_str("<target-layout-not-available>");
                     };
                     let Some((var_id, var_layout)) =
@@ -954,7 +953,7 @@ fn render_const_scalar_inner<'db>(
             let Some(len) = consteval::try_const_usize(f.db, len) else {
                 return f.write_str("<unknown-array-len>");
             };
-            let Ok(layout) = f.db.layout_of_ty(ty, trait_env) else {
+            let Ok(layout) = f.db.layout_of_ty(ty, param_env) else {
                 return f.write_str("<layout-error>");
             };
             let size_one = layout.size.bytes_usize();
@@ -995,18 +994,19 @@ fn render_variant_after_name<'db>(
     data: &VariantFields,
     f: &mut HirFormatter<'_, 'db>,
     field_types: &ArenaMap<LocalFieldId, EarlyBinder<'db, Ty<'db>>>,
-    trait_env: Arc<TraitEnvironment<'db>>,
+    param_env: ParamEnv<'db>,
     layout: &Layout,
     args: GenericArgs<'db>,
     b: &[u8],
     memory_map: &MemoryMap<'db>,
-) -> Result<(), HirDisplayError> {
+) -> Result {
+    let param_env = ParamEnvAndCrate { param_env, krate: f.krate() };
     match data.shape {
         FieldsShape::Record | FieldsShape::Tuple => {
             let render_field = |f: &mut HirFormatter<'_, 'db>, id: LocalFieldId| {
                 let offset = layout.fields.offset(u32::from(id.into_raw()) as usize).bytes_usize();
                 let ty = field_types[id].instantiate(f.interner, args);
-                let Ok(layout) = f.db.layout_of_ty(ty, trait_env.clone()) else {
+                let Ok(layout) = f.db.layout_of_ty(ty, param_env) else {
                     return f.write_str("<layout-error>");
                 };
                 let size = layout.size.bytes_usize();
@@ -1043,10 +1043,7 @@ fn render_variant_after_name<'db>(
 }
 
 impl<'db> HirDisplay<'db> for Ty<'db> {
-    fn hir_fmt(
-        &self,
-        f @ &mut HirFormatter { db, .. }: &mut HirFormatter<'_, 'db>,
-    ) -> Result<(), HirDisplayError> {
+    fn hir_fmt(&self, f @ &mut HirFormatter { db, .. }: &mut HirFormatter<'_, 'db>) -> Result {
         let interner = f.interner;
         if f.should_truncate() {
             return write!(f, "{TYPE_HINT_TRUNCATION}");
@@ -1649,7 +1646,7 @@ fn hir_fmt_generics<'db>(
     parameters: &[GenericArg<'db>],
     generic_def: Option<hir_def::GenericDefId>,
     self_: Option<Ty<'db>>,
-) -> Result<(), HirDisplayError> {
+) -> Result {
     if parameters.is_empty() {
         return Ok(());
     }
@@ -1699,7 +1696,7 @@ fn hir_fmt_generic_args<'db>(
     parameters: &[GenericArg<'db>],
     generic_def: Option<hir_def::GenericDefId>,
     self_: Option<Ty<'db>>,
-) -> Result<(), HirDisplayError> {
+) -> Result {
     if parameters.is_empty() {
         return Ok(());
     }
@@ -1719,7 +1716,7 @@ fn hir_fmt_generic_arguments<'db>(
     f: &mut HirFormatter<'_, 'db>,
     parameters: &[GenericArg<'db>],
     self_: Option<Ty<'db>>,
-) -> Result<(), HirDisplayError> {
+) -> Result {
     let mut first = true;
     let lifetime_offset = parameters.iter().position(|arg| arg.region().is_some());
 
@@ -1743,7 +1740,7 @@ fn hir_fmt_tys<'db>(
     f: &mut HirFormatter<'_, 'db>,
     tys: &[Ty<'db>],
     self_: Option<Ty<'db>>,
-) -> Result<(), HirDisplayError> {
+) -> Result {
     let mut first = true;
 
     for ty in tys {
@@ -1759,7 +1756,7 @@ fn hir_fmt_tys<'db>(
 }
 
 impl<'db> HirDisplay<'db> for PolyFnSig<'db> {
-    fn hir_fmt(&self, f: &mut HirFormatter<'_, 'db>) -> Result<(), HirDisplayError> {
+    fn hir_fmt(&self, f: &mut HirFormatter<'_, 'db>) -> Result {
         let FnSig { inputs_and_output, c_variadic, safety, abi: _ } = self.skip_binder();
         if let Safety::Unsafe = safety {
             write!(f, "unsafe ")?;
@@ -1790,7 +1787,7 @@ impl<'db> HirDisplay<'db> for PolyFnSig<'db> {
 }
 
 impl<'db> HirDisplay<'db> for Term<'db> {
-    fn hir_fmt(&self, f: &mut HirFormatter<'_, 'db>) -> Result<(), HirDisplayError> {
+    fn hir_fmt(&self, f: &mut HirFormatter<'_, 'db>) -> Result {
         match self {
             Term::Ty(it) => it.hir_fmt(f),
             Term::Const(it) => it.hir_fmt(f),
@@ -1822,7 +1819,7 @@ pub fn write_bounds_like_dyn_trait_with_prefix<'db>(
     this: Either<Ty<'db>, Region<'db>>,
     predicates: &[Clause<'db>],
     default_sized: SizedByDefault,
-) -> Result<(), HirDisplayError> {
+) -> Result {
     write!(f, "{prefix}")?;
     if !predicates.is_empty()
         || predicates.is_empty() && matches!(default_sized, SizedByDefault::Sized { .. })
@@ -1839,7 +1836,7 @@ fn write_bounds_like_dyn_trait<'db>(
     this: Either<Ty<'db>, Region<'db>>,
     predicates: &[Clause<'db>],
     default_sized: SizedByDefault,
-) -> Result<(), HirDisplayError> {
+) -> Result {
     // Note: This code is written to produce nice results (i.e.
     // corresponding to surface Rust) for types that can occur in
     // actual Rust. It will have weird results if the predicates
@@ -1983,7 +1980,7 @@ fn write_bounds_like_dyn_trait<'db>(
 }
 
 impl<'db> HirDisplay<'db> for TraitRef<'db> {
-    fn hir_fmt(&self, f: &mut HirFormatter<'_, 'db>) -> Result<(), HirDisplayError> {
+    fn hir_fmt(&self, f: &mut HirFormatter<'_, 'db>) -> Result {
         let trait_ = self.def_id.0;
         f.start_location_link(trait_.into());
         write!(f, "{}", f.db.trait_signature(trait_).name.display(f.db, f.edition()))?;
@@ -1994,7 +1991,7 @@ impl<'db> HirDisplay<'db> for TraitRef<'db> {
 }
 
 impl<'db> HirDisplay<'db> for Region<'db> {
-    fn hir_fmt(&self, f: &mut HirFormatter<'_, 'db>) -> Result<(), HirDisplayError> {
+    fn hir_fmt(&self, f: &mut HirFormatter<'_, 'db>) -> Result {
         match self.kind() {
             RegionKind::ReEarlyParam(param) => {
                 let generics = generics(f.db, param.id.parent);
@@ -2028,7 +2025,7 @@ pub fn write_visibility<'db>(
     module_id: ModuleId,
     vis: Visibility,
     f: &mut HirFormatter<'_, 'db>,
-) -> Result<(), HirDisplayError> {
+) -> Result {
     match vis {
         Visibility::Public => write!(f, "pub "),
         Visibility::PubCrate(_) => write!(f, "pub(crate) "),
@@ -2051,21 +2048,13 @@ pub fn write_visibility<'db>(
 }
 
 pub trait HirDisplayWithExpressionStore<'db> {
-    fn hir_fmt(
-        &self,
-        f: &mut HirFormatter<'_, 'db>,
-        store: &ExpressionStore,
-    ) -> Result<(), HirDisplayError>;
+    fn hir_fmt(&self, f: &mut HirFormatter<'_, 'db>, store: &ExpressionStore) -> Result;
 }
 
 impl<'db, T: ?Sized + HirDisplayWithExpressionStore<'db>> HirDisplayWithExpressionStore<'db>
     for &'_ T
 {
-    fn hir_fmt(
-        &self,
-        f: &mut HirFormatter<'_, 'db>,
-        store: &ExpressionStore,
-    ) -> Result<(), HirDisplayError> {
+    fn hir_fmt(&self, f: &mut HirFormatter<'_, 'db>, store: &ExpressionStore) -> Result {
         T::hir_fmt(&**self, f, store)
     }
 }
@@ -2086,16 +2075,12 @@ impl<'a, T> ExpressionStoreAdapter<'a, T> {
 }
 
 impl<'db, T: HirDisplayWithExpressionStore<'db>> HirDisplay<'db> for ExpressionStoreAdapter<'_, T> {
-    fn hir_fmt(&self, f: &mut HirFormatter<'_, 'db>) -> Result<(), HirDisplayError> {
+    fn hir_fmt(&self, f: &mut HirFormatter<'_, 'db>) -> Result {
         T::hir_fmt(&self.0, f, self.1)
     }
 }
 impl<'db> HirDisplayWithExpressionStore<'db> for LifetimeRefId {
-    fn hir_fmt(
-        &self,
-        f: &mut HirFormatter<'_, 'db>,
-        store: &ExpressionStore,
-    ) -> Result<(), HirDisplayError> {
+    fn hir_fmt(&self, f: &mut HirFormatter<'_, 'db>, store: &ExpressionStore) -> Result {
         match &store[*self] {
             LifetimeRef::Named(name) => write!(f, "{}", name.display(f.db, f.edition())),
             LifetimeRef::Static => write!(f, "'static"),
@@ -2114,11 +2099,7 @@ impl<'db> HirDisplayWithExpressionStore<'db> for LifetimeRefId {
 }
 
 impl<'db> HirDisplayWithExpressionStore<'db> for TypeRefId {
-    fn hir_fmt(
-        &self,
-        f: &mut HirFormatter<'_, 'db>,
-        store: &ExpressionStore,
-    ) -> Result<(), HirDisplayError> {
+    fn hir_fmt(&self, f: &mut HirFormatter<'_, 'db>, store: &ExpressionStore) -> Result {
         match &store[*self] {
             TypeRef::Never => write!(f, "!")?,
             TypeRef::TypeParam(param) => {
@@ -2243,11 +2224,7 @@ impl<'db> HirDisplayWithExpressionStore<'db> for TypeRefId {
 }
 
 impl<'db> HirDisplayWithExpressionStore<'db> for ConstRef {
-    fn hir_fmt(
-        &self,
-        f: &mut HirFormatter<'_, 'db>,
-        _store: &ExpressionStore,
-    ) -> Result<(), HirDisplayError> {
+    fn hir_fmt(&self, f: &mut HirFormatter<'_, 'db>, _store: &ExpressionStore) -> Result {
         // FIXME
         write!(f, "{{const}}")?;
 
@@ -2256,11 +2233,7 @@ impl<'db> HirDisplayWithExpressionStore<'db> for ConstRef {
 }
 
 impl<'db> HirDisplayWithExpressionStore<'db> for TypeBound {
-    fn hir_fmt(
-        &self,
-        f: &mut HirFormatter<'_, 'db>,
-        store: &ExpressionStore,
-    ) -> Result<(), HirDisplayError> {
+    fn hir_fmt(&self, f: &mut HirFormatter<'_, 'db>, store: &ExpressionStore) -> Result {
         match self {
             &TypeBound::Path(path, modifier) => {
                 match modifier {
@@ -2300,11 +2273,7 @@ impl<'db> HirDisplayWithExpressionStore<'db> for TypeBound {
 }
 
 impl<'db> HirDisplayWithExpressionStore<'db> for Path {
-    fn hir_fmt(
-        &self,
-        f: &mut HirFormatter<'_, 'db>,
-        store: &ExpressionStore,
-    ) -> Result<(), HirDisplayError> {
+    fn hir_fmt(&self, f: &mut HirFormatter<'_, 'db>, store: &ExpressionStore) -> Result {
         match (self.type_anchor(), self.kind()) {
             (Some(anchor), _) => {
                 write!(f, "<")?;
@@ -2452,11 +2421,7 @@ impl<'db> HirDisplayWithExpressionStore<'db> for Path {
 }
 
 impl<'db> HirDisplayWithExpressionStore<'db> for hir_def::expr_store::path::GenericArg {
-    fn hir_fmt(
-        &self,
-        f: &mut HirFormatter<'_, 'db>,
-        store: &ExpressionStore,
-    ) -> Result<(), HirDisplayError> {
+    fn hir_fmt(&self, f: &mut HirFormatter<'_, 'db>, store: &ExpressionStore) -> Result {
         match self {
             hir_def::expr_store::path::GenericArg::Type(ty) => ty.hir_fmt(f, store),
             hir_def::expr_store::path::GenericArg::Const(_c) => {

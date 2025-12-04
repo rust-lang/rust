@@ -10,8 +10,8 @@ use std::{
 
 use cfg::{CfgAtom, CfgDiff};
 use hir::{
-    Adt, AssocItem, Crate, DefWithBody, FindPathConfig, HasSource, HirDisplay, ModuleDef, Name,
-    crate_lang_items,
+    Adt, AssocItem, Crate, DefWithBody, FindPathConfig, HasCrate, HasSource, HirDisplay, ModuleDef,
+    Name, crate_lang_items,
     db::{DefDatabase, ExpandDatabase, HirDatabase},
     next_solver::{DbInterner, GenericArgs},
 };
@@ -391,7 +391,10 @@ impl flags::AnalysisStats {
             let Err(e) = db.layout_of_adt(
                 hir_def::AdtId::from(a),
                 GenericArgs::new_from_iter(interner, []),
-                db.trait_environment(a.into()),
+                hir_ty::ParamEnvAndCrate {
+                    param_env: db.trait_environment(a.into()),
+                    krate: a.krate(db).into(),
+                },
             ) else {
                 continue;
             };

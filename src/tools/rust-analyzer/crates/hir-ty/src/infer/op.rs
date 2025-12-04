@@ -343,7 +343,7 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
                 let obligation = Obligation::new(
                     self.interner(),
                     cause,
-                    self.table.trait_env.env,
+                    self.table.param_env,
                     TraitRef::new_from_args(self.interner(), trait_did.into(), args),
                 );
                 let mut ocx = ObligationCtxt::new(self.infcx());

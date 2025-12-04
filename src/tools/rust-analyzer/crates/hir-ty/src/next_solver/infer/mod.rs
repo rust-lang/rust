@@ -402,7 +402,7 @@ impl<'db> InferCtxt<'db> {
         self.evaluate_obligation(obligation).may_apply()
     }
 
-    /// See the comment on [OpaqueTypesJank](crate::solve::OpaqueTypesJank)
+    /// See the comment on `GeneralAutoderef::overloaded_deref_ty`
     /// for more details.
     pub fn predicate_may_hold_opaque_types_jank(
         &self,
@@ -532,7 +532,7 @@ impl<'db> InferCtxt<'db> {
         })
     }
 
-    /// See the comment on [OpaqueTypesJank](crate::solve::OpaqueTypesJank)
+    /// See the comment on `GeneralAutoderef::overloaded_deref_ty`
     /// for more details.
     pub fn goal_may_hold_opaque_types_jank(&self, goal: Goal<'db, Predicate<'db>>) -> bool {
         <&SolverContext<'db>>::from(self).root_goal_may_hold_opaque_types_jank(goal)

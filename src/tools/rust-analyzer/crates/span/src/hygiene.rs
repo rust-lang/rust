@@ -249,7 +249,7 @@ const _: () = {
             )
         }
 
-        /// Invariant: Only [`SyntaxContext::ROOT`] has a [`None`] outer expansion.
+        /// Invariant: Only the root [`SyntaxContext`] has a [`None`] outer expansion.
         // FIXME: The None case needs to encode the context crate id. We can encode that as the MSB of
         // MacroCallId is reserved anyways so we can do bit tagging here just fine.
         // The bigger issue is that this will cause interning to now create completely separate chains
@@ -348,7 +348,7 @@ impl SyntaxContext {
         }
     }
 
-    /// The root context, which is the parent of all other contexts. All [`FileId`]s have this context.
+    /// The root context, which is the parent of all other contexts. All `FileId`s have this context.
     #[inline]
     pub const fn root(edition: Edition) -> Self {
         let edition = edition as u32;

@@ -2,6 +2,8 @@
 //! information and various assists.
 
 #![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
+// It's useful to refer to code that is private in doc comments.
+#![allow(rustdoc::private_intra_doc_links)]
 
 // FIXME: We used to import `rustc_*` deps from `rustc_private` with `feature = "in-rust-tree" but
 // temporarily switched to crates.io versions due to hardships that working on them from rustc
@@ -67,7 +69,6 @@ use rustc_type_ir::{
 };
 use syntax::ast::{ConstArg, make};
 use traits::FnTrait;
-use triomphe::Arc;
 
 use crate::{
     db::HirDatabase,
@@ -94,7 +95,7 @@ pub use lower::{
 };
 pub use next_solver::interner::{attach_db, attach_db_allow_change, with_attached_db};
 pub use target_feature::TargetFeatures;
-pub use traits::{TraitEnvironment, check_orphan_rules};
+pub use traits::{ParamEnvAndCrate, check_orphan_rules};
 pub use utils::{
     TargetFeatureIsSafeInTarget, Unsafety, all_super_traits, direct_super_traits,
     is_fn_unsafe_to_call, target_feature_is_safe_in_target,
@@ -474,10 +475,10 @@ where
 /// To be used from `hir` only.
 pub fn callable_sig_from_fn_trait<'db>(
     self_ty: Ty<'db>,
-    trait_env: Arc<TraitEnvironment<'db>>,
+    trait_env: ParamEnvAndCrate<'db>,
     db: &'db dyn HirDatabase,
 ) -> Option<(FnTrait, PolyFnSig<'db>)> {
-    let mut table = InferenceTable::new(db, trait_env.clone(), None);
+    let mut table = InferenceTable::new(db, trait_env.param_env, trait_env.krate, None);
     let lang_items = table.interner().lang_items();
 
     let fn_once_trait = FnTrait::FnOnce.get_id(lang_items)?;

@@ -1,5 +1,8 @@
 //! `completions` crate provides utilities for generating completions of user input.
 
+// It's useful to refer to code that is private in doc comments.
+#![allow(rustdoc::private_intra_doc_links)]
+
 mod completions;
 mod config;
 mod context;

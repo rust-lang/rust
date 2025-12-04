@@ -7,14 +7,12 @@ use rustc_type_ir::{
     TypeSuperVisitable, TypeVisitable, TypeVisitor,
     inherent::{AdtDef, IntoKind},
 };
-use triomphe::Arc;
 
 use crate::{
-    TraitEnvironment,
     consteval::try_const_usize,
     db::HirDatabase,
     next_solver::{
-        DbInterner, EarlyBinder, GenericArgs, Ty, TyKind,
+        DbInterner, EarlyBinder, GenericArgs, ParamEnv, Ty, TyKind,
         infer::{InferCtxt, traits::ObligationCause},
         obligation_ctxt::ObligationCtxt,
     },
@@ -26,7 +24,7 @@ pub(crate) fn is_ty_uninhabited_from<'db>(
     infcx: &InferCtxt<'db>,
     ty: Ty<'db>,
     target_mod: ModuleId,
-    env: Arc<TraitEnvironment<'db>>,
+    env: ParamEnv<'db>,
 ) -> bool {
     let _p = tracing::info_span!("is_ty_uninhabited_from", ?ty).entered();
     let mut uninhabited_from = UninhabitedFrom::new(infcx, target_mod, env);
@@ -41,7 +39,7 @@ pub(crate) fn is_enum_variant_uninhabited_from<'db>(
     variant: EnumVariantId,
     subst: GenericArgs<'db>,
     target_mod: ModuleId,
-    env: Arc<TraitEnvironment<'db>>,
+    env: ParamEnv<'db>,
 ) -> bool {
     let _p = tracing::info_span!("is_enum_variant_uninhabited_from").entered();
 
@@ -56,7 +54,7 @@ struct UninhabitedFrom<'a, 'db> {
     // guard for preventing stack overflow in non trivial non terminating types
     max_depth: usize,
     infcx: &'a InferCtxt<'db>,
-    env: Arc<TraitEnvironment<'db>>,
+    env: ParamEnv<'db>,
 }
 
 const CONTINUE_OPAQUELY_INHABITED: ControlFlow<VisiblyUninhabited> = Continue(());
@@ -78,7 +76,7 @@ impl<'db> TypeVisitor<DbInterner<'db>> for UninhabitedFrom<'_, 'db> {
 
         if matches!(ty.kind(), TyKind::Alias(..)) {
             let mut ocx = ObligationCtxt::new(self.infcx);
-            match ocx.structurally_normalize_ty(&ObligationCause::dummy(), self.env.env, ty) {
+            match ocx.structurally_normalize_ty(&ObligationCause::dummy(), self.env, ty) {
                 Ok(it) => ty = it,
                 Err(_) => return CONTINUE_OPAQUELY_INHABITED,
             }
@@ -101,11 +99,7 @@ impl<'db> TypeVisitor<DbInterner<'db>> for UninhabitedFrom<'_, 'db> {
 }
 
 impl<'a, 'db> UninhabitedFrom<'a, 'db> {
-    fn new(
-        infcx: &'a InferCtxt<'db>,
-        target_mod: ModuleId,
-        env: Arc<TraitEnvironment<'db>>,
-    ) -> Self {
+    fn new(infcx: &'a InferCtxt<'db>, target_mod: ModuleId, env: ParamEnv<'db>) -> Self {
         Self { target_mod, recursive_ty: FxHashSet::default(), max_depth: 500, infcx, env }
     }
 

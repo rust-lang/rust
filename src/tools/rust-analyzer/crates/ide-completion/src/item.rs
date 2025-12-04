@@ -23,7 +23,7 @@ use crate::{
 /// editor pop-up.
 ///
 /// It is basically a POD with various properties. To construct a [`CompletionItem`],
-/// use [`Builder::new`] method and the [`Builder`] struct.
+/// use the [`Builder`] struct.
 #[derive(Clone, UpmapFromRaFixture)]
 #[non_exhaustive]
 pub struct CompletionItem {

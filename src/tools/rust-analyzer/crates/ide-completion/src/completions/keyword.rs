@@ -344,6 +344,60 @@ fn main() {
 }
 "#,
         );
+
+        check_edit(
+            "loop",
+            r#"
+fn main() {
+    let x = &$0
+    bar();
+}
+"#,
+            r#"
+fn main() {
+    let x = &loop {
+    $0
+};
+    bar();
+}
+"#,
+        );
+
+        check_edit(
+            "loop",
+            r#"
+fn main() {
+    let x = -$0
+    bar();
+}
+"#,
+            r#"
+fn main() {
+    let x = -loop {
+    $0
+};
+    bar();
+}
+"#,
+        );
+
+        check_edit(
+            "loop",
+            r#"
+fn main() {
+    let x = 2 + $0
+    bar();
+}
+"#,
+            r#"
+fn main() {
+    let x = 2 + loop {
+    $0
+};
+    bar();
+}
+"#,
+        );
     }
 
     #[test]

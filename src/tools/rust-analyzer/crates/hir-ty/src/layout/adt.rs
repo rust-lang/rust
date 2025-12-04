@@ -13,7 +13,7 @@ use smallvec::SmallVec;
 use triomphe::Arc;
 
 use crate::{
-    TraitEnvironment,
+    ParamEnvAndCrate,
     db::HirDatabase,
     layout::{Layout, LayoutCx, LayoutError, field_ty},
     next_solver::GenericArgs,
@@ -23,7 +23,7 @@ pub fn layout_of_adt_query<'db>(
     db: &'db dyn HirDatabase,
     def: AdtId,
     args: GenericArgs<'db>,
-    trait_env: Arc<TraitEnvironment<'db>>,
+    trait_env: ParamEnvAndCrate<'db>,
 ) -> Result<Arc<Layout>, LayoutError> {
     let krate = trait_env.krate;
     let Ok(target) = db.target_data_layout(krate) else {
@@ -34,7 +34,7 @@ pub fn layout_of_adt_query<'db>(
     let handle_variant = |def: VariantId, var: &VariantFields| {
         var.fields()
             .iter()
-            .map(|(fd, _)| db.layout_of_ty(field_ty(db, def, fd, &args), trait_env.clone()))
+            .map(|(fd, _)| db.layout_of_ty(field_ty(db, def, fd, &args), trait_env))
             .collect::<Result<Vec<_>, _>>()
     };
     let (variants, repr, is_special_no_niche) = match def {
@@ -99,7 +99,7 @@ pub(crate) fn layout_of_adt_cycle_result<'db>(
     _: &'db dyn HirDatabase,
     _def: AdtId,
     _args: GenericArgs<'db>,
-    _trait_env: Arc<TraitEnvironment<'db>>,
+    _trait_env: ParamEnvAndCrate<'db>,
 ) -> Result<Arc<Layout>, LayoutError> {
     Err(LayoutError::RecursiveTypeWithoutIndirection)
 }
