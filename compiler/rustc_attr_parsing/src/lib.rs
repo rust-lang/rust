@@ -81,6 +81,7 @@
 #![recursion_limit = "256"]
 // tidy-alphabetical-end
 #![feature(if_let_guard)]
+#![feature(iter_intersperse)]
 
 #[macro_use]
 /// All the individual attribute parsers for each of rustc's built-in attributes.

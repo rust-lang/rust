@@ -442,7 +442,12 @@ impl DocParser {
                 cx.emit_lint(AttributeLintKind::DocUnknownAny { name }, path.span());
             }
             None => {
-                // FIXME: is there anything to do in this case?
+                let full_name =
+                    path.segments().map(|s| s.as_str()).intersperse("::").collect::<String>();
+                cx.emit_lint(
+                    AttributeLintKind::DocUnknownAny { name: Symbol::intern(&full_name) },
+                    path.span(),
+                );
             }
         }
     }
