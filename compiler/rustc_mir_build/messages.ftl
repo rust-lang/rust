@@ -250,11 +250,11 @@ mir_build_loop_match_unsupported_type =
     .note = only integers, floats, bool, char, and enums without fields are supported
 
 mir_build_lower_range_bound_must_be_less_than_or_equal_to_upper =
-    lower range bound must be less than or equal to upper
+    lower bound for range pattern must be less than or equal to upper bound
     .label = lower bound larger than upper bound
     .teach_note = When matching against a range, the compiler verifies that the range is non-empty. Range patterns include both end-points, so this is equivalent to requiring the start of the range to be less than or equal to the end of the range.
 
-mir_build_lower_range_bound_must_be_less_than_upper = lower range bound must be less than upper
+mir_build_lower_range_bound_must_be_less_than_upper = lower bound for range pattern must be less than upper bound
 
 mir_build_more_information = for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
 
@@ -505,6 +505,8 @@ mir_build_unused_unsafe = unnecessary `unsafe` block
     .label = unnecessary `unsafe` block
 
 mir_build_unused_unsafe_enclosing_block_label = because it's nested under this `unsafe` block
+
+mir_build_upper_range_bound_cannot_be_min = exclusive upper bound for a range bound cannot be the minimum
 
 mir_build_variant_defined_here = not covered
 
