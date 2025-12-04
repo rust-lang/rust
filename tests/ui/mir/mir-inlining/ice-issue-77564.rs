@@ -29,11 +29,10 @@ where
 
 fn main() {
     assert_eq!(
-        CollectArray::collect_array(
-            &mut [[1, 2], [3, 4]]
+        [[1, 2], [3, 4]]
             .iter()
-            .map(|row| CollectArray::collect_array(&mut row.iter()))
-        ),
+            .map(|row| row.iter().collect_array())
+            .collect_array(),
         [[&1, &2], [&3, &4]]
     );
 }
