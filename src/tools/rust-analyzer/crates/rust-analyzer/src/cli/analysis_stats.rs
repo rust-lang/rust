@@ -1222,6 +1222,7 @@ impl flags::AnalysisStats {
                     implied_dyn_trait_hints: true,
                     lifetime_elision_hints: ide::LifetimeElisionHints::Always,
                     param_names_for_lifetime_elision_hints: true,
+                    hide_inferred_type_hints: false,
                     hide_named_constructor_hints: false,
                     hide_closure_initialization_hints: false,
                     hide_closure_parameter_hints: false,
