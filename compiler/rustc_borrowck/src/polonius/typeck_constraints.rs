@@ -142,14 +142,12 @@ fn localize_terminator_constraint<'tcx>(
     universal_regions: &UniversalRegions<'tcx>,
 ) -> LocalizedOutlivesConstraint {
     // FIXME: check if other terminators need the same handling as `Call`s, in particular
-    // Assert/Yield/Drop. A handful of tests are failing with Drop related issues, as well as some
-    // coroutine tests, and that may be why.
+    // Assert/Yield/Drop.
     match &terminator.kind {
         // FIXME: also handle diverging calls.
         TerminatorKind::Call { destination, target: Some(target), .. } => {
-            // Calls are similar to assignments, and thus follow the same pattern. If there is a
-            // target for the call we also relate what flows into the destination here to entry to
-            // that successor.
+            // If there is a target for the call we also relate what flows into the destination here
+            // to entry to that successor.
             let destination_ty = destination.ty(&body.local_decls, tcx);
             let successor_location = Location { block: *target, statement_index: 0 };
             let successor_point = liveness.point_from_location(successor_location);
