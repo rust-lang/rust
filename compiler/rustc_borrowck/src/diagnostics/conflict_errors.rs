@@ -3940,14 +3940,16 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         if let Some(decl) = local_decl
             && decl.can_be_made_mutable()
         {
-            let message = if matches!(
-                decl.local_info(),
-                LocalInfo::User(BindingForm::Var(VarBindingForm {
-                    opt_match_place: Some((_, match_span)),
-                    ..
-                })) if matches!(match_span.desugaring_kind(), Some(DesugaringKind::ForLoop))
-            ) && let Ok(binding_name) =
-                self.infcx.tcx.sess.source_map().span_to_snippet(decl.source_info.span)
+            let is_for_loop = matches!(
+                            decl.local_info(),
+                            LocalInfo::User(BindingForm::Var(VarBindingForm {
+                                opt_match_place: Some((_, match_span)),
+                                ..
+                            })) if matches!(match_span.desugaring_kind(), Some(DesugaringKind::ForLoop))
+            );
+            let message = if is_for_loop
+                && let Ok(binding_name) =
+                    self.infcx.tcx.sess.source_map().span_to_snippet(decl.source_info.span)
             {
                 format!("(mut {}) ", binding_name)
             } else {
@@ -3961,6 +3963,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             );
 
             if !from_arg
+                && !is_for_loop
                 && matches!(
                     decl.local_info(),
                     LocalInfo::User(BindingForm::Var(VarBindingForm {

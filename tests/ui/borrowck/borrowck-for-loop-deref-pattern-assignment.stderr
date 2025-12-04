@@ -10,10 +10,6 @@ help: consider making this binding mutable
    |
 LL |     for &(mut num) num in nums {
    |          +++++++++
-help: to modify the original value, take a borrow instead
-   |
-LL |     for &ref mut num in nums {
-   |          +++++++
 
 error: aborting due to 1 previous error
 
