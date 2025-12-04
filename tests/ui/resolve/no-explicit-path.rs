@@ -1,3 +1,4 @@
+//! regression test for issue <https://github.com/rust-lang/rust/issues/122509>
 //@ build-pass
 //@ compile-flags: -C codegen-units=2 --emit asm
 
