@@ -126,12 +126,21 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let tcx = this.tcx;
                 let source_info = this.source_info(expr_span);
 
-                let size = tcx.require_lang_item(LangItem::SizeOf, expr_span);
-                let size = Operand::unevaluated_constant(tcx, size, &[value_ty.into()], expr_span);
+                let size = this.temp(tcx.types.usize, expr_span);
+                this.cfg.push_assign(
+                    block,
+                    source_info,
+                    size,
+                    Rvalue::NullaryOp(NullOp::SizeOf, value_ty),
+                );
 
-                let align = tcx.require_lang_item(LangItem::AlignOf, expr_span);
-                let align =
-                    Operand::unevaluated_constant(tcx, align, &[value_ty.into()], expr_span);
+                let align = this.temp(tcx.types.usize, expr_span);
+                this.cfg.push_assign(
+                    block,
+                    source_info,
+                    align,
+                    Rvalue::NullaryOp(NullOp::AlignOf, value_ty),
+                );
 
                 // malloc some memory of suitable size and align:
                 let exchange_malloc = Operand::function_handle(
@@ -148,8 +157,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     TerminatorKind::Call {
                         func: exchange_malloc,
                         args: [
-                            Spanned { node: size, span: DUMMY_SP },
-                            Spanned { node: align, span: DUMMY_SP },
+                            Spanned { node: Operand::Move(size), span: DUMMY_SP },
+                            Spanned { node: Operand::Move(align), span: DUMMY_SP },
                         ]
                         .into(),
                         destination: storage,

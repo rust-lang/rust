@@ -1,4 +1,4 @@
-//~? ERROR values of the type `[u8; usize::MAX]` are too big for the target architecture
+//~ ERROR
 
 //@ build-fail
 //@ ignore-32bit

@@ -1,0 +1,17 @@
+- // MIR for `align_of` before LowerIntrinsics
++ // MIR for `align_of` after LowerIntrinsics
+  
+  fn align_of() -> usize {
+      let mut _0: usize;
+  
+      bb0: {
+-         _0 = std::intrinsics::align_of::<T>() -> [return: bb1, unwind unreachable];
++         _0 = AlignOf(T);
++         goto -> bb1;
+      }
+  
+      bb1: {
+          return;
+      }
+  }
+  

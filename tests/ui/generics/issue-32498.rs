@@ -1,6 +1,5 @@
 //@ run-pass
 #![allow(dead_code)]
-#![recursion_limit = "256"]
 
 // Making sure that no overflow occurs.
 
