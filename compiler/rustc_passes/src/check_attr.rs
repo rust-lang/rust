@@ -57,7 +57,10 @@ struct DiagnosticOnUnimplementedOnlyForTraits;
 
 #[derive(LintDiagnostic)]
 #[diag(passes_diagnostic_diagnostic_on_const_only_for_trait_impls)]
-struct DiagnosticOnConstOnlyForTraitImpls;
+struct DiagnosticOnConstOnlyForTraitImpls {
+    #[label]
+    item_span: Span,
+}
 
 fn target_from_impl_item<'tcx>(tcx: TyCtxt<'tcx>, impl_item: &hir::ImplItem<'_>) -> Target {
     match impl_item.kind {
@@ -541,11 +544,12 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 ItemLike::ForeignItem => {}
             }
         }
+        let item_span = self.tcx.hir_span(hir_id);
         self.tcx.emit_node_span_lint(
             MISPLACED_DIAGNOSTIC_ATTRIBUTES,
             hir_id,
             attr_span,
-            DiagnosticOnConstOnlyForTraitImpls,
+            DiagnosticOnConstOnlyForTraitImpls { item_span },
         );
     }
 
