@@ -28,7 +28,7 @@ LL |     x as _
    = note: requirement occurs because of a mutable pointer to `dyn Send`
    = note: mutable pointers are invariant over their type parameter
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
-note: raw pointer casts of trait objects do not cast away lifetimes
+note: raw pointer casts of trait objects cannot extend lifetimes
   --> $DIR/ptr-to-ptr-principalless.rs:8:5
    |
 LL |     x as _
@@ -47,7 +47,7 @@ LL |     x as _
    = note: requirement occurs because of a mutable pointer to `dyn Send`
    = note: mutable pointers are invariant over their type parameter
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
-note: raw pointer casts of trait objects do not cast away lifetimes
+note: raw pointer casts of trait objects cannot extend lifetimes
   --> $DIR/ptr-to-ptr-principalless.rs:13:5
    |
 LL |     x as _
@@ -79,7 +79,7 @@ LL |     x as _
    = note: requirement occurs because of a mutable pointer to `Wrapper<dyn Send>`
    = note: mutable pointers are invariant over their type parameter
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
-note: raw pointer casts of trait objects do not cast away lifetimes
+note: raw pointer casts of trait objects cannot extend lifetimes
   --> $DIR/ptr-to-ptr-principalless.rs:18:5
    |
 LL |     x as _
@@ -98,7 +98,7 @@ LL |     x as _
    = note: requirement occurs because of a mutable pointer to `Wrapper<dyn Send>`
    = note: mutable pointers are invariant over their type parameter
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
-note: raw pointer casts of trait objects do not cast away lifetimes
+note: raw pointer casts of trait objects cannot extend lifetimes
   --> $DIR/ptr-to-ptr-principalless.rs:23:5
    |
 LL |     x as _
@@ -130,7 +130,7 @@ LL |     x as _
    = note: requirement occurs because of a mutable pointer to `dyn Sync`
    = note: mutable pointers are invariant over their type parameter
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
-note: raw pointer casts of trait objects do not cast away lifetimes
+note: raw pointer casts of trait objects cannot extend lifetimes
   --> $DIR/ptr-to-ptr-principalless.rs:30:5
    |
 LL |     x as _
@@ -149,7 +149,7 @@ LL |     x as _
    = note: requirement occurs because of a mutable pointer to `dyn Sync`
    = note: mutable pointers are invariant over their type parameter
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
-note: raw pointer casts of trait objects do not cast away lifetimes
+note: raw pointer casts of trait objects cannot extend lifetimes
   --> $DIR/ptr-to-ptr-principalless.rs:35:5
    |
 LL |     x as _
@@ -181,7 +181,7 @@ LL |     x as _
    = note: requirement occurs because of a mutable pointer to `Wrapper<dyn Sync>`
    = note: mutable pointers are invariant over their type parameter
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
-note: raw pointer casts of trait objects do not cast away lifetimes
+note: raw pointer casts of trait objects cannot extend lifetimes
   --> $DIR/ptr-to-ptr-principalless.rs:40:5
    |
 LL |     x as _
@@ -200,7 +200,7 @@ LL |     x as _
    = note: requirement occurs because of a mutable pointer to `Wrapper<dyn Sync>`
    = note: mutable pointers are invariant over their type parameter
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
-note: raw pointer casts of trait objects do not cast away lifetimes
+note: raw pointer casts of trait objects cannot extend lifetimes
   --> $DIR/ptr-to-ptr-principalless.rs:45:5
    |
 LL |     x as _
@@ -232,7 +232,7 @@ LL |     x as _
    = note: requirement occurs because of a mutable pointer to `dyn Send`
    = note: mutable pointers are invariant over their type parameter
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
-note: raw pointer casts of trait objects do not cast away lifetimes
+note: raw pointer casts of trait objects cannot extend lifetimes
   --> $DIR/ptr-to-ptr-principalless.rs:53:5
    |
 LL |     x as _
@@ -251,7 +251,7 @@ LL |     x as _
    = note: requirement occurs because of a mutable pointer to `dyn Send`
    = note: mutable pointers are invariant over their type parameter
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
-note: raw pointer casts of trait objects do not cast away lifetimes
+note: raw pointer casts of trait objects cannot extend lifetimes
   --> $DIR/ptr-to-ptr-principalless.rs:58:5
    |
 LL |     x as _

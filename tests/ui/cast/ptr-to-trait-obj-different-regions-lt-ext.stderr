@@ -6,7 +6,7 @@ LL | fn bad_cast<'a>(x: *const dyn Static<'static>) -> *const dyn Static<'a> {
 LL |     x as _
    |     ^^^^^^ returning this value requires that `'a` must outlive `'static`
    |
-note: raw pointer casts of trait objects do not cast away lifetimes
+note: raw pointer casts of trait objects cannot extend lifetimes
   --> $DIR/ptr-to-trait-obj-different-regions-lt-ext.rs:12:5
    |
 LL |     x as _

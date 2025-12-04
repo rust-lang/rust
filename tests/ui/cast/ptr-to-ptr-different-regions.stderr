@@ -9,7 +9,7 @@ LL |     ptr as _
    = note: requirement occurs because of a mutable pointer to `dyn Trait`
    = note: mutable pointers are invariant over their type parameter
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
-note: raw pointer casts of trait objects do not cast away lifetimes
+note: raw pointer casts of trait objects cannot extend lifetimes
   --> $DIR/ptr-to-ptr-different-regions.rs:17:5
    |
 LL |     ptr as _

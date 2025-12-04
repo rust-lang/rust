@@ -1555,7 +1555,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
 
                             debug!(?src_tty, ?dst_tty, ?src_obj, ?dst_obj);
 
-                            // Trait parameters are Invariant, the only part that actually has
+                            // Trait parameters are invariant, the only part that actually has
                             // subtyping here is the lifetime bound of the dyn-type.
                             //
                             // For example in `dyn Trait<'a> + 'b <: dyn Trait<'c> + 'd`  we would

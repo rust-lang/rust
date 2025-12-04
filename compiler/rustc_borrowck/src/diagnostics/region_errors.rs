@@ -547,7 +547,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             {
                 diag.span_note(
                     constraint.span,
-                    format!("raw pointer casts of trait objects do not cast away lifetimes"),
+                    format!("raw pointer casts of trait objects cannot extend lifetimes"),
                 );
                 diag.note(format!(
                     "this was previously accepted by the compiler but was changed recently"
