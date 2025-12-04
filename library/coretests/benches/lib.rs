@@ -8,6 +8,7 @@
 #![feature(iter_array_chunks)]
 #![feature(iter_next_chunk)]
 #![feature(iter_advance_by)]
+#![feature(uint_gather_scatter_bits)]
 
 extern crate test;
 
