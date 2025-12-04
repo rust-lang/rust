@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use rustc_span::source_map::{FilePathMapping, SourceMap};
 use rustc_span::symbol::sym;
-use rustc_span::{BytePos, Span};
+use rustc_span::{BytePos, DUMMY_SP, Span};
 
 use super::{DocFragment, DocFragmentKind, source_span_for_markdown_range_inner};
 
@@ -17,7 +17,7 @@ fn single_backtick() {
         &[DocFragment {
             span: Span::with_root_ctxt(BytePos(8), BytePos(11)),
             item_id: None,
-            kind: DocFragmentKind::RawDoc,
+            kind: DocFragmentKind::Raw(DUMMY_SP),
             doc: sym::empty, // unused placeholder
             indent: 0,
             from_expansion: false,
@@ -40,7 +40,7 @@ fn utf8() {
         &[DocFragment {
             span: Span::with_root_ctxt(BytePos(8), BytePos(14)),
             item_id: None,
-            kind: DocFragmentKind::RawDoc,
+            kind: DocFragmentKind::Raw(DUMMY_SP),
             doc: sym::empty, // unused placeholder
             indent: 0,
             from_expansion: false,
