@@ -1,5 +1,8 @@
 use core::{cmp, fmt, ops};
 
+mod narrowing_div;
+pub use narrowing_div::NarrowingDiv;
+
 /// Minimal integer implementations needed on all integer types, including wide integers.
 #[allow(dead_code)] // Some constants are only used with tests
 pub trait MinInt:

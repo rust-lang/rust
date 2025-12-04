@@ -1,5 +1,3 @@
-use core::f64;
-
 use super::sqrt;
 
 const SPLIT: f64 = 134217728. + 1.; // 0x1p27 + 1 === (2 ^ 27) + 1
