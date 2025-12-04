@@ -45,7 +45,6 @@ pub(super) fn convert_typeck_constraints<'tcx>(
                 {
                     localize_statement_constraint(
                         tcx,
-                        body,
                         stmt,
                         &outlives_constraint,
                         point,
@@ -74,7 +73,6 @@ pub(super) fn convert_typeck_constraints<'tcx>(
 /// needed CFG `from`-`to` intra-block nodes.
 fn localize_statement_constraint<'tcx>(
     tcx: TyCtxt<'tcx>,
-    body: &Body<'tcx>,
     stmt: &Statement<'tcx>,
     outlives_constraint: &OutlivesConstraint<'tcx>,
     current_point: PointIndex,
@@ -114,27 +112,21 @@ fn localize_statement_constraint<'tcx>(
                 },
                 "there should be no common regions between the LHS and RHS of an assignment"
             );
-
-            let lhs_ty = body.local_decls[lhs.local].ty;
-            let successor_point = current_point;
-            compute_constraint_direction(
-                tcx,
-                outlives_constraint,
-                &lhs_ty,
-                current_point,
-                successor_point,
-                universal_regions,
-            )
         }
         _ => {
-            // For the other cases, we localize an outlives constraint to where it arises.
-            LocalizedOutlivesConstraint {
-                source: outlives_constraint.sup,
-                from: current_point,
-                target: outlives_constraint.sub,
-                to: current_point,
-            }
+            // Assignments should be the only statement that can both generate constraints that
+            // apply on entry (specific to the RHS place) *and* others that only apply on exit (the
+            // subset of RHS regions that actually flow into the LHS): i.e., where midpoints would
+            // be used to ensure the former happen before the latter, within the same MIR Location.
         }
+    }
+
+    // We generally localize an outlives constraint to where it arises.
+    LocalizedOutlivesConstraint {
+        source: outlives_constraint.sup,
+        from: current_point,
+        target: outlives_constraint.sub,
+        to: current_point,
     }
 }
 
