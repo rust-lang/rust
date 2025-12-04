@@ -54,9 +54,11 @@ impl<'mir, 'tcx> ConstCx<'mir, 'tcx> {
     pub fn enforce_recursive_const_stability(&self) -> bool {
         // We can skip this if neither `staged_api` nor `-Zforce-unstable-if-unmarked` are enabled,
         // since in such crates `lookup_const_stability` will always be `None`.
-        self.const_kind == Some(hir::ConstContext::ConstFn)
-            && (self.tcx.features().staged_api()
-                || self.tcx.sess.opts.unstable_opts.force_unstable_if_unmarked)
+        matches!(
+            self.const_kind,
+            Some(hir::ConstContext::ConstFn | hir::ConstContext::Const { inline: true })
+        ) && (self.tcx.features().staged_api()
+            || self.tcx.sess.opts.unstable_opts.force_unstable_if_unmarked)
             && is_fn_or_trait_safe_to_expose_on_stable(self.tcx, self.def_id().to_def_id())
     }
 

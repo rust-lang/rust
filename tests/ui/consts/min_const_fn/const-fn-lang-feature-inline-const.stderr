@@ -1,0 +1,55 @@
+error: const stability of inline consts must match const stability of containing item.
+  --> $DIR/const-fn-lang-feature-inline-const.rs:13:5
+   |
+LL |     #[rustc_const_unstable(feature = "abi_unadjusted", issue = "42")]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: did you mean to use `rustc_allow_const_fn_unstable`?
+  --> $DIR/const-fn-lang-feature-inline-const.rs:13:5
+   |
+LL |     #[rustc_const_unstable(feature = "abi_unadjusted", issue = "42")]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: stability marker of containing item defined here
+  --> $DIR/const-fn-lang-feature-inline-const.rs:11:1
+   |
+LL | #[rustc_const_stable(feature = "asdf", since = "99.0.0")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: const stability of inline consts must match const stability of containing item.
+  --> $DIR/const-fn-lang-feature-inline-const.rs:42:5
+   |
+LL |     #[rustc_const_unstable(feature = "abi_unadjusted", issue = "42")]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: did you mean to use `rustc_allow_const_fn_unstable`?
+  --> $DIR/const-fn-lang-feature-inline-const.rs:42:5
+   |
+LL |     #[rustc_const_unstable(feature = "abi_unadjusted", issue = "42")]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: const function that might be (indirectly) exposed to stable cannot use `#[feature(abi_unadjusted)]`
+  --> $DIR/const-fn-lang-feature-inline-const.rs:26:9
+   |
+LL |         my_fun()
+   |         ^^^^^^^^
+   |
+   = help: mark the callee as `#[rustc_const_stable_indirect]` if it does not itself require any unstable features
+help: if the caller is not (yet) meant to be exposed to stable const contexts, add `#[rustc_const_unstable]`
+   |
+LL |     const #[rustc_const_unstable(feature = "...", issue = "...")]
+   |           +++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+error: const function that might be (indirectly) exposed to stable cannot use `#[feature(abi_unadjusted)]`
+  --> $DIR/const-fn-lang-feature-inline-const.rs:36:9
+   |
+LL |         my_fun()
+   |         ^^^^^^^^
+   |
+   = help: mark the callee as `#[rustc_const_stable_indirect]` if it does not itself require any unstable features
+help: if the caller is not (yet) meant to be exposed to stable const contexts, add `#[rustc_const_unstable]`
+   |
+LL |     const #[rustc_const_unstable(feature = "...", issue = "...")]
+   |           +++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+error: aborting due to 4 previous errors
+

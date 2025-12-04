@@ -63,6 +63,7 @@ impl<S: Stage> CombineAttributeParser<S> for AllowConstFnUnstableParser {
         Allow(Target::Method(MethodKind::Inherent)),
         Allow(Target::Method(MethodKind::Trait { body: true })),
         Allow(Target::Method(MethodKind::TraitImpl)),
+        Allow(Target::Expression), // FIXME: should only allow inline consts
     ]);
     const TEMPLATE: AttributeTemplate = template!(Word, List: &["feat1, feat2, ..."]);
 
