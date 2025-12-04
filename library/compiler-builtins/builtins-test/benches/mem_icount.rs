@@ -1,11 +1,11 @@
-//! Benchmarks that use Callgrind (via `iai_callgrind`) to report instruction count metrics. This
+//! Benchmarks that use Callgrind (via `gungraun`) to report instruction count metrics. This
 //! is stable enough to be tested in CI.
 
 use std::hint::black_box;
 use std::{ops, slice};
 
 use compiler_builtins::mem::{memcmp, memcpy, memmove, memset};
-use iai_callgrind::{library_benchmark, library_benchmark_group, main};
+use gungraun::{library_benchmark, library_benchmark_group, main};
 
 const PAGE_SIZE: usize = 0x1000; // 4 kiB
 const MAX_ALIGN: usize = 512; // assume we may use avx512 operations one day

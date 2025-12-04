@@ -38,7 +38,7 @@ USAGE = cleandoc(
             `--tag` can be specified to look for artifacts with a specific tag, such as
             for a specific architecture.
 
-            Note that `--extract` will overwrite files in `iai-home`.
+            Note that `--extract` will overwrite files in `gungraun-home`.
 
         handle-bench-regressions PR_NUMBER
             Exit with success if the pull request contains a line starting with
