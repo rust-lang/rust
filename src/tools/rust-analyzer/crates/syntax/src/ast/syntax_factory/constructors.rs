@@ -71,7 +71,6 @@ impl SyntaxFactory {
         ast
     }
 
-
     pub fn path_from_text(&self, text: &str) -> ast::Path {
         make::path_from_text(text).clone_for_update()
     }
@@ -213,10 +212,10 @@ impl SyntaxFactory {
 
         if let Some(mut mapping) = self.mappings() {
             let mut builder = SyntaxMappingBuilder::new(ast.syntax().clone());
-            if let Some(self_param) = self_param {
-                if let Some(new_self_param) = ast.self_param() {
-                    builder.map_node(self_param.syntax().clone(), new_self_param.syntax().clone());
-                }
+            if let Some(self_param) = self_param
+                && let Some(new_self_param) = ast.self_param()
+            {
+                builder.map_node(self_param.syntax().clone(), new_self_param.syntax().clone());
             }
             builder.map_children(input, ast.params().map(|p| p.syntax().clone()));
             builder.finish(&mut mapping);
