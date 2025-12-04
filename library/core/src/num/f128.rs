@@ -1800,6 +1800,11 @@ impl f128 {
     /// It might have a different sequence of rounding operations than `powf`,
     /// so the results are not guaranteed to agree.
     ///
+    /// Note that this function is special in that it can return non-NaN results for NaN inputs. For
+    /// example, `f128::powi(f128::NAN, 0)` returns `1.0`. However, if an input is a *signaling*
+    /// NaN, then the result is non-deterministically either a NaN or the result that the
+    /// corresponding quiet NaN would produce.
+    ///
     /// # Unspecified precision
     ///
     /// The precision of this function is non-deterministic. This means it varies by platform,

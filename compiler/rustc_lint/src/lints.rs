@@ -2881,27 +2881,6 @@ pub(crate) struct AssociatedConstElidedLifetime {
 }
 
 #[derive(LintDiagnostic)]
-#[diag(lint_unsafe_attr_outside_unsafe)]
-pub(crate) struct UnsafeAttrOutsideUnsafe {
-    #[label]
-    pub span: Span,
-    #[subdiagnostic]
-    pub suggestion: UnsafeAttrOutsideUnsafeSuggestion,
-}
-
-#[derive(Subdiagnostic)]
-#[multipart_suggestion(
-    lint_unsafe_attr_outside_unsafe_suggestion,
-    applicability = "machine-applicable"
-)]
-pub(crate) struct UnsafeAttrOutsideUnsafeSuggestion {
-    #[suggestion_part(code = "unsafe(")]
-    pub left: Span,
-    #[suggestion_part(code = ")")]
-    pub right: Span,
-}
-
-#[derive(LintDiagnostic)]
 #[diag(lint_static_mut_refs_lint)]
 pub(crate) struct RefOfMutStatic<'a> {
     #[label]

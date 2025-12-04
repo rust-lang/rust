@@ -1,6 +1,6 @@
 use std::num::IntErrorKind;
 
-use rustc_ast::{self as ast, Path};
+use rustc_ast::{self as ast};
 use rustc_errors::codes::*;
 use rustc_errors::{
     Applicability, Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level,
@@ -790,13 +790,22 @@ pub(crate) struct InvalidAttrUnsafe {
     #[primary_span]
     #[label]
     pub span: Span,
-    pub name: Path,
+    pub name: AttrPath,
 }
 
 #[derive(Diagnostic)]
 #[diag(attr_parsing_unsafe_attr_outside_unsafe)]
 pub(crate) struct UnsafeAttrOutsideUnsafe {
     #[primary_span]
+    #[label]
+    pub span: Span,
+    #[subdiagnostic]
+    pub suggestion: UnsafeAttrOutsideUnsafeSuggestion,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(attr_parsing_unsafe_attr_outside_unsafe)]
+pub(crate) struct UnsafeAttrOutsideUnsafeLint {
     #[label]
     pub span: Span,
     #[subdiagnostic]

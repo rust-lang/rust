@@ -283,16 +283,6 @@ pub fn decorate_builtin_lint(
         BuiltinLintDiag::UnusedQualifications { removal_span } => {
             lints::UnusedQualifications { removal_span }.decorate_lint(diag);
         }
-        BuiltinLintDiag::UnsafeAttrOutsideUnsafe {
-            attribute_name_span,
-            sugg_spans: (left, right),
-        } => {
-            lints::UnsafeAttrOutsideUnsafe {
-                span: attribute_name_span,
-                suggestion: lints::UnsafeAttrOutsideUnsafeSuggestion { left, right },
-            }
-            .decorate_lint(diag);
-        }
         BuiltinLintDiag::AssociatedConstElidedLifetime {
             elided,
             span: lt_span,
