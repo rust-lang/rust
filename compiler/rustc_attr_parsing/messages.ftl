@@ -14,8 +14,91 @@ attr_parsing_deprecated_item_suggestion =
     .help = add `#![feature(deprecated_suggestion)]` to the crate root
     .note = see #94785 for more details
 
+attr_parsing_doc_alias_bad_char =
+    {$char_} character isn't allowed in {$attr_str}
+
+attr_parsing_doc_alias_duplicated = doc alias is duplicated
+    .label = first defined here
+
+attr_parsing_doc_alias_empty =
+    {$attr_str} attribute cannot have empty value
+
+attr_parsing_doc_alias_malformed =
+    doc alias attribute expects a string `#[doc(alias = "a")]` or a list of strings `#[doc(alias("a", "b"))]`
+
+attr_parsing_doc_alias_start_end =
+    {$attr_str} cannot start or end with ' '
+
+attr_parsing_doc_attribute_not_attribute =
+    nonexistent builtin attribute `{$attribute}` used in `#[doc(attribute = "...")]`
+    .help = only existing builtin attributes are allowed in core/std
+
+attr_parsing_doc_auto_cfg_expects_hide_or_show =
+    only `hide` or `show` are allowed in `#[doc(auto_cfg(...))]`
+
+attr_parsing_doc_auto_cfg_hide_show_expects_list =
+    `#![doc(auto_cfg({$attr_name}(...)))]` expects a list of items
+
+attr_parsing_doc_auto_cfg_hide_show_unexpected_item =
+    `#![doc(auto_cfg({$attr_name}(...)))]` only accepts identifiers or key/value items
+
+attr_parsing_doc_auto_cfg_wrong_literal =
+    expected boolean for `#[doc(auto_cfg = ...)]`
+
+attr_parsing_doc_invalid =
+    invalid `doc` attribute
+
+attr_parsing_doc_keyword_not_keyword =
+    nonexistent keyword `{$keyword}` used in `#[doc(keyword = "...")]`
+    .help = only existing keywords are allowed in core/std
+
+attr_parsing_doc_test_literal = `#![doc(test(...)]` does not take a literal
+
+attr_parsing_doc_test_takes_list =
+    `#[doc(test(...)]` takes a list of attributes
+
+attr_parsing_doc_test_unknown =
+    unknown `doc(test)` attribute `{$name}`
+
+attr_parsing_doc_unknown_any =
+    unknown `doc` attribute `{$name}`
+
+attr_parsing_doc_unknown_include =
+    unknown `doc` attribute `include`
+    .suggestion = use `doc = include_str!` instead
+
+attr_parsing_doc_unknown_passes =
+    unknown `doc` attribute `{$name}`
+    .note = `doc` attribute `{$name}` no longer functions; see issue #44136 <https://github.com/rust-lang/rust/issues/44136>
+    .label = no longer functions
+    .no_op_note = `doc({$name})` is now a no-op
+
+attr_parsing_doc_unknown_plugins =
+    unknown `doc` attribute `plugins`
+    .note = `doc` attribute `plugins` no longer functions; see issue #44136 <https://github.com/rust-lang/rust/issues/44136> and CVE-2018-1000622 <https://nvd.nist.gov/vuln/detail/CVE-2018-1000622>
+    .label = no longer functions
+    .no_op_note = `doc(plugins)` is now a no-op
+
+attr_parsing_doc_unknown_spotlight =
+    unknown `doc` attribute `spotlight`
+    .note = `doc(spotlight)` was renamed to `doc(notable_trait)`
+    .suggestion = use `notable_trait` instead
+    .no_op_note = `doc(spotlight)` is now a no-op
+
+attr_parsing_empty_attribute =
+    unused attribute
+    .suggestion = {$valid_without_list ->
+        [true] remove these parentheses
+        *[other] remove this attribute
+    }
+    .note = {$valid_without_list ->
+        [true] using `{$attr_path}` with an empty list is equivalent to not using a list at all
+        *[other] using `{$attr_path}` with an empty list has no effect
+    }
+
 attr_parsing_empty_confusables =
     expected at least one confusable name
+
 attr_parsing_empty_link_name =
     link name must not be empty
     .label = empty link name
@@ -238,84 +321,3 @@ attr_parsing_doc_alias_duplicated = doc alias is duplicated
 
 attr_parsing_whole_archive_needs_static =
     linking modifier `whole-archive` is only compatible with `static` linking kind
-
-attr_parsing_unused_no_lints_note =
-    attribute `{$name}` without any lints has no effect
-
-attr_parsing_doc_alias_empty =
-    {$attr_str} attribute cannot have empty value
-
-attr_parsing_doc_alias_bad_char =
-    {$char_} character isn't allowed in {$attr_str}
-
-attr_parsing_doc_alias_start_end =
-    {$attr_str} cannot start or end with ' '
-
-attr_parsing_doc_keyword_not_keyword =
-    nonexistent keyword `{$keyword}` used in `#[doc(keyword = "...")]`
-    .help = only existing keywords are allowed in core/std
-
-attr_parsing_doc_attribute_not_attribute =
-    nonexistent builtin attribute `{$attribute}` used in `#[doc(attribute = "...")]`
-    .help = only existing builtin attributes are allowed in core/std
-
-attr_parsing_doc_inline_conflict =
-    conflicting doc inlining attributes
-    .help = remove one of the conflicting attributes
-
-attr_parsing_doc_inline_conflict_first =
-    this attribute...
-
-attr_parsing_doc_inline_conflict_second =
-    {"."}..conflicts with this attribute
-
-attr_parsing_doc_auto_cfg_expects_hide_or_show =
-    only `hide` or `show` are allowed in `#[doc(auto_cfg(...))]`
-
-attr_parsing_doc_auto_cfg_hide_show_unexpected_item =
-    `#![doc(auto_cfg({$attr_name}(...)))]` only accepts identifiers or key/value items
-
-attr_parsing_doc_auto_cfg_hide_show_expects_list =
-    `#![doc(auto_cfg({$attr_name}(...)))]` expects a list of items
-
-attr_parsing_doc_invalid =
-    invalid `doc` attribute
-
-attr_parsing_doc_unknown_include =
-    unknown `doc` attribute `include`
-    .suggestion = use `doc = include_str!` instead
-
-attr_parsing_doc_unknown_spotlight =
-    unknown `doc` attribute `spotlight`
-    .note = `doc(spotlight)` was renamed to `doc(notable_trait)`
-    .suggestion = use `notable_trait` instead
-    .no_op_note = `doc(spotlight)` is now a no-op
-
-attr_parsing_doc_unknown_passes =
-    unknown `doc` attribute `{$name}`
-    .note = `doc` attribute `{$name}` no longer functions; see issue #44136 <https://github.com/rust-lang/rust/issues/44136>
-    .label = no longer functions
-    .no_op_note = `doc({$name})` is now a no-op
-
-attr_parsing_doc_unknown_plugins =
-    unknown `doc` attribute `plugins`
-    .note = `doc` attribute `plugins` no longer functions; see issue #44136 <https://github.com/rust-lang/rust/issues/44136> and CVE-2018-1000622 <https://nvd.nist.gov/vuln/detail/CVE-2018-1000622>
-    .label = no longer functions
-    .no_op_note = `doc(plugins)` is now a no-op
-
-attr_parsing_doc_unknown_any =
-    unknown `doc` attribute `{$name}`
-
-attr_parsing_doc_auto_cfg_wrong_literal =
-    expected boolean for `#[doc(auto_cfg = ...)]`
-
-attr_parsing_doc_test_takes_list =
-    `#[doc(test(...)]` takes a list of attributes
-
-attr_parsing_doc_test_unknown =
-    unknown `doc(test)` attribute `{$name}`
-
-attr_parsing_doc_test_literal = `#![doc(test(...)]` does not take a literal
-
-attr_parsing_doc_alias_malformed =
-    doc alias attribute expects a string `#[doc(alias = "a")]` or a list of strings `#[doc(alias("a", "b"))]`
