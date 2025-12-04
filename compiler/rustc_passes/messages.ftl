@@ -421,6 +421,8 @@ passes_missing_panic_handler =
 passes_missing_stability_attr =
     {$descr} has missing stability attribute
 
+passes_misspelled_feature = there is a feature with a similar name: `{$actual_name}`
+
 passes_mixed_export_name_and_no_mangle = `{$no_mangle_attr}` attribute may not be used in combination with `{$export_name_attr}`
     .label = `{$no_mangle_attr}` is ignored
     .note = `{$export_name_attr}` takes precedence
