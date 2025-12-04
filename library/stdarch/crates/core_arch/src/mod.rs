@@ -5,6 +5,11 @@
 #[macro_use]
 mod macros;
 
+#[cfg(test)]
+mod test;
+#[cfg(test)]
+use test::assert_eq_const;
+
 #[cfg(any(target_arch = "riscv32", target_arch = "riscv64", doc))]
 mod riscv_shared;
 
