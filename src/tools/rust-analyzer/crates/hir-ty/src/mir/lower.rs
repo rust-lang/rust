@@ -30,7 +30,10 @@ use crate::{
     db::{HirDatabase, InternedClosure, InternedClosureId},
     display::{DisplayTarget, HirDisplay, hir_display_with_store},
     generics::generics,
-    infer::{CaptureKind, CapturedItem, TypeMismatch, cast::CastTy},
+    infer::{
+        CaptureKind, CapturedItem, TypeMismatch, cast::CastTy,
+        closure::analysis::HirPlaceProjection,
+    },
     inhabitedness::is_ty_uninhabited_from,
     layout::LayoutError,
     method_resolution::CandidateId,
@@ -1258,22 +1261,16 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
                                 .clone()
                                 .into_iter()
                                 .map(|it| match it {
-                                    ProjectionElem::Deref => ProjectionElem::Deref,
-                                    ProjectionElem::Field(it) => ProjectionElem::Field(it),
-                                    ProjectionElem::ClosureField(it) => {
-                                        ProjectionElem::ClosureField(it)
+                                    HirPlaceProjection::Deref => ProjectionElem::Deref,
+                                    HirPlaceProjection::Field(field_id) => {
+                                        ProjectionElem::Field(Either::Left(field_id))
                                     }
-                                    ProjectionElem::ConstantIndex { offset, from_end } => {
-                                        ProjectionElem::ConstantIndex { offset, from_end }
+                                    HirPlaceProjection::TupleField(idx) => {
+                                        ProjectionElem::Field(Either::Right(TupleFieldId {
+                                            tuple: TupleId(!0), // Dummy as it's unused
+                                            index: idx,
+                                        }))
                                     }
-                                    ProjectionElem::Subslice { from, to } => {
-                                        ProjectionElem::Subslice { from, to }
-                                    }
-                                    ProjectionElem::OpaqueCast(it) => {
-                                        ProjectionElem::OpaqueCast(it)
-                                    }
-                                    #[allow(unreachable_patterns)]
-                                    ProjectionElem::Index(it) => match it {},
                                 })
                                 .collect(),
                         ),
@@ -2173,10 +2170,13 @@ pub fn mir_body_for_closure_query<'db>(
                 for (it, y) in p.projection.lookup(store).iter().zip(it.0.place.projections.iter())
                 {
                     match (it, y) {
-                        (ProjectionElem::Deref, ProjectionElem::Deref) => (),
-                        (ProjectionElem::Field(it), ProjectionElem::Field(y)) if it == y => (),
-                        (ProjectionElem::ClosureField(it), ProjectionElem::ClosureField(y))
+                        (ProjectionElem::Deref, HirPlaceProjection::Deref) => (),
+                        (ProjectionElem::Field(Either::Left(it)), HirPlaceProjection::Field(y))
                             if it == y => {}
+                        (
+                            ProjectionElem::Field(Either::Right(it)),
+                            HirPlaceProjection::TupleField(y),
+                        ) if it.index == *y => (),
                         _ => return false,
                     }
                 }
