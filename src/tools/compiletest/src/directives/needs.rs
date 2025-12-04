@@ -367,7 +367,7 @@ impl CachedNeedsConditions {
             //
             // However, `rust-lld` is only located under the lib path, so we look for it there.
             rust_lld: config
-                .compile_lib_path
+                .host_compile_lib_path
                 .parent()
                 .expect("couldn't traverse to the parent of the specified --compile-lib-path")
                 .join("lib")

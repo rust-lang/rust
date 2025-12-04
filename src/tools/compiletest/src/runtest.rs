@@ -458,7 +458,7 @@ impl<'test> TestCx<'test> {
 
         self.compose_and_run(
             rustc,
-            self.config.compile_lib_path.as_path(),
+            self.config.host_compile_lib_path.as_path(),
             Some(aux_dir.as_path()),
             src,
         )
@@ -1060,7 +1060,7 @@ impl<'test> TestCx<'test> {
         rustdoc.current_dir(current_dir);
         rustdoc
             .arg("-L")
-            .arg(self.config.run_lib_path.as_path())
+            .arg(self.config.target_run_lib_path.as_path())
             .arg("-L")
             .arg(aux_dir)
             .arg("-o")
@@ -1151,7 +1151,7 @@ impl<'test> TestCx<'test> {
 
                 self.compose_and_run(
                     test_client,
-                    self.config.run_lib_path.as_path(),
+                    self.config.target_run_lib_path.as_path(),
                     Some(aux_dir.as_path()),
                     None,
                 )
@@ -1166,7 +1166,7 @@ impl<'test> TestCx<'test> {
 
                 self.compose_and_run(
                     wr_run,
-                    self.config.run_lib_path.as_path(),
+                    self.config.target_run_lib_path.as_path(),
                     Some(aux_dir.as_path()),
                     None,
                 )
@@ -1181,7 +1181,7 @@ impl<'test> TestCx<'test> {
 
                 self.compose_and_run(
                     program,
-                    self.config.run_lib_path.as_path(),
+                    self.config.target_run_lib_path.as_path(),
                     Some(aux_dir.as_path()),
                     None,
                 )
@@ -1321,7 +1321,7 @@ impl<'test> TestCx<'test> {
         self.props.unset_rustc_env.iter().fold(&mut rustc, Command::env_remove);
         self.compose_and_run(
             rustc,
-            self.config.compile_lib_path.as_path(),
+            self.config.host_compile_lib_path.as_path(),
             Some(aux_dir.as_path()),
             input,
         )
@@ -1344,7 +1344,8 @@ impl<'test> TestCx<'test> {
         rustc.arg("-Cpanic=abort");
         rustc.args(self.props.minicore_compile_flags.clone());
 
-        let res = self.compose_and_run(rustc, self.config.compile_lib_path.as_path(), None, None);
+        let res =
+            self.compose_and_run(rustc, self.config.host_compile_lib_path.as_path(), None, None);
         if !res.status.success() {
             self.fatal_proc_rec(
                 &format!("auxiliary build of {} failed to compile: ", self.config.minicore_path),
@@ -1458,7 +1459,7 @@ impl<'test> TestCx<'test> {
 
         let auxres = aux_cx.compose_and_run(
             aux_rustc,
-            aux_cx.config.compile_lib_path.as_path(),
+            aux_cx.config.host_compile_lib_path.as_path(),
             Some(aux_dir.as_path()),
             None,
         );

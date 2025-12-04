@@ -90,7 +90,7 @@ impl TestCx<'_> {
 
         let debugger_run_result = self.compose_and_run(
             cdb,
-            self.config.run_lib_path.as_path(),
+            self.config.target_run_lib_path.as_path(),
             None, // aux_path
             None, // input
         );
@@ -313,7 +313,7 @@ impl TestCx<'_> {
             gdb.args(debugger_opts).env("PYTHONPATH", pythonpath);
 
             debugger_run_result =
-                self.compose_and_run(gdb, self.config.run_lib_path.as_path(), None, None);
+                self.compose_and_run(gdb, self.config.target_run_lib_path.as_path(), None, None);
         }
 
         if !debugger_run_result.status.success() {

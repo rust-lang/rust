@@ -1271,6 +1271,9 @@ impl InlineAsmClobberAbi {
                     ctr,
                     lr,
                     xer,
+
+                    // These are only supported on PowerPC SPE targets.
+                    spe_acc,
                 }
             },
             InlineAsmClobberAbi::S390x => clobbered_regs! {
