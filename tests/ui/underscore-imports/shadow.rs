@@ -14,6 +14,7 @@ mod b {
 
 mod c {
     use crate::b::Shadow as _; // Only imports the struct
+    //~^ ERROR `Shadow` is ambiguous
 
     fn f(x: &()) {
         x.deref(); //~ ERROR no method named `deref` found

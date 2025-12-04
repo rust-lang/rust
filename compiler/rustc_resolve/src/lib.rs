@@ -153,6 +153,8 @@ enum Scope<'ra> {
 enum ScopeSet<'ra> {
     /// All scopes with the given namespace.
     All(Namespace),
+    /// Two scopes inside a module, for non-glob and glob bindings.
+    Module(Namespace, Module<'ra>),
     /// A module, then extern prelude (used for mixed 2015-2018 mode in macros).
     ModuleAndExternPrelude(Namespace, Module<'ra>),
     /// Just two extern prelude scopes.
