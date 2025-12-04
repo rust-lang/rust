@@ -255,6 +255,7 @@ impl<S: Stage> AttributeParser<S> for ConstStabilityParser {
         Allow(Target::AssocConst),
         Allow(Target::Trait),
         Allow(Target::Static),
+        Allow(Target::Expression), // FIXME: we really only want to allow inline consts
         Allow(Target::Crate),
     ]);
 

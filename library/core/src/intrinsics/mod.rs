@@ -2629,6 +2629,7 @@ pub const fn overflow_checks() -> bool {
 #[rustc_nounwind]
 #[rustc_intrinsic]
 #[miri::intrinsic_fallback_is_spec]
+#[rustc_intrinsic_const_stable_indirect]
 pub const unsafe fn const_allocate(_size: usize, _align: usize) -> *mut u8 {
     // const eval overrides this function, but runtime code for now just returns null pointers.
     // See <https://github.com/rust-lang/rust/issues/93935>.
@@ -2658,6 +2659,7 @@ pub const unsafe fn const_deallocate(_ptr: *mut u8, _size: usize, _align: usize)
 #[rustc_nounwind]
 #[rustc_intrinsic]
 #[miri::intrinsic_fallback_is_spec]
+#[rustc_intrinsic_const_stable_indirect]
 pub const unsafe fn const_make_global(ptr: *mut u8) -> *const u8 {
     // const eval overrides this function; at runtime, it is a NOP.
     ptr
@@ -2823,6 +2825,7 @@ pub const fn offset_of<T: PointeeSized>(variant: u32, field: u32) -> usize;
 #[rustc_nounwind]
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic]
+#[rustc_intrinsic_const_stable_indirect]
 pub const fn variant_count<T>() -> usize;
 
 /// The size of the referenced value in bytes.
@@ -2862,6 +2865,7 @@ pub const unsafe fn align_of_val<T: ?Sized>(ptr: *const T) -> usize;
 #[rustc_nounwind]
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic]
+#[rustc_intrinsic_const_stable_indirect]
 pub const fn type_name<T: ?Sized>() -> &'static str;
 
 /// Gets an identifier which is globally unique to the specified type. This
@@ -2877,6 +2881,7 @@ pub const fn type_name<T: ?Sized>() -> &'static str;
 #[rustc_nounwind]
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic]
+#[rustc_intrinsic_const_stable_indirect]
 pub const fn type_id<T: ?Sized + 'static>() -> crate::any::TypeId;
 
 /// Tests (at compile-time) if two [`crate::any::TypeId`] instances identify the

@@ -197,7 +197,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         }
                     }
                     InlineAsmOperand::Const { anon_const } => hir::InlineAsmOperand::Const {
-                        anon_const: self.lower_const_block(anon_const),
+                        anon_const: self.lower_const_block(anon_const, &[]),
                     },
                     InlineAsmOperand::Sym { sym } => {
                         let static_def_id = self
