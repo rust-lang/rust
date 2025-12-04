@@ -162,24 +162,18 @@ fn macro_input_callback(
                                     }
                                 }
                                 Meta::TokenTree { path, tt } => {
-                                    if path.segments.len() != 1
+                                    if path.is1("cfg") {
+                                        let cfg_expr = CfgExpr::parse_from_ast(
+                                            &mut TokenTreeChildren::new(&tt).peekable(),
+                                        );
+                                        if cfg_options().check(&cfg_expr) == Some(false) {
+                                            return ControlFlow::Break(ItemIsCfgedOut);
+                                        }
+                                        strip_current_attr = true;
+                                    } else if path.segments.len() != 1
                                         || !is_item_tree_filtered_attr(path.segments[0].text())
                                     {
                                         strip_current_attr = should_strip_attr();
-                                    }
-
-                                    if path.segments.len() == 1 {
-                                        let name = path.segments[0].text();
-
-                                        if name == "cfg" {
-                                            let cfg_expr = CfgExpr::parse_from_ast(
-                                                &mut TokenTreeChildren::new(&tt).peekable(),
-                                            );
-                                            if cfg_options().check(&cfg_expr) == Some(false) {
-                                                return ControlFlow::Break(ItemIsCfgedOut);
-                                            }
-                                            strip_current_attr = true;
-                                        }
                                     }
                                 }
                                 Meta::Path { path } => {
