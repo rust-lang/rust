@@ -6,7 +6,6 @@ use std::sync::atomic::AtomicBool;
 use std::{env, io};
 
 use rand::{RngCore, rng};
-use rustc_ast::NodeId;
 use rustc_data_structures::base_n::{CASE_INSENSITIVE, ToBaseN};
 use rustc_data_structures::flock;
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
@@ -22,7 +21,7 @@ use rustc_errors::timings::TimingSectionHandler;
 use rustc_errors::translation::Translator;
 use rustc_errors::{
     Diag, DiagCtxt, DiagCtxtHandle, DiagMessage, Diagnostic, ErrorGuaranteed, FatalAbort,
-    LintEmitter, TerminalUrl, fallback_fluent_bundle,
+    TerminalUrl, fallback_fluent_bundle,
 };
 use rustc_hir::limit::Limit;
 use rustc_macros::HashStable_Generic;
@@ -158,20 +157,6 @@ pub struct Session {
     /// preserved with a flag like `-C save-temps`, since these files may be
     /// hard linked.
     pub invocation_temp: Option<String>,
-}
-
-impl LintEmitter for &'_ Session {
-    type Id = NodeId;
-
-    fn emit_node_span_lint(
-        self,
-        lint: &'static rustc_lint_defs::Lint,
-        node_id: Self::Id,
-        span: impl Into<rustc_errors::MultiSpan>,
-        decorator: impl for<'a> rustc_errors::LintDiagnostic<'a, ()> + DynSend + 'static,
-    ) {
-        self.psess.buffer_lint(lint, span, node_id, decorator);
-    }
 }
 
 #[derive(Clone, Copy)]

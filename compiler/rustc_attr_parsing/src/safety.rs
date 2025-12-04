@@ -2,6 +2,8 @@ use rustc_ast::Safety;
 use rustc_feature::{AttributeSafety, BUILTIN_ATTRIBUTE_MAP};
 use rustc_hir::AttrPath;
 use rustc_hir::lints::{AttributeLint, AttributeLintKind};
+use rustc_session::lint::LintId;
+use rustc_session::lint::builtin::UNSAFE_ATTR_OUTSIDE_UNSAFE;
 use rustc_span::{Span, sym};
 
 use crate::context::Stage;
@@ -74,6 +76,7 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
                     );
                 } else {
                     emit_lint(AttributeLint {
+                        lint_id: LintId::of(UNSAFE_ATTR_OUTSIDE_UNSAFE),
                         id: target_id,
                         span: path_span,
                         kind: AttributeLintKind::UnsafeAttrOutsideUnsafe {

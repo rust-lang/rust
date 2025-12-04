@@ -3126,3 +3126,68 @@ impl Subdiagnostic for MismatchedLifetimeSyntaxesSuggestion {
         }
     }
 }
+
+#[derive(LintDiagnostic)]
+#[diag(lint_empty_attribute)]
+#[note]
+pub(crate) struct EmptyAttributeList {
+    #[suggestion(code = "", applicability = "machine-applicable")]
+    pub attr_span: Span,
+    pub attr_path: String,
+    pub valid_without_list: bool,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(lint_invalid_target)]
+#[warning]
+#[help]
+pub(crate) struct InvalidTargetLint {
+    pub name: String,
+    pub target: &'static str,
+    pub applied: DiagArgValue,
+    pub only: &'static str,
+    #[suggestion(code = "", applicability = "machine-applicable", style = "tool-only")]
+    pub attr_span: Span,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(lint_invalid_style)]
+pub(crate) struct InvalidAttrStyle {
+    pub name: String,
+    pub is_used_as_inner: bool,
+    #[note]
+    pub target_span: Option<Span>,
+    pub target: &'static str,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(lint_unused_duplicate)]
+pub(crate) struct UnusedDuplicate {
+    #[suggestion(code = "", applicability = "machine-applicable")]
+    pub this: Span,
+    #[note]
+    pub other: Span,
+    #[warning]
+    pub warning: bool,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(lint_unsafe_attr_outside_unsafe)]
+pub(crate) struct UnsafeAttrOutsideUnsafeLint {
+    #[label]
+    pub span: Span,
+    #[subdiagnostic]
+    pub suggestion: UnsafeAttrOutsideUnsafeSuggestion,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(
+    lint_unsafe_attr_outside_unsafe_suggestion,
+    applicability = "machine-applicable"
+)]
+pub(crate) struct UnsafeAttrOutsideUnsafeSuggestion {
+    #[suggestion_part(code = "unsafe(")]
+    pub left: Span,
+    #[suggestion_part(code = ")")]
+    pub right: Span,
+}

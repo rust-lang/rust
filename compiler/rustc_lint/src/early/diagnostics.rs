@@ -4,6 +4,7 @@ use rustc_ast::util::unicode::TEXT_FLOW_CONTROL_CHARS;
 use rustc_errors::{
     Applicability, Diag, DiagArgValue, LintDiagnostic, elided_lifetime_in_path_suggestion,
 };
+use rustc_hir::lints::AttributeLintKind;
 use rustc_middle::middle::stability;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
@@ -301,7 +302,21 @@ pub fn decorate_builtin_lint(
         BuiltinLintDiag::UnusedCrateDependency { extern_crate, local_crate } => {
             lints::UnusedCrateDependency { extern_crate, local_crate }.decorate_lint(diag)
         }
-        BuiltinLintDiag::IllFormedAttributeInput { suggestions, docs } => {
+        BuiltinLintDiag::AttributeLint(kind) => decorate_attribute_lint(sess, tcx, &kind, diag),
+    }
+}
+
+pub fn decorate_attribute_lint(
+    _sess: &Session,
+    _tcx: Option<TyCtxt<'_>>,
+    kind: &AttributeLintKind,
+    diag: &mut Diag<'_, ()>,
+) {
+    match kind {
+        &AttributeLintKind::UnusedDuplicate { this, other, warning } => {
+            lints::UnusedDuplicate { this, other, warning }.decorate_lint(diag)
+        }
+        AttributeLintKind::IllFormedAttributeInput { suggestions, docs } => {
             lints::IllFormedAttributeInput {
                 num_suggestions: suggestions.len(),
                 suggestions: DiagArgValue::StrListSepByAnd(
@@ -312,5 +327,42 @@ pub fn decorate_builtin_lint(
             }
             .decorate_lint(diag)
         }
+        AttributeLintKind::EmptyAttribute { first_span, attr_path, valid_without_list } => {
+            lints::EmptyAttributeList {
+                attr_span: *first_span,
+                attr_path: attr_path.clone(),
+                valid_without_list: *valid_without_list,
+            }
+            .decorate_lint(diag)
+        }
+        AttributeLintKind::InvalidTarget { name, target, applied, only, attr_span } => {
+            lints::InvalidTargetLint {
+                name: name.clone(),
+                target,
+                applied: DiagArgValue::StrListSepByAnd(
+                    applied.into_iter().map(|i| Cow::Owned(i.to_string())).collect(),
+                ),
+                only,
+                attr_span: *attr_span,
+            }
+            .decorate_lint(diag)
+        }
+        &AttributeLintKind::InvalidStyle { ref name, is_used_as_inner, target, target_span } => {
+            lints::InvalidAttrStyle {
+                name: name.clone(),
+                is_used_as_inner,
+                target_span: (!is_used_as_inner).then_some(target_span),
+                target,
+            }
+            .decorate_lint(diag)
+        }
+        &AttributeLintKind::UnsafeAttrOutsideUnsafe {
+            attribute_name_span,
+            sugg_spans: (left, right),
+        } => lints::UnsafeAttrOutsideUnsafeLint {
+            span: attribute_name_span,
+            suggestion: lints::UnsafeAttrOutsideUnsafeSuggestion { left, right },
+        }
+        .decorate_lint(diag),
     }
 }

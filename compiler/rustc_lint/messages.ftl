@@ -245,6 +245,19 @@ lint_dropping_copy_types = calls to `std::mem::drop` with a value that implement
 lint_dropping_references = calls to `std::mem::drop` with a reference instead of an owned value does nothing
     .label = argument has type `{$arg_ty}`
 
+lint_empty_attribute =
+    unused attribute
+    .suggestion = {$valid_without_list ->
+        [true] remove these parentheses
+        *[other] remove this attribute
+    }
+    .note = {$valid_without_list ->
+        [true] using `{$attr_path}` with an empty list is equivalent to not using a list at all
+        *[other] using `{$attr_path}` with an empty list has no effect
+    }
+
+-lint_previously_accepted =
+    this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 lint_enum_intrinsics_mem_discriminant =
     the return value of `mem::discriminant` is unspecified when called with a non-enum type
     .note = the argument to `discriminant` should be a reference to an enum, but it was passed a reference to a `{$ty_param}`, which is not an enum
@@ -457,6 +470,17 @@ lint_invalid_reference_casting_borrow_as_mut = casting `&T` to `&mut T` is undef
 lint_invalid_reference_casting_note_book = for more information, visit <https://doc.rust-lang.org/book/ch15-05-interior-mutability.html>
 
 lint_invalid_reference_casting_note_ty_has_interior_mutability = even for types with interior mutability, the only legal way to obtain a mutable pointer from a shared reference is through `UnsafeCell::get`
+
+lint_invalid_style = {$is_used_as_inner ->
+        [false] crate-level attribute should be an inner attribute: add an exclamation mark: `#![{$name}]`
+        *[other] the `#![{$name}]` attribute can only be used at the crate root
+    }
+    .note = This attribute does not have an `!`, which means it is applied to this {$target}
+
+lint_invalid_target = `#[{$name}]` attribute cannot be used on {$target}
+    .warn = {-lint_previously_accepted}
+    .help = `#[{$name}]` can {$only}be applied to {$applied}
+    .suggestion = remove the attribute
 
 lint_lintpass_by_hand = implementing `LintPass` by hand
     .help = try using `declare_lint_pass!` or `impl_lint_pass!` instead
@@ -890,6 +914,10 @@ lint_unpredictable_fn_pointer_comparisons = function pointer comparisons do not 
 
 lint_unqualified_local_imports = `use` of a local item without leading `self::`, `super::`, or `crate::`
 
+lint_unsafe_attr_outside_unsafe = unsafe attribute used without unsafe
+    .label = usage of unsafe attribute
+lint_unsafe_attr_outside_unsafe_suggestion = wrap the attribute in `unsafe(...)`
+
 lint_unsupported_group = `{$lint_group}` lint group is not supported with ´--force-warn´
 
 lint_untranslatable_diag = diagnostics should be created using translatable messages
@@ -921,6 +949,12 @@ lint_unused_def = unused {$pre}`{$def}`{$post} that must be used
 
 lint_unused_delim = unnecessary {$delim} around {$item}
     .suggestion = remove these {$delim}
+
+lint_unused_duplicate =
+    unused attribute
+    .suggestion = remove this attribute
+    .note = attribute also specified here
+    .warn = {-lint_previously_accepted}
 
 lint_unused_import_braces = braces around {$node} is unnecessary
 

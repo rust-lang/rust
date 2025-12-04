@@ -1,3 +1,5 @@
+use rustc_session::lint::builtin::ILL_FORMED_ATTRIBUTE_INPUT;
+
 use super::prelude::*;
 
 pub(crate) struct IgnoreParser;
@@ -20,20 +22,13 @@ impl<S: Stage> SingleAttributeParser<S> for IgnoreParser {
                 ArgParser::NoArgs => None,
                 ArgParser::NameValue(name_value) => {
                     let Some(str_value) = name_value.value_as_str() else {
-                        let suggestions = cx.suggestions();
-                        let span = cx.attr_span;
-                        cx.emit_lint(
-                            AttributeLintKind::IllFormedAttributeInput { suggestions },
-                            span,
-                        );
+                        cx.warn_ill_formed_attribute_input(ILL_FORMED_ATTRIBUTE_INPUT);
                         return None;
                     };
                     Some(str_value)
                 }
                 ArgParser::List(_) => {
-                    let suggestions = cx.suggestions();
-                    let span = cx.attr_span;
-                    cx.emit_lint(AttributeLintKind::IllFormedAttributeInput { suggestions }, span);
+                    cx.warn_ill_formed_attribute_input(ILL_FORMED_ATTRIBUTE_INPUT);
                     return None;
                 }
             },
