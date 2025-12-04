@@ -115,7 +115,7 @@ where
         let ptr = crate::mem::transmute::<
             *mut (dyn FnOnce() + Send + '_),
             *mut (dyn FnOnce() + Send + 'static),
-        >(ptr); 
+        >(ptr);
         Box::from_raw(ptr)
     };
 
