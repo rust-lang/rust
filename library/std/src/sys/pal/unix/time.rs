@@ -67,7 +67,7 @@ impl fmt::Debug for SystemTime {
 impl Timespec {
     const MAX: Timespec = unsafe { Self::new_unchecked(i64::MAX, 1_000_000_000 - 1) };
 
-    // As described below, on AppleOS, dates before epoch are represented differently.
+    // As described below, on Apple OS, dates before epoch are represented differently.
     // This is not an issue here however, because we are using tv_sec = i64::MIN,
     // which will cause the compatibility wrapper to not be executed at all.
     const MIN: Timespec = unsafe { Self::new_unchecked(i64::MIN, 0) };
