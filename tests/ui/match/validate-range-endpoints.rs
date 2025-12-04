@@ -15,7 +15,7 @@ fn main() {
 
         // There isn't really a way to detect these
         1..=TOO_BIG => {}
-        //~^ ERROR lower range bound must be less than or equal to upper
+        //~^ ERROR lower bound for range pattern must be less than or equal to upper bound
         _ => {}
     }
 
