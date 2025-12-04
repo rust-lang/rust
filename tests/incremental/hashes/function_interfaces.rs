@@ -279,7 +279,7 @@ pub fn no_mangle() {}
 #[rustc_clean(cfg = "cfail3")]
 #[rustc_clean(cfg = "cfail5")]
 #[rustc_clean(cfg = "cfail6")]
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub fn no_mangle() {}
 
 // Linkage ---------------------------------------------------------------------

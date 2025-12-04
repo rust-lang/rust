@@ -687,10 +687,6 @@ pub enum BuiltinLintDiag {
         /// The span of the unnecessarily-qualified path to remove.
         removal_span: Span,
     },
-    UnsafeAttrOutsideUnsafe {
-        attribute_name_span: Span,
-        sugg_spans: (Span, Span),
-    },
     AssociatedConstElidedLifetime {
         elided: bool,
         span: Span,
