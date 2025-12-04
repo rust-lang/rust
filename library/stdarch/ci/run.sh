@@ -95,15 +95,6 @@ fi
 
 # Test targets compiled with extra features.
 case ${TARGET} in
-    x86_64-unknown-linux-gnu)
-        export STDARCH_DISABLE_ASSERT_INSTR=1
-
-        export RUSTFLAGS="${RUSTFLAGS} -C target-feature=+avx"
-        cargo_test 
-
-        export RUSTFLAGS="${RUSTFLAGS} -C target-feature=+avx512f"
-        cargo_test 
-        ;;
     x86_64* | i686*)
         export STDARCH_DISABLE_ASSERT_INSTR=1
 
