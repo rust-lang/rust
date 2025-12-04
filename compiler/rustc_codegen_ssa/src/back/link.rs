@@ -3030,7 +3030,7 @@ fn add_dynamic_crate(cmd: &mut dyn Linker, sess: &Session, cratepath: &Path) {
 fn relevant_lib(sess: &Session, lib: &NativeLib) -> bool {
     match lib.cfg {
         Some(ref cfg) => {
-            eval_config_entry(sess, cfg, CRATE_NODE_ID, ShouldEmit::ErrorsAndLints).as_bool()
+            eval_config_entry(sess, cfg, &CRATE_NODE_ID, ShouldEmit::ErrorsAndLints).as_bool()
         }
         None => true,
     }

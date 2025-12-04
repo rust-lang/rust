@@ -2,7 +2,7 @@ use std::convert::identity;
 
 use rustc_ast::token::Delimiter;
 use rustc_ast::tokenstream::DelimSpan;
-use rustc_ast::{AttrItem, Attribute, CRATE_NODE_ID, LitKind, NodeId, ast, token};
+use rustc_ast::{AttrItem, Attribute, CRATE_NODE_ID, LitKind, ast, token};
 use rustc_errors::{Applicability, PResult};
 use rustc_feature::{AttrSuggestionStyle, AttributeTemplate, Features, template};
 use rustc_hir::attrs::CfgEntry;
@@ -201,14 +201,14 @@ pub(crate) fn parse_name_value<S: Stage>(
 pub fn eval_config_entry(
     sess: &Session,
     cfg_entry: &CfgEntry,
-    id: NodeId,
+    lint_emitter: &impl CfgMatchesLintEmitter,
     emit_lints: ShouldEmit,
 ) -> EvalConfigResult {
     match cfg_entry {
         CfgEntry::All(subs, ..) => {
             let mut all = None;
             for sub in subs {
-                let res = eval_config_entry(sess, sub, id, emit_lints);
+                let res = eval_config_entry(sess, sub, lint_emitter, emit_lints);
                 // We cannot short-circuit because `eval_config_entry` emits some lints
                 if !res.as_bool() {
                     all.get_or_insert(res);
@@ -219,7 +219,7 @@ pub fn eval_config_entry(
         CfgEntry::Any(subs, span) => {
             let mut any = None;
             for sub in subs {
-                let res = eval_config_entry(sess, sub, id, emit_lints);
+                let res = eval_config_entry(sess, sub, lint_emitter, emit_lints);
                 // We cannot short-circuit because `eval_config_entry` emits some lints
                 if res.as_bool() {
                     any.get_or_insert(res);
@@ -231,7 +231,7 @@ pub fn eval_config_entry(
             })
         }
         CfgEntry::Not(sub, span) => {
-            if eval_config_entry(sess, sub, id, emit_lints).as_bool() {
+            if eval_config_entry(sess, sub, lint_emitter, emit_lints).as_bool() {
                 EvalConfigResult::False { reason: cfg_entry.clone(), reason_span: *span }
             } else {
                 EvalConfigResult::True
@@ -250,7 +250,7 @@ pub fn eval_config_entry(
                     Some(ExpectedValues::Some(values))
                         if !values.contains(&value.map(|(v, _)| v)) =>
                     {
-                        id.emit_span_lint(
+                        lint_emitter.emit_span_lint(
                             sess,
                             UNEXPECTED_CFGS,
                             *span,
@@ -258,7 +258,7 @@ pub fn eval_config_entry(
                         );
                     }
                     None if sess.psess.check_config.exhaustive_names => {
-                        id.emit_span_lint(
+                        lint_emitter.emit_span_lint(
                             sess,
                             UNEXPECTED_CFGS,
                             *span,
