@@ -91,7 +91,19 @@ pub fn main_inner(profile: Profile) {
                 }
             }
             match profile {
-                Profile::Debug => {}
+                Profile::Debug => {
+                    if test_target.is_ok() {
+                        // m68k doesn't have lubsan for now
+                        compiler.args(["-C", "llvm-args=sanitize-undefined"]);
+                    } else {
+                        compiler.args([
+                            "-C",
+                            "llvm-args=sanitize-undefined",
+                            "-C",
+                            "link-args=-lubsan",
+                        ]);
+                    }
+                }
                 Profile::Release => {
                     compiler.args(["-C", "opt-level=3", "-C", "lto=no"]);
                 }
