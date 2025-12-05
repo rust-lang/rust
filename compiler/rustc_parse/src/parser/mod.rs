@@ -35,9 +35,8 @@ use rustc_ast::tokenstream::{
 };
 use rustc_ast::util::case::Case;
 use rustc_ast::{
-    self as ast, AnonConst, AttrArgs, AttrId, ByRef, Const, CoroutineKind, DUMMY_NODE_ID,
-    DelimArgs, Expr, ExprKind, Extern, HasAttrs, HasTokens, Mutability, Recovered, Safety, StrLit,
-    Visibility, VisibilityKind,
+    self as ast, AttrArgs, AttrId, ByRef, Const, CoroutineKind, DUMMY_NODE_ID, DelimArgs, ExprKind,
+    Extern, HasAttrs, HasTokens, Mutability, Recovered, Safety, StrLit, Visibility, VisibilityKind,
 };
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashMap;
