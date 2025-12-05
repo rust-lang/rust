@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::source::{HasSession, snippet_with_applicability, snippet_with_context};
+use clippy_utils::source::{HasSession, SpanRangeExt, snippet_with_applicability, snippet_with_context};
 use rustc_ast::ast::{Expr, ExprKind, MethodCall};
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass};
@@ -47,8 +47,12 @@ impl EarlyLintPass for DoubleParens {
             // ^^^^^^ expr
             //  ^^^^  inner
             ExprKind::Paren(inner) if matches!(inner.kind, ExprKind::Paren(_) | ExprKind::Tup(_)) => {
-                // suggest removing the outer parens
-                if expr.span.eq_ctxt(inner.span) {
+                if expr.span.eq_ctxt(inner.span)
+                    && !expr.span.in_external_macro(cx.sess().source_map())
+                    && check_source(cx, inner)
+                {
+                    // suggest removing the outer parens
+
                     let mut applicability = Applicability::MachineApplicable;
                     // We don't need to use `snippet_with_context` here, because:
                     // - if `inner`'s `ctxt` is from macro, we don't lint in the first place (see the check above)
@@ -74,8 +78,12 @@ impl EarlyLintPass for DoubleParens {
                 if let [arg] = &**args
                     && let ExprKind::Paren(inner) = &arg.kind =>
             {
-                // suggest removing the inner parens
-                if expr.span.eq_ctxt(arg.span) {
+                if expr.span.eq_ctxt(arg.span)
+                    && !arg.span.in_external_macro(cx.sess().source_map())
+                    && check_source(cx, arg)
+                {
+                    // suggest removing the inner parens
+
                     let mut applicability = Applicability::MachineApplicable;
                     let sugg = snippet_with_context(cx.sess(), inner.span, arg.span.ctxt(), "_", &mut applicability).0;
                     span_lint_and_sugg(
@@ -91,5 +99,24 @@ impl EarlyLintPass for DoubleParens {
             },
             _ => {},
         }
+    }
+}
+
+/// Check that the span does indeed look like `(  (..)  )`
+fn check_source(cx: &EarlyContext<'_>, inner: &Expr) -> bool {
+    if let Some(sfr) = inner.span.get_source_range(cx)
+        // this is the same as `SourceFileRange::as_str`, but doesn't apply the range right away, because
+        // we're interested in the source code outside it
+        && let Some(src) = sfr.sf.src.as_ref().map(|src| src.as_str())
+        && let Some((start, outer_after_inner)) = src.split_at_checked(sfr.range.end)
+        && let Some((outer_before_inner, inner)) = start.split_at_checked(sfr.range.start)
+        && outer_before_inner.trim_end().ends_with('(')
+        && inner.starts_with('(')
+        && inner.ends_with(')')
+        && outer_after_inner.trim_start().starts_with(')')
+    {
+        true
+    } else {
+        false
     }
 }

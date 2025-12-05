@@ -48,5 +48,53 @@ LL |     b = Box::new(mac!(three));
    |
    = note: this creates a needless allocation
 
-error: aborting due to 6 previous errors
+error: creating a new box
+  --> tests/ui/replace_box.rs:86:9
+   |
+LL |         x = Box::new(Foo { inner: String::new() });
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace existing content with inner value instead: `*x = Foo { inner: String::new() }`
+   |
+   = note: this creates a needless allocation
+
+error: creating a new box
+  --> tests/ui/replace_box.rs:92:9
+   |
+LL |         x = Box::new(Foo { inner: String::new() });
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace existing content with inner value instead: `*x = Foo { inner: String::new() }`
+   |
+   = note: this creates a needless allocation
+
+error: creating a new box
+  --> tests/ui/replace_box.rs:97:38
+   |
+LL | static R: fn(&mut Box<String>) = |x| *x = Box::new(String::new());
+   |                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace existing content with inner value instead: `**x = String::new()`
+   |
+   = note: this creates a needless allocation
+
+error: creating a new box
+  --> tests/ui/replace_box.rs:122:5
+   |
+LL |     s.b = Box::new(T::new());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^ help: replace existing content with inner value instead: `*s.b = T::new()`
+   |
+   = note: this creates a needless allocation
+
+error: creating a new box
+  --> tests/ui/replace_box.rs:126:5
+   |
+LL |     s.b = Box::new(T::new());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^ help: replace existing content with inner value instead: `*s.b = T::new()`
+   |
+   = note: this creates a needless allocation
+
+error: creating a new box
+  --> tests/ui/replace_box.rs:136:5
+   |
+LL |     q.0 = Box::new(T::new());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^ help: replace existing content with inner value instead: `*q.0 = T::new()`
+   |
+   = note: this creates a needless allocation
+
+error: aborting due to 12 previous errors
 

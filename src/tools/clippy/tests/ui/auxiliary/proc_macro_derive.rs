@@ -230,3 +230,14 @@ pub fn allow_lint_same_span_derive(input: TokenStream) -> TokenStream {
         span_help(Group::new(Delimiter::Brace, TokenStream::new()).into()),
     ])
 }
+
+#[proc_macro_derive(DoubleParens)]
+pub fn derive_double_parens(_: TokenStream) -> TokenStream {
+    quote! {
+        fn foo() {
+            let a = (());
+            let b = ((5));
+            let c = std::convert::identity((5));
+        }
+    }
+}

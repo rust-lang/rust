@@ -57,3 +57,15 @@ macro_rules! bad_transmute {
         std::mem::transmute($e)
     };
 }
+
+#[macro_export]
+#[rustfmt::skip]
+macro_rules! double_parens {
+    ($a:expr, $b:expr, $c:expr, $d:expr) => {{
+        let a = ($a);
+        let a = (());
+        let b = ((5));
+        let c = std::convert::identity((5));
+        InterruptMask((($a.union($b).union($c).union($d)).into_bits()) as u32)
+    }};
+}
