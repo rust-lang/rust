@@ -790,19 +790,12 @@ pub(crate) unsafe fn llvm_optimize(
             let lib_bc_c = CString::new(host_path.as_str()).unwrap();
             let host_out = host_dir.join("host.out");
             let out_obj = host_dir.join("host.o");
-            assert!(host_out.exists());
-            assert!(out_obj.exists());
             let s = host_out.to_str().expect("path is not valid UTF-8");
             let g = out_obj.to_str().expect("path is not valid UTF-8");
             let host_out_c = CString::new(s).unwrap();
             let out_obj_c = CString::new(g).unwrap();
 
             unsafe {
-                llvm::LLVMRustBundleImages(
-                    module.module_llvm.llmod(),
-                    module.module_llvm.tm.raw(),
-                    host_out_c.as_ptr(),
-                );
                 // 1) Bundle device module into offload image host.out (device TM)
                 let ok = llvm::LLVMRustBundleImages(
                     module.module_llvm.llmod(),
@@ -810,6 +803,10 @@ pub(crate) unsafe fn llvm_optimize(
                     host_out_c.as_ptr(),
                 );
                 assert!(ok, "LLVMRustBundleImages (device -> host.out) failed");
+                if !host_out.exists() {
+                    dbg!("{:?} does not exist!", host_out);
+                    panic!("BundleImages failed!");
+                }
 
                 // 2) Finalize host: lib.bc + host.out -> host.offload.o (host TM created in C++)
                 let ok = llvm::LLVMRustFinalizeOffload(
@@ -818,6 +815,10 @@ pub(crate) unsafe fn llvm_optimize(
                     out_obj_c.as_ptr(),
                 );
                 assert!(ok, "LLVMRustFinalizeOffload (host finalize) failed");
+                if !out_obj.exists() {
+                    dbg!("{:?} does not exist!", out_obj);
+                    panic!("FinalizeOffload failed!");
+                }
             }
             if !cgcx.save_temps {
                 let _ = std::fs::remove_file(PathBuf::from(host_out_c.into_string().unwrap()));

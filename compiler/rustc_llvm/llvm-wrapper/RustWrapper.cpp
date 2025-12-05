@@ -57,6 +57,7 @@
 #include "llvm/Support/MD5.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/xxhash.h"
+#include "llvm/Bitcode/BitcodeReader.h"
 #endif
 
 // for raw `write` in the bad-alloc handler
@@ -217,7 +218,6 @@ extern "C" bool LLVMRustBundleImages(LLVMModuleRef M, TargetMachine &TM, const c
   return true;
 }
 
-#include "llvm/Bitcode/BitcodeReader.h"
 Expected<std::unique_ptr<Module>>
 loadHostModuleFromBitcode(LLVMContext &Ctx, StringRef LibBCPath) {
   auto MBOrErr = MemoryBuffer::getFile(LibBCPath);
@@ -251,38 +251,18 @@ extern "C" void embedBufferInModule(Module &M, MemoryBufferRef Buf) {
   appendToCompilerUsed(M, GV);
 }
 
-Error embedHostOutIntoHostModule(Module &HostM, StringRef HostOutPath) {
-  llvm::errs() << "embedHostOutIntoHostModule step 1:\n";
-  auto MBOrErr = MemoryBuffer::getFile(HostOutPath);
-  llvm::errs() << "embedHostOutIntoHostModule step 2:\n";
-  if (!MBOrErr)
-    return errorCodeToError(MBOrErr.getError());
-
-  llvm::errs() << "embedHostOutIntoHostModule step 3:\n";
-  MemoryBufferRef Buf = (*MBOrErr)->getMemBufferRef();
-  llvm::errs() << "embedHostOutIntoHostModule step 4:\n";
-  embedBufferInModule(HostM, Buf);
-  return Error::success();
-}
-
 #include "llvm/Support/TargetSelect.h"
 #include "llvm/Target/TargetMachine.h"
 #include "llvm/Target/TargetOptions.h"
 #include "llvm/IR/LegacyPassManager.h"
-//#include "llvm/Support/Host.h"
-//#include "llvm/Support/TargetRegistry.h"
 #include "llvm/MC/TargetRegistry.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/FileSystem.h"
-#include "llvm/Support/CodeGen.h"        // <-- new
+#include "llvm/Support/CodeGen.h"
 
 Error emitHostObjectWithTM(Module &HostM,
                            TargetMachine &TM,
                            StringRef OutObjPath) {
-  // Make sure module matches the TM
-  //HostM.setDataLayout(TM.createDataLayout());
-  //HostM.setTargetTriple(TM.getTargetTriple().str());
-
   legacy::PassManager PM;
   std::error_code EC;
   raw_fd_ostream OS(OutObjPath, EC, sys::fs::OF_None);
@@ -363,8 +343,24 @@ extern "C" bool LLVMRustFinalizeOffload(const char *LibBCPath,
   std::unique_ptr<Module> HostM = std::move(*ModOrErr);
 
   // 2. Embed host.out
-  if (Error E = embedHostOutIntoHostModule(*HostM, HostOutPath))
-    return !errorToBool(std::move(E));
+  llvm::errs() << "embedHostOutIntoHostModule step 1:\n";
+  auto MBOrErr = MemoryBuffer::getFile(HostOutPath);
+  llvm::errs() << "embedHostOutIntoHostModule step 2:\n";
+  if (!MBOrErr) {
+    auto E = MBOrErr.getError();
+    auto B = errorCodeToError(E);
+    return !errorToBool(std::move(B));
+    //return errorCodeToError(MBOrErr.getError());
+  }
+
+  llvm::errs() << "embedHostOutIntoHostModule step 3:\n";
+  MemoryBufferRef Buf = (*MBOrErr)->getMemBufferRef();
+  llvm::errs() << "embedHostOutIntoHostModule step 4:\n";
+  embedBufferInModule(*HostM, Buf);
+  //embedBufferInModule(*HostM, Buf);
+  //return Error::success();
+  //if (Error E = embedHostOutIntoHostModule(*HostM, HostOutPath))
+  //  return !errorToBool(std::move(E));
 
   // 3. Create host TM and emit host object
   auto HostTM = createHostTargetMachine();
