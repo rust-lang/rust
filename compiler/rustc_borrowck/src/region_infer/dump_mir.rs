@@ -80,7 +80,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             let OutlivesConstraint { sup, sub, locations, category, span, .. } = constraint;
             let (name, arg) = match locations {
                 Locations::All(span) => {
-                    ("All", tcx.sess.source_map().span_to_embeddable_string(*span))
+                    ("All", tcx.sess.source_map().span_to_diagnostic_string(*span))
                 }
                 Locations::Single(loc) => ("Single", format!("{loc:?}")),
             };
