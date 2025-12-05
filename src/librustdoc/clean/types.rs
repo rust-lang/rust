@@ -25,7 +25,7 @@ use rustc_resolve::rustdoc::{
 use rustc_session::Session;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{Symbol, kw, sym};
-use rustc_span::{DUMMY_SP, FileName, Loc};
+use rustc_span::{DUMMY_SP, FileName, Loc, RemapPathScopeComponents};
 use tracing::{debug, trace};
 use {rustc_ast as ast, rustc_hir as hir};
 
@@ -148,10 +148,17 @@ impl ExternalCrate {
 
     pub(crate) fn src_root(&self, tcx: TyCtxt<'_>) -> PathBuf {
         match self.src(tcx) {
-            FileName::Real(ref p) => match p.local_path_if_available().parent() {
-                Some(p) => p.to_path_buf(),
-                None => PathBuf::new(),
-            },
+            FileName::Real(ref p) => {
+                match p
+                    .local_path()
+                    .or(Some(p.path(RemapPathScopeComponents::MACRO)))
+                    .unwrap()
+                    .parent()
+                {
+                    Some(p) => p.to_path_buf(),
+                    None => PathBuf::new(),
+                }
+            }
             _ => PathBuf::new(),
         }
     }
