@@ -26,13 +26,7 @@ pub(crate) fn expand_cfg(
 
     ExpandResult::Ready(match parse_cfg(cx, sp, tts) {
         Ok(cfg) => {
-            let matches_cfg = attr::eval_config_entry(
-                cx.sess,
-                &cfg,
-                cx.current_expansion.lint_node_id,
-                ShouldEmit::ErrorsAndLints,
-            )
-            .as_bool();
+            let matches_cfg = attr::eval_config_entry(cx.sess, &cfg).as_bool();
 
             MacEager::expr(cx.expr_bool(sp, matches_cfg))
         }
