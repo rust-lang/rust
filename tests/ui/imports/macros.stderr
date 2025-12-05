@@ -1,4 +1,24 @@
 error[E0659]: `m` is ambiguous
+  --> $DIR/macros.rs:16:5
+   |
+LL |     m! {
+   |     ^ ambiguous name
+   |
+   = note: ambiguous because of a conflict between a macro-expanded name and a less macro-expanded name from outer scope during import or macro resolution
+note: `m` could refer to the macro imported here
+  --> $DIR/macros.rs:17:13
+   |
+LL |         use crate::foo::m;
+   |             ^^^^^^^^^^^^^
+   = help: use `self::m` to refer to this macro unambiguously
+note: `m` could also refer to the macro imported here
+  --> $DIR/macros.rs:15:9
+   |
+LL |     use two_macros::*;
+   |         ^^^^^^^^^^^^^
+   = help: use `self::m` to refer to this macro unambiguously
+
+error[E0659]: `m` is ambiguous
   --> $DIR/macros.rs:29:9
    |
 LL |         m! {
@@ -17,6 +37,6 @@ LL |     use two_macros::m;
    |         ^^^^^^^^^^^^^
    = help: use `self::m` to refer to this macro unambiguously
 
-error: aborting due to 1 previous error
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0659`.

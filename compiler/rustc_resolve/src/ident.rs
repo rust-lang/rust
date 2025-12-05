@@ -1249,6 +1249,14 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         parent_scope: &ParentScope<'ra>,
     ) -> bool {
         for single_import in &resolution.single_imports {
+            if let Some(binding) = resolution.non_glob_binding
+                && let NameBindingKind::Import { import, .. } = binding.kind
+                && import == *single_import
+            {
+                // Single import has already defined the name and we are aware of it,
+                // no need to block the globs.
+                continue;
+            }
             if ignore_import == Some(*single_import) {
                 continue;
             }
