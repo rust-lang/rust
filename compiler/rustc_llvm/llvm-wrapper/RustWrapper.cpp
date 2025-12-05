@@ -331,7 +331,8 @@ static std::unique_ptr<TargetMachine> createHostTargetMachine() {
 
 // Top-level entry: host finalize in second rustc invocation
 // lib.bc (from first rustc) + host.out (from LLVMRustBundleImages) => host.offload.o
-extern "C" bool LLVMRustFinalizeOffload(const char *LibBCPath,
+//extern "C" bool LLVMRustFinalizeOffload(const char *LibBCPath,
+extern "C" LLVMModuleRef LLVMRustFinalizeOffload(const char *LibBCPath,
                                         const char *HostOutPath,
                                         const char *OutObjPath) {
   LLVMContext Ctx;
@@ -339,38 +340,33 @@ extern "C" bool LLVMRustFinalizeOffload(const char *LibBCPath,
   // 1. Load host lib.bc
   auto ModOrErr = loadHostModuleFromBitcode(Ctx, LibBCPath);
   if (!ModOrErr)
-    return !errorToBool(ModOrErr.takeError());
+    return nullptr;
+    //return !errorToBool(ModOrErr.takeError());
   std::unique_ptr<Module> HostM = std::move(*ModOrErr);
 
   // 2. Embed host.out
-  llvm::errs() << "embedHostOutIntoHostModule step 1:\n";
   auto MBOrErr = MemoryBuffer::getFile(HostOutPath);
-  llvm::errs() << "embedHostOutIntoHostModule step 2:\n";
   if (!MBOrErr) {
     auto E = MBOrErr.getError();
     auto B = errorCodeToError(E);
-    return !errorToBool(std::move(B));
-    //return errorCodeToError(MBOrErr.getError());
+    return nullptr;
+    //return !errorToBool(std::move(B));
   }
 
-  llvm::errs() << "embedHostOutIntoHostModule step 3:\n";
   MemoryBufferRef Buf = (*MBOrErr)->getMemBufferRef();
-  llvm::errs() << "embedHostOutIntoHostModule step 4:\n";
   embedBufferInModule(*HostM, Buf);
-  //embedBufferInModule(*HostM, Buf);
-  //return Error::success();
-  //if (Error E = embedHostOutIntoHostModule(*HostM, HostOutPath))
-  //  return !errorToBool(std::move(E));
+
+  return wrap(HostM.release());
 
   // 3. Create host TM and emit host object
-  auto HostTM = createHostTargetMachine();
-  if (!HostTM)
-    return false;
+  //auto HostTM = createHostTargetMachine();
+  //if (!HostTM)
+  //  return false;
 
-  if (Error E = emitHostObjectWithTM(*HostM, *HostTM, OutObjPath))
-    return !errorToBool(std::move(E));
+  //if (Error E = emitHostObjectWithTM(*HostM, *HostTM, OutObjPath))
+  //  return !errorToBool(std::move(E));
 
-  return true;
+  //return true;
 }
 
 extern "C" LLVMValueRef LLVMRustGetNamedValue(LLVMModuleRef M, const char *Name,

@@ -809,12 +809,13 @@ pub(crate) unsafe fn llvm_optimize(
                 }
 
                 // 2) Finalize host: lib.bc + host.out -> host.offload.o (host TM created in C++)
-                let ok = llvm::LLVMRustFinalizeOffload(
+                let llmod = llvm::LLVMRustFinalizeOffload(
                     lib_bc_c.as_ptr(),
                     host_out_c.as_ptr(),
                     out_obj_c.as_ptr(),
                 );
-                assert!(ok, "LLVMRustFinalizeOffload (host finalize) failed");
+                // TODO: write llmod to file out_obj_c
+                //assert!(ok, "LLVMRustFinalizeOffload (host finalize) failed");
                 if !out_obj.exists() {
                     dbg!("{:?} does not exist!", out_obj);
                     panic!("FinalizeOffload failed!");

@@ -1727,11 +1727,11 @@ mod Offload {
             TM: &'a TargetMachine,
             host_out: *const c_char,
         ) -> bool;
-        pub(crate) fn LLVMRustFinalizeOffload(
+        pub(crate) fn LLVMRustFinalizeOffload<'a>(
             lib_bc_path: *const c_char,
             host_out_path: *const c_char,
             out_obj_path: *const c_char,
-        ) -> bool;
+        ) -> &'a Module;
         pub(crate) fn LLVMRustOffloadMapper<'a>(OldFn: &'a Value, NewFn: &'a Value);
     }
 }
