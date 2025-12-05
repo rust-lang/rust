@@ -799,6 +799,7 @@ fn print_crate_info(
                 println_info!("{}", calling_conventions.join("\n"));
             }
             RelocationModels
+            | BackendHasZstd
             | CodeModels
             | TlsModels
             | TargetCPUs
