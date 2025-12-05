@@ -1155,6 +1155,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         let callsite_span = span.source_callsite();
         for rib in self.ribs[ValueNS].iter().rev() {
             for (binding_ident, _) in &rib.bindings {
+                // Case 1: the identifier is defined in the same scope as the macro is called
                 if binding_ident.name == ident.name
                     && !binding_ident.span.eq_ctxt(span)
                     && !binding_ident.span.from_expansion()
@@ -1163,6 +1164,19 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                     err.span_help(
                         binding_ident.span,
                         "an identifier with the same name exists, but is not accessible due to macro hygiene",
+                    );
+                    return;
+                }
+
+                // Case 2: the identifier is defined in a macro call in the same scope
+                if binding_ident.name == ident.name
+                    && binding_ident.span.from_expansion()
+                    && binding_ident.span.source_callsite().eq_ctxt(callsite_span)
+                    && binding_ident.span.source_callsite().lo() < callsite_span.lo()
+                {
+                    err.span_help(
+                        binding_ident.span,
+                        "an identifier with the same name is defined here, but is not accessible due to macro hygiene",
                     );
                     return;
                 }
