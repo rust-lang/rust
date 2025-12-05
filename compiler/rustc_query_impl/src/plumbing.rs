@@ -28,7 +28,7 @@ use rustc_middle::ty::{self, TyCtxt};
 use rustc_query_system::dep_graph::{DepNodeParams, HasDepContext};
 use rustc_query_system::ich::StableHashingContext;
 use rustc_query_system::query::{
-    QueryCache, QueryConfig, QueryContext, QueryJobId, QueryMap, QuerySideEffect,
+    QueryCache, QueryConfig, QueryContext, QueryInclusion, QueryJobId, QueryMap, QuerySideEffect,
     QueryStackDeferred, QueryStackFrame, QueryStackFrameExtra, force_query,
 };
 use rustc_query_system::{QueryOverflow, QueryOverflowNote};
@@ -85,7 +85,7 @@ impl<'tcx> QueryContext for QueryCtxt<'tcx> {
     }
 
     #[inline]
-    fn current_query_job(self) -> Option<QueryJobId> {
+    fn current_query_inclusion(self) -> Option<QueryInclusion> {
         tls::with_related_context(self.tcx, |icx| icx.query)
     }
 
@@ -161,9 +161,15 @@ impl<'tcx> QueryContext for QueryCtxt<'tcx> {
             // Update the `ImplicitCtxt` to point to our new query job.
             let new_icx = ImplicitCtxt {
                 tcx: self.tcx,
-                query: Some(token),
+                query: Some(QueryInclusion {
+                    id: token,
+                    branch: BranchKey::root(),
+                    real_depth: NonZero::new(
+                        current_icx.query.map_or(0, |q| q.real_depth.get()).wrapping_add(1),
+                    )
+                    .expect("real query depth exceeded type bounds"),
+                }),
                 query_depth: current_icx.query_depth + depth_limit as usize,
-                query_branch: BranchKey::root(),
                 task_deps: current_icx.task_deps,
             };
 

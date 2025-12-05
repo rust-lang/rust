@@ -1,12 +1,15 @@
+use std::collections::hash_map;
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::io::Write;
-use std::iter;
 use std::num::NonZero;
 use std::sync::{Arc, Weak};
+use std::thread::ThreadId;
+use std::{cmp, iter};
 
 use parking_lot::{Condvar, Mutex};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::sync::BranchKey;
 use rustc_errors::{Diag, DiagCtxtHandle};
 use rustc_hir::def::DefKind;
 use rustc_session::Session;
@@ -50,7 +53,7 @@ impl QueryJobId {
         map.get(&self).unwrap().job.span
     }
 
-    fn parent<I>(self, map: &QueryMap<I>) -> Option<QueryJobId> {
+    fn parent<I>(self, map: &QueryMap<I>) -> Option<QueryInclusion> {
         map.get(&self).unwrap().job.parent
     }
 
@@ -74,7 +77,10 @@ pub struct QueryJob<I> {
     pub span: Span,
 
     /// The parent query job which created this job and is implicitly waiting on it.
-    pub parent: Option<QueryJobId>,
+    pub parent: Option<QueryInclusion>,
+
+    /// Id of the query's execution thread.
+    pub thread_id: ThreadId,
 
     /// The latch that is used to wait on this job.
     latch: Weak<QueryLatch<I>>,
@@ -82,15 +88,30 @@ pub struct QueryJob<I> {
 
 impl<I> Clone for QueryJob<I> {
     fn clone(&self) -> Self {
-        Self { id: self.id, span: self.span, parent: self.parent, latch: self.latch.clone() }
+        Self {
+            id: self.id,
+            span: self.span,
+            parent: self.parent,
+            thread_id: self.thread_id,
+            latch: self.latch.clone(),
+        }
     }
 }
 
 impl<I> QueryJob<I> {
     /// Creates a new query job.
     #[inline]
-    pub fn new(id: QueryJobId, span: Span, parent: Option<QueryJobId>) -> Self {
-        QueryJob { id, span, parent, latch: Weak::new() }
+    pub fn new(
+        id: QueryJobId,
+        span: Span,
+        parent: Option<QueryInclusion>,
+        thread_id: ThreadId,
+    ) -> Self {
+        QueryJob { id, span, parent, thread_id, latch: Weak::new() }
+    }
+
+    pub fn real_depth(&self) -> usize {
+        self.parent.as_ref().map_or(0, |i| i.real_depth.get())
     }
 
     pub(super) fn latch(&mut self) -> Arc<QueryLatch<I>> {
@@ -119,12 +140,11 @@ impl QueryJobId {
     pub(super) fn find_cycle_in_stack<I: Clone>(
         &self,
         query_map: QueryMap<I>,
-        current_job: &Option<QueryJobId>,
+        mut current_job: Option<QueryJobId>,
         span: Span,
     ) -> CycleError<I> {
         // Find the waitee amongst `current_job` parents
         let mut cycle = Vec::new();
-        let mut current_job = Option::clone(current_job);
 
         while let Some(job) = current_job {
             let info = query_map.get(&job).unwrap();
@@ -143,11 +163,11 @@ impl QueryJobId {
                     .job
                     .parent
                     .as_ref()
-                    .map(|parent| (info.job.span, parent.query(&query_map)));
+                    .map(|parent| (info.job.span, parent.id.query(&query_map)));
                 return CycleError { usage, cycle };
             }
 
-            current_job = info.job.parent;
+            current_job = info.job.parent.map(|i| i.id);
         }
 
         panic!("did not find a cycle")
@@ -159,27 +179,41 @@ impl QueryJobId {
         let mut depth = 1;
         let info = query_map.get(&self).unwrap();
         let dep_kind = info.query.dep_kind;
-        let mut current_id = info.job.parent;
+        let mut current = info.job.parent;
         let mut last_layout = (info.clone(), depth);
 
-        while let Some(id) = current_id {
-            let info = query_map.get(&id).unwrap();
+        while let Some(inclusion) = current {
+            let info = query_map.get(&inclusion.id).unwrap();
             if info.query.dep_kind == dep_kind {
                 depth += 1;
                 last_layout = (info.clone(), depth);
             }
-            current_id = info.job.parent;
+            current = info.job.parent;
         }
         last_layout
     }
 }
 
+#[derive(Clone, Copy, Debug)]
+pub struct QueryInclusion {
+    pub id: QueryJobId,
+    pub branch: BranchKey,
+    pub real_depth: NonZero<usize>,
+}
+
 #[derive(Debug)]
 struct QueryWaiter<I> {
-    query: Option<QueryJobId>,
+    query: Option<QueryInclusion>,
+    thread_id: ThreadId,
     condvar: Condvar,
     span: Span,
     cycle: Mutex<Option<CycleError<I>>>,
+}
+
+impl<I> QueryWaiter<I> {
+    fn real_depth(&self) -> usize {
+        self.query.as_ref().map_or(0, |i| i.real_depth.get())
+    }
 }
 
 #[derive(Debug)]
@@ -202,11 +236,16 @@ impl<I> QueryLatch<I> {
     pub(super) fn wait_on(
         &self,
         qcx: impl QueryContext,
-        query: Option<QueryJobId>,
+        query: Option<QueryInclusion>,
         span: Span,
     ) -> Result<(), CycleError<I>> {
-        let waiter =
-            Arc::new(QueryWaiter { query, span, cycle: Mutex::new(None), condvar: Condvar::new() });
+        let waiter = Arc::new(QueryWaiter {
+            query,
+            span,
+            thread_id: std::thread::current().id(),
+            cycle: Mutex::new(None),
+            condvar: Condvar::new(),
+        });
         self.wait_on_inner(qcx, &waiter);
         // FIXME: Get rid of this lock. We have ownership of the QueryWaiter
         // although another thread may still have a Arc reference so we cannot
@@ -266,110 +305,6 @@ impl<I> QueryLatch<I> {
 /// A resumable waiter of a query. The usize is the index into waiters in the query's latch
 type Waiter = (QueryJobId, usize);
 
-/// Visits all the non-resumable and resumable waiters of a query.
-/// Only waiters in a query are visited.
-/// `visit` is called for every waiter and is passed a query waiting on `query_ref`
-/// and a span indicating the reason the query waited on `query_ref`.
-/// If `visit` returns Some, this function returns.
-/// For visits of non-resumable waiters it returns the return value of `visit`.
-/// For visits of resumable waiters it returns Some(Some(Waiter)) which has the
-/// required information to resume the waiter.
-/// If all `visit` calls returns None, this function also returns None.
-fn visit_waiters<I, F>(
-    query_map: &QueryMap<I>,
-    query: QueryJobId,
-    mut visit: F,
-) -> Option<Option<Waiter>>
-where
-    F: FnMut(Span, QueryJobId) -> Option<Option<Waiter>>,
-{
-    // Visit the parent query which is a non-resumable waiter since it's on the same stack
-    if let Some(parent) = query.parent(query_map)
-        && let Some(cycle) = visit(query.span(query_map), parent)
-    {
-        return Some(cycle);
-    }
-
-    // Visit the explicit waiters which use condvars and are resumable
-    if let Some(latch) = query.latch(query_map).upgrade() {
-        for (i, waiter) in latch.info.lock().waiters.iter().enumerate() {
-            if let Some(waiter_query) = waiter.query {
-                if visit(waiter.span, waiter_query).is_some() {
-                    // Return a value which indicates that this waiter can be resumed
-                    return Some(Some((query, i)));
-                }
-            }
-        }
-    }
-
-    None
-}
-
-/// Look for query cycles by doing a depth first search starting at `query`.
-/// `span` is the reason for the `query` to execute. This is initially DUMMY_SP.
-/// If a cycle is detected, this initial value is replaced with the span causing
-/// the cycle.
-fn cycle_check<I>(
-    query_map: &QueryMap<I>,
-    query: QueryJobId,
-    span: Span,
-    stack: &mut Vec<(Span, QueryJobId)>,
-    visited: &mut FxHashSet<QueryJobId>,
-) -> Option<Option<Waiter>> {
-    if !visited.insert(query) {
-        return if let Some(p) = stack.iter().position(|q| q.1 == query) {
-            // We detected a query cycle, fix up the initial span and return Some
-
-            // Remove previous stack entries
-            stack.drain(0..p);
-            // Replace the span for the first query with the cycle cause
-            stack[0].0 = span;
-            Some(None)
-        } else {
-            None
-        };
-    }
-
-    // Query marked as visited is added it to the stack
-    stack.push((span, query));
-
-    // Visit all the waiters
-    let r = visit_waiters(query_map, query, |span, successor| {
-        cycle_check(query_map, successor, span, stack, visited)
-    });
-
-    // Remove the entry in our stack if we didn't find a cycle
-    if r.is_none() {
-        stack.pop();
-    }
-
-    r
-}
-
-/// Finds out if there's a path to the compiler root (aka. code which isn't in a query)
-/// from `query` without going through any of the queries in `visited`.
-/// This is achieved with a depth first search.
-fn connected_to_root<I>(
-    query_map: &QueryMap<I>,
-    query: QueryJobId,
-    visited: &mut FxHashSet<QueryJobId>,
-) -> bool {
-    // We already visited this or we're deliberately ignoring it
-    if !visited.insert(query) {
-        return false;
-    }
-
-    // This query is connected to the root (it has no query parent), return true
-    if query.parent(query_map).is_none() {
-        return true;
-    }
-
-    visit_waiters(query_map, query, |_, successor| {
-        connected_to_root(query_map, successor, visited).then_some(None)
-    })
-    .is_some()
-}
-
 // Deterministically pick an query from a list
 fn pick_query<'a, I: Clone, T, F>(query_map: &QueryMap<I>, queries: &'a [T], f: F) -> &'a T
 where
@@ -391,159 +326,188 @@ where
         .unwrap()
 }
 
-/// Looks for query cycles starting from the last query in `jobs`.
-/// If a cycle is found, all queries in the cycle is removed from `jobs` and
-/// the function return true.
-/// If a cycle was not found, the starting query is removed from `jobs` and
-/// the function returns false.
-fn remove_cycle<I: Clone>(
-    query_map: &QueryMap<I>,
-    jobs: &mut Vec<QueryJobId>,
-    wakelist: &mut Vec<Arc<QueryWaiter<I>>>,
-) -> bool {
-    let mut visited = FxHashSet::default();
-    let mut stack = Vec::new();
-    // Look for a cycle starting with the last query in `jobs`
-    if let Some(waiter) =
-        cycle_check(query_map, jobs.pop().unwrap(), DUMMY_SP, &mut stack, &mut visited)
-    {
-        // The stack is a vector of pairs of spans and queries; reverse it so that
-        // the earlier entries require later entries
-        let (mut spans, queries): (Vec<_>, Vec<_>) = stack.into_iter().rev().unzip();
-
-        // Shift the spans so that queries are matched with the span for their waitee
-        spans.rotate_right(1);
-
-        // Zip them back together
-        let mut stack: Vec<_> = iter::zip(spans, queries).collect();
-
-        // Remove the queries in our cycle from the list of jobs to look at
-        for r in &stack {
-            if let Some(pos) = jobs.iter().position(|j| j == &r.1) {
-                jobs.remove(pos);
-            }
-        }
-
-        // Find the queries in the cycle which are
-        // connected to queries outside the cycle
-        let entry_points = stack
-            .iter()
-            .filter_map(|&(span, query)| {
-                if query.parent(query_map).is_none() {
-                    // This query is connected to the root (it has no query parent)
-                    Some((span, query, None))
-                } else {
-                    let mut waiters = Vec::new();
-                    // Find all the direct waiters who lead to the root
-                    visit_waiters(query_map, query, |span, waiter| {
-                        // Mark all the other queries in the cycle as already visited
-                        let mut visited = FxHashSet::from_iter(stack.iter().map(|q| q.1));
-
-                        if connected_to_root(query_map, waiter, &mut visited) {
-                            waiters.push((span, waiter));
-                        }
-
-                        None
-                    });
-                    if waiters.is_empty() {
-                        None
-                    } else {
-                        // Deterministically pick one of the waiters to show to the user
-                        let waiter = *pick_query(query_map, &waiters, |s| *s);
-                        Some((span, query, Some(waiter)))
-                    }
-                }
-            })
-            .collect::<Vec<(Span, QueryJobId, Option<(Span, QueryJobId)>)>>();
-
-        // Deterministically pick an entry point
-        let (_, entry_point, usage) = pick_query(query_map, &entry_points, |e| (e.0, e.1));
-
-        // Shift the stack so that our entry point is first
-        let entry_point_pos = stack.iter().position(|(_, query)| query == entry_point);
-        if let Some(pos) = entry_point_pos {
-            stack.rotate_left(pos);
-        }
-
-        let usage = usage.as_ref().map(|(span, query)| (*span, query.query(query_map)));
-
-        // Create the cycle error
-        let error = CycleError {
-            usage,
-            cycle: stack
-                .iter()
-                .map(|&(s, ref q)| QueryInfo { span: s, query: q.query(query_map) })
-                .collect(),
-        };
-
-        // We unwrap `waiter` here since there must always be one
-        // edge which is resumable / waited using a query latch
-        let (waitee_query, waiter_idx) = waiter.unwrap();
-
-        // Extract the waiter we want to resume
-        let waiter = waitee_query.latch(query_map).upgrade().unwrap().extract_waiter(waiter_idx);
-
-        // Set the cycle error so it will be picked up when resumed
-        *waiter.cycle.lock() = Some(error);
-
-        // Put the waiter on the list of things to resume
-        wakelist.push(waiter);
-
-        true
-    } else {
-        false
-    }
-}
-
 /// Detects query cycles by using depth first search over all active query jobs.
 /// If a query cycle is found it will break the cycle by finding an edge which
 /// uses a query latch and then resuming that waiter.
 /// There may be multiple cycles involved in a deadlock, so this searches
 /// all active queries for cycles before finally resuming all the waiters at once.
+#[allow(rustc::potential_query_instability)]
 pub fn break_query_cycles<I: Clone + Debug>(
     query_map: QueryMap<I>,
     registry: &rustc_thread_pool::Registry,
 ) {
-    let mut wakelist = Vec::new();
-    // It is OK per the comments:
-    // - https://github.com/rust-lang/rust/pull/131200#issuecomment-2798854932
-    // - https://github.com/rust-lang/rust/pull/131200#issuecomment-2798866392
-    #[allow(rustc::potential_query_instability)]
-    let mut jobs: Vec<QueryJobId> = query_map.keys().cloned().collect();
+    use std::cmp::Ordering::*;
 
-    let mut found_cycle = false;
+    #[derive(Debug)]
+    struct QueryWaitIntermediate<I> {
+        depth: usize,
+        inner: Option<QueryWait<I>>,
+    }
 
-    while jobs.len() > 0 {
-        if remove_cycle(&query_map, &mut jobs, &mut wakelist) {
-            found_cycle = true;
+    #[derive(Debug)]
+    enum QueryWait<I> {
+        /// Waits on a running query
+        Waiter { waited_on: QueryJobId, waiter: Arc<QueryWaiter<I>> },
+        /// Waits other for tasks inside of `join` or `scope`
+        Direct { waited_on: Vec<QueryJobId> },
+    }
+
+    impl<I> QueryWaitIntermediate<I> {
+        fn from_depth(depth: usize) -> Self {
+            QueryWaitIntermediate { depth, inner: None }
+        }
+
+        fn try_finalize(self) -> Option<QueryWait<I>> {
+            self.inner
         }
     }
 
-    // Check that a cycle was found. It is possible for a deadlock to occur without
-    // a query cycle if a query which can be waited on uses Rayon to do multithreading
-    // internally. Such a query (X) may be executing on 2 threads (A and B) and A may
-    // wait using Rayon on B. Rayon may then switch to executing another query (Y)
-    // which in turn will wait on X causing a deadlock. We have a false dependency from
-    // X to Y due to Rayon waiting and a true dependency from Y to X. The algorithm here
-    // only considers the true dependency and won't detect a cycle.
-    if !found_cycle {
-        panic!(
-            "deadlock detected as we're unable to find a query cycle to break\n\
-            current query map:\n{:#?}",
-            query_map
-        );
+    let mut waits = FxHashMap::<ThreadId, QueryWaitIntermediate<I>>::default();
+    for query in query_map.values() {
+        // Account for every query
+        let query_depth = query.job.real_depth();
+        let entry = waits.entry(query.job.thread_id);
+        match entry {
+            hash_map::Entry::Vacant(entry) => {
+                entry.insert(QueryWaitIntermediate::from_depth(query_depth));
+            }
+            hash_map::Entry::Occupied(mut entry) => {
+                let wait = entry.get_mut();
+                match (query_depth.cmp(&wait.depth), &mut wait.inner) {
+                    (Less, _) => (),
+                    (Equal, None) => {
+                        panic!("encountered two queries on the same thread but at the same depth")
+                    }
+                    // Update thread's depth
+                    (Greater, None) => wait.depth = query_depth,
+
+                    (Equal, Some(_)) => (),
+                    (Greater, Some(QueryWait::Waiter { .. })) => {
+                        panic!("query is deeper than thread's waiter")
+                    }
+                    // Overwrite direct wait cause a deeper query is found
+                    (Greater, Some(QueryWait::Direct { .. })) => {
+                        *wait = QueryWaitIntermediate::from_depth(query_depth)
+                    }
+                }
+            }
+        }
+
+        if let Some(inclusion) = query.job.parent {
+            let parent = &query_map[&inclusion.id];
+            if parent.job.thread_id != query.job.thread_id {
+                // Consider adding a `QueryWaitDep::Direct` wait
+                let depth = parent.job.real_depth();
+                let entry = waits.entry(parent.job.thread_id);
+                match entry {
+                    hash_map::Entry::Vacant(entry) => {
+                        entry.insert(QueryWaitIntermediate {
+                            depth,
+                            inner: Some(QueryWait::Direct { waited_on: vec![query.job.id] }),
+                        });
+                    }
+                    hash_map::Entry::Occupied(mut entry) => {
+                        let wait = entry.get_mut();
+                        match (depth.cmp(&wait.depth), &mut wait.inner) {
+                            (Less, _) => (),
+                            (Equal, None) | (Greater, None | Some(QueryWait::Direct { .. })) => {
+                                *wait = QueryWaitIntermediate {
+                                    depth,
+                                    inner: Some(QueryWait::Direct {
+                                        waited_on: vec![query.job.id],
+                                    }),
+                                }
+                            }
+                            (Equal, Some(QueryWait::Direct { waited_on })) => {
+                                if waited_on.contains(&query.job.id) {
+                                    panic!("trying to push another direct dependency")
+                                }
+                                waited_on.push(query.job.id)
+                            }
+                            (Equal, Some(QueryWait::Waiter { .. })) => {
+                                panic!(
+                                    "query can only wait on a running query or in `join`/`scope`"
+                                )
+                            }
+                            (Greater, Some(QueryWait::Waiter { .. })) => {
+                                panic!("query is deeper than thread's waiter")
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        let Some(latch) = query.job.latch.upgrade() else {
+            continue;
+        };
+        let lock = latch.info.try_lock().unwrap();
+        assert!(!lock.complete);
+        for waiter in &lock.waiters {
+            let depth = waiter.real_depth();
+            let old = waits.insert(
+                waiter.thread_id,
+                QueryWaitIntermediate {
+                    depth,
+                    inner: Some(QueryWait::Waiter {
+                        waited_on: query.job.id,
+                        waiter: waiter.clone(),
+                    }),
+                },
+            );
+            // waiter has to be in the thread's deepest query
+            if let Some(wait) = old {
+                assert!(wait.depth <= depth);
+                if wait.depth == depth {
+                    assert!(wait.inner.is_none())
+                }
+            }
+        }
     }
 
-    // Mark all the thread we're about to wake up as unblocked. This needs to be done before
-    // we wake the threads up as otherwise Rayon could detect a deadlock if a thread we
-    // resumed fell asleep and this thread had yet to mark the remaining threads as unblocked.
-    for _ in 0..wakelist.len() {
-        rustc_thread_pool::mark_unblocked(registry);
+    let waits: FxHashMap<_, _> = waits
+        .into_iter()
+        .map(|(k, v)| (k, v.try_finalize().expect("failed to process a query cycle")))
+        .collect();
+    for wait in waits.values() {
+        match wait {
+            QueryWait::Waiter { .. } => continue,
+            QueryWait::Direct { waited_on } => {
+                let parent = waited_on[0].parent(&query_map).unwrap().id;
+                for waited_on in &waited_on[1..] {
+                    assert_eq!(parent, waited_on.parent(&query_map).unwrap().id)
+                }
+            }
+        }
     }
 
-    for waiter in wakelist.into_iter() {
-        waiter.condvar.notify_one();
-    }
+    panic!("fuh: {waits:#?}")
+
+    // // Check that a cycle was found. It is possible for a deadlock to occur without
+    // // a query cycle if a query which can be waited on uses Rayon to do multithreading
+    // // internally. Such a query (X) may be executing on 2 threads (A and B) and A may
+    // // wait using Rayon on B. Rayon may then switch to executing another query (Y)
+    // // which in turn will wait on X causing a deadlock. We have a false dependency from
+    // // X to Y due to Rayon waiting and a true dependency from Y to X. The algorithm here
+    // // only considers the true dependency and won't detect a cycle.
+    // if !found_cycle {
+    //     panic!(
+    //         "deadlock detected as we're unable to find a query cycle to break\n\
+    //         current query map:\n{:#?}",
+    //         query_map
+    //     );
+    // }
+
+    // // Mark all the thread we're about to wake up as unblocked. This needs to be done before
+    // // we wake the threads up as otherwise Rayon could detect a deadlock if a thread we
+    // // resumed fell asleep and this thread had yet to mark the remaining threads as unblocked.
+    // for _ in 0..wakelist.len() {
+    //     rustc_thread_pool::mark_unblocked(registry);
+    // }
+
+    // for waiter in wakelist.into_iter() {
+    //     waiter.condvar.notify_one();
+    // }
 }
 
 #[inline(never)]
@@ -648,7 +612,7 @@ pub fn print_query_stack<Qcx: QueryContext>(
             );
         }
 
-        current_query = query_info.job.parent;
+        current_query = query_info.job.parent.map(|i| i.id);
         count_total += 1;
     }
 

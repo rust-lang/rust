@@ -8,8 +8,8 @@ pub use self::plumbing::*;
 
 mod job;
 pub use self::job::{
-    QueryInfo, QueryJob, QueryJobId, QueryJobInfo, QueryMap, break_query_cycles, print_query_stack,
-    report_cycle,
+    QueryInclusion, QueryInfo, QueryJob, QueryJobId, QueryJobInfo, QueryMap, break_query_cycles,
+    print_query_stack, report_cycle,
 };
 
 mod caches;
@@ -159,7 +159,7 @@ pub trait QueryContext: HasDepContext {
     fn next_job_id(self) -> QueryJobId;
 
     /// Get the query information from the TLS context.
-    fn current_query_job(self) -> Option<QueryJobId>;
+    fn current_query_inclusion(self) -> Option<QueryInclusion>;
 
     fn collect_active_jobs(
         self,

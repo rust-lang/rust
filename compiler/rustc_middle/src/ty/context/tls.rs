@@ -1,6 +1,7 @@
 use std::{mem, ptr};
 
-use rustc_data_structures::sync::{self, BranchKey};
+use rustc_data_structures::sync;
+use rustc_query_system::query::QueryInclusion;
 
 use super::{GlobalCtxt, TyCtxt};
 use crate::dep_graph::TaskDepsRef;
@@ -18,13 +19,10 @@ pub struct ImplicitCtxt<'a, 'tcx> {
 
     /// The current query job, if any. This is updated by `JobOwner::start` in
     /// `ty::query::plumbing` when executing a query.
-    pub query: Option<QueryJobId>,
+    pub query: Option<QueryInclusion>,
 
     /// Used to prevent queries from calling too deeply.
     pub query_depth: usize,
-
-    /// Branch per query, used to calculate deterministic query cycles
-    pub query_branch: BranchKey,
 
     /// The current dep graph task. This is used to add dependencies to queries
     /// when executing them.
@@ -34,13 +32,7 @@ pub struct ImplicitCtxt<'a, 'tcx> {
 impl<'a, 'tcx> ImplicitCtxt<'a, 'tcx> {
     pub fn new(gcx: &'tcx GlobalCtxt<'tcx>) -> Self {
         let tcx = TyCtxt { gcx };
-        ImplicitCtxt {
-            tcx,
-            query: None,
-            query_depth: 0,
-            query_branch: BranchKey::root(),
-            task_deps: TaskDepsRef::Ignore,
-        }
+        ImplicitCtxt { tcx, query: None, query_depth: 0, task_deps: TaskDepsRef::Ignore }
     }
 }
 
