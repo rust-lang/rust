@@ -220,7 +220,7 @@ jobs:
       if: matrix.build_std != ''
 
     # Configure some env vars based on matrix configuration
-    - run: echo "PROFILE=--profile=${{matrix.profile}}" >> $GITHUB_ENV
+    - run: echo "PROFILE=${{matrix.profile}}" >> $GITHUB_ENV
       shell: bash
     - run: echo "NORUN=1" >> $GITHUB_ENV
       shell: bash
@@ -280,7 +280,7 @@ jobs:
       if: ${{ matrix.build_std }}
 
     # Configure some env vars based on matrix configuration
-    - run: echo "PROFILE=--profile=${{ matrix.profile }}" >> $GITHUB_ENV
+    - run: echo "PROFILE=${{ matrix.profile }}" >> $GITHUB_ENV
     - run: ./ci/intrinsic-test-docker.sh ${{ matrix.target }}
       if: ${{ !startsWith(matrix.target, 'thumb') }}
       env:

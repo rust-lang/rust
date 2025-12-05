@@ -41,6 +41,10 @@ pub struct Cli {
     #[arg(long, default_value_t = String::from("armv7-unknown-linux-gnueabihf"))]
     pub target: String,
 
+    /// Pass a profile (release, dev)
+    #[arg(long, default_value_t = String::from("release"))]
+    pub profile: String,
+
     /// Set the linker
     #[arg(long)]
     pub linker: Option<String>,
@@ -59,6 +63,7 @@ pub struct ProcessedCli {
     pub cpp_compiler: Option<String>,
     pub runner: String,
     pub target: String,
+    pub profile: String,
     pub linker: Option<String>,
     pub cxx_toolchain_dir: Option<String>,
     pub skip: Vec<String>,
@@ -70,6 +75,7 @@ impl ProcessedCli {
         let filename = cli_options.input;
         let runner = cli_options.runner.unwrap_or_default();
         let target = cli_options.target;
+        let profile = cli_options.profile;
         let linker = cli_options.linker;
         let cxx_toolchain_dir = cli_options.cxx_toolchain_dir;
         let sample_percentage = cli_options.sample_percentage;
@@ -103,6 +109,7 @@ impl ProcessedCli {
             cpp_compiler,
             runner,
             target,
+            profile,
             linker,
             cxx_toolchain_dir,
             skip,
