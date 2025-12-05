@@ -65,6 +65,7 @@ impl Layout {
         }
     }
 
+    #[inline]
     const fn is_size_align_valid(size: usize, align: usize) -> bool {
         let Some(align) = Alignment::new(align) else { return false };
         if size > Self::max_size_for_align(align) {
