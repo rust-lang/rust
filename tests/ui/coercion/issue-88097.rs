@@ -3,6 +3,9 @@
 // behavior has been fixed.
 
 //@ check-pass
+//@ revisions: current next
+//@ ignore-compare-mode-next-solver (explicit revisions)
+//@[next] compile-flags: -Znext-solver
 
 fn peculiar() -> impl Fn(u8) -> u8 {
     return |x| x + 1
