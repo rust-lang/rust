@@ -233,6 +233,19 @@ impl AttributeExt for Attribute {
         self.has_name(sym::doc)
             && self.meta_item_list().is_some_and(|l| list_contains_name(&l, sym::hidden))
     }
+
+    fn is_doc_keyword_or_attribute(&self) -> bool {
+        if self.has_name(sym::doc)
+            && let Some(items) = self.meta_item_list()
+        {
+            for item in items {
+                if item.has_name(sym::keyword) || item.has_name(sym::attribute) {
+                    return true;
+                }
+            }
+        }
+        false
+    }
 }
 
 impl Attribute {
@@ -865,6 +878,9 @@ pub trait AttributeExt: Debug {
 
     /// Returns `true` if this attribute contains `doc(hidden)`.
     fn is_doc_hidden(&self) -> bool;
+
+    /// Returns `true` is this attribute contains `doc(keyword)` or `doc(attribute)`.
+    fn is_doc_keyword_or_attribute(&self) -> bool;
 }
 
 // FIXME(fn_delegation): use function delegation instead of manually forwarding
