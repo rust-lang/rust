@@ -1454,6 +1454,23 @@ impl SyntaxFactory {
         ast
     }
 
+    pub fn assoc_item_list(
+        &self,
+        items: impl IntoIterator<Item = ast::AssocItem>,
+    ) -> ast::AssocItemList {
+        let (items, input) = iterator_input(items);
+        let items_vec: Vec<_> = items.into_iter().collect();
+        let ast = make::assoc_item_list(Some(items_vec)).clone_for_update();
+
+        if let Some(mut mapping) = self.mappings() {
+            let mut builder = SyntaxMappingBuilder::new(ast.syntax().clone());
+            builder.map_children(input, ast.assoc_items().map(|item| item.syntax().clone()));
+            builder.finish(&mut mapping);
+        }
+
+        ast
+    }
+
     pub fn attr_outer(&self, meta: ast::Meta) -> ast::Attr {
         let ast = make::attr_outer(meta.clone()).clone_for_update();
 

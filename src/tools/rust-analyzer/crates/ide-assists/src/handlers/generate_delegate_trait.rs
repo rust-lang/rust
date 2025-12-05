@@ -296,7 +296,7 @@ fn generate_impl(
                     .collect()
             });
 
-            let delegate = finalize_delegate(&delegate, assoc_items, false)?;
+            let delegate = finalize_delegate(&make, &delegate, assoc_items, false)?;
 
             let target_scope = ctx.sema.scope(strukt.strukt.syntax())?;
             let source_scope = ctx.sema.scope(bound_def.syntax())?;
@@ -406,7 +406,7 @@ fn generate_impl(
                     .collect()
             });
 
-            finalize_delegate(&delegate, assoc_items, true)
+            finalize_delegate(&make, &delegate, assoc_items, true)
         }
     }
 }
@@ -552,6 +552,7 @@ fn remove_useless_where_clauses(editor: &mut SyntaxEditor, delegate: &ast::Impl)
 /// 1. Replacing the assoc_item_list with new items (if any)
 /// 2. Removing useless where clauses
 fn finalize_delegate(
+    make: &SyntaxFactory,
     delegate: &ast::Impl,
     assoc_items: Option<Vec<ast::AssocItem>>,
     remove_where_clauses: bool,
@@ -568,8 +569,7 @@ fn finalize_delegate(
     if let Some(items) = assoc_items
         && !items.is_empty()
     {
-        let new_assoc_item_list =
-            syntax::ast::make::assoc_item_list(Some(items)).clone_for_update();
+        let new_assoc_item_list = make.assoc_item_list(items);
         if let Some(old_list) = delegate.assoc_item_list() {
             editor.replace(old_list.syntax(), new_assoc_item_list.syntax());
         }
