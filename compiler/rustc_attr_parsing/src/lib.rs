@@ -78,10 +78,10 @@
 
 // tidy-alphabetical-start
 #![feature(decl_macro)]
-#![recursion_limit = "256"]
-// tidy-alphabetical-end
 #![feature(if_let_guard)]
 #![feature(iter_intersperse)]
+#![recursion_limit = "256"]
+// tidy-alphabetical-end
 
 #[macro_use]
 /// All the individual attribute parsers for each of rustc's built-in attributes.

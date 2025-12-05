@@ -165,7 +165,6 @@ attribute_parsers!(
         ConstStabilityParser,
         DocParser,
         MacroUseParser,
-
         NakedParser,
         StabilityParser,
         UsedParser,
