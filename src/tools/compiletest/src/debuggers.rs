@@ -133,7 +133,7 @@ pub(crate) fn discover_gdb(
     gdb: Option<String>,
     target: &str,
     android_cross_path: &Utf8Path,
-) -> Option<String> {
+) -> Option<Utf8PathBuf> {
     #[cfg(not(windows))]
     const GDB_FALLBACK: &str = "gdb";
     #[cfg(windows)]
@@ -155,10 +155,10 @@ pub(crate) fn discover_gdb(
         Some(ref s) => s.to_owned(),
     };
 
-    Some(gdb)
+    Some(Utf8PathBuf::from(gdb))
 }
 
-pub(crate) fn query_gdb_version(gdb: &str) -> Option<u32> {
+pub(crate) fn query_gdb_version(gdb: &Utf8Path) -> Option<u32> {
     let mut version_line = None;
     if let Ok(output) = Command::new(&gdb).arg("--version").output() {
         if let Some(first_line) = String::from_utf8_lossy(&output.stdout).lines().next() {

@@ -7,7 +7,7 @@ LL | impl<const N: usize> ArrayWindowsExample {
 LL |         let mut N;
    |                 ^ cannot be named the same as a const parameter
 
-error[E0412]: cannot find type `ArrayWindowsExample` in this scope
+error[E0425]: cannot find type `ArrayWindowsExample` in this scope
   --> $DIR/issue-85348.rs:3:22
    |
 LL | impl<const N: usize> ArrayWindowsExample {
@@ -26,5 +26,5 @@ LL |         let mut N: /* Type */;
 
 error: aborting due to 3 previous errors
 
-Some errors have detailed explanations: E0282, E0412, E0530.
+Some errors have detailed explanations: E0282, E0425, E0530.
 For more information about an error, try `rustc --explain E0282`.

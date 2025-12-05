@@ -1,4 +1,4 @@
-error[E0412]: cannot find type `usize8` in this scope
+error[E0425]: cannot find type `usize8` in this scope
   --> $DIR/align-on-fields-143987.rs:17:8
    |
 LL |     x: usize8,
@@ -30,4 +30,4 @@ LL |     #[rustc_align(32)]
 
 error: aborting due to 4 previous errors
 
-For more information about this error, try `rustc --explain E0412`.
+For more information about this error, try `rustc --explain E0425`.

@@ -172,10 +172,10 @@ impl TestCx<'_> {
             .env(dylib_env_var(), &env::join_paths(recipe_dylib_search_paths).unwrap())
             // Provide the directory to libraries that are needed to run the *compiler* invoked
             // by the recipe.
-            .env("HOST_RUSTC_DYLIB_PATH", &self.config.compile_lib_path)
+            .env("HOST_RUSTC_DYLIB_PATH", &self.config.host_compile_lib_path)
             // Provide the directory to libraries that might be needed to run binaries created
             // by a compiler invoked by the recipe.
-            .env("TARGET_EXE_DYLIB_PATH", &self.config.run_lib_path)
+            .env("TARGET_EXE_DYLIB_PATH", &self.config.target_run_lib_path)
             // Provide the target.
             .env("TARGET", &self.config.target)
             // Some tests unfortunately still need Python, so provide path to a Python interpreter.

@@ -23,7 +23,7 @@ use crate::{
 /// editor pop-up.
 ///
 /// It is basically a POD with various properties. To construct a [`CompletionItem`],
-/// use [`Builder::new`] method and the [`Builder`] struct.
+/// use the [`Builder`] struct.
 #[derive(Clone, UpmapFromRaFixture)]
 #[non_exhaustive]
 pub struct CompletionItem {
@@ -57,7 +57,8 @@ pub struct CompletionItem {
 
     /// Additional info to show in the UI pop up.
     pub detail: Option<String>,
-    pub documentation: Option<Documentation>,
+    // FIXME: Make this with `'db` lifetime.
+    pub documentation: Option<Documentation<'static>>,
 
     /// Whether this item is marked as deprecated
     pub deprecated: bool,
@@ -488,7 +489,8 @@ pub(crate) struct Builder {
     insert_text: Option<String>,
     is_snippet: bool,
     detail: Option<String>,
-    documentation: Option<Documentation>,
+    // FIXME: Make this with `'db` lifetime.
+    documentation: Option<Documentation<'static>>,
     lookup: Option<SmolStr>,
     kind: CompletionItemKind,
     text_edit: Option<TextEdit>,
@@ -644,11 +646,11 @@ impl Builder {
         self
     }
     #[allow(unused)]
-    pub(crate) fn documentation(&mut self, docs: Documentation) -> &mut Builder {
+    pub(crate) fn documentation(&mut self, docs: Documentation<'_>) -> &mut Builder {
         self.set_documentation(Some(docs))
     }
-    pub(crate) fn set_documentation(&mut self, docs: Option<Documentation>) -> &mut Builder {
-        self.documentation = docs;
+    pub(crate) fn set_documentation(&mut self, docs: Option<Documentation<'_>>) -> &mut Builder {
+        self.documentation = docs.map(Documentation::into_owned);
         self
     }
     pub(crate) fn set_deprecated(&mut self, deprecated: bool) -> &mut Builder {

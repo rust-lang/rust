@@ -915,11 +915,14 @@ impl f64 {
 
     /// Returns the maximum of the two numbers, ignoring NaN.
     ///
-    /// If one of the arguments is NaN, then the other argument is returned.
+    /// If exactly one of the arguments is NaN, then the other argument is returned. If both
+    /// arguments are NaN, the return value is NaN, with the bit pattern picked using the usual
+    /// [rules for arithmetic operations](f32#nan-bit-patterns). If the inputs compare equal (such
+    /// as for the case of `+0.0` and `-0.0`), either input may be returned non-deterministically.
+    ///
     /// This follows the IEEE 754-2008 semantics for `maxNum`, except for handling of signaling NaNs;
     /// this function handles all NaNs the same way and avoids `maxNum`'s problems with associativity.
-    /// This also matches the behavior of libm’s fmax. In particular, if the inputs compare equal
-    /// (such as for the case of `+0.0` and `-0.0`), either input may be returned non-deterministically.
+    /// This also matches the behavior of libm’s `fmax`.
     ///
     /// ```
     /// let x = 1.0_f64;
@@ -938,11 +941,14 @@ impl f64 {
 
     /// Returns the minimum of the two numbers, ignoring NaN.
     ///
-    /// If one of the arguments is NaN, then the other argument is returned.
+    /// If exactly one of the arguments is NaN, then the other argument is returned. If both
+    /// arguments are NaN, the return value is NaN, with the bit pattern picked using the usual
+    /// [rules for arithmetic operations](f32#nan-bit-patterns). If the inputs compare equal (such
+    /// as for the case of `+0.0` and `-0.0`), either input may be returned non-deterministically.
+    ///
     /// This follows the IEEE 754-2008 semantics for `minNum`, except for handling of signaling NaNs;
     /// this function handles all NaNs the same way and avoids `minNum`'s problems with associativity.
-    /// This also matches the behavior of libm’s fmin. In particular, if the inputs compare equal
-    /// (such as for the case of `+0.0` and `-0.0`), either input may be returned non-deterministically.
+    /// This also matches the behavior of libm’s `fmin`.
     ///
     /// ```
     /// let x = 1.0_f64;
@@ -1436,6 +1442,35 @@ impl f64 {
             self = max;
         }
         self
+    }
+
+    /// Clamps this number to a symmetric range centered around zero.
+    ///
+    /// The method clamps the number's magnitude (absolute value) to be at most `limit`.
+    ///
+    /// This is functionally equivalent to `self.clamp(-limit, limit)`, but is more
+    /// explicit about the intent.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `limit` is negative or NaN, as this indicates a logic error.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(clamp_magnitude)]
+    /// assert_eq!(5.0f64.clamp_magnitude(3.0), 3.0);
+    /// assert_eq!((-5.0f64).clamp_magnitude(3.0), -3.0);
+    /// assert_eq!(2.0f64.clamp_magnitude(3.0), 2.0);
+    /// assert_eq!((-2.0f64).clamp_magnitude(3.0), -2.0);
+    /// ```
+    #[must_use = "this returns the clamped value and does not modify the original"]
+    #[unstable(feature = "clamp_magnitude", issue = "148519")]
+    #[inline]
+    pub fn clamp_magnitude(self, limit: f64) -> f64 {
+        assert!(limit >= 0.0, "limit must be non-negative");
+        let limit = limit.abs(); // Canonicalises -0.0 to 0.0
+        self.clamp(-limit, limit)
     }
 
     /// Computes the absolute value of `self`.

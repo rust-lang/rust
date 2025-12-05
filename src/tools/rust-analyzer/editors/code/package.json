@@ -2020,30 +2020,19 @@
                         "markdownDescription": "How imports should be grouped into use statements.",
                         "default": "crate",
                         "type": "string",
-                        "anyOf": [
-                            {
-                                "enum": [
-                                    "crate",
-                                    "module",
-                                    "item",
-                                    "one"
-                                ],
-                                "enumDescriptions": [
-                                    "Merge imports from the same crate into a single use statement. Conversely, imports from different crates are split into separate statements.",
-                                    "Merge imports from the same module into a single use statement. Conversely, imports from different modules are split into separate statements.",
-                                    "Flatten imports so that each has its own use statement.",
-                                    "Merge all imports into a single use statement as long as they have the same visibility and attributes."
-                                ]
-                            },
-                            {
-                                "enum": [
-                                    "preserve"
-                                ],
-                                "enumDescriptions": [
-                                    "Deprecated - unless `enforceGranularity` is `true`, the style of the current file is preferred over this setting. Behaves like `item`."
-                                ],
-                                "deprecated": true
-                            }
+                        "enum": [
+                            "crate",
+                            "module",
+                            "item",
+                            "one",
+                            "preserve"
+                        ],
+                        "enumDescriptions": [
+                            "Merge imports from the same crate into a single use statement. Conversely, imports from different crates are split into separate statements.",
+                            "Merge imports from the same module into a single use statement. Conversely, imports from different modules are split into separate statements.",
+                            "Flatten imports so that each has its own use statement.",
+                            "Merge all imports into a single use statement as long as they have the same visibility and attributes.",
+                            "Deprecated - unless `enforceGranularity` is `true`, the style of the current file is preferred over this setting. Behaves like `item`."
                         ]
                     }
                 }
@@ -3043,7 +3032,7 @@
                 "title": "Workspace",
                 "properties": {
                     "rust-analyzer.workspace.discoverConfig": {
-                        "markdownDescription": "Enables automatic discovery of projects using [`DiscoverWorkspaceConfig::command`].\n\n[`DiscoverWorkspaceConfig`] also requires setting `progress_label` and `files_to_watch`.\n`progress_label` is used for the title in progress indicators, whereas `files_to_watch`\nis used to determine which build system-specific files should be watched in order to\nreload rust-analyzer.\n\nBelow is an example of a valid configuration:\n```json\n\"rust-analyzer.workspace.discoverConfig\": {\n        \"command\": [\n                \"rust-project\",\n                \"develop-json\"\n        ],\n        \"progressLabel\": \"rust-analyzer\",\n        \"filesToWatch\": [\n                \"BUCK\"\n        ]\n}\n```\n\n## On `DiscoverWorkspaceConfig::command`\n\n**Warning**: This format is provisional and subject to change.\n\n[`DiscoverWorkspaceConfig::command`] *must* return a JSON object corresponding to\n`DiscoverProjectData::Finished`:\n\n```norun\n#[derive(Debug, Clone, Deserialize, Serialize)]\n#[serde(tag = \"kind\")]\n#[serde(rename_all = \"snake_case\")]\nenum DiscoverProjectData {\n        Finished { buildfile: Utf8PathBuf, project: ProjectJsonData },\n        Error { error: String, source: Option<String> },\n        Progress { message: String },\n}\n```\n\nAs JSON, `DiscoverProjectData::Finished` is:\n\n```json\n{\n        // the internally-tagged representation of the enum.\n        \"kind\": \"finished\",\n        // the file used by a non-Cargo build system to define\n        // a package or target.\n        \"buildfile\": \"rust-analyzer/BUILD\",\n        // the contents of a rust-project.json, elided for brevity\n        \"project\": {\n                \"sysroot\": \"foo\",\n                \"crates\": []\n        }\n}\n```\n\nIt is encouraged, but not required, to use the other variants on `DiscoverProjectData`\nto provide a more polished end-user experience.\n\n`DiscoverWorkspaceConfig::command` may *optionally* include an `{arg}`, which will be\nsubstituted with the JSON-serialized form of the following enum:\n\n```norun\n#[derive(PartialEq, Clone, Debug, Serialize)]\n#[serde(rename_all = \"camelCase\")]\npub enum DiscoverArgument {\n     Path(AbsPathBuf),\n     Buildfile(AbsPathBuf),\n}\n```\n\nThe JSON representation of `DiscoverArgument::Path` is:\n\n```json\n{\n        \"path\": \"src/main.rs\"\n}\n```\n\nSimilarly, the JSON representation of `DiscoverArgument::Buildfile` is:\n\n```json\n{\n        \"buildfile\": \"BUILD\"\n}\n```\n\n`DiscoverArgument::Path` is used to find and generate a `rust-project.json`, and\ntherefore, a workspace, whereas `DiscoverArgument::buildfile` is used to to update an\nexisting workspace. As a reference for implementors, buck2's `rust-project` will likely\nbe useful: https://github.com/facebook/buck2/tree/main/integrations/rust-project.",
+                        "markdownDescription": "Enables automatic discovery of projects using [`DiscoverWorkspaceConfig::command`].\n\n[`DiscoverWorkspaceConfig`] also requires setting `progress_label` and `files_to_watch`.\n`progress_label` is used for the title in progress indicators, whereas `files_to_watch`\nis used to determine which build system-specific files should be watched in order to\nreload rust-analyzer.\n\nBelow is an example of a valid configuration:\n```json\n\"rust-analyzer.workspace.discoverConfig\": {\n        \"command\": [\n                \"rust-project\",\n                \"develop-json\"\n        ],\n        \"progressLabel\": \"rust-analyzer\",\n        \"filesToWatch\": [\n                \"BUCK\"\n        ]\n}\n```\n\n## On `DiscoverWorkspaceConfig::command`\n\n**Warning**: This format is provisional and subject to change.\n\n[`DiscoverWorkspaceConfig::command`] *must* return a JSON object corresponding to\n`DiscoverProjectData::Finished`:\n\n```norun\n#[derive(Debug, Clone, Deserialize, Serialize)]\n#[serde(tag = \"kind\")]\n#[serde(rename_all = \"snake_case\")]\nenum DiscoverProjectData {\n        Finished { buildfile: Utf8PathBuf, project: ProjectJsonData },\n        Error { error: String, source: Option<String> },\n        Progress { message: String },\n}\n```\n\nAs JSON, `DiscoverProjectData::Finished` is:\n\n```json\n{\n        // the internally-tagged representation of the enum.\n        \"kind\": \"finished\",\n        // the file used by a non-Cargo build system to define\n        // a package or target.\n        \"buildfile\": \"rust-analyzer/BUILD\",\n        // the contents of a rust-project.json, elided for brevity\n        \"project\": {\n                \"sysroot\": \"foo\",\n                \"crates\": []\n        }\n}\n```\n\nIt is encouraged, but not required, to use the other variants on `DiscoverProjectData`\nto provide a more polished end-user experience.\n\n`DiscoverWorkspaceConfig::command` may *optionally* include an `{arg}`, which will be\nsubstituted with the JSON-serialized form of the following enum:\n\n```norun\n#[derive(PartialEq, Clone, Debug, Serialize)]\n#[serde(rename_all = \"camelCase\")]\npub enum DiscoverArgument {\n     Path(AbsPathBuf),\n     Buildfile(AbsPathBuf),\n}\n```\n\nThe JSON representation of `DiscoverArgument::Path` is:\n\n```json\n{\n        \"path\": \"src/main.rs\"\n}\n```\n\nSimilarly, the JSON representation of `DiscoverArgument::Buildfile` is:\n\n```json\n{\n        \"buildfile\": \"BUILD\"\n}\n```\n\n`DiscoverArgument::Path` is used to find and generate a `rust-project.json`, and\ntherefore, a workspace, whereas `DiscoverArgument::buildfile` is used to to update an\nexisting workspace. As a reference for implementors, buck2's `rust-project` will likely\nbe useful: <https://github.com/facebook/buck2/tree/main/integrations/rust-project>.",
                         "default": null,
                         "anyOf": [
                             {

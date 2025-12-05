@@ -91,7 +91,7 @@ pub(crate) fn handle_did_open_text_document(
             let _ = state
                 .deferred_task_queue
                 .sender
-                .send(crate::main_loop::QueuedTask::CheckIfIndexed(params.text_document.uri));
+                .send(crate::main_loop::DeferredTask::CheckIfIndexed(params.text_document.uri));
         }
     }
     Ok(())

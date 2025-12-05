@@ -220,7 +220,7 @@ fn from_impl_exists(
     let strukt = sema.to_def(strukt)?;
     let krate = strukt.krate(db);
     let from_trait = FamousDefs(sema, krate).core_convert_From()?;
-    let interner = DbInterner::new_with(db, Some(krate.base()), None);
+    let interner = DbInterner::new_with(db, krate.base());
     use hir::next_solver::infer::DbInternerInferExt;
     let infcx = interner.infer_ctxt().build(TypingMode::non_body_analysis());
 

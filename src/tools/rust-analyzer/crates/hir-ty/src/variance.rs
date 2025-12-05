@@ -32,7 +32,7 @@ use crate::{
 
 pub(crate) fn variances_of(db: &dyn HirDatabase, def: GenericDefId) -> VariancesOf<'_> {
     tracing::debug!("variances_of(def={:?})", def);
-    let interner = DbInterner::new_with(db, None, None);
+    let interner = DbInterner::new_no_crate(db);
     match def {
         GenericDefId::FunctionId(_) => (),
         GenericDefId::AdtId(adt) => {
@@ -107,7 +107,7 @@ pub(crate) fn variances_of_cycle_initial(
     db: &dyn HirDatabase,
     def: GenericDefId,
 ) -> VariancesOf<'_> {
-    let interner = DbInterner::new_with(db, None, None);
+    let interner = DbInterner::new_no_crate(db);
     let generics = generics(db, def);
     let count = generics.len();
 

@@ -5,6 +5,7 @@
 // and make sure that the hash has changed, then change nothing between rev2 and
 // rev3 and make sure that the hash has not changed.
 
+//@ edition: 2024
 //@ build-pass (FIXME(62277): could be check-pass?)
 //@ revisions: cfail1 cfail2 cfail3 cfail4 cfail5 cfail6
 //@ compile-flags: -Z query-dep-graph -O
@@ -649,7 +650,7 @@ impl Foo {
     //--------------------------
     //--------------------------
     //--------------------------
-    //----------
+    //------------------
     pub fn add_no_mangle_to_method(&self) { }
 }
 
@@ -663,7 +664,7 @@ impl Foo {
     #[rustc_clean(cfg="cfail3")]
     #[rustc_clean(cfg="cfail5")]
     #[rustc_clean(cfg="cfail6")]
-    #[no_mangle]
+    #[unsafe(no_mangle)]
     pub fn add_no_mangle_to_method(&self) { }
 }
 

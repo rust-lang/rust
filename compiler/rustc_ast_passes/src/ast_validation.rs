@@ -710,6 +710,14 @@ impl<'a> AstValidator<'a> {
         match fn_ctxt {
             FnCtxt::Foreign => return,
             FnCtxt::Free | FnCtxt::Assoc(_) => {
+                if !self.sess.target.arch.supports_c_variadic_definitions() {
+                    self.dcx().emit_err(errors::CVariadicNotSupported {
+                        variadic_span: variadic_param.span,
+                        target: &*self.sess.target.llvm_target,
+                    });
+                    return;
+                }
+
                 match sig.header.ext {
                     Extern::Implicit(_) => {
                         if !matches!(sig.header.safety, Safety::Unsafe(_)) {
@@ -1067,7 +1075,7 @@ fn validate_generic_param_order(dcx: DiagCtxtHandle<'_>, generics: &[GenericPara
 
 impl<'a> Visitor<'a> for AstValidator<'a> {
     fn visit_attribute(&mut self, attr: &Attribute) {
-        validate_attr::check_attr(&self.sess.psess, attr, self.lint_node_id);
+        validate_attr::check_attr(&self.sess.psess, attr);
     }
 
     fn visit_ty(&mut self, ty: &'a Ty) {

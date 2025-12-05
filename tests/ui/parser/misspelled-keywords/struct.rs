@@ -1,4 +1,6 @@
 Struct Foor {
-//~^ ERROR expected one of
+    //~^ ERROR keyword `struct` is written in the wrong case
     hello: String,
 }
+
+fn main() {}

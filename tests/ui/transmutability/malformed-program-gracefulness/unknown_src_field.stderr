@@ -1,10 +1,10 @@
-error[E0412]: cannot find type `Missing` in this scope
+error[E0425]: cannot find type `Missing` in this scope
   --> $DIR/unknown_src_field.rs:17:27
    |
 LL |     #[repr(C)] struct Src(Missing);
    |                           ^^^^^^^ not found in this scope
 
-error[E0412]: cannot find type `Missing` in this scope
+error[E0425]: cannot find type `Missing` in this scope
   --> $DIR/unknown_src_field.rs:23:36
    |
 LL |     #[repr(C)] struct Src(&'static Missing);
@@ -42,5 +42,5 @@ LL |         Dst: TransmuteFrom<Src>
 
 error: aborting due to 4 previous errors
 
-Some errors have detailed explanations: E0277, E0412.
+Some errors have detailed explanations: E0277, E0425.
 For more information about an error, try `rustc --explain E0277`.

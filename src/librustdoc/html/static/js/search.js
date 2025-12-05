@@ -28,7 +28,7 @@ if (!Array.prototype.toSpliced) {
  * @template T
  * @param {Iterable<T>} arr
  * @param {function(T): Promise<any>} func
- * @param {function(T): boolean} funcBtwn
+ * @param {function(T): void} funcBtwn
  */
 async function onEachBtwnAsync(arr, func, funcBtwn) {
     let skipped = true;
@@ -2132,8 +2132,8 @@ class DocSearch {
      *
      * @param  {rustdoc.ParsedQuery<rustdoc.ParserQueryElement>} parsedQuery
      *     - The parsed user query
-     * @param  {Object} filterCrates - Crate to search in if defined
-     * @param  {string} currentCrate - Current crate, to rank results from this crate higher
+     * @param  {string|null} filterCrates - Crate to search in if defined
+     * @param  {string|null} currentCrate - Current crate, to rank results from this crate higher
      *
      * @return {Promise<rustdoc.ResultsTable>}
      */
@@ -2421,7 +2421,6 @@ class DocSearch {
                     await onEachBtwnAsync(
                         fnType.generics,
                         nested => writeFn(nested, result),
-                        // @ts-expect-error
                         () => pushText({ name: ", ", highlighted: false }, result),
                     );
                     pushText({ name: sb, highlighted: fnType.highlighted }, result);
@@ -2435,7 +2434,6 @@ class DocSearch {
                             prevHighlighted = !!value.highlighted;
                             await writeFn(value, result);
                         },
-                        // @ts-expect-error
                         value => pushText({
                             name: " ",
                             highlighted: prevHighlighted && value.highlighted,
@@ -2454,7 +2452,6 @@ class DocSearch {
                             prevHighlighted = !!value.highlighted;
                             await writeFn(value, result);
                         },
-                        // @ts-expect-error
                         value => pushText({
                             name: " ",
                             highlighted: prevHighlighted && value.highlighted,
@@ -2515,7 +2512,6 @@ class DocSearch {
                     await onEachBtwnAsync(
                         fnType.generics,
                         nested => writeFn(nested, where),
-                        // @ts-expect-error
                         () => pushText({ name: " + ", highlighted: false }, where),
                     );
                     if (where.length > 0) {
@@ -2545,7 +2541,6 @@ class DocSearch {
                         await onEachBtwnAsync(
                             fnType.generics,
                             value => writeFn(value, result),
-                            // @ts-expect-error
                             () => pushText({ name: ", ",  highlighted: false }, result),
                         );
                         if (fnType.generics.length > 1) {
@@ -2568,6 +2563,7 @@ class DocSearch {
                                 async([key, values]) => [await this.getName(key), values],
                             )),
                             async([name, values]) => {
+                                // values[0] cannot be null due to length check
                                 // @ts-expect-error
                                 if (values.length === 1 && values[0].id < 0 &&
                                     // @ts-expect-error
@@ -2593,14 +2589,12 @@ class DocSearch {
                                 await onEachBtwnAsync(
                                     values || [],
                                     value => writeFn(value, result),
-                                    // @ts-expect-error
                                     () => pushText({ name: " + ",  highlighted: false }, result),
                                 );
                                 if (values.length !== 1) {
                                     pushText({ name: ")", highlighted: false }, result);
                                 }
                             },
-                            // @ts-expect-error
                             () => pushText({ name: ", ",  highlighted: false }, result),
                         );
                     }
@@ -2610,7 +2604,6 @@ class DocSearch {
                     await onEachBtwnAsync(
                         fnType.generics,
                         value => writeFn(value, result),
-                        // @ts-expect-error
                         () => pushText({ name: ", ",  highlighted: false }, result),
                     );
                     if (hasBindings || fnType.generics.length > 0) {
@@ -2623,14 +2616,12 @@ class DocSearch {
             await onEachBtwnAsync(
                 fnInputs,
                 fnType => writeFn(fnType, type),
-                // @ts-expect-error
                 () => pushText({ name: ", ",  highlighted: false }, type),
             );
             pushText({ name: " -> ", highlighted: false }, type);
             await onEachBtwnAsync(
                 fnOutput,
                 fnType => writeFn(fnType, type),
-                // @ts-expect-error
                 () => pushText({ name: ", ",  highlighted: false }, type),
             );
 
@@ -2765,7 +2756,7 @@ class DocSearch {
              * @this {DocSearch}
              * @param {Array<rustdoc.PlainResultObject|null>} results
              * @param {"sig"|"elems"|"returned"|null} typeInfo
-             * @param {string} preferredCrate
+             * @param {string|null} preferredCrate
              * @param {Set<string>} duplicates
              * @returns {AsyncGenerator<rustdoc.ResultObject, number>}
              */
@@ -3037,10 +3028,8 @@ class DocSearch {
                     )) {
                         continue;
                     }
-                    // @ts-expect-error
-                    if (fnType.id < 0) {
+                    if (fnType.id !== null && fnType.id < 0) {
                         const highlightedGenerics = unifyFunctionTypes(
-                            // @ts-expect-error
                             whereClause[(-fnType.id) - 1],
                             queryElems,
                             whereClause,
@@ -3903,7 +3892,7 @@ class DocSearch {
         const innerRunNameQuery =
             /**
              * @this {DocSearch}
-             * @param {string} currentCrate
+             * @param {string|null} currentCrate
              * @returns {AsyncGenerator<rustdoc.ResultObject>}
              */
             async function*(currentCrate) {
@@ -4145,7 +4134,7 @@ class DocSearch {
              * @param {rustdoc.ParserQueryElement[]} inputs
              * @param {rustdoc.ParserQueryElement[]} output
              * @param {"sig"|"elems"|"returned"|null} typeInfo
-             * @param {string} currentCrate
+             * @param {string|null} currentCrate
              * @returns {AsyncGenerator<rustdoc.ResultObject>}
              */
             async function*(inputs, output, typeInfo, currentCrate) {
@@ -5180,7 +5169,7 @@ function makeTab(tabNb, text, results, query, isTypeSearch, goToFirst) {
  * @param {DocSearch} docSearch
  * @param {rustdoc.ResultsTable} results
  * @param {boolean} goToFirst
- * @param {string} filterCrates
+ * @param {string|null} filterCrates
  */
 async function showResults(docSearch, results, goToFirst, filterCrates) {
     const search = window.searchState.outputElement();
@@ -5253,6 +5242,8 @@ async function showResults(docSearch, results, goToFirst, filterCrates) {
     }
     const crateSearch = document.getElementById("crate-search");
     if (crateSearch) {
+        // #crate-search is an input element
+        // @ts-expect-error
         crateSearch.addEventListener("input", updateCrate);
     }
     search.appendChild(tabsElem);
@@ -5332,10 +5323,8 @@ async function search(forced) {
 
     await showResults(
         docSearch,
-        // @ts-expect-error
         await docSearch.execQuery(query, filterCrates, window.currentCrate),
         params.go_to_first,
-        // @ts-expect-error
         filterCrates);
 }
 
@@ -5412,27 +5401,33 @@ function registerSearchEvents() {
         }
         // up and down arrow select next/previous search result, or the
         // search box if we're already at the top.
+        //
+        // the .focus() calls are safe because there's no kind of element
+        // that lacks .focus() that should be in the document.
         if (e.which === 38) { // up
-            // @ts-expect-error
-            const previous = document.activeElement.previousElementSibling;
-            if (previous) {
-                // @ts-expect-error
-                previous.focus();
-            } else {
-                searchState.focus();
+            const active = document.activeElement;
+            if (active) {
+                const previous = active.previousElementSibling;
+                if (previous) {
+                    // @ts-expect-error
+                    previous.focus();
+                } else {
+                    searchState.focus();
+                }
             }
             e.preventDefault();
         } else if (e.which === 40) { // down
-            // @ts-expect-error
-            const next = document.activeElement.nextElementSibling;
-            if (next) {
-                // @ts-expect-error
-                next.focus();
-            }
-            // @ts-expect-error
-            const rect = document.activeElement.getBoundingClientRect();
-            if (window.innerHeight - rect.bottom < rect.height) {
-                window.scrollBy(0, rect.height);
+            const active = document.activeElement;
+            if (active) {
+                const next = active.nextElementSibling;
+                if (next) {
+                    // @ts-expect-error
+                    next.focus();
+                }
+                const rect = active.getBoundingClientRect();
+                if (window.innerHeight - rect.bottom < rect.height) {
+                    window.scrollBy(0, rect.height);
+                }
             }
             e.preventDefault();
         } else if (e.which === 37) { // left
@@ -5456,7 +5451,9 @@ function registerSearchEvents() {
     });
 }
 
-// @ts-expect-error
+/**
+ * @param {Event & { target: HTMLInputElement }} ev
+ */
 function updateCrate(ev) {
     if (ev.target.value === "all crates") {
         // If we don't remove it from the URL, it'll be picked up again by the search.

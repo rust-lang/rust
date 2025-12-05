@@ -2,7 +2,7 @@
 
 use intern::Symbol;
 use rustc_hash::FxHashMap;
-use span::{Edition, Span};
+use span::Span;
 use stdx::itertools::Itertools;
 use syntax::{
     AstNode,
@@ -44,16 +44,16 @@ fn benchmark_expand_macro_rules() {
     if skip_slow_tests() {
         return;
     }
+    let db = salsa::DatabaseImpl::default();
     let rules = macro_rules_fixtures();
-    let invocations = invocation_fixtures(&rules);
+    let invocations = invocation_fixtures(&db, &rules);
 
     let hash: usize = {
         let _pt = bench("mbe expand macro rules");
         invocations
             .into_iter()
             .map(|(id, tt)| {
-                let res =
-                    rules[&id].expand(&tt, |_| (), MacroCallStyle::FnLike, DUMMY, Edition::CURRENT);
+                let res = rules[&id].expand(&db, &tt, |_| (), MacroCallStyle::FnLike, DUMMY);
                 assert!(res.err.is_none());
                 res.value.0.0.len()
             })
@@ -93,6 +93,7 @@ fn macro_rules_fixtures_tt() -> FxHashMap<String, tt::TopSubtree<Span>> {
 
 /// Generate random invocation fixtures from rules
 fn invocation_fixtures(
+    db: &dyn salsa::Database,
     rules: &FxHashMap<String, DeclarativeMacro>,
 ) -> Vec<(String, tt::TopSubtree<Span>)> {
     let mut seed = 123456789;
@@ -124,10 +125,7 @@ fn invocation_fixtures(
                     }
                     let subtree = builder.build();
 
-                    if it
-                        .expand(&subtree, |_| (), MacroCallStyle::FnLike, DUMMY, Edition::CURRENT)
-                        .err
-                        .is_none()
+                    if it.expand(db, &subtree, |_| (), MacroCallStyle::FnLike, DUMMY).err.is_none()
                     {
                         res.push((name.clone(), subtree));
                         break;

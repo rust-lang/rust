@@ -14,3 +14,20 @@ fn convert() {
     const BAR: Vec<String> = into(Vec::new());
     assert_eq!(BAR, Vec::<String>::new());
 }
+
+#[test]
+fn into_as_try_into() {
+    struct A;
+    struct B;
+
+    impl Into<B> for A {
+        fn into(self) -> B {
+            B
+        }
+    }
+
+    // This wouldn't compile if the `TryInto`/`TryFrom` blanket impls used
+    // `U: From<T>` instead of `T: Into<U>`
+    let Ok(B) = A.try_into();
+    let Ok(B) = B::try_from(A);
+}

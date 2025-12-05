@@ -12,21 +12,20 @@ use salsa::plumbing::AsId;
 use triomphe::Arc;
 
 use crate::{
-    ImplTraitId, InferenceResult, TraitEnvironment, TyDefId, ValueTyDefId,
+    ImplTraitId, TyDefId, ValueTyDefId,
     consteval::ConstEvalError,
     dyn_compatibility::DynCompatibilityViolation,
     layout::{Layout, LayoutError},
     lower::{Diagnostics, GenericDefaults},
     mir::{BorrowckResult, MirBody, MirLowerError},
-    next_solver::{Const, EarlyBinder, GenericArgs, PolyFnSig, TraitRef, Ty, VariancesOf},
+    next_solver::{
+        Const, EarlyBinder, GenericArgs, ParamEnv, PolyFnSig, TraitRef, Ty, VariancesOf,
+    },
+    traits::ParamEnvAndCrate,
 };
 
 #[query_group::query_group]
 pub trait HirDatabase: DefDatabase + std::fmt::Debug {
-    #[salsa::invoke(crate::infer::infer_query)]
-    #[salsa::cycle(cycle_result = crate::infer::infer_cycle_result)]
-    fn infer<'db>(&'db self, def: DefWithBodyId) -> Arc<InferenceResult<'db>>;
-
     // region:mir
 
     // FXME: Collapse `mir_body_for_closure` into `mir_body`
@@ -50,7 +49,7 @@ pub trait HirDatabase: DefDatabase + std::fmt::Debug {
         &'db self,
         def: DefWithBodyId,
         subst: GenericArgs<'db>,
-        env: Arc<TraitEnvironment<'db>>,
+        env: ParamEnvAndCrate<'db>,
     ) -> Result<Arc<MirBody<'db>>, MirLowerError<'db>>;
 
     #[salsa::invoke(crate::mir::monomorphized_mir_body_for_closure_query)]
@@ -58,7 +57,7 @@ pub trait HirDatabase: DefDatabase + std::fmt::Debug {
         &'db self,
         def: InternedClosureId,
         subst: GenericArgs<'db>,
-        env: Arc<TraitEnvironment<'db>>,
+        env: ParamEnvAndCrate<'db>,
     ) -> Result<Arc<MirBody<'db>>, MirLowerError<'db>>;
 
     #[salsa::invoke(crate::mir::borrowck_query)]
@@ -74,7 +73,7 @@ pub trait HirDatabase: DefDatabase + std::fmt::Debug {
         &'db self,
         def: ConstId,
         subst: GenericArgs<'db>,
-        trait_env: Option<Arc<TraitEnvironment<'db>>>,
+        trait_env: Option<ParamEnvAndCrate<'db>>,
     ) -> Result<Const<'db>, ConstEvalError<'db>>;
 
     #[salsa::invoke(crate::consteval::const_eval_static_query)]
@@ -92,7 +91,7 @@ pub trait HirDatabase: DefDatabase + std::fmt::Debug {
     #[salsa::transparent]
     fn lookup_impl_method<'db>(
         &'db self,
-        env: Arc<TraitEnvironment<'db>>,
+        env: ParamEnvAndCrate<'db>,
         func: FunctionId,
         fn_subst: GenericArgs<'db>,
     ) -> (FunctionId, GenericArgs<'db>);
@@ -105,7 +104,7 @@ pub trait HirDatabase: DefDatabase + std::fmt::Debug {
         &'db self,
         def: AdtId,
         args: GenericArgs<'db>,
-        trait_env: Arc<TraitEnvironment<'db>>,
+        trait_env: ParamEnvAndCrate<'db>,
     ) -> Result<Arc<Layout>, LayoutError>;
 
     #[salsa::invoke(crate::layout::layout_of_ty_query)]
@@ -113,7 +112,7 @@ pub trait HirDatabase: DefDatabase + std::fmt::Debug {
     fn layout_of_ty<'db>(
         &'db self,
         ty: Ty<'db>,
-        env: Arc<TraitEnvironment<'db>>,
+        env: ParamEnvAndCrate<'db>,
     ) -> Result<Arc<Layout>, LayoutError>;
 
     #[salsa::invoke(crate::layout::target_data_layout_query)]
@@ -190,11 +189,10 @@ pub trait HirDatabase: DefDatabase + std::fmt::Debug {
 
     #[salsa::invoke(crate::lower::trait_environment_for_body_query)]
     #[salsa::transparent]
-    fn trait_environment_for_body<'db>(&'db self, def: DefWithBodyId)
-    -> Arc<TraitEnvironment<'db>>;
+    fn trait_environment_for_body<'db>(&'db self, def: DefWithBodyId) -> ParamEnv<'db>;
 
     #[salsa::invoke(crate::lower::trait_environment_query)]
-    fn trait_environment<'db>(&'db self, def: GenericDefId) -> Arc<TraitEnvironment<'db>>;
+    fn trait_environment<'db>(&'db self, def: GenericDefId) -> ParamEnv<'db>;
 
     #[salsa::invoke(crate::lower::generic_defaults_with_diagnostics_query)]
     #[salsa::cycle(cycle_result = crate::lower::generic_defaults_with_diagnostics_cycle_result)]

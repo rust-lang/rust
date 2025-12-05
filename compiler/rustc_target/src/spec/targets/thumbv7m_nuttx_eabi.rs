@@ -21,7 +21,7 @@ pub(crate) fn target() -> Target {
             abi: Abi::Eabi,
             llvm_floatabi: Some(FloatAbi::Soft),
             max_atomic_width: Some(32),
-            ..base::thumb::opts()
+            ..base::arm_none::opts()
         },
     }
 }

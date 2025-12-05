@@ -8,9 +8,10 @@ pub use tls_db::{attach_db, attach_db_allow_change, with_attached_db};
 
 use base_db::Crate;
 use hir_def::{
-    AdtId, AttrDefId, BlockId, CallableDefId, DefWithBodyId, EnumVariantId, HasModule,
-    ItemContainerId, StructId, UnionId, VariantId,
-    lang_item::LangItem,
+    AdtId, CallableDefId, DefWithBodyId, EnumVariantId, HasModule, ItemContainerId, StructId,
+    UnionId, VariantId,
+    attrs::AttrFlags,
+    lang_item::LangItems,
     signatures::{FieldData, FnFlags, ImplFlags, StructFlags, TraitFlags},
 };
 use la_arena::Idx;
@@ -270,8 +271,8 @@ pub use crate::_interned_vec_db as interned_vec_db;
 #[derive(Debug, Copy, Clone)]
 pub struct DbInterner<'db> {
     pub(crate) db: &'db dyn HirDatabase,
-    pub(crate) krate: Option<Crate>,
-    pub(crate) block: Option<BlockId>,
+    krate: Option<Crate>,
+    lang_items: Option<&'db LangItems>,
 }
 
 // FIXME: very wrong, see https://github.com/rust-lang/rust/pull/144808
@@ -284,21 +285,41 @@ impl<'db> DbInterner<'db> {
         crate::with_attached_db(|db| DbInterner {
             db: unsafe { std::mem::transmute::<&dyn HirDatabase, &'db dyn HirDatabase>(db) },
             krate: None,
-            block: None,
+            lang_items: None,
         })
     }
 
-    pub fn new_with(
-        db: &'db dyn HirDatabase,
-        krate: Option<Crate>,
-        block: Option<BlockId>,
-    ) -> DbInterner<'db> {
-        DbInterner { db, krate, block }
+    /// Creates a new interner without an active crate. Good only for interning things, not for trait solving etc..
+    /// As a rule of thumb, when you create an `InferCtxt`, you need to provide the crate (and the block).
+    ///
+    /// Elaboration is a special kind: it needs lang items (for `Sized`), therefore it needs `new_with()`.
+    pub fn new_no_crate(db: &'db dyn HirDatabase) -> Self {
+        DbInterner { db, krate: None, lang_items: None }
+    }
+
+    pub fn new_with(db: &'db dyn HirDatabase, krate: Crate) -> DbInterner<'db> {
+        DbInterner {
+            db,
+            krate: Some(krate),
+            // As an approximation, when we call `new_with` we're trait solving, therefore we need the lang items.
+            // This is also convenient since here we have a starting crate but not in `new_no_crate`.
+            lang_items: Some(hir_def::lang_item::lang_items(db, krate)),
+        }
     }
 
     #[inline]
     pub fn db(&self) -> &'db dyn HirDatabase {
         self.db
+    }
+
+    #[inline]
+    #[track_caller]
+    pub fn lang_items(&self) -> &'db LangItems {
+        self.lang_items.expect(
+            "Must have `DbInterner::lang_items`.\n\n\
+            Note: you might have called `DbInterner::new_no_crate()` \
+            where you should've called `DbInterner::new_with()`",
+        )
     }
 }
 
@@ -479,28 +500,28 @@ impl AdtDef {
 
                 let variants = vec![(VariantIdx(0), VariantDef::Struct(struct_id))];
 
-                let mut repr = ReprOptions::default();
-                repr.align = data.repr.and_then(|r| r.align);
-                repr.pack = data.repr.and_then(|r| r.pack);
-                repr.int = data.repr.and_then(|r| r.int);
-
+                let data_repr = data.repr(db, struct_id);
                 let mut repr_flags = ReprFlags::empty();
                 if flags.is_box {
                     repr_flags.insert(ReprFlags::IS_LINEAR);
                 }
-                if data.repr.is_some_and(|r| r.c()) {
+                if data_repr.is_some_and(|r| r.c()) {
                     repr_flags.insert(ReprFlags::IS_C);
                 }
-                if data.repr.is_some_and(|r| r.simd()) {
+                if data_repr.is_some_and(|r| r.simd()) {
                     repr_flags.insert(ReprFlags::IS_SIMD);
                 }
-                repr.flags = repr_flags;
+                let repr = ReprOptions {
+                    align: data_repr.and_then(|r| r.align),
+                    pack: data_repr.and_then(|r| r.pack),
+                    int: data_repr.and_then(|r| r.int),
+                    flags: repr_flags,
+                    ..ReprOptions::default()
+                };
 
                 (flags, variants, repr)
             }
             AdtId::UnionId(union_id) => {
-                let data = db.union_signature(union_id);
-
                 let flags = AdtFlags {
                     is_enum: false,
                     is_union: true,
@@ -513,22 +534,24 @@ impl AdtDef {
 
                 let variants = vec![(VariantIdx(0), VariantDef::Union(union_id))];
 
-                let mut repr = ReprOptions::default();
-                repr.align = data.repr.and_then(|r| r.align);
-                repr.pack = data.repr.and_then(|r| r.pack);
-                repr.int = data.repr.and_then(|r| r.int);
-
+                let data_repr = AttrFlags::repr(db, union_id.into());
                 let mut repr_flags = ReprFlags::empty();
                 if flags.is_box {
                     repr_flags.insert(ReprFlags::IS_LINEAR);
                 }
-                if data.repr.is_some_and(|r| r.c()) {
+                if data_repr.is_some_and(|r| r.c()) {
                     repr_flags.insert(ReprFlags::IS_C);
                 }
-                if data.repr.is_some_and(|r| r.simd()) {
+                if data_repr.is_some_and(|r| r.simd()) {
                     repr_flags.insert(ReprFlags::IS_SIMD);
                 }
-                repr.flags = repr_flags;
+                let repr = ReprOptions {
+                    align: data_repr.and_then(|r| r.align),
+                    pack: data_repr.and_then(|r| r.pack),
+                    int: data_repr.and_then(|r| r.int),
+                    flags: repr_flags,
+                    ..ReprOptions::default()
+                };
 
                 (flags, variants, repr)
             }
@@ -552,24 +575,26 @@ impl AdtDef {
                     .map(|(idx, v)| (idx, VariantDef::Enum(v.0)))
                     .collect();
 
-                let data = db.enum_signature(enum_id);
-
-                let mut repr = ReprOptions::default();
-                repr.align = data.repr.and_then(|r| r.align);
-                repr.pack = data.repr.and_then(|r| r.pack);
-                repr.int = data.repr.and_then(|r| r.int);
+                let data_repr = AttrFlags::repr(db, enum_id.into());
 
                 let mut repr_flags = ReprFlags::empty();
                 if flags.is_box {
                     repr_flags.insert(ReprFlags::IS_LINEAR);
                 }
-                if data.repr.is_some_and(|r| r.c()) {
+                if data_repr.is_some_and(|r| r.c()) {
                     repr_flags.insert(ReprFlags::IS_C);
                 }
-                if data.repr.is_some_and(|r| r.simd()) {
+                if data_repr.is_some_and(|r| r.simd()) {
                     repr_flags.insert(ReprFlags::IS_SIMD);
                 }
-                repr.flags = repr_flags;
+
+                let repr = ReprOptions {
+                    align: data_repr.and_then(|r| r.align),
+                    pack: data_repr.and_then(|r| r.pack),
+                    int: data_repr.and_then(|r| r.int),
+                    flags: repr_flags,
+                    ..ReprOptions::default()
+                };
 
                 (flags, variants, repr)
             }
@@ -849,7 +874,7 @@ interned_vec_db!(PatList, Pattern);
 
 macro_rules! as_lang_item {
     (
-        $solver_enum:ident, $var:ident;
+        $solver_enum:ident, $self:ident, $def_id:expr;
 
         ignore = {
             $( $ignore:ident ),* $(,)?
@@ -857,6 +882,7 @@ macro_rules! as_lang_item {
 
         $( $variant:ident ),* $(,)?
     ) => {{
+        let lang_items = $self.lang_items();
         // Ensure exhaustiveness.
         if let Some(it) = None::<$solver_enum> {
             match it {
@@ -864,9 +890,28 @@ macro_rules! as_lang_item {
                 $( $solver_enum::$ignore => {} )*
             }
         }
-        match $var {
-            $( LangItem::$variant => Some($solver_enum::$variant), )*
+        match $def_id {
+            $( def_id if lang_items.$variant.is_some_and(|it| it == def_id) => Some($solver_enum::$variant), )*
             _ => None
+        }
+    }};
+}
+
+macro_rules! is_lang_item {
+    (
+        $solver_enum:ident, $self:ident, $def_id:expr, $expected_variant:ident;
+
+        ignore = {
+            $( $ignore:ident ),* $(,)?
+        }
+
+        $( $variant:ident ),* $(,)?
+    ) => {{
+        let lang_items = $self.lang_items();
+        let def_id = $def_id;
+        match $expected_variant {
+            $( $solver_enum::$variant => lang_items.$variant.is_some_and(|it| it == def_id), )*
+            $( $solver_enum::$ignore => false, )*
         }
     }};
 }
@@ -1253,8 +1298,7 @@ impl<'db> Interner for DbInterner<'db> {
     }
 
     fn generics_require_sized_self(self, def_id: Self::DefId) -> bool {
-        let sized_trait =
-            LangItem::Sized.resolve_trait(self.db(), self.krate.expect("Must have self.krate"));
+        let sized_trait = self.lang_items().Sized;
         let Some(sized_id) = sized_trait else {
             return false; /* No Sized trait, can't require it! */
         };
@@ -1428,84 +1472,69 @@ impl<'db> Interner for DbInterner<'db> {
     }
 
     fn require_lang_item(self, lang_item: SolverLangItem) -> Self::DefId {
+        let lang_items = self.lang_items();
         let lang_item = match lang_item {
             SolverLangItem::AsyncFnKindUpvars => unimplemented!(),
-            SolverLangItem::AsyncFnOnceOutput => LangItem::AsyncFnOnceOutput,
-            SolverLangItem::CallOnceFuture => LangItem::CallOnceFuture,
-            SolverLangItem::CallRefFuture => LangItem::CallRefFuture,
-            SolverLangItem::CoroutineReturn => LangItem::CoroutineReturn,
-            SolverLangItem::CoroutineYield => LangItem::CoroutineYield,
-            SolverLangItem::DynMetadata => LangItem::DynMetadata,
-            SolverLangItem::FutureOutput => LangItem::FutureOutput,
-            SolverLangItem::Metadata => LangItem::Metadata,
+            SolverLangItem::AsyncFnOnceOutput => lang_items.AsyncFnOnceOutput,
+            SolverLangItem::CallOnceFuture => lang_items.CallOnceFuture,
+            SolverLangItem::CallRefFuture => lang_items.CallRefFuture,
+            SolverLangItem::CoroutineReturn => lang_items.CoroutineReturn,
+            SolverLangItem::CoroutineYield => lang_items.CoroutineYield,
+            SolverLangItem::FutureOutput => lang_items.FutureOutput,
+            SolverLangItem::Metadata => lang_items.Metadata,
+            SolverLangItem::DynMetadata => {
+                return lang_items.DynMetadata.expect("Lang item required but not found.").into();
+            }
         };
-        let target = hir_def::lang_item::lang_item(
-            self.db(),
-            self.krate.expect("Must have self.krate"),
-            lang_item,
-        )
-        .unwrap_or_else(|| panic!("Lang item {lang_item:?} required but not found."));
-        match target {
-            hir_def::lang_item::LangItemTarget::EnumId(enum_id) => enum_id.into(),
-            hir_def::lang_item::LangItemTarget::Function(function_id) => function_id.into(),
-            hir_def::lang_item::LangItemTarget::ImplDef(impl_id) => impl_id.into(),
-            hir_def::lang_item::LangItemTarget::Static(static_id) => static_id.into(),
-            hir_def::lang_item::LangItemTarget::Struct(struct_id) => struct_id.into(),
-            hir_def::lang_item::LangItemTarget::Union(union_id) => union_id.into(),
-            hir_def::lang_item::LangItemTarget::TypeAlias(type_alias_id) => type_alias_id.into(),
-            hir_def::lang_item::LangItemTarget::Trait(trait_id) => trait_id.into(),
-            hir_def::lang_item::LangItemTarget::EnumVariant(_) => unimplemented!(),
-        }
+        lang_item.expect("Lang item required but not found.").into()
     }
 
     fn require_trait_lang_item(self, lang_item: SolverTraitLangItem) -> TraitIdWrapper {
+        let lang_items = self.lang_items();
         let lang_item = match lang_item {
-            SolverTraitLangItem::AsyncFn => LangItem::AsyncFn,
+            SolverTraitLangItem::AsyncFn => lang_items.AsyncFn,
             SolverTraitLangItem::AsyncFnKindHelper => unimplemented!(),
-            SolverTraitLangItem::AsyncFnMut => LangItem::AsyncFnMut,
-            SolverTraitLangItem::AsyncFnOnce => LangItem::AsyncFnOnce,
-            SolverTraitLangItem::AsyncFnOnceOutput => LangItem::AsyncFnOnceOutput,
+            SolverTraitLangItem::AsyncFnMut => lang_items.AsyncFnMut,
+            SolverTraitLangItem::AsyncFnOnce => lang_items.AsyncFnOnce,
+            SolverTraitLangItem::AsyncFnOnceOutput => unimplemented!(
+                "This is incorrectly marked as `SolverTraitLangItem`, and is not used by the solver."
+            ),
             SolverTraitLangItem::AsyncIterator => unimplemented!(),
-            SolverTraitLangItem::Clone => LangItem::Clone,
-            SolverTraitLangItem::Copy => LangItem::Copy,
-            SolverTraitLangItem::Coroutine => LangItem::Coroutine,
-            SolverTraitLangItem::Destruct => LangItem::Destruct,
-            SolverTraitLangItem::DiscriminantKind => LangItem::DiscriminantKind,
-            SolverTraitLangItem::Drop => LangItem::Drop,
-            SolverTraitLangItem::Fn => LangItem::Fn,
-            SolverTraitLangItem::FnMut => LangItem::FnMut,
-            SolverTraitLangItem::FnOnce => LangItem::FnOnce,
-            SolverTraitLangItem::FnPtrTrait => LangItem::FnPtrTrait,
+            SolverTraitLangItem::Clone => lang_items.Clone,
+            SolverTraitLangItem::Copy => lang_items.Copy,
+            SolverTraitLangItem::Coroutine => lang_items.Coroutine,
+            SolverTraitLangItem::Destruct => lang_items.Destruct,
+            SolverTraitLangItem::DiscriminantKind => lang_items.DiscriminantKind,
+            SolverTraitLangItem::Drop => lang_items.Drop,
+            SolverTraitLangItem::Fn => lang_items.Fn,
+            SolverTraitLangItem::FnMut => lang_items.FnMut,
+            SolverTraitLangItem::FnOnce => lang_items.FnOnce,
+            SolverTraitLangItem::FnPtrTrait => lang_items.FnPtrTrait,
             SolverTraitLangItem::FusedIterator => unimplemented!(),
-            SolverTraitLangItem::Future => LangItem::Future,
-            SolverTraitLangItem::Iterator => LangItem::Iterator,
-            SolverTraitLangItem::PointeeTrait => LangItem::PointeeTrait,
-            SolverTraitLangItem::Sized => LangItem::Sized,
-            SolverTraitLangItem::MetaSized => LangItem::MetaSized,
-            SolverTraitLangItem::PointeeSized => LangItem::PointeeSized,
-            SolverTraitLangItem::TransmuteTrait => LangItem::TransmuteTrait,
-            SolverTraitLangItem::Tuple => LangItem::Tuple,
-            SolverTraitLangItem::Unpin => LangItem::Unpin,
-            SolverTraitLangItem::Unsize => LangItem::Unsize,
+            SolverTraitLangItem::Future => lang_items.Future,
+            SolverTraitLangItem::Iterator => lang_items.Iterator,
+            SolverTraitLangItem::PointeeTrait => lang_items.PointeeTrait,
+            SolverTraitLangItem::Sized => lang_items.Sized,
+            SolverTraitLangItem::MetaSized => lang_items.MetaSized,
+            SolverTraitLangItem::PointeeSized => lang_items.PointeeSized,
+            SolverTraitLangItem::TransmuteTrait => lang_items.TransmuteTrait,
+            SolverTraitLangItem::Tuple => lang_items.Tuple,
+            SolverTraitLangItem::Unpin => lang_items.Unpin,
+            SolverTraitLangItem::Unsize => lang_items.Unsize,
             SolverTraitLangItem::BikeshedGuaranteedNoDrop => {
                 unimplemented!()
             }
         };
-        lang_item
-            .resolve_trait(self.db(), self.krate.expect("Must have self.krate"))
-            .unwrap_or_else(|| panic!("Lang item {lang_item:?} required but not found."))
-            .into()
+        lang_item.expect("Lang item required but not found.").into()
     }
 
     fn require_adt_lang_item(self, lang_item: SolverAdtLangItem) -> AdtIdWrapper {
+        let lang_items = self.lang_items();
         let lang_item = match lang_item {
-            SolverAdtLangItem::Option => LangItem::Option,
-            SolverAdtLangItem::Poll => LangItem::Poll,
+            SolverAdtLangItem::Option => lang_items.Option,
+            SolverAdtLangItem::Poll => lang_items.Poll,
         };
-        lang_item
-            .resolve_adt(self.db(), self.krate.expect("Must have self.krate"))
-            .unwrap_or_else(|| panic!("Lang item {lang_item:?} required but not found."))
-            .into()
+        AdtIdWrapper(lang_item.expect("Lang item required but not found.").into())
     }
 
     fn is_lang_item(self, def_id: Self::DefId, lang_item: SolverLangItem) -> bool {
@@ -1514,53 +1543,15 @@ impl<'db> Interner for DbInterner<'db> {
     }
 
     fn is_trait_lang_item(self, def_id: Self::TraitId, lang_item: SolverTraitLangItem) -> bool {
-        self.as_trait_lang_item(def_id)
-            .map_or(false, |l| std::mem::discriminant(&l) == std::mem::discriminant(&lang_item))
-    }
-
-    fn is_adt_lang_item(self, def_id: Self::AdtId, lang_item: SolverAdtLangItem) -> bool {
-        // FIXME: derive PartialEq on SolverTraitLangItem
-        self.as_adt_lang_item(def_id)
-            .map_or(false, |l| std::mem::discriminant(&l) == std::mem::discriminant(&lang_item))
-    }
-
-    fn as_lang_item(self, def_id: Self::DefId) -> Option<SolverLangItem> {
-        let def_id: AttrDefId = match def_id {
-            SolverDefId::TraitId(id) => id.into(),
-            SolverDefId::TypeAliasId(id) => id.into(),
-            SolverDefId::AdtId(id) => id.into(),
-            _ => panic!("Unexpected SolverDefId in as_lang_item"),
-        };
-        let lang_item = self.db().lang_attr(def_id)?;
-        as_lang_item!(
-            SolverLangItem, lang_item;
-
-            ignore = {
-                AsyncFnKindUpvars,
-            }
-
-            Metadata,
-            DynMetadata,
-            CoroutineReturn,
-            CoroutineYield,
-            FutureOutput,
-            CallRefFuture,
-            CallOnceFuture,
-            AsyncFnOnceOutput,
-        )
-    }
-
-    fn as_trait_lang_item(self, def_id: Self::TraitId) -> Option<SolverTraitLangItem> {
-        let def_id: AttrDefId = def_id.0.into();
-        let lang_item = self.db().lang_attr(def_id)?;
-        as_lang_item!(
-            SolverTraitLangItem, lang_item;
+        is_lang_item!(
+            SolverTraitLangItem, self, def_id.0, lang_item;
 
             ignore = {
                 AsyncFnKindHelper,
                 AsyncIterator,
                 BikeshedGuaranteedNoDrop,
                 FusedIterator,
+                AsyncFnOnceOutput, // This is incorrectly marked as `SolverTraitLangItem`, and is not used by the solver.
             }
 
             Sized,
@@ -1586,15 +1577,101 @@ impl<'db> Interner for DbInterner<'db> {
             AsyncFn,
             AsyncFnMut,
             AsyncFnOnce,
-            AsyncFnOnceOutput,
+        )
+    }
+
+    fn is_adt_lang_item(self, def_id: Self::AdtId, lang_item: SolverAdtLangItem) -> bool {
+        // FIXME: derive PartialEq on SolverTraitLangItem
+        self.as_adt_lang_item(def_id)
+            .map_or(false, |l| std::mem::discriminant(&l) == std::mem::discriminant(&lang_item))
+    }
+
+    fn as_lang_item(self, def_id: Self::DefId) -> Option<SolverLangItem> {
+        match def_id {
+            SolverDefId::TypeAliasId(id) => {
+                as_lang_item!(
+                    SolverLangItem, self, id;
+
+                    ignore = {
+                        AsyncFnKindUpvars,
+                        DynMetadata,
+                    }
+
+                    Metadata,
+                    CoroutineReturn,
+                    CoroutineYield,
+                    FutureOutput,
+                    CallRefFuture,
+                    CallOnceFuture,
+                    AsyncFnOnceOutput,
+                )
+            }
+            SolverDefId::AdtId(AdtId::StructId(id)) => {
+                as_lang_item!(
+                    SolverLangItem, self, id;
+
+                    ignore = {
+                        AsyncFnKindUpvars,
+                        Metadata,
+                        CoroutineReturn,
+                        CoroutineYield,
+                        FutureOutput,
+                        CallRefFuture,
+                        CallOnceFuture,
+                        AsyncFnOnceOutput,
+                    }
+
+                    DynMetadata,
+                )
+            }
+            _ => panic!("Unexpected SolverDefId in as_lang_item"),
+        }
+    }
+
+    fn as_trait_lang_item(self, def_id: Self::TraitId) -> Option<SolverTraitLangItem> {
+        as_lang_item!(
+            SolverTraitLangItem, self, def_id.0;
+
+            ignore = {
+                AsyncFnKindHelper,
+                AsyncIterator,
+                BikeshedGuaranteedNoDrop,
+                FusedIterator,
+                AsyncFnOnceOutput, // This is incorrectly marked as `SolverTraitLangItem`, and is not used by the solver.
+            }
+
+            Sized,
+            MetaSized,
+            PointeeSized,
+            Unsize,
+            Copy,
+            Clone,
+            DiscriminantKind,
+            PointeeTrait,
+            FnPtrTrait,
+            Drop,
+            Destruct,
+            TransmuteTrait,
+            Fn,
+            FnMut,
+            FnOnce,
+            Future,
+            Coroutine,
+            Unpin,
+            Tuple,
+            Iterator,
+            AsyncFn,
+            AsyncFnMut,
+            AsyncFnOnce,
         )
     }
 
     fn as_adt_lang_item(self, def_id: Self::AdtId) -> Option<SolverAdtLangItem> {
-        let def_id: AttrDefId = def_id.0.into();
-        let lang_item = self.db().lang_attr(def_id)?;
+        let AdtId::EnumId(def_id) = def_id.0 else {
+            panic!("Unexpected SolverDefId in as_adt_lang_item");
+        };
         as_lang_item!(
-            SolverAdtLangItem, lang_item;
+            SolverAdtLangItem, self, def_id;
 
             ignore = {}
 

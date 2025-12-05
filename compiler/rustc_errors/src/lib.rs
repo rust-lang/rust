@@ -1366,7 +1366,7 @@ impl<'a> DiagCtxtHandle<'a> {
         self.create_err(err).emit()
     }
 
-    /// Ensures that an error is printed. See `Level::DelayedBug`.
+    /// Ensures that an error is printed. See [`Level::DelayedBug`].
     //
     // No `#[rustc_lint_diagnostics]` and no `impl Into<DiagMessage>` because bug messages aren't
     // user-facing.
@@ -2047,22 +2047,6 @@ pub fn elided_lifetime_in_path_suggestion(
     });
 
     ElidedLifetimeInPathSubdiag { expected, indicate }
-}
-
-pub fn report_ambiguity_error<'a, G: EmissionGuarantee>(
-    diag: &mut Diag<'a, G>,
-    ambiguity: rustc_lint_defs::AmbiguityErrorDiag,
-) {
-    diag.span_label(ambiguity.label_span, ambiguity.label_msg);
-    diag.note(ambiguity.note_msg);
-    diag.span_note(ambiguity.b1_span, ambiguity.b1_note_msg);
-    for help_msg in ambiguity.b1_help_msgs {
-        diag.help(help_msg);
-    }
-    diag.span_note(ambiguity.b2_span, ambiguity.b2_note_msg);
-    for help_msg in ambiguity.b2_help_msgs {
-        diag.help(help_msg);
-    }
 }
 
 /// Grammatical tool for displaying messages to end users in a nice form.

@@ -11,6 +11,7 @@ use hir_def::expr_store::ExpressionStore;
 use hir_def::expr_store::path::Path;
 use hir_def::{hir::ExprOrPatId, resolver::Resolver};
 use la_arena::{Idx, RawIdx};
+use thin_vec::ThinVec;
 
 use crate::{
     InferenceDiagnostic, InferenceTyDiagnosticSource, TyLoweringDiagnostic,
@@ -24,7 +25,7 @@ use crate::{
 // to our resolver and so we cannot have mutable reference, but we really want to have
 // ability to dispatch diagnostics during this work otherwise the code becomes a complete mess.
 #[derive(Debug, Default, Clone)]
-pub(super) struct Diagnostics<'db>(RefCell<Vec<InferenceDiagnostic<'db>>>);
+pub(super) struct Diagnostics<'db>(RefCell<ThinVec<InferenceDiagnostic<'db>>>);
 
 impl<'db> Diagnostics<'db> {
     pub(super) fn push(&self, diagnostic: InferenceDiagnostic<'db>) {
@@ -41,7 +42,7 @@ impl<'db> Diagnostics<'db> {
         );
     }
 
-    pub(super) fn finish(self) -> Vec<InferenceDiagnostic<'db>> {
+    pub(super) fn finish(self) -> ThinVec<InferenceDiagnostic<'db>> {
         self.0.into_inner()
     }
 }

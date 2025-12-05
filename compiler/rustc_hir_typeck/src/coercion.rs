@@ -1078,7 +1078,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self,
             cause,
             allow_two_phase,
-            self.expr_guaranteed_to_constitute_read_for_never(expr),
+            self.tcx.expr_guaranteed_to_constitute_read_for_never(expr),
         );
         let ok = self.commit_if_ok(|_| coerce.coerce(source, target))?;
 

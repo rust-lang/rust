@@ -694,11 +694,14 @@ impl f128 {
 
     /// Returns the maximum of the two numbers, ignoring NaN.
     ///
-    /// If one of the arguments is NaN, then the other argument is returned.
+    /// If exactly one of the arguments is NaN, then the other argument is returned. If both
+    /// arguments are NaN, the return value is NaN, with the bit pattern picked using the usual
+    /// [rules for arithmetic operations](f32#nan-bit-patterns). If the inputs compare equal (such
+    /// as for the case of `+0.0` and `-0.0`), either input may be returned non-deterministically.
+    ///
     /// This follows the IEEE 754-2008 semantics for `maxNum`, except for handling of signaling NaNs;
     /// this function handles all NaNs the same way and avoids `maxNum`'s problems with associativity.
-    /// This also matches the behavior of libm’s fmax. In particular, if the inputs compare equal
-    /// (such as for the case of `+0.0` and `-0.0`), either input may be returned non-deterministically.
+    /// This also matches the behavior of libm’s `fmax`.
     ///
     /// ```
     /// #![feature(f128)]
@@ -722,11 +725,14 @@ impl f128 {
 
     /// Returns the minimum of the two numbers, ignoring NaN.
     ///
-    /// If one of the arguments is NaN, then the other argument is returned.
+    /// If exactly one of the arguments is NaN, then the other argument is returned. If both
+    /// arguments are NaN, the return value is NaN, with the bit pattern picked using the usual
+    /// [rules for arithmetic operations](f32#nan-bit-patterns). If the inputs compare equal (such
+    /// as for the case of `+0.0` and `-0.0`), either input may be returned non-deterministically.
+    ///
     /// This follows the IEEE 754-2008 semantics for `minNum`, except for handling of signaling NaNs;
     /// this function handles all NaNs the same way and avoids `minNum`'s problems with associativity.
-    /// This also matches the behavior of libm’s fmin. In particular, if the inputs compare equal
-    /// (such as for the case of `+0.0` and `-0.0`), either input may be returned non-deterministically.
+    /// This also matches the behavior of libm’s `fmin`.
     ///
     /// ```
     /// #![feature(f128)]
@@ -1285,6 +1291,38 @@ impl f128 {
         self
     }
 
+    /// Clamps this number to a symmetric range centered around zero.
+    ///
+    /// The method clamps the number's magnitude (absolute value) to be at most `limit`.
+    ///
+    /// This is functionally equivalent to `self.clamp(-limit, limit)`, but is more
+    /// explicit about the intent.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `limit` is negative or NaN, as this indicates a logic error.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(f128)]
+    /// #![feature(clamp_magnitude)]
+    /// # #[cfg(all(target_arch = "x86_64", target_os = "linux"))] {
+    /// assert_eq!(5.0f128.clamp_magnitude(3.0), 3.0);
+    /// assert_eq!((-5.0f128).clamp_magnitude(3.0), -3.0);
+    /// assert_eq!(2.0f128.clamp_magnitude(3.0), 2.0);
+    /// assert_eq!((-2.0f128).clamp_magnitude(3.0), -2.0);
+    /// # }
+    /// ```
+    #[inline]
+    #[unstable(feature = "clamp_magnitude", issue = "148519")]
+    #[must_use = "this returns the clamped value and does not modify the original"]
+    pub fn clamp_magnitude(self, limit: f128) -> f128 {
+        assert!(limit >= 0.0, "limit must be non-negative");
+        let limit = limit.abs(); // Canonicalises -0.0 to 0.0
+        self.clamp(-limit, limit)
+    }
+
     /// Computes the absolute value of `self`.
     ///
     /// This function always returns the precise result.
@@ -1761,6 +1799,11 @@ impl f128 {
     /// Using this function is generally faster than using `powf`.
     /// It might have a different sequence of rounding operations than `powf`,
     /// so the results are not guaranteed to agree.
+    ///
+    /// Note that this function is special in that it can return non-NaN results for NaN inputs. For
+    /// example, `f128::powi(f128::NAN, 0)` returns `1.0`. However, if an input is a *signaling*
+    /// NaN, then the result is non-deterministically either a NaN or the result that the
+    /// corresponding quiet NaN would produce.
     ///
     /// # Unspecified precision
     ///

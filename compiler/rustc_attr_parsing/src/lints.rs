@@ -98,5 +98,17 @@ pub fn emit_attribute_lint<L: LintEmitter>(lint: &AttributeLint<L::Id>, lint_emi
                 },
             )
         }
+        &AttributeLintKind::UnsafeAttrOutsideUnsafe {
+            attribute_name_span,
+            sugg_spans: (left, right),
+        } => lint_emitter.emit_node_span_lint(
+            rustc_session::lint::builtin::UNSAFE_ATTR_OUTSIDE_UNSAFE,
+            *id,
+            *span,
+            session_diagnostics::UnsafeAttrOutsideUnsafeLint {
+                span: attribute_name_span,
+                suggestion: session_diagnostics::UnsafeAttrOutsideUnsafeSuggestion { left, right },
+            },
+        ),
     }
 }

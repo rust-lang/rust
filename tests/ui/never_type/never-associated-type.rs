@@ -1,5 +1,5 @@
 // Test that we can use ! as an associated type.
-
+//
 //@ check-pass
 
 #![feature(never_type)]

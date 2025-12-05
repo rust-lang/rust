@@ -845,6 +845,7 @@ dependencies = [
 name = "hir-expand"
 version = "0.0.0"
 dependencies = [
+ "arrayvec",
  "base-db",
  "cfg",
  "cov-mark",
@@ -863,6 +864,7 @@ dependencies = [
  "stdx",
  "syntax",
  "syntax-bridge",
+ "thin-vec",
  "tracing",
  "triomphe",
  "tt",
@@ -905,6 +907,7 @@ dependencies = [
  "syntax",
  "test-fixture",
  "test-utils",
+ "thin-vec",
  "tracing",
  "tracing-subscriber",
  "tracing-tree",
@@ -1475,6 +1478,7 @@ dependencies = [
  "parser",
  "ra-ap-rustc_lexer",
  "rustc-hash 2.1.1",
+ "salsa",
  "smallvec",
  "span",
  "stdx",
@@ -2270,9 +2274,9 @@ checksum = "7a2d987857b319362043e95f5353c0535c1f58eec5336fdfcf626430af7def58"
 
 [[package]]
 name = "rowan"
-version = "0.15.15"
+version = "0.15.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "32a58fa8a7ccff2aec4f39cc45bf5f985cec7125ab271cf681c279fd00192b49"
+checksum = "d4f1e4a001f863f41ea8d0e6a0c34b356d5b733db50dadab3efef640bafb779b"
 dependencies = [
  "countme",
  "hashbrown 0.14.5",

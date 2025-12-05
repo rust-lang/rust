@@ -24,7 +24,8 @@ pub const UNIX_EPOCH: SystemTime = SystemTime::from_uefi(r_efi::efi::Time {
     daylight: 0,
     pad1: 0,
     pad2: 0,
-});
+})
+.unwrap();
 
 const MAX_UEFI_TIME: SystemTime = SystemTime::from_uefi(r_efi::efi::Time {
     year: 9999,
@@ -38,7 +39,8 @@ const MAX_UEFI_TIME: SystemTime = SystemTime::from_uefi(r_efi::efi::Time {
     daylight: 0,
     pad1: 0,
     pad2: 0,
-});
+})
+.unwrap();
 
 impl Instant {
     pub fn now() -> Instant {
@@ -68,8 +70,11 @@ impl Instant {
 }
 
 impl SystemTime {
-    pub(crate) const fn from_uefi(t: r_efi::efi::Time) -> Self {
-        Self(system_time_internal::from_uefi(&t))
+    pub(crate) const fn from_uefi(t: r_efi::efi::Time) -> Option<Self> {
+        match system_time_internal::from_uefi(&t) {
+            Some(x) => Some(Self(x)),
+            None => None,
+        }
     }
 
     pub(crate) const fn to_uefi(
@@ -96,9 +101,8 @@ impl SystemTime {
     }
 
     pub fn now() -> SystemTime {
-        system_time_internal::now()
-            .map(Self::from_uefi)
-            .unwrap_or_else(|| panic!("time not implemented on this platform"))
+        Self::from_uefi(system_time_internal::now())
+            .expect("time incorrectly implemented on this platform")
     }
 
     pub fn sub_time(&self, other: &SystemTime) -> Result<Duration, Duration> {
@@ -129,17 +133,18 @@ pub(crate) mod system_time_internal {
     const SECS_IN_DAY: u64 = SECS_IN_HOUR * 24;
     const SYSTEMTIME_TIMEZONE: i64 = -1440 * SECS_IN_MINUTE as i64;
 
-    pub(crate) fn now() -> Option<Time> {
-        let runtime_services: NonNull<RuntimeServices> = helpers::runtime_services()?;
+    pub(crate) fn now() -> Time {
+        let runtime_services: NonNull<RuntimeServices> =
+            helpers::runtime_services().expect("Runtime services are not available");
         let mut t: MaybeUninit<Time> = MaybeUninit::uninit();
         let r = unsafe {
             ((*runtime_services.as_ptr()).get_time)(t.as_mut_ptr(), crate::ptr::null_mut())
         };
         if r.is_error() {
-            return None;
+            panic!("time not implemented on this platform");
         }
 
-        Some(unsafe { t.assume_init() })
+        unsafe { t.assume_init() }
     }
 
     /// This algorithm is a modified form of the one described in the post
@@ -147,20 +152,22 @@ pub(crate) mod system_time_internal {
     ///
     /// The changes are to use 1900-01-01-00:00:00 with timezone -1440 as anchor instead of UNIX
     /// epoch used in the original algorithm.
-    pub(crate) const fn from_uefi(t: &Time) -> Duration {
-        assert!(t.month <= 12 && t.month != 0);
-        assert!(t.year >= 1900 && t.year <= 9999);
-        assert!(t.day <= 31 && t.day != 0);
-
-        assert!(t.second < 60);
-        assert!(t.minute < 60);
-        assert!(t.hour < 24);
-        assert!(t.nanosecond < 1_000_000_000);
-
-        assert!(
-            (t.timezone <= 1440 && t.timezone >= -1440)
-                || t.timezone == r_efi::efi::UNSPECIFIED_TIMEZONE
-        );
+    pub(crate) const fn from_uefi(t: &Time) -> Option<Duration> {
+        if !(t.month <= 12
+            && t.month != 0
+            && t.year >= 1900
+            && t.year <= 9999
+            && t.day <= 31
+            && t.day != 0
+            && t.second < 60
+            && t.minute <= 60
+            && t.hour < 24
+            && t.nanosecond < 1_000_000_000
+            && ((t.timezone <= 1440 && t.timezone >= -1440)
+                || t.timezone == r_efi::efi::UNSPECIFIED_TIMEZONE))
+        {
+            return None;
+        }
 
         const YEAR_BASE: u32 = 4800; /* Before min year, multiple of 400. */
 
@@ -188,7 +195,7 @@ pub(crate) mod system_time_internal {
         // Calculate the offset from 1/1/1900 at timezone -1440 min
         let epoch = localtime_epoch.checked_add_signed(normalized_timezone).unwrap();
 
-        Duration::new(epoch, t.nanosecond)
+        Some(Duration::new(epoch, t.nanosecond))
     }
 
     /// This algorithm is a modified version of the one described in the post:

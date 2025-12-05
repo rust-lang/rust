@@ -1014,7 +1014,6 @@ ui/for-loop-while/issue-1257.rs
 ui/for-loop-while/issue-2216.rs
 ui/for-loop-while/issue-51345.rs
 ui/for-loop-while/issue-69841.rs
-ui/for/issue-20605.rs
 ui/foreign/issue-74120-lowering-of-ffi-block-bodies.rs
 ui/foreign/issue-91370-foreign-fn-block-impl.rs
 ui/foreign/issue-99276-same-type-lifetimes.rs

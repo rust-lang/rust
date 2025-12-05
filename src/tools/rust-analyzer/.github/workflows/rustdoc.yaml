@@ -8,6 +8,7 @@ env:
   CARGO_INCREMENTAL: 0
   CARGO_NET_RETRY: 10
   RUSTFLAGS: "-D warnings -W unreachable-pub"
+  RUSTDOCFLAGS: "-D warnings"
   RUSTUP_MAX_RETRIES: 10
 
 jobs:

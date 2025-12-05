@@ -59,7 +59,7 @@ pub(crate) fn generic_arg(p: &mut Parser<'_>) -> bool {
 
         // test edition_2015_dyn_prefix_inside_generic_arg 2015
         // type A = Foo<dyn T>;
-        T![ident] if !p.edition().at_least_2018() && types::is_dyn_weak(p) => type_arg(p),
+        T![ident] if !p.current_edition().at_least_2018() && types::is_dyn_weak(p) => type_arg(p),
         // test macro_inside_generic_arg
         // type A = Foo<syn::Token![_]>;
         k if PATH_NAME_REF_KINDS.contains(k) => {
