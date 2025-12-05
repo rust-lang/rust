@@ -56,7 +56,8 @@ where
 /// another.
 #[derive_where(Clone, PartialEq, Ord, Hash; I: Interner, T)]
 #[derive_where(PartialOrd; I: Interner, T: Ord)]
-#[derive_where(Copy; I: Interner, T: Copy)]
+#[derive_where(Copy; I: Interner, T: Copy, T)]
+#[derive_where(Eq; T)]
 #[cfg_attr(
     feature = "nightly",
     derive(Encodable_NoContext, Decodable_NoContext, HashStable_NoContext)
@@ -97,8 +98,6 @@ where
         })
     }
 }
-
-impl<I: Interner, T: Eq> Eq for Placeholder<I, T> {}
 
 #[cfg(feature = "nightly")]
 macro_rules! impl_binder_encode_decode {
