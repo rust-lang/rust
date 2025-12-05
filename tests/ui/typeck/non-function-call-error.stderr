@@ -1,5 +1,5 @@
 error[E0618]: expected function, found `&str`
-  --> $DIR/issue-22468.rs:3:13
+  --> $DIR/non-function-call-error.rs:5:13
    |
 LL |     let foo = "bar";
    |         --- `foo` has type `&str`
@@ -11,6 +11,26 @@ LL |     let x = foo("baz");
 LL | fn foo(file: &str) -> bool {
    | -------------------------- this function of the same name is available here, but it's shadowed by the local binding
 
-error: aborting due to 1 previous error
+error[E0618]: expected function, found `i32`
+  --> $DIR/non-function-call-error.rs:9:5
+   |
+LL |     let i = 0i32;
+   |         - `i` has type `i32`
+LL |     i();
+   |     ^--
+   |     |
+   |     call expression requires function
+
+error[E0618]: expected function, found `i32`
+  --> $DIR/non-function-call-error.rs:18:5
+   |
+LL | fn func(i: i32) {
+   |         - `i` has type `i32`
+LL |     i();
+   |     ^--
+   |     |
+   |     call expression requires function
+
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0618`.
