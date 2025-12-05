@@ -53,3 +53,4 @@ lto = "fat"
 [profile.bench]
 # Required for gungraun
 debug = true
+strip = false
