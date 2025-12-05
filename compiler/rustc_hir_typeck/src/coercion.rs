@@ -924,7 +924,16 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         ocx.register_obligation(obligation);
         let errs = ocx.evaluate_obligations_error_on_ambiguity();
         if errs.is_empty() {
-            Ok(InferOk { value: (vec![], b), obligations: ocx.into_pending_obligations() })
+            Ok(InferOk {
+                value: (
+                    vec![Adjustment {
+                        kind: Adjust::GenericReborrow(ty::Mutability::Not),
+                        target: b,
+                    }],
+                    b,
+                ),
+                obligations: ocx.into_pending_obligations(),
+            })
         } else {
             Err(TypeError::Mismatch)
         }

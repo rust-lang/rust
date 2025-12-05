@@ -304,39 +304,72 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'tcx> {
             self.local_map.entry(borrowed_place.local).or_default().insert(idx);
         } else if let &mir::Rvalue::Reborrow(mutability, borrowed_place) = rvalue {
             let borrowed_place_ty = borrowed_place.ty(self.body, self.tcx).ty;
-            let &ty::Adt(reborrowed_adt, _args) = borrowed_place_ty.kind() else { unreachable!() };
-            let &ty::Adt(target_adt, args) = assigned_place.ty(self.body, self.tcx).ty.kind()
+            let &ty::Adt(reborrowed_adt, reborrowed_args) = borrowed_place_ty.kind() else {
+                unreachable!()
+            };
+            let &ty::Adt(target_adt, target_args) =
+                assigned_place.ty(self.body, self.tcx).ty.kind()
             else {
                 unreachable!()
             };
-            if target_adt.did() != reborrowed_adt.did() {
-                bug!("hir-typeck passed but reborrow involves mismatching types at {location:?}")
-            }
-            for arg in args.iter() {
-                let ty::GenericArgKind::Lifetime(region) = arg.kind() else {
-                    continue;
+            let borrow = if mutability == Mutability::Mut {
+                // Reborrow
+                if target_adt.did() != reborrowed_adt.did() {
+                    bug!(
+                        "hir-typeck passed but Reborrow involves mismatching types at {location:?}"
+                    )
+                }
+                let Some(ty::GenericArgKind::Lifetime(region)) =
+                    reborrowed_args.get(0).map(|r| r.kind())
+                else {
+                    bug!(
+                        "hir-typeck passed but {} does not have a lifetime argument",
+                        if mutability == Mutability::Mut { "Reborrow" } else { "CoerceShared" }
+                    );
                 };
                 let region = region.as_var();
-                let kind = if mutability == Mutability::Mut {
-                    mir::BorrowKind::Mut { kind: mir::MutBorrowKind::Default }
-                } else {
-                    mir::BorrowKind::Shared
-                };
-                let borrow = BorrowData {
+                let kind = mir::BorrowKind::Mut { kind: mir::MutBorrowKind::Default };
+                BorrowData {
                     kind,
                     region,
                     reserve_location: location,
                     activation_location: TwoPhaseActivation::NotTwoPhase,
                     borrowed_place,
                     assigned_place: *assigned_place,
+                }
+            } else {
+                // CoerceShared
+                if target_adt.did() == reborrowed_adt.did() {
+                    bug!(
+                        "hir-typeck passed but CoerceShared involves matching types at {location:?}"
+                    )
+                }
+                let Some(ty::GenericArgKind::Lifetime(region)) =
+                    target_args.get(0).map(|r| r.kind())
+                else {
+                    bug!(
+                        "hir-typeck passed but {} does not have a lifetime argument",
+                        if mutability == Mutability::Mut { "Reborrow" } else { "CoerceShared" }
+                    );
                 };
-                let (idx, _) = self.location_map.insert_full(location, borrow);
-                let idx = BorrowIndex::from(idx);
+                let region = region.as_var();
+                let kind = mir::BorrowKind::Shared;
+                BorrowData {
+                    kind,
+                    region,
+                    reserve_location: location,
+                    activation_location: TwoPhaseActivation::NotTwoPhase,
+                    borrowed_place,
+                    assigned_place: *assigned_place,
+                }
+            };
+            let kind = borrow.kind;
+            let (idx, _) = self.location_map.insert_full(location, borrow);
+            let idx = BorrowIndex::from(idx);
 
-                self.insert_as_pending_if_two_phase(location, assigned_place, kind, idx);
+            self.insert_as_pending_if_two_phase(location, assigned_place, kind, idx);
 
-                self.local_map.entry(borrowed_place.local).or_default().insert(idx);
-            }
+            self.local_map.entry(borrowed_place.local).or_default().insert(idx);
         }
 
         self.super_assign(assigned_place, rvalue, location)
