@@ -89,9 +89,11 @@ cfg_select! {
 cfg_select! {
     a + 1 => {}
     //~^ ERROR expected one of `(`, `::`, `=>`, or `=`, found `+`
+    //~| WARN unexpected `cfg` condition name
 }
 
 cfg_select! {
     cfg!() => {}
     //~^ ERROR expected one of `(`, `::`, `=>`, or `=`, found `!`
+    //~| WARN unexpected `cfg` condition name
 }
