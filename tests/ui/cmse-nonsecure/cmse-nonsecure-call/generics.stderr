@@ -4,7 +4,7 @@ error: function pointer types may not have generic parameters
 LL |     f1: extern "cmse-nonsecure-call" fn<U: Copy>(U, u32, u32, u32) -> u64,
    |                                        ^^^^^^^^^
 
-error[E0412]: cannot find type `U` in this scope
+error[E0425]: cannot find type `U` in this scope
   --> $DIR/generics.rs:14:50
    |
 LL | struct Test<T: Copy> {
@@ -101,5 +101,5 @@ LL | type WithVarArgs = extern "cmse-nonsecure-call" fn(u32, ...);
 
 error: aborting due to 12 previous errors
 
-Some errors have detailed explanations: E0045, E0412, E0562, E0798.
+Some errors have detailed explanations: E0045, E0425, E0562, E0798.
 For more information about an error, try `rustc --explain E0045`.

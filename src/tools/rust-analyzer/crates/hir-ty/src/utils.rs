@@ -3,15 +3,13 @@
 
 use std::cell::LazyCell;
 
-use base_db::{
-    Crate,
-    target::{self, TargetData},
-};
+use base_db::target::{self, TargetData};
 use hir_def::{
     EnumId, EnumVariantId, FunctionId, Lookup, TraitId,
+    attrs::AttrFlags,
     db::DefDatabase,
     hir::generics::WherePredicate,
-    lang_item::LangItem,
+    lang_item::LangItems,
     resolver::{HasResolver, TypeNs},
     type_ref::{TraitBoundModifier, TypeRef},
 };
@@ -27,10 +25,28 @@ use crate::{
     mir::pad16,
 };
 
-pub(crate) fn fn_traits(db: &dyn DefDatabase, krate: Crate) -> impl Iterator<Item = TraitId> + '_ {
-    [LangItem::Fn, LangItem::FnMut, LangItem::FnOnce]
-        .into_iter()
-        .filter_map(move |lang| lang.resolve_trait(db, krate))
+/// SAFETY: `old_pointer` must be valid for unique writes
+pub(crate) unsafe fn unsafe_update_eq<T>(old_pointer: *mut T, new_value: T) -> bool
+where
+    T: PartialEq,
+{
+    // SAFETY: Caller obligation
+    let old_ref: &mut T = unsafe { &mut *old_pointer };
+
+    if *old_ref != new_value {
+        *old_ref = new_value;
+        true
+    } else {
+        // Subtle but important: Eq impls can be buggy or define equality
+        // in surprising ways. If it says that the value has not changed,
+        // we do not modify the existing value, and thus do not have to
+        // update the revision, as downstream code will not see the new value.
+        false
+    }
+}
+
+pub(crate) fn fn_traits(lang_items: &LangItems) -> impl Iterator<Item = TraitId> + '_ {
+    [lang_items.Fn, lang_items.FnMut, lang_items.FnOnce].into_iter().flatten()
 }
 
 /// Returns an iterator over the direct super traits (including the trait itself).
@@ -119,7 +135,7 @@ pub fn target_feature_is_safe_in_target(target: &TargetData) -> TargetFeatureIsS
 pub fn is_fn_unsafe_to_call(
     db: &dyn HirDatabase,
     func: FunctionId,
-    caller_target_features: &TargetFeatures,
+    caller_target_features: &TargetFeatures<'_>,
     call_edition: Edition,
     target_feature_is_safe: TargetFeatureIsSafeInTarget,
 ) -> Unsafety {
@@ -130,8 +146,7 @@ pub fn is_fn_unsafe_to_call(
 
     if data.has_target_feature() && target_feature_is_safe == TargetFeatureIsSafeInTarget::No {
         // RFC 2396 <https://rust-lang.github.io/rfcs/2396-target-feature-1.1.html>.
-        let callee_target_features =
-            TargetFeatures::from_attrs_no_implications(&db.attrs(func.into()));
+        let callee_target_features = TargetFeatures::from_fn_no_implications(db, func);
         if !caller_target_features.enabled.is_superset(&callee_target_features.enabled) {
             return Unsafety::Unsafe;
         }
@@ -152,7 +167,7 @@ pub fn is_fn_unsafe_to_call(
             if is_intrinsic_block {
                 // legacy intrinsics
                 // extern "rust-intrinsic" intrinsics are unsafe unless they have the rustc_safe_intrinsic attribute
-                if db.attrs(func.into()).by_key(sym::rustc_safe_intrinsic).exists() {
+                if AttrFlags::query(db, func.into()).contains(AttrFlags::RUSTC_SAFE_INTRINSIC) {
                     Unsafety::Safe
                 } else {
                     Unsafety::Unsafe

@@ -1,3 +1,5 @@
+// Regression test for <https://github.com/rust-lang/rust/issues/51506>
+
 #![feature(never_type, specialization)]
 #![allow(incomplete_features)]
 

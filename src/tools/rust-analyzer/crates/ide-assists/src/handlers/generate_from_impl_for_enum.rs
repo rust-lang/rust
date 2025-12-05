@@ -123,7 +123,7 @@ fn existing_from_impl(
     let variant = sema.to_def(variant)?;
     let krate = variant.module(db).krate();
     let from_trait = FamousDefs(sema, krate).core_convert_From()?;
-    let interner = DbInterner::new_with(db, Some(krate.base()), None);
+    let interner = DbInterner::new_with(db, krate.base());
     use hir::next_solver::infer::DbInternerInferExt;
     let infcx = interner.infer_ctxt().build(TypingMode::non_body_analysis());
 

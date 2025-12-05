@@ -27,7 +27,7 @@ pub(crate) fn target() -> Target {
             // Cortex-A7/A8/A9 with software floating point
             features: "+soft-float,-neon".into(),
             max_atomic_width: Some(64),
-            ..base::thumb::opts()
+            ..base::arm_none::opts()
         },
     }
 }

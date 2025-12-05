@@ -211,6 +211,105 @@ fn after_visibility_unsafe() {
 }
 
 #[test]
+fn after_abi() {
+    check_with_base_items(
+        r#"extern "C" $0"#,
+        expect![[r#"
+            kw async
+            kw const
+            kw enum
+            kw fn
+            kw impl
+            kw impl for
+            kw mod
+            kw pub
+            kw pub(crate)
+            kw pub(super)
+            kw static
+            kw struct
+            kw trait
+            kw type
+            kw union
+            kw unsafe
+            kw use
+        "#]],
+    );
+    check_with_base_items(
+        r#"extern "C" f$0"#,
+        expect![[r#"
+            kw async
+            kw const
+            kw enum
+            kw fn
+            kw impl
+            kw impl for
+            kw mod
+            kw pub
+            kw pub(crate)
+            kw pub(super)
+            kw static
+            kw struct
+            kw trait
+            kw type
+            kw union
+            kw unsafe
+            kw use
+        "#]],
+    );
+}
+
+#[test]
+fn after_extern_token() {
+    check_with_base_items(
+        r#"extern $0"#,
+        expect![[r#"
+            kw async
+            kw const
+            kw crate
+            kw enum
+            kw fn
+            kw impl
+            kw impl for
+            kw mod
+            kw pub
+            kw pub(crate)
+            kw pub(super)
+            kw static
+            kw struct
+            kw trait
+            kw type
+            kw union
+            kw unsafe
+            kw use
+        "#]],
+    );
+    check_with_base_items(
+        r#"extern cr$0"#,
+        expect![[r#"
+            kw async
+            kw const
+            kw crate
+            kw enum
+            kw fn
+            kw impl
+            kw impl for
+            kw mod
+            kw pub
+            kw pub(crate)
+            kw pub(super)
+            kw static
+            kw struct
+            kw trait
+            kw type
+            kw union
+            kw unsafe
+            kw use
+        "#]],
+    );
+    check_edit("crate", "extern $0", "extern crate $0;");
+}
+
+#[test]
 fn in_impl_assoc_item_list() {
     check_with_base_items(
         r#"impl Struct { $0 }"#,

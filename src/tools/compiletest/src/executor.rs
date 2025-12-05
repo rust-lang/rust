@@ -196,10 +196,10 @@ enum CaptureKind {
 
 impl CaptureKind {
     fn for_config(config: &Config) -> Self {
-        if config.nocapture {
-            Self::None
-        } else {
+        if config.capture {
             Self::Capture { buf: output_capture::CaptureBuf::new() }
+        } else {
+            Self::None
         }
     }
 

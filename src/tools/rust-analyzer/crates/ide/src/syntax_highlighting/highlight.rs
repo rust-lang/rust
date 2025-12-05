@@ -3,7 +3,7 @@
 use std::ops::ControlFlow;
 
 use either::Either;
-use hir::{AsAssocItem, HasAttrs, HasVisibility, Semantics, sym};
+use hir::{AsAssocItem, HasAttrs, HasVisibility, Semantics};
 use ide_db::{
     FxHashMap, RootDatabase, SymbolKind,
     defs::{Definition, IdentClass, NameClass, NameRefClass},
@@ -413,7 +413,7 @@ fn highlight_name_ref(
             if is_from_builtin_crate {
                 h |= HlMod::DefaultLibrary;
             }
-            let is_deprecated = resolved_krate.attrs(sema.db).by_key(sym::deprecated).exists();
+            let is_deprecated = resolved_krate.attrs(sema.db).is_deprecated();
             if is_deprecated {
                 h |= HlMod::Deprecated;
             }
@@ -701,7 +701,7 @@ pub(super) fn highlight_def(
     }
 
     if let Some(attrs) = attrs
-        && attrs.by_key(sym::deprecated).exists()
+        && attrs.is_deprecated()
     {
         h |= HlMod::Deprecated;
     }
@@ -751,7 +751,7 @@ fn highlight_method_call(
     let is_from_other_crate = krate.as_ref().map_or(false, |krate| def_crate != *krate);
     let is_from_builtin_crate = def_crate.is_builtin(sema.db);
     let is_public = func.visibility(sema.db) == hir::Visibility::Public;
-    let is_deprecated = func.attrs(sema.db).by_key(sym::deprecated).exists();
+    let is_deprecated = func.attrs(sema.db).is_deprecated();
 
     if is_from_other_crate {
         h |= HlMod::Library;

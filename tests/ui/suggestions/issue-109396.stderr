@@ -25,6 +25,11 @@ note: function defined here
 help: remove the extra arguments
    |
 LL -             file.as_raw_fd(),
+LL -
+LL -             0,
+LL -             0,
+LL -             0,
+LL -         );
 LL +             );
    |
 

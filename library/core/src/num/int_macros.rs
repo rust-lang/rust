@@ -3878,5 +3878,32 @@ macro_rules! int_impl {
         pub const fn max_value() -> Self {
             Self::MAX
         }
+
+        /// Clamps this number to a symmetric range centred around zero.
+        ///
+        /// The method clamps the number's magnitude (absolute value) to be at most `limit`.
+        ///
+        /// This is functionally equivalent to `self.clamp(-limit, limit)`, but is more
+        /// explicit about the intent.
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(clamp_magnitude)]
+        #[doc = concat!("assert_eq!(120", stringify!($SelfT), ".clamp_magnitude(100), 100);")]
+        #[doc = concat!("assert_eq!(-120", stringify!($SelfT), ".clamp_magnitude(100), -100);")]
+        #[doc = concat!("assert_eq!(80", stringify!($SelfT), ".clamp_magnitude(100), 80);")]
+        #[doc = concat!("assert_eq!(-80", stringify!($SelfT), ".clamp_magnitude(100), -80);")]
+        /// ```
+        #[must_use = "this returns the clamped value and does not modify the original"]
+        #[unstable(feature = "clamp_magnitude", issue = "148519")]
+        #[inline]
+        pub fn clamp_magnitude(self, limit: $UnsignedT) -> Self {
+            if let Ok(limit) = core::convert::TryInto::<$SelfT>::try_into(limit) {
+                self.clamp(-limit, limit)
+            } else {
+                self
+            }
+        }
     }
 }

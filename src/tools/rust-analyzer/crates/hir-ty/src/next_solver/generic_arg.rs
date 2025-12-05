@@ -7,6 +7,7 @@ use rustc_type_ir::{
     GenericArgKind, Interner, TermKind, TyKind, TyVid, Variance,
     inherent::{GenericArg as _, GenericsOf, IntoKind, SliceLike, Term as _, Ty as _},
     relate::{Relate, VarianceDiagInfo},
+    walk::TypeWalker,
 };
 use smallvec::SmallVec;
 
@@ -77,6 +78,11 @@ impl<'db> GenericArg<'db> {
             GenericParamId::ConstParamId(_) => Const::error(interner).into(),
             GenericParamId::LifetimeParamId(_) => Region::error(interner).into(),
         }
+    }
+
+    #[inline]
+    pub fn walk(self) -> TypeWalker<DbInterner<'db>> {
+        TypeWalker::new(self)
     }
 }
 

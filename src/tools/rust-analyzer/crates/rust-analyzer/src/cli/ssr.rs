@@ -72,7 +72,7 @@ impl flags::Search {
                 let sr = db.source_root(root).source_root(db);
                 for file_id in sr.iter() {
                     for debug_info in match_finder.debug_where_text_equal(
-                        EditionedFileId::current_edition(db, file_id),
+                        EditionedFileId::current_edition_guess_origin(db, file_id),
                         debug_snippet,
                     ) {
                         println!("{debug_info:#?}");

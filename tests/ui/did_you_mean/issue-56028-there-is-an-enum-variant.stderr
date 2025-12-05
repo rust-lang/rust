@@ -1,4 +1,4 @@
-error[E0412]: cannot find type `Set` in this scope
+error[E0425]: cannot find type `Set` in this scope
   --> $DIR/issue-56028-there-is-an-enum-variant.rs:10:15
    |
 LL | fn setup() -> Set { Set }
@@ -40,5 +40,4 @@ LL + use PutDown::Set;
 
 error: aborting due to 2 previous errors
 
-Some errors have detailed explanations: E0412, E0425.
-For more information about an error, try `rustc --explain E0412`.
+For more information about this error, try `rustc --explain E0425`.

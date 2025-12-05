@@ -6,7 +6,7 @@ pub trait A {
 }
 
 fn addition() -> Wrapper<impl A> {}
-//~^ ERROR cannot find type `Wrapper` in this scope [E0412]
+//~^ ERROR cannot find type `Wrapper` in this scope [E0425]
 
 fn main() {
     let res = addition();

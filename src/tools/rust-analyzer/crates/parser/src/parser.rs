@@ -26,14 +26,13 @@ pub(crate) struct Parser<'t> {
     pos: usize,
     events: Vec<Event>,
     steps: Cell<u32>,
-    edition: Edition,
 }
 
 const PARSER_STEP_LIMIT: usize = if cfg!(debug_assertions) { 150_000 } else { 15_000_000 };
 
 impl<'t> Parser<'t> {
-    pub(super) fn new(inp: &'t Input, edition: Edition) -> Parser<'t> {
-        Parser { inp, pos: 0, events: Vec::new(), steps: Cell::new(0), edition }
+    pub(super) fn new(inp: &'t Input) -> Parser<'t> {
+        Parser { inp, pos: 0, events: Vec::new(), steps: Cell::new(0) }
     }
 
     pub(crate) fn finish(self) -> Vec<Event> {
@@ -291,8 +290,8 @@ impl<'t> Parser<'t> {
         self.events.push(event);
     }
 
-    pub(crate) fn edition(&self) -> Edition {
-        self.edition
+    pub(crate) fn current_edition(&self) -> Edition {
+        self.inp.edition(self.pos)
     }
 }
 

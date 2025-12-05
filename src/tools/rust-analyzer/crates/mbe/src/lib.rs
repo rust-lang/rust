@@ -275,13 +275,13 @@ impl DeclarativeMacro {
 
     pub fn expand(
         &self,
+        db: &dyn salsa::Database,
         tt: &tt::TopSubtree<Span>,
         marker: impl Fn(&mut Span) + Copy,
         call_style: MacroCallStyle,
         call_site: Span,
-        def_site_edition: Edition,
     ) -> ExpandResult<(tt::TopSubtree<Span>, MatchedArmIndex)> {
-        expander::expand_rules(&self.rules, tt, marker, call_style, call_site, def_site_edition)
+        expander::expand_rules(db, &self.rules, tt, marker, call_style, call_site)
     }
 }
 
@@ -390,16 +390,15 @@ impl<T: Default, E> From<Result<T, E>> for ValueResult<T, E> {
 }
 
 pub fn expect_fragment<'t>(
+    db: &dyn salsa::Database,
     tt_iter: &mut TtIter<'t, Span>,
     entry_point: ::parser::PrefixEntryPoint,
-    edition: ::parser::Edition,
     delim_span: DelimSpan<Span>,
 ) -> ExpandResult<tt::TokenTreesView<'t, Span>> {
     use ::parser;
     let buffer = tt_iter.remaining();
-    // FIXME: Pass the correct edition per token. Due to the split between mbe and hir-expand it's complicated.
-    let parser_input = to_parser_input(buffer, &mut |_ctx| edition);
-    let tree_traversal = entry_point.parse(&parser_input, edition);
+    let parser_input = to_parser_input(buffer, &mut |ctx| ctx.edition(db));
+    let tree_traversal = entry_point.parse(&parser_input);
     let mut cursor = buffer.cursor();
     let mut error = false;
     for step in tree_traversal.iter() {

@@ -9,7 +9,7 @@ use project_model::ProjectJsonData;
 use serde::{Deserialize, Serialize};
 use tracing::{info_span, span::EnteredSpan};
 
-use crate::command::{CargoParser, CommandHandle};
+use crate::command::{CommandHandle, JsonLinesParser};
 
 pub(crate) const ARG_PLACEHOLDER: &str = "{arg}";
 
@@ -67,7 +67,7 @@ impl DiscoverCommand {
         cmd.args(args);
 
         Ok(DiscoverHandle {
-            _handle: CommandHandle::spawn(cmd, DiscoverProjectParser, self.sender.clone(), None)?,
+            handle: CommandHandle::spawn(cmd, DiscoverProjectParser, self.sender.clone(), None)?,
             span: info_span!("discover_command").entered(),
         })
     }
@@ -76,7 +76,7 @@ impl DiscoverCommand {
 /// A handle to a spawned [Discover].
 #[derive(Debug)]
 pub(crate) struct DiscoverHandle {
-    _handle: CommandHandle<DiscoverProjectMessage>,
+    pub(crate) handle: CommandHandle<DiscoverProjectMessage>,
     #[allow(dead_code)] // not accessed, but used to log on drop.
     span: EnteredSpan,
 }
@@ -118,7 +118,7 @@ impl DiscoverProjectMessage {
 
 struct DiscoverProjectParser;
 
-impl CargoParser<DiscoverProjectMessage> for DiscoverProjectParser {
+impl JsonLinesParser<DiscoverProjectMessage> for DiscoverProjectParser {
     fn from_line(&self, line: &str, _error: &mut String) -> Option<DiscoverProjectMessage> {
         match serde_json::from_str::<DiscoverProjectData>(line) {
             Ok(data) => {

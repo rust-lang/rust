@@ -38,7 +38,6 @@ use triomphe::Arc;
 
 use crate::{
     InferenceResult,
-    db::HirDatabase,
     display::{DisplayTarget, HirDisplay},
     infer::{Adjustment, TypeMismatch},
     next_solver::Ty,
@@ -148,7 +147,7 @@ fn check_impl(
         for (def, krate) in defs {
             let display_target = DisplayTarget::from_crate(&db, krate);
             let (body, body_source_map) = db.body_with_source_map(def);
-            let inference_result = db.infer(def);
+            let inference_result = InferenceResult::for_body(&db, def);
 
             for (pat, mut ty) in inference_result.type_of_pat.iter() {
                 if let Pat::Bind { id, .. } = body[pat] {
@@ -319,7 +318,7 @@ fn infer_with_mismatches(content: &str, include_mismatches: bool) -> String {
     crate::attach_db(&db, || {
         let mut buf = String::new();
 
-        let mut infer_def = |inference_result: Arc<InferenceResult<'_>>,
+        let mut infer_def = |inference_result: &InferenceResult<'_>,
                              body: Arc<Body>,
                              body_source_map: Arc<BodySourceMap>,
                              krate: Crate| {
@@ -443,7 +442,7 @@ fn infer_with_mismatches(content: &str, include_mismatches: bool) -> String {
         });
         for (def, krate) in defs {
             let (body, source_map) = db.body_with_source_map(def);
-            let infer = db.infer(def);
+            let infer = InferenceResult::for_body(&db, def);
             infer_def(infer, body, source_map, krate);
         }
 
@@ -595,13 +594,16 @@ fn salsa_bug() {
         let module = db.module_for_file(pos.file_id.file_id(&db));
         let crate_def_map = module.def_map(&db);
         visit_module(&db, crate_def_map, module.local_id, &mut |def| {
-            db.infer(match def {
-                ModuleDefId::FunctionId(it) => it.into(),
-                ModuleDefId::EnumVariantId(it) => it.into(),
-                ModuleDefId::ConstId(it) => it.into(),
-                ModuleDefId::StaticId(it) => it.into(),
-                _ => return,
-            });
+            InferenceResult::for_body(
+                &db,
+                match def {
+                    ModuleDefId::FunctionId(it) => it.into(),
+                    ModuleDefId::EnumVariantId(it) => it.into(),
+                    ModuleDefId::ConstId(it) => it.into(),
+                    ModuleDefId::StaticId(it) => it.into(),
+                    _ => return,
+                },
+            );
         });
     });
 
@@ -636,13 +638,16 @@ fn salsa_bug() {
         let module = db.module_for_file(pos.file_id.file_id(&db));
         let crate_def_map = module.def_map(&db);
         visit_module(&db, crate_def_map, module.local_id, &mut |def| {
-            db.infer(match def {
-                ModuleDefId::FunctionId(it) => it.into(),
-                ModuleDefId::EnumVariantId(it) => it.into(),
-                ModuleDefId::ConstId(it) => it.into(),
-                ModuleDefId::StaticId(it) => it.into(),
-                _ => return,
-            });
+            InferenceResult::for_body(
+                &db,
+                match def {
+                    ModuleDefId::FunctionId(it) => it.into(),
+                    ModuleDefId::EnumVariantId(it) => it.into(),
+                    ModuleDefId::ConstId(it) => it.into(),
+                    ModuleDefId::StaticId(it) => it.into(),
+                    _ => return,
+                },
+            );
         });
     })
 }

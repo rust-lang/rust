@@ -68,7 +68,7 @@ help: consider importing this function
 LL + use other::import;
    |
 
-error[E0412]: cannot find type `A` in this scope
+error[E0425]: cannot find type `A` in this scope
   --> $DIR/glob-resolve1.rs:33:11
    |
 LL |     pub enum B {
@@ -83,7 +83,7 @@ note: enum `bar::A` exists but is inaccessible
 LL |     enum A {
    |     ^^^^^^ not accessible
 
-error[E0412]: cannot find type `C` in this scope
+error[E0425]: cannot find type `C` in this scope
   --> $DIR/glob-resolve1.rs:34:11
    |
 LL |     pub enum B {
@@ -98,7 +98,7 @@ note: struct `bar::C` exists but is inaccessible
 LL |     struct C;
    |     ^^^^^^^^^ not accessible
 
-error[E0412]: cannot find type `D` in this scope
+error[E0425]: cannot find type `D` in this scope
   --> $DIR/glob-resolve1.rs:35:11
    |
 LL |     pub enum B {
@@ -115,5 +115,5 @@ LL |     type D = isize;
 
 error: aborting due to 8 previous errors
 
-Some errors have detailed explanations: E0412, E0423, E0425.
-For more information about an error, try `rustc --explain E0412`.
+Some errors have detailed explanations: E0423, E0425.
+For more information about an error, try `rustc --explain E0423`.

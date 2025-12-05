@@ -7,7 +7,7 @@ LL |     offset_of!(Alpha::One, 0);
    |                not a type
    |                help: try using the variant's enum: `Alpha`
 
-error[E0412]: cannot find type `Beta` in this scope
+error[E0425]: cannot find type `Beta` in this scope
   --> $DIR/offset-of-enum.rs:18:16
    |
 LL |     offset_of!(Beta, One);
@@ -43,5 +43,5 @@ LL |     offset_of!(Alpha, NonExistent);
 
 error: aborting due to 6 previous errors
 
-Some errors have detailed explanations: E0412, E0573, E0599, E0609, E0795.
-For more information about an error, try `rustc --explain E0412`.
+Some errors have detailed explanations: E0425, E0573, E0599, E0609, E0795.
+For more information about an error, try `rustc --explain E0425`.

@@ -224,7 +224,7 @@ impl<'db> InferenceContext<'_, 'db> {
     ) {
         let interner = self.interner();
         let predicates = GenericPredicates::query_all(self.db, def);
-        let param_env = self.table.trait_env.env;
+        let param_env = self.table.param_env;
         self.table.register_predicates(clauses_as_obligations(
             predicates.iter_instantiated_copied(interner, subst.as_slice()),
             ObligationCause::new(),
@@ -343,7 +343,7 @@ impl<'db> InferenceContext<'_, 'db> {
                 self.table.register_predicate(Obligation::new(
                     self.interner(),
                     ObligationCause::new(),
-                    self.table.trait_env.env,
+                    self.table.param_env,
                     trait_ref,
                 ));
                 args

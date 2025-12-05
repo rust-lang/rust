@@ -8,7 +8,6 @@ fn new() {
     let mut rbuf: BorrowedBuf<'_> = buf.into();
 
     assert_eq!(rbuf.filled().len(), 0);
-    assert_eq!(rbuf.init_len(), 16);
     assert_eq!(rbuf.capacity(), 16);
     assert_eq!(rbuf.unfilled().capacity(), 16);
 }
@@ -20,19 +19,8 @@ fn uninit() {
     let mut rbuf: BorrowedBuf<'_> = buf.into();
 
     assert_eq!(rbuf.filled().len(), 0);
-    assert_eq!(rbuf.init_len(), 0);
     assert_eq!(rbuf.capacity(), 16);
     assert_eq!(rbuf.unfilled().capacity(), 16);
-}
-
-#[test]
-fn initialize_unfilled() {
-    let buf: &mut [_] = &mut [MaybeUninit::uninit(); 16];
-    let mut rbuf: BorrowedBuf<'_> = buf.into();
-
-    rbuf.unfilled().ensure_init();
-
-    assert_eq!(rbuf.init_len(), 16);
 }
 
 #[test]
@@ -40,7 +28,7 @@ fn advance_filled() {
     let buf: &mut [_] = &mut [0; 16];
     let mut rbuf: BorrowedBuf<'_> = buf.into();
 
-    rbuf.unfilled().advance(1);
+    unsafe { rbuf.unfilled().advance(1) };
 
     assert_eq!(rbuf.filled().len(), 1);
     assert_eq!(rbuf.unfilled().capacity(), 15);
@@ -51,7 +39,7 @@ fn clear() {
     let buf: &mut [_] = &mut [255; 16];
     let mut rbuf: BorrowedBuf<'_> = buf.into();
 
-    rbuf.unfilled().advance(16);
+    unsafe { rbuf.unfilled().advance(16) };
 
     assert_eq!(rbuf.filled().len(), 16);
     assert_eq!(rbuf.unfilled().capacity(), 0);
@@ -61,33 +49,9 @@ fn clear() {
     assert_eq!(rbuf.filled().len(), 0);
     assert_eq!(rbuf.unfilled().capacity(), 16);
 
-    assert_eq!(rbuf.unfilled().init_mut(), [255; 16]);
-}
+    unsafe { rbuf.unfilled().advance(16) };
 
-#[test]
-fn set_init() {
-    let buf: &mut [_] = &mut [MaybeUninit::zeroed(); 16];
-    let mut rbuf: BorrowedBuf<'_> = buf.into();
-
-    unsafe {
-        rbuf.set_init(8);
-    }
-
-    assert_eq!(rbuf.init_len(), 8);
-
-    rbuf.unfilled().advance(4);
-
-    unsafe {
-        rbuf.set_init(2);
-    }
-
-    assert_eq!(rbuf.init_len(), 8);
-
-    unsafe {
-        rbuf.set_init(8);
-    }
-
-    assert_eq!(rbuf.init_len(), 8);
+    assert_eq!(rbuf.filled(), [255; 16]);
 }
 
 #[test]
@@ -97,7 +61,6 @@ fn append() {
 
     rbuf.unfilled().append(&[0; 8]);
 
-    assert_eq!(rbuf.init_len(), 8);
     assert_eq!(rbuf.filled().len(), 8);
     assert_eq!(rbuf.filled(), [0; 8]);
 
@@ -105,7 +68,6 @@ fn append() {
 
     rbuf.unfilled().append(&[1; 16]);
 
-    assert_eq!(rbuf.init_len(), 16);
     assert_eq!(rbuf.filled().len(), 16);
     assert_eq!(rbuf.filled(), [1; 16]);
 }
@@ -125,41 +87,10 @@ fn reborrow_written() {
     assert_eq!(cursor.written(), 32);
 
     assert_eq!(buf.unfilled().written(), 32);
-    assert_eq!(buf.init_len(), 32);
     assert_eq!(buf.filled().len(), 32);
     let filled = buf.filled();
     assert_eq!(&filled[..16], [1; 16]);
     assert_eq!(&filled[16..], [2; 16]);
-}
-
-#[test]
-fn cursor_set_init() {
-    let buf: &mut [_] = &mut [MaybeUninit::zeroed(); 16];
-    let mut rbuf: BorrowedBuf<'_> = buf.into();
-
-    unsafe {
-        rbuf.unfilled().set_init(8);
-    }
-
-    assert_eq!(rbuf.init_len(), 8);
-    assert_eq!(rbuf.unfilled().init_mut().len(), 8);
-    assert_eq!(unsafe { rbuf.unfilled().as_mut().len() }, 16);
-
-    rbuf.unfilled().advance(4);
-
-    unsafe {
-        rbuf.unfilled().set_init(2);
-    }
-
-    assert_eq!(rbuf.init_len(), 8);
-
-    unsafe {
-        rbuf.unfilled().set_init(8);
-    }
-
-    assert_eq!(rbuf.init_len(), 12);
-    assert_eq!(rbuf.unfilled().init_mut().len(), 8);
-    assert_eq!(unsafe { rbuf.unfilled().as_mut().len() }, 12);
 }
 
 #[test]
@@ -169,31 +100,30 @@ fn cursor_with_unfilled_buf() {
     let mut cursor = rbuf.unfilled();
 
     cursor.with_unfilled_buf(|buf| {
+        assert_eq!(buf.capacity(), 16);
         buf.unfilled().append(&[1, 2, 3]);
         assert_eq!(buf.filled(), &[1, 2, 3]);
     });
 
-    assert_eq!(cursor.init_mut().len(), 0);
     assert_eq!(cursor.written(), 3);
 
     cursor.with_unfilled_buf(|buf| {
         assert_eq!(buf.capacity(), 13);
-        assert_eq!(buf.init_len(), 0);
 
-        buf.unfilled().ensure_init();
-        buf.unfilled().advance(4);
+        unsafe {
+            buf.unfilled().as_mut().write_filled(0);
+            buf.unfilled().advance(4)
+        };
     });
 
-    assert_eq!(cursor.init_mut().len(), 9);
     assert_eq!(cursor.written(), 7);
 
     cursor.with_unfilled_buf(|buf| {
         assert_eq!(buf.capacity(), 9);
-        assert_eq!(buf.init_len(), 9);
     });
 
-    assert_eq!(cursor.init_mut().len(), 9);
     assert_eq!(cursor.written(), 7);
+    assert_eq!(rbuf.len(), 7);
 
     assert_eq!(rbuf.filled(), &[1, 2, 3, 0, 0, 0, 0]);
 }

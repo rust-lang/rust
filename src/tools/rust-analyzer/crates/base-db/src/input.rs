@@ -857,9 +857,10 @@ impl CrateGraphBuilder {
     }
 }
 
-impl BuiltCrateData {
-    pub fn root_file_id(&self, db: &dyn salsa::Database) -> EditionedFileId {
-        EditionedFileId::new(db, self.root_file_id, self.edition)
+impl Crate {
+    pub fn root_file_id(self, db: &dyn salsa::Database) -> EditionedFileId {
+        let data = self.data(db);
+        EditionedFileId::new(db, data.root_file_id, data.edition, self)
     }
 }
 

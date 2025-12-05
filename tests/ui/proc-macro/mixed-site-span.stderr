@@ -576,7 +576,7 @@ LL |         proc_macro_rules!();
    |
    = note: this error originates in the macro `proc_macro_rules` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0412]: cannot find type `ItemUse` in crate `$crate`
+error[E0425]: cannot find type `ItemUse` in crate `$crate`
   --> $DIR/mixed-site-span.rs:23:9
    |
 LL |         proc_macro_rules!();
@@ -609,5 +609,5 @@ LL |         local_def;
 
 error: aborting due to 52 previous errors
 
-Some errors have detailed explanations: E0412, E0425, E0426, E0432.
-For more information about an error, try `rustc --explain E0412`.
+Some errors have detailed explanations: E0425, E0426, E0432.
+For more information about an error, try `rustc --explain E0425`.

@@ -35,9 +35,9 @@
         "x.py",
         "check",
         "--json-output",
-        "--compile-time-deps"
+        "--compile-time-deps",
         "--build-dir",
-        "build-rust-analyzer",
+        "build-rust-analyzer"
     ],
     "rust-analyzer.server.extraEnv": {
         "RUSTUP_TOOLCHAIN": "nightly"

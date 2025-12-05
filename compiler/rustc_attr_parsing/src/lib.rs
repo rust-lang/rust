@@ -98,6 +98,7 @@ mod interface;
 pub mod parser;
 
 mod lints;
+mod safety;
 mod session_diagnostics;
 mod target_checking;
 pub mod validate_attr;

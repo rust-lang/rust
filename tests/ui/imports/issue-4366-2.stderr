@@ -1,4 +1,4 @@
-error[E0412]: cannot find type `Bar` in this scope
+error[E0425]: cannot find type `Bar` in this scope
   --> $DIR/issue-4366-2.rs:16:21
    |
 LL |         fn sub() -> Bar { 1 }
@@ -28,5 +28,5 @@ LL + use foo::foo;
 
 error: aborting due to 2 previous errors
 
-Some errors have detailed explanations: E0412, E0423.
-For more information about an error, try `rustc --explain E0412`.
+Some errors have detailed explanations: E0423, E0425.
+For more information about an error, try `rustc --explain E0423`.

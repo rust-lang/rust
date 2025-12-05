@@ -1321,9 +1321,8 @@ fn classify_name_ref<'db>(
         let incomplete_expr_stmt =
             it.parent().and_then(ast::ExprStmt::cast).map(|it| it.semicolon_token().is_none());
         let before_else_kw = before_else_kw(it);
-        let incomplete_let = it
-            .parent()
-            .and_then(ast::LetStmt::cast)
+        let incomplete_let = left_ancestors(it.parent())
+            .find_map(ast::LetStmt::cast)
             .is_some_and(|it| it.semicolon_token().is_none())
             || after_incomplete_let && incomplete_expr_stmt.unwrap_or(true) && !before_else_kw;
         let in_value = is_in_value(it);
@@ -1628,6 +1627,7 @@ fn classify_name_ref<'db>(
                     }
                 }
                 qualifier_ctx.vis_node = error_node.children().find_map(ast::Visibility::cast);
+                qualifier_ctx.abi_node = error_node.children().find_map(ast::Abi::cast);
             }
 
             if let PathKind::Item { .. } = path_ctx.kind
@@ -1879,6 +1879,13 @@ fn path_or_use_tree_qualifier(path: &ast::Path) -> Option<(ast::Path, bool)> {
     let use_tree_list = path.syntax().ancestors().find_map(ast::UseTreeList::cast)?;
     let use_tree = use_tree_list.syntax().parent().and_then(ast::UseTree::cast)?;
     Some((use_tree.path()?, true))
+}
+
+fn left_ancestors(node: Option<SyntaxNode>) -> impl Iterator<Item = SyntaxNode> {
+    node.into_iter().flat_map(|node| {
+        let end = node.text_range().end();
+        node.ancestors().take_while(move |it| it.text_range().end() == end)
+    })
 }
 
 fn is_in_token_of_for_loop(path: &ast::Path) -> bool {

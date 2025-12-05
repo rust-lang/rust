@@ -1,4 +1,4 @@
-error[E0412]: cannot find type `Foo` in this scope
+error[E0425]: cannot find type `Foo` in this scope
   --> $DIR/issue-88472.rs:17:16
    |
 LL |     type Bar = Foo;
@@ -10,7 +10,7 @@ note: struct `a::Foo` exists but is inaccessible
 LL |     struct Foo;
    |     ^^^^^^^^^^^ not accessible
 
-error[E0412]: cannot find type `Eee` in this scope
+error[E0425]: cannot find type `Eee` in this scope
   --> $DIR/issue-88472.rs:34:16
    |
 LL |     type Baz = Eee;
@@ -39,4 +39,4 @@ LL | #![warn(unused_imports)]
 
 error: aborting due to 2 previous errors; 1 warning emitted
 
-For more information about this error, try `rustc --explain E0412`.
+For more information about this error, try `rustc --explain E0425`.

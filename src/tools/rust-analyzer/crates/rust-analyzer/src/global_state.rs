@@ -45,7 +45,7 @@ use crate::{
     op_queue::{Cause, OpQueue},
     reload,
     target_spec::{CargoTargetSpec, ProjectJsonTargetSpec, TargetSpec},
-    task_pool::{TaskPool, TaskQueue},
+    task_pool::{DeferredTaskQueue, TaskPool},
     test_runner::{CargoTestHandle, CargoTestMessage},
 };
 
@@ -121,9 +121,10 @@ pub(crate) struct GlobalState {
     pub(crate) test_run_remaining_jobs: usize,
 
     // Project loading
-    pub(crate) discover_handle: Option<discover::DiscoverHandle>,
+    pub(crate) discover_handles: Vec<discover::DiscoverHandle>,
     pub(crate) discover_sender: Sender<discover::DiscoverProjectMessage>,
     pub(crate) discover_receiver: Receiver<discover::DiscoverProjectMessage>,
+    pub(crate) discover_jobs_active: u32,
 
     // Debouncing channel for fetching the workspace
     // we want to delay it until the VFS looks stable-ish (and thus is not currently in the middle
@@ -175,7 +176,6 @@ pub(crate) struct GlobalState {
     pub(crate) fetch_build_data_queue: OpQueue<(), FetchBuildDataResponse>,
     pub(crate) fetch_proc_macros_queue: OpQueue<(ChangeWithProcMacros, Vec<ProcMacroPaths>), bool>,
     pub(crate) prime_caches_queue: OpQueue,
-    pub(crate) discover_workspace_queue: OpQueue,
 
     /// A deferred task queue.
     ///
@@ -186,7 +186,8 @@ pub(crate) struct GlobalState {
     /// For certain features, such as [`GlobalState::handle_discover_msg`],
     /// this queue should run only *after* [`GlobalState::process_changes`] has
     /// been called.
-    pub(crate) deferred_task_queue: TaskQueue,
+    pub(crate) deferred_task_queue: DeferredTaskQueue,
+
     /// HACK: Workaround for https://github.com/rust-lang/rust-analyzer/issues/19709
     /// This is marked true if we failed to load a crate root file at crate graph creation,
     /// which will usually end up causing a bunch of incorrect diagnostics on startup.
@@ -241,9 +242,9 @@ impl GlobalState {
         };
         let cancellation_pool = thread::Pool::new(1);
 
-        let task_queue = {
+        let deferred_task_queue = {
             let (sender, receiver) = unbounded();
-            TaskQueue { sender, receiver }
+            DeferredTaskQueue { sender, receiver }
         };
 
         let mut analysis_host = AnalysisHost::new(config.lru_parse_query_capacity());
@@ -291,9 +292,10 @@ impl GlobalState {
             test_run_receiver,
             test_run_remaining_jobs: 0,
 
-            discover_handle: None,
+            discover_handles: vec![],
             discover_sender,
             discover_receiver,
+            discover_jobs_active: 0,
 
             fetch_ws_receiver: None,
 
@@ -312,9 +314,8 @@ impl GlobalState {
             fetch_proc_macros_queue: OpQueue::default(),
 
             prime_caches_queue: OpQueue::default(),
-            discover_workspace_queue: OpQueue::default(),
 
-            deferred_task_queue: task_queue,
+            deferred_task_queue,
             incomplete_crate_graph: false,
 
             minicore: MiniCoreRustAnalyzerInternalOnly::default(),
@@ -540,10 +541,9 @@ impl GlobalState {
         // didn't find anything (to make up for the lack of precision).
         {
             if !matches!(&workspace_structure_change, Some((.., true))) {
-                _ = self
-                    .deferred_task_queue
-                    .sender
-                    .send(crate::main_loop::QueuedTask::CheckProcMacroSources(modified_rust_files));
+                _ = self.deferred_task_queue.sender.send(
+                    crate::main_loop::DeferredTask::CheckProcMacroSources(modified_rust_files),
+                );
             }
             // FIXME: ideally we should only trigger a workspace fetch for non-library changes
             // but something's going wrong with the source root business when we add a new local

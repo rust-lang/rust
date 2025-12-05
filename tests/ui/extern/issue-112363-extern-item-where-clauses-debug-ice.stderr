@@ -20,13 +20,13 @@ LL |     type Item = [T] where [T]: Sized;
    |
    = note: for more information, visit https://doc.rust-lang.org/std/keyword.extern.html
 
-error[E0412]: cannot find type `T` in this scope
+error[E0425]: cannot find type `T` in this scope
   --> $DIR/issue-112363-extern-item-where-clauses-debug-ice.rs:2:28
    |
 LL |     type Item = [T] where [T]: Sized;
    |                            ^ not found in this scope
 
-error[E0412]: cannot find type `T` in this scope
+error[E0425]: cannot find type `T` in this scope
   --> $DIR/issue-112363-extern-item-where-clauses-debug-ice.rs:2:18
    |
 LL |     type Item = [T] where [T]: Sized;
@@ -44,5 +44,5 @@ LL |     type Item = [T] where [T]: Sized;
 
 error: aborting due to 5 previous errors
 
-Some errors have detailed explanations: E0412, E0658.
-For more information about an error, try `rustc --explain E0412`.
+Some errors have detailed explanations: E0425, E0658.
+For more information about an error, try `rustc --explain E0425`.

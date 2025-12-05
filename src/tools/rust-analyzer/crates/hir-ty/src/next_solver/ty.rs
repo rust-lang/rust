@@ -5,7 +5,6 @@ use std::ops::ControlFlow;
 use hir_def::{
     AdtId, HasModule, TypeParamId,
     hir::generics::{TypeOrConstParamData, TypeParamProvenance},
-    lang_item::LangItem,
 };
 use hir_def::{TraitId, type_ref::Rawness};
 use rustc_abi::{Float, Integer, Size};
@@ -620,7 +619,7 @@ impl<'db> Ty<'db> {
 
     // FIXME: Should this be here?
     pub fn impl_trait_bounds(self, db: &'db dyn HirDatabase) -> Option<Vec<Clause<'db>>> {
-        let interner = DbInterner::new_with(db, None, None);
+        let interner = DbInterner::new_no_crate(db);
 
         match self.kind() {
             TyKind::Alias(AliasTyKind::Opaque, opaque_ty) => Some(
@@ -658,7 +657,7 @@ impl<'db> Ty<'db> {
             TyKind::Coroutine(coroutine_id, _args) => {
                 let InternedCoroutine(owner, _) = coroutine_id.0.loc(db);
                 let krate = owner.module(db).krate();
-                if let Some(future_trait) = LangItem::Future.resolve_trait(db, krate) {
+                if let Some(future_trait) = hir_def::lang_item::lang_items(db, krate).Future {
                     // This is only used by type walking.
                     // Parameters will be walked outside, and projection predicate is not used.
                     // So just provide the Future trait.

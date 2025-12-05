@@ -4,7 +4,7 @@ error: generic parameters on `where` clauses are reserved for future use
 LL | fn foo<T>() where <T>::Item: ToString, T: Iterator { }
    |                   ^^^ currently unsupported
 
-error[E0412]: cannot find type `Item` in the crate root
+error[E0425]: cannot find type `Item` in the crate root
   --> $DIR/where_with_bound.rs:2:24
    |
 LL | fn foo<T>() where <T>::Item: ToString, T: Iterator { }
@@ -12,4 +12,4 @@ LL | fn foo<T>() where <T>::Item: ToString, T: Iterator { }
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0412`.
+For more information about this error, try `rustc --explain E0425`.

@@ -1,15 +1,10 @@
-error: expected one of `!` or `::`, found `Result`
-  --> $DIR/assoc-type.rs:2:10
+error: keyword `type` is written in the wrong case
+  --> $DIR/assoc-type.rs:4:5
    |
-LL | trait Animal {
-   |              - while parsing this item list starting here
 LL |     Type Result = u8;
-   |          ^^^^^^ expected one of `!` or `::`
-LL |
-LL | }
-   | - the item list ends here
+   |     ^^^^
    |
-help: write keyword `type` in lowercase
+help: write it in lowercase
    |
 LL -     Type Result = u8;
 LL +     type Result = u8;

@@ -1,10 +1,9 @@
-//@ check-pass
+// Regression test for <https://github.com/rust-lang/rust/issues/120600>
 //
-// issue: rust-lang/rust#120600
+//@ edition: 2024
+//@ check-pass
 
-#![allow(internal_features)]
-#![feature(never_type, rustc_attrs)]
-#![rustc_never_type_options(fallback = "never")]
+#![feature(never_type)]
 
 fn ice(a: !) {
     a == a;
