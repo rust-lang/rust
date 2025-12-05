@@ -784,15 +784,6 @@ impl<'a> Parser<'a> {
             )?
         } else if self.eat_keyword(exp!(Box)) {
             self.parse_pat_box()?
-        } else if self.check_inline_const(0) {
-            // Parse `const pat`
-            let const_expr = self.parse_const_block(lo.to(self.token.span), true)?;
-
-            if let Some(re) = self.parse_range_end() {
-                self.parse_pat_range_begin_with(const_expr, re)?
-            } else {
-                PatKind::Expr(const_expr)
-            }
         } else if self.is_builtin() {
             self.parse_pat_builtin()?
         }
@@ -1280,9 +1271,7 @@ impl<'a> Parser<'a> {
         let open_paren = (self.may_recover() && self.eat_noexpect(&token::OpenParen))
             .then_some(self.prev_token.span);
 
-        let bound = if self.check_inline_const(0) {
-            self.parse_const_block(self.token.span, true)
-        } else if self.check_path() {
+        let bound = if self.check_path() {
             let lo = self.token.span;
             let (qself, path) = if self.eat_lt() {
                 // Parse a qualified path
