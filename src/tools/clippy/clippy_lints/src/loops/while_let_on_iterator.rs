@@ -12,7 +12,7 @@ use rustc_hir::intravisit::{Visitor, walk_expr};
 use rustc_hir::{Closure, Expr, ExprKind, HirId, LetStmt, Mutability, UnOp};
 use rustc_lint::LateContext;
 use rustc_middle::hir::nested_filter::OnlyBodies;
-use rustc_middle::ty::adjustment::Adjust;
+use rustc_middle::ty::adjustment::{Adjust, DerefAdjustKind};
 use rustc_span::Symbol;
 use rustc_span::symbol::sym;
 
@@ -88,7 +88,7 @@ fn try_parse_iter_expr(cx: &LateContext<'_>, mut e: &Expr<'_>) -> Option<IterExp
             .typeck_results()
             .expr_adjustments(e)
             .iter()
-            .any(|a| matches!(a.kind, Adjust::Deref(Some(..))))
+            .any(|a| matches!(a.kind, Adjust::Deref(DerefAdjustKind::Overloaded(..))))
         {
             // Custom deref impls need to borrow the whole value as it's captured by reference
             can_move = false;
