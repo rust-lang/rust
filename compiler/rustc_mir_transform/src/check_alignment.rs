@@ -1,5 +1,4 @@
 use rustc_abi::Align;
-use rustc_hir::LangItem;
 use rustc_index::IndexVec;
 use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::visit::PlaceContext;
@@ -60,9 +59,10 @@ fn insert_alignment_check<'tcx>(
     stmts.push(Statement::new(source_info, StatementKind::Assign(Box::new((addr, rvalue)))));
 
     // Get the alignment of the pointee
-    let align_def_id = tcx.require_lang_item(LangItem::AlignOf, source_info.span);
     let alignment =
-        Operand::unevaluated_constant(tcx, align_def_id, &[pointee_ty.into()], source_info.span);
+        local_decls.push(LocalDecl::with_source_info(tcx.types.usize, source_info)).into();
+    let rvalue = Rvalue::NullaryOp(NullOp::AlignOf, pointee_ty);
+    stmts.push(Statement::new(source_info, StatementKind::Assign(Box::new((alignment, rvalue)))));
 
     // Subtract 1 from the alignment to get the alignment mask
     let alignment_mask =
@@ -76,7 +76,7 @@ fn insert_alignment_check<'tcx>(
         source_info,
         StatementKind::Assign(Box::new((
             alignment_mask,
-            Rvalue::BinaryOp(BinOp::Sub, Box::new((alignment.clone(), one))),
+            Rvalue::BinaryOp(BinOp::Sub, Box::new((Operand::Copy(alignment), one))),
         ))),
     ));
 
@@ -141,7 +141,7 @@ fn insert_alignment_check<'tcx>(
     PointerCheck {
         cond: Operand::Copy(is_ok),
         assert_kind: Box::new(AssertKind::MisalignedPointerDereference {
-            required: alignment,
+            required: Operand::Copy(alignment),
             found: Operand::Copy(addr),
         }),
     }
