@@ -1299,30 +1299,6 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Parses inline const expressions.
-    fn parse_const_block(&mut self, span: Span, pat: bool) -> PResult<'a, Box<Expr>> {
-        self.expect_keyword(exp!(Const))?;
-        let (attrs, blk) = self.parse_inner_attrs_and_block(None)?;
-        let anon_const = AnonConst {
-            id: DUMMY_NODE_ID,
-            value: self.mk_expr(blk.span, ExprKind::Block(blk, None)),
-        };
-        let blk_span = anon_const.value.span;
-        let kind = if pat {
-            let guar = self
-                .dcx()
-                .struct_span_err(blk_span, "const blocks cannot be used as patterns")
-                .with_help(
-                    "use a named `const`-item or an `if`-guard (`x if x == const { ... }`) instead",
-                )
-                .emit();
-            ExprKind::Err(guar)
-        } else {
-            ExprKind::ConstBlock(anon_const)
-        };
-        Ok(self.mk_expr_with_attrs(span.to(blk_span), kind, attrs))
-    }
-
     /// Parses mutability (`mut` or nothing).
     fn parse_mutability(&mut self) -> Mutability {
         if self.eat_keyword(exp!(Mut)) { Mutability::Mut } else { Mutability::Not }
