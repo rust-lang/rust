@@ -813,7 +813,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             && m1 == m2
         {
             // FIXME: this error is too conservative and technically unnecessary now when module
-            // scope is split into two scopes, remove it with lang team approval.
+            // scope is split into two scopes, at least when not resolving in `ScopeSet::Module`,
+            // remove it with lang team approval.
             Some(AmbiguityKind::GlobVsExpanded)
         } else {
             None
