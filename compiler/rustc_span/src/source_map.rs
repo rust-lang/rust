@@ -105,6 +105,9 @@ pub trait FileLoader {
     /// Read the contents of a potentially non-UTF-8 file into memory.
     /// We don't normalize binary files, so we can start in an Arc.
     fn read_binary_file(&self, path: &Path) -> io::Result<Arc<[u8]>>;
+
+    /// Current working directory
+    fn current_directory(&self) -> io::Result<PathBuf>;
 }
 
 /// A FileLoader that uses std::fs to load real files.
@@ -170,6 +173,10 @@ impl FileLoader for RealFileLoader {
         file.read_to_end(&mut bytes)?;
         Ok(bytes.into())
     }
+
+    fn current_directory(&self) -> io::Result<PathBuf> {
+        std::env::current_dir()
+    }
 }
 
 // _____________________________________________________________________________
@@ -198,6 +205,9 @@ pub struct SourceMap {
     // `--remap-path-prefix` to all `SourceFile`s allocated within this `SourceMap`.
     path_mapping: FilePathMapping,
 
+    /// Current working directory
+    working_dir: RealFileName,
+
     /// The algorithm used for hashing the contents of each source file.
     hash_kind: SourceFileHashAlgorithm,
 
@@ -221,8 +231,14 @@ impl SourceMap {
     pub fn with_inputs(
         SourceMapInputs { file_loader, path_mapping, hash_kind, checksum_hash_kind }: SourceMapInputs,
     ) -> SourceMap {
+        let cwd = file_loader
+            .current_directory()
+            .expect("expecting a current working directory to exist");
+        let working_dir = cwd.to_path_buf().into();
+        debug!(?working_dir);
         SourceMap {
             files: Default::default(),
+            working_dir,
             file_loader: IntoDynSyncSend(file_loader),
             path_mapping,
             hash_kind,
@@ -232,6 +248,10 @@ impl SourceMap {
 
     pub fn path_mapping(&self) -> &FilePathMapping {
         &self.path_mapping
+    }
+
+    pub fn working_dir(&self) -> &RealFileName {
+        &self.working_dir
     }
 
     pub fn file_exists(&self, path: &Path) -> bool {
