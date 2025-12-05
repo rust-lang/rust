@@ -12,9 +12,10 @@
 //@ [aarch64] ignore-windows
 //@ [aarch64] ignore-apple
 //@ [aarch64] ignore-uefi
-// Windows dosen't use `#[rustc_pass_indirectly_in_non_rustic_abis]` and is tested in CI, so is here
+// Windows doesn't use `#[rustc_pass_indirectly_in_non_rustic_abis]` and is tested in CI, so is here
 // for comparison.
 //@ [win] only-windows
+//@ [win] only-x86_64
 
 #![feature(rustc_attrs, c_variadic)]
 #![crate_type = "lib"]

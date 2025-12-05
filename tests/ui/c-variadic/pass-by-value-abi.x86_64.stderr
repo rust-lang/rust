@@ -71,7 +71,7 @@ error: fn_abi_of(take_va_list) = FnAbi {
            conv: C,
            can_unwind: false,
        }
-  --> $DIR/pass-by-value-abi.rs:26:1
+  --> $DIR/pass-by-value-abi.rs:27:1
    |
 LL | pub extern "C" fn take_va_list(_: VaList<'_>) {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -151,7 +151,7 @@ error: fn_abi_of(take_va_list_sysv64) = FnAbi {
            ),
            can_unwind: false,
        }
-  --> $DIR/pass-by-value-abi.rs:36:1
+  --> $DIR/pass-by-value-abi.rs:37:1
    |
 LL | pub extern "sysv64" fn take_va_list_sysv64(_: VaList<'_>) {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -231,7 +231,7 @@ error: fn_abi_of(take_va_list_win64) = FnAbi {
            ),
            can_unwind: false,
        }
-  --> $DIR/pass-by-value-abi.rs:43:1
+  --> $DIR/pass-by-value-abi.rs:44:1
    |
 LL | pub extern "win64" fn take_va_list_win64(_: VaList<'_>) {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

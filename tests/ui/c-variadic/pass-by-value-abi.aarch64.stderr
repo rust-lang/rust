@@ -71,7 +71,7 @@ error: fn_abi_of(take_va_list) = FnAbi {
            conv: C,
            can_unwind: false,
        }
-  --> $DIR/pass-by-value-abi.rs:26:1
+  --> $DIR/pass-by-value-abi.rs:27:1
    |
 LL | pub extern "C" fn take_va_list(_: VaList<'_>) {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
