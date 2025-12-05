@@ -1,8 +1,8 @@
 use std::borrow::Cow;
 
 use rustc_ast as ast;
-use rustc_ast::{AttrStyle, NodeId, Safety};
 use rustc_ast::token::DocFragmentKind;
+use rustc_ast::{AttrStyle, NodeId, Safety};
 use rustc_errors::DiagCtxtHandle;
 use rustc_feature::{AttributeTemplate, Features};
 use rustc_hir::attrs::AttributeKind;
@@ -357,7 +357,6 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
                             continue;
                         }
 
-                        let path = parser.path();
                         for accept in accepts {
                             let mut cx: AcceptContext<'_, 'sess, S> = AcceptContext {
                                 shared: SharedContext {

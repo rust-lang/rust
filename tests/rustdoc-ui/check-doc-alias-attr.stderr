@@ -18,14 +18,15 @@ LL - #[doc(alias = 0)]
 LL + #[doc = "string"]
    |
 LL - #[doc(alias = 0)]
-LL + #[doc(hidden)]
+LL + #[doc(alias)]
    |
 LL - #[doc(alias = 0)]
-LL + #[doc(inline)]
+LL + #[doc(attribute)]
    |
 LL - #[doc(alias = 0)]
-LL + #[doc(test)]
+LL + #[doc(auto_cfg)]
    |
+   = and 22 other candidates
 
 error: '"' character isn't allowed in `#[doc(alias = "...")]`
   --> $DIR/check-doc-alias-attr.rs:9:15
@@ -85,14 +86,15 @@ LL - #[doc(alias(0))]
 LL + #[doc = "string"]
    |
 LL - #[doc(alias(0))]
-LL + #[doc(hidden)]
+LL + #[doc(alias)]
    |
 LL - #[doc(alias(0))]
-LL + #[doc(inline)]
+LL + #[doc(attribute)]
    |
 LL - #[doc(alias(0))]
-LL + #[doc(test)]
+LL + #[doc(auto_cfg)]
    |
+   = and 22 other candidates
 
 error: '"' character isn't allowed in `#[doc(alias = "...")]`
   --> $DIR/check-doc-alias-attr.rs:20:13

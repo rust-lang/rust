@@ -12,6 +12,8 @@ struct X {
 fn main() {
     let _ = X {
         #[doc(alias = "StructItem")]
+        //~^ WARN: attribute cannot be used on struct fields
+        //~| WARN: this was previously accepted by the compiler but is being phased out
         foo: 123,
     };
 }

@@ -2177,7 +2177,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                 continue;
             }
 
-            if attr.is_doc_comment() {
+            if attr.doc_str_and_fragment_kind().is_some() {
                 self.cx.sess.psess.buffer_lint(
                     UNUSED_DOC_COMMENTS,
                     current_span,

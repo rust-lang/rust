@@ -10,7 +10,7 @@ use rustc_hir::lints::AttributeLintKind;
 use rustc_span::{Span, Symbol, edition, sym};
 use thin_vec::ThinVec;
 
-use super::prelude::{Allow, AllowedTargets, MethodKind, Target};
+use super::prelude::{Allow, AllowedTargets, Error, MethodKind, Target};
 use super::{AcceptMapping, AttributeParser};
 use crate::context::{AcceptContext, FinalizeContext, Stage};
 use crate::fluent_generated as fluent;
@@ -459,7 +459,9 @@ impl DocParser {
     ) {
         match args {
             ArgParser::NoArgs => {
-                todo!()
+                let suggestions = cx.suggestions();
+                let span = cx.attr_span;
+                cx.emit_lint(AttributeLintKind::IllFormedAttributeInput { suggestions }, span);
             }
             ArgParser::List(items) => {
                 for i in items.mixed() {
@@ -493,12 +495,41 @@ impl DocParser {
 impl<S: Stage> AttributeParser<S> for DocParser {
     const ATTRIBUTES: AcceptMapping<Self, S> = &[(
         &[sym::doc],
-        template!(List: &["hidden", "inline", "test"], NameValueStr: "string"),
+        template!(
+            List: &[
+                "alias",
+                "attribute",
+                "hidden",
+                "html_favicon_url",
+                "html_logo_url",
+                "html_no_source",
+                "html_playground_url",
+                "html_root_url",
+                "issue_tracker_base_url",
+                "inline",
+                "no_inline",
+                "masked",
+                "cfg",
+                "notable_trait",
+                "keyword",
+                "fake_variadic",
+                "search_unbox",
+                "rust_logo",
+                "auto_cfg",
+                "test",
+                "spotlight",
+                "include",
+                "no_default_passes",
+                "passes",
+                "plugins",
+            ],
+            NameValueStr: "string"
+        ),
         |this, cx, args| {
             this.accept_single_doc_attr(cx, args);
         },
     )];
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowListWarnRest(&[
         Allow(Target::ExternCrate),
         Allow(Target::Use),
         Allow(Target::Static),
@@ -527,6 +558,7 @@ impl<S: Stage> AttributeParser<S> for DocParser {
         Allow(Target::ForeignTy),
         Allow(Target::MacroDef),
         Allow(Target::Crate),
+        Error(Target::WherePredicate),
     ]);
 
     fn finalize(self, _cx: &FinalizeContext<'_, '_, S>) -> Option<AttributeKind> {

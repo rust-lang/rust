@@ -10,14 +10,15 @@ LL - #[doc(cfg = "x")]
 LL + #[doc = "string"]
    |
 LL - #[doc(cfg = "x")]
-LL + #[doc(hidden)]
+LL + #[doc(alias)]
    |
 LL - #[doc(cfg = "x")]
-LL + #[doc(inline)]
+LL + #[doc(attribute)]
    |
 LL - #[doc(cfg = "x")]
-LL + #[doc(test)]
+LL + #[doc(auto_cfg)]
    |
+   = and 22 other candidates
 
 error[E0805]: malformed `doc` attribute input
   --> $DIR/invalid-cfg.rs:3:1
@@ -33,14 +34,15 @@ LL - #[doc(cfg(x, y))]
 LL + #[doc = "string"]
    |
 LL - #[doc(cfg(x, y))]
-LL + #[doc(hidden)]
+LL + #[doc(alias)]
    |
 LL - #[doc(cfg(x, y))]
-LL + #[doc(inline)]
+LL + #[doc(attribute)]
    |
 LL - #[doc(cfg(x, y))]
-LL + #[doc(test)]
+LL + #[doc(auto_cfg)]
    |
+   = and 22 other candidates
 
 error[E0539]: malformed `doc` attribute input
   --> $DIR/invalid-cfg.rs:7:1
@@ -54,14 +56,15 @@ LL - #[doc(cfg = "x")]
 LL + #[doc = "string"]
    |
 LL - #[doc(cfg = "x")]
-LL + #[doc(hidden)]
+LL + #[doc(alias)]
    |
 LL - #[doc(cfg = "x")]
-LL + #[doc(inline)]
+LL + #[doc(attribute)]
    |
 LL - #[doc(cfg = "x")]
-LL + #[doc(test)]
+LL + #[doc(auto_cfg)]
    |
+   = and 22 other candidates
 
 error[E0805]: malformed `doc` attribute input
   --> $DIR/invalid-cfg.rs:8:1
@@ -77,14 +80,15 @@ LL - #[doc(cfg(x, y))]
 LL + #[doc = "string"]
    |
 LL - #[doc(cfg(x, y))]
-LL + #[doc(hidden)]
+LL + #[doc(alias)]
    |
 LL - #[doc(cfg(x, y))]
-LL + #[doc(inline)]
+LL + #[doc(attribute)]
    |
 LL - #[doc(cfg(x, y))]
-LL + #[doc(test)]
+LL + #[doc(auto_cfg)]
    |
+   = and 22 other candidates
 
 error[E0539]: malformed `doc` attribute input
   --> $DIR/invalid-cfg.rs:12:1
@@ -98,14 +102,15 @@ LL - #[doc(cfg = "x")]
 LL + #[doc = "string"]
    |
 LL - #[doc(cfg = "x")]
-LL + #[doc(hidden)]
+LL + #[doc(alias)]
    |
 LL - #[doc(cfg = "x")]
-LL + #[doc(inline)]
+LL + #[doc(attribute)]
    |
 LL - #[doc(cfg = "x")]
-LL + #[doc(test)]
+LL + #[doc(auto_cfg)]
    |
+   = and 22 other candidates
 
 error[E0805]: malformed `doc` attribute input
   --> $DIR/invalid-cfg.rs:13:1
@@ -121,14 +126,15 @@ LL - #[doc(cfg(x, y))]
 LL + #[doc = "string"]
    |
 LL - #[doc(cfg(x, y))]
-LL + #[doc(hidden)]
+LL + #[doc(alias)]
    |
 LL - #[doc(cfg(x, y))]
-LL + #[doc(inline)]
+LL + #[doc(attribute)]
    |
 LL - #[doc(cfg(x, y))]
-LL + #[doc(test)]
+LL + #[doc(auto_cfg)]
    |
+   = and 22 other candidates
 
 error[E0539]: malformed `doc` attribute input
   --> $DIR/invalid-cfg.rs:18:1
@@ -142,14 +148,15 @@ LL - #[doc(cfg = "x")]
 LL + #[doc = "string"]
    |
 LL - #[doc(cfg = "x")]
-LL + #[doc(hidden)]
+LL + #[doc(alias)]
    |
 LL - #[doc(cfg = "x")]
-LL + #[doc(inline)]
+LL + #[doc(attribute)]
    |
 LL - #[doc(cfg = "x")]
-LL + #[doc(test)]
+LL + #[doc(auto_cfg)]
    |
+   = and 22 other candidates
 
 error[E0805]: malformed `doc` attribute input
   --> $DIR/invalid-cfg.rs:19:1
@@ -165,14 +172,15 @@ LL - #[doc(cfg(x, y))]
 LL + #[doc = "string"]
    |
 LL - #[doc(cfg(x, y))]
-LL + #[doc(hidden)]
+LL + #[doc(alias)]
    |
 LL - #[doc(cfg(x, y))]
-LL + #[doc(inline)]
+LL + #[doc(attribute)]
    |
 LL - #[doc(cfg(x, y))]
-LL + #[doc(test)]
+LL + #[doc(auto_cfg)]
    |
+   = and 22 other candidates
 
 error: aborting due to 8 previous errors
 
