@@ -77,7 +77,7 @@ Rustdoc
 Compatibility Notes
 -------------------
 * [Fix backtraces with `-C panic=abort` on Linux by generating unwind tables by default](https://github.com/rust-lang/rust/pull/143613). Build with `-C force-unwind-tables=no` to keep omitting unwind tables.
-- As part of the larger effort refactoring compiler built-in attributes and their diagnostics, [The future-compatibility lint `invalid_macro_export_arguments` is upgraded to deny-by-default and will be reported in dependencies too.](https://github.com/rust-lang/rust/pull/143857)
+- As part of the larger effort refactoring compiler built-in attributes and their diagnostics, [the future-compatibility lint `invalid_macro_export_arguments` is upgraded to deny-by-default and will be reported in dependencies too.](https://github.com/rust-lang/rust/pull/143857)
 - [Update the minimum external LLVM to 20](https://github.com/rust-lang/rust/pull/145071)
 - [Prevent downstream `impl DerefMut for Pin<LocalType>`](https://github.com/rust-lang/rust/pull/145608)
 - [Don't apply temporary lifetime extension rules to the arguments of non-extended `pin!` and formatting macros](https://github.com/rust-lang/rust/pull/145838)
