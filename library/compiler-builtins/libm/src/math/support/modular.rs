@@ -1,5 +1,9 @@
 /* SPDX-License-Identifier: MIT OR Apache-2.0 */
 
+//! This module provides accelerated modular multiplication by large powers
+//! of two, which is needed for computing floating point remainders in `fmod`
+//! and similar functions.
+//!
 //! To keep the equations somewhat concise, the following conventions are used:
 //!  - all integer operations are in the mathematical sense, without overflow
 //!  - concatenation means multiplication: `2xq = 2 * x * q`
