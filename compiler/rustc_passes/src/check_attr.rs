@@ -1029,25 +1029,27 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             }
         }
 
-        if let Some((_, span)) = keyword {
-            self.check_attr_not_crate_level(*span, hir_id, "keyword");
+        if let Some((_, span)) = keyword
+            && self.check_attr_not_crate_level(*span, hir_id, "keyword")
+        {
             self.check_doc_keyword_and_attribute(*span, hir_id, "keyword");
         }
-        if let Some((_, span)) = attribute {
-            self.check_attr_not_crate_level(*span, hir_id, "attribute");
+        if let Some((_, span)) = attribute
+            && self.check_attr_not_crate_level(*span, hir_id, "attribute")
+        {
             self.check_doc_keyword_and_attribute(*span, hir_id, "attribute");
         }
 
-        if let Some(span) = fake_variadic {
-            if self.check_attr_not_crate_level(*span, hir_id, "fake_variadic") {
-                self.check_doc_fake_variadic(*span, hir_id);
-            }
+        if let Some(span) = fake_variadic
+            && self.check_attr_not_crate_level(*span, hir_id, "fake_variadic")
+        {
+            self.check_doc_fake_variadic(*span, hir_id);
         }
 
-        if let Some(span) = search_unbox {
-            if self.check_attr_not_crate_level(*span, hir_id, "search_unbox") {
-                self.check_doc_search_unbox(*span, hir_id);
-            }
+        if let Some(span) = search_unbox
+            && self.check_attr_not_crate_level(*span, hir_id, "search_unbox")
+        {
+            self.check_doc_search_unbox(*span, hir_id);
         }
 
         for i in [
@@ -1070,18 +1072,17 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
 
         self.check_doc_inline(hir_id, target, inline);
 
-        if let Some(span) = rust_logo {
-            if self.check_attr_crate_level(*span, hir_id)
-                && !self.tcx.features().rustdoc_internals()
-            {
-                feature_err(
-                    &self.tcx.sess,
-                    sym::rustdoc_internals,
-                    *span,
-                    fluent::passes_doc_rust_logo,
-                )
-                .emit();
-            }
+        if let Some(span) = rust_logo
+            && self.check_attr_crate_level(*span, hir_id)
+            && !self.tcx.features().rustdoc_internals()
+        {
+            feature_err(
+                &self.tcx.sess,
+                sym::rustdoc_internals,
+                *span,
+                fluent::passes_doc_rust_logo,
+            )
+            .emit();
         }
 
         if let Some(span) = masked {
@@ -1984,7 +1985,14 @@ impl<'tcx> Visitor<'tcx> for CheckAttrVisitor<'tcx> {
             .hir_attrs(where_predicate.hir_id)
             .iter()
             .filter(|attr| !ATTRS_ALLOWED.iter().any(|&sym| attr.has_name(sym)))
-            .filter(|attr| !attr.is_parsed_attr())
+            // FIXME: We shouldn't need to special-case `doc`!
+            .filter(|attr| {
+                matches!(
+                    attr,
+                    Attribute::Parsed(AttributeKind::DocComment { .. } | AttributeKind::Doc(_))
+                        | Attribute::Unparsed(_)
+                )
+            })
             .map(|attr| attr.span())
             .collect::<Vec<_>>();
         if !spans.is_empty() {

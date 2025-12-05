@@ -12,14 +12,15 @@ LL - #[doc(cfg(), cfg(foo, bar))]
 LL + #[doc = "string"]
    |
 LL - #[doc(cfg(), cfg(foo, bar))]
-LL + #[doc(hidden)]
+LL + #[doc(alias)]
    |
 LL - #[doc(cfg(), cfg(foo, bar))]
-LL + #[doc(inline)]
+LL + #[doc(attribute)]
    |
 LL - #[doc(cfg(), cfg(foo, bar))]
-LL + #[doc(test)]
+LL + #[doc(auto_cfg)]
    |
+   = and 22 other candidates
 
 error[E0805]: malformed `doc` attribute input
   --> $DIR/doc-cfg.rs:3:1
@@ -35,14 +36,15 @@ LL - #[doc(cfg(), cfg(foo, bar))]
 LL + #[doc = "string"]
    |
 LL - #[doc(cfg(), cfg(foo, bar))]
-LL + #[doc(hidden)]
+LL + #[doc(alias)]
    |
 LL - #[doc(cfg(), cfg(foo, bar))]
-LL + #[doc(inline)]
+LL + #[doc(attribute)]
    |
 LL - #[doc(cfg(), cfg(foo, bar))]
-LL + #[doc(test)]
+LL + #[doc(auto_cfg)]
    |
+   = and 22 other candidates
 
 error[E0805]: malformed `doc` attribute input
   --> $DIR/doc-cfg.rs:6:1
@@ -58,14 +60,15 @@ LL - #[doc(cfg())]
 LL + #[doc = "string"]
    |
 LL - #[doc(cfg())]
-LL + #[doc(hidden)]
+LL + #[doc(alias)]
    |
 LL - #[doc(cfg())]
-LL + #[doc(inline)]
+LL + #[doc(attribute)]
    |
 LL - #[doc(cfg())]
-LL + #[doc(test)]
+LL + #[doc(auto_cfg)]
    |
+   = and 22 other candidates
 
 error[E0805]: malformed `doc` attribute input
   --> $DIR/doc-cfg.rs:7:1
@@ -81,14 +84,15 @@ LL - #[doc(cfg(foo, bar))]
 LL + #[doc = "string"]
    |
 LL - #[doc(cfg(foo, bar))]
-LL + #[doc(hidden)]
+LL + #[doc(alias)]
    |
 LL - #[doc(cfg(foo, bar))]
-LL + #[doc(inline)]
+LL + #[doc(attribute)]
    |
 LL - #[doc(cfg(foo, bar))]
-LL + #[doc(test)]
+LL + #[doc(auto_cfg)]
    |
+   = and 22 other candidates
 
 error[E0539]: malformed `doc` attribute input
   --> $DIR/doc-cfg.rs:8:1
@@ -104,14 +108,15 @@ LL - #[doc(auto_cfg(hide(foo::bar)))]
 LL + #[doc = "string"]
    |
 LL - #[doc(auto_cfg(hide(foo::bar)))]
-LL + #[doc(hidden)]
+LL + #[doc(alias)]
    |
 LL - #[doc(auto_cfg(hide(foo::bar)))]
-LL + #[doc(inline)]
+LL + #[doc(attribute)]
    |
 LL - #[doc(auto_cfg(hide(foo::bar)))]
-LL + #[doc(test)]
+LL + #[doc(auto_cfg)]
    |
+   = and 22 other candidates
 
 error: aborting due to 5 previous errors
 

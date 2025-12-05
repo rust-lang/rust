@@ -1,10 +1,27 @@
-error: `#![doc(test(...)]` does not take a literal
-  --> $DIR/doc-test-literal.rs:1:13
+error[E0565]: malformed `doc` attribute input
+  --> $DIR/doc-test-literal.rs:1:1
    |
 LL | #![doc(test(""))]
-   |             ^^
+   | ^^^^^^^^^^^^--^^^
+   |             |
+   |             didn't expect a literal here
    |
-   = note: `#[deny(invalid_doc_attributes)]` on by default
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #![doc(test(""))]
+LL + #![doc = "string"]
+   |
+LL - #![doc(test(""))]
+LL + #![doc(alias)]
+   |
+LL - #![doc(test(""))]
+LL + #![doc(attribute)]
+   |
+LL - #![doc(test(""))]
+LL + #![doc(auto_cfg)]
+   |
+   = and 22 other candidates
 
 error: aborting due to 1 previous error
 
+For more information about this error, try `rustc --explain E0565`.

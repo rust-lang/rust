@@ -21,11 +21,22 @@ impl Foo for Bar {
     type X = i32;
     fn foo(#[doc(alias = "qux")] _x: u32) -> Self::X {
         //~^ ERROR
-        #[doc(alias = "stmt")] //~ ERROR
+        //~| WARN `#[doc]` attribute cannot be used on function params
+        //~| WARN: this was previously accepted by the compiler
+        #[doc(alias = "stmt")]
+        //~^ ERROR
+        //~| WARN `#[doc]` attribute cannot be used on statements
+        //~| WARN: this was previously accepted by the compiler
         let x = 0;
-        #[doc(alias = "expr")] //~ ERROR
+        #[doc(alias = "expr")]
+        //~^ ERROR
+        //~| WARN `#[doc]` attribute cannot be used on expressions
+        //~| WARN: this was previously accepted by the compiler
         match x {
-            #[doc(alias = "arm")] //~ ERROR
+            #[doc(alias = "arm")]
+            //~^ ERROR
+            //~| WARN `#[doc]` attribute cannot be used on match arms
+            //~| WARN: this was previously accepted by the compiler
             _ => 0
         }
     }

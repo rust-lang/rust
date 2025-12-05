@@ -19,7 +19,7 @@ fn main() {
 
 macro_rules! make {
     ($name:ident) => { #[doc(alias = $name)] pub struct S; }
-    //~^ ERROR expected unsuffixed literal, found identifier `nickname`
+    //~^ ERROR expected a literal (`1u8`, `1.0f32`, `"string"`, etc.) here, found identifier `nickname`
 }
 
 make!(nickname); //~ NOTE in this expansion

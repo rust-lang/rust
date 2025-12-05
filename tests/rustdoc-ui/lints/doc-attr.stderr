@@ -12,14 +12,15 @@ LL - #[doc(123)]
 LL + #[doc = "string"]
    |
 LL - #[doc(123)]
-LL + #[doc(hidden)]
+LL + #[doc(alias)]
    |
 LL - #[doc(123)]
-LL + #[doc(inline)]
+LL + #[doc(attribute)]
    |
 LL - #[doc(123)]
-LL + #[doc(test)]
+LL + #[doc(auto_cfg)]
    |
+   = and 22 other candidates
 
 error[E0539]: malformed `doc` attribute input
   --> $DIR/doc-attr.rs:5:1
@@ -35,14 +36,15 @@ LL - #[doc("hello", "bar")]
 LL + #[doc = "string"]
    |
 LL - #[doc("hello", "bar")]
-LL + #[doc(hidden)]
+LL + #[doc(alias)]
    |
 LL - #[doc("hello", "bar")]
-LL + #[doc(inline)]
+LL + #[doc(attribute)]
    |
 LL - #[doc("hello", "bar")]
-LL + #[doc(test)]
+LL + #[doc(auto_cfg)]
    |
+   = and 22 other candidates
 
 error[E0539]: malformed `doc` attribute input
   --> $DIR/doc-attr.rs:5:1
@@ -58,14 +60,15 @@ LL - #[doc("hello", "bar")]
 LL + #[doc = "string"]
    |
 LL - #[doc("hello", "bar")]
-LL + #[doc(hidden)]
+LL + #[doc(alias)]
    |
 LL - #[doc("hello", "bar")]
-LL + #[doc(inline)]
+LL + #[doc(attribute)]
    |
 LL - #[doc("hello", "bar")]
-LL + #[doc(test)]
+LL + #[doc(auto_cfg)]
    |
+   = and 22 other candidates
 
 error: aborting due to 3 previous errors
 

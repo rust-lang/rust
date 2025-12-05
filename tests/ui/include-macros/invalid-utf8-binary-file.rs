@@ -5,6 +5,8 @@
 //! Ensure that ICE does not occur when reading an invalid UTF8 file with an absolute path.
 //! regression test for issue <https://github.com/rust-lang/rust/issues/149304>
 
-#![doc = include_str!(concat!(env!("INVALID_UTF8_BIN")))] //~ ERROR: wasn't a utf-8 file
+#![doc = include_str!(concat!(env!("INVALID_UTF8_BIN")))]
+//~^ ERROR: wasn't a utf-8 file
+//~| ERROR: attribute value must be a literal
 
 fn main() {}
