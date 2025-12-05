@@ -1,5 +1,7 @@
-use crate::common::{Config, KNOWN_CRATE_TYPES, KNOWN_TARGET_HAS_ATOMIC_WIDTHS, Sanitizer};
-use crate::directives::{DirectiveLine, IgnoreDecision, llvm_has_libzstd};
+use crate::common::{
+    Config, KNOWN_CRATE_TYPES, KNOWN_TARGET_HAS_ATOMIC_WIDTHS, Sanitizer, query_rustc_output,
+};
+use crate::directives::{DirectiveLine, IgnoreDecision};
 
 pub(super) fn handle_needs(
     cache: &CachedNeedsConditions,
@@ -377,7 +379,7 @@ impl CachedNeedsConditions {
                 .join(if config.host.contains("windows") { "rust-lld.exe" } else { "rust-lld" })
                 .exists(),
 
-            llvm_zstd: llvm_has_libzstd(&config),
+            llvm_zstd: llvm_has_zstd(&config),
             dlltool: find_dlltool(&config),
             symlinks: has_symlinks(),
         }
@@ -427,4 +429,19 @@ fn has_symlinks() -> bool {
 #[cfg(not(windows))]
 fn has_symlinks() -> bool {
     true
+}
+
+fn llvm_has_zstd(config: &Config) -> bool {
+    // The compiler already knows whether LLVM was built with zstd or not,
+    // so compiletest can just ask the compiler.
+    let output = query_rustc_output(
+        config,
+        &["-Zunstable-options", "--print=backend-has-zstd"],
+        Default::default(),
+    );
+    match output.trim() {
+        "true" => true,
+        "false" => false,
+        _ => panic!("unexpected output from `--print=backend-has-zstd`: {output:?}"),
+    }
 }
