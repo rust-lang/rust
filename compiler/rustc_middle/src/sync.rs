@@ -1,6 +1,7 @@
 use parking_lot::Mutex;
 pub use rustc_data_structures::marker::{DynSend, DynSync};
 pub use rustc_data_structures::sync::*;
+use rustc_query_system::query::QueryInclusion;
 
 pub use crate::ty::tls;
 
@@ -224,9 +225,15 @@ where
     F: FnOnce() -> R,
 {
     tls::with_context_opt(|icx| {
-        if let Some(icx) = icx {
+        if let Some(icx) = icx
+            && let Some(QueryInclusion { id, branch, real_depth }) = icx.query
+        {
             let icx = tls::ImplicitCtxt {
-                query_branch: icx.query_branch.branch(branch_num, branch_space),
+                query: Some(QueryInclusion {
+                    id,
+                    branch: branch.branch(branch_num, branch_space),
+                    real_depth,
+                }),
                 ..*icx
             };
             tls::enter_context(&icx, f)
