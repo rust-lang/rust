@@ -578,7 +578,6 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
                     Some(val)
                 }
             },
-            PatExprKind::ConstBlock(ConstBlock { body, .. }) => self.expr(self.tcx.hir_body(*body).value),
             PatExprKind::Path(qpath) => self.qpath(qpath, pat_expr.hir_id),
         }
     }
