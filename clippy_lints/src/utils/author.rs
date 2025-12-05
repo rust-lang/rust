@@ -723,7 +723,6 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
                 kind!("Lit {{ ref {lit}, {negated} }}");
                 self.lit(lit);
             },
-            PatExprKind::ConstBlock(_) => kind!("ConstBlock(_)"),
             PatExprKind::Path(_) => self.maybe_path(pat),
         }
     }
