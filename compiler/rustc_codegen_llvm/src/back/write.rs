@@ -776,18 +776,26 @@ pub(crate) unsafe fn llvm_optimize(
     };
 
     if cgcx.target_is_like_gpu {
-        if let Some(device_path) = config.offload.iter().find_map(|o| {
-            if let config::Offload::Device(path) = o {
-                Some(path) // &PathBuf
-            } else {
-                None
+        if let Some(host_path) = config
+            .offload
+            .iter()
+            .find_map(|o| if let config::Offload::Device(path) = o { Some(path) } else { None })
+        {
+            let host_pathbuf = PathBuf::from(host_path);
+            if host_pathbuf.is_relative() {
+                panic!("Absolute path is needed");
             }
-        }) {
-            assert!(PathBuf::from(device_path).exists());
-            let lib_bc_c = CString::new(device_path.as_str()).unwrap();
-            //let lib_bc_c = CString::new("/p/lustre1/drehwald1/prog/offload/r/lib.bc").unwrap();
-            let host_out_c = CString::new("/p/lustre1/drehwald1/prog/offload/r/host.out").unwrap();
-            let out_obj_c = CString::new("/p/lustre1/drehwald1/prog/offload/r/host.o").unwrap();
+            assert!(host_pathbuf.exists());
+            let host_dir = host_pathbuf.parent().unwrap();
+            let lib_bc_c = CString::new(host_path.as_str()).unwrap();
+            let host_out = host_dir.join("host.out");
+            let out_obj = host_dir.join("host.o");
+            assert!(host_out.exists());
+            assert!(out_obj.exists());
+            let s = host_out.to_str().expect("path is not valid UTF-8");
+            let g = out_obj.to_str().expect("path is not valid UTF-8");
+            let host_out_c = CString::new(s).unwrap();
+            let out_obj_c = CString::new(g).unwrap();
 
             unsafe {
                 llvm::LLVMRustBundleImages(
@@ -795,8 +803,6 @@ pub(crate) unsafe fn llvm_optimize(
                     module.module_llvm.tm.raw(),
                     host_out_c.as_ptr(),
                 );
-            }
-            unsafe {
                 // 1) Bundle device module into offload image host.out (device TM)
                 let ok = llvm::LLVMRustBundleImages(
                     module.module_llvm.llmod(),
@@ -812,6 +818,9 @@ pub(crate) unsafe fn llvm_optimize(
                     out_obj_c.as_ptr(),
                 );
                 assert!(ok, "LLVMRustFinalizeOffload (host finalize) failed");
+            }
+            if !cgcx.save_temps {
+                let _ = std::fs::remove_file(PathBuf::from(host_out_c.into_string().unwrap()));
             }
             dbg!("done");
         }
