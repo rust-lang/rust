@@ -30,6 +30,16 @@ error[E0425]: cannot find value `local_def` in this scope
    |
 LL |         local_def;
    |         ^^^^^^^^^ help: a local variable with a similar name exists: `local_use`
+   |
+help: an identifier with the same name is defined here, but is not accessible due to macro hygiene
+  --> $DIR/gen-macro-rules-hygiene.rs:13:1
+   |
+LL | gen_macro_rules!();
+   | ^^^^^^^^^^^^^^^^^^
+...
+LL |         generated!();
+   |         ------------ in this macro invocation
+   = note: this error originates in the macro `generated` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 3 previous errors
 
