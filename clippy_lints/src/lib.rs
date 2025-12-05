@@ -182,6 +182,7 @@ mod large_include_file;
 mod large_stack_arrays;
 mod large_stack_frames;
 mod legacy_numeric_constants;
+mod len_without_is_empty;
 mod len_zero;
 mod let_if_seq;
 mod let_underscore;
@@ -539,6 +540,7 @@ pub fn register_lint_passes(store: &mut rustc_lint::LintStore, conf: &'static Co
         Box::new(|_| Box::new(unnecessary_mut_passed::UnnecessaryMutPassed)),
         Box::new(|_| Box::<significant_drop_tightening::SignificantDropTightening<'_>>::default()),
         Box::new(move |_| Box::new(len_zero::LenZero::new(conf))),
+        Box::new(|_| Box::new(len_without_is_empty::LenWithoutIsEmpty)),
         Box::new(move |_| Box::new(attrs::Attributes::new(conf))),
         Box::new(|_| Box::new(blocks_in_conditions::BlocksInConditions)),
         Box::new(|_| Box::new(unicode::Unicode)),
