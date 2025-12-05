@@ -627,7 +627,7 @@ pub fn report_msg<'tcx>(
                 err.subdiagnostic(frame_info.as_note(machine.tcx));
             } else {
                 let sm = sess.source_map();
-                let span = sm.span_to_embeddable_string(frame_info.span);
+                let span = sm.span_to_diagnostic_string(frame_info.span);
                 err.note(format!("{frame_info} at {span}"));
             }
         }
