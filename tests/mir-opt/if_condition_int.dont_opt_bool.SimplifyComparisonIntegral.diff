@@ -1,0 +1,30 @@
+- // MIR for `dont_opt_bool` before SimplifyComparisonIntegral
++ // MIR for `dont_opt_bool` after SimplifyComparisonIntegral
+  
+  fn dont_opt_bool(_1: bool) -> u32 {
+      debug x => _1;
+      let mut _0: u32;
+      let mut _2: bool;
+  
+      bb0: {
+          StorageLive(_2);
+          _2 = copy _1;
+          switchInt(move _2) -> [0: bb2, otherwise: bb1];
+      }
+  
+      bb1: {
+          _0 = const 0_u32;
+          goto -> bb3;
+      }
+  
+      bb2: {
+          _0 = const 1_u32;
+          goto -> bb3;
+      }
+  
+      bb3: {
+          StorageDead(_2);
+          return;
+      }
+  }
+  

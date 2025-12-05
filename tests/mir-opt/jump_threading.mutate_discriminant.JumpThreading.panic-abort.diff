@@ -1,0 +1,26 @@
+- // MIR for `mutate_discriminant` before JumpThreading
++ // MIR for `mutate_discriminant` after JumpThreading
+  
+  fn mutate_discriminant() -> u8 {
+      let mut _0: u8;
+      let mut _1: std::option::Option<NonZeroUsize>;
+      let mut _2: isize;
+  
+      bb0: {
+          discriminant(_1) = 1;
+          (((_1 as variant#1).0: NonZeroUsize).0: usize) = const 0_usize;
+          _2 = discriminant(_1);
+          switchInt(copy _2) -> [0: bb1, otherwise: bb2];
+      }
+  
+      bb1: {
+          _0 = const 1_u8;
+          return;
+      }
+  
+      bb2: {
+          _0 = const 2_u8;
+          unreachable;
+      }
+  }
+  

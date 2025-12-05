@@ -1,0 +1,10 @@
+error: rustc_outlives
+  --> $DIR/explicit-enum.rs:4:1
+   |
+LL | enum Foo<'a, U> {
+   | ^^^^^^^^^^^^^^^
+   |
+   = note: U: 'a
+
+error: aborting due to 1 previous error
+

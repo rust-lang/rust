@@ -1,0 +1,19 @@
+error[E0277]: `Error` doesn't implement `Debug`
+  --> $DIR/derives-span-Debug-tuple-struct.rs:8:5
+   |
+LL | #[derive(Debug)]
+   |          ----- in this derive macro expansion
+LL | struct Struct(
+LL |     Error
+   |     ^^^^^ the trait `Debug` is not implemented for `Error`
+   |
+   = note: add `#[derive(Debug)]` to `Error` or manually `impl Debug for Error`
+help: consider annotating `Error` with `#[derive(Debug)]`
+   |
+LL + #[derive(Debug)]
+LL | struct Error;
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

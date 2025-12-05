@@ -1,0 +1,13 @@
+error[E0119]: conflicting implementations of trait `Trait` for type `LocalTy`
+  --> $DIR/unstable_impl_coherence.rs:14:1
+   |
+LL | impl aux::Trait for LocalTy {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: conflicting implementation in crate `unstable_impl_coherence_aux`:
+           - impl<T> Trait for T
+             where feature(foo) is enabled;
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0119`.

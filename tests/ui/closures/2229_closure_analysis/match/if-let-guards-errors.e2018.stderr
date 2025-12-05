@@ -1,0 +1,42 @@
+error[E0505]: cannot move out of `value` because it is borrowed
+  --> $DIR/if-let-guards-errors.rs:16:13
+   |
+LL |     let f = |x: &E| {
+   |             ------- borrow of `value` occurs here
+LL |         match &x {
+LL |             E::Number(_) if let E::Number(ref mut n) = *value => { }
+   |                                                        ------ borrow occurs due to use in closure
+...
+LL |     let x = value;
+   |             ^^^^^ move out of `value` occurs here
+LL |
+LL |     drop(f);
+   |          - borrow later used here
+
+error[E0382]: use of moved value: `value`
+  --> $DIR/if-let-guards-errors.rs:28:13
+   |
+LL | fn if_let_move(value: Box<E>) {
+   |                ----- move occurs because `value` has type `Box<E>`, which does not implement the `Copy` trait
+LL |     let f = |x: &E| {
+   |             ------- value moved into closure here
+LL |         match &x {
+LL |             E::Number(_) if let E::String(s) = *value => { }
+   |                                                ------ variable moved due to use in closure
+...
+LL |     let x = value;
+   |             ^^^^^ value used here after move
+   |
+note: if `E` implemented `Clone`, you could clone the value
+  --> $DIR/if-let-guards-errors.rs:32:1
+   |
+LL |             E::Number(_) if let E::String(s) = *value => { }
+   |                                                ------ you could clone this value
+...
+LL | enum E {
+   | ^^^^^^ consider implementing `Clone` for this type
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0382, E0505.
+For more information about an error, try `rustc --explain E0382`.

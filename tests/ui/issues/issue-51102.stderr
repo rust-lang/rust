@@ -1,0 +1,27 @@
+error[E0026]: struct `SimpleStruct` does not have a field named `state`
+  --> $DIR/issue-51102.rs:13:17
+   |
+LL |                 state: 0,
+   |                 ^^^^^
+   |                 |
+   |                 struct `SimpleStruct` does not have this field
+   |                 help: `SimpleStruct` has a field named `no_state_here`
+
+error[E0025]: field `no_state_here` bound multiple times in the pattern
+  --> $DIR/issue-51102.rs:24:17
+   |
+LL |                 no_state_here: 0,
+   |                 ---------------- first use of `no_state_here`
+LL |                 no_state_here: 1
+   |                 ^^^^^^^^^^^^^^^^ multiple uses of `no_state_here` in pattern
+
+error[E0026]: variant `SimpleEnum::NoState` does not have a field named `state`
+  --> $DIR/issue-51102.rs:33:17
+   |
+LL |                 state: 0
+   |                 ^^^^^ variant `SimpleEnum::NoState` does not have this field
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0025, E0026.
+For more information about an error, try `rustc --explain E0025`.

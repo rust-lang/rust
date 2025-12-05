@@ -1,0 +1,21 @@
+error[E0277]: the trait bound `&[i8]: From<&[u8]>` is not satisfied
+  --> $DIR/issue-71394-no-from-impl.rs:8:25
+   |
+LL |     let _: &[i8] = data.into();
+   |                         ^^^^ the trait `From<&[u8]>` is not implemented for `&[i8]`
+   |
+   = help: the following other types implement trait `From<T>`:
+             `[T; 1]` implements `From<(T,)>`
+             `[T; 2]` implements `From<(T, T)>`
+             `[T; 3]` implements `From<(T, T, T)>`
+             `[T; 4]` implements `From<(T, T, T, T)>`
+             `[T; 5]` implements `From<(T, T, T, T, T)>`
+             `[T; 6]` implements `From<(T, T, T, T, T, T)>`
+             `[T; 7]` implements `From<(T, T, T, T, T, T, T)>`
+             `[T; 8]` implements `From<(T, T, T, T, T, T, T, T)>`
+           and 6 others
+   = note: required for `&[u8]` to implement `Into<&[i8]>`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

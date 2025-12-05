@@ -1,0 +1,10 @@
+error: higher-ranked lifetime error
+  --> $DIR/trivial-does-not-hold.rs:7:5
+   |
+LL |     || {};
+   |     ^^^^^
+   |
+   = note: could not prove `for<'a> &'a (): '_`
+
+error: aborting due to 1 previous error
+

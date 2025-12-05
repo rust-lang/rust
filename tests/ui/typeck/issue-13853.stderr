@@ -1,0 +1,49 @@
+error[E0308]: mismatched types
+  --> $DIR/issue-13853.rs:14:9
+   |
+LL |     fn nodes<'a, I: Iterator<Item=&'a N>>(&self) -> I
+   |                  - expected this type parameter     - expected `I` because of return type
+...
+LL |         self.iter()
+   |         ^^^^^^^^^^^ expected type parameter `I`, found `Iter<'_, N>`
+   |
+   = note: expected type parameter `I`
+                      found struct `std::slice::Iter<'_, N>`
+   = note: the caller chooses a type for `I` which can be different from `std::slice::Iter<'_, N>`
+
+error[E0599]: no method named `iter` found for reference `&G` in the current scope
+  --> $DIR/issue-13853.rs:27:23
+   |
+LL |     for node in graph.iter() {
+   |                       ^^^^ method not found in `&G`
+
+error[E0282]: type annotations needed
+  --> $DIR/issue-13853.rs:28:9
+   |
+LL |         node.zomg();
+   |         ^^^^ cannot infer type
+
+error[E0308]: mismatched types
+  --> $DIR/issue-13853.rs:37:13
+   |
+LL |     iterate(graph);
+   |     ------- ^^^^^ expected `&_`, found `Vec<Stuff>`
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected reference `&_`
+                 found struct `Vec<Stuff>`
+note: function defined here
+  --> $DIR/issue-13853.rs:26:4
+   |
+LL | fn iterate<N: Node, G: Graph<N>>(graph: &G) {
+   |    ^^^^^^^                       ---------
+help: consider borrowing here
+   |
+LL |     iterate(&graph);
+   |             +
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0282, E0308, E0599.
+For more information about an error, try `rustc --explain E0282`.

@@ -1,0 +1,24 @@
+[package]
+name = "panic_unwind"
+version = "0.0.0"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/rust-lang/rust.git"
+description = "Implementation of Rust panics via stack unwinding"
+edition = "2024"
+
+[lib]
+test = false
+bench = false
+doc = false
+
+[dependencies]
+alloc = { path = "../alloc" }
+core = { path = "../rustc-std-workspace-core", package = "rustc-std-workspace-core" }
+unwind = { path = "../unwind" }
+
+[target.'cfg(not(all(windows, target_env = "msvc")))'.dependencies]
+libc = { version = "0.2", default-features = false }
+
+[lints.rust.unexpected_cfgs]
+level = "warn"
+check-cfg = ['cfg(emscripten_wasm_eh)']

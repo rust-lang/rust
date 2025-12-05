@@ -1,0 +1,110 @@
+error: repetition matches empty token tree
+  --> $DIR/issue-5067.rs:9:8
+   |
+LL |     ( $()* ) => {};
+   |        ^^
+
+error: repetition matches empty token tree
+  --> $DIR/issue-5067.rs:11:8
+   |
+LL |     ( $()+ ) => {};
+   |        ^^
+
+error: repetition matches empty token tree
+  --> $DIR/issue-5067.rs:13:8
+   |
+LL |     ( $()? ) => {};
+   |        ^^
+
+error: repetition matches empty token tree
+  --> $DIR/issue-5067.rs:18:9
+   |
+LL |     ( [$()*] ) => {};
+   |         ^^
+
+error: repetition matches empty token tree
+  --> $DIR/issue-5067.rs:20:9
+   |
+LL |     ( [$()+] ) => {};
+   |         ^^
+
+error: repetition matches empty token tree
+  --> $DIR/issue-5067.rs:22:9
+   |
+LL |     ( [$()?] ) => {};
+   |         ^^
+
+error: repetition matches empty token tree
+  --> $DIR/issue-5067.rs:27:8
+   |
+LL |     ( $($()* $(),* $(a)* $(a),* )* ) => {};
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: repetition matches empty token tree
+  --> $DIR/issue-5067.rs:29:8
+   |
+LL |     ( $($()* $(),* $(a)* $(a),* )+ ) => {};
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: repetition matches empty token tree
+  --> $DIR/issue-5067.rs:31:8
+   |
+LL |     ( $($()* $(),* $(a)* $(a),* )? ) => {};
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: repetition matches empty token tree
+  --> $DIR/issue-5067.rs:33:8
+   |
+LL |     ( $($()? $(),* $(a)? $(a),* )* ) => {};
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: repetition matches empty token tree
+  --> $DIR/issue-5067.rs:35:8
+   |
+LL |     ( $($()? $(),* $(a)? $(a),* )+ ) => {};
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: repetition matches empty token tree
+  --> $DIR/issue-5067.rs:37:8
+   |
+LL |     ( $($()? $(),* $(a)? $(a),* )? ) => {};
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: repetition matches empty token tree
+  --> $DIR/issue-5067.rs:47:12
+   |
+LL |     ( $(a $()+)* ) => {};
+   |            ^^
+
+error: repetition matches empty token tree
+  --> $DIR/issue-5067.rs:49:12
+   |
+LL |     ( $(a $()*)+ ) => {};
+   |            ^^
+
+error: repetition matches empty token tree
+  --> $DIR/issue-5067.rs:51:12
+   |
+LL |     ( $(a $()+)? ) => {};
+   |            ^^
+
+error: repetition matches empty token tree
+  --> $DIR/issue-5067.rs:53:12
+   |
+LL |     ( $(a $()?)+ ) => {};
+   |            ^^
+
+error: repetition matches empty token tree
+  --> $DIR/issue-5067.rs:60:18
+   |
+LL |     (a $e1:expr $($(, a $e2:expr)*)*) => ([$e1 $($(, $e2)*)*]);
+   |                  ^^^^^^^^^^^^^^^^^^
+
+error: repetition matches empty token tree
+  --> $DIR/issue-5067.rs:71:8
+   |
+LL |     ( $()* ) => {};
+   |        ^^
+
+error: aborting due to 18 previous errors
+

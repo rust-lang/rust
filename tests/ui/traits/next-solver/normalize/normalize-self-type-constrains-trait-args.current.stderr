@@ -1,0 +1,11 @@
+warning: the feature `lazy_type_alias` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/normalize-self-type-constrains-trait-args.rs:8:12
+   |
+LL | #![feature(lazy_type_alias)]
+   |            ^^^^^^^^^^^^^^^
+   |
+   = note: see issue #112792 <https://github.com/rust-lang/rust/issues/112792> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+warning: 1 warning emitted
+

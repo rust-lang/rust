@@ -1,0 +1,76 @@
+error: method's name is the same as an existing method in a trait
+  --> tests/ui/same_name_method.rs:20:13
+   |
+LL |             fn foo() {}
+   |             ^^^^^^^^
+   |
+note: existing `foo` defined here
+  --> tests/ui/same_name_method.rs:25:13
+   |
+LL |             fn foo() {}
+   |             ^^^^^^^^
+   = note: `-D clippy::same-name-method` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::same_name_method)]`
+
+error: method's name is the same as an existing method in a trait
+  --> tests/ui/same_name_method.rs:35:13
+   |
+LL |             fn clone() {}
+   |             ^^^^^^^^^^
+   |
+note: existing `clone` defined here
+  --> tests/ui/same_name_method.rs:31:18
+   |
+LL |         #[derive(Clone)]
+   |                  ^^^^^
+
+error: method's name is the same as an existing method in a trait
+  --> tests/ui/same_name_method.rs:46:13
+   |
+LL |             fn foo() {}
+   |             ^^^^^^^^
+   |
+note: existing `foo` defined here
+  --> tests/ui/same_name_method.rs:51:13
+   |
+LL |             fn foo() {}
+   |             ^^^^^^^^
+
+error: method's name is the same as an existing method in a trait
+  --> tests/ui/same_name_method.rs:61:13
+   |
+LL |             fn foo() {}
+   |             ^^^^^^^^
+   |
+note: existing `foo` defined here
+  --> tests/ui/same_name_method.rs:65:9
+   |
+LL |         impl T1 for S {}
+   |         ^^^^^^^^^^^^^^^^
+
+error: method's name is the same as an existing method in a trait
+  --> tests/ui/same_name_method.rs:74:13
+   |
+LL |             fn foo() {}
+   |             ^^^^^^^^
+   |
+note: existing `foo` defined here
+  --> tests/ui/same_name_method.rs:79:9
+   |
+LL |         impl T1 for S {}
+   |         ^^^^^^^^^^^^^^^^
+
+error: method's name is the same as an existing method in a trait
+  --> tests/ui/same_name_method.rs:74:13
+   |
+LL |             fn foo() {}
+   |             ^^^^^^^^
+   |
+note: existing `foo` defined here
+  --> tests/ui/same_name_method.rs:81:9
+   |
+LL |         impl T2 for S {}
+   |         ^^^^^^^^^^^^^^^^
+
+error: aborting due to 6 previous errors
+

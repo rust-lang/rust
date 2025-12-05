@@ -1,0 +1,33 @@
+error: Undefined Behavior: not granting access to tag <TAG> because that would remove [Unique for <TAG>] which is strongly protected
+  --> tests/fail/stacked_borrows/drop_in_place_protector.rs:LL:CC
+   |
+LL |             let _val = *P;
+   |                        ^^ Undefined Behavior occurred here
+   |
+   = help: this indicates a potential bug in the program: it performed an invalid operation, but the Stacked Borrows rules it violated are still experimental
+   = help: see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/stacked-borrows.md for further information
+help: <TAG> was created by a SharedReadWrite retag at offsets [0x0..0x1]
+  --> tests/fail/stacked_borrows/drop_in_place_protector.rs:LL:CC
+   |
+LL |         let x = core::ptr::addr_of_mut!(x);
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: <TAG> is this argument
+  --> tests/fail/stacked_borrows/drop_in_place_protector.rs:LL:CC
+   |
+LL |         core::ptr::drop_in_place(x);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: BACKTRACE (of the first span):
+   = note: inside `<HasDrop as std::ops::Drop>::drop` at tests/fail/stacked_borrows/drop_in_place_protector.rs:LL:CC
+   = note: inside `std::ptr::drop_in_place::<HasDrop> - shim(Some(HasDrop))` at RUSTLIB/core/src/ptr/mod.rs:LL:CC
+   = note: inside `std::ptr::drop_in_place::<(HasDrop, u8)> - shim(Some((HasDrop, u8)))` at RUSTLIB/core/src/ptr/mod.rs:LL:CC
+note: inside `main`
+  --> tests/fail/stacked_borrows/drop_in_place_protector.rs:LL:CC
+   |
+LL |         core::ptr::drop_in_place(x);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: this error originates in the macro `core::ptr::addr_of_mut` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to 1 previous error
+

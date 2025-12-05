@@ -1,0 +1,2 @@
+error: incorrect value `1,2` for unstable option `patchable-function-entry` - either two comma separated integers (total_nops,prefix_nops), with prefix_nops <= total_nops, or one integer (total_nops) was expected
+

@@ -1,0 +1,117 @@
+error[E0277]: `()` doesn't implement `std::fmt::Display`
+  --> $DIR/binding-assigned-block-without-tail-expression.rs:14:20
+   |
+LL |         42;
+   |           - help: remove this semicolon
+...
+LL |     println!("{}", x);
+   |               --   ^ `()` cannot be formatted with the default formatter
+   |               |
+   |               required by this formatting parameter
+   |
+   = help: the trait `std::fmt::Display` is not implemented for `()`
+   = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
+   = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: `()` doesn't implement `std::fmt::Display`
+  --> $DIR/binding-assigned-block-without-tail-expression.rs:15:20
+   |
+LL |     let y = {};
+   |             -- this empty block is missing a tail expression
+...
+LL |     println!("{}", y);
+   |               --   ^ `()` cannot be formatted with the default formatter
+   |               |
+   |               required by this formatting parameter
+   |
+   = help: the trait `std::fmt::Display` is not implemented for `()`
+   = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
+   = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: `()` doesn't implement `std::fmt::Display`
+  --> $DIR/binding-assigned-block-without-tail-expression.rs:16:20
+   |
+LL |         "hi";
+   |             - help: remove this semicolon
+...
+LL |     println!("{}", z);
+   |               --   ^ `()` cannot be formatted with the default formatter
+   |               |
+   |               required by this formatting parameter
+   |
+   = help: the trait `std::fmt::Display` is not implemented for `()`
+   = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
+   = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: `()` doesn't implement `std::fmt::Display`
+  --> $DIR/binding-assigned-block-without-tail-expression.rs:17:20
+   |
+LL |       let s = {
+   |  _____________-
+LL | |         S;
+LL | |     };
+   | |_____- this block is missing a tail expression
+...
+LL |       println!("{}", s);
+   |                 --   ^ `()` cannot be formatted with the default formatter
+   |                 |
+   |                 required by this formatting parameter
+   |
+   = help: the trait `std::fmt::Display` is not implemented for `()`
+   = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
+   = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0308]: mismatched types
+  --> $DIR/binding-assigned-block-without-tail-expression.rs:18:18
+   |
+LL |         42;
+   |           - help: remove this semicolon
+...
+LL |     let _: i32 = x;
+   |            ---   ^ expected `i32`, found `()`
+   |            |
+   |            expected due to this
+
+error[E0308]: mismatched types
+  --> $DIR/binding-assigned-block-without-tail-expression.rs:19:18
+   |
+LL |     let y = {};
+   |             -- this empty block is missing a tail expression
+...
+LL |     let _: i32 = y;
+   |            ---   ^ expected `i32`, found `()`
+   |            |
+   |            expected due to this
+
+error[E0308]: mismatched types
+  --> $DIR/binding-assigned-block-without-tail-expression.rs:20:18
+   |
+LL |       let z = {
+   |  _____________-
+LL | |         "hi";
+LL | |     };
+   | |_____- this block is missing a tail expression
+...
+LL |       let _: i32 = z;
+   |              ---   ^ expected `i32`, found `()`
+   |              |
+   |              expected due to this
+
+error[E0308]: mismatched types
+  --> $DIR/binding-assigned-block-without-tail-expression.rs:21:18
+   |
+LL |       let s = {
+   |  _____________-
+LL | |         S;
+LL | |     };
+   | |_____- this block is missing a tail expression
+...
+LL |       let _: i32 = s;
+   |              ---   ^ expected `i32`, found `()`
+   |              |
+   |              expected due to this
+
+error: aborting due to 8 previous errors
+
+Some errors have detailed explanations: E0277, E0308.
+For more information about an error, try `rustc --explain E0277`.

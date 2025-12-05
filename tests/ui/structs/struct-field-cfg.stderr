@@ -1,0 +1,46 @@
+error[E0063]: missing field `present` in initializer of `Foo`
+  --> $DIR/struct-field-cfg.rs:7:13
+   |
+LL |     let _ = Foo { #[cfg(any())] present: () };
+   |             ^^^ missing `present`
+
+error[E0560]: struct `Foo` has no field named `absent`
+  --> $DIR/struct-field-cfg.rs:10:46
+   |
+LL |     let _ = Foo { present: (), #[cfg(all())] absent: () };
+   |                                              ^^^^^^ `Foo` does not have this field
+   |
+   = note: all struct fields are already assigned
+
+error[E0027]: pattern does not mention field `present`
+  --> $DIR/struct-field-cfg.rs:13:9
+   |
+LL |     let Foo { #[cfg(any())] present: () } = foo;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing field `present`
+   |
+help: include the missing field in the pattern
+   |
+LL -     let Foo { #[cfg(any())] present: () } = foo;
+LL +     let Foo { present } = foo;
+   |
+help: if you don't care about this missing field, you can explicitly ignore it
+   |
+LL -     let Foo { #[cfg(any())] present: () } = foo;
+LL +     let Foo { present: _ } = foo;
+   |
+help: or always ignore missing fields here
+   |
+LL -     let Foo { #[cfg(any())] present: () } = foo;
+LL +     let Foo { .. } = foo;
+   |
+
+error[E0026]: struct `Foo` does not have a field named `absent`
+  --> $DIR/struct-field-cfg.rs:16:42
+   |
+LL |     let Foo { present: (), #[cfg(all())] absent: () } = foo;
+   |                                          ^^^^^^ struct `Foo` does not have this field
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0026, E0027, E0063, E0560.
+For more information about an error, try `rustc --explain E0026`.

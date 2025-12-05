@@ -1,0 +1,45 @@
+error: extern items cannot be `const`
+  --> $DIR/issue-116203.rs:3:14
+   |
+LL |       static FOO: u32 = 0;
+   |              ^^^
+   |
+   = note: for more information, visit https://doc.rust-lang.org/std/keyword.extern.html
+
+error: extern items cannot be `const`
+  --> $DIR/issue-116203.rs:16:14
+   |
+LL |     hello! { yes }
+   |              ^^^
+   |
+   = note: for more information, visit https://doc.rust-lang.org/std/keyword.extern.html
+
+error: incorrect `static` inside `extern` block
+  --> $DIR/issue-116203.rs:3:14
+   |
+LL |   extern "C" {
+   |   ---------- `extern` blocks define existing foreign statics and statics inside of them cannot have a body
+LL | /     thread_local! {
+LL | |       static FOO: u32 = 0;
+   | |              ^^^ cannot have a body
+...  |
+LL | |     }
+   | |_____- the invalid body
+   |
+   = note: for more information, visit https://doc.rust-lang.org/std/keyword.extern.html
+
+error: incorrect `static` inside `extern` block
+  --> $DIR/issue-116203.rs:16:14
+   |
+LL |         const $name: () = ();
+   |                           -- the invalid body
+...
+LL | extern "C" {
+   | ---------- `extern` blocks define existing foreign statics and statics inside of them cannot have a body
+LL |     hello! { yes }
+   |              ^^^ cannot have a body
+   |
+   = note: for more information, visit https://doc.rust-lang.org/std/keyword.extern.html
+
+error: aborting due to 4 previous errors
+

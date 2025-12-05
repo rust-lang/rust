@@ -1,0 +1,38 @@
+use crate::spec::{
+    Abi, Arch, Cc, LinkerFlavor, Lld, PanicStrategy, RelocModel, Target, TargetMetadata,
+    TargetOptions,
+};
+
+pub(crate) fn target() -> Target {
+    Target {
+        // The below `data_layout` is explicitly specified by the ilp32e ABI in LLVM. See also
+        // `options.llvm_abiname`.
+        data_layout: "e-m:e-p:32:32-i64:64-n32-S32".into(),
+        llvm_target: "riscv32".into(),
+        metadata: TargetMetadata {
+            description: Some("Bare RISC-V (RV32E ISA)".into()),
+            tier: Some(3),
+            host_tools: Some(false),
+            std: Some(false),
+        },
+        pointer_width: 32,
+        arch: Arch::RiscV32,
+
+        options: TargetOptions {
+            abi: Abi::Ilp32e,
+            linker_flavor: LinkerFlavor::Gnu(Cc::No, Lld::Yes),
+            linker: Some("rust-lld".into()),
+            cpu: "generic-rv32".into(),
+            // The ilp32e ABI specifies the `data_layout`
+            llvm_abiname: "ilp32e".into(),
+            max_atomic_width: Some(32),
+            atomic_cas: false,
+            features: "+e,+forced-atomics".into(),
+            panic_strategy: PanicStrategy::Abort,
+            relocation_model: RelocModel::Static,
+            emit_debug_gdb_scripts: false,
+            eh_frame_header: false,
+            ..Default::default()
+        },
+    }
+}

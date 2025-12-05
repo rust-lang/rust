@@ -1,0 +1,91 @@
+// This test ensures that the "pocket menus" are working as expected.
+include: "utils.goml"
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html?search=test"
+wait-for: "#crate-search"
+// First we check that the help menu doesn't exist yet.
+assert-false: "rustdoc-toolbar .help-menu .popover"
+// Then we display the help menu.
+click: "rustdoc-toolbar .help-menu"
+assert: "rustdoc-toolbar .help-menu .popover"
+assert-css: ("rustdoc-toolbar .help-menu .popover", {"display": "block"})
+
+// Now we click somewhere else on the page to ensure it is handling the blur event
+// correctly.
+click: ".sidebar"
+assert-false: "rustdoc-toolbar .help-menu .popover"
+
+// Now we will check that we cannot have two "pocket menus" displayed at the same time.
+click: "rustdoc-toolbar .help-menu"
+assert-css: ("rustdoc-toolbar .help-menu .popover", {"display": "block"})
+click: "rustdoc-toolbar .settings-menu"
+assert-false: "rustdoc-toolbar .help-menu .popover"
+assert-css: ("rustdoc-toolbar .settings-menu .popover", {"display": "block"})
+
+// Now the other way.
+click: "rustdoc-toolbar .help-menu"
+assert-css: ("rustdoc-toolbar .help-menu .popover", {"display": "block"})
+assert-css: ("rustdoc-toolbar .settings-menu .popover", {"display": "none"})
+
+// Now verify that clicking the help menu again closes it.
+click: "rustdoc-toolbar .help-menu"
+assert-false: "rustdoc-toolbar .help-menu .popover"
+assert-css: (".settings-menu .popover", {"display": "none"})
+
+define-function: (
+    "check-popover-colors",
+    [theme, border_color],
+    block {
+        call-function: ("switch-theme", {"theme": |theme|})
+
+        click: "rustdoc-toolbar .help-menu"
+        assert-css: (
+            "rustdoc-toolbar .help-menu .popover",
+            {"display": "block", "border-color": |border_color|},
+        )
+        compare-elements-css: (
+            "rustdoc-toolbar .help-menu .popover",
+            "rustdoc-toolbar .help-menu .top",
+            ["border-color"],
+        )
+        compare-elements-css: (
+            "rustdoc-toolbar .help-menu .popover",
+            "rustdoc-toolbar .help-menu .bottom",
+            ["border-color"],
+        )
+    }
+)
+
+// We check the borders color now:
+call-function: ("check-popover-colors", {
+    "theme": "ayu",
+    "border_color": "#5c6773",
+})
+call-function: ("check-popover-colors", {
+    "theme": "dark",
+    "border_color": "#e0e0e0",
+})
+call-function: ("check-popover-colors", {
+    "theme": "light",
+    "border_color": "#e0e0e0",
+})
+
+// Opening the mobile sidebar should close the settings popover.
+set-window-size: (650, 600)
+click: "rustdoc-topbar .settings-menu a"
+assert-css: ("rustdoc-topbar .settings-menu .popover", {"display": "block"})
+click: ".sidebar-menu-toggle"
+assert: "//*[@class='sidebar shown']"
+assert-css: ("rustdoc-topbar .settings-menu .popover", {"display": "none"})
+// Opening the settings popover should close the sidebar.
+click: ".settings-menu a"
+assert-css: ("rustdoc-topbar .settings-menu .popover", {"display": "block"})
+assert-false: "//*[@class='sidebar shown']"
+
+// Opening the settings popover at start (which async loads stuff) should also close.
+reload:
+click: ".sidebar-menu-toggle"
+assert: "//*[@class='sidebar shown']"
+assert-false: "rustdoc-topbar .settings-menu .popover"
+click: "rustdoc-topbar .settings-menu a"
+assert-false: "//*[@class='sidebar shown']"
+wait-for: "rustdoc-topbar .settings-menu .popover"

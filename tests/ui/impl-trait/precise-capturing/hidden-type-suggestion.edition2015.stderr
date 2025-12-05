@@ -1,0 +1,111 @@
+error[E0700]: hidden type for `impl Sized` captures lifetime that does not appear in bounds
+  --> $DIR/hidden-type-suggestion.rs:6:5
+   |
+LL | fn lifetime<'a, 'b>(x: &'a ()) -> impl Sized + use<'b> {
+   |             --                    -------------------- opaque type defined here
+   |             |
+   |             hidden type `&'a ()` captures the lifetime `'a` as defined here
+LL |
+LL |     x
+   |     ^
+   |
+help: add `'a` to the `use<...>` bound to explicitly capture it
+   |
+LL | fn lifetime<'a, 'b>(x: &'a ()) -> impl Sized + use<'b, 'a> {
+   |                                                      ++++
+
+error[E0700]: hidden type for `impl Sized` captures lifetime that does not appear in bounds
+  --> $DIR/hidden-type-suggestion.rs:12:5
+   |
+LL | fn param<'a, T>(x: &'a ()) -> impl Sized + use<T> {
+   |          --                   ------------------- opaque type defined here
+   |          |
+   |          hidden type `&'a ()` captures the lifetime `'a` as defined here
+LL |
+LL |     x
+   |     ^
+   |
+help: add `'a` to the `use<...>` bound to explicitly capture it
+   |
+LL | fn param<'a, T>(x: &'a ()) -> impl Sized + use<'a, T> {
+   |                                                +++
+
+error[E0700]: hidden type for `impl Sized` captures lifetime that does not appear in bounds
+  --> $DIR/hidden-type-suggestion.rs:18:5
+   |
+LL | fn empty<'a>(x: &'a ()) -> impl Sized + use<> {
+   |          --                ------------------ opaque type defined here
+   |          |
+   |          hidden type `&'a ()` captures the lifetime `'a` as defined here
+LL |
+LL |     x
+   |     ^
+   |
+help: add `'a` to the `use<...>` bound to explicitly capture it
+   |
+LL | fn empty<'a>(x: &'a ()) -> impl Sized + use<'a> {
+   |                                             ++
+
+error[E0700]: hidden type for `impl Captures<'captured>` captures lifetime that does not appear in bounds
+  --> $DIR/hidden-type-suggestion.rs:27:5
+   |
+LL | fn missing<'a, 'captured, 'not_captured, Captured>(x: &'a ()) -> impl Captures<'captured> {
+   |            --                                                    ------------------------ opaque type defined here
+   |            |
+   |            hidden type `&'a ()` captures the lifetime `'a` as defined here
+LL |
+LL |     x
+   |     ^
+   |
+help: add a `use<...>` bound to explicitly capture `'a`
+   |
+LL | fn missing<'a, 'captured, 'not_captured, Captured>(x: &'a ()) -> impl Captures<'captured> + use<'captured, 'a, Captured> {
+   |                                                                                           ++++++++++++++++++++++++++++++
+
+error[E0700]: hidden type for `impl Sized` captures lifetime that does not appear in bounds
+  --> $DIR/hidden-type-suggestion.rs:33:5
+   |
+LL | fn no_params_yet(_: impl Sized, y: &()) -> impl Sized {
+   |                                    ---     ---------- opaque type defined here
+   |                                    |
+   |                                    hidden type `&()` captures the anonymous lifetime defined here
+LL |
+LL |     y
+   |     ^
+   |
+note: you could use a `use<...>` bound to explicitly capture `'_`, but argument-position `impl Trait`s are not nameable
+  --> $DIR/hidden-type-suggestion.rs:31:21
+   |
+LL | fn no_params_yet(_: impl Sized, y: &()) -> impl Sized {
+   |                     ^^^^^^^^^^
+help: add a `use<...>` bound to explicitly capture `'_` after turning all argument-position `impl Trait` into type parameters, noting that this possibly affects the API of this crate
+   |
+LL - fn no_params_yet(_: impl Sized, y: &()) -> impl Sized {
+LL + fn no_params_yet<T: Sized>(_: T, y: &()) -> impl Sized + use<'_, T> {
+   |
+
+error[E0700]: hidden type for `impl Sized` captures lifetime that does not appear in bounds
+  --> $DIR/hidden-type-suggestion.rs:39:5
+   |
+LL | fn yes_params_yet<'a, T>(_: impl Sized, y: &'a ()) -> impl Sized {
+   |                   --                                  ---------- opaque type defined here
+   |                   |
+   |                   hidden type `&'a ()` captures the lifetime `'a` as defined here
+LL |
+LL |     y
+   |     ^
+   |
+note: you could use a `use<...>` bound to explicitly capture `'a`, but argument-position `impl Trait`s are not nameable
+  --> $DIR/hidden-type-suggestion.rs:37:29
+   |
+LL | fn yes_params_yet<'a, T>(_: impl Sized, y: &'a ()) -> impl Sized {
+   |                             ^^^^^^^^^^
+help: add a `use<...>` bound to explicitly capture `'a` after turning all argument-position `impl Trait` into type parameters, noting that this possibly affects the API of this crate
+   |
+LL - fn yes_params_yet<'a, T>(_: impl Sized, y: &'a ()) -> impl Sized {
+LL + fn yes_params_yet<'a, T, U: Sized>(_: U, y: &'a ()) -> impl Sized + use<'a, T, U> {
+   |
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0700`.

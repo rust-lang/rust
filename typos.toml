@@ -1,0 +1,84 @@
+[files]
+extend-exclude = [
+    # exclude git (sub)modules and generated content
+    "compiler/rustc_baked_icu_data",
+    "compiler/rustc_codegen_cranelift",
+    "compiler/rustc_codegen_gcc",
+    "library/backtrace",
+    "library/compiler-builtins",
+    "library/stdarch",
+    # generated lorem ipsum texts
+    "library/alloctests/benches/str.rs",
+    "library/alloctests/tests/str.rs",
+]
+
+[default.extend-words]
+# Add exclusions here, lines should be like `x = "x"`, where `x` is excluded word.
+#
+# Also see docs: https://github.com/crate-ci/typos/blob/v1.28.2/docs/reference.md
+arange = "arange"
+childs = "childs"
+clonable = "clonable"
+Datas = "Datas"
+filetimes = "filetimes"
+leafs = "leafs"
+makro = "makro"
+misformed = "misformed"
+moreso = "moreso"
+optin = "optin"
+publically = "publically"
+rplace = "rplace"
+smove = "smove"
+splitted = "splitted"
+taits = "taits"
+targetting = "targetting"
+unparseable = "unparseable"
+unstability = "unstability"
+unstalled = "unstalled"
+
+# this can be valid word, depends on dictionary edition
+#matcheable = "matcheable"
+
+[default.extend-identifiers]
+# An entry goes here if the typo is part of some existing ident
+# where you want to keep it, but don't want to allow
+# such typos everywhere.
+#
+# I.e. you don't want (or can't) fix some constant name, like
+# `DNS_ERROR_INVAILD_VIRTUALIZATION_INSTANCE_NAME` but actually
+# want to see `INVAILD` typo fixed in other places.
+debug_aranges = "debug_aranges"
+DNS_ERROR_INVAILD_VIRTUALIZATION_INSTANCE_NAME = "DNS_ERROR_INVAILD_VIRTUALIZATION_INSTANCE_NAME"
+EnzymeTypeTreeShiftIndiciesEq = "EnzymeTypeTreeShiftIndiciesEq"
+ERRNO_ACCES = "ERRNO_ACCES"
+ERROR_DS_FILTER_USES_CONTRUCTED_ATTRS = "ERROR_DS_FILTER_USES_CONTRUCTED_ATTRS"
+ERROR_DS_NOT_AUTHORITIVE_FOR_DST_NC = "ERROR_DS_NOT_AUTHORITIVE_FOR_DST_NC"
+ERROR_FILENAME_EXCED_RANGE = "ERROR_FILENAME_EXCED_RANGE"
+ERROR_MCA_OCCURED = "ERROR_MCA_OCCURED"
+ERROR_REQ_NOT_ACCEP = "ERROR_REQ_NOT_ACCEP"
+Oppen = "Oppen"
+# typos treats this as two different camelcase words (`SETTIN` and `Gs`)
+# Tracked in: https://github.com/crate-ci/typos/issues/745
+SETTINGs = "SETTINGs"
+tolen = "tolen"
+
+[default]
+extend-ignore-words-re = [
+    # words with length <= 4 chars is likely noise
+    "^[a-zA-Z]{1,4}$",
+]
+
+extend-ignore-re = [
+    # allow turning off spell checking
+    "(?s)(#|//)\\s*spellchecker:off.*?\\n\\s*(#|//)\\s*spellchecker:on",
+    # ignore these intentional typo examples
+    "/// 1 \\| #\\[cfg\\(widnows\\)\\]",
+    "/// warning: unexpected `cfg` condition name: `widnows`",
+    "/// #\\[cfg\\(widnows\\)\\]",
+    "\\.arg\\(\"Oh no, a tpyo!\"\\)",
+    # string used in benches
+    "\"core::iter::adapters::Copie\"",
+    "-Ccontrol-flow-guard",
+    "concat!\\(\"CURRENT_RUSTC_VERSIO\", \"N\"\\)",
+    "\\*\\*v\\*\\*ariable",
+]

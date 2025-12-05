@@ -1,0 +1,36 @@
+error[E0637]: `'_` cannot be used here
+  --> $DIR/E0637.rs:1:24
+   |
+LL | fn underscore_lifetime<'_>(str1: &'_ str, str2: &'_ str) -> &'_ str {
+   |                        ^^ `'_` is a reserved lifetime name
+   |
+   = help: use another lifetime specifier
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/E0637.rs:1:62
+   |
+LL | fn underscore_lifetime<'_>(str1: &'_ str, str2: &'_ str) -> &'_ str {
+   |                                  -------        -------      ^^ expected named lifetime parameter
+   |
+   = help: this function's return type contains a borrowed value, but the signature does not say whether it is borrowed from `str1` or `str2`
+help: consider introducing a named lifetime parameter
+   |
+LL - fn underscore_lifetime<'_>(str1: &'_ str, str2: &'_ str) -> &'_ str {
+LL + fn underscore_lifetime<'a, '_>(str1: &'a str, str2: &'a str) -> &'a str {
+   |
+
+error[E0637]: `&` without an explicit lifetime name cannot be used here
+  --> $DIR/E0637.rs:13:13
+   |
+LL |     T: Into<&u32>,
+   |             ^ explicit lifetime name needed here
+   |
+help: consider introducing a higher-ranked lifetime here
+   |
+LL |     T: for<'a> Into<&'a u32>,
+   |        +++++++       ++
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0106, E0637.
+For more information about an error, try `rustc --explain E0106`.

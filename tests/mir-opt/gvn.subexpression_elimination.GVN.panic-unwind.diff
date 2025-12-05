@@ -1,0 +1,940 @@
+- // MIR for `subexpression_elimination` before GVN
++ // MIR for `subexpression_elimination` after GVN
+  
+  fn subexpression_elimination(_1: u64, _2: u64, _3: u64) -> () {
+      debug x => _1;
+      debug y => _2;
+      debug z => _3;
+      let mut _0: ();
+      let _4: ();
+      let mut _5: u64;
+      let mut _6: u64;
+      let mut _7: u64;
+      let _8: ();
+      let mut _9: u64;
+      let mut _10: u64;
+      let mut _11: u64;
+      let _12: ();
+      let mut _13: u64;
+      let mut _14: u64;
+      let mut _15: u64;
+      let _16: ();
+      let mut _17: u64;
+      let mut _18: u64;
+      let mut _19: u64;
+      let mut _20: bool;
+      let _21: ();
+      let mut _22: u64;
+      let mut _23: u64;
+      let mut _24: u64;
+      let mut _25: bool;
+      let _26: ();
+      let mut _27: u64;
+      let mut _28: u64;
+      let mut _29: u64;
+      let _30: ();
+      let mut _31: u64;
+      let mut _32: u64;
+      let mut _33: u64;
+      let _34: ();
+      let mut _35: u64;
+      let mut _36: u64;
+      let mut _37: u64;
+      let _38: ();
+      let mut _39: u64;
+      let mut _40: u64;
+      let mut _41: u64;
+      let _42: ();
+      let mut _43: u64;
+      let mut _44: u64;
+      let mut _45: u64;
+      let _46: ();
+      let mut _47: u32;
+      let mut _48: u64;
+      let _49: ();
+      let mut _50: f32;
+      let mut _51: u64;
+      let _52: ();
+      let mut _53: S<u64>;
+      let mut _54: u64;
+      let _55: ();
+      let mut _56: u64;
+      let mut _57: S<u64>;
+      let mut _58: u64;
+      let _59: ();
+      let mut _60: u64;
+      let mut _61: u64;
+      let mut _62: u64;
+      let _63: ();
+      let mut _64: u64;
+      let mut _65: u64;
+      let mut _66: u64;
+      let _67: ();
+      let mut _68: u64;
+      let mut _69: u64;
+      let mut _70: u64;
+      let _71: ();
+      let mut _72: u64;
+      let mut _73: u64;
+      let mut _74: u64;
+      let mut _75: bool;
+      let _76: ();
+      let mut _77: u64;
+      let mut _78: u64;
+      let mut _79: u64;
+      let mut _80: bool;
+      let _81: ();
+      let mut _82: u64;
+      let mut _83: u64;
+      let mut _84: u64;
+      let _85: ();
+      let mut _86: u64;
+      let mut _87: u64;
+      let mut _88: u64;
+      let _89: ();
+      let mut _90: u64;
+      let mut _91: u64;
+      let mut _92: u64;
+      let _93: ();
+      let mut _94: u64;
+      let mut _95: u64;
+      let mut _96: u64;
+      let _97: ();
+      let mut _98: u64;
+      let mut _99: u64;
+      let mut _100: u64;
+      let _101: ();
+      let mut _102: u32;
+      let mut _103: u64;
+      let _104: ();
+      let mut _105: f32;
+      let mut _106: u64;
+      let _107: ();
+      let mut _108: S<u64>;
+      let mut _109: u64;
+      let _110: ();
+      let mut _111: u64;
+      let mut _112: S<u64>;
+      let mut _113: u64;
+      let _114: ();
+      let mut _115: u64;
+      let mut _116: u64;
+      let mut _117: u64;
+      let mut _118: u64;
+      let mut _119: u64;
+      let _120: ();
+      let mut _121: u64;
+      let mut _122: u64;
+      let mut _123: u64;
+      let mut _124: u64;
+      let mut _125: u64;
+      let _126: &u64;
+      let _127: ();
+      let mut _128: u64;
+      let mut _129: u64;
+      let mut _130: u64;
+      let _131: ();
+      let mut _132: u64;
+      let mut _133: u64;
+      let mut _134: u64;
+      let _136: ();
+      let mut _137: u64;
+      let mut _138: u64;
+      let mut _139: u64;
+      let _140: ();
+      let mut _141: u64;
+      let mut _142: u64;
+      let mut _143: u64;
+      let _144: ();
+      let _146: ();
+      let mut _147: u64;
+      let mut _148: u64;
+      let mut _149: u64;
+      let _150: ();
+      let mut _151: u64;
+      let mut _152: u64;
+      let mut _153: u64;
+      let _155: ();
+      let mut _156: u64;
+      let mut _157: u64;
+      let mut _158: u64;
+      let _159: ();
+      let mut _160: u64;
+      let mut _161: u64;
+      let mut _162: u64;
+      let _164: ();
+      let mut _165: u64;
+      let mut _166: u64;
+      let mut _167: u64;
+      let _168: ();
+      let mut _169: u64;
+      let mut _170: u64;
+      let mut _171: u64;
+      scope 1 {
+          debug a => _126;
+          let _135: &mut u64;
+          scope 2 {
+              debug b => _135;
+              let _145: *const u64;
+              let _163: &u64;
+              scope 3 {
+                  debug c => _145;
+                  let _154: *mut u64;
+                  scope 4 {
+                      debug d => _154;
+                  }
+              }
+              scope 5 {
+                  debug e => _163;
+              }
+          }
+      }
+  
+      bb0: {
+          StorageLive(_4);
+-         StorageLive(_5);
++         nop;
+          StorageLive(_6);
+          _6 = copy _1;
+          StorageLive(_7);
+          _7 = copy _2;
+-         _5 = Add(move _6, move _7);
++         _5 = Add(copy _1, copy _2);
+          StorageDead(_7);
+          StorageDead(_6);
+-         _4 = opaque::<u64>(move _5) -> [return: bb1, unwind continue];
++         _4 = opaque::<u64>(copy _5) -> [return: bb1, unwind continue];
+      }
+  
+      bb1: {
+-         StorageDead(_5);
++         nop;
+          StorageDead(_4);
+          StorageLive(_8);
+-         StorageLive(_9);
++         nop;
+          StorageLive(_10);
+          _10 = copy _1;
+          StorageLive(_11);
+          _11 = copy _2;
+-         _9 = Mul(move _10, move _11);
++         _9 = Mul(copy _1, copy _2);
+          StorageDead(_11);
+          StorageDead(_10);
+-         _8 = opaque::<u64>(move _9) -> [return: bb2, unwind continue];
++         _8 = opaque::<u64>(copy _9) -> [return: bb2, unwind continue];
+      }
+  
+      bb2: {
+-         StorageDead(_9);
++         nop;
+          StorageDead(_8);
+          StorageLive(_12);
+-         StorageLive(_13);
++         nop;
+          StorageLive(_14);
+          _14 = copy _1;
+          StorageLive(_15);
+          _15 = copy _2;
+-         _13 = Sub(move _14, move _15);
++         _13 = Sub(copy _1, copy _2);
+          StorageDead(_15);
+          StorageDead(_14);
+-         _12 = opaque::<u64>(move _13) -> [return: bb3, unwind continue];
++         _12 = opaque::<u64>(copy _13) -> [return: bb3, unwind continue];
+      }
+  
+      bb3: {
+-         StorageDead(_13);
++         nop;
+          StorageDead(_12);
+          StorageLive(_16);
+-         StorageLive(_17);
++         nop;
+          StorageLive(_18);
+          _18 = copy _1;
+          StorageLive(_19);
+          _19 = copy _2;
+-         _20 = Eq(copy _19, const 0_u64);
+-         assert(!move _20, "attempt to divide `{}` by zero", copy _18) -> [success: bb4, unwind continue];
++         _20 = Eq(copy _2, const 0_u64);
++         assert(!copy _20, "attempt to divide `{}` by zero", copy _1) -> [success: bb4, unwind continue];
+      }
+  
+      bb4: {
+-         _17 = Div(move _18, move _19);
++         _17 = Div(copy _1, copy _2);
+          StorageDead(_19);
+          StorageDead(_18);
+-         _16 = opaque::<u64>(move _17) -> [return: bb5, unwind continue];
++         _16 = opaque::<u64>(copy _17) -> [return: bb5, unwind continue];
+      }
+  
+      bb5: {
+-         StorageDead(_17);
++         nop;
+          StorageDead(_16);
+          StorageLive(_21);
+-         StorageLive(_22);
++         nop;
+          StorageLive(_23);
+          _23 = copy _1;
+          StorageLive(_24);
+          _24 = copy _2;
+-         _25 = Eq(copy _24, const 0_u64);
+-         assert(!move _25, "attempt to calculate the remainder of `{}` with a divisor of zero", copy _23) -> [success: bb6, unwind continue];
++         _25 = copy _20;
++         assert(!copy _20, "attempt to calculate the remainder of `{}` with a divisor of zero", copy _1) -> [success: bb6, unwind continue];
+      }
+  
+      bb6: {
+-         _22 = Rem(move _23, move _24);
++         _22 = Rem(copy _1, copy _2);
+          StorageDead(_24);
+          StorageDead(_23);
+-         _21 = opaque::<u64>(move _22) -> [return: bb7, unwind continue];
++         _21 = opaque::<u64>(copy _22) -> [return: bb7, unwind continue];
+      }
+  
+      bb7: {
+-         StorageDead(_22);
++         nop;
+          StorageDead(_21);
+          StorageLive(_26);
+-         StorageLive(_27);
++         nop;
+          StorageLive(_28);
+          _28 = copy _1;
+          StorageLive(_29);
+          _29 = copy _2;
+-         _27 = BitAnd(move _28, move _29);
++         _27 = BitAnd(copy _1, copy _2);
+          StorageDead(_29);
+          StorageDead(_28);
+-         _26 = opaque::<u64>(move _27) -> [return: bb8, unwind continue];
++         _26 = opaque::<u64>(copy _27) -> [return: bb8, unwind continue];
+      }
+  
+      bb8: {
+-         StorageDead(_27);
++         nop;
+          StorageDead(_26);
+          StorageLive(_30);
+-         StorageLive(_31);
++         nop;
+          StorageLive(_32);
+          _32 = copy _1;
+          StorageLive(_33);
+          _33 = copy _2;
+-         _31 = BitOr(move _32, move _33);
++         _31 = BitOr(copy _1, copy _2);
+          StorageDead(_33);
+          StorageDead(_32);
+-         _30 = opaque::<u64>(move _31) -> [return: bb9, unwind continue];
++         _30 = opaque::<u64>(copy _31) -> [return: bb9, unwind continue];
+      }
+  
+      bb9: {
+-         StorageDead(_31);
++         nop;
+          StorageDead(_30);
+          StorageLive(_34);
+-         StorageLive(_35);
++         nop;
+          StorageLive(_36);
+          _36 = copy _1;
+          StorageLive(_37);
+          _37 = copy _2;
+-         _35 = BitXor(move _36, move _37);
++         _35 = BitXor(copy _1, copy _2);
+          StorageDead(_37);
+          StorageDead(_36);
+-         _34 = opaque::<u64>(move _35) -> [return: bb10, unwind continue];
++         _34 = opaque::<u64>(copy _35) -> [return: bb10, unwind continue];
+      }
+  
+      bb10: {
+-         StorageDead(_35);
++         nop;
+          StorageDead(_34);
+          StorageLive(_38);
+-         StorageLive(_39);
++         nop;
+          StorageLive(_40);
+          _40 = copy _1;
+          StorageLive(_41);
+          _41 = copy _2;
+-         _39 = Shl(move _40, move _41);
++         _39 = Shl(copy _1, copy _2);
+          StorageDead(_41);
+          StorageDead(_40);
+-         _38 = opaque::<u64>(move _39) -> [return: bb11, unwind continue];
++         _38 = opaque::<u64>(copy _39) -> [return: bb11, unwind continue];
+      }
+  
+      bb11: {
+-         StorageDead(_39);
++         nop;
+          StorageDead(_38);
+          StorageLive(_42);
+-         StorageLive(_43);
++         nop;
+          StorageLive(_44);
+          _44 = copy _1;
+          StorageLive(_45);
+          _45 = copy _2;
+-         _43 = Shr(move _44, move _45);
++         _43 = Shr(copy _1, copy _2);
+          StorageDead(_45);
+          StorageDead(_44);
+-         _42 = opaque::<u64>(move _43) -> [return: bb12, unwind continue];
++         _42 = opaque::<u64>(copy _43) -> [return: bb12, unwind continue];
+      }
+  
+      bb12: {
+-         StorageDead(_43);
++         nop;
+          StorageDead(_42);
+          StorageLive(_46);
+-         StorageLive(_47);
++         nop;
+          StorageLive(_48);
+          _48 = copy _1;
+-         _47 = move _48 as u32 (IntToInt);
++         _47 = copy _1 as u32 (IntToInt);
+          StorageDead(_48);
+-         _46 = opaque::<u32>(move _47) -> [return: bb13, unwind continue];
++         _46 = opaque::<u32>(copy _47) -> [return: bb13, unwind continue];
+      }
+  
+      bb13: {
+-         StorageDead(_47);
++         nop;
+          StorageDead(_46);
+          StorageLive(_49);
+-         StorageLive(_50);
++         nop;
+          StorageLive(_51);
+          _51 = copy _1;
+-         _50 = move _51 as f32 (IntToFloat);
++         _50 = copy _1 as f32 (IntToFloat);
+          StorageDead(_51);
+-         _49 = opaque::<f32>(move _50) -> [return: bb14, unwind continue];
++         _49 = opaque::<f32>(copy _50) -> [return: bb14, unwind continue];
+      }
+  
+      bb14: {
+-         StorageDead(_50);
++         nop;
+          StorageDead(_49);
+          StorageLive(_52);
+-         StorageLive(_53);
++         nop;
+          StorageLive(_54);
+          _54 = copy _1;
+-         _53 = S::<u64>(move _54);
++         _53 = S::<u64>(copy _1);
+          StorageDead(_54);
+-         _52 = opaque::<S<u64>>(move _53) -> [return: bb15, unwind continue];
++         _52 = opaque::<S<u64>>(copy _53) -> [return: bb15, unwind continue];
+      }
+  
+      bb15: {
+-         StorageDead(_53);
++         nop;
+          StorageDead(_52);
+          StorageLive(_55);
+          StorageLive(_56);
+          StorageLive(_57);
+          StorageLive(_58);
+          _58 = copy _1;
+-         _57 = S::<u64>(move _58);
++         _57 = copy _53;
+          StorageDead(_58);
+-         _56 = copy (_57.0: u64);
+-         _55 = opaque::<u64>(move _56) -> [return: bb16, unwind continue];
++         _56 = copy _1;
++         _55 = opaque::<u64>(copy _1) -> [return: bb16, unwind continue];
+      }
+  
+      bb16: {
+          StorageDead(_56);
+          StorageDead(_57);
+          StorageDead(_55);
+          StorageLive(_59);
+          StorageLive(_60);
+          StorageLive(_61);
+          _61 = copy _1;
+          StorageLive(_62);
+          _62 = copy _2;
+-         _60 = Add(move _61, move _62);
++         _60 = copy _5;
+          StorageDead(_62);
+          StorageDead(_61);
+-         _59 = opaque::<u64>(move _60) -> [return: bb17, unwind continue];
++         _59 = opaque::<u64>(copy _5) -> [return: bb17, unwind continue];
+      }
+  
+      bb17: {
+          StorageDead(_60);
+          StorageDead(_59);
+          StorageLive(_63);
+          StorageLive(_64);
+          StorageLive(_65);
+          _65 = copy _1;
+          StorageLive(_66);
+          _66 = copy _2;
+-         _64 = Mul(move _65, move _66);
++         _64 = copy _9;
+          StorageDead(_66);
+          StorageDead(_65);
+-         _63 = opaque::<u64>(move _64) -> [return: bb18, unwind continue];
++         _63 = opaque::<u64>(copy _9) -> [return: bb18, unwind continue];
+      }
+  
+      bb18: {
+          StorageDead(_64);
+          StorageDead(_63);
+          StorageLive(_67);
+          StorageLive(_68);
+          StorageLive(_69);
+          _69 = copy _1;
+          StorageLive(_70);
+          _70 = copy _2;
+-         _68 = Sub(move _69, move _70);
++         _68 = copy _13;
+          StorageDead(_70);
+          StorageDead(_69);
+-         _67 = opaque::<u64>(move _68) -> [return: bb19, unwind continue];
++         _67 = opaque::<u64>(copy _13) -> [return: bb19, unwind continue];
+      }
+  
+      bb19: {
+          StorageDead(_68);
+          StorageDead(_67);
+          StorageLive(_71);
+          StorageLive(_72);
+          StorageLive(_73);
+          _73 = copy _1;
+          StorageLive(_74);
+          _74 = copy _2;
+-         _75 = Eq(copy _74, const 0_u64);
+-         assert(!move _75, "attempt to divide `{}` by zero", copy _73) -> [success: bb20, unwind continue];
++         _75 = copy _20;
++         assert(!copy _20, "attempt to divide `{}` by zero", copy _1) -> [success: bb20, unwind continue];
+      }
+  
+      bb20: {
+-         _72 = Div(move _73, move _74);
++         _72 = copy _17;
+          StorageDead(_74);
+          StorageDead(_73);
+-         _71 = opaque::<u64>(move _72) -> [return: bb21, unwind continue];
++         _71 = opaque::<u64>(copy _17) -> [return: bb21, unwind continue];
+      }
+  
+      bb21: {
+          StorageDead(_72);
+          StorageDead(_71);
+          StorageLive(_76);
+          StorageLive(_77);
+          StorageLive(_78);
+          _78 = copy _1;
+          StorageLive(_79);
+          _79 = copy _2;
+-         _80 = Eq(copy _79, const 0_u64);
+-         assert(!move _80, "attempt to calculate the remainder of `{}` with a divisor of zero", copy _78) -> [success: bb22, unwind continue];
++         _80 = copy _20;
++         assert(!copy _20, "attempt to calculate the remainder of `{}` with a divisor of zero", copy _1) -> [success: bb22, unwind continue];
+      }
+  
+      bb22: {
+-         _77 = Rem(move _78, move _79);
++         _77 = copy _22;
+          StorageDead(_79);
+          StorageDead(_78);
+-         _76 = opaque::<u64>(move _77) -> [return: bb23, unwind continue];
++         _76 = opaque::<u64>(copy _22) -> [return: bb23, unwind continue];
+      }
+  
+      bb23: {
+          StorageDead(_77);
+          StorageDead(_76);
+          StorageLive(_81);
+          StorageLive(_82);
+          StorageLive(_83);
+          _83 = copy _1;
+          StorageLive(_84);
+          _84 = copy _2;
+-         _82 = BitAnd(move _83, move _84);
++         _82 = copy _27;
+          StorageDead(_84);
+          StorageDead(_83);
+-         _81 = opaque::<u64>(move _82) -> [return: bb24, unwind continue];
++         _81 = opaque::<u64>(copy _27) -> [return: bb24, unwind continue];
+      }
+  
+      bb24: {
+          StorageDead(_82);
+          StorageDead(_81);
+          StorageLive(_85);
+          StorageLive(_86);
+          StorageLive(_87);
+          _87 = copy _1;
+          StorageLive(_88);
+          _88 = copy _2;
+-         _86 = BitOr(move _87, move _88);
++         _86 = copy _31;
+          StorageDead(_88);
+          StorageDead(_87);
+-         _85 = opaque::<u64>(move _86) -> [return: bb25, unwind continue];
++         _85 = opaque::<u64>(copy _31) -> [return: bb25, unwind continue];
+      }
+  
+      bb25: {
+          StorageDead(_86);
+          StorageDead(_85);
+          StorageLive(_89);
+          StorageLive(_90);
+          StorageLive(_91);
+          _91 = copy _1;
+          StorageLive(_92);
+          _92 = copy _2;
+-         _90 = BitXor(move _91, move _92);
++         _90 = copy _35;
+          StorageDead(_92);
+          StorageDead(_91);
+-         _89 = opaque::<u64>(move _90) -> [return: bb26, unwind continue];
++         _89 = opaque::<u64>(copy _35) -> [return: bb26, unwind continue];
+      }
+  
+      bb26: {
+          StorageDead(_90);
+          StorageDead(_89);
+          StorageLive(_93);
+          StorageLive(_94);
+          StorageLive(_95);
+          _95 = copy _1;
+          StorageLive(_96);
+          _96 = copy _2;
+-         _94 = Shl(move _95, move _96);
++         _94 = copy _39;
+          StorageDead(_96);
+          StorageDead(_95);
+-         _93 = opaque::<u64>(move _94) -> [return: bb27, unwind continue];
++         _93 = opaque::<u64>(copy _39) -> [return: bb27, unwind continue];
+      }
+  
+      bb27: {
+          StorageDead(_94);
+          StorageDead(_93);
+          StorageLive(_97);
+          StorageLive(_98);
+          StorageLive(_99);
+          _99 = copy _1;
+          StorageLive(_100);
+          _100 = copy _2;
+-         _98 = Shr(move _99, move _100);
++         _98 = copy _43;
+          StorageDead(_100);
+          StorageDead(_99);
+-         _97 = opaque::<u64>(move _98) -> [return: bb28, unwind continue];
++         _97 = opaque::<u64>(copy _43) -> [return: bb28, unwind continue];
+      }
+  
+      bb28: {
+          StorageDead(_98);
+          StorageDead(_97);
+          StorageLive(_101);
+          StorageLive(_102);
+          StorageLive(_103);
+          _103 = copy _1;
+-         _102 = move _103 as u32 (IntToInt);
++         _102 = copy _47;
+          StorageDead(_103);
+-         _101 = opaque::<u32>(move _102) -> [return: bb29, unwind continue];
++         _101 = opaque::<u32>(copy _47) -> [return: bb29, unwind continue];
+      }
+  
+      bb29: {
+          StorageDead(_102);
+          StorageDead(_101);
+          StorageLive(_104);
+          StorageLive(_105);
+          StorageLive(_106);
+          _106 = copy _1;
+-         _105 = move _106 as f32 (IntToFloat);
++         _105 = copy _50;
+          StorageDead(_106);
+-         _104 = opaque::<f32>(move _105) -> [return: bb30, unwind continue];
++         _104 = opaque::<f32>(copy _50) -> [return: bb30, unwind continue];
+      }
+  
+      bb30: {
+          StorageDead(_105);
+          StorageDead(_104);
+          StorageLive(_107);
+          StorageLive(_108);
+          StorageLive(_109);
+          _109 = copy _1;
+-         _108 = S::<u64>(move _109);
++         _108 = copy _53;
+          StorageDead(_109);
+-         _107 = opaque::<S<u64>>(move _108) -> [return: bb31, unwind continue];
++         _107 = opaque::<S<u64>>(copy _53) -> [return: bb31, unwind continue];
+      }
+  
+      bb31: {
+          StorageDead(_108);
+          StorageDead(_107);
+          StorageLive(_110);
+          StorageLive(_111);
+          StorageLive(_112);
+          StorageLive(_113);
+          _113 = copy _1;
+-         _112 = S::<u64>(move _113);
++         _112 = copy _53;
+          StorageDead(_113);
+-         _111 = copy (_112.0: u64);
+-         _110 = opaque::<u64>(move _111) -> [return: bb32, unwind continue];
++         _111 = copy _1;
++         _110 = opaque::<u64>(copy _1) -> [return: bb32, unwind continue];
+      }
+  
+      bb32: {
+          StorageDead(_111);
+          StorageDead(_112);
+          StorageDead(_110);
+          StorageLive(_114);
+-         StorageLive(_115);
++         nop;
+          StorageLive(_116);
+          StorageLive(_117);
+          _117 = copy _1;
+          StorageLive(_118);
+          _118 = copy _2;
+-         _116 = Mul(move _117, move _118);
++         _116 = copy _9;
+          StorageDead(_118);
+          StorageDead(_117);
+          StorageLive(_119);
+          _119 = copy _2;
+-         _115 = Sub(move _116, move _119);
++         _115 = Sub(copy _9, copy _2);
+          StorageDead(_119);
+          StorageDead(_116);
+-         _114 = opaque::<u64>(move _115) -> [return: bb33, unwind continue];
++         _114 = opaque::<u64>(copy _115) -> [return: bb33, unwind continue];
+      }
+  
+      bb33: {
+-         StorageDead(_115);
++         nop;
+          StorageDead(_114);
+          StorageLive(_120);
+          StorageLive(_121);
+          StorageLive(_122);
+          StorageLive(_123);
+          _123 = copy _1;
+          StorageLive(_124);
+          _124 = copy _2;
+-         _122 = Mul(move _123, move _124);
++         _122 = copy _9;
+          StorageDead(_124);
+          StorageDead(_123);
+          StorageLive(_125);
+          _125 = copy _2;
+-         _121 = Sub(move _122, move _125);
++         _121 = copy _115;
+          StorageDead(_125);
+          StorageDead(_122);
+-         _120 = opaque::<u64>(move _121) -> [return: bb34, unwind continue];
++         _120 = opaque::<u64>(copy _115) -> [return: bb34, unwind continue];
+      }
+  
+      bb34: {
+          StorageDead(_121);
+          StorageDead(_120);
+          StorageLive(_126);
+          _126 = &_3;
+          StorageLive(_127);
+          StorageLive(_128);
+          StorageLive(_129);
+          _129 = copy (*_126);
+          StorageLive(_130);
+          _130 = copy _1;
+-         _128 = Add(move _129, move _130);
++         _128 = Add(move _129, copy _1);
+          StorageDead(_130);
+          StorageDead(_129);
+          _127 = opaque::<u64>(move _128) -> [return: bb35, unwind continue];
+      }
+  
+      bb35: {
+          StorageDead(_128);
+          StorageDead(_127);
+          StorageLive(_131);
+          StorageLive(_132);
+          StorageLive(_133);
+          _133 = copy (*_126);
+          StorageLive(_134);
+          _134 = copy _1;
+-         _132 = Add(move _133, move _134);
++         _132 = Add(move _133, copy _1);
+          StorageDead(_134);
+          StorageDead(_133);
+          _131 = opaque::<u64>(move _132) -> [return: bb36, unwind continue];
+      }
+  
+      bb36: {
+          StorageDead(_132);
+          StorageDead(_131);
+          StorageLive(_135);
+          _135 = &mut _3;
+          StorageLive(_136);
+          StorageLive(_137);
+          StorageLive(_138);
+          _138 = copy (*_135);
+          StorageLive(_139);
+          _139 = copy _1;
+-         _137 = Add(move _138, move _139);
++         _137 = Add(move _138, copy _1);
+          StorageDead(_139);
+          StorageDead(_138);
+          _136 = opaque::<u64>(move _137) -> [return: bb37, unwind continue];
+      }
+  
+      bb37: {
+          StorageDead(_137);
+          StorageDead(_136);
+          StorageLive(_140);
+          StorageLive(_141);
+          StorageLive(_142);
+          _142 = copy (*_135);
+          StorageLive(_143);
+          _143 = copy _1;
+-         _141 = Add(move _142, move _143);
++         _141 = Add(move _142, copy _1);
+          StorageDead(_143);
+          StorageDead(_142);
+          _140 = opaque::<u64>(move _141) -> [return: bb38, unwind continue];
+      }
+  
+      bb38: {
+          StorageDead(_141);
+          StorageDead(_140);
+          StorageLive(_144);
+          StorageLive(_145);
+          _145 = &raw const _3;
+          StorageLive(_146);
+          StorageLive(_147);
+          StorageLive(_148);
+          _148 = copy (*_145);
+          StorageLive(_149);
+          _149 = copy _1;
+-         _147 = Add(move _148, move _149);
++         _147 = Add(move _148, copy _1);
+          StorageDead(_149);
+          StorageDead(_148);
+          _146 = opaque::<u64>(move _147) -> [return: bb39, unwind continue];
+      }
+  
+      bb39: {
+          StorageDead(_147);
+          StorageDead(_146);
+          StorageLive(_150);
+          StorageLive(_151);
+          StorageLive(_152);
+          _152 = copy (*_145);
+          StorageLive(_153);
+          _153 = copy _1;
+-         _151 = Add(move _152, move _153);
++         _151 = Add(move _152, copy _1);
+          StorageDead(_153);
+          StorageDead(_152);
+          _150 = opaque::<u64>(move _151) -> [return: bb40, unwind continue];
+      }
+  
+      bb40: {
+          StorageDead(_151);
+          StorageDead(_150);
+          StorageLive(_154);
+          _154 = &raw mut _3;
+          StorageLive(_155);
+          StorageLive(_156);
+          StorageLive(_157);
+          _157 = copy (*_154);
+          StorageLive(_158);
+          _158 = copy _1;
+-         _156 = Add(move _157, move _158);
++         _156 = Add(move _157, copy _1);
+          StorageDead(_158);
+          StorageDead(_157);
+          _155 = opaque::<u64>(move _156) -> [return: bb41, unwind continue];
+      }
+  
+      bb41: {
+          StorageDead(_156);
+          StorageDead(_155);
+          StorageLive(_159);
+          StorageLive(_160);
+          StorageLive(_161);
+          _161 = copy (*_154);
+          StorageLive(_162);
+          _162 = copy _1;
+-         _160 = Add(move _161, move _162);
++         _160 = Add(move _161, copy _1);
+          StorageDead(_162);
+          StorageDead(_161);
+          _159 = opaque::<u64>(move _160) -> [return: bb42, unwind continue];
+      }
+  
+      bb42: {
+          StorageDead(_160);
+          StorageDead(_159);
+          _144 = const ();
+          StorageDead(_154);
+          StorageDead(_145);
+          StorageDead(_144);
+          StorageLive(_163);
+          _163 = &_3;
+          StorageLive(_164);
+          StorageLive(_165);
+          StorageLive(_166);
+          _166 = copy (*_163);
+          StorageLive(_167);
+          _167 = copy _1;
+-         _165 = Add(move _166, move _167);
++         _165 = Add(move _166, copy _1);
+          StorageDead(_167);
+          StorageDead(_166);
+          _164 = opaque::<u64>(move _165) -> [return: bb43, unwind continue];
+      }
+  
+      bb43: {
+          StorageDead(_165);
+          StorageDead(_164);
+          StorageLive(_168);
+          StorageLive(_169);
+          StorageLive(_170);
+          _170 = copy (*_163);
+          StorageLive(_171);
+          _171 = copy _1;
+-         _169 = Add(move _170, move _171);
++         _169 = Add(move _170, copy _1);
+          StorageDead(_171);
+          StorageDead(_170);
+          _168 = opaque::<u64>(move _169) -> [return: bb44, unwind continue];
+      }
+  
+      bb44: {
+          StorageDead(_169);
+          StorageDead(_168);
+          _0 = const ();
+          StorageDead(_163);
+          StorageDead(_135);
+          StorageDead(_126);
+          return;
+      }
+  }
+  

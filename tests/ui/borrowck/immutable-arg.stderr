@@ -1,0 +1,14 @@
+error[E0384]: cannot assign to immutable argument `_x`
+  --> $DIR/immutable-arg.rs:2:5
+   |
+LL |     _x = 4;
+   |     ^^^^^^ cannot assign to immutable argument
+   |
+help: consider making this binding mutable
+   |
+LL | fn foo(mut _x: u32) {
+   |        +++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0384`.

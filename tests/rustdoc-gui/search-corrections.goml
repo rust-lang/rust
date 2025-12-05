@@ -1,0 +1,65 @@
+// ignore-tidy-linelength
+include: "utils.goml"
+
+// Checks that the search tab result tell the user about corrections
+// First, try a search-by-name
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
+call-function: ("perform-search", {"query": "NotableStructWithLongNamr"})
+
+// Corrections aren't shown on the "In Names" tab.
+assert: "#search-tabs button.selected:first-child"
+assert-false: ".search-results:nth-child(1) .search-corrections"
+
+// Corrections do get shown on the "In Parameters" tab.
+click: "#search-tabs button:nth-child(2)"
+assert: "#search-tabs button.selected:nth-child(2)"
+assert-text: (
+    ".search-results:nth-child(2) .search-corrections",
+    "Type \"NotableStructWithLongNamr\" not found. Showing results for closest type name \"NotableStructWithLongName\" instead."
+)
+
+// Corrections do get shown on the "In Return Type" tab.
+click: "#search-tabs button:nth-child(3)"
+assert: "#search-tabs button.selected:nth-child(3)"
+assert-text: (
+    ".search-results:nth-child(3) .search-corrections",
+    "Type \"NotableStructWithLongNamr\" not found. Showing results for closest type name \"NotableStructWithLongName\" instead."
+)
+
+// Now, explicit return values
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
+call-function: ("perform-search", {"query": "-> NotableStructWithLongNamr"})
+
+assert-text: (
+    ".search-results.active .search-corrections",
+    "Type \"NotableStructWithLongNamr\" not found and used as generic parameter. Consider searching for \"NotableStructWithLongName\" instead."
+)
+
+// Now, generic correction
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
+call-function: ("perform-search", {"query": "NotableStructWithLongNamr, NotableStructWithLongNamr"})
+
+assert-text: (
+    ".search-failed.active .search-corrections",
+    "Type \"NotableStructWithLongNamr\" not found and used as generic parameter. Consider searching for \"NotableStructWithLongName\" instead."
+)
+
+// Now, generic correction plus error
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
+call-function: ("perform-search", {"query": "Foo<NotableStructWithLongNamr>,y"})
+
+assert-text: (
+    ".search-failed.active .search-corrections",
+    "Type \"NotableStructWithLongNamr\" not found and used as generic parameter. Consider searching for \"NotableStructWithLongName\" instead."
+)
+
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
+call-function: ("perform-search", {"query": "generic:NotableStructWithLongNamr<x>,y"})
+
+assert-css: (".error", {
+    "display": "block"
+})
+assert-text: (
+    ".error",
+    "Query parser error: \"Generic type parameter NotableStructWithLongNamr does not accept generic parameters\"."
+)

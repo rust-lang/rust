@@ -1,0 +1,46 @@
+error[E0072]: recursive type `Take` has infinite size
+  --> $DIR/infinite-struct.rs:1:1
+   |
+LL | struct Take(Take);
+   | ^^^^^^^^^^^ ---- recursive without indirection
+   |
+help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to break the cycle
+   |
+LL | struct Take(Box<Take>);
+   |             ++++    +
+
+error[E0072]: recursive type `Foo` has infinite size
+  --> $DIR/infinite-struct.rs:12:1
+   |
+LL | struct Foo {
+   | ^^^^^^^^^^
+LL |     x: Bar<Foo>,
+   |            --- recursive without indirection
+   |
+help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to break the cycle
+   |
+LL |     x: Bar<Box<Foo>>,
+   |            ++++   +
+
+error: reached the recursion limit finding the struct tail for `Take`
+  --> $DIR/infinite-struct.rs:1:1
+   |
+LL | struct Take(Take);
+   | ^^^^^^^^^^^
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]`
+
+error[E0391]: cycle detected when computing when `Take` needs drop
+  --> $DIR/infinite-struct.rs:1:1
+   |
+LL | struct Take(Take);
+   | ^^^^^^^^^^^
+   |
+   = note: ...which immediately requires computing when `Take` needs drop again
+   = note: cycle used when computing whether `Take` needs drop
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0072, E0391.
+For more information about an error, try `rustc --explain E0072`.

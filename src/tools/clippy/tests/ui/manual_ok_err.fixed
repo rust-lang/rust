@@ -1,0 +1,129 @@
+#![warn(clippy::manual_ok_err)]
+
+fn funcall() -> Result<u32, &'static str> {
+    todo!()
+}
+
+fn main() {
+    let _ = funcall().ok();
+
+    let _ = funcall().ok();
+
+    let _ = funcall().err();
+
+    let _ = funcall().err();
+
+    let _ = funcall().ok();
+
+    let _ = funcall().err();
+
+    #[allow(clippy::redundant_pattern)]
+    let _ = funcall().ok();
+
+    struct S;
+
+    impl std::ops::Neg for S {
+        type Output = Result<u32, &'static str>;
+
+        fn neg(self) -> Self::Output {
+            funcall()
+        }
+    }
+
+    // Suggestion should be properly parenthesized
+    let _ = (-S).ok();
+
+    no_lint();
+}
+
+fn no_lint() {
+    let _ = match funcall() {
+        Ok(v) if v > 3 => Some(v),
+        _ => None,
+    };
+
+    let _ = match funcall() {
+        Err(_) => None,
+        Ok(3) => None,
+        Ok(v) => Some(v),
+    };
+
+    let _ = match funcall() {
+        _ => None,
+        Ok(v) => Some(v),
+    };
+
+    let _ = match funcall() {
+        Err(_) | Ok(3) => None,
+        Ok(v) => Some(v),
+    };
+
+    #[expect(clippy::redundant_pattern)]
+    let _ = match funcall() {
+        _v @ _ => None,
+        Ok(v) => Some(v),
+    };
+
+    // Content of `Option` and matching content of `Result` do
+    // not have the same type.
+    let _: Option<&dyn std::any::Any> = match Ok::<_, ()>(&1) {
+        Ok(v) => Some(v),
+        _ => None,
+    };
+
+    let _ = match Ok::<_, ()>(&1) {
+        _x => None,
+        Ok(v) => Some(v),
+    };
+
+    let _ = match Ok::<_, std::convert::Infallible>(1) {
+        Ok(3) => None,
+        Ok(v) => Some(v),
+    };
+
+    let _ = match funcall() {
+        Ok(v @ 1..) => Some(v),
+        _ => None,
+    };
+}
+
+const fn cf(x: Result<u32, &'static str>) -> Option<u32> {
+    // Do not lint in const code
+    match x {
+        Ok(v) => Some(v),
+        Err(_) => None,
+    }
+}
+
+fn issue14239() {
+    let _ = if false {
+        None
+    } else {
+        "1".parse::<u8>().ok()
+    };
+    //~^^^^^ manual_ok_err
+}
+
+mod issue15051 {
+    struct Container {
+        field: Result<bool, ()>,
+    }
+
+    #[allow(clippy::needless_borrow)]
+    fn with_addr_of(x: &Container) -> Option<&bool> {
+        (&x.field).as_ref().ok()
+    }
+
+    fn from_fn(x: &Container) -> Option<&bool> {
+        let result_with_ref = || &x.field;
+        result_with_ref().as_ref().ok()
+    }
+
+    fn result_with_ref_mut(x: &mut Container) -> &mut Result<bool, ()> {
+        &mut x.field
+    }
+
+    fn from_fn_mut(x: &mut Container) -> Option<&mut bool> {
+        result_with_ref_mut(x).as_mut().ok()
+    }
+}

@@ -1,0 +1,127 @@
+error: an implementation of `From` is preferred since it gives you `Into<_>` for free where the reverse isn't true
+  --> tests/ui/from_over_into.rs:9:1
+   |
+LL | impl Into<StringWrapper> for String {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::from-over-into` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::from_over_into)]`
+help: replace the `Into` implementation with `From<std::string::String>`
+   |
+LL ~ impl From<String> for StringWrapper {
+LL |
+LL ~     fn from(val: String) -> Self {
+LL ~         StringWrapper(val)
+   |
+
+error: an implementation of `From` is preferred since it gives you `Into<_>` for free where the reverse isn't true
+  --> tests/ui/from_over_into.rs:18:1
+   |
+LL | impl Into<SelfType> for String {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: replace the `Into` implementation with `From<std::string::String>`
+   |
+LL ~ impl From<String> for SelfType {
+LL |
+LL ~     fn from(val: String) -> Self {
+LL ~         SelfType(String::new())
+   |
+
+error: an implementation of `From` is preferred since it gives you `Into<_>` for free where the reverse isn't true
+  --> tests/ui/from_over_into.rs:34:1
+   |
+LL | impl Into<SelfKeywords> for X {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: replace the `Into` implementation with `From<X>`
+   |
+LL ~ impl From<X> for SelfKeywords {
+LL |
+LL ~     fn from(val: X) -> Self {
+LL ~         let _ = X;
+LL ~         let _ = X::FOO;
+LL ~         let _: X = val;
+   |
+
+error: an implementation of `From` is preferred since it gives you `Into<_>` for free where the reverse isn't true
+  --> tests/ui/from_over_into.rs:47:1
+   |
+LL | impl core::convert::Into<bool> for crate::ExplicitPaths {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `impl From<Local> for Foreign` is allowed by the orphan rules, for more information see
+           https://doc.rust-lang.org/reference/items/implementations.html#trait-implementation-coherence
+help: replace the `Into` implementation with `From<ExplicitPaths>`
+   |
+LL ~ impl core::convert::From<crate::ExplicitPaths> for bool {
+LL |
+LL ~     fn from(mut val: crate::ExplicitPaths) -> Self {
+LL ~         let in_closure = || val.0;
+LL |
+LL ~         val.0 = false;
+LL ~         val.0
+   |
+
+error: an implementation of `From` is preferred since it gives you `Into<_>` for free where the reverse isn't true
+  --> tests/ui/from_over_into.rs:68:1
+   |
+LL | impl Into<String> for PathInExpansion {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `impl From<Local> for Foreign` is allowed by the orphan rules, for more information see
+           https://doc.rust-lang.org/reference/items/implementations.html#trait-implementation-coherence
+help: replace the `Into` implementation with `From<PathInExpansion>`
+   |
+LL ~ impl From<PathInExpansion> for String {
+LL |
+LL ~     fn from(val: PathInExpansion) -> Self {
+   |
+
+error: an implementation of `From` is preferred since it gives you `Into<_>` for free where the reverse isn't true
+  --> tests/ui/from_over_into.rs:91:5
+   |
+LL |     impl<T> Into<FromOverInto<T>> for Vec<T> {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: replace the `Into` implementation with `From<std::vec::Vec<T>>`
+   |
+LL ~     impl<T> From<Vec<T>> for FromOverInto<T> {
+LL |
+LL ~         fn from(val: Vec<T>) -> Self {
+LL ~             FromOverInto(val)
+   |
+
+error: an implementation of `From` is preferred since it gives you `Into<_>` for free where the reverse isn't true
+  --> tests/ui/from_over_into.rs:102:5
+   |
+LL |     impl Into<()> for Hello {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `impl From<Local> for Foreign` is allowed by the orphan rules, for more information see
+           https://doc.rust-lang.org/reference/items/implementations.html#trait-implementation-coherence
+help: replace the `Into` implementation with `From<issue_12138::Hello>`
+   |
+LL ~     impl From<Hello> for () {
+LL |
+LL ~         fn from(val: Hello) {}
+   |
+
+error: an implementation of `From` is preferred since it gives you `Into<_>` for free where the reverse isn't true
+  --> tests/ui/from_over_into.rs:111:5
+   |
+LL |     impl Into<i64> for MyInt {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `impl From<Local> for Foreign` is allowed by the orphan rules, for more information see
+           https://doc.rust-lang.org/reference/items/implementations.html#trait-implementation-coherence
+help: replace the `Into` implementation with `From<issue_112502::MyInt>`
+   |
+LL ~     impl From<MyInt> for i64 {
+LL |
+LL ~         fn from(val: MyInt) -> Self {
+LL ~             val.0
+   |
+
+error: aborting due to 8 previous errors
+

@@ -1,0 +1,49 @@
+Function name: closure_unit_return::explicit_unit
+Raw bytes (34): 0x[01, 01, 00, 06, 01, 07, 01, 00, 13, 01, 01, 09, 00, 10, 01, 04, 05, 00, 09, 01, 00, 0a, 00, 11, 01, 01, 05, 00, 07, 01, 01, 01, 00, 02]
+Number of files: 1
+- file 0 => $DIR/closure_unit_return.rs
+Number of expressions: 0
+Number of file 0 mappings: 6
+- Code(Counter(0)) at (prev + 7, 1) to (start + 0, 19)
+- Code(Counter(0)) at (prev + 1, 9) to (start + 0, 16)
+- Code(Counter(0)) at (prev + 4, 5) to (start + 0, 9)
+- Code(Counter(0)) at (prev + 0, 10) to (start + 0, 17)
+- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 7)
+- Code(Counter(0)) at (prev + 1, 1) to (start + 0, 2)
+Highest counter ID seen: c0
+
+Function name: closure_unit_return::explicit_unit::{closure#0} (unused)
+Raw bytes (19): 0x[01, 01, 00, 03, 00, 08, 16, 00, 17, 00, 01, 09, 00, 0b, 00, 01, 05, 00, 06]
+Number of files: 1
+- file 0 => $DIR/closure_unit_return.rs
+Number of expressions: 0
+Number of file 0 mappings: 3
+- Code(Zero) at (prev + 8, 22) to (start + 0, 23)
+- Code(Zero) at (prev + 1, 9) to (start + 0, 11)
+- Code(Zero) at (prev + 1, 5) to (start + 0, 6)
+Highest counter ID seen: (none)
+
+Function name: closure_unit_return::implicit_unit
+Raw bytes (29): 0x[01, 01, 00, 05, 01, 10, 01, 00, 13, 01, 01, 09, 00, 10, 01, 04, 05, 00, 09, 01, 00, 0a, 00, 11, 01, 02, 01, 00, 02]
+Number of files: 1
+- file 0 => $DIR/closure_unit_return.rs
+Number of expressions: 0
+Number of file 0 mappings: 5
+- Code(Counter(0)) at (prev + 16, 1) to (start + 0, 19)
+- Code(Counter(0)) at (prev + 1, 9) to (start + 0, 16)
+- Code(Counter(0)) at (prev + 4, 5) to (start + 0, 9)
+- Code(Counter(0)) at (prev + 0, 10) to (start + 0, 17)
+- Code(Counter(0)) at (prev + 2, 1) to (start + 0, 2)
+Highest counter ID seen: c0
+
+Function name: closure_unit_return::implicit_unit::{closure#0} (unused)
+Raw bytes (19): 0x[01, 01, 00, 03, 00, 11, 16, 00, 17, 00, 01, 09, 00, 0b, 00, 01, 05, 00, 06]
+Number of files: 1
+- file 0 => $DIR/closure_unit_return.rs
+Number of expressions: 0
+Number of file 0 mappings: 3
+- Code(Zero) at (prev + 17, 22) to (start + 0, 23)
+- Code(Zero) at (prev + 1, 9) to (start + 0, 11)
+- Code(Zero) at (prev + 1, 5) to (start + 0, 6)
+Highest counter ID seen: (none)
+

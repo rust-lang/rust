@@ -1,0 +1,16 @@
+error: bound modifier `?` can only be applied to `Sized`
+  --> $DIR/opt-out-bound-not-satisfied.rs:5:18
+   |
+LL | fn foo() -> impl ?Future<Output = impl Send> {
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: bound modifier `?` can only be applied to `Sized`
+  --> $DIR/opt-out-bound-not-satisfied.rs:5:18
+   |
+LL | fn foo() -> impl ?Future<Output = impl Send> {
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 2 previous errors
+

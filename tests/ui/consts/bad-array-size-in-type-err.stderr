@@ -1,0 +1,64 @@
+error: the constant `N` is not of type `usize`
+  --> $DIR/bad-array-size-in-type-err.rs:2:10
+   |
+LL |     arr: [i32; N],
+   |          ^^^^^^^^ expected `usize`, found `u8`
+   |
+   = note: the length of array `[i32; N]` must be type `usize`
+
+error: the constant `N` is not of type `usize`
+  --> $DIR/bad-array-size-in-type-err.rs:19:32
+   |
+LL | pub struct Blorb<const N: u16>([String; N]);
+   |                                ^^^^^^^^^^^ expected `usize`, found `u16`
+   |
+   = note: the length of array `[String; N]` must be type `usize`
+
+error[E0308]: mismatched types
+  --> $DIR/bad-array-size-in-type-err.rs:7:38
+   |
+LL |     let _ = BadArraySize::<2> { arr: [0, 0, 0] };
+   |                                      ^^^^^^^^^ expected an array with a size of 2, found one with a size of 3
+
+error: the constant `2` is not of type `usize`
+  --> $DIR/bad-array-size-in-type-err.rs:7:38
+   |
+LL |     let _ = BadArraySize::<2> { arr: [0, 0, 0] };
+   |                                      ^^^^^^^^^ expected `usize`, found `u8`
+   |
+   = note: the length of array `[i32; 2]` must be type `usize`
+
+error: the constant `2` is not of type `usize`
+  --> $DIR/bad-array-size-in-type-err.rs:13:14
+   |
+LL |     for _ in val.arr {}
+   |              ^^^^^^^ expected `usize`, found `u8`
+   |
+   = note: the length of array `[i32; 2]` must be type `usize`
+
+error[E0277]: `[i32; 2]` is not an iterator
+  --> $DIR/bad-array-size-in-type-err.rs:13:14
+   |
+LL |     for _ in val.arr {}
+   |              ^^^^^^^ `[i32; 2]` is not an iterator; try calling `.into_iter()` or `.iter()`
+   |
+   = help: the trait `IntoIterator` is not implemented for `[i32; 2]`
+   = help: the following other types implement trait `IntoIterator`:
+             &[T; N]
+             &[T]
+             &mut [T; N]
+             &mut [T]
+             [T; N]
+
+error[E0493]: destructor of `Wrap` cannot be evaluated at compile-time
+  --> $DIR/bad-array-size-in-type-err.rs:21:16
+   |
+LL | pub const fn i(_: Wrap) {}
+   |                ^         - value is dropped here
+   |                |
+   |                the destructor for this type cannot be evaluated in constant functions
+
+error: aborting due to 7 previous errors
+
+Some errors have detailed explanations: E0277, E0308, E0493.
+For more information about an error, try `rustc --explain E0277`.

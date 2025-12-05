@@ -1,0 +1,37 @@
+error: unreachable statement
+  --> $DIR/expr_loop.rs:8:5
+   |
+LL |     loop { return; }
+   |            ------ any code following this expression is unreachable
+LL |     println!("I am dead.");
+   |     ^^^^^^^^^^^^^^^^^^^^^^ unreachable statement
+   |
+note: the lint level is defined here
+  --> $DIR/expr_loop.rs:4:9
+   |
+LL | #![deny(unreachable_code)]
+   |         ^^^^^^^^^^^^^^^^
+   = note: this error originates in the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: unreachable statement
+  --> $DIR/expr_loop.rs:21:5
+   |
+LL |     loop { return; }
+   |            ------ any code following this expression is unreachable
+LL |     println!("I am dead.");
+   |     ^^^^^^^^^^^^^^^^^^^^^^ unreachable statement
+   |
+   = note: this error originates in the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: unreachable statement
+  --> $DIR/expr_loop.rs:32:5
+   |
+LL |     loop { 'middle: loop { loop { break 'middle; } } }
+   |     -------------------------------------------------- any code following this expression is unreachable
+LL |     println!("I am dead.");
+   |     ^^^^^^^^^^^^^^^^^^^^^^ unreachable statement
+   |
+   = note: this error originates in the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 3 previous errors
+

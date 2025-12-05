@@ -1,0 +1,115 @@
+error[E0382]: use of moved value: `value`
+  --> $DIR/issue-72649-uninit-in-loop.rs:29:22
+   |
+LL |         let value = NonCopy{};
+   |             ----- move occurs because `value` has type `NonCopy`, which does not implement the `Copy` trait
+LL |
+LL |         let _used = value;
+   |                     ----- value moved here
+...
+LL |         let _used2 = value;
+   |                      ^^^^^ value used here after move
+   |
+note: if `NonCopy` implemented `Clone`, you could clone the value
+  --> $DIR/issue-72649-uninit-in-loop.rs:5:1
+   |
+LL | struct NonCopy;
+   | ^^^^^^^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |         let _used = value;
+   |                     ----- you could clone this value
+
+error[E0382]: use of moved value: `value`
+  --> $DIR/issue-72649-uninit-in-loop.rs:42:26
+   |
+LL |     let value = NonCopy{};
+   |         ----- move occurs because `value` has type `NonCopy`, which does not implement the `Copy` trait
+LL |
+LL |     loop {
+   |     ---- inside of this loop
+LL |         let _used = value;
+   |                     ----- value moved here
+...
+LL |             let _used2 = value;
+   |                          ^^^^^ value used here after move
+   |
+note: if `NonCopy` implemented `Clone`, you could clone the value
+  --> $DIR/issue-72649-uninit-in-loop.rs:5:1
+   |
+LL | struct NonCopy;
+   | ^^^^^^^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |         let _used = value;
+   |                     ----- you could clone this value
+
+error[E0382]: use of moved value: `value`
+  --> $DIR/issue-72649-uninit-in-loop.rs:52:21
+   |
+LL |     let value = NonCopy{};
+   |         ----- move occurs because `value` has type `NonCopy`, which does not implement the `Copy` trait
+LL |
+LL |     loop {
+   |     ---- inside of this loop
+LL |         let _used = value;
+   |                     ^^^^^ value moved here, in previous iteration of loop
+   |
+note: if `NonCopy` implemented `Clone`, you could clone the value
+  --> $DIR/issue-72649-uninit-in-loop.rs:5:1
+   |
+LL | struct NonCopy;
+   | ^^^^^^^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |         let _used = value;
+   |                     ----- you could clone this value
+
+error[E0382]: use of moved value: `value`
+  --> $DIR/issue-72649-uninit-in-loop.rs:64:22
+   |
+LL |     let mut value = NonCopy{};
+   |         --------- move occurs because `value` has type `NonCopy`, which does not implement the `Copy` trait
+...
+LL |     loop {
+   |     ---- inside of this loop
+LL |         let _used2 = value;
+   |                      ^^^^^ value moved here, in previous iteration of loop
+   |
+note: if `NonCopy` implemented `Clone`, you could clone the value
+  --> $DIR/issue-72649-uninit-in-loop.rs:5:1
+   |
+LL | struct NonCopy;
+   | ^^^^^^^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |         let _used2 = value;
+   |                      ----- you could clone this value
+
+error[E0381]: used binding `value` isn't initialized
+  --> $DIR/issue-72649-uninit-in-loop.rs:73:21
+   |
+LL |         let value: NonCopy;
+   |             ----- binding declared here but left uninitialized
+LL |         let _used = value;
+   |                     ^^^^^ `value` used here but it isn't initialized
+   |
+help: consider assigning a value
+   |
+LL |         let value: NonCopy = /* value */;
+   |                            +++++++++++++
+
+error[E0381]: used binding `value` isn't initialized
+  --> $DIR/issue-72649-uninit-in-loop.rs:81:21
+   |
+LL |     let mut value: NonCopy;
+   |         --------- binding declared here but left uninitialized
+LL |     loop {
+LL |         let _used = value;
+   |                     ^^^^^ `value` used here but it isn't initialized
+   |
+help: consider assigning a value
+   |
+LL |     let mut value: NonCopy = /* value */;
+   |                            +++++++++++++
+
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0381, E0382.
+For more information about an error, try `rustc --explain E0381`.

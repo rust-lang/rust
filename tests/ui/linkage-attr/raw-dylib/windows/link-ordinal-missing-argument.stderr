@@ -1,0 +1,25 @@
+error[E0805]: malformed `link_ordinal` attribute input
+  --> $DIR/link-ordinal-missing-argument.rs:3:5
+   |
+LL |     #[link_ordinal()]
+   |     ^^^^^^^^^^^^^^--^
+   |     |             |
+   |     |             expected a single argument here
+   |     help: must be of the form: `#[link_ordinal(ordinal)]`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/items/external-blocks.html#the-link_ordinal-attribute>
+
+error[E0805]: malformed `link_ordinal` attribute input
+  --> $DIR/link-ordinal-missing-argument.rs:8:5
+   |
+LL |     #[link_ordinal()]
+   |     ^^^^^^^^^^^^^^--^
+   |     |             |
+   |     |             expected a single argument here
+   |     help: must be of the form: `#[link_ordinal(ordinal)]`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/items/external-blocks.html#the-link_ordinal-attribute>
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0805`.

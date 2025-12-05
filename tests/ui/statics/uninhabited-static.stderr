@@ -1,0 +1,60 @@
+error: static of uninhabited type
+  --> $DIR/uninhabited-static.rs:12:1
+   |
+LL | static VOID2: Void = unsafe { std::mem::transmute(()) };
+   | ^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #74840 <https://github.com/rust-lang/rust/issues/74840>
+   = note: uninhabited statics cannot be initialized, and any access would be an immediate error
+note: the lint level is defined here
+  --> $DIR/uninhabited-static.rs:2:9
+   |
+LL | #![deny(uninhabited_static)]
+   |         ^^^^^^^^^^^^^^^^^^
+
+error: static of uninhabited type
+  --> $DIR/uninhabited-static.rs:15:1
+   |
+LL | static NEVER2: Void = unsafe { std::mem::transmute(()) };
+   | ^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #74840 <https://github.com/rust-lang/rust/issues/74840>
+   = note: uninhabited statics cannot be initialized, and any access would be an immediate error
+
+error: static of uninhabited type
+  --> $DIR/uninhabited-static.rs:6:5
+   |
+LL |     static VOID: Void;
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #74840 <https://github.com/rust-lang/rust/issues/74840>
+   = note: uninhabited statics cannot be initialized, and any access would be an immediate error
+
+error: static of uninhabited type
+  --> $DIR/uninhabited-static.rs:8:5
+   |
+LL |     static NEVER: !;
+   |     ^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #74840 <https://github.com/rust-lang/rust/issues/74840>
+   = note: uninhabited statics cannot be initialized, and any access would be an immediate error
+
+error[E0080]: constructing invalid value: encountered a value of uninhabited type `Void`
+  --> $DIR/uninhabited-static.rs:12:31
+   |
+LL | static VOID2: Void = unsafe { std::mem::transmute(()) };
+   |                               ^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `VOID2` failed here
+
+error[E0080]: constructing invalid value: encountered a value of uninhabited type `Void`
+  --> $DIR/uninhabited-static.rs:15:32
+   |
+LL | static NEVER2: Void = unsafe { std::mem::transmute(()) };
+   |                                ^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `NEVER2` failed here
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0080`.

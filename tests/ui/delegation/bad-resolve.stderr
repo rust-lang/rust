@@ -1,0 +1,99 @@
+error[E0324]: item `C` is an associated method, which doesn't match its trait `Trait`
+  --> $DIR/bad-resolve.rs:24:5
+   |
+LL |     const C: u32 = 0;
+   |     ----------------- item in trait
+...
+LL |     reuse <F as Trait>::C;
+   |     ^^^^^^^^^^^^^^^^^^^^^^ does not match trait
+
+error[E0324]: item `Type` is an associated method, which doesn't match its trait `Trait`
+  --> $DIR/bad-resolve.rs:27:5
+   |
+LL |     type Type;
+   |     ---------- item in trait
+...
+LL |     reuse <F as Trait>::Type;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^ does not match trait
+
+error[E0407]: method `baz` is not a member of trait `Trait`
+  --> $DIR/bad-resolve.rs:30:5
+   |
+LL |     reuse <F as Trait>::baz;
+   |     ^^^^^^^^^^^^^^^^^^^^---^
+   |     |                   |
+   |     |                   help: there is an associated function with a similar name: `bar`
+   |     not a member of trait `Trait`
+
+error[E0407]: method `foo2` is not a member of trait `Trait`
+  --> $DIR/bad-resolve.rs:37:5
+   |
+LL |     reuse Trait::foo2 { self.0 }
+   |     ^^^^^^^^^^^^^----^^^^^^^^^^^
+   |     |            |
+   |     |            help: there is an associated function with a similar name: `foo`
+   |     not a member of trait `Trait`
+
+error[E0423]: expected function, found associated constant `Trait::C`
+  --> $DIR/bad-resolve.rs:24:11
+   |
+LL |     reuse <F as Trait>::C;
+   |           ^^^^^^^^^^^^^^^ not a function
+
+error[E0575]: expected method or associated constant, found associated type `Trait::Type`
+  --> $DIR/bad-resolve.rs:27:11
+   |
+LL |     reuse <F as Trait>::Type;
+   |           ^^^^^^^^^^^^^^^^^^ not a method or associated constant
+
+error[E0576]: cannot find method or associated constant `baz` in trait `Trait`
+  --> $DIR/bad-resolve.rs:30:25
+   |
+LL |     fn bar() {}
+   |     -------- similarly named associated function `bar` defined here
+...
+LL |     reuse <F as Trait>::baz;
+   |                         ^^^ help: an associated function with a similar name exists: `bar`
+
+error[E0425]: cannot find function `foo` in this scope
+  --> $DIR/bad-resolve.rs:35:11
+   |
+LL |     reuse foo { &self.0 }
+   |           ^^^ not found in this scope
+
+error[E0425]: cannot find function `foo2` in trait `Trait`
+  --> $DIR/bad-resolve.rs:37:18
+   |
+LL |     fn foo(&self, x: i32) -> i32 { x }
+   |     ---------------------------- similarly named associated function `foo` defined here
+...
+LL |     reuse Trait::foo2 { self.0 }
+   |                  ^^^^ help: an associated function with a similar name exists: `foo`
+
+error[E0046]: not all trait items implemented, missing: `Type`
+  --> $DIR/bad-resolve.rs:22:1
+   |
+LL |     type Type;
+   |     --------- `Type` from trait
+...
+LL | impl Trait for S {
+   | ^^^^^^^^^^^^^^^^ missing `Type` in implementation
+
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `unresolved_prefix`
+  --> $DIR/bad-resolve.rs:43:7
+   |
+LL | reuse unresolved_prefix::{a, b, c};
+   |       ^^^^^^^^^^^^^^^^^ use of unresolved module or unlinked crate `unresolved_prefix`
+   |
+   = help: you might be missing a crate named `unresolved_prefix`
+
+error[E0433]: failed to resolve: `crate` in paths can only be used in start position
+  --> $DIR/bad-resolve.rs:44:29
+   |
+LL | reuse prefix::{self, super, crate};
+   |                             ^^^^^ `crate` in paths can only be used in start position
+
+error: aborting due to 12 previous errors
+
+Some errors have detailed explanations: E0046, E0324, E0407, E0423, E0425, E0433, E0575, E0576.
+For more information about an error, try `rustc --explain E0046`.

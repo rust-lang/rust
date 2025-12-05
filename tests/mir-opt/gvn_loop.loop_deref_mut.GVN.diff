@@ -1,0 +1,113 @@
+- // MIR for `loop_deref_mut` before GVN
++ // MIR for `loop_deref_mut` after GVN
+  
+  fn loop_deref_mut(_1: &mut Value) -> Value {
+      debug val => _1;
+      let mut _0: Value;
+      let _2: &Value;
+      let _3: &Value;
+      let mut _4: &Value;
+      let mut _6: !;
+      let mut _8: isize;
+      let mut _9: !;
+      let mut _10: ();
+      let mut _12: i32;
+      let _13: ();
+      let mut _14: bool;
+      let mut _15: !;
+      let mut _16: Value;
+      scope 1 {
+          debug val_alias => _2;
+          let mut _5: bool;
+          scope 2 {
+              debug stop => _5;
+              let _7: i32;
+              scope 3 {
+                  debug v => _7;
+                  let _11: Value;
+                  scope 4 {
+                      debug v => _11;
+                  }
+              }
+          }
+      }
+  
+      bb0: {
+          StorageLive(_2);
+-         StorageLive(_3);
++         nop;
+          StorageLive(_4);
+          _4 = &(*_1);
+          _3 = get::<Value>(move _4) -> [return: bb1, unwind unreachable];
+      }
+  
+      bb1: {
+          _2 = &(*_3);
+          StorageDead(_4);
+-         StorageDead(_3);
++         nop;
+          StorageLive(_5);
+          _5 = const false;
+-         _8 = discriminant((*_2));
++         _8 = discriminant((*_3));
+          switchInt(move _8) -> [0: bb3, otherwise: bb2];
+      }
+  
+      bb2: {
+          unreachable;
+      }
+  
+      bb3: {
+-         StorageLive(_7);
+-         _7 = copy (((*_2) as V0).0: i32);
++         nop;
++         _7 = copy (((*_3) as V0).0: i32);
+          StorageLive(_9);
+          goto -> bb4;
+      }
+  
+      bb4: {
+          StorageLive(_11);
+          StorageLive(_12);
+          _12 = copy _7;
+-         _11 = Value::V0(move _12);
++         _11 = Value::V0(copy _7);
+          StorageDead(_12);
+          StorageLive(_13);
+          StorageLive(_14);
+          _14 = copy _5;
+          switchInt(move _14) -> [0: bb6, otherwise: bb5];
+      }
+  
+      bb5: {
+          _0 = move _11;
+          StorageDead(_14);
+          StorageDead(_13);
+          StorageDead(_11);
+          StorageDead(_9);
+-         StorageDead(_7);
++         nop;
+          StorageDead(_5);
+          StorageDead(_2);
+          return;
+      }
+  
+      bb6: {
+          _13 = const ();
+          StorageDead(_14);
+          StorageDead(_13);
+          _5 = const true;
+          StorageLive(_16);
+-         _16 = Value::V1;
+-         (*_1) = move _16;
++         _16 = const Value::V1;
++         (*_1) = const Value::V1;
+          StorageDead(_16);
+          _10 = const ();
+          StorageDead(_11);
+          goto -> bb4;
+      }
+  }
++ 
++ ALLOC0 (size: 8, align: 4) { .. }
+  

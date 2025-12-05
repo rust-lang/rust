@@ -1,0 +1,8 @@
+error: expected identifier, found `;`
+  --> $DIR/use-ends-with-mod-sep.rs:1:15
+   |
+LL | use std::any::;
+   |               ^ expected identifier
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,30 @@
+error: Undefined Behavior: memory access failed: ALLOC has been freed, so this pointer is dangling
+  --> tests/fail/tail_calls/dangling-local-var.rs:LL:CC
+   |
+LL |     let _val = unsafe { *x };
+   |                         ^^ Undefined Behavior occurred here
+   |
+   = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
+   = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
+help: ALLOC was allocated here:
+  --> tests/fail/tail_calls/dangling-local-var.rs:LL:CC
+   |
+LL |     let local = 0;
+   |         ^^^^^
+help: ALLOC was deallocated here:
+  --> tests/fail/tail_calls/dangling-local-var.rs:LL:CC
+   |
+LL |     f(std::ptr::null());
+   |     ^^^^^^^^^^^^^^^^^^^
+   = note: BACKTRACE (of the first span):
+   = note: inside `g` at tests/fail/tail_calls/dangling-local-var.rs:LL:CC
+note: inside `main`
+  --> tests/fail/tail_calls/dangling-local-var.rs:LL:CC
+   |
+LL |     f(std::ptr::null());
+   |     ^^^^^^^^^^^^^^^^^^^
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to 1 previous error
+

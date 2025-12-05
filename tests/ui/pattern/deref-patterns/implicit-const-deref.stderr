@@ -1,0 +1,17 @@
+error: constant of non-structural type `Vec<()>` in a pattern
+  --> $DIR/implicit-const-deref.rs:15:9
+   |
+LL | const EMPTY: Vec<()> = Vec::new();
+   | -------------------- constant defined here
+...
+LL |         EMPTY => {}
+   |         ^^^^^ constant of non-structural type
+   |
+  --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
+   |
+   = note: `Vec<()>` must be annotated with `#[derive(PartialEq)]` to be usable in patterns
+   |
+   = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralPartialEq.html for details
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,24 @@
+error[E0252]: the name `autodiff_forward` is defined multiple times
+  --> $DIR/visibility.rs:11:5
+   |
+LL | use std::autodiff::autodiff_forward;
+   |     ------------------------------- previous import of the macro `autodiff_forward` here
+LL | extern crate my_macro;
+LL | use my_macro::autodiff_forward; // bring `autodiff_forward` in scope
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ `autodiff_forward` reimported here
+   |
+   = note: `autodiff_forward` must be defined only once in the macro namespace of this module
+help: you can use `as` to change the binding name of the import
+   |
+LL | use my_macro::autodiff_forward as other_autodiff_forward; // bring `autodiff_forward` in scope
+   |                                +++++++++++++++++++++++++
+
+error: this rustc version does not support autodiff
+  --> $DIR/visibility.rs:13:1
+   |
+LL | #[autodiff_forward(dfoo)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0252`.

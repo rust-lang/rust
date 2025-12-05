@@ -1,0 +1,9 @@
+error[E0204]: the trait `ConstParamTy_` cannot be implemented for this type
+  --> $DIR/reference_pointee_is_const_param-2.rs:11:24
+   |
+LL | impl ConstParamTy_ for &'static ConstStrU {}
+   |                        ^^^^^^^^^^^^^^^^^^ this field does not implement `ConstParamTy_`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0204`.

@@ -1,0 +1,14 @@
+error: cannot find attribute `empty_helper` in this scope
+  --> $DIR/derive-helper-legacy-limits.rs:17:3
+   |
+LL | #[empty_helper]
+   |   ^^^^^^^^^^^^
+   |
+help: `empty_helper` is an attribute that can be used by the derive macro `Empty`, you might be missing a `derive` attribute
+   |
+LL + #[derive(Empty)]
+LL | struct S2;
+   |
+
+error: aborting due to 1 previous error
+

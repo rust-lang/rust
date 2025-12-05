@@ -1,0 +1,44 @@
+// MIR for `saturating_sub_at_home` after PreCodegen
+
+fn saturating_sub_at_home(_1: u32, _2: u32) -> u32 {
+    debug lhs => _1;
+    debug rhs => _2;
+    let mut _0: u32;
+    let mut _5: std::option::Option<u32>;
+    scope 1 (inlined core::num::<impl u32>::checked_sub) {
+        let mut _3: bool;
+        let mut _4: u32;
+    }
+    scope 2 (inlined Option::<u32>::unwrap_or) {
+        scope 3 {
+        }
+    }
+
+    bb0: {
+        StorageLive(_5);
+        StorageLive(_3);
+        _3 = Lt(copy _1, copy _2);
+        switchInt(move _3) -> [0: bb1, otherwise: bb2];
+    }
+
+    bb1: {
+        StorageLive(_4);
+        _4 = SubUnchecked(copy _1, copy _2);
+        _5 = Option::<u32>::Some(move _4);
+        StorageDead(_4);
+        StorageDead(_3);
+        _0 = move ((_5 as Some).0: u32);
+        goto -> bb3;
+    }
+
+    bb2: {
+        StorageDead(_3);
+        _0 = const 0_u32;
+        goto -> bb3;
+    }
+
+    bb3: {
+        StorageDead(_5);
+        return;
+    }
+}

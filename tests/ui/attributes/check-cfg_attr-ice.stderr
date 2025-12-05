@@ -1,0 +1,101 @@
+error: an inner attribute is not permitted in this context
+  --> $DIR/check-cfg_attr-ice.rs:60:9
+   |
+LL |         #![cfg_attr::no_such_thing]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: inner attributes, like `#![no_std]`, annotate the item enclosing them, and are usually found at the beginning of source files
+   = note: outer attributes, like `#[test]`, annotate the item following them
+
+error[E0658]: attributes on expressions are experimental
+  --> $DIR/check-cfg_attr-ice.rs:45:9
+   |
+LL |         #[cfg_attr::no_such_thing]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `cfg_attr`
+  --> $DIR/check-cfg_attr-ice.rs:52:3
+   |
+LL | #[cfg_attr::no_such_thing]
+   |   ^^^^^^^^ use of unresolved module or unlinked crate `cfg_attr`
+
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `cfg_attr`
+  --> $DIR/check-cfg_attr-ice.rs:55:7
+   |
+LL |     #[cfg_attr::no_such_thing]
+   |       ^^^^^^^^ use of unresolved module or unlinked crate `cfg_attr`
+
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `cfg_attr`
+  --> $DIR/check-cfg_attr-ice.rs:57:17
+   |
+LL |     GiveYouUp(#[cfg_attr::no_such_thing] u8),
+   |                 ^^^^^^^^ use of unresolved module or unlinked crate `cfg_attr`
+
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `cfg_attr`
+  --> $DIR/check-cfg_attr-ice.rs:64:11
+   |
+LL |         #[cfg_attr::no_such_thing]
+   |           ^^^^^^^^ use of unresolved module or unlinked crate `cfg_attr`
+
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `cfg_attr`
+  --> $DIR/check-cfg_attr-ice.rs:41:7
+   |
+LL |     #[cfg_attr::no_such_thing]
+   |       ^^^^^^^^ use of unresolved module or unlinked crate `cfg_attr`
+
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `cfg_attr`
+  --> $DIR/check-cfg_attr-ice.rs:43:15
+   |
+LL |     fn from(#[cfg_attr::no_such_thing] any_other_guy: AnyOtherGuy) -> This {
+   |               ^^^^^^^^ use of unresolved module or unlinked crate `cfg_attr`
+
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `cfg_attr`
+  --> $DIR/check-cfg_attr-ice.rs:45:11
+   |
+LL |         #[cfg_attr::no_such_thing]
+   |           ^^^^^^^^ use of unresolved module or unlinked crate `cfg_attr`
+
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `cfg_attr`
+  --> $DIR/check-cfg_attr-ice.rs:32:3
+   |
+LL | #[cfg_attr::no_such_thing]
+   |   ^^^^^^^^ use of unresolved module or unlinked crate `cfg_attr`
+
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `cfg_attr`
+  --> $DIR/check-cfg_attr-ice.rs:24:3
+   |
+LL | #[cfg_attr::no_such_thing]
+   |   ^^^^^^^^ use of unresolved module or unlinked crate `cfg_attr`
+
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `cfg_attr`
+  --> $DIR/check-cfg_attr-ice.rs:27:7
+   |
+LL |     #[cfg_attr::no_such_thing]
+   |       ^^^^^^^^ use of unresolved module or unlinked crate `cfg_attr`
+
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `cfg_attr`
+  --> $DIR/check-cfg_attr-ice.rs:16:3
+   |
+LL | #[cfg_attr::no_such_thing]
+   |   ^^^^^^^^ use of unresolved module or unlinked crate `cfg_attr`
+
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `cfg_attr`
+  --> $DIR/check-cfg_attr-ice.rs:19:7
+   |
+LL |     #[cfg_attr::no_such_thing]
+   |       ^^^^^^^^ use of unresolved module or unlinked crate `cfg_attr`
+
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `cfg_attr`
+  --> $DIR/check-cfg_attr-ice.rs:12:3
+   |
+LL | #[cfg_attr::no_such_thing]
+   |   ^^^^^^^^ use of unresolved module or unlinked crate `cfg_attr`
+
+error: aborting due to 15 previous errors
+
+Some errors have detailed explanations: E0433, E0658.
+For more information about an error, try `rustc --explain E0433`.

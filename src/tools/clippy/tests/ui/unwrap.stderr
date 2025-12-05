@@ -1,0 +1,31 @@
+error: used `unwrap()` on an `Option` value
+  --> tests/ui/unwrap.rs:6:13
+   |
+LL |     let _ = opt.unwrap();
+   |             ^^^^^^^^^^^^
+   |
+   = note: if this value is `None`, it will panic
+   = help: consider using `expect()` to provide a better panic message
+   = note: `-D clippy::unwrap-used` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unwrap_used)]`
+
+error: used `unwrap()` on a `Result` value
+  --> tests/ui/unwrap.rs:12:13
+   |
+LL |     let _ = res.unwrap();
+   |             ^^^^^^^^^^^^
+   |
+   = note: if this value is an `Err`, it will panic
+   = help: consider using `expect()` to provide a better panic message
+
+error: used `unwrap_err()` on a `Result` value
+  --> tests/ui/unwrap.rs:15:13
+   |
+LL |     let _ = res.unwrap_err();
+   |             ^^^^^^^^^^^^^^^^
+   |
+   = note: if this value is an `Ok`, it will panic
+   = help: consider using `expect_err()` to provide a better panic message
+
+error: aborting due to 3 previous errors
+

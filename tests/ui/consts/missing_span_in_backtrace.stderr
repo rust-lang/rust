@@ -1,0 +1,20 @@
+error[E0080]: memory access failed: attempting to access 1 byte, but got ALLOC0+0x4 which is at or beyond the end of the allocation of size 4 bytes
+  --> $DIR/missing_span_in_backtrace.rs:16:9
+   |
+16 | /         ptr::swap_nonoverlapping(
+17 | |             &mut x1 as *mut _ as *mut MaybeUninit<u8>,
+18 | |             &mut x2 as *mut _ as *mut MaybeUninit<u8>,
+19 | |             10,
+20 | |         );
+   | |_________^ evaluation of `X` failed inside this call
+   |
+note: inside `swap_nonoverlapping::compiletime::<MaybeUninit<u8>>`
+  --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+note: inside `std::ptr::swap_nonoverlapping_const::<MaybeUninit<u8>>`
+  --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+note: inside `std::ptr::copy_nonoverlapping::<MaybeUninit<u8>>`
+  --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0080`.

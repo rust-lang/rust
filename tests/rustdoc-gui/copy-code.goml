@@ -1,0 +1,54 @@
+// Checks that the "copy code" button is not triggering JS error and its display
+// isn't broken.
+go-to: "file://" + |DOC_PATH| + "/test_docs/fn.foo.html"
+
+define-function: (
+    "check-copy-button",
+    [],
+    block {
+        // First we ensure that there are no "copy code" currently existing.
+        assert-count: (".example-wrap .copy-button", 0)
+        move-cursor-to: ".example-wrap"
+        assert-count: (".example-wrap .copy-button", 1)
+        // We now ensure it's only displayed when the example is hovered.
+        assert-css: (".example-wrap .copy-button", { "visibility": "visible" })
+        move-cursor-to: "rustdoc-toolbar #search-button"
+        assert-css: (".example-wrap .copy-button", { "visibility": "hidden" })
+        // Checking that the copy button has the same size as the "copy path" button.
+        compare-elements-size: (
+            "#copy-path",
+            ".example-wrap:nth-of-type(1) .copy-button",
+            ["height", "width"],
+        )
+    },
+)
+
+call-function: ("check-copy-button", {})
+// Checking that the run button and the copy button have the same height and same width.
+compare-elements-size: (
+    ".example-wrap:nth-of-type(1) .test-arrow",
+    ".example-wrap:nth-of-type(1) .copy-button",
+    ["height", "width"],
+)
+// ... and the same y position.
+compare-elements-position: (
+    ".example-wrap:nth-of-type(1) .test-arrow",
+    ".example-wrap:nth-of-type(1) .copy-button",
+    ["y"],
+)
+store-size: (".example-wrap:nth-of-type(1) .copy-button", {
+    "height": copy_height,
+    "width": copy_width,
+})
+assert: |copy_height| > 0 && |copy_width| > 0
+
+// Checking same things for the copy button when there is no run button.
+go-to: "file://" + |DOC_PATH| + "/lib2/sub_mod/struct.Foo.html"
+call-function: ("check-copy-button", {})
+// Ensure there is no run button.
+assert-count: (".example-wrap .test-arrow", 0)
+// Check it's the same size without a run button.
+assert-size: (".example-wrap:nth-of-type(1) .copy-button", {
+    "height": |copy_height|,
+    "width": |copy_width|,
+})

@@ -1,0 +1,18 @@
+[package]
+name = "lib2"
+version = "0.1.0"
+edition = "2018"
+
+[lib]
+path = "lib.rs"
+
+[features]
+Win32 = ["Win32_System"]
+Win32_System = ["Win32_System_Diagnostics"]
+Win32_System_Diagnostics = ["Win32_System_Diagnostics_Debug"]
+Win32_System_Diagnostics_Debug = []
+default = ["Win32"]
+
+[dependencies]
+implementors = { path = "./implementors" }
+http = { path = "./http" }

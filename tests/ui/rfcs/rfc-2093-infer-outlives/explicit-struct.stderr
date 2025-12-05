@@ -1,0 +1,10 @@
+error: rustc_outlives
+  --> $DIR/explicit-struct.rs:4:1
+   |
+LL | struct Foo<'b, U> {
+   | ^^^^^^^^^^^^^^^^^
+   |
+   = note: U: 'b
+
+error: aborting due to 1 previous error
+

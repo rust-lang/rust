@@ -1,0 +1,1 @@
+[{"name":"<stdin>","mismatches":[{"original_begin_line":1,"original_end_line":6,"expected_begin_line":1,"expected_end_line":2,"original":"\nfn\n some( )\n{\n}\nfn main () {}\n","expected":"fn some() {}\nfn main() {}\n"}]}]

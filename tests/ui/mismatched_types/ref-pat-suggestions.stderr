@@ -1,0 +1,387 @@
+error[E0308]: mismatched types
+  --> $DIR/ref-pat-suggestions.rs:3:8
+   |
+LL | fn _f0(&_a: u32) {}
+   |        ^^^  --- expected due to this
+   |        |
+   |        expected `u32`, found `&_`
+   |
+   = note:   expected type `u32`
+           found reference `&_`
+help: to take parameter `_a` by reference, move `&` to the type
+   |
+LL - fn _f0(&_a: u32) {}
+LL + fn _f0(_a: &u32) {}
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/ref-pat-suggestions.rs:4:8
+   |
+LL | fn _f1(&mut _a: u32) {}
+   |        ^^^^^^^  --- expected due to this
+   |        |
+   |        expected `u32`, found `&mut _`
+   |
+   = note:           expected type `u32`
+           found mutable reference `&mut _`
+note: to declare a mutable parameter use: `mut _a`
+  --> $DIR/ref-pat-suggestions.rs:4:8
+   |
+LL | fn _f1(&mut _a: u32) {}
+   |        ^^^^^^^
+help: to take parameter `_a` by reference, move `&mut` to the type
+   |
+LL - fn _f1(&mut _a: u32) {}
+LL + fn _f1(_a: &mut u32) {}
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/ref-pat-suggestions.rs:5:9
+   |
+LL | fn _f2(&&_a: &u32) {}
+   |         ^^^  ---- expected due to this
+   |         |
+   |         expected `u32`, found `&_`
+   |
+   = note:   expected type `u32`
+           found reference `&_`
+help: consider removing `&` from the pattern
+   |
+LL - fn _f2(&&_a: &u32) {}
+LL + fn _f2(&_a: &u32) {}
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/ref-pat-suggestions.rs:6:13
+   |
+LL | fn _f3(&mut &_a: &mut u32) {}
+   |             ^^^  -------- expected due to this
+   |             |
+   |             expected `u32`, found `&_`
+   |
+   = note:   expected type `u32`
+           found reference `&_`
+help: consider removing `&` from the pattern
+   |
+LL - fn _f3(&mut &_a: &mut u32) {}
+LL + fn _f3(&mut _a: &mut u32) {}
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/ref-pat-suggestions.rs:7:9
+   |
+LL | fn _f4(&&mut _a: &u32) {}
+   |         ^^^^^^^  ---- expected due to this
+   |         |
+   |         expected `u32`, found `&mut _`
+   |
+   = note:           expected type `u32`
+           found mutable reference `&mut _`
+help: consider removing `&mut` from the pattern
+   |
+LL - fn _f4(&&mut _a: &u32) {}
+LL + fn _f4(&_a: &u32) {}
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/ref-pat-suggestions.rs:8:13
+   |
+LL | fn _f5(&mut &mut _a: &mut u32) {}
+   |             ^^^^^^^  -------- expected due to this
+   |             |
+   |             expected `u32`, found `&mut _`
+   |
+   = note:           expected type `u32`
+           found mutable reference `&mut _`
+help: consider removing `&mut` from the pattern
+   |
+LL - fn _f5(&mut &mut _a: &mut u32) {}
+LL + fn _f5(&mut _a: &mut u32) {}
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/ref-pat-suggestions.rs:11:23
+   |
+LL |     let _: fn(u32) = |&_a| ();
+   |                       ^^^
+   |                       |
+   |                       expected `u32`, found `&_`
+   |                       expected due to this
+   |
+   = note:   expected type `u32`
+           found reference `&_`
+help: consider removing `&` from the pattern
+   |
+LL -     let _: fn(u32) = |&_a| ();
+LL +     let _: fn(u32) = |_a| ();
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/ref-pat-suggestions.rs:12:23
+   |
+LL |     let _: fn(u32) = |&mut _a| ();
+   |                       ^^^^^^^
+   |                       |
+   |                       expected `u32`, found `&mut _`
+   |                       expected due to this
+   |
+   = note:           expected type `u32`
+           found mutable reference `&mut _`
+note: to declare a mutable parameter use: `mut _a`
+  --> $DIR/ref-pat-suggestions.rs:12:23
+   |
+LL |     let _: fn(u32) = |&mut _a| ();
+   |                       ^^^^^^^
+help: consider removing `&mut` from the pattern
+   |
+LL -     let _: fn(u32) = |&mut _a| ();
+LL +     let _: fn(u32) = |_a| ();
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/ref-pat-suggestions.rs:13:25
+   |
+LL |     let _: fn(&u32) = |&&_a| ();
+   |                        -^^^
+   |                        ||
+   |                        |expected `u32`, found `&_`
+   |                        expected due to this
+   |
+   = note:   expected type `u32`
+           found reference `&_`
+help: consider removing `&` from the pattern
+   |
+LL -     let _: fn(&u32) = |&&_a| ();
+LL +     let _: fn(&u32) = |&_a| ();
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/ref-pat-suggestions.rs:14:33
+   |
+LL |     let _: fn(&mut u32) = |&mut &_a| ();
+   |                            -----^^^
+   |                            |    |
+   |                            |    expected `u32`, found `&_`
+   |                            expected due to this
+   |
+   = note:   expected type `u32`
+           found reference `&_`
+help: consider removing `&` from the pattern
+   |
+LL -     let _: fn(&mut u32) = |&mut &_a| ();
+LL +     let _: fn(&mut u32) = |&mut _a| ();
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/ref-pat-suggestions.rs:15:25
+   |
+LL |     let _: fn(&u32) = |&&mut _a| ();
+   |                        -^^^^^^^
+   |                        ||
+   |                        |expected `u32`, found `&mut _`
+   |                        expected due to this
+   |
+   = note:           expected type `u32`
+           found mutable reference `&mut _`
+help: consider removing `&mut` from the pattern
+   |
+LL -     let _: fn(&u32) = |&&mut _a| ();
+LL +     let _: fn(&u32) = |&_a| ();
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/ref-pat-suggestions.rs:16:33
+   |
+LL |     let _: fn(&mut u32) = |&mut &mut _a| ();
+   |                            -----^^^^^^^
+   |                            |    |
+   |                            |    expected `u32`, found `&mut _`
+   |                            expected due to this
+   |
+   = note:           expected type `u32`
+           found mutable reference `&mut _`
+help: consider removing `&mut` from the pattern
+   |
+LL -     let _: fn(&mut u32) = |&mut &mut _a| ();
+LL +     let _: fn(&mut u32) = |&mut _a| ();
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/ref-pat-suggestions.rs:18:14
+   |
+LL |     let _ = |&_a: u32| ();
+   |              ^^^  --- expected due to this
+   |              |
+   |              expected `u32`, found `&_`
+   |
+   = note:   expected type `u32`
+           found reference `&_`
+help: to take parameter `_a` by reference, move `&` to the type
+   |
+LL -     let _ = |&_a: u32| ();
+LL +     let _ = |_a: &u32| ();
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/ref-pat-suggestions.rs:19:14
+   |
+LL |     let _ = |&mut _a: u32| ();
+   |              ^^^^^^^  --- expected due to this
+   |              |
+   |              expected `u32`, found `&mut _`
+   |
+   = note:           expected type `u32`
+           found mutable reference `&mut _`
+note: to declare a mutable parameter use: `mut _a`
+  --> $DIR/ref-pat-suggestions.rs:19:14
+   |
+LL |     let _ = |&mut _a: u32| ();
+   |              ^^^^^^^
+help: to take parameter `_a` by reference, move `&mut` to the type
+   |
+LL -     let _ = |&mut _a: u32| ();
+LL +     let _ = |_a: &mut u32| ();
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/ref-pat-suggestions.rs:20:15
+   |
+LL |     let _ = |&&_a: &u32| ();
+   |               ^^^  ---- expected due to this
+   |               |
+   |               expected `u32`, found `&_`
+   |
+   = note:   expected type `u32`
+           found reference `&_`
+help: consider removing `&` from the pattern
+   |
+LL -     let _ = |&&_a: &u32| ();
+LL +     let _ = |&_a: &u32| ();
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/ref-pat-suggestions.rs:21:19
+   |
+LL |     let _ = |&mut &_a: &mut u32| ();
+   |                   ^^^  -------- expected due to this
+   |                   |
+   |                   expected `u32`, found `&_`
+   |
+   = note:   expected type `u32`
+           found reference `&_`
+help: consider removing `&` from the pattern
+   |
+LL -     let _ = |&mut &_a: &mut u32| ();
+LL +     let _ = |&mut _a: &mut u32| ();
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/ref-pat-suggestions.rs:22:15
+   |
+LL |     let _ = |&&mut _a: &u32| ();
+   |               ^^^^^^^  ---- expected due to this
+   |               |
+   |               expected `u32`, found `&mut _`
+   |
+   = note:           expected type `u32`
+           found mutable reference `&mut _`
+help: consider removing `&mut` from the pattern
+   |
+LL -     let _ = |&&mut _a: &u32| ();
+LL +     let _ = |&_a: &u32| ();
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/ref-pat-suggestions.rs:23:19
+   |
+LL |     let _ = |&mut &mut _a: &mut u32| ();
+   |                   ^^^^^^^  -------- expected due to this
+   |                   |
+   |                   expected `u32`, found `&mut _`
+   |
+   = note:           expected type `u32`
+           found mutable reference `&mut _`
+help: consider removing `&mut` from the pattern
+   |
+LL -     let _ = |&mut &mut _a: &mut u32| ();
+LL +     let _ = |&mut _a: &mut u32| ();
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/ref-pat-suggestions.rs:29:13
+   |
+LL |         let &mut _a = 0;
+   |             ^^^^^^^   - this expression has type `{integer}`
+   |             |
+   |             expected integer, found `&mut _`
+   |             help: to declare a mutable variable use: `mut _a`
+   |
+   = note:           expected type `{integer}`
+           found mutable reference `&mut _`
+
+error[E0308]: mismatched types
+  --> $DIR/ref-pat-suggestions.rs:30:15
+   |
+LL |         let S(&mut _b) = S(0);
+   |               ^^^^^^^    ---- this expression has type `S`
+   |               |
+   |               expected `u8`, found `&mut _`
+   |
+   = note:           expected type `u8`
+           found mutable reference `&mut _`
+note: to declare a mutable binding use: `mut _b`
+  --> $DIR/ref-pat-suggestions.rs:30:15
+   |
+LL |         let S(&mut _b) = S(0);
+   |               ^^^^^^^
+help: consider removing `&mut` from the pattern
+   |
+LL -         let S(&mut _b) = S(0);
+LL +         let S(_b) = S(0);
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/ref-pat-suggestions.rs:31:14
+   |
+LL |         let (&mut _c,) = (0,);
+   |              ^^^^^^^     ---- this expression has type `({integer},)`
+   |              |
+   |              expected integer, found `&mut _`
+   |
+   = note:           expected type `{integer}`
+           found mutable reference `&mut _`
+note: to declare a mutable binding use: `mut _c`
+  --> $DIR/ref-pat-suggestions.rs:31:14
+   |
+LL |         let (&mut _c,) = (0,);
+   |              ^^^^^^^
+help: consider removing `&mut` from the pattern
+   |
+LL -         let (&mut _c,) = (0,);
+LL +         let (_c,) = (0,);
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/ref-pat-suggestions.rs:34:13
+   |
+LL |         match 0 {
+   |               - this expression has type `{integer}`
+LL |             &mut _d => {}
+   |             ^^^^^^^ expected integer, found `&mut _`
+   |
+   = note:           expected type `{integer}`
+           found mutable reference `&mut _`
+note: to declare a mutable binding use: `mut _d`
+  --> $DIR/ref-pat-suggestions.rs:34:13
+   |
+LL |             &mut _d => {}
+   |             ^^^^^^^
+help: consider removing `&mut` from the pattern
+   |
+LL -             &mut _d => {}
+LL +             _d => {}
+   |
+
+error: aborting due to 22 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

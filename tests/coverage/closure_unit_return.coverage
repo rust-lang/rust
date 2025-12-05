@@ -1,0 +1,32 @@
+   LL|       |#![feature(coverage_attribute)]
+   LL|       |//@ edition: 2021
+   LL|       |
+   LL|       |// Regression test for an inconsistency between functions that return the value
+   LL|       |// of their trailing expression, and functions that implicitly return `()`.
+   LL|       |
+   LL|      1|fn explicit_unit() {
+   LL|      1|    let closure = || {
+                                   ^0
+   LL|      0|        ();
+   LL|      0|    };
+   LL|       |
+   LL|      1|    drop(closure);
+   LL|      1|    () // explicit return of trailing value
+   LL|      1|}
+   LL|       |
+   LL|      1|fn implicit_unit() {
+   LL|      1|    let closure = || {
+                                   ^0
+   LL|      0|        ();
+   LL|      0|    };
+   LL|       |
+   LL|      1|    drop(closure);
+   LL|       |    // implicit return of `()`
+   LL|      1|}
+   LL|       |
+   LL|       |#[coverage(off)]
+   LL|       |fn main() {
+   LL|       |    explicit_unit();
+   LL|       |    implicit_unit();
+   LL|       |}
+

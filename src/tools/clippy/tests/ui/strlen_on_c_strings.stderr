@@ -1,0 +1,47 @@
+error: using `libc::strlen` on a `CString` or `CStr` value
+  --> tests/ui/strlen_on_c_strings.rs:11:13
+   |
+LL |     let _ = unsafe { libc::strlen(cstring.as_ptr()) };
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `cstring.as_bytes().len()`
+   |
+   = note: `-D clippy::strlen-on-c-strings` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::strlen_on_c_strings)]`
+
+error: using `libc::strlen` on a `CString` or `CStr` value
+  --> tests/ui/strlen_on_c_strings.rs:16:13
+   |
+LL |     let _ = unsafe { libc::strlen(cstr.as_ptr()) };
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `cstr.to_bytes().len()`
+
+error: using `libc::strlen` on a `CString` or `CStr` value
+  --> tests/ui/strlen_on_c_strings.rs:19:13
+   |
+LL |     let _ = unsafe { strlen(cstr.as_ptr()) };
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `cstr.to_bytes().len()`
+
+error: using `libc::strlen` on a `CString` or `CStr` value
+  --> tests/ui/strlen_on_c_strings.rs:23:22
+   |
+LL |     let _ = unsafe { strlen((*pcstr).as_ptr()) };
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `(*pcstr).to_bytes().len()`
+
+error: using `libc::strlen` on a `CString` or `CStr` value
+  --> tests/ui/strlen_on_c_strings.rs:29:22
+   |
+LL |     let _ = unsafe { strlen(unsafe_identity(cstr).as_ptr()) };
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unsafe_identity(cstr).to_bytes().len()`
+
+error: using `libc::strlen` on a `CString` or `CStr` value
+  --> tests/ui/strlen_on_c_strings.rs:31:13
+   |
+LL |     let _ = unsafe { strlen(unsafe { unsafe_identity(cstr) }.as_ptr()) };
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unsafe { unsafe_identity(cstr) }.to_bytes().len()`
+
+error: using `libc::strlen` on a `CString` or `CStr` value
+  --> tests/ui/strlen_on_c_strings.rs:35:22
+   |
+LL |     let _ = unsafe { strlen(f(cstr).as_ptr()) };
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `f(cstr).to_bytes().len()`
+
+error: aborting due to 7 previous errors
+

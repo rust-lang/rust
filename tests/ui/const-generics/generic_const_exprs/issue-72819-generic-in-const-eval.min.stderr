@@ -1,0 +1,11 @@
+error: generic parameters may not be used in const operations
+  --> $DIR/issue-72819-generic-in-const-eval.rs:8:17
+   |
+LL | where Assert::<{N < usize::MAX / 2}>: IsTrue,
+   |                 ^ cannot perform const operation using `N`
+   |
+   = help: const parameters may only be used as standalone arguments here, i.e. `N`
+   = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+
+error: aborting due to 1 previous error
+

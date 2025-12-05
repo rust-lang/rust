@@ -1,0 +1,18 @@
+error: cannot use value of unsized pointer type `*mut T` for inline assembly
+  --> $DIR/conditionally-sized-ptr-fail.rs:7:34
+   |
+LL |         asm!("/* {} */", in(reg) p);
+   |                                  ^
+   |
+   = note: only sized pointers can be used in inline assembly
+
+error: cannot use value of unsized pointer type `*mut [u8]` for inline assembly
+  --> $DIR/conditionally-sized-ptr-fail.rs:14:34
+   |
+LL |         asm!("/* {} */", in(reg) p);
+   |                                  ^
+   |
+   = note: only sized pointers can be used in inline assembly
+
+error: aborting due to 2 previous errors
+

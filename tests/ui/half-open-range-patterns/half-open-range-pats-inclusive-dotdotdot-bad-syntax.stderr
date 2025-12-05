@@ -1,0 +1,81 @@
+error: range-to patterns with `...` are not allowed
+  --> $DIR/half-open-range-pats-inclusive-dotdotdot-bad-syntax.rs:15:9
+   |
+LL |         ...X => {}
+   |         ^^^
+   |
+help: use `..=` instead
+   |
+LL -         ...X => {}
+LL +         ..=X => {}
+   |
+
+error: range-to patterns with `...` are not allowed
+  --> $DIR/half-open-range-pats-inclusive-dotdotdot-bad-syntax.rs:16:9
+   |
+LL |         ...0 => {}
+   |         ^^^
+   |
+help: use `..=` instead
+   |
+LL -         ...0 => {}
+LL +         ..=0 => {}
+   |
+
+error: range-to patterns with `...` are not allowed
+  --> $DIR/half-open-range-pats-inclusive-dotdotdot-bad-syntax.rs:17:9
+   |
+LL |         ...'a' => {}
+   |         ^^^
+   |
+help: use `..=` instead
+   |
+LL -         ...'a' => {}
+LL +         ..='a' => {}
+   |
+
+error: range-to patterns with `...` are not allowed
+  --> $DIR/half-open-range-pats-inclusive-dotdotdot-bad-syntax.rs:18:9
+   |
+LL |         ...0.0f32 => {}
+   |         ^^^
+   |
+help: use `..=` instead
+   |
+LL -         ...0.0f32 => {}
+LL +         ..=0.0f32 => {}
+   |
+
+error: range-to patterns with `...` are not allowed
+  --> $DIR/half-open-range-pats-inclusive-dotdotdot-bad-syntax.rs:25:17
+   |
+LL |             let ...$e;
+   |                 ^^^
+...
+LL |     mac!(0);
+   |     ------- in this macro invocation
+   |
+   = note: this error originates in the macro `mac` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: use `..=` instead
+   |
+LL -             let ...$e;
+LL +             let ..=$e;
+   |
+
+error[E0005]: refutable pattern in local binding
+  --> $DIR/half-open-range-pats-inclusive-dotdotdot-bad-syntax.rs:25:17
+   |
+LL |             let ...$e;
+   |                 ^^^^^ pattern `1_i32..=i32::MAX` not covered
+...
+LL |     mac!(0);
+   |     ------- in this macro invocation
+   |
+   = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
+   = note: the matched value is of type `i32`
+   = note: this error originates in the macro `mac` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0005`.

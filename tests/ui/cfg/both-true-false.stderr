@@ -1,0 +1,25 @@
+error[E0425]: cannot find function `foo` in this scope
+  --> $DIR/both-true-false.rs:13:5
+   |
+LL |     foo();
+   |     ^^^ not found in this scope
+   |
+note: found an item that was configured out
+  --> $DIR/both-true-false.rs:6:4
+   |
+LL | #[cfg(false)]
+   |       ----- the item is gated here
+LL | #[cfg(true)]
+LL | fn foo() {}
+   |    ^^^
+note: found an item that was configured out
+  --> $DIR/both-true-false.rs:10:4
+   |
+LL | #[cfg(false)]
+   |       ----- the item is gated here
+LL | fn foo() {}
+   |    ^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0425`.

@@ -1,0 +1,100 @@
+error: mistyped literal suffix
+  --> tests/ui/mistyped_literal_suffix.rs:16:18
+   |
+LL |     let fail14 = 2_32;
+   |                  ^^^^ help: did you mean to write: `2_i32`
+   |
+   = note: `#[deny(clippy::mistyped_literal_suffixes)]` on by default
+
+error: mistyped literal suffix
+  --> tests/ui/mistyped_literal_suffix.rs:18:18
+   |
+LL |     let fail15 = 4_64;
+   |                  ^^^^ help: did you mean to write: `4_i64`
+
+error: mistyped literal suffix
+  --> tests/ui/mistyped_literal_suffix.rs:20:18
+   |
+LL |     let fail16 = 7_8; //
+   |                  ^^^ help: did you mean to write: `7_i8`
+
+error: mistyped literal suffix
+  --> tests/ui/mistyped_literal_suffix.rs:23:18
+   |
+LL |     let fail17 = 23_16; //
+   |                  ^^^^^ help: did you mean to write: `23_i16`
+
+error: mistyped literal suffix
+  --> tests/ui/mistyped_literal_suffix.rs:28:18
+   |
+LL |     let fail20 = 2__8; //
+   |                  ^^^^ help: did you mean to write: `2_i8`
+
+error: mistyped literal suffix
+  --> tests/ui/mistyped_literal_suffix.rs:31:18
+   |
+LL |     let fail21 = 4___16; //
+   |                  ^^^^^^ help: did you mean to write: `4_i16`
+
+error: mistyped literal suffix
+  --> tests/ui/mistyped_literal_suffix.rs:36:18
+   |
+LL |     let fail25 = 1E2_32;
+   |                  ^^^^^^ help: did you mean to write: `1E2_f32`
+
+error: mistyped literal suffix
+  --> tests/ui/mistyped_literal_suffix.rs:38:18
+   |
+LL |     let fail26 = 43E7_64;
+   |                  ^^^^^^^ help: did you mean to write: `43E7_f64`
+
+error: mistyped literal suffix
+  --> tests/ui/mistyped_literal_suffix.rs:40:18
+   |
+LL |     let fail27 = 243E17_32;
+   |                  ^^^^^^^^^ help: did you mean to write: `243E17_f32`
+
+error: mistyped literal suffix
+  --> tests/ui/mistyped_literal_suffix.rs:42:18
+   |
+LL |     let fail28 = 241251235E723_64;
+   |                  ^^^^^^^^^^^^^^^^ help: did you mean to write: `241_251_235E723_f64`
+
+error: mistyped literal suffix
+  --> tests/ui/mistyped_literal_suffix.rs:47:18
+   |
+LL |     let fail30 = 127_8; // should be i8
+   |                  ^^^^^ help: did you mean to write: `127_i8`
+
+error: mistyped literal suffix
+  --> tests/ui/mistyped_literal_suffix.rs:50:18
+   |
+LL |     let fail31 = 240_8; // should be u8
+   |                  ^^^^^ help: did you mean to write: `240_u8`
+
+error: mistyped literal suffix
+  --> tests/ui/mistyped_literal_suffix.rs:54:18
+   |
+LL |     let fail33 = 0x1234_16;
+   |                  ^^^^^^^^^ help: did you mean to write: `0x1234_i16`
+
+error: mistyped literal suffix
+  --> tests/ui/mistyped_literal_suffix.rs:56:18
+   |
+LL |     let fail34 = 0xABCD_16;
+   |                  ^^^^^^^^^ help: did you mean to write: `0xABCD_u16`
+
+error: mistyped literal suffix
+  --> tests/ui/mistyped_literal_suffix.rs:59:18
+   |
+LL |     let fail36 = 0xFFFF_FFFF_FFFF_FFFF_64; // u64
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^ help: did you mean to write: `0xFFFF_FFFF_FFFF_FFFF_u64`
+
+error: mistyped literal suffix
+  --> tests/ui/mistyped_literal_suffix.rs:67:13
+   |
+LL |     let _ = 1.12345E1_32;
+   |             ^^^^^^^^^^^^ help: did you mean to write: `1.123_45E1_f32`
+
+error: aborting due to 16 previous errors
+

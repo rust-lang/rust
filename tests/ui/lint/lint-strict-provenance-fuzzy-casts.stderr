@@ -1,0 +1,20 @@
+error: strict provenance disallows casting integer `usize` to pointer `*const u8`
+  --> $DIR/lint-strict-provenance-fuzzy-casts.rs:5:20
+   |
+LL |     let dangling = 16_usize as *const u8;
+   |                    ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: if you can't comply with strict provenance and don't have a pointer with the correct provenance you can use `std::ptr::with_exposed_provenance()` instead
+note: the lint level is defined here
+  --> $DIR/lint-strict-provenance-fuzzy-casts.rs:2:9
+   |
+LL | #![deny(fuzzy_provenance_casts)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^
+help: use `.with_addr()` to adjust a valid pointer in the same allocation, to this address
+   |
+LL -     let dangling = 16_usize as *const u8;
+LL +     let dangling = (...).with_addr(16_usize);
+   |
+
+error: aborting due to 1 previous error
+

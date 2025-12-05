@@ -1,0 +1,28 @@
+error[E0283]: type annotations needed
+  --> $DIR/argument-with-unnecessary-method-call.rs:8:13
+   |
+LL |     qux(Bar.into());
+   |     ---     ^^^^
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = note: cannot satisfy `_: From<Bar>`
+note: required by a bound in `qux`
+  --> $DIR/argument-with-unnecessary-method-call.rs:6:16
+   |
+LL | fn qux(_: impl From<Bar>) {}
+   |                ^^^^^^^^^ required by this bound in `qux`
+help: try using a fully qualified path to specify the expected types
+   |
+LL -     qux(Bar.into());
+LL +     qux(<Bar as Into<T>>::into(Bar));
+   |
+help: consider removing this method call, as the receiver has type `Bar` and `Bar: From<Bar>` trivially holds
+   |
+LL -     qux(Bar.into());
+LL +     qux(Bar);
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0283`.

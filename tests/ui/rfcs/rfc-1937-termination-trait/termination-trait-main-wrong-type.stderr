@@ -1,0 +1,11 @@
+error[E0277]: `main` has invalid return type `char`
+  --> $DIR/termination-trait-main-wrong-type.rs:1:14
+   |
+LL | fn main() -> char {
+   |              ^^^^ `main` can only return types that implement `Termination`
+   |
+   = help: consider using `()`, or a `Result`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

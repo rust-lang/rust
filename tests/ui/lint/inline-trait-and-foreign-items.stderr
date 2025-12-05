@@ -1,0 +1,73 @@
+error: `#[inline]` attribute cannot be used on associated types
+  --> $DIR/inline-trait-and-foreign-items.rs:11:5
+   |
+LL |     #[inline]
+   |     ^^^^^^^^^
+   |
+   = help: `#[inline]` can only be applied to functions
+
+error: `#[inline]` attribute cannot be used on associated types
+  --> $DIR/inline-trait-and-foreign-items.rs:22:5
+   |
+LL |     #[inline]
+   |     ^^^^^^^^^
+   |
+   = help: `#[inline]` can only be applied to functions
+
+error: `#[inline]` attribute cannot be used on associated types
+  --> $DIR/inline-trait-and-foreign-items.rs:25:5
+   |
+LL |     #[inline]
+   |     ^^^^^^^^^
+   |
+   = help: `#[inline]` can only be applied to functions
+
+error: `#[inline]` attribute cannot be used on foreign statics
+  --> $DIR/inline-trait-and-foreign-items.rs:30:5
+   |
+LL |     #[inline]
+   |     ^^^^^^^^^
+   |
+   = help: `#[inline]` can only be applied to functions
+
+error: `#[inline]` attribute cannot be used on foreign types
+  --> $DIR/inline-trait-and-foreign-items.rs:33:5
+   |
+LL |     #[inline]
+   |     ^^^^^^^^^
+   |
+   = help: `#[inline]` can only be applied to functions
+
+error: unconstrained opaque type
+  --> $DIR/inline-trait-and-foreign-items.rs:26:14
+   |
+LL |     type U = impl Trait;
+   |              ^^^^^^^^^^
+   |
+   = note: `U` must be used in combination with a concrete type within the same impl
+
+warning: `#[inline]` attribute cannot be used on associated consts
+  --> $DIR/inline-trait-and-foreign-items.rs:7:5
+   |
+LL |     #[inline]
+   |     ^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = help: `#[inline]` can only be applied to functions
+note: the lint level is defined here
+  --> $DIR/inline-trait-and-foreign-items.rs:4:9
+   |
+LL | #![warn(unused_attributes)]
+   |         ^^^^^^^^^^^^^^^^^
+
+warning: `#[inline]` attribute cannot be used on associated consts
+  --> $DIR/inline-trait-and-foreign-items.rs:18:5
+   |
+LL |     #[inline]
+   |     ^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = help: `#[inline]` can only be applied to functions
+
+error: aborting due to 6 previous errors; 2 warnings emitted
+

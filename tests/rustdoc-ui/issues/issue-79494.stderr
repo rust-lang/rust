@@ -1,0 +1,9 @@
+error[E0080]: transmuting from 8-byte type to 16-byte type: `usize` -> `&[u8]`
+  --> $DIR/issue-79494.rs:5:33
+   |
+LL | pub const ZST: &[u8] = unsafe { std::mem::transmute(1usize) };
+   |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `ZST` failed here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0080`.

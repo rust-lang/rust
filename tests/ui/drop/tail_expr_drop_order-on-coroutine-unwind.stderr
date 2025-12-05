@@ -1,0 +1,50 @@
+error: relative drop order changing in Rust 2024
+  --> $DIR/tail_expr_drop_order-on-coroutine-unwind.rs:19:15
+   |
+LL |         match func().await {
+   |               ^^^^^^^-----
+   |               |      |
+   |               |      this value will be stored in a temporary; let us call it `#3`
+   |               |      up until Edition 2021 `#3` is dropped last but will be dropped earlier in Edition 2024
+   |               |      this value will be stored in a temporary; let us call it `#1`
+   |               |      `#1` will be dropped later as of Edition 2024
+   |               this value will be stored in a temporary; let us call it `#2`
+   |               up until Edition 2021 `#2` is dropped last but will be dropped earlier in Edition 2024
+   |               `__awaitee` calls a custom destructor
+   |               `__awaitee` will be dropped later as of Edition 2024
+...
+LL |             Err(e) => {}
+   |                 -
+   |                 |
+   |                 `e` calls a custom destructor
+   |                 `e` will be dropped later as of Edition 2024
+LL |         }
+LL |     }
+   |     - now the temporary value is dropped here, before the local variables in the block or statement
+   |
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/temporary-tail-expr-scope.html>
+note: `#2` invokes this custom destructor
+  --> $DIR/tail_expr_drop_order-on-coroutine-unwind.rs:9:1
+   |
+LL | impl std::ops::Drop for Drop {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: `#1` invokes this custom destructor
+  --> $DIR/tail_expr_drop_order-on-coroutine-unwind.rs:9:1
+   |
+LL | impl std::ops::Drop for Drop {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: `e` invokes this custom destructor
+  --> $DIR/tail_expr_drop_order-on-coroutine-unwind.rs:9:1
+   |
+LL | impl std::ops::Drop for Drop {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: most of the time, changing drop order is harmless; inspect the `impl Drop`s for side effects like releasing locks or sending messages
+note: the lint level is defined here
+  --> $DIR/tail_expr_drop_order-on-coroutine-unwind.rs:6:9
+   |
+LL | #![deny(tail_expr_drop_order)]
+   |         ^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

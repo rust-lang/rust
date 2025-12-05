@@ -1,0 +1,11 @@
+error: cannot find macro `k` in this scope
+  --> $DIR/macro_undefined.rs:11:5
+   |
+LL |     macro_rules! kl {
+   |     --------------- similarly named macro `kl` defined here
+...
+LL |     k!();
+   |     ^ help: a macro with a similar name exists: `kl`
+
+error: aborting due to 1 previous error
+

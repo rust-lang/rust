@@ -1,0 +1,250 @@
+error: usage of `contains_key` followed by `insert` on a `HashMap`
+  --> tests/ui/entry.rs:24:5
+   |
+LL | /     if !m.contains_key(&k) {
+LL | |
+LL | |         m.insert(k, v);
+LL | |     }
+   | |_____^ help: try: `m.entry(k).or_insert(v);`
+   |
+   = note: `-D clippy::map-entry` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::map_entry)]`
+
+error: usage of `contains_key` followed by `insert` on a `HashMap`
+  --> tests/ui/entry.rs:30:5
+   |
+LL | /     if !m.contains_key(&k) {
+LL | |
+LL | |         if true {
+LL | |             m.insert(k, v);
+...  |
+LL | |     }
+   | |_____^
+   |
+help: try
+   |
+LL ~     m.entry(k).or_insert_with(|| {
+LL +
+LL +         if true {
+LL +             v
+LL +         } else {
+LL +             v2
+LL +         }
+LL +     });
+   |
+
+error: usage of `contains_key` followed by `insert` on a `HashMap`
+  --> tests/ui/entry.rs:40:5
+   |
+LL | /     if !m.contains_key(&k) {
+LL | |
+LL | |         if true {
+LL | |             m.insert(k, v)
+...  |
+LL | |         };
+LL | |     }
+   | |_____^
+   |
+help: try
+   |
+LL ~     m.entry(k).or_insert_with(|| {
+LL +
+LL +         if true {
+LL +             v
+LL +         } else {
+LL +             v2
+LL +         }
+LL +     });
+   |
+
+error: usage of `contains_key` followed by `insert` on a `HashMap`
+  --> tests/ui/entry.rs:50:5
+   |
+LL | /     if !m.contains_key(&k) {
+LL | |
+LL | |         if true {
+LL | |             m.insert(k, v);
+...  |
+LL | |     }
+   | |_____^
+   |
+help: try
+   |
+LL ~     if let std::collections::hash_map::Entry::Vacant(e) = m.entry(k) {
+LL +
+LL +         if true {
+LL +             e.insert(v);
+LL +         } else {
+LL +             e.insert(v2);
+LL +             return;
+LL +         }
+LL +     }
+   |
+
+error: usage of `contains_key` followed by `insert` on a `HashMap`
+  --> tests/ui/entry.rs:61:5
+   |
+LL | /     if !m.contains_key(&k) {
+LL | |
+LL | |         foo();
+LL | |         m.insert(k, v);
+LL | |     }
+   | |_____^
+   |
+help: try
+   |
+LL ~     m.entry(k).or_insert_with(|| {
+LL +
+LL +         foo();
+LL +         v
+LL +     });
+   |
+
+error: usage of `contains_key` followed by `insert` on a `HashMap`
+  --> tests/ui/entry.rs:68:5
+   |
+LL | /     if !m.contains_key(&k) {
+LL | |
+LL | |         match 0 {
+LL | |             1 if true => {
+...  |
+LL | |         };
+LL | |     }
+   | |_____^
+   |
+help: try
+   |
+LL ~     m.entry(k).or_insert_with(|| {
+LL +
+LL +         match 0 {
+LL +             1 if true => {
+LL +                 v
+LL +             },
+LL +             _ => {
+LL +                 v2
+LL +             },
+LL +         }
+LL +     });
+   |
+
+error: usage of `contains_key` followed by `insert` on a `HashMap`
+  --> tests/ui/entry.rs:81:5
+   |
+LL | /     if !m.contains_key(&k) {
+LL | |
+LL | |         match 0 {
+LL | |             0 => foo(),
+...  |
+LL | |         };
+LL | |     }
+   | |_____^
+   |
+help: try
+   |
+LL ~     if let std::collections::hash_map::Entry::Vacant(e) = m.entry(k) {
+LL +
+LL +         match 0 {
+LL +             0 => foo(),
+LL +             _ => {
+LL +                 e.insert(v2);
+LL +             },
+LL +         };
+LL +     }
+   |
+
+error: usage of `contains_key` followed by `insert` on a `HashMap`
+  --> tests/ui/entry.rs:92:5
+   |
+LL | /     if !m.contains_key(&k) {
+LL | |
+LL | |         foo();
+LL | |         match 0 {
+...  |
+LL | |     }
+   | |_____^
+   |
+help: try
+   |
+LL ~     m.entry(k).or_insert_with(|| {
+LL +
+LL +         foo();
+LL +         match 0 {
+LL +             0 if false => {
+LL +                 v
+LL +             },
+LL +             1 => {
+LL +                 foo();
+LL +                 v
+LL +             },
+LL +             2 | 3 => {
+LL +                 for _ in 0..2 {
+LL +                     foo();
+LL +                 }
+LL +                 if true {
+LL +                     v
+LL +                 } else {
+LL +                     v2
+LL +                 }
+LL +             },
+LL +             _ => {
+LL +                 v2
+LL +             },
+LL +         }
+LL +     });
+   |
+
+error: usage of `contains_key` followed by `insert` on a `HashMap`
+  --> tests/ui/entry.rs:127:5
+   |
+LL | /     if !m.contains_key(&m!(k)) {
+LL | |
+LL | |         m.insert(m!(k), m!(v));
+LL | |     }
+   | |_____^ help: try: `m.entry(m!(k)).or_insert_with(|| m!(v));`
+
+error: usage of `contains_key` followed by `insert` on a `HashMap`
+  --> tests/ui/entry.rs:160:5
+   |
+LL | /     if !m.contains_key(&k) {
+LL | |
+LL | |         let x = (String::new(), String::new());
+LL | |         let _ = x.0;
+LL | |         m.insert(k, v);
+LL | |     }
+   | |_____^
+   |
+help: try
+   |
+LL ~     m.entry(k).or_insert_with(|| {
+LL +
+LL +         let x = (String::new(), String::new());
+LL +         let _ = x.0;
+LL +         v
+LL +     });
+   |
+
+error: usage of `contains_key` followed by `insert` on a `HashMap`
+  --> tests/ui/entry.rs:194:5
+   |
+LL | /     if !map.contains_key(&1) {
+LL | |
+LL | |         let Some(1) = Some(2) else {
+LL | |             return None;
+LL | |         };
+LL | |         map.insert(1, 42);
+LL | |     }
+   | |_____^
+   |
+help: try
+   |
+LL ~     if let std::collections::hash_map::Entry::Vacant(e) = map.entry(1) {
+LL +
+LL +         let Some(1) = Some(2) else {
+LL +             return None;
+LL +         };
+LL +         e.insert(42);
+LL +     }
+   |
+
+error: aborting due to 11 previous errors
+

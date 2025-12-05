@@ -1,0 +1,11 @@
+error[E0765]: unterminated double quote string
+  --> $DIR/issue-44078.rs:2:8
+   |
+LL |       "😊"";
+   |  _________^
+LL | | }
+   | |__^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0765`.

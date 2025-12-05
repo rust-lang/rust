@@ -1,0 +1,38 @@
+error: expected pattern, found `let`
+  --> $DIR/unnecessary-let.rs:4:9
+   |
+LL |     for let _x of [1, 2, 3] {}
+   |         ^^^
+   |
+help: remove the unnecessary `let` keyword
+   |
+LL -     for let _x of [1, 2, 3] {}
+LL +     for _x of [1, 2, 3] {}
+   |
+
+error: missing `in` in `for` loop
+  --> $DIR/unnecessary-let.rs:4:16
+   |
+LL |     for let _x of [1, 2, 3] {}
+   |                ^^
+   |
+help: try using `in` here instead
+   |
+LL -     for let _x of [1, 2, 3] {}
+LL +     for let _x in [1, 2, 3] {}
+   |
+
+error: expected pattern, found `let`
+  --> $DIR/unnecessary-let.rs:9:9
+   |
+LL |         let 1 => {}
+   |         ^^^
+   |
+help: remove the unnecessary `let` keyword
+   |
+LL -         let 1 => {}
+LL +         1 => {}
+   |
+
+error: aborting due to 3 previous errors
+

@@ -1,0 +1,32 @@
+error: Undefined Behavior: reading memory at ALLOC[0x0..0x8], but memory is uninitialized at [0x4..0x8], and this operation requires initialized memory
+  --> RUSTLIB/core/src/slice/cmp.rs:LL:CC
+   |
+LL |         let mut order = unsafe { compare_bytes(left, right, len) as isize };
+   |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Undefined Behavior occurred here
+   |
+   = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
+   = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
+   = note: BACKTRACE:
+   = note: inside `<u8 as core::slice::cmp::SliceOrd>::compare` at RUSTLIB/core/src/slice/cmp.rs:LL:CC
+   = note: inside `core::slice::cmp::<impl std::cmp::Ord for [u8]>::cmp` at RUSTLIB/core/src/slice/cmp.rs:LL:CC
+note: inside `main`
+  --> tests/fail/uninit/uninit_alloc_diagnostic_with_provenance.rs:LL:CC
+   |
+LL |         drop(slice1.cmp(slice2));
+   |              ^^^^^^^^^^^^^^^^^^
+
+Uninitialized memory occurred at ALLOC[0x4..0x8], in this allocation:
+ALLOC (Rust heap, size: 16, align: 8) {
+    ╾42[ALLOC]<TAG> (ptr fragment 0)╼ 12 13 ╾43[ALLOC]<TAG> (ptr fragment 1)╼ __ __ __ __ __ __ __ __ __ __ __ __ │ ━..━░░░░░░░░░░░░
+}
+ALLOC (global (static or const), size: 1, align: 1) {
+    2a                                              │ *
+}
+ALLOC (global (static or const), size: 1, align: 1) {
+    00                                              │ .
+}
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to 1 previous error
+

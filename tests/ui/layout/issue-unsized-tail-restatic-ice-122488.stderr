@@ -1,0 +1,34 @@
+error[E0277]: the size for values of type `V` cannot be known at compilation time
+  --> $DIR/issue-unsized-tail-restatic-ice-122488.rs:5:61
+   |
+LL | struct ArenaSet<U: Deref, V: ?Sized = <U as Deref>::Target>(V, U);
+   |                           --------------------------------  ^ doesn't have a size known at compile-time
+   |                           |
+   |                           this type parameter needs to be `Sized`
+   |
+   = note: only the last field of a struct may have a dynamically sized type
+   = help: change the field's type to have a statically known size
+help: consider removing the `?Sized` bound to make the type parameter `Sized`
+   |
+LL - struct ArenaSet<U: Deref, V: ?Sized = <U as Deref>::Target>(V, U);
+LL + struct ArenaSet<U: Deref, V = <U as Deref>::Target>(V, U);
+   |
+help: borrowed types always have a statically known size
+   |
+LL | struct ArenaSet<U: Deref, V: ?Sized = <U as Deref>::Target>(&V, U);
+   |                                                             +
+help: the `Box` type always has a statically known size and allocates its contents in the heap
+   |
+LL | struct ArenaSet<U: Deref, V: ?Sized = <U as Deref>::Target>(Box<V>, U);
+   |                                                             ++++ +
+
+error[E0080]: the type `ArenaSet<Vec<u8>, [u8]>` has an unknown layout
+  --> $DIR/issue-unsized-tail-restatic-ice-122488.rs:8:1
+   |
+LL | const DATA: *const ArenaSet<Vec<u8>> = std::ptr::null_mut();
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `DATA` failed here
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0080, E0277.
+For more information about an error, try `rustc --explain E0080`.

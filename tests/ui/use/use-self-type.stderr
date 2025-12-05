@@ -1,0 +1,16 @@
+error[E0433]: failed to resolve: `Self` cannot be used in imports
+  --> $DIR/use-self-type.rs:7:16
+   |
+LL |         pub(in Self::f) struct Z;
+   |                ^^^^ `Self` cannot be used in imports
+
+error[E0432]: unresolved import `Self`
+  --> $DIR/use-self-type.rs:6:13
+   |
+LL |         use Self::f;
+   |             ^^^^ `Self` cannot be used in imports
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0432, E0433.
+For more information about an error, try `rustc --explain E0432`.

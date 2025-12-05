@@ -1,0 +1,25 @@
+error[E0072]: recursive type `Foo` has infinite size
+  --> $DIR/issue-17431-6.rs:3:1
+   |
+LL | enum Foo { X(UnsafeCell<Option<Foo>>) }
+   | ^^^^^^^^                       --- recursive without indirection
+   |
+help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to break the cycle
+   |
+LL | enum Foo { X(UnsafeCell<Option<Box<Foo>>>) }
+   |                                ++++   +
+
+error[E0391]: cycle detected when computing when `Foo` needs drop
+  --> $DIR/issue-17431-6.rs:3:1
+   |
+LL | enum Foo { X(UnsafeCell<Option<Foo>>) }
+   | ^^^^^^^^
+   |
+   = note: ...which immediately requires computing when `Foo` needs drop again
+   = note: cycle used when computing whether `Foo` needs drop
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0072, E0391.
+For more information about an error, try `rustc --explain E0072`.

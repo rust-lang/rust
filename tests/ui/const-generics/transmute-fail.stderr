@@ -1,0 +1,136 @@
+error: the constant `W` is not of type `usize`
+  --> $DIR/transmute-fail.rs:16:42
+   |
+LL | fn bar<const W: bool, const H: usize>(v: [[u32; H]; W]) -> [[u32; W]; H] {
+   |                                          ^^^^^^^^^^^^^ expected `usize`, found `bool`
+   |
+   = note: the length of array `[[u32; H]; W]` must be type `usize`
+
+error: the constant `W` is not of type `usize`
+  --> $DIR/transmute-fail.rs:19:9
+   |
+LL |         std::mem::transmute(v)
+   |         ^^^^^^^^^^^^^^^^^^^ expected `usize`, found `bool`
+   |
+   = note: the length of array `[[u32; H]; W]` must be type `usize`
+
+error[E0512]: cannot transmute between types of different sizes, or dependently-sized types
+  --> $DIR/transmute-fail.rs:11:9
+   |
+LL |         std::mem::transmute(v)
+   |         ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: source type: `[[u32; H + 1]; W]` (size can vary because of [u32; H + 1])
+   = note: target type: `[[u32; W + 1]; H]` (size can vary because of [u32; W + 1])
+
+error[E0512]: cannot transmute between types of different sizes, or dependently-sized types
+  --> $DIR/transmute-fail.rs:26:9
+   |
+LL |         std::mem::transmute(v)
+   |         ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: source type: `[[u32; H]; W]` (size can vary because of [u32; H])
+   = note: target type: `[u32; W * H * H]` (this type does not have a fixed size)
+
+error[E0512]: cannot transmute between types of different sizes, or dependently-sized types
+  --> $DIR/transmute-fail.rs:33:9
+   |
+LL |         std::mem::transmute(v)
+   |         ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: source type: `[[[u32; 8888888]; 9999999]; 777777777]` (values of the type $REALLY_TOO_BIG are too big for the target architecture)
+   = note: target type: `[[[u32; 9999999]; 777777777]; 8888888]` (values of the type $REALLY_TOO_BIG are too big for the target architecture)
+
+error[E0512]: cannot transmute between types of different sizes, or dependently-sized types
+  --> $DIR/transmute-fail.rs:39:14
+   |
+LL |     unsafe { std::mem::transmute(v) }
+   |              ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: source type: `[[[u32; 8888888]; 9999999]; 777777777]` (values of the type $REALLY_TOO_BIG are too big for the target architecture)
+   = note: target type: `[[[u32; 9999999]; 777777777]; 239]` (values of the type $REALLY_TOO_BIG are too big for the target architecture)
+
+error[E0512]: cannot transmute between types of different sizes, or dependently-sized types
+  --> $DIR/transmute-fail.rs:45:9
+   |
+LL |         std::mem::transmute(v)
+   |         ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: source type: `[[u32; H]; W]` (size can vary because of [u32; H])
+   = note: target type: `[[u32; W]; H]` (size can vary because of [u32; W])
+
+error[E0512]: cannot transmute between types of different sizes, or dependently-sized types
+  --> $DIR/transmute-fail.rs:56:9
+   |
+LL |         std::mem::transmute(v)
+   |         ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: source type: `[[u32; H]; W]` (size can vary because of [u32; H])
+   = note: target type: `[u32; W * H]` (this type does not have a fixed size)
+
+error[E0512]: cannot transmute between types of different sizes, or dependently-sized types
+  --> $DIR/transmute-fail.rs:63:9
+   |
+LL |         std::mem::transmute(v)
+   |         ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: source type: `[u32; H * W]` (this type does not have a fixed size)
+   = note: target type: `[[u32; W]; H]` (size can vary because of [u32; W])
+
+error[E0512]: cannot transmute between types of different sizes, or dependently-sized types
+  --> $DIR/transmute-fail.rs:72:9
+   |
+LL |         std::mem::transmute(v)
+   |         ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: source type: `[[[u32; D]; H]; W]` (size can vary because of [u32; D])
+   = note: target type: `[u32; D * W * H]` (this type does not have a fixed size)
+
+error[E0512]: cannot transmute between types of different sizes, or dependently-sized types
+  --> $DIR/transmute-fail.rs:81:9
+   |
+LL |         std::mem::transmute(v)
+   |         ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: source type: `[[[u32; D]; H]; W]` (size can vary because of [u32; D])
+   = note: target type: `[[u32; D * W]; H]` (size can vary because of [u32; D * W])
+
+error[E0512]: cannot transmute between types of different sizes, or dependently-sized types
+  --> $DIR/transmute-fail.rs:88:9
+   |
+LL |         std::mem::transmute(v)
+   |         ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: source type: `[u16; L]` (this type does not have a fixed size)
+   = note: target type: `[u8; L * 2]` (this type does not have a fixed size)
+
+error[E0512]: cannot transmute between types of different sizes, or dependently-sized types
+  --> $DIR/transmute-fail.rs:95:9
+   |
+LL |         std::mem::transmute(v)
+   |         ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: source type: `[u8; L * 2]` (this type does not have a fixed size)
+   = note: target type: `[u16; L]` (this type does not have a fixed size)
+
+error[E0512]: cannot transmute between types of different sizes, or dependently-sized types
+  --> $DIR/transmute-fail.rs:102:9
+   |
+LL |         std::mem::transmute(v)
+   |         ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: source type: `[u8; L]` (this type does not have a fixed size)
+   = note: target type: `[[u8; 1]; L]` (this type does not have a fixed size)
+
+error[E0512]: cannot transmute between types of different sizes, or dependently-sized types
+  --> $DIR/transmute-fail.rs:111:9
+   |
+LL |         std::mem::transmute(v)
+   |         ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: source type: `[[u32; 2 * H]; W + W]` (size can vary because of [u32; 2 * H])
+   = note: target type: `[[u32; W + W]; 2 * H]` (size can vary because of [u32; W + W])
+
+error: aborting due to 15 previous errors
+
+For more information about this error, try `rustc --explain E0512`.

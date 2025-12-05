@@ -1,0 +1,9 @@
+error[E0282]: type annotations needed
+  --> $DIR/dont-type_of-tait-in-defining-scope.rs:15:12
+   |
+LL | fn test(_: Foo) {
+   |            ^^^ cannot infer type
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0282`.

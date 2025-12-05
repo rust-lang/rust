@@ -1,0 +1,27 @@
+error: unknown start of token: \u{2796}
+  --> $DIR/suggest-remove-compount-assign-let-ice.rs:13:11
+   |
+LL |     let x ➖= 1;
+   |           ^^
+   |
+help: Unicode character '➖' (Heavy Minus Sign) looks like '-' (Minus/Hyphen), but it is not
+   |
+LL -     let x ➖= 1;
+LL +     let x -= 1;
+   |
+
+error: can't reassign to an uninitialized variable
+  --> $DIR/suggest-remove-compount-assign-let-ice.rs:13:11
+   |
+LL |     let x ➖= 1;
+   |           ^^^
+   |
+   = help: if you meant to overwrite, remove the `let` binding
+help: initialize the variable
+   |
+LL -     let x ➖= 1;
+LL +     let x = 1;
+   |
+
+error: aborting due to 2 previous errors
+

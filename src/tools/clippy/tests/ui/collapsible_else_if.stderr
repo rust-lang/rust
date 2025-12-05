@@ -1,0 +1,163 @@
+error: this `else { if .. }` block can be collapsed
+  --> tests/ui/collapsible_else_if.rs:11:12
+   |
+LL |       } else {
+   |  ____________^
+LL | |         if y == "world" {
+LL | |             println!("world!")
+LL | |         }
+LL | |     }
+   | |_____^
+   |
+   = note: `-D clippy::collapsible-else-if` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::collapsible_else_if)]`
+help: collapse nested if block
+   |
+LL ~     } else if y == "world" {
+LL +         println!("world!")
+LL +     }
+   |
+
+error: this `else { if .. }` block can be collapsed
+  --> tests/ui/collapsible_else_if.rs:20:12
+   |
+LL |       } else {
+   |  ____________^
+LL | |         if let Some(42) = Some(42) {
+LL | |             println!("world!")
+LL | |         }
+LL | |     }
+   | |_____^
+   |
+help: collapse nested if block
+   |
+LL ~     } else if let Some(42) = Some(42) {
+LL +         println!("world!")
+LL +     }
+   |
+
+error: this `else { if .. }` block can be collapsed
+  --> tests/ui/collapsible_else_if.rs:29:12
+   |
+LL |       } else {
+   |  ____________^
+LL | |         if y == "world" {
+LL | |             println!("world")
+...  |
+LL | |     }
+   | |_____^
+   |
+help: collapse nested if block
+   |
+LL ~     } else if y == "world" {
+LL +         println!("world")
+LL +     }
+LL +     else {
+LL +         println!("!")
+LL +     }
+   |
+
+error: this `else { if .. }` block can be collapsed
+  --> tests/ui/collapsible_else_if.rs:41:12
+   |
+LL |       } else {
+   |  ____________^
+LL | |         if let Some(42) = Some(42) {
+LL | |             println!("world")
+...  |
+LL | |     }
+   | |_____^
+   |
+help: collapse nested if block
+   |
+LL ~     } else if let Some(42) = Some(42) {
+LL +         println!("world")
+LL +     }
+LL +     else {
+LL +         println!("!")
+LL +     }
+   |
+
+error: this `else { if .. }` block can be collapsed
+  --> tests/ui/collapsible_else_if.rs:53:12
+   |
+LL |       } else {
+   |  ____________^
+LL | |         if let Some(42) = Some(42) {
+LL | |             println!("world")
+...  |
+LL | |     }
+   | |_____^
+   |
+help: collapse nested if block
+   |
+LL ~     } else if let Some(42) = Some(42) {
+LL +         println!("world")
+LL +     }
+LL +     else {
+LL +         println!("!")
+LL +     }
+   |
+
+error: this `else { if .. }` block can be collapsed
+  --> tests/ui/collapsible_else_if.rs:65:12
+   |
+LL |       } else {
+   |  ____________^
+LL | |         if x == "hello" {
+LL | |             println!("world")
+...  |
+LL | |     }
+   | |_____^
+   |
+help: collapse nested if block
+   |
+LL ~     } else if x == "hello" {
+LL +         println!("world")
+LL +     }
+LL +     else {
+LL +         println!("!")
+LL +     }
+   |
+
+error: this `else { if .. }` block can be collapsed
+  --> tests/ui/collapsible_else_if.rs:77:12
+   |
+LL |       } else {
+   |  ____________^
+LL | |         if let Some(42) = Some(42) {
+LL | |             println!("world")
+...  |
+LL | |     }
+   | |_____^
+   |
+help: collapse nested if block
+   |
+LL ~     } else if let Some(42) = Some(42) {
+LL +         println!("world")
+LL +     }
+LL +     else {
+LL +         println!("!")
+LL +     }
+   |
+
+error: this `else { if .. }` block can be collapsed
+  --> tests/ui/collapsible_else_if.rs:100:10
+   |
+LL |       }else{
+   |  __________^
+LL | |         if false {}
+LL | |     }
+   | |_____^ help: collapse nested if block: `if false {}`
+
+error: this `else { if .. }` block can be collapsed
+  --> tests/ui/collapsible_else_if.rs:157:12
+   |
+LL |       } else {
+   |  ____________^
+LL | |         (if y == "world" { println!("world") } else { println!("!") })
+LL | |     }
+   | |_____^ help: collapse nested if block: `if y == "world" { println!("world") } else { println!("!") }`
+
+error: aborting due to 9 previous errors
+

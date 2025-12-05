@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
+  <Type Name="core::cell::Cell&lt;*&gt;">
+    <DisplayString>{value.value}</DisplayString>
+    <Expand>
+      <ExpandedItem>value.value</ExpandedItem>
+    </Expand>
+  </Type>
+  <Type Name="core::cell::Ref&lt;*&gt;">
+    <DisplayString>{value.pointer}</DisplayString>
+    <Expand>
+      <ExpandedItem>value.pointer</ExpandedItem>
+    </Expand>
+  </Type>
+  <Type Name="core::cell::RefMut&lt;*&gt;">
+    <DisplayString>{value.pointer}</DisplayString>
+    <Expand>
+      <ExpandedItem>value.pointer</ExpandedItem>
+    </Expand>
+  </Type>
+  <Type Name="core::cell::RefCell&lt;*&gt;">
+    <DisplayString>{value.value}</DisplayString>
+    <Expand>
+      <Item Name="[Borrow state]" Condition="borrow.value.value == 0">"Unborrowed",sb</Item>
+      <Item Name="[Borrow state]" Condition="borrow.value.value &gt; 0">"Immutably borrowed",sb</Item>
+      <Item Name="[Borrow state]" Condition="borrow.value.value &lt; 0">"Mutably borrowed",sb</Item>
+      <ExpandedItem>value.value</ExpandedItem>
+    </Expand>
+  </Type>
+  <Type Name="core::cell::UnsafeCell&lt;*&gt;">
+    <DisplayString>{value}</DisplayString>
+    <Expand>
+      <ExpandedItem>value</ExpandedItem>
+    </Expand>
+  </Type>
+
+  <Type Name="core::mem::manually_drop::ManuallyDrop&lt;*&gt;">
+    <DisplayString>{value}</DisplayString>
+    <Expand>
+      <ExpandedItem>value</ExpandedItem>
+    </Expand>
+  </Type>
+
+  <Type Name="core::num::nonzero::NonZero&lt;*&gt;">
+    <DisplayString>{__0.__0}</DisplayString>
+    <Expand>
+      <ExpandedItem>__0.__0</ExpandedItem>
+    </Expand>
+  </Type>
+
+  <Type Name="core::num::wrapping::Wrapping&lt;*&gt;">
+    <DisplayString>{__0}</DisplayString>
+  </Type>
+
+  <Type Name="core::ops::range::Range&lt;*&gt;">
+    <DisplayString>({start}..{end})</DisplayString>
+  </Type>
+  <Type Name="core::ops::range::RangeFrom&lt;*&gt;">
+    <DisplayString>({start}..)</DisplayString>
+  </Type>
+  <Type Name="core::ops::range::RangeInclusive&lt;*&gt;">
+    <DisplayString>({start}..={end})</DisplayString>
+  </Type>
+  <Type Name="core::ops::range::RangeTo&lt;*&gt;">
+    <DisplayString>(..{end})</DisplayString>
+  </Type>
+  <Type Name="core::ops::range::RangeToInclusive&lt;*&gt;">
+    <DisplayString>(..={end})</DisplayString>
+  </Type>
+
+  <Type Name="core::pin::Pin&lt;*&gt;">
+    <DisplayString>Pin({(void*)pointer}: {pointer})</DisplayString>
+    <Expand>
+      <ExpandedItem>pointer</ExpandedItem>
+    </Expand>
+  </Type>
+
+  <Type Name="core::ptr::non_null::NonNull&lt;*&gt;">
+    <DisplayString>NonNull({(void*) pointer}: {pointer})</DisplayString>
+    <Expand>
+      <ExpandedItem>pointer</ExpandedItem>
+    </Expand>
+  </Type>
+
+  <Type Name="core::ptr::unique::Unique&lt;*&gt;">
+    <DisplayString>Unique({(void*)pointer.pointer}: {pointer.pointer})</DisplayString>
+    <Expand>
+      <ExpandedItem>pointer</ExpandedItem>
+    </Expand>
+  </Type>
+
+  <Type Name="core::sync::atomic::AtomicBool">
+    <DisplayString>{(bool)v.value}</DisplayString>
+  </Type>
+  <Type Name="core::sync::atomic::AtomicI8">
+    <DisplayString>{v.value}</DisplayString>
+  </Type>
+  <Type Name="core::sync::atomic::AtomicI16">
+    <DisplayString>{v.value}</DisplayString>
+  </Type>
+  <Type Name="core::sync::atomic::AtomicI32">
+    <DisplayString>{v.value}</DisplayString>
+  </Type>
+  <Type Name="core::sync::atomic::AtomicI64">
+    <DisplayString>{v.value}</DisplayString>
+  </Type>
+  <Type Name="core::sync::atomic::AtomicIsize">
+    <DisplayString>{v.value}</DisplayString>
+  </Type>
+    <Type Name="core::sync::atomic::AtomicU8">
+    <DisplayString>{v.value}</DisplayString>
+  </Type>
+  <Type Name="core::sync::atomic::AtomicU16">
+    <DisplayString>{v.value}</DisplayString>
+  </Type>
+  <Type Name="core::sync::atomic::AtomicU32">
+    <DisplayString>{v.value}</DisplayString>
+  </Type>
+  <Type Name="core::sync::atomic::AtomicU64">
+    <DisplayString>{v.value}</DisplayString>
+  </Type>
+  <Type Name="core::sync::atomic::AtomicUsize">
+    <DisplayString>{v.value}</DisplayString>
+  </Type>
+
+  <Type Name="core::time::Duration">
+    <DisplayString>{secs,d}s {nanos.__0,d}ns</DisplayString>
+    <Expand>
+      <Item Name="seconds">secs,d</Item>
+      <Item Name="nanoseconds">nanos.__0,d</Item>
+    </Expand>
+  </Type>
+</AutoVisualizer>

@@ -1,0 +1,13 @@
+- // MIR for `from_char` before GVN
++ // MIR for `from_char` after GVN
+  
+  fn from_char() -> i32 {
+      let mut _0: i32;
+  
+      bb0: {
+-         _0 = const 'R' as i32 (Transmute);
++         _0 = const 82_i32;
+          return;
+      }
+  }
+  

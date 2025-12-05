@@ -1,0 +1,92 @@
+error: invalid format string: expected `}`, found `.`
+  --> $DIR/invalid-parse-format-issue-139104.rs:2:22
+   |
+LL |     println!("{foo:_1.4}", foo = 3.14);
+   |               -      ^ expected `}` in format string
+   |               |
+   |               because of this opening brace
+   |
+   = note: if you intended to print `{`, you can escape it using `{{`
+
+error: invalid format string: expected `}`, found `.`
+  --> $DIR/invalid-parse-format-issue-139104.rs:3:20
+   |
+LL |     println!("{0:_1.4}", 1.11);
+   |               -    ^ expected `}` in format string
+   |               |
+   |               because of this opening brace
+   |
+   = note: if you intended to print `{`, you can escape it using `{{`
+
+error: invalid format string: expected `}`, found `.`
+  --> $DIR/invalid-parse-format-issue-139104.rs:4:19
+   |
+LL |     println!("{:_1.4}", 3.14);
+   |               -   ^ expected `}` in format string
+   |               |
+   |               because of this opening brace
+   |
+   = note: if you intended to print `{`, you can escape it using `{{`
+
+error: invalid format string: expected `}`, found `.`
+  --> $DIR/invalid-parse-format-issue-139104.rs:6:22
+   |
+LL |     println!("{foo:_1.4", foo = 3.14);
+   |               -      ^ expected `}` in format string
+   |               |
+   |               because of this opening brace
+   |
+   = note: if you intended to print `{`, you can escape it using `{{`
+
+error: invalid format string: expected `}`, found `.`
+  --> $DIR/invalid-parse-format-issue-139104.rs:7:20
+   |
+LL |     println!("{0:_1.4", 1.11);
+   |               -    ^ expected `}` in format string
+   |               |
+   |               because of this opening brace
+   |
+   = note: if you intended to print `{`, you can escape it using `{{`
+
+error: invalid format string: expected `}`, found `.`
+  --> $DIR/invalid-parse-format-issue-139104.rs:8:19
+   |
+LL |     println!("{:_1.4", 3.14);
+   |               -   ^ expected `}` in format string
+   |               |
+   |               because of this opening brace
+   |
+   = note: if you intended to print `{`, you can escape it using `{{`
+
+error: invalid format string: expected `}`, found `0`
+  --> $DIR/invalid-parse-format-issue-139104.rs:10:18
+   |
+LL |     println!("{  0", 1.11);
+   |               -  ^ expected `}` in format string
+   |               |
+   |               because of this opening brace
+   |
+   = note: if you intended to print `{`, you can escape it using `{{`
+
+error: invalid format string: expected `}`, found `.`
+  --> $DIR/invalid-parse-format-issue-139104.rs:11:25
+   |
+LL |     println!("{foo:1.4_1.4}", foo = 3.14);
+   |               -         ^ expected `}` in format string
+   |               |
+   |               because of this opening brace
+   |
+   = note: if you intended to print `{`, you can escape it using `{{`
+
+error: invalid format string: expected `}`, found `.`
+  --> $DIR/invalid-parse-format-issue-139104.rs:12:23
+   |
+LL |     println!("{0:1.4_1.4}", 3.14);
+   |               -       ^ expected `}` in format string
+   |               |
+   |               because of this opening brace
+   |
+   = note: if you intended to print `{`, you can escape it using `{{`
+
+error: aborting due to 9 previous errors
+

@@ -1,0 +1,20 @@
+error[E0275]: overflow evaluating the requirement `<<<<<<<... as Next>::Next as Next>::Next as Next>::Next as Next>::Next as Next>::Next as Next>::Next as Next>::Next: Sized`
+  --> $DIR/issue-23122-2.rs:11:17
+   |
+LL |     type Next = <GetNext<T::Next> as Next>::Next;
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`issue_23122_2`)
+note: required for `GetNext<<<<... as Next>::Next as Next>::Next as Next>::Next>` to implement `Next`
+  --> $DIR/issue-23122-2.rs:10:15
+   |
+LL | impl<T: Next> Next for GetNext<T> {
+   |      -        ^^^^     ^^^^^^^^^^
+   |      |
+   |      unsatisfied trait bound introduced here
+   = note: the full name for the type has been written to '$TEST_BUILD_DIR/issue-23122-2.long-type-$LONG_TYPE_HASH.txt'
+   = note: consider using `--verbose` to print the full type name to the console
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0275`.

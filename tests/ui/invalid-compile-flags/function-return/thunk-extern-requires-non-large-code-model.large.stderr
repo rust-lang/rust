@@ -1,0 +1,4 @@
+error: `-Zfunction-return=thunk-extern` is only supported on non-large code models
+
+error: aborting due to 1 previous error
+

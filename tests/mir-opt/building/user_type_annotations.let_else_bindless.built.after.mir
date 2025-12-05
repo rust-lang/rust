@@ -1,0 +1,68 @@
+// MIR for `let_else_bindless` after built
+
+| User Type Annotations
+| 0: user_ty: Canonical { value: Ty((u32, u64, &'static char)), max_universe: U0, variables: [] }, span: $DIR/user_type_annotations.rs:41:20: 41:45, inferred_ty: (u32, u64, &char)
+| 1: user_ty: Canonical { value: Ty((u32, u64, &'static char)), max_universe: U0, variables: [] }, span: $DIR/user_type_annotations.rs:41:20: 41:45, inferred_ty: (u32, u64, &char)
+|
+fn let_else_bindless() -> () {
+    let mut _0: ();
+    let mut _1: !;
+    let mut _2: (u32, u64, &char);
+    let mut _3: &char;
+    let _4: &char;
+    let _5: char;
+    scope 1 {
+    }
+
+    bb0: {
+        StorageLive(_2);
+        StorageLive(_3);
+        StorageLive(_4);
+        StorageLive(_5);
+        _5 = const 'u';
+        _4 = &_5;
+        _3 = &(*_4);
+        _2 = (const 7_u32, const 12_u64, move _3);
+        StorageDead(_3);
+        PlaceMention(_2);
+        falseEdge -> [real: bb4, imaginary: bb3];
+    }
+
+    bb1: {
+        _1 = core::panicking::panic(const "internal error: entered unreachable code") -> bb6;
+    }
+
+    bb2: {
+        unreachable;
+    }
+
+    bb3: {
+        goto -> bb5;
+    }
+
+    bb4: {
+        AscribeUserType(_2, +, UserTypeProjection { base: UserType(1), projs: [] });
+        StorageDead(_4);
+        StorageDead(_2);
+        _0 = const ();
+        StorageDead(_5);
+        return;
+    }
+
+    bb5: {
+        StorageDead(_4);
+        StorageDead(_2);
+        StorageDead(_5);
+        goto -> bb1;
+    }
+
+    bb6 (cleanup): {
+        resume;
+    }
+}
+
+ALLOC0 (size: 40, align: 1) {
+    0x00 │ 69 6e 74 65 72 6e 61 6c 20 65 72 72 6f 72 3a 20 │ internal error: 
+    0x10 │ 65 6e 74 65 72 65 64 20 75 6e 72 65 61 63 68 61 │ entered unreacha
+    0x20 │ 62 6c 65 20 63 6f 64 65                         │ ble code
+}

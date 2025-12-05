@@ -1,0 +1,27 @@
+error: incorrect function inside `extern` block
+  --> $DIR/issue-95829.rs:4:14
+   |
+LL |   extern "C" {
+   |   ---------- `extern` blocks define existing foreign functions and functions inside of them cannot have a body
+LL |       async fn L() {
+   |  ______________^___-
+   | |              |
+   | |              cannot have a body
+LL | |
+LL | |         async fn M() {}
+LL | |     }
+   | |_____- help: remove the invalid body: `;`
+   |
+   = help: you might have meant to write a function accessible through FFI, which can be done by writing `extern fn` outside of the `extern` block
+   = note: for more information, visit https://doc.rust-lang.org/std/keyword.extern.html
+
+error: functions in `extern` blocks cannot have `async` qualifier
+  --> $DIR/issue-95829.rs:4:5
+   |
+LL | extern "C" {
+   | ---------- in this `extern` block
+LL |     async fn L() {
+   |     ^^^^^ help: remove the `async` qualifier
+
+error: aborting due to 2 previous errors
+

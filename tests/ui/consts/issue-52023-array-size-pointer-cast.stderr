@@ -1,0 +1,11 @@
+error: pointers cannot be cast to integers during const eval
+  --> $DIR/issue-52023-array-size-pointer-cast.rs:2:17
+   |
+LL |     let _ = [0; (&0 as *const i32) as usize];
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: at compile-time, pointers do not have an integer value
+   = note: avoiding this restriction via `transmute`, `union`, or raw pointers leads to compile-time undefined behavior
+
+error: aborting due to 1 previous error
+

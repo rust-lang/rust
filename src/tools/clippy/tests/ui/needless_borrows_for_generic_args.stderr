@@ -1,0 +1,71 @@
+error: the borrowed expression implements the required traits
+  --> tests/ui/needless_borrows_for_generic_args.rs:16:37
+   |
+LL |     let _ = Command::new("ls").args(&["-a", "-l"]).status().unwrap();
+   |                                     ^^^^^^^^^^^^^ help: change this to: `["-a", "-l"]`
+   |
+   = note: `-D clippy::needless-borrows-for-generic-args` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::needless_borrows_for_generic_args)]`
+
+error: the borrowed expression implements the required traits
+  --> tests/ui/needless_borrows_for_generic_args.rs:18:33
+   |
+LL |     let _ = Path::new(".").join(&&".");
+   |                                 ^^^^^ help: change this to: `"."`
+
+error: the borrowed expression implements the required traits
+  --> tests/ui/needless_borrows_for_generic_args.rs:23:33
+   |
+LL |     let _ = std::fs::write("x", &"".to_string());
+   |                                 ^^^^^^^^^^^^^^^ help: change this to: `"".to_string()`
+
+error: the borrowed expression implements the required traits
+  --> tests/ui/needless_borrows_for_generic_args.rs:39:27
+   |
+LL |         deref_target_is_x(&X);
+   |                           ^^ help: change this to: `X`
+
+error: the borrowed expression implements the required traits
+  --> tests/ui/needless_borrows_for_generic_args.rs:53:30
+   |
+LL |         multiple_constraints(&[[""]]);
+   |                              ^^^^^^^ help: change this to: `[[""]]`
+
+error: the borrowed expression implements the required traits
+  --> tests/ui/needless_borrows_for_generic_args.rs:74:49
+   |
+LL |         multiple_constraints_normalizes_to_same(&X, X);
+   |                                                 ^^ help: change this to: `X`
+
+error: the borrowed expression implements the required traits
+  --> tests/ui/needless_borrows_for_generic_args.rs:133:24
+   |
+LL |             takes_iter(&mut x)
+   |                        ^^^^^^ help: change this to: `x`
+
+error: the borrowed expression implements the required traits
+  --> tests/ui/needless_borrows_for_generic_args.rs:143:41
+   |
+LL |         let _ = Command::new("ls").args(&["-a", "-l"]).status().unwrap();
+   |                                         ^^^^^^^^^^^^^ help: change this to: `["-a", "-l"]`
+
+error: the borrowed expression implements the required traits
+  --> tests/ui/needless_borrows_for_generic_args.rs:255:13
+   |
+LL |         foo(&a);
+   |             ^^ help: change this to: `a`
+
+error: the borrowed expression implements the required traits
+  --> tests/ui/needless_borrows_for_generic_args.rs:340:11
+   |
+LL |         f(&String::new()); // Lint, makes no difference
+   |           ^^^^^^^^^^^^^^ help: change this to: `String::new()`
+
+error: the borrowed expression implements the required traits
+  --> tests/ui/needless_borrows_for_generic_args.rs:345:11
+   |
+LL |         f(&"".to_owned()); // Lint
+   |           ^^^^^^^^^^^^^^ help: change this to: `"".to_owned()`
+
+error: aborting due to 11 previous errors
+

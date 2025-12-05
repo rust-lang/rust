@@ -1,0 +1,14 @@
+error[E0425]: cannot find value `A_CONST` in this scope
+  --> $DIR/assoc-const-without-self.rs:7:9
+   |
+LL |         A_CONST
+   |         ^^^^^^^ not found in this scope
+   |
+help: consider using the associated constant on `Self`
+   |
+LL |         Self::A_CONST
+   |         ++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0425`.

@@ -1,0 +1,329 @@
+error: allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
+  --> $DIR/invalid.rs:131:11
+   |
+LL | fn barqux(#[rustc_force_inline] _x: u32) {}
+   |           ^^^^^^^^^^^^^^^^^^^^^
+
+error[E0805]: malformed `rustc_force_inline` attribute input
+  --> $DIR/invalid.rs:15:1
+   |
+LL | #[rustc_force_inline(bar, baz)]
+   | ^^^^^^^^^^^^^^^^^^^^----------^
+   |                     |
+   |                     expected a single argument here
+   |
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #[rustc_force_inline(bar, baz)]
+LL + #[rustc_force_inline = "reason"]
+   |
+LL - #[rustc_force_inline(bar, baz)]
+LL + #[rustc_force_inline(reason)]
+   |
+LL - #[rustc_force_inline(bar, baz)]
+LL + #[rustc_force_inline]
+   |
+
+error[E0539]: malformed `rustc_force_inline` attribute input
+  --> $DIR/invalid.rs:20:1
+   |
+LL | #[rustc_force_inline(2)]
+   | ^^^^^^^^^^^^^^^^^^^^^-^^
+   |                      |
+   |                      expected a string literal here
+   |
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #[rustc_force_inline(2)]
+LL + #[rustc_force_inline = "reason"]
+   |
+LL - #[rustc_force_inline(2)]
+LL + #[rustc_force_inline(reason)]
+   |
+LL - #[rustc_force_inline(2)]
+LL + #[rustc_force_inline]
+   |
+
+error[E0539]: malformed `rustc_force_inline` attribute input
+  --> $DIR/invalid.rs:25:1
+   |
+LL | #[rustc_force_inline = 2]
+   | ^^^^^^^^^^^^^^^^^^^^^^^-^
+   |                        |
+   |                        expected a string literal here
+   |
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #[rustc_force_inline = 2]
+LL + #[rustc_force_inline = "reason"]
+   |
+LL - #[rustc_force_inline = 2]
+LL + #[rustc_force_inline(reason)]
+   |
+LL - #[rustc_force_inline = 2]
+LL + #[rustc_force_inline]
+   |
+
+error: `#[rustc_force_inline]` attribute cannot be used on extern crates
+  --> $DIR/invalid.rs:30:1
+   |
+LL | #[rustc_force_inline]
+   | ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[rustc_force_inline]` can only be applied to functions
+
+error: `#[rustc_force_inline]` attribute cannot be used on use statements
+  --> $DIR/invalid.rs:34:1
+   |
+LL | #[rustc_force_inline]
+   | ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[rustc_force_inline]` can only be applied to functions
+
+error: `#[rustc_force_inline]` attribute cannot be used on statics
+  --> $DIR/invalid.rs:38:1
+   |
+LL | #[rustc_force_inline]
+   | ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[rustc_force_inline]` can only be applied to functions
+
+error: `#[rustc_force_inline]` attribute cannot be used on constants
+  --> $DIR/invalid.rs:42:1
+   |
+LL | #[rustc_force_inline]
+   | ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[rustc_force_inline]` can only be applied to functions
+
+error: `#[rustc_force_inline]` attribute cannot be used on modules
+  --> $DIR/invalid.rs:46:1
+   |
+LL | #[rustc_force_inline]
+   | ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[rustc_force_inline]` can only be applied to functions
+
+error: `#[rustc_force_inline]` attribute cannot be used on foreign modules
+  --> $DIR/invalid.rs:50:1
+   |
+LL | #[rustc_force_inline]
+   | ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[rustc_force_inline]` can only be applied to functions
+
+error: `#[rustc_force_inline]` attribute cannot be used on foreign statics
+  --> $DIR/invalid.rs:53:5
+   |
+LL |     #[rustc_force_inline]
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[rustc_force_inline]` can only be applied to functions
+
+error: `#[rustc_force_inline]` attribute cannot be used on foreign types
+  --> $DIR/invalid.rs:57:5
+   |
+LL |     #[rustc_force_inline]
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[rustc_force_inline]` can only be applied to functions
+
+error: `#[rustc_force_inline]` attribute cannot be used on foreign functions
+  --> $DIR/invalid.rs:61:5
+   |
+LL |     #[rustc_force_inline]
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[rustc_force_inline]` can be applied to functions and inherent methods
+
+error: `#[rustc_force_inline]` attribute cannot be used on type aliases
+  --> $DIR/invalid.rs:66:1
+   |
+LL | #[rustc_force_inline]
+   | ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[rustc_force_inline]` can only be applied to functions
+
+error: `#[rustc_force_inline]` attribute cannot be used on enums
+  --> $DIR/invalid.rs:70:1
+   |
+LL | #[rustc_force_inline]
+   | ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[rustc_force_inline]` can only be applied to functions
+
+error: `#[rustc_force_inline]` attribute cannot be used on function params
+  --> $DIR/invalid.rs:72:10
+   |
+LL | enum Bar<#[rustc_force_inline] T> {
+   |          ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[rustc_force_inline]` can only be applied to functions
+
+error: `#[rustc_force_inline]` attribute cannot be used on enum variants
+  --> $DIR/invalid.rs:74:5
+   |
+LL |     #[rustc_force_inline]
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[rustc_force_inline]` can only be applied to functions
+
+error: `#[rustc_force_inline]` attribute cannot be used on structs
+  --> $DIR/invalid.rs:79:1
+   |
+LL | #[rustc_force_inline]
+   | ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[rustc_force_inline]` can only be applied to functions
+
+error: `#[rustc_force_inline]` attribute cannot be used on struct fields
+  --> $DIR/invalid.rs:82:5
+   |
+LL |     #[rustc_force_inline]
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[rustc_force_inline]` can only be applied to functions
+
+error: `#[rustc_force_inline]` attribute cannot be used on unions
+  --> $DIR/invalid.rs:87:1
+   |
+LL | #[rustc_force_inline]
+   | ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[rustc_force_inline]` can only be applied to functions
+
+error: `#[rustc_force_inline]` attribute cannot be used on traits
+  --> $DIR/invalid.rs:94:1
+   |
+LL | #[rustc_force_inline]
+   | ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[rustc_force_inline]` can only be applied to functions
+
+error: `#[rustc_force_inline]` attribute cannot be used on associated types
+  --> $DIR/invalid.rs:97:5
+   |
+LL |     #[rustc_force_inline]
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[rustc_force_inline]` can only be applied to functions
+
+error: `#[rustc_force_inline]` attribute cannot be used on associated consts
+  --> $DIR/invalid.rs:100:5
+   |
+LL |     #[rustc_force_inline]
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[rustc_force_inline]` can only be applied to functions
+
+error: `#[rustc_force_inline]` attribute cannot be used on provided trait methods
+  --> $DIR/invalid.rs:104:5
+   |
+LL |     #[rustc_force_inline]
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[rustc_force_inline]` can be applied to functions and inherent methods
+
+error: `#[rustc_force_inline]` attribute cannot be used on trait aliases
+  --> $DIR/invalid.rs:109:1
+   |
+LL | #[rustc_force_inline]
+   | ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[rustc_force_inline]` can only be applied to functions
+
+error: `#[rustc_force_inline]` attribute cannot be used on inherent impl blocks
+  --> $DIR/invalid.rs:113:1
+   |
+LL | #[rustc_force_inline]
+   | ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[rustc_force_inline]` can only be applied to functions
+
+error: `#[rustc_force_inline]` attribute cannot be used on trait impl blocks
+  --> $DIR/invalid.rs:120:1
+   |
+LL | #[rustc_force_inline]
+   | ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[rustc_force_inline]` can only be applied to functions
+
+error: `#[rustc_force_inline]` attribute cannot be used on macro defs
+  --> $DIR/invalid.rs:127:1
+   |
+LL | #[rustc_force_inline]
+   | ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[rustc_force_inline]` can only be applied to functions
+
+error: `#[rustc_force_inline]` attribute cannot be used on function params
+  --> $DIR/invalid.rs:131:11
+   |
+LL | fn barqux(#[rustc_force_inline] _x: u32) {}
+   |           ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[rustc_force_inline]` can only be applied to functions
+
+error: `#[rustc_force_inline]` attribute cannot be used on closures
+  --> $DIR/invalid.rs:148:14
+   |
+LL |     let _x = #[rustc_force_inline] || { };
+   |              ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[rustc_force_inline]` can be applied to functions and inherent methods
+
+error: `#[rustc_force_inline]` attribute cannot be used on expressions
+  --> $DIR/invalid.rs:150:14
+   |
+LL |     let _y = #[rustc_force_inline] 3 + 4;
+   |              ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[rustc_force_inline]` can only be applied to functions
+
+error: `#[rustc_force_inline]` attribute cannot be used on statements
+  --> $DIR/invalid.rs:152:5
+   |
+LL |     #[rustc_force_inline]
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[rustc_force_inline]` can only be applied to functions
+
+error: `#[rustc_force_inline]` attribute cannot be used on match arms
+  --> $DIR/invalid.rs:157:9
+   |
+LL |         #[rustc_force_inline]
+   |         ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[rustc_force_inline]` can only be applied to functions
+
+error: attribute cannot be applied to a `async`, `gen` or `async gen` function
+  --> $DIR/invalid.rs:135:1
+   |
+LL | #[rustc_force_inline]
+   | ^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | async fn async_foo() {}
+   | -------------------- `async`, `gen` or `async gen` function
+
+error: attribute cannot be applied to a `async`, `gen` or `async gen` function
+  --> $DIR/invalid.rs:139:1
+   |
+LL | #[rustc_force_inline]
+   | ^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | gen fn gen_foo() {}
+   | ---------------- `async`, `gen` or `async gen` function
+
+error: attribute cannot be applied to a `async`, `gen` or `async gen` function
+  --> $DIR/invalid.rs:143:1
+   |
+LL | #[rustc_force_inline]
+   | ^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | async gen fn async_gen_foo() {}
+   | ---------------------------- `async`, `gen` or `async gen` function
+
+error: aborting due to 36 previous errors
+
+Some errors have detailed explanations: E0539, E0805.
+For more information about an error, try `rustc --explain E0539`.

@@ -1,0 +1,14 @@
+error[E0726]: implicit elided lifetime not allowed here
+  --> $DIR/bad-region.rs:12:6
+   |
+LL | impl BleRadio for Radio {
+   |      ^^^^^^^^ expected lifetime parameter
+   |
+help: indicate the anonymous lifetime
+   |
+LL | impl BleRadio<'_> for Radio {
+   |              ++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0726`.

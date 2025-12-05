@@ -1,0 +1,31 @@
+// Ensures that the font serif change is working as expected.
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
+
+// By default, it should be the serif fonts.
+store-value: (serif_font, '"Source Serif 4", NanumBarunGothic, serif')
+store-value: (serif_code_font, '"Source Code Pro", monospace')
+assert-css: ("body", {"font-family": |serif_font|})
+assert-css: ("p code", {"font-family": |serif_code_font|})
+
+// We now switch to the sans serif font
+click: "main .settings-menu"
+wait-for: "#sans-serif-fonts"
+click: "#sans-serif-fonts"
+
+store-value: (font, '"Fira Sans", sans-serif')
+store-value: (code_font, '"Fira Mono", monospace')
+assert-css: ("body", {"font-family": |font|})
+assert-css: ("p code", {"font-family": |code_font|})
+
+// Reloading the page to ensure it is loaded correctly.
+reload:
+assert-css: ("body", {"font-family": |font|})
+assert-css: ("p code", {"font-family": |code_font|})
+
+// We switch back to the serif font
+click: "main .settings-menu"
+wait-for: "#sans-serif-fonts"
+click: "#sans-serif-fonts"
+
+assert-css: ("body", {"font-family": |serif_font|})
+assert-css: ("p code", {"font-family": |serif_code_font|})

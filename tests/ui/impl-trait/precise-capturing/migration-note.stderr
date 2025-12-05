@@ -1,0 +1,329 @@
+error[E0597]: `x` does not live long enough
+  --> $DIR/migration-note.rs:184:17
+   |
+LL |     let x = vec![0];
+   |         - binding `x` declared here
+LL |
+LL |     display_len(&x)
+   |     ------------^^-
+   |     |           |
+   |     |           borrowed value does not live long enough
+   |     argument requires that `x` is borrowed for `'static`
+...
+LL | }
+   | - `x` dropped here while still borrowed
+
+error[E0502]: cannot borrow `x` as mutable because it is also borrowed as immutable
+  --> $DIR/migration-note.rs:19:5
+   |
+LL |     let a = display_len(&x);
+   |                         -- immutable borrow occurs here
+...
+LL |     x.push(1);
+   |     ^^^^^^^^^ mutable borrow occurs here
+...
+LL |     println!("{a}");
+   |                - immutable borrow later used here
+   |
+note: this call may capture more lifetimes than intended, because Rust 2024 has adjusted the `impl Trait` lifetime capture rules
+  --> $DIR/migration-note.rs:16:13
+   |
+LL |     let a = display_len(&x);
+   |             ^^^^^^^^^^^^^^^
+help: use the precise capturing `use<...>` syntax to make the captures explicit
+   |
+LL | fn display_len<T>(x: &Vec<T>) -> impl Display + use<T> {
+   |                                               ++++++++
+
+error[E0597]: `x` does not live long enough
+  --> $DIR/migration-note.rs:29:25
+   |
+LL |     let x = vec![1];
+   |         - binding `x` declared here
+LL |
+LL |     let a = display_len(&x);
+   |                         ^^ borrowed value does not live long enough
+...
+LL |     needs_static(a);
+   |     --------------- argument requires that `x` is borrowed for `'static`
+LL |
+LL | }
+   | - `x` dropped here while still borrowed
+   |
+note: requirement that the value outlives `'static` introduced here
+  --> $DIR/migration-note.rs:34:37
+   |
+LL |     fn needs_static(_: impl Sized + 'static) {}
+   |                                     ^^^^^^^
+note: this call may capture more lifetimes than intended, because Rust 2024 has adjusted the `impl Trait` lifetime capture rules
+  --> $DIR/migration-note.rs:29:13
+   |
+LL |     let a = display_len(&x);
+   |             ^^^^^^^^^^^^^^^
+help: use the precise capturing `use<...>` syntax to make the captures explicit
+   |
+LL | fn display_len<T>(x: &Vec<T>) -> impl Display + use<T> {
+   |                                               ++++++++
+
+error[E0505]: cannot move out of `x` because it is borrowed
+  --> $DIR/migration-note.rs:49:8
+   |
+LL |     let x = vec![1];
+   |         - binding `x` declared here
+LL |
+LL |     let a = display_len(&x);
+   |                         -- borrow of `x` occurs here
+...
+LL |     mv(x);
+   |        ^ move out of `x` occurs here
+...
+LL | }
+   | - borrow might be used here, when `a` is dropped and runs the destructor for type `impl std::fmt::Display`
+   |
+note: this call may capture more lifetimes than intended, because Rust 2024 has adjusted the `impl Trait` lifetime capture rules
+  --> $DIR/migration-note.rs:44:13
+   |
+LL |     let a = display_len(&x);
+   |             ^^^^^^^^^^^^^^^
+help: use the precise capturing `use<...>` syntax to make the captures explicit
+   |
+LL | fn display_len<T>(x: &Vec<T>) -> impl Display + use<T> {
+   |                                               ++++++++
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     let a = display_len(&x.clone());
+   |                           ++++++++
+
+error[E0499]: cannot borrow `x` as mutable more than once at a time
+  --> $DIR/migration-note.rs:67:5
+   |
+LL |     let a = display_len_mut(&mut x);
+   |                             ------ first mutable borrow occurs here
+...
+LL |     x.push(1);
+   |     ^ second mutable borrow occurs here
+...
+LL |     println!("{a}");
+   |                - first borrow later used here
+   |
+note: this call may capture more lifetimes than intended, because Rust 2024 has adjusted the `impl Trait` lifetime capture rules
+  --> $DIR/migration-note.rs:64:13
+   |
+LL |     let a = display_len_mut(&mut x);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^
+help: use the precise capturing `use<...>` syntax to make the captures explicit
+   |
+LL | fn display_len_mut<T>(x: &mut Vec<T>) -> impl Display + use<T> {
+   |                                                       ++++++++
+
+error[E0597]: `x` does not live long enough
+  --> $DIR/migration-note.rs:77:29
+   |
+LL |     let mut x = vec![1];
+   |         ----- binding `x` declared here
+LL |
+LL |     let a = display_len_mut(&mut x);
+   |                             ^^^^^^ borrowed value does not live long enough
+...
+LL |     needs_static(a);
+   |     --------------- argument requires that `x` is borrowed for `'static`
+LL |
+LL | }
+   | - `x` dropped here while still borrowed
+   |
+note: requirement that the value outlives `'static` introduced here
+  --> $DIR/migration-note.rs:82:37
+   |
+LL |     fn needs_static(_: impl Sized + 'static) {}
+   |                                     ^^^^^^^
+note: this call may capture more lifetimes than intended, because Rust 2024 has adjusted the `impl Trait` lifetime capture rules
+  --> $DIR/migration-note.rs:77:13
+   |
+LL |     let a = display_len_mut(&mut x);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^
+help: use the precise capturing `use<...>` syntax to make the captures explicit
+   |
+LL | fn display_len_mut<T>(x: &mut Vec<T>) -> impl Display + use<T> {
+   |                                                       ++++++++
+
+error[E0505]: cannot move out of `x` because it is borrowed
+  --> $DIR/migration-note.rs:97:8
+   |
+LL |     let mut x = vec![1];
+   |         ----- binding `x` declared here
+LL |
+LL |     let a = display_len_mut(&mut x);
+   |                             ------ borrow of `x` occurs here
+...
+LL |     mv(x);
+   |        ^ move out of `x` occurs here
+...
+LL | }
+   | - borrow might be used here, when `a` is dropped and runs the destructor for type `impl std::fmt::Display`
+   |
+note: this call may capture more lifetimes than intended, because Rust 2024 has adjusted the `impl Trait` lifetime capture rules
+  --> $DIR/migration-note.rs:92:13
+   |
+LL |     let a = display_len_mut(&mut x);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^
+help: use the precise capturing `use<...>` syntax to make the captures explicit
+   |
+LL | fn display_len_mut<T>(x: &mut Vec<T>) -> impl Display + use<T> {
+   |                                                       ++++++++
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     let a = display_len_mut(&mut x.clone());
+   |                                   ++++++++
+
+error[E0506]: cannot assign to `s.f` because it is borrowed
+  --> $DIR/migration-note.rs:117:5
+   |
+LL |     let a = display_field(&s.f);
+   |                           ---- `s.f` is borrowed here
+...
+LL |     s.f = 1;
+   |     ^^^^^^^ `s.f` is assigned to here but it was already borrowed
+...
+LL |     println!("{a}");
+   |                - borrow later used here
+   |
+note: this call may capture more lifetimes than intended, because Rust 2024 has adjusted the `impl Trait` lifetime capture rules
+  --> $DIR/migration-note.rs:114:13
+   |
+LL |     let a = display_field(&s.f);
+   |             ^^^^^^^^^^^^^^^^^^^
+help: use the precise capturing `use<...>` syntax to make the captures explicit
+   |
+LL | fn display_field<T: Copy + Display>(t: &T) -> impl Display + use<T> {
+   |                                                            ++++++++
+
+error[E0506]: cannot assign to `s.f` because it is borrowed
+  --> $DIR/migration-note.rs:133:5
+   |
+LL |     let a = display_field(&mut s.f);
+   |                           -------- `s.f` is borrowed here
+...
+LL |     s.f = 1;
+   |     ^^^^^^^ `s.f` is assigned to here but it was already borrowed
+...
+LL |     println!("{a}");
+   |                - borrow later used here
+   |
+note: this call may capture more lifetimes than intended, because Rust 2024 has adjusted the `impl Trait` lifetime capture rules
+  --> $DIR/migration-note.rs:130:13
+   |
+LL |     let a = display_field(&mut s.f);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^
+help: use the precise capturing `use<...>` syntax to make the captures explicit
+   |
+LL | fn display_field<T: Copy + Display>(t: &T) -> impl Display + use<T> {
+   |                                                            ++++++++
+
+error[E0503]: cannot use `s.f` because it was mutably borrowed
+  --> $DIR/migration-note.rs:145:5
+   |
+LL |     let a = display_field(&mut s.f);
+   |                           -------- `s.f` is borrowed here
+...
+LL |     s.f;
+   |     ^^^ use of borrowed `s.f`
+...
+LL |     println!("{a}");
+   |                - borrow later used here
+   |
+note: this call may capture more lifetimes than intended, because Rust 2024 has adjusted the `impl Trait` lifetime capture rules
+  --> $DIR/migration-note.rs:142:13
+   |
+LL |     let a = display_field(&mut s.f);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^
+help: use the precise capturing `use<...>` syntax to make the captures explicit
+   |
+LL | fn display_field<T: Copy + Display>(t: &T) -> impl Display + use<T> {
+   |                                                            ++++++++
+
+error[E0597]: `z.f` does not live long enough
+  --> $DIR/migration-note.rs:161:25
+   |
+LL |         let z = Z { f: vec![1] };
+   |             - binding `z` declared here
+LL |
+LL |         x = display_len(&z.f);
+   |                         ^^^^ borrowed value does not live long enough
+...
+LL |     }
+   |     - `z.f` dropped here while still borrowed
+LL |
+LL | }
+   | - borrow might be used here, when `x` is dropped and runs the destructor for type `impl std::fmt::Display`
+   |
+   = note: values in a scope are dropped in the opposite order they are defined
+note: this call may capture more lifetimes than intended, because Rust 2024 has adjusted the `impl Trait` lifetime capture rules
+  --> $DIR/migration-note.rs:161:13
+   |
+LL |         x = display_len(&z.f);
+   |             ^^^^^^^^^^^^^^^^^
+help: use the precise capturing `use<...>` syntax to make the captures explicit
+   |
+LL | fn display_len<T>(x: &Vec<T>) -> impl Display + use<T> {
+   |                                               ++++++++
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/migration-note.rs:172:40
+   |
+LL |     let x = { let x = display_len(&mut vec![0]); x };
+   |                                        ^^^^^^^ - - borrow later used here
+   |                                        |       |
+   |                                        |       temporary value is freed at the end of this statement
+   |                                        creates a temporary value which is freed while still in use
+   |
+   = note: consider using a `let` binding to create a longer lived value
+note: this call may capture more lifetimes than intended, because Rust 2024 has adjusted the `impl Trait` lifetime capture rules
+  --> $DIR/migration-note.rs:172:23
+   |
+LL |     let x = { let x = display_len(&mut vec![0]); x };
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: this error originates in the macro `vec` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: use the precise capturing `use<...>` syntax to make the captures explicit
+   |
+LL | fn display_len<T>(x: &Vec<T>) -> impl Display + use<T> {
+   |                                               ++++++++
+
+error[E0505]: cannot move out of `x` because it is borrowed
+  --> $DIR/migration-note.rs:200:10
+   |
+LL |     let x = String::new();
+   |         - binding `x` declared here
+LL |
+LL |     let y = capture_apit(&x);
+   |                          -- borrow of `x` occurs here
+...
+LL |     drop(x);
+   |          ^ move out of `x` occurs here
+...
+LL | }
+   | - borrow might be used here, when `y` is dropped and runs the destructor for type `impl Sized`
+   |
+note: this call may capture more lifetimes than intended, because Rust 2024 has adjusted the `impl Trait` lifetime capture rules
+  --> $DIR/migration-note.rs:197:13
+   |
+LL |     let y = capture_apit(&x);
+   |             ^^^^^^^^^^^^^^^^
+note: you could use a `use<...>` bound to explicitly specify captures, but argument-position `impl Trait`s are not nameable
+  --> $DIR/migration-note.rs:191:21
+   |
+LL | fn capture_apit(x: &impl Sized) -> impl Sized {}
+   |                     ^^^^^^^^^^
+help: use the precise capturing `use<...>` syntax to make the captures explicit
+   |
+LL - fn capture_apit(x: &impl Sized) -> impl Sized {}
+LL + fn capture_apit<T: Sized>(x: &T) -> impl Sized + use<T> {}
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     let y = capture_apit(&x.clone());
+   |                            ++++++++
+
+error: aborting due to 13 previous errors
+
+Some errors have detailed explanations: E0499, E0502, E0503, E0505, E0506, E0597, E0716.
+For more information about an error, try `rustc --explain E0499`.

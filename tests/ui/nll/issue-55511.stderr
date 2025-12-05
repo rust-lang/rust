@@ -1,0 +1,17 @@
+error[E0597]: `a` does not live long enough
+  --> $DIR/issue-55511.rs:12:28
+   |
+LL |     let a = 22;
+   |         - binding `a` declared here
+LL |     let b = Some(Cell::new(&a));
+   |                            ^^ borrowed value does not live long enough
+...
+LL |         <() as Foo<'static>>::C => { }
+   |         ----------------------- type annotation requires that `a` is borrowed for `'static`
+...
+LL | }
+   | - `a` dropped here while still borrowed
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0597`.

@@ -1,0 +1,35 @@
+[1m[4m[96mH1 Heading ]8;;http://docs.rs\with a link]8;;\[0m[0m
+H1 content: [1msome words in bold[0m and [2mso does inline code[0m
+
+[4m[96mH2 Heading[0m[0m
+H2 content: [3msome words in italic[0m
+
+[3m[96mH3 Heading[0m[0m
+H3 content: [9mstrikethrough[0m text
+
+[3m[4m[36mH4 Heading[0m[0m
+H4 content: A ]8;;https://docs.rs\simple link]8;;\ and a ]8;;http://docs.rs\remote-link]8;;\.
+--------------------------------------------------------------------------------------------------------------------------------------------
+A section break was above. We can also do paragraph breaks:
+
+(new paragraph) and unordered lists:
+
+*   Item 1 in [2mcode[0m
+*   Item 2 in [3mitalics[0m
+
+Or ordered:
+
+1.  Item 1 in [1mbold[0m
+2.  Item 2 with some long lines that should wrap: Lorem ipsum dolor sit amet, consectetur adipiscing elit. Aenean ac mattis nunc. Phasellus
+    elit quam, pulvinar ac risus in, dictum vehicula turpis. Vestibulum neque est, accumsan in cursus sit amet, dictum a nunc. Suspendisse
+    aliquet, lorem eu eleifend accumsan, magna neque sodales nisi, a aliquet lectus leo eu sem.
+--------------------------------------------------------------------------------------------------------------------------------------------
+[4m[96mCode[0m[0m
+Both [2minline code[0m and code blocks are supported:
+
+[2m/// A rust enum
+#[derive(Debug, PartialEq, Clone)]
+enum Foo {
+    /// Start of line
+    Bar
+}[0m

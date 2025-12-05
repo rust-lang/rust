@@ -1,0 +1,115 @@
+error[E0425]: cannot find value `NonExistent` in this scope
+  --> $DIR/ambiguous-builtin-attrs.rs:35:5
+   |
+LL |     NonExistent;
+   |     ^^^^^^^^^^^ not found in this scope
+
+error[E0659]: `repr` is ambiguous
+  --> $DIR/ambiguous-builtin-attrs.rs:10:3
+   |
+LL | #[repr(C)]
+   |   ^^^^ ambiguous name
+   |
+   = note: ambiguous because of a name conflict with a builtin attribute
+   = note: `repr` could refer to a built-in attribute
+note: `repr` could also refer to the attribute macro imported here
+  --> $DIR/ambiguous-builtin-attrs.rs:7:5
+   |
+LL | use builtin_attrs::*;
+   |     ^^^^^^^^^^^^^^^^
+   = help: use `crate::repr` to refer to this attribute macro unambiguously
+
+error[E0659]: `repr` is ambiguous
+  --> $DIR/ambiguous-builtin-attrs.rs:12:19
+   |
+LL | #[cfg_attr(all(), repr(C))]
+   |                   ^^^^ ambiguous name
+   |
+   = note: ambiguous because of a name conflict with a builtin attribute
+   = note: `repr` could refer to a built-in attribute
+note: `repr` could also refer to the attribute macro imported here
+  --> $DIR/ambiguous-builtin-attrs.rs:7:5
+   |
+LL | use builtin_attrs::*;
+   |     ^^^^^^^^^^^^^^^^
+   = help: use `crate::repr` to refer to this attribute macro unambiguously
+
+error[E0659]: `repr` is ambiguous
+  --> $DIR/ambiguous-builtin-attrs.rs:21:34
+   |
+LL | fn non_macro_expanded_location<#[repr(C)] T>() {
+   |                                  ^^^^ ambiguous name
+   |
+   = note: ambiguous because of a name conflict with a builtin attribute
+   = note: `repr` could refer to a built-in attribute
+note: `repr` could also refer to the attribute macro imported here
+  --> $DIR/ambiguous-builtin-attrs.rs:7:5
+   |
+LL | use builtin_attrs::*;
+   |     ^^^^^^^^^^^^^^^^
+   = help: use `crate::repr` to refer to this attribute macro unambiguously
+
+error[E0659]: `repr` is ambiguous
+  --> $DIR/ambiguous-builtin-attrs.rs:25:11
+   |
+LL |         #[repr(C)]
+   |           ^^^^ ambiguous name
+   |
+   = note: ambiguous because of a name conflict with a builtin attribute
+   = note: `repr` could refer to a built-in attribute
+note: `repr` could also refer to the attribute macro imported here
+  --> $DIR/ambiguous-builtin-attrs.rs:7:5
+   |
+LL | use builtin_attrs::*;
+   |     ^^^^^^^^^^^^^^^^
+   = help: use `crate::repr` to refer to this attribute macro unambiguously
+
+error[E0659]: `allow` is ambiguous
+  --> $DIR/ambiguous-builtin-attrs.rs:39:3
+   |
+LL | #[allow(unused)]
+   |   ^^^^^ ambiguous name
+   |
+   = note: ambiguous because of a name conflict with a builtin attribute
+   = note: `allow` could refer to a built-in attribute
+note: `allow` could also refer to the built-in attribute imported here
+  --> $DIR/ambiguous-builtin-attrs.rs:38:5
+   |
+LL | use deny as allow;
+   |     ^^^^^^^^^^^^^
+   = help: use `crate::allow` to refer to this built-in attribute unambiguously
+
+error[E0659]: `feature` is ambiguous
+  --> $DIR/ambiguous-builtin-attrs.rs:4:4
+   |
+LL | #![feature(decl_macro)]
+   |    ^^^^^^^ ambiguous name
+   |
+   = note: ambiguous because of a name conflict with a builtin attribute
+   = note: `feature` could refer to a built-in attribute
+note: `feature` could also refer to the attribute macro imported here
+  --> $DIR/ambiguous-builtin-attrs.rs:7:5
+   |
+LL | use builtin_attrs::*;
+   |     ^^^^^^^^^^^^^^^^
+   = help: use `crate::feature` to refer to this attribute macro unambiguously
+
+error[E0517]: attribute should be applied to a struct, enum, or union
+  --> $DIR/ambiguous-builtin-attrs.rs:21:39
+   |
+LL | fn non_macro_expanded_location<#[repr(C)] T>() {
+   |                                       ^   - not a struct, enum, or union
+
+error[E0517]: attribute should be applied to a struct, enum, or union
+  --> $DIR/ambiguous-builtin-attrs.rs:25:16
+   |
+LL |         #[repr(C)]
+   |                ^
+...
+LL |         _ => {}
+   |         ------- not a struct, enum, or union
+
+error: aborting due to 9 previous errors
+
+Some errors have detailed explanations: E0425, E0517, E0659.
+For more information about an error, try `rustc --explain E0425`.

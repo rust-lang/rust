@@ -1,0 +1,17 @@
+warning: creating a shared reference to mutable static
+  --> $DIR/issue-39367.rs:22:13
+   |
+LL | /             ONCE.call_once(|| {
+LL | |
+LL | |                 DATA = transmute
+LL | |                     ::<Box<ArenaSet<Vec<u8>>>, *const ArenaSet<Vec<u8>>>
+LL | |                     (Box::new(__static_ref_initialize()));
+LL | |             });
+   | |______________^ shared reference to mutable static
+   |
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/static-mut-references.html>
+   = note: shared references to mutable statics are dangerous; it's undefined behavior if the static is mutated or if a mutable reference is created for it while the shared reference lives
+   = note: `#[warn(static_mut_refs)]` (part of `#[warn(rust_2024_compatibility)]`) on by default
+
+warning: 1 warning emitted
+

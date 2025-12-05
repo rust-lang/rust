@@ -1,0 +1,74 @@
+error[E0277]: can't compare `PriorityQueue<T>` with `PriorityQueue<T>`
+  --> $DIR/issue-104884-trait-impl-sugg-err.rs:14:10
+   |
+LL | #[derive(PartialOrd, AddImpl)]
+   |          ^^^^^^^^^^ no implementation for `PriorityQueue<T> == PriorityQueue<T>`
+   |
+help: the trait `PartialEq` is not implemented for `PriorityQueue<T>`
+  --> $DIR/issue-104884-trait-impl-sugg-err.rs:21:1
+   |
+LL | struct PriorityQueue<T>(BinaryHeap<PriorityQueueEntry<T>>);
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+note: required by a bound in `PartialOrd`
+  --> $SRC_DIR/core/src/cmp.rs:LL:COL
+
+error[E0277]: the trait bound `PriorityQueue<T>: Eq` is not satisfied
+  --> $DIR/issue-104884-trait-impl-sugg-err.rs:14:22
+   |
+LL | #[derive(PartialOrd, AddImpl)]
+   |                      ^^^^^^^ unsatisfied trait bound
+   |
+help: the trait `Eq` is not implemented for `PriorityQueue<T>`
+  --> $DIR/issue-104884-trait-impl-sugg-err.rs:21:1
+   |
+LL | struct PriorityQueue<T>(BinaryHeap<PriorityQueueEntry<T>>);
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+note: required by a bound in `Ord`
+  --> $SRC_DIR/core/src/cmp.rs:LL:COL
+   = note: this error originates in the derive macro `AddImpl` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: can't compare `T` with `T`
+  --> $DIR/issue-104884-trait-impl-sugg-err.rs:14:22
+   |
+LL | #[derive(PartialOrd, AddImpl)]
+   |                      ^^^^^^^ no implementation for `T < T` and `T > T`
+   |
+note: required for `PriorityQueue<T>` to implement `PartialOrd`
+  --> $DIR/issue-104884-trait-impl-sugg-err.rs:14:10
+   |
+LL | #[derive(PartialOrd, AddImpl)]
+   |          ^^^^^^^^^^ unsatisfied trait bound introduced in this `derive` macro
+note: required by a bound in `Ord`
+  --> $SRC_DIR/core/src/cmp.rs:LL:COL
+
+error[E0277]: can't compare `BinaryHeap<PriorityQueueEntry<T>>` with `_`
+  --> $DIR/issue-104884-trait-impl-sugg-err.rs:21:25
+   |
+LL | #[derive(PartialOrd, AddImpl)]
+   |          ---------- in this derive macro expansion
+...
+LL | struct PriorityQueue<T>(BinaryHeap<PriorityQueueEntry<T>>);
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no implementation for `BinaryHeap<PriorityQueueEntry<T>> < _` and `BinaryHeap<PriorityQueueEntry<T>> > _`
+   |
+   = help: the trait `PartialOrd<_>` is not implemented for `BinaryHeap<PriorityQueueEntry<T>>`
+
+error[E0599]: no method named `cmp` found for struct `BinaryHeap<PriorityQueueEntry<T>>` in the current scope
+  --> $DIR/issue-104884-trait-impl-sugg-err.rs:14:22
+   |
+LL | #[derive(PartialOrd, AddImpl)]
+   |                      ^^^^^^^ `BinaryHeap<PriorityQueueEntry<T>>` is not an iterator
+   |
+   = note: this error originates in the derive macro `AddImpl` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0609]: no field `height` on type `&PriorityQueue<T>`
+  --> $DIR/issue-104884-trait-impl-sugg-err.rs:14:22
+   |
+LL | #[derive(PartialOrd, AddImpl)]
+   |                      ^^^^^^^ unknown field
+   |
+   = note: this error originates in the derive macro `AddImpl` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0277, E0599, E0609.
+For more information about an error, try `rustc --explain E0277`.

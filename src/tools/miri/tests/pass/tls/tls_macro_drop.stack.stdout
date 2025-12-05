@@ -1,0 +1,8 @@
+Dropping: 8 (should be before 'Continue main 1').
+Dropping: 8 (should be before 'Continue main 1').
+Continue main 1.
+Joining: 7 (should be before 'Continue main 2').
+Continue main 2.
+Foo dtor (should be before `Bar dtor`).
+Bar dtor (should be before `Continue main 3`).
+Continue main 3.

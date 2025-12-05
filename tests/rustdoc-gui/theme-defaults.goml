@@ -1,0 +1,24 @@
+// Ensure that the theme picker always starts with the actual defaults.
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
+click: "rustdoc-toolbar .settings-menu"
+wait-for: "#theme-system-preference"
+assert: "#theme-system-preference:checked"
+assert: "#preferred-light-theme-light:checked"
+assert: "#preferred-dark-theme-dark:checked"
+assert-false: "#preferred-dark-theme-ayu:checked"
+
+// Test legacy migration from old theme setup without system-preference matching.
+// See https://github.com/rust-lang/rust/pull/77809#issuecomment-707875732
+set-local-storage: {
+    "rustdoc-preferred-light-theme": null,
+    "rustdoc-preferred-dark-theme": null,
+    "rustdoc-use-system-theme": null,
+    "rustdoc-theme": "ayu"
+}
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
+click: "rustdoc-toolbar .settings-menu"
+wait-for: "#theme-system-preference"
+assert: "#theme-system-preference:checked"
+assert: "#preferred-light-theme-light:checked"
+assert-false: "#preferred-dark-theme-dark:checked"
+assert: "#preferred-dark-theme-ayu:checked"

@@ -1,0 +1,20 @@
+error[E0038]: the trait `Copy` is not dyn compatible
+  --> $DIR/macro-matcher.rs:8:12
+   |
+LL |     m!(dyn Copy + Send + 'static);
+   |            ^^^^ `Copy` is not dyn compatible
+   |
+   = note: the trait is not dyn compatible because it requires `Self: Sized`
+   = note: for a trait to be dyn compatible it needs to allow building a vtable
+           for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+
+error[E0224]: at least one trait is required for an object type
+  --> $DIR/macro-matcher.rs:11:8
+   |
+LL |     m!(dyn 'static +);
+   |        ^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0038, E0224.
+For more information about an error, try `rustc --explain E0038`.

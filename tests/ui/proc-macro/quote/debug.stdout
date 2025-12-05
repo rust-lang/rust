@@ -1,0 +1,73 @@
+#![feature(prelude_import)]
+#![no_std]
+//@ check-pass
+//@ force-host
+//@ no-prefer-dynamic
+//@ compile-flags: -Z unpretty=expanded
+//@ needs-unwind compiling proc macros with panic=abort causes a warning
+//@ edition: 2015
+//
+// This file is not actually used as a proc-macro - instead,
+// it's just used to show the output of the `quote!` macro
+
+#![feature(proc_macro_quote)]
+#![crate_type = "proc-macro"]
+#[macro_use]
+extern crate std;
+#[prelude_import]
+use ::std::prelude::rust_2015::*;
+
+extern crate proc_macro;
+
+fn main() {
+    {
+        let mut ts = crate::TokenStream::new();
+        crate::ToTokens::to_tokens(&crate::TokenTree::Ident(crate::Ident::new("let",
+                        crate::Span::recover_proc_macro_span(0))), &mut ts);
+        crate::ToTokens::to_tokens(&crate::TokenTree::Ident(crate::Ident::new("hello",
+                        crate::Span::recover_proc_macro_span(1))), &mut ts);
+        crate::ToTokens::to_tokens(&crate::TokenTree::Punct(crate::Punct::new('=',
+                        crate::Spacing::Alone)), &mut ts);
+        crate::ToTokens::to_tokens(&crate::TokenTree::Literal({
+                        let mut iter =
+                            "\"world\"".parse::<crate::TokenStream>().unwrap().into_iter();
+                        if let (Some(crate::TokenTree::Literal(mut lit)), None) =
+                                (iter.next(), iter.next()) {
+                            lit.set_span(crate::Span::recover_proc_macro_span(2));
+                            lit
+                        } else {
+                            ::core::panicking::panic("internal error: entered unreachable code")
+                        }
+                    }), &mut ts);
+        crate::ToTokens::to_tokens(&crate::TokenTree::Punct(crate::Punct::new(';',
+                        crate::Spacing::Alone)), &mut ts);
+        crate::ToTokens::to_tokens(&crate::TokenTree::Ident(crate::Ident::new("let",
+                        crate::Span::recover_proc_macro_span(3))), &mut ts);
+        crate::ToTokens::to_tokens(&crate::TokenTree::Ident(crate::Ident::new_raw("raw_ident",
+                        crate::Span::recover_proc_macro_span(4))), &mut ts);
+        crate::ToTokens::to_tokens(&crate::TokenTree::Punct(crate::Punct::new('=',
+                        crate::Spacing::Alone)), &mut ts);
+        crate::ToTokens::to_tokens(&crate::TokenTree::Literal({
+                        let mut iter =
+                            "r#\"raw\"literal\"#".parse::<crate::TokenStream>().unwrap().into_iter();
+                        if let (Some(crate::TokenTree::Literal(mut lit)), None) =
+                                (iter.next(), iter.next()) {
+                            lit.set_span(crate::Span::recover_proc_macro_span(5));
+                            lit
+                        } else {
+                            ::core::panicking::panic("internal error: entered unreachable code")
+                        }
+                    }), &mut ts);
+        crate::ToTokens::to_tokens(&crate::TokenTree::Punct(crate::Punct::new(';',
+                        crate::Spacing::Alone)), &mut ts);
+        ts
+    }
+}
+const _: () =
+    {
+        extern crate proc_macro;
+        #[rustc_proc_macro_decls]
+        #[used]
+        #[allow(deprecated)]
+        static _DECLS: &[proc_macro::bridge::client::ProcMacro] = &[];
+    };

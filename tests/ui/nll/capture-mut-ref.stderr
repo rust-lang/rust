@@ -1,0 +1,16 @@
+error: variable does not need to be mutable
+  --> $DIR/capture-mut-ref.rs:9:9
+   |
+LL |     let mut x = &mut 0;
+   |         ----^
+   |         |
+   |         help: remove this `mut`
+   |
+note: the lint level is defined here
+  --> $DIR/capture-mut-ref.rs:6:9
+   |
+LL | #![deny(unused_mut)]
+   |         ^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

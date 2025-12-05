@@ -1,0 +1,33 @@
+error: expected identifier, found `0`
+  --> $DIR/struct-field-numeric-shorthand.rs:4:19
+   |
+LL |     let _ = Rgb { 0, 1, 2 };
+   |             ---   ^ expected identifier
+   |             |
+   |             while parsing this struct
+
+error: expected identifier, found `1`
+  --> $DIR/struct-field-numeric-shorthand.rs:4:22
+   |
+LL |     let _ = Rgb { 0, 1, 2 };
+   |             ---      ^ expected identifier
+   |             |
+   |             while parsing this struct
+
+error: expected identifier, found `2`
+  --> $DIR/struct-field-numeric-shorthand.rs:4:25
+   |
+LL |     let _ = Rgb { 0, 1, 2 };
+   |             ---         ^ expected identifier
+   |             |
+   |             while parsing this struct
+
+error[E0063]: missing fields `0`, `1` and `2` in initializer of `Rgb`
+  --> $DIR/struct-field-numeric-shorthand.rs:4:13
+   |
+LL |     let _ = Rgb { 0, 1, 2 };
+   |             ^^^ missing `0`, `1` and `2`
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0063`.

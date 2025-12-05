@@ -1,0 +1,14 @@
+error[E0223]: ambiguous associated type
+  --> $DIR/issue-23073.rs:6:17
+   |
+LL |     type FooT = <<Self as Bar>::Foo>::T;
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: if there were a trait named `Example` with associated type `T` implemented for `<Self as Bar>::Foo`, you could use the fully-qualified path
+   |
+LL |     type FooT = <<Self as Bar>::Foo as Example>::T;
+   |                                     ++++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0223`.

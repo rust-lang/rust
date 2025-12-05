@@ -1,0 +1,20 @@
+error: Undefined Behavior: constructing invalid value: encountered an unaligned reference (required ALIGN byte alignment but found ALIGN)
+  --> tests/fail/unaligned_pointers/reference_to_packed.rs:LL:CC
+   |
+LL |     mem::transmute(x)
+   |     ^^^^^^^^^^^^^^^^^ Undefined Behavior occurred here
+   |
+   = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
+   = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
+   = note: BACKTRACE:
+   = note: inside `raw_to_ref::<'_, i32>` at tests/fail/unaligned_pointers/reference_to_packed.rs:LL:CC
+note: inside `main`
+  --> tests/fail/unaligned_pointers/reference_to_packed.rs:LL:CC
+   |
+LL |         let p: &i32 = unsafe { raw_to_ref(ptr::addr_of!(foo.x)) };
+   |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to 1 previous error
+

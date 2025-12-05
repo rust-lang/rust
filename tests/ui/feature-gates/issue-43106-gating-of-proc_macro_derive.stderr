@@ -1,0 +1,56 @@
+error: the `#[proc_macro_derive]` attribute is only usable with crates of the `proc-macro` crate type
+  --> $DIR/issue-43106-gating-of-proc_macro_derive.rs:16:5
+   |
+LL |     #[proc_macro_derive(Test)] fn f() { }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `#[proc_macro_derive]` attribute cannot be used on modules
+  --> $DIR/issue-43106-gating-of-proc_macro_derive.rs:5:1
+   |
+LL | #[proc_macro_derive(Test)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[proc_macro_derive]` can only be applied to functions
+
+error: `#[proc_macro_derive]` attribute cannot be used on modules
+  --> $DIR/issue-43106-gating-of-proc_macro_derive.rs:8:17
+   |
+LL |     mod inner { #![proc_macro_derive(Test)] }
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[proc_macro_derive]` can only be applied to functions
+
+error: `#[proc_macro_derive]` attribute cannot be used on modules
+  --> $DIR/issue-43106-gating-of-proc_macro_derive.rs:13:17
+   |
+LL |     mod inner { #![proc_macro_derive(Test)] }
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[proc_macro_derive]` can only be applied to functions
+
+error: `#[proc_macro_derive]` attribute cannot be used on structs
+  --> $DIR/issue-43106-gating-of-proc_macro_derive.rs:19:5
+   |
+LL |     #[proc_macro_derive(Test)] struct S;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[proc_macro_derive]` can only be applied to functions
+
+error: `#[proc_macro_derive]` attribute cannot be used on type aliases
+  --> $DIR/issue-43106-gating-of-proc_macro_derive.rs:22:5
+   |
+LL |     #[proc_macro_derive(Test)] type T = S;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[proc_macro_derive]` can only be applied to functions
+
+error: `#[proc_macro_derive]` attribute cannot be used on inherent impl blocks
+  --> $DIR/issue-43106-gating-of-proc_macro_derive.rs:25:5
+   |
+LL |     #[proc_macro_derive(Test)] impl S { }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[proc_macro_derive]` can only be applied to functions
+
+error: aborting due to 7 previous errors
+

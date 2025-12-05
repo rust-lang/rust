@@ -1,0 +1,29 @@
+error[E0220]: associated type `Proj` not found for `Family<Option<()>>` in the current scope
+  --> $DIR/not-found-self-type-differs.rs:15:32
+   |
+LL | struct Family<T>(T);
+   | ---------------- associated type `Proj` not found for this struct
+...
+LL |     let _: Family<Option<()>>::Proj;
+   |                                ^^^^ associated item not found in `Family<Option<()>>`
+   |
+   = note: the associated type was found for
+           - `Family<()>`
+           - `Family<Result<T, ()>>`
+
+error[E0220]: associated type `Proj` not found for `Family<PathBuf>` in the current scope
+  --> $DIR/not-found-self-type-differs.rs:16:40
+   |
+LL | struct Family<T>(T);
+   | ---------------- associated type `Proj` not found for this struct
+...
+LL |     let _: Family<std::path::PathBuf>::Proj = ();
+   |                                        ^^^^ associated item not found in `Family<PathBuf>`
+   |
+   = note: the associated type was found for
+           - `Family<()>`
+           - `Family<Result<T, ()>>`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0220`.

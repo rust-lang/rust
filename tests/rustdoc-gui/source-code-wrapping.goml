@@ -1,0 +1,62 @@
+// Checks that the interactions with the source code pages are working as expected.
+go-to: "file://" + |DOC_PATH| + "/src/test_docs/lib.rs.html"
+show-text: true
+set-window-size: (1000, 1000)
+
+define-function: (
+    "click-code-wrapping",
+    [expected],
+    block {
+        click: "#word-wrap-source-code"
+        wait-for-local-storage: {"rustdoc-word-wrap-source-code": |expected|}
+    },
+)
+
+store-size: (".rust code", {"width": width, "height": height})
+click: "main .settings-menu"
+wait-for: "#settings"
+call-function: ("click-code-wrapping", {"expected": "true"})
+wait-for-size-false: (".rust code", {"width": |width|, "height": |height|})
+store-size: (".rust code", {"width": new_width, "height": new_height})
+// The width should now be smaller than the window's and the height
+// should have increased.
+assert: |width| > |new_width| && |height| < |new_height|
+
+// Switching back to the original setting.
+call-function: ("click-code-wrapping", {"expected": "false"})
+assert-size: (".rust code", {"width": |width|, "height": |height|})
+
+// Now let's check in docs code examples.
+go-to: "file://" + |DOC_PATH| + "/test_docs/trait_bounds/index.html"
+click: "main .settings-menu"
+wait-for: "#settings"
+
+store-property: (".example-wrap .rust code", {"scrollWidth": rust_width, "scrollHeight": rust_height})
+store-property: (".example-wrap .language-text code", {"scrollWidth": txt_width, "scrollHeight": txt_height})
+call-function: ("click-code-wrapping", {"expected": "true"})
+wait-for-property-false: (
+    ".example-wrap .rust code",
+    {"scrollWidth": |rust_width|, "scrollHeight": |rust_height|},
+)
+
+store-property: (
+    ".example-wrap .rust code",
+    {"scrollWidth": new_rust_width, "scrollHeight": new_rust_height},
+)
+store-property: (
+    ".example-wrap .language-text code",
+    {"scrollWidth": new_txt_width, "scrollHeight": new_txt_height},
+)
+
+assert: |rust_width| > |new_rust_width| && |rust_height| < |new_rust_height|
+assert: |txt_width| > |new_txt_width| && |txt_height| < |new_txt_height|
+
+call-function: ("click-code-wrapping", {"expected": "false"})
+wait-for-property: (
+    ".example-wrap .rust code",
+    {"scrollWidth": |rust_width|, "scrollHeight": |rust_height|},
+)
+assert-property: (
+    ".example-wrap .language-text code",
+    {"scrollWidth": |txt_width|, "scrollHeight": |txt_height|},
+)

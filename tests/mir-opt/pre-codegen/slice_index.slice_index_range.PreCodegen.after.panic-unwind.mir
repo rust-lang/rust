@@ -1,0 +1,84 @@
+// MIR for `slice_index_range` after PreCodegen
+
+fn slice_index_range(_1: &[u32], _2: std::ops::Range<usize>) -> &[u32] {
+    debug slice => _1;
+    debug index => _2;
+    let mut _0: &[u32];
+    let mut _3: usize;
+    let mut _4: usize;
+    scope 1 (inlined #[track_caller] core::slice::index::<impl Index<std::ops::Range<usize>> for [u32]>::index) {
+        scope 2 (inlined #[track_caller] <std::ops::Range<usize> as SliceIndex<[u32]>>::index) {
+            let mut _7: usize;
+            let mut _8: bool;
+            let mut _9: *const [u32];
+            let _12: *const [u32];
+            let mut _13: usize;
+            let mut _14: !;
+            scope 3 (inlined core::num::<impl usize>::checked_sub) {
+                let mut _5: bool;
+                let mut _6: usize;
+            }
+            scope 4 (inlined core::slice::index::get_offset_len_noubcheck::<u32>) {
+                let _10: *const u32;
+                scope 5 {
+                    let _11: *const u32;
+                    scope 6 {
+                    }
+                }
+            }
+        }
+    }
+
+    bb0: {
+        _3 = move (_2.0: usize);
+        _4 = move (_2.1: usize);
+        StorageLive(_5);
+        _5 = Lt(copy _4, copy _3);
+        switchInt(move _5) -> [0: bb1, otherwise: bb4];
+    }
+
+    bb1: {
+        _6 = SubUnchecked(copy _4, copy _3);
+        StorageDead(_5);
+        StorageLive(_8);
+        StorageLive(_7);
+        _7 = PtrMetadata(copy _1);
+        _8 = Le(copy _4, move _7);
+        switchInt(move _8) -> [0: bb2, otherwise: bb3];
+    }
+
+    bb2: {
+        StorageDead(_7);
+        goto -> bb5;
+    }
+
+    bb3: {
+        StorageDead(_7);
+        StorageLive(_12);
+        StorageLive(_9);
+        _9 = &raw const (*_1);
+        StorageLive(_10);
+        StorageLive(_11);
+        _10 = copy _9 as *const u32 (PtrToPtr);
+        _11 = Offset(copy _10, copy _3);
+        _12 = *const [u32] from (copy _11, copy _6);
+        StorageDead(_11);
+        StorageDead(_10);
+        StorageDead(_9);
+        _0 = &(*_12);
+        StorageDead(_12);
+        StorageDead(_8);
+        return;
+    }
+
+    bb4: {
+        StorageDead(_5);
+        goto -> bb5;
+    }
+
+    bb5: {
+        StorageLive(_13);
+        _13 = PtrMetadata(copy _1);
+        _14 = core::slice::index::slice_index_fail(move _3, move _4, move _13) -> unwind continue;
+    }
+}

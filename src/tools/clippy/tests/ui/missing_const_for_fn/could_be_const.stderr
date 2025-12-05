@@ -1,0 +1,406 @@
+error: this could be a `const fn`
+  --> tests/ui/missing_const_for_fn/could_be_const.rs:13:5
+   |
+LL | /     pub fn new() -> Self {
+LL | |
+LL | |         Self { guess: 42 }
+LL | |     }
+   | |_____^
+   |
+   = note: `-D clippy::missing-const-for-fn` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::missing_const_for_fn)]`
+help: make the function `const`
+   |
+LL |     pub const fn new() -> Self {
+   |         +++++
+
+error: this could be a `const fn`
+  --> tests/ui/missing_const_for_fn/could_be_const.rs:18:5
+   |
+LL | /     fn const_generic_params<'a, T, const N: usize>(&self, b: &'a [T; N]) -> &'a [T; N] {
+LL | |
+LL | |         b
+LL | |     }
+   | |_____^
+   |
+help: make the function `const`
+   |
+LL |     const fn const_generic_params<'a, T, const N: usize>(&self, b: &'a [T; N]) -> &'a [T; N] {
+   |     +++++
+
+error: this could be a `const fn`
+  --> tests/ui/missing_const_for_fn/could_be_const.rs:25:1
+   |
+LL | / fn one() -> i32 {
+LL | |
+LL | |     1
+LL | | }
+   | |_^
+   |
+help: make the function `const`
+   |
+LL | const fn one() -> i32 {
+   | +++++
+
+error: this could be a `const fn`
+  --> tests/ui/missing_const_for_fn/could_be_const.rs:31:1
+   |
+LL | / fn two() -> i32 {
+LL | |
+LL | |     let abc = 2;
+LL | |     abc
+LL | | }
+   | |_^
+   |
+help: make the function `const`
+   |
+LL | const fn two() -> i32 {
+   | +++++
+
+error: this could be a `const fn`
+  --> tests/ui/missing_const_for_fn/could_be_const.rs:38:1
+   |
+LL | / fn string() -> String {
+LL | |
+LL | |     String::new()
+LL | | }
+   | |_^
+   |
+help: make the function `const`
+   |
+LL | const fn string() -> String {
+   | +++++
+
+error: this could be a `const fn`
+  --> tests/ui/missing_const_for_fn/could_be_const.rs:44:1
+   |
+LL | / unsafe fn four() -> i32 {
+LL | |
+LL | |     4
+LL | | }
+   | |_^
+   |
+help: make the function `const`
+   |
+LL | const unsafe fn four() -> i32 {
+   | +++++
+
+error: this could be a `const fn`
+  --> tests/ui/missing_const_for_fn/could_be_const.rs:50:1
+   |
+LL | / fn generic<T>(t: T) -> T {
+LL | |
+LL | |     t
+LL | | }
+   | |_^
+   |
+help: make the function `const`
+   |
+LL | const fn generic<T>(t: T) -> T {
+   | +++++
+
+error: this could be a `const fn`
+  --> tests/ui/missing_const_for_fn/could_be_const.rs:59:1
+   |
+LL | / fn generic_arr<T: Copy>(t: [T; 1]) -> T {
+LL | |
+LL | |     t[0]
+LL | | }
+   | |_^
+   |
+help: make the function `const`
+   |
+LL | const fn generic_arr<T: Copy>(t: [T; 1]) -> T {
+   | +++++
+
+error: this could be a `const fn`
+  --> tests/ui/missing_const_for_fn/could_be_const.rs:73:9
+   |
+LL | /         pub fn b(self, a: &A) -> B {
+LL | |
+LL | |             B
+LL | |         }
+   | |_________^
+   |
+help: make the function `const`
+   |
+LL |         pub const fn b(self, a: &A) -> B {
+   |             +++++
+
+error: this could be a `const fn`
+  --> tests/ui/missing_const_for_fn/could_be_const.rs:83:5
+   |
+LL | /     fn const_fn_stabilized_before_msrv(byte: u8) {
+LL | |
+LL | |         byte.is_ascii_digit();
+LL | |     }
+   | |_____^
+   |
+help: make the function `const`
+   |
+LL |     const fn const_fn_stabilized_before_msrv(byte: u8) {
+   |     +++++
+
+error: this could be a `const fn`
+  --> tests/ui/missing_const_for_fn/could_be_const.rs:95:1
+   |
+LL | / fn msrv_1_46() -> i32 {
+LL | |
+LL | |     46
+LL | | }
+   | |_^
+   |
+help: make the function `const`
+   |
+LL | const fn msrv_1_46() -> i32 {
+   | +++++
+
+error: this could be a `const fn`
+  --> tests/ui/missing_const_for_fn/could_be_const.rs:115:1
+   |
+LL | fn d(this: D) {}
+   | ^^^^^^^^^^^^^^^^
+   |
+help: make the function `const`
+   |
+LL | const fn d(this: D) {}
+   | +++++
+
+error: this could be a `const fn`
+  --> tests/ui/missing_const_for_fn/could_be_const.rs:123:9
+   |
+LL | /         fn deref_ptr_can_be_const(self) -> usize {
+LL | |
+LL | |             unsafe { *self.0 as usize }
+LL | |         }
+   | |_________^
+   |
+help: make the function `const`
+   |
+LL |         const fn deref_ptr_can_be_const(self) -> usize {
+   |         +++++
+
+error: this could be a `const fn`
+  --> tests/ui/missing_const_for_fn/could_be_const.rs:128:9
+   |
+LL | /         fn deref_copied_val(self) -> usize {
+LL | |
+LL | |             *self.1 as usize
+LL | |         }
+   | |_________^
+   |
+help: make the function `const`
+   |
+LL |         const fn deref_copied_val(self) -> usize {
+   |         +++++
+
+error: this could be a `const fn`
+  --> tests/ui/missing_const_for_fn/could_be_const.rs:139:5
+   |
+LL | /     fn union_access_can_be_const() {
+LL | |
+LL | |         let bar = Bar { val: 1 };
+LL | |         let _ = unsafe { bar.val };
+LL | |     }
+   | |_____^
+   |
+help: make the function `const`
+   |
+LL |     const fn union_access_can_be_const() {
+   |     +++++
+
+error: this could be a `const fn`
+  --> tests/ui/missing_const_for_fn/could_be_const.rs:147:9
+   |
+LL |         unsafe extern "C" fn c() {}
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: make the function `const`
+   |
+LL |         const unsafe extern "C" fn c() {}
+   |         +++++
+
+error: this could be a `const fn`
+  --> tests/ui/missing_const_for_fn/could_be_const.rs:152:9
+   |
+LL |         extern fn implicit_c() {}
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: make the function `const`
+   |
+LL |         const extern fn implicit_c() {}
+   |         +++++
+
+error: this could be a `const fn`
+  --> tests/ui/missing_const_for_fn/could_be_const.rs:169:9
+   |
+LL | /         pub fn new(strings: Vec<String>) -> Self {
+LL | |
+LL | |             Self { strings }
+LL | |         }
+   | |_________^
+   |
+help: make the function `const`
+   |
+LL |         pub const fn new(strings: Vec<String>) -> Self {
+   |             +++++
+
+error: this could be a `const fn`
+  --> tests/ui/missing_const_for_fn/could_be_const.rs:175:9
+   |
+LL | /         pub fn empty() -> Self {
+LL | |
+LL | |             Self { strings: Vec::new() }
+LL | |         }
+   | |_________^
+   |
+help: make the function `const`
+   |
+LL |         pub const fn empty() -> Self {
+   |             +++++
+
+error: this could be a `const fn`
+  --> tests/ui/missing_const_for_fn/could_be_const.rs:187:9
+   |
+LL | /         pub fn new(text: String) -> Self {
+LL | |
+LL | |             let vec = Vec::new();
+LL | |             Self { text, vec }
+LL | |         }
+   | |_________^
+   |
+help: make the function `const`
+   |
+LL |         pub const fn new(text: String) -> Self {
+   |             +++++
+
+error: this could be a `const fn`
+  --> tests/ui/missing_const_for_fn/could_be_const.rs:207:5
+   |
+LL |     fn alias_ty_is_projection(bar: <() as FooTrait>::Foo) {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: make the function `const`
+   |
+LL |     const fn alias_ty_is_projection(bar: <() as FooTrait>::Foo) {}
+   |     +++++
+
+error: this could be a `const fn`
+  --> tests/ui/missing_const_for_fn/could_be_const.rs:212:5
+   |
+LL |     extern "C-unwind" fn c_unwind() {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: make the function `const`
+   |
+LL |     const extern "C-unwind" fn c_unwind() {}
+   |     +++++
+
+error: this could be a `const fn`
+  --> tests/ui/missing_const_for_fn/could_be_const.rs:214:5
+   |
+LL |     extern "system" fn system() {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: make the function `const`
+   |
+LL |     const extern "system" fn system() {}
+   |     +++++
+
+error: this could be a `const fn`
+  --> tests/ui/missing_const_for_fn/could_be_const.rs:216:5
+   |
+LL |     extern "system-unwind" fn system_unwind() {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: make the function `const`
+   |
+LL |     const extern "system-unwind" fn system_unwind() {}
+   |     +++++
+
+error: this could be a `const fn`
+  --> tests/ui/missing_const_for_fn/could_be_const.rs:220:1
+   |
+LL | / fn mut_add(x: &mut i32) {
+LL | |
+LL | |     *x += 1;
+LL | | }
+   | |_^
+   |
+help: make the function `const`
+   |
+LL | const fn mut_add(x: &mut i32) {
+   | +++++
+
+error: this could be a `const fn`
+  --> tests/ui/missing_const_for_fn/could_be_const.rs:239:9
+   |
+LL | /         pub fn new_1_61() -> Self {
+LL | |
+LL | |             Self { _t: None }
+LL | |         }
+   | |_________^
+   |
+help: make the function `const`
+   |
+LL |         pub const fn new_1_61() -> Self {
+   |             +++++
+
+error: this could be a `const fn`
+  --> tests/ui/missing_const_for_fn/could_be_const.rs:251:9
+   |
+LL | /         pub fn new_1_60() -> Self {
+LL | |
+LL | |             Self { _t: None }
+LL | |         }
+   | |_________^
+   |
+help: make the function `const`
+   |
+LL |         pub const fn new_1_60() -> Self {
+   |             +++++
+
+error: this could be a `const fn`
+  --> tests/ui/missing_const_for_fn/could_be_const.rs:257:9
+   |
+LL | /         pub fn new_1_61() -> Self {
+LL | |
+LL | |             Self { _t: None }
+LL | |         }
+   | |_________^
+   |
+help: make the function `const`
+   |
+LL |         pub const fn new_1_61() -> Self {
+   |             +++++
+
+error: this could be a `const fn`
+  --> tests/ui/missing_const_for_fn/could_be_const.rs:269:9
+   |
+LL | /         pub fn new_1_60() -> Self {
+LL | |
+LL | |             Self { _t: None }
+LL | |         }
+   | |_________^
+   |
+help: make the function `const`
+   |
+LL |         pub const fn new_1_60() -> Self {
+   |             +++++
+
+error: this could be a `const fn`
+  --> tests/ui/missing_const_for_fn/could_be_const.rs:275:9
+   |
+LL | /         pub fn new_1_61() -> Self {
+LL | |
+LL | |             Self { _t: None }
+LL | |         }
+   | |_________^
+   |
+help: make the function `const`
+   |
+LL |         pub const fn new_1_61() -> Self {
+   |             +++++
+
+error: aborting due to 30 previous errors
+

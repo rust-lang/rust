@@ -1,0 +1,183 @@
+// Checks that the setting "line numbers" is working as expected.
+include: "utils.goml"
+go-to: "file://" + |DOC_PATH| + "/test_docs/fn.foo.html"
+
+// We check that without this setting, there is no line number displayed.
+assert-false: "pre.example-line-numbers"
+
+// All corners should be rounded.
+assert-css: (
+    ".example-wrap .rust",
+    {
+        "border-top-left-radius": "6px",
+        "border-bottom-left-radius": "6px",
+        "border-top-right-radius": "6px",
+        "border-bottom-right-radius": "6px",
+    },
+    ALL,
+)
+
+// We set the setting to show the line numbers on code examples.
+set-local-storage: {"rustdoc-line-numbers": "true"}
+reload:
+// We wait for the line numbers to be added into the DOM by the JS...
+wait-for: ".digits-1 pre"
+
+// Otherwise, we can't check text color
+show-text: true
+
+// Let's now check some CSS properties...
+define-function: (
+    "check-colors",
+    [theme, color],
+    block {
+        // Page will be reloaded in "switch-theme".
+        call-function: ("switch-theme", {"theme": |theme|})
+        // If the test didn't fail, it means that it was found!
+        assert-css: (
+            ".digits-1 pre [data-nosnippet]",
+            {
+                "color": |color|,
+                "margin-top": "0px",
+                "margin-bottom": "0px",
+                "margin-left": "0px",
+                "margin-right": "20px",
+                "padding-top": "0px",
+                "padding-bottom": "0px",
+                "padding-left": "4px",
+                "padding-right": "4px",
+                "text-align": "right",
+            },
+            ALL,
+        )
+    },
+)
+call-function: ("check-colors", {
+    "theme": "ayu",
+    "color": "#5c6773",
+})
+call-function: ("check-colors", {
+    "theme": "dark",
+    "color": "#3b91e2",
+})
+call-function: ("check-colors", {
+    "theme": "light",
+    "color": "#c67e2d",
+})
+
+// Now, try changing the setting dynamically. We'll turn it off, using the settings menu,
+// and make sure it goes away.
+
+// First, open the settings menu.
+click: "rustdoc-toolbar .settings-menu"
+wait-for: "#settings"
+assert-css: ("#settings", {"display": "block"})
+
+// Then, click the toggle button.
+click: "input#line-numbers"
+wait-for: ".digits-1.hide-lines"
+assert-local-storage: {"rustdoc-line-numbers": "false" }
+
+// Finally, turn it on again.
+click: "input#line-numbers"
+wait-for: ".digits-1:not(.hide-lines)"
+assert-local-storage: {"rustdoc-line-numbers": "true" }
+
+// Same check with scraped examples line numbers.
+go-to: "file://" + |DOC_PATH| + "/scrape_examples/fn.test_many.html"
+
+define-function: (
+    "check-padding",
+    [path, padding_bottom],
+    block {
+        assert-css: (|path| + " span[data-nosnippet]", {
+            "padding-top": "0px",
+            "padding-bottom": "0px",
+            "padding-left": "4px",
+            "padding-right": "4px",
+            "margin-right": "20px",
+            "margin-left": "0px",
+            "margin-top": "0px",
+            "margin-bottom": "0px",
+        }, ALL)
+    },
+)
+
+call-function: ("check-padding", {
+    "path": ".scraped-example .example-wrap",
+    "padding_bottom": "0px",
+})
+
+move-cursor-to: ".scraped-example .example-wrap .rust"
+wait-for: ".scraped-example .example-wrap .button-holder .expand"
+click: ".scraped-example .example-wrap .button-holder .expand"
+wait-for: ".scraped-example.expanded"
+
+call-function: ("check-padding", {
+    "path": ".scraped-example.expanded .example-wrap",
+    "padding_bottom": "14px",
+})
+
+define-function: ("check-line-numbers-existence", [], block {
+    assert-local-storage: {"rustdoc-line-numbers": "true" }
+    assert-false: ".example-line-numbers"
+    click: "rustdoc-toolbar .settings-menu"
+    wait-for: "#settings"
+
+    // Then, click the toggle button.
+    click: "input#line-numbers"
+    wait-for-local-storage-false: {"rustdoc-line-numbers": "true" }
+    assert-false: ".example-line-numbers"
+    // Line numbers should still be there.
+    assert-css: ("[data-nosnippet]", { "display": "block"})
+    // Now disabling the setting.
+    click: "input#line-numbers"
+    wait-for-local-storage: {"rustdoc-line-numbers": "true" }
+    assert-false: ".example-line-numbers"
+    // Line numbers should still be there.
+    assert-css: ("[data-nosnippet]", { "display": "block"})
+    // Closing settings menu.
+    click: "rustdoc-toolbar .settings-menu"
+    wait-for-css: ("#settings", {"display": "none"})
+})
+
+// Checking that turning off the line numbers setting won't remove line numbers from scraped
+// examples.
+call-function: ("check-line-numbers-existence", {})
+
+// Now checking the line numbers in the source code page.
+click: ".src"
+assert-css: ("a[data-nosnippet]", {
+    "padding-top": "0px",
+    "padding-bottom": "0px",
+    "padding-left": "4px",
+    "padding-right": "4px",
+    "margin-top": "0px",
+    "margin-bottom": "0px",
+    "margin-left": "0px",
+    "margin-right": "20px",
+}, ALL)
+// Checking that turning off the line numbers setting won't remove line numbers.
+call-function: ("check-line-numbers-existence", {})
+
+// Now checking that even non-rust code blocks have line numbers generated.
+go-to: "file://" + |DOC_PATH| + "/lib2/sub_mod/struct.Foo.html"
+assert-local-storage: {"rustdoc-line-numbers": "true" }
+assert: ".example-wrap > pre.language-txt"
+assert: ".example-wrap > pre.rust"
+assert-count: (".example-wrap", 2)
+assert-count: (".example-wrap.digits-1", 2)
+
+click: "rustdoc-toolbar .settings-menu"
+wait-for: "#settings"
+
+// Then, click the toggle button.
+click: "input#line-numbers"
+wait-for-count: (".example-wrap.digits-1.hide-lines", 2)
+assert-local-storage-false: {"rustdoc-line-numbers": "true" }
+
+// Now turning off the setting.
+click: "input#line-numbers"
+wait-for-count: (".example-wrap.digits-1", 2)
+wait-for-count: (".example-wrap.digits-1.hide-lines", 0)
+assert-local-storage: {"rustdoc-line-numbers": "true" }

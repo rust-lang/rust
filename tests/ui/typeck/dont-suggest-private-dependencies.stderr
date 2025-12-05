@@ -1,0 +1,27 @@
+error[E0599]: no method named `read` found for struct `Vec<u8>` in the current scope
+  --> $DIR/dont-suggest-private-dependencies.rs:24:16
+   |
+LL |         self.0.read(buf)
+   |                ^^^^
+   |
+help: there is a method `read1` with a similar name, but with different arguments
+  --> $DIR/dont-suggest-private-dependencies.rs:16:5
+   |
+LL |     fn read1(&self) {}
+   |     ^^^^^^^^^^^^^^^
+
+error[E0599]: no function or associated item named `cast_from_lossy` found for type `u8` in the current scope
+  --> $DIR/dont-suggest-private-dependencies.rs:33:17
+   |
+LL |     let _ = u8::cast_from_lossy(9);
+   |                 ^^^^^^^^^^^^^^^ function or associated item not found in `u8`
+
+error[E0599]: no function or associated item named `foo` found for struct `B` in the current scope
+  --> $DIR/dont-suggest-private-dependencies.rs:35:16
+   |
+LL |     let _ = B::foo();
+   |                ^^^ function or associated item not found in `B`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0599`.

@@ -1,0 +1,2061 @@
+//! # Type Coercion
+//!
+//! Under certain circumstances we will coerce from one type to another,
+//! for example by auto-borrowing. This occurs in situations where the
+//! compiler has a firm 'expected type' that was supplied from the user,
+//! and where the actual type is similar to that expected type in purpose
+//! but not in representation (so actual subtyping is inappropriate).
+//!
+//! ## Reborrowing
+//!
+//! Note that if we are expecting a reference, we will *reborrow*
+//! even if the argument provided was already a reference. This is
+//! useful for freezing mut things (that is, when the expected type is &T
+//! but you have &mut T) and also for avoiding the linearity
+//! of mut things (when the expected is &mut T and you have &mut T). See
+//! the various `tests/ui/coerce/*.rs` tests for
+//! examples of where this is useful.
+//!
+//! ## Subtle note
+//!
+//! When inferring the generic arguments of functions, the argument
+//! order is relevant, which can lead to the following edge case:
+//!
+//! ```ignore (illustrative)
+//! fn foo<T>(a: T, b: T) {
+//!     // ...
+//! }
+//!
+//! foo(&7i32, &mut 7i32);
+//! // This compiles, as we first infer `T` to be `&i32`,
+//! // and then coerce `&mut 7i32` to `&7i32`.
+//!
+//! foo(&mut 7i32, &7i32);
+//! // This does not compile, as we first infer `T` to be `&mut i32`
+//! // and are then unable to coerce `&7i32` to `&mut i32`.
+//! ```
+
+use std::ops::{ControlFlow, Deref};
+
+use rustc_errors::codes::*;
+use rustc_errors::{Applicability, Diag, struct_span_code_err};
+use rustc_hir::attrs::InlineAttr;
+use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::{self as hir, LangItem};
+use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
+use rustc_infer::infer::relate::RelateResult;
+use rustc_infer::infer::{DefineOpaqueTypes, InferOk, InferResult, RegionVariableOrigin};
+use rustc_infer::traits::{
+    MatchExpressionArmCause, Obligation, PredicateObligation, PredicateObligations, SelectionError,
+};
+use rustc_middle::span_bug;
+use rustc_middle::ty::adjustment::{
+    Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability, PointerCoercion,
+};
+use rustc_middle::ty::error::TypeError;
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
+use rustc_span::{BytePos, DUMMY_SP, DesugaringKind, Span};
+use rustc_trait_selection::infer::InferCtxtExt as _;
+use rustc_trait_selection::solve::inspect::{self, InferCtxtProofTreeExt, ProofTreeVisitor};
+use rustc_trait_selection::solve::{Certainty, Goal, NoSolution};
+use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
+use rustc_trait_selection::traits::{
+    self, ImplSource, NormalizeExt, ObligationCause, ObligationCauseCode, ObligationCtxt,
+};
+use smallvec::{SmallVec, smallvec};
+use tracing::{debug, instrument};
+
+use crate::FnCtxt;
+use crate::errors::SuggestBoxingForReturnImplTrait;
+
+struct Coerce<'a, 'tcx> {
+    fcx: &'a FnCtxt<'a, 'tcx>,
+    cause: ObligationCause<'tcx>,
+    use_lub: bool,
+    /// Determines whether or not allow_two_phase_borrow is set on any
+    /// autoref adjustments we create while coercing. We don't want to
+    /// allow deref coercions to create two-phase borrows, at least initially,
+    /// but we do need two-phase borrows for function argument reborrows.
+    /// See #47489 and #48598
+    /// See docs on the "AllowTwoPhase" type for a more detailed discussion
+    allow_two_phase: AllowTwoPhase,
+    /// Whether we allow `NeverToAny` coercions. This is unsound if we're
+    /// coercing a place expression without it counting as a read in the MIR.
+    /// This is a side-effect of HIR not really having a great distinction
+    /// between places and values.
+    coerce_never: bool,
+}
+
+impl<'a, 'tcx> Deref for Coerce<'a, 'tcx> {
+    type Target = FnCtxt<'a, 'tcx>;
+    fn deref(&self) -> &Self::Target {
+        self.fcx
+    }
+}
+
+type CoerceResult<'tcx> = InferResult<'tcx, (Vec<Adjustment<'tcx>>, Ty<'tcx>)>;
+
+/// Coercing a mutable reference to an immutable works, while
+/// coercing `&T` to `&mut T` should be forbidden.
+fn coerce_mutbls<'tcx>(
+    from_mutbl: hir::Mutability,
+    to_mutbl: hir::Mutability,
+) -> RelateResult<'tcx, ()> {
+    if from_mutbl >= to_mutbl { Ok(()) } else { Err(TypeError::Mutability) }
+}
+
+/// This always returns `Ok(...)`.
+fn success<'tcx>(
+    adj: Vec<Adjustment<'tcx>>,
+    target: Ty<'tcx>,
+    obligations: PredicateObligations<'tcx>,
+) -> CoerceResult<'tcx> {
+    Ok(InferOk { value: (adj, target), obligations })
+}
+
+/// Whether to force a leak check to occur in `Coerce::unify_raw`.
+/// Note that leak checks may still occur evn with `ForceLeakCheck::No`.
+///
+/// FIXME: We may want to change type relations to always leak-check
+/// after exiting a binder, at which point we will always do so and
+/// no longer need to handle this explicitly
+enum ForceLeakCheck {
+    Yes,
+    No,
+}
+
+impl<'f, 'tcx> Coerce<'f, 'tcx> {
+    fn new(
+        fcx: &'f FnCtxt<'f, 'tcx>,
+        cause: ObligationCause<'tcx>,
+        allow_two_phase: AllowTwoPhase,
+        coerce_never: bool,
+    ) -> Self {
+        Coerce { fcx, cause, allow_two_phase, use_lub: false, coerce_never }
+    }
+
+    fn unify_raw(
+        &self,
+        a: Ty<'tcx>,
+        b: Ty<'tcx>,
+        leak_check: ForceLeakCheck,
+    ) -> InferResult<'tcx, Ty<'tcx>> {
+        debug!("unify(a: {:?}, b: {:?}, use_lub: {})", a, b, self.use_lub);
+        self.commit_if_ok(|snapshot| {
+            let outer_universe = self.infcx.universe();
+
+            let at = self.at(&self.cause, self.fcx.param_env);
+
+            let res = if self.use_lub {
+                at.lub(b, a)
+            } else {
+                at.sup(DefineOpaqueTypes::Yes, b, a)
+                    .map(|InferOk { value: (), obligations }| InferOk { value: b, obligations })
+            };
+
+            // In the new solver, lazy norm may allow us to shallowly equate
+            // more types, but we emit possibly impossible-to-satisfy obligations.
+            // Filter these cases out to make sure our coercion is more accurate.
+            let res = match res {
+                Ok(InferOk { value, obligations }) if self.next_trait_solver() => {
+                    let ocx = ObligationCtxt::new(self);
+                    ocx.register_obligations(obligations);
+                    if ocx.try_evaluate_obligations().is_empty() {
+                        Ok(InferOk { value, obligations: ocx.into_pending_obligations() })
+                    } else {
+                        Err(TypeError::Mismatch)
+                    }
+                }
+                res => res,
+            };
+
+            // We leak check here mostly because lub operations are
+            // kind of scuffed around binders. Instead of computing an actual
+            // lub'd binder we instead:
+            // - Equate the binders
+            // - Return the lhs of the lub operation
+            //
+            // This may lead to incomplete type inference for the resulting type
+            // of a `match` or `if .. else`, etc. This is a backwards compat
+            // hazard for if/when we start handling `lub` more correctly.
+            //
+            // In order to actually ensure that equating the binders *does*
+            // result in equal binders, and that the lhs is actually a supertype
+            // of the rhs, we must perform a leak check here.
+            if matches!(leak_check, ForceLeakCheck::Yes) {
+                self.leak_check(outer_universe, Some(snapshot))?;
+            }
+
+            res
+        })
+    }
+
+    /// Unify two types (using sub or lub).
+    fn unify(&self, a: Ty<'tcx>, b: Ty<'tcx>, leak_check: ForceLeakCheck) -> CoerceResult<'tcx> {
+        self.unify_raw(a, b, leak_check)
+            .and_then(|InferOk { value: ty, obligations }| success(vec![], ty, obligations))
+    }
+
+    /// Unify two types (using sub or lub) and produce a specific coercion.
+    fn unify_and(
+        &self,
+        a: Ty<'tcx>,
+        b: Ty<'tcx>,
+        adjustments: impl IntoIterator<Item = Adjustment<'tcx>>,
+        final_adjustment: Adjust,
+        leak_check: ForceLeakCheck,
+    ) -> CoerceResult<'tcx> {
+        self.unify_raw(a, b, leak_check).and_then(|InferOk { value: ty, obligations }| {
+            success(
+                adjustments
+                    .into_iter()
+                    .chain(std::iter::once(Adjustment { target: ty, kind: final_adjustment }))
+                    .collect(),
+                ty,
+                obligations,
+            )
+        })
+    }
+
+    #[instrument(skip(self), ret)]
+    fn coerce(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> CoerceResult<'tcx> {
+        // First, remove any resolved type variables (at the top level, at least):
+        let a = self.shallow_resolve(a);
+        let b = self.shallow_resolve(b);
+        debug!("Coerce.tys({:?} => {:?})", a, b);
+
+        // Coercing from `!` to any type is allowed:
+        if a.is_never() {
+            if self.coerce_never {
+                return success(
+                    vec![Adjustment { kind: Adjust::NeverToAny, target: b }],
+                    b,
+                    PredicateObligations::new(),
+                );
+            } else {
+                // Otherwise the only coercion we can do is unification.
+                return self.unify(a, b, ForceLeakCheck::No);
+            }
+        }
+
+        // Coercing *from* an unresolved inference variable means that
+        // we have no information about the source type. This will always
+        // ultimately fall back to some form of subtyping.
+        if a.is_ty_var() {
+            return self.coerce_from_inference_variable(a, b);
+        }
+
+        // Consider coercing the subtype to a DST
+        //
+        // NOTE: this is wrapped in a `commit_if_ok` because it creates
+        // a "spurious" type variable, and we don't want to have that
+        // type variable in memory if the coercion fails.
+        let unsize = self.commit_if_ok(|_| self.coerce_unsized(a, b));
+        match unsize {
+            Ok(_) => {
+                debug!("coerce: unsize successful");
+                return unsize;
+            }
+            Err(error) => {
+                debug!(?error, "coerce: unsize failed");
+            }
+        }
+
+        // Examine the target type and consider type-specific coercions, such
+        // as auto-borrowing, coercing pointer mutability, or pin-ergonomics.
+        match *b.kind() {
+            ty::RawPtr(_, b_mutbl) => {
+                return self.coerce_to_raw_ptr(a, b, b_mutbl);
+            }
+            ty::Ref(r_b, _, mutbl_b) => {
+                return self.coerce_to_ref(a, b, r_b, mutbl_b);
+            }
+            ty::Adt(pin, _)
+                if self.tcx.features().pin_ergonomics()
+                    && self.tcx.is_lang_item(pin.did(), hir::LangItem::Pin) =>
+            {
+                let pin_coerce = self.commit_if_ok(|_| self.coerce_to_pin_ref(a, b));
+                if pin_coerce.is_ok() {
+                    return pin_coerce;
+                }
+            }
+            _ => {}
+        }
+
+        match *a.kind() {
+            ty::FnDef(..) => {
+                // Function items are coercible to any closure
+                // type; function pointers are not (that would
+                // require double indirection).
+                // Additionally, we permit coercion of function
+                // items to drop the unsafe qualifier.
+                self.coerce_from_fn_item(a, b)
+            }
+            ty::FnPtr(a_sig_tys, a_hdr) => {
+                // We permit coercion of fn pointers to drop the
+                // unsafe qualifier.
+                self.coerce_from_fn_pointer(a, a_sig_tys.with(a_hdr), b)
+            }
+            ty::Closure(..) => {
+                // Non-capturing closures are coercible to
+                // function pointers or unsafe function pointers.
+                // It cannot convert closures that require unsafe.
+                self.coerce_closure_to_fn(a, b)
+            }
+            _ => {
+                // Otherwise, just use unification rules.
+                self.unify(a, b, ForceLeakCheck::No)
+            }
+        }
+    }
+
+    /// Coercing *from* an inference variable. In this case, we have no information
+    /// about the source type, so we can't really do a true coercion and we always
+    /// fall back to subtyping (`unify_and`).
+    fn coerce_from_inference_variable(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> CoerceResult<'tcx> {
+        debug!("coerce_from_inference_variable(a={:?}, b={:?})", a, b);
+        debug_assert!(a.is_ty_var() && self.shallow_resolve(a) == a);
+        debug_assert!(self.shallow_resolve(b) == b);
+
+        if b.is_ty_var() {
+            let mut obligations = PredicateObligations::with_capacity(2);
+            let mut push_coerce_obligation = |a, b| {
+                obligations.push(Obligation::new(
+                    self.tcx(),
+                    self.cause.clone(),
+                    self.param_env,
+                    ty::Binder::dummy(ty::PredicateKind::Coerce(ty::CoercePredicate { a, b })),
+                ));
+            };
+
+            let target_ty = if self.use_lub {
+                // When computing the lub, we create a new target
+                // and coerce both `a` and `b` to it.
+                let target_ty = self.next_ty_var(self.cause.span);
+                push_coerce_obligation(a, target_ty);
+                push_coerce_obligation(b, target_ty);
+                target_ty
+            } else {
+                // When subtyping, we don't need to create a new target
+                // as we only coerce `a` to `b`.
+                push_coerce_obligation(a, b);
+                b
+            };
+
+            debug!(
+                "coerce_from_inference_variable: two inference variables, target_ty={:?}, obligations={:?}",
+                target_ty, obligations
+            );
+            success(vec![], target_ty, obligations)
+        } else {
+            // One unresolved type variable: just apply subtyping, we may be able
+            // to do something useful.
+            self.unify(a, b, ForceLeakCheck::No)
+        }
+    }
+
+    /// Handles coercing some arbitrary type `a` to some reference (`b`). This
+    /// handles a few cases:
+    /// - Introducing reborrows to give more flexible lifetimes
+    /// - Deref coercions to allow `&T` to coerce to `&T::Target`
+    /// - Coercing mutable references to immutable references
+    /// These coercions can be freely intermixed, for example we are able to
+    /// coerce `&mut T` to `&mut T::Target`.
+    fn coerce_to_ref(
+        &self,
+        a: Ty<'tcx>,
+        b: Ty<'tcx>,
+        r_b: ty::Region<'tcx>,
+        mutbl_b: hir::Mutability,
+    ) -> CoerceResult<'tcx> {
+        debug!("coerce_to_ref(a={:?}, b={:?})", a, b);
+        debug_assert!(self.shallow_resolve(a) == a);
+        debug_assert!(self.shallow_resolve(b) == b);
+
+        let (r_a, mt_a) = match *a.kind() {
+            ty::Ref(r_a, ty, mutbl) => {
+                coerce_mutbls(mutbl, mutbl_b)?;
+                (r_a, ty::TypeAndMut { ty, mutbl })
+            }
+            _ => return self.unify(a, b, ForceLeakCheck::No),
+        };
+
+        // Look at each step in the `Deref` chain and check if
+        // any of the autoref'd `Target` types unify with the
+        // coercion target.
+        //
+        // For example when coercing from `&mut Vec<T>` to `&M [T]` we
+        // have three deref steps:
+        // 1. `&mut Vec<T>`, skip autoref
+        // 2. `Vec<T>`, autoref'd ty: `&M Vec<T>`
+        //     - `&M Vec<T>` does not unify with `&M [T]`
+        // 3. `[T]`, autoref'd ty: `&M [T]`
+        //     - `&M [T]` does unify with `&M [T]`
+        let mut first_error = None;
+        let mut r_borrow_var = None;
+        let mut autoderef = self.autoderef(self.cause.span, a);
+        let found = autoderef.by_ref().find_map(|(deref_ty, autoderefs)| {
+            if autoderefs == 0 {
+                // Don't autoref the first step as otherwise we'd allow
+                // coercing `&T` to `&&T`.
+                return None;
+            }
+
+            // The logic here really shouldn't exist. We don't care about free
+            // lifetimes during HIR typeck. Unfortunately later parts of this
+            // function rely on structural identity of the autoref'd deref'd ty.
+            //
+            // This means that what region we use here actually impacts whether
+            // we emit a reborrow coercion or not which can affect diagnostics
+            // and capture analysis (which in turn affects borrowck).
+            let r = if !self.use_lub {
+                r_b
+            } else if autoderefs == 1 {
+                r_a
+            } else {
+                if r_borrow_var.is_none() {
+                    // create var lazily, at most once
+                    let coercion = RegionVariableOrigin::Coercion(self.cause.span);
+                    let r = self.next_region_var(coercion);
+                    r_borrow_var = Some(r);
+                }
+                r_borrow_var.unwrap()
+            };
+
+            let autorefd_deref_ty = Ty::new_ref(self.tcx, r, deref_ty, mutbl_b);
+
+            // Note that we unify the autoref'd `Target` type with `b` rather than
+            // the `Target` type with the pointee of `b`. This is necessary
+            // to properly account for the differing variances of the pointees
+            // of `&` vs `&mut` references.
+            match self.unify_raw(autorefd_deref_ty, b, ForceLeakCheck::No) {
+                Ok(ok) => Some(ok),
+                Err(err) => {
+                    if first_error.is_none() {
+                        first_error = Some(err);
+                    }
+                    None
+                }
+            }
+        });
+
+        // Extract type or return an error. We return the first error
+        // we got, which should be from relating the "base" type
+        // (e.g., in example above, the failure from relating `Vec<T>`
+        // to the target type), since that should be the least
+        // confusing.
+        let Some(InferOk { value: coerced_a, mut obligations }) = found else {
+            if let Some(first_error) = first_error {
+                debug!("coerce_to_ref: failed with err = {:?}", first_error);
+                return Err(first_error);
+            } else {
+                // This may happen in the new trait solver since autoderef requires
+                // the pointee to be structurally normalizable, or else it'll just bail.
+                // So when we have a type like `&<not well formed>`, then we get no
+                // autoderef steps (even though there should be at least one). That means
+                // we get no type mismatches, since the loop above just exits early.
+                return Err(TypeError::Mismatch);
+            }
+        };
+
+        if coerced_a == a && mt_a.mutbl.is_not() && autoderef.step_count() == 1 {
+            // As a special case, if we would produce `&'a *x`, that's
+            // a total no-op. We end up with the type `&'a T` just as
+            // we started with. In that case, just skip it altogether.
+            //
+            // Unfortunately, this can actually effect capture analysis
+            // which in turn means this effects borrow checking. This can
+            // also effect diagnostics.
+            // FIXME(BoxyUwU): we should always emit reborrow coercions
+            //
+            // Note that for `&mut`, we DO want to reborrow --
+            // otherwise, this would be a move, which might be an
+            // error. For example `foo(self.x)` where `self` and
+            // `self.x` both have `&mut `type would be a move of
+            // `self.x`, but we auto-coerce it to `foo(&mut *self.x)`,
+            // which is a borrow.
+            assert!(mutbl_b.is_not()); // can only coerce &T -> &U
+            return success(vec![], coerced_a, obligations);
+        }
+
+        let InferOk { value: mut adjustments, obligations: o } =
+            self.adjust_steps_as_infer_ok(&autoderef);
+        obligations.extend(o);
+        obligations.extend(autoderef.into_obligations());
+
+        assert!(
+            matches!(coerced_a.kind(), ty::Ref(..)),
+            "expected a ref type, got {:?}",
+            coerced_a
+        );
+
+        // Now apply the autoref
+        let mutbl = AutoBorrowMutability::new(mutbl_b, self.allow_two_phase);
+        adjustments
+            .push(Adjustment { kind: Adjust::Borrow(AutoBorrow::Ref(mutbl)), target: coerced_a });
+
+        debug!("coerce_to_ref: succeeded coerced_a={:?} adjustments={:?}", coerced_a, adjustments);
+
+        success(adjustments, coerced_a, obligations)
+    }
+
+    /// Performs [unsized coercion] by emulating a fulfillment loop on a
+    /// `CoerceUnsized` goal until all `CoerceUnsized` and `Unsize` goals
+    /// are successfully selected.
+    ///
+    /// [unsized coercion](https://doc.rust-lang.org/reference/type-coercions.html#unsized-coercions)
+    #[instrument(skip(self), level = "debug")]
+    fn coerce_unsized(&self, source: Ty<'tcx>, target: Ty<'tcx>) -> CoerceResult<'tcx> {
+        debug!(?source, ?target);
+        debug_assert!(self.shallow_resolve(source) == source);
+        debug_assert!(self.shallow_resolve(target) == target);
+
+        // We don't apply any coercions incase either the source or target
+        // aren't sufficiently well known but tend to instead just equate
+        // them both.
+        if source.is_ty_var() {
+            debug!("coerce_unsized: source is a TyVar, bailing out");
+            return Err(TypeError::Mismatch);
+        }
+        if target.is_ty_var() {
+            debug!("coerce_unsized: target is a TyVar, bailing out");
+            return Err(TypeError::Mismatch);
+        }
+
+        // This is an optimization because coercion is one of the most common
+        // operations that we do in typeck, since it happens at every assignment
+        // and call arg (among other positions).
+        //
+        // These targets are known to never be RHS in `LHS: CoerceUnsized<RHS>`.
+        // That's because these are built-in types for which a core-provided impl
+        // doesn't exist, and for which a user-written impl is invalid.
+        //
+        // This is technically incomplete when users write impossible bounds like
+        // `where T: CoerceUnsized<usize>`, for example, but that trait is unstable
+        // and coercion is allowed to be incomplete. The only case where this matters
+        // is impossible bounds.
+        //
+        // Note that some of these types implement `LHS: Unsize<RHS>`, but they
+        // do not implement *`CoerceUnsized`* which is the root obligation of the
+        // check below.
+        match target.kind() {
+            ty::Bool
+            | ty::Char
+            | ty::Int(_)
+            | ty::Uint(_)
+            | ty::Float(_)
+            | ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
+            | ty::Str
+            | ty::Array(_, _)
+            | ty::Slice(_)
+            | ty::FnDef(_, _)
+            | ty::FnPtr(_, _)
+            | ty::Dynamic(_, _)
+            | ty::Closure(_, _)
+            | ty::CoroutineClosure(_, _)
+            | ty::Coroutine(_, _)
+            | ty::CoroutineWitness(_, _)
+            | ty::Never
+            | ty::Tuple(_) => return Err(TypeError::Mismatch),
+            _ => {}
+        }
+        // `&str: CoerceUnsized<&str>` does not hold but is encountered frequently
+        // so we fast path bail out here
+        if let ty::Ref(_, source_pointee, ty::Mutability::Not) = *source.kind()
+            && source_pointee.is_str()
+            && let ty::Ref(_, target_pointee, ty::Mutability::Not) = *target.kind()
+            && target_pointee.is_str()
+        {
+            return Err(TypeError::Mismatch);
+        }
+
+        let traits =
+            (self.tcx.lang_items().unsize_trait(), self.tcx.lang_items().coerce_unsized_trait());
+        let (Some(unsize_did), Some(coerce_unsized_did)) = traits else {
+            debug!("missing Unsize or CoerceUnsized traits");
+            return Err(TypeError::Mismatch);
+        };
+
+        // Note, we want to avoid unnecessary unsizing. We don't want to coerce to
+        // a DST unless we have to. This currently comes out in the wash since
+        // we can't unify [T] with U. But to properly support DST, we need to allow
+        // that, at which point we will need extra checks on the target here.
+
+        // Handle reborrows before selecting `Source: CoerceUnsized<Target>`.
+        let reborrow = match (source.kind(), target.kind()) {
+            (&ty::Ref(_, ty_a, mutbl_a), &ty::Ref(_, _, mutbl_b)) => {
+                coerce_mutbls(mutbl_a, mutbl_b)?;
+
+                let coercion = RegionVariableOrigin::Coercion(self.cause.span);
+                let r_borrow = self.next_region_var(coercion);
+
+                // We don't allow two-phase borrows here, at least for initial
+                // implementation. If it happens that this coercion is a function argument,
+                // the reborrow in coerce_borrowed_ptr will pick it up.
+                let mutbl = AutoBorrowMutability::new(mutbl_b, AllowTwoPhase::No);
+
+                Some((
+                    Adjustment { kind: Adjust::Deref(None), target: ty_a },
+                    Adjustment {
+                        kind: Adjust::Borrow(AutoBorrow::Ref(mutbl)),
+                        target: Ty::new_ref(self.tcx, r_borrow, ty_a, mutbl_b),
+                    },
+                ))
+            }
+            (&ty::Ref(_, ty_a, mt_a), &ty::RawPtr(_, mt_b)) => {
+                coerce_mutbls(mt_a, mt_b)?;
+
+                Some((
+                    Adjustment { kind: Adjust::Deref(None), target: ty_a },
+                    Adjustment {
+                        kind: Adjust::Borrow(AutoBorrow::RawPtr(mt_b)),
+                        target: Ty::new_ptr(self.tcx, ty_a, mt_b),
+                    },
+                ))
+            }
+            _ => None,
+        };
+        let coerce_source = reborrow.as_ref().map_or(source, |(_, r)| r.target);
+
+        // Setup either a subtyping or a LUB relationship between
+        // the `CoerceUnsized` target type and the expected type.
+        // We only have the latter, so we use an inference variable
+        // for the former and let type inference do the rest.
+        let coerce_target = self.next_ty_var(self.cause.span);
+
+        let mut coercion = self.unify_and(
+            coerce_target,
+            target,
+            reborrow.into_iter().flat_map(|(deref, autoref)| [deref, autoref]),
+            Adjust::Pointer(PointerCoercion::Unsize),
+            ForceLeakCheck::No,
+        )?;
+
+        // Create an obligation for `Source: CoerceUnsized<Target>`.
+        let cause = self.cause(self.cause.span, ObligationCauseCode::Coercion { source, target });
+        let pred = ty::TraitRef::new(self.tcx, coerce_unsized_did, [coerce_source, coerce_target]);
+        let obligation = Obligation::new(self.tcx, cause, self.fcx.param_env, pred);
+
+        if self.next_trait_solver() {
+            coercion.obligations.push(obligation);
+
+            if self
+                .infcx
+                .visit_proof_tree(
+                    Goal::new(self.tcx, self.param_env, pred),
+                    &mut CoerceVisitor { fcx: self.fcx, span: self.cause.span },
+                )
+                .is_break()
+            {
+                return Err(TypeError::Mismatch);
+            }
+        } else {
+            self.coerce_unsized_old_solver(
+                obligation,
+                &mut coercion,
+                coerce_unsized_did,
+                unsize_did,
+            )?;
+        }
+
+        Ok(coercion)
+    }
+
+    fn coerce_unsized_old_solver(
+        &self,
+        obligation: Obligation<'tcx, ty::Predicate<'tcx>>,
+        coercion: &mut InferOk<'tcx, (Vec<Adjustment<'tcx>>, Ty<'tcx>)>,
+        coerce_unsized_did: DefId,
+        unsize_did: DefId,
+    ) -> Result<(), TypeError<'tcx>> {
+        let mut selcx = traits::SelectionContext::new(self);
+        // Use a FIFO queue for this custom fulfillment procedure.
+        //
+        // A Vec (or SmallVec) is not a natural choice for a queue. However,
+        // this code path is hot, and this queue usually has a max length of 1
+        // and almost never more than 3. By using a SmallVec we avoid an
+        // allocation, at the (very small) cost of (occasionally) having to
+        // shift subsequent elements down when removing the front element.
+        let mut queue: SmallVec<[PredicateObligation<'tcx>; 4]> = smallvec![obligation];
+
+        // Keep resolving `CoerceUnsized` and `Unsize` predicates to avoid
+        // emitting a coercion in cases like `Foo<$1>` -> `Foo<$2>`, where
+        // inference might unify those two inner type variables later.
+        let traits = [coerce_unsized_did, unsize_did];
+        while !queue.is_empty() {
+            let obligation = queue.remove(0);
+            let trait_pred = match obligation.predicate.kind().no_bound_vars() {
+                Some(ty::PredicateKind::Clause(ty::ClauseKind::Trait(trait_pred)))
+                    if traits.contains(&trait_pred.def_id()) =>
+                {
+                    self.resolve_vars_if_possible(trait_pred)
+                }
+                // Eagerly process alias-relate obligations in new trait solver,
+                // since these can be emitted in the process of solving trait goals,
+                // but we need to constrain vars before processing goals mentioning
+                // them.
+                Some(ty::PredicateKind::AliasRelate(..)) => {
+                    let ocx = ObligationCtxt::new(self);
+                    ocx.register_obligation(obligation);
+                    if !ocx.try_evaluate_obligations().is_empty() {
+                        return Err(TypeError::Mismatch);
+                    }
+                    coercion.obligations.extend(ocx.into_pending_obligations());
+                    continue;
+                }
+                _ => {
+                    coercion.obligations.push(obligation);
+                    continue;
+                }
+            };
+            debug!("coerce_unsized resolve step: {:?}", trait_pred);
+            match selcx.select(&obligation.with(selcx.tcx(), trait_pred)) {
+                // Uncertain or unimplemented.
+                Ok(None) => {
+                    if trait_pred.def_id() == unsize_did {
+                        let self_ty = trait_pred.self_ty();
+                        let unsize_ty = trait_pred.trait_ref.args[1].expect_ty();
+                        debug!("coerce_unsized: ambiguous unsize case for {:?}", trait_pred);
+                        match (self_ty.kind(), unsize_ty.kind()) {
+                            (&ty::Infer(ty::TyVar(v)), ty::Dynamic(..))
+                                if self.type_var_is_sized(v) =>
+                            {
+                                debug!("coerce_unsized: have sized infer {:?}", v);
+                                coercion.obligations.push(obligation);
+                                // `$0: Unsize<dyn Trait>` where we know that `$0: Sized`, try going
+                                // for unsizing.
+                            }
+                            _ => {
+                                // Some other case for `$0: Unsize<Something>`. Note that we
+                                // hit this case even if `Something` is a sized type, so just
+                                // don't do the coercion.
+                                debug!("coerce_unsized: ambiguous unsize");
+                                return Err(TypeError::Mismatch);
+                            }
+                        }
+                    } else {
+                        debug!("coerce_unsized: early return - ambiguous");
+                        return Err(TypeError::Mismatch);
+                    }
+                }
+                Err(SelectionError::Unimplemented) => {
+                    debug!("coerce_unsized: early return - can't prove obligation");
+                    return Err(TypeError::Mismatch);
+                }
+
+                Err(SelectionError::TraitDynIncompatible(_)) => {
+                    // Dyn compatibility errors in coercion will *always* be due to the
+                    // fact that the RHS of the coercion is a non-dyn compatible `dyn Trait`
+                    // written in source somewhere (otherwise we will never have lowered
+                    // the dyn trait from HIR to middle).
+                    //
+                    // There's no reason to emit yet another dyn compatibility error,
+                    // especially since the span will differ slightly and thus not be
+                    // deduplicated at all!
+                    self.fcx.set_tainted_by_errors(
+                        self.fcx
+                            .dcx()
+                            .span_delayed_bug(self.cause.span, "dyn compatibility during coercion"),
+                    );
+                }
+                Err(err) => {
+                    let guar = self.err_ctxt().report_selection_error(
+                        obligation.clone(),
+                        &obligation,
+                        &err,
+                    );
+                    self.fcx.set_tainted_by_errors(guar);
+                    // Treat this like an obligation and follow through
+                    // with the unsizing - the lack of a coercion should
+                    // be silent, as it causes a type mismatch later.
+                }
+                Ok(Some(ImplSource::UserDefined(impl_source))) => {
+                    queue.extend(impl_source.nested);
+                    // Certain incoherent `CoerceUnsized` implementations may cause ICEs,
+                    // so check the impl's validity. Taint the body so that we don't try
+                    // to evaluate these invalid coercions in CTFE. We only need to do this
+                    // for local impls, since upstream impls should be valid.
+                    if impl_source.impl_def_id.is_local()
+                        && let Err(guar) =
+                            self.tcx.ensure_ok().coerce_unsized_info(impl_source.impl_def_id)
+                    {
+                        self.fcx.set_tainted_by_errors(guar);
+                    }
+                }
+                Ok(Some(impl_source)) => queue.extend(impl_source.nested_obligations()),
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Applies reborrowing for `Pin`
+    ///
+    /// We currently only support reborrowing `Pin<&mut T>` as `Pin<&mut T>`. This is accomplished
+    /// by inserting a call to `Pin::as_mut` during MIR building.
+    ///
+    /// In the future we might want to support other reborrowing coercions, such as:
+    /// - `Pin<&mut T>` as `Pin<&T>`
+    /// - `Pin<&T>` as `Pin<&T>`
+    /// - `Pin<Box<T>>` as `Pin<&T>`
+    /// - `Pin<Box<T>>` as `Pin<&mut T>`
+    #[instrument(skip(self), level = "trace")]
+    fn coerce_to_pin_ref(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> CoerceResult<'tcx> {
+        debug_assert!(self.shallow_resolve(a) == a);
+        debug_assert!(self.shallow_resolve(b) == b);
+
+        // We need to make sure the two types are compatible for coercion.
+        // Then we will build a ReborrowPin adjustment and return that as an InferOk.
+
+        // Right now we can only reborrow if this is a `Pin<&mut T>`.
+        let extract_pin_mut = |ty: Ty<'tcx>| {
+            // Get the T out of Pin<T>
+            let (pin, ty) = match ty.kind() {
+                ty::Adt(pin, args) if self.tcx.is_lang_item(pin.did(), hir::LangItem::Pin) => {
+                    (*pin, args[0].expect_ty())
+                }
+                _ => {
+                    debug!("can't reborrow {:?} as pinned", ty);
+                    return Err(TypeError::Mismatch);
+                }
+            };
+            // Make sure the T is something we understand (just `&mut U` for now)
+            match ty.kind() {
+                ty::Ref(region, ty, mutbl) => Ok((pin, *region, *ty, *mutbl)),
+                _ => {
+                    debug!("can't reborrow pin of inner type {:?}", ty);
+                    Err(TypeError::Mismatch)
+                }
+            }
+        };
+
+        let (pin, a_region, a_ty, mut_a) = extract_pin_mut(a)?;
+        let (_, _, _b_ty, mut_b) = extract_pin_mut(b)?;
+
+        coerce_mutbls(mut_a, mut_b)?;
+
+        // update a with b's mutability since we'll be coercing mutability
+        let a = Ty::new_adt(
+            self.tcx,
+            pin,
+            self.tcx.mk_args(&[Ty::new_ref(self.tcx, a_region, a_ty, mut_b).into()]),
+        );
+
+        // To complete the reborrow, we need to make sure we can unify the inner types, and if so we
+        // add the adjustments.
+        self.unify_and(a, b, [], Adjust::ReborrowPin(mut_b), ForceLeakCheck::No)
+    }
+
+    fn coerce_from_fn_pointer(
+        &self,
+        a: Ty<'tcx>,
+        a_sig: ty::PolyFnSig<'tcx>,
+        b: Ty<'tcx>,
+    ) -> CoerceResult<'tcx> {
+        debug!(?a_sig, ?b, "coerce_from_fn_pointer");
+        debug_assert!(self.shallow_resolve(b) == b);
+
+        match b.kind() {
+            ty::FnPtr(_, b_hdr) if a_sig.safety().is_safe() && b_hdr.safety.is_unsafe() => {
+                let a = self.tcx.safe_to_unsafe_fn_ty(a_sig);
+                let adjust = Adjust::Pointer(PointerCoercion::UnsafeFnPointer);
+                self.unify_and(a, b, [], adjust, ForceLeakCheck::Yes)
+            }
+            _ => self.unify(a, b, ForceLeakCheck::Yes),
+        }
+    }
+
+    fn coerce_from_fn_item(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> CoerceResult<'tcx> {
+        debug!("coerce_from_fn_item(a={:?}, b={:?})", a, b);
+        debug_assert!(self.shallow_resolve(a) == a);
+        debug_assert!(self.shallow_resolve(b) == b);
+
+        match b.kind() {
+            ty::FnPtr(_, b_hdr) => {
+                let a_sig = self.sig_for_fn_def_coercion(a, Some(b_hdr.safety))?;
+
+                let InferOk { value: a_sig, mut obligations } =
+                    self.at(&self.cause, self.param_env).normalize(a_sig);
+                let a = Ty::new_fn_ptr(self.tcx, a_sig);
+
+                let adjust = Adjust::Pointer(PointerCoercion::ReifyFnPointer(b_hdr.safety));
+                let InferOk { value, obligations: o2 } =
+                    self.unify_and(a, b, [], adjust, ForceLeakCheck::Yes)?;
+
+                obligations.extend(o2);
+                Ok(InferOk { value, obligations })
+            }
+            _ => self.unify(a, b, ForceLeakCheck::No),
+        }
+    }
+
+    /// Attempts to coerce from a closure to a function pointer. Fails
+    /// if the closure has any upvars.
+    fn coerce_closure_to_fn(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> CoerceResult<'tcx> {
+        debug_assert!(self.shallow_resolve(a) == a);
+        debug_assert!(self.shallow_resolve(b) == b);
+
+        match b.kind() {
+            ty::FnPtr(_, hdr) => {
+                let safety = hdr.safety;
+                let terr = TypeError::Sorts(ty::error::ExpectedFound::new(a, b));
+                let closure_sig = self.sig_for_closure_coercion(a, Some(hdr.safety), terr)?;
+                let pointer_ty = Ty::new_fn_ptr(self.tcx, closure_sig);
+                debug!("coerce_closure_to_fn(a={:?}, b={:?}, pty={:?})", a, b, pointer_ty);
+
+                let adjust = Adjust::Pointer(PointerCoercion::ClosureFnPointer(safety));
+                self.unify_and(pointer_ty, b, [], adjust, ForceLeakCheck::No)
+            }
+            _ => self.unify(a, b, ForceLeakCheck::No),
+        }
+    }
+
+    fn coerce_to_raw_ptr(
+        &self,
+        a: Ty<'tcx>,
+        b: Ty<'tcx>,
+        mutbl_b: hir::Mutability,
+    ) -> CoerceResult<'tcx> {
+        debug!("coerce_to_raw_ptr(a={:?}, b={:?})", a, b);
+        debug_assert!(self.shallow_resolve(a) == a);
+        debug_assert!(self.shallow_resolve(b) == b);
+
+        let (is_ref, mt_a) = match *a.kind() {
+            ty::Ref(_, ty, mutbl) => (true, ty::TypeAndMut { ty, mutbl }),
+            ty::RawPtr(ty, mutbl) => (false, ty::TypeAndMut { ty, mutbl }),
+            _ => return self.unify(a, b, ForceLeakCheck::No),
+        };
+        coerce_mutbls(mt_a.mutbl, mutbl_b)?;
+
+        // Check that the types which they point at are compatible.
+        let a_raw = Ty::new_ptr(self.tcx, mt_a.ty, mutbl_b);
+        // Although references and raw ptrs have the same
+        // representation, we still register an Adjust::DerefRef so that
+        // regionck knows that the region for `a` must be valid here.
+        if is_ref {
+            self.unify_and(
+                a_raw,
+                b,
+                [Adjustment { kind: Adjust::Deref(None), target: mt_a.ty }],
+                Adjust::Borrow(AutoBorrow::RawPtr(mutbl_b)),
+                ForceLeakCheck::No,
+            )
+        } else if mt_a.mutbl != mutbl_b {
+            self.unify_and(
+                a_raw,
+                b,
+                [],
+                Adjust::Pointer(PointerCoercion::MutToConstPointer),
+                ForceLeakCheck::No,
+            )
+        } else {
+            self.unify(a_raw, b, ForceLeakCheck::No)
+        }
+    }
+}
+
+impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
+    /// Attempt to coerce an expression to a type, and return the
+    /// adjusted type of the expression, if successful.
+    /// Adjustments are only recorded if the coercion succeeded.
+    /// The expressions *must not* have any preexisting adjustments.
+    pub(crate) fn coerce(
+        &self,
+        expr: &'tcx hir::Expr<'tcx>,
+        expr_ty: Ty<'tcx>,
+        mut target: Ty<'tcx>,
+        allow_two_phase: AllowTwoPhase,
+        cause: Option<ObligationCause<'tcx>>,
+    ) -> RelateResult<'tcx, Ty<'tcx>> {
+        let source = self.try_structurally_resolve_type(expr.span, expr_ty);
+        if self.next_trait_solver() {
+            target = self.try_structurally_resolve_type(
+                cause.as_ref().map_or(expr.span, |cause| cause.span),
+                target,
+            );
+        }
+        debug!("coercion::try({:?}: {:?} -> {:?})", expr, source, target);
+
+        let cause =
+            cause.unwrap_or_else(|| self.cause(expr.span, ObligationCauseCode::ExprAssignable));
+        let coerce = Coerce::new(
+            self,
+            cause,
+            allow_two_phase,
+            self.tcx.expr_guaranteed_to_constitute_read_for_never(expr),
+        );
+        let ok = self.commit_if_ok(|_| coerce.coerce(source, target))?;
+
+        let (adjustments, _) = self.register_infer_ok_obligations(ok);
+        self.apply_adjustments(expr, adjustments);
+        Ok(if let Err(guar) = expr_ty.error_reported() {
+            Ty::new_error(self.tcx, guar)
+        } else {
+            target
+        })
+    }
+
+    /// Probe whether `expr_ty` can be coerced to `target_ty`. This has no side-effects,
+    /// and may return false positives if types are not yet fully constrained by inference.
+    ///
+    /// Returns false if the coercion is not possible, or if the coercion creates any
+    /// sub-obligations that result in errors.
+    ///
+    /// This should only be used for diagnostics.
+    pub(crate) fn may_coerce(&self, expr_ty: Ty<'tcx>, target_ty: Ty<'tcx>) -> bool {
+        let cause = self.cause(DUMMY_SP, ObligationCauseCode::ExprAssignable);
+        // We don't ever need two-phase here since we throw out the result of the coercion.
+        // We also just always set `coerce_never` to true, since this is a heuristic.
+        let coerce = Coerce::new(self, cause.clone(), AllowTwoPhase::No, true);
+        self.probe(|_| {
+            // Make sure to structurally resolve the types, since we use
+            // the `TyKind`s heavily in coercion.
+            let ocx = ObligationCtxt::new(self);
+            let structurally_resolve = |ty| {
+                let ty = self.shallow_resolve(ty);
+                if self.next_trait_solver()
+                    && let ty::Alias(..) = ty.kind()
+                {
+                    ocx.structurally_normalize_ty(&cause, self.param_env, ty)
+                } else {
+                    Ok(ty)
+                }
+            };
+            let Ok(expr_ty) = structurally_resolve(expr_ty) else {
+                return false;
+            };
+            let Ok(target_ty) = structurally_resolve(target_ty) else {
+                return false;
+            };
+
+            let Ok(ok) = coerce.coerce(expr_ty, target_ty) else {
+                return false;
+            };
+            ocx.register_obligations(ok.obligations);
+            ocx.try_evaluate_obligations().is_empty()
+        })
+    }
+
+    /// Given a type and a target type, this function will calculate and return
+    /// how many dereference steps needed to coerce `expr_ty` to `target`. If
+    /// it's not possible, return `None`.
+    pub(crate) fn deref_steps_for_suggestion(
+        &self,
+        expr_ty: Ty<'tcx>,
+        target: Ty<'tcx>,
+    ) -> Option<usize> {
+        let cause = self.cause(DUMMY_SP, ObligationCauseCode::ExprAssignable);
+        // We don't ever need two-phase here since we throw out the result of the coercion.
+        let coerce = Coerce::new(self, cause, AllowTwoPhase::No, true);
+        coerce.autoderef(DUMMY_SP, expr_ty).find_map(|(ty, steps)| {
+            self.probe(|_| coerce.unify_raw(ty, target, ForceLeakCheck::No)).ok().map(|_| steps)
+        })
+    }
+
+    /// Given a type, this function will calculate and return the type given
+    /// for `<Ty as Deref>::Target` only if `Ty` also implements `DerefMut`.
+    ///
+    /// This function is for diagnostics only, since it does not register
+    /// trait or region sub-obligations. (presumably we could, but it's not
+    /// particularly important for diagnostics...)
+    pub(crate) fn deref_once_mutably_for_diagnostic(&self, expr_ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
+        self.autoderef(DUMMY_SP, expr_ty).silence_errors().nth(1).and_then(|(deref_ty, _)| {
+            self.infcx
+                .type_implements_trait(
+                    self.tcx.lang_items().deref_mut_trait()?,
+                    [expr_ty],
+                    self.param_env,
+                )
+                .may_apply()
+                .then_some(deref_ty)
+        })
+    }
+
+    #[instrument(level = "debug", skip(self), ret)]
+    fn sig_for_coerce_lub(
+        &self,
+        ty: Ty<'tcx>,
+        closure_upvars_terr: TypeError<'tcx>,
+    ) -> Result<ty::PolyFnSig<'tcx>, TypeError<'tcx>> {
+        match ty.kind() {
+            ty::FnDef(..) => self.sig_for_fn_def_coercion(ty, None),
+            ty::Closure(..) => self.sig_for_closure_coercion(ty, None, closure_upvars_terr),
+            _ => unreachable!("`sig_for_fn_def_closure_coerce_lub` called with wrong ty: {:?}", ty),
+        }
+    }
+
+    fn sig_for_fn_def_coercion(
+        &self,
+        fndef: Ty<'tcx>,
+        expected_safety: Option<hir::Safety>,
+    ) -> Result<ty::PolyFnSig<'tcx>, TypeError<'tcx>> {
+        let tcx = self.tcx;
+
+        let &ty::FnDef(def_id, _) = fndef.kind() else {
+            unreachable!("`sig_for_fn_def_coercion` called with non-fndef: {:?}", fndef);
+        };
+
+        // Intrinsics are not coercible to function pointers
+        if tcx.intrinsic(def_id).is_some() {
+            return Err(TypeError::IntrinsicCast);
+        }
+
+        let fn_attrs = tcx.codegen_fn_attrs(def_id);
+        if matches!(fn_attrs.inline, InlineAttr::Force { .. }) {
+            return Err(TypeError::ForceInlineCast);
+        }
+
+        let sig = fndef.fn_sig(tcx);
+        let sig = if fn_attrs.safe_target_features {
+            // Allow the coercion if the current function has all the features that would be
+            // needed to call the coercee safely.
+            match tcx.adjust_target_feature_sig(def_id, sig, self.body_id.into()) {
+                Some(adjusted_sig) => adjusted_sig,
+                None if matches!(expected_safety, Some(hir::Safety::Safe)) => {
+                    return Err(TypeError::TargetFeatureCast(def_id));
+                }
+                None => sig,
+            }
+        } else {
+            sig
+        };
+
+        if sig.safety().is_safe() && matches!(expected_safety, Some(hir::Safety::Unsafe)) {
+            Ok(tcx.safe_to_unsafe_sig(sig))
+        } else {
+            Ok(sig)
+        }
+    }
+
+    fn sig_for_closure_coercion(
+        &self,
+        closure: Ty<'tcx>,
+        expected_safety: Option<hir::Safety>,
+        closure_upvars_terr: TypeError<'tcx>,
+    ) -> Result<ty::PolyFnSig<'tcx>, TypeError<'tcx>> {
+        let tcx = self.tcx;
+
+        let ty::Closure(closure_def, closure_args) = closure.kind() else {
+            unreachable!("`sig_for_closure_coercion` called with non closure ty: {:?}", closure);
+        };
+
+        // At this point we haven't done capture analysis, which means
+        // that the ClosureArgs just contains an inference variable instead
+        // of tuple of captured types.
+        //
+        // All we care here is if any variable is being captured and not the exact paths,
+        // so we check `upvars_mentioned` for root variables being captured.
+        if !tcx.upvars_mentioned(closure_def.expect_local()).is_none_or(|u| u.is_empty()) {
+            return Err(closure_upvars_terr);
+        }
+
+        // We coerce the closure, which has fn type
+        //     `extern "rust-call" fn((arg0,arg1,...)) -> _`
+        // to
+        //     `fn(arg0,arg1,...) -> _`
+        // or
+        //     `unsafe fn(arg0,arg1,...) -> _`
+        let closure_sig = closure_args.as_closure().sig();
+        Ok(tcx.signature_unclosure(closure_sig, expected_safety.unwrap_or(hir::Safety::Safe)))
+    }
+
+    /// Given some expressions, their known unified type and another expression,
+    /// tries to unify the types, potentially inserting coercions on any of the
+    /// provided expressions and returns their LUB (aka "common supertype").
+    ///
+    /// This is really an internal helper. From outside the coercion
+    /// module, you should instantiate a `CoerceMany` instance.
+    fn try_find_coercion_lub<E>(
+        &self,
+        cause: &ObligationCause<'tcx>,
+        exprs: &[E],
+        prev_ty: Ty<'tcx>,
+        new: &hir::Expr<'_>,
+        new_ty: Ty<'tcx>,
+    ) -> RelateResult<'tcx, Ty<'tcx>>
+    where
+        E: AsCoercionSite,
+    {
+        let prev_ty = self.try_structurally_resolve_type(cause.span, prev_ty);
+        let new_ty = self.try_structurally_resolve_type(new.span, new_ty);
+        debug!(
+            "coercion::try_find_coercion_lub({:?}, {:?}, exprs={:?} exprs)",
+            prev_ty,
+            new_ty,
+            exprs.len()
+        );
+
+        // Fast Path: don't go through the coercion logic if we're coercing
+        // a type to itself. This is unfortunately quite perf relevant so
+        // we do it even though it may mask bugs in the coercion logic.
+        if prev_ty == new_ty {
+            return Ok(prev_ty);
+        }
+
+        let terr = TypeError::Sorts(ty::error::ExpectedFound::new(prev_ty, new_ty));
+        let opt_sigs = match (prev_ty.kind(), new_ty.kind()) {
+            // Don't coerce pairs of fndefs or pairs of closures to fn ptrs
+            // if they can just be lubbed.
+            //
+            // See #88097 or `lub_closures_before_fnptr_coercion.rs` for where
+            // we would erroneously coerce closures to fnptrs when attempting to
+            // coerce a closure to itself.
+            (ty::FnDef(..), ty::FnDef(..)) | (ty::Closure(..), ty::Closure(..)) => {
+                let lubbed_ty = self.commit_if_ok(|snapshot| {
+                    let outer_universe = self.infcx.universe();
+
+                    // We need to eagerly handle nested obligations due to lazy norm.
+                    let result = if self.next_trait_solver() {
+                        let ocx = ObligationCtxt::new(self);
+                        let value = ocx.lub(cause, self.param_env, prev_ty, new_ty)?;
+                        if ocx.try_evaluate_obligations().is_empty() {
+                            Ok(InferOk { value, obligations: ocx.into_pending_obligations() })
+                        } else {
+                            Err(TypeError::Mismatch)
+                        }
+                    } else {
+                        self.at(cause, self.param_env).lub(prev_ty, new_ty)
+                    };
+
+                    self.leak_check(outer_universe, Some(snapshot))?;
+                    result
+                });
+
+                match lubbed_ty {
+                    Ok(ok) => return Ok(self.register_infer_ok_obligations(ok)),
+                    Err(_) => {
+                        let a_sig = self.sig_for_coerce_lub(prev_ty, terr)?;
+                        let b_sig = self.sig_for_coerce_lub(new_ty, terr)?;
+                        Some((a_sig, b_sig))
+                    }
+                }
+            }
+
+            (ty::Closure(..), ty::FnDef(..)) | (ty::FnDef(..), ty::Closure(..)) => {
+                let a_sig = self.sig_for_coerce_lub(prev_ty, terr)?;
+                let b_sig = self.sig_for_coerce_lub(new_ty, terr)?;
+                Some((a_sig, b_sig))
+            }
+            // ty::FnPtr x ty::FnPtr is fine to just be handled through a normal `unify`
+            // call using `lub` which is what will happen on the normal path.
+            (ty::FnPtr(..), ty::FnPtr(..)) => None,
+            _ => None,
+        };
+
+        if let Some((mut a_sig, mut b_sig)) = opt_sigs {
+            // Allow coercing safe sigs to unsafe sigs
+            if a_sig.safety().is_safe() && b_sig.safety().is_unsafe() {
+                a_sig = self.tcx.safe_to_unsafe_sig(a_sig);
+            } else if b_sig.safety().is_safe() && a_sig.safety().is_unsafe() {
+                b_sig = self.tcx.safe_to_unsafe_sig(b_sig);
+            };
+
+            // The signature must match.
+            let (a_sig, b_sig) = self.normalize(new.span, (a_sig, b_sig));
+            let sig = self
+                .at(cause, self.param_env)
+                .lub(a_sig, b_sig)
+                .map(|ok| self.register_infer_ok_obligations(ok))?;
+
+            // Reify both sides and return the reified fn pointer type.
+            let fn_ptr = Ty::new_fn_ptr(self.tcx, sig);
+            let prev_adjustment = match prev_ty.kind() {
+                ty::Closure(..) => Adjust::Pointer(PointerCoercion::ClosureFnPointer(sig.safety())),
+                ty::FnDef(..) => Adjust::Pointer(PointerCoercion::ReifyFnPointer(sig.safety())),
+                _ => span_bug!(cause.span, "should not try to coerce a {prev_ty} to a fn pointer"),
+            };
+            let next_adjustment = match new_ty.kind() {
+                ty::Closure(..) => Adjust::Pointer(PointerCoercion::ClosureFnPointer(sig.safety())),
+                ty::FnDef(..) => Adjust::Pointer(PointerCoercion::ReifyFnPointer(sig.safety())),
+                _ => span_bug!(new.span, "should not try to coerce a {new_ty} to a fn pointer"),
+            };
+            for expr in exprs.iter().map(|e| e.as_coercion_site()) {
+                self.apply_adjustments(
+                    expr,
+                    vec![Adjustment { kind: prev_adjustment.clone(), target: fn_ptr }],
+                );
+            }
+            self.apply_adjustments(new, vec![Adjustment { kind: next_adjustment, target: fn_ptr }]);
+            return Ok(fn_ptr);
+        }
+
+        // Configure a Coerce instance to compute the LUB.
+        // We don't allow two-phase borrows on any autorefs this creates since we
+        // probably aren't processing function arguments here and even if we were,
+        // they're going to get autorefed again anyway and we can apply 2-phase borrows
+        // at that time.
+        //
+        // NOTE: we set `coerce_never` to `true` here because coercion LUBs only
+        // operate on values and not places, so a never coercion is valid.
+        let mut coerce = Coerce::new(self, cause.clone(), AllowTwoPhase::No, true);
+        coerce.use_lub = true;
+
+        // First try to coerce the new expression to the type of the previous ones,
+        // but only if the new expression has no coercion already applied to it.
+        let mut first_error = None;
+        if !self.typeck_results.borrow().adjustments().contains_key(new.hir_id) {
+            let result = self.commit_if_ok(|_| coerce.coerce(new_ty, prev_ty));
+            match result {
+                Ok(ok) => {
+                    let (adjustments, target) = self.register_infer_ok_obligations(ok);
+                    self.apply_adjustments(new, adjustments);
+                    debug!(
+                        "coercion::try_find_coercion_lub: was able to coerce from new type {:?} to previous type {:?} ({:?})",
+                        new_ty, prev_ty, target
+                    );
+                    return Ok(target);
+                }
+                Err(e) => first_error = Some(e),
+            }
+        }
+
+        let ok = self
+            .commit_if_ok(|_| coerce.coerce(prev_ty, new_ty))
+            // Avoid giving strange errors on failed attempts.
+            .map_err(|e| first_error.unwrap_or(e))?;
+
+        let (adjustments, target) = self.register_infer_ok_obligations(ok);
+        for expr in exprs {
+            let expr = expr.as_coercion_site();
+            self.apply_adjustments(expr, adjustments.clone());
+        }
+        debug!(
+            "coercion::try_find_coercion_lub: was able to coerce previous type {:?} to new type {:?} ({:?})",
+            prev_ty, new_ty, target
+        );
+        Ok(target)
+    }
+}
+
+/// Check whether `ty` can be coerced to `output_ty`.
+/// Used from clippy.
+pub fn can_coerce<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    body_id: LocalDefId,
+    ty: Ty<'tcx>,
+    output_ty: Ty<'tcx>,
+) -> bool {
+    let root_ctxt = crate::typeck_root_ctxt::TypeckRootCtxt::new(tcx, body_id);
+    let fn_ctxt = FnCtxt::new(&root_ctxt, param_env, body_id);
+    fn_ctxt.may_coerce(ty, output_ty)
+}
+
+/// CoerceMany encapsulates the pattern you should use when you have
+/// many expressions that are all getting coerced to a common
+/// type. This arises, for example, when you have a match (the result
+/// of each arm is coerced to a common type). It also arises in less
+/// obvious places, such as when you have many `break foo` expressions
+/// that target the same loop, or the various `return` expressions in
+/// a function.
+///
+/// The basic protocol is as follows:
+///
+/// - Instantiate the `CoerceMany` with an initial `expected_ty`.
+///   This will also serve as the "starting LUB". The expectation is
+///   that this type is something which all of the expressions *must*
+///   be coercible to. Use a fresh type variable if needed.
+/// - For each expression whose result is to be coerced, invoke `coerce()` with.
+///   - In some cases we wish to coerce "non-expressions" whose types are implicitly
+///     unit. This happens for example if you have a `break` with no expression,
+///     or an `if` with no `else`. In that case, invoke `coerce_forced_unit()`.
+///   - `coerce()` and `coerce_forced_unit()` may report errors. They hide this
+///     from you so that you don't have to worry your pretty head about it.
+///     But if an error is reported, the final type will be `err`.
+///   - Invoking `coerce()` may cause us to go and adjust the "adjustments" on
+///     previously coerced expressions.
+/// - When all done, invoke `complete()`. This will return the LUB of
+///   all your expressions.
+///   - WARNING: I don't believe this final type is guaranteed to be
+///     related to your initial `expected_ty` in any particular way,
+///     although it will typically be a subtype, so you should check it.
+///   - Invoking `complete()` may cause us to go and adjust the "adjustments" on
+///     previously coerced expressions.
+///
+/// Example:
+///
+/// ```ignore (illustrative)
+/// let mut coerce = CoerceMany::new(expected_ty);
+/// for expr in exprs {
+///     let expr_ty = fcx.check_expr_with_expectation(expr, expected);
+///     coerce.coerce(fcx, &cause, expr, expr_ty);
+/// }
+/// let final_ty = coerce.complete(fcx);
+/// ```
+pub(crate) struct CoerceMany<'tcx, 'exprs, E: AsCoercionSite> {
+    expected_ty: Ty<'tcx>,
+    final_ty: Option<Ty<'tcx>>,
+    expressions: Expressions<'tcx, 'exprs, E>,
+    pushed: usize,
+}
+
+/// The type of a `CoerceMany` that is storing up the expressions into
+/// a buffer. We use this in `check/mod.rs` for things like `break`.
+pub(crate) type DynamicCoerceMany<'tcx> = CoerceMany<'tcx, 'tcx, &'tcx hir::Expr<'tcx>>;
+
+enum Expressions<'tcx, 'exprs, E: AsCoercionSite> {
+    Dynamic(Vec<&'tcx hir::Expr<'tcx>>),
+    UpFront(&'exprs [E]),
+}
+
+impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
+    /// The usual case; collect the set of expressions dynamically.
+    /// If the full set of coercion sites is known before hand,
+    /// consider `with_coercion_sites()` instead to avoid allocation.
+    pub(crate) fn new(expected_ty: Ty<'tcx>) -> Self {
+        Self::make(expected_ty, Expressions::Dynamic(vec![]))
+    }
+
+    /// As an optimization, you can create a `CoerceMany` with a
+    /// preexisting slice of expressions. In this case, you are
+    /// expected to pass each element in the slice to `coerce(...)` in
+    /// order. This is used with arrays in particular to avoid
+    /// needlessly cloning the slice.
+    pub(crate) fn with_coercion_sites(expected_ty: Ty<'tcx>, coercion_sites: &'exprs [E]) -> Self {
+        Self::make(expected_ty, Expressions::UpFront(coercion_sites))
+    }
+
+    fn make(expected_ty: Ty<'tcx>, expressions: Expressions<'tcx, 'exprs, E>) -> Self {
+        CoerceMany { expected_ty, final_ty: None, expressions, pushed: 0 }
+    }
+
+    /// Returns the "expected type" with which this coercion was
+    /// constructed. This represents the "downward propagated" type
+    /// that was given to us at the start of typing whatever construct
+    /// we are typing (e.g., the match expression).
+    ///
+    /// Typically, this is used as the expected type when
+    /// type-checking each of the alternative expressions whose types
+    /// we are trying to merge.
+    pub(crate) fn expected_ty(&self) -> Ty<'tcx> {
+        self.expected_ty
+    }
+
+    /// Returns the current "merged type", representing our best-guess
+    /// at the LUB of the expressions we've seen so far (if any). This
+    /// isn't *final* until you call `self.complete()`, which will return
+    /// the merged type.
+    pub(crate) fn merged_ty(&self) -> Ty<'tcx> {
+        self.final_ty.unwrap_or(self.expected_ty)
+    }
+
+    /// Indicates that the value generated by `expression`, which is
+    /// of type `expression_ty`, is one of the possibilities that we
+    /// could coerce from. This will record `expression`, and later
+    /// calls to `coerce` may come back and add adjustments and things
+    /// if necessary.
+    pub(crate) fn coerce<'a>(
+        &mut self,
+        fcx: &FnCtxt<'a, 'tcx>,
+        cause: &ObligationCause<'tcx>,
+        expression: &'tcx hir::Expr<'tcx>,
+        expression_ty: Ty<'tcx>,
+    ) {
+        self.coerce_inner(fcx, cause, Some(expression), expression_ty, |_| {}, false)
+    }
+
+    /// Indicates that one of the inputs is a "forced unit". This
+    /// occurs in a case like `if foo { ... };`, where the missing else
+    /// generates a "forced unit". Another example is a `loop { break;
+    /// }`, where the `break` has no argument expression. We treat
+    /// these cases slightly differently for error-reporting
+    /// purposes. Note that these tend to correspond to cases where
+    /// the `()` expression is implicit in the source, and hence we do
+    /// not take an expression argument.
+    ///
+    /// The `augment_error` gives you a chance to extend the error
+    /// message, in case any results (e.g., we use this to suggest
+    /// removing a `;`).
+    pub(crate) fn coerce_forced_unit<'a>(
+        &mut self,
+        fcx: &FnCtxt<'a, 'tcx>,
+        cause: &ObligationCause<'tcx>,
+        augment_error: impl FnOnce(&mut Diag<'_>),
+        label_unit_as_expected: bool,
+    ) {
+        self.coerce_inner(
+            fcx,
+            cause,
+            None,
+            fcx.tcx.types.unit,
+            augment_error,
+            label_unit_as_expected,
+        )
+    }
+
+    /// The inner coercion "engine". If `expression` is `None`, this
+    /// is a forced-unit case, and hence `expression_ty` must be
+    /// `Nil`.
+    #[instrument(skip(self, fcx, augment_error, label_expression_as_expected), level = "debug")]
+    pub(crate) fn coerce_inner<'a>(
+        &mut self,
+        fcx: &FnCtxt<'a, 'tcx>,
+        cause: &ObligationCause<'tcx>,
+        expression: Option<&'tcx hir::Expr<'tcx>>,
+        mut expression_ty: Ty<'tcx>,
+        augment_error: impl FnOnce(&mut Diag<'_>),
+        label_expression_as_expected: bool,
+    ) {
+        // Incorporate whatever type inference information we have
+        // until now; in principle we might also want to process
+        // pending obligations, but doing so should only improve
+        // compatibility (hopefully that is true) by helping us
+        // uncover never types better.
+        if expression_ty.is_ty_var() {
+            expression_ty = fcx.infcx.shallow_resolve(expression_ty);
+        }
+
+        // If we see any error types, just propagate that error
+        // upwards.
+        if let Err(guar) = (expression_ty, self.merged_ty()).error_reported() {
+            self.final_ty = Some(Ty::new_error(fcx.tcx, guar));
+            return;
+        }
+
+        let (expected, found) = if label_expression_as_expected {
+            // In the case where this is a "forced unit", like
+            // `break`, we want to call the `()` "expected"
+            // since it is implied by the syntax.
+            // (Note: not all force-units work this way.)"
+            (expression_ty, self.merged_ty())
+        } else {
+            // Otherwise, the "expected" type for error
+            // reporting is the current unification type,
+            // which is basically the LUB of the expressions
+            // we've seen so far (combined with the expected
+            // type)
+            (self.merged_ty(), expression_ty)
+        };
+
+        // Handle the actual type unification etc.
+        let result = if let Some(expression) = expression {
+            if self.pushed == 0 {
+                // Special-case the first expression we are coercing.
+                // To be honest, I'm not entirely sure why we do this.
+                // We don't allow two-phase borrows, see comment in try_find_coercion_lub for why
+                fcx.coerce(
+                    expression,
+                    expression_ty,
+                    self.expected_ty,
+                    AllowTwoPhase::No,
+                    Some(cause.clone()),
+                )
+            } else {
+                match self.expressions {
+                    Expressions::Dynamic(ref exprs) => fcx.try_find_coercion_lub(
+                        cause,
+                        exprs,
+                        self.merged_ty(),
+                        expression,
+                        expression_ty,
+                    ),
+                    Expressions::UpFront(coercion_sites) => fcx.try_find_coercion_lub(
+                        cause,
+                        &coercion_sites[0..self.pushed],
+                        self.merged_ty(),
+                        expression,
+                        expression_ty,
+                    ),
+                }
+            }
+        } else {
+            // this is a hack for cases where we default to `()` because
+            // the expression etc has been omitted from the source. An
+            // example is an `if let` without an else:
+            //
+            //     if let Some(x) = ... { }
+            //
+            // we wind up with a second match arm that is like `_ =>
+            // ()`. That is the case we are considering here. We take
+            // a different path to get the right "expected, found"
+            // message and so forth (and because we know that
+            // `expression_ty` will be unit).
+            //
+            // Another example is `break` with no argument expression.
+            assert!(expression_ty.is_unit(), "if let hack without unit type");
+            fcx.at(cause, fcx.param_env)
+                .eq(
+                    // needed for tests/ui/type-alias-impl-trait/issue-65679-inst-opaque-ty-from-val-twice.rs
+                    DefineOpaqueTypes::Yes,
+                    expected,
+                    found,
+                )
+                .map(|infer_ok| {
+                    fcx.register_infer_ok_obligations(infer_ok);
+                    expression_ty
+                })
+        };
+
+        debug!(?result);
+        match result {
+            Ok(v) => {
+                self.final_ty = Some(v);
+                if let Some(e) = expression {
+                    match self.expressions {
+                        Expressions::Dynamic(ref mut buffer) => buffer.push(e),
+                        Expressions::UpFront(coercion_sites) => {
+                            // if the user gave us an array to validate, check that we got
+                            // the next expression in the list, as expected
+                            assert_eq!(
+                                coercion_sites[self.pushed].as_coercion_site().hir_id,
+                                e.hir_id
+                            );
+                        }
+                    }
+                    self.pushed += 1;
+                }
+            }
+            Err(coercion_error) => {
+                // Mark that we've failed to coerce the types here to suppress
+                // any superfluous errors we might encounter while trying to
+                // emit or provide suggestions on how to fix the initial error.
+                fcx.set_tainted_by_errors(
+                    fcx.dcx().span_delayed_bug(cause.span, "coercion error but no error emitted"),
+                );
+                let (expected, found) = fcx.resolve_vars_if_possible((expected, found));
+
+                let mut err;
+                let mut unsized_return = false;
+                match *cause.code() {
+                    ObligationCauseCode::ReturnNoExpression => {
+                        err = struct_span_code_err!(
+                            fcx.dcx(),
+                            cause.span,
+                            E0069,
+                            "`return;` in a function whose return type is not `()`"
+                        );
+                        if let Some(value) = fcx.err_ctxt().ty_kind_suggestion(fcx.param_env, found)
+                        {
+                            err.span_suggestion_verbose(
+                                cause.span.shrink_to_hi(),
+                                "give the `return` a value of the expected type",
+                                format!(" {value}"),
+                                Applicability::HasPlaceholders,
+                            );
+                        }
+                        err.span_label(cause.span, "return type is not `()`");
+                    }
+                    ObligationCauseCode::BlockTailExpression(blk_id, ..) => {
+                        err = self.report_return_mismatched_types(
+                            cause,
+                            expected,
+                            found,
+                            coercion_error,
+                            fcx,
+                            blk_id,
+                            expression,
+                        );
+                        unsized_return = self.is_return_ty_definitely_unsized(fcx);
+                    }
+                    ObligationCauseCode::ReturnValue(return_expr_id) => {
+                        err = self.report_return_mismatched_types(
+                            cause,
+                            expected,
+                            found,
+                            coercion_error,
+                            fcx,
+                            return_expr_id,
+                            expression,
+                        );
+                        unsized_return = self.is_return_ty_definitely_unsized(fcx);
+                    }
+                    ObligationCauseCode::MatchExpressionArm(box MatchExpressionArmCause {
+                        arm_span,
+                        arm_ty,
+                        prior_arm_ty,
+                        ref prior_non_diverging_arms,
+                        tail_defines_return_position_impl_trait: Some(rpit_def_id),
+                        ..
+                    }) => {
+                        err = fcx.err_ctxt().report_mismatched_types(
+                            cause,
+                            fcx.param_env,
+                            expected,
+                            found,
+                            coercion_error,
+                        );
+                        // Check that we're actually in the second or later arm
+                        if prior_non_diverging_arms.len() > 0 {
+                            self.suggest_boxing_tail_for_return_position_impl_trait(
+                                fcx,
+                                &mut err,
+                                rpit_def_id,
+                                arm_ty,
+                                prior_arm_ty,
+                                prior_non_diverging_arms
+                                    .iter()
+                                    .chain(std::iter::once(&arm_span))
+                                    .copied(),
+                            );
+                        }
+                    }
+                    ObligationCauseCode::IfExpression {
+                        expr_id,
+                        tail_defines_return_position_impl_trait: Some(rpit_def_id),
+                    } => {
+                        let hir::Node::Expr(hir::Expr {
+                            kind: hir::ExprKind::If(_, then_expr, Some(else_expr)),
+                            ..
+                        }) = fcx.tcx.hir_node(expr_id)
+                        else {
+                            unreachable!();
+                        };
+                        err = fcx.err_ctxt().report_mismatched_types(
+                            cause,
+                            fcx.param_env,
+                            expected,
+                            found,
+                            coercion_error,
+                        );
+                        let then_span = fcx.find_block_span_from_hir_id(then_expr.hir_id);
+                        let else_span = fcx.find_block_span_from_hir_id(else_expr.hir_id);
+                        // Don't suggest wrapping whole block in `Box::new`.
+                        if then_span != then_expr.span && else_span != else_expr.span {
+                            let then_ty = fcx.typeck_results.borrow().expr_ty(then_expr);
+                            let else_ty = fcx.typeck_results.borrow().expr_ty(else_expr);
+                            self.suggest_boxing_tail_for_return_position_impl_trait(
+                                fcx,
+                                &mut err,
+                                rpit_def_id,
+                                then_ty,
+                                else_ty,
+                                [then_span, else_span].into_iter(),
+                            );
+                        }
+                    }
+                    _ => {
+                        err = fcx.err_ctxt().report_mismatched_types(
+                            cause,
+                            fcx.param_env,
+                            expected,
+                            found,
+                            coercion_error,
+                        );
+                    }
+                }
+
+                augment_error(&mut err);
+
+                if let Some(expr) = expression {
+                    if let hir::ExprKind::Loop(
+                        _,
+                        _,
+                        loop_src @ (hir::LoopSource::While | hir::LoopSource::ForLoop),
+                        _,
+                    ) = expr.kind
+                    {
+                        let loop_type = if loop_src == hir::LoopSource::While {
+                            "`while` loops"
+                        } else {
+                            "`for` loops"
+                        };
+
+                        err.note(format!("{loop_type} evaluate to unit type `()`"));
+                    }
+
+                    fcx.emit_coerce_suggestions(
+                        &mut err,
+                        expr,
+                        found,
+                        expected,
+                        None,
+                        Some(coercion_error),
+                    );
+                }
+
+                let reported = err.emit_unless_delay(unsized_return);
+
+                self.final_ty = Some(Ty::new_error(fcx.tcx, reported));
+            }
+        }
+    }
+
+    fn suggest_boxing_tail_for_return_position_impl_trait(
+        &self,
+        fcx: &FnCtxt<'_, 'tcx>,
+        err: &mut Diag<'_>,
+        rpit_def_id: LocalDefId,
+        a_ty: Ty<'tcx>,
+        b_ty: Ty<'tcx>,
+        arm_spans: impl Iterator<Item = Span>,
+    ) {
+        let compatible = |ty: Ty<'tcx>| {
+            fcx.probe(|_| {
+                let ocx = ObligationCtxt::new(fcx);
+                ocx.register_obligations(
+                    fcx.tcx.item_self_bounds(rpit_def_id).iter_identity().filter_map(|clause| {
+                        let predicate = clause
+                            .kind()
+                            .map_bound(|clause| match clause {
+                                ty::ClauseKind::Trait(trait_pred) => Some(ty::ClauseKind::Trait(
+                                    trait_pred.with_replaced_self_ty(fcx.tcx, ty),
+                                )),
+                                ty::ClauseKind::Projection(proj_pred) => {
+                                    Some(ty::ClauseKind::Projection(
+                                        proj_pred.with_replaced_self_ty(fcx.tcx, ty),
+                                    ))
+                                }
+                                _ => None,
+                            })
+                            .transpose()?;
+                        Some(Obligation::new(
+                            fcx.tcx,
+                            ObligationCause::dummy(),
+                            fcx.param_env,
+                            predicate,
+                        ))
+                    }),
+                );
+                ocx.try_evaluate_obligations().is_empty()
+            })
+        };
+
+        if !compatible(a_ty) || !compatible(b_ty) {
+            return;
+        }
+
+        let rpid_def_span = fcx.tcx.def_span(rpit_def_id);
+        err.subdiagnostic(SuggestBoxingForReturnImplTrait::ChangeReturnType {
+            start_sp: rpid_def_span.with_hi(rpid_def_span.lo() + BytePos(4)),
+            end_sp: rpid_def_span.shrink_to_hi(),
+        });
+
+        let (starts, ends) =
+            arm_spans.map(|span| (span.shrink_to_lo(), span.shrink_to_hi())).unzip();
+        err.subdiagnostic(SuggestBoxingForReturnImplTrait::BoxReturnExpr { starts, ends });
+    }
+
+    fn report_return_mismatched_types<'infcx>(
+        &self,
+        cause: &ObligationCause<'tcx>,
+        expected: Ty<'tcx>,
+        found: Ty<'tcx>,
+        ty_err: TypeError<'tcx>,
+        fcx: &'infcx FnCtxt<'_, 'tcx>,
+        block_or_return_id: hir::HirId,
+        expression: Option<&'tcx hir::Expr<'tcx>>,
+    ) -> Diag<'infcx> {
+        let mut err =
+            fcx.err_ctxt().report_mismatched_types(cause, fcx.param_env, expected, found, ty_err);
+
+        let due_to_block = matches!(fcx.tcx.hir_node(block_or_return_id), hir::Node::Block(..));
+        let parent = fcx.tcx.parent_hir_node(block_or_return_id);
+        if let Some(expr) = expression
+            && let hir::Node::Expr(&hir::Expr {
+                kind: hir::ExprKind::Closure(&hir::Closure { body, .. }),
+                ..
+            }) = parent
+        {
+            let needs_block =
+                !matches!(fcx.tcx.hir_body(body).value.kind, hir::ExprKind::Block(..));
+            fcx.suggest_missing_semicolon(&mut err, expr, expected, needs_block, true);
+        }
+        // Verify that this is a tail expression of a function, otherwise the
+        // label pointing out the cause for the type coercion will be wrong
+        // as prior return coercions would not be relevant (#57664).
+        if let Some(expr) = expression
+            && due_to_block
+        {
+            fcx.suggest_missing_semicolon(&mut err, expr, expected, false, false);
+            let pointing_at_return_type = fcx.suggest_mismatched_types_on_tail(
+                &mut err,
+                expr,
+                expected,
+                found,
+                block_or_return_id,
+            );
+            if let Some(cond_expr) = fcx.tcx.hir_get_if_cause(expr.hir_id)
+                && expected.is_unit()
+                && !pointing_at_return_type
+                // If the block is from an external macro or try (`?`) desugaring, then
+                // do not suggest adding a semicolon, because there's nowhere to put it.
+                // See issues #81943 and #87051.
+                && matches!(
+                    cond_expr.span.desugaring_kind(),
+                    None | Some(DesugaringKind::WhileLoop)
+                )
+                && !cond_expr.span.in_external_macro(fcx.tcx.sess.source_map())
+                && !matches!(
+                    cond_expr.kind,
+                    hir::ExprKind::Match(.., hir::MatchSource::TryDesugar(_))
+                )
+            {
+                err.span_label(cond_expr.span, "expected this to be `()`");
+                if expr.can_have_side_effects() {
+                    fcx.suggest_semicolon_at_end(cond_expr.span, &mut err);
+                }
+            }
+        }
+
+        // If this is due to an explicit `return`, suggest adding a return type.
+        if let Some((fn_id, fn_decl)) = fcx.get_fn_decl(block_or_return_id)
+            && !due_to_block
+        {
+            fcx.suggest_missing_return_type(&mut err, fn_decl, expected, found, fn_id);
+        }
+
+        // If this is due to a block, then maybe we forgot a `return`/`break`.
+        if due_to_block
+            && let Some(expr) = expression
+            && let Some(parent_fn_decl) =
+                fcx.tcx.hir_fn_decl_by_hir_id(fcx.tcx.local_def_id_to_hir_id(fcx.body_id))
+        {
+            fcx.suggest_missing_break_or_return_expr(
+                &mut err,
+                expr,
+                parent_fn_decl,
+                expected,
+                found,
+                block_or_return_id,
+                fcx.body_id,
+            );
+        }
+
+        let ret_coercion_span = fcx.ret_coercion_span.get();
+
+        if let Some(sp) = ret_coercion_span
+            // If the closure has an explicit return type annotation, or if
+            // the closure's return type has been inferred from outside
+            // requirements (such as an Fn* trait bound), then a type error
+            // may occur at the first return expression we see in the closure
+            // (if it conflicts with the declared return type). Skip adding a
+            // note in this case, since it would be incorrect.
+            && let Some(fn_sig) = fcx.body_fn_sig()
+            && fn_sig.output().is_ty_var()
+        {
+            err.span_note(sp, format!("return type inferred to be `{expected}` here"));
+        }
+
+        err
+    }
+
+    /// Checks whether the return type is unsized via an obligation, which makes
+    /// sure we consider `dyn Trait: Sized` where clauses, which are trivially
+    /// false but technically valid for typeck.
+    fn is_return_ty_definitely_unsized(&self, fcx: &FnCtxt<'_, 'tcx>) -> bool {
+        if let Some(sig) = fcx.body_fn_sig() {
+            !fcx.predicate_may_hold(&Obligation::new(
+                fcx.tcx,
+                ObligationCause::dummy(),
+                fcx.param_env,
+                ty::TraitRef::new(
+                    fcx.tcx,
+                    fcx.tcx.require_lang_item(hir::LangItem::Sized, DUMMY_SP),
+                    [sig.output()],
+                ),
+            ))
+        } else {
+            false
+        }
+    }
+
+    pub(crate) fn complete<'a>(self, fcx: &FnCtxt<'a, 'tcx>) -> Ty<'tcx> {
+        if let Some(final_ty) = self.final_ty {
+            final_ty
+        } else {
+            // If we only had inputs that were of type `!` (or no
+            // inputs at all), then the final type is `!`.
+            assert_eq!(self.pushed, 0);
+            fcx.tcx.types.never
+        }
+    }
+}
+
+/// Something that can be converted into an expression to which we can
+/// apply a coercion.
+pub(crate) trait AsCoercionSite {
+    fn as_coercion_site(&self) -> &hir::Expr<'_>;
+}
+
+impl AsCoercionSite for hir::Expr<'_> {
+    fn as_coercion_site(&self) -> &hir::Expr<'_> {
+        self
+    }
+}
+
+impl<'a, T> AsCoercionSite for &'a T
+where
+    T: AsCoercionSite,
+{
+    fn as_coercion_site(&self) -> &hir::Expr<'_> {
+        (**self).as_coercion_site()
+    }
+}
+
+impl AsCoercionSite for ! {
+    fn as_coercion_site(&self) -> &hir::Expr<'_> {
+        *self
+    }
+}
+
+impl AsCoercionSite for hir::Arm<'_> {
+    fn as_coercion_site(&self) -> &hir::Expr<'_> {
+        self.body
+    }
+}
+
+/// Recursively visit goals to decide whether an unsizing is possible.
+/// `Break`s when it isn't, and an error should be raised.
+/// `Continue`s when an unsizing ok based on an implementation of the `Unsize` trait / lang item.
+struct CoerceVisitor<'a, 'tcx> {
+    fcx: &'a FnCtxt<'a, 'tcx>,
+    span: Span,
+}
+
+impl<'tcx> ProofTreeVisitor<'tcx> for CoerceVisitor<'_, 'tcx> {
+    type Result = ControlFlow<()>;
+
+    fn span(&self) -> Span {
+        self.span
+    }
+
+    fn visit_goal(&mut self, goal: &inspect::InspectGoal<'_, 'tcx>) -> Self::Result {
+        let Some(pred) = goal.goal().predicate.as_trait_clause() else {
+            return ControlFlow::Continue(());
+        };
+
+        // Make sure this predicate is referring to either an `Unsize` or `CoerceUnsized` trait,
+        // Otherwise there's nothing to do.
+        if !self.fcx.tcx.is_lang_item(pred.def_id(), LangItem::Unsize)
+            && !self.fcx.tcx.is_lang_item(pred.def_id(), LangItem::CoerceUnsized)
+        {
+            return ControlFlow::Continue(());
+        }
+
+        match goal.result() {
+            // If we prove the `Unsize` or `CoerceUnsized` goal, continue recursing.
+            Ok(Certainty::Yes) => ControlFlow::Continue(()),
+            Err(NoSolution) => {
+                // Even if we find no solution, continue recursing if we find a single candidate
+                // for which we're shallowly certain it holds to get the right error source.
+                if let [only_candidate] = &goal.candidates()[..]
+                    && only_candidate.shallow_certainty() == Certainty::Yes
+                {
+                    only_candidate.visit_nested_no_probe(self)
+                } else {
+                    ControlFlow::Break(())
+                }
+            }
+            Ok(Certainty::Maybe { .. }) => {
+                // FIXME: structurally normalize?
+                if self.fcx.tcx.is_lang_item(pred.def_id(), LangItem::Unsize)
+                    && let ty::Dynamic(..) = pred.skip_binder().trait_ref.args.type_at(1).kind()
+                    && let ty::Infer(ty::TyVar(vid)) = *pred.self_ty().skip_binder().kind()
+                    && self.fcx.type_var_is_sized(vid)
+                {
+                    // We get here when trying to unsize a type variable to a `dyn Trait`,
+                    // knowing that that variable is sized. Unsizing definitely has to happen in that case.
+                    // If the variable weren't sized, we may not need an unsizing coercion.
+                    // In general, we don't want to add coercions too eagerly since it makes error messages much worse.
+                    ControlFlow::Continue(())
+                } else if let Some(cand) = goal.unique_applicable_candidate()
+                    && cand.shallow_certainty() == Certainty::Yes
+                {
+                    cand.visit_nested_no_probe(self)
+                } else {
+                    ControlFlow::Break(())
+                }
+            }
+        }
+    }
+}

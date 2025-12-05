@@ -1,0 +1,18 @@
+error[E0204]: the trait `Copy` cannot be implemented for this type
+  --> $DIR/union-copy.rs:12:15
+   |
+LL |     a: std::mem::ManuallyDrop<String>
+   |     --------------------------------- this field does not implement `Copy`
+...
+LL | impl Copy for W {}
+   |               ^
+   |
+note: the `Copy` impl for `ManuallyDrop<String>` requires that `String: Copy`
+  --> $DIR/union-copy.rs:8:8
+   |
+LL |     a: std::mem::ManuallyDrop<String>
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0204`.

@@ -1,0 +1,175 @@
+error: this could be rewritten as `let...else`
+  --> tests/ui/manual_let_else_match.rs:36:5
+   |
+LL | /     let v = match g() {
+LL | |
+LL | |         Some(v_some) => v_some,
+LL | |         None => return,
+LL | |     };
+   | |______^ help: consider writing: `let Some(v) = g() else { return };`
+   |
+   = note: `-D clippy::manual-let-else` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::manual_let_else)]`
+
+error: this could be rewritten as `let...else`
+  --> tests/ui/manual_let_else_match.rs:42:5
+   |
+LL | /     let v = match g() {
+LL | |
+LL | |         Some(v_some) => v_some,
+LL | |         _ => return,
+LL | |     };
+   | |______^ help: consider writing: `let Some(v) = g() else { return };`
+
+error: this could be rewritten as `let...else`
+  --> tests/ui/manual_let_else_match.rs:50:9
+   |
+LL | /         let v = match h() {
+LL | |
+LL | |             (Some(v), None) | (None, Some(v)) => v,
+LL | |             (Some(_), Some(_)) | (None, None) => continue,
+LL | |         };
+   | |__________^ help: consider writing: `let ((Some(v), None) | (None, Some(v))) = h() else { continue };`
+
+error: this could be rewritten as `let...else`
+  --> tests/ui/manual_let_else_match.rs:56:9
+   |
+LL | /         let v = match build_enum() {
+LL | |
+LL | |             Variant::Bar(v) | Variant::Baz(v) => v,
+LL | |             _ => continue,
+LL | |         };
+   | |__________^ help: consider writing: `let (Variant::Bar(v) | Variant::Baz(v)) = build_enum() else { continue };`
+
+error: this could be rewritten as `let...else`
+  --> tests/ui/manual_let_else_match.rs:65:5
+   |
+LL | /     let v = match f() {
+LL | |
+LL | |         Ok(v) => v,
+LL | |         Err(_) => return,
+LL | |     };
+   | |______^ help: consider writing: `let Ok(v) = f() else { return };`
+
+error: this could be rewritten as `let...else`
+  --> tests/ui/manual_let_else_match.rs:72:5
+   |
+LL | /     let v = match f().map_err(|_| ()) {
+LL | |
+LL | |         Ok(v) => v,
+LL | |         Err(()) => return,
+LL | |     };
+   | |______^ help: consider writing: `let Ok(v) = f().map_err(|_| ()) else { return };`
+
+error: this could be rewritten as `let...else`
+  --> tests/ui/manual_let_else_match.rs:80:5
+   |
+LL | /     let _value = match f {
+LL | |
+LL | |         Variant::Bar(v) | Variant::Baz(v) => v,
+LL | |         _ => return,
+LL | |     };
+   | |______^ help: consider writing: `let (Variant::Bar(_value) | Variant::Baz(_value)) = f else { return };`
+
+error: this could be rewritten as `let...else`
+  --> tests/ui/manual_let_else_match.rs:86:5
+   |
+LL | /     let _value = match Some(build_enum()) {
+LL | |
+LL | |         Some(Variant::Bar(v) | Variant::Baz(v)) => v,
+LL | |         _ => return,
+LL | |     };
+   | |______^ help: consider writing: `let Some(Variant::Bar(_value) | Variant::Baz(_value)) = Some(build_enum()) else { return };`
+
+error: this could be rewritten as `let...else`
+  --> tests/ui/manual_let_else_match.rs:93:5
+   |
+LL | /     let data = match data.as_slice() {
+LL | |
+LL | |         [data @ .., 0, 0, 0, 0] | [data @ .., 0, 0] | [data @ .., 0] => data,
+LL | |         _ => return,
+LL | |     };
+   | |______^ help: consider writing: `let ([data @ .., 0, 0, 0, 0] | [data @ .., 0, 0] | [data @ .., 0]) = data.as_slice() else { return };`
+
+error: this could be rewritten as `let...else`
+  --> tests/ui/manual_let_else_match.rs:174:5
+   |
+LL | /     let msg = match Some("hi") {
+LL | |
+LL | |         Some(m) => m,
+LL | |         _ => unreachable!("can't happen"),
+LL | |     };
+   | |______^ help: consider writing: `let Some(msg) = Some("hi") else { unreachable!("can't happen") };`
+
+error: this could be rewritten as `let...else`
+  --> tests/ui/manual_let_else_match.rs:188:5
+   |
+LL | /     let tornado = match issue {
+LL | |
+LL | |         Some(Issue9939 { avalanche }) => avalanche,
+LL | |         _ => unreachable!("can't happen"),
+LL | |     };
+   | |______^ help: consider writing: `let Some(Issue9939 { avalanche: tornado }) = issue else { unreachable!("can't happen") };`
+
+error: this could be rewritten as `let...else`
+  --> tests/ui/manual_let_else_match.rs:194:5
+   |
+LL | /     let acid_rain = match issue {
+LL | |
+LL | |         Some(Issue9939 { avalanche: tornado }) => tornado,
+LL | |         _ => unreachable!("can't happen"),
+LL | |     };
+   | |______^ help: consider writing: `let Some(Issue9939 { avalanche: acid_rain }) = issue else { unreachable!("can't happen") };`
+
+error: this could be rewritten as `let...else`
+  --> tests/ui/manual_let_else_match.rs:203:5
+   |
+LL | /     let _y = match issue {
+LL | |
+LL | |         _x @ Some(Issue9939 { avalanche }) => avalanche,
+LL | |         None => unreachable!("can't happen"),
+LL | |     };
+   | |______^ help: consider writing: `let _x @ Some(Issue9939 { avalanche: _y }) = issue else { unreachable!("can't happen") };`
+
+error: this could be rewritten as `let...else`
+  --> tests/ui/manual_let_else_match.rs:210:5
+   |
+LL | /     let _x = match issue {
+LL | |
+LL | |         _x @ Some(Issue9939 { avalanche }) => avalanche,
+LL | |         None => unreachable!("can't happen"),
+LL | |     };
+   | |______^ help: consider writing: `let Some(Issue9939 { avalanche: _x }) = issue else { unreachable!("can't happen") };`
+
+error: this could be rewritten as `let...else`
+  --> tests/ui/manual_let_else_match.rs:228:5
+   |
+LL | /     let (issue, drought, flood) = match issue {
+LL | |
+LL | |         flood @ Some(Issue9939b { earthquake, hurricane }) => (flood, hurricane, earthquake),
+LL | |         None => unreachable!("can't happen"),
+LL | |     };
+   | |______^ help: consider writing: `let issue @ Some(Issue9939b { earthquake: flood, hurricane: drought }) = issue else { unreachable!("can't happen") };`
+
+error: this could be rewritten as `let...else`
+  --> tests/ui/manual_let_else_match.rs:238:5
+   |
+LL | /     let (_y, erosion) = match issue {
+LL | |
+LL | |         _x @ Some(Issue9939b { earthquake, hurricane }) => (hurricane, earthquake),
+LL | |         None => unreachable!("can't happen"),
+LL | |     };
+   | |______^ help: consider writing: `let _x @ Some(Issue9939b { earthquake: erosion, hurricane: _y }) = issue else { unreachable!("can't happen") };`
+
+error: this could be rewritten as `let...else`
+  --> tests/ui/manual_let_else_match.rs:246:5
+   |
+LL | /     let (_x, erosion) = match issue {
+LL | |
+LL | |         _x @ Some(Issue9939b { earthquake, hurricane }) => (hurricane, earthquake),
+LL | |         None => unreachable!("can't happen"),
+LL | |     };
+   | |______^ help: consider writing: `let Some(Issue9939b { earthquake: erosion, hurricane: _x }) = issue else { unreachable!("can't happen") };`
+
+error: aborting due to 17 previous errors
+

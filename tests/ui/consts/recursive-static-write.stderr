@@ -1,0 +1,15 @@
+error[E0080]: encountered static that tried to access itself during initialization
+  --> $DIR/recursive-static-write.rs:13:9
+   |
+LL |         (&raw const S.x).cast_mut().write(1);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `S` failed here
+
+error[E0080]: encountered static that tried to access itself during initialization
+  --> $DIR/recursive-static-write.rs:20:9
+   |
+LL |         S2.x = 1;
+   |         ^^^^^^^^ evaluation of `S2` failed here
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0080`.

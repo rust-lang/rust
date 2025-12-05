@@ -1,0 +1,34 @@
+
+thread 'main' ($TID) panicked at tests/fail/panic/abort_unwind.rs:LL:CC:
+PANIC!!!
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+note: in Miri, you may have to set `MIRIFLAGS=-Zmiri-env-forward=RUST_BACKTRACE` for the environment variable to have an effect
+
+thread 'main' ($TID) panicked at RUSTLIB/core/src/panicking.rs:LL:CC:
+panic in a function that cannot unwind
+stack backtrace:
+thread caused non-unwinding panic. aborting.
+error: abnormal termination: the program aborted execution
+  --> RUSTLIB/std/src/panicking.rs:LL:CC
+   |
+LL |         crate::process::abort();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^ abnormal termination occurred here
+   |
+   = note: BACKTRACE:
+   = note: inside `std::panicking::panic_with_hook` at RUSTLIB/std/src/panicking.rs:LL:CC
+   = note: inside closure at RUSTLIB/std/src/panicking.rs:LL:CC
+   = note: inside `std::sys::backtrace::__rust_end_short_backtrace::<{closure@std::panicking::panic_handler::{closure#0}}, !>` at RUSTLIB/std/src/sys/backtrace.rs:LL:CC
+   = note: inside `std::panicking::panic_handler` at RUSTLIB/std/src/panicking.rs:LL:CC
+   = note: inside `core::panicking::panic_nounwind` at RUSTLIB/core/src/panicking.rs:LL:CC
+   = note: inside `core::panicking::panic_cannot_unwind` at RUSTLIB/core/src/panicking.rs:LL:CC
+   = note: inside `std::panic::abort_unwind::<{closure@tests/fail/panic/abort_unwind.rs:LL:CC}, ()>` at RUSTLIB/core/src/panic.rs:LL:CC
+note: inside `main`
+  --> tests/fail/panic/abort_unwind.rs:LL:CC
+   |
+LL |     std::panic::abort_unwind(|| panic!("PANIC!!!"));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to 1 previous error
+

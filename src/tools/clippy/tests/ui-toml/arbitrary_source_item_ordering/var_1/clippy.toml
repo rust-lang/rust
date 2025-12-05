@@ -1,0 +1,1 @@
+trait-assoc-item-kinds-order = ["fn", "type", "const"]

@@ -1,0 +1,22 @@
+warning: `extern` declarations without an explicit ABI are deprecated
+  --> $DIR/feature-gate-explicit-extern-abis.rs:27:1
+   |
+LL | extern fn _foo() {}
+   | ^^^^^^ help: explicitly specify the "C" ABI: `extern "C"`
+   |
+   = note: `#[warn(missing_abi)]` on by default
+
+warning: `extern` declarations without an explicit ABI are deprecated
+  --> $DIR/feature-gate-explicit-extern-abis.rs:33:8
+   |
+LL | unsafe extern fn _bar() {}
+   |        ^^^^^^ help: explicitly specify the "C" ABI: `extern "C"`
+
+warning: `extern` declarations without an explicit ABI are deprecated
+  --> $DIR/feature-gate-explicit-extern-abis.rs:39:8
+   |
+LL | unsafe extern {}
+   |        ^^^^^^ help: explicitly specify the "C" ABI: `extern "C"`
+
+warning: 3 warnings emitted
+

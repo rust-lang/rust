@@ -1,0 +1,7 @@
+bin
+cdylib
+dylib
+lib
+proc-macro
+rlib
+staticlib

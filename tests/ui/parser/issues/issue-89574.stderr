@@ -1,0 +1,20 @@
+error[E0282]: type annotations needed
+  --> $DIR/issue-89574.rs:2:25
+   |
+LL |     const EMPTY_ARRAY = [];
+   |                         ^^ cannot infer type
+
+error: missing type for `const` item
+  --> $DIR/issue-89574.rs:2:22
+   |
+LL |     const EMPTY_ARRAY = [];
+   |                      ^
+   |
+help: provide a type for the item
+   |
+LL |     const EMPTY_ARRAY: <type> = [];
+   |                      ++++++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0282`.

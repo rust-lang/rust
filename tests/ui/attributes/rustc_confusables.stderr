@@ -1,0 +1,83 @@
+error: expected at least one confusable name
+  --> $DIR/rustc_confusables.rs:30:5
+   |
+LL |     #[rustc_confusables()]
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0539]: malformed `rustc_confusables` attribute input
+  --> $DIR/rustc_confusables.rs:34:5
+   |
+LL |     #[rustc_confusables]
+   |     ^^^^^^^^^^^^^^^^^^^^
+   |     |
+   |     expected this to be a list
+   |     help: must be of the form: `#[rustc_confusables("name1", "name2", ...)]`
+
+error[E0539]: malformed `rustc_confusables` attribute input
+  --> $DIR/rustc_confusables.rs:39:5
+   |
+LL |     #[rustc_confusables(invalid_meta_item)]
+   |     ^^^^^^^^^^^^^^^^^^^^-----------------^^
+   |     |                   |
+   |     |                   expected a string literal here
+   |     help: must be of the form: `#[rustc_confusables("name1", "name2", ...)]`
+
+error: `#[rustc_confusables]` attribute cannot be used on functions
+  --> $DIR/rustc_confusables.rs:45:1
+   |
+LL | #[rustc_confusables("blah")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[rustc_confusables]` can only be applied to inherent methods
+
+error[E0599]: no method named `inser` found for struct `rustc_confusables_across_crate::BTreeSet` in the current scope
+  --> $DIR/rustc_confusables.rs:12:7
+   |
+LL |     x.inser();
+   |       ^^^^^
+   |
+help: there is a method `insert` with a similar name
+   |
+LL |     x.insert();
+   |            +
+
+error[E0599]: no method named `foo` found for struct `rustc_confusables_across_crate::BTreeSet` in the current scope
+  --> $DIR/rustc_confusables.rs:15:7
+   |
+LL |     x.foo();
+   |       ^^^ method not found in `rustc_confusables_across_crate::BTreeSet`
+
+error[E0599]: no method named `push` found for struct `rustc_confusables_across_crate::BTreeSet` in the current scope
+  --> $DIR/rustc_confusables.rs:17:7
+   |
+LL |     x.push();
+   |       ^^^^ method not found in `rustc_confusables_across_crate::BTreeSet`
+   |
+help: you might have meant to use `insert`
+   |
+LL -     x.push();
+LL +     x.insert();
+   |
+
+error[E0599]: no method named `test` found for struct `rustc_confusables_across_crate::BTreeSet` in the current scope
+  --> $DIR/rustc_confusables.rs:20:7
+   |
+LL |     x.test();
+   |       ^^^^ method not found in `rustc_confusables_across_crate::BTreeSet`
+
+error[E0599]: no method named `pulled` found for struct `rustc_confusables_across_crate::BTreeSet` in the current scope
+  --> $DIR/rustc_confusables.rs:22:7
+   |
+LL |     x.pulled();
+   |       ^^^^^^
+   |
+help: you might have meant to use `pull`
+   |
+LL -     x.pulled();
+LL +     x.pull();
+   |
+
+error: aborting due to 9 previous errors
+
+Some errors have detailed explanations: E0539, E0599.
+For more information about an error, try `rustc --explain E0539`.

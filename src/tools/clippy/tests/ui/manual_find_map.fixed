@@ -1,0 +1,142 @@
+#![allow(dead_code)]
+#![warn(clippy::manual_find_map)]
+#![allow(clippy::redundant_closure)] // FIXME suggestion may have redundant closure
+#![allow(clippy::useless_vec)]
+#![allow(clippy::struct_field_names)]
+
+fn main() {
+    // is_some(), unwrap()
+    let _ = (0..).find_map(|a| to_opt(a));
+    //~^ manual_find_map
+
+    // ref pattern, expect()
+    let _ = (0..).find_map(|a| to_opt(a));
+    //~^ manual_find_map
+
+    // is_ok(), unwrap_or()
+    let _ = (0..).find_map(|a| to_res(a).ok());
+    //~^ manual_find_map
+
+    let _ = (1..5)
+        .find_map(|y| *to_ref(to_opt(y)));
+    let _ = (1..5)
+        .find_map(|y| *to_ref(to_opt(y)));
+
+    let _ = (1..5)
+        .find_map(|y| to_ref(to_res(y)).ok());
+    let _ = (1..5)
+        .find_map(|y| to_ref(to_res(y)).ok());
+}
+
+#[rustfmt::skip]
+fn simple_equal() {
+    iter::<Option<u8>>().find_map(|x| x);
+    //~^ manual_find_map
+    iter::<&Option<u8>>().find_map(|x| *x);
+    //~^ manual_find_map
+    iter::<&&Option<u8>>().find_map(|x| **x);
+    //~^ manual_find_map
+    iter::<Option<&u8>>().find_map(|x| x.cloned());
+    //~^ manual_find_map
+    iter::<&Option<&u8>>().find_map(|x| x.cloned());
+    //~^ manual_find_map
+    iter::<&Option<String>>().find_map(|x| x.as_deref());
+    //~^ manual_find_map
+    iter::<Option<&String>>().find_map(|y| to_ref(y).cloned());
+    //~^ manual_find_map
+
+    iter::<Result<u8, ()>>().find_map(|x| x.ok());
+    //~^ manual_find_map
+    iter::<&Result<u8, ()>>().find_map(|x| x.ok());
+    //~^ manual_find_map
+    iter::<&&Result<u8, ()>>().find_map(|x| x.ok());
+    //~^ manual_find_map
+    iter::<Result<&u8, ()>>().find_map(|x| x.cloned().ok());
+    //~^ manual_find_map
+    iter::<&Result<&u8, ()>>().find_map(|x| x.cloned().ok());
+    //~^ manual_find_map
+    iter::<&Result<String, ()>>().find_map(|x| x.as_deref().ok());
+    //~^ manual_find_map
+    iter::<Result<&String, ()>>().find_map(|y| to_ref(y).cloned().ok());
+    //~^ manual_find_map
+}
+
+fn no_lint() {
+    // no shared code
+    let _ = (0..).filter(|n| *n > 1).map(|n| n + 1);
+
+    // very close but different since filter() provides a reference
+    let _ = (0..).find(|n| to_opt(n).is_some()).map(|a| to_opt(a).unwrap());
+
+    // similar but different
+    let _ = (0..).find(|n| to_opt(n).is_some()).map(|n| to_res(n).unwrap());
+    let _ = (0..)
+        .find(|n| to_opt(n).map(|n| n + 1).is_some())
+        .map(|a| to_opt(a).unwrap());
+}
+
+fn iter<T>() -> impl Iterator<Item = T> {
+    std::iter::empty()
+}
+
+fn to_opt<T>(_: T) -> Option<T> {
+    unimplemented!()
+}
+
+fn to_res<T>(_: T) -> Result<T, ()> {
+    unimplemented!()
+}
+
+fn to_ref<'a, T>(_: T) -> &'a T {
+    unimplemented!()
+}
+
+struct Issue8920<'a> {
+    option_field: Option<String>,
+    result_field: Result<String, ()>,
+    ref_field: Option<&'a usize>,
+}
+
+fn issue_8920() {
+    let mut vec = vec![Issue8920 {
+        option_field: Some(String::from("str")),
+        result_field: Ok(String::from("str")),
+        ref_field: Some(&1),
+    }];
+
+    let _ = vec
+        .iter()
+        .find_map(|f| f.option_field.clone());
+
+    let _ = vec
+        .iter()
+        .find_map(|f| f.ref_field.cloned());
+
+    let _ = vec
+        .iter()
+        .find_map(|f| f.ref_field.copied());
+
+    let _ = vec
+        .iter()
+        .find_map(|f| f.result_field.clone().ok());
+
+    let _ = vec
+        .iter()
+        .find_map(|f| f.result_field.as_ref().ok());
+
+    let _ = vec
+        .iter()
+        .find_map(|f| f.result_field.as_deref().ok());
+
+    let _ = vec
+        .iter_mut()
+        .find_map(|f| f.result_field.as_mut().ok());
+
+    let _ = vec
+        .iter_mut()
+        .find_map(|f| f.result_field.as_deref_mut().ok());
+
+    let _ = vec
+        .iter()
+        .find_map(|f| f.result_field.to_owned().ok());
+}

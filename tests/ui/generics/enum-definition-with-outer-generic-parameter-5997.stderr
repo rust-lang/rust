@@ -1,0 +1,19 @@
+error[E0401]: can't use generic parameters from outer item
+  --> $DIR/enum-definition-with-outer-generic-parameter-5997.rs:3:16
+   |
+LL | fn f<Z>() -> bool {
+   |      - type parameter from outer item
+LL |     enum E { V(Z) }
+   |          -     ^ use of generic parameter from outer item
+   |          |
+   |          generic parameter used in this inner enum
+   |
+   = note: nested items are independent from their parent item for everything except for privacy and name resolution
+help: try introducing a local generic parameter here
+   |
+LL |     enum E<Z> { V(Z) }
+   |           +++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0401`.

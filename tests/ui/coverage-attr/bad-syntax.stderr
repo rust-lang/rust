@@ -1,0 +1,168 @@
+error: multiple `coverage` attributes
+  --> $DIR/bad-syntax.rs:9:1
+   |
+LL | #[coverage(off)]
+   | ^^^^^^^^^^^^^^^^ help: remove this attribute
+   |
+note: attribute also specified here
+  --> $DIR/bad-syntax.rs:10:1
+   |
+LL | #[coverage(off)]
+   | ^^^^^^^^^^^^^^^^
+
+error: multiple `coverage` attributes
+  --> $DIR/bad-syntax.rs:13:1
+   |
+LL | #[coverage(off)]
+   | ^^^^^^^^^^^^^^^^ help: remove this attribute
+   |
+note: attribute also specified here
+  --> $DIR/bad-syntax.rs:14:1
+   |
+LL | #[coverage(on)]
+   | ^^^^^^^^^^^^^^^
+
+error[E0539]: malformed `coverage` attribute input
+  --> $DIR/bad-syntax.rs:17:1
+   |
+LL | #[coverage]
+   | ^^^^^^^^^^^ this attribute is only valid with either `on` or `off` as an argument
+   |
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL | #[coverage(off)]
+   |           +++++
+LL | #[coverage(on)]
+   |           ++++
+
+error[E0539]: malformed `coverage` attribute input
+  --> $DIR/bad-syntax.rs:20:1
+   |
+LL | #[coverage = true]
+   | ^^^^^^^^^^^^^^^^^^ this attribute is only valid with either `on` or `off` as an argument
+   |
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #[coverage = true]
+LL + #[coverage(off)]
+   |
+LL - #[coverage = true]
+LL + #[coverage(on)]
+   |
+
+error[E0805]: malformed `coverage` attribute input
+  --> $DIR/bad-syntax.rs:23:1
+   |
+LL | #[coverage()]
+   | ^^^^^^^^^^--^
+   |           |
+   |           expected a single argument here
+   |
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL | #[coverage(off)]
+   |            +++
+LL | #[coverage(on)]
+   |            ++
+
+error[E0805]: malformed `coverage` attribute input
+  --> $DIR/bad-syntax.rs:26:1
+   |
+LL | #[coverage(off, off)]
+   | ^^^^^^^^^^----------^
+   |           |
+   |           expected a single argument here
+   |
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #[coverage(off, off)]
+LL + #[coverage(off)]
+   |
+LL - #[coverage(off, off)]
+LL + #[coverage(on)]
+   |
+
+error[E0805]: malformed `coverage` attribute input
+  --> $DIR/bad-syntax.rs:29:1
+   |
+LL | #[coverage(off, on)]
+   | ^^^^^^^^^^---------^
+   |           |
+   |           expected a single argument here
+   |
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #[coverage(off, on)]
+LL + #[coverage(off)]
+   |
+LL - #[coverage(off, on)]
+LL + #[coverage(on)]
+   |
+
+error[E0539]: malformed `coverage` attribute input
+  --> $DIR/bad-syntax.rs:32:1
+   |
+LL | #[coverage(bogus)]
+   | ^^^^^^^^^^^-----^^
+   |            |
+   |            valid arguments are `on` or `off`
+   |
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #[coverage(bogus)]
+LL + #[coverage(off)]
+   |
+LL - #[coverage(bogus)]
+LL + #[coverage(on)]
+   |
+
+error[E0805]: malformed `coverage` attribute input
+  --> $DIR/bad-syntax.rs:35:1
+   |
+LL | #[coverage(bogus, off)]
+   | ^^^^^^^^^^------------^
+   |           |
+   |           expected a single argument here
+   |
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #[coverage(bogus, off)]
+LL + #[coverage(off)]
+   |
+LL - #[coverage(bogus, off)]
+LL + #[coverage(on)]
+   |
+
+error[E0805]: malformed `coverage` attribute input
+  --> $DIR/bad-syntax.rs:38:1
+   |
+LL | #[coverage(off, bogus)]
+   | ^^^^^^^^^^------------^
+   |           |
+   |           expected a single argument here
+   |
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #[coverage(off, bogus)]
+LL + #[coverage(off)]
+   |
+LL - #[coverage(off, bogus)]
+LL + #[coverage(on)]
+   |
+
+error: expected identifier, found `,`
+  --> $DIR/bad-syntax.rs:44:12
+   |
+LL | #[coverage(,off)]
+   |            ^ expected identifier
+   |
+help: remove this comma
+   |
+LL - #[coverage(,off)]
+LL + #[coverage(off)]
+   |
+
+error: aborting due to 11 previous errors
+
+Some errors have detailed explanations: E0539, E0805.
+For more information about an error, try `rustc --explain E0539`.

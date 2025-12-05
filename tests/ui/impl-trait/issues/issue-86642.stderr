@@ -1,0 +1,11 @@
+error[E0562]: `impl Trait` is not allowed in static types
+  --> $DIR/issue-86642.rs:1:11
+   |
+LL | static x: impl Fn(&str) -> Result<&str, ()> = move |source| {
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `impl Trait` is only allowed in arguments and return types of functions and methods
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0562`.

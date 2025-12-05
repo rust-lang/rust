@@ -1,0 +1,15 @@
+error[E0700]: hidden type for `impl Iterator<Item = i32>` captures lifetime that does not appear in bounds
+  --> $DIR/explicit-lifetime-suggestion-in-proper-span-issue-121267.rs:8:5
+   |
+LL |   fn bar(src: &crate::Foo) -> impl Iterator<Item = i32> {
+   |                               ------------------------- opaque type defined here
+LL | /     [0].into_iter()
+LL | |
+LL | |         .filter_map(|_| foo(src))
+   | |_________________________________^
+   |
+   = note: hidden type `FilterMap<std::slice::Iter<'_, i32>, {closure@$DIR/explicit-lifetime-suggestion-in-proper-span-issue-121267.rs:10:21: 10:24}>` captures lifetime `'_`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0700`.

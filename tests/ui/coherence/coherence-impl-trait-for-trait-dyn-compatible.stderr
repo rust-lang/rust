@@ -1,0 +1,28 @@
+error[E0046]: not all trait items implemented, missing: `eq`
+  --> $DIR/coherence-impl-trait-for-trait-dyn-compatible.rs:7:1
+   |
+LL | trait DynIncompatible { fn eq(&self, other: Self); }
+   |                         -------------------------- `eq` from trait
+LL | impl DynIncompatible for dyn DynIncompatible { }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `eq` in implementation
+
+error[E0038]: the trait `DynIncompatible` is not dyn compatible
+  --> $DIR/coherence-impl-trait-for-trait-dyn-compatible.rs:7:26
+   |
+LL | impl DynIncompatible for dyn DynIncompatible { }
+   |                          ^^^^^^^^^^^^^^^^^^^ `DynIncompatible` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/coherence-impl-trait-for-trait-dyn-compatible.rs:6:45
+   |
+LL | trait DynIncompatible { fn eq(&self, other: Self); }
+   |       ---------------                       ^^^^ ...because method `eq` references the `Self` type in this parameter
+   |       |
+   |       this trait is not dyn compatible...
+   = help: consider moving `eq` to another trait
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0038, E0046.
+For more information about an error, try `rustc --explain E0038`.

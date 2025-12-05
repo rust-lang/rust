@@ -1,0 +1,116 @@
+error[E0637]: `&` without an explicit lifetime name cannot be used here
+  --> $DIR/implicit-stuff.rs:20:23
+   |
+LL |     let _ = for<> |_: &()| -> () {};
+   |                       ^ explicit lifetime name needed here
+
+error[E0637]: `&` without an explicit lifetime name cannot be used here
+  --> $DIR/implicit-stuff.rs:21:23
+   |
+LL |     let _ = for<> |x: &()| -> &() { x };
+   |                       ^ explicit lifetime name needed here
+
+error[E0637]: `&` without an explicit lifetime name cannot be used here
+  --> $DIR/implicit-stuff.rs:21:31
+   |
+LL |     let _ = for<> |x: &()| -> &() { x };
+   |                               ^ explicit lifetime name needed here
+
+error[E0637]: `'_` cannot be used here
+  --> $DIR/implicit-stuff.rs:23:24
+   |
+LL |     let _ = for<> |x: &'_ ()| -> &'_ () { x };
+   |                        ^^ `'_` is a reserved lifetime name
+
+error[E0637]: `'_` cannot be used here
+  --> $DIR/implicit-stuff.rs:23:35
+   |
+LL |     let _ = for<> |x: &'_ ()| -> &'_ () { x };
+   |                                   ^^ `'_` is a reserved lifetime name
+
+error[E0637]: `&` without an explicit lifetime name cannot be used here
+  --> $DIR/implicit-stuff.rs:25:25
+   |
+LL |     let _ = for<'a> |x: &()| -> &'a () { x };
+   |                         ^ explicit lifetime name needed here
+
+error[E0637]: `&` without an explicit lifetime name cannot be used here
+  --> $DIR/implicit-stuff.rs:26:36
+   |
+LL |     let _ = for<'a> |x: &'a ()| -> &() { x };
+   |                                    ^ explicit lifetime name needed here
+
+error: implicit types in closure signatures are forbidden when `for<...>` is present
+  --> $DIR/implicit-stuff.rs:5:21
+   |
+LL |     let _ = for<> || {};
+   |             -----   ^
+   |             |
+   |             `for<...>` is here
+
+error: implicit types in closure signatures are forbidden when `for<...>` is present
+  --> $DIR/implicit-stuff.rs:6:31
+   |
+LL |     let _ = for<'a> || -> &'a _ { &() };
+   |             -------           ^
+   |             |
+   |             `for<...>` is here
+
+error: implicit types in closure signatures are forbidden when `for<...>` is present
+  --> $DIR/implicit-stuff.rs:7:22
+   |
+LL |     let _ = for<'a> |x| -> &'a () { x };
+   |             -------  ^
+   |             |
+   |             `for<...>` is here
+
+error: implicit types in closure signatures are forbidden when `for<...>` is present
+  --> $DIR/implicit-stuff.rs:8:29
+   |
+LL |     let _ = for<'a> |x: &'a _| -> &'a () { x };
+   |             -------         ^
+   |             |
+   |             `for<...>` is here
+
+error: implicit types in closure signatures are forbidden when `for<...>` is present
+  --> $DIR/implicit-stuff.rs:9:35
+   |
+LL |     let _ = for<'a> |x: &'a Vec::<_>| -> &'a Vec::<()> { x };
+   |             -------               ^
+   |             |
+   |             `for<...>` is here
+
+error: implicit types in closure signatures are forbidden when `for<...>` is present
+  --> $DIR/implicit-stuff.rs:10:49
+   |
+LL |     let _ = for<'a> |x: &'a Vec<()>| -> &'a Vec<_> { x };
+   |             ------- `for<...>` is here          ^
+
+error: implicit types in closure signatures are forbidden when `for<...>` is present
+  --> $DIR/implicit-stuff.rs:11:29
+   |
+LL |     let _ = for<'a> |x: &'a _| -> &'a &'a () { x };
+   |             -------         ^
+   |             |
+   |             `for<...>` is here
+
+error: implicit types in closure signatures are forbidden when `for<...>` is present
+  --> $DIR/implicit-stuff.rs:12:29
+   |
+LL |     let _ = for<'a> |x: &'a _, y, z: _| -> &'a _ {
+   |             -------         ^  ^     ^         ^
+   |             |
+   |             `for<...>` is here
+
+error: lifetime may not live long enough
+  --> $DIR/implicit-stuff.rs:26:42
+   |
+LL |     let _ = for<'a> |x: &'a ()| -> &() { x };
+   |                 --                 -     ^ returning this value requires that `'a` must outlive `'1`
+   |                 |                  |
+   |                 |                  let's call the lifetime of this reference `'1`
+   |                 lifetime `'a` defined here
+
+error: aborting due to 16 previous errors
+
+For more information about this error, try `rustc --explain E0637`.

@@ -1,0 +1,440 @@
+- // MIR for `arithmetic` before GVN
++ // MIR for `arithmetic` after GVN
+  
+  fn arithmetic(_1: u64) -> () {
+      debug x => _1;
+      let mut _0: ();
+      let _2: ();
+      let mut _3: u64;
+      let mut _4: u64;
+      let _5: ();
+      let mut _6: u64;
+      let mut _7: u64;
+      let _8: ();
+      let mut _9: u64;
+      let mut _10: u64;
+      let mut _11: u64;
+      let _12: ();
+      let mut _13: u64;
+      let mut _14: u64;
+      let _15: ();
+      let mut _16: u64;
+      let mut _17: u64;
+      let _18: ();
+      let mut _19: u64;
+      let mut _20: u64;
+      let mut _21: bool;
+      let _22: ();
+      let mut _23: u64;
+      let mut _24: u64;
+      let mut _25: bool;
+      let _26: ();
+      let mut _27: u64;
+      let mut _28: u64;
+      let mut _29: bool;
+      let _30: ();
+      let mut _31: u64;
+      let mut _32: u64;
+      let mut _33: bool;
+      let _34: ();
+      let mut _35: u64;
+      let mut _36: u64;
+      let mut _37: bool;
+      let _38: ();
+      let mut _39: u64;
+      let mut _40: u64;
+      let mut _41: bool;
+      let _42: ();
+      let mut _43: u64;
+      let mut _44: u64;
+      let mut _45: bool;
+      let _46: ();
+      let mut _47: u64;
+      let mut _48: u64;
+      let mut _49: bool;
+      let _50: ();
+      let mut _51: u64;
+      let mut _52: u64;
+      let _53: ();
+      let mut _54: u64;
+      let mut _55: u64;
+      let _56: ();
+      let mut _57: u64;
+      let mut _58: u64;
+      let _59: ();
+      let mut _60: u64;
+      let mut _61: u64;
+      let _62: ();
+      let mut _63: u64;
+      let mut _64: u64;
+      let _65: ();
+      let mut _66: u64;
+      let mut _67: u64;
+      let mut _68: u64;
+      let _69: ();
+      let mut _70: u64;
+      let mut _71: u64;
+      let _72: ();
+      let mut _73: u64;
+      let mut _74: u64;
+  
+      bb0: {
+          StorageLive(_2);
+          StorageLive(_3);
+          StorageLive(_4);
+          _4 = copy _1;
+-         _3 = Add(move _4, const 0_u64);
++         _3 = copy _1;
+          StorageDead(_4);
+-         _2 = opaque::<u64>(move _3) -> [return: bb1, unwind continue];
++         _2 = opaque::<u64>(copy _1) -> [return: bb1, unwind continue];
+      }
+  
+      bb1: {
+          StorageDead(_3);
+          StorageDead(_2);
+          StorageLive(_5);
+          StorageLive(_6);
+          StorageLive(_7);
+          _7 = copy _1;
+-         _6 = Sub(move _7, const 0_u64);
++         _6 = copy _1;
+          StorageDead(_7);
+-         _5 = opaque::<u64>(move _6) -> [return: bb2, unwind continue];
++         _5 = opaque::<u64>(copy _1) -> [return: bb2, unwind continue];
+      }
+  
+      bb2: {
+          StorageDead(_6);
+          StorageDead(_5);
+          StorageLive(_8);
+-         StorageLive(_9);
++         nop;
+          StorageLive(_10);
+          _10 = copy _1;
+          StorageLive(_11);
+          _11 = copy _1;
+-         _9 = Sub(move _10, move _11);
++         _9 = const 0_u64;
+          StorageDead(_11);
+          StorageDead(_10);
+-         _8 = opaque::<u64>(move _9) -> [return: bb3, unwind continue];
++         _8 = opaque::<u64>(const 0_u64) -> [return: bb3, unwind continue];
+      }
+  
+      bb3: {
+-         StorageDead(_9);
++         nop;
+          StorageDead(_8);
+          StorageLive(_12);
+          StorageLive(_13);
+          StorageLive(_14);
+          _14 = copy _1;
+-         _13 = Mul(move _14, const 0_u64);
++         _13 = const 0_u64;
+          StorageDead(_14);
+-         _12 = opaque::<u64>(move _13) -> [return: bb4, unwind continue];
++         _12 = opaque::<u64>(const 0_u64) -> [return: bb4, unwind continue];
+      }
+  
+      bb4: {
+          StorageDead(_13);
+          StorageDead(_12);
+          StorageLive(_15);
+          StorageLive(_16);
+          StorageLive(_17);
+          _17 = copy _1;
+-         _16 = Mul(move _17, const 1_u64);
++         _16 = copy _1;
+          StorageDead(_17);
+-         _15 = opaque::<u64>(move _16) -> [return: bb5, unwind continue];
++         _15 = opaque::<u64>(copy _1) -> [return: bb5, unwind continue];
+      }
+  
+      bb5: {
+          StorageDead(_16);
+          StorageDead(_15);
+          StorageLive(_18);
+          StorageLive(_19);
+          StorageLive(_20);
+          _20 = copy _1;
+-         _21 = Eq(const 0_u64, const 0_u64);
+-         assert(!move _21, "attempt to divide `{}` by zero", copy _20) -> [success: bb6, unwind continue];
++         _21 = const true;
++         assert(!const true, "attempt to divide `{}` by zero", copy _1) -> [success: bb6, unwind continue];
+      }
+  
+      bb6: {
+-         _19 = Div(move _20, const 0_u64);
++         _19 = Div(copy _1, const 0_u64);
+          StorageDead(_20);
+          _18 = opaque::<u64>(move _19) -> [return: bb7, unwind continue];
+      }
+  
+      bb7: {
+          StorageDead(_19);
+          StorageDead(_18);
+          StorageLive(_22);
+          StorageLive(_23);
+          StorageLive(_24);
+          _24 = copy _1;
+-         _25 = Eq(const 1_u64, const 0_u64);
+-         assert(!move _25, "attempt to divide `{}` by zero", copy _24) -> [success: bb8, unwind continue];
++         _25 = const false;
++         assert(!const false, "attempt to divide `{}` by zero", copy _1) -> [success: bb8, unwind continue];
+      }
+  
+      bb8: {
+-         _23 = Div(move _24, const 1_u64);
++         _23 = copy _1;
+          StorageDead(_24);
+-         _22 = opaque::<u64>(move _23) -> [return: bb9, unwind continue];
++         _22 = opaque::<u64>(copy _1) -> [return: bb9, unwind continue];
+      }
+  
+      bb9: {
+          StorageDead(_23);
+          StorageDead(_22);
+          StorageLive(_26);
+          StorageLive(_27);
+          StorageLive(_28);
+          _28 = copy _1;
+-         _29 = Eq(copy _28, const 0_u64);
+-         assert(!move _29, "attempt to divide `{}` by zero", const 0_u64) -> [success: bb10, unwind continue];
++         _29 = Eq(copy _1, const 0_u64);
++         assert(!copy _29, "attempt to divide `{}` by zero", const 0_u64) -> [success: bb10, unwind continue];
+      }
+  
+      bb10: {
+-         _27 = Div(const 0_u64, move _28);
++         _27 = const 0_u64;
+          StorageDead(_28);
+-         _26 = opaque::<u64>(move _27) -> [return: bb11, unwind continue];
++         _26 = opaque::<u64>(const 0_u64) -> [return: bb11, unwind continue];
+      }
+  
+      bb11: {
+          StorageDead(_27);
+          StorageDead(_26);
+          StorageLive(_30);
+          StorageLive(_31);
+          StorageLive(_32);
+          _32 = copy _1;
+-         _33 = Eq(copy _32, const 0_u64);
+-         assert(!move _33, "attempt to divide `{}` by zero", const 1_u64) -> [success: bb12, unwind continue];
++         _33 = copy _29;
++         assert(!copy _29, "attempt to divide `{}` by zero", const 1_u64) -> [success: bb12, unwind continue];
+      }
+  
+      bb12: {
+-         _31 = Div(const 1_u64, move _32);
++         _31 = Div(const 1_u64, copy _1);
+          StorageDead(_32);
+          _30 = opaque::<u64>(move _31) -> [return: bb13, unwind continue];
+      }
+  
+      bb13: {
+          StorageDead(_31);
+          StorageDead(_30);
+          StorageLive(_34);
+          StorageLive(_35);
+          StorageLive(_36);
+          _36 = copy _1;
+-         _37 = Eq(const 0_u64, const 0_u64);
+-         assert(!move _37, "attempt to calculate the remainder of `{}` with a divisor of zero", copy _36) -> [success: bb14, unwind continue];
++         _37 = const true;
++         assert(!const true, "attempt to calculate the remainder of `{}` with a divisor of zero", copy _1) -> [success: bb14, unwind continue];
+      }
+  
+      bb14: {
+-         _35 = Rem(move _36, const 0_u64);
++         _35 = Rem(copy _1, const 0_u64);
+          StorageDead(_36);
+          _34 = opaque::<u64>(move _35) -> [return: bb15, unwind continue];
+      }
+  
+      bb15: {
+          StorageDead(_35);
+          StorageDead(_34);
+          StorageLive(_38);
+          StorageLive(_39);
+          StorageLive(_40);
+          _40 = copy _1;
+-         _41 = Eq(const 1_u64, const 0_u64);
+-         assert(!move _41, "attempt to calculate the remainder of `{}` with a divisor of zero", copy _40) -> [success: bb16, unwind continue];
++         _41 = const false;
++         assert(!const false, "attempt to calculate the remainder of `{}` with a divisor of zero", copy _1) -> [success: bb16, unwind continue];
+      }
+  
+      bb16: {
+-         _39 = Rem(move _40, const 1_u64);
++         _39 = const 0_u64;
+          StorageDead(_40);
+-         _38 = opaque::<u64>(move _39) -> [return: bb17, unwind continue];
++         _38 = opaque::<u64>(const 0_u64) -> [return: bb17, unwind continue];
+      }
+  
+      bb17: {
+          StorageDead(_39);
+          StorageDead(_38);
+          StorageLive(_42);
+          StorageLive(_43);
+          StorageLive(_44);
+          _44 = copy _1;
+-         _45 = Eq(copy _44, const 0_u64);
+-         assert(!move _45, "attempt to calculate the remainder of `{}` with a divisor of zero", const 0_u64) -> [success: bb18, unwind continue];
++         _45 = copy _29;
++         assert(!copy _29, "attempt to calculate the remainder of `{}` with a divisor of zero", const 0_u64) -> [success: bb18, unwind continue];
+      }
+  
+      bb18: {
+-         _43 = Rem(const 0_u64, move _44);
++         _43 = const 0_u64;
+          StorageDead(_44);
+-         _42 = opaque::<u64>(move _43) -> [return: bb19, unwind continue];
++         _42 = opaque::<u64>(const 0_u64) -> [return: bb19, unwind continue];
+      }
+  
+      bb19: {
+          StorageDead(_43);
+          StorageDead(_42);
+          StorageLive(_46);
+          StorageLive(_47);
+          StorageLive(_48);
+          _48 = copy _1;
+-         _49 = Eq(copy _48, const 0_u64);
+-         assert(!move _49, "attempt to calculate the remainder of `{}` with a divisor of zero", const 1_u64) -> [success: bb20, unwind continue];
++         _49 = copy _29;
++         assert(!copy _29, "attempt to calculate the remainder of `{}` with a divisor of zero", const 1_u64) -> [success: bb20, unwind continue];
+      }
+  
+      bb20: {
+-         _47 = Rem(const 1_u64, move _48);
++         _47 = Rem(const 1_u64, copy _1);
+          StorageDead(_48);
+          _46 = opaque::<u64>(move _47) -> [return: bb21, unwind continue];
+      }
+  
+      bb21: {
+          StorageDead(_47);
+          StorageDead(_46);
+          StorageLive(_50);
+          StorageLive(_51);
+          StorageLive(_52);
+          _52 = copy _1;
+-         _51 = BitAnd(move _52, const 0_u64);
++         _51 = const 0_u64;
+          StorageDead(_52);
+-         _50 = opaque::<u64>(move _51) -> [return: bb22, unwind continue];
++         _50 = opaque::<u64>(const 0_u64) -> [return: bb22, unwind continue];
+      }
+  
+      bb22: {
+          StorageDead(_51);
+          StorageDead(_50);
+          StorageLive(_53);
+          StorageLive(_54);
+          StorageLive(_55);
+          _55 = copy _1;
+-         _54 = BitAnd(move _55, const core::num::<impl u64>::MAX);
++         _54 = copy _1;
+          StorageDead(_55);
+-         _53 = opaque::<u64>(move _54) -> [return: bb23, unwind continue];
++         _53 = opaque::<u64>(copy _1) -> [return: bb23, unwind continue];
+      }
+  
+      bb23: {
+          StorageDead(_54);
+          StorageDead(_53);
+          StorageLive(_56);
+          StorageLive(_57);
+          StorageLive(_58);
+          _58 = copy _1;
+-         _57 = BitOr(move _58, const 0_u64);
++         _57 = copy _1;
+          StorageDead(_58);
+-         _56 = opaque::<u64>(move _57) -> [return: bb24, unwind continue];
++         _56 = opaque::<u64>(copy _1) -> [return: bb24, unwind continue];
+      }
+  
+      bb24: {
+          StorageDead(_57);
+          StorageDead(_56);
+          StorageLive(_59);
+          StorageLive(_60);
+          StorageLive(_61);
+          _61 = copy _1;
+-         _60 = BitOr(move _61, const core::num::<impl u64>::MAX);
++         _60 = const u64::MAX;
+          StorageDead(_61);
+-         _59 = opaque::<u64>(move _60) -> [return: bb25, unwind continue];
++         _59 = opaque::<u64>(const u64::MAX) -> [return: bb25, unwind continue];
+      }
+  
+      bb25: {
+          StorageDead(_60);
+          StorageDead(_59);
+          StorageLive(_62);
+          StorageLive(_63);
+          StorageLive(_64);
+          _64 = copy _1;
+-         _63 = BitXor(move _64, const 0_u64);
++         _63 = copy _1;
+          StorageDead(_64);
+-         _62 = opaque::<u64>(move _63) -> [return: bb26, unwind continue];
++         _62 = opaque::<u64>(copy _1) -> [return: bb26, unwind continue];
+      }
+  
+      bb26: {
+          StorageDead(_63);
+          StorageDead(_62);
+          StorageLive(_65);
+          StorageLive(_66);
+          StorageLive(_67);
+          _67 = copy _1;
+          StorageLive(_68);
+          _68 = copy _1;
+-         _66 = BitXor(move _67, move _68);
++         _66 = const 0_u64;
+          StorageDead(_68);
+          StorageDead(_67);
+-         _65 = opaque::<u64>(move _66) -> [return: bb27, unwind continue];
++         _65 = opaque::<u64>(const 0_u64) -> [return: bb27, unwind continue];
+      }
+  
+      bb27: {
+          StorageDead(_66);
+          StorageDead(_65);
+          StorageLive(_69);
+          StorageLive(_70);
+          StorageLive(_71);
+          _71 = copy _1;
+-         _70 = Shr(move _71, const 0_i32);
++         _70 = copy _1;
+          StorageDead(_71);
+-         _69 = opaque::<u64>(move _70) -> [return: bb28, unwind continue];
++         _69 = opaque::<u64>(copy _1) -> [return: bb28, unwind continue];
+      }
+  
+      bb28: {
+          StorageDead(_70);
+          StorageDead(_69);
+          StorageLive(_72);
+          StorageLive(_73);
+          StorageLive(_74);
+          _74 = copy _1;
+-         _73 = Shl(move _74, const 0_i32);
++         _73 = copy _1;
+          StorageDead(_74);
+-         _72 = opaque::<u64>(move _73) -> [return: bb29, unwind continue];
++         _72 = opaque::<u64>(copy _1) -> [return: bb29, unwind continue];
+      }
+  
+      bb29: {
+          StorageDead(_73);
+          StorageDead(_72);
+          _0 = const ();
+          return;
+      }
+  }
+  

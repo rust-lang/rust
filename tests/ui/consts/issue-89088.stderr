@@ -1,0 +1,17 @@
+error: constant of non-structural type `Cow<'_, str>` in a pattern
+  --> $DIR/issue-89088.rs:16:9
+   |
+LL | const FOO: &A = &A::Field(Cow::Borrowed("foo"));
+   | ------------- constant defined here
+...
+LL |         FOO => todo!(),
+   |         ^^^ constant of non-structural type
+   |
+  --> $SRC_DIR/alloc/src/borrow.rs:LL:COL
+   |
+   = note: `Cow<'_, str>` must be annotated with `#[derive(PartialEq)]` to be usable in patterns
+   |
+   = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralPartialEq.html for details
+
+error: aborting due to 1 previous error
+

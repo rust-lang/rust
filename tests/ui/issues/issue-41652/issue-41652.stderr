@@ -1,0 +1,14 @@
+error[E0689]: can't call method `f` on ambiguous numeric type `{integer}`
+  --> $DIR/issue-41652.rs:9:11
+   |
+LL |         3.f()
+   |           ^
+   |
+help: you must specify a concrete type for this numeric value, like `i32`
+   |
+LL |         3_i32.f()
+   |          ++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0689`.

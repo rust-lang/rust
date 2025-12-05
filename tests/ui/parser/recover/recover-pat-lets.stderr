@@ -1,0 +1,52 @@
+error: expected a pattern, found an expression
+  --> $DIR/recover-pat-lets.rs:4:9
+   |
+LL |     let x.expect("foo");
+   |         ^^^^^^^^^^^^^^^ not a pattern
+   |
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
+
+error: expected a pattern, found an expression
+  --> $DIR/recover-pat-lets.rs:7:9
+   |
+LL |     let x.unwrap(): u32;
+   |         ^^^^^^^^^^ not a pattern
+   |
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
+
+error: expected a pattern, found an expression
+  --> $DIR/recover-pat-lets.rs:10:9
+   |
+LL |     let x[0] = 1;
+   |         ^^^^ not a pattern
+   |
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
+
+error: expected a pattern, found an expression
+  --> $DIR/recover-pat-lets.rs:13:14
+   |
+LL |     let Some(1 + 1) = x else {
+   |              ^^^^^ not a pattern
+   |
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
+help: consider extracting the expression into a `const`
+   |
+LL +     const VAL: /* Type */ = 1 + 1;
+LL ~     let Some(VAL) = x else {
+   |
+
+error: expected a pattern, found an expression
+  --> $DIR/recover-pat-lets.rs:17:17
+   |
+LL |     if let Some(1 + 1) = x {
+   |                 ^^^^^ not a pattern
+   |
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
+help: consider extracting the expression into a `const`
+   |
+LL +     const VAL: /* Type */ = 1 + 1;
+LL ~     if let Some(VAL) = x {
+   |
+
+error: aborting due to 5 previous errors
+

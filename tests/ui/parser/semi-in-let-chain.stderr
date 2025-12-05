@@ -1,0 +1,50 @@
+error: expected `{`, found `;`
+  --> $DIR/semi-in-let-chain.rs:6:23
+   |
+LL |         && let () = ();
+   |                       ^ expected `{`
+   |
+note: you likely meant to continue parsing the let-chain starting here
+  --> $DIR/semi-in-let-chain.rs:7:9
+   |
+LL |         && let () = ()
+   |         ^^^^^^
+help: consider removing this semicolon to parse the `let` as part of the same chain
+   |
+LL -         && let () = ();
+LL +         && let () = ()
+   |
+
+error: expected `{`, found `;`
+  --> $DIR/semi-in-let-chain.rs:14:20
+   |
+LL |         && () == ();
+   |                    ^ expected `{`
+   |
+note: the `if` expression is missing a block after this condition
+  --> $DIR/semi-in-let-chain.rs:13:8
+   |
+LL |       if let () = ()
+   |  ________^
+LL | |         && () == ();
+   | |___________________^
+
+error: expected `{`, found `;`
+  --> $DIR/semi-in-let-chain.rs:22:20
+   |
+LL |         && () == ();
+   |                    ^ expected `{`
+   |
+note: you likely meant to continue parsing the let-chain starting here
+  --> $DIR/semi-in-let-chain.rs:23:9
+   |
+LL |         && let () = ()
+   |         ^^^^^^
+help: consider removing this semicolon to parse the `let` as part of the same chain
+   |
+LL -         && () == ();
+LL +         && () == ()
+   |
+
+error: aborting due to 3 previous errors
+

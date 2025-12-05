@@ -1,0 +1,83 @@
+error: you are deriving `PartialEq` and can implement `Eq`
+  --> tests/ui/derive_partial_eq_without_eq.rs:11:17
+   |
+LL | #[derive(Debug, PartialEq)]
+   |                 ^^^^^^^^^ help: consider deriving `Eq` as well: `PartialEq, Eq`
+   |
+   = note: `-D clippy::derive-partial-eq-without-eq` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::derive_partial_eq_without_eq)]`
+
+error: you are deriving `PartialEq` and can implement `Eq`
+  --> tests/ui/derive_partial_eq_without_eq.rs:70:10
+   |
+LL | #[derive(PartialEq)]
+   |          ^^^^^^^^^ help: consider deriving `Eq` as well: `PartialEq, Eq`
+
+error: you are deriving `PartialEq` and can implement `Eq`
+  --> tests/ui/derive_partial_eq_without_eq.rs:77:10
+   |
+LL | #[derive(PartialEq)]
+   |          ^^^^^^^^^ help: consider deriving `Eq` as well: `PartialEq, Eq`
+
+error: you are deriving `PartialEq` and can implement `Eq`
+  --> tests/ui/derive_partial_eq_without_eq.rs:84:10
+   |
+LL | #[derive(PartialEq)]
+   |          ^^^^^^^^^ help: consider deriving `Eq` as well: `PartialEq, Eq`
+
+error: you are deriving `PartialEq` and can implement `Eq`
+  --> tests/ui/derive_partial_eq_without_eq.rs:88:10
+   |
+LL | #[derive(PartialEq)]
+   |          ^^^^^^^^^ help: consider deriving `Eq` as well: `PartialEq, Eq`
+
+error: you are deriving `PartialEq` and can implement `Eq`
+  --> tests/ui/derive_partial_eq_without_eq.rs:95:10
+   |
+LL | #[derive(PartialEq)]
+   |          ^^^^^^^^^ help: consider deriving `Eq` as well: `PartialEq, Eq`
+
+error: you are deriving `PartialEq` and can implement `Eq`
+  --> tests/ui/derive_partial_eq_without_eq.rs:102:10
+   |
+LL | #[derive(PartialEq)]
+   |          ^^^^^^^^^ help: consider deriving `Eq` as well: `PartialEq, Eq`
+
+error: you are deriving `PartialEq` and can implement `Eq`
+  --> tests/ui/derive_partial_eq_without_eq.rs:116:17
+   |
+LL | #[derive(Debug, PartialEq, Clone)]
+   |                 ^^^^^^^^^ help: consider deriving `Eq` as well: `PartialEq, Eq`
+
+error: you are deriving `PartialEq` and can implement `Eq`
+  --> tests/ui/derive_partial_eq_without_eq.rs:120:10
+   |
+LL | #[derive(PartialEq)]
+   |          ^^^^^^^^^ help: consider deriving `Eq` as well: `PartialEq, Eq`
+
+error: you are deriving `PartialEq` and can implement `Eq`
+  --> tests/ui/derive_partial_eq_without_eq.rs:128:14
+   |
+LL |     #[derive(PartialEq)]
+   |              ^^^^^^^^^ help: consider deriving `Eq` as well: `PartialEq, Eq`
+
+error: you are deriving `PartialEq` and can implement `Eq`
+  --> tests/ui/derive_partial_eq_without_eq.rs:132:14
+   |
+LL |     #[derive(PartialEq)]
+   |              ^^^^^^^^^ help: consider deriving `Eq` as well: `PartialEq, Eq`
+
+error: you are deriving `PartialEq` and can implement `Eq`
+  --> tests/ui/derive_partial_eq_without_eq.rs:193:14
+   |
+LL |     #[derive(PartialEq)]
+   |              ^^^^^^^^^ help: consider deriving `Eq` as well: `PartialEq, Eq`
+
+error: you are deriving `PartialEq` and can implement `Eq`
+  --> tests/ui/derive_partial_eq_without_eq.rs:202:14
+   |
+LL |     #[derive(PartialEq)]
+   |              ^^^^^^^^^ help: consider deriving `Eq` as well: `PartialEq, Eq`
+
+error: aborting due to 13 previous errors
+

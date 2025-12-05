@@ -1,0 +1,61 @@
+name: autopublish
+on:
+  workflow_dispatch: # We can add version input when 1.0 is released and scheduled releases are removed
+
+  #   schedule:
+  #     - cron: "0 0 * * *" # midnight UTC
+
+  push:
+    branches:
+      - release
+
+jobs:
+  publish:
+    if: ${{ github.repository == 'rust-lang/rust-analyzer' || github.event_name == 'workflow_dispatch' }}
+    name: publish
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # https://github.com/jlumbroso/free-disk-space/blob/main/action.yml
+      - name: Free up some disk space
+        run: sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/.ghcup
+
+      - name: Install Rust toolchain
+        run: rustup update --no-self-update stable
+
+      - name: Install cargo-workspaces
+        run: cargo install cargo-workspaces --version "0.3.6"
+
+      - name: Publish Crates
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+          RUN_NUMBER: ${{ github.run_number }}
+        shell: bash
+        run: |
+          git config --global user.email "runner@gha.local"
+          git config --global user.name "GitHub Action"
+          rm Cargo.lock
+          # Fix names for crates that were published before switch to kebab-case.
+          cargo workspaces rename --from base-db base_db
+          cargo workspaces rename --from hir-def hir_def
+          cargo workspaces rename --from hir-expand hir_expand
+          cargo workspaces rename --from hir-ty hir_ty
+          cargo workspaces rename --from ide-assists ide_assists
+          cargo workspaces rename --from ide-completion ide_completion
+          cargo workspaces rename --from ide-db ide_db
+          cargo workspaces rename --from ide-diagnostics ide_diagnostics
+          cargo workspaces rename --from ide-ssr ide_ssr
+          cargo workspaces rename --from proc-macro-api proc_macro_api
+          cargo workspaces rename --from proc-macro-srv proc_macro_srv
+          cargo workspaces rename --from project-model project_model
+          cargo workspaces rename --from test-fixture test_fixture
+          cargo workspaces rename --from test-utils test_utils
+          # Remove library crates and xtask from the workspaces so we don't auto-publish them as well
+          sed -i 's|^members = .*$|members = ["crates/*"]|' Cargo.toml
+          cargo workspaces rename ra_ap_%n
+          find crates/rust-analyzer -type f -name '*.rs' -exec sed -i 's/rust_analyzer/ra_ap_rust_analyzer/g' {} +
+          cargo workspaces publish --yes --force '*' --exact --no-git-commit --allow-dirty --skip-published custom 0.0.$(($RUN_NUMBER + 133))

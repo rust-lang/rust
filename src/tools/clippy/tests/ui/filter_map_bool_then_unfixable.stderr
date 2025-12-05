@@ -1,0 +1,65 @@
+error: usage of `bool::then` in `filter_map`
+  --> tests/ui/filter_map_bool_then_unfixable.rs:6:48
+   |
+LL |       let _ = (0..x.len()).zip(x.clone().iter()).filter_map(|(i, v)| {
+   |  ________________________________________________^
+LL | |
+LL | |         (x[i] != *v).then(|| {
+LL | |             x[i] = i;
+LL | |             i
+LL | |         })
+LL | |     });
+   | |______^
+   |
+   = help: consider using `filter` then `map` instead
+   = note: `-D clippy::filter-map-bool-then` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::filter_map_bool_then)]`
+
+error: usage of `bool::then` in `filter_map`
+  --> tests/ui/filter_map_bool_then_unfixable.rs:22:26
+   |
+LL |         let _ = x.iter().filter_map(|&x| x?.then(|| do_something(())));
+   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using `filter` then `map` instead
+
+error: usage of `bool::then` in `filter_map`
+  --> tests/ui/filter_map_bool_then_unfixable.rs:26:14
+   |
+LL |             .filter_map(|&x| if let Some(x) = x { x } else { return None }.then(|| do_something(())));
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using `filter` then `map` instead
+
+error: usage of `bool::then` in `filter_map`
+  --> tests/ui/filter_map_bool_then_unfixable.rs:28:26
+   |
+LL |           let _ = x.iter().filter_map(|&x| {
+   |  __________________________^
+LL | |
+LL | |             match x {
+LL | |                 Some(x) => x,
+...  |
+LL | |             .then(|| do_something(()))
+LL | |         });
+   | |__________^
+   |
+   = help: consider using `filter` then `map` instead
+
+error: usage of `bool::then` in `filter_map`
+  --> tests/ui/filter_map_bool_then_unfixable.rs:46:26
+   |
+LL |           let _ = x.iter().filter_map(|&x| {
+   |  __________________________^
+LL | |
+LL | |             match x {
+LL | |                 Foo::One(x) => x,
+...  |
+LL | |             .then(|| do_something(()))
+LL | |         });
+   | |__________^
+   |
+   = help: consider using `filter` then `map` instead
+
+error: aborting due to 5 previous errors
+

@@ -1,0 +1,67 @@
+error[E0308]: mismatched types
+  --> $DIR/overloaded-calls-bad.rs:33:17
+   |
+LL |     let ans = s("what");
+   |               - ^^^^^^ expected `isize`, found `&str`
+   |               |
+   |               arguments to this function are incorrect
+   |
+note: implementation defined here
+  --> $DIR/overloaded-calls-bad.rs:10:1
+   |
+LL | impl FnMut<(isize,)> for S {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0057]: this function takes 1 argument but 0 arguments were supplied
+  --> $DIR/overloaded-calls-bad.rs:35:15
+   |
+LL |     let ans = s();
+   |               ^-- argument #1 of type `isize` is missing
+   |
+note: implementation defined here
+  --> $DIR/overloaded-calls-bad.rs:10:1
+   |
+LL | impl FnMut<(isize,)> for S {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: provide the argument
+   |
+LL |     let ans = s(/* isize */);
+   |                 +++++++++++
+
+error[E0057]: this function takes 1 argument but 2 arguments were supplied
+  --> $DIR/overloaded-calls-bad.rs:37:15
+   |
+LL |     let ans = s("burma", "shave");
+   |               ^ -------  ------- unexpected argument #2 of type `&'static str`
+   |                 |
+   |                 expected `isize`, found `&str`
+   |
+note: implementation defined here
+  --> $DIR/overloaded-calls-bad.rs:10:1
+   |
+LL | impl FnMut<(isize,)> for S {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: remove the extra argument
+   |
+LL -     let ans = s("burma", "shave");
+LL +     let ans = s(/* isize */);
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/overloaded-calls-bad.rs:40:7
+   |
+LL |     F("");
+   |     - ^^ expected `i32`, found `&str`
+   |     |
+   |     arguments to this struct are incorrect
+   |
+note: implementation defined here
+  --> $DIR/overloaded-calls-bad.rs:25:1
+   |
+LL | impl FnOnce<(i32,)> for F {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0057, E0308.
+For more information about an error, try `rustc --explain E0057`.

@@ -1,0 +1,74 @@
+#![allow(non_local_definitions, clippy::manual_repeat_n)]
+#![warn(clippy::manual_str_repeat)]
+
+use std::borrow::Cow;
+use std::iter::repeat;
+
+fn main() {
+    let _: String = "test".repeat(10);
+    //~^ manual_str_repeat
+    let _: String = "x".repeat(10);
+    //~^ manual_str_repeat
+    let _: String = "'".repeat(10);
+    //~^ manual_str_repeat
+    let _: String = "\"".repeat(10);
+    //~^ manual_str_repeat
+
+    let x = "test";
+    let count = 10;
+    let _ = x.repeat(count + 2);
+    //~^ manual_str_repeat
+
+    macro_rules! m {
+        ($e:expr) => {{ $e }};
+    }
+    // FIXME: macro args are fine
+    let _: String = repeat(m!("test")).take(m!(count)).collect();
+
+    let x = &x;
+    let _: String = (*x).repeat(count);
+    //~^ manual_str_repeat
+
+    macro_rules! repeat_m {
+        ($e:expr) => {{ repeat($e) }};
+    }
+    // Don't lint, repeat is from a macro.
+    let _: String = repeat_m!("test").take(count).collect();
+
+    let x: Box<str> = Box::from("test");
+    let _: String = x.repeat(count);
+    //~^ manual_str_repeat
+
+    #[derive(Clone)]
+    struct S;
+    impl FromIterator<Box<S>> for String {
+        fn from_iter<T: IntoIterator<Item = Box<S>>>(_: T) -> Self {
+            Self::new()
+        }
+    }
+    // Don't lint, wrong box type
+    let _: String = repeat(Box::new(S)).take(count).collect();
+
+    let _: String = Cow::Borrowed("test").repeat(count);
+    //~^ manual_str_repeat
+
+    let x = "x".to_owned();
+    let _: String = x.repeat(count);
+    //~^ manual_str_repeat
+
+    let x = 'x';
+    // Don't lint, not char literal
+    let _: String = repeat(x).take(count).collect();
+}
+
+#[clippy::msrv = "1.15"]
+fn _msrv_1_15() {
+    // `str::repeat` was stabilized in 1.16. Do not lint this
+    let _: String = std::iter::repeat("test").take(10).collect();
+}
+
+#[clippy::msrv = "1.16"]
+fn _msrv_1_16() {
+    let _: String = "test".repeat(10);
+    //~^ manual_str_repeat
+}

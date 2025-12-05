@@ -1,0 +1,22 @@
+error[E0369]: cannot add `{integer}` to `&str`
+  --> $DIR/issue-79040.rs:2:25
+   |
+LL |     const FOO = "hello" + 1;
+   |                 ------- ^ - {integer}
+   |                 |
+   |                 &str
+
+error: missing type for `const` item
+  --> $DIR/issue-79040.rs:2:14
+   |
+LL |     const FOO = "hello" + 1;
+   |              ^
+   |
+help: provide a type for the item
+   |
+LL |     const FOO: <type> = "hello" + 1;
+   |              ++++++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0369`.

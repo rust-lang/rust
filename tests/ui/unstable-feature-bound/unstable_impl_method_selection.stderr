@@ -1,0 +1,14 @@
+error[E0283]: type annotations needed
+  --> $DIR/unstable_impl_method_selection.rs:11:12
+   |
+LL |     vec![].foo();
+   |            ^^^ cannot infer type for struct `Vec<_>`
+   |
+   = note: multiple `impl`s satisfying `Vec<_>: Trait` found in the `unstable_impl_method_selection_aux` crate:
+           - impl Trait for Vec<u32>;
+           - impl Trait for Vec<u64>
+             where feature(bar) is enabled;
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0283`.

@@ -1,0 +1,25 @@
+error[E0059]: type parameter to bare `Fn` trait must be a tuple
+  --> $DIR/E0059.rs:3:11
+   |
+LL | fn foo<F: Fn<i32>>(f: F) -> F::Output { f(3) }
+   |           ^^^^^^^ the trait `Tuple` is not implemented for `i32`
+   |
+note: required by a bound in `Fn`
+  --> $SRC_DIR/core/src/ops/function.rs:LL:COL
+
+error[E0277]: `i32` is not a tuple
+  --> $DIR/E0059.rs:3:41
+   |
+LL | fn foo<F: Fn<i32>>(f: F) -> F::Output { f(3) }
+   |                                         ^^^^ the trait `Tuple` is not implemented for `i32`
+
+error[E0059]: cannot use call notation; the first type parameter for the function trait is neither a tuple nor unit
+  --> $DIR/E0059.rs:3:41
+   |
+LL | fn foo<F: Fn<i32>>(f: F) -> F::Output { f(3) }
+   |                                         ^^^^
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0059, E0277.
+For more information about an error, try `rustc --explain E0059`.

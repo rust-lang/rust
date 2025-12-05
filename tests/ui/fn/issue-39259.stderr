@@ -1,0 +1,38 @@
+error[E0229]: associated item constraints are not allowed here
+  --> $DIR/issue-39259.rs:6:17
+   |
+LL | impl Fn(u32) -> u32 for S {
+   |                 ^^^ associated item constraint not allowed here
+   |
+help: parenthesized trait syntax expands to `Fn<(u32,), Output=u32>`
+  --> $DIR/issue-39259.rs:6:6
+   |
+LL | impl Fn(u32) -> u32 for S {
+   |      ^^^^^^^^^^^^^^
+
+error[E0050]: method `call` has 1 parameter but the declaration in trait `call` has 2
+  --> $DIR/issue-39259.rs:9:13
+   |
+LL |     fn call(&self) -> u32 {
+   |             ^^^^^ expected 2 parameters, found 1
+   |
+   = note: `call` from trait: `extern "rust-call" fn(&Self, Args) -> <Self as FnOnce<Args>>::Output`
+
+error[E0277]: expected a `FnMut(u32)` closure, found `S`
+  --> $DIR/issue-39259.rs:6:25
+   |
+LL | impl Fn(u32) -> u32 for S {
+   |                         ^ expected an `FnMut(u32)` closure, found `S`
+   |
+help: the trait `FnMut(u32)` is not implemented for `S`
+  --> $DIR/issue-39259.rs:4:1
+   |
+LL | struct S;
+   | ^^^^^^^^
+note: required by a bound in `Fn`
+  --> $SRC_DIR/core/src/ops/function.rs:LL:COL
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0050, E0229, E0277.
+For more information about an error, try `rustc --explain E0050`.

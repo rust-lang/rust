@@ -1,0 +1,160 @@
+#![warn(clippy::ref_as_ptr)]
+#![allow(clippy::unnecessary_mut_passed, clippy::needless_lifetimes)]
+
+fn f<T>(_: T) {}
+
+fn main() {
+    f(std::ptr::from_ref(&1u8));
+    //~^ ref_as_ptr
+    f(std::ptr::from_ref::<u32>(&2u32));
+    //~^ ref_as_ptr
+    f(std::ptr::from_ref::<f64>(&3.0f64));
+    //~^ ref_as_ptr
+
+    f(std::ptr::from_ref(&4) as *const f32);
+    //~^ ref_as_ptr
+    f(std::ptr::from_ref::<f32>(&5.0f32) as *const u32);
+    //~^ ref_as_ptr
+
+    f(std::ptr::from_ref(&mut 6u8));
+    //~^ ref_as_ptr
+    f(std::ptr::from_ref::<u32>(&mut 7u32));
+    //~^ ref_as_ptr
+    f(std::ptr::from_ref::<f64>(&mut 8.0f64));
+    //~^ ref_as_ptr
+
+    f(std::ptr::from_ref(&mut 9) as *const f32);
+    //~^ ref_as_ptr
+    f(std::ptr::from_ref::<f32>(&mut 10.0f32) as *const u32);
+    //~^ ref_as_ptr
+
+    f(std::ptr::from_mut(&mut 11u8));
+    //~^ ref_as_ptr
+    f(std::ptr::from_mut::<u32>(&mut 12u32));
+    //~^ ref_as_ptr
+    f(std::ptr::from_mut::<f64>(&mut 13.0f64));
+    //~^ ref_as_ptr
+
+    f(std::ptr::from_mut(&mut 14) as *const f32);
+    //~^ ref_as_ptr
+    f(std::ptr::from_mut::<f32>(&mut 15.0f32) as *const u32);
+    //~^ ref_as_ptr
+
+    f(std::ptr::from_ref(&1u8));
+    //~^ ref_as_ptr
+    f(std::ptr::from_ref::<u32>(&2u32));
+    //~^ ref_as_ptr
+    f(std::ptr::from_ref::<f64>(&3.0f64));
+    //~^ ref_as_ptr
+
+    f(std::ptr::from_ref(&4) as *const f32);
+    //~^ ref_as_ptr
+    f(std::ptr::from_ref::<f32>(&5.0f32) as *const u32);
+    //~^ ref_as_ptr
+
+    let val = 1;
+    f(std::ptr::from_ref(&val));
+    //~^ ref_as_ptr
+    f(std::ptr::from_ref::<i32>(&val));
+    //~^ ref_as_ptr
+
+    f(std::ptr::from_ref(&val) as *const f32);
+    //~^ ref_as_ptr
+    f(std::ptr::from_ref::<i32>(&val) as *const f64);
+    //~^ ref_as_ptr
+
+    let mut val: u8 = 2;
+    f(std::ptr::from_mut::<u8>(&mut val));
+    //~^ ref_as_ptr
+    f(std::ptr::from_mut(&mut val));
+    //~^ ref_as_ptr
+
+    f(std::ptr::from_ref::<u8>(&mut val));
+    //~^ ref_as_ptr
+    f(std::ptr::from_ref(&mut val));
+    //~^ ref_as_ptr
+
+    f(std::ptr::from_ref::<u8>(&mut val) as *const f64);
+    //~^ ref_as_ptr
+    f::<*const Option<u8>>(std::ptr::from_ref(&mut val) as *const _);
+    //~^ ref_as_ptr
+
+    f(std::ptr::from_ref::<[usize; 7]>(&std::array::from_fn(|i| i * i)));
+    //~^ ref_as_ptr
+    f(std::ptr::from_ref::<[usize; 8]>(&mut std::array::from_fn(|i| i * i)));
+    //~^ ref_as_ptr
+    f(std::ptr::from_mut::<[usize; 9]>(&mut std::array::from_fn(|i| i * i)));
+    //~^ ref_as_ptr
+
+    let _ = &String::new() as *const _;
+    let _ = &mut String::new() as *mut _;
+    const FOO: *const String = &String::new() as *const _;
+}
+
+#[clippy::msrv = "1.75"]
+fn _msrv_1_75() {
+    let val = &42_i32;
+    let mut_val = &mut 42_i32;
+
+    // `std::ptr::from_{ref, mut}` was stabilized in 1.76. Do not lint this
+    f(val as *const i32);
+    f(mut_val as *mut i32);
+}
+
+#[clippy::msrv = "1.76"]
+fn _msrv_1_76() {
+    let val = &42_i32;
+    let mut_val = &mut 42_i32;
+
+    f(std::ptr::from_ref::<i32>(val));
+    //~^ ref_as_ptr
+    f(std::ptr::from_mut::<i32>(mut_val));
+    //~^ ref_as_ptr
+}
+
+fn foo(val: &[u8]) {
+    f(std::ptr::from_ref(val));
+    //~^ ref_as_ptr
+    f(std::ptr::from_ref::<[u8]>(val));
+    //~^ ref_as_ptr
+}
+
+fn bar(val: &mut str) {
+    f(std::ptr::from_mut(val));
+    //~^ ref_as_ptr
+    f(std::ptr::from_mut::<str>(val));
+    //~^ ref_as_ptr
+}
+
+struct X<'a>(&'a i32);
+
+impl<'a> X<'a> {
+    fn foo(&self) -> *const i64 {
+        std::ptr::from_ref(self.0) as *const _
+        //~^ ref_as_ptr
+    }
+
+    fn bar(&mut self) -> *const i64 {
+        std::ptr::from_ref(self.0) as *const _
+        //~^ ref_as_ptr
+    }
+}
+
+struct Y<'a>(&'a mut i32);
+
+impl<'a> Y<'a> {
+    fn foo(&self) -> *const i64 {
+        std::ptr::from_ref(self.0) as *const _
+        //~^ ref_as_ptr
+    }
+
+    fn bar(&mut self) -> *const i64 {
+        std::ptr::from_ref(self.0) as *const _
+        //~^ ref_as_ptr
+    }
+
+    fn baz(&mut self) -> *const i64 {
+        std::ptr::from_mut(self.0) as *mut _
+        //~^ ref_as_ptr
+    }
+}

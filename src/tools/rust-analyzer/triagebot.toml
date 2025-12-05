@@ -1,0 +1,30 @@
+[assign]
+
+[shortcut]
+
+[relabel]
+allow-unauthenticated = [
+    "S-*",
+    "A-*",
+]
+
+[autolabel."S-waiting-on-review"]
+new_pr = true
+
+[no-merges]
+exclude_titles = [ # exclude syncs from subtree in rust-lang/rust
+    "Sync from downstream",
+    "sync from downstream",
+    "Sync from rust",
+    "sync from rust",
+    "Rustc pull update",
+]
+labels = ["has-merge-commits", "S-waiting-on-author"]
+
+[transfer]
+
+# Canonicalize issue numbers to avoid closing the wrong issue when upstreaming this subtree
+[canonicalize-issue-links]
+
+# Prevents mentions in commits to avoid users being spammed
+[no-mentions]

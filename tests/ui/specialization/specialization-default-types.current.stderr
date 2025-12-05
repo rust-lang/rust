@@ -1,0 +1,39 @@
+warning: the feature `specialization` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/specialization-default-types.rs:9:12
+   |
+LL | #![feature(specialization)]
+   |            ^^^^^^^^^^^^^^
+   |
+   = note: see issue #31844 <https://github.com/rust-lang/rust/issues/31844> for more information
+   = help: consider using `min_specialization` instead, which is more stable and complete
+   = note: `#[warn(incomplete_features)]` on by default
+
+error[E0308]: mismatched types
+  --> $DIR/specialization-default-types.rs:19:9
+   |
+LL |     default type Output = Box<T>;
+   |     ------------------- associated type is `default` and may be overridden
+LL |     default fn generate(self) -> Self::Output {
+   |                                  ------------ expected `<T as Example>::Output` because of return type
+LL |         Box::new(self)
+   |         ^^^^^^^^^^^^^^ expected associated type, found `Box<T>`
+   |
+   = note: expected associated type `<T as Example>::Output`
+                       found struct `Box<T>`
+
+error[E0308]: mismatched types
+  --> $DIR/specialization-default-types.rs:29:5
+   |
+LL | fn trouble<T>(t: T) -> Box<T> {
+   |                        ------ expected `Box<T>` because of return type
+LL |     Example::generate(t)
+   |     ^^^^^^^^^^^^^^^^^^^^ expected `Box<T>`, found associated type
+   |
+   = note:       expected struct `Box<T>`
+           found associated type `<T as Example>::Output`
+   = help: consider constraining the associated type `<T as Example>::Output` to `Box<T>`
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
+
+error: aborting due to 2 previous errors; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0308`.

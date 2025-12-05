@@ -1,0 +1,76 @@
+error[E0133]: call to unsafe function `std::env::set_var` is unsafe and requires unsafe block
+  --> $DIR/unsafe-env.rs:9:5
+   |
+LL |     env::set_var("FOO", "BAR");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+   |
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+note: an unsafe function restricts its caller, but its body is safe by default
+  --> $DIR/unsafe-env.rs:8:1
+   |
+LL | unsafe fn unsafe_fn() {
+   | ^^^^^^^^^^^^^^^^^^^^^
+note: the lint level is defined here
+  --> $DIR/unsafe-env.rs:7:8
+   |
+LL | #[deny(unsafe_op_in_unsafe_fn)]
+   |        ^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0133]: call to unsafe function `std::env::remove_var` is unsafe and requires unsafe block
+  --> $DIR/unsafe-env.rs:11:5
+   |
+LL |     env::remove_var("FOO");
+   |     ^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+   |
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+
+error[E0133]: call to unsafe function `unsafe_fn` is unsafe and requires unsafe block
+  --> $DIR/unsafe-env.rs:14:9
+   |
+LL |         unsafe_fn();
+   |         ^^^^^^^^^^^ call to unsafe function
+   |
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+
+error[E0133]: call to unsafe function `set_var` is unsafe and requires unsafe block
+  --> $DIR/unsafe-env.rs:22:5
+   |
+LL |     env::set_var("FOO", "BAR");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+   |
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+
+error[E0133]: call to unsafe function `remove_var` is unsafe and requires unsafe block
+  --> $DIR/unsafe-env.rs:24:5
+   |
+LL |     env::remove_var("FOO");
+   |     ^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+   |
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+
+error[E0133]: call to unsafe function `unsafe_fn` is unsafe and requires unsafe block
+  --> $DIR/unsafe-env.rs:32:5
+   |
+LL |     unsafe_fn();
+   |     ^^^^^^^^^^^ call to unsafe function
+   |
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+
+error: unnecessary `unsafe` block
+  --> $DIR/unsafe-env.rs:35:5
+   |
+LL |     unsafe {
+   |     ^^^^^^ unnecessary `unsafe` block
+   |
+note: the lint level is defined here
+  --> $DIR/unsafe-env.rs:20:8
+   |
+LL | #[deny(unused_unsafe)]
+   |        ^^^^^^^^^^^^^
+
+error: aborting due to 7 previous errors
+
+For more information about this error, try `rustc --explain E0133`.

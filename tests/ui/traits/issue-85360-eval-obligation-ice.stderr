@@ -1,0 +1,20 @@
+error: evaluate(Binder { value: TraitPredicate(<MaskedStorage<GenericComp<Pos>> as std::marker::Sized>, polarity:Positive), bound_vars: [] }) = Ok(EvaluatedToOk)
+  --> $DIR/issue-85360-eval-obligation-ice.rs:9:5
+   |
+LL |     test::<MaskedStorage<GenericComp<Pos>>>(make());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | fn test<T: Sized>(_: T) {}
+   |            ----- predicate
+
+error: evaluate(Binder { value: TraitPredicate(<MaskedStorage<GenericComp2<Pos>> as std::marker::Sized>, polarity:Positive), bound_vars: [] }) = Ok(EvaluatedToOkModuloRegions)
+  --> $DIR/issue-85360-eval-obligation-ice.rs:12:5
+   |
+LL |     test::<MaskedStorage<GenericComp2<Pos>>>(make());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | fn test<T: Sized>(_: T) {}
+   |            ----- predicate
+
+error: aborting due to 2 previous errors
+

@@ -1,0 +1,29 @@
+warning: creating a shared reference to mutable static
+  --> $DIR/static-mut-shared-parens.rs:7:22
+   |
+LL |     let _ = unsafe { (&TEST) as *const usize };
+   |                      ^^^^^^^ shared reference to mutable static
+   |
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/static-mut-references.html>
+   = note: shared references to mutable statics are dangerous; it's undefined behavior if the static is mutated or if a mutable reference is created for it while the shared reference lives
+   = note: `#[warn(static_mut_refs)]` (part of `#[warn(rust_2024_compatibility)]`) on by default
+help: use `&raw const` instead to create a raw pointer
+   |
+LL |     let _ = unsafe { (&raw const TEST) as *const usize };
+   |                        +++++++++
+
+warning: creating a mutable reference to mutable static
+  --> $DIR/static-mut-shared-parens.rs:10:22
+   |
+LL |     let _ = unsafe { (&mut TEST) as *const usize };
+   |                      ^^^^^^^^^^^ mutable reference to mutable static
+   |
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/static-mut-references.html>
+   = note: mutable references to mutable statics are dangerous; it's undefined behavior if any other pointer to the static is used or if any other reference is created for the static while the mutable reference lives
+help: use `&raw mut` instead to create a raw pointer
+   |
+LL |     let _ = unsafe { (&raw mut TEST) as *const usize };
+   |                        +++
+
+warning: 2 warnings emitted
+

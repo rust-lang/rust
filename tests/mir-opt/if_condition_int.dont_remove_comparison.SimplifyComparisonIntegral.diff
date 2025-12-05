@@ -1,0 +1,58 @@
+- // MIR for `dont_remove_comparison` before SimplifyComparisonIntegral
++ // MIR for `dont_remove_comparison` after SimplifyComparisonIntegral
+  
+  fn dont_remove_comparison(_1: i8) -> i32 {
+      debug a => _1;
+      let mut _0: i32;
+      let _2: bool;
+      let mut _3: i8;
+      let mut _4: i32;
+      let mut _5: bool;
+      let mut _6: i32;
+      let mut _7: bool;
+      scope 1 {
+          debug b => _2;
+      }
+  
+      bb0: {
+          StorageLive(_2);
+          StorageLive(_3);
+          _3 = copy _1;
+-         _2 = Eq(move _3, const 17_i8);
+-         StorageDead(_3);
+-         switchInt(copy _2) -> [0: bb2, otherwise: bb1];
++         _2 = Eq(copy _3, const 17_i8);
++         nop;
++         switchInt(move _3) -> [17: bb1, otherwise: bb2];
+      }
+  
+      bb1: {
++         StorageDead(_3);
+          StorageLive(_6);
+          StorageLive(_7);
+          _7 = copy _2;
+          _6 = move _7 as i32 (IntToInt);
+          StorageDead(_7);
+          _0 = Add(const 100_i32, move _6);
+          StorageDead(_6);
+          goto -> bb3;
+      }
+  
+      bb2: {
++         StorageDead(_3);
+          StorageLive(_4);
+          StorageLive(_5);
+          _5 = copy _2;
+          _4 = move _5 as i32 (IntToInt);
+          StorageDead(_5);
+          _0 = Add(const 10_i32, move _4);
+          StorageDead(_4);
+          goto -> bb3;
+      }
+  
+      bb3: {
+          StorageDead(_2);
+          return;
+      }
+  }
+  

@@ -1,0 +1,12 @@
+error: the `?` operator was used
+  --> tests/ui/question_mark_used.rs:11:5
+   |
+LL |     other_function()?;
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using a custom macro or match expression
+   = note: `-D clippy::question-mark-used` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::question_mark_used)]`
+
+error: aborting due to 1 previous error
+

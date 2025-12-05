@@ -1,0 +1,58 @@
+error[E0539]: malformed `cfg` attribute input
+  --> $DIR/cfg-target-compact-errors.rs:5:1
+   |
+LL | #[cfg(target(o::o))]
+   | ^^^^^^^^^^^^^----^^^
+   | |            |
+   | |            expected this to be of the form `... = "..."`
+   | help: must be of the form: `#[cfg(predicate)]`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>
+
+error[E0539]: malformed `cfg` attribute input
+  --> $DIR/cfg-target-compact-errors.rs:9:1
+   |
+LL | #[cfg(target(os = 8))]
+   | ^^^^^^^^^^^^^^^^^^-^^^
+   | |                 |
+   | |                 expected a string literal here
+   | help: must be of the form: `#[cfg(predicate)]`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>
+
+error[E0539]: malformed `cfg` attribute input
+  --> $DIR/cfg-target-compact-errors.rs:13:1
+   |
+LL | #[cfg(target(os = "linux", pointer(width = "64")))]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^---------------------^^^
+   | |                          |
+   | |                          expected this to be of the form `... = "..."`
+   | help: must be of the form: `#[cfg(predicate)]`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>
+
+error[E0539]: malformed `cfg` attribute input
+  --> $DIR/cfg-target-compact-errors.rs:17:1
+   |
+LL | #[cfg(target(true))]
+   | ^^^^^^^^^^^^^----^^^
+   | |            |
+   | |            expected this to be of the form `... = "..."`
+   | help: must be of the form: `#[cfg(predicate)]`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>
+
+error[E0539]: malformed `cfg` attribute input
+  --> $DIR/cfg-target-compact-errors.rs:21:1
+   |
+LL | #[cfg(target(clippy::os = "linux"))]
+   | ^^^^^^^^^^^^^----------^^^^^^^^^^^^^
+   | |            |
+   | |            expected a valid identifier here
+   | help: must be of the form: `#[cfg(predicate)]`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0539`.

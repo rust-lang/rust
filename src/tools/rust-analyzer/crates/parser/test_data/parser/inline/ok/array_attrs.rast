@@ -1,0 +1,48 @@
+SOURCE_FILE
+  CONST
+    CONST_KW "const"
+    WHITESPACE " "
+    NAME
+      IDENT "A"
+    COLON ":"
+    WHITESPACE " "
+    REF_TYPE
+      AMP "&"
+      SLICE_TYPE
+        L_BRACK "["
+        PATH_TYPE
+          PATH
+            PATH_SEGMENT
+              NAME_REF
+                IDENT "i64"
+        R_BRACK "]"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    REF_EXPR
+      AMP "&"
+      ARRAY_EXPR
+        L_BRACK "["
+        LITERAL
+          INT_NUMBER "1"
+        COMMA ","
+        WHITESPACE " "
+        LITERAL
+          ATTR
+            POUND "#"
+            L_BRACK "["
+            META
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "cfg"
+              TOKEN_TREE
+                L_PAREN "("
+                IDENT "test"
+                R_PAREN ")"
+            R_BRACK "]"
+          WHITESPACE " "
+          INT_NUMBER "2"
+        R_BRACK "]"
+    SEMICOLON ";"
+  WHITESPACE "\n"

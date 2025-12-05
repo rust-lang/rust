@@ -1,0 +1,4 @@
+error: the `#[global_allocator]` in this crate conflicts with global allocator in: system_allocator
+
+error: aborting due to 1 previous error
+

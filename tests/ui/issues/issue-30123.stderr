@@ -1,0 +1,17 @@
+error[E0599]: no function or associated item named `new_undirected` found for struct `issue_30123_aux::Graph<i32, i32>` in the current scope
+  --> $DIR/issue-30123.rs:7:33
+   |
+LL |     let ug = Graph::<i32, i32>::new_undirected();
+   |                                 ^^^^^^^^^^^^^^ function or associated item not found in `issue_30123_aux::Graph<i32, i32>`
+   |
+note: if you're trying to build a new `issue_30123_aux::Graph<i32, i32>`, consider using `issue_30123_aux::Graph::<N, E>::new` which returns `issue_30123_aux::Graph<_, _>`
+  --> $DIR/auxiliary/issue-30123-aux.rs:14:5
+   |
+LL |     pub fn new() -> Self {
+   |     ^^^^^^^^^^^^^^^^^^^^
+   = note: the function or associated item was found for
+           - `issue_30123_aux::Graph<N, E, Undirected>`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0599`.

@@ -1,0 +1,155 @@
+error[E0597]: `_t1` does not live long enough
+  --> $DIR/issue-54556-used-vs-unused-tails.rs:10:55
+   |
+LL |     {              let mut _t1 = D(Box::new("t1")); D(&_t1).end()    } ; // suggest `;`
+   |                        -------                      --^^^^-          - - ... and the borrow might be used here, when that temporary is dropped and runs the `Drop` code for type `D`
+   |                        |                            | |              |
+   |                        |                            | |              `_t1` dropped here while still borrowed
+   |                        |                            | borrowed value does not live long enough
+   |                        |                            a temporary with access to the borrow is created here ...
+   |                        binding `_t1` declared here
+   |
+help: consider adding semicolon after the expression so its temporaries are dropped sooner, before the local variables declared by the block are dropped
+   |
+LL |     {              let mut _t1 = D(Box::new("t1")); D(&_t1).end();    } ; // suggest `;`
+   |                                                                  +
+
+error[E0597]: `_t1` does not live long enough
+  --> $DIR/issue-54556-used-vs-unused-tails.rs:13:55
+   |
+LL |     {            { let mut _t1 = D(Box::new("t1")); D(&_t1).end() }  } ; // suggest `;`
+   |                        -------                      --^^^^-       -    - ... and the borrow might be used here, when that temporary is dropped and runs the `Drop` code for type `D`
+   |                        |                            | |           |
+   |                        |                            | |           `_t1` dropped here while still borrowed
+   |                        |                            | borrowed value does not live long enough
+   |                        |                            a temporary with access to the borrow is created here ...
+   |                        binding `_t1` declared here
+   |
+help: consider adding semicolon after the expression so its temporaries are dropped sooner, before the local variables declared by the block are dropped
+   |
+LL |     {            { let mut _t1 = D(Box::new("t1")); D(&_t1).end(); }  } ; // suggest `;`
+   |                                                                  +
+
+error[E0597]: `_t1` does not live long enough
+  --> $DIR/issue-54556-used-vs-unused-tails.rs:16:55
+   |
+LL |     {            { let mut _t1 = D(Box::new("t1")); D(&_t1).end() }; }   // suggest `;`
+   |                        -------                      --^^^^-       -- ... and the borrow might be used here, when that temporary is dropped and runs the `Drop` code for type `D`
+   |                        |                            | |           |
+   |                        |                            | |           `_t1` dropped here while still borrowed
+   |                        |                            | borrowed value does not live long enough
+   |                        |                            a temporary with access to the borrow is created here ...
+   |                        binding `_t1` declared here
+   |
+help: consider adding semicolon after the expression so its temporaries are dropped sooner, before the local variables declared by the block are dropped
+   |
+LL |     {            { let mut _t1 = D(Box::new("t1")); D(&_t1).end(); }; }   // suggest `;`
+   |                                                                  +
+
+error[E0597]: `_t1` does not live long enough
+  --> $DIR/issue-54556-used-vs-unused-tails.rs:19:55
+   |
+LL |     let _ =      { let mut _t1 = D(Box::new("t1")); D(&_t1).end()    } ; // suggest `;`
+   |                        -------                      --^^^^-          - - ... and the borrow might be used here, when that temporary is dropped and runs the `Drop` code for type `D`
+   |                        |                            | |              |
+   |                        |                            | |              `_t1` dropped here while still borrowed
+   |                        |                            | borrowed value does not live long enough
+   |                        |                            a temporary with access to the borrow is created here ...
+   |                        binding `_t1` declared here
+   |
+help: consider adding semicolon after the expression so its temporaries are dropped sooner, before the local variables declared by the block are dropped
+   |
+LL |     let _ =      { let mut _t1 = D(Box::new("t1")); D(&_t1).end();    } ; // suggest `;`
+   |                                                                  +
+
+error[E0597]: `_t1` does not live long enough
+  --> $DIR/issue-54556-used-vs-unused-tails.rs:22:55
+   |
+LL |     let _u =     { let mut _t1 = D(Box::new("t1")); D(&_t1).unit()   } ; // suggest `;`
+   |                        -------                      --^^^^-          - - ... and the borrow might be used here, when that temporary is dropped and runs the `Drop` code for type `D`
+   |                        |                            | |              |
+   |                        |                            | |              `_t1` dropped here while still borrowed
+   |                        |                            | borrowed value does not live long enough
+   |                        |                            a temporary with access to the borrow is created here ...
+   |                        binding `_t1` declared here
+   |
+help: consider adding semicolon after the expression so its temporaries are dropped sooner, before the local variables declared by the block are dropped
+   |
+LL |     let _u =     { let mut _t1 = D(Box::new("t1")); D(&_t1).unit();   } ; // suggest `;`
+   |                                                                   +
+
+error[E0597]: `_t1` does not live long enough
+  --> $DIR/issue-54556-used-vs-unused-tails.rs:25:55
+   |
+LL |     let _x =     { let mut _t1 = D(Box::new("t1")); D(&_t1).end()    } ; // `let x = ...; x`
+   |                        -------                      --^^^^-          - - ... and the borrow might be used here, when that temporary is dropped and runs the `Drop` code for type `D`
+   |                        |                            | |              |
+   |                        |                            | |              `_t1` dropped here while still borrowed
+   |                        |                            | borrowed value does not live long enough
+   |                        |                            a temporary with access to the borrow is created here ...
+   |                        binding `_t1` declared here
+   |
+   = note: the temporary is part of an expression at the end of a block;
+           consider forcing this temporary to be dropped sooner, before the block's local variables are dropped
+help: for example, you could save the expression's value in a new local variable `x` and then make `x` be the expression at the end of the block
+   |
+LL |     let _x =     { let mut _t1 = D(Box::new("t1")); let x = D(&_t1).end(); x    } ; // `let x = ...; x`
+   |                                                     +++++++              +++
+
+error[E0597]: `_t1` does not live long enough
+  --> $DIR/issue-54556-used-vs-unused-tails.rs:30:55
+   |
+LL |     _y =         { let mut _t1 = D(Box::new("t1")); D(&_t1).end() } ; // `let x = ...; x`
+   |                        -------                      --^^^^-       - - ... and the borrow might be used here, when that temporary is dropped and runs the `Drop` code for type `D`
+   |                        |                            | |           |
+   |                        |                            | |           `_t1` dropped here while still borrowed
+   |                        |                            | borrowed value does not live long enough
+   |                        |                            a temporary with access to the borrow is created here ...
+   |                        binding `_t1` declared here
+   |
+   = note: the temporary is part of an expression at the end of a block;
+           consider forcing this temporary to be dropped sooner, before the block's local variables are dropped
+help: for example, you could save the expression's value in a new local variable `x` and then make `x` be the expression at the end of the block
+   |
+LL |     _y =         { let mut _t1 = D(Box::new("t1")); let x = D(&_t1).end(); x } ; // `let x = ...; x`
+   |                                                     +++++++              +++
+
+error[E0597]: `_t1` does not live long enough
+  --> $DIR/issue-54556-used-vs-unused-tails.rs:37:55
+   |
+LL | fn f_local_ref() { let mut _t1 = D(Box::new("t1")); D(&_t1).unit()   }  // suggest `;`
+   |                        -------                      --^^^^-          -
+   |                        |                            | |              |
+   |                        |                            | |              `_t1` dropped here while still borrowed
+   |                        |                            | |              ... and the borrow might be used here, when that temporary is dropped and runs the `Drop` code for type `D`
+   |                        |                            | borrowed value does not live long enough
+   |                        |                            a temporary with access to the borrow is created here ...
+   |                        binding `_t1` declared here
+   |
+help: consider adding semicolon after the expression so its temporaries are dropped sooner, before the local variables declared by the block are dropped
+   |
+LL | fn f_local_ref() { let mut _t1 = D(Box::new("t1")); D(&_t1).unit();   }  // suggest `;`
+   |                                                                   +
+
+error[E0597]: `_t1` does not live long enough
+  --> $DIR/issue-54556-used-vs-unused-tails.rs:40:55
+   |
+LL | fn f() -> String { let mut _t1 = D(Box::new("t1")); D(&_t1).end()   }   // `let x = ...; x`
+   |                        -------                      --^^^^-         -
+   |                        |                            | |             |
+   |                        |                            | |             `_t1` dropped here while still borrowed
+   |                        |                            | |             ... and the borrow might be used here, when that temporary is dropped and runs the `Drop` code for type `D`
+   |                        |                            | borrowed value does not live long enough
+   |                        |                            a temporary with access to the borrow is created here ...
+   |                        binding `_t1` declared here
+   |
+   = note: the temporary is part of an expression at the end of a block;
+           consider forcing this temporary to be dropped sooner, before the block's local variables are dropped
+help: for example, you could save the expression's value in a new local variable `x` and then make `x` be the expression at the end of the block
+   |
+LL | fn f() -> String { let mut _t1 = D(Box::new("t1")); let x = D(&_t1).end(); x   }   // `let x = ...; x`
+   |                                                     +++++++              +++
+
+error: aborting due to 9 previous errors
+
+For more information about this error, try `rustc --explain E0597`.

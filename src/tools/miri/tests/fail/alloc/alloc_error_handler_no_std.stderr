@@ -1,0 +1,24 @@
+custom panic handler called!
+panicked at RUSTLIB/alloc/src/alloc.rs:LL:CC:
+memory allocation of 4 bytes failed
+error: abnormal termination: the program aborted execution
+  --> tests/fail/alloc/alloc_error_handler_no_std.rs:LL:CC
+   |
+LL |     core::intrinsics::abort();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^ abnormal termination occurred here
+   |
+   = note: BACKTRACE:
+   = note: inside `panic_handler` at tests/fail/alloc/alloc_error_handler_no_std.rs:LL:CC
+   = note: inside `alloc::alloc::__alloc_error_handler::__rdl_alloc_error_handler` at RUSTLIB/alloc/src/alloc.rs:LL:CC
+   = note: inside `alloc::alloc::handle_alloc_error::rt_error` at RUSTLIB/alloc/src/alloc.rs:LL:CC
+   = note: inside `alloc::alloc::handle_alloc_error` at RUSTLIB/alloc/src/alloc.rs:LL:CC
+note: inside `miri_start`
+  --> tests/fail/alloc/alloc_error_handler_no_std.rs:LL:CC
+   |
+LL |     handle_alloc_error(Layout::for_value(&0));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to 1 previous error
+

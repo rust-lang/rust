@@ -1,0 +1,26 @@
+error: tail calls can only be performed with function definitions or pointers
+  --> $DIR/callee_is_weird.rs:7:12
+   |
+LL |     become std::sync::Exclusive::new(f)()
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: callee has type `Exclusive<fn() {f}>`
+
+error: tail calls can only be performed with function definitions or pointers
+  --> $DIR/callee_is_weird.rs:11:12
+   |
+LL |     become (&mut &std::sync::Exclusive::new(f))()
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: callee has type `&Exclusive<fn() {f}>`
+
+error: tail calls can only be performed with function definitions or pointers
+  --> $DIR/callee_is_weird.rs:22:12
+   |
+LL |     become J();
+   |            ^^^
+   |
+   = note: callee has type `J`
+
+error: aborting due to 3 previous errors
+

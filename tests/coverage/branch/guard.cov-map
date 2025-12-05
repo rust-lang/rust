@@ -1,0 +1,40 @@
+Function name: guard::branch_match_guard
+Raw bytes (104): 0x[01, 01, 08, 05, 0d, 09, 05, 05, 0f, 0d, 11, 17, 1b, 01, 05, 1f, 11, 09, 0d, 10, 01, 0c, 01, 00, 26, 01, 01, 05, 00, 0e, 02, 02, 0b, 00, 0c, 06, 01, 14, 02, 0a, 0d, 03, 0e, 00, 0f, 05, 00, 14, 00, 19, 20, 0d, 02, 00, 14, 00, 1e, 0d, 00, 1d, 00, 1e, 0d, 00, 22, 02, 0a, 11, 03, 0e, 00, 0f, 02, 00, 14, 00, 19, 20, 11, 0a, 00, 14, 00, 1e, 11, 00, 1d, 00, 1e, 11, 00, 22, 02, 0a, 12, 03, 0e, 02, 0a, 01, 04, 01, 00, 02]
+Number of files: 1
+- file 0 => $DIR/guard.rs
+Number of expressions: 8
+- expression 0 operands: lhs = Counter(1), rhs = Counter(3)
+- expression 1 operands: lhs = Counter(2), rhs = Counter(1)
+- expression 2 operands: lhs = Counter(1), rhs = Expression(3, Add)
+- expression 3 operands: lhs = Counter(3), rhs = Counter(4)
+- expression 4 operands: lhs = Expression(5, Add), rhs = Expression(6, Add)
+- expression 5 operands: lhs = Counter(0), rhs = Counter(1)
+- expression 6 operands: lhs = Expression(7, Add), rhs = Counter(4)
+- expression 7 operands: lhs = Counter(2), rhs = Counter(3)
+Number of file 0 mappings: 16
+- Code(Counter(0)) at (prev + 12, 1) to (start + 0, 38)
+- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 14)
+- Code(Expression(0, Sub)) at (prev + 2, 11) to (start + 0, 12)
+    = (c1 - c3)
+- Code(Expression(1, Sub)) at (prev + 1, 20) to (start + 2, 10)
+    = (c2 - c1)
+- Code(Counter(3)) at (prev + 3, 14) to (start + 0, 15)
+- Code(Counter(1)) at (prev + 0, 20) to (start + 0, 25)
+- Branch { true: Counter(3), false: Expression(0, Sub) } at (prev + 0, 20) to (start + 0, 30)
+    true  = c3
+    false = (c1 - c3)
+- Code(Counter(3)) at (prev + 0, 29) to (start + 0, 30)
+- Code(Counter(3)) at (prev + 0, 34) to (start + 2, 10)
+- Code(Counter(4)) at (prev + 3, 14) to (start + 0, 15)
+- Code(Expression(0, Sub)) at (prev + 0, 20) to (start + 0, 25)
+    = (c1 - c3)
+- Branch { true: Counter(4), false: Expression(2, Sub) } at (prev + 0, 20) to (start + 0, 30)
+    true  = c4
+    false = (c1 - (c3 + c4))
+- Code(Counter(4)) at (prev + 0, 29) to (start + 0, 30)
+- Code(Counter(4)) at (prev + 0, 34) to (start + 2, 10)
+- Code(Expression(4, Sub)) at (prev + 3, 14) to (start + 2, 10)
+    = ((c0 + c1) - ((c2 + c3) + c4))
+- Code(Counter(0)) at (prev + 4, 1) to (start + 0, 2)
+Highest counter ID seen: c4
+

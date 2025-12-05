@@ -1,0 +1,22 @@
+#[attr = MacroUse {arguments: UseAll}]
+extern crate std;
+#[prelude_import]
+use ::std::prelude::rust_2015::*;
+//@ compile-flags: -Zunpretty=hir -Zflatten-format-args=yes
+//@ check-pass
+//@ edition: 2015
+
+fn main() {
+    let x = 1;
+    // Should flatten to println!("a 123 b {x} xyz\n"):
+    {
+        ::std::io::_print({
+                super let args = (&x,);
+                super let args = [format_argument::new_display(args.0)];
+                unsafe {
+                    format_arguments::new(b"\x08a 123 b \xc0\x05 xyz\n\x00",
+                        &args)
+                }
+            });
+    };
+}

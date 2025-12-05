@@ -1,0 +1,13 @@
+error: expected item after attributes
+  --> $DIR/issue-20711.rs:4:5
+   |
+LL | impl Foo {
+   |          - while parsing this item list starting here
+LL |     #[stable(feature = "rust1", since = "1.0.0")]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | }
+   | - the item list ends here
+
+error: aborting due to 1 previous error
+

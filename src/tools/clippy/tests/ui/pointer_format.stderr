@@ -1,0 +1,47 @@
+error: pointer formatting detected
+  --> tests/ui/pointer_format.rs:42:23
+   |
+LL |     let o = &format!("{m:p}");
+   |                       ^^^^^
+   |
+   = note: `-D clippy::pointer-format` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::pointer_format)]`
+
+error: pointer formatting detected
+  --> tests/ui/pointer_format.rs:44:22
+   |
+LL |     let _ = format!("{m:?}");
+   |                      ^^^^^
+
+error: pointer formatting detected
+  --> tests/ui/pointer_format.rs:46:15
+   |
+LL |     println!("{g:p}");
+   |               ^^^^^
+
+error: pointer formatting detected
+  --> tests/ui/pointer_format.rs:48:13
+   |
+LL |     panic!("{o:p}");
+   |             ^^^^^
+
+error: pointer formatting detected
+  --> tests/ui/pointer_format.rs:54:22
+   |
+LL |     let _ = format!("{x:?}");
+   |                      ^^^^^
+
+error: pointer formatting detected
+  --> tests/ui/pointer_format.rs:56:13
+   |
+LL |     print!("{with_ptr:?}");
+   |             ^^^^^^^^^^^^
+
+error: pointer formatting detected
+  --> tests/ui/pointer_format.rs:59:13
+   |
+LL |     print!("{container:?}");
+   |             ^^^^^^^^^^^^^
+
+error: aborting due to 7 previous errors
+

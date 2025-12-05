@@ -1,0 +1,53 @@
+warning: unexpected `cfg` condition value: `serde`
+  --> $DIR/cargo-feature.rs:15:7
+   |
+LL | #[cfg(feature = "serde")]
+   |       ^^^^^^^^^^^^^^^^^
+   |
+   = note: expected values for `feature` are: `bitcode`
+   = help: consider adding `serde` as a feature in `Cargo.toml`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+   = note: `#[warn(unexpected_cfgs)]` on by default
+
+warning: unexpected `cfg` condition value: (none)
+  --> $DIR/cargo-feature.rs:19:7
+   |
+LL | #[cfg(feature)]
+   |       ^^^^^^^- help: specify a config value: `= "bitcode"`
+   |
+   = note: expected values for `feature` are: `bitcode`
+   = help: consider defining some features in `Cargo.toml`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `tokio_unstable`
+  --> $DIR/cargo-feature.rs:23:7
+   |
+LL | #[cfg(tokio_unstable)]
+   |       ^^^^^^^^^^^^^^
+   |
+   = help: expected names are: `CONFIG_NVME`, `docsrs`, `feature`, and `test` and 31 more
+   = help: consider using a Cargo feature instead
+   = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
+            [lints.rust]
+            unexpected_cfgs = { level = "warn", check-cfg = ['cfg(tokio_unstable)'] }
+   = help: or consider adding `println!("cargo::rustc-check-cfg=cfg(tokio_unstable)");` to the top of the `build.rs`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `m`
+  --> $DIR/cargo-feature.rs:27:7
+   |
+LL | #[cfg(CONFIG_NVME = "m")]
+   |       ^^^^^^^^^^^^^^---
+   |                     |
+   |                     help: there is a expected value with a similar name: `"y"`
+   |
+   = note: expected values for `CONFIG_NVME` are: `y`
+   = help: consider using a Cargo feature instead
+   = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
+            [lints.rust]
+            unexpected_cfgs = { level = "warn", check-cfg = ['cfg(CONFIG_NVME, values("m"))'] }
+   = help: or consider adding `println!("cargo::rustc-check-cfg=cfg(CONFIG_NVME, values(\"m\"))");` to the top of the `build.rs`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: 4 warnings emitted
+

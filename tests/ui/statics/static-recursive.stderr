@@ -1,0 +1,25 @@
+warning: creating a shared reference to mutable static
+  --> $DIR/static-recursive.rs:3:36
+   |
+LL | static mut S: *const u8 = unsafe { &S as *const *const u8 as *const u8 };
+   |                                    ^^ shared reference to mutable static
+   |
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/static-mut-references.html>
+   = note: shared references to mutable statics are dangerous; it's undefined behavior if the static is mutated or if a mutable reference is created for it while the shared reference lives
+   = note: `#[warn(static_mut_refs)]` (part of `#[warn(rust_2024_compatibility)]`) on by default
+help: use `&raw const` instead to create a raw pointer
+   |
+LL | static mut S: *const u8 = unsafe { &raw const S as *const *const u8 as *const u8 };
+   |                                     +++++++++
+
+warning: creating a shared reference to mutable static
+  --> $DIR/static-recursive.rs:19:20
+   |
+LL |         assert_eq!(S, *(S as *const *const u8));
+   |                    ^ shared reference to mutable static
+   |
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/static-mut-references.html>
+   = note: shared references to mutable statics are dangerous; it's undefined behavior if the static is mutated or if a mutable reference is created for it while the shared reference lives
+
+warning: 2 warnings emitted
+

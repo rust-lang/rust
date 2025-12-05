@@ -1,0 +1,15 @@
+error[E0657]: `impl Trait` cannot capture higher-ranked lifetime from outer `impl Trait`
+  --> $DIR/issue-67830.rs:20:64
+   |
+LL | fn test() -> impl for<'a> MyFn<&'a A, Output = impl Iterator + 'a> {
+   |                                                                ^^
+   |
+note: lifetime declared here
+  --> $DIR/issue-67830.rs:20:23
+   |
+LL | fn test() -> impl for<'a> MyFn<&'a A, Output = impl Iterator + 'a> {
+   |                       ^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0657`.

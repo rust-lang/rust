@@ -1,0 +1,186 @@
+error: first final: "hello"
+  --> $DIR/parent-source-spans.rs:17:12
+   |
+LL |     three!($a, $b);
+   |            ^^
+...
+LL |     one!("hello", "world");
+   |     ---------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `two` which comes from the expansion of the macro `one` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: second final: "world"
+  --> $DIR/parent-source-spans.rs:17:16
+   |
+LL |     three!($a, $b);
+   |                ^^
+...
+LL |     one!("hello", "world");
+   |     ---------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `two` which comes from the expansion of the macro `one` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: first parent: "hello"
+  --> $DIR/parent-source-spans.rs:11:5
+   |
+LL |     two!($a, $b);
+   |     ^^^^^^^^^^^^
+...
+LL |     one!("hello", "world");
+   |     ---------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `one` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: second parent: "world"
+  --> $DIR/parent-source-spans.rs:11:5
+   |
+LL |     two!($a, $b);
+   |     ^^^^^^^^^^^^
+...
+LL |     one!("hello", "world");
+   |     ---------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `one` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: first grandparent: "hello"
+  --> $DIR/parent-source-spans.rs:37:5
+   |
+LL |     one!("hello", "world");
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+
+error: second grandparent: "world"
+  --> $DIR/parent-source-spans.rs:37:5
+   |
+LL |     one!("hello", "world");
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+
+error: first source: "hello"
+  --> $DIR/parent-source-spans.rs:37:5
+   |
+LL |     one!("hello", "world");
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+
+error: second source: "world"
+  --> $DIR/parent-source-spans.rs:37:5
+   |
+LL |     one!("hello", "world");
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+
+error: first final: "yay"
+  --> $DIR/parent-source-spans.rs:17:12
+   |
+LL |     three!($a, $b);
+   |            ^^
+...
+LL |     two!("yay", "rust");
+   |     ------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `two` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: second final: "rust"
+  --> $DIR/parent-source-spans.rs:17:16
+   |
+LL |     three!($a, $b);
+   |                ^^
+...
+LL |     two!("yay", "rust");
+   |     ------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `two` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: first parent: "yay"
+  --> $DIR/parent-source-spans.rs:43:5
+   |
+LL |     two!("yay", "rust");
+   |     ^^^^^^^^^^^^^^^^^^^
+
+error: second parent: "rust"
+  --> $DIR/parent-source-spans.rs:43:5
+   |
+LL |     two!("yay", "rust");
+   |     ^^^^^^^^^^^^^^^^^^^
+
+error: first source: "yay"
+  --> $DIR/parent-source-spans.rs:43:5
+   |
+LL |     two!("yay", "rust");
+   |     ^^^^^^^^^^^^^^^^^^^
+
+error: second source: "rust"
+  --> $DIR/parent-source-spans.rs:43:5
+   |
+LL |     two!("yay", "rust");
+   |     ^^^^^^^^^^^^^^^^^^^
+
+error: first final: "hip"
+  --> $DIR/parent-source-spans.rs:49:12
+   |
+LL |     three!("hip", "hop");
+   |            ^^^^^
+
+error: second final: "hop"
+  --> $DIR/parent-source-spans.rs:49:19
+   |
+LL |     three!("hip", "hop");
+   |                   ^^^^^
+
+error: first source: "hip"
+  --> $DIR/parent-source-spans.rs:49:12
+   |
+LL |     three!("hip", "hop");
+   |            ^^^^^
+
+error: second source: "hop"
+  --> $DIR/parent-source-spans.rs:49:19
+   |
+LL |     three!("hip", "hop");
+   |                   ^^^^^
+
+error[E0425]: cannot find value `ok` in this scope
+  --> $DIR/parent-source-spans.rs:30:5
+   |
+LL |     parent_source_spans!($($tokens)*);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: a tuple variant with a similar name exists: `Ok`
+...
+LL |     one!("hello", "world");
+   |     ---------------------- in this macro invocation
+   |
+  --> $SRC_DIR/core/src/result.rs:LL:COL
+   |
+   = note: similarly named tuple variant `Ok` defined here
+   |
+   = note: this error originates in the macro `parent_source_spans` which comes from the expansion of the macro `one` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0425]: cannot find value `ok` in this scope
+  --> $DIR/parent-source-spans.rs:30:5
+   |
+LL |     parent_source_spans!($($tokens)*);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: a tuple variant with a similar name exists: `Ok`
+...
+LL |     two!("yay", "rust");
+   |     ------------------- in this macro invocation
+   |
+  --> $SRC_DIR/core/src/result.rs:LL:COL
+   |
+   = note: similarly named tuple variant `Ok` defined here
+   |
+   = note: this error originates in the macro `parent_source_spans` which comes from the expansion of the macro `two` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0425]: cannot find value `ok` in this scope
+  --> $DIR/parent-source-spans.rs:30:5
+   |
+LL |     parent_source_spans!($($tokens)*);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: a tuple variant with a similar name exists: `Ok`
+...
+LL |     three!("hip", "hop");
+   |     -------------------- in this macro invocation
+   |
+  --> $SRC_DIR/core/src/result.rs:LL:COL
+   |
+   = note: similarly named tuple variant `Ok` defined here
+   |
+   = note: this error originates in the macro `parent_source_spans` which comes from the expansion of the macro `three` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 21 previous errors
+
+For more information about this error, try `rustc --explain E0425`.

@@ -1,0 +1,59 @@
+[package]
+name = "rustc_codegen_ssa"
+version = "0.0.0"
+edition = "2024"
+
+[dependencies]
+# tidy-alphabetical-start
+ar_archive_writer = "0.5"
+bitflags = "2.4.1"
+bstr = "1.11.3"
+find-msvc-tools = "0.1.2"
+itertools = "0.12"
+pathdiff = "0.2.0"
+regex = "1.4"
+rustc_abi = { path = "../rustc_abi" }
+rustc_arena = { path = "../rustc_arena" }
+rustc_ast = { path = "../rustc_ast" }
+rustc_attr_parsing = { path = "../rustc_attr_parsing" }
+rustc_data_structures = { path = "../rustc_data_structures" }
+rustc_errors = { path = "../rustc_errors" }
+rustc_fluent_macro = { path = "../rustc_fluent_macro" }
+rustc_fs_util = { path = "../rustc_fs_util" }
+rustc_hashes = { path = "../rustc_hashes" }
+rustc_hir = { path = "../rustc_hir" }
+rustc_incremental = { path = "../rustc_incremental" }
+rustc_index = { path = "../rustc_index" }
+rustc_lint_defs = { path = "../rustc_lint_defs" }
+rustc_macros = { path = "../rustc_macros" }
+rustc_metadata = { path = "../rustc_metadata" }
+rustc_middle = { path = "../rustc_middle" }
+rustc_query_system = { path = "../rustc_query_system" }
+rustc_serialize = { path = "../rustc_serialize" }
+rustc_session = { path = "../rustc_session" }
+rustc_span = { path = "../rustc_span" }
+rustc_symbol_mangling = { path = "../rustc_symbol_mangling" }
+rustc_target = { path = "../rustc_target" }
+rustc_trait_selection = { path = "../rustc_trait_selection" }
+serde_json = "1.0.59"
+smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
+tempfile = "3.2"
+thin-vec = "0.2.12"
+thorin-dwp = "0.9"
+tracing = "0.1"
+wasm-encoder = "0.219"
+# tidy-alphabetical-end
+
+[target.'cfg(unix)'.dependencies]
+# tidy-alphabetical-start
+libc = "0.2.50"
+# tidy-alphabetical-end
+
+[dependencies.object]
+version = "0.37.0"
+default-features = false
+features = ["read_core", "elf", "macho", "pe", "xcoff", "unaligned", "archive", "write", "wasm"]
+
+[target.'cfg(windows)'.dependencies.windows]
+version = "0.61.0"
+features = ["Win32_Globalization"]

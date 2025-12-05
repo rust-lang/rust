@@ -1,0 +1,84 @@
+error[E0784]: union expressions should have exactly one field
+  --> $DIR/union-fields-2.rs:7:13
+   |
+LL |     let u = U {};
+   |             ^
+
+error[E0784]: union expressions should have exactly one field
+  --> $DIR/union-fields-2.rs:9:13
+   |
+LL |     let u = U { a: 0, b: 1 };
+   |             ^
+
+error[E0560]: union `U` has no field named `c`
+  --> $DIR/union-fields-2.rs:10:29
+   |
+LL |     let u = U { a: 0, b: 1, c: 2 };
+   |                             ^ `U` does not have this field
+   |
+   = note: all struct fields are already assigned
+
+error[E0784]: union expressions should have exactly one field
+  --> $DIR/union-fields-2.rs:10:13
+   |
+LL |     let u = U { a: 0, b: 1, c: 2 };
+   |             ^
+
+error[E0784]: union expressions should have exactly one field
+  --> $DIR/union-fields-2.rs:12:13
+   |
+LL |     let u = U { ..u };
+   |             ^
+
+error[E0436]: functional record update syntax requires a struct
+  --> $DIR/union-fields-2.rs:12:19
+   |
+LL |     let u = U { ..u };
+   |                   ^
+
+error: union patterns should have exactly one field
+  --> $DIR/union-fields-2.rs:15:9
+   |
+LL |     let U {} = u;
+   |         ^^^^
+
+error: union patterns should have exactly one field
+  --> $DIR/union-fields-2.rs:17:9
+   |
+LL |     let U { a, b } = u;
+   |         ^^^^^^^^^^
+
+error: union patterns should have exactly one field
+  --> $DIR/union-fields-2.rs:18:9
+   |
+LL |     let U { a, b, c } = u;
+   |         ^^^^^^^^^^^^^
+
+error[E0026]: union `U` does not have a field named `c`
+  --> $DIR/union-fields-2.rs:18:19
+   |
+LL |     let U { a, b, c } = u;
+   |                   ^ union `U` does not have this field
+
+error: union patterns should have exactly one field
+  --> $DIR/union-fields-2.rs:20:9
+   |
+LL |     let U { .. } = u;
+   |         ^^^^^^^^
+
+error: `..` cannot be used in union patterns
+  --> $DIR/union-fields-2.rs:20:9
+   |
+LL |     let U { .. } = u;
+   |         ^^^^^^^^
+
+error: `..` cannot be used in union patterns
+  --> $DIR/union-fields-2.rs:22:9
+   |
+LL |     let U { a, .. } = u;
+   |         ^^^^^^^^^^^
+
+error: aborting due to 13 previous errors
+
+Some errors have detailed explanations: E0026, E0436, E0560, E0784.
+For more information about an error, try `rustc --explain E0026`.

@@ -1,0 +1,37 @@
+error: calls to `push` immediately after creation
+  --> tests/ui/pathbuf_init_then_push.rs:6:5
+   |
+LL | /     let mut path_buf = PathBuf::new();
+LL | |
+LL | |     path_buf.push("foo");
+   | |_________________________^ help: consider using the `.join()`: `let mut path_buf = PathBuf::from("foo");`
+   |
+   = note: `-D clippy::pathbuf-init-then-push` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::pathbuf_init_then_push)]`
+
+error: calls to `push` immediately after creation
+  --> tests/ui/pathbuf_init_then_push.rs:10:5
+   |
+LL | /     path_buf = PathBuf::from("foo");
+LL | |
+LL | |     path_buf.push("bar");
+   | |_________________________^ help: consider using the `.join()`: `path_buf = PathBuf::from("foo").join("bar");`
+
+error: calls to `push` immediately after creation
+  --> tests/ui/pathbuf_init_then_push.rs:15:5
+   |
+LL | /     path_buf = PathBuf::from("foo");
+LL | |
+LL | |     path_buf.push(bar);
+   | |_______________________^ help: consider using the `.join()`: `path_buf = PathBuf::from("foo").join(bar);`
+
+error: calls to `push` immediately after creation
+  --> tests/ui/pathbuf_init_then_push.rs:19:5
+   |
+LL | /     let mut path_buf = PathBuf::from("foo").join("bar");
+LL | |
+LL | |     path_buf.push("buz");
+   | |_________________________^ help: consider using the `.join()`: `let mut path_buf = PathBuf::from("foo").join("bar").join("buz");`
+
+error: aborting due to 4 previous errors
+

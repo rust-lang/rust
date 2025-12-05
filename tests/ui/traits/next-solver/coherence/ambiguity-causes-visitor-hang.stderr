@@ -1,0 +1,14 @@
+error[E0119]: conflicting implementations of trait `Overlap` for type `Box<_>`
+  --> $DIR/ambiguity-causes-visitor-hang.rs:53:1
+   |
+LL | impl<T: RecursiveSuper> Overlap for T {}
+   | ------------------------------------- first implementation here
+LL | impl<T> Overlap for Box<T> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `Box<_>`
+   |
+   = note: downstream crates may implement trait `Super` for type `std::boxed::Box<_>`
+   = note: downstream crates may implement trait `RecursiveSuper` for type `std::boxed::Box<_>`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0119`.

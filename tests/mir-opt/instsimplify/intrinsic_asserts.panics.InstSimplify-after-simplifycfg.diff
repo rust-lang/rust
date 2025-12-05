@@ -1,0 +1,36 @@
+- // MIR for `panics` before InstSimplify-after-simplifycfg
++ // MIR for `panics` after InstSimplify-after-simplifycfg
+  
+  fn panics() -> () {
+      let mut _0: ();
+      let _1: ();
+      let _2: ();
+      let _3: ();
+  
+      bb0: {
+          StorageLive(_1);
+-         _1 = assert_inhabited::<Never>() -> [return: bb1, unwind unreachable];
++         _1 = assert_inhabited::<Never>() -> unwind unreachable;
+      }
+  
+      bb1: {
+          StorageDead(_1);
+          StorageLive(_2);
+-         _2 = assert_zero_valid::<&u8>() -> [return: bb2, unwind unreachable];
++         _2 = assert_zero_valid::<&u8>() -> unwind unreachable;
+      }
+  
+      bb2: {
+          StorageDead(_2);
+          StorageLive(_3);
+-         _3 = assert_mem_uninitialized_valid::<&u8>() -> [return: bb3, unwind unreachable];
++         _3 = assert_mem_uninitialized_valid::<&u8>() -> unwind unreachable;
+      }
+  
+      bb3: {
+          StorageDead(_3);
+          _0 = const ();
+          return;
+      }
+  }
+  

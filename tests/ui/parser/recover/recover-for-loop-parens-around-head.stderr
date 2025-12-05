@@ -1,0 +1,27 @@
+error: unexpected parentheses surrounding `for` loop head
+  --> $DIR/recover-for-loop-parens-around-head.rs:11:9
+   |
+LL |     for ( _elem in vec ) {
+   |         ^              ^
+   |
+help: remove parentheses in `for` loop
+   |
+LL -     for ( _elem in vec ) {
+LL +     for _elem in vec {
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/recover-for-loop-parens-around-head.rs:13:40
+   |
+LL |         const _RECOVERY_WITNESS: u32 = 0u8;
+   |                                        ^^^ expected `u32`, found `u8`
+   |
+help: change the type of the numeric literal from `u8` to `u32`
+   |
+LL -         const _RECOVERY_WITNESS: u32 = 0u8;
+LL +         const _RECOVERY_WITNESS: u32 = 0u32;
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

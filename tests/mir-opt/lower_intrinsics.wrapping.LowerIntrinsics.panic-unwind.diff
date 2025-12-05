@@ -1,0 +1,74 @@
+- // MIR for `wrapping` before LowerIntrinsics
++ // MIR for `wrapping` after LowerIntrinsics
+  
+  fn wrapping(_1: i32, _2: i32) -> () {
+      debug a => _1;
+      debug b => _2;
+      let mut _0: ();
+      let _3: i32;
+      let mut _4: i32;
+      let mut _5: i32;
+      let mut _7: i32;
+      let mut _8: i32;
+      let mut _10: i32;
+      let mut _11: i32;
+      scope 1 {
+          debug _x => _3;
+          let _6: i32;
+          scope 2 {
+              debug _y => _6;
+              let _9: i32;
+              scope 3 {
+                  debug _z => _9;
+              }
+          }
+      }
+  
+      bb0: {
+          StorageLive(_3);
+          StorageLive(_4);
+          _4 = copy _1;
+          StorageLive(_5);
+          _5 = copy _2;
+-         _3 = std::intrinsics::wrapping_add::<i32>(move _4, move _5) -> [return: bb1, unwind unreachable];
++         _3 = Add(move _4, move _5);
++         goto -> bb1;
+      }
+  
+      bb1: {
+          StorageDead(_5);
+          StorageDead(_4);
+          StorageLive(_6);
+          StorageLive(_7);
+          _7 = copy _1;
+          StorageLive(_8);
+          _8 = copy _2;
+-         _6 = std::intrinsics::wrapping_sub::<i32>(move _7, move _8) -> [return: bb2, unwind unreachable];
++         _6 = Sub(move _7, move _8);
++         goto -> bb2;
+      }
+  
+      bb2: {
+          StorageDead(_8);
+          StorageDead(_7);
+          StorageLive(_9);
+          StorageLive(_10);
+          _10 = copy _1;
+          StorageLive(_11);
+          _11 = copy _2;
+-         _9 = wrapping_mul::<i32>(move _10, move _11) -> [return: bb3, unwind unreachable];
++         _9 = Mul(move _10, move _11);
++         goto -> bb3;
+      }
+  
+      bb3: {
+          StorageDead(_11);
+          StorageDead(_10);
+          _0 = const ();
+          StorageDead(_9);
+          StorageDead(_6);
+          StorageDead(_3);
+          return;
+      }
+  }
+  

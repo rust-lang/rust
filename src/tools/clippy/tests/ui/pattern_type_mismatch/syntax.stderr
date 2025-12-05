@@ -1,0 +1,80 @@
+error: type of pattern does not match the expression type
+  --> tests/ui/pattern_type_mismatch/syntax.rs:19:9
+   |
+LL |         Some(_) => (),
+   |         ^^^^^^^
+   |
+   = help: use `*` to dereference the match expression or explicitly match against a `&_` pattern and adjust the enclosed variable bindings
+   = note: `-D clippy::pattern-type-mismatch` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::pattern_type_mismatch)]`
+
+error: type of pattern does not match the expression type
+  --> tests/ui/pattern_type_mismatch/syntax.rs:39:12
+   |
+LL |     if let Some(_) = ref_value {}
+   |            ^^^^^^^
+   |
+   = help: use `*` to dereference the match expression or explicitly match against a `&_` pattern and adjust the enclosed variable bindings
+
+error: type of pattern does not match the expression type
+  --> tests/ui/pattern_type_mismatch/syntax.rs:51:15
+   |
+LL |     while let Some(_) = ref_value {
+   |               ^^^^^^^
+   |
+   = help: use `*` to dereference the match expression or explicitly match against a `&_` pattern and adjust the enclosed variable bindings
+
+error: type of pattern does not match the expression type
+  --> tests/ui/pattern_type_mismatch/syntax.rs:71:9
+   |
+LL |     for (_a, _b) in slice.iter() {}
+   |         ^^^^^^^^
+   |
+   = help: explicitly match against a `&_` pattern and adjust the enclosed variable bindings
+
+error: type of pattern does not match the expression type
+  --> tests/ui/pattern_type_mismatch/syntax.rs:82:9
+   |
+LL |     let (_n, _m) = ref_value;
+   |         ^^^^^^^^
+   |
+   = help: use `*` to dereference the match expression or explicitly match against a `&_` pattern and adjust the enclosed variable bindings
+
+error: type of pattern does not match the expression type
+  --> tests/ui/pattern_type_mismatch/syntax.rs:92:12
+   |
+LL |     fn foo((_a, _b): &(i32, i32)) {}
+   |            ^^^^^^^^
+   |
+   = help: explicitly match against a `&_` pattern and adjust the enclosed variable bindings
+
+error: type of pattern does not match the expression type
+  --> tests/ui/pattern_type_mismatch/syntax.rs:107:10
+   |
+LL |     foo(|(_a, _b)| ());
+   |          ^^^^^^^^
+   |
+   = help: explicitly match against a `&_` pattern and adjust the enclosed variable bindings
+
+error: type of pattern does not match the expression type
+  --> tests/ui/pattern_type_mismatch/syntax.rs:124:9
+   |
+LL |         Some(_) => (),
+   |         ^^^^^^^
+   |
+   = help: use `*` to dereference the match expression or explicitly match against a `&_` pattern and adjust the enclosed variable bindings
+
+error: type of pattern does not match the expression type
+  --> tests/ui/pattern_type_mismatch/syntax.rs:145:17
+   |
+LL |                 Some(_) => (),
+   |                 ^^^^^^^
+...
+LL |     matching_macro!(value);
+   |     ---------------------- in this macro invocation
+   |
+   = help: use `*` to dereference the match expression or explicitly match against a `&_` pattern and adjust the enclosed variable bindings
+   = note: this error originates in the macro `matching_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 9 previous errors
+

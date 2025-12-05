@@ -1,0 +1,32 @@
+[alias]
+bless = "test --config env.RUSTC_BLESS='1'"
+uitest = "test --test compile-test"
+uibless = "bless --test compile-test"
+dev = "run --package clippy_dev --bin clippy_dev --manifest-path clippy_dev/Cargo.toml --"
+lintcheck = "run --package lintcheck --bin lintcheck --manifest-path lintcheck/Cargo.toml  -- "
+collect-metadata = "test --test compile-test --config env.COLLECT_METADATA='1'"
+
+[build]
+# -Zbinary-dep-depinfo allows us to track which rlib files to use for compiling UI tests
+rustflags = ["-Zunstable-options", "-Zbinary-dep-depinfo"]
+target-dir = "target"
+
+[unstable]
+binary-dep-depinfo = true
+profile-rustflags = true
+
+[profile.dev]
+split-debuginfo = "unpacked"
+
+# Add back the containing directory of the packages we have to refer to using --manifest-path
+[profile.dev.package.clippy_dev]
+rustflags = ["--remap-path-prefix", "=clippy_dev"]
+[profile.dev.package.lintcheck]
+rustflags = ["--remap-path-prefix", "=lintcheck"]
+
+# quine-mc_cluskey makes up a significant part of the runtime in dogfood
+# due to the number of conditions in the clippy_lints crate
+# and enabling optimizations for that specific dependency helps a bit
+# without increasing total build times.
+[profile.dev.package.quine-mc_cluskey]
+opt-level = 3

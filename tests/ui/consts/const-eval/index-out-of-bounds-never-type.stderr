@@ -1,0 +1,21 @@
+error[E0080]: index out of bounds: the length is 0 but the index is 0
+  --> $DIR/index-out-of-bounds-never-type.rs:10:61
+   |
+LL |     const VOID: ! = { let x = 0 * std::mem::size_of::<T>(); [][x] };
+   |                                                             ^^^^^ evaluation of `PrintName::<()>::VOID` failed here
+
+note: erroneous constant encountered
+  --> $DIR/index-out-of-bounds-never-type.rs:16:13
+   |
+LL |     let _ = PrintName::<T>::VOID;
+   |             ^^^^^^^^^^^^^^^^^^^^
+
+note: the above error was encountered while instantiating `fn f::<()>`
+  --> $DIR/index-out-of-bounds-never-type.rs:20:5
+   |
+LL |     f::<()>();
+   |     ^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0080`.

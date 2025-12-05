@@ -1,0 +1,15 @@
+[package]
+name = "windows-targets"
+description = "A drop-in replacement for the real windows-targets crate for use in std only."
+version = "0.0.0"
+edition = "2024"
+
+[lib]
+test = false
+bench = false
+doc = false
+
+[features]
+# Enable using raw-dylib for Windows imports.
+# This will eventually be the default.
+windows_raw_dylib = []

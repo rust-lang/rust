@@ -1,0 +1,40 @@
+error: incorrect ordering of items (must be alphabetically ordered)
+  --> tests/ui-toml/arbitrary_source_item_ordering/ordering_only_trait.rs:32:11
+   |
+LL |     const A: bool;
+   |           ^
+   |
+note: should be placed before `B`
+  --> tests/ui-toml/arbitrary_source_item_ordering/ordering_only_trait.rs:31:11
+   |
+LL |     const B: bool;
+   |           ^
+   = note: `-D clippy::arbitrary-source-item-ordering` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::arbitrary_source_item_ordering)]`
+
+error: incorrect ordering of items (must be alphabetically ordered)
+  --> tests/ui-toml/arbitrary_source_item_ordering/ordering_only_trait.rs:38:8
+   |
+LL |     fn a();
+   |        ^
+   |
+note: should be placed before `b`
+  --> tests/ui-toml/arbitrary_source_item_ordering/ordering_only_trait.rs:37:8
+   |
+LL |     fn b();
+   |        ^
+
+error: incorrect ordering of trait items (defined order: [Const, Type, Fn])
+  --> tests/ui-toml/arbitrary_source_item_ordering/ordering_only_trait.rs:45:5
+   |
+LL |     const A: bool;
+   |     ^^^^^^^^^^^^^
+   |
+note: should be placed before `SomeType`
+  --> tests/ui-toml/arbitrary_source_item_ordering/ordering_only_trait.rs:43:5
+   |
+LL |     type SomeType;
+   |     ^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+

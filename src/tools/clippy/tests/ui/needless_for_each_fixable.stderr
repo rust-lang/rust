@@ -1,0 +1,158 @@
+error: needless use of `for_each`
+  --> tests/ui/needless_for_each_fixable.rs:15:5
+   |
+LL | /     v.iter().for_each(|elem| {
+LL | |
+LL | |         acc += elem;
+LL | |     });
+   | |_______^
+   |
+   = note: `-D clippy::needless-for-each` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::needless_for_each)]`
+help: try
+   |
+LL ~     for elem in v.iter() {
+LL +
+LL +         acc += elem;
+LL +     }
+   |
+
+error: needless use of `for_each`
+  --> tests/ui/needless_for_each_fixable.rs:19:5
+   |
+LL | /     v.into_iter().for_each(|elem| {
+LL | |
+LL | |         acc += elem;
+LL | |     });
+   | |_______^
+   |
+help: try
+   |
+LL ~     for elem in v.into_iter() {
+LL +
+LL +         acc += elem;
+LL +     }
+   |
+
+error: needless use of `for_each`
+  --> tests/ui/needless_for_each_fixable.rs:24:5
+   |
+LL | /     [1, 2, 3].iter().for_each(|elem| {
+LL | |
+LL | |         acc += elem;
+LL | |     });
+   | |_______^
+   |
+help: try
+   |
+LL ~     for elem in [1, 2, 3].iter() {
+LL +
+LL +         acc += elem;
+LL +     }
+   |
+
+error: needless use of `for_each`
+  --> tests/ui/needless_for_each_fixable.rs:30:5
+   |
+LL | /     hash_map.iter().for_each(|(k, v)| {
+LL | |
+LL | |         acc += k + v;
+LL | |     });
+   | |_______^
+   |
+help: try
+   |
+LL ~     for (k, v) in hash_map.iter() {
+LL +
+LL +         acc += k + v;
+LL +     }
+   |
+
+error: needless use of `for_each`
+  --> tests/ui/needless_for_each_fixable.rs:34:5
+   |
+LL | /     hash_map.iter_mut().for_each(|(k, v)| {
+LL | |
+LL | |         acc += *k + *v;
+LL | |     });
+   | |_______^
+   |
+help: try
+   |
+LL ~     for (k, v) in hash_map.iter_mut() {
+LL +
+LL +         acc += *k + *v;
+LL +     }
+   |
+
+error: needless use of `for_each`
+  --> tests/ui/needless_for_each_fixable.rs:38:5
+   |
+LL | /     hash_map.keys().for_each(|k| {
+LL | |
+LL | |         acc += k;
+LL | |     });
+   | |_______^
+   |
+help: try
+   |
+LL ~     for k in hash_map.keys() {
+LL +
+LL +         acc += k;
+LL +     }
+   |
+
+error: needless use of `for_each`
+  --> tests/ui/needless_for_each_fixable.rs:42:5
+   |
+LL | /     hash_map.values().for_each(|v| {
+LL | |
+LL | |         acc += v;
+LL | |     });
+   | |_______^
+   |
+help: try
+   |
+LL ~     for v in hash_map.values() {
+LL +
+LL +         acc += v;
+LL +     }
+   |
+
+error: needless use of `for_each`
+  --> tests/ui/needless_for_each_fixable.rs:50:5
+   |
+LL | /     my_vec().iter().for_each(|elem| {
+LL | |
+LL | |         acc += elem;
+LL | |     });
+   | |_______^
+   |
+help: try
+   |
+LL ~     for elem in my_vec().iter() {
+LL +
+LL +         acc += elem;
+LL +     }
+   |
+
+error: needless use of `for_each`
+  --> tests/ui/needless_for_each_fixable.rs:135:9
+   |
+LL |         rows.iter().for_each(|x| _ = v.push(x));
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for x in rows.iter() { _ = v.push(x) }`
+
+error: needless use of `for_each`
+  --> tests/ui/needless_for_each_fixable.rs:142:9
+   |
+LL |         rows.iter().for_each(|x| do_something(x, 1u8));
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for x in rows.iter() { do_something(x, 1u8); }`
+
+error: needless use of `for_each`
+  --> tests/ui/needless_for_each_fixable.rs:149:5
+   |
+LL |     vec.iter().for_each(|v| println!("{v}"));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for v in vec.iter() { println!("{v}"); }`
+
+error: aborting due to 11 previous errors
+

@@ -1,0 +1,38 @@
+error: constant of non-structural type `B` in a pattern
+  --> $DIR/issue-62307-match-ref-ref-forbidden-without-eq.rs:35:9
+   |
+LL | struct B(i32);
+   | -------- `B` must be annotated with `#[derive(PartialEq)]` to be usable in patterns
+...
+LL |     const RR_B1: & & B = & & B(1);
+   |     ------------------ constant defined here
+...
+LL |         RR_B1 => { println!("CLAIM RR0: {:?} matches {:?}", RR_B1, RR_B0); }
+   |         ^^^^^ constant of non-structural type
+   |
+note: the `PartialEq` trait must be derived, manual `impl`s are not sufficient; see https://doc.rust-lang.org/stable/std/marker/trait.StructuralPartialEq.html for details
+  --> $DIR/issue-62307-match-ref-ref-forbidden-without-eq.rs:22:1
+   |
+LL | impl PartialEq for B {
+   | ^^^^^^^^^^^^^^^^^^^^
+
+error: constant of non-structural type `B` in a pattern
+  --> $DIR/issue-62307-match-ref-ref-forbidden-without-eq.rs:42:9
+   |
+LL | struct B(i32);
+   | -------- `B` must be annotated with `#[derive(PartialEq)]` to be usable in patterns
+...
+LL |     const RR_B1: & & B = & & B(1);
+   |     ------------------ constant defined here
+...
+LL |         RR_B1 => { println!("CLAIM RR1: {:?} matches {:?}", RR_B1, RR_B1); }
+   |         ^^^^^ constant of non-structural type
+   |
+note: the `PartialEq` trait must be derived, manual `impl`s are not sufficient; see https://doc.rust-lang.org/stable/std/marker/trait.StructuralPartialEq.html for details
+  --> $DIR/issue-62307-match-ref-ref-forbidden-without-eq.rs:22:1
+   |
+LL | impl PartialEq for B {
+   | ^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

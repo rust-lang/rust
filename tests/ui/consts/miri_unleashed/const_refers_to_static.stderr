@@ -1,0 +1,37 @@
+error[E0080]: calling non-const function `AtomicUsize::fetch_add`
+  --> $DIR/const_refers_to_static.rs:11:5
+   |
+LL |     FOO.fetch_add(1, Ordering::Relaxed)
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `MUTATE_INTERIOR_MUT` failed here
+
+error[E0080]: constant accesses mutable global memory
+  --> $DIR/const_refers_to_static.rs:16:14
+   |
+LL |     unsafe { *(&FOO as *const _ as *const usize) }
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `READ_INTERIOR_MUT` failed here
+
+error[E0080]: constant accesses mutable global memory
+  --> $DIR/const_refers_to_static.rs:20:32
+   |
+LL | const READ_MUT: u32 = unsafe { MUTABLE };
+   |                                ^^^^^^^ evaluation of `READ_MUT` failed here
+
+error: constant REF_INTERIOR_MUT cannot be used as pattern
+  --> $DIR/const_refers_to_static.rs:35:9
+   |
+LL |         REF_INTERIOR_MUT => {},
+   |         ^^^^^^^^^^^^^^^^
+   |
+   = note: constants that reference mutable or external memory cannot be used as patterns
+
+warning: skipping const checks
+   |
+help: skipping check that does not even have a feature gate
+  --> $DIR/const_refers_to_static.rs:11:5
+   |
+LL |     FOO.fetch_add(1, Ordering::Relaxed)
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0080`.

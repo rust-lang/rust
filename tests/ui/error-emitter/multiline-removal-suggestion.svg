@@ -1,0 +1,456 @@
+<svg width="2288px" height="3890px" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    .fg { fill: #AAAAAA }
+    .bg { fill: #000000 }
+    .fg-bright-blue { fill: #5555FF }
+    .fg-bright-cyan { fill: #55FFFF }
+    .fg-bright-green { fill: #55FF55 }
+    .fg-bright-red { fill: #FF5555 }
+    .container {
+      padding: 0 10px;
+      line-height: 18px;
+    }
+    .bold { font-weight: bold; }
+    tspan {
+      font: 14px SFMono-Regular, Consolas, Liberation Mono, Menlo, monospace;
+      white-space: pre;
+      line-height: 18px;
+    }
+  </style>
+
+  <rect width="100%" height="100%" y="0" rx="4.5" class="bg" />
+
+  <text xml:space="preserve" class="container fg">
+    <tspan x="10px" y="28px"><tspan class="fg-bright-red bold">error[E0277]</tspan><tspan class="bold">: `(bool, HashSet&lt;u8&gt;)` is not an iterator</tspan>
+</tspan>
+    <tspan x="10px" y="46px"><tspan>  </tspan><tspan class="fg-bright-blue bold">--&gt; </tspan><tspan>$DIR/multiline-removal-suggestion.rs:21:8</tspan>
+</tspan>
+    <tspan x="10px" y="64px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan>
+</tspan>
+    <tspan x="10px" y="82px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan>                 }).flatten()</tspan>
+</tspan>
+    <tspan x="10px" y="100px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan>                    </tspan><tspan class="fg-bright-red bold">^^^^^^^</tspan><tspan> </tspan><tspan class="fg-bright-red bold">`(bool, HashSet&lt;u8&gt;)` is not an iterator</tspan>
+</tspan>
+    <tspan x="10px" y="118px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan>
+</tspan>
+    <tspan x="10px" y="136px"><tspan>   </tspan><tspan class="fg-bright-blue bold">= </tspan><tspan class="bold">help</tspan><tspan>: the trait `Iterator` is not implemented for `(bool, HashSet&lt;u8&gt;)`</tspan>
+</tspan>
+    <tspan x="10px" y="154px"><tspan>   </tspan><tspan class="fg-bright-blue bold">= </tspan><tspan class="bold">note</tspan><tspan>: required for `(bool, HashSet&lt;u8&gt;)` to implement `IntoIterator`</tspan>
+</tspan>
+    <tspan x="10px" y="172px"><tspan class="fg-bright-green bold">note</tspan><tspan>: required by a bound in `flatten`</tspan>
+</tspan>
+    <tspan x="10px" y="190px"><tspan>  </tspan><tspan class="fg-bright-blue bold">--&gt; </tspan><tspan>$SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL</tspan>
+</tspan>
+    <tspan x="10px" y="208px"><tspan class="fg-bright-cyan bold">help</tspan><tspan>: consider removing this method call, as the receiver has type `std::vec::IntoIter&lt;HashSet&lt;u8&gt;&gt;` and `std::vec::IntoIter&lt;HashSet&lt;u8&gt;&gt;: Iterator` trivially holds</tspan>
+</tspan>
+    <tspan x="10px" y="226px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan>
+</tspan>
+    <tspan x="10px" y="244px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-red">- </tspan><tspan>            ts.into_iter()</tspan>
+</tspan>
+    <tspan x="10px" y="262px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-red">-                 .map(|t| {</tspan>
+</tspan>
+    <tspan x="10px" y="280px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-red">-                     (</tspan>
+</tspan>
+    <tspan x="10px" y="298px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-red">-                         is_true,</tspan>
+</tspan>
+    <tspan x="10px" y="316px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-red">-                         t,</tspan>
+</tspan>
+    <tspan x="10px" y="334px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-red">-                     )</tspan>
+</tspan>
+    <tspan x="10px" y="352px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-red">-                 })</tspan><tspan>.flatten()</tspan>
+</tspan>
+    <tspan x="10px" y="370px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-green">+ </tspan><tspan>            ts.into_iter().flatten()</tspan>
+</tspan>
+    <tspan x="10px" y="388px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan>
+</tspan>
+    <tspan x="10px" y="406px">
+</tspan>
+    <tspan x="10px" y="424px"><tspan class="fg-bright-red bold">error[E0277]</tspan><tspan class="bold">: `(bool, HashSet&lt;u8&gt;)` is not an iterator</tspan>
+</tspan>
+    <tspan x="10px" y="442px"><tspan>  </tspan><tspan class="fg-bright-blue bold">--&gt; </tspan><tspan>$DIR/multiline-removal-suggestion.rs:13:2</tspan>
+</tspan>
+    <tspan x="10px" y="460px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan>
+</tspan>
+    <tspan x="10px" y="478px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan> </tspan><tspan class="fg-bright-red bold">/</tspan><tspan>     hm.into_iter()</tspan>
+</tspan>
+    <tspan x="10px" y="496px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan> </tspan><tspan class="fg-bright-red bold">|</tspan><tspan>         .map(|(is_true, ts)| {</tspan>
+</tspan>
+    <tspan x="10px" y="514px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan> </tspan><tspan class="fg-bright-red bold">|</tspan><tspan>             ts.into_iter()</tspan>
+</tspan>
+    <tspan x="10px" y="532px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan> </tspan><tspan class="fg-bright-red bold">|</tspan><tspan>                 .map(|t| {</tspan>
+</tspan>
+    <tspan x="10px" y="550px"><tspan class="fg-bright-blue bold">...</tspan><tspan>  </tspan><tspan class="fg-bright-red bold">|</tspan>
+</tspan>
+    <tspan x="10px" y="568px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan> </tspan><tspan class="fg-bright-red bold">|</tspan><tspan>                 }).flatten()</tspan>
+</tspan>
+    <tspan x="10px" y="586px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan> </tspan><tspan class="fg-bright-red bold">|</tspan><tspan>         })</tspan>
+</tspan>
+    <tspan x="10px" y="604px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan> </tspan><tspan class="fg-bright-red bold">|__________^</tspan><tspan> </tspan><tspan class="fg-bright-red bold">`(bool, HashSet&lt;u8&gt;)` is not an iterator</tspan>
+</tspan>
+    <tspan x="10px" y="622px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan>
+</tspan>
+    <tspan x="10px" y="640px"><tspan>   </tspan><tspan class="fg-bright-blue bold">= </tspan><tspan class="bold">help</tspan><tspan>: the trait `Iterator` is not implemented for `(bool, HashSet&lt;u8&gt;)`</tspan>
+</tspan>
+    <tspan x="10px" y="658px"><tspan>   </tspan><tspan class="fg-bright-blue bold">= </tspan><tspan class="bold">note</tspan><tspan>: required for `(bool, HashSet&lt;u8&gt;)` to implement `IntoIterator`</tspan>
+</tspan>
+    <tspan x="10px" y="676px"><tspan class="fg-bright-green bold">note</tspan><tspan>: required by a bound in `Flatten`</tspan>
+</tspan>
+    <tspan x="10px" y="694px"><tspan>  </tspan><tspan class="fg-bright-blue bold">--&gt; </tspan><tspan>$SRC_DIR/core/src/iter/adapters/flatten.rs:LL:COL</tspan>
+</tspan>
+    <tspan x="10px" y="712px">
+</tspan>
+    <tspan x="10px" y="730px"><tspan class="fg-bright-red bold">error[E0599]</tspan><tspan class="bold">: the method `collect` exists for struct `Flatten&lt;Map&lt;std::collections::hash_map::IntoIter&lt;bool, Vec&lt;HashSet&lt;u8&gt;&gt;&gt;, {closure@$DIR/multiline-removal-suggestion.rs:14:8: 14:23}&gt;&gt;`, but its trait bounds were not satisfied</tspan>
+</tspan>
+    <tspan x="10px" y="748px"><tspan>  </tspan><tspan class="fg-bright-blue bold">--&gt; </tspan><tspan>$DIR/multiline-removal-suggestion.rs:24:4</tspan>
+</tspan>
+    <tspan x="10px" y="766px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan>
+</tspan>
+    <tspan x="10px" y="784px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">/</tspan><tspan>     hm.into_iter()</tspan>
+</tspan>
+    <tspan x="10px" y="802px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan>         .map(|(is_true, ts)| {</tspan>
+</tspan>
+    <tspan x="10px" y="820px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan>             ts.into_iter()</tspan>
+</tspan>
+    <tspan x="10px" y="838px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan>                 .map(|t| {</tspan>
+</tspan>
+    <tspan x="10px" y="856px"><tspan class="fg-bright-blue bold">...</tspan><tspan>  </tspan><tspan class="fg-bright-blue bold">|</tspan>
+</tspan>
+    <tspan x="10px" y="874px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan>         .flatten()</tspan>
+</tspan>
+    <tspan x="10px" y="892px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan>         .collect()</tspan>
+</tspan>
+    <tspan x="10px" y="910px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan>         </tspan><tspan class="fg-bright-blue bold">-</tspan><tspan class="fg-bright-red bold">^^^^^^^</tspan><tspan> </tspan><tspan class="fg-bright-red bold">method cannot be called due to unsatisfied trait bounds</tspan>
+</tspan>
+    <tspan x="10px" y="928px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">|_________|</tspan>
+</tspan>
+    <tspan x="10px" y="946px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan>
+</tspan>
+    <tspan x="10px" y="964px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan>
+</tspan>
+    <tspan x="10px" y="982px"><tspan>   </tspan><tspan class="fg-bright-blue bold">= </tspan><tspan class="bold">note</tspan><tspan>: the following trait bounds were not satisfied:</tspan>
+</tspan>
+    <tspan x="10px" y="1000px"><tspan>           `Flatten&lt;Map&lt;std::collections::hash_map::IntoIter&lt;bool, Vec&lt;HashSet&lt;u8&gt;&gt;&gt;, {closure@$DIR/multiline-removal-suggestion.rs:14:8: 14:23}&gt;&gt;: Iterator`</tspan>
+</tspan>
+    <tspan x="10px" y="1018px"><tspan>           which is required by `&amp;mut Flatten&lt;Map&lt;std::collections::hash_map::IntoIter&lt;bool, Vec&lt;HashSet&lt;u8&gt;&gt;&gt;, {closure@$DIR/multiline-removal-suggestion.rs:14:8: 14:23}&gt;&gt;: Iterator`</tspan>
+</tspan>
+    <tspan x="10px" y="1036px">
+</tspan>
+    <tspan x="10px" y="1054px"><tspan class="fg-bright-red bold">error[E0277]</tspan><tspan class="bold">: `(bool, HashSet&lt;u8&gt;)` is not an iterator</tspan>
+</tspan>
+    <tspan x="10px" y="1072px"><tspan>  </tspan><tspan class="fg-bright-blue bold">--&gt; </tspan><tspan>$DIR/multiline-removal-suggestion.rs:32:6</tspan>
+</tspan>
+    <tspan x="10px" y="1090px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan>
+</tspan>
+    <tspan x="10px" y="1108px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan>                 .flatten()</tspan>
+</tspan>
+    <tspan x="10px" y="1126px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan>                  </tspan><tspan class="fg-bright-red bold">^^^^^^^</tspan><tspan> </tspan><tspan class="fg-bright-red bold">`(bool, HashSet&lt;u8&gt;)` is not an iterator</tspan>
+</tspan>
+    <tspan x="10px" y="1144px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan>
+</tspan>
+    <tspan x="10px" y="1162px"><tspan>   </tspan><tspan class="fg-bright-blue bold">= </tspan><tspan class="bold">help</tspan><tspan>: the trait `Iterator` is not implemented for `(bool, HashSet&lt;u8&gt;)`</tspan>
+</tspan>
+    <tspan x="10px" y="1180px"><tspan>   </tspan><tspan class="fg-bright-blue bold">= </tspan><tspan class="bold">note</tspan><tspan>: required for `(bool, HashSet&lt;u8&gt;)` to implement `IntoIterator`</tspan>
+</tspan>
+    <tspan x="10px" y="1198px"><tspan class="fg-bright-green bold">note</tspan><tspan>: required by a bound in `flatten`</tspan>
+</tspan>
+    <tspan x="10px" y="1216px"><tspan>  </tspan><tspan class="fg-bright-blue bold">--&gt; </tspan><tspan>$SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL</tspan>
+</tspan>
+    <tspan x="10px" y="1234px"><tspan class="fg-bright-cyan bold">help</tspan><tspan>: consider removing this method call, as the receiver has type `std::vec::IntoIter&lt;HashSet&lt;u8&gt;&gt;` and `std::vec::IntoIter&lt;HashSet&lt;u8&gt;&gt;: Iterator` trivially holds</tspan>
+</tspan>
+    <tspan x="10px" y="1252px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan>
+</tspan>
+    <tspan x="10px" y="1270px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-red">- </tspan><tspan>            ts.into_iter()</tspan>
+</tspan>
+    <tspan x="10px" y="1288px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-red">-                 .map(|t| (is_true, t))</tspan>
+</tspan>
+    <tspan x="10px" y="1306px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-green">+ </tspan><tspan>            ts.into_iter()</tspan>
+</tspan>
+    <tspan x="10px" y="1324px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan>
+</tspan>
+    <tspan x="10px" y="1342px">
+</tspan>
+    <tspan x="10px" y="1360px"><tspan class="fg-bright-red bold">error[E0277]</tspan><tspan class="bold">: `(bool, HashSet&lt;u8&gt;)` is not an iterator</tspan>
+</tspan>
+    <tspan x="10px" y="1378px"><tspan>  </tspan><tspan class="fg-bright-blue bold">--&gt; </tspan><tspan>$DIR/multiline-removal-suggestion.rs:28:2</tspan>
+</tspan>
+    <tspan x="10px" y="1396px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan>
+</tspan>
+    <tspan x="10px" y="1414px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan> </tspan><tspan class="fg-bright-red bold">/</tspan><tspan>     hm.into_iter()</tspan>
+</tspan>
+    <tspan x="10px" y="1432px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan> </tspan><tspan class="fg-bright-red bold">|</tspan><tspan>         .map(|(is_true, ts)| {</tspan>
+</tspan>
+    <tspan x="10px" y="1450px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan> </tspan><tspan class="fg-bright-red bold">|</tspan><tspan>             ts.into_iter()</tspan>
+</tspan>
+    <tspan x="10px" y="1468px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan> </tspan><tspan class="fg-bright-red bold">|</tspan><tspan>                 .map(|t| (is_true, t))</tspan>
+</tspan>
+    <tspan x="10px" y="1486px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan> </tspan><tspan class="fg-bright-red bold">|</tspan><tspan>                 .flatten()</tspan>
+</tspan>
+    <tspan x="10px" y="1504px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan> </tspan><tspan class="fg-bright-red bold">|</tspan><tspan>         })</tspan>
+</tspan>
+    <tspan x="10px" y="1522px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan> </tspan><tspan class="fg-bright-red bold">|__________^</tspan><tspan> </tspan><tspan class="fg-bright-red bold">`(bool, HashSet&lt;u8&gt;)` is not an iterator</tspan>
+</tspan>
+    <tspan x="10px" y="1540px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan>
+</tspan>
+    <tspan x="10px" y="1558px"><tspan>   </tspan><tspan class="fg-bright-blue bold">= </tspan><tspan class="bold">help</tspan><tspan>: the trait `Iterator` is not implemented for `(bool, HashSet&lt;u8&gt;)`</tspan>
+</tspan>
+    <tspan x="10px" y="1576px"><tspan>   </tspan><tspan class="fg-bright-blue bold">= </tspan><tspan class="bold">note</tspan><tspan>: required for `(bool, HashSet&lt;u8&gt;)` to implement `IntoIterator`</tspan>
+</tspan>
+    <tspan x="10px" y="1594px"><tspan class="fg-bright-green bold">note</tspan><tspan>: required by a bound in `Flatten`</tspan>
+</tspan>
+    <tspan x="10px" y="1612px"><tspan>  </tspan><tspan class="fg-bright-blue bold">--&gt; </tspan><tspan>$SRC_DIR/core/src/iter/adapters/flatten.rs:LL:COL</tspan>
+</tspan>
+    <tspan x="10px" y="1630px">
+</tspan>
+    <tspan x="10px" y="1648px"><tspan class="fg-bright-red bold">error[E0599]</tspan><tspan class="bold">: the method `collect` exists for struct `Flatten&lt;Map&lt;std::collections::hash_map::IntoIter&lt;bool, Vec&lt;HashSet&lt;u8&gt;&gt;&gt;, {closure@$DIR/multiline-removal-suggestion.rs:29:8: 29:23}&gt;&gt;`, but its trait bounds were not satisfied</tspan>
+</tspan>
+    <tspan x="10px" y="1666px"><tspan>  </tspan><tspan class="fg-bright-blue bold">--&gt; </tspan><tspan>$DIR/multiline-removal-suggestion.rs:35:4</tspan>
+</tspan>
+    <tspan x="10px" y="1684px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan>
+</tspan>
+    <tspan x="10px" y="1702px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">/</tspan><tspan>     hm.into_iter()</tspan>
+</tspan>
+    <tspan x="10px" y="1720px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan>         .map(|(is_true, ts)| {</tspan>
+</tspan>
+    <tspan x="10px" y="1738px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan>             ts.into_iter()</tspan>
+</tspan>
+    <tspan x="10px" y="1756px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan>                 .map(|t| (is_true, t))</tspan>
+</tspan>
+    <tspan x="10px" y="1774px"><tspan class="fg-bright-blue bold">...</tspan><tspan>  </tspan><tspan class="fg-bright-blue bold">|</tspan>
+</tspan>
+    <tspan x="10px" y="1792px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan>         .flatten()</tspan>
+</tspan>
+    <tspan x="10px" y="1810px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan>         .collect()</tspan>
+</tspan>
+    <tspan x="10px" y="1828px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan>         </tspan><tspan class="fg-bright-blue bold">-</tspan><tspan class="fg-bright-red bold">^^^^^^^</tspan><tspan> </tspan><tspan class="fg-bright-red bold">method cannot be called due to unsatisfied trait bounds</tspan>
+</tspan>
+    <tspan x="10px" y="1846px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">|_________|</tspan>
+</tspan>
+    <tspan x="10px" y="1864px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan>
+</tspan>
+    <tspan x="10px" y="1882px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan>
+</tspan>
+    <tspan x="10px" y="1900px"><tspan>   </tspan><tspan class="fg-bright-blue bold">= </tspan><tspan class="bold">note</tspan><tspan>: the following trait bounds were not satisfied:</tspan>
+</tspan>
+    <tspan x="10px" y="1918px"><tspan>           `Flatten&lt;Map&lt;std::collections::hash_map::IntoIter&lt;bool, Vec&lt;HashSet&lt;u8&gt;&gt;&gt;, {closure@$DIR/multiline-removal-suggestion.rs:29:8: 29:23}&gt;&gt;: Iterator`</tspan>
+</tspan>
+    <tspan x="10px" y="1936px"><tspan>           which is required by `&amp;mut Flatten&lt;Map&lt;std::collections::hash_map::IntoIter&lt;bool, Vec&lt;HashSet&lt;u8&gt;&gt;&gt;, {closure@$DIR/multiline-removal-suggestion.rs:29:8: 29:23}&gt;&gt;: Iterator`</tspan>
+</tspan>
+    <tspan x="10px" y="1954px">
+</tspan>
+    <tspan x="10px" y="1972px"><tspan class="fg-bright-red bold">error[E0277]</tspan><tspan class="bold">: `(bool, HashSet&lt;u8&gt;)` is not an iterator</tspan>
+</tspan>
+    <tspan x="10px" y="1990px"><tspan>  </tspan><tspan class="fg-bright-blue bold">--&gt; </tspan><tspan>$DIR/multiline-removal-suggestion.rs:43:7</tspan>
+</tspan>
+    <tspan x="10px" y="2008px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan>
+</tspan>
+    <tspan x="10px" y="2026px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan>             }).flatten()</tspan>
+</tspan>
+    <tspan x="10px" y="2044px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan>                </tspan><tspan class="fg-bright-red bold">^^^^^^^</tspan><tspan> </tspan><tspan class="fg-bright-red bold">`(bool, HashSet&lt;u8&gt;)` is not an iterator</tspan>
+</tspan>
+    <tspan x="10px" y="2062px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan>
+</tspan>
+    <tspan x="10px" y="2080px"><tspan>   </tspan><tspan class="fg-bright-blue bold">= </tspan><tspan class="bold">help</tspan><tspan>: the trait `Iterator` is not implemented for `(bool, HashSet&lt;u8&gt;)`</tspan>
+</tspan>
+    <tspan x="10px" y="2098px"><tspan>   </tspan><tspan class="fg-bright-blue bold">= </tspan><tspan class="bold">note</tspan><tspan>: required for `(bool, HashSet&lt;u8&gt;)` to implement `IntoIterator`</tspan>
+</tspan>
+    <tspan x="10px" y="2116px"><tspan class="fg-bright-green bold">note</tspan><tspan>: required by a bound in `flatten`</tspan>
+</tspan>
+    <tspan x="10px" y="2134px"><tspan>  </tspan><tspan class="fg-bright-blue bold">--&gt; </tspan><tspan>$SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL</tspan>
+</tspan>
+    <tspan x="10px" y="2152px"><tspan class="fg-bright-cyan bold">help</tspan><tspan>: consider removing this method call, as the receiver has type `std::vec::IntoIter&lt;HashSet&lt;u8&gt;&gt;` and `std::vec::IntoIter&lt;HashSet&lt;u8&gt;&gt;: Iterator` trivially holds</tspan>
+</tspan>
+    <tspan x="10px" y="2170px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan>
+</tspan>
+    <tspan x="10px" y="2188px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-red">- </tspan><tspan>            ts.into_iter()</tspan><tspan class="fg-bright-red">.map(|t| {</tspan>
+</tspan>
+    <tspan x="10px" y="2206px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-red">-                 (is_true, t)</tspan>
+</tspan>
+    <tspan x="10px" y="2224px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-red">-             })</tspan><tspan>.flatten()</tspan>
+</tspan>
+    <tspan x="10px" y="2242px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-green">+ </tspan><tspan>            ts.into_iter().flatten()</tspan>
+</tspan>
+    <tspan x="10px" y="2260px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan>
+</tspan>
+    <tspan x="10px" y="2278px">
+</tspan>
+    <tspan x="10px" y="2296px"><tspan class="fg-bright-red bold">error[E0277]</tspan><tspan class="bold">: `(bool, HashSet&lt;u8&gt;)` is not an iterator</tspan>
+</tspan>
+    <tspan x="10px" y="2314px"><tspan>  </tspan><tspan class="fg-bright-blue bold">--&gt; </tspan><tspan>$DIR/multiline-removal-suggestion.rs:39:2</tspan>
+</tspan>
+    <tspan x="10px" y="2332px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan>
+</tspan>
+    <tspan x="10px" y="2350px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan> </tspan><tspan class="fg-bright-red bold">/</tspan><tspan>     hm.into_iter()</tspan>
+</tspan>
+    <tspan x="10px" y="2368px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan> </tspan><tspan class="fg-bright-red bold">|</tspan><tspan>         .map(|(is_true, ts)| {</tspan>
+</tspan>
+    <tspan x="10px" y="2386px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan> </tspan><tspan class="fg-bright-red bold">|</tspan><tspan>             ts.into_iter().map(|t| {</tspan>
+</tspan>
+    <tspan x="10px" y="2404px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan> </tspan><tspan class="fg-bright-red bold">|</tspan><tspan>                 (is_true, t)</tspan>
+</tspan>
+    <tspan x="10px" y="2422px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan> </tspan><tspan class="fg-bright-red bold">|</tspan><tspan>             }).flatten()</tspan>
+</tspan>
+    <tspan x="10px" y="2440px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan> </tspan><tspan class="fg-bright-red bold">|</tspan><tspan>         })</tspan>
+</tspan>
+    <tspan x="10px" y="2458px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan> </tspan><tspan class="fg-bright-red bold">|__________^</tspan><tspan> </tspan><tspan class="fg-bright-red bold">`(bool, HashSet&lt;u8&gt;)` is not an iterator</tspan>
+</tspan>
+    <tspan x="10px" y="2476px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan>
+</tspan>
+    <tspan x="10px" y="2494px"><tspan>   </tspan><tspan class="fg-bright-blue bold">= </tspan><tspan class="bold">help</tspan><tspan>: the trait `Iterator` is not implemented for `(bool, HashSet&lt;u8&gt;)`</tspan>
+</tspan>
+    <tspan x="10px" y="2512px"><tspan>   </tspan><tspan class="fg-bright-blue bold">= </tspan><tspan class="bold">note</tspan><tspan>: required for `(bool, HashSet&lt;u8&gt;)` to implement `IntoIterator`</tspan>
+</tspan>
+    <tspan x="10px" y="2530px"><tspan class="fg-bright-green bold">note</tspan><tspan>: required by a bound in `Flatten`</tspan>
+</tspan>
+    <tspan x="10px" y="2548px"><tspan>  </tspan><tspan class="fg-bright-blue bold">--&gt; </tspan><tspan>$SRC_DIR/core/src/iter/adapters/flatten.rs:LL:COL</tspan>
+</tspan>
+    <tspan x="10px" y="2566px">
+</tspan>
+    <tspan x="10px" y="2584px"><tspan class="fg-bright-red bold">error[E0599]</tspan><tspan class="bold">: the method `collect` exists for struct `Flatten&lt;Map&lt;std::collections::hash_map::IntoIter&lt;bool, Vec&lt;HashSet&lt;u8&gt;&gt;&gt;, {closure@$DIR/multiline-removal-suggestion.rs:40:8: 40:23}&gt;&gt;`, but its trait bounds were not satisfied</tspan>
+</tspan>
+    <tspan x="10px" y="2602px"><tspan>  </tspan><tspan class="fg-bright-blue bold">--&gt; </tspan><tspan>$DIR/multiline-removal-suggestion.rs:46:4</tspan>
+</tspan>
+    <tspan x="10px" y="2620px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan>
+</tspan>
+    <tspan x="10px" y="2638px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">/</tspan><tspan>     hm.into_iter()</tspan>
+</tspan>
+    <tspan x="10px" y="2656px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan>         .map(|(is_true, ts)| {</tspan>
+</tspan>
+    <tspan x="10px" y="2674px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan>             ts.into_iter().map(|t| {</tspan>
+</tspan>
+    <tspan x="10px" y="2692px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan>                 (is_true, t)</tspan>
+</tspan>
+    <tspan x="10px" y="2710px"><tspan class="fg-bright-blue bold">...</tspan><tspan>  </tspan><tspan class="fg-bright-blue bold">|</tspan>
+</tspan>
+    <tspan x="10px" y="2728px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan>         .flatten()</tspan>
+</tspan>
+    <tspan x="10px" y="2746px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan>         .collect()</tspan>
+</tspan>
+    <tspan x="10px" y="2764px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan>         </tspan><tspan class="fg-bright-blue bold">-</tspan><tspan class="fg-bright-red bold">^^^^^^^</tspan><tspan> </tspan><tspan class="fg-bright-red bold">method cannot be called due to unsatisfied trait bounds</tspan>
+</tspan>
+    <tspan x="10px" y="2782px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">|_________|</tspan>
+</tspan>
+    <tspan x="10px" y="2800px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan>
+</tspan>
+    <tspan x="10px" y="2818px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan>
+</tspan>
+    <tspan x="10px" y="2836px"><tspan>   </tspan><tspan class="fg-bright-blue bold">= </tspan><tspan class="bold">note</tspan><tspan>: the following trait bounds were not satisfied:</tspan>
+</tspan>
+    <tspan x="10px" y="2854px"><tspan>           `Flatten&lt;Map&lt;std::collections::hash_map::IntoIter&lt;bool, Vec&lt;HashSet&lt;u8&gt;&gt;&gt;, {closure@$DIR/multiline-removal-suggestion.rs:40:8: 40:23}&gt;&gt;: Iterator`</tspan>
+</tspan>
+    <tspan x="10px" y="2872px"><tspan>           which is required by `&amp;mut Flatten&lt;Map&lt;std::collections::hash_map::IntoIter&lt;bool, Vec&lt;HashSet&lt;u8&gt;&gt;&gt;, {closure@$DIR/multiline-removal-suggestion.rs:40:8: 40:23}&gt;&gt;: Iterator`</tspan>
+</tspan>
+    <tspan x="10px" y="2890px">
+</tspan>
+    <tspan x="10px" y="2908px"><tspan class="fg-bright-red bold">error[E0277]</tspan><tspan class="bold">: `(bool, HashSet&lt;u8&gt;)` is not an iterator</tspan>
+</tspan>
+    <tspan x="10px" y="2926px"><tspan>  </tspan><tspan class="fg-bright-blue bold">--&gt; </tspan><tspan>$DIR/multiline-removal-suggestion.rs:53:28</tspan>
+</tspan>
+    <tspan x="10px" y="2944px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan>
+</tspan>
+    <tspan x="10px" y="2962px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan>                 .map(|t| (is_true, t)).flatten()</tspan>
+</tspan>
+    <tspan x="10px" y="2980px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan>                                        </tspan><tspan class="fg-bright-red bold">^^^^^^^</tspan><tspan> </tspan><tspan class="fg-bright-red bold">`(bool, HashSet&lt;u8&gt;)` is not an iterator</tspan>
+</tspan>
+    <tspan x="10px" y="2998px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan>
+</tspan>
+    <tspan x="10px" y="3016px"><tspan>   </tspan><tspan class="fg-bright-blue bold">= </tspan><tspan class="bold">help</tspan><tspan>: the trait `Iterator` is not implemented for `(bool, HashSet&lt;u8&gt;)`</tspan>
+</tspan>
+    <tspan x="10px" y="3034px"><tspan>   </tspan><tspan class="fg-bright-blue bold">= </tspan><tspan class="bold">note</tspan><tspan>: required for `(bool, HashSet&lt;u8&gt;)` to implement `IntoIterator`</tspan>
+</tspan>
+    <tspan x="10px" y="3052px"><tspan class="fg-bright-green bold">note</tspan><tspan>: required by a bound in `flatten`</tspan>
+</tspan>
+    <tspan x="10px" y="3070px"><tspan>  </tspan><tspan class="fg-bright-blue bold">--&gt; </tspan><tspan>$SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL</tspan>
+</tspan>
+    <tspan x="10px" y="3088px"><tspan class="fg-bright-cyan bold">help</tspan><tspan>: consider removing this method call, as the receiver has type `std::vec::IntoIter&lt;HashSet&lt;u8&gt;&gt;` and `std::vec::IntoIter&lt;HashSet&lt;u8&gt;&gt;: Iterator` trivially holds</tspan>
+</tspan>
+    <tspan x="10px" y="3106px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan>
+</tspan>
+    <tspan x="10px" y="3124px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-red">- </tspan><tspan>            ts.into_iter()</tspan>
+</tspan>
+    <tspan x="10px" y="3142px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-red">-                 .map(|t| (is_true, t))</tspan><tspan>.flatten()</tspan>
+</tspan>
+    <tspan x="10px" y="3160px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-green">+ </tspan><tspan>            ts.into_iter().flatten()</tspan>
+</tspan>
+    <tspan x="10px" y="3178px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan>
+</tspan>
+    <tspan x="10px" y="3196px">
+</tspan>
+    <tspan x="10px" y="3214px"><tspan class="fg-bright-red bold">error[E0277]</tspan><tspan class="bold">: `(bool, HashSet&lt;u8&gt;)` is not an iterator</tspan>
+</tspan>
+    <tspan x="10px" y="3232px"><tspan>  </tspan><tspan class="fg-bright-blue bold">--&gt; </tspan><tspan>$DIR/multiline-removal-suggestion.rs:50:2</tspan>
+</tspan>
+    <tspan x="10px" y="3250px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan>
+</tspan>
+    <tspan x="10px" y="3268px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan> </tspan><tspan class="fg-bright-red bold">/</tspan><tspan>     hm.into_iter()</tspan>
+</tspan>
+    <tspan x="10px" y="3286px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan> </tspan><tspan class="fg-bright-red bold">|</tspan><tspan>         .map(|(is_true, ts)| {</tspan>
+</tspan>
+    <tspan x="10px" y="3304px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan> </tspan><tspan class="fg-bright-red bold">|</tspan><tspan>             ts.into_iter()</tspan>
+</tspan>
+    <tspan x="10px" y="3322px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan> </tspan><tspan class="fg-bright-red bold">|</tspan><tspan>                 .map(|t| (is_true, t)).flatten()</tspan>
+</tspan>
+    <tspan x="10px" y="3340px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan> </tspan><tspan class="fg-bright-red bold">|</tspan><tspan>         })</tspan>
+</tspan>
+    <tspan x="10px" y="3358px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan> </tspan><tspan class="fg-bright-red bold">|__________^</tspan><tspan> </tspan><tspan class="fg-bright-red bold">`(bool, HashSet&lt;u8&gt;)` is not an iterator</tspan>
+</tspan>
+    <tspan x="10px" y="3376px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan>
+</tspan>
+    <tspan x="10px" y="3394px"><tspan>   </tspan><tspan class="fg-bright-blue bold">= </tspan><tspan class="bold">help</tspan><tspan>: the trait `Iterator` is not implemented for `(bool, HashSet&lt;u8&gt;)`</tspan>
+</tspan>
+    <tspan x="10px" y="3412px"><tspan>   </tspan><tspan class="fg-bright-blue bold">= </tspan><tspan class="bold">note</tspan><tspan>: required for `(bool, HashSet&lt;u8&gt;)` to implement `IntoIterator`</tspan>
+</tspan>
+    <tspan x="10px" y="3430px"><tspan class="fg-bright-green bold">note</tspan><tspan>: required by a bound in `Flatten`</tspan>
+</tspan>
+    <tspan x="10px" y="3448px"><tspan>  </tspan><tspan class="fg-bright-blue bold">--&gt; </tspan><tspan>$SRC_DIR/core/src/iter/adapters/flatten.rs:LL:COL</tspan>
+</tspan>
+    <tspan x="10px" y="3466px">
+</tspan>
+    <tspan x="10px" y="3484px"><tspan class="fg-bright-red bold">error[E0599]</tspan><tspan class="bold">: the method `collect` exists for struct `Flatten&lt;Map&lt;std::collections::hash_map::IntoIter&lt;bool, Vec&lt;HashSet&lt;u8&gt;&gt;&gt;, {closure@$DIR/multiline-removal-suggestion.rs:51:8: 51:23}&gt;&gt;`, but its trait bounds were not satisfied</tspan>
+</tspan>
+    <tspan x="10px" y="3502px"><tspan>  </tspan><tspan class="fg-bright-blue bold">--&gt; </tspan><tspan>$DIR/multiline-removal-suggestion.rs:56:4</tspan>
+</tspan>
+    <tspan x="10px" y="3520px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan>
+</tspan>
+    <tspan x="10px" y="3538px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">/</tspan><tspan>     hm.into_iter()</tspan>
+</tspan>
+    <tspan x="10px" y="3556px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan>         .map(|(is_true, ts)| {</tspan>
+</tspan>
+    <tspan x="10px" y="3574px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan>             ts.into_iter()</tspan>
+</tspan>
+    <tspan x="10px" y="3592px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan>                 .map(|t| (is_true, t)).flatten()</tspan>
+</tspan>
+    <tspan x="10px" y="3610px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan>         })</tspan>
+</tspan>
+    <tspan x="10px" y="3628px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan>         .flatten()</tspan>
+</tspan>
+    <tspan x="10px" y="3646px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan>         .collect()</tspan>
+</tspan>
+    <tspan x="10px" y="3664px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan>         </tspan><tspan class="fg-bright-blue bold">-</tspan><tspan class="fg-bright-red bold">^^^^^^^</tspan><tspan> </tspan><tspan class="fg-bright-red bold">method cannot be called due to unsatisfied trait bounds</tspan>
+</tspan>
+    <tspan x="10px" y="3682px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">|_________|</tspan>
+</tspan>
+    <tspan x="10px" y="3700px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan>
+</tspan>
+    <tspan x="10px" y="3718px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan>
+</tspan>
+    <tspan x="10px" y="3736px"><tspan>   </tspan><tspan class="fg-bright-blue bold">= </tspan><tspan class="bold">note</tspan><tspan>: the following trait bounds were not satisfied:</tspan>
+</tspan>
+    <tspan x="10px" y="3754px"><tspan>           `Flatten&lt;Map&lt;std::collections::hash_map::IntoIter&lt;bool, Vec&lt;HashSet&lt;u8&gt;&gt;&gt;, {closure@$DIR/multiline-removal-suggestion.rs:51:8: 51:23}&gt;&gt;: Iterator`</tspan>
+</tspan>
+    <tspan x="10px" y="3772px"><tspan>           which is required by `&amp;mut Flatten&lt;Map&lt;std::collections::hash_map::IntoIter&lt;bool, Vec&lt;HashSet&lt;u8&gt;&gt;&gt;, {closure@$DIR/multiline-removal-suggestion.rs:51:8: 51:23}&gt;&gt;: Iterator`</tspan>
+</tspan>
+    <tspan x="10px" y="3790px">
+</tspan>
+    <tspan x="10px" y="3808px"><tspan class="fg-bright-red bold">error</tspan><tspan class="bold">: aborting due to 12 previous errors</tspan>
+</tspan>
+    <tspan x="10px" y="3826px">
+</tspan>
+    <tspan x="10px" y="3844px"><tspan class="bold">Some errors have detailed explanations: E0277, E0599.</tspan>
+</tspan>
+    <tspan x="10px" y="3862px"><tspan class="bold">For more information about an error, try `rustc --explain E0277`.</tspan>
+</tspan>
+    <tspan x="10px" y="3880px">
+</tspan>
+  </text>
+
+</svg>

@@ -1,0 +1,303 @@
+warning: unreachable statement
+  --> $DIR/liveness-unused.rs:120:9
+   |
+LL |         continue;
+   |         -------- any code following this expression is unreachable
+LL |         drop(*x as i32);
+   |         ^^^^^^^^^^^^^^^^ unreachable statement
+   |
+note: the lint level is defined here
+  --> $DIR/liveness-unused.rs:1:9
+   |
+LL | #![warn(unused)]
+   |         ^^^^^^
+   = note: `#[warn(unreachable_code)]` implied by `#[warn(unused)]`
+
+error: unused variable: `x`
+  --> $DIR/liveness-unused.rs:9:7
+   |
+LL | fn f1(x: isize) {
+   |       ^ help: if this is intentional, prefix it with an underscore: `_x`
+   |
+note: the lint level is defined here
+  --> $DIR/liveness-unused.rs:2:9
+   |
+LL | #![deny(unused_variables)]
+   |         ^^^^^^^^^^^^^^^^
+
+error: unused variable: `x`
+  --> $DIR/liveness-unused.rs:13:8
+   |
+LL | fn f1b(x: &mut isize) {
+   |        ^ help: if this is intentional, prefix it with an underscore: `_x`
+
+error: unused variable: `x`
+  --> $DIR/liveness-unused.rs:21:9
+   |
+LL |     let x: isize;
+   |         ^ help: if this is intentional, prefix it with an underscore: `_x`
+
+error: unused variable: `x`
+  --> $DIR/liveness-unused.rs:26:9
+   |
+LL |     let x = 3;
+   |         ^ help: if this is intentional, prefix it with an underscore: `_x`
+
+error: variable `x` is assigned to, but never used
+  --> $DIR/liveness-unused.rs:31:9
+   |
+LL |     let mut x = 3;
+   |         ^^^^^
+   |
+   = note: consider using `_x` instead
+
+error: value assigned to `x` is never read
+  --> $DIR/liveness-unused.rs:33:5
+   |
+LL |     x += 4;
+   |     ^^^^^^
+   |
+   = help: maybe it is overwritten before being read?
+note: the lint level is defined here
+  --> $DIR/liveness-unused.rs:3:9
+   |
+LL | #![deny(unused_assignments)]
+   |         ^^^^^^^^^^^^^^^^^^
+
+error: variable `z` is assigned to, but never used
+  --> $DIR/liveness-unused.rs:38:9
+   |
+LL |     let mut z = 3;
+   |         ^^^^^
+   |
+   = note: consider using `_z` instead
+
+error: value assigned to `z` is never read
+  --> $DIR/liveness-unused.rs:41:9
+   |
+LL |         z += 4;
+   |         ^^^^^^
+   |
+   = help: maybe it is overwritten before being read?
+
+error: value assigned to `z` is never read
+  --> $DIR/liveness-unused.rs:49:12
+   |
+LL |     loop { z += 4; }
+   |            ^^^^^^
+   |
+   = help: maybe it is overwritten before being read?
+
+error: variable `z` is assigned to, but never used
+  --> $DIR/liveness-unused.rs:62:9
+   |
+LL |     let mut z = 3;
+   |         ^^^^^
+   |
+   = note: consider using `_z` instead
+
+error: value assigned to `z` is never read
+  --> $DIR/liveness-unused.rs:65:9
+   |
+LL |         z += a;
+   |         ^^^^^^
+   |
+   = help: maybe it is overwritten before being read?
+
+error: unused variable: `i`
+  --> $DIR/liveness-unused.rs:72:12
+   |
+LL |       Some(i) => {
+   |            ^ help: if this is intentional, prefix it with an underscore: `_i`
+
+error: unused variable: `i`
+  --> $DIR/liveness-unused.rs:85:14
+   |
+LL |       tri::a(i) | tri::b(i) | tri::c(i) => {
+   |              ^           ^           ^
+   |
+help: if this is intentional, prefix it with an underscore
+   |
+LL |       tri::a(_i) | tri::b(_i) | tri::c(_i) => {
+   |              +            +            +
+
+error: unused variable: `x`
+  --> $DIR/liveness-unused.rs:107:9
+   |
+LL |     for x in 1..10 { }
+   |         ^ help: if this is intentional, prefix it with an underscore: `_x`
+
+error: unused variable: `x`
+  --> $DIR/liveness-unused.rs:112:10
+   |
+LL |     for (x, _) in [1, 2, 3].iter().enumerate() { }
+   |          ^ help: if this is intentional, prefix it with an underscore: `_x`
+
+error: unused variable: `x`
+  --> $DIR/liveness-unused.rs:117:13
+   |
+LL |     for (_, x) in [1, 2, 3].iter().enumerate() {
+   |             ^ help: if this is intentional, prefix it with an underscore: `_x`
+
+error: variable `x` is assigned to, but never used
+  --> $DIR/liveness-unused.rs:140:9
+   |
+LL |     let x;
+   |         ^
+   |
+   = note: consider using `_x` instead
+
+error: value assigned to `x` is never read
+  --> $DIR/liveness-unused.rs:144:9
+   |
+LL |         x = 0;
+   |         ^^^^^
+   |
+   = help: maybe it is overwritten before being read?
+
+error: variable `a` is assigned to, but never used
+  --> $DIR/liveness-unused.rs:173:9
+   |
+LL |     let mut a = 10;
+   |         ^^^^^
+   |
+   = note: consider using `_a` instead
+
+error: value assigned to `a` is never read
+  --> $DIR/liveness-unused.rs:183:5
+   |
+LL |     a += b;
+   |     ^^^^^^
+   |
+   = help: maybe it is overwritten before being read?
+
+error: value assigned to `a` is never read
+  --> $DIR/liveness-unused.rs:185:5
+   |
+LL |     a -= c;
+   |     ^^^^^^
+   |
+   = help: maybe it is overwritten before being read?
+
+error: value assigned to `a` is never read
+  --> $DIR/liveness-unused.rs:187:5
+   |
+LL |     a *= d;
+   |     ^^^^^^
+   |
+   = help: maybe it is overwritten before being read?
+
+error: value assigned to `a` is never read
+  --> $DIR/liveness-unused.rs:189:5
+   |
+LL |     a /= e;
+   |     ^^^^^^
+   |
+   = help: maybe it is overwritten before being read?
+
+error: value assigned to `a` is never read
+  --> $DIR/liveness-unused.rs:191:5
+   |
+LL |     a |= f;
+   |     ^^^^^^
+   |
+   = help: maybe it is overwritten before being read?
+
+error: value assigned to `a` is never read
+  --> $DIR/liveness-unused.rs:193:5
+   |
+LL |     a &= g;
+   |     ^^^^^^
+   |
+   = help: maybe it is overwritten before being read?
+
+error: value assigned to `a` is never read
+  --> $DIR/liveness-unused.rs:195:5
+   |
+LL |     a %= h;
+   |     ^^^^^^
+   |
+   = help: maybe it is overwritten before being read?
+
+error: variable `a` is assigned to, but never used
+  --> $DIR/liveness-unused.rs:221:9
+   |
+LL |     let mut a = 10.;
+   |         ^^^^^
+   |
+   = note: consider using `_a` instead
+
+error: value assigned to `a` is never read
+  --> $DIR/liveness-unused.rs:229:5
+   |
+LL |     a += b;
+   |     ^^^^^^
+   |
+   = help: maybe it is overwritten before being read?
+
+error: value assigned to `a` is never read
+  --> $DIR/liveness-unused.rs:231:5
+   |
+LL |     a -= c;
+   |     ^^^^^^
+   |
+   = help: maybe it is overwritten before being read?
+
+error: value assigned to `a` is never read
+  --> $DIR/liveness-unused.rs:233:5
+   |
+LL |     a *= d;
+   |     ^^^^^^
+   |
+   = help: maybe it is overwritten before being read?
+
+error: value assigned to `a` is never read
+  --> $DIR/liveness-unused.rs:235:5
+   |
+LL |     a /= e;
+   |     ^^^^^^
+   |
+   = help: maybe it is overwritten before being read?
+
+error: value assigned to `a` is never read
+  --> $DIR/liveness-unused.rs:237:5
+   |
+LL |     a %= f;
+   |     ^^^^^^
+   |
+   = help: maybe it is overwritten before being read?
+
+error: variable `a` is assigned to, but never used
+  --> $DIR/liveness-unused.rs:241:11
+   |
+LL | fn f10<T>(mut a: T, b: T) {
+   |           ^^^^^
+   |
+   = note: consider using `_a` instead
+
+error: value assigned to `a` is never read
+  --> $DIR/liveness-unused.rs:243:5
+   |
+LL |     a = b;
+   |     ^
+   |
+   = help: maybe it is overwritten before being read?
+
+error: variable `a` is assigned to, but never used
+  --> $DIR/liveness-unused.rs:247:12
+   |
+LL | fn f10b<T>(mut a: Box<T>, b: Box<T>) {
+   |            ^^^^^
+   |
+   = note: consider using `_a` instead
+
+error: value assigned to `a` is never read
+  --> $DIR/liveness-unused.rs:248:5
+   |
+LL |     a = b;
+   |     ^
+   |
+   = help: maybe it is overwritten before being read?
+
+error: aborting due to 36 previous errors; 1 warning emitted
+

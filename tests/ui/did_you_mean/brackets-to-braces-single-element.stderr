@@ -1,0 +1,41 @@
+error[E0308]: mismatched types
+  --> $DIR/brackets-to-braces-single-element.rs:1:24
+   |
+LL | const A: [&str; 1] = { "hello" };
+   |                        ^^^^^^^ expected `[&str; 1]`, found `&str`
+   |
+help: to create an array, use square brackets instead of curly braces
+   |
+LL - const A: [&str; 1] = { "hello" };
+LL + const A: [&str; 1] = [ "hello" ];
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/brackets-to-braces-single-element.rs:4:19
+   |
+LL | const B: &[u32] = &{ 1 };
+   |                   ^^^^^^ expected `&[u32]`, found `&{integer}`
+   |
+   = note: expected reference `&'static [u32]`
+              found reference `&{integer}`
+help: to create an array, use square brackets instead of curly braces
+   |
+LL - const B: &[u32] = &{ 1 };
+LL + const B: &[u32] = &[ 1 ];
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/brackets-to-braces-single-element.rs:7:27
+   |
+LL | const C: &&[u32; 1] = &&{ 1 };
+   |                           ^ expected `[u32; 1]`, found integer
+   |
+help: to create an array, use square brackets instead of curly braces
+   |
+LL - const C: &&[u32; 1] = &&{ 1 };
+LL + const C: &&[u32; 1] = &&[ 1 ];
+   |
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

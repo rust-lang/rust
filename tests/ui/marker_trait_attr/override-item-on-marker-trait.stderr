@@ -1,0 +1,28 @@
+error[E0714]: marker traits cannot have associated items
+  --> $DIR/override-item-on-marker-trait.rs:5:5
+   |
+LL |     const N: usize = 0;
+   |     ^^^^^^^^^^^^^^
+
+error[E0714]: marker traits cannot have associated items
+  --> $DIR/override-item-on-marker-trait.rs:7:5
+   |
+LL |     fn do_something() {}
+   |     ^^^^^^^^^^^^^^^^^
+
+error[E0715]: impls for marker traits cannot contain items
+  --> $DIR/override-item-on-marker-trait.rs:12:1
+   |
+LL | impl Marker for OverrideConst {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0715]: impls for marker traits cannot contain items
+  --> $DIR/override-item-on-marker-trait.rs:18:1
+   |
+LL | impl Marker for OverrideFn {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0714, E0715.
+For more information about an error, try `rustc --explain E0714`.

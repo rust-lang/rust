@@ -1,0 +1,23 @@
+error: unresolved link to `before_but_limited_to_module`
+  --> $DIR/macro-rules-error.rs:13:6
+   |
+LL | /// [before_but_limited_to_module]
+   |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no item named `before_but_limited_to_module` in scope
+   |
+   = note: `macro_rules` named `before_but_limited_to_module` exists in this crate, but it is not in scope at this link's location
+note: the lint level is defined here
+  --> $DIR/macro-rules-error.rs:5:9
+   |
+LL | #![deny(rustdoc::broken_intra_doc_links)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: unresolved link to `after`
+  --> $DIR/macro-rules-error.rs:15:6
+   |
+LL | /// [after]
+   |      ^^^^^ no item named `after` in scope
+   |
+   = note: `macro_rules` named `after` exists in this crate, but it is not in scope at this link's location
+
+error: aborting due to 2 previous errors
+

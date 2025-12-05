@@ -1,0 +1,9 @@
+   LL|       |#![feature(test)]
+   LL|       |//@ edition: 2021
+   LL|       |//@ compile-flags: --test
+   LL|       |
+   LL|       |extern crate test;
+   LL|       |
+   LL|       |#[bench]
+   LL|      1|fn my_bench(_b: &mut test::Bencher) {}
+

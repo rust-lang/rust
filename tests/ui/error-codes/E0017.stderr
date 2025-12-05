@@ -1,0 +1,62 @@
+warning: taking a mutable reference to a `const` item
+  --> $DIR/E0017.rs:8:30
+   |
+LL | const CR: &'static mut i32 = &mut C;
+   |                              ^^^^^^
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: the mutable reference will refer to this temporary, not the original `const` item
+note: `const` item defined here
+  --> $DIR/E0017.rs:5:1
+   |
+LL | const C: i32 = 2;
+   | ^^^^^^^^^^^^
+   = note: `#[warn(const_item_mutation)]` on by default
+
+error[E0764]: mutable borrows of temporaries that have their lifetime extended until the end of the program are not allowed
+  --> $DIR/E0017.rs:8:30
+   |
+LL | const CR: &'static mut i32 = &mut C;
+   |                              ^^^^^^ this mutable borrow refers to such a temporary
+   |
+   = note: Temporaries in constants and statics can have their lifetime extended until the end of the program
+   = note: To avoid accidentally creating global mutable state, such temporaries must be immutable
+   = help: If you really want global mutable state, try replacing the temporary by an interior mutable `static` or a `static mut`
+
+error[E0596]: cannot borrow immutable static item `X` as mutable
+  --> $DIR/E0017.rs:11:39
+   |
+LL | static X: i32 = 1;
+   | ------------- this `static` cannot be borrowed as mutable
+...
+LL | static STATIC_REF: &'static mut i32 = &mut X;
+   |                                       ^^^^^^ cannot borrow as mutable
+
+warning: taking a mutable reference to a `const` item
+  --> $DIR/E0017.rs:13:38
+   |
+LL | static CONST_REF: &'static mut i32 = &mut C;
+   |                                      ^^^^^^
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: the mutable reference will refer to this temporary, not the original `const` item
+note: `const` item defined here
+  --> $DIR/E0017.rs:5:1
+   |
+LL | const C: i32 = 2;
+   | ^^^^^^^^^^^^
+
+error[E0764]: mutable borrows of temporaries that have their lifetime extended until the end of the program are not allowed
+  --> $DIR/E0017.rs:13:38
+   |
+LL | static CONST_REF: &'static mut i32 = &mut C;
+   |                                      ^^^^^^ this mutable borrow refers to such a temporary
+   |
+   = note: Temporaries in constants and statics can have their lifetime extended until the end of the program
+   = note: To avoid accidentally creating global mutable state, such temporaries must be immutable
+   = help: If you really want global mutable state, try replacing the temporary by an interior mutable `static` or a `static mut`
+
+error: aborting due to 3 previous errors; 2 warnings emitted
+
+Some errors have detailed explanations: E0596, E0764.
+For more information about an error, try `rustc --explain E0596`.

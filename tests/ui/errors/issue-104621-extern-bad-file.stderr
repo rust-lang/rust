@@ -1,0 +1,21 @@
+error: extern location for foo is of an unknown type: $DIR/issue-104621-extern-bad-file.rs
+  --> $DIR/issue-104621-extern-bad-file.rs:4:1
+   |
+LL | extern crate foo;
+   | ^^^^^^^^^^^^^^^^^
+
+error: file name should be lib*.rlib or lib*.so
+  --> $DIR/issue-104621-extern-bad-file.rs:4:1
+   |
+LL | extern crate foo;
+   | ^^^^^^^^^^^^^^^^^
+
+error[E0463]: can't find crate for `foo`
+  --> $DIR/issue-104621-extern-bad-file.rs:4:1
+   |
+LL | extern crate foo;
+   | ^^^^^^^^^^^^^^^^^ can't find crate
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0463`.

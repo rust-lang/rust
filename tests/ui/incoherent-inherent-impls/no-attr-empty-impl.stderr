@@ -1,0 +1,44 @@
+error[E0116]: cannot define inherent `impl` for a type outside of the crate where the type is defined
+  --> $DIR/no-attr-empty-impl.rs:4:1
+   |
+LL | impl extern_crate::StructWithAttr {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl for type defined outside of crate
+   |
+   = note: define and implement a trait or new type instead
+
+error[E0116]: cannot define inherent `impl` for a type outside of the crate where the type is defined
+  --> $DIR/no-attr-empty-impl.rs:7:1
+   |
+LL | impl extern_crate::StructNoAttr {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl for type defined outside of crate
+   |
+   = note: define and implement a trait or new type instead
+
+error[E0116]: cannot define inherent `impl` for a type outside of the crate where the type is defined
+  --> $DIR/no-attr-empty-impl.rs:10:1
+   |
+LL | impl extern_crate::EnumWithAttr {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl for type defined outside of crate
+   |
+   = note: define and implement a trait or new type instead
+
+error[E0116]: cannot define inherent `impl` for a type outside of the crate where the type is defined
+  --> $DIR/no-attr-empty-impl.rs:13:1
+   |
+LL | impl extern_crate::EnumNoAttr {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl for type defined outside of crate
+   |
+   = note: define and implement a trait or new type instead
+
+error[E0390]: cannot define inherent `impl` for primitive types
+  --> $DIR/no-attr-empty-impl.rs:16:1
+   |
+LL | impl f32 {}
+   | ^^^^^^^^
+   |
+   = help: consider using an extension trait instead
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0116, E0390.
+For more information about an error, try `rustc --explain E0116`.

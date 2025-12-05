@@ -1,0 +1,24 @@
+error[E0277]: `T` doesn't implement `std::fmt::Display`
+  --> $DIR/generic-associated-types-where.rs:18:22
+   |
+LL |     type Assoc2<T> = Vec<T>;
+   |                      ^^^^^^ the trait `std::fmt::Display` is not implemented for `T`
+   |
+help: consider restricting type parameter `T` with trait `Display`
+   |
+LL |     type Assoc2<T: std::fmt::Display> = Vec<T>;
+   |                  +++++++++++++++++++
+
+error[E0276]: impl has stricter requirements than trait
+  --> $DIR/generic-associated-types-where.rs:20:38
+   |
+LL |     type Assoc3<T>;
+   |     -------------- definition of `Assoc3` from trait
+...
+LL |     type Assoc3<T> = Vec<T> where T: Iterator;
+   |                                      ^^^^^^^^ impl has extra requirement `T: Iterator`
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0276, E0277.
+For more information about an error, try `rustc --explain E0276`.

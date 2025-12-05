@@ -1,0 +1,27 @@
+error: constant evaluation is taking a long time
+  --> $DIR/no-ice-on-inference-failure.rs:5:9
+   |
+LL | /         while n < 5 {
+LL | |
+LL | |             x = &0;
+LL | |         }
+   | |_________^
+   |
+   = note: this lint makes sure the compiler doesn't get stuck due to infinite loops in const eval.
+           If your compilation actually takes a long time, you can safely allow the lint.
+help: the constant being evaluated
+  --> $DIR/no-ice-on-inference-failure.rs:2:22
+   |
+LL |       let array = [(); {
+   |  ______________________^
+LL | |         let mut x = &0;
+LL | |         let mut n = 0;
+LL | |         while n < 5 {
+...  |
+LL | |         0
+LL | |     }];
+   | |_____^
+   = note: `#[deny(long_running_const_eval)]` on by default
+
+error: aborting due to 1 previous error
+

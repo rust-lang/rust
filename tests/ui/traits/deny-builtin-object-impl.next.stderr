@@ -1,0 +1,44 @@
+error[E0322]: explicit impls for the `NotImplYesObject` trait are not permitted
+  --> $DIR/deny-builtin-object-impl.rs:20:1
+   |
+LL | impl NotImplYesObject for () {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl of `NotImplYesObject` not allowed
+
+error[E0277]: the trait bound `dyn NotImplNotObject: NotImplNotObject` is not satisfied
+  --> $DIR/deny-builtin-object-impl.rs:37:32
+   |
+LL |     test_not_impl_not_object::<dyn NotImplNotObject>();
+   |                                ^^^^^^^^^^^^^^^^^^^^ the trait `NotImplNotObject` is not implemented for `dyn NotImplNotObject`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/deny-builtin-object-impl.rs:12:1
+   |
+LL | trait NotImplNotObject {}
+   | ^^^^^^^^^^^^^^^^^^^^^^
+note: required by a bound in `test_not_impl_not_object`
+  --> $DIR/deny-builtin-object-impl.rs:28:32
+   |
+LL | fn test_not_impl_not_object<T: NotImplNotObject + ?Sized>() {}
+   |                                ^^^^^^^^^^^^^^^^ required by this bound in `test_not_impl_not_object`
+
+error[E0277]: the trait bound `dyn YesImplNotObject: YesImplNotObject` is not satisfied
+  --> $DIR/deny-builtin-object-impl.rs:40:32
+   |
+LL |     test_yes_impl_not_object::<dyn YesImplNotObject>();
+   |                                ^^^^^^^^^^^^^^^^^^^^ the trait `YesImplNotObject` is not implemented for `dyn YesImplNotObject`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/deny-builtin-object-impl.rs:15:1
+   |
+LL | trait YesImplNotObject {}
+   | ^^^^^^^^^^^^^^^^^^^^^^
+note: required by a bound in `test_yes_impl_not_object`
+  --> $DIR/deny-builtin-object-impl.rs:30:32
+   |
+LL | fn test_yes_impl_not_object<T: YesImplNotObject + ?Sized>() {}
+   |                                ^^^^^^^^^^^^^^^^ required by this bound in `test_yes_impl_not_object`
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0277, E0322.
+For more information about an error, try `rustc --explain E0277`.

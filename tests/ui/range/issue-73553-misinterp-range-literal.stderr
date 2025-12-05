@@ -1,0 +1,43 @@
+error[E0308]: mismatched types
+  --> $DIR/issue-73553-misinterp-range-literal.rs:12:10
+   |
+LL |     demo(tell(1)..tell(10));
+   |     ---- ^^^^^^^^^^^^^^^^^ expected `&Range<usize>`, found `Range<usize>`
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected reference `&std::ops::Range<_>`
+                 found struct `std::ops::Range<_>`
+note: function defined here
+  --> $DIR/issue-73553-misinterp-range-literal.rs:3:4
+   |
+LL | fn demo(r: &Range) {
+   |    ^^^^ ---------
+help: consider borrowing here
+   |
+LL |     demo(&(tell(1)..tell(10)));
+   |          ++                 +
+
+error[E0308]: mismatched types
+  --> $DIR/issue-73553-misinterp-range-literal.rs:14:10
+   |
+LL |     demo(1..10);
+   |     ---- ^^^^^ expected `&Range<usize>`, found `Range<{integer}>`
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected reference `&std::ops::Range<usize>`
+                 found struct `std::ops::Range<{integer}>`
+note: function defined here
+  --> $DIR/issue-73553-misinterp-range-literal.rs:3:4
+   |
+LL | fn demo(r: &Range) {
+   |    ^^^^ ---------
+help: consider borrowing here
+   |
+LL |     demo(&(1..10));
+   |          ++     +
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

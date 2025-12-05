@@ -1,0 +1,64 @@
+error[E0658]: const trait impls are experimental
+  --> $DIR/super-traits-fail-3.rs:15:33
+   |
+LL | #[cfg(any(yyy, yyn, nyy, nyn))] const trait Foo { fn a(&self); }
+   |                                 ^^^^^
+   |
+   = note: see issue #143874 <https://github.com/rust-lang/rust/issues/143874> for more information
+   = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: const trait impls are experimental
+  --> $DIR/super-traits-fail-3.rs:19:33
+   |
+LL | #[cfg(any(yyy, yny, nyy, nny))] const trait Bar: [const] Foo {}
+   |                                 ^^^^^
+   |
+   = note: see issue #143874 <https://github.com/rust-lang/rust/issues/143874> for more information
+   = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: const trait impls are experimental
+  --> $DIR/super-traits-fail-3.rs:19:50
+   |
+LL | #[cfg(any(yyy, yny, nyy, nny))] const trait Bar: [const] Foo {}
+   |                                                  ^^^^^^^
+   |
+   = note: see issue #143874 <https://github.com/rust-lang/rust/issues/143874> for more information
+   = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: const trait impls are experimental
+  --> $DIR/super-traits-fail-3.rs:27:44
+   |
+LL | #[cfg(any(yyn, ynn, nyn, nnn))] trait Bar: [const] Foo {}
+   |                                            ^^^^^^^
+   |
+   = note: see issue #143874 <https://github.com/rust-lang/rust/issues/143874> for more information
+   = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: const trait impls are experimental
+  --> $DIR/super-traits-fail-3.rs:34:17
+   |
+LL | const fn foo<T: [const] Bar>(x: &T) {
+   |                 ^^^^^^^
+   |
+   = note: see issue #143874 <https://github.com/rust-lang/rust/issues/143874> for more information
+   = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: cannot call conditionally-const method `<T as Foo>::a` in constant functions
+  --> $DIR/super-traits-fail-3.rs:38:7
+   |
+LL |     x.a();
+   |       ^^^
+   |
+   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
+   = note: see issue #143874 <https://github.com/rust-lang/rust/issues/143874> for more information
+   = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

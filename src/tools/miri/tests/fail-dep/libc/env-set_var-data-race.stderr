@@ -1,0 +1,18 @@
+error: Undefined Behavior: Data race detected between (1) non-atomic write on thread `main` and (2) non-atomic read on thread `unnamed-ID` at ALLOC
+  --> tests/fail-dep/libc/env-set_var-data-race.rs:LL:CC
+   |
+LL |         libc::getenv(b"TZ/0".as_ptr().cast());
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (2) just happened here
+   |
+help: and (1) occurred earlier here
+  --> tests/fail-dep/libc/env-set_var-data-race.rs:LL:CC
+   |
+LL |     env::set_var("MY_RUST_VAR", "Ferris");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
+   = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,27 @@
+// MIR for `let_uninit` after built
+
+| User Type Annotations
+| 0: user_ty: Canonical { value: Ty((u32, u64, &'static char)), max_universe: U0, variables: [] }, span: $DIR/user_type_annotations.rs:16:20: 16:45, inferred_ty: (u32, u64, &char)
+|
+fn let_uninit() -> () {
+    let mut _0: ();
+    let _1: u32 as UserTypeProjection { base: UserType(0), projs: [Field(0, ())] };
+    let _2: u64 as UserTypeProjection { base: UserType(0), projs: [Field(1, ())] };
+    let _3: &char as UserTypeProjection { base: UserType(0), projs: [Field(2, ())] };
+    scope 1 {
+        debug x => _1;
+        debug y => _2;
+        debug z => _3;
+    }
+
+    bb0: {
+        StorageLive(_1);
+        StorageLive(_2);
+        StorageLive(_3);
+        _0 = const ();
+        StorageDead(_3);
+        StorageDead(_2);
+        StorageDead(_1);
+        return;
+    }
+}

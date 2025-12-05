@@ -1,0 +1,20 @@
+error[E0491]: in type `&'a MessageListeners<'_>`, reference has a longer lifetime than the data it references
+  --> $DIR/impl-implied-bounds-compatibility.rs:12:5
+   |
+LL |     fn listeners<'b>(&'b self) -> &'a MessageListeners<'b> {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the pointer is valid for the lifetime `'a` as defined here
+  --> $DIR/impl-implied-bounds-compatibility.rs:11:6
+   |
+LL | impl<'a> MessageListenersInterface for MessageListeners<'a> {
+   |      ^^
+note: but the referenced data is only valid for the lifetime `'c` as defined here
+  --> $DIR/impl-implied-bounds-compatibility.rs:12:5
+   |
+LL |     fn listeners<'b>(&'b self) -> &'a MessageListeners<'b> {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0491`.

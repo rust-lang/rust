@@ -1,0 +1,64 @@
+error: this `if` statement can be collapsed
+  --> tests/ui-toml/collapsible_if/collapsible_if_let_chains.rs:4:5
+   |
+LL | /     if let Some(a) = Some(3) {
+LL | |         // with comment
+LL | |         if let Some(b) = Some(4) {
+LL | |             let _ = a + b;
+LL | |         }
+LL | |     }
+   | |_____^
+   |
+   = note: `-D clippy::collapsible-if` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::collapsible_if)]`
+help: collapse nested if block
+   |
+LL ~     if let Some(a) = Some(3)
+LL |         // with comment
+LL ~         && let Some(b) = Some(4) {
+LL |             let _ = a + b;
+LL ~         }
+   |
+
+error: this `if` statement can be collapsed
+  --> tests/ui-toml/collapsible_if/collapsible_if_let_chains.rs:12:5
+   |
+LL | /     if let Some(a) = Some(3) {
+LL | |         // with comment
+LL | |         if a + 1 == 4 {
+LL | |             let _ = a;
+LL | |         }
+LL | |     }
+   | |_____^
+   |
+help: collapse nested if block
+   |
+LL ~     if let Some(a) = Some(3)
+LL |         // with comment
+LL ~         && a + 1 == 4 {
+LL |             let _ = a;
+LL ~         }
+   |
+
+error: this `if` statement can be collapsed
+  --> tests/ui-toml/collapsible_if/collapsible_if_let_chains.rs:20:5
+   |
+LL | /     if Some(3) == Some(4).map(|x| x - 1) {
+LL | |         // with comment
+LL | |         if let Some(b) = Some(4) {
+LL | |             let _ = b;
+LL | |         }
+LL | |     }
+   | |_____^
+   |
+help: collapse nested if block
+   |
+LL ~     if Some(3) == Some(4).map(|x| x - 1)
+LL |         // with comment
+LL ~         && let Some(b) = Some(4) {
+LL |             let _ = b;
+LL ~         }
+   |
+
+error: aborting due to 3 previous errors
+

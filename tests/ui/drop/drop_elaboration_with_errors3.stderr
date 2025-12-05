@@ -1,0 +1,8 @@
+error: bonjour
+  --> $DIR/drop_elaboration_with_errors3.rs:15:5
+   |
+LL |     compile_error!("bonjour");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

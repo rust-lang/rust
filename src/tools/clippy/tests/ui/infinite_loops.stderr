@@ -1,0 +1,347 @@
+error: infinite loop detected
+  --> tests/ui/infinite_loops.rs:13:5
+   |
+LL | /     loop {
+LL | |
+LL | |         do_something();
+LL | |     }
+   | |_____^
+   |
+   = note: `-D clippy::infinite-loop` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::infinite_loop)]`
+help: if this is intentional, consider specifying `!` as function return
+   |
+LL | fn no_break() -> ! {
+   |               ++++
+
+error: infinite loop detected
+  --> tests/ui/infinite_loops.rs:20:5
+   |
+LL | /     loop {
+LL | |
+LL | |         loop {
+...  |
+LL | |         do_something();
+LL | |     }
+   | |_____^
+   |
+help: if this is intentional, consider specifying `!` as function return
+   |
+LL | fn all_inf() -> ! {
+   |              ++++
+
+error: infinite loop detected
+  --> tests/ui/infinite_loops.rs:22:9
+   |
+LL | /         loop {
+LL | |
+LL | |             loop {
+...  |
+LL | |         }
+   | |_________^
+   |
+help: if this is intentional, consider specifying `!` as function return
+   |
+LL | fn all_inf() -> ! {
+   |              ++++
+
+error: infinite loop detected
+  --> tests/ui/infinite_loops.rs:24:13
+   |
+LL | /             loop {
+LL | |
+LL | |                 do_something();
+LL | |             }
+   | |_____________^
+   |
+help: if this is intentional, consider specifying `!` as function return
+   |
+LL | fn all_inf() -> ! {
+   |              ++++
+
+error: infinite loop detected
+  --> tests/ui/infinite_loops.rs:38:5
+   |
+LL | /     loop {
+LL | |
+LL | |         do_something();
+LL | |     }
+   | |_____^
+   |
+   = help: if this is not intended, try adding a `break` or `return` condition in the loop
+
+error: infinite loop detected
+  --> tests/ui/infinite_loops.rs:51:5
+   |
+LL | /     loop {
+LL | |
+LL | |         fn inner_fn() -> ! {
+LL | |             std::process::exit(0);
+LL | |         }
+LL | |         do_something();
+LL | |     }
+   | |_____^
+   |
+help: if this is intentional, consider specifying `!` as function return
+   |
+LL | fn no_break_never_ret_noise() -> ! {
+   |                               ++++
+
+error: infinite loop detected
+  --> tests/ui/infinite_loops.rs:95:5
+   |
+LL | /     loop {
+LL | |
+LL | |         loop {
+LL | |             if cond {
+...  |
+LL | |     }
+   | |_____^
+   |
+help: if this is intentional, consider specifying `!` as function return
+   |
+LL | fn break_inner_but_not_outer_1(cond: bool) -> ! {
+   |                                            ++++
+
+error: infinite loop detected
+  --> tests/ui/infinite_loops.rs:106:5
+   |
+LL | /     loop {
+LL | |
+LL | |         'inner: loop {
+LL | |             loop {
+...  |
+LL | |     }
+   | |_____^
+   |
+help: if this is intentional, consider specifying `!` as function return
+   |
+LL | fn break_inner_but_not_outer_2(cond: bool) -> ! {
+   |                                            ++++
+
+error: infinite loop detected
+  --> tests/ui/infinite_loops.rs:120:9
+   |
+LL | /         loop {
+LL | |
+LL | |             do_something();
+LL | |         }
+   | |_________^
+   |
+help: if this is intentional, consider specifying `!` as function return
+   |
+LL | fn break_outer_but_not_inner() -> ! {
+   |                                ++++
+
+error: infinite loop detected
+  --> tests/ui/infinite_loops.rs:143:9
+   |
+LL | /         loop {
+LL | |
+LL | |             'inner: loop {
+LL | |                 loop {
+...  |
+LL | |         }
+   | |_________^
+   |
+help: if this is intentional, consider specifying `!` as function return
+   |
+LL | fn break_wrong_loop(cond: bool) -> ! {
+   |                                 ++++
+
+error: infinite loop detected
+  --> tests/ui/infinite_loops.rs:183:5
+   |
+LL | /     loop {
+LL | |
+LL | |         match opt {
+LL | |             Some(v) => {
+...  |
+LL | |     }
+   | |_____^
+   |
+help: if this is intentional, consider specifying `!` as function return
+   |
+LL | fn match_like() -> ! {
+   |                 ++++
+
+error: infinite loop detected
+  --> tests/ui/infinite_loops.rs:224:5
+   |
+LL | /     loop {
+LL | |
+LL | |         let _x = matches!(result, Ok(v) if v != 0).then_some(0);
+LL | |     }
+   | |_____^
+   |
+help: if this is intentional, consider specifying `!` as function return
+   |
+LL | fn match_like() -> ! {
+   |                 ++++
+
+error: infinite loop detected
+  --> tests/ui/infinite_loops.rs:229:5
+   |
+LL | /     loop {
+LL | |
+LL | |         // This `return` does not return the function, so it doesn't count
+LL | |         let _x = matches!(result, Ok(v) if v != 0).then(|| {
+...  |
+LL | |         });
+LL | |     }
+   | |_____^
+   |
+help: if this is intentional, consider specifying `!` as function return
+   |
+LL | fn match_like() -> ! {
+   |                 ++++
+
+error: infinite loop detected
+  --> tests/ui/infinite_loops.rs:334:9
+   |
+LL | /         loop {
+LL | |
+LL | |             do_something();
+LL | |         }
+   | |_________^
+   |
+help: if this is intentional, consider specifying `!` as function return
+   |
+LL |     fn problematic_trait_method() -> ! {
+   |                                   ++++
+
+error: infinite loop detected
+  --> tests/ui/infinite_loops.rs:344:9
+   |
+LL | /         loop {
+LL | |
+LL | |             do_something();
+LL | |         }
+   | |_________^
+   |
+help: if this is intentional, consider specifying `!` as function return
+   |
+LL |     fn could_be_problematic() -> ! {
+   |                               ++++
+
+error: infinite loop detected
+  --> tests/ui/infinite_loops.rs:353:9
+   |
+LL | /         loop {
+LL | |
+LL | |             do_something();
+LL | |         }
+   | |_________^
+   |
+help: if this is intentional, consider specifying `!` as function return
+   |
+LL |     let _loop_forever = || -> ! {
+   |                            ++++
+
+error: infinite loop detected
+  --> tests/ui/infinite_loops.rs:367:8
+   |
+LL |       Ok(loop {
+   |  ________^
+LL | |
+LL | |         do_something()
+LL | |     })
+   | |_____^
+   |
+   = help: if this is not intended, try adding a `break` or `return` condition in the loop
+
+error: infinite loop detected
+  --> tests/ui/infinite_loops.rs:410:5
+   |
+LL | /     'infinite: loop {
+LL | |
+LL | |         loop {
+LL | |             continue 'infinite;
+LL | |         }
+LL | |     }
+   | |_____^
+   |
+help: if this is intentional, consider specifying `!` as function return
+   |
+LL | fn continue_outer() -> ! {
+   |                     ++++
+
+error: infinite loop detected
+  --> tests/ui/infinite_loops.rs:417:5
+   |
+LL | /     loop {
+LL | |
+LL | |         'inner: loop {
+...  |
+LL | |     }
+   | |_____^
+   |
+help: if this is intentional, consider specifying `!` as function return
+   |
+LL | fn continue_outer() -> ! {
+   |                     ++++
+
+error: infinite loop detected
+  --> tests/ui/infinite_loops.rs:419:9
+   |
+LL | /         'inner: loop {
+LL | |
+LL | |             loop {
+LL | |                 continue 'inner;
+LL | |             }
+LL | |         }
+   | |_________^
+   |
+help: if this is intentional, consider specifying `!` as function return
+   |
+LL | fn continue_outer() -> ! {
+   |                     ++++
+
+error: infinite loop detected
+  --> tests/ui/infinite_loops.rs:428:5
+   |
+LL | /     loop {
+LL | |
+LL | |         continue;
+LL | |     }
+   | |_____^
+   |
+help: if this is intentional, consider specifying `!` as function return
+   |
+LL | fn continue_outer() -> ! {
+   |                     ++++
+
+error: infinite loop detected
+  --> tests/ui/infinite_loops.rs:459:13
+   |
+LL | /             loop {
+LL | |
+LL | |                 do_something();
+LL | |             }
+   | |_____________^
+   |
+   = help: if this is not intended, try adding a `break` or `return` condition in the loop
+
+error: infinite loop detected
+  --> tests/ui/infinite_loops.rs:466:13
+   |
+LL | /             loop {
+LL | |
+LL | |                 continue;
+LL | |             }
+   | |_____________^
+   |
+   = help: if this is not intended, try adding a `break` or `return` condition in the loop
+
+error: infinite loop detected
+  --> tests/ui/infinite_loops.rs:533:9
+   |
+LL | /         loop {
+LL | |             std::future::pending().await
+LL | |         }
+   | |_________^
+   |
+   = help: if this is not intended, try adding a `break` or `return` condition in the loop
+
+error: aborting due to 24 previous errors
+

@@ -1,0 +1,16 @@
+This file is contained in the './lib' directory.
+
+The directory name './lib' conflicts with the './lib.rs' file name.
+
+'lib.rs' defines 3 external modules:
+
+    * mod a;
+    * mod b;
+    * mod c;
+
+Module resolution will fail if we look for './lib/a.rs' or './lib/a/mod.rs',
+so we should fall back to looking for './a.rs', which correctly finds the module that
+rustfmt should format.
+
+'./lib/b.rs' and './lib/c/mod.rs' exist at the default submodule paths so we should be able
+to resolve these modules with no problems.

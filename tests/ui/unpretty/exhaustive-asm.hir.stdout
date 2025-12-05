@@ -1,0 +1,32 @@
+#[attr = MacroUse {arguments: UseAll}]
+extern crate std;
+#[prelude_import]
+use std::prelude::rust_2024::*;
+//@ revisions: expanded hir
+//@[expanded]compile-flags: -Zunpretty=expanded
+//@[expanded]check-pass
+//@[hir]compile-flags: -Zunpretty=hir
+//@[hir]check-pass
+//@ edition:2024
+//@ only-x86_64
+//
+// asm parts of exhaustive.rs. Separate because we only run this on x86_64.
+
+mod expressions {
+    /// ExprKind::InlineAsm
+    fn expr_inline_asm() {
+        let x;
+        asm!("mov {1}, {0}\nshl {1}, 1\nshl {0}, 2\nadd {0}, {1}",
+            inout(reg)
+            x,
+            out(reg)
+            _);
+    }
+}
+
+mod items {
+    /// ItemKind::GlobalAsm
+    mod item_global_asm {
+        global_asm! (".globl my_asm_func");
+    }
+}

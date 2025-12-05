@@ -1,0 +1,46 @@
+error[E0106]: missing lifetime specifier
+  --> $DIR/generic-associated-const.rs:15:29
+   |
+LL |     const GAC_LIFETIME<'a>: &str = "";
+   |                             ^ expected named lifetime parameter
+   |
+help: consider using the `'a` lifetime
+   |
+LL |     const GAC_LIFETIME<'a>: &'a str = "";
+   |                              ++
+
+warning: the feature `generic_const_items` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/generic-associated-const.rs:2:12
+   |
+LL | #![feature(generic_const_items)]
+   |            ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #113521 <https://github.com/rust-lang/rust/issues/113521> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+error: `&` without an explicit lifetime name cannot be used here
+  --> $DIR/generic-associated-const.rs:8:29
+   |
+LL |     const GAC_LIFETIME<'a>: &str = "";
+   |                             ^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #115010 <https://github.com/rust-lang/rust/issues/115010>
+note: cannot automatically infer `'static` because of other lifetimes in scope
+  --> $DIR/generic-associated-const.rs:8:24
+   |
+LL |     const GAC_LIFETIME<'a>: &str = "";
+   |                        ^^
+note: the lint level is defined here
+  --> $DIR/generic-associated-const.rs:1:9
+   |
+LL | #![deny(elided_lifetimes_in_associated_constant)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: use the `'static` lifetime
+   |
+LL |     const GAC_LIFETIME<'a>: &'static str = "";
+   |                              +++++++
+
+error: aborting due to 2 previous errors; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0106`.

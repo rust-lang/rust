@@ -1,0 +1,17 @@
+error[E0582]: binding for associated type `Output` references lifetime `'r`, which does not appear in the trait input types
+  --> $DIR/issue-54189.rs:1:35
+   |
+LL | fn bug() -> impl for <'r> Fn() -> &'r () { || { &() } }
+   |                                   ^^^^^^
+
+error[E0582]: binding for associated type `Output` references lifetime `'r`, which does not appear in the trait input types
+  --> $DIR/issue-54189.rs:1:35
+   |
+LL | fn bug() -> impl for <'r> Fn() -> &'r () { || { &() } }
+   |                                   ^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0582`.

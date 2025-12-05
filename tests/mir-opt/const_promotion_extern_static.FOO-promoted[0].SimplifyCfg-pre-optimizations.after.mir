@@ -1,0 +1,18 @@
+// MIR for `FOO::promoted[0]` after SimplifyCfg-pre-optimizations
+
+const FOO::promoted[0]: &[&i32; 1] = {
+    let mut _0: &[&i32; 1];
+    let mut _1: [&i32; 1];
+    let mut _2: &i32;
+    let mut _3: *const i32;
+
+    bb0: {
+        _3 = const {ALLOC0: *const i32};
+        _2 = &(*_3);
+        _1 = [move _2];
+        _0 = &_1;
+        return;
+    }
+}
+
+ALLOC0 (extern static: X)

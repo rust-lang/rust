@@ -1,0 +1,299 @@
+error[E0308]: mismatched types
+  --> $DIR/invalid_arguments.rs:13:11
+   |
+LL |   one_arg(1.0);
+   |   ------- ^^^ expected `i32`, found floating-point number
+   |   |
+   |   arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/invalid_arguments.rs:5:4
+   |
+LL | fn one_arg(_a: i32) {}
+   |    ^^^^^^^ -------
+
+error[E0308]: mismatched types
+  --> $DIR/invalid_arguments.rs:16:19
+   |
+LL |   two_arg_same(1, "");
+   |   ------------    ^^ expected `i32`, found `&str`
+   |   |
+   |   arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/invalid_arguments.rs:6:4
+   |
+LL | fn two_arg_same(_a: i32, _b: i32) {}
+   |    ^^^^^^^^^^^^          -------
+
+error[E0308]: mismatched types
+  --> $DIR/invalid_arguments.rs:17:16
+   |
+LL |   two_arg_same("", 1);
+   |   ------------ ^^ expected `i32`, found `&str`
+   |   |
+   |   arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/invalid_arguments.rs:6:4
+   |
+LL | fn two_arg_same(_a: i32, _b: i32) {}
+   |    ^^^^^^^^^^^^ -------
+
+error[E0308]: arguments to this function are incorrect
+  --> $DIR/invalid_arguments.rs:18:3
+   |
+LL |   two_arg_same("", "");
+   |   ^^^^^^^^^^^^ --  -- expected `i32`, found `&str`
+   |                |
+   |                expected `i32`, found `&str`
+   |
+note: function defined here
+  --> $DIR/invalid_arguments.rs:6:4
+   |
+LL | fn two_arg_same(_a: i32, _b: i32) {}
+   |    ^^^^^^^^^^^^ -------  -------
+
+error[E0308]: mismatched types
+  --> $DIR/invalid_arguments.rs:19:19
+   |
+LL |   two_arg_diff(1, "");
+   |   ------------    ^^ expected `f32`, found `&str`
+   |   |
+   |   arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/invalid_arguments.rs:7:4
+   |
+LL | fn two_arg_diff(_a: i32, _b: f32) {}
+   |    ^^^^^^^^^^^^          -------
+
+error[E0308]: mismatched types
+  --> $DIR/invalid_arguments.rs:20:16
+   |
+LL |   two_arg_diff("", 1.0);
+   |   ------------ ^^ expected `i32`, found `&str`
+   |   |
+   |   arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/invalid_arguments.rs:7:4
+   |
+LL | fn two_arg_diff(_a: i32, _b: f32) {}
+   |    ^^^^^^^^^^^^ -------
+
+error[E0308]: arguments to this function are incorrect
+  --> $DIR/invalid_arguments.rs:21:3
+   |
+LL |   two_arg_diff("", "");
+   |   ^^^^^^^^^^^^ --  -- expected `f32`, found `&str`
+   |                |
+   |                expected `i32`, found `&str`
+   |
+note: function defined here
+  --> $DIR/invalid_arguments.rs:7:4
+   |
+LL | fn two_arg_diff(_a: i32, _b: f32) {}
+   |    ^^^^^^^^^^^^ -------  -------
+
+error[E0308]: mismatched types
+  --> $DIR/invalid_arguments.rs:24:18
+   |
+LL |   three_arg_diff(X{}, 1.0, "");
+   |   -------------- ^^^ expected `i32`, found `X`
+   |   |
+   |   arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/invalid_arguments.rs:8:4
+   |
+LL | fn three_arg_diff(_a: i32, _b: f32, _c: &str) {}
+   |    ^^^^^^^^^^^^^^ -------
+
+error[E0308]: mismatched types
+  --> $DIR/invalid_arguments.rs:25:21
+   |
+LL |   three_arg_diff(1, X {}, "");
+   |   --------------    ^^^^ expected `f32`, found `X`
+   |   |
+   |   arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/invalid_arguments.rs:8:4
+   |
+LL | fn three_arg_diff(_a: i32, _b: f32, _c: &str) {}
+   |    ^^^^^^^^^^^^^^          -------
+
+error[E0308]: mismatched types
+  --> $DIR/invalid_arguments.rs:26:26
+   |
+LL |   three_arg_diff(1, 1.0, X {});
+   |   --------------         ^^^^ expected `&str`, found `X`
+   |   |
+   |   arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/invalid_arguments.rs:8:4
+   |
+LL | fn three_arg_diff(_a: i32, _b: f32, _c: &str) {}
+   |    ^^^^^^^^^^^^^^                   --------
+
+error[E0308]: arguments to this function are incorrect
+  --> $DIR/invalid_arguments.rs:28:3
+   |
+LL |   three_arg_diff(X {}, X {}, "");
+   |   ^^^^^^^^^^^^^^ ----  ---- expected `f32`, found `X`
+   |                  |
+   |                  expected `i32`, found `X`
+   |
+note: function defined here
+  --> $DIR/invalid_arguments.rs:8:4
+   |
+LL | fn three_arg_diff(_a: i32, _b: f32, _c: &str) {}
+   |    ^^^^^^^^^^^^^^ -------  -------
+
+error[E0308]: arguments to this function are incorrect
+  --> $DIR/invalid_arguments.rs:29:3
+   |
+LL |   three_arg_diff(X {}, 1.0, X {});
+   |   ^^^^^^^^^^^^^^ ----       ---- expected `&str`, found `X`
+   |                  |
+   |                  expected `i32`, found `X`
+   |
+note: function defined here
+  --> $DIR/invalid_arguments.rs:8:4
+   |
+LL | fn three_arg_diff(_a: i32, _b: f32, _c: &str) {}
+   |    ^^^^^^^^^^^^^^ -------           --------
+
+error[E0308]: arguments to this function are incorrect
+  --> $DIR/invalid_arguments.rs:30:3
+   |
+LL |   three_arg_diff(1, X {}, X {});
+   |   ^^^^^^^^^^^^^^    ----  ---- expected `&str`, found `X`
+   |                     |
+   |                     expected `f32`, found `X`
+   |
+note: function defined here
+  --> $DIR/invalid_arguments.rs:8:4
+   |
+LL | fn three_arg_diff(_a: i32, _b: f32, _c: &str) {}
+   |    ^^^^^^^^^^^^^^          -------  --------
+
+error[E0308]: arguments to this function are incorrect
+  --> $DIR/invalid_arguments.rs:32:3
+   |
+LL |   three_arg_diff(X {}, X {}, X {});
+   |   ^^^^^^^^^^^^^^ ----  ----  ---- expected `&str`, found `X`
+   |                  |     |
+   |                  |     expected `f32`, found `X`
+   |                  expected `i32`, found `X`
+   |
+note: function defined here
+  --> $DIR/invalid_arguments.rs:8:4
+   |
+LL | fn three_arg_diff(_a: i32, _b: f32, _c: &str) {}
+   |    ^^^^^^^^^^^^^^ -------  -------  --------
+
+error[E0308]: mismatched types
+  --> $DIR/invalid_arguments.rs:34:20
+   |
+LL |   three_arg_repeat(X {}, 1, "");
+   |   ---------------- ^^^^ expected `i32`, found `X`
+   |   |
+   |   arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/invalid_arguments.rs:9:4
+   |
+LL | fn three_arg_repeat(_a: i32, _b: i32, _c: &str) {}
+   |    ^^^^^^^^^^^^^^^^ -------
+
+error[E0308]: mismatched types
+  --> $DIR/invalid_arguments.rs:35:23
+   |
+LL |   three_arg_repeat(1, X {}, "");
+   |   ----------------    ^^^^ expected `i32`, found `X`
+   |   |
+   |   arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/invalid_arguments.rs:9:4
+   |
+LL | fn three_arg_repeat(_a: i32, _b: i32, _c: &str) {}
+   |    ^^^^^^^^^^^^^^^^          -------
+
+error[E0308]: mismatched types
+  --> $DIR/invalid_arguments.rs:36:26
+   |
+LL |   three_arg_repeat(1, 1, X {});
+   |   ----------------       ^^^^ expected `&str`, found `X`
+   |   |
+   |   arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/invalid_arguments.rs:9:4
+   |
+LL | fn three_arg_repeat(_a: i32, _b: i32, _c: &str) {}
+   |    ^^^^^^^^^^^^^^^^                   --------
+
+error[E0308]: arguments to this function are incorrect
+  --> $DIR/invalid_arguments.rs:38:3
+   |
+LL |   three_arg_repeat(X {}, X {}, "");
+   |   ^^^^^^^^^^^^^^^^ ----  ---- expected `i32`, found `X`
+   |                    |
+   |                    expected `i32`, found `X`
+   |
+note: function defined here
+  --> $DIR/invalid_arguments.rs:9:4
+   |
+LL | fn three_arg_repeat(_a: i32, _b: i32, _c: &str) {}
+   |    ^^^^^^^^^^^^^^^^ -------  -------
+
+error[E0308]: arguments to this function are incorrect
+  --> $DIR/invalid_arguments.rs:39:3
+   |
+LL |   three_arg_repeat(X {}, 1, X {});
+   |   ^^^^^^^^^^^^^^^^ ----     ---- expected `&str`, found `X`
+   |                    |
+   |                    expected `i32`, found `X`
+   |
+note: function defined here
+  --> $DIR/invalid_arguments.rs:9:4
+   |
+LL | fn three_arg_repeat(_a: i32, _b: i32, _c: &str) {}
+   |    ^^^^^^^^^^^^^^^^ -------           --------
+
+error[E0308]: arguments to this function are incorrect
+  --> $DIR/invalid_arguments.rs:40:3
+   |
+LL |   three_arg_repeat(1, X {}, X{});
+   |   ^^^^^^^^^^^^^^^^    ----  --- expected `&str`, found `X`
+   |                       |
+   |                       expected `i32`, found `X`
+   |
+note: function defined here
+  --> $DIR/invalid_arguments.rs:9:4
+   |
+LL | fn three_arg_repeat(_a: i32, _b: i32, _c: &str) {}
+   |    ^^^^^^^^^^^^^^^^          -------  --------
+
+error[E0308]: arguments to this function are incorrect
+  --> $DIR/invalid_arguments.rs:42:3
+   |
+LL |   three_arg_repeat(X {}, X {}, X {});
+   |   ^^^^^^^^^^^^^^^^ ----  ----  ---- expected `&str`, found `X`
+   |                    |     |
+   |                    |     expected `i32`, found `X`
+   |                    expected `i32`, found `X`
+   |
+note: function defined here
+  --> $DIR/invalid_arguments.rs:9:4
+   |
+LL | fn three_arg_repeat(_a: i32, _b: i32, _c: &str) {}
+   |    ^^^^^^^^^^^^^^^^ -------  -------  --------
+
+error: aborting due to 21 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

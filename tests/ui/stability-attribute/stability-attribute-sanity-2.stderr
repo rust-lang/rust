@@ -1,0 +1,27 @@
+error[E0538]: malformed `stable` attribute input
+  --> $DIR/stability-attribute-sanity-2.rs:7:1
+   |
+LL | #[stable(feature = "a", feature = "b", since = "1.0.0")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^-------^^^^^^^^^^^^^^^^^^^^^^^^^
+   | |                       |
+   | |                       found `feature` used as a key more than once
+   | help: must be of the form: `#[stable(feature = "name", since = "version")]`
+
+error[E0541]: unknown meta item 'sinse'
+  --> $DIR/stability-attribute-sanity-2.rs:10:25
+   |
+LL | #[stable(feature = "a", sinse = "1.0.0")]
+   |                         ^^^^^^^^^^^^^^^ expected one of `feature`, `since`
+
+error[E0545]: `issue` must be a non-zero numeric string or "none"
+  --> $DIR/stability-attribute-sanity-2.rs:13:27
+   |
+LL | #[unstable(feature = "a", issue = "no")]
+   |                           ^^^^^^^^----
+   |                                   |
+   |                                   invalid digit found in string
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0538, E0541, E0545.
+For more information about an error, try `rustc --explain E0538`.

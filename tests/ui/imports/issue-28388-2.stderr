@@ -1,0 +1,15 @@
+error[E0603]: module `n` is private
+  --> $DIR/issue-28388-2.rs:7:8
+   |
+LL | use m::n::{};
+   |        ^ private module
+   |
+note: the module `n` is defined here
+  --> $DIR/issue-28388-2.rs:4:5
+   |
+LL |     mod n {}
+   |     ^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0603`.

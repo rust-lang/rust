@@ -1,0 +1,24 @@
+error[E0277]: the trait bound `str: UpperHex` is not satisfied
+  --> $DIR/ifmt-unimpl.rs:2:21
+   |
+LL |     format!("{:X}", "3");
+   |              ----   ^^^ the trait `UpperHex` is not implemented for `str`
+   |              |
+   |              required by this formatting parameter
+   |
+   = help: the following other types implement trait `UpperHex`:
+             &T
+             &mut T
+             NonZero<T>
+             Saturating<T>
+             Wrapping<T>
+             i128
+             i16
+             i32
+           and 9 others
+   = note: required for `&str` to implement `UpperHex`
+   = note: this error originates in the macro `$crate::__export::format_args` which comes from the expansion of the macro `format` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

@@ -1,0 +1,36 @@
+error[E0277]: the trait bound `T: Trait` is not satisfied
+  --> $DIR/generic_underconstrained.rs:10:31
+   |
+LL | fn underconstrain<T>(_: T) -> Underconstrained<T> {
+   |                               ^^^^^^^^^^^^^^^^^^^ the trait `Trait` is not implemented for `T`
+   |
+note: required by a bound on the type alias `Underconstrained`
+  --> $DIR/generic_underconstrained.rs:6:26
+   |
+LL | type Underconstrained<T: Trait> = impl Send;
+   |                          ^^^^^ required by this bound
+help: consider restricting type parameter `T` with trait `Trait`
+   |
+LL | fn underconstrain<T: Trait>(_: T) -> Underconstrained<T> {
+   |                    +++++++
+
+error[E0277]: the trait bound `T: Trait` is not satisfied
+  --> $DIR/generic_underconstrained.rs:10:31
+   |
+LL | fn underconstrain<T>(_: T) -> Underconstrained<T> {
+   |                               ^^^^^^^^^^^^^^^^^^^ the trait `Trait` is not implemented for `T`
+   |
+note: required by a bound on the type alias `Underconstrained`
+  --> $DIR/generic_underconstrained.rs:6:26
+   |
+LL | type Underconstrained<T: Trait> = impl Send;
+   |                          ^^^^^ required by this bound
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: consider restricting type parameter `T` with trait `Trait`
+   |
+LL | fn underconstrain<T: Trait>(_: T) -> Underconstrained<T> {
+   |                    +++++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

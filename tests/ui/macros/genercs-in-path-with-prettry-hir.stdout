@@ -1,0 +1,14 @@
+#[attr = MacroUse {arguments: UseAll}]
+extern crate std;
+#[prelude_import]
+use ::std::prelude::rust_2015::*;
+//@ compile-flags: -Zunpretty=hir
+//@ edition: 2015
+
+// issue#97006
+
+macro_rules! m { ($attr_path: path) => { #[$attr_path] fn f() {} } }
+#[attr = Inline(Hint)]
+fn f() { }
+
+fn main() { }

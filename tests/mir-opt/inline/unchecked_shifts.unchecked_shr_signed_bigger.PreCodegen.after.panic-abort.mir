@@ -1,0 +1,18 @@
+// MIR for `unchecked_shr_signed_bigger` after PreCodegen
+
+fn unchecked_shr_signed_bigger(_1: i64, _2: u32) -> i64 {
+    debug a => _1;
+    debug b => _2;
+    let mut _0: i64;
+    scope 1 (inlined #[track_caller] core::num::<impl i64>::unchecked_shr) {
+        scope 2 (inlined core::ub_checks::check_language_ub) {
+            scope 3 (inlined core::ub_checks::check_language_ub::runtime) {
+            }
+        }
+    }
+
+    bb0: {
+        _0 = ShrUnchecked(copy _1, copy _2);
+        return;
+    }
+}

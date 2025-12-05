@@ -1,0 +1,24 @@
+error: function pointers and raw pointers not derived from integers in patterns behave unpredictably and should not be relied upon
+  --> $DIR/issue-44333.rs:15:9
+   |
+LL | const FOO: Func = foo;
+   | --------------- constant defined here
+...
+LL |         FOO => println!("foo"),
+   |         ^^^ can't be used in patterns
+   |
+   = note: see https://github.com/rust-lang/rust/issues/70861 for details
+
+error: function pointers and raw pointers not derived from integers in patterns behave unpredictably and should not be relied upon
+  --> $DIR/issue-44333.rs:16:9
+   |
+LL | const BAR: Func = bar;
+   | --------------- constant defined here
+...
+LL |         BAR => println!("bar"),
+   |         ^^^ can't be used in patterns
+   |
+   = note: see https://github.com/rust-lang/rust/issues/70861 for details
+
+error: aborting due to 2 previous errors
+

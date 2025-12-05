@@ -1,0 +1,14 @@
+error[E0282]: type annotations needed for `Expr<'_, _>`
+  --> $DIR/issue-23046.rs:17:15
+   |
+LL |     let ex = |x| {
+   |               ^
+   |
+help: consider giving this closure parameter an explicit type, where the type for type parameter `VAR` is specified
+   |
+LL |     let ex = |x: Expr<'_, VAR>| {
+   |                +++++++++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0282`.

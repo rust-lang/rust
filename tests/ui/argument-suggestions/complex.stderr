@@ -1,0 +1,20 @@
+error[E0308]: arguments to this function are incorrect
+  --> $DIR/complex.rs:14:3
+   |
+LL |   complex(1.0, H {}, &"", G{}, F::X2, Z {}, X {}, Y {});
+   |   ^^^^^^^ --- expected `u32`, found floating-point number
+   |
+note: function defined here
+  --> $DIR/complex.rs:11:4
+   |
+LL | fn complex(_i: u32, _s: &str, _e: E, _f: F, _g: G, _x: X, _y: Y, _z: Z ) {}
+   |    ^^^^^^^ -------            -----
+help: did you mean
+   |
+LL -   complex(1.0, H {}, &"", G{}, F::X2, Z {}, X {}, Y {});
+LL +   complex(/* u32 */, &"", /* E */, F::X2, G{}, X {}, Y {}, Z {});
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0308`.

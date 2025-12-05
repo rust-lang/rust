@@ -1,0 +1,189 @@
+error: casting `isize` to `i8` may truncate the value
+  --> tests/ui/cast_size.rs:17:5
+   |
+LL |     1isize as i8;
+   |     ^^^^^^^^^^^^
+   |
+   = help: if this is intentional allow the lint with `#[allow(clippy::cast_possible_truncation)]` ...
+   = note: `-D clippy::cast-possible-truncation` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::cast_possible_truncation)]`
+help: ... or use `try_from` and handle the error accordingly
+   |
+LL -     1isize as i8;
+LL +     i8::try_from(1isize);
+   |
+
+error: casting `isize` to `f32` causes a loss of precision (`isize` is 32 or 64 bits wide, but `f32`'s mantissa is only 23 bits wide)
+  --> tests/ui/cast_size.rs:24:5
+   |
+LL |     x0 as f32;
+   |     ^^^^^^^^^
+   |
+   = note: `-D clippy::cast-precision-loss` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::cast_precision_loss)]`
+
+error: casting `usize` to `f32` causes a loss of precision (`usize` is 32 or 64 bits wide, but `f32`'s mantissa is only 23 bits wide)
+  --> tests/ui/cast_size.rs:26:5
+   |
+LL |     x1 as f32;
+   |     ^^^^^^^^^
+
+error: casting `isize` to `f64` causes a loss of precision on targets with 64-bit wide pointers (`isize` is 64 bits wide, but `f64`'s mantissa is only 52 bits wide)
+  --> tests/ui/cast_size.rs:28:5
+   |
+LL |     x0 as f64;
+   |     ^^^^^^^^^
+
+error: casting `usize` to `f64` causes a loss of precision on targets with 64-bit wide pointers (`usize` is 64 bits wide, but `f64`'s mantissa is only 52 bits wide)
+  --> tests/ui/cast_size.rs:30:5
+   |
+LL |     x1 as f64;
+   |     ^^^^^^^^^
+
+error: casting `isize` to `i32` may truncate the value on targets with 64-bit wide pointers
+  --> tests/ui/cast_size.rs:35:5
+   |
+LL |     1isize as i32;
+   |     ^^^^^^^^^^^^^
+   |
+   = help: if this is intentional allow the lint with `#[allow(clippy::cast_possible_truncation)]` ...
+help: ... or use `try_from` and handle the error accordingly
+   |
+LL -     1isize as i32;
+LL +     i32::try_from(1isize);
+   |
+
+error: casting `isize` to `u32` may truncate the value on targets with 64-bit wide pointers
+  --> tests/ui/cast_size.rs:37:5
+   |
+LL |     1isize as u32;
+   |     ^^^^^^^^^^^^^
+   |
+   = help: if this is intentional allow the lint with `#[allow(clippy::cast_possible_truncation)]` ...
+help: ... or use `try_from` and handle the error accordingly
+   |
+LL -     1isize as u32;
+LL +     u32::try_from(1isize);
+   |
+
+error: casting `usize` to `u32` may truncate the value on targets with 64-bit wide pointers
+  --> tests/ui/cast_size.rs:39:5
+   |
+LL |     1usize as u32;
+   |     ^^^^^^^^^^^^^
+   |
+   = help: if this is intentional allow the lint with `#[allow(clippy::cast_possible_truncation)]` ...
+help: ... or use `try_from` and handle the error accordingly
+   |
+LL -     1usize as u32;
+LL +     u32::try_from(1usize);
+   |
+
+error: casting `usize` to `i32` may truncate the value on targets with 64-bit wide pointers
+  --> tests/ui/cast_size.rs:41:5
+   |
+LL |     1usize as i32;
+   |     ^^^^^^^^^^^^^
+   |
+   = help: if this is intentional allow the lint with `#[allow(clippy::cast_possible_truncation)]` ...
+help: ... or use `try_from` and handle the error accordingly
+   |
+LL -     1usize as i32;
+LL +     i32::try_from(1usize);
+   |
+
+error: casting `usize` to `i32` may wrap around the value on targets with 32-bit wide pointers
+  --> tests/ui/cast_size.rs:41:5
+   |
+LL |     1usize as i32;
+   |     ^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::cast-possible-wrap` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::cast_possible_wrap)]`
+
+error: casting `i64` to `isize` may truncate the value on targets with 32-bit wide pointers
+  --> tests/ui/cast_size.rs:44:5
+   |
+LL |     1i64 as isize;
+   |     ^^^^^^^^^^^^^
+   |
+   = help: if this is intentional allow the lint with `#[allow(clippy::cast_possible_truncation)]` ...
+help: ... or use `try_from` and handle the error accordingly
+   |
+LL -     1i64 as isize;
+LL +     isize::try_from(1i64);
+   |
+
+error: casting `i64` to `usize` may truncate the value on targets with 32-bit wide pointers
+  --> tests/ui/cast_size.rs:46:5
+   |
+LL |     1i64 as usize;
+   |     ^^^^^^^^^^^^^
+   |
+   = help: if this is intentional allow the lint with `#[allow(clippy::cast_possible_truncation)]` ...
+help: ... or use `try_from` and handle the error accordingly
+   |
+LL -     1i64 as usize;
+LL +     usize::try_from(1i64);
+   |
+
+error: casting `u64` to `isize` may truncate the value on targets with 32-bit wide pointers
+  --> tests/ui/cast_size.rs:48:5
+   |
+LL |     1u64 as isize;
+   |     ^^^^^^^^^^^^^
+   |
+   = help: if this is intentional allow the lint with `#[allow(clippy::cast_possible_truncation)]` ...
+help: ... or use `try_from` and handle the error accordingly
+   |
+LL -     1u64 as isize;
+LL +     isize::try_from(1u64);
+   |
+
+error: casting `u64` to `isize` may wrap around the value on targets with 64-bit wide pointers
+  --> tests/ui/cast_size.rs:48:5
+   |
+LL |     1u64 as isize;
+   |     ^^^^^^^^^^^^^
+
+error: casting `u64` to `usize` may truncate the value on targets with 32-bit wide pointers
+  --> tests/ui/cast_size.rs:51:5
+   |
+LL |     1u64 as usize;
+   |     ^^^^^^^^^^^^^
+   |
+   = help: if this is intentional allow the lint with `#[allow(clippy::cast_possible_truncation)]` ...
+help: ... or use `try_from` and handle the error accordingly
+   |
+LL -     1u64 as usize;
+LL +     usize::try_from(1u64);
+   |
+
+error: casting `u32` to `isize` may wrap around the value on targets with 32-bit wide pointers
+  --> tests/ui/cast_size.rs:53:5
+   |
+LL |     1u32 as isize;
+   |     ^^^^^^^^^^^^^
+
+error: casting `i32` to `f32` causes a loss of precision (`i32` is 32 bits wide, but `f32`'s mantissa is only 23 bits wide)
+  --> tests/ui/cast_size.rs:61:5
+   |
+LL |     999_999_999 as f32;
+   |     ^^^^^^^^^^^^^^^^^^
+
+error: casting `usize` to `f64` causes a loss of precision on targets with 64-bit wide pointers (`usize` is 64 bits wide, but `f64`'s mantissa is only 52 bits wide)
+  --> tests/ui/cast_size.rs:63:5
+   |
+LL |     9_999_999_999_999_999usize as f64;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: casting `usize` to `u16` may truncate the value
+  --> tests/ui/cast_size.rs:71:20
+   |
+LL |     const N: u16 = M as u16;
+   |                    ^^^^^^^^
+   |
+   = help: if this is intentional allow the lint with `#[allow(clippy::cast_possible_truncation)]` ...
+
+error: aborting due to 19 previous errors
+

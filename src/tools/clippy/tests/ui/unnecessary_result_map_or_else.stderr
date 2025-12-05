@@ -1,0 +1,35 @@
+error: unused "map closure" when calling `Result::map_or_else` value
+  --> tests/ui/unnecessary_result_map_or_else.rs:6:5
+   |
+LL |     x.map_or_else(|err| err, |n| n);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `unwrap_or_else`: `x.unwrap_or_else(|err| err)`
+   |
+   = note: `-D clippy::unnecessary-result-map-or-else` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unnecessary_result_map_or_else)]`
+
+error: unused "map closure" when calling `Result::map_or_else` value
+  --> tests/ui/unnecessary_result_map_or_else.rs:11:5
+   |
+LL |     x.map_or_else(|err: ()| err, |n: ()| n);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `unwrap_or_else`: `x.unwrap_or_else(|err: ()| err)`
+
+error: unused "map closure" when calling `Result::map_or_else` value
+  --> tests/ui/unnecessary_result_map_or_else.rs:17:19
+   |
+LL |     let y: &str = x.map_or_else(|err| err, |n| n);
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `unwrap_or_else`: `x.unwrap_or_else(|err| err)`
+
+error: unused "map closure" when calling `Result::map_or_else` value
+  --> tests/ui/unnecessary_result_map_or_else.rs:22:5
+   |
+LL | /     x.map_or_else(
+LL | |
+LL | |         |err| err,
+LL | |         |n| {
+...  |
+LL | |         },
+LL | |     );
+   | |_____^ help: consider using `unwrap_or_else`: `x.unwrap_or_else(|err| err)`
+
+error: aborting due to 4 previous errors
+

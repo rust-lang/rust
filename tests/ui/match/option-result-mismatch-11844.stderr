@@ -1,0 +1,14 @@
+error[E0308]: mismatched types
+  --> $DIR/option-result-mismatch-11844.rs:6:9
+   |
+LL |     match a {
+   |           - this expression has type `Option<Box<{integer}>>`
+LL |         Ok(a) =>
+   |         ^^^^^ expected `Option<Box<{integer}>>`, found `Result<_, _>`
+   |
+   = note: expected enum `Option<Box<{integer}>>`
+              found enum `Result<_, _>`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0308`.

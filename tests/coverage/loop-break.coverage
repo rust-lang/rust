@@ -1,0 +1,14 @@
+   LL|       |//@ edition: 2021
+   LL|       |
+   LL|      1|fn main() {
+   LL|       |    loop {
+   LL|      1|        if core::hint::black_box(true) {
+   LL|      1|            break;
+   LL|      0|        }
+   LL|       |    }
+   LL|      1|}
+   LL|       |
+   LL|       |// This test is a lightly-modified version of `tests/mir-opt/coverage/instrument_coverage.rs`.
+   LL|       |// If this test needs to be blessed, then the mir-opt version probably needs to
+   LL|       |// be blessed too!
+

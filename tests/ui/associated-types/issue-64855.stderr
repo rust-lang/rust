@@ -1,0 +1,33 @@
+error[E0277]: the trait bound `Bar<T>: Foo` is not satisfied
+  --> $DIR/issue-64855.rs:9:19
+   |
+LL | pub struct Bar<T>(<Self as Foo>::Type) where Self: ;
+   |                   ^^^^^^^^^^^^^^^^^^^ unsatisfied trait bound
+   |
+help: the trait `Foo` is not implemented for `Bar<T>`
+  --> $DIR/issue-64855.rs:9:1
+   |
+LL | pub struct Bar<T>(<Self as Foo>::Type) where Self: ;
+   | ^^^^^^^^^^^^^^^^^
+help: this trait has no implementations, consider adding one
+  --> $DIR/issue-64855.rs:5:1
+   |
+LL | pub trait Foo {
+   | ^^^^^^^^^^^^^
+
+error[E0275]: overflow evaluating the requirement `Bar<T> well-formed`
+  --> $DIR/issue-64855.rs:9:46
+   |
+LL | pub struct Bar<T>(<Self as Foo>::Type) where Self: ;
+   |                                              ^^^^
+   |
+note: required by a bound in `Bar`
+  --> $DIR/issue-64855.rs:9:46
+   |
+LL | pub struct Bar<T>(<Self as Foo>::Type) where Self: ;
+   |                                              ^^^^ required by this bound in `Bar`
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0275, E0277.
+For more information about an error, try `rustc --explain E0275`.

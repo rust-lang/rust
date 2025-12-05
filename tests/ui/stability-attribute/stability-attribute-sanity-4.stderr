@@ -1,0 +1,58 @@
+error[E0539]: malformed `unstable` attribute input
+  --> $DIR/stability-attribute-sanity-4.rs:8:5
+   |
+LL |     #[unstable]
+   |     ^^^^^^^^^^^
+   |     |
+   |     expected this to be a list
+   |     help: must be of the form: `#[unstable(feature = "name", reason = "...", issue = "N")]`
+
+error[E0539]: malformed `unstable` attribute input
+  --> $DIR/stability-attribute-sanity-4.rs:11:5
+   |
+LL |     #[unstable = "b"]
+   |     ^^^^^^^^^^^^^^^^^
+   |     |
+   |     expected this to be a list
+   |     help: must be of the form: `#[unstable(feature = "name", reason = "...", issue = "N")]`
+
+error[E0539]: malformed `stable` attribute input
+  --> $DIR/stability-attribute-sanity-4.rs:14:5
+   |
+LL |     #[stable]
+   |     ^^^^^^^^^
+   |     |
+   |     expected this to be a list
+   |     help: must be of the form: `#[stable(feature = "name", since = "version")]`
+
+error[E0539]: malformed `stable` attribute input
+  --> $DIR/stability-attribute-sanity-4.rs:17:5
+   |
+LL |     #[stable = "a"]
+   |     ^^^^^^^^^^^^^^^
+   |     |
+   |     expected this to be a list
+   |     help: must be of the form: `#[stable(feature = "name", since = "version")]`
+
+error[E0542]: missing 'since'
+  --> $DIR/stability-attribute-sanity-4.rs:21:5
+   |
+LL |     #[deprecated]
+   |     ^^^^^^^^^^^^^
+
+error[E0543]: missing 'note'
+  --> $DIR/stability-attribute-sanity-4.rs:21:5
+   |
+LL |     #[deprecated]
+   |     ^^^^^^^^^^^^^
+
+error[E0542]: missing 'since'
+  --> $DIR/stability-attribute-sanity-4.rs:26:5
+   |
+LL |     #[deprecated = "a"]
+   |     ^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 7 previous errors
+
+Some errors have detailed explanations: E0539, E0542, E0543.
+For more information about an error, try `rustc --explain E0539`.

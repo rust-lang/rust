@@ -1,0 +1,26 @@
+error: `impl Sized` will capture more lifetimes than possibly intended in edition 2024
+  --> $DIR/overcaptures-2024-machine-applicable.rs:9:29
+   |
+LL | fn named<'a>(x: &'a i32) -> impl Sized { *x }
+   |                             ^^^^^^^^^^
+   |
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/rpit-lifetime-capture.html>
+note: specifically, this lifetime is in scope but not mentioned in the type's bounds
+  --> $DIR/overcaptures-2024-machine-applicable.rs:9:10
+   |
+LL | fn named<'a>(x: &'a i32) -> impl Sized { *x }
+   |          ^^
+   = note: all lifetimes in scope will be captured by `impl Trait`s in edition 2024
+note: the lint level is defined here
+  --> $DIR/overcaptures-2024-machine-applicable.rs:7:9
+   |
+LL | #![deny(impl_trait_overcaptures)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^
+help: use the precise capturing `use<...>` syntax to make the captures explicit
+   |
+LL | fn named<'a>(x: &'a i32) -> impl Sized + use<> { *x }
+   |                                        +++++++
+
+error: aborting due to 1 previous error
+

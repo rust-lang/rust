@@ -1,0 +1,28 @@
+error[E0658]: allow_internal_unstable side-steps feature gating and stability checks
+  --> $DIR/issue-32782.rs:7:9
+   |
+LL |         #[allow_internal_unstable()]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | foo!();
+   | ------ in this macro invocation
+   |
+   = help: add `#![feature(allow_internal_unstable)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = note: this error originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: `#[allow_internal_unstable]` attribute cannot be used on macro calls
+  --> $DIR/issue-32782.rs:7:9
+   |
+LL |         #[allow_internal_unstable()]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | foo!();
+   | ------ in this macro invocation
+   |
+   = help: `#[allow_internal_unstable]` can be applied to functions and macro defs
+   = note: this error originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

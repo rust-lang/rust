@@ -1,0 +1,29 @@
+[package]
+name = "syntax-fuzz"
+version = "0.0.1"
+publish = false
+edition = "2024"
+rust-version = "1.85"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+syntax = { path = "..", version = "0.0.0" }
+text-edit = { path = "../../text-edit", version = "0.0.0" }
+libfuzzer-sys = "0.4.5"
+
+# Prevent this from interfering with workspaces
+[workspace]
+members = ["."]
+
+[[bin]]
+name = "parser"
+path = "fuzz_targets/parser.rs"
+
+[[bin]]
+name = "reparse"
+path = "fuzz_targets/reparse.rs"
+
+[lints]
+workspace = true

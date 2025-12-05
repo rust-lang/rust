@@ -1,0 +1,35 @@
+error: consider adding a `;` to the last statement for consistent formatting
+  --> tests/ui/semicolon_if_nothing_returned.rs:18:5
+   |
+LL |     println!("Hello")
+   |     ^^^^^^^^^^^^^^^^^ help: add a `;` here: `println!("Hello");`
+   |
+   = note: `-D clippy::semicolon-if-nothing-returned` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::semicolon_if_nothing_returned)]`
+
+error: consider adding a `;` to the last statement for consistent formatting
+  --> tests/ui/semicolon_if_nothing_returned.rs:23:5
+   |
+LL |     get_unit()
+   |     ^^^^^^^^^^ help: add a `;` here: `get_unit();`
+
+error: consider adding a `;` to the last statement for consistent formatting
+  --> tests/ui/semicolon_if_nothing_returned.rs:29:5
+   |
+LL |     y = x + 1
+   |     ^^^^^^^^^ help: add a `;` here: `y = x + 1;`
+
+error: consider adding a `;` to the last statement for consistent formatting
+  --> tests/ui/semicolon_if_nothing_returned.rs:36:9
+   |
+LL |         hello()
+   |         ^^^^^^^ help: add a `;` here: `hello();`
+
+error: consider adding a `;` to the last statement for consistent formatting
+  --> tests/ui/semicolon_if_nothing_returned.rs:48:9
+   |
+LL |         ptr::drop_in_place(s.as_mut_ptr())
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: add a `;` here: `ptr::drop_in_place(s.as_mut_ptr());`
+
+error: aborting due to 5 previous errors
+

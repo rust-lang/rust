@@ -1,0 +1,14 @@
+error[E0282]: type annotations needed for `B<_>`
+  --> $DIR/issue-17551.rs:6:9
+   |
+LL |     let foo = B(marker::PhantomData);
+   |         ^^^     ------------------- type must be known at this point
+   |
+help: consider giving `foo` an explicit type, where the type for type parameter `T` is specified
+   |
+LL |     let foo: B<T> = B(marker::PhantomData);
+   |            ++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0282`.

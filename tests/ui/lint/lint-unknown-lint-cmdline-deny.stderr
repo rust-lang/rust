@@ -1,0 +1,35 @@
+error[E0602]: unknown lint: `bogus`
+   |
+   = note: requested on the command line with `-D bogus`
+   = note: requested on the command line with `-D unknown-lints`
+
+error[E0602]: unknown lint: `dead_cod`
+   |
+   = help: did you mean: `dead_code`
+   = note: requested on the command line with `-D dead_cod`
+
+error[E0602]: unknown lint: `bogus`
+   |
+   = note: requested on the command line with `-D bogus`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0602]: unknown lint: `dead_cod`
+   |
+   = help: did you mean: `dead_code`
+   = note: requested on the command line with `-D dead_cod`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0602]: unknown lint: `bogus`
+   |
+   = note: requested on the command line with `-D bogus`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0602]: unknown lint: `dead_cod`
+   |
+   = help: did you mean: `dead_code`
+   = note: requested on the command line with `-D dead_cod`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0602`.

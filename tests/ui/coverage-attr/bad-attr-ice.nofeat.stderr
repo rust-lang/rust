@@ -1,0 +1,27 @@
+error[E0658]: the `#[coverage]` attribute is an experimental feature
+  --> $DIR/bad-attr-ice.rs:11:1
+   |
+LL | #[coverage]
+   | ^^^^^^^^^^^
+   |
+   = note: see issue #84605 <https://github.com/rust-lang/rust/issues/84605> for more information
+   = help: add `#![feature(coverage_attribute)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0539]: malformed `coverage` attribute input
+  --> $DIR/bad-attr-ice.rs:11:1
+   |
+LL | #[coverage]
+   | ^^^^^^^^^^^ this attribute is only valid with either `on` or `off` as an argument
+   |
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL | #[coverage(off)]
+   |           +++++
+LL | #[coverage(on)]
+   |           ++++
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0539, E0658.
+For more information about an error, try `rustc --explain E0539`.

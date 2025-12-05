@@ -1,0 +1,18 @@
+error[E0277]: `<impl IntoIterator as IntoIterator>::Item` doesn't implement `std::fmt::Display`
+  --> $DIR/issue-97760.rs:4:19
+   |
+LL |         println!("{x}");
+   |                   ^^^ `<impl IntoIterator as IntoIterator>::Item` cannot be formatted with the default formatter
+   |
+   = help: the trait `std::fmt::Display` is not implemented for `<impl IntoIterator as IntoIterator>::Item`
+   = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
+   = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: introduce a type parameter with a trait bound instead of using `impl Trait`
+   |
+LL ~ pub fn print_values<I: IntoIterator>(values: &I)
+LL ~ where <I as IntoIterator>::Item: std::fmt::Display {
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

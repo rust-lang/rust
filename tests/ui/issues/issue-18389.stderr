@@ -1,0 +1,19 @@
+warning: trait `Private<<Self as Public>::P, <Self as Public>::R>` is more private than the item `Public`
+  --> $DIR/issue-18389.rs:9:1
+   |
+LL | / pub trait Public: Private<
+LL | |
+LL | |     <Self as Public>::P,
+LL | |     <Self as Public>::R
+LL | | > {
+   | |_^ trait `Public` is reachable at visibility `pub`
+   |
+note: but trait `Private<<Self as Public>::P, <Self as Public>::R>` is only usable at visibility `pub(crate)`
+  --> $DIR/issue-18389.rs:6:1
+   |
+LL | trait Private<P, R> {
+   | ^^^^^^^^^^^^^^^^^^^
+   = note: `#[warn(private_bounds)]` on by default
+
+warning: 1 warning emitted
+

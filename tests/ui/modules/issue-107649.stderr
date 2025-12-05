@@ -1,0 +1,18 @@
+error[E0277]: `Dummy` doesn't implement `Debug`
+   --> $DIR/issue-107649.rs:105:5
+    |
+105 |     dbg!(lib::Dummy);
+    |     ^^^^^^^^^^^^^^^^ the trait `Debug` is not implemented for `Dummy`
+    |
+    = note: add `#[derive(Debug)]` to `Dummy` or manually `impl Debug for Dummy`
+    = note: this error originates in the macro `dbg` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: consider annotating `Dummy` with `#[derive(Debug)]`
+   --> $DIR/auxiliary/dummy_lib.rs:2:1
+    |
+  2 + #[derive(Debug)]
+  3 | pub struct Dummy;
+    |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

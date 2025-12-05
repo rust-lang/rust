@@ -1,0 +1,34 @@
+error[E0658]: attributes on expressions are experimental
+  --> $DIR/invalid-reprs.rs:2:13
+   |
+LL |     let y = #[repr(uwu(4))]
+   |             ^^^^^^^^^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0425]: cannot find function `id` in this scope
+  --> $DIR/invalid-reprs.rs:5:7
+   |
+LL |     (&id(5));
+   |       ^^ not found in this scope
+   |
+help: consider importing this function
+   |
+LL + use std::process::id;
+   |
+
+error[E0552]: unrecognized representation hint
+  --> $DIR/invalid-reprs.rs:2:20
+   |
+LL |     let y = #[repr(uwu(4))]
+   |                    ^^^^^^
+   |
+   = help: valid reprs are `Rust` (default), `C`, `align`, `packed`, `transparent`, `simd`, `i8`, `u8`, `i16`, `u16`, `i32`, `u32`, `i64`, `u64`, `i128`, `u128`, `isize`, `usize`
+   = note: for more information, visit <https://doc.rust-lang.org/reference/type-layout.html?highlight=repr#representations>
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0425, E0552, E0658.
+For more information about an error, try `rustc --explain E0425`.

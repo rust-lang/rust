@@ -1,0 +1,17 @@
+// MIR for `far` after built
+
+fn far(_1: Far) -> isize {
+    debug far => _1;
+    let mut _0: isize;
+    let _2: Far;
+    let mut _3: i16;
+
+    bb0: {
+        StorageLive(_2);
+        _2 = move _1;
+        _3 = discriminant(_2);
+        _0 = move _3 as isize (IntToInt);
+        StorageDead(_2);
+        return;
+    }
+}

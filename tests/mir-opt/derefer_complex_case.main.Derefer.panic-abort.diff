@@ -1,0 +1,99 @@
+- // MIR for `main` before Derefer
++ // MIR for `main` after Derefer
+  
+  fn main() -> () {
+      let mut _0: ();
+      let mut _1: std::slice::Iter<'_, i32>;
+      let mut _2: &[i32; 2];
+      let _3: [i32; 2];
+      let mut _4: std::slice::Iter<'_, i32>;
+      let mut _5: ();
+      let _6: ();
+      let mut _7: std::option::Option<&i32>;
+      let mut _8: &mut std::slice::Iter<'_, i32>;
+      let mut _9: &mut std::slice::Iter<'_, i32>;
+      let mut _10: isize;
+      let mut _11: !;
+      let mut _13: i32;
+      let mut _14: &[i32; 2];
++     let mut _15: &i32;
+      scope 1 {
+          debug iter => _4;
+          let _12: i32;
+          scope 2 {
+              debug foo => _12;
+          }
+      }
+  
+      bb0: {
+          StorageLive(_1);
+          StorageLive(_2);
+          _14 = const main::promoted[0];
+          _2 = &(*_14);
+          _1 = <&[i32; 2] as IntoIterator>::into_iter(move _2) -> [return: bb1, unwind: bb8];
+      }
+  
+      bb1: {
+          StorageDead(_2);
+          PlaceMention(_1);
+          StorageLive(_4);
+          _4 = move _1;
+          goto -> bb2;
+      }
+  
+      bb2: {
+          StorageLive(_6);
+          StorageLive(_7);
+          StorageLive(_8);
+          StorageLive(_9);
+          _9 = &mut _4;
+          _8 = &mut (*_9);
+          _7 = <std::slice::Iter<'_, i32> as Iterator>::next(move _8) -> [return: bb3, unwind: bb8];
+      }
+  
+      bb3: {
+          StorageDead(_8);
+          PlaceMention(_7);
+          _10 = discriminant(_7);
+          switchInt(move _10) -> [0: bb6, 1: bb5, otherwise: bb4];
+      }
+  
+      bb4: {
+          unreachable;
+      }
+  
+      bb5: {
+          StorageLive(_12);
+-         _12 = copy (*((_7 as Some).0: &i32));
++         _15 = deref_copy ((_7 as Some).0: &i32);
++         _12 = copy (*_15);
+          StorageLive(_13);
+          _13 = copy _12;
+          _6 = std::mem::drop::<i32>(move _13) -> [return: bb7, unwind: bb8];
+      }
+  
+      bb6: {
+          _0 = const ();
+          StorageDead(_9);
+          StorageDead(_7);
+          StorageDead(_6);
+          StorageDead(_4);
+          StorageDead(_1);
+          return;
+      }
+  
+      bb7: {
+          StorageDead(_13);
+          StorageDead(_12);
+          StorageDead(_9);
+          StorageDead(_7);
+          StorageDead(_6);
+          _5 = const ();
+          goto -> bb2;
+      }
+  
+      bb8 (cleanup): {
+          resume;
+      }
+  }
+  

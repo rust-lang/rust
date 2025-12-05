@@ -1,0 +1,54 @@
+error: type parameter `T` is only used recursively
+  --> $DIR/issue-105231.rs:1:15
+   |
+LL | struct A<T>(B<T>);
+   |          -    ^
+   |          |
+   |          type parameter must be used non-recursively in the definition
+   |
+   = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
+   = note: all type parameters must be used in a non-recursive way in order to constrain their variance
+
+error[E0072]: recursive types `A` and `B` have infinite size
+  --> $DIR/issue-105231.rs:1:1
+   |
+LL | struct A<T>(B<T>);
+   | ^^^^^^^^^^^ ---- recursive without indirection
+...
+LL | struct B<T>(A<A<T>>);
+   | ^^^^^^^^^^^ ------- recursive without indirection
+   |
+help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to break the cycle
+   |
+LL ~ struct A<T>(Box<B<T>>);
+LL |
+LL |
+LL ~ struct B<T>(Box<A<A<T>>>);
+   |
+
+error: type parameter `T` is only used recursively
+  --> $DIR/issue-105231.rs:4:17
+   |
+LL | struct B<T>(A<A<T>>);
+   |          -      ^
+   |          |
+   |          type parameter must be used non-recursively in the definition
+   |
+   = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
+   = note: all type parameters must be used in a non-recursive way in order to constrain their variance
+
+error[E0119]: conflicting implementations of trait `Foo` for type `B<u8>`
+  --> $DIR/issue-105231.rs:8:1
+   |
+LL | impl<T> Foo for T where T: Send {}
+   | ------------------------------- first implementation here
+LL | impl Foo for B<u8> {}
+   | ^^^^^^^^^^^^^^^^^^ conflicting implementation for `B<u8>`
+   |
+   = note: overflow evaluating the requirement `B<u8>: Send`
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`issue_105231`)
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0072, E0119.
+For more information about an error, try `rustc --explain E0072`.

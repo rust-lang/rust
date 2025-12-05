@@ -1,0 +1,10 @@
+// MIR for `pointee` after built
+
+fn pointee(_1: &mut Option<i32>) -> () {
+    debug foo => (((*_1) as variant#1).0: i32);
+    let mut _0: ();
+
+    bb0: {
+        return;
+    }
+}

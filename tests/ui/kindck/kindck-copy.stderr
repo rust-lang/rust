@@ -1,0 +1,150 @@
+error[E0277]: the trait bound `&'static mut isize: Copy` is not satisfied
+  --> $DIR/kindck-copy.rs:27:19
+   |
+LL |     assert_copy::<&'static mut isize>();
+   |                   ^^^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `&'static mut isize`
+   |
+note: required by a bound in `assert_copy`
+  --> $DIR/kindck-copy.rs:5:18
+   |
+LL | fn assert_copy<T:Copy>() { }
+   |                  ^^^^ required by this bound in `assert_copy`
+help: consider removing the leading `&`-reference
+   |
+LL -     assert_copy::<&'static mut isize>();
+LL +     assert_copy::<isize>();
+   |
+
+error[E0277]: the trait bound `&'a mut isize: Copy` is not satisfied
+  --> $DIR/kindck-copy.rs:28:19
+   |
+LL |     assert_copy::<&'a mut isize>();
+   |                   ^^^^^^^^^^^^^ the trait `Copy` is not implemented for `&'a mut isize`
+   |
+note: required by a bound in `assert_copy`
+  --> $DIR/kindck-copy.rs:5:18
+   |
+LL | fn assert_copy<T:Copy>() { }
+   |                  ^^^^ required by this bound in `assert_copy`
+help: consider removing the leading `&`-reference
+   |
+LL -     assert_copy::<&'a mut isize>();
+LL +     assert_copy::<isize>();
+   |
+
+error[E0277]: the trait bound `Box<isize>: Copy` is not satisfied
+  --> $DIR/kindck-copy.rs:31:19
+   |
+LL |     assert_copy::<Box<isize>>();
+   |                   ^^^^^^^^^^ the trait `Copy` is not implemented for `Box<isize>`
+   |
+note: required by a bound in `assert_copy`
+  --> $DIR/kindck-copy.rs:5:18
+   |
+LL | fn assert_copy<T:Copy>() { }
+   |                  ^^^^ required by this bound in `assert_copy`
+
+error[E0277]: the trait bound `String: Copy` is not satisfied
+  --> $DIR/kindck-copy.rs:32:19
+   |
+LL |     assert_copy::<String>();
+   |                   ^^^^^^ the trait `Copy` is not implemented for `String`
+   |
+note: required by a bound in `assert_copy`
+  --> $DIR/kindck-copy.rs:5:18
+   |
+LL | fn assert_copy<T:Copy>() { }
+   |                  ^^^^ required by this bound in `assert_copy`
+
+error[E0277]: the trait bound `Vec<isize>: Copy` is not satisfied
+  --> $DIR/kindck-copy.rs:33:19
+   |
+LL |     assert_copy::<Vec<isize> >();
+   |                   ^^^^^^^^^^ the trait `Copy` is not implemented for `Vec<isize>`
+   |
+note: required by a bound in `assert_copy`
+  --> $DIR/kindck-copy.rs:5:18
+   |
+LL | fn assert_copy<T:Copy>() { }
+   |                  ^^^^ required by this bound in `assert_copy`
+
+error[E0277]: the trait bound `Box<&'a mut isize>: Copy` is not satisfied
+  --> $DIR/kindck-copy.rs:34:19
+   |
+LL |     assert_copy::<Box<&'a mut isize>>();
+   |                   ^^^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `Box<&'a mut isize>`
+   |
+note: required by a bound in `assert_copy`
+  --> $DIR/kindck-copy.rs:5:18
+   |
+LL | fn assert_copy<T:Copy>() { }
+   |                  ^^^^ required by this bound in `assert_copy`
+
+error[E0277]: the trait bound `Box<dyn Dummy>: Copy` is not satisfied
+  --> $DIR/kindck-copy.rs:42:19
+   |
+LL |     assert_copy::<Box<dyn Dummy>>();
+   |                   ^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `Box<dyn Dummy>`
+   |
+note: required by a bound in `assert_copy`
+  --> $DIR/kindck-copy.rs:5:18
+   |
+LL | fn assert_copy<T:Copy>() { }
+   |                  ^^^^ required by this bound in `assert_copy`
+
+error[E0277]: the trait bound `Box<dyn Dummy + Send>: Copy` is not satisfied
+  --> $DIR/kindck-copy.rs:43:19
+   |
+LL |     assert_copy::<Box<dyn Dummy + Send>>();
+   |                   ^^^^^^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `Box<dyn Dummy + Send>`
+   |
+note: required by a bound in `assert_copy`
+  --> $DIR/kindck-copy.rs:5:18
+   |
+LL | fn assert_copy<T:Copy>() { }
+   |                  ^^^^ required by this bound in `assert_copy`
+
+error[E0277]: the trait bound `&'a mut (dyn Dummy + Send + 'a): Copy` is not satisfied
+  --> $DIR/kindck-copy.rs:46:19
+   |
+LL |     assert_copy::<&'a mut (dyn Dummy + Send)>();
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `&'a mut (dyn Dummy + Send + 'a)`
+   |
+note: required by a bound in `assert_copy`
+  --> $DIR/kindck-copy.rs:5:18
+   |
+LL | fn assert_copy<T:Copy>() { }
+   |                  ^^^^ required by this bound in `assert_copy`
+
+error[E0277]: the trait bound `MyNoncopyStruct: Copy` is not satisfied
+  --> $DIR/kindck-copy.rs:64:19
+   |
+LL |     assert_copy::<MyNoncopyStruct>();
+   |                   ^^^^^^^^^^^^^^^ unsatisfied trait bound
+   |
+help: the trait `Copy` is not implemented for `MyNoncopyStruct`
+  --> $DIR/kindck-copy.rs:15:1
+   |
+LL | struct MyNoncopyStruct {
+   | ^^^^^^^^^^^^^^^^^^^^^^
+note: required by a bound in `assert_copy`
+  --> $DIR/kindck-copy.rs:5:18
+   |
+LL | fn assert_copy<T:Copy>() { }
+   |                  ^^^^ required by this bound in `assert_copy`
+
+error[E0277]: the trait bound `Rc<isize>: Copy` is not satisfied
+  --> $DIR/kindck-copy.rs:67:19
+   |
+LL |     assert_copy::<Rc<isize>>();
+   |                   ^^^^^^^^^ the trait `Copy` is not implemented for `Rc<isize>`
+   |
+note: required by a bound in `assert_copy`
+  --> $DIR/kindck-copy.rs:5:18
+   |
+LL | fn assert_copy<T:Copy>() { }
+   |                  ^^^^ required by this bound in `assert_copy`
+
+error: aborting due to 11 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

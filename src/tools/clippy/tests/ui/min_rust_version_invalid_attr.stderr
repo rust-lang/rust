@@ -1,0 +1,38 @@
+error: `invalid.version` is not a valid Rust version
+  --> tests/ui/min_rust_version_invalid_attr.rs:4:1
+   |
+LL | #![clippy::msrv = "invalid.version"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `invalid.version` is not a valid Rust version
+  --> tests/ui/min_rust_version_invalid_attr.rs:9:1
+   |
+LL | #[clippy::msrv = "invalid.version"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `clippy::msrv` is defined multiple times
+  --> tests/ui/min_rust_version_invalid_attr.rs:16:5
+   |
+LL |     #![clippy::msrv = "1.10.1"]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: first definition found here
+  --> tests/ui/min_rust_version_invalid_attr.rs:14:5
+   |
+LL |     #![clippy::msrv = "1.40"]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `clippy::msrv` is defined multiple times
+  --> tests/ui/min_rust_version_invalid_attr.rs:21:9
+   |
+LL |         #![clippy::msrv = "1.0.0"]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: first definition found here
+  --> tests/ui/min_rust_version_invalid_attr.rs:20:9
+   |
+LL |         #![clippy::msrv = "1.0"]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
+

@@ -1,0 +1,18 @@
+error: Undefined Behavior: Data race detected between (1) non-atomic read on thread `unnamed-ID` and (2) deallocation on thread `main` at ALLOC
+  --> tests/fail/data_race/stack_pop_race.rs:LL:CC
+   |
+LL |     race(0);
+   |     ^^^^^^^ (2) just happened here
+   |
+help: and (1) occurred earlier here
+  --> tests/fail/data_race/stack_pop_race.rs:LL:CC
+   |
+LL |         let _val = unsafe { *ptr.0 };
+   |                             ^^^^^^
+   = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
+   = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to 1 previous error
+

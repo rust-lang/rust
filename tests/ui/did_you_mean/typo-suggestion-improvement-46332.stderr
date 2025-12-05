@@ -1,0 +1,12 @@
+error[E0422]: cannot find struct, variant or union type `TyUInt` in this scope
+  --> $DIR/typo-suggestion-improvement-46332.rs:10:5
+   |
+LL | struct TyUint {}
+   | ------------- similarly named struct `TyUint` defined here
+...
+LL |     TyUInt {};
+   |     ^^^^^^ help: a struct with a similar name exists (notice the capitalization): `TyUint`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0422`.

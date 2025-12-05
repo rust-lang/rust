@@ -1,0 +1,128 @@
+ifdef VERBOSE
+Q :=
+BOOTSTRAP_ARGS := -v
+else
+Q := @
+BOOTSTRAP_ARGS :=
+endif
+
+# Pass `-jN` to the bootstrap if it is specified.
+ifdef MAKEFLAGS
+  ifneq (,$(findstring -j, $(MAKEFLAGS)))
+    BOOTSTRAP_ARGS += $(filter -j%, $(MAKEFLAGS))
+  endif
+endif
+
+BOOTSTRAP := $(CFG_PYTHON) $(CFG_SRC_DIR)src/bootstrap/bootstrap.py
+
+all:
+	$(Q)$(BOOTSTRAP) build --stage 2 $(BOOTSTRAP_ARGS)
+	$(Q)$(BOOTSTRAP) doc --stage 2 $(BOOTSTRAP_ARGS)
+
+help:
+	$(Q)echo 'Welcome to bootstrap, the Rust build system!'
+	$(Q)echo
+	$(Q)echo This makefile is a thin veneer over the ./x.py script located
+	$(Q)echo in this directory. To get the full power of the build system
+	$(Q)echo you can run x.py directly.
+	$(Q)echo
+	$(Q)echo To learn more run \`./x.py --help\`
+
+clean:
+	$(Q)$(BOOTSTRAP) clean $(BOOTSTRAP_ARGS)
+
+rustc-stage1:
+	$(Q)$(BOOTSTRAP) build --stage 1 library/test $(BOOTSTRAP_ARGS)
+rustc-stage2:
+	$(Q)$(BOOTSTRAP) build --stage 2 library/test $(BOOTSTRAP_ARGS)
+
+docs: doc
+doc:
+	$(Q)$(BOOTSTRAP) doc --stage 2 $(BOOTSTRAP_ARGS)
+nomicon:
+	$(Q)$(BOOTSTRAP) doc --stage 2 src/doc/nomicon $(BOOTSTRAP_ARGS)
+book:
+	$(Q)$(BOOTSTRAP) doc --stage 2 src/doc/book $(BOOTSTRAP_ARGS)
+standalone-docs:
+	$(Q)$(BOOTSTRAP) doc --stage 2 src/doc $(BOOTSTRAP_ARGS)
+check:
+	$(Q)$(BOOTSTRAP) test --stage 2 $(BOOTSTRAP_ARGS)
+check-aux:
+	$(Q)$(BOOTSTRAP) test --stage 2 \
+		src/tools/cargo \
+		src/tools/cargotest \
+		src/tools/test-float-parse \
+		$(BOOTSTRAP_ARGS)
+	# Run standard library tests in Miri.
+	$(Q)MIRIFLAGS="-Zmiri-strict-provenance" \
+		$(BOOTSTRAP) miri --stage 2 \
+		library/coretests \
+		library/alloctests \
+		library/alloc \
+		$(BOOTSTRAP_ARGS) \
+		--no-doc
+	# Some doctests use file system operations to demonstrate dealing with `Result`,
+	# so we have to run them with isolation disabled.
+	$(Q)MIRIFLAGS="-Zmiri-disable-isolation" \
+		$(BOOTSTRAP) miri --stage 2 \
+		library/coretests \
+		library/alloctests \
+		library/alloc \
+		$(BOOTSTRAP_ARGS) \
+		--doc
+	# In `std` we cannot test everything, so we skip some modules.
+	$(Q)MIRIFLAGS="-Zmiri-disable-isolation" \
+		$(BOOTSTRAP) miri --stage 2 \
+		library/std \
+		$(BOOTSTRAP_ARGS) \
+		-- \
+		--skip fs:: --skip net:: --skip process:: --skip sys::
+	# Also test some very target-specific modules on other targets
+	# (making sure to cover an i686 target as well).
+	$(Q)MIRIFLAGS="-Zmiri-disable-isolation" BOOTSTRAP_SKIP_TARGET_SANITY=1 \
+		$(BOOTSTRAP) miri --stage 2 \
+		library/std \
+		--target aarch64-apple-darwin,i686-pc-windows-msvc \
+		$(BOOTSTRAP_ARGS) \
+		-- \
+		time:: sync:: thread:: env::
+dist:
+	$(Q)$(BOOTSTRAP) dist $(BOOTSTRAP_ARGS)
+distcheck:
+	$(Q)$(BOOTSTRAP) dist $(BOOTSTRAP_ARGS)
+	$(Q)$(BOOTSTRAP) test --stage 2 distcheck $(BOOTSTRAP_ARGS)
+install:
+	$(Q)$(BOOTSTRAP) install $(BOOTSTRAP_ARGS)
+tidy:
+	$(Q)$(BOOTSTRAP) test --stage 2 src/tools/tidy $(BOOTSTRAP_ARGS)
+prepare:
+	$(Q)$(BOOTSTRAP) build --stage 2 --dry-run
+
+# Set of tests that represent around half of the time of the test suite.
+# Used to split tests across multiple CI runners.
+SKIP_COMPILER := --skip=compiler
+SKIP_SRC := --skip=src
+TEST_SET1 := $(SKIP_COMPILER) $(SKIP_SRC)
+TEST_SET2 := --skip=tests --skip=coverage-map --skip=coverage-run --skip=library --skip=tidyselftest
+
+## MSVC native builders
+
+# this intentionally doesn't use `$(BOOTSTRAP)` so we can test the shebang on Windows
+ci-msvc-py:
+	$(Q)$(CFG_SRC_DIR)/x.py test --stage 2 $(TEST_SET1)
+ci-msvc-ps1:
+	$(Q)$(CFG_SRC_DIR)/x.ps1 test --stage 2 $(TEST_SET2)
+ci-msvc: ci-msvc-py ci-msvc-ps1
+
+## MingW native builders
+
+# Set of tests that should represent half of the time of the test suite.
+# Used to split tests across multiple CI runners.
+# Test both x and bootstrap entrypoints.
+ci-mingw-x:
+	$(Q)$(CFG_SRC_DIR)/x test --stage 2 $(TEST_SET1)
+ci-mingw-bootstrap:
+	$(Q)$(BOOTSTRAP) test --stage 2 $(TEST_SET2)
+ci-mingw: ci-mingw-x ci-mingw-bootstrap
+
+.PHONY: dist

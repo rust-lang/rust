@@ -1,0 +1,9 @@
+error[E0277]: the trait bound `{closure@$DIR/const-closure-parse-not-item.rs:8:5: 8:18}: [const] Fn()` is not satisfied
+  --> $DIR/const-closure-parse-not-item.rs:7:20
+   |
+LL | const fn test() -> impl [const] Fn() {
+   |                    ^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

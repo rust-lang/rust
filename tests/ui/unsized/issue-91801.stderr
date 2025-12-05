@@ -1,0 +1,18 @@
+error[E0746]: return type cannot be a trait object without pointer indirection
+  --> $DIR/issue-91801.rs:8:77
+   |
+LL | fn or<'a>(first: &'static Validator<'a>, second: &'static Validator<'a>) -> Validator<'a> {
+   |                                                                             ^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+help: consider returning an `impl Trait` instead of a `dyn Trait`
+   |
+LL | fn or<'a>(first: &'static Validator<'a>, second: &'static Validator<'a>) -> impl Validator<'a> {
+   |                                                                             ++++
+help: alternatively, box the return type, and wrap all of the returned values in `Box::new`
+   |
+LL | fn or<'a>(first: &'static Validator<'a>, second: &'static Validator<'a>) -> Box<dyn Validator<'a>> {
+   |                                                                             +++++++              +
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0746`.

@@ -1,0 +1,19 @@
+error[E0369]: cannot multiply `Thing` by `{integer}`
+  --> $DIR/issue-3820.rs:14:15
+   |
+LL |     let w = u * 3;
+   |             - ^ - {integer}
+   |             |
+   |             Thing
+   |
+note: an implementation of `Mul<{integer}>` might be missing for `Thing`
+  --> $DIR/issue-3820.rs:1:1
+   |
+LL | struct Thing {
+   | ^^^^^^^^^^^^ must implement `Mul<{integer}>`
+note: the trait `Mul` must be implemented
+  --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0369`.

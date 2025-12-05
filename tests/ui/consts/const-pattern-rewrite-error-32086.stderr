@@ -1,0 +1,21 @@
+error[E0532]: expected tuple struct or tuple variant, found constant `C`
+  --> $DIR/const-pattern-rewrite-error-32086.rs:6:9
+   |
+LL | struct S(u8);
+   | ------------- similarly named tuple struct `S` defined here
+...
+LL |     let C(a) = S(11);
+   |         ^ help: a tuple struct with a similar name exists: `S`
+
+error[E0532]: expected tuple struct or tuple variant, found constant `C`
+  --> $DIR/const-pattern-rewrite-error-32086.rs:7:9
+   |
+LL | struct S(u8);
+   | ------------- similarly named tuple struct `S` defined here
+...
+LL |     let C(..) = S(11);
+   |         ^ help: a tuple struct with a similar name exists: `S`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0532`.

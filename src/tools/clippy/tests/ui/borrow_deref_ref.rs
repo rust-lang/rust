@@ -1,0 +1,173 @@
+//@aux-build: proc_macros.rs
+
+#![allow(dead_code, unused_variables)]
+
+extern crate proc_macros;
+use proc_macros::with_span;
+
+fn main() {}
+
+mod should_lint {
+    fn one_help() {
+        let a = &12;
+        let b = &*a;
+        //~^ borrow_deref_ref
+
+        let b = &mut &*bar(&12);
+        //~^ borrow_deref_ref
+    }
+
+    fn bar(x: &u32) -> &u32 {
+        x
+    }
+}
+
+// this mod explains why we should not lint `&mut &* (&T)`
+mod should_not_lint1 {
+    fn foo(x: &mut &u32) {
+        *x = &1;
+    }
+
+    fn main() {
+        let mut x = &0;
+        foo(&mut &*x); // should not lint
+        assert_eq!(*x, 0);
+
+        foo(&mut x);
+        assert_eq!(*x, 1);
+    }
+}
+
+// similar to should_not_lint1
+mod should_not_lint2 {
+    struct S<'a> {
+        a: &'a u32,
+        b: u32,
+    }
+
+    fn main() {
+        let s = S { a: &1, b: 1 };
+        let x = &mut &*s.a;
+        *x = &2;
+    }
+}
+
+with_span!(
+    span
+
+    fn just_returning(x: &u32) -> &u32 {
+        x
+    }
+
+    fn dont_lint_proc_macro() {
+        let a = &mut &*just_returning(&12);
+    }
+);
+// this mod explains why we should not lint `& &* (&T)`
+mod false_negative {
+    fn foo() {
+        let x = &12;
+        let addr_x = &x as *const _ as usize;
+        let addr_y = &&*x as *const _ as usize; // assert ok
+        //
+        //~^^ borrow_deref_ref
+        // let addr_y = &x as *const _ as usize; // assert fail
+        assert_ne!(addr_x, addr_y);
+    }
+}
+
+fn issue_13584() {
+    let s = "Hello, world!\n";
+    let p = &raw const *s;
+    let _ = p as *const i8;
+}
+
+mod issue_9905 {
+    use std::{fs, io};
+
+    pub enum File {
+        Stdio,
+        File(fs::File),
+    }
+
+    impl io::Read for &'_ File {
+        fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+            match self {
+                File::Stdio => io::stdin().read(buf),
+                File::File(file) => (&*file).read(buf),
+            }
+        }
+    }
+}
+
+mod issue_11346 {
+    struct Struct;
+
+    impl Struct {
+        fn foo(self: &mut &Self) {}
+    }
+
+    trait Trait {
+        fn bar(&mut self) {}
+    }
+
+    impl Trait for &Struct {}
+
+    fn bar() {
+        let s = &Struct;
+        (&*s).foo();
+        (&*s).bar();
+
+        let mut s = &Struct;
+        s.foo(); // To avoid a warning about `s` not needing to be mutable
+        (&*s).foo();
+        //~^ borrow_deref_ref
+    }
+}
+
+fn issue_14934() {
+    let x: &'static str = "x";
+    let y = "y".to_string();
+    {
+        #[expect(clippy::toplevel_ref_arg)]
+        let ref mut x = &*x; // Do not lint
+        *x = &*y;
+    }
+    {
+        let mut x = &*x;
+        //~^ borrow_deref_ref
+        x = &*y;
+    }
+    {
+        #[expect(clippy::toplevel_ref_arg, clippy::needless_borrow)]
+        let ref x = &*x;
+        //~^ borrow_deref_ref
+    }
+    {
+        #[expect(clippy::toplevel_ref_arg)]
+        let ref mut x = &*std::convert::identity(x);
+        //~^ borrow_deref_ref
+        *x = &*y;
+    }
+    {
+        #[derive(Clone)]
+        struct S(&'static str);
+        let s = S("foo");
+        #[expect(clippy::toplevel_ref_arg)]
+        let ref mut x = &*s.0; // Do not lint
+        *x = "bar";
+        #[expect(clippy::toplevel_ref_arg)]
+        let ref mut x = &*s.clone().0;
+        //~^ borrow_deref_ref
+        *x = "bar";
+        #[expect(clippy::toplevel_ref_arg)]
+        let ref mut x = &*std::convert::identity(&s).0;
+        *x = "bar";
+    }
+    {
+        let y = &1;
+        #[expect(clippy::toplevel_ref_arg)]
+        let ref mut x = { &*y };
+        //~^ borrow_deref_ref
+    }
+}

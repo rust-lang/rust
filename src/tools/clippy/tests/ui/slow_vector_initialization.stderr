@@ -1,0 +1,122 @@
+error: slow zero-filling initialization
+  --> tests/ui/slow_vector_initialization.rs:14:20
+   |
+LL |       let mut vec1 = Vec::with_capacity(len);
+   |  ____________________^
+...  |
+LL | |     vec1.extend(repeat(0).take(len));
+   | |____________________________________^ help: consider replacing this with: `vec![0; len]`
+   |
+   = note: `-D clippy::slow-vector-initialization` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::slow_vector_initialization)]`
+
+error: slow zero-filling initialization
+  --> tests/ui/slow_vector_initialization.rs:20:20
+   |
+LL |       let mut vec2 = Vec::with_capacity(len - 10);
+   |  ____________________^
+...  |
+LL | |     vec2.extend(repeat(0).take(len - 10));
+   | |_________________________________________^ help: consider replacing this with: `vec![0; len - 10]`
+
+error: slow zero-filling initialization
+  --> tests/ui/slow_vector_initialization.rs:29:20
+   |
+LL |       let mut vec4 = Vec::with_capacity(len);
+   |  ____________________^
+...  |
+LL | |     vec4.extend(repeat(0).take(vec4.capacity()));
+   | |________________________________________________^ help: consider replacing this with: `vec![0; len]`
+
+error: slow zero-filling initialization
+  --> tests/ui/slow_vector_initialization.rs:41:27
+   |
+LL |       let mut resized_vec = Vec::with_capacity(30);
+   |  ___________________________^
+...  |
+LL | |     resized_vec.resize(30, 0);
+   | |_____________________________^ help: consider replacing this with: `vec![0; 30]`
+
+error: slow zero-filling initialization
+  --> tests/ui/slow_vector_initialization.rs:46:26
+   |
+LL |       let mut extend_vec = Vec::with_capacity(30);
+   |  __________________________^
+...  |
+LL | |     extend_vec.extend(repeat(0).take(30));
+   | |_________________________________________^ help: consider replacing this with: `vec![0; 30]`
+
+error: slow zero-filling initialization
+  --> tests/ui/slow_vector_initialization.rs:55:20
+   |
+LL |       let mut vec1 = Vec::with_capacity(len);
+   |  ____________________^
+...  |
+LL | |     vec1.resize(len, 0);
+   | |_______________________^ help: consider replacing this with: `vec![0; len]`
+
+error: slow zero-filling initialization
+  --> tests/ui/slow_vector_initialization.rs:65:20
+   |
+LL |       let mut vec3 = Vec::with_capacity(len - 10);
+   |  ____________________^
+...  |
+LL | |     vec3.resize(len - 10, 0);
+   | |____________________________^ help: consider replacing this with: `vec![0; len - 10]`
+
+error: slow zero-filling initialization
+  --> tests/ui/slow_vector_initialization.rs:70:20
+   |
+LL |       let mut vec4 = Vec::with_capacity(len);
+   |  ____________________^
+...  |
+LL | |     vec4.resize(vec4.capacity(), 0);
+   | |___________________________________^ help: consider replacing this with: `vec![0; len]`
+
+error: slow zero-filling initialization
+  --> tests/ui/slow_vector_initialization.rs:76:12
+   |
+LL |       vec1 = Vec::with_capacity(10);
+   |  ____________^
+...  |
+LL | |     vec1.resize(10, 0);
+   | |______________________^ help: consider replacing this with: `vec![0; 10]`
+
+error: slow zero-filling initialization
+  --> tests/ui/slow_vector_initialization.rs:85:20
+   |
+LL |       let mut vec1 = Vec::new();
+   |  ____________________^
+...  |
+LL | |     vec1.resize(len, 0);
+   | |_______________________^ help: consider replacing this with: `vec![0; len]`
+
+error: slow zero-filling initialization
+  --> tests/ui/slow_vector_initialization.rs:91:20
+   |
+LL |       let mut vec3 = Vec::new();
+   |  ____________________^
+...  |
+LL | |     vec3.resize(len - 10, 0);
+   | |____________________________^ help: consider replacing this with: `vec![0; len - 10]`
+
+error: slow zero-filling initialization
+  --> tests/ui/slow_vector_initialization.rs:97:12
+   |
+LL |       vec1 = Vec::new();
+   |  ____________^
+...  |
+LL | |     vec1.resize(10, 0);
+   | |______________________^ help: consider replacing this with: `vec![0; 10]`
+
+error: slow zero-filling initialization
+  --> tests/ui/slow_vector_initialization.rs:102:12
+   |
+LL |       vec1 = vec![];
+   |  ____________^
+...  |
+LL | |     vec1.resize(10, 0);
+   | |______________________^ help: consider replacing this with: `vec![0; 10]`
+
+error: aborting due to 13 previous errors
+

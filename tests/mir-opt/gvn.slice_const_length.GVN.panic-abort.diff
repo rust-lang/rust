@@ -1,0 +1,48 @@
+- // MIR for `slice_const_length` before GVN
++ // MIR for `slice_const_length` after GVN
+  
+  fn slice_const_length(_1: &[i32]) -> *const [i32] {
+      debug x => _1;
+      let mut _0: *const [i32];
+      let _2: *const i32;
+      let mut _3: &[i32];
+      let mut _5: *const i32;
+      let mut _6: usize;
+      scope 1 {
+          debug ptr => _2;
+          let _4: usize;
+          scope 2 {
+              debug len => _4;
+          }
+      }
+  
+      bb0: {
+-         StorageLive(_2);
++         nop;
+          StorageLive(_3);
+          _3 = &(*_1);
+          _2 = core::slice::<impl [i32]>::as_ptr(move _3) -> [return: bb1, unwind unreachable];
+      }
+  
+      bb1: {
+          StorageDead(_3);
+-         StorageLive(_4);
++         nop;
+          _4 = const 123_usize;
+          StorageLive(_5);
+          _5 = copy _2;
+          StorageLive(_6);
+-         _6 = copy _4;
+-         _0 = *const [i32] from (move _5, move _6);
++         _6 = const 123_usize;
++         _0 = *const [i32] from (copy _2, const 123_usize);
+          StorageDead(_6);
+          StorageDead(_5);
+-         StorageDead(_4);
+-         StorageDead(_2);
++         nop;
++         nop;
+          return;
+      }
+  }
+  

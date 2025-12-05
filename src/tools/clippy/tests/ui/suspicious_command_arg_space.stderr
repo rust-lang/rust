@@ -1,0 +1,28 @@
+error: single argument that looks like it should be multiple arguments
+  --> tests/ui/suspicious_command_arg_space.rs:4:44
+   |
+LL |     std::process::Command::new("echo").arg("-n hello").spawn().unwrap();
+   |                                            ^^^^^^^^^^
+   |
+   = note: `-D clippy::suspicious-command-arg-space` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::suspicious_command_arg_space)]`
+help: consider splitting the argument
+   |
+LL -     std::process::Command::new("echo").arg("-n hello").spawn().unwrap();
+LL +     std::process::Command::new("echo").args(["-n", "hello"]).spawn().unwrap();
+   |
+
+error: single argument that looks like it should be multiple arguments
+  --> tests/ui/suspicious_command_arg_space.rs:7:43
+   |
+LL |     std::process::Command::new("cat").arg("--number file").spawn().unwrap();
+   |                                           ^^^^^^^^^^^^^^^
+   |
+help: consider splitting the argument
+   |
+LL -     std::process::Command::new("cat").arg("--number file").spawn().unwrap();
+LL +     std::process::Command::new("cat").args(["--number", "file"]).spawn().unwrap();
+   |
+
+error: aborting due to 2 previous errors
+

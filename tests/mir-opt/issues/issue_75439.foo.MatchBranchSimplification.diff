@@ -1,0 +1,50 @@
+- // MIR for `foo` before MatchBranchSimplification
++ // MIR for `foo` after MatchBranchSimplification
+  
+  fn foo(_1: [u8; 16]) -> Option<[u8; 4]> {
+      debug bytes => _1;
+      let mut _0: std::option::Option<[u8; 4]>;
+      let _2: [u32; 4];
+      let mut _4: [u8; 4];
+      scope 1 {
+          debug dwords => _2;
+          scope 2 {
+              debug ip => _3;
+              let _3: u32;
+          }
+      }
+  
+      bb0: {
+          StorageLive(_2);
+          _2 = copy _1 as [u32; 4] (Transmute);
+          switchInt(copy _2[0 of 4]) -> [0: bb1, otherwise: bb4];
+      }
+  
+      bb1: {
+          switchInt(copy _2[1 of 4]) -> [0: bb2, otherwise: bb4];
+      }
+  
+      bb2: {
+          switchInt(copy _2[2 of 4]) -> [0: bb3, 4294901760: bb3, otherwise: bb4];
+      }
+  
+      bb3: {
+          _3 = copy _2[3 of 4];
+          StorageLive(_4);
+          _4 = copy _3 as [u8; 4] (Transmute);
+          _0 = Option::<[u8; 4]>::Some(move _4);
+          StorageDead(_4);
+          goto -> bb5;
+      }
+  
+      bb4: {
+          _0 = Option::<[u8; 4]>::None;
+          goto -> bb5;
+      }
+  
+      bb5: {
+          StorageDead(_2);
+          return;
+      }
+  }
+  

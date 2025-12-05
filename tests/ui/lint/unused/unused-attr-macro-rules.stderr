@@ -1,0 +1,39 @@
+error: `#[macro_use]` attribute cannot be used on macro defs
+  --> $DIR/unused-attr-macro-rules.rs:7:1
+   |
+LL | #[macro_use]
+   | ^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = help: `#[macro_use]` can be applied to crates, extern crates, and modules
+note: the lint level is defined here
+  --> $DIR/unused-attr-macro-rules.rs:1:9
+   |
+LL | #![deny(unused_attributes)]
+   |         ^^^^^^^^^^^^^^^^^
+
+error: `#[path]` attribute cannot be used on macro defs
+  --> $DIR/unused-attr-macro-rules.rs:9:1
+   |
+LL | #[path="foo"]
+   | ^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = help: `#[path]` can only be applied to modules
+
+error: crate-level attribute should be an inner attribute: add an exclamation mark: `#![recursion_limit]`
+  --> $DIR/unused-attr-macro-rules.rs:11:1
+   |
+LL | #[recursion_limit="1"]
+   | ^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: This attribute does not have an `!`, which means it is applied to this macro def
+  --> $DIR/unused-attr-macro-rules.rs:12:1
+   |
+LL | / macro_rules! foo {
+LL | |     () => {};
+LL | | }
+   | |_^
+
+error: aborting due to 3 previous errors
+

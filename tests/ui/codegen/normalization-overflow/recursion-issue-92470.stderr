@@ -1,0 +1,26 @@
+warning: function cannot return without recursing
+  --> $DIR/recursion-issue-92470.rs:12:1
+   |
+LL | fn encode<E: Encoder>(mut encoder: E) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot return without recursing
+...
+LL |     encode(&mut encoder);
+   |     -------------------- recursive call site
+   |
+   = help: a `loop` may express intention better if this is on purpose
+   = note: `#[warn(unconditional_recursion)]` on by default
+
+error: reached the recursion limit while instantiating `encode::<&mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut EncoderImpl>`
+  --> $DIR/recursion-issue-92470.rs:15:5
+   |
+LL |     encode(&mut encoder);
+   |     ^^^^^^^^^^^^^^^^^^^^
+   |
+note: `encode` defined here
+  --> $DIR/recursion-issue-92470.rs:12:1
+   |
+LL | fn encode<E: Encoder>(mut encoder: E) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error; 1 warning emitted
+

@@ -1,0 +1,11 @@
+error[E0539]: malformed `recursion_limit` attribute input
+  --> $DIR/no-value.rs:3:1
+   |
+LL | #![recursion_limit]
+   | ^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#![recursion_limit = "N"]`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/limits.html#the-recursion_limit-attribute>
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0539`.

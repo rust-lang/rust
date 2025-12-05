@@ -1,0 +1,88 @@
+- // MIR for `main` before GVN
++ // MIR for `main` after GVN
+  
+  fn main() -> () {
+      let mut _0: ();
+      let _1: A;
+      let mut _2: std::boxed::Box<[bool]>;
+      scope 1 {
+          debug a => _1;
+      }
+      scope 2 (inlined <Box<[bool]> as Default>::default) {
+          let _3: std::ptr::Unique<[bool]>;
+          let mut _4: std::ptr::Unique<[bool; 0]>;
+          scope 3 {
+          }
+          scope 4 (inlined Unique::<[bool; 0]>::dangling) {
+              let mut _5: std::ptr::NonNull<[bool; 0]>;
+              scope 5 (inlined NonNull::<[bool; 0]>::dangling) {
+                  let mut _6: std::num::NonZero<usize>;
+                  scope 6 {
+                      scope 8 (inlined std::ptr::Alignment::as_nonzero) {
+                      }
+                      scope 9 (inlined NonNull::<[bool; 0]>::without_provenance) {
+                          let _7: *const [bool; 0];
+                          scope 10 {
+                          }
+                          scope 11 (inlined NonZero::<usize>::get) {
+                          }
+                          scope 12 (inlined std::ptr::without_provenance::<[bool; 0]>) {
+                              scope 13 (inlined without_provenance_mut::<[bool; 0]>) {
+                              }
+                          }
+                      }
+                  }
+                  scope 7 (inlined std::ptr::Alignment::of::<[bool; 0]>) {
+                  }
+              }
+          }
+      }
+  
+      bb0: {
+          StorageLive(_1);
+          StorageLive(_2);
+          StorageLive(_3);
+          StorageLive(_4);
+          StorageLive(_5);
+          StorageLive(_6);
+-         _6 = const std::ptr::Alignment::of::<[bool; 0]>::{constant#0} as std::num::NonZero<usize> (Transmute);
++         _6 = const NonZero::<usize>(core::num::niche_types::NonZeroUsizeInner(1_usize));
+          StorageLive(_7);
+-         _7 = copy _6 as *const [bool; 0] (Transmute);
+-         _5 = NonNull::<[bool; 0]> { pointer: copy _7 };
++         _7 = const {0x1 as *const [bool; 0]};
++         _5 = const NonNull::<[bool; 0]> {{ pointer: {0x1 as *const [bool; 0]} }};
+          StorageDead(_7);
+          StorageDead(_6);
+-         _4 = Unique::<[bool; 0]> { pointer: move _5, _marker: const PhantomData::<[bool; 0]> };
++         _4 = const Unique::<[bool; 0]> {{ pointer: NonNull::<[bool; 0]> {{ pointer: {0x1 as *const [bool; 0]} }}, _marker: PhantomData::<[bool; 0]> }};
+          StorageDead(_5);
+-         _3 = move _4 as std::ptr::Unique<[bool]> (PointerCoercion(Unsize, Implicit));
++         _3 = const Unique::<[bool]> {{ pointer: NonNull::<[bool]> {{ pointer: Indirect { alloc_id: ALLOC0, offset: Size(0 bytes) }: *const [bool] }}, _marker: PhantomData::<[bool]> }};
+          StorageDead(_4);
+-         _2 = Box::<[bool]>(copy _3, const std::alloc::Global);
++         _2 = const Box::<[bool]>(Unique::<[bool]> {{ pointer: NonNull::<[bool]> {{ pointer: Indirect { alloc_id: ALLOC1, offset: Size(0 bytes) }: *const [bool] }}, _marker: PhantomData::<[bool]> }}, std::alloc::Global);
+          StorageDead(_3);
+-         _1 = A { foo: move _2 };
++         _1 = const A {{ foo: Box::<[bool]>(Unique::<[bool]> {{ pointer: NonNull::<[bool]> {{ pointer: Indirect { alloc_id: ALLOC2, offset: Size(0 bytes) }: *const [bool] }}, _marker: PhantomData::<[bool]> }}, std::alloc::Global) }};
+          StorageDead(_2);
+          _0 = const ();
+          drop(_1) -> [return: bb1, unwind: bb2];
+      }
+  
+      bb1: {
+          StorageDead(_1);
+          return;
+      }
+  
+      bb2 (cleanup): {
+          resume;
+      }
+  }
++ 
++ ALLOC2 (size: 8, align: 4) { .. }
++ 
++ ALLOC1 (size: 8, align: 4) { .. }
++ 
++ ALLOC0 (size: 8, align: 4) { .. }
+  

@@ -1,0 +1,39 @@
+error[E0425]: cannot find type `Item` in this scope
+  --> $DIR/sugg-swap-equality-in-macro-issue-139050.rs:29:5
+   |
+LL |     Item: Eq + Debug,
+   |     ^^^^ not found in this scope
+
+error[E0308]: mismatched types
+  --> $DIR/sugg-swap-equality-in-macro-issue-139050.rs:31:5
+   |
+LL |     ext::eq!(assert iter.next(), Some(value));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Option<<I as Iterator>::Item>`, found `Option<&<I as Iterator>::Item>`
+   |
+   = note: expected enum `Option<_>`
+              found enum `Option<&_>`
+   = note: this error originates in the macro `ext::eq` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0308]: mismatched types
+  --> $DIR/sugg-swap-equality-in-macro-issue-139050.rs:15:35
+   |
+LL |                 if !(*left_val == *right_val) {
+   |                                   ^^^^^^^^^^ expected `Option<<I as Iterator>::Item>`, found `Option<&<I as Iterator>::Item>`
+...
+LL |     eq_local!(assert iter.next(), Some(value));
+   |     ------------------------------------------ in this macro invocation
+   |
+   = note: expected enum `Option<_>`
+              found enum `Option<&_>`
+   = note: `Option<&<I as Iterator>::Item>` implements `PartialEq<Option<<I as Iterator>::Item>>`
+   = note: this error originates in the macro `eq_local` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: consider swapping the equality
+   |
+LL -                 if !(*left_val == *right_val) {
+LL +                 if !(*right_val == *left_val) {
+   |
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0308, E0425.
+For more information about an error, try `rustc --explain E0308`.

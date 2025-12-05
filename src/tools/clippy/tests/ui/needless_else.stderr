@@ -1,0 +1,13 @@
+error: this `else` branch is empty
+  --> tests/ui/needless_else.rs:23:7
+   |
+LL |       } else {
+   |  _______^
+LL | |     }
+   | |_____^ help: you can remove it
+   |
+   = note: `-D clippy::needless-else` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::needless_else)]`
+
+error: aborting due to 1 previous error
+

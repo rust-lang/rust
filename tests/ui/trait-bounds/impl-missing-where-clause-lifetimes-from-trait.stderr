@@ -1,0 +1,63 @@
+error[E0195]: lifetime parameters or bounds on method `foo` do not match the trait declaration
+  --> $DIR/impl-missing-where-clause-lifetimes-from-trait.rs:6:11
+   |
+LL |     fn foo<'a, K>(self, _: T, _: K) where T: 'a, K: 'a;
+   |           -------                            --     -- this bound might be missing in the impl
+   |           |                                  |
+   |           |                                  this bound might be missing in the impl
+   |           lifetimes in impl do not match this method in trait
+...
+LL |     fn foo<'a, K>(self, _: (), _: K) where {
+   |           ^^^^^^^ lifetimes do not match method in trait
+
+error[E0195]: lifetime parameters do not match the trait definition
+  --> $DIR/impl-missing-where-clause-lifetimes-from-trait.rs:23:12
+   |
+LL |     fn foo<'a>(&self, state: &'a State) -> &'a T {
+   |            ^^
+   |
+   = note: lifetime parameters differ in whether they are early- or late-bound
+note: `'a` differs between the trait and impl
+  --> $DIR/impl-missing-where-clause-lifetimes-from-trait.rs:14:12
+   |
+LL |   trait Foo<T> {
+   |   ------------ in this trait...
+LL |       fn foo<'a>(&self, state: &'a State) -> &'a T
+   |              ^^ `'a` is early-bound
+LL |       where
+LL |           T: 'a;
+   |              -- this lifetime bound makes `'a` early-bound
+...
+LL | / impl<F, T> Foo<T> for F
+LL | | where
+LL | |     F: Fn(&State) -> &T,
+   | |________________________- in this impl...
+LL |   {
+LL |       fn foo<'a>(&self, state: &'a State) -> &'a T {
+   |              ^^ `'a` is late-bound
+
+error[E0195]: lifetime parameters do not match the trait definition
+  --> $DIR/impl-missing-where-clause-lifetimes-from-trait.rs:33:12
+   |
+LL |     fn foo<'a: 'a>(&'a self) {}
+   |            ^^
+   |
+   = note: lifetime parameters differ in whether they are early- or late-bound
+note: `'a` differs between the trait and impl
+  --> $DIR/impl-missing-where-clause-lifetimes-from-trait.rs:29:12
+   |
+LL | trait Bar {
+   | --------- in this trait...
+LL |     fn foo<'a>(&'a self) {}
+   |            ^^ `'a` is late-bound
+...
+LL | impl Bar for () {
+   | --------------- in this impl...
+LL |     fn foo<'a: 'a>(&'a self) {}
+   |            ^^  -- this lifetime bound makes `'a` early-bound
+   |            |
+   |            `'a` is early-bound
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0195`.

@@ -1,0 +1,14 @@
+error[E0277]: cannot multiply `T` by `T`
+  --> $DIR/unsatisfied-bounds-type-alias-body.rs:6:17
+   |
+LL | type Alias<T> = <T as std::ops::Mul>::Output;
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no implementation for `T * T`
+   |
+help: consider restricting type parameter `T` with trait `Mul`
+   |
+LL | type Alias<T: std::ops::Mul> = <T as std::ops::Mul>::Output;
+   |             +++++++++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

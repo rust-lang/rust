@@ -1,0 +1,36 @@
+error[E0521]: borrowed data escapes outside of method
+  --> $DIR/ice-on-non-ref-sig-ty.rs:13:9
+   |
+LL | impl<'a> W<'a> for &'static () {
+   |      -- lifetime `'a` defined here
+LL |     fn g<T>(self, x: &'a T) -> &'static T {
+   |             ----  - `x` is a reference that is only valid in the method body
+   |             |
+   |             `self` declared here, outside of the method body
+LL |         f(&self, x)
+   |         ^^^^^^^^^^^
+   |         |
+   |         `x` escapes the method body here
+   |         argument requires that `'a` must outlive `'static`
+
+error[E0597]: `self` does not live long enough
+  --> $DIR/ice-on-non-ref-sig-ty.rs:13:11
+   |
+LL | impl<'a> W<'a> for &'static () {
+   |                     ------- has lifetime `'static`
+LL |     fn g<T>(self, x: &'a T) -> &'static T {
+   |                                 ------- also has lifetime `'static`
+LL |         f(&self, x)
+   |           ^^^^^ `self` would have to be valid for `'static`...
+...
+LL |     }
+   |      - ...but `self` will be dropped here, when the function `g` returns
+   |
+   = help: use data from the highlighted arguments which match the `'static` lifetime of the return type
+   = note: functions cannot return a borrow to data owned within the function's scope, functions can only return borrows to data passed as arguments
+   = note: to learn more, visit <https://doc.rust-lang.org/book/ch04-02-references-and-borrowing.html#dangling-references>
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0521, E0597.
+For more information about an error, try `rustc --explain E0521`.

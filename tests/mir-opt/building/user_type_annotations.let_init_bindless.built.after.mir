@@ -1,0 +1,39 @@
+// MIR for `let_init_bindless` after built
+
+| User Type Annotations
+| 0: user_ty: Canonical { value: Ty((u32, u64, &'static char)), max_universe: U0, variables: [] }, span: $DIR/user_type_annotations.rs:31:20: 31:45, inferred_ty: (u32, u64, &char)
+| 1: user_ty: Canonical { value: Ty((u32, u64, &'static char)), max_universe: U0, variables: [] }, span: $DIR/user_type_annotations.rs:31:20: 31:45, inferred_ty: (u32, u64, &char)
+|
+fn let_init_bindless() -> () {
+    let mut _0: ();
+    let mut _1: (u32, u64, &char);
+    let mut _2: &char;
+    let _3: &char;
+    let _4: char;
+    scope 1 {
+    }
+
+    bb0: {
+        StorageLive(_1);
+        StorageLive(_2);
+        StorageLive(_3);
+        StorageLive(_4);
+        _4 = const 'u';
+        _3 = &_4;
+        _2 = &(*_3);
+        _1 = (const 7_u32, const 12_u64, move _2);
+        StorageDead(_2);
+        PlaceMention(_1);
+        AscribeUserType(_1, +, UserTypeProjection { base: UserType(1), projs: [] });
+        StorageDead(_3);
+        StorageDead(_1);
+        _0 = const ();
+        StorageDead(_4);
+        return;
+    }
+
+    bb1: {
+        FakeRead(ForMatchedPlace(None), _1);
+        unreachable;
+    }
+}

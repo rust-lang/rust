@@ -1,0 +1,14 @@
+error: OK
+  --> $DIR/dep-graph-caller-callee.rs:21:5
+   |
+LL |     #[rustc_then_this_would_need(typeck)]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: no path from `x` to `typeck`
+  --> $DIR/dep-graph-caller-callee.rs:32:5
+   |
+LL |     #[rustc_then_this_would_need(typeck)]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

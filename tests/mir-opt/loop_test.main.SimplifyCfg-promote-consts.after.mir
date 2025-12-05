@@ -1,0 +1,52 @@
+// MIR for `main` after SimplifyCfg-promote-consts
+
+fn main() -> () {
+    let mut _0: ();
+    let _1: ();
+    let mut _2: bool;
+    let mut _3: !;
+    let mut _4: !;
+    let mut _5: ();
+    let _6: i32;
+    scope 1 {
+        debug x => _6;
+    }
+
+    bb0: {
+        StorageLive(_1);
+        StorageLive(_2);
+        _2 = const true;
+        switchInt(move _2) -> [0: bb2, otherwise: bb1];
+    }
+
+    bb1: {
+        _0 = const ();
+        StorageDead(_2);
+        StorageDead(_1);
+        return;
+    }
+
+    bb2: {
+        _1 = const ();
+        StorageDead(_2);
+        StorageDead(_1);
+        StorageLive(_4);
+        goto -> bb3;
+    }
+
+    bb3: {
+        falseUnwind -> [real: bb4, unwind: bb5];
+    }
+
+    bb4: {
+        StorageLive(_6);
+        _6 = const 1_i32;
+        FakeRead(ForLet(None), _6);
+        StorageDead(_6);
+        goto -> bb3;
+    }
+
+    bb5 (cleanup): {
+        resume;
+    }
+}

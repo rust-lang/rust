@@ -1,0 +1,21 @@
+error[E0207]: the lifetime parameter `'a` is not constrained by the impl trait, self type, or predicates
+  --> $DIR/issue-29861.rs:11:6
+   |
+LL | impl<'a, T: 'a> MakeRef2 for T {
+   |      ^^ unconstrained lifetime parameter
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/issue-29861.rs:16:43
+   |
+LL | fn foo() -> <String as MakeRef2>::Ref2 { &String::from("foo") }
+   |                                           ^^^^^^^^^^^^^^^^^^^ -- borrow later used here
+   |                                           |                   |
+   |                                           |                   temporary value is freed at the end of this statement
+   |                                           creates a temporary value which is freed while still in use
+   |
+   = note: consider using a `let` binding to create a longer lived value
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0207, E0716.
+For more information about an error, try `rustc --explain E0207`.

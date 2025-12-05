@@ -1,0 +1,40 @@
+[package]
+name = "rustc_metadata"
+version = "0.0.0"
+edition = "2024"
+
+[dependencies]
+# tidy-alphabetical-start
+bitflags = "2.4.1"
+libloading = "0.8.0"
+odht = { version = "0.3.1", features = ["nightly"] }
+rustc_abi = { path = "../rustc_abi" }
+rustc_ast = { path = "../rustc_ast" }
+rustc_attr_parsing = { path = "../rustc_attr_parsing" }
+rustc_data_structures = { path = "../rustc_data_structures" }
+rustc_errors = { path = "../rustc_errors" }
+rustc_expand = { path = "../rustc_expand" }
+rustc_feature = { path = "../rustc_feature" }
+rustc_fluent_macro = { path = "../rustc_fluent_macro" }
+rustc_fs_util = { path = "../rustc_fs_util" }
+rustc_hir = { path = "../rustc_hir" }
+rustc_hir_pretty = { path = "../rustc_hir_pretty" }
+rustc_incremental = { path = "../rustc_incremental" }
+rustc_index = { path = "../rustc_index" }
+rustc_macros = { path = "../rustc_macros" }
+rustc_middle = { path = "../rustc_middle" }
+# We must use the proc_macro version that we will compile proc-macros against,
+# not the one from our own sysroot.
+rustc_proc_macro = { path = "../rustc_proc_macro" }
+rustc_serialize = { path = "../rustc_serialize" }
+rustc_session = { path = "../rustc_session" }
+rustc_span = { path = "../rustc_span" }
+rustc_target = { path = "../rustc_target" }
+tempfile = "3.7.1"
+tracing = "0.1"
+# tidy-alphabetical-end
+
+[target.'cfg(target_os = "aix")'.dependencies]
+# tidy-alphabetical-start
+libc = "0.2"
+# tidy-alphabetical-end

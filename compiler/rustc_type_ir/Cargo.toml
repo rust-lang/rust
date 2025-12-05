@@ -1,0 +1,41 @@
+[package]
+name = "rustc_type_ir"
+version = "0.0.0"
+edition = "2024"
+
+[dependencies]
+# tidy-alphabetical-start
+arrayvec = { version = "0.7", default-features = false }
+bitflags = "2.4.1"
+derive-where = "1.2.7"
+ena = "0.14.3"
+indexmap = "2.0.0"
+rustc-hash = "2.0.0"
+rustc_ast_ir = { path = "../rustc_ast_ir", default-features = false }
+rustc_data_structures = { path = "../rustc_data_structures", optional = true }
+rustc_error_messages = { path = "../rustc_error_messages", optional = true }
+rustc_index = { path = "../rustc_index", default-features = false }
+rustc_macros = { path = "../rustc_macros", optional = true }
+rustc_serialize = { path = "../rustc_serialize", optional = true }
+rustc_span = { path = "../rustc_span", optional = true }
+rustc_type_ir_macros = { path = "../rustc_type_ir_macros" }
+smallvec = { version = "1.8.1", default-features = false, features = ["const_generics"] }
+thin-vec = "0.2.12"
+tracing = "0.1"
+# tidy-alphabetical-end
+
+[features]
+# tidy-alphabetical-start
+default = ["nightly"]
+nightly = [
+    "dep:rustc_data_structures",
+    "dep:rustc_error_messages",
+    "dep:rustc_macros",
+    "dep:rustc_serialize",
+    "dep:rustc_span",
+    "rustc_ast_ir/nightly",
+    "rustc_index/nightly",
+    "smallvec/may_dangle",
+    "smallvec/union",
+]
+# tidy-alphabetical-end

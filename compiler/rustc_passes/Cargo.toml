@@ -1,0 +1,28 @@
+[package]
+name = "rustc_passes"
+version = "0.0.0"
+edition = "2024"
+
+[dependencies]
+# tidy-alphabetical-start
+rustc_abi = { path = "../rustc_abi" }
+rustc_ast = { path = "../rustc_ast" }
+rustc_ast_lowering = { path = "../rustc_ast_lowering" }
+rustc_ast_pretty = { path = "../rustc_ast_pretty" }
+rustc_attr_parsing = { path = "../rustc_attr_parsing" }
+rustc_data_structures = { path = "../rustc_data_structures" }
+rustc_errors = { path = "../rustc_errors" }
+rustc_expand = { path = "../rustc_expand" }
+rustc_feature = { path = "../rustc_feature" }
+rustc_fluent_macro = { path = "../rustc_fluent_macro" }
+rustc_hir = { path = "../rustc_hir" }
+rustc_index = { path = "../rustc_index" }
+rustc_macros = { path = "../rustc_macros" }
+rustc_middle = { path = "../rustc_middle" }
+rustc_privacy = { path = "../rustc_privacy" }
+rustc_session = { path = "../rustc_session" }
+rustc_span = { path = "../rustc_span" }
+rustc_target = { path = "../rustc_target" }
+rustc_trait_selection = { path = "../rustc_trait_selection" }
+tracing = "0.1"
+# tidy-alphabetical-end

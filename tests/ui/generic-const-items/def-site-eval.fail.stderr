@@ -1,0 +1,9 @@
+error[E0080]: evaluation panicked: explicit panic
+  --> $DIR/def-site-eval.rs:13:20
+   |
+LL | const _<'_a>: () = panic!();
+   |                    ^^^^^^^^ evaluation of `_` failed here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0080`.

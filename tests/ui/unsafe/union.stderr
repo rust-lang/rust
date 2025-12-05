@@ -1,0 +1,38 @@
+error[E0133]: access to union field is unsafe and requires unsafe function or block
+  --> $DIR/union.rs:27:20
+   |
+LL |         Foo { bar: _a } => {},
+   |                    ^^ access to union field
+   |
+   = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
+
+error[E0133]: access to union field is unsafe and requires unsafe function or block
+  --> $DIR/union.rs:31:20
+   |
+LL |               pizza: Pizza {
+   |  ____________________^
+LL | |                 topping: Some(PizzaTopping::Cheese) | Some(PizzaTopping::Pineapple) | None
+LL | |             }
+   | |_____________^ access to union field
+   |
+   = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
+
+error[E0133]: access to union field is unsafe and requires unsafe function or block
+  --> $DIR/union.rs:38:20
+   |
+LL |         Foo { zst: () } => {}
+   |                    ^^ access to union field
+   |
+   = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
+
+error[E0133]: access to union field is unsafe and requires unsafe function or block
+  --> $DIR/union.rs:41:22
+   |
+LL |         Foo { pizza: Pizza { .. } } => {}
+   |                      ^^^^^^^^^^^^ access to union field
+   |
+   = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0133`.

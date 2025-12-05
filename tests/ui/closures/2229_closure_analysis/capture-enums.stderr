@@ -1,0 +1,113 @@
+error[E0658]: attributes on expressions are experimental
+  --> $DIR/capture-enums.rs:16:13
+   |
+LL |     let c = #[rustc_capture_analysis]
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: attributes on expressions are experimental
+  --> $DIR/capture-enums.rs:48:13
+   |
+LL |     let c = #[rustc_capture_analysis]
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: First Pass analysis includes:
+  --> $DIR/capture-enums.rs:20:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         if let Info::Point(_, _, str) = point {
+...  |
+LL | |     };
+   | |_____^
+   |
+note: Capturing point[] -> Immutable
+  --> $DIR/capture-enums.rs:23:41
+   |
+LL |         if let Info::Point(_, _, str) = point {
+   |                                         ^^^^^
+note: Capturing point[(2, 0)] -> ByValue
+  --> $DIR/capture-enums.rs:23:41
+   |
+LL |         if let Info::Point(_, _, str) = point {
+   |                                         ^^^^^
+note: Capturing meta[] -> Immutable
+  --> $DIR/capture-enums.rs:30:35
+   |
+LL |         if let Info::Meta(_, v) = meta {
+   |                                   ^^^^
+note: Capturing meta[(1, 1)] -> ByValue
+  --> $DIR/capture-enums.rs:30:35
+   |
+LL |         if let Info::Meta(_, v) = meta {
+   |                                   ^^^^
+
+error: Min Capture analysis includes:
+  --> $DIR/capture-enums.rs:20:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         if let Info::Point(_, _, str) = point {
+...  |
+LL | |     };
+   | |_____^
+   |
+note: Min Capture point[] -> ByValue
+  --> $DIR/capture-enums.rs:23:41
+   |
+LL |         if let Info::Point(_, _, str) = point {
+   |                                         ^^^^^
+note: Min Capture meta[] -> ByValue
+  --> $DIR/capture-enums.rs:30:35
+   |
+LL |         if let Info::Meta(_, v) = meta {
+   |                                   ^^^^
+
+error: First Pass analysis includes:
+  --> $DIR/capture-enums.rs:52:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         let SingleVariant::Point(_, _, str) = point;
+...  |
+LL | |         println!("{}", str);
+LL | |     };
+   | |_____^
+   |
+note: Capturing point[(2, 0)] -> ByValue
+  --> $DIR/capture-enums.rs:55:47
+   |
+LL |         let SingleVariant::Point(_, _, str) = point;
+   |                                               ^^^^^
+
+error: Min Capture analysis includes:
+  --> $DIR/capture-enums.rs:52:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         let SingleVariant::Point(_, _, str) = point;
+...  |
+LL | |         println!("{}", str);
+LL | |     };
+   | |_____^
+   |
+note: Min Capture point[(2, 0)] -> ByValue
+  --> $DIR/capture-enums.rs:55:47
+   |
+LL |         let SingleVariant::Point(_, _, str) = point;
+   |                                               ^^^^^
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

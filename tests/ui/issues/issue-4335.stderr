@@ -1,0 +1,24 @@
+error[E0507]: cannot move out of `*v`, as `v` is a captured variable in an `FnMut` closure
+  --> $DIR/issue-4335.rs:6:20
+   |
+LL | fn f<'r, T>(v: &'r T) -> Box<dyn FnMut() -> T + 'r> {
+   |             -  ----- move occurs because `*v` has type `T`, which does not implement the `Copy` trait
+   |             |
+   |             captured outer variable
+LL |     id(Box::new(|| *v))
+   |                 -- ^^ `*v` is moved here
+   |                 |
+   |                 captured by this `FnMut` closure
+   |
+   = help: `Fn` and `FnMut` closures require captured values to be able to be consumed multiple times, but `FnOnce` closures may consume them only once
+help: if `T` implemented `Clone`, you could clone the value
+  --> $DIR/issue-4335.rs:5:10
+   |
+LL | fn f<'r, T>(v: &'r T) -> Box<dyn FnMut() -> T + 'r> {
+   |          ^ consider constraining this type parameter with `Clone`
+LL |     id(Box::new(|| *v))
+   |                    -- you could clone this value
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0507`.

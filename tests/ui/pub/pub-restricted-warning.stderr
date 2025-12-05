@@ -1,0 +1,27 @@
+warning: type `Foo` is more private than the item `outer::inner::bar`
+  --> $DIR/pub-restricted-warning.rs:8:9
+   |
+LL |         pub fn bar() -> Foo {
+   |         ^^^^^^^^^^^^^^^^^^^ function `outer::inner::bar` is reachable at visibility `pub(crate)`
+   |
+note: but type `Foo` is only usable at visibility `pub(in crate::outer)`
+  --> $DIR/pub-restricted-warning.rs:7:9
+   |
+LL |         pub(in crate::outer) struct Foo;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: `#[warn(private_interfaces)]` on by default
+
+warning: type `NestedFoo` is more private than the item `nested::inner::bar`
+  --> $DIR/pub-restricted-warning.rs:17:13
+   |
+LL |             pub fn bar() -> NestedFoo {
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^ function `nested::inner::bar` is reachable at visibility `pub(crate)`
+   |
+note: but type `NestedFoo` is only usable at visibility `pub(in crate::outer::nested)`
+  --> $DIR/pub-restricted-warning.rs:16:13
+   |
+LL |             pub(in crate::outer::nested) struct NestedFoo;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: 2 warnings emitted
+

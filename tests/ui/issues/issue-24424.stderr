@@ -1,0 +1,15 @@
+error[E0283]: type annotations needed: cannot satisfy `T0: Trait0<'l0>`
+  --> $DIR/issue-24424.rs:4:57
+   |
+LL | impl <'l0, 'l1, T0> Trait1<'l0, T0> for bool where T0 : Trait0<'l0>, T0 : Trait0<'l1> {}
+   |                                                         ^^^^^^^^^^^
+   |
+note: multiple `impl`s or `where` clauses satisfying `T0: Trait0<'l0>` found
+  --> $DIR/issue-24424.rs:4:57
+   |
+LL | impl <'l0, 'l1, T0> Trait1<'l0, T0> for bool where T0 : Trait0<'l0>, T0 : Trait0<'l1> {}
+   |                                                         ^^^^^^^^^^^       ^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0283`.

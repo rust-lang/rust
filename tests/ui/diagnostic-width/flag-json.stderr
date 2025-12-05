@@ -1,0 +1,40 @@
+{"$message_type":"diagnostic","message":"mismatched types","code":{"code":"E0308","explanation":"Expected type did not match the received type.
+
+Erroneous code examples:
+
+```compile_fail,E0308
+fn plus_one(x: i32) -> i32 {
+    x + 1
+}
+
+plus_one(\"Not a number\");
+//       ^^^^^^^^^^^^^^ expected `i32`, found `&str`
+
+if \"Not a bool\" {
+// ^^^^^^^^^^^^ expected `bool`, found `&str`
+}
+
+let x: f32 = \"Not a float\";
+//     ---   ^^^^^^^^^^^^^ expected `f32`, found `&str`
+//     |
+//     expected due to this
+```
+
+This error occurs when an expression was used in a place where the compiler
+expected an expression of a different type. It can occur in several cases, the
+most common being when calling a function and passing an argument which has a
+different type than the matching type in the function declaration.
+"},"level":"error","spans":[{"file_name":"$DIR/flag-json.rs","byte_start":244,"byte_end":246,"line_start":7,"line_end":7,"column_start":17,"column_end":19,"is_primary":true,"text":[{"text":"    let _: () = 42;
+  --> $DIR/flag-json.rs:7:17
+   |
+LL | ..._: () = 42; /...
+   |       --   ^^ expected `()`, found integer
+   |       |
+   |       expected due to this
+
+"}
+{"$message_type":"diagnostic","message":"aborting due to 1 previous error","code":null,"level":"error","spans":[],"children":[],"rendered":"error: aborting due to 1 previous error
+
+"}
+{"$message_type":"diagnostic","message":"For more information about this error, try `rustc --explain E0308`.","code":null,"level":"failure-note","spans":[],"children":[],"rendered":"For more information about this error, try `rustc --explain E0308`.
+"}

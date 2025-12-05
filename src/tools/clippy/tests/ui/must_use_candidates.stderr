@@ -1,0 +1,64 @@
+error: this function could have a `#[must_use]` attribute
+  --> tests/ui/must_use_candidates.rs:16:8
+   |
+LL | pub fn pure(i: u8) -> u8 {
+   |        ^^^^
+   |
+   = note: `-D clippy::must-use-candidate` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::must_use_candidate)]`
+help: add the attribute
+   |
+LL + #[must_use] 
+LL | pub fn pure(i: u8) -> u8 {
+   |
+
+error: this method could have a `#[must_use]` attribute
+  --> tests/ui/must_use_candidates.rs:22:12
+   |
+LL |     pub fn inherent_pure(&self) -> u8 {
+   |            ^^^^^^^^^^^^^
+   |
+help: add the attribute
+   |
+LL ~     #[must_use] 
+LL ~     pub fn inherent_pure(&self) -> u8 {
+   |
+
+error: this function could have a `#[must_use]` attribute
+  --> tests/ui/must_use_candidates.rs:54:8
+   |
+LL | pub fn with_marker(_d: std::marker::PhantomData<&mut u32>) -> bool {
+   |        ^^^^^^^^^^^
+   |
+help: add the attribute
+   |
+LL + #[must_use] 
+LL | pub fn with_marker(_d: std::marker::PhantomData<&mut u32>) -> bool {
+   |
+
+error: this function could have a `#[must_use]` attribute
+  --> tests/ui/must_use_candidates.rs:67:8
+   |
+LL | pub fn rcd(_x: Rc<u32>) -> bool {
+   |        ^^^
+   |
+help: add the attribute
+   |
+LL + #[must_use] 
+LL | pub fn rcd(_x: Rc<u32>) -> bool {
+   |
+
+error: this function could have a `#[must_use]` attribute
+  --> tests/ui/must_use_candidates.rs:76:8
+   |
+LL | pub fn arcd(_x: Arc<u32>) -> bool {
+   |        ^^^^
+   |
+help: add the attribute
+   |
+LL + #[must_use] 
+LL | pub fn arcd(_x: Arc<u32>) -> bool {
+   |
+
+error: aborting due to 5 previous errors
+

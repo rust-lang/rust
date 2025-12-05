@@ -1,0 +1,53 @@
+// MIR for `slice_ptr_get_unchecked_range` after PreCodegen
+
+fn slice_ptr_get_unchecked_range(_1: *const [u32], _2: std::ops::Range<usize>) -> *const [u32] {
+    debug slice => _1;
+    debug index => _2;
+    let mut _0: *const [u32];
+    let mut _3: usize;
+    let mut _4: usize;
+    scope 1 (inlined std::ptr::const_ptr::<impl *const [u32]>::get_unchecked::<std::ops::Range<usize>>) {
+        scope 2 (inlined #[track_caller] <std::ops::Range<usize> as SliceIndex<[u32]>>::get_unchecked) {
+            let mut _5: usize;
+            let _6: ();
+            let _7: usize;
+            scope 3 {
+                scope 6 (inlined core::slice::index::get_offset_len_noubcheck::<u32>) {
+                    let _8: *const u32;
+                    scope 7 {
+                        let _9: *const u32;
+                        scope 8 {
+                        }
+                    }
+                }
+            }
+            scope 4 (inlined std::ptr::const_ptr::<impl *const [u32]>::len) {
+                scope 5 (inlined std::ptr::metadata::<[u32]>) {
+                }
+            }
+        }
+    }
+
+    bb0: {
+        _3 = move (_2.0: usize);
+        _4 = move (_2.1: usize);
+        StorageLive(_7);
+        StorageLive(_5);
+        _5 = PtrMetadata(copy _1);
+        _6 = <std::ops::Range<usize> as SliceIndex<[T]>>::get_unchecked::precondition_check(copy _3, copy _4, move _5) -> [return: bb1, unwind unreachable];
+    }
+
+    bb1: {
+        StorageDead(_5);
+        _7 = SubUnchecked(copy _4, copy _3);
+        StorageLive(_8);
+        StorageLive(_9);
+        _8 = copy _1 as *const u32 (PtrToPtr);
+        _9 = Offset(copy _8, copy _3);
+        _0 = *const [u32] from (copy _9, copy _7);
+        StorageDead(_9);
+        StorageDead(_8);
+        StorageDead(_7);
+        return;
+    }
+}

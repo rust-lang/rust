@@ -1,0 +1,26 @@
+//! This crates defines the type inference engine.
+//!
+//! - **Type inference.** The type inference code can be found in the `infer` module;
+//!   this code handles low-level equality and subtyping operations. The
+//!   type check pass in the compiler is found in the `rustc_hir_analysis` crate.
+//!
+//! For more information about how rustc works, see the [rustc dev guide].
+//!
+//! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/
+//!
+//! # Note
+//!
+//! This API is completely unstable and subject to change.
+
+// tidy-alphabetical-start
+#![allow(rustc::direct_use_of_rustc_type_ir)]
+#![feature(assert_matches)]
+#![feature(extend_one)]
+#![recursion_limit = "512"] // For rustdoc
+// tidy-alphabetical-end
+
+mod errors;
+pub mod infer;
+pub mod traits;
+
+rustc_fluent_macro::fluent_messages! { "../messages.ftl" }

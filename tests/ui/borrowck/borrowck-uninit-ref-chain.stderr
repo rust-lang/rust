@@ -1,0 +1,82 @@
+error[E0381]: used binding `x` isn't initialized
+  --> $DIR/borrowck-uninit-ref-chain.rs:8:14
+   |
+LL |     let x: &&Box<i32>;
+   |         - binding declared here but left uninitialized
+LL |     let _y = &**x;
+   |              ^^^^ `**x` used here but it isn't initialized
+   |
+help: consider assigning a value
+   |
+LL |     let x: &&Box<i32> = &&Box::new(42);
+   |                       ++++++++++++++++
+
+error[E0381]: used binding `x` isn't initialized
+  --> $DIR/borrowck-uninit-ref-chain.rs:11:14
+   |
+LL |     let x: &&S<i32, i32>;
+   |         - binding declared here but left uninitialized
+LL |     let _y = &**x;
+   |              ^^^^ `**x` used here but it isn't initialized
+   |
+help: consider assigning a value
+   |
+LL |     let x: &&S<i32, i32> = &&/* value */;
+   |                          +++++++++++++++
+
+error[E0381]: used binding `x` isn't initialized
+  --> $DIR/borrowck-uninit-ref-chain.rs:14:14
+   |
+LL |     let x: &&i32;
+   |         - binding declared here but left uninitialized
+LL |     let _y = &**x;
+   |              ^^^^ `**x` used here but it isn't initialized
+   |
+help: consider assigning a value
+   |
+LL |     let x: &&i32 = &&42;
+   |                  ++++++
+
+error[E0381]: partially assigned binding `a` isn't fully initialized
+  --> $DIR/borrowck-uninit-ref-chain.rs:18:5
+   |
+LL |     let mut a: S<i32, i32>;
+   |         ----- binding declared here but left uninitialized
+LL |     a.x = 0;
+   |     ^^^^^^^ `a` partially assigned here but it isn't fully initialized
+   |
+   = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate it, or use `std::mem::MaybeUninit`
+
+error[E0381]: partially assigned binding `a` isn't fully initialized
+  --> $DIR/borrowck-uninit-ref-chain.rs:22:5
+   |
+LL |     let mut a: S<&&i32, &&i32>;
+   |         ----- binding declared here but left uninitialized
+LL |     a.x = &&0;
+   |     ^^^^^^^^^ `a` partially assigned here but it isn't fully initialized
+   |
+   = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate it, or use `std::mem::MaybeUninit`
+
+error[E0381]: partially assigned binding `a` isn't fully initialized
+  --> $DIR/borrowck-uninit-ref-chain.rs:27:5
+   |
+LL |     let mut a: S<i32, i32>;
+   |         ----- binding declared here but left uninitialized
+LL |     a.x = 0;
+   |     ^^^^^^^ `a` partially assigned here but it isn't fully initialized
+   |
+   = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate it, or use `std::mem::MaybeUninit`
+
+error[E0381]: partially assigned binding `a` isn't fully initialized
+  --> $DIR/borrowck-uninit-ref-chain.rs:31:5
+   |
+LL |     let mut a: S<&&i32, &&i32>;
+   |         ----- binding declared here but left uninitialized
+LL |     a.x = &&0;
+   |     ^^^^^^^^^ `a` partially assigned here but it isn't fully initialized
+   |
+   = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate it, or use `std::mem::MaybeUninit`
+
+error: aborting due to 7 previous errors
+
+For more information about this error, try `rustc --explain E0381`.

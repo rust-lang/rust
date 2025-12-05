@@ -1,0 +1,13 @@
+error: expected identifier, found keyword `enum`
+  --> $DIR/keyword-enum-as-identifier.rs:4:9
+   |
+LL |     let enum = "foo";
+   |         ^^^^ expected identifier, found keyword
+   |
+help: escape `enum` to use it as an identifier
+   |
+LL |     let r#enum = "foo";
+   |         ++
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,80 @@
+error[E0408]: variable `b` is not bound in all patterns
+  --> $DIR/issue-39698.rs:10:9
+   |
+LL |         T::T1(a, d) | T::T2(d, b) | T::T3(c) | T::T4(a) => { println!("{:?}", a); }
+   |         ^^^^^^^^^^^            -    ^^^^^^^^   ^^^^^^^^ pattern doesn't bind `b`
+   |         |                      |    |
+   |         |                      |    pattern doesn't bind `b`
+   |         |                      variable not in all patterns
+   |         pattern doesn't bind `b`
+   |
+help: you might have meant to use the similarly named previously used binding `c`
+   |
+LL -         T::T1(a, d) | T::T2(d, b) | T::T3(c) | T::T4(a) => { println!("{:?}", a); }
+LL +         T::T1(a, d) | T::T2(d, c) | T::T3(c) | T::T4(a) => { println!("{:?}", a); }
+   |
+
+error[E0408]: variable `c` is not bound in all patterns
+  --> $DIR/issue-39698.rs:10:9
+   |
+LL |         T::T1(a, d) | T::T2(d, b) | T::T3(c) | T::T4(a) => { println!("{:?}", a); }
+   |         ^^^^^^^^^^^   ^^^^^^^^^^^         -    ^^^^^^^^ pattern doesn't bind `c`
+   |         |             |                   |
+   |         |             |                   variable not in all patterns
+   |         |             pattern doesn't bind `c`
+   |         pattern doesn't bind `c`
+   |
+help: you might have meant to use the similarly named previously used binding `d`
+   |
+LL -         T::T1(a, d) | T::T2(d, b) | T::T3(c) | T::T4(a) => { println!("{:?}", a); }
+LL +         T::T1(a, d) | T::T2(d, b) | T::T3(d) | T::T4(a) => { println!("{:?}", a); }
+   |
+
+error[E0408]: variable `a` is not bound in all patterns
+  --> $DIR/issue-39698.rs:10:23
+   |
+LL |         T::T1(a, d) | T::T2(d, b) | T::T3(c) | T::T4(a) => { println!("{:?}", a); }
+   |               -       ^^^^^^^^^^^   ^^^^^^^^         - variable not in all patterns
+   |               |       |             |
+   |               |       |             pattern doesn't bind `a`
+   |               |       pattern doesn't bind `a`
+   |               variable not in all patterns
+   |
+help: you might have meant to use the similarly named previously used binding `c`
+   |
+LL -         T::T1(a, d) | T::T2(d, b) | T::T3(c) | T::T4(a) => { println!("{:?}", a); }
+LL +         T::T1(c, d) | T::T2(d, b) | T::T3(c) | T::T4(c) => { println!("{:?}", a); }
+   |
+
+error[E0408]: variable `d` is not bound in all patterns
+  --> $DIR/issue-39698.rs:10:37
+   |
+LL |         T::T1(a, d) | T::T2(d, b) | T::T3(c) | T::T4(a) => { println!("{:?}", a); }
+   |                  -          -       ^^^^^^^^   ^^^^^^^^ pattern doesn't bind `d`
+   |                  |          |       |
+   |                  |          |       pattern doesn't bind `d`
+   |                  |          variable not in all patterns
+   |                  variable not in all patterns
+   |
+help: you might have meant to use the similarly named previously used binding `c`
+   |
+LL -         T::T1(a, d) | T::T2(d, b) | T::T3(c) | T::T4(a) => { println!("{:?}", a); }
+LL +         T::T1(a, c) | T::T2(c, b) | T::T3(c) | T::T4(a) => { println!("{:?}", a); }
+   |
+
+error[E0381]: used binding `a` is possibly-uninitialized
+  --> $DIR/issue-39698.rs:10:79
+   |
+LL |         T::T1(a, d) | T::T2(d, b) | T::T3(c) | T::T4(a) => { println!("{:?}", a); }
+   |               -                                      -                        ^ `a` used here but it is possibly-uninitialized
+   |               |                                      |
+   |               |                                      binding initialized here in some conditions
+   |               binding initialized here in some conditions
+   |               binding declared here but left uninitialized
+   |
+   = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0381, E0408.
+For more information about an error, try `rustc --explain E0381`.

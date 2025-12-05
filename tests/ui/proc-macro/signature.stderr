@@ -1,0 +1,11 @@
+error: derive proc macro has incorrect signature
+  --> $DIR/signature.rs:10:1
+   |
+LL | pub unsafe extern "C" fn foo(a: i32, b: u32) -> u32 {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected safe fn, found unsafe fn
+   |
+   = note: expected signature `fn(proc_macro::TokenStream) -> proc_macro::TokenStream`
+              found signature `unsafe extern "C" fn(i32, u32) -> u32`
+
+error: aborting due to 1 previous error
+

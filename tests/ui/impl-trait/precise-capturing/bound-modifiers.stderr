@@ -1,0 +1,73 @@
+error: expected identifier, found keyword `use`
+  --> $DIR/bound-modifiers.rs:3:32
+   |
+LL | fn polarity() -> impl Sized + ?use<> {}
+   |                                ^^^ expected identifier, found keyword
+
+error: expected identifier, found keyword `use`
+  --> $DIR/bound-modifiers.rs:7:38
+   |
+LL | fn asyncness() -> impl Sized + async use<> {}
+   |                                      ^^^ expected identifier, found keyword
+
+error: expected identifier, found keyword `use`
+  --> $DIR/bound-modifiers.rs:12:38
+   |
+LL | fn constness() -> impl Sized + const use<> {}
+   |                                      ^^^ expected identifier, found keyword
+
+error: expected identifier, found keyword `use`
+  --> $DIR/bound-modifiers.rs:17:37
+   |
+LL | fn binder() -> impl Sized + for<'a> use<> {}
+   |                                     ^^^ expected identifier, found keyword
+
+error[E0405]: cannot find trait `r#use` in this scope
+  --> $DIR/bound-modifiers.rs:3:32
+   |
+LL | fn polarity() -> impl Sized + ?use<> {}
+   |                                ^^^ not found in this scope
+
+error[E0405]: cannot find trait `r#use` in this scope
+  --> $DIR/bound-modifiers.rs:7:38
+   |
+LL | fn asyncness() -> impl Sized + async use<> {}
+   |                                      ^^^ not found in this scope
+
+error[E0405]: cannot find trait `r#use` in this scope
+  --> $DIR/bound-modifiers.rs:12:38
+   |
+LL | fn constness() -> impl Sized + const use<> {}
+   |                                      ^^^ not found in this scope
+
+error[E0405]: cannot find trait `r#use` in this scope
+  --> $DIR/bound-modifiers.rs:17:37
+   |
+LL | fn binder() -> impl Sized + for<'a> use<> {}
+   |                                     ^^^ not found in this scope
+
+error[E0658]: `async` trait bounds are unstable
+  --> $DIR/bound-modifiers.rs:7:32
+   |
+LL | fn asyncness() -> impl Sized + async use<> {}
+   |                                ^^^^^
+   |
+   = note: see issue #62290 <https://github.com/rust-lang/rust/issues/62290> for more information
+   = help: add `#![feature(async_trait_bounds)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = help: use the desugared name of the async trait, such as `AsyncFn`
+
+error[E0658]: const trait impls are experimental
+  --> $DIR/bound-modifiers.rs:12:32
+   |
+LL | fn constness() -> impl Sized + const use<> {}
+   |                                ^^^^^
+   |
+   = note: see issue #143874 <https://github.com/rust-lang/rust/issues/143874> for more information
+   = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 10 previous errors
+
+Some errors have detailed explanations: E0405, E0658.
+For more information about an error, try `rustc --explain E0405`.

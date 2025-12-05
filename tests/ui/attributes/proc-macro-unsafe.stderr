@@ -1,0 +1,8 @@
+error: unnecessary `unsafe` on safe attribute
+  --> $DIR/proc-macro-unsafe.rs:5:3
+   |
+LL | #[unsafe(external_macro_use::a)]
+   |   ^^^^^^
+
+error: aborting due to 1 previous error
+

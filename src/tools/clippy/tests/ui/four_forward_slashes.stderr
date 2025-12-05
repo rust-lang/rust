@@ -1,0 +1,82 @@
+error: this item has comments with 4 forward slashes (`////`). These look like doc comments, but they aren't
+  --> tests/ui/four_forward_slashes.rs:11:1
+   |
+LL | / //// whoops
+LL | |
+LL | | fn a() {}
+   | |_^
+   |
+   = note: `-D clippy::four-forward-slashes` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::four_forward_slashes)]`
+help: make this a doc comment by removing one `/`
+   |
+LL - //// whoops
+LL -
+LL + /// whoops
+   |
+
+error: this item has comments with 4 forward slashes (`////`). These look like doc comments, but they aren't
+  --> tests/ui/four_forward_slashes.rs:15:1
+   |
+LL | / //// whoops
+LL | |
+LL | | #[allow(dead_code)]
+LL | | fn b() {}
+   | |_^
+   |
+help: make this a doc comment by removing one `/`
+   |
+LL - //// whoops
+LL -
+LL + /// whoops
+   |
+
+error: this item has comments with 4 forward slashes (`////`). These look like doc comments, but they aren't
+  --> tests/ui/four_forward_slashes.rs:20:1
+   |
+LL | / //// whoops
+LL | | //// two borked comments!
+LL | |
+LL | | #[track_caller]
+LL | | fn c() {}
+   | |_^
+   |
+help: turn these into doc comments by removing one `/`
+   |
+LL + /// whoops
+LL ~ /// two borked comments!
+   |
+
+error: this item has comments with 4 forward slashes (`////`). These look like doc comments, but they aren't
+  --> tests/ui/four_forward_slashes.rs:29:1
+   |
+LL | / //// between attributes
+LL | |
+LL | | #[allow(dead_code)]
+LL | | fn g() {}
+   | |_^
+   |
+help: make this a doc comment by removing one `/`
+   |
+LL - //// between attributes
+LL -
+LL + /// between attributes
+   |
+
+error: this item has comments with 4 forward slashes (`////`). These look like doc comments, but they aren't
+  --> tests/ui/four_forward_slashes.rs:34:1
+   |
+LL | /     //// not very start of contents
+LL | |
+LL | | fn h() {}
+   | |_^
+   |
+help: make this a doc comment by removing one `/`
+   |
+LL -     //// not very start of contents
+LL -
+LL + /// not very start of contents
+   |
+
+error: aborting due to 5 previous errors
+

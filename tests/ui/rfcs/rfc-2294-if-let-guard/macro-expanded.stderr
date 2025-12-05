@@ -1,0 +1,14 @@
+error: expected expression, found `let` statement
+  --> $DIR/macro-expanded.rs:6:20
+   |
+LL |     ($e:expr) => { let Some(x) = $e }
+   |                    ^^^
+...
+LL |         () if m!(Some(5)) => {}
+   |               ----------- in this macro invocation
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 1 previous error
+

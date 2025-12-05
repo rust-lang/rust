@@ -1,0 +1,96 @@
+- // MIR for `comparison` before GVN
++ // MIR for `comparison` after GVN
+  
+  fn comparison(_1: u64, _2: u64) -> () {
+      debug x => _1;
+      debug y => _2;
+      let mut _0: ();
+      let _3: ();
+      let mut _4: bool;
+      let mut _5: u64;
+      let mut _6: u64;
+      let _7: ();
+      let mut _8: bool;
+      let mut _9: u64;
+      let mut _10: u64;
+      let _11: ();
+      let mut _12: bool;
+      let mut _13: u64;
+      let mut _14: u64;
+      let _15: ();
+      let mut _16: bool;
+      let mut _17: u64;
+      let mut _18: u64;
+  
+      bb0: {
+          StorageLive(_3);
+          StorageLive(_4);
+          StorageLive(_5);
+          _5 = copy _1;
+          StorageLive(_6);
+          _6 = copy _1;
+-         _4 = Eq(move _5, move _6);
++         _4 = const true;
+          StorageDead(_6);
+          StorageDead(_5);
+-         _3 = opaque::<bool>(move _4) -> [return: bb1, unwind continue];
++         _3 = opaque::<bool>(const true) -> [return: bb1, unwind continue];
+      }
+  
+      bb1: {
+          StorageDead(_4);
+          StorageDead(_3);
+          StorageLive(_7);
+          StorageLive(_8);
+          StorageLive(_9);
+          _9 = copy _1;
+          StorageLive(_10);
+          _10 = copy _1;
+-         _8 = Ne(move _9, move _10);
++         _8 = const false;
+          StorageDead(_10);
+          StorageDead(_9);
+-         _7 = opaque::<bool>(move _8) -> [return: bb2, unwind continue];
++         _7 = opaque::<bool>(const false) -> [return: bb2, unwind continue];
+      }
+  
+      bb2: {
+          StorageDead(_8);
+          StorageDead(_7);
+          StorageLive(_11);
+          StorageLive(_12);
+          StorageLive(_13);
+          _13 = copy _1;
+          StorageLive(_14);
+          _14 = copy _2;
+-         _12 = Eq(move _13, move _14);
++         _12 = Eq(copy _1, copy _2);
+          StorageDead(_14);
+          StorageDead(_13);
+          _11 = opaque::<bool>(move _12) -> [return: bb3, unwind continue];
+      }
+  
+      bb3: {
+          StorageDead(_12);
+          StorageDead(_11);
+          StorageLive(_15);
+          StorageLive(_16);
+          StorageLive(_17);
+          _17 = copy _1;
+          StorageLive(_18);
+          _18 = copy _2;
+-         _16 = Ne(move _17, move _18);
++         _16 = Ne(copy _1, copy _2);
+          StorageDead(_18);
+          StorageDead(_17);
+          _15 = opaque::<bool>(move _16) -> [return: bb4, unwind continue];
+      }
+  
+      bb4: {
+          StorageDead(_16);
+          StorageDead(_15);
+          _0 = const ();
+          return;
+      }
+  }
+  

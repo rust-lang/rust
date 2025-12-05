@@ -1,0 +1,20 @@
+error[E0599]: no function or associated item named `forced_capture` found for struct `Backtrace` in the current scope
+  --> $DIR/issue-109291.rs:2:65
+   |
+LL |     println!("Custom backtrace: {}", std::backtrace::Backtrace::forced_capture());
+   |                                                                 ^^^^^^^^^^^^^^ function or associated item not found in `Backtrace`
+   |
+note: if you're trying to build a new `Backtrace` consider using one of the following associated functions:
+      Backtrace::capture
+      Backtrace::force_capture
+      Backtrace::disabled
+  --> $SRC_DIR/std/src/backtrace.rs:LL:COL
+help: there is an associated function `force_capture` with a similar name
+   |
+LL -     println!("Custom backtrace: {}", std::backtrace::Backtrace::forced_capture());
+LL +     println!("Custom backtrace: {}", std::backtrace::Backtrace::force_capture());
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0599`.

@@ -1,0 +1,15 @@
+error: unused import: `super::f`
+  --> $DIR/unused.rs:7:24
+   |
+LL |         pub(super) use super::f;
+   |                        ^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/unused.rs:1:9
+   |
+LL | #![deny(unused)]
+   |         ^^^^^^
+   = note: `#[deny(unused_imports)]` implied by `#[deny(unused)]`
+
+error: aborting due to 1 previous error
+

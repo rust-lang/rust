@@ -1,0 +1,17 @@
+error[E0107]: type alias takes 1 lifetime argument but 2 lifetime arguments were supplied
+  --> $DIR/mismatched_arg_count.rs:7:29
+   |
+LL | fn bar<'a, T: Trait<'a>>(_: Alias<'a, 'a, T>) {}
+   |                             ^^^^^   ---- help: remove the lifetime argument
+   |                             |
+   |                             expected 1 lifetime argument
+   |
+note: type alias defined here, with 1 lifetime parameter: `'a`
+  --> $DIR/mismatched_arg_count.rs:5:6
+   |
+LL | type Alias<'a, T> = <T as Trait<'a>>::Assoc;
+   |      ^^^^^ --
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0107`.

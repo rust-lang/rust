@@ -1,0 +1,19 @@
+warning: impl trait in impl method signature does not match trait method signature
+  --> $DIR/expeced-refree-to-map-to-reearlybound-ice-108580.rs:10:22
+   |
+LL |     fn bar(&self) -> impl Iterator<Item = impl Sized> + '_;
+   |                      ------------------------------------- return type from trait method defined here
+...
+LL |     fn bar(&self) -> impl Iterator + '_ {
+   |                      ^^^^^^^^^^^^^^^^^^
+   |
+   = note: add `#[allow(refining_impl_trait)]` if it is intended for this to be part of the public API of this crate
+   = note: we are soliciting feedback, see issue #121718 <https://github.com/rust-lang/rust/issues/121718> for more information
+   = note: `#[warn(refining_impl_trait_internal)]` (part of `#[warn(refining_impl_trait)]`) on by default
+help: replace the return type so that it matches the trait
+   |
+LL |     fn bar(&self) -> impl Iterator<Item = impl Sized> + '_ {
+   |                                   +++++++++++++++++++
+
+warning: 1 warning emitted
+

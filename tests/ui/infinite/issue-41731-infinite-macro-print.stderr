@@ -1,0 +1,38 @@
+error: recursion limit reached while expanding `$crate::format_args!`
+  --> $DIR/issue-41731-infinite-macro-print.rs:14:5
+   |
+LL |     stack!("overflow");
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "10"]` attribute to your crate (`issue_41731_infinite_macro_print`)
+   = note: this error originates in the macro `print` which comes from the expansion of the macro `stack` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+note: trace_macro
+  --> $DIR/issue-41731-infinite-macro-print.rs:14:5
+   |
+LL |     stack!("overflow");
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+   = note: expanding `stack! { "overflow" }`
+   = note: to `print! (stack! ("overflow"))`
+   = note: expanding `print! { stack! ("overflow") }`
+   = note: to `{ $crate :: io :: _print($crate :: format_args! (stack! ("overflow"))); }`
+   = note: expanding `stack! { "overflow" }`
+   = note: to `print! (stack! ("overflow"))`
+   = note: expanding `print! { stack! ("overflow") }`
+   = note: to `{ $crate :: io :: _print($crate :: format_args! (stack! ("overflow"))); }`
+
+error: format argument must be a string literal
+  --> $DIR/issue-41731-infinite-macro-print.rs:14:5
+   |
+LL |     stack!("overflow");
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+   = note: this error originates in the macro `print` which comes from the expansion of the macro `stack` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: you might be missing a string literal to format with
+   |
+LL |             print!("{}", stack!($overflow))
+   |                    +++++
+
+error: aborting due to 2 previous errors
+

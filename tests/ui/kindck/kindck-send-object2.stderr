@@ -1,0 +1,33 @@
+error[E0277]: `&'static (dyn Dummy + 'static)` cannot be sent between threads safely
+  --> $DIR/kindck-send-object2.rs:7:19
+   |
+LL |     assert_send::<&'static dyn Dummy>();
+   |                   ^^^^^^^^^^^^^^^^^^ `&'static (dyn Dummy + 'static)` cannot be sent between threads safely
+   |
+   = help: the trait `Sync` is not implemented for `(dyn Dummy + 'static)`
+   = note: required for `&'static (dyn Dummy + 'static)` to implement `Send`
+note: required by a bound in `assert_send`
+  --> $DIR/kindck-send-object2.rs:3:18
+   |
+LL | fn assert_send<T:Send>() { }
+   |                  ^^^^ required by this bound in `assert_send`
+
+error[E0277]: `dyn Dummy` cannot be sent between threads safely
+  --> $DIR/kindck-send-object2.rs:12:19
+   |
+LL |     assert_send::<Box<dyn Dummy>>();
+   |                   ^^^^^^^^^^^^^^ `dyn Dummy` cannot be sent between threads safely
+   |
+   = help: the trait `Send` is not implemented for `dyn Dummy`
+   = note: required for `Unique<dyn Dummy>` to implement `Send`
+note: required because it appears within the type `Box<dyn Dummy>`
+  --> $SRC_DIR/alloc/src/boxed.rs:LL:COL
+note: required by a bound in `assert_send`
+  --> $DIR/kindck-send-object2.rs:3:18
+   |
+LL | fn assert_send<T:Send>() { }
+   |                  ^^^^ required by this bound in `assert_send`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

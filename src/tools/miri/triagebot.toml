@@ -1,0 +1,63 @@
+## See <https://forge.rust-lang.org/triagebot/index.html> for documentation
+## of these options.
+
+[relabel]
+allow-unauthenticated = [
+    "A-*",
+    "C-*",
+    "E-*",
+    "I-*",
+    "S-*",
+ ]
+
+# Gives us the commands 'ready', 'author', 'blocked'
+[shortcut]
+
+# Enables assigning users to issues and PRs.
+[assign]
+warn_non_default_branch = true
+contributing_url = "https://github.com/rust-lang/miri/blob/master/CONTRIBUTING.md#pr-review-process"
+[assign.custom_welcome_messages]
+welcome-message = "(unused)"
+welcome-message-no-reviewer = """
+Thank you for contributing to Miri! A reviewer will take a look at your PR, typically within a week or two.
+Please remember to not force-push to the PR branch except when you need to rebase due to a conflict or when the reviewer asks you for it.
+"""
+
+[no-merges]
+exclude_titles = ["Rustup"]
+
+[review-submitted]
+# This label is added when a "request changes" review is submitted.
+reviewed_label = "S-waiting-on-author"
+# These labels are removed when a "request changes" review is submitted.
+review_labels = ["S-waiting-on-review"]
+
+[review-requested]
+# Those labels are removed when PR author requests a review from an assignee
+remove_labels = ["S-waiting-on-author"]
+# Those labels are added when PR author requests a review from an assignee
+add_labels = ["S-waiting-on-review"]
+
+[merge-conflicts]
+remove = []
+add = ["S-waiting-on-author"]
+unless = ["S-blocked", "S-waiting-on-team", "S-waiting-on-review"]
+
+[autolabel."S-waiting-on-review"]
+new_pr = true
+
+[autolabel."S-waiting-on-author"]
+new_draft = true
+
+# Canonicalize issue numbers to avoid closing the wrong issue when upstreaming this subtree.
+[canonicalize-issue-links]
+
+# Prevents mentions in commits to avoid users being spammed.
+[no-mentions]
+
+# Show range-diff links on force pushes.
+[range-diff]
+
+# Add link to the review body to review changes since posting it.
+[review-changes-since]

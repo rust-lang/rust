@@ -1,0 +1,39 @@
+- // MIR for `identity_transmutes` before InstSimplify-after-simplifycfg
++ // MIR for `identity_transmutes` after InstSimplify-after-simplifycfg
+  
+  fn identity_transmutes() -> () {
+      let mut _0: ();
+      let _1: i32;
+      let mut _3: std::vec::Vec<i32>;
+      scope 1 {
+          debug _a => _1;
+          let _2: std::vec::Vec<i32>;
+          scope 2 {
+              debug _a => _2;
+          }
+      }
+  
+      bb0: {
+          StorageLive(_1);
+-         _1 = const 1_i32 as i32 (Transmute);
++         _1 = const 1_i32;
+          StorageLive(_2);
+          StorageLive(_3);
+          _3 = Vec::<i32>::new() -> [return: bb1, unwind unreachable];
+      }
+  
+      bb1: {
+-         _2 = move _3 as std::vec::Vec<i32> (Transmute);
++         _2 = move _3;
+          StorageDead(_3);
+          _0 = const ();
+          drop(_2) -> [return: bb2, unwind unreachable];
+      }
+  
+      bb2: {
+          StorageDead(_2);
+          StorageDead(_1);
+          return;
+      }
+  }
+  

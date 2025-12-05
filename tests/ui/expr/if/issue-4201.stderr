@@ -1,0 +1,18 @@
+error[E0317]: `if` may be missing an `else` clause
+  --> $DIR/issue-4201.rs:6:12
+   |
+LL |       } else if false {
+   |  ____________^
+LL | |
+LL | |
+LL | |         1
+   | |         - found here
+LL | |     };
+   | |_____^ expected integer, found `()`
+   |
+   = note: `if` expressions without `else` evaluate to `()`
+   = help: consider adding an `else` block that evaluates to the expected type
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0317`.

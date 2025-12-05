@@ -1,0 +1,24 @@
+error[E0080]: constructing invalid value: encountered 0x2a, but expected a boolean
+  --> $DIR/union-ub.rs:33:1
+   |
+LL | const BAD_BOOL: bool = unsafe { DummyUnion { u8: 42 }.bool };
+   | ^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
+   |
+   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: 1, align: 1) {
+               2a                                              │ *
+           }
+
+error[E0080]: reading memory at ALLOC0[0x0..0x1], but memory is uninitialized at [0x0..0x1], and this operation requires initialized memory
+  --> $DIR/union-ub.rs:35:36
+   |
+LL | const UNINIT_BOOL: bool = unsafe { DummyUnion { unit: () }.bool };
+   |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `UNINIT_BOOL` failed here
+   |
+   = note: the raw bytes of the constant (size: 1, align: 1) {
+               __                                              │ ░
+           }
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0080`.

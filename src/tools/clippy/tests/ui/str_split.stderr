@@ -1,0 +1,65 @@
+error: using `str.trim().split()` with hard-coded newlines
+  --> tests/ui/str_split.rs:60:13
+   |
+LL |     let _ = s1.trim().split('\n');
+   |             ^^^^^^^^^^^^^^^^^^^^^ help: use `str.lines()` instead: `s1.lines()`
+   |
+   = note: `-D clippy::str-split-at-newline` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::str_split_at_newline)]`
+
+error: using `str.trim().split()` with hard-coded newlines
+  --> tests/ui/str_split.rs:63:13
+   |
+LL |     let _ = s1.trim().split("\n");
+   |             ^^^^^^^^^^^^^^^^^^^^^ help: use `str.lines()` instead: `s1.lines()`
+
+error: using `str.trim().split()` with hard-coded newlines
+  --> tests/ui/str_split.rs:65:13
+   |
+LL |     let _ = s1.trim().split("\r\n");
+   |             ^^^^^^^^^^^^^^^^^^^^^^^ help: use `str.lines()` instead: `s1.lines()`
+
+error: using `str.trim().split()` with hard-coded newlines
+  --> tests/ui/str_split.rs:69:13
+   |
+LL |     let _ = s2.trim().split('\n');
+   |             ^^^^^^^^^^^^^^^^^^^^^ help: use `str.lines()` instead: `s2.lines()`
+
+error: using `str.trim().split()` with hard-coded newlines
+  --> tests/ui/str_split.rs:72:13
+   |
+LL |     let _ = s2.trim().split("\n");
+   |             ^^^^^^^^^^^^^^^^^^^^^ help: use `str.lines()` instead: `s2.lines()`
+
+error: using `str.trim().split()` with hard-coded newlines
+  --> tests/ui/str_split.rs:74:13
+   |
+LL |     let _ = s2.trim().split("\r\n");
+   |             ^^^^^^^^^^^^^^^^^^^^^^^ help: use `str.lines()` instead: `s2.lines()`
+
+error: using `str.trim().split()` with hard-coded newlines
+  --> tests/ui/str_split.rs:79:13
+   |
+LL |     let _ = s3.trim().split('\n');
+   |             ^^^^^^^^^^^^^^^^^^^^^ help: use `str.lines()` instead: `s3.lines()`
+
+error: using `str.trim().split()` with hard-coded newlines
+  --> tests/ui/str_split.rs:82:13
+   |
+LL |     let _ = s3.trim().split("\n");
+   |             ^^^^^^^^^^^^^^^^^^^^^ help: use `str.lines()` instead: `s3.lines()`
+
+error: using `str.trim().split()` with hard-coded newlines
+  --> tests/ui/str_split.rs:84:13
+   |
+LL |     let _ = s3.trim().split("\r\n");
+   |             ^^^^^^^^^^^^^^^^^^^^^^^ help: use `str.lines()` instead: `s3.lines()`
+
+error: using `str.trim().split()` with hard-coded newlines
+  --> tests/ui/str_split.rs:88:13
+   |
+LL |     let _ = make_str!(s1).trim().split('\n');
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `str.lines()` instead: `make_str!(s1).lines()`
+
+error: aborting due to 10 previous errors
+

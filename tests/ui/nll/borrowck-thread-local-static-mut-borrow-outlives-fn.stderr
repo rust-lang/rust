@@ -1,0 +1,16 @@
+warning: creating a mutable reference to mutable static
+  --> $DIR/borrowck-thread-local-static-mut-borrow-outlives-fn.rs:17:26
+   |
+LL |         S1 { a: unsafe { &mut X1 } }
+   |                          ^^^^^^^ mutable reference to mutable static
+   |
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/static-mut-references.html>
+   = note: mutable references to mutable statics are dangerous; it's undefined behavior if any other pointer to the static is used or if any other reference is created for the static while the mutable reference lives
+   = note: `#[warn(static_mut_refs)]` (part of `#[warn(rust_2024_compatibility)]`) on by default
+help: use `&raw mut` instead to create a raw pointer
+   |
+LL |         S1 { a: unsafe { &raw mut X1 } }
+   |                           +++
+
+warning: 1 warning emitted
+

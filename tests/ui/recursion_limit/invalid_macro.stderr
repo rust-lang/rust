@@ -1,0 +1,8 @@
+error: attribute value must be a literal
+  --> $DIR/invalid_macro.rs:1:22
+   |
+LL | #![recursion_limit = foo!()]
+   |                      ^^^^^^
+
+error: aborting due to 1 previous error
+

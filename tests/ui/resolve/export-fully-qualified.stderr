@@ -1,0 +1,11 @@
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `foo`
+  --> $DIR/export-fully-qualified.rs:8:20
+   |
+LL |     pub fn bar() { foo::baz(); }
+   |                    ^^^ use of unresolved module or unlinked crate `foo`
+   |
+   = help: you might be missing a crate named `foo`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0433`.

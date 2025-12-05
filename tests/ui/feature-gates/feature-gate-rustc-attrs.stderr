@@ -1,0 +1,49 @@
+error: attributes starting with `rustc` are reserved for use by the `rustc` compiler
+  --> $DIR/feature-gate-rustc-attrs.rs:8:3
+   |
+LL | #[rustc::unknown]
+   |   ^^^^^
+
+error: expected attribute, found macro `rustc::unknown`
+  --> $DIR/feature-gate-rustc-attrs.rs:8:3
+   |
+LL | #[rustc::unknown]
+   |   ^^^^^^^^^^^^^^ not an attribute
+
+error: attributes starting with `rustc` are reserved for use by the `rustc` compiler
+  --> $DIR/feature-gate-rustc-attrs.rs:14:12
+   |
+LL | #[unknown::rustc]
+   |            ^^^^^
+
+error: expected attribute, found macro `unknown::rustc`
+  --> $DIR/feature-gate-rustc-attrs.rs:14:3
+   |
+LL | #[unknown::rustc]
+   |   ^^^^^^^^^^^^^^ not an attribute
+
+error: attributes starting with `rustc` are reserved for use by the `rustc` compiler
+  --> $DIR/feature-gate-rustc-attrs.rs:24:3
+   |
+LL | #[rustc_unknown]
+   |   ^^^^^^^^^^^^^
+
+error: cannot find attribute `rustc_unknown` in this scope
+  --> $DIR/feature-gate-rustc-attrs.rs:24:3
+   |
+LL | #[rustc_unknown]
+   |   ^^^^^^^^^^^^^
+
+error[E0658]: use of an internal attribute
+  --> $DIR/feature-gate-rustc-attrs.rs:20:1
+   |
+LL | #[rustc_dummy]
+   | ^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(rustc_attrs)]` to the crate attributes to enable
+   = note: the `#[rustc_dummy]` attribute is an internal implementation detail that will never be stable
+   = note: the `#[rustc_dummy]` attribute is used for rustc unit tests
+
+error: aborting due to 7 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

@@ -1,0 +1,49 @@
+error: `x` is ambiguous
+  --> $DIR/ambiguous-3.rs:5:5
+   |
+LL |     x();
+   |     ^ ambiguous name
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #114095 <https://github.com/rust-lang/rust/issues/114095>
+   = note: ambiguous because of multiple glob imports of a name in the same module
+note: `x` could refer to the function imported here
+  --> $DIR/ambiguous-3.rs:18:13
+   |
+LL |     pub use self::b::*;
+   |             ^^^^^^^^^^
+   = help: consider adding an explicit import of `x` to disambiguate
+note: `x` could also refer to the function imported here
+  --> $DIR/ambiguous-3.rs:19:13
+   |
+LL |     pub use self::c::*;
+   |             ^^^^^^^^^^
+   = help: consider adding an explicit import of `x` to disambiguate
+   = note: `#[deny(ambiguous_glob_imports)]` (part of `#[deny(future_incompatible)]`) on by default
+
+error: aborting due to 1 previous error
+
+Future incompatibility report: Future breakage diagnostic:
+error: `x` is ambiguous
+  --> $DIR/ambiguous-3.rs:5:5
+   |
+LL |     x();
+   |     ^ ambiguous name
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #114095 <https://github.com/rust-lang/rust/issues/114095>
+   = note: ambiguous because of multiple glob imports of a name in the same module
+note: `x` could refer to the function imported here
+  --> $DIR/ambiguous-3.rs:18:13
+   |
+LL |     pub use self::b::*;
+   |             ^^^^^^^^^^
+   = help: consider adding an explicit import of `x` to disambiguate
+note: `x` could also refer to the function imported here
+  --> $DIR/ambiguous-3.rs:19:13
+   |
+LL |     pub use self::c::*;
+   |             ^^^^^^^^^^
+   = help: consider adding an explicit import of `x` to disambiguate
+   = note: `#[deny(ambiguous_glob_imports)]` (part of `#[deny(future_incompatible)]`) on by default
+

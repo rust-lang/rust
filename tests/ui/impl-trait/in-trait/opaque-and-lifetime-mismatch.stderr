@@ -1,0 +1,82 @@
+error[E0106]: missing lifetime specifier
+  --> $DIR/opaque-and-lifetime-mismatch.rs:4:24
+   |
+LL |     fn bar() -> Wrapper<impl Sized>;
+   |                        ^ expected named lifetime parameter
+   |
+   = help: this function's return type contains a borrowed value, but there is no value for it to be borrowed from
+help: consider using the `'static` lifetime, but this is uncommon unless you're returning a borrowed value from a `const` or a `static`, or if you will only have owned values
+   |
+LL |     fn bar() -> Wrapper<'static, impl Sized>;
+   |                         ++++++++
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/opaque-and-lifetime-mismatch.rs:16:24
+   |
+LL |     fn foo() -> Wrapper<impl Sized>;
+   |                        ^ expected named lifetime parameter
+   |
+   = help: this function's return type contains a borrowed value, but there is no value for it to be borrowed from
+help: consider using the `'static` lifetime, but this is uncommon unless you're returning a borrowed value from a `const` or a `static`, or if you will only have owned values
+   |
+LL |     fn foo() -> Wrapper<'static, impl Sized>;
+   |                         ++++++++
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/opaque-and-lifetime-mismatch.rs:22:24
+   |
+LL |     fn foo() -> Wrapper<impl Sized> {
+   |                        ^ expected named lifetime parameter
+   |
+   = help: this function's return type contains a borrowed value, but there is no value for it to be borrowed from
+help: consider using the `'static` lifetime, but this is uncommon unless you're returning a borrowed value from a `const` or a `static`, or if you will only have owned values
+   |
+LL |     fn foo() -> Wrapper<'static, impl Sized> {
+   |                         ++++++++
+
+error[E0107]: struct takes 0 generic arguments but 1 generic argument was supplied
+  --> $DIR/opaque-and-lifetime-mismatch.rs:4:17
+   |
+LL |     fn bar() -> Wrapper<impl Sized>;
+   |                 ^^^^^^^ ---------- help: remove the unnecessary generic argument
+   |                 |
+   |                 expected 0 generic arguments
+   |
+note: struct defined here, with 0 generic parameters
+  --> $DIR/opaque-and-lifetime-mismatch.rs:1:8
+   |
+LL | struct Wrapper<'rom>(&'rom ());
+   |        ^^^^^^^
+
+error[E0107]: struct takes 0 generic arguments but 1 generic argument was supplied
+  --> $DIR/opaque-and-lifetime-mismatch.rs:16:17
+   |
+LL |     fn foo() -> Wrapper<impl Sized>;
+   |                 ^^^^^^^ ---------- help: remove the unnecessary generic argument
+   |                 |
+   |                 expected 0 generic arguments
+   |
+note: struct defined here, with 0 generic parameters
+  --> $DIR/opaque-and-lifetime-mismatch.rs:1:8
+   |
+LL | struct Wrapper<'rom>(&'rom ());
+   |        ^^^^^^^
+
+error[E0107]: struct takes 0 generic arguments but 1 generic argument was supplied
+  --> $DIR/opaque-and-lifetime-mismatch.rs:22:17
+   |
+LL |     fn foo() -> Wrapper<impl Sized> {
+   |                 ^^^^^^^ ---------- help: remove the unnecessary generic argument
+   |                 |
+   |                 expected 0 generic arguments
+   |
+note: struct defined here, with 0 generic parameters
+  --> $DIR/opaque-and-lifetime-mismatch.rs:1:8
+   |
+LL | struct Wrapper<'rom>(&'rom ());
+   |        ^^^^^^^
+
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0106, E0107.
+For more information about an error, try `rustc --explain E0106`.

@@ -1,0 +1,25 @@
+error: expected a literal (`1u8`, `1.0f32`, `"string"`, etc.) here, found `-`
+  --> $DIR/attr-bad-meta-4.rs:11:17
+   |
+LL | #[cfg(feature = -1)]
+   |                 ^
+   |
+help: negative numbers are not literals, try removing the `-` sign
+   |
+LL - #[cfg(feature = -1)]
+LL + #[cfg(feature = 1)]
+   |
+
+error: expected a literal (`1u8`, `1.0f32`, `"string"`, etc.) here, found `meta` metavariable
+  --> $DIR/attr-bad-meta-4.rs:3:15
+   |
+LL |         #[cfg($attr_item)]
+   |               ^^^^^^^^^^
+...
+LL | mac!(an(arbitrary token stream));
+   | -------------------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `mac` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 2 previous errors
+

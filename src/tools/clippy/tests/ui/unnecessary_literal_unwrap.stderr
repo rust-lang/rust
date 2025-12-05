@@ -1,0 +1,616 @@
+error: used `unwrap()` on `Some` value
+  --> tests/ui/unnecessary_literal_unwrap.rs:11:16
+   |
+LL |     let _val = Some(1).unwrap();
+   |                ^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::unnecessary-literal-unwrap` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unnecessary_literal_unwrap)]`
+help: remove the `Some` and `unwrap()`
+   |
+LL -     let _val = Some(1).unwrap();
+LL +     let _val = 1;
+   |
+
+error: used `expect()` on `Some` value
+  --> tests/ui/unnecessary_literal_unwrap.rs:13:16
+   |
+LL |     let _val = Some(1).expect("this never happens");
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `Some` and `expect()`
+   |
+LL -     let _val = Some(1).expect("this never happens");
+LL +     let _val = 1;
+   |
+
+error: used `unwrap()` on `Some` value
+  --> tests/ui/unnecessary_literal_unwrap.rs:16:5
+   |
+LL |     Some(1).unwrap();
+   |     ^^^^^^^^^^^^^^^^
+   |
+help: remove the `Some` and `unwrap()`
+   |
+LL -     Some(1).unwrap();
+LL +     1;
+   |
+
+error: used `expect()` on `Some` value
+  --> tests/ui/unnecessary_literal_unwrap.rs:18:5
+   |
+LL |     Some(1).expect("this never happens");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `Some` and `expect()`
+   |
+LL -     Some(1).expect("this never happens");
+LL +     1;
+   |
+
+error: used `unwrap()` on `None` value
+  --> tests/ui/unnecessary_literal_unwrap.rs:24:16
+   |
+LL |     let _val = None::<()>.unwrap();
+   |                ^^^^^^^^^^^^^^^^^^^ help: remove the `None` and `unwrap()`: `panic!()`
+
+error: used `expect()` on `None` value
+  --> tests/ui/unnecessary_literal_unwrap.rs:26:16
+   |
+LL |     let _val = None::<()>.expect("this always happens");
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `None` and `expect()`
+   |
+LL -     let _val = None::<()>.expect("this always happens");
+LL +     let _val = panic!("this always happens");
+   |
+
+error: used `unwrap_or_default()` on `None` value
+  --> tests/ui/unnecessary_literal_unwrap.rs:28:24
+   |
+LL |     let _val: String = None.unwrap_or_default();
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^ help: remove the `None` and `unwrap_or_default()`: `String::default()`
+
+error: used `unwrap_or()` on `None` value
+  --> tests/ui/unnecessary_literal_unwrap.rs:30:21
+   |
+LL |     let _val: u16 = None.unwrap_or(234);
+   |                     ^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `None` and `unwrap_or()`
+   |
+LL -     let _val: u16 = None.unwrap_or(234);
+LL +     let _val: u16 = 234;
+   |
+
+error: used `unwrap_or_else()` on `None` value
+  --> tests/ui/unnecessary_literal_unwrap.rs:32:21
+   |
+LL |     let _val: u16 = None.unwrap_or_else(|| 234);
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `None` and `unwrap_or_else()`
+   |
+LL -     let _val: u16 = None.unwrap_or_else(|| 234);
+LL +     let _val: u16 = 234;
+   |
+
+error: used `unwrap_or_else()` on `None` value
+  --> tests/ui/unnecessary_literal_unwrap.rs:34:21
+   |
+LL |     let _val: u16 = None.unwrap_or_else(|| { 234 });
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `None` and `unwrap_or_else()`
+   |
+LL -     let _val: u16 = None.unwrap_or_else(|| { 234 });
+LL +     let _val: u16 = { 234 };
+   |
+
+error: used `unwrap_or_else()` on `None` value
+  --> tests/ui/unnecessary_literal_unwrap.rs:36:21
+   |
+LL |     let _val: u16 = None.unwrap_or_else(|| -> u16 { 234 });
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `None` and `unwrap_or_else()`
+   |
+LL -     let _val: u16 = None.unwrap_or_else(|| -> u16 { 234 });
+LL +     let _val: u16 = { 234 };
+   |
+
+error: used `unwrap()` on `None` value
+  --> tests/ui/unnecessary_literal_unwrap.rs:39:5
+   |
+LL |     None::<()>.unwrap();
+   |     ^^^^^^^^^^^^^^^^^^^ help: remove the `None` and `unwrap()`: `panic!()`
+
+error: used `expect()` on `None` value
+  --> tests/ui/unnecessary_literal_unwrap.rs:41:5
+   |
+LL |     None::<()>.expect("this always happens");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `None` and `expect()`
+   |
+LL -     None::<()>.expect("this always happens");
+LL +     panic!("this always happens");
+   |
+
+error: used `unwrap_or_default()` on `None` value
+  --> tests/ui/unnecessary_literal_unwrap.rs:43:5
+   |
+LL |     None::<String>.unwrap_or_default();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove the `None` and `unwrap_or_default()`: `String::default()`
+
+error: used `unwrap_or()` on `None` value
+  --> tests/ui/unnecessary_literal_unwrap.rs:45:5
+   |
+LL |     None::<u16>.unwrap_or(234);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `None` and `unwrap_or()`
+   |
+LL -     None::<u16>.unwrap_or(234);
+LL +     234;
+   |
+
+error: used `unwrap_or_else()` on `None` value
+  --> tests/ui/unnecessary_literal_unwrap.rs:47:5
+   |
+LL |     None::<u16>.unwrap_or_else(|| 234);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `None` and `unwrap_or_else()`
+   |
+LL -     None::<u16>.unwrap_or_else(|| 234);
+LL +     234;
+   |
+
+error: used `unwrap_or_else()` on `None` value
+  --> tests/ui/unnecessary_literal_unwrap.rs:49:5
+   |
+LL |     None::<u16>.unwrap_or_else(|| { 234 });
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `None` and `unwrap_or_else()`
+   |
+LL -     None::<u16>.unwrap_or_else(|| { 234 });
+LL +     { 234 };
+   |
+
+error: used `unwrap_or_else()` on `None` value
+  --> tests/ui/unnecessary_literal_unwrap.rs:51:5
+   |
+LL |     None::<u16>.unwrap_or_else(|| -> u16 { 234 });
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `None` and `unwrap_or_else()`
+   |
+LL -     None::<u16>.unwrap_or_else(|| -> u16 { 234 });
+LL +     { 234 };
+   |
+
+error: used `unwrap()` on `Ok` value
+  --> tests/ui/unnecessary_literal_unwrap.rs:56:16
+   |
+LL |     let _val = Ok::<_, ()>(1).unwrap();
+   |                ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `Ok` and `unwrap()`
+   |
+LL -     let _val = Ok::<_, ()>(1).unwrap();
+LL +     let _val = 1;
+   |
+
+error: used `expect()` on `Ok` value
+  --> tests/ui/unnecessary_literal_unwrap.rs:58:16
+   |
+LL |     let _val = Ok::<_, ()>(1).expect("this never happens");
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `Ok` and `expect()`
+   |
+LL -     let _val = Ok::<_, ()>(1).expect("this never happens");
+LL +     let _val = 1;
+   |
+
+error: used `unwrap_err()` on `Ok` value
+  --> tests/ui/unnecessary_literal_unwrap.rs:60:16
+   |
+LL |     let _val = Ok::<_, ()>(1).unwrap_err();
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `Ok` and `unwrap_err()`
+   |
+LL -     let _val = Ok::<_, ()>(1).unwrap_err();
+LL +     let _val = panic!("{:?}", 1);
+   |
+
+error: used `expect_err()` on `Ok` value
+  --> tests/ui/unnecessary_literal_unwrap.rs:62:16
+   |
+LL |     let _val = Ok::<_, ()>(1).expect_err("this always happens");
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `Ok` and `expect_err()`
+   |
+LL -     let _val = Ok::<_, ()>(1).expect_err("this always happens");
+LL +     let _val = panic!("{1}: {:?}", 1, "this always happens");
+   |
+
+error: used `unwrap()` on `Ok` value
+  --> tests/ui/unnecessary_literal_unwrap.rs:65:5
+   |
+LL |     Ok::<_, ()>(1).unwrap();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `Ok` and `unwrap()`
+   |
+LL -     Ok::<_, ()>(1).unwrap();
+LL +     1;
+   |
+
+error: used `expect()` on `Ok` value
+  --> tests/ui/unnecessary_literal_unwrap.rs:67:5
+   |
+LL |     Ok::<_, ()>(1).expect("this never happens");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `Ok` and `expect()`
+   |
+LL -     Ok::<_, ()>(1).expect("this never happens");
+LL +     1;
+   |
+
+error: used `unwrap_err()` on `Ok` value
+  --> tests/ui/unnecessary_literal_unwrap.rs:69:5
+   |
+LL |     Ok::<_, ()>(1).unwrap_err();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `Ok` and `unwrap_err()`
+   |
+LL -     Ok::<_, ()>(1).unwrap_err();
+LL +     panic!("{:?}", 1);
+   |
+
+error: used `expect_err()` on `Ok` value
+  --> tests/ui/unnecessary_literal_unwrap.rs:71:5
+   |
+LL |     Ok::<_, ()>(1).expect_err("this always happens");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `Ok` and `expect_err()`
+   |
+LL -     Ok::<_, ()>(1).expect_err("this always happens");
+LL +     panic!("{1}: {:?}", 1, "this always happens");
+   |
+
+error: used `unwrap_err()` on `Err` value
+  --> tests/ui/unnecessary_literal_unwrap.rs:76:16
+   |
+LL |     let _val = Err::<(), _>(1).unwrap_err();
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `Err` and `unwrap_err()`
+   |
+LL -     let _val = Err::<(), _>(1).unwrap_err();
+LL +     let _val = 1;
+   |
+
+error: used `expect_err()` on `Err` value
+  --> tests/ui/unnecessary_literal_unwrap.rs:78:16
+   |
+LL |     let _val = Err::<(), _>(1).expect_err("this never happens");
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `Err` and `expect_err()`
+   |
+LL -     let _val = Err::<(), _>(1).expect_err("this never happens");
+LL +     let _val = 1;
+   |
+
+error: used `unwrap()` on `Err` value
+  --> tests/ui/unnecessary_literal_unwrap.rs:80:16
+   |
+LL |     let _val = Err::<(), _>(1).unwrap();
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `Err` and `unwrap()`
+   |
+LL -     let _val = Err::<(), _>(1).unwrap();
+LL +     let _val = panic!("{:?}", 1);
+   |
+
+error: used `expect()` on `Err` value
+  --> tests/ui/unnecessary_literal_unwrap.rs:82:16
+   |
+LL |     let _val = Err::<(), _>(1).expect("this always happens");
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `Err` and `expect()`
+   |
+LL -     let _val = Err::<(), _>(1).expect("this always happens");
+LL +     let _val = panic!("{1}: {:?}", 1, "this always happens");
+   |
+
+error: used `unwrap_err()` on `Err` value
+  --> tests/ui/unnecessary_literal_unwrap.rs:85:5
+   |
+LL |     Err::<(), _>(1).unwrap_err();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `Err` and `unwrap_err()`
+   |
+LL -     Err::<(), _>(1).unwrap_err();
+LL +     1;
+   |
+
+error: used `expect_err()` on `Err` value
+  --> tests/ui/unnecessary_literal_unwrap.rs:87:5
+   |
+LL |     Err::<(), _>(1).expect_err("this never happens");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `Err` and `expect_err()`
+   |
+LL -     Err::<(), _>(1).expect_err("this never happens");
+LL +     1;
+   |
+
+error: used `unwrap()` on `Err` value
+  --> tests/ui/unnecessary_literal_unwrap.rs:89:5
+   |
+LL |     Err::<(), _>(1).unwrap();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `Err` and `unwrap()`
+   |
+LL -     Err::<(), _>(1).unwrap();
+LL +     panic!("{:?}", 1);
+   |
+
+error: used `expect()` on `Err` value
+  --> tests/ui/unnecessary_literal_unwrap.rs:91:5
+   |
+LL |     Err::<(), _>(1).expect("this always happens");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `Err` and `expect()`
+   |
+LL -     Err::<(), _>(1).expect("this always happens");
+LL +     panic!("{1}: {:?}", 1, "this always happens");
+   |
+
+error: used `unwrap_or()` on `Some` value
+  --> tests/ui/unnecessary_literal_unwrap.rs:96:16
+   |
+LL |     let _val = Some(1).unwrap_or(2);
+   |                ^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `Some` and `unwrap_or()`
+   |
+LL -     let _val = Some(1).unwrap_or(2);
+LL +     let _val = 1;
+   |
+
+error: used `unwrap_or_default()` on `Some` value
+  --> tests/ui/unnecessary_literal_unwrap.rs:98:16
+   |
+LL |     let _val = Some(1).unwrap_or_default();
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `Some` and `unwrap_or_default()`
+   |
+LL -     let _val = Some(1).unwrap_or_default();
+LL +     let _val = 1;
+   |
+
+error: used `unwrap_or_else()` on `Some` value
+  --> tests/ui/unnecessary_literal_unwrap.rs:100:16
+   |
+LL |     let _val = Some(1).unwrap_or_else(|| 2);
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `Some` and `unwrap_or_else()`
+   |
+LL -     let _val = Some(1).unwrap_or_else(|| 2);
+LL +     let _val = 1;
+   |
+
+error: used `unwrap_or()` on `Some` value
+  --> tests/ui/unnecessary_literal_unwrap.rs:103:5
+   |
+LL |     Some(1).unwrap_or(2);
+   |     ^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `Some` and `unwrap_or()`
+   |
+LL -     Some(1).unwrap_or(2);
+LL +     1;
+   |
+
+error: used `unwrap_or_default()` on `Some` value
+  --> tests/ui/unnecessary_literal_unwrap.rs:105:5
+   |
+LL |     Some(1).unwrap_or_default();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `Some` and `unwrap_or_default()`
+   |
+LL -     Some(1).unwrap_or_default();
+LL +     1;
+   |
+
+error: used `unwrap_or_else()` on `Some` value
+  --> tests/ui/unnecessary_literal_unwrap.rs:107:5
+   |
+LL |     Some(1).unwrap_or_else(|| 2);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `Some` and `unwrap_or_else()`
+   |
+LL -     Some(1).unwrap_or_else(|| 2);
+LL +     1;
+   |
+
+error: used `unwrap_or()` on `Ok` value
+  --> tests/ui/unnecessary_literal_unwrap.rs:112:16
+   |
+LL |     let _val = Ok::<_, ()>(1).unwrap_or(2);
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `Ok` and `unwrap_or()`
+   |
+LL -     let _val = Ok::<_, ()>(1).unwrap_or(2);
+LL +     let _val = 1;
+   |
+
+error: used `unwrap_or_default()` on `Ok` value
+  --> tests/ui/unnecessary_literal_unwrap.rs:114:16
+   |
+LL |     let _val = Ok::<_, ()>(1).unwrap_or_default();
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `Ok` and `unwrap_or_default()`
+   |
+LL -     let _val = Ok::<_, ()>(1).unwrap_or_default();
+LL +     let _val = 1;
+   |
+
+error: used `unwrap_or_else()` on `Ok` value
+  --> tests/ui/unnecessary_literal_unwrap.rs:116:16
+   |
+LL |     let _val = Ok::<_, ()>(1).unwrap_or_else(|_| 2);
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `Ok` and `unwrap_or_else()`
+   |
+LL -     let _val = Ok::<_, ()>(1).unwrap_or_else(|_| 2);
+LL +     let _val = 1;
+   |
+
+error: used `unwrap_or()` on `Ok` value
+  --> tests/ui/unnecessary_literal_unwrap.rs:119:5
+   |
+LL |     Ok::<_, ()>(1).unwrap_or(2);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `Ok` and `unwrap_or()`
+   |
+LL -     Ok::<_, ()>(1).unwrap_or(2);
+LL +     1;
+   |
+
+error: used `unwrap_or_default()` on `Ok` value
+  --> tests/ui/unnecessary_literal_unwrap.rs:121:5
+   |
+LL |     Ok::<_, ()>(1).unwrap_or_default();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `Ok` and `unwrap_or_default()`
+   |
+LL -     Ok::<_, ()>(1).unwrap_or_default();
+LL +     1;
+   |
+
+error: used `unwrap_or_else()` on `Ok` value
+  --> tests/ui/unnecessary_literal_unwrap.rs:123:5
+   |
+LL |     Ok::<_, ()>(1).unwrap_or_else(|_| 2);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `Ok` and `unwrap_or_else()`
+   |
+LL -     Ok::<_, ()>(1).unwrap_or_else(|_| 2);
+LL +     1;
+   |
+
+error: used `unwrap_unchecked()` on `Some` value
+  --> tests/ui/unnecessary_literal_unwrap.rs:138:22
+   |
+LL |     let _ = unsafe { Some(1).unwrap_unchecked() };
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `Some` and `unwrap_unchecked()`
+   |
+LL -     let _ = unsafe { Some(1).unwrap_unchecked() };
+LL +     let _ = 1;
+   |
+
+error: used `unwrap_unchecked()` on `Some` value
+  --> tests/ui/unnecessary_literal_unwrap.rs:140:22
+   |
+LL |     let _ = unsafe { Some(1).unwrap_unchecked() + *(&1 as *const i32) }; // needs to keep the unsafe block
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `Some` and `unwrap_unchecked()`
+   |
+LL -     let _ = unsafe { Some(1).unwrap_unchecked() + *(&1 as *const i32) }; // needs to keep the unsafe block
+LL +     let _ = unsafe { 1 + *(&1 as *const i32) }; // needs to keep the unsafe block
+   |
+
+error: used `unwrap_unchecked()` on `Some` value
+  --> tests/ui/unnecessary_literal_unwrap.rs:143:22
+   |
+LL |     let _ = unsafe { Some(1).unwrap_unchecked() } + 1;
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `Some` and `unwrap_unchecked()`
+   |
+LL -     let _ = unsafe { Some(1).unwrap_unchecked() } + 1;
+LL +     let _ = 1 + 1;
+   |
+
+error: used `unwrap_unchecked()` on `Ok` value
+  --> tests/ui/unnecessary_literal_unwrap.rs:145:22
+   |
+LL |     let _ = unsafe { Ok::<_, ()>(1).unwrap_unchecked() };
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `Ok` and `unwrap_unchecked()`
+   |
+LL -     let _ = unsafe { Ok::<_, ()>(1).unwrap_unchecked() };
+LL +     let _ = 1;
+   |
+
+error: used `unwrap_unchecked()` on `Ok` value
+  --> tests/ui/unnecessary_literal_unwrap.rs:147:22
+   |
+LL |     let _ = unsafe { Ok::<_, ()>(1).unwrap_unchecked() + *(&1 as *const i32) };
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `Ok` and `unwrap_unchecked()`
+   |
+LL -     let _ = unsafe { Ok::<_, ()>(1).unwrap_unchecked() + *(&1 as *const i32) };
+LL +     let _ = unsafe { 1 + *(&1 as *const i32) };
+   |
+
+error: used `unwrap_unchecked()` on `Ok` value
+  --> tests/ui/unnecessary_literal_unwrap.rs:149:22
+   |
+LL |     let _ = unsafe { Ok::<_, ()>(1).unwrap_unchecked() } + 1;
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `Ok` and `unwrap_unchecked()`
+   |
+LL -     let _ = unsafe { Ok::<_, ()>(1).unwrap_unchecked() } + 1;
+LL +     let _ = 1 + 1;
+   |
+
+error: used `unwrap_err_unchecked()` on `Err` value
+  --> tests/ui/unnecessary_literal_unwrap.rs:151:22
+   |
+LL |     let _ = unsafe { Err::<(), i32>(123).unwrap_err_unchecked() };
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `Err` and `unwrap_err_unchecked()`
+   |
+LL -     let _ = unsafe { Err::<(), i32>(123).unwrap_err_unchecked() };
+LL +     let _ = 123;
+   |
+
+error: aborting due to 53 previous errors
+

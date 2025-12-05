@@ -1,0 +1,70 @@
+error[E0261]: use of undeclared lifetime name `'unpinned`
+  --> $DIR/ice-cast-type-with-error-124848.rs:7:32
+   |
+LL | struct MyType<'a>(Cell<Option<&'unpinned mut MyType<'a>>>, Pin);
+   |                                ^^^^^^^^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'unpinned` here
+   |
+LL | struct MyType<'unpinned, 'a>(Cell<Option<&'unpinned mut MyType<'a>>>, Pin);
+   |               ++++++++++
+
+error[E0261]: use of undeclared lifetime name `'a`
+  --> $DIR/ice-cast-type-with-error-124848.rs:14:53
+   |
+LL |     let bad_addr = &unpinned as *const Cell<Option<&'a mut MyType<'a>>> as usize;
+   |                                                     ^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'a` here
+   |
+LL | fn main<'a>() {
+   |        ++++
+
+error[E0261]: use of undeclared lifetime name `'a`
+  --> $DIR/ice-cast-type-with-error-124848.rs:14:67
+   |
+LL |     let bad_addr = &unpinned as *const Cell<Option<&'a mut MyType<'a>>> as usize;
+   |                                                                   ^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'a` here
+   |
+LL | fn main<'a>() {
+   |        ++++
+
+error[E0425]: cannot find type `Pin` in this scope
+  --> $DIR/ice-cast-type-with-error-124848.rs:7:60
+   |
+LL | struct MyType<'a>(Cell<Option<&'unpinned mut MyType<'a>>>, Pin);
+   |                                                            ^^^ not found in this scope
+   |
+help: consider importing this struct
+   |
+LL + use std::pin::Pin;
+   |
+
+error[E0061]: this struct takes 2 arguments but 1 argument was supplied
+  --> $DIR/ice-cast-type-with-error-124848.rs:12:24
+   |
+LL |     let mut unpinned = MyType(Cell::new(None));
+   |                        ^^^^^^----------------- argument #2 is missing
+   |
+note: tuple struct defined here
+  --> $DIR/ice-cast-type-with-error-124848.rs:7:8
+   |
+LL | struct MyType<'a>(Cell<Option<&'unpinned mut MyType<'a>>>, Pin);
+   |        ^^^^^^
+help: provide the argument
+   |
+LL |     let mut unpinned = MyType(Cell::new(None), /* value */);
+   |                                              +++++++++++++
+
+error[E0606]: casting `&MyType<'_>` as `*const Cell<Option<&mut MyType<'_>>>` is invalid
+  --> $DIR/ice-cast-type-with-error-124848.rs:14:20
+   |
+LL |     let bad_addr = &unpinned as *const Cell<Option<&'a mut MyType<'a>>> as usize;
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0061, E0261, E0425, E0606.
+For more information about an error, try `rustc --explain E0061`.

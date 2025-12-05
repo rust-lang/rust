@@ -1,0 +1,9 @@
+error[E0277]: the trait bound `{closure@$DIR/call.rs:7:14: 7:22}: [const] Fn()` is not satisfied
+  --> $DIR/call.rs:7:13
+   |
+LL |     assert!((const || true)());
+   |             ^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

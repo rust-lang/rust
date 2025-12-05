@@ -1,0 +1,11 @@
+warning: this lint expectation is unfulfilled
+  --> $DIR/expect_with_reason.rs:5:11
+   |
+LL | #![expect(unused_variables, reason = "<This should fail and display this reason>")]
+   |           ^^^^^^^^^^^^^^^^
+   |
+   = note: <This should fail and display this reason>
+   = note: `#[warn(unfulfilled_lint_expectations)]` on by default
+
+warning: 1 warning emitted
+

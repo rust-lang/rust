@@ -1,0 +1,71 @@
+error: usage of `bool::then` in `filter_map`
+  --> tests/ui/filter_map_bool_then.rs:19:22
+   |
+LL |     v.clone().iter().filter_map(|i| (i % 2 == 0).then(|| i + 1));
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `filter` then `map` instead: `filter(|&i| (i % 2 == 0)).map(|i| i + 1)`
+   |
+   = note: `-D clippy::filter-map-bool-then` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::filter_map_bool_then)]`
+
+error: usage of `bool::then` in `filter_map`
+  --> tests/ui/filter_map_bool_then.rs:21:27
+   |
+LL |     v.clone().into_iter().filter_map(|i| (i % 2 == 0).then(|| i + 1));
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `filter` then `map` instead: `filter(|&i| (i % 2 == 0)).map(|i| i + 1)`
+
+error: usage of `bool::then` in `filter_map`
+  --> tests/ui/filter_map_bool_then.rs:25:10
+   |
+LL |         .filter_map(|i| -> Option<_> { (i % 2 == 0).then(|| i + 1) });
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `filter` then `map` instead: `filter(|&i| (i % 2 == 0)).map(|i| i + 1)`
+
+error: usage of `bool::then` in `filter_map`
+  --> tests/ui/filter_map_bool_then.rs:30:10
+   |
+LL |         .filter_map(|i| (i % 2 == 0).then(|| i + 1));
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `filter` then `map` instead: `filter(|&i| (i % 2 == 0)).map(|i| i + 1)`
+
+error: usage of `bool::then` in `filter_map`
+  --> tests/ui/filter_map_bool_then.rs:35:10
+   |
+LL |         .filter_map(|i| (i.clone() % 2 == 0).then(|| i + 1));
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `filter` then `map` instead: `filter(|&i| (i.clone() % 2 == 0)).map(|i| i + 1)`
+
+error: usage of `bool::then` in `filter_map`
+  --> tests/ui/filter_map_bool_then.rs:42:22
+   |
+LL |     v.clone().iter().filter_map(|i| (i == &NonCopy).then(|| i));
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `filter` then `map` instead: `filter(|&i| (i == &NonCopy)).map(|i| i)`
+
+error: usage of `bool::then` in `filter_map`
+  --> tests/ui/filter_map_bool_then.rs:67:50
+   |
+LL |     let _: Vec<usize> = bools.iter().enumerate().filter_map(|(i, b)| b.then(|| i)).collect();
+   |                                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `filter` then `map` instead: `filter(|&(i, b)| *b).map(|(i, b)| i)`
+
+error: usage of `bool::then` in `filter_map`
+  --> tests/ui/filter_map_bool_then.rs:72:50
+   |
+LL |     let _: Vec<usize> = bools.iter().enumerate().filter_map(|(i, b)| b.then(|| i)).collect();
+   |                                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `filter` then `map` instead: `filter(|&(i, b)| ***b).map(|(i, b)| i)`
+
+error: usage of `bool::then` in `filter_map`
+  --> tests/ui/filter_map_bool_then.rs:77:50
+   |
+LL |     let _: Vec<usize> = bools.iter().enumerate().filter_map(|(i, b)| b.then(|| i)).collect();
+   |                                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `filter` then `map` instead: `filter(|&(i, b)| **b).map(|(i, b)| i)`
+
+error: usage of `bool::then` in `filter_map`
+  --> tests/ui/filter_map_bool_then.rs:89:50
+   |
+LL |     let _: Vec<usize> = bools.iter().enumerate().filter_map(|(i, b)| b.then(|| i)).collect();
+   |                                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `filter` then `map` instead: `filter(|&(i, b)| ****b).map(|(i, b)| i)`
+
+error: usage of `bool::then` in `filter_map`
+  --> tests/ui/filter_map_bool_then.rs:110:10
+   |
+LL |         .filter_map(|(t, s, i)| matches!(t, MyEnum::A if s.starts_with("bar")).then(|| foo!(x)));
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `filter` then `map` instead: `filter(|&(t, s, i)| matches!(t, MyEnum::A if s.starts_with("bar"))).map(|(t, s, i)| foo!(x))`
+
+error: aborting due to 11 previous errors
+

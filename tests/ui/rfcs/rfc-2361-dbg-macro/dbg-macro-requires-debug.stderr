@@ -1,0 +1,17 @@
+error[E0277]: `NotDebug` doesn't implement `Debug`
+  --> $DIR/dbg-macro-requires-debug.rs:9:23
+   |
+LL |     let _: NotDebug = dbg!(NotDebug);
+   |                       ^^^^^^^^^^^^^^ the trait `Debug` is not implemented for `NotDebug`
+   |
+   = note: add `#[derive(Debug)]` to `NotDebug` or manually `impl Debug for NotDebug`
+   = note: this error originates in the macro `dbg` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: consider annotating `NotDebug` with `#[derive(Debug)]`
+   |
+LL + #[derive(Debug)]
+LL | struct NotDebug;
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

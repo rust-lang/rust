@@ -1,0 +1,47 @@
+error[E0433]: failed to resolve: could not find `inner` in `type_ns`
+  --> $DIR/prelude-order.rs:62:12
+   |
+LL | #[type_ns::inner]
+   |            ^^^^^ could not find `inner` in `type_ns`
+
+error[E0433]: failed to resolve: could not find `inner` in `usize`
+  --> $DIR/prelude-order.rs:74:10
+   |
+LL | #[usize::inner]
+   |          ^^^^^ could not find `inner` in `usize`
+
+error[E0573]: expected type, found crate `Option`
+  --> $DIR/prelude-order.rs:80:12
+   |
+LL | fn e2() -> Option<i32> { None }
+   |            ^^^^^^^^^^^ not a type
+   |
+help: consider importing this enum instead
+   |
+LL + use std::option::Option;
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/prelude-order.rs:83:1
+   |
+LL | #[test]
+   | ^^^^^^^- help: try adding a return type: `-> &'static str`
+   | |
+   | expected `()`, found `&str`
+   |
+   = note: this error originates in the attribute macro `test` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0308]: mismatched types
+  --> $DIR/prelude-order.rs:87:1
+   |
+LL | #[global_allocator]
+   | ^^^^^^^^^^^^^^^^^^^- help: try adding a return type: `-> &'static str`
+   | |
+   | expected `()`, found `&str`
+   |
+   = note: this error originates in the attribute macro `global_allocator` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0308, E0433, E0573.
+For more information about an error, try `rustc --explain E0308`.

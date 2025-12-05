@@ -1,0 +1,37 @@
+error[E0283]: type annotations needed for `Foo<i32, &str, _, _>`
+  --> $DIR/erase-type-params-in-label.rs:2:9
+   |
+LL |     let foo = foo(1, "");
+   |         ^^^   ---------- type must be known at this point
+   |
+   = note: cannot satisfy `_: Default`
+note: required by a bound in `foo`
+  --> $DIR/erase-type-params-in-label.rs:25:17
+   |
+LL | fn foo<T, K, W: Default, Z: Default>(t: T, k: K) -> Foo<T, K, W, Z> {
+   |                 ^^^^^^^ required by this bound in `foo`
+help: consider giving `foo` an explicit type, where the type for type parameter `W` is specified
+   |
+LL |     let foo: Foo<_, &_, W, Z> = foo(1, "");
+   |            ++++++++++++++++++
+
+error[E0283]: type annotations needed for `Bar<i32, &str, _>`
+  --> $DIR/erase-type-params-in-label.rs:5:9
+   |
+LL |     let bar = bar(1, "");
+   |         ^^^   ---------- type must be known at this point
+   |
+   = note: cannot satisfy `_: Default`
+note: required by a bound in `bar`
+  --> $DIR/erase-type-params-in-label.rs:14:17
+   |
+LL | fn bar<T, K, Z: Default>(t: T, k: K) -> Bar<T, K, Z> {
+   |                 ^^^^^^^ required by this bound in `bar`
+help: consider giving `bar` an explicit type, where the type for type parameter `Z` is specified
+   |
+LL |     let bar: Bar<_, &_, Z> = bar(1, "");
+   |            +++++++++++++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0283`.

@@ -1,0 +1,45 @@
+// MIR for `checked_shl` after PreCodegen
+
+fn checked_shl(_1: u32, _2: u32) -> Option<u32> {
+    debug x => _1;
+    debug rhs => _2;
+    let mut _0: std::option::Option<u32>;
+    scope 1 (inlined core::num::<impl u32>::checked_shl) {
+        let mut _3: bool;
+        let mut _4: u32;
+        scope 2 (inlined #[track_caller] core::num::<impl u32>::unchecked_shl) {
+            scope 3 (inlined core::ub_checks::check_language_ub) {
+                scope 4 (inlined core::ub_checks::check_language_ub::runtime) {
+                }
+            }
+        }
+    }
+
+    bb0: {
+        StorageLive(_3);
+        _3 = Lt(copy _2, const core::num::<impl u32>::BITS);
+        switchInt(move _3) -> [0: bb1, otherwise: bb2];
+    }
+
+    bb1: {
+        _0 = const Option::<u32>::None;
+        goto -> bb3;
+    }
+
+    bb2: {
+        StorageLive(_4);
+        _4 = ShlUnchecked(copy _1, copy _2);
+        _0 = Option::<u32>::Some(move _4);
+        StorageDead(_4);
+        goto -> bb3;
+    }
+
+    bb3: {
+        StorageDead(_3);
+        return;
+    }
+}
+
+ALLOC0 (size: 8, align: 4) {
+    00 00 00 00 __ __ __ __                         │ ....░░░░
+}

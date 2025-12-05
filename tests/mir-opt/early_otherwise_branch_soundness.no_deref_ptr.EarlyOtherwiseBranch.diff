@@ -1,0 +1,51 @@
+- // MIR for `no_deref_ptr` before EarlyOtherwiseBranch
++ // MIR for `no_deref_ptr` after EarlyOtherwiseBranch
+  
+  fn no_deref_ptr(_1: Option<i32>, _2: *const Option<i32>) -> i32 {
+      debug a => _1;
+      debug b => _2;
+      let mut _0: i32;
+      let mut _3: isize;
+      let mut _4: isize;
+      let _5: i32;
+      scope 1 {
+          debug v => _5;
+      }
+  
+      bb0: {
+          _3 = discriminant(_1);
+          switchInt(move _3) -> [1: bb2, 0: bb1, otherwise: bb6];
+      }
+  
+      bb1: {
+          _0 = const 0_i32;
+          goto -> bb5;
+      }
+  
+      bb2: {
+          _4 = discriminant((*_2));
+          switchInt(move _4) -> [1: bb4, 0: bb3, otherwise: bb6];
+      }
+  
+      bb3: {
+          _0 = const 0_i32;
+          goto -> bb5;
+      }
+  
+      bb4: {
+          StorageLive(_5);
+          _5 = copy (((*_2) as Some).0: i32);
+          _0 = copy _5;
+          StorageDead(_5);
+          goto -> bb5;
+      }
+  
+      bb5: {
+          return;
+      }
+  
+      bb6: {
+          unreachable;
+      }
+  }
+  

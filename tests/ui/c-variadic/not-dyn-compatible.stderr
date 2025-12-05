@@ -1,0 +1,21 @@
+error[E0038]: the trait `Trait` is not dyn compatible
+  --> $DIR/not-dyn-compatible.rs:27:30
+   |
+LL |         let dyn_object: &dyn Trait = &Struct(64);
+   |                              ^^^^^ `Trait` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/not-dyn-compatible.rs:14:26
+   |
+LL | trait Trait {
+   |       ----- this trait is not dyn compatible...
+...
+LL |     unsafe extern "C" fn dyn_method_ref(&self, mut ap: ...) -> u64 {
+   |                          ^^^^^^^^^^^^^^ ...because method `dyn_method_ref` is C-variadic
+   = help: consider moving `dyn_method_ref` to another trait
+   = help: only type `Struct` implements `Trait`; consider using it directly instead.
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0038`.

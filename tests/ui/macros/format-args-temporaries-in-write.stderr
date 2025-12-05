@@ -1,0 +1,35 @@
+error[E0597]: `mutex` does not live long enough
+  --> $DIR/format-args-temporaries-in-write.rs:41:27
+   |
+LL |         let mutex = Mutex;
+   |             ----- binding `mutex` declared here
+LL |         write!(Out, "{}", mutex.lock()) /* no semicolon */
+   |                           ^^^^^-------
+   |                           |
+   |                           borrowed value does not live long enough
+   |                           a temporary with access to the borrow is created here ...
+LL |
+LL |     };
+   |     -- ... and the borrow might be used here, when that temporary is dropped and runs the `Drop` code for type `MutexGuard`
+   |     |
+   |     `mutex` dropped here while still borrowed
+
+error[E0597]: `mutex` does not live long enough
+  --> $DIR/format-args-temporaries-in-write.rs:47:29
+   |
+LL |         let mutex = Mutex;
+   |             ----- binding `mutex` declared here
+LL |         writeln!(Out, "{}", mutex.lock()) /* no semicolon */
+   |                             ^^^^^-------
+   |                             |
+   |                             borrowed value does not live long enough
+   |                             a temporary with access to the borrow is created here ...
+LL |
+LL |     };
+   |     -- ... and the borrow might be used here, when that temporary is dropped and runs the `Drop` code for type `MutexGuard`
+   |     |
+   |     `mutex` dropped here while still borrowed
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0597`.

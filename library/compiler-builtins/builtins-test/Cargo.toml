@@ -1,0 +1,99 @@
+[package]
+name = "builtins-test"
+version = "0.1.0"
+authors = ["Alex Crichton <alex@alexcrichton.com>"]
+edition = "2024"
+publish = false
+license = "MIT AND Apache-2.0 WITH LLVM-exception AND (MIT OR Apache-2.0)"
+
+[dependencies]
+# For fuzzing tests we want a deterministic seedable RNG. We also eliminate potential
+# problems with system RNGs on the variety of platforms this crate is tested on.
+# `xoshiro128**` is used for its quality, size, and speed at generating `u32` shift amounts.
+rand_xoshiro = "0.7"
+# To compare float builtins against
+rustc_apfloat = "0.2.3"
+# Really a dev dependency, but dev dependencies can't be optional
+iai-callgrind = { version = "0.15.2", optional = true }
+
+[dependencies.compiler_builtins]
+path = "../builtins-shim"
+default-features = false
+features = ["unstable-public-internals"]
+
+[dev-dependencies]
+criterion = { version = "0.6.0", default-features = false, features = ["cargo_bench_support"] }
+paste = "1.0.15"
+
+[target.'cfg(all(target_arch = "arm", not(any(target_env = "gnu", target_env = "musl")), target_os = "linux"))'.dev-dependencies]
+test = { git = "https://github.com/japaric/utest" }
+utest-cortex-m-qemu = { default-features = false, git = "https://github.com/japaric/utest" }
+utest-macros = { git = "https://github.com/japaric/utest" }
+
+[features]
+default = ["mangled-names"]
+c = ["compiler_builtins/c"]
+no-asm = ["compiler_builtins/no-asm"]
+no-f16-f128 = ["compiler_builtins/no-f16-f128"]
+mem = ["compiler_builtins/mem"]
+mangled-names = ["compiler_builtins/mangled-names"]
+# Skip tests that rely on f128 symbols being available on the system
+no-sys-f128 = ["no-sys-f128-int-convert", "no-sys-f16-f128-convert"]
+# Some platforms have some f128 functions but everything except integer conversions
+no-sys-f128-int-convert = []
+no-sys-f16-f128-convert = []
+no-sys-f16-f64-convert = []
+# Skip tests that rely on f16 symbols being available on the system
+no-sys-f16 = ["no-sys-f16-f64-convert"]
+
+# Enable icount benchmarks (requires iai-callgrind and valgrind)
+icount = ["dep:iai-callgrind"]
+
+# Enable report generation without bringing in more dependencies by default
+benchmarking-reports = ["criterion/plotters", "criterion/html_reports"]
+
+# NOTE: benchmarks must be run with `--no-default-features` or with
+# `-p builtins-test`, otherwise the default `compiler-builtins` feature
+# of the `compiler_builtins` crate gets activated, resulting in linker
+# errors.
+
+[[bench]]
+name = "float_add"
+harness = false
+
+[[bench]]
+name = "float_sub"
+harness = false
+
+[[bench]]
+name = "float_mul"
+harness = false
+
+[[bench]]
+name = "float_div"
+harness = false
+
+[[bench]]
+name = "float_cmp"
+harness = false
+
+[[bench]]
+name = "float_conv"
+harness = false
+
+[[bench]]
+name = "float_extend"
+harness = false
+
+[[bench]]
+name = "float_trunc"
+harness = false
+
+[[bench]]
+name = "float_pow"
+harness = false
+
+[[bench]]
+name = "mem_icount"
+harness = false
+required-features = ["icount"]

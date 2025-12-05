@@ -1,0 +1,12 @@
+error: cannot find macro `printlx` in this scope
+  --> $DIR/macro-name-typo.rs:2:5
+   |
+LL |     printlx!("oh noes!");
+   |     ^^^^^^^ help: a macro with a similar name exists: `println`
+   |
+  --> $SRC_DIR/std/src/macros.rs:LL:COL
+   |
+   = note: similarly named macro `println` defined here
+
+error: aborting due to 1 previous error
+

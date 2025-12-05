@@ -1,0 +1,20 @@
+error: Undefined Behavior: accessing memory based on pointer with alignment ALIGN, but alignment ALIGN is required
+  --> tests/fail/unaligned_pointers/field_requires_parent_struct_alignment2.rs:LL:CC
+   |
+LL |     unsafe { (*x).packed.x }
+   |              ^^^^^^^^^^^^^ Undefined Behavior occurred here
+   |
+   = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
+   = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
+   = note: BACKTRACE:
+   = note: inside `foo` at tests/fail/unaligned_pointers/field_requires_parent_struct_alignment2.rs:LL:CC
+note: inside `main`
+  --> tests/fail/unaligned_pointers/field_requires_parent_struct_alignment2.rs:LL:CC
+   |
+LL |         foo(odd_ptr.cast());
+   |         ^^^^^^^^^^^^^^^^^^^
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to 1 previous error
+

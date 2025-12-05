@@ -1,0 +1,9 @@
+error[E0599]: no associated item named `BYTES` found for type `usize` in the current scope
+  --> $DIR/issue-28586.rs:4:26
+   |
+LL | impl Foo for [u8; usize::BYTES] {}
+   |                          ^^^^^ associated item not found in `usize`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0599`.

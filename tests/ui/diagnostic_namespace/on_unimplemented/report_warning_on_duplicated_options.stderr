@@ -1,0 +1,67 @@
+warning: `message` is ignored due to previous definition of `message`
+  --> $DIR/report_warning_on_duplicated_options.rs:8:5
+   |
+LL |     message = "first message",
+   |     ------------------------- `message` is first declared here
+...
+LL |     message = "second message",
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ `message` is already declared here
+   |
+   = note: `#[warn(malformed_diagnostic_attributes)]` (part of `#[warn(unknown_or_malformed_diagnostic_attributes)]`) on by default
+
+warning: `label` is ignored due to previous definition of `label`
+  --> $DIR/report_warning_on_duplicated_options.rs:11:5
+   |
+LL |     label = "first label",
+   |     --------------------- `label` is first declared here
+...
+LL |     label = "second label",
+   |     ^^^^^^^^^^^^^^^^^^^^^^ `label` is already declared here
+
+warning: `message` is ignored due to previous definition of `message`
+  --> $DIR/report_warning_on_duplicated_options.rs:8:5
+   |
+LL |     message = "first message",
+   |     ------------------------- `message` is first declared here
+...
+LL |     message = "second message",
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ `message` is already declared here
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+warning: `label` is ignored due to previous definition of `label`
+  --> $DIR/report_warning_on_duplicated_options.rs:11:5
+   |
+LL |     label = "first label",
+   |     --------------------- `label` is first declared here
+...
+LL |     label = "second label",
+   |     ^^^^^^^^^^^^^^^^^^^^^^ `label` is already declared here
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0277]: first message
+  --> $DIR/report_warning_on_duplicated_options.rs:22:15
+   |
+LL |     takes_foo(());
+   |     --------- ^^ first label
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = help: the trait `Foo` is not implemented for `()`
+   = note: custom note
+   = note: second note
+help: this trait has no implementations, consider adding one
+  --> $DIR/report_warning_on_duplicated_options.rs:16:1
+   |
+LL | trait Foo {}
+   | ^^^^^^^^^
+note: required by a bound in `takes_foo`
+  --> $DIR/report_warning_on_duplicated_options.rs:19:22
+   |
+LL | fn takes_foo(_: impl Foo) {}
+   |                      ^^^ required by this bound in `takes_foo`
+
+error: aborting due to 1 previous error; 4 warnings emitted
+
+For more information about this error, try `rustc --explain E0277`.

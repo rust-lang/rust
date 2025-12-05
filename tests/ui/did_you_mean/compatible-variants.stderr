@@ -1,0 +1,226 @@
+error[E0308]: mismatched types
+  --> $DIR/compatible-variants.rs:13:5
+   |
+LL |   fn a() -> Option<()> {
+   |             ---------- expected `Option<()>` because of return type
+LL | /     while false {
+LL | |
+LL | |         f();
+LL | |     }
+   | |_____^ expected `Option<()>`, found `()`
+   |
+   = note:   expected enum `Option<()>`
+           found unit type `()`
+   = note: `while` loops evaluate to unit type `()`
+help: try adding an expression at the end of the block
+   |
+LL ~     }
+LL +     None
+   |
+LL ~     }
+LL +     Some(())
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/compatible-variants.rs:21:5
+   |
+LL | fn b() -> Result<(), ()> {
+   |           -------------- expected `Result<(), ()>` because of return type
+LL |     f()
+   |     ^^^ expected `Result<(), ()>`, found `()`
+   |
+   = note:   expected enum `Result<(), ()>`
+           found unit type `()`
+help: try adding an expression at the end of the block
+   |
+LL ~     f();
+LL +     Ok(())
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/compatible-variants.rs:27:5
+   |
+LL |   fn c() -> Option<()> {
+   |             ---------- expected `Option<()>` because of return type
+LL | /     for _ in [1, 2] {
+LL | |
+LL | |         f();
+LL | |     }
+   | |_____^ expected `Option<()>`, found `()`
+   |
+   = note:   expected enum `Option<()>`
+           found unit type `()`
+   = note: `for` loops evaluate to unit type `()`
+help: try adding an expression at the end of the block
+   |
+LL ~     }
+LL +     None
+   |
+LL ~     }
+LL +     Some(())
+   |
+
+error[E0308]: `?` operator has incompatible types
+  --> $DIR/compatible-variants.rs:35:5
+   |
+LL | fn d() -> Option<()> {
+   |           ---------- expected `Option<()>` because of return type
+LL |     c()?
+   |     ^^^^ expected `Option<()>`, found `()`
+   |
+   = note: `?` operator cannot convert from `()` to `Option<()>`
+   = note:   expected enum `Option<()>`
+           found unit type `()`
+help: try removing this `?`
+   |
+LL -     c()?
+LL +     c()
+   |
+help: try adding an expression at the end of the block
+   |
+LL ~     c()?;
+LL +     None
+   |
+LL ~     c()?;
+LL +     Some(())
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/compatible-variants.rs:42:25
+   |
+LL |     let _: Option<()> = while false {};
+   |            ----------   ^^^^^^^^^^^^^^ expected `Option<()>`, found `()`
+   |            |
+   |            expected due to this
+   |
+   = note:   expected enum `Option<()>`
+           found unit type `()`
+help: try wrapping the expression in `Some`
+   |
+LL |     let _: Option<()> = Some(while false {});
+   |                         +++++              +
+
+error[E0308]: mismatched types
+  --> $DIR/compatible-variants.rs:46:9
+   |
+LL |         while false {}
+   |         ^^^^^^^^^^^^^^ expected `Option<()>`, found `()`
+   |
+   = note:   expected enum `Option<()>`
+           found unit type `()`
+   = note: `while` loops evaluate to unit type `()`
+help: try adding an expression at the end of the block
+   |
+LL ~         while false {}
+LL +         None
+   |
+LL ~         while false {}
+LL +         Some(())
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/compatible-variants.rs:50:31
+   |
+LL |     let _: Result<i32, i32> = 1;
+   |            ----------------   ^ expected `Result<i32, i32>`, found integer
+   |            |
+   |            expected due to this
+   |
+   = note: expected enum `Result<i32, i32>`
+              found type `{integer}`
+help: try wrapping the expression in a variant of `Result`
+   |
+LL |     let _: Result<i32, i32> = Ok(1);
+   |                               +++ +
+LL |     let _: Result<i32, i32> = Err(1);
+   |                               ++++ +
+
+error[E0308]: mismatched types
+  --> $DIR/compatible-variants.rs:53:26
+   |
+LL |     let _: Option<i32> = 1;
+   |            -----------   ^ expected `Option<i32>`, found integer
+   |            |
+   |            expected due to this
+   |
+   = note: expected enum `Option<i32>`
+              found type `{integer}`
+help: try wrapping the expression in `Some`
+   |
+LL |     let _: Option<i32> = Some(1);
+   |                          +++++ +
+
+error[E0308]: mismatched types
+  --> $DIR/compatible-variants.rs:56:28
+   |
+LL |     let _: Hey<i32, i32> = 1;
+   |            -------------   ^ expected `Hey<i32, i32>`, found integer
+   |            |
+   |            expected due to this
+   |
+   = note: expected enum `Hey<i32, i32>`
+              found type `{integer}`
+help: try wrapping the expression in a variant of `Hey`
+   |
+LL |     let _: Hey<i32, i32> = Hey::A(1);
+   |                            +++++++ +
+LL |     let _: Hey<i32, i32> = Hey::B(1);
+   |                            +++++++ +
+
+error[E0308]: mismatched types
+  --> $DIR/compatible-variants.rs:59:29
+   |
+LL |     let _: Hey<i32, bool> = false;
+   |            --------------   ^^^^^ expected `Hey<i32, bool>`, found `bool`
+   |            |
+   |            expected due to this
+   |
+   = note: expected enum `Hey<i32, bool>`
+              found type `bool`
+help: try wrapping the expression in `Hey::B`
+   |
+LL |     let _: Hey<i32, bool> = Hey::B(false);
+   |                             +++++++     +
+
+error[E0308]: mismatched types
+  --> $DIR/compatible-variants.rs:63:19
+   |
+LL |     let _ = Foo { bar };
+   |                   ^^^ expected `Option<i32>`, found `i32`
+   |
+   = note: expected enum `Option<i32>`
+              found type `i32`
+help: try wrapping the expression in `Some`
+   |
+LL |     let _ = Foo { bar: Some(bar) };
+   |                   ++++++++++   +
+
+error[E0308]: mismatched types
+  --> $DIR/compatible-variants.rs:80:16
+   |
+LL |     let a: A = B::Fst;
+   |            -   ^^^^^^ expected `A`, found `B`
+   |            |
+   |            expected due to this
+   |
+help: try wrapping the expression in `A::B`
+   |
+LL |     let a: A = A::B { b: B::Fst };
+   |                +++++++++        +
+
+error[E0308]: mismatched types
+  --> $DIR/compatible-variants.rs:86:17
+   |
+LL |     let a: A2 = B::Fst;
+   |            --   ^^^^^^ expected `A2`, found `B`
+   |            |
+   |            expected due to this
+   |
+help: try wrapping the expression in `A2`
+   |
+LL |     let a: A2 = A2(B::Fst);
+   |                 +++      +
+
+error: aborting due to 13 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

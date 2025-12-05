@@ -1,0 +1,58 @@
+name: "Miri CI setup"
+description: "Sets up Miri CI"
+inputs:
+  toolchain_flags:
+    description: extra flags to pass to rustup-toolchain-install-master
+    required: false
+    default: ''
+runs:
+  using: "composite"
+  steps:
+      - name: Show Rust version (stable toolchain)
+        run: |
+          rustup show
+          rustc -Vv
+          cargo -V
+        shell: bash
+
+      # Cache the global cargo directory, but NOT the local `target` directory which
+      # we cannot reuse anyway when the nightly changes (and it grows quite large
+      # over time).
+      - name: Add cache for cargo
+        id: cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            # Taken from <https://doc.rust-lang.org/nightly/cargo/guide/cargo-home.html#caching-the-cargo-home-in-ci>.
+            # Cache package/registry information
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            # Cache installed binaries
+            ~/.cargo/bin
+            ~/.cargo/.crates.toml
+            ~/.cargo/.crates2.json
+          # Bump the version when something here changes that needs a cache reset.
+          key: cargo-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/Cargo.lock') }}-v1
+          restore-keys: cargo-${{ runner.os }}-${{ runner.arch }}
+
+      - name: Install the tools we need
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: cargo install -f rustup-toolchain-install-master hyperfine
+        shell: bash
+
+      - name: Install "master" toolchain
+        run: |
+          if [[ ${{ github.event_name }} == 'schedule' ]]; then
+            echo "Building against latest rustc git version"
+            git ls-remote https://github.com/rust-lang/rust/ HEAD | cut -f 1 > rust-version
+          fi
+          ./miri toolchain ${{ inputs.toolchain_flags }}
+        shell: bash
+
+      - name: Show Rust version (miri toolchain)
+        run: |
+          rustup show
+          rustc -Vv
+          cargo -V
+        shell: bash

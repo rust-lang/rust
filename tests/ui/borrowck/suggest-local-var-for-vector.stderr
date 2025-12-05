@@ -1,0 +1,24 @@
+error[E0502]: cannot borrow `vec` as immutable because it is also borrowed as mutable
+  --> $DIR/suggest-local-var-for-vector.rs:3:9
+   |
+LL |     vec[vec.len() - 1] = 123;
+   |     ----^^^-----------
+   |     |  ||
+   |     |  |immutable borrow occurs here
+   |     |  mutable borrow later used here
+   |     mutable borrow occurs here
+   |
+help: try adding a local storing this...
+  --> $DIR/suggest-local-var-for-vector.rs:3:9
+   |
+LL |     vec[vec.len() - 1] = 123;
+   |         ^^^^^^^^^
+help: ...and then using that local here
+  --> $DIR/suggest-local-var-for-vector.rs:3:8
+   |
+LL |     vec[vec.len() - 1] = 123;
+   |        ^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0502`.

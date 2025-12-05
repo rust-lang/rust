@@ -1,0 +1,19 @@
+error[E0277]: the size for values of type `Self` cannot be known at compilation time
+  --> $DIR/issue-27078.rs:3:12
+   |
+LL |     fn foo(self) -> &'static i32 {
+   |            ^^^^ doesn't have a size known at compile-time
+   |
+   = help: unsized fn params are gated as an unstable feature
+help: consider further restricting `Self`
+   |
+LL |     fn foo(self) -> &'static i32 where Self: Sized {
+   |                                  +++++++++++++++++
+help: function arguments must have a statically known size, borrowed types always have a known size
+   |
+LL |     fn foo(&self) -> &'static i32 {
+   |            +
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

@@ -1,0 +1,44 @@
+error[E0425]: cannot find value `x` in this scope
+  --> $DIR/unboxed-closures-type-mismatch-closure-from-another-scope.rs:2:21
+   |
+LL |     let x = match **x {
+   |                     ^ not found in this scope
+
+error[E0425]: cannot find value `y` in this scope
+  --> $DIR/unboxed-closures-type-mismatch-closure-from-another-scope.rs:9:26
+   |
+LL |         closure(&mut p, &y);
+   |                          ^ help: a local variable with a similar name exists: `p`
+
+error[E0308]: mismatched types
+  --> $DIR/unboxed-closures-type-mismatch-closure-from-another-scope.rs:9:17
+   |
+LL |         closure(&mut p, &y);
+   |         ------- ^^^^^^ expected `&mut &i32`, found `&mut &()`
+   |         |
+   |         arguments to this function are incorrect
+   |
+   = note: expected mutable reference `&mut &i32`
+              found mutable reference `&mut &()`
+note: closure parameter defined here
+  --> $DIR/unboxed-closures-type-mismatch-closure-from-another-scope.rs:8:39
+   |
+LL |         let mut closure = expect_sig(|p, y| *p = y);
+   |                                       ^
+
+error[E0423]: expected function, found macro `deref`
+  --> $DIR/unboxed-closures-type-mismatch-closure-from-another-scope.rs:13:5
+   |
+LL |     deref(p);
+   |     ^^^^^ not a function
+   |
+help: use the `.` operator to call the method `Deref::deref` on `&&()`
+   |
+LL -     deref(p);
+LL +     p.deref();
+   |
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0308, E0423, E0425.
+For more information about an error, try `rustc --explain E0308`.

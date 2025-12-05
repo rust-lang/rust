@@ -1,0 +1,158 @@
+#![warn(clippy::manual_filter)]
+#![allow(unused_variables, dead_code, clippy::useless_vec)]
+
+fn main() {
+    Some(0).filter(|&x| x <= 0);
+
+    Some(1).filter(|&x| x <= 0);
+
+    Some(2).filter(|&x| x <= 0);
+
+    Some(3).filter(|&x| x > 0);
+
+    let y = Some(4);
+    y.filter(|&x| x <= 0);
+
+    Some(5).filter(|&x| x > 0);
+
+    Some(6).as_ref().filter(|&x| x > &0);
+
+    let external_cond = true;
+    Some(String::new()).filter(|x| external_cond);
+
+    Some(7).filter(|&x| external_cond);
+
+    Some(8).filter(|&x| x != 0);
+
+    Some(9).filter(|&x| x > 10 && x < 100);
+
+    const fn f1() {
+        // Don't lint, `.filter` is not const
+        match Some(10) {
+            Some(x) => {
+                if x > 10 && x < 100 {
+                    Some(x)
+                } else {
+                    None
+                }
+            },
+            None => None,
+        };
+    }
+
+    #[allow(clippy::blocks_in_conditions)]
+    Some(11).filter(|&x| {
+                println!("foo");
+                x > 10 && x < 100
+            });
+
+    match Some(12) {
+        // Don't Lint, statement is lost by `.filter`
+        Some(x) => {
+            if x > 10 && x < 100 {
+                println!("foo");
+                Some(x)
+            } else {
+                None
+            }
+        },
+        None => None,
+    };
+
+    match Some(13) {
+        // Don't Lint, because of `None => Some(1)`
+        Some(x) => {
+            if x > 10 && x < 100 {
+                println!("foo");
+                Some(x)
+            } else {
+                None
+            }
+        },
+        None => Some(1),
+    };
+
+    unsafe fn f(x: u32) -> bool {
+        true
+    }
+    let _ = Some(14).filter(|&x| unsafe { f(x) });
+    let _ = Some(15).filter(|&x| unsafe { f(x) });
+
+    #[allow(clippy::redundant_pattern_matching)]
+    if let Some(_) = Some(16) {
+        Some(16)
+    } else { Some(16).filter(|&x| x % 2 == 0) };
+
+    match Some((17, 17)) {
+        // Not linted for now could be
+        Some((x, y)) => {
+            if y != x {
+                Some((x, y))
+            } else {
+                None
+            }
+        },
+        None => None,
+    };
+
+    struct NamedTuple {
+        pub x: u8,
+        pub y: (i32, u32),
+    }
+
+    match Some(NamedTuple {
+        // Not linted for now could be
+        x: 17,
+        y: (18, 19),
+    }) {
+        Some(NamedTuple { x, y }) => {
+            if y.1 != x as u32 {
+                Some(NamedTuple { x, y })
+            } else {
+                None
+            }
+        },
+        None => None,
+    };
+
+    match Some(20) {
+        // Don't Lint, because `Some(3*x)` is not `None`
+        None => None,
+        Some(x) => {
+            if x > 0 {
+                Some(3 * x)
+            } else {
+                Some(x)
+            }
+        },
+    };
+
+    // Don't lint: https://github.com/rust-lang/rust-clippy/issues/10088
+    let result = if let Some(a) = maybe_some() {
+        if let Some(b) = maybe_some() {
+            Some(a + b)
+        } else {
+            Some(a)
+        }
+    } else {
+        None
+    };
+
+    let allowed_integers = vec![3, 4, 5, 6];
+    // Don't lint, since there's a side effect in the else branch
+    match Some(21) {
+        Some(x) => {
+            if allowed_integers.contains(&x) {
+                Some(x)
+            } else {
+                println!("Invalid integer: {x:?}");
+                None
+            }
+        },
+        None => None,
+    };
+}
+
+fn maybe_some() -> Option<u32> {
+    Some(0)
+}

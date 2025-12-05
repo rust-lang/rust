@@ -1,0 +1,97 @@
+// MIR for `int_range` after PreCodegen
+
+fn int_range(_1: usize, _2: usize) -> () {
+    debug start => _1;
+    debug end => _2;
+    let mut _0: ();
+    let mut _3: std::ops::Range<usize>;
+    let mut _9: std::option::Option<usize>;
+    let _11: ();
+    let mut _12: &mut std::ops::Range<usize>;
+    scope 1 {
+        debug iter => _3;
+        let _10: usize;
+        scope 2 {
+            debug i => _10;
+        }
+        scope 4 (inlined iter::range::<impl Iterator for std::ops::Range<usize>>::next) {
+            debug self => _12;
+            scope 5 (inlined <std::ops::Range<usize> as iter::range::RangeIteratorImpl>::spec_next) {
+                debug self => _12;
+                let mut _6: bool;
+                let _7: usize;
+                let mut _8: usize;
+                let mut _13: &usize;
+                let mut _14: &usize;
+                scope 6 {
+                    debug old => _7;
+                    scope 8 (inlined <usize as Step>::forward_unchecked) {
+                        debug start => _7;
+                        debug n => const 1_usize;
+                        scope 9 (inlined #[track_caller] core::num::<impl usize>::unchecked_add) {
+                            debug self => _7;
+                            debug rhs => const 1_usize;
+                            scope 10 (inlined core::ub_checks::check_language_ub) {
+                                scope 11 (inlined core::ub_checks::check_language_ub::runtime) {
+                                }
+                            }
+                        }
+                    }
+                }
+                scope 7 (inlined std::cmp::impls::<impl PartialOrd for usize>::lt) {
+                    debug self => _13;
+                    debug other => _14;
+                    let mut _4: usize;
+                    let mut _5: usize;
+                }
+            }
+        }
+    }
+    scope 3 (inlined <std::ops::Range<usize> as IntoIterator>::into_iter) {
+        debug self => _3;
+    }
+
+    bb0: {
+        _3 = std::ops::Range::<usize> { start: copy _1, end: copy _2 };
+        goto -> bb1;
+    }
+
+    bb1: {
+        StorageLive(_9);
+        // DBG: _12 = &_3;
+        StorageLive(_6);
+        // DBG: _13 = &(_3.0: usize);
+        // DBG: _14 = &(_3.1: usize);
+        StorageLive(_4);
+        _4 = copy (_3.0: usize);
+        StorageLive(_5);
+        _5 = copy (_3.1: usize);
+        _6 = Lt(move _4, move _5);
+        StorageDead(_5);
+        StorageDead(_4);
+        switchInt(move _6) -> [0: bb2, otherwise: bb3];
+    }
+
+    bb2: {
+        StorageDead(_6);
+        StorageDead(_9);
+        return;
+    }
+
+    bb3: {
+        _7 = copy (_3.0: usize);
+        StorageLive(_8);
+        _8 = AddUnchecked(copy _7, const 1_usize);
+        (_3.0: usize) = move _8;
+        StorageDead(_8);
+        _9 = Option::<usize>::Some(copy _7);
+        StorageDead(_6);
+        _10 = copy ((_9 as Some).0: usize);
+        _11 = opaque::<usize>(move _10) -> [return: bb4, unwind continue];
+    }
+
+    bb4: {
+        StorageDead(_9);
+        goto -> bb1;
+    }
+}

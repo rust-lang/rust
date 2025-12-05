@@ -1,0 +1,343 @@
+// This test ensures that the settings menu display is working as expected and that
+// the settings page is also rendered as expected.
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
+show-text: true // needed when we check for colors below.
+// First, we check that the settings page doesn't exist.
+assert-false: "#settings"
+// We now click on the settings button.
+click: "rustdoc-toolbar .settings-menu"
+wait-for: "#settings"
+assert-css: ("#settings", {"display": "block"})
+
+// Store the line margin to compare with the settings.html later.
+store-css: (".setting-line", {"margin": setting_line_margin})
+
+// Let's close it by clicking on the same button.
+click: "rustdoc-toolbar .settings-menu"
+wait-for-css: ("#settings", {"display": "none"})
+
+// Let's check that pressing "ESCAPE" is closing it.
+click: "rustdoc-toolbar .settings-menu"
+wait-for-css: ("#settings", {"display": "block"})
+press-key: "Escape"
+wait-for-css: ("#settings", {"display": "none"})
+
+// Let's click on it when the search results are displayed.
+focus: ".search-input"
+write: "test"
+// To be SURE that the search will be run.
+press-key: 'Enter'
+wait-for: "#alternative-display #search"
+click: "rustdoc-toolbar .settings-menu"
+wait-for-css: ("#settings", {"display": "block"})
+// Ensure that the search is still displayed.
+wait-for: "#alternative-display #search"
+assert: "#main-content.hidden"
+
+// Now let's check the content of the settings menu.
+// If we are on the settings page, the menu doesn't work the same so we set
+// the theme manually.
+set-local-storage: {"rustdoc-theme": "dark", "rustdoc-use-system-theme": "false"}
+// We reload the page so the local storage settings are being used.
+reload:
+
+click: "rustdoc-toolbar .settings-menu"
+wait-for: "#settings"
+
+// We check that the "Use system theme" is disabled.
+assert-property: ("#theme-system-preference", {"checked": "false"})
+// Meaning that only the "theme" menu is showing up.
+assert: "#theme.setting-line:not(.hidden)"
+assert: "#preferred-dark-theme.setting-line.hidden"
+assert: "#preferred-light-theme.setting-line.hidden"
+
+// We check that the correct theme is selected.
+assert-property: ("#theme .setting-radio-choices #theme-dark", {"checked": "true"})
+
+// Some style checks...
+move-cursor-to: "rustdoc-toolbar .settings-menu > a"
+// First we check the "default" display for radio buttons.
+assert-css: (
+    "#theme-dark",
+    {
+        "border-color": "#999",
+        "box-shadow": "#353535 0px 0px 0px 3px inset",
+        "border-width": "2px",
+    },
+)
+assert-css: ("#theme-light", {"border-color": "#999", "box-shadow": "none"})
+// Let's start with the hover for radio buttons.
+move-cursor-to: "#theme-dark"
+assert-css: (
+    "#theme-dark",
+    {
+        "border-color": "#2196f3",
+        "box-shadow": "#353535 0px 0px 0px 3px inset",
+        "border-width": "2px",
+    },
+)
+move-cursor-to: "#theme-light"
+assert-css: (
+    "#theme-light",
+    {
+        "border-color": "#2196f3",
+        "box-shadow": "none",
+        "border-width": "2px",
+    }
+)
+move-cursor-to: "#theme-ayu"
+// Let's now check with the focus for radio buttons.
+focus: "#theme-dark"
+assert-css: (
+    "#theme-dark",
+    {
+        "border-color": "#999",
+        "box-shadow": "#353535 0px 0px 0px 3px inset, #2196f3 0px 0px 2px 2px",
+        "border-width": "2px",
+    },
+)
+focus: "#theme-light"
+assert-css: (
+    "#theme-light",
+    {
+        "border-color": "#999",
+        "box-shadow": "#2196f3 0px 0px 1px 1px",
+        "border-width": "2px",
+    },
+)
+// Now we check we both focus and hover for radio buttons.
+move-cursor-to: "#theme-dark"
+focus: "#theme-dark"
+assert-css: (
+    "#theme-dark",
+    {
+        "border-color": "#2196f3",
+        "box-shadow": "#353535 0px 0px 0px 3px inset, #2196f3 0px 0px 2px 2px",
+        "border-width": "2px",
+    },
+)
+move-cursor-to: "#theme-light"
+focus: "#theme-light"
+assert-css: (
+    "#theme-light",
+    {
+        "border-color": "#2196f3",
+        "box-shadow": "#2196f3 0px 0px 1px 1px",
+        "border-width": "2px",
+    },
+)
+// Now we check the setting-radio-name is on a different line than the label.
+compare-elements-position-near: (
+    "#theme .setting-radio-name",
+    "#theme .setting-radio-choices",
+    {"x": 1}
+)
+compare-elements-position-near-false: (
+    "#theme .setting-radio-name",
+    "#theme .setting-radio-choices",
+    {"y": 1}
+)
+// Now we check that the label positions are all on the same line.
+compare-elements-position-near: (
+    "#theme .setting-radio-choices #theme-light",
+    "#theme .setting-radio-choices #theme-dark",
+    {"y": 1}
+)
+compare-elements-position-near: (
+    "#theme .setting-radio-choices #theme-dark",
+    "#theme .setting-radio-choices #theme-ayu",
+    {"y": 1}
+)
+compare-elements-position-near: (
+    "#theme .setting-radio-choices #theme-ayu",
+    "#theme .setting-radio-choices #theme-system-preference",
+    {"y": 1}
+)
+
+// First we check the "default" display for toggles.
+assert-css: (
+    "#auto-hide-large-items",
+    {
+        "background-color": "#2196f3",
+        "border-color": "#999",
+        // 1px border when checked
+        "border-width": "1px",
+    },
+)
+assert-css: (
+    "#auto-hide-method-docs",
+    {
+        "background-color": "rgba(0, 0, 0, 0)",
+        "border-color": "#999",
+        // 2px border when unchecked
+        "border-width": "2px",
+    },
+)
+// Let's start with the hover for toggles.
+move-cursor-to: "#auto-hide-large-items"
+assert-css: (
+    "#auto-hide-large-items",
+    {
+        "background-color": "#2196f3",
+        "border-color": "#2196f3",
+        // 1px border when checked
+        "border-width": "1px",
+    },
+)
+move-cursor-to: "#auto-hide-method-docs"
+assert-css: (
+    "#auto-hide-method-docs",
+    {
+        "background-color": "rgba(0, 0, 0, 0)",
+        "border-color": "#2196f3",
+        // 2px border when unchecked
+        "border-width": "2px",
+    },
+)
+move-cursor-to: "rustdoc-toolbar .settings-menu > a"
+// Let's now check with the focus for toggles.
+focus: "#auto-hide-large-items"
+assert-css: (
+    "#auto-hide-large-items",
+    {
+        "background-color": "#2196f3",
+        "border-color": "#999",
+        "box-shadow": "#2196f3 0px 0px 1px 1px",
+        // 1px border when checked
+        "border-width": "1px",
+    },
+)
+focus: "#auto-hide-method-docs"
+assert-css: (
+    "#auto-hide-method-docs",
+    {
+        "background-color": "rgba(0, 0, 0, 0)",
+        "border-color": "#999",
+        "box-shadow": "#2196f3 0px 0px 1px 1px",
+        // 2px border when unchecked
+        "border-width": "2px",
+    },
+)
+// Now we check we both focus and hover for toggles.
+move-cursor-to: "#auto-hide-large-items"
+focus: "#auto-hide-large-items"
+assert-css: (
+    "#auto-hide-large-items",
+    {
+        "background-color": "#2196f3",
+        "border-color": "#2196f3",
+        "box-shadow": "#2196f3 0px 0px 1px 1px",
+        // 1px border when checked
+        "border-width": "1px",
+    },
+)
+move-cursor-to: "#auto-hide-method-docs"
+focus: "#auto-hide-method-docs"
+assert-css: (
+    "#auto-hide-method-docs",
+    {
+        "background-color": "rgba(0, 0, 0, 0)",
+        "border-color": "#2196f3",
+        "box-shadow": "#2196f3 0px 0px 1px 1px",
+        // 2px border when unchecked
+        "border-width": "2px",
+    },
+)
+
+// We now switch the display.
+click: "#theme-system-preference"
+// Wait for the hidden element to show up.
+wait-for: "#preferred-dark-theme.setting-line:not(.hidden)"
+assert: "#preferred-light-theme.setting-line:not(.hidden)"
+
+// We check their text as well.
+assert-text: ("#preferred-dark-theme .setting-radio-name", "Preferred dark theme")
+assert-text: ("#preferred-light-theme .setting-radio-name", "Preferred light theme")
+
+// We now check that clicking on the toggles' text is like clicking on the checkbox.
+// To test it, we use the "Disable keyboard shortcuts".
+set-local-storage: {"rustdoc-disable-shortcuts": "false"}
+click: "#disable-shortcuts"
+assert-local-storage: {"rustdoc-disable-shortcuts": "true"}
+
+// We now check that focusing a toggle and pressing Space is like clicking on it.
+assert-local-storage: {"rustdoc-disable-shortcuts": "true"}
+focus: "#disable-shortcuts"
+press-key: "Space"
+assert-local-storage: {"rustdoc-disable-shortcuts": "false"}
+focus: "#disable-shortcuts"
+press-key: "Space"
+assert-local-storage: {"rustdoc-disable-shortcuts": "true"}
+
+// Make sure that "Disable keyboard shortcuts" actually took effect.
+press-key: "Escape"
+press-key: "?"
+assert-false: "#help-button .popover"
+wait-for-css: ("rustdoc-toolbar .settings-menu .popover", {"display": "block"})
+
+// Now turn keyboard shortcuts back on, and see if they work.
+click: "#disable-shortcuts"
+assert-local-storage: {"rustdoc-disable-shortcuts": "false"}
+press-key: "Escape"
+press-key: "?"
+wait-for-css: ("rustdoc-toolbar .help-menu .popover", {"display": "block"})
+assert-css: ("rustdoc-toolbar .settings-menu .popover", {"display": "none"})
+
+// Now switch back to the settings popover, and make sure the keyboard
+// shortcut works when a check box is selected.
+click: "rustdoc-toolbar .settings-menu > a"
+wait-for-css: ("rustdoc-toolbar .settings-menu .popover", {"display": "block"})
+focus: "#auto-hide-large-items"
+press-key: "?"
+wait-for-css: ("rustdoc-toolbar .settings-menu .popover", {"display": "none"})
+wait-for-css: ("rustdoc-toolbar .help-menu .popover", {"display": "block"})
+
+// Now switch back to the settings popover, and make sure the keyboard
+// shortcut works when a check box is selected.
+click: "rustdoc-toolbar .settings-menu > a"
+wait-for-css: ("rustdoc-toolbar .settings-menu .popover", {"display": "block"})
+assert-false: "rustdoc-toolbar .help-menu .popover"
+focus: "#theme-system-preference"
+press-key: "?"
+wait-for-css: ("rustdoc-toolbar .settings-menu .popover", {"display": "none"})
+wait-for-css: ("rustdoc-toolbar .help-menu .popover", {"display": "block"})
+
+// Now we go to the settings page to check that the CSS is loaded as expected.
+go-to: "file://" + |DOC_PATH| + "/settings.html"
+wait-for: "#settings"
+assert-false: "rustdoc-toolbar .settings-menu"
+assert-css: (".setting-radio", {"cursor": "pointer"})
+
+assert-attribute-false: ("#settings", {"class": "popover"}, CONTAINS)
+compare-elements-position: (".main-heading", "#settings", ["x"])
+
+// Check that setting-line has the same margin in this mode as in the popover.
+assert-css: (".setting-line", {"margin": |setting_line_margin|})
+
+// We will check that the checkboxes size doesn't change either.
+assert-size: (
+    "#settings label > input[type='checkbox']",
+    {"width": 19, "height": 19},
+    ALL,
+)
+
+// We now check the display with JS disabled.
+assert-false: "noscript section"
+javascript: false
+reload:
+assert-css: ("noscript section", {"display": "block"})
+javascript: true
+
+// Check for the display on small screen
+show-text: true
+reload:
+set-window-size: (300, 1000)
+wait-for: "#settings"
+assert-css: (".setting-radio", {"cursor": "pointer"})
+
+// We ensure that the checkboxes size didn't change.
+assert-size: (
+    "#settings label > input[type='checkbox']",
+    {"width": 19, "height": 19},
+    ALL,
+)

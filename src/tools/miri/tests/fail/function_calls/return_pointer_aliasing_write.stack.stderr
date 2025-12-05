@@ -1,0 +1,36 @@
+error: Undefined Behavior: attempting a write access using <TAG> at ALLOC[0x0], but that tag does not exist in the borrow stack for this location
+  --> tests/fail/function_calls/return_pointer_aliasing_write.rs:LL:CC
+   |
+LL |     unsafe { ptr.write(0) };
+   |              ^^^^^^^^^^^^ this error occurs as part of an access at ALLOC[0x0..0x4]
+   |
+   = help: this indicates a potential bug in the program: it performed an invalid operation, but the Stacked Borrows rules it violated are still experimental
+   = help: see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/stacked-borrows.md for further information
+help: <TAG> was created by a SharedReadWrite retag at offsets [0x0..0x4]
+  --> tests/fail/function_calls/return_pointer_aliasing_write.rs:LL:CC
+   |
+LL | /     mir! {
+LL | |         {
+LL | |             let _x = 0;
+LL | |             let ptr = &raw mut _x;
+...  |
+LL | |     }
+   | |_____^
+help: <TAG> was later invalidated at offsets [0x0..0x4] by a Unique in-place function argument/return passing protection
+  --> tests/fail/function_calls/return_pointer_aliasing_write.rs:LL:CC
+   |
+LL |     unsafe { ptr.write(0) };
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+   = note: BACKTRACE (of the first span):
+   = note: inside `myfun` at tests/fail/function_calls/return_pointer_aliasing_write.rs:LL:CC
+note: inside `main`
+  --> tests/fail/function_calls/return_pointer_aliasing_write.rs:LL:CC
+   |
+LL |             Call(_x = myfun(ptr), ReturnTo(after_call), UnwindContinue())
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: this error originates in the macro `::core::intrinsics::mir::__internal_remove_let` which comes from the expansion of the macro `mir` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to 1 previous error
+

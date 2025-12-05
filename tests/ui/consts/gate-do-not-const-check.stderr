@@ -1,0 +1,13 @@
+error[E0658]: use of an internal attribute
+  --> $DIR/gate-do-not-const-check.rs:1:1
+   |
+LL | #[rustc_do_not_const_check]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(rustc_attrs)]` to the crate attributes to enable
+   = note: the `#[rustc_do_not_const_check]` attribute is an internal implementation detail that will never be stable
+   = note: `#[rustc_do_not_const_check]` skips const-check for this function's body
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0658`.

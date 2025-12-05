@@ -1,0 +1,35 @@
+error[E0107]: method takes 0 generic arguments but 1 generic argument was supplied
+  --> $DIR/effect_param.rs:4:9
+   |
+LL |     i8::checked_sub::<true>(42, 43);
+   |         ^^^^^^^^^^^-------- help: remove the unnecessary generics
+   |         |
+   |         expected 0 generic arguments
+
+error[E0107]: method takes 0 generic arguments but 1 generic argument was supplied
+  --> $DIR/effect_param.rs:6:9
+   |
+LL |     i8::checked_sub::<false>(42, 43);
+   |         ^^^^^^^^^^^--------- help: remove the unnecessary generics
+   |         |
+   |         expected 0 generic arguments
+
+error[E0107]: method takes 0 generic arguments but 1 generic argument was supplied
+  --> $DIR/effect_param.rs:11:9
+   |
+LL |     i8::checked_sub::<false>(42, 43);
+   |         ^^^^^^^^^^^--------- help: remove the unnecessary generics
+   |         |
+   |         expected 0 generic arguments
+
+error[E0107]: method takes 0 generic arguments but 1 generic argument was supplied
+  --> $DIR/effect_param.rs:13:9
+   |
+LL |     i8::checked_sub::<true>(42, 43);
+   |         ^^^^^^^^^^^-------- help: remove the unnecessary generics
+   |         |
+   |         expected 0 generic arguments
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0107`.

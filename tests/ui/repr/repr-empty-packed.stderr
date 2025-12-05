@@ -1,0 +1,27 @@
+error[E0517]: attribute should be applied to a struct or union
+  --> $DIR/repr-empty-packed.rs:5:8
+   |
+LL |   #[repr(packed)]
+   |          ^^^^^^
+LL | / pub enum Foo {
+LL | |     Bar,
+LL | |     Baz(i32),
+LL | | }
+   | |_- not a struct or union
+
+error: unused attribute
+  --> $DIR/repr-empty-packed.rs:4:1
+   |
+LL | #[repr()]
+   | ^^^^^^^^^ help: remove this attribute
+   |
+   = note: using `repr` with an empty list has no effect
+note: the lint level is defined here
+  --> $DIR/repr-empty-packed.rs:2:9
+   |
+LL | #![deny(unused_attributes)]
+   |         ^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0517`.

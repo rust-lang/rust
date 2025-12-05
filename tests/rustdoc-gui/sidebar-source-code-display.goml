@@ -1,0 +1,173 @@
+// This test ensures that the elements in the sidebar are displayed correctly.
+include: "utils.goml"
+javascript: false
+go-to: "file://" + |DOC_PATH| + "/src/test_docs/lib.rs.html"
+// Since the javascript is disabled, there shouldn't be a toggle.
+wait-for-css: (".sidebar", {"display": "none"})
+assert-false: "#sidebar-button"
+
+// Let's retry with javascript enabled.
+javascript: true
+reload:
+wait-for: "#src-sidebar"
+assert-css: (".src .sidebar > *", {"visibility": "hidden"})
+// Let's expand the sidebar now.
+click: "#sidebar-button"
+wait-for-css: (".src .sidebar > *", {"visibility": "visible"})
+
+// We now check that opening the sidebar and clicking a link will leave it open.
+// The behavior here on desktop is different than the behavior on mobile,
+// but since the sidebar doesn't fill the entire screen here, it makes sense to have the
+// sidebar stay resident.
+wait-for-css: (".sidebar", {"width": "300px"})
+assert-local-storage: {"rustdoc-source-sidebar-show": "true"}
+click: ".sidebar a.selected"
+go-to: "file://" + |DOC_PATH| + "/src/test_docs/lib.rs.html"
+wait-for-css: (".sidebar", {"width": "300px"})
+assert-local-storage: {"rustdoc-source-sidebar-show": "true"}
+
+// Now we check the display of the sidebar items.
+show-text: true
+
+define-function: (
+    "check-colors",
+    [
+        theme, color, color_hover, background, background_hover, background_toggle,
+    ],
+    block {
+        call-function: ("switch-theme", {"theme": |theme|})
+        wait-for-css: (".src .sidebar > *", {"visibility": "visible"})
+        assert-css: (
+            "#src-sidebar details[open] > .files a.selected",
+            {"color": |color_hover|, "background-color": |background|},
+        )
+
+        // Without hover or focus.
+        assert-css: (
+            "#src-sidebar details[open] > .files a:not(.selected)",
+            {"color": |color|, "background-color": |background_toggle|},
+        )
+        // With focus.
+        focus: "#src-sidebar details[open] > .files a:not(.selected)"
+        wait-for-css: (
+            "#src-sidebar details[open] > .files a:not(.selected):focus",
+            {"color": |color_hover|, "background-color": |background_hover|},
+        )
+        focus: ".search-input"
+        // With hover.
+        move-cursor-to: "#src-sidebar details[open] > .files a:not(.selected)"
+        assert-css: (
+            "#src-sidebar details[open] > .files a:not(.selected):hover",
+            {"color": |color_hover|, "background-color": |background_hover|},
+        )
+
+        // Without hover or focus.
+        assert-css: (
+            "#src-sidebar .dir-entry summary",
+            {"color": |color|, "background-color": |background_toggle|},
+        )
+        // With focus.
+        focus: "#src-sidebar .dir-entry summary"
+        wait-for-css: (
+            "#src-sidebar .dir-entry summary:focus",
+            {"color": |color_hover|, "background-color": |background_hover|},
+        )
+        focus: ".search-input"
+        // With hover.
+        move-cursor-to: "#src-sidebar .dir-entry summary"
+        assert-css: (
+            "#src-sidebar .dir-entry summary:hover",
+            {"color": |color_hover|, "background-color": |background_hover|},
+        )
+
+        // Without hover or focus.
+        assert-css: (
+            "#src-sidebar details[open] > .folders > details > summary",
+            {"color": |color|, "background-color": |background_toggle|},
+        )
+        // With focus.
+        focus: "#src-sidebar details[open] > .folders > details > summary"
+        wait-for-css: (
+            "#src-sidebar details[open] > .folders > details > summary:focus",
+            {"color": |color_hover|, "background-color": |background_hover|},
+        )
+        focus: ".search-input"
+        // With hover.
+        move-cursor-to: "#src-sidebar details[open] > .folders > details > summary"
+        assert-css: (
+            "#src-sidebar details[open] > .folders > details > summary:hover",
+            {"color": |color_hover|, "background-color": |background_hover|},
+        )
+    },
+)
+
+call-function: ("check-colors", {
+    "theme": "light",
+    "color": "black",
+    "color_hover": "#000",
+    "background": "#fff",
+    "background_hover": "#e0e0e0",
+    "background_toggle": "rgba(0, 0, 0, 0)",
+})
+call-function: ("check-colors", {
+    "theme": "dark",
+    "color": "#ddd",
+    "color_hover": "#ddd",
+    "background": "#333",
+    "background_hover": "#444",
+    "background_toggle": "rgba(0, 0, 0, 0)",
+})
+call-function: ("check-colors", {
+    "theme": "ayu",
+    "color": "#c5c5c5",
+    "color_hover": "#ffb44c",
+    "background": "#14191f",
+    "background_hover": "#14191f",
+    "background_toggle": "rgba(0, 0, 0, 0)",
+})
+
+// Now checking on mobile devices.
+set-window-size: (500, 700)
+reload:
+// Waiting for the sidebar to be displayed...
+wait-for-css: (".src .sidebar > *", {"visibility": "visible"})
+
+// We now check it takes the full size of the display.
+assert-property: ("body", {"clientWidth": "500", "clientHeight": "700"})
+assert-property: (".sidebar", {"clientWidth": "500", "clientHeight": "700"})
+
+// We now check that the scroll position is kept when opening the sidebar.
+click: "#sidebar-button"
+wait-for-css: (".src .sidebar > *", {"visibility": "hidden"})
+// We scroll to line 117 to change the scroll position.
+scroll-to: '//*[@id="117"]'
+store-value: (y_offset, "2567")
+assert-window-property: {"pageYOffset": |y_offset|}
+// Expanding the sidebar...
+click: "#sidebar-button"
+wait-for-css: (".sidebar", {"left": "0px"})
+click: "#sidebar-button"
+wait-for-css: (".sidebar", {"left": "-1000px"})
+// The "scrollTop" property should be the same.
+assert-window-property: {"pageYOffset": |y_offset|}
+
+// We now check that opening the sidebar and clicking a link will close it.
+// The behavior here on mobile is different than the behavior on desktop,
+// but common sense dictates that if you have a list of files that fills the entire screen, and
+// you click one of them, you probably want to actually see the file's contents, and not just
+// make it the current selection.
+set-window-size: (500, 700)
+click: "#sidebar-button"
+wait-for-css: ("#src-sidebar", {"visibility": "visible"})
+assert-local-storage: {"rustdoc-source-sidebar-show": "true"}
+click: ".sidebar a.selected"
+go-to: "file://" + |DOC_PATH| + "/src/test_docs/lib.rs.html"
+wait-for-css: ("#src-sidebar", {"visibility": "hidden"})
+assert-local-storage: {"rustdoc-source-sidebar-show": "false"}
+// Resize back to desktop size, to check that the sidebar doesn't spontaneously open.
+set-window-size: (1000, 1000)
+wait-for-css: ("#src-sidebar", {"visibility": "hidden"})
+assert-local-storage: {"rustdoc-source-sidebar-show": "false"}
+click: "#sidebar-button"
+wait-for-css: ("#src-sidebar", {"visibility": "visible"})
+assert-local-storage: {"rustdoc-source-sidebar-show": "true"}

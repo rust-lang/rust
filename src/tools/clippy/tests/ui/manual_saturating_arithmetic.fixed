@@ -1,0 +1,60 @@
+#![allow(clippy::legacy_numeric_constants, unused_imports)]
+
+fn main() {
+    let _ = 1u32.saturating_add(1);
+    //~^ manual_saturating_arithmetic
+    let _ = 1u32.saturating_add(1);
+    //~^ manual_saturating_arithmetic
+    let _ = 1u8.saturating_add(1);
+    //~^ manual_saturating_arithmetic
+    let _ = 1u128.saturating_add(1);
+    let _ = 1u32.checked_add(1).unwrap_or(1234); // ok
+    let _ = 1u8.checked_add(1).unwrap_or(0); // ok
+    let _ = 1u32.saturating_mul(1);
+    //~^ manual_saturating_arithmetic
+
+    let _ = 1u32.saturating_sub(1);
+    //~^ manual_saturating_arithmetic
+    let _ = 1u32.saturating_sub(1);
+    //~^ manual_saturating_arithmetic
+    let _ = 1u8.saturating_sub(1);
+    //~^ manual_saturating_arithmetic
+    let _ = 1u32.checked_sub(1).unwrap_or(1234); // ok
+    let _ = 1u8.checked_sub(1).unwrap_or(255); // ok
+
+    let _ = 1i32.saturating_add(1);
+    //~^ manual_saturating_arithmetic
+    let _ = 1i32.saturating_add(1);
+    //~^ manual_saturating_arithmetic
+    let _ = 1i8.saturating_add(1);
+    //~^ manual_saturating_arithmetic
+    let _ = 1i128.saturating_add(1);
+    let _ = 1i32.saturating_add(-1);
+    //~^ manual_saturating_arithmetic
+    let _ = 1i32.saturating_add(-1);
+    //~^ manual_saturating_arithmetic
+    let _ = 1i8.saturating_add(-1);
+    //~^ manual_saturating_arithmetic
+    let _ = 1i128.saturating_add(-1);
+    let _ = 1i32.checked_add(1).unwrap_or(1234); // ok
+    let _ = 1i8.checked_add(1).unwrap_or(-128); // ok
+    let _ = 1i8.checked_add(-1).unwrap_or(127); // ok
+
+    let _ = 1i32.saturating_sub(1);
+    //~^ manual_saturating_arithmetic
+    let _ = 1i32.saturating_sub(1);
+    //~^ manual_saturating_arithmetic
+    let _ = 1i8.saturating_sub(1);
+    //~^ manual_saturating_arithmetic
+    let _ = 1i128.saturating_sub(1);
+    let _ = 1i32.saturating_sub(-1);
+    //~^ manual_saturating_arithmetic
+    let _ = 1i32.saturating_sub(-1);
+    //~^ manual_saturating_arithmetic
+    let _ = 1i8.saturating_sub(-1);
+    //~^ manual_saturating_arithmetic
+    let _ = 1i128.saturating_sub(-1);
+    let _ = 1i32.checked_sub(1).unwrap_or(1234); // ok
+    let _ = 1i8.checked_sub(1).unwrap_or(127); // ok
+    let _ = 1i8.checked_sub(-1).unwrap_or(-128); // ok
+}

@@ -1,0 +1,34 @@
+[package]
+name = "rustc_expand"
+version = "0.0.0"
+edition = "2024"
+build = false
+
+[lib]
+doctest = false
+
+[dependencies]
+# tidy-alphabetical-start
+rustc_ast = { path = "../rustc_ast" }
+rustc_ast_passes = { path = "../rustc_ast_passes" }
+rustc_ast_pretty = { path = "../rustc_ast_pretty" }
+rustc_attr_parsing = { path = "../rustc_attr_parsing" }
+rustc_data_structures = { path = "../rustc_data_structures" }
+rustc_errors = { path = "../rustc_errors" }
+rustc_feature = { path = "../rustc_feature" }
+rustc_fluent_macro = { path = "../rustc_fluent_macro" }
+rustc_hir = { path = "../rustc_hir" }
+rustc_lexer = { path = "../rustc_lexer" }
+rustc_lint_defs = { path = "../rustc_lint_defs" }
+rustc_macros = { path = "../rustc_macros" }
+rustc_parse = { path = "../rustc_parse" }
+# We must use the proc_macro version that we will compile proc-macros against,
+# not the one from our own sysroot.
+rustc_proc_macro = { path = "../rustc_proc_macro" }
+rustc_serialize = { path = "../rustc_serialize" }
+rustc_session = { path = "../rustc_session" }
+rustc_span = { path = "../rustc_span" }
+smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
+thin-vec = "0.2.12"
+tracing = "0.1"
+# tidy-alphabetical-end

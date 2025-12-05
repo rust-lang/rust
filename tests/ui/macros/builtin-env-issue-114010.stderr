@@ -1,0 +1,18 @@
+error: environment variable `oopsie` not defined at compile time
+  --> $DIR/builtin-env-issue-114010.rs:4:1
+   |
+LL | env![r#"oopsie"#];
+   | ^^^^^^^^^^^^^^^^^
+   |
+   = help: use `std::env::var(r#"oopsie"#)` to read the variable at run time
+
+error: environment variable `a""a` not defined at compile time
+  --> $DIR/builtin-env-issue-114010.rs:7:1
+   |
+LL | env![r#"a""a"#];
+   | ^^^^^^^^^^^^^^^
+   |
+   = help: use `std::env::var(r#"a""a"#)` to read the variable at run time
+
+error: aborting due to 2 previous errors
+

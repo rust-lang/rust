@@ -1,0 +1,151 @@
+error[E0277]: the size for values of type `(dyn Debug + 'static)` cannot be known at compilation time
+  --> $DIR/unsizing-wfcheck-issue-126272.rs:11:13
+   |
+LL |     nested: &'static Bar<dyn std::fmt::Debug>,
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `(dyn Debug + 'static)`
+note: required by an implicit `Sized` bound in `Bar`
+  --> $DIR/unsizing-wfcheck-issue-126272.rs:20:12
+   |
+LL | struct Bar<T>(T);
+   |            ^ required by the implicit `Sized` requirement on this type parameter in `Bar`
+help: you could relax the implicit `Sized` bound on `T` if it were used through indirection like `&T` or `Box<T>`
+  --> $DIR/unsizing-wfcheck-issue-126272.rs:20:12
+   |
+LL | struct Bar<T>(T);
+   |            ^  - ...if indirection were used here: `Box<T>`
+   |            |
+   |            this could be changed to `T: ?Sized`...
+
+error[E0204]: the trait `ConstParamTy_` cannot be implemented for this type
+  --> $DIR/unsizing-wfcheck-issue-126272.rs:8:32
+   |
+LL | #[derive(Debug, PartialEq, Eq, ConstParamTy)]
+   |                                ^^^^^^^^^^^^
+...
+LL |     nested: &'static Bar<dyn std::fmt::Debug>,
+   |     ----------------------------------------- this field does not implement `ConstParamTy_`
+   |
+note: the `ConstParamTy_` impl for `&'static Bar<(dyn Debug + 'static)>` requires that `(dyn Debug + 'static): ConstParamTy_`
+  --> $DIR/unsizing-wfcheck-issue-126272.rs:11:13
+   |
+LL |     nested: &'static Bar<dyn std::fmt::Debug>,
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: the `ConstParamTy_` impl for `&'static Bar<(dyn Debug + 'static)>` requires that `(dyn Debug + 'static): Eq`
+  --> $DIR/unsizing-wfcheck-issue-126272.rs:11:13
+   |
+LL |     nested: &'static Bar<dyn std::fmt::Debug>,
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: the `ConstParamTy_` impl for `&'static Bar<(dyn Debug + 'static)>` requires that `(dyn Debug + 'static): Sized`
+  --> $DIR/unsizing-wfcheck-issue-126272.rs:11:13
+   |
+LL |     nested: &'static Bar<dyn std::fmt::Debug>,
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: the size for values of type `(dyn Debug + 'static)` cannot be known at compilation time
+  --> $DIR/unsizing-wfcheck-issue-126272.rs:11:5
+   |
+LL | #[derive(Debug, PartialEq, Eq, ConstParamTy)]
+   |          ----- in this derive macro expansion
+...
+LL |     nested: &'static Bar<dyn std::fmt::Debug>,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `(dyn Debug + 'static)`
+help: the trait `Debug` is implemented for `Bar<T>`
+  --> $DIR/unsizing-wfcheck-issue-126272.rs:19:10
+   |
+LL | #[derive(Debug, PartialEq, Eq, ConstParamTy)]
+   |          ^^^^^
+note: required for `Bar<(dyn Debug + 'static)>` to implement `Debug`
+  --> $DIR/unsizing-wfcheck-issue-126272.rs:19:10
+   |
+LL | #[derive(Debug, PartialEq, Eq, ConstParamTy)]
+   |          ^^^^^
+LL | struct Bar<T>(T);
+   |            - unsatisfied trait bound introduced in this `derive` macro
+   = note: 2 redundant requirements hidden
+   = note: required for `&&'static Bar<(dyn Debug + 'static)>` to implement `Debug`
+   = note: required for the cast from `&&&'static Bar<(dyn Debug + 'static)>` to `&dyn Debug`
+
+error[E0369]: binary operation `==` cannot be applied to type `&Bar<dyn Debug>`
+  --> $DIR/unsizing-wfcheck-issue-126272.rs:11:5
+   |
+LL | #[derive(Debug, PartialEq, Eq, ConstParamTy)]
+   |                 --------- in this derive macro expansion
+...
+LL |     nested: &'static Bar<dyn std::fmt::Debug>,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: the trait bound `dyn Debug: Eq` is not satisfied
+  --> $DIR/unsizing-wfcheck-issue-126272.rs:11:5
+   |
+LL | #[derive(Debug, PartialEq, Eq, ConstParamTy)]
+   |                            -- in this derive macro expansion
+...
+LL |     nested: &'static Bar<dyn std::fmt::Debug>,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Eq` is not implemented for `dyn Debug`
+   |
+help: the trait `Eq` is implemented for `Bar<T>`
+  --> $DIR/unsizing-wfcheck-issue-126272.rs:19:28
+   |
+LL | #[derive(Debug, PartialEq, Eq, ConstParamTy)]
+   |                            ^^
+note: required for `Bar<dyn Debug>` to implement `Eq`
+  --> $DIR/unsizing-wfcheck-issue-126272.rs:19:28
+   |
+LL | #[derive(Debug, PartialEq, Eq, ConstParamTy)]
+   |                            ^^ unsatisfied trait bound introduced in this `derive` macro
+   = note: 1 redundant requirement hidden
+   = note: required for `&'static Bar<dyn Debug>` to implement `Eq`
+note: required by a bound in `AssertParamIsEq`
+  --> $SRC_DIR/core/src/cmp.rs:LL:COL
+
+error[E0277]: the size for values of type `dyn Debug` cannot be known at compilation time
+  --> $DIR/unsizing-wfcheck-issue-126272.rs:11:5
+   |
+LL | #[derive(Debug, PartialEq, Eq, ConstParamTy)]
+   |                            -- in this derive macro expansion
+...
+LL |     nested: &'static Bar<dyn std::fmt::Debug>,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `dyn Debug`
+note: required by an implicit `Sized` bound in `Bar`
+  --> $DIR/unsizing-wfcheck-issue-126272.rs:20:12
+   |
+LL | struct Bar<T>(T);
+   |            ^ required by the implicit `Sized` requirement on this type parameter in `Bar`
+help: you could relax the implicit `Sized` bound on `T` if it were used through indirection like `&T` or `Box<T>`
+  --> $DIR/unsizing-wfcheck-issue-126272.rs:20:12
+   |
+LL | struct Bar<T>(T);
+   |            ^  - ...if indirection were used here: `Box<T>`
+   |            |
+   |            this could be changed to `T: ?Sized`...
+
+error[E0277]: the size for values of type `(dyn Debug + 'static)` cannot be known at compilation time
+  --> $DIR/unsizing-wfcheck-issue-126272.rs:25:33
+   |
+LL |     let x: Test<{ Foo { nested: &Bar(4) } }> = Test;
+   |                                 ^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `(dyn Debug + 'static)`
+note: required by an implicit `Sized` bound in `Bar`
+  --> $DIR/unsizing-wfcheck-issue-126272.rs:20:12
+   |
+LL | struct Bar<T>(T);
+   |            ^ required by the implicit `Sized` requirement on this type parameter in `Bar`
+help: you could relax the implicit `Sized` bound on `T` if it were used through indirection like `&T` or `Box<T>`
+  --> $DIR/unsizing-wfcheck-issue-126272.rs:20:12
+   |
+LL | struct Bar<T>(T);
+   |            ^  - ...if indirection were used here: `Box<T>`
+   |            |
+   |            this could be changed to `T: ?Sized`...
+
+error: aborting due to 7 previous errors
+
+Some errors have detailed explanations: E0204, E0277, E0369.
+For more information about an error, try `rustc --explain E0204`.

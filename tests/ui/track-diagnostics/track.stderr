@@ -1,0 +1,49 @@
+error[E0425]: cannot find value `rust` in this scope
+  --> $DIR/track.rs:LL:CC
+   |
+LL |     break rust;
+   |           ^^^^ not found in this scope
+   |
+   = note: -Ztrack-diagnostics: created at compiler/rustc_resolve/src/late/diagnostics.rs:LL:CC
+
+error[E0268]: `break` outside of a loop or labeled block
+  --> $DIR/track.rs:LL:CC
+   |
+LL |     break rust;
+   |     ^^^^^^^^^^ cannot `break` outside of a loop or labeled block
+   |
+   = note: -Ztrack-diagnostics: created at compiler/rustc_hir_typeck/src/loops.rs:LL:CC
+
+error: internal compiler error: It looks like you're trying to break rust; would you like some ICE?
+  --> $DIR/track.rs:LL:CC
+   |
+LL |     break rust;
+   |     ^^^^^^^^^^
+   |
+   = note: -Ztrack-diagnostics: created at compiler/rustc_hir_typeck/src/lib.rs:LL:CC
+   = note: the compiler expectedly panicked. this is a feature.
+   = note: we would appreciate a joke overview: https://github.com/rust-lang/rust/issues/43162#issuecomment-320764675
+   = note: rustc $VERSION running on $TARGET
+   = note: compiler flags: ... -Z ui-testing ... -Z track-diagnostics
+
+
+thread 'rustc' ($TID) panicked at compiler/rustc_hir_typeck/src/lib.rs:LL:CC:
+Box<dyn Any>
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: please make sure that you have updated to the latest nightly
+
+note: rustc $VERSION running on $TARGET
+
+note: compiler flags: ... -Z ui-testing ... -Z track-diagnostics
+
+query stack during panic:
+#0 [typeck] type-checking `main`
+#1 [analysis] running analysis passes on crate `track`
+end of query stack
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0268, E0425.
+For more information about an error, try `rustc --explain E0268`.

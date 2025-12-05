@@ -1,0 +1,14 @@
+#![feature(prelude_import)]
+#![no_std]
+#[macro_use]
+extern crate std;
+#[prelude_import]
+use ::std::prelude::rust_2015::*;
+//@ revisions: normal expanded
+//@[expanded] check-pass
+//@[expanded]compile-flags: -Zunpretty=expanded
+//@ edition: 2015
+
+extern "路濫狼á́́" fn foo() {}
+
+fn main() {}

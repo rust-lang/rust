@@ -1,0 +1,41 @@
+error[E0425]: cannot find function `bar` in this scope
+  --> $DIR/non_valtreeable_const_arg-2.rs:11:16
+   |
+LL | impl Wrapper<{ bar() }> {
+   |                ^^^ not found in this scope
+   |
+help: you might be missing a const parameter
+   |
+LL | impl<const bar: /* Type */> Wrapper<{ bar() }> {
+   |     +++++++++++++++++++++++
+
+error: using function pointers as const generic parameters is forbidden
+  --> $DIR/non_valtreeable_const_arg-2.rs:8:25
+   |
+LL | struct Wrapper<const F: fn()>;
+   |                         ^^^^
+   |
+   = note: the only supported types are integers, `bool`, and `char`
+
+error[E0599]: the function or associated item `call` exists for struct `Wrapper<function>`, but its trait bounds were not satisfied
+  --> $DIR/non_valtreeable_const_arg-2.rs:17:26
+   |
+LL | struct Wrapper<const F: fn()>;
+   | ----------------------------- function or associated item `call` not found for this struct because it doesn't satisfy `Wrapper<function>: Fn<_>`
+...
+LL |     Wrapper::<function>::call;
+   |                          ^^^^ function or associated item cannot be called on `Wrapper<function>` due to unsatisfied trait bounds
+   |
+   = note: the following trait bounds were not satisfied:
+           `Wrapper<function>: Fn<_>`
+           which is required by `&Wrapper<function>: Fn<_>`
+note: the trait `Fn` must be implemented
+  --> $SRC_DIR/core/src/ops/function.rs:LL:COL
+   = help: items from traits can only be used if the trait is implemented and in scope
+   = note: the following trait defines an item `call`, perhaps you need to implement it:
+           candidate #1: `Fn`
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0425, E0599.
+For more information about an error, try `rustc --explain E0425`.

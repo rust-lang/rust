@@ -1,0 +1,15 @@
+error[E0080]: pointer not dereferenceable: pointer must point to some allocation, but got 0x3e7[noalloc] which is a dangling pointer (it has no provenance)
+  --> $DIR/const_transmute_type_id3.rs:15:13
+   |
+LL |     assert!(a == b);
+   |             ^^^^^^ evaluation of `_` failed inside this call
+   |
+note: inside `<TypeId as PartialEq>::eq`
+  --> $SRC_DIR/core/src/any.rs:LL:COL
+note: inside `<TypeId as PartialEq>::eq::compiletime`
+  --> $SRC_DIR/core/src/any.rs:LL:COL
+   = note: this error originates in the macro `$crate::intrinsics::const_eval_select` which comes from the expansion of the macro `crate::intrinsics::const_eval_select` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0080`.

@@ -1,0 +1,143 @@
+error: malformed `rustc_on_unimplemented` attribute input
+  --> $DIR/bad-annotation.rs:15:1
+   |
+LL | #[rustc_on_unimplemented]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: the following are the possible correct uses
+   |
+LL | #[rustc_on_unimplemented = "message"]
+   |                          +++++++++++
+LL | #[rustc_on_unimplemented(/*opt*/ message = "...", /*opt*/ label = "...", /*opt*/ note = "...")]
+   |                         ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+error[E0230]: cannot find parameter C on this trait
+  --> $DIR/bad-annotation.rs:19:90
+   |
+LL | #[rustc_on_unimplemented = "Unimplemented trait error on `{Self}` with params `<{A},{B},{C}>`"]
+   |                                                                                          ^
+
+error[E0231]: positional format arguments are not allowed here
+  --> $DIR/bad-annotation.rs:23:90
+   |
+LL | #[rustc_on_unimplemented = "Unimplemented trait error on `{Self}` with params `<{A},{B},{}>`"]
+   |                                                                                          ^
+
+error[E0232]: this attribute must have a value
+  --> $DIR/bad-annotation.rs:27:26
+   |
+LL | #[rustc_on_unimplemented(lorem = "")]
+   |                          ^^^^^^^^^^ expected value here
+   |
+   = note: e.g. `#[rustc_on_unimplemented(message="foo")]`
+
+error[E0232]: this attribute must have a value
+  --> $DIR/bad-annotation.rs:33:26
+   |
+LL | #[rustc_on_unimplemented(lorem(ipsum(dolor)))]
+   |                          ^^^^^^^^^^^^^^^^^^^ expected value here
+   |
+   = note: e.g. `#[rustc_on_unimplemented(message="foo")]`
+
+error[E0232]: this attribute must have a value
+  --> $DIR/bad-annotation.rs:39:41
+   |
+LL | #[rustc_on_unimplemented(message = "x", message = "y")]
+   |                                         ^^^^^^^^^^^^^ expected value here
+   |
+   = note: e.g. `#[rustc_on_unimplemented(message="foo")]`
+
+error[E0232]: this attribute must have a value
+  --> $DIR/bad-annotation.rs:45:41
+   |
+LL | #[rustc_on_unimplemented(message = "x", on(desugared, message = "y"))]
+   |                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected value here
+   |
+   = note: e.g. `#[rustc_on_unimplemented(message="foo")]`
+
+error[E0232]: empty `on`-clause in `#[rustc_on_unimplemented]`
+  --> $DIR/bad-annotation.rs:51:26
+   |
+LL | #[rustc_on_unimplemented(on(), message = "y")]
+   |                          ^^^^ empty `on`-clause here
+
+error[E0232]: this attribute must have a value
+  --> $DIR/bad-annotation.rs:56:26
+   |
+LL | #[rustc_on_unimplemented(on = "x", message = "y")]
+   |                          ^^^^^^^^ expected value here
+   |
+   = note: e.g. `#[rustc_on_unimplemented(message="foo")]`
+
+error[E0232]: this attribute must have a value
+  --> $DIR/bad-annotation.rs:65:46
+   |
+LL | #[rustc_on_unimplemented(on(from_desugaring, on(from_desugaring, message = "x")), message = "y")]
+   |                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected value here
+   |
+   = note: e.g. `#[rustc_on_unimplemented(message="foo")]`
+
+error[E0232]: literals inside `on`-clauses are not supported
+  --> $DIR/bad-annotation.rs:71:29
+   |
+LL | #[rustc_on_unimplemented(on("y", message = "y"))]
+   |                             ^^^ unexpected literal here
+
+error[E0232]: literals inside `on`-clauses are not supported
+  --> $DIR/bad-annotation.rs:76:29
+   |
+LL | #[rustc_on_unimplemented(on(42, message = "y"))]
+   |                             ^^ unexpected literal here
+
+error[E0232]: expected a single predicate in `not(..)`
+  --> $DIR/bad-annotation.rs:81:33
+   |
+LL | #[rustc_on_unimplemented(on(not(a, b), message = "y"))]
+   |                                 ^^^^ unexpected quantity of predicates here
+
+error[E0232]: expected a single predicate in `not(..)`
+  --> $DIR/bad-annotation.rs:86:29
+   |
+LL | #[rustc_on_unimplemented(on(not(), message = "y"))]
+   |                             ^^^^^ unexpected quantity of predicates here
+
+error[E0232]: expected an identifier inside this `on`-clause
+  --> $DIR/bad-annotation.rs:91:29
+   |
+LL | #[rustc_on_unimplemented(on(thing::What, message = "y"))]
+   |                             ^^^^^^^^^^^ expected an identifier here, not `thing::What`
+
+error[E0232]: expected an identifier inside this `on`-clause
+  --> $DIR/bad-annotation.rs:96:29
+   |
+LL | #[rustc_on_unimplemented(on(thing::What = "value", message = "y"))]
+   |                             ^^^^^^^^^^^ expected an identifier here, not `thing::What`
+
+error[E0232]: this predicate is invalid
+  --> $DIR/bad-annotation.rs:101:29
+   |
+LL | #[rustc_on_unimplemented(on(aaaaaaaaaaaaaa(a, b), message = "y"))]
+   |                             ^^^^^^^^^^^^^^ expected one of `any`, `all` or `not` here, not `aaaaaaaaaaaaaa`
+
+error[E0232]: invalid flag in `on`-clause
+  --> $DIR/bad-annotation.rs:106:29
+   |
+LL | #[rustc_on_unimplemented(on(something, message = "y"))]
+   |                             ^^^^^^^^^ expected one of the `crate_local`, `direct` or `from_desugaring` flags, not `something`
+
+error[E0232]: invalid name in `on`-clause
+  --> $DIR/bad-annotation.rs:111:29
+   |
+LL | #[rustc_on_unimplemented(on(_Self = "y", message = "y"))]
+   |                             ^^^^^ expected one of `cause`, `from_desugaring`, `Self` or any generic parameter of the trait, not `_Self`
+
+error[E0232]: invalid name in `on`-clause
+  --> $DIR/bad-annotation.rs:116:29
+   |
+LL | #[rustc_on_unimplemented(on(abc = "y", message = "y"))]
+   |                             ^^^ expected one of `cause`, `from_desugaring`, `Self` or any generic parameter of the trait, not `abc`
+
+error: aborting due to 20 previous errors
+
+Some errors have detailed explanations: E0230, E0231, E0232.
+For more information about an error, try `rustc --explain E0230`.

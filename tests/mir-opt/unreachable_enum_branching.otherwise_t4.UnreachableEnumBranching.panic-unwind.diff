@@ -1,0 +1,60 @@
+- // MIR for `otherwise_t4` before UnreachableEnumBranching
++ // MIR for `otherwise_t4` after UnreachableEnumBranching
+  
+  fn otherwise_t4() -> () {
+      let mut _0: ();
+      let _1: &str;
+      let mut _2: Test4;
+      let mut _3: isize;
+      let _4: &str;
+      let _5: &str;
+  
+      bb0: {
+          StorageLive(_1);
+          StorageLive(_2);
+          _2 = Test4::C;
+          _3 = discriminant(_2);
+          switchInt(move _3) -> [0: bb3, 1: bb2, otherwise: bb1];
+      }
+  
+      bb1: {
+          StorageLive(_5);
+          _5 = const "CD";
+          _1 = &(*_5);
+          StorageDead(_5);
+          goto -> bb4;
+      }
+  
+      bb2: {
+          StorageLive(_4);
+          _4 = const "B(i32)";
+          _1 = &(*_4);
+          StorageDead(_4);
+          goto -> bb4;
+      }
+  
+      bb3: {
+          _1 = const "A(i32)";
+          goto -> bb4;
+      }
+  
+      bb4: {
+          StorageDead(_2);
+          StorageDead(_1);
+          _0 = const ();
+          return;
+      }
+  }
+  
+  ALLOC0 (size: 2, align: 1) {
+      43 44                                           │ CD
+  }
+  
+  ALLOC1 (size: 6, align: 1) {
+      42 28 69 33 32 29                               │ B(i32)
+  }
+  
+  ALLOC2 (size: 6, align: 1) {
+      41 28 69 33 32 29                               │ A(i32)
+  }
+  

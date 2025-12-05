@@ -1,0 +1,28 @@
+C_STRING "c\"\\💩\"" error: unknown character escape
+WHITESPACE "\n"
+C_STRING "c\"\\●\"" error: unknown character escape
+WHITESPACE "\n"
+C_STRING "c\"\\u{_0000}\"" error: invalid start of unicode escape
+WHITESPACE "\n"
+C_STRING "c\"\\u{0000000}\"" error: overlong unicode escape
+WHITESPACE "\n"
+C_STRING "c\"\\u{FFFFFF}\"" error: invalid unicode character escape
+WHITESPACE "\n"
+C_STRING "c\"\\u{ffffff}\"" error: invalid unicode character escape
+WHITESPACE "\n"
+C_STRING "c\"\\u{ffffff}\"" error: invalid unicode character escape
+WHITESPACE "\n"
+C_STRING "c\"\\u{DC00}\"" error: invalid unicode character escape
+WHITESPACE "\n"
+C_STRING "c\"\\u{DDDD}\"" error: invalid unicode character escape
+WHITESPACE "\n"
+C_STRING "c\"\\u{DFFF}\"" error: invalid unicode character escape
+WHITESPACE "\n"
+C_STRING "c\"\\u{D800}\"" error: invalid unicode character escape
+WHITESPACE "\n"
+C_STRING "c\"\\u{DAAA}\"" error: invalid unicode character escape
+WHITESPACE "\n"
+C_STRING "c\"\\u{DBFF}\"" error: invalid unicode character escape
+WHITESPACE "\n"
+C_STRING "c\"\\xы\"" error: invalid character in numeric character escape
+WHITESPACE "\n"

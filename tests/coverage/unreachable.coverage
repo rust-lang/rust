@@ -1,0 +1,37 @@
+   LL|       |#![feature(core_intrinsics, coverage_attribute)]
+   LL|       |//@ edition: 2021
+   LL|       |
+   LL|       |// <https://github.com/rust-lang/rust/issues/116171>
+   LL|       |// If we instrument a function for coverage, but all of its counter-increment
+   LL|       |// statements are removed by MIR optimizations, LLVM will think it isn't
+   LL|       |// instrumented and it will disappear from coverage maps and coverage reports.
+   LL|       |// Most MIR opts won't cause this because they tend not to remove statements
+   LL|       |// from bb0, but `UnreachablePropagation` can do so if it sees that bb0 ends
+   LL|       |// with `TerminatorKind::Unreachable`.
+   LL|       |
+   LL|       |use std::hint::{black_box, unreachable_unchecked};
+   LL|       |
+   LL|      0|static UNREACHABLE_CLOSURE: fn() = || unsafe { unreachable_unchecked() };
+   LL|       |
+   LL|      0|fn unreachable_function() {
+   LL|      0|    unsafe { unreachable_unchecked() }
+   LL|       |}
+   LL|       |
+   LL|       |// Use an intrinsic to more reliably trigger unreachable-propagation.
+   LL|      0|fn unreachable_intrinsic() {
+   LL|      0|    unsafe { std::intrinsics::unreachable() }
+   LL|       |}
+   LL|       |
+   LL|       |#[coverage(off)]
+   LL|       |fn main() {
+   LL|       |    if black_box(false) {
+   LL|       |        UNREACHABLE_CLOSURE();
+   LL|       |    }
+   LL|       |    if black_box(false) {
+   LL|       |        unreachable_function();
+   LL|       |    }
+   LL|       |    if black_box(false) {
+   LL|       |        unreachable_intrinsic();
+   LL|       |    }
+   LL|       |}
+

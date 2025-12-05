@@ -1,0 +1,16 @@
+warning: conflicting implementations of trait `TheTrait` for type `for<'a, 'b> fn(&'a u8, &'b u8) -> &'a u8`
+  --> $DIR/coherence-subtyping.rs:15:1
+   |
+LL | impl TheTrait for for<'a, 'b> fn(&'a u8, &'b u8) -> &'a u8 {}
+   | ---------------------------------------------------------- first implementation here
+LL |
+LL | impl TheTrait for for<'a> fn(&'a u8, &'a u8) -> &'a u8 {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `for<'a, 'b> fn(&'a u8, &'b u8) -> &'a u8`
+   |
+   = warning: the behavior may change in a future release
+   = note: for more information, see issue #56105 <https://github.com/rust-lang/rust/issues/56105>
+   = note: this behavior recently changed as a result of a bug fix; see rust-lang/rust#56105 for details
+   = note: `#[warn(coherence_leak_check)]` (part of `#[warn(future_incompatible)]`) on by default
+
+warning: 1 warning emitted
+

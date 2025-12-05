@@ -1,0 +1,28 @@
+error[E0283]: type annotations needed
+  --> $DIR/overflow-computing-ambiguity.rs:15:5
+   |
+LL |     hello();
+   |     ^^^^^ cannot infer type of the type parameter `T` declared on the function `hello`
+   |
+   = note: cannot satisfy `_: Hello`
+help: the following types implement trait `Hello`
+  --> $DIR/overflow-computing-ambiguity.rs:8:1
+   |
+LL | impl<'a, T> Hello for Foo<'a, &'a T> where Foo<'a, T>: Hello {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `Foo<'a, &'a T>`
+LL |
+LL | impl Hello for Foo<'static, i32> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `Foo<'static, i32>`
+note: required by a bound in `hello`
+  --> $DIR/overflow-computing-ambiguity.rs:12:13
+   |
+LL | fn hello<T: Hello>() {}
+   |             ^^^^^ required by this bound in `hello`
+help: consider specifying the generic argument
+   |
+LL |     hello::<T>();
+   |          +++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0283`.

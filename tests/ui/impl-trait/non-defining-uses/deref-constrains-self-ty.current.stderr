@@ -1,0 +1,16 @@
+error[E0599]: no method named `len` found for struct `Wrapper<T>` in the current scope
+  --> $DIR/deref-constrains-self-ty.rs:22:32
+   |
+LL | struct Wrapper<T>(T);
+   | ----------------- method `len` not found for this struct
+...
+LL |         let _ = Wrapper(foo()).len();
+   |                                ^^^ method not found in `Wrapper<impl Sized>`
+   |
+   = help: items from traits can only be used if the trait is implemented and in scope
+   = note: the following trait defines an item `len`, perhaps you need to implement it:
+           candidate #1: `ExactSizeIterator`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0599`.

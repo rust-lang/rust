@@ -1,0 +1,44 @@
+error[E0577]: expected module, found enum `E`
+  --> $DIR/resolve-bad-visibility.rs:5:8
+   |
+LL | pub(in E) struct S;
+   |        ^ not a module
+
+error[E0577]: expected module, found trait `Tr`
+  --> $DIR/resolve-bad-visibility.rs:6:8
+   |
+LL | pub(in Tr) struct Z;
+   |        ^^ not a module
+
+error[E0742]: visibilities can only be restricted to ancestor modules
+  --> $DIR/resolve-bad-visibility.rs:7:8
+   |
+LL | pub(in std::vec) struct F;
+   |        ^^^^^^^^
+
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `nonexistent`
+  --> $DIR/resolve-bad-visibility.rs:8:8
+   |
+LL | pub(in nonexistent) struct G;
+   |        ^^^^^^^^^^^ use of unresolved module or unlinked crate `nonexistent`
+   |
+help: you might be missing a crate named `nonexistent`, add it to your project and import it in your code
+   |
+LL + extern crate nonexistent;
+   |
+
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `too_soon`
+  --> $DIR/resolve-bad-visibility.rs:9:8
+   |
+LL | pub(in too_soon) struct H;
+   |        ^^^^^^^^ use of unresolved module or unlinked crate `too_soon`
+   |
+help: you might be missing a crate named `too_soon`, add it to your project and import it in your code
+   |
+LL + extern crate too_soon;
+   |
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0433, E0577, E0742.
+For more information about an error, try `rustc --explain E0433`.

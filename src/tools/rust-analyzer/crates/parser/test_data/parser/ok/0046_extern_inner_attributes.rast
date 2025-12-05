@@ -1,0 +1,29 @@
+SOURCE_FILE
+  EXTERN_BLOCK
+    ABI
+      EXTERN_KW "extern"
+      WHITESPACE " "
+      STRING "\"C\""
+    WHITESPACE " "
+    EXTERN_ITEM_LIST
+      L_CURLY "{"
+      WHITESPACE "\n    "
+      COMMENT "//! This is a doc comment"
+      WHITESPACE "\n    "
+      ATTR
+        POUND "#"
+        BANG "!"
+        L_BRACK "["
+        META
+          PATH
+            PATH_SEGMENT
+              NAME_REF
+                IDENT "doc"
+          TOKEN_TREE
+            L_PAREN "("
+            STRING "\"This is also a doc comment\""
+            R_PAREN ")"
+        R_BRACK "]"
+      WHITESPACE "\n"
+      R_CURLY "}"
+  WHITESPACE "\n"

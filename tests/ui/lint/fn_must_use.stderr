@@ -1,0 +1,107 @@
+warning: `#[must_use]` attribute cannot be used on trait methods in impl blocks
+  --> $DIR/fn_must_use.rs:41:5
+   |
+LL |     #[must_use]
+   |     ^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = help: `#[must_use]` can be applied to data types, foreign functions, functions, inherent methods, provided trait methods, required trait methods, traits, and unions
+   = note: requested on the command line with `-W unused-attributes`
+
+warning: unused return value of `need_to_use_this_value` that must be used
+  --> $DIR/fn_must_use.rs:57:5
+   |
+LL |     need_to_use_this_value();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: it's important
+note: the lint level is defined here
+  --> $DIR/fn_must_use.rs:3:9
+   |
+LL | #![warn(unused_must_use)]
+   |         ^^^^^^^^^^^^^^^
+help: use `let _ = ...` to ignore the resulting value
+   |
+LL |     let _ = need_to_use_this_value();
+   |     +++++++
+
+warning: unused return value of `MyStruct::need_to_use_this_method_value` that must be used
+  --> $DIR/fn_must_use.rs:62:5
+   |
+LL |     m.need_to_use_this_method_value();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `let _ = ...` to ignore the resulting value
+   |
+LL |     let _ = m.need_to_use_this_method_value();
+   |     +++++++
+
+warning: unused return value of `EvenNature::is_even` that must be used
+  --> $DIR/fn_must_use.rs:63:5
+   |
+LL |     m.is_even(); // trait method!
+   |     ^^^^^^^^^^^
+   |
+   = note: no side effects
+help: use `let _ = ...` to ignore the resulting value
+   |
+LL |     let _ = m.is_even(); // trait method!
+   |     +++++++
+
+warning: unused return value of `MyStruct::need_to_use_this_associated_function_value` that must be used
+  --> $DIR/fn_must_use.rs:66:5
+   |
+LL |     MyStruct::need_to_use_this_associated_function_value();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `let _ = ...` to ignore the resulting value
+   |
+LL |     let _ = MyStruct::need_to_use_this_associated_function_value();
+   |     +++++++
+
+warning: unused return value of `std::cmp::PartialEq::eq` that must be used
+  --> $DIR/fn_must_use.rs:72:5
+   |
+LL |     2.eq(&3);
+   |     ^^^^^^^^
+   |
+help: use `let _ = ...` to ignore the resulting value
+   |
+LL |     let _ = 2.eq(&3);
+   |     +++++++
+
+warning: unused return value of `std::cmp::PartialEq::eq` that must be used
+  --> $DIR/fn_must_use.rs:73:5
+   |
+LL |     m.eq(&n);
+   |     ^^^^^^^^
+   |
+help: use `let _ = ...` to ignore the resulting value
+   |
+LL |     let _ = m.eq(&n);
+   |     +++++++
+
+warning: unused comparison that must be used
+  --> $DIR/fn_must_use.rs:76:5
+   |
+LL |     2 == 3;
+   |     ^^^^^^ the comparison produces a value
+   |
+help: use `let _ = ...` to ignore the resulting value
+   |
+LL |     let _ = 2 == 3;
+   |     +++++++
+
+warning: unused comparison that must be used
+  --> $DIR/fn_must_use.rs:77:5
+   |
+LL |     m == n;
+   |     ^^^^^^ the comparison produces a value
+   |
+help: use `let _ = ...` to ignore the resulting value
+   |
+LL |     let _ = m == n;
+   |     +++++++
+
+warning: 9 warnings emitted
+

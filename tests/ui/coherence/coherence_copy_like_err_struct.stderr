@@ -1,0 +1,14 @@
+error[E0119]: conflicting implementations of trait `MyTrait` for type `MyStruct<MyType>`
+  --> $DIR/coherence_copy_like_err_struct.rs:19:1
+   |
+LL | impl<T: lib::MyCopy> MyTrait for T { }
+   | ---------------------------------- first implementation here
+...
+LL | impl MyTrait for lib::MyStruct<MyType> { }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `MyStruct<MyType>`
+   |
+   = note: upstream crates may add a new impl of trait `lib::MyCopy` for type `lib::MyStruct<MyType>` in future versions
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0119`.

@@ -1,0 +1,86 @@
+error[E0539]: malformed `should_panic` attribute input
+  --> $DIR/test-should-panic-attr.rs:10:1
+   |
+LL | #[should_panic(expected)]
+   | ^^^^^^^^^^^^^^^--------^^
+   |                |
+   |                expected this to be of the form `expected = "..."`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/testing.html#the-should_panic-attribute>
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #[should_panic(expected)]
+LL + #[should_panic = "reason"]
+   |
+LL | #[should_panic(expected = "reason")]
+   |                         ++++++++++
+LL - #[should_panic(expected)]
+LL + #[should_panic]
+   |
+
+error[E0539]: malformed `should_panic` attribute input
+  --> $DIR/test-should-panic-attr.rs:19:1
+   |
+LL | #[should_panic(expect)]
+   | ^^^^^^^^^^^^^^--------^
+   |               |
+   |               the only valid argument here is "expected"
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/testing.html#the-should_panic-attribute>
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #[should_panic(expect)]
+LL + #[should_panic = "reason"]
+   |
+LL | #[should_panic(expected = "reason")]
+   |                      +++++++++++++
+LL - #[should_panic(expect)]
+LL + #[should_panic]
+   |
+
+error[E0539]: malformed `should_panic` attribute input
+  --> $DIR/test-should-panic-attr.rs:28:1
+   |
+LL | #[should_panic(expected(foo, bar))]
+   | ^^^^^^^^^^^^^^^------------------^^
+   |                |
+   |                expected this to be of the form `expected = "..."`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/testing.html#the-should_panic-attribute>
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #[should_panic(expected(foo, bar))]
+LL + #[should_panic = "reason"]
+   |
+LL - #[should_panic(expected(foo, bar))]
+LL + #[should_panic(expected = "reason")]
+   |
+LL - #[should_panic(expected(foo, bar))]
+LL + #[should_panic]
+   |
+
+error[E0805]: malformed `should_panic` attribute input
+  --> $DIR/test-should-panic-attr.rs:37:1
+   |
+LL | #[should_panic(expected = "foo", bar)]
+   | ^^^^^^^^^^^^^^-----------------------^
+   |               |
+   |               expected a single argument here
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/testing.html#the-should_panic-attribute>
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #[should_panic(expected = "foo", bar)]
+LL + #[should_panic = "reason"]
+   |
+LL - #[should_panic(expected = "foo", bar)]
+LL + #[should_panic(expected = "reason")]
+   |
+LL - #[should_panic(expected = "foo", bar)]
+LL + #[should_panic]
+   |
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0539, E0805.
+For more information about an error, try `rustc --explain E0539`.

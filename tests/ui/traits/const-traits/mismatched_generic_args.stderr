@@ -1,0 +1,64 @@
+error[E0425]: cannot find value `y` in this scope
+  --> $DIR/mismatched_generic_args.rs:20:9
+   |
+LL | pub fn add<const U: Dimension>(x: Quantity<f32, U>) -> Quantity<f32, U> {
+   |                  - similarly named const parameter `U` defined here
+LL |
+LL |     x + y
+   |         ^ help: a const parameter with a similar name exists: `U`
+
+warning: the feature `generic_const_exprs` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/mismatched_generic_args.rs:1:12
+   |
+LL | #![feature(generic_const_exprs)]
+   |            ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #76560 <https://github.com/rust-lang/rust/issues/76560> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+error: `Dimension` is forbidden as the type of a const generic parameter
+  --> $DIR/mismatched_generic_args.rs:11:33
+   |
+LL | pub struct Quantity<S, const D: Dimension>(S);
+   |                                 ^^^^^^^^^
+   |
+   = note: the only supported types are integers, `bool`, and `char`
+help: add `#![feature(adt_const_params)]` to the crate attributes to enable more complex and user defined types
+   |
+LL + #![feature(adt_const_params)]
+   |
+
+error[E0107]: trait takes at most 1 generic argument but 2 generic arguments were supplied
+  --> $DIR/mismatched_generic_args.rs:14:36
+   |
+LL | impl<const D: Dimension, LHS, RHS> Add<LHS, D> for Quantity<LHS, { Dimension }> {}
+   |                                    ^^^ expected at most 1 generic argument
+
+error: `Dimension` is forbidden as the type of a const generic parameter
+  --> $DIR/mismatched_generic_args.rs:14:15
+   |
+LL | impl<const D: Dimension, LHS, RHS> Add<LHS, D> for Quantity<LHS, { Dimension }> {}
+   |               ^^^^^^^^^
+   |
+   = note: the only supported types are integers, `bool`, and `char`
+help: add `#![feature(adt_const_params)]` to the crate attributes to enable more complex and user defined types
+   |
+LL + #![feature(adt_const_params)]
+   |
+
+error: `Dimension` is forbidden as the type of a const generic parameter
+  --> $DIR/mismatched_generic_args.rs:18:21
+   |
+LL | pub fn add<const U: Dimension>(x: Quantity<f32, U>) -> Quantity<f32, U> {
+   |                     ^^^^^^^^^
+   |
+   = note: the only supported types are integers, `bool`, and `char`
+help: add `#![feature(adt_const_params)]` to the crate attributes to enable more complex and user defined types
+   |
+LL + #![feature(adt_const_params)]
+   |
+
+error: aborting due to 5 previous errors; 1 warning emitted
+
+Some errors have detailed explanations: E0107, E0425.
+For more information about an error, try `rustc --explain E0107`.

@@ -1,0 +1,11 @@
+error[E0425]: cannot find value `foobar2` in this scope
+  --> $DIR/lints_in_proc_macros.rs:10:5
+   |
+LL |     bang_proc_macro2!();
+   |     ^^^^^^^^^^^^^^^^^^^ help: a local variable with a similar name exists: `foobar`
+   |
+   = note: this error originates in the macro `bang_proc_macro2` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0425`.

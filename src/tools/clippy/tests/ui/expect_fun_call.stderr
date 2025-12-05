@@ -1,0 +1,101 @@
+error: function call inside of `expect`
+  --> tests/ui/expect_fun_call.rs:35:26
+   |
+LL |     with_none_and_format.expect(&format!("Error {}: fake error", error_code));
+   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_else(|| panic!("Error {}: fake error", error_code))`
+   |
+   = note: `-D clippy::expect-fun-call` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::expect_fun_call)]`
+
+error: function call inside of `expect`
+  --> tests/ui/expect_fun_call.rs:39:26
+   |
+LL |     with_none_and_as_str.expect(format!("Error {}: fake error", error_code).as_str());
+   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_else(|| panic!("Error {}: fake error", error_code))`
+
+error: function call inside of `expect`
+  --> tests/ui/expect_fun_call.rs:43:37
+   |
+LL |     with_none_and_format_with_macro.expect(format!("Error {}: fake error", one!()).as_str());
+   |                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_else(|| panic!("Error {}: fake error", one!()))`
+
+error: function call inside of `expect`
+  --> tests/ui/expect_fun_call.rs:54:25
+   |
+LL |     with_err_and_format.expect(&format!("Error {}: fake error", error_code));
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_else(|_| panic!("Error {}: fake error", error_code))`
+
+error: function call inside of `expect`
+  --> tests/ui/expect_fun_call.rs:58:25
+   |
+LL |     with_err_and_as_str.expect(format!("Error {}: fake error", error_code).as_str());
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_else(|_| panic!("Error {}: fake error", error_code))`
+
+error: function call inside of `expect`
+  --> tests/ui/expect_fun_call.rs:71:17
+   |
+LL |     Some("foo").expect(format!("{} {}", 1, 2).as_ref());
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_else(|| panic!("{} {}", 1, 2))`
+
+error: function call inside of `expect`
+  --> tests/ui/expect_fun_call.rs:97:21
+   |
+LL |         Some("foo").expect(&get_string());
+   |                     ^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_else(|| panic!("{}", get_string()))`
+
+error: function call inside of `expect`
+  --> tests/ui/expect_fun_call.rs:99:21
+   |
+LL |         Some("foo").expect(get_string().as_ref());
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_else(|| panic!("{}", get_string()))`
+
+error: function call inside of `expect`
+  --> tests/ui/expect_fun_call.rs:101:21
+   |
+LL |         Some("foo").expect(get_string().as_str());
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_else(|| panic!("{}", get_string()))`
+
+error: function call inside of `expect`
+  --> tests/ui/expect_fun_call.rs:104:21
+   |
+LL |         Some("foo").expect(get_static_str());
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_else(|| panic!("{}", get_static_str()))`
+
+error: function call inside of `expect`
+  --> tests/ui/expect_fun_call.rs:106:21
+   |
+LL |         Some("foo").expect(get_non_static_str(&0));
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_else(|| panic!("{}", get_non_static_str(&0)))`
+
+error: function call inside of `expect`
+  --> tests/ui/expect_fun_call.rs:109:21
+   |
+LL |         Some("foo").expect(const_evaluable());
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_else(|| panic!("{}", const_evaluable()))`
+
+error: function call inside of `expect`
+  --> tests/ui/expect_fun_call.rs:120:16
+   |
+LL |     Some(true).expect(&format!("key {}, {}", 1, 2));
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_else(|| panic!("key {}, {}", 1, 2))`
+
+error: function call inside of `expect`
+  --> tests/ui/expect_fun_call.rs:127:17
+   |
+LL |         opt_ref.expect(&format!("{:?}", opt_ref));
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_else(|| panic!("{:?}", opt_ref))`
+
+error: function call inside of `expect`
+  --> tests/ui/expect_fun_call.rs:132:20
+   |
+LL |     format_capture.expect(&format!("{error_code}"));
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_else(|| panic!("{error_code}"))`
+
+error: function call inside of `expect`
+  --> tests/ui/expect_fun_call.rs:136:30
+   |
+LL |     format_capture_and_value.expect(&format!("{error_code}, {}", 1));
+   |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_else(|| panic!("{error_code}, {}", 1))`
+
+error: aborting due to 16 previous errors
+

@@ -1,0 +1,17 @@
+<code>pub trait Write {
+    // Required methods
+    fn <a href="#tymethod.poll_write" class="fn">poll_write</a>(
+        self,
+        cx: &amp;mut <a class="enum" href="{{channel}}/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="{{channel}}/alloc/string/struct.String.html" title="struct alloc::string::String">String</a>&gt;,
+        buf: &amp;mut [<a class="primitive" href="{{channel}}/std/primitive.usize.html">usize</a>],
+    ) -&gt; <a class="enum" href="{{channel}}/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="enum" href="{{channel}}/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="primitive" href="{{channel}}/std/primitive.usize.html">usize</a>, <a class="struct" href="struct.Error.html" title="struct foo::Error">Error</a>&gt;&gt;;
+<span class="item-spacer" />    fn <a href="#tymethod.poll_flush" class="fn">poll_flush</a>(self, cx: &amp;mut <a class="enum" href="{{channel}}/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="{{channel}}/alloc/string/struct.String.html" title="struct alloc::string::String">String</a>&gt;) -&gt; <a class="enum" href="{{channel}}/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="enum" href="{{channel}}/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="primitive" href="{{channel}}/std/primitive.unit.html">()</a>, <a class="struct" href="struct.Error.html" title="struct foo::Error">Error</a>&gt;&gt;;
+<span class="item-spacer" />    fn <a href="#tymethod.poll_close" class="fn">poll_close</a>(self, cx: &amp;mut <a class="enum" href="{{channel}}/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="{{channel}}/alloc/string/struct.String.html" title="struct alloc::string::String">String</a>&gt;) -&gt; <a class="enum" href="{{channel}}/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="enum" href="{{channel}}/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="primitive" href="{{channel}}/std/primitive.unit.html">()</a>, <a class="struct" href="struct.Error.html" title="struct foo::Error">Error</a>&gt;&gt;;
+
+    // Provided method
+    fn <a href="#method.poll_write_vectored" class="fn">poll_write_vectored</a>(
+        self,
+        cx: &amp;mut <a class="enum" href="{{channel}}/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="{{channel}}/alloc/string/struct.String.html" title="struct alloc::string::String">String</a>&gt;,
+        bufs: &amp;[<a class="primitive" href="{{channel}}/std/primitive.usize.html">usize</a>],
+    ) -&gt; <a class="enum" href="{{channel}}/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="enum" href="{{channel}}/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="primitive" href="{{channel}}/std/primitive.usize.html">usize</a>, <a class="struct" href="struct.Error.html" title="struct foo::Error">Error</a>&gt;&gt; { ... }
+}</code>

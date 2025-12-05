@@ -1,0 +1,13 @@
+error[E0080]: reading memory at ALLOC0[0x1..0x2], but memory is uninitialized at [0x1..0x2], and this operation requires initialized memory
+  --> $DIR/ub-enum-overwrite.rs:11:14
+   |
+LL |     unsafe { *p }
+   |              ^^ evaluation of `_` failed here
+   |
+   = note: the raw bytes of the constant (size: 2, align: 1) {
+               01 __                                           │ .░
+           }
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0080`.

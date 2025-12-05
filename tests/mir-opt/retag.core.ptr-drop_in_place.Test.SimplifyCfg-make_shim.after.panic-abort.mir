@@ -1,0 +1,23 @@
+// MIR for `std::ptr::drop_in_place` after SimplifyCfg-make_shim
+
+fn drop_in_place(_1: *mut Test) -> () {
+    let mut _0: ();
+    let mut _2: &mut Test;
+    let mut _3: &mut Test;
+    let mut _4: ();
+
+    bb0: {
+        _2 = &mut (*_1);
+        Retag([fn entry] _2);
+        _3 = &mut (*_2);
+        _4 = <Test as Drop>::drop(move _3) -> [return: bb2, unwind: bb1];
+    }
+
+    bb1 (cleanup): {
+        resume;
+    }
+
+    bb2: {
+        return;
+    }
+}

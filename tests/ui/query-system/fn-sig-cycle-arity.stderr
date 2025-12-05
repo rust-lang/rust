@@ -1,0 +1,9 @@
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for return types
+  --> $DIR/fn-sig-cycle-arity.rs:2:24
+   |
+LL |     fn dance(&self) -> _ {
+   |                        ^ not allowed in type signatures
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0121`.

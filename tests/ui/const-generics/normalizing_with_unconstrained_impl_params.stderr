@@ -1,0 +1,71 @@
+error[E0637]: `'_` cannot be used here
+  --> $DIR/normalizing_with_unconstrained_impl_params.rs:9:32
+   |
+LL | struct ConstChunksExact<'a, T: '_, const assert: usize> {}
+   |                                ^^ `'_` is a reserved lifetime name
+
+error[E0308]: mismatched types
+  --> $DIR/normalizing_with_unconstrained_impl_params.rs:13:83
+   |
+LL | impl<'a, T: std::fmt::Debug, const N: usize> Iterator for ConstChunksExact<'a, T, {}> {
+   |                                                                                   ^^ expected `usize`, found `()`
+
+error[E0046]: not all trait items implemented, missing: `Item`
+  --> $DIR/normalizing_with_unconstrained_impl_params.rs:4:1
+   |
+LL | impl<'a, T: std::fmt::Debug, const N: usize> Iterator for ConstChunksExact<'a, T, { N }> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `Item` in implementation
+   |
+   = help: implement the missing item: `type Item = /* Type */;`
+
+error[E0392]: lifetime parameter `'a` is never used
+  --> $DIR/normalizing_with_unconstrained_impl_params.rs:9:25
+   |
+LL | struct ConstChunksExact<'a, T: '_, const assert: usize> {}
+   |                         ^^ unused lifetime parameter
+   |
+   = help: consider removing `'a`, referring to it in a field, or using a marker such as `PhantomData`
+
+error[E0392]: type parameter `T` is never used
+  --> $DIR/normalizing_with_unconstrained_impl_params.rs:9:29
+   |
+LL | struct ConstChunksExact<'a, T: '_, const assert: usize> {}
+   |                             ^ unused type parameter
+   |
+   = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
+
+error[E0520]: `Item` specializes an item from a parent `impl`, but that item is not marked `default`
+  --> $DIR/normalizing_with_unconstrained_impl_params.rs:16:5
+   |
+LL | impl<'a, T: std::fmt::Debug, const N: usize> Iterator for ConstChunksExact<'a, T, { N }> {
+   | ---------------------------------------------------------------------------------------- parent `impl` is here
+...
+LL |     type Item = &'a [T; N]; }
+   |     ^^^^^^^^^ cannot specialize default item `Item`
+   |
+   = note: to specialize, `Item` in the parent `impl` must be marked `default`
+
+error[E0207]: the const parameter `N` is not constrained by the impl trait, self type, or predicates
+  --> $DIR/normalizing_with_unconstrained_impl_params.rs:13:30
+   |
+LL | impl<'a, T: std::fmt::Debug, const N: usize> Iterator for ConstChunksExact<'a, T, {}> {
+   |                              ^^^^^^^^^^^^^^ unconstrained const parameter
+   |
+   = note: expressions using a const parameter must map each value to a distinct output value
+   = note: proving the result of expressions other than the parameter are unique is not supported
+
+error[E0308]: mismatched types
+  --> $DIR/normalizing_with_unconstrained_impl_params.rs:6:27
+   |
+LL |     fn next(&mut self) -> Option<Self::Item> {}
+   |        ----               ^^^^^^^^^^^^^^^^^^ expected `Option<_>`, found `()`
+   |        |
+   |        implicitly returns `()` as its body has no tail or `return` expression
+   |
+   = note:   expected enum `Option<_>`
+           found unit type `()`
+
+error: aborting due to 8 previous errors
+
+Some errors have detailed explanations: E0046, E0207, E0308, E0392, E0520, E0637.
+For more information about an error, try `rustc --explain E0046`.

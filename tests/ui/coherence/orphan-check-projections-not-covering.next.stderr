@@ -1,0 +1,37 @@
+warning[E0210]: type parameter `T` must be covered by another type when it appears before the first local type (`Local`)
+  --> $DIR/orphan-check-projections-not-covering.rs:22:6
+   |
+LL | impl<T> foreign::Trait0<Local, T, ()> for <T as Identity>::Output {}
+   |      ^ type parameter `T` must be covered by another type when it appears before the first local type (`Local`)
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #124559 <https://github.com/rust-lang/rust/issues/124559>
+   = note: implementing a foreign trait is only possible if at least one of the types for which it is implemented is local, and no uncovered type parameters appear before that first local type
+   = note: in this case, 'before' refers to the following order: `impl<..> ForeignTrait<T1, ..., Tn> for T0`, where `T0` is the first and `Tn` is the last
+   = note: `#[warn(uncovered_param_in_projection)]` (part of `#[warn(future_incompatible)]`) on by default
+
+warning[E0210]: type parameter `T` must be covered by another type when it appears before the first local type (`Local`)
+  --> $DIR/orphan-check-projections-not-covering.rs:27:6
+   |
+LL | impl<T> foreign::Trait0<<T as Identity>::Output, Local, T> for Option<T> {}
+   |      ^ type parameter `T` must be covered by another type when it appears before the first local type (`Local`)
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #124559 <https://github.com/rust-lang/rust/issues/124559>
+   = note: implementing a foreign trait is only possible if at least one of the types for which it is implemented is local, and no uncovered type parameters appear before that first local type
+   = note: in this case, 'before' refers to the following order: `impl<..> ForeignTrait<T1, ..., Tn> for T0`, where `T0` is the first and `Tn` is the last
+
+warning[E0210]: type parameter `T` must be covered by another type when it appears before the first local type (`Local`)
+  --> $DIR/orphan-check-projections-not-covering.rs:40:6
+   |
+LL | impl<T: Deferred> foreign::Trait1<Local, T> for <T as Deferred>::Output {}
+   |      ^ type parameter `T` must be covered by another type when it appears before the first local type (`Local`)
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #124559 <https://github.com/rust-lang/rust/issues/124559>
+   = note: implementing a foreign trait is only possible if at least one of the types for which it is implemented is local, and no uncovered type parameters appear before that first local type
+   = note: in this case, 'before' refers to the following order: `impl<..> ForeignTrait<T1, ..., Tn> for T0`, where `T0` is the first and `Tn` is the last
+
+warning: 3 warnings emitted
+
+For more information about this error, try `rustc --explain E0210`.

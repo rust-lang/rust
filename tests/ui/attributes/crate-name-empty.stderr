@@ -1,0 +1,8 @@
+error: crate name must not be empty
+  --> $DIR/crate-name-empty.rs:3:17
+   |
+LL | #![crate_name = ""]
+   |                 ^^
+
+error: aborting due to 1 previous error
+

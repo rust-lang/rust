@@ -1,0 +1,14 @@
+error[E0428]: the name `a` is defined multiple times
+  --> $DIR/issue-3099.rs:5:1
+   |
+LL | fn a(x: String) -> String {
+   | ------------------------- previous definition of the value `a` here
+...
+LL | fn a(x: String, y: String) -> String {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `a` redefined here
+   |
+   = note: `a` must be defined only once in the value namespace of this module
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0428`.

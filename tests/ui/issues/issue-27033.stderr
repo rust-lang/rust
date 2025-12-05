@@ -1,0 +1,22 @@
+error[E0530]: match bindings cannot shadow unit variants
+  --> $DIR/issue-27033.rs:3:9
+   |
+LL |         None @ _ => {}
+   |         ^^^^ cannot be named the same as a unit variant
+   |
+  --> $SRC_DIR/std/src/prelude/mod.rs:LL:COL
+   |
+   = note: the unit variant `None` is defined here
+
+error[E0530]: match bindings cannot shadow constants
+  --> $DIR/issue-27033.rs:7:9
+   |
+LL |     const C: u8 = 1;
+   |     ---------------- the constant `C` is defined here
+LL |     match 1 {
+LL |         C @ 2 => {
+   |         ^ cannot be named the same as a constant
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0530`.

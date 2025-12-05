@@ -1,0 +1,10 @@
+error: the constant `MAIN_SEPARATOR` is not of type `usize`
+  --> $DIR/non-local-const.rs:9:14
+   |
+LL | impl Foo for [u8; std::path::MAIN_SEPARATOR] {}
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `usize`, found `char`
+   |
+   = note: the length of array `[u8; MAIN_SEPARATOR]` must be type `usize`
+
+error: aborting due to 1 previous error
+

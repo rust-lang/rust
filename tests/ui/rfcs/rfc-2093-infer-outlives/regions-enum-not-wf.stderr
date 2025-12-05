@@ -1,0 +1,43 @@
+error[E0309]: the parameter type `T` may not live long enough
+  --> $DIR/regions-enum-not-wf.rs:17:18
+   |
+LL | enum Ref1<'a, T> {
+   |           -- the parameter type `T` must be valid for the lifetime `'a` as defined here...
+LL |     Ref1Variant1(RequireOutlives<'a, T>),
+   |                  ^^^^^^^^^^^^^^^^^^^^^^ ...so that the type `T` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL | enum Ref1<'a, T: 'a> {
+   |                ++++
+
+error[E0309]: the parameter type `T` may not live long enough
+  --> $DIR/regions-enum-not-wf.rs:22:25
+   |
+LL | enum Ref2<'a, T> {
+   |           -- the parameter type `T` must be valid for the lifetime `'a` as defined here...
+LL |     Ref2Variant1,
+LL |     Ref2Variant2(isize, RequireOutlives<'a, T>),
+   |                         ^^^^^^^^^^^^^^^^^^^^^^ ...so that the type `T` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL | enum Ref2<'a, T: 'a> {
+   |                ++++
+
+error[E0309]: the parameter type `T` may not live long enough
+  --> $DIR/regions-enum-not-wf.rs:35:23
+   |
+LL | enum RefDouble<'a, 'b, T> {
+   |                    -- the parameter type `T` must be valid for the lifetime `'b` as defined here...
+LL |     RefDoubleVariant1(&'a RequireOutlives<'b, T>),
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^ ...so that the type `T` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL | enum RefDouble<'a, 'b, T: 'b> {
+   |                         ++++
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0309`.

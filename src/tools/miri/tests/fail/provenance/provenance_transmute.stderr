@@ -1,0 +1,20 @@
+error: Undefined Behavior: memory access failed: attempting to access 1 byte, but got $HEX[noalloc] which is a dangling pointer (it has no provenance)
+  --> tests/fail/provenance/provenance_transmute.rs:LL:CC
+   |
+LL |         let _val = *left_ptr;
+   |                    ^^^^^^^^^ Undefined Behavior occurred here
+   |
+   = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
+   = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
+   = note: BACKTRACE:
+   = note: inside `deref` at tests/fail/provenance/provenance_transmute.rs:LL:CC
+note: inside `main`
+  --> tests/fail/provenance/provenance_transmute.rs:LL:CC
+   |
+LL |         deref(ptr1, ptr2.with_addr(ptr1.addr()));
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to 1 previous error
+

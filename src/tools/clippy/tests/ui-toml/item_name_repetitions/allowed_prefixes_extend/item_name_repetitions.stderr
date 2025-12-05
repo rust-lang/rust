@@ -1,0 +1,11 @@
+error: item name ends with its containing module's name
+  --> tests/ui-toml/item_name_repetitions/allowed_prefixes_extend/item_name_repetitions.rs:9:12
+   |
+LL |     pub fn something_foo() {}
+   |            ^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::module-name-repetitions` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::module_name_repetitions)]`
+
+error: aborting due to 1 previous error
+

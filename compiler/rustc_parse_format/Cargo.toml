@@ -1,0 +1,15 @@
+[package]
+name = "rustc_parse_format"
+version = "0.0.0"
+edition = "2024"
+
+[dependencies]
+# tidy-alphabetical-start
+rustc-literal-escaper = "0.0.5"
+rustc_lexer = { path = "../rustc_lexer" }
+# tidy-alphabetical-end
+
+[target.'cfg(target_pointer_width = "64")'.dev-dependencies]
+# tidy-alphabetical-start
+rustc_index = { path = "../rustc_index", default-features = false }
+# tidy-alphabetical-end

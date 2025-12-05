@@ -1,0 +1,30 @@
+error: Undefined Behavior: attempting a write access using <TAG> at ALLOC[0x0], but that tag only grants SharedReadOnly permission for this location
+  --> tests/fail/both_borrows/shr_frozen_violation1.rs:LL:CC
+   |
+LL |         *(x as *const i32 as *mut i32) = 7;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this error occurs as part of an access at ALLOC[0x0..0x4]
+   |
+   = help: this indicates a potential bug in the program: it performed an invalid operation, but the Stacked Borrows rules it violated are still experimental
+   = help: see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/stacked-borrows.md for further information
+help: <TAG> was created by a SharedReadOnly retag at offsets [0x0..0x4]
+  --> tests/fail/both_borrows/shr_frozen_violation1.rs:LL:CC
+   |
+LL |         *(x as *const i32 as *mut i32) = 7;
+   |           ^
+   = note: BACKTRACE (of the first span):
+   = note: inside `unknown_code` at tests/fail/both_borrows/shr_frozen_violation1.rs:LL:CC
+note: inside `foo`
+  --> tests/fail/both_borrows/shr_frozen_violation1.rs:LL:CC
+   |
+LL |     unknown_code(&*x);
+   |     ^^^^^^^^^^^^^^^^^
+note: inside `main`
+  --> tests/fail/both_borrows/shr_frozen_violation1.rs:LL:CC
+   |
+LL |     println!("{}", foo(&mut 0));
+   |                    ^^^^^^^^^^^
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to 1 previous error
+

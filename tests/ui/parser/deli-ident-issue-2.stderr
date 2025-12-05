@@ -1,0 +1,13 @@
+error: unexpected closing delimiter: `}`
+  --> $DIR/deli-ident-issue-2.rs:5:1
+   |
+LL |     if 1 < 2 {
+   |              - the nearest open delimiter
+LL |         let _a = vec!];
+   |                      - missing open `[` for this delimiter
+LL |     }
+LL | }
+   | ^ unexpected closing delimiter
+
+error: aborting due to 1 previous error
+

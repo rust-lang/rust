@@ -1,0 +1,97 @@
+error: this `if` has identical blocks
+  --> tests/ui/branches_sharing_code/valid_if_blocks.rs:109:14
+   |
+LL |       if false {
+   |  ______________^
+LL | |     } else {
+   | |_____^
+   |
+note: same as this
+  --> tests/ui/branches_sharing_code/valid_if_blocks.rs:110:12
+   |
+LL |       } else {
+   |  ____________^
+LL | |     }
+   | |_____^
+note: the lint level is defined here
+  --> tests/ui/branches_sharing_code/valid_if_blocks.rs:1:40
+   |
+LL | #![deny(clippy::branches_sharing_code, clippy::if_same_then_else)]
+   |                                        ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: this `if` has identical blocks
+  --> tests/ui/branches_sharing_code/valid_if_blocks.rs:121:15
+   |
+LL |       if x == 0 {
+   |  _______________^
+LL | |         let u = 19;
+LL | |         println!("How are u today?");
+LL | |         let _ = "This is a string";
+LL | |     } else {
+   | |_____^
+   |
+note: same as this
+  --> tests/ui/branches_sharing_code/valid_if_blocks.rs:125:12
+   |
+LL |       } else {
+   |  ____________^
+LL | |         let u = 19;
+LL | |         println!("How are u today?");
+LL | |         let _ = "This is a string";
+LL | |     }
+   | |_____^
+
+error: this `if` has identical blocks
+  --> tests/ui/branches_sharing_code/valid_if_blocks.rs:133:23
+   |
+LL |     let _ = if x == 6 { 7 } else { 7 };
+   |                       ^^^^^
+   |
+note: same as this
+  --> tests/ui/branches_sharing_code/valid_if_blocks.rs:133:34
+   |
+LL |     let _ = if x == 6 { 7 } else { 7 };
+   |                                  ^^^^^
+
+error: this `if` has identical blocks
+  --> tests/ui/branches_sharing_code/valid_if_blocks.rs:140:23
+   |
+LL |       } else if x == 68 {
+   |  _______________________^
+LL | |         println!("I'm a doppelgänger");
+LL | |
+LL | |         if y == 90 { "=^.^=" } else { ":D" }
+LL | |     } else {
+   | |_____^
+   |
+note: same as this
+  --> tests/ui/branches_sharing_code/valid_if_blocks.rs:144:12
+   |
+LL |       } else {
+   |  ____________^
+LL | |         println!("I'm a doppelgänger");
+LL | |
+LL | |         if y == 90 { "=^.^=" } else { ":D" }
+LL | |     };
+   | |_____^
+
+error: this `if` has identical blocks
+  --> tests/ui/branches_sharing_code/valid_if_blocks.rs:153:23
+   |
+LL |       } else if x == 68 {
+   |  _______________________^
+LL | |         println!("I'm a doppelgänger");
+LL | |     } else {
+   | |_____^
+   |
+note: same as this
+  --> tests/ui/branches_sharing_code/valid_if_blocks.rs:155:12
+   |
+LL |       } else {
+   |  ____________^
+LL | |         println!("I'm a doppelgänger");
+LL | |     }
+   | |_____^
+
+error: aborting due to 5 previous errors
+

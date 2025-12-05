@@ -1,0 +1,35 @@
+- // MIR for `dont_opt_floats` before SimplifyComparisonIntegral
++ // MIR for `dont_opt_floats` after SimplifyComparisonIntegral
+  
+  fn dont_opt_floats(_1: f32) -> i32 {
+      debug a => _1;
+      let mut _0: i32;
+      let mut _2: bool;
+      let mut _3: f32;
+  
+      bb0: {
+          StorageLive(_2);
+          StorageLive(_3);
+          _3 = copy _1;
+          _2 = Eq(move _3, const -42f32);
+          switchInt(move _2) -> [0: bb2, otherwise: bb1];
+      }
+  
+      bb1: {
+          StorageDead(_3);
+          _0 = const 0_i32;
+          goto -> bb3;
+      }
+  
+      bb2: {
+          StorageDead(_3);
+          _0 = const 1_i32;
+          goto -> bb3;
+      }
+  
+      bb3: {
+          StorageDead(_2);
+          return;
+      }
+  }
+  

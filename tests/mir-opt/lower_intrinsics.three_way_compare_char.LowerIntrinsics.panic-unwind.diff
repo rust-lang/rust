@@ -1,0 +1,34 @@
+- // MIR for `three_way_compare_char` before LowerIntrinsics
++ // MIR for `three_way_compare_char` after LowerIntrinsics
+  
+  fn three_way_compare_char(_1: char, _2: char) -> () {
+      debug a => _1;
+      debug b => _2;
+      let mut _0: ();
+      let _3: std::cmp::Ordering;
+      let mut _4: char;
+      let mut _5: char;
+      scope 1 {
+          debug _x => _3;
+      }
+  
+      bb0: {
+          StorageLive(_3);
+          StorageLive(_4);
+          _4 = copy _1;
+          StorageLive(_5);
+          _5 = copy _2;
+-         _3 = three_way_compare::<char>(move _4, move _5) -> [return: bb1, unwind unreachable];
++         _3 = Cmp(move _4, move _5);
++         goto -> bb1;
+      }
+  
+      bb1: {
+          StorageDead(_5);
+          StorageDead(_4);
+          _0 = const ();
+          StorageDead(_3);
+          return;
+      }
+  }
+  

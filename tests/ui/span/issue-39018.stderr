@@ -1,0 +1,196 @@
+error[E0369]: cannot add `&str` to `&str`
+  --> $DIR/issue-39018.rs:2:22
+   |
+LL |     let x = "Hello " + "World!";
+   |             -------- ^ -------- &str
+   |             |        |
+   |             |        `+` cannot be used to concatenate two `&str` strings
+   |             &str
+   |
+   = note: string concatenation requires an owned `String` on the left
+help: create an owned `String` from a string reference
+   |
+LL |     let x = "Hello ".to_owned() + "World!";
+   |                     +++++++++++
+
+error[E0369]: cannot add `World` to `World`
+  --> $DIR/issue-39018.rs:8:26
+   |
+LL |     let y = World::Hello + World::Goodbye;
+   |             ------------ ^ -------------- World
+   |             |
+   |             World
+   |
+note: an implementation of `Add` might be missing for `World`
+  --> $DIR/issue-39018.rs:15:1
+   |
+LL | enum World {
+   | ^^^^^^^^^^ must implement `Add`
+note: the trait `Add` must be implemented
+  --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
+
+error[E0369]: cannot add `String` to `&str`
+  --> $DIR/issue-39018.rs:11:22
+   |
+LL |     let x = "Hello " + "World!".to_owned();
+   |             -------- ^ ------------------- String
+   |             |        |
+   |             |        `+` cannot be used to concatenate a `&str` with a `String`
+   |             &str
+   |
+help: create an owned `String` on the left and add a borrow on the right
+   |
+LL |     let x = "Hello ".to_owned() + &"World!".to_owned();
+   |                     +++++++++++   +
+
+error[E0369]: cannot add `&String` to `&String`
+  --> $DIR/issue-39018.rs:26:16
+   |
+LL |     let _ = &a + &b;
+   |             -- ^ -- &String
+   |             |  |
+   |             |  `+` cannot be used to concatenate two `&str` strings
+   |             &String
+   |
+   = note: string concatenation requires an owned `String` on the left
+help: remove the borrow to obtain an owned `String`
+   |
+LL -     let _ = &a + &b;
+LL +     let _ = a + &b;
+   |
+
+error[E0369]: cannot add `String` to `&String`
+  --> $DIR/issue-39018.rs:27:16
+   |
+LL |     let _ = &a + b;
+   |             -- ^ - String
+   |             |  |
+   |             |  `+` cannot be used to concatenate a `&str` with a `String`
+   |             &String
+   |
+help: remove the borrow on the left and add one on the right
+   |
+LL -     let _ = &a + b;
+LL +     let _ = a + &b;
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/issue-39018.rs:29:17
+   |
+LL |     let _ = a + b;
+   |                 ^ expected `&str`, found `String`
+   |
+help: consider borrowing here
+   |
+LL |     let _ = a + &b;
+   |                 +
+
+error[E0369]: cannot add `String` to `&String`
+  --> $DIR/issue-39018.rs:30:15
+   |
+LL |     let _ = e + b;
+   |             - ^ - String
+   |             | |
+   |             | `+` cannot be used to concatenate a `&str` with a `String`
+   |             &String
+   |
+help: create an owned `String` on the left and add a borrow on the right
+   |
+LL |     let _ = e.to_owned() + &b;
+   |              +++++++++++   +
+
+error[E0369]: cannot add `&String` to `&String`
+  --> $DIR/issue-39018.rs:31:15
+   |
+LL |     let _ = e + &b;
+   |             - ^ -- &String
+   |             | |
+   |             | `+` cannot be used to concatenate two `&str` strings
+   |             &String
+   |
+   = note: string concatenation requires an owned `String` on the left
+help: create an owned `String` from a string reference
+   |
+LL |     let _ = e.to_owned() + &b;
+   |              +++++++++++
+
+error[E0369]: cannot add `&str` to `&String`
+  --> $DIR/issue-39018.rs:32:15
+   |
+LL |     let _ = e + d;
+   |             - ^ - &str
+   |             | |
+   |             | `+` cannot be used to concatenate two `&str` strings
+   |             &String
+   |
+   = note: string concatenation requires an owned `String` on the left
+help: create an owned `String` from a string reference
+   |
+LL |     let _ = e.to_owned() + d;
+   |              +++++++++++
+
+error[E0369]: cannot add `&&str` to `&String`
+  --> $DIR/issue-39018.rs:33:15
+   |
+LL |     let _ = e + &d;
+   |             - ^ -- &&str
+   |             | |
+   |             | `+` cannot be used to concatenate two `&str` strings
+   |             &String
+   |
+   = note: string concatenation requires an owned `String` on the left
+help: create an owned `String` from a string reference
+   |
+LL |     let _ = e.to_owned() + &d;
+   |              +++++++++++
+
+error[E0369]: cannot add `&&str` to `&&str`
+  --> $DIR/issue-39018.rs:34:16
+   |
+LL |     let _ = &c + &d;
+   |             -- ^ -- &&str
+   |             |
+   |             &&str
+
+error[E0369]: cannot add `&str` to `&&str`
+  --> $DIR/issue-39018.rs:35:16
+   |
+LL |     let _ = &c + d;
+   |             -- ^ - &str
+   |             |
+   |             &&str
+
+error[E0369]: cannot add `&&str` to `&str`
+  --> $DIR/issue-39018.rs:36:15
+   |
+LL |     let _ = c + &d;
+   |             - ^ -- &&str
+   |             | |
+   |             | `+` cannot be used to concatenate two `&str` strings
+   |             &str
+   |
+   = note: string concatenation requires an owned `String` on the left
+help: create an owned `String` from a string reference
+   |
+LL |     let _ = c.to_owned() + &d;
+   |              +++++++++++
+
+error[E0369]: cannot add `&str` to `&str`
+  --> $DIR/issue-39018.rs:37:15
+   |
+LL |     let _ = c + d;
+   |             - ^ - &str
+   |             | |
+   |             | `+` cannot be used to concatenate two `&str` strings
+   |             &str
+   |
+   = note: string concatenation requires an owned `String` on the left
+help: create an owned `String` from a string reference
+   |
+LL |     let _ = c.to_owned() + d;
+   |              +++++++++++
+
+error: aborting due to 14 previous errors
+
+Some errors have detailed explanations: E0308, E0369.
+For more information about an error, try `rustc --explain E0308`.

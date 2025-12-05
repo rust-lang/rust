@@ -1,0 +1,8 @@
+error: unexpected generic arguments in path
+  --> $DIR/issue-43424.rs:10:10
+   |
+LL | m!(inline<u8>);
+   |          ^^^^
+
+error: aborting due to 1 previous error
+

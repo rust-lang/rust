@@ -1,0 +1,45 @@
+error: `#[inline]` attribute cannot be used on structs
+  --> $DIR/attr-usage-inline.rs:7:1
+   |
+LL | #[inline]
+   | ^^^^^^^^^
+   |
+   = help: `#[inline]` can only be applied to functions
+
+error[E0518]: attribute should be applied to function or closure
+  --> $DIR/attr-usage-inline.rs:25:1
+   |
+LL | #[inline]
+   | ^^^^^^^^^ not a function or closure
+
+warning: `#[inline]` attribute cannot be used on struct fields
+  --> $DIR/attr-usage-inline.rs:11:5
+   |
+LL |     #[inline]
+   |     ^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = help: `#[inline]` can only be applied to functions
+   = note: requested on the command line with `-W unused-attributes`
+
+warning: `#[inline]` attribute cannot be used on macro defs
+  --> $DIR/attr-usage-inline.rs:18:1
+   |
+LL | #[inline]
+   | ^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = help: `#[inline]` can only be applied to functions
+
+warning: `#[inline]` attribute cannot be used on macro defs
+  --> $DIR/attr-usage-inline.rs:25:1
+   |
+LL | #[inline]
+   | ^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = help: `#[inline]` can only be applied to functions
+
+error: aborting due to 2 previous errors; 3 warnings emitted
+
+For more information about this error, try `rustc --explain E0518`.

@@ -1,0 +1,54 @@
+error[E0277]: the trait bound `i8: Foo<i32>` is not satisfied
+  --> $DIR/issue-39802-show-5-trait-impls.rs:24:21
+   |
+LL |     Foo::<i32>::bar(&1i8);
+   |     --------------- ^^^^ the trait `Foo<i32>` is not implemented for `i8`
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = help: the following other types implement trait `Foo<B>`:
+             `i8` implements `Foo<bool>`
+             `i8` implements `Foo<u16>`
+             `i8` implements `Foo<u32>`
+             `i8` implements `Foo<u64>`
+             `i8` implements `Foo<u8>`
+
+error[E0277]: the trait bound `u8: Foo<i32>` is not satisfied
+  --> $DIR/issue-39802-show-5-trait-impls.rs:25:21
+   |
+LL |     Foo::<i32>::bar(&1u8);
+   |     --------------- ^^^^ the trait `Foo<i32>` is not implemented for `u8`
+   |     |
+   |     required by a bound introduced by this call
+   |
+help: the following other types implement trait `Foo<B>`
+  --> $DIR/issue-39802-show-5-trait-impls.rs:11:1
+   |
+LL | impl Foo<u16> for u8 {}
+   | ^^^^^^^^^^^^^^^^^^^^ `u8` implements `Foo<u16>`
+LL | impl Foo<u32> for u8 {}
+   | ^^^^^^^^^^^^^^^^^^^^ `u8` implements `Foo<u32>`
+LL | impl Foo<u64> for u8 {}
+   | ^^^^^^^^^^^^^^^^^^^^ `u8` implements `Foo<u64>`
+LL | impl Foo<bool> for u8 {}
+   | ^^^^^^^^^^^^^^^^^^^^^ `u8` implements `Foo<bool>`
+
+error[E0277]: the trait bound `bool: Foo<i32>` is not satisfied
+  --> $DIR/issue-39802-show-5-trait-impls.rs:26:21
+   |
+LL |     Foo::<i32>::bar(&true);
+   |     --------------- ^^^^^ the trait `Foo<i32>` is not implemented for `bool`
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = help: the following other types implement trait `Foo<B>`:
+             `bool` implements `Foo<bool>`
+             `bool` implements `Foo<i8>`
+             `bool` implements `Foo<u16>`
+             `bool` implements `Foo<u32>`
+             `bool` implements `Foo<u64>`
+             `bool` implements `Foo<u8>`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

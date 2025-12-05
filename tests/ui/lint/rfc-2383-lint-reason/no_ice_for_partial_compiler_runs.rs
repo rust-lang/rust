@@ -1,0 +1,15 @@
+// This ensures that ICEs like rust#94953 don't happen
+//@ check-pass
+//@ compile-flags: -Z unpretty=expanded
+//@ edition: 2015
+
+// This `expect` will create an expectation with an unstable expectation id
+#[expect(while_true)]
+fn create_early_lint_pass_expectation() {
+    // `while_true` is an early lint
+    while true {}
+}
+
+fn main() {
+    create_early_lint_pass_expectation();
+}

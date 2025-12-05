@@ -1,0 +1,22 @@
+error: ambiguous associated item
+  --> $DIR/enum-variant-priority-lint-ambiguous_associated_items.rs:32:15
+   |
+LL |     fn f() -> Self::V { 0 }
+   |               ^^^^^^^ help: use fully-qualified syntax: `<E as Tr>::V`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #57644 <https://github.com/rust-lang/rust/issues/57644>
+note: `V` could refer to the variant defined here
+  --> $DIR/enum-variant-priority-lint-ambiguous_associated_items.rs:22:5
+   |
+LL |     V
+   |     ^
+note: `V` could also refer to the associated type defined here
+  --> $DIR/enum-variant-priority-lint-ambiguous_associated_items.rs:26:5
+   |
+LL |     type V;
+   |     ^^^^^^
+   = note: `#[deny(ambiguous_associated_items)]` (part of `#[deny(future_incompatible)]`) on by default
+
+error: aborting due to 1 previous error
+

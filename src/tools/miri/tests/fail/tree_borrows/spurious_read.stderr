@@ -1,0 +1,45 @@
+Thread 1 executing: start
+Thread 2 executing: start
+Thread 2 executing: retag x (&mut, protect)
+Thread 1 executing: retag x (&mut, protect)
+Thread 1 executing: retag y (&mut, protect)
+Thread 2 executing: retag y (&mut, protect)
+Thread 2 executing: location where spurious read of x would happen in the target
+Thread 1 executing: location where spurious read of x would happen in the target
+Thread 1 executing: ret x
+Thread 2 executing: ret x
+Thread 2 executing: write y
+Thread 1 executing: write y
+Thread 1 executing: ret y
+error: Undefined Behavior: write access through <TAG> at ALLOC[0x0] is forbidden
+  --> tests/fail/tree_borrows/spurious_read.rs:LL:CC
+   |
+LL |                 *y = 2;
+   |                 ^^^^^^ Undefined Behavior occurred here
+   |
+   = help: this indicates a potential bug in the program: it performed an invalid operation, but the Tree Borrows rules it violated are still experimental
+   = help: see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/tree-borrows.md for further information
+   = help: the accessed tag <TAG> has state Reserved (conflicted) which forbids this child write access
+help: the accessed tag <TAG> was created here, in the initial state Reserved
+  --> tests/fail/tree_borrows/spurious_read.rs:LL:CC
+   |
+LL |         fn as_mut(y: &mut u8, b: (usize, Arc<Barrier>)) -> *mut u8 {
+   |                   ^
+help: the accessed tag <TAG> later transitioned to Reserved (conflicted) due to a protector release (acting as a foreign read access) on every location previously accessed by this tag
+  --> tests/fail/tree_borrows/spurious_read.rs:LL:CC
+   |
+LL |         }
+   |          ^
+   = help: this transition corresponds to a temporary loss of write permissions until function exit
+   = note: BACKTRACE (of the first span) on thread `unnamed-ID`:
+   = note: inside `retagx_retagy_retx_writey_rety::{closure#1}::as_mut` at tests/fail/tree_borrows/spurious_read.rs:LL:CC
+note: inside closure
+  --> tests/fail/tree_borrows/spurious_read.rs:LL:CC
+   |
+LL |         let _y = as_mut(unsafe { &mut *ptr.0 }, b.clone());
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to 1 previous error
+

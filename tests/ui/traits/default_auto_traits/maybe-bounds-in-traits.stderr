@@ -1,0 +1,49 @@
+error[E0277]: the trait bound `NonLeakS: Leak` is not satisfied
+  --> $DIR/maybe-bounds-in-traits.rs:49:20
+   |
+LL |     impl LeakT for NonLeakS {}
+   |                    ^^^^^^^^ unsatisfied trait bound
+   |
+help: the trait `Leak` is not implemented for `NonLeakS`
+  --> $DIR/maybe-bounds-in-traits.rs:38:1
+   |
+LL | struct NonLeakS;
+   | ^^^^^^^^^^^^^^^
+note: required by a bound in `LeakT`
+  --> $DIR/maybe-bounds-in-traits.rs:48:5
+   |
+LL |     trait LeakT {}
+   |     ^^^^^^^^^^^^^^ required by this bound in `LeakT`
+
+error[E0277]: the trait bound `NonLeakS: Leak` is not satisfied
+  --> $DIR/maybe-bounds-in-traits.rs:58:22
+   |
+LL |         type Leak2 = NonLeakS;
+   |                      ^^^^^^^^ unsatisfied trait bound
+   |
+help: the trait `Leak` is not implemented for `NonLeakS`
+  --> $DIR/maybe-bounds-in-traits.rs:38:1
+   |
+LL | struct NonLeakS;
+   | ^^^^^^^^^^^^^^^
+note: required by a bound in `Test1::Leak2`
+  --> $DIR/maybe-bounds-in-traits.rs:58:9
+   |
+LL |         type Leak2 = NonLeakS;
+   |         ^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `Test1::Leak2`
+
+error[E0658]: `&mut Self` cannot be used as the type of `self` without the `arbitrary_self_types` feature
+  --> $DIR/maybe-bounds-in-traits.rs:77:20
+   |
+LL |         fn mut_foo(&mut self) {}
+   |                    ^^^^^^^^^
+   |
+   = note: see issue #44874 <https://github.com/rust-lang/rust/issues/44874> for more information
+   = help: add `#![feature(arbitrary_self_types)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = help: consider changing to `self`, `&self`, `&mut self`, or a type implementing `Receiver` such as `self: Box<Self>`, `self: Rc<Self>`, or `self: Arc<Self>`
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0277, E0658.
+For more information about an error, try `rustc --explain E0277`.

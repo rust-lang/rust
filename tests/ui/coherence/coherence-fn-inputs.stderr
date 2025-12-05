@@ -1,0 +1,15 @@
+warning: conflicting implementations of trait `Trait` for type `for<'a, 'b> fn(&'a u32, &'b u32)`
+  --> $DIR/coherence-fn-inputs.rs:16:1
+   |
+LL | impl Trait for for<'a, 'b> fn(&'a u32, &'b u32) {}
+   | ----------------------------------------------- first implementation here
+LL | impl Trait for for<'c> fn(&'c u32, &'c u32) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `for<'a, 'b> fn(&'a u32, &'b u32)`
+   |
+   = warning: the behavior may change in a future release
+   = note: for more information, see issue #56105 <https://github.com/rust-lang/rust/issues/56105>
+   = note: this behavior recently changed as a result of a bug fix; see rust-lang/rust#56105 for details
+   = note: `#[warn(coherence_leak_check)]` (part of `#[warn(future_incompatible)]`) on by default
+
+warning: 1 warning emitted
+

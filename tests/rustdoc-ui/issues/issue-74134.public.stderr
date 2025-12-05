@@ -1,0 +1,11 @@
+warning: public documentation for `public_item` links to private item `PrivateType`
+  --> $DIR/issue-74134.rs:19:11
+   |
+LL |     /// [`PrivateType`]
+   |           ^^^^^^^^^^^ this item is private
+   |
+   = note: this link will resolve properly if you pass `--document-private-items`
+   = note: `#[warn(rustdoc::private_intra_doc_links)]` on by default
+
+warning: 1 warning emitted
+

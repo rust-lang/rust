@@ -1,0 +1,14 @@
+error: abi: ScalarPair(Initialized { value: Int(I?, false), valid_range: $VALID_RANGE }, Initialized { value: Pointer(AddressSpace(0)), valid_range: $VALID_RANGE })
+  --> $DIR/enum-scalar-pair-int-ptr.rs:12:1
+   |
+LL | enum ScalarPairPointerWithInt {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: abi: Memory { sized: true }
+  --> $DIR/enum-scalar-pair-int-ptr.rs:21:1
+   |
+LL | enum NotScalarPairPointerWithSmallerInt {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

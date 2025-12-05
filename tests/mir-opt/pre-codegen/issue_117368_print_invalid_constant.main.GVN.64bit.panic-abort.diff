@@ -1,0 +1,125 @@
+- // MIR for `main` before GVN
++ // MIR for `main` after GVN
+  
+  fn main() -> () {
+      let mut _0: ();
+      let _1: std::alloc::Layout;
+      let mut _2: std::option::Option<std::alloc::Layout>;
+      let mut _3: *mut u8;
+      let mut _4: *mut [u8];
+      let mut _5: std::ptr::NonNull<[u8]>;
+      let mut _6: std::result::Result<std::ptr::NonNull<[u8]>, std::alloc::AllocError>;
+      let mut _7: &std::alloc::Global;
+      let mut _8: std::alloc::Layout;
+      scope 1 {
+          debug layout => _1;
+          let mut _9: &std::alloc::Global;
+          scope 2 {
+              debug ptr => _3;
+          }
+          scope 5 (inlined <std::alloc::Global as Allocator>::allocate) {
+          }
+          scope 6 (inlined #[track_caller] Result::<NonNull<[u8]>, std::alloc::AllocError>::unwrap) {
+              let mut _12: isize;
+              let _13: std::alloc::AllocError;
+              let mut _14: !;
+              let mut _15: &dyn std::fmt::Debug;
+              let _16: &std::alloc::AllocError;
+              scope 7 {
+              }
+              scope 8 {
+              }
+          }
+          scope 9 (inlined NonNull::<[u8]>::as_ptr) {
+          }
+      }
+      scope 3 (inlined #[track_caller] Option::<Layout>::unwrap) {
+          let mut _10: isize;
+          let mut _11: !;
+          scope 4 {
+          }
+      }
+  
+      bb0: {
+-         StorageLive(_1);
++         nop;
+          StorageLive(_2);
+-         _2 = Option::<Layout>::None;
++         _2 = const Option::<Layout>::None;
+          StorageLive(_10);
+-         _10 = discriminant(_2);
+-         switchInt(move _10) -> [0: bb2, 1: bb3, otherwise: bb1];
++         _10 = const 0_isize;
++         switchInt(const 0_isize) -> [0: bb2, 1: bb3, otherwise: bb1];
+      }
+  
+      bb1: {
+          unreachable;
+      }
+  
+      bb2: {
+          _11 = option::unwrap_failed() -> unwind unreachable;
+      }
+  
+      bb3: {
+-         _1 = move ((_2 as Some).0: std::alloc::Layout);
++         _1 = const Layout {{ size: Indirect { alloc_id: ALLOC0, offset: Size(8 bytes) }: usize, align: std::ptr::Alignment(Scalar(0x0000000000000000): std::ptr::alignment::AlignmentEnum) }};
+          StorageDead(_10);
+          StorageDead(_2);
+          StorageLive(_3);
+          StorageLive(_4);
+          StorageLive(_5);
+          StorageLive(_6);
+          StorageLive(_7);
+          _9 = const main::promoted[0];
+          _7 = copy _9;
+          StorageLive(_8);
+-         _8 = copy _1;
+-         _6 = std::alloc::Global::alloc_impl(move _7, move _8, const false) -> [return: bb4, unwind unreachable];
++         _8 = const Layout {{ size: Indirect { alloc_id: ALLOC0, offset: Size(8 bytes) }: usize, align: std::ptr::Alignment(Scalar(0x0000000000000000): std::ptr::alignment::AlignmentEnum) }};
++         _6 = std::alloc::Global::alloc_impl(copy _9, const Layout {{ size: Indirect { alloc_id: ALLOC0, offset: Size(8 bytes) }: usize, align: std::ptr::Alignment(Scalar(0x0000000000000000): std::ptr::alignment::AlignmentEnum) }}, const false) -> [return: bb4, unwind unreachable];
+      }
+  
+      bb4: {
+          StorageDead(_8);
+          StorageDead(_7);
+          StorageLive(_12);
+          StorageLive(_16);
+          _12 = discriminant(_6);
+          switchInt(move _12) -> [0: bb6, 1: bb5, otherwise: bb1];
+      }
+  
+      bb5: {
+          StorageLive(_15);
+          _16 = &_13;
+          _15 = copy _16 as &dyn std::fmt::Debug (PointerCoercion(Unsize, Implicit));
+          _14 = result::unwrap_failed(const "called `Result::unwrap()` on an `Err` value", move _15) -> unwind unreachable;
+      }
+  
+      bb6: {
+          _5 = move ((_6 as Ok).0: std::ptr::NonNull<[u8]>);
+          StorageDead(_16);
+          StorageDead(_12);
+          StorageDead(_6);
+          _4 = copy _5 as *mut [u8] (Transmute);
+          StorageDead(_5);
+          _3 = copy _4 as *mut u8 (PtrToPtr);
+          StorageDead(_4);
+          StorageDead(_3);
+-         StorageDead(_1);
++         nop;
+          return;
+      }
+  }
+  
+- ALLOC0 (size: 43, align: 1) {
++ ALLOC0 (size: 16, align: 8) {
++     00 00 00 00 00 00 00 00 __ __ __ __ __ __ __ __ │ ........░░░░░░░░
++ }
++ 
++ ALLOC1 (size: 43, align: 1) {
+      0x00 │ 63 61 6c 6c 65 64 20 60 52 65 73 75 6c 74 3a 3a │ called `Result::
+      0x10 │ 75 6e 77 72 61 70 28 29 60 20 6f 6e 20 61 6e 20 │ unwrap()` on an 
+      0x20 │ 60 45 72 72 60 20 76 61 6c 75 65                │ `Err` value
+  }
+  

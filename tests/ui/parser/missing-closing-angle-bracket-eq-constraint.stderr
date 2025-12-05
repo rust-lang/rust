@@ -1,0 +1,64 @@
+error: expected one of `,`, `:`, or `>`, found `=`
+  --> $DIR/missing-closing-angle-bracket-eq-constraint.rs:7:23
+   |
+LL |   let v : Vec<(u32,_) = vec![];
+   |         -             ^ expected one of `,`, `:`, or `>`
+   |         |
+   |         while parsing the type for `v`
+   |
+help: you might have meant to end the type parameters here
+   |
+LL |   let v : Vec<(u32,_)> = vec![];
+   |                      +
+
+error: expected one of `!`, `(`, `+`, `,`, `::`, `<`, or `>`, found `{`
+  --> $DIR/missing-closing-angle-bracket-eq-constraint.rs:13:32
+   |
+LL |   let foo : Foo::<T1, T2 = Foo {_a : arg1, _b : arg2};
+   |           -                    ^ expected one of 7 possible tokens
+   |           |
+   |           while parsing the type for `foo`
+   |
+help: you might have meant to end the type parameters here
+   |
+LL |   let foo : Foo::<T1>, T2 = Foo {_a : arg1, _b : arg2};
+   |                     +
+
+error: expected one of `,`, `:`, or `>`, found `=`
+  --> $DIR/missing-closing-angle-bracket-eq-constraint.rs:18:18
+   |
+LL |   let v : Vec<'a = vec![];
+   |         -        ^ expected one of `,`, `:`, or `>`
+   |         |
+   |         while parsing the type for `v`
+   |
+help: you might have meant to end the type parameters here
+   |
+LL |   let v : Vec<'a> = vec![];
+   |                 +
+
+error[E0282]: type annotations needed for `Vec<_>`
+  --> $DIR/missing-closing-angle-bracket-eq-constraint.rs:7:7
+   |
+LL |   let v : Vec<(u32,_) = vec![];
+   |       ^                 ------ type must be known at this point
+   |
+help: consider giving `v` an explicit type, where the placeholders `_` are specified
+   |
+LL |   let v: Vec<_> : Vec<(u32,_) = vec![];
+   |        ++++++++
+
+error[E0282]: type annotations needed for `Vec<_>`
+  --> $DIR/missing-closing-angle-bracket-eq-constraint.rs:18:7
+   |
+LL |   let v : Vec<'a = vec![];
+   |       ^            ------ type must be known at this point
+   |
+help: consider giving `v` an explicit type, where the placeholders `_` are specified
+   |
+LL |   let v: Vec<_> : Vec<'a = vec![];
+   |        ++++++++
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0282`.

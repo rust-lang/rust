@@ -1,0 +1,74 @@
+error: diagnostics should be created using translatable messages
+  --> $DIR/diagnostics.rs:43:31
+   |
+LL |         Diag::new(dcx, level, "untranslatable diagnostic")
+   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/diagnostics.rs:7:9
+   |
+LL | #![deny(rustc::untranslatable_diagnostic)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: diagnostics should be created using translatable messages
+  --> $DIR/diagnostics.rs:63:19
+   |
+LL |         diag.note("untranslatable diagnostic");
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: diagnostics should be created using translatable messages
+  --> $DIR/diagnostics.rs:83:19
+   |
+LL |         diag.note("untranslatable diagnostic");
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: diagnostics should only be created in `Diagnostic`/`Subdiagnostic`/`LintDiagnostic` impls
+  --> $DIR/diagnostics.rs:97:21
+   |
+LL |     let _diag = dcx.struct_err(crate::fluent_generated::no_crate_example);
+   |                     ^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/diagnostics.rs:8:9
+   |
+LL | #![deny(rustc::diagnostic_outside_of_impl)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: diagnostics should only be created in `Diagnostic`/`Subdiagnostic`/`LintDiagnostic` impls
+  --> $DIR/diagnostics.rs:100:21
+   |
+LL |     let _diag = dcx.struct_err("untranslatable diagnostic");
+   |                     ^^^^^^^^^^
+
+error: diagnostics should be created using translatable messages
+  --> $DIR/diagnostics.rs:100:32
+   |
+LL |     let _diag = dcx.struct_err("untranslatable diagnostic");
+   |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: diagnostics should be created using translatable messages
+  --> $DIR/diagnostics.rs:118:7
+   |
+LL |     f("untranslatable diagnostic", crate::fluent_generated::no_crate_example);
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: diagnostics should be created using translatable messages
+  --> $DIR/diagnostics.rs:120:50
+   |
+LL |     f(crate::fluent_generated::no_crate_example, "untranslatable diagnostic");
+   |                                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: diagnostics should be created using translatable messages
+  --> $DIR/diagnostics.rs:122:7
+   |
+LL |     f("untranslatable diagnostic", "untranslatable diagnostic");
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: diagnostics should be created using translatable messages
+  --> $DIR/diagnostics.rs:122:36
+   |
+LL |     f("untranslatable diagnostic", "untranslatable diagnostic");
+   |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 10 previous errors
+

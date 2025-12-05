@@ -1,0 +1,83 @@
+warning: unexpected `cfg` condition name: `list_all_well_known_cfgs`
+  --> $DIR/well-known-names.rs:8:7
+   |
+LL | #[cfg(list_all_well_known_cfgs)]
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: expected names are: `clippy`
+`contract_checks`
+`debug_assertions`
+`doc`
+`doctest`
+`fmt_debug`
+`miri`
+`overflow_checks`
+`panic`
+`proc_macro`
+`relocation_model`
+`rustfmt`
+`sanitize`
+`sanitizer_cfi_generalize_pointers`
+`sanitizer_cfi_normalize_integers`
+`target_abi`
+`target_arch`
+`target_endian`
+`target_env`
+`target_family`
+`target_feature`
+`target_has_atomic`
+`target_has_atomic_equal_alignment`
+`target_has_atomic_load_store`
+`target_os`
+`target_pointer_width`
+`target_thread_local`
+`target_vendor`
+`ub_checks`
+`unix`, and `windows`
+   = help: to expect this configuration use `--check-cfg=cfg(list_all_well_known_cfgs)`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+   = note: `#[warn(unexpected_cfgs)]` on by default
+
+warning: unexpected `cfg` condition name: `target_oz`
+  --> $DIR/well-known-names.rs:12:7
+   |
+LL | #[cfg(target_oz = "linux")]
+   |       ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: to expect this configuration use `--check-cfg=cfg(target_oz, values("linux"))`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+help: there is a config with a similar name and value
+   |
+LL - #[cfg(target_oz = "linux")]
+LL + #[cfg(target_os = "linux")]
+   |
+
+warning: unexpected `cfg` condition name: `features`
+  --> $DIR/well-known-names.rs:19:7
+   |
+LL | #[cfg(features = "foo")]
+   |       ^^^^^^^^^^^^^^^^
+   |
+   = help: to expect this configuration use `--check-cfg=cfg(features, values("foo"))`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `feature`
+  --> $DIR/well-known-names.rs:23:7
+   |
+LL | #[cfg(feature = "foo")]
+   |       ^^^^^^^^^^^^^^^
+   |
+   = help: to expect this configuration use `--check-cfg=cfg(feature, values("foo"))`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `uniw`
+  --> $DIR/well-known-names.rs:27:7
+   |
+LL | #[cfg(uniw)]
+   |       ^^^^ help: there is a config with a similar name: `unix`
+   |
+   = help: to expect this configuration use `--check-cfg=cfg(uniw)`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+
+warning: 5 warnings emitted
+

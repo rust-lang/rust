@@ -1,0 +1,48 @@
+error[E0204]: the trait `ConstParamTy_` cannot be implemented for this type
+  --> $DIR/unsized_field-1.rs:8:10
+   |
+LL | #[derive(ConstParamTy, Eq, PartialEq)]
+   |          ^^^^^^^^^^^^
+LL |
+LL | struct A([u8]);
+   |          ---- this field does not implement `ConstParamTy_`
+   |
+note: the `ConstParamTy_` impl for `[u8]` requires that `feature(unsized_const_params) is enabled`
+  --> $DIR/unsized_field-1.rs:10:10
+   |
+LL | struct A([u8]);
+   |          ^^^^
+
+error[E0204]: the trait `ConstParamTy_` cannot be implemented for this type
+  --> $DIR/unsized_field-1.rs:12:10
+   |
+LL | #[derive(ConstParamTy, Eq, PartialEq)]
+   |          ^^^^^^^^^^^^
+LL |
+LL | struct B(&'static [u8]);
+   |          ------------- this field does not implement `ConstParamTy_`
+   |
+note: the `ConstParamTy_` impl for `&'static [u8]` requires that `feature(unsized_const_params) is enabled`
+  --> $DIR/unsized_field-1.rs:14:10
+   |
+LL | struct B(&'static [u8]);
+   |          ^^^^^^^^^^^^^
+
+error[E0204]: the trait `ConstParamTy_` cannot be implemented for this type
+  --> $DIR/unsized_field-1.rs:19:10
+   |
+LL | #[derive(std::marker::ConstParamTy, Eq, PartialEq)]
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | struct D(unsized_const_param::GenericNotUnsizedParam<&'static [u8]>);
+   |          ---------------------------------------------------------- this field does not implement `ConstParamTy_`
+   |
+note: the `ConstParamTy_` impl for `GenericNotUnsizedParam<&'static [u8]>` requires that `feature(unsized_const_params) is enabled`
+  --> $DIR/unsized_field-1.rs:21:10
+   |
+LL | struct D(unsized_const_param::GenericNotUnsizedParam<&'static [u8]>);
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0204`.

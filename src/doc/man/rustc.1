@@ -1,0 +1,314 @@
+.TH RUSTC "1" "April 2019" "rustc <INSERT VERSION HERE>" "User Commands"
+.SH NAME
+rustc \- The Rust compiler
+.SH SYNOPSIS
+.B rustc
+[\fIOPTIONS\fR] \fIINPUT\fR
+
+.SH DESCRIPTION
+This program is a compiler for the Rust language, available at https://www.rust\-lang.org.
+
+.SH OPTIONS
+
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Display the help message.
+.TP
+\fB\-\-cfg\fR \fISPEC\fR
+Configure the compilation environment.
+.TP
+\fB\-L\fR [\fIKIND\fR=]\fIPATH\fR
+Add a directory to the library search path.
+The optional \fIKIND\fR can be one of:
+.RS
+.TP
+\fBdependency\fR
+only lookup transitive dependencies here
+.TP
+.B crate
+only lookup local `extern crate` directives here
+.TP
+.B native
+only lookup native libraries here
+.TP
+.B framework
+only look for OSX frameworks here
+.TP
+.B all
+look for anything here (the default)
+.RE
+.TP
+\fB\-l\fR [\fIKIND\fR=]\fINAME\fR
+Link the generated crate(s) to the specified library \fINAME\fR.
+The optional \fIKIND\fR can be one of \fIstatic\fR, \fIdylib\fR, or
+\fIframework\fR.
+If omitted, \fIdylib\fR is assumed.
+.TP
+\fB\-\-crate\-type\fR [bin|lib|rlib|dylib|cdylib|staticlib|proc\-macro]
+Comma separated list of types of crates for the compiler to emit.
+.TP
+\fB\-\-crate\-name\fR \fINAME\fR
+Specify the name of the crate being built.
+.TP
+\fB\-\-emit\fR [asm|llvm\-bc|llvm\-ir|obj|metadata|link|dep\-info|mir][=\fIPATH\fR]
+Configure the output that \fBrustc\fR will produce. Each emission may also have
+an optional explicit output \fIPATH\fR specified for that particular emission
+kind. This path takes precedence over the \fB-o\fR option.
+.TP
+\fB\-\-print\fR [crate\-name|\:file\-names|\:sysroot|\:target\-libdir|\:cfg|\:target\-list|\:target\-cpus|\:target\-features|\:relocation\-models|\:code\-models|\:tls\-models|\:target\-spec\-json|\:native\-static\-libs|\:stack\-protector\-strategies|\:link\-args]
+Comma separated list of compiler information to print on stdout.
+.TP
+\fB\-g\fR
+Equivalent to \fI\-C\ debuginfo=2\fR.
+.TP
+\fB\-O\fR
+Equivalent to \fI\-C\ opt\-level=2\fR.
+.TP
+\fB\-o\fR \fIFILENAME\fR
+Write output to \fIFILENAME\fR. Ignored if multiple \fI\-\-emit\fR outputs are specified which
+don't have an explicit path otherwise.
+.TP
+\fB\-\-out\-dir\fR \fIDIR\fR
+Write output to compiler\[hy]chosen filename in \fIDIR\fR. Ignored if \fI\-o\fR is specified.
+Defaults to the current directory.
+.TP
+\fB\-\-explain\fR \fIOPT\fR
+Provide a detailed explanation of an error message.
+.TP
+\fB\-\-test\fR
+Build a test harness.
+.TP
+\fB\-\-target\fR \fITARGET\fR
+Target triple for which the code is compiled. This option defaults to the host’s target
+triple. The target triple has the general format <arch><sub>\-<vendor>\-<sys>\-<abi>, where:
+.RS
+.TP
+.B <arch>
+x86, arm, thumb, mips, etc.
+.TP
+.B <sub>
+for example on ARM: v5, v6m, v7a, v7m, etc.
+.TP
+.B <vendor>
+pc, apple, nvidia, ibm, etc.
+.TP
+.B <sys>
+none, linux, win32, darwin, cuda, etc.
+.TP
+.B <abi>
+eabi, gnu, android, macho, elf, etc.
+.RE
+.TP
+\fB\-W help\fR
+Print 'lint' options and default settings.
+.TP
+\fB\-W\fR \fIOPT\fR, \fB\-\-warn\fR \fIOPT\fR
+Set lint warnings.
+.TP
+\fB\-A\fR \fIOPT\fR, \fB\-\-allow\fR \fIOPT\fR
+Set lint allowed.
+.TP
+\fB\-D\fR \fIOPT\fR, \fB\-\-deny\fR \fIOPT\fR
+Set lint denied.
+.TP
+\fB\-F\fR \fIOPT\fR, \fB\-\-forbid\fR \fIOPT\fR
+Set lint forbidden.
+.TP
+\fB\-C\fR \fIFLAG\fR[=\fIVAL\fR], \fB\-\-codegen\fR \fIFLAG\fR[=\fIVAL\fR]
+Set a codegen\[hy]related flag to the value specified.
+Use \fI\-C help\fR to print available flags.
+See CODEGEN OPTIONS below.
+.TP
+\fB\-V\fR, \fB\-\-version\fR
+Print version info and exit.
+.TP
+\fB\-v\fR, \fB\-\-verbose\fR
+Use verbose output.
+.TP
+\fB\-\-remap\-path\-prefix\fR \fIfrom\fR=\fIto\fR
+Remap source path prefixes in all output, including compiler diagnostics, debug information,
+macro expansions, etc. The \fIfrom\fR=\fIto\fR parameter is scanned from right to left, so \fIfrom\fR
+may contain '=', but \fIto\fR may not.
+
+This is useful for normalizing build products, for example by removing the current directory out of
+pathnames emitted into the object files. The replacement is purely textual, with no consideration of
+the current system's pathname syntax. For example \fI\-\-remap\-path\-prefix foo=bar\fR will
+match \fBfoo/lib.rs\fR but not \fB./foo/lib.rs\fR.
+.TP
+\fB\-\-extern\fR \fINAME\fR=\fIPATH\fR
+Specify where an external rust library is located. These should match
+\fIextern\fR declarations in the crate's source code.
+.TP
+\fB\-\-sysroot\fR \fIPATH\fR
+Override the system root.
+.TP
+\fB\-Z\fR \fIFLAG\fR
+Set unstable / perma-unstable options.
+Use \fI\-Z help\fR to print available options.
+.TP
+\fB\-\-color\fR auto|always|never
+Configure coloring of output:
+.RS
+.TP
+.B auto
+colorize, if output goes to a tty (default);
+.TP
+.B always
+always colorize output;
+.TP
+.B never
+never colorize output.
+.RE
+
+.SH CODEGEN OPTIONS
+
+.TP
+\fBlinker\fR=\fI/path/to/cc\fR
+Path to the linker utility to use when linking libraries, executables, and
+objects.
+.TP
+\fBlink\-args\fR='\fI\-flag1 \-flag2\fR'
+A space\[hy]separated list of extra arguments to pass to the linker when the linker
+is invoked.
+.TP
+\fBlto\fR
+Perform LLVM link\[hy]time optimizations.
+.TP
+\fBtarget\-cpu\fR=\fIhelp\fR
+Selects a target processor.
+If the value is 'help', then a list of available CPUs is printed.
+.TP
+\fBtarget\-feature\fR='\fI+feature1\fR,\fI\-feature2\fR'
+A comma\[hy]separated list of features to enable or disable for the target.
+A preceding '+' enables a feature while a preceding '\-' disables it.
+Available features can be discovered through \fIllc -mcpu=help\fR.
+.TP
+\fBpasses\fR=\fIval\fR
+A space\[hy]separated list of extra LLVM passes to run.
+A value of 'list' will cause \fBrustc\fR to print all known passes and
+exit.
+The passes specified are appended at the end of the normal pass manager.
+.TP
+\fBllvm\-args\fR='\fI\-arg1\fR \fI\-arg2\fR'
+A space\[hy]separated list of arguments to pass through to LLVM.
+.TP
+\fBsave\-temps\fR
+If specified, the compiler will save more files (.bc, .o, .no\-opt.bc) generated
+throughout compilation in the output directory.
+.TP
+\fBrpath\fR
+If specified, then the rpath value for dynamic libraries will be set in
+either dynamic library or executable outputs.
+.TP
+\fBno\-prepopulate\-passes\fR
+Suppresses pre\[hy]population of the LLVM pass manager that is run over the module.
+.TP
+\fBno\-vectorize\-loops\fR
+Suppresses running the loop vectorization LLVM pass, regardless of optimization
+level.
+.TP
+\fBno\-vectorize\-slp\fR
+Suppresses running the LLVM SLP vectorization pass, regardless of optimization
+level.
+.TP
+\fBsoft\-float\fR
+Generates software floating point library calls instead of hardware
+instructions.
+.TP
+\fBprefer\-dynamic\fR
+Prefers dynamic linking to static linking.
+.TP
+\fBno\-integrated\-as\fR
+Force usage of an external assembler rather than LLVM's integrated one.
+.TP
+\fBno\-redzone\fR
+Disable the use of the redzone.
+.TP
+\fBrelocation\-model\fR=[pic,static,dynamic\-no\-pic]
+The relocation model to use.
+(Default: \fIpic\fR)
+.TP
+\fBcode\-model\fR=[small,kernel,medium,large]
+Choose the code model to use.
+.TP
+\fBmetadata\fR=\fIval\fR
+Metadata to mangle symbol names with.
+.TP
+\fBextra\-filename\fR=\fIval\fR
+Extra data to put in each output filename.
+.TP
+\fBcodegen\-units\fR=\fIn\fR
+Divide crate into \fIn\fR units to optimize in parallel.
+.TP
+\fBremark\fR=\fIval\fR
+Print remarks for these optimization passes (space separated, or "all").
+.TP
+\fBno\-stack\-check\fR
+Disable checks for stack exhaustion (a memory\[hy]safety hazard!).
+.TP
+\fBdebuginfo\fR=\fIval\fR
+Debug info emission level:
+.RS
+.TP
+.B 0
+no debug info;
+.TP
+.B 1
+line\[hy]tables only (for stacktraces and breakpoints);
+.TP
+.B 2
+full debug info with variable and type information.
+.RE
+.TP
+\fBopt\-level\fR=\fIVAL\fR
+Optimize with possible levels 0\[en]3, s (optimize for size), or z (for minimal size)
+
+.SH ENVIRONMENT
+
+Some of these affect only test harness programs (generated via rustc --test);
+others affect all programs which link to the Rust standard library.
+
+.TP
+\fBRUST_TEST_THREADS\fR
+The test framework Rust provides executes tests in parallel. This variable sets
+the maximum number of threads used for this purpose. This setting is overridden
+by the --test-threads option.
+
+.TP
+\fBRUST_TEST_NOCAPTURE\fR
+If set to a value other than "0", a synonym for the --nocapture flag.
+
+.TP
+\fBRUST_MIN_STACK\fR
+Sets the minimum stack size for new threads.
+
+.TP
+\fBRUST_BACKTRACE\fR
+If set to a value different than "0", produces a backtrace in the output of a program which panics.
+
+.SH "EXAMPLES"
+To build an executable from a source file with a main function:
+    $ rustc \-o hello hello.rs
+
+To build a library from a source file:
+    $ rustc \-\-crate\-type=lib hello\-lib.rs
+
+To build either with a crate (.rs) file:
+    $ rustc hello.rs
+
+To build an executable with debug info:
+    $ rustc \-g \-o hello hello.rs
+
+.SH "SEE ALSO"
+
+.BR rustdoc (1)
+
+.SH "BUGS"
+See https://github.com/rust\-lang/rust/issues for issues.
+
+.SH "AUTHOR"
+See https://github.com/rust\-lang/rust/graphs/contributors or use `git log --all --format='%cN <%cE>' | sort -u` in the rust source distribution.
+
+.SH "COPYRIGHT"
+This work is dual\[hy]licensed under Apache\ 2.0 and MIT terms.
+See \fICOPYRIGHT\fR file in the rust source distribution.

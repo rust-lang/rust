@@ -1,0 +1,15 @@
+error[E0040]: explicit use of destructor method
+  --> $DIR/explicit-call-to-dtor.rs:15:7
+   |
+LL |     x.drop();
+   |       ^^^^ explicit destructor calls not allowed
+   |
+help: consider using `drop` function
+   |
+LL -     x.drop();
+LL +     drop(x);
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0040`.

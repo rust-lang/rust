@@ -1,0 +1,19 @@
+error[E0080]: transmuting from word size type to 2 * word size type: `usize` -> `&[u8]`
+  --> $DIR/transmute-size-mismatch-before-typeck.rs:16:29
+   |
+LL | const ZST: &[u8] = unsafe { std::mem::transmute(1usize) };
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `ZST` failed here
+
+error[E0512]: cannot transmute between types of different sizes, or dependently-sized types
+  --> $DIR/transmute-size-mismatch-before-typeck.rs:16:29
+   |
+LL | const ZST: &[u8] = unsafe { std::mem::transmute(1usize) };
+   |                             ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: source type: `usize` (word size)
+   = note: target type: `&[u8]` (2 * word size)
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0080, E0512.
+For more information about an error, try `rustc --explain E0080`.

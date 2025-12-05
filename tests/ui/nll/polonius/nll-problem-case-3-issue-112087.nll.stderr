@@ -1,0 +1,17 @@
+error[E0506]: cannot assign to `*opt` because it is borrowed
+  --> $DIR/nll-problem-case-3-issue-112087.rs:23:5
+   |
+LL | fn issue_112087<'a>(opt: &'a mut Option<i32>, b: bool) -> Result<&'a mut Option<i32>, &'a mut i32> {
+   |                 -- lifetime `'a` defined here
+LL |     if let Some(v) = opt {
+   |                 - `*opt` is borrowed here
+LL |         if b {
+LL |             return Err(v);
+   |                    ------ returning this value requires that `opt.0` is borrowed for `'a`
+...
+LL |     *opt = None;
+   |     ^^^^^^^^^^^ `*opt` is assigned to here but it was already borrowed
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0506`.

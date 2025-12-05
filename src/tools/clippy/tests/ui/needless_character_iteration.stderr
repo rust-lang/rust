@@ -1,0 +1,69 @@
+error: checking if a string is ascii using iterators
+  --> tests/ui/needless_character_iteration.rs:18:5
+   |
+LL |     "foo".chars().all(|c| c.is_ascii());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `"foo".is_ascii()`
+   |
+   = note: `-D clippy::needless-character-iteration` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::needless_character_iteration)]`
+
+error: checking if a string is ascii using iterators
+  --> tests/ui/needless_character_iteration.rs:21:5
+   |
+LL |     "foo".chars().any(|c| !c.is_ascii());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `!"foo".is_ascii()`
+
+error: checking if a string is ascii using iterators
+  --> tests/ui/needless_character_iteration.rs:24:5
+   |
+LL |     "foo".chars().all(|c| char::is_ascii(&c));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `"foo".is_ascii()`
+
+error: checking if a string is ascii using iterators
+  --> tests/ui/needless_character_iteration.rs:27:5
+   |
+LL |     "foo".chars().any(|c| !char::is_ascii(&c));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `!"foo".is_ascii()`
+
+error: checking if a string is ascii using iterators
+  --> tests/ui/needless_character_iteration.rs:31:5
+   |
+LL |     s.chars().all(|c| c.is_ascii());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `s.is_ascii()`
+
+error: checking if a string is ascii using iterators
+  --> tests/ui/needless_character_iteration.rs:34:5
+   |
+LL |     "foo".to_string().chars().any(|c| !c.is_ascii());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `!"foo".to_string().is_ascii()`
+
+error: checking if a string is ascii using iterators
+  --> tests/ui/needless_character_iteration.rs:37:5
+   |
+LL | /     "foo".chars().all(|c| {
+LL | |
+LL | |
+LL | |         let x = c;
+LL | |         x.is_ascii()
+LL | |     });
+   | |______^ help: try: `"foo".is_ascii()`
+
+error: checking if a string is ascii using iterators
+  --> tests/ui/needless_character_iteration.rs:43:5
+   |
+LL | /     "foo".chars().any(|c| {
+LL | |
+LL | |
+LL | |         let x = c;
+LL | |         !x.is_ascii()
+LL | |     });
+   | |______^ help: try: `!"foo".is_ascii()`
+
+error: checking if a string is ascii using iterators
+  --> tests/ui/needless_character_iteration.rs:50:5
+   |
+LL |     S::default().field().chars().all(|x| x.is_ascii());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `S::default().field().is_ascii()`
+
+error: aborting due to 9 previous errors
+

@@ -1,0 +1,1228 @@
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:28:14
+   |
+LL |     let _n = 1u8 << 8;
+   |              ^^^^^^^^ attempt to shift left by `8_i32`, which would overflow
+   |
+note: the lint level is defined here
+  --> $DIR/lint-overflowing-ops.rs:17:9
+   |
+LL | #![deny(arithmetic_overflow)]
+   |         ^^^^^^^^^^^^^^^^^^^
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:226:15
+   |
+LL |     let _n = &(isize::MAX * 5);
+   |               ^^^^^^^^^^^^^^^^ attempt to compute `isize::MAX * 5_isize`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:223:15
+   |
+LL |     let _n = &(i128::MAX * 5);
+   |               ^^^^^^^^^^^^^^^ attempt to compute `i128::MAX * 5_i128`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:220:15
+   |
+LL |     let _n = &(i64::MAX * 5);
+   |               ^^^^^^^^^^^^^^ attempt to compute `i64::MAX * 5_i64`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:217:15
+   |
+LL |     let _n = &(i32::MAX * 5);
+   |               ^^^^^^^^^^^^^^ attempt to compute `i32::MAX * 5_i32`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:214:15
+   |
+LL |     let _n = &(i16::MAX * 5);
+   |               ^^^^^^^^^^^^^^ attempt to compute `i16::MAX * 5_i16`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:211:15
+   |
+LL |     let _n = &(i8::MAX * i8::MAX);
+   |               ^^^^^^^^^^^^^^^^^^^ attempt to compute `i8::MAX * i8::MAX`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:208:15
+   |
+LL |     let _n = &(usize::MAX * 5);
+   |               ^^^^^^^^^^^^^^^^ attempt to compute `usize::MAX * 5_usize`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:205:15
+   |
+LL |     let _n = &(u128::MAX * 5);
+   |               ^^^^^^^^^^^^^^^ attempt to compute `u128::MAX * 5_u128`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:202:15
+   |
+LL |     let _n = &(u64::MAX * 5);
+   |               ^^^^^^^^^^^^^^ attempt to compute `u64::MAX * 5_u64`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:199:15
+   |
+LL |     let _n = &(u32::MAX * 5);
+   |               ^^^^^^^^^^^^^^ attempt to compute `u32::MAX * 5_u32`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:196:15
+   |
+LL |     let _n = &(u16::MAX * 5);
+   |               ^^^^^^^^^^^^^^ attempt to compute `u16::MAX * 5_u16`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:193:15
+   |
+LL |     let _n = &(u8::MAX * 5);
+   |               ^^^^^^^^^^^^^ attempt to compute `u8::MAX * 5_u8`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:188:15
+   |
+LL |     let _n = &(-i8::MIN);
+   |               ^^^^^^^^^^ attempt to negate `i8::MIN`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:185:15
+   |
+LL |     let _n = &(1usize - 5);
+   |               ^^^^^^^^^^^^ attempt to compute `1_usize - 5_usize`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:182:15
+   |
+LL |     let _n = &(-5isize - isize::MAX);
+   |               ^^^^^^^^^^^^^^^^^^^^^^ attempt to compute `-5_isize - isize::MAX`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:179:15
+   |
+LL |     let _n = &(-5i128 - i128::MAX);
+   |               ^^^^^^^^^^^^^^^^^^^^ attempt to compute `-5_i128 - i128::MAX`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:176:15
+   |
+LL |     let _n = &(-5i64 - i64::MAX);
+   |               ^^^^^^^^^^^^^^^^^^ attempt to compute `-5_i64 - i64::MAX`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:173:15
+   |
+LL |     let _n = &(-5i32 - i32::MAX);
+   |               ^^^^^^^^^^^^^^^^^^ attempt to compute `-5_i32 - i32::MAX`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:170:15
+   |
+LL |     let _n = &(-5i16 - i16::MAX);
+   |               ^^^^^^^^^^^^^^^^^^ attempt to compute `-5_i16 - i16::MAX`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:167:15
+   |
+LL |     let _n = &(-5i8 - i8::MAX);
+   |               ^^^^^^^^^^^^^^^^ attempt to compute `-5_i8 - i8::MAX`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:164:15
+   |
+LL |     let _n = &(1u128 - 5);
+   |               ^^^^^^^^^^^ attempt to compute `1_u128 - 5_u128`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:161:15
+   |
+LL |     let _n = &(1u64 - 5);
+   |               ^^^^^^^^^^ attempt to compute `1_u64 - 5_u64`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:158:15
+   |
+LL |     let _n = &(1u32 - 5);
+   |               ^^^^^^^^^^ attempt to compute `1_u32 - 5_u32`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:155:15
+   |
+LL |     let _n = &(1u16 - 5);
+   |               ^^^^^^^^^^ attempt to compute `1_u16 - 5_u16`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:152:15
+   |
+LL |     let _n = &(1u8 - 5);
+   |               ^^^^^^^^^ attempt to compute `1_u8 - 5_u8`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:147:15
+   |
+LL |     let _n = &(1usize + usize::MAX);
+   |               ^^^^^^^^^^^^^^^^^^^^^ attempt to compute `1_usize + usize::MAX`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:144:15
+   |
+LL |     let _n = &(1isize + isize::MAX);
+   |               ^^^^^^^^^^^^^^^^^^^^^ attempt to compute `1_isize + isize::MAX`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:141:15
+   |
+LL |     let _n = &(1i128 + i128::MAX);
+   |               ^^^^^^^^^^^^^^^^^^^ attempt to compute `1_i128 + i128::MAX`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:138:15
+   |
+LL |     let _n = &(1i64 + i64::MAX);
+   |               ^^^^^^^^^^^^^^^^^ attempt to compute `1_i64 + i64::MAX`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:135:15
+   |
+LL |     let _n = &(1i32 + i32::MAX);
+   |               ^^^^^^^^^^^^^^^^^ attempt to compute `1_i32 + i32::MAX`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:132:15
+   |
+LL |     let _n = &(1i16 + i16::MAX);
+   |               ^^^^^^^^^^^^^^^^^ attempt to compute `1_i16 + i16::MAX`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:129:15
+   |
+LL |     let _n = &(1i8 + i8::MAX);
+   |               ^^^^^^^^^^^^^^^ attempt to compute `1_i8 + i8::MAX`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:126:15
+   |
+LL |     let _n = &(1u128 + u128::MAX);
+   |               ^^^^^^^^^^^^^^^^^^^ attempt to compute `1_u128 + u128::MAX`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:123:15
+   |
+LL |     let _n = &(1u64 + u64::MAX);
+   |               ^^^^^^^^^^^^^^^^^ attempt to compute `1_u64 + u64::MAX`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:120:15
+   |
+LL |     let _n = &(1u32 + u32::MAX);
+   |               ^^^^^^^^^^^^^^^^^ attempt to compute `1_u32 + u32::MAX`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:117:15
+   |
+LL |     let _n = &(1u16 + u16::MAX);
+   |               ^^^^^^^^^^^^^^^^^ attempt to compute `1_u16 + u16::MAX`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:114:15
+   |
+LL |     let _n = &(1u8 + u8::MAX);
+   |               ^^^^^^^^^^^^^^^ attempt to compute `1_u8 + u8::MAX`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:110:15
+   |
+LL |     let _n = &(1i64 >> [64][0]);
+   |               ^^^^^^^^^^^^^^^^^ attempt to shift right by `64_i32`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:107:15
+   |
+LL |     let _n = &(1_usize >> BITS);
+   |               ^^^^^^^^^^^^^^^^^ attempt to shift right by `%BITS%`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:104:15
+   |
+LL |     let _n = &(1_isize >> BITS);
+   |               ^^^^^^^^^^^^^^^^^ attempt to shift right by `%BITS%`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:101:15
+   |
+LL |     let _n = &(1i128 >> 128);
+   |               ^^^^^^^^^^^^^^ attempt to shift right by `128_i32`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:98:15
+   |
+LL |     let _n = &(1i64 >> 64);
+   |               ^^^^^^^^^^^^ attempt to shift right by `64_i32`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:95:15
+   |
+LL |     let _n = &(1i32 >> 32);
+   |               ^^^^^^^^^^^^ attempt to shift right by `32_i32`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:92:15
+   |
+LL |     let _n = &(1i16 >> 16);
+   |               ^^^^^^^^^^^^ attempt to shift right by `16_i32`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:89:15
+   |
+LL |     let _n = &(1i8 >> 8);
+   |               ^^^^^^^^^^ attempt to shift right by `8_i32`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:86:15
+   |
+LL |     let _n = &(1u128 >> 128);
+   |               ^^^^^^^^^^^^^^ attempt to shift right by `128_i32`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:83:15
+   |
+LL |     let _n = &(1u64 >> 64);
+   |               ^^^^^^^^^^^^ attempt to shift right by `64_i32`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:80:15
+   |
+LL |     let _n = &(1u32 >> 32);
+   |               ^^^^^^^^^^^^ attempt to shift right by `32_i32`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:77:15
+   |
+LL |     let _n = &(1u16 >> 16);
+   |               ^^^^^^^^^^^^ attempt to shift right by `16_i32`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:74:15
+   |
+LL |     let _n = &(1u8 >> 8);
+   |               ^^^^^^^^^^ attempt to shift right by `8_i32`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:65:15
+   |
+LL |     let _n = &(1 << -1);
+   |               ^^^^^^^^^ attempt to shift left by `-1_i32`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:62:15
+   |
+LL |     let _n = &(1_usize << BITS);
+   |               ^^^^^^^^^^^^^^^^^ attempt to shift left by `%BITS%`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:59:15
+   |
+LL |     let _n = &(1_isize << BITS);
+   |               ^^^^^^^^^^^^^^^^^ attempt to shift left by `%BITS%`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:56:15
+   |
+LL |     let _n = &(1i128 << 128);
+   |               ^^^^^^^^^^^^^^ attempt to shift left by `128_i32`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:53:15
+   |
+LL |     let _n = &(1i64 << 64);
+   |               ^^^^^^^^^^^^ attempt to shift left by `64_i32`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:50:15
+   |
+LL |     let _n = &(1i32 << 32);
+   |               ^^^^^^^^^^^^ attempt to shift left by `32_i32`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:47:15
+   |
+LL |     let _n = &(1i16 << 16);
+   |               ^^^^^^^^^^^^ attempt to shift left by `16_i32`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:44:15
+   |
+LL |     let _n = &(1i8 << 8);
+   |               ^^^^^^^^^^ attempt to shift left by `8_i32`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:41:15
+   |
+LL |     let _n = &(1u128 << 128);
+   |               ^^^^^^^^^^^^^^ attempt to shift left by `128_i32`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:38:15
+   |
+LL |     let _n = &(1u64 << 64);
+   |               ^^^^^^^^^^^^ attempt to shift left by `64_i32`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:35:15
+   |
+LL |     let _n = &(1u32 << 32);
+   |               ^^^^^^^^^^^^ attempt to shift left by `32_i32`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:32:15
+   |
+LL |     let _n = &(1u16 << 16);
+   |               ^^^^^^^^^^^^ attempt to shift left by `16_i32`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:29:15
+   |
+LL |     let _n = &(1u8 << 8);
+   |               ^^^^^^^^^^ attempt to shift left by `8_i32`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:31:14
+   |
+LL |     let _n = 1u16 << 16;
+   |              ^^^^^^^^^^ attempt to shift left by `16_i32`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:34:14
+   |
+LL |     let _n = 1u32 << 32;
+   |              ^^^^^^^^^^ attempt to shift left by `32_i32`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:37:14
+   |
+LL |     let _n = 1u64 << 64;
+   |              ^^^^^^^^^^ attempt to shift left by `64_i32`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:40:14
+   |
+LL |     let _n = 1u128 << 128;
+   |              ^^^^^^^^^^^^ attempt to shift left by `128_i32`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:43:14
+   |
+LL |     let _n = 1i8 << 8;
+   |              ^^^^^^^^ attempt to shift left by `8_i32`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:46:14
+   |
+LL |     let _n = 1i16 << 16;
+   |              ^^^^^^^^^^ attempt to shift left by `16_i32`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:49:14
+   |
+LL |     let _n = 1i32 << 32;
+   |              ^^^^^^^^^^ attempt to shift left by `32_i32`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:52:14
+   |
+LL |     let _n = 1i64 << 64;
+   |              ^^^^^^^^^^ attempt to shift left by `64_i32`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:55:14
+   |
+LL |     let _n = 1i128 << 128;
+   |              ^^^^^^^^^^^^ attempt to shift left by `128_i32`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:58:14
+   |
+LL |     let _n = 1_isize << BITS;
+   |              ^^^^^^^^^^^^^^^ attempt to shift left by `%BITS%`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:61:14
+   |
+LL |     let _n = 1_usize << BITS;
+   |              ^^^^^^^^^^^^^^^ attempt to shift left by `%BITS%`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:64:14
+   |
+LL |     let _n = 1 << -1;
+   |              ^^^^^^^ attempt to shift left by `-1_i32`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:69:14
+   |
+LL |     let _n = -1_i64 >> 64;
+   |              ^^^^^^^^^^^^ attempt to shift right by `64_i32`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:70:14
+   |
+LL |     let _n = -1_i32 >> 32;
+   |              ^^^^^^^^^^^^ attempt to shift right by `32_i32`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:71:14
+   |
+LL |     let _n = -1_i32 >> -1;
+   |              ^^^^^^^^^^^^ attempt to shift right by `-1_i32`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:73:14
+   |
+LL |     let _n = 1u8 >> 8;
+   |              ^^^^^^^^ attempt to shift right by `8_i32`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:76:14
+   |
+LL |     let _n = 1u16 >> 16;
+   |              ^^^^^^^^^^ attempt to shift right by `16_i32`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:79:14
+   |
+LL |     let _n = 1u32 >> 32;
+   |              ^^^^^^^^^^ attempt to shift right by `32_i32`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:82:14
+   |
+LL |     let _n = 1u64 >> 64;
+   |              ^^^^^^^^^^ attempt to shift right by `64_i32`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:85:14
+   |
+LL |     let _n = 1u128 >> 128;
+   |              ^^^^^^^^^^^^ attempt to shift right by `128_i32`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:88:14
+   |
+LL |     let _n = 1i8 >> 8;
+   |              ^^^^^^^^ attempt to shift right by `8_i32`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:91:14
+   |
+LL |     let _n = 1i16 >> 16;
+   |              ^^^^^^^^^^ attempt to shift right by `16_i32`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:94:14
+   |
+LL |     let _n = 1i32 >> 32;
+   |              ^^^^^^^^^^ attempt to shift right by `32_i32`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:97:14
+   |
+LL |     let _n = 1i64 >> 64;
+   |              ^^^^^^^^^^ attempt to shift right by `64_i32`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:100:14
+   |
+LL |     let _n = 1i128 >> 128;
+   |              ^^^^^^^^^^^^ attempt to shift right by `128_i32`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:103:14
+   |
+LL |     let _n = 1_isize >> BITS;
+   |              ^^^^^^^^^^^^^^^ attempt to shift right by `%BITS%`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:106:14
+   |
+LL |     let _n = 1_usize >> BITS;
+   |              ^^^^^^^^^^^^^^^ attempt to shift right by `%BITS%`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:109:14
+   |
+LL |     let _n = 1i64 >> [64][0];
+   |              ^^^^^^^^^^^^^^^ attempt to shift right by `64_i32`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:113:14
+   |
+LL |     let _n = 1u8 + u8::MAX;
+   |              ^^^^^^^^^^^^^ attempt to compute `1_u8 + u8::MAX`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:116:14
+   |
+LL |     let _n = 1u16 + u16::MAX;
+   |              ^^^^^^^^^^^^^^^ attempt to compute `1_u16 + u16::MAX`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:119:14
+   |
+LL |     let _n = 1u32 + u32::MAX;
+   |              ^^^^^^^^^^^^^^^ attempt to compute `1_u32 + u32::MAX`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:122:14
+   |
+LL |     let _n = 1u64 + u64::MAX;
+   |              ^^^^^^^^^^^^^^^ attempt to compute `1_u64 + u64::MAX`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:125:14
+   |
+LL |     let _n = 1u128 + u128::MAX;
+   |              ^^^^^^^^^^^^^^^^^ attempt to compute `1_u128 + u128::MAX`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:128:14
+   |
+LL |     let _n = 1i8 + i8::MAX;
+   |              ^^^^^^^^^^^^^ attempt to compute `1_i8 + i8::MAX`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:131:14
+   |
+LL |     let _n = 1i16 + i16::MAX;
+   |              ^^^^^^^^^^^^^^^ attempt to compute `1_i16 + i16::MAX`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:134:14
+   |
+LL |     let _n = 1i32 + i32::MAX;
+   |              ^^^^^^^^^^^^^^^ attempt to compute `1_i32 + i32::MAX`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:137:14
+   |
+LL |     let _n = 1i64 + i64::MAX;
+   |              ^^^^^^^^^^^^^^^ attempt to compute `1_i64 + i64::MAX`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:140:14
+   |
+LL |     let _n = 1i128 + i128::MAX;
+   |              ^^^^^^^^^^^^^^^^^ attempt to compute `1_i128 + i128::MAX`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:143:14
+   |
+LL |     let _n = 1isize + isize::MAX;
+   |              ^^^^^^^^^^^^^^^^^^^ attempt to compute `1_isize + isize::MAX`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:146:14
+   |
+LL |     let _n = 1usize + usize::MAX;
+   |              ^^^^^^^^^^^^^^^^^^^ attempt to compute `1_usize + usize::MAX`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:151:14
+   |
+LL |     let _n = 1u8 - 5;
+   |              ^^^^^^^ attempt to compute `1_u8 - 5_u8`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:154:14
+   |
+LL |     let _n = 1u16 - 5;
+   |              ^^^^^^^^ attempt to compute `1_u16 - 5_u16`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:157:14
+   |
+LL |     let _n = 1u32 - 5;
+   |              ^^^^^^^^ attempt to compute `1_u32 - 5_u32`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:160:14
+   |
+LL |     let _n = 1u64 - 5 ;
+   |              ^^^^^^^^ attempt to compute `1_u64 - 5_u64`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:163:14
+   |
+LL |     let _n = 1u128 - 5 ;
+   |              ^^^^^^^^^ attempt to compute `1_u128 - 5_u128`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:166:14
+   |
+LL |     let _n = -5i8 - i8::MAX;
+   |              ^^^^^^^^^^^^^^ attempt to compute `-5_i8 - i8::MAX`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:169:14
+   |
+LL |     let _n = -5i16 - i16::MAX;
+   |              ^^^^^^^^^^^^^^^^ attempt to compute `-5_i16 - i16::MAX`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:172:14
+   |
+LL |     let _n = -5i32 - i32::MAX;
+   |              ^^^^^^^^^^^^^^^^ attempt to compute `-5_i32 - i32::MAX`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:175:14
+   |
+LL |     let _n = -5i64 - i64::MAX;
+   |              ^^^^^^^^^^^^^^^^ attempt to compute `-5_i64 - i64::MAX`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:178:14
+   |
+LL |     let _n = -5i128 - i128::MAX;
+   |              ^^^^^^^^^^^^^^^^^^ attempt to compute `-5_i128 - i128::MAX`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:181:14
+   |
+LL |     let _n = -5isize - isize::MAX;
+   |              ^^^^^^^^^^^^^^^^^^^^ attempt to compute `-5_isize - isize::MAX`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:184:14
+   |
+LL |     let _n = 1usize - 5;
+   |              ^^^^^^^^^^ attempt to compute `1_usize - 5_usize`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:187:14
+   |
+LL |     let _n = -i8::MIN;
+   |              ^^^^^^^^ attempt to negate `i8::MIN`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:192:14
+   |
+LL |     let _n = u8::MAX * 5;
+   |              ^^^^^^^^^^^ attempt to compute `u8::MAX * 5_u8`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:195:14
+   |
+LL |     let _n = u16::MAX * 5;
+   |              ^^^^^^^^^^^^ attempt to compute `u16::MAX * 5_u16`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:198:14
+   |
+LL |     let _n = u32::MAX * 5;
+   |              ^^^^^^^^^^^^ attempt to compute `u32::MAX * 5_u32`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:201:14
+   |
+LL |     let _n = u64::MAX * 5;
+   |              ^^^^^^^^^^^^ attempt to compute `u64::MAX * 5_u64`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:204:14
+   |
+LL |     let _n = u128::MAX * 5;
+   |              ^^^^^^^^^^^^^ attempt to compute `u128::MAX * 5_u128`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:207:14
+   |
+LL |     let _n = usize::MAX * 5;
+   |              ^^^^^^^^^^^^^^ attempt to compute `usize::MAX * 5_usize`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:210:14
+   |
+LL |     let _n = i8::MAX * i8::MAX;
+   |              ^^^^^^^^^^^^^^^^^ attempt to compute `i8::MAX * i8::MAX`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:213:14
+   |
+LL |     let _n = i16::MAX * 5;
+   |              ^^^^^^^^^^^^ attempt to compute `i16::MAX * 5_i16`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:216:14
+   |
+LL |     let _n = i32::MAX * 5;
+   |              ^^^^^^^^^^^^ attempt to compute `i32::MAX * 5_i32`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:219:14
+   |
+LL |     let _n = i64::MAX * 5;
+   |              ^^^^^^^^^^^^ attempt to compute `i64::MAX * 5_i64`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:222:14
+   |
+LL |     let _n = i128::MAX * 5;
+   |              ^^^^^^^^^^^^^ attempt to compute `i128::MAX * 5_i128`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/lint-overflowing-ops.rs:225:14
+   |
+LL |     let _n = isize::MAX * 5;
+   |              ^^^^^^^^^^^^^^ attempt to compute `isize::MAX * 5_isize`, which would overflow
+
+error: this operation will panic at runtime
+  --> $DIR/lint-overflowing-ops.rs:230:14
+   |
+LL |     let _n = 1u8 / 0;
+   |              ^^^^^^^ attempt to divide `1_u8` by zero
+   |
+   = note: `#[deny(unconditional_panic)]` on by default
+
+error: this operation will panic at runtime
+  --> $DIR/lint-overflowing-ops.rs:231:15
+   |
+LL |     let _n = &(1u8 / 0);
+   |               ^^^^^^^^^ attempt to divide `1_u8` by zero
+
+error: this operation will panic at runtime
+  --> $DIR/lint-overflowing-ops.rs:233:14
+   |
+LL |     let _n = 1u16 / 0;
+   |              ^^^^^^^^ attempt to divide `1_u16` by zero
+
+error: this operation will panic at runtime
+  --> $DIR/lint-overflowing-ops.rs:234:15
+   |
+LL |     let _n = &(1u16 / 0);
+   |               ^^^^^^^^^^ attempt to divide `1_u16` by zero
+
+error: this operation will panic at runtime
+  --> $DIR/lint-overflowing-ops.rs:236:14
+   |
+LL |     let _n = 1u32 / 0;
+   |              ^^^^^^^^ attempt to divide `1_u32` by zero
+
+error: this operation will panic at runtime
+  --> $DIR/lint-overflowing-ops.rs:237:15
+   |
+LL |     let _n = &(1u32 / 0);
+   |               ^^^^^^^^^^ attempt to divide `1_u32` by zero
+
+error: this operation will panic at runtime
+  --> $DIR/lint-overflowing-ops.rs:239:14
+   |
+LL |     let _n = 1u64 / 0;
+   |              ^^^^^^^^ attempt to divide `1_u64` by zero
+
+error: this operation will panic at runtime
+  --> $DIR/lint-overflowing-ops.rs:240:15
+   |
+LL |     let _n = &(1u64 / 0);
+   |               ^^^^^^^^^^ attempt to divide `1_u64` by zero
+
+error: this operation will panic at runtime
+  --> $DIR/lint-overflowing-ops.rs:242:14
+   |
+LL |     let _n = 1u128 / 0;
+   |              ^^^^^^^^^ attempt to divide `1_u128` by zero
+
+error: this operation will panic at runtime
+  --> $DIR/lint-overflowing-ops.rs:243:15
+   |
+LL |     let _n = &(1u128 / 0);
+   |               ^^^^^^^^^^^ attempt to divide `1_u128` by zero
+
+error: this operation will panic at runtime
+  --> $DIR/lint-overflowing-ops.rs:245:14
+   |
+LL |     let _n = 1usize / 0;
+   |              ^^^^^^^^^^ attempt to divide `1_usize` by zero
+
+error: this operation will panic at runtime
+  --> $DIR/lint-overflowing-ops.rs:246:15
+   |
+LL |     let _n = &(1usize / 0);
+   |               ^^^^^^^^^^^^ attempt to divide `1_usize` by zero
+
+error: this operation will panic at runtime
+  --> $DIR/lint-overflowing-ops.rs:248:14
+   |
+LL |     let _n = 1i8 / 0;
+   |              ^^^^^^^ attempt to divide `1_i8` by zero
+
+error: this operation will panic at runtime
+  --> $DIR/lint-overflowing-ops.rs:249:15
+   |
+LL |     let _n = &(1i8 / 0);
+   |               ^^^^^^^^^ attempt to divide `1_i8` by zero
+
+error: this operation will panic at runtime
+  --> $DIR/lint-overflowing-ops.rs:250:14
+   |
+LL |     let _n = i8::MIN / -1;
+   |              ^^^^^^^^^^^^ attempt to compute `i8::MIN / -1_i8`, which would overflow
+
+error: this operation will panic at runtime
+  --> $DIR/lint-overflowing-ops.rs:251:15
+   |
+LL |     let _n = &(i8::MIN / -1);
+   |               ^^^^^^^^^^^^^^ attempt to compute `i8::MIN / -1_i8`, which would overflow
+
+error: this operation will panic at runtime
+  --> $DIR/lint-overflowing-ops.rs:253:14
+   |
+LL |     let _n = 1i16 / 0;
+   |              ^^^^^^^^ attempt to divide `1_i16` by zero
+
+error: this operation will panic at runtime
+  --> $DIR/lint-overflowing-ops.rs:254:15
+   |
+LL |     let _n = &(1i16 / 0);
+   |               ^^^^^^^^^^ attempt to divide `1_i16` by zero
+
+error: this operation will panic at runtime
+  --> $DIR/lint-overflowing-ops.rs:255:14
+   |
+LL |     let _n = i16::MIN / -1;
+   |              ^^^^^^^^^^^^^ attempt to compute `i16::MIN / -1_i16`, which would overflow
+
+error: this operation will panic at runtime
+  --> $DIR/lint-overflowing-ops.rs:256:15
+   |
+LL |     let _n = &(i16::MIN / -1);
+   |               ^^^^^^^^^^^^^^^ attempt to compute `i16::MIN / -1_i16`, which would overflow
+
+error: this operation will panic at runtime
+  --> $DIR/lint-overflowing-ops.rs:258:14
+   |
+LL |     let _n = 1i32 / 0;
+   |              ^^^^^^^^ attempt to divide `1_i32` by zero
+
+error: this operation will panic at runtime
+  --> $DIR/lint-overflowing-ops.rs:259:15
+   |
+LL |     let _n = &(1i32 / 0);
+   |               ^^^^^^^^^^ attempt to divide `1_i32` by zero
+
+error: this operation will panic at runtime
+  --> $DIR/lint-overflowing-ops.rs:260:14
+   |
+LL |     let _n = i32::MIN / -1;
+   |              ^^^^^^^^^^^^^ attempt to compute `i32::MIN / -1_i32`, which would overflow
+
+error: this operation will panic at runtime
+  --> $DIR/lint-overflowing-ops.rs:261:15
+   |
+LL |     let _n = &(i32::MIN / -1);
+   |               ^^^^^^^^^^^^^^^ attempt to compute `i32::MIN / -1_i32`, which would overflow
+
+error: this operation will panic at runtime
+  --> $DIR/lint-overflowing-ops.rs:263:14
+   |
+LL |     let _n = 1i64 / 0;
+   |              ^^^^^^^^ attempt to divide `1_i64` by zero
+
+error: this operation will panic at runtime
+  --> $DIR/lint-overflowing-ops.rs:264:15
+   |
+LL |     let _n = &(1i64 / 0);
+   |               ^^^^^^^^^^ attempt to divide `1_i64` by zero
+
+error: this operation will panic at runtime
+  --> $DIR/lint-overflowing-ops.rs:265:14
+   |
+LL |     let _n = i64::MIN / -1;
+   |              ^^^^^^^^^^^^^ attempt to compute `i64::MIN / -1_i64`, which would overflow
+
+error: this operation will panic at runtime
+  --> $DIR/lint-overflowing-ops.rs:266:15
+   |
+LL |     let _n = &(i64::MIN / -1);
+   |               ^^^^^^^^^^^^^^^ attempt to compute `i64::MIN / -1_i64`, which would overflow
+
+error: this operation will panic at runtime
+  --> $DIR/lint-overflowing-ops.rs:268:14
+   |
+LL |     let _n = 1i128 / 0;
+   |              ^^^^^^^^^ attempt to divide `1_i128` by zero
+
+error: this operation will panic at runtime
+  --> $DIR/lint-overflowing-ops.rs:269:15
+   |
+LL |     let _n = &(1i128 / 0);
+   |               ^^^^^^^^^^^ attempt to divide `1_i128` by zero
+
+error: this operation will panic at runtime
+  --> $DIR/lint-overflowing-ops.rs:270:14
+   |
+LL |     let _n = i128::MIN / -1;
+   |              ^^^^^^^^^^^^^^ attempt to compute `i128::MIN / -1_i128`, which would overflow
+
+error: this operation will panic at runtime
+  --> $DIR/lint-overflowing-ops.rs:271:15
+   |
+LL |     let _n = &(i128::MIN / -1);
+   |               ^^^^^^^^^^^^^^^^ attempt to compute `i128::MIN / -1_i128`, which would overflow
+
+error: this operation will panic at runtime
+  --> $DIR/lint-overflowing-ops.rs:273:14
+   |
+LL |     let _n = 1isize / 0;
+   |              ^^^^^^^^^^ attempt to divide `1_isize` by zero
+
+error: this operation will panic at runtime
+  --> $DIR/lint-overflowing-ops.rs:274:15
+   |
+LL |     let _n = &(1isize / 0);
+   |               ^^^^^^^^^^^^ attempt to divide `1_isize` by zero
+
+error: this operation will panic at runtime
+  --> $DIR/lint-overflowing-ops.rs:275:14
+   |
+LL |     let _n = isize::MIN / -1;
+   |              ^^^^^^^^^^^^^^^ attempt to compute `isize::MIN / -1_isize`, which would overflow
+
+error: this operation will panic at runtime
+  --> $DIR/lint-overflowing-ops.rs:276:15
+   |
+LL |     let _n = &(isize::MIN / -1);
+   |               ^^^^^^^^^^^^^^^^^ attempt to compute `isize::MIN / -1_isize`, which would overflow
+
+error: this operation will panic at runtime
+  --> $DIR/lint-overflowing-ops.rs:280:14
+   |
+LL |     let _n = 1u8 % 0;
+   |              ^^^^^^^ attempt to calculate the remainder of `1_u8` with a divisor of zero
+
+error: this operation will panic at runtime
+  --> $DIR/lint-overflowing-ops.rs:281:15
+   |
+LL |     let _n = &(1u8 % 0);
+   |               ^^^^^^^^^ attempt to calculate the remainder of `1_u8` with a divisor of zero
+
+error: this operation will panic at runtime
+  --> $DIR/lint-overflowing-ops.rs:283:14
+   |
+LL |     let _n = 1u16 % 0;
+   |              ^^^^^^^^ attempt to calculate the remainder of `1_u16` with a divisor of zero
+
+error: this operation will panic at runtime
+  --> $DIR/lint-overflowing-ops.rs:284:15
+   |
+LL |     let _n = &(1u16 % 0);
+   |               ^^^^^^^^^^ attempt to calculate the remainder of `1_u16` with a divisor of zero
+
+error: this operation will panic at runtime
+  --> $DIR/lint-overflowing-ops.rs:286:14
+   |
+LL |     let _n = 1u32 % 0;
+   |              ^^^^^^^^ attempt to calculate the remainder of `1_u32` with a divisor of zero
+
+error: this operation will panic at runtime
+  --> $DIR/lint-overflowing-ops.rs:287:15
+   |
+LL |     let _n = &(1u32 % 0);
+   |               ^^^^^^^^^^ attempt to calculate the remainder of `1_u32` with a divisor of zero
+
+error: this operation will panic at runtime
+  --> $DIR/lint-overflowing-ops.rs:289:14
+   |
+LL |     let _n = 1u64 % 0;
+   |              ^^^^^^^^ attempt to calculate the remainder of `1_u64` with a divisor of zero
+
+error: this operation will panic at runtime
+  --> $DIR/lint-overflowing-ops.rs:290:15
+   |
+LL |     let _n = &(1u64 % 0);
+   |               ^^^^^^^^^^ attempt to calculate the remainder of `1_u64` with a divisor of zero
+
+error: this operation will panic at runtime
+  --> $DIR/lint-overflowing-ops.rs:292:14
+   |
+LL |     let _n = 1u128 % 0;
+   |              ^^^^^^^^^ attempt to calculate the remainder of `1_u128` with a divisor of zero
+
+error: this operation will panic at runtime
+  --> $DIR/lint-overflowing-ops.rs:293:15
+   |
+LL |     let _n = &(1u128 % 0);
+   |               ^^^^^^^^^^^ attempt to calculate the remainder of `1_u128` with a divisor of zero
+
+error: this operation will panic at runtime
+  --> $DIR/lint-overflowing-ops.rs:295:14
+   |
+LL |     let _n = 1usize % 0;
+   |              ^^^^^^^^^^ attempt to calculate the remainder of `1_usize` with a divisor of zero
+
+error: this operation will panic at runtime
+  --> $DIR/lint-overflowing-ops.rs:296:15
+   |
+LL |     let _n = &(1usize % 0);
+   |               ^^^^^^^^^^^^ attempt to calculate the remainder of `1_usize` with a divisor of zero
+
+error: this operation will panic at runtime
+  --> $DIR/lint-overflowing-ops.rs:298:14
+   |
+LL |     let _n = 1i8 % 0;
+   |              ^^^^^^^ attempt to calculate the remainder of `1_i8` with a divisor of zero
+
+error: this operation will panic at runtime
+  --> $DIR/lint-overflowing-ops.rs:299:15
+   |
+LL |     let _n = &(1i8 % 0);
+   |               ^^^^^^^^^ attempt to calculate the remainder of `1_i8` with a divisor of zero
+
+error: this operation will panic at runtime
+  --> $DIR/lint-overflowing-ops.rs:300:14
+   |
+LL |     let _n = i8::MIN % -1;
+   |              ^^^^^^^^^^^^ attempt to compute `i8::MIN % -1_i8`, which would overflow
+
+error: this operation will panic at runtime
+  --> $DIR/lint-overflowing-ops.rs:301:15
+   |
+LL |     let _n = &(i8::MIN % -1);
+   |               ^^^^^^^^^^^^^^ attempt to compute `i8::MIN % -1_i8`, which would overflow
+
+error: this operation will panic at runtime
+  --> $DIR/lint-overflowing-ops.rs:303:14
+   |
+LL |     let _n = 1i16 % 0;
+   |              ^^^^^^^^ attempt to calculate the remainder of `1_i16` with a divisor of zero
+
+error: this operation will panic at runtime
+  --> $DIR/lint-overflowing-ops.rs:304:15
+   |
+LL |     let _n = &(1i16 % 0);
+   |               ^^^^^^^^^^ attempt to calculate the remainder of `1_i16` with a divisor of zero
+
+error: this operation will panic at runtime
+  --> $DIR/lint-overflowing-ops.rs:305:14
+   |
+LL |     let _n = i16::MIN % -1;
+   |              ^^^^^^^^^^^^^ attempt to compute `i16::MIN % -1_i16`, which would overflow
+
+error: this operation will panic at runtime
+  --> $DIR/lint-overflowing-ops.rs:306:15
+   |
+LL |     let _n = &(i16::MIN % -1);
+   |               ^^^^^^^^^^^^^^^ attempt to compute `i16::MIN % -1_i16`, which would overflow
+
+error: this operation will panic at runtime
+  --> $DIR/lint-overflowing-ops.rs:308:14
+   |
+LL |     let _n = 1i32 % 0;
+   |              ^^^^^^^^ attempt to calculate the remainder of `1_i32` with a divisor of zero
+
+error: this operation will panic at runtime
+  --> $DIR/lint-overflowing-ops.rs:309:15
+   |
+LL |     let _n = &(1i32 % 0);
+   |               ^^^^^^^^^^ attempt to calculate the remainder of `1_i32` with a divisor of zero
+
+error: this operation will panic at runtime
+  --> $DIR/lint-overflowing-ops.rs:310:14
+   |
+LL |     let _n = i32::MIN % -1;
+   |              ^^^^^^^^^^^^^ attempt to compute `i32::MIN % -1_i32`, which would overflow
+
+error: this operation will panic at runtime
+  --> $DIR/lint-overflowing-ops.rs:311:15
+   |
+LL |     let _n = &(i32::MIN % -1);
+   |               ^^^^^^^^^^^^^^^ attempt to compute `i32::MIN % -1_i32`, which would overflow
+
+error: this operation will panic at runtime
+  --> $DIR/lint-overflowing-ops.rs:313:14
+   |
+LL |     let _n = 1i64 % 0;
+   |              ^^^^^^^^ attempt to calculate the remainder of `1_i64` with a divisor of zero
+
+error: this operation will panic at runtime
+  --> $DIR/lint-overflowing-ops.rs:314:15
+   |
+LL |     let _n = &(1i64 % 0);
+   |               ^^^^^^^^^^ attempt to calculate the remainder of `1_i64` with a divisor of zero
+
+error: this operation will panic at runtime
+  --> $DIR/lint-overflowing-ops.rs:315:14
+   |
+LL |     let _n = i64::MIN % -1;
+   |              ^^^^^^^^^^^^^ attempt to compute `i64::MIN % -1_i64`, which would overflow
+
+error: this operation will panic at runtime
+  --> $DIR/lint-overflowing-ops.rs:316:15
+   |
+LL |     let _n = &(i64::MIN % -1);
+   |               ^^^^^^^^^^^^^^^ attempt to compute `i64::MIN % -1_i64`, which would overflow
+
+error: this operation will panic at runtime
+  --> $DIR/lint-overflowing-ops.rs:318:14
+   |
+LL |     let _n = 1i128 % 0;
+   |              ^^^^^^^^^ attempt to calculate the remainder of `1_i128` with a divisor of zero
+
+error: this operation will panic at runtime
+  --> $DIR/lint-overflowing-ops.rs:319:15
+   |
+LL |     let _n = &(1i128 % 0);
+   |               ^^^^^^^^^^^ attempt to calculate the remainder of `1_i128` with a divisor of zero
+
+error: this operation will panic at runtime
+  --> $DIR/lint-overflowing-ops.rs:320:14
+   |
+LL |     let _n = i128::MIN % -1;
+   |              ^^^^^^^^^^^^^^ attempt to compute `i128::MIN % -1_i128`, which would overflow
+
+error: this operation will panic at runtime
+  --> $DIR/lint-overflowing-ops.rs:321:15
+   |
+LL |     let _n = &(i128::MIN % -1);
+   |               ^^^^^^^^^^^^^^^^ attempt to compute `i128::MIN % -1_i128`, which would overflow
+
+error: this operation will panic at runtime
+  --> $DIR/lint-overflowing-ops.rs:323:14
+   |
+LL |     let _n = 1isize % 0;
+   |              ^^^^^^^^^^ attempt to calculate the remainder of `1_isize` with a divisor of zero
+
+error: this operation will panic at runtime
+  --> $DIR/lint-overflowing-ops.rs:324:15
+   |
+LL |     let _n = &(1isize % 0);
+   |               ^^^^^^^^^^^^ attempt to calculate the remainder of `1_isize` with a divisor of zero
+
+error: this operation will panic at runtime
+  --> $DIR/lint-overflowing-ops.rs:325:14
+   |
+LL |     let _n = isize::MIN % -1;
+   |              ^^^^^^^^^^^^^^^ attempt to compute `isize::MIN % -1_isize`, which would overflow
+
+error: this operation will panic at runtime
+  --> $DIR/lint-overflowing-ops.rs:326:15
+   |
+LL |     let _n = &(isize::MIN % -1);
+   |               ^^^^^^^^^^^^^^^^^ attempt to compute `isize::MIN % -1_isize`, which would overflow
+
+error: this operation will panic at runtime
+  --> $DIR/lint-overflowing-ops.rs:329:14
+   |
+LL |     let _n = [1, 2, 3][4];
+   |              ^^^^^^^^^^^^ index out of bounds: the length is 3 but the index is 4
+
+error: this operation will panic at runtime
+  --> $DIR/lint-overflowing-ops.rs:330:15
+   |
+LL |     let _n = &([1, 2, 3][4]);
+   |               ^^^^^^^^^^^^^^ index out of bounds: the length is 3 but the index is 4
+
+error: aborting due to 203 previous errors
+

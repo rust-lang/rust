@@ -1,0 +1,87 @@
+// MIR for `filter_mapped` after PreCodegen
+
+fn filter_mapped(_1: impl Iterator<Item = T>, _2: impl Fn(T) -> Option<U>) -> () {
+    debug iter => _1;
+    debug f => _2;
+    let mut _0: ();
+    let mut _3: std::iter::FilterMap<impl Iterator<Item = T>, impl Fn(T) -> Option<U>>;
+    let mut _4: std::iter::FilterMap<impl Iterator<Item = T>, impl Fn(T) -> Option<U>>;
+    let mut _7: std::option::Option<U>;
+    let mut _8: isize;
+    let _10: ();
+    let mut _11: &mut std::iter::FilterMap<impl Iterator<Item = T>, impl Fn(T) -> Option<U>>;
+    scope 1 {
+        debug iter => _4;
+        let _9: U;
+        scope 2 {
+            debug x => _9;
+        }
+        scope 4 (inlined <FilterMap<impl Iterator<Item = T>, impl Fn(T) -> Option<U>> as Iterator>::next) {
+            debug self => _11;
+            let mut _5: &mut impl Iterator<Item = T>;
+            let mut _6: &mut impl Fn(T) -> Option<U>;
+        }
+    }
+    scope 3 (inlined <FilterMap<impl Iterator<Item = T>, impl Fn(T) -> Option<U>> as IntoIterator>::into_iter) {
+        debug self => _3;
+    }
+
+    bb0: {
+        _3 = <impl Iterator<Item = T> as Iterator>::filter_map::<U, impl Fn(T) -> Option<U>>(move _1, move _2) -> [return: bb1, unwind continue];
+    }
+
+    bb1: {
+        StorageLive(_4);
+        _4 = copy _3;
+        goto -> bb2;
+    }
+
+    bb2: {
+        StorageLive(_7);
+        // DBG: _11 = &_4;
+        StorageLive(_5);
+        _5 = &mut (_4.0: impl Iterator<Item = T>);
+        StorageLive(_6);
+        _6 = &mut (_4.1: impl Fn(T) -> Option<U>);
+        _7 = <impl Iterator<Item = T> as Iterator>::find_map::<U, &mut impl Fn(T) -> Option<U>>(move _5, move _6) -> [return: bb3, unwind: bb9];
+    }
+
+    bb3: {
+        StorageDead(_6);
+        StorageDead(_5);
+        _8 = discriminant(_7);
+        switchInt(move _8) -> [0: bb4, 1: bb6, otherwise: bb8];
+    }
+
+    bb4: {
+        StorageDead(_7);
+        drop(_4) -> [return: bb5, unwind continue];
+    }
+
+    bb5: {
+        StorageDead(_4);
+        return;
+    }
+
+    bb6: {
+        _9 = move ((_7 as Some).0: U);
+        _10 = opaque::<U>(move _9) -> [return: bb7, unwind: bb9];
+    }
+
+    bb7: {
+        StorageDead(_7);
+        goto -> bb2;
+    }
+
+    bb8: {
+        unreachable;
+    }
+
+    bb9 (cleanup): {
+        drop(_4) -> [return: bb10, unwind terminate(cleanup)];
+    }
+
+    bb10 (cleanup): {
+        resume;
+    }
+}

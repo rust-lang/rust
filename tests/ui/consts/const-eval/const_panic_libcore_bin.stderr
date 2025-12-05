@@ -1,0 +1,23 @@
+error[E0080]: evaluation panicked: cheese
+  --> $DIR/const_panic_libcore_bin.rs:8:15
+   |
+LL | const Z: () = panic!("cheese");
+   |               ^^^^^^^^^^^^^^^^ evaluation of `Z` failed here
+
+error[E0080]: evaluation panicked: internal error: entered unreachable code
+  --> $DIR/const_panic_libcore_bin.rs:11:15
+   |
+LL | const Y: () = unreachable!();
+   |               ^^^^^^^^^^^^^^ evaluation of `Y` failed here
+
+error[E0080]: evaluation panicked: not implemented
+  --> $DIR/const_panic_libcore_bin.rs:14:15
+   |
+LL | const X: () = unimplemented!();
+   |               ^^^^^^^^^^^^^^^^ evaluation of `X` failed here
+   |
+   = note: this error originates in the macro `unimplemented` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0080`.

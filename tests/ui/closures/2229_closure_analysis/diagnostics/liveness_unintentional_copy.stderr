@@ -1,0 +1,98 @@
+warning: value captured by `last.a` is never read
+  --> $DIR/liveness_unintentional_copy.rs:19:9
+   |
+LL |         last.a = s;
+   |         ^^^^^^
+   |
+   = help: did you mean to capture by reference instead?
+note: the lint level is defined here
+  --> $DIR/liveness_unintentional_copy.rs:4:9
+   |
+LL | #![warn(unused)]
+   |         ^^^^^^
+   = note: `#[warn(unused_assignments)]` implied by `#[warn(unused)]`
+
+warning: value assigned to `last.a` is never read
+  --> $DIR/liveness_unintentional_copy.rs:19:9
+   |
+LL |         last.a = s;
+   |         ^^^^^^^^^^
+   |
+   = help: maybe it is overwritten before being read?
+
+warning: value captured by `a` is never read
+  --> $DIR/liveness_unintentional_copy.rs:22:9
+   |
+LL |         a = s;
+   |         ^
+   |
+   = help: did you mean to capture by reference instead?
+
+warning: value assigned to `a` is never read
+  --> $DIR/liveness_unintentional_copy.rs:22:9
+   |
+LL |         a = s;
+   |         ^^^^^
+   |
+   = help: maybe it is overwritten before being read?
+
+warning: unused variable: `a`
+  --> $DIR/liveness_unintentional_copy.rs:14:9
+   |
+LL |     let mut a = 1;
+   |         ^^^^^ help: if this is intentional, prefix it with an underscore: `_a`
+   |
+   = note: `#[warn(unused_variables)]` implied by `#[warn(unused)]`
+
+warning: unused variable: `last`
+  --> $DIR/liveness_unintentional_copy.rs:16:9
+   |
+LL |     let mut last = MyStruct { a: 1, b: 1 };
+   |         ^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_last`
+
+warning: value captured by `sum.b` is never read
+  --> $DIR/liveness_unintentional_copy.rs:37:9
+   |
+LL |         sum.b += x;
+   |         ^^^^^
+   |
+   = help: did you mean to capture by reference instead?
+
+warning: value assigned to `sum.b` is never read
+  --> $DIR/liveness_unintentional_copy.rs:37:9
+   |
+LL |         sum.b += x;
+   |         ^^^^^^^^^^
+   |
+   = help: maybe it is overwritten before being read?
+
+warning: value captured by `a` is never read
+  --> $DIR/liveness_unintentional_copy.rs:40:9
+   |
+LL |         a += x;
+   |         ^
+   |
+   = help: did you mean to capture by reference instead?
+
+warning: value assigned to `a` is never read
+  --> $DIR/liveness_unintentional_copy.rs:40:9
+   |
+LL |         a += x;
+   |         ^^^^^^
+   |
+   = help: maybe it is overwritten before being read?
+
+warning: unused variable: `a`
+  --> $DIR/liveness_unintentional_copy.rs:32:9
+   |
+LL |     let mut a = 1;
+   |         ^^^^^ help: if this is intentional, prefix it with an underscore: `_a`
+
+warning: unused variable: `sum`
+  --> $DIR/liveness_unintentional_copy.rs:34:9
+   |
+LL |     let mut sum = MyStruct { a: 1, b: 0 };
+   |         ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_sum`
+
+warning: 12 warnings emitted
+

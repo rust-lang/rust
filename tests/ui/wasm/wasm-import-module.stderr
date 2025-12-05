@@ -1,0 +1,96 @@
+error[E0539]: malformed `link` attribute input
+  --> $DIR/wasm-import-module.rs:3:1
+   |
+LL | #[link(name = "...", wasm_import_module)]
+   | ^^^^^^^^^^^^^^^^^^^^^------------------^^
+   |                      |
+   |                      expected this to be of the form `wasm_import_module = "..."`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/items/external-blocks.html#the-link-attribute>
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #[link(name = "...", wasm_import_module)]
+LL + #[link(name = "...")]
+   |
+LL - #[link(name = "...", wasm_import_module)]
+LL + #[link(name = "...", import_name_type = "decorated|noprefix|undecorated")]
+   |
+LL - #[link(name = "...", wasm_import_module)]
+LL + #[link(name = "...", kind = "dylib|static|...")]
+   |
+LL - #[link(name = "...", wasm_import_module)]
+LL + #[link(name = "...", kind = "dylib|static|...", wasm_import_module = "...", import_name_type = "decorated|noprefix|undecorated")]
+   |
+   = and 1 other candidate
+
+error[E0539]: malformed `link` attribute input
+  --> $DIR/wasm-import-module.rs:6:1
+   |
+LL | #[link(name = "...", wasm_import_module(x))]
+   | ^^^^^^^^^^^^^^^^^^^^^---------------------^^
+   |                      |
+   |                      expected this to be of the form `wasm_import_module = "..."`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/items/external-blocks.html#the-link-attribute>
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #[link(name = "...", wasm_import_module(x))]
+LL + #[link(name = "...")]
+   |
+LL - #[link(name = "...", wasm_import_module(x))]
+LL + #[link(name = "...", import_name_type = "decorated|noprefix|undecorated")]
+   |
+LL - #[link(name = "...", wasm_import_module(x))]
+LL + #[link(name = "...", kind = "dylib|static|...")]
+   |
+LL - #[link(name = "...", wasm_import_module(x))]
+LL + #[link(name = "...", kind = "dylib|static|...", wasm_import_module = "...", import_name_type = "decorated|noprefix|undecorated")]
+   |
+   = and 1 other candidate
+
+error[E0539]: malformed `link` attribute input
+  --> $DIR/wasm-import-module.rs:9:1
+   |
+LL | #[link(name = "...", wasm_import_module())]
+   | ^^^^^^^^^^^^^^^^^^^^^--------------------^^
+   |                      |
+   |                      expected this to be of the form `wasm_import_module = "..."`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/items/external-blocks.html#the-link-attribute>
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #[link(name = "...", wasm_import_module())]
+LL + #[link(name = "...")]
+   |
+LL - #[link(name = "...", wasm_import_module())]
+LL + #[link(name = "...", import_name_type = "decorated|noprefix|undecorated")]
+   |
+LL - #[link(name = "...", wasm_import_module())]
+LL + #[link(name = "...", kind = "dylib|static|...")]
+   |
+LL - #[link(name = "...", wasm_import_module())]
+LL + #[link(name = "...", kind = "dylib|static|...", wasm_import_module = "...", import_name_type = "decorated|noprefix|undecorated")]
+   |
+   = and 1 other candidate
+
+error: `wasm_import_module` is incompatible with other arguments in `#[link]` attributes
+  --> $DIR/wasm-import-module.rs:12:8
+   |
+LL | #[link(wasm_import_module = "foo", name = "bar")]
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `wasm_import_module` is incompatible with other arguments in `#[link]` attributes
+  --> $DIR/wasm-import-module.rs:15:8
+   |
+LL | #[link(wasm_import_module = "foo", kind = "dylib")]
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `wasm_import_module` is incompatible with other arguments in `#[link]` attributes
+  --> $DIR/wasm-import-module.rs:18:8
+   |
+LL | #[link(wasm_import_module = "foo", cfg(false))]
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0539`.

@@ -1,0 +1,19 @@
+error[E0308]: mismatched types
+  --> $DIR/issue-24819.rs:7:9
+   |
+LL |     foo(&mut v);
+   |     --- ^^^^^^ expected `&mut HashSet<u32>`, found `&mut Vec<_>`
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected mutable reference `&mut HashSet<u32>`
+              found mutable reference `&mut Vec<_>`
+note: function defined here
+  --> $DIR/issue-24819.rs:12:4
+   |
+LL | fn foo(h: &mut HashSet<u32>) {
+   |    ^^^ --------------------
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0308`.

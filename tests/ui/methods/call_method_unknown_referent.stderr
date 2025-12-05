@@ -1,0 +1,29 @@
+error[E0282]: type annotations needed
+  --> $DIR/call_method_unknown_referent.rs:20:19
+   |
+LL |     let _a: i32 = (ptr as &_).read();
+   |                   ^^^^^^^^^^^ cannot infer type
+
+error[E0282]: type annotations needed
+  --> $DIR/call_method_unknown_referent.rs:26:14
+   |
+LL |     let _b = (rc as std::rc::Rc<_>).read();
+   |              ^^^^^^^^^^^^^^^^^^^^^^ cannot infer type
+
+error[E0599]: no method named `read` found for struct `SmartPtr<T>` in the current scope
+  --> $DIR/call_method_unknown_referent.rs:46:35
+   |
+LL | struct SmartPtr<T>(T);
+   | ------------------ method `read` not found for this struct
+...
+LL |     let _c = (ptr as SmartPtr<_>).read();
+   |                                   ^^^^ method not found in `SmartPtr<_>`
+   |
+   = help: items from traits can only be used if the trait is implemented and in scope
+   = note: the following trait defines an item `read`, perhaps you need to implement it:
+           candidate #1: `std::io::Read`
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0282, E0599.
+For more information about an error, try `rustc --explain E0282`.

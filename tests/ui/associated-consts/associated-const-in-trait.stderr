@@ -1,0 +1,51 @@
+error[E0038]: the trait `Trait` is not dyn compatible
+  --> $DIR/associated-const-in-trait.rs:7:6
+   |
+LL | impl dyn Trait {
+   |      ^^^^^^^^^ `Trait` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/associated-const-in-trait.rs:4:11
+   |
+LL | trait Trait {
+   |       ----- this trait is not dyn compatible...
+LL |     const N: usize;
+   |           ^ ...because it contains this associated `const`
+   = help: consider moving `N` to another trait
+
+error[E0038]: the trait `Trait` is not dyn compatible
+  --> $DIR/associated-const-in-trait.rs:9:29
+   |
+LL |     const fn n() -> usize { Self::N }
+   |                             ^^^^ `Trait` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/associated-const-in-trait.rs:4:11
+   |
+LL | trait Trait {
+   |       ----- this trait is not dyn compatible...
+LL |     const N: usize;
+   |           ^ ...because it contains this associated `const`
+   = help: consider moving `N` to another trait
+
+error[E0038]: the trait `Trait` is not dyn compatible
+  --> $DIR/associated-const-in-trait.rs:9:29
+   |
+LL |     const fn n() -> usize { Self::N }
+   |                             ^^^^^^^ `Trait` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/associated-const-in-trait.rs:4:11
+   |
+LL | trait Trait {
+   |       ----- this trait is not dyn compatible...
+LL |     const N: usize;
+   |           ^ ...because it contains this associated `const`
+   = help: consider moving `N` to another trait
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0038`.

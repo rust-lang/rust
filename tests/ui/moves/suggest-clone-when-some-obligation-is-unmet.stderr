@@ -1,0 +1,32 @@
+error[E0507]: cannot move out of a shared reference
+  --> $DIR/suggest-clone-when-some-obligation-is-unmet.rs:20:28
+   |
+LL |     let mut copy: Vec<U> = map.clone().into_values().collect();
+   |                            ^^^^^^^^^^^ ------------- value moved due to this method call
+   |                            |
+   |                            move occurs because value has type `HashMap<T, U, Hash128_1>`, which does not implement the `Copy` trait
+   |
+note: `HashMap::<K, V, S>::into_values` takes ownership of the receiver `self`, which moves value
+  --> $SRC_DIR/std/src/collections/hash/map.rs:LL:COL
+note: if `Hash128_1` implemented `Clone`, you could clone the value
+  --> $DIR/suggest-clone-when-some-obligation-is-unmet.rs:8:1
+   |
+LL | pub struct Hash128_1;
+   | ^^^^^^^^^^^^^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |     let mut copy: Vec<U> = map.clone().into_values().collect();
+   |                            ----------- you could clone this value
+help: you could `clone` the value and consume it, if the `Hash128_1: Clone` trait bound could be satisfied
+   |
+LL -     let mut copy: Vec<U> = map.clone().into_values().collect();
+LL +     let mut copy: Vec<U> = <HashMap<T, U, Hash128_1> as Clone>::clone(&map).into_values().collect();
+   |
+help: consider annotating `Hash128_1` with `#[derive(Clone)]`
+   |
+LL + #[derive(Clone)]
+LL | pub struct Hash128_1;
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0507`.

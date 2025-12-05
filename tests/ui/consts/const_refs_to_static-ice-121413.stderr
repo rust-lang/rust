@@ -1,0 +1,38 @@
+error[E0433]: failed to resolve: use of undeclared type `AtomicUsize`
+  --> $DIR/const_refs_to_static-ice-121413.rs:9:24
+   |
+LL |     static FOO: Sync = AtomicUsize::new(0);
+   |                        ^^^^^^^^^^^ use of undeclared type `AtomicUsize`
+   |
+help: consider importing this struct
+   |
+LL + use std::sync::atomic::AtomicUsize;
+   |
+
+warning: trait objects without an explicit `dyn` are deprecated
+  --> $DIR/const_refs_to_static-ice-121413.rs:9:17
+   |
+LL |     static FOO: Sync = AtomicUsize::new(0);
+   |                 ^^^^
+   |
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/warnings-promoted-to-error.html>
+   = note: `#[warn(bare_trait_objects)]` (part of `#[warn(rust_2021_compatibility)]`) on by default
+help: if this is a dyn-compatible trait, use `dyn`
+   |
+LL |     static FOO: dyn Sync = AtomicUsize::new(0);
+   |                 +++
+
+error[E0277]: the size for values of type `(dyn Sync + 'static)` cannot be known at compilation time
+  --> $DIR/const_refs_to_static-ice-121413.rs:9:5
+   |
+LL |     static FOO: Sync = AtomicUsize::new(0);
+   |     ^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `(dyn Sync + 'static)`
+   = note: statics and constants must have a statically known size
+
+error: aborting due to 2 previous errors; 1 warning emitted
+
+Some errors have detailed explanations: E0277, E0433.
+For more information about an error, try `rustc --explain E0277`.

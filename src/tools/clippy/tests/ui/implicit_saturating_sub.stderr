@@ -1,0 +1,242 @@
+error: implicitly performing saturating subtraction
+  --> tests/ui/implicit_saturating_sub.rs:27:5
+   |
+LL | /     if u_8 > 0 {
+LL | |
+LL | |         u_8 = u_8 - 1;
+LL | |     }
+   | |_____^ help: try: `u_8 = u_8.saturating_sub(1);`
+   |
+   = note: `-D clippy::implicit-saturating-sub` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::implicit_saturating_sub)]`
+
+error: implicitly performing saturating subtraction
+  --> tests/ui/implicit_saturating_sub.rs:35:13
+   |
+LL | /             if u_8 > 0 {
+LL | |
+LL | |                 u_8 -= 1;
+LL | |             }
+   | |_____________^ help: try: `u_8 = u_8.saturating_sub(1);`
+
+error: implicitly performing saturating subtraction
+  --> tests/ui/implicit_saturating_sub.rs:50:5
+   |
+LL | /     if u_16 > 0 {
+LL | |
+LL | |         u_16 -= 1;
+LL | |     }
+   | |_____^ help: try: `u_16 = u_16.saturating_sub(1);`
+
+error: implicitly performing saturating subtraction
+  --> tests/ui/implicit_saturating_sub.rs:61:5
+   |
+LL | /     if u_32 != 0 {
+LL | |
+LL | |         u_32 -= 1;
+LL | |     }
+   | |_____^ help: try: `u_32 = u_32.saturating_sub(1);`
+
+error: implicitly performing saturating subtraction
+  --> tests/ui/implicit_saturating_sub.rs:83:5
+   |
+LL | /     if u_64 > 0 {
+LL | |
+LL | |         u_64 -= 1;
+LL | |     }
+   | |_____^ help: try: `u_64 = u_64.saturating_sub(1);`
+
+error: implicitly performing saturating subtraction
+  --> tests/ui/implicit_saturating_sub.rs:89:5
+   |
+LL | /     if 0 < u_64 {
+LL | |
+LL | |         u_64 -= 1;
+LL | |     }
+   | |_____^ help: try: `u_64 = u_64.saturating_sub(1);`
+
+error: implicitly performing saturating subtraction
+  --> tests/ui/implicit_saturating_sub.rs:95:5
+   |
+LL | /     if 0 != u_64 {
+LL | |
+LL | |         u_64 -= 1;
+LL | |     }
+   | |_____^ help: try: `u_64 = u_64.saturating_sub(1);`
+
+error: implicitly performing saturating subtraction
+  --> tests/ui/implicit_saturating_sub.rs:117:5
+   |
+LL | /     if u_usize > 0 {
+LL | |
+LL | |         u_usize -= 1;
+LL | |     }
+   | |_____^ help: try: `u_usize = u_usize.saturating_sub(1);`
+
+error: implicitly performing saturating subtraction
+  --> tests/ui/implicit_saturating_sub.rs:130:5
+   |
+LL | /     if i_8 > i8::MIN {
+LL | |
+LL | |         i_8 -= 1;
+LL | |     }
+   | |_____^ help: try: `i_8 = i_8.saturating_sub(1);`
+
+error: implicitly performing saturating subtraction
+  --> tests/ui/implicit_saturating_sub.rs:136:5
+   |
+LL | /     if i_8 > i8::MIN {
+LL | |
+LL | |         i_8 -= 1;
+LL | |     }
+   | |_____^ help: try: `i_8 = i_8.saturating_sub(1);`
+
+error: implicitly performing saturating subtraction
+  --> tests/ui/implicit_saturating_sub.rs:142:5
+   |
+LL | /     if i_8 != i8::MIN {
+LL | |
+LL | |         i_8 -= 1;
+LL | |     }
+   | |_____^ help: try: `i_8 = i_8.saturating_sub(1);`
+
+error: implicitly performing saturating subtraction
+  --> tests/ui/implicit_saturating_sub.rs:148:5
+   |
+LL | /     if i_8 != i8::MIN {
+LL | |
+LL | |         i_8 -= 1;
+LL | |     }
+   | |_____^ help: try: `i_8 = i_8.saturating_sub(1);`
+
+error: implicitly performing saturating subtraction
+  --> tests/ui/implicit_saturating_sub.rs:159:5
+   |
+LL | /     if i_16 > i16::MIN {
+LL | |
+LL | |         i_16 -= 1;
+LL | |     }
+   | |_____^ help: try: `i_16 = i_16.saturating_sub(1);`
+
+error: implicitly performing saturating subtraction
+  --> tests/ui/implicit_saturating_sub.rs:165:5
+   |
+LL | /     if i_16 > i16::MIN {
+LL | |
+LL | |         i_16 -= 1;
+LL | |     }
+   | |_____^ help: try: `i_16 = i_16.saturating_sub(1);`
+
+error: implicitly performing saturating subtraction
+  --> tests/ui/implicit_saturating_sub.rs:171:5
+   |
+LL | /     if i_16 != i16::MIN {
+LL | |
+LL | |         i_16 -= 1;
+LL | |     }
+   | |_____^ help: try: `i_16 = i_16.saturating_sub(1);`
+
+error: implicitly performing saturating subtraction
+  --> tests/ui/implicit_saturating_sub.rs:177:5
+   |
+LL | /     if i_16 != i16::MIN {
+LL | |
+LL | |         i_16 -= 1;
+LL | |     }
+   | |_____^ help: try: `i_16 = i_16.saturating_sub(1);`
+
+error: implicitly performing saturating subtraction
+  --> tests/ui/implicit_saturating_sub.rs:188:5
+   |
+LL | /     if i_32 > i32::MIN {
+LL | |
+LL | |         i_32 -= 1;
+LL | |     }
+   | |_____^ help: try: `i_32 = i_32.saturating_sub(1);`
+
+error: implicitly performing saturating subtraction
+  --> tests/ui/implicit_saturating_sub.rs:194:5
+   |
+LL | /     if i_32 > i32::MIN {
+LL | |
+LL | |         i_32 -= 1;
+LL | |     }
+   | |_____^ help: try: `i_32 = i_32.saturating_sub(1);`
+
+error: implicitly performing saturating subtraction
+  --> tests/ui/implicit_saturating_sub.rs:200:5
+   |
+LL | /     if i_32 != i32::MIN {
+LL | |
+LL | |         i_32 -= 1;
+LL | |     }
+   | |_____^ help: try: `i_32 = i_32.saturating_sub(1);`
+
+error: implicitly performing saturating subtraction
+  --> tests/ui/implicit_saturating_sub.rs:206:5
+   |
+LL | /     if i_32 != i32::MIN {
+LL | |
+LL | |         i_32 -= 1;
+LL | |     }
+   | |_____^ help: try: `i_32 = i_32.saturating_sub(1);`
+
+error: implicitly performing saturating subtraction
+  --> tests/ui/implicit_saturating_sub.rs:217:5
+   |
+LL | /     if i64::MIN < i_64 {
+LL | |
+LL | |         i_64 -= 1;
+LL | |     }
+   | |_____^ help: try: `i_64 = i_64.saturating_sub(1);`
+
+error: implicitly performing saturating subtraction
+  --> tests/ui/implicit_saturating_sub.rs:223:5
+   |
+LL | /     if i64::MIN != i_64 {
+LL | |
+LL | |         i_64 -= 1;
+LL | |     }
+   | |_____^ help: try: `i_64 = i_64.saturating_sub(1);`
+
+error: implicitly performing saturating subtraction
+  --> tests/ui/implicit_saturating_sub.rs:229:5
+   |
+LL | /     if i64::MIN < i_64 {
+LL | |
+LL | |         i_64 -= 1;
+LL | |     }
+   | |_____^ help: try: `i_64 = i_64.saturating_sub(1);`
+
+error: manual arithmetic check found
+  --> tests/ui/implicit_saturating_sub.rs:298:12
+   |
+LL |       } else if a >= b {
+   |  ____________^
+LL | |
+LL | |         0
+LL | |     } else {
+LL | |         b - a
+LL | |     }
+   | |_____^ help: replace it with: `{ b.saturating_sub(a) }`
+
+error: manual arithmetic check found
+  --> tests/ui/implicit_saturating_sub.rs:314:13
+   |
+LL |     let _ = if a * 2 > b { a * 2 - b } else { 0 };
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `(a * 2).saturating_sub(b)`
+
+error: manual arithmetic check found
+  --> tests/ui/implicit_saturating_sub.rs:317:13
+   |
+LL |     let _ = if a > b * 2 { a - b * 2 } else { 0 };
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `a.saturating_sub(b * 2)`
+
+error: manual arithmetic check found
+  --> tests/ui/implicit_saturating_sub.rs:320:13
+   |
+LL |     let _ = if a < b * 2 { 0 } else { a - b * 2 };
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `a.saturating_sub(b * 2)`
+
+error: aborting due to 27 previous errors
+

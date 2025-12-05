@@ -1,0 +1,16 @@
+error[E0599]: no function or associated item named `make_g` found for fn pointer `for<'a> fn(&'a ())` in the current scope
+  --> $DIR/issue-57362-2.rs:23:25
+   |
+LL |     let x = <fn (&())>::make_g();
+   |                         ^^^^^^ function or associated item not found in `for<'a> fn(&'a ())`
+   |
+   = help: items from traits can only be used if the trait is implemented and in scope
+note: `X` defines an item `make_g`, perhaps you need to implement it
+  --> $DIR/issue-57362-2.rs:8:1
+   |
+LL | trait X {
+   | ^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0599`.

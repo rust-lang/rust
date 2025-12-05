@@ -1,0 +1,86 @@
+// MIR for `step_forward` after PreCodegen
+
+fn step_forward(_1: u16, _2: usize) -> u16 {
+    debug x => _1;
+    debug n => _2;
+    let mut _0: u16;
+    scope 1 (inlined <u16 as Step>::forward) {
+        let mut _8: u16;
+        scope 2 {
+        }
+        scope 3 (inlined <u16 as Step>::forward_checked) {
+            scope 4 {
+                scope 6 (inlined core::num::<impl u16>::checked_add) {
+                    let mut _5: (u16, bool);
+                    let mut _6: bool;
+                    scope 7 (inlined std::intrinsics::unlikely) {
+                        let _7: ();
+                    }
+                }
+            }
+            scope 5 (inlined convert::num::ptr_try_from_impls::<impl TryFrom<usize> for u16>::try_from) {
+                let mut _3: bool;
+                let mut _4: u16;
+            }
+        }
+        scope 8 (inlined Option::<u16>::is_none) {
+            scope 9 (inlined Option::<u16>::is_some) {
+                scope 10 {
+                }
+            }
+        }
+        scope 11 (inlined core::num::<impl u16>::wrapping_add) {
+        }
+    }
+
+    bb0: {
+        StorageLive(_4);
+        StorageLive(_3);
+        _3 = Gt(copy _2, const 65535_usize);
+        switchInt(move _3) -> [0: bb1, otherwise: bb5];
+    }
+
+    bb1: {
+        _4 = copy _2 as u16 (IntToInt);
+        StorageDead(_3);
+        StorageLive(_6);
+        StorageLive(_5);
+        _5 = AddWithOverflow(copy _1, copy _4);
+        _6 = copy (_5.1: bool);
+        switchInt(copy _6) -> [0: bb2, otherwise: bb3];
+    }
+
+    bb2: {
+        StorageDead(_5);
+        StorageDead(_6);
+        goto -> bb7;
+    }
+
+    bb3: {
+        _7 = std::intrinsics::cold_path() -> [return: bb4, unwind unreachable];
+    }
+
+    bb4: {
+        StorageDead(_5);
+        StorageDead(_6);
+        goto -> bb6;
+    }
+
+    bb5: {
+        StorageDead(_3);
+        goto -> bb6;
+    }
+
+    bb6: {
+        assert(!const true, "attempt to compute `{} + {}`, which would overflow", const core::num::<impl u16>::MAX, const 1_u16) -> [success: bb7, unwind continue];
+    }
+
+    bb7: {
+        StorageLive(_8);
+        _8 = copy _2 as u16 (IntToInt);
+        _0 = Add(copy _1, copy _8);
+        StorageDead(_8);
+        StorageDead(_4);
+        return;
+    }
+}

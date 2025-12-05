@@ -1,0 +1,49 @@
+error: unknown start of token: \u{0}
+  --> $DIR/issue-68730.rs:8:5
+   |
+LL | enum␀em␀˂˂
+   |     ^
+   |
+   = help: source files must contain UTF-8 encoded text, unexpected null bytes might occur when a different encoding is used
+
+error: unknown start of token: \u{0}
+  --> $DIR/issue-68730.rs:8:8
+   |
+LL | enum␀em␀˂˂
+   |        ^
+   |
+   = help: source files must contain UTF-8 encoded text, unexpected null bytes might occur when a different encoding is used
+
+error: unknown start of token: \u{2c2}
+  --> $DIR/issue-68730.rs:8:9
+   |
+LL | enum␀em␀˂˂
+   |         ^^
+   |
+   = note: character appears once more
+help: Unicode character '˂' (Modifier Letter Left Arrowhead) looks like '<' (Less-Than Sign), but it is not
+   |
+LL - enum␀em␀˂˂
+LL + enum␀em␀<<
+   |
+
+error: unknown start of token: \u{2c2}
+  --> $DIR/issue-68730.rs:8:10
+   |
+LL | enum␀em␀˂˂
+   |          ^
+   |
+help: Unicode character '˂' (Modifier Letter Left Arrowhead) looks like '<' (Less-Than Sign), but it is not
+   |
+LL - enum␀em␀˂˂
+LL + enum␀em␀˂<
+   |
+
+error: expected one of `#`, `>`, `const`, identifier, or lifetime, found `<`
+  --> $DIR/issue-68730.rs:8:10
+   |
+LL | enum␀em␀˂˂
+   |          ^ expected one of `#`, `>`, `const`, identifier, or lifetime
+
+error: aborting due to 5 previous errors
+

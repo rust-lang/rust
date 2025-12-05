@@ -1,0 +1,8 @@
+error: the SIMD type `Simd<f64, 0>` has zero elements
+  --> $DIR/monomorphize-zero-length.rs:9:9
+   |
+LL |     let _empty = Simd([1.0; 0]);
+   |         ^^^^^^
+
+error: aborting due to 1 previous error
+

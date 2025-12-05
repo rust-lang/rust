@@ -1,0 +1,10 @@
+// MIR for `<impl at $DIR/unusual_item_types.rs:9:1: 9:7>::ASSOCIATED_CONSTANT` after built
+
+const <impl at $DIR/unusual_item_types.rs:9:1: 9:7>::ASSOCIATED_CONSTANT: i32 = {
+    let mut _0: i32;
+
+    bb0: {
+        _0 = const 2_i32;
+        return;
+    }
+}

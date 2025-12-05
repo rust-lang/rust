@@ -1,0 +1,22 @@
+[package]
+name = "test-float-parse"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+indicatif = { version = "0.17.8", default-features = false }
+num = "0.4.3"
+rand = "0.9.0"
+rand_chacha = "0.9.0"
+rayon = "1"
+
+[lib]
+name = "test_float_parse"
+
+[lints.rust.unexpected_cfgs]
+level = "warn"
+check-cfg = [
+    # Internal features aren't marked known config by default
+    'cfg(target_has_reliable_f16)',
+]

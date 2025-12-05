@@ -1,0 +1,21 @@
+error[E0433]: failed to resolve: use of undeclared type `Baz`
+  --> $DIR/issue-81508.rs:11:20
+   |
+LL |     let Baz: &str = "";
+   |         --- help: `Baz` is defined here, but is not a type
+LL |
+LL |     println!("{}", Baz::Bar);
+   |                    ^^^ use of undeclared type `Baz`
+
+error[E0433]: failed to resolve: use of undeclared type `Foo`
+  --> $DIR/issue-81508.rs:20:24
+   |
+LL |     use super::Foo;
+   |         ---------- help: `Foo` is defined here, but is not a type
+LL |     fn function() {
+LL |         println!("{}", Foo::Bar);
+   |                        ^^^ use of undeclared type `Foo`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0433`.

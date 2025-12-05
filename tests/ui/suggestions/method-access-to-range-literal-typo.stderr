@@ -1,0 +1,48 @@
+error[E0425]: cannot find function `foo` in this scope
+  --> $DIR/method-access-to-range-literal-typo.rs:26:22
+   |
+LL |         self.option..foo().get(0)
+   |                      ^^^ not found in this scope
+   |
+help: you might have meant to write `.` instead of `..`
+   |
+LL -         self.option..foo().get(0)
+LL +         self.option.foo().get(0)
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/method-access-to-range-literal-typo.rs:22:9
+   |
+LL |     fn method(&self) -> Option<&Vec<u8>> {
+   |                         ---------------- expected `Option<&Vec<u8>>` because of return type
+LL |         self.option..as_ref().map(|x| x)
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Option<&Vec<u8>>`, found `Range<Option<Vec<u8>>>`
+   |
+   = note: expected enum `Option<&Vec<_>>`
+            found struct `std::ops::Range<Option<Vec<_>>>`
+help: you likely meant to write a method call instead of a range
+   |
+LL -         self.option..as_ref().map(|x| x)
+LL +         self.option.as_ref().map(|x| x)
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/method-access-to-range-literal-typo.rs:26:9
+   |
+LL |     fn method2(&self) -> Option<&u8> {
+   |                          ----------- expected `Option<&u8>` because of return type
+LL |         self.option..foo().get(0)
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Option<&u8>`, found `Range<Option<Vec<u8>>>`
+   |
+   = note: expected enum `Option<&u8>`
+            found struct `std::ops::Range<Option<Vec<u8>>>`
+help: you likely meant to write a method call instead of a range
+   |
+LL -         self.option..foo().get(0)
+LL +         self.option.foo().get(0)
+   |
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0308, E0425.
+For more information about an error, try `rustc --explain E0308`.

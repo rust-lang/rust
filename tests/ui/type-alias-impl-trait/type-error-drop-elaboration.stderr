@@ -1,0 +1,12 @@
+error[E0425]: cannot find function `value` in this scope
+  --> $DIR/type-error-drop-elaboration.rs:12:5
+   |
+LL |     value()
+   |     ^^^^^ help: a constant with a similar name exists: `VALUE`
+...
+LL | const VALUE: Foo = foo();
+   | ------------------------- similarly named constant `VALUE` defined here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0425`.

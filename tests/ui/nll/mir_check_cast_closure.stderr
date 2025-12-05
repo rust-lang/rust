@@ -1,0 +1,15 @@
+error: lifetime may not live long enough
+  --> $DIR/mir_check_cast_closure.rs:5:5
+   |
+LL | fn bar<'a, 'b>() -> fn(&'a u32, &'b u32) -> &'a u32 {
+   |        --  -- lifetime `'b` defined here
+   |        |
+   |        lifetime `'a` defined here
+LL |     let g: fn(_, _) -> _ = |_x, y| y;
+LL |     g
+   |     ^ function was supposed to return data with lifetime `'a` but it is returning data with lifetime `'b`
+   |
+   = help: consider adding the following bound: `'b: 'a`
+
+error: aborting due to 1 previous error
+

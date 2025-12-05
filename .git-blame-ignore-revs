@@ -1,0 +1,35 @@
+# Use `git config blame.ignorerevsfile .git-blame-ignore-revs` to make `git blame` ignore the following commits.
+
+# format the world
+a06baa56b95674fc626b3c3fd680d6a65357fe60
+# format libcore
+95e00bfed801e264e9c4ac817004153ca0f19eb6
+# reformat with new rustfmt
+971c549ca334b7b7406e61e958efcca9c4152822
+# refactor infcx building
+283abbf0e7d20176f76006825b5c52e9a4234e4c
+# format libstd/sys
+c34fbfaad38cf5829ef5cfe780dc9d58480adeaa
+# move tests
+cf2dff2b1e3fa55fa5415d524200070d0d7aacfe
+# Run rustfmt on bootstrap
+b39a1d6f1a30ba29f25d7141038b9a5bf0126e36
+# reorder fluent message files
+f97fddab91fbf290ea5b691fe355d6f915220b6e
+# format let-else
+cc907f80b95c6ec530c5ee1b05b044a468f07eca
+# format let-chains
+b2d2184edea578109a48ec3d8decbee5948e8f35
+# test directives migration
+6e48b96692d63a79a14563f27fe5185f122434f8
+ec2cc761bc7067712ecc7734502f703fe3b024c8
+# format use declarations
+84ac80f1921afc243d71fd0caaa4f2838c294102
+# bless mir-opt tests to add `copy`
+99cb0c6bc399fb94a0ddde7e9b38e9c00d523bad
+# reformat with rustfmt edition 2024
+c682aa162b0d41e21cc6748f4fecfe01efb69d1f
+# reformat with updated edition 2024
+1fcae03369abb4c2cc180cd5a49e1f4440a81300
+# Breaking up of compiletest runtest.rs
+60600a6fa403216bfd66e04f948b1822f6450af7

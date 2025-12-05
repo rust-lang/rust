@@ -1,0 +1,127 @@
+- // MIR for `main` before CopyProp
++ // MIR for `main` after CopyProp
+  
+  fn main() -> () {
+      let mut _0: ();
+      let mut _1: i32;
+      let mut _3: std::ops::Range<usize>;
+      let mut _4: std::ops::Range<usize>;
+      let mut _5: usize;
+      let mut _6: &[i32];
+      let mut _7: &[i32; 4];
+      let mut _9: ();
+      let _10: ();
+      let mut _11: std::option::Option<usize>;
+      let mut _12: &mut std::ops::Range<usize>;
+      let mut _13: &mut std::ops::Range<usize>;
+      let mut _14: isize;
+      let mut _15: !;
+      let mut _17: i32;
+      let _18: usize;
+      let mut _19: bool;
+      scope 1 {
+          debug sum => _1;
+          let _2: [i32; 4];
+          scope 2 {
+              debug a => _2;
+              let mut _8: std::ops::Range<usize>;
+              scope 3 {
+                  debug iter => _8;
+                  let _16: usize;
+                  scope 4 {
+                      debug i => _16;
+                  }
+              }
+          }
+      }
+  
+      bb0: {
+          StorageLive(_1);
+          _1 = const 0_i32;
+          StorageLive(_2);
+          _2 = [const 0_i32, const 10_i32, const 20_i32, const 30_i32];
+          StorageLive(_3);
+          StorageLive(_4);
+          StorageLive(_5);
+          StorageLive(_6);
+          StorageLive(_7);
+          _7 = &_2;
+          _6 = move _7 as &[i32] (PointerCoercion(Unsize, Implicit));
+          StorageDead(_7);
+          _5 = core::slice::<impl [i32]>::len(move _6) -> [return: bb1, unwind continue];
+      }
+  
+      bb1: {
+          StorageDead(_6);
+          _4 = std::ops::Range::<usize> { start: const 0_usize, end: move _5 };
+          StorageDead(_5);
+          _3 = <std::ops::Range<usize> as IntoIterator>::into_iter(move _4) -> [return: bb2, unwind continue];
+      }
+  
+      bb2: {
+          StorageDead(_4);
+          StorageLive(_8);
+          _8 = move _3;
+          goto -> bb3;
+      }
+  
+      bb3: {
+-         StorageLive(_10);
+          StorageLive(_11);
+          StorageLive(_12);
+          StorageLive(_13);
+          _13 = &mut _8;
+          _12 = &mut (*_13);
+          _11 = <std::ops::Range<usize> as Iterator>::next(move _12) -> [return: bb4, unwind continue];
+      }
+  
+      bb4: {
+          StorageDead(_12);
+          _14 = discriminant(_11);
+          switchInt(move _14) -> [0: bb7, 1: bb6, otherwise: bb5];
+      }
+  
+      bb5: {
+          unreachable;
+      }
+  
+      bb6: {
+-         StorageLive(_16);
+          _16 = copy ((_11 as Some).0: usize);
+          StorageLive(_17);
+-         StorageLive(_18);
+-         _18 = copy _16;
+-         _19 = Lt(copy _18, const 4_usize);
+-         assert(move _19, "index out of bounds: the length is {} but the index is {}", const 4_usize, copy _18) -> [success: bb8, unwind continue];
++         _19 = Lt(copy _16, const 4_usize);
++         assert(move _19, "index out of bounds: the length is {} but the index is {}", const 4_usize, copy _16) -> [success: bb8, unwind continue];
+      }
+  
+      bb7: {
+          _0 = const ();
+          StorageDead(_13);
+          StorageDead(_11);
+-         StorageDead(_10);
+          StorageDead(_8);
+          StorageDead(_3);
+          StorageDead(_2);
+          StorageDead(_1);
+          return;
+      }
+  
+      bb8: {
+-         _17 = copy _2[_18];
++         _17 = copy _2[_16];
+          _1 = Add(copy _1, move _17);
+          StorageDead(_17);
+-         StorageDead(_18);
+-         _10 = const ();
+-         StorageDead(_16);
+          StorageDead(_13);
+          StorageDead(_11);
+-         StorageDead(_10);
+-         _9 = const ();
+          goto -> bb3;
+      }
+  }
+  

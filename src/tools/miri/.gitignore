@@ -1,0 +1,16 @@
+target
+tex/*/out
+*.dot
+*.out
+*.rs.bk
+.vscode
+.helix
+*.mm_profdata
+perf.data
+perf.data.old
+flamegraph*.svg
+rustc-ice*.txt
+tests/native-lib/libtestlib.so
+.auto-*
+
+/genmc/

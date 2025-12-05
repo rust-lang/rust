@@ -1,0 +1,62 @@
+error[E0425]: cannot find type `MissingType` in this scope
+  --> $DIR/auxiliary/span-from-proc-macro.rs:33:20
+   |
+LL | pub fn error_from_attribute(_args: TokenStream, _input: TokenStream) -> TokenStream {
+   | ----------------------------------------------------------------------------------- in this expansion of `#[error_from_attribute]`
+...
+LL |             field: MissingType
+   |                    ^^^^^^^^^^^ not found in this scope
+   |
+  ::: $DIR/span-from-proc-macro.rs:9:1
+   |
+LL | #[error_from_attribute]
+   | ----------------------- in this attribute macro expansion
+
+error[E0425]: cannot find type `OtherMissingType` in this scope
+  --> $DIR/auxiliary/span-from-proc-macro.rs:42:21
+   |
+LL | pub fn error_from_derive(_input: TokenStream) -> TokenStream {
+   | ------------------------------------------------------------ in this expansion of `#[derive(ErrorFromDerive)]`
+...
+LL |             Variant(OtherMissingType)
+   |                     ^^^^^^^^^^^^^^^^ not found in this scope
+   |
+  ::: $DIR/span-from-proc-macro.rs:12:10
+   |
+LL | #[derive(ErrorFromDerive)]
+   |          --------------- in this derive macro expansion
+
+error[E0425]: cannot find value `my_ident` in this scope
+  --> $DIR/auxiliary/span-from-proc-macro.rs:25:9
+   |
+LL | pub fn other_error_from_bang(_input: TokenStream) -> TokenStream {
+   | ---------------------------------------------------------------- in this expansion of `other_error_from_bang!`
+LL |     custom_quote::custom_quote! {
+LL |         my_ident
+   |         ^^^^^^^^ not found in this scope
+   |
+  ::: $DIR/span-from-proc-macro.rs:17:5
+   |
+LL |     other_error_from_bang!();
+   |     ------------------------ in this macro invocation
+
+error[E0308]: mismatched types
+  --> $DIR/auxiliary/span-from-proc-macro.rs:12:36
+   |
+LL |             let bang_error: bool = 25;
+   |                             ----   ^^ expected `bool`, found integer
+   |                             |
+   |                             expected due to this
+...
+LL | pub fn error_from_bang(_input: TokenStream) -> TokenStream {
+   | ---------------------------------------------------------- in this expansion of `error_from_bang!`
+   |
+  ::: $DIR/span-from-proc-macro.rs:16:5
+   |
+LL |     error_from_bang!();
+   |     ------------------ in this macro invocation
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0308, E0425.
+For more information about an error, try `rustc --explain E0308`.

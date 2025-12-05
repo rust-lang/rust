@@ -1,0 +1,53 @@
+error[E0106]: missing lifetime specifier
+  --> $DIR/impl-fn-hrtb-bounds.rs:19:38
+   |
+LL | fn d() -> impl Fn() -> (impl Debug + '_) {
+   |                                      ^^ expected named lifetime parameter
+   |
+   = help: this function's return type contains a borrowed value, but there is no value for it to be borrowed from
+help: consider using the `'static` lifetime, but this is uncommon unless you're returning a borrowed value from a `const` or a `static`, or if you will only have owned values
+   |
+LL - fn d() -> impl Fn() -> (impl Debug + '_) {
+LL + fn d() -> impl Fn() -> (impl Debug + 'static) {
+   |
+
+error[E0657]: `impl Trait` cannot capture higher-ranked lifetime from outer `impl Trait`
+  --> $DIR/impl-fn-hrtb-bounds.rs:4:41
+   |
+LL | fn a() -> impl Fn(&u8) -> (impl Debug + '_) {
+   |                                         ^^
+   |
+note: lifetime declared here
+  --> $DIR/impl-fn-hrtb-bounds.rs:4:19
+   |
+LL | fn a() -> impl Fn(&u8) -> (impl Debug + '_) {
+   |                   ^
+
+error[E0657]: `impl Trait` cannot capture higher-ranked lifetime from outer `impl Trait`
+  --> $DIR/impl-fn-hrtb-bounds.rs:9:52
+   |
+LL | fn b() -> impl for<'a> Fn(&'a u8) -> (impl Debug + 'a) {
+   |                                                    ^^
+   |
+note: lifetime declared here
+  --> $DIR/impl-fn-hrtb-bounds.rs:9:20
+   |
+LL | fn b() -> impl for<'a> Fn(&'a u8) -> (impl Debug + 'a) {
+   |                    ^^
+
+error[E0657]: `impl Trait` cannot capture higher-ranked lifetime from outer `impl Trait`
+  --> $DIR/impl-fn-hrtb-bounds.rs:14:52
+   |
+LL | fn c() -> impl for<'a> Fn(&'a u8) -> (impl Debug + '_) {
+   |                                                    ^^
+   |
+note: lifetime declared here
+  --> $DIR/impl-fn-hrtb-bounds.rs:14:20
+   |
+LL | fn c() -> impl for<'a> Fn(&'a u8) -> (impl Debug + '_) {
+   |                    ^^
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0106, E0657.
+For more information about an error, try `rustc --explain E0106`.

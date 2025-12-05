@@ -1,0 +1,128 @@
+note: external requirements
+  --> $DIR/ty-param-closure-outlives-from-where-clause.rs:27:26
+   |
+LL |     with_signature(a, b, |x, y| {
+   |                          ^^^^^^
+   |
+   = note: defining type: no_region::<T>::{closure#0} with closure args [
+               i32,
+               extern "rust-call" fn((std::cell::Cell<&'?1 ()>, T)),
+               (),
+           ]
+   = note: late-bound region is '?2
+   = note: number of external vids: 3
+   = note: where T: '?1
+
+note: no external requirements
+  --> $DIR/ty-param-closure-outlives-from-where-clause.rs:26:1
+   |
+LL | fn no_region<'a, T>(a: Cell<&'a ()>, b: T) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: defining type: no_region::<T>
+
+error[E0309]: the parameter type `T` may not live long enough
+  --> $DIR/ty-param-closure-outlives-from-where-clause.rs:32:9
+   |
+LL | fn no_region<'a, T>(a: Cell<&'a ()>, b: T) {
+   |              -- the parameter type `T` must be valid for the lifetime `'a` as defined here...
+...
+LL |         require(&x, &y)
+   |         ^^^^^^^^^^^^^^^ ...so that the type `T` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL | fn no_region<'a, T: 'a>(a: Cell<&'a ()>, b: T) {
+   |                   ++++
+
+note: external requirements
+  --> $DIR/ty-param-closure-outlives-from-where-clause.rs:42:26
+   |
+LL |     with_signature(a, b, |x, y| {
+   |                          ^^^^^^
+   |
+   = note: defining type: correct_region::<'?1, T>::{closure#0} with closure args [
+               i32,
+               extern "rust-call" fn((std::cell::Cell<&'?2 ()>, T)),
+               (),
+           ]
+   = note: number of external vids: 3
+   = note: where T: '?2
+
+note: no external requirements
+  --> $DIR/ty-param-closure-outlives-from-where-clause.rs:38:1
+   |
+LL | / fn correct_region<'a, T>(a: Cell<&'a ()>, b: T)
+LL | | where
+LL | |     T: 'a,
+   | |__________^
+   |
+   = note: defining type: correct_region::<'?1, T>
+
+note: external requirements
+  --> $DIR/ty-param-closure-outlives-from-where-clause.rs:63:26
+   |
+LL |     with_signature(a, b, |x, y| {
+   |                          ^^^^^^
+   |
+   = note: defining type: wrong_region::<'?1, T>::{closure#0} with closure args [
+               i32,
+               extern "rust-call" fn((std::cell::Cell<&'?2 ()>, T)),
+               (),
+           ]
+   = note: late-bound region is '?3
+   = note: number of external vids: 4
+   = note: where T: '?2
+
+note: no external requirements
+  --> $DIR/ty-param-closure-outlives-from-where-clause.rs:59:1
+   |
+LL | / fn wrong_region<'a, 'b, T>(a: Cell<&'a ()>, b: T)
+LL | | where
+LL | |     T: 'b,
+   | |__________^
+   |
+   = note: defining type: wrong_region::<'?1, T>
+
+error[E0309]: the parameter type `T` may not live long enough
+  --> $DIR/ty-param-closure-outlives-from-where-clause.rs:65:9
+   |
+LL | fn wrong_region<'a, 'b, T>(a: Cell<&'a ()>, b: T)
+   |                 -- the parameter type `T` must be valid for the lifetime `'a` as defined here...
+...
+LL |         require(&x, &y)
+   |         ^^^^^^^^^^^^^^^ ...so that the type `T` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL |     T: 'b + 'a,
+   |           ++++
+
+note: external requirements
+  --> $DIR/ty-param-closure-outlives-from-where-clause.rs:76:26
+   |
+LL |     with_signature(a, b, |x, y| {
+   |                          ^^^^^^
+   |
+   = note: defining type: outlives_region::<'?1, '?2, T>::{closure#0} with closure args [
+               i32,
+               extern "rust-call" fn((std::cell::Cell<&'?3 ()>, T)),
+               (),
+           ]
+   = note: number of external vids: 4
+   = note: where T: '?3
+
+note: no external requirements
+  --> $DIR/ty-param-closure-outlives-from-where-clause.rs:71:1
+   |
+LL | / fn outlives_region<'a, 'b, T>(a: Cell<&'a ()>, b: T)
+LL | | where
+LL | |     T: 'b,
+LL | |     'b: 'a,
+   | |___________^
+   |
+   = note: defining type: outlives_region::<'?1, '?2, T>
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0309`.

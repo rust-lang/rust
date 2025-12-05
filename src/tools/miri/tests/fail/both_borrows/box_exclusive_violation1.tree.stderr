@@ -1,0 +1,37 @@
+error: Undefined Behavior: write access through <TAG> at ALLOC[0x0] is forbidden
+  --> tests/fail/both_borrows/box_exclusive_violation1.rs:LL:CC
+   |
+LL |         *LEAK = 7;
+   |         ^^^^^^^^^ Undefined Behavior occurred here
+   |
+   = help: this indicates a potential bug in the program: it performed an invalid operation, but the Tree Borrows rules it violated are still experimental
+   = help: see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/tree-borrows.md for further information
+   = help: the accessed tag <TAG> has state Disabled which forbids this child write access
+help: the accessed tag <TAG> was created here, in the initial state Frozen
+  --> tests/fail/both_borrows/box_exclusive_violation1.rs:LL:CC
+   |
+LL | fn unknown_code_1(x: &i32) {
+   |                   ^
+help: the accessed tag <TAG> later transitioned to Disabled due to a foreign write access at offsets [0x0..0x4]
+  --> tests/fail/both_borrows/box_exclusive_violation1.rs:LL:CC
+   |
+LL |     *our = 5;
+   |     ^^^^^^^^
+   = help: this transition corresponds to a loss of read permissions
+   = note: BACKTRACE (of the first span):
+   = note: inside `unknown_code_2` at tests/fail/both_borrows/box_exclusive_violation1.rs:LL:CC
+note: inside `demo_box_advanced_unique`
+  --> tests/fail/both_borrows/box_exclusive_violation1.rs:LL:CC
+   |
+LL |     unknown_code_2();
+   |     ^^^^^^^^^^^^^^^^
+note: inside `main`
+  --> tests/fail/both_borrows/box_exclusive_violation1.rs:LL:CC
+   |
+LL |     demo_box_advanced_unique(Box::new(0));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to 1 previous error
+

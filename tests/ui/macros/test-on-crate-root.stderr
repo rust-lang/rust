@@ -1,0 +1,25 @@
+error[E0658]: inner macro attributes are unstable
+  --> $DIR/test-on-crate-root.rs:5:4
+   |
+LL | #![core::prelude::v1::test]
+   |    ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #54726 <https://github.com/rust-lang/rust/issues/54726> for more information
+   = help: add `#![feature(custom_inner_attributes)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: the `#[test]` attribute may only be used on a free function
+  --> $DIR/test-on-crate-root.rs:5:1
+   |
+LL | #![core::prelude::v1::test]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ the `#[test]` macro causes a function to be run as a test and has no effect on non-functions
+   |
+help: replace with conditional compilation to make the item only exist when tests are being run
+   |
+LL - #![core::prelude::v1::test]
+LL + #[cfg(test)]
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

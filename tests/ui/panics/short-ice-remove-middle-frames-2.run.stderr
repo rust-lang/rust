@@ -1,0 +1,15 @@
+
+thread 'main' ($TID) panicked at $DIR/short-ice-remove-middle-frames-2.rs:63:5:
+debug!!!
+stack backtrace:
+   0: std::panicking::begin_panic
+   1: short_ice_remove_middle_frames_2::eight
+   2: short_ice_remove_middle_frames_2::seven::{closure#0}
+      [... omitted 3 frames ...]
+   3: short_ice_remove_middle_frames_2::fifth
+   4: short_ice_remove_middle_frames_2::fourth::{closure#0}
+      [... omitted 4 frames ...]
+   5: short_ice_remove_middle_frames_2::first
+   6: short_ice_remove_middle_frames_2::main
+   7: <fn() as core::ops::function::FnOnce<()>>::call_once
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.

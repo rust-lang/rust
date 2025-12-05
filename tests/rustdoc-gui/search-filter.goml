@@ -1,0 +1,88 @@
+// Checks that the crate search filtering is handled correctly and changes the results.
+include: "utils.goml"
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
+show-text: true
+call-function: ("perform-search", {"query": "test"})
+assert-text: ("#results .externcrate", "test_docs")
+
+wait-for: "#crate-search"
+// We now want to change the crate filter.
+click: "#crate-search"
+// We select "lib2" option then press enter to change the filter.
+press-key: "ArrowDown"
+press-key: "ArrowDown"
+press-key: "ArrowDown"
+press-key: "ArrowDown"
+press-key: "ArrowDown"
+press-key: "Enter"
+// Waiting for the search results to appear...
+wait-for: "#search-tabs"
+wait-for-false: "#search-tabs .count.loading"
+assert-document-property: ({"URL": "&filter-crate="}, CONTAINS)
+// We check that there is no more "test_docs" appearing.
+assert-false: "#results .externcrate"
+// We also check that "lib2" is the filter crate.
+assert-property: ("#crate-search", {"value": "lib2"})
+
+// Now we check that leaving the search results and putting them back keeps the
+// crate filtering.
+press-key: "Escape"
+wait-for-css: ("#main-content", {"display": "block"})
+click: "#search-button"
+wait-for: ".search-input"
+wait-for-css: ("#main-content", {"display": "none"})
+// We check that there is no more "test_docs" appearing.
+assert-false: "#results .externcrate"
+assert-property: ("#crate-search", {"value": "lib2"})
+
+// Selecting back "All crates"
+click: "#crate-search"
+press-key: "ArrowUp"
+press-key: "ArrowUp"
+press-key: "ArrowUp"
+press-key: "ArrowUp"
+press-key: "ArrowUp"
+press-key: "Enter"
+// Waiting for the search results to appear...
+wait-for: "#search-tabs"
+wait-for-false: "#search-tabs .count.loading"
+assert-property: ("#crate-search", {"value": "all crates"})
+
+// Checking that the URL parameter is taken into account for crate filtering.
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html?search=test&filter-crate=lib2"
+wait-for: "#crate-search"
+assert-property: ("#crate-search", {"value": "lib2"})
+assert-false: "#results .externcrate"
+
+// Checking that the text for the "title" is correct (the "all crates" comes from the "<select>").
+assert-text: (".search-switcher", "Search results in all crates", STARTS_WITH)
+
+// Checking the display of the crate filter.
+// We start with the light theme.
+call-function: ("switch-theme", {"theme": "light"})
+
+set-timeout: 2000
+wait-for: "#crate-search"
+assert-css: ("#crate-search", {
+    "border": "1px solid #e0e0e0",
+    "color": "black",
+    "background-color": "white",
+})
+
+// We now check the dark theme.
+click: "rustdoc-toolbar .settings-menu"
+wait-for: "#settings"
+click: "#theme-dark"
+wait-for-css: ("#crate-search", {
+    "border": "1px solid #e0e0e0",
+    "color": "#ddd",
+    "background-color": "#353535",
+})
+
+// And finally we check the ayu theme.
+click: "#theme-ayu"
+wait-for-css: ("#crate-search", {
+    "border": "1px solid #5c6773",
+    "color": "#c5c5c5",
+    "background-color": "#0f1419",
+})

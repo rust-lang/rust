@@ -1,0 +1,27 @@
+error: item does not constrain `FutNothing::{opaque#0}`
+  --> $DIR/hkl_forbidden4.rs:18:10
+   |
+LL | async fn call<F>(_f: F)
+   |          ^^^^
+   |
+   = note: consider removing `#[define_opaque]` or adding an empty `#[define_opaque()]`
+note: this opaque type is supposed to be constrained
+  --> $DIR/hkl_forbidden4.rs:10:23
+   |
+LL | type FutNothing<'a> = impl 'a + Future<Output = ()>;
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: concrete type differs from previous defining opaque type use
+  --> $DIR/hkl_forbidden4.rs:13:5
+   |
+LL |     call(operation).await
+   |     ^^^^^^^^^^^^^^^ expected `{async fn body of operation()}`, got `FutNothing<'_>`
+   |
+note: previous use here
+  --> $DIR/hkl_forbidden4.rs:12:1
+   |
+LL | async fn operation(_: &mut ()) -> () {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

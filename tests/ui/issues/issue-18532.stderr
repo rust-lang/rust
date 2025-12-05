@@ -1,0 +1,11 @@
+error[E0618]: expected function, found `!`
+  --> $DIR/issue-18532.rs:6:5
+   |
+LL |     (return)((),());
+   |     ^^^^^^^^-------
+   |     |
+   |     call expression requires function
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0618`.

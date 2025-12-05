@@ -1,0 +1,131 @@
+error[E0502]: cannot borrow `u.a` as mutable because it is also borrowed as immutable
+  --> $DIR/borrowck-union-borrow.rs:23:23
+   |
+LL |             let ra = &u.a;
+   |                      ---- immutable borrow occurs here
+LL |             let rma = &mut u.a;
+   |                       ^^^^^^^^ mutable borrow occurs here
+LL |             drop(ra);
+   |                  -- immutable borrow later used here
+
+error[E0506]: cannot assign to `u.a` because it is borrowed
+  --> $DIR/borrowck-union-borrow.rs:28:13
+   |
+LL |             let ra = &u.a;
+   |                      ---- `u.a` is borrowed here
+LL |             u.a = 1;
+   |             ^^^^^^^ `u.a` is assigned to here but it was already borrowed
+LL |             drop(ra);
+   |                  -- borrow later used here
+
+error[E0502]: cannot borrow `u` (via `u.b`) as mutable because it is also borrowed as immutable (via `u.a`)
+  --> $DIR/borrowck-union-borrow.rs:44:23
+   |
+LL |             let ra = &u.a;
+   |                      ---- immutable borrow occurs here (via `u.a`)
+LL |             let rmb = &mut u.b;
+   |                       ^^^^^^^^ mutable borrow of `u.b` -- which overlaps with `u.a` -- occurs here
+LL |             drop(ra);
+   |                  -- immutable borrow later used here
+   |
+   = note: `u.b` is a field of the union `U`, so it overlaps the field `u.a`
+
+error[E0506]: cannot assign to `u.b` because it is borrowed
+  --> $DIR/borrowck-union-borrow.rs:49:13
+   |
+LL |             let ra = &u.a;
+   |                      ---- `u.b` is borrowed here
+LL |             u.b = 1;
+   |             ^^^^^^^ `u.b` is assigned to here but it was already borrowed
+LL |             drop(ra);
+   |                  -- borrow later used here
+
+error[E0502]: cannot borrow `u.a` as immutable because it is also borrowed as mutable
+  --> $DIR/borrowck-union-borrow.rs:55:22
+   |
+LL |             let rma = &mut u.a;
+   |                       -------- mutable borrow occurs here
+LL |             let ra = &u.a;
+   |                      ^^^^ immutable borrow occurs here
+LL |             drop(rma);
+   |                  --- mutable borrow later used here
+
+error[E0503]: cannot use `u.a` because it was mutably borrowed
+  --> $DIR/borrowck-union-borrow.rs:60:21
+   |
+LL |             let ra = &mut u.a;
+   |                      -------- `u.a` is borrowed here
+LL |             let a = u.a;
+   |                     ^^^ use of borrowed `u.a`
+LL |             drop(ra);
+   |                  -- borrow later used here
+
+error[E0499]: cannot borrow `u.a` as mutable more than once at a time
+  --> $DIR/borrowck-union-borrow.rs:65:24
+   |
+LL |             let rma = &mut u.a;
+   |                       -------- first mutable borrow occurs here
+LL |             let rma2 = &mut u.a;
+   |                        ^^^^^^^^ second mutable borrow occurs here
+LL |             drop(rma);
+   |                  --- first borrow later used here
+
+error[E0506]: cannot assign to `u.a` because it is borrowed
+  --> $DIR/borrowck-union-borrow.rs:70:13
+   |
+LL |             let rma = &mut u.a;
+   |                       -------- `u.a` is borrowed here
+LL |             u.a = 1;
+   |             ^^^^^^^ `u.a` is assigned to here but it was already borrowed
+LL |             drop(rma);
+   |                  --- borrow later used here
+
+error[E0502]: cannot borrow `u` (via `u.b`) as immutable because it is also borrowed as mutable (via `u.a`)
+  --> $DIR/borrowck-union-borrow.rs:76:22
+   |
+LL |             let rma = &mut u.a;
+   |                       -------- mutable borrow occurs here (via `u.a`)
+LL |             let rb = &u.b;
+   |                      ^^^^ immutable borrow of `u.b` -- which overlaps with `u.a` -- occurs here
+LL |             drop(rma);
+   |                  --- mutable borrow later used here
+   |
+   = note: `u.b` is a field of the union `U`, so it overlaps the field `u.a`
+
+error[E0503]: cannot use `u.b` because it was mutably borrowed
+  --> $DIR/borrowck-union-borrow.rs:81:21
+   |
+LL |             let ra = &mut u.a;
+   |                      -------- `u.a` is borrowed here
+LL |             let b = u.b;
+   |                     ^^^ use of borrowed `u.a`
+LL |
+LL |             drop(ra);
+   |                  -- borrow later used here
+
+error[E0499]: cannot borrow `u` (via `u.b`) as mutable more than once at a time
+  --> $DIR/borrowck-union-borrow.rs:87:24
+   |
+LL |             let rma = &mut u.a;
+   |                       -------- first mutable borrow occurs here (via `u.a`)
+LL |             let rmb2 = &mut u.b;
+   |                        ^^^^^^^^ second mutable borrow occurs here (via `u.b`)
+LL |             drop(rma);
+   |                  --- first borrow later used here
+   |
+   = note: `u.b` is a field of the union `U`, so it overlaps the field `u.a`
+
+error[E0506]: cannot assign to `u.b` because it is borrowed
+  --> $DIR/borrowck-union-borrow.rs:92:13
+   |
+LL |             let rma = &mut u.a;
+   |                       -------- `u.b` is borrowed here
+LL |             u.b = 1;
+   |             ^^^^^^^ `u.b` is assigned to here but it was already borrowed
+LL |             drop(rma);
+   |                  --- borrow later used here
+
+error: aborting due to 12 previous errors
+
+Some errors have detailed explanations: E0499, E0502, E0503, E0506.
+For more information about an error, try `rustc --explain E0499`.

@@ -1,0 +1,51 @@
+error[E0403]: the name `N` is already used for a generic parameter in this item's generic parameters
+  --> $DIR/ice-hir-wf-check-anon-const-issue-122199.rs:4:18
+   |
+LL | trait Trait<const N: dyn Trait = bar> {
+   |                   - first use of `N`
+...
+LL |     fn fnc<const N: dyn Trait = u32>(&self) -> dyn Trait {
+   |                  ^ already used
+
+error[E0425]: cannot find value `bar` in this scope
+  --> $DIR/ice-hir-wf-check-anon-const-issue-122199.rs:1:34
+   |
+LL | trait Trait<const N: dyn Trait = bar> {
+   |                                  ^^^ not found in this scope
+
+error[E0423]: expected value, found builtin type `u32`
+  --> $DIR/ice-hir-wf-check-anon-const-issue-122199.rs:4:33
+   |
+LL |     fn fnc<const N: dyn Trait = u32>(&self) -> dyn Trait {
+   |                                 ^^^ not a value
+
+error[E0425]: cannot find value `bar` in this scope
+  --> $DIR/ice-hir-wf-check-anon-const-issue-122199.rs:8:9
+   |
+LL |         bar
+   |         ^^^ not found in this scope
+
+error[E0391]: cycle detected when computing type of `Trait::N`
+  --> $DIR/ice-hir-wf-check-anon-const-issue-122199.rs:1:26
+   |
+LL | trait Trait<const N: dyn Trait = bar> {
+   |                          ^^^^^
+   |
+   = note: ...which immediately requires computing type of `Trait::N` again
+note: cycle used when checking that `Trait` is well-formed
+  --> $DIR/ice-hir-wf-check-anon-const-issue-122199.rs:1:1
+   |
+LL | trait Trait<const N: dyn Trait = bar> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+
+error: defaults for generic parameters are not allowed here
+  --> $DIR/ice-hir-wf-check-anon-const-issue-122199.rs:4:12
+   |
+LL |     fn fnc<const N: dyn Trait = u32>(&self) -> dyn Trait {
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0391, E0403, E0423, E0425.
+For more information about an error, try `rustc --explain E0391`.

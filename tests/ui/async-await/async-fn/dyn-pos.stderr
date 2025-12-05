@@ -1,0 +1,15 @@
+error[E0038]: the trait `AsyncFnMut` is not dyn compatible
+  --> $DIR/dyn-pos.rs:3:16
+   |
+LL | fn foo(x: &dyn AsyncFn()) {}
+   |                ^^^^^^^^^ `AsyncFnMut` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $SRC_DIR/core/src/ops/async_function.rs:LL:COL
+   |
+   = note: the trait is not dyn compatible because it contains the generic associated type `CallRefFuture`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0038`.

@@ -1,0 +1,602 @@
+use core::fmt::{self, Display};
+use core::marker::PhantomData;
+use core::num::NonZero;
+use core::ops::{Deref, DerefMut};
+use core::range::Range;
+use core::str::FromStr;
+use std::ffi::OsStr;
+use std::fs::{self, OpenOptions};
+use std::io::{self, Read as _, Seek as _, SeekFrom, Write};
+use std::path::{Path, PathBuf};
+use std::process::{self, Command, Stdio};
+use std::{env, thread};
+use walkdir::WalkDir;
+
+pub struct Scoped<'inner, 'outer: 'inner, T>(T, PhantomData<&'inner mut T>, PhantomData<&'outer mut ()>);
+impl<T> Scoped<'_, '_, T> {
+    pub fn new(value: T) -> Self {
+        Self(value, PhantomData, PhantomData)
+    }
+}
+impl<T> Deref for Scoped<'_, '_, T> {
+    type Target = T;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+impl<T> DerefMut for Scoped<'_, '_, T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+#[derive(Clone, Copy)]
+pub enum ErrAction {
+    Open,
+    Read,
+    Write,
+    Create,
+    Rename,
+    Delete,
+    Run,
+}
+impl ErrAction {
+    fn as_str(self) -> &'static str {
+        match self {
+            Self::Open => "opening",
+            Self::Read => "reading",
+            Self::Write => "writing",
+            Self::Create => "creating",
+            Self::Rename => "renaming",
+            Self::Delete => "deleting",
+            Self::Run => "running",
+        }
+    }
+}
+
+#[cold]
+#[track_caller]
+pub fn panic_action(err: &impl Display, action: ErrAction, path: &Path) -> ! {
+    panic!("error {} `{}`: {}", action.as_str(), path.display(), *err)
+}
+
+#[track_caller]
+pub fn expect_action<T>(res: Result<T, impl Display>, action: ErrAction, path: impl AsRef<Path>) -> T {
+    match res {
+        Ok(x) => x,
+        Err(ref e) => panic_action(e, action, path.as_ref()),
+    }
+}
+
+/// Wrapper around `std::fs::File` which panics with a path on failure.
+pub struct File<'a> {
+    pub inner: fs::File,
+    pub path: &'a Path,
+}
+impl<'a> File<'a> {
+    /// Opens a file panicking on failure.
+    #[track_caller]
+    pub fn open(path: &'a (impl AsRef<Path> + ?Sized), options: &mut OpenOptions) -> Self {
+        let path = path.as_ref();
+        Self {
+            inner: expect_action(options.open(path), ErrAction::Open, path),
+            path,
+        }
+    }
+
+    /// Opens a file if it exists, panicking on any other failure.
+    #[track_caller]
+    pub fn open_if_exists(path: &'a (impl AsRef<Path> + ?Sized), options: &mut OpenOptions) -> Option<Self> {
+        let path = path.as_ref();
+        match options.open(path) {
+            Ok(inner) => Some(Self { inner, path }),
+            Err(e) if e.kind() == io::ErrorKind::NotFound => None,
+            Err(e) => panic_action(&e, ErrAction::Open, path),
+        }
+    }
+
+    /// Opens and reads a file into a string, panicking of failure.
+    #[track_caller]
+    pub fn open_read_to_cleared_string<'dst>(
+        path: &'a (impl AsRef<Path> + ?Sized),
+        dst: &'dst mut String,
+    ) -> &'dst mut String {
+        Self::open(path, OpenOptions::new().read(true)).read_to_cleared_string(dst)
+    }
+
+    /// Read the entire contents of a file to the given buffer.
+    #[track_caller]
+    pub fn read_append_to_string<'dst>(&mut self, dst: &'dst mut String) -> &'dst mut String {
+        expect_action(self.inner.read_to_string(dst), ErrAction::Read, self.path);
+        dst
+    }
+
+    #[track_caller]
+    pub fn read_to_cleared_string<'dst>(&mut self, dst: &'dst mut String) -> &'dst mut String {
+        dst.clear();
+        self.read_append_to_string(dst)
+    }
+
+    /// Replaces the entire contents of a file.
+    #[track_caller]
+    pub fn replace_contents(&mut self, data: &[u8]) {
+        let res = match self.inner.seek(SeekFrom::Start(0)) {
+            Ok(_) => match self.inner.write_all(data) {
+                Ok(()) => self.inner.set_len(data.len() as u64),
+                Err(e) => Err(e),
+            },
+            Err(e) => Err(e),
+        };
+        expect_action(res, ErrAction::Write, self.path);
+    }
+}
+
+/// Creates a `Command` for running cargo.
+#[must_use]
+pub fn cargo_cmd() -> Command {
+    if let Some(path) = env::var_os("CARGO") {
+        Command::new(path)
+    } else {
+        Command::new("cargo")
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub struct Version {
+    pub major: u16,
+    pub minor: u16,
+}
+impl FromStr for Version {
+    type Err = ();
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if let Some(s) = s.strip_prefix("0.")
+            && let Some((major, minor)) = s.split_once('.')
+            && let Ok(major) = major.parse()
+            && let Ok(minor) = minor.parse()
+        {
+            Ok(Self { major, minor })
+        } else {
+            Err(())
+        }
+    }
+}
+impl Version {
+    /// Displays the version as a rust version. i.e. `x.y.0`
+    #[must_use]
+    pub fn rust_display(self) -> impl Display {
+        struct X(Version);
+        impl Display for X {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                write!(f, "{}.{}.0", self.0.major, self.0.minor)
+            }
+        }
+        X(self)
+    }
+
+    /// Displays the version as it should appear in clippy's toml files. i.e. `0.x.y`
+    #[must_use]
+    pub fn toml_display(self) -> impl Display {
+        struct X(Version);
+        impl Display for X {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                write!(f, "0.{}.{}", self.0.major, self.0.minor)
+            }
+        }
+        X(self)
+    }
+}
+
+enum TomlPart<'a> {
+    Table(&'a str),
+    Value(&'a str, &'a str),
+}
+
+fn toml_iter(s: &str) -> impl Iterator<Item = (usize, TomlPart<'_>)> {
+    let mut pos = 0;
+    s.split('\n')
+        .map(move |s| {
+            let x = pos;
+            pos += s.len() + 1;
+            (x, s)
+        })
+        .filter_map(|(pos, s)| {
+            if let Some(s) = s.strip_prefix('[') {
+                s.split_once(']').map(|(name, _)| (pos, TomlPart::Table(name)))
+            } else if matches!(s.bytes().next(), Some(b'a'..=b'z' | b'A'..=b'Z' | b'0'..=b'9' | b'_')) {
+                s.split_once('=').map(|(key, value)| (pos, TomlPart::Value(key, value)))
+            } else {
+                None
+            }
+        })
+}
+
+pub struct CargoPackage<'a> {
+    pub name: &'a str,
+    pub version_range: Range<usize>,
+    pub not_a_platform_range: Range<usize>,
+}
+
+#[must_use]
+pub fn parse_cargo_package(s: &str) -> CargoPackage<'_> {
+    let mut in_package = false;
+    let mut in_platform_deps = false;
+    let mut name = "";
+    let mut version_range = 0..0;
+    let mut not_a_platform_range = 0..0;
+    for (offset, part) in toml_iter(s) {
+        match part {
+            TomlPart::Table(name) => {
+                if in_platform_deps {
+                    not_a_platform_range.end = offset;
+                }
+                in_package = false;
+                in_platform_deps = false;
+
+                match name.trim() {
+                    "package" => in_package = true,
+                    "target.'cfg(NOT_A_PLATFORM)'.dependencies" => {
+                        in_platform_deps = true;
+                        not_a_platform_range.start = offset;
+                    },
+                    _ => {},
+                }
+            },
+            TomlPart::Value(key, value) if in_package => match key.trim_end() {
+                "name" => name = value.trim(),
+                "version" => {
+                    version_range.start = offset + (value.len() - value.trim().len()) + key.len() + 1;
+                    version_range.end = offset + key.len() + value.trim_end().len() + 1;
+                },
+                _ => {},
+            },
+            TomlPart::Value(..) => {},
+        }
+    }
+    CargoPackage {
+        name,
+        version_range,
+        not_a_platform_range,
+    }
+}
+
+pub struct ClippyInfo {
+    pub path: PathBuf,
+    pub version: Version,
+    pub has_intellij_hook: bool,
+}
+impl ClippyInfo {
+    #[must_use]
+    pub fn search_for_manifest() -> Self {
+        let mut path = env::current_dir().expect("error reading the working directory");
+        let mut buf = String::new();
+        loop {
+            path.push("Cargo.toml");
+            if let Some(mut file) = File::open_if_exists(&path, OpenOptions::new().read(true)) {
+                file.read_to_cleared_string(&mut buf);
+                let package = parse_cargo_package(&buf);
+                if package.name == "\"clippy\"" {
+                    if let Some(version) = buf[package.version_range].strip_prefix('"')
+                        && let Some(version) = version.strip_suffix('"')
+                        && let Ok(version) = version.parse()
+                    {
+                        path.pop();
+                        return ClippyInfo {
+                            path,
+                            version,
+                            has_intellij_hook: !package.not_a_platform_range.is_empty(),
+                        };
+                    }
+                    panic!("error reading clippy version from `{}`", file.path.display());
+                }
+            }
+
+            path.pop();
+            assert!(
+                path.pop(),
+                "error finding project root, please run from inside the clippy directory"
+            );
+        }
+    }
+}
+
+#[derive(Clone, Copy)]
+pub enum UpdateStatus {
+    Unchanged,
+    Changed,
+}
+impl UpdateStatus {
+    #[must_use]
+    pub fn from_changed(value: bool) -> Self {
+        if value { Self::Changed } else { Self::Unchanged }
+    }
+
+    #[must_use]
+    pub fn is_changed(self) -> bool {
+        matches!(self, Self::Changed)
+    }
+}
+
+#[derive(Clone, Copy)]
+pub enum UpdateMode {
+    Change,
+    Check,
+}
+impl UpdateMode {
+    #[must_use]
+    pub fn from_check(check: bool) -> Self {
+        if check { Self::Check } else { Self::Change }
+    }
+
+    #[must_use]
+    pub fn is_check(self) -> bool {
+        matches!(self, Self::Check)
+    }
+}
+
+#[derive(Default)]
+pub struct FileUpdater {
+    src_buf: String,
+    dst_buf: String,
+}
+impl FileUpdater {
+    #[track_caller]
+    fn update_file_checked_inner(
+        &mut self,
+        tool: &str,
+        mode: UpdateMode,
+        path: &Path,
+        update: &mut dyn FnMut(&Path, &str, &mut String) -> UpdateStatus,
+    ) {
+        let mut file = File::open(path, OpenOptions::new().read(true).write(true));
+        file.read_to_cleared_string(&mut self.src_buf);
+        self.dst_buf.clear();
+        match (mode, update(path, &self.src_buf, &mut self.dst_buf)) {
+            (UpdateMode::Check, UpdateStatus::Changed) => {
+                eprintln!(
+                    "the contents of `{}` are out of date\nplease run `{tool}` to update",
+                    path.display()
+                );
+                process::exit(1);
+            },
+            (UpdateMode::Change, UpdateStatus::Changed) => file.replace_contents(self.dst_buf.as_bytes()),
+            (UpdateMode::Check | UpdateMode::Change, UpdateStatus::Unchanged) => {},
+        }
+    }
+
+    #[track_caller]
+    fn update_file_inner(&mut self, path: &Path, update: &mut dyn FnMut(&Path, &str, &mut String) -> UpdateStatus) {
+        let mut file = File::open(path, OpenOptions::new().read(true).write(true));
+        file.read_to_cleared_string(&mut self.src_buf);
+        self.dst_buf.clear();
+        if update(path, &self.src_buf, &mut self.dst_buf).is_changed() {
+            file.replace_contents(self.dst_buf.as_bytes());
+        }
+    }
+
+    #[track_caller]
+    pub fn update_file_checked(
+        &mut self,
+        tool: &str,
+        mode: UpdateMode,
+        path: impl AsRef<Path>,
+        update: &mut dyn FnMut(&Path, &str, &mut String) -> UpdateStatus,
+    ) {
+        self.update_file_checked_inner(tool, mode, path.as_ref(), update);
+    }
+
+    #[track_caller]
+    pub fn update_file(
+        &mut self,
+        path: impl AsRef<Path>,
+        update: &mut dyn FnMut(&Path, &str, &mut String) -> UpdateStatus,
+    ) {
+        self.update_file_inner(path.as_ref(), update);
+    }
+}
+
+/// Replaces a region in a text delimited by two strings. Returns the new text if both delimiters
+/// were found, or the missing delimiter if not.
+pub fn update_text_region(
+    path: &Path,
+    start: &str,
+    end: &str,
+    src: &str,
+    dst: &mut String,
+    insert: &mut impl FnMut(&mut String),
+) -> UpdateStatus {
+    let Some((src_start, src_end)) = src.split_once(start) else {
+        panic!("`{}` does not contain `{start}`", path.display());
+    };
+    let Some((replaced_text, src_end)) = src_end.split_once(end) else {
+        panic!("`{}` does not contain `{end}`", path.display());
+    };
+    dst.push_str(src_start);
+    dst.push_str(start);
+    let new_start = dst.len();
+    insert(dst);
+    let changed = dst[new_start..] != *replaced_text;
+    dst.push_str(end);
+    dst.push_str(src_end);
+    UpdateStatus::from_changed(changed)
+}
+
+pub fn update_text_region_fn(
+    start: &str,
+    end: &str,
+    mut insert: impl FnMut(&mut String),
+) -> impl FnMut(&Path, &str, &mut String) -> UpdateStatus {
+    move |path, src, dst| update_text_region(path, start, end, src, dst, &mut insert)
+}
+
+#[track_caller]
+pub fn try_rename_file(old_name: &Path, new_name: &Path) -> bool {
+    match OpenOptions::new().create_new(true).write(true).open(new_name) {
+        Ok(file) => drop(file),
+        Err(e) if matches!(e.kind(), io::ErrorKind::AlreadyExists | io::ErrorKind::NotFound) => return false,
+        Err(ref e) => panic_action(e, ErrAction::Create, new_name),
+    }
+    match fs::rename(old_name, new_name) {
+        Ok(()) => true,
+        Err(ref e) => {
+            drop(fs::remove_file(new_name));
+            // `NotADirectory` happens on posix when renaming a directory to an existing file.
+            // Windows will ignore this and rename anyways.
+            if matches!(e.kind(), io::ErrorKind::NotFound | io::ErrorKind::NotADirectory) {
+                false
+            } else {
+                panic_action(e, ErrAction::Rename, old_name);
+            }
+        },
+    }
+}
+
+#[track_caller]
+pub fn try_rename_dir(old_name: &Path, new_name: &Path) -> bool {
+    match fs::create_dir(new_name) {
+        Ok(()) => {},
+        Err(e) if matches!(e.kind(), io::ErrorKind::AlreadyExists | io::ErrorKind::NotFound) => return false,
+        Err(ref e) => panic_action(e, ErrAction::Create, new_name),
+    }
+    // Windows can't reliably rename to an empty directory.
+    #[cfg(windows)]
+    drop(fs::remove_dir(new_name));
+    match fs::rename(old_name, new_name) {
+        Ok(()) => true,
+        Err(ref e) => {
+            // Already dropped earlier on windows.
+            #[cfg(not(windows))]
+            drop(fs::remove_dir(new_name));
+            // `NotADirectory` happens on posix when renaming a file to an existing directory.
+            if matches!(e.kind(), io::ErrorKind::NotFound | io::ErrorKind::NotADirectory) {
+                false
+            } else {
+                panic_action(e, ErrAction::Rename, old_name);
+            }
+        },
+    }
+}
+
+#[track_caller]
+pub fn run_exit_on_err(path: &(impl AsRef<Path> + ?Sized), cmd: &mut Command) {
+    match expect_action(cmd.status(), ErrAction::Run, path.as_ref()).code() {
+        Some(0) => {},
+        Some(n) => process::exit(n),
+        None => {
+            eprintln!("{} killed by signal", path.as_ref().display());
+            process::exit(1);
+        },
+    }
+}
+
+#[track_caller]
+#[must_use]
+pub fn run_with_output(path: &(impl AsRef<Path> + ?Sized), cmd: &mut Command) -> Vec<u8> {
+    fn f(path: &Path, cmd: &mut Command) -> Vec<u8> {
+        let output = expect_action(
+            cmd.stdin(Stdio::null())
+                .stdout(Stdio::piped())
+                .stderr(Stdio::inherit())
+                .output(),
+            ErrAction::Run,
+            path,
+        );
+        expect_action(output.status.exit_ok(), ErrAction::Run, path);
+        output.stdout
+    }
+    f(path.as_ref(), cmd)
+}
+
+/// Splits an argument list across multiple `Command` invocations.
+///
+/// The argument list will be split into a number of batches based on
+/// `thread::available_parallelism`, with `min_batch_size` setting a lower bound on the size of each
+/// batch.
+///
+/// If the size of the arguments would exceed the system limit additional batches will be created.
+pub fn split_args_for_threads(
+    min_batch_size: usize,
+    make_cmd: impl FnMut() -> Command,
+    args: impl ExactSizeIterator<Item: AsRef<OsStr>>,
+) -> impl Iterator<Item = Command> {
+    struct Iter<F, I> {
+        make_cmd: F,
+        args: I,
+        min_batch_size: usize,
+        batch_size: usize,
+        thread_count: usize,
+    }
+    impl<F, I> Iterator for Iter<F, I>
+    where
+        F: FnMut() -> Command,
+        I: ExactSizeIterator<Item: AsRef<OsStr>>,
+    {
+        type Item = Command;
+        fn next(&mut self) -> Option<Self::Item> {
+            if self.thread_count > 1 {
+                self.thread_count -= 1;
+            }
+            let mut cmd = (self.make_cmd)();
+            let mut cmd_len = 0usize;
+            for arg in self.args.by_ref().take(self.batch_size) {
+                cmd.arg(arg.as_ref());
+                // `+ 8` to account for the `argv` pointer on unix.
+                // Windows is complicated since the arguments are first converted to UTF-16ish,
+                // but this needs to account for the space between arguments and whatever additional
+                // is needed to escape within an argument.
+                cmd_len += arg.as_ref().len() + 8;
+                cmd_len += 8;
+
+                // Windows has a command length limit of 32767. For unix systems this is more
+                // complicated since the limit includes environment variables and room needs to be
+                // left to edit them once the program starts, but the total size comes from
+                // `getconf ARG_MAX`.
+                //
+                // For simplicity we use 30000 here under a few assumptions.
+                // * Individual arguments aren't super long (the final argument is still added)
+                // * `ARG_MAX` is set to a reasonable amount. Basically every system will be configured way above
+                //   what windows supports, but POSIX only requires `4096`.
+                if cmd_len > 30000 {
+                    self.batch_size = self.args.len().div_ceil(self.thread_count).max(self.min_batch_size);
+                    break;
+                }
+            }
+            (cmd_len != 0).then_some(cmd)
+        }
+    }
+    let thread_count = thread::available_parallelism().map_or(1, NonZero::get);
+    let batch_size = args.len().div_ceil(thread_count).max(min_batch_size);
+    Iter {
+        make_cmd,
+        args,
+        min_batch_size,
+        batch_size,
+        thread_count,
+    }
+}
+
+#[track_caller]
+pub fn delete_file_if_exists(path: &Path) -> bool {
+    match fs::remove_file(path) {
+        Ok(()) => true,
+        Err(e) if matches!(e.kind(), io::ErrorKind::NotFound | io::ErrorKind::IsADirectory) => false,
+        Err(ref e) => panic_action(e, ErrAction::Delete, path),
+    }
+}
+
+#[track_caller]
+pub fn delete_dir_if_exists(path: &Path) {
+    match fs::remove_dir_all(path) {
+        Ok(()) => {},
+        Err(e) if matches!(e.kind(), io::ErrorKind::NotFound | io::ErrorKind::NotADirectory) => {},
+        Err(ref e) => panic_action(e, ErrAction::Delete, path),
+    }
+}
+
+/// Walks all items excluding top-level dot files/directories and any target directories.
+pub fn walk_dir_no_dot_or_target(p: impl AsRef<Path>) -> impl Iterator<Item = ::walkdir::Result<::walkdir::DirEntry>> {
+    WalkDir::new(p).into_iter().filter_entry(|e| {
+        e.path()
+            .file_name()
+            .is_none_or(|x| x != "target" && x.as_encoded_bytes().first().copied() != Some(b'.'))
+    })
+}

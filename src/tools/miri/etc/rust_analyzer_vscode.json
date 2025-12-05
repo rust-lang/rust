@@ -1,0 +1,27 @@
+{
+    "rust-analyzer.rustc.source": "discover",
+    "rust-analyzer.linkedProjects": [
+        "Cargo.toml",
+        "cargo-miri/Cargo.toml",
+        "genmc-sys/Cargo.toml",
+        "miri-script/Cargo.toml",
+    ],
+    "rust-analyzer.check.invocationStrategy": "once",
+    "rust-analyzer.check.overrideCommand": [
+        "./miri",
+        "clippy", // make this `check` when working with a locally built rustc
+        "--message-format=json",
+    ],
+    "rust-analyzer.cargo.extraEnv": {
+        "MIRI_AUTO_OPS": "no",
+        "MIRI_IN_RA": "1",
+    },
+    // Contrary to what the name suggests, this also affects proc macros.
+    "rust-analyzer.cargo.buildScripts.invocationStrategy": "once",
+    "rust-analyzer.cargo.buildScripts.overrideCommand": [
+        "./miri",
+        "check",
+        "--no-default-features",
+        "--message-format=json",
+    ],
+}

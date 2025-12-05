@@ -1,0 +1,40 @@
+error[E0380]: auto traits cannot have associated items
+  --> $DIR/assoc-ty.rs:10:10
+   |
+LL | auto trait Trait {
+   |            ----- auto traits cannot have associated items
+LL |
+LL |     type Output;
+   |          ^^^^^^
+
+error[E0658]: auto traits are experimental and possibly buggy
+  --> $DIR/assoc-ty.rs:8:1
+   |
+LL | / auto trait Trait {
+LL | |
+LL | |     type Output;
+LL | |
+LL | | }
+   | |_^
+   |
+   = note: see issue #13231 <https://github.com/rust-lang/rust/issues/13231> for more information
+   = help: add `#![feature(auto_traits)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0308]: mismatched types
+  --> $DIR/assoc-ty.rs:15:36
+   |
+LL |     let _: <() as Trait>::Output = ();
+   |            ---------------------   ^^ expected associated type, found `()`
+   |            |
+   |            expected due to this
+   |
+   = note: expected associated type `<() as Trait>::Output`
+                    found unit type `()`
+   = help: consider constraining the associated type `<() as Trait>::Output` to `()` or calling a method that returns `<() as Trait>::Output`
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0308, E0380, E0658.
+For more information about an error, try `rustc --explain E0308`.

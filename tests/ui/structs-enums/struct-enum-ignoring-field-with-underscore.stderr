@@ -1,0 +1,14 @@
+error: expected field pattern, found `_`
+  --> $DIR/struct-enum-ignoring-field-with-underscore.rs:9:27
+   |
+LL |     if let Some(Foo::Bar {_}) = foo {}
+   |                           ^
+   |
+help: to omit remaining fields, use `..`
+   |
+LL -     if let Some(Foo::Bar {_}) = foo {}
+LL +     if let Some(Foo::Bar {..}) = foo {}
+   |
+
+error: aborting due to 1 previous error
+

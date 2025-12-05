@@ -1,0 +1,30 @@
+warning: function cannot return without recursing
+  --> $DIR/recursive-drop-elaboration-2.rs:13:1
+   |
+LL | fn with_positive(fun: impl Fn(Alias<'_>)) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot return without recursing
+LL |
+LL |     with_positive(|&n| ());
+   |     ---------------------- recursive call site
+   |
+   = help: a `loop` may express intention better if this is on purpose
+   = note: `#[warn(unconditional_recursion)]` on by default
+
+error[E0507]: cannot move out of a shared reference
+  --> $DIR/recursive-drop-elaboration-2.rs:15:20
+   |
+LL |     with_positive(|&n| ());
+   |                    ^-
+   |                     |
+   |                     data moved here
+   |                     move occurs because `n` has type `S`, which does not implement the `Copy` trait
+   |
+help: consider removing the borrow
+   |
+LL -     with_positive(|&n| ());
+LL +     with_positive(|n| ());
+   |
+
+error: aborting due to 1 previous error; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0507`.

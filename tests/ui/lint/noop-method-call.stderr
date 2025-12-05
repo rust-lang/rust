@@ -1,0 +1,109 @@
+warning: call to `.clone()` on a reference in this situation does nothing
+  --> $DIR/noop-method-call.rs:15:25
+   |
+LL |     let _ = &mut encoded.clone();
+   |                         ^^^^^^^^ help: remove this redundant call
+   |
+   = note: the type `[u8]` does not implement `Clone`, so calling `clone` on `&[u8]` copies the reference, which does not do anything and can be removed
+   = note: `#[warn(noop_method_call)]` on by default
+
+warning: call to `.clone()` on a reference in this situation does nothing
+  --> $DIR/noop-method-call.rs:17:21
+   |
+LL |     let _ = &encoded.clone();
+   |                     ^^^^^^^^ help: remove this redundant call
+   |
+   = note: the type `[u8]` does not implement `Clone`, so calling `clone` on `&[u8]` copies the reference, which does not do anything and can be removed
+
+warning: call to `.clone()` on a reference in this situation does nothing
+  --> $DIR/noop-method-call.rs:23:71
+   |
+LL |     let non_clone_type_ref_clone: &PlainType<u32> = non_clone_type_ref.clone();
+   |                                                                       ^^^^^^^^
+   |
+   = note: the type `PlainType<u32>` does not implement `Clone`, so calling `clone` on `&PlainType<u32>` copies the reference, which does not do anything and can be removed
+help: remove this redundant call
+   |
+LL -     let non_clone_type_ref_clone: &PlainType<u32> = non_clone_type_ref.clone();
+LL +     let non_clone_type_ref_clone: &PlainType<u32> = non_clone_type_ref;
+   |
+help: if you meant to clone `PlainType<u32>`, implement `Clone` for it
+   |
+LL + #[derive(Clone)]
+LL | struct PlainType<T>(T);
+   |
+
+warning: call to `.deref()` on a reference in this situation does nothing
+  --> $DIR/noop-method-call.rs:31:63
+   |
+LL |     let non_deref_type_deref: &PlainType<u32> = non_deref_type.deref();
+   |                                                               ^^^^^^^^
+   |
+   = note: the type `PlainType<u32>` does not implement `Deref`, so calling `deref` on `&PlainType<u32>` copies the reference, which does not do anything and can be removed
+help: remove this redundant call
+   |
+LL -     let non_deref_type_deref: &PlainType<u32> = non_deref_type.deref();
+LL +     let non_deref_type_deref: &PlainType<u32> = non_deref_type;
+   |
+help: if you meant to clone `PlainType<u32>`, implement `Clone` for it
+   |
+LL + #[derive(Clone)]
+LL | struct PlainType<T>(T);
+   |
+
+warning: call to `.borrow()` on a reference in this situation does nothing
+  --> $DIR/noop-method-call.rs:35:66
+   |
+LL |     let non_borrow_type_borrow: &PlainType<u32> = non_borrow_type.borrow();
+   |                                                                  ^^^^^^^^^
+   |
+   = note: the type `PlainType<u32>` does not implement `Borrow`, so calling `borrow` on `&PlainType<u32>` copies the reference, which does not do anything and can be removed
+help: remove this redundant call
+   |
+LL -     let non_borrow_type_borrow: &PlainType<u32> = non_borrow_type.borrow();
+LL +     let non_borrow_type_borrow: &PlainType<u32> = non_borrow_type;
+   |
+help: if you meant to clone `PlainType<u32>`, implement `Clone` for it
+   |
+LL + #[derive(Clone)]
+LL | struct PlainType<T>(T);
+   |
+
+warning: call to `.clone()` on a reference in this situation does nothing
+  --> $DIR/noop-method-call.rs:44:19
+   |
+LL |     non_clone_type.clone();
+   |                   ^^^^^^^^
+   |
+   = note: the type `PlainType<T>` does not implement `Clone`, so calling `clone` on `&PlainType<T>` copies the reference, which does not do anything and can be removed
+help: remove this redundant call
+   |
+LL -     non_clone_type.clone();
+LL +     non_clone_type;
+   |
+help: if you meant to clone `PlainType<T>`, implement `Clone` for it
+   |
+LL + #[derive(Clone)]
+LL | struct PlainType<T>(T);
+   |
+
+warning: call to `.clone()` on a reference in this situation does nothing
+  --> $DIR/noop-method-call.rs:49:19
+   |
+LL |     non_clone_type.clone();
+   |                   ^^^^^^^^
+   |
+   = note: the type `PlainType<u32>` does not implement `Clone`, so calling `clone` on `&PlainType<u32>` copies the reference, which does not do anything and can be removed
+help: remove this redundant call
+   |
+LL -     non_clone_type.clone();
+LL +     non_clone_type;
+   |
+help: if you meant to clone `PlainType<u32>`, implement `Clone` for it
+   |
+LL + #[derive(Clone)]
+LL | struct PlainType<T>(T);
+   |
+
+warning: 7 warnings emitted
+

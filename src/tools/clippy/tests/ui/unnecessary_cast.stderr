@@ -1,0 +1,269 @@
+error: casting raw pointers to the same type and constness is unnecessary (`*const T` -> `*const T`)
+  --> tests/ui/unnecessary_cast.rs:19:5
+   |
+LL |     ptr as *const T
+   |     ^^^^^^^^^^^^^^^ help: try: `ptr`
+   |
+   = note: `-D clippy::unnecessary-cast` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unnecessary_cast)]`
+
+error: casting integer literal to `i32` is unnecessary
+  --> tests/ui/unnecessary_cast.rs:55:5
+   |
+LL |     1i32 as i32;
+   |     ^^^^^^^^^^^ help: try: `1_i32`
+
+error: casting float literal to `f32` is unnecessary
+  --> tests/ui/unnecessary_cast.rs:57:5
+   |
+LL |     1f32 as f32;
+   |     ^^^^^^^^^^^ help: try: `1_f32`
+
+error: casting to the same type is unnecessary (`bool` -> `bool`)
+  --> tests/ui/unnecessary_cast.rs:59:5
+   |
+LL |     false as bool;
+   |     ^^^^^^^^^^^^^ help: try: `false`
+
+error: casting integer literal to `i32` is unnecessary
+  --> tests/ui/unnecessary_cast.rs:63:5
+   |
+LL |     -1_i32 as i32;
+   |     ^^^^^^^^^^^^^ help: try: `-1_i32`
+
+error: casting integer literal to `i32` is unnecessary
+  --> tests/ui/unnecessary_cast.rs:65:5
+   |
+LL |     - 1_i32 as i32;
+   |     ^^^^^^^^^^^^^^ help: try: `- 1_i32`
+
+error: casting float literal to `f32` is unnecessary
+  --> tests/ui/unnecessary_cast.rs:67:5
+   |
+LL |     -1f32 as f32;
+   |     ^^^^^^^^^^^^ help: try: `-1_f32`
+
+error: casting integer literal to `i32` is unnecessary
+  --> tests/ui/unnecessary_cast.rs:69:5
+   |
+LL |     1_i32 as i32;
+   |     ^^^^^^^^^^^^ help: try: `1_i32`
+
+error: casting float literal to `f32` is unnecessary
+  --> tests/ui/unnecessary_cast.rs:71:5
+   |
+LL |     1_f32 as f32;
+   |     ^^^^^^^^^^^^ help: try: `1_f32`
+
+error: casting raw pointers to the same type and constness is unnecessary (`*const u8` -> `*const u8`)
+  --> tests/ui/unnecessary_cast.rs:74:22
+   |
+LL |     let _: *mut u8 = [1u8, 2].as_ptr() as *const u8 as *mut u8;
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `[1u8, 2].as_ptr()`
+
+error: casting raw pointers to the same type and constness is unnecessary (`*const u8` -> `*const u8`)
+  --> tests/ui/unnecessary_cast.rs:77:5
+   |
+LL |     [1u8, 2].as_ptr() as *const u8;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `[1u8, 2].as_ptr()`
+
+error: casting raw pointers to the same type and constness is unnecessary (`*mut u8` -> `*mut u8`)
+  --> tests/ui/unnecessary_cast.rs:80:5
+   |
+LL |     [1u8, 2].as_mut_ptr() as *mut u8;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `[1u8, 2].as_mut_ptr()`
+
+error: casting raw pointers to the same type and constness is unnecessary (`*const u32` -> `*const u32`)
+  --> tests/ui/unnecessary_cast.rs:92:5
+   |
+LL |     owo::<u32>([1u32].as_ptr()) as *const u32;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `owo::<u32>([1u32].as_ptr())`
+
+error: casting raw pointers to the same type and constness is unnecessary (`*const u8` -> `*const u8`)
+  --> tests/ui/unnecessary_cast.rs:94:5
+   |
+LL |     uwu::<u32, u8>([1u32].as_ptr()) as *const u8;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `uwu::<u32, u8>([1u32].as_ptr())`
+
+error: casting raw pointers to the same type and constness is unnecessary (`*const u32` -> `*const u32`)
+  --> tests/ui/unnecessary_cast.rs:97:5
+   |
+LL |     uwu::<u32, u32>([1u32].as_ptr()) as *const u32;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `uwu::<u32, u32>([1u32].as_ptr())`
+
+error: casting to the same type is unnecessary (`u32` -> `u32`)
+  --> tests/ui/unnecessary_cast.rs:133:5
+   |
+LL |     aaa() as u32;
+   |     ^^^^^^^^^^^^ help: try: `aaa()`
+
+error: casting to the same type is unnecessary (`u32` -> `u32`)
+  --> tests/ui/unnecessary_cast.rs:136:5
+   |
+LL |     aaa() as u32;
+   |     ^^^^^^^^^^^^ help: try: `aaa()`
+
+error: casting integer literal to `f32` is unnecessary
+  --> tests/ui/unnecessary_cast.rs:173:9
+   |
+LL |         100 as f32;
+   |         ^^^^^^^^^^ help: try: `100_f32`
+
+error: casting integer literal to `f64` is unnecessary
+  --> tests/ui/unnecessary_cast.rs:175:9
+   |
+LL |         100 as f64;
+   |         ^^^^^^^^^^ help: try: `100_f64`
+
+error: casting integer literal to `f64` is unnecessary
+  --> tests/ui/unnecessary_cast.rs:177:9
+   |
+LL |         100_i32 as f64;
+   |         ^^^^^^^^^^^^^^ help: try: `100_f64`
+
+error: casting integer literal to `f32` is unnecessary
+  --> tests/ui/unnecessary_cast.rs:179:17
+   |
+LL |         let _ = -100 as f32;
+   |                 ^^^^^^^^^^^ help: try: `-100_f32`
+
+error: casting integer literal to `f64` is unnecessary
+  --> tests/ui/unnecessary_cast.rs:181:17
+   |
+LL |         let _ = -100 as f64;
+   |                 ^^^^^^^^^^^ help: try: `-100_f64`
+
+error: casting integer literal to `f64` is unnecessary
+  --> tests/ui/unnecessary_cast.rs:183:17
+   |
+LL |         let _ = -100_i32 as f64;
+   |                 ^^^^^^^^^^^^^^^ help: try: `-100_f64`
+
+error: casting float literal to `f32` is unnecessary
+  --> tests/ui/unnecessary_cast.rs:185:9
+   |
+LL |         100. as f32;
+   |         ^^^^^^^^^^^ help: try: `100_f32`
+
+error: casting float literal to `f64` is unnecessary
+  --> tests/ui/unnecessary_cast.rs:187:9
+   |
+LL |         100. as f64;
+   |         ^^^^^^^^^^^ help: try: `100_f64`
+
+error: casting integer literal to `u32` is unnecessary
+  --> tests/ui/unnecessary_cast.rs:200:9
+   |
+LL |         1 as u32;
+   |         ^^^^^^^^ help: try: `1_u32`
+
+error: casting integer literal to `i32` is unnecessary
+  --> tests/ui/unnecessary_cast.rs:202:9
+   |
+LL |         0x10 as i32;
+   |         ^^^^^^^^^^^ help: try: `0x10_i32`
+
+error: casting integer literal to `usize` is unnecessary
+  --> tests/ui/unnecessary_cast.rs:204:9
+   |
+LL |         0b10 as usize;
+   |         ^^^^^^^^^^^^^ help: try: `0b10_usize`
+
+error: casting integer literal to `u16` is unnecessary
+  --> tests/ui/unnecessary_cast.rs:206:9
+   |
+LL |         0o73 as u16;
+   |         ^^^^^^^^^^^ help: try: `0o73_u16`
+
+error: casting integer literal to `u32` is unnecessary
+  --> tests/ui/unnecessary_cast.rs:208:9
+   |
+LL |         1_000_000_000 as u32;
+   |         ^^^^^^^^^^^^^^^^^^^^ help: try: `1_000_000_000_u32`
+
+error: casting float literal to `f64` is unnecessary
+  --> tests/ui/unnecessary_cast.rs:211:9
+   |
+LL |         1.0 as f64;
+   |         ^^^^^^^^^^ help: try: `1.0_f64`
+
+error: casting float literal to `f32` is unnecessary
+  --> tests/ui/unnecessary_cast.rs:213:9
+   |
+LL |         0.5 as f32;
+   |         ^^^^^^^^^^ help: try: `0.5_f32`
+
+error: casting integer literal to `i32` is unnecessary
+  --> tests/ui/unnecessary_cast.rs:218:17
+   |
+LL |         let _ = -1 as i32;
+   |                 ^^^^^^^^^ help: try: `-1_i32`
+
+error: casting float literal to `f32` is unnecessary
+  --> tests/ui/unnecessary_cast.rs:220:17
+   |
+LL |         let _ = -1.0 as f32;
+   |                 ^^^^^^^^^^^ help: try: `-1.0_f32`
+
+error: casting to the same type is unnecessary (`i32` -> `i32`)
+  --> tests/ui/unnecessary_cast.rs:227:18
+   |
+LL |         let _ = &(x as i32);
+   |                  ^^^^^^^^^^ help: try: `{ x }`
+
+error: casting integer literal to `i32` is unnecessary
+  --> tests/ui/unnecessary_cast.rs:234:22
+   |
+LL |         let _: i32 = -(1) as i32;
+   |                      ^^^^^^^^^^^ help: try: `-1_i32`
+
+error: casting integer literal to `i64` is unnecessary
+  --> tests/ui/unnecessary_cast.rs:237:22
+   |
+LL |         let _: i64 = -(1) as i64;
+   |                      ^^^^^^^^^^^ help: try: `-1_i64`
+
+error: casting float literal to `f64` is unnecessary
+  --> tests/ui/unnecessary_cast.rs:245:22
+   |
+LL |         let _: f64 = (-8.0 as f64).exp();
+   |                      ^^^^^^^^^^^^^ help: try: `(-8.0_f64)`
+
+error: casting float literal to `f64` is unnecessary
+  --> tests/ui/unnecessary_cast.rs:248:23
+   |
+LL |         let _: f64 = -(8.0 as f64).exp(); // should suggest `-8.0_f64.exp()` here not to change code behavior
+   |                       ^^^^^^^^^^^^ help: try: `8.0_f64`
+
+error: casting to the same type is unnecessary (`f32` -> `f32`)
+  --> tests/ui/unnecessary_cast.rs:258:20
+   |
+LL |         let _num = foo() as f32;
+   |                    ^^^^^^^^^^^^ help: try: `foo()`
+
+error: casting to the same type is unnecessary (`usize` -> `usize`)
+  --> tests/ui/unnecessary_cast.rs:269:9
+   |
+LL |         (*x as usize).pow(2)
+   |         ^^^^^^^^^^^^^ help: try: `(*x)`
+
+error: casting to the same type is unnecessary (`usize` -> `usize`)
+  --> tests/ui/unnecessary_cast.rs:277:31
+   |
+LL |         assert_eq!(vec.len(), x as usize);
+   |                               ^^^^^^^^^^ help: try: `x`
+
+error: casting to the same type is unnecessary (`i64` -> `i64`)
+  --> tests/ui/unnecessary_cast.rs:280:17
+   |
+LL |         let _ = (5i32 as i64 as i64).abs();
+   |                 ^^^^^^^^^^^^^^^^^^^^ help: try: `(5i32 as i64)`
+
+error: casting to the same type is unnecessary (`i64` -> `i64`)
+  --> tests/ui/unnecessary_cast.rs:283:17
+   |
+LL |         let _ = 5i32 as i64 as i64;
+   |                 ^^^^^^^^^^^^^^^^^^ help: try: `5i32 as i64`
+
+error: aborting due to 44 previous errors
+

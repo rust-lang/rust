@@ -1,0 +1,25 @@
+name: rustdoc check
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+
+jobs:
+  rustdoc_check:
+    runs-on: ubuntu-latest
+    name: rustdoc check
+    steps:
+    - name: checkout
+      uses: actions/checkout@v4
+
+    - name: install rustup
+      run: |
+        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs > rustup-init.sh
+        sh rustup-init.sh -y --default-toolchain none
+        rustup target add x86_64-unknown-linux-gnu
+
+    - name: document rustfmt
+      env:
+        RUSTDOCFLAGS: --document-private-items --enable-index-page --show-type-layout --generate-link-to-definition -Zunstable-options -Dwarnings
+      run: cargo doc -Zskip-rustdoc-fingerprint --no-deps -p rustfmt-nightly -p rustfmt-config_proc_macro

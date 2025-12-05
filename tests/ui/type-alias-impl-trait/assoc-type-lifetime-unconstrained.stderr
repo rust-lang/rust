@@ -1,0 +1,19 @@
+error[E0207]: the lifetime parameter `'a` is not constrained by the impl trait, self type, or predicates
+  --> $DIR/assoc-type-lifetime-unconstrained.rs:17:6
+   |
+LL | impl<'a, I> UnwrapItemsExt for I {
+   |      ^^ unconstrained lifetime parameter
+
+error[E0792]: expected generic lifetime parameter, found `'_`
+  --> $DIR/assoc-type-lifetime-unconstrained.rs:22:9
+   |
+LL | impl<'a, I> UnwrapItemsExt for I {
+   |      -- this generic parameter must be used with a generic lifetime parameter
+...
+LL |         MyStruct {}
+   |         ^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0207, E0792.
+For more information about an error, try `rustc --explain E0207`.

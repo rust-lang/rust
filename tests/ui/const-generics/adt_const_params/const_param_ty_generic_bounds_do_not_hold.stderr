@@ -1,0 +1,57 @@
+error[E0277]: `NotParam` can't be used as a const parameter type
+  --> $DIR/const_param_ty_generic_bounds_do_not_hold.rs:10:13
+   |
+LL |     check::<&NotParam>();
+   |             ^^^^^^^^^ unsatisfied trait bound
+   |
+help: the trait `ConstParamTy_` is not implemented for `NotParam`
+  --> $DIR/const_param_ty_generic_bounds_do_not_hold.rs:5:1
+   |
+LL | struct NotParam;
+   | ^^^^^^^^^^^^^^^
+   = note: required for `&NotParam` to implement `ConstParamTy_`
+note: required by a bound in `check`
+  --> $DIR/const_param_ty_generic_bounds_do_not_hold.rs:7:13
+   |
+LL | fn check<T: std::marker::ConstParamTy_ + ?Sized>() {}
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `check`
+
+error[E0277]: `NotParam` can't be used as a const parameter type
+  --> $DIR/const_param_ty_generic_bounds_do_not_hold.rs:11:13
+   |
+LL |     check::<[NotParam]>();
+   |             ^^^^^^^^^^ unsatisfied trait bound
+   |
+help: the trait `ConstParamTy_` is not implemented for `NotParam`
+  --> $DIR/const_param_ty_generic_bounds_do_not_hold.rs:5:1
+   |
+LL | struct NotParam;
+   | ^^^^^^^^^^^^^^^
+   = note: required for `[NotParam]` to implement `ConstParamTy_`
+note: required by a bound in `check`
+  --> $DIR/const_param_ty_generic_bounds_do_not_hold.rs:7:13
+   |
+LL | fn check<T: std::marker::ConstParamTy_ + ?Sized>() {}
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `check`
+
+error[E0277]: `NotParam` can't be used as a const parameter type
+  --> $DIR/const_param_ty_generic_bounds_do_not_hold.rs:12:13
+   |
+LL |     check::<[NotParam; 17]>();
+   |             ^^^^^^^^^^^^^^ unsatisfied trait bound
+   |
+help: the trait `ConstParamTy_` is not implemented for `NotParam`
+  --> $DIR/const_param_ty_generic_bounds_do_not_hold.rs:5:1
+   |
+LL | struct NotParam;
+   | ^^^^^^^^^^^^^^^
+   = note: required for `[NotParam; 17]` to implement `ConstParamTy_`
+note: required by a bound in `check`
+  --> $DIR/const_param_ty_generic_bounds_do_not_hold.rs:7:13
+   |
+LL | fn check<T: std::marker::ConstParamTy_ + ?Sized>() {}
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `check`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

@@ -1,0 +1,21 @@
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `should_panic`
+  --> $DIR/check-builtin-attr-ice.rs:45:7
+   |
+LL |     #[should_panic::skip]
+   |       ^^^^^^^^^^^^ use of unresolved module or unlinked crate `should_panic`
+
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `should_panic`
+  --> $DIR/check-builtin-attr-ice.rs:49:7
+   |
+LL |     #[should_panic::a::b::c]
+   |       ^^^^^^^^^^^^ use of unresolved module or unlinked crate `should_panic`
+
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `deny`
+  --> $DIR/check-builtin-attr-ice.rs:57:7
+   |
+LL |     #[deny::skip]
+   |       ^^^^ use of unresolved module or unlinked crate `deny`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0433`.

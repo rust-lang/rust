@@ -1,0 +1,41 @@
+error: initializer for `thread_local` value can be made `const`
+  --> tests/ui/missing_const_for_thread_local.rs:8:41
+   |
+LL |         static BUF_1: RefCell<String> = RefCell::new(String::new());
+   |                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `const { RefCell::new(String::new()) }`
+   |
+   = note: `-D clippy::missing-const-for-thread-local` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::missing_const_for_thread_local)]`
+
+error: initializer for `thread_local` value can be made `const`
+  --> tests/ui/missing_const_for_thread_local.rs:18:29
+   |
+LL |         static SIMPLE:i32 = 1;
+   |                             ^ help: replace with: `const { 1 }`
+
+error: initializer for `thread_local` value can be made `const`
+  --> tests/ui/missing_const_for_thread_local.rs:24:59
+   |
+LL |         static BUF_3_CAN_BE_MADE_CONST: RefCell<String> = RefCell::new(String::new());
+   |                                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `const { RefCell::new(String::new()) }`
+
+error: initializer for `thread_local` value can be made `const`
+  --> tests/ui/missing_const_for_thread_local.rs:27:59
+   |
+LL |         static BUF_4_CAN_BE_MADE_CONST: RefCell<String> = RefCell::new(String::new());
+   |                                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `const { RefCell::new(String::new()) }`
+
+error: initializer for `thread_local` value can be made `const`
+  --> tests/ui/missing_const_for_thread_local.rs:32:31
+   |
+LL |         static PEEL_ME: i32 = { 1 };
+   |                               ^^^^^ help: replace with: `const { 1 }`
+
+error: initializer for `thread_local` value can be made `const`
+  --> tests/ui/missing_const_for_thread_local.rs:35:36
+   |
+LL |         static PEEL_ME_MANY: i32 = { let x = 1; x * x };
+   |                                    ^^^^^^^^^^^^^^^^^^^^ help: replace with: `const { { let x = 1; x * x } }`
+
+error: aborting due to 6 previous errors
+

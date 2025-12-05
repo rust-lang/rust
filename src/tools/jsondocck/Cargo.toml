@@ -1,0 +1,12 @@
+[package]
+name = "jsondocck"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+jsonpath-rust = "1.0.0"
+getopts = "0.2"
+regex = "1.4"
+shlex = "1.0"
+serde_json = "1.0"
+fs-err = "2.5.0"

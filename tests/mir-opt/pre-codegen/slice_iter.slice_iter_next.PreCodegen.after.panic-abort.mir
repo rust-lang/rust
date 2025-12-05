@@ -1,0 +1,136 @@
+// MIR for `slice_iter_next` after PreCodegen
+
+fn slice_iter_next(_1: &mut std::slice::Iter<'_, T>) -> Option<&T> {
+    debug it => _1;
+    let mut _0: std::option::Option<&T>;
+    scope 1 (inlined <std::slice::Iter<'_, T> as Iterator>::next) {
+        let _2: std::ptr::NonNull<T>;
+        let _4: std::ptr::NonNull<T>;
+        let mut _7: bool;
+        let mut _10: std::ptr::NonNull<T>;
+        let mut _12: usize;
+        let _14: &T;
+        scope 2 {
+            let _3: *const T;
+            scope 3 {
+                let _11: usize;
+                scope 4 {
+                    scope 7 (inlined #[track_caller] core::num::<impl usize>::unchecked_sub) {
+                        scope 8 (inlined core::ub_checks::check_language_ub) {
+                            scope 9 (inlined core::ub_checks::check_language_ub::runtime) {
+                            }
+                        }
+                    }
+                    scope 10 (inlined without_provenance_mut::<T>) {
+                    }
+                }
+                scope 5 (inlined std::ptr::const_ptr::<impl *const T>::addr) {
+                    scope 6 (inlined std::ptr::const_ptr::<impl *const T>::cast::<()>) {
+                    }
+                }
+                scope 11 (inlined <NonNull<T> as PartialEq>::eq) {
+                    let mut _5: *mut T;
+                    let mut _6: *mut T;
+                    scope 12 (inlined NonNull::<T>::as_ptr) {
+                    }
+                    scope 13 (inlined NonNull::<T>::as_ptr) {
+                    }
+                }
+                scope 14 (inlined NonNull::<T>::add) {
+                    let mut _8: *const T;
+                    let mut _9: *const T;
+                    scope 15 (inlined NonNull::<T>::as_ptr) {
+                    }
+                }
+                scope 16 (inlined NonNull::<T>::as_ref::<'_>) {
+                    let _13: *const T;
+                    scope 17 (inlined NonNull::<T>::as_ptr) {
+                    }
+                    scope 18 (inlined std::ptr::mut_ptr::<impl *mut T>::cast_const) {
+                    }
+                }
+            }
+        }
+    }
+
+    bb0: {
+        StorageLive(_2);
+        StorageLive(_3);
+        StorageLive(_11);
+        StorageLive(_12);
+        StorageLive(_4);
+        StorageLive(_14);
+        _2 = copy ((*_1).0: std::ptr::NonNull<T>);
+        _3 = copy ((*_1).1: *const T);
+        switchInt(const <T as std::mem::SizedTypeProperties>::IS_ZST) -> [0: bb1, otherwise: bb4];
+    }
+
+    bb1: {
+        StorageLive(_7);
+        _4 = copy _3 as std::ptr::NonNull<T> (Transmute);
+        StorageLive(_5);
+        _5 = copy _2 as *mut T (Transmute);
+        StorageLive(_6);
+        _6 = copy _4 as *mut T (Transmute);
+        _7 = Eq(copy _5, copy _6);
+        StorageDead(_6);
+        StorageDead(_5);
+        switchInt(move _7) -> [0: bb2, otherwise: bb3];
+    }
+
+    bb2: {
+        StorageDead(_7);
+        StorageLive(_10);
+        StorageLive(_9);
+        StorageLive(_8);
+        _8 = copy _2 as *const T (Transmute);
+        _9 = Offset(copy _8, const 1_usize);
+        StorageDead(_8);
+        _10 = NonNull::<T> { pointer: copy _9 };
+        StorageDead(_9);
+        ((*_1).0: std::ptr::NonNull<T>) = move _10;
+        StorageDead(_10);
+        goto -> bb7;
+    }
+
+    bb3: {
+        _0 = const {transmute(0x0000000000000000): Option<&T>};
+        StorageDead(_7);
+        goto -> bb8;
+    }
+
+    bb4: {
+        _11 = copy _3 as usize (Transmute);
+        switchInt(copy _11) -> [0: bb5, otherwise: bb6];
+    }
+
+    bb5: {
+        _0 = const {transmute(0x0000000000000000): Option<&T>};
+        goto -> bb8;
+    }
+
+    bb6: {
+        _12 = SubUnchecked(copy _11, const 1_usize);
+        ((*_1).1: *const T) = copy _12 as *const T (Transmute);
+        goto -> bb7;
+    }
+
+    bb7: {
+        StorageLive(_13);
+        _13 = copy _2 as *const T (Transmute);
+        _14 = &(*_13);
+        StorageDead(_13);
+        _0 = Option::<&T>::Some(copy _14);
+        goto -> bb8;
+    }
+
+    bb8: {
+        StorageDead(_14);
+        StorageDead(_4);
+        StorageDead(_12);
+        StorageDead(_11);
+        StorageDead(_3);
+        StorageDead(_2);
+        return;
+    }
+}

@@ -1,0 +1,160 @@
+// Checking the colors of the search tab headers.
+include: "utils.goml"
+go-to: "file://" + |DOC_PATH| + "/test_docs/fn.foo.html?search=foo"
+show-text: true
+
+define-function: (
+    "check-colors",
+    [theme, background, background_selected, background_hover, border_bottom,
+     border_bottom_selected, border_bottom_hover, border_top, border_top_selected,
+     border_top_hover],
+    block {
+        call-function: ("switch-theme", {"theme": |theme|})
+
+        // These two commands are used to be sure the search will be run.
+        focus: ".search-input"
+        press-key: "Enter"
+
+        wait-for: "#search-tabs .count"
+        wait-for-false: "#search-tabs .count.loading"
+        assert-css: ("#search-tabs > button:not(.selected)", {
+            "background-color": |background|,
+            "border-bottom": |border_bottom|,
+            "border-top": |border_top|,
+        })
+        assert-css: ("#search-tabs > button.selected", {
+            "background-color": |background_selected|,
+            "border-bottom": |border_bottom_selected|,
+            "border-top": |border_top_selected|,
+        })
+        move-cursor-to: "#search-tabs > button:not(.selected)"
+        assert-css: ("#search-tabs > button:not(.selected):hover", {
+            "background-color": |background_hover|,
+            "border-bottom": |border_bottom_hover|,
+            "border-top": |border_top_hover|,
+        })
+        // To prevent disrupting next run of this function.
+        move-cursor-to: ".search-input"
+    },
+)
+
+call-function: ("check-colors", {
+    "theme": "ayu",
+    "background": "transparent",
+    "background_selected": "#141920",
+    "background_hover": "transparent",
+    "border_bottom": "0px none #c5c5c5",
+    "border_bottom_selected": "1px solid #ffb44c",
+    "border_bottom_hover": "1px solid rgba(242, 151, 24, 0.3)",
+    "border_top": "0px none #c5c5c5",
+    "border_top_selected": "0px none #c5c5c5",
+    "border_top_hover": "0px none #c5c5c5",
+})
+call-function: ("check-colors", {
+    "theme": "dark",
+    "background": "#252525",
+    "background_selected": "#353535",
+    "background_hover": "#353535",
+    "border_bottom": "0px none #ddd",
+    "border_bottom_selected": "0px none #ddd",
+    "border_bottom_hover": "0px none #ddd",
+    "border_top": "2px solid #252525",
+    "border_top_selected": "2px solid #0089ff",
+    "border_top_hover": "2px solid #0089ff",
+})
+call-function: ("check-colors", {
+    "theme": "light",
+    "background": "#e6e6e6",
+    "background_selected": "#fff",
+    "background_hover": "#fff",
+    "border_bottom": "0px none #000",
+    "border_bottom_selected": "0px none #000",
+    "border_bottom_hover": "0px none #000",
+    "border_top": "2px solid #e6e6e6",
+    "border_top_selected": "2px solid #0089ff",
+    "border_top_hover": "2px solid #0089ff",
+})
+
+// set size wide enough that the text is in a single row
+set-window-size: (851, 600)
+
+// Check the size and count in tabs
+assert-text: ("#search-tabs > button:nth-child(1) > .count", " (25) ")
+assert-text: ("#search-tabs > button:nth-child(2) > .count", " (7)  ")
+assert-text: ("#search-tabs > button:nth-child(3) > .count", " (0)  ")
+store-property: ("#search-tabs > button:nth-child(1)", {"offsetWidth": buttonWidth})
+assert-property: ("#search-tabs > button:nth-child(2)", {"offsetWidth": |buttonWidth|})
+assert-property: ("#search-tabs > button:nth-child(3)", {"offsetWidth": |buttonWidth|})
+store-property: ("#search-tabs > button:nth-child(1) > .count", {"offsetWidth": countWidth})
+assert-property: ("#search-tabs > button:nth-child(2) > .count", {"offsetWidth": |countWidth|})
+assert-property: ("#search-tabs > button:nth-child(3) > .count", {"offsetWidth": |countWidth|})
+
+// Check that counts are in a row with each other
+compare-elements-position: (
+    "#search-tabs > button:nth-child(1) > .count",
+    "#search-tabs > button:nth-child(2) > .count",
+    ["y"]
+)
+compare-elements-position: (
+    "#search-tabs > button:nth-child(2) > .count",
+    "#search-tabs > button:nth-child(3) > .count",
+    ["y"]
+)
+// Check that counts are beside the titles and haven't wrapped
+compare-elements-position-near: (
+    "#search-tabs > button:nth-child(1)",
+    "#search-tabs > button:nth-child(1) > .count",
+    {"y": 8}
+)
+compare-elements-position-near: (
+    "#search-tabs > button:nth-child(2)",
+    "#search-tabs > button:nth-child(2) > .count",
+    {"y": 8}
+)
+compare-elements-position-near: (
+    "#search-tabs > button:nth-child(2)",
+    "#search-tabs > button:nth-child(2) > .count",
+    {"y": 8}
+)
+
+// Set size narrow enough that they wrap.
+// When I tested it, it wrapped at 811px, but I added some fudge factor to ensure it
+// doesn't prematurely wrap with slightly different font kerning or whatever, with a
+// @media query
+set-window-size: (850, 600)
+
+// all counts and buttons still have same size
+store-property: ("#search-tabs > button:nth-child(1)", {"offsetWidth": buttonWidth})
+assert-property: ("#search-tabs > button:nth-child(2)", {"offsetWidth": |buttonWidth|})
+assert-property: ("#search-tabs > button:nth-child(3)", {"offsetWidth": |buttonWidth|})
+store-property: ("#search-tabs > button:nth-child(1) > .count", {"offsetWidth": countWidth})
+assert-property: ("#search-tabs > button:nth-child(2) > .count", {"offsetWidth": |countWidth|})
+assert-property: ("#search-tabs > button:nth-child(3) > .count", {"offsetWidth": |countWidth|})
+
+// Check that counts are still in a row with each other
+compare-elements-position: (
+    "#search-tabs > button:nth-child(1) > .count",
+    "#search-tabs > button:nth-child(2) > .count",
+    ["y"]
+)
+compare-elements-position: (
+    "#search-tabs > button:nth-child(2) > .count",
+    "#search-tabs > button:nth-child(3) > .count",
+    ["y"]
+)
+// Check that counts are NOT beside the titles; now they have wrapped
+compare-elements-position-near-false: (
+    "#search-tabs > button:nth-child(1)",
+    "#search-tabs > button:nth-child(1) > .count",
+    {"y": 8}
+)
+compare-elements-position-near-false: (
+    "#search-tabs > button:nth-child(2)",
+    "#search-tabs > button:nth-child(2) > .count",
+    {"y": 8}
+)
+compare-elements-position-near-false: (
+    "#search-tabs > button:nth-child(2)",
+    "#search-tabs > button:nth-child(2) > .count",
+    {"y": 8}
+)

@@ -1,0 +1,104 @@
+error[E0599]: no method named `distance` found for struct `Point<i32>` in the current scope
+  --> $DIR/method-not-found-generic-arg-elision.rs:82:23
+   |
+LL | struct Point<T> {
+   | --------------- method `distance` not found for this struct
+...
+LL |     let d = point_i32.distance();
+   |                       ^^^^^^^^ method not found in `Point<i32>`
+   |
+   = note: the method was found for
+           - `Point<f64>`
+
+error[E0599]: no method named `other` found for struct `Point<T>` in the current scope
+  --> $DIR/method-not-found-generic-arg-elision.rs:84:23
+   |
+LL | struct Point<T> {
+   | --------------- method `other` not found for this struct
+...
+LL |     let d = point_i32.other();
+   |                       ^^^^^ method not found in `Point<i32>`
+
+error[E0599]: no method named `extend` found for struct `Map<I, F>` in the current scope
+  --> $DIR/method-not-found-generic-arg-elision.rs:87:67
+   |
+LL |     v.iter().map(Box::new(|x| x * x) as Box<dyn Fn(&i32) -> i32>).extend(std::iter::once(100));
+   |                                                                   ^^^^^^ method not found in `Map<std::slice::Iter<'_, i32>, Box<dyn for<'a> Fn(&'a i32) -> i32>>`
+
+error[E0599]: no method named `method` found for struct `Wrapper<bool>` in the current scope
+  --> $DIR/method-not-found-generic-arg-elision.rs:90:13
+   |
+LL | struct Wrapper<T>(T);
+   | ----------------- method `method` not found for this struct
+...
+LL |     wrapper.method();
+   |             ^^^^^^ method not found in `Wrapper<bool>`
+   |
+   = note: the method was found for
+           - `Wrapper<i16>`
+           - `Wrapper<i32>`
+           - `Wrapper<i64>`
+           - `Wrapper<i8>`
+           and 2 more types
+
+error[E0599]: no method named `other` found for struct `Wrapper<T>` in the current scope
+  --> $DIR/method-not-found-generic-arg-elision.rs:92:13
+   |
+LL | struct Wrapper<T>(T);
+   | ----------------- method `other` not found for this struct
+...
+LL |     wrapper.other();
+   |             ^^^^^ method not found in `Wrapper<bool>`
+
+error[E0599]: no method named `method` found for struct `Wrapper2<'_, bool, 3>` in the current scope
+  --> $DIR/method-not-found-generic-arg-elision.rs:96:13
+   |
+LL | struct Wrapper2<'a, T, const C: usize> {
+   | -------------------------------------- method `method` not found for this struct
+...
+LL |     wrapper.method();
+   |             ^^^^^^ method not found in `Wrapper2<'_, bool, 3>`
+   |
+   = note: the method was found for
+           - `Wrapper2<'a, i16, C>`
+           - `Wrapper2<'a, i32, C>`
+           - `Wrapper2<'a, i8, C>`
+
+error[E0599]: no method named `other` found for struct `Wrapper2<'a, T, C>` in the current scope
+  --> $DIR/method-not-found-generic-arg-elision.rs:98:13
+   |
+LL | struct Wrapper2<'a, T, const C: usize> {
+   | -------------------------------------- method `other` not found for this struct
+...
+LL |     wrapper.other();
+   |             ^^^^^ method not found in `Wrapper2<'_, bool, 3>`
+
+error[E0599]: no method named `not_found` found for struct `Vec<{integer}>` in the current scope
+  --> $DIR/method-not-found-generic-arg-elision.rs:101:7
+   |
+LL |     a.not_found();
+   |       ^^^^^^^^^ method not found in `Vec<{integer}>`
+
+error[E0599]: the method `method` exists for struct `Struct<f64>`, but its trait bounds were not satisfied
+  --> $DIR/method-not-found-generic-arg-elision.rs:104:7
+   |
+LL | struct Struct<T> {
+   | ---------------- method `method` not found for this struct
+...
+LL |     s.method();
+   |       ^^^^^^ method cannot be called on `Struct<f64>` due to unsatisfied trait bounds
+   |
+note: the following trait bounds were not satisfied:
+      `f64: Eq`
+      `f64: Ord`
+  --> $DIR/method-not-found-generic-arg-elision.rs:74:36
+   |
+LL | impl<T: Clone + Copy + PartialEq + Eq + PartialOrd + Ord> Struct<T> {
+   |                                    ^^                ^^^  ---------
+   |                                    |                 |
+   |                                    |                 unsatisfied trait bound introduced here
+   |                                    unsatisfied trait bound introduced here
+
+error: aborting due to 9 previous errors
+
+For more information about this error, try `rustc --explain E0599`.

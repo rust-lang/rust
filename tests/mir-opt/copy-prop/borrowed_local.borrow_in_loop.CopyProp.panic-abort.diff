@@ -1,0 +1,101 @@
+- // MIR for `borrow_in_loop` before CopyProp
++ // MIR for `borrow_in_loop` after CopyProp
+  
+  fn borrow_in_loop() -> () {
+      let mut _0: ();
+      let mut _1: bool;
+      let _3: bool;
+      let mut _4: !;
+      let mut _5: ();
+      let mut _7: bool;
+      let mut _9: bool;
+      let mut _10: bool;
+      let mut _11: &bool;
+      let _12: &bool;
+      let mut _13: bool;
+      let mut _14: bool;
+      let mut _15: bool;
+      let mut _16: !;
+      scope 1 {
+          debug c => _1;
+          let mut _2: &bool;
+          let mut _17: &bool;
+          scope 2 {
+              debug p => _2;
+              let _6: bool;
+              scope 3 {
+                  debug a => _6;
+                  let _8: bool;
+                  scope 4 {
+                      debug b => _8;
+                  }
+              }
+          }
+      }
+  
+      bb0: {
+          StorageLive(_1);
+          StorageLive(_2);
+          _17 = const borrow_in_loop::promoted[0];
+          _2 = &(*_17);
+-         StorageLive(_4);
+          goto -> bb1;
+      }
+  
+      bb1: {
+-         StorageLive(_6);
+          StorageLive(_7);
+          _7 = copy (*_2);
+          _6 = Not(move _7);
+          StorageDead(_7);
+-         StorageLive(_8);
+          StorageLive(_9);
+          _9 = copy (*_2);
+          _8 = Not(move _9);
+          StorageDead(_9);
+-         StorageLive(_10);
+-         _10 = copy _6;
+-         _1 = move _10;
+-         StorageDead(_10);
++         _1 = copy _6;
+          StorageLive(_11);
+          StorageLive(_12);
+          _12 = &_1;
+          _11 = &(*_12);
+          _2 = move _11;
+          StorageDead(_11);
+          StorageDead(_12);
+          StorageLive(_13);
+-         StorageLive(_14);
+-         _14 = copy _6;
+-         StorageLive(_15);
+-         _15 = copy _8;
+-         _13 = Ne(move _14, move _15);
++         _13 = Ne(copy _6, copy _8);
+          switchInt(move _13) -> [0: bb3, otherwise: bb2];
+      }
+  
+      bb2: {
+-         StorageDead(_15);
+-         StorageDead(_14);
+          _0 = const ();
+          StorageDead(_13);
+-         StorageDead(_8);
+-         StorageDead(_6);
+-         StorageDead(_4);
+          StorageDead(_2);
+          StorageDead(_1);
+          return;
+      }
+  
+      bb3: {
+-         StorageDead(_15);
+-         StorageDead(_14);
+-         _5 = const ();
+          StorageDead(_13);
+-         StorageDead(_8);
+-         StorageDead(_6);
+          goto -> bb1;
+      }
+  }
+  

@@ -1,0 +1,77 @@
+error: consider using `sort`
+  --> tests/ui/unnecessary_sort_by.rs:12:5
+   |
+LL |     vec.sort_by(|a, b| a.cmp(b));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `vec.sort()`
+   |
+   = note: `-D clippy::unnecessary-sort-by` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unnecessary_sort_by)]`
+
+error: consider using `sort_unstable`
+  --> tests/ui/unnecessary_sort_by.rs:14:5
+   |
+LL |     vec.sort_unstable_by(|a, b| a.cmp(b));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `vec.sort_unstable()`
+
+error: consider using `sort_by_key`
+  --> tests/ui/unnecessary_sort_by.rs:16:5
+   |
+LL |     vec.sort_by(|a, b| (a + 5).abs().cmp(&(b + 5).abs()));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `vec.sort_by_key(|a| (a + 5).abs())`
+
+error: consider using `sort_unstable_by_key`
+  --> tests/ui/unnecessary_sort_by.rs:18:5
+   |
+LL |     vec.sort_unstable_by(|a, b| id(-a).cmp(&id(-b)));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `vec.sort_unstable_by_key(|a| id(-a))`
+
+error: consider using `sort_by_key`
+  --> tests/ui/unnecessary_sort_by.rs:22:5
+   |
+LL |     vec.sort_by(|a, b| (b + 5).abs().cmp(&(a + 5).abs()));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `vec.sort_by_key(|b| std::cmp::Reverse((b + 5).abs()))`
+
+error: consider using `sort_unstable_by_key`
+  --> tests/ui/unnecessary_sort_by.rs:24:5
+   |
+LL |     vec.sort_unstable_by(|a, b| id(-b).cmp(&id(-a)));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `vec.sort_unstable_by_key(|b| std::cmp::Reverse(id(-b)))`
+
+error: consider using `sort_by_key`
+  --> tests/ui/unnecessary_sort_by.rs:35:5
+   |
+LL |     vec.sort_by(|a, b| (***a).abs().cmp(&(***b).abs()));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `vec.sort_by_key(|a| (***a).abs())`
+
+error: consider using `sort_unstable_by_key`
+  --> tests/ui/unnecessary_sort_by.rs:37:5
+   |
+LL |     vec.sort_unstable_by(|a, b| (***a).abs().cmp(&(***b).abs()));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `vec.sort_unstable_by_key(|a| (***a).abs())`
+
+error: consider using `sort_by_key`
+  --> tests/ui/unnecessary_sort_by.rs:97:9
+   |
+LL |         args.sort_by(|a, b| a.name().cmp(&b.name()));
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `args.sort_by_key(|a| a.name())`
+
+error: consider using `sort_unstable_by_key`
+  --> tests/ui/unnecessary_sort_by.rs:99:9
+   |
+LL |         args.sort_unstable_by(|a, b| a.name().cmp(&b.name()));
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `args.sort_unstable_by_key(|a| a.name())`
+
+error: consider using `sort_by_key`
+  --> tests/ui/unnecessary_sort_by.rs:102:9
+   |
+LL |         args.sort_by(|a, b| b.name().cmp(&a.name()));
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `args.sort_by_key(|b| std::cmp::Reverse(b.name()))`
+
+error: consider using `sort_unstable_by_key`
+  --> tests/ui/unnecessary_sort_by.rs:104:9
+   |
+LL |         args.sort_unstable_by(|a, b| b.name().cmp(&a.name()));
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `args.sort_unstable_by_key(|b| std::cmp::Reverse(b.name()))`
+
+error: aborting due to 12 previous errors
+

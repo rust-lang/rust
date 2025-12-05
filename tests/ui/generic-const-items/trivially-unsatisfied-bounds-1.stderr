@@ -1,0 +1,11 @@
+error[E0080]: entering unreachable code
+  --> $DIR/trivially-unsatisfied-bounds-1.rs:7:1
+   |
+LL | / const UNUSED: () = ()
+LL | | where
+LL | |     String: Copy;
+   | |_________________^ evaluation of `UNUSED` failed here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0080`.

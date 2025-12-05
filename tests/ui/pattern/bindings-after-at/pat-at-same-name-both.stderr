@@ -1,0 +1,90 @@
+error[E0415]: identifier `a` is bound more than once in this parameter list
+  --> $DIR/pat-at-same-name-both.rs:6:14
+   |
+LL |     fn f(a @ a @ a: ()) {}
+   |              ^ used as parameter more than once
+
+error[E0415]: identifier `a` is bound more than once in this parameter list
+  --> $DIR/pat-at-same-name-both.rs:6:18
+   |
+LL |     fn f(a @ a @ a: ()) {}
+   |                  ^ used as parameter more than once
+
+error[E0416]: identifier `a` is bound more than once in the same pattern
+  --> $DIR/pat-at-same-name-both.rs:11:20
+   |
+LL |         Ok(a @ b @ a)
+   |                    ^ used in a pattern more than once
+
+error[E0416]: identifier `a` is bound more than once in the same pattern
+  --> $DIR/pat-at-same-name-both.rs:13:23
+   |
+LL |         | Err(a @ b @ a)
+   |                       ^ used in a pattern more than once
+
+error[E0416]: identifier `a` is bound more than once in the same pattern
+  --> $DIR/pat-at-same-name-both.rs:18:13
+   |
+LL |     let a @ a @ a = ();
+   |             ^ used in a pattern more than once
+
+error[E0416]: identifier `a` is bound more than once in the same pattern
+  --> $DIR/pat-at-same-name-both.rs:18:17
+   |
+LL |     let a @ a @ a = ();
+   |                 ^ used in a pattern more than once
+
+error[E0416]: identifier `a` is bound more than once in the same pattern
+  --> $DIR/pat-at-same-name-both.rs:21:21
+   |
+LL |     let ref a @ ref a = ();
+   |                     ^ used in a pattern more than once
+
+error[E0416]: identifier `a` is bound more than once in the same pattern
+  --> $DIR/pat-at-same-name-both.rs:23:29
+   |
+LL |     let ref mut a @ ref mut a = ();
+   |                             ^ used in a pattern more than once
+
+error[E0416]: identifier `a` is bound more than once in the same pattern
+  --> $DIR/pat-at-same-name-both.rs:26:17
+   |
+LL |     let a @ (Ok(a) | Err(a)) = Ok(());
+   |                 ^ used in a pattern more than once
+
+error[E0416]: identifier `a` is bound more than once in the same pattern
+  --> $DIR/pat-at-same-name-both.rs:26:26
+   |
+LL |     let a @ (Ok(a) | Err(a)) = Ok(());
+   |                          ^ used in a pattern more than once
+
+error: cannot borrow value as mutable more than once at a time
+  --> $DIR/pat-at-same-name-both.rs:23:9
+   |
+LL |     let ref mut a @ ref mut a = ();
+   |         ^^^^^^^^^   --------- value is mutably borrowed by `a` here
+   |         |
+   |         value is mutably borrowed by `a` here
+
+error[E0384]: cannot assign twice to immutable variable `a`
+  --> $DIR/pat-at-same-name-both.rs:13:15
+   |
+LL |         Ok(a @ b @ a)
+   |                    - first assignment to `a`
+LL |
+LL |         | Err(a @ b @ a)
+   |               ^ cannot assign twice to immutable variable
+   |
+help: consider making this binding mutable
+   |
+LL |         Ok(a @ b @ mut a)
+   |                    +++
+help: to modify the original value, take a borrow instead
+   |
+LL |         Ok(a @ b @ ref mut a)
+   |                    +++++++
+
+error: aborting due to 12 previous errors
+
+Some errors have detailed explanations: E0384, E0415, E0416.
+For more information about an error, try `rustc --explain E0384`.

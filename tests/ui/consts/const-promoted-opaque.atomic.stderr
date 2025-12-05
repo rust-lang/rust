@@ -1,0 +1,34 @@
+error[E0493]: destructor of `Foo` cannot be evaluated at compile-time
+  --> $DIR/const-promoted-opaque.rs:32:26
+   |
+LL |     let _: &'static _ = &FOO;
+   |                          ^^^ the destructor for this type cannot be evaluated in constants
+LL |
+LL | };
+   | - value is dropped here
+
+error[E0492]: interior mutable shared borrows of temporaries that have their lifetime extended until the end of the program are not allowed
+  --> $DIR/const-promoted-opaque.rs:36:19
+   |
+LL | const BAZ: &Foo = &FOO;
+   |                   ^^^^ this borrow of an interior mutable value refers to such a temporary
+   |
+   = note: Temporaries in constants and statics can have their lifetime extended until the end of the program
+   = note: To avoid accidentally creating global mutable state, such temporaries must be immutable
+   = help: If you really want global mutable state, try replacing the temporary by an interior mutable `static` or a `static mut`
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/const-promoted-opaque.rs:40:26
+   |
+LL |     let _: &'static _ = &FOO;
+   |            ----------    ^^^ creates a temporary value which is freed while still in use
+   |            |
+   |            type annotation requires that borrow lasts for `'static`
+LL |
+LL | }
+   | - temporary value is freed at the end of this statement
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0492, E0493, E0716.
+For more information about an error, try `rustc --explain E0492`.

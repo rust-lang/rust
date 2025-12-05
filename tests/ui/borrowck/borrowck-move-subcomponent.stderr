@@ -1,0 +1,24 @@
+error[E0505]: cannot move out of `a.x` because it is borrowed
+  --> $DIR/borrowck-move-subcomponent.rs:15:14
+   |
+LL |   let a : S = S { x : Box::new(1) };
+   |       - binding `a` declared here
+LL |   let pb = &a;
+   |            -- borrow of `a` occurs here
+LL |   let S { x: ax } = a;
+   |              ^^ move out of `a.x` occurs here
+LL |   f(pb);
+   |     -- borrow later used here
+   |
+note: if `S` implemented `Clone`, you could clone the value
+  --> $DIR/borrowck-move-subcomponent.rs:6:1
+   |
+LL | struct S {
+   | ^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |   let pb = &a;
+   |             - you could clone this value
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0505`.

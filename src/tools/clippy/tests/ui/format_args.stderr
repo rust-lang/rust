@@ -1,0 +1,161 @@
+error: `to_string` applied to a type that implements `Display` in `format!` args
+  --> tests/ui/format_args.rs:77:72
+   |
+LL |     let _ = format!("error: something failed at {}", Location::caller().to_string());
+   |                                                                        ^^^^^^^^^^^^ help: remove this
+   |
+   = note: `-D clippy::to-string-in-format-args` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::to_string_in_format_args)]`
+
+error: `to_string` applied to a type that implements `Display` in `write!` args
+  --> tests/ui/format_args.rs:82:27
+   |
+LL |         Location::caller().to_string(),
+   |                           ^^^^^^^^^^^^ help: remove this
+
+error: `to_string` applied to a type that implements `Display` in `writeln!` args
+  --> tests/ui/format_args.rs:88:27
+   |
+LL |         Location::caller().to_string(),
+   |                           ^^^^^^^^^^^^ help: remove this
+
+error: `to_string` applied to a type that implements `Display` in `print!` args
+  --> tests/ui/format_args.rs:91:63
+   |
+LL |     print!("error: something failed at {}", Location::caller().to_string());
+   |                                                               ^^^^^^^^^^^^ help: remove this
+
+error: `to_string` applied to a type that implements `Display` in `println!` args
+  --> tests/ui/format_args.rs:93:65
+   |
+LL |     println!("error: something failed at {}", Location::caller().to_string());
+   |                                                                 ^^^^^^^^^^^^ help: remove this
+
+error: `to_string` applied to a type that implements `Display` in `eprint!` args
+  --> tests/ui/format_args.rs:95:64
+   |
+LL |     eprint!("error: something failed at {}", Location::caller().to_string());
+   |                                                                ^^^^^^^^^^^^ help: remove this
+
+error: `to_string` applied to a type that implements `Display` in `eprintln!` args
+  --> tests/ui/format_args.rs:97:66
+   |
+LL |     eprintln!("error: something failed at {}", Location::caller().to_string());
+   |                                                                  ^^^^^^^^^^^^ help: remove this
+
+error: `to_string` applied to a type that implements `Display` in `format_args!` args
+  --> tests/ui/format_args.rs:99:77
+   |
+LL |     let _ = format_args!("error: something failed at {}", Location::caller().to_string());
+   |                                                                             ^^^^^^^^^^^^ help: remove this
+
+error: `to_string` applied to a type that implements `Display` in `assert!` args
+  --> tests/ui/format_args.rs:101:70
+   |
+LL |     assert!(true, "error: something failed at {}", Location::caller().to_string());
+   |                                                                      ^^^^^^^^^^^^ help: remove this
+
+error: `to_string` applied to a type that implements `Display` in `assert_eq!` args
+  --> tests/ui/format_args.rs:103:73
+   |
+LL |     assert_eq!(0, 0, "error: something failed at {}", Location::caller().to_string());
+   |                                                                         ^^^^^^^^^^^^ help: remove this
+
+error: `to_string` applied to a type that implements `Display` in `assert_ne!` args
+  --> tests/ui/format_args.rs:105:73
+   |
+LL |     assert_ne!(0, 0, "error: something failed at {}", Location::caller().to_string());
+   |                                                                         ^^^^^^^^^^^^ help: remove this
+
+error: `to_string` applied to a type that implements `Display` in `panic!` args
+  --> tests/ui/format_args.rs:107:63
+   |
+LL |     panic!("error: something failed at {}", Location::caller().to_string());
+   |                                                               ^^^^^^^^^^^^ help: remove this
+
+error: `to_string` applied to a type that implements `Display` in `println!` args
+  --> tests/ui/format_args.rs:109:20
+   |
+LL |     println!("{}", X(1).to_string());
+   |                    ^^^^^^^^^^^^^^^^ help: use this: `*X(1)`
+
+error: `to_string` applied to a type that implements `Display` in `println!` args
+  --> tests/ui/format_args.rs:111:20
+   |
+LL |     println!("{}", Y(&X(1)).to_string());
+   |                    ^^^^^^^^^^^^^^^^^^^^ help: use this: `***Y(&X(1))`
+
+error: `to_string` applied to a type that implements `Display` in `println!` args
+  --> tests/ui/format_args.rs:113:24
+   |
+LL |     println!("{}", Z(1).to_string());
+   |                        ^^^^^^^^^^^^ help: remove this
+
+error: `to_string` applied to a type that implements `Display` in `println!` args
+  --> tests/ui/format_args.rs:115:20
+   |
+LL |     println!("{}", x.to_string());
+   |                    ^^^^^^^^^^^^^ help: use this: `**x`
+
+error: `to_string` applied to a type that implements `Display` in `println!` args
+  --> tests/ui/format_args.rs:117:20
+   |
+LL |     println!("{}", x_ref.to_string());
+   |                    ^^^^^^^^^^^^^^^^^ help: use this: `***x_ref`
+
+error: `to_string` applied to a type that implements `Display` in `println!` args
+  --> tests/ui/format_args.rs:120:39
+   |
+LL |     println!("{foo}{bar}", foo = "foo".to_string(), bar = "bar");
+   |                                       ^^^^^^^^^^^^ help: remove this
+
+error: `to_string` applied to a type that implements `Display` in `println!` args
+  --> tests/ui/format_args.rs:122:52
+   |
+LL |     println!("{foo}{bar}", foo = "foo", bar = "bar".to_string());
+   |                                                    ^^^^^^^^^^^^ help: remove this
+
+error: `to_string` applied to a type that implements `Display` in `println!` args
+  --> tests/ui/format_args.rs:124:39
+   |
+LL |     println!("{foo}{bar}", bar = "bar".to_string(), foo = "foo");
+   |                                       ^^^^^^^^^^^^ help: remove this
+
+error: `to_string` applied to a type that implements `Display` in `println!` args
+  --> tests/ui/format_args.rs:126:52
+   |
+LL |     println!("{foo}{bar}", bar = "bar", foo = "foo".to_string());
+   |                                                    ^^^^^^^^^^^^ help: remove this
+
+error: `to_string` applied to a type that implements `Display` in `println!` args
+  --> tests/ui/format_args.rs:128:37
+   |
+LL |     println!("{}", my_other_macro!().to_string());
+   |                                     ^^^^^^^^^^^^ help: remove this
+
+error: `to_string` applied to a type that implements `Display` in `print!` args
+  --> tests/ui/format_args.rs:141:37
+   |
+LL |     print!("{}", (Location::caller().to_string()));
+   |                                     ^^^^^^^^^^^^ help: remove this
+
+error: `to_string` applied to a type that implements `Display` in `print!` args
+  --> tests/ui/format_args.rs:143:39
+   |
+LL |     print!("{}", ((Location::caller()).to_string()));
+   |                                       ^^^^^^^^^^^^ help: remove this
+
+error: `to_string` applied to a type that implements `Display` in `format!` args
+  --> tests/ui/format_args.rs:172:38
+   |
+LL |         let x = format!("{} {}", a, b.to_string());
+   |                                      ^^^^^^^^^^^^ help: remove this
+
+error: `to_string` applied to a type that implements `Display` in `println!` args
+  --> tests/ui/format_args.rs:187:24
+   |
+LL |         println!("{}", original[..10].to_string());
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use this: `&original[..10]`
+
+error: aborting due to 26 previous errors
+

@@ -1,0 +1,84 @@
+name: Clippy Test
+
+on:
+  pull_request:
+
+env:
+  RUST_BACKTRACE: 1
+  CARGO_TARGET_DIR: '${{ github.workspace }}/target'
+  NO_FMT_TEST: 1
+  CARGO_INCREMENTAL: 0
+  RUSTFLAGS: -D warnings
+
+concurrency:
+  # For a given workflow, if we push to the same PR, cancel all previous builds on that PR.
+  # If the push is not attached to a PR, we will cancel all builds on the same branch.
+  group: "${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}"
+  cancel-in-progress: true
+
+jobs:
+  base:
+    # NOTE: If you modify this job, make sure you copy the changes to clippy_mq.yml
+    runs-on: ubuntu-latest
+
+    steps:
+    # Setup
+    - name: Checkout
+      uses: actions/checkout@v5
+      with:
+        # Unsetting this would make so that any malicious package could get our Github Token
+        persist-credentials: false
+
+    - name: Install toolchain
+      run: |
+        # Use a way compatible with Rustup pre-1.28.0 and Rustup 1.28.0
+        rustup show active-toolchain || rustup toolchain install
+
+    # Run
+    - name: Build
+      run: cargo build --tests --features internal
+
+    - name: Test
+      run: cargo test --features internal
+
+    - name: Test clippy_lints
+      run: cargo test
+      working-directory: clippy_lints
+
+    - name: Test clippy_utils
+      run: cargo test
+      working-directory: clippy_utils
+
+    - name: Test rustc_tools_util
+      run: cargo test
+      working-directory: rustc_tools_util
+
+    - name: Test clippy_dev
+      run: cargo test
+      working-directory: clippy_dev
+
+    - name: Test clippy-driver
+      run: .github/driver.sh
+      env:
+        OS: ${{ runner.os }}
+
+  # We need to have the "conclusion" job also on PR CI, to make it possible
+  # to add PRs to a merge queue.
+  conclusion:
+    needs: [ base ]
+    # We need to ensure this job does *not* get skipped if its dependencies fail,
+    # because a skipped job is considered a success by GitHub. So we have to
+    # overwrite `if:`. We use `!cancelled()` to ensure the job does still not get run
+    # when the workflow is canceled manually.
+    #
+    # ALL THE PREVIOUS JOBS NEED TO BE ADDED TO THE `needs` SECTION OF THIS JOB!
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    steps:
+      # Manually check the status of all dependencies. `if: failure()` does not work.
+      - name: Conclusion
+        run: |
+          # Print the dependent jobs to see them in the CI log
+          jq -C <<< '${{ toJson(needs) }}'
+          # Check if all jobs that we depend on (in the needs array) were successful.
+          jq --exit-status 'all(.result == "success")' <<< '${{ toJson(needs) }}'

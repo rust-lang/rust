@@ -1,0 +1,33 @@
+error: Undefined Behavior: trying to retag from <TAG> for Unique permission at ALLOC[0x4], but that tag does not exist in the borrow stack for this location
+  --> tests/fail/stacked_borrows/return_invalid_mut_option.rs:LL:CC
+   |
+LL |     ret
+   |     ^^^
+   |     |
+   |     this error occurs as part of retag (of a reference/box inside this compound value) at ALLOC[0x4..0x8]
+   |     errors for retagging in fields are fairly new; please reach out to us (e.g. at <https://rust-lang.zulipchat.com/#narrow/stream/269128-miri>) if you find this error troubling
+   |
+   = help: this indicates a potential bug in the program: it performed an invalid operation, but the Stacked Borrows rules it violated are still experimental
+   = help: see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/stacked-borrows.md for further information
+help: <TAG> was created by a Unique retag at offsets [0x4..0x8]
+  --> tests/fail/stacked_borrows/return_invalid_mut_option.rs:LL:CC
+   |
+LL |     let ret = Some(ret);
+   |               ^^^^^^^^^
+help: <TAG> was later invalidated at offsets [0x0..0x8] by a read access
+  --> tests/fail/stacked_borrows/return_invalid_mut_option.rs:LL:CC
+   |
+LL |     let _val = unsafe { *xraw }; // invalidate xref
+   |                         ^^^^^
+   = note: BACKTRACE (of the first span):
+   = note: inside `foo` at tests/fail/stacked_borrows/return_invalid_mut_option.rs:LL:CC
+note: inside `main`
+  --> tests/fail/stacked_borrows/return_invalid_mut_option.rs:LL:CC
+   |
+LL |     match foo(&mut (1, 2)) {
+   |           ^^^^^^^^^^^^^^^^
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to 1 previous error
+

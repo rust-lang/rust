@@ -1,0 +1,48 @@
+warning: You have explicitly enabled MIR optimizations, overriding Miri's default which is to completely disable them. Any optimizations may hide UB that Miri would otherwise detect, and it is not necessarily possible to predict what kind of UB will be missed. If you are enabling optimizations to make Miri run faster, we advise using cfg(miri) to shrink your workload instead. The performance benefit of enabling MIR optimizations is usually marginal at best.
+
+
+thread 'main' ($TID) panicked at tests/fail/terminate-terminator.rs:LL:CC:
+explicit panic
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+note: in Miri, you may have to set `MIRIFLAGS=-Zmiri-env-forward=RUST_BACKTRACE` for the environment variable to have an effect
+
+thread 'main' ($TID) panicked at RUSTLIB/core/src/panicking.rs:LL:CC:
+panic in a function that cannot unwind
+stack backtrace:
+thread caused non-unwinding panic. aborting.
+error: abnormal termination: the program aborted execution
+  --> RUSTLIB/std/src/panicking.rs:LL:CC
+   |
+LL |         crate::process::abort();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^ abnormal termination occurred here
+   |
+   = note: BACKTRACE:
+   = note: inside `std::panicking::panic_with_hook` at RUSTLIB/std/src/panicking.rs:LL:CC
+   = note: inside closure at RUSTLIB/std/src/panicking.rs:LL:CC
+   = note: inside `std::sys::backtrace::__rust_end_short_backtrace::<{closure@std::panicking::panic_handler::{closure#0}}, !>` at RUSTLIB/std/src/sys/backtrace.rs:LL:CC
+   = note: inside `std::panicking::panic_handler` at RUSTLIB/std/src/panicking.rs:LL:CC
+   = note: inside `core::panicking::panic_nounwind` at RUSTLIB/core/src/panicking.rs:LL:CC
+   = note: inside `core::panicking::panic_cannot_unwind` at RUSTLIB/core/src/panicking.rs:LL:CC
+note: inside `has_cleanup`
+  --> tests/fail/terminate-terminator.rs:LL:CC
+   |
+LL | / fn has_cleanup() {
+LL | |     let _f = Foo;
+LL | |     panic!();
+LL | | }
+   | |_^
+note: inside `panic_abort`
+  --> tests/fail/terminate-terminator.rs:LL:CC
+   |
+LL |     has_cleanup();
+   |     ^^^^^^^^^^^^^
+note: inside `main`
+  --> tests/fail/terminate-terminator.rs:LL:CC
+   |
+LL |     panic_abort();
+   |     ^^^^^^^^^^^^^
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to 1 previous error; 1 warning emitted
+

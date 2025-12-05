@@ -1,0 +1,53 @@
+error[E0261]: use of undeclared lifetime name `'s`
+  --> $DIR/ice-mutability-error-slicing-121807.rs:17:31
+   |
+LL |     extern "C" fn read_dword(&'s self) -> u16 {
+   |                               ^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'s` here
+   |
+LL |     extern "C" fn read_dword<'s>(&'s self) -> u16 {
+   |                             ++++
+help: consider introducing lifetime `'s` here
+   |
+LL | impl<'s> MemoryUnit for ROM {
+   |     ++++
+
+warning: anonymous parameters are deprecated and will be removed in the next edition
+  --> $DIR/ice-mutability-error-slicing-121807.rs:7:30
+   |
+LL |     extern "C" fn read_dword(Self::Assoc<'_>) -> u16;
+   |                              ^^^^^^^^^^^^^^^ help: try naming the parameter or explicitly ignoring it: `_: Self::Assoc<'_>`
+   |
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2018!
+   = note: for more information, see issue #41686 <https://github.com/rust-lang/rust/issues/41686>
+   = note: `#[warn(anonymous_parameters)]` (part of `#[warn(rust_2018_compatibility)]`) on by default
+
+error[E0185]: method `read_dword` has a `&self` declaration in the impl, but not in the trait
+  --> $DIR/ice-mutability-error-slicing-121807.rs:17:5
+   |
+LL |     extern "C" fn read_dword(Self::Assoc<'_>) -> u16;
+   |     ------------------------------------------------- trait method declared without `&self`
+...
+LL |     extern "C" fn read_dword(&'s self) -> u16 {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `&self` used in impl
+
+error[E0046]: not all trait items implemented, missing: `read_word`
+  --> $DIR/ice-mutability-error-slicing-121807.rs:15:1
+   |
+LL |     extern "C" fn read_word(&mut self) -> u8;
+   |     ----------------------------------------- `read_word` from trait
+...
+LL | impl MemoryUnit for ROM {
+   | ^^^^^^^^^^^^^^^^^^^^^^^ missing `read_word` in implementation
+
+error[E0220]: associated type `Assoc` not found for `Self`
+  --> $DIR/ice-mutability-error-slicing-121807.rs:7:36
+   |
+LL |     extern "C" fn read_dword(Self::Assoc<'_>) -> u16;
+   |                                    ^^^^^ associated type `Assoc` not found
+
+error: aborting due to 4 previous errors; 1 warning emitted
+
+Some errors have detailed explanations: E0046, E0185, E0220, E0261.
+For more information about an error, try `rustc --explain E0046`.

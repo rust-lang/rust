@@ -1,0 +1,15 @@
+error[E0657]: `impl Trait` cannot capture higher-ranked lifetime from outer `impl Trait`
+  --> $DIR/issue-88236.rs:15:61
+   |
+LL | fn make_impl() -> impl for<'a> Hrtb<'a, Assoc = impl Send + 'a> {}
+   |                                                             ^^
+   |
+note: lifetime declared here
+  --> $DIR/issue-88236.rs:15:28
+   |
+LL | fn make_impl() -> impl for<'a> Hrtb<'a, Assoc = impl Send + 'a> {}
+   |                            ^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0657`.

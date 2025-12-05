@@ -1,0 +1,51 @@
+error: expected identifier, found keyword `fn`
+  --> $DIR/recover-fn-trait-from-fn-kw.rs:1:16
+   |
+LL | fn foo(_: impl fn() -> i32) {}
+   |                ^^
+   |
+help: use `Fn` to refer to the trait (notice the capitalization)
+   |
+LL - fn foo(_: impl fn() -> i32) {}
+LL + fn foo(_: impl Fn() -> i32) {}
+   |
+
+error: expected identifier, found keyword `fn`
+  --> $DIR/recover-fn-trait-from-fn-kw.rs:4:12
+   |
+LL | fn foo2<T: fn(i32)>(_: T) {}
+   |            ^^
+   |
+help: use `Fn` to refer to the trait (notice the capitalization)
+   |
+LL - fn foo2<T: fn(i32)>(_: T) {}
+LL + fn foo2<T: Fn(i32)>(_: T) {}
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/recover-fn-trait-from-fn-kw.rs:8:12
+   |
+LL |     foo(|| ());
+   |            ^^ expected `i32`, found `()`
+
+error[E0631]: type mismatch in closure arguments
+  --> $DIR/recover-fn-trait-from-fn-kw.rs:10:5
+   |
+LL |     foo2(|_: ()| {});
+   |     ^^^^^-------^^^^
+   |     |    |
+   |     |    found signature defined here
+   |     expected due to this
+   |
+   = note: expected closure signature `fn(i32) -> _`
+              found closure signature `fn(()) -> _`
+note: required by a bound in `foo2`
+  --> $DIR/recover-fn-trait-from-fn-kw.rs:4:12
+   |
+LL | fn foo2<T: fn(i32)>(_: T) {}
+   |            ^^^^^^^ required by this bound in `foo2`
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0308, E0631.
+For more information about an error, try `rustc --explain E0308`.

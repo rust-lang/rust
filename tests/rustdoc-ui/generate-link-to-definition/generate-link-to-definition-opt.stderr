@@ -1,0 +1,4 @@
+warning: `--generate-link-to-definition` option can only be used with HTML output format
+   |
+   = note: `--generate-link-to-definition` option will be ignored
+

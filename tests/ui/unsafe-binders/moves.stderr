@@ -1,0 +1,53 @@
+warning: the feature `unsafe_binders` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/moves.rs:1:12
+   |
+LL | #![feature(unsafe_binders)]
+   |            ^^^^^^^^^^^^^^
+   |
+   = note: see issue #130516 <https://github.com/rust-lang/rust/issues/130516> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+error[E0382]: use of moved value: `base`
+  --> $DIR/moves.rs:15:14
+   |
+LL |         let base = NotCopy::default();
+   |             ---- move occurs because `base` has type `ManuallyDrop<NotCopyInner>`, which does not implement the `Copy` trait
+LL |         let binder: unsafe<> NotCopy = wrap_binder!(base);
+   |                                                     ---- value moved here
+LL |         drop(base);
+   |              ^^^^ value used here after move
+   |
+note: if `NotCopyInner` implemented `Clone`, you could clone the value
+  --> $DIR/moves.rs:8:1
+   |
+LL | struct NotCopyInner;
+   | ^^^^^^^^^^^^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |         let binder: unsafe<> NotCopy = wrap_binder!(base);
+   |                                                     ---- you could clone this value
+
+error[E0382]: use of moved value: `binder`
+  --> $DIR/moves.rs:24:14
+   |
+LL |         drop(unwrap_binder!(binder));
+   |              ---------------------- value moved here
+LL |         drop(unwrap_binder!(binder));
+   |              ^^^^^^^^^^^^^^^^^^^^^^ value used here after move
+   |
+   = note: move occurs because `binder` has type `ManuallyDrop<NotCopyInner>`, which does not implement the `Copy` trait
+   = note: this error originates in the macro `unwrap_binder` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0382]: use of moved value: `binder.0`
+  --> $DIR/moves.rs:36:14
+   |
+LL |         drop(unwrap_binder!(binder).0);
+   |              ------------------------ value moved here
+...
+LL |         drop(unwrap_binder!(binder).0);
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^ value used here after move
+   |
+   = note: move occurs because `binder.0` has type `ManuallyDrop<NotCopyInner>`, which does not implement the `Copy` trait
+
+error: aborting due to 3 previous errors; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0382`.

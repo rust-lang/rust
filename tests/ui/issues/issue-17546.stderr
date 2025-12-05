@@ -1,0 +1,77 @@
+error[E0573]: expected type, found variant `NoResult`
+  --> $DIR/issue-17546.rs:15:17
+   |
+LL |     fn new() -> NoResult<MyEnum, String> {
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+  --> $SRC_DIR/core/src/result.rs:LL:COL
+   |
+   = note: similarly named enum `Result` defined here
+help: try using the variant's enum
+   |
+LL -     fn new() -> NoResult<MyEnum, String> {
+LL +     fn new() -> foo::MyEnum {
+   |
+help: an enum with a similar name exists
+   |
+LL -     fn new() -> NoResult<MyEnum, String> {
+LL +     fn new() -> Result<MyEnum, String> {
+   |
+
+error[E0573]: expected type, found variant `Result`
+  --> $DIR/issue-17546.rs:25:17
+   |
+LL |     fn new() -> Result<foo::MyEnum, String> {
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^ not a type
+   |
+help: consider importing one of these items instead
+   |
+LL +     use std::fmt::Result;
+   |
+LL +     use std::io::Result;
+   |
+LL +     use std::result::Result;
+   |
+LL +     use std::thread::Result;
+   |
+
+error[E0573]: expected type, found variant `Result`
+  --> $DIR/issue-17546.rs:31:13
+   |
+LL | fn new() -> Result<foo::MyEnum, String> {
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^ not a type
+   |
+help: consider importing one of these items instead
+   |
+LL + use std::fmt::Result;
+   |
+LL + use std::io::Result;
+   |
+LL + use std::result::Result;
+   |
+LL + use std::thread::Result;
+   |
+
+error[E0573]: expected type, found variant `NoResult`
+  --> $DIR/issue-17546.rs:36:15
+   |
+LL | fn newer() -> NoResult<foo::MyEnum, String> {
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+  --> $SRC_DIR/core/src/result.rs:LL:COL
+   |
+   = note: similarly named enum `Result` defined here
+help: try using the variant's enum
+   |
+LL - fn newer() -> NoResult<foo::MyEnum, String> {
+LL + fn newer() -> foo::MyEnum {
+   |
+help: an enum with a similar name exists
+   |
+LL - fn newer() -> NoResult<foo::MyEnum, String> {
+LL + fn newer() -> Result<foo::MyEnum, String> {
+   |
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0573`.

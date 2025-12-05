@@ -1,0 +1,12 @@
+error[E0580]: `main` function has wrong type
+  --> $DIR/issue-111879-1.rs:12:1
+   |
+LL | fn main(_: for<'a> fn(Foo<fn(&'a ())>::Assoc)) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ incorrect number of function parameters
+   |
+   = note: expected signature `fn()`
+              found signature `fn(for<'a> fn(&'a ()))`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0580`.

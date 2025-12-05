@@ -1,0 +1,65 @@
+// MIR for `foo` after PreCodegen
+
+fn foo(_1: Option<String>) -> i32 {
+    debug s => _1;
+    let mut _0: i32;
+    let mut _2: bool;
+    let mut _3: isize;
+    let mut _4: &std::string::String;
+    let mut _5: &str;
+    let mut _6: bool;
+    let _7: std::option::Option<std::string::String>;
+    scope 1 {
+        debug s => _7;
+    }
+
+    bb0: {
+        _2 = const false;
+        _2 = const true;
+        _3 = discriminant(_1);
+        switchInt(move _3) -> [1: bb1, otherwise: bb5];
+    }
+
+    bb1: {
+        _4 = &((_1 as Some).0: std::string::String);
+        _5 = <String as Deref>::deref(move _4) -> [return: bb2, unwind unreachable];
+    }
+
+    bb2: {
+        _6 = <str as PartialEq>::eq(copy _5, const "a") -> [return: bb3, unwind unreachable];
+    }
+
+    bb3: {
+        switchInt(move _6) -> [0: bb5, otherwise: bb4];
+    }
+
+    bb4: {
+        _0 = const 1234_i32;
+        goto -> bb7;
+    }
+
+    bb5: {
+        StorageLive(_7);
+        _2 = const false;
+        _7 = move _1;
+        _0 = const 4321_i32;
+        drop(_7) -> [return: bb6, unwind unreachable];
+    }
+
+    bb6: {
+        StorageDead(_7);
+        goto -> bb7;
+    }
+
+    bb7: {
+        switchInt(copy _2) -> [0: bb9, otherwise: bb8];
+    }
+
+    bb8: {
+        drop(_1) -> [return: bb9, unwind unreachable];
+    }
+
+    bb9: {
+        return;
+    }
+}

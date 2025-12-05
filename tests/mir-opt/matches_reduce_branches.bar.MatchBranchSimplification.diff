@@ -1,0 +1,84 @@
+- // MIR for `bar` before MatchBranchSimplification
++ // MIR for `bar` after MatchBranchSimplification
+  
+  fn bar(_1: i32) -> (bool, bool, bool, bool) {
+      debug i => _1;
+      let mut _0: (bool, bool, bool, bool);
+      let _2: bool;
+      let _6: ();
+      let mut _7: bool;
+      let mut _8: bool;
+      let mut _9: bool;
+      let mut _10: bool;
++     let mut _11: i32;
+      scope 1 {
+          debug a => _2;
+          let _3: bool;
+          scope 2 {
+              debug b => _3;
+              let _4: bool;
+              scope 3 {
+                  debug c => _4;
+                  let _5: bool;
+                  scope 4 {
+                      debug d => _5;
+                  }
+              }
+          }
+      }
+  
+      bb0: {
+          StorageLive(_2);
+          StorageLive(_3);
+          StorageLive(_4);
+          StorageLive(_5);
+          StorageLive(_6);
+-         switchInt(copy _1) -> [7: bb2, otherwise: bb1];
+-     }
+- 
+-     bb1: {
+-         _2 = const true;
+-         _3 = const false;
++         StorageLive(_11);
++         _11 = copy _1;
++         _2 = Ne(copy _11, const 7_i32);
++         _3 = Eq(copy _11, const 7_i32);
+          _4 = const false;
+          _5 = const true;
+          _6 = ();
+-         goto -> bb3;
+-     }
+- 
+-     bb2: {
+-         _2 = const false;
+-         _3 = const true;
+-         _4 = const false;
+-         _5 = const true;
+-         _6 = ();
+-         goto -> bb3;
+-     }
+- 
+-     bb3: {
++         StorageDead(_11);
+          StorageDead(_6);
+          StorageLive(_7);
+          _7 = copy _2;
+          StorageLive(_8);
+          _8 = copy _3;
+          StorageLive(_9);
+          _9 = copy _4;
+          StorageLive(_10);
+          _10 = copy _5;
+          _0 = (move _7, move _8, move _9, move _10);
+          StorageDead(_10);
+          StorageDead(_9);
+          StorageDead(_8);
+          StorageDead(_7);
+          StorageDead(_5);
+          StorageDead(_4);
+          StorageDead(_3);
+          StorageDead(_2);
+          return;
+      }
+  }
+  

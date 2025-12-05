@@ -1,0 +1,10 @@
+error: the evaluated program deadlocked
+  --> tests/fail-dep/concurrency/libc_pthread_mutex_normal_reentrant.rs:LL:CC
+   |
+LL |         libc::pthread_mutex_lock(&mut mutex as *mut _);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this thread got stuck here
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to 1 previous error
+

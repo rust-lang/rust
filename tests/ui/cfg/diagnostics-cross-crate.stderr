@@ -1,0 +1,66 @@
+error[E0433]: failed to resolve: could not find `doesnt_exist` in `inner`
+  --> $DIR/diagnostics-cross-crate.rs:17:23
+   |
+LL |     cfged_out::inner::doesnt_exist::hello();
+   |                       ^^^^^^^^^^^^ could not find `doesnt_exist` in `inner`
+   |
+note: found an item that was configured out
+  --> $DIR/auxiliary/cfged_out.rs:6:13
+   |
+LL |     #[cfg(false)]
+   |           ----- the item is gated here
+LL |     pub mod doesnt_exist {
+   |             ^^^^^^^^^^^^
+
+error[E0425]: cannot find function `uwu` in crate `cfged_out`
+  --> $DIR/diagnostics-cross-crate.rs:7:16
+   |
+LL |     cfged_out::uwu();
+   |                ^^^ not found in `cfged_out`
+
+error[E0425]: cannot find function `uwu` in module `cfged_out::inner`
+  --> $DIR/diagnostics-cross-crate.rs:11:23
+   |
+LL |     cfged_out::inner::uwu();
+   |                       ^^^ not found in `cfged_out::inner`
+   |
+note: found an item that was configured out
+  --> $DIR/auxiliary/cfged_out.rs:3:12
+   |
+LL |     #[cfg(false)]
+   |           ----- the item is gated here
+LL |     pub fn uwu() {}
+   |            ^^^
+
+error[E0425]: cannot find function `meow` in module `cfged_out::inner::right`
+  --> $DIR/diagnostics-cross-crate.rs:22:30
+   |
+LL |     cfged_out::inner::right::meow();
+   |                              ^^^^ not found in `cfged_out::inner::right`
+   |
+note: found an item that was configured out
+  --> $DIR/auxiliary/cfged_out.rs:17:16
+   |
+LL |         #[cfg(feature = "what-a-cool-feature")]
+   |               ------------------------------- the item is gated behind the `what-a-cool-feature` feature
+LL |         pub fn meow() {}
+   |                ^^^^
+
+error[E0425]: cannot find function `vanished` in crate `cfged_out`
+  --> $DIR/diagnostics-cross-crate.rs:27:16
+   |
+LL |     cfged_out::vanished();
+   |                ^^^^^^^^ not found in `cfged_out`
+   |
+note: found an item that was configured out
+  --> $DIR/auxiliary/cfged_out.rs:22:8
+   |
+LL | #[cfg(i_dont_exist_and_you_can_do_nothing_about_it)]
+   |       -------------------------------------------- the item is gated here
+LL | pub fn vanished() {}
+   |        ^^^^^^^^
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0425, E0433.
+For more information about an error, try `rustc --explain E0425`.

@@ -1,0 +1,34 @@
+error: constant of non-structural type `CustomEq` in a pattern
+  --> $DIR/cross-crate-fail.rs:11:9
+   |
+LL |         consts::SOME => panic!(),
+   |         ^^^^^^^^^^^^ constant of non-structural type
+   |
+  ::: $DIR/auxiliary/consts.rs:1:1
+   |
+LL | pub struct CustomEq;
+   | ------------------- `CustomEq` must be annotated with `#[derive(PartialEq)]` to be usable in patterns
+...
+LL | pub const SOME: Option<CustomEq> = Some(CustomEq);
+   | -------------------------------- constant defined here
+   |
+   = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralPartialEq.html for details
+
+error: constant of non-structural type `CustomEq` in a pattern
+  --> $DIR/cross-crate-fail.rs:17:9
+   |
+LL |         <Defaulted as consts::AssocConst>::SOME  => panic!(),
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constant of non-structural type
+   |
+  ::: $DIR/auxiliary/consts.rs:1:1
+   |
+LL | pub struct CustomEq;
+   | ------------------- `CustomEq` must be annotated with `#[derive(PartialEq)]` to be usable in patterns
+...
+LL |     const SOME: Option<CustomEq> = Some(CustomEq);
+   |     ---------------------------- constant defined here
+   |
+   = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralPartialEq.html for details
+
+error: aborting due to 2 previous errors
+

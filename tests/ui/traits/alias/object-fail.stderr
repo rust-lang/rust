@@ -1,0 +1,27 @@
+error[E0038]: the trait alias `EqAlias` is not dyn compatible
+  --> $DIR/object-fail.rs:7:17
+   |
+LL |     let _: &dyn EqAlias = &123;
+   |                 ^^^^^^^ `EqAlias` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $SRC_DIR/core/src/cmp.rs:LL:COL
+   |
+   = note: ...because it uses `Self` as a type parameter
+   |
+  ::: $DIR/object-fail.rs:3:7
+   |
+LL | trait EqAlias = Eq;
+   |       ------- this trait is not dyn compatible...
+
+error[E0191]: the value of the associated type `Item` in `Iterator` must be specified
+  --> $DIR/object-fail.rs:9:17
+   |
+LL |     let _: &dyn IteratorAlias = &vec![123].into_iter();
+   |                 ^^^^^^^^^^^^^ help: specify the associated type: `IteratorAlias<Item = Type>`
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0038, E0191.
+For more information about an error, try `rustc --explain E0038`.

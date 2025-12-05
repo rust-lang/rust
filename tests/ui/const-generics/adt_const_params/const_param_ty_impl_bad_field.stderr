@@ -1,0 +1,21 @@
+error[E0204]: the trait `ConstParamTy_` cannot be implemented for this type
+  --> $DIR/const_param_ty_impl_bad_field.rs:10:37
+   |
+LL | struct CantParam(NotParam);
+   |                  -------- this field does not implement `ConstParamTy_`
+LL |
+LL | impl std::marker::ConstParamTy_ for CantParam {}
+   |                                     ^^^^^^^^^
+
+error[E0204]: the trait `ConstParamTy_` cannot be implemented for this type
+  --> $DIR/const_param_ty_impl_bad_field.rs:13:10
+   |
+LL | #[derive(std::marker::ConstParamTy, Eq, PartialEq)]
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | struct CantParamDerive(NotParam);
+   |                        -------- this field does not implement `ConstParamTy_`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0204`.

@@ -1,0 +1,59 @@
+error: unnecessary use of `to_string`
+  --> tests/ui/unnecessary_to_owned_on_split.rs:19:13
+   |
+LL |     let _ = "a".to_string().split('a').next().unwrap();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `"a".split('a')`
+   |
+   = note: `-D clippy::unnecessary-to-owned` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unnecessary_to_owned)]`
+
+error: unnecessary use of `to_string`
+  --> tests/ui/unnecessary_to_owned_on_split.rs:22:13
+   |
+LL |     let _ = "a".to_string().split("a").next().unwrap();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `"a".split("a")`
+
+error: unnecessary use of `to_owned`
+  --> tests/ui/unnecessary_to_owned_on_split.rs:25:13
+   |
+LL |     let _ = "a".to_owned().split('a').next().unwrap();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `"a".split('a')`
+
+error: unnecessary use of `to_owned`
+  --> tests/ui/unnecessary_to_owned_on_split.rs:28:13
+   |
+LL |     let _ = "a".to_owned().split("a").next().unwrap();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `"a".split("a")`
+
+error: unnecessary use of `to_string`
+  --> tests/ui/unnecessary_to_owned_on_split.rs:31:13
+   |
+LL |     let _ = Issue12068.to_string().split('a').next().unwrap();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `Issue12068.as_ref().split('a')`
+
+error: unnecessary use of `to_vec`
+  --> tests/ui/unnecessary_to_owned_on_split.rs:34:13
+   |
+LL |     let _ = [1].to_vec().split(|x| *x == 2).next().unwrap();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `[1].split(|x| *x == 2)`
+
+error: unnecessary use of `to_vec`
+  --> tests/ui/unnecessary_to_owned_on_split.rs:37:13
+   |
+LL |     let _ = [1].to_vec().split(|x| *x == 2).next().unwrap();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `[1].split(|x| *x == 2)`
+
+error: unnecessary use of `to_owned`
+  --> tests/ui/unnecessary_to_owned_on_split.rs:40:13
+   |
+LL |     let _ = [1].to_owned().split(|x| *x == 2).next().unwrap();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `[1].split(|x| *x == 2)`
+
+error: unnecessary use of `to_owned`
+  --> tests/ui/unnecessary_to_owned_on_split.rs:43:13
+   |
+LL |     let _ = [1].to_owned().split(|x| *x == 2).next().unwrap();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `[1].split(|x| *x == 2)`
+
+error: aborting due to 9 previous errors
+

@@ -1,0 +1,14 @@
+error[E0517]: attribute should be applied to a struct
+  --> $DIR/repr-simd-on-enum.rs:5:8
+   |
+LL |   #[repr(simd)]
+   |          ^^^^
+LL | / enum Aligned {
+LL | |     Zero = 0,
+LL | |     One = 1,
+LL | | }
+   | |_- not a struct
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0517`.

@@ -1,0 +1,34 @@
+error: `#[optimize]` attribute cannot be used on structs
+  --> $DIR/optimize.rs:8:1
+   |
+LL | #[optimize(speed)]
+   | ^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[optimize]` can only be applied to functions
+
+error: `#[optimize]` attribute cannot be used on expressions
+  --> $DIR/optimize.rs:12:5
+   |
+LL |     #[optimize(speed)]
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[optimize]` can only be applied to functions
+
+error: `#[optimize]` attribute cannot be used on modules
+  --> $DIR/optimize.rs:21:1
+   |
+LL | #[optimize(speed)]
+   | ^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[optimize]` can only be applied to functions
+
+error: `#[optimize]` attribute cannot be used on inherent impl blocks
+  --> $DIR/optimize.rs:24:1
+   |
+LL | #[optimize(speed)]
+   | ^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[optimize]` can only be applied to functions
+
+error: aborting due to 4 previous errors
+

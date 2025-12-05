@@ -1,0 +1,23 @@
+error[E0658]: use of unstable library feature `autodiff`
+  --> $DIR/feature-gate-autodiff-use.rs:13:3
+   |
+LL | #[autodiff_reverse(dfoo)]
+   |   ^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #124509 <https://github.com/rust-lang/rust/issues/124509> for more information
+   = help: add `#![feature(autodiff)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `autodiff`
+  --> $DIR/feature-gate-autodiff-use.rs:9:5
+   |
+LL | use std::autodiff::autodiff_reverse;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #124509 <https://github.com/rust-lang/rust/issues/124509> for more information
+   = help: add `#![feature(autodiff)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

@@ -1,0 +1,63 @@
+// MIR for `std::ptr::drop_in_place` before AddMovesForPackedDrops
+
+fn drop_in_place(_1: *mut [String; 42]) -> () {
+    let mut _0: ();
+    let mut _2: *mut [std::string::String; 42];
+    let mut _3: *mut [std::string::String];
+    let mut _4: usize;
+    let mut _5: usize;
+    let mut _6: *mut std::string::String;
+    let mut _7: bool;
+    let mut _8: *mut std::string::String;
+    let mut _9: bool;
+
+    bb0: {
+        goto -> bb9;
+    }
+
+    bb1: {
+        return;
+    }
+
+    bb2 (cleanup): {
+        resume;
+    }
+
+    bb3 (cleanup): {
+        _6 = &raw mut (*_3)[_5];
+        _5 = Add(move _5, const 1_usize);
+        drop((*_6)) -> [return: bb4, unwind terminate(cleanup)];
+    }
+
+    bb4 (cleanup): {
+        _7 = Eq(copy _5, copy _4);
+        switchInt(move _7) -> [0: bb3, otherwise: bb2];
+    }
+
+    bb5: {
+        _8 = &raw mut (*_3)[_5];
+        _5 = Add(move _5, const 1_usize);
+        drop((*_8)) -> [return: bb6, unwind: bb4];
+    }
+
+    bb6: {
+        _9 = Eq(copy _5, copy _4);
+        switchInt(move _9) -> [0: bb5, otherwise: bb1];
+    }
+
+    bb7: {
+        _4 = PtrMetadata(copy _3);
+        _5 = const 0_usize;
+        goto -> bb6;
+    }
+
+    bb8: {
+        goto -> bb7;
+    }
+
+    bb9: {
+        _2 = &raw mut (*_1);
+        _3 = move _2 as *mut [std::string::String] (PointerCoercion(Unsize, Implicit));
+        goto -> bb8;
+    }
+}

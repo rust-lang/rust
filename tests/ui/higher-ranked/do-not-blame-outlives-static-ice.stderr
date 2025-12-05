@@ -1,0 +1,17 @@
+error: implementation of `Trait` is not general enough
+  --> $DIR/do-not-blame-outlives-static-ice.rs:8:9
+   |
+LL | fn f(_: for<'a> fn(<fn(&'a ()) as Trait>::Assoc)) {}
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ implementation of `Trait` is not general enough
+   |
+   = note: `for<'a> fn(&'a ())` must implement `Trait`, for any lifetime `'0`...
+   = note: ...but `Trait` is actually implemented for the type `for<'a> fn(&'a ())`
+
+error: higher-ranked subtype error
+  --> $DIR/do-not-blame-outlives-static-ice.rs:8:1
+   |
+LL | fn f(_: for<'a> fn(<fn(&'a ()) as Trait>::Assoc)) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

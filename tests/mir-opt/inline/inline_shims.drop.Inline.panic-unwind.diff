@@ -1,0 +1,44 @@
+- // MIR for `drop` before Inline
++ // MIR for `drop` after Inline
+  
+  fn drop(_1: *mut Vec<A>, _2: *mut Option<B>) -> () {
+      debug a => _1;
+      debug b => _2;
+      let mut _0: ();
+      let _3: ();
+      let mut _4: *mut std::vec::Vec<A>;
+      let mut _5: *mut std::option::Option<B>;
++     scope 1 (inlined drop_in_place::<Option<B>> - shim(Some(Option<B>))) {
++         let mut _6: isize;
++         let mut _7: isize;
++     }
+  
+      bb0: {
+          StorageLive(_3);
+          StorageLive(_4);
+          _4 = copy _1;
+          _3 = drop_in_place::<Vec<A>>(move _4) -> [return: bb1, unwind continue];
+      }
+  
+      bb1: {
+          StorageDead(_4);
+          StorageDead(_3);
+          StorageLive(_5);
+          _5 = copy _2;
+-         _0 = drop_in_place::<Option<B>>(move _5) -> [return: bb2, unwind continue];
++         StorageLive(_6);
++         _6 = discriminant((*_5));
++         switchInt(move _6) -> [0: bb2, otherwise: bb3];
+      }
+  
+      bb2: {
++         StorageDead(_6);
+          StorageDead(_5);
+          return;
++     }
++ 
++     bb3: {
++         drop((((*_5) as Some).0: B)) -> [return: bb2, unwind continue];
+      }
+  }
+  

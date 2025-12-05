@@ -1,0 +1,19 @@
+#[attr = MacroUse {arguments: UseAll}]
+extern crate std;
+#[prelude_import]
+use ::std::prelude::rust_2015::*;
+//@ compile-flags: -Zunpretty=hir
+//@ check-pass
+//@ edition: 2015
+
+struct Bar {
+    a: String,
+    b: u8,
+}
+
+impl Bar {
+    fn imm_self(self) { }
+    fn mut_self(mut self) { }
+    fn refimm_self(&self) { }
+    fn refmut_self(&mut self) { }
+}

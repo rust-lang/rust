@@ -1,0 +1,155 @@
+error: Direct: pub, Reexported: pub, Reachable: pub, ReachableThroughImplTrait: pub
+  --> $DIR/effective_visibilities.rs:1:1
+   |
+LL | / #![rustc_effective_visibility]
+LL | | #![feature(rustc_attrs)]
+LL | |
+LL | | #[rustc_effective_visibility]
+...  |
+LL | | fn main() {}
+   | |____________^
+
+error: Direct: pub(crate), Reexported: pub(crate), Reachable: pub(crate), ReachableThroughImplTrait: pub(crate)
+  --> $DIR/effective_visibilities.rs:5:1
+   |
+LL | mod outer {
+   | ^^^^^^^^^
+
+error: Direct: pub(crate), Reexported: pub, Reachable: pub, ReachableThroughImplTrait: pub
+  --> $DIR/effective_visibilities.rs:7:5
+   |
+LL |     pub mod inner1 {
+   |     ^^^^^^^^^^^^^^
+
+error: not in the table
+  --> $DIR/effective_visibilities.rs:10:9
+   |
+LL |         extern "C" {}
+   |         ^^^^^^^^^^^^^
+
+error: Direct: pub(crate), Reexported: pub, Reachable: pub, ReachableThroughImplTrait: pub
+  --> $DIR/effective_visibilities.rs:13:9
+   |
+LL |         pub trait PubTrait {
+   |         ^^^^^^^^^^^^^^^^^^
+
+error: not in the table
+  --> $DIR/effective_visibilities.rs:21:9
+   |
+LL |         struct PrivStruct;
+   |         ^^^^^^^^^^^^^^^^^
+
+error: not in the table
+  --> $DIR/effective_visibilities.rs:21:9
+   |
+LL |         struct PrivStruct;
+   |         ^^^^^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: Direct: pub(crate), Reexported: pub, Reachable: pub, ReachableThroughImplTrait: pub
+  --> $DIR/effective_visibilities.rs:25:9
+   |
+LL |         pub union PubUnion {
+   |         ^^^^^^^^^^^^^^^^^^
+
+error: not in the table
+  --> $DIR/effective_visibilities.rs:27:13
+   |
+LL |             a: u8,
+   |             ^^^^^
+
+error: Direct: pub(crate), Reexported: pub, Reachable: pub, ReachableThroughImplTrait: pub
+  --> $DIR/effective_visibilities.rs:29:13
+   |
+LL |             pub b: u8,
+   |             ^^^^^^^^^
+
+error: Direct: pub(crate), Reexported: pub, Reachable: pub, ReachableThroughImplTrait: pub
+  --> $DIR/effective_visibilities.rs:33:9
+   |
+LL |         pub enum Enum {
+   |         ^^^^^^^^^^^^^
+
+error: Direct: pub(crate), Reexported: pub, Reachable: pub, ReachableThroughImplTrait: pub
+  --> $DIR/effective_visibilities.rs:35:13
+   |
+LL |             A(
+   |             ^
+
+error: Direct: pub(crate), Reexported: pub, Reachable: pub, ReachableThroughImplTrait: pub
+  --> $DIR/effective_visibilities.rs:35:13
+   |
+LL |             A(
+   |             ^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: Direct: pub(crate), Reexported: pub, Reachable: pub, ReachableThroughImplTrait: pub
+  --> $DIR/effective_visibilities.rs:38:17
+   |
+LL |                 PubUnion,
+   |                 ^^^^^^^^
+
+error: not in the table
+  --> $DIR/effective_visibilities.rs:44:5
+   |
+LL |     macro_rules! none_macro {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: Direct: pub(self), Reexported: pub, Reachable: pub, ReachableThroughImplTrait: pub
+  --> $DIR/effective_visibilities.rs:50:5
+   |
+LL |     macro_rules! public_macro {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: Direct: pub(crate), Reexported: pub(crate), Reachable: pub, ReachableThroughImplTrait: pub
+  --> $DIR/effective_visibilities.rs:55:5
+   |
+LL |     pub struct ReachableStruct {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: Direct: pub(crate), Reexported: pub(crate), Reachable: pub, ReachableThroughImplTrait: pub
+  --> $DIR/effective_visibilities.rs:57:9
+   |
+LL |         pub a: u8,
+   |         ^^^^^^^^^
+
+error: Direct: pub, Reexported: pub, Reachable: pub, ReachableThroughImplTrait: pub
+  --> $DIR/effective_visibilities.rs:62:9
+   |
+LL | pub use outer::inner1;
+   |         ^^^^^^^^^^^^^
+
+error: Direct: pub(crate), Reexported: pub, Reachable: pub, ReachableThroughImplTrait: pub
+  --> $DIR/effective_visibilities.rs:68:5
+   |
+LL |     pub type HalfPublicImport = u8;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: Direct: pub(crate), Reexported: pub(crate), Reachable: pub(crate), ReachableThroughImplTrait: pub(crate)
+  --> $DIR/effective_visibilities.rs:71:5
+   |
+LL |     pub(crate) const HalfPublicImport: u8 = 0;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: Direct: pub, Reexported: pub, Reachable: pub, ReachableThroughImplTrait: pub
+  --> $DIR/effective_visibilities.rs:75:9
+   |
+LL | pub use half_public_import::HalfPublicImport;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: Direct: pub(crate), Reexported: pub, Reachable: pub, ReachableThroughImplTrait: pub
+  --> $DIR/effective_visibilities.rs:15:13
+   |
+LL |             const A: i32;
+   |             ^^^^^^^^^^^^
+
+error: Direct: pub(crate), Reexported: pub, Reachable: pub, ReachableThroughImplTrait: pub
+  --> $DIR/effective_visibilities.rs:17:13
+   |
+LL |             type B;
+   |             ^^^^^^
+
+error: aborting due to 24 previous errors
+

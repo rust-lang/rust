@@ -1,0 +1,10 @@
+// huge_logo crate has a custom 712x860 logo
+// test to ensure the maximum size in the layout works correctly
+go-to: "file://" + |DOC_PATH| + "/huge_logo/index.html"
+
+set-window-size: (1280, 1024)
+// offsetWidth = width of sidebar + left and right margins
+assert-property: (".sidebar-crate .logo-container", {"offsetWidth": "96", "offsetHeight": 48})
+// offsetWidth = width of sidebar, offsetHeight = height + top padding
+assert-property: (".sidebar-crate .logo-container img", {"offsetWidth": "48", "offsetHeight": 64})
+assert-css: (".sidebar-crate .logo-container img", {"border-top-width": "16px", "margin-top": "-16px"})

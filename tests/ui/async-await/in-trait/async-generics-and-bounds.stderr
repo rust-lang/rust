@@ -1,0 +1,31 @@
+error[E0311]: the parameter type `T` may not live long enough
+  --> $DIR/async-generics-and-bounds.rs:8:5
+   |
+LL |     async fn foo(&self) -> &(T, U) where T: Debug + Sized, U: Hash;
+   |     ^^^^^^^^^^^^^-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     |            |
+   |     |            the parameter type `T` must be valid for the anonymous lifetime as defined here...
+   |     ...so that the reference type `&(T, U)` does not outlive the data it points at
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL |     async fn foo<'a>(&'a self) -> &'a (T, U) where T: Debug + Sized, U: Hash, T: 'a;
+   |                 ++++  ++           ++                                       +++++++
+
+error[E0311]: the parameter type `U` may not live long enough
+  --> $DIR/async-generics-and-bounds.rs:8:5
+   |
+LL |     async fn foo(&self) -> &(T, U) where T: Debug + Sized, U: Hash;
+   |     ^^^^^^^^^^^^^-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     |            |
+   |     |            the parameter type `U` must be valid for the anonymous lifetime as defined here...
+   |     ...so that the reference type `&(T, U)` does not outlive the data it points at
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL |     async fn foo<'a>(&'a self) -> &'a (T, U) where T: Debug + Sized, U: Hash, U: 'a;
+   |                 ++++  ++           ++                                       +++++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0311`.

@@ -1,0 +1,35 @@
+#![warn(clippy::option_filter_map)]
+#![allow(clippy::map_flatten, clippy::unnecessary_map_on_constructor)]
+
+fn main() {
+    let _ = Some(Some(1)).flatten();
+    //~^ option_filter_map
+
+    let _ = Some(Some(1)).flatten();
+    //~^ option_filter_map
+
+    let _ = Some(1).map(odds_out).flatten();
+    //~^ option_filter_map
+
+    let _ = Some(1).map(odds_out).flatten();
+    //~^ option_filter_map
+
+    let _ = vec![Some(1)].into_iter().flatten();
+    //~^ option_filter_map
+
+    let _ = vec![Some(1)].into_iter().flatten();
+    //~^ option_filter_map
+
+    let _ = vec![1]
+        .into_iter()
+        .map(odds_out)
+        .flatten();
+    let _ = vec![1]
+        .into_iter()
+        .map(odds_out)
+        .flatten();
+}
+
+fn odds_out(x: i32) -> Option<i32> {
+    if x % 2 == 0 { Some(x) } else { None }
+}

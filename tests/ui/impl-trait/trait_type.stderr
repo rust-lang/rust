@@ -1,0 +1,42 @@
+error[E0053]: method `fmt` has an incompatible type for trait
+  --> $DIR/trait_type.rs:7:21
+   |
+LL |    fn fmt(&self, x: &str) -> () { }
+   |                     ^^^^ types differ in mutability
+   |
+   = note: expected signature `fn(&MyType, &mut Formatter<'_>) -> Result<(), std::fmt::Error>`
+              found signature `fn(&MyType, &str) -> ()`
+help: change the parameter type to match the trait
+   |
+LL -    fn fmt(&self, x: &str) -> () { }
+LL +    fn fmt(&self, x: &mut Formatter<'_>) -> () { }
+   |
+
+error[E0050]: method `fmt` has 1 parameter but the declaration in trait `std::fmt::Display::fmt` has 2
+  --> $DIR/trait_type.rs:12:11
+   |
+LL |    fn fmt(&self) -> () { }
+   |           ^^^^^ expected 2 parameters, found 1
+   |
+   = note: `fmt` from trait: `fn(&Self, &mut Formatter<'_>) -> Result<(), std::fmt::Error>`
+
+error[E0186]: method `fmt` has a `&self` declaration in the trait, but not in the impl
+  --> $DIR/trait_type.rs:17:4
+   |
+LL |    fn fmt() -> () { }
+   |    ^^^^^^^^^^^^^^ expected `&self` in impl
+   |
+   = note: `fmt` from trait: `fn(&Self, &mut Formatter<'_>) -> Result<(), std::fmt::Error>`
+
+error[E0046]: not all trait items implemented, missing: `fmt`
+  --> $DIR/trait_type.rs:21:1
+   |
+LL | impl std::fmt::Display for MyType4 {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `fmt` in implementation
+   |
+   = help: implement the missing item: `fn fmt(&self, _: &mut Formatter<'_>) -> Result<(), std::fmt::Error> { todo!() }`
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0046, E0050, E0053, E0186.
+For more information about an error, try `rustc --explain E0046`.

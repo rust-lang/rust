@@ -1,0 +1,12 @@
+error[E0515]: cannot return value referencing local variable `s`
+  --> $DIR/issue-67765-async-diagnostic.rs:13:5
+   |
+LL |     let b = &s[..];
+   |              - `s` is borrowed here
+LL |
+LL |     Err(b)?;
+   |     ^^^^^^^ returns a value referencing data owned by the current function
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0515`.

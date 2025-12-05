@@ -1,0 +1,240 @@
+error[E0599]: no method named `a` found for struct `S` in the current scope
+  --> $DIR/item-privacy.rs:68:7
+   |
+LL | struct S;
+   | -------- method `a` not found for this struct
+...
+LL |     S.a();
+   |       ^
+   |
+   = help: items from traits can only be used if the trait is implemented and in scope
+   = help: trait `method::A` which provides `a` is implemented but not reachable
+help: there is a method `b` with a similar name
+   |
+LL -     S.a();
+LL +     S.b();
+   |
+
+error[E0599]: no method named `b` found for struct `S` in the current scope
+  --> $DIR/item-privacy.rs:69:7
+   |
+LL | struct S;
+   | -------- method `b` not found for this struct
+...
+LL |         fn b(&self) { }
+   |            - the method is available for `S` here
+...
+LL |     S.b();
+   |       ^
+   |
+   = help: items from traits can only be used if the trait is in scope
+help: trait `B` which provides `b` is implemented but not in scope; perhaps you want to import it
+   |
+LL + use method::B;
+   |
+help: there is a method `c` with a similar name
+   |
+LL -     S.b();
+LL +     S.c();
+   |
+
+error[E0624]: method `a` is private
+  --> $DIR/item-privacy.rs:73:7
+   |
+LL |         fn a(&self) { }
+   |         ----------- private method defined here
+...
+LL |     c.a();
+   |       ^ private method
+
+error[E0599]: no function or associated item named `a` found for struct `S` in the current scope
+  --> $DIR/item-privacy.rs:79:8
+   |
+LL | struct S;
+   | -------- function or associated item `a` not found for this struct
+...
+LL |     S::a(&S);
+   |        ^ function or associated item not found in `S`
+   |
+   = help: items from traits can only be used if the trait is implemented and in scope
+   = help: trait `method::A` which provides `a` is implemented but not reachable
+help: there is an associated constant `B` with a similar name
+  --> $DIR/item-privacy.rs:30:9
+   |
+LL |         const B: u8 = 0;
+   |         ^^^^^^^^^^^
+
+error[E0599]: no function or associated item named `b` found for struct `S` in the current scope
+  --> $DIR/item-privacy.rs:81:8
+   |
+LL | struct S;
+   | -------- function or associated item `b` not found for this struct
+...
+LL |     S::b(&S);
+   |        ^ function or associated item not found in `S`
+   |
+   = help: items from traits can only be used if the trait is in scope
+help: there is an associated constant `B` with a similar name
+  --> $DIR/item-privacy.rs:30:9
+   |
+LL |         const B: u8 = 0;
+   |         ^^^^^^^^^^^
+help: trait `B` which provides `b` is implemented but not in scope; perhaps you want to import it
+   |
+LL + use method::B;
+   |
+
+error[E0624]: method `a` is private
+  --> $DIR/item-privacy.rs:85:14
+   |
+LL |         fn a(&self) { }
+   |         ----------- private method defined here
+...
+LL |     <dyn C>::a(&S);
+   |              ^ private method
+
+error[E0599]: no associated item named `A` found for struct `S` in the current scope
+  --> $DIR/item-privacy.rs:98:8
+   |
+LL | struct S;
+   | -------- associated item `A` not found for this struct
+...
+LL |     S::A;
+   |        ^ associated item not found in `S`
+   |
+   = help: items from traits can only be used if the trait is implemented and in scope
+   = help: trait `assoc_const::A` which provides `A` is implemented but not reachable
+help: there is an associated constant `B` with a similar name
+   |
+LL -     S::A;
+LL +     S::B;
+   |
+
+error[E0599]: no associated item named `B` found for struct `S` in the current scope
+  --> $DIR/item-privacy.rs:99:8
+   |
+LL | struct S;
+   | -------- associated item `B` not found for this struct
+...
+LL |     S::B;
+   |        ^ associated item not found in `S`
+   |
+   = help: items from traits can only be used if the trait is in scope
+help: there is a method `b` with a similar name
+  --> $DIR/item-privacy.rs:12:9
+   |
+LL |         fn b(&self) { }
+   |         ^^^^^^^^^^^
+help: trait `B` which provides `B` is implemented but not in scope; perhaps you want to import it
+   |
+LL + use assoc_const::B;
+   |
+
+error[E0038]: the trait `assoc_const::C` is not dyn compatible
+  --> $DIR/item-privacy.rs:102:10
+   |
+LL |     <dyn C>::A;
+   |          ^ `assoc_const::C` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/item-privacy.rs:26:15
+   |
+LL |         const A: u8 = 0;
+   |               ^ ...because it contains this associated `const`
+...
+LL |         const B: u8 = 0;
+   |               ^ ...because it contains this associated `const`
+...
+LL |     pub trait C: A + B {
+   |               - this trait is not dyn compatible...
+LL |         const C: u8 = 0;
+   |               ^ ...because it contains this associated `const`
+   = help: consider moving `C` to another trait
+   = help: consider moving `A` to another trait
+   = help: consider moving `B` to another trait
+   = help: only type `S` implements `assoc_const::C`; consider using it directly instead.
+
+error[E0038]: the trait `assoc_const::C` is not dyn compatible
+  --> $DIR/item-privacy.rs:104:10
+   |
+LL |     <dyn C>::B;
+   |          ^ `assoc_const::C` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/item-privacy.rs:26:15
+   |
+LL |         const A: u8 = 0;
+   |               ^ ...because it contains this associated `const`
+...
+LL |         const B: u8 = 0;
+   |               ^ ...because it contains this associated `const`
+...
+LL |     pub trait C: A + B {
+   |               - this trait is not dyn compatible...
+LL |         const C: u8 = 0;
+   |               ^ ...because it contains this associated `const`
+   = help: consider moving `C` to another trait
+   = help: consider moving `A` to another trait
+   = help: consider moving `B` to another trait
+   = help: only type `S` implements `assoc_const::C`; consider using it directly instead.
+
+error[E0223]: ambiguous associated type
+  --> $DIR/item-privacy.rs:117:12
+   |
+LL |     let _: S::A;
+   |            ^^^^
+   |
+help: if there were a trait named `Example` with associated type `A` implemented for `S`, you could use the fully-qualified path
+   |
+LL -     let _: S::A;
+LL +     let _: <S as Example>::A;
+   |
+
+error[E0223]: ambiguous associated type
+  --> $DIR/item-privacy.rs:118:12
+   |
+LL |     let _: S::B;
+   |            ^^^^
+   |
+help: use fully-qualified syntax
+   |
+LL -     let _: S::B;
+LL +     let _: <S as assoc_ty::B>::B;
+   |
+
+error[E0223]: ambiguous associated type
+  --> $DIR/item-privacy.rs:119:12
+   |
+LL |     let _: S::C;
+   |            ^^^^
+   |
+help: use fully-qualified syntax
+   |
+LL -     let _: S::C;
+LL +     let _: <S as assoc_ty::C>::C;
+   |
+
+error[E0624]: associated type `A` is private
+  --> $DIR/item-privacy.rs:121:12
+   |
+LL |         type A = u8;
+   |         ------ the associated type is defined here
+...
+LL |     let _: T::A;
+   |            ^^^^ private associated type
+
+error[E0624]: associated type `A` is private
+  --> $DIR/item-privacy.rs:130:9
+   |
+LL |         type A = u8;
+   |         ------ the associated type is defined here
+...
+LL |         A = u8,
+   |         ^^^^^^ private associated type
+
+error: aborting due to 15 previous errors
+
+Some errors have detailed explanations: E0038, E0223, E0599, E0624.
+For more information about an error, try `rustc --explain E0038`.

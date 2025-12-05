@@ -1,0 +1,38 @@
+error: functions used as tests can not have any arguments
+  --> $DIR/test-function-signature.rs:14:1
+   |
+LL | fn baz(val: i32) {}
+   | ^^^^^^^^^^^^^^^^^^^
+
+error: functions used as tests can not have any non-lifetime generic parameters
+  --> $DIR/test-function-signature.rs:22:1
+   |
+LL | fn type_generic<T>() {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: functions used as tests can not have any non-lifetime generic parameters
+  --> $DIR/test-function-signature.rs:25:1
+   |
+LL | fn const_generic<const N: usize>() {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: functions used as tests can not have any arguments
+  --> $DIR/test-function-signature.rs:30:5
+   |
+LL |     fn foo(arg: ()) {}
+   |     ^^^^^^^^^^^^^^^^^^
+
+error[E0277]: the trait bound `i32: Termination` is not satisfied
+  --> $DIR/test-function-signature.rs:9:13
+   |
+LL | #[test]
+   | ------- in this attribute macro expansion
+LL | fn bar() -> i32 {
+   |             ^^^ the trait `Termination` is not implemented for `i32`
+   |
+note: required by a bound in `assert_test_result`
+  --> $SRC_DIR/test/src/lib.rs:LL:COL
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

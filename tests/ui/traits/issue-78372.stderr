@@ -1,0 +1,77 @@
+error[E0425]: cannot find type `PhantomData` in this scope
+  --> $DIR/issue-78372.rs:2:23
+   |
+LL | struct Smaht<T, MISC>(PhantomData);
+   |                       ^^^^^^^^^^^ not found in this scope
+   |
+help: consider importing this struct
+   |
+LL + use std::marker::PhantomData;
+   |
+
+error[E0425]: cannot find type `U` in this scope
+  --> $DIR/issue-78372.rs:3:31
+   |
+LL | impl<T> DispatchFromDyn<Smaht<U, MISC>> for T {}
+   |      -                        ^
+   |      |
+   |      similarly named type parameter `T` defined here
+   |
+help: a type parameter with a similar name exists
+   |
+LL - impl<T> DispatchFromDyn<Smaht<U, MISC>> for T {}
+LL + impl<T> DispatchFromDyn<Smaht<T, MISC>> for T {}
+   |
+help: you might be missing a type parameter
+   |
+LL | impl<T, U> DispatchFromDyn<Smaht<U, MISC>> for T {}
+   |       +++
+
+error[E0425]: cannot find type `MISC` in this scope
+  --> $DIR/issue-78372.rs:3:34
+   |
+LL | impl<T> DispatchFromDyn<Smaht<U, MISC>> for T {}
+   |                                  ^^^^ not found in this scope
+   |
+help: you might be missing a type parameter
+   |
+LL | impl<T, MISC> DispatchFromDyn<Smaht<U, MISC>> for T {}
+   |       ++++++
+
+error[E0658]: use of unstable library feature `dispatch_from_dyn`
+  --> $DIR/issue-78372.rs:1:5
+   |
+LL | use std::ops::DispatchFromDyn;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(dispatch_from_dyn)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `dispatch_from_dyn`
+  --> $DIR/issue-78372.rs:3:9
+   |
+LL | impl<T> DispatchFromDyn<Smaht<U, MISC>> for T {}
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(dispatch_from_dyn)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0377]: the trait `DispatchFromDyn` may only be implemented for a coercion between structures
+  --> $DIR/issue-78372.rs:3:1
+   |
+LL | impl<T> DispatchFromDyn<Smaht<U, MISC>> for T {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0307]: invalid `self` parameter type: `Smaht<Self, T>`
+  --> $DIR/issue-78372.rs:9:18
+   |
+LL |     fn foo(self: Smaht<Self, T>);
+   |                  ^^^^^^^^^^^^^^
+   |
+   = note: type of `self` must be `Self` or a type that dereferences to it
+   = help: consider changing to `self`, `&self`, `&mut self`, `self: Box<Self>`, `self: Rc<Self>`, `self: Arc<Self>`, or `self: Pin<P>` (where P is one of the previous types except `Self`)
+
+error: aborting due to 7 previous errors
+
+Some errors have detailed explanations: E0307, E0377, E0425, E0658.
+For more information about an error, try `rustc --explain E0307`.

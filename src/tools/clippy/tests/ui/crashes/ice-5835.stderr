@@ -1,0 +1,11 @@
+error: using tabs in doc comments is not recommended
+  --> tests/ui/crashes/ice-5835.rs:4:10
+   |
+LL |     /// 位    
+   |           ^^^^ help: consider using four spaces per tab
+   |
+   = note: `-D clippy::tabs-in-doc-comments` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::tabs_in_doc_comments)]`
+
+error: aborting due to 1 previous error
+

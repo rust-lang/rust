@@ -1,0 +1,26 @@
+error: `0 as *const _` detected
+  --> tests/ui/zero_ptr_no_std.rs:6:13
+   |
+LL |     let _ = 0 as *const usize;
+   |             ^^^^^^^^^^^^^^^^^ help: try: `core::ptr::null::<usize>()`
+   |
+note: the lint level is defined here
+  --> tests/ui/zero_ptr_no_std.rs:3:9
+   |
+LL | #![deny(clippy::zero_ptr)]
+   |         ^^^^^^^^^^^^^^^^
+
+error: `0 as *mut _` detected
+  --> tests/ui/zero_ptr_no_std.rs:8:13
+   |
+LL |     let _ = 0 as *mut f64;
+   |             ^^^^^^^^^^^^^ help: try: `core::ptr::null_mut::<f64>()`
+
+error: `0 as *const _` detected
+  --> tests/ui/zero_ptr_no_std.rs:10:24
+   |
+LL |     let _: *const u8 = 0 as *const _;
+   |                        ^^^^^^^^^^^^^ help: try: `core::ptr::null()`
+
+error: aborting due to 3 previous errors
+

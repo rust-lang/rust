@@ -1,0 +1,138 @@
+#![warn(clippy::transmute_ptr_to_ref)]
+#![allow(
+    clippy::match_single_binding,
+    clippy::unnecessary_cast,
+    clippy::missing_transmute_annotations
+)]
+
+fn ptr_to_ref<T, U>(p: *const T, m: *mut T, o: *const U, om: *mut U) {
+    unsafe {
+        let _: &T = &*p;
+        //~^ transmute_ptr_to_ref
+        let _: &T = &*p;
+
+        let _: &mut T = &mut *m;
+        //~^ transmute_ptr_to_ref
+        let _: &mut T = &mut *m;
+
+        let _: &T = &*m;
+        //~^ transmute_ptr_to_ref
+        let _: &T = &*m;
+
+        let _: &mut T = &mut *(p as *mut T);
+        //~^ transmute_ptr_to_ref
+        let _ = &mut *(p as *mut T);
+
+        let _: &T = &*(o as *const T);
+        //~^ transmute_ptr_to_ref
+        let _: &T = &*(o as *const T);
+
+        let _: &mut T = &mut *(om as *mut T);
+        //~^ transmute_ptr_to_ref
+        let _: &mut T = &mut *(om as *mut T);
+
+        let _: &T = &*(om as *const T);
+        //~^ transmute_ptr_to_ref
+        let _: &T = &*(om as *const T);
+    }
+}
+
+fn issue1231() {
+    struct Foo<'a, T> {
+        bar: &'a T,
+    }
+
+    let raw = 42 as *const i32;
+    let _: &Foo<u8> = unsafe { &*raw.cast::<Foo<_>>() };
+    //~^ transmute_ptr_to_ref
+
+    let _: &Foo<&u8> = unsafe { &*raw.cast::<Foo<&_>>() };
+    //~^ transmute_ptr_to_ref
+
+    type Bar<'a> = &'a u8;
+    let raw = 42 as *const i32;
+    unsafe { &*(raw as *const u8) };
+    //~^ transmute_ptr_to_ref
+}
+
+fn issue8924<'a, 'b, 'c>(x: *const &'a u32, y: *const &'b u32) -> &'c &'b u32 {
+    unsafe {
+        match 0 {
+            0 => &*x.cast::<&u32>(),
+            //~^ transmute_ptr_to_ref
+            1 => &*y.cast::<&u32>(),
+            //~^ transmute_ptr_to_ref
+            2 => &*x.cast::<&'b u32>(),
+            //~^ transmute_ptr_to_ref
+            _ => &*y.cast::<&'b u32>(),
+            //~^ transmute_ptr_to_ref
+        }
+    }
+}
+
+#[clippy::msrv = "1.38"]
+fn meets_msrv<'a, 'b, 'c>(x: *const &'a u32) -> &'c &'b u32 {
+    unsafe {
+        let a = 0u32;
+        let a = &a as *const u32;
+        let _: &u32 = &*a;
+        //~^ transmute_ptr_to_ref
+        let _: &u32 = &*a.cast::<u32>();
+        //~^ transmute_ptr_to_ref
+        match 0 {
+            0 => &*x.cast::<&u32>(),
+            //~^ transmute_ptr_to_ref
+            _ => &*x.cast::<&'b u32>(),
+            //~^ transmute_ptr_to_ref
+        }
+    }
+}
+
+#[clippy::msrv = "1.37"]
+fn under_msrv<'a, 'b, 'c>(x: *const &'a u32) -> &'c &'b u32 {
+    unsafe {
+        let a = 0u32;
+        let a = &a as *const u32;
+        let _: &u32 = &*a;
+        //~^ transmute_ptr_to_ref
+        let _: &u32 = &*(a as *const u32);
+        //~^ transmute_ptr_to_ref
+        match 0 {
+            0 => &*(x as *const () as *const &u32),
+            //~^ transmute_ptr_to_ref
+            _ => &*(x as *const () as *const &'b u32),
+            //~^ transmute_ptr_to_ref
+        }
+    }
+}
+
+// handle DSTs
+fn issue13357(ptr: *const [i32], s_ptr: *const &str, a_s_ptr: *const [&str]) {
+    unsafe {
+        // different types, without erased regions
+        let _ = &*(ptr as *const [u32]);
+        //~^ transmute_ptr_to_ref
+        let _: &[u32] = &*(ptr as *const [u32]);
+        //~^ transmute_ptr_to_ref
+
+        // different types, with erased regions
+        let _ = &*(a_s_ptr as *const [&[u8]]);
+        //~^ transmute_ptr_to_ref
+        let _: &[&[u8]] = &*(a_s_ptr as *const [&[u8]]);
+        //~^ transmute_ptr_to_ref
+
+        // same type, without erased regions
+        let _ = &*(ptr as *const [i32]);
+        //~^ transmute_ptr_to_ref
+        let _: &[i32] = &*ptr;
+        //~^ transmute_ptr_to_ref
+
+        // same type, with erased regions
+        let _ = &*(a_s_ptr as *const [&str]);
+        //~^ transmute_ptr_to_ref
+        let _: &[&str] = &*(a_s_ptr as *const [&str]);
+        //~^ transmute_ptr_to_ref
+    }
+}
+
+fn main() {}

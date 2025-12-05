@@ -1,0 +1,10 @@
+error: the evaluated program deadlocked
+  --> tests/fail-dep/concurrency/libc_pthread_rwlock_write_write_deadlock_single_thread.rs:LL:CC
+   |
+LL |         libc::pthread_rwlock_wrlock(rw.get());
+   |                                             ^ this thread got stuck here
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to 1 previous error
+

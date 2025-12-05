@@ -1,0 +1,40 @@
+error: late-bound const parameters cannot be used currently
+  --> $DIR/bad-suggestion-on-missing-assoc.rs:20:15
+   |
+LL |     for<const N: u8 = { T::A }> T: TraitA<AsA = impl TraitB<AsB = impl TraitC>>,
+   |               ^
+
+warning: the feature `generic_const_exprs` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/bad-suggestion-on-missing-assoc.rs:1:12
+   |
+LL | #![feature(generic_const_exprs)]
+   |            ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #76560 <https://github.com/rust-lang/rust/issues/76560> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+warning: the feature `non_lifetime_binders` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/bad-suggestion-on-missing-assoc.rs:3:12
+   |
+LL | #![feature(non_lifetime_binders)]
+   |            ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #108185 <https://github.com/rust-lang/rust/issues/108185> for more information
+
+error: defaults for generic parameters are not allowed in `for<...>` binders
+  --> $DIR/bad-suggestion-on-missing-assoc.rs:20:9
+   |
+LL |     for<const N: u8 = { T::A }> T: TraitA<AsA = impl TraitB<AsB = impl TraitC>>,
+   |         ^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0562]: `impl Trait` is not allowed in bounds
+  --> $DIR/bad-suggestion-on-missing-assoc.rs:20:49
+   |
+LL |     for<const N: u8 = { T::A }> T: TraitA<AsA = impl TraitB<AsB = impl TraitC>>,
+   |                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `impl Trait` is only allowed in arguments and return types of functions and methods
+
+error: aborting due to 3 previous errors; 2 warnings emitted
+
+For more information about this error, try `rustc --explain E0562`.

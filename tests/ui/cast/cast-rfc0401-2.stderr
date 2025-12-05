@@ -1,0 +1,15 @@
+error[E0054]: cannot cast `i32` as `bool`
+  --> $DIR/cast-rfc0401-2.rs:6:13
+   |
+LL |     let _ = 3 as bool;
+   |             ^^^^^^^^^
+   |
+help: compare with zero instead
+   |
+LL -     let _ = 3 as bool;
+LL +     let _ = 3 != 0;
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0054`.

@@ -1,0 +1,17 @@
+error: 3 positional arguments in format string, but there is 1 argument
+  --> $DIR/format-args-capture-issue-93378.rs:5:23
+   |
+LL |     println!("{a} {b} {} {} {c} {}", c = "c");
+   |                       ^^ ^^     ^^       ---
+
+error: 1 positional argument in format string, but no arguments were given
+  --> $DIR/format-args-capture-issue-93378.rs:9:26
+   |
+LL |     println!("{a:.n$} {b:.*}");
+   |                          ^^ this precision flag adds an extra required argument at position 0, which is why there is 1 argument expected
+   |
+   = note: positional arguments are zero-based
+   = note: for information about formatting flags, visit https://doc.rust-lang.org/std/fmt/index.html
+
+error: aborting due to 2 previous errors
+

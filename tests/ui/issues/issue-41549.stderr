@@ -1,0 +1,9 @@
+error[E0326]: implemented const `CONST` has an incompatible type for trait
+  --> $DIR/issue-41549.rs:9:18
+   |
+LL |     const CONST: () = ();
+   |                  ^^ expected `u32`, found `()`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0326`.

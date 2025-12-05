@@ -1,0 +1,131 @@
+error[E0252]: the name `a` is defined multiple times
+  --> $DIR/issue-52891.rs:12:5
+   |
+LL | use issue_52891::a;
+   |     -------------- previous import of the module `a` here
+LL | use issue_52891::a;
+   |     ^^^^^^^^^^^^^^ `a` reimported here
+   |
+   = note: `a` must be defined only once in the type namespace of this module
+
+error[E0252]: the name `a` is defined multiple times
+  --> $DIR/issue-52891.rs:14:19
+   |
+LL | use issue_52891::a;
+   |     -------------- previous import of the module `a` here
+...
+LL | use issue_52891::{a, b, c};
+   |                   ^--
+   |                   |
+   |                   `a` reimported here
+   |                   help: remove unnecessary import
+   |
+   = note: `a` must be defined only once in the type namespace of this module
+
+error[E0252]: the name `a` is defined multiple times
+  --> $DIR/issue-52891.rs:15:22
+   |
+LL | use issue_52891::a;
+   |     -------------- previous import of the module `a` here
+...
+LL | use issue_52891::{d, a, e};
+   |                      ^--
+   |                      |
+   |                      `a` reimported here
+   |                      help: remove unnecessary import
+   |
+   = note: `a` must be defined only once in the type namespace of this module
+
+error[E0252]: the name `a` is defined multiple times
+  --> $DIR/issue-52891.rs:16:25
+   |
+LL | use issue_52891::a;
+   |     -------------- previous import of the module `a` here
+...
+LL | use issue_52891::{f, g, a};
+   |                         ^ `a` reimported here
+   |
+   = note: `a` must be defined only once in the type namespace of this module
+
+error[E0252]: the name `a` is defined multiple times
+  --> $DIR/issue-52891.rs:18:19
+   |
+LL | use issue_52891::a;
+   |     -------------- previous import of the module `a` here
+...
+LL | use issue_52891::{a,
+   |                   ^--
+   |                   |
+   |                   `a` reimported here
+   |                   help: remove unnecessary import
+   |
+   = note: `a` must be defined only once in the type namespace of this module
+
+error[E0252]: the name `a` is defined multiple times
+  --> $DIR/issue-52891.rs:22:5
+   |
+LL | use issue_52891::a;
+   |     -------------- previous import of the module `a` here
+...
+LL |     a,
+   |     ^--
+   |     |
+   |     `a` reimported here
+   |     help: remove unnecessary import
+   |
+   = note: `a` must be defined only once in the type namespace of this module
+
+error[E0252]: the name `a` is defined multiple times
+  --> $DIR/issue-52891.rs:26:5
+   |
+LL | use issue_52891::a;
+   |     -------------- previous import of the module `a` here
+...
+LL |     a};
+   |     ^ `a` reimported here
+   |
+   = note: `a` must be defined only once in the type namespace of this module
+
+error[E0252]: the name `inner` is defined multiple times
+  --> $DIR/issue-52891.rs:29:5
+   |
+LL | use issue_52891::a::inner;
+   |     --------------------- previous import of the module `inner` here
+LL | use issue_52891::b::inner;
+   |     ^^^^^^^^^^^^^^^^^^^^^ `inner` reimported here
+   |
+   = note: `inner` must be defined only once in the type namespace of this module
+help: you can use `as` to change the binding name of the import
+   |
+LL | use issue_52891::b::inner as other_inner;
+   |                           ++++++++++++++
+
+error[E0254]: the name `issue_52891` is defined multiple times
+  --> $DIR/issue-52891.rs:31:19
+   |
+LL | extern crate issue_52891;
+   | ------------------------- previous import of the extern crate `issue_52891` here
+...
+LL | use issue_52891::{self};
+   | ------------------^^^^--
+   | |                 |
+   | |                 `issue_52891` reimported here
+   | help: remove unnecessary import
+   |
+   = note: `issue_52891` must be defined only once in the type namespace of this module
+
+error[E0252]: the name `n` is defined multiple times
+  --> $DIR/issue-52891.rs:36:5
+   |
+LL | use issue_52891::n;
+   |     -------------- previous import of the module `n` here
+LL | #[macro_use]
+LL | use issue_52891::n;
+   |     ^^^^^^^^^^^^^^ `n` reimported here
+   |
+   = note: `n` must be defined only once in the type namespace of this module
+
+error: aborting due to 10 previous errors
+
+Some errors have detailed explanations: E0252, E0254.
+For more information about an error, try `rustc --explain E0252`.

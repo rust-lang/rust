@@ -1,0 +1,190 @@
+error: sanitize attribute not allowed here
+  --> $DIR/valid-sanitize.rs:15:1
+   |
+LL | #[sanitize(thread = "off")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | static BAR: u32 = 0;
+   | -------------------- not a function, impl block, or module
+   |
+   = help: sanitize attribute can be applied to a function (with body), impl block, or module
+
+error: sanitize attribute not allowed here
+  --> $DIR/valid-sanitize.rs:18:1
+   |
+LL | #[sanitize(address = "off")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | type MyTypeAlias = ();
+   | ---------------------- not a function, impl block, or module
+   |
+   = help: sanitize attribute can be applied to a function (with body), impl block, or module
+
+error: sanitize attribute not allowed here
+  --> $DIR/valid-sanitize.rs:21:1
+   |
+LL |   #[sanitize(address = "off")]
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | / trait MyTrait {
+LL | |     #[sanitize(address = "off")]
+LL | |     const TRAIT_ASSOC_CONST: u32;
+...  |
+LL | |     fn trait_assoc_fn();
+LL | | }
+   | |_- not a function, impl block, or module
+   |
+   = help: sanitize attribute can be applied to a function (with body), impl block, or module
+
+error: sanitize attribute not allowed here
+  --> $DIR/valid-sanitize.rs:65:1
+   |
+LL |   #[sanitize(address = "off")]
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | / struct MyStruct {
+LL | |     #[sanitize(address = "off")]
+LL | |     field: u32,
+LL | | }
+   | |_- not a function, impl block, or module
+   |
+   = help: sanitize attribute can be applied to a function (with body), impl block, or module
+
+error: sanitize attribute not allowed here
+  --> $DIR/valid-sanitize.rs:67:5
+   |
+LL |     #[sanitize(address = "off")]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     field: u32,
+   |     ---------- not a function, impl block, or module
+   |
+   = help: sanitize attribute can be applied to a function (with body), impl block, or module
+
+error: sanitize attribute not allowed here
+  --> $DIR/valid-sanitize.rs:92:5
+   |
+LL |     #[sanitize(address = "off", thread = "on")]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     let _ = ();
+   |     ----------- not a function, impl block, or module
+   |
+   = help: sanitize attribute can be applied to a function (with body), impl block, or module
+
+error: sanitize attribute not allowed here
+  --> $DIR/valid-sanitize.rs:98:5
+   |
+LL |     #[sanitize(address = "off")]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     let _let_closure = || ();
+   |     ------------------------- not a function, impl block, or module
+   |
+   = help: sanitize attribute can be applied to a function (with body), impl block, or module
+
+error: sanitize attribute not allowed here
+  --> $DIR/valid-sanitize.rs:109:9
+   |
+LL |         #[sanitize(address = "off")]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |         () => (),
+   |         -------- not a function, impl block, or module
+   |
+   = help: sanitize attribute can be applied to a function (with body), impl block, or module
+
+error: sanitize attribute not allowed here
+  --> $DIR/valid-sanitize.rs:113:5
+   |
+LL |     #[sanitize(address = "off")]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     return ();
+   |     --------- not a function, impl block, or module
+   |
+   = help: sanitize attribute can be applied to a function (with body), impl block, or module
+
+error: sanitize attribute not allowed here
+  --> $DIR/valid-sanitize.rs:23:5
+   |
+LL |     #[sanitize(address = "off")]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     const TRAIT_ASSOC_CONST: u32;
+   |     ----------------------------- not a function, impl block, or module
+   |
+   = help: sanitize attribute can be applied to a function (with body), impl block, or module
+
+error: sanitize attribute not allowed here
+  --> $DIR/valid-sanitize.rs:26:5
+   |
+LL |     #[sanitize(address = "off")]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     type TraitAssocType;
+   |     -------------------- not a function, impl block, or module
+   |
+   = help: sanitize attribute can be applied to a function (with body), impl block, or module
+
+error: sanitize attribute not allowed here
+  --> $DIR/valid-sanitize.rs:29:5
+   |
+LL |     #[sanitize(address = "off")]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     fn trait_method(&self);
+   |     ----------------------- function has no body
+   |
+   = help: sanitize attribute can be applied to a function (with body), impl block, or module
+
+error: sanitize attribute not allowed here
+  --> $DIR/valid-sanitize.rs:35:5
+   |
+LL |     #[sanitize(address = "off")]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     fn trait_assoc_fn();
+   |     -------------------- function has no body
+   |
+   = help: sanitize attribute can be applied to a function (with body), impl block, or module
+
+error: sanitize attribute not allowed here
+  --> $DIR/valid-sanitize.rs:43:5
+   |
+LL |     #[sanitize(address = "off")]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     type TraitAssocType = Self;
+   |     --------------------------- not a function, impl block, or module
+   |
+   = help: sanitize attribute can be applied to a function (with body), impl block, or module
+
+error: sanitize attribute not allowed here
+  --> $DIR/valid-sanitize.rs:60:5
+   |
+LL |     #[sanitize(address = "off")]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     type T = impl Copy;
+   |     ------------------- not a function, impl block, or module
+   |
+   = help: sanitize attribute can be applied to a function (with body), impl block, or module
+
+error: sanitize attribute not allowed here
+  --> $DIR/valid-sanitize.rs:80:5
+   |
+LL |     #[sanitize(address = "off", thread = "on")]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     static X: u32;
+   |     -------------- not a function, impl block, or module
+   |
+   = help: sanitize attribute can be applied to a function (with body), impl block, or module
+
+error: sanitize attribute not allowed here
+  --> $DIR/valid-sanitize.rs:83:5
+   |
+LL |     #[sanitize(address = "off", thread = "on")]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     type T;
+   |     ------- not a function, impl block, or module
+   |
+   = help: sanitize attribute can be applied to a function (with body), impl block, or module
+
+error: sanitize attribute not allowed here
+  --> $DIR/valid-sanitize.rs:86:5
+   |
+LL |     #[sanitize(address = "off", thread = "on")]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     fn foreign_fn();
+   |     ---------------- function has no body
+   |
+   = help: sanitize attribute can be applied to a function (with body), impl block, or module
+
+error: aborting due to 18 previous errors
+

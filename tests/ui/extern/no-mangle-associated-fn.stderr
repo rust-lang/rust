@@ -1,0 +1,10 @@
+warning: trait `Bar` is never used
+  --> $DIR/no-mangle-associated-fn.rs:15:7
+   |
+LL | trait Bar {
+   |       ^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: 1 warning emitted
+

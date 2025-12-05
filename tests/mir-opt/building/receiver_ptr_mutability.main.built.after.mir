@@ -1,0 +1,87 @@
+// MIR for `main` after built
+
+| User Type Annotations
+| 0: user_ty: Canonical { value: Ty(*mut Test), max_universe: U0, variables: [] }, span: $DIR/receiver_ptr_mutability.rs:16:14: 16:23, inferred_ty: *mut Test
+| 1: user_ty: Canonical { value: Ty(*mut Test), max_universe: U0, variables: [] }, span: $DIR/receiver_ptr_mutability.rs:16:14: 16:23, inferred_ty: *mut Test
+| 2: user_ty: Canonical { value: Ty(&&&&*mut Test), max_universe: U0, variables: [Region(U0), Region(U0), Region(U0), Region(U0)] }, span: $DIR/receiver_ptr_mutability.rs:20:18: 20:31, inferred_ty: &&&&*mut Test
+| 3: user_ty: Canonical { value: Ty(&&&&*mut Test), max_universe: U0, variables: [Region(U0), Region(U0), Region(U0), Region(U0)] }, span: $DIR/receiver_ptr_mutability.rs:20:18: 20:31, inferred_ty: &&&&*mut Test
+|
+fn main() -> () {
+    let mut _0: ();
+    let _1: *mut Test as UserTypeProjection { base: UserType(0), projs: [] };
+    let _2: ();
+    let mut _3: *const Test;
+    let mut _4: *mut Test;
+    let _6: &&&&*mut Test;
+    let _7: &&&*mut Test;
+    let _8: &&*mut Test;
+    let _9: &*mut Test;
+    let _10: ();
+    let mut _11: *const Test;
+    let mut _12: *mut Test;
+    scope 1 {
+        debug ptr => _1;
+        let _5: &&&&*mut Test as UserTypeProjection { base: UserType(2), projs: [] };
+        scope 2 {
+            debug ptr_ref => _5;
+        }
+    }
+
+    bb0: {
+        StorageLive(_1);
+        _1 = null_mut::<Test>() -> [return: bb1, unwind: bb4];
+    }
+
+    bb1: {
+        FakeRead(ForLet(None), _1);
+        AscribeUserType(_1, o, UserTypeProjection { base: UserType(1), projs: [] });
+        StorageLive(_2);
+        StorageLive(_3);
+        StorageLive(_4);
+        _4 = copy _1;
+        _3 = move _4 as *const Test (PointerCoercion(MutToConstPointer, Implicit));
+        StorageDead(_4);
+        _2 = Test::x(move _3) -> [return: bb2, unwind: bb4];
+    }
+
+    bb2: {
+        StorageDead(_3);
+        StorageDead(_2);
+        StorageLive(_5);
+        StorageLive(_6);
+        StorageLive(_7);
+        StorageLive(_8);
+        StorageLive(_9);
+        _9 = &_1;
+        _8 = &_9;
+        _7 = &_8;
+        _6 = &_7;
+        _5 = &(*_6);
+        FakeRead(ForLet(None), _5);
+        AscribeUserType(_5, o, UserTypeProjection { base: UserType(3), projs: [] });
+        StorageDead(_6);
+        StorageLive(_10);
+        StorageLive(_11);
+        StorageLive(_12);
+        _12 = copy (*(*(*(*_5))));
+        _11 = move _12 as *const Test (PointerCoercion(MutToConstPointer, Implicit));
+        StorageDead(_12);
+        _10 = Test::x(move _11) -> [return: bb3, unwind: bb4];
+    }
+
+    bb3: {
+        StorageDead(_11);
+        StorageDead(_10);
+        _0 = const ();
+        StorageDead(_9);
+        StorageDead(_8);
+        StorageDead(_7);
+        StorageDead(_5);
+        StorageDead(_1);
+        return;
+    }
+
+    bb4 (cleanup): {
+        resume;
+    }
+}

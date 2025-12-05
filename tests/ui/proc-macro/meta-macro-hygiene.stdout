@@ -1,0 +1,64 @@
+Def site: $DIR/auxiliary/make-macro.rs:7:9: 7:56 (#4)
+Input: TokenStream [Ident { ident: "$crate", span: $DIR/meta-macro-hygiene.rs:26:37: 26:43 (#3) }, Punct { ch: ':', spacing: Joint, span: $DIR/meta-macro-hygiene.rs:26:43: 26:44 (#3) }, Punct { ch: ':', spacing: Alone, span: $DIR/meta-macro-hygiene.rs:26:44: 26:45 (#3) }, Ident { ident: "dummy", span: $DIR/meta-macro-hygiene.rs:26:45: 26:50 (#3) }, Punct { ch: '!', spacing: Alone, span: $DIR/meta-macro-hygiene.rs:26:50: 26:51 (#3) }, Group { delimiter: Parenthesis, stream: TokenStream [], span: $DIR/meta-macro-hygiene.rs:26:51: 26:53 (#3) }]
+Respanned: TokenStream [Ident { ident: "$crate", span: $DIR/auxiliary/make-macro.rs:7:9: 7:56 (#4) }, Punct { ch: ':', spacing: Joint, span: $DIR/auxiliary/make-macro.rs:7:9: 7:56 (#4) }, Punct { ch: ':', spacing: Alone, span: $DIR/auxiliary/make-macro.rs:7:9: 7:56 (#4) }, Ident { ident: "dummy", span: $DIR/auxiliary/make-macro.rs:7:9: 7:56 (#4) }, Punct { ch: '!', spacing: Alone, span: $DIR/auxiliary/make-macro.rs:7:9: 7:56 (#4) }, Group { delimiter: Parenthesis, stream: TokenStream [], span: $DIR/auxiliary/make-macro.rs:7:9: 7:56 (#4) }]
+#![feature /* 0#0 */(prelude_import)]
+//@ aux-build:make-macro.rs
+//@ proc-macro: meta-macro.rs
+//@ edition:2018
+//@ compile-flags: -Z span-debug -Z macro-backtrace -Z unpretty=expanded,hygiene -Z trim-diagnostic-paths=no
+//@ check-pass
+// ignore-tidy-linelength
+//@ normalize-stdout: "\d+#" -> "0#"
+//@ normalize-stdout: "expn\d{3,}" -> "expnNNN"
+//@ normalize-stdout: "extern crate compiler_builtins /\* \d+ \*/" -> "extern crate compiler_builtins /* NNN */"
+//
+// We don't care about symbol ids, so we set them all to 0
+// in the stdout
+
+#![no_std /* 0#0 */]
+#[macro_use /* 0#1 */]
+extern crate core /* 0#1 */;
+#[prelude_import /* 0#1 */]
+use core /* 0#1 */::prelude /* 0#1 */::rust_2018 /* 0#1 */::*;
+// Don't load unnecessary hygiene information from std
+extern crate std /* 0#0 */;
+
+extern crate meta_macro /* 0#0 */;
+
+macro_rules! produce_it
+    /*
+    0#0
+    */ {
+    () =>
+    {
+        meta_macro::print_def_site!($crate::dummy!());
+        // `print_def_site!` will respan the `$crate` identifier
+        // with `Span::def_site()`. This should cause it to resolve
+        // relative to `meta_macro`, *not* `make_macro` (despite
+        // the fact that `print_def_site` is produced by a
+        // `macro_rules!` macro in `make_macro`).
+    };
+}
+
+fn main /* 0#0 */() { ; }
+
+/*
+Expansions:
+crate0::{{expn0}}: parent: crate0::{{expn0}}, call_site_ctxt: #0, def_site_ctxt: #0, kind: Root
+crate0::{{expn1}}: parent: crate0::{{expn0}}, call_site_ctxt: #0, def_site_ctxt: #0, kind: AstPass(StdImports)
+crate0::{{expn2}}: parent: crate0::{{expn0}}, call_site_ctxt: #0, def_site_ctxt: #0, kind: Macro(Bang, "produce_it")
+crate0::{{expn3}}: parent: crate0::{{expn2}}, call_site_ctxt: #3, def_site_ctxt: #0, kind: Macro(Bang, "meta_macro::print_def_site")
+crate0::{{expn4}}: parent: crate0::{{expn3}}, call_site_ctxt: #4, def_site_ctxt: #0, kind: Macro(Bang, "$crate::dummy")
+
+SyntaxContexts:
+#0: parent: #0, outer_mark: (crate0::{{expn0}}, Opaque)
+#1: parent: #0, outer_mark: (crate0::{{expn1}}, Opaque)
+#2: parent: #0, outer_mark: (crate0::{{expn1}}, Transparent)
+#3: parent: #0, outer_mark: (crate0::{{expn2}}, SemiOpaque)
+#4: parent: #0, outer_mark: (crate0::{{expn3}}, Opaque)
+#5: parent: #3, outer_mark: (crate0::{{expn3}}, Transparent)
+#6: parent: #0, outer_mark: (crate0::{{expn3}}, SemiOpaque)
+#7: parent: #0, outer_mark: (crate0::{{expn4}}, Opaque)
+#8: parent: #4, outer_mark: (crate0::{{expn4}}, Transparent)
+#9: parent: #4, outer_mark: (crate0::{{expn4}}, SemiOpaque)
+*/

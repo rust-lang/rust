@@ -1,0 +1,17 @@
+error: internal compiler error: compiler/rustc_mir_transform/src/check_packed_ref.rs:LL:CC: builtin derive created an unaligned reference
+  --> $DIR/proc_macro_generated_packed.rs:18:25
+   |
+LL | #[derive(PartialEq)]
+   |          --------- in this derive macro expansion
+...
+LL | struct Dealigned<T>(u8, T);
+   |                         ^
+
+
+Box<dyn Any>
+query stack during panic:
+#0 [mir_built] building MIR for `<impl at $DIR/proc_macro_generated_packed.rs:15:10: 15:19>::eq`
+#1 [check_unsafety] unsafety-checking `<impl at $DIR/proc_macro_generated_packed.rs:15:10: 15:19>::eq`
+... and 1 other queries... use `env RUST_BACKTRACE=1` to see the full query stack
+error: aborting due to 1 previous error
+

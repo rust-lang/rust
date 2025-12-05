@@ -1,0 +1,74 @@
+warning: creating a shared reference to mutable static
+  --> $DIR/static-mut-xc.rs:19:16
+   |
+LL |     assert_eq!(static_mut_xc::a, 3);
+   |                ^^^^^^^^^^^^^^^^ shared reference to mutable static
+   |
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/static-mut-references.html>
+   = note: shared references to mutable statics are dangerous; it's undefined behavior if the static is mutated or if a mutable reference is created for it while the shared reference lives
+   = note: `#[warn(static_mut_refs)]` (part of `#[warn(rust_2024_compatibility)]`) on by default
+
+warning: creating a shared reference to mutable static
+  --> $DIR/static-mut-xc.rs:22:16
+   |
+LL |     assert_eq!(static_mut_xc::a, 4);
+   |                ^^^^^^^^^^^^^^^^ shared reference to mutable static
+   |
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/static-mut-references.html>
+   = note: shared references to mutable statics are dangerous; it's undefined behavior if the static is mutated or if a mutable reference is created for it while the shared reference lives
+
+warning: creating a shared reference to mutable static
+  --> $DIR/static-mut-xc.rs:25:16
+   |
+LL |     assert_eq!(static_mut_xc::a, 5);
+   |                ^^^^^^^^^^^^^^^^ shared reference to mutable static
+   |
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/static-mut-references.html>
+   = note: shared references to mutable statics are dangerous; it's undefined behavior if the static is mutated or if a mutable reference is created for it while the shared reference lives
+
+warning: creating a shared reference to mutable static
+  --> $DIR/static-mut-xc.rs:28:16
+   |
+LL |     assert_eq!(static_mut_xc::a, 15);
+   |                ^^^^^^^^^^^^^^^^ shared reference to mutable static
+   |
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/static-mut-references.html>
+   = note: shared references to mutable statics are dangerous; it's undefined behavior if the static is mutated or if a mutable reference is created for it while the shared reference lives
+
+warning: creating a shared reference to mutable static
+  --> $DIR/static-mut-xc.rs:31:16
+   |
+LL |     assert_eq!(static_mut_xc::a, -3);
+   |                ^^^^^^^^^^^^^^^^ shared reference to mutable static
+   |
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/static-mut-references.html>
+   = note: shared references to mutable statics are dangerous; it's undefined behavior if the static is mutated or if a mutable reference is created for it while the shared reference lives
+
+warning: creating a shared reference to mutable static
+  --> $DIR/static-mut-xc.rs:33:18
+   |
+LL |     static_bound(&static_mut_xc::a);
+   |                  ^^^^^^^^^^^^^^^^^ shared reference to mutable static
+   |
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/static-mut-references.html>
+   = note: shared references to mutable statics are dangerous; it's undefined behavior if the static is mutated or if a mutable reference is created for it while the shared reference lives
+help: use `&raw const` instead to create a raw pointer
+   |
+LL |     static_bound(&raw const static_mut_xc::a);
+   |                   +++++++++
+
+warning: creating a mutable reference to mutable static
+  --> $DIR/static-mut-xc.rs:35:22
+   |
+LL |     static_bound_set(&mut static_mut_xc::a);
+   |                      ^^^^^^^^^^^^^^^^^^^^^ mutable reference to mutable static
+   |
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/static-mut-references.html>
+   = note: mutable references to mutable statics are dangerous; it's undefined behavior if any other pointer to the static is used or if any other reference is created for the static while the mutable reference lives
+help: use `&raw mut` instead to create a raw pointer
+   |
+LL |     static_bound_set(&raw mut static_mut_xc::a);
+   |                       +++
+
+warning: 7 warnings emitted
+

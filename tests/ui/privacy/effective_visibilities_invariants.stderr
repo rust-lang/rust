@@ -1,0 +1,30 @@
+error[E0428]: the name `m` is defined multiple times
+  --> $DIR/effective_visibilities_invariants.rs:7:1
+   |
+LL | pub mod m {}
+   | --------- previous definition of the module `m` here
+LL |
+LL | pub mod m {
+   | ^^^^^^^^^ `m` redefined here
+   |
+   = note: `m` must be defined only once in the type namespace of this module
+
+error: module has missing stability attribute
+  --> $DIR/effective_visibilities_invariants.rs:3:1
+   |
+LL | / #![feature(staged_api)]
+LL | |
+LL | | pub mod m {}
+...  |
+LL | | fn main() {}
+   | |____________^
+
+error: module has missing stability attribute
+  --> $DIR/effective_visibilities_invariants.rs:5:1
+   |
+LL | pub mod m {}
+   | ^^^^^^^^^
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0428`.

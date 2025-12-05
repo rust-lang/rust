@@ -1,0 +1,35 @@
+error[E0277]: the size for values of type `[i32]` cannot be known at compilation time
+  --> $DIR/feature-gate-offset-of-slice.rs:17:5
+   |
+LL |     offset_of!(S, c);
+   |     ^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `[i32]`
+   = note: this error originates in the macro `offset_of` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the size for values of type `[i32]` cannot be known at compilation time
+  --> $DIR/feature-gate-offset-of-slice.rs:21:5
+   |
+LL |     offset_of!(T, y);
+   |     ^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: within `S`, the trait `Sized` is not implemented for `[i32]`
+note: required because it appears within the type `S`
+  --> $DIR/feature-gate-offset-of-slice.rs:3:8
+   |
+LL | struct S {
+   |        ^
+   = note: this error originates in the macro `offset_of` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the size for values of type `[i32]` cannot be known at compilation time
+  --> $DIR/feature-gate-offset-of-slice.rs:25:5
+   |
+LL |     offset_of!(Tup, 1);
+   |     ^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `[i32]`
+   = note: this error originates in the macro `offset_of` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

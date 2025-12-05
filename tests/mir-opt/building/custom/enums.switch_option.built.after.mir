@@ -1,0 +1,21 @@
+// MIR for `switch_option` after built
+
+fn switch_option(_1: Option<()>) -> bool {
+    let mut _0: bool;
+    let mut _2: isize;
+
+    bb0: {
+        _2 = discriminant(_1);
+        switchInt(copy _2) -> [0: bb1, 1: bb2, otherwise: bb2];
+    }
+
+    bb1: {
+        _0 = const false;
+        return;
+    }
+
+    bb2: {
+        _0 = const true;
+        return;
+    }
+}

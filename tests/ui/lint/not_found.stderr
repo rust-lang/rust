@@ -1,0 +1,22 @@
+warning: unknown lint: `FOO_BAR`
+  --> $DIR/not_found.rs:6:9
+   |
+LL | #[allow(FOO_BAR)]
+   |         ^^^^^^^
+   |
+   = note: `#[warn(unknown_lints)]` on by default
+
+warning: unknown lint: `DEAD_CODE`
+  --> $DIR/not_found.rs:10:8
+   |
+LL | #[warn(DEAD_CODE)]
+   |        ^^^^^^^^^ help: did you mean: `dead_code`
+
+warning: unknown lint: `Warnings`
+  --> $DIR/not_found.rs:15:8
+   |
+LL | #[deny(Warnings)]
+   |        ^^^^^^^^ help: did you mean (notice the capitalization): `warnings`
+
+warning: 3 warnings emitted
+

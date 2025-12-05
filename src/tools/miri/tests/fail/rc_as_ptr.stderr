@@ -1,0 +1,24 @@
+error: Undefined Behavior: pointer not dereferenceable: ALLOC has been freed, so this pointer is dangling
+  --> tests/fail/rc_as_ptr.rs:LL:CC
+   |
+LL |     assert_eq!(42, **unsafe { &*Weak::as_ptr(&weak) });
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Undefined Behavior occurred here
+   |
+   = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
+   = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
+help: ALLOC was allocated here:
+  --> tests/fail/rc_as_ptr.rs:LL:CC
+   |
+LL |     let strong = Rc::new(Box::new(42));
+   |                          ^^^^^^^^^^^^
+help: ALLOC was deallocated here:
+  --> tests/fail/rc_as_ptr.rs:LL:CC
+   |
+LL |     drop(strong);
+   |     ^^^^^^^^^^^^
+   = note: this error originates in the macro `assert_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to 1 previous error
+

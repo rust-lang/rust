@@ -1,0 +1,19 @@
+error[E0382]: use of moved value: `x`
+  --> $DIR/borrowck-reinit.rs:6:16
+   |
+LL |     let mut x = Box::new(0);
+   |         ----- move occurs because `x` has type `Box<i32>`, which does not implement the `Copy` trait
+...
+LL |     drop(x);
+   |          - value moved here
+LL |     let _ = (1,x);
+   |                ^ value used here after move
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     drop(x.clone());
+   |           ++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0382`.

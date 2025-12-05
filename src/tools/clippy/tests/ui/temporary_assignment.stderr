@@ -1,0 +1,33 @@
+error: assignment to temporary
+  --> tests/ui/temporary_assignment.rs:48:5
+   |
+LL |     Struct { field: 0 }.field = 1;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::temporary-assignment` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::temporary_assignment)]`
+
+error: assignment to temporary
+  --> tests/ui/temporary_assignment.rs:51:5
+   |
+LL | /     MultiStruct {
+LL | |
+LL | |         structure: Struct { field: 0 },
+...  |
+LL | |     .field = 1;
+   | |______________^
+
+error: assignment to temporary
+  --> tests/ui/temporary_assignment.rs:57:5
+   |
+LL |     ArrayStruct { array: [0] }.array[0] = 1;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: assignment to temporary
+  --> tests/ui/temporary_assignment.rs:60:5
+   |
+LL |     (0, 0).0 = 1;
+   |     ^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
+

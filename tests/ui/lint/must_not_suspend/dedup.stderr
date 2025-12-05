@@ -1,0 +1,22 @@
+error: `No` held across a suspend point, but should not be
+  --> $DIR/dedup.rs:16:9
+   |
+LL |     let no = No {};
+   |         ^^
+LL |
+LL |     wheeee(&no).await;
+   |                 ----- the value is held across this suspend point
+   |
+help: consider using a block (`{ ... }`) to shrink the value's scope, ending before the suspend point
+  --> $DIR/dedup.rs:16:9
+   |
+LL |     let no = No {};
+   |         ^^
+note: the lint level is defined here
+  --> $DIR/dedup.rs:3:9
+   |
+LL | #![deny(must_not_suspend)]
+   |         ^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

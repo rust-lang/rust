@@ -1,0 +1,126 @@
+error: `#[inline]` attribute cannot be used on statements
+  --> $DIR/issue-43988.rs:5:5
+   |
+LL |     #[inline]
+   |     ^^^^^^^^^
+   |
+   = help: `#[inline]` can only be applied to functions
+
+error[E0539]: malformed `inline` attribute input
+  --> $DIR/issue-43988.rs:10:5
+   |
+LL |     #[inline(XYZ)]
+   |     ^^^^^^^^^---^^
+   |              |
+   |              valid arguments are `always` or `never`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/codegen.html#the-inline-attribute>
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL -     #[inline(XYZ)]
+LL +     #[inline(always)]
+   |
+LL -     #[inline(XYZ)]
+LL +     #[inline(never)]
+   |
+LL -     #[inline(XYZ)]
+LL +     #[inline]
+   |
+
+error: `#[inline]` attribute cannot be used on statements
+  --> $DIR/issue-43988.rs:10:5
+   |
+LL |     #[inline(XYZ)]
+   |     ^^^^^^^^^^^^^^
+   |
+   = help: `#[inline]` can only be applied to functions
+
+error[E0552]: unrecognized representation hint
+  --> $DIR/issue-43988.rs:15:12
+   |
+LL |     #[repr(nothing)]
+   |            ^^^^^^^
+   |
+   = help: valid reprs are `Rust` (default), `C`, `align`, `packed`, `transparent`, `simd`, `i8`, `u8`, `i16`, `u16`, `i32`, `u32`, `i64`, `u64`, `i128`, `u128`, `isize`, `usize`
+   = note: for more information, visit <https://doc.rust-lang.org/reference/type-layout.html?highlight=repr#representations>
+
+error[E0552]: unrecognized representation hint
+  --> $DIR/issue-43988.rs:19:12
+   |
+LL |     #[repr(something_not_real)]
+   |            ^^^^^^^^^^^^^^^^^^
+   |
+   = help: valid reprs are `Rust` (default), `C`, `align`, `packed`, `transparent`, `simd`, `i8`, `u8`, `i16`, `u16`, `i32`, `u32`, `i64`, `u64`, `i128`, `u128`, `isize`, `usize`
+   = note: for more information, visit <https://doc.rust-lang.org/reference/type-layout.html?highlight=repr#representations>
+
+error[E0539]: malformed `repr` attribute input
+  --> $DIR/issue-43988.rs:25:5
+   |
+LL |     #[repr]
+   |     ^^^^^^^ expected this to be a list
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/type-layout.html#representations>
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL |     #[repr(<integer type>)]
+   |           ++++++++++++++++
+LL |     #[repr(C)]
+   |           +++
+LL |     #[repr(Rust)]
+   |           ++++++
+LL |     #[repr(align(...))]
+   |           ++++++++++++
+   = and 2 other candidates
+
+error[E0539]: malformed `inline` attribute input
+  --> $DIR/issue-43988.rs:31:5
+   |
+LL |     #[inline(ABC)]
+   |     ^^^^^^^^^---^^
+   |              |
+   |              valid arguments are `always` or `never`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/codegen.html#the-inline-attribute>
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL -     #[inline(ABC)]
+LL +     #[inline(always)]
+   |
+LL -     #[inline(ABC)]
+LL +     #[inline(never)]
+   |
+LL -     #[inline(ABC)]
+LL +     #[inline]
+   |
+
+error: `#[inline]` attribute cannot be used on expressions
+  --> $DIR/issue-43988.rs:31:5
+   |
+LL |     #[inline(ABC)]
+   |     ^^^^^^^^^^^^^^
+   |
+   = help: `#[inline]` can only be applied to functions
+
+error[E0539]: malformed `repr` attribute input
+  --> $DIR/issue-43988.rs:36:14
+   |
+LL |     let _z = #[repr] 1;
+   |              ^^^^^^^ expected this to be a list
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/type-layout.html#representations>
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL |     let _z = #[repr(<integer type>)] 1;
+   |                    ++++++++++++++++
+LL |     let _z = #[repr(C)] 1;
+   |                    +++
+LL |     let _z = #[repr(Rust)] 1;
+   |                    ++++++
+LL |     let _z = #[repr(align(...))] 1;
+   |                    ++++++++++++
+   = and 2 other candidates
+
+error: aborting due to 9 previous errors
+
+Some errors have detailed explanations: E0539, E0552.
+For more information about an error, try `rustc --explain E0539`.

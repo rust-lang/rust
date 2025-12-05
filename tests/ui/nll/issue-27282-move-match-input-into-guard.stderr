@@ -1,0 +1,29 @@
+error[E0382]: use of moved value: `b`
+  --> $DIR/issue-27282-move-match-input-into-guard.rs:14:5
+   |
+LL |     let b = &mut true;
+   |         - move occurs because `b` has type `&mut bool`, which does not implement the `Copy` trait
+LL |     match b {
+   |     ^^^^^^^ value used here after move
+...
+LL |         _ if { (|| { let bar = b; *bar = false; })();
+   |                 --             - variable moved due to use in closure
+   |                 |
+   |                 value moved into closure here
+
+error[E0382]: use of moved value: `b`
+  --> $DIR/issue-27282-move-match-input-into-guard.rs:24:5
+   |
+LL |     let b = &mut true;
+   |         - move occurs because `b` has type `&mut bool`, which does not implement the `Copy` trait
+LL |     match b {
+   |     ^^^^^^^ value used here after move
+...
+LL |             (|| { let bar = b; *bar = false; })();
+   |              --             - variable moved due to use in closure
+   |              |
+   |              value moved into closure here
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0382`.

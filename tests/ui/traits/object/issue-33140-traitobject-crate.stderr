@@ -1,0 +1,29 @@
+error[E0119]: conflicting implementations of trait `Trait` for type `(dyn Send + Sync + 'static)`
+  --> $DIR/issue-33140-traitobject-crate.rs:83:1
+   |
+LL | unsafe impl Trait for dyn (::std::marker::Send) + Sync { }
+   | ------------------------------------------------------ first implementation here
+LL | unsafe impl Trait for dyn (::std::marker::Send) + Send + Sync { }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `(dyn Send + Sync + 'static)`
+
+error[E0119]: conflicting implementations of trait `Trait` for type `(dyn Send + Sync + 'static)`
+  --> $DIR/issue-33140-traitobject-crate.rs:85:1
+   |
+LL | unsafe impl Trait for dyn (::std::marker::Send) + Sync { }
+   | ------------------------------------------------------ first implementation here
+...
+LL | unsafe impl Trait for dyn (::std::marker::Sync) + Send { }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `(dyn Send + Sync + 'static)`
+
+error[E0119]: conflicting implementations of trait `Trait` for type `(dyn Send + Sync + 'static)`
+  --> $DIR/issue-33140-traitobject-crate.rs:88:1
+   |
+LL | unsafe impl Trait for dyn (::std::marker::Send) + Sync { }
+   | ------------------------------------------------------ first implementation here
+...
+LL | unsafe impl Trait for dyn (::std::marker::Sync) + Send + Sync { }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `(dyn Send + Sync + 'static)`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0119`.

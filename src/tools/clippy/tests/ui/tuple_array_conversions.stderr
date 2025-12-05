@@ -1,0 +1,84 @@
+error: it looks like you're trying to convert an array to a tuple
+  --> tests/ui/tuple_array_conversions.rs:10:13
+   |
+LL |     let x = (x[0], x[1]);
+   |             ^^^^^^^^^^^^
+   |
+   = help: use `.into()` instead, or `<(T0, T1, ..., Tn)>::from` if type annotations are needed
+   = note: `-D clippy::tuple-array-conversions` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::tuple_array_conversions)]`
+
+error: it looks like you're trying to convert a tuple to an array
+  --> tests/ui/tuple_array_conversions.rs:12:13
+   |
+LL |     let x = [x.0, x.1];
+   |             ^^^^^^^^^^
+   |
+   = help: use `.into()` instead, or `<[T; N]>::from` if type annotations are needed
+
+error: it looks like you're trying to convert a tuple to an array
+  --> tests/ui/tuple_array_conversions.rs:18:53
+   |
+LL |     let v1: Vec<[u32; 2]> = t1.iter().map(|&(a, b)| [a, b]).collect();
+   |                                                     ^^^^^^
+   |
+   = help: use `.into()` instead, or `<[T; N]>::from` if type annotations are needed
+
+error: it looks like you're trying to convert a tuple to an array
+  --> tests/ui/tuple_array_conversions.rs:20:38
+   |
+LL |     t1.iter().for_each(|&(a, b)| _ = [a, b]);
+   |                                      ^^^^^^
+   |
+   = help: use `.into()` instead, or `<[T; N]>::from` if type annotations are needed
+
+error: it looks like you're trying to convert an array to a tuple
+  --> tests/ui/tuple_array_conversions.rs:22:55
+   |
+LL |     let t2: Vec<(u32, u32)> = v1.iter().map(|&[a, b]| (a, b)).collect();
+   |                                                       ^^^^^^
+   |
+   = help: use `.into()` instead, or `<(T0, T1, ..., Tn)>::from` if type annotations are needed
+
+error: it looks like you're trying to convert a tuple to an array
+  --> tests/ui/tuple_array_conversions.rs:24:38
+   |
+LL |     t1.iter().for_each(|&(a, b)| _ = [a, b]);
+   |                                      ^^^^^^
+   |
+   = help: use `.into()` instead, or `<[T; N]>::from` if type annotations are needed
+
+error: it looks like you're trying to convert a tuple to an array
+  --> tests/ui/tuple_array_conversions.rs:63:22
+   |
+LL |     let _: &[f64] = &[a, b];
+   |                      ^^^^^^
+   |
+   = help: use `.into()` instead, or `<[T; N]>::from` if type annotations are needed
+
+error: it looks like you're trying to convert an array to a tuple
+  --> tests/ui/tuple_array_conversions.rs:67:5
+   |
+LL |     (src, dest);
+   |     ^^^^^^^^^^^
+   |
+   = help: use `.into()` instead, or `<(T0, T1, ..., Tn)>::from` if type annotations are needed
+
+error: it looks like you're trying to convert an array to a tuple
+  --> tests/ui/tuple_array_conversions.rs:112:13
+   |
+LL |     let x = (x[0], x[1]);
+   |             ^^^^^^^^^^^^
+   |
+   = help: use `.into()` instead, or `<(T0, T1, ..., Tn)>::from` if type annotations are needed
+
+error: it looks like you're trying to convert a tuple to an array
+  --> tests/ui/tuple_array_conversions.rs:114:13
+   |
+LL |     let x = [x.0, x.1];
+   |             ^^^^^^^^^^
+   |
+   = help: use `.into()` instead, or `<[T; N]>::from` if type annotations are needed
+
+error: aborting due to 10 previous errors
+

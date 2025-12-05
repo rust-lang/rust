@@ -1,0 +1,14 @@
+error: invalid format string: tuple index access isn't supported
+  --> $DIR/format-args-non-identifier-diagnostics.rs:8:16
+   |
+LL |     println!("{x.0}");
+   |                ^^^ not supported in format string
+   |
+help: consider using a positional formatting argument instead
+   |
+LL -     println!("{x.0}");
+LL +     println!("{0}", x.0);
+   |
+
+error: aborting due to 1 previous error
+

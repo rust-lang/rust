@@ -1,0 +1,29 @@
+error[E0307]: invalid `self` parameter type: `&dyn Foo`
+  --> $DIR/inference_var_self_argument.rs:5:24
+   |
+LL |     async fn foo(self: &dyn Foo) {
+   |                        ^^^^^^^^
+   |
+   = note: type of `self` must be `Self` or a type that dereferences to it
+   = help: consider changing to `self`, `&self`, `&mut self`, `self: Box<Self>`, `self: Rc<Self>`, `self: Arc<Self>`, or `self: Pin<P>` (where P is one of the previous types except `Self`)
+
+error[E0038]: the trait `Foo` is not dyn compatible
+  --> $DIR/inference_var_self_argument.rs:5:5
+   |
+LL |     async fn foo(self: &dyn Foo) {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `Foo` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/inference_var_self_argument.rs:5:14
+   |
+LL | trait Foo {
+   |       --- this trait is not dyn compatible...
+LL |     async fn foo(self: &dyn Foo) {
+   |              ^^^ ...because method `foo` is `async`
+   = help: consider moving `foo` to another trait
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0038, E0307.
+For more information about an error, try `rustc --explain E0038`.

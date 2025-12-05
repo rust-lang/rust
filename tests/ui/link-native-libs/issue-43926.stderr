@@ -1,0 +1,28 @@
+error[E0805]: malformed `link` attribute input
+  --> $DIR/issue-43926.rs:1:1
+   |
+LL | #[link(name = "foo", cfg())]
+   | ^^^^^^^^^^^^^^^^^^^^^-----^^
+   |                      |
+   |                      expected a single argument here
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/items/external-blocks.html#the-link-attribute>
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #[link(name = "foo", cfg())]
+LL + #[link(name = "...")]
+   |
+LL - #[link(name = "foo", cfg())]
+LL + #[link(name = "...", import_name_type = "decorated|noprefix|undecorated")]
+   |
+LL - #[link(name = "foo", cfg())]
+LL + #[link(name = "...", kind = "dylib|static|...")]
+   |
+LL - #[link(name = "foo", cfg())]
+LL + #[link(name = "...", kind = "dylib|static|...", wasm_import_module = "...", import_name_type = "decorated|noprefix|undecorated")]
+   |
+   = and 1 other candidate
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0805`.

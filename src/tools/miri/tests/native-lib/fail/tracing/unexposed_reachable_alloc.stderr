@@ -1,0 +1,39 @@
+warning: sharing memory with a native function called via FFI
+  --> tests/native-lib/fail/tracing/unexposed_reachable_alloc.rs:LL:CC
+   |
+LL |     unsafe { do_one_deref(exposed) };
+   |              ^^^^^^^^^^^^^^^^^^^^^ sharing memory with a native function
+   |
+   = help: when memory is shared with a native function call, Miri can only track initialisation and provenance on a best-effort basis
+   = help: in particular, Miri assumes that the native call initializes all memory it has written to
+   = help: Miri also assumes that any part of this memory may be a pointer that is permitted to point to arbitrary exposed memory
+   = help: what this means is that Miri will easily miss Undefined Behavior related to incorrect usage of this shared memory, so you should not take a clean Miri run as a signal that your FFI code is UB-free
+   = help: tracing memory accesses in native code is not yet fully implemented, so there can be further imprecisions beyond what is documented here
+   = note: BACKTRACE:
+   = note: inside `unexposed_reachable_alloc` at tests/native-lib/fail/tracing/unexposed_reachable_alloc.rs:LL:CC
+note: inside `main`
+  --> tests/native-lib/fail/tracing/unexposed_reachable_alloc.rs:LL:CC
+   |
+LL |     unexposed_reachable_alloc();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: Undefined Behavior: memory access failed: attempting to access 4 bytes, but got $HEX[noalloc] which is a dangling pointer (it has no provenance)
+  --> tests/native-lib/fail/tracing/unexposed_reachable_alloc.rs:LL:CC
+   |
+LL |         let _not_ok = *invalid;
+   |                       ^^^^^^^^ Undefined Behavior occurred here
+   |
+   = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
+   = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
+   = note: BACKTRACE:
+   = note: inside `unexposed_reachable_alloc` at tests/native-lib/fail/tracing/unexposed_reachable_alloc.rs:LL:CC
+note: inside `main`
+  --> tests/native-lib/fail/tracing/unexposed_reachable_alloc.rs:LL:CC
+   |
+LL |     unexposed_reachable_alloc();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to 1 previous error; 1 warning emitted
+

@@ -1,0 +1,38 @@
+[package]
+name = "unwind"
+version = "0.0.0"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/rust-lang/rust.git"
+edition = "2024"
+include = [
+  '/libunwind/*',
+]
+
+[lib]
+test = false
+bench = false
+doc = false
+
+[dependencies]
+core = { path = "../rustc-std-workspace-core", package = "rustc-std-workspace-core" }
+
+[target.'cfg(not(all(windows, target_env = "msvc")))'.dependencies]
+libc = { version = "0.2.140", features = ['rustc-dep-of-std'], default-features = false }
+
+[target.'cfg(target_os = "xous")'.dependencies]
+unwinding = { version = "0.2.7", features = ['rustc-dep-of-std', 'unwinder', 'fde-custom'], default-features = false }
+
+[features]
+
+# Only applies for Linux and Fuchsia targets
+# Static link to the in-tree build of llvm libunwind
+llvm-libunwind = []
+
+# Only applies for Linux and Fuchsia targets
+# If crt-static is enabled, static link to `libunwind.a` provided by system
+# If crt-static is disabled, dynamic link to `libunwind.so` provided by system
+system-llvm-libunwind = []
+
+[lints.rust.unexpected_cfgs]
+level = "warn"
+check-cfg = ['cfg(emscripten_wasm_eh)', 'cfg(target_arch, values("loongarch32"))']

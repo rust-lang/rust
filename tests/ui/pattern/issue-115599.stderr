@@ -1,0 +1,17 @@
+error: constant of non-structural type `Vec<u8>` in a pattern
+  --> $DIR/issue-115599.rs:5:12
+   |
+LL | const CONST_STRING: String = String::new();
+   | -------------------------- constant defined here
+...
+LL |     if let CONST_STRING = empty_str {}
+   |            ^^^^^^^^^^^^ constant of non-structural type
+   |
+  --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
+   |
+   = note: `Vec<u8>` must be annotated with `#[derive(PartialEq)]` to be usable in patterns
+   |
+   = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralPartialEq.html for details
+
+error: aborting due to 1 previous error
+

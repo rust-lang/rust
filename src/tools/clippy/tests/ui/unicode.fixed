@@ -1,0 +1,66 @@
+#![allow(dead_code)]
+
+#[warn(clippy::invisible_characters)]
+fn zero() {
+    print!("Here >\u{200B}< is a ZWS, and \u{200B}another");
+    //~^ invisible_characters
+    print!("This\u{200B}is\u{200B}fine");
+    print!("Here >\u{AD}< is a SHY, and \u{AD}another");
+    //~^ invisible_characters
+    print!("This\u{ad}is\u{ad}fine");
+    print!("Here >\u{2060}< is a WJ, and \u{2060}another");
+    //~^ invisible_characters
+    print!("This\u{2060}is\u{2060}fine");
+}
+
+#[warn(clippy::unicode_not_nfc)]
+fn canon() {
+    print!("̀àh?");
+    //~^ unicode_not_nfc
+    print!("a\u{0300}h?"); // also ok
+}
+
+mod non_ascii_literal {
+    #![deny(clippy::non_ascii_literal)]
+
+    fn uni() {
+        print!("\u{dc}ben!");
+        //~^ non_ascii_literal
+        print!("\u{DC}ben!"); // this is ok
+    }
+
+    // issue 8013
+    fn single_quote() {
+        const _EMPTY_BLOCK: char = '\u{25b1}';
+        //~^ non_ascii_literal
+        const _FULL_BLOCK: char = '\u{25b0}';
+        //~^ non_ascii_literal
+    }
+
+    #[test]
+    pub fn issue_7739() {
+        // Ryū crate: https://github.com/dtolnay/ryu
+    }
+
+    mod issue_8263 {
+        #![deny(clippy::non_ascii_literal)]
+
+        // Re-allow for a single test
+        #[test]
+        #[allow(clippy::non_ascii_literal)]
+        fn allowed() {
+            let _ = "悲しいかな、ここに日本語を書くことはできない。";
+        }
+
+        #[test]
+        fn denied() {
+            let _ = "\u{60b2}\u{3057}\u{3044}\u{304b}\u{306a}\u{3001}\u{3053}\u{3053}\u{306b}\u{65e5}\u{672c}\u{8a9e}\u{3092}\u{66f8}\u{304f}\u{3053}\u{3068}\u{306f}\u{3067}\u{304d}\u{306a}\u{3044}\u{3002}";
+            //~^ non_ascii_literal
+        }
+    }
+}
+
+fn main() {
+    zero();
+    canon();
+}

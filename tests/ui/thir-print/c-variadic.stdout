@@ -1,0 +1,61 @@
+DefId(0:3 ~ c_variadic[a5de]::foo):
+params: [
+    Param {
+        ty: i32
+        ty_span: Some($DIR/c-variadic.rs:7:29: 7:32 (#0))
+        self_kind: None
+        hir_id: Some(HirId(DefId(0:3 ~ c_variadic[a5de]::foo).1))
+        param: Some( 
+            Pat: {
+                ty: i32
+                span: $DIR/c-variadic.rs:7:26: 7:27 (#0)
+                kind: PatKind {
+                    Wild
+                }
+            }
+        )
+    }
+    Param {
+        ty: std::ffi::VaListImpl<'{erased}>
+        ty_span: None
+        self_kind: None
+        hir_id: Some(HirId(DefId(0:3 ~ c_variadic[a5de]::foo).3))
+        param: Some( 
+            Pat: {
+                ty: std::ffi::VaListImpl<'{erased}>
+                span: $DIR/c-variadic.rs:7:34: 7:37 (#0)
+                kind: PatKind {
+                    Missing
+                }
+            }
+        )
+    }
+]
+body:
+    Expr {
+        ty: ()
+        temp_scope_id: 6
+        span: $DIR/c-variadic.rs:7:39: 7:41 (#0)
+        kind: 
+            Scope {
+                region_scope: Node(6)
+                lint_level: Explicit(HirId(DefId(0:3 ~ c_variadic[a5de]::foo).6))
+                value:
+                    Expr {
+                        ty: ()
+                        temp_scope_id: 6
+                        span: $DIR/c-variadic.rs:7:39: 7:41 (#0)
+                        kind: 
+                            Block {
+                                targeted_by_break: false
+                                span: $DIR/c-variadic.rs:7:39: 7:41 (#0)
+                                region_scope: Node(5)
+                                safety_mode: Safe
+                                stmts: []
+                                expr: []
+                            }
+                    }
+            }
+    }
+
+

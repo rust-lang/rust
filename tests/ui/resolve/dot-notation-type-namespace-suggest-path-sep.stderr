@@ -1,0 +1,251 @@
+error[E0423]: expected value, found struct `String`
+  --> $DIR/dot-notation-type-namespace-suggest-path-sep.rs:10:13
+   |
+LL |     let _ = String.new();
+   |             ^^^^^^
+   |
+help: use the path separator to refer to an item
+   |
+LL -     let _ = String.new();
+LL +     let _ = String::new();
+   |
+
+error[E0423]: expected value, found struct `String`
+  --> $DIR/dot-notation-type-namespace-suggest-path-sep.rs:14:13
+   |
+LL |     let _ = String.default;
+   |             ^^^^^^
+   |
+help: use the path separator to refer to an item
+   |
+LL -     let _ = String.default;
+LL +     let _ = String::default;
+   |
+
+error[E0423]: expected value, found struct `Vec`
+  --> $DIR/dot-notation-type-namespace-suggest-path-sep.rs:18:13
+   |
+LL |     let _ = Vec::<()>.with_capacity(1);
+   |             ^^^^^^^^^
+   |
+help: use the path separator to refer to an item
+   |
+LL -     let _ = Vec::<()>.with_capacity(1);
+LL +     let _ = Vec::<()>::with_capacity(1);
+   |
+
+error[E0423]: expected value, found type alias `Alias`
+  --> $DIR/dot-notation-type-namespace-suggest-path-sep.rs:22:13
+   |
+LL |     let _ = Alias.new();
+   |             ^^^^^
+   |
+help: use the path separator to refer to an item
+   |
+LL -     let _ = Alias.new();
+LL +     let _ = Alias::new();
+   |
+
+error[E0423]: expected value, found type alias `Alias`
+  --> $DIR/dot-notation-type-namespace-suggest-path-sep.rs:26:13
+   |
+LL |     let _ = Alias.default;
+   |             ^^^^^
+   |
+help: use the path separator to refer to an item
+   |
+LL -     let _ = Alias.default;
+LL +     let _ = Alias::default;
+   |
+
+error[E0423]: expected value, found module `foo`
+  --> $DIR/dot-notation-type-namespace-suggest-path-sep.rs:30:13
+   |
+LL |     let _ = foo.bar;
+   |             ^^^
+   |
+help: use the path separator to refer to an item
+   |
+LL -     let _ = foo.bar;
+LL +     let _ = foo::bar;
+   |
+
+error[E0423]: expected value, found struct `std::cell::Cell`
+  --> $DIR/dot-notation-type-namespace-suggest-path-sep.rs:37:9
+   |
+LL |         ::std::cell::Cell
+   |         ^^^^^^^^^^^^^^^^^
+...
+LL |     Type!().get();
+   |     ------- in this macro invocation
+   |
+   = note: this error originates in the macro `Type` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: use the path separator to refer to an item
+   |
+LL -     Type!().get();
+LL +     <Type!()>::get();
+   |
+
+error[E0423]: expected value, found struct `std::cell::Cell`
+  --> $DIR/dot-notation-type-namespace-suggest-path-sep.rs:37:9
+   |
+LL |         ::std::cell::Cell
+   |         ^^^^^^^^^^^^^^^^^
+...
+LL |     Type! {}.get;
+   |     -------- in this macro invocation
+   |
+   = note: this error originates in the macro `Type` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: use the path separator to refer to an item
+   |
+LL -     Type! {}.get;
+LL +     <Type! {}>::get;
+   |
+
+error[E0423]: expected value, found type alias `Alias`
+  --> $DIR/dot-notation-type-namespace-suggest-path-sep.rs:43:9
+   |
+LL |         Alias
+   |         ^^^^^
+...
+LL |     Type!(alias).get();
+   |     ------------ in this macro invocation
+   |
+   = note: this error originates in the macro `Type` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: use the path separator to refer to an item
+   |
+LL -     Type!(alias).get();
+LL +     <Type!(alias)>::get();
+   |
+
+error[E0423]: expected value, found type alias `Alias`
+  --> $DIR/dot-notation-type-namespace-suggest-path-sep.rs:43:9
+   |
+LL |         Alias
+   |         ^^^^^
+...
+LL |     Type! {alias}.get;
+   |     ------------- in this macro invocation
+   |
+   = note: this error originates in the macro `Type` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: use the path separator to refer to an item
+   |
+LL -     Type! {alias}.get;
+LL +     <Type! {alias}>::get;
+   |
+
+error[E0423]: expected value, found struct `Vec`
+  --> $DIR/dot-notation-type-namespace-suggest-path-sep.rs:52:9
+   |
+LL |         Vec.new()
+   |         ^^^
+...
+LL |     let _ = create!(type method);
+   |             -------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `create` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: use the path separator to refer to an item
+   |
+LL -         Vec.new()
+LL +         Vec::new()
+   |
+
+error[E0423]: expected value, found struct `Vec`
+  --> $DIR/dot-notation-type-namespace-suggest-path-sep.rs:57:9
+   |
+LL |         Vec.new
+   |         ^^^
+...
+LL |     let _ = create!(type field);
+   |             ------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `create` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: use the path separator to refer to an item
+   |
+LL -         Vec.new
+LL +         Vec::new
+   |
+
+error[E0423]: expected value, found struct `std::cell::Cell`
+  --> $DIR/dot-notation-type-namespace-suggest-path-sep.rs:37:9
+   |
+LL |         ::std::cell::Cell
+   |         ^^^^^^^^^^^^^^^^^
+...
+LL |     let _ = create!(macro method);
+   |             --------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `Type` which comes from the expansion of the macro `create` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: use the path separator to refer to an item
+   |
+LL -         Type!().new(0)
+LL +         <Type!()>::new(0)
+   |
+
+error[E0423]: expected value, found type alias `Alias`
+  --> $DIR/dot-notation-type-namespace-suggest-path-sep.rs:43:9
+   |
+LL |         Alias
+   |         ^^^^^
+...
+LL |     let _ = create!(macro method alias);
+   |             --------------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `Type` which comes from the expansion of the macro `create` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: use the path separator to refer to an item
+   |
+LL -         Type!(alias).new(0)
+LL +         <Type!(alias)>::new(0)
+   |
+
+error[E0423]: expected value, found type alias `Alias`
+  --> $DIR/dot-notation-type-namespace-suggest-path-sep.rs:73:9
+   |
+LL |         $Ty.foo
+   |         ^^^
+...
+LL |     let _ = check_ty!(Alias);
+   |             ---------------- in this macro invocation
+   |
+   = note: this error originates in the macro `check_ty` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: use the path separator to refer to an item
+   |
+LL -         $Ty.foo
+LL +         $Ty::foo
+   |
+
+error[E0423]: expected value, found type alias `Alias`
+  --> $DIR/dot-notation-type-namespace-suggest-path-sep.rs:80:9
+   |
+LL |         Alias.$Ident
+   |         ^^^^^
+...
+LL |     let _ = check_ident!(foo);
+   |             ----------------- in this macro invocation
+   |
+   = note: this error originates in the macro `check_ident` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: use the path separator to refer to an item
+   |
+LL -         Alias.$Ident
+LL +         <Alias>::$Ident
+   |
+
+error[E0423]: expected value, found type alias `Alias`
+  --> $DIR/dot-notation-type-namespace-suggest-path-sep.rs:87:9
+   |
+LL |         $Ty.$Ident
+   |         ^^^
+...
+LL |     let _ = check_ty_ident!(Alias, foo);
+   |             --------------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `check_ty_ident` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: use the path separator to refer to an item
+   |
+LL -         $Ty.$Ident
+LL +         <$Ty>::$Ident
+   |
+
+error: aborting due to 17 previous errors
+
+For more information about this error, try `rustc --explain E0423`.

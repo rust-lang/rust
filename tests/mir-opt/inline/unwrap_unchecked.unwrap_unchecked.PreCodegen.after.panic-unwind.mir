@@ -1,0 +1,33 @@
+// MIR for `unwrap_unchecked` after PreCodegen
+
+fn unwrap_unchecked(_1: Option<T>) -> T {
+    debug slf => _1;
+    let mut _0: T;
+    scope 1 (inlined #[track_caller] Option::<T>::unwrap_unchecked) {
+        let mut _2: isize;
+        scope 2 {
+        }
+        scope 3 (inlined #[track_caller] unreachable_unchecked) {
+            scope 4 (inlined core::ub_checks::check_language_ub) {
+                scope 5 (inlined core::ub_checks::check_language_ub::runtime) {
+                }
+            }
+        }
+    }
+
+    bb0: {
+        StorageLive(_2);
+        _2 = discriminant(_1);
+        switchInt(move _2) -> [0: bb2, 1: bb1, otherwise: bb2];
+    }
+
+    bb1: {
+        _0 = copy ((_1 as Some).0: T);
+        StorageDead(_2);
+        return;
+    }
+
+    bb2: {
+        unreachable;
+    }
+}

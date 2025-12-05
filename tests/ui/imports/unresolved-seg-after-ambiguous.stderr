@@ -1,0 +1,56 @@
+error[E0432]: unresolved import `self::a::E`
+  --> $DIR/unresolved-seg-after-ambiguous.rs:19:14
+   |
+LL | use self::a::E::in_exist;
+   |              ^ `E` is a struct, not a module
+
+error: `E` is ambiguous
+  --> $DIR/unresolved-seg-after-ambiguous.rs:19:14
+   |
+LL | use self::a::E::in_exist;
+   |              ^ ambiguous name
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #114095 <https://github.com/rust-lang/rust/issues/114095>
+   = note: ambiguous because of multiple glob imports of a name in the same module
+note: `E` could refer to the struct imported here
+  --> $DIR/unresolved-seg-after-ambiguous.rs:13:17
+   |
+LL |         pub use self::c::*;
+   |                 ^^^^^^^^^^
+   = help: consider adding an explicit import of `E` to disambiguate
+note: `E` could also refer to the struct imported here
+  --> $DIR/unresolved-seg-after-ambiguous.rs:12:17
+   |
+LL |         pub use self::d::*;
+   |                 ^^^^^^^^^^
+   = help: consider adding an explicit import of `E` to disambiguate
+   = note: `#[deny(ambiguous_glob_imports)]` (part of `#[deny(future_incompatible)]`) on by default
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0432`.
+Future incompatibility report: Future breakage diagnostic:
+error: `E` is ambiguous
+  --> $DIR/unresolved-seg-after-ambiguous.rs:19:14
+   |
+LL | use self::a::E::in_exist;
+   |              ^ ambiguous name
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #114095 <https://github.com/rust-lang/rust/issues/114095>
+   = note: ambiguous because of multiple glob imports of a name in the same module
+note: `E` could refer to the struct imported here
+  --> $DIR/unresolved-seg-after-ambiguous.rs:13:17
+   |
+LL |         pub use self::c::*;
+   |                 ^^^^^^^^^^
+   = help: consider adding an explicit import of `E` to disambiguate
+note: `E` could also refer to the struct imported here
+  --> $DIR/unresolved-seg-after-ambiguous.rs:12:17
+   |
+LL |         pub use self::d::*;
+   |                 ^^^^^^^^^^
+   = help: consider adding an explicit import of `E` to disambiguate
+   = note: `#[deny(ambiguous_glob_imports)]` (part of `#[deny(future_incompatible)]`) on by default
+

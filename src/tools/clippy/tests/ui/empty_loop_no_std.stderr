@@ -1,0 +1,12 @@
+error: empty `loop {}` wastes CPU cycles
+  --> tests/ui/empty_loop_no_std.rs:10:5
+   |
+LL |     loop {}
+   |     ^^^^^^^
+   |
+   = help: you should either use `panic!()` or add a call pausing or sleeping the thread to the loop body
+   = note: `-D clippy::empty-loop` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::empty_loop)]`
+
+error: aborting due to 1 previous error
+

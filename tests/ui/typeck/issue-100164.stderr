@@ -1,0 +1,14 @@
+error: missing type for `const` item
+  --> $DIR/issue-100164.rs:3:10
+   |
+LL | const _A: = 123;
+   |          ^ help: provide a type for the constant: `i32`
+
+error: missing type for `const` item
+  --> $DIR/issue-100164.rs:7:14
+   |
+LL |     const _B: = 123;
+   |              ^ help: provide a type for the constant: `i32`
+
+error: aborting due to 2 previous errors
+

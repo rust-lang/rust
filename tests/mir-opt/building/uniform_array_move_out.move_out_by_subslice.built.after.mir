@@ -1,0 +1,99 @@
+// MIR for `move_out_by_subslice` after built
+
+fn move_out_by_subslice() -> () {
+    let mut _0: ();
+    let _1: [std::boxed::Box<i32>; 2];
+    let mut _2: std::boxed::Box<i32>;
+    let mut _3: *mut u8;
+    let mut _4: std::boxed::Box<i32>;
+    let mut _5: std::boxed::Box<i32>;
+    let mut _6: *mut u8;
+    let mut _7: std::boxed::Box<i32>;
+    scope 1 {
+        debug a => _1;
+        let _8: [std::boxed::Box<i32>; 2];
+        scope 2 {
+            debug _y => _8;
+        }
+    }
+
+    bb0: {
+        StorageLive(_1);
+        StorageLive(_2);
+        _3 = alloc::alloc::exchange_malloc(const <i32 as std::mem::SizedTypeProperties>::SIZE, const <i32 as std::mem::SizedTypeProperties>::ALIGN) -> [return: bb1, unwind: bb13];
+    }
+
+    bb1: {
+        StorageLive(_4);
+        _4 = ShallowInitBox(move _3, i32);
+        (*_4) = const 1_i32;
+        _2 = move _4;
+        drop(_4) -> [return: bb2, unwind: bb12];
+    }
+
+    bb2: {
+        StorageDead(_4);
+        StorageLive(_5);
+        _6 = alloc::alloc::exchange_malloc(const <i32 as std::mem::SizedTypeProperties>::SIZE, const <i32 as std::mem::SizedTypeProperties>::ALIGN) -> [return: bb3, unwind: bb12];
+    }
+
+    bb3: {
+        StorageLive(_7);
+        _7 = ShallowInitBox(move _6, i32);
+        (*_7) = const 2_i32;
+        _5 = move _7;
+        drop(_7) -> [return: bb4, unwind: bb11];
+    }
+
+    bb4: {
+        StorageDead(_7);
+        _1 = [move _2, move _5];
+        drop(_5) -> [return: bb5, unwind: bb12];
+    }
+
+    bb5: {
+        StorageDead(_5);
+        drop(_2) -> [return: bb6, unwind: bb13];
+    }
+
+    bb6: {
+        StorageDead(_2);
+        FakeRead(ForLet(None), _1);
+        PlaceMention(_1);
+        StorageLive(_8);
+        _8 = move _1[0..2];
+        _0 = const ();
+        drop(_8) -> [return: bb8, unwind: bb10];
+    }
+
+    bb7: {
+        FakeRead(ForMatchedPlace(None), _1);
+        unreachable;
+    }
+
+    bb8: {
+        StorageDead(_8);
+        drop(_1) -> [return: bb9, unwind: bb13];
+    }
+
+    bb9: {
+        StorageDead(_1);
+        return;
+    }
+
+    bb10 (cleanup): {
+        drop(_1) -> [return: bb13, unwind terminate(cleanup)];
+    }
+
+    bb11 (cleanup): {
+        drop(_5) -> [return: bb12, unwind terminate(cleanup)];
+    }
+
+    bb12 (cleanup): {
+        drop(_2) -> [return: bb13, unwind terminate(cleanup)];
+    }
+
+    bb13 (cleanup): {
+        resume;
+    }
+}

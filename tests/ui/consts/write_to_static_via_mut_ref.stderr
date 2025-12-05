@@ -1,0 +1,23 @@
+error[E0764]: mutable borrows of temporaries that have their lifetime extended until the end of the program are not allowed
+  --> $DIR/write_to_static_via_mut_ref.rs:1:26
+   |
+LL | static OH_NO: &mut i32 = &mut 42;
+   |                          ^^^^^^^ this mutable borrow refers to such a temporary
+   |
+   = note: Temporaries in constants and statics can have their lifetime extended until the end of the program
+   = note: To avoid accidentally creating global mutable state, such temporaries must be immutable
+   = help: If you really want global mutable state, try replacing the temporary by an interior mutable `static` or a `static mut`
+
+error[E0594]: cannot assign to `*OH_NO`, as `OH_NO` is an immutable static item
+  --> $DIR/write_to_static_via_mut_ref.rs:4:5
+   |
+LL | static OH_NO: &mut i32 = &mut 42;
+   | ---------------------- this `static` cannot be written to
+...
+LL |     *OH_NO = 43;
+   |     ^^^^^^^^^^^ cannot assign
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0594, E0764.
+For more information about an error, try `rustc --explain E0594`.

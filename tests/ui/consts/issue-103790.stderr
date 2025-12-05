@@ -1,0 +1,54 @@
+error[E0403]: the name `S` is already used for a generic parameter in this item's generic parameters
+  --> $DIR/issue-103790.rs:4:29
+   |
+LL | struct S<const S: (), const S: S = { S }>;
+   |                -            ^ already used
+   |                |
+   |                first use of `S`
+
+error[E0107]: missing generics for struct `S`
+  --> $DIR/issue-103790.rs:4:32
+   |
+LL | struct S<const S: (), const S: S = { S }>;
+   |                                ^ expected at least 1 generic argument
+   |
+note: struct defined here, with at least 1 generic parameter: `S`
+  --> $DIR/issue-103790.rs:4:8
+   |
+LL | struct S<const S: (), const S: S = { S }>;
+   |        ^ -----------
+help: add missing generic argument
+   |
+LL | struct S<const S: (), const S: S<S> = { S }>;
+   |                                 +++
+
+error[E0391]: cycle detected when computing type of `S::S`
+  --> $DIR/issue-103790.rs:4:32
+   |
+LL | struct S<const S: (), const S: S = { S }>;
+   |                                ^
+   |
+   = note: ...which immediately requires computing type of `S::S` again
+note: cycle used when checking that `S` is well-formed
+  --> $DIR/issue-103790.rs:4:1
+   |
+LL | struct S<const S: (), const S: S = { S }>;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+
+error: `()` is forbidden as the type of a const generic parameter
+  --> $DIR/issue-103790.rs:4:19
+   |
+LL | struct S<const S: (), const S: S = { S }>;
+   |                   ^^
+   |
+   = note: the only supported types are integers, `bool`, and `char`
+help: add `#![feature(adt_const_params)]` to the crate attributes to enable more complex and user defined types
+   |
+LL + #![feature(adt_const_params)]
+   |
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0107, E0391, E0403.
+For more information about an error, try `rustc --explain E0107`.

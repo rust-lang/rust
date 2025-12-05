@@ -1,0 +1,57 @@
+error[E0308]: mismatched types
+  --> $DIR/conversion-methods.rs:5:41
+   |
+LL |     let _tis_an_instants_play: String = "'Tis a fond Ambush—";
+   |                                ------   ^^^^^^^^^^^^^^^^^^^^^ expected `String`, found `&str`
+   |                                |
+   |                                expected due to this
+   |
+help: try using a conversion method
+   |
+LL |     let _tis_an_instants_play: String = "'Tis a fond Ambush—".to_string();
+   |                                                              ++++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/conversion-methods.rs:6:40
+   |
+LL |     let _just_to_make_bliss: PathBuf = Path::new("/ern/her/own/surprise");
+   |                              -------   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `PathBuf`, found `&Path`
+   |                              |
+   |                              expected due to this
+   |
+help: try using a conversion method
+   |
+LL |     let _just_to_make_bliss: PathBuf = Path::new("/ern/her/own/surprise").to_path_buf();
+   |                                                                          ++++++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/conversion-methods.rs:9:40
+   |
+LL |     let _but_should_the_play: String = 2; // Perhaps surprisingly, we suggest .to_string() here
+   |                               ------   ^ expected `String`, found integer
+   |                               |
+   |                               expected due to this
+   |
+help: try using a conversion method
+   |
+LL |     let _but_should_the_play: String = 2.to_string(); // Perhaps surprisingly, we suggest .to_string() here
+   |                                         ++++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/conversion-methods.rs:12:47
+   |
+LL |     let _prove_piercing_earnest: Vec<usize> = &[1, 2, 3];
+   |                                  ----------   ^^^^^^^^^^ expected `Vec<usize>`, found `&[{integer}; 3]`
+   |                                  |
+   |                                  expected due to this
+   |
+   = note: expected struct `Vec<usize>`
+           found reference `&[{integer}; 3]`
+help: try using a conversion method
+   |
+LL |     let _prove_piercing_earnest: Vec<usize> = (&[1, 2, 3]).to_vec();
+   |                                               +          ++++++++++
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

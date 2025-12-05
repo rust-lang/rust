@@ -1,0 +1,11 @@
+error[E0606]: cannot cast `usize` to a pointer that is wide
+  --> $DIR/cast-macro-lhs.rs:8:23
+   |
+LL |     let x = foo!() as *const [u8];
+   |             ------    ^^^^^^^^^^^ creating a `*const [u8]` requires both an address and a length
+   |             |
+   |             consider casting this expression to `*const ()`, then using `core::ptr::from_raw_parts`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0606`.

@@ -1,0 +1,46 @@
+error: unsafe function's docs are missing a `# Safety` section
+  --> tests/ui/doc_unsafe.rs:9:1
+   |
+LL | pub unsafe fn destroy_the_planet() {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::missing-safety-doc` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::missing_safety_doc)]`
+
+error: unsafe function's docs are missing a `# Safety` section
+  --> tests/ui/doc_unsafe.rs:33:5
+   |
+LL |     pub unsafe fn republished() {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: unsafe function's docs are missing a `# Safety` section
+  --> tests/ui/doc_unsafe.rs:42:5
+   |
+LL |     unsafe fn woefully_underdocumented(self);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: docs for unsafe trait missing `# Safety` section
+  --> tests/ui/doc_unsafe.rs:49:1
+   |
+LL | pub unsafe trait UnsafeTrait {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: unsafe function's docs are missing a `# Safety` section
+  --> tests/ui/doc_unsafe.rs:80:5
+   |
+LL |     pub unsafe fn more_undocumented_unsafe() -> Self {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: unsafe function's docs are missing a `# Safety` section
+  --> tests/ui/doc_unsafe.rs:97:9
+   |
+LL |         pub unsafe fn whee() {
+   |         ^^^^^^^^^^^^^^^^^^^^
+...
+LL | very_unsafe!();
+   | -------------- in this macro invocation
+   |
+   = note: this error originates in the macro `very_unsafe` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 6 previous errors
+

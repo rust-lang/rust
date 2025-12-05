@@ -1,0 +1,24 @@
+error[E0038]: the trait `T` is not dyn compatible
+  --> $DIR/issue-87495.rs:4:25
+   |
+LL |     const CONST: (bool, dyn T);
+   |                         ^^^^^ `T` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/issue-87495.rs:4:11
+   |
+LL | trait T {
+   |       - this trait is not dyn compatible...
+LL |     const CONST: (bool, dyn T);
+   |           ^^^^^ ...because it contains this associated `const`
+   = help: consider moving `CONST` to another trait
+help: you might have meant to use `Self` to refer to the implementing type
+   |
+LL -     const CONST: (bool, dyn T);
+LL +     const CONST: (bool, Self);
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0038`.

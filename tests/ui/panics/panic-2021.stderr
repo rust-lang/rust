@@ -1,0 +1,42 @@
+error: format argument must be a string literal
+  --> $DIR/panic-2021.rs:4:12
+   |
+LL |     panic!(123);
+   |            ^^^
+   |
+help: you might be missing a string literal to format with
+   |
+LL |     panic!("{}", 123);
+   |            +++++
+
+error: 1 positional argument in format string, but no arguments were given
+  --> $DIR/panic-2021.rs:5:13
+   |
+LL |     panic!("{}");
+   |             ^^
+
+error: 1 positional argument in format string, but no arguments were given
+  --> $DIR/panic-2021.rs:6:19
+   |
+LL |     core::panic!("{}");
+   |                   ^^
+
+error: format argument must be a string literal
+  --> $DIR/panic-2021.rs:7:20
+   |
+LL |     assert!(false, 123);
+   |                    ^^^
+   |
+help: you might be missing a string literal to format with
+   |
+LL |     assert!(false, "{}", 123);
+   |                    +++++
+
+error: 1 positional argument in format string, but no arguments were given
+  --> $DIR/panic-2021.rs:8:21
+   |
+LL |     assert!(false, "{}");
+   |                     ^^
+
+error: aborting due to 5 previous errors
+

@@ -1,0 +1,14 @@
+error: invalid path separator in function definition
+  --> $DIR/invalid-path-sep-in-fn-definition-issue-130791.rs:4:26
+   |
+LL | fn invalid_path_separator::<T>() {}
+   |                          ^^
+   |
+help: remove invalid path separator
+   |
+LL - fn invalid_path_separator::<T>() {}
+LL + fn invalid_path_separator<T>() {}
+   |
+
+error: aborting due to 1 previous error
+

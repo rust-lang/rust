@@ -1,0 +1,32 @@
+error[E0425]: cannot find type `Missing` in this scope
+  --> $DIR/issue-118950-root-region.rs:19:55
+   |
+LL | impl<T> Overlap<for<'a> fn(Assoc<'a, T>)> for T where Missing: Overlap<T> {}
+   |                                                       ^^^^^^^ not found in this scope
+
+warning: the feature `lazy_type_alias` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/issue-118950-root-region.rs:5:12
+   |
+LL | #![feature(lazy_type_alias)]
+   |            ^^^^^^^^^^^^^^^
+   |
+   = note: see issue #112792 <https://github.com/rust-lang/rust/issues/112792> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+error[E0277]: the trait bound `*const T: ToUnit<'a>` is not satisfied
+  --> $DIR/issue-118950-root-region.rs:14:1
+   |
+LL | type Assoc<'a, T> = <*const T as ToUnit<'a>>::Unit;
+   | ^^^^^^^^^^^^^^^^^ the trait `ToUnit<'a>` is not implemented for `*const T`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/issue-118950-root-region.rs:8:1
+   |
+LL | trait ToUnit<'a> {
+   | ^^^^^^^^^^^^^^^^
+
+ WARN rustc_infer::infer::relate::generalize may incompletely handle alias type: AliasTy { args: ['^0.Named(DefId(0:15 ~ issue_118950_root_region[d54f]::{impl#1}::'a)), ?1t], def_id: DefId(0:8 ~ issue_118950_root_region[d54f]::Assoc), .. }
+error: aborting due to 2 previous errors; 1 warning emitted
+
+Some errors have detailed explanations: E0277, E0425.
+For more information about an error, try `rustc --explain E0277`.

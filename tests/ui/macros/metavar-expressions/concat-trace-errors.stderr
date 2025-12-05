@@ -1,0 +1,24 @@
+error: `${concat(..)}` is not generating a valid identifier
+  --> $DIR/concat-trace-errors.rs:17:24
+   |
+LL |         const _: () = ${concat("hi", $a, "bye")};
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | post_expansion!("!");
+   | -------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `post_expansion` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: `${concat(..)}` is not generating a valid identifier
+  --> $DIR/concat-trace-errors.rs:26:24
+   |
+LL |         const _: () = ${concat($a, $b, $c, $d, $e)};
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | post_expansion_many!(a, b, c, ".d", e);
+   | -------------------------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `post_expansion_many` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 2 previous errors
+

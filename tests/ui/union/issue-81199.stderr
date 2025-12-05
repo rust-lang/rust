@@ -1,0 +1,33 @@
+error[E0740]: field must implement `Copy` or be wrapped in `ManuallyDrop<...>` to be used in a union
+  --> $DIR/issue-81199.rs:5:5
+   |
+LL |     components: PtrComponents<T>,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: union fields must not have drop side-effects, which is currently enforced via either `Copy` or `ManuallyDrop<...>`
+help: wrap the field type in `ManuallyDrop<...>`
+   |
+LL |     components: std::mem::ManuallyDrop<PtrComponents<T>>,
+   |                 +++++++++++++++++++++++                +
+
+error[E0277]: the trait bound `T: Pointee` is not satisfied
+  --> $DIR/issue-81199.rs:5:17
+   |
+LL |     components: PtrComponents<T>,
+   |                 ^^^^^^^^^^^^^^^^ the trait `Pointee` is not implemented for `T`
+   |
+   = note: `T` implements similarly named trait `std::ptr::Pointee`, but not `Pointee`
+note: required by a bound in `PtrComponents`
+  --> $DIR/issue-81199.rs:11:25
+   |
+LL | struct PtrComponents<T: Pointee + ?Sized> {
+   |                         ^^^^^^^ required by this bound in `PtrComponents`
+help: consider further restricting type parameter `T` with trait `Pointee`
+   |
+LL | union PtrRepr<T: ?Sized + Pointee> {
+   |                         +++++++++
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0277, E0740.
+For more information about an error, try `rustc --explain E0277`.

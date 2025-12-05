@@ -1,0 +1,10 @@
+warning: trait `Meow` is never used
+  --> $DIR/type-alias-generic-param.rs:8:7
+   |
+LL | trait Meow {
+   |       ^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: 1 warning emitted
+

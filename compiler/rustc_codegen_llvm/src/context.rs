@@ -1,0 +1,1148 @@
+use std::borrow::{Borrow, Cow};
+use std::cell::{Cell, RefCell};
+use std::ffi::{CStr, c_char, c_uint};
+use std::marker::PhantomData;
+use std::ops::{Deref, DerefMut};
+use std::str;
+
+use rustc_abi::{HasDataLayout, Size, TargetDataLayout, VariantIdx};
+use rustc_codegen_ssa::back::versioned_llvm_target;
+use rustc_codegen_ssa::base::{wants_msvc_seh, wants_wasm_eh};
+use rustc_codegen_ssa::errors as ssa_errors;
+use rustc_codegen_ssa::traits::*;
+use rustc_data_structures::base_n::{ALPHANUMERIC_ONLY, ToBaseN};
+use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::small_c_str::SmallCStr;
+use rustc_hir::def_id::DefId;
+use rustc_middle::middle::codegen_fn_attrs::PatchableFunctionEntry;
+use rustc_middle::mir::mono::CodegenUnit;
+use rustc_middle::ty::layout::{
+    FnAbiError, FnAbiOfHelpers, FnAbiRequest, HasTypingEnv, LayoutError, LayoutOfHelpers,
+};
+use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
+use rustc_middle::{bug, span_bug};
+use rustc_session::Session;
+use rustc_session::config::{
+    BranchProtection, CFGuard, CFProtection, CrateType, DebugInfo, FunctionReturn, PAuthKey, PacRet,
+};
+use rustc_span::source_map::Spanned;
+use rustc_span::{DUMMY_SP, Span, Symbol};
+use rustc_symbol_mangling::mangle_internal_symbol;
+use rustc_target::spec::{
+    Abi, Arch, Env, HasTargetSpec, Os, RelocModel, SmallDataThresholdSupport, Target, TlsModel,
+};
+use smallvec::SmallVec;
+
+use crate::abi::to_llvm_calling_convention;
+use crate::back::write::to_llvm_code_model;
+use crate::callee::get_fn;
+use crate::debuginfo::metadata::apply_vcall_visibility_metadata;
+use crate::llvm::{self, Metadata, MetadataKindId, Module, Type, Value};
+use crate::{attributes, common, coverageinfo, debuginfo, llvm_util};
+
+/// `TyCtxt` (and related cache datastructures) can't be move between threads.
+/// However, there are various cx related functions which we want to be available to the builder and
+/// other compiler pieces. Here we define a small subset which has enough information and can be
+/// moved around more freely.
+pub(crate) struct SCx<'ll> {
+    pub llmod: &'ll llvm::Module,
+    pub llcx: &'ll llvm::Context,
+    pub isize_ty: &'ll Type,
+}
+
+impl<'ll> Borrow<SCx<'ll>> for FullCx<'ll, '_> {
+    fn borrow(&self) -> &SCx<'ll> {
+        &self.scx
+    }
+}
+
+impl<'ll, 'tcx> Deref for FullCx<'ll, 'tcx> {
+    type Target = SimpleCx<'ll>;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        &self.scx
+    }
+}
+
+pub(crate) struct GenericCx<'ll, T: Borrow<SCx<'ll>>>(T, PhantomData<SCx<'ll>>);
+
+impl<'ll, T: Borrow<SCx<'ll>>> Deref for GenericCx<'ll, T> {
+    type Target = T;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl<'ll, T: Borrow<SCx<'ll>>> DerefMut for GenericCx<'ll, T> {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+pub(crate) type SimpleCx<'ll> = GenericCx<'ll, SCx<'ll>>;
+
+/// There is one `CodegenCx` per codegen unit. Each one has its own LLVM
+/// `llvm::Context` so that several codegen units may be processed in parallel.
+/// All other LLVM data structures in the `CodegenCx` are tied to that `llvm::Context`.
+pub(crate) type CodegenCx<'ll, 'tcx> = GenericCx<'ll, FullCx<'ll, 'tcx>>;
+
+pub(crate) struct FullCx<'ll, 'tcx> {
+    pub tcx: TyCtxt<'tcx>,
+    pub scx: SimpleCx<'ll>,
+    pub use_dll_storage_attrs: bool,
+    pub tls_model: llvm::ThreadLocalMode,
+
+    pub codegen_unit: &'tcx CodegenUnit<'tcx>,
+
+    /// Cache instances of monomorphic and polymorphic items
+    pub instances: RefCell<FxHashMap<Instance<'tcx>, &'ll Value>>,
+    /// Cache generated vtables
+    pub vtables: RefCell<FxHashMap<(Ty<'tcx>, Option<ty::ExistentialTraitRef<'tcx>>), &'ll Value>>,
+    /// Cache of constant strings,
+    pub const_str_cache: RefCell<FxHashMap<String, &'ll Value>>,
+
+    /// Cache of emitted const globals (value -> global)
+    pub const_globals: RefCell<FxHashMap<&'ll Value, &'ll Value>>,
+
+    /// List of globals for static variables which need to be passed to the
+    /// LLVM function ReplaceAllUsesWith (RAUW) when codegen is complete.
+    /// (We have to make sure we don't invalidate any Values referring
+    /// to constants.)
+    pub statics_to_rauw: RefCell<Vec<(&'ll Value, &'ll Value)>>,
+
+    /// Statics that will be placed in the llvm.used variable
+    /// See <https://llvm.org/docs/LangRef.html#the-llvm-used-global-variable> for details
+    pub used_statics: Vec<&'ll Value>,
+
+    /// Statics that will be placed in the llvm.compiler.used variable
+    /// See <https://llvm.org/docs/LangRef.html#the-llvm-compiler-used-global-variable> for details
+    pub compiler_used_statics: RefCell<Vec<&'ll Value>>,
+
+    /// Mapping of non-scalar types to llvm types.
+    pub type_lowering: RefCell<FxHashMap<(Ty<'tcx>, Option<VariantIdx>), &'ll Type>>,
+
+    /// Mapping of scalar types to llvm types.
+    pub scalar_lltypes: RefCell<FxHashMap<Ty<'tcx>, &'ll Type>>,
+
+    /// Extra per-CGU codegen state needed when coverage instrumentation is enabled.
+    pub coverage_cx: Option<coverageinfo::CguCoverageContext<'ll, 'tcx>>,
+    pub dbg_cx: Option<debuginfo::CodegenUnitDebugContext<'ll, 'tcx>>,
+
+    eh_personality: Cell<Option<&'ll Value>>,
+    eh_catch_typeinfo: Cell<Option<&'ll Value>>,
+    pub rust_try_fn: Cell<Option<(&'ll Type, &'ll Value)>>,
+
+    intrinsics:
+        RefCell<FxHashMap<(Cow<'static, str>, SmallVec<[&'ll Type; 2]>), (&'ll Type, &'ll Value)>>,
+
+    /// A counter that is used for generating local symbol names
+    local_gen_sym_counter: Cell<usize>,
+
+    /// `codegen_static` will sometimes create a second global variable with a
+    /// different type and clear the symbol name of the original global.
+    /// `global_asm!` needs to be able to find this new global so that it can
+    /// compute the correct mangled symbol name to insert into the asm.
+    pub renamed_statics: RefCell<FxHashMap<DefId, &'ll Value>>,
+
+    /// Cached Objective-C class type
+    pub objc_class_t: Cell<Option<&'ll Type>>,
+
+    /// Cache of Objective-C class references
+    pub objc_classrefs: RefCell<FxHashMap<Symbol, &'ll Value>>,
+
+    /// Cache of Objective-C selector references
+    pub objc_selrefs: RefCell<FxHashMap<Symbol, &'ll Value>>,
+}
+
+fn to_llvm_tls_model(tls_model: TlsModel) -> llvm::ThreadLocalMode {
+    match tls_model {
+        TlsModel::GeneralDynamic => llvm::ThreadLocalMode::GeneralDynamic,
+        TlsModel::LocalDynamic => llvm::ThreadLocalMode::LocalDynamic,
+        TlsModel::InitialExec => llvm::ThreadLocalMode::InitialExec,
+        TlsModel::LocalExec => llvm::ThreadLocalMode::LocalExec,
+        TlsModel::Emulated => llvm::ThreadLocalMode::GeneralDynamic,
+    }
+}
+
+pub(crate) unsafe fn create_module<'ll>(
+    tcx: TyCtxt<'_>,
+    llcx: &'ll llvm::Context,
+    mod_name: &str,
+) -> &'ll llvm::Module {
+    let sess = tcx.sess;
+    let mod_name = SmallCStr::new(mod_name);
+    let llmod = unsafe { llvm::LLVMModuleCreateWithNameInContext(mod_name.as_ptr(), llcx) };
+
+    let cx = SimpleCx::new(llmod, llcx, tcx.data_layout.pointer_size());
+
+    let mut target_data_layout = sess.target.data_layout.to_string();
+    let llvm_version = llvm_util::get_version();
+
+    if llvm_version < (21, 0, 0) {
+        if sess.target.arch == Arch::Nvptx64 {
+            // LLVM 21 updated the default layout on nvptx: https://github.com/llvm/llvm-project/pull/124961
+            target_data_layout = target_data_layout.replace("e-p6:32:32-i64", "e-i64");
+        }
+        if sess.target.arch == Arch::AmdGpu {
+            // LLVM 21 adds the address width for address space 8.
+            // See https://github.com/llvm/llvm-project/pull/139419
+            target_data_layout = target_data_layout.replace("p8:128:128:128:48", "p8:128:128")
+        }
+    }
+    if llvm_version < (22, 0, 0) {
+        if sess.target.arch == Arch::Avr {
+            // LLVM 22.0 updated the default layout on avr: https://github.com/llvm/llvm-project/pull/153010
+            target_data_layout = target_data_layout.replace("n8:16", "n8")
+        }
+        if sess.target.arch == Arch::Nvptx64 {
+            // LLVM 22 updated the NVPTX layout to indicate 256-bit vector load/store: https://github.com/llvm/llvm-project/pull/155198
+            target_data_layout = target_data_layout.replace("-i256:256", "");
+        }
+    }
+
+    // Ensure the data-layout values hardcoded remain the defaults.
+    {
+        let tm = crate::back::write::create_informational_target_machine(sess, false);
+        unsafe {
+            llvm::LLVMRustSetDataLayoutFromTargetMachine(llmod, tm.raw());
+        }
+
+        let llvm_data_layout = unsafe { llvm::LLVMGetDataLayoutStr(llmod) };
+        let llvm_data_layout =
+            str::from_utf8(unsafe { CStr::from_ptr(llvm_data_layout) }.to_bytes())
+                .expect("got a non-UTF8 data-layout from LLVM");
+
+        if target_data_layout != llvm_data_layout {
+            tcx.dcx().emit_err(crate::errors::MismatchedDataLayout {
+                rustc_target: sess.opts.target_triple.to_string().as_str(),
+                rustc_layout: target_data_layout.as_str(),
+                llvm_target: sess.target.llvm_target.borrow(),
+                llvm_layout: llvm_data_layout,
+            });
+        }
+    }
+
+    let data_layout = SmallCStr::new(&target_data_layout);
+    unsafe {
+        llvm::LLVMSetDataLayout(llmod, data_layout.as_ptr());
+    }
+
+    let llvm_target = SmallCStr::new(&versioned_llvm_target(sess));
+    unsafe {
+        llvm::LLVMRustSetNormalizedTarget(llmod, llvm_target.as_ptr());
+    }
+
+    let reloc_model = sess.relocation_model();
+    if matches!(reloc_model, RelocModel::Pic | RelocModel::Pie) {
+        unsafe {
+            llvm::LLVMRustSetModulePICLevel(llmod);
+        }
+        // PIE is potentially more effective than PIC, but can only be used in executables.
+        // If all our outputs are executables, then we can relax PIC to PIE.
+        if reloc_model == RelocModel::Pie
+            || tcx.crate_types().iter().all(|ty| *ty == CrateType::Executable)
+        {
+            unsafe {
+                llvm::LLVMRustSetModulePIELevel(llmod);
+            }
+        }
+    }
+
+    // Linking object files with different code models is undefined behavior
+    // because the compiler would have to generate additional code (to span
+    // longer jumps) if a larger code model is used with a smaller one.
+    //
+    // See https://reviews.llvm.org/D52322 and https://reviews.llvm.org/D52323.
+    unsafe {
+        llvm::LLVMRustSetModuleCodeModel(llmod, to_llvm_code_model(sess.code_model()));
+    }
+
+    // If skipping the PLT is enabled, we need to add some module metadata
+    // to ensure intrinsic calls don't use it.
+    if !sess.needs_plt() {
+        llvm::add_module_flag_u32(llmod, llvm::ModuleFlagMergeBehavior::Warning, "RtLibUseGOT", 1);
+    }
+
+    // Enable canonical jump tables if CFI is enabled. (See https://reviews.llvm.org/D65629.)
+    if sess.is_sanitizer_cfi_canonical_jump_tables_enabled() && sess.is_sanitizer_cfi_enabled() {
+        llvm::add_module_flag_u32(
+            llmod,
+            llvm::ModuleFlagMergeBehavior::Override,
+            "CFI Canonical Jump Tables",
+            1,
+        );
+    }
+
+    // If we're normalizing integers with CFI, ensure LLVM generated functions do the same.
+    // See https://github.com/llvm/llvm-project/pull/104826
+    if sess.is_sanitizer_cfi_normalize_integers_enabled() {
+        llvm::add_module_flag_u32(
+            llmod,
+            llvm::ModuleFlagMergeBehavior::Override,
+            "cfi-normalize-integers",
+            1,
+        );
+    }
+
+    // Enable LTO unit splitting if specified or if CFI is enabled. (See
+    // https://reviews.llvm.org/D53891.)
+    if sess.is_split_lto_unit_enabled() || sess.is_sanitizer_cfi_enabled() {
+        llvm::add_module_flag_u32(
+            llmod,
+            llvm::ModuleFlagMergeBehavior::Override,
+            "EnableSplitLTOUnit",
+            1,
+        );
+    }
+
+    // Add "kcfi" module flag if KCFI is enabled. (See https://reviews.llvm.org/D119296.)
+    if sess.is_sanitizer_kcfi_enabled() {
+        llvm::add_module_flag_u32(llmod, llvm::ModuleFlagMergeBehavior::Override, "kcfi", 1);
+
+        // Add "kcfi-offset" module flag with -Z patchable-function-entry (See
+        // https://reviews.llvm.org/D141172).
+        let pfe =
+            PatchableFunctionEntry::from_config(sess.opts.unstable_opts.patchable_function_entry);
+        if pfe.prefix() > 0 {
+            llvm::add_module_flag_u32(
+                llmod,
+                llvm::ModuleFlagMergeBehavior::Override,
+                "kcfi-offset",
+                pfe.prefix().into(),
+            );
+        }
+
+        // Add "kcfi-arity" module flag if KCFI arity indicator is enabled. (See
+        // https://github.com/llvm/llvm-project/pull/117121.)
+        if sess.is_sanitizer_kcfi_arity_enabled() {
+            // KCFI arity indicator requires LLVM 21.0.0 or later.
+            if llvm_version < (21, 0, 0) {
+                tcx.dcx().emit_err(crate::errors::SanitizerKcfiArityRequiresLLVM2100);
+            }
+
+            llvm::add_module_flag_u32(
+                llmod,
+                llvm::ModuleFlagMergeBehavior::Override,
+                "kcfi-arity",
+                1,
+            );
+        }
+    }
+
+    // Control Flow Guard is currently only supported by MSVC and LLVM on Windows.
+    if sess.target.is_like_msvc
+        || (sess.target.options.os == Os::Windows
+            && sess.target.options.env == Env::Gnu
+            && sess.target.options.abi == Abi::Llvm)
+    {
+        match sess.opts.cg.control_flow_guard {
+            CFGuard::Disabled => {}
+            CFGuard::NoChecks => {
+                // Set `cfguard=1` module flag to emit metadata only.
+                llvm::add_module_flag_u32(
+                    llmod,
+                    llvm::ModuleFlagMergeBehavior::Warning,
+                    "cfguard",
+                    1,
+                );
+            }
+            CFGuard::Checks => {
+                // Set `cfguard=2` module flag to emit metadata and checks.
+                llvm::add_module_flag_u32(
+                    llmod,
+                    llvm::ModuleFlagMergeBehavior::Warning,
+                    "cfguard",
+                    2,
+                );
+            }
+        }
+    }
+
+    if let Some(regparm_count) = sess.opts.unstable_opts.regparm {
+        llvm::add_module_flag_u32(
+            llmod,
+            llvm::ModuleFlagMergeBehavior::Error,
+            "NumRegisterParameters",
+            regparm_count,
+        );
+    }
+
+    if let Some(BranchProtection { bti, pac_ret, gcs }) = sess.opts.unstable_opts.branch_protection
+    {
+        if sess.target.arch == Arch::AArch64 {
+            llvm::add_module_flag_u32(
+                llmod,
+                llvm::ModuleFlagMergeBehavior::Min,
+                "branch-target-enforcement",
+                bti.into(),
+            );
+            llvm::add_module_flag_u32(
+                llmod,
+                llvm::ModuleFlagMergeBehavior::Min,
+                "sign-return-address",
+                pac_ret.is_some().into(),
+            );
+            let pac_opts = pac_ret.unwrap_or(PacRet { leaf: false, pc: false, key: PAuthKey::A });
+            llvm::add_module_flag_u32(
+                llmod,
+                llvm::ModuleFlagMergeBehavior::Min,
+                "branch-protection-pauth-lr",
+                pac_opts.pc.into(),
+            );
+            llvm::add_module_flag_u32(
+                llmod,
+                llvm::ModuleFlagMergeBehavior::Min,
+                "sign-return-address-all",
+                pac_opts.leaf.into(),
+            );
+            llvm::add_module_flag_u32(
+                llmod,
+                llvm::ModuleFlagMergeBehavior::Min,
+                "sign-return-address-with-bkey",
+                u32::from(pac_opts.key == PAuthKey::B),
+            );
+            llvm::add_module_flag_u32(
+                llmod,
+                llvm::ModuleFlagMergeBehavior::Min,
+                "guarded-control-stack",
+                gcs.into(),
+            );
+        } else {
+            bug!(
+                "branch-protection used on non-AArch64 target; \
+                  this should be checked in rustc_session."
+            );
+        }
+    }
+
+    // Pass on the control-flow protection flags to LLVM (equivalent to `-fcf-protection` in Clang).
+    if let CFProtection::Branch | CFProtection::Full = sess.opts.unstable_opts.cf_protection {
+        llvm::add_module_flag_u32(
+            llmod,
+            llvm::ModuleFlagMergeBehavior::Override,
+            "cf-protection-branch",
+            1,
+        );
+    }
+    if let CFProtection::Return | CFProtection::Full = sess.opts.unstable_opts.cf_protection {
+        llvm::add_module_flag_u32(
+            llmod,
+            llvm::ModuleFlagMergeBehavior::Override,
+            "cf-protection-return",
+            1,
+        );
+    }
+
+    if sess.opts.unstable_opts.virtual_function_elimination {
+        llvm::add_module_flag_u32(
+            llmod,
+            llvm::ModuleFlagMergeBehavior::Error,
+            "Virtual Function Elim",
+            1,
+        );
+    }
+
+    // Set module flag to enable Windows EHCont Guard (/guard:ehcont).
+    if sess.opts.unstable_opts.ehcont_guard {
+        llvm::add_module_flag_u32(llmod, llvm::ModuleFlagMergeBehavior::Warning, "ehcontguard", 1);
+    }
+
+    match sess.opts.unstable_opts.function_return {
+        FunctionReturn::Keep => {}
+        FunctionReturn::ThunkExtern => {
+            llvm::add_module_flag_u32(
+                llmod,
+                llvm::ModuleFlagMergeBehavior::Override,
+                "function_return_thunk_extern",
+                1,
+            );
+        }
+    }
+
+    if sess.opts.unstable_opts.indirect_branch_cs_prefix {
+        llvm::add_module_flag_u32(
+            llmod,
+            llvm::ModuleFlagMergeBehavior::Override,
+            "indirect_branch_cs_prefix",
+            1,
+        );
+    }
+
+    match (sess.opts.unstable_opts.small_data_threshold, sess.target.small_data_threshold_support())
+    {
+        // Set up the small-data optimization limit for architectures that use
+        // an LLVM module flag to control this.
+        (Some(threshold), SmallDataThresholdSupport::LlvmModuleFlag(flag)) => {
+            llvm::add_module_flag_u32(
+                llmod,
+                llvm::ModuleFlagMergeBehavior::Error,
+                &flag,
+                threshold as u32,
+            );
+        }
+        _ => (),
+    };
+
+    // Insert `llvm.ident` metadata.
+    //
+    // On the wasm targets it will get hooked up to the "producer" sections
+    // `processed-by` information.
+    #[allow(clippy::option_env_unwrap)]
+    let rustc_producer =
+        format!("rustc version {}", option_env!("CFG_VERSION").expect("CFG_VERSION"));
+
+    let name_metadata = cx.create_metadata(rustc_producer.as_bytes());
+    cx.module_add_named_metadata_node(llmod, c"llvm.ident", &[name_metadata]);
+
+    // Emit RISC-V specific target-abi metadata
+    // to workaround lld as the LTO plugin not
+    // correctly setting target-abi for the LTO object
+    // FIXME: https://github.com/llvm/llvm-project/issues/50591
+    // If llvm_abiname is empty, emit nothing.
+    let llvm_abiname = &sess.target.options.llvm_abiname;
+    if matches!(sess.target.arch, Arch::RiscV32 | Arch::RiscV64) && !llvm_abiname.is_empty() {
+        llvm::add_module_flag_str(
+            llmod,
+            llvm::ModuleFlagMergeBehavior::Error,
+            "target-abi",
+            llvm_abiname,
+        );
+    }
+
+    // Add module flags specified via -Z llvm_module_flag
+    for (key, value, merge_behavior) in &sess.opts.unstable_opts.llvm_module_flag {
+        let merge_behavior = match merge_behavior.as_str() {
+            "error" => llvm::ModuleFlagMergeBehavior::Error,
+            "warning" => llvm::ModuleFlagMergeBehavior::Warning,
+            "require" => llvm::ModuleFlagMergeBehavior::Require,
+            "override" => llvm::ModuleFlagMergeBehavior::Override,
+            "append" => llvm::ModuleFlagMergeBehavior::Append,
+            "appendunique" => llvm::ModuleFlagMergeBehavior::AppendUnique,
+            "max" => llvm::ModuleFlagMergeBehavior::Max,
+            "min" => llvm::ModuleFlagMergeBehavior::Min,
+            // We already checked this during option parsing
+            _ => unreachable!(),
+        };
+        llvm::add_module_flag_u32(llmod, merge_behavior, key, *value);
+    }
+
+    llmod
+}
+
+impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
+    pub(crate) fn new(
+        tcx: TyCtxt<'tcx>,
+        codegen_unit: &'tcx CodegenUnit<'tcx>,
+        llvm_module: &'ll crate::ModuleLlvm,
+    ) -> Self {
+        // An interesting part of Windows which MSVC forces our hand on (and
+        // apparently MinGW didn't) is the usage of `dllimport` and `dllexport`
+        // attributes in LLVM IR as well as native dependencies (in C these
+        // correspond to `__declspec(dllimport)`).
+        //
+        // LD (BFD) in MinGW mode can often correctly guess `dllexport` but
+        // relying on that can result in issues like #50176.
+        // LLD won't support that and expects symbols with proper attributes.
+        // Because of that we make MinGW target emit dllexport just like MSVC.
+        // When it comes to dllimport we use it for constants but for functions
+        // rely on the linker to do the right thing. Opposed to dllexport this
+        // task is easy for them (both LD and LLD) and allows us to easily use
+        // symbols from static libraries in shared libraries.
+        //
+        // Whenever a dynamic library is built on Windows it must have its public
+        // interface specified by functions tagged with `dllexport` or otherwise
+        // they're not available to be linked against. This poses a few problems
+        // for the compiler, some of which are somewhat fundamental, but we use
+        // the `use_dll_storage_attrs` variable below to attach the `dllexport`
+        // attribute to all LLVM functions that are exported e.g., they're
+        // already tagged with external linkage). This is suboptimal for a few
+        // reasons:
+        //
+        // * If an object file will never be included in a dynamic library,
+        //   there's no need to attach the dllexport attribute. Most object
+        //   files in Rust are not destined to become part of a dll as binaries
+        //   are statically linked by default.
+        // * If the compiler is emitting both an rlib and a dylib, the same
+        //   source object file is currently used but with MSVC this may be less
+        //   feasible. The compiler may be able to get around this, but it may
+        //   involve some invasive changes to deal with this.
+        //
+        // The flip side of this situation is that whenever you link to a dll and
+        // you import a function from it, the import should be tagged with
+        // `dllimport`. At this time, however, the compiler does not emit
+        // `dllimport` for any declarations other than constants (where it is
+        // required), which is again suboptimal for even more reasons!
+        //
+        // * Calling a function imported from another dll without using
+        //   `dllimport` causes the linker/compiler to have extra overhead (one
+        //   `jmp` instruction on x86) when calling the function.
+        // * The same object file may be used in different circumstances, so a
+        //   function may be imported from a dll if the object is linked into a
+        //   dll, but it may be just linked against if linked into an rlib.
+        // * The compiler has no knowledge about whether native functions should
+        //   be tagged dllimport or not.
+        //
+        // For now the compiler takes the perf hit (I do not have any numbers to
+        // this effect) by marking very little as `dllimport` and praying the
+        // linker will take care of everything. Fixing this problem will likely
+        // require adding a few attributes to Rust itself (feature gated at the
+        // start) and then strongly recommending static linkage on Windows!
+        let use_dll_storage_attrs = tcx.sess.target.is_like_windows;
+
+        let tls_model = to_llvm_tls_model(tcx.sess.tls_model());
+
+        let (llcx, llmod) = (&*llvm_module.llcx, llvm_module.llmod());
+
+        let coverage_cx =
+            tcx.sess.instrument_coverage().then(coverageinfo::CguCoverageContext::new);
+
+        let dbg_cx = if tcx.sess.opts.debuginfo != DebugInfo::None {
+            let dctx = debuginfo::CodegenUnitDebugContext::new(llmod);
+            debuginfo::metadata::build_compile_unit_di_node(
+                tcx,
+                codegen_unit.name().as_str(),
+                &dctx,
+            );
+            Some(dctx)
+        } else {
+            None
+        };
+
+        GenericCx(
+            FullCx {
+                tcx,
+                scx: SimpleCx::new(llmod, llcx, tcx.data_layout.pointer_size()),
+                use_dll_storage_attrs,
+                tls_model,
+                codegen_unit,
+                instances: Default::default(),
+                vtables: Default::default(),
+                const_str_cache: Default::default(),
+                const_globals: Default::default(),
+                statics_to_rauw: RefCell::new(Vec::new()),
+                used_statics: Vec::new(),
+                compiler_used_statics: Default::default(),
+                type_lowering: Default::default(),
+                scalar_lltypes: Default::default(),
+                coverage_cx,
+                dbg_cx,
+                eh_personality: Cell::new(None),
+                eh_catch_typeinfo: Cell::new(None),
+                rust_try_fn: Cell::new(None),
+                intrinsics: Default::default(),
+                local_gen_sym_counter: Cell::new(0),
+                renamed_statics: Default::default(),
+                objc_class_t: Cell::new(None),
+                objc_classrefs: Default::default(),
+                objc_selrefs: Default::default(),
+            },
+            PhantomData,
+        )
+    }
+
+    pub(crate) fn statics_to_rauw(&self) -> &RefCell<Vec<(&'ll Value, &'ll Value)>> {
+        &self.statics_to_rauw
+    }
+
+    /// Extra state that is only available when coverage instrumentation is enabled.
+    #[inline]
+    #[track_caller]
+    pub(crate) fn coverage_cx(&self) -> &coverageinfo::CguCoverageContext<'ll, 'tcx> {
+        self.coverage_cx.as_ref().expect("only called when coverage instrumentation is enabled")
+    }
+
+    pub(crate) fn create_used_variable_impl(&self, name: &'static CStr, values: &[&'ll Value]) {
+        let array = self.const_array(self.type_ptr(), values);
+
+        let g = llvm::add_global(self.llmod, self.val_ty(array), name);
+        llvm::set_initializer(g, array);
+        llvm::set_linkage(g, llvm::Linkage::AppendingLinkage);
+        llvm::set_section(g, c"llvm.metadata");
+    }
+
+    /// The Objective-C ABI that is used.
+    ///
+    /// This corresponds to the `-fobjc-abi-version=` flag in Clang / GCC.
+    pub(crate) fn objc_abi_version(&self) -> u32 {
+        assert!(self.tcx.sess.target.is_like_darwin);
+        if self.tcx.sess.target.arch == Arch::X86 && self.tcx.sess.target.os == Os::MacOs {
+            // 32-bit x86 macOS uses ABI version 1 (a.k.a. the "fragile ABI").
+            1
+        } else {
+            // All other Darwin-like targets we support use ABI version 2
+            // (a.k.a the "non-fragile ABI").
+            2
+        }
+    }
+
+    // We do our best here to match what Clang does when compiling Objective-C natively.
+    // See Clang's `CGObjCCommonMac::EmitImageInfo`:
+    // https://github.com/llvm/llvm-project/blob/llvmorg-20.1.8/clang/lib/CodeGen/CGObjCMac.cpp#L5085
+    pub(crate) fn add_objc_module_flags(&self) {
+        let abi_version = self.objc_abi_version();
+
+        llvm::add_module_flag_u32(
+            self.llmod,
+            llvm::ModuleFlagMergeBehavior::Error,
+            "Objective-C Version",
+            abi_version,
+        );
+
+        llvm::add_module_flag_u32(
+            self.llmod,
+            llvm::ModuleFlagMergeBehavior::Error,
+            "Objective-C Image Info Version",
+            0,
+        );
+
+        llvm::add_module_flag_str(
+            self.llmod,
+            llvm::ModuleFlagMergeBehavior::Error,
+            "Objective-C Image Info Section",
+            match abi_version {
+                1 => "__OBJC,__image_info,regular",
+                2 => "__DATA,__objc_imageinfo,regular,no_dead_strip",
+                _ => unreachable!(),
+            },
+        );
+
+        if self.tcx.sess.target.env == Env::Sim {
+            llvm::add_module_flag_u32(
+                self.llmod,
+                llvm::ModuleFlagMergeBehavior::Error,
+                "Objective-C Is Simulated",
+                1 << 5,
+            );
+        }
+
+        llvm::add_module_flag_u32(
+            self.llmod,
+            llvm::ModuleFlagMergeBehavior::Error,
+            "Objective-C Class Properties",
+            1 << 6,
+        );
+    }
+}
+impl<'ll> SimpleCx<'ll> {
+    pub(crate) fn get_type_of_global(&self, val: &'ll Value) -> &'ll Type {
+        unsafe { llvm::LLVMGlobalGetValueType(val) }
+    }
+    pub(crate) fn val_ty(&self, v: &'ll Value) -> &'ll Type {
+        common::val_ty(v)
+    }
+}
+impl<'ll> SimpleCx<'ll> {
+    pub(crate) fn new(
+        llmod: &'ll llvm::Module,
+        llcx: &'ll llvm::Context,
+        pointer_size: Size,
+    ) -> Self {
+        let isize_ty = llvm::LLVMIntTypeInContext(llcx, pointer_size.bits() as c_uint);
+        Self(SCx { llmod, llcx, isize_ty }, PhantomData)
+    }
+}
+
+impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
+    pub(crate) fn get_metadata_value(&self, metadata: &'ll Metadata) -> &'ll Value {
+        llvm::LLVMMetadataAsValue(self.llcx(), metadata)
+    }
+
+    pub(crate) fn get_const_int(&self, ty: &'ll Type, val: u64) -> &'ll Value {
+        unsafe { llvm::LLVMConstInt(ty, val, llvm::FALSE) }
+    }
+
+    pub(crate) fn get_const_i64(&self, n: u64) -> &'ll Value {
+        self.get_const_int(self.type_i64(), n)
+    }
+
+    pub(crate) fn get_const_i32(&self, n: u64) -> &'ll Value {
+        self.get_const_int(self.type_i32(), n)
+    }
+
+    pub(crate) fn get_const_i16(&self, n: u64) -> &'ll Value {
+        self.get_const_int(self.type_i16(), n)
+    }
+
+    pub(crate) fn get_const_i8(&self, n: u64) -> &'ll Value {
+        self.get_const_int(self.type_i8(), n)
+    }
+
+    pub(crate) fn get_function(&self, name: &str) -> Option<&'ll Value> {
+        let name = SmallCStr::new(name);
+        unsafe { llvm::LLVMGetNamedFunction((**self).borrow().llmod, name.as_ptr()) }
+    }
+
+    pub(crate) fn get_md_kind_id(&self, name: &str) -> llvm::MetadataKindId {
+        unsafe {
+            llvm::LLVMGetMDKindIDInContext(
+                self.llcx(),
+                name.as_ptr() as *const c_char,
+                name.len() as c_uint,
+            )
+        }
+    }
+
+    pub(crate) fn create_metadata(&self, name: &[u8]) -> &'ll Metadata {
+        unsafe {
+            llvm::LLVMMDStringInContext2(self.llcx(), name.as_ptr() as *const c_char, name.len())
+        }
+    }
+
+    pub(crate) fn get_functions(&self) -> Vec<&'ll Value> {
+        let mut functions = vec![];
+        let mut func = unsafe { llvm::LLVMGetFirstFunction(self.llmod()) };
+        while let Some(f) = func {
+            functions.push(f);
+            func = unsafe { llvm::LLVMGetNextFunction(f) }
+        }
+        functions
+    }
+}
+
+impl<'ll, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
+    fn vtables(
+        &self,
+    ) -> &RefCell<FxHashMap<(Ty<'tcx>, Option<ty::ExistentialTraitRef<'tcx>>), &'ll Value>> {
+        &self.vtables
+    }
+
+    fn apply_vcall_visibility_metadata(
+        &self,
+        ty: Ty<'tcx>,
+        poly_trait_ref: Option<ty::ExistentialTraitRef<'tcx>>,
+        vtable: &'ll Value,
+    ) {
+        apply_vcall_visibility_metadata(self, ty, poly_trait_ref, vtable);
+    }
+
+    fn get_fn(&self, instance: Instance<'tcx>) -> &'ll Value {
+        get_fn(self, instance)
+    }
+
+    fn get_fn_addr(&self, instance: Instance<'tcx>) -> &'ll Value {
+        get_fn(self, instance)
+    }
+
+    fn eh_personality(&self) -> &'ll Value {
+        // The exception handling personality function.
+        //
+        // If our compilation unit has the `eh_personality` lang item somewhere
+        // within it, then we just need to codegen that. Otherwise, we're
+        // building an rlib which will depend on some upstream implementation of
+        // this function, so we just codegen a generic reference to it. We don't
+        // specify any of the types for the function, we just make it a symbol
+        // that LLVM can later use.
+        //
+        // Note that MSVC is a little special here in that we don't use the
+        // `eh_personality` lang item at all. Currently LLVM has support for
+        // both Dwarf and SEH unwind mechanisms for MSVC targets and uses the
+        // *name of the personality function* to decide what kind of unwind side
+        // tables/landing pads to emit. It looks like Dwarf is used by default,
+        // injecting a dependency on the `_Unwind_Resume` symbol for resuming
+        // an "exception", but for MSVC we want to force SEH. This means that we
+        // can't actually have the personality function be our standard
+        // `rust_eh_personality` function, but rather we wired it up to the
+        // CRT's custom personality function, which forces LLVM to consider
+        // landing pads as "landing pads for SEH".
+        if let Some(llpersonality) = self.eh_personality.get() {
+            return llpersonality;
+        }
+
+        let name = if wants_msvc_seh(self.sess()) {
+            Some("__CxxFrameHandler3")
+        } else if wants_wasm_eh(self.sess()) {
+            // LLVM specifically tests for the name of the personality function
+            // There is no need for this function to exist anywhere, it will
+            // not be called. However, its name has to be "__gxx_wasm_personality_v0"
+            // for native wasm exceptions.
+            Some("__gxx_wasm_personality_v0")
+        } else {
+            None
+        };
+
+        let tcx = self.tcx;
+        let llfn = match tcx.lang_items().eh_personality() {
+            Some(def_id) if name.is_none() => self.get_fn_addr(ty::Instance::expect_resolve(
+                tcx,
+                self.typing_env(),
+                def_id,
+                ty::List::empty(),
+                DUMMY_SP,
+            )),
+            _ => {
+                let name = name.unwrap_or("rust_eh_personality");
+                if let Some(llfn) = self.get_declared_value(name) {
+                    llfn
+                } else {
+                    let fty = self.type_variadic_func(&[], self.type_i32());
+                    let llfn = self.declare_cfn(name, llvm::UnnamedAddr::Global, fty);
+                    let target_cpu = attributes::target_cpu_attr(self, self.sess());
+                    attributes::apply_to_llfn(llfn, llvm::AttributePlace::Function, &[target_cpu]);
+                    llfn
+                }
+            }
+        };
+        self.eh_personality.set(Some(llfn));
+        llfn
+    }
+
+    fn sess(&self) -> &Session {
+        self.tcx.sess
+    }
+
+    fn set_frame_pointer_type(&self, llfn: &'ll Value) {
+        if let Some(attr) = attributes::frame_pointer_type_attr(self, self.sess()) {
+            attributes::apply_to_llfn(llfn, llvm::AttributePlace::Function, &[attr]);
+        }
+    }
+
+    fn apply_target_cpu_attr(&self, llfn: &'ll Value) {
+        let mut attrs = SmallVec::<[_; 2]>::new();
+        attrs.push(attributes::target_cpu_attr(self, self.sess()));
+        attrs.extend(attributes::tune_cpu_attr(self, self.sess()));
+        attributes::apply_to_llfn(llfn, llvm::AttributePlace::Function, &attrs);
+    }
+
+    fn declare_c_main(&self, fn_type: Self::Type) -> Option<Self::Function> {
+        let entry_name = self.sess().target.entry_name.as_ref();
+        if self.get_declared_value(entry_name).is_none() {
+            let llfn = self.declare_entry_fn(
+                entry_name,
+                to_llvm_calling_convention(self.sess(), self.sess().target.entry_abi),
+                llvm::UnnamedAddr::Global,
+                fn_type,
+            );
+            attributes::apply_to_llfn(
+                llfn,
+                llvm::AttributePlace::Function,
+                attributes::target_features_attr(self, self.tcx, vec![]).as_slice(),
+            );
+            Some(llfn)
+        } else {
+            // If the symbol already exists, it is an error: for example, the user wrote
+            // #[no_mangle] extern "C" fn main(..) {..}
+            None
+        }
+    }
+}
+
+impl<'ll> CodegenCx<'ll, '_> {
+    pub(crate) fn get_intrinsic(
+        &self,
+        base_name: Cow<'static, str>,
+        type_params: &[&'ll Type],
+    ) -> (&'ll Type, &'ll Value) {
+        *self
+            .intrinsics
+            .borrow_mut()
+            .entry((base_name, SmallVec::from_slice(type_params)))
+            .or_insert_with_key(|(base_name, type_params)| {
+                self.declare_intrinsic(base_name, type_params)
+            })
+    }
+
+    fn declare_intrinsic(
+        &self,
+        base_name: &str,
+        type_params: &[&'ll Type],
+    ) -> (&'ll Type, &'ll Value) {
+        // This isn't an "LLVM intrinsic", but LLVM's optimization passes
+        // recognize it like one (including turning it into `bcmp` sometimes)
+        // and we use it to implement intrinsics like `raw_eq` and `compare_bytes`
+        if base_name == "memcmp" {
+            let fn_ty = self
+                .type_func(&[self.type_ptr(), self.type_ptr(), self.type_isize()], self.type_int());
+            let f = self.declare_cfn("memcmp", llvm::UnnamedAddr::No, fn_ty);
+
+            return (fn_ty, f);
+        }
+
+        let intrinsic = llvm::Intrinsic::lookup(base_name.as_bytes())
+            .unwrap_or_else(|| bug!("Unknown intrinsic: `{base_name}`"));
+        let f = intrinsic.get_declaration(self.llmod, &type_params);
+
+        (self.get_type_of_global(f), f)
+    }
+
+    pub(crate) fn eh_catch_typeinfo(&self) -> &'ll Value {
+        if let Some(eh_catch_typeinfo) = self.eh_catch_typeinfo.get() {
+            return eh_catch_typeinfo;
+        }
+        let tcx = self.tcx;
+        assert!(self.sess().target.os == Os::Emscripten);
+        let eh_catch_typeinfo = match tcx.lang_items().eh_catch_typeinfo() {
+            Some(def_id) => self.get_static(def_id),
+            _ => {
+                let ty = self.type_struct(&[self.type_ptr(), self.type_ptr()], false);
+                self.declare_global(&mangle_internal_symbol(self.tcx, "rust_eh_catch_typeinfo"), ty)
+            }
+        };
+        self.eh_catch_typeinfo.set(Some(eh_catch_typeinfo));
+        eh_catch_typeinfo
+    }
+}
+
+impl CodegenCx<'_, '_> {
+    /// Generates a new symbol name with the given prefix. This symbol name must
+    /// only be used for definitions with `internal` or `private` linkage.
+    pub(crate) fn generate_local_symbol_name(&self, prefix: &str) -> String {
+        let idx = self.local_gen_sym_counter.get();
+        self.local_gen_sym_counter.set(idx + 1);
+        // Include a '.' character, so there can be no accidental conflicts with
+        // user defined names
+        let mut name = String::with_capacity(prefix.len() + 6);
+        name.push_str(prefix);
+        name.push('.');
+        name.push_str(&(idx as u64).to_base(ALPHANUMERIC_ONLY));
+        name
+    }
+}
+
+impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
+    /// Wrapper for `LLVMMDNodeInContext2`, i.e. `llvm::MDNode::get`.
+    pub(crate) fn md_node_in_context(&self, md_list: &[&'ll Metadata]) -> &'ll Metadata {
+        unsafe { llvm::LLVMMDNodeInContext2(self.llcx(), md_list.as_ptr(), md_list.len()) }
+    }
+
+    /// A wrapper for [`llvm::LLVMSetMetadata`], but it takes `Metadata` as a parameter instead of `Value`.
+    pub(crate) fn set_metadata<'a>(
+        &self,
+        val: &'a Value,
+        kind_id: MetadataKindId,
+        md: &'ll Metadata,
+    ) {
+        let node = self.get_metadata_value(md);
+        llvm::LLVMSetMetadata(val, kind_id, node);
+    }
+
+    /// Helper method for the sequence of calls:
+    /// - `LLVMMDNodeInContext2` (to create an `llvm::MDNode` from a list of metadata)
+    /// - `LLVMMetadataAsValue` (to adapt that node to an `llvm::Value`)
+    /// - `LLVMSetMetadata` (to set that node as metadata of `kind_id` for `instruction`)
+    pub(crate) fn set_metadata_node(
+        &self,
+        instruction: &'ll Value,
+        kind_id: MetadataKindId,
+        md_list: &[&'ll Metadata],
+    ) {
+        let md = self.md_node_in_context(md_list);
+        self.set_metadata(instruction, kind_id, md);
+    }
+
+    /// Helper method for the sequence of calls:
+    /// - `LLVMMDNodeInContext2` (to create an `llvm::MDNode` from a list of metadata)
+    /// - `LLVMMetadataAsValue` (to adapt that node to an `llvm::Value`)
+    /// - `LLVMAddNamedMetadataOperand` (to set that node as metadata of `kind_name` for `module`)
+    pub(crate) fn module_add_named_metadata_node(
+        &self,
+        module: &'ll Module,
+        kind_name: &CStr,
+        md_list: &[&'ll Metadata],
+    ) {
+        let md = self.md_node_in_context(md_list);
+        let md_as_val = self.get_metadata_value(md);
+        unsafe { llvm::LLVMAddNamedMetadataOperand(module, kind_name.as_ptr(), md_as_val) };
+    }
+
+    /// Helper method for the sequence of calls:
+    /// - `LLVMMDNodeInContext2` (to create an `llvm::MDNode` from a list of metadata)
+    /// - `LLVMRustGlobalAddMetadata` (to set that node as metadata of `kind_id` for `global`)
+    pub(crate) fn global_add_metadata_node(
+        &self,
+        global: &'ll Value,
+        kind_id: MetadataKindId,
+        md_list: &[&'ll Metadata],
+    ) {
+        let md = self.md_node_in_context(md_list);
+        unsafe { llvm::LLVMRustGlobalAddMetadata(global, kind_id, md) };
+    }
+
+    /// Helper method for the sequence of calls:
+    /// - `LLVMMDNodeInContext2` (to create an `llvm::MDNode` from a list of metadata)
+    /// - `LLVMGlobalSetMetadata` (to set that node as metadata of `kind_id` for `global`)
+    pub(crate) fn global_set_metadata_node(
+        &self,
+        global: &'ll Value,
+        kind_id: MetadataKindId,
+        md_list: &[&'ll Metadata],
+    ) {
+        let md = self.md_node_in_context(md_list);
+        unsafe { llvm::LLVMGlobalSetMetadata(global, kind_id, md) };
+    }
+}
+
+impl HasDataLayout for CodegenCx<'_, '_> {
+    #[inline]
+    fn data_layout(&self) -> &TargetDataLayout {
+        &self.tcx.data_layout
+    }
+}
+
+impl HasTargetSpec for CodegenCx<'_, '_> {
+    #[inline]
+    fn target_spec(&self) -> &Target {
+        &self.tcx.sess.target
+    }
+}
+
+impl<'tcx> ty::layout::HasTyCtxt<'tcx> for CodegenCx<'_, 'tcx> {
+    #[inline]
+    fn tcx(&self) -> TyCtxt<'tcx> {
+        self.tcx
+    }
+}
+
+impl<'tcx, 'll> HasTypingEnv<'tcx> for CodegenCx<'ll, 'tcx> {
+    fn typing_env(&self) -> ty::TypingEnv<'tcx> {
+        ty::TypingEnv::fully_monomorphized()
+    }
+}
+
+impl<'tcx> LayoutOfHelpers<'tcx> for CodegenCx<'_, 'tcx> {
+    #[inline]
+    fn handle_layout_err(&self, err: LayoutError<'tcx>, span: Span, ty: Ty<'tcx>) -> ! {
+        if let LayoutError::SizeOverflow(_)
+        | LayoutError::ReferencesError(_)
+        | LayoutError::InvalidSimd { .. } = err
+        {
+            self.tcx.dcx().emit_fatal(Spanned { span, node: err.into_diagnostic() })
+        } else {
+            self.tcx.dcx().emit_fatal(ssa_errors::FailedToGetLayout { span, ty, err })
+        }
+    }
+}
+
+impl<'tcx> FnAbiOfHelpers<'tcx> for CodegenCx<'_, 'tcx> {
+    #[inline]
+    fn handle_fn_abi_err(
+        &self,
+        err: FnAbiError<'tcx>,
+        span: Span,
+        fn_abi_request: FnAbiRequest<'tcx>,
+    ) -> ! {
+        match err {
+            FnAbiError::Layout(
+                LayoutError::SizeOverflow(_)
+                | LayoutError::Cycle(_)
+                | LayoutError::InvalidSimd { .. },
+            ) => {
+                self.tcx.dcx().emit_fatal(Spanned { span, node: err });
+            }
+            _ => match fn_abi_request {
+                FnAbiRequest::OfFnPtr { sig, extra_args } => {
+                    span_bug!(span, "`fn_abi_of_fn_ptr({sig}, {extra_args:?})` failed: {err:?}",);
+                }
+                FnAbiRequest::OfInstance { instance, extra_args } => {
+                    span_bug!(
+                        span,
+                        "`fn_abi_of_instance({instance}, {extra_args:?})` failed: {err:?}",
+                    );
+                }
+            },
+        }
+    }
+}

@@ -1,0 +1,40 @@
+error[E0080]: attempt to compute `u8::MAX + 1_u8`, which would overflow
+  --> $DIR/defaults-not-assumed-fail.rs:9:19
+   |
+LL |     const B: u8 = Self::A + 1;
+   |                   ^^^^^^^^^^^ evaluation of `<() as Tr>::B` failed here
+
+note: erroneous constant encountered
+  --> $DIR/defaults-not-assumed-fail.rs:34:16
+   |
+LL |     assert_eq!(<() as Tr>::B, 0);    // causes the error above
+   |                ^^^^^^^^^^^^^
+
+note: erroneous constant encountered
+  --> $DIR/defaults-not-assumed-fail.rs:34:16
+   |
+LL |     assert_eq!(<() as Tr>::B, 0);    // causes the error above
+   |                ^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+note: erroneous constant encountered
+  --> $DIR/defaults-not-assumed-fail.rs:34:5
+   |
+LL |     assert_eq!(<() as Tr>::B, 0);    // causes the error above
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this note originates in the macro `assert_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+note: erroneous constant encountered
+  --> $DIR/defaults-not-assumed-fail.rs:34:5
+   |
+LL |     assert_eq!(<() as Tr>::B, 0);    // causes the error above
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+   = note: this note originates in the macro `assert_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0080`.

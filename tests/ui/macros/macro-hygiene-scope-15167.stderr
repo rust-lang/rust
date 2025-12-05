@@ -1,0 +1,67 @@
+error[E0425]: cannot find value `n` in this scope
+  --> $DIR/macro-hygiene-scope-15167.rs:5:25
+   |
+LL | macro_rules! f { () => (n) }
+   |                         ^ not found in this scope
+...
+LL |         println!("{}", f!());
+   |                        ---- in this macro invocation
+   |
+help: an identifier with the same name exists, but is not accessible due to macro hygiene
+  --> $DIR/macro-hygiene-scope-15167.rs:12:9
+   |
+LL |     for n in 0..1 {
+   |         ^
+   = note: this error originates in the macro `f` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0425]: cannot find value `n` in this scope
+  --> $DIR/macro-hygiene-scope-15167.rs:5:25
+   |
+LL | macro_rules! f { () => (n) }
+   |                         ^ not found in this scope
+...
+LL |         println!("{}", f!());
+   |                        ---- in this macro invocation
+   |
+help: an identifier with the same name exists, but is not accessible due to macro hygiene
+  --> $DIR/macro-hygiene-scope-15167.rs:16:17
+   |
+LL |     if let Some(n) = None {
+   |                 ^
+   = note: this error originates in the macro `f` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0425]: cannot find value `n` in this scope
+  --> $DIR/macro-hygiene-scope-15167.rs:5:25
+   |
+LL | macro_rules! f { () => (n) }
+   |                         ^ not found in this scope
+...
+LL |         println!("{}", f!());
+   |                        ---- in this macro invocation
+   |
+help: an identifier with the same name exists, but is not accessible due to macro hygiene
+  --> $DIR/macro-hygiene-scope-15167.rs:21:24
+   |
+LL |     } else if let Some(n) = None {
+   |                        ^
+   = note: this error originates in the macro `f` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0425]: cannot find value `n` in this scope
+  --> $DIR/macro-hygiene-scope-15167.rs:5:25
+   |
+LL | macro_rules! f { () => (n) }
+   |                         ^ not found in this scope
+...
+LL |         println!("{}", f!());
+   |                        ---- in this macro invocation
+   |
+help: an identifier with the same name exists, but is not accessible due to macro hygiene
+  --> $DIR/macro-hygiene-scope-15167.rs:25:20
+   |
+LL |     while let Some(n) = None {
+   |                    ^
+   = note: this error originates in the macro `f` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0425`.

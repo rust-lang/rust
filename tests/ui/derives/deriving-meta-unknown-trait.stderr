@@ -1,0 +1,24 @@
+error: cannot find derive macro `Eqr` in this scope
+  --> $DIR/deriving-meta-unknown-trait.rs:1:10
+   |
+LL | #[derive(Eqr)]
+   |          ^^^ help: a derive macro with a similar name exists: `Eq`
+   |
+  --> $SRC_DIR/core/src/cmp.rs:LL:COL
+   |
+   = note: similarly named derive macro `Eq` defined here
+
+error: cannot find derive macro `Eqr` in this scope
+  --> $DIR/deriving-meta-unknown-trait.rs:1:10
+   |
+LL | #[derive(Eqr)]
+   |          ^^^ help: a derive macro with a similar name exists: `Eq`
+   |
+  --> $SRC_DIR/core/src/cmp.rs:LL:COL
+   |
+   = note: similarly named derive macro `Eq` defined here
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 2 previous errors
+

@@ -1,0 +1,67 @@
+error[E0433]: failed to resolve: use of undeclared type `TryFrom`
+  --> $DIR/suggest-tryinto-edition-change.rs:10:19
+   |
+LL |     let _i: i16 = TryFrom::try_from(0_i32).unwrap();
+   |                   ^^^^^^^ use of undeclared type `TryFrom`
+   |
+   = note: 'std::convert::TryFrom' is included in the prelude starting in Edition 2021
+help: consider importing this trait
+   |
+LL + use std::convert::TryFrom;
+   |
+
+error[E0433]: failed to resolve: use of undeclared type `TryInto`
+  --> $DIR/suggest-tryinto-edition-change.rs:15:19
+   |
+LL |     let _i: i16 = TryInto::try_into(0_i32).unwrap();
+   |                   ^^^^^^^ use of undeclared type `TryInto`
+   |
+   = note: 'std::convert::TryInto' is included in the prelude starting in Edition 2021
+help: consider importing this trait
+   |
+LL + use std::convert::TryInto;
+   |
+
+error[E0433]: failed to resolve: use of undeclared type `FromIterator`
+  --> $DIR/suggest-tryinto-edition-change.rs:20:22
+   |
+LL |     let _v: Vec<_> = FromIterator::from_iter(&[1]);
+   |                      ^^^^^^^^^^^^ use of undeclared type `FromIterator`
+   |
+   = note: 'std::iter::FromIterator' is included in the prelude starting in Edition 2021
+help: a trait with a similar name exists
+   |
+LL -     let _v: Vec<_> = FromIterator::from_iter(&[1]);
+LL +     let _v: Vec<_> = IntoIterator::from_iter(&[1]);
+   |
+help: consider importing this trait
+   |
+LL + use std::iter::FromIterator;
+   |
+
+error[E0599]: no method named `try_into` found for type `i32` in the current scope
+  --> $DIR/suggest-tryinto-edition-change.rs:6:25
+   |
+LL |     let _i: i16 = 0_i32.try_into().unwrap();
+   |                         ^^^^^^^^
+   |
+  --> $SRC_DIR/core/src/convert/mod.rs:LL:COL
+   |
+   = note: the method is available for `i32` here
+   |
+   = help: items from traits can only be used if the trait is in scope
+   = note: 'std::convert::TryInto' is included in the prelude starting in Edition 2021
+help: trait `TryInto` which provides `try_into` is implemented but not in scope; perhaps you want to import it
+   |
+LL + use std::convert::TryInto;
+   |
+help: there is a method `into` with a similar name
+   |
+LL -     let _i: i16 = 0_i32.try_into().unwrap();
+LL +     let _i: i16 = 0_i32.into().unwrap();
+   |
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0433, E0599.
+For more information about an error, try `rustc --explain E0433`.

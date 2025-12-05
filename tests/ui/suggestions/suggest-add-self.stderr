@@ -1,0 +1,29 @@
+error[E0424]: expected value, found module `self`
+  --> $DIR/suggest-add-self.rs:5:9
+   |
+LL |     pub(crate) fn f() {
+   |                   - this function doesn't have a `self` parameter
+LL |         self.0
+   |         ^^^^ `self` value is a keyword only available in methods with a `self` parameter
+   |
+help: add a `self` receiver parameter to make the associated `fn` a method
+   |
+LL |     pub(crate) fn f(&self) {
+   |                     +++++
+
+error[E0424]: expected value, found module `self`
+  --> $DIR/suggest-add-self.rs:10:9
+   |
+LL |     pub fn g() {
+   |            - this function doesn't have a `self` parameter
+LL |         self.0
+   |         ^^^^ `self` value is a keyword only available in methods with a `self` parameter
+   |
+help: add a `self` receiver parameter to make the associated `fn` a method
+   |
+LL |     pub fn g(&self) {
+   |              +++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0424`.

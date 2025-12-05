@@ -1,0 +1,4 @@
+warning: `-C inline-threshold`: this option is deprecated and does nothing (consider using `-Cllvm-args=--inline-threshold=...`)
+
+error: incorrect value `asd` for codegen option `inline-threshold` - a number was expected
+

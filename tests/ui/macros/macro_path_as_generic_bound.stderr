@@ -1,0 +1,11 @@
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `m`
+  --> $DIR/macro_path_as_generic_bound.rs:7:6
+   |
+LL | foo!(m::m2::A);
+   |      ^ use of unresolved module or unlinked crate `m`
+   |
+   = help: you might be missing a crate named `m`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0433`.

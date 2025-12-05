@@ -1,0 +1,62 @@
+error[E0507]: cannot move out of `self.v` which is behind a shared reference
+  --> $DIR/for-i-in-vec.rs:11:18
+   |
+LL |         for _ in self.v {
+   |                  ^^^^^^
+   |                  |
+   |                  `self.v` moved due to this implicit call to `.into_iter()`
+   |                  move occurs because `self.v` has type `Vec<u32>`, which does not implement the `Copy` trait
+   |
+note: `into_iter` takes ownership of the receiver `self`, which moves `self.v`
+  --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
+help: consider iterating over a slice of the `Vec<u32>`'s content to avoid moving into the `for` loop
+   |
+LL |         for _ in &self.v {
+   |                  +
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |         for _ in self.v.clone() {
+   |                        ++++++++
+
+error[E0507]: cannot move out of `self.h` which is behind a shared reference
+  --> $DIR/for-i-in-vec.rs:13:18
+   |
+LL |         for _ in self.h {
+   |                  ^^^^^^
+   |                  |
+   |                  `self.h` moved due to this implicit call to `.into_iter()`
+   |                  move occurs because `self.h` has type `HashMap<i32, i32>`, which does not implement the `Copy` trait
+   |
+help: consider iterating over a slice of the `HashMap<i32, i32>`'s content to avoid moving into the `for` loop
+   |
+LL |         for _ in &self.h {
+   |                  +
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |         for _ in self.h.clone() {
+   |                        ++++++++
+
+error[E0507]: cannot move out of a shared reference
+  --> $DIR/for-i-in-vec.rs:21:19
+   |
+LL |     for loader in *LOADERS {
+   |                   ^^^^^^^^
+   |                   |
+   |                   value moved due to this implicit call to `.into_iter()`
+   |                   move occurs because value has type `Vec<&u8>`, which does not implement the `Copy` trait
+   |
+note: `into_iter` takes ownership of the receiver `self`, which moves value
+  --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
+help: consider iterating over a slice of the `Vec<&u8>`'s content to avoid moving into the `for` loop
+   |
+LL |     for loader in &*LOADERS {
+   |                   +
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL -     for loader in *LOADERS {
+LL +     for loader in LOADERS.clone() {
+   |
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0507`.

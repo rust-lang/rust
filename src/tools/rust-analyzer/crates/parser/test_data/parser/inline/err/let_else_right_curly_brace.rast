@@ -1,0 +1,69 @@
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "func"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE " "
+        LET_STMT
+          LET_KW "let"
+          WHITESPACE " "
+          TUPLE_STRUCT_PAT
+            PATH
+              PATH_SEGMENT
+                NAME_REF
+                  IDENT "Some"
+            L_PAREN "("
+            WILDCARD_PAT
+              UNDERSCORE "_"
+            R_PAREN ")"
+          WHITESPACE " "
+          EQ "="
+          WHITESPACE " "
+          BLOCK_EXPR
+            STMT_LIST
+              L_CURLY "{"
+              CALL_EXPR
+                PATH_EXPR
+                  PATH
+                    PATH_SEGMENT
+                      NAME_REF
+                        IDENT "Some"
+                ARG_LIST
+                  L_PAREN "("
+                  LITERAL
+                    INT_NUMBER "1"
+                  R_PAREN ")"
+              R_CURLY "}"
+          WHITESPACE " "
+          LET_ELSE
+            ELSE_KW "else"
+            WHITESPACE " "
+            BLOCK_EXPR
+              STMT_LIST
+                L_CURLY "{"
+                WHITESPACE " "
+                MACRO_EXPR
+                  MACRO_CALL
+                    PATH
+                      PATH_SEGMENT
+                        NAME_REF
+                          IDENT "panic"
+                    BANG "!"
+                    TOKEN_TREE
+                      L_PAREN "("
+                      STRING "\"h\""
+                      R_PAREN ")"
+                WHITESPACE " "
+                R_CURLY "}"
+          SEMICOLON ";"
+        R_CURLY "}"
+  WHITESPACE "\n"
+error 35: right curly brace `}` before `else` in a `let...else` statement not allowed

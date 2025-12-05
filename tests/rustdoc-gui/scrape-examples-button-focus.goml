@@ -1,0 +1,47 @@
+// This test ensures that the scraped examples buttons are working as expecting
+// when 'Enter' key is pressed when they're focused.
+go-to: "file://" + |DOC_PATH| + "/scrape_examples/fn.test.html"
+
+// The next/prev buttons vertically scroll the code viewport between examples
+move-cursor-to: ".scraped-example-list > .scraped-example"
+wait-for: ".scraped-example-list > .scraped-example .next"
+store-value: (initialScrollTop, 236)
+assert-property: (".scraped-example-list > .scraped-example .rust", {
+    "scrollTop": |initialScrollTop|,
+}, NEAR)
+focus: ".scraped-example-list > .scraped-example .next"
+press-key: "Enter"
+assert-property-false: (".scraped-example-list > .scraped-example .rust", {
+    "scrollTop": |initialScrollTop|
+}, NEAR)
+focus: ".scraped-example-list > .scraped-example .prev"
+press-key: "Enter"
+assert-property: (".scraped-example-list > .scraped-example .rust", {
+    "scrollTop": |initialScrollTop|
+}, NEAR)
+
+// Make sure all the buttons are the same size
+store-property: (".scraped-example-list > .scraped-example .prev", {
+    "offsetWidth": buttonWidth,
+    "offsetHeight": buttonHeight,
+})
+assert-property: (".scraped-example-list > .scraped-example .prev", {
+    "offsetWidth": |buttonWidth|,
+    "offsetHeight": |buttonHeight|,
+    "title": "Previous usage",
+})
+assert-property: (".scraped-example-list > .scraped-example .next", {
+    "offsetWidth": |buttonWidth|,
+    "offsetHeight": |buttonHeight|,
+    "title": "Next usage",
+})
+assert-property: (".scraped-example-list > .scraped-example .expand", {
+    "offsetWidth": |buttonWidth|,
+    "offsetHeight": |buttonHeight|,
+    "title": "Show all",
+})
+assert-property: (".scraped-example-list > .scraped-example .copy-button", {
+    "offsetWidth": |buttonWidth|,
+    "offsetHeight": |buttonHeight|,
+    "title": "Copy code to clipboard",
+})

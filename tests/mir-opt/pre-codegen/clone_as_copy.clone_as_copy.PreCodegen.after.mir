@@ -1,0 +1,19 @@
+// MIR for `clone_as_copy` after PreCodegen
+
+fn clone_as_copy(_1: &NestCopy) -> NestCopy {
+    debug v => _1;
+    let mut _0: NestCopy;
+    scope 1 (inlined <NestCopy as Clone>::clone) {
+        debug self => _1;
+        let _2: &AllCopy;
+        scope 2 (inlined <AllCopy as Clone>::clone) {
+            debug self => _2;
+        }
+    }
+
+    bb0: {
+        // DBG: _2 = &((*_1).1: AllCopy);
+        _0 = copy (*_1);
+        return;
+    }
+}

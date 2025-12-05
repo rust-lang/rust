@@ -1,0 +1,51 @@
+error[E0133]: access to union field is unsafe and requires unsafe function or block
+  --> $DIR/union-assignop.rs:16:5
+   |
+LL |     foo.a += 5;
+   |     ^^^^^ access to union field
+   |
+   = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
+
+error[E0133]: access to union field is unsafe and requires unsafe function or block
+  --> $DIR/union-assignop.rs:17:6
+   |
+LL |     *foo.b += NonCopy;
+   |      ^^^^^ access to union field
+   |
+   = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
+
+error[E0133]: access to union field is unsafe and requires unsafe function or block
+  --> $DIR/union-assignop.rs:18:6
+   |
+LL |     *foo.b = NonCopy;
+   |      ^^^^^ access to union field
+   |
+   = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
+
+error[E0133]: access to union field is unsafe and requires unsafe function or block
+  --> $DIR/union-assignop.rs:20:5
+   |
+LL |     foo.a;
+   |     ^^^^^ access to union field
+   |
+   = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
+
+error[E0133]: access to union field is unsafe and requires unsafe function or block
+  --> $DIR/union-assignop.rs:22:5
+   |
+LL |     foo.b;
+   |     ^^^^^ access to union field
+   |
+   = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
+
+error[E0133]: access to union field is unsafe and requires unsafe function or block
+  --> $DIR/union-assignop.rs:24:13
+   |
+LL |     foo.b = foo.b;
+   |             ^^^^^ access to union field
+   |
+   = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0133`.

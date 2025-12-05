@@ -1,0 +1,49 @@
+- // MIR for `map` before SimplifyLocals-before-const-prop
++ // MIR for `map` after SimplifyLocals-before-const-prop
+  
+  fn map(_1: Option<Box<()>>) -> Option<Box<()>> {
+      debug x => _1;
+      let mut _0: std::option::Option<std::boxed::Box<()>>;
+      let mut _2: isize;
+      let _3: std::boxed::Box<()>;
+      let mut _4: std::boxed::Box<()>;
+-     let mut _5: bool;
+-     let mut _6: isize;
+-     let mut _7: isize;
+      scope 1 {
+          debug x => _3;
+      }
+  
+      bb0: {
+-         _5 = const false;
+-         _5 = const true;
+          _2 = discriminant(_1);
+          switchInt(move _2) -> [0: bb3, 1: bb2, otherwise: bb1];
+      }
+  
+      bb1: {
+          unreachable;
+      }
+  
+      bb2: {
+          StorageLive(_3);
+          _3 = move ((_1 as Some).0: std::boxed::Box<()>);
+          StorageLive(_4);
+          _4 = move _3;
+          _0 = Option::<Box<()>>::Some(move _4);
+          StorageDead(_4);
+          StorageDead(_3);
+          goto -> bb4;
+      }
+  
+      bb3: {
+          _0 = Option::<Box<()>>::None;
+          goto -> bb4;
+      }
+  
+      bb4: {
+-         _6 = discriminant(_1);
+          return;
+      }
+  }
+  

@@ -1,0 +1,16 @@
+warning: unused `offset_of` call that must be used
+  --> $DIR/offset-of-must-use.rs:6:5
+   |
+LL |     core::mem::offset_of!((String,), 0);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the `offset_of` call produces a value
+   |
+note: the lint level is defined here
+  --> $DIR/offset-of-must-use.rs:3:9
+   |
+LL | #![warn(unused)]
+   |         ^^^^^^
+   = note: `#[warn(unused_must_use)]` implied by `#[warn(unused)]`
+   = note: this warning originates in the macro `core::mem::offset_of` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: 1 warning emitted
+

@@ -1,0 +1,40 @@
+error[E0492]: interior mutable shared borrows of temporaries that have their lifetime extended until the end of the program are not allowed
+  --> $DIR/refs-to-cell-in-final.rs:13:54
+   |
+LL | static RAW_SYNC_S: SyncPtr<Cell<i32>> = SyncPtr { x: &Cell::new(42) };
+   |                                                      ^^^^^^^^^^^^^^ this borrow of an interior mutable value refers to such a temporary
+   |
+   = note: Temporaries in constants and statics can have their lifetime extended until the end of the program
+   = note: To avoid accidentally creating global mutable state, such temporaries must be immutable
+   = help: If you really want global mutable state, try replacing the temporary by an interior mutable `static` or a `static mut`
+
+error[E0492]: interior mutable shared borrows of temporaries that have their lifetime extended until the end of the program are not allowed
+  --> $DIR/refs-to-cell-in-final.rs:15:53
+   |
+LL | const RAW_SYNC_C: SyncPtr<Cell<i32>> = SyncPtr { x: &Cell::new(42) };
+   |                                                     ^^^^^^^^^^^^^^ this borrow of an interior mutable value refers to such a temporary
+   |
+   = note: Temporaries in constants and statics can have their lifetime extended until the end of the program
+   = note: To avoid accidentally creating global mutable state, such temporaries must be immutable
+   = help: If you really want global mutable state, try replacing the temporary by an interior mutable `static` or a `static mut`
+
+error[E0492]: interior mutable shared borrows of temporaries that have their lifetime extended until the end of the program are not allowed
+  --> $DIR/refs-to-cell-in-final.rs:41:57
+   |
+LL |   const INTERIOR_MUT_VARIANT: &Option<UnsafeCell<bool>> = &{
+   |  _________________________________________________________^
+LL | |
+LL | |     let mut x = None;
+LL | |     assert!(x.is_none());
+LL | |     x = Some(UnsafeCell::new(false));
+LL | |     x
+LL | | };
+   | |_^ this borrow of an interior mutable value refers to such a temporary
+   |
+   = note: Temporaries in constants and statics can have their lifetime extended until the end of the program
+   = note: To avoid accidentally creating global mutable state, such temporaries must be immutable
+   = help: If you really want global mutable state, try replacing the temporary by an interior mutable `static` or a `static mut`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0492`.

@@ -1,0 +1,15 @@
+warning: extern crate `bar` is unused in crate `warn_attr`
+  --> $DIR/warn-attr.rs:7:1
+   |
+LL | #![warn(unused_crate_dependencies)]
+   | ^
+   |
+   = help: remove the dependency or add `use bar as _;` to the crate root
+note: the lint level is defined here
+  --> $DIR/warn-attr.rs:7:9
+   |
+LL | #![warn(unused_crate_dependencies)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: 1 warning emitted
+

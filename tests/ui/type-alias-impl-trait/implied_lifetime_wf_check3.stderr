@@ -1,0 +1,43 @@
+error: lifetime may not live long enough
+  --> $DIR/implied_lifetime_wf_check3.rs:15:5
+   |
+LL | fn test_lifetime_param_test<'a>()
+   |                             -- lifetime `'a` defined here
+...
+LL |     test_lifetime_param::assert_static::<'a>()
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ requires that `'a` must outlive `'static`
+
+error: lifetime may not live long enough
+  --> $DIR/implied_lifetime_wf_check3.rs:31:5
+   |
+LL | fn test_higher_kinded_lifetime_param_test<'a>()
+   |                                           -- lifetime `'a` defined here
+...
+LL |     test_higher_kinded_lifetime_param::assert_static::<'a>()
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ requires that `'a` must outlive `'static`
+
+error: lifetime may not live long enough
+  --> $DIR/implied_lifetime_wf_check3.rs:38:9
+   |
+LL |     fn test<'a>() {
+   |             -- lifetime `'a` defined here
+LL |         assert_static::<'a>()
+   |         ^^^^^^^^^^^^^^^^^^^ requires that `'a` must outlive `'static`
+
+error[E0310]: the parameter type `A` may not live long enough
+  --> $DIR/implied_lifetime_wf_check3.rs:55:5
+   |
+LL |     test_type_param::assert_static::<A>()
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     |
+   |     the parameter type `A` must be valid for the static lifetime...
+   |     ...so that the type `A` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL | fn test_type_param_test<A: 'static>()
+   |                          +++++++++
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0310`.

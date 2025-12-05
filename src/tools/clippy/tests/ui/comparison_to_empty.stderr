@@ -1,0 +1,83 @@
+error: comparison to empty slice
+  --> tests/ui/comparison_to_empty.rs:7:13
+   |
+LL |     let _ = s == "";
+   |             ^^^^^^^ help: using `is_empty` is clearer and more explicit: `s.is_empty()`
+   |
+   = note: `-D clippy::comparison-to-empty` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::comparison_to_empty)]`
+
+error: comparison to empty slice
+  --> tests/ui/comparison_to_empty.rs:9:13
+   |
+LL |     let _ = s != "";
+   |             ^^^^^^^ help: using `!is_empty` is clearer and more explicit: `!s.is_empty()`
+
+error: comparison to empty slice
+  --> tests/ui/comparison_to_empty.rs:13:13
+   |
+LL |     let _ = v == [];
+   |             ^^^^^^^ help: using `is_empty` is clearer and more explicit: `v.is_empty()`
+
+error: comparison to empty slice
+  --> tests/ui/comparison_to_empty.rs:15:13
+   |
+LL |     let _ = v != [];
+   |             ^^^^^^^ help: using `!is_empty` is clearer and more explicit: `!v.is_empty()`
+
+error: comparison to empty slice using `if let`
+  --> tests/ui/comparison_to_empty.rs:17:8
+   |
+LL |     if let [] = &*v {}
+   |        ^^^^^^^^^^^^ help: using `is_empty` is clearer and more explicit: `(*v).is_empty()`
+
+error: comparison to empty slice using `if let`
+  --> tests/ui/comparison_to_empty.rs:20:8
+   |
+LL |     if let [] = s {}
+   |        ^^^^^^^^^^ help: using `is_empty` is clearer and more explicit: `s.is_empty()`
+
+error: comparison to empty slice using `if let`
+  --> tests/ui/comparison_to_empty.rs:22:8
+   |
+LL |     if let [] = &*s {}
+   |        ^^^^^^^^^^^^ help: using `is_empty` is clearer and more explicit: `s.is_empty()`
+
+error: comparison to empty slice using `if let`
+  --> tests/ui/comparison_to_empty.rs:24:8
+   |
+LL |     if let [] = &*s
+   |        ^^^^^^^^^^^^ help: using `is_empty` is clearer and more explicit: `s.is_empty()`
+
+error: comparison to empty slice
+  --> tests/ui/comparison_to_empty.rs:26:12
+   |
+LL |         && s == []
+   |            ^^^^^^^ help: using `is_empty` is clearer and more explicit: `s.is_empty()`
+
+error: comparison to empty slice
+  --> tests/ui/comparison_to_empty.rs:47:13
+   |
+LL |     let _ = s.eq("");
+   |             ^^^^^^^^ help: using `is_empty` is clearer and more explicit: `s.is_empty()`
+
+error: comparison to empty slice
+  --> tests/ui/comparison_to_empty.rs:49:13
+   |
+LL |     let _ = s.ne("");
+   |             ^^^^^^^^ help: using `!is_empty` is clearer and more explicit: `!s.is_empty()`
+
+error: comparison to empty slice
+  --> tests/ui/comparison_to_empty.rs:52:13
+   |
+LL |     let _ = v.eq(&[]);
+   |             ^^^^^^^^^ help: using `is_empty` is clearer and more explicit: `v.is_empty()`
+
+error: comparison to empty slice
+  --> tests/ui/comparison_to_empty.rs:54:13
+   |
+LL |     let _ = v.ne(&[]);
+   |             ^^^^^^^^^ help: using `!is_empty` is clearer and more explicit: `!v.is_empty()`
+
+error: aborting due to 13 previous errors
+

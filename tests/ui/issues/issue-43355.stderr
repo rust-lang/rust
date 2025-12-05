@@ -1,0 +1,14 @@
+error[E0119]: conflicting implementations of trait `Trait1<Box<_>>` for type `A`
+  --> $DIR/issue-43355.rs:15:1
+   |
+LL | impl<X, T> Trait1<X> for T where T: Trait2<X> {
+   | --------------------------------------------- first implementation here
+...
+LL | impl<X> Trait1<Box<X>> for A {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `A`
+   |
+   = note: downstream crates may implement trait `Trait2<std::boxed::Box<_>>` for type `A`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0119`.

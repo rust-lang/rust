@@ -1,0 +1,101 @@
+- // MIR for `test` before GVN
++ // MIR for `test` after GVN
+  
+  fn test() -> () {
+      let mut _0: ();
+      let _1: &std::boxed::Box<()>;
+      let _2: &std::boxed::Box<()>;
+      let _3: std::boxed::Box<()>;
+      let mut _4: ();
+      let mut _7: *const ();
+      let mut _9: *const [()];
+      let mut _10: std::boxed::Box<()>;
+      let mut _11: *const ();
+      let mut _12: usize;
+      scope 1 {
+          debug vp_ctx => _1;
+          let _5: *const ();
+          scope 2 {
+              debug slf => _5;
+              let _6: *const [()];
+              scope 3 {
+                  debug bytes => _6;
+                  let _8: *mut ();
+                  scope 4 {
+                      debug _x => _8;
+                  }
+                  scope 7 (inlined foo) {
+                      let mut _13: *const [()];
+                  }
+              }
+              scope 5 (inlined slice_from_raw_parts::<()>) {
+                  scope 6 (inlined std::ptr::from_raw_parts::<[()], ()>) {
+                  }
+              }
+          }
+      }
+  
+      bb0: {
+          StorageLive(_1);
+-         StorageLive(_2);
++         nop;
+          StorageLive(_3);
+          StorageLive(_4);
+-         _4 = ();
+-         _3 = Box::<()>::new(move _4) -> [return: bb1, unwind continue];
++         _4 = const ();
++         _3 = Box::<()>::new(const ()) -> [return: bb1, unwind continue];
+      }
+  
+      bb1: {
+          StorageDead(_4);
+          _2 = &_3;
+          _1 = &(*_2);
+-         StorageDead(_2);
+-         StorageLive(_5);
+-         _10 = copy (*_1);
++         nop;
++         nop;
++         _10 = copy (*_2);
+          _11 = copy ((_10.0: std::ptr::Unique<()>).0: std::ptr::NonNull<()>) as *const () (Transmute);
+          _5 = &raw const (*_11);
+-         StorageLive(_6);
++         nop;
+          StorageLive(_7);
+          _7 = copy _5;
+          StorageLive(_12);
+          _12 = const 1_usize;
+-         _6 = *const [()] from (copy _7, copy _12);
++         _6 = *const [()] from (copy _5, const 1_usize);
+          StorageDead(_12);
+          StorageDead(_7);
+          StorageLive(_8);
+          StorageLive(_9);
+          _9 = copy _6;
+          StorageLive(_13);
+-         _13 = copy _9;
+-         _8 = copy _9 as *mut () (PtrToPtr);
++         _13 = copy _6;
++         _8 = copy _5 as *mut () (PtrToPtr);
+          StorageDead(_13);
+          StorageDead(_9);
+          _0 = const ();
+          StorageDead(_8);
+-         StorageDead(_6);
+-         StorageDead(_5);
++         nop;
++         nop;
+          drop(_3) -> [return: bb2, unwind: bb3];
+      }
+  
+      bb2: {
+          StorageDead(_3);
+          StorageDead(_1);
+          return;
+      }
+  
+      bb3 (cleanup): {
+          resume;
+      }
+  }
+  

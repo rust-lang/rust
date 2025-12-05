@@ -1,0 +1,196 @@
+error: the loop variable `i` is only used to index `vec`
+  --> tests/ui/needless_range_loop.rs:16:14
+   |
+LL |     for i in 0..vec.len() {
+   |              ^^^^^^^^^^^^
+   |
+   = note: `-D clippy::needless-range-loop` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::needless_range_loop)]`
+help: consider using an iterator
+   |
+LL -     for i in 0..vec.len() {
+LL +     for <item> in &vec {
+   |
+
+error: the loop variable `i` is only used to index `vec`
+  --> tests/ui/needless_range_loop.rs:27:14
+   |
+LL |     for i in 0..vec.len() {
+   |              ^^^^^^^^^^^^
+   |
+help: consider using an iterator
+   |
+LL -     for i in 0..vec.len() {
+LL +     for <item> in &vec {
+   |
+
+error: the loop variable `j` is only used to index `STATIC`
+  --> tests/ui/needless_range_loop.rs:34:14
+   |
+LL |     for j in 0..4 {
+   |              ^^^^
+   |
+help: consider using an iterator
+   |
+LL -     for j in 0..4 {
+LL +     for <item> in &STATIC {
+   |
+
+error: the loop variable `j` is only used to index `CONST`
+  --> tests/ui/needless_range_loop.rs:40:14
+   |
+LL |     for j in 0..4 {
+   |              ^^^^
+   |
+help: consider using an iterator
+   |
+LL -     for j in 0..4 {
+LL +     for <item> in &CONST {
+   |
+
+error: the loop variable `i` is used to index `vec`
+  --> tests/ui/needless_range_loop.rs:46:14
+   |
+LL |     for i in 0..vec.len() {
+   |              ^^^^^^^^^^^^
+   |
+help: consider using an iterator and enumerate()
+   |
+LL -     for i in 0..vec.len() {
+LL +     for (i, <item>) in vec.iter().enumerate() {
+   |
+
+error: the loop variable `i` is only used to index `vec2`
+  --> tests/ui/needless_range_loop.rs:56:14
+   |
+LL |     for i in 0..vec.len() {
+   |              ^^^^^^^^^^^^
+   |
+help: consider using an iterator
+   |
+LL -     for i in 0..vec.len() {
+LL +     for <item> in vec2.iter().take(vec.len()) {
+   |
+
+error: the loop variable `i` is only used to index `vec`
+  --> tests/ui/needless_range_loop.rs:62:14
+   |
+LL |     for i in 5..vec.len() {
+   |              ^^^^^^^^^^^^
+   |
+help: consider using an iterator
+   |
+LL -     for i in 5..vec.len() {
+LL +     for <item> in vec.iter().skip(5) {
+   |
+
+error: the loop variable `i` is only used to index `vec`
+  --> tests/ui/needless_range_loop.rs:68:14
+   |
+LL |     for i in 0..MAX_LEN {
+   |              ^^^^^^^^^^
+   |
+help: consider using an iterator
+   |
+LL -     for i in 0..MAX_LEN {
+LL +     for <item> in vec.iter().take(MAX_LEN) {
+   |
+
+error: the loop variable `i` is only used to index `vec`
+  --> tests/ui/needless_range_loop.rs:74:14
+   |
+LL |     for i in 0..=MAX_LEN {
+   |              ^^^^^^^^^^^
+   |
+help: consider using an iterator
+   |
+LL -     for i in 0..=MAX_LEN {
+LL +     for <item> in vec.iter().take(MAX_LEN + 1) {
+   |
+
+error: the loop variable `i` is only used to index `vec`
+  --> tests/ui/needless_range_loop.rs:80:14
+   |
+LL |     for i in 5..10 {
+   |              ^^^^^
+   |
+help: consider using an iterator
+   |
+LL -     for i in 5..10 {
+LL +     for <item> in vec.iter().take(10).skip(5) {
+   |
+
+error: the loop variable `i` is only used to index `vec`
+  --> tests/ui/needless_range_loop.rs:86:14
+   |
+LL |     for i in 5..=10 {
+   |              ^^^^^^
+   |
+help: consider using an iterator
+   |
+LL -     for i in 5..=10 {
+LL +     for <item> in vec.iter().take(10 + 1).skip(5) {
+   |
+
+error: the loop variable `i` is used to index `vec`
+  --> tests/ui/needless_range_loop.rs:92:14
+   |
+LL |     for i in 5..vec.len() {
+   |              ^^^^^^^^^^^^
+   |
+help: consider using an iterator and enumerate()
+   |
+LL -     for i in 5..vec.len() {
+LL +     for (i, <item>) in vec.iter().enumerate().skip(5) {
+   |
+
+error: the loop variable `i` is used to index `vec`
+  --> tests/ui/needless_range_loop.rs:98:14
+   |
+LL |     for i in 5..10 {
+   |              ^^^^^
+   |
+help: consider using an iterator and enumerate()
+   |
+LL -     for i in 5..10 {
+LL +     for (i, <item>) in vec.iter().enumerate().take(10).skip(5) {
+   |
+
+error: the loop variable `i` is used to index `vec`
+  --> tests/ui/needless_range_loop.rs:105:14
+   |
+LL |     for i in 0..vec.len() {
+   |              ^^^^^^^^^^^^
+   |
+help: consider using an iterator and enumerate()
+   |
+LL -     for i in 0..vec.len() {
+LL +     for (i, <item>) in vec.iter_mut().enumerate() {
+   |
+
+error: the loop variable `i` is used to index `a`
+  --> tests/ui/needless_range_loop.rs:235:14
+   |
+LL |     for i in 0..MAX_LEN {
+   |              ^^^^^^^^^^
+   |
+help: consider using an iterator and enumerate()
+   |
+LL -     for i in 0..MAX_LEN {
+LL +     for (i, <item>) in a.iter().enumerate().take(MAX_LEN) {
+   |
+
+error: the loop variable `i` is only used to index `a`
+  --> tests/ui/needless_range_loop.rs:240:14
+   |
+LL |     for i in 0..MAX_LEN {
+   |              ^^^^^^^^^^
+   |
+help: consider using an iterator
+   |
+LL -     for i in 0..MAX_LEN {
+LL +     for <item> in a.iter().take(MAX_LEN) {
+   |
+
+error: aborting due to 16 previous errors
+

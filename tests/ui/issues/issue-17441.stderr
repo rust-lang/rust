@@ -1,0 +1,49 @@
+error[E0620]: cast to unsized type: `&[usize; 2]` as `[usize]`
+  --> $DIR/issue-17441.rs:2:16
+   |
+LL |     let _foo = &[1_usize, 2] as [usize];
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider casting to a reference instead
+   |
+LL |     let _foo = &[1_usize, 2] as &[usize];
+   |                                 +
+
+error[E0620]: cast to unsized type: `Box<usize>` as `dyn Debug`
+  --> $DIR/issue-17441.rs:5:16
+   |
+LL |     let _bar = Box::new(1_usize) as dyn std::fmt::Debug;
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: you can cast to a `Box` instead
+   |
+LL |     let _bar = Box::new(1_usize) as Box<dyn std::fmt::Debug>;
+   |                                     ++++                   +
+
+error[E0620]: cast to unsized type: `usize` as `dyn Debug`
+  --> $DIR/issue-17441.rs:8:16
+   |
+LL |     let _baz = 1_usize as dyn std::fmt::Debug;
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider using a box or reference as appropriate
+  --> $DIR/issue-17441.rs:8:16
+   |
+LL |     let _baz = 1_usize as dyn std::fmt::Debug;
+   |                ^^^^^^^
+
+error[E0620]: cast to unsized type: `[usize; 2]` as `[usize]`
+  --> $DIR/issue-17441.rs:11:17
+   |
+LL |     let _quux = [1_usize, 2] as [usize];
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider using a box or reference as appropriate
+  --> $DIR/issue-17441.rs:11:17
+   |
+LL |     let _quux = [1_usize, 2] as [usize];
+   |                 ^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0620`.

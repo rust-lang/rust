@@ -1,0 +1,38 @@
+error: ['a: +, A: o, B: o]
+  --> $DIR/variance-types.rs:10:1
+   |
+LL | struct InvariantMut<'a,A:'a,B:'a> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: [A: o]
+  --> $DIR/variance-types.rs:15:1
+   |
+LL | struct InvariantCell<A> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: [A: o]
+  --> $DIR/variance-types.rs:20:1
+   |
+LL | struct InvariantIndirect<A> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: [A: +]
+  --> $DIR/variance-types.rs:25:1
+   |
+LL | struct Covariant<A> {
+   | ^^^^^^^^^^^^^^^^^^^
+
+error: [A: -]
+  --> $DIR/variance-types.rs:30:1
+   |
+LL | struct Contravariant<A> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: [A: +, B: -, C: o]
+  --> $DIR/variance-types.rs:35:1
+   |
+LL | enum Enum<A,B,C> {
+   | ^^^^^^^^^^^^^^^^
+
+error: aborting due to 6 previous errors
+

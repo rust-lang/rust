@@ -1,0 +1,9 @@
+error[E0425]: cannot find function `used_fn` in this scope
+  --> $DIR/tainted-body.rs:7:9
+   |
+LL |         used_fn();
+   |         ^^^^^^^ not found in this scope
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0425`.

@@ -1,0 +1,28 @@
+warning: the feature `non_lifetime_binders` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/supertrait-dyn-compatibility.rs:2:12
+   |
+LL | #![feature(non_lifetime_binders)]
+   |            ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #108185 <https://github.com/rust-lang/rust/issues/108185> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+error[E0038]: the trait `Foo` is not dyn compatible
+  --> $DIR/supertrait-dyn-compatibility.rs:22:17
+   |
+LL |     let x: &dyn Foo = &();
+   |                 ^^^ `Foo` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/supertrait-dyn-compatibility.rs:7:12
+   |
+LL | trait Foo: for<T> Bar<T> {}
+   |       ---  ^^^^^^^^^^^^^ ...because where clause cannot reference non-lifetime `for<...>` variables
+   |       |
+   |       this trait is not dyn compatible...
+   = help: only type `()` implements `Foo`; consider using it directly instead.
+
+error: aborting due to 1 previous error; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0038`.

@@ -1,0 +1,59 @@
+[package]
+name = "rustc_data_structures"
+version = "0.0.0"
+edition = "2024"
+
+[dependencies]
+# tidy-alphabetical-start
+arrayvec = { version = "0.7", default-features = false }
+bitflags = "2.4.1"
+either = "1.0"
+elsa = "1.11.0"
+ena = "0.14.3"
+indexmap = "2.4.0"
+jobserver_crate = { version = "0.1.28", package = "jobserver" }
+measureme = "12.0.1"
+parking_lot = "0.12"
+rustc-hash = "2.0.0"
+rustc-stable-hash = { version = "0.1.0", features = ["nightly"] }
+rustc_arena = { path = "../rustc_arena" }
+rustc_graphviz = { path = "../rustc_graphviz" }
+rustc_hashes = { path = "../rustc_hashes" }
+rustc_index = { path = "../rustc_index", package = "rustc_index" }
+rustc_macros = { path = "../rustc_macros" }
+rustc_serialize = { path = "../rustc_serialize" }
+rustc_thread_pool = { path = "../rustc_thread_pool" }
+smallvec = { version = "1.8.1", features = ["const_generics", "union", "may_dangle"] }
+stacker = "0.1.17"
+tempfile = "3.2"
+thin-vec = "0.2.12"
+tracing = "0.1"
+# tidy-alphabetical-end
+
+[dependencies.hashbrown]
+version = "0.15.2"
+default-features = false
+features = ["nightly"] # for may_dangle
+
+[target.'cfg(windows)'.dependencies.windows]
+version = "0.61.0"
+features = [
+    "Win32_Foundation",
+    "Win32_Storage_FileSystem",
+    "Win32_System_IO",
+    "Win32_System_ProcessStatus",
+    "Win32_System_Threading",
+]
+
+[target.'cfg(unix)'.dependencies]
+# tidy-alphabetical-start
+libc = "0.2"
+# tidy-alphabetical-end
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+# tidy-alphabetical-start
+memmap2 = "0.2.1"
+# tidy-alphabetical-end
+
+[target.'cfg(not(target_has_atomic = "64"))'.dependencies]
+portable-atomic = "1.5.1"

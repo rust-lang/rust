@@ -1,0 +1,29 @@
+error[E0308]: mismatched types
+  --> $DIR/range-1.rs:5:19
+   |
+LL |     let _ = 0u32..10i32;
+   |                   ^^^^^ expected `u32`, found `i32`
+
+error[E0277]: the trait bound `bool: Step` is not satisfied
+  --> $DIR/range-1.rs:9:14
+   |
+LL |     for i in false..true {}
+   |              ^^^^^^^^^^^ the trait `Step` is not implemented for `bool`
+   |
+   = note: required for `std::ops::Range<bool>` to implement `Iterator`
+   = note: required for `std::ops::Range<bool>` to implement `IntoIterator`
+
+error[E0277]: the size for values of type `[{integer}]` cannot be known at compilation time
+  --> $DIR/range-1.rs:14:17
+   |
+LL |     let range = *arr..;
+   |                 ^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `[{integer}]`
+note: required by an implicit `Sized` bound in `std::ops::RangeFrom`
+  --> $SRC_DIR/core/src/ops/range.rs:LL:COL
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0277, E0308.
+For more information about an error, try `rustc --explain E0277`.

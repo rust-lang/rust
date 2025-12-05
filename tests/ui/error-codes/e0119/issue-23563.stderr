@@ -1,0 +1,13 @@
+error[E0119]: conflicting implementations of trait `LolFrom<&[u8]>` for type `LocalType<u8>`
+  --> $DIR/issue-23563.rs:13:1
+   |
+LL | impl<'a, T> LolFrom<&'a [T]> for LocalType<T> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: conflicting implementation in crate `issue_23563_a`:
+           - impl<T, U> LolFrom<T> for U
+             where T: LolInto<U>;
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0119`.

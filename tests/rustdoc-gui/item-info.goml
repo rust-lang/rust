@@ -1,0 +1,70 @@
+// This test ensures a few things for item info elements.
+go-to: "file://" + |DOC_PATH| + "/lib2/struct.Foo.html"
+// Ensuring that the item information don't take 100% of the width if unnecessary.
+// We set a fixed size so there is no chance of "random" resize.
+set-window-size: (1100, 800)
+// We check that ".item-info" is bigger than its content.
+assert-size: (".item-info", {"width": 840})
+assert-size: (".item-info .stab", {"width": 289})
+assert-position: (".item-info .stab", {"x": 245})
+
+// We check that the display of the feature elements is not broken. It serves as regression
+// test for <https://github.com/rust-lang/rust/issues/118615>.
+set-window-size: (850, 800)
+store-position: (
+    "//*[@class='stab portability']//code[normalize-space()='Win32_System']",
+    {"x": first_line_x, "y": first_line_y},
+)
+store-position: (
+    "//*[@class='stab portability']//code[normalize-space()='Win32_System_Diagnostics']",
+    {"x": second_line_x, "y": second_line_y},
+)
+assert: |first_line_x| != |second_line_x| && |first_line_x| == 521 && |second_line_x| == 277
+assert: |first_line_y| != |second_line_y| && |first_line_y| == 676 && |second_line_y| == 699
+
+// Now we ensure that they're not rendered on the same line.
+set-window-size: (1100, 800)
+go-to: "file://" + |DOC_PATH| + "/lib2/trait.Trait.html"
+// We first ensure that there are two item info on the trait.
+assert-count: ("#main-content > .item-info .stab", 2)
+// They should not have the same `y` position!
+compare-elements-position-false: (
+    "#main-content > .item-info .stab:nth-of-type(1)",
+    "#main-content > .item-info .stab:nth-of-type(2)",
+    ["y"],
+)
+// But they should have the same `x` position.
+compare-elements-position: (
+    "#main-content > .item-info .stab:nth-of-type(1)",
+    "#main-content > .item-info .stab:nth-of-type(2)",
+    ["x"],
+)
+// They are supposed to have the same height too.
+compare-elements-css: (
+    "#main-content > .item-info .stab:nth-of-type(1)",
+    "#main-content > .item-info .stab:nth-of-type(2)",
+    ["height"],
+)
+
+// Now checking the text color and the links color.
+show-text: true
+include: "utils.goml"
+go-to: "file://" + |DOC_PATH| + "/lib2/trait.Trait.html"
+
+call-function: ("switch-theme", {"theme": "ayu"})
+assert-css: (".item-info .stab", {"color": "rgb(197, 197, 197)"}, ALL)
+assert-css: (".item-info .stab strong", {"color": "rgb(197, 197, 197)"}, ALL)
+assert-css: (".item-info .stab span", {"color": "rgb(197, 197, 197)"}, ALL)
+assert-css: (".item-info .stab a", {"color": "rgb(57, 175, 215)"}, ALL)
+
+call-function: ("switch-theme", {"theme": "dark"})
+assert-css: (".item-info .stab", {"color": "rgb(221, 221, 221)"}, ALL)
+assert-css: (".item-info .stab strong", {"color": "rgb(221, 221, 221)"}, ALL)
+assert-css: (".item-info .stab span", {"color": "rgb(221, 221, 221)"}, ALL)
+assert-css: (".item-info .stab a", {"color": "rgb(210, 153, 29)"}, ALL)
+
+call-function: ("switch-theme", {"theme": "light"})
+assert-css: (".item-info .stab", {"color": "rgb(0, 0, 0)"}, ALL)
+assert-css: (".item-info .stab strong", {"color": "rgb(0, 0, 0)"}, ALL)
+assert-css: (".item-info .stab span", {"color": "rgb(0, 0, 0)"}, ALL)
+assert-css: (".item-info .stab a", {"color": "rgb(56, 115, 173)"}, ALL)

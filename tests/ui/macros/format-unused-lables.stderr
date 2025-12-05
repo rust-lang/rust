@@ -1,0 +1,65 @@
+error: multiple unused formatting arguments
+  --> $DIR/format-unused-lables.rs:2:22
+   |
+LL |     println!("Test", 123, 456, 789);
+   |              ------  ^^^  ^^^  ^^^ argument never used
+   |              |       |    |
+   |              |       |    argument never used
+   |              |       argument never used
+   |              multiple missing formatting specifiers
+   |
+help: format specifiers use curly braces, consider adding 3 format specifiers
+   |
+LL |     println!("Test{}{}{}", 123, 456, 789);
+   |                   ++++++
+
+error: multiple unused formatting arguments
+  --> $DIR/format-unused-lables.rs:6:9
+   |
+LL |     println!("Test2",
+   |              ------- multiple missing formatting specifiers
+LL |         123,
+   |         ^^^ argument never used
+LL |         456,
+   |         ^^^ argument never used
+LL |         789
+   |         ^^^ argument never used
+   |
+help: format specifiers use curly braces, consider adding 3 format specifiers
+   |
+LL |     println!("Test2{}{}{}",
+   |                    ++++++
+
+error: named argument never used
+  --> $DIR/format-unused-lables.rs:11:35
+   |
+LL |     println!("Some stuff", UNUSED="args");
+   |              ------------         ^^^^^^ named argument never used
+   |              |
+   |              formatting specifier missing
+   |
+help: format specifiers use curly braces, consider adding a format specifier
+   |
+LL |     println!("Some stuff{}", UNUSED="args");
+   |                         ++
+
+error: multiple unused formatting arguments
+  --> $DIR/format-unused-lables.rs:14:9
+   |
+LL |     println!("Some more $STUFF",
+   |              ------------------
+   |              |          |
+   |              |          help: format specifiers use curly braces: `{STUFF}`
+   |              multiple missing formatting specifiers
+LL |         "woo!",
+   |         ^^^^^^ argument never used
+LL |             STUFF=
+LL |        "things"
+   |        ^^^^^^^^ named argument never used
+LL |              , UNUSED="args");
+   |                       ^^^^^^ named argument never used
+   |
+   = note: shell formatting is not supported; see the documentation for `std::fmt`
+
+error: aborting due to 4 previous errors
+

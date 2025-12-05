@@ -1,0 +1,9 @@
+error[E0080]: evaluation panicked: panic
+  --> $DIR/issue-76064.rs:1:17
+   |
+LL | struct Bug([u8; panic!("panic")]);
+   |                 ^^^^^^^^^^^^^^^ evaluation of `Bug::0::{constant#0}` failed here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0080`.

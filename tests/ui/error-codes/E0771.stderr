@@ -1,0 +1,18 @@
+error[E0770]: the type of const parameters must not depend on other generic parameters
+  --> $DIR/E0771.rs:4:41
+   |
+LL | fn function_with_str<'a, const STRING: &'a str>() {}
+   |                                         ^^ the type must not depend on the parameter `'a`
+
+warning: the feature `unsized_const_params` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/E0771.rs:1:30
+   |
+LL | #![feature(adt_const_params, unsized_const_params)]
+   |                              ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #95174 <https://github.com/rust-lang/rust/issues/95174> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+error: aborting due to 1 previous error; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0770`.

@@ -1,0 +1,11 @@
+error: generic parameters may not be used in const operations
+  --> $DIR/param-in-ct-in-ty-param-default.rs:1:44
+   |
+LL | struct Foo<T, U = [u8; std::mem::size_of::<T>()]>(T, U);
+   |                                            ^ cannot perform const operation using `T`
+   |
+   = note: type parameters may not be used in const expressions
+   = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+
+error: aborting due to 1 previous error
+

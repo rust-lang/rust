@@ -1,0 +1,260 @@
+error: crate `priv_dep` from private dependency 'priv_dep' is re-exported
+  --> $DIR/pub-priv1.rs:12:1
+   |
+LL | pub extern crate priv_dep;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/pub-priv1.rs:9:9
+   |
+LL | #![deny(exported_private_dependencies)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: macro `m` from private dependency 'priv_dep' is re-exported
+  --> $DIR/pub-priv1.rs:156:9
+   |
+LL | pub use priv_dep::m;
+   |         ^^^^^^^^^^^
+
+error: macro `fn_like` from private dependency 'pm' is re-exported
+  --> $DIR/pub-priv1.rs:158:9
+   |
+LL | pub use pm::fn_like;
+   |         ^^^^^^^^^^^
+
+error: derive macro `PmDerive` from private dependency 'pm' is re-exported
+  --> $DIR/pub-priv1.rs:160:9
+   |
+LL | pub use pm::PmDerive;
+   |         ^^^^^^^^^^^^
+
+error: attribute macro `pm_attr` from private dependency 'pm' is re-exported
+  --> $DIR/pub-priv1.rs:162:9
+   |
+LL | pub use pm::pm_attr;
+   |         ^^^^^^^^^^^
+
+error: variant `V1` from private dependency 'priv_dep' is re-exported
+  --> $DIR/pub-priv1.rs:165:9
+   |
+LL | pub use priv_dep::E::V1;
+   |         ^^^^^^^^^^^^^^^
+
+error: type alias `Unit` from private dependency 'priv_dep' is re-exported
+  --> $DIR/pub-priv1.rs:168:9
+   |
+LL | pub use priv_dep::Unit;
+   |         ^^^^^^^^^^^^^^
+
+error: type alias `PubPub` from private dependency 'priv_dep' is re-exported
+  --> $DIR/pub-priv1.rs:170:9
+   |
+LL | pub use priv_dep::PubPub;
+   |         ^^^^^^^^^^^^^^^^
+
+error: type alias `PubPriv` from private dependency 'priv_dep' is re-exported
+  --> $DIR/pub-priv1.rs:172:9
+   |
+LL | pub use priv_dep::PubPriv;
+   |         ^^^^^^^^^^^^^^^^^
+
+error: struct `Renamed` from private dependency 'priv_dep' is re-exported
+  --> $DIR/pub-priv1.rs:174:9
+   |
+LL | pub use priv_dep::OtherType as Renamed;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: type `OtherType` from private dependency 'priv_dep' in public interface
+  --> $DIR/pub-priv1.rs:29:5
+   |
+LL |     pub field: OtherType,
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: type `OtherType` from private dependency 'priv_dep' in public interface
+  --> $DIR/pub-priv1.rs:36:5
+   |
+LL |     pub OtherType,
+   |     ^^^^^^^^^^^^^
+
+error: type `OtherType` from private dependency 'priv_dep' in public interface
+  --> $DIR/pub-priv1.rs:44:21
+   |
+LL |     ActualOtherType(OtherType, PubType),
+   |                     ^^^^^^^^^
+
+error: type `OtherType` from private dependency 'priv_dep' in public interface
+  --> $DIR/pub-priv1.rs:47:9
+   |
+LL |         field: OtherType,
+   |         ^^^^^^^^^^^^^^^^
+
+error: type `OtherType` from private dependency 'priv_dep' in public interface
+  --> $DIR/pub-priv1.rs:54:1
+   |
+LL | pub type ReexportedPublicGeneric = PublicGenericType<OtherType, ()>;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: type `OtherType` from private dependency 'priv_dep' in public interface
+  --> $DIR/pub-priv1.rs:56:1
+   |
+LL | pub type ReexportedPrivateGeneric = PublicGenericType<(), OtherType>;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: trait `OtherTrait` from private dependency 'priv_dep' in public interface
+  --> $DIR/pub-priv1.rs:59:1
+   |
+LL | pub struct PublicGenericBoundedType<T: OtherTrait>(T);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: type `OtherType` from private dependency 'priv_dep' in public interface
+  --> $DIR/pub-priv1.rs:63:5
+   |
+LL |     pub fn pub_fn_param(param: OtherType) {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: type `OtherType` from private dependency 'priv_dep' in public interface
+  --> $DIR/pub-priv1.rs:66:5
+   |
+LL |     pub fn pub_fn_return() -> OtherType { OtherType }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: trait `OtherTrait` from private dependency 'priv_dep' in public interface
+  --> $DIR/pub-priv1.rs:73:5
+   |
+LL |     type Foo: OtherTrait;
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: type `OtherType` from private dependency 'priv_dep' in public interface
+  --> $DIR/pub-priv1.rs:80:5
+   |
+LL |     fn required_concrete() -> OtherType;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: type `OtherType` from private dependency 'priv_dep' in public interface
+  --> $DIR/pub-priv1.rs:83:5
+   |
+LL |     fn provided_concrete() -> OtherType { OtherType }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: trait `OtherTrait` from private dependency 'priv_dep' in public interface
+  --> $DIR/pub-priv1.rs:87:1
+   |
+LL | pub trait WithSuperTrait: OtherTrait {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: type `OtherType` from private dependency 'priv_dep' in public interface
+  --> $DIR/pub-priv1.rs:96:5
+   |
+LL |     type X = OtherType;
+   |     ^^^^^^
+
+error: trait `OtherTrait` from private dependency 'priv_dep' in public interface
+  --> $DIR/pub-priv1.rs:100:1
+   |
+LL | pub fn in_bounds<T: OtherTrait>(x: T) { unimplemented!() }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: trait `OtherTrait` from private dependency 'priv_dep' in public interface
+  --> $DIR/pub-priv1.rs:103:1
+   |
+LL | pub fn private_return_impl_trait() -> impl OtherTrait { OtherType }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: type `OtherType` from private dependency 'priv_dep' in public interface
+  --> $DIR/pub-priv1.rs:106:1
+   |
+LL | pub fn private_return() -> OtherType { OtherType }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: type `OtherType` from private dependency 'priv_dep' in public interface
+  --> $DIR/pub-priv1.rs:109:1
+   |
+LL | pub fn private_in_generic() -> std::num::Saturating<OtherType> { unimplemented!() }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: type `OtherType` from private dependency 'priv_dep' in public interface
+  --> $DIR/pub-priv1.rs:112:1
+   |
+LL | pub static STATIC: OtherType = OtherType;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: type `OtherType` from private dependency 'priv_dep' in public interface
+  --> $DIR/pub-priv1.rs:115:1
+   |
+LL | pub const CONST: OtherType = OtherType;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: type `OtherType` from private dependency 'priv_dep' in public interface
+  --> $DIR/pub-priv1.rs:118:1
+   |
+LL | pub type Alias = OtherType;
+   | ^^^^^^^^^^^^^^
+
+error: type `OtherType` from private dependency 'priv_dep' in public interface
+  --> $DIR/pub-priv1.rs:121:1
+   |
+LL | pub type AliasOfAlias = priv_dep::PubPub;
+   | ^^^^^^^^^^^^^^^^^^^^^
+
+error: trait `OtherTrait` from private dependency 'priv_dep' in public interface
+  --> $DIR/pub-priv1.rs:126:1
+   |
+LL | impl OtherTrait for PublicWithPrivateImpl {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: type `OtherType` from private dependency 'priv_dep' in public interface
+  --> $DIR/pub-priv1.rs:131:1
+   |
+LL | impl PubTraitOnPrivate for OtherType {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: type `OtherType` from private dependency 'priv_dep' in public interface
+  --> $DIR/pub-priv1.rs:131:1
+   |
+LL | impl PubTraitOnPrivate for OtherType {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: type `OtherType` from private dependency 'priv_dep' in public interface
+  --> $DIR/pub-priv1.rs:137:1
+   |
+LL | impl From<OtherType> for PublicWithStdImpl {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: type `OtherType` from private dependency 'priv_dep' in public interface
+  --> $DIR/pub-priv1.rs:139:5
+   |
+LL |     fn from(val: OtherType) -> Self { Self }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: type `OtherType` from private dependency 'priv_dep' in public interface
+  --> $DIR/pub-priv1.rs:143:1
+   |
+LL | impl From<PublicWithStdImpl> for OtherType {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: type `OtherType` from private dependency 'priv_dep' in public interface
+  --> $DIR/pub-priv1.rs:143:1
+   |
+LL | impl From<PublicWithStdImpl> for OtherType {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: type `OtherType` from private dependency 'priv_dep' in public interface
+  --> $DIR/pub-priv1.rs:146:5
+   |
+LL |     fn from(val: PublicWithStdImpl) -> Self { Self }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: type `OtherType` from private dependency 'priv_dep' in public interface
+  --> $DIR/pub-priv1.rs:146:5
+   |
+LL |     fn from(val: PublicWithStdImpl) -> Self { Self }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 41 previous errors
+

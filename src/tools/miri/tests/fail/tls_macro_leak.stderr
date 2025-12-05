@@ -1,0 +1,24 @@
+error: memory leaked: ALLOC (Rust heap, size: 4, align: 4), allocated here:
+  --> tests/fail/tls_macro_leak.rs:LL:CC
+   |
+LL |             cell.set(Some(Box::leak(Box::new(123))));
+   |                                     ^^^^^^^^^^^^^
+   |
+   = note: BACKTRACE:
+   = note: inside closure at tests/fail/tls_macro_leak.rs:LL:CC
+   = note: inside `std::thread::LocalKey::<std::cell::Cell<std::option::Option<&i32>>>::try_with::<{closure@tests/fail/tls_macro_leak.rs:LL:CC}, ()>` at RUSTLIB/std/src/thread/local.rs:LL:CC
+   = note: inside `std::thread::LocalKey::<std::cell::Cell<std::option::Option<&i32>>>::with::<{closure@tests/fail/tls_macro_leak.rs:LL:CC}, ()>` at RUSTLIB/std/src/thread/local.rs:LL:CC
+note: inside closure
+  --> tests/fail/tls_macro_leak.rs:LL:CC
+   |
+LL | /         TLS.with(|cell| {
+LL | |             cell.set(Some(Box::leak(Box::new(123))));
+LL | |         });
+   | |__________^
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+note: set `MIRIFLAGS=-Zmiri-ignore-leaks` to disable this check
+
+error: aborting due to 1 previous error
+

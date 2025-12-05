@@ -1,0 +1,101 @@
+error: manual implementation of an assign operation
+  --> tests/ui/assign_ops.rs:11:5
+   |
+LL |     a = a + 1;
+   |     ^^^^^^^^^ help: replace it with: `a += 1`
+   |
+   = note: `-D clippy::assign-op-pattern` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::assign_op_pattern)]`
+
+error: manual implementation of an assign operation
+  --> tests/ui/assign_ops.rs:13:5
+   |
+LL |     a = 1 + a;
+   |     ^^^^^^^^^ help: replace it with: `a += 1`
+
+error: manual implementation of an assign operation
+  --> tests/ui/assign_ops.rs:15:5
+   |
+LL |     a = a - 1;
+   |     ^^^^^^^^^ help: replace it with: `a -= 1`
+
+error: manual implementation of an assign operation
+  --> tests/ui/assign_ops.rs:17:5
+   |
+LL |     a = a * 99;
+   |     ^^^^^^^^^^ help: replace it with: `a *= 99`
+
+error: manual implementation of an assign operation
+  --> tests/ui/assign_ops.rs:19:5
+   |
+LL |     a = 42 * a;
+   |     ^^^^^^^^^^ help: replace it with: `a *= 42`
+
+error: manual implementation of an assign operation
+  --> tests/ui/assign_ops.rs:21:5
+   |
+LL |     a = a / 2;
+   |     ^^^^^^^^^ help: replace it with: `a /= 2`
+
+error: manual implementation of an assign operation
+  --> tests/ui/assign_ops.rs:23:5
+   |
+LL |     a = a % 5;
+   |     ^^^^^^^^^ help: replace it with: `a %= 5`
+
+error: manual implementation of an assign operation
+  --> tests/ui/assign_ops.rs:25:5
+   |
+LL |     a = a & 1;
+   |     ^^^^^^^^^ help: replace it with: `a &= 1`
+
+error: manual implementation of an assign operation
+  --> tests/ui/assign_ops.rs:32:5
+   |
+LL |     s = s + "bla";
+   |     ^^^^^^^^^^^^^ help: replace it with: `s += "bla"`
+
+error: manual implementation of an assign operation
+  --> tests/ui/assign_ops.rs:37:5
+   |
+LL |     a = a + Wrapping(1u32);
+   |     ^^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `a += Wrapping(1u32)`
+
+error: manual implementation of an assign operation
+  --> tests/ui/assign_ops.rs:40:5
+   |
+LL |     v[0] = v[0] + v[1];
+   |     ^^^^^^^^^^^^^^^^^^ help: replace it with: `v[0] += v[1]`
+
+error: manual implementation of an assign operation
+  --> tests/ui/assign_ops.rs:53:5
+   |
+LL |     buf = buf + cows.clone();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `buf += cows.clone()`
+
+error: manual implementation of an assign operation
+  --> tests/ui/assign_ops.rs:91:17
+   |
+LL |                 res = res + Self::ONE;
+   |                 ^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `res += Self::ONE`
+
+error: manual implementation of an assign operation
+  --> tests/ui/assign_ops.rs:93:17
+   |
+LL |                 count = count + 1;
+   |                 ^^^^^^^^^^^^^^^^^ help: replace it with: `count += 1`
+
+error: manual implementation of an assign operation
+  --> tests/ui/assign_ops.rs:114:17
+   |
+LL |                 count = count + 1;
+   |                 ^^^^^^^^^^^^^^^^^ help: replace it with: `count += 1`
+
+error: manual implementation of an assign operation
+  --> tests/ui/assign_ops.rs:136:9
+   |
+LL |         s = s + S;
+   |         ^^^^^^^^^ help: replace it with: `s += S`
+
+error: aborting due to 16 previous errors
+

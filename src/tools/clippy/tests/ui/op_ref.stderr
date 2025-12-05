@@ -1,0 +1,60 @@
+error: needlessly taken reference of both operands
+  --> tests/ui/op_ref.rs:11:15
+   |
+LL |     let foo = &5 - &6;
+   |               ^^^^^^^
+   |
+   = note: `-D clippy::op-ref` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::op_ref)]`
+help: use the values directly
+   |
+LL -     let foo = &5 - &6;
+LL +     let foo = 5 - 6;
+   |
+
+error: taken reference of right operand
+  --> tests/ui/op_ref.rs:57:13
+   |
+LL |     let z = x & &y;
+   |             ^^^^--
+   |                 |
+   |                 help: use the right value directly: `y`
+
+error: taken reference of right operand
+  --> tests/ui/op_ref.rs:91:17
+   |
+LL |         let _ = one * &self;
+   |                 ^^^^^^-----
+   |                       |
+   |                       help: use the right value directly: `self`
+
+error: taken reference of right operand
+  --> tests/ui/op_ref.rs:94:17
+   |
+LL |         let _ = two + &three;
+   |                 ^^^^^^------
+   |                       |
+   |                       help: use the right value directly: `three`
+
+error: needlessly taken reference of both operands
+  --> tests/ui/op_ref.rs:125:8
+   |
+LL |     if &x == &mac!(1) {}
+   |        ^^^^^^^^^^^^^^
+   |
+help: use the values directly
+   |
+LL -     if &x == &mac!(1) {}
+LL +     if x == mac!(1) {}
+   |
+
+error: taken reference of right operand
+  --> tests/ui/op_ref.rs:144:13
+   |
+LL |     let z = x & &mac!(y);
+   |             ^^^^--------
+   |                 |
+   |                 help: use the right value directly: `mac!(y)`
+
+error: aborting due to 6 previous errors
+

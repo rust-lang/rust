@@ -1,0 +1,17 @@
+error: unexpected end of macro invocation
+  --> $DIR/macro-invocation-span-error-7970.rs:9:5
+   |
+LL | macro_rules! one_arg_macro {
+   | -------------------------- when calling this macro
+...
+LL |     one_arg_macro!();
+   |     ^^^^^^^^^^^^^^^^ missing tokens in macro arguments
+   |
+note: while trying to match meta-variable `$fmt:expr`
+  --> $DIR/macro-invocation-span-error-7970.rs:3:6
+   |
+LL |     ($fmt:expr) => {
+   |      ^^^^^^^^^
+
+error: aborting due to 1 previous error
+

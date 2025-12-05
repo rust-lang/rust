@@ -1,0 +1,14 @@
+error: unexpected closing delimiter: `)`
+  --> $DIR/issue-98601-delimiter-error-unexpected-close.rs:5:17
+   |
+LL | fn main() {
+   |           - this opening brace...
+LL |     todo!();
+LL | }
+   | - ...matches this closing brace
+LL |
+LL | fn other(_: i32)) {}
+   |                 ^ unexpected closing delimiter
+
+error: aborting due to 1 previous error
+

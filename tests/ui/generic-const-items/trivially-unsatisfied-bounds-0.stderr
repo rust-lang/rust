@@ -1,0 +1,27 @@
+error[E0080]: entering unreachable code
+  --> $DIR/trivially-unsatisfied-bounds-0.rs:6:1
+   |
+LL | / const UNUSABLE: () = ()
+LL | | where
+LL | |     String: Copy;
+   | |_________________^ evaluation of `UNUSABLE` failed here
+
+error[E0277]: the trait bound `String: Copy` is not satisfied
+  --> $DIR/trivially-unsatisfied-bounds-0.rs:11:13
+   |
+LL |     let _ = UNUSABLE;
+   |             ^^^^^^^^ the trait `Copy` is not implemented for `String`
+   |
+note: required by a bound in `UNUSABLE`
+  --> $DIR/trivially-unsatisfied-bounds-0.rs:8:13
+   |
+LL | const UNUSABLE: () = ()
+   |       -------- required by a bound in this constant
+LL | where
+LL |     String: Copy;
+   |             ^^^^ required by this bound in `UNUSABLE`
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0080, E0277.
+For more information about an error, try `rustc --explain E0080`.

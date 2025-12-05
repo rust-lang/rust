@@ -1,0 +1,16 @@
+error[E0381]: used binding `x` isn't initialized
+  --> $DIR/check_place_is_initialized.rs:10:15
+   |
+LL |     let x: Void;
+   |         - binding declared here but left uninitialized
+LL |     match x { ! }
+   |               ^ `x` used here but it isn't initialized
+   |
+help: consider assigning a value
+   |
+LL |     let x: Void = /* value */;
+   |                 +++++++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0381`.

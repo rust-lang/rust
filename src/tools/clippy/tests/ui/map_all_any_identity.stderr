@@ -1,0 +1,28 @@
+error: usage of `.map(...).any(identity)`
+  --> tests/ui/map_all_any_identity.rs:4:33
+   |
+LL |     let _ = ["foo"].into_iter().map(|s| s == "foo").any(|a| a);
+   |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::map-all-any-identity` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::map_all_any_identity)]`
+help: use `.any(...)` instead
+   |
+LL -     let _ = ["foo"].into_iter().map(|s| s == "foo").any(|a| a);
+LL +     let _ = ["foo"].into_iter().any(|s| s == "foo");
+   |
+
+error: usage of `.map(...).all(identity)`
+  --> tests/ui/map_all_any_identity.rs:7:33
+   |
+LL |     let _ = ["foo"].into_iter().map(|s| s == "foo").all(std::convert::identity);
+   |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `.all(...)` instead
+   |
+LL -     let _ = ["foo"].into_iter().map(|s| s == "foo").all(std::convert::identity);
+LL +     let _ = ["foo"].into_iter().all(|s| s == "foo");
+   |
+
+error: aborting due to 2 previous errors
+

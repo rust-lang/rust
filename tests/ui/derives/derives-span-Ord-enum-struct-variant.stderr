@@ -1,0 +1,18 @@
+error[E0277]: the trait bound `Error: Ord` is not satisfied
+  --> $DIR/derives-span-Ord-enum-struct-variant.rs:9:6
+   |
+LL | #[derive(Ord,Eq,PartialOrd,PartialEq)]
+   |          --- in this derive macro expansion
+...
+LL |      x: Error
+   |      ^^^^^^^^ the trait `Ord` is not implemented for `Error`
+   |
+help: consider annotating `Error` with `#[derive(Ord)]`
+   |
+LL + #[derive(Ord)]
+LL | struct Error;
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

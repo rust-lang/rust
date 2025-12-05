@@ -1,0 +1,16 @@
+error[E0308]: mismatched types
+  --> $DIR/secondary-label-with-long-type.rs:9:9
+   |
+LL |     let () = x;
+   |         ^^   - this expression has type `((..., ..., ..., ...), ..., ..., ...)`
+   |         |
+   |         expected `((..., ..., ..., ...), ..., ..., ...)`, found `()`
+   |
+   = note:  expected tuple `((..., ..., ..., ...), ..., ..., ...)`
+           found unit type `()`
+   = note: the full name for the type has been written to '$TEST_BUILD_DIR/secondary-label-with-long-type.long-type-$LONG_TYPE_HASH.txt'
+   = note: consider using `--verbose` to print the full type name to the console
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0308`.

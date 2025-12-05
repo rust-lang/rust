@@ -1,0 +1,35 @@
+error[E0308]: mismatched types
+  --> $DIR/issue-38371.rs:8:8
+   |
+LL | fn foo(&_a: Foo) {}
+   |        ^^^  --- expected due to this
+   |        |
+   |        expected `Foo`, found `&_`
+   |
+   = note: expected struct `Foo`
+           found reference `&_`
+help: to take parameter `_a` by reference, move `&` to the type
+   |
+LL - fn foo(&_a: Foo) {}
+LL + fn foo(_a: &Foo) {}
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/issue-38371.rs:16:9
+   |
+LL | fn agh(&&_a: &u32) {}
+   |         ^^^  ---- expected due to this
+   |         |
+   |         expected `u32`, found `&_`
+   |
+   = note:   expected type `u32`
+           found reference `&_`
+help: consider removing `&` from the pattern
+   |
+LL - fn agh(&&_a: &u32) {}
+LL + fn agh(&_a: &u32) {}
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

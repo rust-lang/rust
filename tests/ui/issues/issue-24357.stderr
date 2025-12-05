@@ -1,0 +1,26 @@
+error[E0382]: use of moved value: `x`
+  --> $DIR/issue-24357.rs:10:12
+   |
+LL |    let x = NoCopy;
+   |        - move occurs because `x` has type `NoCopy`, which does not implement the `Copy` trait
+LL |
+LL |    let f = move || { let y = x; };
+   |            -------           - variable moved due to use in closure
+   |            |
+   |            value moved into closure here
+...
+LL |    let z = x;
+   |            ^ value used here after move
+   |
+note: if `NoCopy` implemented `Clone`, you could clone the value
+  --> $DIR/issue-24357.rs:1:1
+   |
+LL | struct NoCopy;
+   | ^^^^^^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |    let f = move || { let y = x; };
+   |                              - you could clone this value
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0382`.

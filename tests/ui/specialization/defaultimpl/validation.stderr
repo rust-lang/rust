@@ -1,0 +1,64 @@
+error: inherent impls cannot be default
+  --> $DIR/validation.rs:7:14
+   |
+LL | default impl S {}
+   | -------      ^ inherent impl for this type
+   | |
+   | default because of this
+   |
+   = note: only trait implementations may be annotated with `default`
+
+warning: the feature `specialization` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/validation.rs:2:12
+   |
+LL | #![feature(specialization)]
+   |            ^^^^^^^^^^^^^^
+   |
+   = note: see issue #31844 <https://github.com/rust-lang/rust/issues/31844> for more information
+   = help: consider using `min_specialization` instead, which is more stable and complete
+   = note: `#[warn(incomplete_features)]` on by default
+
+error[E0367]: `!Send` impl requires `Z: Send` but the struct it is implemented for does not
+  --> $DIR/validation.rs:12:1
+   |
+LL | default impl !Send for Z {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the implementor must specify the same requirement
+  --> $DIR/validation.rs:5:1
+   |
+LL | struct Z;
+   | ^^^^^^^^
+
+error: impls of auto traits cannot be default
+  --> $DIR/validation.rs:9:21
+   |
+LL | default unsafe impl Send for S {}
+   | -------             ^^^^ auto trait
+   | |
+   | default because of this
+
+error: impls of auto traits cannot be default
+  --> $DIR/validation.rs:12:15
+   |
+LL | default impl !Send for Z {}
+   | -------       ^^^^ auto trait
+   | |
+   | default because of this
+
+error[E0750]: negative impls cannot be default impls
+  --> $DIR/validation.rs:12:1
+   |
+LL | default impl !Send for Z {}
+   | ^^^^^^^      ^
+
+error[E0750]: negative impls cannot be default impls
+  --> $DIR/validation.rs:19:1
+   |
+LL | default impl !Tr for S {}
+   | ^^^^^^^      ^
+
+error: aborting due to 6 previous errors; 1 warning emitted
+
+Some errors have detailed explanations: E0367, E0750.
+For more information about an error, try `rustc --explain E0367`.

@@ -1,0 +1,299 @@
+error: const stability on the impl does not match the const stability on the trait
+  --> $DIR/staged-api.rs:96:1
+   |
+LL | impl const U for u8 {}
+   | ^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: this impl is (implicitly) stable...
+  --> $DIR/staged-api.rs:96:1
+   |
+LL | impl const U for u8 {}
+   | ^^^^^^^^^^^^^^^^^^^^^^
+note: ...but the trait is unstable
+  --> $DIR/staged-api.rs:90:13
+   |
+LL | const trait U {}
+   |             ^
+
+error: trait implementations cannot be const stable yet
+  --> $DIR/staged-api.rs:100:1
+   |
+LL | impl const U for u16 {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #143874 <https://github.com/rust-lang/rust/issues/143874> for more information
+
+error: const stability on the impl does not match the const stability on the trait
+  --> $DIR/staged-api.rs:100:1
+   |
+LL | impl const U for u16 {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: this impl is (implicitly) stable...
+  --> $DIR/staged-api.rs:100:1
+   |
+LL | impl const U for u16 {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+note: ...but the trait is unstable
+  --> $DIR/staged-api.rs:90:13
+   |
+LL | const trait U {}
+   |             ^
+
+error: trait implementations cannot be const stable yet
+  --> $DIR/staged-api.rs:111:1
+   |
+LL | impl const S for u16 {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #143874 <https://github.com/rust-lang/rust/issues/143874> for more information
+
+error: const stability on the impl does not match the const stability on the trait
+  --> $DIR/staged-api.rs:115:1
+   |
+LL | impl const S for u32 {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: this impl is unstable...
+  --> $DIR/staged-api.rs:115:1
+   |
+LL | impl const S for u32 {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+note: ...but the trait is stable
+  --> $DIR/staged-api.rs:93:13
+   |
+LL | const trait S {}
+   |             ^
+
+error: const function that might be (indirectly) exposed to stable cannot use `#[feature(const_trait_impl)]`
+  --> $DIR/staged-api.rs:38:5
+   |
+LL |     Unstable::func();
+   |     ^^^^^^^^^^^^^^^^
+   |
+help: if the function is not (yet) meant to be exposed to stable const contexts, add `#[rustc_const_unstable]`
+   |
+LL + #[rustc_const_unstable(feature = "...", issue = "...")]
+LL | const fn const_context() {
+   |
+
+error: const function that might be (indirectly) exposed to stable cannot use `#[feature(unstable)]`
+  --> $DIR/staged-api.rs:38:5
+   |
+LL |     Unstable::func();
+   |     ^^^^^^^^^^^^^^^^
+   |
+help: if the function is not (yet) meant to be exposed to stable const contexts, add `#[rustc_const_unstable]`
+   |
+LL + #[rustc_const_unstable(feature = "...", issue = "...")]
+LL | const fn const_context() {
+   |
+
+error: const function that might be (indirectly) exposed to stable cannot use `#[feature(const_trait_impl)]`
+  --> $DIR/staged-api.rs:41:5
+   |
+LL |     Foo::func();
+   |     ^^^^^^^^^^^
+   |
+help: if the function is not (yet) meant to be exposed to stable const contexts, add `#[rustc_const_unstable]`
+   |
+LL + #[rustc_const_unstable(feature = "...", issue = "...")]
+LL | const fn const_context() {
+   |
+
+error: const function that might be (indirectly) exposed to stable cannot use `#[feature(unstable)]`
+  --> $DIR/staged-api.rs:41:5
+   |
+LL |     Foo::func();
+   |     ^^^^^^^^^^^
+   |
+help: if the function is not (yet) meant to be exposed to stable const contexts, add `#[rustc_const_unstable]`
+   |
+LL + #[rustc_const_unstable(feature = "...", issue = "...")]
+LL | const fn const_context() {
+   |
+
+error: const function that might be (indirectly) exposed to stable cannot use `#[feature(const_trait_impl)]`
+  --> $DIR/staged-api.rs:44:5
+   |
+LL |     Unstable2::func();
+   |     ^^^^^^^^^^^^^^^^^
+   |
+help: if the function is not (yet) meant to be exposed to stable const contexts, add `#[rustc_const_unstable]`
+   |
+LL + #[rustc_const_unstable(feature = "...", issue = "...")]
+LL | const fn const_context() {
+   |
+
+error: const function that might be (indirectly) exposed to stable cannot use `#[feature(unstable)]`
+  --> $DIR/staged-api.rs:44:5
+   |
+LL |     Unstable2::func();
+   |     ^^^^^^^^^^^^^^^^^
+   |
+help: if the function is not (yet) meant to be exposed to stable const contexts, add `#[rustc_const_unstable]`
+   |
+LL + #[rustc_const_unstable(feature = "...", issue = "...")]
+LL | const fn const_context() {
+   |
+
+error: const function that might be (indirectly) exposed to stable cannot use `#[feature(const_trait_impl)]`
+  --> $DIR/staged-api.rs:47:5
+   |
+LL |     conditionally_const::<Foo>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: if the function is not (yet) meant to be exposed to stable const contexts, add `#[rustc_const_unstable]`
+   |
+LL + #[rustc_const_unstable(feature = "...", issue = "...")]
+LL | const fn const_context() {
+   |
+
+error: const function that might be (indirectly) exposed to stable cannot use `#[feature(const_trait_impl)]`
+  --> $DIR/staged-api.rs:63:5
+   |
+LL |     Unstable::func();
+   |     ^^^^^^^^^^^^^^^^
+   |
+help: if the function is not (yet) meant to be exposed to stable const contexts, add `#[rustc_const_unstable]`
+   |
+LL + #[rustc_const_unstable(feature = "...", issue = "...")]
+LL | const fn stable_const_context() {
+   |
+
+error: const function that might be (indirectly) exposed to stable cannot use `#[feature(unstable)]`
+  --> $DIR/staged-api.rs:63:5
+   |
+LL |     Unstable::func();
+   |     ^^^^^^^^^^^^^^^^
+   |
+help: if the function is not (yet) meant to be exposed to stable const contexts, add `#[rustc_const_unstable]`
+   |
+LL + #[rustc_const_unstable(feature = "...", issue = "...")]
+LL | const fn stable_const_context() {
+   |
+
+error: const function that might be (indirectly) exposed to stable cannot use `#[feature(const_trait_impl)]`
+  --> $DIR/staged-api.rs:66:5
+   |
+LL |     Foo::func();
+   |     ^^^^^^^^^^^
+   |
+help: if the function is not (yet) meant to be exposed to stable const contexts, add `#[rustc_const_unstable]`
+   |
+LL + #[rustc_const_unstable(feature = "...", issue = "...")]
+LL | const fn stable_const_context() {
+   |
+
+error: const function that might be (indirectly) exposed to stable cannot use `#[feature(unstable)]`
+  --> $DIR/staged-api.rs:66:5
+   |
+LL |     Foo::func();
+   |     ^^^^^^^^^^^
+   |
+help: if the function is not (yet) meant to be exposed to stable const contexts, add `#[rustc_const_unstable]`
+   |
+LL + #[rustc_const_unstable(feature = "...", issue = "...")]
+LL | const fn stable_const_context() {
+   |
+
+error: const function that might be (indirectly) exposed to stable cannot use `#[feature(local_feature)]`
+  --> $DIR/staged-api.rs:69:5
+   |
+LL |     const_context_not_const_stable();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: mark the callee as `#[rustc_const_stable_indirect]` if it does not itself require any unstable features
+help: if the caller is not (yet) meant to be exposed to stable const contexts, add `#[rustc_const_unstable]`
+   |
+LL + #[rustc_const_unstable(feature = "...", issue = "...")]
+LL | const fn stable_const_context() {
+   |
+
+error: const function that might be (indirectly) exposed to stable cannot use `#[feature(const_trait_impl)]`
+  --> $DIR/staged-api.rs:71:5
+   |
+LL |     conditionally_const::<Foo>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: if the function is not (yet) meant to be exposed to stable const contexts, add `#[rustc_const_unstable]`
+   |
+LL + #[rustc_const_unstable(feature = "...", issue = "...")]
+LL | const fn stable_const_context() {
+   |
+
+error: const function that might be (indirectly) exposed to stable cannot use `#[feature(const_trait_impl)]`
+  --> $DIR/staged-api.rs:76:5
+   |
+LL |     Unstable::func();
+   |     ^^^^^^^^^^^^^^^^
+   |
+help: if the function is not (yet) meant to be exposed to stable const contexts, add `#[rustc_const_unstable]`
+   |
+LL + #[rustc_const_unstable(feature = "...", issue = "...")]
+LL | const fn implicitly_stable_const_context() {
+   |
+
+error: const function that might be (indirectly) exposed to stable cannot use `#[feature(unstable)]`
+  --> $DIR/staged-api.rs:76:5
+   |
+LL |     Unstable::func();
+   |     ^^^^^^^^^^^^^^^^
+   |
+help: if the function is not (yet) meant to be exposed to stable const contexts, add `#[rustc_const_unstable]`
+   |
+LL + #[rustc_const_unstable(feature = "...", issue = "...")]
+LL | const fn implicitly_stable_const_context() {
+   |
+
+error: const function that might be (indirectly) exposed to stable cannot use `#[feature(const_trait_impl)]`
+  --> $DIR/staged-api.rs:79:5
+   |
+LL |     Foo::func();
+   |     ^^^^^^^^^^^
+   |
+help: if the function is not (yet) meant to be exposed to stable const contexts, add `#[rustc_const_unstable]`
+   |
+LL + #[rustc_const_unstable(feature = "...", issue = "...")]
+LL | const fn implicitly_stable_const_context() {
+   |
+
+error: const function that might be (indirectly) exposed to stable cannot use `#[feature(unstable)]`
+  --> $DIR/staged-api.rs:79:5
+   |
+LL |     Foo::func();
+   |     ^^^^^^^^^^^
+   |
+help: if the function is not (yet) meant to be exposed to stable const contexts, add `#[rustc_const_unstable]`
+   |
+LL + #[rustc_const_unstable(feature = "...", issue = "...")]
+LL | const fn implicitly_stable_const_context() {
+   |
+
+error: const function that might be (indirectly) exposed to stable cannot use `#[feature(local_feature)]`
+  --> $DIR/staged-api.rs:82:5
+   |
+LL |     const_context_not_const_stable();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: mark the callee as `#[rustc_const_stable_indirect]` if it does not itself require any unstable features
+help: if the caller is not (yet) meant to be exposed to stable const contexts, add `#[rustc_const_unstable]`
+   |
+LL + #[rustc_const_unstable(feature = "...", issue = "...")]
+LL | const fn implicitly_stable_const_context() {
+   |
+
+error: const function that might be (indirectly) exposed to stable cannot use `#[feature(const_trait_impl)]`
+  --> $DIR/staged-api.rs:84:5
+   |
+LL |     conditionally_const::<Foo>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: if the function is not (yet) meant to be exposed to stable const contexts, add `#[rustc_const_unstable]`
+   |
+LL + #[rustc_const_unstable(feature = "...", issue = "...")]
+LL | const fn implicitly_stable_const_context() {
+   |
+
+error: aborting due to 24 previous errors
+

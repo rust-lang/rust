@@ -1,0 +1,18 @@
+[package]
+name = "rustc_query_impl"
+version = "0.0.0"
+edition = "2024"
+
+[dependencies]
+# tidy-alphabetical-start
+measureme = "12.0.1"
+rustc_data_structures = { path = "../rustc_data_structures" }
+rustc_hashes = { path = "../rustc_hashes" }
+rustc_hir = { path = "../rustc_hir" }
+rustc_index = { path = "../rustc_index" }
+rustc_middle = { path = "../rustc_middle" }
+rustc_query_system = { path = "../rustc_query_system" }
+rustc_serialize = { path = "../rustc_serialize" }
+rustc_span = { path = "../rustc_span" }
+tracing = "0.1"
+# tidy-alphabetical-end

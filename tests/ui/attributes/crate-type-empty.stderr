@@ -1,0 +1,21 @@
+error: malformed `crate_type` attribute input
+  --> $DIR/crate-type-empty.rs:2:1
+   |
+LL | #![crate_type]
+   | ^^^^^^^^^^^^^^
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/linkage.html>
+help: the following are the possible correct uses
+   |
+LL | #![crate_type = "bin"]
+   |               +++++++
+LL | #![crate_type = "cdylib"]
+   |               ++++++++++
+LL | #![crate_type = "dylib"]
+   |               +++++++++
+LL | #![crate_type = "lib"]
+   |               +++++++
+   = and 4 other candidates
+
+error: aborting due to 1 previous error
+

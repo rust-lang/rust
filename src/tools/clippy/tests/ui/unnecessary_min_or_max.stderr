@@ -1,0 +1,107 @@
+error: `(-6_i32)` is never greater than `9` and has therefore no effect
+  --> tests/ui/unnecessary_min_or_max.rs:13:13
+   |
+LL |     let _ = (-6_i32).min(9);
+   |             ^^^^^^^^^^^^^^^ help: try: `(-6_i32)`
+   |
+   = note: `-D clippy::unnecessary-min-or-max` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unnecessary_min_or_max)]`
+
+error: `(-6_i32)` is never greater than `9` and has therefore no effect
+  --> tests/ui/unnecessary_min_or_max.rs:15:13
+   |
+LL |     let _ = (-6_i32).max(9);
+   |             ^^^^^^^^^^^^^^^ help: try: `9`
+
+error: `9_u32` is never smaller than `6` and has therefore no effect
+  --> tests/ui/unnecessary_min_or_max.rs:17:13
+   |
+LL |     let _ = 9_u32.min(6);
+   |             ^^^^^^^^^^^^ help: try: `6`
+
+error: `9_u32` is never smaller than `6` and has therefore no effect
+  --> tests/ui/unnecessary_min_or_max.rs:19:13
+   |
+LL |     let _ = 9_u32.max(6);
+   |             ^^^^^^^^^^^^ help: try: `9_u32`
+
+error: `6` is never greater than `7_u8` and has therefore no effect
+  --> tests/ui/unnecessary_min_or_max.rs:21:13
+   |
+LL |     let _ = 6.min(7_u8);
+   |             ^^^^^^^^^^^ help: try: `6`
+
+error: `6` is never greater than `7_u8` and has therefore no effect
+  --> tests/ui/unnecessary_min_or_max.rs:23:13
+   |
+LL |     let _ = 6.max(7_u8);
+   |             ^^^^^^^^^^^ help: try: `7_u8`
+
+error: `0` is never greater than `x` and has therefore no effect
+  --> tests/ui/unnecessary_min_or_max.rs:28:13
+   |
+LL |     let _ = 0.min(x);
+   |             ^^^^^^^^ help: try: `0`
+
+error: `0` is never greater than `x` and has therefore no effect
+  --> tests/ui/unnecessary_min_or_max.rs:30:13
+   |
+LL |     let _ = 0.max(x);
+   |             ^^^^^^^^ help: try: `x`
+
+error: `x` is never smaller than `0_u32` and has therefore no effect
+  --> tests/ui/unnecessary_min_or_max.rs:32:13
+   |
+LL |     let _ = x.min(0_u32);
+   |             ^^^^^^^^^^^^ help: try: `0_u32`
+
+error: `x` is never smaller than `0_u32` and has therefore no effect
+  --> tests/ui/unnecessary_min_or_max.rs:34:13
+   |
+LL |     let _ = x.max(0_u32);
+   |             ^^^^^^^^^^^^ help: try: `x`
+
+error: `i32::MIN` is never greater than `x` and has therefore no effect
+  --> tests/ui/unnecessary_min_or_max.rs:39:13
+   |
+LL |     let _ = i32::MIN.min(x);
+   |             ^^^^^^^^^^^^^^^ help: try: `i32::MIN`
+
+error: `i32::MIN` is never greater than `x` and has therefore no effect
+  --> tests/ui/unnecessary_min_or_max.rs:41:13
+   |
+LL |     let _ = i32::MIN.max(x);
+   |             ^^^^^^^^^^^^^^^ help: try: `x`
+
+error: `x` is never smaller than `i32::MIN` and has therefore no effect
+  --> tests/ui/unnecessary_min_or_max.rs:43:13
+   |
+LL |     let _ = x.min(i32::MIN);
+   |             ^^^^^^^^^^^^^^^ help: try: `i32::MIN`
+
+error: `x` is never smaller than `i32::MIN` and has therefore no effect
+  --> tests/ui/unnecessary_min_or_max.rs:45:13
+   |
+LL |     let _ = x.max(i32::MIN);
+   |             ^^^^^^^^^^^^^^^ help: try: `x`
+
+error: `x` is never smaller than `i32::MIN - 0` and has therefore no effect
+  --> tests/ui/unnecessary_min_or_max.rs:48:13
+   |
+LL |     let _ = x.min(i32::MIN - 0);
+   |             ^^^^^^^^^^^^^^^^^^^ help: try: `i32::MIN - 0`
+
+error: `x` is never smaller than `i32::MIN` and has therefore no effect
+  --> tests/ui/unnecessary_min_or_max.rs:50:13
+   |
+LL |     let _ = x.max(i32::MIN);
+   |             ^^^^^^^^^^^^^^^ help: try: `x`
+
+error: `x` is never smaller than `i32::MIN - 0` and has therefore no effect
+  --> tests/ui/unnecessary_min_or_max.rs:53:13
+   |
+LL |     let _ = x.min(i32::MIN - 0);
+   |             ^^^^^^^^^^^^^^^^^^^ help: try: `i32::MIN - 0`
+
+error: aborting due to 17 previous errors
+

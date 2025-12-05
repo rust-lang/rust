@@ -1,0 +1,86 @@
+PRINT-BANG INPUT (DISPLAY): struct S;
+PRINT-BANG INPUT (DEBUG): TokenStream [
+    Group {
+        delimiter: None,
+        stream: TokenStream [
+            Ident {
+                ident: "struct",
+                span: $DIR/nonterminal-token-hygiene.rs:33:5: 33:11 (#5),
+            },
+            Ident {
+                ident: "S",
+                span: $DIR/nonterminal-token-hygiene.rs:33:12: 33:13 (#5),
+            },
+            Punct {
+                ch: ';',
+                spacing: Alone,
+                span: $DIR/nonterminal-token-hygiene.rs:33:13: 33:14 (#5),
+            },
+        ],
+        span: $DIR/nonterminal-token-hygiene.rs:23:27: 23:32 (#4),
+    },
+]
+#![feature /* 0#0 */(prelude_import)]
+#![no_std /* 0#0 */]
+// Make sure that marks from declarative macros are applied to tokens in nonterminal.
+
+//@ check-pass
+//@ compile-flags: -Z span-debug -Z macro-backtrace -Z unpretty=expanded,hygiene
+//@ compile-flags: -Z trim-diagnostic-paths=no
+// ignore-tidy-linelength
+//@ normalize-stdout: "\d+#" -> "0#"
+//@ normalize-stdout: "expn\d{3,}" -> "expnNNN"
+//@ normalize-stdout: "extern crate compiler_builtins /\* \d+ \*/" -> "extern crate compiler_builtins /* NNN */"
+//@ proc-macro: test-macros.rs
+//@ edition: 2015
+
+#![feature /* 0#0 */(decl_macro)]
+#![no_std /* 0#0 */]
+#[macro_use /* 0#1 */]
+extern crate core /* 0#2 */;
+#[prelude_import /* 0#1 */]
+use ::core /* 0#1 */::prelude /* 0#1 */::rust_2015 /* 0#1 */::*;
+// Don't load unnecessary hygiene information from std
+extern crate std /* 0#0 */;
+
+#[macro_use /* 0#0 */]
+extern crate test_macros /* 0#0 */;
+
+macro_rules! outer
+    /*
+    0#0
+    */ {
+    ($item:item) =>
+    {
+        macro inner() { print_bang! { $item } } inner!();
+
+    };
+}
+
+struct S /* 0#0 */;
+macro inner /* 0#3 */ { () => { print_bang! { struct S; } } }
+
+struct S /* 0#5 */;
+// OK, not a duplicate definition of `S`
+
+fn main /* 0#0 */() {}
+
+/*
+Expansions:
+crate0::{{expn0}}: parent: crate0::{{expn0}}, call_site_ctxt: #0, def_site_ctxt: #0, kind: Root
+crate0::{{expn1}}: parent: crate0::{{expn0}}, call_site_ctxt: #0, def_site_ctxt: #0, kind: AstPass(StdImports)
+crate0::{{expn2}}: parent: crate0::{{expn0}}, call_site_ctxt: #0, def_site_ctxt: #0, kind: Macro(Bang, "outer")
+crate0::{{expn3}}: parent: crate0::{{expn2}}, call_site_ctxt: #3, def_site_ctxt: #3, kind: Macro(Bang, "inner")
+crate0::{{expn4}}: parent: crate0::{{expn3}}, call_site_ctxt: #4, def_site_ctxt: #0, kind: Macro(Bang, "print_bang")
+
+SyntaxContexts:
+#0: parent: #0, outer_mark: (crate0::{{expn0}}, Opaque)
+#1: parent: #0, outer_mark: (crate0::{{expn1}}, Opaque)
+#2: parent: #0, outer_mark: (crate0::{{expn1}}, Transparent)
+#3: parent: #0, outer_mark: (crate0::{{expn2}}, SemiOpaque)
+#4: parent: #3, outer_mark: (crate0::{{expn3}}, Opaque)
+#5: parent: #0, outer_mark: (crate0::{{expn3}}, Opaque)
+#6: parent: #0, outer_mark: (crate0::{{expn4}}, Opaque)
+#7: parent: #4, outer_mark: (crate0::{{expn4}}, Transparent)
+#8: parent: #5, outer_mark: (crate0::{{expn4}}, SemiOpaque)
+*/

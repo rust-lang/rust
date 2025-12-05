@@ -1,0 +1,15 @@
+error[E0636]: the feature `if_let` has already been enabled
+  --> $DIR/duplicate-features.rs:7:12
+   |
+LL | #![feature(if_let)]
+   |            ^^^^^^
+
+error[E0636]: the feature `rust1` has already been enabled
+  --> $DIR/duplicate-features.rs:4:12
+   |
+LL | #![feature(rust1)]
+   |            ^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0636`.

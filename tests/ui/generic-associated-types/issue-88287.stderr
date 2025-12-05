@@ -1,0 +1,27 @@
+error[E0277]: the size for values of type `A` cannot be known at compilation time
+  --> $DIR/issue-88287.rs:35:9
+   |
+LL | type SearchFutureTy<'f, A, B: 'f>
+   |                         - this type parameter needs to be `Sized`
+...
+LL |         async move { todo!() }
+   |         ^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+note: required by an implicit `Sized` bound in `<T as SearchableResourceExt<Criteria>>`
+  --> $DIR/issue-88287.rs:24:6
+   |
+LL | impl<T, Criteria> SearchableResourceExt<Criteria> for T
+   |      ^ required by the implicit `Sized` requirement on this type parameter in `<T as SearchableResourceExt<Criteria>>`
+help: consider removing the `?Sized` bound to make the type parameter `Sized`
+   |
+LL -     A: SearchableResource<B> + ?Sized + 'f,
+LL +     A: SearchableResource<B> + 'f,
+   |
+help: consider relaxing the implicit `Sized` restriction
+   |
+LL |     T: SearchableResource<Criteria> + ?Sized,
+   |                                     ++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

@@ -1,0 +1,68 @@
+// MIR for `demo_ge_partial` after PreCodegen
+
+fn demo_ge_partial(_1: &(f32, f32), _2: &(f32, f32)) -> bool {
+    debug a => _1;
+    debug b => _2;
+    let mut _0: bool;
+    scope 1 (inlined std::cmp::impls::<impl PartialOrd for &(f32, f32)>::ge) {
+        scope 2 (inlined core::tuple::<impl PartialOrd for (f32, f32)>::ge) {
+            let mut _7: std::ops::ControlFlow<bool>;
+            scope 3 {
+            }
+            scope 4 (inlined std::cmp::impls::<impl PartialOrd for f32>::__chaining_ge) {
+                let mut _3: f32;
+                let mut _4: f32;
+                let mut _5: bool;
+                let mut _6: bool;
+                scope 5 {
+                }
+            }
+            scope 6 (inlined std::cmp::impls::<impl PartialOrd for f32>::ge) {
+                let mut _8: f32;
+                let mut _9: f32;
+            }
+        }
+    }
+
+    bb0: {
+        StorageLive(_7);
+        StorageLive(_3);
+        StorageLive(_4);
+        _3 = copy ((*_1).0: f32);
+        _4 = copy ((*_2).0: f32);
+        StorageLive(_5);
+        _5 = Eq(copy _3, copy _4);
+        switchInt(move _5) -> [0: bb1, otherwise: bb2];
+    }
+
+    bb1: {
+        StorageLive(_6);
+        _6 = Ge(copy _3, copy _4);
+        _7 = ControlFlow::<bool>::Break(move _6);
+        StorageDead(_6);
+        StorageDead(_5);
+        StorageDead(_4);
+        StorageDead(_3);
+        _0 = copy ((_7 as Break).0: bool);
+        goto -> bb3;
+    }
+
+    bb2: {
+        StorageDead(_5);
+        StorageDead(_4);
+        StorageDead(_3);
+        StorageLive(_8);
+        _8 = copy ((*_1).1: f32);
+        StorageLive(_9);
+        _9 = copy ((*_2).1: f32);
+        _0 = Ge(move _8, move _9);
+        StorageDead(_9);
+        StorageDead(_8);
+        goto -> bb3;
+    }
+
+    bb3: {
+        StorageDead(_7);
+        return;
+    }
+}

@@ -1,0 +1,59 @@
+error[E0505]: cannot move out of `s` because it is borrowed
+  --> $DIR/borrowck-overloaded-index-move-index.rs:50:22
+   |
+LL |     let mut s = "hello".to_string();
+   |         ----- binding `s` declared here
+LL |     let rs = &mut s;
+   |              ------ borrow of `s` occurs here
+LL |
+LL |     println!("{}", f[s]);
+   |                      ^ move out of `s` occurs here
+...
+LL |     use_mut(rs);
+   |             -- borrow later used here
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     let rs = &mut s.clone();
+   |                    ++++++++
+
+error[E0505]: cannot move out of `s` because it is borrowed
+  --> $DIR/borrowck-overloaded-index-move-index.rs:53:7
+   |
+LL |     let mut s = "hello".to_string();
+   |         ----- binding `s` declared here
+LL |     let rs = &mut s;
+   |              ------ borrow of `s` occurs here
+...
+LL |     f[s] = 10;
+   |       ^ move out of `s` occurs here
+...
+LL |     use_mut(rs);
+   |             -- borrow later used here
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     let rs = &mut s.clone();
+   |                    ++++++++
+
+error[E0382]: use of moved value: `s`
+  --> $DIR/borrowck-overloaded-index-move-index.rs:53:7
+   |
+LL |     let mut s = "hello".to_string();
+   |         ----- move occurs because `s` has type `String`, which does not implement the `Copy` trait
+...
+LL |     println!("{}", f[s]);
+   |                      - value moved here
+...
+LL |     f[s] = 10;
+   |       ^ value used here after move
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     println!("{}", f[s.clone()]);
+   |                       ++++++++
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0382, E0505.
+For more information about an error, try `rustc --explain E0382`.

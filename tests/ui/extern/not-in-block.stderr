@@ -1,0 +1,34 @@
+error: free function without a body
+  --> $DIR/not-in-block.rs:4:1
+   |
+LL | extern fn none_fn(x: bool) -> i32;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: provide a definition for the function
+   |
+LL - extern fn none_fn(x: bool) -> i32;
+LL + extern fn none_fn(x: bool) -> i32 { <body> }
+   |
+help: if you meant to declare an externally defined function, use an `extern` block
+   |
+LL | extern { fn none_fn(x: bool) -> i32; }
+   |        +                             +
+
+error: free function without a body
+  --> $DIR/not-in-block.rs:6:1
+   |
+LL | extern "C" fn c_fn(x: bool) -> i32;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: provide a definition for the function
+   |
+LL - extern "C" fn c_fn(x: bool) -> i32;
+LL + extern "C" fn c_fn(x: bool) -> i32 { <body> }
+   |
+help: if you meant to declare an externally defined function, use an `extern` block
+   |
+LL | extern "C" { fn c_fn(x: bool) -> i32; }
+   |            +                          +
+
+error: aborting due to 2 previous errors
+

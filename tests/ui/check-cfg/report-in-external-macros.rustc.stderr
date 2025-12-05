@@ -1,0 +1,41 @@
+warning: unexpected `cfg` condition name: `my_lib_cfg`
+  --> $DIR/report-in-external-macros.rs:13:5
+   |
+LL |     cfg_macro::my_lib_macro!();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: expected names are: `feature` and 31 more
+   = note: using a cfg inside a macro will use the cfgs from the destination crate and not the ones from the defining crate
+   = help: try referring to `cfg_macro::my_lib_macro` crate for guidance on how handle this unexpected cfg
+   = help: to expect this configuration use `--check-cfg=cfg(my_lib_cfg)`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+   = note: `#[warn(unexpected_cfgs)]` on by default
+   = note: this warning originates in the macro `cfg_macro::my_lib_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: unexpected `cfg` condition value: `UNEXPECTED_VALUE`
+  --> $DIR/report-in-external-macros.rs:16:5
+   |
+LL |     cfg_macro::my_lib_macro_value!();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: expected values for `panic` are: `abort`, `immediate-abort`, and `unwind`
+   = note: using a cfg inside a macro will use the cfgs from the destination crate and not the ones from the defining crate
+   = help: try referring to `cfg_macro::my_lib_macro_value` crate for guidance on how handle this unexpected cfg
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+   = note: this warning originates in the macro `cfg_macro::my_lib_macro_value` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: unexpected `cfg` condition value: `UNEXPECTED_FEATURE`
+  --> $DIR/report-in-external-macros.rs:19:5
+   |
+LL |     cfg_macro::my_lib_macro_feature!();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: no expected values for `feature`
+   = help: to expect this configuration use `--check-cfg=cfg(feature, values("UNEXPECTED_FEATURE"))`
+   = note: using a cfg inside a macro will use the cfgs from the destination crate and not the ones from the defining crate
+   = help: try referring to `cfg_macro::my_lib_macro_feature` crate for guidance on how handle this unexpected cfg
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+   = note: this warning originates in the macro `cfg_macro::my_lib_macro_feature` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: 3 warnings emitted
+

@@ -1,0 +1,72 @@
+warning: prefix `z` is unknown
+  --> $DIR/reserved-prefixes-migration.rs:16:9
+   |
+LL |     m2!(z"hey");
+   |         ^ unknown prefix
+   |
+   = warning: this is accepted in the current edition (Rust 2018) but is a hard error in Rust 2021!
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/reserving-syntax.html>
+note: the lint level is defined here
+  --> $DIR/reserved-prefixes-migration.rs:5:9
+   |
+LL | #![warn(rust_2021_prefixes_incompatible_syntax)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: insert whitespace here to avoid this being parsed as a prefix in Rust 2021
+   |
+LL |     m2!(z "hey");
+   |          +
+
+warning: prefix `prefix` is unknown
+  --> $DIR/reserved-prefixes-migration.rs:19:9
+   |
+LL |     m2!(prefix"hey");
+   |         ^^^^^^ unknown prefix
+   |
+   = warning: this is accepted in the current edition (Rust 2018) but is a hard error in Rust 2021!
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/reserving-syntax.html>
+help: insert whitespace here to avoid this being parsed as a prefix in Rust 2021
+   |
+LL |     m2!(prefix "hey");
+   |               +
+
+warning: prefix `hey` is unknown
+  --> $DIR/reserved-prefixes-migration.rs:22:9
+   |
+LL |     m3!(hey#123);
+   |         ^^^ unknown prefix
+   |
+   = warning: this is accepted in the current edition (Rust 2018) but is a hard error in Rust 2021!
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/reserving-syntax.html>
+help: insert whitespace here to avoid this being parsed as a prefix in Rust 2021
+   |
+LL |     m3!(hey #123);
+   |            +
+
+warning: prefix `hey` is unknown
+  --> $DIR/reserved-prefixes-migration.rs:25:9
+   |
+LL |     m3!(hey#hey);
+   |         ^^^ unknown prefix
+   |
+   = warning: this is accepted in the current edition (Rust 2018) but is a hard error in Rust 2021!
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/reserving-syntax.html>
+help: insert whitespace here to avoid this being parsed as a prefix in Rust 2021
+   |
+LL |     m3!(hey #hey);
+   |            +
+
+warning: prefix `kind` is unknown
+  --> $DIR/reserved-prefixes-migration.rs:35:14
+   |
+LL |     #name = #kind#value
+   |              ^^^^ unknown prefix
+   |
+   = warning: this is accepted in the current edition (Rust 2018) but is a hard error in Rust 2021!
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/reserving-syntax.html>
+help: insert whitespace here to avoid this being parsed as a prefix in Rust 2021
+   |
+LL |     #name = #kind #value
+   |                  +
+
+warning: 5 warnings emitted
+

@@ -1,0 +1,11 @@
+error[E0761]: file for module `mod_file_disambig_aux` found at both "$DIR/mod_file_disambig_aux.rs" and "$DIR/mod_file_disambig_aux/mod.rs"
+  --> $DIR/mod_file_disambig.rs:3:1
+   |
+LL | mod mod_file_disambig_aux;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: delete or rename one of them to remove the ambiguity
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0761`.

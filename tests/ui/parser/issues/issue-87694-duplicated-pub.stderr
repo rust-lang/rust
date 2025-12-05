@@ -1,0 +1,17 @@
+error: expected one of `async`, `extern`, `fn`, `safe`, or `unsafe`, found keyword `pub`
+  --> $DIR/issue-87694-duplicated-pub.rs:1:11
+   |
+LL | pub const pub fn test() {}
+   |           ^^^
+   |           |
+   |           expected one of `async`, `extern`, `fn`, `safe`, or `unsafe`
+   |           help: there is already a visibility modifier, remove one
+   |
+note: explicit visibility first seen here
+  --> $DIR/issue-87694-duplicated-pub.rs:1:1
+   |
+LL | pub const pub fn test() {}
+   | ^^^
+
+error: aborting due to 1 previous error
+

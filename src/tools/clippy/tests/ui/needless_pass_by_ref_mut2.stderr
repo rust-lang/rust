@@ -1,0 +1,17 @@
+error: this argument is a mutable reference, but not used mutably
+  --> tests/ui/needless_pass_by_ref_mut2.rs:8:26
+   |
+LL | async fn inner_async3(x: &mut i32, y: &mut u32) {
+   |                          ^^^^^^^^ help: consider changing to: `&i32`
+   |
+   = note: `-D clippy::needless-pass-by-ref-mut` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::needless_pass_by_ref_mut)]`
+
+error: this argument is a mutable reference, but not used mutably
+  --> tests/ui/needless_pass_by_ref_mut2.rs:17:39
+   |
+LL | async fn inner_async4(u: &mut i32, v: &mut u32) {
+   |                                       ^^^^^^^^ help: consider changing to: `&u32`
+
+error: aborting due to 2 previous errors
+

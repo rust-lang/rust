@@ -1,0 +1,59 @@
+error: `[const]` can only be applied to `const` traits
+  --> $DIR/const_trait_impl.rs:33:9
+   |
+LL | impl<T: [const] Debug> const A for T {
+   |         ^^^^^^^ can't be applied to `Debug`
+   |
+note: `Debug` can't be used with `[const]` because it isn't `const`
+  --> $SRC_DIR/core/src/fmt/mod.rs:LL:COL
+
+error: `[const]` can only be applied to `const` traits
+  --> $DIR/const_trait_impl.rs:39:9
+   |
+LL | impl<T: [const] Debug + [const] Sup> const A for T {
+   |         ^^^^^^^ can't be applied to `Debug`
+   |
+note: `Debug` can't be used with `[const]` because it isn't `const`
+  --> $SRC_DIR/core/src/fmt/mod.rs:LL:COL
+
+error: `[const]` can only be applied to `const` traits
+  --> $DIR/const_trait_impl.rs:45:9
+   |
+LL | impl<T: [const] Debug + [const] Sub> const A for T {
+   |         ^^^^^^^ can't be applied to `Debug`
+   |
+note: `Debug` can't be used with `[const]` because it isn't `const`
+  --> $SRC_DIR/core/src/fmt/mod.rs:LL:COL
+
+error: `[const]` can only be applied to `const` traits
+  --> $DIR/const_trait_impl.rs:39:9
+   |
+LL | impl<T: [const] Debug + [const] Sup> const A for T {
+   |         ^^^^^^^ can't be applied to `Debug`
+   |
+note: `Debug` can't be used with `[const]` because it isn't `const`
+  --> $SRC_DIR/core/src/fmt/mod.rs:LL:COL
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: `[const]` can only be applied to `const` traits
+  --> $DIR/const_trait_impl.rs:33:9
+   |
+LL | impl<T: [const] Debug> const A for T {
+   |         ^^^^^^^ can't be applied to `Debug`
+   |
+note: `Debug` can't be used with `[const]` because it isn't `const`
+  --> $SRC_DIR/core/src/fmt/mod.rs:LL:COL
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: `[const]` can only be applied to `const` traits
+  --> $DIR/const_trait_impl.rs:45:9
+   |
+LL | impl<T: [const] Debug + [const] Sub> const A for T {
+   |         ^^^^^^^ can't be applied to `Debug`
+   |
+note: `Debug` can't be used with `[const]` because it isn't `const`
+  --> $SRC_DIR/core/src/fmt/mod.rs:LL:COL
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 6 previous errors
+

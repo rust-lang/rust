@@ -1,0 +1,54 @@
+error: field `f` is never read
+  --> $DIR/clone-debug-dead-code.rs:6:12
+   |
+LL | struct A { f: () }
+   |        -   ^
+   |        |
+   |        field in this struct
+   |
+note: the lint level is defined here
+  --> $DIR/clone-debug-dead-code.rs:4:11
+   |
+LL | #![forbid(dead_code)]
+   |           ^^^^^^^^^
+
+error: field `f` is never read
+  --> $DIR/clone-debug-dead-code.rs:10:12
+   |
+LL | struct B { f: () }
+   |        -   ^
+   |        |
+   |        field in this struct
+   |
+   = note: `B` has a derived impl for the trait `Clone`, but this is intentionally ignored during dead code analysis
+
+error: field `f` is never read
+  --> $DIR/clone-debug-dead-code.rs:14:12
+   |
+LL | struct C { f: () }
+   |        -   ^
+   |        |
+   |        field in this struct
+   |
+   = note: `C` has a derived impl for the trait `Debug`, but this is intentionally ignored during dead code analysis
+
+error: field `f` is never read
+  --> $DIR/clone-debug-dead-code.rs:18:12
+   |
+LL | struct D { f: () }
+   |        -   ^
+   |        |
+   |        field in this struct
+   |
+   = note: `D` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored during dead code analysis
+
+error: field `f` is never read
+  --> $DIR/clone-debug-dead-code.rs:21:12
+   |
+LL | struct E { f: () }
+   |        -   ^
+   |        |
+   |        field in this struct
+
+error: aborting due to 5 previous errors
+

@@ -1,0 +1,116 @@
+#![allow(unused)]
+#![warn(clippy::match_as_ref)]
+
+fn match_as_ref() {
+    let owned: Option<()> = None;
+    let borrowed: Option<&()> = match owned {
+        //~^ match_as_ref
+        None => None,
+        Some(ref v) => Some(v),
+    };
+
+    let mut mut_owned: Option<()> = None;
+    let borrow_mut: Option<&mut ()> = match mut_owned {
+        //~^ match_as_ref
+        None => None,
+        Some(ref mut v) => Some(v),
+    };
+}
+
+mod issue4437 {
+    use std::error::Error;
+    use std::fmt;
+    use std::num::ParseIntError;
+
+    #[derive(Debug)]
+    struct E {
+        source: Option<ParseIntError>,
+    }
+
+    impl Error for E {
+        fn source(&self) -> Option<&(dyn Error + 'static)> {
+            match self.source {
+                //~^ match_as_ref
+                Some(ref s) => Some(s),
+                None => None,
+            }
+        }
+    }
+
+    impl fmt::Display for E {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            unimplemented!()
+        }
+    }
+}
+
+fn main() {
+    // Don't lint
+    let _ = match Some(0) {
+        #[cfg(feature = "foo")]
+        Some(ref x) if *x > 50 => None,
+        Some(ref x) => Some(x),
+        None => None,
+    };
+}
+
+mod issue15691 {
+    use std::ops::{Deref, DerefMut};
+
+    struct A(B);
+    struct B;
+
+    impl Deref for A {
+        type Target = B;
+        fn deref(&self) -> &Self::Target {
+            &self.0
+        }
+    }
+
+    impl DerefMut for A {
+        fn deref_mut(&mut self) -> &mut Self::Target {
+            &mut self.0
+        }
+    }
+
+    fn func() {
+        let mut a = Some(A(B));
+        let mut b = Some(B);
+        // Do not lint, we don't have `None => None`
+        let _ = match b {
+            Some(ref mut x) => Some(x),
+            None => a.as_deref_mut(),
+        };
+    }
+}
+
+fn recv_requiring_parens() {
+    struct S;
+
+    impl std::ops::Not for S {
+        type Output = Option<u64>;
+        fn not(self) -> Self::Output {
+            None
+        }
+    }
+
+    let _ = match !S {
+        //~^ match_as_ref
+        None => None,
+        Some(ref v) => Some(v),
+    };
+}
+
+fn issue15932() {
+    let _: Option<&u32> = match Some(0) {
+        //~^ match_as_ref
+        None => None,
+        Some(ref mut v) => Some(v),
+    };
+
+    let _: Option<&dyn std::fmt::Debug> = match Some(0) {
+        //~^ match_as_ref
+        None => None,
+        Some(ref mut v) => Some(v),
+    };
+}

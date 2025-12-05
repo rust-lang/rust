@@ -1,0 +1,26 @@
+ WARN rustc_infer::infer::relate::generalize may incompletely handle alias type: AliasTy { args: [*const ?1t, '^0.Named(DefId(0:27 ~ associated_type[f554]::{impl#3}::'a#1))], def_id: DefId(0:5 ~ associated_type[f554]::ToUnit::Unit), .. }
+ WARN rustc_infer::infer::relate::generalize may incompletely handle alias type: AliasTy { args: [*const ?1t, '^0.Named(DefId(0:27 ~ associated_type[f554]::{impl#3}::'a#1))], def_id: DefId(0:5 ~ associated_type[f554]::ToUnit::Unit), .. }
+error[E0119]: conflicting implementations of trait `Overlap<for<'a> fn(&'a (), ())>` for type `for<'a> fn(&'a (), ())`
+  --> $DIR/associated-type.rs:32:1
+   |
+LL |   impl<T> Overlap<T> for T {
+   |   ------------------------ first implementation here
+...
+LL | / impl<T> Overlap<for<'a> fn(&'a (), Assoc<'a, T>)> for T
+LL | |
+LL | | where
+LL | |     for<'a> *const T: ToUnit<'a>,
+   | |_________________________________^ conflicting implementation for `for<'a> fn(&'a (), ())`
+   |
+   = note: this behavior recently changed as a result of a bug fix; see rust-lang/rust#56105 for details
+
+error[E0284]: type annotations needed: cannot normalize `<for<'a> fn(&'a (), ()) as Overlap<for<'a> fn(&'a (), ())>>::Assoc`
+  --> $DIR/associated-type.rs:45:59
+   |
+LL |     foo::<for<'a> fn(&'a (), ()), for<'a> fn(&'a (), ())>(3usize);
+   |                                                           ^^^^^^ cannot normalize `<for<'a> fn(&'a (), ()) as Overlap<for<'a> fn(&'a (), ())>>::Assoc`
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0119, E0284.
+For more information about an error, try `rustc --explain E0119`.

@@ -1,0 +1,15 @@
+error[E0119]: conflicting implementations of trait `PartialEq<Interval<_>>` for type `Interval<_>`
+  --> $DIR/warn-when-cycle-is-error-in-coherence.rs:5:10
+   |
+LL |   #[derive(PartialEq, Default)]
+   |            ^^^^^^^^^ conflicting implementation for `Interval<_>`
+...
+LL | / impl<T, Q> PartialEq<Q> for Interval<T>
+LL | | where
+LL | |     T: Borrow<Q>,
+LL | |     Q: ?Sized + PartialOrd,
+   | |___________________________- first implementation here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0119`.

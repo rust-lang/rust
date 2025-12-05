@@ -1,0 +1,39 @@
+[package]
+name = "rustc_session"
+version = "0.0.0"
+edition = "2024"
+
+[dependencies]
+# tidy-alphabetical-start
+bitflags = "2.4.1"
+getopts = "0.2"
+rand = "0.9.0"
+rustc_abi = { path = "../rustc_abi" }
+rustc_ast = { path = "../rustc_ast" }
+rustc_data_structures = { path = "../rustc_data_structures" }
+rustc_errors = { path = "../rustc_errors" }
+rustc_feature = { path = "../rustc_feature" }
+rustc_fluent_macro = { path = "../rustc_fluent_macro" }
+rustc_fs_util = { path = "../rustc_fs_util" }
+rustc_hashes = { path = "../rustc_hashes" }
+rustc_hir = { path = "../rustc_hir" }
+rustc_lint_defs = { path = "../rustc_lint_defs" }
+rustc_macros = { path = "../rustc_macros" }
+rustc_serialize = { path = "../rustc_serialize" }
+rustc_span = { path = "../rustc_span" }
+rustc_target = { path = "../rustc_target" }
+termize = "0.2"
+tracing = "0.1"
+# tidy-alphabetical-end
+
+[target.'cfg(unix)'.dependencies]
+# tidy-alphabetical-start
+libc = "0.2"
+# tidy-alphabetical-end
+
+[target.'cfg(windows)'.dependencies.windows]
+version = "0.61.0"
+features = [
+    "Win32_Foundation",
+    "Win32_System_LibraryLoader",
+]

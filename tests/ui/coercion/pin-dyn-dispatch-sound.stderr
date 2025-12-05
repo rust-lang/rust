@@ -1,0 +1,9 @@
+error[E0321]: cross-crate traits with a default impl, like `Unpin`, can only be implemented for a struct/enum type, not `(dyn MyUnpinTrait + 'static)`
+  --> $DIR/pin-dyn-dispatch-sound.rs:12:1
+   |
+LL | impl Unpin for dyn MyUnpinTrait {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ can't implement cross-crate trait with a default impl for non-struct/enum type
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0321`.

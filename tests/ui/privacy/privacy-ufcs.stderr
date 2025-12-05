@@ -1,0 +1,17 @@
+error[E0603]: trait `Bar` is private
+  --> $DIR/privacy-ufcs.rs:12:25
+   |
+LL |     <i32 as crate::foo::Bar>::baz();
+   |                         ^^^   --- associated function `baz` is not publicly re-exported
+   |                         |
+   |                         private trait
+   |
+note: the trait `Bar` is defined here
+  --> $DIR/privacy-ufcs.rs:4:5
+   |
+LL |     trait Bar {
+   |     ^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0603`.

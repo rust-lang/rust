@@ -1,0 +1,23 @@
+error[E0425]: cannot find value `banana` in this scope
+  --> $DIR/issue-60057.rs:8:21
+   |
+LL |     banana: u8,
+   |     ------ a field by that name exists in `Self`
+...
+LL |             banana: banana
+   |                     ^^^^^^
+
+error[E0425]: cannot find value `banana` in this scope
+  --> $DIR/issue-60057.rs:14:21
+   |
+LL |             banana: banana
+   |                     ^^^^^^
+   |
+help: you might have meant to use the available field
+   |
+LL |             banana: self.banana
+   |                     +++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0425`.

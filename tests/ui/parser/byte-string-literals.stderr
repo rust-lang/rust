@@ -1,0 +1,51 @@
+error: unknown byte escape: `f`
+  --> $DIR/byte-string-literals.rs:1:32
+   |
+LL | static FOO: &'static [u8] = b"\f";
+   |                                ^ unknown byte escape
+   |
+   = help: for more information, visit <https://doc.rust-lang.org/reference/tokens.html#literals>
+
+error: unknown byte escape: `f`
+  --> $DIR/byte-string-literals.rs:4:8
+   |
+LL |     b"\f";
+   |        ^ unknown byte escape
+   |
+   = help: for more information, visit <https://doc.rust-lang.org/reference/tokens.html#literals>
+
+error: invalid character in numeric character escape: `Z`
+  --> $DIR/byte-string-literals.rs:5:10
+   |
+LL |     b"\x0Z";
+   |          ^ invalid character in numeric character escape
+
+error: non-ASCII character in byte string literal
+  --> $DIR/byte-string-literals.rs:6:7
+   |
+LL |     b"é";
+   |       ^ must be ASCII
+   |
+help: if you meant to use the unicode code point for 'é', use a \xHH escape
+   |
+LL -     b"é";
+LL +     b"\xE9";
+   |
+
+error: non-ASCII character in raw byte string literal
+  --> $DIR/byte-string-literals.rs:7:10
+   |
+LL |     br##"é"##;
+   |          ^ must be ASCII
+
+error[E0766]: unterminated double quote byte string
+  --> $DIR/byte-string-literals.rs:8:6
+   |
+LL |       b"a
+   |  ______^
+LL | | }
+   | |__^
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0766`.

@@ -1,0 +1,36 @@
+error[E0107]: missing generics for associated type `MapLike::VRefCont`
+  --> $DIR/issue-79422.rs:45:36
+   |
+LL |         as Box<dyn MapLike<u8, u8, VRefCont = dyn RefCont<'_, u8>>>;
+   |                                    ^^^^^^^^ expected 1 lifetime argument
+   |
+note: associated type defined here, with 1 lifetime parameter: `'a`
+  --> $DIR/issue-79422.rs:18:10
+   |
+LL |     type VRefCont<'a>: RefCont<'a, V>
+   |          ^^^^^^^^ --
+help: add missing lifetime argument
+   |
+LL |         as Box<dyn MapLike<u8, u8, VRefCont<'a> = dyn RefCont<'_, u8>>>;
+   |                                            ++++
+
+error[E0038]: the trait `MapLike` is not dyn compatible
+  --> $DIR/issue-79422.rs:45:20
+   |
+LL |         as Box<dyn MapLike<u8, u8, VRefCont = dyn RefCont<'_, u8>>>;
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `MapLike` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/issue-79422.rs:18:10
+   |
+LL | trait MapLike<K, V> {
+   |       ------- this trait is not dyn compatible...
+LL |     type VRefCont<'a>: RefCont<'a, V>
+   |          ^^^^^^^^ ...because it contains the generic associated type `VRefCont`
+   = help: consider moving `VRefCont` to another trait
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0038, E0107.
+For more information about an error, try `rustc --explain E0038`.

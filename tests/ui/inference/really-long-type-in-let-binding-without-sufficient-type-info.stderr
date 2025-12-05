@@ -1,0 +1,16 @@
+error[E0282]: type annotations needed for `Result<_, (((..., ..., ..., ...), ..., ..., ...), ..., ..., ...)>`
+  --> $DIR/really-long-type-in-let-binding-without-sufficient-type-info.rs:8:9
+   |
+LL |     let y = Err(x);
+   |         ^   ------ type must be known at this point
+   |
+   = note: the full name for the type has been written to '$TEST_BUILD_DIR/really-long-type-in-let-binding-without-sufficient-type-info.long-type-$LONG_TYPE_HASH.txt'
+   = note: consider using `--verbose` to print the full type name to the console
+help: consider giving `y` an explicit type, where the type for type parameter `T` is specified
+   |
+LL |     let y: Result<T, _> = Err(x);
+   |          ++++++++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0282`.

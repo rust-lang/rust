@@ -1,0 +1,39 @@
+error[E0308]: mismatched types
+  --> $DIR/issue-46756-consider-borrowing-cast-or-binexpr.rs:12:42
+   |
+LL |     light_flows_our_war_of_mocking_words(behold as usize);
+   |     ------------------------------------ ^^^^^^^^^^^^^^^ expected `&usize`, found `usize`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/issue-46756-consider-borrowing-cast-or-binexpr.rs:5:4
+   |
+LL | fn light_flows_our_war_of_mocking_words(and_yet: &usize) -> usize {
+   |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ---------------
+help: consider borrowing here
+   |
+LL |     light_flows_our_war_of_mocking_words(&(behold as usize));
+   |                                          ++               +
+
+error[E0308]: mismatched types
+  --> $DIR/issue-46756-consider-borrowing-cast-or-binexpr.rs:14:42
+   |
+LL |     light_flows_our_war_of_mocking_words(with_tears + 4);
+   |     ------------------------------------ ^^^^^^^^^^^^^^ expected `&usize`, found `usize`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/issue-46756-consider-borrowing-cast-or-binexpr.rs:5:4
+   |
+LL | fn light_flows_our_war_of_mocking_words(and_yet: &usize) -> usize {
+   |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ---------------
+help: consider borrowing here
+   |
+LL |     light_flows_our_war_of_mocking_words(&(with_tears + 4));
+   |                                          ++              +
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

@@ -1,0 +1,10 @@
+
+thread 'main' ($TID) panicked at $DIR/panic-in-ffi.rs:21:5:
+Test
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+Noisy Drop
+
+thread 'main' ($TID) panicked at library/core/src/panicking.rs:$LINE:$COL:
+panic in a function that cannot unwind
+stack backtrace:
+thread caused non-unwinding panic. aborting.

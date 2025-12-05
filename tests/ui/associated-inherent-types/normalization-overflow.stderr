@@ -1,0 +1,8 @@
+error: overflow evaluating associated type `T::This`
+  --> $DIR/normalization-overflow.rs:9:5
+   |
+LL |     type This = Self::This;
+   |     ^^^^^^^^^
+
+error: aborting due to 1 previous error
+

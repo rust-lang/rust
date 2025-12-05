@@ -1,0 +1,65 @@
+error: struct literals are not allowed here
+  --> $DIR/E0423.rs:12:32
+   |
+LL |     if let S { x: _x, y: 2 } = S { x: 1, y: 2 } { println!("Ok"); }
+   |                                ^^^^^^^^^^^^^^^^
+   |
+help: surround the struct literal with parentheses
+   |
+LL |     if let S { x: _x, y: 2 } = (S { x: 1, y: 2 }) { println!("Ok"); }
+   |                                +                +
+
+error: expected expression, found `==`
+  --> $DIR/E0423.rs:14:13
+   |
+LL |     if T {} == T {} { println!("Ok"); }
+   |             ^^ expected expression
+
+error: struct literals are not allowed here
+  --> $DIR/E0423.rs:20:14
+   |
+LL |     for _ in std::ops::Range { start: 0, end: 10 } {}
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: surround the struct literal with parentheses
+   |
+LL |     for _ in (std::ops::Range { start: 0, end: 10 }) {}
+   |              +                                     +
+
+error[E0423]: expected value, found struct `T`
+  --> $DIR/E0423.rs:14:8
+   |
+LL |     if T {} == T {} { println!("Ok"); }
+   |        ^ not a value
+   |
+help: surround the struct literal with parentheses
+   |
+LL |     if (T {}) == T {} { println!("Ok"); }
+   |        +    +
+
+error[E0423]: expected function, tuple struct or tuple variant, found struct `Foo`
+  --> $DIR/E0423.rs:4:13
+   |
+LL |     struct Foo { a: bool };
+   |     ---------------------- `Foo` defined here
+LL |
+LL |     let f = Foo();
+   |             ^^^^^
+...
+LL | fn foo() {
+   | -------- similarly named function `foo` defined here
+   |
+help: use struct literal syntax instead
+   |
+LL -     let f = Foo();
+LL +     let f = Foo { a: val };
+   |
+help: a function with a similar name exists (notice the capitalization)
+   |
+LL -     let f = Foo();
+LL +     let f = foo();
+   |
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0423`.

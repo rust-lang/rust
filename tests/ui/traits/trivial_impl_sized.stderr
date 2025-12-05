@@ -1,0 +1,37 @@
+error[E0046]: not all trait items implemented, missing: `foo`
+  --> $DIR/trivial_impl_sized.rs:15:1
+   |
+LL | /     fn foo()
+LL | |     where
+LL | |         Self: Sized;
+   | |____________________- `foo` from trait
+...
+LL |   impl Foo for i32 {}
+   |   ^^^^^^^^^^^^^^^^ missing `foo` in implementation
+
+error: this item cannot be used as its where bounds are not satisfied for the `Self` type
+  --> $DIR/trivial_impl_sized.rs:22:5
+   |
+LL |     fn foo() {}
+   |     ^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/trivial_impl_sized.rs:20:8
+   |
+LL | #[deny(dead_code)]
+   |        ^^^^^^^^^
+
+error[E0046]: not all trait items implemented, missing: `foo`
+  --> $DIR/trivial_impl_sized.rs:39:1
+   |
+LL | /     fn foo(self)
+LL | |     where
+LL | |         Self: Sized;
+   | |____________________- `foo` from trait
+LL |   }
+LL |   impl<T: ?Sized> Trait for T {}
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `foo` in implementation
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0046`.

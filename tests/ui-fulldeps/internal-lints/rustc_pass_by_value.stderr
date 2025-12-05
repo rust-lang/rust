@@ -1,0 +1,128 @@
+error: passing `Ty<'_>` by reference
+  --> $DIR/rustc_pass_by_value.rs:14:13
+   |
+LL |     ty_ref: &Ty<'_>,
+   |             ^^^^^^^ help: try passing by value: `Ty<'_>`
+   |
+note: the lint level is defined here
+  --> $DIR/rustc_pass_by_value.rs:5:9
+   |
+LL | #![deny(rustc::pass_by_value)]
+   |         ^^^^^^^^^^^^^^^^^^^^
+
+error: passing `TyCtxt<'_>` by reference
+  --> $DIR/rustc_pass_by_value.rs:16:18
+   |
+LL |     ty_ctxt_ref: &TyCtxt<'_>,
+   |                  ^^^^^^^^^^^ help: try passing by value: `TyCtxt<'_>`
+
+error: passing `Ty<'_>` by reference
+  --> $DIR/rustc_pass_by_value.rs:20:28
+   |
+LL | fn ty_multi_ref(ty_multi: &&Ty<'_>, ty_ctxt_multi: &&&&TyCtxt<'_>) {}
+   |                            ^^^^^^^ help: try passing by value: `Ty<'_>`
+
+error: passing `TyCtxt<'_>` by reference
+  --> $DIR/rustc_pass_by_value.rs:20:55
+   |
+LL | fn ty_multi_ref(ty_multi: &&Ty<'_>, ty_ctxt_multi: &&&&TyCtxt<'_>) {}
+   |                                                       ^^^^^^^^^^^ help: try passing by value: `TyCtxt<'_>`
+
+error: passing `Ty<'_>` by reference
+  --> $DIR/rustc_pass_by_value.rs:27:17
+   |
+LL |         ty_ref: &Ty<'_>,
+   |                 ^^^^^^^ help: try passing by value: `Ty<'_>`
+
+error: passing `TyCtxt<'_>` by reference
+  --> $DIR/rustc_pass_by_value.rs:29:22
+   |
+LL |         ty_ctxt_ref: &TyCtxt<'_>,
+   |                      ^^^^^^^^^^^ help: try passing by value: `TyCtxt<'_>`
+
+error: passing `Ty<'_>` by reference
+  --> $DIR/rustc_pass_by_value.rs:32:41
+   |
+LL |     fn ty_multi_ref_in_trait(ty_multi: &&Ty<'_>, ty_ctxt_multi: &&&&TyCtxt<'_>);
+   |                                         ^^^^^^^ help: try passing by value: `Ty<'_>`
+
+error: passing `TyCtxt<'_>` by reference
+  --> $DIR/rustc_pass_by_value.rs:32:68
+   |
+LL |     fn ty_multi_ref_in_trait(ty_multi: &&Ty<'_>, ty_ctxt_multi: &&&&TyCtxt<'_>);
+   |                                                                    ^^^^^^^^^^^ help: try passing by value: `TyCtxt<'_>`
+
+error: passing `Ty<'_>` by reference
+  --> $DIR/rustc_pass_by_value.rs:54:17
+   |
+LL |         ty_ref: &Ty<'_>,
+   |                 ^^^^^^^ help: try passing by value: `Ty<'_>`
+
+error: passing `TyCtxt<'_>` by reference
+  --> $DIR/rustc_pass_by_value.rs:56:22
+   |
+LL |         ty_ctxt_ref: &TyCtxt<'_>,
+   |                      ^^^^^^^^^^^ help: try passing by value: `TyCtxt<'_>`
+
+error: passing `Ty<'_>` by reference
+  --> $DIR/rustc_pass_by_value.rs:60:38
+   |
+LL |     fn ty_multi_ref_assoc(ty_multi: &&Ty<'_>, ty_ctxt_multi: &&&&TyCtxt<'_>) {}
+   |                                      ^^^^^^^ help: try passing by value: `Ty<'_>`
+
+error: passing `TyCtxt<'_>` by reference
+  --> $DIR/rustc_pass_by_value.rs:60:65
+   |
+LL |     fn ty_multi_ref_assoc(ty_multi: &&Ty<'_>, ty_ctxt_multi: &&&&TyCtxt<'_>) {}
+   |                                                                 ^^^^^^^^^^^ help: try passing by value: `TyCtxt<'_>`
+
+error: passing `CustomEnum` by reference
+  --> $DIR/rustc_pass_by_value.rs:74:20
+   |
+LL |         reference: &CustomEnum,
+   |                    ^^^^^^^^^^^ help: try passing by value: `CustomEnum`
+
+error: passing `CustomStruct` by reference
+  --> $DIR/rustc_pass_by_value.rs:85:24
+   |
+LL | type CustomAlias<'a> = &'a CustomStruct;
+   |                        ^^^^^^^^^^^^^^^^ help: try passing by value: `CustomStruct`
+
+error: passing `CustomStruct` by reference
+  --> $DIR/rustc_pass_by_value.rs:90:20
+   |
+LL |         reference: &CustomStruct,
+   |                    ^^^^^^^^^^^^^ help: try passing by value: `CustomStruct`
+
+error: passing `CustomAlias<'_>` by reference
+  --> $DIR/rustc_pass_by_value.rs:96:20
+   |
+LL |         reference: &CustomAlias,
+   |                    ^^^^^^^^^^^^ help: try passing by value: `CustomAlias<'_>`
+
+error: passing `WithParameters<T, 1>` by reference
+  --> $DIR/rustc_pass_by_value.rs:110:20
+   |
+LL |         reference: &'a WithParameters<T, 1>,
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^ help: try passing by value: `WithParameters<T, 1>`
+
+error: passing `WithParameters<T, 1, u32>` by reference
+  --> $DIR/rustc_pass_by_value.rs:111:27
+   |
+LL |         reference_with_m: &WithParameters<T, 1, u32>,
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try passing by value: `WithParameters<T, 1, u32>`
+
+error: passing `WithParameters<T, 1>` by reference
+  --> $DIR/rustc_pass_by_value.rs:112:10
+   |
+LL |     ) -> &'a WithParameters<T, 1> {
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^ help: try passing by value: `WithParameters<T, 1>`
+
+error: passing `WithParameters<_, 1>` by reference
+  --> $DIR/rustc_pass_by_value.rs:114:22
+   |
+LL |         reference as &WithParameters<_, 1>
+   |                      ^^^^^^^^^^^^^^^^^^^^^ help: try passing by value: `WithParameters<_, 1>`
+
+error: aborting due to 20 previous errors
+

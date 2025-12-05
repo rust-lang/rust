@@ -1,0 +1,25 @@
+warning: the feature `generic_const_parameter_types` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/concrete-const-param-type.rs:1:12
+   |
+LL | #![feature(generic_const_parameter_types, unsized_const_params, adt_const_params)]
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #137626 <https://github.com/rust-lang/rust/issues/137626> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+warning: the feature `unsized_const_params` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/concrete-const-param-type.rs:1:43
+   |
+LL | #![feature(generic_const_parameter_types, unsized_const_params, adt_const_params)]
+   |                                           ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #95174 <https://github.com/rust-lang/rust/issues/95174> for more information
+
+error: the constant `N` is not of type `u64`
+  --> $DIR/concrete-const-param-type.rs:9:26
+   |
+LL | struct Foo<const N: u32, const M: u64 = N>;
+   |                          ^^^^^^^^^^^^^^^^ expected `u64`, found `u32`
+
+error: aborting due to 1 previous error; 2 warnings emitted
+

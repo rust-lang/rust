@@ -1,0 +1,27 @@
+error[E0803]: cannot infer an appropriate lifetime for lifetime parameter `'a` due to conflicting requirements
+  --> $DIR/regions-normalize-in-where-clause-list.rs:26:36
+   |
+LL |     <() as Project<'a, 'b>>::Item: Eq,
+   |                                    ^^
+   |
+note: first, the lifetime cannot outlive the lifetime `'a` as defined here...
+  --> $DIR/regions-normalize-in-where-clause-list.rs:24:8
+   |
+LL | fn bar<'a, 'b>()
+   |        ^^
+note: ...but the lifetime must also be valid for the lifetime `'b` as defined here...
+  --> $DIR/regions-normalize-in-where-clause-list.rs:24:12
+   |
+LL | fn bar<'a, 'b>()
+   |            ^^
+note: ...so that the types are compatible
+  --> $DIR/regions-normalize-in-where-clause-list.rs:26:36
+   |
+LL |     <() as Project<'a, 'b>>::Item: Eq,
+   |                                    ^^
+   = note: expected `Project<'a, 'b>`
+              found `Project<'_, '_>`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0803`.

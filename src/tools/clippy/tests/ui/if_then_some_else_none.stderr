@@ -1,0 +1,143 @@
+error: this could be simplified with `bool::then`
+  --> tests/ui/if_then_some_else_none.rs:6:13
+   |
+LL |       let _ = if foo() {
+   |  _____________^
+LL | |
+LL | |
+LL | |         println!("true!");
+...  |
+LL | |         None
+LL | |     };
+   | |_____^ help: try: `foo().then(||  { println!("true!"); "foo" })`
+   |
+   = note: `-D clippy::if-then-some-else-none` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::if_then_some_else_none)]`
+
+error: this could be simplified with `bool::then`
+  --> tests/ui/if_then_some_else_none.rs:16:13
+   |
+LL |       let _ = if matches!(true, true) {
+   |  _____________^
+LL | |
+LL | |
+LL | |         println!("true!");
+...  |
+LL | |         None
+LL | |     };
+   | |_____^ help: try: `matches!(true, true).then(||  { println!("true!"); matches!(true, false) })`
+
+error: this could be simplified with `bool::then_some`
+  --> tests/ui/if_then_some_else_none.rs:27:28
+   |
+LL |     let _ = x.and_then(|o| if o < 32 { Some(o) } else { None });
+   |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `(o < 32).then_some(o)`
+
+error: this could be simplified with `bool::then_some`
+  --> tests/ui/if_then_some_else_none.rs:32:13
+   |
+LL |     let _ = if !x { Some(0) } else { None };
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `(!x).then_some(0)`
+
+error: this could be simplified with `bool::then`
+  --> tests/ui/if_then_some_else_none.rs:88:13
+   |
+LL |       let _ = if foo() {
+   |  _____________^
+LL | |
+LL | |
+LL | |         println!("true!");
+...  |
+LL | |         None
+LL | |     };
+   | |_____^ help: try: `foo().then(||  { println!("true!"); 150 })`
+
+error: this could be simplified with `bool::then`
+  --> tests/ui/if_then_some_else_none.rs:138:5
+   |
+LL |     if s == "1" { Some(true) } else { None }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `(s == "1").then(|| true)`
+
+error: this could be simplified with `bool::then`
+  --> tests/ui/if_then_some_else_none.rs:154:9
+   |
+LL | /         if rs.len() == 1 && rs[0].start == rs[0].end {
+LL | |
+LL | |             Some(vec![rs[0].start])
+LL | |         } else {
+LL | |             None
+LL | |         }
+   | |_________^ help: try: `(rs.len() == 1 && rs[0].start == rs[0].end).then(|| vec![rs[0].start])`
+
+error: this could be simplified with `bool::then_some`
+  --> tests/ui/if_then_some_else_none.rs:164:9
+   |
+LL | /         if modulo == 0 {
+LL | |
+LL | |             Some(i)
+LL | |         } else {
+LL | |             None
+LL | |         }
+   | |_________^ help: try: `(modulo == 0).then_some(i)`
+
+error: this could be simplified with `bool::then_some`
+  --> tests/ui/if_then_some_else_none.rs:181:22
+   |
+LL |           do_something(if i % 2 == 0 {
+   |  ______________________^
+LL | |
+LL | |             Some(item_fn)
+LL | |         } else {
+LL | |             None
+LL | |         });
+   | |_________^ help: try: `(i % 2 == 0).then_some(item_fn)`
+
+error: this could be simplified with `bool::then_some`
+  --> tests/ui/if_then_some_else_none.rs:198:22
+   |
+LL |           do_something(if i % 2 == 0 {
+   |  ______________________^
+LL | |
+LL | |             Some(item_fn)
+LL | |         } else {
+LL | |             None
+LL | |         });
+   | |_________^ help: try: `(i % 2 == 0).then_some(item_fn)`
+
+error: this could be simplified with `bool::then_some`
+  --> tests/ui/if_then_some_else_none.rs:206:22
+   |
+LL |           do_something(if i % 2 == 0 {
+   |  ______________________^
+LL | |
+LL | |             Some(closure_fn)
+LL | |         } else {
+LL | |             None
+LL | |         });
+   | |_________^ help: try: `(i % 2 == 0).then_some(closure_fn)`
+
+error: this could be simplified with `bool::then`
+  --> tests/ui/if_then_some_else_none.rs:231:13
+   |
+LL | /             if self.count < 5 {
+LL | |                 self.count += 1;
+LL | |                 Some(self.count)
+LL | |             } else {
+LL | |                 None
+LL | |             }
+   | |_____________^ help: try: `(self.count < 5).then(||  { self.count += 1; self.count })`
+
+error: this could be simplified with `bool::then`
+  --> tests/ui/if_then_some_else_none.rs:249:13
+   |
+LL |       let _ = if true {
+   |  _____________^
+LL | |         mac!();
+LL | |         Some(42)
+LL | |     } else {
+LL | |         None
+LL | |     };
+   | |_____^ help: try: `true.then(||  { mac!(); 42 })`
+
+error: aborting due to 13 previous errors
+

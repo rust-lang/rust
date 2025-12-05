@@ -1,0 +1,26 @@
+#[attr = MacroUse {arguments: UseAll}]
+extern crate std;
+#[prelude_import]
+use ::std::prelude::rust_2015::*;
+//@ compile-flags: -Zunpretty=hir
+//@ check-pass
+//@ edition: 2015
+
+use std::fmt;
+
+struct Bar {
+    a: String,
+    b: u8,
+}
+
+impl fmt::Debug for Bar {
+    fn fmt(&self, f: &'_ mut fmt::Formatter<'_>)
+        ->
+            fmt::Result {
+        debug_struct_field2_finish(f, "Bar", "a", &self.a, "b", &&self.b)
+    }
+}
+
+fn debug_struct_field2_finish<'a>(name: &'_ str, name1: &'_ str,
+    value1: &'a dyn fmt::Debug, name2: &'_ str, value2: &'a dyn fmt::Debug)
+    -> fmt::Result { loop { } }

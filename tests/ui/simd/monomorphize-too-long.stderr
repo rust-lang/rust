@@ -1,0 +1,8 @@
+error: the SIMD type `Simd<u16, 54321>` has more elements than the limit 32768
+  --> $DIR/monomorphize-too-long.rs:9:9
+   |
+LL |     let _too_big = Simd([1_u16; 54321]);
+   |         ^^^^^^^^
+
+error: aborting due to 1 previous error
+

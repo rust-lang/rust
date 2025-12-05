@@ -1,0 +1,17 @@
+error[E0152]: found duplicate lang item `panic_impl`
+  --> $DIR/E0152-duplicate-lang-items.rs:16:1
+   |
+LL | / fn panic_impl(info: &PanicInfo) -> ! {
+LL | |
+LL | |
+LL | |     loop {}
+LL | | }
+   | |_^
+   |
+   = note: the lang item is first defined in crate `std` (which `E0152_duplicate_lang_items` depends on)
+   = note: first definition in `std` loaded from SYSROOT/libstd-*.rlib
+   = note: second definition in the local crate (`E0152_duplicate_lang_items`)
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0152`.

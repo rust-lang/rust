@@ -1,0 +1,34 @@
+note: no external requirements
+  --> $DIR/escape-argument-callee.rs:26:38
+   |
+LL |         let mut closure = expect_sig(|p, y| *p = y);
+   |                                      ^^^^^^
+   |
+   = note: defining type: test::{closure#0} with closure args [
+               i16,
+               for<Region(BrAnon), Region(BrAnon), Region(BrAnon)> extern "rust-call" fn((&'^0 mut &'^1 i32, &'^2 i32)),
+               (),
+           ]
+   = note: late-bound region is '?1
+   = note: late-bound region is '?2
+   = note: late-bound region is '?3
+
+error: lifetime may not live long enough
+  --> $DIR/escape-argument-callee.rs:26:45
+   |
+LL |         let mut closure = expect_sig(|p, y| *p = y);
+   |                                       -  -  ^^^^^^ assignment requires that `'1` must outlive `'2`
+   |                                       |  |
+   |                                       |  has type `&'1 i32`
+   |                                       has type `&'?1 mut &'2 i32`
+
+note: no external requirements
+  --> $DIR/escape-argument-callee.rs:20:1
+   |
+LL | fn test() {
+   | ^^^^^^^^^
+   |
+   = note: defining type: test
+
+error: aborting due to 1 previous error
+

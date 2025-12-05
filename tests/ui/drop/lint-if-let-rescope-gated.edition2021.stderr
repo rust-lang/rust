@@ -1,0 +1,38 @@
+error: `if let` assigns a shorter lifetime since Edition 2024
+  --> $DIR/lint-if-let-rescope-gated.rs:26:8
+   |
+LL |     if let Some(_value) = Droppy.get() {
+   |        ^^^^^^^^^^^^^^^^^^^------^^^^^^
+   |                           |
+   |                           this value has a significant drop implementation which may observe a major change in drop order and requires your discretion
+   |
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/temporary-if-let-scope.html>
+note: value invokes this custom destructor
+  --> $DIR/lint-if-let-rescope-gated.rs:14:1
+   |
+LL | impl Drop for Droppy {
+   | ^^^^^^^^^^^^^^^^^^^^
+help: the value is now dropped here in Edition 2024
+  --> $DIR/lint-if-let-rescope-gated.rs:30:5
+   |
+LL |     } else {
+   |     ^
+note: the lint level is defined here
+  --> $DIR/lint-if-let-rescope-gated.rs:10:9
+   |
+LL | #![deny(if_let_rescope)]
+   |         ^^^^^^^^^^^^^^
+help: a `match` with a single arm can preserve the drop order up to Edition 2021
+   |
+LL ~     match Droppy.get() { Some(_value) => {
+LL |
+LL |
+LL |
+LL ~     } _ => {
+LL |
+LL ~     }}
+   |
+
+error: aborting due to 1 previous error
+

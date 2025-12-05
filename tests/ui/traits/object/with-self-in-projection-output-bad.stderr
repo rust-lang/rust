@@ -1,0 +1,21 @@
+error[E0191]: the value of the associated type `Output` in `Base` must be specified
+  --> $DIR/with-self-in-projection-output-bad.rs:45:21
+   |
+LL |     type Output;
+   |     ----------- `Output` defined here
+...
+LL |     let _x: Box<dyn Helper<Target=i32>> = Box::new(2u32);
+   |                     ^^^^^^^^^^^^^^^^^^ help: specify the associated type: `Helper<Target=i32, Output = Type>`
+
+error[E0191]: the value of the associated type `Output` in `Base` must be specified
+  --> $DIR/with-self-in-projection-output-bad.rs:48:21
+   |
+LL |     type Output;
+   |     ----------- `Output` defined here
+...
+LL |     let _y: Box<dyn NormalizableHelper<Target=i32>> = Box::new(2u32);
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: specify the associated type: `NormalizableHelper<Target=i32, Output = Type>`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0191`.

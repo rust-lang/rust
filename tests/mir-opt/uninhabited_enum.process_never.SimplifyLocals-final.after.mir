@@ -1,0 +1,13 @@
+// MIR for `process_never` after SimplifyLocals-final
+
+fn process_never(_1: *const !) -> () {
+    debug input => _1;
+    let mut _0: ();
+    scope 1 {
+        debug _input => const ();
+    }
+
+    bb0: {
+        unreachable;
+    }
+}

@@ -1,0 +1,23 @@
+error: Undefined Behavior: reading memory at ALLOC[0xX..0xY], but memory is uninitialized at [0xX..0xY], and this operation requires initialized memory
+  --> tests/fail/intrinsics/ptr_metadata_uninit_slice_data.rs:LL:CC
+   |
+LL |             RET = PtrMetadata(*p);
+   |             ^^^^^^^^^^^^^^^^^^^^^ Undefined Behavior occurred here
+   |
+   = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
+   = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
+   = note: BACKTRACE:
+   = note: inside `deref_meta` at tests/fail/intrinsics/ptr_metadata_uninit_slice_data.rs:LL:CC
+note: inside `main`
+  --> tests/fail/intrinsics/ptr_metadata_uninit_slice_data.rs:LL:CC
+   |
+LL |         let _meta = deref_meta(p.as_ptr().cast());
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Uninitialized memory occurred at ALLOC[0xX..0xY], in this allocation:
+ALLOC DUMP
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to 1 previous error
+

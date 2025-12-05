@@ -1,0 +1,21 @@
+error: internal compiler error: expected one of `->`, `where`, or `{`, found `<eof>`
+  --> $DIR/ice-bug-report-url.rs:12:10
+   |
+LL | fn wrong()
+   |          ^ expected one of `->`, `where`, or `{`
+
+
+
+aborting due to `-Z treat-err-as-bug=1`
+stack backtrace:
+
+error: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-rustdoc&template=ice.md
+
+note: please make sure that you have updated to the latest nightly
+
+note: rustc {version} running on {platform}
+
+query stack during panic:
+end of query stack

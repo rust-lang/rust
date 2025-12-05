@@ -1,0 +1,25 @@
+#![feature(auto_traits)]
+#![allow(dead_code)]
+
+//@ run-rustfix
+
+auto trait Generic {}
+//~^ ERROR auto traits cannot have generic parameters [E0567]
+auto trait Bound {}
+//~^ ERROR auto traits cannot have super traits or lifetime bounds [E0568]
+auto trait LifetimeBound {}
+//~^ ERROR auto traits cannot have super traits or lifetime bounds [E0568]
+auto trait MyTrait {  }
+//~^ ERROR auto traits cannot have associated items [E0380]
+auto trait AssocTy {  }
+//~^ ERROR auto traits cannot have associated items [E0380]
+auto trait All {
+    //~^ ERROR auto traits cannot have generic parameters [E0567]
+    
+}
+// We can't test both generic params and super-traits because the suggestion span overlaps.
+auto trait All2 {
+    //~^ ERROR auto traits cannot have super traits or lifetime bounds [E0568]
+    
+}
+fn main() {}

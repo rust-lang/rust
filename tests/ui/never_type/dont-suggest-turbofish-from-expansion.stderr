@@ -1,0 +1,43 @@
+error: this function depends on never type fallback being `()`
+  --> $DIR/dont-suggest-turbofish-from-expansion.rs:8:1
+   |
+LL | fn main() -> Result<(), ()> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in Rust 2024 and in a future release in all editions!
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/never-type-fallback.html>
+   = help: specify the types explicitly
+note: in edition 2024, the requirement `!: Default` will fail
+  --> $DIR/dont-suggest-turbofish-from-expansion.rs:12:23
+   |
+LL |         let created = create_ok_default()?;
+   |                       ^^^^^^^^^^^^^^^^^^^
+   = note: `#[deny(dependency_on_unit_never_type_fallback)]` (part of `#[deny(rust_2024_compatibility)]`) on by default
+help: use `()` annotations to avoid fallback changes
+   |
+LL |         let created: () = create_ok_default()?;
+   |                    ++++
+
+error: aborting due to 1 previous error
+
+Future incompatibility report: Future breakage diagnostic:
+error: this function depends on never type fallback being `()`
+  --> $DIR/dont-suggest-turbofish-from-expansion.rs:8:1
+   |
+LL | fn main() -> Result<(), ()> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in Rust 2024 and in a future release in all editions!
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/never-type-fallback.html>
+   = help: specify the types explicitly
+note: in edition 2024, the requirement `!: Default` will fail
+  --> $DIR/dont-suggest-turbofish-from-expansion.rs:12:23
+   |
+LL |         let created = create_ok_default()?;
+   |                       ^^^^^^^^^^^^^^^^^^^
+   = note: `#[deny(dependency_on_unit_never_type_fallback)]` (part of `#[deny(rust_2024_compatibility)]`) on by default
+help: use `()` annotations to avoid fallback changes
+   |
+LL |         let created: () = create_ok_default()?;
+   |                    ++++
+

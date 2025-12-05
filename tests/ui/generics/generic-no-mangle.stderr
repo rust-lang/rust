@@ -1,0 +1,144 @@
+error: functions generic over types or consts must be mangled
+  --> $DIR/generic-no-mangle.rs:6:1
+   |
+LL | #[no_mangle]
+   | ------------ help: remove this attribute
+LL | pub fn foo<T>() {}
+   | ^^^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/generic-no-mangle.rs:3:9
+   |
+LL | #![deny(no_mangle_generic_items)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: functions generic over types or consts must be mangled
+  --> $DIR/generic-no-mangle.rs:9:1
+   |
+LL | #[no_mangle]
+   | ------------ help: remove this attribute
+LL | pub extern "C" fn bar<T>() {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: functions generic over types or consts must be mangled
+  --> $DIR/generic-no-mangle.rs:21:5
+   |
+LL |     #[no_mangle]
+   |     ------------ help: remove this attribute
+LL |     pub fn foo<T>() {}
+   |     ^^^^^^^^^^^^^^^
+
+error: functions generic over types or consts must be mangled
+  --> $DIR/generic-no-mangle.rs:24:5
+   |
+LL |     #[no_mangle]
+   |     ------------ help: remove this attribute
+LL |     pub extern "C" fn bar<T>() {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: functions generic over types or consts must be mangled
+  --> $DIR/generic-no-mangle.rs:42:5
+   |
+LL |     #[no_mangle]
+   |     ------------ help: remove this attribute
+LL |     fn foo<T>() {}
+   |     ^^^^^^^^^^^
+
+error: functions generic over types or consts must be mangled
+  --> $DIR/generic-no-mangle.rs:45:5
+   |
+LL |     #[no_mangle]
+   |     ------------ help: remove this attribute
+LL |     extern "C" fn bar<T>() {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+
+error: functions generic over types or consts must be mangled
+  --> $DIR/generic-no-mangle.rs:64:5
+   |
+LL |     #[no_mangle]
+   |     ------------ help: remove this attribute
+LL |     fn foo() {}
+   |     ^^^^^^^^
+
+error: functions generic over types or consts must be mangled
+  --> $DIR/generic-no-mangle.rs:67:5
+   |
+LL |     #[no_mangle]
+   |     ------------ help: remove this attribute
+LL |     fn foo2<U>() {}
+   |     ^^^^^^^^^^^^
+
+error: functions generic over types or consts must be mangled
+  --> $DIR/generic-no-mangle.rs:70:5
+   |
+LL |     #[no_mangle]
+   |     ------------ help: remove this attribute
+LL |     extern "C" fn bar() {}
+   |     ^^^^^^^^^^^^^^^^^^^
+
+error: functions generic over types or consts must be mangled
+  --> $DIR/generic-no-mangle.rs:73:5
+   |
+LL |     #[no_mangle]
+   |     ------------ help: remove this attribute
+LL |     fn baz(x: &i32) -> &i32 { x }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: functions generic over types or consts must be mangled
+  --> $DIR/generic-no-mangle.rs:76:5
+   |
+LL |     #[no_mangle]
+   |     ------------ help: remove this attribute
+LL |     fn qux<'a>(x: &'a i32) -> &i32 { x }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: functions generic over types or consts must be mangled
+  --> $DIR/generic-no-mangle.rs:83:5
+   |
+LL |     #[no_mangle]
+   |     ------------ help: remove this attribute
+LL |     pub fn foo() {}
+   |     ^^^^^^^^^^^^
+
+error: functions generic over types or consts must be mangled
+  --> $DIR/generic-no-mangle.rs:86:5
+   |
+LL |     #[no_mangle]
+   |     ------------ help: remove this attribute
+LL |     pub extern "C" fn bar() {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: functions generic over types or consts must be mangled
+  --> $DIR/generic-no-mangle.rs:89:5
+   |
+LL |     #[no_mangle]
+   |     ------------ help: remove this attribute
+LL |     pub fn baz<U>() {}
+   |     ^^^^^^^^^^^^^^^
+
+error: functions generic over types or consts must be mangled
+  --> $DIR/generic-no-mangle.rs:105:5
+   |
+LL |     #[no_mangle]
+   |     ------------ help: remove this attribute
+LL |     fn foo() {}
+   |     ^^^^^^^^
+
+error: functions generic over types or consts must be mangled
+  --> $DIR/generic-no-mangle.rs:108:5
+   |
+LL |     #[no_mangle]
+   |     ------------ help: remove this attribute
+LL |     extern "C" fn bar() {}
+   |     ^^^^^^^^^^^^^^^^^^^
+
+error: functions generic over types or consts must be mangled
+  --> $DIR/generic-no-mangle.rs:111:5
+   |
+LL |     #[no_mangle]
+   |     ------------ help: remove this attribute
+LL |     fn baz<U>() {}
+   |     ^^^^^^^^^^^
+
+error: aborting due to 17 previous errors
+

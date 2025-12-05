@@ -1,0 +1,79 @@
+error[E0277]: the trait bound `impl Future<Output = ()>: Coroutine<_>` is not satisfied
+  --> $DIR/coroutine-not-future.rs:36:21
+   |
+LL |     takes_coroutine(async_fn());
+   |     --------------- ^^^^^^^^^^ the trait `Coroutine<_>` is not implemented for `impl Future<Output = ()>`
+   |     |
+   |     required by a bound introduced by this call
+   |
+note: required by a bound in `takes_coroutine`
+  --> $DIR/coroutine-not-future.rs:20:39
+   |
+LL | fn takes_coroutine<ResumeTy>(_g: impl Coroutine<ResumeTy, Yield = (), Return = ()>) {}
+   |                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `takes_coroutine`
+
+error[E0277]: the trait bound `impl Future<Output = ()>: Coroutine<_>` is not satisfied
+  --> $DIR/coroutine-not-future.rs:38:21
+   |
+LL |     takes_coroutine(returns_async_block());
+   |     --------------- ^^^^^^^^^^^^^^^^^^^^^ the trait `Coroutine<_>` is not implemented for `impl Future<Output = ()>`
+   |     |
+   |     required by a bound introduced by this call
+   |
+note: required by a bound in `takes_coroutine`
+  --> $DIR/coroutine-not-future.rs:20:39
+   |
+LL | fn takes_coroutine<ResumeTy>(_g: impl Coroutine<ResumeTy, Yield = (), Return = ()>) {}
+   |                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `takes_coroutine`
+
+error[E0277]: the trait bound `{async block@$DIR/coroutine-not-future.rs:40:21: 40:26}: Coroutine<_>` is not satisfied
+  --> $DIR/coroutine-not-future.rs:40:21
+   |
+LL |     takes_coroutine(async {});
+   |     --------------- ^^^^^^^^ the trait `Coroutine<_>` is not implemented for `{async block@$DIR/coroutine-not-future.rs:40:21: 40:26}`
+   |     |
+   |     required by a bound introduced by this call
+   |
+note: required by a bound in `takes_coroutine`
+  --> $DIR/coroutine-not-future.rs:20:39
+   |
+LL | fn takes_coroutine<ResumeTy>(_g: impl Coroutine<ResumeTy, Yield = (), Return = ()>) {}
+   |                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `takes_coroutine`
+
+error[E0277]: `impl Coroutine<Yield = (), Return = ()>` is not a future
+  --> $DIR/coroutine-not-future.rs:44:18
+   |
+LL |     takes_future(returns_coroutine());
+   |     ------------ ^^^^^^^^^^^^^^^^^^^ `impl Coroutine<Yield = (), Return = ()>` is not a future
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = help: the trait `Future` is not implemented for `impl Coroutine<Yield = (), Return = ()>`
+note: required by a bound in `takes_future`
+  --> $DIR/coroutine-not-future.rs:19:26
+   |
+LL | fn takes_future(_f: impl Future<Output = ()>) {}
+   |                          ^^^^^^^^^^^^^^^^^^^ required by this bound in `takes_future`
+
+error[E0277]: `{coroutine@$DIR/coroutine-not-future.rs:48:9: 48:14}` is not a future
+  --> $DIR/coroutine-not-future.rs:48:9
+   |
+LL |       takes_future(
+   |       ------------ required by a bound introduced by this call
+LL |           #[coroutine]
+LL | /         |ctx| {
+LL | |
+LL | |             ctx = yield ();
+LL | |         },
+   | |_________^ `{coroutine@$DIR/coroutine-not-future.rs:48:9: 48:14}` is not a future
+   |
+   = help: the trait `Future` is not implemented for `{coroutine@$DIR/coroutine-not-future.rs:48:9: 48:14}`
+note: required by a bound in `takes_future`
+  --> $DIR/coroutine-not-future.rs:19:26
+   |
+LL | fn takes_future(_f: impl Future<Output = ()>) {}
+   |                          ^^^^^^^^^^^^^^^^^^^ required by this bound in `takes_future`
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

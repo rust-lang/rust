@@ -1,0 +1,9 @@
+error[E0277]: the trait bound `User: AuthUser` is not satisfied
+  --> $DIR/dropck-only-error.rs:20:31
+   |
+LL | pub fn run_query<User: Authz>(auth: AuthSession<User::AuthnBackend>) {}
+   |                               ^^^^ the trait `AuthUser` is not implemented for `User`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

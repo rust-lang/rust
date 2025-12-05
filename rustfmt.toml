@@ -1,0 +1,62 @@
+# Run rustfmt with this config (it should be picked up automatically).
+style_edition = "2024"
+use_small_heuristics = "Max"
+merge_derives = false
+group_imports = "StdExternalCrate"
+imports_granularity = "Module"
+use_field_init_shorthand = true
+
+# Files to ignore. Each entry uses gitignore syntax, but `!` prefixes aren't allowed.
+ignore = [
+    "/build/",
+    "/*-build/",
+    "/build-*/",
+    "/vendor/",
+
+    # Some tests are not formatted, for various reasons.
+    "/tests/codegen-llvm/simd-intrinsic/", # Many types like `u8x64` are better hand-formatted.
+    "/tests/crashes/",                # Many of these tests contain syntax errors.
+    "/tests/debuginfo/",              # These tests are somewhat sensitive to source code layout.
+    "/tests/incremental/",            # These tests are somewhat sensitive to source code layout.
+    "/tests/pretty/",                 # These tests are very sensitive to source code layout.
+    "/tests/run-make/export",         # These tests contain syntax errors.
+    "/tests/run-make/translation/test.rs", # This test contains syntax errors.
+    "/tests/rustdoc/",                # Some have syntax errors, some are whitespace-sensitive.
+    "/tests/rustdoc-gui/",            # Some tests are sensitive to source code layout.
+    "/tests/rustdoc-ui/",             # Some have syntax errors, some are whitespace-sensitive.
+    "/tests/ui/",                     # Some have syntax errors, some are whitespace-sensitive.
+    "/tests/ui-fulldeps/",            # Some are whitespace-sensitive (e.g. `// ~ERROR` comments).
+
+    # Do not format submodules.
+    "library/backtrace",
+    "library/compiler-builtins",
+    "library/portable-simd",
+    "library/stdarch",
+    "src/doc/book",
+    "src/doc/edition-guide",
+    "src/doc/embedded-book",
+    "src/doc/nomicon",
+    "src/doc/reference",
+    "src/doc/rust-by-example",
+    "src/doc/rustc-dev-guide",
+    "src/llvm-project",
+    "src/tools/cargo",
+    "src/tools/clippy",
+    "src/tools/enzyme",
+    "src/tools/miri",
+    "src/tools/rust-analyzer",
+    "src/tools/rustc-perf",
+    "src/tools/rustfmt",
+    "src/gcc",
+
+    # These are ignored by a standard cargo fmt run.
+    "compiler/rustc_codegen_cranelift/scripts",
+    "compiler/rustc_codegen_gcc/tests",
+    # Code automatically generated and included.
+    "compiler/rustc_codegen_gcc/src/intrinsic/archs.rs",
+    "compiler/rustc_codegen_gcc/example",
+
+    # Rustfmt doesn't support use closures yet
+    "tests/mir-opt/ergonomic-clones/closure.rs",
+    "tests/codegen-llvm/ergonomic-clones/closure.rs",
+]

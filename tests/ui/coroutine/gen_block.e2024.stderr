@@ -1,0 +1,41 @@
+error[E0658]: the `#[coroutine]` attribute is an experimental feature
+  --> $DIR/gen_block.rs:20:13
+   |
+LL |     let _ = #[coroutine] || yield true;
+   |             ^^^^^^^^^^^^
+   |
+   = note: see issue #43122 <https://github.com/rust-lang/rust/issues/43122> for more information
+   = help: add `#![feature(coroutines)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: the `#[coroutine]` attribute is an experimental feature
+  --> $DIR/gen_block.rs:24:13
+   |
+LL |     let _ = #[coroutine] || {};
+   |             ^^^^^^^^^^^^
+   |
+   = note: see issue #43122 <https://github.com/rust-lang/rust/issues/43122> for more information
+   = help: add `#![feature(coroutines)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: `yield` can only be used in `#[coroutine]` closures, or `gen` blocks
+  --> $DIR/gen_block.rs:16:16
+   |
+LL |     let _ = || yield true;
+   |                ^^^^^^^^^^
+   |
+help: use `#[coroutine]` to make this closure a coroutine
+   |
+LL |     let _ = #[coroutine] || yield true;
+   |             ++++++++++++
+
+error[E0282]: type annotations needed
+  --> $DIR/gen_block.rs:7:13
+   |
+LL |     let x = gen {};
+   |             ^^^^^^ cannot infer type
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0282, E0658.
+For more information about an error, try `rustc --explain E0282`.

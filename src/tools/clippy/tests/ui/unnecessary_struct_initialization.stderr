@@ -1,0 +1,79 @@
+error: unnecessary struct building
+  --> tests/ui/unnecessary_struct_initialization.rs:37:9
+   |
+LL |         Self { ..*self }
+   |         ^^^^^^^^^^^^^^^^ help: replace with: `*self`
+   |
+   = note: `-D clippy::unnecessary-struct-initialization` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unnecessary_struct_initialization)]`
+
+error: unnecessary struct building
+  --> tests/ui/unnecessary_struct_initialization.rs:45:17
+   |
+LL |     let mut b = S { ..a };
+   |                 ^^^^^^^^^ help: replace with: `a`
+
+error: unnecessary struct building
+  --> tests/ui/unnecessary_struct_initialization.rs:49:18
+   |
+LL |     let c = &mut S { ..b };
+   |                  ^^^^^^^^^ help: replace with: `b`
+
+error: unnecessary struct building
+  --> tests/ui/unnecessary_struct_initialization.rs:58:14
+   |
+LL |     let g = &S { ..f };
+   |              ^^^^^^^^^ help: replace with: `f`
+
+error: unnecessary struct building
+  --> tests/ui/unnecessary_struct_initialization.rs:62:18
+   |
+LL |       let h = &mut S {
+   |  __________________^
+LL | |
+LL | |         ..*Box::new(S { f: String::from("foo") })
+LL | |     };
+   | |_____^ help: replace with: `*Box::new(S { f: String::from("foo") })`
+
+error: unnecessary struct building
+  --> tests/ui/unnecessary_struct_initialization.rs:82:18
+   |
+LL |       let p = &mut T {
+   |  __________________^
+LL | |
+LL | |         ..*Box::new(T { f: 5 })
+LL | |     };
+   | |_____^ help: replace with: `*Box::new(T { f: 5 })`
+
+error: unnecessary struct building
+  --> tests/ui/unnecessary_struct_initialization.rs:89:13
+   |
+LL |     let r = W { f1: q.f1, f2: q.f2 };
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `q`
+
+error: unnecessary struct building
+  --> tests/ui/unnecessary_struct_initialization.rs:101:13
+   |
+LL |     let w = W { f1: v.f1, ..v };
+   |             ^^^^^^^^^^^^^^^^^^^ help: replace with: `v`
+
+error: unnecessary struct building
+  --> tests/ui/unnecessary_struct_initialization.rs:110:14
+   |
+LL |     let r2 = r1.start..r1.end;
+   |              ^^^^^^^^^^^^^^^^ help: replace with: `r1`
+
+error: unnecessary struct building
+  --> tests/ui/unnecessary_struct_initialization.rs:124:14
+   |
+LL |     let d = &W { f1: c.f1, f2: c.f2 };
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `c`
+
+error: unnecessary struct building
+  --> tests/ui/unnecessary_struct_initialization.rs:133:14
+   |
+LL |     let h = &W { f1: g.f1, ..g };
+   |              ^^^^^^^^^^^^^^^^^^^ help: replace with: `g`
+
+error: aborting due to 11 previous errors
+

@@ -1,0 +1,6 @@
+error: invalid `--check-cfg` argument: `cfg(foo,values(any(),any()))`
+   |
+   = note: `any()` is invalid
+   = note: `any()` in `values()` cannot be specified multiple times
+   = note: visit <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more details
+

@@ -1,0 +1,84 @@
+error[E0798]: return value of `"cmse-nonsecure-entry"` function too large to pass via registers
+  --> $DIR/return-via-stack.rs:24:46
+   |
+LL | pub extern "cmse-nonsecure-entry" fn f1() -> ReprCU64 {
+   |                                              ^^^^^^^^ this type doesn't fit in the available registers
+   |
+   = note: functions with the `"cmse-nonsecure-entry"` ABI must pass their result via the available return registers
+   = note: the result must either be a (transparently wrapped) i64, u64 or f64, or be at most 4 bytes in size
+
+error[E0798]: return value of `"cmse-nonsecure-entry"` function too large to pass via registers
+  --> $DIR/return-via-stack.rs:29:46
+   |
+LL | pub extern "cmse-nonsecure-entry" fn f2() -> ReprCBytes {
+   |                                              ^^^^^^^^^^ this type doesn't fit in the available registers
+   |
+   = note: functions with the `"cmse-nonsecure-entry"` ABI must pass their result via the available return registers
+   = note: the result must either be a (transparently wrapped) i64, u64 or f64, or be at most 4 bytes in size
+
+error[E0798]: return value of `"cmse-nonsecure-entry"` function too large to pass via registers
+  --> $DIR/return-via-stack.rs:34:46
+   |
+LL | pub extern "cmse-nonsecure-entry" fn f3() -> U64Compound {
+   |                                              ^^^^^^^^^^^ this type doesn't fit in the available registers
+   |
+   = note: functions with the `"cmse-nonsecure-entry"` ABI must pass their result via the available return registers
+   = note: the result must either be a (transparently wrapped) i64, u64 or f64, or be at most 4 bytes in size
+
+error[E0798]: return value of `"cmse-nonsecure-entry"` function too large to pass via registers
+  --> $DIR/return-via-stack.rs:39:46
+   |
+LL | pub extern "cmse-nonsecure-entry" fn f4() -> ReprCAlign16 {
+   |                                              ^^^^^^^^^^^^ this type doesn't fit in the available registers
+   |
+   = note: functions with the `"cmse-nonsecure-entry"` ABI must pass their result via the available return registers
+   = note: the result must either be a (transparently wrapped) i64, u64 or f64, or be at most 4 bytes in size
+
+error[E0798]: return value of `"cmse-nonsecure-entry"` function too large to pass via registers
+  --> $DIR/return-via-stack.rs:46:46
+   |
+LL | pub extern "cmse-nonsecure-entry" fn f5() -> [u8; 5] {
+   |                                              ^^^^^^^ this type doesn't fit in the available registers
+   |
+   = note: functions with the `"cmse-nonsecure-entry"` ABI must pass their result via the available return registers
+   = note: the result must either be a (transparently wrapped) i64, u64 or f64, or be at most 4 bytes in size
+
+error[E0798]: return value of `"cmse-nonsecure-entry"` function too large to pass via registers
+  --> $DIR/return-via-stack.rs:52:48
+   |
+LL | pub extern "cmse-nonsecure-entry" fn u128() -> u128 {
+   |                                                ^^^^ this type doesn't fit in the available registers
+   |
+   = note: functions with the `"cmse-nonsecure-entry"` ABI must pass their result via the available return registers
+   = note: the result must either be a (transparently wrapped) i64, u64 or f64, or be at most 4 bytes in size
+
+error[E0798]: return value of `"cmse-nonsecure-entry"` function too large to pass via registers
+  --> $DIR/return-via-stack.rs:58:48
+   |
+LL | pub extern "cmse-nonsecure-entry" fn i128() -> i128 {
+   |                                                ^^^^ this type doesn't fit in the available registers
+   |
+   = note: functions with the `"cmse-nonsecure-entry"` ABI must pass their result via the available return registers
+   = note: the result must either be a (transparently wrapped) i64, u64 or f64, or be at most 4 bytes in size
+
+error[E0798]: return value of `"cmse-nonsecure-entry"` function too large to pass via registers
+  --> $DIR/return-via-stack.rs:75:54
+   |
+LL | pub extern "cmse-nonsecure-entry" fn union_rust() -> ReprRustUnionU64 {
+   |                                                      ^^^^^^^^^^^^^^^^ this type doesn't fit in the available registers
+   |
+   = note: functions with the `"cmse-nonsecure-entry"` ABI must pass their result via the available return registers
+   = note: the result must either be a (transparently wrapped) i64, u64 or f64, or be at most 4 bytes in size
+
+error[E0798]: return value of `"cmse-nonsecure-entry"` function too large to pass via registers
+  --> $DIR/return-via-stack.rs:80:51
+   |
+LL | pub extern "cmse-nonsecure-entry" fn union_c() -> ReprCUnionU64 {
+   |                                                   ^^^^^^^^^^^^^ this type doesn't fit in the available registers
+   |
+   = note: functions with the `"cmse-nonsecure-entry"` ABI must pass their result via the available return registers
+   = note: the result must either be a (transparently wrapped) i64, u64 or f64, or be at most 4 bytes in size
+
+error: aborting due to 9 previous errors
+
+For more information about this error, try `rustc --explain E0798`.

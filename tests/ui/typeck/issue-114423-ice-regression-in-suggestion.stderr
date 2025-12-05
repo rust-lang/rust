@@ -1,0 +1,52 @@
+error[E0425]: cannot find value `e` in this scope
+  --> $DIR/issue-114423-ice-regression-in-suggestion.rs:7:51
+   |
+LL |     let (r, alone_in_path, b): (f32, f32, f32) = (e.clone(), e.clone());
+   |                                                   ^ not found in this scope
+
+error[E0425]: cannot find value `e` in this scope
+  --> $DIR/issue-114423-ice-regression-in-suggestion.rs:7:62
+   |
+LL |     let (r, alone_in_path, b): (f32, f32, f32) = (e.clone(), e.clone());
+   |                                                              ^ not found in this scope
+
+error[E0425]: cannot find value `g` in this scope
+  --> $DIR/issue-114423-ice-regression-in-suggestion.rs:11:22
+   |
+LL |     let _ = RGB { r, g, b };
+   |                      ^ help: a local variable with a similar name exists: `b`
+
+error[E0308]: mismatched types
+  --> $DIR/issue-114423-ice-regression-in-suggestion.rs:7:50
+   |
+LL |     let (r, alone_in_path, b): (f32, f32, f32) = (e.clone(), e.clone());
+   |                                ---------------   ^^^^^^^^^^^^^^^^^^^^^^ expected a tuple with 3 elements, found one with 2 elements
+   |                                |
+   |                                expected due to this
+   |
+   = note: expected tuple `(f32, f32, f32)`
+              found tuple `(f32, f32)`
+
+error[E0560]: struct `RGB` has no field named `r`
+  --> $DIR/issue-114423-ice-regression-in-suggestion.rs:11:19
+   |
+LL |     let _ = RGB { r, g, b };
+   |                   ^ `RGB` does not have this field
+   |
+   = note: all struct fields are already assigned
+
+error[E0308]: mismatched types
+  --> $DIR/issue-114423-ice-regression-in-suggestion.rs:11:25
+   |
+LL |     let _ = RGB { r, g, b };
+   |                         ^ expected `f64`, found `f32`
+   |
+help: you can convert an `f32` to an `f64`
+   |
+LL |     let _ = RGB { r, g, b: b.into() };
+   |                         ++  +++++++
+
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0308, E0425, E0560.
+For more information about an error, try `rustc --explain E0308`.

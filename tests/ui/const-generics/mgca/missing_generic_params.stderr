@@ -1,0 +1,19 @@
+error[E0107]: missing generics for function `N`
+  --> $DIR/missing_generic_params.rs:13:21
+   |
+LL | impl Trait for [(); N] {}
+   |                     ^ expected 1 generic argument
+   |
+note: function defined here, with 1 generic parameter: `T`
+  --> $DIR/missing_generic_params.rs:15:4
+   |
+LL | fn N<T>() {}
+   |    ^ -
+help: add missing generic argument
+   |
+LL | impl Trait for [(); N<T>] {}
+   |                      +++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0107`.

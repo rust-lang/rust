@@ -1,0 +1,15 @@
+error[E0599]: no method named `test` found for reference `&impl T1` in the current scope
+  --> $DIR/issue-99597.rs:11:7
+   |
+LL |     s.test();
+   |       ^^^^ method not found in `&impl T1`
+   |
+   = help: items from traits can only be used if the type parameter is bounded by the trait
+help: the following trait defines an item `test`, perhaps you need to restrict type parameter `impl T1` with it:
+   |
+LL | fn go(s: &(impl T1 + T2)) {
+   |           +        +++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0599`.

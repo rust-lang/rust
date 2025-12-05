@@ -1,0 +1,21 @@
+warning: the feature `generic_const_exprs` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/bad_const_generics_args_on_const_param.rs:8:47
+   |
+LL | #![feature(pattern_types, pattern_type_macro, generic_const_exprs)]
+   |                                               ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #76560 <https://github.com/rust-lang/rust/issues/76560> for more information
+   = error: internal compiler error: compiler/rustc_hir_analysis/src/hir_ty_lowering/mod.rs:LL:CC: try_lower_anon_const_lit: received const param which shouldn't be possible
+  --> $DIR/bad_const_generics_args_on_const_param.rs:12:36
+   |
+LL |     std::pat::pattern_type!(u32 is START::<(), i32, 2>..=END::<_, Assoc = ()>);
+   |                                    ^^^^^^^^^^^^^^^^^^^
+
+
+Box<dyn Any>
+query stack during panic:
+#0 [type_of] expanding type alias `Pat`
+#1 [check_well_formed] checking that `Pat` is well-formed
+... and 2 other queries... use `env RUST_BACKTRACE=1` to see the full query stack
+error: aborting due to 1 previous error; 1 warning emitted
+

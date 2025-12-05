@@ -1,0 +1,20 @@
+error[E0658]: const closures are experimental
+  --> $DIR/ice-112822-expected-type-for-param.rs:5:5
+   |
+LL |     const move || {
+   |     ^^^^^
+   |
+   = note: see issue #106003 <https://github.com/rust-lang/rust/issues/106003> for more information
+   = help: add `#![feature(const_closures)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0277]: the trait bound `{closure@$DIR/ice-112822-expected-type-for-param.rs:5:5: 5:18}: [const] Fn()` is not satisfied
+  --> $DIR/ice-112822-expected-type-for-param.rs:3:20
+   |
+LL | const fn test() -> impl [const] Fn() {
+   |                    ^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0277, E0658.
+For more information about an error, try `rustc --explain E0277`.

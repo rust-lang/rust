@@ -1,0 +1,35 @@
+error[E0311]: the parameter type `Self` may not live long enough
+   |
+note: ...that is required by this bound
+  --> $DIR/supertrait-mentions-GAT.rs:6:15
+   |
+LL |         Self: 'a;
+   |               ^^
+   = help: consider adding an explicit lifetime bound `Self: 'a`...
+
+error[E0038]: the trait `SuperTrait` is not dyn compatible
+  --> $DIR/supertrait-mentions-GAT.rs:10:20
+   |
+LL |     fn c(&self) -> dyn SuperTrait<T>;
+   |                    ^^^^^^^^^^^^^^^^^ `SuperTrait` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/supertrait-mentions-GAT.rs:4:10
+   |
+LL |     type Gat<'a>
+   |          ^^^ ...because it contains the generic associated type `Gat`
+...
+LL | trait SuperTrait<T>: for<'a> GatTrait<Gat<'a> = T> {
+   |       ---------- this trait is not dyn compatible...
+   = help: consider moving `Gat` to another trait
+help: you might have meant to use `Self` to refer to the implementing type
+   |
+LL -     fn c(&self) -> dyn SuperTrait<T>;
+LL +     fn c(&self) -> Self;
+   |
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0038, E0311.
+For more information about an error, try `rustc --explain E0038`.

@@ -1,0 +1,27 @@
+error[E0080]: reading memory at ALLOC0[0x0..0x8], but memory is uninitialized at [0x4..0x8], and this operation requires initialized memory
+  --> $DIR/union-const-eval-field.rs:30:37
+   |
+LL |     const FIELD3: Field3 = unsafe { UNION.field3 };
+   |                                     ^^^^^^^^^^^^ evaluation of `read_field3::FIELD3` failed here
+   |
+   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
+               HEX_DUMP
+           }
+
+note: erroneous constant encountered
+  --> $DIR/union-const-eval-field.rs:32:5
+   |
+LL |     FIELD3
+   |     ^^^^^^
+
+note: erroneous constant encountered
+  --> $DIR/union-const-eval-field.rs:32:5
+   |
+LL |     FIELD3
+   |     ^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0080`.

@@ -1,0 +1,26 @@
+error[E0220]: associated type `Assoc` not found for `V`
+  --> $DIR/issue-96287.rs:7:33
+   |
+LL | pub type Foo<V> = impl Trait<V::Assoc>;
+   |                                 ^^^^^ there is an associated type `Assoc` in the trait `TraitWithAssoc`
+   |
+help: consider restricting type parameter `V` with trait `TraitWithAssoc`
+   |
+LL | pub type Foo<V: TraitWithAssoc> = impl Trait<V::Assoc>;
+   |               ++++++++++++++++
+
+error[E0220]: associated type `Assoc` not found for `V`
+  --> $DIR/issue-96287.rs:7:33
+   |
+LL | pub type Foo<V> = impl Trait<V::Assoc>;
+   |                                 ^^^^^ there is an associated type `Assoc` in the trait `TraitWithAssoc`
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: consider restricting type parameter `V` with trait `TraitWithAssoc`
+   |
+LL | pub type Foo<V: TraitWithAssoc> = impl Trait<V::Assoc>;
+   |               ++++++++++++++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0220`.

@@ -1,0 +1,14 @@
+error[E0080]: constructing invalid value: encountered a dangling reference (use-after-free)
+  --> $DIR/dangling-alloc-id-ice.rs:12:1
+   |
+LL | const FOO: &() = {
+   | ^^^^^^^^^^^^^^ it is undefined behavior to use this value
+   |
+   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
+               HEX_DUMP
+           }
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0080`.

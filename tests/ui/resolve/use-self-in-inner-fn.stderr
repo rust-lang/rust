@@ -1,0 +1,40 @@
+error[E0401]: can't use `Self` from outer item
+  --> $DIR/use-self-in-inner-fn.rs:6:25
+   |
+LL | impl A {
+   | ---- `Self` type implicitly declared here, by this `impl`
+...
+LL |         fn peach(this: &Self) {
+   |            -----        ^^^^ use of `Self` from outer item
+   |            |
+   |            `Self` used in this inner function
+   |
+   = note: nested items are independent from their parent item for everything except for privacy and name resolution
+help: refer to the type directly here instead
+   |
+LL -         fn peach(this: &Self) {
+LL +         fn peach(this: &A) {
+   |
+
+error[E0401]: can't use `Self` from outer item
+  --> $DIR/use-self-in-inner-fn.rs:27:13
+   |
+LL | impl MyEnum {
+   | ---- `Self` type implicitly declared here, by this `impl`
+...
+LL |         fn inner() {
+   |            ----- `Self` used in this inner function
+LL |
+LL |             Self::do_something(move || {});
+   |             ^^^^ use of `Self` from outer item
+   |
+   = note: nested items are independent from their parent item for everything except for privacy and name resolution
+help: refer to the type directly here instead
+   |
+LL -             Self::do_something(move || {});
+LL +             MyEnum::do_something(move || {});
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0401`.

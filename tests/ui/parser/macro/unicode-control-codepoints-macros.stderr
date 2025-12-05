@@ -1,0 +1,57 @@
+error: unicode codepoint changing visible direction of text present in doc comment
+  --> $DIR/unicode-control-codepoints-macros.rs:21:9
+   |
+LL |         /// �test� RTL in doc in vec
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this doc comment contains invisible unicode text flow control codepoints
+   |
+   = note: these kind of unicode codepoints change the way text flows on applications that support them, but can cause confusion because they change the order of characters on the screen
+   = note: if their presence wasn't intentional, you can remove them
+   = note: if you want to keep them but make them visible in your source code, you can escape them: '\u{202e}', '\u{2066}'
+   = note: `#[deny(text_direction_codepoint_in_literal)]` on by default
+
+error: unicode codepoint changing visible direction of text present in doc comment
+  --> $DIR/unicode-control-codepoints-macros.rs:26:9
+   |
+LL | /         /**
+LL | |          * �test� RTL in doc in macro
+LL | |          */
+   | |___________^ this doc comment contains invisible unicode text flow control codepoints
+   |
+   = note: these kind of unicode codepoints change the way text flows on applications that support them, but can cause confusion because they change the order of characters on the screen
+   = note: if their presence wasn't intentional, you can remove them
+   = note: if you want to keep them but make them visible in your source code, you can escape them: '\u{202e}', '\u{2066}'
+
+error: unicode codepoint changing visible direction of text present in doc comment
+  --> $DIR/unicode-control-codepoints-macros.rs:33:9
+   |
+LL | /         /**
+LL | |          * �test� RTL in doc in macro
+LL | |          */
+   | |___________^ this doc comment contains invisible unicode text flow control codepoints
+   |
+   = note: these kind of unicode codepoints change the way text flows on applications that support them, but can cause confusion because they change the order of characters on the screen
+   = note: if their presence wasn't intentional, you can remove them
+   = note: if you want to keep them but make them visible in your source code, you can escape them: '\u{202e}', '\u{2066}'
+
+error: unicode codepoint changing visible direction of text present in doc comment
+  --> $DIR/unicode-control-codepoints-macros.rs:41:9
+   |
+LL |         /// �test� RTL in doc in proc macro
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this doc comment contains invisible unicode text flow control codepoints
+   |
+   = note: these kind of unicode codepoints change the way text flows on applications that support them, but can cause confusion because they change the order of characters on the screen
+   = note: if their presence wasn't intentional, you can remove them
+   = note: if you want to keep them but make them visible in your source code, you can escape them: '\u{202e}', '\u{2066}'
+
+error: unicode codepoint changing visible direction of text present in doc comment
+  --> $DIR/unicode-control-codepoints-macros.rs:46:9
+   |
+LL |         /// �test� RTL in doc in proc macro
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this doc comment contains invisible unicode text flow control codepoints
+   |
+   = note: these kind of unicode codepoints change the way text flows on applications that support them, but can cause confusion because they change the order of characters on the screen
+   = note: if their presence wasn't intentional, you can remove them
+   = note: if you want to keep them but make them visible in your source code, you can escape them: '\u{202e}', '\u{2066}'
+
+error: aborting due to 5 previous errors
+

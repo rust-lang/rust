@@ -1,0 +1,10 @@
+error: rustc_outlives
+  --> $DIR/nested-union.rs:4:1
+   |
+LL | union Foo<'a, T: Copy> {
+   | ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: T: 'a
+
+error: aborting due to 1 previous error
+

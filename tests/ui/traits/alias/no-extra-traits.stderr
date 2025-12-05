@@ -1,0 +1,579 @@
+error[E0225]: only auto traits can be used as additional traits in a trait object
+  --> $DIR/no-extra-traits.rs:16:17
+   |
+LL | trait _0 = ObjA;
+   |            ---- additional non-auto trait
+...
+LL | type _T00 = dyn _0 + ObjB;
+   |                 ^^   ---- first non-auto trait
+   |                 |
+   |                 second non-auto trait comes from this alias
+   |
+   = help: consider creating a new trait with all of these as supertraits and using that trait here instead: `trait NewTrait: ObjB + ObjA {}`
+   = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
+
+error[E0225]: only auto traits can be used as additional traits in a trait object
+  --> $DIR/no-extra-traits.rs:19:24
+   |
+LL | trait _0 = ObjA;
+   |            ---- additional non-auto trait
+...
+LL | type _T01 = dyn ObjB + _0;
+   |                 ----   ^^ second non-auto trait comes from this alias
+   |                 |
+   |                 first non-auto trait
+   |
+   = help: consider creating a new trait with all of these as supertraits and using that trait here instead: `trait NewTrait: ObjB + ObjA {}`
+   = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
+
+error[E0225]: only auto traits can be used as additional traits in a trait object
+  --> $DIR/no-extra-traits.rs:22:24
+   |
+LL | trait _0 = ObjA;
+   |            ---- additional non-auto trait
+LL | trait _1 = _0;
+   |            -- second non-auto trait comes from this alias
+...
+LL | type _T02 = dyn ObjB + _1;
+   |                 ----   ^^ second non-auto trait comes from this alias
+   |                 |
+   |                 first non-auto trait
+   |
+   = help: consider creating a new trait with all of these as supertraits and using that trait here instead: `trait NewTrait: ObjB + ObjA {}`
+   = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
+
+error[E0225]: only auto traits can be used as additional traits in a trait object
+  --> $DIR/no-extra-traits.rs:25:17
+   |
+LL | trait _0 = ObjA;
+   |            ---- additional non-auto trait
+LL | trait _1 = _0;
+   |            -- second non-auto trait comes from this alias
+...
+LL | type _T03 = dyn _1 + ObjB;
+   |                 ^^   ---- first non-auto trait
+   |                 |
+   |                 second non-auto trait comes from this alias
+   |
+   = help: consider creating a new trait with all of these as supertraits and using that trait here instead: `trait NewTrait: ObjB + ObjA {}`
+   = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
+
+error[E0225]: only auto traits can be used as additional traits in a trait object
+  --> $DIR/no-extra-traits.rs:34:22
+   |
+LL | trait _2 = ObjB;
+   |            ----
+   |            |
+   |            first non-auto trait
+   |            additional non-auto trait
+LL | trait _3 = _2;
+   |            -- second non-auto trait comes from this alias
+...
+LL | type _T10 = dyn _2 + _3;
+   |                 --   ^^ second non-auto trait comes from this alias
+   |                 |
+   |                 first non-auto trait comes from this alias
+   |
+   = help: consider creating a new trait with all of these as supertraits and using that trait here instead: `trait NewTrait: ObjB + ObjB {}`
+   = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
+
+error[E0225]: only auto traits can be used as additional traits in a trait object
+  --> $DIR/no-extra-traits.rs:37:17
+   |
+LL | trait _2 = ObjB;
+   |            ----
+   |            |
+   |            first non-auto trait
+   |            additional non-auto trait
+LL | trait _3 = _2;
+   |            -- second non-auto trait comes from this alias
+...
+LL | type _T11 = dyn _3 + _2;
+   |                 ^^   -- first non-auto trait comes from this alias
+   |                 |
+   |                 second non-auto trait comes from this alias
+   |
+   = help: consider creating a new trait with all of these as supertraits and using that trait here instead: `trait NewTrait: ObjB + ObjB {}`
+   = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
+
+error[E0225]: only auto traits can be used as additional traits in a trait object
+  --> $DIR/no-extra-traits.rs:40:22
+   |
+LL | trait _2 = ObjB;
+   |            ----
+   |            |
+   |            first non-auto trait
+   |            additional non-auto trait
+LL | trait _3 = _2;
+   |            -- second non-auto trait comes from this alias
+LL | trait _4 = _3;
+   |            -- second non-auto trait comes from this alias
+...
+LL | type _T12 = dyn _2 + _4;
+   |                 --   ^^ second non-auto trait comes from this alias
+   |                 |
+   |                 first non-auto trait comes from this alias
+   |
+   = help: consider creating a new trait with all of these as supertraits and using that trait here instead: `trait NewTrait: ObjB + ObjB {}`
+   = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
+
+error[E0225]: only auto traits can be used as additional traits in a trait object
+  --> $DIR/no-extra-traits.rs:43:17
+   |
+LL | trait _2 = ObjB;
+   |            ----
+   |            |
+   |            first non-auto trait
+   |            additional non-auto trait
+LL | trait _3 = _2;
+   |            -- second non-auto trait comes from this alias
+LL | trait _4 = _3;
+   |            -- second non-auto trait comes from this alias
+...
+LL | type _T13 = dyn _4 + _2;
+   |                 ^^   -- first non-auto trait comes from this alias
+   |                 |
+   |                 second non-auto trait comes from this alias
+   |
+   = help: consider creating a new trait with all of these as supertraits and using that trait here instead: `trait NewTrait: ObjB + ObjB {}`
+   = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
+
+error[E0225]: only auto traits can be used as additional traits in a trait object
+  --> $DIR/no-extra-traits.rs:50:22
+   |
+LL | trait _0 = ObjA;
+   |            ---- additional non-auto trait
+LL | trait _1 = _0;
+   |            -- second non-auto trait comes from this alias
+...
+LL | trait _5 = Sync + ObjB + Send;
+   |                   ---- first non-auto trait
+LL |
+LL | type _T20 = dyn _5 + _1;
+   |                 --   ^^ second non-auto trait comes from this alias
+   |                 |
+   |                 first non-auto trait comes from this alias
+   |
+   = help: consider creating a new trait with all of these as supertraits and using that trait here instead: `trait NewTrait: ObjB + ObjA {}`
+   = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
+
+error[E0225]: only auto traits can be used as additional traits in a trait object
+  --> $DIR/no-extra-traits.rs:53:17
+   |
+LL | trait _0 = ObjA;
+   |            ---- additional non-auto trait
+LL | trait _1 = _0;
+   |            -- second non-auto trait comes from this alias
+...
+LL | trait _5 = Sync + ObjB + Send;
+   |                   ---- first non-auto trait
+...
+LL | type _T21 = dyn _1 + _5;
+   |                 ^^   -- first non-auto trait comes from this alias
+   |                 |
+   |                 second non-auto trait comes from this alias
+   |
+   = help: consider creating a new trait with all of these as supertraits and using that trait here instead: `trait NewTrait: ObjB + ObjA {}`
+   = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
+
+error[E0225]: only auto traits can be used as additional traits in a trait object
+  --> $DIR/no-extra-traits.rs:56:17
+   |
+LL | trait _5 = Sync + ObjB + Send;
+   |                   ---- additional non-auto trait
+...
+LL | type _T22 = dyn _5 + ObjA;
+   |                 ^^   ---- first non-auto trait
+   |                 |
+   |                 second non-auto trait comes from this alias
+   |
+   = help: consider creating a new trait with all of these as supertraits and using that trait here instead: `trait NewTrait: ObjA + ObjB {}`
+   = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
+
+error[E0225]: only auto traits can be used as additional traits in a trait object
+  --> $DIR/no-extra-traits.rs:59:24
+   |
+LL | trait _5 = Sync + ObjB + Send;
+   |                   ---- additional non-auto trait
+...
+LL | type _T23 = dyn ObjA + _5;
+   |                 ----   ^^ second non-auto trait comes from this alias
+   |                 |
+   |                 first non-auto trait
+   |
+   = help: consider creating a new trait with all of these as supertraits and using that trait here instead: `trait NewTrait: ObjA + ObjB {}`
+   = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
+
+error[E0225]: only auto traits can be used as additional traits in a trait object
+  --> $DIR/no-extra-traits.rs:62:29
+   |
+LL | trait _0 = ObjA;
+   |            ---- additional non-auto trait
+LL | trait _1 = _0;
+   |            -- second non-auto trait comes from this alias
+...
+LL | trait _5 = Sync + ObjB + Send;
+   |                   ---- first non-auto trait
+...
+LL | type _T24 = dyn Send + _5 + _1 + Sync;
+   |                        --   ^^ second non-auto trait comes from this alias
+   |                        |
+   |                        first non-auto trait comes from this alias
+   |
+   = help: consider creating a new trait with all of these as supertraits and using that trait here instead: `trait NewTrait: ObjB + ObjA {}`
+   = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
+
+error[E0225]: only auto traits can be used as additional traits in a trait object
+  --> $DIR/no-extra-traits.rs:65:17
+   |
+LL | trait _0 = ObjA;
+   |            ---- additional non-auto trait
+LL | trait _1 = _0;
+   |            -- second non-auto trait comes from this alias
+...
+LL | trait _5 = Sync + ObjB + Send;
+   |                   ---- first non-auto trait
+...
+LL | type _T25 = dyn _1 + Sync + _5 + Send;
+   |                 ^^          -- first non-auto trait comes from this alias
+   |                 |
+   |                 second non-auto trait comes from this alias
+   |
+   = help: consider creating a new trait with all of these as supertraits and using that trait here instead: `trait NewTrait: ObjB + ObjA {}`
+   = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
+
+error[E0225]: only auto traits can be used as additional traits in a trait object
+  --> $DIR/no-extra-traits.rs:68:31
+   |
+LL | trait _5 = Sync + ObjB + Send;
+   |                   ---- additional non-auto trait
+...
+LL | type _T26 = dyn Sync + Send + _5 + ObjA;
+   |                               ^^   ---- first non-auto trait
+   |                               |
+   |                               second non-auto trait comes from this alias
+   |
+   = help: consider creating a new trait with all of these as supertraits and using that trait here instead: `trait NewTrait: ObjA + ObjB {}`
+   = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
+
+error[E0225]: only auto traits can be used as additional traits in a trait object
+  --> $DIR/no-extra-traits.rs:71:38
+   |
+LL | trait _5 = Sync + ObjB + Send;
+   |                   ---- additional non-auto trait
+...
+LL | type _T27 = dyn Send + Sync + ObjA + _5;
+   |                               ----   ^^ second non-auto trait comes from this alias
+   |                               |
+   |                               first non-auto trait
+   |
+   = help: consider creating a new trait with all of these as supertraits and using that trait here instead: `trait NewTrait: ObjA + ObjB {}`
+   = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
+
+error[E0225]: only auto traits can be used as additional traits in a trait object
+  --> $DIR/no-extra-traits.rs:80:17
+   |
+LL | trait _0 = ObjA;
+   |            ---- additional non-auto trait
+LL | trait _1 = _0;
+   |            -- second non-auto trait comes from this alias
+...
+LL | trait _5 = Sync + ObjB + Send;
+   |                   ---- first non-auto trait
+...
+LL | trait _6 = _1 + _5;
+   |            --   -- first non-auto trait comes from this alias
+   |            |
+   |            second non-auto trait comes from this alias
+...
+LL | type _T30 = dyn _6;
+   |                 ^^
+   |                 |
+   |                 first non-auto trait comes from this alias
+   |                 second non-auto trait comes from this alias
+   |
+   = help: consider creating a new trait with all of these as supertraits and using that trait here instead: `trait NewTrait: ObjB + ObjA {}`
+   = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
+
+error[E0225]: only auto traits can be used as additional traits in a trait object
+  --> $DIR/no-extra-traits.rs:83:17
+   |
+LL | trait _0 = ObjA;
+   |            ---- additional non-auto trait
+LL | trait _1 = _0;
+   |            -- second non-auto trait comes from this alias
+...
+LL | trait _5 = Sync + ObjB + Send;
+   |                   ---- first non-auto trait
+...
+LL | trait _6 = _1 + _5;
+   |            --   -- first non-auto trait comes from this alias
+   |            |
+   |            second non-auto trait comes from this alias
+...
+LL | type _T31 = dyn _6 + Send;
+   |                 ^^
+   |                 |
+   |                 first non-auto trait comes from this alias
+   |                 second non-auto trait comes from this alias
+   |
+   = help: consider creating a new trait with all of these as supertraits and using that trait here instead: `trait NewTrait: ObjB + ObjA {}`
+   = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
+
+error[E0225]: only auto traits can be used as additional traits in a trait object
+  --> $DIR/no-extra-traits.rs:86:24
+   |
+LL | trait _0 = ObjA;
+   |            ---- additional non-auto trait
+LL | trait _1 = _0;
+   |            -- second non-auto trait comes from this alias
+...
+LL | trait _5 = Sync + ObjB + Send;
+   |                   ---- first non-auto trait
+...
+LL | trait _6 = _1 + _5;
+   |            --   -- first non-auto trait comes from this alias
+   |            |
+   |            second non-auto trait comes from this alias
+...
+LL | type _T32 = dyn Send + _6;
+   |                        ^^
+   |                        |
+   |                        first non-auto trait comes from this alias
+   |                        second non-auto trait comes from this alias
+   |
+   = help: consider creating a new trait with all of these as supertraits and using that trait here instead: `trait NewTrait: ObjB + ObjA {}`
+   = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
+
+error[E0225]: only auto traits can be used as additional traits in a trait object
+  --> $DIR/no-extra-traits.rs:89:17
+   |
+LL | trait _0 = ObjA;
+   |            ---- additional non-auto trait
+LL | trait _1 = _0;
+   |            -- second non-auto trait comes from this alias
+...
+LL | trait _5 = Sync + ObjB + Send;
+   |                   ---- first non-auto trait
+...
+LL | trait _6 = _1 + _5;
+   |            --   -- first non-auto trait comes from this alias
+   |            |
+   |            second non-auto trait comes from this alias
+LL | trait _7 = _6;
+   |            --
+   |            |
+   |            first non-auto trait comes from this alias
+   |            second non-auto trait comes from this alias
+LL | trait _8 = _7;
+   |            --
+   |            |
+   |            first non-auto trait comes from this alias
+   |            second non-auto trait comes from this alias
+...
+LL | type _T33 = dyn _8;
+   |                 ^^
+   |                 |
+   |                 first non-auto trait comes from this alias
+   |                 second non-auto trait comes from this alias
+   |
+   = help: consider creating a new trait with all of these as supertraits and using that trait here instead: `trait NewTrait: ObjB + ObjA {}`
+   = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
+
+error[E0225]: only auto traits can be used as additional traits in a trait object
+  --> $DIR/no-extra-traits.rs:92:17
+   |
+LL | trait _0 = ObjA;
+   |            ---- additional non-auto trait
+LL | trait _1 = _0;
+   |            -- second non-auto trait comes from this alias
+...
+LL | trait _5 = Sync + ObjB + Send;
+   |                   ---- first non-auto trait
+...
+LL | trait _6 = _1 + _5;
+   |            --   -- first non-auto trait comes from this alias
+   |            |
+   |            second non-auto trait comes from this alias
+LL | trait _7 = _6;
+   |            --
+   |            |
+   |            first non-auto trait comes from this alias
+   |            second non-auto trait comes from this alias
+LL | trait _8 = _7;
+   |            --
+   |            |
+   |            first non-auto trait comes from this alias
+   |            second non-auto trait comes from this alias
+...
+LL | type _T34 = dyn _8 + Send;
+   |                 ^^
+   |                 |
+   |                 first non-auto trait comes from this alias
+   |                 second non-auto trait comes from this alias
+   |
+   = help: consider creating a new trait with all of these as supertraits and using that trait here instead: `trait NewTrait: ObjB + ObjA {}`
+   = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
+
+error[E0225]: only auto traits can be used as additional traits in a trait object
+  --> $DIR/no-extra-traits.rs:95:24
+   |
+LL | trait _0 = ObjA;
+   |            ---- additional non-auto trait
+LL | trait _1 = _0;
+   |            -- second non-auto trait comes from this alias
+...
+LL | trait _5 = Sync + ObjB + Send;
+   |                   ---- first non-auto trait
+...
+LL | trait _6 = _1 + _5;
+   |            --   -- first non-auto trait comes from this alias
+   |            |
+   |            second non-auto trait comes from this alias
+LL | trait _7 = _6;
+   |            --
+   |            |
+   |            first non-auto trait comes from this alias
+   |            second non-auto trait comes from this alias
+LL | trait _8 = _7;
+   |            --
+   |            |
+   |            first non-auto trait comes from this alias
+   |            second non-auto trait comes from this alias
+...
+LL | type _T35 = dyn Send + _8;
+   |                        ^^
+   |                        |
+   |                        first non-auto trait comes from this alias
+   |                        second non-auto trait comes from this alias
+   |
+   = help: consider creating a new trait with all of these as supertraits and using that trait here instead: `trait NewTrait: ObjB + ObjA {}`
+   = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
+
+error[E0225]: only auto traits can be used as additional traits in a trait object
+  --> $DIR/no-extra-traits.rs:103:17
+   |
+LL | trait _5 = Sync + ObjB + Send;
+   |                   ---- additional non-auto trait
+...
+LL | trait _9 = _5 + Sync;
+   |            -- second non-auto trait comes from this alias
+LL | trait _10 = Unpin + _9;
+   |                     -- second non-auto trait comes from this alias
+LL |
+LL | type _T40 = dyn _10 + ObjA;
+   |                 ^^^   ---- first non-auto trait
+   |                 |
+   |                 second non-auto trait comes from this alias
+   |
+   = help: consider creating a new trait with all of these as supertraits and using that trait here instead: `trait NewTrait: ObjA + ObjB {}`
+   = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
+
+error[E0225]: only auto traits can be used as additional traits in a trait object
+  --> $DIR/no-extra-traits.rs:106:24
+   |
+LL | trait _5 = Sync + ObjB + Send;
+   |                   ---- additional non-auto trait
+...
+LL | trait _9 = _5 + Sync;
+   |            -- second non-auto trait comes from this alias
+LL | trait _10 = Unpin + _9;
+   |                     -- second non-auto trait comes from this alias
+...
+LL | type _T41 = dyn ObjA + _10;
+   |                 ----   ^^^ second non-auto trait comes from this alias
+   |                 |
+   |                 first non-auto trait
+   |
+   = help: consider creating a new trait with all of these as supertraits and using that trait here instead: `trait NewTrait: ObjA + ObjB {}`
+   = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
+
+error[E0225]: only auto traits can be used as additional traits in a trait object
+  --> $DIR/no-extra-traits.rs:109:17
+   |
+LL | trait _0 = ObjA;
+   |            ---- first non-auto trait
+LL | trait _1 = _0;
+   |            -- first non-auto trait comes from this alias
+...
+LL | trait _5 = Sync + ObjB + Send;
+   |                   ---- additional non-auto trait
+...
+LL | trait _9 = _5 + Sync;
+   |            -- second non-auto trait comes from this alias
+LL | trait _10 = Unpin + _9;
+   |                     -- second non-auto trait comes from this alias
+...
+LL | type _T42 = dyn _10 + _1;
+   |                 ^^^   -- first non-auto trait comes from this alias
+   |                 |
+   |                 second non-auto trait comes from this alias
+   |
+   = help: consider creating a new trait with all of these as supertraits and using that trait here instead: `trait NewTrait: ObjA + ObjB {}`
+   = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
+
+error[E0225]: only auto traits can be used as additional traits in a trait object
+  --> $DIR/no-extra-traits.rs:112:24
+   |
+LL | trait _5 = Sync + ObjB + Send;
+   |                   ---- additional non-auto trait
+...
+LL | trait _9 = _5 + Sync;
+   |            -- second non-auto trait comes from this alias
+LL | trait _10 = Unpin + _9;
+   |                     -- second non-auto trait comes from this alias
+...
+LL | type _T43 = dyn Send + _10 + Sync + ObjA;
+   |                        ^^^          ---- first non-auto trait
+   |                        |
+   |                        second non-auto trait comes from this alias
+   |
+   = help: consider creating a new trait with all of these as supertraits and using that trait here instead: `trait NewTrait: ObjA + ObjB {}`
+   = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
+
+error[E0225]: only auto traits can be used as additional traits in a trait object
+  --> $DIR/no-extra-traits.rs:115:24
+   |
+LL | trait _5 = Sync + ObjB + Send;
+   |                   ---- additional non-auto trait
+...
+LL | trait _9 = _5 + Sync;
+   |            -- second non-auto trait comes from this alias
+LL | trait _10 = Unpin + _9;
+   |                     -- second non-auto trait comes from this alias
+...
+LL | type _T44 = dyn ObjA + _10 + Send + Sync;
+   |                 ----   ^^^ second non-auto trait comes from this alias
+   |                 |
+   |                 first non-auto trait
+   |
+   = help: consider creating a new trait with all of these as supertraits and using that trait here instead: `trait NewTrait: ObjA + ObjB {}`
+   = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
+
+error[E0225]: only auto traits can be used as additional traits in a trait object
+  --> $DIR/no-extra-traits.rs:118:31
+   |
+LL | trait _0 = ObjA;
+   |            ---- first non-auto trait
+LL | trait _1 = _0;
+   |            -- first non-auto trait comes from this alias
+...
+LL | trait _5 = Sync + ObjB + Send;
+   |                   ---- additional non-auto trait
+...
+LL | trait _9 = _5 + Sync;
+   |            -- second non-auto trait comes from this alias
+LL | trait _10 = Unpin + _9;
+   |                     -- second non-auto trait comes from this alias
+...
+LL | type _T45 = dyn Sync + Send + _10 + _1;
+   |                               ^^^   -- first non-auto trait comes from this alias
+   |                               |
+   |                               second non-auto trait comes from this alias
+   |
+   = help: consider creating a new trait with all of these as supertraits and using that trait here instead: `trait NewTrait: ObjA + ObjB {}`
+   = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
+
+error: aborting due to 28 previous errors
+
+For more information about this error, try `rustc --explain E0225`.

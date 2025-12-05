@@ -1,0 +1,328 @@
+error: invalid register `r11`: The frame pointer cannot be used as an operand for inline asm
+  --> $DIR/bad-reg.rs:31:18
+   |
+LL |         asm!("", out("r11") _);
+   |                  ^^^^^^^^^^^^
+
+error: invalid register `r15`: The stack pointer cannot be used as an operand for inline asm
+  --> $DIR/bad-reg.rs:33:18
+   |
+LL |         asm!("", out("r15") _);
+   |                  ^^^^^^^^^^^^
+
+error: invalid register `c0`: control registers are reserved by the kernel and cannot be used as operands for inline asm
+  --> $DIR/bad-reg.rs:35:18
+   |
+LL |         asm!("", out("c0") _);
+   |                  ^^^^^^^^^^^
+
+error: invalid register `c1`: control registers are reserved by the kernel and cannot be used as operands for inline asm
+  --> $DIR/bad-reg.rs:37:18
+   |
+LL |         asm!("", out("c1") _);
+   |                  ^^^^^^^^^^^
+
+error: invalid register `c2`: control registers are reserved by the kernel and cannot be used as operands for inline asm
+  --> $DIR/bad-reg.rs:39:18
+   |
+LL |         asm!("", out("c2") _);
+   |                  ^^^^^^^^^^^
+
+error: invalid register `c3`: control registers are reserved by the kernel and cannot be used as operands for inline asm
+  --> $DIR/bad-reg.rs:41:18
+   |
+LL |         asm!("", out("c3") _);
+   |                  ^^^^^^^^^^^
+
+error: invalid register `c4`: control registers are reserved by the kernel and cannot be used as operands for inline asm
+  --> $DIR/bad-reg.rs:43:18
+   |
+LL |         asm!("", out("c4") _);
+   |                  ^^^^^^^^^^^
+
+error: invalid register `c5`: control registers are reserved by the kernel and cannot be used as operands for inline asm
+  --> $DIR/bad-reg.rs:45:18
+   |
+LL |         asm!("", out("c5") _);
+   |                  ^^^^^^^^^^^
+
+error: invalid register `c6`: control registers are reserved by the kernel and cannot be used as operands for inline asm
+  --> $DIR/bad-reg.rs:47:18
+   |
+LL |         asm!("", out("c6") _);
+   |                  ^^^^^^^^^^^
+
+error: invalid register `c7`: control registers are reserved by the kernel and cannot be used as operands for inline asm
+  --> $DIR/bad-reg.rs:49:18
+   |
+LL |         asm!("", out("c7") _);
+   |                  ^^^^^^^^^^^
+
+error: invalid register `c8`: control registers are reserved by the kernel and cannot be used as operands for inline asm
+  --> $DIR/bad-reg.rs:51:18
+   |
+LL |         asm!("", out("c8") _);
+   |                  ^^^^^^^^^^^
+
+error: invalid register `c9`: control registers are reserved by the kernel and cannot be used as operands for inline asm
+  --> $DIR/bad-reg.rs:53:18
+   |
+LL |         asm!("", out("c9") _);
+   |                  ^^^^^^^^^^^
+
+error: invalid register `c10`: control registers are reserved by the kernel and cannot be used as operands for inline asm
+  --> $DIR/bad-reg.rs:55:18
+   |
+LL |         asm!("", out("c10") _);
+   |                  ^^^^^^^^^^^^
+
+error: invalid register `c11`: control registers are reserved by the kernel and cannot be used as operands for inline asm
+  --> $DIR/bad-reg.rs:57:18
+   |
+LL |         asm!("", out("c11") _);
+   |                  ^^^^^^^^^^^^
+
+error: invalid register `c12`: control registers are reserved by the kernel and cannot be used as operands for inline asm
+  --> $DIR/bad-reg.rs:59:18
+   |
+LL |         asm!("", out("c12") _);
+   |                  ^^^^^^^^^^^^
+
+error: invalid register `c13`: control registers are reserved by the kernel and cannot be used as operands for inline asm
+  --> $DIR/bad-reg.rs:61:18
+   |
+LL |         asm!("", out("c13") _);
+   |                  ^^^^^^^^^^^^
+
+error: invalid register `c14`: control registers are reserved by the kernel and cannot be used as operands for inline asm
+  --> $DIR/bad-reg.rs:63:18
+   |
+LL |         asm!("", out("c14") _);
+   |                  ^^^^^^^^^^^^
+
+error: invalid register `c15`: control registers are reserved by the kernel and cannot be used as operands for inline asm
+  --> $DIR/bad-reg.rs:65:18
+   |
+LL |         asm!("", out("c15") _);
+   |                  ^^^^^^^^^^^^
+
+error: invalid register `a0`: a0 and a1 are reserved for system use and cannot be used as operands for inline asm
+  --> $DIR/bad-reg.rs:67:18
+   |
+LL |         asm!("", out("a0") _);
+   |                  ^^^^^^^^^^^
+
+error: invalid register `a1`: a0 and a1 are reserved for system use and cannot be used as operands for inline asm
+  --> $DIR/bad-reg.rs:69:18
+   |
+LL |         asm!("", out("a1") _);
+   |                  ^^^^^^^^^^^
+
+error: register class `areg` can only be used as a clobber, not as an input or output
+  --> $DIR/bad-reg.rs:120:18
+   |
+LL |         asm!("", in("a2") x);
+   |                  ^^^^^^^^^^
+
+error: register class `areg` can only be used as a clobber, not as an input or output
+  --> $DIR/bad-reg.rs:123:18
+   |
+LL |         asm!("", out("a2") x);
+   |                  ^^^^^^^^^^^
+
+error: register class `areg` can only be used as a clobber, not as an input or output
+  --> $DIR/bad-reg.rs:126:26
+   |
+LL |         asm!("/* {} */", in(areg) x);
+   |                          ^^^^^^^^^^
+
+error: register class `areg` can only be used as a clobber, not as an input or output
+  --> $DIR/bad-reg.rs:129:26
+   |
+LL |         asm!("/* {} */", out(areg) _);
+   |                          ^^^^^^^^^^^
+
+error: register `f0` conflicts with register `v0`
+  --> $DIR/bad-reg.rs:134:31
+   |
+LL |         asm!("", out("v0") _, out("f0") _);
+   |                  -----------  ^^^^^^^^^^^ register `f0`
+   |                  |
+   |                  register `v0`
+
+error: register `f1` conflicts with register `v1`
+  --> $DIR/bad-reg.rs:136:31
+   |
+LL |         asm!("", out("v1") _, out("f1") _);
+   |                  -----------  ^^^^^^^^^^^ register `f1`
+   |                  |
+   |                  register `v1`
+
+error: register `f2` conflicts with register `v2`
+  --> $DIR/bad-reg.rs:138:31
+   |
+LL |         asm!("", out("v2") _, out("f2") _);
+   |                  -----------  ^^^^^^^^^^^ register `f2`
+   |                  |
+   |                  register `v2`
+
+error: register `f3` conflicts with register `v3`
+  --> $DIR/bad-reg.rs:140:31
+   |
+LL |         asm!("", out("v3") _, out("f3") _);
+   |                  -----------  ^^^^^^^^^^^ register `f3`
+   |                  |
+   |                  register `v3`
+
+error: register `f4` conflicts with register `v4`
+  --> $DIR/bad-reg.rs:142:31
+   |
+LL |         asm!("", out("v4") _, out("f4") _);
+   |                  -----------  ^^^^^^^^^^^ register `f4`
+   |                  |
+   |                  register `v4`
+
+error: register `f5` conflicts with register `v5`
+  --> $DIR/bad-reg.rs:144:31
+   |
+LL |         asm!("", out("v5") _, out("f5") _);
+   |                  -----------  ^^^^^^^^^^^ register `f5`
+   |                  |
+   |                  register `v5`
+
+error: register `f6` conflicts with register `v6`
+  --> $DIR/bad-reg.rs:146:31
+   |
+LL |         asm!("", out("v6") _, out("f6") _);
+   |                  -----------  ^^^^^^^^^^^ register `f6`
+   |                  |
+   |                  register `v6`
+
+error: register `f7` conflicts with register `v7`
+  --> $DIR/bad-reg.rs:148:31
+   |
+LL |         asm!("", out("v7") _, out("f7") _);
+   |                  -----------  ^^^^^^^^^^^ register `f7`
+   |                  |
+   |                  register `v7`
+
+error: register `f8` conflicts with register `v8`
+  --> $DIR/bad-reg.rs:150:31
+   |
+LL |         asm!("", out("v8") _, out("f8") _);
+   |                  -----------  ^^^^^^^^^^^ register `f8`
+   |                  |
+   |                  register `v8`
+
+error: register `f9` conflicts with register `v9`
+  --> $DIR/bad-reg.rs:152:31
+   |
+LL |         asm!("", out("v9") _, out("f9") _);
+   |                  -----------  ^^^^^^^^^^^ register `f9`
+   |                  |
+   |                  register `v9`
+
+error: register `f10` conflicts with register `v10`
+  --> $DIR/bad-reg.rs:154:32
+   |
+LL |         asm!("", out("v10") _, out("f10") _);
+   |                  ------------  ^^^^^^^^^^^^ register `f10`
+   |                  |
+   |                  register `v10`
+
+error: register `f11` conflicts with register `v11`
+  --> $DIR/bad-reg.rs:156:32
+   |
+LL |         asm!("", out("v11") _, out("f11") _);
+   |                  ------------  ^^^^^^^^^^^^ register `f11`
+   |                  |
+   |                  register `v11`
+
+error: register `f12` conflicts with register `v12`
+  --> $DIR/bad-reg.rs:158:32
+   |
+LL |         asm!("", out("v12") _, out("f12") _);
+   |                  ------------  ^^^^^^^^^^^^ register `f12`
+   |                  |
+   |                  register `v12`
+
+error: register `f13` conflicts with register `v13`
+  --> $DIR/bad-reg.rs:160:32
+   |
+LL |         asm!("", out("v13") _, out("f13") _);
+   |                  ------------  ^^^^^^^^^^^^ register `f13`
+   |                  |
+   |                  register `v13`
+
+error: register `f14` conflicts with register `v14`
+  --> $DIR/bad-reg.rs:162:32
+   |
+LL |         asm!("", out("v14") _, out("f14") _);
+   |                  ------------  ^^^^^^^^^^^^ register `f14`
+   |                  |
+   |                  register `v14`
+
+error: register `f15` conflicts with register `v15`
+  --> $DIR/bad-reg.rs:164:32
+   |
+LL |         asm!("", out("v15") _, out("f15") _);
+   |                  ------------  ^^^^^^^^^^^^ register `f15`
+   |                  |
+   |                  register `v15`
+
+error: invalid register `f16`: unknown register
+  --> $DIR/bad-reg.rs:167:32
+   |
+LL |         asm!("", out("v16") _, out("f16") _);
+   |                                ^^^^^^^^^^^^
+
+error: type `u8` cannot be used with this register class
+  --> $DIR/bad-reg.rs:90:27
+   |
+LL |         asm!("", in("v0") b);
+   |                           ^
+   |
+   = note: register class `vreg` supports these types: i32, f32, i64, f64, i128, f128, i8x16, i16x8, i32x4, i64x2, f32x4, f64x2
+
+error: type `u8` cannot be used with this register class
+  --> $DIR/bad-reg.rs:95:28
+   |
+LL |         asm!("", out("v0") b);
+   |                            ^
+   |
+   = note: register class `vreg` supports these types: i32, f32, i64, f64, i128, f128, i8x16, i16x8, i32x4, i64x2, f32x4, f64x2
+
+error: type `u8` cannot be used with this register class
+  --> $DIR/bad-reg.rs:108:35
+   |
+LL |         asm!("/* {} */", in(vreg) b);
+   |                                   ^
+   |
+   = note: register class `vreg` supports these types: i32, f32, i64, f64, i128, f128, i8x16, i16x8, i32x4, i64x2, f32x4, f64x2
+
+error: type `i32` cannot be used with this register class
+  --> $DIR/bad-reg.rs:120:27
+   |
+LL |         asm!("", in("a2") x);
+   |                           ^
+   |
+   = note: register class `areg` supports these types: 
+
+error: type `i32` cannot be used with this register class
+  --> $DIR/bad-reg.rs:123:28
+   |
+LL |         asm!("", out("a2") x);
+   |                            ^
+   |
+   = note: register class `areg` supports these types: 
+
+error: type `i32` cannot be used with this register class
+  --> $DIR/bad-reg.rs:126:35
+   |
+LL |         asm!("/* {} */", in(areg) x);
+   |                                   ^
+   |
+   = note: register class `areg` supports these types: 
+
+error: aborting due to 47 previous errors
+

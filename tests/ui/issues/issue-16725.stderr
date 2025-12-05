@@ -1,0 +1,15 @@
+error[E0603]: function `bar` is private
+  --> $DIR/issue-16725.rs:6:19
+   |
+LL |     unsafe { foo::bar(); }
+   |                   ^^^ private function
+   |
+note: the function `bar` is defined here
+  --> $DIR/auxiliary/issue-16725.rs:2:5
+   |
+LL |     fn bar();
+   |     ^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0603`.

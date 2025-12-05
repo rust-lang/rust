@@ -1,0 +1,30 @@
+error: unsupported operation: `open` not available when isolation is enabled
+  --> RUSTLIB/std/src/sys/fs/PLATFORM.rs:LL:CC
+   |
+LL |         let fd = cvt_r(|| unsafe { open64(path.as_ptr(), flags, opts.mode as c_int) })?;
+   |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unsupported operation occurred here
+   |
+   = help: set `MIRIFLAGS=-Zmiri-disable-isolation` to disable isolation;
+   = help: or set `MIRIFLAGS=-Zmiri-isolation-error=warn` to make Miri return an error code from isolated operations (if supported for that operation) and continue with a warning
+   = note: BACKTRACE:
+   = note: inside closure at RUSTLIB/std/src/sys/fs/PLATFORM.rs:LL:CC
+   = note: inside `std::sys::pal::PLATFORM::cvt_r::<i32, {closure@std::sys::fs::PLATFORM::File::open_c::{closure#0}}>` at RUSTLIB/std/src/sys/pal/PLATFORM/mod.rs:LL:CC
+   = note: inside `std::sys::fs::PLATFORM::File::open_c` at RUSTLIB/std/src/sys/fs/PLATFORM.rs:LL:CC
+   = note: inside closure at RUSTLIB/std/src/sys/fs/PLATFORM.rs:LL:CC
+   = note: inside `std::sys::pal::PLATFORM::small_c_string::run_with_cstr_stack::<std::sys::fs::PLATFORM::File>` at RUSTLIB/std/src/sys/pal/PLATFORM/small_c_string.rs:LL:CC
+   = note: inside `std::sys::pal::PLATFORM::small_c_string::run_with_cstr::<std::sys::fs::PLATFORM::File>` at RUSTLIB/std/src/sys/pal/PLATFORM/small_c_string.rs:LL:CC
+   = note: inside `std::sys::pal::PLATFORM::small_c_string::run_path_with_cstr::<std::sys::fs::PLATFORM::File>` at RUSTLIB/std/src/sys/pal/PLATFORM/small_c_string.rs:LL:CC
+   = note: inside `std::sys::fs::PLATFORM::File::open` at RUSTLIB/std/src/sys/fs/PLATFORM.rs:LL:CC
+   = note: inside `std::fs::OpenOptions::_open` at RUSTLIB/std/src/fs.rs:LL:CC
+   = note: inside `std::fs::OpenOptions::open::<&std::path::Path>` at RUSTLIB/std/src/fs.rs:LL:CC
+   = note: inside `std::fs::File::open::<&str>` at RUSTLIB/std/src/fs.rs:LL:CC
+note: inside `main`
+  --> tests/fail/shims/fs/isolated_file.rs:LL:CC
+   |
+LL |     let _file = std::fs::File::open("file.txt").unwrap();
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to 1 previous error
+

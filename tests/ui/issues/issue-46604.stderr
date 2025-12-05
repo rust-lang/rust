@@ -1,0 +1,23 @@
+error[E0764]: mutable borrows of temporaries that have their lifetime extended until the end of the program are not allowed
+  --> $DIR/issue-46604.rs:1:25
+   |
+LL | static buf: &mut [u8] = &mut [1u8,2,3,4,5,7];
+   |                         ^^^^^^^^^^^^^^^^^^^^ this mutable borrow refers to such a temporary
+   |
+   = note: Temporaries in constants and statics can have their lifetime extended until the end of the program
+   = note: To avoid accidentally creating global mutable state, such temporaries must be immutable
+   = help: If you really want global mutable state, try replacing the temporary by an interior mutable `static` or a `static mut`
+
+error[E0594]: cannot assign to `buf[_]`, as `buf` is an immutable static item
+  --> $DIR/issue-46604.rs:6:5
+   |
+LL | static buf: &mut [u8] = &mut [1u8,2,3,4,5,7];
+   | --------------------- this `static` cannot be written to
+...
+LL |     buf[0]=2;
+   |     ^^^^^^^^ cannot assign
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0594, E0764.
+For more information about an error, try `rustc --explain E0594`.

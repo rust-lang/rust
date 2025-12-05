@@ -1,0 +1,19 @@
+error[E0133]: call to unsafe function `test1` is unsafe and requires unsafe function or block
+  --> $DIR/unsafe-items.rs:17:5
+   |
+LL |     test1(TEST1);
+   |     ^^^^^^^^^^^^ call to unsafe function
+   |
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+
+error[E0133]: use of extern static is unsafe and requires unsafe function or block
+  --> $DIR/unsafe-items.rs:17:11
+   |
+LL |     test1(TEST1);
+   |           ^^^^^ use of extern static
+   |
+   = note: extern statics are not controlled by the Rust type system: invalid data, aliasing violations or data races will cause undefined behavior
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0133`.

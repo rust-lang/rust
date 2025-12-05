@@ -1,0 +1,11 @@
+error: expected one of `extern` or `fn`, found keyword `pub`
+  --> $DIR/issue-76437-pub-crate-unsafe.rs:4:12
+   |
+LL |     unsafe pub(crate) fn t() {}
+   |     -------^^^-------
+   |     |      |
+   |     |      expected one of `extern` or `fn`
+   |     help: visibility `pub(crate)` must come before `unsafe`: `pub(crate) unsafe`
+
+error: aborting due to 1 previous error
+

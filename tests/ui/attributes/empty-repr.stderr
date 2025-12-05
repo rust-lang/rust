@@ -1,0 +1,15 @@
+error: unused attribute
+  --> $DIR/empty-repr.rs:10:1
+   |
+LL | #[repr()]
+   | ^^^^^^^^^ help: remove this attribute
+   |
+   = note: using `repr` with an empty list has no effect
+note: the lint level is defined here
+  --> $DIR/empty-repr.rs:4:9
+   |
+LL | #![deny(unused_attributes)]
+   |         ^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

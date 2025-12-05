@@ -1,0 +1,55 @@
+- // MIR for `foo` before MatchBranchSimplification
++ // MIR for `foo` after MatchBranchSimplification
+  
+  fn foo(_1: Option<()>) -> () {
+      debug bar => _1;
+      let mut _0: ();
+      let mut _2: bool;
+      let mut _3: isize;
++     let mut _4: isize;
+      scope 1 {
+      }
+  
+      bb0: {
+          StorageLive(_2);
+          _3 = discriminant(_1);
+-         switchInt(move _3) -> [0: bb2, otherwise: bb1];
++         StorageLive(_4);
++         _4 = move _3;
++         _2 = Eq(copy _4, const 0_isize);
++         StorageDead(_4);
++         switchInt(move _2) -> [0: bb2, otherwise: bb1];
+      }
+  
+      bb1: {
+-         _2 = const false;
++         _0 = ();
+          goto -> bb3;
+      }
+  
+      bb2: {
+-         _2 = const true;
++         _0 = const ();
+          goto -> bb3;
+      }
+  
+      bb3: {
+-         switchInt(move _2) -> [0: bb5, otherwise: bb4];
+-     }
+- 
+-     bb4: {
+-         _0 = ();
+-         goto -> bb6;
+-     }
+- 
+-     bb5: {
+-         _0 = const ();
+-         goto -> bb6;
+-     }
+- 
+-     bb6: {
+          StorageDead(_2);
+          return;
+      }
+  }
+  

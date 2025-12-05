@@ -1,0 +1,22 @@
+// issue: <https://github.com/rust-lang/rust/issues/142473>
+//
+//@ run-rustfix
+#![allow(unused)]
+struct T();
+
+trait Trait {
+    type Assoc;
+
+    fn f();
+}
+
+impl Trait for () {
+    type Assoc = T;
+
+    fn f() {
+        <Self>::Assoc();
+        //~^ ERROR no associated item named `Assoc` found for unit type `()` in the current scope
+    }
+}
+
+fn main() {}

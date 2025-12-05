@@ -1,0 +1,47 @@
+// MIR for `unwrap` after SimplifyCfg-pre-optimizations
+
+fn unwrap(_1: Option<T>) -> T {
+    debug opt => _1;
+    let mut _0: T;
+    let mut _2: isize;
+    let _3: T;
+    let mut _4: !;
+    let mut _5: isize;
+    let mut _6: isize;
+    let mut _7: isize;
+    scope 1 {
+        debug x => _3;
+    }
+
+    bb0: {
+        _2 = discriminant(_1);
+        switchInt(move _2) -> [0: bb2, 1: bb3, otherwise: bb1];
+    }
+
+    bb1: {
+        unreachable;
+    }
+
+    bb2: {
+        StorageLive(_4);
+        _4 = begin_panic::<&str>(const "explicit panic") -> bb4;
+    }
+
+    bb3: {
+        StorageLive(_3);
+        _3 = move ((_1 as Some).0: T);
+        _0 = move _3;
+        StorageDead(_3);
+        _5 = discriminant(_1);
+        return;
+    }
+
+    bb4 (cleanup): {
+        _7 = discriminant(_1);
+        resume;
+    }
+}
+
+ALLOC0 (size: 14, align: 1) {
+    65 78 70 6c 69 63 69 74 20 70 61 6e 69 63       │ explicit panic
+}

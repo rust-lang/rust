@@ -1,0 +1,36 @@
+error[E0426]: use of undeclared label `'fo`
+  --> $DIR/suggest-labels.rs:4:15
+   |
+LL |     'foo: loop {
+   |     ---- a label with a similar name is reachable
+LL |         break 'fo;
+   |               ^^^
+   |               |
+   |               undeclared label `'fo`
+   |               help: try using similarly named label: `'foo`
+
+error[E0426]: use of undeclared label `'bor`
+  --> $DIR/suggest-labels.rs:8:18
+   |
+LL |     'bar: loop {
+   |     ---- a label with a similar name is reachable
+LL |         continue 'bor;
+   |                  ^^^^
+   |                  |
+   |                  undeclared label `'bor`
+   |                  help: try using similarly named label: `'bar`
+
+error[E0426]: use of undeclared label `'longlable`
+  --> $DIR/suggest-labels.rs:13:19
+   |
+LL |         'longlabel1: loop {
+   |         ----------- a label with a similar name is reachable
+LL |             break 'longlable;
+   |                   ^^^^^^^^^^
+   |                   |
+   |                   undeclared label `'longlable`
+   |                   help: try using similarly named label: `'longlabel1`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0426`.

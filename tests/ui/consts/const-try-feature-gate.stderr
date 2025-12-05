@@ -1,0 +1,47 @@
+error[E0658]: `?` is not allowed on `Option<()>` in constant functions
+  --> $DIR/const-try-feature-gate.rs:4:5
+   |
+LL |     Some(())?;
+   |     ^^^^^^^^^
+   |
+   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
+   = note: see issue #143874 <https://github.com/rust-lang/rust/issues/143874> for more information
+   = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: `Try` is not yet stable as a const trait
+  --> $DIR/const-try-feature-gate.rs:4:5
+   |
+LL |     Some(())?;
+   |     ^^^^^^^^^
+   |
+help: add `#![feature(const_try)]` to the crate attributes to enable
+   |
+LL + #![feature(const_try)]
+   |
+
+error[E0658]: `?` is not allowed on `Option<()>` in constant functions
+  --> $DIR/const-try-feature-gate.rs:4:5
+   |
+LL |     Some(())?;
+   |     ^^^^^^^^^
+   |
+   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
+   = note: see issue #143874 <https://github.com/rust-lang/rust/issues/143874> for more information
+   = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: `FromResidual` is not yet stable as a const trait
+  --> $DIR/const-try-feature-gate.rs:4:5
+   |
+LL |     Some(())?;
+   |     ^^^^^^^^^
+   |
+help: add `#![feature(const_try)]` to the crate attributes to enable
+   |
+LL + #![feature(const_try)]
+   |
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

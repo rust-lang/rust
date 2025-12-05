@@ -1,0 +1,32 @@
+error: missing code example in this documentation
+  --> $DIR/lint-missing-doc-code-example.rs:38:3
+   |
+LL |   /// doc
+   |   ^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/lint-missing-doc-code-example.rs:3:9
+   |
+LL | #![deny(rustdoc::missing_doc_code_examples)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: missing code example in this documentation
+  --> $DIR/lint-missing-doc-code-example.rs:50:1
+   |
+LL | /// Doc
+   | ^^^^^^^
+
+error: missing code example in this documentation
+  --> $DIR/lint-missing-doc-code-example.rs:57:1
+   |
+LL | /// Doc
+   | ^^^^^^^
+
+error: missing code example in this documentation
+  --> $DIR/lint-missing-doc-code-example.rs:64:1
+   |
+LL | /// Doc
+   | ^^^^^^^
+
+error: aborting due to 4 previous errors
+

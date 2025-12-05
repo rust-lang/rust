@@ -1,0 +1,23 @@
+error: useless lint attribute
+  --> tests/ui/useless_attribute.rs:8:1
+   |
+LL | #[allow(dead_code)]
+   | ^^^^^^^^^^^^^^^^^^^ help: if you just forgot a `!`, use: `#![allow(dead_code)]`
+   |
+   = note: `-D clippy::useless-attribute` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::useless_attribute)]`
+
+error: useless lint attribute
+  --> tests/ui/useless_attribute.rs:10:1
+   |
+LL | #[cfg_attr(clippy, allow(dead_code))]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: if you just forgot a `!`, use: `#![cfg_attr(clippy, allow(dead_code)`
+
+error: useless lint attribute
+  --> tests/ui/useless_attribute.rs:22:5
+   |
+LL |     #[allow(clippy::almost_swapped)]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: if you just forgot a `!`, use: `#![allow(clippy::almost_swapped)]`
+
+error: aborting due to 3 previous errors
+

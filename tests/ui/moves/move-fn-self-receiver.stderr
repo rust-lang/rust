@@ -1,0 +1,205 @@
+error[E0382]: use of moved value: `val.0`
+  --> $DIR/move-fn-self-receiver.rs:30:5
+   |
+LL |     val.0.into_iter().next();
+   |           ----------- `val.0` moved due to this method call
+LL |     val.0;
+   |     ^^^^^ value used here after move
+   |
+note: `into_iter` takes ownership of the receiver `self`, which moves `val.0`
+  --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
+   = note: move occurs because `val.0` has type `Vec<bool>`, which does not implement the `Copy` trait
+help: you can `clone` the value and consume it, but this might not be your desired behavior
+   |
+LL |     val.0.clone().into_iter().next();
+   |          ++++++++
+
+error[E0382]: use of moved value: `foo`
+  --> $DIR/move-fn-self-receiver.rs:34:5
+   |
+LL |     let foo = Foo;
+   |         --- move occurs because `foo` has type `Foo`, which does not implement the `Copy` trait
+LL |     foo.use_self();
+   |         ---------- `foo` moved due to this method call
+LL |     foo;
+   |     ^^^ value used here after move
+   |
+note: `Foo::use_self` takes ownership of the receiver `self`, which moves `foo`
+  --> $DIR/move-fn-self-receiver.rs:13:17
+   |
+LL |     fn use_self(self) {}
+   |                 ^^^^
+
+error[E0382]: use of moved value: `second_foo`
+  --> $DIR/move-fn-self-receiver.rs:38:5
+   |
+LL |     let second_foo = Foo;
+   |         ---------- move occurs because `second_foo` has type `Foo`, which does not implement the `Copy` trait
+LL |     second_foo.use_self();
+   |                ---------- `second_foo` moved due to this method call
+LL |     second_foo;
+   |     ^^^^^^^^^^ value used here after move
+
+error[E0382]: use of moved value: `boxed_foo`
+  --> $DIR/move-fn-self-receiver.rs:42:5
+   |
+LL |     let boxed_foo = Box::new(Foo);
+   |         --------- move occurs because `boxed_foo` has type `Box<Foo>`, which does not implement the `Copy` trait
+LL |     boxed_foo.use_box_self();
+   |               -------------- `boxed_foo` moved due to this method call
+LL |     boxed_foo;
+   |     ^^^^^^^^^ value used here after move
+   |
+note: `Foo::use_box_self` takes ownership of the receiver `self`, which moves `boxed_foo`
+  --> $DIR/move-fn-self-receiver.rs:14:21
+   |
+LL |     fn use_box_self(self: Box<Self>) {}
+   |                     ^^^^
+help: you could `clone` the value and consume it, if the `Foo: Clone` trait bound could be satisfied
+   |
+LL |     boxed_foo.clone().use_box_self();
+   |              ++++++++
+help: consider annotating `Foo` with `#[derive(Clone)]`
+   |
+LL + #[derive(Clone)]
+LL | struct Foo;
+   |
+
+error[E0382]: use of moved value: `pin_box_foo`
+  --> $DIR/move-fn-self-receiver.rs:46:5
+   |
+LL |     let pin_box_foo = Box::pin(Foo);
+   |         ----------- move occurs because `pin_box_foo` has type `Pin<Box<Foo>>`, which does not implement the `Copy` trait
+LL |     pin_box_foo.use_pin_box_self();
+   |                 ------------------ `pin_box_foo` moved due to this method call
+LL |     pin_box_foo;
+   |     ^^^^^^^^^^^ value used here after move
+   |
+note: `Foo::use_pin_box_self` takes ownership of the receiver `self`, which moves `pin_box_foo`
+  --> $DIR/move-fn-self-receiver.rs:15:25
+   |
+LL |     fn use_pin_box_self(self: Pin<Box<Self>>) {}
+   |                         ^^^^
+help: you could `clone` the value and consume it, if the `Foo: Clone` trait bound could be satisfied
+   |
+LL |     pin_box_foo.clone().use_pin_box_self();
+   |                ++++++++
+help: consider annotating `Foo` with `#[derive(Clone)]`
+   |
+LL + #[derive(Clone)]
+LL | struct Foo;
+   |
+
+error[E0505]: cannot move out of `mut_foo` because it is borrowed
+  --> $DIR/move-fn-self-receiver.rs:50:5
+   |
+LL |     let mut mut_foo = Foo;
+   |         ----------- binding `mut_foo` declared here
+LL |     let ret = mut_foo.use_mut_self();
+   |               ------- borrow of `mut_foo` occurs here
+LL |     mut_foo;
+   |     ^^^^^^^ move out of `mut_foo` occurs here
+LL |     ret;
+   |     --- borrow later used here
+
+error[E0382]: use of moved value: `rc_foo`
+  --> $DIR/move-fn-self-receiver.rs:55:5
+   |
+LL |     let rc_foo = Rc::new(Foo);
+   |         ------ move occurs because `rc_foo` has type `Rc<Foo>`, which does not implement the `Copy` trait
+LL |     rc_foo.use_rc_self();
+   |            ------------- `rc_foo` moved due to this method call
+LL |     rc_foo;
+   |     ^^^^^^ value used here after move
+   |
+note: `Foo::use_rc_self` takes ownership of the receiver `self`, which moves `rc_foo`
+  --> $DIR/move-fn-self-receiver.rs:16:20
+   |
+LL |     fn use_rc_self(self: Rc<Self>) {}
+   |                    ^^^^
+help: you can `clone` the value and consume it, but this might not be your desired behavior
+   |
+LL |     rc_foo.clone().use_rc_self();
+   |           ++++++++
+
+error[E0382]: use of moved value: `foo_add`
+  --> $DIR/move-fn-self-receiver.rs:59:5
+   |
+LL |     let foo_add = Foo;
+   |         ------- move occurs because `foo_add` has type `Foo`, which does not implement the `Copy` trait
+LL |     foo_add + Foo;
+   |     ------------- `foo_add` moved due to usage in operator
+LL |     foo_add;
+   |     ^^^^^^^ value used here after move
+   |
+note: if `Foo` implemented `Clone`, you could clone the value
+  --> $DIR/move-fn-self-receiver.rs:5:1
+   |
+LL | struct Foo;
+   | ^^^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |     foo_add + Foo;
+   |     ------- you could clone this value
+note: calling this operator moves the left-hand side
+  --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
+
+error[E0382]: use of moved value: `implicit_into_iter`
+  --> $DIR/move-fn-self-receiver.rs:63:5
+   |
+LL |     let implicit_into_iter = vec![true];
+   |         ------------------ move occurs because `implicit_into_iter` has type `Vec<bool>`, which does not implement the `Copy` trait
+LL |     for _val in implicit_into_iter {}
+   |                 ------------------ `implicit_into_iter` moved due to this implicit call to `.into_iter()`
+LL |     implicit_into_iter;
+   |     ^^^^^^^^^^^^^^^^^^ value used here after move
+   |
+help: consider iterating over a slice of the `Vec<bool>`'s content to avoid moving into the `for` loop
+   |
+LL |     for _val in &implicit_into_iter {}
+   |                 +
+
+error[E0382]: use of moved value: `explicit_into_iter`
+  --> $DIR/move-fn-self-receiver.rs:67:5
+   |
+LL |     let explicit_into_iter = vec![true];
+   |         ------------------ move occurs because `explicit_into_iter` has type `Vec<bool>`, which does not implement the `Copy` trait
+LL |     for _val in explicit_into_iter.into_iter() {}
+   |                                    ----------- `explicit_into_iter` moved due to this method call
+LL |     explicit_into_iter;
+   |     ^^^^^^^^^^^^^^^^^^ value used here after move
+   |
+help: you can `clone` the value and consume it, but this might not be your desired behavior
+   |
+LL |     for _val in explicit_into_iter.clone().into_iter() {}
+   |                                   ++++++++
+
+error[E0382]: use of moved value: `container`
+  --> $DIR/move-fn-self-receiver.rs:71:5
+   |
+LL |     let container = Container(vec![]);
+   |         --------- move occurs because `container` has type `Container`, which does not implement the `Copy` trait
+LL |     for _val in container.custom_into_iter() {}
+   |                           ------------------ `container` moved due to this method call
+LL |     container;
+   |     ^^^^^^^^^ value used here after move
+   |
+note: `Container::custom_into_iter` takes ownership of the receiver `self`, which moves `container`
+  --> $DIR/move-fn-self-receiver.rs:23:25
+   |
+LL |     fn custom_into_iter(self) -> impl Iterator<Item = bool> {
+   |                         ^^^^
+
+error[E0382]: use of moved value: `foo2`
+  --> $DIR/move-fn-self-receiver.rs:75:9
+   |
+LL |     let foo2 = Foo;
+   |         ---- move occurs because `foo2` has type `Foo`, which does not implement the `Copy` trait
+LL |     loop {
+   |     ---- inside of this loop
+LL |         foo2.use_self();
+   |         ^^^^ ---------- `foo2` moved due to this method call, in previous iteration of loop
+
+error: aborting due to 12 previous errors
+
+Some errors have detailed explanations: E0382, E0505.
+For more information about an error, try `rustc --explain E0382`.

@@ -1,0 +1,53 @@
+error: this ident is too short (1 <= 3)
+  --> tests/ui-toml/min_ident_chars/min_ident_chars.rs:6:41
+   |
+LL | use extern_types::{Aaa, LONGER, M, N as W};
+   |                                         ^
+   |
+   = note: `-D clippy::min-ident-chars` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::min_ident_chars)]`
+
+error: this ident is too short (1 <= 3)
+  --> tests/ui-toml/min_ident_chars/min_ident_chars.rs:9:11
+   |
+LL | pub const N: u32 = 0;
+   |           ^
+
+error: this ident is too short (3 <= 3)
+  --> tests/ui-toml/min_ident_chars/min_ident_chars.rs:15:5
+   |
+LL |     aaa: Aaa,
+   |     ^^^
+
+error: this ident is too short (3 <= 3)
+  --> tests/ui-toml/min_ident_chars/min_ident_chars.rs:21:9
+   |
+LL |     let vvv = 1;
+   |         ^^^
+
+error: this ident is too short (3 <= 3)
+  --> tests/ui-toml/min_ident_chars/min_ident_chars.rs:23:9
+   |
+LL |     let uuu = 1;
+   |         ^^^
+
+error: this ident is too short (1 <= 3)
+  --> tests/ui-toml/min_ident_chars/min_ident_chars.rs:25:14
+   |
+LL |     let (mut a, mut b) = (1, 2);
+   |              ^
+
+error: this ident is too short (1 <= 3)
+  --> tests/ui-toml/min_ident_chars/min_ident_chars.rs:25:21
+   |
+LL |     let (mut a, mut b) = (1, 2);
+   |                     ^
+
+error: this ident is too short (1 <= 3)
+  --> tests/ui-toml/min_ident_chars/min_ident_chars.rs:28:9
+   |
+LL |     for i in 0..1000 {}
+   |         ^
+
+error: aborting due to 8 previous errors
+

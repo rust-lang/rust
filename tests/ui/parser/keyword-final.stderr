@@ -1,0 +1,13 @@
+error: expected identifier, found reserved keyword `final`
+  --> $DIR/keyword-final.rs:2:9
+   |
+LL |     let final = ();
+   |         ^^^^^ expected identifier, found reserved keyword
+   |
+help: escape `final` to use it as an identifier
+   |
+LL |     let r#final = ();
+   |         ++
+
+error: aborting due to 1 previous error
+

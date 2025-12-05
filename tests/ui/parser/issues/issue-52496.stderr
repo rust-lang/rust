@@ -1,0 +1,48 @@
+error: float literals must have an integer part
+  --> $DIR/issue-52496.rs:4:24
+   |
+LL |     let _ = Foo { bar: .5, baz: 42 };
+   |                        ^^
+   |
+help: must have an integer part
+   |
+LL |     let _ = Foo { bar: 0.5, baz: 42 };
+   |                        +
+
+error: expected one of `,`, `:`, or `}`, found `.`
+  --> $DIR/issue-52496.rs:8:22
+   |
+LL |     let _ = Foo { bar.into(), bat: -1, . };
+   |             ---   ---^ expected one of `,`, `:`, or `}`
+   |             |     |
+   |             |     while parsing this struct field
+   |             while parsing this struct
+   |
+help: try naming a field
+   |
+LL |     let _ = Foo { bar: bar.into(), bat: -1, . };
+   |                   ++++
+
+error: expected identifier, found `.`
+  --> $DIR/issue-52496.rs:8:40
+   |
+LL |     let _ = Foo { bar.into(), bat: -1, . };
+   |             ---                        ^ expected identifier
+   |             |
+   |             while parsing this struct
+
+error[E0063]: missing field `bat` in initializer of `Foo`
+  --> $DIR/issue-52496.rs:4:13
+   |
+LL |     let _ = Foo { bar: .5, baz: 42 };
+   |             ^^^ missing `bat`
+
+error[E0063]: missing fields `bar` and `baz` in initializer of `Foo`
+  --> $DIR/issue-52496.rs:8:13
+   |
+LL |     let _ = Foo { bar.into(), bat: -1, . };
+   |             ^^^ missing `bar` and `baz`
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0063`.

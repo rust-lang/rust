@@ -1,0 +1,36 @@
+error: Undefined Behavior: not granting access to tag <TAG> because that would remove [Unique for <TAG>] which is strongly protected
+  --> tests/fail/function_calls/arg_inplace_mutate.rs:LL:CC
+   |
+LL |     unsafe { ptr.write(S(0)) };
+   |              ^^^^^^^^^^^^^^^ Undefined Behavior occurred here
+   |
+   = help: this indicates a potential bug in the program: it performed an invalid operation, but the Stacked Borrows rules it violated are still experimental
+   = help: see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/stacked-borrows.md for further information
+help: <TAG> was created by a SharedReadWrite retag at offsets [0x0..0x4]
+  --> tests/fail/function_calls/arg_inplace_mutate.rs:LL:CC
+   |
+LL | /     mir! {
+LL | |         let _unit: ();
+LL | |         {
+LL | |             let non_copy = S(42);
+...  |
+LL | |     }
+   | |_____^
+help: <TAG> is this argument
+  --> tests/fail/function_calls/arg_inplace_mutate.rs:LL:CC
+   |
+LL |     unsafe { ptr.write(S(0)) };
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: BACKTRACE (of the first span):
+   = note: inside `callee` at tests/fail/function_calls/arg_inplace_mutate.rs:LL:CC
+note: inside `main`
+  --> tests/fail/function_calls/arg_inplace_mutate.rs:LL:CC
+   |
+LL |             Call(_unit = callee(Move(*ptr), ptr), ReturnTo(after_call), UnwindContinue())
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: this error originates in the macro `::core::intrinsics::mir::__internal_remove_let` which comes from the expansion of the macro `mir` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to 1 previous error
+

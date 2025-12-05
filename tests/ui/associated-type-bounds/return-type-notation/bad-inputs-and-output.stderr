@@ -1,0 +1,121 @@
+error: return type not allowed with return type notation
+  --> $DIR/bad-inputs-and-output.rs:25:45
+   |
+LL | fn bay_path<T: Trait>() where T::method(..) -> (): Send {}
+   |                                             ^^^^^
+   |
+help: remove the return type
+   |
+LL - fn bay_path<T: Trait>() where T::method(..) -> (): Send {}
+LL + fn bay_path<T: Trait>() where T::method(..): Send {}
+   |
+
+error[E0575]: expected associated type, found associated function `Trait::method`
+  --> $DIR/bad-inputs-and-output.rs:31:36
+   |
+LL | fn foo_qualified<T: Trait>() where <T as Trait>::method(i32): Send {}
+   |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^ not a associated type
+   |
+help: you might have meant to use the return type notation syntax
+   |
+LL - fn foo_qualified<T: Trait>() where <T as Trait>::method(i32): Send {}
+LL + fn foo_qualified<T: Trait>() where T::method(..): Send {}
+   |
+
+error[E0575]: expected associated type, found associated function `Trait::method`
+  --> $DIR/bad-inputs-and-output.rs:34:36
+   |
+LL | fn bar_qualified<T: Trait>() where <T as Trait>::method() -> (): Send {}
+   |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not a associated type
+   |
+help: you might have meant to use the return type notation syntax
+   |
+LL - fn bar_qualified<T: Trait>() where <T as Trait>::method() -> (): Send {}
+LL + fn bar_qualified<T: Trait>() where T::method(..): Send {}
+   |
+
+error[E0575]: expected associated type, found associated function `Trait::method`
+  --> $DIR/bad-inputs-and-output.rs:37:36
+   |
+LL | fn baz_qualified<T: Trait>() where <T as Trait>::method(): Send {}
+   |                                    ^^^^^^^^^^^^^^^^^^^^^^ not a associated type
+   |
+help: you might have meant to use the return type notation syntax
+   |
+LL - fn baz_qualified<T: Trait>() where <T as Trait>::method(): Send {}
+LL + fn baz_qualified<T: Trait>() where T::method(..): Send {}
+   |
+
+error: argument types not allowed with return type notation
+  --> $DIR/bad-inputs-and-output.rs:10:23
+   |
+LL | fn foo<T: Trait<method(i32): Send>>() {}
+   |                       ^^^^^
+   |
+help: remove the input types
+   |
+LL - fn foo<T: Trait<method(i32): Send>>() {}
+LL + fn foo<T: Trait<method(..): Send>>() {}
+   |
+
+error: return type not allowed with return type notation
+  --> $DIR/bad-inputs-and-output.rs:13:25
+   |
+LL | fn bar<T: Trait<method() -> (): Send>>() {}
+   |                         ^^^^^^
+   |
+help: use the right argument notation and remove the return type
+   |
+LL - fn bar<T: Trait<method() -> (): Send>>() {}
+LL + fn bar<T: Trait<method(..): Send>>() {}
+   |
+
+error: return type notation arguments must be elided with `..`
+  --> $DIR/bad-inputs-and-output.rs:16:23
+   |
+LL | fn baz<T: Trait<method(): Send>>() {}
+   |                       ^^
+   |
+help: use the correct syntax by adding `..` to the arguments
+   |
+LL | fn baz<T: Trait<method(..): Send>>() {}
+   |                        ++
+
+error: argument types not allowed with return type notation
+  --> $DIR/bad-inputs-and-output.rs:19:40
+   |
+LL | fn foo_path<T: Trait>() where T::method(i32): Send {}
+   |                                        ^^^^^
+   |
+help: remove the input types
+   |
+LL - fn foo_path<T: Trait>() where T::method(i32): Send {}
+LL + fn foo_path<T: Trait>() where T::method(..): Send {}
+   |
+
+error: return type not allowed with return type notation
+  --> $DIR/bad-inputs-and-output.rs:22:42
+   |
+LL | fn bar_path<T: Trait>() where T::method() -> (): Send {}
+   |                                          ^^^^^^
+   |
+help: use the right argument notation and remove the return type
+   |
+LL - fn bar_path<T: Trait>() where T::method() -> (): Send {}
+LL + fn bar_path<T: Trait>() where T::method(..): Send {}
+   |
+
+error: return type notation arguments must be elided with `..`
+  --> $DIR/bad-inputs-and-output.rs:28:40
+   |
+LL | fn baz_path<T: Trait>() where T::method(): Send {}
+   |                                        ^^
+   |
+help: use the correct syntax by adding `..` to the arguments
+   |
+LL | fn baz_path<T: Trait>() where T::method(..): Send {}
+   |                                         ++
+
+error: aborting due to 10 previous errors
+
+For more information about this error, try `rustc --explain E0575`.

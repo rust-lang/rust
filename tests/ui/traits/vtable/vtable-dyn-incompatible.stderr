@@ -1,0 +1,16 @@
+error: vtable entries: [
+           MetadataDropInPlace,
+           MetadataSize,
+           MetadataAlign,
+           Method(<dyn A<Item = u8> as Iterator>::next - shim(reify)),
+           Method(<dyn A<Item = u8> as Iterator>::size_hint - shim(reify)),
+           Method(<dyn A<Item = u8> as Iterator>::advance_by - shim(reify)),
+           Method(<dyn A<Item = u8> as Iterator>::nth - shim(reify)),
+       ]
+  --> $DIR/vtable-dyn-incompatible.rs:11:1
+   |
+LL | type Test = dyn A<Item=u8>;
+   | ^^^^^^^^^
+
+error: aborting due to 1 previous error
+

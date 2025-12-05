@@ -1,0 +1,52 @@
+- // MIR for `main` before GVN
++ // MIR for `main` after GVN
+  
+  fn main() -> () {
+      let mut _0: ();
+      let _1: u32;
+      let mut _2: &[u32];
+      let mut _3: &[u32; 3];
+      let _4: &[u32; 3];
+      let _5: [u32; 3];
+      let _6: usize;
+      let mut _7: usize;
+      let mut _8: bool;
+      let mut _9: &[u32; 3];
+      scope 1 {
+          debug a => _1;
+      }
+  
+      bb0: {
+          StorageLive(_1);
+          StorageLive(_2);
+          StorageLive(_3);
+          StorageLive(_4);
+          _9 = const main::promoted[0];
+          _4 = copy _9;
+-         _3 = copy _4;
+-         _2 = move _3 as &[u32] (PointerCoercion(Unsize, AsCast));
++         _3 = copy _9;
++         _2 = copy _9 as &[u32] (PointerCoercion(Unsize, AsCast));
+          StorageDead(_3);
+          StorageLive(_6);
+          _6 = const 1_usize;
+-         _7 = PtrMetadata(copy _2);
+-         _8 = Lt(copy _6, copy _7);
+-         assert(move _8, "index out of bounds: the length is {} but the index is {}", move _7, copy _6) -> [success: bb1, unwind continue];
++         _7 = const 3_usize;
++         _8 = const true;
++         assert(const true, "index out of bounds: the length is {} but the index is {}", const 3_usize, const 1_usize) -> [success: bb1, unwind continue];
+      }
+  
+      bb1: {
+-         _1 = copy (*_2)[_6];
++         _1 = const 2_u32;
+          StorageDead(_6);
+          StorageDead(_4);
+          StorageDead(_2);
+          _0 = const ();
+          StorageDead(_1);
+          return;
+      }
+  }
+  

@@ -1,0 +1,40 @@
+error[E0790]: cannot call associated function on trait without specifying the corresponding `impl` type
+  --> $DIR/E0283.rs:30:21
+   |
+LL |     fn create() -> u32;
+   |     ------------------- `Coroutine::create` defined here
+...
+LL |     let cont: u32 = Coroutine::create();
+   |                     ^^^^^^^^^^^^^^^^^^^ cannot call associated function of trait
+   |
+help: use a fully-qualified path to one of the available implementations
+   |
+LL |     let cont: u32 = <Impl as Coroutine>::create();
+   |                     ++++++++          +
+LL |     let cont: u32 = <AnotherImpl as Coroutine>::create();
+   |                     +++++++++++++++          +
+
+error[E0283]: type annotations needed
+  --> $DIR/E0283.rs:35:24
+   |
+LL |     let bar = foo_impl.into() * 1u32;
+   |                        ^^^^
+   |
+note: multiple `impl`s satisfying `Impl: Into<_>` found
+  --> $DIR/E0283.rs:17:1
+   |
+LL | impl Into<u32> for Impl {
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+   = note: and another `impl` found in the `core` crate:
+           - impl<T, U> Into<U> for T
+             where U: From<T>;
+help: try using a fully qualified path to specify the expected types
+   |
+LL -     let bar = foo_impl.into() * 1u32;
+LL +     let bar = <Impl as Into<T>>::into(foo_impl) * 1u32;
+   |
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0283, E0790.
+For more information about an error, try `rustc --explain E0283`.

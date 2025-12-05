@@ -1,0 +1,166 @@
+error: transmute from a pointer to a pointer
+  --> tests/ui/transmute_ptr_to_ptr.rs:32:29
+   |
+LL |         let _: *const f32 = transmute(ptr);
+   |                             ^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::transmute-ptr-to-ptr` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::transmute_ptr_to_ptr)]`
+help: use `pointer::cast` instead
+   |
+LL -         let _: *const f32 = transmute(ptr);
+LL +         let _: *const f32 = ptr.cast::<f32>();
+   |
+
+error: transmute from a pointer to a pointer
+  --> tests/ui/transmute_ptr_to_ptr.rs:35:27
+   |
+LL |         let _: *mut f32 = transmute(mut_ptr);
+   |                           ^^^^^^^^^^^^^^^^^^
+   |
+help: use `pointer::cast` instead
+   |
+LL -         let _: *mut f32 = transmute(mut_ptr);
+LL +         let _: *mut f32 = mut_ptr.cast::<f32>();
+   |
+
+error: transmute from a reference to a reference
+  --> tests/ui/transmute_ptr_to_ptr.rs:39:23
+   |
+LL |         let _: &f32 = transmute(&1u32);
+   |                       ^^^^^^^^^^^^^^^^ help: try: `&*(&1u32 as *const u32 as *const f32)`
+
+error: transmute from a reference to a reference
+  --> tests/ui/transmute_ptr_to_ptr.rs:42:23
+   |
+LL |         let _: &f32 = transmute(&1f64);
+   |                       ^^^^^^^^^^^^^^^^ help: try: `&*(&1f64 as *const f64 as *const f32)`
+
+error: transmute from a reference to a reference
+  --> tests/ui/transmute_ptr_to_ptr.rs:47:27
+   |
+LL |         let _: &mut f32 = transmute(&mut 1u32);
+   |                           ^^^^^^^^^^^^^^^^^^^^ help: try: `&mut *(&mut 1u32 as *mut u32 as *mut f32)`
+
+error: transmute from a reference to a reference
+  --> tests/ui/transmute_ptr_to_ptr.rs:50:37
+   |
+LL |         let _: &GenericParam<f32> = transmute(&GenericParam { t: 1u32 });
+   |                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `&*(&GenericParam { t: 1u32 } as *const GenericParam<u32> as *const GenericParam<f32>)`
+
+error: transmute from a reference to a reference
+  --> tests/ui/transmute_ptr_to_ptr.rs:54:27
+   |
+LL |         let u8_ref: &u8 = transmute(u64_ref);
+   |                           ^^^^^^^^^^^^^^^^^^ help: try: `&*(u64_ref as *const u64 as *const u8)`
+
+error: transmute from a pointer to a pointer
+  --> tests/ui/transmute_ptr_to_ptr.rs:57:29
+   |
+LL |         let _: *const u32 = transmute(mut_ptr);
+   |                             ^^^^^^^^^^^^^^^^^^
+   |
+help: use `pointer::cast_const` instead
+   |
+LL -         let _: *const u32 = transmute(mut_ptr);
+LL +         let _: *const u32 = mut_ptr.cast_const();
+   |
+
+error: transmute from a pointer to a pointer
+  --> tests/ui/transmute_ptr_to_ptr.rs:60:27
+   |
+LL |         let _: *mut u32 = transmute(ptr);
+   |                           ^^^^^^^^^^^^^^
+   |
+help: use `pointer::cast_mut` instead
+   |
+LL -         let _: *mut u32 = transmute(ptr);
+LL +         let _: *mut u32 = ptr.cast_mut();
+   |
+
+error: transmute from a pointer to a pointer
+  --> tests/ui/transmute_ptr_to_ptr.rs:72:14
+   |
+LL |     unsafe { transmute(v) }
+   |              ^^^^^^^^^^^^
+   |
+help: use an `as` cast instead
+   |
+LL -     unsafe { transmute(v) }
+LL +     unsafe { v as *const &() }
+   |
+
+error: transmute from a pointer to a pointer
+  --> tests/ui/transmute_ptr_to_ptr.rs:87:28
+   |
+LL |         let _: *const i8 = transmute(ptr);
+   |                            ^^^^^^^^^^^^^^
+   |
+help: use an `as` cast instead
+   |
+LL -         let _: *const i8 = transmute(ptr);
+LL +         let _: *const i8 = ptr as *const i8;
+   |
+
+error: transmute from a pointer to a pointer
+  --> tests/ui/transmute_ptr_to_ptr.rs:95:28
+   |
+LL |         let _: *const i8 = transmute(ptr);
+   |                            ^^^^^^^^^^^^^^
+   |
+help: use `pointer::cast` instead
+   |
+LL -         let _: *const i8 = transmute(ptr);
+LL +         let _: *const i8 = ptr.cast::<i8>();
+   |
+
+error: transmute from a pointer to a pointer
+  --> tests/ui/transmute_ptr_to_ptr.rs:103:26
+   |
+LL |         let _: *mut u8 = transmute(ptr);
+   |                          ^^^^^^^^^^^^^^
+   |
+help: use an `as` cast instead
+   |
+LL -         let _: *mut u8 = transmute(ptr);
+LL +         let _: *mut u8 = ptr as *mut u8;
+   |
+
+error: transmute from a pointer to a pointer
+  --> tests/ui/transmute_ptr_to_ptr.rs:105:28
+   |
+LL |         let _: *const u8 = transmute(mut_ptr);
+   |                            ^^^^^^^^^^^^^^^^^^
+   |
+help: use an `as` cast instead
+   |
+LL -         let _: *const u8 = transmute(mut_ptr);
+LL +         let _: *const u8 = mut_ptr as *const u8;
+   |
+
+error: transmute from a pointer to a pointer
+  --> tests/ui/transmute_ptr_to_ptr.rs:113:26
+   |
+LL |         let _: *mut u8 = transmute(ptr);
+   |                          ^^^^^^^^^^^^^^
+   |
+help: use `pointer::cast_mut` instead
+   |
+LL -         let _: *mut u8 = transmute(ptr);
+LL +         let _: *mut u8 = ptr.cast_mut();
+   |
+
+error: transmute from a pointer to a pointer
+  --> tests/ui/transmute_ptr_to_ptr.rs:115:28
+   |
+LL |         let _: *const u8 = transmute(mut_ptr);
+   |                            ^^^^^^^^^^^^^^^^^^
+   |
+help: use `pointer::cast_const` instead
+   |
+LL -         let _: *const u8 = transmute(mut_ptr);
+LL +         let _: *const u8 = mut_ptr.cast_const();
+   |
+
+error: aborting due to 16 previous errors
+

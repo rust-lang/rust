@@ -1,0 +1,20 @@
+error: Undefined Behavior: writing to ALLOC which is read-only
+  --> tests/fail-dep/libc/fs/mkstemp_immutable_arg.rs:LL:CC
+   |
+LL |     let _fd = unsafe { libc::mkstemp(s) };
+   |                        ^^^^^^^^^^^^^^^^ Undefined Behavior occurred here
+   |
+   = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
+   = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
+   = note: BACKTRACE:
+   = note: inside `test_mkstemp_immutable_arg` at tests/fail-dep/libc/fs/mkstemp_immutable_arg.rs:LL:CC
+note: inside `main`
+  --> tests/fail-dep/libc/fs/mkstemp_immutable_arg.rs:LL:CC
+   |
+LL |     test_mkstemp_immutable_arg();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to 1 previous error
+

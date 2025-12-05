@@ -1,0 +1,95 @@
+# This file's format is documented at
+# https://forge.rust-lang.org/triagebot/pr-assignment.html#configuration
+
+[autolabel."needs-triage"]
+new_issue = true
+exclude_labels = [
+    "A-diagnostics",
+    "C-tracking-issue",
+]
+
+[review-submitted]
+# This label is added when a "request changes" review is submitted.
+reviewed_label = "S-waiting-on-author"
+# These labels are removed when a "request changes" review is submitted.
+review_labels = ["S-waiting-on-review"]
+
+[review-requested]
+# Those labels are removed when PR author requests a review from an assignee
+remove_labels = ["S-waiting-on-author"]
+# Those labels are added when PR author requests a review from an assignee
+add_labels = ["S-waiting-on-review"]
+
+# Enable shortcuts like `@rustbot ready`
+# Documentation at: https://forge.rust-lang.org/triagebot/shortcuts.html
+[shortcut]
+
+[autolabel."S-waiting-on-review"]
+new_pr = true
+
+# Enable issue transfers within the org
+# Documentation at: https://forge.rust-lang.org/triagebot/transfer.html
+[transfer]
+
+[relabel]
+allow-unauthenticated = [
+    "-Z*",
+    "A-*",
+    "C-*",
+    "D-*",
+    "E-*",
+    "F-*",
+    "I-*",
+    "L-*",
+    "O-*",
+    "PG-*",
+    "S-*",
+    "T-*",
+    "WG-*",
+    "needs-triage",
+]
+
+# Enable `@rustbot note` functionality
+# Documentation at: https://forge.rust-lang.org/triagebot/note.html
+[note]
+
+# Prevents mentions in commits to avoid users being spammed
+# Documentation at: https://forge.rust-lang.org/triagebot/no-mentions.html
+[no-mentions]
+
+# Canonicalize issue numbers to avoid closing the wrong issue
+# when commits are included in subtrees, as well as warning links in commits.
+# Documentation at: https://forge.rust-lang.org/triagebot/issue-links.html
+[issue-links]
+
+[behind-upstream]
+days-threshold = 7
+
+# Enable triagebot (PR) assignment.
+# Documentation at: https://forge.rust-lang.org/triagebot/pr-assignment.html
+[assign]
+
+# NOTE: do not add `[assign.owners]` if we still wish to keep the opt-in
+# reviewer model, as `[assign.owners]` will cause triagebot auto-reviewer
+# assignment to kick in.
+
+# Custom PR welcome message for when no auto reviewer assignment is performed
+# and no explicit manual reviewer selection is made.
+# Documentation at: https://forge.rust-lang.org/triagebot/pr-assignment.html#custom-welcome-messages
+[assign.custom_welcome_messages]
+welcome-message = ""
+welcome-message-no-reviewer = """\
+Thanks for the PR. If you have write access, feel free to merge this PR if it \
+does not need reviews. You can request a review using `r? rustc-dev-guide` or \
+`r? <username>`.
+"""
+
+# Groups for `r? <group>`.
+# Documentation at: https://forge.rust-lang.org/triagebot/pr-assignment.html#usage
+# Keep members alphanumerically sorted.
+[assign.adhoc_groups]
+rustc-dev-guide = [
+    "@BoxyUwU",
+    "@jyn514",
+    "@tshepang",
+]

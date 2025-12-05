@@ -1,0 +1,39 @@
+error: Undefined Behavior: write access through <TAG> at ALLOC[0x0] is forbidden
+  --> tests/fail/both_borrows/illegal_write6.rs:LL:CC
+   |
+LL |     unsafe { *y = 2 };
+   |              ^^^^^^ Undefined Behavior occurred here
+   |
+   = help: this indicates a potential bug in the program: it performed an invalid operation, but the Tree Borrows rules it violated are still experimental
+   = help: see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/tree-borrows.md for further information
+   = help: the accessed tag <TAG> is foreign to the protected tag <TAG> (i.e., it is not a child)
+   = help: this foreign write access would cause the protected tag <TAG> (currently Unique) to become Disabled
+   = help: protected tags must never be Disabled
+help: the accessed tag <TAG> was created here
+  --> tests/fail/both_borrows/illegal_write6.rs:LL:CC
+   |
+LL |     let x = &mut 0u32;
+   |             ^^^^^^^^^
+help: the protected tag <TAG> was created here, in the initial state Reserved
+  --> tests/fail/both_borrows/illegal_write6.rs:LL:CC
+   |
+LL | fn foo(a: &mut u32, y: *mut u32) -> u32 {
+   |        ^
+help: the protected tag <TAG> later transitioned to Unique due to a child write access at offsets [0x0..0x4]
+  --> tests/fail/both_borrows/illegal_write6.rs:LL:CC
+   |
+LL |     *a = 1;
+   |     ^^^^^^
+   = help: this transition corresponds to the first write to a 2-phase borrowed mutable reference
+   = note: BACKTRACE (of the first span):
+   = note: inside `foo` at tests/fail/both_borrows/illegal_write6.rs:LL:CC
+note: inside `main`
+  --> tests/fail/both_borrows/illegal_write6.rs:LL:CC
+   |
+LL |     foo(x, p);
+   |     ^^^^^^^^^
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to 1 previous error
+

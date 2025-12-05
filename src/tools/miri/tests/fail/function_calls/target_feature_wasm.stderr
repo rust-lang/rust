@@ -1,0 +1,10 @@
+error: abnormal termination: calling a function that requires unavailable target features: simd128
+  --> tests/fail/function_calls/target_feature_wasm.rs:LL:CC
+   |
+LL |     simd128_fn();
+   |     ^^^^^^^^^^^^ abnormal termination occurred here
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to 1 previous error
+

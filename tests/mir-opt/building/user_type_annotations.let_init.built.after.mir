@@ -1,0 +1,54 @@
+// MIR for `let_init` after built
+
+| User Type Annotations
+| 0: user_ty: Canonical { value: Ty((u32, u64, &'static char)), max_universe: U0, variables: [] }, span: $DIR/user_type_annotations.rs:26:20: 26:45, inferred_ty: (u32, u64, &char)
+| 1: user_ty: Canonical { value: Ty((u32, u64, &'static char)), max_universe: U0, variables: [] }, span: $DIR/user_type_annotations.rs:26:20: 26:45, inferred_ty: (u32, u64, &char)
+|
+fn let_init() -> () {
+    let mut _0: ();
+    let _1: u32 as UserTypeProjection { base: UserType(0), projs: [Field(0, ())] };
+    let _2: u64 as UserTypeProjection { base: UserType(0), projs: [Field(1, ())] };
+    let _3: &char as UserTypeProjection { base: UserType(0), projs: [Field(2, ())] };
+    let mut _4: (u32, u64, &char);
+    let mut _5: &char;
+    let _6: &char;
+    let _7: char;
+    scope 1 {
+        debug x => _1;
+        debug y => _2;
+        debug z => _3;
+    }
+
+    bb0: {
+        StorageLive(_4);
+        StorageLive(_5);
+        StorageLive(_6);
+        StorageLive(_7);
+        _7 = const 'u';
+        _6 = &_7;
+        _5 = &(*_6);
+        _4 = (const 7_u32, const 12_u64, move _5);
+        StorageDead(_5);
+        PlaceMention(_4);
+        AscribeUserType(_4, +, UserTypeProjection { base: UserType(1), projs: [] });
+        StorageLive(_1);
+        _1 = copy (_4.0: u32);
+        StorageLive(_2);
+        _2 = copy (_4.1: u64);
+        StorageLive(_3);
+        _3 = copy (_4.2: &char);
+        StorageDead(_6);
+        StorageDead(_4);
+        _0 = const ();
+        StorageDead(_3);
+        StorageDead(_2);
+        StorageDead(_1);
+        StorageDead(_7);
+        return;
+    }
+
+    bb1: {
+        FakeRead(ForMatchedPlace(None), _4);
+        unreachable;
+    }
+}

@@ -1,0 +1,15 @@
+warning: conflicting implementations of trait `Trait` for type `for<'r> fn(fn(&'r ()))`
+  --> $DIR/coherence-fn-covariant-bound-vs-static.rs:22:1
+   |
+LL | impl Trait for for<'r> fn(fn(&'r ())) {}
+   | ------------------------------------- first implementation here
+LL | impl<'a> Trait for fn(fn(&'a ())) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `for<'r> fn(fn(&'r ()))`
+   |
+   = warning: the behavior may change in a future release
+   = note: for more information, see issue #56105 <https://github.com/rust-lang/rust/issues/56105>
+   = note: this behavior recently changed as a result of a bug fix; see rust-lang/rust#56105 for details
+   = note: `#[warn(coherence_leak_check)]` (part of `#[warn(future_incompatible)]`) on by default
+
+warning: 1 warning emitted
+

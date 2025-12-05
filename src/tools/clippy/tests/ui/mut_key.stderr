@@ -1,0 +1,155 @@
+error: mutable key type
+  --> tests/ui/mut_key.rs:31:32
+   |
+LL | fn should_not_take_this_arg(m: &mut HashMap<Key, usize>, _n: usize) -> HashSet<Key> {
+   |                                ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: ... because it contains `Key`, which has interior mutability
+   = note: ... because it contains `AtomicUsize`, which has interior mutability
+   = note: ... because it contains `UnsafeCell<usize>`, which has interior mutability
+   = note: `-D clippy::mutable-key-type` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::mutable_key_type)]`
+
+error: mutable key type
+  --> tests/ui/mut_key.rs:31:72
+   |
+LL | fn should_not_take_this_arg(m: &mut HashMap<Key, usize>, _n: usize) -> HashSet<Key> {
+   |                                                                        ^^^^^^^^^^^^
+   |
+   = note: ... because it contains `Key`, which has interior mutability
+   = note: ... because it contains `AtomicUsize`, which has interior mutability
+   = note: ... because it contains `UnsafeCell<usize>`, which has interior mutability
+
+error: mutable key type
+  --> tests/ui/mut_key.rs:35:5
+   |
+LL |     let _other: HashMap<Key, bool> = HashMap::new();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: ... because it contains `Key`, which has interior mutability
+   = note: ... because it contains `AtomicUsize`, which has interior mutability
+   = note: ... because it contains `UnsafeCell<usize>`, which has interior mutability
+
+error: mutable key type
+  --> tests/ui/mut_key.rs:64:22
+   |
+LL | fn tuples_bad<U>(_m: &mut HashMap<(Key, U), bool>) {}
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: ... because it contains `(Key, U)`, which has interior mutability
+   = note: ... because it contains `Key`, which has interior mutability
+   = note: ... because it contains `AtomicUsize`, which has interior mutability
+   = note: ... because it contains `UnsafeCell<usize>`, which has interior mutability
+
+error: mutable key type
+  --> tests/ui/mut_key.rs:77:5
+   |
+LL |     let _map = HashMap::<Cell<usize>, usize>::new();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: ... because it contains `Cell<usize>`, which has interior mutability
+   = note: ... because it contains `UnsafeCell<usize>`, which has interior mutability
+
+error: mutable key type
+  --> tests/ui/mut_key.rs:80:5
+   |
+LL |     let _map = HashMap::<&mut Cell<usize>, usize>::new();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: ... because it contains `&mut Cell<usize>`, which has interior mutability
+   = note: ... because it contains `Cell<usize>`, which has interior mutability
+   = note: ... because it contains `UnsafeCell<usize>`, which has interior mutability
+
+error: mutable key type
+  --> tests/ui/mut_key.rs:84:5
+   |
+LL |     let _map = HashMap::<Vec<Cell<usize>>, usize>::new();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: ... because it contains `Vec<Cell<usize>>`, which has interior mutability
+   = note: ... because it contains `Cell<usize>`, which has interior mutability
+   = note: ... because it contains `UnsafeCell<usize>`, which has interior mutability
+
+error: mutable key type
+  --> tests/ui/mut_key.rs:87:5
+   |
+LL |     let _map = HashMap::<BTreeMap<Cell<usize>, ()>, usize>::new();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: ... because it contains `BTreeMap<Cell<usize>, ()>`, which has interior mutability
+   = note: ... because it contains `Cell<usize>`, which has interior mutability
+   = note: ... because it contains `UnsafeCell<usize>`, which has interior mutability
+
+error: mutable key type
+  --> tests/ui/mut_key.rs:90:5
+   |
+LL |     let _map = HashMap::<BTreeMap<(), Cell<usize>>, usize>::new();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: ... because it contains `BTreeMap<(), Cell<usize>>`, which has interior mutability
+   = note: ... because it contains `Cell<usize>`, which has interior mutability
+   = note: ... because it contains `UnsafeCell<usize>`, which has interior mutability
+
+error: mutable key type
+  --> tests/ui/mut_key.rs:93:5
+   |
+LL |     let _map = HashMap::<BTreeSet<Cell<usize>>, usize>::new();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: ... because it contains `BTreeSet<Cell<usize>>`, which has interior mutability
+   = note: ... because it contains `Cell<usize>`, which has interior mutability
+   = note: ... because it contains `UnsafeCell<usize>`, which has interior mutability
+
+error: mutable key type
+  --> tests/ui/mut_key.rs:96:5
+   |
+LL |     let _map = HashMap::<Option<Cell<usize>>, usize>::new();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: ... because it contains `Option<Cell<usize>>`, which has interior mutability
+   = note: ... because it contains `Cell<usize>`, which has interior mutability
+   = note: ... because it contains `UnsafeCell<usize>`, which has interior mutability
+
+error: mutable key type
+  --> tests/ui/mut_key.rs:99:5
+   |
+LL |     let _map = HashMap::<Option<Vec<Cell<usize>>>, usize>::new();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: ... because it contains `Option<Vec<Cell<usize>>>`, which has interior mutability
+   = note: ... because it contains `Vec<Cell<usize>>`, which has interior mutability
+   = note: ... because it contains `Cell<usize>`, which has interior mutability
+   = note: ... because it contains `UnsafeCell<usize>`, which has interior mutability
+
+error: mutable key type
+  --> tests/ui/mut_key.rs:103:5
+   |
+LL |     let _map = HashMap::<Box<Cell<usize>>, usize>::new();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: ... because it contains `Box<Cell<usize>>`, which has interior mutability
+   = note: ... because it contains `Cell<usize>`, which has interior mutability
+   = note: ... because it contains `UnsafeCell<usize>`, which has interior mutability
+
+error: mutable key type
+  --> tests/ui/mut_key.rs:106:5
+   |
+LL |     let _map = HashMap::<Rc<Cell<usize>>, usize>::new();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: ... because it contains `Rc<Cell<usize>>`, which has interior mutability
+   = note: ... because it contains `Cell<usize>`, which has interior mutability
+   = note: ... because it contains `UnsafeCell<usize>`, which has interior mutability
+
+error: mutable key type
+  --> tests/ui/mut_key.rs:109:5
+   |
+LL |     let _map = HashMap::<Arc<Cell<usize>>, usize>::new();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: ... because it contains `Arc<Cell<usize>>`, which has interior mutability
+   = note: ... because it contains `Cell<usize>`, which has interior mutability
+   = note: ... because it contains `UnsafeCell<usize>`, which has interior mutability
+
+error: aborting due to 15 previous errors
+

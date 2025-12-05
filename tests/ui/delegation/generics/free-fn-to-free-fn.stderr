@@ -1,0 +1,54 @@
+error[E0284]: type annotations needed
+  --> $DIR/free-fn-to-free-fn.rs:15:17
+   |
+LL | reuse to_reuse::consts;
+   |                 ^^^^^^ cannot infer the value of the const parameter `N` declared on the function `consts`
+   |
+note: required by a const generic parameter in `to_reuse::consts`
+  --> $DIR/free-fn-to-free-fn.rs:5:19
+   |
+LL |     pub fn consts<const N: i32>() -> i32 {
+   |                   ^^^^^^^^^^^^ required by this const generic parameter in `consts`
+help: consider specifying the generic argument
+   |
+LL | reuse to_reuse::consts::<N>;
+   |                       +++++
+
+error[E0794]: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
+  --> $DIR/free-fn-to-free-fn.rs:21:12
+   |
+LL |     late::<'static>(&0u8);
+   |            ^^^^^^^
+   |
+note: the late bound lifetime parameter is introduced here
+  --> $DIR/free-fn-to-free-fn.rs:8:17
+   |
+LL |     pub fn late<'a>(x: &'a u8) -> u8 {
+   |                 ^^
+
+error[E0277]: the trait bound `S: Clone` is not satisfied
+  --> $DIR/free-fn-to-free-fn.rs:25:12
+   |
+LL |     bounds(S);
+   |     ------ ^ the trait `Clone` is not implemented for `S`
+   |     |
+   |     required by a bound introduced by this call
+   |
+note: required by a bound in `bounds`
+  --> $DIR/free-fn-to-free-fn.rs:11:22
+   |
+LL |     pub fn bounds<T: Clone>(_: T) {}
+   |                      ^^^^^ required by this bound in `bounds`
+...
+LL | reuse to_reuse::bounds;
+   |                 ------ required by a bound in this function
+help: consider annotating `S` with `#[derive(Clone)]`
+   |
+LL +     #[derive(Clone)]
+LL |     struct S;
+   |
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0277, E0284, E0794.
+For more information about an error, try `rustc --explain E0277`.

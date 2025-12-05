@@ -1,0 +1,13 @@
+error: `yield` can only be used in `#[coroutine]` closures, or `gen` blocks
+  --> $DIR/missing_coroutine_attr_suggestion.rs:6:16
+   |
+LL |     let _ = || yield;
+   |                ^^^^^
+   |
+help: use `#[coroutine]` to make this closure a coroutine
+   |
+LL |     let _ = #[coroutine] || yield;
+   |             ++++++++++++
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,24 @@
+error[E0207]: the type parameter `I` is not constrained by the impl trait, self type, or predicates
+  --> $DIR/issue-88526.rs:25:13
+   |
+LL | impl<'q, Q, I, F> A for TestB<Q, F>
+   |             ^ unconstrained type parameter
+
+error[E0309]: the parameter type `F` may not live long enough
+  --> $DIR/issue-88526.rs:16:5
+   |
+LL |     type I<'a> = &'a F;
+   |     ^^^^^^^--^
+   |     |      |
+   |     |      the parameter type `F` must be valid for the lifetime `'a` as defined here...
+   |     ...so that the reference type `&'a F` does not outlive the data it points at
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL |     type I<'a> = &'a F where F: 'a;
+   |                        +++++++++++
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0207, E0309.
+For more information about an error, try `rustc --explain E0207`.

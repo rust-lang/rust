@@ -1,0 +1,51 @@
+// This test ensures that the "Auto-hide item contents for large items" setting is working as
+// expected.
+
+// We need to disable this check because `trait.impl/test_docs/trait.Iterator.js` doesn't exist.
+fail-on-request-error: false
+
+define-function: (
+    "check-setting",
+    [storage_value, setting_attribute_value, toggle_attribute_value],
+    block {
+        assert-local-storage: {"rustdoc-auto-hide-large-items": |storage_value|}
+        click: "rustdoc-toolbar .settings-menu"
+        wait-for: "#settings"
+        assert-property: ("#auto-hide-large-items", {"checked": |setting_attribute_value|})
+        assert-attribute: (".item-decl .type-contents-toggle", {"open": |toggle_attribute_value|})
+    }
+)
+
+go-to: "file://" + |DOC_PATH| + "/lib2/scroll_traits/trait.Iterator.html"
+
+// We check that the setting is enabled by default and is working.
+call-function: ("check-setting", {
+    "storage_value": null,
+    "setting_attribute_value": "true",
+    "toggle_attribute_value": null,
+})
+
+// Now we change its value.
+click: "#auto-hide-large-items"
+assert-local-storage: {"rustdoc-auto-hide-large-items": "false"}
+
+// We check that the changes were applied as expected.
+reload:
+
+call-function: ("check-setting", {
+    "storage_value": "false",
+    "setting_attribute_value": "false",
+    "toggle_attribute_value": "",
+})
+
+// And now we re-enable the setting.
+click: "#auto-hide-large-items"
+assert-local-storage: {"rustdoc-auto-hide-large-items": "true"}
+
+// And we check everything is back the way it was before.
+reload:
+call-function: ("check-setting", {
+    "storage_value": "true",
+    "setting_attribute_value": "true",
+    "toggle_attribute_value": null,
+})

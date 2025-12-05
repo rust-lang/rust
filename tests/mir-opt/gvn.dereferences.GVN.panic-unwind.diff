@@ -1,0 +1,179 @@
+- // MIR for `dereferences` before GVN
++ // MIR for `dereferences` after GVN
+  
+  fn dereferences(_1: &mut u32, _2: &impl Copy, _3: &S<u32>) -> () {
+      debug t => _1;
+      debug u => _2;
+      debug s => _3;
+      let mut _0: ();
+      let _4: ();
+      let mut _5: u32;
+      let _6: ();
+      let mut _7: u32;
+      let _8: *const u32;
+      let _9: ();
+      let mut _10: u32;
+      let _11: ();
+      let mut _12: u32;
+      let _14: ();
+      let mut _15: u32;
+      let _16: ();
+      let mut _17: u32;
+      let _19: ();
+      let mut _20: u32;
+      let _21: ();
+      let mut _22: u32;
+      let _23: ();
+      let mut _24: &u32;
+      let _25: ();
+      let mut _26: impl Copy;
+      let _27: ();
+      let mut _28: impl Copy;
+      let _29: ();
+      let mut _30: u32;
+      let _31: ();
+      let mut _32: u32;
+      scope 1 {
+          debug z => _8;
+          let _13: *mut u32;
+          scope 2 {
+              debug z => _13;
+              let _18: &u32;
+              scope 3 {
+                  debug z => _18;
+              }
+          }
+      }
+  
+      bb0: {
+          StorageLive(_4);
+          StorageLive(_5);
+          _5 = copy (*_1);
+          _4 = opaque::<u32>(move _5) -> [return: bb1, unwind continue];
+      }
+  
+      bb1: {
+          StorageDead(_5);
+          StorageDead(_4);
+          StorageLive(_6);
+          StorageLive(_7);
+          _7 = copy (*_1);
+          _6 = opaque::<u32>(move _7) -> [return: bb2, unwind continue];
+      }
+  
+      bb2: {
+          StorageDead(_7);
+          StorageDead(_6);
+          StorageLive(_8);
+          _8 = &raw const (*_1);
+          StorageLive(_9);
+          StorageLive(_10);
+          _10 = copy (*_8);
+          _9 = opaque::<u32>(move _10) -> [return: bb3, unwind continue];
+      }
+  
+      bb3: {
+          StorageDead(_10);
+          StorageDead(_9);
+          StorageLive(_11);
+          StorageLive(_12);
+          _12 = copy (*_8);
+          _11 = opaque::<u32>(move _12) -> [return: bb4, unwind continue];
+      }
+  
+      bb4: {
+          StorageDead(_12);
+          StorageDead(_11);
+          StorageLive(_13);
+          _13 = &raw mut (*_1);
+          StorageLive(_14);
+          StorageLive(_15);
+          _15 = copy (*_13);
+          _14 = opaque::<u32>(move _15) -> [return: bb5, unwind continue];
+      }
+  
+      bb5: {
+          StorageDead(_15);
+          StorageDead(_14);
+          StorageLive(_16);
+          StorageLive(_17);
+          _17 = copy (*_13);
+          _16 = opaque::<u32>(move _17) -> [return: bb6, unwind continue];
+      }
+  
+      bb6: {
+          StorageDead(_17);
+          StorageDead(_16);
+          StorageLive(_18);
+          _18 = &(*_1);
+          StorageLive(_19);
+          StorageLive(_20);
+          _20 = copy (*_18);
+          _19 = opaque::<u32>(move _20) -> [return: bb7, unwind continue];
+      }
+  
+      bb7: {
+          StorageDead(_20);
+          StorageDead(_19);
+          StorageLive(_21);
+          StorageLive(_22);
+          _22 = copy (*_18);
+          _21 = opaque::<u32>(move _22) -> [return: bb8, unwind continue];
+      }
+  
+      bb8: {
+          StorageDead(_22);
+          StorageDead(_21);
+          StorageLive(_23);
+          StorageLive(_24);
+          _24 = &(*_18);
+          _23 = opaque::<&u32>(move _24) -> [return: bb9, unwind continue];
+      }
+  
+      bb9: {
+          StorageDead(_24);
+          StorageDead(_23);
+          StorageLive(_25);
+          StorageLive(_26);
+          _26 = copy (*_2);
+          _25 = opaque::<impl Copy>(move _26) -> [return: bb10, unwind continue];
+      }
+  
+      bb10: {
+          StorageDead(_26);
+          StorageDead(_25);
+          StorageLive(_27);
+          StorageLive(_28);
+          _28 = copy (*_2);
+          _27 = opaque::<impl Copy>(move _28) -> [return: bb11, unwind continue];
+      }
+  
+      bb11: {
+          StorageDead(_28);
+          StorageDead(_27);
+          StorageLive(_29);
+          StorageLive(_30);
+          _30 = copy ((*_3).0: u32);
+          _29 = opaque::<u32>(move _30) -> [return: bb12, unwind continue];
+      }
+  
+      bb12: {
+          StorageDead(_30);
+          StorageDead(_29);
+          StorageLive(_31);
+          StorageLive(_32);
+          _32 = copy ((*_3).0: u32);
+          _31 = opaque::<u32>(move _32) -> [return: bb13, unwind continue];
+      }
+  
+      bb13: {
+          StorageDead(_32);
+          StorageDead(_31);
+          _0 = const ();
+          StorageDead(_18);
+          StorageDead(_13);
+          StorageDead(_8);
+          return;
+      }
+  }
+  

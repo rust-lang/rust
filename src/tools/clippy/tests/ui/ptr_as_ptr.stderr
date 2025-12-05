@@ -1,0 +1,209 @@
+error: `as` casting between raw pointers without changing their constness
+  --> tests/ui/ptr_as_ptr.rs:18:33
+   |
+LL |         *unsafe { Box::from_raw(Box::into_raw(Box::new(o)) as *mut super::issue_11278_a::T<String>) }
+   |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try `pointer::cast`, a safer alternative: `Box::into_raw(Box::new(o)).cast::<super::issue_11278_a::T<String>>()`
+   |
+   = note: `-D clippy::ptr-as-ptr` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::ptr_as_ptr)]`
+
+error: `as` casting between raw pointers without changing their constness
+  --> tests/ui/ptr_as_ptr.rs:28:13
+   |
+LL |     let _ = ptr as *const i32;
+   |             ^^^^^^^^^^^^^^^^^ help: try `pointer::cast`, a safer alternative: `ptr.cast::<i32>()`
+
+error: `as` casting between raw pointers without changing their constness
+  --> tests/ui/ptr_as_ptr.rs:30:13
+   |
+LL |     let _ = mut_ptr as *mut i32;
+   |             ^^^^^^^^^^^^^^^^^^^ help: try `pointer::cast`, a safer alternative: `mut_ptr.cast::<i32>()`
+
+error: `as` casting between raw pointers without changing their constness
+  --> tests/ui/ptr_as_ptr.rs:36:17
+   |
+LL |         let _ = *ptr_ptr as *const i32;
+   |                 ^^^^^^^^^^^^^^^^^^^^^^ help: try `pointer::cast`, a safer alternative: `(*ptr_ptr).cast::<i32>()`
+
+error: `as` casting between raw pointers without changing their constness
+  --> tests/ui/ptr_as_ptr.rs:50:25
+   |
+LL |     let _: *const i32 = ptr as *const _;
+   |                         ^^^^^^^^^^^^^^^ help: try `pointer::cast`, a safer alternative: `ptr.cast()`
+
+error: `as` casting between raw pointers without changing their constness
+  --> tests/ui/ptr_as_ptr.rs:52:23
+   |
+LL |     let _: *mut i32 = mut_ptr as _;
+   |                       ^^^^^^^^^^^^ help: try `pointer::cast`, a safer alternative: `mut_ptr.cast()`
+
+error: `as` casting between raw pointers without changing their constness
+  --> tests/ui/ptr_as_ptr.rs:80:13
+   |
+LL |     let _ = ptr as *const i32;
+   |             ^^^^^^^^^^^^^^^^^ help: try `pointer::cast`, a safer alternative: `ptr.cast::<i32>()`
+
+error: `as` casting between raw pointers without changing their constness
+  --> tests/ui/ptr_as_ptr.rs:82:13
+   |
+LL |     let _ = mut_ptr as *mut i32;
+   |             ^^^^^^^^^^^^^^^^^^^ help: try `pointer::cast`, a safer alternative: `mut_ptr.cast::<i32>()`
+
+error: `as` casting between raw pointers without changing their constness
+  --> tests/ui/ptr_as_ptr.rs:90:9
+   |
+LL |         ptr::null_mut() as *mut u32
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try call directly: `ptr::null_mut::<u32>()`
+
+error: `as` casting between raw pointers without changing their constness
+  --> tests/ui/ptr_as_ptr.rs:95:9
+   |
+LL |         std::ptr::null_mut() as *mut u32
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try call directly: `std::ptr::null_mut::<u32>()`
+
+error: `as` casting between raw pointers without changing their constness
+  --> tests/ui/ptr_as_ptr.rs:101:9
+   |
+LL |         ptr::null_mut() as *mut u32
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try call directly: `ptr::null_mut::<u32>()`
+
+error: `as` casting between raw pointers without changing their constness
+  --> tests/ui/ptr_as_ptr.rs:106:9
+   |
+LL |         core::ptr::null_mut() as *mut u32
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try call directly: `core::ptr::null_mut::<u32>()`
+
+error: `as` casting between raw pointers without changing their constness
+  --> tests/ui/ptr_as_ptr.rs:112:9
+   |
+LL |         ptr::null() as *const u32
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^ help: try call directly: `ptr::null::<u32>()`
+
+error: `as` casting between raw pointers without changing their constness
+  --> tests/ui/ptr_as_ptr.rs:117:9
+   |
+LL |         std::ptr::null() as *const u32
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try call directly: `std::ptr::null::<u32>()`
+
+error: `as` casting between raw pointers without changing their constness
+  --> tests/ui/ptr_as_ptr.rs:123:9
+   |
+LL |         ptr::null() as *const u32
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^ help: try call directly: `ptr::null::<u32>()`
+
+error: `as` casting between raw pointers without changing their constness
+  --> tests/ui/ptr_as_ptr.rs:128:9
+   |
+LL |         core::ptr::null() as *const u32
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try call directly: `core::ptr::null::<u32>()`
+
+error: `as` casting between raw pointers without changing their constness
+  --> tests/ui/ptr_as_ptr.rs:136:9
+   |
+LL |         ptr::null_mut() as *mut _
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^ help: try call directly: `ptr::null_mut()`
+
+error: `as` casting between raw pointers without changing their constness
+  --> tests/ui/ptr_as_ptr.rs:141:9
+   |
+LL |         std::ptr::null_mut() as *mut _
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try call directly: `std::ptr::null_mut()`
+
+error: `as` casting between raw pointers without changing their constness
+  --> tests/ui/ptr_as_ptr.rs:147:9
+   |
+LL |         ptr::null_mut() as *mut _
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^ help: try call directly: `ptr::null_mut()`
+
+error: `as` casting between raw pointers without changing their constness
+  --> tests/ui/ptr_as_ptr.rs:152:9
+   |
+LL |         core::ptr::null_mut() as *mut _
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try call directly: `core::ptr::null_mut()`
+
+error: `as` casting between raw pointers without changing their constness
+  --> tests/ui/ptr_as_ptr.rs:158:9
+   |
+LL |         ptr::null() as *const _
+   |         ^^^^^^^^^^^^^^^^^^^^^^^ help: try call directly: `ptr::null()`
+
+error: `as` casting between raw pointers without changing their constness
+  --> tests/ui/ptr_as_ptr.rs:163:9
+   |
+LL |         std::ptr::null() as *const _
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try call directly: `std::ptr::null()`
+
+error: `as` casting between raw pointers without changing their constness
+  --> tests/ui/ptr_as_ptr.rs:169:9
+   |
+LL |         ptr::null() as *const _
+   |         ^^^^^^^^^^^^^^^^^^^^^^^ help: try call directly: `ptr::null()`
+
+error: `as` casting between raw pointers without changing their constness
+  --> tests/ui/ptr_as_ptr.rs:174:9
+   |
+LL |         core::ptr::null() as *const _
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try call directly: `core::ptr::null()`
+
+error: `as` casting between raw pointers without changing their constness
+  --> tests/ui/ptr_as_ptr.rs:182:9
+   |
+LL |         ptr::null_mut() as _
+   |         ^^^^^^^^^^^^^^^^^^^^ help: try call directly: `ptr::null_mut()`
+
+error: `as` casting between raw pointers without changing their constness
+  --> tests/ui/ptr_as_ptr.rs:187:9
+   |
+LL |         std::ptr::null_mut() as _
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^ help: try call directly: `std::ptr::null_mut()`
+
+error: `as` casting between raw pointers without changing their constness
+  --> tests/ui/ptr_as_ptr.rs:193:9
+   |
+LL |         ptr::null_mut() as _
+   |         ^^^^^^^^^^^^^^^^^^^^ help: try call directly: `ptr::null_mut()`
+
+error: `as` casting between raw pointers without changing their constness
+  --> tests/ui/ptr_as_ptr.rs:198:9
+   |
+LL |         core::ptr::null_mut() as _
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try call directly: `core::ptr::null_mut()`
+
+error: `as` casting between raw pointers without changing their constness
+  --> tests/ui/ptr_as_ptr.rs:204:9
+   |
+LL |         ptr::null() as _
+   |         ^^^^^^^^^^^^^^^^ help: try call directly: `ptr::null()`
+
+error: `as` casting between raw pointers without changing their constness
+  --> tests/ui/ptr_as_ptr.rs:209:9
+   |
+LL |         std::ptr::null() as _
+   |         ^^^^^^^^^^^^^^^^^^^^^ help: try call directly: `std::ptr::null()`
+
+error: `as` casting between raw pointers without changing their constness
+  --> tests/ui/ptr_as_ptr.rs:215:9
+   |
+LL |         ptr::null() as _
+   |         ^^^^^^^^^^^^^^^^ help: try call directly: `ptr::null()`
+
+error: `as` casting between raw pointers without changing their constness
+  --> tests/ui/ptr_as_ptr.rs:220:9
+   |
+LL |         core::ptr::null() as _
+   |         ^^^^^^^^^^^^^^^^^^^^^^ help: try call directly: `core::ptr::null()`
+
+error: `as` casting between raw pointers without changing their constness
+  --> tests/ui/ptr_as_ptr.rs:228:43
+   |
+LL |         let _: fn() = std::mem::transmute(std::ptr::null::<()>() as *const u8);
+   |                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try call directly: `std::ptr::null::<u8>()`
+
+error: `as` casting between raw pointers without changing their constness
+  --> tests/ui/ptr_as_ptr.rs:235:16
+   |
+LL |     let _ptr = std::ptr::addr_of_mut!(*b) as *mut ();
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try `pointer::cast`, a safer alternative: `std::ptr::addr_of_mut!(*b).cast::<()>()`
+
+error: aborting due to 34 previous errors
+

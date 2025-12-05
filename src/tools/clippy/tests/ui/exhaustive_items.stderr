@@ -1,0 +1,64 @@
+error: exported enums should not be exhaustive
+  --> tests/ui/exhaustive_items.rs:10:5
+   |
+LL | /     pub enum Exhaustive {
+LL | |
+LL | |         Foo,
+LL | |         Bar,
+LL | |         Baz,
+LL | |         Quux(String),
+LL | |     }
+   | |_____^
+   |
+note: the lint level is defined here
+  --> tests/ui/exhaustive_items.rs:2:9
+   |
+LL | #![deny(clippy::exhaustive_enums, clippy::exhaustive_structs)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^
+help: try adding #[non_exhaustive]
+   |
+LL ~     #[non_exhaustive]
+LL ~     pub enum Exhaustive {
+   |
+
+error: exported enums should not be exhaustive
+  --> tests/ui/exhaustive_items.rs:20:5
+   |
+LL | /     pub enum ExhaustiveWithAttrs {
+LL | |
+LL | |         Foo,
+LL | |         Bar,
+LL | |         Baz,
+LL | |         Quux(String),
+LL | |     }
+   | |_____^
+   |
+help: try adding #[non_exhaustive]
+   |
+LL ~     #[non_exhaustive]
+LL ~     pub enum ExhaustiveWithAttrs {
+   |
+
+error: exported structs should not be exhaustive
+  --> tests/ui/exhaustive_items.rs:56:5
+   |
+LL | /     pub struct Exhaustive {
+LL | |
+LL | |         pub foo: u8,
+LL | |         pub bar: String,
+LL | |     }
+   | |_____^
+   |
+note: the lint level is defined here
+  --> tests/ui/exhaustive_items.rs:2:35
+   |
+LL | #![deny(clippy::exhaustive_enums, clippy::exhaustive_structs)]
+   |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: try adding #[non_exhaustive]
+   |
+LL ~     #[non_exhaustive]
+LL ~     pub struct Exhaustive {
+   |
+
+error: aborting due to 3 previous errors
+

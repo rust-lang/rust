@@ -1,0 +1,17 @@
+error: `test` attribute cannot be used at crate level
+  --> $DIR/issue-43106-gating-of-test.rs:4:1
+   |
+LL | #![test                    = "4200"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | fn main() {}
+   |    ---- the inner attribute doesn't annotate this function
+   |
+help: perhaps you meant to use an outer attribute
+   |
+LL - #![test                    = "4200"]
+LL + #[test                    = "4200"]
+   |
+
+error: aborting due to 1 previous error
+

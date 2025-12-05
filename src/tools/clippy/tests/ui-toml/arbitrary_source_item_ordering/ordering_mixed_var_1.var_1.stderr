@@ -1,0 +1,100 @@
+error: incorrect ordering of items (must be alphabetically ordered)
+  --> tests/ui-toml/arbitrary_source_item_ordering/ordering_mixed_var_1.rs:105:8
+   |
+LL |     fn b() {}
+   |        ^
+   |
+note: should be placed before `c`
+  --> tests/ui-toml/arbitrary_source_item_ordering/ordering_mixed_var_1.rs:104:8
+   |
+LL |     fn c() {}
+   |        ^
+   = note: `-D clippy::arbitrary-source-item-ordering` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::arbitrary_source_item_ordering)]`
+
+error: incorrect ordering of items (must be alphabetically ordered)
+  --> tests/ui-toml/arbitrary_source_item_ordering/ordering_mixed_var_1.rs:112:11
+   |
+LL |     const B: bool = false;
+   |           ^
+   |
+note: should be placed before `C`
+  --> tests/ui-toml/arbitrary_source_item_ordering/ordering_mixed_var_1.rs:111:11
+   |
+LL |     const C: bool = false;
+   |           ^
+
+error: incorrect ordering of impl items (defined order: [Fn, Type, Const])
+  --> tests/ui-toml/arbitrary_source_item_ordering/ordering_mixed_var_1.rs:119:5
+   |
+LL |     type SomeType = ();
+   |     ^^^^^^^^^^^^^
+   |
+note: should be placed before `A`
+  --> tests/ui-toml/arbitrary_source_item_ordering/ordering_mixed_var_1.rs:117:5
+   |
+LL |     const A: bool = false;
+   |     ^^^^^^^^^^^^^
+
+error: incorrect ordering of impl items (defined order: [Fn, Type, Const])
+  --> tests/ui-toml/arbitrary_source_item_ordering/ordering_mixed_var_1.rs:122:5
+   |
+LL |     fn a() {}
+   |     ^^^^^^
+   |
+note: should be placed before `SomeType`
+  --> tests/ui-toml/arbitrary_source_item_ordering/ordering_mixed_var_1.rs:119:5
+   |
+LL |     type SomeType = ();
+   |     ^^^^^^^^^^^^^
+
+error: incorrect ordering of items (must be alphabetically ordered)
+  --> tests/ui-toml/arbitrary_source_item_ordering/ordering_mixed_var_1.rs:149:8
+   |
+LL |     fn b();
+   |        ^
+   |
+note: should be placed before `c`
+  --> tests/ui-toml/arbitrary_source_item_ordering/ordering_mixed_var_1.rs:148:8
+   |
+LL |     fn c();
+   |        ^
+
+error: incorrect ordering of items (must be alphabetically ordered)
+  --> tests/ui-toml/arbitrary_source_item_ordering/ordering_mixed_var_1.rs:156:11
+   |
+LL |     const B: bool;
+   |           ^
+   |
+note: should be placed before `C`
+  --> tests/ui-toml/arbitrary_source_item_ordering/ordering_mixed_var_1.rs:155:11
+   |
+LL |     const C: bool;
+   |           ^
+
+error: incorrect ordering of trait items (defined order: [Fn, Type, Const])
+  --> tests/ui-toml/arbitrary_source_item_ordering/ordering_mixed_var_1.rs:163:5
+   |
+LL |     type SomeType;
+   |     ^^^^^^^^^^^^^
+   |
+note: should be placed before `A`
+  --> tests/ui-toml/arbitrary_source_item_ordering/ordering_mixed_var_1.rs:161:5
+   |
+LL |     const A: bool;
+   |     ^^^^^^^^^^^^^
+
+error: incorrect ordering of trait items (defined order: [Fn, Type, Const])
+  --> tests/ui-toml/arbitrary_source_item_ordering/ordering_mixed_var_1.rs:166:5
+   |
+LL |     fn a();
+   |     ^^^^^^^
+   |
+note: should be placed before `SomeType`
+  --> tests/ui-toml/arbitrary_source_item_ordering/ordering_mixed_var_1.rs:163:5
+   |
+LL |     type SomeType;
+   |     ^^^^^^^^^^^^^
+
+error: aborting due to 8 previous errors
+

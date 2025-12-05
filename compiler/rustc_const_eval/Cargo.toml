@@ -1,0 +1,26 @@
+[package]
+name = "rustc_const_eval"
+version = "0.0.0"
+edition = "2024"
+
+[dependencies]
+# tidy-alphabetical-start
+either = "1"
+rustc_abi = { path = "../rustc_abi" }
+rustc_apfloat = "0.2.0"
+rustc_ast = { path = "../rustc_ast" }
+rustc_data_structures = { path = "../rustc_data_structures" }
+rustc_errors = { path = "../rustc_errors" }
+rustc_fluent_macro = { path = "../rustc_fluent_macro" }
+rustc_hir = { path = "../rustc_hir" }
+rustc_index = { path = "../rustc_index" }
+rustc_infer = { path = "../rustc_infer" }
+rustc_macros = { path = "../rustc_macros" }
+rustc_middle = { path = "../rustc_middle" }
+rustc_mir_dataflow = { path = "../rustc_mir_dataflow" }
+rustc_session = { path = "../rustc_session" }
+rustc_span = { path = "../rustc_span" }
+rustc_target = { path = "../rustc_target" }
+rustc_trait_selection = { path = "../rustc_trait_selection" }
+tracing = "0.1"
+# tidy-alphabetical-end

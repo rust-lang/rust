@@ -1,0 +1,87 @@
+error[E0511]: invalid monomorphization of `simd_shuffle` intrinsic: SIMD index #0 is out of bounds (limit 4)
+  --> $DIR/not-out-of-bounds.rs:53:21
+   |
+LL |                     $y(vec1, vec2, IDX)
+   |                     ^^^^^^^^^^^^^^^^^^^
+...
+LL |     test_shuffle_lanes!(2, u8x2, simd_shuffle);
+   |     ------------------------------------------ in this macro invocation
+   |
+   = note: this error originates in the macro `test_shuffle_lanes` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0511]: invalid monomorphization of `simd_shuffle` intrinsic: SIMD index #0 is out of bounds (limit 8)
+  --> $DIR/not-out-of-bounds.rs:53:21
+   |
+LL |                     $y(vec1, vec2, IDX)
+   |                     ^^^^^^^^^^^^^^^^^^^
+...
+LL |     test_shuffle_lanes!(4, u8x4, simd_shuffle);
+   |     ------------------------------------------ in this macro invocation
+   |
+   = note: this error originates in the macro `test_shuffle_lanes` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0511]: invalid monomorphization of `simd_shuffle` intrinsic: SIMD index #0 is out of bounds (limit 16)
+  --> $DIR/not-out-of-bounds.rs:53:21
+   |
+LL |                     $y(vec1, vec2, IDX)
+   |                     ^^^^^^^^^^^^^^^^^^^
+...
+LL |     test_shuffle_lanes!(8, u8x8, simd_shuffle);
+   |     ------------------------------------------ in this macro invocation
+   |
+   = note: this error originates in the macro `test_shuffle_lanes` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0511]: invalid monomorphization of `simd_shuffle` intrinsic: SIMD index #0 is out of bounds (limit 32)
+  --> $DIR/not-out-of-bounds.rs:53:21
+   |
+LL |                     $y(vec1, vec2, IDX)
+   |                     ^^^^^^^^^^^^^^^^^^^
+...
+LL |     test_shuffle_lanes!(16, u8x16, simd_shuffle);
+   |     -------------------------------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `test_shuffle_lanes` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0511]: invalid monomorphization of `simd_shuffle` intrinsic: SIMD index #0 is out of bounds (limit 64)
+  --> $DIR/not-out-of-bounds.rs:53:21
+   |
+LL |                     $y(vec1, vec2, IDX)
+   |                     ^^^^^^^^^^^^^^^^^^^
+...
+LL |     test_shuffle_lanes!(32, u8x32, simd_shuffle);
+   |     -------------------------------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `test_shuffle_lanes` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0511]: invalid monomorphization of `simd_shuffle` intrinsic: SIMD index #0 is out of bounds (limit 128)
+  --> $DIR/not-out-of-bounds.rs:53:21
+   |
+LL |                     $y(vec1, vec2, IDX)
+   |                     ^^^^^^^^^^^^^^^^^^^
+...
+LL |     test_shuffle_lanes!(64, u8x64, simd_shuffle);
+   |     -------------------------------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `test_shuffle_lanes` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0511]: invalid monomorphization of `simd_shuffle` intrinsic: SIMD index #0 is out of bounds (limit 4)
+  --> $DIR/not-out-of-bounds.rs:78:23
+   |
+LL |         let _: u8x2 = simd_shuffle(v, v, I);
+   |                       ^^^^^^^^^^^^^^^^^^^^^
+
+error[E0511]: invalid monomorphization of `simd_insert` intrinsic: SIMD index #1 is out of bounds (limit 2)
+  --> $DIR/not-out-of-bounds.rs:84:9
+   |
+LL |         simd_insert(v, 2, 0u8);
+   |         ^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0511]: invalid monomorphization of `simd_extract` intrinsic: SIMD index #1 is out of bounds (limit 2)
+  --> $DIR/not-out-of-bounds.rs:85:24
+   |
+LL | ...   let _val: u8 = simd_extract(v, 2);
+   |                      ^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 9 previous errors
+
+For more information about this error, try `rustc --explain E0511`.

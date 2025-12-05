@@ -1,0 +1,32 @@
+error[E0310]: the parameter type `T` may not live long enough
+  --> $DIR/issue-102117.rs:17:26
+   |
+LL |                 type_id: TypeId::of::<T>(),
+   |                          ^^^^^^^^^^^^^^^^^
+   |                          |
+   |                          the parameter type `T` must be valid for the static lifetime...
+   |                          ...so that the type `T` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL |     pub fn new<T: 'static>() -> &'static Self {
+   |                 +++++++++
+
+error[E0310]: the parameter type `T` may not live long enough
+  --> $DIR/issue-102117.rs:17:26
+   |
+LL |                 type_id: TypeId::of::<T>(),
+   |                          ^^^^^^^^^^^^^^^^^
+   |                          |
+   |                          the parameter type `T` must be valid for the static lifetime...
+   |                          ...so that the type `T` will meet its required lifetime bounds
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: consider adding an explicit lifetime bound
+   |
+LL |     pub fn new<T: 'static>() -> &'static Self {
+   |                 +++++++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0310`.

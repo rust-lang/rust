@@ -1,0 +1,14 @@
+error[E0080]: values of the type `[u8; usize::MAX]` are too big for the target architecture
+  --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
+   |
+   = note: evaluation of `<S<u8> as std::mem::SizedTypeProperties>::SIZE` failed here
+
+note: the above error was encountered while instantiating `fn std::mem::size_of::<S<u8>>`
+  --> $DIR/issue-75158-64.rs:11:5
+   |
+LL |     std::mem::size_of::<S<u8>>()
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0080`.

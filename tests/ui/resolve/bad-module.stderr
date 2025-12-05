@@ -1,0 +1,19 @@
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `foo`
+  --> $DIR/bad-module.rs:5:15
+   |
+LL |     let foo = foo::bar::baz();
+   |               ^^^ use of unresolved module or unlinked crate `foo`
+   |
+   = help: you might be missing a crate named `foo`
+
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `thing`
+  --> $DIR/bad-module.rs:2:15
+   |
+LL |     let foo = thing::len(Vec::new());
+   |               ^^^^^ use of unresolved module or unlinked crate `thing`
+   |
+   = help: you might be missing a crate named `thing`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0433`.

@@ -1,0 +1,278 @@
+error[E0381]: partially assigned binding `s` isn't fully initialized
+  --> $DIR/issue-21232-partial-init-and-use.rs:97:5
+   |
+LL |     let s: S<B>;
+   |         - binding declared here but left uninitialized
+LL |     s.x = 10; s.y = Box::new(20);
+   |     ^^^^^^^^ `s` partially assigned here but it isn't fully initialized
+   |
+   = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate it, or use `std::mem::MaybeUninit`
+
+error[E0381]: partially assigned binding `t` isn't fully initialized
+  --> $DIR/issue-21232-partial-init-and-use.rs:103:5
+   |
+LL |     let t: T;
+   |         - binding declared here but left uninitialized
+LL |     t.0 = 10; t.1 = Box::new(20);
+   |     ^^^^^^^^ `t` partially assigned here but it isn't fully initialized
+   |
+   = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate it, or use `std::mem::MaybeUninit`
+
+error[E0382]: assign to part of moved value: `s`
+  --> $DIR/issue-21232-partial-init-and-use.rs:109:5
+   |
+LL |     let mut s: S<B> = S::new(); drop(s);
+   |         -----                        - value moved here
+   |         |
+   |         move occurs because `s` has type `S<Box<u32>>`, which does not implement the `Copy` trait
+LL |     s.x = 10; s.y = Box::new(20);
+   |     ^^^^^^^^ value partially assigned here after move
+   |
+note: if `S<Box<u32>>` implemented `Clone`, you could clone the value
+  --> $DIR/issue-21232-partial-init-and-use.rs:15:1
+   |
+LL | struct S<Y> {
+   | ^^^^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |     let mut s: S<B> = S::new(); drop(s);
+   |                                      - you could clone this value
+
+error[E0382]: assign to part of moved value: `t`
+  --> $DIR/issue-21232-partial-init-and-use.rs:116:5
+   |
+LL |     let mut t: T = (0, Box::new(0)); drop(t);
+   |         -----                             - value moved here
+   |         |
+   |         move occurs because `t` has type `(u32, Box<u32>)`, which does not implement the `Copy` trait
+LL |     t.0 = 10; t.1 = Box::new(20);
+   |     ^^^^^^^^ value partially assigned here after move
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     let mut t: T = (0, Box::new(0)); drop(t.clone());
+   |                                            ++++++++
+
+error[E0381]: partially assigned binding `s` isn't fully initialized
+  --> $DIR/issue-21232-partial-init-and-use.rs:123:5
+   |
+LL |     let s: S<B>;
+   |         - binding declared here but left uninitialized
+LL |     s.x = 10;
+   |     ^^^^^^^^ `s` partially assigned here but it isn't fully initialized
+   |
+   = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate it, or use `std::mem::MaybeUninit`
+
+error[E0381]: partially assigned binding `t` isn't fully initialized
+  --> $DIR/issue-21232-partial-init-and-use.rs:129:5
+   |
+LL |     let t: T;
+   |         - binding declared here but left uninitialized
+LL |     t.0 = 10;
+   |     ^^^^^^^^ `t` partially assigned here but it isn't fully initialized
+   |
+   = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate it, or use `std::mem::MaybeUninit`
+
+error[E0382]: assign to part of moved value: `s`
+  --> $DIR/issue-21232-partial-init-and-use.rs:135:5
+   |
+LL |     let mut s: S<B> = S::new(); drop(s);
+   |         -----                        - value moved here
+   |         |
+   |         move occurs because `s` has type `S<Box<u32>>`, which does not implement the `Copy` trait
+LL |     s.x = 10;
+   |     ^^^^^^^^ value partially assigned here after move
+   |
+note: if `S<Box<u32>>` implemented `Clone`, you could clone the value
+  --> $DIR/issue-21232-partial-init-and-use.rs:15:1
+   |
+LL | struct S<Y> {
+   | ^^^^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |     let mut s: S<B> = S::new(); drop(s);
+   |                                      - you could clone this value
+
+error[E0382]: assign to part of moved value: `t`
+  --> $DIR/issue-21232-partial-init-and-use.rs:142:5
+   |
+LL |     let mut t: T = (0, Box::new(0)); drop(t);
+   |         -----                             - value moved here
+   |         |
+   |         move occurs because `t` has type `(u32, Box<u32>)`, which does not implement the `Copy` trait
+LL |     t.0 = 10;
+   |     ^^^^^^^^ value partially assigned here after move
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     let mut t: T = (0, Box::new(0)); drop(t.clone());
+   |                                            ++++++++
+
+error[E0381]: partially assigned binding `s` isn't fully initialized
+  --> $DIR/issue-21232-partial-init-and-use.rs:149:5
+   |
+LL |     let s: S<Void>;
+   |         - binding declared here but left uninitialized
+LL |     s.x = 10;
+   |     ^^^^^^^^ `s` partially assigned here but it isn't fully initialized
+   |
+   = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate it, or use `std::mem::MaybeUninit`
+
+error[E0381]: partially assigned binding `t` isn't fully initialized
+  --> $DIR/issue-21232-partial-init-and-use.rs:155:5
+   |
+LL |     let t: Tvoid;
+   |         - binding declared here but left uninitialized
+LL |     t.0 = 10;
+   |     ^^^^^^^^ `t` partially assigned here but it isn't fully initialized
+   |
+   = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate it, or use `std::mem::MaybeUninit`
+
+error[E0381]: partially assigned binding `q` isn't fully initialized
+  --> $DIR/issue-21232-partial-init-and-use.rs:170:5
+   |
+LL |     let q: Q<S<B>>;
+   |         - binding declared here but left uninitialized
+LL |     q.r.f.x = 10; q.r.f.y = Box::new(20);
+   |     ^^^^^^^^^^^^ `q.r.f` partially assigned here but it isn't fully initialized
+   |
+   = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate it, or use `std::mem::MaybeUninit`
+
+error[E0381]: partially assigned binding `q` isn't fully initialized
+  --> $DIR/issue-21232-partial-init-and-use.rs:176:5
+   |
+LL |     let q: Q<T>;
+   |         - binding declared here but left uninitialized
+LL |     q.r.f.0 = 10; q.r.f.1 = Box::new(20);
+   |     ^^^^^^^^^^^^ `q.r.f` partially assigned here but it isn't fully initialized
+   |
+   = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate it, or use `std::mem::MaybeUninit`
+
+error[E0382]: assign to part of moved value: `q.r`
+  --> $DIR/issue-21232-partial-init-and-use.rs:182:5
+   |
+LL |     let mut q: Q<S<B>> = Q::new(S::new()); drop(q.r);
+   |                                                 --- value moved here
+LL |     q.r.f.x = 10; q.r.f.y = Box::new(20);
+   |     ^^^^^^^^^^^^ value partially assigned here after move
+   |
+   = note: move occurs because `q.r` has type `R<S<Box<u32>>>`, which does not implement the `Copy` trait
+
+error[E0382]: assign to part of moved value: `q.r`
+  --> $DIR/issue-21232-partial-init-and-use.rs:189:5
+   |
+LL |     let mut q: Q<T> = Q::new((0, Box::new(0))); drop(q.r);
+   |                                                      --- value moved here
+LL |     q.r.f.0 = 10; q.r.f.1 = Box::new(20);
+   |     ^^^^^^^^^^^^ value partially assigned here after move
+   |
+   = note: move occurs because `q.r` has type `R<(u32, Box<u32>)>`, which does not implement the `Copy` trait
+
+error[E0381]: partially assigned binding `q` isn't fully initialized
+  --> $DIR/issue-21232-partial-init-and-use.rs:196:5
+   |
+LL |     let q: Q<S<B>>;
+   |         - binding declared here but left uninitialized
+LL |     q.r.f.x = 10;
+   |     ^^^^^^^^^^^^ `q.r.f` partially assigned here but it isn't fully initialized
+   |
+   = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate it, or use `std::mem::MaybeUninit`
+
+error[E0381]: partially assigned binding `q` isn't fully initialized
+  --> $DIR/issue-21232-partial-init-and-use.rs:202:5
+   |
+LL |     let q: Q<T>;
+   |         - binding declared here but left uninitialized
+LL |     q.r.f.0 = 10;
+   |     ^^^^^^^^^^^^ `q.r.f` partially assigned here but it isn't fully initialized
+   |
+   = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate it, or use `std::mem::MaybeUninit`
+
+error[E0382]: assign to part of moved value: `q.r`
+  --> $DIR/issue-21232-partial-init-and-use.rs:208:5
+   |
+LL |     let mut q: Q<S<B>> = Q::new(S::new()); drop(q.r);
+   |                                                 --- value moved here
+LL |     q.r.f.x = 10;
+   |     ^^^^^^^^^^^^ value partially assigned here after move
+   |
+   = note: move occurs because `q.r` has type `R<S<Box<u32>>>`, which does not implement the `Copy` trait
+
+error[E0382]: assign to part of moved value: `q.r`
+  --> $DIR/issue-21232-partial-init-and-use.rs:215:5
+   |
+LL |     let mut q: Q<T> = Q::new((0, Box::new(0))); drop(q.r);
+   |                                                      --- value moved here
+LL |     q.r.f.0 = 10;
+   |     ^^^^^^^^^^^^ value partially assigned here after move
+   |
+   = note: move occurs because `q.r` has type `R<(u32, Box<u32>)>`, which does not implement the `Copy` trait
+
+error[E0381]: partially assigned binding `q` isn't fully initialized
+  --> $DIR/issue-21232-partial-init-and-use.rs:222:5
+   |
+LL |     let mut q: Q<S<Void>>;
+   |         ----- binding declared here but left uninitialized
+LL |     q.r.f.x = 10;
+   |     ^^^^^^^^^^^^ `q.r.f` partially assigned here but it isn't fully initialized
+   |
+   = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate it, or use `std::mem::MaybeUninit`
+
+error[E0381]: partially assigned binding `q` isn't fully initialized
+  --> $DIR/issue-21232-partial-init-and-use.rs:228:5
+   |
+LL |     let mut q: Q<Tvoid>;
+   |         ----- binding declared here but left uninitialized
+LL |     q.r.f.0 = 10;
+   |     ^^^^^^^^^^^^ `q.r.f` partially assigned here but it isn't fully initialized
+   |
+   = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate it, or use `std::mem::MaybeUninit`
+
+error[E0382]: assign to part of moved value: `c`
+  --> $DIR/issue-21232-partial-init-and-use.rs:245:13
+   |
+LL |     let mut c = (1, "".to_owned());
+   |         ----- move occurs because `c` has type `(i32, String)`, which does not implement the `Copy` trait
+LL |     match c {
+LL |         c2 => {
+   |         -- value moved here
+LL |             c.0 = 2;
+   |             ^^^^^^^ value partially assigned here after move
+   |
+help: borrow this binding in the pattern to avoid moving the value
+   |
+LL |         ref c2 => {
+   |         +++
+
+error[E0382]: assign to part of moved value: `c`
+  --> $DIR/issue-21232-partial-init-and-use.rs:255:13
+   |
+LL |     let mut c = (1, (1, "".to_owned()));
+   |         ----- move occurs because `c` has type `(i32, (i32, String))`, which does not implement the `Copy` trait
+LL |     match c {
+LL |         c2 => {
+   |         -- value moved here
+LL |             (c.1).0 = 2;
+   |             ^^^^^^^^^^^ value partially assigned here after move
+   |
+help: borrow this binding in the pattern to avoid moving the value
+   |
+LL |         ref c2 => {
+   |         +++
+
+error[E0382]: assign to part of moved value: `c.1`
+  --> $DIR/issue-21232-partial-init-and-use.rs:263:13
+   |
+LL |         c2 => {
+   |         -- value moved here
+LL |             ((c.1).1).0 = 3;
+   |             ^^^^^^^^^^^^^^^ value partially assigned here after move
+   |
+   = note: move occurs because `c.1` has type `(i32, (i32, String))`, which does not implement the `Copy` trait
+help: borrow this binding in the pattern to avoid moving the value
+   |
+LL |         ref c2 => {
+   |         +++
+
+error: aborting due to 23 previous errors
+
+Some errors have detailed explanations: E0381, E0382.
+For more information about an error, try `rustc --explain E0381`.

@@ -1,0 +1,17 @@
+error[E0259]: the name `m1` is defined multiple times
+  --> $DIR/extern-crate-rename.rs:6:1
+   |
+LL | extern crate m1;
+   | ---------------- previous import of the extern crate `m1` here
+LL | extern crate m2 as m1;
+   | ^^^^^^^^^^^^^^^^^^^^^^ `m1` reimported here
+   |
+   = note: `m1` must be defined only once in the type namespace of this module
+help: you can use `as` to change the binding name of the import
+   |
+LL | extern crate m2 as other_m1;
+   |                    ++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0259`.

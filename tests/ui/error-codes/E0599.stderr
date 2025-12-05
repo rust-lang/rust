@@ -1,0 +1,12 @@
+error[E0599]: no associated item named `NotEvenReal` found for struct `Foo` in the current scope
+  --> $DIR/E0599.rs:4:20
+   |
+LL | struct Foo;
+   | ---------- associated item `NotEvenReal` not found for this struct
+...
+LL |     || if let Foo::NotEvenReal() = Foo {};
+   |                    ^^^^^^^^^^^ associated item not found in `Foo`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0599`.

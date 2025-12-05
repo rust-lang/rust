@@ -1,0 +1,71 @@
+- // MIR for `main` before GVN
++ // MIR for `main` after GVN
+  
+  fn main() -> () {
+      let mut _0: ();
+      let _1: char;
+      let mut _2: main::InvalidChar;
+      let mut _4: E;
+      let mut _5: main::InvalidTag;
+      let mut _7: Empty;
+      let mut _8: main::NoVariants;
+      scope 1 {
+          debug _invalid_char => _1;
+          let _3: [E; 1];
+          scope 2 {
+              debug _invalid_tag => _3;
+              let _6: [Empty; 1];
+              scope 3 {
+                  debug _enum_without_variants => const [ZeroSized: Empty];
+                  let _9: main::Str<"���">;
+                  scope 4 {
+                      debug _non_utf8_str => const Str::<"���">;
+                  }
+              }
+          }
+      }
+  
+      bb0: {
+          StorageLive(_1);
+          StorageLive(_2);
+-         _2 = InvalidChar { int: const 1114113_u32 };
+-         _1 = copy (_2.1: char);
++         _2 = const InvalidChar {{ int: 1114113_u32, chr: {transmute(0x00110001): char} }};
++         _1 = const {transmute(0x00110001): char};
+          StorageDead(_2);
+          StorageLive(_3);
+          StorageLive(_4);
+          StorageLive(_5);
+-         _5 = InvalidTag { int: const 4_u32 };
+-         _4 = copy (_5.1: E);
+-         _3 = [move _4];
++         _5 = const InvalidTag {{ int: 4_u32, e: Scalar(0x00000004): E }};
++         _4 = const Scalar(0x00000004): E;
++         _3 = [const Scalar(0x00000004): E];
+          StorageDead(_4);
+          StorageDead(_5);
+          nop;
+          nop;
+          StorageLive(_8);
+-         _8 = NoVariants { int: const 0_u32 };
++         _8 = const NoVariants {{ int: 0_u32, empty: ZeroSized: Empty }};
+          nop;
+          nop;
+          nop;
+          StorageDead(_8);
+          nop;
+          nop;
+          nop;
+          nop;
+          StorageDead(_3);
+          StorageDead(_1);
+          return;
+      }
+  }
++ 
++ ALLOC0 (size: 4, align: 4) { .. }
++ 
++ ALLOC1 (size: 4, align: 4) { .. }
++ 
++ ALLOC2 (size: 4, align: 4) { .. }
+  

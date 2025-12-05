@@ -1,0 +1,49 @@
+error: `C` is ambiguous
+  --> $DIR/ambiguous-6.rs:6:5
+   |
+LL |     C
+   |     ^ ambiguous name
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #114095 <https://github.com/rust-lang/rust/issues/114095>
+   = note: ambiguous because of multiple glob imports of a name in the same module
+note: `C` could refer to the constant imported here
+  --> $DIR/ambiguous-6.rs:15:13
+   |
+LL |     pub use mod1::*;
+   |             ^^^^^^^
+   = help: consider adding an explicit import of `C` to disambiguate
+note: `C` could also refer to the constant imported here
+  --> $DIR/ambiguous-6.rs:16:13
+   |
+LL |     pub use mod2::*;
+   |             ^^^^^^^
+   = help: consider adding an explicit import of `C` to disambiguate
+   = note: `#[deny(ambiguous_glob_imports)]` (part of `#[deny(future_incompatible)]`) on by default
+
+error: aborting due to 1 previous error
+
+Future incompatibility report: Future breakage diagnostic:
+error: `C` is ambiguous
+  --> $DIR/ambiguous-6.rs:6:5
+   |
+LL |     C
+   |     ^ ambiguous name
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #114095 <https://github.com/rust-lang/rust/issues/114095>
+   = note: ambiguous because of multiple glob imports of a name in the same module
+note: `C` could refer to the constant imported here
+  --> $DIR/ambiguous-6.rs:15:13
+   |
+LL |     pub use mod1::*;
+   |             ^^^^^^^
+   = help: consider adding an explicit import of `C` to disambiguate
+note: `C` could also refer to the constant imported here
+  --> $DIR/ambiguous-6.rs:16:13
+   |
+LL |     pub use mod2::*;
+   |             ^^^^^^^
+   = help: consider adding an explicit import of `C` to disambiguate
+   = note: `#[deny(ambiguous_glob_imports)]` (part of `#[deny(future_incompatible)]`) on by default
+

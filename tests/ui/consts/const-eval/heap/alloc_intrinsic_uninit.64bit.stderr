@@ -1,0 +1,14 @@
+error[E0080]: constructing invalid value at .<deref>: encountered uninitialized memory, but expected an integer
+  --> $DIR/alloc_intrinsic_uninit.rs:7:1
+   |
+LL | const BAR: &i32 = unsafe {
+   | ^^^^^^^^^^^^^^^ it is undefined behavior to use this value
+   |
+   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: 8, align: 8) {
+               ╾ALLOC0<imm>╼                         │ ╾──────╼
+           }
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0080`.

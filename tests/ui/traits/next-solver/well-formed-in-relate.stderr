@@ -1,0 +1,29 @@
+error[E0283]: type annotations needed for `Map<_, _>`
+  --> $DIR/well-formed-in-relate.rs:2:9
+   |
+LL |     let x;
+   |         ^
+...
+LL |     x = unconstrained_map();
+   |         ------------------- type must be known at this point
+   |
+   = note: multiple `impl`s satisfying `_: Fn()` found in the following crates: `alloc`, `core`:
+           - impl<A, F> Fn<A> for &F
+             where A: Tuple, F: Fn<A>, F: ?Sized;
+           - impl<Args, F, A> Fn<Args> for Box<F, A>
+             where Args: Tuple, F: Fn<Args>, A: Allocator, F: ?Sized;
+           - impl<F, Args> Fn<Args> for Exclusive<F>
+             where F: Sync, F: Fn<Args>, Args: Tuple;
+note: required by a bound in `unconstrained_map`
+  --> $DIR/well-formed-in-relate.rs:21:25
+   |
+LL | fn unconstrained_map<T: Fn() -> U, U>() -> <Map<T, U> as Mirror>::Assoc { todo!() }
+   |                         ^^^^^^^^^ required by this bound in `unconstrained_map`
+help: consider giving `x` an explicit type, where the type for type parameter `T` is specified
+   |
+LL |     let x: Map<T, U>;
+   |          +++++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0283`.

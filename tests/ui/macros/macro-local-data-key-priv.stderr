@@ -1,0 +1,16 @@
+error[E0603]: constant `baz` is private
+  --> $DIR/macro-local-data-key-priv.rs:8:10
+   |
+LL |     bar::baz.with(|_| ());
+   |          ^^^ private constant
+   |
+note: the constant `baz` is defined here
+  --> $DIR/macro-local-data-key-priv.rs:4:5
+   |
+LL |     thread_local!(static baz: f64 = 0.0);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: this error originates in the macro `$crate::thread::local_impl::thread_local_process_attrs` which comes from the expansion of the macro `thread_local` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0603`.

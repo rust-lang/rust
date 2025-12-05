@@ -1,0 +1,16 @@
+error: statement has unnecessary safety comment
+  --> tests/ui/crashes/ice-15684.rs:6:5
+   |
+LL |     return 33;
+   |     ^^^^^^^^^^
+   |
+help: consider removing the safety comment
+  --> tests/ui/crashes/ice-15684.rs:4:8
+   |
+LL |     // SAFETY: fail ONLY if `accept-comment-above-attribute = false`
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: `-D clippy::unnecessary-safety-comment` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unnecessary_safety_comment)]`
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,11 @@
+error[E0568]: auto traits cannot have super traits or lifetime bounds
+  --> $DIR/typeck-auto-trait-no-supertraits.rs:28:19
+   |
+LL | auto trait Magic: Copy {}
+   |            -----  ^^^^
+   |            |
+   |            auto traits cannot have super traits or lifetime bounds
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0568`.

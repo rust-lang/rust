@@ -1,0 +1,13 @@
+
+thread 'main' ($TID) panicked at tests/panic/panic1.rs:LL:CC:
+panicking from libstd
+stack backtrace:
+   0: std::panicking::panic_handler
+ at RUSTLIB/std/src/panicking.rs:LL:CC
+   1: std::rt::panic_fmt
+ at RUSTLIB/core/src/panicking.rs:LL:CC
+   2: main
+ at tests/panic/panic1.rs:LL:CC
+   3: <fn() as std::ops::FnOnce<()>>::call_once - shim(fn())
+ at RUSTLIB/core/src/ops/function.rs:LL:CC
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.

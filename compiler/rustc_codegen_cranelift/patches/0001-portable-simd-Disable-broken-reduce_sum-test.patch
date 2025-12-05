@@ -1,0 +1,26 @@
+From 5489384bc265e9e6fc2efaa63d93a4d51ebec2f5 Mon Sep 17 00:00:00 2001
+From: bjorn3 <17426603+bjorn3@users.noreply.github.com>
+Date: Thu, 22 Aug 2024 19:22:58 +0000
+Subject: [PATCH] Disable broken reduce_sum test
+
+It was broken by an upstream change to the .sum() implementation on
+float iterators.
+---
+ crates/core_simd/tests/ops_macros.rs | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/crates/core_simd/tests/ops_macros.rs b/crates/core_simd/tests/ops_macros.rs
+index aa565a1..5e6ac41 100644
+--- a/crates/core_simd/tests/ops_macros.rs
++++ b/crates/core_simd/tests/ops_macros.rs
+@@ -646,6 +646,7 @@ macro_rules! impl_float_tests {
+                 }
+ 
+                 fn reduce_sum<const LANES: usize>() {
++                    return;
+                     test_helpers::test_1(&|x| {
+                         test_helpers::prop_assert_biteq! (
+                             Vector::<LANES>::from_array(x).reduce_sum(),
+-- 
+2.34.1
+

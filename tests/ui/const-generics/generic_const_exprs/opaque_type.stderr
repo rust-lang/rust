@@ -1,0 +1,22 @@
+error[E0308]: mismatched types
+  --> $DIR/opaque_type.rs:11:17
+   |
+LL | type Foo = impl Sized;
+   |            ---------- the found opaque type
+...
+LL |     let _: [u8; (N / 2) as Foo] = [0; (N / 2) as usize];
+   |                 ^^^^^^^^^^^^^^ expected `usize`, found opaque type
+   |
+   = note:     expected type `usize`
+           found opaque type `Foo`
+
+error[E0605]: non-primitive cast: `usize` as `Foo`
+  --> $DIR/opaque_type.rs:11:17
+   |
+LL |     let _: [u8; (N / 2) as Foo] = [0; (N / 2) as usize];
+   |                 ^^^^^^^^^^^^^^ an `as` expression can only be used to convert between primitive types or to coerce to a specific trait object
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0308, E0605.
+For more information about an error, try `rustc --explain E0308`.

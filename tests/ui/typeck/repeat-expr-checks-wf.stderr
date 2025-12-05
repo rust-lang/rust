@@ -1,0 +1,12 @@
+error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
+  --> $DIR/repeat-expr-checks-wf.rs:6:13
+   |
+LL |     let a = [T::ASSOC; 2];
+   |             ^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `[u8]`
+   = note: slice and array elements must have `Sized` type
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

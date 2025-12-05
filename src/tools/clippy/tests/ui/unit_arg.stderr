@@ -1,0 +1,224 @@
+error: passing a unit value to a function
+  --> tests/ui/unit_arg.rs:63:5
+   |
+LL | /     foo({
+LL | |
+LL | |         1;
+LL | |     });
+   | |______^
+   |
+   = note: `-D clippy::unit-arg` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unit_arg)]`
+help: remove the semicolon from the last statement in the block
+   |
+LL -         1;
+LL +         1
+   |
+help: or move the expression in front of the call and replace it with the unit literal `()`
+   |
+LL ~     {
+LL +
+LL +         1;
+LL +     };
+LL ~     foo(());
+   |
+
+error: passing a unit value to a function
+  --> tests/ui/unit_arg.rs:67:5
+   |
+LL |     foo(foo(1));
+   |     ^^^^^^^^^^^
+   |
+help: move the expression in front of the call and replace it with the unit literal `()`
+   |
+LL ~     foo(1);
+LL ~     foo(());
+   |
+
+error: passing a unit value to a function
+  --> tests/ui/unit_arg.rs:69:5
+   |
+LL | /     foo({
+LL | |
+LL | |         foo(1);
+LL | |         foo(2);
+LL | |     });
+   | |______^
+   |
+help: remove the semicolon from the last statement in the block
+   |
+LL -         foo(2);
+LL +         foo(2)
+   |
+help: or move the expression in front of the call and replace it with the unit literal `()`
+   |
+LL ~     {
+LL +
+LL +         foo(1);
+LL +         foo(2);
+LL +     };
+LL ~     foo(());
+   |
+
+error: passing a unit value to a function
+  --> tests/ui/unit_arg.rs:75:5
+   |
+LL | /     b.bar({
+LL | |
+LL | |         1;
+LL | |     });
+   | |______^
+   |
+help: remove the semicolon from the last statement in the block
+   |
+LL -         1;
+LL +         1
+   |
+help: or move the expression in front of the call and replace it with the unit literal `()`
+   |
+LL ~     {
+LL +
+LL +         1;
+LL +     };
+LL ~     b.bar(());
+   |
+
+error: passing unit values to a function
+  --> tests/ui/unit_arg.rs:79:5
+   |
+LL |     taking_multiple_units(foo(0), foo(1));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: move the expressions in front of the call and replace them with the unit literal `()`
+   |
+LL ~     foo(0);
+LL +     foo(1);
+LL ~     taking_multiple_units((), ());
+   |
+
+error: passing unit values to a function
+  --> tests/ui/unit_arg.rs:81:5
+   |
+LL | /     taking_multiple_units(foo(0), {
+LL | |
+LL | |         foo(1);
+LL | |         foo(2);
+LL | |     });
+   | |______^
+   |
+help: remove the semicolon from the last statement in the block
+   |
+LL -         foo(2);
+LL +         foo(2)
+   |
+help: or move the expressions in front of the call and replace them with the unit literal `()`
+   |
+LL ~     foo(0);
+LL +     {
+LL +
+LL +         foo(1);
+LL +         foo(2);
+LL +     };
+LL ~     taking_multiple_units((), ());
+   |
+
+error: passing unit values to a function
+  --> tests/ui/unit_arg.rs:86:5
+   |
+LL | /     taking_multiple_units(
+LL | |
+LL | |         {
+LL | |             foo(0);
+...  |
+LL | |         },
+LL | |     );
+   | |_____^
+   |
+help: remove the semicolon from the last statement in the block
+   |
+LL -             foo(1);
+LL +             foo(1)
+   |
+help: remove the semicolon from the last statement in the block
+   |
+LL -             foo(3);
+LL +             foo(3)
+   |
+help: or move the expressions in front of the call and replace them with the unit literal `()`
+   |
+LL ~     {
+LL +         foo(0);
+LL +         foo(1);
+LL +     };
+LL +     {
+LL +         foo(2);
+LL +         foo(3);
+LL +     };
+LL +     taking_multiple_units(
+LL +
+LL +         (),
+LL +         (),
+LL ~     );
+   |
+
+error: passing a unit value to a function
+  --> tests/ui/unit_arg.rs:98:13
+   |
+LL |     None.or(Some(foo(2)));
+   |             ^^^^^^^^^^^^
+   |
+help: move the expression in front of the call and replace it with the unit literal `()`
+   |
+LL ~     None.or({
+LL +         foo(2);
+LL +         Some(())
+LL ~     });
+   |
+
+error: passing a unit value to a function
+  --> tests/ui/unit_arg.rs:102:5
+   |
+LL |     foo(foo(()));
+   |     ^^^^^^^^^^^^
+   |
+help: move the expression in front of the call and replace it with the unit literal `()`
+   |
+LL ~     foo(());
+LL ~     foo(());
+   |
+
+error: passing a unit value to a function
+  --> tests/ui/unit_arg.rs:140:5
+   |
+LL |     Some(foo(1))
+   |     ^^^^^^^^^^^^
+   |
+help: move the expression in front of the call and replace it with the unit literal `()`
+   |
+LL ~     foo(1);
+LL +     Some(())
+   |
+
+error: passing a unit value to a function
+  --> tests/ui/unit_arg.rs:171:5
+   |
+LL |     fn_take_unit(mac!(def));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+
+error: passing a unit value to a function
+  --> tests/ui/unit_arg.rs:173:5
+   |
+LL |     fn_take_unit(mac!(func Default::default));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+
+error: passing a unit value to a function
+  --> tests/ui/unit_arg.rs:175:5
+   |
+LL |     fn_take_unit(mac!(nonempty_block Default::default()));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+
+error: aborting due to 13 previous errors
+

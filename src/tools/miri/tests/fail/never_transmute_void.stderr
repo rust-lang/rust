@@ -1,0 +1,20 @@
+error: Undefined Behavior: entering unreachable code
+  --> tests/fail/never_transmute_void.rs:LL:CC
+   |
+LL |         match v.0 {}
+   |               ^^^ Undefined Behavior occurred here
+   |
+   = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
+   = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
+   = note: BACKTRACE:
+   = note: inside `m::f` at tests/fail/never_transmute_void.rs:LL:CC
+note: inside `main`
+  --> tests/fail/never_transmute_void.rs:LL:CC
+   |
+LL |     m::f(v);
+   |     ^^^^^^^
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to 1 previous error
+

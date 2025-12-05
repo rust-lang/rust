@@ -1,0 +1,32 @@
+error: Undefined Behavior: write access through <TAG> at ALLOC[0x0] is forbidden
+  --> tests/fail/tree_borrows/repeated_foreign_read_lazy_conflicted.rs:LL:CC
+   |
+LL |     *(x as *mut u8).byte_sub(1) = 42;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Undefined Behavior occurred here
+   |
+   = help: this indicates a potential bug in the program: it performed an invalid operation, but the Tree Borrows rules it violated are still experimental
+   = help: see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/tree-borrows.md for further information
+   = help: the accessed tag <TAG> has state Reserved (conflicted) which forbids this child write access
+help: the accessed tag <TAG> was created here, in the initial state Reserved
+  --> tests/fail/tree_borrows/repeated_foreign_read_lazy_conflicted.rs:LL:CC
+   |
+LL | unsafe fn access_after_sub_1(x: &mut u8, orig_ptr: *mut u8) {
+   |                              ^
+help: the accessed tag <TAG> later transitioned to Reserved (conflicted) due to a foreign read access at offsets [0x0..0x1]
+  --> tests/fail/tree_borrows/repeated_foreign_read_lazy_conflicted.rs:LL:CC
+   |
+LL |     do_something(*orig_ptr);
+   |                  ^^^^^^^^^
+   = help: this transition corresponds to a temporary loss of write permissions until function exit
+   = note: BACKTRACE (of the first span):
+   = note: inside `access_after_sub_1` at tests/fail/tree_borrows/repeated_foreign_read_lazy_conflicted.rs:LL:CC
+note: inside `main`
+  --> tests/fail/tree_borrows/repeated_foreign_read_lazy_conflicted.rs:LL:CC
+   |
+LL |         access_after_sub_1(&mut *(foo as *mut u8).byte_add(1), orig_ptr);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to 1 previous error
+

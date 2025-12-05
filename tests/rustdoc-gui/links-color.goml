@@ -1,0 +1,105 @@
+// This test checks links colors.
+include: "utils.goml"
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
+
+// This is needed so that the text color is computed.
+show-text: true
+
+// First we check the links of the different items.
+define-function: (
+    "check-colors",
+    [theme, mod, macro, struct, enum, trait, fn, type, union, keyword,
+     attribute, sidebar, sidebar_current, sidebar_current_background],
+    block {
+        call-function: ("switch-theme", {"theme": |theme|})
+        // Checking results colors.
+        assert-css: (".item-table .mod", {"color": |mod|}, ALL)
+        assert-css: (".item-table .macro", {"color": |macro|}, ALL)
+        assert-css: (".item-table .struct", {"color": |struct|}, ALL)
+        assert-css: (".item-table .enum", {"color": |enum|}, ALL)
+        assert-css: (".item-table .trait", {"color": |trait|}, ALL)
+        assert-css: (".item-table .fn", {"color": |fn|}, ALL)
+        assert-css: (".item-table .type", {"color": |type|}, ALL)
+        assert-css: (".item-table .union", {"color": |union|}, ALL)
+        assert-css: (".item-table .keyword", {"color": |keyword|}, ALL)
+        assert-css: (".item-table .attribute", {"color": |attribute|}, ALL)
+        // Checking sidebar elements.
+        assert-css: (
+            ".sidebar-elems li:not(.current) a",
+            {"color": |sidebar|, "background-color": "rgba(0, 0, 0, 0)", "font-weight": "400"},
+            ALL,
+        )
+        assert-css: (
+            ".sidebar-elems li.current a",
+            {
+                "color": |sidebar_current|,
+                "background-color": |sidebar_current_background|,
+                "font-weight": "500",
+            },
+            ALL,
+        )
+        move-cursor-to: "dd a[href='long_code_block_link/index.html']"
+        assert-css: (
+            "dd a[href='long_code_block_link/index.html']",
+            {"text-decoration": "underline solid " + |mod|},
+        )
+    },
+)
+
+call-function: (
+    "check-colors",
+    {
+        "theme": "ayu",
+        "mod": "#39afd7",
+        "macro": "#a37acc",
+        "struct": "#ffa0a5",
+        "enum": "#ffa0a5",
+        "trait": "#39afd7",
+        "fn": "#fdd687",
+        "type": "#ffa0a5",
+        "union": "#ffa0a5",
+        "keyword": "#39afd7",
+        "attribute": "#39afd7",
+        "sidebar": "#53b1db",
+        "sidebar_current": "#ffb44c",
+        "sidebar_current_background": "transparent",
+    },
+)
+call-function: (
+    "check-colors",
+    {
+        "theme": "dark",
+        "mod": "#d2991d",
+        "macro": "#09bd00",
+        "struct": "#2dbfb8",
+        "enum": "#2dbfb8",
+        "trait": "#b78cf2",
+        "fn": "#2bab63",
+        "type": "#2dbfb8",
+        "union": "#2dbfb8",
+        "keyword": "#d2991d",
+        "attribute": "#d2991d",
+        "sidebar": "#fdbf35",
+        "sidebar_current": "#fdbf35",
+        "sidebar_current_background": "#444",
+    },
+)
+call-function: (
+    "check-colors",
+    {
+        "theme": "light",
+        "mod": "#3873ad",
+        "macro": "#068000",
+        "struct": "#ad378a",
+        "enum": "#ad378a",
+        "trait": "#6e4fc9",
+        "fn": "#ad7c37",
+        "type": "#ad378a",
+        "union": "#ad378a",
+        "keyword": "#3873ad",
+        "attribute": "#3873ad",
+        "sidebar": "#356da4",
+        "sidebar_current": "#356da4",
+        "sidebar_current_background": "#fff",
+    },
+)

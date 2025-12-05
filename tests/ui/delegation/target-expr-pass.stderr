@@ -1,0 +1,22 @@
+warning: trait `Trait` is never used
+  --> $DIR/target-expr-pass.rs:17:7
+   |
+LL | trait Trait {
+   |       ^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: struct `F` is never constructed
+  --> $DIR/target-expr-pass.rs:21:8
+   |
+LL | struct F;
+   |        ^
+
+warning: struct `S` is never constructed
+  --> $DIR/target-expr-pass.rs:24:8
+   |
+LL | struct S(F);
+   |        ^
+
+warning: 3 warnings emitted
+

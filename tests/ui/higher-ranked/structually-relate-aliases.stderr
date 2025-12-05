@@ -1,0 +1,15 @@
+ WARN rustc_infer::infer::relate::generalize may incompletely handle alias type: AliasTy { args: [?1t, '^0.Named(DefId(0:15 ~ structually_relate_aliases[de75]::{impl#1}::'a))], def_id: DefId(0:5 ~ structually_relate_aliases[de75]::ToUnit::Unit), .. }
+error[E0277]: the trait bound `for<'a> T: ToUnit<'a>` is not satisfied
+  --> $DIR/structually-relate-aliases.rs:13:36
+   |
+LL | impl<T> Overlap<for<'a> fn(&'a (), Assoc<'a, T>)> for T {}
+   |                                    ^^^^^^^^^^^^ the trait `for<'a> ToUnit<'a>` is not implemented for `T`
+   |
+help: consider restricting type parameter `T` with trait `ToUnit`
+   |
+LL | impl<T: for<'a> ToUnit<'a>> Overlap<for<'a> fn(&'a (), Assoc<'a, T>)> for T {}
+   |       ++++++++++++++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

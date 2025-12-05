@@ -1,0 +1,20 @@
+panicked at tests/fail/panic/no_std.rs:LL:CC:
+blarg I am dead
+error: abnormal termination: the program aborted execution
+  --> tests/fail/panic/no_std.rs:LL:CC
+   |
+LL |     core::intrinsics::abort();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^ abnormal termination occurred here
+   |
+   = note: BACKTRACE:
+   = note: inside `panic_handler` at tests/fail/panic/no_std.rs:LL:CC
+note: inside `miri_start`
+  --> tests/fail/panic/no_std.rs:LL:CC
+   |
+LL |     panic!("blarg I am dead")
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to 1 previous error
+

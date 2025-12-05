@@ -1,0 +1,13 @@
+error[E0700]: hidden type for `impl Future<Output = i32>` captures lifetime that does not appear in bounds
+  --> $DIR/cannot-capture-intersection.rs:22:9
+   |
+LL |     fn foo<'a, 'b>(&'a self, x: &'b i32) -> impl Future<Output = i32> {
+   |                                             ------------------------- opaque type defined here
+LL |         self.ptr.foo(x)
+   |         ^^^^^^^^^^^^^^^
+   |
+   = note: hidden type `Pin<Box<dyn Future<Output = i32>>>` captures lifetime `'_`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0700`.

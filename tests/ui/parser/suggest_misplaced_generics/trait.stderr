@@ -1,0 +1,14 @@
+error: expected identifier, found `<`
+  --> $DIR/trait.rs:5:6
+   |
+LL | trait<T> Foo {
+   |      ^ expected identifier
+   |
+help: place the generic parameter name after the trait name
+   |
+LL - trait<T> Foo {
+LL + trait Foo<T> {
+   |
+
+error: aborting due to 1 previous error
+

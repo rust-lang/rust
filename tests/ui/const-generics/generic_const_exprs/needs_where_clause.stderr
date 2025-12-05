@@ -1,0 +1,13 @@
+error: unconstrained generic constant
+  --> $DIR/needs_where_clause.rs:11:6
+   |
+LL |   b: [f32; complex_maths::<T>(N)],
+   |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try adding a `where` bound
+   |
+LL | struct Example<T, const N: usize> where [(); complex_maths::<T>(N)]: {
+   |                                   ++++++++++++++++++++++++++++++++++
+
+error: aborting due to 1 previous error
+

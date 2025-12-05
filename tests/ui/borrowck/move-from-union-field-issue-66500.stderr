@@ -1,0 +1,49 @@
+error[E0507]: cannot move out of `*u.a` which is behind a shared reference
+  --> $DIR/move-from-union-field-issue-66500.rs:12:5
+   |
+LL |     *u.a
+   |     ^^^^ move occurs because `*u.a` has type `String`, which does not implement the `Copy` trait
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL -     *u.a
+LL +     u.a.clone()
+   |
+
+error[E0507]: cannot move out of `*u.b` which is behind a mutable reference
+  --> $DIR/move-from-union-field-issue-66500.rs:16:5
+   |
+LL |     *u.b
+   |     ^^^^ move occurs because `*u.b` has type `String`, which does not implement the `Copy` trait
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL -     *u.b
+LL +     u.b.clone()
+   |
+
+error[E0507]: cannot move out of `*u.c` which is behind a raw pointer
+  --> $DIR/move-from-union-field-issue-66500.rs:20:5
+   |
+LL |     *u.c
+   |     ^^^^ move occurs because `*u.c` has type `String`, which does not implement the `Copy` trait
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     (*u.c).clone()
+   |     +    +++++++++
+
+error[E0507]: cannot move out of `*u.d` which is behind a raw pointer
+  --> $DIR/move-from-union-field-issue-66500.rs:24:5
+   |
+LL |     *u.d
+   |     ^^^^ move occurs because `*u.d` has type `String`, which does not implement the `Copy` trait
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     (*u.d).clone()
+   |     +    +++++++++
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0507`.

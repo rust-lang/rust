@@ -1,0 +1,44 @@
+Function name: long_and_wide::far_function
+Raw bytes (15): 0x[01, 01, 00, 02, 01, 96, 01, 01, 00, 12, 01, 00, 14, 00, 15]
+Number of files: 1
+- file 0 => $DIR/long_and_wide.rs
+Number of expressions: 0
+Number of file 0 mappings: 2
+- Code(Counter(0)) at (prev + 150, 1) to (start + 0, 18)
+- Code(Counter(0)) at (prev + 0, 20) to (start + 0, 21)
+Highest counter ID seen: c0
+
+Function name: long_and_wide::long_function
+Raw bytes (15): 0x[01, 01, 00, 02, 01, 10, 01, 00, 13, 01, 84, 01, 01, 00, 02]
+Number of files: 1
+- file 0 => $DIR/long_and_wide.rs
+Number of expressions: 0
+Number of file 0 mappings: 2
+- Code(Counter(0)) at (prev + 16, 1) to (start + 0, 19)
+- Code(Counter(0)) at (prev + 132, 1) to (start + 0, 2)
+Highest counter ID seen: c0
+
+Function name: long_and_wide::main
+Raw bytes (29): 0x[01, 01, 00, 05, 01, 07, 01, 00, 0a, 01, 01, 05, 00, 12, 01, 01, 05, 00, 12, 01, 01, 05, 00, 11, 01, 01, 01, 00, 02]
+Number of files: 1
+- file 0 => $DIR/long_and_wide.rs
+Number of expressions: 0
+Number of file 0 mappings: 5
+- Code(Counter(0)) at (prev + 7, 1) to (start + 0, 10)
+- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 18)
+- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 18)
+- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 17)
+- Code(Counter(0)) at (prev + 1, 1) to (start + 0, 2)
+Highest counter ID seen: c0
+
+Function name: long_and_wide::wide_function
+Raw bytes (23): 0x[01, 01, 00, 03, 01, 0e, 01, 00, 13, 01, 00, 86, 01, 00, 88, 01, 01, 00, 8a, 01, 00, 8b, 01]
+Number of files: 1
+- file 0 => $DIR/long_and_wide.rs
+Number of expressions: 0
+Number of file 0 mappings: 3
+- Code(Counter(0)) at (prev + 14, 1) to (start + 0, 19)
+- Code(Counter(0)) at (prev + 0, 134) to (start + 0, 136)
+- Code(Counter(0)) at (prev + 0, 138) to (start + 0, 139)
+Highest counter ID seen: c0
+

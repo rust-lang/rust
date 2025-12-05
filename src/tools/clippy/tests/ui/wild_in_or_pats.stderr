@@ -1,0 +1,52 @@
+error: wildcard pattern covers any other pattern as it will match anyway
+  --> tests/ui/wild_in_or_pats.rs:8:9
+   |
+LL |         "bar" | _ => {
+   |         ^^^^^^^^^
+   |
+   = help: consider handling `_` separately
+   = note: `-D clippy::wildcard-in-or-patterns` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::wildcard_in_or_patterns)]`
+
+error: wildcard pattern covers any other pattern as it will match anyway
+  --> tests/ui/wild_in_or_pats.rs:18:9
+   |
+LL |         "bar" | "bar2" | _ => {
+   |         ^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider handling `_` separately
+
+error: wildcard pattern covers any other pattern as it will match anyway
+  --> tests/ui/wild_in_or_pats.rs:28:9
+   |
+LL |         _ | "bar" | _ => {
+   |         ^^^^^^^^^^^^^
+   |
+   = help: consider handling `_` separately
+
+error: wildcard pattern covers any other pattern as it will match anyway
+  --> tests/ui/wild_in_or_pats.rs:38:9
+   |
+LL |         _ | "bar" => {
+   |         ^^^^^^^^^
+   |
+   = help: consider handling `_` separately
+
+error: wildcard pattern covers any other pattern as it will match anyway
+  --> tests/ui/wild_in_or_pats.rs:73:9
+   |
+LL |         ExhaustiveEnum::Quit | _ => {
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider handling `_` separately
+
+error: wildcard pattern covers any other pattern as it will match anyway
+  --> tests/ui/wild_in_or_pats.rs:109:9
+   |
+LL |         ExhaustiveStruct { x: 1, y: 1 } | _ => {
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider handling `_` separately
+
+error: aborting due to 6 previous errors
+

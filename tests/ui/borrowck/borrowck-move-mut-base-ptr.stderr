@@ -1,0 +1,22 @@
+error[E0505]: cannot move out of `t0` because it is borrowed
+  --> $DIR/borrowck-move-mut-base-ptr.rs:10:14
+   |
+LL | fn foo(t0: &mut isize) {
+   |        -- binding `t0` declared here
+LL |     let p: &isize = &*t0; // Freezes `*t0`
+   |                     ---- borrow of `*t0` occurs here
+LL |     let t1 = t0;
+   |              ^^ move out of `t0` occurs here
+LL |     *t1 = 22;
+LL |     p.use_ref();
+   |     - borrow later used here
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL -     let p: &isize = &*t0; // Freezes `*t0`
+LL +     let p: &isize = &t0.clone(); // Freezes `*t0`
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0505`.

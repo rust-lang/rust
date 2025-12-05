@@ -1,0 +1,59 @@
+error[E0277]: the trait bound `bounds::S: Trait0` is not satisfied
+  --> $DIR/impl-to-trait-method.rs:12:19
+   |
+LL |             Self: Trait0,
+   |                   ^^^^^^ unsatisfied trait bound
+   |
+help: the trait `Trait0` is not implemented for `bounds::S`
+  --> $DIR/impl-to-trait-method.rs:21:5
+   |
+LL |     struct S(F);
+   |     ^^^^^^^^
+help: this trait has no implementations, consider adding one
+  --> $DIR/impl-to-trait-method.rs:5:5
+   |
+LL |     trait Trait0 {}
+   |     ^^^^^^^^^^^^
+   = help: see issue #48214
+help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
+   |
+LL + #![feature(trivial_bounds)]
+   |
+
+error[E0277]: the trait bound `bounds::F: Trait0` is not satisfied
+  --> $DIR/impl-to-trait-method.rs:24:34
+   |
+LL |         reuse Trait1::<T>::foo { &self.0 }
+   |                            ---   ^^^^^^^ unsatisfied trait bound
+   |                            |
+   |                            required by a bound introduced by this call
+   |
+help: the trait `Trait0` is not implemented for `bounds::F`
+  --> $DIR/impl-to-trait-method.rs:18:5
+   |
+LL |     struct F;
+   |     ^^^^^^^^
+help: this trait has no implementations, consider adding one
+  --> $DIR/impl-to-trait-method.rs:5:5
+   |
+LL |     trait Trait0 {}
+   |     ^^^^^^^^^^^^
+note: required by a bound in `Trait1::foo`
+  --> $DIR/impl-to-trait-method.rs:12:19
+   |
+LL |         fn foo<U>(&self)
+   |            --- required by a bound in this associated function
+...
+LL |             Self: Trait0,
+   |                   ^^^^^^ required by this bound in `Trait1::foo`
+
+error[E0282]: type annotations needed
+  --> $DIR/impl-to-trait-method.rs:39:22
+   |
+LL |         reuse Trait::foo { &self.0 }
+   |                      ^^^ cannot infer type for type parameter `T` declared on the trait `Trait`
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0277, E0282.
+For more information about an error, try `rustc --explain E0277`.

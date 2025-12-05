@@ -1,0 +1,32 @@
+error: macros must contain at least one rule
+  --> $DIR/crate-type-macro-empty.rs:6:1
+   |
+LL | macro_rules! foo {}
+   | ^^^^^^^^^^^^^^^^^^^
+
+error: cannot find macro `foo` in this scope
+  --> $DIR/crate-type-macro-empty.rs:2:16
+   |
+LL | #[crate_type = foo!()]
+   |                ^^^ consider moving the definition of `foo` before this call
+   |
+note: a macro with the same name exists, but it appears later
+  --> $DIR/crate-type-macro-empty.rs:6:14
+   |
+LL | macro_rules! foo {}
+   |              ^^^
+
+warning: crate-level attribute should be an inner attribute
+  --> $DIR/crate-type-macro-empty.rs:2:1
+   |
+LL | #[crate_type = foo!()]
+   | ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: requested on the command line with `-W unused-attributes`
+help: add a `!`
+   |
+LL | #![crate_type = foo!()]
+   |  +
+
+error: aborting due to 2 previous errors; 1 warning emitted
+

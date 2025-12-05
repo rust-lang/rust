@@ -1,0 +1,35 @@
+error[E0277]: the trait bound `Bar: Copy` is not satisfied
+  --> $DIR/nll-fail.rs:11:38
+   |
+LL |         let arr: [Option<Bar>; 2] = [x; 2];
+   |                                      ^ the trait `Copy` is not implemented for `Bar`
+   |
+   = note: required for `Option<Bar>` to implement `Copy`
+   = note: the `Copy` trait is required because this value will be copied for each element of the array
+   = help: consider using `core::array::from_fn` to initialize the array
+   = help: see https://doc.rust-lang.org/stable/std/array/fn.from_fn.html for more information
+help: consider annotating `Bar` with `#[derive(Copy)]`
+   |
+LL + #[derive(Copy)]
+LL | struct Bar;
+   |
+
+error[E0277]: the trait bound `Bar: Copy` is not satisfied
+  --> $DIR/nll-fail.rs:17:38
+   |
+LL |         let arr: [Option<Bar>; 2] = [x; 2];
+   |                                      ^ the trait `Copy` is not implemented for `Bar`
+   |
+   = note: required for `Option<Bar>` to implement `Copy`
+   = note: the `Copy` trait is required because this value will be copied for each element of the array
+   = help: consider using `core::array::from_fn` to initialize the array
+   = help: see https://doc.rust-lang.org/stable/std/array/fn.from_fn.html for more information
+help: consider annotating `Bar` with `#[derive(Copy)]`
+   |
+LL + #[derive(Copy)]
+LL | struct Bar;
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

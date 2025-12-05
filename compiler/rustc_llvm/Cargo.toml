@@ -1,0 +1,21 @@
+[package]
+name = "rustc_llvm"
+version = "0.0.0"
+edition = "2024"
+
+[dependencies]
+# tidy-alphabetical-start
+libc = "0.2.73"
+# tidy-alphabetical-end
+
+[build-dependencies]
+# tidy-alphabetical-start
+# `cc` updates often break things, so we pin it here.
+cc = "=1.2.16"
+# tidy-alphabetical-end
+
+[features]
+# tidy-alphabetical-start
+# Used by ./x.py check --compile-time-deps to skip building C++ code
+check_only = []
+# tidy-alphabetical-end

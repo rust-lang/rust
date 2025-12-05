@@ -1,0 +1,2 @@
+SOURCE_FILE
+  SHEBANG "#!/use/bin/env rusti"

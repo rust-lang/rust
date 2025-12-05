@@ -1,0 +1,15 @@
+error[E0423]: expected value, found struct `Mod::Foo`
+  --> $DIR/assoc-const-as-field.rs:11:9
+   |
+LL |     foo(Mod::Foo.Bar);
+   |         ^^^^^^^^
+   |
+help: use the path separator to refer to an item
+   |
+LL -     foo(Mod::Foo.Bar);
+LL +     foo(Mod::Foo::Bar);
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0423`.

@@ -1,0 +1,10 @@
+error: const blocks cannot be used as patterns
+  --> $DIR/in-pat-recovery.rs:6:15
+   |
+LL |         const { 1 + 7 } => {}
+   |               ^^^^^^^^^
+   |
+   = help: use a named `const`-item or an `if`-guard (`x if x == const { ... }`) instead
+
+error: aborting due to 1 previous error
+

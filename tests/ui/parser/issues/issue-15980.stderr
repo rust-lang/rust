@@ -1,0 +1,20 @@
+error: expected identifier, found keyword `return`
+  --> $DIR/issue-15980.rs:8:13
+   |
+LL |         Err(ref e) if e.kind == io::EndOfFile {
+   |                                 ------------- while parsing this struct
+LL |
+LL |             return
+   |             ^^^^^^ expected identifier, found keyword
+   |
+help: escape `return` to use it as an identifier
+   |
+LL |             r#return
+   |             ++
+help: you might have meant to start a match arm after the match guard
+   |
+LL |         Err(ref e) if e.kind == io::EndOfFile => {
+   |                                               ++
+
+error: aborting due to 1 previous error
+

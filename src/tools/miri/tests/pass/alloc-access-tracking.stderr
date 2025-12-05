@@ -1,0 +1,35 @@
+note: now tracking allocation ALLOC of 123 bytes (alignment ALIGN bytes)
+  --> tests/pass/alloc-access-tracking.rs:LL:CC
+   |
+LL |         utils::miri_track_alloc(ptr);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ tracking was triggered here
+
+note: write access at ALLOC[0..1]
+  --> tests/pass/alloc-access-tracking.rs:LL:CC
+   |
+LL |         *ptr = 42; // Crucially, only a write is printed here, no read!
+   |         ^^^^^^^^^ tracking was triggered here
+
+note: read access at ALLOC[0..1]
+  --> tests/pass/alloc-access-tracking.rs:LL:CC
+   |
+LL |         assert_eq!(*ptr, 42);
+   |         ^^^^^^^^^^^^^^^^^^^^ tracking was triggered here
+   |
+   = note: this note originates in the macro `assert_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+note: freed allocation ALLOC
+  --> RUSTLIB/alloc/src/boxed.rs:LL:CC
+   |
+LL |                 self.1.deallocate(From::from(ptr.cast()), layout);
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ tracking was triggered here
+   |
+   = note: BACKTRACE:
+   = note: inside `<std::boxed::Box<std::mem::MaybeUninit<[u8; 123]>> as std::ops::Drop>::drop` at RUSTLIB/alloc/src/boxed.rs:LL:CC
+   = note: inside `std::ptr::drop_in_place::<std::boxed::Box<std::mem::MaybeUninit<[u8; 123]>>> - shim(Some(std::boxed::Box<std::mem::MaybeUninit<[u8; 123]>>))` at RUSTLIB/core/src/ptr/mod.rs:LL:CC
+note: inside `main`
+  --> tests/pass/alloc-access-tracking.rs:LL:CC
+   |
+LL |     }
+   |     ^
+

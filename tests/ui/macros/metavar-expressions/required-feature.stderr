@@ -1,0 +1,103 @@
+error[E0658]: meta-variable expressions are unstable
+  --> $DIR/required-feature.rs:3:10
+   |
+LL |         ${ count($e) }
+   |          ^^^^^^^^^^^^^
+   |
+   = note: see issue #83527 <https://github.com/rust-lang/rust/issues/83527> for more information
+   = help: add `#![feature(macro_metavar_expr)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: meta-variable expressions are unstable
+  --> $DIR/required-feature.rs:11:16
+   |
+LL |             ( $$( $$any:tt )* ) => { $$( $$any )* };
+   |                ^
+   |
+   = note: see issue #83527 <https://github.com/rust-lang/rust/issues/83527> for more information
+   = help: add `#![feature(macro_metavar_expr)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: meta-variable expressions are unstable
+  --> $DIR/required-feature.rs:11:20
+   |
+LL |             ( $$( $$any:tt )* ) => { $$( $$any )* };
+   |                    ^
+   |
+   = note: see issue #83527 <https://github.com/rust-lang/rust/issues/83527> for more information
+   = help: add `#![feature(macro_metavar_expr)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: meta-variable expressions are unstable
+  --> $DIR/required-feature.rs:11:39
+   |
+LL |             ( $$( $$any:tt )* ) => { $$( $$any )* };
+   |                                       ^
+   |
+   = note: see issue #83527 <https://github.com/rust-lang/rust/issues/83527> for more information
+   = help: add `#![feature(macro_metavar_expr)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: meta-variable expressions are unstable
+  --> $DIR/required-feature.rs:11:43
+   |
+LL |             ( $$( $$any:tt )* ) => { $$( $$any )* };
+   |                                           ^
+   |
+   = note: see issue #83527 <https://github.com/rust-lang/rust/issues/83527> for more information
+   = help: add `#![feature(macro_metavar_expr)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: meta-variable expressions are unstable
+  --> $DIR/required-feature.rs:22:13
+   |
+LL |         $( ${ignore($e)} ${index()} )*
+   |             ^^^^^^^^^^^^
+   |
+   = note: see issue #83527 <https://github.com/rust-lang/rust/issues/83527> for more information
+   = help: add `#![feature(macro_metavar_expr)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: meta-variable expressions are unstable
+  --> $DIR/required-feature.rs:22:27
+   |
+LL |         $( ${ignore($e)} ${index()} )*
+   |                           ^^^^^^^^^
+   |
+   = note: see issue #83527 <https://github.com/rust-lang/rust/issues/83527> for more information
+   = help: add `#![feature(macro_metavar_expr)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: meta-variable expressions are unstable
+  --> $DIR/required-feature.rs:30:19
+   |
+LL |         0 $( + 1 ${ignore($i)} )*
+   |                   ^^^^^^^^^^^^
+   |
+   = note: see issue #83527 <https://github.com/rust-lang/rust/issues/83527> for more information
+   = help: add `#![feature(macro_metavar_expr)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: meta-variable expressions are unstable
+  --> $DIR/required-feature.rs:37:13
+   |
+LL |         $( ${ignore($e)} ${len()} )*
+   |             ^^^^^^^^^^^^
+   |
+   = note: see issue #83527 <https://github.com/rust-lang/rust/issues/83527> for more information
+   = help: add `#![feature(macro_metavar_expr)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: meta-variable expressions are unstable
+  --> $DIR/required-feature.rs:37:27
+   |
+LL |         $( ${ignore($e)} ${len()} )*
+   |                           ^^^^^^^
+   |
+   = note: see issue #83527 <https://github.com/rust-lang/rust/issues/83527> for more information
+   = help: add `#![feature(macro_metavar_expr)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 10 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

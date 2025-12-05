@@ -1,0 +1,177 @@
+error: rustc_dump_def_parents: DefId(..)
+  --> $DIR/dump_def_parents.rs:7:9
+   |
+LL |         fn baz() {
+   |         ^^^^^^^^
+   |
+note: DefId(..)
+  --> $DIR/dump_def_parents.rs:5:5
+   |
+LL |     fn foo() {
+   |     ^^^^^^^^
+note: DefId(..)
+  --> $DIR/dump_def_parents.rs:4:1
+   |
+LL | fn bar() {
+   | ^^^^^^^^
+note: DefId(..)
+  --> $DIR/dump_def_parents.rs:2:1
+   |
+LL | / #![feature(rustc_attrs)]
+LL | |
+LL | | fn bar() {
+LL | |     fn foo() {
+...  |
+LL | | fn main() {}
+   | |____________^
+
+error: rustc_dump_def_parents: DefId(..)
+  --> $DIR/dump_def_parents.rs:11:21
+   |
+LL | /                     {
+LL | |
+LL | |                         fn inhibits_dump() {
+LL | |                             qux::<
+...  |
+LL | |                         1
+LL | |                     },
+   | |_____________________^
+   |
+note: DefId(..)
+  --> $DIR/dump_def_parents.rs:9:13
+   |
+LL |             || {
+   |             ^^
+note: DefId(..)
+  --> $DIR/dump_def_parents.rs:7:9
+   |
+LL |         fn baz() {
+   |         ^^^^^^^^
+note: DefId(..)
+  --> $DIR/dump_def_parents.rs:5:5
+   |
+LL |     fn foo() {
+   |     ^^^^^^^^
+note: DefId(..)
+  --> $DIR/dump_def_parents.rs:4:1
+   |
+LL | fn bar() {
+   | ^^^^^^^^
+note: DefId(..)
+  --> $DIR/dump_def_parents.rs:2:1
+   |
+LL | / #![feature(rustc_attrs)]
+LL | |
+LL | | fn bar() {
+LL | |     fn foo() {
+...  |
+LL | | fn main() {}
+   | |____________^
+
+error: rustc_dump_def_parents: DefId(..)
+  --> $DIR/dump_def_parents.rs:15:33
+   |
+LL | / ...                   {
+LL | | ...
+LL | | ...                       "hi";
+LL | | ...                       1
+LL | | ...                   },
+   | |_______________________^
+   |
+note: DefId(..)
+  --> $DIR/dump_def_parents.rs:13:25
+   |
+LL |                         fn inhibits_dump() {
+   |                         ^^^^^^^^^^^^^^^^^^
+note: DefId(..)
+  --> $DIR/dump_def_parents.rs:11:21
+   |
+LL | /                     {
+LL | |
+LL | |                         fn inhibits_dump() {
+LL | |                             qux::<
+...  |
+LL | |                         1
+LL | |                     },
+   | |_____________________^
+note: DefId(..)
+  --> $DIR/dump_def_parents.rs:9:13
+   |
+LL |             || {
+   |             ^^
+note: DefId(..)
+  --> $DIR/dump_def_parents.rs:7:9
+   |
+LL |         fn baz() {
+   |         ^^^^^^^^
+note: DefId(..)
+  --> $DIR/dump_def_parents.rs:5:5
+   |
+LL |     fn foo() {
+   |     ^^^^^^^^
+note: DefId(..)
+  --> $DIR/dump_def_parents.rs:4:1
+   |
+LL | fn bar() {
+   | ^^^^^^^^
+note: DefId(..)
+  --> $DIR/dump_def_parents.rs:2:1
+   |
+LL | / #![feature(rustc_attrs)]
+LL | |
+LL | | fn bar() {
+LL | |     fn foo() {
+...  |
+LL | | fn main() {}
+   | |____________^
+
+error: rustc_dump_def_parents: DefId(..)
+  --> $DIR/dump_def_parents.rs:23:31
+   |
+LL |                         qux::<{ 1 + 1 }>();
+   |                               ^^^^^^^^^
+   |
+note: DefId(..)
+  --> $DIR/dump_def_parents.rs:11:21
+   |
+LL | /                     {
+LL | |
+LL | |                         fn inhibits_dump() {
+LL | |                             qux::<
+...  |
+LL | |                         1
+LL | |                     },
+   | |_____________________^
+note: DefId(..)
+  --> $DIR/dump_def_parents.rs:9:13
+   |
+LL |             || {
+   |             ^^
+note: DefId(..)
+  --> $DIR/dump_def_parents.rs:7:9
+   |
+LL |         fn baz() {
+   |         ^^^^^^^^
+note: DefId(..)
+  --> $DIR/dump_def_parents.rs:5:5
+   |
+LL |     fn foo() {
+   |     ^^^^^^^^
+note: DefId(..)
+  --> $DIR/dump_def_parents.rs:4:1
+   |
+LL | fn bar() {
+   | ^^^^^^^^
+note: DefId(..)
+  --> $DIR/dump_def_parents.rs:2:1
+   |
+LL | / #![feature(rustc_attrs)]
+LL | |
+LL | | fn bar() {
+LL | |     fn foo() {
+...  |
+LL | | fn main() {}
+   | |____________^
+
+error: aborting due to 4 previous errors
+

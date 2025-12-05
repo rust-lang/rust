@@ -1,0 +1,8 @@
+error: could not determine the target branch for this `#[const_continue]`
+  --> $DIR/const-continue-to-polymorphic-const.rs:18:36
+   |
+LL |                         break 'blk Self::TARGET;
+   |                                    ^^^^^^^^^^^^ this value is too generic
+
+error: aborting due to 1 previous error
+

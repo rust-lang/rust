@@ -1,0 +1,50 @@
+error: macro expansion ignores `assert_eq` and any tokens following
+  --> $DIR/macro-in-expression-context.rs:12:9
+   |
+LL |         assert_eq!("B", "B");
+   |         ^^^^^^^^^
+...
+LL |     foo!()
+   |     ------ caused by the macro expansion here
+   |
+   = note: the usage of `foo!` is likely invalid in expression context
+help: you might be missing a semicolon here
+   |
+LL |     foo!();
+   |           +
+
+error: trailing semicolon in macro used in expression position
+  --> $DIR/macro-in-expression-context.rs:5:29
+   |
+LL |         assert_eq!("A", "A");
+   |                             ^
+...
+LL |     foo!()
+   |     ------ in this macro invocation
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #79813 <https://github.com/rust-lang/rust/issues/79813>
+   = note: macro invocations at the end of a block are treated as expressions
+   = note: to ignore the value produced by the macro, add a semicolon after the invocation of `foo`
+   = note: `#[deny(semicolon_in_expressions_from_macros)]` (part of `#[deny(future_incompatible)]`) on by default
+   = note: this error originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 2 previous errors
+
+Future incompatibility report: Future breakage diagnostic:
+error: trailing semicolon in macro used in expression position
+  --> $DIR/macro-in-expression-context.rs:5:29
+   |
+LL |         assert_eq!("A", "A");
+   |                             ^
+...
+LL |     foo!()
+   |     ------ in this macro invocation
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #79813 <https://github.com/rust-lang/rust/issues/79813>
+   = note: macro invocations at the end of a block are treated as expressions
+   = note: to ignore the value produced by the macro, add a semicolon after the invocation of `foo`
+   = note: `#[deny(semicolon_in_expressions_from_macros)]` (part of `#[deny(future_incompatible)]`) on by default
+   = note: this error originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
+

@@ -1,0 +1,109 @@
+error[E0277]: the trait bound `Foo: Trait` is not satisfied
+  --> $DIR/parent-label.rs:14:11
+   |
+LL |     let x = || {
+   |             -- in this scope
+LL |         f(Foo {});
+   |         - ^^^^^^ unsatisfied trait bound
+   |         |
+   |         required by a bound introduced by this call
+   |
+help: the trait `Trait` is not implemented for `Foo`
+  --> $DIR/parent-label.rs:8:1
+   |
+LL | struct Foo;
+   | ^^^^^^^^^^
+help: this trait has no implementations, consider adding one
+  --> $DIR/parent-label.rs:6:1
+   |
+LL | trait Trait {}
+   | ^^^^^^^^^^^
+note: required by a bound in `f`
+  --> $DIR/parent-label.rs:10:9
+   |
+LL | fn f<T: Trait>(x: T) {}
+   |         ^^^^^ required by this bound in `f`
+
+error[E0277]: the trait bound `Foo: Trait` is not satisfied
+  --> $DIR/parent-label.rs:16:15
+   |
+LL |         let y = || {
+   |                 -- in this scope
+LL |             f(Foo {});
+   |             - ^^^^^^ unsatisfied trait bound
+   |             |
+   |             required by a bound introduced by this call
+   |
+help: the trait `Trait` is not implemented for `Foo`
+  --> $DIR/parent-label.rs:8:1
+   |
+LL | struct Foo;
+   | ^^^^^^^^^^
+help: this trait has no implementations, consider adding one
+  --> $DIR/parent-label.rs:6:1
+   |
+LL | trait Trait {}
+   | ^^^^^^^^^^^
+note: required by a bound in `f`
+  --> $DIR/parent-label.rs:10:9
+   |
+LL | fn f<T: Trait>(x: T) {}
+   |         ^^^^^ required by this bound in `f`
+
+error[E0277]: the trait bound `Foo: Trait` is not satisfied
+  --> $DIR/parent-label.rs:22:15
+   |
+LL | fn main() {
+   | --------- in this scope
+...
+LL |             f(Foo {});
+   |             - ^^^^^^ unsatisfied trait bound
+   |             |
+   |             required by a bound introduced by this call
+   |
+help: the trait `Trait` is not implemented for `Foo`
+  --> $DIR/parent-label.rs:8:1
+   |
+LL | struct Foo;
+   | ^^^^^^^^^^
+help: this trait has no implementations, consider adding one
+  --> $DIR/parent-label.rs:6:1
+   |
+LL | trait Trait {}
+   | ^^^^^^^^^^^
+note: required by a bound in `f`
+  --> $DIR/parent-label.rs:10:9
+   |
+LL | fn f<T: Trait>(x: T) {}
+   |         ^^^^^ required by this bound in `f`
+
+error[E0277]: the trait bound `Foo: Trait` is not satisfied
+  --> $DIR/parent-label.rs:26:7
+   |
+LL | fn main() {
+   | --------- in this scope
+...
+LL |     f(Foo {});
+   |     - ^^^^^^ unsatisfied trait bound
+   |     |
+   |     required by a bound introduced by this call
+   |
+help: the trait `Trait` is not implemented for `Foo`
+  --> $DIR/parent-label.rs:8:1
+   |
+LL | struct Foo;
+   | ^^^^^^^^^^
+help: this trait has no implementations, consider adding one
+  --> $DIR/parent-label.rs:6:1
+   |
+LL | trait Trait {}
+   | ^^^^^^^^^^^
+note: required by a bound in `f`
+  --> $DIR/parent-label.rs:10:9
+   |
+LL | fn f<T: Trait>(x: T) {}
+   |         ^^^^^ required by this bound in `f`
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

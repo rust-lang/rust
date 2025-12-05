@@ -1,0 +1,21 @@
+error[E0283]: type annotations needed
+  --> $DIR/issue-72616.rs:22:37
+   |
+LL |         if String::from("a") == "a".try_into().unwrap() {}
+   |                              --     ^^^^^^^^
+   |                              |
+   |                              type must be known at this point
+   |
+   = note: multiple `impl`s satisfying `String: PartialEq<_>` found in the following crates: `alloc`, `std`:
+           - impl PartialEq for String;
+           - impl PartialEq<Path> for String;
+           - impl PartialEq<PathBuf> for String;
+help: try using a fully qualified path to specify the expected types
+   |
+LL -         if String::from("a") == "a".try_into().unwrap() {}
+LL +         if String::from("a") == <&str as TryInto<T>>::try_into("a").unwrap() {}
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0283`.

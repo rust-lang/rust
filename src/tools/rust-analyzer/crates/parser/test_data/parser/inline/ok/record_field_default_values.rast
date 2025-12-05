@@ -1,0 +1,28 @@
+SOURCE_FILE
+  STRUCT
+    STRUCT_KW "struct"
+    WHITESPACE " "
+    NAME
+      IDENT "S"
+    WHITESPACE " "
+    RECORD_FIELD_LIST
+      L_CURLY "{"
+      WHITESPACE " "
+      RECORD_FIELD
+        NAME
+          IDENT "f"
+        COLON ":"
+        WHITESPACE " "
+        PATH_TYPE
+          PATH
+            PATH_SEGMENT
+              NAME_REF
+                IDENT "f32"
+        WHITESPACE " "
+        EQ "="
+        WHITESPACE " "
+        LITERAL
+          FLOAT_NUMBER "0.0"
+      WHITESPACE " "
+      R_CURLY "}"
+  WHITESPACE "\n"

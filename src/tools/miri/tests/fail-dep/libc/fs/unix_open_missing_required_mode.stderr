@@ -1,0 +1,20 @@
+error: Undefined Behavior: not enough variadic arguments for `open(pathname, O_CREAT, ...)`: got 0, expected at least 1
+  --> tests/fail-dep/libc/fs/unix_open_missing_required_mode.rs:LL:CC
+   |
+LL |     let _fd = unsafe { libc::open(name_ptr, libc::O_CREAT) };
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Undefined Behavior occurred here
+   |
+   = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
+   = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
+   = note: BACKTRACE:
+   = note: inside `test_file_open_missing_needed_mode` at tests/fail-dep/libc/fs/unix_open_missing_required_mode.rs:LL:CC
+note: inside `main`
+  --> tests/fail-dep/libc/fs/unix_open_missing_required_mode.rs:LL:CC
+   |
+LL |     test_file_open_missing_needed_mode();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to 1 previous error
+

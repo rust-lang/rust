@@ -1,0 +1,14 @@
+error: lifetime may not live long enough
+  --> $DIR/implied-bounds-on-nested-references-plus-variance-unnormalized.rs:12:5
+   |
+LL | fn extend<'a, 'b>(x: &'a str) -> &'b str {
+   |           --  -- lifetime `'b` defined here
+   |           |
+   |           lifetime `'a` defined here
+LL |     (extend_inner as fn(_) -> _)(x)
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ function was supposed to return data with lifetime `'b` but it is returning data with lifetime `'a`
+   |
+   = help: consider adding the following bound: `'a: 'b`
+
+error: aborting due to 1 previous error
+

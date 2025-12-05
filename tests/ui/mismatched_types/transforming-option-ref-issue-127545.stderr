@@ -1,0 +1,93 @@
+error[E0308]: mismatched types
+  --> $DIR/transforming-option-ref-issue-127545.rs:5:5
+   |
+LL | pub fn foo(arg: Option<&Vec<i32>>) -> Option<&[i32]> {
+   |                                       -------------- expected `Option<&[i32]>` because of return type
+LL |     arg
+   |     ^^^ expected `Option<&[i32]>`, found `Option<&Vec<i32>>`
+   |
+   = note: expected enum `Option<&[i32]>`
+              found enum `Option<&Vec<i32>>`
+help: try using `.map(|v| &**v)` to convert `Option<&Vec<i32>>` to `Option<&[i32]>`
+   |
+LL |     arg.map(|v| &**v)
+   |        ++++++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/transforming-option-ref-issue-127545.rs:9:19
+   |
+LL |     arg.unwrap_or(&[])
+   |         --------- ^^^ expected `&Vec<i32>`, found `&[_; 0]`
+   |         |
+   |         arguments to this method are incorrect
+   |
+   = note: expected reference `&Vec<i32>`
+              found reference `&[_; 0]`
+help: the return type of this call is `&[_; 0]` due to the type of the argument passed
+  --> $DIR/transforming-option-ref-issue-127545.rs:9:5
+   |
+LL |     arg.unwrap_or(&[])
+   |     ^^^^^^^^^^^^^^---^
+   |                   |
+   |                   this argument influences the return type of `unwrap_or`
+note: method defined here
+  --> $SRC_DIR/core/src/option.rs:LL:COL
+help: use `Option::map_or` to deref inner value of `Option`
+   |
+LL -     arg.unwrap_or(&[])
+LL +     arg.map_or(&[], |v| v)
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/transforming-option-ref-issue-127545.rs:13:19
+   |
+LL |     arg.unwrap_or(v)
+   |         --------- ^ expected `&Vec<i32>`, found `&[i32]`
+   |         |
+   |         arguments to this method are incorrect
+   |
+   = note: expected reference `&Vec<i32>`
+              found reference `&'a [i32]`
+help: the return type of this call is `&'a [i32]` due to the type of the argument passed
+  --> $DIR/transforming-option-ref-issue-127545.rs:13:5
+   |
+LL |     arg.unwrap_or(v)
+   |     ^^^^^^^^^^^^^^-^
+   |                   |
+   |                   this argument influences the return type of `unwrap_or`
+note: method defined here
+  --> $SRC_DIR/core/src/option.rs:LL:COL
+help: use `Option::map_or` to deref inner value of `Option`
+   |
+LL -     arg.unwrap_or(v)
+LL +     arg.map_or(v, |v| v)
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/transforming-option-ref-issue-127545.rs:17:19
+   |
+LL |     arg.unwrap_or(&[])
+   |         --------- ^^^ expected `&Vec<i32>`, found `&[_; 0]`
+   |         |
+   |         arguments to this method are incorrect
+   |
+   = note: expected reference `&Vec<i32>`
+              found reference `&[_; 0]`
+help: the return type of this call is `&[_; 0]` due to the type of the argument passed
+  --> $DIR/transforming-option-ref-issue-127545.rs:17:5
+   |
+LL |     arg.unwrap_or(&[])
+   |     ^^^^^^^^^^^^^^---^
+   |                   |
+   |                   this argument influences the return type of `unwrap_or`
+note: method defined here
+  --> $SRC_DIR/core/src/result.rs:LL:COL
+help: use `Result::map_or` to deref inner value of `Result`
+   |
+LL -     arg.unwrap_or(&[])
+LL +     arg.map_or(&[], |v| v)
+   |
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

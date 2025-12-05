@@ -1,0 +1,32 @@
+[package]
+name = "rustc_resolve"
+version = "0.0.0"
+edition = "2024"
+
+[dependencies]
+# tidy-alphabetical-start
+bitflags = "2.4.1"
+indexmap = "2.4.0"
+itertools = "0.12"
+pulldown-cmark = { version = "0.11", features = ["html"], default-features = false }
+rustc_arena = { path = "../rustc_arena" }
+rustc_ast = { path = "../rustc_ast" }
+rustc_ast_pretty = { path = "../rustc_ast_pretty" }
+rustc_attr_parsing = { path = "../rustc_attr_parsing" }
+rustc_data_structures = { path = "../rustc_data_structures" }
+rustc_errors = { path = "../rustc_errors" }
+rustc_expand = { path = "../rustc_expand" }
+rustc_feature = { path = "../rustc_feature" }
+rustc_fluent_macro = { path = "../rustc_fluent_macro" }
+rustc_hir = { path = "../rustc_hir" }
+rustc_index = { path = "../rustc_index" }
+rustc_macros = { path = "../rustc_macros" }
+rustc_metadata = { path = "../rustc_metadata" }
+rustc_middle = { path = "../rustc_middle" }
+rustc_query_system = { path = "../rustc_query_system" }
+rustc_session = { path = "../rustc_session" }
+rustc_span = { path = "../rustc_span" }
+smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
+thin-vec = "0.2.12"
+tracing = "0.1"
+# tidy-alphabetical-end

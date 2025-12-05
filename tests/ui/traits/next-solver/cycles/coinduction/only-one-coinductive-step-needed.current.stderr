@@ -1,0 +1,17 @@
+error[E0275]: overflow evaluating the requirement `Foo<T>: SendIndir`
+  --> $DIR/only-one-coinductive-step-needed.rs:17:15
+   |
+LL | struct Foo<T>(<Foo<T> as Trait>::Assoc);
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: required for `Foo<T>` to implement `Trait`
+  --> $DIR/only-one-coinductive-step-needed.rs:26:20
+   |
+LL | impl<T: SendIndir> Trait for T {
+   |         ---------  ^^^^^     ^
+   |         |
+   |         unsatisfied trait bound introduced here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0275`.

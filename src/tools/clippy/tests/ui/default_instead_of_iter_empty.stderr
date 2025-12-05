@@ -1,0 +1,23 @@
+error: `std::iter::empty()` is the more idiomatic way
+  --> tests/ui/default_instead_of_iter_empty.rs:12:13
+   |
+LL |     let _ = std::iter::Empty::<usize>::default();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `std::iter::empty::<usize>()`
+   |
+   = note: `-D clippy::default-instead-of-iter-empty` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::default_instead_of_iter_empty)]`
+
+error: `std::iter::empty()` is the more idiomatic way
+  --> tests/ui/default_instead_of_iter_empty.rs:14:13
+   |
+LL |     let _ = std::iter::Empty::<HashMap<usize, usize>>::default();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `std::iter::empty::<HashMap<usize, usize>>()`
+
+error: `std::iter::empty()` is the more idiomatic way
+  --> tests/ui/default_instead_of_iter_empty.rs:16:41
+   |
+LL |     let _foo: std::iter::Empty<usize> = std::iter::Empty::default();
+   |                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `std::iter::empty()`
+
+error: aborting due to 3 previous errors
+

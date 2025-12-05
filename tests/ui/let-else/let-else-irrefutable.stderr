@@ -1,0 +1,21 @@
+warning: irrefutable `let...else` pattern
+  --> $DIR/let-else-irrefutable.rs:4:5
+   |
+LL |     let x = 1 else { return };
+   |     ^^^^^^^^^
+   |
+   = note: this pattern will always match, so the `else` clause is useless
+   = help: consider removing the `else` clause
+   = note: `#[warn(irrefutable_let_patterns)]` on by default
+
+warning: irrefutable `let...else` pattern
+  --> $DIR/let-else-irrefutable.rs:7:5
+   |
+LL |     let x = 1 else {
+   |     ^^^^^^^^^
+   |
+   = note: this pattern will always match, so the `else` clause is useless
+   = help: consider removing the `else` clause
+
+warning: 2 warnings emitted
+

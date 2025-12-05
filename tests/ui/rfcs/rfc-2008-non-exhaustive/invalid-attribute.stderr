@@ -1,0 +1,28 @@
+error[E0565]: malformed `non_exhaustive` attribute input
+  --> $DIR/invalid-attribute.rs:1:1
+   |
+LL | #[non_exhaustive(anything)]
+   | ^^^^^^^^^^^^^^^^----------^
+   | |               |
+   | |               didn't expect any arguments here
+   | help: must be of the form: `#[non_exhaustive]`
+
+error: `#[non_exhaustive]` attribute cannot be used on traits
+  --> $DIR/invalid-attribute.rs:5:1
+   |
+LL | #[non_exhaustive]
+   | ^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[non_exhaustive]` can be applied to data types and enum variants
+
+error: `#[non_exhaustive]` attribute cannot be used on unions
+  --> $DIR/invalid-attribute.rs:9:1
+   |
+LL | #[non_exhaustive]
+   | ^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[non_exhaustive]` can be applied to data types and enum variants
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0565`.

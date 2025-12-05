@@ -1,0 +1,41 @@
+error: any number modulo 1 will be 0
+  --> tests/ui/modulo_one.rs:9:5
+   |
+LL |     10 % 1;
+   |     ^^^^^^
+   |
+   = note: `-D clippy::modulo-one` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::modulo_one)]`
+
+error: any number modulo -1 will panic/overflow or result in 0
+  --> tests/ui/modulo_one.rs:12:5
+   |
+LL |     10 % -1;
+   |     ^^^^^^^
+
+error: any number modulo -1 will panic/overflow or result in 0
+  --> tests/ui/modulo_one.rs:17:5
+   |
+LL |     i32::MIN % (-1);
+   |     ^^^^^^^^^^^^^^^
+
+error: any number modulo 1 will be 0
+  --> tests/ui/modulo_one.rs:24:5
+   |
+LL |     2 % ONE;
+   |     ^^^^^^^
+
+error: any number modulo -1 will panic/overflow or result in 0
+  --> tests/ui/modulo_one.rs:29:5
+   |
+LL |     2 % NEG_ONE;
+   |     ^^^^^^^^^^^
+
+error: any number modulo -1 will panic/overflow or result in 0
+  --> tests/ui/modulo_one.rs:35:5
+   |
+LL |     INT_MIN % NEG_ONE;
+   |     ^^^^^^^^^^^^^^^^^
+
+error: aborting due to 6 previous errors
+

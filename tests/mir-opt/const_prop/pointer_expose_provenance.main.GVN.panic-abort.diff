@@ -1,0 +1,41 @@
+- // MIR for `main` before GVN
++ // MIR for `main` after GVN
+  
+  fn main() -> () {
+      let mut _0: ();
+      let _1: usize;
+      let mut _2: *const i32;
+      let _3: &i32;
+      let _4: ();
+      let mut _5: usize;
+      scope 1 {
+          debug x => _1;
+      }
+  
+      bb0: {
+-         StorageLive(_1);
++         nop;
+          StorageLive(_2);
+          StorageLive(_3);
+          _3 = const main::FOO;
+          _2 = &raw const (*_3);
+          _1 = move _2 as usize (PointerExposeProvenance);
+          StorageDead(_2);
+          StorageDead(_3);
+          StorageLive(_4);
+          StorageLive(_5);
+          _5 = copy _1;
+-         _4 = read(move _5) -> [return: bb1, unwind unreachable];
++         _4 = read(copy _1) -> [return: bb1, unwind unreachable];
+      }
+  
+      bb1: {
+          StorageDead(_5);
+          StorageDead(_4);
+          _0 = const ();
+-         StorageDead(_1);
++         nop;
+          return;
+      }
+  }
+  

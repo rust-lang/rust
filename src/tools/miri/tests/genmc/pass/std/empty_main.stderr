@@ -1,0 +1,45 @@
+Running GenMC Verification...
+warning: GenMC currently does not model spurious failures of `compare_exchange_weak`. Miri with GenMC might miss bugs related to spurious failures.
+  --> RUSTLIB/std/src/thread/mod.rs:LL:CC
+   |
+LL |                     match COUNTER.compare_exchange_weak(last, id, Ordering::Relaxed, Ordering::Relaxed) {
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ GenMC might miss possible behaviors of this code
+   |
+   = note: BACKTRACE:
+   = note: inside closure at RUSTLIB/std/src/thread/current.rs:LL:CC
+   = note: inside closure at RUSTLIB/std/src/rt.rs:LL:CC
+
+warning: GenMC currently does not model spurious failures of `compare_exchange_weak`. Miri with GenMC might miss bugs related to spurious failures.
+  --> RUSTLIB/std/src/rt.rs:LL:CC
+   |
+LL | /     CLEANUP.call_once(|| unsafe {
+LL | |         // Flush stdout and disable buffering.
+LL | |         crate::io::cleanup();
+...  |
+LL | |     });
+   | |______^ GenMC might miss possible behaviors of this code
+   |
+   = note: BACKTRACE:
+   = note: inside closure at RUSTLIB/std/src/rt.rs:LL:CC
+
+warning: GenMC currently does not model spurious failures of `compare_exchange_weak`. Miri with GenMC might miss bugs related to spurious failures.
+  --> RUSTLIB/std/src/sync/once.rs:LL:CC
+   |
+LL |         self.inner.call(true, &mut |p| f.take().unwrap()(p));
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ GenMC might miss possible behaviors of this code
+   |
+   = note: BACKTRACE:
+   = note: inside closure at RUSTLIB/std/src/rt.rs:LL:CC
+   = note: inside closure at RUSTLIB/std/src/sync/once.rs:LL:CC
+   = note: inside closure at RUSTLIB/std/src/rt.rs:LL:CC
+
+warning: GenMC currently does not model the failure ordering for `compare_exchange`. Due to success ordering 'Acquire', the failure ordering 'Relaxed' is treated like 'Acquire'. Miri with GenMC might miss bugs related to this memory access.
+  --> RUSTLIB/std/src/sys/exit_guard.rs:LL:CC
+   |
+LL |             match EXITING_THREAD_ID.compare_exchange(ptr::null_mut(), this_thread_id, Acquire, Relaxed) {
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ GenMC might miss possible behaviors of this code
+   |
+   = note: BACKTRACE:
+   = note: inside closure at RUSTLIB/std/src/rt.rs:LL:CC
+
+Verification complete with 1 executions. No errors found.

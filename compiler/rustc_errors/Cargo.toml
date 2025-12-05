@@ -1,0 +1,37 @@
+[package]
+name = "rustc_errors"
+version = "0.0.0"
+edition = "2024"
+
+[dependencies]
+# tidy-alphabetical-start
+annotate-snippets = { version = "0.12.10", features = ["simd"] }
+anstream = "0.6.20"
+anstyle = "1.0.13"
+derive_setters = "0.1.6"
+rustc_abi = { path = "../rustc_abi" }
+rustc_ast = { path = "../rustc_ast" }
+rustc_data_structures = { path = "../rustc_data_structures" }
+rustc_error_codes = { path = "../rustc_error_codes" }
+rustc_error_messages = { path = "../rustc_error_messages" }
+rustc_fluent_macro = { path = "../rustc_fluent_macro" }
+rustc_hashes = { path = "../rustc_hashes" }
+rustc_index = { path = "../rustc_index" }
+rustc_lexer = { path = "../rustc_lexer" }
+rustc_lint_defs = { path = "../rustc_lint_defs" }
+rustc_macros = { path = "../rustc_macros" }
+rustc_serialize = { path = "../rustc_serialize" }
+rustc_span = { path = "../rustc_span" }
+serde = { version = "1.0.125", features = ["derive"] }
+serde_json = "1.0.59"
+termize = "0.2"
+tracing = "0.1"
+# tidy-alphabetical-end
+
+[target.'cfg(windows)'.dependencies.windows]
+version = "0.61.0"
+features = [
+    "Win32_Foundation",
+    "Win32_Security",
+    "Win32_System_Threading",
+]

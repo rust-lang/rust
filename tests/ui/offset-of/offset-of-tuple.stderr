@@ -1,0 +1,137 @@
+error: leading `+` is not supported
+  --> $DIR/offset-of-tuple.rs:12:37
+   |
+LL |     { builtin # offset_of((u8, u8), +1) };
+   |                                     ^ unexpected `+`
+   |
+help: try removing the `+`
+   |
+LL -     { builtin # offset_of((u8, u8), +1) };
+LL +     { builtin # offset_of((u8, u8), 1) };
+   |
+
+error: offset_of expects dot-separated field and variant names
+  --> $DIR/offset-of-tuple.rs:13:38
+   |
+LL |     { builtin # offset_of((u8, u8), 1.) };
+   |                                      ^
+
+error: unexpected token: `)`
+  --> $DIR/offset-of-tuple.rs:14:40
+   |
+LL |     { builtin # offset_of((u8, u8), 1 .) };
+   |                                        ^
+
+error: unexpected token: `)`
+  --> $DIR/offset-of-tuple.rs:32:45
+   |
+LL |     { builtin # offset_of(ComplexTup, 0.0.1.) };
+   |                                             ^
+
+error: unexpected token: `)`
+  --> $DIR/offset-of-tuple.rs:33:46
+   |
+LL |     { builtin # offset_of(ComplexTup, 0 .0.1.) };
+   |                                              ^
+
+error: unexpected token: `)`
+  --> $DIR/offset-of-tuple.rs:34:47
+   |
+LL |     { builtin # offset_of(ComplexTup, 0 . 0.1.) };
+   |                                               ^
+
+error: unexpected token: `)`
+  --> $DIR/offset-of-tuple.rs:35:46
+   |
+LL |     { builtin # offset_of(ComplexTup, 0. 0.1.) };
+   |                                              ^
+
+error: unexpected token: `)`
+  --> $DIR/offset-of-tuple.rs:36:46
+   |
+LL |     { builtin # offset_of(ComplexTup, 0.0 .1.) };
+   |                                              ^
+
+error: unexpected token: `)`
+  --> $DIR/offset-of-tuple.rs:37:47
+   |
+LL |     { builtin # offset_of(ComplexTup, 0.0 . 1.) };
+   |                                               ^
+
+error: unexpected token: `)`
+  --> $DIR/offset-of-tuple.rs:38:46
+   |
+LL |     { builtin # offset_of(ComplexTup, 0.0. 1.) };
+   |                                              ^
+
+error: no rules expected `+`
+  --> $DIR/offset-of-tuple.rs:6:26
+   |
+LL |     offset_of!((u8, u8), +1);
+   |                          ^ no rules expected this token in macro call
+   |
+note: while trying to match meta-variable `$fields:expr`
+  --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
+
+error: offset_of expects dot-separated field and variant names
+  --> $DIR/offset-of-tuple.rs:7:26
+   |
+LL |     offset_of!((u8, u8), -1);
+   |                          ^^
+
+error: offset_of expects dot-separated field and variant names
+  --> $DIR/offset-of-tuple.rs:8:27
+   |
+LL |     offset_of!((u8, u8), 1.);
+   |                           ^
+
+error: unexpected token: `)`
+  --> $DIR/offset-of-tuple.rs:9:29
+   |
+LL |     offset_of!((u8, u8), 1 .);
+   |                             ^
+
+error: unexpected token: `)`
+  --> $DIR/offset-of-tuple.rs:21:34
+   |
+LL |     offset_of!(ComplexTup, 0.0.1.);
+   |                                  ^
+
+error: unexpected token: `)`
+  --> $DIR/offset-of-tuple.rs:22:35
+   |
+LL |     offset_of!(ComplexTup, 0 .0.1.);
+   |                                   ^
+
+error: unexpected token: `)`
+  --> $DIR/offset-of-tuple.rs:23:36
+   |
+LL |     offset_of!(ComplexTup, 0 . 0.1.);
+   |                                    ^
+
+error: unexpected token: `)`
+  --> $DIR/offset-of-tuple.rs:24:35
+   |
+LL |     offset_of!(ComplexTup, 0. 0.1.);
+   |                                   ^
+
+error: unexpected token: `)`
+  --> $DIR/offset-of-tuple.rs:25:35
+   |
+LL |     offset_of!(ComplexTup, 0.0 .1.);
+   |                                   ^
+
+error: unexpected token: `)`
+  --> $DIR/offset-of-tuple.rs:26:36
+   |
+LL |     offset_of!(ComplexTup, 0.0 . 1.);
+   |                                    ^
+
+error: unexpected token: `)`
+  --> $DIR/offset-of-tuple.rs:27:35
+   |
+LL |     offset_of!(ComplexTup, 0.0. 1.);
+   |                                   ^
+
+error: aborting due to 21 previous errors
+

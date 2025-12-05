@@ -1,0 +1,60 @@
+error: unreachable pattern
+  --> $DIR/unreachable-patterns.rs:10:9
+   |
+LL |         false => {}
+   |         ----- matches all the relevant values
+LL |         false => {}
+   |         ^^^^^ no value can reach this
+   |
+note: the lint level is defined here
+  --> $DIR/unreachable-patterns.rs:4:9
+   |
+LL | #![deny(unreachable_patterns)]
+   |         ^^^^^^^^^^^^^^^^^^^^
+
+error: unreachable pattern
+  --> $DIR/unreachable-patterns.rs:16:9
+   |
+LL |         true => {}
+   |         ---- matches all the relevant values
+LL |         false => {}
+LL |         true => {}
+   |         ^^^^ no value can reach this
+
+error: unreachable pattern
+  --> $DIR/unreachable-patterns.rs:23:9
+   |
+LL |         _ => {}
+   |         ^ no value can reach this
+   |
+note: multiple earlier patterns match some of the same values
+  --> $DIR/unreachable-patterns.rs:23:9
+   |
+LL |         (true, _) => {}
+   |         --------- matches some of the same values
+LL |         (_, true) => {}
+   |         --------- matches some of the same values
+LL |         (false, false) => {}
+   |         -------------- matches some of the same values
+LL |         _ => {}
+   |         ^ collectively making this unreachable
+
+error: unreachable pattern
+  --> $DIR/unreachable-patterns.rs:29:9
+   |
+LL |         (T::A | T::B, T::A | T::C) => {}
+   |         -------------------------- matches all the relevant values
+LL |         (T::A, T::C) => {}
+   |         ^^^^^^^^^^^^ no value can reach this
+
+error: unreachable pattern
+  --> $DIR/unreachable-patterns.rs:30:9
+   |
+LL |         (T::A | T::B, T::A | T::C) => {}
+   |         -------------------------- matches all the relevant values
+LL |         (T::A, T::C) => {}
+LL |         (T::B, T::A) => {}
+   |         ^^^^^^^^^^^^ no value can reach this
+
+error: aborting due to 5 previous errors
+

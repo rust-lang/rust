@@ -1,0 +1,12 @@
+#![warn(clippy::char_lit_as_u8)]
+
+fn main() {
+    let _ = b'a';
+    //~^ char_lit_as_u8
+    let _ = b'\n';
+    //~^ char_lit_as_u8
+    let _ = b'\0';
+    //~^ char_lit_as_u8
+    let _ = b'\x01';
+    //~^ char_lit_as_u8
+}

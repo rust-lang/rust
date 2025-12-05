@@ -1,0 +1,32 @@
+error: malformed `patchable_function_entry` attribute input
+  --> $DIR/patchable-function-entry-attribute.rs:10:1
+   |
+LL | #[patchable_function_entry]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[patchable_function_entry(prefix_nops = m, entry_nops = n)]`
+
+error: integer value out of range
+  --> $DIR/patchable-function-entry-attribute.rs:4:42
+   |
+LL | #[patchable_function_entry(prefix_nops = 256, entry_nops = 0)]
+   |                                          ^^^ value must be between `0` and `255`
+
+error: invalid literal value
+  --> $DIR/patchable-function-entry-attribute.rs:7:42
+   |
+LL | #[patchable_function_entry(prefix_nops = "stringvalue", entry_nops = 0)]
+   |                                          ^^^^^^^^^^^^^ value must be an integer between `0` and `255`
+
+error: unexpected parameter name
+  --> $DIR/patchable-function-entry-attribute.rs:13:46
+   |
+LL | #[patchable_function_entry(prefix_nops = 10, something = 0)]
+   |                                              ^^^^^^^^^^^^^ expected `prefix_nops` or `entry_nops`
+
+error: must specify at least one parameter
+  --> $DIR/patchable-function-entry-attribute.rs:16:1
+   |
+LL | #[patchable_function_entry()]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 5 previous errors
+

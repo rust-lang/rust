@@ -1,0 +1,58 @@
+warning: function cannot return without recursing
+  --> $DIR/recursive-drop-elaboration.rs:13:1
+   |
+LL | fn with_positive(fun: impl Fn(Alias<'_>)) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot return without recursing
+LL |
+LL |     with_positive(|&n| ());
+   |     ---------------------- recursive call site
+   |
+   = help: a `loop` may express intention better if this is on purpose
+   = note: `#[warn(unconditional_recursion)]` on by default
+
+error[E0507]: cannot move out of a shared reference
+  --> $DIR/recursive-drop-elaboration.rs:15:20
+   |
+LL |     with_positive(|&n| ());
+   |                    ^-
+   |                     |
+   |                     data moved here
+   |                     move occurs because `n` has type `S`, which does not implement the `Copy` trait
+   |
+help: consider removing the borrow
+   |
+LL -     with_positive(|&n| ());
+LL +     with_positive(|n| ());
+   |
+
+error[E0507]: cannot move out of a shared reference
+  --> $DIR/recursive-drop-elaboration.rs:22:20
+   |
+LL |     with_positive(|&a| ());
+   |                    ^-
+   |                     |
+   |                     data moved here
+   |                     move occurs because `a` has type `S`, which does not implement the `Copy` trait
+   |
+help: consider removing the borrow
+   |
+LL -     with_positive(|&a| ());
+LL +     with_positive(|a| ());
+   |
+
+error[E0580]: `main` function has wrong type
+  --> $DIR/recursive-drop-elaboration.rs:20:1
+   |
+LL | type Alias<'a> = impl T;
+   |                  ------ the found opaque type
+...
+LL | fn main(_: Alias<'_>) {
+   | ^^^^^^^^^^^^^^^^^^^^^ incorrect number of function parameters
+   |
+   = note: expected signature `fn()`
+              found signature `for<'a> fn(Alias<'a>)`
+
+error: aborting due to 3 previous errors; 1 warning emitted
+
+Some errors have detailed explanations: E0507, E0580.
+For more information about an error, try `rustc --explain E0507`.

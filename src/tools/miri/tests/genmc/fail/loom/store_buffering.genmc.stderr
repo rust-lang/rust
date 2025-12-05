@@ -1,0 +1,13 @@
+Running GenMC Verification...
+error: abnormal termination: the program aborted execution
+  --> tests/genmc/fail/loom/store_buffering.rs:LL:CC
+   |
+LL |             std::process::abort();
+   |             ^^^^^^^^^^^^^^^^^^^^^ abnormal termination occurred here
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+note: add `-Zmiri-genmc-print-genmc-output` to MIRIFLAGS to see the detailed GenMC error report
+
+error: aborting due to 1 previous error
+

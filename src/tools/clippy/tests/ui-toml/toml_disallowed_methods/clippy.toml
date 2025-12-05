@@ -1,0 +1,20 @@
+disallowed-methods = [
+    # just a string is shorthand for path only
+    "std::iter::Iterator::sum",
+    "f32::clamp",
+    "slice::sort_unstable",
+    "futures::stream::select_all",
+    # can give path and reason with an inline table
+    { path = "regex::Regex::is_match", reason = "no matching allowed" },
+    # can use an inline table but omit reason
+    { path = "regex::Regex::new" },
+    # local paths
+    "conf_disallowed_methods::local_fn",
+    "conf_disallowed_methods::local_mod::f",
+    "conf_disallowed_methods::Struct::method",
+    "conf_disallowed_methods::Trait::provided_method",
+    "conf_disallowed_methods::Trait::implemented_method",
+    # re-exports
+    "conf_disallowed_methods::identity",
+    "conf_disallowed_methods::renamed",
+]

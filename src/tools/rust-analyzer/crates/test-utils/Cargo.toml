@@ -1,0 +1,26 @@
+[package]
+name = "test-utils"
+version = "0.0.0"
+repository.workspace = true
+description = "Assorted testing utilities for rust-analyzer."
+
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[lib]
+doctest = false
+
+[dependencies]
+# Avoid adding deps here, this crate is widely used in tests it should compile fast!
+dissimilar = "1.0.10"
+text-size.workspace = true
+rustc-hash.workspace = true
+
+paths.workspace = true
+stdx.workspace = true
+profile.workspace = true
+
+[lints]
+workspace = true

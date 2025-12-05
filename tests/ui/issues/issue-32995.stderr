@@ -1,0 +1,45 @@
+error[E0214]: parenthesized type parameters may only be used with a `Fn` trait
+  --> $DIR/issue-32995.rs:2:12
+   |
+LL |     let x: usize() = 1;
+   |            ^^^^^^^ only `Fn` traits may use parentheses
+
+error[E0214]: parenthesized type parameters may only be used with a `Fn` trait
+  --> $DIR/issue-32995.rs:5:19
+   |
+LL |     let b: ::std::boxed()::Box<_> = Box::new(1);
+   |                   ^^^^^^^ only `Fn` traits may use parentheses
+
+error[E0214]: parenthesized type parameters may only be used with a `Fn` trait
+  --> $DIR/issue-32995.rs:8:20
+   |
+LL |     let p = ::std::str::()::from_utf8(b"foo").unwrap();
+   |                    ^^^^^^^ only `Fn` traits may use parentheses
+
+error[E0214]: parenthesized type parameters may only be used with a `Fn` trait
+  --> $DIR/issue-32995.rs:11:25
+   |
+LL |     let p = ::std::str::from_utf8::()(b"foo").unwrap();
+   |                         ^^^^^^^^^^^^^ only `Fn` traits may use parentheses
+
+error[E0214]: parenthesized type parameters may only be used with a `Fn` trait
+  --> $DIR/issue-32995.rs:14:29
+   |
+LL |     let o : Box<dyn (::std::marker()::Send)> = Box::new(1);
+   |                             ^^^^^^^^ only `Fn` traits may use parentheses
+
+error[E0214]: parenthesized type parameters may only be used with a `Fn` trait
+  --> $DIR/issue-32995.rs:17:35
+   |
+LL |     let o : Box<dyn Send + ::std::marker()::Sync> = Box::new(1);
+   |                                   ^^^^^^^^ only `Fn` traits may use parentheses
+
+error[E0214]: parenthesized type parameters may only be used with a `Fn` trait
+  --> $DIR/issue-32995.rs:22:13
+   |
+LL |     let d : X() = Default::default();
+   |             ^^^ only `Fn` traits may use parentheses
+
+error: aborting due to 7 previous errors
+
+For more information about this error, try `rustc --explain E0214`.

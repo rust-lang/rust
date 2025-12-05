@@ -1,0 +1,32 @@
+error[E0277]: the trait bound `(): const Foo` is not satisfied
+  --> $DIR/const-opaque.rs:30:22
+   |
+LL |     let opaque = bar(());
+   |                  --- ^^
+   |                  |
+   |                  required by a bound introduced by this call
+   |
+note: required by a bound in `bar`
+  --> $DIR/const-opaque.rs:25:17
+   |
+LL | const fn bar<T: [const] Foo>(t: T) -> impl [const] Foo {
+   |                 ^^^^^^^^^^^ required by this bound in `bar`
+help: make the `impl` of trait `Foo` `const`
+   |
+LL | impl const Foo for () {
+   |      +++++
+
+error[E0277]: the trait bound `(): const Foo` is not satisfied
+  --> $DIR/const-opaque.rs:32:12
+   |
+LL |     opaque.method();
+   |            ^^^^^^
+   |
+help: make the `impl` of trait `Foo` `const`
+   |
+LL | impl const Foo for () {
+   |      +++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

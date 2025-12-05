@@ -1,0 +1,263 @@
+error: cannot find macro `in_mod` in this scope
+  --> $DIR/key-value-expansion-scope.rs:3:10
+   |
+LL | #![doc = in_mod!()]
+   |          ^^^^^^
+   |
+   = help: have you added the `#[macro_use]` on the module/import?
+
+error: cannot find macro `in_block` in this scope
+  --> $DIR/key-value-expansion-scope.rs:6:10
+   |
+LL | #![doc = in_block!()]
+   |          ^^^^^^^^
+   |
+   = help: have you added the `#[macro_use]` on the module/import?
+
+error: cannot find macro `in_root` in this scope
+  --> $DIR/key-value-expansion-scope.rs:8:9
+   |
+LL | #[doc = in_root!()]
+   |         ^^^^^^^
+   |
+   = help: have you added the `#[macro_use]` on the module/import?
+
+error: cannot find macro `in_mod` in this scope
+  --> $DIR/key-value-expansion-scope.rs:9:9
+   |
+LL | #[doc = in_mod!()]
+   |         ^^^^^^
+   |
+   = help: have you added the `#[macro_use]` on the module/import?
+
+error: cannot find macro `in_mod_escape` in this scope
+  --> $DIR/key-value-expansion-scope.rs:10:9
+   |
+LL | #[doc = in_mod_escape!()]
+   |         ^^^^^^^^^^^^^
+   |
+   = help: have you added the `#[macro_use]` on the module/import?
+
+error: cannot find macro `in_block` in this scope
+  --> $DIR/key-value-expansion-scope.rs:11:9
+   |
+LL | #[doc = in_block!()]
+   |         ^^^^^^^^
+   |
+   = help: have you added the `#[macro_use]` on the module/import?
+
+error: cannot find macro `in_root` in this scope
+  --> $DIR/key-value-expansion-scope.rs:13:14
+   |
+LL |     #![doc = in_root!()]
+   |              ^^^^^^^
+   |
+   = help: have you added the `#[macro_use]` on the module/import?
+
+error: cannot find macro `in_mod` in this scope
+  --> $DIR/key-value-expansion-scope.rs:14:14
+   |
+LL |     #![doc = in_mod!()]
+   |              ^^^^^^
+   |
+   = help: have you added the `#[macro_use]` on the module/import?
+
+error: cannot find macro `in_mod_escape` in this scope
+  --> $DIR/key-value-expansion-scope.rs:15:14
+   |
+LL |     #![doc = in_mod_escape!()]
+   |              ^^^^^^^^^^^^^
+   |
+   = help: have you added the `#[macro_use]` on the module/import?
+
+error: cannot find macro `in_block` in this scope
+  --> $DIR/key-value-expansion-scope.rs:16:14
+   |
+LL |     #![doc = in_block!()]
+   |              ^^^^^^^^
+   |
+   = help: have you added the `#[macro_use]` on the module/import?
+
+error: cannot find macro `in_block` in this scope
+  --> $DIR/key-value-expansion-scope.rs:50:9
+   |
+LL | #[doc = in_block!()]
+   |         ^^^^^^^^
+   |
+   = help: have you added the `#[macro_use]` on the module/import?
+
+error: cannot find macro `in_block` in this scope
+  --> $DIR/key-value-expansion-scope.rs:52:14
+   |
+LL |     #![doc = in_block!()]
+   |              ^^^^^^^^
+   |
+   = help: have you added the `#[macro_use]` on the module/import?
+
+error: cannot find macro `in_mod` in this scope
+  --> $DIR/key-value-expansion-scope.rs:63:9
+   |
+LL | #[doc = in_mod!()]
+   |         ^^^^^^
+   |
+   = help: have you added the `#[macro_use]` on the module/import?
+
+error: cannot find macro `in_block` in this scope
+  --> $DIR/key-value-expansion-scope.rs:65:9
+   |
+LL | #[doc = in_block!()]
+   |         ^^^^^^^^
+   |
+   = help: have you added the `#[macro_use]` on the module/import?
+
+error: cannot find macro `in_mod` in this scope
+  --> $DIR/key-value-expansion-scope.rs:68:14
+   |
+LL |     #![doc = in_mod!()]
+   |              ^^^^^^
+   |
+   = help: have you added the `#[macro_use]` on the module/import?
+
+error: cannot find macro `in_block` in this scope
+  --> $DIR/key-value-expansion-scope.rs:70:14
+   |
+LL |     #![doc = in_block!()]
+   |              ^^^^^^^^
+   |
+   = help: have you added the `#[macro_use]` on the module/import?
+
+error: cannot find macro `in_root` in the current scope when looking from the crate root
+  --> $DIR/key-value-expansion-scope.rs:1:10
+   |
+LL | #![doc = in_root!()]
+   |          ^^^^^^^ not found from the crate root
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #124535 <https://github.com/rust-lang/rust/issues/124535>
+   = help: import `macro_rules` with `use` to make it callable above its definition
+   = note: `#[deny(out_of_scope_macro_calls)]` (part of `#[deny(future_incompatible)]`) on by default
+
+error: cannot find macro `in_mod_escape` in the current scope when looking from the crate root
+  --> $DIR/key-value-expansion-scope.rs:4:10
+   |
+LL | #![doc = in_mod_escape!()]
+   |          ^^^^^^^^^^^^^ not found from the crate root
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #124535 <https://github.com/rust-lang/rust/issues/124535>
+   = help: import `macro_rules` with `use` to make it callable above its definition
+
+error: cannot find macro `in_mod` in the current scope when looking from module `macros_stay`
+  --> $DIR/key-value-expansion-scope.rs:21:9
+   |
+LL | #[doc = in_mod!()]
+   |         ^^^^^^ not found from module `macros_stay`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #124535 <https://github.com/rust-lang/rust/issues/124535>
+   = help: import `macro_rules` with `use` to make it callable above its definition
+
+error: cannot find macro `in_mod` in the current scope when looking from module `macros_stay`
+  --> $DIR/key-value-expansion-scope.rs:24:14
+   |
+LL |     #![doc = in_mod!()]
+   |              ^^^^^^ not found from module `macros_stay`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #124535 <https://github.com/rust-lang/rust/issues/124535>
+   = help: import `macro_rules` with `use` to make it callable above its definition
+
+error: cannot find macro `in_mod_escape` in the current scope when looking from module `macros_escape`
+  --> $DIR/key-value-expansion-scope.rs:36:9
+   |
+LL | #[doc = in_mod_escape!()]
+   |         ^^^^^^^^^^^^^ not found from module `macros_escape`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #124535 <https://github.com/rust-lang/rust/issues/124535>
+   = help: import `macro_rules` with `use` to make it callable above its definition
+
+error: cannot find macro `in_mod_escape` in the current scope when looking from module `macros_escape`
+  --> $DIR/key-value-expansion-scope.rs:39:14
+   |
+LL |     #![doc = in_mod_escape!()]
+   |              ^^^^^^^^^^^^^ not found from module `macros_escape`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #124535 <https://github.com/rust-lang/rust/issues/124535>
+   = help: import `macro_rules` with `use` to make it callable above its definition
+
+error: aborting due to 22 previous errors
+
+Future incompatibility report: Future breakage diagnostic:
+error: cannot find macro `in_root` in the current scope when looking from the crate root
+  --> $DIR/key-value-expansion-scope.rs:1:10
+   |
+LL | #![doc = in_root!()]
+   |          ^^^^^^^ not found from the crate root
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #124535 <https://github.com/rust-lang/rust/issues/124535>
+   = help: import `macro_rules` with `use` to make it callable above its definition
+   = note: `#[deny(out_of_scope_macro_calls)]` (part of `#[deny(future_incompatible)]`) on by default
+
+Future breakage diagnostic:
+error: cannot find macro `in_mod_escape` in the current scope when looking from the crate root
+  --> $DIR/key-value-expansion-scope.rs:4:10
+   |
+LL | #![doc = in_mod_escape!()]
+   |          ^^^^^^^^^^^^^ not found from the crate root
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #124535 <https://github.com/rust-lang/rust/issues/124535>
+   = help: import `macro_rules` with `use` to make it callable above its definition
+   = note: `#[deny(out_of_scope_macro_calls)]` (part of `#[deny(future_incompatible)]`) on by default
+
+Future breakage diagnostic:
+error: cannot find macro `in_mod` in the current scope when looking from module `macros_stay`
+  --> $DIR/key-value-expansion-scope.rs:21:9
+   |
+LL | #[doc = in_mod!()]
+   |         ^^^^^^ not found from module `macros_stay`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #124535 <https://github.com/rust-lang/rust/issues/124535>
+   = help: import `macro_rules` with `use` to make it callable above its definition
+   = note: `#[deny(out_of_scope_macro_calls)]` (part of `#[deny(future_incompatible)]`) on by default
+
+Future breakage diagnostic:
+error: cannot find macro `in_mod` in the current scope when looking from module `macros_stay`
+  --> $DIR/key-value-expansion-scope.rs:24:14
+   |
+LL |     #![doc = in_mod!()]
+   |              ^^^^^^ not found from module `macros_stay`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #124535 <https://github.com/rust-lang/rust/issues/124535>
+   = help: import `macro_rules` with `use` to make it callable above its definition
+   = note: `#[deny(out_of_scope_macro_calls)]` (part of `#[deny(future_incompatible)]`) on by default
+
+Future breakage diagnostic:
+error: cannot find macro `in_mod_escape` in the current scope when looking from module `macros_escape`
+  --> $DIR/key-value-expansion-scope.rs:36:9
+   |
+LL | #[doc = in_mod_escape!()]
+   |         ^^^^^^^^^^^^^ not found from module `macros_escape`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #124535 <https://github.com/rust-lang/rust/issues/124535>
+   = help: import `macro_rules` with `use` to make it callable above its definition
+   = note: `#[deny(out_of_scope_macro_calls)]` (part of `#[deny(future_incompatible)]`) on by default
+
+Future breakage diagnostic:
+error: cannot find macro `in_mod_escape` in the current scope when looking from module `macros_escape`
+  --> $DIR/key-value-expansion-scope.rs:39:14
+   |
+LL |     #![doc = in_mod_escape!()]
+   |              ^^^^^^^^^^^^^ not found from module `macros_escape`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #124535 <https://github.com/rust-lang/rust/issues/124535>
+   = help: import `macro_rules` with `use` to make it callable above its definition
+   = note: `#[deny(out_of_scope_macro_calls)]` (part of `#[deny(future_incompatible)]`) on by default
+

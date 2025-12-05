@@ -1,0 +1,25 @@
+error[E0282]: type annotations needed
+  --> $DIR/type-inference-unconstrained-none.rs:4:21
+   |
+LL |     format!("{:?}", None);
+   |                     ^^^^ cannot infer type of the type parameter `T` declared on the enum `Option`
+   |
+help: consider specifying the generic argument
+   |
+LL |     format!("{:?}", None::<T>);
+   |                         +++++
+
+error[E0282]: type annotations needed
+  --> $DIR/type-inference-unconstrained-none.rs:8:5
+   |
+LL |     None;
+   |     ^^^^ cannot infer type of the type parameter `T` declared on the enum `Option`
+   |
+help: consider specifying the generic argument
+   |
+LL |     None::<T>;
+   |         +++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0282`.

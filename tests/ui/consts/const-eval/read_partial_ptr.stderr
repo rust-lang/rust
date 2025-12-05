@@ -1,0 +1,39 @@
+error[E0080]: unable to read parts of a pointer from memory at ALLOC0
+  --> $DIR/read_partial_ptr.rs:10:13
+   |
+LL |     let x = *p;
+   |             ^^ evaluation of `PARTIAL_OVERWRITE` failed here
+   |
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
+
+error[E0080]: unable to read parts of a pointer from memory at ALLOC1
+  --> $DIR/read_partial_ptr.rs:23:13
+   |
+LL |     let x = *p;
+   |             ^^ evaluation of `PTR_BYTES_SWAP` failed here
+   |
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
+
+error[E0080]: unable to read parts of a pointer from memory at ALLOC2
+  --> $DIR/read_partial_ptr.rs:34:13
+   |
+LL |     let x = *p;
+   |             ^^ evaluation of `PTR_BYTES_REPEAT` failed here
+   |
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
+
+error[E0080]: unable to read parts of a pointer from memory at ALLOC3
+  --> $DIR/read_partial_ptr.rs:46:13
+   |
+LL |     let x = *p;
+   |             ^^ evaluation of `PTR_BYTES_MIX` failed here
+   |
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0080`.

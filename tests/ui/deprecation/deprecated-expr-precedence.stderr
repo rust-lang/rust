@@ -1,0 +1,21 @@
+warning: `#[deprecated]` attribute cannot be used on expressions
+  --> $DIR/deprecated-expr-precedence.rs:6:5
+   |
+LL |     #[deprecated] 0
+   |     ^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = help: `#[deprecated]` can be applied to associated consts, associated types, constants, crates, data types, enum variants, foreign statics, functions, inherent impl blocks, macro defs, modules, statics, struct fields, traits, type aliases, unions, and use statements
+   = note: requested on the command line with `-W unused-attributes`
+
+error[E0308]: mismatched types
+  --> $DIR/deprecated-expr-precedence.rs:6:19
+   |
+LL | pub fn public() {
+   |                - help: try adding a return type: `-> i32`
+LL |     #[deprecated] 0
+   |                   ^ expected `()`, found integer
+
+error: aborting due to 1 previous error; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0308`.

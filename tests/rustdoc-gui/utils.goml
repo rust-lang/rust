@@ -1,0 +1,58 @@
+// This file contains code to be re-used by other tests.
+define-function: (
+    "switch-theme",
+    [theme],
+    block {
+        // Set the theme.
+        // Open the settings menu.
+        click: "rustdoc-toolbar .settings-menu"
+        // Wait for the popover to appear...
+        wait-for: "#settings"
+        // Change the setting.
+        click: "#theme-"+ |theme|
+        // Close the popover.
+        click: "rustdoc-toolbar .settings-menu"
+        // Ensure that the local storage was correctly updated.
+        assert-local-storage: {"rustdoc-theme": |theme|}
+    },
+)
+
+define-function: (
+    "switch-theme-mobile",
+    [theme],
+    block {
+        // Set the theme.
+        // Open the settings menu.
+        click: "rustdoc-topbar .settings-menu"
+        // Wait for the popover to appear...
+        wait-for: "#settings"
+        // Change the setting.
+        click: "#theme-"+ |theme|
+        // Close the popover.
+        click: "rustdoc-topbar .settings-menu"
+        // Ensure that the local storage was correctly updated.
+        assert-local-storage: {"rustdoc-theme": |theme|}
+    },
+)
+
+define-function: (
+    "perform-search",
+    [query],
+    block {
+        // Block requests with doubled `//`.
+        // Amazon S3 doesn't support them, but other web hosts do,
+        // and so do file:/// URLs, which means we need to block
+        // it here if we want to avoid breaking the main docs site.
+        // https://github.com/rust-lang/rust/issues/145646
+        block-network-request: "file://*//*"
+        // Perform search
+        click: "#search-button"
+        wait-for: ".search-input"
+        write-into: (".search-input", |query|)
+        press-key: 'Enter'
+        // wait for the search to start
+        wait-for: "#search-tabs"
+        // then wait for it to finish
+        wait-for-false: "#search-tabs .count.loading"
+    }
+)

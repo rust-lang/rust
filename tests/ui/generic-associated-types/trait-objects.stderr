@@ -1,0 +1,19 @@
+error[E0038]: the trait `StreamingIterator` is not dyn compatible
+  --> $DIR/trait-objects.rs:8:21
+   |
+LL | fn min_size(x: &mut dyn for<'a> StreamingIterator<Item<'a> = &'a i32>) -> usize {
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `StreamingIterator` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/trait-objects.rs:2:10
+   |
+LL | trait StreamingIterator {
+   |       ----------------- this trait is not dyn compatible...
+LL |     type Item<'a> where Self: 'a;
+   |          ^^^^ ...because it contains the generic associated type `Item`
+   = help: consider moving `Item` to another trait
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0038`.

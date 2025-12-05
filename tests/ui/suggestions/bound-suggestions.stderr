@@ -1,0 +1,152 @@
+error[E0277]: `impl Sized` doesn't implement `Debug`
+  --> $DIR/bound-suggestions.rs:9:22
+   |
+LL |     println!("{:?}", t);
+   |               ----   ^ `impl Sized` cannot be formatted using `{:?}` because it doesn't implement `Debug`
+   |               |
+   |               required by this formatting parameter
+   |
+   = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: consider restricting opaque type `impl Sized` with trait `Debug`
+   |
+LL | fn test_impl(t: impl Sized + std::fmt::Debug) {
+   |                            +++++++++++++++++
+
+error[E0277]: `T` doesn't implement `Debug`
+  --> $DIR/bound-suggestions.rs:15:22
+   |
+LL |     println!("{:?}", t);
+   |               ----   ^ `T` cannot be formatted using `{:?}` because it doesn't implement `Debug`
+   |               |
+   |               required by this formatting parameter
+   |
+   = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: consider restricting type parameter `T` with trait `Debug`
+   |
+LL | fn test_no_bounds<T: std::fmt::Debug>(t: T) {
+   |                    +++++++++++++++++
+
+error[E0277]: `T` doesn't implement `Debug`
+  --> $DIR/bound-suggestions.rs:21:22
+   |
+LL |     println!("{:?}", t);
+   |               ----   ^ `T` cannot be formatted using `{:?}` because it doesn't implement `Debug`
+   |               |
+   |               required by this formatting parameter
+   |
+   = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: consider further restricting type parameter `T` with trait `Debug`
+   |
+LL | fn test_one_bound<T: Sized + std::fmt::Debug>(t: T) {
+   |                            +++++++++++++++++
+
+error[E0277]: `Y` doesn't implement `Debug`
+  --> $DIR/bound-suggestions.rs:27:30
+   |
+LL |     println!("{:?} {:?}", x, y);
+   |                    ----      ^ `Y` cannot be formatted using `{:?}` because it doesn't implement `Debug`
+   |                    |
+   |                    required by this formatting parameter
+   |
+   = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: consider further restricting type parameter `Y` with trait `Debug`
+   |
+LL | fn test_no_bounds_where<X, Y>(x: X, y: Y) where X: std::fmt::Debug, Y: std::fmt::Debug {
+   |                                                                     ++++++++++++++++++
+
+error[E0277]: `X` doesn't implement `Debug`
+  --> $DIR/bound-suggestions.rs:33:22
+   |
+LL |     println!("{:?}", x);
+   |               ----   ^ `X` cannot be formatted using `{:?}` because it doesn't implement `Debug`
+   |               |
+   |               required by this formatting parameter
+   |
+   = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: consider further restricting type parameter `X` with trait `Debug`
+   |
+LL | fn test_one_bound_where<X>(x: X) where X: Sized + std::fmt::Debug {
+   |                                                 +++++++++++++++++
+
+error[E0277]: `X` doesn't implement `Debug`
+  --> $DIR/bound-suggestions.rs:39:22
+   |
+LL |     println!("{:?}", x);
+   |               ----   ^ `X` cannot be formatted using `{:?}` because it doesn't implement `Debug`
+   |               |
+   |               required by this formatting parameter
+   |
+   = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: consider further restricting type parameter `X` with trait `Debug`
+   |
+LL | fn test_many_bounds_where<X>(x: X) where X: Sized + std::fmt::Debug, X: Sized {
+   |                                                   +++++++++++++++++
+
+error[E0277]: the size for values of type `Self` cannot be known at compilation time
+  --> $DIR/bound-suggestions.rs:45:46
+   |
+LL |     const SIZE: usize = core::mem::size_of::<Self>();
+   |                                              ^^^^ doesn't have a size known at compile-time
+   |
+note: required by an implicit `Sized` bound in `std::mem::size_of`
+  --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
+help: consider further restricting `Self`
+   |
+LL | trait Foo<T>: Sized {
+   |             +++++++
+
+error[E0277]: the size for values of type `Self` cannot be known at compilation time
+  --> $DIR/bound-suggestions.rs:51:46
+   |
+LL |     const SIZE: usize = core::mem::size_of::<Self>();
+   |                                              ^^^^ doesn't have a size known at compile-time
+   |
+note: required by an implicit `Sized` bound in `std::mem::size_of`
+  --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
+help: consider further restricting `Self`
+   |
+LL | trait Bar: std::fmt::Display + Sized {
+   |                              +++++++
+
+error[E0277]: the size for values of type `Self` cannot be known at compilation time
+  --> $DIR/bound-suggestions.rs:57:46
+   |
+LL |     const SIZE: usize = core::mem::size_of::<Self>();
+   |                                              ^^^^ doesn't have a size known at compile-time
+   |
+note: required by an implicit `Sized` bound in `std::mem::size_of`
+  --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
+help: consider further restricting `Self`
+   |
+LL | trait Baz: Sized where Self: std::fmt::Display {
+   |          +++++++
+
+error[E0277]: the size for values of type `Self` cannot be known at compilation time
+  --> $DIR/bound-suggestions.rs:63:46
+   |
+LL |     const SIZE: usize = core::mem::size_of::<Self>();
+   |                                              ^^^^ doesn't have a size known at compile-time
+   |
+note: required by an implicit `Sized` bound in `std::mem::size_of`
+  --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
+help: consider further restricting `Self`
+   |
+LL | trait Qux<T>: Sized where Self: std::fmt::Display {
+   |             +++++++
+
+error[E0277]: the size for values of type `Self` cannot be known at compilation time
+  --> $DIR/bound-suggestions.rs:69:46
+   |
+LL |     const SIZE: usize = core::mem::size_of::<Self>();
+   |                                              ^^^^ doesn't have a size known at compile-time
+   |
+note: required by an implicit `Sized` bound in `std::mem::size_of`
+  --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
+help: consider further restricting `Self`
+   |
+LL | trait Bat<T>: std::fmt::Display + Sized {
+   |                                 +++++++
+
+error: aborting due to 11 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

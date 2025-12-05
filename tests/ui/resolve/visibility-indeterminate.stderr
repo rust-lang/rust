@@ -1,0 +1,15 @@
+error[E0433]: failed to resolve: could not find `bar` in the list of imported crates
+  --> $DIR/visibility-indeterminate.rs:5:10
+   |
+LL | pub(in ::bar) struct Baz {}
+   |          ^^^ could not find `bar` in the list of imported crates
+
+error: cannot find macro `foo` in this scope
+  --> $DIR/visibility-indeterminate.rs:3:1
+   |
+LL | foo!();
+   | ^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0433`.

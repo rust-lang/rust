@@ -1,0 +1,41 @@
+error[E0603]: tuple struct constructor `A` is private
+  --> $DIR/suggest-making-field-public.rs:13:8
+   |
+LL |     pub struct A(pub(self)String);
+   |                  --------------- a constructor is private if any of the fields is private
+...
+LL |     a::A("a".into());
+   |        ^ private tuple struct constructor
+   |
+note: the tuple struct constructor `A` is defined here
+  --> $DIR/suggest-making-field-public.rs:3:5
+   |
+LL |     pub struct A(pub(self)String);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: consider making the field publicly accessible
+   |
+LL -     pub struct A(pub(self)String);
+LL +     pub struct A(pub String);
+   |
+
+error[E0423]: cannot initialize a tuple struct which contains private fields
+  --> $DIR/suggest-making-field-public.rs:9:9
+   |
+LL |         A("".into());
+   |         ^
+   |
+note: constructor is not visible here due to private fields
+  --> $DIR/suggest-making-field-public.rs:3:18
+   |
+LL |     pub struct A(pub(self)String);
+   |                  ^^^^^^^^^^^^^^^ private field
+help: consider making the field publicly accessible
+   |
+LL -     pub struct A(pub(self)String);
+LL +     pub struct A(pub String);
+   |
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0423, E0603.
+For more information about an error, try `rustc --explain E0423`.

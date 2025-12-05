@@ -1,0 +1,68 @@
+// MIR for `variant_b::{closure#0}` after PreCodegen
+
+fn variant_b::{closure#0}(_1: &mut {closure@$DIR/slice_filter.rs:11:25: 11:41}, _2: &&(usize, usize, usize, usize)) -> bool {
+    let mut _0: bool;
+    let mut _3: &(usize, usize, usize, usize);
+    let _4: usize;
+    let _5: usize;
+    let _6: usize;
+    let _7: usize;
+    let mut _8: bool;
+    let mut _9: bool;
+    let mut _10: bool;
+    scope 1 {
+        debug a => _4;
+        debug b => _5;
+        debug c => _6;
+        debug d => _7;
+    }
+
+    bb0: {
+        _3 = copy (*_2);
+        _4 = copy ((*_3).0: usize);
+        _5 = copy ((*_3).1: usize);
+        _6 = copy ((*_3).2: usize);
+        _7 = copy ((*_3).3: usize);
+        StorageLive(_8);
+        _8 = Le(copy _4, copy _6);
+        switchInt(move _8) -> [0: bb2, otherwise: bb1];
+    }
+
+    bb1: {
+        StorageLive(_9);
+        _9 = Le(copy _7, copy _5);
+        switchInt(move _9) -> [0: bb2, otherwise: bb6];
+    }
+
+    bb2: {
+        StorageLive(_10);
+        _10 = Le(copy _6, copy _4);
+        switchInt(move _10) -> [0: bb3, otherwise: bb4];
+    }
+
+    bb3: {
+        _0 = const false;
+        goto -> bb5;
+    }
+
+    bb4: {
+        _0 = Le(copy _5, copy _7);
+        goto -> bb5;
+    }
+
+    bb5: {
+        StorageDead(_10);
+        goto -> bb7;
+    }
+
+    bb6: {
+        _0 = const true;
+        goto -> bb7;
+    }
+
+    bb7: {
+        StorageDead(_9);
+        StorageDead(_8);
+        return;
+    }
+}

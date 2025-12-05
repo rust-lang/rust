@@ -1,0 +1,24 @@
+- // MIR for `hello` before GVN
++ // MIR for `hello` after GVN
+  
+  fn hello() -> () {
+      let mut _0: ();
+      let mut _1: !;
+  
+      bb0: {
+          goto -> bb2;
+      }
+  
+      bb1: {
+          _1 = begin_panic::<&str>(const "explicit panic") -> unwind continue;
+      }
+  
+      bb2: {
+          return;
+      }
+  }
+  
+  ALLOC0 (size: 14, align: 1) {
+      65 78 70 6c 69 63 69 74 20 70 61 6e 69 63       │ explicit panic
+  }
+  

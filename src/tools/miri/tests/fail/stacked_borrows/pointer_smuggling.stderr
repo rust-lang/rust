@@ -1,0 +1,30 @@
+error: Undefined Behavior: attempting a read access using <TAG> at ALLOC[0x0], but that tag does not exist in the borrow stack for this location
+  --> tests/fail/stacked_borrows/pointer_smuggling.rs:LL:CC
+   |
+LL |     let _x = unsafe { *PTR };
+   |                       ^^^^ this error occurs as part of an access at ALLOC[0x0..0x1]
+   |
+   = help: this indicates a potential bug in the program: it performed an invalid operation, but the Stacked Borrows rules it violated are still experimental
+   = help: see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/stacked-borrows.md for further information
+help: <TAG> was created by a SharedReadWrite retag at offsets [0x0..0x1]
+  --> tests/fail/stacked_borrows/pointer_smuggling.rs:LL:CC
+   |
+LL |         PTR = x;
+   |               ^
+help: <TAG> was later invalidated at offsets [0x0..0x1] by a write access
+  --> tests/fail/stacked_borrows/pointer_smuggling.rs:LL:CC
+   |
+LL |     *val = 2; // this invalidates any raw ptrs `fun1` might have created.
+   |     ^^^^^^^^
+   = note: BACKTRACE (of the first span):
+   = note: inside `fun2` at tests/fail/stacked_borrows/pointer_smuggling.rs:LL:CC
+note: inside `main`
+  --> tests/fail/stacked_borrows/pointer_smuggling.rs:LL:CC
+   |
+LL |     fun2(); // if they now use a raw ptr they break our reference
+   |     ^^^^^^
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to 1 previous error
+

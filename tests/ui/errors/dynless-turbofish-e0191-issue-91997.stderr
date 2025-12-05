@@ -1,0 +1,23 @@
+warning: trait objects without an explicit `dyn` are deprecated
+  --> $DIR/dynless-turbofish-e0191-issue-91997.rs:5:13
+   |
+LL |     let _ = MyIterator::next;
+   |             ^^^^^^^^^^
+   |
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/warnings-promoted-to-error.html>
+   = note: `#[warn(bare_trait_objects)]` (part of `#[warn(rust_2021_compatibility)]`) on by default
+help: if this is a dyn-compatible trait, use `dyn`
+   |
+LL |     let _ = <dyn MyIterator>::next;
+   |             ++++           +
+
+error[E0191]: the value of the associated type `Item` in `Iterator` must be specified
+  --> $DIR/dynless-turbofish-e0191-issue-91997.rs:5:13
+   |
+LL |     let _ = MyIterator::next;
+   |             ^^^^^^^^^^ help: specify the associated type: `MyIterator::<Item = Type>`
+
+error: aborting due to 1 previous error; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0191`.

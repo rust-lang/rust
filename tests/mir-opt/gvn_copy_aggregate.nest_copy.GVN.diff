@@ -1,0 +1,81 @@
+- // MIR for `nest_copy` before GVN
++ // MIR for `nest_copy` after GVN
+  
+  fn nest_copy(_1: &NestCopy) -> NestCopy {
+      debug v => _1;
+      let mut _0: NestCopy;
+      let _2: i32;
+      let mut _6: i32;
+      let mut _7: u64;
+      let mut _8: [i8; 3];
+      let mut _10: i32;
+      let mut _11: AllCopy;
+      scope 1 {
+          debug a => _2;
+          let _3: u64;
+          scope 2 {
+              debug b => _3;
+              let _4: [i8; 3];
+              scope 3 {
+                  debug c => _4;
+                  let _5: AllCopy;
+                  scope 4 {
+                      debug all_copy => _5;
+                      let _9: i32;
+                      scope 5 {
+                          debug d => _9;
+                      }
+                  }
+              }
+          }
+      }
+  
+      bb0: {
+-         StorageLive(_2);
++         nop;
+          _2 = copy (((*_1).1: AllCopy).0: i32);
+-         StorageLive(_3);
++         nop;
+          _3 = copy (((*_1).1: AllCopy).1: u64);
+-         StorageLive(_4);
++         nop;
+          _4 = copy (((*_1).1: AllCopy).2: [i8; 3]);
+-         StorageLive(_5);
++         nop;
+          StorageLive(_6);
+          _6 = copy _2;
+          StorageLive(_7);
+          _7 = copy _3;
+          StorageLive(_8);
+          _8 = copy _4;
+-         _5 = AllCopy { a: move _6, b: move _7, c: move _8 };
++         _5 = copy ((*_1).1: AllCopy);
+          StorageDead(_8);
+          StorageDead(_7);
+          StorageDead(_6);
+-         StorageLive(_9);
++         nop;
+          _9 = copy ((*_1).0: i32);
+          StorageLive(_10);
+          _10 = copy _9;
+          StorageLive(_11);
+-         _11 = move _5;
+-         _0 = NestCopy { d: move _10, all_copy: move _11 };
++         _11 = copy _5;
++         _0 = copy (*_1);
+          StorageDead(_11);
+          StorageDead(_10);
+-         StorageDead(_9);
+-         StorageDead(_5);
+-         StorageDead(_4);
+-         StorageDead(_3);
+-         StorageDead(_2);
++         nop;
++         nop;
++         nop;
++         nop;
++         nop;
+          return;
+      }
+  }
+  

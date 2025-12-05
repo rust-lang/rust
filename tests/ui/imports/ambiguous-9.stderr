@@ -1,0 +1,113 @@
+warning: ambiguous glob re-exports
+  --> $DIR/ambiguous-9.rs:7:13
+   |
+LL |     pub use self::range::*;
+   |             ^^^^^^^^^^^^^^ the name `date_range` in the value namespace is first re-exported here
+LL |     use super::prelude::*;
+   |         ----------------- but the name `date_range` in the value namespace is also re-exported here
+   |
+   = note: `#[warn(ambiguous_glob_reexports)]` on by default
+
+error: `date_range` is ambiguous
+  --> $DIR/ambiguous-9.rs:23:5
+   |
+LL |     date_range();
+   |     ^^^^^^^^^^ ambiguous name
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #114095 <https://github.com/rust-lang/rust/issues/114095>
+   = note: ambiguous because of multiple glob imports of a name in the same module
+note: `date_range` could refer to the function imported here
+  --> $DIR/ambiguous-9.rs:7:13
+   |
+LL |     pub use self::range::*;
+   |             ^^^^^^^^^^^^^^
+   = help: consider adding an explicit import of `date_range` to disambiguate
+note: `date_range` could also refer to the function imported here
+  --> $DIR/ambiguous-9.rs:8:9
+   |
+LL |     use super::prelude::*;
+   |         ^^^^^^^^^^^^^^^^^
+   = help: consider adding an explicit import of `date_range` to disambiguate
+   = note: `#[deny(ambiguous_glob_imports)]` (part of `#[deny(future_incompatible)]`) on by default
+
+warning: ambiguous glob re-exports
+  --> $DIR/ambiguous-9.rs:15:13
+   |
+LL |     pub use self::t::*;
+   |             ^^^^^^^^^^ the name `date_range` in the value namespace is first re-exported here
+LL |     pub use super::dsl::*;
+   |             ------------- but the name `date_range` in the value namespace is also re-exported here
+
+error: `date_range` is ambiguous
+  --> $DIR/ambiguous-9.rs:23:5
+   |
+LL |     date_range();
+   |     ^^^^^^^^^^ ambiguous name
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #114095 <https://github.com/rust-lang/rust/issues/114095>
+   = note: ambiguous because of multiple glob imports of a name in the same module
+note: `date_range` could refer to the function imported here
+  --> $DIR/ambiguous-9.rs:19:5
+   |
+LL | use dsl::*;
+   |     ^^^^^^
+   = help: consider adding an explicit import of `date_range` to disambiguate
+note: `date_range` could also refer to the function imported here
+  --> $DIR/ambiguous-9.rs:20:5
+   |
+LL | use prelude::*;
+   |     ^^^^^^^^^^
+   = help: consider adding an explicit import of `date_range` to disambiguate
+
+error: aborting due to 2 previous errors; 2 warnings emitted
+
+Future incompatibility report: Future breakage diagnostic:
+error: `date_range` is ambiguous
+  --> $DIR/ambiguous-9.rs:23:5
+   |
+LL |     date_range();
+   |     ^^^^^^^^^^ ambiguous name
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #114095 <https://github.com/rust-lang/rust/issues/114095>
+   = note: ambiguous because of multiple glob imports of a name in the same module
+note: `date_range` could refer to the function imported here
+  --> $DIR/ambiguous-9.rs:7:13
+   |
+LL |     pub use self::range::*;
+   |             ^^^^^^^^^^^^^^
+   = help: consider adding an explicit import of `date_range` to disambiguate
+note: `date_range` could also refer to the function imported here
+  --> $DIR/ambiguous-9.rs:8:9
+   |
+LL |     use super::prelude::*;
+   |         ^^^^^^^^^^^^^^^^^
+   = help: consider adding an explicit import of `date_range` to disambiguate
+   = note: `#[deny(ambiguous_glob_imports)]` (part of `#[deny(future_incompatible)]`) on by default
+
+Future breakage diagnostic:
+error: `date_range` is ambiguous
+  --> $DIR/ambiguous-9.rs:23:5
+   |
+LL |     date_range();
+   |     ^^^^^^^^^^ ambiguous name
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #114095 <https://github.com/rust-lang/rust/issues/114095>
+   = note: ambiguous because of multiple glob imports of a name in the same module
+note: `date_range` could refer to the function imported here
+  --> $DIR/ambiguous-9.rs:19:5
+   |
+LL | use dsl::*;
+   |     ^^^^^^
+   = help: consider adding an explicit import of `date_range` to disambiguate
+note: `date_range` could also refer to the function imported here
+  --> $DIR/ambiguous-9.rs:20:5
+   |
+LL | use prelude::*;
+   |     ^^^^^^^^^^
+   = help: consider adding an explicit import of `date_range` to disambiguate
+   = note: `#[deny(ambiguous_glob_imports)]` (part of `#[deny(future_incompatible)]`) on by default
+

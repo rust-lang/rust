@@ -1,0 +1,13 @@
+error: expected `fn`, found keyword `unsafe`
+  --> $DIR/wrong-unsafe-abi.rs:9:12
+   |
+LL | extern "C" unsafe fn test() {}
+   | -----------^^^^^^
+   | |          |
+   | |          expected `fn`
+   | help: `unsafe` must come before `extern "C"`: `unsafe extern "C"`
+   |
+   = note: keyword order for functions declaration is `pub`, `default`, `const`, `async`, `unsafe`, `extern`
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,26 @@
+error: symbol-name(_RNvCsCRATE_HASH_5basic4main)
+  --> $DIR/basic.rs:8:1
+   |
+LL | #[rustc_symbol_name]
+   | ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling(basic[a90d658f4748b9d1]::main)
+  --> $DIR/basic.rs:8:1
+   |
+LL | #[rustc_symbol_name]
+   | ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling-alt(basic::main)
+  --> $DIR/basic.rs:8:1
+   |
+LL | #[rustc_symbol_name]
+   | ^^^^^^^^^^^^^^^^^^^^
+
+error: def-path(main)
+  --> $DIR/basic.rs:15:1
+   |
+LL | #[rustc_def_path]
+   | ^^^^^^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
+

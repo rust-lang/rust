@@ -1,0 +1,23 @@
+[package]
+name = "opt-dist"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+build_helper = { path = "../../build_helper" }
+env_logger = "0.11"
+log = "0.4"
+anyhow = "1"
+humantime = "2"
+humansize = "2"
+sysinfo = { version = "0.37.0", default-features = false, features = ["disk"] }
+fs_extra = "1"
+camino = "1"
+tar = "0.4"
+xz = { version = "0.1", package = "xz2" }
+serde_json = "1"
+glob = "0.3"
+tempfile = "3.5"
+derive_builder = "0.20"
+clap = { version = "4", features = ["derive"] }
+tabled = { version = "0.15", default-features = false, features = ["std"] }

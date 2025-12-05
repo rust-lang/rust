@@ -1,0 +1,35 @@
+error[E0433]: failed to resolve: use of undeclared type `Vec`
+  --> $DIR/no_implicit_prelude.rs:12:9
+   |
+LL |     fn f() { ::bar::m!(); }
+   |              ----------- in this macro invocation
+...
+LL |         Vec::new();
+   |         ^^^ use of undeclared type `Vec`
+   |
+   = note: this error originates in the macro `::bar::m` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: consider importing this struct
+   |
+LL +     use std::vec::Vec;
+   |
+
+error[E0599]: no method named `clone` found for unit type `()` in the current scope
+  --> $DIR/no_implicit_prelude.rs:13:12
+   |
+LL |     fn f() { ::bar::m!(); }
+   |              ----------- in this macro invocation
+...
+LL |         ().clone()
+   |            ^^^^^
+   |
+   = help: items from traits can only be used if the trait is in scope
+   = note: this error originates in the macro `::bar::m` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: trait `Clone` which provides `clone` is implemented but not in scope; perhaps you want to import it
+   |
+LL +     use std::clone::Clone;
+   |
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0433, E0599.
+For more information about an error, try `rustc --explain E0433`.

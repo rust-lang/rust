@@ -1,0 +1,27 @@
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "main"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE "\n    "
+        MATCH_EXPR
+          MATCH_KW "match"
+          WHITESPACE " "
+          RANGE_EXPR
+            DOT2 ".."
+          WHITESPACE " "
+          MATCH_ARM_LIST
+            L_CURLY "{"
+            WHITESPACE "\n    "
+            R_CURLY "}"
+        WHITESPACE "\n"
+        R_CURLY "}"
+  WHITESPACE "\n"

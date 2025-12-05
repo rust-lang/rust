@@ -1,0 +1,21 @@
+error[E0539]: malformed `windows_subsystem` attribute input
+  --> $DIR/windows-subsystem-invalid.rs:1:1
+   |
+LL | #![windows_subsystem = "wrong"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^-------^
+   |                        |
+   |                        valid arguments are "console" or "windows"
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/runtime.html#the-windows_subsystem-attribute>
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #![windows_subsystem = "wrong"]
+LL + #![windows_subsystem = "console"]
+   |
+LL - #![windows_subsystem = "wrong"]
+LL + #![windows_subsystem = "windows"]
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0539`.

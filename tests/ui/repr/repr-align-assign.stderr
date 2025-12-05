@@ -1,0 +1,15 @@
+error[E0693]: incorrect `repr(align)` attribute format
+  --> $DIR/repr-align-assign.rs:5:8
+   |
+LL | #[repr(align=8)]
+   |        ^^^^^^^ help: use parentheses instead: `align(8)`
+
+error[E0693]: incorrect `repr(align)` attribute format
+  --> $DIR/repr-align-assign.rs:8:8
+   |
+LL | #[repr(align="8")]
+   |        ^^^^^^^^^ help: use parentheses instead: `align(8)`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0693`.

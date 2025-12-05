@@ -1,0 +1,23 @@
+error[E0659]: `S` is ambiguous
+  --> $DIR/issue-55884-1.rs:19:12
+   |
+LL |     use m::S;
+   |            ^ ambiguous name
+   |
+   = note: ambiguous because of multiple glob imports of a name in the same module
+note: `S` could refer to the struct imported here
+  --> $DIR/issue-55884-1.rs:14:13
+   |
+LL |     pub use self::m1::*;
+   |             ^^^^^^^^^^^
+   = help: consider adding an explicit import of `S` to disambiguate
+note: `S` could also refer to the struct imported here
+  --> $DIR/issue-55884-1.rs:15:13
+   |
+LL |     pub use self::m2::*;
+   |             ^^^^^^^^^^^
+   = help: consider adding an explicit import of `S` to disambiguate
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0659`.

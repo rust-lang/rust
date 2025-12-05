@@ -1,0 +1,96 @@
+error[E0658]: `#[track_caller]` on closures is currently unstable
+  --> $DIR/async-closure-gate.rs:8:13
+   |
+LL |     let _ = #[track_caller] async || {
+   |             ^^^^^^^^^^^^^^^
+   |
+   = note: see issue #87417 <https://github.com/rust-lang/rust/issues/87417> for more information
+   = help: add `#![feature(closure_track_caller)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `#[track_caller]` on closures is currently unstable
+  --> $DIR/async-closure-gate.rs:15:13
+   |
+LL |     let _ = #[track_caller] async || {
+   |             ^^^^^^^^^^^^^^^
+   |
+   = note: see issue #87417 <https://github.com/rust-lang/rust/issues/87417> for more information
+   = help: add `#![feature(closure_track_caller)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `#[track_caller]` on closures is currently unstable
+  --> $DIR/async-closure-gate.rs:21:13
+   |
+LL |     let _ = #[track_caller] || {
+   |             ^^^^^^^^^^^^^^^
+   |
+   = note: see issue #87417 <https://github.com/rust-lang/rust/issues/87417> for more information
+   = help: add `#![feature(closure_track_caller)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `#[track_caller]` on closures is currently unstable
+  --> $DIR/async-closure-gate.rs:29:17
+   |
+LL |         let _ = #[track_caller] || {
+   |                 ^^^^^^^^^^^^^^^
+   |
+   = note: see issue #87417 <https://github.com/rust-lang/rust/issues/87417> for more information
+   = help: add `#![feature(closure_track_caller)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `#[track_caller]` on closures is currently unstable
+  --> $DIR/async-closure-gate.rs:37:9
+   |
+LL |         #[track_caller] || {
+   |         ^^^^^^^^^^^^^^^
+   |
+   = note: see issue #87417 <https://github.com/rust-lang/rust/issues/87417> for more information
+   = help: add `#![feature(closure_track_caller)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `#[track_caller]` on closures is currently unstable
+  --> $DIR/async-closure-gate.rs:47:13
+   |
+LL |             #[track_caller] || {
+   |             ^^^^^^^^^^^^^^^
+   |
+   = note: see issue #87417 <https://github.com/rust-lang/rust/issues/87417> for more information
+   = help: add `#![feature(closure_track_caller)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0308]: mismatched types
+  --> $DIR/async-closure-gate.rs:27:5
+   |
+LL |   fn foo3() {
+   |            - help: try adding a return type: `-> impl Future<Output = ()>`
+LL | /     async {
+LL | |
+LL | |         let _ = #[track_caller] || {
+...  |
+LL | |     }
+   | |_____^ expected `()`, found `async` block
+   |
+   = note:  expected unit type `()`
+           found `async` block `{async block@$DIR/async-closure-gate.rs:27:5: 27:10}`
+
+error[E0308]: mismatched types
+  --> $DIR/async-closure-gate.rs:44:5
+   |
+LL |   fn foo5() {
+   |            - help: try adding a return type: `-> impl Future<Output = ()>`
+LL | /     async {
+LL | |
+LL | |         let _ = || {
+LL | |             #[track_caller] || {
+...  |
+LL | |         };
+LL | |     }
+   | |_____^ expected `()`, found `async` block
+   |
+   = note:  expected unit type `()`
+           found `async` block `{async block@$DIR/async-closure-gate.rs:44:5: 44:10}`
+
+error: aborting due to 8 previous errors
+
+Some errors have detailed explanations: E0308, E0658.
+For more information about an error, try `rustc --explain E0308`.

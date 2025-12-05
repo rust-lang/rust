@@ -1,0 +1,19 @@
+error[E0038]: the trait `Super` is not dyn compatible
+  --> $DIR/gat-incompatible-supertrait.rs:15:21
+   |
+LL | fn take_dyn(_: &dyn Child) {}
+   |                     ^^^^^ `Super` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/gat-incompatible-supertrait.rs:10:10
+   |
+LL | trait Super {
+   |       ----- this trait is not dyn compatible...
+LL |     type Assoc<'a>;
+   |          ^^^^^ ...because it contains the generic associated type `Assoc`
+   = help: consider moving `Assoc` to another trait
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0038`.

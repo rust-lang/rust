@@ -1,0 +1,21 @@
+[workspace]
+members = ["../error_index_generator"]
+
+[package]
+name = "rustbook"
+version = "0.1.0"
+license = "MIT OR Apache-2.0"
+edition = "2021"
+
+[dependencies]
+clap = "4.0.32"
+env_logger = "0.11"
+libc = "0.2"
+mdbook-trpl = { path = "../../doc/book/packages/mdbook-trpl" }
+mdbook-i18n-helpers = "0.3.3"
+mdbook-spec = { path = "../../doc/reference/mdbook-spec" }
+
+[dependencies.mdbook]
+version = "0.4.52"
+default-features = false
+features = ["search"]

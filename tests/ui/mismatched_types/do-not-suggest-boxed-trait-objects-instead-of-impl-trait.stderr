@@ -1,0 +1,26 @@
+error[E0308]: `if` and `else` have incompatible types
+  --> $DIR/do-not-suggest-boxed-trait-objects-instead-of-impl-trait.rs:12:9
+   |
+LL | /     if true {
+LL | |         S
+   | |         - expected because of this
+LL | |     } else {
+LL | |         Y
+   | |         ^ expected `S`, found `Y`
+LL | |     }
+   | |_____- `if` and `else` have incompatible types
+
+error[E0308]: `match` arms have incompatible types
+  --> $DIR/do-not-suggest-boxed-trait-objects-instead-of-impl-trait.rs:19:18
+   |
+LL | /     match true {
+LL | |         true => S,
+   | |                 - this is found to be of type `S`
+LL | |         false => Y,
+   | |                  ^ expected `S`, found `Y`
+LL | |     }
+   | |_____- `match` arms have incompatible types
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

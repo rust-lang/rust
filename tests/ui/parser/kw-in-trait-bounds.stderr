@@ -1,0 +1,131 @@
+error: expected identifier, found keyword `fn`
+  --> $DIR/kw-in-trait-bounds.rs:3:10
+   |
+LL | fn _f<F: fn(), G>(_: impl fn(), _: &dyn fn())
+   |          ^^
+   |
+help: use `Fn` to refer to the trait (notice the capitalization)
+   |
+LL - fn _f<F: fn(), G>(_: impl fn(), _: &dyn fn())
+LL + fn _f<F: Fn(), G>(_: impl fn(), _: &dyn fn())
+   |
+
+error: expected identifier, found keyword `fn`
+  --> $DIR/kw-in-trait-bounds.rs:3:27
+   |
+LL | fn _f<F: fn(), G>(_: impl fn(), _: &dyn fn())
+   |                           ^^
+   |
+help: use `Fn` to refer to the trait (notice the capitalization)
+   |
+LL - fn _f<F: fn(), G>(_: impl fn(), _: &dyn fn())
+LL + fn _f<F: fn(), G>(_: impl Fn(), _: &dyn fn())
+   |
+
+error: expected identifier, found keyword `fn`
+  --> $DIR/kw-in-trait-bounds.rs:3:41
+   |
+LL | fn _f<F: fn(), G>(_: impl fn(), _: &dyn fn())
+   |                                         ^^
+   |
+help: use `Fn` to refer to the trait (notice the capitalization)
+   |
+LL - fn _f<F: fn(), G>(_: impl fn(), _: &dyn fn())
+LL + fn _f<F: fn(), G>(_: impl fn(), _: &dyn Fn())
+   |
+
+error: expected identifier, found keyword `fn`
+  --> $DIR/kw-in-trait-bounds.rs:11:4
+   |
+LL | G: fn(),
+   |    ^^
+   |
+help: use `Fn` to refer to the trait (notice the capitalization)
+   |
+LL - G: fn(),
+LL + G: Fn(),
+   |
+
+error: expected identifier, found keyword `struct`
+  --> $DIR/kw-in-trait-bounds.rs:16:10
+   |
+LL | fn _g<A: struct, B>(_: impl struct, _: &dyn struct)
+   |          ^^^^^^ expected identifier, found keyword
+   |
+help: escape `struct` to use it as an identifier
+   |
+LL | fn _g<A: r#struct, B>(_: impl struct, _: &dyn struct)
+   |          ++
+
+error: expected identifier, found keyword `struct`
+  --> $DIR/kw-in-trait-bounds.rs:16:29
+   |
+LL | fn _g<A: struct, B>(_: impl struct, _: &dyn struct)
+   |                             ^^^^^^ expected identifier, found keyword
+   |
+help: escape `struct` to use it as an identifier
+   |
+LL | fn _g<A: struct, B>(_: impl r#struct, _: &dyn struct)
+   |                             ++
+
+error: expected identifier, found keyword `struct`
+  --> $DIR/kw-in-trait-bounds.rs:16:45
+   |
+LL | fn _g<A: struct, B>(_: impl struct, _: &dyn struct)
+   |                                             ^^^^^^ expected identifier, found keyword
+   |
+help: escape `struct` to use it as an identifier
+   |
+LL | fn _g<A: struct, B>(_: impl struct, _: &dyn r#struct)
+   |                                             ++
+
+error: expected identifier, found keyword `struct`
+  --> $DIR/kw-in-trait-bounds.rs:30:8
+   |
+LL |     B: struct,
+   |        ^^^^^^ expected identifier, found keyword
+   |
+help: escape `struct` to use it as an identifier
+   |
+LL |     B: r#struct,
+   |        ++
+
+error[E0405]: cannot find trait `r#struct` in this scope
+  --> $DIR/kw-in-trait-bounds.rs:16:10
+   |
+LL | fn _g<A: struct, B>(_: impl struct, _: &dyn struct)
+   |          ^^^^^^ help: a trait with a similar name exists (notice the capitalization): `Struct`
+...
+LL | trait Struct {}
+   | ------------ similarly named trait `Struct` defined here
+
+error[E0405]: cannot find trait `r#struct` in this scope
+  --> $DIR/kw-in-trait-bounds.rs:30:8
+   |
+LL |     B: struct,
+   |        ^^^^^^ help: a trait with a similar name exists (notice the capitalization): `Struct`
+...
+LL | trait Struct {}
+   | ------------ similarly named trait `Struct` defined here
+
+error[E0405]: cannot find trait `r#struct` in this scope
+  --> $DIR/kw-in-trait-bounds.rs:16:29
+   |
+LL | fn _g<A: struct, B>(_: impl struct, _: &dyn struct)
+   |                             ^^^^^^ help: a trait with a similar name exists (notice the capitalization): `Struct`
+...
+LL | trait Struct {}
+   | ------------ similarly named trait `Struct` defined here
+
+error[E0405]: cannot find trait `r#struct` in this scope
+  --> $DIR/kw-in-trait-bounds.rs:16:45
+   |
+LL | fn _g<A: struct, B>(_: impl struct, _: &dyn struct)
+   |                                             ^^^^^^ help: a trait with a similar name exists (notice the capitalization): `Struct`
+...
+LL | trait Struct {}
+   | ------------ similarly named trait `Struct` defined here
+
+error: aborting due to 12 previous errors
+
+For more information about this error, try `rustc --explain E0405`.

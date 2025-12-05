@@ -1,0 +1,11 @@
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `assert_mem_uninitialized_valid`
+  --> tests/fail/rustc-error2.rs:LL:CC
+   |
+LL |     fn deref(&self) -> &assert_mem_uninitialized_valid::Target {
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ use of unresolved module or unlinked crate `assert_mem_uninitialized_valid`
+   |
+   = help: you might be missing a crate named `assert_mem_uninitialized_valid`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0433`.

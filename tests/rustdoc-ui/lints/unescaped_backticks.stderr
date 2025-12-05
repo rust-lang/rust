@@ -1,0 +1,959 @@
+error: unescaped backtick
+  --> $DIR/unescaped_backticks.rs:187:70
+   |
+LL | /// if you want your MIR to be modified by the full MIR pipeline, or `#![custom_mir(dialect =
+   |                                                                      ^
+   |
+note: the lint level is defined here
+  --> $DIR/unescaped_backticks.rs:1:9
+   |
+LL | #![deny(rustdoc::unescaped_backticks)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: the closing backtick of an inline code may be missing
+   |
+LL | /// "runtime", phase = "optimized")]` if you don't.
+   |                                     +
+help: if you meant to use a literal backtick, escape it
+   |
+LL | /// if you want your MIR to be modified by the full MIR pipeline, or \`#![custom_mir(dialect =
+   |                                                                      +
+
+error: unescaped backtick
+  --> $DIR/unescaped_backticks.rs:232:13
+   |
+LL |         //! `#![rustc_expected_cgu_reuse(module="spike", cfg="rpass2", kind="post-lto")]
+   |             ^
+   |
+help: the closing backtick of an inline code may be missing
+   |
+LL |         //! `#![rustc_expected_cgu_reuse(module="spike", cfg="rpass2", kind="post-lto")]`
+   |                                                                                         +
+help: if you meant to use a literal backtick, escape it
+   |
+LL |         //! \`#![rustc_expected_cgu_reuse(module="spike", cfg="rpass2", kind="post-lto")]
+   |             +
+
+error: unescaped backtick
+  --> $DIR/unescaped_backticks.rs:237:13
+   |
+LL |         /// `cfg=...
+   |             ^
+   |
+help: the closing backtick of an inline code may be missing
+   |
+LL |         /// `cfg=...`
+   |                     +
+help: if you meant to use a literal backtick, escape it
+   |
+LL |         /// \`cfg=...
+   |             +
+
+error: unescaped backtick
+  --> $DIR/unescaped_backticks.rs:241:42
+   |
+LL |         /// `cfg=... and not `#[cfg_attr]`
+   |                                          ^
+   |
+help: a previous inline code might be longer than expected
+   |
+LL |         /// `cfg=...` and not `#[cfg_attr]`
+   |                     +
+help: if you meant to use a literal backtick, escape it
+   |
+LL |         /// `cfg=... and not `#[cfg_attr]\`
+   |                                          +
+
+error: unescaped backtick
+  --> $DIR/unescaped_backticks.rs:193:93
+   |
+LL |     /// Constructs a `TyKind::Error` type and registers a `span_delayed_bug` with the given `msg to
+   |                                                                                             ^
+   |
+help: the closing backtick of an inline code may be missing
+   |
+LL |     /// Constructs a `TyKind::Error` type and registers a `span_delayed_bug` with the given `msg` to
+   |                                                                                                 +
+help: if you meant to use a literal backtick, escape it
+   |
+LL |     /// Constructs a `TyKind::Error` type and registers a `span_delayed_bug` with the given \`msg to
+   |                                                                                             +
+
+error: unescaped backtick
+  --> $DIR/unescaped_backticks.rs:202:34
+   |
+LL |         /// in `nt_to_tokenstream`
+   |                                  ^
+   |
+help: a previous inline code might be longer than expected
+   |
+LL |         /// if we parsed no predicates (e.g. `struct` Foo where {}
+   |                                                     +
+help: if you meant to use a literal backtick, escape it
+   |
+LL |         /// in `nt_to_tokenstream\`
+   |                                  +
+
+error: unescaped backtick
+  --> $DIR/unescaped_backticks.rs:208:62
+   |
+LL |     /// that `Option<Symbol>` only takes up 4 bytes, because `newtype_index! reserves
+   |                                                              ^
+   |
+help: the closing backtick of an inline code may be missing
+   |
+LL |     /// that `Option<Symbol>` only takes up 4 bytes, because `newtype_index!` reserves
+   |                                                                             +
+help: if you meant to use a literal backtick, escape it
+   |
+LL |     /// that `Option<Symbol>` only takes up 4 bytes, because \`newtype_index! reserves
+   |                                                              +
+
+error: unescaped backtick
+  --> $DIR/unescaped_backticks.rs:216:52
+   |
+LL |     /// also avoids the need to import `OpenOptions`.
+   |                                                    ^
+   |
+help: a previous inline code might be longer than expected
+   |
+LL |     /// you can write `File::with_options().read(true).open("foo.txt")`. This
+   |                                                                       +
+help: if you meant to use a literal backtick, escape it
+   |
+LL |     /// also avoids the need to import `OpenOptions\`.
+   |                                                    +
+
+error: unescaped backtick
+  --> $DIR/unescaped_backticks.rs:221:47
+   |
+LL |     /// `ChunkedBitSet`. Has no effect if `row` does not exist.
+   |                                               ^
+   |
+help: a previous inline code might be longer than expected
+   |
+LL |     /// Subtracts `set` from `row`. `set` can be either `BitSet` or
+   |                       +
+help: if you meant to use a literal backtick, escape it
+   |
+LL |     /// `ChunkedBitSet`. Has no effect if `row\` does not exist.
+   |                                               +
+
+error: unescaped backtick
+  --> $DIR/unescaped_backticks.rs:247:12
+   |
+LL |     /// RWU`s can get very large, so it uses a more compact representation.
+   |            ^
+   |
+help: the opening backtick of an inline code may be missing
+   |
+LL |     /// `RWU`s can get very large, so it uses a more compact representation.
+   |         +
+help: if you meant to use a literal backtick, escape it
+   |
+LL |     /// RWU\`s can get very large, so it uses a more compact representation.
+   |            +
+
+error: unescaped backtick
+  --> $DIR/unescaped_backticks.rs:254:15
+   |
+LL |     /// in `U2`.
+   |               ^
+   |
+help: the opening backtick of a previous inline code may be missing
+   |
+LL |     /// `'?1` is in `U3` would be canonicalized to have `?0` in `U1` and `'?1`
+   |                                                         +
+help: if you meant to use a literal backtick, escape it
+   |
+LL |     /// in `U2\`.
+   |               +
+
+error: unescaped backtick
+  --> $DIR/unescaped_backticks.rs:271:42
+   |
+LL |     /// because it contains `[type error]`. Yuck! (See issue #29857 for
+   |                                          ^
+   |
+help: a previous inline code might be longer than expected
+   |
+LL |     /// as Trait>::Foo == $0`. Here, normalizing `<MyType<$0>` as
+   |                                                              +
+help: if you meant to use a literal backtick, escape it
+   |
+LL |     /// because it contains `[type error]\`. Yuck! (See issue #29857 for
+   |                                          +
+
+error: unescaped backtick
+  --> $DIR/unescaped_backticks.rs:281:53
+   |
+LL |     /// well as the second instance of `A: AutoTrait`) to suppress
+   |                                                     ^
+   |
+help: a previous inline code might be longer than expected
+   |
+LL |     /// encountered a problem (later on) with `A:` AutoTrait. So we
+   |                                                  +
+help: if you meant to use a literal backtick, escape it
+   |
+LL |     /// well as the second instance of `A: AutoTrait\`) to suppress
+   |                                                     +
+
+error: unescaped backtick
+  --> $DIR/unescaped_backticks.rs:291:40
+   |
+LL |     /// `'a` with `'b` and not `'static`. But it will have to do for
+   |                                        ^
+   |
+   = help: the opening or closing backtick of an inline code may be missing
+help: if you meant to use a literal backtick, escape it
+   |
+LL |     /// `'a` with `'b` and not `'static\`. But it will have to do for
+   |                                        +
+
+error: unescaped backtick
+  --> $DIR/unescaped_backticks.rs:300:54
+   |
+LL | /// `None`. Otherwise, it will return `Some(Dispatch)`.
+   |                                                      ^
+   |
+help: the opening backtick of a previous inline code may be missing
+   |
+LL | /// The `Subscriber` may be accessed by calling [`WeakDispatch::upgrade`],
+   |         +
+help: if you meant to use a literal backtick, escape it
+   |
+LL | /// `None`. Otherwise, it will return `Some(Dispatch)\`.
+   |                                                      +
+
+error: unescaped backtick
+  --> $DIR/unescaped_backticks.rs:304:13
+   |
+LL | /// or `None` if it isn't.
+   |             ^
+   |
+   = help: the opening or closing backtick of an inline code may be missing
+help: if you meant to use a literal backtick, escape it
+   |
+LL | /// or `None\` if it isn't.
+   |             +
+
+error: unescaped backtick
+  --> $DIR/unescaped_backticks.rs:308:14
+   |
+LL | /// `on_event` should be called.
+   |              ^
+   |
+help: a previous inline code might be longer than expected
+   |
+LL | /// Called before the filtered [`Layer`]'s [`on_event`], to determine if
+   |                                       +
+help: if you meant to use a literal backtick, escape it
+   |
+LL | /// `on_event\` should be called.
+   |              +
+
+error: unescaped backtick
+  --> $DIR/unescaped_backticks.rs:313:29
+   |
+LL | /// [`rebuild_interest_cache`][rebuild] is called after the value of the max
+   |                             ^
+   |
+help: a previous inline code might be longer than expected
+   |
+LL | /// Therefore, if the `Filter` will change the value returned by this
+   |                              +
+help: if you meant to use a literal backtick, escape it
+   |
+LL | /// [`rebuild_interest_cache\`][rebuild] is called after the value of the max
+   |                             +
+
+error: unescaped backtick
+  --> $DIR/unescaped_backticks.rs:323:5
+   |
+LL | /     /// The Subscriber` may be accessed by calling [`WeakDispatch::upgrade`],
+...  |
+LL | |     /// [`rebuild_interest_cache`][rebuild] is called after the value of the max
+LL | |     /// level changes.
+   | |______________________^
+   |
+   = help: the opening backtick of a previous inline code may be missing
+            change: The Subscriber` may be accessed by calling [`WeakDispatch::upgrade`],
+           to this: The `Subscriber` may be accessed by calling [`WeakDispatch::upgrade`],
+   = help: if you meant to use a literal backtick, escape it
+            change: `None`. Otherwise, it will return `Some(Dispatch)`.
+           to this: `None`. Otherwise, it will return `Some(Dispatch)\`.
+
+error: unescaped backtick
+  --> $DIR/unescaped_backticks.rs:323:5
+   |
+LL | /     /// The Subscriber` may be accessed by calling [`WeakDispatch::upgrade`],
+...  |
+LL | |     /// [`rebuild_interest_cache`][rebuild] is called after the value of the max
+LL | |     /// level changes.
+   | |______________________^
+   |
+   = help: the opening or closing backtick of an inline code may be missing
+   = help: if you meant to use a literal backtick, escape it
+            change: or `None` if it isn't.
+           to this: or `None\` if it isn't.
+
+error: unescaped backtick
+  --> $DIR/unescaped_backticks.rs:323:5
+   |
+LL | /     /// The Subscriber` may be accessed by calling [`WeakDispatch::upgrade`],
+...  |
+LL | |     /// [`rebuild_interest_cache`][rebuild] is called after the value of the max
+LL | |     /// level changes.
+   | |______________________^
+   |
+   = help: a previous inline code might be longer than expected
+            change: Called before the filtered [`Layer]'s [`on_event`], to determine if
+           to this: Called before the filtered [`Layer`]'s [`on_event`], to determine if
+   = help: if you meant to use a literal backtick, escape it
+            change: `on_event` should be called.
+           to this: `on_event\` should be called.
+
+error: unescaped backtick
+  --> $DIR/unescaped_backticks.rs:323:5
+   |
+LL | /     /// The Subscriber` may be accessed by calling [`WeakDispatch::upgrade`],
+...  |
+LL | |     /// [`rebuild_interest_cache`][rebuild] is called after the value of the max
+LL | |     /// level changes.
+   | |______________________^
+   |
+   = help: a previous inline code might be longer than expected
+            change: Therefore, if the `Filter will change the value returned by this
+           to this: Therefore, if the `Filter` will change the value returned by this
+   = help: if you meant to use a literal backtick, escape it
+            change: [`rebuild_interest_cache`][rebuild] is called after the value of the max
+           to this: [`rebuild_interest_cache\`][rebuild] is called after the value of the max
+
+error: unescaped backtick
+  --> $DIR/unescaped_backticks.rs:349:56
+   |
+LL |     /// instead and use [`CloneCounterObserver::counter`] to increment.
+   |                                                        ^
+   |
+   = help: the opening or closing backtick of an inline code may be missing
+help: if you meant to use a literal backtick, escape it
+   |
+LL |     /// instead and use [`CloneCounterObserver::counter\`] to increment.
+   |                                                        +
+
+error: unescaped backtick
+  --> $DIR/unescaped_backticks.rs:12:5
+   |
+LL | /// `
+   |     ^
+   |
+   = help: the opening or closing backtick of an inline code may be missing
+help: if you meant to use a literal backtick, escape it
+   |
+LL | /// \`
+   |     +
+
+error: unescaped backtick
+  --> $DIR/unescaped_backticks.rs:19:7
+   |
+LL | /// \`
+   |       ^
+   |
+help: the opening backtick of an inline code may be missing
+   |
+LL | /// `\`
+   |     +
+help: if you meant to use a literal backtick, escape it
+   |
+LL | /// \\`
+   |       +
+
+error: unescaped backtick
+  --> $DIR/unescaped_backticks.rs:26:6
+   |
+LL | /// [`link1]
+   |      ^
+   |
+help: the closing backtick of an inline code may be missing
+   |
+LL | /// [`link1`]
+   |            +
+help: if you meant to use a literal backtick, escape it
+   |
+LL | /// [\`link1]
+   |      +
+
+error: unescaped backtick
+  --> $DIR/unescaped_backticks.rs:30:11
+   |
+LL | /// [link2`]
+   |           ^
+   |
+help: the opening backtick of an inline code may be missing
+   |
+LL | /// [`link2`]
+   |      +
+help: if you meant to use a literal backtick, escape it
+   |
+LL | /// [link2\`]
+   |           +
+
+error: unescaped backtick
+  --> $DIR/unescaped_backticks.rs:34:6
+   |
+LL | /// [`link_long](link_long)
+   |      ^
+   |
+help: the closing backtick of an inline code may be missing
+   |
+LL | /// [`link_long`](link_long)
+   |                +
+help: if you meant to use a literal backtick, escape it
+   |
+LL | /// [\`link_long](link_long)
+   |      +
+
+error: unescaped backtick
+  --> $DIR/unescaped_backticks.rs:38:6
+   |
+LL | /// [`broken-link]
+   |      ^
+   |
+help: the closing backtick of an inline code may be missing
+   |
+LL | /// [`broken-link`]
+   |                  +
+help: if you meant to use a literal backtick, escape it
+   |
+LL | /// [\`broken-link]
+   |      +
+
+error: unescaped backtick
+  --> $DIR/unescaped_backticks.rs:45:8
+   |
+LL | /// <x:`>
+   |        ^
+   |
+help: the opening backtick of an inline code may be missing
+   |
+LL | /// `<x:`>
+   |     +
+help: if you meant to use a literal backtick, escape it
+   |
+LL | /// <x:\`>
+   |        +
+
+error: unescaped backtick
+  --> $DIR/unescaped_backticks.rs:55:6
+   |
+LL | /// 🦀`🦀
+   |       ^
+   |
+help: the opening backtick of an inline code may be missing
+   |
+LL | /// `🦀`🦀
+   |     +
+help: the closing backtick of an inline code may be missing
+   |
+LL | /// 🦀`🦀`
+   |          +
+help: if you meant to use a literal backtick, escape it
+   |
+LL | /// 🦀\`🦀
+   |       +
+
+error: unescaped backtick
+  --> $DIR/unescaped_backticks.rs:59:5
+   |
+LL | /// `foo(
+   |     ^
+   |
+help: the closing backtick of an inline code may be missing
+   |
+LL | /// `foo(`
+   |          +
+help: if you meant to use a literal backtick, escape it
+   |
+LL | /// \`foo(
+   |     +
+
+error: unescaped backtick
+  --> $DIR/unescaped_backticks.rs:65:14
+   |
+LL | /// `foo `bar`
+   |              ^
+   |
+help: a previous inline code might be longer than expected
+   |
+LL | /// `foo` `bar`
+   |         +
+help: if you meant to use a literal backtick, escape it
+   |
+LL | /// `foo `bar\`
+   |              +
+
+error: unescaped backtick
+  --> $DIR/unescaped_backticks.rs:71:5
+   |
+LL | /// `foo(
+   |     ^
+   |
+help: the closing backtick of an inline code may be missing
+   |
+LL | /// not paragraph`
+   |                  +
+help: if you meant to use a literal backtick, escape it
+   |
+LL | /// \`foo(
+   |     +
+
+error: unescaped backtick
+  --> $DIR/unescaped_backticks.rs:76:83
+   |
+LL | /// Addition is commutative, which means that add(a, b)` is the same as `add(b, a)`.
+   |                                                                                   ^
+   |
+help: the opening backtick of a previous inline code may be missing
+   |
+LL | /// Addition is commutative, which means that `add(a, b)` is the same as `add(b, a)`.
+   |                                               +
+help: if you meant to use a literal backtick, escape it
+   |
+LL | /// Addition is commutative, which means that add(a, b)` is the same as `add(b, a)\`.
+   |                                                                                   +
+
+error: unescaped backtick
+  --> $DIR/unescaped_backticks.rs:80:51
+   |
+LL | /// or even to add a number `n` to 42 (`add(42, b)`)!
+   |                                                   ^
+   |
+help: the opening backtick of a previous inline code may be missing
+   |
+LL | /// You could use this function to add 42 to a number `n` (`add(n, 42)`),
+   |                                                            +
+help: if you meant to use a literal backtick, escape it
+   |
+LL | /// or even to add a number `n` to 42 (`add(42, b)\`)!
+   |                                                   +
+
+error: unescaped backtick
+  --> $DIR/unescaped_backticks.rs:84:83
+   |
+LL | /// Addition is commutative, which means that `add(a, b) is the same as `add(b, a)`.
+   |                                                                                   ^
+   |
+help: a previous inline code might be longer than expected
+   |
+LL | /// Addition is commutative, which means that `add(a, b)` is the same as `add(b, a)`.
+   |                                                         +
+help: if you meant to use a literal backtick, escape it
+   |
+LL | /// Addition is commutative, which means that `add(a, b) is the same as `add(b, a)\`.
+   |                                                                                   +
+
+error: unescaped backtick
+  --> $DIR/unescaped_backticks.rs:88:51
+   |
+LL | /// or even to add a number `n` to 42 (`add(42, n)`)!
+   |                                                   ^
+   |
+help: a previous inline code might be longer than expected
+   |
+LL | /// You could use this function to add 42 to a number `n` (`add(n, 42)`),
+   |                                                                       +
+help: if you meant to use a literal backtick, escape it
+   |
+LL | /// or even to add a number `n` to 42 (`add(42, n)\`)!
+   |                                                   +
+
+error: unescaped backtick
+  --> $DIR/unescaped_backticks.rs:92:83
+   |
+LL | /// Addition is commutative, which means that `add(a, b)` is the same as add(b, a)`.
+   |                                                                                   ^
+   |
+help: the opening backtick of an inline code may be missing
+   |
+LL | /// Addition is commutative, which means that `add(a, b)` is the same as `add(b, a)`.
+   |                                                                          +
+help: if you meant to use a literal backtick, escape it
+   |
+LL | /// Addition is commutative, which means that `add(a, b)` is the same as add(b, a)\`.
+   |                                                                                   +
+
+error: unescaped backtick
+  --> $DIR/unescaped_backticks.rs:96:50
+   |
+LL | /// or even to add a number `n` to 42 (add(42, n)`)!
+   |                                                  ^
+   |
+help: the opening backtick of an inline code may be missing
+   |
+LL | /// or even to add a number `n` to 42 (`add(42, n)`)!
+   |                                        +
+help: if you meant to use a literal backtick, escape it
+   |
+LL | /// or even to add a number `n` to 42 (add(42, n)\`)!
+   |                                                  +
+
+error: unescaped backtick
+  --> $DIR/unescaped_backticks.rs:100:74
+   |
+LL | /// Addition is commutative, which means that `add(a, b)` is the same as `add(b, a).
+   |                                                                          ^
+   |
+help: the closing backtick of an inline code may be missing
+   |
+LL | /// Addition is commutative, which means that `add(a, b)` is the same as `add(b, a)`.
+   |                                                                                    +
+help: if you meant to use a literal backtick, escape it
+   |
+LL | /// Addition is commutative, which means that `add(a, b)` is the same as \`add(b, a).
+   |                                                                          +
+
+error: unescaped backtick
+  --> $DIR/unescaped_backticks.rs:104:51
+   |
+LL | /// or even to add a number `n` to 42 (`add(42, n)`)!
+   |                                                   ^
+   |
+help: a previous inline code might be longer than expected
+   |
+LL | /// You could use this function to add 42 to a number `n` (`add(n, 42)`),
+   |                                                                       +
+help: if you meant to use a literal backtick, escape it
+   |
+LL | /// or even to add a number `n` to 42 (`add(42, n)\`)!
+   |                                                   +
+
+error: unescaped backtick
+  --> $DIR/unescaped_backticks.rs:108:10
+   |
+LL | #[doc = "`"]
+   |          ^
+   |
+   = help: the opening or closing backtick of an inline code may be missing
+   = help: if you meant to use a literal backtick, escape it
+            change: `
+           to this: \`
+
+error: unescaped backtick
+  --> $DIR/unescaped_backticks.rs:115:26
+   |
+LL | #[doc = concat!("\\", "`")]
+   |                          ^
+   |
+   = help: the opening backtick of an inline code may be missing
+            change: \`
+           to this: `\`
+   = help: if you meant to use a literal backtick, escape it
+            change: \`
+           to this: \\`
+
+error: unescaped backtick
+  --> $DIR/unescaped_backticks.rs:119:9
+   |
+LL | #[doc = "Addition is commutative, which means that add(a, b)` is the same as `add(b, a)`."]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: the opening backtick of a previous inline code may be missing
+            change: Addition is commutative, which means that add(a, b)` is the same as `add(b, a)`.
+           to this: Addition is commutative, which means that `add(a, b)` is the same as `add(b, a)`.
+   = help: if you meant to use a literal backtick, escape it
+            change: Addition is commutative, which means that add(a, b)` is the same as `add(b, a)`.
+           to this: Addition is commutative, which means that add(a, b)` is the same as `add(b, a)\`.
+
+error: unescaped backtick
+  --> $DIR/unescaped_backticks.rs:123:9
+   |
+LL | #[doc = "Addition is commutative, which means that `add(a, b) is the same as `add(b, a)`."]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: a previous inline code might be longer than expected
+            change: Addition is commutative, which means that `add(a, b) is the same as `add(b, a)`.
+           to this: Addition is commutative, which means that `add(a, b)` is the same as `add(b, a)`.
+   = help: if you meant to use a literal backtick, escape it
+            change: Addition is commutative, which means that `add(a, b) is the same as `add(b, a)`.
+           to this: Addition is commutative, which means that `add(a, b) is the same as `add(b, a)\`.
+
+error: unescaped backtick
+  --> $DIR/unescaped_backticks.rs:127:9
+   |
+LL | #[doc = "Addition is commutative, which means that `add(a, b)` is the same as add(b, a)`."]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: the opening backtick of an inline code may be missing
+            change: Addition is commutative, which means that `add(a, b)` is the same as add(b, a)`.
+           to this: Addition is commutative, which means that `add(a, b)` is the same as `add(b, a)`.
+   = help: if you meant to use a literal backtick, escape it
+            change: Addition is commutative, which means that `add(a, b)` is the same as add(b, a)`.
+           to this: Addition is commutative, which means that `add(a, b)` is the same as add(b, a)\`.
+
+error: unescaped backtick
+  --> $DIR/unescaped_backticks.rs:131:9
+   |
+LL | #[doc = "Addition is commutative, which means that `add(a, b)` is the same as `add(b, a)."]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: the closing backtick of an inline code may be missing
+            change: Addition is commutative, which means that `add(a, b)` is the same as `add(b, a).
+           to this: Addition is commutative, which means that `add(a, b)` is the same as `add(b, a)`.
+   = help: if you meant to use a literal backtick, escape it
+            change: Addition is commutative, which means that `add(a, b)` is the same as `add(b, a).
+           to this: Addition is commutative, which means that `add(a, b)` is the same as \`add(b, a).
+
+error: unescaped backtick
+  --> $DIR/unescaped_backticks.rs:136:5
+   |
+LL | /// `foo
+   |     ^
+   |
+help: the closing backtick of an inline code may be missing
+   |
+LL | /// `foo`
+   |         +
+help: if you meant to use a literal backtick, escape it
+   |
+LL | /// \`foo
+   |     +
+
+error: unescaped backtick
+  --> $DIR/unescaped_backticks.rs:140:7
+   |
+LL | /// # `(heading
+   |       ^
+   |
+help: the closing backtick of an inline code may be missing
+   |
+LL | /// # `(heading`
+   |                +
+help: if you meant to use a literal backtick, escape it
+   |
+LL | /// # \`(heading
+   |       +
+
+error: unescaped backtick
+  --> $DIR/unescaped_backticks.rs:142:17
+   |
+LL | /// ## heading2)`
+   |                 ^
+   |
+help: the opening backtick of an inline code may be missing
+   |
+LL | /// ## `heading2)`
+   |        +
+help: if you meant to use a literal backtick, escape it
+   |
+LL | /// ## heading2)\`
+   |                 +
+
+error: unescaped backtick
+  --> $DIR/unescaped_backticks.rs:145:11
+   |
+LL | /// multi `(
+   |           ^
+   |
+help: the closing backtick of an inline code may be missing
+   |
+LL | /// )` heading
+   |      +
+help: if you meant to use a literal backtick, escape it
+   |
+LL | /// multi \`(
+   |           +
+
+error: unescaped backtick
+  --> $DIR/unescaped_backticks.rs:151:10
+   |
+LL | /// para)`(graph
+   |          ^
+   |
+help: the opening backtick of an inline code may be missing
+   |
+LL | /// `para)`(graph
+   |     +
+help: the closing backtick of an inline code may be missing
+   |
+LL | /// para)`(graph`
+   |                 +
+help: if you meant to use a literal backtick, escape it
+   |
+LL | /// para)\`(graph
+   |          +
+
+error: unescaped backtick
+  --> $DIR/unescaped_backticks.rs:154:10
+   |
+LL | /// para)`(graph2
+   |          ^
+   |
+help: the opening backtick of an inline code may be missing
+   |
+LL | /// `para)`(graph2
+   |     +
+help: the closing backtick of an inline code may be missing
+   |
+LL | /// para)`(graph2`
+   |                  +
+help: if you meant to use a literal backtick, escape it
+   |
+LL | /// para)\`(graph2
+   |          +
+
+error: unescaped backtick
+  --> $DIR/unescaped_backticks.rs:157:12
+   |
+LL | /// 1. foo)`
+   |            ^
+   |
+help: the opening backtick of an inline code may be missing
+   |
+LL | /// 1. `foo)`
+   |        +
+help: if you meant to use a literal backtick, escape it
+   |
+LL | /// 1. foo)\`
+   |            +
+
+error: unescaped backtick
+  --> $DIR/unescaped_backticks.rs:159:8
+   |
+LL | /// 2. `(bar
+   |        ^
+   |
+help: the closing backtick of an inline code may be missing
+   |
+LL | /// 2. `(bar`
+   |             +
+help: if you meant to use a literal backtick, escape it
+   |
+LL | /// 2. \`(bar
+   |        +
+
+error: unescaped backtick
+  --> $DIR/unescaped_backticks.rs:161:11
+   |
+LL | /// * baz)`
+   |           ^
+   |
+help: the opening backtick of an inline code may be missing
+   |
+LL | /// * `baz)`
+   |       +
+help: if you meant to use a literal backtick, escape it
+   |
+LL | /// * baz)\`
+   |           +
+
+error: unescaped backtick
+  --> $DIR/unescaped_backticks.rs:163:7
+   |
+LL | /// * `(quux
+   |       ^
+   |
+help: the closing backtick of an inline code may be missing
+   |
+LL | /// * `(quux`
+   |             +
+help: if you meant to use a literal backtick, escape it
+   |
+LL | /// * \`(quux
+   |       +
+
+error: unescaped backtick
+  --> $DIR/unescaped_backticks.rs:166:5
+   |
+LL | /// `#![this_is_actually_an_image(and(not), an = "attribute")]
+   |     ^
+   |
+help: the closing backtick of an inline code may be missing
+   |
+LL | /// `#`![this_is_actually_an_image(and(not), an = "attribute")]
+   |       +
+help: if you meant to use a literal backtick, escape it
+   |
+LL | /// \`#![this_is_actually_an_image(and(not), an = "attribute")]
+   |     +
+
+error: unescaped backtick
+  --> $DIR/unescaped_backticks.rs:169:62
+   |
+LL | /// #![this_is_actually_an_image(and(not), an = "attribute")]`
+   |                                                              ^
+   |
+help: the opening backtick of an inline code may be missing
+   |
+LL | /// `#![this_is_actually_an_image(and(not), an = "attribute")]`
+   |     +
+help: if you meant to use a literal backtick, escape it
+   |
+LL | /// #![this_is_actually_an_image(and(not), an = "attribute")]\`
+   |                                                              +
+
+error: unescaped backtick
+  --> $DIR/unescaped_backticks.rs:174:7
+   |
+LL | /// | `table( | )head` |
+   |       ^
+   |
+help: the closing backtick of an inline code may be missing
+   |
+LL | /// | `table(` | )head` |
+   |              +
+help: if you meant to use a literal backtick, escape it
+   |
+LL | /// | \`table( | )head` |
+   |       +
+
+error: unescaped backtick
+  --> $DIR/unescaped_backticks.rs:174:22
+   |
+LL | /// | `table( | )head` |
+   |                      ^
+   |
+help: the opening backtick of an inline code may be missing
+   |
+LL | /// | `table( | `)head` |
+   |                 +
+help: if you meant to use a literal backtick, escape it
+   |
+LL | /// | `table( | )head\` |
+   |                      +
+
+error: unescaped backtick
+  --> $DIR/unescaped_backticks.rs:178:12
+   |
+LL | /// | table`( | )`body |
+   |            ^
+   |
+help: the opening backtick of an inline code may be missing
+   |
+LL | /// | `table`( | )`body |
+   |       +
+help: if you meant to use a literal backtick, escape it
+   |
+LL | /// | table\`( | )`body |
+   |            +
+
+error: unescaped backtick
+  --> $DIR/unescaped_backticks.rs:178:18
+   |
+LL | /// | table`( | )`body |
+   |                  ^
+   |
+help: the opening backtick of an inline code may be missing
+   |
+LL | /// | table`( | `)`body |
+   |                 +
+help: the closing backtick of an inline code may be missing
+   |
+LL | /// | table`( | )`body` |
+   |                       +
+help: if you meant to use a literal backtick, escape it
+   |
+LL | /// | table`( | )\`body |
+   |                  +
+
+error: aborting due to 64 previous errors
+

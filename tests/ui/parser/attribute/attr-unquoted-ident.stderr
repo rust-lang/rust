@@ -1,0 +1,35 @@
+error: expected a literal (`1u8`, `1.0f32`, `"string"`, etc.) here, found `foo`
+  --> $DIR/attr-unquoted-ident.rs:6:15
+   |
+LL |     #[cfg(key=foo)]
+   |               ^^^
+   |
+help: surround the identifier with quotation marks to make it into a string literal
+   |
+LL |     #[cfg(key="foo")]
+   |               +   +
+
+error: expected a literal (`1u8`, `1.0f32`, `"string"`, etc.) here, found `foo`
+  --> $DIR/attr-unquoted-ident.rs:12:15
+   |
+LL |     #[cfg(key=foo bar baz)]
+   |               ^^^
+   |
+help: surround the identifier with quotation marks to make it into a string literal
+   |
+LL |     #[cfg(key="foo bar baz")]
+   |               +           +
+
+error: expected unsuffixed literal, found identifier `nickname`
+  --> $DIR/attr-unquoted-ident.rs:21:38
+   |
+LL |     ($name:ident) => { #[doc(alias = $name)] pub struct S; }
+   |                                      ^^^^^
+...
+LL | make!(nickname);
+   | --------------- in this macro invocation
+   |
+   = note: this error originates in the macro `make` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 3 previous errors
+

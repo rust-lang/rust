@@ -1,0 +1,9 @@
+error[E0433]: failed to resolve: `Self` is only available in impls, traits, and type definitions
+  --> $DIR/ice-array-into-iter-lint-issue-121532.rs:7:12
+   |
+LL | fn func(a: Self::ItemsIterator) {
+   |            ^^^^ `Self` is only available in impls, traits, and type definitions
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0433`.

@@ -1,0 +1,50 @@
+error: `#[marker]` attribute cannot be used on structs
+  --> $DIR/marker-attribute-on-non-trait.rs:3:1
+   |
+LL | #[marker]
+   | ^^^^^^^^^
+   |
+   = help: `#[marker]` can only be applied to traits
+
+error: `#[marker]` attribute cannot be used on inherent impl blocks
+  --> $DIR/marker-attribute-on-non-trait.rs:6:1
+   |
+LL | #[marker]
+   | ^^^^^^^^^
+   |
+   = help: `#[marker]` can only be applied to traits
+
+error: `#[marker]` attribute cannot be used on unions
+  --> $DIR/marker-attribute-on-non-trait.rs:9:1
+   |
+LL | #[marker]
+   | ^^^^^^^^^
+   |
+   = help: `#[marker]` can only be applied to traits
+
+error: `#[marker]` attribute cannot be used on constants
+  --> $DIR/marker-attribute-on-non-trait.rs:14:1
+   |
+LL | #[marker]
+   | ^^^^^^^^^
+   |
+   = help: `#[marker]` can only be applied to traits
+
+error: `#[marker]` attribute cannot be used on functions
+  --> $DIR/marker-attribute-on-non-trait.rs:17:1
+   |
+LL | #[marker]
+   | ^^^^^^^^^
+   |
+   = help: `#[marker]` can only be applied to traits
+
+error: `#[marker]` attribute cannot be used on type aliases
+  --> $DIR/marker-attribute-on-non-trait.rs:20:1
+   |
+LL | #[marker]
+   | ^^^^^^^^^
+   |
+   = help: `#[marker]` can only be applied to traits
+
+error: aborting due to 6 previous errors
+

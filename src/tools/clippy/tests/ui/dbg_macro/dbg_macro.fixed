@@ -1,0 +1,141 @@
+#![allow(
+    clippy::no_effect,
+    clippy::uninlined_format_args,
+    clippy::unit_arg,
+    clippy::unnecessary_operation
+)]
+#![warn(clippy::dbg_macro)]
+
+fn foo(n: u32) -> u32 {
+    if let Some(n) = n.checked_sub(4) { n } else { n }
+    //~^ dbg_macro
+}
+fn bar(_: ()) {}
+
+fn factorial(n: u32) -> u32 {
+    if n <= 1 {
+        //~^ dbg_macro
+
+        1
+        //~^ dbg_macro
+    } else {
+        n * factorial(n - 1)
+        //~^ dbg_macro
+    }
+}
+
+fn main() {
+    42;
+    //~^ dbg_macro
+
+    foo(3) + factorial(4);
+    //~^ dbg_macro
+
+    (1, 2, 3, 4, 5);
+    //~^ dbg_macro
+}
+
+fn issue9914() {
+    macro_rules! foo {
+        ($x:expr) => {
+            $x;
+        };
+    }
+    macro_rules! foo2 {
+        ($x:expr) => {
+            $x;
+        };
+    }
+    macro_rules! expand_to_dbg {
+        () => {
+            
+            //~^ dbg_macro
+        };
+    }
+
+    
+    //~^ dbg_macro
+
+    #[allow(clippy::let_unit_value)]
+    let _ = ();
+    //~^ dbg_macro
+
+    bar(());
+    //~^ dbg_macro
+
+    foo!(());
+    //~^ dbg_macro
+
+    foo2!(foo!(()));
+    //~^ dbg_macro
+
+    expand_to_dbg!();
+}
+
+mod issue7274 {
+    trait Thing<'b> {
+        fn foo(&self);
+    }
+
+    macro_rules! define_thing {
+        ($thing:ident, $body:expr) => {
+            impl<'a> Thing<'a> for $thing {
+                fn foo<'b>(&self) {
+                    $body
+                }
+            }
+        };
+    }
+
+    struct MyThing;
+    define_thing!(MyThing, {
+        2;
+        //~^ dbg_macro
+    });
+}
+
+#[test]
+pub fn issue8481() {
+    1;
+    //~^ dbg_macro
+}
+
+#[cfg(test)]
+fn foo2() {
+    1;
+    //~^ dbg_macro
+}
+
+#[cfg(test)]
+mod mod1 {
+    fn func() {
+        1;
+        //~^ dbg_macro
+    }
+}
+
+mod issue12131 {
+    fn dbg_in_print(s: &str) {
+        println!("dbg: {:?}", s);
+        //~^ dbg_macro
+
+        print!("{}", s);
+        //~^ dbg_macro
+    }
+}
+
+mod issue14914 {
+    use std::future::Future;
+
+    fn takes_async_fn<F, Fut>(_f: F)
+    where
+        F: FnOnce(i32) -> Fut,
+        Fut: Future<Output = i32>,
+    {
+    }
+
+    fn should_not_panic() {
+        takes_async_fn(async |val| val);
+        //~^ dbg_macro
+    }
+}

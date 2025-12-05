@@ -1,0 +1,23 @@
+// This test ensures that the item name's width is not wrapped.
+go-to: "file://" + |DOC_PATH| + "/test_docs/short_docs/index.html"
+set-window-size: (1000, 600)
+
+// First we ensure that there is only one `item-table`...
+assert-count: ("dl.item-table", 1)
+// And only two items in it.
+assert-count: ("dl.item-table dt", 2)
+
+// If they don't have the same height, then it means one of the two is on two lines whereas it
+// shouldn't!
+compare-elements-size: (
+    ".item-table dt a[href='fn.mult_vec_num.html']",
+    ".item-table dt a[href='fn.subt_vec_num.html']",
+    ["height"],
+)
+
+// We also check that the `item-table` is taking the full width.
+compare-elements-size: (
+    "#functions",
+    "dl.item-table",
+    ["width"],
+)

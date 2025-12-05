@@ -1,0 +1,39 @@
+error[E0425]: cannot find value `z` in this scope
+  --> $DIR/fn-to-method-deeply-nested.rs:8:9
+   |
+LL |         z????????????????????????????????????????????????????????????????????????????????????????
+   |         ^ not found in this scope
+
+error[E0425]: cannot find function `e` in this scope
+  --> $DIR/fn-to-method-deeply-nested.rs:2:13
+   |
+LL |     a(b(c(d(e(
+   |             ^ not found in this scope
+
+error[E0425]: cannot find function `d` in this scope
+  --> $DIR/fn-to-method-deeply-nested.rs:2:11
+   |
+LL |     a(b(c(d(e(
+   |           ^ not found in this scope
+
+error[E0425]: cannot find function `c` in this scope
+  --> $DIR/fn-to-method-deeply-nested.rs:2:9
+   |
+LL |     a(b(c(d(e(
+   |         ^ not found in this scope
+
+error[E0425]: cannot find function `b` in this scope
+  --> $DIR/fn-to-method-deeply-nested.rs:2:7
+   |
+LL |     a(b(c(d(e(
+   |       ^ not found in this scope
+
+error[E0425]: cannot find function `a` in this scope
+  --> $DIR/fn-to-method-deeply-nested.rs:2:5
+   |
+LL |     a(b(c(d(e(
+   |     ^ not found in this scope
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0425`.

@@ -1,0 +1,53 @@
+error: used `cloned` where `copied` could be used instead
+  --> tests/ui/cloned_instead_of_copied.rs:7:24
+   |
+LL |     let _ = [1].iter().cloned();
+   |                        ^^^^^^ help: try: `copied`
+   |
+   = note: `-D clippy::cloned-instead-of-copied` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::cloned_instead_of_copied)]`
+
+error: used `cloned` where `copied` could be used instead
+  --> tests/ui/cloned_instead_of_copied.rs:9:31
+   |
+LL |     let _ = vec!["hi"].iter().cloned();
+   |                               ^^^^^^ help: try: `copied`
+
+error: used `cloned` where `copied` could be used instead
+  --> tests/ui/cloned_instead_of_copied.rs:11:22
+   |
+LL |     let _ = Some(&1).cloned();
+   |                      ^^^^^^ help: try: `copied`
+
+error: used `cloned` where `copied` could be used instead
+  --> tests/ui/cloned_instead_of_copied.rs:13:34
+   |
+LL |     let _ = Box::new([1].iter()).cloned();
+   |                                  ^^^^^^ help: try: `copied`
+
+error: used `cloned` where `copied` could be used instead
+  --> tests/ui/cloned_instead_of_copied.rs:15:32
+   |
+LL |     let _ = Box::new(Some(&1)).cloned();
+   |                                ^^^^^^ help: try: `copied`
+
+error: used `cloned` where `copied` could be used instead
+  --> tests/ui/cloned_instead_of_copied.rs:32:22
+   |
+LL |     let _ = Some(&1).cloned(); // Option::copied needs 1.35
+   |                      ^^^^^^ help: try: `copied`
+
+error: used `cloned` where `copied` could be used instead
+  --> tests/ui/cloned_instead_of_copied.rs:39:24
+   |
+LL |     let _ = [1].iter().cloned(); // Iterator::copied needs 1.36
+   |                        ^^^^^^ help: try: `copied`
+
+error: used `cloned` where `copied` could be used instead
+  --> tests/ui/cloned_instead_of_copied.rs:42:22
+   |
+LL |     let _ = Some(&1).cloned();
+   |                      ^^^^^^ help: try: `copied`
+
+error: aborting due to 8 previous errors
+

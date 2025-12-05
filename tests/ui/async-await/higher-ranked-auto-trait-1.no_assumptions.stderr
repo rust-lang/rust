@@ -1,0 +1,38 @@
+error[E0308]: mismatched types
+  --> $DIR/higher-ranked-auto-trait-1.rs:37:5
+   |
+LL | /     async {
+LL | |         let _y = &();
+LL | |         let _x = filter(FilterMap {
+LL | |             f: || async move { *_y },
+...  |
+LL | |         drop(_x);
+LL | |     }
+   | |_____^ one type is more general than the other
+   |
+   = note: expected `async` block `{async block@$DIR/higher-ranked-auto-trait-1.rs:40:19: 40:29}`
+              found `async` block `{async block@$DIR/higher-ranked-auto-trait-1.rs:40:19: 40:29}`
+   = note: no two async blocks, even if identical, have the same type
+   = help: consider pinning your async block and casting it to a trait object
+
+error[E0308]: mismatched types
+  --> $DIR/higher-ranked-auto-trait-1.rs:37:5
+   |
+LL | /     async {
+LL | |         let _y = &();
+LL | |         let _x = filter(FilterMap {
+LL | |             f: || async move { *_y },
+...  |
+LL | |         drop(_x);
+LL | |     }
+   | |_____^ one type is more general than the other
+   |
+   = note: expected `async` block `{async block@$DIR/higher-ranked-auto-trait-1.rs:40:19: 40:29}`
+              found `async` block `{async block@$DIR/higher-ranked-auto-trait-1.rs:40:19: 40:29}`
+   = note: no two async blocks, even if identical, have the same type
+   = help: consider pinning your async block and casting it to a trait object
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

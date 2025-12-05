@@ -1,0 +1,12 @@
+error: this file contains an unclosed delimiter
+  --> $DIR/issue-103451.rs:4:15
+   |
+LL | struct S {
+   |          - unclosed delimiter
+LL |     x: [u8; R
+   |        -     ^
+   |        |
+   |        unclosed delimiter
+
+error: aborting due to 1 previous error
+

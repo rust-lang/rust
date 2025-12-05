@@ -1,0 +1,16 @@
+error[E0539]: malformed `coverage` attribute input
+  --> $DIR/bad-attr-ice.rs:11:1
+   |
+LL | #[coverage]
+   | ^^^^^^^^^^^ this attribute is only valid with either `on` or `off` as an argument
+   |
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL | #[coverage(off)]
+   |           +++++
+LL | #[coverage(on)]
+   |           ++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0539`.

@@ -1,0 +1,20 @@
+warning: the feature `never_patterns` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/never-pattern-is-a-read.rs:3:24
+   |
+LL | #![feature(never_type, never_patterns)]
+   |                        ^^^^^^^^^^^^^^
+   |
+   = note: see issue #118155 <https://github.com/rust-lang/rust/issues/118155> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+error[E0133]: access to union field is unsafe and requires unsafe function or block
+  --> $DIR/never-pattern-is-a-read.rs:12:16
+   |
+LL |     let U { a: ! } = u;
+   |                ^ access to union field
+   |
+   = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
+
+error: aborting due to 1 previous error; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0133`.

@@ -1,0 +1,29 @@
+error[E0308]: mismatched types
+  --> $DIR/issue-104768.rs:1:15
+   |
+LL | const A: &_ = 0_u32;
+   |               ^^^^^ expected `&_`, found `u32`
+   |
+   = note: expected reference `&'static _`
+                   found type `u32`
+help: consider borrowing here
+   |
+LL | const A: &_ = &0_u32;
+   |               +
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for constants
+  --> $DIR/issue-104768.rs:1:11
+   |
+LL | const A: &_ = 0_u32;
+   |           ^ not allowed in type signatures
+   |
+help: replace this with a fully-specified type
+   |
+LL - const A: &_ = 0_u32;
+LL + const A: u32 = 0_u32;
+   |
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0121, E0308.
+For more information about an error, try `rustc --explain E0121`.

@@ -1,0 +1,60 @@
+error: expressions must be enclosed in braces to be used as const generic arguments
+  --> $DIR/macro_rules-braces.rs:44:17
+   |
+LL |     let _: baz!(m::P);
+   |                 ^^^^
+   |
+help: enclose the `const` expression in braces
+   |
+LL |     let _: baz!({ m::P });
+   |                 +      +
+
+error: expressions must be enclosed in braces to be used as const generic arguments
+  --> $DIR/macro_rules-braces.rs:64:17
+   |
+LL |     let _: baz!(10 + 7);
+   |                 ^^^^^^
+   |
+help: enclose the `const` expression in braces
+   |
+LL |     let _: baz!({ 10 + 7 });
+   |                 +        +
+
+error: generic parameters may not be used in const operations
+  --> $DIR/macro_rules-braces.rs:32:20
+   |
+LL |     let _: foo!({{ N }});
+   |                    ^ cannot perform const operation using `N`
+   |
+   = help: const parameters may only be used as standalone arguments here, i.e. `N`
+   = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+
+error: generic parameters may not be used in const operations
+  --> $DIR/macro_rules-braces.rs:36:19
+   |
+LL |     let _: bar!({ N });
+   |                   ^ cannot perform const operation using `N`
+   |
+   = help: const parameters may only be used as standalone arguments here, i.e. `N`
+   = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+
+error: generic parameters may not be used in const operations
+  --> $DIR/macro_rules-braces.rs:41:20
+   |
+LL |     let _: baz!({{ N }});
+   |                    ^ cannot perform const operation using `N`
+   |
+   = help: const parameters may only be used as standalone arguments here, i.e. `N`
+   = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+
+error: generic parameters may not be used in const operations
+  --> $DIR/macro_rules-braces.rs:46:19
+   |
+LL |     let _: biz!({ N });
+   |                   ^ cannot perform const operation using `N`
+   |
+   = help: const parameters may only be used as standalone arguments here, i.e. `N`
+   = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+
+error: aborting due to 6 previous errors
+

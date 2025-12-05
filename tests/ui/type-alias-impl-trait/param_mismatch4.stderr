@@ -1,0 +1,12 @@
+error[E0792]: expected generic lifetime parameter, found `'_`
+  --> $DIR/param_mismatch4.rs:13:12
+   |
+LL | type Opq<'a> = impl Sized;
+   |          -- this generic parameter must be used with a generic lifetime parameter
+...
+LL |     let _: Opq<'_> = ();
+   |            ^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0792`.

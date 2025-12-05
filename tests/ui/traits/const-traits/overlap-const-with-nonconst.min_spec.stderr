@@ -1,0 +1,14 @@
+error[E0119]: conflicting implementations of trait `Foo` for type `(_,)`
+  --> $DIR/overlap-const-with-nonconst.rs:21:1
+   |
+LL | / impl<T> const Foo for T
+LL | | where
+LL | |     T: [const] Bar,
+   | |___________________- first implementation here
+...
+LL |   impl<T> Foo for (T,) {
+   |   ^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `(_,)`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0119`.

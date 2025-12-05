@@ -1,0 +1,34 @@
+cargo-features = ["public-dependency"]
+
+[package]
+name = "alloc"
+version = "0.0.0"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/rust-lang/rust.git"
+description = "The Rust core allocation and collections library"
+autotests = false
+autobenches = false
+edition = "2024"
+
+[lib]
+test = false
+bench = false
+
+[dependencies]
+core = { path = "../core", public = true }
+compiler_builtins = { path = "../compiler-builtins/compiler-builtins", features = ["rustc-dep-of-std"] }
+
+[features]
+compiler-builtins-mem = ['compiler_builtins/mem']
+compiler-builtins-c = ["compiler_builtins/c"]
+compiler-builtins-no-f16-f128 = ["compiler_builtins/no-f16-f128"]
+# Choose algorithms that are optimized for binary size instead of runtime performance
+optimize_for_size = ["core/optimize_for_size"]
+
+[lints.rust.unexpected_cfgs]
+level = "warn"
+check-cfg = [
+    'cfg(no_global_oom_handling)',
+    'cfg(no_rc)',
+    'cfg(no_sync)',
+]

@@ -1,0 +1,107 @@
+   LL|       |#![feature(coverage_attribute, stmt_expr_attributes)]
+   LL|       |//@ edition: 2021
+   LL|       |//@ reference: attributes.coverage.nesting
+   LL|       |
+   LL|       |// Demonstrates the interaction between #[coverage(off)] and various kinds of
+   LL|       |// nested function.
+   LL|       |
+   LL|       |#[coverage(off)]
+   LL|       |fn do_stuff() {}
+   LL|       |
+   LL|       |#[coverage(off)]
+   LL|       |fn outer_fn() {
+   LL|       |    fn middle_fn() {
+   LL|       |        fn inner_fn() {
+   LL|       |            do_stuff();
+   LL|       |        }
+   LL|       |        do_stuff();
+   LL|       |    }
+   LL|       |    do_stuff();
+   LL|       |}
+   LL|       |
+   LL|       |struct MyOuter;
+   LL|       |impl MyOuter {
+   LL|       |    #[coverage(off)]
+   LL|       |    fn outer_method(&self) {
+   LL|       |        struct MyMiddle;
+   LL|       |        impl MyMiddle {
+   LL|       |            fn middle_method(&self) {
+   LL|       |                struct MyInner;
+   LL|       |                impl MyInner {
+   LL|       |                    fn inner_method(&self) {
+   LL|       |                        do_stuff();
+   LL|       |                    }
+   LL|       |                }
+   LL|       |                do_stuff();
+   LL|       |            }
+   LL|       |        }
+   LL|       |        do_stuff();
+   LL|       |    }
+   LL|       |}
+   LL|       |
+   LL|       |trait MyTrait {
+   LL|       |    fn trait_method(&self);
+   LL|       |}
+   LL|       |impl MyTrait for MyOuter {
+   LL|       |    #[coverage(off)]
+   LL|       |    fn trait_method(&self) {
+   LL|       |        struct MyMiddle;
+   LL|       |        impl MyTrait for MyMiddle {
+   LL|       |            fn trait_method(&self) {
+   LL|       |                struct MyInner;
+   LL|       |                impl MyTrait for MyInner {
+   LL|       |                    fn trait_method(&self) {
+   LL|       |                        do_stuff();
+   LL|       |                    }
+   LL|       |                }
+   LL|       |                do_stuff();
+   LL|       |            }
+   LL|       |        }
+   LL|       |        do_stuff();
+   LL|       |    }
+   LL|       |}
+   LL|       |
+   LL|      1|fn closure_expr() {
+   LL|      1|    let _outer = #[coverage(off)]
+   LL|       |    || {
+   LL|       |        let _middle = || {
+   LL|       |            let _inner = || {
+   LL|       |                do_stuff();
+   LL|       |            };
+   LL|       |            do_stuff();
+   LL|       |        };
+   LL|       |        do_stuff();
+   LL|       |    };
+   LL|      1|    do_stuff();
+   LL|      1|}
+   LL|       |
+   LL|       |// This syntax is allowed, even without #![feature(stmt_expr_attributes)].
+   LL|      1|fn closure_tail() {
+   LL|      1|    let _outer = {
+   LL|       |        #[coverage(off)]
+   LL|       |        || {
+   LL|       |            let _middle = {
+   LL|       |                || {
+   LL|       |                    let _inner = {
+   LL|       |                        || {
+   LL|       |                            do_stuff();
+   LL|       |                        }
+   LL|       |                    };
+   LL|       |                    do_stuff();
+   LL|       |                }
+   LL|       |            };
+   LL|       |            do_stuff();
+   LL|       |        }
+   LL|       |    };
+   LL|      1|    do_stuff();
+   LL|      1|}
+   LL|       |
+   LL|       |#[coverage(off)]
+   LL|       |fn main() {
+   LL|       |    outer_fn();
+   LL|       |    MyOuter.outer_method();
+   LL|       |    MyOuter.trait_method();
+   LL|       |    closure_expr();
+   LL|       |    closure_tail();
+   LL|       |}
+

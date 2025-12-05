@@ -1,0 +1,8 @@
+error: the `main` function cannot be declared in an `extern` block
+  --> $DIR/extern-main-issue-86110.rs:4:5
+   |
+LL |     fn main();
+   |     ^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,130 @@
+error[E0277]: the trait bound `str: From<_>` is not satisfied
+  --> $DIR/dont-suggest-borrowing-existing-borrow.rs:14:14
+   |
+LL |     let _ = &str::from("value");
+   |              ^^^ the trait `From<_>` is not implemented for `str`
+   |
+   = help: the following other types implement trait `From<T>`:
+             `String` implements `From<&String>`
+             `String` implements `From<&mut str>`
+             `String` implements `From<&str>`
+             `String` implements `From<Box<str>>`
+             `String` implements `From<Cow<'_, str>>`
+             `String` implements `From<char>`
+help: you likely meant to call the associated function `from` for type `&str`, but the code as written calls associated function `from` on type `str`
+   |
+LL |     let _ = <&str>::from("value");
+   |             +    +
+
+error[E0277]: the trait bound `S: Trait` is not satisfied
+  --> $DIR/dont-suggest-borrowing-existing-borrow.rs:17:18
+   |
+LL |     let _ = &mut S::foo();
+   |                  ^ unsatisfied trait bound
+   |
+help: the trait `Trait` is not implemented for `S`
+  --> $DIR/dont-suggest-borrowing-existing-borrow.rs:3:1
+   |
+LL | struct S;
+   | ^^^^^^^^
+help: the trait `Trait` is implemented for `&mut S`
+  --> $DIR/dont-suggest-borrowing-existing-borrow.rs:7:1
+   |
+LL | impl Trait for &mut S {}
+   | ^^^^^^^^^^^^^^^^^^^^^
+help: you likely meant to call the associated function `foo` for type `&mut S`, but the code as written calls associated function `foo` on type `S`
+   |
+LL |     let _ = <&mut S>::foo();
+   |             +      +
+
+error[E0277]: the trait bound `S: Trait` is not satisfied
+  --> $DIR/dont-suggest-borrowing-existing-borrow.rs:19:14
+   |
+LL |     let _ = &S::foo();
+   |              ^ unsatisfied trait bound
+   |
+help: the trait `Trait` is not implemented for `S`
+  --> $DIR/dont-suggest-borrowing-existing-borrow.rs:3:1
+   |
+LL | struct S;
+   | ^^^^^^^^
+help: the trait `Trait` is implemented for `&mut S`
+  --> $DIR/dont-suggest-borrowing-existing-borrow.rs:7:1
+   |
+LL | impl Trait for &mut S {}
+   | ^^^^^^^^^^^^^^^^^^^^^
+help: you likely meant to call the associated function `foo` for type `&S`, but the code as written calls associated function `foo` on type `S`
+   |
+LL -     let _ = &S::foo();
+LL +     let _ = <&mut S>::foo();
+   |
+
+error[E0277]: the trait bound `S: Trait` is not satisfied
+  --> $DIR/dont-suggest-borrowing-existing-borrow.rs:21:13
+   |
+LL |     let _ = S::foo();
+   |             ^ the trait `Trait` is not implemented for `S`
+   |
+help: consider mutably borrowing here
+   |
+LL |     let _ = <&mut S>::foo();
+   |             +++++  +
+
+error[E0277]: the trait bound `S: Trait2` is not satisfied
+  --> $DIR/dont-suggest-borrowing-existing-borrow.rs:23:18
+   |
+LL |     let _ = &mut S::bar();
+   |                  ^ unsatisfied trait bound
+   |
+help: the trait `Trait2` is not implemented for `S`
+  --> $DIR/dont-suggest-borrowing-existing-borrow.rs:3:1
+   |
+LL | struct S;
+   | ^^^^^^^^
+help: the following other types implement trait `Trait2`
+  --> $DIR/dont-suggest-borrowing-existing-borrow.rs:11:1
+   |
+LL | impl Trait2 for &S {}
+   | ^^^^^^^^^^^^^^^^^^ `&S`
+LL | impl Trait2 for &mut S {}
+   | ^^^^^^^^^^^^^^^^^^^^^^ `&mut S`
+help: you likely meant to call the associated function `bar` for type `&mut S`, but the code as written calls associated function `bar` on type `S`
+   |
+LL |     let _ = <&mut S>::bar();
+   |             +      +
+
+error[E0277]: the trait bound `S: Trait2` is not satisfied
+  --> $DIR/dont-suggest-borrowing-existing-borrow.rs:25:14
+   |
+LL |     let _ = &S::bar();
+   |              ^ unsatisfied trait bound
+   |
+help: the trait `Trait2` is not implemented for `S`
+  --> $DIR/dont-suggest-borrowing-existing-borrow.rs:3:1
+   |
+LL | struct S;
+   | ^^^^^^^^
+help: the following other types implement trait `Trait2`
+  --> $DIR/dont-suggest-borrowing-existing-borrow.rs:11:1
+   |
+LL | impl Trait2 for &S {}
+   | ^^^^^^^^^^^^^^^^^^ `&S`
+LL | impl Trait2 for &mut S {}
+   | ^^^^^^^^^^^^^^^^^^^^^^ `&mut S`
+help: you likely meant to call the associated function `bar` for type `&S`, but the code as written calls associated function `bar` on type `S`
+   |
+LL |     let _ = <&S>::bar();
+   |             +  +
+
+error[E0277]: the size for values of type `str` cannot be known at compilation time
+  --> $DIR/dont-suggest-borrowing-existing-borrow.rs:14:14
+   |
+LL |     let _ = &str::from("value");
+   |              ^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `str`
+   = note: the return type of a function must have a statically known size
+
+error: aborting due to 7 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

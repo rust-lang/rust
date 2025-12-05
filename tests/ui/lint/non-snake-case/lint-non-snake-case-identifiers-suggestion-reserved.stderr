@@ -1,0 +1,70 @@
+warning: unused variable: `Mod`
+  --> $DIR/lint-non-snake-case-identifiers-suggestion-reserved.rs:12:9
+   |
+LL |     let Mod: usize = 0;
+   |         ^^^ help: if this is intentional, prefix it with an underscore: `_Mod`
+   |
+note: the lint level is defined here
+  --> $DIR/lint-non-snake-case-identifiers-suggestion-reserved.rs:1:9
+   |
+LL | #![warn(unused)]
+   |         ^^^^^^
+   = note: `#[warn(unused_variables)]` implied by `#[warn(unused)]`
+
+warning: unused variable: `Super`
+  --> $DIR/lint-non-snake-case-identifiers-suggestion-reserved.rs:16:9
+   |
+LL |     let Super: usize = 0;
+   |         ^^^^^ help: if this is intentional, prefix it with an underscore: `_Super`
+
+error: module `Impl` should have a snake case name
+  --> $DIR/lint-non-snake-case-identifiers-suggestion-reserved.rs:5:5
+   |
+LL | mod Impl {}
+   |     ^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/lint-non-snake-case-identifiers-suggestion-reserved.rs:3:9
+   |
+LL | #![deny(non_snake_case)]
+   |         ^^^^^^^^^^^^^^
+help: rename the identifier or convert it to a snake case raw identifier
+   |
+LL - mod Impl {}
+LL + mod r#impl {}
+   |
+
+error: function `While` should have a snake case name
+  --> $DIR/lint-non-snake-case-identifiers-suggestion-reserved.rs:8:4
+   |
+LL | fn While() {}
+   |    ^^^^^
+   |
+help: rename the identifier or convert it to a snake case raw identifier
+   |
+LL - fn While() {}
+LL + fn r#while() {}
+   |
+
+error: variable `Mod` should have a snake case name
+  --> $DIR/lint-non-snake-case-identifiers-suggestion-reserved.rs:12:9
+   |
+LL |     let Mod: usize = 0;
+   |         ^^^
+   |
+help: rename the identifier or convert it to a snake case raw identifier
+   |
+LL -     let Mod: usize = 0;
+LL +     let r#mod: usize = 0;
+   |
+
+error: variable `Super` should have a snake case name
+  --> $DIR/lint-non-snake-case-identifiers-suggestion-reserved.rs:16:9
+   |
+LL |     let Super: usize = 0;
+   |         ^^^^^ help: rename the identifier
+   |
+   = note: `super` cannot be used as a raw identifier
+
+error: aborting due to 4 previous errors; 2 warnings emitted
+

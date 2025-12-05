@@ -1,0 +1,53 @@
+error[E0539]: malformed `repr` attribute input
+  --> $DIR/malformed-reprs.rs:4:1
+   |
+LL | #![repr]
+   | ^^^^^^^^ expected this to be a list
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/type-layout.html#representations>
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL | #![repr(<integer type>)]
+   |        ++++++++++++++++
+LL | #![repr(C)]
+   |        +++
+LL | #![repr(Rust)]
+   |        ++++++
+LL | #![repr(align(...))]
+   |        ++++++++++++
+   = and 2 other candidates
+
+error[E0589]: invalid `repr(align)` attribute: not a power of two
+  --> $DIR/malformed-reprs.rs:9:14
+   |
+LL | #[repr(align(0))]
+   |              ^
+
+error: `repr` attribute cannot be used at crate level
+  --> $DIR/malformed-reprs.rs:4:1
+   |
+LL | #![repr]
+   | ^^^^^^^^
+...
+LL | enum Foo {}
+   |      --- the inner attribute doesn't annotate this enum
+   |
+help: perhaps you meant to use an outer attribute
+   |
+LL - #![repr]
+LL + #[repr]
+   |
+
+error[E0084]: unsupported representation for zero-variant enum
+  --> $DIR/malformed-reprs.rs:9:1
+   |
+LL | #[repr(align(0))]
+   | ^^^^^^^^^^^^^^^^^
+...
+LL | enum Foo {}
+   | -------- zero-variant enum
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0084, E0539, E0589.
+For more information about an error, try `rustc --explain E0084`.

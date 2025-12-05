@@ -1,0 +1,10 @@
+error: item annotated with `#[unstable_feature_bound]` should not be stable
+  --> $DIR/unstable_feature_bound_incompatible_stability.rs:11:1
+   |
+LL | fn bar() {}
+   | ^^^^^^^^^^^
+   |
+   = help: If this item is meant to be stable, do not use any functions annotated with `#[unstable_feature_bound]`. Otherwise, mark this item as unstable with `#[unstable]`
+
+error: aborting due to 1 previous error
+

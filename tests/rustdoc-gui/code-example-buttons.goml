@@ -1,0 +1,119 @@
+// This test ensures that code blocks buttons are displayed on hover and when you click on them.
+go-to: "file://" + |DOC_PATH| + "/test_docs/fn.foo.html"
+include: "utils.goml"
+
+// First we check we "hover".
+move-cursor-to: ".example-wrap"
+assert-css: (".example-wrap .copy-button", { "visibility": "visible" })
+move-cursor-to: "#search-button"
+assert-css: (".example-wrap .copy-button", { "visibility": "hidden" })
+
+// Now we check the click.
+assert-count: (".example-wrap:not(:hover) .button-holder.keep-visible", 0)
+click: ".example-wrap"
+move-cursor-to: "#search-button"
+// It should have a new class and be visible.
+wait-for-count: (".example-wrap:not(:hover) .button-holder.keep-visible", 1)
+wait-for-css: (".example-wrap:not(:hover) .button-holder.keep-visible", { "visibility": "visible" })
+// Clicking again will remove the class.
+click: ".example-wrap"
+move-cursor-to: "rustdoc-toolbar #search-button"
+assert-count: (".example-wrap:not(:hover) .button-holder.keep-visible", 0)
+assert-css: (".example-wrap .copy-button", { "visibility": "hidden" })
+
+// Clicking on the "copy code" button shouldn't make the buttons stick.
+click: ".example-wrap .copy-button"
+move-cursor-to: "#search-button"
+assert-count: (".example-wrap:not(:hover) .button-holder.keep-visible", 0)
+assert-css: (".example-wrap .copy-button", { "visibility": "hidden" })
+// Since we clicked on the copy button, the clipboard content should have been updated.
+assert-clipboard: 'println!("nothing fancy");\nprintln!("but with two lines!");'
+
+define-function: (
+    "check-buttons",
+    [theme, background, filter, filter_hover],
+    block {
+        call-function: ("switch-theme", {"theme": |theme|})
+
+        assert-css: (".example-wrap .test-arrow", {"visibility": "hidden"})
+        assert-css: (".example-wrap .copy-button", {"visibility": "hidden"})
+
+        move-cursor-to: ".example-wrap"
+        assert-css: (".example-wrap .test-arrow", {
+            "visibility": "visible",
+            "background-color": |background|,
+            "border-radius": "2px",
+        })
+        assert-css: (".example-wrap .test-arrow::before", {
+            "filter": |filter|,
+        })
+        assert-css: (".example-wrap .copy-button", {
+            "visibility": "visible",
+            "background-color": |background|,
+            "border-radius": "2px",
+        })
+        assert-css: (".example-wrap .copy-button::before", {
+            "filter": |filter|,
+        })
+
+        move-cursor-to: ".example-wrap .test-arrow"
+        assert-css: (".example-wrap .test-arrow:hover", {
+            "visibility": "visible",
+            "background-color": |background|,
+            "border-radius": "2px",
+        })
+        assert-css: (".example-wrap .test-arrow:hover::before", {
+            "filter": |filter_hover|,
+        })
+
+        move-cursor-to: ".example-wrap .copy-button"
+        assert-css: (".example-wrap .copy-button:hover", {
+            "visibility": "visible",
+            "background-color": |background|,
+            "border-radius": "2px",
+        })
+        assert-css: (".example-wrap .copy-button:hover::before", {
+            "filter": |filter_hover|,
+        })
+    },
+)
+
+call-function: ("check-buttons",{
+    "theme": "ayu",
+    "background": "#0f1419",
+    "filter": "invert(0.7)",
+    "filter_hover": "invert(1)",
+})
+call-function: ("check-buttons",{
+    "theme": "dark",
+    "background": "#353535",
+    "filter": "invert(0.5)",
+    "filter_hover": "invert(0.65)",
+})
+call-function: ("check-buttons",{
+    "theme": "light",
+    "background": "#fff",
+    "filter": "invert(0.5)",
+    "filter_hover": "invert(0.35)",
+})
+
+define-function: (
+    "check-buttons-position",
+    [pre_selector],
+    block {
+        move-cursor-to: |pre_selector| + " .rust:not(.item-decl)"
+        store-position: (|pre_selector| + " .rust:not(.item-decl)", {"x": x, "y": y})
+        assert-position: (|pre_selector| + " .rust:not(.item-decl) + .button-holder", {
+            "y": |y| + 4,
+        })
+    }
+)
+
+call-function: ("check-buttons-position", {"pre_selector": ".example-wrap"})
+
+go-to: "file://" + |DOC_PATH| + "/scrape_examples/fn.test_many.html"
+// We should work as well for scraped examples.
+call-function: ("check-buttons-position", {"pre_selector": ".scraped-example .example-wrap"})
+// And also when the scraped example "title" goes above.
+set-window-size: (600, 600)
+call-function: ("check-buttons-position", {"pre_selector": ".scraped-example .example-wrap"})

@@ -1,0 +1,68 @@
+error[E0539]: malformed `repr` attribute input
+  --> $DIR/repr.rs:1:1
+   |
+LL | #[repr]
+   | ^^^^^^^ expected this to be a list
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/type-layout.html#representations>
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL | #[repr(<integer type>)]
+   |       ++++++++++++++++
+LL | #[repr(C)]
+   |       +++
+LL | #[repr(Rust)]
+   |       ++++++
+LL | #[repr(align(...))]
+   |       ++++++++++++
+   = and 2 other candidates
+
+error[E0539]: malformed `repr` attribute input
+  --> $DIR/repr.rs:4:1
+   |
+LL | #[repr = "B"]
+   | ^^^^^^^^^^^^^ expected this to be a list
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/type-layout.html#representations>
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #[repr = "B"]
+LL + #[repr(<integer type>)]
+   |
+LL - #[repr = "B"]
+LL + #[repr(C)]
+   |
+LL - #[repr = "B"]
+LL + #[repr(Rust)]
+   |
+LL - #[repr = "B"]
+LL + #[repr(align(...))]
+   |
+   = and 2 other candidates
+
+error[E0539]: malformed `repr` attribute input
+  --> $DIR/repr.rs:7:1
+   |
+LL | #[repr = "C"]
+   | ^^^^^^^^^^^^^ expected this to be a list
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/type-layout.html#representations>
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #[repr = "C"]
+LL + #[repr(<integer type>)]
+   |
+LL - #[repr = "C"]
+LL + #[repr(C)]
+   |
+LL - #[repr = "C"]
+LL + #[repr(Rust)]
+   |
+LL - #[repr = "C"]
+LL + #[repr(align(...))]
+   |
+   = and 2 other candidates
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0539`.

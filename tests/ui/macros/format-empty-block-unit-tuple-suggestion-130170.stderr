@@ -1,0 +1,46 @@
+error: format argument must be a string literal
+  --> $DIR/format-empty-block-unit-tuple-suggestion-130170.rs:5:14
+   |
+LL |     println!({}, "sss", s);
+   |              ^^
+   |
+help: you might be missing a string literal to format with
+   |
+LL |     println!("{:?} {} {}", {}, "sss", s);
+   |              +++++++++++++
+
+error: format argument must be a string literal
+  --> $DIR/format-empty-block-unit-tuple-suggestion-130170.rs:7:14
+   |
+LL |     println!({});
+   |              ^^
+   |
+help: you might be missing a string literal to format with
+   |
+LL |     println!("{:?}", {});
+   |              +++++++
+
+error: format argument must be a string literal
+  --> $DIR/format-empty-block-unit-tuple-suggestion-130170.rs:9:14
+   |
+LL |     println!(s, "sss", s, {});
+   |              ^
+   |
+help: you might be missing a string literal to format with
+   |
+LL |     println!("{} {} {} {:?}", s, "sss", s, {});
+   |              ++++++++++++++++
+
+error: format argument must be a string literal
+  --> $DIR/format-empty-block-unit-tuple-suggestion-130170.rs:11:14
+   |
+LL |     println!((), s, {});
+   |              ^^
+   |
+help: you might be missing a string literal to format with
+   |
+LL |     println!("{:?} {} {:?}", (), s, {});
+   |              +++++++++++++++
+
+error: aborting due to 4 previous errors
+

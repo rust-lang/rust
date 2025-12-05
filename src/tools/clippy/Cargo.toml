@@ -1,0 +1,75 @@
+[package]
+name = "clippy"
+version = "0.1.93"
+description = "A bunch of helpful lints to avoid common pitfalls in Rust"
+repository = "https://github.com/rust-lang/rust-clippy"
+readme = "README.md"
+license = "MIT OR Apache-2.0"
+keywords = ["clippy", "lint", "plugin"]
+categories = ["development-tools", "development-tools::cargo-plugins"]
+build = "build.rs"
+edition = "2024"
+publish = false
+
+[[bin]]
+name = "cargo-clippy"
+test = false
+path = "src/main.rs"
+
+[[bin]]
+name = "clippy-driver"
+path = "src/driver.rs"
+
+[dependencies]
+clippy_config = { path = "clippy_config" }
+clippy_lints = { path = "clippy_lints" }
+clippy_utils = { path = "clippy_utils" }
+declare_clippy_lint = { path = "declare_clippy_lint" }
+rustc_tools_util = { path = "rustc_tools_util", version = "0.4.2" }
+clippy_lints_internal = { path = "clippy_lints_internal", optional = true }
+tempfile = { version = "3.20", optional = true }
+termize = "0.2"
+color-print = "0.3.4"
+anstream = "0.6.18"
+
+[dev-dependencies]
+cargo_metadata = "0.18.1"
+ui_test = "0.30.2"
+regex = "1.5.5"
+serde = { version = "1.0.145", features = ["derive"] }
+serde_json = "1.0.122"
+walkdir = "2.3"
+filetime = "0.2.9"
+itertools = "0.12"
+pulldown-cmark = { version = "0.11", default-features = false, features = ["html"] }
+askama = { version = "0.14", default-features = false, features = ["alloc", "config", "derive"] }
+
+[dev-dependencies.toml]
+version = "0.9.7"
+default-features = false
+# preserve_order keeps diagnostic output in file order
+features = ["parse", "preserve_order"]
+
+[build-dependencies]
+rustc_tools_util = { path = "rustc_tools_util", version = "0.4.2" }
+
+[features]
+integration = ["dep:tempfile"]
+internal = ["dep:clippy_lints_internal", "dep:tempfile"]
+jemalloc = []
+
+[package.metadata.rust-analyzer]
+# This package uses #[feature(rustc_private)]
+rustc_private = true
+
+[[test]]
+name = "compile-test"
+harness = false
+
+[[test]]
+name = "dogfood"
+harness = false
+
+[lints.rust.unexpected_cfgs]
+level = "warn"
+check-cfg = ['cfg(bootstrap)']

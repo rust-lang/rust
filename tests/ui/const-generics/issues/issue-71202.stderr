@@ -1,0 +1,107 @@
+error: unconstrained generic constant
+  --> $DIR/issue-71202.rs:11:5
+   |
+LL | /     const ITEM_IS_COPY: [(); 1 - {
+LL | |         trait NotCopy {
+LL | |             const VALUE: bool = false;
+...  |
+LL | |         <IsCopy<T>>::VALUE
+LL | |     } as usize] = [];
+   | |_______________^
+   |
+help: try adding a `where` bound
+   |
+LL ~     } as usize] where [(); 1 - {
+LL +         trait NotCopy {
+LL +             const VALUE: bool = false;
+LL +         }
+LL + 
+LL +         impl<__Type: ?Sized> NotCopy for __Type {}
+LL + 
+LL +         struct IsCopy<__Type: ?Sized>(PhantomData<__Type>);
+LL + 
+LL +         impl<__Type> IsCopy<__Type>
+LL +         where
+LL +             __Type: Sized + Copy,
+LL +         {
+LL +             const VALUE: bool = true;
+LL +         }
+LL + 
+LL +         <IsCopy<T>>::VALUE
+LL ~     } as usize]: = [];
+   |
+
+error: unconstrained generic constant
+  --> $DIR/issue-71202.rs:28:19
+   |
+LL |     } as usize] = [];
+   |                   ^^
+   |
+help: try adding a `where` bound
+   |
+LL ~     } as usize] where [(); 1 - {
+LL +         trait NotCopy {
+LL +             const VALUE: bool = false;
+LL +         }
+LL + 
+LL +         impl<__Type: ?Sized> NotCopy for __Type {}
+LL + 
+LL +         struct IsCopy<__Type: ?Sized>(PhantomData<__Type>);
+LL + 
+LL +         impl<__Type> IsCopy<__Type>
+LL +         where
+LL +             __Type: Sized + Copy,
+LL +         {
+LL +             const VALUE: bool = true;
+LL +         }
+LL + 
+LL +         <IsCopy<T>>::VALUE
+LL ~     } as usize]: = [];
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/issue-71202.rs:28:19
+   |
+LL |     } as usize] = [];
+   |                   ^^ expected `1 - {
+        trait NotCopy {
+            const VALUE: bool = false;
+        }
+
+        impl<__Type: ?Sized> NotCopy for __Type {}
+
+        struct IsCopy<__Type: ?Sized>(PhantomData<__Type>);
+
+        impl<__Type> IsCopy<__Type>
+        where
+            __Type: Sized + Copy,
+        {
+            const VALUE: bool = true;
+        }
+
+        <IsCopy<T>>::VALUE
+    } as usize`, found `0`
+   |
+   = note: expected constant `1 - {
+                   trait NotCopy {
+                       const VALUE: bool = false;
+                   }
+           
+                   impl<__Type: ?Sized> NotCopy for __Type {}
+           
+                   struct IsCopy<__Type: ?Sized>(PhantomData<__Type>);
+           
+                   impl<__Type> IsCopy<__Type>
+                   where
+                       __Type: Sized + Copy,
+                   {
+                       const VALUE: bool = true;
+                   }
+           
+                   <IsCopy<T>>::VALUE
+               } as usize`
+              found constant `0`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

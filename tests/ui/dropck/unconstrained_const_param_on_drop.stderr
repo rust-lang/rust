@@ -1,0 +1,33 @@
+error[E0367]: `Drop` impl requires `the constant `_` has type `usize`` but the struct it is implemented for does not
+  --> $DIR/unconstrained_const_param_on_drop.rs:3:6
+   |
+LL | impl<const UNUSED: usize> Drop for Foo {}
+   |      ^^^^^^^^^^^^^^^^^^^
+   |
+note: the implementor must specify the same requirement
+  --> $DIR/unconstrained_const_param_on_drop.rs:1:1
+   |
+LL | struct Foo {}
+   | ^^^^^^^^^^
+
+error[E0046]: not all trait items implemented, missing: `drop`
+  --> $DIR/unconstrained_const_param_on_drop.rs:3:1
+   |
+LL | impl<const UNUSED: usize> Drop for Foo {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `drop` in implementation
+   |
+   = help: implement the missing item: `fn drop(&mut self) { todo!() }`
+
+error[E0207]: the const parameter `UNUSED` is not constrained by the impl trait, self type, or predicates
+  --> $DIR/unconstrained_const_param_on_drop.rs:3:6
+   |
+LL | impl<const UNUSED: usize> Drop for Foo {}
+   |      ^^^^^^^^^^^^^^^^^^^ unconstrained const parameter
+   |
+   = note: expressions using a const parameter must map each value to a distinct output value
+   = note: proving the result of expressions other than the parameter are unique is not supported
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0046, E0207, E0367.
+For more information about an error, try `rustc --explain E0046`.

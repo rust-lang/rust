@@ -1,0 +1,21 @@
+error[E0277]: cannot add `()` to `{integer}`
+  --> $DIR/issue-50582.rs:2:18
+   |
+LL |     Vec::<[(); 1 + for x in 0..1 {}]>::new();
+   |                  ^ no implementation for `{integer} + ()`
+   |
+   = help: the trait `Add<()>` is not implemented for `{integer}`
+   = help: the following other types implement trait `Add<Rhs>`:
+             `&f128` implements `Add<f128>`
+             `&f128` implements `Add`
+             `&f16` implements `Add<f16>`
+             `&f16` implements `Add`
+             `&f32` implements `Add<f32>`
+             `&f32` implements `Add`
+             `&f64` implements `Add<f64>`
+             `&f64` implements `Add`
+           and 56 others
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

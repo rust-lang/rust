@@ -1,0 +1,12 @@
+error[E0119]: conflicting implementations of trait `From<MyError<_>>` for type `MyError<_>`
+  --> $DIR/so-37347311.rs:11:1
+   |
+LL | impl<S: Storage> From<S::Error> for MyError<S> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: conflicting implementation in crate `core`:
+           - impl<T> From<T> for T;
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0119`.

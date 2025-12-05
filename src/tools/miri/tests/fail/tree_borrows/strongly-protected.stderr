@@ -1,0 +1,47 @@
+error: Undefined Behavior: deallocation through <TAG> at ALLOC[0x0] is forbidden
+  --> RUSTLIB/alloc/src/boxed.rs:LL:CC
+   |
+LL |                 self.1.deallocate(From::from(ptr.cast()), layout);
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Undefined Behavior occurred here
+   |
+   = help: this indicates a potential bug in the program: it performed an invalid operation, but the Tree Borrows rules it violated are still experimental
+   = help: see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/tree-borrows.md for further information
+   = help: the allocation of the accessed tag <TAG> also contains the strongly protected tag <TAG>
+   = help: the strongly protected tag <TAG> disallows deallocations
+help: the accessed tag <TAG> was created here
+  --> tests/fail/tree_borrows/strongly-protected.rs:LL:CC
+   |
+LL |         drop(unsafe { Box::from_raw(raw) });
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: the strongly protected tag <TAG> was created here, in the initial state Reserved
+  --> tests/fail/tree_borrows/strongly-protected.rs:LL:CC
+   |
+LL | fn inner(x: &mut i32, f: fn(*mut i32)) {
+   |          ^
+   = note: BACKTRACE (of the first span):
+   = note: inside `<std::boxed::Box<i32> as std::ops::Drop>::drop` at RUSTLIB/alloc/src/boxed.rs:LL:CC
+   = note: inside `std::ptr::drop_in_place::<std::boxed::Box<i32>> - shim(Some(std::boxed::Box<i32>))` at RUSTLIB/core/src/ptr/mod.rs:LL:CC
+   = note: inside `std::mem::drop::<std::boxed::Box<i32>>` at RUSTLIB/core/src/mem/mod.rs:LL:CC
+note: inside closure
+  --> tests/fail/tree_borrows/strongly-protected.rs:LL:CC
+   |
+LL |         drop(unsafe { Box::from_raw(raw) });
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: inside `<{closure@tests/fail/tree_borrows/strongly-protected.rs:LL:CC} as std::ops::FnOnce<(*mut i32,)>>::call_once - shim` at RUSTLIB/core/src/ops/function.rs:LL:CC
+note: inside `inner`
+  --> tests/fail/tree_borrows/strongly-protected.rs:LL:CC
+   |
+LL |     f(x)
+   |     ^^^^
+note: inside `main`
+  --> tests/fail/tree_borrows/strongly-protected.rs:LL:CC
+   |
+LL | /     inner(Box::leak(Box::new(0)), |raw| {
+LL | |         drop(unsafe { Box::from_raw(raw) });
+LL | |     });
+   | |______^
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to 1 previous error
+

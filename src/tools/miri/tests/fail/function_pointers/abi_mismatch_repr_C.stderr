@@ -1,0 +1,15 @@
+error: Undefined Behavior: calling a function whose parameter #1 has type S2 passing argument of type S1
+  --> tests/fail/function_pointers/abi_mismatch_repr_C.rs:LL:CC
+   |
+LL |     fnptr(S1(NonZero::new(1).unwrap()));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Undefined Behavior occurred here
+   |
+   = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
+   = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
+   = help: this means these two types are not *guaranteed* to be ABI-compatible across all targets
+   = help: if you think this code should be accepted anyway, please report an issue with Miri
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,24 @@
+error[E0277]: the size for values of type `(dyn Foo + 'static)` cannot be known at compilation time
+  --> $DIR/issue-111932.rs:4:20
+   |
+LL |     foos.for_each(|foo| {
+   |                    ^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `(dyn Foo + 'static)`
+   = note: all function arguments must have a statically known size
+   = help: unsized fn params are gated as an unstable feature
+
+error[E0277]: the size for values of type `dyn Foo` cannot be known at compilation time
+  --> $DIR/issue-111932.rs:5:26
+   |
+LL |         println!("{:?}", foo);
+   |                   ----   ^^^ doesn't have a size known at compile-time
+   |                   |
+   |                   required by this formatting parameter
+   |
+   = help: the trait `Sized` is not implemented for `dyn Foo`
+   = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

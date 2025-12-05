@@ -1,0 +1,46 @@
+#![feature(prelude_import)]
+#![no_std]
+//@ check-pass
+//@ proc-macro: another-proc-macro.rs
+//@ compile-flags: -Zunpretty=expanded
+//@ edition:2015
+
+#![feature(derive_coerce_pointee)]
+#[macro_use]
+extern crate std;
+#[prelude_import]
+use ::std::prelude::rust_2015::*;
+
+#[macro_use]
+extern crate another_proc_macro;
+
+use another_proc_macro::{AnotherMacro, pointee};
+
+#[repr(transparent)]
+pub struct Ptr<'a, #[pointee] T: ?Sized> {
+    data: &'a mut T,
+}
+#[automatically_derived]
+impl<'a, T: ?Sized> ::core::marker::CoercePointeeValidated for Ptr<'a, T> { }
+#[automatically_derived]
+impl<'a, T: ?Sized + ::core::marker::Unsize<__S>, __S: ?Sized>
+    ::core::ops::DispatchFromDyn<Ptr<'a, __S>> for Ptr<'a, T> {
+}
+#[automatically_derived]
+impl<'a, T: ?Sized + ::core::marker::Unsize<__S>, __S: ?Sized>
+    ::core::ops::CoerceUnsized<Ptr<'a, __S>> for Ptr<'a, T> {
+}
+
+
+
+const _: () =
+    {
+        const POINTEE_MACRO_ATTR_DERIVED: () = ();
+    };
+#[pointee]
+struct MyStruct;
+const _: () =
+    {
+        const ANOTHER_MACRO_DERIVED: () = ();
+    };
+fn main() {}

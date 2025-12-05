@@ -1,0 +1,17 @@
+error[E0282]: type annotations needed for `*const _`
+  --> $DIR/edition-raw-pointer-method-2018.rs:8:9
+   |
+LL |     let y = &x as *const _;
+   |         ^
+LL |
+LL |     let _ = y.is_null();
+   |               ------- cannot call a method on a raw pointer with an unknown pointee type
+   |
+help: consider giving `y` an explicit type, where the placeholders `_` are specified
+   |
+LL |     let y: *const _ = &x as *const _;
+   |          ++++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0282`.

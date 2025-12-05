@@ -1,0 +1,24 @@
+// MIR for `issue_77355_opt` after PreCodegen
+
+fn issue_77355_opt(_1: Foo) -> u64 {
+    debug num => _1;
+    let mut _0: u64;
+    let mut _2: isize;
+    scope 1 {
+    }
+
+    bb0: {
+        _2 = discriminant(_1);
+        switchInt(move _2) -> [1: bb1, 2: bb1, otherwise: bb2];
+    }
+
+    bb1: {
+        _0 = const 23_u64;
+        return;
+    }
+
+    bb2: {
+        _0 = const 42_u64;
+        return;
+    }
+}

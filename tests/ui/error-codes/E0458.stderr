@@ -1,0 +1,35 @@
+error[E0539]: malformed `link` attribute input
+  --> $DIR/E0458.rs:1:1
+   |
+LL | #[link(kind = "wonderful_unicorn")] extern "C" {}
+   | ^^^^^^^^^^^^^^-------------------^^
+   |               |
+   |               valid arguments are "static", "dylib", "framework", "raw-dylib" or "link-arg"
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/items/external-blocks.html#the-link-attribute>
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #[link(kind = "wonderful_unicorn")] extern "C" {}
+LL + #[link(name = "...")] extern "C" {}
+   |
+LL - #[link(kind = "wonderful_unicorn")] extern "C" {}
+LL + #[link(name = "...", import_name_type = "decorated|noprefix|undecorated")] extern "C" {}
+   |
+LL - #[link(kind = "wonderful_unicorn")] extern "C" {}
+LL + #[link(name = "...", kind = "dylib|static|...")] extern "C" {}
+   |
+LL - #[link(kind = "wonderful_unicorn")] extern "C" {}
+LL + #[link(name = "...", kind = "dylib|static|...", wasm_import_module = "...", import_name_type = "decorated|noprefix|undecorated")] extern "C" {}
+   |
+   = and 1 other candidate
+
+error[E0459]: `#[link]` attribute requires a `name = "string"` argument
+  --> $DIR/E0458.rs:1:1
+   |
+LL | #[link(kind = "wonderful_unicorn")] extern "C" {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `name` argument
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0459, E0539.
+For more information about an error, try `rustc --explain E0459`.

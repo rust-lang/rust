@@ -1,0 +1,71 @@
+error: manual implementation of `.is_multiple_of()`
+  --> tests/ui/manual_is_multiple_of.rs:8:13
+   |
+LL |     let _ = a % b == 0;
+   |             ^^^^^^^^^^ help: replace with: `a.is_multiple_of(b)`
+   |
+   = note: `-D clippy::manual-is-multiple-of` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::manual_is_multiple_of)]`
+
+error: manual implementation of `.is_multiple_of()`
+  --> tests/ui/manual_is_multiple_of.rs:9:13
+   |
+LL |     let _ = (a + 1) % (b + 1) == 0;
+   |             ^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `(a + 1).is_multiple_of(b + 1)`
+
+error: manual implementation of `.is_multiple_of()`
+  --> tests/ui/manual_is_multiple_of.rs:10:13
+   |
+LL |     let _ = a % b != 0;
+   |             ^^^^^^^^^^ help: replace with: `!a.is_multiple_of(b)`
+
+error: manual implementation of `.is_multiple_of()`
+  --> tests/ui/manual_is_multiple_of.rs:11:13
+   |
+LL |     let _ = (a + 1) % (b + 1) != 0;
+   |             ^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `!(a + 1).is_multiple_of(b + 1)`
+
+error: manual implementation of `.is_multiple_of()`
+  --> tests/ui/manual_is_multiple_of.rs:13:13
+   |
+LL |     let _ = a % b > 0;
+   |             ^^^^^^^^^ help: replace with: `!a.is_multiple_of(b)`
+
+error: manual implementation of `.is_multiple_of()`
+  --> tests/ui/manual_is_multiple_of.rs:14:13
+   |
+LL |     let _ = 0 < a % b;
+   |             ^^^^^^^^^ help: replace with: `!a.is_multiple_of(b)`
+
+error: manual implementation of `.is_multiple_of()`
+  --> tests/ui/manual_is_multiple_of.rs:28:13
+   |
+LL |     let _ = a % b == 0;
+   |             ^^^^^^^^^^ help: replace with: `a.is_multiple_of(*b)`
+
+error: manual implementation of `.is_multiple_of()`
+  --> tests/ui/manual_is_multiple_of.rs:41:26
+   |
+LL |     let cl = |a: u64, b| a % b == 0;
+   |                          ^^^^^^^^^^ help: replace with: `a.is_multiple_of(b)`
+
+error: manual implementation of `.is_multiple_of()`
+  --> tests/ui/manual_is_multiple_of.rs:45:27
+   |
+LL |     let cl = |a: &u64, b| a % b == 0;
+   |                           ^^^^^^^^^^ help: replace with: `a.is_multiple_of(b)`
+
+error: manual implementation of `.is_multiple_of()`
+  --> tests/ui/manual_is_multiple_of.rs:63:19
+   |
+LL |             while n % p == 0 {
+   |                   ^^^^^^^^^^ help: replace with: `n.is_multiple_of(*p)`
+
+error: manual implementation of `.is_multiple_of()`
+  --> tests/ui/manual_is_multiple_of.rs:97:58
+   |
+LL |         let d = |n: u32| -> u32 { (1..=n / 2).filter(|i| n % i == 0).sum() };
+   |                                                          ^^^^^^^^^^ help: replace with: `n.is_multiple_of(*i)`
+
+error: aborting due to 11 previous errors
+

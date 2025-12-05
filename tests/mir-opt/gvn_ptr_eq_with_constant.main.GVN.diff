@@ -1,0 +1,68 @@
+- // MIR for `main` before GVN
++ // MIR for `main` after GVN
+  
+  fn main() -> () {
+      let mut _0: ();
+      let _1: bool;
+      let mut _2: *mut u8;
+      scope 1 (inlined dangling_mut::<u8>) {
+          scope 2 (inlined NonNull::<u8>::dangling) {
+              let mut _3: std::num::NonZero<usize>;
+              scope 3 {
+                  scope 5 (inlined std::ptr::Alignment::as_nonzero) {
+                  }
+                  scope 6 (inlined NonNull::<u8>::without_provenance) {
+                      scope 7 {
+                      }
+                      scope 8 (inlined NonZero::<usize>::get) {
+                      }
+                      scope 9 (inlined std::ptr::without_provenance::<u8>) {
+                          scope 10 (inlined without_provenance_mut::<u8>) {
+                          }
+                      }
+                  }
+              }
+              scope 4 (inlined std::ptr::Alignment::of::<u8>) {
+              }
+          }
+          scope 11 (inlined NonNull::<u8>::as_ptr) {
+          }
+      }
+      scope 12 (inlined Foo::<u8>::cmp_ptr) {
+          let mut _4: *const u8;
+          let mut _5: *mut u8;
+          let mut _6: *const u8;
+          scope 13 (inlined std::ptr::eq::<u8>) {
+          }
+      }
+  
+      bb0: {
+          StorageLive(_1);
+          StorageLive(_2);
+          StorageLive(_3);
+-         _3 = const std::ptr::Alignment::of::<u8>::{constant#0} as std::num::NonZero<usize> (Transmute);
+-         _2 = copy _3 as *mut u8 (Transmute);
++         _3 = const NonZero::<usize>(core::num::niche_types::NonZeroUsizeInner(1_usize));
++         _2 = const {0x1 as *mut u8};
+          StorageDead(_3);
+          StorageLive(_4);
+          StorageLive(_5);
+-         _5 = copy _2;
+-         _4 = copy _2 as *const u8 (PtrToPtr);
++         _5 = const {0x1 as *mut u8};
++         _4 = const {0x1 as *const u8};
+          StorageDead(_5);
+          StorageLive(_6);
+-         _6 = const Foo::<u8>::SENTINEL as *const u8 (PtrToPtr);
+-         _1 = Eq(copy _4, copy _6);
++         _6 = const {0x1 as *const u8};
++         _1 = const true;
+          StorageDead(_6);
+          StorageDead(_4);
+          StorageDead(_2);
+          StorageDead(_1);
+          _0 = const ();
+          return;
+      }
+  }
+  

@@ -1,0 +1,37 @@
+error: ambiguous `+` in a type
+  --> $DIR/impl-fn-parsing-ambiguities.rs:4:27
+   |
+LL | fn a() -> impl Fn(&u8) -> impl Debug + '_ {
+   |                           ^^^^^^^^^^^^^^^
+   |
+help: try adding parentheses
+   |
+LL | fn a() -> impl Fn(&u8) -> (impl Debug + '_) {
+   |                           +               +
+
+error: ambiguous `+` in a type
+  --> $DIR/impl-fn-parsing-ambiguities.rs:10:24
+   |
+LL | fn b() -> impl Fn() -> impl Debug + Send {
+   |                        ^^^^^^^^^^^^^^^^^
+   |
+help: try adding parentheses
+   |
+LL | fn b() -> impl Fn() -> (impl Debug + Send) {
+   |                        +                 +
+
+error[E0657]: `impl Trait` cannot capture higher-ranked lifetime from outer `impl Trait`
+  --> $DIR/impl-fn-parsing-ambiguities.rs:4:40
+   |
+LL | fn a() -> impl Fn(&u8) -> impl Debug + '_ {
+   |                                        ^^
+   |
+note: lifetime declared here
+  --> $DIR/impl-fn-parsing-ambiguities.rs:4:19
+   |
+LL | fn a() -> impl Fn(&u8) -> impl Debug + '_ {
+   |                   ^
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0657`.

@@ -1,0 +1,9 @@
+error[E0614]: type `{integer}` cannot be dereferenced
+  --> $DIR/deref-non-pointer.rs:2:9
+   |
+LL |   match *1 {
+   |         ^^ can't be dereferenced
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0614`.

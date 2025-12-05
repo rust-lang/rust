@@ -1,0 +1,14 @@
+tests/run-make/cross-lang-lto/
+tests/run-make/cross-lang-lto-upstream-rlibs/
+tests/run-make/llvm-ident/
+tests/run-make/native-link-modifier-bundle/
+tests/run-make/remap-path-prefix-dwarf/
+tests/run-make/rlib-format-packed-bundled-libs/
+tests/run-make/rlib-format-packed-bundled-libs-2/
+tests/run-make/arguments-non-c-like-enum/
+tests/run-make/foreign-double-unwind/
+tests/run-make/foreign-exceptions/
+tests/run-make/glibc-staticlib-args/
+tests/run-make/lto-smoke-c/
+tests/run-make/return-non-c-like-enum/
+

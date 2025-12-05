@@ -1,0 +1,10 @@
+error: to use `strict_coherence` on this trait, the `with_negative_coherence` feature must be enabled
+  --> $DIR/strict-coherence-needs-negative-coherence.rs:4:1
+   |
+LL | #[rustc_strict_coherence]
+   | ------------------------- due to this attribute
+LL | trait Foo {}
+   | ^^^^^^^^^
+
+error: aborting due to 1 previous error
+

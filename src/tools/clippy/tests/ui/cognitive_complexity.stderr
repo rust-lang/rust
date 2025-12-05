@@ -1,0 +1,180 @@
+error: the function has a cognitive complexity of (28/25)
+  --> tests/ui/cognitive_complexity.rs:11:4
+   |
+LL | fn main() {
+   |    ^^^^
+   |
+   = help: you could split it up into multiple smaller functions
+   = note: `-D clippy::cognitive-complexity` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::cognitive_complexity)]`
+
+error: the function has a cognitive complexity of (7/1)
+  --> tests/ui/cognitive_complexity.rs:98:4
+   |
+LL | fn kaboom() {
+   |    ^^^^^^
+   |
+   = help: you could split it up into multiple smaller functions
+
+error: the function has a cognitive complexity of (2/1)
+  --> tests/ui/cognitive_complexity.rs:158:4
+   |
+LL | fn baa() {
+   |    ^^^
+   |
+   = help: you could split it up into multiple smaller functions
+
+error: the function has a cognitive complexity of (2/1)
+  --> tests/ui/cognitive_complexity.rs:161:13
+   |
+LL |     let x = || match 99 {
+   |             ^^
+   |
+   = help: you could split it up into multiple smaller functions
+
+error: the function has a cognitive complexity of (2/1)
+  --> tests/ui/cognitive_complexity.rs:179:4
+   |
+LL | fn bar() {
+   |    ^^^
+   |
+   = help: you could split it up into multiple smaller functions
+
+error: the function has a cognitive complexity of (2/1)
+  --> tests/ui/cognitive_complexity.rs:192:4
+   |
+LL | fn dont_warn_on_tests() {
+   |    ^^^^^^^^^^^^^^^^^^
+   |
+   = help: you could split it up into multiple smaller functions
+
+error: the function has a cognitive complexity of (2/1)
+  --> tests/ui/cognitive_complexity.rs:202:4
+   |
+LL | fn barr() {
+   |    ^^^^
+   |
+   = help: you could split it up into multiple smaller functions
+
+error: the function has a cognitive complexity of (3/1)
+  --> tests/ui/cognitive_complexity.rs:214:4
+   |
+LL | fn barr2() {
+   |    ^^^^^
+   |
+   = help: you could split it up into multiple smaller functions
+
+error: the function has a cognitive complexity of (2/1)
+  --> tests/ui/cognitive_complexity.rs:232:4
+   |
+LL | fn barrr() {
+   |    ^^^^^
+   |
+   = help: you could split it up into multiple smaller functions
+
+error: the function has a cognitive complexity of (3/1)
+  --> tests/ui/cognitive_complexity.rs:244:4
+   |
+LL | fn barrr2() {
+   |    ^^^^^^
+   |
+   = help: you could split it up into multiple smaller functions
+
+error: the function has a cognitive complexity of (2/1)
+  --> tests/ui/cognitive_complexity.rs:262:4
+   |
+LL | fn barrrr() {
+   |    ^^^^^^
+   |
+   = help: you could split it up into multiple smaller functions
+
+error: the function has a cognitive complexity of (3/1)
+  --> tests/ui/cognitive_complexity.rs:274:4
+   |
+LL | fn barrrr2() {
+   |    ^^^^^^^
+   |
+   = help: you could split it up into multiple smaller functions
+
+error: the function has a cognitive complexity of (2/1)
+  --> tests/ui/cognitive_complexity.rs:292:4
+   |
+LL | fn cake() {
+   |    ^^^^
+   |
+   = help: you could split it up into multiple smaller functions
+
+error: the function has a cognitive complexity of (4/1)
+  --> tests/ui/cognitive_complexity.rs:304:8
+   |
+LL | pub fn read_file(input_path: &str) -> String {
+   |        ^^^^^^^^^
+   |
+   = help: you could split it up into multiple smaller functions
+
+error: the function has a cognitive complexity of (2/1)
+  --> tests/ui/cognitive_complexity.rs:337:4
+   |
+LL | fn void(void: Void) {
+   |    ^^^^
+   |
+   = help: you could split it up into multiple smaller functions
+
+error: the function has a cognitive complexity of (8/1)
+  --> tests/ui/cognitive_complexity.rs:390:4
+   |
+LL | fn early_ret() -> i32 {
+   |    ^^^^^^^^^
+   |
+   = help: you could split it up into multiple smaller functions
+
+error: the function has a cognitive complexity of (2/1)
+  --> tests/ui/cognitive_complexity.rs:413:13
+   |
+LL |     let x = |a: i32, b: i32| -> i32 {
+   |             ^^^^^^^^^^^^^^^^
+   |
+   = help: you could split it up into multiple smaller functions
+
+error: the function has a cognitive complexity of (2/1)
+  --> tests/ui/cognitive_complexity.rs:428:8
+   |
+LL |     fn moo(&self) {
+   |        ^^^
+   |
+   = help: you could split it up into multiple smaller functions
+
+error: the function has a cognitive complexity of (2/1)
+  --> tests/ui/cognitive_complexity.rs:439:14
+   |
+LL |     async fn a() {
+   |              ^
+   |
+   = help: you could split it up into multiple smaller functions
+
+error: the function has a cognitive complexity of (2/1)
+  --> tests/ui/cognitive_complexity.rs:448:22
+   |
+LL |         pub async fn async_method() {
+   |                      ^^^^^^^^^^^^
+   |
+   = help: you could split it up into multiple smaller functions
+
+error: the function has a cognitive complexity of (2/1)
+  --> tests/ui/cognitive_complexity.rs:459:8
+   |
+LL |     fn foo() {
+   |        ^^^
+   |
+   = help: you could split it up into multiple smaller functions
+
+error: the function has a cognitive complexity of (2/1)
+  --> tests/ui/cognitive_complexity.rs:466:8
+   |
+LL |     fn bar() {
+   |        ^^^
+   |
+   = help: you could split it up into multiple smaller functions
+
+error: aborting due to 22 previous errors
+

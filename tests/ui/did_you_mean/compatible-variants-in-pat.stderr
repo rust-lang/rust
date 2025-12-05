@@ -1,0 +1,70 @@
+error[E0308]: mismatched types
+  --> $DIR/compatible-variants-in-pat.rs:10:9
+   |
+LL |     match f {
+   |           - this expression has type `Foo`
+LL |         Bar { x } => {
+   |         ^^^^^^^^^ expected `Foo`, found `Bar`
+   |
+help: try wrapping the pattern in `Foo::Bar`
+   |
+LL |         Foo::Bar(Bar { x }) => {
+   |         +++++++++         +
+
+error[E0308]: mismatched types
+  --> $DIR/compatible-variants-in-pat.rs:21:9
+   |
+LL | struct S;
+   | -------- unit struct defined here
+...
+LL |     match s {
+   |           - this expression has type `Option<S>`
+LL |         S => {
+   |         ^
+   |         |
+   |         expected `Option<S>`, found `S`
+   |         `S` is interpreted as a unit struct, not a new binding
+   |
+   = note: expected enum `Option<S>`
+            found struct `S`
+help: try wrapping the pattern in `Some`
+   |
+LL |         Some(S) => {
+   |         +++++ +
+help: introduce a new binding instead
+   |
+LL -         S => {
+LL +         other_s => {
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/compatible-variants-in-pat.rs:32:9
+   |
+LL | struct S;
+   | -------- unit struct defined here
+...
+LL |     match s {
+   |           - this expression has type `Result<S, S>`
+LL |         S => {
+   |         ^
+   |         |
+   |         expected `Result<S, S>`, found `S`
+   |         `S` is interpreted as a unit struct, not a new binding
+   |
+   = note: expected enum `Result<S, S>`
+            found struct `S`
+help: try wrapping the pattern in a variant of `Result`
+   |
+LL |         Ok(S) => {
+   |         +++ +
+LL |         Err(S) => {
+   |         ++++ +
+help: introduce a new binding instead
+   |
+LL -         S => {
+LL +         other_s => {
+   |
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

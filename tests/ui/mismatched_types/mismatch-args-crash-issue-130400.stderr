@@ -1,0 +1,26 @@
+error[E0061]: this function takes 1 argument but 0 arguments were supplied
+  --> $DIR/mismatch-args-crash-issue-130400.rs:4:9
+   |
+LL |         Self::foo()
+   |         ^^^^^^^^^-- argument #1 is missing
+   |
+note: method defined here
+  --> $DIR/mismatch-args-crash-issue-130400.rs:2:8
+   |
+LL |     fn foo(&mut self) -> _ {
+   |        ^^^ ---------
+help: provide the argument
+   |
+LL |         Self::foo(/* value */)
+   |                   +++++++++++
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for return types
+  --> $DIR/mismatch-args-crash-issue-130400.rs:2:26
+   |
+LL |     fn foo(&mut self) -> _ {
+   |                          ^ not allowed in type signatures
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0061, E0121.
+For more information about an error, try `rustc --explain E0061`.

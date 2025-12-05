@@ -1,0 +1,41 @@
+[package]
+name = "ide-completion"
+version = "0.0.0"
+repository.workspace = true
+description = "Utilities for generating completions of user input for rust-analyzer."
+
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[lib]
+doctest = false
+
+[dependencies]
+cov-mark = "2.0.0"
+itertools.workspace = true
+tracing.workspace = true
+
+smallvec.workspace = true
+
+
+# local deps
+base-db.workspace = true
+ide-db.workspace = true
+stdx.workspace = true
+syntax.workspace = true
+# completions crate should depend only on the top-level `hir` package. if you need
+# something from some `hir-xxx` subpackage, reexport the API via `hir`.
+hir.workspace = true
+macros.workspace = true
+
+[dev-dependencies]
+expect-test = "1.5.1"
+
+# local deps
+test-utils.workspace = true
+test-fixture.workspace = true
+
+[lints]
+workspace = true

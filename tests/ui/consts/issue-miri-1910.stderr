@@ -1,0 +1,12 @@
+error[E0080]: unable to turn pointer into integer
+  --> $DIR/issue-miri-1910.rs:8:5
+   |
+LL |     (&foo as *const _ as *const u8).add(one_and_a_half_pointers).read();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `C` failed here
+   |
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0080`.

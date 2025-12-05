@@ -1,0 +1,16 @@
+error[E0284]: type annotations needed
+  --> $DIR/issue-12028.rs:27:14
+   |
+LL |         self.input_stream(&mut stream);
+   |              ^^^^^^^^^^^^
+   |
+   = note: cannot satisfy `<_ as StreamHasher>::S == <H as StreamHasher>::S`
+help: try using a fully qualified path to specify the expected types
+   |
+LL -         self.input_stream(&mut stream);
+LL +         <u8 as StreamHash<H>>::input_stream(self, &mut stream);
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0284`.

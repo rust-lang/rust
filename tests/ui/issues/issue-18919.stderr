@@ -1,0 +1,23 @@
+error[E0277]: the size for values of type `dyn for<'a> Fn(&'a isize) -> isize` cannot be known at compilation time
+  --> $DIR/issue-18919.rs:3:15
+   |
+LL | fn ho_func(f: Option<FuncType>) {
+   |               ^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `dyn for<'a> Fn(&'a isize) -> isize`
+note: required by an implicit `Sized` bound in `Option`
+  --> $DIR/issue-18919.rs:7:13
+   |
+LL | enum Option<T> {
+   |             ^ required by the implicit `Sized` requirement on this type parameter in `Option`
+help: you could relax the implicit `Sized` bound on `T` if it were used through indirection like `&T` or `Box<T>`
+  --> $DIR/issue-18919.rs:7:13
+   |
+LL | enum Option<T> {
+   |             ^ this could be changed to `T: ?Sized`...
+LL |     Some(T),
+   |          - ...if indirection were used here: `Box<T>`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

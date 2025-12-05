@@ -1,0 +1,23 @@
+error: use of a disallowed method `rustc_lint::context::LintContext::span_lint`
+  --> tests/ui-internal/disallow_span_lint.rs:15:8
+   |
+LL |     cx.span_lint(lint, span, |lint| {
+   |        ^^^^^^^^^
+   |
+   = note: this function does not add a link to our documentation; please use the `clippy_utils::diagnostics::span_lint*` functions instead
+note: the lint level is defined here
+  --> tests/ui-internal/disallow_span_lint.rs:2:9
+   |
+LL | #![deny(clippy::disallowed_methods)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: use of a disallowed method `rustc_middle::ty::context::TyCtxt::node_span_lint`
+  --> tests/ui-internal/disallow_span_lint.rs:22:9
+   |
+LL |     tcx.node_span_lint(lint, hir_id, span, |lint| {
+   |         ^^^^^^^^^^^^^^
+   |
+   = note: this function does not add a link to our documentation; please use the `clippy_utils::diagnostics::span_lint_hir*` functions instead
+
+error: aborting due to 2 previous errors
+

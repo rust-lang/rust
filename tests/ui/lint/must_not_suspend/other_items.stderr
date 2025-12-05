@@ -1,0 +1,10 @@
+error: `must_not_suspend` attribute should be applied to a struct, enum, union, or trait
+  --> $DIR/other_items.rs:5:1
+   |
+LL | #[must_not_suspend]
+   | ^^^^^^^^^^^^^^^^^^^
+LL | mod inner {}
+   | ------------ is not a struct, enum, union, or trait
+
+error: aborting due to 1 previous error
+

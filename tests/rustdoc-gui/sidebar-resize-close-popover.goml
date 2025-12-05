@@ -1,0 +1,20 @@
+// Checks sidebar resizing close the Settings popover
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
+assert-property: (".sidebar", {"clientWidth": "199"})
+show-text: true
+click: "rustdoc-toolbar .settings-menu"
+wait-for: "#settings"
+assert-css: ("#settings", {"display": "block"})
+// normal resizing
+drag-and-drop: ((205, 100), (185, 100))
+assert-property: (".sidebar", {"clientWidth": "181"})
+assert-css: ("#settings", {"display": "none"})
+
+// Now same thing, but for source code
+go-to: "file://" + |DOC_PATH| + "/src/test_docs/lib.rs.html"
+click: "rustdoc-toolbar .settings-menu"
+wait-for: "#settings"
+assert-css: ("#settings", {"display": "block"})
+assert-property: (".sidebar", {"clientWidth": "49"})
+drag-and-drop: ((52, 100), (185, 100))
+assert-css: ("#settings", {"display": "none"})

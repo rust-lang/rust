@@ -1,0 +1,21 @@
+error[E0790]: cannot refer to the associated constant on trait without specifying the corresponding `impl` type
+  --> $DIR/issue-63496.rs:4:21
+   |
+LL |     const C: usize;
+   |     -------------- `A::C` defined here
+LL |
+LL |     fn f() -> ([u8; A::C], [u8; A::C]);
+   |                     ^^^^ cannot refer to the associated constant of trait
+
+error[E0790]: cannot refer to the associated constant on trait without specifying the corresponding `impl` type
+  --> $DIR/issue-63496.rs:4:33
+   |
+LL |     const C: usize;
+   |     -------------- `A::C` defined here
+LL |
+LL |     fn f() -> ([u8; A::C], [u8; A::C]);
+   |                                 ^^^^ cannot refer to the associated constant of trait
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0790`.

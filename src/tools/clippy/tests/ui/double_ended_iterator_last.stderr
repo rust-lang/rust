@@ -1,0 +1,47 @@
+error: called `Iterator::last` on a `DoubleEndedIterator`; this will needlessly iterate the entire iterator
+  --> tests/ui/double_ended_iterator_last.rs:5:5
+   |
+LL |     s.split(' ').last()
+   |     ^^^^^^^^^^^^^------
+   |                  |
+   |                  help: try: `next_back()`
+   |
+   = note: `-D clippy::double-ended-iterator-last` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::double_ended_iterator_last)]`
+
+error: called `Iterator::last` on a `DoubleEndedIterator`; this will needlessly iterate the entire iterator
+  --> tests/ui/double_ended_iterator_last.rs:22:13
+   |
+LL |     let _ = DeIterator.last();
+   |             ^^^^^^^^^^^------
+   |                        |
+   |                        help: try: `next_back()`
+
+error: called `Iterator::last` on a `DoubleEndedIterator`; this will needlessly iterate the entire iterator
+  --> tests/ui/double_ended_iterator_last.rs:114:36
+   |
+LL |     println!("Last element is {}", v.last().unwrap().0);
+   |                                    ^^^^^^^^
+   |
+   = note: this change will alter drop order which may be undesirable
+help: try
+   |
+LL ~     let mut v = DropDeIterator(v.into_iter());
+LL ~     println!("Last element is {}", v.next_back().unwrap().0);
+   |
+
+error: called `Iterator::last` on a `DoubleEndedIterator`; this will needlessly iterate the entire iterator
+  --> tests/ui/double_ended_iterator_last.rs:119:36
+   |
+LL |     println!("Last element is {}", v.0.last().unwrap().0);
+   |                                    ^^^^^^^^^^
+   |
+   = note: this change will alter drop order which may be undesirable
+help: try
+   |
+LL ~     let mut v = (DropDeIterator(v.into_iter()), 42);
+LL ~     println!("Last element is {}", v.0.next_back().unwrap().0);
+   |
+
+error: aborting due to 4 previous errors
+

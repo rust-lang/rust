@@ -1,0 +1,43 @@
+──────────────────────────────────────────────────
+Warning: this tree is indicative only. Some tags may have been hidden.
+0..   1
+| Act |    └─┬──<TAG=root of the allocation>
+| ReIM|      └─┬──<TAG=base>
+| ReIM|        ├─┬──<TAG=x>
+| ReIM|        │ └─┬──<TAG=caller:x>
+| Res |        │   └────<TAG=callee:x> Strongly protected
+| ReIM|        └────<TAG=y, callee:y, caller:y>
+──────────────────────────────────────────────────
+error: Undefined Behavior: write access through <TAG> (y, callee:y, caller:y) at ALLOC[0x0] is forbidden
+  --> tests/fail/tree_borrows/reserved/cell-protected-write.rs:LL:CC
+   |
+LL |             *y = 1;
+   |             ^^^^^^ Undefined Behavior occurred here
+   |
+   = help: this indicates a potential bug in the program: it performed an invalid operation, but the Tree Borrows rules it violated are still experimental
+   = help: see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/tree-borrows.md for further information
+   = help: the accessed tag <TAG> (y, callee:y, caller:y) is foreign to the protected tag <TAG> (callee:x) (i.e., it is not a child)
+   = help: this foreign write access would cause the protected tag <TAG> (callee:x) (currently Reserved) to become Disabled
+   = help: protected tags must never be Disabled
+help: the accessed tag <TAG> was created here
+  --> tests/fail/tree_borrows/reserved/cell-protected-write.rs:LL:CC
+   |
+LL |         let y = (&mut *n) as *mut UnsafeCell<_> as *mut _;
+   |                 ^^^^^^^^^
+help: the protected tag <TAG> was created here, in the initial state Reserved
+  --> tests/fail/tree_borrows/reserved/cell-protected-write.rs:LL:CC
+   |
+LL |         unsafe fn write_second(x: &mut UnsafeCell<u8>, y: *mut u8) {
+   |                                ^
+   = note: BACKTRACE (of the first span):
+   = note: inside `main::write_second` at tests/fail/tree_borrows/reserved/cell-protected-write.rs:LL:CC
+note: inside `main`
+  --> tests/fail/tree_borrows/reserved/cell-protected-write.rs:LL:CC
+   |
+LL |         write_second(x, y);
+   |         ^^^^^^^^^^^^^^^^^^
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to 1 previous error
+

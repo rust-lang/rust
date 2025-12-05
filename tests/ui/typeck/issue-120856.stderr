@@ -1,0 +1,25 @@
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `n`
+  --> $DIR/issue-120856.rs:1:37
+   |
+LL | pub type Archived<T> = <m::Alias as n::Trait>::Archived;
+   |                                     ^
+   |                                     |
+   |                                     use of unresolved module or unlinked crate `n`
+   |                                     help: a trait with a similar name exists: `Fn`
+   |
+   = help: you might be missing a crate named `n`
+
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `m`
+  --> $DIR/issue-120856.rs:1:25
+   |
+LL | pub type Archived<T> = <m::Alias as n::Trait>::Archived;
+   |                         ^
+   |                         |
+   |                         use of unresolved module or unlinked crate `m`
+   |                         help: a type parameter with a similar name exists: `T`
+   |
+   = help: you might be missing a crate named `m`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0433`.

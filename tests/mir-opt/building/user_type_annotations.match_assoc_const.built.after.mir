@@ -1,0 +1,46 @@
+// MIR for `match_assoc_const` after built
+
+| User Type Annotations
+| 0: user_ty: Canonical { value: TypeOf(DefId(0:11 ~ user_type_annotations[ee8e]::MyTrait::FOO), UserArgs { args: [MyStruct, 'static], user_self_ty: None }), max_universe: U0, variables: [] }, span: $DIR/user_type_annotations.rs:55:9: 55:44, inferred_ty: u32
+| 1: user_ty: Canonical { value: TypeOf(DefId(0:11 ~ user_type_annotations[ee8e]::MyTrait::FOO), UserArgs { args: [MyStruct, 'static], user_self_ty: None }), max_universe: U0, variables: [] }, span: $DIR/user_type_annotations.rs:55:9: 55:44, inferred_ty: u32
+|
+fn match_assoc_const() -> () {
+    let mut _0: ();
+    let mut _1: u32;
+
+    bb0: {
+        StorageLive(_1);
+        _1 = const 8_u32;
+        PlaceMention(_1);
+        switchInt(copy _1) -> [99: bb2, otherwise: bb1];
+    }
+
+    bb1: {
+        _0 = const ();
+        goto -> bb6;
+    }
+
+    bb2: {
+        falseEdge -> [real: bb5, imaginary: bb1];
+    }
+
+    bb3: {
+        goto -> bb1;
+    }
+
+    bb4: {
+        FakeRead(ForMatchedPlace(None), _1);
+        unreachable;
+    }
+
+    bb5: {
+        AscribeUserType(_1, -, UserTypeProjection { base: UserType(1), projs: [] });
+        _0 = const ();
+        goto -> bb6;
+    }
+
+    bb6: {
+        StorageDead(_1);
+        return;
+    }
+}

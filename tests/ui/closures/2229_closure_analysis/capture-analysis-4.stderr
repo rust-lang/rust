@@ -1,0 +1,52 @@
+error[E0658]: attributes on expressions are experimental
+  --> $DIR/capture-analysis-4.rs:19:13
+   |
+LL |     let c = #[rustc_capture_analysis]
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: First Pass analysis includes:
+  --> $DIR/capture-analysis-4.rs:23:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         let _x = a.b;
+...  |
+LL | |     };
+   | |_____^
+   |
+note: Capturing a[(0, 0)] -> ByValue
+  --> $DIR/capture-analysis-4.rs:26:18
+   |
+LL |         let _x = a.b;
+   |                  ^^^
+note: Capturing a[(0, 0),(0, 0)] -> Immutable
+  --> $DIR/capture-analysis-4.rs:29:26
+   |
+LL |         println!("{:?}", a.b.c);
+   |                          ^^^^^
+
+error: Min Capture analysis includes:
+  --> $DIR/capture-analysis-4.rs:23:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         let _x = a.b;
+...  |
+LL | |     };
+   | |_____^
+   |
+note: Min Capture a[(0, 0)] -> ByValue
+  --> $DIR/capture-analysis-4.rs:26:18
+   |
+LL |         let _x = a.b;
+   |                  ^^^
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

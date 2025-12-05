@@ -1,0 +1,189 @@
+// MIR for `slice_iter_mut_next_back` after PreCodegen
+
+fn slice_iter_mut_next_back(_1: &mut std::slice::IterMut<'_, T>) -> Option<&mut T> {
+    debug it => _1;
+    let mut _0: std::option::Option<&mut T>;
+    scope 1 (inlined <std::slice::IterMut<'_, T> as DoubleEndedIterator>::next_back) {
+        let mut _2: *mut T;
+        let mut _7: bool;
+        let mut _8: *mut T;
+        let mut _21: &mut T;
+        scope 2 {
+            let _3: std::ptr::NonNull<T>;
+            let _9: usize;
+            scope 3 {
+            }
+            scope 4 {
+                scope 7 (inlined <NonNull<T> as PartialEq>::eq) {
+                    let mut _4: std::ptr::NonNull<T>;
+                    let mut _5: *mut T;
+                    let mut _6: *mut T;
+                    scope 8 (inlined NonNull::<T>::as_ptr) {
+                    }
+                    scope 9 (inlined NonNull::<T>::as_ptr) {
+                    }
+                }
+            }
+            scope 5 (inlined std::ptr::mut_ptr::<impl *mut T>::addr) {
+                scope 6 (inlined std::ptr::mut_ptr::<impl *mut T>::cast::<()>) {
+                }
+            }
+        }
+        scope 10 (inlined std::slice::IterMut::<'_, T>::next_back_unchecked) {
+            let mut _15: std::ptr::NonNull<T>;
+            scope 11 (inlined std::slice::IterMut::<'_, T>::pre_dec_end) {
+                let mut _10: *mut *mut T;
+                let mut _11: *mut std::ptr::NonNull<T>;
+                let mut _12: std::ptr::NonNull<T>;
+                let mut _16: *mut *mut T;
+                let mut _17: *mut usize;
+                let mut _18: usize;
+                let mut _19: usize;
+                scope 12 {
+                    scope 13 {
+                    }
+                    scope 14 {
+                        scope 17 (inlined NonNull::<T>::sub) {
+                            scope 18 (inlined #[track_caller] core::num::<impl isize>::unchecked_neg) {
+                                scope 19 (inlined core::ub_checks::check_language_ub) {
+                                    scope 20 (inlined core::ub_checks::check_language_ub::runtime) {
+                                    }
+                                }
+                            }
+                            scope 21 (inlined NonNull::<T>::offset) {
+                                let mut _13: *const T;
+                                let mut _14: *const T;
+                                scope 22 (inlined NonNull::<T>::as_ptr) {
+                                }
+                            }
+                        }
+                    }
+                    scope 15 (inlined std::ptr::mut_ptr::<impl *mut *mut T>::cast::<usize>) {
+                    }
+                    scope 16 (inlined std::ptr::mut_ptr::<impl *mut *mut T>::cast::<NonNull<T>>) {
+                    }
+                }
+            }
+            scope 23 (inlined NonNull::<T>::as_mut::<'_>) {
+                let mut _20: *mut T;
+                scope 24 (inlined NonNull::<T>::as_ptr) {
+                }
+            }
+        }
+    }
+
+    bb0: {
+        StorageLive(_9);
+        StorageLive(_8);
+        StorageLive(_3);
+        StorageLive(_2);
+        StorageLive(_21);
+        StorageLive(_7);
+        switchInt(const <T as std::mem::SizedTypeProperties>::IS_ZST) -> [0: bb1, otherwise: bb2];
+    }
+
+    bb1: {
+        _2 = copy ((*_1).1: *mut T);
+        _3 = copy _2 as std::ptr::NonNull<T> (Transmute);
+        StorageLive(_5);
+        StorageLive(_4);
+        _4 = copy ((*_1).0: std::ptr::NonNull<T>);
+        _5 = copy _4 as *mut T (Transmute);
+        StorageDead(_4);
+        StorageLive(_6);
+        _6 = copy _3 as *mut T (Transmute);
+        _7 = Eq(copy _5, copy _6);
+        StorageDead(_6);
+        StorageDead(_5);
+        goto -> bb3;
+    }
+
+    bb2: {
+        _8 = copy ((*_1).1: *mut T);
+        _9 = copy _8 as usize (Transmute);
+        _7 = Eq(copy _9, const 0_usize);
+        goto -> bb3;
+    }
+
+    bb3: {
+        switchInt(move _7) -> [0: bb4, otherwise: bb10];
+    }
+
+    bb4: {
+        StorageLive(_15);
+        StorageLive(_17);
+        StorageLive(_11);
+        StorageLive(_12);
+        switchInt(const <T as std::mem::SizedTypeProperties>::IS_ZST) -> [0: bb5, otherwise: bb8];
+    }
+
+    bb5: {
+        StorageLive(_10);
+        _10 = &raw mut ((*_1).1: *mut T);
+        _11 = copy _10 as *mut std::ptr::NonNull<T> (PtrToPtr);
+        StorageDead(_10);
+        _12 = copy (*_11);
+        switchInt(const <T as std::mem::SizedTypeProperties>::IS_ZST) -> [0: bb6, otherwise: bb7];
+    }
+
+    bb6: {
+        StorageLive(_14);
+        StorageLive(_13);
+        _13 = copy _12 as *const T (Transmute);
+        _14 = Offset(copy _13, const -1_isize);
+        StorageDead(_13);
+        _12 = NonNull::<T> { pointer: copy _14 };
+        StorageDead(_14);
+        goto -> bb7;
+    }
+
+    bb7: {
+        (*_11) = move _12;
+        _15 = copy (*_11);
+        goto -> bb9;
+    }
+
+    bb8: {
+        StorageLive(_16);
+        _16 = &raw mut ((*_1).1: *mut T);
+        _17 = copy _16 as *mut usize (PtrToPtr);
+        StorageDead(_16);
+        StorageLive(_19);
+        StorageLive(_18);
+        _18 = copy (*_17);
+        _19 = SubUnchecked(move _18, const 1_usize);
+        StorageDead(_18);
+        (*_17) = move _19;
+        StorageDead(_19);
+        _15 = copy ((*_1).0: std::ptr::NonNull<T>);
+        goto -> bb9;
+    }
+
+    bb9: {
+        StorageDead(_12);
+        StorageDead(_11);
+        StorageDead(_17);
+        StorageLive(_20);
+        _20 = copy _15 as *mut T (Transmute);
+        _21 = &mut (*_20);
+        StorageDead(_20);
+        StorageDead(_15);
+        _0 = Option::<&mut T>::Some(copy _21);
+        goto -> bb11;
+    }
+
+    bb10: {
+        _0 = const {transmute(0x0000000000000000): Option<&mut T>};
+        goto -> bb11;
+    }
+
+    bb11: {
+        StorageDead(_7);
+        StorageDead(_21);
+        StorageDead(_2);
+        StorageDead(_3);
+        StorageDead(_8);
+        StorageDead(_9);
+        return;
+    }
+}

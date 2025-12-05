@@ -1,0 +1,491 @@
+error[E0565]: malformed `link` attribute input
+  --> $DIR/link-attr-validation-late.rs:4:1
+   |
+LL | #[link(name = "...", "literal")]
+   | ^^^^^^^^^^^^^^^^^^^^^---------^^
+   |                      |
+   |                      didn't expect a literal here
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/items/external-blocks.html#the-link-attribute>
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #[link(name = "...", "literal")]
+LL + #[link(name = "...")]
+   |
+LL - #[link(name = "...", "literal")]
+LL + #[link(name = "...", import_name_type = "decorated|noprefix|undecorated")]
+   |
+LL - #[link(name = "...", "literal")]
+LL + #[link(name = "...", kind = "dylib|static|...")]
+   |
+LL - #[link(name = "...", "literal")]
+LL + #[link(name = "...", kind = "dylib|static|...", wasm_import_module = "...", import_name_type = "decorated|noprefix|undecorated")]
+   |
+   = and 1 other candidate
+
+error[E0539]: malformed `link` attribute input
+  --> $DIR/link-attr-validation-late.rs:5:1
+   |
+LL | #[link(name = "...", unknown)]
+   | ^^^^^^^^^^^^^^^^^^^^^-------^^
+   |                      |
+   |                      valid arguments are "name", "kind", "modifiers", "cfg", "wasm_import_module" or "import_name_type"
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/items/external-blocks.html#the-link-attribute>
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #[link(name = "...", unknown)]
+LL + #[link(name = "...")]
+   |
+LL - #[link(name = "...", unknown)]
+LL + #[link(name = "...", import_name_type = "decorated|noprefix|undecorated")]
+   |
+LL - #[link(name = "...", unknown)]
+LL + #[link(name = "...", kind = "dylib|static|...")]
+   |
+LL - #[link(name = "...", unknown)]
+LL + #[link(name = "...", kind = "dylib|static|...", wasm_import_module = "...", import_name_type = "decorated|noprefix|undecorated")]
+   |
+   = and 1 other candidate
+
+error[E0538]: malformed `link` attribute input
+  --> $DIR/link-attr-validation-late.rs:9:1
+   |
+LL | #[link(name = "foo", name = "bar")]
+   | ^^^^^^^^^^^^^^^^^^^^^------------^^
+   |                      |
+   |                      found `name` used as a key more than once
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/items/external-blocks.html#the-link-attribute>
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #[link(name = "foo", name = "bar")]
+LL + #[link(name = "...")]
+   |
+LL - #[link(name = "foo", name = "bar")]
+LL + #[link(name = "...", import_name_type = "decorated|noprefix|undecorated")]
+   |
+LL - #[link(name = "foo", name = "bar")]
+LL + #[link(name = "...", kind = "dylib|static|...")]
+   |
+LL - #[link(name = "foo", name = "bar")]
+LL + #[link(name = "...", kind = "dylib|static|...", wasm_import_module = "...", import_name_type = "decorated|noprefix|undecorated")]
+   |
+   = and 1 other candidate
+
+error[E0538]: malformed `link` attribute input
+  --> $DIR/link-attr-validation-late.rs:10:1
+   |
+LL | #[link(name = "...", kind = "dylib", kind = "bar")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^------------^^
+   |                                      |
+   |                                      found `kind` used as a key more than once
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/items/external-blocks.html#the-link-attribute>
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #[link(name = "...", kind = "dylib", kind = "bar")]
+LL + #[link(name = "...")]
+   |
+LL - #[link(name = "...", kind = "dylib", kind = "bar")]
+LL + #[link(name = "...", import_name_type = "decorated|noprefix|undecorated")]
+   |
+LL - #[link(name = "...", kind = "dylib", kind = "bar")]
+LL + #[link(name = "...", kind = "dylib|static|...")]
+   |
+LL - #[link(name = "...", kind = "dylib", kind = "bar")]
+LL + #[link(name = "...", kind = "dylib|static|...", wasm_import_module = "...", import_name_type = "decorated|noprefix|undecorated")]
+   |
+   = and 1 other candidate
+
+error[E0538]: malformed `link` attribute input
+  --> $DIR/link-attr-validation-late.rs:11:1
+   |
+LL | #[link(name = "...", modifiers = "+verbatim", modifiers = "bar")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-----------------^^
+   |                                               |
+   |                                               found `modifiers` used as a key more than once
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/items/external-blocks.html#the-link-attribute>
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #[link(name = "...", modifiers = "+verbatim", modifiers = "bar")]
+LL + #[link(name = "...")]
+   |
+LL - #[link(name = "...", modifiers = "+verbatim", modifiers = "bar")]
+LL + #[link(name = "...", import_name_type = "decorated|noprefix|undecorated")]
+   |
+LL - #[link(name = "...", modifiers = "+verbatim", modifiers = "bar")]
+LL + #[link(name = "...", kind = "dylib|static|...")]
+   |
+LL - #[link(name = "...", modifiers = "+verbatim", modifiers = "bar")]
+LL + #[link(name = "...", kind = "dylib|static|...", wasm_import_module = "...", import_name_type = "decorated|noprefix|undecorated")]
+   |
+   = and 1 other candidate
+
+error[E0538]: malformed `link` attribute input
+  --> $DIR/link-attr-validation-late.rs:12:1
+   |
+LL | #[link(name = "...", cfg(false), cfg(false))]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^----------^^
+   |                                  |
+   |                                  found `cfg` used as a key more than once
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/items/external-blocks.html#the-link-attribute>
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #[link(name = "...", cfg(false), cfg(false))]
+LL + #[link(name = "...")]
+   |
+LL - #[link(name = "...", cfg(false), cfg(false))]
+LL + #[link(name = "...", import_name_type = "decorated|noprefix|undecorated")]
+   |
+LL - #[link(name = "...", cfg(false), cfg(false))]
+LL + #[link(name = "...", kind = "dylib|static|...")]
+   |
+LL - #[link(name = "...", cfg(false), cfg(false))]
+LL + #[link(name = "...", kind = "dylib|static|...", wasm_import_module = "...", import_name_type = "decorated|noprefix|undecorated")]
+   |
+   = and 1 other candidate
+
+error[E0538]: malformed `link` attribute input
+  --> $DIR/link-attr-validation-late.rs:13:1
+   |
+LL | #[link(wasm_import_module = "foo", wasm_import_module = "bar")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^--------------------------^^
+   |                                    |
+   |                                    found `wasm_import_module` used as a key more than once
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/items/external-blocks.html#the-link-attribute>
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #[link(wasm_import_module = "foo", wasm_import_module = "bar")]
+LL + #[link(name = "...")]
+   |
+LL - #[link(wasm_import_module = "foo", wasm_import_module = "bar")]
+LL + #[link(name = "...", import_name_type = "decorated|noprefix|undecorated")]
+   |
+LL - #[link(wasm_import_module = "foo", wasm_import_module = "bar")]
+LL + #[link(name = "...", kind = "dylib|static|...")]
+   |
+LL - #[link(wasm_import_module = "foo", wasm_import_module = "bar")]
+LL + #[link(name = "...", kind = "dylib|static|...", wasm_import_module = "...", import_name_type = "decorated|noprefix|undecorated")]
+   |
+   = and 1 other candidate
+
+error[E0539]: malformed `link` attribute input
+  --> $DIR/link-attr-validation-late.rs:17:1
+   |
+LL | #[link(name)]
+   | ^^^^^^^----^^
+   |        |
+   |        expected this to be of the form `name = "..."`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/items/external-blocks.html#the-link-attribute>
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL | #[link(name = "...")]
+   |             +++++++
+LL | #[link(name = "...", import_name_type = "decorated|noprefix|undecorated")]
+   |             ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+LL | #[link(name = "...", kind = "dylib|static|...")]
+   |             ++++++++++++++++++++++++++++++++++
+LL | #[link(name = "...", kind = "dylib|static|...", wasm_import_module = "...", import_name_type = "decorated|noprefix|undecorated")]
+   |             +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+   = and 1 other candidate
+
+error[E0539]: malformed `link` attribute input
+  --> $DIR/link-attr-validation-late.rs:18:1
+   |
+LL | #[link(name())]
+   | ^^^^^^^------^^
+   |        |
+   |        expected this to be of the form `name = "..."`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/items/external-blocks.html#the-link-attribute>
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #[link(name())]
+LL + #[link(name = "...")]
+   |
+LL - #[link(name())]
+LL + #[link(name = "...", import_name_type = "decorated|noprefix|undecorated")]
+   |
+LL - #[link(name())]
+LL + #[link(name = "...", kind = "dylib|static|...")]
+   |
+LL - #[link(name())]
+LL + #[link(name = "...", kind = "dylib|static|...", wasm_import_module = "...", import_name_type = "decorated|noprefix|undecorated")]
+   |
+   = and 1 other candidate
+
+error[E0539]: malformed `link` attribute input
+  --> $DIR/link-attr-validation-late.rs:19:1
+   |
+LL | #[link(name = "...", kind)]
+   | ^^^^^^^^^^^^^^^^^^^^^----^^
+   |                      |
+   |                      expected this to be of the form `kind = "..."`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/items/external-blocks.html#the-link-attribute>
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #[link(name = "...", kind)]
+LL + #[link(name = "...")]
+   |
+LL - #[link(name = "...", kind)]
+LL + #[link(name = "...", import_name_type = "decorated|noprefix|undecorated")]
+   |
+LL | #[link(name = "...", kind = "dylib|static|...")]
+   |                           ++++++++++++++++++++
+LL | #[link(name = "...", kind = "dylib|static|...", wasm_import_module = "...", import_name_type = "decorated|noprefix|undecorated")]
+   |                           +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+   = and 1 other candidate
+
+error[E0539]: malformed `link` attribute input
+  --> $DIR/link-attr-validation-late.rs:20:1
+   |
+LL | #[link(name = "...", kind())]
+   | ^^^^^^^^^^^^^^^^^^^^^------^^
+   |                      |
+   |                      expected this to be of the form `kind = "..."`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/items/external-blocks.html#the-link-attribute>
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #[link(name = "...", kind())]
+LL + #[link(name = "...")]
+   |
+LL - #[link(name = "...", kind())]
+LL + #[link(name = "...", import_name_type = "decorated|noprefix|undecorated")]
+   |
+LL - #[link(name = "...", kind())]
+LL + #[link(name = "...", kind = "dylib|static|...")]
+   |
+LL - #[link(name = "...", kind())]
+LL + #[link(name = "...", kind = "dylib|static|...", wasm_import_module = "...", import_name_type = "decorated|noprefix|undecorated")]
+   |
+   = and 1 other candidate
+
+error[E0539]: malformed `link` attribute input
+  --> $DIR/link-attr-validation-late.rs:21:1
+   |
+LL | #[link(name = "...", modifiers)]
+   | ^^^^^^^^^^^^^^^^^^^^^---------^^
+   |                      |
+   |                      expected this to be of the form `modifiers = "..."`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/items/external-blocks.html#the-link-attribute>
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #[link(name = "...", modifiers)]
+LL + #[link(name = "...")]
+   |
+LL - #[link(name = "...", modifiers)]
+LL + #[link(name = "...", import_name_type = "decorated|noprefix|undecorated")]
+   |
+LL - #[link(name = "...", modifiers)]
+LL + #[link(name = "...", kind = "dylib|static|...")]
+   |
+LL - #[link(name = "...", modifiers)]
+LL + #[link(name = "...", kind = "dylib|static|...", wasm_import_module = "...", import_name_type = "decorated|noprefix|undecorated")]
+   |
+   = and 1 other candidate
+
+error[E0539]: malformed `link` attribute input
+  --> $DIR/link-attr-validation-late.rs:22:1
+   |
+LL | #[link(name = "...", modifiers())]
+   | ^^^^^^^^^^^^^^^^^^^^^-----------^^
+   |                      |
+   |                      expected this to be of the form `modifiers = "..."`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/items/external-blocks.html#the-link-attribute>
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #[link(name = "...", modifiers())]
+LL + #[link(name = "...")]
+   |
+LL - #[link(name = "...", modifiers())]
+LL + #[link(name = "...", import_name_type = "decorated|noprefix|undecorated")]
+   |
+LL - #[link(name = "...", modifiers())]
+LL + #[link(name = "...", kind = "dylib|static|...")]
+   |
+LL - #[link(name = "...", modifiers())]
+LL + #[link(name = "...", kind = "dylib|static|...", wasm_import_module = "...", import_name_type = "decorated|noprefix|undecorated")]
+   |
+   = and 1 other candidate
+
+error[E0539]: malformed `link` attribute input
+  --> $DIR/link-attr-validation-late.rs:23:1
+   |
+LL | #[link(name = "...", cfg)]
+   | ^^^^^^^^^^^^^^^^^^^^^---^^
+   |                      |
+   |                      expected this to be a list
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/items/external-blocks.html#the-link-attribute>
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #[link(name = "...", cfg)]
+LL + #[link(name = "...")]
+   |
+LL - #[link(name = "...", cfg)]
+LL + #[link(name = "...", import_name_type = "decorated|noprefix|undecorated")]
+   |
+LL - #[link(name = "...", cfg)]
+LL + #[link(name = "...", kind = "dylib|static|...")]
+   |
+LL - #[link(name = "...", cfg)]
+LL + #[link(name = "...", kind = "dylib|static|...", wasm_import_module = "...", import_name_type = "decorated|noprefix|undecorated")]
+   |
+   = and 1 other candidate
+
+error[E0539]: malformed `link` attribute input
+  --> $DIR/link-attr-validation-late.rs:24:1
+   |
+LL | #[link(name = "...", cfg = "literal")]
+   | ^^^^^^^^^^^^^^^^^^^^^---------------^^
+   |                      |
+   |                      expected this to be a list
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/items/external-blocks.html#the-link-attribute>
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #[link(name = "...", cfg = "literal")]
+LL + #[link(name = "...")]
+   |
+LL - #[link(name = "...", cfg = "literal")]
+LL + #[link(name = "...", import_name_type = "decorated|noprefix|undecorated")]
+   |
+LL - #[link(name = "...", cfg = "literal")]
+LL + #[link(name = "...", kind = "dylib|static|...")]
+   |
+LL - #[link(name = "...", cfg = "literal")]
+LL + #[link(name = "...", kind = "dylib|static|...", wasm_import_module = "...", import_name_type = "decorated|noprefix|undecorated")]
+   |
+   = and 1 other candidate
+
+error[E0539]: malformed `link` attribute input
+  --> $DIR/link-attr-validation-late.rs:25:1
+   |
+LL | #[link(name = "...", cfg("literal"))]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^---------^^^
+   |                          |
+   |                          expected a valid identifier here
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/items/external-blocks.html#the-link-attribute>
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #[link(name = "...", cfg("literal"))]
+LL + #[link(name = "...")]
+   |
+LL - #[link(name = "...", cfg("literal"))]
+LL + #[link(name = "...", import_name_type = "decorated|noprefix|undecorated")]
+   |
+LL - #[link(name = "...", cfg("literal"))]
+LL + #[link(name = "...", kind = "dylib|static|...")]
+   |
+LL - #[link(name = "...", cfg("literal"))]
+LL + #[link(name = "...", kind = "dylib|static|...", wasm_import_module = "...", import_name_type = "decorated|noprefix|undecorated")]
+   |
+   = and 1 other candidate
+
+error[E0539]: malformed `link` attribute input
+  --> $DIR/link-attr-validation-late.rs:26:1
+   |
+LL | #[link(name = "...", wasm_import_module)]
+   | ^^^^^^^^^^^^^^^^^^^^^------------------^^
+   |                      |
+   |                      expected this to be of the form `wasm_import_module = "..."`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/items/external-blocks.html#the-link-attribute>
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #[link(name = "...", wasm_import_module)]
+LL + #[link(name = "...")]
+   |
+LL - #[link(name = "...", wasm_import_module)]
+LL + #[link(name = "...", import_name_type = "decorated|noprefix|undecorated")]
+   |
+LL - #[link(name = "...", wasm_import_module)]
+LL + #[link(name = "...", kind = "dylib|static|...")]
+   |
+LL - #[link(name = "...", wasm_import_module)]
+LL + #[link(name = "...", kind = "dylib|static|...", wasm_import_module = "...", import_name_type = "decorated|noprefix|undecorated")]
+   |
+   = and 1 other candidate
+
+error[E0539]: malformed `link` attribute input
+  --> $DIR/link-attr-validation-late.rs:27:1
+   |
+LL | #[link(name = "...", wasm_import_module())]
+   | ^^^^^^^^^^^^^^^^^^^^^--------------------^^
+   |                      |
+   |                      expected this to be of the form `wasm_import_module = "..."`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/items/external-blocks.html#the-link-attribute>
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #[link(name = "...", wasm_import_module())]
+LL + #[link(name = "...")]
+   |
+LL - #[link(name = "...", wasm_import_module())]
+LL + #[link(name = "...", import_name_type = "decorated|noprefix|undecorated")]
+   |
+LL - #[link(name = "...", wasm_import_module())]
+LL + #[link(name = "...", kind = "dylib|static|...")]
+   |
+LL - #[link(name = "...", wasm_import_module())]
+LL + #[link(name = "...", kind = "dylib|static|...", wasm_import_module = "...", import_name_type = "decorated|noprefix|undecorated")]
+   |
+   = and 1 other candidate
+
+error: invalid linking modifier syntax, expected '+' or '-' prefix before one of: bundle, verbatim, whole-archive, as-needed
+  --> $DIR/link-attr-validation-late.rs:31:34
+   |
+LL | #[link(name = "...", modifiers = "")]
+   |                                  ^^
+
+error: invalid linking modifier syntax, expected '+' or '-' prefix before one of: bundle, verbatim, whole-archive, as-needed
+  --> $DIR/link-attr-validation-late.rs:32:34
+   |
+LL | #[link(name = "...", modifiers = "no-plus-minus")]
+   |                                  ^^^^^^^^^^^^^^^
+
+error[E0539]: malformed `link` attribute input
+  --> $DIR/link-attr-validation-late.rs:33:1
+   |
+LL | #[link(name = "...", modifiers = "+unknown")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^----------^^
+   |                                  |
+   |                                  valid arguments are "bundle", "verbatim", "whole-archive" or "as-needed"
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/items/external-blocks.html#the-link-attribute>
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #[link(name = "...", modifiers = "+unknown")]
+LL + #[link(name = "...")]
+   |
+LL - #[link(name = "...", modifiers = "+unknown")]
+LL + #[link(name = "...", import_name_type = "decorated|noprefix|undecorated")]
+   |
+LL - #[link(name = "...", modifiers = "+unknown")]
+LL + #[link(name = "...", kind = "dylib|static|...")]
+   |
+LL - #[link(name = "...", modifiers = "+unknown")]
+LL + #[link(name = "...", kind = "dylib|static|...", wasm_import_module = "...", import_name_type = "decorated|noprefix|undecorated")]
+   |
+   = and 1 other candidate
+
+error: multiple `verbatim` modifiers in a single `modifiers` argument
+  --> $DIR/link-attr-validation-late.rs:34:34
+   |
+LL | #[link(name = "...", modifiers = "+verbatim,+verbatim")]
+   |                                  ^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 22 previous errors
+
+Some errors have detailed explanations: E0538, E0539, E0565.
+For more information about an error, try `rustc --explain E0538`.

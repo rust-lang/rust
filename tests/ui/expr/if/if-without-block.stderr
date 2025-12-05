@@ -1,0 +1,14 @@
+error: this `if` expression is missing a block after the condition
+  --> $DIR/if-without-block.rs:3:5
+   |
+LL |     if 5 == {
+   |     ^^
+   |
+help: this binary operation is possibly unfinished
+  --> $DIR/if-without-block.rs:3:8
+   |
+LL |     if 5 == {
+   |        ^^^^
+
+error: aborting due to 1 previous error
+

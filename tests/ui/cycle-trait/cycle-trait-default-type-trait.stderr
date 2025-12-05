@@ -1,0 +1,17 @@
+error[E0391]: cycle detected when computing type of `Foo::X`
+  --> $DIR/cycle-trait-default-type-trait.rs:4:23
+   |
+LL | trait Foo<X = Box<dyn Foo>> {
+   |                       ^^^
+   |
+   = note: ...which immediately requires computing type of `Foo::X` again
+note: cycle used when checking that `Foo` is well-formed
+  --> $DIR/cycle-trait-default-type-trait.rs:4:1
+   |
+LL | trait Foo<X = Box<dyn Foo>> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0391`.

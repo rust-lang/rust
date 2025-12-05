@@ -1,0 +1,14 @@
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/promotion.rs:16:37
+   |
+LL |             let _x: &'static i32 = &div_by_zero();
+   |                     ------------    ^^^^^^^^^^^^^ creates a temporary value which is freed while still in use
+   |                     |
+   |                     type annotation requires that borrow lasts for `'static`
+LL |
+LL |         }
+   |         - temporary value is freed at the end of this statement
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0716`.

@@ -1,0 +1,12 @@
+[package]
+name = "rustc_tools_util"
+version = "0.4.2"
+description = "small helper to generate version information for git packages"
+repository = "https://github.com/rust-lang/rust-clippy"
+readme = "README.md"
+license = "MIT OR Apache-2.0"
+keywords = ["rustc", "tool", "git", "version", "hash"]
+categories = ["development-tools"]
+edition = "2021" # Keep this, for this crate's MSRV to stay low
+
+[dependencies]

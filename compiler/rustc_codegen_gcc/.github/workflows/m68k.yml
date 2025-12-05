@@ -1,0 +1,136 @@
+# TODO: check if qemu-user-static-binfmt is needed (perhaps to run some tests since it probably calls exec).
+
+name: m68k CI
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+
+permissions:
+  contents: read
+
+env:
+  # Enable backtraces for easier debugging
+  RUST_BACKTRACE: 1
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+
+    strategy:
+      fail-fast: false
+      matrix:
+        commands: [
+          "--std-tests",
+          # TODO(antoyo): fix those on m68k.
+          #"--test-libcore",
+          #"--extended-rand-tests",
+          #"--extended-regex-example-tests",
+          #"--extended-regex-tests",
+          #"--test-successful-rustc --nb-parts 2 --current-part 0",
+          #"--test-successful-rustc --nb-parts 2 --current-part 1",
+          #"--test-failing-rustc",
+        ]
+
+    steps:
+    - uses: actions/checkout@v4
+
+    # `rustup show` installs from rust-toolchain.toml
+    - name: Setup rust toolchain
+      run: rustup show
+
+    - name: Setup rust cache
+      uses: Swatinem/rust-cache@v2
+
+    - name: Install packages
+      run: |
+        sudo apt-get update
+        sudo apt-get install qemu-system qemu-user-static
+
+    - name: Download artifact
+      run: curl -LO https://github.com/cross-cg-gcc-tools/cross-gcc/releases/latest/download/gcc-m68k-15.deb
+
+    - name: Download VM artifact
+      run: curl -LO https://github.com/cross-cg-gcc-tools/vms/releases/latest/download/debian-m68k.img
+
+    - name: Setup path to libgccjit
+      run: |
+          sudo dpkg --force-overwrite -i gcc-m68k-15.deb
+          echo 'gcc-path = "/usr/lib/"' > config.toml
+
+    - name: Set env
+      run: |
+        echo "workspace="$GITHUB_WORKSPACE >> $GITHUB_ENV
+
+    #- name: Cache rust repository
+      ## We only clone the rust repository for rustc tests
+      #if: ${{ contains(matrix.commands, 'rustc') }}
+      #uses: actions/cache@v3
+      #id: cache-rust-repository
+      #with:
+        #path: rust
+        #key: ${{ runner.os }}-packages-${{ hashFiles('rust/.git/HEAD') }}
+
+    - name: Prepare VM
+      run: |
+        mkdir vm
+        sudo mount debian-m68k.img vm
+        sudo cp $(which qemu-m68k-static) vm/usr/bin/
+
+    - name: Build sample project with target defined as JSON spec
+      run: |
+        ./y.sh prepare --only-libcore --cross
+        ./y.sh build --sysroot --target-triple m68k-unknown-linux-gnu --target ${{ github.workspace }}/target_specs/m68k-unknown-linux-gnu.json
+        CG_RUSTFLAGS="-Clinker=m68k-unknown-linux-gnu-gcc" ./y.sh cargo build --manifest-path=./tests/hello-world/Cargo.toml --target ${{ github.workspace }}/target_specs/m68k-unknown-linux-gnu.json
+        ./y.sh clean all
+
+    - name: Build
+      run: |
+        ./y.sh prepare --only-libcore --cross
+        ./y.sh build --sysroot --target-triple m68k-unknown-linux-gnu
+        ./y.sh test --mini-tests --target-triple m68k-unknown-linux-gnu
+        CG_GCC_TEST_TARGET=m68k-unknown-linux-gnu ./y.sh test --cargo-tests --target-triple m68k-unknown-linux-gnu
+        ./y.sh clean all
+
+    - name: Prepare dependencies
+      run: |
+        git config --global user.email "user@example.com"
+        git config --global user.name "User"
+        ./y.sh prepare --cross
+
+    - name: Run tests
+      run: |
+        ./y.sh test --target-triple m68k-unknown-linux-gnu --release --clean --build-sysroot ${{ matrix.commands }}
+
+    - name: Run Hello World!
+      run: |
+        ./y.sh build --target-triple m68k-unknown-linux-gnu
+
+        vm_dir=$(pwd)/vm
+        cd tests/hello-world
+        CG_RUSTFLAGS="-Clinker=m68k-unknown-linux-gnu-gcc" ../../y.sh cargo build --target m68k-unknown-linux-gnu
+        sudo cp target/m68k-unknown-linux-gnu/debug/hello_world $vm_dir/home/
+        sudo chroot $vm_dir qemu-m68k-static /home/hello_world > hello_world_stdout
+        expected_output="40"
+        test $(cat hello_world_stdout) == $expected_output || (echo "Output differs. Actual output: $(cat hello_world_stdout)"; exit 1)
+
+  # Summary job for the merge queue.
+  # ALL THE PREVIOUS JOBS NEED TO BE ADDED TO THE `needs` SECTION OF THIS JOB!
+  success_m68k:
+    needs: [build]
+    # We need to ensure this job does *not* get skipped if its dependencies fail,
+    # because a skipped job is considered a success by GitHub. So we have to
+    # overwrite `if:`. We use `!cancelled()` to ensure the job does still not get run
+    # when the workflow is canceled manually.
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    steps:
+      # Manually check the status of all dependencies. `if: failure()` does not work.
+      - name: Conclusion
+        run: |
+          # Print the dependent jobs to see them in the CI log
+          jq -C <<< '${{ toJson(needs) }}'
+          # Check if all jobs that we depend on (in the needs array) were successful.
+          jq --exit-status 'all(.result == "success")' <<< '${{ toJson(needs) }}'

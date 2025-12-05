@@ -1,0 +1,18 @@
+error: `#[unstable_feature_bound]` attribute cannot be used on required trait methods
+  --> $DIR/unstable_inherent_method.rs:11:5
+   |
+LL |     #[unstable_feature_bound(foo)]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[unstable_feature_bound]` can be applied to functions, trait impl blocks, and traits
+
+error: `#[unstable_feature_bound]` attribute cannot be used on trait methods in impl blocks
+  --> $DIR/unstable_inherent_method.rs:18:5
+   |
+LL |     #[unstable_feature_bound(foo)]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[unstable_feature_bound]` can be applied to functions, trait impl blocks, and traits
+
+error: aborting due to 2 previous errors
+

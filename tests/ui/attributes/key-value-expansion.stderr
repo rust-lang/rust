@@ -1,0 +1,30 @@
+error: attribute value must be a literal
+  --> $DIR/key-value-expansion.rs:27:14
+   |
+LL |         bug!("bug" + stringify!(found));
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | bug!();
+   | ------ in this macro invocation
+   |
+   = note: this error originates in the macro `bug` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: attribute value must be a literal
+  --> $DIR/key-value-expansion.rs:48:23
+   |
+LL |         doc_comment! {format!("{coor}", coor = stringify!($t1)).as_str()}
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | some_macro!(u8);
+   | --------------- in this macro invocation
+   |
+   = note: this error originates in the macro `some_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: attribute value must be a literal
+  --> $DIR/key-value-expansion.rs:21:6
+   |
+LL | bug!((column!()));
+   |      ^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+

@@ -1,0 +1,39 @@
+warning: the feature `specialization` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/specialization-transmute.rs:2:12
+   |
+LL | #![feature(specialization)]
+   |            ^^^^^^^^^^^^^^
+   |
+   = note: see issue #31844 <https://github.com/rust-lang/rust/issues/31844> for more information
+   = help: consider using `min_specialization` instead, which is more stable and complete
+   = note: `#[warn(incomplete_features)]` on by default
+
+error[E0308]: mismatched types
+  --> $DIR/specialization-transmute.rs:14:9
+   |
+LL |     fn intu(&self) -> &Self::Id {
+   |                       --------- expected `&<T as Default>::Id` because of return type
+LL |         self
+   |         ^^^^ types differ
+   |
+   = note: expected reference `&<T as Default>::Id`
+              found reference `&T`
+
+error[E0271]: type mismatch resolving `<u8 as Default>::Id == Option<NonZero<u8>>`
+  --> $DIR/specialization-transmute.rs:25:50
+   |
+LL |     let s = transmute::<u8, Option<NonZero<u8>>>(0);
+   |             ------------------------------------ ^ types differ
+   |             |
+   |             required by a bound introduced by this call
+   |
+note: required by a bound in `transmute`
+  --> $DIR/specialization-transmute.rs:18:25
+   |
+LL | fn transmute<T: Default<Id = U>, U: Copy>(t: T) -> U {
+   |                         ^^^^^^ required by this bound in `transmute`
+
+error: aborting due to 2 previous errors; 1 warning emitted
+
+Some errors have detailed explanations: E0271, E0308.
+For more information about an error, try `rustc --explain E0271`.

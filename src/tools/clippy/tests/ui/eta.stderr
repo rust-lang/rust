@@ -1,0 +1,260 @@
+error: redundant closure
+  --> tests/ui/eta.rs:34:27
+   |
+LL |     let a = Some(1u8).map(|a| foo(a));
+   |                           ^^^^^^^^^^ help: replace the closure with the function itself: `foo`
+   |
+   = note: `-D clippy::redundant-closure` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::redundant_closure)]`
+
+error: redundant closure
+  --> tests/ui/eta.rs:39:40
+   |
+LL |     let _: Option<Vec<u8>> = true.then(|| vec![]); // special case vec!
+   |                                        ^^^^^^^^^ help: replace the closure with `Vec::new`: `std::vec::Vec::new`
+
+error: redundant closure
+  --> tests/ui/eta.rs:42:35
+   |
+LL |     let d = Some(1u8).map(|a| foo((|b| foo2(b))(a))); //is adjusted?
+   |                                   ^^^^^^^^^^^^^ help: replace the closure with the function itself: `foo2`
+
+error: redundant closure
+  --> tests/ui/eta.rs:45:26
+   |
+LL |     all(&[1, 2, 3], &&2, |x, y| below(x, y)); //is adjusted
+   |                          ^^^^^^^^^^^^^^^^^^ help: replace the closure with the function itself: `below`
+
+error: redundant closure
+  --> tests/ui/eta.rs:54:27
+   |
+LL |     let e = Some(1u8).map(|a| generic(a));
+   |                           ^^^^^^^^^^^^^^ help: replace the closure with the function itself: `generic`
+
+error: redundant closure
+  --> tests/ui/eta.rs:107:51
+   |
+LL |     let e = Some(TestStruct { some_ref: &i }).map(|a| a.foo());
+   |                                                   ^^^^^^^^^^^ help: replace the closure with the method itself: `TestStruct::foo`
+   |
+   = note: `-D clippy::redundant-closure-for-method-calls` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::redundant_closure_for_method_calls)]`
+
+error: redundant closure
+  --> tests/ui/eta.rs:109:51
+   |
+LL |     let e = Some(TestStruct { some_ref: &i }).map(|a| a.trait_foo());
+   |                                                   ^^^^^^^^^^^^^^^^^ help: replace the closure with the method itself: `TestTrait::trait_foo`
+
+error: redundant closure
+  --> tests/ui/eta.rs:112:42
+   |
+LL |     let e = Some(&mut vec![1, 2, 3]).map(|v| v.clear());
+   |                                          ^^^^^^^^^^^^^ help: replace the closure with the method itself: `std::vec::Vec::clear`
+
+error: redundant closure
+  --> tests/ui/eta.rs:117:29
+   |
+LL |     let e = Some("str").map(|s| s.to_string());
+   |                             ^^^^^^^^^^^^^^^^^ help: replace the closure with the method itself: `std::string::ToString::to_string`
+
+error: redundant closure
+  --> tests/ui/eta.rs:119:27
+   |
+LL |     let e = Some('a').map(|s| s.to_uppercase());
+   |                           ^^^^^^^^^^^^^^^^^^^^ help: replace the closure with the method itself: `char::to_uppercase`
+
+error: redundant closure
+  --> tests/ui/eta.rs:122:65
+   |
+LL |     let e: std::vec::Vec<char> = vec!['a', 'b', 'c'].iter().map(|c| c.to_ascii_uppercase()).collect();
+   |                                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace the closure with the method itself: `char::to_ascii_uppercase`
+
+error: redundant closure
+  --> tests/ui/eta.rs:139:23
+   |
+LL |         let _ = x.map(|x| x.parse::<i16>());
+   |                       ^^^^^^^^^^^^^^^^^^^^ help: replace the closure with the method itself: `str::parse::<i16>`
+
+error: redundant closure
+  --> tests/ui/eta.rs:192:22
+   |
+LL |     requires_fn_once(|| x());
+   |                      ^^^^^^ help: replace the closure with the function itself: `x`
+
+error: redundant closure
+  --> tests/ui/eta.rs:200:27
+   |
+LL |     let a = Some(1u8).map(|a| foo_ptr(a));
+   |                           ^^^^^^^^^^^^^^ help: replace the closure with the function itself: `foo_ptr`
+
+error: redundant closure
+  --> tests/ui/eta.rs:206:27
+   |
+LL |     let a = Some(1u8).map(|a| closure(a));
+   |                           ^^^^^^^^^^^^^^ help: replace the closure with the function itself: `closure`
+
+error: redundant closure
+  --> tests/ui/eta.rs:239:28
+   |
+LL |     x.into_iter().for_each(|x| add_to_res(x));
+   |                            ^^^^^^^^^^^^^^^^^ help: replace the closure with the function itself: `&mut add_to_res`
+
+error: redundant closure
+  --> tests/ui/eta.rs:241:28
+   |
+LL |     y.into_iter().for_each(|x| add_to_res(x));
+   |                            ^^^^^^^^^^^^^^^^^ help: replace the closure with the function itself: `&mut add_to_res`
+
+error: redundant closure
+  --> tests/ui/eta.rs:243:28
+   |
+LL |     z.into_iter().for_each(|x| add_to_res(x));
+   |                            ^^^^^^^^^^^^^^^^^ help: replace the closure with the function itself: `add_to_res`
+
+error: redundant closure
+  --> tests/ui/eta.rs:251:21
+   |
+LL |         Some(1).map(|n| closure(n));
+   |                     ^^^^^^^^^^^^^^ help: replace the closure with the function itself: `&mut closure`
+
+error: redundant closure
+  --> tests/ui/eta.rs:256:21
+   |
+LL |         Some(1).map(|n| in_loop(n));
+   |                     ^^^^^^^^^^^^^^ help: replace the closure with the function itself: `in_loop`
+
+error: redundant closure
+  --> tests/ui/eta.rs:350:18
+   |
+LL |     takes_fn_mut(|| f());
+   |                  ^^^^^^ help: replace the closure with the function itself: `&mut f`
+
+error: redundant closure
+  --> tests/ui/eta.rs:354:19
+   |
+LL |     takes_fn_once(|| f());
+   |                   ^^^^^^ help: replace the closure with the function itself: `&mut f`
+
+error: redundant closure
+  --> tests/ui/eta.rs:359:26
+   |
+LL |     move || takes_fn_mut(|| f_used_once())
+   |                          ^^^^^^^^^^^^^^^^ help: replace the closure with the function itself: `&mut f_used_once`
+
+error: redundant closure
+  --> tests/ui/eta.rs:372:19
+   |
+LL |     array_opt.map(|a| a.as_slice());
+   |                   ^^^^^^^^^^^^^^^^ help: replace the closure with the method itself: `<[u8; 3]>::as_slice`
+
+error: redundant closure
+  --> tests/ui/eta.rs:376:19
+   |
+LL |     slice_opt.map(|s| s.len());
+   |                   ^^^^^^^^^^^ help: replace the closure with the method itself: `<[u8]>::len`
+
+error: redundant closure
+  --> tests/ui/eta.rs:380:17
+   |
+LL |     ptr_opt.map(|p| p.is_null());
+   |                 ^^^^^^^^^^^^^^^ help: replace the closure with the method itself: `<*const usize>::is_null`
+
+error: redundant closure
+  --> tests/ui/eta.rs:385:17
+   |
+LL |     dyn_opt.map(|d| d.method_on_dyn());
+   |                 ^^^^^^^^^^^^^^^^^^^^^ help: replace the closure with the method itself: `<dyn TestTrait>::method_on_dyn`
+
+error: redundant closure
+  --> tests/ui/eta.rs:446:19
+   |
+LL |     let _ = f(&0, |x, y| f2(x, y));
+   |                   ^^^^^^^^^^^^^^^ help: replace the closure with the function itself: `f2`
+
+error: redundant closure
+  --> tests/ui/eta.rs:475:22
+   |
+LL |             test.map(|t| t.method())
+   |                      ^^^^^^^^^^^^^^ help: replace the closure with the method itself: `Test::method`
+
+error: redundant closure
+  --> tests/ui/eta.rs:480:22
+   |
+LL |             test.map(|t| t.method())
+   |                      ^^^^^^^^^^^^^^ help: replace the closure with the method itself: `super::Outer::method`
+
+error: redundant closure
+  --> tests/ui/eta.rs:494:18
+   |
+LL |         test.map(|t| t.method())
+   |                  ^^^^^^^^^^^^^^ help: replace the closure with the method itself: `test_mod::Test::method`
+
+error: redundant closure
+  --> tests/ui/eta.rs:502:30
+   |
+LL |                     test.map(|t| t.method())
+   |                              ^^^^^^^^^^^^^^ help: replace the closure with the method itself: `crate::issue_10854::d::Test::method`
+
+error: redundant closure
+  --> tests/ui/eta.rs:522:38
+   |
+LL |         let x = Box::new(|| None.map(|x| f(x)));
+   |                                      ^^^^^^^^ help: replace the closure with the function itself: `&f`
+
+error: redundant closure
+  --> tests/ui/eta.rs:527:38
+   |
+LL |         let x = Box::new(|| None.map(|x| f(x)));
+   |                                      ^^^^^^^^ help: replace the closure with the function itself: `f`
+
+error: redundant closure
+  --> tests/ui/eta.rs:545:35
+   |
+LL |         let _field = bind.or_else(|| get_default()).unwrap();
+   |                                   ^^^^^^^^^^^^^^^^ help: replace the closure with the function itself: `get_default`
+
+error: redundant closure
+  --> tests/ui/eta.rs:592:16
+   |
+LL |     accepts_fn(|| f());
+   |                ^^^^^^ help: replace the closure with the function itself: `**f`
+
+error: redundant closure
+  --> tests/ui/eta.rs:596:16
+   |
+LL |     accepts_fn(|| g());
+   |                ^^^^^^ help: replace the closure with the function itself: `g`
+
+error: redundant closure
+  --> tests/ui/eta.rs:609:16
+   |
+LL |     accepts_fn(|| b());
+   |                ^^^^^^ help: replace the closure with the function itself: `***b`
+
+error: redundant closure
+  --> tests/ui/eta.rs:633:14
+   |
+LL |         .map(|n| MyError::A(n))
+   |              ^^^^^^^^^^^^^^^^^ help: replace the closure with the tuple variant itself: `MyError::A`
+
+error: redundant closure
+  --> tests/ui/eta.rs:630:14
+   |
+LL |         .map(|n| S(n))
+   |              ^^^^^^^^ help: replace the closure with the tuple struct itself: `S`
+
+error: redundant closure
+  --> tests/ui/eta.rs:627:14
+   |
+LL |         .map(|n| g(n))
+   |              ^^^^^^^^ help: replace the closure with the function itself: `g`
+
+error: redundant closure
+  --> tests/ui/eta.rs:624:14
+   |
+LL |         .map(|n| f(n))
+   |              ^^^^^^^^ help: replace the closure with the function itself: `f`
+
+error: aborting due to 42 previous errors
+

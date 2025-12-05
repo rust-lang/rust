@@ -1,0 +1,59 @@
+error: calling `std::fs::create_dir` where there may be a better way
+  --> tests/ui/create_dir.rs:10:5
+   |
+LL |     std::fs::create_dir("foo");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::create-dir` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::create_dir)]`
+help: consider calling `std::fs::create_dir_all` instead
+   |
+LL |     std::fs::create_dir_all("foo");
+   |                        ++++
+
+error: calling `std::fs::create_dir` where there may be a better way
+  --> tests/ui/create_dir.rs:12:5
+   |
+LL |     std::fs::create_dir("bar").unwrap();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider calling `std::fs::create_dir_all` instead
+   |
+LL |     std::fs::create_dir_all("bar").unwrap();
+   |                        ++++
+
+error: calling `std::fs::create_dir` where there may be a better way
+  --> tests/ui/create_dir.rs:23:9
+   |
+LL |         create_dir("some/dir").unwrap();
+   |         ^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider calling `std::fs::create_dir_all` instead
+   |
+LL |         std::fs::create_dir_all("some/dir").unwrap();
+   |         +++++++++          ++++
+
+error: calling `std::fs::create_dir` where there may be a better way
+  --> tests/ui/create_dir.rs:29:9
+   |
+LL |         fs::create_dir("/some/dir").unwrap();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider calling `std::fs::create_dir_all` instead
+   |
+LL |         fs::create_dir_all("/some/dir").unwrap();
+   |                       ++++
+
+error: calling `std::fs::create_dir` where there may be a better way
+  --> tests/ui/create_dir.rs:34:9
+   |
+LL |         std::fs::create_dir("/some/dir").unwrap();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider calling `std::fs::create_dir_all` instead
+   |
+LL |         std::fs::create_dir_all("/some/dir").unwrap();
+   |                            ++++
+
+error: aborting due to 5 previous errors
+

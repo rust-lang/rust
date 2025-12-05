@@ -1,0 +1,39 @@
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `env`
+  --> $DIR/builtin-prelude-no-accidents.rs:5:5
+   |
+LL |     env::current_dir;
+   |     ^^^ use of unresolved module or unlinked crate `env`
+   |
+   = help: you might be missing a crate named `env`
+help: consider importing this module
+   |
+LL + use std::env;
+   |
+
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `panic`
+  --> $DIR/builtin-prelude-no-accidents.rs:6:14
+   |
+LL |     type A = panic::PanicInfo;
+   |              ^^^^^ use of unresolved module or unlinked crate `panic`
+   |
+   = help: you might be missing a crate named `panic`
+help: consider importing this module
+   |
+LL + use std::panic;
+   |
+
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `vec`
+  --> $DIR/builtin-prelude-no-accidents.rs:7:14
+   |
+LL |     type B = vec::Vec<u8>;
+   |              ^^^ use of unresolved module or unlinked crate `vec`
+   |
+   = help: you might be missing a crate named `vec`
+help: consider importing this module
+   |
+LL + use std::vec;
+   |
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0433`.

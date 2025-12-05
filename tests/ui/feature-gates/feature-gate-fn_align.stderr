@@ -1,0 +1,33 @@
+error[E0658]: the `#[rustc_align]` attribute is an experimental feature
+  --> $DIR/feature-gate-fn_align.rs:7:1
+   |
+LL | #[rustc_align(16)]
+   | ^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #82232 <https://github.com/rust-lang/rust/issues/82232> for more information
+   = help: add `#![feature(fn_align)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: the `#[rustc_align]` attribute is an experimental feature
+  --> $DIR/feature-gate-fn_align.rs:12:5
+   |
+LL |     #[rustc_align]
+   |     ^^^^^^^^^^^^^^
+   |
+   = note: see issue #82232 <https://github.com/rust-lang/rust/issues/82232> for more information
+   = help: add `#![feature(fn_align)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0539]: malformed `rustc_align` attribute input
+  --> $DIR/feature-gate-fn_align.rs:12:5
+   |
+LL |     #[rustc_align]
+   |     ^^^^^^^^^^^^^^
+   |     |
+   |     expected this to be a list
+   |     help: must be of the form: `#[rustc_align(<alignment in bytes>)]`
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0539, E0658.
+For more information about an error, try `rustc --explain E0539`.

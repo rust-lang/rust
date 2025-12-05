@@ -1,0 +1,14 @@
+error[E0596]: cannot borrow `*x` as mutable, as it is behind a `&` reference
+  --> $DIR/slice-mut-2.rs:7:18
+   |
+LL |     let _ = &mut x[2..4];
+   |                  ^ `x` is a `&` reference, so it cannot be borrowed as mutable
+   |
+help: consider changing this binding's type
+   |
+LL |     let x: &mut [isize] = &[1, 2, 3, 4, 5];
+   |             +++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0596`.

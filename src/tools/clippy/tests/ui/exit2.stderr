@@ -1,0 +1,11 @@
+error: usage of `process::exit`
+  --> tests/ui/exit2.rs:4:5
+   |
+LL |     std::process::exit(3);
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::exit` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::exit)]`
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,9 @@
+error[E0277]: the trait bound `{closure@$DIR/const_closure-const_trait_impl-ice-113381.rs:15:6: 15:14}: [const] Fn()` is not satisfied
+  --> $DIR/const_closure-const_trait_impl-ice-113381.rs:15:5
+   |
+LL |     (const || (()).foo())();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

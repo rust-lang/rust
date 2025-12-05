@@ -1,0 +1,42 @@
+error[E0277]: the size for values of type `dyn Debug` cannot be known at compilation time
+  --> $DIR/issue-80742.rs:28:15
+   |
+LL |     let dst = Inline::<dyn Debug>::new(0);
+   |               ^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `dyn Debug`
+note: required by an implicit `Sized` bound in `Inline`
+  --> $DIR/issue-80742.rs:10:15
+   |
+LL | struct Inline<T>
+   |               ^ required by the implicit `Sized` requirement on this type parameter in `Inline`
+help: consider relaxing the implicit `Sized` restriction
+   |
+LL | struct Inline<T: ?Sized>
+   |                ++++++++
+
+error[E0599]: the function or associated item `new` exists for struct `Inline<dyn Debug>`, but its trait bounds were not satisfied
+  --> $DIR/issue-80742.rs:28:36
+   |
+LL | struct Inline<T>
+   | ---------------- function or associated item `new` not found for this struct
+...
+LL |     let dst = Inline::<dyn Debug>::new(0);
+   |                                    ^^^ function or associated item cannot be called on `Inline<dyn Debug>` due to unsatisfied trait bounds
+   |
+note: trait bound `dyn Debug: Sized` was not satisfied
+  --> $DIR/issue-80742.rs:18:6
+   |
+LL | impl<T> Inline<T>
+   |      ^  ---------
+   |      |
+   |      unsatisfied trait bound introduced here
+help: consider relaxing the type parameter's implicit `Sized` bound
+   |
+LL | impl<T: ?Sized> Inline<T>
+   |       ++++++++
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0277, E0599.
+For more information about an error, try `rustc --explain E0277`.

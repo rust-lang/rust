@@ -1,0 +1,31 @@
+warning: function cannot return without recursing
+  --> $DIR/recursive.rs:3:1
+   |
+LL | const fn f<T>(x: T) {
+   | ^^^^^^^^^^^^^^^^^^^ cannot return without recursing
+LL |     f(x);
+   |     ---- recursive call site
+   |
+   = help: a `loop` may express intention better if this is on purpose
+   = note: `#[warn(unconditional_recursion)]` on by default
+
+error[E0080]: reached the configured maximum number of stack frames
+  --> $DIR/recursive.rs:7:15
+   |
+LL | const X: () = f(1);
+   |               ^^^^ evaluation of `X` failed inside this call
+   |
+note: [... 126 additional calls inside `f::<i32>` ...]
+  --> $DIR/recursive.rs:4:5
+   |
+LL |     f(x);
+   |     ^^^^
+note: inside `f::<i32>`
+  --> $DIR/recursive.rs:4:5
+   |
+LL |     f(x);
+   |     ^^^^ the failure occurred here
+
+error: aborting due to 1 previous error; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0080`.

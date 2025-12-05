@@ -1,0 +1,64 @@
+error[E0308]: mismatched types
+  --> $DIR/issue-71676-1.rs:43:24
+   |
+LL |     let _: *const u8 = &a;
+   |            ---------   ^^ expected `*const u8`, found `&Emm`
+   |            |
+   |            expected due to this
+   |
+   = note: expected raw pointer `*const u8`
+                found reference `&Emm`
+help: consider dereferencing
+   |
+LL |     let _: *const u8 = &***a;
+   |                         +++
+
+error[E0308]: mismatched types
+  --> $DIR/issue-71676-1.rs:46:22
+   |
+LL |     let _: *mut u8 = &a;
+   |            -------   ^^ types differ in mutability
+   |            |
+   |            expected due to this
+   |
+   = note: expected raw pointer `*mut u8`
+                found reference `&Emm`
+help: consider dereferencing
+   |
+LL |     let _: *mut u8 = &mut ***a;
+   |                       +++++++
+
+error[E0308]: mismatched types
+  --> $DIR/issue-71676-1.rs:49:24
+   |
+LL |     let _: *const u8 = &mut a;
+   |            ---------   ^^^^^^ expected `*const u8`, found `&mut Emm`
+   |            |
+   |            expected due to this
+   |
+   = note:    expected raw pointer `*const u8`
+           found mutable reference `&mut Emm`
+help: consider dereferencing
+   |
+LL -     let _: *const u8 = &mut a;
+LL +     let _: *const u8 = &***a;
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/issue-71676-1.rs:52:22
+   |
+LL |     let _: *mut u8 = &mut a;
+   |            -------   ^^^^^^ expected `*mut u8`, found `&mut Emm`
+   |            |
+   |            expected due to this
+   |
+   = note:    expected raw pointer `*mut u8`
+           found mutable reference `&mut Emm`
+help: consider dereferencing
+   |
+LL |     let _: *mut u8 = &mut ***a;
+   |                           +++
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

@@ -1,0 +1,26 @@
+error[E0432]: unresolved import `extern_prelude`
+  --> $DIR/extern-prelude-fail.rs:8:9
+   |
+LL |     use extern_prelude::S;
+   |         ^^^^^^^^^^^^^^ use of unresolved module or unlinked crate `extern_prelude`
+   |
+help: you might be missing a crate named `extern_prelude`, add it to your project and import it in your code
+   |
+LL + extern crate extern_prelude;
+   |
+
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `extern_prelude`
+  --> $DIR/extern-prelude-fail.rs:9:15
+   |
+LL |     let s = ::extern_prelude::S;
+   |               ^^^^^^^^^^^^^^ use of unresolved module or unlinked crate `extern_prelude`
+   |
+help: you might be missing a crate named `extern_prelude`, add it to your project and import it in your code
+   |
+LL + extern crate extern_prelude;
+   |
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0432, E0433.
+For more information about an error, try `rustc --explain E0432`.

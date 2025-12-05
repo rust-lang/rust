@@ -1,0 +1,23 @@
+error: transmuting a known null pointer into a reference
+  --> tests/ui/transmuting_null.rs:11:23
+   |
+LL |         let _: &u64 = std::mem::transmute(0 as *const u64);
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::transmuting-null` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::transmuting_null)]`
+
+error: transmuting a known null pointer into a reference
+  --> tests/ui/transmuting_null.rs:14:23
+   |
+LL |         let _: &u64 = std::mem::transmute(std::ptr::null::<u64>());
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: transmuting a known null pointer into a reference
+  --> tests/ui/transmuting_null.rs:25:23
+   |
+LL |         let _: &u64 = std::mem::transmute(ZPTR);
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+

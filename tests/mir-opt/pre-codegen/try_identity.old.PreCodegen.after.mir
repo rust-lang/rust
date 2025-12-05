@@ -1,0 +1,40 @@
+// MIR for `old` after PreCodegen
+
+fn old(_1: Result<T, E>) -> Result<T, E> {
+    debug x => _1;
+    let mut _0: std::result::Result<T, E>;
+    let mut _2: isize;
+    let _3: T;
+    let _4: E;
+    scope 1 {
+        debug v => _3;
+    }
+    scope 2 {
+        debug e => _4;
+    }
+
+    bb0: {
+        _2 = discriminant(_1);
+        switchInt(move _2) -> [0: bb1, 1: bb2, otherwise: bb4];
+    }
+
+    bb1: {
+        _3 = copy ((_1 as Ok).0: T);
+        _0 = copy _1;
+        goto -> bb3;
+    }
+
+    bb2: {
+        _4 = copy ((_1 as Err).0: E);
+        _0 = copy _1;
+        goto -> bb3;
+    }
+
+    bb3: {
+        return;
+    }
+
+    bb4: {
+        unreachable;
+    }
+}

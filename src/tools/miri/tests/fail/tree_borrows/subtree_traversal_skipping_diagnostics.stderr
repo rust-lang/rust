@@ -1,0 +1,32 @@
+error: Undefined Behavior: write access through <TAG> at ALLOC[0x0] is forbidden
+  --> tests/fail/tree_borrows/subtree_traversal_skipping_diagnostics.rs:LL:CC
+   |
+LL |     *m = 42;
+   |     ^^^^^^^ Undefined Behavior occurred here
+   |
+   = help: this indicates a potential bug in the program: it performed an invalid operation, but the Tree Borrows rules it violated are still experimental
+   = help: see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/tree-borrows.md for further information
+   = help: the accessed tag <TAG> is a child of the conflicting tag <TAG>
+   = help: the conflicting tag <TAG> has state Frozen which forbids this child write access
+help: the accessed tag <TAG> was created here
+  --> tests/fail/tree_borrows/subtree_traversal_skipping_diagnostics.rs:LL:CC
+   |
+LL | fn write_to_mut(m: &mut u8, other_ptr: *const u8) {
+   |                 ^
+help: the conflicting tag <TAG> was created here, in the initial state Frozen
+  --> tests/fail/tree_borrows/subtree_traversal_skipping_diagnostics.rs:LL:CC
+   |
+LL |         let intermediary = &root;
+   |                            ^^^^^
+   = note: BACKTRACE (of the first span):
+   = note: inside `write_to_mut` at tests/fail/tree_borrows/subtree_traversal_skipping_diagnostics.rs:LL:CC
+note: inside `main`
+  --> tests/fail/tree_borrows/subtree_traversal_skipping_diagnostics.rs:LL:CC
+   |
+LL |         write_to_mut(data, core::ptr::addr_of!(root));
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to 1 previous error
+

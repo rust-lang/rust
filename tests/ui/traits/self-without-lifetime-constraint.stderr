@@ -1,0 +1,29 @@
+error: `impl` item signature doesn't match `trait` item signature
+  --> $DIR/self-without-lifetime-constraint.rs:46:5
+   |
+LL |     fn column_result(value: ValueRef<'_>) -> FromSqlResult<Self, &Self>;
+   |     -------------------------------------------------------------------- expected `fn(ValueRef<'1>) -> Result<(&'2 str, &'1 &'2 str), FromSqlError>`
+...
+LL |     fn column_result(value: ValueRef<'_>) -> FromSqlResult<&str, &&str> {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ found `fn(ValueRef<'1>) -> Result<(&'1 str, &'1 &'1 str), FromSqlError>`
+   |
+   = note: expected signature `fn(ValueRef<'1>) -> Result<(&'2 str, &'1 &'2 str), FromSqlError>`
+              found signature `fn(ValueRef<'1>) -> Result<(&'1 str, &'1 &'1 str), FromSqlError>`
+help: the lifetime requirements from the `impl` do not correspond to the requirements in the `trait`
+  --> $DIR/self-without-lifetime-constraint.rs:42:60
+   |
+LL |     fn column_result(value: ValueRef<'_>) -> FromSqlResult<Self, &Self>;
+   |                                                            ^^^^ consider borrowing this type parameter in the trait
+
+error[E0515]: cannot return value referencing function parameter `x`
+  --> $DIR/self-without-lifetime-constraint.rs:17:87
+   |
+LL |                 std::str::from_utf8(t).map_err(|_| FromSqlError::InvalidType).map(|x| (x, &x))
+   |                                                                                       ^^^^--^
+   |                                                                                       |   |
+   |                                                                                       |   `x` is borrowed here
+   |                                                                                       returns a value referencing data owned by the current function
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0515`.

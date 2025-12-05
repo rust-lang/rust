@@ -1,0 +1,21 @@
+error[E0029]: only `char` and numeric types are allowed in range patterns
+  --> $DIR/half-open-range-pats-bad-types.rs:2:9
+   |
+LL |     let "a".. = "a";
+   |         ^^^ this is of type `&'static str` but it should be `char` or numeric
+
+error[E0029]: only `char` and numeric types are allowed in range patterns
+  --> $DIR/half-open-range-pats-bad-types.rs:3:11
+   |
+LL |     let .."a" = "a";
+   |           ^^^ this is of type `&'static str` but it should be `char` or numeric
+
+error[E0029]: only `char` and numeric types are allowed in range patterns
+  --> $DIR/half-open-range-pats-bad-types.rs:4:12
+   |
+LL |     let ..="a" = "a";
+   |            ^^^ this is of type `&'static str` but it should be `char` or numeric
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0029`.

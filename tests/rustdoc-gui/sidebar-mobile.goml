@@ -1,0 +1,98 @@
+// This test ensure that the sidebar isn't "hidden" on mobile but instead moved out of the viewport.
+// This is especially important for devices for "text-first" content (like for users with
+// sight issues).
+include: "utils.goml"
+go-to: "file://" + |DOC_PATH| + "/test_docs/struct.Foo.html"
+// Switching to "mobile view" by reducing the width to 600px.
+set-window-size: (600, 600)
+assert-css: (".sidebar", {"display": "block", "left": "-1000px"})
+// Opening the sidebar menu.
+click: ".sidebar-menu-toggle"
+assert-css: (".sidebar", {"display": "block", "left": "0px"})
+// Closing the sidebar menu.
+click: ".sidebar-menu-toggle"
+assert-css: (".sidebar", {"display": "block", "left": "-1000px"})
+// Force the sidebar open by focusing a link inside it.
+// This makes it easier for keyboard users to get to it.
+focus: ".sidebar-elems h3 a"
+assert-css: (".sidebar", {"display": "block", "left": "0px"})
+// When we tab out of the sidebar, close it.
+focus: "#search-button"
+assert-css: (".sidebar", {"display": "block", "left": "-1000px"})
+
+// Open the sidebar menu.
+click: ".sidebar-menu-toggle"
+assert-css: (".sidebar", {"left": "0px"})
+
+// Make sure the "struct Foo" header is hidden, since the mobile topbar already does it.
+assert-css: ("//nav[contains(@class, 'sidebar')]//h2/a[normalize-space()='Foo']/parent::h2", {"display": "none"})
+// Make sure the global navigation is still here.
+assert-css: (
+    "//nav[contains(@class, 'sidebar')]//h2/a[normalize-space()='In crate test_docs']/parent::h2",
+    {"display": "block"}
+)
+
+// Click the toggle to close it
+click: ".sidebar-menu-toggle"
+assert-css: (".sidebar", {"display": "block", "left": "-1000px"})
+
+// Open the sidebar menu, and make sure pressing Escape closes it.
+click: ".sidebar-menu-toggle"
+assert-css: (".sidebar", {"left": "0px"})
+press-key: "Escape"
+assert-css: (".sidebar", {"display": "block", "left": "-1000px"})
+
+// Check that the topbar is visible
+assert-property: ("rustdoc-topbar", {"clientHeight": "45"})
+
+// Check that clicking an element from the sidebar scrolls to the right place
+// so the target is not obscured by the topbar.
+click: ".sidebar-menu-toggle"
+click: ".sidebar-elems section .block li > a"
+assert-position: ("#method\.must_use", {"y": 46})
+
+// Check that the bottom-most item on the sidebar menu can be scrolled fully into view.
+click: ".sidebar-menu-toggle"
+scroll-to: ".block.keyword li:nth-child(1)"
+compare-elements-position-near: (".block.keyword li:nth-child(1)", "rustdoc-topbar", {"y": 544})
+
+// Now checking the background color of the sidebar.
+// Close the sidebar menu.
+press-key: "Escape"
+show-text: true
+
+define-function: (
+    "check-colors",
+    [theme, color, background],
+    block {
+        call-function: ("switch-theme-mobile", {"theme": |theme|})
+        reload:
+
+        // Open the sidebar menu.
+        click: ".sidebar-menu-toggle"
+        assert-css: (".sidebar", {
+            "background-color": |background|,
+            "color": |color|,
+        })
+        // Make sure the sidebar is full width
+        compare-elements-size: (".sidebar", "body", ["width"])
+        // Close the sidebar menu.
+        press-key: "Escape"
+    },
+)
+
+call-function: ("check-colors", {
+    "theme": "ayu",
+    "color": "#c5c5c5",
+    "background": "#14191f",
+})
+call-function: ("check-colors", {
+    "theme": "dark",
+    "color": "#ddd",
+    "background": "#505050",
+})
+call-function: ("check-colors", {
+    "theme": "light",
+    "color": "black",
+    "background": "#F5F5F5",
+})

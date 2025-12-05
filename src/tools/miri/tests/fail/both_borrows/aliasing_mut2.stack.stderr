@@ -1,0 +1,30 @@
+error: Undefined Behavior: not granting access to tag <TAG> because that would remove [SharedReadOnly for <TAG>] which is strongly protected
+  --> tests/fail/both_borrows/aliasing_mut2.rs:LL:CC
+   |
+LL | fn safe(x: &i32, y: &mut i32) {
+   |                  ^ Undefined Behavior occurred here
+   |
+   = help: this indicates a potential bug in the program: it performed an invalid operation, but the Stacked Borrows rules it violated are still experimental
+   = help: see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/stacked-borrows.md for further information
+help: <TAG> was created by a Unique retag at offsets [0x0..0x4]
+  --> tests/fail/both_borrows/aliasing_mut2.rs:LL:CC
+   |
+LL |     let xref = &mut x;
+   |                ^^^^^^
+help: <TAG> is this argument
+  --> tests/fail/both_borrows/aliasing_mut2.rs:LL:CC
+   |
+LL | fn safe(x: &i32, y: &mut i32) {
+   |         ^
+   = note: BACKTRACE (of the first span):
+   = note: inside `safe` at tests/fail/both_borrows/aliasing_mut2.rs:LL:CC
+note: inside `main`
+  --> tests/fail/both_borrows/aliasing_mut2.rs:LL:CC
+   |
+LL |     safe_raw(xshr, xraw);
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to 1 previous error
+

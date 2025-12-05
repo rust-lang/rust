@@ -1,0 +1,19 @@
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `lib2`
+  --> $DIR/issue-121103.rs:1:38
+   |
+LL | fn main(_: <lib2::GenericType<42> as lib2::TypeFn>::Output) {}
+   |                                      ^^^^ use of unresolved module or unlinked crate `lib2`
+   |
+   = help: you might be missing a crate named `lib2`
+
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `lib2`
+  --> $DIR/issue-121103.rs:1:13
+   |
+LL | fn main(_: <lib2::GenericType<42> as lib2::TypeFn>::Output) {}
+   |             ^^^^ use of unresolved module or unlinked crate `lib2`
+   |
+   = help: you might be missing a crate named `lib2`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0433`.

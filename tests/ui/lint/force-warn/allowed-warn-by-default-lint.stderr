@@ -1,0 +1,10 @@
+warning: function `dead_function` is never used
+  --> $DIR/allowed-warn-by-default-lint.rs:8:4
+   |
+LL | fn dead_function() {}
+   |    ^^^^^^^^^^^^^
+   |
+   = note: requested on the command line with `--force-warn dead-code`
+
+warning: 1 warning emitted
+

@@ -1,0 +1,43 @@
+error[E0275]: overflow normalizing the type alias `Loop`
+  --> $DIR/inherent-impls-overflow.rs:8:1
+   |
+LL | type Loop = Loop;
+   | ^^^^^^^^^
+   |
+   = note: in case this is a recursive type alias, consider using a struct, enum, or union instead
+
+error[E0275]: overflow normalizing the type alias `Loop`
+  --> $DIR/inherent-impls-overflow.rs:12:1
+   |
+LL | impl Loop {}
+   | ^^^^^^^^^^^^
+   |
+   = note: in case this is a recursive type alias, consider using a struct, enum, or union instead
+
+error[E0275]: overflow normalizing the type alias `Poly0<(((((((...,),),),),),),)>`
+  --> $DIR/inherent-impls-overflow.rs:17:1
+   |
+LL | type Poly0<T> = Poly1<(T,)>;
+   | ^^^^^^^^^^^^^
+   |
+   = note: in case this is a recursive type alias, consider using a struct, enum, or union instead
+
+error[E0275]: overflow normalizing the type alias `Poly1<(((((((...,),),),),),),)>`
+  --> $DIR/inherent-impls-overflow.rs:21:1
+   |
+LL | type Poly1<T> = Poly0<(T,)>;
+   | ^^^^^^^^^^^^^
+   |
+   = note: in case this is a recursive type alias, consider using a struct, enum, or union instead
+
+error[E0275]: overflow normalizing the type alias `Poly1<(((((((...,),),),),),),)>`
+  --> $DIR/inherent-impls-overflow.rs:26:1
+   |
+LL | impl Poly0<()> {}
+   | ^^^^^^^^^^^^^^^^^
+   |
+   = note: in case this is a recursive type alias, consider using a struct, enum, or union instead
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0275`.

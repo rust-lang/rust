@@ -1,0 +1,27 @@
+error[E0511]: invalid monomorphization of `simd_gather` intrinsic: expected element type `i32` of second argument `x4<i32>` to be a pointer to the element type `f32` of the first argument `x4<f32>`, found `i32` != `*_ f32`
+  --> $DIR/generic-gather-scatter.rs:30:9
+   |
+LL |         simd_gather(default, mask, mask);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0511]: invalid monomorphization of `simd_gather` intrinsic: expected mask element type to be an integer, found `f32`
+  --> $DIR/generic-gather-scatter.rs:33:9
+   |
+LL |         simd_gather(default, pointers, fmask);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0511]: invalid monomorphization of `simd_scatter` intrinsic: expected element type `i32` of second argument `x4<i32>` to be a pointer to the element type `f32` of the first argument `x4<f32>`, found `i32` != `*mut f32`
+  --> $DIR/generic-gather-scatter.rs:39:9
+   |
+LL |         simd_scatter(values, mask, mask);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0511]: invalid monomorphization of `simd_scatter` intrinsic: expected mask element type to be an integer, found `f32`
+  --> $DIR/generic-gather-scatter.rs:42:9
+   |
+LL |         simd_scatter(values, pointers, fmask);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0511`.

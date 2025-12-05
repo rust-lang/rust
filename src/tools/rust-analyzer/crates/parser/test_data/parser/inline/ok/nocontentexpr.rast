@@ -1,0 +1,57 @@
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "foo"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE "\n    "
+        SEMICOLON ";"
+        SEMICOLON ";"
+        SEMICOLON ";"
+        EXPR_STMT
+          CALL_EXPR
+            PATH_EXPR
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "some_expr"
+            ARG_LIST
+              L_PAREN "("
+              R_PAREN ")"
+          SEMICOLON ";"
+        SEMICOLON ";"
+        SEMICOLON ";"
+        SEMICOLON ";"
+        EXPR_STMT
+          BLOCK_EXPR
+            STMT_LIST
+              L_CURLY "{"
+              SEMICOLON ";"
+              SEMICOLON ";"
+              SEMICOLON ";"
+              R_CURLY "}"
+          SEMICOLON ";"
+        SEMICOLON ";"
+        SEMICOLON ";"
+        SEMICOLON ";"
+        CALL_EXPR
+          PATH_EXPR
+            PATH
+              PATH_SEGMENT
+                NAME_REF
+                  IDENT "Ok"
+          ARG_LIST
+            L_PAREN "("
+            TUPLE_EXPR
+              L_PAREN "("
+              R_PAREN ")"
+            R_PAREN ")"
+        WHITESPACE "\n"
+        R_CURLY "}"
+  WHITESPACE "\n"

@@ -1,0 +1,102 @@
+error[E0718]: `add` lang item must be applied to a trait with 1 generic argument
+  --> $DIR/lang-item-generic-requirements.rs:16:1
+   |
+LL | #[lang = "add"]
+   | ^^^^^^^^^^^^^^^
+LL | trait MyAdd<'a, T> {}
+   |            ------- this trait has 2 generic arguments
+
+error[E0718]: `drop_in_place` lang item must be applied to a function with at least 1 generic argument
+  --> $DIR/lang-item-generic-requirements.rs:20:1
+   |
+LL | #[lang = "drop_in_place"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | fn my_ptr_drop() {}
+   |               - this function has 0 generic arguments
+
+error[E0718]: `index` lang item must be applied to a trait with 1 generic argument
+  --> $DIR/lang-item-generic-requirements.rs:24:1
+   |
+LL | #[lang = "index"]
+   | ^^^^^^^^^^^^^^^^^
+LL | trait MyIndex<'a, T> {}
+   |              ------- this trait has 2 generic arguments
+
+error[E0718]: `phantom_data` lang item must be applied to a struct with 1 generic argument
+  --> $DIR/lang-item-generic-requirements.rs:28:1
+   |
+LL | #[lang = "phantom_data"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | struct MyPhantomData<T, U>;
+   |                     ------ this struct has 2 generic arguments
+
+error[E0718]: `owned_box` lang item must be applied to a struct with at least 1 generic argument
+  --> $DIR/lang-item-generic-requirements.rs:34:1
+   |
+LL | #[lang = "owned_box"]
+   | ^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | struct Foo;
+   |           - this struct has 0 generic arguments
+
+error[E0718]: `start` lang item must be applied to a function with 1 generic argument
+  --> $DIR/lang-item-generic-requirements.rs:40:1
+   |
+LL | #[lang = "start"]
+   | ^^^^^^^^^^^^^^^^^
+LL |
+LL | fn start(_: *const u8, _: isize, _: *const *const u8) -> isize {
+   |         - this function has 0 generic arguments
+
+error[E0392]: type parameter `T` is never used
+  --> $DIR/lang-item-generic-requirements.rs:30:22
+   |
+LL | struct MyPhantomData<T, U>;
+   |                      ^ unused type parameter
+   |
+   = help: consider removing `T` or referring to it in a field
+   = help: if you intended `T` to be a const parameter, use `const T: /* Type */` instead
+
+error[E0392]: type parameter `U` is never used
+  --> $DIR/lang-item-generic-requirements.rs:30:25
+   |
+LL | struct MyPhantomData<T, U>;
+   |                         ^ unused type parameter
+   |
+   = help: consider removing `U` or referring to it in a field
+   = help: if you intended `U` to be a const parameter, use `const U: /* Type */` instead
+
+error[E0369]: cannot add `{integer}` to `{integer}`
+  --> $DIR/lang-item-generic-requirements.rs:50:7
+   |
+LL |     r + a;
+   |     - ^ - {integer}
+   |     |
+   |     {integer}
+
+error[E0608]: cannot index into a value of type `[{integer}; 5]`
+  --> $DIR/lang-item-generic-requirements.rs:58:16
+   |
+LL |     let _ = arr[2];
+   |                ^^^
+
+error[E0308]: mismatched types
+  --> $DIR/lang-item-generic-requirements.rs:65:17
+   |
+LL |     let _: () = Foo;
+   |            --   ^^^ expected `()`, found `Foo`
+   |            |
+   |            expected due to this
+
+error: requires `copy` lang_item
+  --> $DIR/lang-item-generic-requirements.rs:56:16
+   |
+LL |     let arr = [0; 5];
+   |                ^
+
+error: aborting due to 12 previous errors
+
+Some errors have detailed explanations: E0308, E0369, E0392, E0608, E0718.
+For more information about an error, try `rustc --explain E0308`.

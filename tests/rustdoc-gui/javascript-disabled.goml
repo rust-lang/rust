@@ -1,0 +1,20 @@
+// When JavaScript is disabled, we hide the search bar, because it
+// can't be used without JS.
+javascript: false
+
+go-to: "file://" + |DOC_PATH| + "/test_docs/struct.Foo.html"
+show-text: true
+assert-false: ".sub"
+
+// Even though JS is disabled, we should still have themes applied. Links are never black-colored
+// if styles are applied so we check that they are not.
+assert-css-false: ("a.src", {"color": "#000"})
+
+javascript: true
+fail-on-request-error: false
+block-network-request: "*.js"
+reload:
+
+// JS is enabled but wasn't loaded, we should still have the light theme applied. Links are never
+// black-colored if styles are applied so we check that they are not.
+assert-css-false: ("a.src", {"color": "#000"})

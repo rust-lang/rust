@@ -1,0 +1,51 @@
+error: there is no argument named `foo`
+  --> $DIR/format-args-capture-macro-hygiene.rs:15:13
+   |
+LL |     format!(concat!("{foo}"));
+   |             ^^^^^^^^^^^^^^^^
+   |
+   = note: did you intend to capture a variable `foo` from the surrounding scope?
+   = note: to avoid ambiguity, `format_args!` cannot capture variables when the format string is expanded from a macro
+
+error: there is no argument named `bar`
+  --> $DIR/format-args-capture-macro-hygiene.rs:16:13
+   |
+LL |     format!(concat!("{ba", "r} {}"), 1);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: did you intend to capture a variable `bar` from the surrounding scope?
+   = note: to avoid ambiguity, `format_args!` cannot capture variables when the format string is expanded from a macro
+
+error: there is no argument named `foo`
+  --> $DIR/format-args-capture-macro-hygiene.rs:7:13
+   |
+LL |     () => { "{foo}" }
+   |             ^^^^^^^
+...
+LL |     format!(def_site!());
+   |             ----------- in this macro invocation
+   |
+   = note: did you intend to capture a variable `foo` from the surrounding scope?
+   = note: to avoid ambiguity, `format_args!` cannot capture variables when the format string is expanded from a macro
+   = note: this error originates in the macro `def_site` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: there is no argument named `foo`
+  --> $DIR/format-args-capture-macro-hygiene.rs:19:24
+   |
+LL |     format!(call_site!("{foo}"));
+   |                        ^^^^^^^
+   |
+   = note: did you intend to capture a variable `foo` from the surrounding scope?
+   = note: to avoid ambiguity, `format_args!` cannot capture variables when the format string is expanded from a macro
+
+error: there is no argument named `foo`
+  --> $DIR/format-args-capture-macro-hygiene.rs:21:34
+   |
+LL |     format!(foo_with_input_span!(""));
+   |                                  ^^
+   |
+   = note: did you intend to capture a variable `foo` from the surrounding scope?
+   = note: to avoid ambiguity, `format_args!` cannot capture variables when the format string is expanded from a macro
+
+error: aborting due to 5 previous errors
+

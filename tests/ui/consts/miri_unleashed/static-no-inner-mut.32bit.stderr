@@ -1,0 +1,97 @@
+error[E0080]: constructing invalid value at .<deref>.v: encountered `UnsafeCell` in read-only memory
+  --> $DIR/static-no-inner-mut.rs:8:1
+   |
+LL | static REF: &AtomicI32 = &AtomicI32::new(42);
+   | ^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
+   |
+   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: 4, align: 4) {
+               ╾ALLOC0╼                                     │ ╾──╼
+           }
+
+error[E0080]: constructing invalid value: encountered mutable reference or box pointing to read-only memory
+  --> $DIR/static-no-inner-mut.rs:11:1
+   |
+LL | static REFMUT: &mut i32 = &mut 0;
+   | ^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
+   |
+   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: 4, align: 4) {
+               ╾ALLOC1╼                                     │ ╾──╼
+           }
+
+error[E0080]: constructing invalid value at .<deref>.v: encountered `UnsafeCell` in read-only memory
+  --> $DIR/static-no-inner-mut.rs:15:1
+   |
+LL | static REF2: &AtomicI32 = {let x = AtomicI32::new(42); &{x}};
+   | ^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
+   |
+   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: 4, align: 4) {
+               ╾ALLOC2╼                                     │ ╾──╼
+           }
+
+error[E0080]: constructing invalid value: encountered mutable reference or box pointing to read-only memory
+  --> $DIR/static-no-inner-mut.rs:17:1
+   |
+LL | static REFMUT2: &mut i32 = {let mut x = 0; &mut {x}};
+   | ^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
+   |
+   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: 4, align: 4) {
+               ╾ALLOC3╼                                     │ ╾──╼
+           }
+
+error: encountered mutable pointer in final value of static
+  --> $DIR/static-no-inner-mut.rs:34:1
+   |
+LL | static RAW_MUT_CAST: SyncPtr<i32> = SyncPtr { x : &mut 42 as *mut _ as *const _ };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: encountered mutable pointer in final value of static
+  --> $DIR/static-no-inner-mut.rs:37:1
+   |
+LL | static RAW_MUT_COERCE: SyncPtr<i32> = SyncPtr { x: &mut 0 };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: skipping const checks
+   |
+help: skipping check that does not even have a feature gate
+  --> $DIR/static-no-inner-mut.rs:8:26
+   |
+LL | static REF: &AtomicI32 = &AtomicI32::new(42);
+   |                          ^^^^^^^^^^^^^^^^^^^
+help: skipping check that does not even have a feature gate
+  --> $DIR/static-no-inner-mut.rs:11:27
+   |
+LL | static REFMUT: &mut i32 = &mut 0;
+   |                           ^^^^^^
+help: skipping check that does not even have a feature gate
+  --> $DIR/static-no-inner-mut.rs:15:56
+   |
+LL | static REF2: &AtomicI32 = {let x = AtomicI32::new(42); &{x}};
+   |                                                        ^^^^
+help: skipping check that does not even have a feature gate
+  --> $DIR/static-no-inner-mut.rs:17:44
+   |
+LL | static REFMUT2: &mut i32 = {let mut x = 0; &mut {x}};
+   |                                            ^^^^^^^^
+help: skipping check that does not even have a feature gate
+  --> $DIR/static-no-inner-mut.rs:31:52
+   |
+LL | static RAW_SYNC: SyncPtr<AtomicI32> = SyncPtr { x: &AtomicI32::new(42) };
+   |                                                    ^^^^^^^^^^^^^^^^^^^
+help: skipping check that does not even have a feature gate
+  --> $DIR/static-no-inner-mut.rs:34:51
+   |
+LL | static RAW_MUT_CAST: SyncPtr<i32> = SyncPtr { x : &mut 42 as *mut _ as *const _ };
+   |                                                   ^^^^^^^
+help: skipping check that does not even have a feature gate
+  --> $DIR/static-no-inner-mut.rs:37:52
+   |
+LL | static RAW_MUT_COERCE: SyncPtr<i32> = SyncPtr { x: &mut 0 };
+   |                                                    ^^^^^^
+
+error: aborting due to 6 previous errors; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0080`.

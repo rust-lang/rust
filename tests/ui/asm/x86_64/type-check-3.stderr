@@ -1,0 +1,118 @@
+error: type `i128` cannot be used with this register class
+  --> $DIR/type-check-3.rs:12:28
+   |
+LL |         asm!("{}", in(reg) 0i128);
+   |                            ^^^^^
+   |
+   = note: register class `reg` supports these types: i16, i32, i64, f16, f32, f64
+
+error: type `__m128` cannot be used with this register class
+  --> $DIR/type-check-3.rs:14:28
+   |
+LL |         asm!("{}", in(reg) _mm_setzero_ps());
+   |                            ^^^^^^^^^^^^^^^^
+   |
+   = note: register class `reg` supports these types: i16, i32, i64, f16, f32, f64
+
+error: type `__m256` cannot be used with this register class
+  --> $DIR/type-check-3.rs:16:28
+   |
+LL |         asm!("{}", in(reg) _mm256_setzero_ps());
+   |                            ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: register class `reg` supports these types: i16, i32, i64, f16, f32, f64
+
+error: type `u8` cannot be used with this register class
+  --> $DIR/type-check-3.rs:18:32
+   |
+LL |         asm!("{}", in(xmm_reg) 0u8);
+   |                                ^^^
+   |
+   = note: register class `xmm_reg` supports these types: i32, i64, f16, f32, f64, f128, i8x16, i16x8, i32x4, i64x2, f16x8, f32x4, f64x2
+
+error: `avx512bw` target feature is not enabled
+  --> $DIR/type-check-3.rs:27:29
+   |
+LL |         asm!("{}", in(kreg) 0u64);
+   |                             ^^^^
+   |
+   = note: this is required to use type `u64` with register class `kreg`
+
+warning: formatting may not be suitable for sub-register argument
+  --> $DIR/type-check-3.rs:32:15
+   |
+LL |         asm!("{0} {0}", in(reg) 0i16);
+   |               ^^^ ^^^           ---- for this argument
+   |
+   = help: use `{0:x}` to have the register formatted as `ax` (for 16-bit values)
+   = help: or use `{0:r}` to keep the default formatting of `rax` (for 64-bit values)
+   = note: `#[warn(asm_sub_register)]` on by default
+
+warning: formatting may not be suitable for sub-register argument
+  --> $DIR/type-check-3.rs:34:15
+   |
+LL |         asm!("{0} {0:x}", in(reg) 0i16);
+   |               ^^^                 ---- for this argument
+   |
+   = help: use `{0:x}` to have the register formatted as `ax` (for 16-bit values)
+   = help: or use `{0:r}` to keep the default formatting of `rax` (for 64-bit values)
+
+warning: formatting may not be suitable for sub-register argument
+  --> $DIR/type-check-3.rs:36:15
+   |
+LL |         asm!("{}", in(reg) 0i32);
+   |               ^^           ---- for this argument
+   |
+   = help: use `{0:e}` to have the register formatted as `eax` (for 32-bit values)
+   = help: or use `{0:r}` to keep the default formatting of `rax` (for 64-bit values)
+
+warning: formatting may not be suitable for sub-register argument
+  --> $DIR/type-check-3.rs:39:15
+   |
+LL |         asm!("{}", in(ymm_reg) 0i64);
+   |               ^^               ---- for this argument
+   |
+   = help: use `{0:x}` to have the register formatted as `xmm0` (for 128-bit values)
+   = help: or use `{0:y}` to keep the default formatting of `ymm0` (for 256-bit values)
+
+error: type `i8` cannot be used with this register class
+  --> $DIR/type-check-3.rs:50:28
+   |
+LL |         asm!("{}", in(reg) 0i8);
+   |                            ^^^
+   |
+   = note: register class `reg` supports these types: i16, i32, i64, f16, f32, f64
+   = help: consider using the `reg_byte` register class instead
+
+error: incompatible types for asm inout argument
+  --> $DIR/type-check-3.rs:62:33
+   |
+LL |         asm!("{:r}", inout(reg) 0u32 => val_f32);
+   |                                 ^^^^    ^^^^^^^ type `f32`
+   |                                 |
+   |                                 type `u32`
+   |
+   = note: asm inout arguments must have the same type, unless they are both pointers or integers of the same size
+
+error: incompatible types for asm inout argument
+  --> $DIR/type-check-3.rs:64:33
+   |
+LL |         asm!("{:r}", inout(reg) 0u32 => val_ptr);
+   |                                 ^^^^    ^^^^^^^ type `*mut u8`
+   |                                 |
+   |                                 type `u32`
+   |
+   = note: asm inout arguments must have the same type, unless they are both pointers or integers of the same size
+
+error: incompatible types for asm inout argument
+  --> $DIR/type-check-3.rs:66:33
+   |
+LL |         asm!("{:r}", inout(reg) main => val_u32);
+   |                                 ^^^^    ^^^^^^^ type `u32`
+   |                                 |
+   |                                 type `fn()`
+   |
+   = note: asm inout arguments must have the same type, unless they are both pointers or integers of the same size
+
+error: aborting due to 9 previous errors; 4 warnings emitted
+

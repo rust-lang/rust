@@ -1,0 +1,136 @@
+error[E0596]: cannot borrow `foo` as mutable, as it is not declared as mutable
+  --> $DIR/borrow-unpin.rs:38:17
+   |
+LL |     foo_pin_mut(&pin mut foo);
+   |                 ^^^^^^^^^^^^ cannot borrow as mutable
+   |
+help: consider changing this to be mutable
+   |
+LL |     let mut foo = Foo::default();
+   |         +++
+
+error[E0596]: cannot borrow `foo` as mutable, as it is not declared as mutable
+  --> $DIR/borrow-unpin.rs:42:13
+   |
+LL |     let x = &pin mut foo;
+   |             ^^^^^^^^^^^^ cannot borrow as mutable
+   |
+help: consider changing this to be mutable
+   |
+LL |     let mut foo = Foo::default();
+   |         +++
+
+error[E0505]: cannot move out of `foo` because it is borrowed
+  --> $DIR/borrow-unpin.rs:43:14
+   |
+LL |     let foo = Foo::default();
+   |         --- binding `foo` declared here
+LL |     let x = &pin mut foo;
+   |             ------------ borrow of `foo` occurs here
+LL |     foo_move(foo);
+   |              ^^^ move out of `foo` occurs here
+LL |
+LL |     foo_pin_mut(x); //
+   |                 - borrow later used here
+   |
+note: if `Foo` implemented `Clone`, you could clone the value
+  --> $DIR/borrow-unpin.rs:20:1
+   |
+LL | struct Foo;
+   | ^^^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |     let x = &pin mut foo;
+   |                      --- you could clone this value
+
+error[E0505]: cannot move out of `foo` because it is borrowed
+  --> $DIR/borrow-unpin.rs:56:14
+   |
+LL |     let mut foo = Foo::default();
+   |         ------- binding `foo` declared here
+LL |     let x = &pin mut foo; // ok
+   |             ------------ borrow of `foo` occurs here
+LL |     foo_move(foo);
+   |              ^^^ move out of `foo` occurs here
+LL |
+LL |     foo_pin_mut(x); //
+   |                 - borrow later used here
+   |
+note: if `Foo` implemented `Clone`, you could clone the value
+  --> $DIR/borrow-unpin.rs:20:1
+   |
+LL | struct Foo;
+   | ^^^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |     let x = &pin mut foo; // ok
+   |                      --- you could clone this value
+
+error[E0505]: cannot move out of `foo` because it is borrowed
+  --> $DIR/borrow-unpin.rs:68:14
+   |
+LL |     let foo = Foo::default();
+   |         --- binding `foo` declared here
+LL |     let x = &pin const foo; // ok
+   |             -------------- borrow of `foo` occurs here
+LL |     foo_move(foo);
+   |              ^^^ move out of `foo` occurs here
+LL |
+LL |     foo_pin_ref(x);
+   |                 - borrow later used here
+   |
+note: if `Foo` implemented `Clone`, you could clone the value
+  --> $DIR/borrow-unpin.rs:20:1
+   |
+LL | struct Foo;
+   | ^^^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |     let x = &pin const foo; // ok
+   |                        --- you could clone this value
+
+error[E0502]: cannot borrow `foo` as immutable because it is also borrowed as mutable
+  --> $DIR/borrow-unpin.rs:80:13
+   |
+LL |     let x = &pin mut foo; // ok
+   |             ------------ mutable borrow occurs here
+LL |     foo_ref(&foo);
+   |             ^^^^ immutable borrow occurs here
+LL |
+LL |     foo_pin_mut(x);
+   |                 - mutable borrow later used here
+
+error[E0499]: cannot borrow `foo` as mutable more than once at a time
+  --> $DIR/borrow-unpin.rs:103:17
+   |
+LL |     let x = &pin mut foo; // ok
+   |             ------------ first mutable borrow occurs here
+LL |     foo_pin_mut(&pin mut foo);
+   |                 ^^^^^^^^^^^^ second mutable borrow occurs here
+LL |
+LL |     foo_pin_mut(x);
+   |                 - first borrow later used here
+
+error[E0502]: cannot borrow `foo` as mutable because it is also borrowed as immutable
+  --> $DIR/borrow-unpin.rs:115:17
+   |
+LL |     let x = &pin const foo; // ok
+   |             -------------- immutable borrow occurs here
+LL |     foo_pin_mut(&pin mut foo);
+   |                 ^^^^^^^^^^^^ mutable borrow occurs here
+LL |
+LL |     foo_pin_ref(x);
+   |                 - immutable borrow later used here
+
+error[E0502]: cannot borrow `foo` as immutable because it is also borrowed as mutable
+  --> $DIR/borrow-unpin.rs:127:17
+   |
+LL |     let x = &pin mut foo; // ok
+   |             ------------ mutable borrow occurs here
+LL |     foo_pin_ref(&pin const foo);
+   |                 ^^^^^^^^^^^^^^ immutable borrow occurs here
+LL |
+LL |     foo_pin_mut(x);
+   |                 - mutable borrow later used here
+
+error: aborting due to 9 previous errors
+
+Some errors have detailed explanations: E0499, E0502, E0505, E0596.
+For more information about an error, try `rustc --explain E0499`.

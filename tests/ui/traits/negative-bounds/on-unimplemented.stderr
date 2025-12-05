@@ -1,0 +1,18 @@
+error[E0277]: the trait bound `NotFoo: !Foo` is not satisfied
+  --> $DIR/on-unimplemented.rs:9:15
+   |
+LL | fn hello() -> impl !Foo {
+   |               ^^^^^^^^^ unsatisfied trait bound
+LL |
+LL |     NotFoo
+   |     ------ return type was inferred to be `NotFoo` here
+   |
+help: the trait bound `NotFoo: !Foo` is not satisfied
+  --> $DIR/on-unimplemented.rs:7:1
+   |
+LL | struct NotFoo;
+   | ^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

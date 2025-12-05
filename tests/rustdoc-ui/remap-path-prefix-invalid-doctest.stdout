@@ -1,0 +1,22 @@
+
+running 1 test
+test remapped_path/remap-path-prefix-invalid-doctest.rs - SomeStruct (line 10) ... FAILED
+
+failures:
+
+---- remapped_path/remap-path-prefix-invalid-doctest.rs - SomeStruct (line 10) stdout ----
+error: expected one of `!` or `::`, found `is`
+  --> remapped_path/remap-path-prefix-invalid-doctest.rs:11:6
+   |
+LL | this is not real code
+   |      ^^ expected one of `!` or `::`
+
+error: aborting due to 1 previous error
+
+Couldn't compile the test.
+
+failures:
+    remapped_path/remap-path-prefix-invalid-doctest.rs - SomeStruct (line 10)
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in $TIME
+

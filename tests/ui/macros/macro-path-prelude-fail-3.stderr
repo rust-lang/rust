@@ -1,0 +1,14 @@
+error: cannot find macro `inline` in this scope
+  --> $DIR/macro-path-prelude-fail-3.rs:2:5
+   |
+LL |     inline!();
+   |     ^^^^^^ help: a macro with a similar name exists: `line`
+   |
+  --> $SRC_DIR/core/src/macros/mod.rs:LL:COL
+   |
+   = note: similarly named macro `line` defined here
+   |
+   = note: `inline` is in scope, but it is an attribute: `#[inline]`
+
+error: aborting due to 1 previous error
+

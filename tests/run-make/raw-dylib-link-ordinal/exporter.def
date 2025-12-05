@@ -1,0 +1,5 @@
+LIBRARY exporter
+EXPORTS
+    exported_function @13 NONAME
+    exported_variable @5 NONAME DATA
+    print_exported_variable @9 NONAME

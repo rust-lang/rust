@@ -1,0 +1,500 @@
+error: type `type_outer` should have an upper camel case name
+  --> $DIR/lint-attr-everywhere-early.rs:23:6
+   |
+LL | type type_outer = i32;
+   |      ^^^^^^^^^^ help: convert the identifier to upper camel case: `TypeOuter`
+   |
+note: the lint level is defined here
+  --> $DIR/lint-attr-everywhere-early.rs:22:8
+   |
+LL | #[deny(non_camel_case_types)]
+   |        ^^^^^^^^^^^^^^^^^^^^
+
+error: unnecessary parentheses around type
+  --> $DIR/lint-attr-everywhere-early.rs:25:43
+   |
+LL | type BareFnPtr = fn(#[deny(unused_parens)](i32));
+   |                                           ^   ^
+   |
+note: the lint level is defined here
+  --> $DIR/lint-attr-everywhere-early.rs:25:28
+   |
+LL | type BareFnPtr = fn(#[deny(unused_parens)](i32));
+   |                            ^^^^^^^^^^^^^
+help: remove these parentheses
+   |
+LL - type BareFnPtr = fn(#[deny(unused_parens)](i32));
+LL + type BareFnPtr = fn(#[deny(unused_parens)]i32);
+   |
+
+error: type `ITEM_OUTER` should have an upper camel case name
+  --> $DIR/lint-attr-everywhere-early.rs:31:8
+   |
+LL | struct ITEM_OUTER;
+   |        ^^^^^^^^^^ help: convert the identifier to upper camel case: `ItemOuter`
+   |
+note: the lint level is defined here
+  --> $DIR/lint-attr-everywhere-early.rs:30:8
+   |
+LL | #[deny(non_camel_case_types)]
+   |        ^^^^^^^^^^^^^^^^^^^^
+
+error: usage of an `unsafe` block
+  --> $DIR/lint-attr-everywhere-early.rs:36:9
+   |
+LL |         unsafe {}
+   |         ^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/lint-attr-everywhere-early.rs:34:13
+   |
+LL |     #![deny(unsafe_code)]
+   |             ^^^^^^^^^^^
+
+error: usage of an `unsafe` block
+  --> $DIR/lint-attr-everywhere-early.rs:44:39
+   |
+LL |     fn inherent_denied_from_inner() { unsafe {} }
+   |                                       ^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/lint-attr-everywhere-early.rs:42:13
+   |
+LL |     #![deny(unsafe_code)]
+   |             ^^^^^^^^^^^
+
+error: denote infinite loops with `loop { ... }`
+  --> $DIR/lint-attr-everywhere-early.rs:47:24
+   |
+LL |     fn inherent_fn() { while true {} }
+   |                        ^^^^^^^^^^ help: use `loop`
+   |
+note: the lint level is defined here
+  --> $DIR/lint-attr-everywhere-early.rs:46:12
+   |
+LL |     #[deny(while_true)]
+   |            ^^^^^^^^^^
+
+error: denote infinite loops with `loop { ... }`
+  --> $DIR/lint-attr-everywhere-early.rs:50:34
+   |
+LL |     const INHERENT_CONST: i32 = {while true {} 1};
+   |                                  ^^^^^^^^^^ help: use `loop`
+   |
+note: the lint level is defined here
+  --> $DIR/lint-attr-everywhere-early.rs:49:12
+   |
+LL |     #[deny(while_true)]
+   |            ^^^^^^^^^^
+
+error: trait `trait_inner` should have an upper camel case name
+  --> $DIR/lint-attr-everywhere-early.rs:53:7
+   |
+LL | trait trait_inner {
+   |       ^^^^^^^^^^^ help: convert the identifier to upper camel case: `TraitInner`
+   |
+note: the lint level is defined here
+  --> $DIR/lint-attr-everywhere-early.rs:54:13
+   |
+LL |     #![deny(non_camel_case_types)]
+   |             ^^^^^^^^^^^^^^^^^^^^
+
+error: usage of an `unsafe` block
+  --> $DIR/lint-attr-everywhere-early.rs:60:30
+   |
+LL |     fn denied_from_inner() { unsafe {} }
+   |                              ^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/lint-attr-everywhere-early.rs:58:13
+   |
+LL |     #![deny(unsafe_code)]
+   |             ^^^^^^^^^^^
+
+error: denote infinite loops with `loop { ... }`
+  --> $DIR/lint-attr-everywhere-early.rs:63:21
+   |
+LL |     fn assoc_fn() { while true {} }
+   |                     ^^^^^^^^^^ help: use `loop`
+   |
+note: the lint level is defined here
+  --> $DIR/lint-attr-everywhere-early.rs:62:12
+   |
+LL |     #[deny(while_true)]
+   |            ^^^^^^^^^^
+
+error: denote infinite loops with `loop { ... }`
+  --> $DIR/lint-attr-everywhere-early.rs:66:31
+   |
+LL |     const ASSOC_CONST: i32 = {while true {} 1};
+   |                               ^^^^^^^^^^ help: use `loop`
+   |
+note: the lint level is defined here
+  --> $DIR/lint-attr-everywhere-early.rs:65:12
+   |
+LL |     #[deny(while_true)]
+   |            ^^^^^^^^^^
+
+error: associated type `assoc_type` should have an upper camel case name
+  --> $DIR/lint-attr-everywhere-early.rs:69:10
+   |
+LL |     type assoc_type;
+   |          ^^^^^^^^^^ help: convert the identifier to upper camel case: `AssocType`
+   |
+note: the lint level is defined here
+  --> $DIR/lint-attr-everywhere-early.rs:68:12
+   |
+LL |     #[deny(non_camel_case_types)]
+   |            ^^^^^^^^^^^^^^^^^^^^
+
+error: usage of an `unsafe` block
+  --> $DIR/lint-attr-everywhere-early.rs:75:30
+   |
+LL |     fn denied_from_inner() { unsafe {} }
+   |                              ^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/lint-attr-everywhere-early.rs:73:13
+   |
+LL |     #![deny(unsafe_code)]
+   |             ^^^^^^^^^^^
+
+error: denote infinite loops with `loop { ... }`
+  --> $DIR/lint-attr-everywhere-early.rs:78:21
+   |
+LL |     fn assoc_fn() { while true {} }
+   |                     ^^^^^^^^^^ help: use `loop`
+   |
+note: the lint level is defined here
+  --> $DIR/lint-attr-everywhere-early.rs:77:12
+   |
+LL |     #[deny(while_true)]
+   |            ^^^^^^^^^^
+
+error: denote infinite loops with `loop { ... }`
+  --> $DIR/lint-attr-everywhere-early.rs:81:31
+   |
+LL |     const ASSOC_CONST: i32 = {while true {} 1};
+   |                               ^^^^^^^^^^ help: use `loop`
+   |
+note: the lint level is defined here
+  --> $DIR/lint-attr-everywhere-early.rs:80:12
+   |
+LL |     #[deny(while_true)]
+   |            ^^^^^^^^^^
+
+error: unnecessary parentheses around type
+  --> $DIR/lint-attr-everywhere-early.rs:84:23
+   |
+LL |     type assoc_type = (i32);
+   |                       ^   ^
+   |
+note: the lint level is defined here
+  --> $DIR/lint-attr-everywhere-early.rs:83:12
+   |
+LL |     #[deny(unused_parens)]
+   |            ^^^^^^^^^^^^^
+help: remove these parentheses
+   |
+LL -     type assoc_type = (i32);
+LL +     type assoc_type = i32;
+   |
+
+error: unnecessary parentheses around type
+  --> $DIR/lint-attr-everywhere-early.rs:88:31
+   |
+LL |     #[deny(unused_parens)]f1: (i32),
+   |                               ^   ^
+   |
+note: the lint level is defined here
+  --> $DIR/lint-attr-everywhere-early.rs:88:12
+   |
+LL |     #[deny(unused_parens)]f1: (i32),
+   |            ^^^^^^^^^^^^^
+help: remove these parentheses
+   |
+LL -     #[deny(unused_parens)]f1: (i32),
+LL +     #[deny(unused_parens)]f1: i32,
+   |
+
+error: unnecessary parentheses around type
+  --> $DIR/lint-attr-everywhere-early.rs:90:42
+   |
+LL | struct StructTuple(#[deny(unused_parens)](i32));
+   |                                          ^   ^
+   |
+note: the lint level is defined here
+  --> $DIR/lint-attr-everywhere-early.rs:90:27
+   |
+LL | struct StructTuple(#[deny(unused_parens)](i32));
+   |                           ^^^^^^^^^^^^^
+help: remove these parentheses
+   |
+LL - struct StructTuple(#[deny(unused_parens)](i32));
+LL + struct StructTuple(#[deny(unused_parens)]i32);
+   |
+
+error: variant `VARIANT_CAMEL` should have an upper camel case name
+  --> $DIR/lint-attr-everywhere-early.rs:94:5
+   |
+LL |     VARIANT_CAMEL,
+   |     ^^^^^^^^^^^^^ help: convert the identifier to upper camel case: `VariantCamel`
+   |
+note: the lint level is defined here
+  --> $DIR/lint-attr-everywhere-early.rs:93:12
+   |
+LL |     #[deny(non_camel_case_types)]
+   |            ^^^^^^^^^^^^^^^^^^^^
+
+error: unnecessary parentheses around type
+  --> $DIR/lint-attr-everywhere-early.rs:100:37
+   |
+LL |     fn foreign_denied_from_inner(x: (i32));
+   |                                     ^   ^
+   |
+note: the lint level is defined here
+  --> $DIR/lint-attr-everywhere-early.rs:98:13
+   |
+LL |     #![deny(unused_parens)]
+   |             ^^^^^^^^^^^^^
+help: remove these parentheses
+   |
+LL -     fn foreign_denied_from_inner(x: (i32));
+LL +     fn foreign_denied_from_inner(x: i32);
+   |
+
+error: unnecessary parentheses around type
+  --> $DIR/lint-attr-everywhere-early.rs:105:37
+   |
+LL |     fn foreign_denied_from_outer(x: (i32));
+   |                                     ^   ^
+   |
+note: the lint level is defined here
+  --> $DIR/lint-attr-everywhere-early.rs:104:12
+   |
+LL |     #[deny(unused_parens)]
+   |            ^^^^^^^^^^^^^
+help: remove these parentheses
+   |
+LL -     fn foreign_denied_from_outer(x: (i32));
+LL +     fn foreign_denied_from_outer(x: i32);
+   |
+
+error: unnecessary parentheses around type
+  --> $DIR/lint-attr-everywhere-early.rs:108:43
+   |
+LL | fn function(#[deny(unused_parens)] param: (i32)) {}
+   |                                           ^   ^
+   |
+note: the lint level is defined here
+  --> $DIR/lint-attr-everywhere-early.rs:108:20
+   |
+LL | fn function(#[deny(unused_parens)] param: (i32)) {}
+   |                    ^^^^^^^^^^^^^
+help: remove these parentheses
+   |
+LL - fn function(#[deny(unused_parens)] param: (i32)) {}
+LL + fn function(#[deny(unused_parens)] param: i32) {}
+   |
+
+error: type parameter `foo` should have an upper camel case name
+  --> $DIR/lint-attr-everywhere-early.rs:110:42
+   |
+LL | fn generics<#[deny(non_camel_case_types)]foo>() {}
+   |                                          ^^^ help: convert the identifier to upper camel case (notice the capitalization): `Foo`
+   |
+note: the lint level is defined here
+  --> $DIR/lint-attr-everywhere-early.rs:110:20
+   |
+LL | fn generics<#[deny(non_camel_case_types)]foo>() {}
+   |                    ^^^^^^^^^^^^^^^^^^^^
+
+error: unnecessary parentheses around assigned value
+  --> $DIR/lint-attr-everywhere-early.rs:116:13
+   |
+LL |     let x = (1);
+   |             ^ ^
+   |
+note: the lint level is defined here
+  --> $DIR/lint-attr-everywhere-early.rs:115:12
+   |
+LL |     #[deny(unused_parens)]
+   |            ^^^^^^^^^^^^^
+help: remove these parentheses
+   |
+LL -     let x = (1);
+LL +     let x = 1;
+   |
+
+error: unnecessary parentheses around type
+  --> $DIR/lint-attr-everywhere-early.rs:122:50
+   |
+LL |     let closure = |#[deny(unused_parens)] param: (i32)| {};
+   |                                                  ^   ^
+   |
+note: the lint level is defined here
+  --> $DIR/lint-attr-everywhere-early.rs:122:27
+   |
+LL |     let closure = |#[deny(unused_parens)] param: (i32)| {};
+   |                           ^^^^^^^^^^^^^
+help: remove these parentheses
+   |
+LL -     let closure = |#[deny(unused_parens)] param: (i32)| {};
+LL +     let closure = |#[deny(unused_parens)] param: i32| {};
+   |
+
+error: unnecessary parentheses around block return value
+  --> $DIR/lint-attr-everywhere-early.rs:126:46
+   |
+LL |     let f = Match{#[deny(unused_parens)]f1: {(123)}};
+   |                                              ^   ^
+   |
+note: the lint level is defined here
+  --> $DIR/lint-attr-everywhere-early.rs:126:26
+   |
+LL |     let f = Match{#[deny(unused_parens)]f1: {(123)}};
+   |                          ^^^^^^^^^^^^^
+help: remove these parentheses
+   |
+LL -     let f = Match{#[deny(unused_parens)]f1: {(123)}};
+LL +     let f = Match{#[deny(unused_parens)]f1: {123}};
+   |
+
+error: usage of an `unsafe` block
+  --> $DIR/lint-attr-everywhere-early.rs:133:13
+   |
+LL |             unsafe {}
+   |             ^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/lint-attr-everywhere-early.rs:129:17
+   |
+LL |         #![deny(unsafe_code)]
+   |                 ^^^^^^^^^^^
+
+error: denote infinite loops with `loop { ... }`
+  --> $DIR/lint-attr-everywhere-early.rs:134:13
+   |
+LL |             while true {}
+   |             ^^^^^^^^^^ help: use `loop`
+   |
+note: the lint level is defined here
+  --> $DIR/lint-attr-everywhere-early.rs:131:16
+   |
+LL |         #[deny(while_true)]
+   |                ^^^^^^^^^^
+
+error: `...` range patterns are deprecated
+  --> $DIR/lint-attr-everywhere-early.rs:140:20
+   |
+LL |         Match{f1: 0...100} => {}
+   |                    ^^^ help: use `..=` for an inclusive range
+   |
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/warnings-promoted-to-error.html>
+note: the lint level is defined here
+  --> $DIR/lint-attr-everywhere-early.rs:139:16
+   |
+LL |         #[deny(ellipsis_inclusive_range_patterns)]
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: usage of an `unsafe` block
+  --> $DIR/lint-attr-everywhere-early.rs:149:9
+   |
+LL |         unsafe {}
+   |         ^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/lint-attr-everywhere-early.rs:148:17
+   |
+LL |         #![deny(unsafe_code)]
+   |                 ^^^^^^^^^^^
+
+error: usage of an `unsafe` block
+  --> $DIR/lint-attr-everywhere-early.rs:153:9
+   |
+LL |         unsafe {}
+   |         ^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/lint-attr-everywhere-early.rs:152:16
+   |
+LL |         #[deny(unsafe_code)]
+   |                ^^^^^^^^^^^
+
+error: usage of an `unsafe` block
+  --> $DIR/lint-attr-everywhere-early.rs:158:5
+   |
+LL |     unsafe {};
+   |     ^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/lint-attr-everywhere-early.rs:157:12
+   |
+LL |     #[deny(unsafe_code)]
+   |            ^^^^^^^^^^^
+
+error: usage of an `unsafe` block
+  --> $DIR/lint-attr-everywhere-early.rs:160:27
+   |
+LL |     [#[deny(unsafe_code)] unsafe {123}];
+   |                           ^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/lint-attr-everywhere-early.rs:160:13
+   |
+LL |     [#[deny(unsafe_code)] unsafe {123}];
+   |             ^^^^^^^^^^^
+
+error: usage of an `unsafe` block
+  --> $DIR/lint-attr-everywhere-early.rs:161:27
+   |
+LL |     (#[deny(unsafe_code)] unsafe {123},);
+   |                           ^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/lint-attr-everywhere-early.rs:161:13
+   |
+LL |     (#[deny(unsafe_code)] unsafe {123},);
+   |             ^^^^^^^^^^^
+
+error: usage of an `unsafe` block
+  --> $DIR/lint-attr-everywhere-early.rs:163:31
+   |
+LL |     call(#[deny(unsafe_code)] unsafe {123});
+   |                               ^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/lint-attr-everywhere-early.rs:163:17
+   |
+LL |     call(#[deny(unsafe_code)] unsafe {123});
+   |                 ^^^^^^^^^^^
+
+error: usage of an `unsafe` block
+  --> $DIR/lint-attr-everywhere-early.rs:165:38
+   |
+LL |     TupleStruct(#[deny(unsafe_code)] unsafe {123});
+   |                                      ^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/lint-attr-everywhere-early.rs:165:24
+   |
+LL |     TupleStruct(#[deny(unsafe_code)] unsafe {123});
+   |                        ^^^^^^^^^^^
+
+error: `...` range patterns are deprecated
+  --> $DIR/lint-attr-everywhere-early.rs:176:18
+   |
+LL |             f1: 0...100,
+   |                  ^^^ help: use `..=` for an inclusive range
+   |
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/warnings-promoted-to-error.html>
+note: the lint level is defined here
+  --> $DIR/lint-attr-everywhere-early.rs:175:20
+   |
+LL |             #[deny(ellipsis_inclusive_range_patterns)]
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 37 previous errors
+

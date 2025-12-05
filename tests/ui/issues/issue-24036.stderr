@@ -1,0 +1,29 @@
+error[E0308]: mismatched types
+  --> $DIR/issue-24036.rs:3:9
+   |
+LL |     let mut x = |c| c + 1;
+   |                 --- the expected closure
+LL |     x = |c| c + 1;
+   |         ^^^^^^^^^ expected closure, found a different closure
+   |
+   = note: expected closure `{closure@$DIR/issue-24036.rs:2:17: 2:20}`
+              found closure `{closure@$DIR/issue-24036.rs:3:9: 3:12}`
+   = note: no two closures, even if identical, have the same type
+   = help: consider boxing your closure and/or using it as a trait object
+
+error[E0284]: type annotations needed
+  --> $DIR/issue-24036.rs:9:15
+   |
+LL |         1 => |c| c + 1,
+   |               ^    - type must be known at this point
+   |
+   = note: cannot satisfy `<_ as Add<i32>>::Output == _`
+help: consider giving this closure parameter an explicit type
+   |
+LL |         1 => |c: /* Type */| c + 1,
+   |                ++++++++++++
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0284, E0308.
+For more information about an error, try `rustc --explain E0284`.

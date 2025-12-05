@@ -1,0 +1,96 @@
+error: reached the recursion limit finding the struct tail for `[u8; 256]`
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]`
+
+error: reached the recursion limit finding the struct tail for `[u8; 256]`
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: reached the recursion limit finding the struct tail for `[u8; 256]`
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: reached the recursion limit finding the struct tail for `[u8; 256]`
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+note: the above error was encountered while instantiating `fn virtualize_my_trait::<VirtualWrapper<..., 1>>`
+  --> $DIR/infinite-instantiation-struct-tail-ice-114484.rs:38:18
+   |
+LL |         unsafe { virtualize_my_trait(L, self) }
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the full name for the type has been written to '$TEST_BUILD_DIR/infinite-instantiation-struct-tail-ice-114484.long-type-$LONG_TYPE_HASH.txt'
+   = note: consider using `--verbose` to print the full type name to the console
+
+error: reached the recursion limit finding the struct tail for `SomeData<256>`
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]`
+
+error: reached the recursion limit finding the struct tail for `SomeData<256>`
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: reached the recursion limit finding the struct tail for `SomeData<256>`
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: reached the recursion limit finding the struct tail for `SomeData<256>`
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+note: the above error was encountered while instantiating `fn virtualize_my_trait::<VirtualWrapper<..., 1>>`
+  --> $DIR/infinite-instantiation-struct-tail-ice-114484.rs:38:18
+   |
+LL |         unsafe { virtualize_my_trait(L, self) }
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the full name for the type has been written to '$TEST_BUILD_DIR/infinite-instantiation-struct-tail-ice-114484.long-type-$LONG_TYPE_HASH.txt'
+   = note: consider using `--verbose` to print the full type name to the console
+
+error: reached the recursion limit finding the struct tail for `VirtualWrapper<SomeData<256>, 0>`
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]`
+
+error: reached the recursion limit finding the struct tail for `VirtualWrapper<SomeData<256>, 0>`
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: reached the recursion limit finding the struct tail for `VirtualWrapper<SomeData<256>, 0>`
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: reached the recursion limit finding the struct tail for `VirtualWrapper<SomeData<256>, 0>`
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+note: the above error was encountered while instantiating `fn virtualize_my_trait::<VirtualWrapper<..., 1>>`
+  --> $DIR/infinite-instantiation-struct-tail-ice-114484.rs:38:18
+   |
+LL |         unsafe { virtualize_my_trait(L, self) }
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the full name for the type has been written to '$TEST_BUILD_DIR/infinite-instantiation-struct-tail-ice-114484.long-type-$LONG_TYPE_HASH.txt'
+   = note: consider using `--verbose` to print the full type name to the console
+
+error: reached the recursion limit while instantiating `<VirtualWrapper<..., 1> as MyTrait>::virtualize`
+   |
+note: `<VirtualWrapper<T, L> as MyTrait>::virtualize` defined here
+  --> $DIR/infinite-instantiation-struct-tail-ice-114484.rs:37:5
+   |
+LL |     fn virtualize(&self) -> &dyn MyTrait {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: the full name for the type has been written to '$TEST_BUILD_DIR/infinite-instantiation-struct-tail-ice-114484.long-type-$LONG_TYPE_HASH.txt'
+   = note: consider using `--verbose` to print the full type name to the console
+
+error: aborting due to 13 previous errors
+

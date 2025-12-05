@@ -1,0 +1,44 @@
+- // MIR for `unchecked_shr_signed_bigger` before Inline
++ // MIR for `unchecked_shr_signed_bigger` after Inline
+  
+  fn unchecked_shr_signed_bigger(_1: i64, _2: u32) -> i64 {
+      debug a => _1;
+      debug b => _2;
+      let mut _0: i64;
+      let mut _3: i64;
+      let mut _4: u32;
++     scope 1 (inlined #[track_caller] core::num::<impl i64>::unchecked_shr) {
++         let _5: ();
++         scope 2 (inlined core::ub_checks::check_language_ub) {
++             let mut _6: bool;
++             scope 3 (inlined core::ub_checks::check_language_ub::runtime) {
++             }
++         }
++     }
+  
+      bb0: {
+          StorageLive(_3);
+          _3 = copy _1;
+          StorageLive(_4);
+          _4 = copy _2;
+-         _0 = core::num::<impl i64>::unchecked_shr(move _3, move _4) -> [return: bb1, unwind continue];
++         StorageLive(_5);
++         StorageLive(_6);
++         _6 = UbChecks();
++         switchInt(copy _6) -> [0: bb2, otherwise: bb1];
+      }
+  
+      bb1: {
++         _5 = core::num::<impl i64>::unchecked_shr::precondition_check(copy _4) -> [return: bb2, unwind unreachable];
++     }
++ 
++     bb2: {
++         _0 = ShrUnchecked(copy _3, copy _4);
++         StorageDead(_6);
++         StorageDead(_5);
+          StorageDead(_4);
+          StorageDead(_3);
+          return;
+      }
+  }
+  

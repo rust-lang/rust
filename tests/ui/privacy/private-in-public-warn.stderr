@@ -1,0 +1,427 @@
+error: type `types::Priv` is more private than the item `types::Alias`
+  --> $DIR/private-in-public-warn.rs:15:5
+   |
+LL |     pub type Alias = Priv;
+   |     ^^^^^^^^^^^^^^ type alias `types::Alias` is reachable at visibility `pub(crate)`
+   |
+note: but type `types::Priv` is only usable at visibility `pub(self)`
+  --> $DIR/private-in-public-warn.rs:9:5
+   |
+LL |     struct Priv;
+   |     ^^^^^^^^^^^
+note: the lint level is defined here
+  --> $DIR/private-in-public-warn.rs:5:9
+   |
+LL | #![deny(private_interfaces, private_bounds)]
+   |         ^^^^^^^^^^^^^^^^^^
+
+error: type `types::Priv` is more private than the item `E::V1::0`
+  --> $DIR/private-in-public-warn.rs:17:12
+   |
+LL |         V1(Priv),
+   |            ^^^^ field `E::V1::0` is reachable at visibility `pub(crate)`
+   |
+note: but type `types::Priv` is only usable at visibility `pub(self)`
+  --> $DIR/private-in-public-warn.rs:9:5
+   |
+LL |     struct Priv;
+   |     ^^^^^^^^^^^
+
+error: type `types::Priv` is more private than the item `E::V2::field`
+  --> $DIR/private-in-public-warn.rs:18:14
+   |
+LL |         V2 { field: Priv },
+   |              ^^^^^^^^^^^ field `E::V2::field` is reachable at visibility `pub(crate)`
+   |
+note: but type `types::Priv` is only usable at visibility `pub(self)`
+  --> $DIR/private-in-public-warn.rs:9:5
+   |
+LL |     struct Priv;
+   |     ^^^^^^^^^^^
+
+error: type `types::Priv` is more private than the item `Tr::C`
+  --> $DIR/private-in-public-warn.rs:21:9
+   |
+LL |         const C: Priv = Priv;
+   |         ^^^^^^^^^^^^^ associated constant `Tr::C` is reachable at visibility `pub(crate)`
+   |
+note: but type `types::Priv` is only usable at visibility `pub(self)`
+  --> $DIR/private-in-public-warn.rs:9:5
+   |
+LL |     struct Priv;
+   |     ^^^^^^^^^^^
+
+error[E0446]: private type `types::Priv` in public interface
+  --> $DIR/private-in-public-warn.rs:22:9
+   |
+LL |     struct Priv;
+   |     ----------- `types::Priv` declared as private
+...
+LL |         type Alias = Priv;
+   |         ^^^^^^^^^^ can't leak private type
+
+error: type `types::Priv` is more private than the item `Tr::f1`
+  --> $DIR/private-in-public-warn.rs:23:9
+   |
+LL |         fn f1(arg: Priv) {}
+   |         ^^^^^^^^^^^^^^^^ associated function `Tr::f1` is reachable at visibility `pub(crate)`
+   |
+note: but type `types::Priv` is only usable at visibility `pub(self)`
+  --> $DIR/private-in-public-warn.rs:9:5
+   |
+LL |     struct Priv;
+   |     ^^^^^^^^^^^
+
+error: type `types::Priv` is more private than the item `Tr::f2`
+  --> $DIR/private-in-public-warn.rs:24:9
+   |
+LL |         fn f2() -> Priv { panic!() }
+   |         ^^^^^^^^^^^^^^^ associated function `Tr::f2` is reachable at visibility `pub(crate)`
+   |
+note: but type `types::Priv` is only usable at visibility `pub(self)`
+  --> $DIR/private-in-public-warn.rs:9:5
+   |
+LL |     struct Priv;
+   |     ^^^^^^^^^^^
+
+error[E0446]: private type `types::Priv` in public interface
+  --> $DIR/private-in-public-warn.rs:32:9
+   |
+LL |     struct Priv;
+   |     ----------- `types::Priv` declared as private
+...
+LL |         type Alias = Priv;
+   |         ^^^^^^^^^^ can't leak private type
+
+error: type `types::Priv` is more private than the item `types::ES`
+  --> $DIR/private-in-public-warn.rs:27:9
+   |
+LL |         pub static ES: Priv;
+   |         ^^^^^^^^^^^^^^^^^^^ static `types::ES` is reachable at visibility `pub(crate)`
+   |
+note: but type `types::Priv` is only usable at visibility `pub(self)`
+  --> $DIR/private-in-public-warn.rs:9:5
+   |
+LL |     struct Priv;
+   |     ^^^^^^^^^^^
+
+error: type `types::Priv` is more private than the item `types::ef1`
+  --> $DIR/private-in-public-warn.rs:28:9
+   |
+LL |         pub fn ef1(arg: Priv);
+   |         ^^^^^^^^^^^^^^^^^^^^^^ function `types::ef1` is reachable at visibility `pub(crate)`
+   |
+note: but type `types::Priv` is only usable at visibility `pub(self)`
+  --> $DIR/private-in-public-warn.rs:9:5
+   |
+LL |     struct Priv;
+   |     ^^^^^^^^^^^
+
+error: type `types::Priv` is more private than the item `types::ef2`
+  --> $DIR/private-in-public-warn.rs:29:9
+   |
+LL |         pub fn ef2() -> Priv;
+   |         ^^^^^^^^^^^^^^^^^^^^^ function `types::ef2` is reachable at visibility `pub(crate)`
+   |
+note: but type `types::Priv` is only usable at visibility `pub(self)`
+  --> $DIR/private-in-public-warn.rs:9:5
+   |
+LL |     struct Priv;
+   |     ^^^^^^^^^^^
+
+error: trait `traits::PrivTr` is more private than the item `traits::Alias`
+  --> $DIR/private-in-public-warn.rs:42:5
+   |
+LL |     pub type Alias<T: PrivTr> = T;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^ type alias `traits::Alias` is reachable at visibility `pub(crate)`
+   |
+note: but trait `traits::PrivTr` is only usable at visibility `pub(self)`
+  --> $DIR/private-in-public-warn.rs:37:5
+   |
+LL |     trait PrivTr {}
+   |     ^^^^^^^^^^^^
+note: the lint level is defined here
+  --> $DIR/private-in-public-warn.rs:5:29
+   |
+LL | #![deny(private_interfaces, private_bounds)]
+   |                             ^^^^^^^^^^^^^^
+
+error: trait `traits::PrivTr` is more private than the item `traits::Tr1`
+  --> $DIR/private-in-public-warn.rs:44:5
+   |
+LL |     pub trait Tr1: PrivTr {}
+   |     ^^^^^^^^^^^^^^^^^^^^^ trait `traits::Tr1` is reachable at visibility `pub(crate)`
+   |
+note: but trait `traits::PrivTr` is only usable at visibility `pub(self)`
+  --> $DIR/private-in-public-warn.rs:37:5
+   |
+LL |     trait PrivTr {}
+   |     ^^^^^^^^^^^^
+
+error: trait `traits::PrivTr` is more private than the item `traits::Tr2`
+  --> $DIR/private-in-public-warn.rs:45:5
+   |
+LL |     pub trait Tr2<T: PrivTr> {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^ trait `traits::Tr2` is reachable at visibility `pub(crate)`
+   |
+note: but trait `traits::PrivTr` is only usable at visibility `pub(self)`
+  --> $DIR/private-in-public-warn.rs:37:5
+   |
+LL |     trait PrivTr {}
+   |     ^^^^^^^^^^^^
+
+error: trait `traits::PrivTr` is more private than the item `traits::Tr3::Alias`
+  --> $DIR/private-in-public-warn.rs:47:9
+   |
+LL |         type Alias: PrivTr;
+   |         ^^^^^^^^^^^^^^^^^^ associated type `traits::Tr3::Alias` is reachable at visibility `pub(crate)`
+   |
+note: but trait `traits::PrivTr` is only usable at visibility `pub(self)`
+  --> $DIR/private-in-public-warn.rs:37:5
+   |
+LL |     trait PrivTr {}
+   |     ^^^^^^^^^^^^
+
+error: trait `traits::PrivTr` is more private than the item `traits::Tr3::f`
+  --> $DIR/private-in-public-warn.rs:49:9
+   |
+LL |         fn f<T: PrivTr>(arg: T) {}
+   |         ^^^^^^^^^^^^^^^^^^^^^^^ associated function `traits::Tr3::f` is reachable at visibility `pub(crate)`
+   |
+note: but trait `traits::PrivTr` is only usable at visibility `pub(self)`
+  --> $DIR/private-in-public-warn.rs:37:5
+   |
+LL |     trait PrivTr {}
+   |     ^^^^^^^^^^^^
+
+error: trait `traits::PrivTr` is more private than the item `traits::Pub<T>`
+  --> $DIR/private-in-public-warn.rs:54:5
+   |
+LL |     impl<T: PrivTr> Pub<T> {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^ implementation `traits::Pub<T>` is reachable at visibility `pub(crate)`
+   |
+note: but trait `traits::PrivTr` is only usable at visibility `pub(self)`
+  --> $DIR/private-in-public-warn.rs:37:5
+   |
+LL |     trait PrivTr {}
+   |     ^^^^^^^^^^^^
+
+error: trait `traits_where::PrivTr` is more private than the item `traits_where::Alias`
+  --> $DIR/private-in-public-warn.rs:63:5
+   |
+LL |     pub type Alias<T> where T: PrivTr = T;
+   |     ^^^^^^^^^^^^^^^^^ type alias `traits_where::Alias` is reachable at visibility `pub(crate)`
+   |
+note: but trait `traits_where::PrivTr` is only usable at visibility `pub(self)`
+  --> $DIR/private-in-public-warn.rs:59:5
+   |
+LL |     trait PrivTr {}
+   |     ^^^^^^^^^^^^
+
+error: trait `traits_where::PrivTr` is more private than the item `traits_where::Tr2`
+  --> $DIR/private-in-public-warn.rs:66:5
+   |
+LL |     pub trait Tr2<T> where T: PrivTr {}
+   |     ^^^^^^^^^^^^^^^^ trait `traits_where::Tr2` is reachable at visibility `pub(crate)`
+   |
+note: but trait `traits_where::PrivTr` is only usable at visibility `pub(self)`
+  --> $DIR/private-in-public-warn.rs:59:5
+   |
+LL |     trait PrivTr {}
+   |     ^^^^^^^^^^^^
+
+error: trait `traits_where::PrivTr` is more private than the item `traits_where::Tr3::f`
+  --> $DIR/private-in-public-warn.rs:69:9
+   |
+LL |         fn f<T>(arg: T) where T: PrivTr {}
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ associated function `traits_where::Tr3::f` is reachable at visibility `pub(crate)`
+   |
+note: but trait `traits_where::PrivTr` is only usable at visibility `pub(self)`
+  --> $DIR/private-in-public-warn.rs:59:5
+   |
+LL |     trait PrivTr {}
+   |     ^^^^^^^^^^^^
+
+error: trait `traits_where::PrivTr` is more private than the item `traits_where::Pub<T>`
+  --> $DIR/private-in-public-warn.rs:72:5
+   |
+LL |     impl<T> Pub<T> where T: PrivTr {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ implementation `traits_where::Pub<T>` is reachable at visibility `pub(crate)`
+   |
+note: but trait `traits_where::PrivTr` is only usable at visibility `pub(self)`
+  --> $DIR/private-in-public-warn.rs:59:5
+   |
+LL |     trait PrivTr {}
+   |     ^^^^^^^^^^^^
+
+error: trait `generics::PrivTr<generics::Pub>` is more private than the item `generics::Tr1`
+  --> $DIR/private-in-public-warn.rs:84:5
+   |
+LL |     pub trait Tr1: PrivTr<Pub> {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ trait `generics::Tr1` is reachable at visibility `pub(crate)`
+   |
+note: but trait `generics::PrivTr<generics::Pub>` is only usable at visibility `pub(self)`
+  --> $DIR/private-in-public-warn.rs:80:5
+   |
+LL |     trait PrivTr<T> {}
+   |     ^^^^^^^^^^^^^^^
+
+error: type `generics::Priv` is more private than the item `generics::Tr2`
+  --> $DIR/private-in-public-warn.rs:86:5
+   |
+LL |     pub trait Tr2: PubTr<Priv> {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ trait `generics::Tr2` is reachable at visibility `pub(crate)`
+   |
+note: but type `generics::Priv` is only usable at visibility `pub(self)`
+  --> $DIR/private-in-public-warn.rs:78:5
+   |
+LL |     struct Priv<T = u8>(T);
+   |     ^^^^^^^^^^^^^^^^^^^
+
+error: type `generics::Priv` is more private than the item `generics::Tr3`
+  --> $DIR/private-in-public-warn.rs:87:5
+   |
+LL |     pub trait Tr3: PubTr<[Priv; 1]> {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ trait `generics::Tr3` is reachable at visibility `pub(crate)`
+   |
+note: but type `generics::Priv` is only usable at visibility `pub(self)`
+  --> $DIR/private-in-public-warn.rs:78:5
+   |
+LL |     struct Priv<T = u8>(T);
+   |     ^^^^^^^^^^^^^^^^^^^
+
+error: type `generics::Priv` is more private than the item `Tr4`
+  --> $DIR/private-in-public-warn.rs:88:5
+   |
+LL |     pub trait Tr4: PubTr<Pub<Priv>> {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ trait `Tr4` is reachable at visibility `pub(crate)`
+   |
+note: but type `generics::Priv` is only usable at visibility `pub(self)`
+  --> $DIR/private-in-public-warn.rs:78:5
+   |
+LL |     struct Priv<T = u8>(T);
+   |     ^^^^^^^^^^^^^^^^^^^
+
+error[E0446]: private type `impls::Priv` in public interface
+  --> $DIR/private-in-public-warn.rs:119:9
+   |
+LL |     struct Priv;
+   |     ----------- `impls::Priv` declared as private
+...
+LL |         type Alias = Priv;
+   |         ^^^^^^^^^^ can't leak private type
+
+error: type `aliases_pub::Priv` is more private than the item `aliases_pub::<impl Pub2>::f`
+  --> $DIR/private-in-public-warn.rs:190:9
+   |
+LL |         pub fn f(arg: Priv) {}
+   |         ^^^^^^^^^^^^^^^^^^^ associated function `aliases_pub::<impl Pub2>::f` is reachable at visibility `pub(crate)`
+   |
+note: but type `aliases_pub::Priv` is only usable at visibility `pub(self)`
+  --> $DIR/private-in-public-warn.rs:163:5
+   |
+LL |     struct Priv;
+   |     ^^^^^^^^^^^
+
+error[E0446]: private type `aliases_pub::Priv` in public interface
+  --> $DIR/private-in-public-warn.rs:193:9
+   |
+LL |     struct Priv;
+   |     ----------- `aliases_pub::Priv` declared as private
+...
+LL |         type Check = Priv;
+   |         ^^^^^^^^^^ can't leak private type
+
+error[E0446]: private type `aliases_pub::Priv` in public interface
+  --> $DIR/private-in-public-warn.rs:196:9
+   |
+LL |     struct Priv;
+   |     ----------- `aliases_pub::Priv` declared as private
+...
+LL |         type Check = Priv;
+   |         ^^^^^^^^^^ can't leak private type
+
+error[E0446]: private type `aliases_pub::Priv` in public interface
+  --> $DIR/private-in-public-warn.rs:199:9
+   |
+LL |     struct Priv;
+   |     ----------- `aliases_pub::Priv` declared as private
+...
+LL |         type Check = Priv;
+   |         ^^^^^^^^^^ can't leak private type
+
+error[E0446]: private type `aliases_pub::Priv` in public interface
+  --> $DIR/private-in-public-warn.rs:202:9
+   |
+LL |     struct Priv;
+   |     ----------- `aliases_pub::Priv` declared as private
+...
+LL |         type Check = Priv;
+   |         ^^^^^^^^^^ can't leak private type
+
+error: trait `PrivTr1` is more private than the item `aliases_priv::Tr1`
+  --> $DIR/private-in-public-warn.rs:232:5
+   |
+LL |     pub trait Tr1: PrivUseAliasTr {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ trait `aliases_priv::Tr1` is reachable at visibility `pub(crate)`
+   |
+note: but trait `PrivTr1` is only usable at visibility `pub(self)`
+  --> $DIR/private-in-public-warn.rs:218:5
+   |
+LL |     trait PrivTr1<T = u8> {
+   |     ^^^^^^^^^^^^^^^^^^^^^
+
+error: trait `PrivTr1<Priv2>` is more private than the item `aliases_priv::Tr2`
+  --> $DIR/private-in-public-warn.rs:234:5
+   |
+LL |     pub trait Tr2: PrivUseAliasTr<PrivAlias> {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ trait `aliases_priv::Tr2` is reachable at visibility `pub(crate)`
+   |
+note: but trait `PrivTr1<Priv2>` is only usable at visibility `pub(self)`
+  --> $DIR/private-in-public-warn.rs:218:5
+   |
+LL |     trait PrivTr1<T = u8> {
+   |     ^^^^^^^^^^^^^^^^^^^^^
+
+error: type `Priv2` is more private than the item `aliases_priv::Tr2`
+  --> $DIR/private-in-public-warn.rs:234:5
+   |
+LL |     pub trait Tr2: PrivUseAliasTr<PrivAlias> {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ trait `aliases_priv::Tr2` is reachable at visibility `pub(crate)`
+   |
+note: but type `Priv2` is only usable at visibility `pub(self)`
+  --> $DIR/private-in-public-warn.rs:216:5
+   |
+LL |     struct Priv2;
+   |     ^^^^^^^^^^^^
+
+warning: bounds on generic parameters in type aliases are not enforced
+  --> $DIR/private-in-public-warn.rs:42:23
+   |
+LL |     pub type Alias<T: PrivTr> = T;
+   |                     --^^^^^^
+   |                     | |
+   |                     | will not be checked at usage sites of the type alias
+   |                     help: remove this bound
+   |
+   = note: this is a known limitation of the type checker that may be lifted in a future edition.
+           see issue #112792 <https://github.com/rust-lang/rust/issues/112792> for more information
+   = help: add `#![feature(lazy_type_alias)]` to the crate attributes to enable the desired semantics
+   = note: `#[warn(type_alias_bounds)]` on by default
+
+warning: where clauses on type aliases are not enforced
+  --> $DIR/private-in-public-warn.rs:63:29
+   |
+LL |     pub type Alias<T> where T: PrivTr = T;
+   |                       ------^^^^^^^^^
+   |                       |     |
+   |                       |     will not be checked at usage sites of the type alias
+   |                       help: remove this where clause
+   |
+   = note: this is a known limitation of the type checker that may be lifted in a future edition.
+           see issue #112792 <https://github.com/rust-lang/rust/issues/112792> for more information
+   = help: add `#![feature(lazy_type_alias)]` to the crate attributes to enable the desired semantics
+
+error: aborting due to 34 previous errors; 2 warnings emitted
+
+For more information about this error, try `rustc --explain E0446`.

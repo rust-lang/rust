@@ -1,0 +1,39 @@
+error[E0740]: field must implement `Copy` or be wrapped in `ManuallyDrop<...>` to be used in a union
+  --> $DIR/union-with-drop-fields.rs:8:5
+   |
+LL |     a: String,
+   |     ^^^^^^^^^
+   |
+   = note: union fields must not have drop side-effects, which is currently enforced via either `Copy` or `ManuallyDrop<...>`
+help: wrap the field type in `ManuallyDrop<...>`
+   |
+LL |     a: std::mem::ManuallyDrop<String>,
+   |        +++++++++++++++++++++++      +
+
+error[E0740]: field must implement `Copy` or be wrapped in `ManuallyDrop<...>` to be used in a union
+  --> $DIR/union-with-drop-fields.rs:16:5
+   |
+LL |     a: S,
+   |     ^^^^
+   |
+   = note: union fields must not have drop side-effects, which is currently enforced via either `Copy` or `ManuallyDrop<...>`
+help: wrap the field type in `ManuallyDrop<...>`
+   |
+LL |     a: std::mem::ManuallyDrop<S>,
+   |        +++++++++++++++++++++++ +
+
+error[E0740]: field must implement `Copy` or be wrapped in `ManuallyDrop<...>` to be used in a union
+  --> $DIR/union-with-drop-fields.rs:21:5
+   |
+LL |     a: T,
+   |     ^^^^
+   |
+   = note: union fields must not have drop side-effects, which is currently enforced via either `Copy` or `ManuallyDrop<...>`
+help: wrap the field type in `ManuallyDrop<...>`
+   |
+LL |     a: std::mem::ManuallyDrop<T>,
+   |        +++++++++++++++++++++++ +
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0740`.

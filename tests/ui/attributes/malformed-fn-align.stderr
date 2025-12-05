@@ -1,0 +1,125 @@
+error[E0539]: malformed `rustc_align` attribute input
+  --> $DIR/malformed-fn-align.rs:10:5
+   |
+LL |     #[rustc_align]
+   |     ^^^^^^^^^^^^^^
+   |     |
+   |     expected this to be a list
+   |     help: must be of the form: `#[rustc_align(<alignment in bytes>)]`
+
+error[E0805]: malformed `rustc_align` attribute input
+  --> $DIR/malformed-fn-align.rs:13:5
+   |
+LL |     #[rustc_align(1, 2)]
+   |     ^^^^^^^^^^^^^------^
+   |     |            |
+   |     |            expected a single argument here
+   |     help: must be of the form: `#[rustc_align(<alignment in bytes>)]`
+
+error[E0539]: malformed `rustc_align` attribute input
+  --> $DIR/malformed-fn-align.rs:17:1
+   |
+LL | #[rustc_align = 16]
+   | ^^^^^^^^^^^^^^^^^^^
+   | |
+   | expected this to be a list
+   | help: must be of the form: `#[rustc_align(<alignment in bytes>)]`
+
+error[E0589]: invalid alignment value: not an unsuffixed integer
+  --> $DIR/malformed-fn-align.rs:20:15
+   |
+LL | #[rustc_align("hello")]
+   |               ^^^^^^^
+
+error[E0589]: invalid alignment value: not a power of two
+  --> $DIR/malformed-fn-align.rs:23:15
+   |
+LL | #[rustc_align(0)]
+   |               ^
+
+error: expected a literal (`1u8`, `1.0f32`, `"string"`, etc.) here, found `-`
+  --> $DIR/malformed-fn-align.rs:29:15
+   |
+LL | #[rustc_align(-1)]
+   |               ^
+   |
+help: negative numbers are not literals, try removing the `-` sign
+   |
+LL - #[rustc_align(-1)]
+LL + #[rustc_align(1)]
+   |
+
+error[E0589]: invalid alignment value: not a power of two
+  --> $DIR/malformed-fn-align.rs:32:15
+   |
+LL | #[rustc_align(3)]
+   |               ^
+
+error: suffixed literals are not allowed in attributes
+  --> $DIR/malformed-fn-align.rs:35:15
+   |
+LL | #[rustc_align(4usize)]
+   |               ^^^^^^
+   |
+   = help: instead of using a suffixed literal (`1u8`, `1.0f32`, etc.), use an unsuffixed version (`1`, `1.0`, etc.)
+
+error[E0589]: invalid alignment value: not an unsuffixed integer
+  --> $DIR/malformed-fn-align.rs:35:15
+   |
+LL | #[rustc_align(4usize)]
+   |               ^^^^^^
+
+error[E0589]: invalid alignment value: not a power of two
+  --> $DIR/malformed-fn-align.rs:40:15
+   |
+LL | #[rustc_align(3)]
+   |               ^
+
+error: `#[rustc_align]` attribute cannot be used on structs
+  --> $DIR/malformed-fn-align.rs:44:1
+   |
+LL | #[rustc_align(16)]
+   | ^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[rustc_align]` can only be applied to functions
+
+error: `#[rustc_align]` attribute cannot be used on constants
+  --> $DIR/malformed-fn-align.rs:47:1
+   |
+LL | #[rustc_align(32)]
+   | ^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[rustc_align]` can only be applied to functions
+
+error: `#[rustc_align]` attribute cannot be used on modules
+  --> $DIR/malformed-fn-align.rs:50:1
+   |
+LL | #[rustc_align(32)]
+   | ^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[rustc_align]` can only be applied to functions
+
+error: `#[rustc_align]` attribute cannot be used on use statements
+  --> $DIR/malformed-fn-align.rs:53:1
+   |
+LL | #[rustc_align(32)]
+   | ^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[rustc_align]` can only be applied to functions
+
+error: `#[repr(align(...))]` is not supported on functions
+  --> $DIR/malformed-fn-align.rs:26:8
+   |
+LL | #[repr(align(16))]
+   |        ^^^^^^^^^
+   |
+help: use `#[rustc_align(...)]` instead
+  --> $DIR/malformed-fn-align.rs:26:8
+   |
+LL | #[repr(align(16))]
+   |        ^^^^^^^^^
+
+error: aborting due to 15 previous errors
+
+Some errors have detailed explanations: E0539, E0589, E0805.
+For more information about an error, try `rustc --explain E0539`.

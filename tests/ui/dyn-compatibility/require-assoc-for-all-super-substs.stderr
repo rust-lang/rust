@@ -1,0 +1,12 @@
+error[E0191]: the value of the associated type `Assoc` in `Sup<u32>` must be specified
+  --> $DIR/require-assoc-for-all-super-substs.rs:13:17
+   |
+LL |     type Assoc: Default;
+   |     ------------------- `Assoc` defined here
+...
+LL |     let q: <dyn Dyn<i32, u32> as Sup<u32>>::Assoc = Default::default();
+   |                 ^^^^^^^^^^^^^ help: specify the associated type: `Dyn<i32, u32, Assoc = Type>`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0191`.

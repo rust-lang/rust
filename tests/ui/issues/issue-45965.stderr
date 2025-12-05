@@ -1,0 +1,11 @@
+error[E0618]: expected function, found `{float}`
+  --> $DIR/issue-45965.rs:2:30
+   |
+LL |     let a = |r: f64| if r != 0.0(r != 0.0) { 1.0 } else { 0.0 };
+   |                              ^^^----------
+   |                              |
+   |                              call expression requires function
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0618`.

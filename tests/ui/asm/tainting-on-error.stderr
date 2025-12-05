@@ -1,0 +1,10 @@
+error: invalid `sym` operand
+  --> $DIR/tainting-on-error.rs:9:13
+   |
+LL |             sym None::<()>,
+   |             ^^^^^^^^^^^^^^ is an `Option<()>`
+   |
+   = help: `sym` operands must refer to either a function or a static
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,30 @@
+error[E0080]: constructing invalid value at .<deref>: encountered 0x0a, but expected a boolean
+  --> $DIR/const_refs_to_static_fail_invalid.rs:10:5
+   |
+LL |     const C: &bool = unsafe { std::mem::transmute(&S) };
+   |     ^^^^^^^^^^^^^^ it is undefined behavior to use this value
+   |
+   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
+               HEX_DUMP
+           }
+
+error: constant extern_::C cannot be used as pattern
+  --> $DIR/const_refs_to_static_fail_invalid.rs:29:9
+   |
+LL |         C => {}
+   |         ^
+   |
+   = note: constants that reference mutable or external memory cannot be used as patterns
+
+error: constant mutable::C cannot be used as pattern
+  --> $DIR/const_refs_to_static_fail_invalid.rs:42:9
+   |
+LL |         C => {}
+   |         ^
+   |
+   = note: constants that reference mutable or external memory cannot be used as patterns
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0080`.

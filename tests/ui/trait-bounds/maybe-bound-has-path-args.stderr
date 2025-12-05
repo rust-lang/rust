@@ -1,0 +1,17 @@
+error: bound modifier `?` can only be applied to `Sized`
+  --> $DIR/maybe-bound-has-path-args.rs:3:12
+   |
+LL | fn test<T: ?self::<i32>::Trait>() {}
+   |            ^^^^^^^^^^^^^^^^^^^
+
+error[E0109]: type arguments are not allowed on module `maybe_bound_has_path_args`
+  --> $DIR/maybe-bound-has-path-args.rs:3:20
+   |
+LL | fn test<T: ?self::<i32>::Trait>() {}
+   |             ----   ^^^ type argument not allowed
+   |             |
+   |             not allowed on module `maybe_bound_has_path_args`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0109`.

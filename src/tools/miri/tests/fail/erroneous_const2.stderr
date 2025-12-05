@@ -1,0 +1,31 @@
+error[E0080]: attempt to compute `5_u32 - 6_u32`, which would overflow
+  --> tests/fail/erroneous_const2.rs:LL:CC
+   |
+LL | const FOO: u32 = [X - Y, Y - X][(X < Y) as usize];
+   |                   ^^^^^ evaluation of `FOO` failed here
+
+note: erroneous constant encountered
+  --> tests/fail/erroneous_const2.rs:LL:CC
+   |
+LL |     println!("{}", FOO);
+   |                    ^^^
+
+note: erroneous constant encountered
+  --> tests/fail/erroneous_const2.rs:LL:CC
+   |
+LL |     println!("{}", FOO);
+   |                    ^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+note: erroneous constant encountered
+  --> tests/fail/erroneous_const2.rs:LL:CC
+   |
+LL |     println!("{}", FOO);
+   |                    ^^^
+   |
+   = note: this note originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0080`.

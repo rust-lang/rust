@@ -1,0 +1,13 @@
+#![warn(clippy::unnecessary_semicolon)]
+#![feature(stmt_expr_attributes)]
+
+fn main() {
+    // removing the `;` would turn the stmt into an expr, but attrs aren't allowed on exprs
+    // -- unless the feature `stmt_expr_attributes` is enabled
+    #[rustfmt::skip]
+    match 0 {
+        0b00 => {}  0b01 => {}
+        0b11 => {}  _    => {}
+    };
+    //~^ unnecessary_semicolon
+}

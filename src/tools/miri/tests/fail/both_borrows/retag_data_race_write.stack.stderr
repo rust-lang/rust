@@ -1,0 +1,28 @@
+error: Undefined Behavior: Data race detected between (1) retag write on thread `unnamed-ID` and (2) non-atomic write on thread `unnamed-ID` at ALLOC
+  --> tests/fail/both_borrows/retag_data_race_write.rs:LL:CC
+   |
+LL | ...   *p = 5;
+   |       ^^^^^^ (2) just happened here
+   |
+help: and (1) occurred earlier here
+  --> tests/fail/both_borrows/retag_data_race_write.rs:LL:CC
+   |
+LL |         let _r = &mut *p;
+   |                  ^^^^^^^
+   = help: retags occur on all (re)borrows and as well as when references are copied or moved
+   = help: retags permit optimizations that insert speculative reads or writes
+   = help: therefore from the perspective of data races, a retag has the same implications as a read or write
+   = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
+   = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
+   = note: BACKTRACE (of the first span) on thread `unnamed-ID`:
+   = note: inside `thread_2` at tests/fail/both_borrows/retag_data_race_write.rs:LL:CC
+note: inside closure
+  --> tests/fail/both_borrows/retag_data_race_write.rs:LL:CC
+   |
+LL |     let t2 = std::thread::spawn(move || thread_2(p));
+   |                                         ^^^^^^^^^^^
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to 1 previous error
+

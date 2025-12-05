@@ -1,0 +1,10 @@
+# requirements.in This is the source file for our pinned version requirements
+# file "requirements.txt" To regenerate that file, pip-tools is required
+# (`python -m pip install pip-tools==7.4.1`). Once installed, run: `pip-compile
+# --generate-hashes --strip-extras src/tools/tidy/config/requirements.in`
+#
+# Note: this generation step should be run with the oldest supported python
+# version (currently 3.9) to ensure backward compatibility
+
+ruff==0.4.9
+clang-format==18.1.7

@@ -1,0 +1,11 @@
+error[E0560]: struct `Foo` has no field named `nonexistent`
+  --> $DIR/nonexistent-struct-field-error-5439.rs:12:31
+   |
+LL |         return Box::new(Foo { nonexistent: self, foo: i });
+   |                               ^^^^^^^^^^^ `Foo` does not have this field
+   |
+   = note: all struct fields are already assigned
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0560`.

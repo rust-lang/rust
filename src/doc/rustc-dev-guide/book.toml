@@ -1,0 +1,69 @@
+[book]
+title = "Rust Compiler Development Guide"
+authors = ["The Rust Project Developers"]
+description = "A guide to developing the Rust compiler (rustc)"
+
+[build]
+create-missing = false
+
+[preprocessor.mermaid]
+command = "mdbook-mermaid"
+
+[output.html]
+git-repository-url = "https://github.com/rust-lang/rustc-dev-guide"
+edit-url-template = "https://github.com/rust-lang/rustc-dev-guide/edit/main/{path}"
+additional-js = [
+  "mermaid.min.js",
+  "mermaid-init.js",
+  "pagetoc.js",
+]
+additional-css = ["pagetoc.css"]
+
+[output.html.search]
+use-boolean-and = true
+
+[output.html.fold]
+enable = true
+level = 0
+
+[output.linkcheck]
+command = "ci/linkcheck.sh"
+follow-web-links = true
+exclude = [
+    "crates\\.io",
+    "gcc\\.godbolt\\.org",
+    "youtube\\.com",
+    "youtu\\.be",
+    "dl\\.acm\\.org",
+    "cs\\.bgu\\.ac\\.il",
+    "www\\.amazon\\.com",
+    "www\\.rustaceans\\.org",
+    "play\\.rust-lang\\.org",
+    "tomlee\\.co",
+    "marketplace\\.visualstudio\\.com",
+    "objects\\.githubusercontent\\.com",
+    # The bug listing URL works only if an user is logged in, otherwise one gets 404.
+    "github\\.com/issues\\?q=.*",
+    # Similarly 500 is sometimes returned here.
+    "github\\.com/rust-lang/rust/pulls\\?q=.*",
+    # 401 is returned here for unknown reason
+    "github\\.com/wesleywiser/rustc-bootstrap-wpa-analysis",
+    # Handle: connection closed before message completed
+    "microsoft\\.com/en-us/research/publication/",
+    # 500 is returned for HEAD request
+    "code\\.visualstudio\\.com/docs/editor/tasks",
+]
+# The scheduled CI runs every day and so we need to reuse a part of the cache
+# in order to face "Server returned 429 Too Many Requests" errors for github.com.
+cache-timeout = 90000
+warning-policy = "error"
+
+[output.html.redirect]
+"/compiletest.html" = "tests/compiletest.html"
+"/diagnostics/sessiondiagnostic.html" = "diagnostic-structs.html"
+"/diagnostics/diagnostic-codes.html" = "error-codes.html"
+"/miri.html" = "const-eval/interpret.html"
+"/tests/fuchsia.html" = "ecosystem-test-jobs/fuchsia.html"
+"/tests/headers.html" = "directives.html"
+"/tests/integration.html" = "ecosystem.html"
+"/tests/rust-for-linux.html" = "ecosystem-test-jobs/rust-for-linux.html"

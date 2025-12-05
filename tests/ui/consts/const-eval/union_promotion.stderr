@@ -1,0 +1,16 @@
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/union_promotion.rs:8:29
+   |
+LL |       let x: &'static bool = &unsafe {
+   |  ____________-------------____^
+   | |            |
+   | |            type annotation requires that borrow lasts for `'static`
+LL | |         Foo { a: &1 }.b == Foo { a: &2 }.b
+LL | |     };
+   | |_____^ creates a temporary value which is freed while still in use
+LL |   }
+   |   - temporary value is freed at the end of this statement
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0716`.

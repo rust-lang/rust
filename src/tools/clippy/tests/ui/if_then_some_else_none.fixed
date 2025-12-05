@@ -1,0 +1,220 @@
+#![warn(clippy::if_then_some_else_none)]
+#![allow(clippy::redundant_pattern_matching, clippy::unnecessary_lazy_evaluations)]
+
+fn main() {
+    // Should issue an error.
+    let _ = foo().then(||  { println!("true!"); "foo" });
+
+    // Should issue an error when macros are used.
+    let _ = matches!(true, true).then(||  { println!("true!"); matches!(true, false) });
+
+    // Should issue an error. Binary expression `o < 32` should be parenthesized.
+    let x = Some(5);
+    let _ = x.and_then(|o| (o < 32).then_some(o));
+    //~^ if_then_some_else_none
+
+    // Should issue an error. Unary expression `!x` should be parenthesized.
+    let x = true;
+    let _ = (!x).then_some(0);
+    //~^ if_then_some_else_none
+
+    // Should not issue an error since the `else` block has a statement besides `None`.
+    let _ = if foo() {
+        println!("true!");
+        Some("foo")
+    } else {
+        eprintln!("false...");
+        None
+    };
+
+    // Should not issue an error since there are more than 2 blocks in the if-else chain.
+    let _ = if foo() {
+        println!("foo true!");
+        Some("foo")
+    } else if bar() {
+        println!("bar true!");
+        Some("bar")
+    } else {
+        None
+    };
+
+    let _ = if foo() {
+        println!("foo true!");
+        Some("foo")
+    } else {
+        bar().then(|| {
+            println!("bar true!");
+            "bar"
+        })
+    };
+
+    // Should not issue an error since the `then` block has `None`, not `Some`.
+    let _ = if foo() { None } else { Some("foo is false") };
+
+    // Should not issue an error since the `else` block doesn't use `None` directly.
+    let _ = if foo() { Some("foo is true") } else { into_none() };
+
+    // Should not issue an error since the `then` block doesn't use `Some` directly.
+    let _ = if foo() { into_some("foo") } else { None };
+}
+
+#[clippy::msrv = "1.49"]
+fn _msrv_1_49() {
+    // `bool::then` was stabilized in 1.50. Do not lint this
+    let _ = if foo() {
+        println!("true!");
+        Some(149)
+    } else {
+        None
+    };
+}
+
+#[clippy::msrv = "1.50"]
+fn _msrv_1_50() {
+    let _ = foo().then(||  { println!("true!"); 150 });
+}
+
+fn foo() -> bool {
+    unimplemented!()
+}
+
+fn bar() -> bool {
+    unimplemented!()
+}
+
+fn into_some<T>(v: T) -> Option<T> {
+    Some(v)
+}
+
+fn into_none<T>() -> Option<T> {
+    None
+}
+
+// Should not warn
+fn f(b: bool, v: Option<()>) -> Option<()> {
+    if b {
+        v?; // This is a potential early return, is not equivalent with `bool::then`
+
+        Some(())
+    } else {
+        None
+    }
+}
+
+fn issue11394(b: bool, v: Result<(), ()>) -> Result<(), ()> {
+    let x = if b {
+        #[allow(clippy::let_unit_value)]
+        let _ = v?;
+        Some(())
+    } else {
+        None
+    };
+
+    Ok(())
+}
+
+fn issue13407(s: &str) -> Option<bool> {
+    (s == "1").then(|| true)
+    //~^ if_then_some_else_none
+}
+
+const fn issue12103(x: u32) -> Option<u32> {
+    // Should not issue an error in `const` context
+    if x > 42 { Some(150) } else { None }
+}
+
+mod issue15257 {
+    struct Range {
+        start: u8,
+        end: u8,
+    }
+
+    fn can_be_safely_rewrite(rs: &[&Range]) -> Option<Vec<u8>> {
+        (rs.len() == 1 && rs[0].start == rs[0].end).then(|| vec![rs[0].start])
+    }
+
+    fn reborrow_as_ptr(i: *mut i32) -> Option<*const i32> {
+        let modulo = unsafe { *i % 2 };
+        (modulo == 0).then_some(i)
+    }
+
+    fn reborrow_as_fn_ptr(i: i32) {
+        fn do_something(fn_: Option<fn(i32)>) {
+            todo!()
+        }
+
+        fn item_fn(i: i32) {
+            todo!()
+        }
+
+        do_something((i % 2 == 0).then_some(item_fn));
+    }
+
+    fn reborrow_as_fn_unsafe(i: i32) {
+        fn do_something(fn_: Option<unsafe fn(i32)>) {
+            todo!()
+        }
+
+        fn item_fn(i: i32) {
+            todo!()
+        }
+
+        do_something((i % 2 == 0).then_some(item_fn));
+
+        let closure_fn = |i: i32| {};
+        do_something((i % 2 == 0).then_some(closure_fn));
+    }
+}
+
+fn issue15005() {
+    struct Counter {
+        count: u32,
+    }
+
+    impl Counter {
+        fn new() -> Counter {
+            Counter { count: 0 }
+        }
+    }
+
+    impl Iterator for Counter {
+        type Item = u32;
+
+        fn next(&mut self) -> Option<Self::Item> {
+            //~v if_then_some_else_none
+            (self.count < 5).then(||  { self.count += 1; self.count })
+        }
+    }
+}
+
+fn statements_from_macro() {
+    macro_rules! mac {
+        () => {
+            println!("foo");
+            println!("bar");
+        };
+    }
+    //~v if_then_some_else_none
+    let _ = true.then(||  { mac!(); 42 });
+}
+
+fn dont_lint_inside_macros() {
+    macro_rules! mac {
+        ($cond:expr, $res:expr) => {
+            if $cond { Some($res) } else { None }
+        };
+    }
+    let _: Option<u32> = mac!(true, 42);
+}
+
+mod issue15770 {
+    fn maybe_error() -> Result<u32, &'static str> {
+        Err("error!")
+    }
+
+    pub fn trying(b: bool) -> Result<(), &'static str> {
+        let _x: Option<u32> = if b { Some(maybe_error()?) } else { None };
+        // Process _x locally
+        Ok(())
+    }
+}

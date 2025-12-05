@@ -1,0 +1,19 @@
+error[E0597]: `awd` does not live long enough
+  --> $DIR/using-late-bound-from-closure.rs:9:29
+   |
+LL |     let a = for<'a> |b: &'a ()| -> &'a () {
+   |                 -- lifetime `'a` defined here
+LL |         const {
+LL |             let awd = ();
+   |                 --- binding `awd` declared here
+LL |             let _: &'a () = &awd;
+   |                    ------   ^^^^ borrowed value does not live long enough
+   |                    |
+   |                    type annotation requires that `awd` is borrowed for `'a`
+LL |
+LL |         };
+   |         - `awd` dropped here while still borrowed
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0597`.

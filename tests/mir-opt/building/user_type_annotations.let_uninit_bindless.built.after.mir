@@ -1,0 +1,15 @@
+// MIR for `let_uninit_bindless` after built
+
+| User Type Annotations
+| 0: user_ty: Canonical { value: Ty((u32, u64, &'static char)), max_universe: U0, variables: [] }, span: $DIR/user_type_annotations.rs:21:20: 21:45, inferred_ty: (u32, u64, &char)
+|
+fn let_uninit_bindless() -> () {
+    let mut _0: ();
+    scope 1 {
+    }
+
+    bb0: {
+        _0 = const ();
+        return;
+    }
+}

@@ -1,0 +1,69 @@
+error: this macro has been superseded by `std::sync::LazyLock`
+  --> tests/ui/non_std_lazy_static/non_std_lazy_static_unfixable.rs:31:5
+   |
+LL | /     lazy_static! {
+LL | |         static ref LAZY_FOO: String = "foo".to_uppercase();
+LL | |     }
+   | |_____^
+   |
+   = note: `-D clippy::non-std-lazy-statics` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::non_std_lazy_statics)]`
+
+error: this macro has been superseded by `std::sync::LazyLock`
+  --> tests/ui/non_std_lazy_static/non_std_lazy_static_unfixable.rs:35:5
+   |
+LL | /     lazy_static! {
+LL | |         static ref LAZY_BAR: String = "bar".to_uppercase();
+LL | |         static ref LAZY_BAZ: String = "baz".to_uppercase();
+LL | |     }
+   | |_____^
+
+error: this macro has been superseded by `std::sync::LazyLock`
+  --> tests/ui/non_std_lazy_static/non_std_lazy_static_unfixable.rs:35:5
+   |
+LL | /     lazy_static! {
+LL | |         static ref LAZY_BAR: String = "bar".to_uppercase();
+LL | |         static ref LAZY_BAZ: String = "baz".to_uppercase();
+LL | |     }
+   | |_____^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: this type has been superseded by `LazyLock` in the standard library
+  --> tests/ui/non_std_lazy_static/non_std_lazy_static_unfixable.rs:11:22
+   |
+LL |     static LAZY_FOO: Lazy<String> = Lazy::new(|| "foo".to_uppercase());
+   |                      ^^^^
+   |
+help: use `std::sync::LazyLock` instead
+   |
+LL -     static LAZY_FOO: Lazy<String> = Lazy::new(|| "foo".to_uppercase());
+LL +     static LAZY_FOO: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| "foo".to_uppercase());
+   |
+
+error: this type has been superseded by `LazyLock` in the standard library
+  --> tests/ui/non_std_lazy_static/non_std_lazy_static_unfixable.rs:13:26
+   |
+LL |     static mut LAZY_BAR: Lazy<String> = Lazy::new(|| "bar".to_uppercase());
+   |                          ^^^^
+   |
+help: use `std::sync::LazyLock` instead
+   |
+LL -     static mut LAZY_BAR: Lazy<String> = Lazy::new(|| "bar".to_uppercase());
+LL +     static mut LAZY_BAR: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| "bar".to_uppercase());
+   |
+
+error: this type has been superseded by `LazyLock` in the standard library
+  --> tests/ui/non_std_lazy_static/non_std_lazy_static_unfixable.rs:15:26
+   |
+LL |     static mut LAZY_BAZ: Lazy<String> = Lazy::new(|| "baz".to_uppercase());
+   |                          ^^^^
+   |
+help: use `std::sync::LazyLock` instead
+   |
+LL -     static mut LAZY_BAZ: Lazy<String> = Lazy::new(|| "baz".to_uppercase());
+LL +     static mut LAZY_BAZ: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| "baz".to_uppercase());
+   |
+
+error: aborting due to 6 previous errors
+

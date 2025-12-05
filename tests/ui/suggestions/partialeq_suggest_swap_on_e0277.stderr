@@ -1,0 +1,26 @@
+error[E0277]: can't compare `String` with `T`
+  --> $DIR/partialeq_suggest_swap_on_e0277.rs:10:36
+   |
+LL |     String::from("Girls Band Cry") == T(String::from("Girls Band Cry"));
+   |                                    ^^ no implementation for `String == T`
+   |
+   = help: the trait `PartialEq<T>` is not implemented for `String`
+   = help: the following other types implement trait `PartialEq<Rhs>`:
+             `String` implements `PartialEq<&str>`
+             `String` implements `PartialEq<ByteStr>`
+             `String` implements `PartialEq<ByteString>`
+             `String` implements `PartialEq<Cow<'_, str>>`
+             `String` implements `PartialEq<Path>`
+             `String` implements `PartialEq<PathBuf>`
+             `String` implements `PartialEq<str>`
+             `String` implements `PartialEq`
+   = note: `T` implements `PartialEq<String>`
+help: consider swapping the equality
+   |
+LL -     String::from("Girls Band Cry") == T(String::from("Girls Band Cry"));
+LL +     T(String::from("Girls Band Cry")) == String::from("Girls Band Cry");
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

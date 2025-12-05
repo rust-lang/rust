@@ -1,0 +1,30 @@
+error[E0404]: expected trait, found type parameter `Add`
+  --> $DIR/issue-35987.rs:5:21
+   |
+LL | use std::ops::Add;
+   |               --- you might have meant to refer to this trait
+LL |
+LL | impl<T: Clone, Add> Add for Foo<T> {
+   |                ---  ^^^ not a trait
+   |                |
+   |                found this type parameter
+
+error[E0223]: ambiguous associated type
+  --> $DIR/issue-35987.rs:9:32
+   |
+LL |     fn add(self, rhs: Self) -> Self::Output {
+   |                                ^^^^^^^^^^^^
+   |
+help: use fully-qualified syntax
+   |
+LL -     fn add(self, rhs: Self) -> Self::Output {
+LL +     fn add(self, rhs: Self) -> <Foo<T> as BitOr>::Output {
+   |
+LL -     fn add(self, rhs: Self) -> Self::Output {
+LL +     fn add(self, rhs: Self) -> <Foo<T> as IntoFuture>::Output {
+   |
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0223, E0404.
+For more information about an error, try `rustc --explain E0223`.

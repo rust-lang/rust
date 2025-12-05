@@ -1,0 +1,23 @@
+warning: unexpected `cfg` condition name: `my_value`
+  --> $DIR/cfg-value-for-cfg-name-multiple.rs:8:7
+   |
+LL | #[cfg(my_value)]
+   |       ^^^^^^^^
+   |
+   = help: expected names are: `bar` and `foo` and 31 more
+   = help: to expect this configuration use `--check-cfg=cfg(my_value)`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+   = note: `#[warn(unexpected_cfgs)]` on by default
+help: found config with similar value
+   |
+LL - #[cfg(my_value)]
+LL + #[cfg(foo = "my_value")]
+   |
+help: found config with similar value
+   |
+LL - #[cfg(my_value)]
+LL + #[cfg(bar = "my_value")]
+   |
+
+warning: 1 warning emitted
+

@@ -1,0 +1,101 @@
+error: this pattern creates a reference to a reference
+  --> tests/ui/ref_binding_to_reference.rs:30:14
+   |
+LL |         Some(ref x) => x,
+   |              ^^^^^
+   |
+   = note: `-D clippy::ref-binding-to-reference` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::ref_binding_to_reference)]`
+help: try
+   |
+LL -         Some(ref x) => x,
+LL +         Some(x) => &x,
+   |
+
+error: this pattern creates a reference to a reference
+  --> tests/ui/ref_binding_to_reference.rs:37:14
+   |
+LL |         Some(ref x) => {
+   |              ^^^^^
+   |
+help: try
+   |
+LL ~         Some(x) => {
+LL |
+LL |
+LL |             f1(x);
+LL ~             f1(x);
+LL ~             &x
+   |
+
+error: this pattern creates a reference to a reference
+  --> tests/ui/ref_binding_to_reference.rs:49:14
+   |
+LL |         Some(ref x) => m2!(x),
+   |              ^^^^^
+   |
+help: try
+   |
+LL -         Some(ref x) => m2!(x),
+LL +         Some(x) => m2!(&x),
+   |
+
+error: this pattern creates a reference to a reference
+  --> tests/ui/ref_binding_to_reference.rs:55:15
+   |
+LL |     let _ = |&ref x: &&String| {
+   |               ^^^^^
+   |
+help: try
+   |
+LL ~     let _ = |&x: &&String| {
+LL |
+LL |
+LL ~         let _: &&String = &x;
+   |
+
+error: this pattern creates a reference to a reference
+  --> tests/ui/ref_binding_to_reference.rs:63:12
+   |
+LL | fn f2<'a>(&ref x: &&'a String) -> &'a String {
+   |            ^^^^^
+   |
+help: try
+   |
+LL ~ fn f2<'a>(&x: &&'a String) -> &'a String {
+LL |
+LL |
+LL ~     let _: &&String = &x;
+LL ~     x
+   |
+
+error: this pattern creates a reference to a reference
+  --> tests/ui/ref_binding_to_reference.rs:72:11
+   |
+LL |     fn f(&ref x: &&String) {
+   |           ^^^^^
+   |
+help: try
+   |
+LL ~     fn f(&x: &&String) {
+LL |
+LL |
+LL ~         let _: &&String = &x;
+   |
+
+error: this pattern creates a reference to a reference
+  --> tests/ui/ref_binding_to_reference.rs:82:11
+   |
+LL |     fn f(&ref x: &&String) {
+   |           ^^^^^
+   |
+help: try
+   |
+LL ~     fn f(&x: &&String) {
+LL |
+LL |
+LL ~         let _: &&String = &x;
+   |
+
+error: aborting due to 7 previous errors
+

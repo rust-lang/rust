@@ -1,0 +1,16 @@
+[book]
+multilingual = false
+src = "src"
+title = "The rustc book"
+
+[output.html]
+git-repository-url = "https://github.com/rust-lang/rust/tree/HEAD/src/doc/rustc"
+edit-url-template = "https://github.com/rust-lang/rust/edit/HEAD/src/doc/rustc/{path}"
+additional-css = ["theme/pagetoc.css"]
+additional-js = ["theme/pagetoc.js"]
+
+[output.html.search]
+use-boolean-and = true
+
+[output.html.playground]
+runnable = false

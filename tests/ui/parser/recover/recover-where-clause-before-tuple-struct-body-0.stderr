@@ -1,0 +1,40 @@
+error: where clauses are not allowed before tuple struct bodies
+  --> $DIR/recover-where-clause-before-tuple-struct-body-0.rs:7:1
+   |
+LL |   pub struct Example
+   |              ------- while parsing this tuple struct
+LL | / where
+LL | |     (): Sized,
+   | |______________^ unexpected where clause
+LL |   (usize);
+   |   ------- the struct body
+   |
+help: move the body before the where clause
+   |
+LL ~ pub struct Example(usize)
+LL | where
+LL ~     (): Sized;
+   |
+
+error: where clauses are not allowed before tuple struct bodies
+  --> $DIR/recover-where-clause-before-tuple-struct-body-0.rs:13:1
+   |
+LL |   struct _Demo
+   |          ----- while parsing this tuple struct
+LL | / where
+LL | |     (): Sized,
+LL | |     String: Clone,
+   | |__________________^ unexpected where clause
+LL |   (pub usize, usize);
+   |   ------------------ the struct body
+   |
+help: move the body before the where clause
+   |
+LL ~ struct _Demo(pub usize, usize)
+LL | where
+LL |     (): Sized,
+LL ~     String: Clone;
+   |
+
+error: aborting due to 2 previous errors
+

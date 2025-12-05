@@ -1,0 +1,8 @@
+error: the `#[proc_macro_derive]` attribute is only usable with crates of the `proc-macro` crate type
+  --> $DIR/proc_macro_bug.rs:8:1
+   |
+LL | #[proc_macro_derive(DeriveA)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,15 @@
+error[E0597]: `tmp0` does not live long enough
+  --> $DIR/issue-52663-trait-object.rs:12:20
+   |
+LL |         let tmp0 = 3;
+   |             ---- binding `tmp0` declared here
+LL |         let tmp1 = &tmp0;
+   |                    ^^^^^ borrowed value does not live long enough
+LL |         Box::new(tmp1) as Box<dyn Foo + '_>
+   |         ----------------------------------- borrow later captured here by trait object
+LL |     };
+   |     - `tmp0` dropped here while still borrowed
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0597`.

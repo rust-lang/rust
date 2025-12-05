@@ -1,0 +1,28 @@
+error: empty drop implementation
+  --> tests/ui/empty_drop.rs:7:1
+   |
+LL | / impl Drop for Foo {
+LL | |
+LL | |     fn drop(&mut self) {}
+LL | | }
+   | |_^
+   |
+   = note: `-D clippy::empty-drop` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::empty_drop)]`
+   = help: try removing this impl
+
+error: empty drop implementation
+  --> tests/ui/empty_drop.rs:24:1
+   |
+LL | / impl Drop for Baz {
+LL | |
+LL | |     fn drop(&mut self) {
+LL | |         {}
+LL | |     }
+LL | | }
+   | |_^
+   |
+   = help: try removing this impl
+
+error: aborting due to 2 previous errors
+

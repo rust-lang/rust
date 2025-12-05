@@ -1,0 +1,17 @@
+error[E0109]: const arguments are not allowed on builtin type `usize`
+  --> $DIR/usize-no-generic-arguments.rs:4:18
+   |
+LL |     let x: usize<foo>;
+   |            ----- ^^^ const argument not allowed
+   |            |
+   |            not allowed on builtin type `usize`
+   |
+help: primitive type `usize` doesn't have generic parameters
+   |
+LL -     let x: usize<foo>;
+LL +     let x: usize;
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0109`.

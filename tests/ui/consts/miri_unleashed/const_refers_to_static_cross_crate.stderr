@@ -1,0 +1,33 @@
+error[E0080]: constant accesses mutable global memory
+  --> $DIR/const_refers_to_static_cross_crate.rs:27:15
+   |
+LL |         match static_cross_crate::OPT_ZERO {
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `U8_MUT3` failed here
+
+error: constant SLICE_MUT cannot be used as pattern
+  --> $DIR/const_refers_to_static_cross_crate.rs:37:9
+   |
+LL |         SLICE_MUT => true,
+   |         ^^^^^^^^^
+   |
+   = note: constants that reference mutable or external memory cannot be used as patterns
+
+error: constant U8_MUT cannot be used as pattern
+  --> $DIR/const_refers_to_static_cross_crate.rs:44:9
+   |
+LL |         U8_MUT => true,
+   |         ^^^^^^
+   |
+   = note: constants that reference mutable or external memory cannot be used as patterns
+
+error: constant U8_MUT2 cannot be used as pattern
+  --> $DIR/const_refers_to_static_cross_crate.rs:53:9
+   |
+LL |         U8_MUT2 => true,
+   |         ^^^^^^^
+   |
+   = note: constants that reference mutable or external memory cannot be used as patterns
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0080`.

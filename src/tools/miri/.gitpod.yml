@@ -1,0 +1,9 @@
+image: ubuntu:latest
+
+tasks:
+  - before: echo "..."
+    init: |
+      cargo install rustup-toolchain-install-master
+      ./miri toolchain
+      ./miri build
+    command: echo "Run tests with ./miri test"

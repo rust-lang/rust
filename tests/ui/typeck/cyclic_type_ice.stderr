@@ -1,0 +1,32 @@
+error[E0644]: closure/coroutine type that references itself
+  --> $DIR/cyclic_type_ice.rs:3:7
+   |
+LL |     f(f);
+   |       ^ cyclic type of infinite size
+   |
+   = note: closures cannot capture themselves or take themselves as argument;
+           this error may be the result of a recent compiler bug-fix,
+           see issue #46062 <https://github.com/rust-lang/rust/issues/46062>
+           for more information
+
+error[E0057]: this function takes 2 arguments but 1 argument was supplied
+  --> $DIR/cyclic_type_ice.rs:3:5
+   |
+LL |     f(f);
+   |     ^--- argument #2 is missing
+   |
+note: closure defined here
+  --> $DIR/cyclic_type_ice.rs:2:13
+   |
+LL |     let f = |_, _| ();
+   |             ^^^^^^
+help: provide the argument
+   |
+LL -     f(f);
+LL +     f(/* _ */, /* _ */);
+   |
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0057, E0644.
+For more information about an error, try `rustc --explain E0057`.

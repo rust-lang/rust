@@ -1,0 +1,67 @@
+error[E0517]: attribute should be applied to a struct, enum, or union
+  --> $DIR/attr-usage-repr.rs:3:8
+   |
+LL | #[repr(C)]
+   |        ^
+LL | fn f() {}
+   | --------- not a struct, enum, or union
+
+error[E0517]: attribute should be applied to an enum
+  --> $DIR/attr-usage-repr.rs:15:8
+   |
+LL | #[repr(i8)]
+   |        ^^
+LL | struct SInt(f64, f64);
+   | ---------------------- not an enum
+
+error[E0517]: attribute should be applied to a struct or union
+  --> $DIR/attr-usage-repr.rs:30:8
+   |
+LL |   #[repr(packed)]
+   |          ^^^^^^
+LL | / enum EPacked {
+LL | |     A,
+LL | |     B,
+LL | | }
+   | |_- not a struct or union
+
+error[E0517]: attribute should be applied to a struct
+  --> $DIR/attr-usage-repr.rs:36:8
+   |
+LL |   #[repr(simd)]
+   |          ^^^^
+LL | / enum ESimd {
+LL | |     A,
+LL | |     B,
+LL | | }
+   | |_- not a struct
+
+error[E0517]: attribute should be applied to a struct, enum, or union
+  --> $DIR/attr-usage-repr.rs:48:1
+   |
+LL | #[repr()]
+   | ^^^^^^^^^
+LL |
+LL | type SirThisIsAType = i32;
+   | -------------------------- not a struct, enum, or union
+
+warning: unused attribute
+  --> $DIR/attr-usage-repr.rs:48:1
+   |
+LL | #[repr()]
+   | ^^^^^^^^^ help: remove this attribute
+   |
+   = note: using `repr` with an empty list has no effect
+   = note: requested on the command line with `-W unused-attributes`
+
+warning: unused attribute
+  --> $DIR/attr-usage-repr.rs:52:1
+   |
+LL | #[repr()]
+   | ^^^^^^^^^ help: remove this attribute
+   |
+   = note: using `repr` with an empty list has no effect
+
+error: aborting due to 5 previous errors; 2 warnings emitted
+
+For more information about this error, try `rustc --explain E0517`.

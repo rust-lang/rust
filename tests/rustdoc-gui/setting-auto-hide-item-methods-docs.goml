@@ -1,0 +1,48 @@
+// This test ensures that the "Auto-hide item methods' documentation" setting is working as
+// expected.
+
+define-function: (
+    "check-setting",
+    [storage_value, setting_attribute_value, toggle_attribute_value],
+    block {
+        assert-local-storage: {"rustdoc-auto-hide-method-docs": |storage_value|}
+        click: "rustdoc-toolbar .settings-menu"
+        wait-for: "#settings"
+        assert-property: ("#auto-hide-method-docs", {"checked": |setting_attribute_value|})
+        assert-attribute: (".toggle.method-toggle", {"open": |toggle_attribute_value|})
+    }
+)
+
+go-to: "file://" + |DOC_PATH| + "/lib2/struct.Foo.html"
+
+// We check that the setting is disabled by default.
+call-function: ("check-setting", {
+    "storage_value": null,
+    "setting_attribute_value": "false",
+    "toggle_attribute_value": "",
+})
+
+// Now we change its value.
+click: "#auto-hide-method-docs"
+assert-local-storage: {"rustdoc-auto-hide-method-docs": "true"}
+
+// We check that the changes were applied as expected.
+reload:
+
+call-function: ("check-setting", {
+    "storage_value": "true",
+    "setting_attribute_value": "true",
+    "toggle_attribute_value": null,
+})
+
+// And now we re-disable the setting.
+click: "#auto-hide-method-docs"
+assert-local-storage: {"rustdoc-auto-hide-method-docs": "false"}
+
+// And we check everything is back the way it was before.
+reload:
+call-function: ("check-setting", {
+    "storage_value": "false",
+    "setting_attribute_value": "false",
+    "toggle_attribute_value": "",
+})

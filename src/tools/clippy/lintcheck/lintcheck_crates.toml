@@ -1,0 +1,49 @@
+# If you want to check a local project it's usually easier to use:
+# ```
+# cargo dev lint <path>
+# ```
+#
+# For testing you can also add sources to git and local repos like this:
+# ```
+# crate = {name = "crate", git_url = "https://github.com/name/repo.git", git_hash = "coo1cafe"}
+# crate = {name = "crate", path = "/path/to/project"}
+# ```
+
+[crates]
+
+# Some binaries
+cargo = {name = "cargo", version = '0.80.0', online_link = 'https://docs.rs/cargo/{version}/src/{file}.html#{line}'}
+ripgrep = {name = "ripgrep", version = '14.1.0'}
+mdbook = {name = "mdbook", version = '0.4.40'}
+
+# Common libraries
+rayon = {name = "rayon", version = '1.10.0'}
+serde = {name = "serde", version = '1.0.204'}
+bitflags = {name = "bitflags", version = '2.6.0'}
+log = {name = "log", version = '0.4.22'}
+quote = {name = "quote", version = '1.0.36'}
+proc-macro2 = {name = "proc-macro2", version = '1.0.86'}
+rand = {name = "rand", version = '0.8.5'}
+rand_core = {name = "rand_core", version = '0.6.4'}
+regex = {name = "regex", version = '1.10.5'}
+syn = {name = "syn", version = '2.0.71'}
+anyhow = {name = "anyhow", version = '1.0.86'}
+async-trait = { name = 'async-trait', version = '0.1.81' }
+cxx = {name = "cxx", version = '1.0.124'}
+ryu = {name = "ryu", version = '1.0.18'}
+thiserror = {name = "thiserror", version = '1.0.63'}
+serde_yaml = {name = "serde_yaml", version = '0.9.33'}
+puffin = {name = "puffin", version = '0.19.0'}
+bumpalo = {name = "bumpalo", version = '3.16.0'}
+wasmi = {name = "wasmi", version = '0.35.0'}
+base64 = { name = 'base64', version = '0.22.1' }
+once_cell = { name = 'once_cell', version = '1.19.0' }
+tokio = { name = 'tokio', version = '1.38.1' }
+
+[recursive]
+ignore = [
+    # Takes ~30s to lint
+    "combine",
+    # Has 1.2 million `clippy::match_same_arms`s
+    "unicode-normalization",
+]

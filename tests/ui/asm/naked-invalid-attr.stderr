@@ -1,0 +1,67 @@
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `a`
+  --> $DIR/naked-invalid-attr.rs:57:5
+   |
+LL | #[::a]
+   |     ^ use of unresolved module or unlinked crate `a`
+
+error: `#[naked]` attribute cannot be used on crates
+  --> $DIR/naked-invalid-attr.rs:5:1
+   |
+LL | #![unsafe(naked)]
+   | ^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[naked]` can only be applied to functions
+
+error: `#[naked]` attribute cannot be used on foreign functions
+  --> $DIR/naked-invalid-attr.rs:10:5
+   |
+LL |     #[unsafe(naked)]
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = help: `#[naked]` can be applied to functions and methods
+
+error: `#[naked]` attribute cannot be used on structs
+  --> $DIR/naked-invalid-attr.rs:14:1
+   |
+LL | #[unsafe(naked)]
+   | ^^^^^^^^^^^^^^^^
+   |
+   = help: `#[naked]` can only be applied to functions
+
+error: `#[naked]` attribute cannot be used on struct fields
+  --> $DIR/naked-invalid-attr.rs:17:5
+   |
+LL |     #[unsafe(naked)]
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = help: `#[naked]` can only be applied to functions
+
+error: `#[naked]` attribute cannot be used on required trait methods
+  --> $DIR/naked-invalid-attr.rs:23:5
+   |
+LL |     #[unsafe(naked)]
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = help: `#[naked]` can be applied to functions, inherent methods, provided trait methods, and trait methods in impl blocks
+
+error: `#[naked]` attribute cannot be used on closures
+  --> $DIR/naked-invalid-attr.rs:52:5
+   |
+LL |     #[unsafe(naked)]
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = help: `#[naked]` can be applied to functions and methods
+
+error[E0736]: attribute incompatible with `#[unsafe(naked)]`
+  --> $DIR/naked-invalid-attr.rs:57:3
+   |
+LL | #[::a]
+   |   ^^^ the `::a` attribute is incompatible with `#[unsafe(naked)]`
+...
+LL | #[unsafe(naked)]
+   | ---------------- function marked with `#[unsafe(naked)]` here
+
+error: aborting due to 8 previous errors
+
+Some errors have detailed explanations: E0433, E0736.
+For more information about an error, try `rustc --explain E0433`.

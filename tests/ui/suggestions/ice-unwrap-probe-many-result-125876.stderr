@@ -1,0 +1,41 @@
+error[E0425]: cannot find value `num` in this scope
+  --> $DIR/ice-unwrap-probe-many-result-125876.rs:5:24
+   |
+LL |     std::ptr::from_ref(num).cast_mut().as_deref();
+   |                        ^^^ not found in this scope
+
+warning: type annotations needed
+  --> $DIR/ice-unwrap-probe-many-result-125876.rs:5:29
+   |
+LL |     std::ptr::from_ref(num).cast_mut().as_deref();
+   |                             ^^^^^^^^
+   |
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2018!
+   = note: for more information, see issue #46906 <https://github.com/rust-lang/rust/issues/46906>
+   = note: `#[warn(tyvar_behind_raw_pointer)]` (part of `#[warn(rust_2018_compatibility)]`) on by default
+
+warning: type annotations needed
+  --> $DIR/ice-unwrap-probe-many-result-125876.rs:5:40
+   |
+LL |     std::ptr::from_ref(num).cast_mut().as_deref();
+   |                                        ^^^^^^^^
+   |
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2018!
+   = note: for more information, see issue #46906 <https://github.com/rust-lang/rust/issues/46906>
+
+error[E0599]: no method named `as_deref` found for raw pointer `*mut _` in the current scope
+  --> $DIR/ice-unwrap-probe-many-result-125876.rs:5:40
+   |
+LL |     std::ptr::from_ref(num).cast_mut().as_deref();
+   |                                        ^^^^^^^^
+   |
+help: there is a method `as_ref` with a similar name
+   |
+LL -     std::ptr::from_ref(num).cast_mut().as_deref();
+LL +     std::ptr::from_ref(num).cast_mut().as_ref();
+   |
+
+error: aborting due to 2 previous errors; 2 warnings emitted
+
+Some errors have detailed explanations: E0425, E0599.
+For more information about an error, try `rustc --explain E0425`.

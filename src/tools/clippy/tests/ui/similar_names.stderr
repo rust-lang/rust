@@ -1,0 +1,64 @@
+error: binding's name is too similar to existing binding
+  --> tests/ui/similar_names.rs:47:9
+   |
+LL |     let bluby: i32;
+   |         ^^^^^
+   |
+note: existing binding defined here
+  --> tests/ui/similar_names.rs:46:9
+   |
+LL |     let blubx: i32;
+   |         ^^^^^
+   = note: `-D clippy::similar-names` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::similar_names)]`
+
+error: binding's name is too similar to existing binding
+  --> tests/ui/similar_names.rs:52:9
+   |
+LL |     let coke: i32;
+   |         ^^^^
+   |
+note: existing binding defined here
+  --> tests/ui/similar_names.rs:50:9
+   |
+LL |     let cake: i32;
+   |         ^^^^
+
+error: binding's name is too similar to existing binding
+  --> tests/ui/similar_names.rs:71:9
+   |
+LL |     let xyzeabc: i32;
+   |         ^^^^^^^
+   |
+note: existing binding defined here
+  --> tests/ui/similar_names.rs:69:9
+   |
+LL |     let xyz1abc: i32;
+   |         ^^^^^^^
+
+error: binding's name is too similar to existing binding
+  --> tests/ui/similar_names.rs:76:9
+   |
+LL |     let parsee: i32;
+   |         ^^^^^^
+   |
+note: existing binding defined here
+  --> tests/ui/similar_names.rs:74:9
+   |
+LL |     let parser: i32;
+   |         ^^^^^^
+
+error: binding's name is too similar to existing binding
+  --> tests/ui/similar_names.rs:102:16
+   |
+LL |         bpple: sprang,
+   |                ^^^^^^
+   |
+note: existing binding defined here
+  --> tests/ui/similar_names.rs:101:16
+   |
+LL |         apple: spring,
+   |                ^^^^^^
+
+error: aborting due to 5 previous errors
+

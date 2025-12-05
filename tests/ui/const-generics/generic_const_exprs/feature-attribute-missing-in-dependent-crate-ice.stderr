@@ -1,0 +1,14 @@
+error: generic `Self` types are currently not permitted in anonymous constants
+  --> $DIR/feature-attribute-missing-in-dependent-crate-ice.rs:13:33
+   |
+LL |     fn validate_slice(_: &[[u8; Self::SIZE]]) -> Result<(), aux::Error> {
+   |                                 ^^^^
+   |
+note: not a concrete type
+  --> $DIR/feature-attribute-missing-in-dependent-crate-ice.rs:12:41
+   |
+LL | impl<const F: usize> aux::FromSlice for Wrapper<F> {
+   |                                         ^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

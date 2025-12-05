@@ -1,0 +1,82 @@
+error: this `min`/`max` combination leads to constant result
+  --> tests/ui/min_max.rs:21:5
+   |
+LL |     min(1, max(3, x));
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[deny(clippy::min_max)]` on by default
+
+error: this `min`/`max` combination leads to constant result
+  --> tests/ui/min_max.rs:24:5
+   |
+LL |     min(max(3, x), 1);
+   |     ^^^^^^^^^^^^^^^^^
+
+error: this `min`/`max` combination leads to constant result
+  --> tests/ui/min_max.rs:27:5
+   |
+LL |     max(min(x, 1), 3);
+   |     ^^^^^^^^^^^^^^^^^
+
+error: this `min`/`max` combination leads to constant result
+  --> tests/ui/min_max.rs:30:5
+   |
+LL |     max(3, min(x, 1));
+   |     ^^^^^^^^^^^^^^^^^
+
+error: this `min`/`max` combination leads to constant result
+  --> tests/ui/min_max.rs:33:5
+   |
+LL |     my_max(3, my_min(x, 1));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: this `min`/`max` combination leads to constant result
+  --> tests/ui/min_max.rs:44:5
+   |
+LL |     min("Apple", max("Zoo", s));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: this `min`/`max` combination leads to constant result
+  --> tests/ui/min_max.rs:47:5
+   |
+LL |     max(min(s, "Apple"), "Zoo");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: this `min`/`max` combination leads to constant result
+  --> tests/ui/min_max.rs:53:5
+   |
+LL |     x.min(1).max(3);
+   |     ^^^^^^^^^^^^^^^
+
+error: this `min`/`max` combination leads to constant result
+  --> tests/ui/min_max.rs:56:5
+   |
+LL |     x.max(3).min(1);
+   |     ^^^^^^^^^^^^^^^
+
+error: this `min`/`max` combination leads to constant result
+  --> tests/ui/min_max.rs:59:5
+   |
+LL |     f.max(3f32).min(1f32);
+   |     ^^^^^^^^^^^^^^^^^^^^^
+
+error: this `min`/`max` combination leads to constant result
+  --> tests/ui/min_max.rs:66:5
+   |
+LL |     max(x.min(1), 3);
+   |     ^^^^^^^^^^^^^^^^
+
+error: this `min`/`max` combination leads to constant result
+  --> tests/ui/min_max.rs:71:5
+   |
+LL |     s.max("Zoo").min("Apple");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: this `min`/`max` combination leads to constant result
+  --> tests/ui/min_max.rs:74:5
+   |
+LL |     s.min("Apple").max("Zoo");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 13 previous errors
+

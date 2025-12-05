@@ -1,0 +1,71 @@
+// MIR for `vec_deref_to_slice` after PreCodegen
+
+fn vec_deref_to_slice(_1: &Vec<u8>) -> &[u8] {
+    debug v => _1;
+    let mut _0: &[u8];
+    scope 1 (inlined <Vec<u8> as Deref>::deref) {
+        debug self => _1;
+        scope 2 (inlined Vec::<u8>::as_slice) {
+            debug self => _1;
+            let mut _3: *const u8;
+            let mut _4: usize;
+            scope 3 (inlined Vec::<u8>::as_ptr) {
+                debug self => _1;
+                scope 4 (inlined alloc::raw_vec::RawVec::<u8>::ptr) {
+                    scope 5 (inlined alloc::raw_vec::RawVecInner::ptr::<u8>) {
+                        scope 6 (inlined alloc::raw_vec::RawVecInner::non_null::<u8>) {
+                            let mut _2: std::ptr::NonNull<u8>;
+                            scope 7 (inlined Unique::<u8>::cast::<u8>) {
+                                scope 8 (inlined NonNull::<u8>::cast::<u8>) {
+                                    scope 9 (inlined NonNull::<u8>::as_ptr) {
+                                    }
+                                }
+                            }
+                            scope 10 (inlined Unique::<u8>::as_non_null_ptr) {
+                            }
+                        }
+                        scope 11 (inlined NonNull::<u8>::as_ptr) {
+                        }
+                    }
+                }
+            }
+            scope 12 (inlined #[track_caller] std::slice::from_raw_parts::<'_, u8>) {
+                debug data => _3;
+                debug len => _4;
+                let _5: *const [u8];
+                scope 13 (inlined core::ub_checks::check_language_ub) {
+                    scope 14 (inlined core::ub_checks::check_language_ub::runtime) {
+                    }
+                }
+                scope 15 (inlined std::mem::size_of::<u8>) {
+                }
+                scope 16 (inlined std::mem::align_of::<u8>) {
+                }
+                scope 17 (inlined slice_from_raw_parts::<u8>) {
+                    debug data => _3;
+                    debug len => _4;
+                    scope 18 (inlined std::ptr::from_raw_parts::<[u8], u8>) {
+                        debug data_pointer => _3;
+                    }
+                }
+            }
+        }
+    }
+
+    bb0: {
+        StorageLive(_2);
+        StorageLive(_3);
+        _2 = copy (((((*_1).0: alloc::raw_vec::RawVec<u8>).0: alloc::raw_vec::RawVecInner).0: std::ptr::Unique<u8>).0: std::ptr::NonNull<u8>);
+        _3 = copy _2 as *const u8 (Transmute);
+        StorageLive(_4);
+        _4 = copy ((*_1).1: usize);
+        StorageLive(_5);
+        _5 = *const [u8] from (copy _3, copy _4);
+        _0 = &(*_5);
+        StorageDead(_5);
+        StorageDead(_4);
+        StorageDead(_3);
+        StorageDead(_2);
+        return;
+    }
+}

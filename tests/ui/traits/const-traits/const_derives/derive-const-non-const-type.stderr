@@ -1,0 +1,20 @@
+error: const `impl` for trait `Debug` which is not `const`
+  --> $DIR/derive-const-non-const-type.rs:12:16
+   |
+LL | #[derive_const(Debug)]
+   |                ^^^^^ this trait is not `const`
+   |
+   = note: marking a trait with `const` ensures all default method bodies are `const`
+   = note: adding a non-const method body in the future would be a breaking change
+
+error[E0015]: cannot call non-const method `Formatter::<'_>::debug_tuple_field1_finish` in constant functions
+  --> $DIR/derive-const-non-const-type.rs:12:16
+   |
+LL | #[derive_const(Debug)]
+   |                ^^^^^
+   |
+   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0015`.

@@ -1,0 +1,9 @@
+error[E0207]: the type parameter `T` is not constrained by the impl trait, self type, or predicates
+  --> $DIR/issue-74244.rs:9:6
+   |
+LL | impl<T> Allocator for DefaultAllocator {
+   |      ^ unconstrained type parameter
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0207`.

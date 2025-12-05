@@ -1,0 +1,23 @@
+error: this creates an owned instance just for comparison
+  --> tests/ui/cmp_owned/without_suggestion.rs:7:5
+   |
+LL |     y.to_owned() == *x;
+   |     ^^^^^^^^^^^^^^^^^^ try implementing the comparison without allocating
+   |
+   = note: `-D clippy::cmp-owned` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::cmp_owned)]`
+
+error: this creates an owned instance just for comparison
+  --> tests/ui/cmp_owned/without_suggestion.rs:12:5
+   |
+LL |     y.to_owned() == **x;
+   |     ^^^^^^^^^^^^^^^^^^^ try implementing the comparison without allocating
+
+error: this creates an owned instance just for comparison
+  --> tests/ui/cmp_owned/without_suggestion.rs:24:9
+   |
+LL |         self.to_owned() == *other
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^ try implementing the comparison without allocating
+
+error: aborting due to 3 previous errors
+

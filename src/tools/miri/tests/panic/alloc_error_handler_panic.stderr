@@ -1,0 +1,6 @@
+
+thread 'main' ($TID) panicked at RUSTLIB/std/src/alloc.rs:LL:CC:
+memory allocation of 4 bytes failed
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+note: in Miri, you may have to set `MIRIFLAGS=-Zmiri-env-forward=RUST_BACKTRACE` for the environment variable to have an effect
+yes we are unwinding!

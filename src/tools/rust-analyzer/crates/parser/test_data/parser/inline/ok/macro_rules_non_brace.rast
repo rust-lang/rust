@@ -1,0 +1,57 @@
+SOURCE_FILE
+  MACRO_RULES
+    MACRO_RULES_KW "macro_rules"
+    BANG "!"
+    WHITESPACE " "
+    NAME
+      IDENT "m"
+    WHITESPACE " "
+    TOKEN_TREE
+      L_PAREN "("
+      WHITESPACE " "
+      TOKEN_TREE
+        L_PAREN "("
+        DOLLAR "$"
+        IDENT "i"
+        COLON ":"
+        IDENT "ident"
+        R_PAREN ")"
+      WHITESPACE " "
+      EQ "="
+      R_ANGLE ">"
+      WHITESPACE " "
+      TOKEN_TREE
+        L_CURLY "{"
+        R_CURLY "}"
+      WHITESPACE " "
+      R_PAREN ")"
+    SEMICOLON ";"
+  WHITESPACE "\n"
+  MACRO_RULES
+    MACRO_RULES_KW "macro_rules"
+    BANG "!"
+    WHITESPACE " "
+    NAME
+      IDENT "m"
+    WHITESPACE " "
+    TOKEN_TREE
+      L_BRACK "["
+      WHITESPACE " "
+      TOKEN_TREE
+        L_PAREN "("
+        DOLLAR "$"
+        IDENT "i"
+        COLON ":"
+        IDENT "ident"
+        R_PAREN ")"
+      WHITESPACE " "
+      EQ "="
+      R_ANGLE ">"
+      WHITESPACE " "
+      TOKEN_TREE
+        L_CURLY "{"
+        R_CURLY "}"
+      WHITESPACE " "
+      R_BRACK "]"
+    SEMICOLON ";"
+  WHITESPACE "\n"

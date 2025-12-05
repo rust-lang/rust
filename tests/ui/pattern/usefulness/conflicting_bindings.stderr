@@ -1,0 +1,74 @@
+error: cannot borrow value as mutable more than once at a time
+  --> $DIR/conflicting_bindings.rs:7:9
+   |
+LL |     let ref mut y @ ref mut z = x;
+   |         ^^^^^^^^^   --------- value is mutably borrowed by `z` here
+   |         |
+   |         value is mutably borrowed by `y` here
+
+error: cannot borrow value as mutable more than once at a time
+  --> $DIR/conflicting_bindings.rs:9:14
+   |
+LL |     let Some(ref mut y @ ref mut z) = x else { return };
+   |              ^^^^^^^^^   --------- value is mutably borrowed by `z` here
+   |              |
+   |              value is mutably borrowed by `y` here
+
+error: cannot borrow value as mutable more than once at a time
+  --> $DIR/conflicting_bindings.rs:11:17
+   |
+LL |     if let Some(ref mut y @ ref mut z) = x {}
+   |                 ^^^^^^^^^   --------- value is mutably borrowed by `z` here
+   |                 |
+   |                 value is mutably borrowed by `y` here
+
+error: cannot borrow value as mutable more than once at a time
+  --> $DIR/conflicting_bindings.rs:13:17
+   |
+LL |     if let Some(ref mut y @ ref mut z) = x && true {}
+   |                 ^^^^^^^^^   --------- value is mutably borrowed by `z` here
+   |                 |
+   |                 value is mutably borrowed by `y` here
+
+error: cannot borrow value as mutable more than once at a time
+  --> $DIR/conflicting_bindings.rs:15:43
+   |
+LL |     if let Some(_) = Some(()) && let Some(ref mut y @ ref mut z) = x && true {}
+   |                                           ^^^^^^^^^   --------- value is mutably borrowed by `z` here
+   |                                           |
+   |                                           value is mutably borrowed by `y` here
+
+error: cannot borrow value as mutable more than once at a time
+  --> $DIR/conflicting_bindings.rs:17:20
+   |
+LL |     while let Some(ref mut y @ ref mut z) = x {}
+   |                    ^^^^^^^^^   --------- value is mutably borrowed by `z` here
+   |                    |
+   |                    value is mutably borrowed by `y` here
+
+error: cannot borrow value as mutable more than once at a time
+  --> $DIR/conflicting_bindings.rs:19:20
+   |
+LL |     while let Some(ref mut y @ ref mut z) = x && true {}
+   |                    ^^^^^^^^^   --------- value is mutably borrowed by `z` here
+   |                    |
+   |                    value is mutably borrowed by `y` here
+
+error: cannot borrow value as mutable more than once at a time
+  --> $DIR/conflicting_bindings.rs:22:9
+   |
+LL |         ref mut y @ ref mut z => {}
+   |         ^^^^^^^^^   --------- value is mutably borrowed by `z` here
+   |         |
+   |         value is mutably borrowed by `y` here
+
+error: cannot borrow value as mutable more than once at a time
+  --> $DIR/conflicting_bindings.rs:25:24
+   |
+LL |         () if let Some(ref mut y @ ref mut z) = x => {}
+   |                        ^^^^^^^^^   --------- value is mutably borrowed by `z` here
+   |                        |
+   |                        value is mutably borrowed by `y` here
+
+error: aborting due to 9 previous errors
+

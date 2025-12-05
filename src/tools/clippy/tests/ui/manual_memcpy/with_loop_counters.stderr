@@ -1,0 +1,133 @@
+error: it looks like you're manually copying between slices
+  --> tests/ui/manual_memcpy/with_loop_counters.rs:5:5
+   |
+LL | /     for i in 3..src.len() {
+LL | |
+LL | |
+LL | |         dst[i] = src[count];
+LL | |         count += 1;
+LL | |     }
+   | |_____^ help: try replacing the loop by: `dst[3..src.len()].copy_from_slice(&src[..(src.len() - 3)]);`
+   |
+   = note: `-D clippy::manual-memcpy` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::manual_memcpy)]`
+
+error: it looks like you're manually copying between slices
+  --> tests/ui/manual_memcpy/with_loop_counters.rs:13:5
+   |
+LL | /     for i in 3..src.len() {
+LL | |
+LL | |
+LL | |         dst[count] = src[i];
+LL | |         count += 1;
+LL | |     }
+   | |_____^ help: try replacing the loop by: `dst[..(src.len() - 3)].copy_from_slice(&src[3..]);`
+
+error: it looks like you're manually copying between slices
+  --> tests/ui/manual_memcpy/with_loop_counters.rs:21:5
+   |
+LL | /     for i in 0..src.len() {
+LL | |
+LL | |
+LL | |         dst[count] = src[i];
+LL | |         count += 1;
+LL | |     }
+   | |_____^ help: try replacing the loop by: `dst[3..(src.len() + 3)].copy_from_slice(&src[..]);`
+
+error: it looks like you're manually copying between slices
+  --> tests/ui/manual_memcpy/with_loop_counters.rs:29:5
+   |
+LL | /     for i in 0..src.len() {
+LL | |
+LL | |
+LL | |         dst[i] = src[count];
+LL | |         count += 1;
+LL | |     }
+   | |_____^ help: try replacing the loop by: `dst[..src.len()].copy_from_slice(&src[3..(src.len() + 3)]);`
+
+error: it looks like you're manually copying between slices
+  --> tests/ui/manual_memcpy/with_loop_counters.rs:37:5
+   |
+LL | /     for i in 3..(3 + src.len()) {
+LL | |
+LL | |
+LL | |         dst[i] = src[count];
+LL | |         count += 1;
+LL | |     }
+   | |_____^ help: try replacing the loop by: `dst[3..(3 + src.len())].copy_from_slice(&src[..(3 + src.len() - 3)]);`
+
+error: it looks like you're manually copying between slices
+  --> tests/ui/manual_memcpy/with_loop_counters.rs:45:5
+   |
+LL | /     for i in 5..src.len() {
+LL | |
+LL | |
+LL | |         dst[i] = src[count - 2];
+LL | |         count += 1;
+LL | |     }
+   | |_____^ help: try replacing the loop by: `dst[5..src.len()].copy_from_slice(&src[(3 - 2)..((src.len() - 2) + 3 - 5)]);`
+
+error: it looks like you're manually copying between slices
+  --> tests/ui/manual_memcpy/with_loop_counters.rs:53:5
+   |
+LL | /     for i in 0..dst.len() {
+LL | |
+LL | |
+LL | |         dst[i] = src[count];
+LL | |         count += 1;
+LL | |     }
+   | |_____^ help: try replacing the loop by: `dst.copy_from_slice(&src[2..(dst.len() + 2)]);`
+
+error: it looks like you're manually copying between slices
+  --> tests/ui/manual_memcpy/with_loop_counters.rs:61:5
+   |
+LL | /     for i in 3..10 {
+LL | |
+LL | |
+LL | |         dst[i] = src[count];
+LL | |         count += 1;
+LL | |     }
+   | |_____^ help: try replacing the loop by: `dst[3..10].copy_from_slice(&src[5..(10 + 5 - 3)]);`
+
+error: it looks like you're manually copying between slices
+  --> tests/ui/manual_memcpy/with_loop_counters.rs:70:5
+   |
+LL | /     for i in 0..src.len() {
+LL | |
+LL | |
+LL | |         dst[count] = src[i];
+...  |
+LL | |         count2 += 1;
+LL | |     }
+   | |_____^
+   |
+help: try replacing the loop by
+   |
+LL ~     dst[3..(src.len() + 3)].copy_from_slice(&src[..]);
+LL +     dst2[30..(src.len() + 30)].copy_from_slice(&src[..]);
+   |
+
+error: it looks like you're manually copying between slices
+  --> tests/ui/manual_memcpy/with_loop_counters.rs:82:5
+   |
+LL | /     for i in 0..1 << 1 {
+LL | |
+LL | |
+LL | |         dst[count] = src[i + 2];
+LL | |         count += 1;
+LL | |     }
+   | |_____^ help: try replacing the loop by: `dst[(0 << 1)..((1 << 1) + (0 << 1))].copy_from_slice(&src[2..((1 << 1) + 2)]);`
+
+error: it looks like you're manually copying between slices
+  --> tests/ui/manual_memcpy/with_loop_counters.rs:91:5
+   |
+LL | /     for i in 3..src.len() {
+LL | |
+LL | |
+LL | |         dst[i] = src[count];
+LL | |         count += 1
+LL | |     }
+   | |_____^ help: try replacing the loop by: `dst[3..src.len()].copy_from_slice(&src[..(src.len() - 3)]);`
+
+error: aborting due to 11 previous errors
+

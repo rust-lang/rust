@@ -1,0 +1,27 @@
+error[E0432]: unresolved import `module::SomeUsefulType`
+  --> $DIR/unresolved-import-avoid-suggesting-global-path.rs:18:9
+   |
+LL |     use module::SomeUsefulType;
+   |         ^^^^^^^^^^^^^^^^^^^^^^ no `SomeUsefulType` in `hygiene::module`
+   |
+help: consider importing this struct instead
+   |
+LL -     use module::SomeUsefulType;
+LL +     use library::SomeUsefulType;
+   |
+
+error[E0432]: unresolved import `module::SomeUsefulType`
+  --> $DIR/unresolved-import-avoid-suggesting-global-path.rs:28:9
+   |
+LL |     use module::SomeUsefulType;
+   |         ^^^^^^^^^^^^^^^^^^^^^^ no `SomeUsefulType` in `glob::module`
+   |
+help: consider importing this struct instead
+   |
+LL -     use module::SomeUsefulType;
+LL +     use library::SomeUsefulType;
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0432`.

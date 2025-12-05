@@ -1,0 +1,37 @@
+$DIR/auxiliary/inline_always_with_dead_code.rs:
+   LL|       |//@ compile-flags: -Cinstrument-coverage -Ccodegen-units=4 -Copt-level=0
+   LL|       |
+   LL|       |#![allow(dead_code)]
+   LL|       |
+   LL|       |mod foo {
+   LL|       |    #[inline(always)]
+   LL|      2|    pub fn called() {}
+   LL|       |
+   LL|      0|    fn uncalled() {}
+   LL|       |}
+   LL|       |
+   LL|       |pub mod bar {
+   LL|      1|    pub fn call_me() {
+   LL|      1|        super::foo::called();
+   LL|      1|    }
+   LL|       |}
+   LL|       |
+   LL|       |pub mod baz {
+   LL|      1|    pub fn call_me() {
+   LL|      1|        super::foo::called();
+   LL|      1|    }
+   LL|       |}
+
+$DIR/issue-85461.rs:
+   LL|       |// Regression test for #85461: MSVC sometimes fail to link with dead code and #[inline(always)]
+   LL|       |
+   LL|       |//@ aux-build:inline_always_with_dead_code.rs
+   LL|       |extern crate inline_always_with_dead_code;
+   LL|       |
+   LL|       |use inline_always_with_dead_code::{bar, baz};
+   LL|       |
+   LL|      1|fn main() {
+   LL|      1|    bar::call_me();
+   LL|      1|    baz::call_me();
+   LL|      1|}
+

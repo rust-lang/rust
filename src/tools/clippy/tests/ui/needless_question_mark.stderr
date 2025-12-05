@@ -1,0 +1,188 @@
+error: enclosing `Some` and `?` operator are unneeded
+  --> tests/ui/needless_question_mark.rs:20:12
+   |
+LL |     return Some(to.magic?);
+   |            ^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::needless-question-mark` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::needless_question_mark)]`
+help: remove the enclosing `Some` and `?` operator
+   |
+LL -     return Some(to.magic?);
+LL +     return to.magic;
+   |
+
+error: enclosing `Some` and `?` operator are unneeded
+  --> tests/ui/needless_question_mark.rs:29:12
+   |
+LL |     return Some(to.magic?)
+   |            ^^^^^^^^^^^^^^^
+   |
+help: remove the enclosing `Some` and `?` operator
+   |
+LL -     return Some(to.magic?)
+LL +     return to.magic
+   |
+
+error: enclosing `Some` and `?` operator are unneeded
+  --> tests/ui/needless_question_mark.rs:35:5
+   |
+LL |     Some(to.magic?)
+   |     ^^^^^^^^^^^^^^^
+   |
+help: remove the enclosing `Some` and `?` operator
+   |
+LL -     Some(to.magic?)
+LL +     to.magic
+   |
+
+error: enclosing `Some` and `?` operator are unneeded
+  --> tests/ui/needless_question_mark.rs:41:21
+   |
+LL |     to.and_then(|t| Some(t.magic?))
+   |                     ^^^^^^^^^^^^^^
+   |
+help: remove the enclosing `Some` and `?` operator
+   |
+LL -     to.and_then(|t| Some(t.magic?))
+LL +     to.and_then(|t| t.magic)
+   |
+
+error: enclosing `Some` and `?` operator are unneeded
+  --> tests/ui/needless_question_mark.rs:51:9
+   |
+LL |         Some(t.magic?)
+   |         ^^^^^^^^^^^^^^
+   |
+help: remove the enclosing `Some` and `?` operator
+   |
+LL -         Some(t.magic?)
+LL +         t.magic
+   |
+
+error: enclosing `Ok` and `?` operator are unneeded
+  --> tests/ui/needless_question_mark.rs:57:12
+   |
+LL |     return Ok(tr.magic?);
+   |            ^^^^^^^^^^^^^
+   |
+help: remove the enclosing `Ok` and `?` operator
+   |
+LL -     return Ok(tr.magic?);
+LL +     return tr.magic;
+   |
+
+error: enclosing `Ok` and `?` operator are unneeded
+  --> tests/ui/needless_question_mark.rs:65:12
+   |
+LL |     return Ok(tr.magic?)
+   |            ^^^^^^^^^^^^^
+   |
+help: remove the enclosing `Ok` and `?` operator
+   |
+LL -     return Ok(tr.magic?)
+LL +     return tr.magic
+   |
+
+error: enclosing `Ok` and `?` operator are unneeded
+  --> tests/ui/needless_question_mark.rs:70:5
+   |
+LL |     Ok(tr.magic?)
+   |     ^^^^^^^^^^^^^
+   |
+help: remove the enclosing `Ok` and `?` operator
+   |
+LL -     Ok(tr.magic?)
+LL +     tr.magic
+   |
+
+error: enclosing `Ok` and `?` operator are unneeded
+  --> tests/ui/needless_question_mark.rs:75:21
+   |
+LL |     tr.and_then(|t| Ok(t.magic?))
+   |                     ^^^^^^^^^^^^
+   |
+help: remove the enclosing `Ok` and `?` operator
+   |
+LL -     tr.and_then(|t| Ok(t.magic?))
+LL +     tr.and_then(|t| t.magic)
+   |
+
+error: enclosing `Ok` and `?` operator are unneeded
+  --> tests/ui/needless_question_mark.rs:84:9
+   |
+LL |         Ok(t.magic?)
+   |         ^^^^^^^^^^^^
+   |
+help: remove the enclosing `Ok` and `?` operator
+   |
+LL -         Ok(t.magic?)
+LL +         t.magic
+   |
+
+error: enclosing `Ok` and `?` operator are unneeded
+  --> tests/ui/needless_question_mark.rs:92:16
+   |
+LL |         return Ok(t.magic?);
+   |                ^^^^^^^^^^^^
+   |
+help: remove the enclosing `Ok` and `?` operator
+   |
+LL -         return Ok(t.magic?);
+LL +         return t.magic;
+   |
+
+error: enclosing `Some` and `?` operator are unneeded
+  --> tests/ui/needless_question_mark.rs:128:27
+   |
+LL |         || -> Option<_> { Some(Some($expr)?) }()
+   |                           ^^^^^^^^^^^^^^^^^^
+...
+LL |     let _x = some_and_qmark_in_macro!(x?);
+   |              ---------------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `some_and_qmark_in_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: remove the enclosing `Some` and `?` operator
+   |
+LL -         || -> Option<_> { Some(Some($expr)?) }()
+LL +         || -> Option<_> { Some($expr) }()
+   |
+
+error: enclosing `Some` and `?` operator are unneeded
+  --> tests/ui/needless_question_mark.rs:140:5
+   |
+LL |     Some(to.magic?)
+   |     ^^^^^^^^^^^^^^^
+   |
+help: remove the enclosing `Some` and `?` operator
+   |
+LL -     Some(to.magic?)
+LL +     to.magic
+   |
+
+error: enclosing `Ok` and `?` operator are unneeded
+  --> tests/ui/needless_question_mark.rs:149:5
+   |
+LL |     Ok(s.magic?)
+   |     ^^^^^^^^^^^^
+   |
+help: remove the enclosing `Ok` and `?` operator
+   |
+LL -     Ok(s.magic?)
+LL +     s.magic
+   |
+
+error: enclosing `Some` and `?` operator are unneeded
+  --> tests/ui/needless_question_mark.rs:154:7
+   |
+LL |     { Some(a?) }
+   |       ^^^^^^^^
+   |
+help: remove the enclosing `Some` and `?` operator
+   |
+LL -     { Some(a?) }
+LL +     { a }
+   |
+
+error: aborting due to 15 previous errors
+

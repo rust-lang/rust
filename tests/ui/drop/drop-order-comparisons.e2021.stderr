@@ -1,0 +1,479 @@
+warning: relative drop order changing in Rust 2024
+  --> $DIR/drop-order-comparisons.rs:79:9
+   |
+LL |       _ = ({
+   |  _________-
+LL | |         let _v = e.ok(2);
+   | |             --
+   | |             |
+   | |             `_v` calls a custom destructor
+   | |             `_v` will be dropped later as of Edition 2024
+LL | |         let _v = e.ok(1);
+   | |             --
+   | |             |
+   | |             this value will be stored in a temporary; let us call it `#2`
+   | |             `#2` will be dropped later as of Edition 2024
+LL | |         e.ok(5).is_ok()
+   | |         ^^^^^^^
+   | |         |
+   | |         this value will be stored in a temporary; let us call it `#3`
+   | |         up until Edition 2021 `#3` is dropped last but will be dropped earlier in Edition 2024
+...  |
+LL | |     }, e.mark(3), e.ok(4));
+   | |                          -
+   | |                          |
+   | |                          now the temporary value is dropped here, before the local variables in the block or statement
+   | |__________________________this value will be stored in a temporary; let us call it `#1`
+   |                            `#1` will be dropped later as of Edition 2024
+   |
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/temporary-tail-expr-scope.html>
+note: `#3` invokes this custom destructor
+  --> $DIR/drop-order-comparisons.rs:504:1
+   |
+LL | impl<'b> Drop for LogDrop<'b> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: `#1` invokes this custom destructor
+  --> $DIR/drop-order-comparisons.rs:504:1
+   |
+LL | impl<'b> Drop for LogDrop<'b> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: `_v` invokes this custom destructor
+  --> $DIR/drop-order-comparisons.rs:504:1
+   |
+LL | impl<'b> Drop for LogDrop<'b> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: `#2` invokes this custom destructor
+  --> $DIR/drop-order-comparisons.rs:504:1
+   |
+LL | impl<'b> Drop for LogDrop<'b> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: most of the time, changing drop order is harmless; inspect the `impl Drop`s for side effects like releasing locks or sending messages
+note: the lint level is defined here
+  --> $DIR/drop-order-comparisons.rs:31:25
+   |
+LL | #![cfg_attr(e2021, warn(rust_2024_compatibility))]
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^
+   = note: `#[warn(tail_expr_drop_order)]` implied by `#[warn(rust_2024_compatibility)]`
+
+warning: relative drop order changing in Rust 2024
+  --> $DIR/drop-order-comparisons.rs:103:45
+   |
+LL |       _ = ({
+   |  _________-
+LL | |         (e.ok(2), e.ok(6).is_ok(), e.ok(3), e.ok(5).is_ok())
+   | |                                             ^^^^^^^
+   | |                                             |
+   | |                                             this value will be stored in a temporary; let us call it `#2`
+   | |                                             up until Edition 2021 `#2` is dropped last but will be dropped earlier in Edition 2024
+...  |
+LL | |     }, e.mark(1), e.ok(4));
+   | |                          -
+   | |                          |
+   | |                          now the temporary value is dropped here, before the local variables in the block or statement
+   | |__________________________this value will be stored in a temporary; let us call it `#1`
+   |                            `#1` will be dropped later as of Edition 2024
+   |
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/temporary-tail-expr-scope.html>
+note: `#2` invokes this custom destructor
+  --> $DIR/drop-order-comparisons.rs:504:1
+   |
+LL | impl<'b> Drop for LogDrop<'b> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: `#1` invokes this custom destructor
+  --> $DIR/drop-order-comparisons.rs:504:1
+   |
+LL | impl<'b> Drop for LogDrop<'b> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: most of the time, changing drop order is harmless; inspect the `impl Drop`s for side effects like releasing locks or sending messages
+
+warning: relative drop order changing in Rust 2024
+  --> $DIR/drop-order-comparisons.rs:103:19
+   |
+LL |       _ = ({
+   |  _________-
+LL | |         (e.ok(2), e.ok(6).is_ok(), e.ok(3), e.ok(5).is_ok())
+   | |                   ^^^^^^^
+   | |                   |
+   | |                   this value will be stored in a temporary; let us call it `#2`
+   | |                   up until Edition 2021 `#2` is dropped last but will be dropped earlier in Edition 2024
+...  |
+LL | |     }, e.mark(1), e.ok(4));
+   | |                          -
+   | |                          |
+   | |                          now the temporary value is dropped here, before the local variables in the block or statement
+   | |__________________________this value will be stored in a temporary; let us call it `#1`
+   |                            `#1` will be dropped later as of Edition 2024
+   |
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/temporary-tail-expr-scope.html>
+note: `#2` invokes this custom destructor
+  --> $DIR/drop-order-comparisons.rs:504:1
+   |
+LL | impl<'b> Drop for LogDrop<'b> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: `#1` invokes this custom destructor
+  --> $DIR/drop-order-comparisons.rs:504:1
+   |
+LL | impl<'b> Drop for LogDrop<'b> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: most of the time, changing drop order is harmless; inspect the `impl Drop`s for side effects like releasing locks or sending messages
+
+warning: relative drop order changing in Rust 2024
+  --> $DIR/drop-order-comparisons.rs:224:24
+   |
+LL |       _ = ({
+   |  _________-
+LL | |         if let Ok(_) = e.ok(4).as_ref() {
+   | |                        ^^^^^^^
+   | |                        |
+   | |                        this value will be stored in a temporary; let us call it `#2`
+   | |                        up until Edition 2021 `#2` is dropped last but will be dropped earlier in Edition 2024
+...  |
+LL | |     }, e.mark(2), e.ok(3));
+   | |                          -
+   | |                          |
+   | |                          now the temporary value is dropped here, before the local variables in the block or statement
+   | |__________________________this value will be stored in a temporary; let us call it `#1`
+   |                            `#1` will be dropped later as of Edition 2024
+   |
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/temporary-tail-expr-scope.html>
+note: `#2` invokes this custom destructor
+  --> $DIR/drop-order-comparisons.rs:504:1
+   |
+LL | impl<'b> Drop for LogDrop<'b> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: `#1` invokes this custom destructor
+  --> $DIR/drop-order-comparisons.rs:504:1
+   |
+LL | impl<'b> Drop for LogDrop<'b> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: most of the time, changing drop order is harmless; inspect the `impl Drop`s for side effects like releasing locks or sending messages
+
+warning: relative drop order changing in Rust 2024
+  --> $DIR/drop-order-comparisons.rs:250:24
+   |
+LL |       _ = ({
+   |  _________-
+LL | |         if let Ok(_) = e.err(4).as_ref() {} else {
+   | |                        ^^^^^^^^
+   | |                        |
+   | |                        this value will be stored in a temporary; let us call it `#2`
+   | |                        up until Edition 2021 `#2` is dropped last but will be dropped earlier in Edition 2024
+...  |
+LL | |     }, e.mark(2), e.ok(3));
+   | |                          -
+   | |                          |
+   | |                          now the temporary value is dropped here, before the local variables in the block or statement
+   | |__________________________this value will be stored in a temporary; let us call it `#1`
+   |                            `#1` will be dropped later as of Edition 2024
+   |
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/temporary-tail-expr-scope.html>
+note: `#2` invokes this custom destructor
+  --> $DIR/drop-order-comparisons.rs:504:1
+   |
+LL | impl<'b> Drop for LogDrop<'b> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: `#1` invokes this custom destructor
+  --> $DIR/drop-order-comparisons.rs:504:1
+   |
+LL | impl<'b> Drop for LogDrop<'b> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: most of the time, changing drop order is harmless; inspect the `impl Drop`s for side effects like releasing locks or sending messages
+
+warning: `if let` assigns a shorter lifetime since Edition 2024
+  --> $DIR/drop-order-comparisons.rs:126:13
+   |
+LL |     _ = (if let Ok(_) = e.ok(4).as_ref() {
+   |             ^^^^^^^^^^^^-------^^^^^^^^^
+   |                         |
+   |                         this value has a significant drop implementation which may observe a major change in drop order and requires your discretion
+   |
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/temporary-if-let-scope.html>
+note: value invokes this custom destructor
+  --> $DIR/drop-order-comparisons.rs:504:1
+   |
+LL | impl<'b> Drop for LogDrop<'b> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: the value is now dropped here in Edition 2024
+  --> $DIR/drop-order-comparisons.rs:130:5
+   |
+LL |     }, e.mark(2), e.ok(3));
+   |     ^
+   = note: `#[warn(if_let_rescope)]` implied by `#[warn(rust_2024_compatibility)]`
+help: a `match` with a single arm can preserve the drop order up to Edition 2021
+   |
+LL ~     _ = (match e.ok(4).as_ref() { Ok(_) => {
+LL |
+LL |
+LL |             e.mark(1);
+LL ~     } _ => {}}, e.mark(2), e.ok(3));
+   |
+
+warning: `if let` assigns a shorter lifetime since Edition 2024
+  --> $DIR/drop-order-comparisons.rs:148:13
+   |
+LL |     _ = (if let Ok(_) = e.err(4).as_ref() {} else {
+   |             ^^^^^^^^^^^^--------^^^^^^^^^
+   |                         |
+   |                         this value has a significant drop implementation which may observe a major change in drop order and requires your discretion
+   |
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/temporary-if-let-scope.html>
+note: value invokes this custom destructor
+  --> $DIR/drop-order-comparisons.rs:504:1
+   |
+LL | impl<'b> Drop for LogDrop<'b> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: the value is now dropped here in Edition 2024
+  --> $DIR/drop-order-comparisons.rs:148:44
+   |
+LL |     _ = (if let Ok(_) = e.err(4).as_ref() {} else {
+   |                                            ^
+help: a `match` with a single arm can preserve the drop order up to Edition 2021
+   |
+LL ~     _ = (match e.err(4).as_ref() { Ok(_) => {} _ => {
+LL |
+LL |
+LL |             e.mark(1);
+LL ~     }}, e.mark(2), e.ok(3));
+   |
+
+warning: `if let` assigns a shorter lifetime since Edition 2024
+  --> $DIR/drop-order-comparisons.rs:250:12
+   |
+LL |         if let Ok(_) = e.err(4).as_ref() {} else {
+   |            ^^^^^^^^^^^^--------^^^^^^^^^
+   |                        |
+   |                        this value has a significant drop implementation which may observe a major change in drop order and requires your discretion
+   |
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/temporary-if-let-scope.html>
+note: value invokes this custom destructor
+  --> $DIR/drop-order-comparisons.rs:504:1
+   |
+LL | impl<'b> Drop for LogDrop<'b> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: the value is now dropped here in Edition 2024
+  --> $DIR/drop-order-comparisons.rs:250:43
+   |
+LL |         if let Ok(_) = e.err(4).as_ref() {} else {
+   |                                           ^
+help: a `match` with a single arm can preserve the drop order up to Edition 2021
+   |
+LL ~         match e.err(4).as_ref() { Ok(_) => {} _ => {
+LL |
+...
+LL |             e.mark(1);
+LL ~         }}
+   |
+
+warning: `if let` assigns a shorter lifetime since Edition 2024
+  --> $DIR/drop-order-comparisons.rs:321:12
+   |
+LL |         if let true = e.err(9).is_ok() {} else {
+   |            ^^^^^^^^^^^--------^^^^^^^^
+   |                       |
+   |                       this value has a significant drop implementation which may observe a major change in drop order and requires your discretion
+   |
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/temporary-if-let-scope.html>
+note: value invokes this custom destructor
+  --> $DIR/drop-order-comparisons.rs:504:1
+   |
+LL | impl<'b> Drop for LogDrop<'b> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: the value is now dropped here in Edition 2024
+  --> $DIR/drop-order-comparisons.rs:321:41
+   |
+LL |         if let true = e.err(9).is_ok() {} else {
+   |                                         ^
+help: a `match` with a single arm can preserve the drop order up to Edition 2021
+   |
+LL ~         match e.err(9).is_ok() { true => {} _ => {
+LL |
+...
+LL |             e.mark(3);
+LL ~         }}}}}}}}};
+   |
+
+warning: `if let` assigns a shorter lifetime since Edition 2024
+  --> $DIR/drop-order-comparisons.rs:324:12
+   |
+LL |         if let Ok(_v) = e.err(8) {} else {
+   |            ^^^^^^^^^^^^^--------
+   |                         |
+   |                         this value has a significant drop implementation which may observe a major change in drop order and requires your discretion
+   |
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/temporary-if-let-scope.html>
+note: value invokes this custom destructor
+  --> $DIR/drop-order-comparisons.rs:504:1
+   |
+LL | impl<'b> Drop for LogDrop<'b> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: the value is now dropped here in Edition 2024
+  --> $DIR/drop-order-comparisons.rs:324:35
+   |
+LL |         if let Ok(_v) = e.err(8) {} else {
+   |                                   ^
+help: a `match` with a single arm can preserve the drop order up to Edition 2021
+   |
+LL ~         match e.err(8) { Ok(_v) => {} _ => {
+LL |
+...
+LL |             e.mark(3);
+LL ~         }}}}}}}}};
+   |
+
+warning: `if let` assigns a shorter lifetime since Edition 2024
+  --> $DIR/drop-order-comparisons.rs:327:12
+   |
+LL |         if let Ok(_) = e.err(7) {} else {
+   |            ^^^^^^^^^^^^--------
+   |                        |
+   |                        this value has a significant drop implementation which may observe a major change in drop order and requires your discretion
+   |
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/temporary-if-let-scope.html>
+note: value invokes this custom destructor
+  --> $DIR/drop-order-comparisons.rs:504:1
+   |
+LL | impl<'b> Drop for LogDrop<'b> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: the value is now dropped here in Edition 2024
+  --> $DIR/drop-order-comparisons.rs:327:34
+   |
+LL |         if let Ok(_) = e.err(7) {} else {
+   |                                  ^
+help: a `match` with a single arm can preserve the drop order up to Edition 2021
+   |
+LL ~         match e.err(7) { Ok(_) => {} _ => {
+LL |
+...
+LL |             e.mark(3);
+LL ~         }}}}}}}}};
+   |
+
+warning: `if let` assigns a shorter lifetime since Edition 2024
+  --> $DIR/drop-order-comparisons.rs:330:12
+   |
+LL |         if let Ok(_) = e.err(6).as_ref() {} else {
+   |            ^^^^^^^^^^^^--------^^^^^^^^^
+   |                        |
+   |                        this value has a significant drop implementation which may observe a major change in drop order and requires your discretion
+   |
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/temporary-if-let-scope.html>
+note: value invokes this custom destructor
+  --> $DIR/drop-order-comparisons.rs:504:1
+   |
+LL | impl<'b> Drop for LogDrop<'b> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: the value is now dropped here in Edition 2024
+  --> $DIR/drop-order-comparisons.rs:330:43
+   |
+LL |         if let Ok(_) = e.err(6).as_ref() {} else {
+   |                                           ^
+help: a `match` with a single arm can preserve the drop order up to Edition 2021
+   |
+LL ~         match e.err(6).as_ref() { Ok(_) => {} _ => {
+LL |
+...
+LL |             e.mark(3);
+LL ~         }}}}}}}}};
+   |
+
+warning: `if let` assigns a shorter lifetime since Edition 2024
+  --> $DIR/drop-order-comparisons.rs:334:12
+   |
+LL |         if let Ok(_v) = e.err(5) {} else {
+   |            ^^^^^^^^^^^^^--------
+   |                         |
+   |                         this value has a significant drop implementation which may observe a major change in drop order and requires your discretion
+   |
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/temporary-if-let-scope.html>
+note: value invokes this custom destructor
+  --> $DIR/drop-order-comparisons.rs:504:1
+   |
+LL | impl<'b> Drop for LogDrop<'b> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: the value is now dropped here in Edition 2024
+  --> $DIR/drop-order-comparisons.rs:334:35
+   |
+LL |         if let Ok(_v) = e.err(5) {} else {
+   |                                   ^
+help: a `match` with a single arm can preserve the drop order up to Edition 2021
+   |
+LL ~         match e.err(5) { Ok(_v) => {} _ => {
+LL |
+...
+LL |             e.mark(3);
+LL ~         }}}}}}}}};
+   |
+
+warning: `if let` assigns a shorter lifetime since Edition 2024
+  --> $DIR/drop-order-comparisons.rs:337:12
+   |
+LL |         if let Ok(_) = e.err(4) {} else {
+   |            ^^^^^^^^^^^^--------
+   |                        |
+   |                        this value has a significant drop implementation which may observe a major change in drop order and requires your discretion
+   |
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/temporary-if-let-scope.html>
+note: value invokes this custom destructor
+  --> $DIR/drop-order-comparisons.rs:504:1
+   |
+LL | impl<'b> Drop for LogDrop<'b> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: the value is now dropped here in Edition 2024
+  --> $DIR/drop-order-comparisons.rs:337:34
+   |
+LL |         if let Ok(_) = e.err(4) {} else {
+   |                                  ^
+help: a `match` with a single arm can preserve the drop order up to Edition 2021
+   |
+LL ~         match e.err(4) { Ok(_) => {} _ => {
+LL |
+LL |
+LL |             e.mark(3);
+LL ~         }}}}}}}}};
+   |
+
+warning: `if let` assigns a shorter lifetime since Edition 2024
+  --> $DIR/drop-order-comparisons.rs:373:12
+   |
+LL |         if let Ok(_) = e.err(4).as_ref() {} else {
+   |            ^^^^^^^^^^^^--------^^^^^^^^^
+   |                        |
+   |                        this value has a significant drop implementation which may observe a major change in drop order and requires your discretion
+   |
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/temporary-if-let-scope.html>
+note: value invokes this custom destructor
+  --> $DIR/drop-order-comparisons.rs:504:1
+   |
+LL | impl<'b> Drop for LogDrop<'b> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: the value is now dropped here in Edition 2024
+  --> $DIR/drop-order-comparisons.rs:373:43
+   |
+LL |         if let Ok(_) = e.err(4).as_ref() {} else {
+   |                                           ^
+help: a `match` with a single arm can preserve the drop order up to Edition 2021
+   |
+LL ~         match e.err(4).as_ref() { Ok(_) => {} _ => {
+LL |
+LL |
+LL |             e.mark(3);
+LL ~         }}}}}}}}};
+   |
+
+warning: 15 warnings emitted
+

@@ -1,0 +1,113 @@
+Running GenMC Verification...
+warning: GenMC currently does not model spurious failures of `compare_exchange_weak`. Miri with GenMC might miss bugs related to spurious failures.
+  --> RUSTLIB/std/src/thread/mod.rs:LL:CC
+   |
+LL |                     match COUNTER.compare_exchange_weak(last, id, Ordering::Relaxed, Ordering::Relaxed) {
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ GenMC might miss possible behaviors of this code
+   |
+   = note: BACKTRACE:
+   = note: inside closure at RUSTLIB/std/src/thread/current.rs:LL:CC
+   = note: inside closure at RUSTLIB/std/src/rt.rs:LL:CC
+
+warning: GenMC currently does not model the failure ordering for `compare_exchange`. Due to success ordering 'Acquire', the failure ordering 'Relaxed' is treated like 'Acquire'. Miri with GenMC might miss bugs related to this memory access.
+  --> RUSTLIB/std/src/sys/sync/PLATFORM/futex.rs:LL:CC
+   |
+LL |               || self
+   |  ________________^
+LL | |                 .state
+LL | |                 .compare_exchange_weak(state, state + READ_LOCKED, Acquire, Relaxed)
+   | |____________________________________________________________________________________^ GenMC might miss possible behaviors of this code
+   |
+   = note: BACKTRACE:
+   = note: inside closure at RUSTLIB/std/src/sys/env/PLATFORM.rs:LL:CC
+   = note: inside closure at RUSTLIB/std/src/thread/mod.rs:LL:CC
+note: inside `main`
+  --> tests/genmc/pass/std/thread_locals.rs:LL:CC
+   |
+LL | /         std::thread::spawn(|| {
+LL | |             R.set(unsafe { malloc() });
+LL | |             let r_ptr = R.get();
+LL | |             let _ = X.compare_exchange(std::ptr::null_mut(), r_ptr, SeqCst, SeqCst);
+LL | |         }),
+   | |__________^
+
+warning: GenMC currently does not model spurious failures of `compare_exchange_weak`. Miri with GenMC might miss bugs related to spurious failures.
+  --> RUSTLIB/std/src/sys/sync/PLATFORM/futex.rs:LL:CC
+   |
+LL |               || self
+   |  ________________^
+LL | |                 .state
+LL | |                 .compare_exchange_weak(state, state + READ_LOCKED, Acquire, Relaxed)
+   | |____________________________________________________________________________________^ GenMC might miss possible behaviors of this code
+   |
+   = note: BACKTRACE:
+   = note: inside closure at RUSTLIB/std/src/sys/env/PLATFORM.rs:LL:CC
+   = note: inside closure at RUSTLIB/std/src/thread/mod.rs:LL:CC
+note: inside `main`
+  --> tests/genmc/pass/std/thread_locals.rs:LL:CC
+   |
+LL | /         std::thread::spawn(|| {
+LL | |             R.set(unsafe { malloc() });
+LL | |             let r_ptr = R.get();
+LL | |             let _ = X.compare_exchange(std::ptr::null_mut(), r_ptr, SeqCst, SeqCst);
+LL | |         }),
+   | |__________^
+
+warning: GenMC currently does not model the failure ordering for `compare_exchange`. Due to success ordering 'Acquire', the failure ordering 'Relaxed' is treated like 'Acquire'. Miri with GenMC might miss bugs related to this memory access.
+  --> RUSTLIB/alloc/src/sync.rs:LL:CC
+   |
+LL |         if this.inner().weak.compare_exchange(1, usize::MAX, Acquire, Relaxed).is_ok() {
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ GenMC might miss possible behaviors of this code
+   |
+   = note: BACKTRACE:
+note: inside closure
+  --> tests/genmc/pass/std/thread_locals.rs:LL:CC
+   |
+LL |     handles.into_iter().for_each(|handle| handle.join().unwrap());
+   |                                           ^^^^^^^^^^^^^
+   = note: inside closure at RUSTLIB/core/src/iter/traits/iterator.rs:LL:CC
+   = note: inside closure at RUSTLIB/core/src/ops/try_trait.rs:LL:CC
+   = note: inside closure at RUSTLIB/core/src/array/iter/iter_inner.rs:LL:CC
+   = note: inside `<std::ops::index_range::IndexRange as std::iter::Iterator>::try_fold::<(), {closure@std::array::iter::iter_inner::PolymorphicIter<[std::mem::MaybeUninit<std::thread::JoinHandle<()>>]>::try_fold<(), {closure@std::ops::try_trait::NeverShortCircuit<()>::wrap_mut_2<(), std::thread::JoinHandle<()>, {closure@std::iter::Iterator::for_each::call<std::thread::JoinHandle<()>, {closure@tests/genmc/pass/std/thread_locals.rs:LL:CC}>::{closure#0}}>::{closure#0}}, std::ops::try_trait::NeverShortCircuit<()>>::{closure#0}}, std::ops::try_trait::NeverShortCircuit<()>>` at RUSTLIB/core/src/ops/index_range.rs:LL:CC
+   = note: inside `<std::array::IntoIter<std::thread::JoinHandle<()>, 3> as std::iter::Iterator>::fold::<(), {closure@std::iter::Iterator::for_each::call<std::thread::JoinHandle<()>, {closure@tests/genmc/pass/std/thread_locals.rs:LL:CC}>::{closure#0}}>` at RUSTLIB/core/src/array/iter.rs:LL:CC
+   = note: inside `<std::array::IntoIter<std::thread::JoinHandle<()>, 3> as std::iter::Iterator>::for_each::<{closure@tests/genmc/pass/std/thread_locals.rs:LL:CC}>` at RUSTLIB/core/src/iter/traits/iterator.rs:LL:CC
+note: inside `main`
+  --> tests/genmc/pass/std/thread_locals.rs:LL:CC
+   |
+LL |     handles.into_iter().for_each(|handle| handle.join().unwrap());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: GenMC currently does not model spurious failures of `compare_exchange_weak`. Miri with GenMC might miss bugs related to spurious failures.
+  --> RUSTLIB/std/src/rt.rs:LL:CC
+   |
+LL | /     CLEANUP.call_once(|| unsafe {
+LL | |         // Flush stdout and disable buffering.
+LL | |         crate::io::cleanup();
+...  |
+LL | |     });
+   | |______^ GenMC might miss possible behaviors of this code
+   |
+   = note: BACKTRACE:
+   = note: inside closure at RUSTLIB/std/src/rt.rs:LL:CC
+
+warning: GenMC currently does not model spurious failures of `compare_exchange_weak`. Miri with GenMC might miss bugs related to spurious failures.
+  --> RUSTLIB/std/src/sync/once.rs:LL:CC
+   |
+LL |         self.inner.call(true, &mut |p| f.take().unwrap()(p));
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ GenMC might miss possible behaviors of this code
+   |
+   = note: BACKTRACE:
+   = note: inside closure at RUSTLIB/std/src/rt.rs:LL:CC
+   = note: inside closure at RUSTLIB/std/src/sync/once.rs:LL:CC
+   = note: inside closure at RUSTLIB/std/src/rt.rs:LL:CC
+
+warning: GenMC currently does not model the failure ordering for `compare_exchange`. Due to success ordering 'Acquire', the failure ordering 'Relaxed' is treated like 'Acquire'. Miri with GenMC might miss bugs related to this memory access.
+  --> RUSTLIB/std/src/sys/exit_guard.rs:LL:CC
+   |
+LL |             match EXITING_THREAD_ID.compare_exchange(ptr::null_mut(), this_thread_id, Acquire, Relaxed) {
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ GenMC might miss possible behaviors of this code
+   |
+   = note: BACKTRACE:
+   = note: inside closure at RUSTLIB/std/src/rt.rs:LL:CC
+
+Verification complete with 2 executions. No errors found.

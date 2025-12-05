@@ -1,0 +1,11 @@
+error: non-item in item list
+  --> $DIR/issue-32446.rs:4:11
+   |
+LL | trait T { ... }
+   |         - ^^^ - item list ends here
+   |         | |
+   |         | non-item starts here
+   |         item list starts here
+
+error: aborting due to 1 previous error
+

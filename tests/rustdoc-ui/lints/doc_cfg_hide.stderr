@@ -1,0 +1,22 @@
+error: `#![doc(auto_cfg(hide(...)))]` expects a list of items
+  --> $DIR/doc_cfg_hide.rs:2:8
+   |
+LL | #![doc(auto_cfg(hide = "test"))]
+   |        ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[deny(invalid_doc_attributes)]` on by default
+
+error: `#![doc(auto_cfg(hide(...)))]` expects a list of items
+  --> $DIR/doc_cfg_hide.rs:3:8
+   |
+LL | #![doc(auto_cfg(hide))]
+   |        ^^^^^^^^^^^^^^
+
+error: `#![doc(auto_cfg(hide(...)))]` only accepts identifiers or key/value items
+  --> $DIR/doc_cfg_hide.rs:4:22
+   |
+LL | #![doc(auto_cfg(hide(not(windows))))]
+   |                      ^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+

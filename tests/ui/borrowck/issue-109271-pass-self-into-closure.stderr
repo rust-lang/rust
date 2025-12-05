@@ -1,0 +1,74 @@
+error[E0502]: cannot borrow `v` as mutable because it is also borrowed as immutable
+  --> $DIR/issue-109271-pass-self-into-closure.rs:19:5
+   |
+LL |     v.call(|(), this: &mut S| v.get());
+   |     ^^----^------------------^-^^^^^^^
+   |     | |    |                  |
+   |     | |    |                  first borrow occurs due to use of `v` in closure
+   |     | |    |                  help: try using the closure argument: `this`
+   |     | |    immutable borrow occurs here
+   |     | immutable borrow later used by call
+   |     mutable borrow occurs here
+
+error[E0499]: cannot borrow `v` as mutable more than once at a time
+  --> $DIR/issue-109271-pass-self-into-closure.rs:21:5
+   |
+LL |     v.call(|(), this: &mut S| v.set());
+   |     ^^----^------------------^-^^^^^^^
+   |     | |    |                  |
+   |     | |    |                  first borrow occurs due to use of `v` in closure
+   |     | |    |                  help: try using the closure argument: `this`
+   |     | |    first mutable borrow occurs here
+   |     | first borrow later used by call
+   |     second mutable borrow occurs here
+
+error[E0499]: cannot borrow `v` as mutable more than once at a time
+  --> $DIR/issue-109271-pass-self-into-closure.rs:21:12
+   |
+LL |     v.call(|(), this: &mut S| v.set());
+   |     - ---- ^^^^^^^^^^^^^^^^^^ - second borrow occurs due to use of `v` in closure
+   |     | |    |
+   |     | |    second mutable borrow occurs here
+   |     | first borrow later used by call
+   |     first mutable borrow occurs here
+
+error[E0499]: cannot borrow `v` as mutable more than once at a time
+  --> $DIR/issue-109271-pass-self-into-closure.rs:25:5
+   |
+LL |       v.call(|(), this: &mut S| {
+   |       ^ ---- ------------------ first mutable borrow occurs here
+   |       | |
+   |  _____| first borrow later used by call
+   | |
+...  |
+LL | |         v.set();
+   | |         - first borrow occurs due to use of `v` in closure
+...  |
+LL | |         _ = v.add(3);
+LL | |     });
+   | |______^ second mutable borrow occurs here
+   |
+help: try using the closure argument
+   |
+LL ~         _ = this;
+LL ~         this.set();
+LL ~         this.get();
+LL ~         S::get(&this);
+   |
+
+error[E0499]: cannot borrow `v` as mutable more than once at a time
+  --> $DIR/issue-109271-pass-self-into-closure.rs:25:12
+   |
+LL |     v.call(|(), this: &mut S| {
+   |     - ---- ^^^^^^^^^^^^^^^^^^ second mutable borrow occurs here
+   |     | |
+   |     | first borrow later used by call
+   |     first mutable borrow occurs here
+...
+LL |         v.set();
+   |         - second borrow occurs due to use of `v` in closure
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0499, E0502.
+For more information about an error, try `rustc --explain E0499`.

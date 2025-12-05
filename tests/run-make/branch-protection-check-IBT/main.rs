@@ -1,0 +1,5 @@
+#![feature(no_core)]
+#![allow(internal_features)]
+#![no_core]
+#![no_std]
+#![no_main]

@@ -1,0 +1,105 @@
+error: useless use of `format!`
+  --> tests/ui/format.rs:20:5
+   |
+LL |     format!("foo");
+   |     ^^^^^^^^^^^^^^ help: consider using `.to_string()`: `"foo".to_string()`
+   |
+   = note: `-D clippy::useless-format` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::useless_format)]`
+
+error: useless use of `format!`
+  --> tests/ui/format.rs:22:5
+   |
+LL |     format!("{{}}");
+   |     ^^^^^^^^^^^^^^^ help: consider using `.to_string()`: `"{}".to_string()`
+
+error: useless use of `format!`
+  --> tests/ui/format.rs:24:5
+   |
+LL |     format!("{{}} abc {{}}");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `.to_string()`: `"{} abc {}".to_string()`
+
+error: useless use of `format!`
+  --> tests/ui/format.rs:26:5
+   |
+LL | /     format!(
+LL | |
+LL | |         r##"foo {{}}
+LL | | " bar"##
+LL | |     );
+   | |_____^
+   |
+help: consider using `.to_string()`
+   |
+LL ~     r##"foo {}
+LL ~ " bar"##.to_string();
+   |
+
+error: useless use of `format!`
+  --> tests/ui/format.rs:32:13
+   |
+LL |     let _ = format!("");
+   |             ^^^^^^^^^^^ help: consider using `String::new()`: `String::new()`
+
+error: useless use of `format!`
+  --> tests/ui/format.rs:35:5
+   |
+LL |     format!("{}", "foo");
+   |     ^^^^^^^^^^^^^^^^^^^^ help: consider using `.to_string()`: `"foo".to_string()`
+
+error: useless use of `format!`
+  --> tests/ui/format.rs:44:5
+   |
+LL |     format!("{}", arg);
+   |     ^^^^^^^^^^^^^^^^^^ help: consider using `.to_string()`: `arg.to_string()`
+
+error: useless use of `format!`
+  --> tests/ui/format.rs:75:5
+   |
+LL |     format!("{}", 42.to_string());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `.to_string()`: `42.to_string()`
+
+error: useless use of `format!`
+  --> tests/ui/format.rs:78:5
+   |
+LL |     format!("{}", x.display().to_string());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `.to_string()`: `x.display().to_string()`
+
+error: useless use of `format!`
+  --> tests/ui/format.rs:83:18
+   |
+LL |     let _ = Some(format!("{}", a + "bar"));
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `.to_string()`: `a + "bar"`
+
+error: useless use of `format!`
+  --> tests/ui/format.rs:88:22
+   |
+LL |     let _s: String = format!("{}", &*v.join("\n"));
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `.to_string()`: `(&*v.join("\n")).to_string()`
+
+error: useless use of `format!`
+  --> tests/ui/format.rs:95:13
+   |
+LL |     let _ = format!("{x}");
+   |             ^^^^^^^^^^^^^^ help: consider using `.to_string()`: `x.to_string()`
+
+error: useless use of `format!`
+  --> tests/ui/format.rs:98:13
+   |
+LL |     let _ = format!("{y}", y = x);
+   |             ^^^^^^^^^^^^^^^^^^^^^ help: consider using `.to_string()`: `x.to_string()`
+
+error: useless use of `format!`
+  --> tests/ui/format.rs:103:13
+   |
+LL |     let _ = format!("{abc}");
+   |             ^^^^^^^^^^^^^^^^ help: consider using `.to_string()`: `abc.to_string()`
+
+error: useless use of `format!`
+  --> tests/ui/format.rs:106:13
+   |
+LL |     let _ = format!("{xx}");
+   |             ^^^^^^^^^^^^^^^ help: consider using `.to_string()`: `xx.to_string()`
+
+error: aborting due to 15 previous errors
+

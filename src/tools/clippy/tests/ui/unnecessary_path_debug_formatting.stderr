@@ -1,0 +1,85 @@
+error: unnecessary `Debug` formatting in `println!` args
+  --> tests/ui/unnecessary_path_debug_formatting.rs:30:22
+   |
+LL |     println!("{:?}", os_str);
+   |                      ^^^^^^
+   |
+   = help: use `Display` formatting and change this to `os_str.display()`
+   = note: switching to `Display` formatting will change how the value is shown; escaped characters will no longer be escaped and surrounding quotes will be removed
+   = note: `-D clippy::unnecessary-debug-formatting` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unnecessary_debug_formatting)]`
+
+error: unnecessary `Debug` formatting in `println!` args
+  --> tests/ui/unnecessary_path_debug_formatting.rs:31:22
+   |
+LL |     println!("{:?}", os_string);
+   |                      ^^^^^^^^^
+   |
+   = help: use `Display` formatting and change this to `os_string.display()`
+   = note: switching to `Display` formatting will change how the value is shown; escaped characters will no longer be escaped and surrounding quotes will be removed
+
+error: unnecessary `Debug` formatting in `println!` args
+  --> tests/ui/unnecessary_path_debug_formatting.rs:33:22
+   |
+LL |     println!("{:?}", path);
+   |                      ^^^^
+   |
+   = help: use `Display` formatting and change this to `path.display()`
+   = note: switching to `Display` formatting will change how the value is shown; escaped characters will no longer be escaped and surrounding quotes will be removed
+
+error: unnecessary `Debug` formatting in `println!` args
+  --> tests/ui/unnecessary_path_debug_formatting.rs:34:22
+   |
+LL |     println!("{:?}", path_buf);
+   |                      ^^^^^^^^
+   |
+   = help: use `Display` formatting and change this to `path_buf.display()`
+   = note: switching to `Display` formatting will change how the value is shown; escaped characters will no longer be escaped and surrounding quotes will be removed
+
+error: unnecessary `Debug` formatting in `println!` args
+  --> tests/ui/unnecessary_path_debug_formatting.rs:36:16
+   |
+LL |     println!("{path:?}");
+   |                ^^^^
+   |
+   = help: use `Display` formatting and change this to `path.display()`
+   = note: switching to `Display` formatting will change how the value is shown; escaped characters will no longer be escaped and surrounding quotes will be removed
+
+error: unnecessary `Debug` formatting in `println!` args
+  --> tests/ui/unnecessary_path_debug_formatting.rs:37:16
+   |
+LL |     println!("{path_buf:?}");
+   |                ^^^^^^^^
+   |
+   = help: use `Display` formatting and change this to `path_buf.display()`
+   = note: switching to `Display` formatting will change how the value is shown; escaped characters will no longer be escaped and surrounding quotes will be removed
+
+error: unnecessary `Debug` formatting in `format!` args
+  --> tests/ui/unnecessary_path_debug_formatting.rs:39:37
+   |
+LL |     let _: String = format!("{:?}", path);
+   |                                     ^^^^
+   |
+   = help: use `Display` formatting and change this to `path.display()`
+   = note: switching to `Display` formatting will change how the value is shown; escaped characters will no longer be escaped and surrounding quotes will be removed
+
+error: unnecessary `Debug` formatting in `format!` args
+  --> tests/ui/unnecessary_path_debug_formatting.rs:40:37
+   |
+LL |     let _: String = format!("{:?}", path_buf);
+   |                                     ^^^^^^^^
+   |
+   = help: use `Display` formatting and change this to `path_buf.display()`
+   = note: switching to `Display` formatting will change how the value is shown; escaped characters will no longer be escaped and surrounding quotes will be removed
+
+error: unnecessary `Debug` formatting in `println!` args
+  --> tests/ui/unnecessary_path_debug_formatting.rs:43:22
+   |
+LL |     println!("{:?}", &*deref_path);
+   |                      ^^^^^^^^^^^^
+   |
+   = help: use `Display` formatting and change this to `&*deref_path.display()`
+   = note: switching to `Display` formatting will change how the value is shown; escaped characters will no longer be escaped and surrounding quotes will be removed
+
+error: aborting due to 9 previous errors
+

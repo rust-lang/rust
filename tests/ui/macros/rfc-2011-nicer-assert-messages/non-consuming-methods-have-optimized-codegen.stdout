@@ -1,0 +1,148 @@
+#![feature(prelude_import)]
+#![no_std]
+//@ check-pass
+//@ compile-flags: -Z unpretty=expanded
+//@ edition: 2015
+
+#![feature(core_intrinsics, generic_assert)]
+#[macro_use]
+extern crate std;
+#[prelude_import]
+use ::std::prelude::rust_2015::*;
+
+fn arbitrary_consuming_method_for_demonstration_purposes() {
+    let elem = 1i32;
+    {
+        #[allow(unused_imports)]
+        use ::core::asserting::{TryCaptureGeneric, TryCapturePrintable};
+        let mut __capture0 = ::core::asserting::Capture::new();
+        let __local_bind0 = &elem;
+        if ::core::intrinsics::unlikely(!(*{
+                                (&::core::asserting::Wrapper(__local_bind0)).try_capture(&mut __capture0);
+                                __local_bind0
+                            } as usize)) {
+
+
+
+
+            {
+                ::std::rt::panic_fmt(format_args!("Assertion failed: elem as usize\nWith captures:\n  elem = {0:?}\n",
+                        __capture0));
+            }
+        }
+    };
+}
+fn addr_of() {
+    let elem = 1i32;
+    {
+        #[allow(unused_imports)]
+        use ::core::asserting::{TryCaptureGeneric, TryCapturePrintable};
+        let mut __capture0 = ::core::asserting::Capture::new();
+        let __local_bind0 = &elem;
+        if ::core::intrinsics::unlikely(!&*__local_bind0) {
+            (&::core::asserting::Wrapper(__local_bind0)).try_capture(&mut __capture0);
+            {
+                ::std::rt::panic_fmt(format_args!("Assertion failed: &elem\nWith captures:\n  elem = {0:?}\n",
+                        __capture0));
+            }
+        }
+    };
+}
+fn binary() {
+    let elem = 1i32;
+    {
+        #[allow(unused_imports)]
+        use ::core::asserting::{TryCaptureGeneric, TryCapturePrintable};
+        let mut __capture0 = ::core::asserting::Capture::new();
+        let __local_bind0 = &elem;
+        if ::core::intrinsics::unlikely(!(*__local_bind0 == 1)) {
+            (&::core::asserting::Wrapper(__local_bind0)).try_capture(&mut __capture0);
+            {
+                ::std::rt::panic_fmt(format_args!("Assertion failed: elem == 1\nWith captures:\n  elem = {0:?}\n",
+                        __capture0));
+            }
+        }
+    };
+    {
+        #[allow(unused_imports)]
+        use ::core::asserting::{TryCaptureGeneric, TryCapturePrintable};
+        let mut __capture0 = ::core::asserting::Capture::new();
+        let __local_bind0 = &elem;
+        if ::core::intrinsics::unlikely(!(*__local_bind0 >= 1)) {
+            (&::core::asserting::Wrapper(__local_bind0)).try_capture(&mut __capture0);
+            {
+                ::std::rt::panic_fmt(format_args!("Assertion failed: elem >= 1\nWith captures:\n  elem = {0:?}\n",
+                        __capture0));
+            }
+        }
+    };
+    {
+        #[allow(unused_imports)]
+        use ::core::asserting::{TryCaptureGeneric, TryCapturePrintable};
+        let mut __capture0 = ::core::asserting::Capture::new();
+        let __local_bind0 = &elem;
+        if ::core::intrinsics::unlikely(!(*__local_bind0 > 0)) {
+            (&::core::asserting::Wrapper(__local_bind0)).try_capture(&mut __capture0);
+            {
+                ::std::rt::panic_fmt(format_args!("Assertion failed: elem > 0\nWith captures:\n  elem = {0:?}\n",
+                        __capture0));
+            }
+        }
+    };
+    {
+        #[allow(unused_imports)]
+        use ::core::asserting::{TryCaptureGeneric, TryCapturePrintable};
+        let mut __capture0 = ::core::asserting::Capture::new();
+        let __local_bind0 = &elem;
+        if ::core::intrinsics::unlikely(!(*__local_bind0 < 3)) {
+            (&::core::asserting::Wrapper(__local_bind0)).try_capture(&mut __capture0);
+            {
+                ::std::rt::panic_fmt(format_args!("Assertion failed: elem < 3\nWith captures:\n  elem = {0:?}\n",
+                        __capture0));
+            }
+        }
+    };
+    {
+        #[allow(unused_imports)]
+        use ::core::asserting::{TryCaptureGeneric, TryCapturePrintable};
+        let mut __capture0 = ::core::asserting::Capture::new();
+        let __local_bind0 = &elem;
+        if ::core::intrinsics::unlikely(!(*__local_bind0 <= 3)) {
+            (&::core::asserting::Wrapper(__local_bind0)).try_capture(&mut __capture0);
+            {
+                ::std::rt::panic_fmt(format_args!("Assertion failed: elem <= 3\nWith captures:\n  elem = {0:?}\n",
+                        __capture0));
+            }
+        }
+    };
+    {
+        #[allow(unused_imports)]
+        use ::core::asserting::{TryCaptureGeneric, TryCapturePrintable};
+        let mut __capture0 = ::core::asserting::Capture::new();
+        let __local_bind0 = &elem;
+        if ::core::intrinsics::unlikely(!(*__local_bind0 != 3)) {
+            (&::core::asserting::Wrapper(__local_bind0)).try_capture(&mut __capture0);
+            {
+                ::std::rt::panic_fmt(format_args!("Assertion failed: elem != 3\nWith captures:\n  elem = {0:?}\n",
+                        __capture0));
+            }
+        }
+    };
+}
+fn unary() {
+    let elem = &1i32;
+    {
+        #[allow(unused_imports)]
+        use ::core::asserting::{TryCaptureGeneric, TryCapturePrintable};
+        let mut __capture0 = ::core::asserting::Capture::new();
+        let __local_bind0 = &elem;
+        if ::core::intrinsics::unlikely(!**__local_bind0) {
+            (&::core::asserting::Wrapper(__local_bind0)).try_capture(&mut __capture0);
+            {
+                ::std::rt::panic_fmt(format_args!("Assertion failed: *elem\nWith captures:\n  elem = {0:?}\n",
+                        __capture0));
+            }
+        }
+    };
+}
+fn main() {}

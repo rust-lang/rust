@@ -1,0 +1,37 @@
+error[E0539]: malformed `cfg_attr` attribute input
+  --> $DIR/malformed-special-attrs.rs:1:1
+   |
+LL | #[cfg_attr]
+   | ^^^^^^^^^^^
+   | |
+   | expected this to be a list
+   | help: must be of the form: `#[cfg_attr(predicate, attr1, attr2, ...)]`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg_attr-attribute>
+
+error[E0539]: malformed `cfg_attr` attribute input
+  --> $DIR/malformed-special-attrs.rs:4:1
+   |
+LL | #[cfg_attr = ""]
+   | ^^^^^^^^^^^^^^^^
+   | |
+   | expected this to be a list
+   | help: must be of the form: `#[cfg_attr(predicate, attr1, attr2, ...)]`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg_attr-attribute>
+
+error: malformed `derive` attribute input
+  --> $DIR/malformed-special-attrs.rs:7:1
+   |
+LL | #[derive]
+   | ^^^^^^^^^ help: must be of the form: `#[derive(Trait1, Trait2, ...)]`
+
+error: malformed `derive` attribute input
+  --> $DIR/malformed-special-attrs.rs:10:1
+   |
+LL | #[derive = ""]
+   | ^^^^^^^^^^^^^^ help: must be of the form: `#[derive(Trait1, Trait2, ...)]`
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0539`.

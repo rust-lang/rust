@@ -1,0 +1,26 @@
+error[E0529]: expected an array or slice, found `Vec<Struct>`
+  --> $DIR/suppress-consider-slicing-issue-120605.rs:7:16
+   |
+LL |         if let [Struct { a: [] }] = &self.a {
+   |                ^^^^^^^^^^^^^^^^^^ pattern cannot match with input type `Vec<Struct>`
+   |
+help: consider slicing here
+   |
+LL |         if let [Struct { a: [] }] = &self.a[..] {
+   |                                            ++++
+
+error[E0529]: expected an array or slice, found `Vec<Struct>`
+  --> $DIR/suppress-consider-slicing-issue-120605.rs:7:29
+   |
+LL |         if let [Struct { a: [] }] = &self.a {
+   |                             ^^ pattern cannot match with input type `Vec<Struct>`
+
+error[E0529]: expected an array or slice, found `Vec<Struct>`
+  --> $DIR/suppress-consider-slicing-issue-120605.rs:13:29
+   |
+LL |         if let [Struct { a: [] }] = &self.a[..] {
+   |                             ^^ pattern cannot match with input type `Vec<Struct>`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0529`.

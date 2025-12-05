@@ -1,0 +1,19 @@
+warning: the feature `unsized_const_params` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/issue-97047-ice-1.rs:3:30
+   |
+LL | #![feature(adt_const_params, unsized_const_params, generic_const_exprs)]
+   |                              ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #95174 <https://github.com/rust-lang/rust/issues/95174> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+warning: the feature `generic_const_exprs` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/issue-97047-ice-1.rs:3:52
+   |
+LL | #![feature(adt_const_params, unsized_const_params, generic_const_exprs)]
+   |                                                    ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #76560 <https://github.com/rust-lang/rust/issues/76560> for more information
+
+warning: 2 warnings emitted
+

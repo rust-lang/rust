@@ -1,0 +1,44 @@
+error: `#[diagnostic::on_const]` can only be applied to trait impls
+  --> $DIR/misplaced_attr.rs:4:1
+   |
+LL | #[diagnostic::on_const(message = "tadaa", note = "boing")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | pub struct Foo;
+   | -------------- not a trait impl
+   |
+note: the lint level is defined here
+  --> $DIR/misplaced_attr.rs:2:9
+   |
+LL | #![deny(misplaced_diagnostic_attributes)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `#[diagnostic::on_const]` can only be applied to trait impls
+  --> $DIR/misplaced_attr.rs:8:1
+   |
+LL | #[diagnostic::on_const(message = "tadaa", note = "boing")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | impl const PartialEq for Foo {
+   | ---------------------------- not a trait impl
+
+error: `#[diagnostic::on_const]` can only be applied to trait impls
+  --> $DIR/misplaced_attr.rs:16:1
+   |
+LL | #[diagnostic::on_const(message = "tadaa", note = "boing")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | impl Foo {
+   | -------- not a trait impl
+
+error: `#[diagnostic::on_const]` can only be applied to trait impls
+  --> $DIR/misplaced_attr.rs:25:5
+   |
+LL |     #[diagnostic::on_const(message = "tadaa", note = "boing")]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL |     fn partial_cmp(&self, other: &Foo) -> Option<std::cmp::Ordering> {
+   |     ---------------------------------------------------------------- not a trait impl
+
+error: aborting due to 4 previous errors
+

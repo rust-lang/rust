@@ -1,0 +1,13 @@
+error: conflicting associated type bounds for `Item`
+  --> $DIR/associated-types-overridden-binding-2.rs:6:13
+   |
+LL | trait I32Iterator = Iterator<Item = i32>;
+   |                              ---------- `Item` is specified to be `i32` here
+...
+LL |     let _: &dyn I32Iterator<Item = u32> = &vec![42].into_iter();
+   |             ^^^^^^^^^^^^^^^^----------^
+   |                             |
+   |                             `Item` is specified to be `u32` here
+
+error: aborting due to 1 previous error
+

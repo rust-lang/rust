@@ -1,0 +1,33 @@
+error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
+  --> $DIR/issue-58022.rs:13:41
+   |
+LL |     fn new(slice: &[u8; Self::SIZE]) -> Self {
+   |                                         ^^^^ doesn't have a size known at compile-time
+   |
+   = help: within `Bar<[u8]>`, the trait `Sized` is not implemented for `[u8]`
+note: required because it appears within the type `Bar<[u8]>`
+  --> $DIR/issue-58022.rs:8:12
+   |
+LL | pub struct Bar<T: ?Sized>(T);
+   |            ^^^
+   = note: the return type of a function must have a statically known size
+
+error[E0790]: cannot refer to the associated constant on trait without specifying the corresponding `impl` type
+  --> $DIR/issue-58022.rs:4:25
+   |
+LL |     const SIZE: usize;
+   |     ----------------- `Foo::SIZE` defined here
+LL |
+LL |     fn new(slice: &[u8; Foo::SIZE]) -> Self;
+   |                         ^^^^^^^^^ cannot refer to the associated constant of trait
+
+error[E0423]: expected function, tuple struct or tuple variant, found trait `Foo`
+  --> $DIR/issue-58022.rs:15:9
+   |
+LL |         Foo(Box::new(*slice))
+   |         ^^^ not a function, tuple struct or tuple variant
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0277, E0423, E0790.
+For more information about an error, try `rustc --explain E0277`.

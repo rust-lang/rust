@@ -1,0 +1,27 @@
+error: cannot find derive macro `Sync` in this scope
+  --> $DIR/issue-33571.rs:2:10
+   |
+LL |          Sync,
+   |          ^^^^
+   |
+note: unsafe traits like `Sync` should be implemented explicitly
+  --> $DIR/issue-33571.rs:2:10
+   |
+LL |          Sync,
+   |          ^^^^
+
+error: cannot find derive macro `Sync` in this scope
+  --> $DIR/issue-33571.rs:2:10
+   |
+LL |          Sync,
+   |          ^^^^
+   |
+note: unsafe traits like `Sync` should be implemented explicitly
+  --> $DIR/issue-33571.rs:2:10
+   |
+LL |          Sync,
+   |          ^^^^
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 2 previous errors
+

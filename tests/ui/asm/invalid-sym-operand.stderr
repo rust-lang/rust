@@ -1,0 +1,26 @@
+error: invalid `sym` operand
+  --> $DIR/invalid-sym-operand.rs:27:24
+   |
+LL |         asm!("{}", sym x);
+   |                        ^ is a local variable
+   |
+   = help: `sym` operands must refer to either a function or a static
+
+error: invalid `sym` operand
+  --> $DIR/invalid-sym-operand.rs:13:19
+   |
+LL | global_asm!("{}", sym C);
+   |                   ^^^^^ is an `i32`
+   |
+   = help: `sym` operands must refer to either a function or a static
+
+error: invalid `sym` operand
+  --> $DIR/invalid-sym-operand.rs:25:20
+   |
+LL |         asm!("{}", sym C);
+   |                    ^^^^^ is an `i32`
+   |
+   = help: `sym` operands must refer to either a function or a static
+
+error: aborting due to 3 previous errors
+

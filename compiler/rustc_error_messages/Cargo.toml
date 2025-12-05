@@ -1,0 +1,22 @@
+[package]
+name = "rustc_error_messages"
+version = "0.0.0"
+edition = "2024"
+
+[dependencies]
+# tidy-alphabetical-start
+fluent-bundle = "0.16"
+fluent-syntax = "0.12"
+icu_list = { version = "2.0", default-features = false, features = ["alloc"] }
+icu_locale = { version = "2.0", default-features = false }
+intl-memoizer = "0.5.1"
+rustc_ast = { path = "../rustc_ast" }
+rustc_ast_pretty = { path = "../rustc_ast_pretty" }
+rustc_baked_icu_data = { path = "../rustc_baked_icu_data" }
+rustc_data_structures = { path = "../rustc_data_structures" }
+rustc_macros = { path = "../rustc_macros" }
+rustc_serialize = { path = "../rustc_serialize" }
+rustc_span = { path = "../rustc_span" }
+tracing = "0.1"
+unic-langid = { version = "0.9.0", features = ["macros"] }
+# tidy-alphabetical-end

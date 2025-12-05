@@ -1,0 +1,31 @@
+error: multiple implementations of this structure
+  --> tests/ui/multiple_inherent_impl_cfg.rs:11:1
+   |
+LL | impl A {}
+   | ^^^^^^^^^
+   |
+note: first implementation here
+  --> tests/ui/multiple_inherent_impl_cfg.rs:10:1
+   |
+LL | impl A {}
+   | ^^^^^^^^^
+note: the lint level is defined here
+  --> tests/ui/multiple_inherent_impl_cfg.rs:3:9
+   |
+LL | #![deny(clippy::multiple_inherent_impl)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: multiple implementations of this structure
+  --> tests/ui/multiple_inherent_impl_cfg.rs:25:1
+   |
+LL | impl B {}
+   | ^^^^^^^^^
+   |
+note: first implementation here
+  --> tests/ui/multiple_inherent_impl_cfg.rs:21:1
+   |
+LL | impl B {}
+   | ^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

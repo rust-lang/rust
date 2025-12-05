@@ -1,0 +1,327 @@
+Function name: async::c
+Raw bytes (9): 0x[01, 01, 00, 01, 01, 0b, 01, 00, 18]
+Number of files: 1
+- file 0 => $DIR/async.rs
+Number of expressions: 0
+Number of file 0 mappings: 1
+- Code(Counter(0)) at (prev + 11, 1) to (start + 0, 24)
+Highest counter ID seen: c0
+
+Function name: async::c::{closure#0}
+Raw bytes (31): 0x[01, 01, 01, 01, 05, 05, 01, 0b, 19, 00, 1a, 01, 01, 08, 00, 0e, 05, 01, 09, 00, 0a, 02, 02, 09, 00, 0a, 01, 02, 01, 00, 02]
+Number of files: 1
+- file 0 => $DIR/async.rs
+Number of expressions: 1
+- expression 0 operands: lhs = Counter(0), rhs = Counter(1)
+Number of file 0 mappings: 5
+- Code(Counter(0)) at (prev + 11, 25) to (start + 0, 26)
+- Code(Counter(0)) at (prev + 1, 8) to (start + 0, 14)
+- Code(Counter(1)) at (prev + 1, 9) to (start + 0, 10)
+- Code(Expression(0, Sub)) at (prev + 2, 9) to (start + 0, 10)
+    = (c0 - c1)
+- Code(Counter(0)) at (prev + 2, 1) to (start + 0, 2)
+Highest counter ID seen: c1
+
+Function name: async::d
+Raw bytes (9): 0x[01, 01, 00, 01, 01, 13, 01, 00, 13]
+Number of files: 1
+- file 0 => $DIR/async.rs
+Number of expressions: 0
+Number of file 0 mappings: 1
+- Code(Counter(0)) at (prev + 19, 1) to (start + 0, 19)
+Highest counter ID seen: c0
+
+Function name: async::d::{closure#0}
+Raw bytes (19): 0x[01, 01, 00, 03, 01, 13, 14, 00, 15, 01, 00, 16, 00, 17, 01, 00, 18, 00, 19]
+Number of files: 1
+- file 0 => $DIR/async.rs
+Number of expressions: 0
+Number of file 0 mappings: 3
+- Code(Counter(0)) at (prev + 19, 20) to (start + 0, 21)
+- Code(Counter(0)) at (prev + 0, 22) to (start + 0, 23)
+- Code(Counter(0)) at (prev + 0, 24) to (start + 0, 25)
+Highest counter ID seen: c0
+
+Function name: async::e (unused)
+Raw bytes (9): 0x[01, 01, 00, 01, 00, 15, 01, 00, 13]
+Number of files: 1
+- file 0 => $DIR/async.rs
+Number of expressions: 0
+Number of file 0 mappings: 1
+- Code(Zero) at (prev + 21, 1) to (start + 0, 19)
+Highest counter ID seen: (none)
+
+Function name: async::e::{closure#0} (unused)
+Raw bytes (19): 0x[01, 01, 00, 03, 00, 15, 14, 00, 15, 00, 00, 16, 00, 17, 00, 00, 18, 00, 19]
+Number of files: 1
+- file 0 => $DIR/async.rs
+Number of expressions: 0
+Number of file 0 mappings: 3
+- Code(Zero) at (prev + 21, 20) to (start + 0, 21)
+- Code(Zero) at (prev + 0, 22) to (start + 0, 23)
+- Code(Zero) at (prev + 0, 24) to (start + 0, 25)
+Highest counter ID seen: (none)
+
+Function name: async::f
+Raw bytes (9): 0x[01, 01, 00, 01, 01, 17, 01, 00, 13]
+Number of files: 1
+- file 0 => $DIR/async.rs
+Number of expressions: 0
+Number of file 0 mappings: 1
+- Code(Counter(0)) at (prev + 23, 1) to (start + 0, 19)
+Highest counter ID seen: c0
+
+Function name: async::f::{closure#0}
+Raw bytes (19): 0x[01, 01, 00, 03, 01, 17, 14, 00, 15, 01, 00, 16, 00, 17, 01, 00, 18, 00, 19]
+Number of files: 1
+- file 0 => $DIR/async.rs
+Number of expressions: 0
+Number of file 0 mappings: 3
+- Code(Counter(0)) at (prev + 23, 20) to (start + 0, 21)
+- Code(Counter(0)) at (prev + 0, 22) to (start + 0, 23)
+- Code(Counter(0)) at (prev + 0, 24) to (start + 0, 25)
+Highest counter ID seen: c0
+
+Function name: async::foo (unused)
+Raw bytes (9): 0x[01, 01, 00, 01, 00, 19, 01, 00, 1d]
+Number of files: 1
+- file 0 => $DIR/async.rs
+Number of expressions: 0
+Number of file 0 mappings: 1
+- Code(Zero) at (prev + 25, 1) to (start + 0, 29)
+Highest counter ID seen: (none)
+
+Function name: async::foo::{closure#0} (unused)
+Raw bytes (19): 0x[01, 01, 00, 03, 00, 19, 1e, 00, 1f, 00, 00, 20, 00, 2b, 00, 00, 2c, 00, 2d]
+Number of files: 1
+- file 0 => $DIR/async.rs
+Number of expressions: 0
+Number of file 0 mappings: 3
+- Code(Zero) at (prev + 25, 30) to (start + 0, 31)
+- Code(Zero) at (prev + 0, 32) to (start + 0, 43)
+- Code(Zero) at (prev + 0, 44) to (start + 0, 45)
+Highest counter ID seen: (none)
+
+Function name: async::g
+Raw bytes (9): 0x[01, 01, 00, 01, 01, 1b, 01, 00, 12]
+Number of files: 1
+- file 0 => $DIR/async.rs
+Number of expressions: 0
+Number of file 0 mappings: 1
+- Code(Counter(0)) at (prev + 27, 1) to (start + 0, 18)
+Highest counter ID seen: c0
+
+Function name: async::g::{closure#0} (unused)
+Raw bytes (64): 0x[01, 01, 00, 0c, 00, 1b, 13, 00, 14, 00, 01, 0b, 00, 0c, 00, 01, 09, 00, 0a, 00, 00, 0e, 00, 17, 00, 00, 1b, 00, 1c, 00, 00, 20, 00, 22, 00, 01, 09, 00, 0a, 00, 00, 0e, 00, 17, 00, 00, 1b, 00, 1c, 00, 00, 20, 00, 22, 00, 01, 0e, 00, 10, 00, 02, 01, 00, 02]
+Number of files: 1
+- file 0 => $DIR/async.rs
+Number of expressions: 0
+Number of file 0 mappings: 12
+- Code(Zero) at (prev + 27, 19) to (start + 0, 20)
+- Code(Zero) at (prev + 1, 11) to (start + 0, 12)
+- Code(Zero) at (prev + 1, 9) to (start + 0, 10)
+- Code(Zero) at (prev + 0, 14) to (start + 0, 23)
+- Code(Zero) at (prev + 0, 27) to (start + 0, 28)
+- Code(Zero) at (prev + 0, 32) to (start + 0, 34)
+- Code(Zero) at (prev + 1, 9) to (start + 0, 10)
+- Code(Zero) at (prev + 0, 14) to (start + 0, 23)
+- Code(Zero) at (prev + 0, 27) to (start + 0, 28)
+- Code(Zero) at (prev + 0, 32) to (start + 0, 34)
+- Code(Zero) at (prev + 1, 14) to (start + 0, 16)
+- Code(Zero) at (prev + 2, 1) to (start + 0, 2)
+Highest counter ID seen: (none)
+
+Function name: async::h
+Raw bytes (9): 0x[01, 01, 00, 01, 01, 23, 01, 00, 15]
+Number of files: 1
+- file 0 => $DIR/async.rs
+Number of expressions: 0
+Number of file 0 mappings: 1
+- Code(Counter(0)) at (prev + 35, 1) to (start + 0, 21)
+Highest counter ID seen: c0
+
+Function name: async::h::{closure#0} (unused)
+Raw bytes (44): 0x[01, 01, 00, 08, 00, 23, 16, 00, 17, 00, 03, 0b, 00, 0c, 00, 01, 09, 00, 0a, 00, 00, 0e, 00, 19, 00, 00, 1a, 00, 1b, 00, 00, 20, 00, 22, 00, 01, 0e, 00, 10, 00, 02, 01, 00, 02]
+Number of files: 1
+- file 0 => $DIR/async.rs
+Number of expressions: 0
+Number of file 0 mappings: 8
+- Code(Zero) at (prev + 35, 22) to (start + 0, 23)
+- Code(Zero) at (prev + 3, 11) to (start + 0, 12)
+- Code(Zero) at (prev + 1, 9) to (start + 0, 10)
+- Code(Zero) at (prev + 0, 14) to (start + 0, 25)
+- Code(Zero) at (prev + 0, 26) to (start + 0, 27)
+- Code(Zero) at (prev + 0, 32) to (start + 0, 34)
+- Code(Zero) at (prev + 1, 14) to (start + 0, 16)
+- Code(Zero) at (prev + 2, 1) to (start + 0, 2)
+Highest counter ID seen: (none)
+
+Function name: async::i
+Raw bytes (9): 0x[01, 01, 00, 01, 01, 2c, 01, 00, 12]
+Number of files: 1
+- file 0 => $DIR/async.rs
+Number of expressions: 0
+Number of file 0 mappings: 1
+- Code(Counter(0)) at (prev + 44, 1) to (start + 0, 18)
+Highest counter ID seen: c0
+
+Function name: async::i::{closure#0}
+Raw bytes (75): 0x[01, 01, 03, 05, 09, 11, 15, 0d, 11, 0d, 01, 2c, 13, 00, 14, 01, 04, 0b, 00, 0c, 09, 01, 09, 00, 0a, 01, 00, 0e, 00, 0f, 01, 00, 0e, 00, 18, 05, 00, 1c, 00, 21, 09, 00, 27, 00, 30, 15, 01, 09, 00, 0a, 02, 00, 0e, 00, 17, 11, 00, 1b, 00, 20, 15, 00, 24, 00, 26, 06, 01, 0e, 00, 10, 0b, 02, 01, 00, 02]
+Number of files: 1
+- file 0 => $DIR/async.rs
+Number of expressions: 3
+- expression 0 operands: lhs = Counter(1), rhs = Counter(2)
+- expression 1 operands: lhs = Counter(4), rhs = Counter(5)
+- expression 2 operands: lhs = Counter(3), rhs = Counter(4)
+Number of file 0 mappings: 13
+- Code(Counter(0)) at (prev + 44, 19) to (start + 0, 20)
+- Code(Counter(0)) at (prev + 4, 11) to (start + 0, 12)
+- Code(Counter(2)) at (prev + 1, 9) to (start + 0, 10)
+- Code(Counter(0)) at (prev + 0, 14) to (start + 0, 15)
+- Code(Counter(0)) at (prev + 0, 14) to (start + 0, 24)
+- Code(Counter(1)) at (prev + 0, 28) to (start + 0, 33)
+- Code(Counter(2)) at (prev + 0, 39) to (start + 0, 48)
+- Code(Counter(5)) at (prev + 1, 9) to (start + 0, 10)
+- Code(Expression(0, Sub)) at (prev + 0, 14) to (start + 0, 23)
+    = (c1 - c2)
+- Code(Counter(4)) at (prev + 0, 27) to (start + 0, 32)
+- Code(Counter(5)) at (prev + 0, 36) to (start + 0, 38)
+- Code(Expression(1, Sub)) at (prev + 1, 14) to (start + 0, 16)
+    = (c4 - c5)
+- Code(Expression(2, Add)) at (prev + 2, 1) to (start + 0, 2)
+    = (c3 + c4)
+Highest counter ID seen: c5
+
+Function name: async::j
+Raw bytes (65): 0x[01, 01, 03, 01, 05, 01, 0b, 05, 09, 0b, 01, 37, 01, 00, 0c, 01, 0b, 0b, 00, 0c, 05, 01, 09, 00, 0a, 01, 00, 0e, 00, 0f, 01, 00, 0e, 00, 1b, 05, 00, 1f, 00, 27, 09, 01, 09, 00, 0a, 02, 00, 0e, 00, 1a, 09, 00, 1e, 00, 20, 06, 01, 0e, 00, 10, 01, 02, 01, 00, 02]
+Number of files: 1
+- file 0 => $DIR/async.rs
+Number of expressions: 3
+- expression 0 operands: lhs = Counter(0), rhs = Counter(1)
+- expression 1 operands: lhs = Counter(0), rhs = Expression(2, Add)
+- expression 2 operands: lhs = Counter(1), rhs = Counter(2)
+Number of file 0 mappings: 11
+- Code(Counter(0)) at (prev + 55, 1) to (start + 0, 12)
+- Code(Counter(0)) at (prev + 11, 11) to (start + 0, 12)
+- Code(Counter(1)) at (prev + 1, 9) to (start + 0, 10)
+- Code(Counter(0)) at (prev + 0, 14) to (start + 0, 15)
+- Code(Counter(0)) at (prev + 0, 14) to (start + 0, 27)
+- Code(Counter(1)) at (prev + 0, 31) to (start + 0, 39)
+- Code(Counter(2)) at (prev + 1, 9) to (start + 0, 10)
+- Code(Expression(0, Sub)) at (prev + 0, 14) to (start + 0, 26)
+    = (c0 - c1)
+- Code(Counter(2)) at (prev + 0, 30) to (start + 0, 32)
+- Code(Expression(1, Sub)) at (prev + 1, 14) to (start + 0, 16)
+    = (c0 - (c1 + c2))
+- Code(Counter(0)) at (prev + 2, 1) to (start + 0, 2)
+Highest counter ID seen: c2
+
+Function name: async::j::c
+Raw bytes (31): 0x[01, 01, 01, 01, 05, 05, 01, 39, 05, 00, 16, 01, 01, 0c, 00, 12, 05, 01, 0d, 00, 0e, 02, 02, 0d, 00, 0e, 01, 02, 05, 00, 06]
+Number of files: 1
+- file 0 => $DIR/async.rs
+Number of expressions: 1
+- expression 0 operands: lhs = Counter(0), rhs = Counter(1)
+Number of file 0 mappings: 5
+- Code(Counter(0)) at (prev + 57, 5) to (start + 0, 22)
+- Code(Counter(0)) at (prev + 1, 12) to (start + 0, 18)
+- Code(Counter(1)) at (prev + 1, 13) to (start + 0, 14)
+- Code(Expression(0, Sub)) at (prev + 2, 13) to (start + 0, 14)
+    = (c0 - c1)
+- Code(Counter(0)) at (prev + 2, 5) to (start + 0, 6)
+Highest counter ID seen: c1
+
+Function name: async::j::d
+Raw bytes (19): 0x[01, 01, 00, 03, 01, 40, 05, 00, 11, 01, 00, 14, 00, 15, 01, 00, 16, 00, 17]
+Number of files: 1
+- file 0 => $DIR/async.rs
+Number of expressions: 0
+Number of file 0 mappings: 3
+- Code(Counter(0)) at (prev + 64, 5) to (start + 0, 17)
+- Code(Counter(0)) at (prev + 0, 20) to (start + 0, 21)
+- Code(Counter(0)) at (prev + 0, 22) to (start + 0, 23)
+Highest counter ID seen: c0
+
+Function name: async::j::f
+Raw bytes (19): 0x[01, 01, 00, 03, 01, 41, 05, 00, 11, 01, 00, 14, 00, 15, 01, 00, 16, 00, 17]
+Number of files: 1
+- file 0 => $DIR/async.rs
+Number of expressions: 0
+Number of file 0 mappings: 3
+- Code(Counter(0)) at (prev + 65, 5) to (start + 0, 17)
+- Code(Counter(0)) at (prev + 0, 20) to (start + 0, 21)
+- Code(Counter(0)) at (prev + 0, 22) to (start + 0, 23)
+Highest counter ID seen: c0
+
+Function name: async::k (unused)
+Raw bytes (34): 0x[01, 01, 00, 06, 00, 49, 01, 00, 0c, 00, 01, 0b, 00, 0c, 00, 01, 0e, 00, 10, 00, 01, 0e, 00, 10, 00, 01, 0e, 00, 10, 00, 02, 01, 00, 02]
+Number of files: 1
+- file 0 => $DIR/async.rs
+Number of expressions: 0
+Number of file 0 mappings: 6
+- Code(Zero) at (prev + 73, 1) to (start + 0, 12)
+- Code(Zero) at (prev + 1, 11) to (start + 0, 12)
+- Code(Zero) at (prev + 1, 14) to (start + 0, 16)
+- Code(Zero) at (prev + 1, 14) to (start + 0, 16)
+- Code(Zero) at (prev + 1, 14) to (start + 0, 16)
+- Code(Zero) at (prev + 2, 1) to (start + 0, 2)
+Highest counter ID seen: (none)
+
+Function name: async::l
+Raw bytes (38): 0x[01, 01, 02, 01, 07, 05, 09, 06, 01, 51, 01, 00, 0c, 01, 01, 0b, 00, 0c, 02, 01, 0e, 00, 10, 09, 01, 0e, 00, 10, 05, 01, 0e, 00, 10, 01, 02, 01, 00, 02]
+Number of files: 1
+- file 0 => $DIR/async.rs
+Number of expressions: 2
+- expression 0 operands: lhs = Counter(0), rhs = Expression(1, Add)
+- expression 1 operands: lhs = Counter(1), rhs = Counter(2)
+Number of file 0 mappings: 6
+- Code(Counter(0)) at (prev + 81, 1) to (start + 0, 12)
+- Code(Counter(0)) at (prev + 1, 11) to (start + 0, 12)
+- Code(Expression(0, Sub)) at (prev + 1, 14) to (start + 0, 16)
+    = (c0 - (c1 + c2))
+- Code(Counter(2)) at (prev + 1, 14) to (start + 0, 16)
+- Code(Counter(1)) at (prev + 1, 14) to (start + 0, 16)
+- Code(Counter(0)) at (prev + 2, 1) to (start + 0, 2)
+Highest counter ID seen: c2
+
+Function name: async::m
+Raw bytes (9): 0x[01, 01, 00, 01, 01, 59, 01, 00, 18]
+Number of files: 1
+- file 0 => $DIR/async.rs
+Number of expressions: 0
+Number of file 0 mappings: 1
+- Code(Counter(0)) at (prev + 89, 1) to (start + 0, 24)
+Highest counter ID seen: c0
+
+Function name: async::m::{closure#0} (unused)
+Raw bytes (19): 0x[01, 01, 00, 03, 00, 59, 19, 00, 1a, 00, 00, 1b, 00, 20, 00, 00, 21, 00, 22]
+Number of files: 1
+- file 0 => $DIR/async.rs
+Number of expressions: 0
+Number of file 0 mappings: 3
+- Code(Zero) at (prev + 89, 25) to (start + 0, 26)
+- Code(Zero) at (prev + 0, 27) to (start + 0, 32)
+- Code(Zero) at (prev + 0, 33) to (start + 0, 34)
+Highest counter ID seen: (none)
+
+Function name: async::main
+Raw bytes (69): 0x[01, 01, 00, 0d, 01, 5b, 01, 00, 0a, 01, 01, 0d, 00, 12, 01, 01, 0d, 00, 11, 01, 01, 09, 00, 13, 01, 00, 16, 00, 1e, 01, 00, 1f, 00, 20, 01, 01, 05, 00, 06, 01, 01, 05, 00, 06, 01, 01, 0d, 00, 11, 01, 01, 05, 00, 17, 01, 00, 18, 00, 1e, 01, 00, 1f, 00, 25, 01, 01, 01, 00, 02]
+Number of files: 1
+- file 0 => $DIR/async.rs
+Number of expressions: 0
+Number of file 0 mappings: 13
+- Code(Counter(0)) at (prev + 91, 1) to (start + 0, 10)
+- Code(Counter(0)) at (prev + 1, 13) to (start + 0, 18)
+- Code(Counter(0)) at (prev + 1, 13) to (start + 0, 17)
+- Code(Counter(0)) at (prev + 1, 9) to (start + 0, 19)
+- Code(Counter(0)) at (prev + 0, 22) to (start + 0, 30)
+- Code(Counter(0)) at (prev + 0, 31) to (start + 0, 32)
+- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 6)
+- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 6)
+- Code(Counter(0)) at (prev + 1, 13) to (start + 0, 17)
+- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 23)
+- Code(Counter(0)) at (prev + 0, 24) to (start + 0, 30)
+- Code(Counter(0)) at (prev + 0, 31) to (start + 0, 37)
+- Code(Counter(0)) at (prev + 1, 1) to (start + 0, 2)
+Highest counter ID seen: c0
+

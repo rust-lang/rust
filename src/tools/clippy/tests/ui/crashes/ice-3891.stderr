@@ -1,0 +1,10 @@
+error: invalid suffix `x` for number literal
+  --> tests/ui/crashes/ice-3891.rs:2:5
+   |
+LL |     1x;
+   |     ^^ invalid suffix `x`
+   |
+   = help: the suffix must be one of the numeric types (`u32`, `isize`, `f32`, etc.)
+
+error: aborting due to 1 previous error
+

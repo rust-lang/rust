@@ -1,0 +1,14 @@
+error: `use` of a local item without leading `self::`, `super::`, or `crate::`
+  --> $DIR/unqualified_local_imports.rs:14:5
+   |
+LL | use localmod::S;
+   |     ^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/unqualified_local_imports.rs:3:9
+   |
+LL | #![deny(unqualified_local_imports)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

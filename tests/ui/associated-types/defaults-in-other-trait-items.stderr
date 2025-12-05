@@ -1,0 +1,44 @@
+error[E0308]: mismatched types
+  --> $DIR/defaults-in-other-trait-items.rs:9:13
+   |
+LL |     type A = ();
+   |     ------ associated type defaults can't be assumed inside the trait defining them
+...
+LL |         let () = p;
+   |             ^^   - this expression has type `<Self as Tr>::A`
+   |             |
+   |             expected associated type, found `()`
+   |
+   = note: expected associated type `<Self as Tr>::A`
+                    found unit type `()`
+
+error[E0308]: mismatched types
+  --> $DIR/defaults-in-other-trait-items.rs:36:25
+   |
+LL |     type Ty = u8;
+   |     ------- associated type defaults can't be assumed inside the trait defining them
+...
+LL |     const C: Self::Ty = 0u8;
+   |                         ^^^ expected associated type, found `u8`
+   |
+   = note: expected associated type `<Self as AssocConst>::Ty`
+                         found type `u8`
+
+error[E0308]: mismatched types
+  --> $DIR/defaults-in-other-trait-items.rs:54:9
+   |
+LL |     type Res = isize;
+   |     -------- associated type defaults can't be assumed inside the trait defining them
+LL |
+LL |     fn infer_me_correctly() -> Self::Res {
+   |                                --------- expected `<Self as Trait>::Res` because of return type
+...
+LL |         2
+   |         ^ expected associated type, found integer
+   |
+   = note: expected associated type `<Self as Trait>::Res`
+                         found type `{integer}`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

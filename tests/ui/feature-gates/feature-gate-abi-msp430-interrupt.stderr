@@ -1,0 +1,73 @@
+error[E0658]: the extern "msp430-interrupt" ABI is experimental and subject to change
+  --> $DIR/feature-gate-abi-msp430-interrupt.rs:10:8
+   |
+LL | extern "msp430-interrupt" fn f() {}
+   |        ^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #38487 <https://github.com/rust-lang/rust/issues/38487> for more information
+   = help: add `#![feature(abi_msp430_interrupt)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: the extern "msp430-interrupt" ABI is experimental and subject to change
+  --> $DIR/feature-gate-abi-msp430-interrupt.rs:14:12
+   |
+LL |     extern "msp430-interrupt" fn m();
+   |            ^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #38487 <https://github.com/rust-lang/rust/issues/38487> for more information
+   = help: add `#![feature(abi_msp430_interrupt)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: the extern "msp430-interrupt" ABI is experimental and subject to change
+  --> $DIR/feature-gate-abi-msp430-interrupt.rs:17:12
+   |
+LL |     extern "msp430-interrupt" fn dm() {}
+   |            ^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #38487 <https://github.com/rust-lang/rust/issues/38487> for more information
+   = help: add `#![feature(abi_msp430_interrupt)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: the extern "msp430-interrupt" ABI is experimental and subject to change
+  --> $DIR/feature-gate-abi-msp430-interrupt.rs:23:12
+   |
+LL |     extern "msp430-interrupt" fn m() {}
+   |            ^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #38487 <https://github.com/rust-lang/rust/issues/38487> for more information
+   = help: add `#![feature(abi_msp430_interrupt)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: the extern "msp430-interrupt" ABI is experimental and subject to change
+  --> $DIR/feature-gate-abi-msp430-interrupt.rs:28:12
+   |
+LL |     extern "msp430-interrupt" fn im() {}
+   |            ^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #38487 <https://github.com/rust-lang/rust/issues/38487> for more information
+   = help: add `#![feature(abi_msp430_interrupt)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: the extern "msp430-interrupt" ABI is experimental and subject to change
+  --> $DIR/feature-gate-abi-msp430-interrupt.rs:32:18
+   |
+LL | type TA = extern "msp430-interrupt" fn();
+   |                  ^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #38487 <https://github.com/rust-lang/rust/issues/38487> for more information
+   = help: add `#![feature(abi_msp430_interrupt)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: the extern "msp430-interrupt" ABI is experimental and subject to change
+  --> $DIR/feature-gate-abi-msp430-interrupt.rs:35:8
+   |
+LL | extern "msp430-interrupt" {}
+   |        ^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #38487 <https://github.com/rust-lang/rust/issues/38487> for more information
+   = help: add `#![feature(abi_msp430_interrupt)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 7 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

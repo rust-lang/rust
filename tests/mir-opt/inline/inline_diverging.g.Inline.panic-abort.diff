@@ -1,0 +1,46 @@
+- // MIR for `g` before Inline
++ // MIR for `g` after Inline
+  
+  fn g(_1: i32) -> u32 {
+      debug i => _1;
+      let mut _0: u32;
+      let mut _2: bool;
+      let mut _3: i32;
+      let mut _4: i32;
+      let mut _5: !;
+      let _6: !;
++     scope 1 (inlined panic) {
++         let mut _7: !;
++     }
+  
+      bb0: {
+          StorageLive(_2);
+          StorageLive(_3);
+          _3 = copy _1;
+          _2 = Gt(move _3, const 0_i32);
+          switchInt(move _2) -> [0: bb2, otherwise: bb1];
+      }
+  
+      bb1: {
+          StorageDead(_3);
+          StorageLive(_4);
+          _4 = copy _1;
+          _0 = move _4 as u32 (IntToInt);
+          StorageDead(_4);
+          StorageDead(_2);
+          return;
+      }
+  
+      bb2: {
+          StorageDead(_3);
+          StorageLive(_6);
+-         _6 = panic() -> unwind unreachable;
++         StorageLive(_7);
++         _7 = begin_panic::<&str>(const "explicit panic") -> unwind unreachable;
+      }
++ }
++ 
++ ALLOC0 (size: 14, align: 1) {
++     65 78 70 6c 69 63 69 74 20 70 61 6e 69 63       │ explicit panic
+  }
+  

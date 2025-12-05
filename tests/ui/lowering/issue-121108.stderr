@@ -1,0 +1,17 @@
+error: `derive` attribute cannot be used at crate level
+  --> $DIR/issue-121108.rs:1:1
+   |
+LL | #![derive(Clone, Copy)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | use std::ptr::addr_of;
+   |               ------- the inner attribute doesn't annotate this import
+   |
+help: perhaps you meant to use an outer attribute
+   |
+LL - #![derive(Clone, Copy)]
+LL + #[derive(Clone, Copy)]
+   |
+
+error: aborting due to 1 previous error
+

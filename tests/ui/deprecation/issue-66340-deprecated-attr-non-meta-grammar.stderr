@@ -1,0 +1,13 @@
+error: expected a literal (`1u8`, `1.0f32`, `"string"`, etc.) here, found `test`
+  --> $DIR/issue-66340-deprecated-attr-non-meta-grammar.rs:9:21
+   |
+LL | #[deprecated(note = test)]
+   |                     ^^^^
+   |
+help: surround the identifier with quotation marks to make it into a string literal
+   |
+LL | #[deprecated(note = "test")]
+   |                     +    +
+
+error: aborting due to 1 previous error
+

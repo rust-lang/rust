@@ -1,0 +1,16 @@
+error[E0124]: field `a` is already declared
+  --> $DIR/fields-definition.rs:14:13
+   |
+LL |             a: u8,
+   |             ----- `a` first declared here
+LL |             $a: u8,
+   |             ^^^^^^ field already declared
+...
+LL | legacy!(a);
+   | ---------- in this macro invocation
+   |
+   = note: this error originates in the macro `legacy` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0124`.

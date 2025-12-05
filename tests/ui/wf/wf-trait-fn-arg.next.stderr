@@ -1,0 +1,19 @@
+error[E0277]: the trait bound `Self: Eq` is not satisfied
+  --> $DIR/wf-trait-fn-arg.rs:16:23
+   |
+LL |     fn bar(&self, x: &Bar<Self>);
+   |                       ^^^^^^^^^ the trait `Eq` is not implemented for `Self`
+   |
+note: required by a bound in `Bar`
+  --> $DIR/wf-trait-fn-arg.rs:11:15
+   |
+LL | struct Bar<T: Eq + ?Sized> {
+   |               ^^ required by this bound in `Bar`
+help: consider further restricting `Self`
+   |
+LL |     fn bar(&self, x: &Bar<Self>) where Self: Eq;
+   |                                  ++++++++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

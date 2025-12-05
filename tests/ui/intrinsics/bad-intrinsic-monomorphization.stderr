@@ -1,0 +1,21 @@
+error[E0511]: invalid monomorphization of `simd_add` intrinsic: expected SIMD input type, found non-SIMD `Foo`
+  --> $DIR/bad-intrinsic-monomorphization.rs:26:5
+   |
+LL |     intrinsics::simd::simd_add(a, b)
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0511]: invalid monomorphization of `fadd_fast` intrinsic: expected basic float type, found `Foo`
+  --> $DIR/bad-intrinsic-monomorphization.rs:21:5
+   |
+LL |     intrinsics::fadd_fast(a, b)
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0511]: invalid monomorphization of `cttz` intrinsic: expected basic integer type, found `Foo`
+  --> $DIR/bad-intrinsic-monomorphization.rs:16:5
+   |
+LL |     intrinsics::cttz(v)
+   |     ^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0511`.

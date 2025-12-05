@@ -1,0 +1,45 @@
+warning: the feature `specialization` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/specialization-overlap.rs:1:12
+   |
+LL | #![feature(specialization)]
+   |            ^^^^^^^^^^^^^^
+   |
+   = note: see issue #31844 <https://github.com/rust-lang/rust/issues/31844> for more information
+   = help: consider using `min_specialization` instead, which is more stable and complete
+   = note: `#[warn(incomplete_features)]` on by default
+
+error[E0119]: conflicting implementations of trait `Foo` for type `Vec<_>`
+  --> $DIR/specialization-overlap.rs:5:1
+   |
+LL | impl<T: Clone> Foo for T {}
+   | ------------------------ first implementation here
+LL | impl<T> Foo for Vec<T> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `Vec<_>`
+
+error[E0119]: conflicting implementations of trait `Bar` for type `(u8, u8)`
+  --> $DIR/specialization-overlap.rs:9:1
+   |
+LL | impl<T> Bar for (T, u8) {}
+   | ----------------------- first implementation here
+LL | impl<T> Bar for (u8, T) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `(u8, u8)`
+
+error[E0119]: conflicting implementations of trait `Baz<u8>` for type `u8`
+  --> $DIR/specialization-overlap.rs:13:1
+   |
+LL | impl<T> Baz<T> for u8 {}
+   | --------------------- first implementation here
+LL | impl<T> Baz<u8> for T {}
+   | ^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `u8`
+
+error[E0119]: conflicting implementations of trait `Qux`
+  --> $DIR/specialization-overlap.rs:17:1
+   |
+LL | impl<T: Clone> Qux for T {}
+   | ------------------------ first implementation here
+LL | impl<T: Eq> Qux for T {}
+   | ^^^^^^^^^^^^^^^^^^^^^ conflicting implementation
+
+error: aborting due to 4 previous errors; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0119`.

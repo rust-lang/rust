@@ -1,0 +1,246 @@
+error: the `dbg!` macro is intended as a debugging tool
+  --> tests/ui/dbg_macro/dbg_macro.rs:10:22
+   |
+LL |     if let Some(n) = dbg!(n.checked_sub(4)) { n } else { n }
+   |                      ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::dbg-macro` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::dbg_macro)]`
+help: remove the invocation before committing it to a version control system
+   |
+LL -     if let Some(n) = dbg!(n.checked_sub(4)) { n } else { n }
+LL +     if let Some(n) = n.checked_sub(4) { n } else { n }
+   |
+
+error: the `dbg!` macro is intended as a debugging tool
+  --> tests/ui/dbg_macro/dbg_macro.rs:16:8
+   |
+LL |     if dbg!(n <= 1) {
+   |        ^^^^^^^^^^^^
+   |
+help: remove the invocation before committing it to a version control system
+   |
+LL -     if dbg!(n <= 1) {
+LL +     if n <= 1 {
+   |
+
+error: the `dbg!` macro is intended as a debugging tool
+  --> tests/ui/dbg_macro/dbg_macro.rs:19:9
+   |
+LL |         dbg!(1)
+   |         ^^^^^^^
+   |
+help: remove the invocation before committing it to a version control system
+   |
+LL -         dbg!(1)
+LL +         1
+   |
+
+error: the `dbg!` macro is intended as a debugging tool
+  --> tests/ui/dbg_macro/dbg_macro.rs:22:9
+   |
+LL |         dbg!(n * factorial(n - 1))
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the invocation before committing it to a version control system
+   |
+LL -         dbg!(n * factorial(n - 1))
+LL +         n * factorial(n - 1)
+   |
+
+error: the `dbg!` macro is intended as a debugging tool
+  --> tests/ui/dbg_macro/dbg_macro.rs:28:5
+   |
+LL |     dbg!(42);
+   |     ^^^^^^^^
+   |
+help: remove the invocation before committing it to a version control system
+   |
+LL -     dbg!(42);
+LL +     42;
+   |
+
+error: the `dbg!` macro is intended as a debugging tool
+  --> tests/ui/dbg_macro/dbg_macro.rs:31:14
+   |
+LL |     foo(3) + dbg!(factorial(4));
+   |              ^^^^^^^^^^^^^^^^^^
+   |
+help: remove the invocation before committing it to a version control system
+   |
+LL -     foo(3) + dbg!(factorial(4));
+LL +     foo(3) + factorial(4);
+   |
+
+error: the `dbg!` macro is intended as a debugging tool
+  --> tests/ui/dbg_macro/dbg_macro.rs:34:5
+   |
+LL |     dbg!(1, 2, 3, 4, 5);
+   |     ^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the invocation before committing it to a version control system
+   |
+LL -     dbg!(1, 2, 3, 4, 5);
+LL +     (1, 2, 3, 4, 5);
+   |
+
+error: the `dbg!` macro is intended as a debugging tool
+  --> tests/ui/dbg_macro/dbg_macro.rs:56:5
+   |
+LL |     dbg!();
+   |     ^^^^^^
+   |
+help: remove the invocation before committing it to a version control system
+   |
+LL -     dbg!();
+   |
+
+error: the `dbg!` macro is intended as a debugging tool
+  --> tests/ui/dbg_macro/dbg_macro.rs:60:13
+   |
+LL |     let _ = dbg!();
+   |             ^^^^^^
+   |
+help: remove the invocation before committing it to a version control system
+   |
+LL -     let _ = dbg!();
+LL +     let _ = ();
+   |
+
+error: the `dbg!` macro is intended as a debugging tool
+  --> tests/ui/dbg_macro/dbg_macro.rs:63:9
+   |
+LL |     bar(dbg!());
+   |         ^^^^^^
+   |
+help: remove the invocation before committing it to a version control system
+   |
+LL -     bar(dbg!());
+LL +     bar(());
+   |
+
+error: the `dbg!` macro is intended as a debugging tool
+  --> tests/ui/dbg_macro/dbg_macro.rs:66:10
+   |
+LL |     foo!(dbg!());
+   |          ^^^^^^
+   |
+help: remove the invocation before committing it to a version control system
+   |
+LL -     foo!(dbg!());
+LL +     foo!(());
+   |
+
+error: the `dbg!` macro is intended as a debugging tool
+  --> tests/ui/dbg_macro/dbg_macro.rs:69:16
+   |
+LL |     foo2!(foo!(dbg!()));
+   |                ^^^^^^
+   |
+help: remove the invocation before committing it to a version control system
+   |
+LL -     foo2!(foo!(dbg!()));
+LL +     foo2!(foo!(()));
+   |
+
+error: the `dbg!` macro is intended as a debugging tool
+  --> tests/ui/dbg_macro/dbg_macro.rs:51:13
+   |
+LL |             dbg!();
+   |             ^^^^^^
+...
+LL |     expand_to_dbg!();
+   |     ---------------- in this macro invocation
+   |
+   = note: this error originates in the macro `expand_to_dbg` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: remove the invocation before committing it to a version control system
+   |
+LL -             dbg!();
+   |
+
+error: the `dbg!` macro is intended as a debugging tool
+  --> tests/ui/dbg_macro/dbg_macro.rs:92:9
+   |
+LL |         dbg!(2);
+   |         ^^^^^^^
+   |
+help: remove the invocation before committing it to a version control system
+   |
+LL -         dbg!(2);
+LL +         2;
+   |
+
+error: the `dbg!` macro is intended as a debugging tool
+  --> tests/ui/dbg_macro/dbg_macro.rs:99:5
+   |
+LL |     dbg!(1);
+   |     ^^^^^^^
+   |
+help: remove the invocation before committing it to a version control system
+   |
+LL -     dbg!(1);
+LL +     1;
+   |
+
+error: the `dbg!` macro is intended as a debugging tool
+  --> tests/ui/dbg_macro/dbg_macro.rs:105:5
+   |
+LL |     dbg!(1);
+   |     ^^^^^^^
+   |
+help: remove the invocation before committing it to a version control system
+   |
+LL -     dbg!(1);
+LL +     1;
+   |
+
+error: the `dbg!` macro is intended as a debugging tool
+  --> tests/ui/dbg_macro/dbg_macro.rs:112:9
+   |
+LL |         dbg!(1);
+   |         ^^^^^^^
+   |
+help: remove the invocation before committing it to a version control system
+   |
+LL -         dbg!(1);
+LL +         1;
+   |
+
+error: the `dbg!` macro is intended as a debugging tool
+  --> tests/ui/dbg_macro/dbg_macro.rs:119:31
+   |
+LL |         println!("dbg: {:?}", dbg!(s));
+   |                               ^^^^^^^
+   |
+help: remove the invocation before committing it to a version control system
+   |
+LL -         println!("dbg: {:?}", dbg!(s));
+LL +         println!("dbg: {:?}", s);
+   |
+
+error: the `dbg!` macro is intended as a debugging tool
+  --> tests/ui/dbg_macro/dbg_macro.rs:122:22
+   |
+LL |         print!("{}", dbg!(s));
+   |                      ^^^^^^^
+   |
+help: remove the invocation before committing it to a version control system
+   |
+LL -         print!("{}", dbg!(s));
+LL +         print!("{}", s);
+   |
+
+error: the `dbg!` macro is intended as a debugging tool
+  --> tests/ui/dbg_macro/dbg_macro.rs:138:36
+   |
+LL |         takes_async_fn(async |val| dbg!(val));
+   |                                    ^^^^^^^^^
+   |
+help: remove the invocation before committing it to a version control system
+   |
+LL -         takes_async_fn(async |val| dbg!(val));
+LL +         takes_async_fn(async |val| val);
+   |
+
+error: aborting due to 20 previous errors
+

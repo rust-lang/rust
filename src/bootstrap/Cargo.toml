@@ -1,0 +1,96 @@
+[package]
+name = "bootstrap"
+version = "0.0.0"
+edition = "2024"
+build = "build.rs"
+default-run = "bootstrap"
+
+[features]
+build-metrics = ["sysinfo"]
+tracing = ["dep:tracing", "dep:tracing-chrome", "dep:tracing-subscriber", "dep:chrono", "dep:tempfile"]
+
+[lib]
+path = "src/lib.rs"
+doctest = false
+
+[[bin]]
+name = "bootstrap"
+path = "src/bin/main.rs"
+test = false
+
+[[bin]]
+name = "rustc"
+path = "src/bin/rustc.rs"
+test = false
+
+[[bin]]
+name = "rustdoc"
+path = "src/bin/rustdoc.rs"
+test = false
+
+[dependencies]
+# Most of the time updating these dependencies requires modifications to the
+# bootstrap codebase(e.g., https://github.com/rust-lang/rust/issues/124565);
+# otherwise, some targets will fail. That's why these dependencies are explicitly pinned.
+cc = "=1.2.28"
+cmake = "=0.1.54"
+
+build_helper = { path = "../build_helper" }
+clap = { version = "4.4", default-features = false, features = ["std", "usage", "help", "derive", "error-context"] }
+clap_complete = "4.4"
+home = "0.5"
+ignore = "0.4"
+libc = "0.2"
+object = { version = "0.37", default-features = false, features = ["archive", "coff", "read_core", "std", "unaligned"] }
+opener = "0.8"
+semver = "1.0"
+serde = "1.0"
+# Directly use serde_derive rather than through the derive feature of serde to allow building both
+# in parallel and to allow serde_json and toml to start building as soon as serde has been built.
+serde_derive = "1.0"
+serde_json = "1.0"
+sha2 = "0.10"
+tar = { version = "0.4.44", default-features = false }
+termcolor = "1.4"
+toml = "0.5"
+walkdir = "2.4"
+xz2 = "0.1"
+
+# Dependencies needed by the build-metrics feature
+sysinfo = { version = "0.37.0", default-features = false, optional = true, features = ["system"] }
+
+# Dependencies needed by the `tracing` feature
+chrono = { version = "0.4", default-features = false, optional = true, features = ["now", "std"] }
+tracing = { version = "0.1", optional = true, features = ["attributes"] }
+tracing-chrome = { version = "0.7", optional = true }
+tracing-subscriber = { version = "0.3", optional = true, features = ["env-filter", "fmt", "registry", "std"] }
+tempfile = { version = "3.15.0", optional = true }
+
+[target.'cfg(windows)'.dependencies.junction]
+version = "1.3.0"
+
+[target.'cfg(windows)'.dependencies.windows]
+version = "0.61"
+features = [
+    "Win32_Foundation",
+    "Win32_Security",
+    "Win32_System_Diagnostics_Debug",
+    "Win32_System_JobObjects",
+    "Win32_System_ProcessStatus",
+    "Win32_System_Threading",
+    "Win32_System_Time",
+]
+
+[dev-dependencies]
+pretty_assertions = "1.4"
+tempfile = "3.15.0"
+insta = "1.43"
+
+# We care a lot about bootstrap's compile times, so don't include debuginfo for
+# dependencies, only bootstrap itself.
+[profile.dev]
+debug = 0
+
+[profile.dev.package]
+# Only use debuginfo=1 to further reduce compile times.
+bootstrap.debug = 1

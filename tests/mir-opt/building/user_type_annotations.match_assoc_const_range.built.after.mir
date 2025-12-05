@@ -1,0 +1,74 @@
+// MIR for `match_assoc_const_range` after built
+
+| User Type Annotations
+| 0: user_ty: Canonical { value: TypeOf(DefId(0:11 ~ user_type_annotations[ee8e]::MyTrait::FOO), UserArgs { args: [MyStruct, 'static], user_self_ty: None }), max_universe: U0, variables: [] }, span: $DIR/user_type_annotations.rs:63:11: 63:46, inferred_ty: u32
+| 1: user_ty: Canonical { value: TypeOf(DefId(0:11 ~ user_type_annotations[ee8e]::MyTrait::FOO), UserArgs { args: [MyStruct, 'static], user_self_ty: None }), max_universe: U0, variables: [] }, span: $DIR/user_type_annotations.rs:63:11: 63:46, inferred_ty: u32
+| 2: user_ty: Canonical { value: TypeOf(DefId(0:11 ~ user_type_annotations[ee8e]::MyTrait::FOO), UserArgs { args: [MyStruct, 'static], user_self_ty: None }), max_universe: U0, variables: [] }, span: $DIR/user_type_annotations.rs:64:9: 64:44, inferred_ty: u32
+| 3: user_ty: Canonical { value: TypeOf(DefId(0:11 ~ user_type_annotations[ee8e]::MyTrait::FOO), UserArgs { args: [MyStruct, 'static], user_self_ty: None }), max_universe: U0, variables: [] }, span: $DIR/user_type_annotations.rs:64:9: 64:44, inferred_ty: u32
+|
+fn match_assoc_const_range() -> () {
+    let mut _0: ();
+    let mut _1: u32;
+    let mut _2: bool;
+    let mut _3: bool;
+
+    bb0: {
+        StorageLive(_1);
+        _1 = const 8_u32;
+        PlaceMention(_1);
+        _3 = Lt(copy _1, const 99_u32);
+        switchInt(move _3) -> [0: bb4, otherwise: bb2];
+    }
+
+    bb1: {
+        _0 = const ();
+        goto -> bb11;
+    }
+
+    bb2: {
+        falseEdge -> [real: bb10, imaginary: bb4];
+    }
+
+    bb3: {
+        goto -> bb1;
+    }
+
+    bb4: {
+        _2 = Le(const 99_u32, copy _1);
+        switchInt(move _2) -> [0: bb5, otherwise: bb6];
+    }
+
+    bb5: {
+        goto -> bb1;
+    }
+
+    bb6: {
+        falseEdge -> [real: bb9, imaginary: bb1];
+    }
+
+    bb7: {
+        goto -> bb5;
+    }
+
+    bb8: {
+        FakeRead(ForMatchedPlace(None), _1);
+        unreachable;
+    }
+
+    bb9: {
+        AscribeUserType(_1, -, UserTypeProjection { base: UserType(3), projs: [] });
+        _0 = const ();
+        goto -> bb11;
+    }
+
+    bb10: {
+        AscribeUserType(_1, -, UserTypeProjection { base: UserType(1), projs: [] });
+        _0 = const ();
+        goto -> bb11;
+    }
+
+    bb11: {
+        StorageDead(_1);
+        return;
+    }
+}

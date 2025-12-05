@@ -1,0 +1,70 @@
+// This test ensures that opening the help page in its own tab works.
+go-to: "file://" + |DOC_PATH| + "/help.html"
+set-window-size: (1000, 1000) // Try desktop size first.
+wait-for: "#help"
+assert-css: ("#help", {"display": "block"})
+assert-css: ("#help dd", {"font-size": "16px"})
+assert-false: "#help-button > a"
+assert-css: ("#help", {"display": "block"})
+compare-elements-property: (".main-heading", "#help", ["offsetWidth"])
+compare-elements-position: (".main-heading", "#help", ["x"])
+set-window-size: (500, 1000) // Try mobile next.
+assert-css: ("#help", {"display": "block"})
+compare-elements-property: (".main-heading", "#help", ["offsetWidth"])
+compare-elements-position: (".main-heading", "#help", ["x"])
+
+// Checking the color of the elements of the help menu.
+show-text: true
+define-function: (
+    "check-colors",
+    [theme, color, background, box_shadow],
+    block {
+        // FIXME: no clue why we can't call the `switch-theme` function here...
+        set-local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
+        reload:
+        assert-css: ("#help kbd", {
+            "color": |color|,
+            "background-color": |background|,
+            "box-shadow": |box_shadow| + " 0px -1px 0px 0px inset",
+        }, ALL)
+    },
+)
+
+call-function: ("check-colors", {
+    "theme": "ayu",
+    "color": "#c5c5c5",
+    "background": "#314559",
+    "box_shadow": "#5c6773",
+})
+call-function: ("check-colors", {
+    "theme": "dark",
+    "color": "#000",
+    "background": "#fafbfc",
+    "box_shadow": "#c6cbd1",
+})
+call-function: ("check-colors", {
+    "theme": "light",
+    "color": "#000",
+    "background": "#fafbfc",
+    "box_shadow": "#c6cbd1",
+})
+
+// This test ensures that opening the help popover without switching pages works.
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html?search=a"
+wait-for: "#search-tabs" // Waiting for the search.js to load.
+set-window-size: (1000, 1000) // Only supported on desktop.
+assert-false: "#help"
+click: "rustdoc-toolbar .help-menu > a"
+assert-css: ("#help", {"display": "block"})
+assert-css: ("#help dd", {"font-size": "16px"})
+click: "rustdoc-toolbar .help-menu > a"
+assert-false: "#help"
+
+// This test ensures that the "the rustdoc book" anchor link within the help popover works.
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html?search=a"
+wait-for: "#search-tabs" // Waiting for the search.js to load.
+set-window-size: (1000, 1000) // Popover only appears when the screen width is >700px.
+assert-false: "#help"
+click: "rustdoc-toolbar .help-menu > a"
+click: "//*[@id='help']//a[text()='the rustdoc book']"
+wait-for-document-property: ({"URL": "https://doc.rust-lang.org/"}, STARTS_WITH)

@@ -1,0 +1,113 @@
+error: binary comparison to literal `Option::None`
+  --> tests/ui/partialeq_to_none.rs:14:8
+   |
+LL |     if f != None { "yay" } else { "nay" }
+   |        ^^^^^^^^^ help: use `Option::is_some()` instead: `f.is_some()`
+   |
+   = note: `-D clippy::partialeq-to-none` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::partialeq_to_none)]`
+
+error: binary comparison to literal `Option::None`
+  --> tests/ui/partialeq_to_none.rs:45:13
+   |
+LL |     let _ = x == None;
+   |             ^^^^^^^^^ help: use `Option::is_none()` instead: `x.is_none()`
+
+error: binary comparison to literal `Option::None`
+  --> tests/ui/partialeq_to_none.rs:47:13
+   |
+LL |     let _ = x != None;
+   |             ^^^^^^^^^ help: use `Option::is_some()` instead: `x.is_some()`
+
+error: binary comparison to literal `Option::None`
+  --> tests/ui/partialeq_to_none.rs:49:13
+   |
+LL |     let _ = None == x;
+   |             ^^^^^^^^^ help: use `Option::is_none()` instead: `x.is_none()`
+
+error: binary comparison to literal `Option::None`
+  --> tests/ui/partialeq_to_none.rs:51:13
+   |
+LL |     let _ = None != x;
+   |             ^^^^^^^^^ help: use `Option::is_some()` instead: `x.is_some()`
+
+error: binary comparison to literal `Option::None`
+  --> tests/ui/partialeq_to_none.rs:54:8
+   |
+LL |     if foobar() == None {}
+   |        ^^^^^^^^^^^^^^^^ help: use `Option::is_none()` instead: `foobar().is_none()`
+
+error: binary comparison to literal `Option::None`
+  --> tests/ui/partialeq_to_none.rs:57:8
+   |
+LL |     if bar().ok() != None {}
+   |        ^^^^^^^^^^^^^^^^^^ help: use `Option::is_some()` instead: `bar().ok().is_some()`
+
+error: binary comparison to literal `Option::None`
+  --> tests/ui/partialeq_to_none.rs:60:13
+   |
+LL |     let _ = Some(1 + 2) != None;
+   |             ^^^^^^^^^^^^^^^^^^^ help: use `Option::is_some()` instead: `Some(1 + 2).is_some()`
+
+error: binary comparison to literal `Option::None`
+  --> tests/ui/partialeq_to_none.rs:63:13
+   |
+LL |     let _ = { Some(0) } == None;
+   |             ^^^^^^^^^^^^^^^^^^^ help: use `Option::is_none()` instead: `{ Some(0) }.is_none()`
+
+error: binary comparison to literal `Option::None`
+  --> tests/ui/partialeq_to_none.rs:66:13
+   |
+LL |       let _ = {
+   |  _____________^
+LL | |
+LL | |         /*
+LL | |           This comment runs long
+LL | |         */
+LL | |         Some(1)
+LL | |     } != None;
+   | |_____________^
+   |
+help: use `Option::is_some()` instead
+   |
+LL ~     let _ = {
+LL +
+LL +         /*
+LL +           This comment runs long
+LL +         */
+LL +         Some(1)
+LL ~     }.is_some();
+   |
+
+error: binary comparison to literal `Option::None`
+  --> tests/ui/partialeq_to_none.rs:77:13
+   |
+LL |     let _ = optref() == &&None;
+   |             ^^^^^^^^^^^^^^^^^^ help: use `Option::is_none()` instead: `optref().is_none()`
+
+error: binary comparison to literal `Option::None`
+  --> tests/ui/partialeq_to_none.rs:79:13
+   |
+LL |     let _ = &&None != optref();
+   |             ^^^^^^^^^^^^^^^^^^ help: use `Option::is_some()` instead: `optref().is_some()`
+
+error: binary comparison to literal `Option::None`
+  --> tests/ui/partialeq_to_none.rs:81:13
+   |
+LL |     let _ = **optref() == None;
+   |             ^^^^^^^^^^^^^^^^^^ help: use `Option::is_none()` instead: `optref().is_none()`
+
+error: binary comparison to literal `Option::None`
+  --> tests/ui/partialeq_to_none.rs:83:13
+   |
+LL |     let _ = &None != *optref();
+   |             ^^^^^^^^^^^^^^^^^^ help: use `Option::is_some()` instead: `optref().is_some()`
+
+error: binary comparison to literal `Option::None`
+  --> tests/ui/partialeq_to_none.rs:87:13
+   |
+LL |     let _ = None != *x;
+   |             ^^^^^^^^^^ help: use `Option::is_some()` instead: `(*x).is_some()`
+
+error: aborting due to 15 previous errors
+

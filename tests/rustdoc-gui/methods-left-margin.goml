@@ -1,0 +1,18 @@
+// This test is to ensure that methods are correctly aligned on the left side.
+
+go-to: "file://" + |DOC_PATH| + "/test_docs/struct.Foo.html"
+// First we ensure that we have methods with and without documentation.
+assert: ".impl-items > details.method-toggle > summary > section.method"
+assert: ".impl-items > section.method"
+
+// Checking on desktop.
+set-window-size: (900, 600)
+wait-for-size: ("body", {"width": 900})
+store-position: (".impl-items section.method", {"x": x})
+assert-position: (".impl-items section.method", {"x": |x|}, ALL)
+
+// Checking on mobile.
+set-window-size: (600, 600)
+wait-for-size: ("body", {"width": 600})
+store-position: (".impl-items section.method", {"x": x})
+assert-position: (".impl-items section.method", {"x": |x|}, ALL)

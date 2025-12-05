@@ -1,0 +1,24 @@
+error[E0107]: trait takes 3 generic arguments but 1 generic argument was supplied
+  --> $DIR/unboxed-closure-sugar-wrong-number-number-type-parameters-3.rs:5:16
+   |
+LL | fn foo(_: &dyn Three())
+   |                ^^^^^-- supplied 1 generic argument
+   |                |
+   |                expected 3 generic arguments
+   |
+note: trait defined here, with 3 generic parameters: `A`, `B`, `C`
+  --> $DIR/unboxed-closure-sugar-wrong-number-number-type-parameters-3.rs:3:7
+   |
+LL | trait Three<A,B,C> { fn dummy(&self) -> (A,B,C); }
+   |       ^^^^^ - - -
+
+error[E0220]: associated type `Output` not found for `Three`
+  --> $DIR/unboxed-closure-sugar-wrong-number-number-type-parameters-3.rs:5:16
+   |
+LL | fn foo(_: &dyn Three())
+   |                ^^^^^^^ associated type `Output` not found
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0107, E0220.
+For more information about an error, try `rustc --explain E0107`.

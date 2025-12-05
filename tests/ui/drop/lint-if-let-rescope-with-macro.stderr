@@ -1,0 +1,44 @@
+error: `if let` assigns a shorter lifetime since Edition 2024
+  --> $DIR/lint-if-let-rescope-with-macro.rs:12:12
+   |
+LL |           if let $p = $e { $($conseq)* } else { $($alt)* }
+   |              ^^^^^^^^^^^
+...
+LL | /     edition_2021_if_let! {
+LL | |         Some(_value),
+LL | |         droppy().get(),
+   | |         -------- this value has a significant drop implementation which may observe a major change in drop order and requires your discretion
+LL | |         {}
+LL | |         {}
+LL | |     };
+   | |_____- in this macro invocation
+   |
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/temporary-if-let-scope.html>
+note: value invokes this custom destructor
+  --> $DIR/lint-if-let-rescope-with-macro.rs:22:1
+   |
+LL | impl Drop for Droppy {
+   | ^^^^^^^^^^^^^^^^^^^^
+help: the value is now dropped here in Edition 2024
+  --> $DIR/lint-if-let-rescope-with-macro.rs:12:38
+   |
+LL |           if let $p = $e { $($conseq)* } else { $($alt)* }
+   |                                        ^
+...
+LL | /     edition_2021_if_let! {
+LL | |         Some(_value),
+LL | |         droppy().get(),
+LL | |         {}
+LL | |         {}
+LL | |     };
+   | |_____- in this macro invocation
+note: the lint level is defined here
+  --> $DIR/lint-if-let-rescope-with-macro.rs:7:9
+   |
+LL | #![deny(if_let_rescope)]
+   |         ^^^^^^^^^^^^^^
+   = note: this error originates in the macro `edition_2021_if_let` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 1 previous error
+

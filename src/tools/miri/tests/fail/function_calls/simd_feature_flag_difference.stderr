@@ -1,0 +1,20 @@
+error: Undefined Behavior: calling a function that requires unavailable target features: avx
+  --> tests/fail/function_calls/simd_feature_flag_difference.rs:LL:CC
+   |
+LL |     unsafe { foo(0.0, x) }
+   |              ^^^^^^^^^^^ Undefined Behavior occurred here
+   |
+   = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
+   = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
+   = note: BACKTRACE:
+   = note: inside `bar` at tests/fail/function_calls/simd_feature_flag_difference.rs:LL:CC
+note: inside `main`
+  --> tests/fail/function_calls/simd_feature_flag_difference.rs:LL:CC
+   |
+LL |     let copy = bar(input);
+   |                ^^^^^^^^^^
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to 1 previous error
+

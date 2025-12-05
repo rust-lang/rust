@@ -1,0 +1,33 @@
+name: Diff Check
+on:
+  workflow_dispatch:
+    inputs:
+      clone_url:
+        description: 'Git url of a rustfmt fork to compare against the latest master rustfmt'
+        required: true
+      branch_name:
+        description: 'Name of the feature branch on the forked repo'
+        required: true
+      commit_hash:
+        description: 'Optional commit hash from the feature branch'
+        required: false
+      rustfmt_configs:
+        description: 'Optional comma separated list of rustfmt config options to pass when running the feature branch'
+        required: false
+
+jobs:
+  diff_check:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: checkout
+      uses: actions/checkout@v4
+
+    - name: install rustup
+      run: |
+        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs > rustup-init.sh
+        sh rustup-init.sh -y --default-toolchain none
+        rustup target add x86_64-unknown-linux-gnu
+
+    - name: check diff
+      run: bash ${GITHUB_WORKSPACE}/ci/check_diff.sh ${{ github.event.inputs.clone_url }} ${{ github.event.inputs.branch_name }} ${{ github.event.inputs.commit_hash || github.event.inputs.branch_name }} ${{ github.event.inputs.rustfmt_configs }}

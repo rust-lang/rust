@@ -1,0 +1,200 @@
+warning: value captured by `last` is never read
+  --> $DIR/liveness-upvars.rs:10:9
+   |
+LL |         last = Some(s);
+   |         ^^^^
+   |
+   = help: did you mean to capture by reference instead?
+note: the lint level is defined here
+  --> $DIR/liveness-upvars.rs:4:9
+   |
+LL | #![warn(unused)]
+   |         ^^^^^^
+   = note: `#[warn(unused_assignments)]` implied by `#[warn(unused)]`
+
+warning: value assigned to `last` is never read
+  --> $DIR/liveness-upvars.rs:10:9
+   |
+LL |         last = Some(s);
+   |         ^^^^^^^^^^^^^^
+   |
+   = help: maybe it is overwritten before being read?
+
+warning: value captured by `sum` is never read
+  --> $DIR/liveness-upvars.rs:22:9
+   |
+LL |         sum += x;
+   |         ^^^
+   |
+   = help: did you mean to capture by reference instead?
+
+warning: value assigned to `sum` is never read
+  --> $DIR/liveness-upvars.rs:22:9
+   |
+LL |         sum += x;
+   |         ^^^^^^^^
+   |
+   = help: maybe it is overwritten before being read?
+
+warning: value assigned to `c` is never read
+  --> $DIR/liveness-upvars.rs:69:9
+   |
+LL |         c += 1;
+   |         ^^^^^^
+   |
+   = help: maybe it is overwritten before being read?
+
+warning: value assigned to `c` is never read
+  --> $DIR/liveness-upvars.rs:63:9
+   |
+LL |         c += 1;
+   |         ^^^^^^
+   |
+   = help: maybe it is overwritten before being read?
+
+warning: value captured by `c` is never read
+  --> $DIR/liveness-upvars.rs:49:9
+   |
+LL |         c += 1;
+   |         ^
+   |
+   = help: did you mean to capture by reference instead?
+
+warning: value assigned to `c` is never read
+  --> $DIR/liveness-upvars.rs:49:9
+   |
+LL |         c += 1;
+   |         ^^^^^^
+   |
+   = help: maybe it is overwritten before being read?
+
+warning: value captured by `c` is never read
+  --> $DIR/liveness-upvars.rs:44:9
+   |
+LL |         c += 1;
+   |         ^
+   |
+   = help: did you mean to capture by reference instead?
+
+warning: value assigned to `c` is never read
+  --> $DIR/liveness-upvars.rs:44:9
+   |
+LL |         c += 1;
+   |         ^^^^^^
+   |
+   = help: maybe it is overwritten before being read?
+
+warning: value captured by `c` is never read
+  --> $DIR/liveness-upvars.rs:38:9
+   |
+LL |         c = 1;
+   |         ^
+   |
+   = help: did you mean to capture by reference instead?
+
+warning: value captured by `c` is never read
+  --> $DIR/liveness-upvars.rs:34:9
+   |
+LL |         c = 1;
+   |         ^
+   |
+   = help: did you mean to capture by reference instead?
+
+warning: value captured by `e` is never read
+  --> $DIR/liveness-upvars.rs:82:13
+   |
+LL |             e = Some("e1");
+   |             ^
+   |
+   = help: did you mean to capture by reference instead?
+
+warning: value assigned to `e` is never read
+  --> $DIR/liveness-upvars.rs:82:13
+   |
+LL |             e = Some("e1");
+   |             ^^^^^^^^^^^^^^
+   |
+   = help: maybe it is overwritten before being read?
+
+warning: value assigned to `e` is never read
+  --> $DIR/liveness-upvars.rs:84:13
+   |
+LL |             e = Some("e2");
+   |             ^^^^^^^^^^^^^^
+   |
+   = help: maybe it is overwritten before being read?
+
+warning: value assigned to `d` is never read
+  --> $DIR/liveness-upvars.rs:78:13
+   |
+LL |             d = Some("d1");
+   |             ^^^^^^^^^^^^^^
+   |
+   = help: maybe it is overwritten before being read?
+
+warning: value assigned to `v` is never read
+  --> $DIR/liveness-upvars.rs:92:13
+   |
+LL |             v = T::default();
+   |             ^
+   |
+   = help: maybe it is overwritten before being read?
+
+warning: value captured by `z` is never read
+  --> $DIR/liveness-upvars.rs:105:17
+   |
+LL |                 z = T::default();
+   |                 ^
+   |
+   = help: did you mean to capture by reference instead?
+
+warning: value assigned to `z` is never read
+  --> $DIR/liveness-upvars.rs:105:17
+   |
+LL |                 z = T::default();
+   |                 ^^^^^^^^^^^^^^^^
+   |
+   = help: maybe it is overwritten before being read?
+
+warning: value captured by `state` is never read
+  --> $DIR/liveness-upvars.rs:131:9
+   |
+LL |         state = 4;
+   |         ^^^^^
+   |
+   = help: did you mean to capture by reference instead?
+
+warning: value assigned to `state` is never read
+  --> $DIR/liveness-upvars.rs:131:9
+   |
+LL |         state = 4;
+   |         ^^^^^^^^^
+   |
+   = help: maybe it is overwritten before being read?
+
+warning: value assigned to `state` is never read
+  --> $DIR/liveness-upvars.rs:134:9
+   |
+LL |         state = 5;
+   |         ^^^^^^^^^
+   |
+   = help: maybe it is overwritten before being read?
+
+warning: value assigned to `s` is never read
+  --> $DIR/liveness-upvars.rs:143:9
+   |
+LL |         s = 1;
+   |         ^^^^^
+   |
+   = help: maybe it is overwritten before being read?
+
+warning: value assigned to `s` is never read
+  --> $DIR/liveness-upvars.rs:145:9
+   |
+LL |         s = yield ();
+   |         ^^^^^^^^^^^^
+   |
+   = help: maybe it is overwritten before being read?
+
+warning: 24 warnings emitted
+

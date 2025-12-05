@@ -1,0 +1,10 @@
+error: expected one of `!` or `::`, found `foo`
+  --> $DIR/fn-defined-using-func.rs:6:6
+   |
+LL | func foo() {}
+   | ---- ^^^ expected one of `!` or `::`
+   | |
+   | help: write `fn` instead of `func` to declare a function
+
+error: aborting due to 1 previous error
+

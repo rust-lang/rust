@@ -1,0 +1,35 @@
+[package]
+name = "base-db"
+version = "0.0.0"
+repository.workspace = true
+description = "Basic database traits for rust-analyzer. The concrete DB is defined by `ide` (aka `ra_ap_ide`)."
+
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[lib]
+doctest = false
+
+[dependencies]
+la-arena.workspace = true
+dashmap.workspace = true
+salsa.workspace = true
+salsa-macros.workspace = true
+query-group.workspace = true
+rustc-hash.workspace = true
+triomphe.workspace = true
+semver.workspace = true
+tracing.workspace = true
+indexmap.workspace = true
+
+# local deps
+cfg.workspace = true
+syntax.workspace = true
+vfs.workspace = true
+span.workspace = true
+intern.workspace = true
+
+[lints]
+workspace = true

@@ -1,0 +1,33 @@
+error[E0532]: expected a pattern, found a function call
+  --> $DIR/vec-macro-in-pattern.rs:7:14
+   |
+LL |         Some(vec![43]) => {}
+   |              ^^^^^^^^ not a tuple struct or tuple variant
+   |
+   = note: function calls are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
+   = note: this error originates in the macro `vec` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0658]: usage of qualified paths in this context is experimental
+  --> $DIR/vec-macro-in-pattern.rs:7:14
+   |
+LL |         Some(vec![43]) => {}
+   |              ^^^^^^^^
+   |
+   = note: see issue #86935 <https://github.com/rust-lang/rust/issues/86935> for more information
+   = help: add `#![feature(more_qualified_paths)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = note: this error originates in the macro `vec` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0164]: expected tuple struct or tuple variant, found associated function `<[_]>::into_vec`
+  --> $DIR/vec-macro-in-pattern.rs:7:14
+   |
+LL |         Some(vec![43]) => {}
+   |              ^^^^^^^^ `fn` calls are not allowed in patterns
+   |
+   = help: for more information, visit https://doc.rust-lang.org/book/ch19-00-patterns.html
+   = note: this error originates in the macro `vec` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0164, E0532, E0658.
+For more information about an error, try `rustc --explain E0164`.

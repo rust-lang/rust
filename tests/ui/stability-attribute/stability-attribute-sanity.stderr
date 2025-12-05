@@ -1,0 +1,142 @@
+error[E0541]: unknown meta item 'reason'
+  --> $DIR/stability-attribute-sanity.rs:8:46
+   |
+LL |     #[stable(feature = "a", since = "4.4.4", reason)]
+   |                                              ^^^^^^ expected one of `feature`, `since`
+
+error[E0539]: malformed `stable` attribute input
+  --> $DIR/stability-attribute-sanity.rs:11:5
+   |
+LL |     #[stable(feature = "a", since)]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^-----^^
+   |     |                       |
+   |     |                       expected this to be of the form `since = "..."`
+   |     help: must be of the form: `#[stable(feature = "name", since = "version")]`
+
+error[E0539]: malformed `stable` attribute input
+  --> $DIR/stability-attribute-sanity.rs:14:5
+   |
+LL |     #[stable(feature, since = "3.3.3")]
+   |     ^^^^^^^^^-------^^^^^^^^^^^^^^^^^^^
+   |     |        |
+   |     |        expected this to be of the form `feature = "..."`
+   |     help: must be of the form: `#[stable(feature = "name", since = "version")]`
+
+error[E0539]: malformed `stable` attribute input
+  --> $DIR/stability-attribute-sanity.rs:17:5
+   |
+LL |     #[stable(feature = "a", since(b))]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^--------^^
+   |     |                       |
+   |     |                       expected this to be of the form `since = "..."`
+   |     help: must be of the form: `#[stable(feature = "name", since = "version")]`
+
+error[E0539]: malformed `stable` attribute input
+  --> $DIR/stability-attribute-sanity.rs:20:5
+   |
+LL |     #[stable(feature(b), since = "3.3.3")]
+   |     ^^^^^^^^^----------^^^^^^^^^^^^^^^^^^^
+   |     |        |
+   |     |        expected this to be of the form `feature = "..."`
+   |     help: must be of the form: `#[stable(feature = "name", since = "version")]`
+
+error[E0546]: missing 'feature'
+  --> $DIR/stability-attribute-sanity.rs:25:5
+   |
+LL |     #[unstable(issue = "none")]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0547]: missing 'issue'
+  --> $DIR/stability-attribute-sanity.rs:28:5
+   |
+LL |     #[unstable(feature = "b")]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0546]: missing 'feature'
+  --> $DIR/stability-attribute-sanity.rs:31:5
+   |
+LL |     #[stable(since = "3.3.3")]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0542]: missing 'since'
+  --> $DIR/stability-attribute-sanity.rs:36:5
+   |
+LL |     #[stable(feature = "a")]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0542]: missing 'since'
+  --> $DIR/stability-attribute-sanity.rs:40:5
+   |
+LL |     #[deprecated(note = "a")]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0543]: missing 'note'
+  --> $DIR/stability-attribute-sanity.rs:44:5
+   |
+LL |     #[deprecated(since = "5.5.5")]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0544]: multiple stability levels
+  --> $DIR/stability-attribute-sanity.rs:49:1
+   |
+LL | #[stable(feature = "a", since = "4.4.4")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0544]: multiple stability levels
+  --> $DIR/stability-attribute-sanity.rs:53:1
+   |
+LL | #[unstable(feature = "b", issue = "none")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0544]: multiple stability levels
+  --> $DIR/stability-attribute-sanity.rs:57:1
+   |
+LL | #[stable(feature = "a", since = "4.4.4")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: 'since' must be a Rust version number, such as "1.31.0"
+  --> $DIR/stability-attribute-sanity.rs:60:1
+   |
+LL | #[stable(feature = "e", since = "b")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: multiple `deprecated` attributes
+  --> $DIR/stability-attribute-sanity.rs:62:1
+   |
+LL | #[deprecated(since = "5.5.5", note = "text")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
+   |
+note: attribute also specified here
+  --> $DIR/stability-attribute-sanity.rs:61:1
+   |
+LL | #[deprecated(since = "5.5.5", note = "text")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0544]: multiple stability levels
+  --> $DIR/stability-attribute-sanity.rs:64:1
+   |
+LL | #[rustc_const_unstable(feature = "d", issue = "none")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: 'since' must be a Rust version number, such as "1.31.0"
+  --> $DIR/stability-attribute-sanity.rs:68:1
+   |
+LL | #[deprecated(since = "invalid", note = "text")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0549]: deprecated attribute must be paired with either stable or unstable attribute
+  --> $DIR/stability-attribute-sanity.rs:71:1
+   |
+LL | #[deprecated(since = "5.5.5", note = "text")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0711]: feature `a` is declared stable since 1.0.0, but was previously declared stable since 4.4.4
+  --> $DIR/stability-attribute-sanity.rs:67:1
+   |
+LL | #[stable(feature = "a", since = "1.0.0")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 20 previous errors
+
+Some errors have detailed explanations: E0539, E0541, E0542, E0543, E0544, E0546, E0547, E0549, E0711.
+For more information about an error, try `rustc --explain E0539`.

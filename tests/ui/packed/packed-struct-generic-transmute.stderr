@@ -1,0 +1,12 @@
+error[E0512]: cannot transmute between types of different sizes, or dependently-sized types
+  --> $DIR/packed-struct-generic-transmute.rs:22:38
+   |
+LL |         let oof: Oof<[u8; 5], i32> = mem::transmute(foo);
+   |                                      ^^^^^^^^^^^^^^
+   |
+   = note: source type: `Foo<[u8; 5], i32>` (72 bits)
+   = note: target type: `Oof<[u8; 5], i32>` (96 bits)
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0512`.

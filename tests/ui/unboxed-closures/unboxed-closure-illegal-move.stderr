@@ -1,0 +1,83 @@
+error[E0507]: cannot move out of `x`, a captured variable in an `Fn` closure
+  --> $DIR/unboxed-closure-illegal-move.rs:15:31
+   |
+LL |         let x = Box::new(0);
+   |             -   ----------- move occurs because `x` has type `Box<i32>`, which does not implement the `Copy` trait
+   |             |
+   |             captured outer variable
+LL |         let f = to_fn(|| drop(x));
+   |                       --      ^ `x` is moved here
+   |                       |
+   |                       captured by this `Fn` closure
+   |
+help: `Fn` and `FnMut` closures require captured values to be able to be consumed multiple times, but `FnOnce` closures may consume them only once
+  --> $DIR/unboxed-closure-illegal-move.rs:7:33
+   |
+LL | fn to_fn<A:std::marker::Tuple,F:Fn<A>>(f: F) -> F { f }
+   |                                 ^^^^^
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |         let f = to_fn(|| drop(x.clone()));
+   |                                ++++++++
+
+error[E0507]: cannot move out of `x`, a captured variable in an `FnMut` closure
+  --> $DIR/unboxed-closure-illegal-move.rs:19:35
+   |
+LL |         let x = Box::new(0);
+   |             -   ----------- move occurs because `x` has type `Box<i32>`, which does not implement the `Copy` trait
+   |             |
+   |             captured outer variable
+LL |         let f = to_fn_mut(|| drop(x));
+   |                           --      ^ `x` is moved here
+   |                           |
+   |                           captured by this `FnMut` closure
+   |
+help: `Fn` and `FnMut` closures require captured values to be able to be consumed multiple times, but `FnOnce` closures may consume them only once
+  --> $DIR/unboxed-closure-illegal-move.rs:8:37
+   |
+LL | fn to_fn_mut<A:std::marker::Tuple,F:FnMut<A>>(f: F) -> F { f }
+   |                                     ^^^^^^^^
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |         let f = to_fn_mut(|| drop(x.clone()));
+   |                                    ++++++++
+
+error[E0507]: cannot move out of `x`, a captured variable in an `Fn` closure
+  --> $DIR/unboxed-closure-illegal-move.rs:28:36
+   |
+LL |         let x = Box::new(0);
+   |             -   ----------- move occurs because `x` has type `Box<i32>`, which does not implement the `Copy` trait
+   |             |
+   |             captured outer variable
+LL |         let f = to_fn(move || drop(x));
+   |                       -------      ^ `x` is moved here
+   |                       |
+   |                       captured by this `Fn` closure
+   |
+help: `Fn` and `FnMut` closures require captured values to be able to be consumed multiple times, but `FnOnce` closures may consume them only once
+  --> $DIR/unboxed-closure-illegal-move.rs:7:33
+   |
+LL | fn to_fn<A:std::marker::Tuple,F:Fn<A>>(f: F) -> F { f }
+   |                                 ^^^^^
+
+error[E0507]: cannot move out of `x`, a captured variable in an `FnMut` closure
+  --> $DIR/unboxed-closure-illegal-move.rs:32:40
+   |
+LL |         let x = Box::new(0);
+   |             -   ----------- move occurs because `x` has type `Box<i32>`, which does not implement the `Copy` trait
+   |             |
+   |             captured outer variable
+LL |         let f = to_fn_mut(move || drop(x));
+   |                           -------      ^ `x` is moved here
+   |                           |
+   |                           captured by this `FnMut` closure
+   |
+help: `Fn` and `FnMut` closures require captured values to be able to be consumed multiple times, but `FnOnce` closures may consume them only once
+  --> $DIR/unboxed-closure-illegal-move.rs:8:37
+   |
+LL | fn to_fn_mut<A:std::marker::Tuple,F:FnMut<A>>(f: F) -> F { f }
+   |                                     ^^^^^^^^
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0507`.

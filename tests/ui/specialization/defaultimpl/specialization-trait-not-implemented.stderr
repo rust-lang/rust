@@ -1,0 +1,29 @@
+warning: the feature `specialization` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/specialization-trait-not-implemented.rs:5:12
+   |
+LL | #![feature(specialization)]
+   |            ^^^^^^^^^^^^^^
+   |
+   = note: see issue #31844 <https://github.com/rust-lang/rust/issues/31844> for more information
+   = help: consider using `min_specialization` instead, which is more stable and complete
+   = note: `#[warn(incomplete_features)]` on by default
+
+error[E0599]: no method named `foo_one` found for struct `MyStruct` in the current scope
+  --> $DIR/specialization-trait-not-implemented.rs:22:29
+   |
+LL | struct MyStruct;
+   | --------------- method `foo_one` not found for this struct
+...
+LL |     println!("{}", MyStruct.foo_one());
+   |                             ^^^^^^^ method not found in `MyStruct`
+   |
+   = help: items from traits can only be used if the trait is implemented and in scope
+note: `Foo` defines an item `foo_one`, perhaps you need to implement it
+  --> $DIR/specialization-trait-not-implemented.rs:7:1
+   |
+LL | trait Foo {
+   | ^^^^^^^^^
+
+error: aborting due to 1 previous error; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0599`.

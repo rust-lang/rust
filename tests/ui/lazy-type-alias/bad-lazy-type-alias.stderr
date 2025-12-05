@@ -1,0 +1,28 @@
+warning: the feature `lazy_type_alias` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/bad-lazy-type-alias.rs:3:12
+   |
+LL | #![feature(lazy_type_alias)]
+   |            ^^^^^^^^^^^^^^^
+   |
+   = note: see issue #112792 <https://github.com/rust-lang/rust/issues/112792> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+error[E0107]: missing generics for type alias `ExplicitTypeOutlives`
+  --> $DIR/bad-lazy-type-alias.rs:9:24
+   |
+LL |     _significant_drop: ExplicitTypeOutlives,
+   |                        ^^^^^^^^^^^^^^^^^^^^ expected 1 generic argument
+   |
+note: type alias defined here, with 1 generic parameter: `T`
+  --> $DIR/bad-lazy-type-alias.rs:6:6
+   |
+LL | type ExplicitTypeOutlives<T> = T;
+   |      ^^^^^^^^^^^^^^^^^^^^ -
+help: add missing generic argument
+   |
+LL |     _significant_drop: ExplicitTypeOutlives<T>,
+   |                                            +++
+
+error: aborting due to 1 previous error; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0107`.

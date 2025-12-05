@@ -1,0 +1,21 @@
+error: defaults for generic parameters are not allowed here
+  --> $DIR/issue-105257.rs:5:12
+   |
+LL |     fn fnc<const N: usize = "">(&self) {}
+   |            ^^^^^^^^^^^^^^^^^^^
+
+error: defaults for generic parameters are not allowed here
+  --> $DIR/issue-105257.rs:7:12
+   |
+LL |     fn foo<const N: usize = { std::mem::size_of::<T>() }>(&self) {}
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0308]: mismatched types
+  --> $DIR/issue-105257.rs:5:29
+   |
+LL |     fn fnc<const N: usize = "">(&self) {}
+   |                             ^^ expected `usize`, found `&str`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

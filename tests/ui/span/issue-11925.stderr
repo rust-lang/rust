@@ -1,0 +1,9 @@
+error[E0515]: cannot return reference to local data `x`
+  --> $DIR/issue-11925.rs:8:35
+   |
+LL |         let f = to_fn_once(move|| &x);
+   |                                   ^^ returns a reference to data owned by the current function
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0515`.

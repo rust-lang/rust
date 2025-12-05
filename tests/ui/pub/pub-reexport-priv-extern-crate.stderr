@@ -1,0 +1,57 @@
+error[E0603]: crate import `core` is private
+  --> $DIR/pub-reexport-priv-extern-crate.rs:10:22
+   |
+LL |     use crate::foo1::core;
+   |                      ^^^^ private crate import
+   |
+note: the crate import `core` is defined here
+  --> $DIR/pub-reexport-priv-extern-crate.rs:6:5
+   |
+LL |     extern crate core;
+   |     ^^^^^^^^^^^^^^^^^^
+
+error[E0603]: crate import `core` is private
+  --> $DIR/pub-reexport-priv-extern-crate.rs:17:31
+   |
+LL |     pub use crate::foo2::bar::core;
+   |                               ^^^^ private crate import
+   |
+note: the crate import `core` is defined here
+  --> $DIR/pub-reexport-priv-extern-crate.rs:12:9
+   |
+LL |         extern crate core;
+   |         ^^^^^^^^^^^^^^^^^^
+
+error[E0365]: extern crate `core` is private and cannot be re-exported
+  --> $DIR/pub-reexport-priv-extern-crate.rs:2:9
+   |
+LL | pub use core as reexported_core;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #127909 <https://github.com/rust-lang/rust/issues/127909>
+   = note: `#[deny(pub_use_of_private_extern_crate)]` (part of `#[deny(future_incompatible)]`) on by default
+help: consider making the `extern crate` item publicly accessible
+   |
+LL | pub extern crate core;
+   | +++
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0365, E0603.
+For more information about an error, try `rustc --explain E0365`.
+Future incompatibility report: Future breakage diagnostic:
+error[E0365]: extern crate `core` is private and cannot be re-exported
+  --> $DIR/pub-reexport-priv-extern-crate.rs:2:9
+   |
+LL | pub use core as reexported_core;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #127909 <https://github.com/rust-lang/rust/issues/127909>
+   = note: `#[deny(pub_use_of_private_extern_crate)]` (part of `#[deny(future_incompatible)]`) on by default
+help: consider making the `extern crate` item publicly accessible
+   |
+LL | pub extern crate core;
+   | +++
+

@@ -1,0 +1,26 @@
+error[E0594]: cannot assign to `x`, as it is not declared as mutable
+  --> $DIR/closure-immut-capture-error.rs:14:9
+   |
+LL |         x = 2;
+   |         ^^^^^ cannot assign
+   |
+help: consider changing this to be mutable
+   |
+LL |     let mut x = 1;
+   |         +++
+
+error[E0596]: cannot borrow `s` as mutable, as it is not declared as mutable
+  --> $DIR/closure-immut-capture-error.rs:20:9
+   |
+LL |         s.read_to_end(&mut Vec::new());
+   |         ^ cannot borrow as mutable
+   |
+help: consider changing this to be mutable
+   |
+LL |     let mut s = std::io::stdin();
+   |         +++
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0594, E0596.
+For more information about an error, try `rustc --explain E0594`.

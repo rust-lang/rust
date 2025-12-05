@@ -1,0 +1,15 @@
+error: struct `Foo` is never constructed
+  --> tests/fail/deny_lint.rs:LL:CC
+   |
+LL | struct Foo;
+   |        ^^^
+   |
+note: the lint level is defined here
+  --> tests/fail/deny_lint.rs:LL:CC
+   |
+LL | #![deny(warnings, unused)]
+   |                   ^^^^^^
+   = note: `#[deny(dead_code)]` implied by `#[deny(unused)]`
+
+error: aborting due to 1 previous error
+

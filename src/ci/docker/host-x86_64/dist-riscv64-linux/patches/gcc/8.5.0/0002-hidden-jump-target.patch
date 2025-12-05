@@ -1,0 +1,117 @@
+From 45116f342057b7facecd3d05c2091ce3a77eda59 Mon Sep 17 00:00:00 2001
+From: Nelson Chu <nelson.chu@sifive.com>
+Date: Mon, 29 Nov 2021 04:48:20 -0800
+Subject: [PATCH] RISC-V: jal cannot refer to a default visibility symbol for
+ shared object.
+
+This is the original binutils bugzilla report,
+https://sourceware.org/bugzilla/show_bug.cgi?id=28509
+
+And this is the first version of the proposed binutils patch,
+https://sourceware.org/pipermail/binutils/2021-November/118398.html
+
+After applying the binutils patch, I get the unexpected error when
+building libgcc,
+
+/scratch/nelsonc/riscv-gnu-toolchain/riscv-gcc/libgcc/config/riscv/div.S:42:
+/scratch/nelsonc/build-upstream/rv64gc-linux/build-install/riscv64-unknown-linux-gnu/bin/ld: relocation R_RISCV_JAL against `__udivdi3' which may bind externally can not be used when making a shared object; recompile with -fPIC
+
+Therefore, this patch add an extra hidden alias symbol for __udivdi3, and
+then use HIDDEN_JUMPTARGET to target a non-preemptible symbol instead.
+The solution is similar to glibc as follows,
+https://sourceware.org/git/?p=glibc.git;a=commit;h=68389203832ab39dd0dbaabbc4059e7fff51c29b
+
+libgcc/ChangeLog:
+
+	* config/riscv/div.S: Add the hidden alias symbol for __udivdi3, and
+	then use HIDDEN_JUMPTARGET to target it since it is non-preemptible.
+	* config/riscv/riscv-asm.h: Added new macros HIDDEN_JUMPTARGET and
+	HIDDEN_DEF.
+---
+ libgcc/config/riscv/div.S       | 15 ++++++++-------
+ libgcc/config/riscv/riscv-asm.h |  6 ++++++
+ 2 files changed, 14 insertions(+), 7 deletions(-)
+
+diff --git a/libgcc/config/riscv/div.S b/libgcc/config/riscv/div.S
+index c9bd7879c1e36..723c3b82e48c6 100644
+--- a/libgcc/config/riscv/div.S
++++ b/libgcc/config/riscv/div.S
+@@ -40,7 +40,7 @@ FUNC_BEGIN (__udivsi3)
+   sll    a0, a0, 32
+   sll    a1, a1, 32
+   move   t0, ra
+-  jal    __udivdi3
++  jal    HIDDEN_JUMPTARGET(__udivdi3)
+   sext.w a0, a0
+   jr     t0
+ FUNC_END (__udivsi3)
+@@ -52,7 +52,7 @@ FUNC_BEGIN (__umodsi3)
+   srl    a0, a0, 32
+   srl    a1, a1, 32
+   move   t0, ra
+-  jal    __udivdi3
++  jal    HIDDEN_JUMPTARGET(__udivdi3)
+   sext.w a0, a1
+   jr     t0
+ FUNC_END (__umodsi3)
+@@ -95,11 +95,12 @@ FUNC_BEGIN (__udivdi3)
+ .L5:
+   ret
+ FUNC_END (__udivdi3)
++HIDDEN_DEF (__udivdi3)
+ 
+ FUNC_BEGIN (__umoddi3)
+   /* Call __udivdi3(a0, a1), then return the remainder, which is in a1.  */
+   move  t0, ra
+-  jal   __udivdi3
++  jal   HIDDEN_JUMPTARGET(__udivdi3)
+   move  a0, a1
+   jr    t0
+ FUNC_END (__umoddi3)
+@@ -111,12 +112,12 @@ FUNC_END (__umoddi3)
+   bgtz  a1, .L12     /* Compute __udivdi3(-a0, a1), then negate the result.  */
+ 
+   neg   a1, a1
+-  j     __udivdi3    /* Compute __udivdi3(-a0, -a1).  */
++  j     HIDDEN_JUMPTARGET(__udivdi3)     /* Compute __udivdi3(-a0, -a1).  */
+ .L11:                /* Compute __udivdi3(a0, -a1), then negate the result.  */
+   neg   a1, a1
+ .L12:
+   move  t0, ra
+-  jal   __udivdi3
++  jal   HIDDEN_JUMPTARGET(__udivdi3)
+   neg   a0, a0
+   jr    t0
+ FUNC_END (__divdi3)
+@@ -126,7 +127,7 @@ FUNC_BEGIN (__moddi3)
+   bltz   a1, .L31
+   bltz   a0, .L32
+ .L30:
+-  jal    __udivdi3    /* The dividend is not negative.  */
++  jal    HIDDEN_JUMPTARGET(__udivdi3)    /* The dividend is not negative.  */
+   move   a0, a1
+   jr     t0
+ .L31:
+@@ -134,7 +135,7 @@ FUNC_BEGIN (__moddi3)
+   bgez   a0, .L30
+ .L32:
+   neg    a0, a0
+-  jal    __udivdi3    /* The dividend is hella negative.  */
++  jal    HIDDEN_JUMPTARGET(__udivdi3)    /* The dividend is hella negative.  */
+   neg    a0, a1
+   jr     t0
+ FUNC_END (__moddi3)
+diff --git a/libgcc/config/riscv/riscv-asm.h b/libgcc/config/riscv/riscv-asm.h
+index 8550707a4a26a..96dd85b0df2e5 100644
+--- a/libgcc/config/riscv/riscv-asm.h
++++ b/libgcc/config/riscv/riscv-asm.h
+@@ -33,3 +33,9 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
+ #define FUNC_ALIAS(X,Y)		\
+ 	.globl X;		\
+ 	X = Y
++
++#define CONCAT1(a, b)		CONCAT2(a, b)
++#define CONCAT2(a, b)		a ## b
++#define HIDDEN_JUMPTARGET(X)	CONCAT1(__hidden_, X)
++#define HIDDEN_DEF(X)		FUNC_ALIAS(HIDDEN_JUMPTARGET(X), X);     \
++				.hidden HIDDEN_JUMPTARGET(X)

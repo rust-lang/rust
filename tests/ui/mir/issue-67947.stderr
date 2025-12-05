@@ -1,0 +1,16 @@
+error[E0161]: cannot move a value of type `str`
+  --> $DIR/issue-67947.rs:2:13
+   |
+LL |     A: [(); { *"" }.len()],
+   |             ^^^^^^^ the size of `str` cannot be statically determined
+
+error[E0507]: cannot move out of a shared reference
+  --> $DIR/issue-67947.rs:2:15
+   |
+LL |     A: [(); { *"" }.len()],
+   |               ^^^ move occurs because value has type `str`, which does not implement the `Copy` trait
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0161, E0507.
+For more information about an error, try `rustc --explain E0161`.

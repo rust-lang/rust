@@ -1,0 +1,17 @@
+error[E0382]: use of moved value: `hello`
+  --> $DIR/closure-origin-struct-diagnostics.rs:21:13
+   |
+LL |     let b = hello;
+   |             ----- value moved here
+LL |     let c = hello;
+   |             ^^^^^ value used here after move
+   |
+note: closure cannot be moved more than once as it is not `Copy` due to moving the variable `x.y.a` out of its environment
+  --> $DIR/closure-origin-struct-diagnostics.rs:17:9
+   |
+LL |         x.y.a += 1;
+   |         ^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0382`.

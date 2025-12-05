@@ -1,0 +1,79 @@
+error: range-to patterns with `...` are not allowed
+  --> $DIR/range-pattern-meant-to-be-slice-rest-pattern.rs:17:13
+   |
+LL |         [_, ...tail] => println!("{tail}"),
+   |             ^^^
+   |
+help: use `..=` instead
+   |
+LL -         [_, ...tail] => println!("{tail}"),
+LL +         [_, ..=tail] => println!("{tail}"),
+   |
+
+error[E0425]: cannot find value `rest` in this scope
+  --> $DIR/range-pattern-meant-to-be-slice-rest-pattern.rs:3:13
+   |
+LL |         [1, rest..] => println!("{rest}"),
+   |             ^^^^ not found in this scope
+   |
+help: if you meant to collect the rest of the slice in `rest`, use the at operator
+   |
+LL |         [1, rest @ ..] => println!("{rest}"),
+   |                  +
+
+error[E0425]: cannot find value `rest` in this scope
+  --> $DIR/range-pattern-meant-to-be-slice-rest-pattern.rs:3:35
+   |
+LL |         [1, rest..] => println!("{rest}"),
+   |                                   ^^^^ not found in this scope
+
+error[E0425]: cannot find value `tail` in this scope
+  --> $DIR/range-pattern-meant-to-be-slice-rest-pattern.rs:11:15
+   |
+LL |         [_, ..tail] => println!("{tail}"),
+   |               ^^^^ not found in this scope
+   |
+help: if you meant to collect the rest of the slice in `tail`, use the at operator
+   |
+LL -         [_, ..tail] => println!("{tail}"),
+LL +         [_, tail @ ..] => println!("{tail}"),
+   |
+
+error[E0425]: cannot find value `tail` in this scope
+  --> $DIR/range-pattern-meant-to-be-slice-rest-pattern.rs:11:35
+   |
+LL |         [_, ..tail] => println!("{tail}"),
+   |                                   ^^^^ not found in this scope
+
+error[E0425]: cannot find value `tail` in this scope
+  --> $DIR/range-pattern-meant-to-be-slice-rest-pattern.rs:17:16
+   |
+LL |         [_, ...tail] => println!("{tail}"),
+   |                ^^^^ not found in this scope
+   |
+help: if you meant to collect the rest of the slice in `tail`, use the at operator
+   |
+LL -         [_, ...tail] => println!("{tail}"),
+LL +         [_, tail @ ..] => println!("{tail}"),
+   |
+
+error[E0425]: cannot find value `tail` in this scope
+  --> $DIR/range-pattern-meant-to-be-slice-rest-pattern.rs:17:36
+   |
+LL |         [_, ...tail] => println!("{tail}"),
+   |                                    ^^^^ not found in this scope
+
+error[E0658]: `X..` patterns in slices are experimental
+  --> $DIR/range-pattern-meant-to-be-slice-rest-pattern.rs:3:13
+   |
+LL |         [1, rest..] => println!("{rest}"),
+   |             ^^^^^^
+   |
+   = note: see issue #67264 <https://github.com/rust-lang/rust/issues/67264> for more information
+   = help: add `#![feature(half_open_range_patterns_in_slices)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 8 previous errors
+
+Some errors have detailed explanations: E0425, E0658.
+For more information about an error, try `rustc --explain E0425`.

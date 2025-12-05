@@ -1,0 +1,26 @@
+[package]
+name = "rustc_hir"
+version = "0.0.0"
+edition = "2024"
+
+[dependencies]
+# tidy-alphabetical-start
+bitflags = "2.9.1"
+odht = { version = "0.3.1", features = ["nightly"] }
+rustc_abi = { path = "../rustc_abi" }
+rustc_arena = { path = "../rustc_arena" }
+rustc_ast = { path = "../rustc_ast" }
+rustc_ast_pretty = { path = "../rustc_ast_pretty" }
+rustc_data_structures = { path = "../rustc_data_structures" }
+rustc_error_messages = { path = "../rustc_error_messages" }
+rustc_hashes = { path = "../rustc_hashes" }
+rustc_hir_id = { path = "../rustc_hir_id" }
+rustc_index = { path = "../rustc_index" }
+rustc_macros = { path = "../rustc_macros" }
+rustc_serialize = { path = "../rustc_serialize" }
+rustc_span = { path = "../rustc_span" }
+rustc_target = { path = "../rustc_target" }
+smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
+thin-vec = "0.2.12"
+tracing = "0.1"
+# tidy-alphabetical-end

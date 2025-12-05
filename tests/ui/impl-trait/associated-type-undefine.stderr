@@ -1,0 +1,23 @@
+error: unconstrained opaque type
+  --> $DIR/associated-type-undefine.rs:18:16
+   |
+LL |     type Bar = impl Sized;
+   |                ^^^^^^^^^^
+   |
+   = note: `Bar` must be used in combination with a concrete type within the same impl
+
+error[E0308]: mismatched types
+  --> $DIR/associated-type-undefine.rs:24:14
+   |
+LL |     type Bar = impl Sized;
+   |                ---------- the expected opaque type
+...
+LL |         ((), ())
+   |              ^^ expected opaque type, found `()`
+   |
+   = note: expected opaque type `<() as Foo>::Bar`
+                found unit type `()`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

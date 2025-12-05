@@ -1,0 +1,83 @@
+error: `allow_internal_unstable` expects a list of feature names
+  --> $DIR/internal-unstable.rs:10:5
+   |
+LL |     #[allow_internal_unstable]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `allow_internal_unstable` expects a list of feature names
+  --> $DIR/internal-unstable.rs:61:9
+   |
+LL |         #[allow_internal_unstable]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0658]: use of unstable library feature `function`
+  --> $DIR/internal-unstable.rs:50:25
+   |
+LL |     pass_through_allow!(internal_unstable::unstable());
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(function)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `function`
+  --> $DIR/internal-unstable.rs:52:27
+   |
+LL |     pass_through_noallow!(internal_unstable::unstable());
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(function)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `function`
+  --> $DIR/internal-unstable.rs:56:22
+   |
+LL |     println!("{:?}", internal_unstable::unstable());
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(function)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `function`
+  --> $DIR/internal-unstable.rs:58:10
+   |
+LL |     bar!(internal_unstable::unstable());
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(function)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `function`
+  --> $DIR/internal-unstable.rs:20:9
+   |
+LL |         internal_unstable::unstable();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL |     bar!(internal_unstable::unstable());
+   |     ----------------------------------- in this macro invocation
+   |
+   = help: add `#![feature(function)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = note: this error originates in the macro `foo` which comes from the expansion of the macro `bar` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: `#[allow_internal_unstable]` attribute cannot be used on struct fields
+  --> $DIR/internal-unstable.rs:10:5
+   |
+LL |     #[allow_internal_unstable]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = help: `#[allow_internal_unstable]` can be applied to functions and macro defs
+   = note: requested on the command line with `-W unused-attributes`
+
+warning: `#[allow_internal_unstable]` attribute cannot be used on match arms
+  --> $DIR/internal-unstable.rs:61:9
+   |
+LL |         #[allow_internal_unstable]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = help: `#[allow_internal_unstable]` can be applied to functions and macro defs
+
+error: aborting due to 7 previous errors; 2 warnings emitted
+
+For more information about this error, try `rustc --explain E0658`.

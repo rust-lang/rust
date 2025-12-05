@@ -1,0 +1,75 @@
+error[E0080]: constructing invalid value: encountered 0x03, but expected a boolean
+  --> $DIR/detect-extra-ub.rs:30:20
+   |
+LL |     let _x: bool = transmute(3u8);
+   |                    ^^^^^^^^^^^^^^ evaluation of `INVALID_BOOL` failed here
+
+error[E0080]: constructing invalid value: encountered a pointer, but expected an integer
+  --> $DIR/detect-extra-ub.rs:35:21
+   |
+LL |     let _x: usize = transmute(&3u8);
+   |                     ^^^^^^^^^^^^^^^ evaluation of `INVALID_PTR_IN_INT` failed here
+   |
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
+
+error[E0080]: constructing invalid value at .<enum-tag>: encountered a pointer, but expected an integer
+  --> $DIR/detect-extra-ub.rs:40:28
+   |
+LL |     let _x: PtrSizedEnum = transmute(&3u8);
+   |                            ^^^^^^^^^^^^^^^ evaluation of `INVALID_PTR_IN_ENUM` failed here
+   |
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
+
+error[E0080]: constructing invalid value at .0: encountered a pointer, but expected an integer
+  --> $DIR/detect-extra-ub.rs:46:30
+   |
+LL |     let _x: (usize, usize) = transmute(x);
+   |                              ^^^^^^^^^^^^ evaluation of `INVALID_SLICE_TO_USIZE_TRANSMUTE` failed here
+   |
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
+
+error[E0080]: constructing invalid value: encountered an unaligned reference (required 4 byte alignment but found 1)
+  --> $DIR/detect-extra-ub.rs:51:20
+   |
+LL |     let _x: &u32 = transmute(&[0u8; 4]);
+   |                    ^^^^^^^^^^^^^^^^^^^^ evaluation of `UNALIGNED_PTR` failed here
+
+error[E0080]: constructing invalid value: encountered a maybe-null function pointer
+  --> $DIR/detect-extra-ub.rs:57:20
+   |
+LL |       let _x: fn() = transmute({
+   |  ____________________^
+LL | |
+LL | |         fn fun() {}
+LL | |         let ptr = fun as fn();
+LL | |         (ptr as *const u8).wrapping_add(10)
+LL | |     });
+   | |______^ evaluation of `MAYBE_NULL_FN_PTR` failed here
+
+error[E0080]: constructing invalid value at .<enum-tag>: encountered an uninhabited enum variant
+  --> $DIR/detect-extra-ub.rs:68:13
+   |
+LL |     let v = *addr_of!(data).cast::<UninhDiscriminant>();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `UNINHABITED_VARIANT` failed here
+
+error[E0080]: constructing invalid value at [0]: encountered a partial pointer or a mix of pointers
+  --> $DIR/detect-extra-ub.rs:87:16
+   |
+LL |     let _val = *(&mem as *const Align as *const [*const u8; 2]);
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `PARTIAL_POINTER` failed here
+   |
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
+
+error[E0080]: constructing invalid value: encountered invalid reference metadata: slice is bigger than largest supported object
+  --> $DIR/detect-extra-ub.rs:101:16
+   |
+LL |     let _val = &*slice;
+   |                ^^^^^^^ evaluation of `OVERSIZED_REF` failed here
+
+error: aborting due to 9 previous errors
+
+For more information about this error, try `rustc --explain E0080`.

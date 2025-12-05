@@ -1,0 +1,60 @@
+error[E0324]: item `CONST` is an associated method, which doesn't match its trait `Trait`
+  --> $DIR/glob-non-fn.rs:30:5
+   |
+LL |     const CONST: u8;
+   |     ---------------- item in trait
+...
+LL |     reuse Trait::* { &self.0 }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ does not match trait
+
+error[E0324]: item `Type` is an associated method, which doesn't match its trait `Trait`
+  --> $DIR/glob-non-fn.rs:30:5
+   |
+LL |     type Type;
+   |     ---------- item in trait
+...
+LL |     reuse Trait::* { &self.0 }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ does not match trait
+
+error[E0201]: duplicate definitions with name `method`:
+  --> $DIR/glob-non-fn.rs:30:5
+   |
+LL |     fn method(&self);
+   |     ----------------- item in trait
+...
+LL |     reuse Trait::* { &self.0 }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     |
+   |     duplicate definition
+   |     previous definition here
+
+error[E0423]: expected function, found associated constant `Trait::CONST`
+  --> $DIR/glob-non-fn.rs:30:11
+   |
+LL |     reuse Trait::* { &self.0 }
+   |           ^^^^^ not a function
+
+error[E0423]: expected function, found associated type `Trait::Type`
+  --> $DIR/glob-non-fn.rs:30:11
+   |
+LL |     reuse Trait::* { &self.0 }
+   |           ^^^^^ not a function
+
+error[E0046]: not all trait items implemented, missing: `CONST`, `Type`, `method`
+  --> $DIR/glob-non-fn.rs:29:1
+   |
+LL |     const CONST: u8;
+   |     --------------- `CONST` from trait
+LL |     type Type;
+   |     --------- `Type` from trait
+LL |     #[allow(non_camel_case_types)]
+LL |     type method;
+   |     ----------- `method` from trait
+...
+LL | impl Trait for Bad {
+   | ^^^^^^^^^^^^^^^^^^ missing `CONST`, `Type`, `method` in implementation
+
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0046, E0201, E0324, E0423.
+For more information about an error, try `rustc --explain E0046`.

@@ -1,0 +1,32 @@
+error[E0070]: invalid left-hand side of assignment
+  --> $DIR/invalid-assignment-in-macro-26093.rs:4:16
+   |
+LL |         $thing = 42;
+   |                ^
+...
+LL |     not_a_place!(99);
+   |     ----------------
+   |     |            |
+   |     |            cannot assign to this expression
+   |     in this macro invocation
+   |
+   = note: this error originates in the macro `not_a_place` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0067]: invalid left-hand side of assignment
+  --> $DIR/invalid-assignment-in-macro-26093.rs:6:16
+   |
+LL |         $thing += 42;
+   |                ^^
+...
+LL |     not_a_place!(99);
+   |     ----------------
+   |     |            |
+   |     |            cannot assign to this expression
+   |     in this macro invocation
+   |
+   = note: this error originates in the macro `not_a_place` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0067, E0070.
+For more information about an error, try `rustc --explain E0067`.

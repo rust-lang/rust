@@ -1,0 +1,288 @@
+error: writing `&Vec` instead of `&[_]` involves a new object where a slice will do
+  --> tests/ui/ptr_arg.rs:13:14
+   |
+LL | fn do_vec(x: &Vec<i64>) {
+   |              ^^^^^^^^^ help: change this to: `&[i64]`
+   |
+   = note: `-D clippy::ptr-arg` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::ptr_arg)]`
+
+error: writing `&mut Vec` instead of `&mut [_]` involves a new object where a slice will do
+  --> tests/ui/ptr_arg.rs:19:18
+   |
+LL | fn do_vec_mut(x: &mut Vec<i64>) {
+   |                  ^^^^^^^^^^^^^ help: change this to: `&mut [i64]`
+
+error: writing `&mut Vec` instead of `&mut [_]` involves a new object where a slice will do
+  --> tests/ui/ptr_arg.rs:25:19
+   |
+LL | fn do_vec_mut2(x: &mut Vec<i64>) {
+   |                   ^^^^^^^^^^^^^ help: change this to: `&mut [i64]`
+
+error: writing `&String` instead of `&str` involves a new object where a slice will do
+  --> tests/ui/ptr_arg.rs:32:14
+   |
+LL | fn do_str(x: &String) {
+   |              ^^^^^^^ help: change this to: `&str`
+
+error: writing `&mut String` instead of `&mut str` involves a new object where a slice will do
+  --> tests/ui/ptr_arg.rs:38:18
+   |
+LL | fn do_str_mut(x: &mut String) {
+   |                  ^^^^^^^^^^^ help: change this to: `&mut str`
+
+error: writing `&PathBuf` instead of `&Path` involves a new object where a slice will do
+  --> tests/ui/ptr_arg.rs:44:15
+   |
+LL | fn do_path(x: &PathBuf) {
+   |               ^^^^^^^^ help: change this to: `&Path`
+
+error: writing `&mut PathBuf` instead of `&mut Path` involves a new object where a slice will do
+  --> tests/ui/ptr_arg.rs:50:19
+   |
+LL | fn do_path_mut(x: &mut PathBuf) {
+   |                   ^^^^^^^^^^^^ help: change this to: `&mut Path`
+
+error: writing `&Vec` instead of `&[_]` involves a new object where a slice will do
+  --> tests/ui/ptr_arg.rs:60:18
+   |
+LL |     fn do_vec(x: &Vec<i64>);
+   |                  ^^^^^^^^^ help: change this to: `&[i64]`
+
+error: writing `&Vec` instead of `&[_]` involves a new object where a slice will do
+  --> tests/ui/ptr_arg.rs:75:14
+   |
+LL | fn cloned(x: &Vec<u8>) -> Vec<u8> {
+   |              ^^^^^^^^
+   |
+help: change this to
+   |
+LL ~ fn cloned(x: &[u8]) -> Vec<u8> {
+LL |
+LL |
+LL ~     let e = x.to_owned();
+LL |     let f = e.clone(); // OK
+LL |     let g = x;
+LL ~     let h = g.to_owned();
+LL |     let i = (e).clone();
+LL ~     x.to_owned()
+   |
+
+error: writing `&String` instead of `&str` involves a new object where a slice will do
+  --> tests/ui/ptr_arg.rs:86:18
+   |
+LL | fn str_cloned(x: &String) -> String {
+   |                  ^^^^^^^
+   |
+help: change this to
+   |
+LL ~ fn str_cloned(x: &str) -> String {
+LL |
+LL |
+LL ~     let a = x.to_owned();
+LL ~     let b = x.to_owned();
+LL |     let c = b.clone();
+LL |     let d = a.clone().clone().clone();
+LL ~     x.to_owned()
+   |
+
+error: writing `&PathBuf` instead of `&Path` involves a new object where a slice will do
+  --> tests/ui/ptr_arg.rs:96:19
+   |
+LL | fn path_cloned(x: &PathBuf) -> PathBuf {
+   |                   ^^^^^^^^
+   |
+help: change this to
+   |
+LL ~ fn path_cloned(x: &Path) -> PathBuf {
+LL |
+LL |
+LL ~     let a = x.to_path_buf();
+LL ~     let b = x.to_path_buf();
+LL |     let c = b.clone();
+LL |     let d = a.clone().clone().clone();
+LL ~     x.to_path_buf()
+   |
+
+error: writing `&String` instead of `&str` involves a new object where a slice will do
+  --> tests/ui/ptr_arg.rs:106:44
+   |
+LL | fn false_positive_capacity(x: &Vec<u8>, y: &String) {
+   |                                            ^^^^^^^
+   |
+help: change this to
+   |
+LL ~ fn false_positive_capacity(x: &Vec<u8>, y: &str) {
+LL |
+LL |
+LL |     let a = x.capacity();
+LL ~     let b = y.to_owned();
+LL ~     let c = y;
+   |
+
+error: using a reference to `Cow` is not recommended
+  --> tests/ui/ptr_arg.rs:122:25
+   |
+LL | fn test_cow_with_ref(c: &Cow<[i32]>) {}
+   |                         ^^^^^^^^^^^ help: change this to: `&[i32]`
+
+error: writing `&String` instead of `&str` involves a new object where a slice will do
+  --> tests/ui/ptr_arg.rs:152:64
+   |
+LL |     fn some_allowed(#[allow(clippy::ptr_arg)] v: &Vec<u32>, s: &String) {}
+   |                                                                ^^^^^^^ help: change this to: `&str`
+
+error: writing `&Vec` instead of `&[_]` involves a new object where a slice will do
+  --> tests/ui/ptr_arg.rs:182:21
+   |
+LL |     fn foo_vec(vec: &Vec<u8>) {
+   |                     ^^^^^^^^
+   |
+help: change this to
+   |
+LL ~     fn foo_vec(vec: &[u8]) {
+LL |
+LL |
+LL ~         let a = vec.to_owned().pop();
+LL ~         let b = vec.to_owned().clone();
+   |
+
+error: writing `&PathBuf` instead of `&Path` involves a new object where a slice will do
+  --> tests/ui/ptr_arg.rs:189:23
+   |
+LL |     fn foo_path(path: &PathBuf) {
+   |                       ^^^^^^^^
+   |
+help: change this to
+   |
+LL ~     fn foo_path(path: &Path) {
+LL |
+LL |
+LL ~         let c = path.to_path_buf().pop();
+LL ~         let d = path.to_path_buf().clone();
+   |
+
+error: writing `&String` instead of `&str` involves a new object where a slice will do
+  --> tests/ui/ptr_arg.rs:196:21
+   |
+LL |     fn foo_str(str: &String) {
+   |                     ^^^^^^^
+   |
+help: change this to
+   |
+LL ~     fn foo_str(str: &str) {
+LL |
+LL |
+LL ~         let e = str.to_owned().pop();
+LL ~         let f = str.to_owned().clone();
+   |
+
+error: writing `&mut Vec` instead of `&mut [_]` involves a new object where a slice will do
+  --> tests/ui/ptr_arg.rs:204:29
+   |
+LL | fn mut_vec_slice_methods(v: &mut Vec<u32>) {
+   |                             ^^^^^^^^^^^^^ help: change this to: `&mut [u32]`
+
+error: writing `&mut Vec` instead of `&mut [_]` involves a new object where a slice will do
+  --> tests/ui/ptr_arg.rs:268:17
+   |
+LL | fn dyn_trait(a: &mut Vec<u32>, b: &mut String, c: &mut PathBuf) {
+   |                 ^^^^^^^^^^^^^ help: change this to: `&mut [u32]`
+
+error: writing `&mut String` instead of `&mut str` involves a new object where a slice will do
+  --> tests/ui/ptr_arg.rs:268:35
+   |
+LL | fn dyn_trait(a: &mut Vec<u32>, b: &mut String, c: &mut PathBuf) {
+   |                                   ^^^^^^^^^^^ help: change this to: `&mut str`
+
+error: writing `&mut PathBuf` instead of `&mut Path` involves a new object where a slice will do
+  --> tests/ui/ptr_arg.rs:268:51
+   |
+LL | fn dyn_trait(a: &mut Vec<u32>, b: &mut String, c: &mut PathBuf) {
+   |                                                   ^^^^^^^^^^^^ help: change this to: `&mut Path`
+
+error: using a reference to `Cow` is not recommended
+  --> tests/ui/ptr_arg.rs:295:39
+   |
+LL |     fn cow_elided_lifetime<'a>(input: &'a Cow<str>) -> &'a str {
+   |                                       ^^^^^^^^^^^^ help: change this to: `&str`
+
+error: using a reference to `Cow` is not recommended
+  --> tests/ui/ptr_arg.rs:302:36
+   |
+LL |     fn cow_bad_ret_ty_1<'a>(input: &'a Cow<'a, str>) -> &'static str {
+   |                                    ^^^^^^^^^^^^^^^^ help: change this to: `&str`
+
+error: using a reference to `Cow` is not recommended
+  --> tests/ui/ptr_arg.rs:307:40
+   |
+LL |     fn cow_bad_ret_ty_2<'a, 'b>(input: &'a Cow<'a, str>) -> &'b str {
+   |                                        ^^^^^^^^^^^^^^^^ help: change this to: `&str`
+
+error: writing `&String` instead of `&str` involves a new object where a slice will do
+  --> tests/ui/ptr_arg.rs:347:17
+   |
+LL |     fn good(v1: &String, v2: &String) {
+   |                 ^^^^^^^ help: change this to: `&str`
+
+error: writing `&String` instead of `&str` involves a new object where a slice will do
+  --> tests/ui/ptr_arg.rs:347:30
+   |
+LL |     fn good(v1: &String, v2: &String) {
+   |                              ^^^^^^^ help: change this to: `&str`
+
+error: writing `&Vec` instead of `&[_]` involves a new object where a slice will do
+  --> tests/ui/ptr_arg.rs:363:20
+   |
+LL |     fn foo_used(x: &Vec<i32>) {
+   |                    ^^^^^^^^^ help: change this to: `&[i32]`
+
+error: writing `&Vec` instead of `&[_]` involves a new object where a slice will do
+  --> tests/ui/ptr_arg.rs:377:26
+   |
+LL |     fn foo_local_used(x: &Vec<i32>) {
+   |                          ^^^^^^^^^ help: change this to: `&[i32]`
+
+error: writing `&String` instead of `&str` involves a new object where a slice will do
+  --> tests/ui/ptr_arg.rs:386:33
+   |
+LL |     fn foofoo(_x: &Vec<i32>, y: &String) {
+   |                                 ^^^^^^^ help: change this to: `&str`
+
+error: writing `&mut Vec` instead of `&mut [_]` involves a new object where a slice will do
+  --> tests/ui/ptr_arg.rs:407:20
+   |
+LL |     fn bar_used(x: &mut Vec<u32>) {
+   |                    ^^^^^^^^^^^^^ help: change this to: `&mut [u32]`
+
+error: writing `&mut Vec` instead of `&mut [_]` involves a new object where a slice will do
+  --> tests/ui/ptr_arg.rs:421:26
+   |
+LL |     fn bar_local_used(x: &mut Vec<u32>) {
+   |                          ^^^^^^^^^^^^^ help: change this to: `&mut [u32]`
+
+error: writing `&mut String` instead of `&mut str` involves a new object where a slice will do
+  --> tests/ui/ptr_arg.rs:430:37
+   |
+LL |     fn barbar(_x: &mut Vec<u32>, y: &mut String) {
+   |                                     ^^^^^^^^^^^ help: change this to: `&mut str`
+
+error: eliding a lifetime that's named elsewhere is confusing
+  --> tests/ui/ptr_arg.rs:314:56
+   |
+LL |     fn cow_good_ret_ty<'a>(input: &'a Cow<'a, str>) -> &str {
+   |                                    --     --           ^^^^ the same lifetime is elided here
+   |                                    |      |
+   |                                    |      the lifetime is named here
+   |                                    the lifetime is named here
+   |
+   = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+   = note: `-D mismatched-lifetime-syntaxes` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(mismatched_lifetime_syntaxes)]`
+help: consistently use `'a`
+   |
+LL |     fn cow_good_ret_ty<'a>(input: &'a Cow<'a, str>) -> &'a str {
+   |                                                         ++
+
+error: aborting due to 33 previous errors
+

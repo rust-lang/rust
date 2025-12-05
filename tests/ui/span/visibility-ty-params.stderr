@@ -1,0 +1,21 @@
+error: unexpected generic arguments in path
+  --> $DIR/visibility-ty-params.rs:6:13
+   |
+LL | m!{ crate::S<u8> }
+   |             ^^^^
+
+error[E0433]: failed to resolve: `S` is a struct, not a module
+  --> $DIR/visibility-ty-params.rs:6:12
+   |
+LL | m!{ crate::S<u8> }
+   |            ^ `S` is a struct, not a module
+
+error: unexpected generic arguments in path
+  --> $DIR/visibility-ty-params.rs:10:17
+   |
+LL |     m!{ crate::m<> }
+   |                 ^^
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0433`.

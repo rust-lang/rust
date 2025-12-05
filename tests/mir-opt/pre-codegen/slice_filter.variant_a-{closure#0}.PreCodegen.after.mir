@@ -1,0 +1,136 @@
+// MIR for `variant_a::{closure#0}` after PreCodegen
+
+fn variant_a::{closure#0}(_1: &mut {closure@$DIR/slice_filter.rs:7:25: 7:39}, _2: &&(usize, usize, usize, usize)) -> bool {
+    let mut _0: bool;
+    let mut _3: &(usize, usize, usize, usize);
+    let mut _6: bool;
+    let mut _9: bool;
+    let mut _10: bool;
+    let _13: &usize;
+    let _14: &usize;
+    let _15: &usize;
+    let _16: &usize;
+    let mut _17: &&usize;
+    let mut _18: &&usize;
+    let mut _19: &&usize;
+    let mut _20: &&usize;
+    let mut _21: &&usize;
+    let mut _22: &&usize;
+    let mut _23: &&usize;
+    let mut _24: &&usize;
+    scope 1 {
+        debug a => _13;
+        debug b => _14;
+        debug c => _15;
+        debug d => _16;
+        scope 2 (inlined std::cmp::impls::<impl PartialOrd for &usize>::le) {
+            debug self => _17;
+            debug other => _18;
+            scope 3 (inlined std::cmp::impls::<impl PartialOrd for usize>::le) {
+                debug self => _13;
+                debug other => _15;
+                let mut _4: usize;
+                let mut _5: usize;
+            }
+        }
+        scope 4 (inlined std::cmp::impls::<impl PartialOrd for &usize>::le) {
+            debug self => _19;
+            debug other => _20;
+            scope 5 (inlined std::cmp::impls::<impl PartialOrd for usize>::le) {
+                debug self => _16;
+                debug other => _14;
+                let mut _7: usize;
+                let mut _8: usize;
+            }
+        }
+        scope 6 (inlined std::cmp::impls::<impl PartialOrd for &usize>::le) {
+            debug self => _21;
+            debug other => _22;
+            scope 7 (inlined std::cmp::impls::<impl PartialOrd for usize>::le) {
+                debug self => _15;
+                debug other => _13;
+            }
+        }
+        scope 8 (inlined std::cmp::impls::<impl PartialOrd for &usize>::le) {
+            debug self => _23;
+            debug other => _24;
+            scope 9 (inlined std::cmp::impls::<impl PartialOrd for usize>::le) {
+                debug self => _14;
+                debug other => _16;
+                let mut _11: usize;
+                let mut _12: usize;
+            }
+        }
+    }
+
+    bb0: {
+        _3 = copy (*_2);
+        // DBG: _13 = &((*_3).0: usize);
+        // DBG: _14 = &((*_3).1: usize);
+        // DBG: _15 = &((*_3).2: usize);
+        // DBG: _16 = &((*_3).3: usize);
+        StorageLive(_6);
+        // DBG: _17 = &_13;
+        // DBG: _18 = &?;
+        _4 = copy ((*_3).0: usize);
+        _5 = copy ((*_3).2: usize);
+        _6 = Le(copy _4, copy _5);
+        switchInt(move _6) -> [0: bb2, otherwise: bb1];
+    }
+
+    bb1: {
+        StorageLive(_9);
+        // DBG: _19 = &_16;
+        // DBG: _20 = &?;
+        StorageLive(_7);
+        _7 = copy ((*_3).3: usize);
+        StorageLive(_8);
+        _8 = copy ((*_3).1: usize);
+        _9 = Le(move _7, move _8);
+        StorageDead(_8);
+        StorageDead(_7);
+        switchInt(move _9) -> [0: bb2, otherwise: bb6];
+    }
+
+    bb2: {
+        StorageLive(_10);
+        // DBG: _21 = &_15;
+        // DBG: _22 = &?;
+        _10 = Le(copy _5, copy _4);
+        switchInt(move _10) -> [0: bb3, otherwise: bb4];
+    }
+
+    bb3: {
+        _0 = const false;
+        goto -> bb5;
+    }
+
+    bb4: {
+        // DBG: _23 = &_14;
+        // DBG: _24 = &?;
+        StorageLive(_11);
+        _11 = copy ((*_3).1: usize);
+        StorageLive(_12);
+        _12 = copy ((*_3).3: usize);
+        _0 = Le(move _11, move _12);
+        StorageDead(_12);
+        StorageDead(_11);
+        goto -> bb5;
+    }
+
+    bb5: {
+        StorageDead(_10);
+        goto -> bb7;
+    }
+
+    bb6: {
+        _0 = const true;
+        goto -> bb7;
+    }
+
+    bb7: {
+        StorageDead(_9);
+        StorageDead(_6);
+        return;
+    }
+}

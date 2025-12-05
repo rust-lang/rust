@@ -1,0 +1,28 @@
+error[E0038]: the trait `Bar` is not dyn compatible
+  --> $DIR/issue-48027.rs:6:6
+   |
+LL | impl dyn Bar {}
+   |      ^^^^^^^ `Bar` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/issue-48027.rs:2:11
+   |
+LL | trait Bar {
+   |       --- this trait is not dyn compatible...
+LL |     const X: usize;
+   |           ^ ...because it contains this associated `const`
+   = help: consider moving `X` to another trait
+
+error[E0790]: cannot refer to the associated constant on trait without specifying the corresponding `impl` type
+  --> $DIR/issue-48027.rs:3:32
+   |
+LL |     const X: usize;
+   |     -------------- `Bar::X` defined here
+LL |     fn return_n(&self) -> [u8; Bar::X];
+   |                                ^^^^^^ cannot refer to the associated constant of trait
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0038, E0790.
+For more information about an error, try `rustc --explain E0038`.

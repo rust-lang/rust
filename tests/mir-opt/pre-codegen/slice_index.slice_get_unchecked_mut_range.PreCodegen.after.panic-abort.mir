@@ -1,0 +1,61 @@
+// MIR for `slice_get_unchecked_mut_range` after PreCodegen
+
+fn slice_get_unchecked_mut_range(_1: &mut [u32], _2: std::ops::Range<usize>) -> &mut [u32] {
+    debug slice => _1;
+    debug index => _2;
+    let mut _0: &mut [u32];
+    let mut _3: usize;
+    let mut _4: usize;
+    scope 1 (inlined #[track_caller] core::slice::<impl [u32]>::get_unchecked_mut::<std::ops::Range<usize>>) {
+        let mut _5: *mut [u32];
+        let mut _11: *mut [u32];
+        scope 2 (inlined #[track_caller] <std::ops::Range<usize> as SliceIndex<[u32]>>::get_unchecked_mut) {
+            let mut _6: usize;
+            let _7: ();
+            let _8: usize;
+            scope 3 {
+                scope 6 (inlined core::slice::index::get_offset_len_mut_noubcheck::<u32>) {
+                    let _9: *mut u32;
+                    scope 7 {
+                        let _10: *mut u32;
+                        scope 8 {
+                        }
+                    }
+                }
+            }
+            scope 4 (inlined std::ptr::mut_ptr::<impl *mut [u32]>::len) {
+                scope 5 (inlined std::ptr::metadata::<[u32]>) {
+                }
+            }
+        }
+    }
+
+    bb0: {
+        _3 = move (_2.0: usize);
+        _4 = move (_2.1: usize);
+        StorageLive(_11);
+        StorageLive(_5);
+        _5 = &raw mut (*_1);
+        StorageLive(_8);
+        StorageLive(_6);
+        _6 = PtrMetadata(copy _1);
+        _7 = <std::ops::Range<usize> as SliceIndex<[T]>>::get_unchecked_mut::precondition_check(copy _3, copy _4, move _6) -> [return: bb1, unwind unreachable];
+    }
+
+    bb1: {
+        StorageDead(_6);
+        _8 = SubUnchecked(copy _4, copy _3);
+        StorageLive(_9);
+        StorageLive(_10);
+        _9 = copy _5 as *mut u32 (PtrToPtr);
+        _10 = Offset(copy _9, copy _3);
+        _11 = *mut [u32] from (copy _10, copy _8);
+        StorageDead(_10);
+        StorageDead(_9);
+        StorageDead(_8);
+        StorageDead(_5);
+        _0 = &mut (*_11);
+        StorageDead(_11);
+        return;
+    }
+}

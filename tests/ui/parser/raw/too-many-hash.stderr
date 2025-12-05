@@ -1,0 +1,8 @@
+error: too many `#` symbols: raw strings may be delimited by up to 255 `#` symbols, but found 256
+  --> $DIR/too-many-hash.rs:4:19
+   |
+LL | ... = r###################################################...######################################;
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^...^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

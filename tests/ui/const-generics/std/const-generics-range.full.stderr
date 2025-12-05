@@ -1,0 +1,39 @@
+error[E0741]: `std::ops::Range<usize>` must implement `ConstParamTy` to be used as the type of a const generic parameter
+  --> $DIR/const-generics-range.rs:8:24
+   |
+LL | struct _Range<const R: std::ops::Range<usize>>;
+   |                        ^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0741]: `std::ops::RangeFrom<usize>` must implement `ConstParamTy` to be used as the type of a const generic parameter
+  --> $DIR/const-generics-range.rs:13:28
+   |
+LL | struct _RangeFrom<const R: std::ops::RangeFrom<usize>>;
+   |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0741]: `RangeFull` must implement `ConstParamTy` to be used as the type of a const generic parameter
+  --> $DIR/const-generics-range.rs:18:28
+   |
+LL | struct _RangeFull<const R: std::ops::RangeFull>;
+   |                            ^^^^^^^^^^^^^^^^^^^
+
+error[E0741]: `std::ops::RangeInclusive<usize>` must implement `ConstParamTy` to be used as the type of a const generic parameter
+  --> $DIR/const-generics-range.rs:24:33
+   |
+LL | struct _RangeInclusive<const R: std::ops::RangeInclusive<usize>>;
+   |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0741]: `RangeTo<usize>` must implement `ConstParamTy` to be used as the type of a const generic parameter
+  --> $DIR/const-generics-range.rs:29:26
+   |
+LL | struct _RangeTo<const R: std::ops::RangeTo<usize>>;
+   |                          ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0741]: `std::ops::RangeToInclusive<usize>` must implement `ConstParamTy` to be used as the type of a const generic parameter
+  --> $DIR/const-generics-range.rs:34:35
+   |
+LL | struct _RangeToInclusive<const R: std::ops::RangeToInclusive<usize>>;
+   |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0741`.

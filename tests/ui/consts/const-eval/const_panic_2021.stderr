@@ -1,0 +1,67 @@
+error[E0080]: evaluation panicked: blåhaj
+  --> $DIR/const_panic_2021.rs:6:15
+   |
+LL | const A: () = std::panic!("blåhaj");
+   |               ^^^^^^^^^^^^^^^^^^^^^ evaluation of `A` failed here
+
+error[E0080]: evaluation panicked: explicit panic
+  --> $DIR/const_panic_2021.rs:9:15
+   |
+LL | const B: () = std::panic!();
+   |               ^^^^^^^^^^^^^ evaluation of `B` failed here
+
+error[E0080]: evaluation panicked: internal error: entered unreachable code
+  --> $DIR/const_panic_2021.rs:12:15
+   |
+LL | const C: () = std::unreachable!();
+   |               ^^^^^^^^^^^^^^^^^^^ evaluation of `C` failed here
+
+error[E0080]: evaluation panicked: not implemented
+  --> $DIR/const_panic_2021.rs:15:15
+   |
+LL | const D: () = std::unimplemented!();
+   |               ^^^^^^^^^^^^^^^^^^^^^ evaluation of `D` failed here
+   |
+   = note: this error originates in the macro `std::unimplemented` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0080]: evaluation panicked: hello
+  --> $DIR/const_panic_2021.rs:18:15
+   |
+LL | const E: () = std::panic!("{}", MSG);
+   |               ^^^^^^^^^^^^^^^^^^^^^^ evaluation of `E` failed here
+
+error[E0080]: evaluation panicked: shark
+  --> $DIR/const_panic_2021.rs:21:20
+   |
+LL | const A_CORE: () = core::panic!("shark");
+   |                    ^^^^^^^^^^^^^^^^^^^^^ evaluation of `A_CORE` failed here
+
+error[E0080]: evaluation panicked: explicit panic
+  --> $DIR/const_panic_2021.rs:24:20
+   |
+LL | const B_CORE: () = core::panic!();
+   |                    ^^^^^^^^^^^^^^ evaluation of `B_CORE` failed here
+
+error[E0080]: evaluation panicked: internal error: entered unreachable code
+  --> $DIR/const_panic_2021.rs:27:20
+   |
+LL | const C_CORE: () = core::unreachable!();
+   |                    ^^^^^^^^^^^^^^^^^^^^ evaluation of `C_CORE` failed here
+
+error[E0080]: evaluation panicked: not implemented
+  --> $DIR/const_panic_2021.rs:30:20
+   |
+LL | const D_CORE: () = core::unimplemented!();
+   |                    ^^^^^^^^^^^^^^^^^^^^^^ evaluation of `D_CORE` failed here
+   |
+   = note: this error originates in the macro `core::unimplemented` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0080]: evaluation panicked: hello
+  --> $DIR/const_panic_2021.rs:33:20
+   |
+LL | const E_CORE: () = core::panic!("{}", MSG);
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `E_CORE` failed here
+
+error: aborting due to 10 previous errors
+
+For more information about this error, try `rustc --explain E0080`.

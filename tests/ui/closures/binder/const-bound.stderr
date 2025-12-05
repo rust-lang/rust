@@ -1,0 +1,23 @@
+error: late-bound const parameters cannot be used currently
+  --> $DIR/const-bound.rs:5:15
+   |
+LL |     for<const N: i32> || -> () {};
+   |               ^
+
+warning: the feature `non_lifetime_binders` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/const-bound.rs:1:37
+   |
+LL | #![feature(closure_lifetime_binder, non_lifetime_binders)]
+   |                                     ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #108185 <https://github.com/rust-lang/rust/issues/108185> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+error: late-bound const parameter not allowed on closures
+  --> $DIR/const-bound.rs:5:9
+   |
+LL |     for<const N: i32> || -> () {};
+   |         ^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors; 1 warning emitted
+

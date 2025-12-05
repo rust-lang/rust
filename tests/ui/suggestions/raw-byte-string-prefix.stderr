@@ -1,0 +1,21 @@
+error: prefix `rb` is unknown
+  --> $DIR/raw-byte-string-prefix.rs:6:5
+   |
+LL |     rb"abc";
+   |     ^^ unknown prefix
+   |
+   = note: prefixed identifiers and literals are reserved since Rust 2021
+help: use `br` for a raw byte string
+   |
+LL -     rb"abc";
+LL +     br"abc";
+   |
+
+error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found `"abc"`
+  --> $DIR/raw-byte-string-prefix.rs:6:7
+   |
+LL |     rb"abc";
+   |       ^^^^^ expected one of 8 possible tokens
+
+error: aborting due to 2 previous errors
+

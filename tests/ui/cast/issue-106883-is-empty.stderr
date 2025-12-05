@@ -1,0 +1,62 @@
+error[E0606]: casting `&'static str` as `bool` is invalid
+  --> $DIR/issue-106883-is-empty.rs:14:13
+   |
+LL |     let _ = "foo" as bool;
+   |             ^^^^^^^^^^^^^
+   |
+help: consider using the `is_empty` method on `&'static str` to determine if it contains anything
+   |
+LL -     let _ = "foo" as bool;
+LL +     let _ = !"foo".is_empty();
+   |
+
+error[E0605]: non-primitive cast: `String` as `bool`
+  --> $DIR/issue-106883-is-empty.rs:17:13
+   |
+LL |     let _ = String::from("foo") as bool;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^ an `as` expression can only be used to convert between primitive types or to coerce to a specific trait object
+   |
+note: this expression `Deref`s to `str` which implements `is_empty`
+  --> $DIR/issue-106883-is-empty.rs:17:13
+   |
+LL |     let _ = String::from("foo") as bool;
+   |             ^^^^^^^^^^^^^^^^^^^
+help: consider using the `is_empty` method on `String` to determine if it contains anything
+   |
+LL -     let _ = String::from("foo") as bool;
+LL +     let _ = !String::from("foo").is_empty();
+   |
+
+error[E0605]: non-primitive cast: `Foo` as `bool`
+  --> $DIR/issue-106883-is-empty.rs:20:13
+   |
+LL |     let _ = Foo as bool;
+   |             ^^^^^^^^^^^ an `as` expression can only be used to convert between primitive types or to coerce to a specific trait object
+   |
+note: this expression `Deref`s to `[u8]` which implements `is_empty`
+  --> $DIR/issue-106883-is-empty.rs:20:13
+   |
+LL |     let _ = Foo as bool;
+   |             ^^^
+help: consider using the `is_empty` method on `Foo` to determine if it contains anything
+   |
+LL -     let _ = Foo as bool;
+LL +     let _ = !Foo.is_empty();
+   |
+
+error[E0606]: casting `&[i32]` as `bool` is invalid
+  --> $DIR/issue-106883-is-empty.rs:25:5
+   |
+LL |     bar as bool
+   |     ^^^^^^^^^^^
+   |
+help: consider using the `is_empty` method on `&[i32]` to determine if it contains anything
+   |
+LL -     bar as bool
+LL +     !bar.is_empty()
+   |
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0605, E0606.
+For more information about an error, try `rustc --explain E0605`.

@@ -1,0 +1,67 @@
+error: the variable `_index` is used as a loop counter
+  --> tests/ui/explicit_counter_loop.rs:7:5
+   |
+LL |     for _v in &vec {
+   |     ^^^^^^^^^^^^^^ help: consider using: `for (_index, _v) in vec.iter().enumerate()`
+   |
+   = note: `-D clippy::explicit-counter-loop` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::explicit_counter_loop)]`
+
+error: the variable `_index` is used as a loop counter
+  --> tests/ui/explicit_counter_loop.rs:15:5
+   |
+LL |     for _v in &vec {
+   |     ^^^^^^^^^^^^^^ help: consider using: `for (_index, _v) in vec.iter().enumerate()`
+
+error: the variable `_index` is used as a loop counter
+  --> tests/ui/explicit_counter_loop.rs:22:5
+   |
+LL |     for _v in &mut vec {
+   |     ^^^^^^^^^^^^^^^^^^ help: consider using: `for (_index, _v) in vec.iter_mut().enumerate()`
+
+error: the variable `_index` is used as a loop counter
+  --> tests/ui/explicit_counter_loop.rs:29:5
+   |
+LL |     for _v in vec {
+   |     ^^^^^^^^^^^^^ help: consider using: `for (_index, _v) in vec.into_iter().enumerate()`
+
+error: the variable `count` is used as a loop counter
+  --> tests/ui/explicit_counter_loop.rs:118:9
+   |
+LL |         for ch in text.chars() {
+   |         ^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `for (count, ch) in text.chars().enumerate()`
+
+error: the variable `count` is used as a loop counter
+  --> tests/ui/explicit_counter_loop.rs:131:9
+   |
+LL |         for ch in text.chars() {
+   |         ^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `for (count, ch) in text.chars().enumerate()`
+
+error: the variable `count` is used as a loop counter
+  --> tests/ui/explicit_counter_loop.rs:191:9
+   |
+LL |         for _i in 3..10 {
+   |         ^^^^^^^^^^^^^^^ help: consider using: `for (count, _i) in (3..10).enumerate()`
+
+error: the variable `idx_usize` is used as a loop counter
+  --> tests/ui/explicit_counter_loop.rs:233:9
+   |
+LL |         for _item in slice {
+   |         ^^^^^^^^^^^^^^^^^^ help: consider using: `for (idx_usize, _item) in slice.iter().enumerate()`
+
+error: the variable `idx_u32` is used as a loop counter
+  --> tests/ui/explicit_counter_loop.rs:247:9
+   |
+LL |         for _item in slice {
+   |         ^^^^^^^^^^^^^^^^^^ help: consider using: `for (idx_u32, _item) in (0_u32..).zip(slice.iter())`
+   |
+   = note: `idx_u32` is of type `u32`, making it ineligible for `Iterator::enumerate`
+
+error: the variable `_index` is used as a loop counter
+  --> tests/ui/explicit_counter_loop.rs:293:9
+   |
+LL |         'label: for v in vec {
+   |         ^^^^^^^^^^^^^^^^^^^^ help: consider using: `'label: for (_index, v) in vec.into_iter().enumerate()`
+
+error: aborting due to 10 previous errors
+

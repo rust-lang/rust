@@ -1,0 +1,21 @@
+error[E0072]: recursive type `ExplicitlyPadded` has infinite size
+  --> $DIR/transmute_infinitely_recursive_type.rs:21:5
+   |
+LL |     struct ExplicitlyPadded(ExplicitlyPadded);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ ---------------- recursive without indirection
+   |
+help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to break the cycle
+   |
+LL |     struct ExplicitlyPadded(Box<ExplicitlyPadded>);
+   |                             ++++                +
+
+error[E0391]: cycle detected when computing layout of `should_pad_explicitly_packed_field::ExplicitlyPadded`
+   |
+   = note: ...which immediately requires computing layout of `should_pad_explicitly_packed_field::ExplicitlyPadded` again
+   = note: cycle used when evaluating trait selection obligation `(): core::mem::transmutability::TransmuteFrom<should_pad_explicitly_packed_field::ExplicitlyPadded, ValTree(Branch([Leaf(0x00), Leaf(0x00), Leaf(0x00), Leaf(0x00)]): core::mem::transmutability::Assume)>`
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0072, E0391.
+For more information about an error, try `rustc --explain E0072`.

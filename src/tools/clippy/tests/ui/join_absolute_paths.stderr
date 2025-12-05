@@ -1,0 +1,76 @@
+error: argument to `Path::join` starts with a path separator
+  --> tests/ui/join_absolute_paths.rs:10:15
+   |
+LL |     path.join("/sh");
+   |               ^^^^^
+   |
+   = note: joining a path starting with separator will replace the path instead
+   = note: `-D clippy::join-absolute-paths` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::join_absolute_paths)]`
+help: if this is unintentional, try removing the starting separator
+   |
+LL -     path.join("/sh");
+LL +     path.join("sh");
+   |
+help: if this is intentional, consider using `Path::new`
+   |
+LL -     path.join("/sh");
+LL +     PathBuf::from("/sh");
+   |
+
+error: argument to `Path::join` starts with a path separator
+  --> tests/ui/join_absolute_paths.rs:14:15
+   |
+LL |     path.join("\\user");
+   |               ^^^^^^^^
+   |
+   = note: joining a path starting with separator will replace the path instead
+help: if this is unintentional, try removing the starting separator
+   |
+LL -     path.join("\\user");
+LL +     path.join("\user");
+   |
+help: if this is intentional, consider using `Path::new`
+   |
+LL -     path.join("\\user");
+LL +     PathBuf::from("\\user");
+   |
+
+error: argument to `Path::join` starts with a path separator
+  --> tests/ui/join_absolute_paths.rs:18:15
+   |
+LL |     path.join("/sh");
+   |               ^^^^^
+   |
+   = note: joining a path starting with separator will replace the path instead
+help: if this is unintentional, try removing the starting separator
+   |
+LL -     path.join("/sh");
+LL +     path.join("sh");
+   |
+help: if this is intentional, consider using `Path::new`
+   |
+LL -     path.join("/sh");
+LL +     PathBuf::from("/sh");
+   |
+
+error: argument to `Path::join` starts with a path separator
+  --> tests/ui/join_absolute_paths.rs:22:15
+   |
+LL |     path.join(r#"/sh"#);
+   |               ^^^^^^^^
+   |
+   = note: joining a path starting with separator will replace the path instead
+help: if this is unintentional, try removing the starting separator
+   |
+LL -     path.join(r#"/sh"#);
+LL +     path.join(r#"sh"#);
+   |
+help: if this is intentional, consider using `Path::new`
+   |
+LL -     path.join(r#"/sh"#);
+LL +     PathBuf::from(r#"/sh"#);
+   |
+
+error: aborting due to 4 previous errors
+

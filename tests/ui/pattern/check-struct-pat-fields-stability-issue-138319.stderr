@@ -1,0 +1,10 @@
+warning: use of deprecated field `Point::_x`: x is deprecated
+  --> $DIR/check-struct-pat-fields-stability-issue-138319.rs:9:21
+   |
+LL |     let p = Point { _x: 1, _y: 2 };
+   |                     ^^^^^
+   |
+   = note: `#[warn(deprecated)]` on by default
+
+warning: 1 warning emitted
+

@@ -1,0 +1,31 @@
+#![feature(prelude_import)]
+#![no_std]
+// This test certify that we can mix attribute macros from Rust and external proc-macros.
+// For instance, `#[derive(Default)]` uses `#[default]` and `#[derive(CoercePointee)]` uses
+// `#[pointee]`.
+// The scoping rule should allow the use of the said two attributes when external proc-macros
+// are in scope.
+
+//@ check-pass
+//@ proc-macro: another-proc-macro.rs
+//@ compile-flags: -Zunpretty=expanded
+//@ edition: 2015
+
+#![feature(derive_coerce_pointee)]
+#[macro_use]
+extern crate std;
+#[prelude_import]
+use ::std::prelude::rust_2015::*;
+
+#[macro_use]
+extern crate another_proc_macro;
+
+
+const _: () =
+    {
+        const POINTEE_MACRO_ATTR_DERIVED: () = ();
+    };
+const _: () =
+    {
+        const DEFAULT_MACRO_ATTR_DERIVED: () = ();
+    };

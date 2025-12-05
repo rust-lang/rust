@@ -1,0 +1,14 @@
+error: expected identifier, found `<`
+  --> $DIR/type.rs:5:5
+   |
+LL | type<T> Foo = T;
+   |     ^ expected identifier
+   |
+help: place the generic parameter name after the type name
+   |
+LL - type<T> Foo = T;
+LL + type Foo<T> = T;
+   |
+
+error: aborting due to 1 previous error
+

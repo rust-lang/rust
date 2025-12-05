@@ -1,0 +1,3 @@
+error: invalid `--cfg` argument: `#!/usr/bin/shebang
+       key` (expected `key` or `key="value"`)
+

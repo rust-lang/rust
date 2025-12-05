@@ -1,0 +1,78 @@
+error[E0261]: use of undeclared lifetime name `'a`
+  --> $DIR/ice-unexpected-inference-var-122549.rs:5:70
+   |
+LL |     fn const_chunks_exact<const N: usize>(&self) -> ConstChunksExact<'a, T, { N }>;
+   |                                                                      ^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'a` here
+   |
+LL |     fn const_chunks_exact<'a, const N: usize>(&self) -> ConstChunksExact<'a, T, { N }>;
+   |                           +++
+help: consider introducing lifetime `'a` here
+   |
+LL | trait ConstChunksExactTrait<'a, T> {
+   |                             +++
+
+error[E0261]: use of undeclared lifetime name `'a`
+  --> $DIR/ice-unexpected-inference-var-122549.rs:11:34
+   |
+LL | struct ConstChunksExact<'rem, T: 'a, const N: usize> {}
+   |                                  ^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'a` here
+   |
+LL | struct ConstChunksExact<'a, 'rem, T: 'a, const N: usize> {}
+   |                         +++
+
+error[E0046]: not all trait items implemented, missing: `const_chunks_exact`
+  --> $DIR/ice-unexpected-inference-var-122549.rs:9:1
+   |
+LL |     fn const_chunks_exact<const N: usize>(&self) -> ConstChunksExact<'a, T, { N }>;
+   |     ------------------------------------------------------------------------------- `const_chunks_exact` from trait
+...
+LL | impl<T> ConstChunksExactTrait<T> for [T] {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `const_chunks_exact` in implementation
+
+error[E0392]: lifetime parameter `'rem` is never used
+  --> $DIR/ice-unexpected-inference-var-122549.rs:11:25
+   |
+LL | struct ConstChunksExact<'rem, T: 'a, const N: usize> {}
+   |                         ^^^^ unused lifetime parameter
+   |
+   = help: consider removing `'rem`, referring to it in a field, or using a marker such as `PhantomData`
+
+error[E0392]: type parameter `T` is never used
+  --> $DIR/ice-unexpected-inference-var-122549.rs:11:31
+   |
+LL | struct ConstChunksExact<'rem, T: 'a, const N: usize> {}
+   |                               ^ unused type parameter
+   |
+   = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
+
+error[E0308]: mismatched types
+  --> $DIR/ice-unexpected-inference-var-122549.rs:15:66
+   |
+LL | impl<'a, T, const N: usize> Iterator for ConstChunksExact<'a, T, {}> {
+   |                                                                  ^^ expected `usize`, found `()`
+
+error[E0046]: not all trait items implemented, missing: `next`
+  --> $DIR/ice-unexpected-inference-var-122549.rs:15:1
+   |
+LL | impl<'a, T, const N: usize> Iterator for ConstChunksExact<'a, T, {}> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `next` in implementation
+   |
+   = help: implement the missing item: `fn next(&mut self) -> Option<<Self as Iterator>::Item> { todo!() }`
+
+error[E0207]: the const parameter `N` is not constrained by the impl trait, self type, or predicates
+  --> $DIR/ice-unexpected-inference-var-122549.rs:15:13
+   |
+LL | impl<'a, T, const N: usize> Iterator for ConstChunksExact<'a, T, {}> {
+   |             ^^^^^^^^^^^^^^ unconstrained const parameter
+   |
+   = note: expressions using a const parameter must map each value to a distinct output value
+   = note: proving the result of expressions other than the parameter are unique is not supported
+
+error: aborting due to 8 previous errors
+
+Some errors have detailed explanations: E0046, E0207, E0261, E0308, E0392.
+For more information about an error, try `rustc --explain E0046`.

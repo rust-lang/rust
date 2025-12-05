@@ -1,0 +1,8 @@
+error: couldn't read `$DIR/../parser`: $ACCESS_DENIED_MSG (os error $ACCESS_DENIED_CODE)
+  --> $DIR/issue-5806.rs:5:1
+   |
+LL | mod foo;
+   | ^^^^^^^^
+
+error: aborting due to 1 previous error
+

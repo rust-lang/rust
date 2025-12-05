@@ -1,0 +1,344 @@
+error[E0658]: associated const equality is incomplete
+  --> $DIR/associated-types-eq-2.rs:76:10
+   |
+LL |   impl Tr3<N
+   |  __________^
+...  |
+LL | | = 42, T2 = Qux, T3 = usize> for Bar {
+   | |____^
+   |
+   = note: see issue #92827 <https://github.com/rust-lang/rust/issues/92827> for more information
+   = help: add `#![feature(associated_const_equality)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: associated const equality is incomplete
+  --> $DIR/associated-types-eq-2.rs:84:10
+   |
+LL | impl Tr3<n = 42, T2 = Qux, T3 = usize> for Qux {
+   |          ^^^^^^
+   |
+   = note: see issue #92827 <https://github.com/rust-lang/rust/issues/92827> for more information
+   = help: add `#![feature(associated_const_equality)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: associated const equality is incomplete
+  --> $DIR/associated-types-eq-2.rs:98:14
+   |
+LL | impl Tr3<42, T2 = 42, T3 = usize> for Bar {
+   |              ^^^^^^^
+   |
+   = note: see issue #92827 <https://github.com/rust-lang/rust/issues/92827> for more information
+   = help: add `#![feature(associated_const_equality)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: associated const equality is incomplete
+  --> $DIR/associated-types-eq-2.rs:106:10
+   |
+LL | impl Tr3<X = 42, Y = Qux, Z = usize> for Bar {
+   |          ^^^^^^
+   |
+   = note: see issue #92827 <https://github.com/rust-lang/rust/issues/92827> for more information
+   = help: add `#![feature(associated_const_equality)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0229]: associated item constraints are not allowed here
+  --> $DIR/associated-types-eq-2.rs:20:10
+   |
+LL | impl Tr1<A = usize> for usize {
+   |          ^^^^^^^^^ associated item constraint not allowed here
+   |
+help: consider removing this associated item binding
+   |
+LL - impl Tr1<A = usize> for usize {
+LL + impl Tr1 for usize {
+   |
+
+error[E0046]: not all trait items implemented, missing: `A`
+  --> $DIR/associated-types-eq-2.rs:20:1
+   |
+LL |     type A;
+   |     ------ `A` from trait
+...
+LL | impl Tr1<A = usize> for usize {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `A` in implementation
+
+error[E0229]: associated item constraints are not allowed here
+  --> $DIR/associated-types-eq-2.rs:27:31
+   |
+LL | fn baz<I: Tr1>(_x: &<I as Tr1<A=Bar>>::A) {}
+   |                               ^^^^^ associated item constraint not allowed here
+   |
+help: consider removing this associated item binding
+   |
+LL - fn baz<I: Tr1>(_x: &<I as Tr1<A=Bar>>::A) {}
+LL + fn baz<I: Tr1>(_x: &<I as Tr1>::A) {}
+   |
+
+error[E0107]: trait takes 3 generic arguments but 1 generic argument was supplied
+  --> $DIR/associated-types-eq-2.rs:40:6
+   |
+LL | impl Tr2<i32, T2 = Qux, T3 = usize> for Bar {
+   |      ^^^ --- supplied 1 generic argument
+   |      |
+   |      expected 3 generic arguments
+   |
+note: trait defined here, with 3 generic parameters: `T1`, `T2`, `T3`
+  --> $DIR/associated-types-eq-2.rs:33:7
+   |
+LL | trait Tr2<T1, T2, T3> {
+   |       ^^^ --  --  --
+help: add missing generic arguments
+   |
+LL | impl Tr2<i32, T2, T3, T2 = Qux, T3 = usize> for Bar {
+   |             ++++++++
+
+error[E0229]: associated item constraints are not allowed here
+  --> $DIR/associated-types-eq-2.rs:40:15
+   |
+LL | impl Tr2<i32, T2 = Qux, T3 = usize> for Bar {
+   |               ^^^^^^^^ associated item constraint not allowed here
+   |
+help: to use `Qux` as a generic argument specify it directly
+   |
+LL - impl Tr2<i32, T2 = Qux, T3 = usize> for Bar {
+LL + impl Tr2<i32, Qux, T3 = usize> for Bar {
+   |
+
+error[E0107]: trait takes 3 generic arguments but 1 generic argument was supplied
+  --> $DIR/associated-types-eq-2.rs:47:6
+   |
+LL | impl Tr2<i32, t2 = Qux, T3 = usize> for Qux {
+   |      ^^^ --- supplied 1 generic argument
+   |      |
+   |      expected 3 generic arguments
+   |
+note: trait defined here, with 3 generic parameters: `T1`, `T2`, `T3`
+  --> $DIR/associated-types-eq-2.rs:33:7
+   |
+LL | trait Tr2<T1, T2, T3> {
+   |       ^^^ --  --  --
+help: add missing generic arguments
+   |
+LL | impl Tr2<i32, T2, T3, t2 = Qux, T3 = usize> for Qux {
+   |             ++++++++
+
+error[E0229]: associated item constraints are not allowed here
+  --> $DIR/associated-types-eq-2.rs:47:15
+   |
+LL | impl Tr2<i32, t2 = Qux, T3 = usize> for Qux {
+   |               ^^^^^^^^ associated item constraint not allowed here
+   |
+help: consider removing this associated item binding
+   |
+LL - impl Tr2<i32, t2 = Qux, T3 = usize> for Qux {
+LL + impl Tr2<i32, T3 = usize> for Qux {
+   |
+
+error[E0107]: trait takes 3 generic arguments but 1 generic argument was supplied
+  --> $DIR/associated-types-eq-2.rs:54:6
+   |
+LL | impl Tr2<i32, X = Qux, Y = usize> for Bar {
+   |      ^^^ --- supplied 1 generic argument
+   |      |
+   |      expected 3 generic arguments
+   |
+note: trait defined here, with 3 generic parameters: `T1`, `T2`, `T3`
+  --> $DIR/associated-types-eq-2.rs:33:7
+   |
+LL | trait Tr2<T1, T2, T3> {
+   |       ^^^ --  --  --
+help: add missing generic arguments
+   |
+LL | impl Tr2<i32, T2, T3, X = Qux, Y = usize> for Bar {
+   |             ++++++++
+
+error[E0229]: associated item constraints are not allowed here
+  --> $DIR/associated-types-eq-2.rs:54:15
+   |
+LL | impl Tr2<i32, X = Qux, Y = usize> for Bar {
+   |               ^^^^^^^ associated item constraint not allowed here
+   |
+help: consider removing this associated item binding
+   |
+LL - impl Tr2<i32, X = Qux, Y = usize> for Bar {
+LL + impl Tr2<i32, Y = usize> for Bar {
+   |
+
+error[E0107]: trait takes 3 generic arguments but 2 generic arguments were supplied
+  --> $DIR/associated-types-eq-2.rs:61:6
+   |
+LL | impl Tr2<i32, Qux, T3 = GenericTerm<i32>> for Bar {
+   |      ^^^ ---  --- supplied 2 generic arguments
+   |      |
+   |      expected 3 generic arguments
+   |
+note: trait defined here, with 3 generic parameters: `T1`, `T2`, `T3`
+  --> $DIR/associated-types-eq-2.rs:33:7
+   |
+LL | trait Tr2<T1, T2, T3> {
+   |       ^^^ --  --  --
+help: add missing generic argument
+   |
+LL | impl Tr2<i32, Qux, T3, T3 = GenericTerm<i32>> for Bar {
+   |                  ++++
+
+error[E0229]: associated item constraints are not allowed here
+  --> $DIR/associated-types-eq-2.rs:61:20
+   |
+LL | impl Tr2<i32, Qux, T3 = GenericTerm<i32>> for Bar {
+   |                    ^^^^^^^^^^^^^^^^^^^^^ associated item constraint not allowed here
+   |
+help: to use `GenericTerm<i32>` as a generic argument specify it directly
+   |
+LL - impl Tr2<i32, Qux, T3 = GenericTerm<i32>> for Bar {
+LL + impl Tr2<i32, Qux, GenericTerm<i32>> for Bar {
+   |
+
+error[E0229]: associated item constraints are not allowed here
+  --> $DIR/associated-types-eq-2.rs:76:10
+   |
+LL |   impl Tr3<N
+   |  __________^
+...  |
+LL | | = 42, T2 = Qux, T3 = usize> for Bar {
+   | |____^ associated item constraint not allowed here
+   |
+help: to use `42` as a generic argument specify it directly
+   |
+LL - impl Tr3<N
+LL -
+LL -
+LL - = 42, T2 = Qux, T3 = usize> for Bar {
+LL + impl Tr3<42, T2 = Qux, T3 = usize> for Bar {
+   |
+
+error[E0107]: trait takes 3 generic arguments but 0 generic arguments were supplied
+  --> $DIR/associated-types-eq-2.rs:84:6
+   |
+LL | impl Tr3<n = 42, T2 = Qux, T3 = usize> for Qux {
+   |      ^^^ expected 3 generic arguments
+   |
+note: trait defined here, with 3 generic parameters: `N`, `T2`, `T3`
+  --> $DIR/associated-types-eq-2.rs:69:7
+   |
+LL | trait Tr3<const N: i32, T2, T3> {
+   |       ^^^ ------------  --  --
+help: add missing generic arguments
+   |
+LL | impl Tr3<N, T2, T3, n = 42, T2 = Qux, T3 = usize> for Qux {
+   |          ++++++++++
+
+error[E0229]: associated item constraints are not allowed here
+  --> $DIR/associated-types-eq-2.rs:84:10
+   |
+LL | impl Tr3<n = 42, T2 = Qux, T3 = usize> for Qux {
+   |          ^^^^^^ associated item constraint not allowed here
+   |
+help: consider removing this associated item binding
+   |
+LL - impl Tr3<n = 42, T2 = Qux, T3 = usize> for Qux {
+LL + impl Tr3<T2 = Qux, T3 = usize> for Qux {
+   |
+
+error[E0229]: associated item constraints are not allowed here
+  --> $DIR/associated-types-eq-2.rs:92:10
+   |
+LL | impl Tr3<N = u32, T2 = Qux, T3 = usize> for Bar {
+   |          ^^^^^^^ associated item constraint not allowed here
+   |
+help: consider removing this associated item binding
+   |
+LL - impl Tr3<N = u32, T2 = Qux, T3 = usize> for Bar {
+LL + impl Tr3<T2 = Qux, T3 = usize> for Bar {
+   |
+
+error[E0107]: trait takes 3 generic arguments but 1 generic argument was supplied
+  --> $DIR/associated-types-eq-2.rs:98:6
+   |
+LL | impl Tr3<42, T2 = 42, T3 = usize> for Bar {
+   |      ^^^ -- supplied 1 generic argument
+   |      |
+   |      expected 3 generic arguments
+   |
+note: trait defined here, with 3 generic parameters: `N`, `T2`, `T3`
+  --> $DIR/associated-types-eq-2.rs:69:7
+   |
+LL | trait Tr3<const N: i32, T2, T3> {
+   |       ^^^ ------------  --  --
+help: add missing generic arguments
+   |
+LL | impl Tr3<42, T2, T3, T2 = 42, T3 = usize> for Bar {
+   |            ++++++++
+
+error[E0229]: associated item constraints are not allowed here
+  --> $DIR/associated-types-eq-2.rs:98:14
+   |
+LL | impl Tr3<42, T2 = 42, T3 = usize> for Bar {
+   |              ^^^^^^^ associated item constraint not allowed here
+   |
+help: consider removing this associated item binding
+   |
+LL - impl Tr3<42, T2 = 42, T3 = usize> for Bar {
+LL + impl Tr3<42, T3 = usize> for Bar {
+   |
+
+error[E0107]: trait takes 3 generic arguments but 0 generic arguments were supplied
+  --> $DIR/associated-types-eq-2.rs:106:6
+   |
+LL | impl Tr3<X = 42, Y = Qux, Z = usize> for Bar {
+   |      ^^^ expected 3 generic arguments
+   |
+note: trait defined here, with 3 generic parameters: `N`, `T2`, `T3`
+  --> $DIR/associated-types-eq-2.rs:69:7
+   |
+LL | trait Tr3<const N: i32, T2, T3> {
+   |       ^^^ ------------  --  --
+help: add missing generic arguments
+   |
+LL | impl Tr3<N, T2, T3, X = 42, Y = Qux, Z = usize> for Bar {
+   |          ++++++++++
+
+error[E0229]: associated item constraints are not allowed here
+  --> $DIR/associated-types-eq-2.rs:106:10
+   |
+LL | impl Tr3<X = 42, Y = Qux, Z = usize> for Bar {
+   |          ^^^^^^ associated item constraint not allowed here
+   |
+help: consider removing this associated item binding
+   |
+LL - impl Tr3<X = 42, Y = Qux, Z = usize> for Bar {
+LL + impl Tr3<Y = Qux, Z = usize> for Bar {
+   |
+
+error[E0107]: struct takes 1 generic argument but 0 generic arguments were supplied
+  --> $DIR/associated-types-eq-2.rs:117:13
+   |
+LL | impl<'a, T> St<'a , T = Qux> {
+   |             ^^ expected 1 generic argument
+   |
+note: struct defined here, with 1 generic parameter: `T`
+  --> $DIR/associated-types-eq-2.rs:115:8
+   |
+LL | struct St<'a, T> { v: &'a T }
+   |        ^^     -
+help: add missing generic argument
+   |
+LL | impl<'a, T> St<'a, T , T = Qux> {
+   |                  +++
+
+error[E0229]: associated item constraints are not allowed here
+  --> $DIR/associated-types-eq-2.rs:117:21
+   |
+LL | impl<'a, T> St<'a , T = Qux> {
+   |                     ^^^^^^^ associated item constraint not allowed here
+   |
+help: to use `Qux` as a generic argument specify it directly
+   |
+LL - impl<'a, T> St<'a , T = Qux> {
+LL + impl<'a, T> St<'a , Qux> {
+   |
+
+error: aborting due to 25 previous errors
+
+Some errors have detailed explanations: E0046, E0107, E0229, E0658.
+For more information about an error, try `rustc --explain E0046`.

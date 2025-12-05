@@ -1,0 +1,31 @@
+error: Undefined Behavior: write access through <TAG> at ALLOC[0x0] is forbidden
+  --> tests/fail/both_borrows/shr_frozen_violation1.rs:LL:CC
+   |
+LL |         *(x as *const i32 as *mut i32) = 7;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Undefined Behavior occurred here
+   |
+   = help: this indicates a potential bug in the program: it performed an invalid operation, but the Tree Borrows rules it violated are still experimental
+   = help: see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/tree-borrows.md for further information
+   = help: the accessed tag <TAG> has state Frozen which forbids this child write access
+help: the accessed tag <TAG> was created here, in the initial state Frozen
+  --> tests/fail/both_borrows/shr_frozen_violation1.rs:LL:CC
+   |
+LL | fn unknown_code(x: &i32) {
+   |                 ^
+   = note: BACKTRACE (of the first span):
+   = note: inside `unknown_code` at tests/fail/both_borrows/shr_frozen_violation1.rs:LL:CC
+note: inside `foo`
+  --> tests/fail/both_borrows/shr_frozen_violation1.rs:LL:CC
+   |
+LL |     unknown_code(&*x);
+   |     ^^^^^^^^^^^^^^^^^
+note: inside `main`
+  --> tests/fail/both_borrows/shr_frozen_violation1.rs:LL:CC
+   |
+LL |     println!("{}", foo(&mut 0));
+   |                    ^^^^^^^^^^^
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to 1 previous error
+

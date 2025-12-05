@@ -1,0 +1,64 @@
+error: missing trait method provided by default: `provided`
+  --> tests/ui/missing_trait_methods.rs:22:1
+   |
+LL | impl A for Partial {}
+   | ^^^^^^^^^^^^^^^^^^
+   |
+help: implement the method
+  --> tests/ui/missing_trait_methods.rs:5:5
+   |
+LL |     fn provided() {}
+   |     ^^^^^^^^^^^^^
+   = note: `-D clippy::missing-trait-methods` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::missing_trait_methods)]`
+
+error: missing trait method provided by default: `b`
+  --> tests/ui/missing_trait_methods.rs:25:1
+   |
+LL | impl B for Partial {
+   | ^^^^^^^^^^^^^^^^^^
+   |
+help: implement the method
+  --> tests/ui/missing_trait_methods.rs:15:5
+   |
+LL |     fn b<'a, T: AsRef<[u8]>>(a: &'a T) -> &'a [u8] {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: missing trait method provided by default: `one`
+  --> tests/ui/missing_trait_methods.rs:59:1
+   |
+LL | impl MissingMultiple for Partial {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: implement the method
+  --> tests/ui/missing_trait_methods.rs:54:5
+   |
+LL |     fn one() {}
+   |     ^^^^^^^^
+
+error: missing trait method provided by default: `two`
+  --> tests/ui/missing_trait_methods.rs:59:1
+   |
+LL | impl MissingMultiple for Partial {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: implement the method
+  --> tests/ui/missing_trait_methods.rs:55:5
+   |
+LL |     fn two() {}
+   |     ^^^^^^^^
+
+error: missing trait method provided by default: `three`
+  --> tests/ui/missing_trait_methods.rs:59:1
+   |
+LL | impl MissingMultiple for Partial {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: implement the method
+  --> tests/ui/missing_trait_methods.rs:56:5
+   |
+LL |     fn three() {}
+   |     ^^^^^^^^^^
+
+error: aborting due to 5 previous errors
+

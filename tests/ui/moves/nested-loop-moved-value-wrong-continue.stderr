@@ -1,0 +1,83 @@
+error[E0382]: use of moved value: `foo`
+  --> $DIR/nested-loop-moved-value-wrong-continue.rs:21:14
+   |
+LL |     for foo in foos { for bar in &bars { if foo == *bar {
+   |         ---           ---------------- inside of this loop
+   |         |
+   |         this reinitialization might get skipped
+   |         move occurs because `foo` has type `String`, which does not implement the `Copy` trait
+...
+LL |         baz.push(foo);
+   |                  --- value moved here, in previous iteration of loop
+...
+LL |     qux.push(foo);
+   |              ^^^ value used here after move
+   |
+note: verify that your loop breaking logic is correct
+  --> $DIR/nested-loop-moved-value-wrong-continue.rs:17:9
+   |
+LL |     for foo in foos { for bar in &bars { if foo == *bar {
+   |     ---------------   ----------------
+...
+LL |         continue;
+   |         ^^^^^^^^ this `continue` advances the loop at $DIR/nested-loop-moved-value-wrong-continue.rs:6:23: 20:8
+help: consider moving the expression out of the loop so it is only moved once
+   |
+LL ~     for foo in foos { let mut value = baz.push(foo);
+LL ~     for bar in &bars { if foo == *bar {
+LL |
+...
+LL |
+LL ~         value;
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |         baz.push(foo.clone());
+   |                     ++++++++
+
+error[E0382]: use of moved value: `foo`
+  --> $DIR/nested-loop-moved-value-wrong-continue.rs:50:18
+   |
+LL |     for foo in foos {
+   |         ---
+   |         |
+   |         this reinitialization might get skipped
+   |         move occurs because `foo` has type `String`, which does not implement the `Copy` trait
+...
+LL |         for bar in &bars {
+   |         ---------------- inside of this loop
+...
+LL |                 baz.push(foo);
+   |                          --- value moved here, in previous iteration of loop
+...
+LL |         qux.push(foo);
+   |                  ^^^ value used here after move
+   |
+note: verify that your loop breaking logic is correct
+  --> $DIR/nested-loop-moved-value-wrong-continue.rs:45:17
+   |
+LL |     for foo in foos {
+   |     ---------------
+...
+LL |         for bar in &bars {
+   |         ----------------
+...
+LL |                 continue;
+   |                 ^^^^^^^^ this `continue` advances the loop at line 36
+help: consider moving the expression out of the loop so it is only moved once
+   |
+LL ~         let mut value = baz.push(foo);
+LL ~         for bar in &bars {
+LL |
+...
+LL |             if foo == *bar {
+LL ~                 value;
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |                 baz.push(foo.clone());
+   |                             ++++++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0382`.

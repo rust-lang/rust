@@ -1,0 +1,65 @@
+error: unused closure that must be used
+  --> $DIR/unused-closure.rs:8:5
+   |
+LL | /     || {
+LL | |         println!("Hello!");
+LL | |     };
+   | |_____^
+   |
+   = note: closures are lazy and do nothing unless called
+note: the lint level is defined here
+  --> $DIR/unused-closure.rs:5:9
+   |
+LL | #![deny(unused_must_use)]
+   |         ^^^^^^^^^^^^^^^
+
+error: unused implementer of `Future` that must be used
+  --> $DIR/unused-closure.rs:12:5
+   |
+LL |     async {};
+   |     ^^^^^^^^
+   |
+   = note: futures do nothing unless you `.await` or poll them
+
+error: unused closure that must be used
+  --> $DIR/unused-closure.rs:13:5
+   |
+LL |     || async {};
+   |     ^^^^^^^^^^^
+   |
+   = note: closures are lazy and do nothing unless called
+
+error: unused closure that must be used
+  --> $DIR/unused-closure.rs:14:5
+   |
+LL |     async || {};
+   |     ^^^^^^^^^^^
+   |
+   = note: closures are lazy and do nothing unless called
+
+error: unused array of boxed arrays of closures that must be used
+  --> $DIR/unused-closure.rs:17:5
+   |
+LL |     [Box::new([|| {}; 10]); 1];
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: closures are lazy and do nothing unless called
+
+error: unused closure that must be used
+  --> $DIR/unused-closure.rs:19:5
+   |
+LL |     vec![|| "a"].pop().unwrap();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: closures are lazy and do nothing unless called
+
+error: unused closure that must be used
+  --> $DIR/unused-closure.rs:22:9
+   |
+LL |         || true;
+   |         ^^^^^^^
+   |
+   = note: closures are lazy and do nothing unless called
+
+error: aborting due to 7 previous errors
+

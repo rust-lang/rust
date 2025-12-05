@@ -1,0 +1,18 @@
+warning[E0133]: call to unsafe function `unsf` is unsafe and requires unsafe block
+  --> $DIR/edition-2024-unsafe_op_in_unsafe_fn.rs:9:5
+   |
+LL |     unsf();
+   |     ^^^^^^ call to unsafe function
+   |
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+note: an unsafe function restricts its caller, but its body is safe by default
+  --> $DIR/edition-2024-unsafe_op_in_unsafe_fn.rs:8:1
+   |
+LL | unsafe fn foo() {
+   | ^^^^^^^^^^^^^^^
+   = note: `#[warn(unsafe_op_in_unsafe_fn)]` (part of `#[warn(rust_2024_compatibility)]`) on by default
+
+warning: 1 warning emitted
+
+For more information about this error, try `rustc --explain E0133`.

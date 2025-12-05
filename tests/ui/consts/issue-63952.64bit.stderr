@@ -1,0 +1,14 @@
+error[E0080]: constructing invalid value: encountered invalid reference metadata: slice is bigger than largest supported object
+  --> $DIR/issue-63952.rs:17:1
+   |
+LL | const SLICE_WAY_TOO_LONG: &[u8] = unsafe {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
+   |
+   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: 16, align: 8) {
+               ╾ALLOC0<imm>╼ ff ff ff ff ff ff ff ff │ ╾──────╼........
+           }
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0080`.

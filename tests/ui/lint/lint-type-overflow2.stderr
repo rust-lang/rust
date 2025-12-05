@@ -1,0 +1,62 @@
+warning: use of a double negation
+  --> $DIR/lint-type-overflow2.rs:6:18
+   |
+LL |     let x2: i8 = --128;
+   |                  ^^^^^
+   |
+   = note: the prefix `--` could be misinterpreted as a decrement operator which exists in other languages
+   = note: use `-= 1` if you meant to decrement the value
+   = note: `#[warn(double_negations)]` on by default
+help: add parentheses for clarity
+   |
+LL |     let x2: i8 = -(-128);
+   |                   +    +
+
+error: literal out of range for `i8`
+  --> $DIR/lint-type-overflow2.rs:6:20
+   |
+LL |     let x2: i8 = --128;
+   |                    ^^^
+   |
+   = note: the literal `128` does not fit into the type `i8` whose range is `-128..=127`
+   = help: consider using the type `u8` instead
+note: the lint level is defined here
+  --> $DIR/lint-type-overflow2.rs:3:9
+   |
+LL | #![deny(overflowing_literals)]
+   |         ^^^^^^^^^^^^^^^^^^^^
+
+error: literal out of range for `f32`
+  --> $DIR/lint-type-overflow2.rs:9:14
+   |
+LL |     let x = -3.40282357e+38_f32;
+   |              ^^^^^^^^^^^^^^^^^^
+   |
+   = note: the literal `3.40282357e+38_f32` does not fit into the type `f32` and will be converted to `f32::INFINITY`
+
+error: literal out of range for `f32`
+  --> $DIR/lint-type-overflow2.rs:10:14
+   |
+LL |     let x =  3.40282357e+38_f32;
+   |              ^^^^^^^^^^^^^^^^^^
+   |
+   = note: the literal `3.40282357e+38_f32` does not fit into the type `f32` and will be converted to `f32::INFINITY`
+
+error: literal out of range for `f64`
+  --> $DIR/lint-type-overflow2.rs:11:14
+   |
+LL |     let x = -1.7976931348623159e+308_f64;
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the literal `1.7976931348623159e+308_f64` does not fit into the type `f64` and will be converted to `f64::INFINITY`
+
+error: literal out of range for `f64`
+  --> $DIR/lint-type-overflow2.rs:12:14
+   |
+LL |     let x =  1.7976931348623159e+308_f64;
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the literal `1.7976931348623159e+308_f64` does not fit into the type `f64` and will be converted to `f64::INFINITY`
+
+error: aborting due to 5 previous errors; 1 warning emitted
+

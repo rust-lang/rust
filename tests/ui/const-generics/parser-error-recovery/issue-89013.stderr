@@ -1,0 +1,38 @@
+error: expected lifetime, type, or constant, found keyword `const`
+  --> $DIR/issue-89013.rs:9:14
+   |
+LL | impl Foo<N = const 3> for Bar {
+   |              ^^^^^
+   |
+help: the `const` keyword is only needed in the definition of the type
+   |
+LL - impl Foo<N = const 3> for Bar {
+LL + impl Foo<N = 3> for Bar {
+   |
+
+error[E0658]: associated const equality is incomplete
+  --> $DIR/issue-89013.rs:9:10
+   |
+LL | impl Foo<N = const 3> for Bar {
+   |          ^^^^^^^^^^^
+   |
+   = note: see issue #92827 <https://github.com/rust-lang/rust/issues/92827> for more information
+   = help: add `#![feature(associated_const_equality)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0229]: associated item constraints are not allowed here
+  --> $DIR/issue-89013.rs:9:10
+   |
+LL | impl Foo<N = const 3> for Bar {
+   |          ^^^^^^^^^^^ associated item constraint not allowed here
+   |
+help: to use `3` as a generic argument specify it directly
+   |
+LL - impl Foo<N = const 3> for Bar {
+LL + impl Foo<3> for Bar {
+   |
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0229, E0658.
+For more information about an error, try `rustc --explain E0229`.

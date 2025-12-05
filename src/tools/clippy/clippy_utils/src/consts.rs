@@ -1,0 +1,1145 @@
+//! A simple const eval API, for use on arbitrary HIR expressions.
+//!
+//! This cannot use rustc's const eval, aka miri, as arbitrary HIR expressions cannot be lowered to
+//! executable MIR bodies, so we have to do this instead.
+#![expect(clippy::float_cmp)]
+
+use crate::res::MaybeDef;
+use crate::source::{SpanRangeExt, walk_span_to_context};
+use crate::{clip, is_direct_expn_of, sext, sym, unsext};
+
+use rustc_abi::Size;
+use rustc_apfloat::Float;
+use rustc_apfloat::ieee::{Half, Quad};
+use rustc_ast::ast::{LitFloatType, LitKind};
+use rustc_hir::def::{DefKind, Res};
+use rustc_hir::{
+    BinOpKind, Block, ConstArgKind, ConstBlock, ConstItemRhs, Expr, ExprKind, HirId, PatExpr, PatExprKind, QPath,
+    TyKind, UnOp,
+};
+use rustc_lexer::{FrontmatterAllowed, tokenize};
+use rustc_lint::LateContext;
+use rustc_middle::mir::ConstValue;
+use rustc_middle::mir::interpret::{Scalar, alloc_range};
+use rustc_middle::ty::{self, FloatTy, IntTy, ScalarInt, Ty, TyCtxt, TypeckResults, UintTy};
+use rustc_middle::{bug, mir, span_bug};
+use rustc_span::{Symbol, SyntaxContext};
+use std::cell::Cell;
+use std::cmp::Ordering;
+use std::hash::{Hash, Hasher};
+use std::iter;
+
+/// A `LitKind`-like enum to fold constant `Expr`s into.
+#[derive(Debug, Clone)]
+pub enum Constant {
+    Adt(ConstValue),
+    /// A `String` (e.g., "abc").
+    Str(String),
+    /// A binary string (e.g., `b"abc"`).
+    Binary(Vec<u8>),
+    /// A single `char` (e.g., `'a'`).
+    Char(char),
+    /// An integer's bit representation.
+    Int(u128),
+    /// An `f16` bitcast to a `u16`.
+    // FIXME(f16_f128): use `f16` once builtins are available on all host tools platforms.
+    F16(u16),
+    /// An `f32`.
+    F32(f32),
+    /// An `f64`.
+    F64(f64),
+    /// An `f128` bitcast to a `u128`.
+    // FIXME(f16_f128): use `f128` once builtins are available on all host tools platforms.
+    F128(u128),
+    /// `true` or `false`.
+    Bool(bool),
+    /// An array of constants.
+    Vec(Vec<Self>),
+    /// Also an array, but with only one constant, repeated N times.
+    Repeat(Box<Self>, u64),
+    /// A tuple of constants.
+    Tuple(Vec<Self>),
+    /// A raw pointer.
+    RawPtr(u128),
+    /// A reference
+    Ref(Box<Self>),
+    /// A literal with syntax error.
+    Err,
+}
+
+trait IntTypeBounds: Sized {
+    type Output: PartialOrd;
+
+    fn min_max(self) -> Option<(Self::Output, Self::Output)>;
+    fn bits(self) -> Self::Output;
+    fn ensure_fits(self, val: Self::Output) -> Option<Self::Output> {
+        let (min, max) = self.min_max()?;
+        (min <= val && val <= max).then_some(val)
+    }
+}
+impl IntTypeBounds for UintTy {
+    type Output = u128;
+    fn min_max(self) -> Option<(Self::Output, Self::Output)> {
+        Some(match self {
+            UintTy::U8 => (u8::MIN.into(), u8::MAX.into()),
+            UintTy::U16 => (u16::MIN.into(), u16::MAX.into()),
+            UintTy::U32 => (u32::MIN.into(), u32::MAX.into()),
+            UintTy::U64 => (u64::MIN.into(), u64::MAX.into()),
+            UintTy::U128 => (u128::MIN, u128::MAX),
+            UintTy::Usize => (usize::MIN.try_into().ok()?, usize::MAX.try_into().ok()?),
+        })
+    }
+    fn bits(self) -> Self::Output {
+        match self {
+            UintTy::U8 => 8,
+            UintTy::U16 => 16,
+            UintTy::U32 => 32,
+            UintTy::U64 => 64,
+            UintTy::U128 => 128,
+            UintTy::Usize => usize::BITS.into(),
+        }
+    }
+}
+impl IntTypeBounds for IntTy {
+    type Output = i128;
+    fn min_max(self) -> Option<(Self::Output, Self::Output)> {
+        Some(match self {
+            IntTy::I8 => (i8::MIN.into(), i8::MAX.into()),
+            IntTy::I16 => (i16::MIN.into(), i16::MAX.into()),
+            IntTy::I32 => (i32::MIN.into(), i32::MAX.into()),
+            IntTy::I64 => (i64::MIN.into(), i64::MAX.into()),
+            IntTy::I128 => (i128::MIN, i128::MAX),
+            IntTy::Isize => (isize::MIN.try_into().ok()?, isize::MAX.try_into().ok()?),
+        })
+    }
+    fn bits(self) -> Self::Output {
+        match self {
+            IntTy::I8 => 8,
+            IntTy::I16 => 16,
+            IntTy::I32 => 32,
+            IntTy::I64 => 64,
+            IntTy::I128 => 128,
+            IntTy::Isize => isize::BITS.into(),
+        }
+    }
+}
+
+impl PartialEq for Constant {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Str(ls), Self::Str(rs)) => ls == rs,
+            (Self::Binary(l), Self::Binary(r)) => l == r,
+            (&Self::Char(l), &Self::Char(r)) => l == r,
+            (&Self::Int(l), &Self::Int(r)) => l == r,
+            (&Self::F64(l), &Self::F64(r)) => {
+                // `to_bits` is required to catch non-matching `0.0` and `-0.0`.
+                l.to_bits() == r.to_bits() && !l.is_nan()
+            },
+            (&Self::F32(l), &Self::F32(r)) => {
+                // `to_bits` is required to catch non-matching `0.0` and `-0.0`.
+                l.to_bits() == r.to_bits() && !l.is_nan()
+            },
+            (&Self::Bool(l), &Self::Bool(r)) => l == r,
+            (&Self::Vec(ref l), &Self::Vec(ref r)) | (&Self::Tuple(ref l), &Self::Tuple(ref r)) => l == r,
+            (Self::Repeat(lv, ls), Self::Repeat(rv, rs)) => ls == rs && lv == rv,
+            (Self::Ref(lb), Self::Ref(rb)) => *lb == *rb,
+            // TODO: are there inter-type equalities?
+            _ => false,
+        }
+    }
+}
+
+impl Hash for Constant {
+    fn hash<H>(&self, state: &mut H)
+    where
+        H: Hasher,
+    {
+        std::mem::discriminant(self).hash(state);
+        match *self {
+            Self::Adt(ref elem) => {
+                elem.hash(state);
+            },
+            Self::Str(ref s) => {
+                s.hash(state);
+            },
+            Self::Binary(ref b) => {
+                b.hash(state);
+            },
+            Self::Char(c) => {
+                c.hash(state);
+            },
+            Self::Int(i) => {
+                i.hash(state);
+            },
+            Self::F16(f) => {
+                // FIXME(f16_f128): once conversions to/from `f128` are available on all platforms,
+                f.hash(state);
+            },
+            Self::F32(f) => {
+                f64::from(f).to_bits().hash(state);
+            },
+            Self::F64(f) => {
+                f.to_bits().hash(state);
+            },
+            Self::F128(f) => {
+                f.hash(state);
+            },
+            Self::Bool(b) => {
+                b.hash(state);
+            },
+            Self::Vec(ref v) | Self::Tuple(ref v) => {
+                v.hash(state);
+            },
+            Self::Repeat(ref c, l) => {
+                c.hash(state);
+                l.hash(state);
+            },
+            Self::RawPtr(u) => {
+                u.hash(state);
+            },
+            Self::Ref(ref r) => {
+                r.hash(state);
+            },
+            Self::Err => {},
+        }
+    }
+}
+
+impl Constant {
+    pub fn partial_cmp(tcx: TyCtxt<'_>, cmp_type: Ty<'_>, left: &Self, right: &Self) -> Option<Ordering> {
+        match (left, right) {
+            (Self::Str(ls), Self::Str(rs)) => Some(ls.cmp(rs)),
+            (Self::Char(l), Self::Char(r)) => Some(l.cmp(r)),
+            (&Self::Int(l), &Self::Int(r)) => match *cmp_type.kind() {
+                ty::Int(int_ty) => Some(sext(tcx, l, int_ty).cmp(&sext(tcx, r, int_ty))),
+                ty::Uint(_) => Some(l.cmp(&r)),
+                _ => bug!("Not an int type"),
+            },
+            (&Self::F64(l), &Self::F64(r)) => l.partial_cmp(&r),
+            (&Self::F32(l), &Self::F32(r)) => l.partial_cmp(&r),
+            (Self::Bool(l), Self::Bool(r)) => Some(l.cmp(r)),
+            (Self::Tuple(l), Self::Tuple(r)) if l.len() == r.len() => match *cmp_type.kind() {
+                ty::Tuple(tys) if tys.len() == l.len() => l
+                    .iter()
+                    .zip(r)
+                    .zip(tys)
+                    .map(|((li, ri), cmp_type)| Self::partial_cmp(tcx, cmp_type, li, ri))
+                    .find(|r| r.is_none_or(|o| o != Ordering::Equal))
+                    .unwrap_or_else(|| Some(l.len().cmp(&r.len()))),
+                _ => None,
+            },
+            (Self::Vec(l), Self::Vec(r)) => {
+                let cmp_type = cmp_type.builtin_index()?;
+                iter::zip(l, r)
+                    .map(|(li, ri)| Self::partial_cmp(tcx, cmp_type, li, ri))
+                    .find(|r| r.is_none_or(|o| o != Ordering::Equal))
+                    .unwrap_or_else(|| Some(l.len().cmp(&r.len())))
+            },
+            (Self::Repeat(lv, ls), Self::Repeat(rv, rs)) => {
+                match Self::partial_cmp(
+                    tcx,
+                    match *cmp_type.kind() {
+                        ty::Array(ty, _) => ty,
+                        _ => return None,
+                    },
+                    lv,
+                    rv,
+                ) {
+                    Some(Ordering::Equal) => Some(ls.cmp(rs)),
+                    x => x,
+                }
+            },
+            (Self::Ref(lb), Self::Ref(rb)) => Self::partial_cmp(
+                tcx,
+                match *cmp_type.kind() {
+                    ty::Ref(_, ty, _) => ty,
+                    _ => return None,
+                },
+                lb,
+                rb,
+            ),
+            // TODO: are there any useful inter-type orderings?
+            _ => None,
+        }
+    }
+
+    /// Returns the integer value or `None` if `self` or `val_type` is not integer type.
+    pub fn int_value(&self, tcx: TyCtxt<'_>, val_type: Ty<'_>) -> Option<FullInt> {
+        if let Constant::Int(const_int) = *self {
+            match *val_type.kind() {
+                ty::Int(ity) => Some(FullInt::S(sext(tcx, const_int, ity))),
+                ty::Uint(_) => Some(FullInt::U(const_int)),
+                _ => None,
+            }
+        } else {
+            None
+        }
+    }
+
+    #[must_use]
+    pub fn peel_refs(mut self) -> Self {
+        while let Constant::Ref(r) = self {
+            self = *r;
+        }
+        self
+    }
+
+    fn parse_f16(s: &str) -> Self {
+        let f: Half = s.parse().unwrap();
+        Self::F16(f.to_bits().try_into().unwrap())
+    }
+
+    fn parse_f128(s: &str) -> Self {
+        let f: Quad = s.parse().unwrap();
+        Self::F128(f.to_bits())
+    }
+
+    pub fn new_numeric_min<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<Self> {
+        match *ty.kind() {
+            ty::Uint(_) => Some(Self::Int(0)),
+            ty::Int(ty) => {
+                let val = match ty.normalize(tcx.sess.target.pointer_width) {
+                    IntTy::I8 => i128::from(i8::MIN),
+                    IntTy::I16 => i128::from(i16::MIN),
+                    IntTy::I32 => i128::from(i32::MIN),
+                    IntTy::I64 => i128::from(i64::MIN),
+                    IntTy::I128 => i128::MIN,
+                    IntTy::Isize => return None,
+                };
+                Some(Self::Int(val.cast_unsigned()))
+            },
+            ty::Char => Some(Self::Char(char::MIN)),
+            ty::Float(FloatTy::F32) => Some(Self::F32(f32::NEG_INFINITY)),
+            ty::Float(FloatTy::F64) => Some(Self::F64(f64::NEG_INFINITY)),
+            _ => None,
+        }
+    }
+
+    pub fn new_numeric_max<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<Self> {
+        match *ty.kind() {
+            ty::Uint(ty) => Some(Self::Int(match ty.normalize(tcx.sess.target.pointer_width) {
+                UintTy::U8 => u128::from(u8::MAX),
+                UintTy::U16 => u128::from(u16::MAX),
+                UintTy::U32 => u128::from(u32::MAX),
+                UintTy::U64 => u128::from(u64::MAX),
+                UintTy::U128 => u128::MAX,
+                UintTy::Usize => return None,
+            })),
+            ty::Int(ty) => {
+                let val = match ty.normalize(tcx.sess.target.pointer_width) {
+                    IntTy::I8 => i128::from(i8::MAX),
+                    IntTy::I16 => i128::from(i16::MAX),
+                    IntTy::I32 => i128::from(i32::MAX),
+                    IntTy::I64 => i128::from(i64::MAX),
+                    IntTy::I128 => i128::MAX,
+                    IntTy::Isize => return None,
+                };
+                Some(Self::Int(val.cast_unsigned()))
+            },
+            ty::Char => Some(Self::Char(char::MAX)),
+            ty::Float(FloatTy::F32) => Some(Self::F32(f32::INFINITY)),
+            ty::Float(FloatTy::F64) => Some(Self::F64(f64::INFINITY)),
+            _ => None,
+        }
+    }
+
+    pub fn is_numeric_min<'tcx>(&self, tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
+        match (self, ty.kind()) {
+            (&Self::Int(x), &ty::Uint(_)) => x == 0,
+            (&Self::Int(x), &ty::Int(ty)) => {
+                let limit = match ty.normalize(tcx.sess.target.pointer_width) {
+                    IntTy::I8 => i128::from(i8::MIN),
+                    IntTy::I16 => i128::from(i16::MIN),
+                    IntTy::I32 => i128::from(i32::MIN),
+                    IntTy::I64 => i128::from(i64::MIN),
+                    IntTy::I128 => i128::MIN,
+                    IntTy::Isize => return false,
+                };
+                x.cast_signed() == limit
+            },
+            (&Self::Char(x), &ty::Char) => x == char::MIN,
+            (&Self::F32(x), &ty::Float(FloatTy::F32)) => x == f32::NEG_INFINITY,
+            (&Self::F64(x), &ty::Float(FloatTy::F64)) => x == f64::NEG_INFINITY,
+            _ => false,
+        }
+    }
+
+    pub fn is_numeric_max<'tcx>(&self, tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
+        match (self, ty.kind()) {
+            (&Self::Int(x), &ty::Uint(ty)) => {
+                let limit = match ty.normalize(tcx.sess.target.pointer_width) {
+                    UintTy::U8 => u128::from(u8::MAX),
+                    UintTy::U16 => u128::from(u16::MAX),
+                    UintTy::U32 => u128::from(u32::MAX),
+                    UintTy::U64 => u128::from(u64::MAX),
+                    UintTy::U128 => u128::MAX,
+                    UintTy::Usize => return false,
+                };
+                x == limit
+            },
+            (&Self::Int(x), &ty::Int(ty)) => {
+                let limit = match ty.normalize(tcx.sess.target.pointer_width) {
+                    IntTy::I8 => i128::from(i8::MAX),
+                    IntTy::I16 => i128::from(i16::MAX),
+                    IntTy::I32 => i128::from(i32::MAX),
+                    IntTy::I64 => i128::from(i64::MAX),
+                    IntTy::I128 => i128::MAX,
+                    IntTy::Isize => return false,
+                };
+                x.cast_signed() == limit
+            },
+            (&Self::Char(x), &ty::Char) => x == char::MAX,
+            (&Self::F32(x), &ty::Float(FloatTy::F32)) => x == f32::INFINITY,
+            (&Self::F64(x), &ty::Float(FloatTy::F64)) => x == f64::INFINITY,
+            _ => false,
+        }
+    }
+
+    pub fn is_pos_infinity(&self) -> bool {
+        match *self {
+            // FIXME(f16_f128): add f16 and f128 when constants are available
+            Constant::F32(x) => x == f32::INFINITY,
+            Constant::F64(x) => x == f64::INFINITY,
+            _ => false,
+        }
+    }
+
+    pub fn is_neg_infinity(&self) -> bool {
+        match *self {
+            // FIXME(f16_f128): add f16 and f128 when constants are available
+            Constant::F32(x) => x == f32::NEG_INFINITY,
+            Constant::F64(x) => x == f64::NEG_INFINITY,
+            _ => false,
+        }
+    }
+}
+
+/// Parses a `LitKind` to a `Constant`.
+pub fn lit_to_mir_constant(lit: &LitKind, ty: Option<Ty<'_>>) -> Constant {
+    match *lit {
+        LitKind::Str(ref is, _) => Constant::Str(is.to_string()),
+        LitKind::Byte(b) => Constant::Int(u128::from(b)),
+        LitKind::ByteStr(ref s, _) | LitKind::CStr(ref s, _) => Constant::Binary(s.as_byte_str().to_vec()),
+        LitKind::Char(c) => Constant::Char(c),
+        LitKind::Int(n, _) => Constant::Int(n.get()),
+        LitKind::Float(ref is, LitFloatType::Suffixed(fty)) => match fty {
+            // FIXME(f16_f128): just use `parse()` directly when available for `f16`/`f128`
+            FloatTy::F16 => Constant::parse_f16(is.as_str()),
+            FloatTy::F32 => Constant::F32(is.as_str().parse().unwrap()),
+            FloatTy::F64 => Constant::F64(is.as_str().parse().unwrap()),
+            FloatTy::F128 => Constant::parse_f128(is.as_str()),
+        },
+        LitKind::Float(ref is, LitFloatType::Unsuffixed) => match ty.expect("type of float is known").kind() {
+            ty::Float(FloatTy::F16) => Constant::parse_f16(is.as_str()),
+            ty::Float(FloatTy::F32) => Constant::F32(is.as_str().parse().unwrap()),
+            ty::Float(FloatTy::F64) => Constant::F64(is.as_str().parse().unwrap()),
+            ty::Float(FloatTy::F128) => Constant::parse_f128(is.as_str()),
+            _ => bug!(),
+        },
+        LitKind::Bool(b) => Constant::Bool(b),
+        LitKind::Err(_) => Constant::Err,
+    }
+}
+
+/// The source of a constant value.
+#[derive(Clone, Copy)]
+pub enum ConstantSource {
+    /// The value is determined solely from the expression.
+    Local,
+    /// The value is dependent on another definition that may change independently from the local
+    /// expression.
+    NonLocal,
+}
+impl ConstantSource {
+    pub fn is_local(self) -> bool {
+        matches!(self, Self::Local)
+    }
+}
+
+#[derive(Copy, Clone, Debug, Eq)]
+pub enum FullInt {
+    S(i128),
+    U(u128),
+}
+
+impl PartialEq for FullInt {
+    fn eq(&self, other: &Self) -> bool {
+        self.cmp(other) == Ordering::Equal
+    }
+}
+
+impl PartialOrd for FullInt {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for FullInt {
+    fn cmp(&self, other: &Self) -> Ordering {
+        use FullInt::{S, U};
+
+        fn cmp_s_u(s: i128, u: u128) -> Ordering {
+            u128::try_from(s).map_or(Ordering::Less, |x| x.cmp(&u))
+        }
+
+        match (*self, *other) {
+            (S(s), S(o)) => s.cmp(&o),
+            (U(s), U(o)) => s.cmp(&o),
+            (S(s), U(o)) => cmp_s_u(s, o),
+            (U(s), S(o)) => cmp_s_u(o, s).reverse(),
+        }
+    }
+}
+
+/// The context required to evaluate a constant expression.
+///
+/// This is currently limited to constant folding and reading the value of named constants.
+///
+/// See the module level documentation for some context.
+pub struct ConstEvalCtxt<'tcx> {
+    tcx: TyCtxt<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
+    typeck: &'tcx TypeckResults<'tcx>,
+    source: Cell<ConstantSource>,
+    ctxt: Cell<SyntaxContext>,
+}
+
+impl<'tcx> ConstEvalCtxt<'tcx> {
+    /// Creates the evaluation context from the lint context. This requires the lint context to be
+    /// in a body (i.e. `cx.enclosing_body.is_some()`).
+    pub fn new(cx: &LateContext<'tcx>) -> Self {
+        Self {
+            tcx: cx.tcx,
+            typing_env: cx.typing_env(),
+            typeck: cx.typeck_results(),
+            source: Cell::new(ConstantSource::Local),
+            ctxt: Cell::new(SyntaxContext::root()),
+        }
+    }
+
+    /// Creates an evaluation context.
+    pub fn with_env(tcx: TyCtxt<'tcx>, typing_env: ty::TypingEnv<'tcx>, typeck: &'tcx TypeckResults<'tcx>) -> Self {
+        Self {
+            tcx,
+            typing_env,
+            typeck,
+            source: Cell::new(ConstantSource::Local),
+            ctxt: Cell::new(SyntaxContext::root()),
+        }
+    }
+
+    /// Attempts to evaluate the expression and returns both the value and whether it's dependant on
+    /// other items.
+    pub fn eval_with_source(&self, e: &Expr<'_>, ctxt: SyntaxContext) -> Option<(Constant, ConstantSource)> {
+        self.source.set(ConstantSource::Local);
+        self.ctxt.set(ctxt);
+        self.expr(e).map(|c| (c, self.source.get()))
+    }
+
+    /// Attempts to evaluate the expression.
+    pub fn eval(&self, e: &Expr<'_>) -> Option<Constant> {
+        self.expr(e)
+    }
+
+    /// Attempts to evaluate the expression without accessing other items.
+    ///
+    /// The context argument is the context used to view the evaluated expression. e.g. when
+    /// evaluating the argument in `f(m!(1))` the context of the call expression should be used.
+    /// This is need so the const evaluator can see the `m` macro and marke the evaluation as
+    /// non-local independant of what the macro expands to.
+    pub fn eval_local(&self, e: &Expr<'_>, ctxt: SyntaxContext) -> Option<Constant> {
+        match self.eval_with_source(e, ctxt) {
+            Some((x, ConstantSource::Local)) => Some(x),
+            _ => None,
+        }
+    }
+
+    /// Attempts to evaluate the expression as an integer without accessing other items.
+    ///
+    /// The context argument is the context used to view the evaluated expression. e.g. when
+    /// evaluating the argument in `f(m!(1))` the context of the call expression should be used.
+    /// This is need so the const evaluator can see the `m` macro and marke the evaluation as
+    /// non-local independant of what the macro expands to.
+    pub fn eval_full_int(&self, e: &Expr<'_>, ctxt: SyntaxContext) -> Option<FullInt> {
+        match self.eval_with_source(e, ctxt) {
+            Some((x, ConstantSource::Local)) => x.int_value(self.tcx, self.typeck.expr_ty(e)),
+            _ => None,
+        }
+    }
+
+    pub fn eval_pat_expr(&self, pat_expr: &PatExpr<'_>) -> Option<Constant> {
+        match &pat_expr.kind {
+            PatExprKind::Lit { lit, negated } => {
+                let ty = self.typeck.node_type_opt(pat_expr.hir_id);
+                let val = lit_to_mir_constant(&lit.node, ty);
+                if *negated {
+                    self.constant_negate(&val, ty?)
+                } else {
+                    Some(val)
+                }
+            },
+            PatExprKind::ConstBlock(ConstBlock { body, .. }) => self.expr(self.tcx.hir_body(*body).value),
+            PatExprKind::Path(qpath) => self.qpath(qpath, pat_expr.hir_id),
+        }
+    }
+
+    fn check_ctxt(&self, ctxt: SyntaxContext) {
+        if self.ctxt.get() != ctxt {
+            self.source.set(ConstantSource::NonLocal);
+        }
+    }
+
+    fn qpath(&self, qpath: &QPath<'_>, hir_id: HirId) -> Option<Constant> {
+        self.fetch_path(qpath, hir_id)
+            .and_then(|c| mir_to_const(self.tcx, c, self.typeck.node_type(hir_id)))
+    }
+
+    /// Simple constant folding: Insert an expression, get a constant or none.
+    fn expr(&self, e: &Expr<'_>) -> Option<Constant> {
+        self.check_ctxt(e.span.ctxt());
+        match e.kind {
+            ExprKind::ConstBlock(ConstBlock { body, .. }) => self.expr(self.tcx.hir_body(body).value),
+            ExprKind::DropTemps(e) => self.expr(e),
+            ExprKind::Path(ref qpath) => self.qpath(qpath, e.hir_id),
+            ExprKind::Block(block, _) => {
+                self.check_ctxt(block.span.ctxt());
+                self.block(block)
+            },
+            ExprKind::Lit(lit) => {
+                self.check_ctxt(lit.span.ctxt());
+                Some(lit_to_mir_constant(&lit.node, self.typeck.expr_ty_opt(e)))
+            },
+            ExprKind::Array(vec) => self.multi(vec).map(Constant::Vec),
+            ExprKind::Tup(tup) => self.multi(tup).map(Constant::Tuple),
+            ExprKind::Repeat(value, _) => {
+                let n = match self.typeck.expr_ty(e).kind() {
+                    ty::Array(_, n) => n.try_to_target_usize(self.tcx)?,
+                    _ => span_bug!(e.span, "typeck error"),
+                };
+                self.expr(value).map(|v| Constant::Repeat(Box::new(v), n))
+            },
+            ExprKind::Unary(op, operand) => self.expr(operand).and_then(|o| match op {
+                UnOp::Not => self.constant_not(&o, self.typeck.expr_ty(e)),
+                UnOp::Neg => self.constant_negate(&o, self.typeck.expr_ty(e)),
+                UnOp::Deref => Some(if let Constant::Ref(r) = o { *r } else { o }),
+            }),
+            ExprKind::If(cond, then, ref otherwise) => self.ifthenelse(cond, then, *otherwise),
+            ExprKind::Binary(op, left, right) => {
+                self.check_ctxt(e.span.ctxt());
+                self.binop(op.node, left, right)
+            },
+            ExprKind::Call(callee, []) => {
+                // We only handle a few const functions for now.
+                if let ExprKind::Path(qpath) = &callee.kind
+                    && let Some(did) = self.typeck.qpath_res(qpath, callee.hir_id).opt_def_id()
+                {
+                    match self.tcx.get_diagnostic_name(did) {
+                        Some(sym::i8_legacy_fn_max_value) => Some(Constant::Int(i8::MAX as u128)),
+                        Some(sym::i16_legacy_fn_max_value) => Some(Constant::Int(i16::MAX as u128)),
+                        Some(sym::i32_legacy_fn_max_value) => Some(Constant::Int(i32::MAX as u128)),
+                        Some(sym::i64_legacy_fn_max_value) => Some(Constant::Int(i64::MAX as u128)),
+                        Some(sym::i128_legacy_fn_max_value) => Some(Constant::Int(i128::MAX as u128)),
+                        _ => None,
+                    }
+                } else {
+                    None
+                }
+            },
+            ExprKind::Index(arr, index, _) => self.index(arr, index),
+            ExprKind::AddrOf(_, _, inner) => self.expr(inner).map(|r| Constant::Ref(Box::new(r))),
+            ExprKind::Field(base, ref field)
+                if let base_ty = self.typeck.expr_ty(base)
+                    && match self.typeck.expr_adjustments(base) {
+                        [] => true,
+                        [.., a] => a.target == base_ty,
+                    }
+                    && let Some(Constant::Adt(constant)) = self.expr(base)
+                    && let ty::Adt(adt_def, _) = *base_ty.kind()
+                    && adt_def.is_struct()
+                    && let Some((desired_field, ty)) =
+                        field_of_struct(adt_def, self.tcx, constant, base_ty, field.name) =>
+            {
+                self.check_ctxt(field.span.ctxt());
+                mir_to_const(self.tcx, desired_field, ty)
+            },
+            _ => None,
+        }
+    }
+
+    /// Simple constant folding to determine if an expression is an empty slice, str, array, …
+    /// `None` will be returned if the constness cannot be determined, or if the resolution
+    /// leaves the local crate.
+    pub fn eval_is_empty(&self, e: &Expr<'_>) -> Option<bool> {
+        match e.kind {
+            ExprKind::ConstBlock(ConstBlock { body, .. }) => self.eval_is_empty(self.tcx.hir_body(body).value),
+            ExprKind::DropTemps(e) => self.eval_is_empty(e),
+            ExprKind::Lit(lit) => {
+                if is_direct_expn_of(e.span, sym::cfg).is_some() {
+                    None
+                } else {
+                    match &lit.node {
+                        LitKind::Str(is, _) => Some(is.is_empty()),
+                        LitKind::ByteStr(s, _) | LitKind::CStr(s, _) => Some(s.as_byte_str().is_empty()),
+                        _ => None,
+                    }
+                }
+            },
+            ExprKind::Array(vec) => self.multi(vec).map(|v| v.is_empty()),
+            ExprKind::Repeat(..) => {
+                if let ty::Array(_, n) = self.typeck.expr_ty(e).kind() {
+                    Some(n.try_to_target_usize(self.tcx)? == 0)
+                } else {
+                    span_bug!(e.span, "typeck error");
+                }
+            },
+            _ => None,
+        }
+    }
+
+    #[expect(clippy::cast_possible_wrap)]
+    fn constant_not(&self, o: &Constant, ty: Ty<'_>) -> Option<Constant> {
+        use self::Constant::{Bool, Int};
+        match *o {
+            Bool(b) => Some(Bool(!b)),
+            Int(value) => {
+                let value = !value;
+                match *ty.kind() {
+                    ty::Int(ity) => Some(Int(unsext(self.tcx, value as i128, ity))),
+                    ty::Uint(ity) => Some(Int(clip(self.tcx, value, ity))),
+                    _ => None,
+                }
+            },
+            _ => None,
+        }
+    }
+
+    fn constant_negate(&self, o: &Constant, ty: Ty<'_>) -> Option<Constant> {
+        use self::Constant::{F32, F64, Int};
+        match *o {
+            Int(value) => {
+                let ty::Int(ity) = *ty.kind() else { return None };
+                let (min, _) = ity.min_max()?;
+                // sign extend
+                let value = sext(self.tcx, value, ity);
+
+                // Applying unary - to the most negative value of any signed integer type panics.
+                if value == min {
+                    return None;
+                }
+
+                let value = value.checked_neg()?;
+                // clear unused bits
+                Some(Int(unsext(self.tcx, value, ity)))
+            },
+            F32(f) => Some(F32(-f)),
+            F64(f) => Some(F64(-f)),
+            _ => None,
+        }
+    }
+
+    /// Create `Some(Vec![..])` of all constants, unless there is any
+    /// non-constant part.
+    fn multi(&self, vec: &[Expr<'_>]) -> Option<Vec<Constant>> {
+        vec.iter().map(|elem| self.expr(elem)).collect::<Option<_>>()
+    }
+
+    /// Lookup a possibly constant expression from an `ExprKind::Path` and apply a function on it.
+    #[expect(clippy::too_many_lines)]
+    fn fetch_path(&self, qpath: &QPath<'_>, id: HirId) -> Option<ConstValue> {
+        // Resolve the path to a constant and check if that constant is known to
+        // not change based on the target.
+        //
+        // This should be replaced with an attribute at some point.
+        let did = match *qpath {
+            QPath::Resolved(None, path)
+                if path.span.ctxt() == self.ctxt.get()
+                    && path.segments.iter().all(|s| self.ctxt.get() == s.ident.span.ctxt())
+                    && let Res::Def(DefKind::Const, did) = path.res
+                    && (matches!(
+                        self.tcx.get_diagnostic_name(did),
+                        Some(
+                            sym::f32_legacy_const_digits
+                                | sym::f32_legacy_const_epsilon
+                                | sym::f32_legacy_const_infinity
+                                | sym::f32_legacy_const_mantissa_dig
+                                | sym::f32_legacy_const_max
+                                | sym::f32_legacy_const_max_10_exp
+                                | sym::f32_legacy_const_max_exp
+                                | sym::f32_legacy_const_min
+                                | sym::f32_legacy_const_min_10_exp
+                                | sym::f32_legacy_const_min_exp
+                                | sym::f32_legacy_const_min_positive
+                                | sym::f32_legacy_const_nan
+                                | sym::f32_legacy_const_neg_infinity
+                                | sym::f32_legacy_const_radix
+                                | sym::f64_legacy_const_digits
+                                | sym::f64_legacy_const_epsilon
+                                | sym::f64_legacy_const_infinity
+                                | sym::f64_legacy_const_mantissa_dig
+                                | sym::f64_legacy_const_max
+                                | sym::f64_legacy_const_max_10_exp
+                                | sym::f64_legacy_const_max_exp
+                                | sym::f64_legacy_const_min
+                                | sym::f64_legacy_const_min_10_exp
+                                | sym::f64_legacy_const_min_exp
+                                | sym::f64_legacy_const_min_positive
+                                | sym::f64_legacy_const_nan
+                                | sym::f64_legacy_const_neg_infinity
+                                | sym::f64_legacy_const_radix
+                                | sym::u8_legacy_const_min
+                                | sym::u16_legacy_const_min
+                                | sym::u32_legacy_const_min
+                                | sym::u64_legacy_const_min
+                                | sym::u128_legacy_const_min
+                                | sym::usize_legacy_const_min
+                                | sym::u8_legacy_const_max
+                                | sym::u16_legacy_const_max
+                                | sym::u32_legacy_const_max
+                                | sym::u64_legacy_const_max
+                                | sym::u128_legacy_const_max
+                                | sym::i8_legacy_const_min
+                                | sym::i16_legacy_const_min
+                                | sym::i32_legacy_const_min
+                                | sym::i64_legacy_const_min
+                                | sym::i128_legacy_const_min
+                                | sym::i8_legacy_const_max
+                                | sym::i16_legacy_const_max
+                                | sym::i32_legacy_const_max
+                                | sym::i64_legacy_const_max
+                                | sym::i128_legacy_const_max
+                        )
+                    ) || self.tcx.opt_parent(did).is_some_and(|parent| {
+                        parent.is_diag_item(&self.tcx, sym::f16_consts_mod)
+                            || parent.is_diag_item(&self.tcx, sym::f32_consts_mod)
+                            || parent.is_diag_item(&self.tcx, sym::f64_consts_mod)
+                            || parent.is_diag_item(&self.tcx, sym::f128_consts_mod)
+                    })) =>
+            {
+                did
+            },
+            QPath::TypeRelative(ty, const_name)
+                if let TyKind::Path(QPath::Resolved(None, ty_path)) = ty.kind
+                    && let [.., ty_name] = ty_path.segments
+                    && (matches!(
+                        ty_name.ident.name,
+                        sym::i8
+                            | sym::i16
+                            | sym::i32
+                            | sym::i64
+                            | sym::i128
+                            | sym::u8
+                            | sym::u16
+                            | sym::u32
+                            | sym::u64
+                            | sym::u128
+                            | sym::f32
+                            | sym::f64
+                            | sym::char
+                    ) || (ty_name.ident.name == sym::usize && const_name.ident.name == sym::MIN))
+                    && const_name.ident.span.ctxt() == self.ctxt.get()
+                    && ty.span.ctxt() == self.ctxt.get()
+                    && ty_name.ident.span.ctxt() == self.ctxt.get()
+                    && matches!(ty_path.res, Res::PrimTy(_))
+                    && let Some((DefKind::AssocConst, did)) = self.typeck.type_dependent_def(id) =>
+            {
+                did
+            },
+            _ if let Res::Def(DefKind::Const | DefKind::AssocConst, did) = self.typeck.qpath_res(qpath, id) => {
+                self.source.set(ConstantSource::NonLocal);
+                did
+            },
+            _ => return None,
+        };
+
+        self.tcx
+            .const_eval_resolve(
+                self.typing_env,
+                mir::UnevaluatedConst::new(did, self.typeck.node_args(id)),
+                qpath.span(),
+            )
+            .ok()
+    }
+
+    fn index(&self, lhs: &'_ Expr<'_>, index: &'_ Expr<'_>) -> Option<Constant> {
+        let lhs = self.expr(lhs);
+        let index = self.expr(index);
+
+        match (lhs, index) {
+            (Some(Constant::Vec(vec)), Some(Constant::Int(index))) => match vec.get(index as usize) {
+                Some(Constant::F16(x)) => Some(Constant::F16(*x)),
+                Some(Constant::F32(x)) => Some(Constant::F32(*x)),
+                Some(Constant::F64(x)) => Some(Constant::F64(*x)),
+                Some(Constant::F128(x)) => Some(Constant::F128(*x)),
+                _ => None,
+            },
+            (Some(Constant::Vec(vec)), _) => {
+                if !vec.is_empty() && vec.iter().all(|x| *x == vec[0]) {
+                    match vec.first() {
+                        Some(Constant::F16(x)) => Some(Constant::F16(*x)),
+                        Some(Constant::F32(x)) => Some(Constant::F32(*x)),
+                        Some(Constant::F64(x)) => Some(Constant::F64(*x)),
+                        Some(Constant::F128(x)) => Some(Constant::F128(*x)),
+                        _ => None,
+                    }
+                } else {
+                    None
+                }
+            },
+            _ => None,
+        }
+    }
+
+    /// A block can only yield a constant if it has exactly one constant expression.
+    fn block(&self, block: &Block<'_>) -> Option<Constant> {
+        if block.stmts.is_empty()
+            && let Some(expr) = block.expr
+        {
+            // Try to detect any `cfg`ed statements or empty macro expansions.
+            let span = block.span.data();
+            if span.ctxt == SyntaxContext::root() {
+                if let Some(expr_span) = walk_span_to_context(expr.span, span.ctxt)
+                    && let expr_lo = expr_span.lo()
+                    && expr_lo >= span.lo
+                    && let Some(src) = (span.lo..expr_lo).get_source_range(&self.tcx)
+                    && let Some(src) = src.as_str()
+                {
+                    use rustc_lexer::TokenKind::{BlockComment, LineComment, OpenBrace, Semi, Whitespace};
+                    if !tokenize(src, FrontmatterAllowed::No)
+                        .map(|t| t.kind)
+                        .filter(|t| !matches!(t, Whitespace | LineComment { .. } | BlockComment { .. } | Semi))
+                        .eq([OpenBrace])
+                    {
+                        self.source.set(ConstantSource::NonLocal);
+                    }
+                } else {
+                    // Unable to access the source. Assume a non-local dependency.
+                    self.source.set(ConstantSource::NonLocal);
+                }
+            }
+
+            self.expr(expr)
+        } else {
+            None
+        }
+    }
+
+    fn ifthenelse(&self, cond: &Expr<'_>, then: &Expr<'_>, otherwise: Option<&Expr<'_>>) -> Option<Constant> {
+        if let Some(Constant::Bool(b)) = self.expr(cond) {
+            if b {
+                self.expr(then)
+            } else {
+                otherwise.as_ref().and_then(|expr| self.expr(expr))
+            }
+        } else {
+            None
+        }
+    }
+
+    fn binop(&self, op: BinOpKind, left: &Expr<'_>, right: &Expr<'_>) -> Option<Constant> {
+        let l = self.expr(left)?;
+        let r = self.expr(right);
+        match (l, r) {
+            (Constant::Int(l), Some(Constant::Int(r))) => match *self.typeck.expr_ty_opt(left)?.kind() {
+                ty::Int(ity) => {
+                    let (ty_min_value, _) = ity.min_max()?;
+                    let bits = ity.bits();
+                    let l = sext(self.tcx, l, ity);
+                    let r = sext(self.tcx, r, ity);
+
+                    // Using / or %, where the left-hand argument is the smallest integer of a signed integer type and
+                    // the right-hand argument is -1 always panics, even with overflow-checks disabled
+                    if let BinOpKind::Div | BinOpKind::Rem = op
+                        && l == ty_min_value
+                        && r == -1
+                    {
+                        return None;
+                    }
+
+                    let zext = |n: i128| Constant::Int(unsext(self.tcx, n, ity));
+                    match op {
+                        // When +, * or binary - create a value greater than the maximum value, or less than
+                        // the minimum value that can be stored, it panics.
+                        BinOpKind::Add => l.checked_add(r).and_then(|n| ity.ensure_fits(n)).map(zext),
+                        BinOpKind::Sub => l.checked_sub(r).and_then(|n| ity.ensure_fits(n)).map(zext),
+                        BinOpKind::Mul => l.checked_mul(r).and_then(|n| ity.ensure_fits(n)).map(zext),
+                        BinOpKind::Div if r != 0 => l.checked_div(r).map(zext),
+                        BinOpKind::Rem if r != 0 => l.checked_rem(r).map(zext),
+                        // Using << or >> where the right-hand argument is greater than or equal to the number of bits
+                        // in the type of the left-hand argument, or is negative panics.
+                        BinOpKind::Shr if r < bits && !r.is_negative() => l.checked_shr(r.try_into().ok()?).map(zext),
+                        BinOpKind::Shl if r < bits && !r.is_negative() => l.checked_shl(r.try_into().ok()?).map(zext),
+                        BinOpKind::BitXor => Some(zext(l ^ r)),
+                        BinOpKind::BitOr => Some(zext(l | r)),
+                        BinOpKind::BitAnd => Some(zext(l & r)),
+                        // FIXME: f32/f64 currently consider `0.0` and `-0.0` as different.
+                        BinOpKind::Eq => Some(Constant::Bool(l == r)),
+                        BinOpKind::Ne => Some(Constant::Bool(l != r)),
+                        BinOpKind::Lt => Some(Constant::Bool(l < r)),
+                        BinOpKind::Le => Some(Constant::Bool(l <= r)),
+                        BinOpKind::Ge => Some(Constant::Bool(l >= r)),
+                        BinOpKind::Gt => Some(Constant::Bool(l > r)),
+                        _ => None,
+                    }
+                },
+                ty::Uint(ity) => {
+                    let bits = ity.bits();
+
+                    match op {
+                        BinOpKind::Add => l.checked_add(r).and_then(|n| ity.ensure_fits(n)).map(Constant::Int),
+                        BinOpKind::Sub => l.checked_sub(r).and_then(|n| ity.ensure_fits(n)).map(Constant::Int),
+                        BinOpKind::Mul => l.checked_mul(r).and_then(|n| ity.ensure_fits(n)).map(Constant::Int),
+                        BinOpKind::Div => l.checked_div(r).map(Constant::Int),
+                        BinOpKind::Rem => l.checked_rem(r).map(Constant::Int),
+                        BinOpKind::Shr if r < bits => l.checked_shr(r.try_into().ok()?).map(Constant::Int),
+                        BinOpKind::Shl if r < bits => l.checked_shl(r.try_into().ok()?).map(Constant::Int),
+                        BinOpKind::BitXor => Some(Constant::Int(l ^ r)),
+                        BinOpKind::BitOr => Some(Constant::Int(l | r)),
+                        BinOpKind::BitAnd => Some(Constant::Int(l & r)),
+                        BinOpKind::Eq => Some(Constant::Bool(l == r)),
+                        BinOpKind::Ne => Some(Constant::Bool(l != r)),
+                        BinOpKind::Lt => Some(Constant::Bool(l < r)),
+                        BinOpKind::Le => Some(Constant::Bool(l <= r)),
+                        BinOpKind::Ge => Some(Constant::Bool(l >= r)),
+                        BinOpKind::Gt => Some(Constant::Bool(l > r)),
+                        _ => None,
+                    }
+                },
+                _ => None,
+            },
+            // FIXME(f16_f128): add these types when binary operations are available on all platforms
+            (Constant::F32(l), Some(Constant::F32(r))) => match op {
+                BinOpKind::Add => Some(Constant::F32(l + r)),
+                BinOpKind::Sub => Some(Constant::F32(l - r)),
+                BinOpKind::Mul => Some(Constant::F32(l * r)),
+                BinOpKind::Div => Some(Constant::F32(l / r)),
+                BinOpKind::Rem => Some(Constant::F32(l % r)),
+                BinOpKind::Eq => Some(Constant::Bool(l == r)),
+                BinOpKind::Ne => Some(Constant::Bool(l != r)),
+                BinOpKind::Lt => Some(Constant::Bool(l < r)),
+                BinOpKind::Le => Some(Constant::Bool(l <= r)),
+                BinOpKind::Ge => Some(Constant::Bool(l >= r)),
+                BinOpKind::Gt => Some(Constant::Bool(l > r)),
+                _ => None,
+            },
+            (Constant::F64(l), Some(Constant::F64(r))) => match op {
+                BinOpKind::Add => Some(Constant::F64(l + r)),
+                BinOpKind::Sub => Some(Constant::F64(l - r)),
+                BinOpKind::Mul => Some(Constant::F64(l * r)),
+                BinOpKind::Div => Some(Constant::F64(l / r)),
+                BinOpKind::Rem => Some(Constant::F64(l % r)),
+                BinOpKind::Eq => Some(Constant::Bool(l == r)),
+                BinOpKind::Ne => Some(Constant::Bool(l != r)),
+                BinOpKind::Lt => Some(Constant::Bool(l < r)),
+                BinOpKind::Le => Some(Constant::Bool(l <= r)),
+                BinOpKind::Ge => Some(Constant::Bool(l >= r)),
+                BinOpKind::Gt => Some(Constant::Bool(l > r)),
+                _ => None,
+            },
+            (l, r) => match (op, l, r) {
+                (BinOpKind::And, Constant::Bool(false), _) => Some(Constant::Bool(false)),
+                (BinOpKind::Or, Constant::Bool(true), _) => Some(Constant::Bool(true)),
+                (BinOpKind::And, Constant::Bool(true), Some(r)) | (BinOpKind::Or, Constant::Bool(false), Some(r)) => {
+                    Some(r)
+                },
+                (BinOpKind::BitXor, Constant::Bool(l), Some(Constant::Bool(r))) => Some(Constant::Bool(l ^ r)),
+                (BinOpKind::BitAnd, Constant::Bool(l), Some(Constant::Bool(r))) => Some(Constant::Bool(l & r)),
+                (BinOpKind::BitOr, Constant::Bool(l), Some(Constant::Bool(r))) => Some(Constant::Bool(l | r)),
+                _ => None,
+            },
+        }
+    }
+}
+
+pub fn mir_to_const<'tcx>(tcx: TyCtxt<'tcx>, val: ConstValue, ty: Ty<'tcx>) -> Option<Constant> {
+    match (val, ty.kind()) {
+        (_, &ty::Adt(adt_def, _)) if adt_def.is_struct() => Some(Constant::Adt(val)),
+        (ConstValue::Scalar(Scalar::Int(int)), _) => match ty.kind() {
+            ty::Bool => Some(Constant::Bool(int == ScalarInt::TRUE)),
+            ty::Uint(_) | ty::Int(_) => Some(Constant::Int(int.to_bits(int.size()))),
+            ty::Float(FloatTy::F16) => Some(Constant::F16(int.into())),
+            ty::Float(FloatTy::F32) => Some(Constant::F32(f32::from_bits(int.into()))),
+            ty::Float(FloatTy::F64) => Some(Constant::F64(f64::from_bits(int.into()))),
+            ty::Float(FloatTy::F128) => Some(Constant::F128(int.into())),
+            ty::RawPtr(_, _) => Some(Constant::RawPtr(int.to_bits(int.size()))),
+            _ => None,
+        },
+        (_, ty::Ref(_, inner_ty, _)) if matches!(inner_ty.kind(), ty::Str) => {
+            let data = val.try_get_slice_bytes_for_diagnostics(tcx)?;
+            String::from_utf8(data.to_owned()).ok().map(Constant::Str)
+        },
+        (ConstValue::Indirect { alloc_id, offset }, ty::Array(sub_type, len)) => {
+            let alloc = tcx.global_alloc(alloc_id).unwrap_memory().inner();
+            let len = len.try_to_target_usize(tcx)?;
+            let ty::Float(flt) = sub_type.kind() else {
+                return None;
+            };
+            let size = Size::from_bits(flt.bit_width());
+            let mut res = Vec::new();
+            for idx in 0..len {
+                let range = alloc_range(offset + size * idx, size);
+                let val = alloc.read_scalar(&tcx, range, /* read_provenance */ false).ok()?;
+                res.push(match flt {
+                    FloatTy::F16 => Constant::F16(val.to_u16().discard_err()?),
+                    FloatTy::F32 => Constant::F32(f32::from_bits(val.to_u32().discard_err()?)),
+                    FloatTy::F64 => Constant::F64(f64::from_bits(val.to_u64().discard_err()?)),
+                    FloatTy::F128 => Constant::F128(val.to_u128().discard_err()?),
+                });
+            }
+            Some(Constant::Vec(res))
+        },
+        _ => None,
+    }
+}
+
+fn field_of_struct<'tcx>(
+    adt_def: ty::AdtDef<'tcx>,
+    tcx: TyCtxt<'tcx>,
+    value: ConstValue,
+    ty: Ty<'tcx>,
+    field: Symbol,
+) -> Option<(ConstValue, Ty<'tcx>)> {
+    if let Some(dc) = tcx.try_destructure_mir_constant_for_user_output(value, ty)
+        && let Some(dc_variant) = dc.variant
+        && let Some(variant) = adt_def.variants().get(dc_variant)
+        && let Some(field_idx) = variant.fields.iter().position(|el| el.name == field)
+    {
+        dc.fields.get(field_idx).copied()
+    } else {
+        None
+    }
+}
+
+/// If `expr` evaluates to an integer constant, return its value.
+///
+/// The context argument is the context used to view the evaluated expression. e.g. when evaluating
+/// the argument in `f(m!(1))` the context of the call expression should be used. This is need so
+/// the const evaluator can see the `m` macro and marke the evaluation as non-local independant of
+/// what the macro expands to.
+pub fn integer_const(cx: &LateContext<'_>, expr: &Expr<'_>, ctxt: SyntaxContext) -> Option<u128> {
+    if let Some(Constant::Int(value)) = ConstEvalCtxt::new(cx).eval_local(expr, ctxt) {
+        Some(value)
+    } else {
+        None
+    }
+}
+
+/// Check if `expr` evaluates to an integer constant of 0.
+///
+/// The context argument is the context used to view the evaluated expression. e.g. when evaluating
+/// the argument in `f(m!(1))` the context of the call expression should be used. This is need so
+/// the const evaluator can see the `m` macro and marke the evaluation as non-local independant of
+/// what the macro expands to.
+#[inline]
+pub fn is_zero_integer_const(cx: &LateContext<'_>, expr: &Expr<'_>, ctxt: SyntaxContext) -> bool {
+    integer_const(cx, expr, ctxt) == Some(0)
+}
+
+pub fn const_item_rhs_to_expr<'tcx>(tcx: TyCtxt<'tcx>, ct_rhs: ConstItemRhs<'tcx>) -> Option<&'tcx Expr<'tcx>> {
+    match ct_rhs {
+        ConstItemRhs::Body(body_id) => Some(tcx.hir_body(body_id).value),
+        ConstItemRhs::TypeConst(const_arg) => match const_arg.kind {
+            ConstArgKind::Anon(anon) => Some(tcx.hir_body(anon.body).value),
+            ConstArgKind::Path(_) | ConstArgKind::Error(..) | ConstArgKind::Infer(..) => None,
+        },
+    }
+}

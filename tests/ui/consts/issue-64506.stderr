@@ -1,0 +1,9 @@
+error[E0080]: constructing invalid value at .inner: encountered a value of uninhabited type `AnonPipe`
+  --> $DIR/issue-64506.rs:16:22
+   |
+LL |     let x = unsafe { Foo { b: () }.a };
+   |                      ^^^^^^^^^^^^^^^ evaluation of `FOO` failed here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0080`.

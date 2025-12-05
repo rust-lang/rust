@@ -1,0 +1,45 @@
+error[E0308]: mismatched types
+  --> $DIR/loop-labeled-break-value.rs:3:29
+   |
+LL |         let _: i32 = loop { break };
+   |             -        ----   ^^^^^ expected `i32`, found `()`
+   |             |        |
+   |             |        this loop is expected to be of type `i32`
+   |             expected because of this assignment
+   |
+help: give the `break` a value of the expected type
+   |
+LL |         let _: i32 = loop { break 42 };
+   |                                   ++
+
+error[E0308]: mismatched types
+  --> $DIR/loop-labeled-break-value.rs:6:37
+   |
+LL |         let _: i32 = 'inner: loop { break 'inner };
+   |             -                ----   ^^^^^^^^^^^^ expected `i32`, found `()`
+   |             |                |
+   |             |                this loop is expected to be of type `i32`
+   |             expected because of this assignment
+   |
+help: give the `break` a value of the expected type
+   |
+LL |         let _: i32 = 'inner: loop { break 'inner 42 };
+   |                                                  ++
+
+error[E0308]: mismatched types
+  --> $DIR/loop-labeled-break-value.rs:9:45
+   |
+LL |         let _: i32 = 'inner2: loop { loop { break 'inner2 } };
+   |             -                 ----          ^^^^^^^^^^^^^ expected `i32`, found `()`
+   |             |                 |
+   |             |                 this loop is expected to be of type `i32`
+   |             expected because of this assignment
+   |
+help: give the `break` a value of the expected type
+   |
+LL |         let _: i32 = 'inner2: loop { loop { break 'inner2 42 } };
+   |                                                           ++
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

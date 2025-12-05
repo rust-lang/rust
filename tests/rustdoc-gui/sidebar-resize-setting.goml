@@ -1,0 +1,51 @@
+// Checks sidebar resizing stays synced with the setting
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
+assert-property: (".sidebar", {"clientWidth": "199"})
+show-text: true
+
+// Verify that the "hide" option is unchecked
+click: "rustdoc-toolbar .settings-menu"
+wait-for: "#settings"
+assert-css: ("#settings", {"display": "block"})
+assert-property: ("#hide-sidebar", {"checked": "false"})
+press-key: "Escape"
+wait-for-css: ("#settings", {"display": "none"})
+
+drag-and-drop: ((205, 100), (5, 100))
+assert-css: (".sidebar", {"display": "none"})
+
+// Verify that the "hide" option is checked
+focus: "rustdoc-toolbar .settings-menu a"
+press-key: "Enter"
+wait-for-css: ("#settings", {"display": "block"})
+assert-property: ("#hide-sidebar", {"checked": "true"})
+click: "#hide-sidebar"
+wait-for-css: (".sidebar", {"display": "block"})
+
+// Verify that hiding the sidebar hides the source sidebar
+// and puts the button in static position mode on mobile
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
+set-window-size: (600, 600)
+focus: "rustdoc-topbar .settings-menu a"
+press-key: "Enter"
+wait-for-css: ("#settings", {"display": "block"})
+wait-for-css: ("#sidebar-button", {"position": "static"})
+assert-property: ("#hide-sidebar", {"checked": "false"})
+click: "#hide-sidebar"
+wait-for-css: (".sidebar", {"display": "none"})
+wait-for-css: ("#sidebar-button", {"position": "fixed"})
+store-position: ("#sidebar-button", {
+    "y": sidebar_button_y,
+    "x": sidebar_button_x,
+})
+assert-property: ("#hide-sidebar", {"checked": "true"})
+press-key: "Escape"
+// Clicking the sidebar button should work, and implicitly re-enable
+// the persistent navigation bar
+wait-for-css: ("#settings", {"display": "none"})
+assert-position: ("#sidebar-button", {
+    "y": |sidebar_button_y|,
+    "x": |sidebar_button_x|,
+})
+click: "#sidebar-button"
+wait-for-css: (".sidebar", {"display": "block"})

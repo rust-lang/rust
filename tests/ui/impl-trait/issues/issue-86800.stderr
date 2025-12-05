@@ -1,0 +1,28 @@
+error: item does not constrain `TransactionFuture::{opaque#0}`
+  --> $DIR/issue-86800.rs:24:4
+   |
+LL | fn execute_transaction_fut<'f, F, O>(
+   |    ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: consider removing `#[define_opaque]` or adding an empty `#[define_opaque()]`
+note: this opaque type is supposed to be constrained
+  --> $DIR/issue-86800.rs:21:34
+   |
+LL | type TransactionFuture<'__, O> = impl '__ + Future<Output = TransactionResult<O>>;
+   |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: item does not constrain `TransactionFuture::{opaque#0}`
+  --> $DIR/issue-86800.rs:36:14
+   |
+LL |     async fn do_transaction<O>(
+   |              ^^^^^^^^^^^^^^
+   |
+   = note: consider removing `#[define_opaque]` or adding an empty `#[define_opaque()]`
+note: this opaque type is supposed to be constrained
+  --> $DIR/issue-86800.rs:21:34
+   |
+LL | type TransactionFuture<'__, O> = impl '__ + Future<Output = TransactionResult<O>>;
+   |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

@@ -1,0 +1,87 @@
+error[E0631]: type mismatch in closure arguments
+  --> $DIR/closure-arg-type-mismatch.rs:3:14
+   |
+LL |     a.iter().map(|_: (u32, u32)| 45);
+   |              ^^^ --------------- found signature defined here
+   |              |
+   |              expected due to this
+   |
+   = note: expected closure signature `fn(&(_, _)) -> _`
+              found closure signature `fn((_, _)) -> _`
+note: required by a bound in `map`
+  --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
+help: consider adjusting the signature so it borrows its argument
+   |
+LL |     a.iter().map(|_: &(u32, u32)| 45);
+   |                      +
+
+error[E0631]: type mismatch in closure arguments
+  --> $DIR/closure-arg-type-mismatch.rs:4:14
+   |
+LL |     a.iter().map(|_: &(u16, u16)| 45);
+   |              ^^^ ---------------- found signature defined here
+   |              |
+   |              expected due to this
+   |
+   = note: expected closure signature `fn(&(u32, u32)) -> _`
+              found closure signature `fn(&(u16, u16)) -> _`
+note: required by a bound in `map`
+  --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
+
+error[E0631]: type mismatch in closure arguments
+  --> $DIR/closure-arg-type-mismatch.rs:5:14
+   |
+LL |     a.iter().map(|_: (u16, u16)| 45);
+   |              ^^^ --------------- found signature defined here
+   |              |
+   |              expected due to this
+   |
+   = note: expected closure signature `fn(&(u32, u32)) -> _`
+              found closure signature `fn((u16, u16)) -> _`
+note: required by a bound in `map`
+  --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
+
+error[E0521]: borrowed data escapes outside of function
+  --> $DIR/closure-arg-type-mismatch.rs:10:5
+   |
+LL | fn _test<'a>(f: fn(*mut &'a u32)) {
+   |          --  - `f` is a reference that is only valid in the function body
+   |          |
+   |          lifetime `'a` defined here
+LL |     baz(f);
+   |     ^^^^^^
+   |     |
+   |     `f` escapes the function body here
+   |     argument requires that `'a` must outlive `'static`
+   |
+   = note: requirement occurs because of a mutable pointer to `&u32`
+   = note: mutable pointers are invariant over their type parameter
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+note: due to a current limitation of the type system, this implies a `'static` lifetime
+  --> $DIR/closure-arg-type-mismatch.rs:8:11
+   |
+LL | fn baz<F: Fn(*mut &u32)>(_: F) {}
+   |           ^^^^^^^^^^^^^
+
+error: implementation of `Fn` is not general enough
+  --> $DIR/closure-arg-type-mismatch.rs:10:5
+   |
+LL |     baz(f);
+   |     ^^^^^^ implementation of `Fn` is not general enough
+   |
+   = note: `fn(*mut &'2 u32)` must implement `Fn<(*mut &'1 u32,)>`, for any lifetime `'1`...
+   = note: ...but it actually implements `Fn<(*mut &'2 u32,)>`, for some specific lifetime `'2`
+
+error: implementation of `FnOnce` is not general enough
+  --> $DIR/closure-arg-type-mismatch.rs:10:5
+   |
+LL |     baz(f);
+   |     ^^^^^^ implementation of `FnOnce` is not general enough
+   |
+   = note: `fn(*mut &'2 u32)` must implement `FnOnce<(*mut &'1 u32,)>`, for any lifetime `'1`...
+   = note: ...but it actually implements `FnOnce<(*mut &'2 u32,)>`, for some specific lifetime `'2`
+
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0521, E0631.
+For more information about an error, try `rustc --explain E0521`.

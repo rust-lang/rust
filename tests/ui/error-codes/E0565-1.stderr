@@ -1,0 +1,27 @@
+error[E0565]: malformed `deprecated` attribute input
+  --> $DIR/E0565-1.rs:2:1
+   |
+LL | #[deprecated("since")]
+   | ^^^^^^^^^^^^^-------^^
+   |              |
+   |              didn't expect a literal here
+   |
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #[deprecated("since")]
+LL + #[deprecated = "reason"]
+   |
+LL - #[deprecated("since")]
+LL + #[deprecated(note = "reason")]
+   |
+LL - #[deprecated("since")]
+LL + #[deprecated(since = "version")]
+   |
+LL - #[deprecated("since")]
+LL + #[deprecated(since = "version", note = "reason")]
+   |
+   = and 1 other candidate
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0565`.

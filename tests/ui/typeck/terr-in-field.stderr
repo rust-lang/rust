@@ -1,0 +1,17 @@
+error[E0308]: mismatched types
+  --> $DIR/terr-in-field.rs:15:14
+   |
+LL |     want_foo(b);
+   |     -------- ^ expected `Foo`, found `Bar`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/terr-in-field.rs:13:4
+   |
+LL | fn want_foo(f: Foo) {}
+   |    ^^^^^^^^ ------
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0308`.

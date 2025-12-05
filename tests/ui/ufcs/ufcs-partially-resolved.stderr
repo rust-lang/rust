@@ -1,0 +1,285 @@
+error[E0576]: cannot find associated type `N` in trait `Tr`
+  --> $DIR/ufcs-partially-resolved.rs:19:24
+   |
+LL |     type Y = u16;
+   |     ------------- similarly named associated type `Y` defined here
+...
+LL |     let _: <u8 as Tr>::N;
+   |                        ^ help: an associated type with a similar name exists: `Y`
+
+error[E0404]: expected trait, found enum `E`
+  --> $DIR/ufcs-partially-resolved.rs:20:19
+   |
+LL |     let _: <u8 as E>::N;
+   |                   ^ help: a trait with a similar name exists: `Eq`
+   |
+  --> $SRC_DIR/core/src/cmp.rs:LL:COL
+   |
+   = note: similarly named trait `Eq` defined here
+
+error[E0404]: expected trait, found type alias `A`
+  --> $DIR/ufcs-partially-resolved.rs:21:19
+   |
+LL |     let _: <u8 as A>::N;
+   |                   ^ type aliases cannot be used as traits
+   |
+help: you might have meant to use `#![feature(trait_alias)]` instead of a `type` alias
+   |
+LL - type A = u32;
+LL + trait A = u32;
+   |
+
+error[E0576]: cannot find method or associated constant `N` in trait `Tr`
+  --> $DIR/ufcs-partially-resolved.rs:22:17
+   |
+LL |     fn Y() {}
+   |     ------ similarly named associated function `Y` defined here
+...
+LL |     <u8 as Tr>::N;
+   |                 ^ help: an associated function with a similar name exists: `Y`
+
+error[E0404]: expected trait, found enum `E`
+  --> $DIR/ufcs-partially-resolved.rs:23:12
+   |
+LL |     <u8 as E>::N;
+   |            ^ help: a trait with a similar name exists: `Eq`
+   |
+  --> $SRC_DIR/core/src/cmp.rs:LL:COL
+   |
+   = note: similarly named trait `Eq` defined here
+
+error[E0404]: expected trait, found type alias `A`
+  --> $DIR/ufcs-partially-resolved.rs:24:12
+   |
+LL |     <u8 as A>::N;
+   |            ^ type aliases cannot be used as traits
+   |
+help: you might have meant to use `#![feature(trait_alias)]` instead of a `type` alias
+   |
+LL - type A = u32;
+LL + trait A = u32;
+   |
+
+error[E0404]: expected trait, found enum `E`
+  --> $DIR/ufcs-partially-resolved.rs:26:19
+   |
+LL |     let _: <u8 as E>::Y;
+   |                   ^ help: a trait with a similar name exists: `Eq`
+   |
+  --> $SRC_DIR/core/src/cmp.rs:LL:COL
+   |
+   = note: similarly named trait `Eq` defined here
+
+error[E0404]: expected trait, found enum `E`
+  --> $DIR/ufcs-partially-resolved.rs:28:12
+   |
+LL |     <u8 as E>::Y;
+   |            ^ help: a trait with a similar name exists: `Eq`
+   |
+  --> $SRC_DIR/core/src/cmp.rs:LL:COL
+   |
+   = note: similarly named trait `Eq` defined here
+
+error[E0576]: cannot find associated type `N` in trait `Tr`
+  --> $DIR/ufcs-partially-resolved.rs:30:24
+   |
+LL |     type Y = u16;
+   |     ------------- similarly named associated type `Y` defined here
+...
+LL |     let _: <u8 as Tr>::N::NN;
+   |                        ^ help: an associated type with a similar name exists: `Y`
+
+error[E0404]: expected trait, found enum `E`
+  --> $DIR/ufcs-partially-resolved.rs:31:19
+   |
+LL |     let _: <u8 as E>::N::NN;
+   |                   ^ help: a trait with a similar name exists: `Eq`
+   |
+  --> $SRC_DIR/core/src/cmp.rs:LL:COL
+   |
+   = note: similarly named trait `Eq` defined here
+
+error[E0404]: expected trait, found type alias `A`
+  --> $DIR/ufcs-partially-resolved.rs:32:19
+   |
+LL |     let _: <u8 as A>::N::NN;
+   |                   ^ type aliases cannot be used as traits
+   |
+help: you might have meant to use `#![feature(trait_alias)]` instead of a `type` alias
+   |
+LL - type A = u32;
+LL + trait A = u32;
+   |
+
+error[E0576]: cannot find associated type `N` in trait `Tr`
+  --> $DIR/ufcs-partially-resolved.rs:33:17
+   |
+LL |     type Y = u16;
+   |     ------------- similarly named associated type `Y` defined here
+...
+LL |     <u8 as Tr>::N::NN;
+   |                 ^ help: an associated type with a similar name exists: `Y`
+
+error[E0404]: expected trait, found enum `E`
+  --> $DIR/ufcs-partially-resolved.rs:34:12
+   |
+LL |     <u8 as E>::N::NN;
+   |            ^ help: a trait with a similar name exists: `Eq`
+   |
+  --> $SRC_DIR/core/src/cmp.rs:LL:COL
+   |
+   = note: similarly named trait `Eq` defined here
+
+error[E0404]: expected trait, found type alias `A`
+  --> $DIR/ufcs-partially-resolved.rs:35:12
+   |
+LL |     <u8 as A>::N::NN;
+   |            ^ type aliases cannot be used as traits
+   |
+help: you might have meant to use `#![feature(trait_alias)]` instead of a `type` alias
+   |
+LL - type A = u32;
+LL + trait A = u32;
+   |
+
+error[E0404]: expected trait, found enum `E`
+  --> $DIR/ufcs-partially-resolved.rs:37:19
+   |
+LL |     let _: <u8 as E>::Y::NN;
+   |                   ^ help: a trait with a similar name exists: `Eq`
+   |
+  --> $SRC_DIR/core/src/cmp.rs:LL:COL
+   |
+   = note: similarly named trait `Eq` defined here
+
+error[E0404]: expected trait, found enum `E`
+  --> $DIR/ufcs-partially-resolved.rs:39:12
+   |
+LL |     <u8 as E>::Y::NN;
+   |            ^ help: a trait with a similar name exists: `Eq`
+   |
+  --> $SRC_DIR/core/src/cmp.rs:LL:COL
+   |
+   = note: similarly named trait `Eq` defined here
+
+error[E0405]: cannot find trait `N` in trait `Tr`
+  --> $DIR/ufcs-partially-resolved.rs:41:23
+   |
+LL |     let _: <u8 as Tr::N>::NN;
+   |                       ^ not found in `Tr`
+
+error[E0405]: cannot find trait `N` in enum `E`
+  --> $DIR/ufcs-partially-resolved.rs:42:22
+   |
+LL |     let _: <u8 as E::N>::NN;
+   |                      ^ not found in `E`
+
+error[E0405]: cannot find trait `N` in `A`
+  --> $DIR/ufcs-partially-resolved.rs:43:22
+   |
+LL |     let _: <u8 as A::N>::NN;
+   |                      ^ not found in `A`
+
+error[E0405]: cannot find trait `N` in trait `Tr`
+  --> $DIR/ufcs-partially-resolved.rs:44:16
+   |
+LL |     <u8 as Tr::N>::NN;
+   |                ^ not found in `Tr`
+
+error[E0405]: cannot find trait `N` in enum `E`
+  --> $DIR/ufcs-partially-resolved.rs:45:15
+   |
+LL |     <u8 as E::N>::NN;
+   |               ^ not found in `E`
+
+error[E0405]: cannot find trait `N` in `A`
+  --> $DIR/ufcs-partially-resolved.rs:46:15
+   |
+LL |     <u8 as A::N>::NN;
+   |               ^ not found in `A`
+
+error[E0404]: expected trait, found associated type `Tr::Y`
+  --> $DIR/ufcs-partially-resolved.rs:47:19
+   |
+LL |     let _: <u8 as Tr::Y>::NN;
+   |                   ^^^^^ not a trait
+
+error[E0404]: expected trait, found variant `E::Y`
+  --> $DIR/ufcs-partially-resolved.rs:48:19
+   |
+LL |     let _: <u8 as E::Y>::NN;
+   |                   ^^^^ not a trait
+
+error[E0404]: expected trait, found associated type `Tr::Y`
+  --> $DIR/ufcs-partially-resolved.rs:49:12
+   |
+LL |     <u8 as Tr::Y>::NN;
+   |            ^^^^^ not a trait
+
+error[E0404]: expected trait, found variant `E::Y`
+  --> $DIR/ufcs-partially-resolved.rs:50:12
+   |
+LL |     <u8 as E::Y>::NN;
+   |            ^^^^ not a trait
+
+error[E0575]: expected associated type, found associated function `Dr::Z`
+  --> $DIR/ufcs-partially-resolved.rs:52:12
+   |
+LL |     type X = u16;
+   |     ------------- similarly named associated type `X` defined here
+...
+LL |     let _: <u8 as Dr>::Z;
+   |            ^^^^^^^^^^^^-
+   |                        |
+   |                        help: an associated type with a similar name exists: `X`
+
+error[E0575]: expected method or associated constant, found associated type `Dr::X`
+  --> $DIR/ufcs-partially-resolved.rs:53:5
+   |
+LL |     fn Z() {}
+   |     ------ similarly named associated function `Z` defined here
+...
+LL |     <u8 as Dr>::X;
+   |     ^^^^^^^^^^^^-
+   |                 |
+   |                 help: an associated function with a similar name exists: `Z`
+
+error[E0575]: expected associated type, found associated function `Dr::Z`
+  --> $DIR/ufcs-partially-resolved.rs:54:12
+   |
+LL |     type X = u16;
+   |     ------------- similarly named associated type `X` defined here
+...
+LL |     let _: <u8 as Dr>::Z::N;
+   |            ^^^^^^^^^^^^-^^^
+   |                        |
+   |                        help: an associated type with a similar name exists: `X`
+
+error[E0223]: ambiguous associated type
+  --> $DIR/ufcs-partially-resolved.rs:36:12
+   |
+LL |     let _: <u8 as Tr>::Y::NN;
+   |            ^^^^^^^^^^^^^^^^^
+   |
+help: if there were a trait named `Example` with associated type `NN` implemented for `<u8 as Tr>::Y`, you could use the fully-qualified path
+   |
+LL -     let _: <u8 as Tr>::Y::NN;
+LL +     let _: <<u8 as Tr>::Y as Example>::NN;
+   |
+
+error[E0599]: no associated item named `NN` found for type `u16` in the current scope
+  --> $DIR/ufcs-partially-resolved.rs:38:20
+   |
+LL |     <u8 as Tr>::Y::NN;
+   |                    ^^ associated item not found in `u16`
+
+error[E0599]: no associated item named `N` found for type `u16` in the current scope
+  --> $DIR/ufcs-partially-resolved.rs:55:20
+   |
+LL |     <u8 as Dr>::X::N;
+   |                    ^ associated item not found in `u16`
+
+error: aborting due to 32 previous errors
+
+Some errors have detailed explanations: E0223, E0404, E0405, E0575, E0576, E0599.
+For more information about an error, try `rustc --explain E0223`.

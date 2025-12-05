@@ -1,0 +1,39 @@
+   LL|       |#![feature(coverage_attribute)]
+   LL|       |//@ edition: 2021
+   LL|       |
+   LL|       |#[rustfmt::skip]
+   LL|     12|fn if_not(cond: bool) {
+   LL|       |    if
+   LL|     12|        !
+   LL|     12|        cond
+   LL|      4|    {
+   LL|      4|        println!("cond was false");
+   LL|      8|    }
+   LL|       |
+   LL|       |    if
+   LL|     12|        !
+   LL|     12|        cond
+   LL|      4|    {
+   LL|      4|        println!("cond was false");
+   LL|      8|    }
+   LL|       |
+   LL|       |    if
+   LL|     12|        !
+   LL|     12|        cond
+   LL|      4|    {
+   LL|      4|        println!("cond was false");
+   LL|      8|    } else {
+   LL|      8|        println!("cond was true");
+   LL|      8|    }
+   LL|     12|}
+   LL|       |
+   LL|       |#[coverage(off)]
+   LL|       |fn main() {
+   LL|       |    for _ in 0..8 {
+   LL|       |        if_not(std::hint::black_box(true));
+   LL|       |    }
+   LL|       |    for _ in 0..4 {
+   LL|       |        if_not(std::hint::black_box(false));
+   LL|       |    }
+   LL|       |}
+

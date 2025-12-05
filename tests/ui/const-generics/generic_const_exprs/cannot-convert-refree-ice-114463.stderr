@@ -1,0 +1,19 @@
+warning: the feature `generic_const_exprs` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/cannot-convert-refree-ice-114463.rs:3:12
+   |
+LL | #![feature(generic_const_exprs)]
+   |            ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #76560 <https://github.com/rust-lang/rust/issues/76560> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+error: cannot capture late-bound lifetime in constant
+  --> $DIR/cannot-convert-refree-ice-114463.rs:6:16
+   |
+LL | fn bug<'a>() {
+   |        -- lifetime defined here
+LL |     [(); (|_: &'a u8| (), 0).1];
+   |                ^^
+
+error: aborting due to 1 previous error; 1 warning emitted
+

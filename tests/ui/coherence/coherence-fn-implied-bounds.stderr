@@ -1,0 +1,20 @@
+error: conflicting implementations of trait `Trait` for type `for<'a, 'b> fn(&'a &'b u32, &'b &'a u32) -> &'b u32`
+  --> $DIR/coherence-fn-implied-bounds.rs:21:1
+   |
+LL | impl Trait for for<'a, 'b> fn(&'a &'b u32, &'b &'a u32) -> &'b u32 {}
+   | ------------------------------------------------------------------ first implementation here
+LL |
+LL | impl Trait for for<'c> fn(&'c &'c u32, &'c &'c u32) -> &'c u32 {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `for<'a, 'b> fn(&'a &'b u32, &'b &'a u32) -> &'b u32`
+   |
+   = warning: the behavior may change in a future release
+   = note: for more information, see issue #56105 <https://github.com/rust-lang/rust/issues/56105>
+   = note: this behavior recently changed as a result of a bug fix; see rust-lang/rust#56105 for details
+note: the lint level is defined here
+  --> $DIR/coherence-fn-implied-bounds.rs:15:9
+   |
+LL | #![deny(coherence_leak_check)]
+   |         ^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

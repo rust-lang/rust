@@ -1,0 +1,61 @@
+cargo-features = ["profile-rustflags"]
+
+[workspace]
+resolver = "1"
+members = [
+  "std",
+  "sysroot",
+  "coretests",
+  "alloctests",
+]
+
+exclude = [
+  # stdarch has its own Cargo workspace
+  "stdarch",
+  "windows_targets"
+]
+
+[profile.release.package.compiler_builtins]
+# For compiler-builtins we always use a high number of codegen units.
+# The goal here is to place every single intrinsic into its own object
+# file to avoid symbol clashes with the system libgcc if possible. Note
+# that this number doesn't actually produce this many object files, we
+# just don't create more than this number of object files.
+#
+# It's a bit of a bummer that we have to pass this here, unfortunately.
+# Ideally this would be specified through an env var to Cargo so Cargo
+# knows how many CGUs are for this specific crate, but for now
+# per-crate configuration isn't specifiable in the environment.
+codegen-units = 10000
+
+# These dependencies of the standard library implement symbolication for
+# backtraces on most platforms. Their debuginfo causes both linking to be slower
+# (more data to chew through) and binaries to be larger without really all that
+# much benefit. This section turns them all to down to have no debuginfo which
+# helps to improve link times a little bit.
+[profile.release.package]
+addr2line.debug = 0
+addr2line.opt-level = "s"
+adler2.debug = 0
+gimli.debug = 0
+gimli.opt-level = "s"
+miniz_oxide.debug = 0
+miniz_oxide.opt-level = "s"
+# `opt-level = "s"` for `object` led to a size regression when tried previously
+object.debug = 0
+rustc-demangle.debug = 0
+rustc-demangle.opt-level = "s"
+
+# panic_abort must always be compiled with panic=abort, even when the rest of the
+# sysroot is panic=unwind.
+[profile.dev.package.panic_abort]
+rustflags = ["-Cpanic=abort"]
+
+[profile.release.package.panic_abort]
+rustflags = ["-Cpanic=abort"]
+
+[patch.crates-io]
+# See comments in `library/rustc-std-workspace-core/README.md` for what's going on here
+rustc-std-workspace-core = { path = 'rustc-std-workspace-core' }
+rustc-std-workspace-alloc = { path = 'rustc-std-workspace-alloc' }
+rustc-std-workspace-std = { path = 'rustc-std-workspace-std' }

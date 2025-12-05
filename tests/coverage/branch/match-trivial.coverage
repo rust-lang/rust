@@ -1,0 +1,49 @@
+   LL|       |#![feature(coverage_attribute)]
+   LL|       |//@ edition: 2021
+   LL|       |//@ compile-flags: -Zcoverage-options=branch
+   LL|       |//@ llvm-cov-flags: --show-branches=count
+   LL|       |
+   LL|       |// When instrumenting match expressions for branch coverage, make sure we don't
+   LL|       |// cause an ICE or produce weird coverage output for matches with <2 arms.
+   LL|       |
+   LL|       |// Helper macro to prevent start-of-function spans from being merged into
+   LL|       |// spans on the lines we care about.
+   LL|       |macro_rules! no_merge {
+   LL|       |    () => {
+   LL|       |        for _ in 0..1 {}
+   LL|       |    };
+   LL|       |}
+   LL|       |
+   LL|       |enum Uninhabited {}
+   LL|       |enum Trivial {
+   LL|       |    Value,
+   LL|       |}
+   LL|       |
+   LL|      0|fn _uninhabited(x: Uninhabited) {
+   LL|      0|    no_merge!();
+   LL|       |
+   LL|       |    match x {}
+   LL|       |
+   LL|       |    consume("done");
+   LL|       |}
+   LL|       |
+   LL|      1|fn trivial(x: Trivial) {
+   LL|      1|    no_merge!();
+   LL|       |
+   LL|      1|    match x {
+   LL|      1|        Trivial::Value => consume("trivial"),
+   LL|       |    }
+   LL|       |
+   LL|      1|    consume("done");
+   LL|      1|}
+   LL|       |
+   LL|       |#[coverage(off)]
+   LL|       |fn consume<T>(x: T) {
+   LL|       |    core::hint::black_box(x);
+   LL|       |}
+   LL|       |
+   LL|       |#[coverage(off)]
+   LL|       |fn main() {
+   LL|       |    trivial(Trivial::Value);
+   LL|       |}
+

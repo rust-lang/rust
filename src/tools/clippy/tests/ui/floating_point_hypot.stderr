@@ -1,0 +1,23 @@
+error: hypotenuse can be computed more accurately
+  --> tests/ui/floating_point_hypot.rs:6:13
+   |
+LL |     let _ = (x * x + y * y).sqrt();
+   |             ^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `x.hypot(y)`
+   |
+   = note: `-D clippy::imprecise-flops` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::imprecise_flops)]`
+
+error: hypotenuse can be computed more accurately
+  --> tests/ui/floating_point_hypot.rs:8:13
+   |
+LL |     let _ = ((x + 1f32) * (x + 1f32) + y * y).sqrt();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `(x + 1f32).hypot(y)`
+
+error: hypotenuse can be computed more accurately
+  --> tests/ui/floating_point_hypot.rs:10:13
+   |
+LL |     let _ = (x.powi(2) + y.powi(2)).sqrt();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `x.hypot(y)`
+
+error: aborting due to 3 previous errors
+

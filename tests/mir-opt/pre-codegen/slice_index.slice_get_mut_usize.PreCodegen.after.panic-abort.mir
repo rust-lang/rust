@@ -1,0 +1,42 @@
+// MIR for `slice_get_mut_usize` after PreCodegen
+
+fn slice_get_mut_usize(_1: &mut [u32], _2: usize) -> Option<&mut u32> {
+    debug slice => _1;
+    debug index => _2;
+    let mut _0: std::option::Option<&mut u32>;
+    scope 1 (inlined core::slice::<impl [u32]>::get_mut::<usize>) {
+        scope 2 (inlined <usize as SliceIndex<[u32]>>::get_mut) {
+            let mut _3: usize;
+            let mut _4: bool;
+            let mut _5: &mut u32;
+        }
+    }
+
+    bb0: {
+        StorageLive(_4);
+        StorageLive(_3);
+        _3 = PtrMetadata(copy _1);
+        _4 = Lt(copy _2, move _3);
+        switchInt(move _4) -> [0: bb1, otherwise: bb2];
+    }
+
+    bb1: {
+        StorageDead(_3);
+        _0 = const Option::<&mut u32>::None;
+        goto -> bb3;
+    }
+
+    bb2: {
+        StorageDead(_3);
+        StorageLive(_5);
+        _5 = &mut (*_1)[_2];
+        _0 = Option::<&mut u32>::Some(copy _5);
+        StorageDead(_5);
+        goto -> bb3;
+    }
+
+    bb3: {
+        StorageDead(_4);
+        return;
+    }
+}

@@ -1,0 +1,32 @@
+// MIR for `enum_clone_as_copy` after PreCodegen
+
+fn enum_clone_as_copy(_1: &Enum1) -> Enum1 {
+    debug v => _1;
+    let mut _0: Enum1;
+    scope 1 (inlined <Enum1 as Clone>::clone) {
+        debug self => _1;
+        let _2: &AllCopy;
+        let _3: &NestCopy;
+        scope 2 {
+            debug __self_0 => _2;
+            scope 6 (inlined <AllCopy as Clone>::clone) {
+                debug self => _2;
+            }
+        }
+        scope 3 {
+            debug __self_0 => _3;
+            scope 4 (inlined <NestCopy as Clone>::clone) {
+                debug self => _3;
+                let _4: &AllCopy;
+                scope 5 (inlined <AllCopy as Clone>::clone) {
+                    debug self => _4;
+                }
+            }
+        }
+    }
+
+    bb0: {
+        _0 = copy (*_1);
+        return;
+    }
+}

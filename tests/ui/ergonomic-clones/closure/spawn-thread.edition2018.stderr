@@ -1,0 +1,28 @@
+error[E0382]: use of moved value: `x`
+  --> $DIR/spawn-thread.rs:15:42
+   |
+LL |       let x = (Arc::new("foo".to_owned()), Arc::new(vec![1, 2, 3]), Arc::new(1));
+   |           - move occurs because `x` has type `(Arc<String>, Arc<Vec<i32>>, Arc<i32>)`, which does not implement the `Copy` trait
+LL |       for _ in 0..10 {
+   |       -------------- inside of this loop
+LL |           let handler = std::thread::spawn(use || {
+   |  __________________________________________-^^^^^
+LL | |
+LL | |             drop((x.0, x.1, x.2));
+   | |                   --- use occurs due to use in closure
+LL | |         });
+   | |_________- value moved here, in previous iteration of loop
+   |
+help: consider moving the expression out of the loop so it is only moved once
+   |
+LL ~     let mut value = std::thread::spawn(use || {
+LL +
+LL +             drop((x.0, x.1, x.2));
+LL +         });
+LL ~     for _ in 0..10 {
+LL ~         let handler = value;
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0382`.

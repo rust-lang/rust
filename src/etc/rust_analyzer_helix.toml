@@ -1,0 +1,71 @@
+# This config uses a separate build directory for rust-analyzer,
+# so that r-a's checks don't block user `x` commands and vice-verse.
+# R-a's build directory is located in `build-rust-analyzer`.
+#
+# To download rustfmt and proc macro server for r-a run the following command
+# (proc macro server is downloaded automatically with pretty much any command,
+# this specific one also downloads rustfmt):
+# ```
+# x fmt --check
+# ```
+# (if that doesn't work -- do `x clean` first)
+
+[language-server.rust-analyzer.config]
+linkedProjects = [
+    "Cargo.toml",
+    "compiler/rustc_codegen_cranelift/Cargo.toml",
+    "compiler/rustc_codegen_gcc/Cargo.toml",
+    "library/Cargo.toml",
+    "src/bootstrap/Cargo.toml",
+    "src/tools/rust-analyzer/Cargo.toml",
+]
+
+[language-server.rust-analyzer.config.check]
+invocationStrategy = "once"
+overrideCommand = [
+    "python3",
+    "x.py",
+    "check",
+    "--json-output",
+    "--build-dir",
+    "build-rust-analyzer",
+]
+
+[language-server.rust-analyzer.config.rustfmt]
+overrideCommand = [
+    "build/host/rustfmt/bin/rustfmt",
+    "--edition=2024"
+]
+
+[language-server.rust-analyzer.config.procMacro]
+server = "build/host/stage0/libexec/rust-analyzer-proc-macro-srv"
+enable = true
+
+[language-server.rust-analyzer.config.rustc]
+source = "./Cargo.toml"
+
+[language-server.rust-analyzer.config.cargo]
+sysrootSrc = "./library"
+
+[language-server.rust-analyzer.config.cargo.extraEnv]
+RUSTC_BOOTSTRAP = "1"
+
+[language-server.rust-analyzer.config.cargo.buildScripts]
+enable = true
+invocationStrategy = "once"
+overrideCommand = [
+    "python3",
+    "x.py",
+    "check",
+    "--json-output",
+    "--compile-time-deps",
+    "--build-dir",
+    "build-rust-analyzer",
+]
+
+[language-server.rust-analyzer.environment]
+RUSTUP_TOOLCHAIN = "nightly"
+
+[[language]]
+name = "rust"
+file-types = ["rs", "fixed", "pp", "mir"]

@@ -1,0 +1,5 @@
+error: unknown print request: `yyyy`
+  |
+  = help: valid print requests are: `all-target-specs-json`, `calling-conventions`, `cfg`, `check-cfg`, `code-models`, `crate-name`, `crate-root-lint-levels`, `deployment-target`, `file-names`, `host-tuple`, `link-args`, `native-static-libs`, `relocation-models`, `split-debuginfo`, `stack-protector-strategies`, `supported-crate-types`, `sysroot`, `target-cpus`, `target-features`, `target-libdir`, `target-list`, `target-spec-json`, `target-spec-json-schema`, `tls-models`
+  = help: for more information, see the rustc book: https://doc.rust-lang.org/rustc/command-line-arguments.html#--print-print-compiler-information
+

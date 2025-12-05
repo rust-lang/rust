@@ -1,0 +1,47 @@
+error[E0276]: impl has stricter requirements than trait
+  --> $DIR/return-dont-satisfy-bounds.rs:8:16
+   |
+LL |     fn foo<F2>(self) -> impl Foo<T>;
+   |     -------------------------------- definition of `foo` from trait
+...
+LL |     fn foo<F2: Foo<u8>>(self) -> impl Foo<u8> {
+   |                ^^^^^^^ impl has extra requirement `F2: Foo<u8>`
+
+error[E0277]: the trait bound `impl Foo<u8>: Foo<char>` is not satisfied
+  --> $DIR/return-dont-satisfy-bounds.rs:8:34
+   |
+LL |     fn foo<F2: Foo<u8>>(self) -> impl Foo<u8> {
+   |                                  ^^^^^^^^^^^^ the trait `Foo<char>` is not implemented for `impl Foo<u8>`
+   |
+help: the trait `Foo<char>` is implemented for `Bar`
+  --> $DIR/return-dont-satisfy-bounds.rs:7:1
+   |
+LL | impl Foo<char> for Bar {
+   | ^^^^^^^^^^^^^^^^^^^^^^
+note: required by a bound in `Foo::foo::{anon_assoc#0}`
+  --> $DIR/return-dont-satisfy-bounds.rs:2:30
+   |
+LL |     fn foo<F2>(self) -> impl Foo<T>;
+   |                              ^^^^^^ required by this bound in `Foo::foo::{anon_assoc#0}`
+
+error[E0277]: the trait bound `Bar: Foo<u8>` is not satisfied
+  --> $DIR/return-dont-satisfy-bounds.rs:8:34
+   |
+LL |     fn foo<F2: Foo<u8>>(self) -> impl Foo<u8> {
+   |                                  ^^^^^^^^^^^^ unsatisfied trait bound
+...
+LL |         self
+   |         ---- return type was inferred to be `Bar` here
+   |
+help: the trait `Foo<u8>` is not implemented for `Bar`
+      but trait `Foo<char>` is implemented for it
+  --> $DIR/return-dont-satisfy-bounds.rs:7:1
+   |
+LL | impl Foo<char> for Bar {
+   | ^^^^^^^^^^^^^^^^^^^^^^
+   = help: for that trait implementation, expected `char`, found `u8`
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0276, E0277.
+For more information about an error, try `rustc --explain E0276`.

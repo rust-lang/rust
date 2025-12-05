@@ -1,0 +1,22 @@
+error: expected parameter name, found `*`
+  --> $DIR/suggest-add-self-issue-128042.rs:6:12
+   |
+LL |     fn oof(*mut Self) {
+   |            ^ expected parameter name
+
+error[E0424]: expected value, found module `self`
+  --> $DIR/suggest-add-self-issue-128042.rs:7:9
+   |
+LL |     fn oof(*mut Self) {
+   |        --- this function doesn't have a `self` parameter
+LL |         self.state = 1;
+   |         ^^^^ `self` value is a keyword only available in methods with a `self` parameter
+   |
+help: add a `self` receiver parameter to make the associated `fn` a method
+   |
+LL |     fn oof(&self, *mut Self) {
+   |            ++++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0424`.

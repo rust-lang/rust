@@ -1,0 +1,65 @@
+[package]
+
+name = "rustfmt-nightly"
+version = "1.8.0"
+description = "Tool to find and fix Rust formatting issues"
+repository = "https://github.com/rust-lang/rustfmt"
+readme = "README.md"
+license = "Apache-2.0 OR MIT"
+build = "build.rs"
+categories = ["development-tools"]
+edition = "2021"
+
+[[bin]]
+name = "rustfmt"
+path = "src/bin/main.rs"
+
+[[bin]]
+name = "cargo-fmt"
+path = "src/cargo-fmt/main.rs"
+
+[[bin]]
+name = "rustfmt-format-diff"
+path = "src/format-diff/main.rs"
+
+[[bin]]
+name = "git-rustfmt"
+path = "src/git-rustfmt/main.rs"
+
+[features]
+default = ["cargo-fmt", "rustfmt-format-diff"]
+cargo-fmt = []
+rustfmt-format-diff = []
+generic-simd = ["bytecount/generic-simd"]
+
+[dependencies]
+annotate-snippets = { version = "0.9", features = ["color"] }
+anyhow = "1.0"
+bytecount = "0.6.8"
+cargo_metadata = "0.18"
+clap = { version = "4.4.2", features = ["derive"] }
+clap-cargo = "0.12.0"
+diff = "0.1"
+dirs = "6.0"
+getopts = "0.2"
+ignore = "0.4"
+itertools = "0.12"
+regex = "1.7"
+serde = { version = "1.0.160", features = ["derive"] }
+serde_json = "1.0"
+term = "0.7"
+thiserror = "1.0.40"
+toml = "0.7.4"
+tracing = { version = "0.1.37", default-features = false, features = ["std"] }
+tracing-subscriber = { version = "0.3.17", features = ["env-filter"] }
+unicode-segmentation = "1.9"
+unicode-width = "0.1"
+unicode-properties = { version = "0.1", default-features = false, features = ["general-category"] }
+
+rustfmt-config_proc_macro = { version = "0.3", path = "config_proc_macro" }
+
+# Rustc dependencies are loaded from the sysroot, Cargo doesn't know about them.
+
+[package.metadata.rust-analyzer]
+# This package uses #[feature(rustc_private)]
+rustc_private = true

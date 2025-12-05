@@ -1,0 +1,17 @@
+error: usage of `&String::new()` for a function expecting a `&str` argument
+  --> tests/ui/unnecessary_owned_empty_strings.rs:10:22
+   |
+LL |     ref_str_argument(&String::new());
+   |                      ^^^^^^^^^^^^^^ help: try: `""`
+   |
+   = note: `-D clippy::unnecessary-owned-empty-strings` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unnecessary_owned_empty_strings)]`
+
+error: usage of `&String::from("")` for a function expecting a `&str` argument
+  --> tests/ui/unnecessary_owned_empty_strings.rs:15:22
+   |
+LL |     ref_str_argument(&String::from(""));
+   |                      ^^^^^^^^^^^^^^^^^ help: try: `""`
+
+error: aborting due to 2 previous errors
+

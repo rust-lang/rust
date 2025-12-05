@@ -1,0 +1,71 @@
+error[E0308]: mismatched types
+  --> $DIR/method-deref-to-same-trait-object-with-separate-params.rs:88:24
+   |
+LL |     let _seetype: () = z;
+   |                   --   ^ expected `()`, found `u32`
+   |                   |
+   |                   expected due to this
+
+error[E0308]: mismatched types
+  --> $DIR/method-deref-to-same-trait-object-with-separate-params.rs:105:24
+   |
+LL |     let _seetype: () = z;
+   |                   --   ^ expected `()`, found `u64`
+   |                   |
+   |                   expected due to this
+
+error[E0034]: multiple applicable items in scope
+  --> $DIR/method-deref-to-same-trait-object-with-separate-params.rs:123:15
+   |
+LL |     let z = x.foo();
+   |               ^^^ multiple `foo` found
+   |
+note: candidate #1 is defined in an impl of the trait `NuisanceFoo` for the type `T`
+  --> $DIR/method-deref-to-same-trait-object-with-separate-params.rs:73:9
+   |
+LL |         fn foo(self) {}
+   |         ^^^^^^^^^^^^
+note: candidate #2 is defined in an impl of the trait `X` for the type `T`
+  --> $DIR/method-deref-to-same-trait-object-with-separate-params.rs:46:9
+   |
+LL |         fn foo(self: Smaht<Self, u64>) -> u64 {
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: disambiguate the method for candidate #1
+   |
+LL -     let z = x.foo();
+LL +     let z = NuisanceFoo::foo(x);
+   |
+help: disambiguate the method for candidate #2
+   |
+LL -     let z = x.foo();
+LL +     let z = X::foo(x);
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/method-deref-to-same-trait-object-with-separate-params.rs:140:24
+   |
+LL |     let _seetype: () = z;
+   |                   --   ^ expected `()`, found `u8`
+   |                   |
+   |                   expected due to this
+
+error[E0308]: mismatched types
+  --> $DIR/method-deref-to-same-trait-object-with-separate-params.rs:158:24
+   |
+LL |     let _seetype: () = z;
+   |                   --   ^ expected `()`, found `u32`
+   |                   |
+   |                   expected due to this
+
+error[E0308]: mismatched types
+  --> $DIR/method-deref-to-same-trait-object-with-separate-params.rs:175:24
+   |
+LL |     let _seetype: () = z;
+   |                   --   ^ expected `()`, found `u32`
+   |                   |
+   |                   expected due to this
+
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0034, E0308.
+For more information about an error, try `rustc --explain E0034`.

@@ -1,0 +1,15 @@
+error[E0081]: discriminant value `0` assigned more than once
+  --> $DIR/enum-discrim-autosizing.rs:6:1
+   |
+LL | enum Eu64 {
+   | ^^^^^^^^^
+LL |
+LL |     Au64 = 0,
+   |            - `0` assigned here
+LL |
+LL |     Bu64 = 0x8000_0000_0000_0000
+   |            --------------------- `0` (overflowed from `9223372036854775808`) assigned here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0081`.

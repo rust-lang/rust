@@ -1,0 +1,15 @@
+error[E0433]: failed to resolve: could not find `abort` in `process`
+  --> $DIR/issue-103112.rs:2:19
+   |
+LL |     std::process::abort!();
+   |                   ^^^^^ could not find `abort` in `process`
+   |
+help: std::process::abort is not a macro, but a function, try to remove `!`
+   |
+LL -     std::process::abort!();
+LL +     std::process::abort();
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0433`.

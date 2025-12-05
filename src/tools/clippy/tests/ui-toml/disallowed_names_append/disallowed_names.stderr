@@ -1,0 +1,17 @@
+error: use of a disallowed/placeholder name `foo`
+  --> tests/ui-toml/disallowed_names_append/disallowed_names.rs:5:9
+   |
+LL |     let foo = "bar";
+   |         ^^^
+   |
+   = note: `-D clippy::disallowed-names` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::disallowed_names)]`
+
+error: use of a disallowed/placeholder name `ducks`
+  --> tests/ui-toml/disallowed_names_append/disallowed_names.rs:8:9
+   |
+LL |     let ducks = ["quack", "quack"];
+   |         ^^^^^
+
+error: aborting due to 2 previous errors
+

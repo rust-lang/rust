@@ -1,0 +1,56 @@
+// MIR for `<impl at $DIR/derived_ord.rs:5:10: 5:20>::partial_cmp` after PreCodegen
+
+fn <impl at $DIR/derived_ord.rs:5:10: 5:20>::partial_cmp(_1: &MultiField, _2: &MultiField) -> Option<std::cmp::Ordering> {
+    debug self => _1;
+    debug other => _2;
+    let mut _0: std::option::Option<std::cmp::Ordering>;
+    let mut _6: i8;
+    scope 1 {
+        debug cmp => _0;
+    }
+    scope 2 (inlined std::cmp::impls::<impl PartialOrd for char>::partial_cmp) {
+        let mut _3: char;
+        let mut _4: char;
+        let mut _5: std::cmp::Ordering;
+    }
+    scope 3 (inlined std::cmp::impls::<impl PartialOrd for i16>::partial_cmp) {
+        let mut _7: i16;
+        let mut _8: i16;
+        let mut _9: std::cmp::Ordering;
+    }
+
+    bb0: {
+        StorageLive(_3);
+        _3 = copy ((*_1).0: char);
+        StorageLive(_4);
+        _4 = copy ((*_2).0: char);
+        _5 = Cmp(move _3, move _4);
+        StorageDead(_4);
+        StorageDead(_3);
+        _0 = Option::<std::cmp::Ordering>::Some(copy _5);
+        _6 = discriminant(_5);
+        switchInt(move _6) -> [0: bb1, otherwise: bb2];
+    }
+
+    bb1: {
+        StorageLive(_9);
+        StorageLive(_7);
+        _7 = copy ((*_1).1: i16);
+        StorageLive(_8);
+        _8 = copy ((*_2).1: i16);
+        _9 = Cmp(move _7, move _8);
+        StorageDead(_8);
+        StorageDead(_7);
+        _0 = Option::<std::cmp::Ordering>::Some(move _9);
+        StorageDead(_9);
+        goto -> bb3;
+    }
+
+    bb2: {
+        goto -> bb3;
+    }
+
+    bb3: {
+        return;
+    }
+}

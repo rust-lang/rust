@@ -1,0 +1,17 @@
+error[E0072]: recursive type `Foo` has infinite size
+  --> $DIR/type-recursive-box-shadowed.rs:7:1
+   |
+LL | struct Foo {
+   | ^^^^^^^^^^
+LL |
+LL |     inner: Foo,
+   |            --- recursive without indirection
+   |
+help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to break the cycle
+   |
+LL |     inner: Box<Foo>,
+   |            ++++   +
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0072`.

@@ -1,0 +1,16 @@
+error: arbitrary expressions aren't allowed in patterns
+  --> $DIR/patkind-litrange-no-expr.rs:20:13
+   |
+LL |     Arith = 1 + 1,
+   |             ^^^^^
+
+error: arbitrary expressions aren't allowed in patterns
+  --> $DIR/patkind-litrange-no-expr.rs:20:13
+   |
+LL |     Arith = 1 + 1,
+   |             ^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 2 previous errors
+

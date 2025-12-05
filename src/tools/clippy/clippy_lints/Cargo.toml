@@ -1,0 +1,41 @@
+[package]
+name = "clippy_lints"
+version = "0.1.93"
+description = "A bunch of helpful lints to avoid common pitfalls in Rust"
+repository = "https://github.com/rust-lang/rust-clippy"
+readme = "README.md"
+license = "MIT OR Apache-2.0"
+keywords = ["clippy", "lint", "plugin"]
+edition = "2024"
+
+[dependencies]
+arrayvec = { version = "0.7", default-features = false }
+cargo_metadata = "0.18"
+clippy_config = { path = "../clippy_config" }
+clippy_utils = { path = "../clippy_utils" }
+declare_clippy_lint = { path = "../declare_clippy_lint" }
+itertools = "0.12"
+quine-mc_cluskey = "0.2"
+regex-syntax = "0.8"
+serde = { version = "1.0", features = ["derive"] }
+unicode-normalization = "0.1"
+unicode-script = { version = "0.5", default-features = false }
+semver = "1.0"
+url = "2.2"
+
+[dependencies.toml]
+version = "0.9.7"
+default-features = false
+# preserve_order keeps diagnostic output in file order
+features = ["parse", "preserve_order"]
+
+[dev-dependencies]
+walkdir = "2.3"
+
+[lints.rust.unexpected_cfgs]
+level = "warn"
+check-cfg = ['cfg(bootstrap)']
+
+[package.metadata.rust-analyzer]
+# This crate uses #[feature(rustc_private)]
+rustc_private = true

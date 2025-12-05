@@ -1,0 +1,90 @@
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "o"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    RET_TYPE
+      THIN_ARROW "->"
+      WHITESPACE " "
+      PATH_TYPE
+        PATH
+          PATH_SEGMENT
+            NAME_REF
+              IDENT "Result"
+            GENERIC_ARG_LIST
+              L_ANGLE "<"
+              TYPE_ARG
+                TUPLE_TYPE
+                  L_PAREN "("
+                  R_PAREN ")"
+              COMMA ","
+              WHITESPACE " "
+              TYPE_ARG
+                TUPLE_TYPE
+                  L_PAREN "("
+                  R_PAREN ")"
+              R_ANGLE ">"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE "\n    "
+        LET_STMT
+          LET_KW "let"
+          WHITESPACE " "
+          IDENT_PAT
+            NAME
+              IDENT "foo"
+          WHITESPACE " "
+          EQ "="
+          WHITESPACE " "
+          YEET_EXPR
+            DO_KW "do"
+            WHITESPACE " "
+            YEET_KW "yeet"
+            WHITESPACE " "
+            BLOCK_EXPR
+              STMT_LIST
+                L_CURLY "{"
+                WHITESPACE "\n        "
+                TUPLE_EXPR
+                  L_PAREN "("
+                  R_PAREN ")"
+                WHITESPACE "\n    "
+                R_CURLY "}"
+          WHITESPACE " "
+          LET_ELSE
+            ELSE_KW "else"
+            WHITESPACE " "
+            BLOCK_EXPR
+              STMT_LIST
+                L_CURLY "{"
+                WHITESPACE "\n        "
+                EXPR_STMT
+                  RETURN_EXPR
+                    RETURN_KW "return"
+                    WHITESPACE " "
+                    CALL_EXPR
+                      PATH_EXPR
+                        PATH
+                          PATH_SEGMENT
+                            NAME_REF
+                              IDENT "Ok"
+                      ARG_LIST
+                        L_PAREN "("
+                        TUPLE_EXPR
+                          L_PAREN "("
+                          R_PAREN ")"
+                        R_PAREN ")"
+                  SEMICOLON ";"
+                WHITESPACE "\n    "
+                R_CURLY "}"
+          SEMICOLON ";"
+        WHITESPACE "\n"
+        R_CURLY "}"
+error 67: right curly brace `}` before `else` in a `let...else` statement not allowed

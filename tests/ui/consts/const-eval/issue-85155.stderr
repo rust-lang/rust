@@ -1,0 +1,23 @@
+error[E0080]: attempt to divide `1_usize` by zero
+  --> $DIR/auxiliary/post_monomorphization_error.rs:7:17
+   |
+LL |         let _ = 1 / ((IMM >= MIN && IMM <= MAX) as usize);
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `post_monomorphization_error::ValidateConstImm::<2, 0, 1>::VALID` failed here
+
+note: erroneous constant encountered
+  --> $DIR/auxiliary/post_monomorphization_error.rs:19:5
+   |
+LL |     static_assert_imm1!(IMM1);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this note originates in the macro `static_assert_imm1` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+note: the above error was encountered while instantiating `fn stdarch_intrinsic::<2>`
+  --> $DIR/issue-85155.rs:19:5
+   |
+LL |     post_monomorphization_error::stdarch_intrinsic::<2>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0080`.

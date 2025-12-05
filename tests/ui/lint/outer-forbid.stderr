@@ -1,0 +1,455 @@
+error: allow(unused_variables) incompatible with previous forbid
+  --> $DIR/outer-forbid.rs:20:9
+   |
+LL | #![forbid(unused, non_snake_case)]
+   |           ------ `forbid` level set here
+...
+LL | #[allow(unused_variables)]
+   |         ^^^^^^^^^^^^^^^^ overruled by previous forbid
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #81670 <https://github.com/rust-lang/rust/issues/81670>
+note: the lint level is defined here
+  --> $DIR/outer-forbid.rs:18:11
+   |
+LL | #![forbid(forbidden_lint_groups)]
+   |           ^^^^^^^^^^^^^^^^^^^^^
+
+error: allow(unused) incompatible with previous forbid
+  --> $DIR/outer-forbid.rs:25:9
+   |
+LL | #![forbid(unused, non_snake_case)]
+   |           ------ `forbid` level set here
+...
+LL | #[allow(unused)]
+   |         ^^^^^^ overruled by previous forbid
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #81670 <https://github.com/rust-lang/rust/issues/81670>
+
+error[E0453]: allow(nonstandard_style) incompatible with previous forbid
+  --> $DIR/outer-forbid.rs:29:9
+   |
+LL | #![forbid(unused, non_snake_case)]
+   |                   -------------- `forbid` level set here
+...
+LL | #[allow(nonstandard_style)]
+   |         ^^^^^^^^^^^^^^^^^ overruled by previous forbid
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0453`.
+Future incompatibility report: Future breakage diagnostic:
+error: allow(unused_variables) incompatible with previous forbid
+  --> $DIR/outer-forbid.rs:20:9
+   |
+LL | #![forbid(unused, non_snake_case)]
+   |           ------ `forbid` level set here
+...
+LL | #[allow(unused_variables)]
+   |         ^^^^^^^^^^^^^^^^ overruled by previous forbid
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #81670 <https://github.com/rust-lang/rust/issues/81670>
+note: the lint level is defined here
+  --> $DIR/outer-forbid.rs:18:11
+   |
+LL | #![forbid(forbidden_lint_groups)]
+   |           ^^^^^^^^^^^^^^^^^^^^^
+
+Future breakage diagnostic:
+error: allow(unused) incompatible with previous forbid
+  --> $DIR/outer-forbid.rs:25:9
+   |
+LL | #![forbid(unused, non_snake_case)]
+   |           ------ `forbid` level set here
+...
+LL | #[allow(unused)]
+   |         ^^^^^^ overruled by previous forbid
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #81670 <https://github.com/rust-lang/rust/issues/81670>
+note: the lint level is defined here
+  --> $DIR/outer-forbid.rs:18:11
+   |
+LL | #![forbid(forbidden_lint_groups)]
+   |           ^^^^^^^^^^^^^^^^^^^^^
+
+Future breakage diagnostic:
+error: allow(unused) incompatible with previous forbid
+  --> $DIR/outer-forbid.rs:25:9
+   |
+LL | #![forbid(unused, non_snake_case)]
+   |           ------ `forbid` level set here
+...
+LL | #[allow(unused)]
+   |         ^^^^^^ overruled by previous forbid
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #81670 <https://github.com/rust-lang/rust/issues/81670>
+note: the lint level is defined here
+  --> $DIR/outer-forbid.rs:18:11
+   |
+LL | #![forbid(forbidden_lint_groups)]
+   |           ^^^^^^^^^^^^^^^^^^^^^
+
+Future breakage diagnostic:
+error: allow(unused) incompatible with previous forbid
+  --> $DIR/outer-forbid.rs:25:9
+   |
+LL | #![forbid(unused, non_snake_case)]
+   |           ------ `forbid` level set here
+...
+LL | #[allow(unused)]
+   |         ^^^^^^ overruled by previous forbid
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #81670 <https://github.com/rust-lang/rust/issues/81670>
+note: the lint level is defined here
+  --> $DIR/outer-forbid.rs:18:11
+   |
+LL | #![forbid(forbidden_lint_groups)]
+   |           ^^^^^^^^^^^^^^^^^^^^^
+
+Future breakage diagnostic:
+error: allow(unused) incompatible with previous forbid
+  --> $DIR/outer-forbid.rs:25:9
+   |
+LL | #![forbid(unused, non_snake_case)]
+   |           ------ `forbid` level set here
+...
+LL | #[allow(unused)]
+   |         ^^^^^^ overruled by previous forbid
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #81670 <https://github.com/rust-lang/rust/issues/81670>
+note: the lint level is defined here
+  --> $DIR/outer-forbid.rs:18:11
+   |
+LL | #![forbid(forbidden_lint_groups)]
+   |           ^^^^^^^^^^^^^^^^^^^^^
+
+Future breakage diagnostic:
+error: allow(unused) incompatible with previous forbid
+  --> $DIR/outer-forbid.rs:25:9
+   |
+LL | #![forbid(unused, non_snake_case)]
+   |           ------ `forbid` level set here
+...
+LL | #[allow(unused)]
+   |         ^^^^^^ overruled by previous forbid
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #81670 <https://github.com/rust-lang/rust/issues/81670>
+note: the lint level is defined here
+  --> $DIR/outer-forbid.rs:18:11
+   |
+LL | #![forbid(forbidden_lint_groups)]
+   |           ^^^^^^^^^^^^^^^^^^^^^
+
+Future breakage diagnostic:
+error: allow(unused) incompatible with previous forbid
+  --> $DIR/outer-forbid.rs:25:9
+   |
+LL | #![forbid(unused, non_snake_case)]
+   |           ------ `forbid` level set here
+...
+LL | #[allow(unused)]
+   |         ^^^^^^ overruled by previous forbid
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #81670 <https://github.com/rust-lang/rust/issues/81670>
+note: the lint level is defined here
+  --> $DIR/outer-forbid.rs:18:11
+   |
+LL | #![forbid(forbidden_lint_groups)]
+   |           ^^^^^^^^^^^^^^^^^^^^^
+
+Future breakage diagnostic:
+error: allow(unused) incompatible with previous forbid
+  --> $DIR/outer-forbid.rs:25:9
+   |
+LL | #![forbid(unused, non_snake_case)]
+   |           ------ `forbid` level set here
+...
+LL | #[allow(unused)]
+   |         ^^^^^^ overruled by previous forbid
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #81670 <https://github.com/rust-lang/rust/issues/81670>
+note: the lint level is defined here
+  --> $DIR/outer-forbid.rs:18:11
+   |
+LL | #![forbid(forbidden_lint_groups)]
+   |           ^^^^^^^^^^^^^^^^^^^^^
+
+Future breakage diagnostic:
+error: allow(unused) incompatible with previous forbid
+  --> $DIR/outer-forbid.rs:25:9
+   |
+LL | #![forbid(unused, non_snake_case)]
+   |           ------ `forbid` level set here
+...
+LL | #[allow(unused)]
+   |         ^^^^^^ overruled by previous forbid
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #81670 <https://github.com/rust-lang/rust/issues/81670>
+note: the lint level is defined here
+  --> $DIR/outer-forbid.rs:18:11
+   |
+LL | #![forbid(forbidden_lint_groups)]
+   |           ^^^^^^^^^^^^^^^^^^^^^
+
+Future breakage diagnostic:
+error: allow(unused) incompatible with previous forbid
+  --> $DIR/outer-forbid.rs:25:9
+   |
+LL | #![forbid(unused, non_snake_case)]
+   |           ------ `forbid` level set here
+...
+LL | #[allow(unused)]
+   |         ^^^^^^ overruled by previous forbid
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #81670 <https://github.com/rust-lang/rust/issues/81670>
+note: the lint level is defined here
+  --> $DIR/outer-forbid.rs:18:11
+   |
+LL | #![forbid(forbidden_lint_groups)]
+   |           ^^^^^^^^^^^^^^^^^^^^^
+
+Future breakage diagnostic:
+error: allow(unused) incompatible with previous forbid
+  --> $DIR/outer-forbid.rs:25:9
+   |
+LL | #![forbid(unused, non_snake_case)]
+   |           ------ `forbid` level set here
+...
+LL | #[allow(unused)]
+   |         ^^^^^^ overruled by previous forbid
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #81670 <https://github.com/rust-lang/rust/issues/81670>
+note: the lint level is defined here
+  --> $DIR/outer-forbid.rs:18:11
+   |
+LL | #![forbid(forbidden_lint_groups)]
+   |           ^^^^^^^^^^^^^^^^^^^^^
+
+Future breakage diagnostic:
+error: allow(unused) incompatible with previous forbid
+  --> $DIR/outer-forbid.rs:25:9
+   |
+LL | #![forbid(unused, non_snake_case)]
+   |           ------ `forbid` level set here
+...
+LL | #[allow(unused)]
+   |         ^^^^^^ overruled by previous forbid
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #81670 <https://github.com/rust-lang/rust/issues/81670>
+note: the lint level is defined here
+  --> $DIR/outer-forbid.rs:18:11
+   |
+LL | #![forbid(forbidden_lint_groups)]
+   |           ^^^^^^^^^^^^^^^^^^^^^
+
+Future breakage diagnostic:
+error: allow(unused) incompatible with previous forbid
+  --> $DIR/outer-forbid.rs:25:9
+   |
+LL | #![forbid(unused, non_snake_case)]
+   |           ------ `forbid` level set here
+...
+LL | #[allow(unused)]
+   |         ^^^^^^ overruled by previous forbid
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #81670 <https://github.com/rust-lang/rust/issues/81670>
+note: the lint level is defined here
+  --> $DIR/outer-forbid.rs:18:11
+   |
+LL | #![forbid(forbidden_lint_groups)]
+   |           ^^^^^^^^^^^^^^^^^^^^^
+
+Future breakage diagnostic:
+error: allow(unused) incompatible with previous forbid
+  --> $DIR/outer-forbid.rs:25:9
+   |
+LL | #![forbid(unused, non_snake_case)]
+   |           ------ `forbid` level set here
+...
+LL | #[allow(unused)]
+   |         ^^^^^^ overruled by previous forbid
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #81670 <https://github.com/rust-lang/rust/issues/81670>
+note: the lint level is defined here
+  --> $DIR/outer-forbid.rs:18:11
+   |
+LL | #![forbid(forbidden_lint_groups)]
+   |           ^^^^^^^^^^^^^^^^^^^^^
+
+Future breakage diagnostic:
+error: allow(unused) incompatible with previous forbid
+  --> $DIR/outer-forbid.rs:25:9
+   |
+LL | #![forbid(unused, non_snake_case)]
+   |           ------ `forbid` level set here
+...
+LL | #[allow(unused)]
+   |         ^^^^^^ overruled by previous forbid
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #81670 <https://github.com/rust-lang/rust/issues/81670>
+note: the lint level is defined here
+  --> $DIR/outer-forbid.rs:18:11
+   |
+LL | #![forbid(forbidden_lint_groups)]
+   |           ^^^^^^^^^^^^^^^^^^^^^
+
+Future breakage diagnostic:
+error: allow(unused) incompatible with previous forbid
+  --> $DIR/outer-forbid.rs:25:9
+   |
+LL | #![forbid(unused, non_snake_case)]
+   |           ------ `forbid` level set here
+...
+LL | #[allow(unused)]
+   |         ^^^^^^ overruled by previous forbid
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #81670 <https://github.com/rust-lang/rust/issues/81670>
+note: the lint level is defined here
+  --> $DIR/outer-forbid.rs:18:11
+   |
+LL | #![forbid(forbidden_lint_groups)]
+   |           ^^^^^^^^^^^^^^^^^^^^^
+
+Future breakage diagnostic:
+error: allow(unused) incompatible with previous forbid
+  --> $DIR/outer-forbid.rs:25:9
+   |
+LL | #![forbid(unused, non_snake_case)]
+   |           ------ `forbid` level set here
+...
+LL | #[allow(unused)]
+   |         ^^^^^^ overruled by previous forbid
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #81670 <https://github.com/rust-lang/rust/issues/81670>
+note: the lint level is defined here
+  --> $DIR/outer-forbid.rs:18:11
+   |
+LL | #![forbid(forbidden_lint_groups)]
+   |           ^^^^^^^^^^^^^^^^^^^^^
+
+Future breakage diagnostic:
+error: allow(unused) incompatible with previous forbid
+  --> $DIR/outer-forbid.rs:25:9
+   |
+LL | #![forbid(unused, non_snake_case)]
+   |           ------ `forbid` level set here
+...
+LL | #[allow(unused)]
+   |         ^^^^^^ overruled by previous forbid
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #81670 <https://github.com/rust-lang/rust/issues/81670>
+note: the lint level is defined here
+  --> $DIR/outer-forbid.rs:18:11
+   |
+LL | #![forbid(forbidden_lint_groups)]
+   |           ^^^^^^^^^^^^^^^^^^^^^
+
+Future breakage diagnostic:
+error: allow(unused) incompatible with previous forbid
+  --> $DIR/outer-forbid.rs:25:9
+   |
+LL | #![forbid(unused, non_snake_case)]
+   |           ------ `forbid` level set here
+...
+LL | #[allow(unused)]
+   |         ^^^^^^ overruled by previous forbid
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #81670 <https://github.com/rust-lang/rust/issues/81670>
+note: the lint level is defined here
+  --> $DIR/outer-forbid.rs:18:11
+   |
+LL | #![forbid(forbidden_lint_groups)]
+   |           ^^^^^^^^^^^^^^^^^^^^^
+
+Future breakage diagnostic:
+error: allow(unused) incompatible with previous forbid
+  --> $DIR/outer-forbid.rs:25:9
+   |
+LL | #![forbid(unused, non_snake_case)]
+   |           ------ `forbid` level set here
+...
+LL | #[allow(unused)]
+   |         ^^^^^^ overruled by previous forbid
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #81670 <https://github.com/rust-lang/rust/issues/81670>
+note: the lint level is defined here
+  --> $DIR/outer-forbid.rs:18:11
+   |
+LL | #![forbid(forbidden_lint_groups)]
+   |           ^^^^^^^^^^^^^^^^^^^^^
+
+Future breakage diagnostic:
+error: allow(unused) incompatible with previous forbid
+  --> $DIR/outer-forbid.rs:25:9
+   |
+LL | #![forbid(unused, non_snake_case)]
+   |           ------ `forbid` level set here
+...
+LL | #[allow(unused)]
+   |         ^^^^^^ overruled by previous forbid
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #81670 <https://github.com/rust-lang/rust/issues/81670>
+note: the lint level is defined here
+  --> $DIR/outer-forbid.rs:18:11
+   |
+LL | #![forbid(forbidden_lint_groups)]
+   |           ^^^^^^^^^^^^^^^^^^^^^
+
+Future breakage diagnostic:
+error: allow(unused) incompatible with previous forbid
+  --> $DIR/outer-forbid.rs:25:9
+   |
+LL | #![forbid(unused, non_snake_case)]
+   |           ------ `forbid` level set here
+...
+LL | #[allow(unused)]
+   |         ^^^^^^ overruled by previous forbid
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #81670 <https://github.com/rust-lang/rust/issues/81670>
+note: the lint level is defined here
+  --> $DIR/outer-forbid.rs:18:11
+   |
+LL | #![forbid(forbidden_lint_groups)]
+   |           ^^^^^^^^^^^^^^^^^^^^^
+
+Future breakage diagnostic:
+error: allow(unused) incompatible with previous forbid
+  --> $DIR/outer-forbid.rs:25:9
+   |
+LL | #![forbid(unused, non_snake_case)]
+   |           ------ `forbid` level set here
+...
+LL | #[allow(unused)]
+   |         ^^^^^^ overruled by previous forbid
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #81670 <https://github.com/rust-lang/rust/issues/81670>
+note: the lint level is defined here
+  --> $DIR/outer-forbid.rs:18:11
+   |
+LL | #![forbid(forbidden_lint_groups)]
+   |           ^^^^^^^^^^^^^^^^^^^^^
+

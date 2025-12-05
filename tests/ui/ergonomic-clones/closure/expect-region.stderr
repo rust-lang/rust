@@ -1,0 +1,22 @@
+error: lifetime may not live long enough
+  --> $DIR/expect-region.rs:15:34
+   |
+LL | fn expect_bound_supply_named<'x>() {
+   |                              -- lifetime `'x` defined here
+...
+LL |     closure_expecting_bound(use |x: &'x u32| {
+   |                                  ^  - let's call the lifetime of this reference `'1`
+   |                                  |
+   |                                  requires that `'1` must outlive `'x`
+
+error: lifetime may not live long enough
+  --> $DIR/expect-region.rs:15:34
+   |
+LL | fn expect_bound_supply_named<'x>() {
+   |                              -- lifetime `'x` defined here
+...
+LL |     closure_expecting_bound(use |x: &'x u32| {
+   |                                  ^ requires that `'x` must outlive `'static`
+
+error: aborting due to 2 previous errors
+

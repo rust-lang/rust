@@ -1,0 +1,111 @@
+SOURCE_FILE
+  COMMENT "// https://github.com/rust-lang/rust-analyzer/issues/674"
+  WHITESPACE "\n\n"
+  STRUCT
+    STRUCT_KW "struct"
+    WHITESPACE " "
+    NAME
+      IDENT "Repr"
+    WHITESPACE " "
+    RECORD_FIELD_LIST
+      L_CURLY "{"
+      WHITESPACE " "
+      RECORD_FIELD
+        NAME
+          IDENT "raw"
+        COLON ":"
+        WHITESPACE " "
+        ARRAY_TYPE
+          L_BRACK "["
+          PATH_TYPE
+            PATH
+              PATH_SEGMENT
+                NAME_REF
+                  IDENT "u8"
+          SEMICOLON ";"
+          WHITESPACE " "
+          CONST_ARG
+            LITERAL
+              INT_NUMBER "1"
+          R_BRACK "]"
+      WHITESPACE " "
+      R_CURLY "}"
+  WHITESPACE "\n\n"
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "abc"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          BIN_EXPR
+            INDEX_EXPR
+              FIELD_EXPR
+                RECORD_EXPR
+                  PATH
+                    PATH_SEGMENT
+                      NAME_REF
+                        IDENT "Repr"
+                  WHITESPACE " "
+                  RECORD_EXPR_FIELD_LIST
+                    L_CURLY "{"
+                    WHITESPACE " "
+                    RECORD_EXPR_FIELD
+                      NAME_REF
+                        IDENT "raw"
+                      COLON ":"
+                      WHITESPACE " "
+                      ARRAY_EXPR
+                        L_BRACK "["
+                        LITERAL
+                          INT_NUMBER "0"
+                        R_BRACK "]"
+                    WHITESPACE " "
+                    R_CURLY "}"
+                DOT "."
+                NAME_REF
+                  IDENT "raw"
+              L_BRACK "["
+              LITERAL
+                INT_NUMBER "0"
+              R_BRACK "]"
+            WHITESPACE " "
+            EQ "="
+            WHITESPACE " "
+            LITERAL
+              INT_NUMBER "0"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          CALL_EXPR
+            RECORD_EXPR
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "Repr"
+              RECORD_EXPR_FIELD_LIST
+                L_CURLY "{"
+                RECORD_EXPR_FIELD
+                  NAME_REF
+                    IDENT "raw"
+                  COLON ":"
+                  ARRAY_EXPR
+                    L_BRACK "["
+                    LITERAL
+                      INT_NUMBER "0"
+                    R_BRACK "]"
+                R_CURLY "}"
+            ARG_LIST
+              L_PAREN "("
+              R_PAREN ")"
+          SEMICOLON ";"
+        WHITESPACE "\n"
+        R_CURLY "}"
+  WHITESPACE "\n"

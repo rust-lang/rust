@@ -1,0 +1,1 @@
+CHAR "'\\x7f" error: Missing trailing `'` symbol to terminate the character literal

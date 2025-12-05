@@ -1,0 +1,15 @@
+error: item does not constrain `Tait::{opaque#0}`
+  --> $DIR/method_resolution_trait_method_from_opaque.rs:26:8
+   |
+LL |     fn foo(&mut self) {
+   |        ^^^
+   |
+   = note: consider removing `#[define_opaque]` or adding an empty `#[define_opaque()]`
+note: this opaque type is supposed to be constrained
+  --> $DIR/method_resolution_trait_method_from_opaque.rs:17:13
+   |
+LL | type Tait = impl Iterator<Item = ()>;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

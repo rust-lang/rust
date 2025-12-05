@@ -1,0 +1,54 @@
+error: lifetime may not live long enough
+  --> $DIR/regions-outlives-projection-container.rs:36:13
+   |
+LL | fn with_assoc<'a,'b>() {
+   |               -- -- lifetime `'b` defined here
+   |               |
+   |               lifetime `'a` defined here
+...
+LL |     let _x: &'a WithAssoc<TheType<'b>> = loop { };
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ requires that `'b` must outlive `'a`
+   |
+   = help: consider adding the following bound: `'b: 'a`
+
+error: lifetime may not live long enough
+  --> $DIR/regions-outlives-projection-container.rs:54:13
+   |
+LL | fn without_assoc<'a,'b>() {
+   |                  -- -- lifetime `'b` defined here
+   |                  |
+   |                  lifetime `'a` defined here
+...
+LL |     let _x: &'a WithoutAssoc<TheType<'b>> = loop { };
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ requires that `'b` must outlive `'a`
+   |
+   = help: consider adding the following bound: `'b: 'a`
+
+error: lifetime may not live long enough
+  --> $DIR/regions-outlives-projection-container.rs:63:5
+   |
+LL | fn call_with_assoc<'a,'b>() {
+   |                    -- -- lifetime `'b` defined here
+   |                    |
+   |                    lifetime `'a` defined here
+...
+LL |     call::<&'a WithAssoc<TheType<'b>>>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ requires that `'b` must outlive `'a`
+   |
+   = help: consider adding the following bound: `'b: 'a`
+
+error: lifetime may not live long enough
+  --> $DIR/regions-outlives-projection-container.rs:70:5
+   |
+LL | fn call_without_assoc<'a,'b>() {
+   |                       -- -- lifetime `'b` defined here
+   |                       |
+   |                       lifetime `'a` defined here
+...
+LL |     call::<&'a WithoutAssoc<TheType<'b>>>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ requires that `'b` must outlive `'a`
+   |
+   = help: consider adding the following bound: `'b: 'a`
+
+error: aborting due to 4 previous errors
+

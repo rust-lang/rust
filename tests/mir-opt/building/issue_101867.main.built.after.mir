@@ -1,0 +1,76 @@
+// MIR for `main` after built
+
+| User Type Annotations
+| 0: user_ty: Canonical { value: Ty(std::option::Option<u8>), max_universe: U0, variables: [] }, span: $DIR/issue_101867.rs:5:12: 5:22, inferred_ty: std::option::Option<u8>
+| 1: user_ty: Canonical { value: Ty(std::option::Option<u8>), max_universe: U0, variables: [] }, span: $DIR/issue_101867.rs:5:12: 5:22, inferred_ty: std::option::Option<u8>
+|
+fn main() -> () {
+    let mut _0: ();
+    let _1: std::option::Option<u8> as UserTypeProjection { base: UserType(0), projs: [] };
+    let mut _2: !;
+    let _3: ();
+    let mut _4: !;
+    let mut _6: isize;
+    scope 1 {
+        debug x => _1;
+        let _5: u8;
+        scope 2 {
+            debug y => _5;
+        }
+    }
+
+    bb0: {
+        StorageLive(_1);
+        _1 = Option::<u8>::Some(const 1_u8);
+        FakeRead(ForLet(None), _1);
+        AscribeUserType(_1, o, UserTypeProjection { base: UserType(1), projs: [] });
+        PlaceMention(_1);
+        _6 = discriminant(_1);
+        switchInt(move _6) -> [1: bb4, otherwise: bb3];
+    }
+
+    bb1: {
+        StorageLive(_3);
+        StorageLive(_4);
+        _4 = begin_panic::<&str>(const "explicit panic") -> bb8;
+    }
+
+    bb2: {
+        StorageDead(_4);
+        StorageDead(_3);
+        unreachable;
+    }
+
+    bb3: {
+        goto -> bb7;
+    }
+
+    bb4: {
+        falseEdge -> [real: bb6, imaginary: bb3];
+    }
+
+    bb5: {
+        goto -> bb3;
+    }
+
+    bb6: {
+        StorageLive(_5);
+        _5 = copy ((_1 as Some).0: u8);
+        _0 = const ();
+        StorageDead(_5);
+        StorageDead(_1);
+        return;
+    }
+
+    bb7: {
+        goto -> bb1;
+    }
+
+    bb8 (cleanup): {
+        resume;
+    }
+}
+
+ALLOC0 (size: 14, align: 1) {
+    65 78 70 6c 69 63 69 74 20 70 61 6e 69 63       │ explicit panic
+}

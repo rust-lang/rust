@@ -1,0 +1,78 @@
+[package]
+authors = ["Miri Team"]
+description = "An experimental interpreter for Rust MIR (core driver)."
+license = "MIT OR Apache-2.0"
+name = "miri"
+repository = "https://github.com/rust-lang/miri"
+version = "0.1.0"
+default-run = "miri"
+edition = "2024"
+
+[lib]
+test = true     # we have unit tests
+doctest = false # but no doc tests
+
+[[bin]]
+name = "miri"
+test = false    # we have no unit tests
+doctest = false # and no doc tests
+
+[dependencies]
+getrandom = { version = "0.3", features = ["std"] }
+rand = "0.9"
+smallvec = { version = "1.7", features = ["drain_filter"] }
+aes = { version = "0.8.3", features = ["hazmat"] }
+measureme = "12"
+chrono = { version = "0.4.38", default-features = false }
+chrono-tz = "0.10"
+directories = "6"
+bitflags = "2.6"
+serde_json = { version = "1.0", optional = true }
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+# native-lib dependencies
+libffi = { version = "5.0.0", optional = true }
+libloading = { version = "0.9", optional = true }
+serde = { version = "1.0.219", features = ["derive"], optional = true }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+nix = { version = "0.30.1", features = ["mman", "ptrace", "signal"], optional = true }
+ipc-channel = { version = "0.20.0", optional = true }
+capstone = { version = "0.13", optional = true }
+
+[target.'cfg(all(target_os = "linux", target_pointer_width = "64", target_endian = "little"))'.dependencies]
+genmc-sys = { path = "./genmc-sys/", version = "0.1.0", optional = true }
+
+[dev-dependencies]
+ui_test = "0.30.2"
+colored = "3"
+rustc_version = "0.4"
+regex = "1.5.5"
+tempfile = "3"
+
+[package.metadata.rust-analyzer]
+# This crate uses #[feature(rustc_private)].
+# See https://github.com/rust-analyzer/rust-analyzer/pull/7891
+rustc_private = true
+
+[[test]]
+name = "ui"
+harness = false
+
+[features]
+default = ["stack-cache", "native-lib"]
+genmc = ["dep:genmc-sys"]
+stack-cache = []
+expensive-consistency-checks = ["stack-cache"]
+tracing = ["serde_json"]
+native-lib = ["dep:libffi", "dep:libloading", "dep:capstone", "dep:ipc-channel", "dep:nix", "dep:serde"]
+jemalloc = []
+
+[lints.rust.unexpected_cfgs]
+level = "warn"
+check-cfg = ['cfg(bootstrap)']
+
+# Be aware that this file is inside a workspace when used via the
+# submodule in the rustc repo. That means there are many cargo features
+# we cannot use, such as profiles.

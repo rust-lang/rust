@@ -1,0 +1,15 @@
+error[E0277]: the trait bound `MyPointer: DerefPure` is not satisfied
+  --> $DIR/unsatisfied-bounds.rs:17:9
+   |
+LL |         () => {}
+   |         ^^ unsatisfied trait bound
+   |
+help: the trait `DerefPure` is not implemented for `MyPointer`
+  --> $DIR/unsatisfied-bounds.rs:4:1
+   |
+LL | struct MyPointer;
+   | ^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

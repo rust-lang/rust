@@ -1,0 +1,16 @@
+// MIR for `outer` after PreCodegen
+
+fn outer(_1: u8) -> u8 {
+    debug v => _1;                       // in scope 0 at $DIR/spans.rs:10:14: 10:15
+    let mut _0: u8;                      // return place in scope 0 at $DIR/spans.rs:10:24: 10:26
+    let _2: &u8;                         // in scope 0 at $DIR/spans.rs:11:11: 11:13
+    scope 1 (inlined inner) {            // at $DIR/spans.rs:11:5: 11:14
+        debug x => _2;                   // in scope 1 at $DIR/spans.rs:14:14: 14:15
+    }
+
+    bb0: {
+        // DBG: _2 = &_1;
+        _0 = copy _1;                    // scope 1 at $DIR/spans.rs:15:5: 15:7
+        return;                          // scope 0 at $DIR/spans.rs:12:2: 12:2
+    }
+}

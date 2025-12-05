@@ -1,0 +1,30 @@
+error[E0599]: no variant or associated item named `Baz` found for enum `Foo` in the current scope
+  --> $DIR/issue-28971.rs:7:18
+   |
+LL | enum Foo {
+   | -------- variant or associated item `Baz` not found for this enum
+...
+LL |             Foo::Baz(..) => (),
+   |                  ^^^ variant or associated item not found in `Foo`
+   |
+help: there is a variant with a similar name
+   |
+LL -             Foo::Baz(..) => (),
+LL +             Foo::Bar(..) => (),
+   |
+
+error[E0596]: cannot borrow `f` as mutable, as it is not declared as mutable
+  --> $DIR/issue-28971.rs:15:5
+   |
+LL |     f();
+   |     ^ cannot borrow as mutable
+   |
+help: consider changing this to be mutable
+   |
+LL | fn foo<F>(mut f: F) where F: FnMut() {
+   |           +++
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0596, E0599.
+For more information about an error, try `rustc --explain E0596`.

@@ -1,0 +1,110 @@
+error[E0061]: this function takes 2 arguments but 1 argument was supplied
+  --> $DIR/fn-arg-count-mismatch-diagnostics.rs:24:9
+   |
+LL |         <Self>::$method(8)
+   |         ^^^^^^^^^^^^^^^--- argument #2 of type `u8` is missing
+...
+LL |         delegate_local!(foo);
+   |         -------------------- in this macro invocation
+   |
+note: associated function defined here
+  --> $DIR/fn-arg-count-mismatch-diagnostics.rs:39:8
+   |
+LL |     fn foo(a: u8, b: u8) {}
+   |        ^^^        -----
+   = note: this error originates in the macro `delegate_local` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: provide the argument
+   |
+LL |         <Self>::$method(8, /* u8 */)
+   |                          ++++++++++
+
+error[E0061]: this function takes 2 arguments but 1 argument was supplied
+  --> $DIR/fn-arg-count-mismatch-diagnostics.rs:43:9
+   |
+LL |         delegate!(foo);
+   |         ^^^^^^^^^^^^^^ argument #2 of type `u8` is missing
+   |
+note: associated function defined here
+  --> $DIR/fn-arg-count-mismatch-diagnostics.rs:39:8
+   |
+LL |     fn foo(a: u8, b: u8) {}
+   |        ^^^        -----
+   = note: this error originates in the macro `delegate` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0061]: this function takes 2 arguments but 1 argument was supplied
+  --> $DIR/fn-arg-count-mismatch-diagnostics.rs:31:9
+   |
+LL |         <$from>::$method(8)
+   |         ^^^^^^^^^^^^^^^^--- argument #2 of type `u8` is missing
+...
+LL |         delegate_from!(Bar, foo);
+   |         ------------------------ in this macro invocation
+   |
+note: associated function defined here
+  --> $DIR/fn-arg-count-mismatch-diagnostics.rs:39:8
+   |
+LL |     fn foo(a: u8, b: u8) {}
+   |        ^^^        -----
+   = note: this error originates in the macro `delegate_from` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: provide the argument
+   |
+LL |         <$from>::$method(8, /* u8 */)
+   |                           ++++++++++
+
+error[E0061]: this function takes 4 arguments but 3 arguments were supplied
+  --> $DIR/fn-arg-count-mismatch-diagnostics.rs:52:5
+   |
+LL |     foo(1, 2, 3);
+   |     ^^^--------- argument #4 of type `isize` is missing
+   |
+note: function defined here
+  --> $DIR/fn-arg-count-mismatch-diagnostics.rs:9:4
+   |
+LL | fn foo(a: isize, b: isize, c: isize, d: isize) {
+   |    ^^^                               --------
+help: provide the argument
+   |
+LL |     foo(1, 2, 3, /* isize */);
+   |                +++++++++++++
+
+error[E0061]: this function takes 6 arguments but 3 arguments were supplied
+  --> $DIR/fn-arg-count-mismatch-diagnostics.rs:54:5
+   |
+LL |     bar(1, 2, 3);
+   |     ^^^--------- three arguments of type `i32`, `i32`, and `i32` are missing
+   |
+note: function defined here
+  --> $DIR/fn-arg-count-mismatch-diagnostics.rs:13:4
+   |
+LL | fn bar(a: i32, b: i32, c: i32, d: i32, e: i32, f: i32) {
+   |    ^^^                         ------  ------  ------
+help: provide the arguments
+   |
+LL |     bar(1, 2, 3, /* i32 */, /* i32 */, /* i32 */);
+   |                +++++++++++++++++++++++++++++++++
+
+error[E0061]: this function takes 6 arguments but 5 arguments were supplied
+  --> $DIR/fn-arg-count-mismatch-diagnostics.rs:58:5
+   |
+LL |     function_with_lots_of_arguments(
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |         variable_name,
+LL |         variable_name,
+   |         ------------- argument #2 of type `char` is missing
+   |
+note: function defined here
+  --> $DIR/fn-arg-count-mismatch-diagnostics.rs:49:4
+   |
+LL | fn function_with_lots_of_arguments(a: i32, b: char, c: i32, d: i32, e: i32, f: i32) {}
+   |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^         -------
+help: provide the argument
+   |
+LL |     function_with_lots_of_arguments(
+LL |         variable_name,
+LL ~         /* char */,
+LL ~         variable_name,
+   |
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0061`.

@@ -1,0 +1,33 @@
+warning: the `expr` fragment specifier will accept more expressions in the 2024 edition
+  --> $DIR/expr_2021_cargo_fix_edition.rs:7:9
+   |
+LL |     ($e:expr) => {
+   |         ^^^^
+   |
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see Migration Guide <https://doc.rust-lang.org/edition-guide/rust-2024/macro-fragment-specifiers.html>
+note: the lint level is defined here
+  --> $DIR/expr_2021_cargo_fix_edition.rs:4:9
+   |
+LL | #![warn(edition_2024_expr_fragment_specifier)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: to keep the existing behavior, use the `expr_2021` fragment specifier
+   |
+LL |     ($e:expr_2021) => {
+   |             +++++
+
+warning: the `expr` fragment specifier will accept more expressions in the 2024 edition
+  --> $DIR/expr_2021_cargo_fix_edition.rs:11:11
+   |
+LL |     ($($i:expr)*) => { };
+   |           ^^^^
+   |
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see Migration Guide <https://doc.rust-lang.org/edition-guide/rust-2024/macro-fragment-specifiers.html>
+help: to keep the existing behavior, use the `expr_2021` fragment specifier
+   |
+LL |     ($($i:expr_2021)*) => { };
+   |               +++++
+
+warning: 2 warnings emitted
+

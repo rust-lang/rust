@@ -1,0 +1,68 @@
+warning: ambiguous glob re-exports
+  --> $DIR/ambiguous-1.rs:13:13
+   |
+LL |     pub use self::evp::*;
+   |             ^^^^^^^^^^^^ the name `id` in the value namespace is first re-exported here
+LL |
+LL |     pub use self::handwritten::*;
+   |             -------------------- but the name `id` in the value namespace is also re-exported here
+   |
+   = note: `#[warn(ambiguous_glob_reexports)]` on by default
+
+warning: `id` is ambiguous
+  --> $DIR/ambiguous-1.rs:29:5
+   |
+LL |     id();
+   |     ^^ ambiguous name
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #114095 <https://github.com/rust-lang/rust/issues/114095>
+   = note: ambiguous because of multiple glob imports of a name in the same module
+note: `id` could refer to the function imported here
+  --> $DIR/ambiguous-1.rs:13:13
+   |
+LL |     pub use self::evp::*;
+   |             ^^^^^^^^^^^^
+   = help: consider adding an explicit import of `id` to disambiguate
+note: `id` could also refer to the function imported here
+  --> $DIR/ambiguous-1.rs:15:13
+   |
+LL |     pub use self::handwritten::*;
+   |             ^^^^^^^^^^^^^^^^^^^^
+   = help: consider adding an explicit import of `id` to disambiguate
+note: the lint level is defined here
+  --> $DIR/ambiguous-1.rs:4:9
+   |
+LL | #![warn(ambiguous_glob_imports)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: 2 warnings emitted
+
+Future incompatibility report: Future breakage diagnostic:
+warning: `id` is ambiguous
+  --> $DIR/ambiguous-1.rs:29:5
+   |
+LL |     id();
+   |     ^^ ambiguous name
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #114095 <https://github.com/rust-lang/rust/issues/114095>
+   = note: ambiguous because of multiple glob imports of a name in the same module
+note: `id` could refer to the function imported here
+  --> $DIR/ambiguous-1.rs:13:13
+   |
+LL |     pub use self::evp::*;
+   |             ^^^^^^^^^^^^
+   = help: consider adding an explicit import of `id` to disambiguate
+note: `id` could also refer to the function imported here
+  --> $DIR/ambiguous-1.rs:15:13
+   |
+LL |     pub use self::handwritten::*;
+   |             ^^^^^^^^^^^^^^^^^^^^
+   = help: consider adding an explicit import of `id` to disambiguate
+note: the lint level is defined here
+  --> $DIR/ambiguous-1.rs:4:9
+   |
+LL | #![warn(ambiguous_glob_imports)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^
+

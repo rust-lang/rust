@@ -1,0 +1,57 @@
+error: literal out of range for `i8`
+  --> $DIR/no-inline-literals-out-of-range.rs:4:24
+   |
+LL |     format_args!("{}", 0x8f_i8); // issue #115423
+   |                        ^^^^^^^
+   |
+   = note: the literal `0x8f_i8` (decimal `143`) does not fit into the type `i8` and will become `-113i8`
+   = note: `#[deny(overflowing_literals)]` on by default
+help: consider using the type `u8` instead
+   |
+LL -     format_args!("{}", 0x8f_i8); // issue #115423
+LL +     format_args!("{}", 0x8f_u8); // issue #115423
+   |
+help: to use as a negative number (decimal `-113`), consider using the type `u8` for the literal and cast it to `i8`
+   |
+LL |     format_args!("{}", 0x8f_u8 as i8); // issue #115423
+   |                             +++++
+
+error: literal out of range for `u8`
+  --> $DIR/no-inline-literals-out-of-range.rs:6:24
+   |
+LL |     format_args!("{}", 0xffff_ffff_u8); // issue #116633
+   |                        ^^^^^^^^^^^^^^ help: consider using the type `u32` instead: `0xffff_ffff_u32`
+   |
+   = note: the literal `0xffff_ffff_u8` (decimal `4294967295`) does not fit into the type `u8` and will become `255u8`
+
+error: literal out of range for `usize`
+  --> $DIR/no-inline-literals-out-of-range.rs:8:24
+   |
+LL |     format_args!("{}", 0xffff_ffff_ffff_ffff_ffff_usize);
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the literal `0xffff_ffff_ffff_ffff_ffff_usize` (decimal `1208925819614629174706175`) does not fit into the type `usize` and will become `18446744073709551615usize`
+
+error: literal out of range for `isize`
+  --> $DIR/no-inline-literals-out-of-range.rs:10:24
+   |
+LL |     format_args!("{}", 0x8000_0000_0000_0000_isize);
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the literal `0x8000_0000_0000_0000_isize` (decimal `9223372036854775808`) does not fit into the type `isize` and will become `-9223372036854775808isize`
+
+error: literal out of range for `i32`
+  --> $DIR/no-inline-literals-out-of-range.rs:12:24
+   |
+LL |     format_args!("{}", 0xffff_ffff); // treat unsuffixed literals as i32
+   |                        ^^^^^^^^^^^
+   |
+   = note: the literal `0xffff_ffff` (decimal `4294967295`) does not fit into the type `i32` and will become `-1i32`
+   = help: consider using the type `u32` instead
+help: to use as a negative number (decimal `-1`), consider using the type `u32` for the literal and cast it to `i32`
+   |
+LL |     format_args!("{}", 0xffff_ffffu32 as i32); // treat unsuffixed literals as i32
+   |                                   ++++++++++
+
+error: aborting due to 5 previous errors
+

@@ -1,0 +1,65 @@
+error: this call to `from_str_radix` can be replaced with a call to `str::parse`
+  --> tests/ui/from_str_radix_10.rs:28:5
+   |
+LL |     u32::from_str_radix("30", 10)?;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `"30".parse::<u32>()`
+   |
+   = note: `-D clippy::from-str-radix-10` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::from_str_radix_10)]`
+
+error: this call to `from_str_radix` can be replaced with a call to `str::parse`
+  --> tests/ui/from_str_radix_10.rs:31:5
+   |
+LL |     i64::from_str_radix("24", 10)?;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `"24".parse::<i64>()`
+
+error: this call to `from_str_radix` can be replaced with a call to `str::parse`
+  --> tests/ui/from_str_radix_10.rs:34:5
+   |
+LL |     isize::from_str_radix("100", 10)?;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `"100".parse::<isize>()`
+
+error: this call to `from_str_radix` can be replaced with a call to `str::parse`
+  --> tests/ui/from_str_radix_10.rs:37:5
+   |
+LL |     u8::from_str_radix("7", 10)?;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `"7".parse::<u8>()`
+
+error: this call to `from_str_radix` can be replaced with a call to `str::parse`
+  --> tests/ui/from_str_radix_10.rs:40:5
+   |
+LL |     u16::from_str_radix(&("10".to_owned() + "5"), 10)?;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `("10".to_owned() + "5").parse::<u16>()`
+
+error: this call to `from_str_radix` can be replaced with a call to `str::parse`
+  --> tests/ui/from_str_radix_10.rs:43:5
+   |
+LL |     i128::from_str_radix(Test + Test, 10)?;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `(Test + Test).parse::<i128>()`
+
+error: this call to `from_str_radix` can be replaced with a call to `str::parse`
+  --> tests/ui/from_str_radix_10.rs:47:5
+   |
+LL |     i32::from_str_radix(string, 10)?;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `string.parse::<i32>()`
+
+error: this call to `from_str_radix` can be replaced with a call to `str::parse`
+  --> tests/ui/from_str_radix_10.rs:51:5
+   |
+LL |     i32::from_str_radix(&stringier, 10)?;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `stringier.parse::<i32>()`
+
+error: this call to `from_str_radix` can be replaced with a call to `str::parse`
+  --> tests/ui/from_str_radix_10.rs:81:13
+   |
+LL |     let _ = u32::from_str_radix(&s, 10).unwrap();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `s.parse::<u32>()`
+
+error: this call to `from_str_radix` can be replaced with a call to `str::parse`
+  --> tests/ui/from_str_radix_10.rs:84:13
+   |
+LL |     let _ = u32::from_str_radix(&s_ref, 10).unwrap();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `s_ref.parse::<u32>()`
+
+error: aborting due to 10 previous errors
+

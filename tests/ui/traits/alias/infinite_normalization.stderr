@@ -1,0 +1,18 @@
+error[E0391]: cycle detected when computing the implied predicates of `Baz`
+  --> $DIR/infinite_normalization.rs:8:16
+   |
+LL | trait Baz<A> = Baz<Option<A>>;
+   |                ^^^^^^^^^^^^^^
+   |
+   = note: ...which immediately requires computing the implied predicates of `Baz` again
+   = note: trait aliases cannot be recursive
+note: cycle used when computing normalized predicates of `foo`
+  --> $DIR/infinite_normalization.rs:7:1
+   |
+LL | fn foo<T: Baz<i32>>() {}
+   | ^^^^^^^^^^^^^^^^^^^^^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0391`.

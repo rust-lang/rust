@@ -1,0 +1,36 @@
+error: found a count of bytes instead of a count of elements of `T`
+  --> tests/ui/size_of_in_element_count/expressions.rs:15:62
+   |
+LL |     unsafe { copy_nonoverlapping(x.as_ptr(), y.as_mut_ptr(), size_of::<u16>() * SIZE) };
+   |                                                              ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: use a count of elements instead of a count of bytes, it already gets multiplied by the size of the type
+   = note: `-D clippy::size-of-in-element-count` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::size_of_in_element_count)]`
+
+error: found a count of bytes instead of a count of elements of `T`
+  --> tests/ui/size_of_in_element_count/expressions.rs:19:62
+   |
+LL |     unsafe { copy_nonoverlapping(x.as_ptr(), y.as_mut_ptr(), HALF_SIZE * size_of_val(&x[0]) * 2) };
+   |                                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: use a count of elements instead of a count of bytes, it already gets multiplied by the size of the type
+
+error: found a count of bytes instead of a count of elements of `T`
+  --> tests/ui/size_of_in_element_count/expressions.rs:23:47
+   |
+LL |     unsafe { copy(x.as_ptr(), y.as_mut_ptr(), DOUBLE_SIZE * size_of::<u16>() / 2) };
+   |                                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: use a count of elements instead of a count of bytes, it already gets multiplied by the size of the type
+
+error: found a count of bytes instead of a count of elements of `T`
+  --> tests/ui/size_of_in_element_count/expressions.rs:33:47
+   |
+LL |     unsafe { copy(x.as_ptr(), y.as_mut_ptr(), DOUBLE_SIZE / (2 / size_of::<u16>())) };
+   |                                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: use a count of elements instead of a count of bytes, it already gets multiplied by the size of the type
+
+error: aborting due to 4 previous errors
+

@@ -1,0 +1,40 @@
+error: unnecessary hashes around raw string literal
+  --> tests/ui-toml/needless_raw_string_hashes_one_allowed/needless_raw_string_hashes.rs:6:5
+   |
+LL |     r##"\aaa"##;
+   |     ^^^^^^^^^^^
+   |
+   = note: `-D clippy::needless-raw-string-hashes` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::needless_raw_string_hashes)]`
+help: remove one hash from both sides of the string literal
+   |
+LL -     r##"\aaa"##;
+LL +     r#"\aaa"#;
+   |
+
+error: unnecessary hashes around raw string literal
+  --> tests/ui-toml/needless_raw_string_hashes_one_allowed/needless_raw_string_hashes.rs:8:5
+   |
+LL |     r##"Hello "world"!"##;
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove one hash from both sides of the string literal
+   |
+LL -     r##"Hello "world"!"##;
+LL +     r#"Hello "world"!"#;
+   |
+
+error: unnecessary hashes around raw string literal
+  --> tests/ui-toml/needless_raw_string_hashes_one_allowed/needless_raw_string_hashes.rs:10:5
+   |
+LL |     r######" "### "## "# "######;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove 2 hashes from both sides of the string literal
+   |
+LL -     r######" "### "## "# "######;
+LL +     r####" "### "## "# "####;
+   |
+
+error: aborting due to 3 previous errors
+

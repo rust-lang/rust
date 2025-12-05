@@ -1,0 +1,65 @@
+error[E0425]: cannot find value `N` in this scope
+  --> $DIR/missing-const-parameter.rs:3:15
+   |
+LL | impl Struct<{ N }> {}
+   |               ^ not found in this scope
+   |
+help: you might be missing a const parameter
+   |
+LL | impl<const N: /* Type */> Struct<{ N }> {}
+   |     +++++++++++++++++++++
+
+error[E0425]: cannot find value `N` in this scope
+  --> $DIR/missing-const-parameter.rs:7:22
+   |
+LL | fn func0(_: Struct<{ N }>) {}
+   |                      ^ not found in this scope
+   |
+help: you might be missing a const parameter
+   |
+LL | fn func0<const N: /* Type */>(_: Struct<{ N }>) {}
+   |         +++++++++++++++++++++
+
+error[E0425]: cannot find value `N` in this scope
+  --> $DIR/missing-const-parameter.rs:11:18
+   |
+LL | fn func1(_: [u8; N]) {}
+   |                  ^ not found in this scope
+   |
+help: you might be missing a const parameter
+   |
+LL | fn func1<const N: /* Type */>(_: [u8; N]) {}
+   |         +++++++++++++++++++++
+
+error[E0425]: cannot find value `N` in this scope
+  --> $DIR/missing-const-parameter.rs:15:20
+   |
+LL | fn func2<T>(_: [T; N]) {}
+   |                    ^ not found in this scope
+   |
+help: you might be missing a const parameter
+   |
+LL | fn func2<T, const N: /* Type */>(_: [T; N]) {}
+   |           +++++++++++++++++++++
+
+error[E0425]: cannot find value `C` in this scope
+  --> $DIR/missing-const-parameter.rs:19:37
+   |
+LL | struct Image<const R: usize>([[u32; C]; R]);
+   |                    -                ^
+   |                    |
+   |                    similarly named const parameter `R` defined here
+   |
+help: a const parameter with a similar name exists
+   |
+LL - struct Image<const R: usize>([[u32; C]; R]);
+LL + struct Image<const R: usize>([[u32; R]; R]);
+   |
+help: you might be missing a const parameter
+   |
+LL | struct Image<const R: usize, const C: /* Type */>([[u32; C]; R]);
+   |                            +++++++++++++++++++++
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0425`.

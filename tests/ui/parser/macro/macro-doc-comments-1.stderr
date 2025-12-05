@@ -1,0 +1,20 @@
+error: no rules expected `!`
+  --> $DIR/macro-doc-comments-1.rs:6:5
+   |
+LL | macro_rules! outer {
+   | ------------------ when calling this macro
+...
+LL |     //! Inner
+   |     ^^^^^^^^^
+   |     |
+   |     no rules expected this token in macro call
+   |     inner doc comments expand to `#![doc = "..."]`, which is what this macro attempted to match
+   |
+note: while trying to match `[`
+  --> $DIR/macro-doc-comments-1.rs:2:7
+   |
+LL |     (#[$outer:meta]) => ()
+   |       ^
+
+error: aborting due to 1 previous error
+

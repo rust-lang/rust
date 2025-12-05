@@ -1,0 +1,37 @@
+error: `Trait::IDENT` is both an associated constant and an associated type
+  --> $DIR/issue-108653-associated-items-2.rs:5:7
+   |
+LL | /// [`Trait::IDENT`]
+   |       ^^^^^^^^^^^^ ambiguous link
+   |
+note: the lint level is defined here
+  --> $DIR/issue-108653-associated-items-2.rs:3:9
+   |
+LL | #![deny(rustdoc::broken_intra_doc_links)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: to link to the associated constant, prefix with `const@`
+   |
+LL | /// [`const@Trait::IDENT`]
+   |       ++++++
+help: to link to the associated type, prefix with `type@`
+   |
+LL | /// [`type@Trait::IDENT`]
+   |       +++++
+
+error: `Trait2::IDENT` is both an associated function and an associated type
+  --> $DIR/issue-108653-associated-items-2.rs:12:7
+   |
+LL | /// [`Trait2::IDENT`]
+   |       ^^^^^^^^^^^^^ ambiguous link
+   |
+help: to link to the associated function, add parentheses
+   |
+LL | /// [`Trait2::IDENT()`]
+   |                    ++
+help: to link to the associated type, prefix with `type@`
+   |
+LL | /// [`type@Trait2::IDENT`]
+   |       +++++
+
+error: aborting due to 2 previous errors
+

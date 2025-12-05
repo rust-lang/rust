@@ -1,0 +1,27 @@
+- // MIR for `generic` before JumpThreading
++ // MIR for `generic` after JumpThreading
+  
+  fn generic() -> usize {
+      let mut _0: usize;
+      let mut _1: isize;
+      let mut _2: E<T>;
+  
+      bb0: {
+          _2 = E::<T>::A;
+          discriminant(_2) = 1;
+          _1 = discriminant(_2);
+-         switchInt(copy _1) -> [0: bb1, otherwise: bb2];
++         goto -> bb2;
+      }
+  
+      bb1: {
+          _0 = const 0_usize;
+          return;
+      }
+  
+      bb2: {
+          _0 = const 1_usize;
+          return;
+      }
+  }
+  

@@ -1,0 +1,145 @@
+error[E0408]: variable `y` is not bound in all patterns
+  --> $DIR/name-resolution.rs:37:10
+   |
+LL |         ((Ok(x) if y) | (Err(y) if x),) => x && y,
+   |          ^^^^^^^^^^^^        - variable not in all patterns
+   |          |
+   |          pattern doesn't bind `y`
+   |
+help: you might have meant to use the similarly named previously used binding `x`
+   |
+LL -         ((Ok(x) if y) | (Err(y) if x),) => x && y,
+LL +         ((Ok(x) if y) | (Err(x) if x),) => x && y,
+   |
+
+error[E0408]: variable `x` is not bound in all patterns
+  --> $DIR/name-resolution.rs:37:25
+   |
+LL |         ((Ok(x) if y) | (Err(y) if x),) => x && y,
+   |              -          ^^^^^^^^^^^^^ pattern doesn't bind `x`
+   |              |
+   |              variable not in all patterns
+   |
+help: you might have meant to use the similarly named previously used binding `y`
+   |
+LL -         ((Ok(x) if y) | (Err(y) if x),) => x && y,
+LL +         ((Ok(y) if y) | (Err(y) if x),) => x && y,
+   |
+
+error[E0408]: variable `x` is not bound in all patterns
+  --> $DIR/name-resolution.rs:63:28
+   |
+LL |         Some(x if x > 0) | None => {}
+   |              -             ^^^^ pattern doesn't bind `x`
+   |              |
+   |              variable not in all patterns
+
+error[E0425]: cannot find value `x` in this scope
+  --> $DIR/name-resolution.rs:10:34
+   |
+LL | fn bad_fn_item_1(x: bool, ((y if x) | y): bool) {}
+   |                                  ^ help: a local variable with a similar name exists: `y`
+
+error[E0425]: cannot find value `y` in this scope
+  --> $DIR/name-resolution.rs:12:25
+   |
+LL | fn bad_fn_item_2(((x if y) | x): bool, y: bool) {}
+   |                         ^ help: a local variable with a similar name exists: `x`
+
+error[E0425]: cannot find value `x` in this scope
+  --> $DIR/name-resolution.rs:20:18
+   |
+LL |         (x, y if x) => x && y,
+   |                  ^ help: a local variable with a similar name exists: `y`
+
+error[E0425]: cannot find value `y` in this scope
+  --> $DIR/name-resolution.rs:22:15
+   |
+LL |         (x if y, y) => x && y,
+   |               ^ help: a local variable with a similar name exists: `x`
+
+error[E0425]: cannot find value `x` in this scope
+  --> $DIR/name-resolution.rs:29:20
+   |
+LL |         (x @ (y if x),) => x && y,
+   |                    ^ help: a local variable with a similar name exists: `y`
+
+error[E0425]: cannot find value `y` in this scope
+  --> $DIR/name-resolution.rs:37:20
+   |
+LL |         ((Ok(x) if y) | (Err(y) if x),) => x && y,
+   |                    ^ help: a local variable with a similar name exists: `x`
+
+error[E0425]: cannot find value `x` in this scope
+  --> $DIR/name-resolution.rs:37:36
+   |
+LL |         ((Ok(x) if y) | (Err(y) if x),) => x && y,
+   |                                    ^ help: a local variable with a similar name exists: `y`
+
+error[E0425]: cannot find value `nonexistent` in this scope
+  --> $DIR/name-resolution.rs:44:15
+   |
+LL |     let (_ if nonexistent) = true;
+   |               ^^^^^^^^^^^ not found in this scope
+
+error[E0425]: cannot find value `x` in this scope
+  --> $DIR/name-resolution.rs:46:22
+   |
+LL |     if let ((x, y if x) | (x if y, y)) = (true, true) { x && y; }
+   |                      ^ help: a local variable with a similar name exists: `y`
+
+error[E0425]: cannot find value `y` in this scope
+  --> $DIR/name-resolution.rs:46:33
+   |
+LL |     if let ((x, y if x) | (x if y, y)) = (true, true) { x && y; }
+   |                                 ^ help: a local variable with a similar name exists: `x`
+
+error[E0425]: cannot find value `x` in this scope
+  --> $DIR/name-resolution.rs:49:25
+   |
+LL |     while let ((x, y if x) | (x if y, y)) = (true, true) { x && y; }
+   |                         ^ help: a local variable with a similar name exists: `y`
+
+error[E0425]: cannot find value `y` in this scope
+  --> $DIR/name-resolution.rs:49:36
+   |
+LL |     while let ((x, y if x) | (x if y, y)) = (true, true) { x && y; }
+   |                                    ^ help: a local variable with a similar name exists: `x`
+
+error[E0425]: cannot find value `x` in this scope
+  --> $DIR/name-resolution.rs:52:19
+   |
+LL |     for ((x, y if x) | (x if y, y)) in [(true, true)] { x && y; }
+   |                   ^ help: a local variable with a similar name exists: `y`
+
+error[E0425]: cannot find value `y` in this scope
+  --> $DIR/name-resolution.rs:52:30
+   |
+LL |     for ((x, y if x) | (x if y, y)) in [(true, true)] { x && y; }
+   |                              ^ help: a local variable with a similar name exists: `x`
+
+error[E0425]: cannot find value `y` in this scope
+  --> $DIR/name-resolution.rs:57:13
+   |
+LL |     (|(x if y), (y if x)| x && y)(true, true);
+   |             ^ help: a local variable with a similar name exists: `x`
+
+error[E0425]: cannot find value `x` in this scope
+  --> $DIR/name-resolution.rs:57:23
+   |
+LL |     (|(x if y), (y if x)| x && y)(true, true);
+   |                       ^ help: a local variable with a similar name exists: `y`
+
+error[E0308]: mismatched types
+  --> $DIR/name-resolution.rs:75:18
+   |
+LL |         local if local => 0,
+   |                  ^^^^^ expected `bool`, found `({integer}, {integer})`
+   |
+   = note: expected type `bool`
+             found tuple `({integer}, {integer})`
+
+error: aborting due to 20 previous errors
+
+Some errors have detailed explanations: E0308, E0408, E0425.
+For more information about an error, try `rustc --explain E0308`.

@@ -1,0 +1,43 @@
+error[E0195]: lifetime parameters do not match the trait definition
+  --> $DIR/E0195.rs:16:12
+   |
+LL |     fn bar<'a,'b>(x: &'a str, y: &'b str) {
+   |            ^^ ^^
+   |
+   = note: lifetime parameters differ in whether they are early- or late-bound
+note: `'a` differs between the trait and impl
+  --> $DIR/E0195.rs:4:12
+   |
+LL | trait Trait {
+   | ----------- in this trait...
+...
+LL |     fn bar<'a,'b:'a>(x: &'a str, y: &'b str);
+   |            ^^    -- this lifetime bound makes `'a` early-bound
+   |            |
+   |            `'a` is early-bound
+...
+LL | impl Trait for Foo {
+   | ------------------ in this impl...
+...
+LL |     fn bar<'a,'b>(x: &'a str, y: &'b str) {
+   |            ^^ `'a` is late-bound
+note: `'b` differs between the trait and impl
+  --> $DIR/E0195.rs:4:15
+   |
+LL | trait Trait {
+   | ----------- in this trait...
+...
+LL |     fn bar<'a,'b:'a>(x: &'a str, y: &'b str);
+   |               ^^ -- this lifetime bound makes `'b` early-bound
+   |               |
+   |               `'b` is early-bound
+...
+LL | impl Trait for Foo {
+   | ------------------ in this impl...
+...
+LL |     fn bar<'a,'b>(x: &'a str, y: &'b str) {
+   |               ^^ `'b` is late-bound
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0195`.

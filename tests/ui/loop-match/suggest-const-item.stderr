@@ -1,0 +1,58 @@
+error: could not determine the target branch for this `#[const_continue]`
+  --> $DIR/suggest-const-item.rs:19:32
+   |
+LL |                     break 'blk const_fn();
+   |                                ^^^^^^^^^^ this value must be a literal or a monomorphic const
+   |
+   = help: try extracting the expression into a `const` item
+
+error: could not determine the target branch for this `#[const_continue]`
+  --> $DIR/suggest-const-item.rs:24:32
+   |
+LL |                     break 'blk const { const_fn() };
+   |                                ^^^^^^^^^^^^^^^^^^^^ `const` blocks may use generics, and are not evaluated early enough
+   |
+   = help: try extracting the expression into a `const` item
+
+error: could not determine the target branch for this `#[const_continue]`
+  --> $DIR/suggest-const-item.rs:29:32
+   |
+LL |                     break 'blk N;
+   |                                ^ constant parameters may use generics, and are not evaluated early enough
+   |
+   = help: try extracting the expression into a `const` item
+
+error: could not determine the target branch for this `#[const_continue]`
+  --> $DIR/suggest-const-item.rs:34:32
+   |
+LL |                     break 'blk 1 + 1;
+   |                                ^^^^^ this value must be a literal or a monomorphic const
+   |
+   = help: try extracting the expression into a `const` item
+
+error: could not determine the target branch for this `#[const_continue]`
+  --> $DIR/suggest-const-item.rs:76:36
+   |
+LL |                         break 'blk Self::N;
+   |                                    ^^^^^^^ this value is too generic
+
+error: could not determine the target branch for this `#[const_continue]`
+  --> $DIR/suggest-const-item.rs:119:36
+   |
+LL |                         break 'blk Self::L;
+   |                                    ^^^^^^^ this value is too generic
+
+error: could not determine the target branch for this `#[const_continue]`
+  --> $DIR/suggest-const-item.rs:139:32
+   |
+LL |                     break 'blk SIZE_OF::<T>;
+   |                                ^^^^^^^^^^^^ this value is too generic
+
+error: could not determine the target branch for this `#[const_continue]`
+  --> $DIR/suggest-const-item.rs:167:32
+   |
+LL |                     break 'blk <() as Trait<T>>::Y;
+   |                                ^^^^^^^^^^^^^^^^^^^ this value is too generic
+
+error: aborting due to 8 previous errors
+

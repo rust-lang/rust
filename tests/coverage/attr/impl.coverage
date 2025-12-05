@@ -1,0 +1,43 @@
+   LL|       |#![feature(coverage_attribute)]
+   LL|       |//@ edition: 2021
+   LL|       |//@ reference: attributes.coverage.nesting
+   LL|       |
+   LL|       |// Checks that `#[coverage(..)]` can be applied to impl and impl-trait blocks,
+   LL|       |// and is inherited by any enclosed functions.
+   LL|       |
+   LL|       |struct MyStruct;
+   LL|       |
+   LL|       |#[coverage(off)]
+   LL|       |impl MyStruct {
+   LL|       |    fn off_inherit() {}
+   LL|       |
+   LL|       |    #[coverage(on)]
+   LL|      0|    fn off_on() {}
+   LL|       |
+   LL|       |    #[coverage(off)]
+   LL|       |    fn off_off() {}
+   LL|       |}
+   LL|       |
+   LL|       |#[coverage(on)]
+   LL|       |impl MyStruct {
+   LL|      0|    fn on_inherit() {}
+   LL|       |
+   LL|       |    #[coverage(on)]
+   LL|      0|    fn on_on() {}
+   LL|       |
+   LL|       |    #[coverage(off)]
+   LL|       |    fn on_off() {}
+   LL|       |}
+   LL|       |
+   LL|       |trait MyTrait {
+   LL|       |    fn method();
+   LL|       |}
+   LL|       |
+   LL|       |#[coverage(off)]
+   LL|       |impl MyTrait for MyStruct {
+   LL|       |    fn method() {}
+   LL|       |}
+   LL|       |
+   LL|       |#[coverage(off)]
+   LL|       |fn main() {}
+

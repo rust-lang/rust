@@ -1,0 +1,12 @@
+[package]
+name = "symbol-check"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+object = "0.37.1"
+serde_json = "1.0.140"
+
+[features]
+wasm = ["object/wasm"]

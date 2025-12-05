@@ -1,0 +1,34 @@
+error[E0736]: attribute incompatible with `#[unsafe(naked)]`
+  --> $DIR/error-with-naked.rs:5:3
+   |
+LL | #[track_caller]
+   |   ^^^^^^^^^^^^ the `track_caller` attribute is incompatible with `#[unsafe(naked)]`
+LL |
+LL | #[unsafe(naked)]
+   | ---------------- function marked with `#[unsafe(naked)]` here
+
+error[E0736]: attribute incompatible with `#[unsafe(naked)]`
+  --> $DIR/error-with-naked.rs:17:7
+   |
+LL |     #[track_caller]
+   |       ^^^^^^^^^^^^ the `track_caller` attribute is incompatible with `#[unsafe(naked)]`
+LL |
+LL |     #[unsafe(naked)]
+   |     ---------------- function marked with `#[unsafe(naked)]` here
+
+error[E0737]: `#[track_caller]` requires Rust ABI
+  --> $DIR/error-with-naked.rs:5:1
+   |
+LL | #[track_caller]
+   | ^^^^^^^^^^^^^^^
+
+error[E0737]: `#[track_caller]` requires Rust ABI
+  --> $DIR/error-with-naked.rs:17:5
+   |
+LL |     #[track_caller]
+   |     ^^^^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0736, E0737.
+For more information about an error, try `rustc --explain E0736`.

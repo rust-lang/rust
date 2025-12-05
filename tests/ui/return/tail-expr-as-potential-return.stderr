@@ -1,0 +1,64 @@
+error[E0308]: mismatched types
+  --> $DIR/tail-expr-as-potential-return.rs:28:9
+   |
+LL | /     if x {
+LL | |         Err(42)
+   | |         ^^^^^^^ expected `()`, found `Result<_, {integer}>`
+...  |
+LL | |     }
+   | |_____- expected this to be `()`
+   |
+   = note: expected unit type `()`
+                   found enum `Result<_, {integer}>`
+help: you might have meant to return this value
+   |
+LL |         return Err(42);
+   |         ++++++        +
+
+error[E0308]: mismatched types
+  --> $DIR/tail-expr-as-potential-return.rs:45:9
+   |
+LL | /     if true {
+LL | |         1i32
+   | |         ^^^^ expected `()`, found `i32`
+...  |
+LL | |     }
+   | |_____- expected this to be `()`
+   |
+help: you might have meant to return this value
+   |
+LL |         return 1i32;
+   |         ++++++     +
+
+error[E0308]: mismatched types
+  --> $DIR/tail-expr-as-potential-return.rs:19:9
+   |
+LL | /     if x {
+LL | |         Err(42)
+   | |         ^^^^^^^ expected `()`, found `Result<_, {integer}>`
+...  |
+LL | |     }
+   | |_____- expected this to be `()`
+   |
+   = note: expected unit type `()`
+                   found enum `Result<_, {integer}>`
+help: you might have meant to return this value
+   |
+LL |         return Err(42);
+   |         ++++++        +
+
+error[E0282]: type annotations needed
+  --> $DIR/tail-expr-as-potential-return.rs:60:18
+   |
+LL |         Receiver.generic();
+   |                  ^^^^^^^ cannot infer type of the type parameter `T` declared on the method `generic`
+   |
+help: consider specifying the generic argument
+   |
+LL |         Receiver.generic::<T>();
+   |                         +++++
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0282, E0308.
+For more information about an error, try `rustc --explain E0282`.

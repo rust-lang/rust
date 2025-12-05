@@ -1,0 +1,96 @@
+error[E0404]: expected trait, found struct `String`
+  --> $DIR/assoc_type_bound_with_struct.rs:5:46
+   |
+LL | struct Foo<T> where T: Bar, <T as Bar>::Baz: String {
+   |                                              ^^^^^^ not a trait
+   |
+  --> $SRC_DIR/alloc/src/string.rs:LL:COL
+   |
+   = note: similarly named trait `ToString` defined here
+help: constrain the associated type to `String`
+   |
+LL - struct Foo<T> where T: Bar, <T as Bar>::Baz: String {
+LL + struct Foo<T> where T: Bar, T: Bar<Baz = String> {
+   |
+help: a trait with a similar name exists
+   |
+LL | struct Foo<T> where T: Bar, <T as Bar>::Baz: ToString {
+   |                                              ++
+
+error[E0404]: expected trait, found struct `String`
+  --> $DIR/assoc_type_bound_with_struct.rs:9:54
+   |
+LL | struct Qux<'a, T> where T: Bar, <&'a T as Bar>::Baz: String {
+   |                                                      ^^^^^^ not a trait
+   |
+  --> $SRC_DIR/alloc/src/string.rs:LL:COL
+   |
+   = note: similarly named trait `ToString` defined here
+help: constrain the associated type to `String`
+   |
+LL - struct Qux<'a, T> where T: Bar, <&'a T as Bar>::Baz: String {
+LL + struct Qux<'a, T> where T: Bar, &'a T: Bar<Baz = String> {
+   |
+help: a trait with a similar name exists
+   |
+LL | struct Qux<'a, T> where T: Bar, <&'a T as Bar>::Baz: ToString {
+   |                                                      ++
+
+error[E0404]: expected trait, found struct `String`
+  --> $DIR/assoc_type_bound_with_struct.rs:13:45
+   |
+LL | fn foo<T: Bar>(_: T) where <T as Bar>::Baz: String {
+   |                                             ^^^^^^ not a trait
+   |
+  --> $SRC_DIR/alloc/src/string.rs:LL:COL
+   |
+   = note: similarly named trait `ToString` defined here
+help: constrain the associated type to `String`
+   |
+LL - fn foo<T: Bar>(_: T) where <T as Bar>::Baz: String {
+LL + fn foo<T: Bar>(_: T) where T: Bar<Baz = String> {
+   |
+help: a trait with a similar name exists
+   |
+LL | fn foo<T: Bar>(_: T) where <T as Bar>::Baz: ToString {
+   |                                             ++
+
+error[E0404]: expected trait, found struct `String`
+  --> $DIR/assoc_type_bound_with_struct.rs:16:57
+   |
+LL | fn qux<'a, T: Bar>(_: &'a T) where <&'a T as Bar>::Baz: String {
+   |                                                         ^^^^^^ not a trait
+   |
+  --> $SRC_DIR/alloc/src/string.rs:LL:COL
+   |
+   = note: similarly named trait `ToString` defined here
+help: constrain the associated type to `String`
+   |
+LL - fn qux<'a, T: Bar>(_: &'a T) where <&'a T as Bar>::Baz: String {
+LL + fn qux<'a, T: Bar>(_: &'a T) where &'a T: Bar<Baz = String> {
+   |
+help: a trait with a similar name exists
+   |
+LL | fn qux<'a, T: Bar>(_: &'a T) where <&'a T as Bar>::Baz: ToString {
+   |                                                         ++
+
+error[E0405]: cannot find trait `Unresolved` in this scope
+  --> $DIR/assoc_type_bound_with_struct.rs:19:31
+   |
+LL | fn issue_95327() where <u8 as Unresolved>::Assoc: String {}
+   |                               ^^^^^^^^^^ not found in this scope
+
+error[E0404]: expected trait, found struct `String`
+  --> $DIR/assoc_type_bound_with_struct.rs:19:51
+   |
+LL | fn issue_95327() where <u8 as Unresolved>::Assoc: String {}
+   |                                                   ^^^^^^ help: a trait with a similar name exists: `ToString`
+   |
+  --> $SRC_DIR/alloc/src/string.rs:LL:COL
+   |
+   = note: similarly named trait `ToString` defined here
+
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0404, E0405.
+For more information about an error, try `rustc --explain E0404`.

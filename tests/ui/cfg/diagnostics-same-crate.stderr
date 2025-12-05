@@ -1,0 +1,97 @@
+error[E0432]: unresolved import `super::inner::doesnt_exist`
+  --> $DIR/diagnostics-same-crate.rs:32:9
+   |
+LL |     use super::inner::doesnt_exist;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^ no `doesnt_exist` in `inner`
+   |
+note: found an item that was configured out
+  --> $DIR/diagnostics-same-crate.rs:11:13
+   |
+LL |     #[cfg(false)]
+   |           ----- the item is gated here
+...
+LL |     pub mod doesnt_exist {
+   |             ^^^^^^^^^^^^
+
+error[E0432]: unresolved import `super::inner::doesnt_exist`
+  --> $DIR/diagnostics-same-crate.rs:35:23
+   |
+LL |     use super::inner::doesnt_exist::hi;
+   |                       ^^^^^^^^^^^^ could not find `doesnt_exist` in `inner`
+   |
+note: found an item that was configured out
+  --> $DIR/diagnostics-same-crate.rs:11:13
+   |
+LL |     #[cfg(false)]
+   |           ----- the item is gated here
+...
+LL |     pub mod doesnt_exist {
+   |             ^^^^^^^^^^^^
+
+error[E0433]: failed to resolve: could not find `doesnt_exist` in `inner`
+  --> $DIR/diagnostics-same-crate.rs:53:12
+   |
+LL |     inner::doesnt_exist::hello();
+   |            ^^^^^^^^^^^^ could not find `doesnt_exist` in `inner`
+   |
+note: found an item that was configured out
+  --> $DIR/diagnostics-same-crate.rs:11:13
+   |
+LL |     #[cfg(false)]
+   |           ----- the item is gated here
+...
+LL |     pub mod doesnt_exist {
+   |             ^^^^^^^^^^^^
+
+error[E0425]: cannot find function `uwu` in module `inner`
+  --> $DIR/diagnostics-same-crate.rs:49:12
+   |
+LL |     inner::uwu();
+   |            ^^^ not found in `inner`
+   |
+note: found an item that was configured out
+  --> $DIR/diagnostics-same-crate.rs:5:12
+   |
+LL |     #[cfg(false)]
+   |           ----- the item is gated here
+LL |     pub fn uwu() {}
+   |            ^^^
+
+error[E0425]: cannot find function `meow` in module `inner::right`
+  --> $DIR/diagnostics-same-crate.rs:57:19
+   |
+LL |     inner::right::meow();
+   |                   ^^^^ not found in `inner::right`
+   |
+note: found an item that was configured out
+  --> $DIR/diagnostics-same-crate.rs:26:16
+   |
+LL |         #[cfg(feature = "what-a-cool-feature")]
+   |               ------------------------------- the item is gated behind the `what-a-cool-feature` feature
+LL |         pub fn meow() {}
+   |                ^^^^
+
+error[E0425]: cannot find function `uwu` in this scope
+  --> $DIR/diagnostics-same-crate.rs:45:5
+   |
+LL |     uwu();
+   |     ^^^ not found in this scope
+
+error[E0425]: cannot find function `vanished` in this scope
+  --> $DIR/diagnostics-same-crate.rs:62:5
+   |
+LL |     vanished();
+   |     ^^^^^^^^ not found in this scope
+   |
+note: found an item that was configured out
+  --> $DIR/diagnostics-same-crate.rs:41:8
+   |
+LL | #[cfg(i_dont_exist_and_you_can_do_nothing_about_it)]
+   |       -------------------------------------------- the item is gated here
+LL | pub fn vanished() {}
+   |        ^^^^^^^^
+
+error: aborting due to 7 previous errors
+
+Some errors have detailed explanations: E0425, E0432, E0433.
+For more information about an error, try `rustc --explain E0425`.

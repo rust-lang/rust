@@ -1,0 +1,159 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+
+permissions:
+  contents: read
+
+env:
+  # Enable backtraces for easier debugging
+  RUST_BACKTRACE: 1
+  # For the run-make tests.
+  LLVM_BIN_DIR: /usr/bin
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+
+    strategy:
+      fail-fast: false
+      matrix:
+        libgccjit_version:
+          - { gcc: "gcc-15.deb" }
+          - { gcc: "gcc-15-without-int128.deb" }
+        commands: [
+          "--std-tests",
+          # FIXME: re-enable asm tests when GCC can emit in the right syntax.
+          # "--asm-tests",
+          "--test-libcore",
+          "--extended-rand-tests",
+          "--extended-regex-example-tests",
+          "--extended-regex-tests",
+          "--test-successful-rustc --nb-parts 2 --current-part 0",
+          "--test-successful-rustc --nb-parts 2 --current-part 1",
+          "--projects",
+        ]
+
+    steps:
+    - uses: actions/checkout@v4
+
+    # `rustup show` installs from rust-toolchain.toml
+    - name: Setup rust toolchain
+      run: rustup show
+
+    - name: Setup rust cache
+      uses: Swatinem/rust-cache@v2
+
+    - name: Install packages
+      # `llvm-14-tools` is needed to install the `FileCheck` binary which is used for asm tests.
+      run: sudo apt-get install ninja-build ripgrep llvm-14-tools llvm
+
+    - name: Install rustfmt & clippy
+      run: rustup component add rustfmt clippy
+
+    - name: Download artifact
+      run: curl -LO https://github.com/rust-lang/gcc/releases/latest/download/${{ matrix.libgccjit_version.gcc }}
+
+    - name: Setup path to libgccjit
+      run: |
+          sudo dpkg --force-overwrite -i ${{ matrix.libgccjit_version.gcc }}
+          echo 'gcc-path = "/usr/lib/"' > config.toml
+
+    # Some run-make tests fail if we use our forked GCC because it doesn't
+    # bundle libstdc++, so we switch to gcc-14 to have a GCC that has
+    # libstdc++.
+    - name: Set default GCC to gcc-14
+      run: sudo update-alternatives --install /usr/bin/cc cc /usr/bin/gcc-14 30
+
+    - name: Set env
+      run: |
+        echo "workspace="$GITHUB_WORKSPACE >> $GITHUB_ENV
+
+    #- name: Cache rust repository
+      ## We only clone the rust repository for rustc tests
+      #if: ${{ contains(matrix.commands, 'rustc') }}
+      #uses: actions/cache@v3
+      #id: cache-rust-repository
+      #with:
+        #path: rust
+        #key: ${{ runner.os }}-packages-${{ hashFiles('rust/.git/HEAD') }}
+
+    - name: Prepare
+      run: ./y.sh prepare --only-libcore
+
+    - name: Check formatting
+      run: ./y.sh fmt --check
+
+    - name: clippy
+      run: |
+        cargo clippy --all-targets -- -D warnings
+        cargo clippy --all-targets --no-default-features -- -D warnings
+        cargo clippy --manifest-path build_system/Cargo.toml --all-targets -- -D warnings
+
+    - name: Build
+      run: |
+        ./y.sh build --sysroot
+        ./y.sh test --cargo-tests
+
+    - name: Run y.sh cargo build
+      run: |
+        ./y.sh cargo build --manifest-path tests/hello-world/Cargo.toml
+
+    - name: Clean
+      run: |
+        ./y.sh clean all
+
+    - name: Prepare dependencies
+      run: |
+        git config --global user.email "user@example.com"
+        git config --global user.name "User"
+        ./y.sh prepare
+
+    - name: Run tests
+      run: |
+        ./y.sh test --release --clean --build-sysroot ${{ matrix.commands }}
+
+  duplicates:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: python tools/check_intrinsics_duplicates.py
+
+  spell_check:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: crate-ci/typos@v1.32.0
+      - uses: streetsidesoftware/cspell-action@v7
+
+  build_system:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test build system
+        run: |
+          cd build_system
+          cargo test
+
+  # Summary job for the merge queue.
+  # ALL THE PREVIOUS JOBS NEED TO BE ADDED TO THE `needs` SECTION OF THIS JOB!
+  success:
+    needs: [build, duplicates, build_system]
+    # We need to ensure this job does *not* get skipped if its dependencies fail,
+    # because a skipped job is considered a success by GitHub. So we have to
+    # overwrite `if:`. We use `!cancelled()` to ensure the job does still not get run
+    # when the workflow is canceled manually.
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    steps:
+      # Manually check the status of all dependencies. `if: failure()` does not work.
+      - name: Conclusion
+        run: |
+          # Print the dependent jobs to see them in the CI log
+          jq -C <<< '${{ toJson(needs) }}'
+          # Check if all jobs that we depend on (in the needs array) were successful.
+          jq --exit-status 'all(.result == "success")' <<< '${{ toJson(needs) }}'

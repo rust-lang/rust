@@ -1,0 +1,14 @@
+error[E0308]: mismatched types
+  --> $DIR/pattern-tyvar.rs:5:18
+   |
+LL |     match t {
+   |           - this expression has type `Bar`
+LL |       Bar::T1(_, Some::<isize>(x)) => {
+   |                  ^^^^^^^^^^^^^^^^ expected `Option<Vec<isize>>`, found `Option<isize>`
+   |
+   = note: expected enum `Option<Vec<isize>>`
+              found enum `Option<isize>`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0308`.

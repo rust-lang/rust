@@ -1,0 +1,77 @@
+#![deny(clippy::match_bool)]
+#![allow(clippy::nonminimal_bool, clippy::eq_op)]
+
+fn match_bool() {
+    let test: bool = true;
+
+    if test { 0 } else { 42 };
+
+    let option = 1;
+    if option == 1 { 1 } else { 0 };
+
+    if !test {
+        println!("Noooo!");
+    };
+
+    if !test {
+        println!("Noooo!");
+    };
+
+    if !(test && test) {
+        println!("Noooo!");
+    };
+
+    if !test {
+        println!("Noooo!");
+    } else {
+        println!("Yes!");
+    };
+
+    // Not linted
+    match option {
+        1..=10 => 1,
+        11..=20 => 2,
+        _ => 3,
+    };
+
+    // Don't lint
+    let _ = match test {
+        #[cfg(feature = "foo")]
+        true if option == 5 => 10,
+        true => 0,
+        false => 1,
+    };
+
+    let _ = if test && option == 5 { 10 } else { 1 };
+
+    let _ = if !test && option == 5 { 10 } else { 1 };
+
+    if test && option == 5 { println!("Hello") };
+
+    if !(test && option == 5) { println!("Hello") };
+
+    if !test && option == 5 { println!("Hello") };
+
+    if !(!test && option == 5) { println!("Hello") };
+}
+
+fn issue14099() {
+    if true { 'a: {
+        break 'a;
+    } }
+}
+
+fn issue15351() {
+    let mut d = false;
+    match d {
+        false => println!("foo"),
+        ref mut d => *d = false,
+    }
+
+    match d {
+        false => println!("foo"),
+        e => println!("{e}"),
+    }
+}
+
+fn main() {}

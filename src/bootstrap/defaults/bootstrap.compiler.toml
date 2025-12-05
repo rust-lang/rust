@@ -1,0 +1,35 @@
+# These defaults are meant for contributors to the compiler who do not modify codegen or LLVM
+[build]
+# Contributors working on the compiler will probably expect compiler docs to be generated.
+compiler-docs = true
+
+[rust]
+# This enables `RUSTC_LOG=debug`, avoiding confusing situations
+# where adding `debug!()` appears to do nothing.
+# However, it makes running the compiler slightly slower.
+debug-logging = true
+# Enables debug assertions, which guard from many mistakes when working on the compiler.
+debug-assertions = true
+# Get actually-useful information from backtraces, profiling, etc. with minimal added bytes
+debuginfo-level = "line-tables-only"
+# This greatly increases the speed of rebuilds, especially when there are only minor changes. However, it makes the initial build slightly slower.
+incremental = true
+# Print backtrace on internal compiler errors during bootstrap
+backtrace-on-ice = true
+# Make the compiler and standard library faster to build, at the expense of a ~20% runtime slowdown.
+lto = "off"
+# Forces frame pointers to be used with `-Cforce-frame-pointers`.
+# This can be helpful for profiling at a small performance cost.
+frame-pointers = true
+# Compiler contributors often want to build rustc even without any changes to
+# e.g. check that it builds locally and check the baseline behavior of a
+# compiler built from latest `master` commit.
+download-rustc = false
+
+[llvm]
+# Having this set to true disrupts compiler development workflows for people who use `llvm.download-ci-llvm = true`
+# because we don't provide ci-llvm on the `rustc-alt-builds` server. Therefore, it is kept off by default.
+assertions = false
+# Will download LLVM from CI if available on your platform.
+# If you intend to modify `src/llvm-project`, use `"if-unchanged"` or `false` instead.
+download-ci-llvm = true

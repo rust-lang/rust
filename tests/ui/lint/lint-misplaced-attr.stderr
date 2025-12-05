@@ -1,0 +1,25 @@
+error: crate-level attribute should be in the root module
+  --> $DIR/lint-misplaced-attr.rs:7:5
+   |
+LL |     #![crate_type = "bin"]
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/lint-misplaced-attr.rs:4:9
+   |
+LL | #![deny(unused_attributes)]
+   |         ^^^^^^^^^^^^^^^^^
+
+error: crate-level attribute should be an inner attribute
+  --> $DIR/lint-misplaced-attr.rs:10:1
+   |
+LL | #[crate_type = "bin"] fn main() {}
+   | ^^^^^^^^^^^^^^^^^^^^^
+   |
+help: add a `!`
+   |
+LL | #![crate_type = "bin"] fn main() {}
+   |  +
+
+error: aborting due to 2 previous errors
+

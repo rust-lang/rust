@@ -1,0 +1,349 @@
+error[E0004]: non-exhaustive patterns: `&[false, _]` not covered
+  --> $DIR/slice-patterns-exhaustiveness.rs:8:11
+   |
+LL |     match s2 {
+   |           ^^ pattern `&[false, _]` not covered
+   |
+   = note: the matched value is of type `&[bool; 2]`
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+   |
+LL ~         [true, .., true] => {},
+LL +         &[false, _] => todo!()
+   |
+
+error[E0004]: non-exhaustive patterns: `&[false, ..]` not covered
+  --> $DIR/slice-patterns-exhaustiveness.rs:12:11
+   |
+LL |     match s3 {
+   |           ^^ pattern `&[false, ..]` not covered
+   |
+   = note: the matched value is of type `&[bool; 3]`
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+   |
+LL ~         [true, .., true] => {},
+LL +         &[false, ..] => todo!()
+   |
+
+error[E0004]: non-exhaustive patterns: `&[false, ..]` not covered
+  --> $DIR/slice-patterns-exhaustiveness.rs:16:11
+   |
+LL |     match s10 {
+   |           ^^^ pattern `&[false, ..]` not covered
+   |
+   = note: the matched value is of type `&[bool; 10]`
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+   |
+LL ~         [true, .., true] => {},
+LL +         &[false, ..] => todo!()
+   |
+
+error[E0004]: non-exhaustive patterns: `&[false, true]` not covered
+  --> $DIR/slice-patterns-exhaustiveness.rs:25:11
+   |
+LL |     match s2 {
+   |           ^^ pattern `&[false, true]` not covered
+   |
+   = note: the matched value is of type `&[bool; 2]`
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+   |
+LL ~         [.., false] => {},
+LL +         &[false, true] => todo!()
+   |
+
+error[E0004]: non-exhaustive patterns: `&[false, .., true]` not covered
+  --> $DIR/slice-patterns-exhaustiveness.rs:30:11
+   |
+LL |     match s3 {
+   |           ^^ pattern `&[false, .., true]` not covered
+   |
+   = note: the matched value is of type `&[bool; 3]`
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+   |
+LL ~         [.., false] => {},
+LL +         &[false, .., true] => todo!()
+   |
+
+error[E0004]: non-exhaustive patterns: `&[false, .., true]` not covered
+  --> $DIR/slice-patterns-exhaustiveness.rs:35:11
+   |
+LL |     match s {
+   |           ^ pattern `&[false, .., true]` not covered
+   |
+   = note: the matched value is of type `&[bool]`
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+   |
+LL ~         [.., false] => {},
+LL +         &[false, .., true] => todo!()
+   |
+
+error[E0004]: non-exhaustive patterns: `&[_, ..]` not covered
+  --> $DIR/slice-patterns-exhaustiveness.rs:42:11
+   |
+LL |     match s {
+   |           ^ pattern `&[_, ..]` not covered
+   |
+   = note: the matched value is of type `&[bool]`
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+   |
+LL ~         [] => {},
+LL +         &[_, ..] => todo!()
+   |
+
+error[E0004]: non-exhaustive patterns: `&[]` and `&[_, ..]` not covered
+  --> $DIR/slice-patterns-exhaustiveness.rs:46:11
+   |
+LL |     match s {
+   |           ^ patterns `&[]` and `&[_, ..]` not covered
+   |
+   = note: the matched value is of type `&[bool]`
+   = note: match arms with guards don't count towards exhaustivity
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern, a match arm with multiple or-patterns as shown, or multiple match arms
+   |
+LL ~         [..] if false => {},
+LL +         &[] | &[_, ..] => todo!()
+   |
+
+error[E0004]: non-exhaustive patterns: `&[_, _, ..]` not covered
+  --> $DIR/slice-patterns-exhaustiveness.rs:50:11
+   |
+LL |     match s {
+   |           ^ pattern `&[_, _, ..]` not covered
+   |
+   = note: the matched value is of type `&[bool]`
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+   |
+LL ~         [_] => {},
+LL +         &[_, _, ..] => todo!()
+   |
+
+error[E0004]: non-exhaustive patterns: `&[false, ..]` not covered
+  --> $DIR/slice-patterns-exhaustiveness.rs:55:11
+   |
+LL |     match s {
+   |           ^ pattern `&[false, ..]` not covered
+   |
+   = note: the matched value is of type `&[bool]`
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+   |
+LL ~         [true, ..] => {},
+LL +         &[false, ..] => todo!()
+   |
+
+error[E0004]: non-exhaustive patterns: `&[false, _, ..]` not covered
+  --> $DIR/slice-patterns-exhaustiveness.rs:60:11
+   |
+LL |     match s {
+   |           ^ pattern `&[false, _, ..]` not covered
+   |
+   = note: the matched value is of type `&[bool]`
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+   |
+LL ~         [true, ..] => {},
+LL +         &[false, _, ..] => todo!()
+   |
+
+error[E0004]: non-exhaustive patterns: `&[_, .., false]` not covered
+  --> $DIR/slice-patterns-exhaustiveness.rs:66:11
+   |
+LL |     match s {
+   |           ^ pattern `&[_, .., false]` not covered
+   |
+   = note: the matched value is of type `&[bool]`
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+   |
+LL ~         [.., true] => {},
+LL +         &[_, .., false] => todo!()
+   |
+
+error[E0004]: non-exhaustive patterns: `&[_, _, .., true]` not covered
+  --> $DIR/slice-patterns-exhaustiveness.rs:73:11
+   |
+LL |     match s {
+   |           ^ pattern `&[_, _, .., true]` not covered
+   |
+   = note: the matched value is of type `&[bool]`
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+   |
+LL ~         [.., false] => {},
+LL +         &[_, _, .., true] => todo!()
+   |
+
+error[E0004]: non-exhaustive patterns: `&[true, _, .., _]` not covered
+  --> $DIR/slice-patterns-exhaustiveness.rs:80:11
+   |
+LL |     match s {
+   |           ^ pattern `&[true, _, .., _]` not covered
+   |
+   = note: the matched value is of type `&[bool]`
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+   |
+LL ~         [false, .., false] => {},
+LL +         &[true, _, .., _] => todo!()
+   |
+
+error[E0004]: non-exhaustive patterns: `&[]` and `&[_, _, ..]` not covered
+  --> $DIR/slice-patterns-exhaustiveness.rs:89:11
+   |
+LL |     match s {
+   |           ^ patterns `&[]` and `&[_, _, ..]` not covered
+   |
+   = note: the matched value is of type `&[bool]`
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern, a match arm with multiple or-patterns as shown, or multiple match arms
+   |
+LL ~         &[true] => {},
+LL +         &[] | &[_, _, ..] => todo!()
+   |
+
+error[E0004]: non-exhaustive patterns: `&[]` and `&[_, _, ..]` not covered
+  --> $DIR/slice-patterns-exhaustiveness.rs:93:11
+   |
+LL |     match s {
+   |           ^ patterns `&[]` and `&[_, _, ..]` not covered
+LL |
+LL |         CONST => {}
+   |         ----- this pattern doesn't introduce a new catch-all binding, but rather pattern matches against the value of constant `CONST`
+   |
+   = note: the matched value is of type `&[bool]`
+note: constant `CONST` defined here
+  --> $DIR/slice-patterns-exhaustiveness.rs:88:5
+   |
+LL |     const CONST: &[bool] = &[true];
+   |     ^^^^^^^^^^^^^^^^^^^^
+help: if you meant to introduce a binding, use a different name
+   |
+LL |         CONST_var => {}
+   |              ++++
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern, a match arm with multiple or-patterns as shown, or multiple match arms
+   |
+LL ~         CONST => {},
+LL +         &[] | &[_, _, ..] => todo!()
+   |
+
+error[E0004]: non-exhaustive patterns: `&[]` and `&[_, _, ..]` not covered
+  --> $DIR/slice-patterns-exhaustiveness.rs:97:11
+   |
+LL |     match s {
+   |           ^ patterns `&[]` and `&[_, _, ..]` not covered
+LL |
+LL |         CONST => {}
+   |         ----- this pattern doesn't introduce a new catch-all binding, but rather pattern matches against the value of constant `CONST`
+   |
+   = note: the matched value is of type `&[bool]`
+note: constant `CONST` defined here
+  --> $DIR/slice-patterns-exhaustiveness.rs:88:5
+   |
+LL |     const CONST: &[bool] = &[true];
+   |     ^^^^^^^^^^^^^^^^^^^^
+help: if you meant to introduce a binding, use a different name
+   |
+LL |         CONST_var => {}
+   |              ++++
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern, a match arm with multiple or-patterns as shown, or multiple match arms
+   |
+LL ~         &[false] => {},
+LL +         &[] | &[_, _, ..] => todo!()
+   |
+
+error[E0004]: non-exhaustive patterns: `&[]` and `&[_, _, ..]` not covered
+  --> $DIR/slice-patterns-exhaustiveness.rs:102:11
+   |
+LL |     match s {
+   |           ^ patterns `&[]` and `&[_, _, ..]` not covered
+...
+LL |         CONST => {}
+   |         ----- this pattern doesn't introduce a new catch-all binding, but rather pattern matches against the value of constant `CONST`
+   |
+   = note: the matched value is of type `&[bool]`
+note: constant `CONST` defined here
+  --> $DIR/slice-patterns-exhaustiveness.rs:88:5
+   |
+LL |     const CONST: &[bool] = &[true];
+   |     ^^^^^^^^^^^^^^^^^^^^
+help: if you meant to introduce a binding, use a different name
+   |
+LL |         CONST_var => {}
+   |              ++++
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern, a match arm with multiple or-patterns as shown, or multiple match arms
+   |
+LL ~         CONST => {},
+LL +         &[] | &[_, _, ..] => todo!()
+   |
+
+error[E0004]: non-exhaustive patterns: `&[_, _, ..]` not covered
+  --> $DIR/slice-patterns-exhaustiveness.rs:107:11
+   |
+LL |     match s {
+   |           ^ pattern `&[_, _, ..]` not covered
+...
+LL |         CONST => {}
+   |         ----- this pattern doesn't introduce a new catch-all binding, but rather pattern matches against the value of constant `CONST`
+   |
+   = note: the matched value is of type `&[bool]`
+note: constant `CONST` defined here
+  --> $DIR/slice-patterns-exhaustiveness.rs:88:5
+   |
+LL |     const CONST: &[bool] = &[true];
+   |     ^^^^^^^^^^^^^^^^^^^^
+help: if you meant to introduce a binding, use a different name
+   |
+LL |         CONST_var => {}
+   |              ++++
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+   |
+LL ~         CONST => {},
+LL +         &[_, _, ..] => todo!()
+   |
+
+error[E0004]: non-exhaustive patterns: `&[false]` not covered
+  --> $DIR/slice-patterns-exhaustiveness.rs:112:11
+   |
+LL |     match s {
+   |           ^ pattern `&[false]` not covered
+...
+LL |         CONST => {}
+   |         ----- this pattern doesn't introduce a new catch-all binding, but rather pattern matches against the value of constant `CONST`
+   |
+   = note: the matched value is of type `&[bool]`
+note: constant `CONST` defined here
+  --> $DIR/slice-patterns-exhaustiveness.rs:88:5
+   |
+LL |     const CONST: &[bool] = &[true];
+   |     ^^^^^^^^^^^^^^^^^^^^
+help: if you meant to introduce a binding, use a different name
+   |
+LL |         CONST_var => {}
+   |              ++++
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+   |
+LL ~         &[_, _, ..] => {},
+LL +         &[false] => todo!()
+   |
+
+error[E0004]: non-exhaustive patterns: `&[false]` not covered
+  --> $DIR/slice-patterns-exhaustiveness.rs:125:11
+   |
+LL |     match s1 {
+   |           ^^ pattern `&[false]` not covered
+LL |
+LL |         CONST1 => {}
+   |         ------ this pattern doesn't introduce a new catch-all binding, but rather pattern matches against the value of constant `CONST1`
+   |
+   = note: the matched value is of type `&[bool; 1]`
+note: constant `CONST1` defined here
+  --> $DIR/slice-patterns-exhaustiveness.rs:124:5
+   |
+LL |     const CONST1: &[bool; 1] = &[true];
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+help: if you meant to introduce a binding, use a different name
+   |
+LL |         CONST1_var => {}
+   |               ++++
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+   |
+LL ~         CONST1 => {},
+LL +         &[false] => todo!()
+   |
+
+error: aborting due to 21 previous errors
+
+For more information about this error, try `rustc --explain E0004`.

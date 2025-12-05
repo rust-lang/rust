@@ -1,0 +1,51 @@
+- // MIR for `wrap_unwrap` before GVN
++ // MIR for `wrap_unwrap` after GVN
+  
+  fn wrap_unwrap(_1: T) -> T {
+      debug x => _1;
+      let mut _0: T;
+      let mut _2: std::option::Option<T>;
+      let mut _3: T;
+      let mut _4: isize;
+      let _5: T;
+      let mut _6: !;
+      scope 1 {
+          debug y => _5;
+      }
+  
+      bb0: {
+          StorageLive(_2);
+          StorageLive(_3);
+          _3 = copy _1;
+-         _2 = Option::<T>::Some(move _3);
++         _2 = Option::<T>::Some(copy _1);
+          StorageDead(_3);
+-         _4 = discriminant(_2);
+-         switchInt(move _4) -> [0: bb2, 1: bb3, otherwise: bb1];
++         _4 = const 1_isize;
++         switchInt(const 1_isize) -> [0: bb2, 1: bb3, otherwise: bb1];
+      }
+  
+      bb1: {
+          unreachable;
+      }
+  
+      bb2: {
+          StorageLive(_6);
+          _6 = begin_panic::<&str>(const "explicit panic") -> unwind unreachable;
+      }
+  
+      bb3: {
+          StorageLive(_5);
+-         _5 = copy ((_2 as Some).0: T);
+-         _0 = copy _5;
++         _5 = copy _1;
++         _0 = copy _1;
+          StorageDead(_5);
+          StorageDead(_2);
+          return;
+      }
+  }
+  
+  ALLOC0 (size: 14, align: 1) { .. }
+  

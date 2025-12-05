@@ -1,0 +1,39 @@
+error[E0512]: cannot transmute between types of different sizes, or dependently-sized types
+  --> $DIR/transmute-fat-pointers.rs:10:14
+   |
+LL |     unsafe { transmute(x) }
+   |              ^^^^^^^^^
+   |
+   = note: source type: `&[T]` (N bits)
+   = note: target type: `&U` (pointer to `U`)
+
+error[E0512]: cannot transmute between types of different sizes, or dependently-sized types
+  --> $DIR/transmute-fat-pointers.rs:14:14
+   |
+LL |     unsafe { transmute(x) }
+   |              ^^^^^^^^^
+   |
+   = note: source type: `&T` (pointer to `T`)
+   = note: target type: `&U` (pointer to `U`)
+
+error[E0512]: cannot transmute between types of different sizes, or dependently-sized types
+  --> $DIR/transmute-fat-pointers.rs:26:14
+   |
+LL |     unsafe { transmute(x) }
+   |              ^^^^^^^^^
+   |
+   = note: source type: `&T` (pointer to `T`)
+   = note: target type: `&U` (N bits)
+
+error[E0512]: cannot transmute between types of different sizes, or dependently-sized types
+  --> $DIR/transmute-fat-pointers.rs:30:14
+   |
+LL |     unsafe { transmute(x) }
+   |              ^^^^^^^^^
+   |
+   = note: source type: `&T` (N bits)
+   = note: target type: `&U` (pointer to `U`)
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0512`.

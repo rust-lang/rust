@@ -1,0 +1,20 @@
+error[E0507]: cannot move out of `hellothere.x` as enum variant `Bar` which is behind a shared reference
+  --> $DIR/moves-based-on-type-block-bad.rs:22:19
+   |
+LL |             match hellothere.x {
+   |                   ^^^^^^^^^^^^
+LL |                 box E::Foo(_) => {}
+LL |                 box E::Bar(x) => println!("{}", x.to_string()),
+   |                            -
+   |                            |
+   |                            data moved here
+   |                            move occurs because `x` has type `Box<isize>`, which does not implement the `Copy` trait
+   |
+help: consider borrowing here
+   |
+LL |             match &hellothere.x {
+   |                   +
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0507`.

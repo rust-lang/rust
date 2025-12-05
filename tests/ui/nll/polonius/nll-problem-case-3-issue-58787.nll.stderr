@@ -1,0 +1,112 @@
+error[E0503]: cannot use `list.0` because it was mutably borrowed
+  --> $DIR/nll-problem-case-3-issue-58787.rs:34:11
+   |
+LL |         Some(ref mut d) => {
+   |              --------- `list.0.0` is borrowed here
+...
+LL |     match list.0 {
+   |           ^^^^^^
+   |           |
+   |           use of borrowed `list.0.0`
+   |           borrow later used here
+
+error[E0499]: cannot borrow `list.0.0` as mutable more than once at a time
+  --> $DIR/nll-problem-case-3-issue-58787.rs:35:14
+   |
+LL |         Some(ref mut d) => {
+   |              --------- first mutable borrow occurs here
+...
+LL |         Some(ref mut d) => {
+   |              ^^^^^^^^^
+   |              |
+   |              second mutable borrow occurs here
+   |              first borrow later used here
+
+error[E0503]: cannot use `list.0` because it was mutably borrowed
+  --> $DIR/nll-problem-case-3-issue-58787.rs:41:11
+   |
+LL |         Some(ref mut d) => {
+   |              --------- `list.0.0` is borrowed here
+...
+LL |     match list {
+   |           ^^^^
+   |           |
+   |           use of borrowed `list.0.0`
+   |           borrow later used here
+
+error[E0499]: cannot borrow `list.0.0` as mutable more than once at a time
+  --> $DIR/nll-problem-case-3-issue-58787.rs:42:19
+   |
+LL |         Some(ref mut d) => {
+   |              --------- first mutable borrow occurs here
+...
+LL |         List(Some(d)) => {
+   |                   ^
+   |                   |
+   |                   second mutable borrow occurs here
+   |                   first borrow later used here
+
+error[E0503]: cannot use `list.0` because it was mutably borrowed
+  --> $DIR/nll-problem-case-3-issue-58787.rs:50:11
+   |
+LL |         List(Some(d)) => {
+   |                   - `list.0.0` is borrowed here
+...
+LL |     match list {
+   |           ^^^^
+   |           |
+   |           use of borrowed `list.0.0`
+   |           borrow later used here
+
+error[E0499]: cannot borrow `list.0.0` as mutable more than once at a time
+  --> $DIR/nll-problem-case-3-issue-58787.rs:51:19
+   |
+LL |         List(Some(d)) => {
+   |                   - first mutable borrow occurs here
+...
+LL |         List(Some(d)) => {
+   |                   ^
+   |                   |
+   |                   second mutable borrow occurs here
+   |                   first borrow later used here
+
+error[E0499]: cannot borrow `list.0` as mutable more than once at a time
+  --> $DIR/nll-problem-case-3-issue-58787.rs:57:11
+   |
+LL |         List(Some(d)) => {
+   |                   - first mutable borrow occurs here
+...
+LL |     match &mut list.0 {
+   |           ^^^^^^^^^^^
+   |           |
+   |           second mutable borrow occurs here
+   |           first borrow later used here
+
+error[E0499]: cannot borrow `list.0` as mutable more than once at a time
+  --> $DIR/nll-problem-case-3-issue-58787.rs:66:11
+   |
+LL |     match &mut list.0 {
+   |           ----------- first mutable borrow occurs here
+...
+LL |     match &mut list.0 {
+   |           ^^^^^^^^^^^
+   |           |
+   |           second mutable borrow occurs here
+   |           first borrow later used here
+
+error[E0506]: cannot assign to `list.0` because it is borrowed
+  --> $DIR/nll-problem-case-3-issue-58787.rs:73:5
+   |
+LL |     match &mut list.0 {
+   |           ----------- `list.0` is borrowed here
+...
+LL |     list.0 = None;
+   |     ^^^^^^
+   |     |
+   |     `list.0` is assigned to here but it was already borrowed
+   |     borrow later used here
+
+error: aborting due to 9 previous errors
+
+Some errors have detailed explanations: E0499, E0503, E0506.
+For more information about an error, try `rustc --explain E0499`.

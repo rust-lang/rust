@@ -1,0 +1,10 @@
+error: expected `,`, found `label`
+  --> $DIR/expected-comma-found-token.rs:8:5
+   |
+LL |     message="the message"
+   |                          - expected `,`
+LL |     label="the label"
+   |     ^^^^^ unexpected token
+
+error: aborting due to 1 previous error
+

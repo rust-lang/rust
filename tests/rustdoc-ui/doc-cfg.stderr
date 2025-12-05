@@ -1,0 +1,90 @@
+error: only `hide` or `show` are allowed in `#[doc(auto_cfg(...))]`
+  --> $DIR/doc-cfg.rs:11:7
+   |
+LL | #[doc(auto_cfg(42))]
+   |       ^^^^^^^^^^^^
+   |
+   = note: `#[deny(invalid_doc_attributes)]` on by default
+
+error: `#![doc(auto_cfg(hide(...)))]` only accepts identifiers or key/value items
+  --> $DIR/doc-cfg.rs:12:21
+   |
+LL | #[doc(auto_cfg(hide(true)))]
+   |                     ^^^^
+
+error: `#![doc(auto_cfg(hide(...)))]` only accepts identifiers or key/value items
+  --> $DIR/doc-cfg.rs:13:21
+   |
+LL | #[doc(auto_cfg(hide(42)))]
+   |                     ^^
+
+error: `#![doc(auto_cfg(hide(...)))]` only accepts identifiers or key/value items
+  --> $DIR/doc-cfg.rs:14:21
+   |
+LL | #[doc(auto_cfg(hide("a")))]
+   |                     ^^^
+
+error: `#![doc(auto_cfg(hide(...)))]` only accepts identifiers or key/value items
+  --> $DIR/doc-cfg.rs:15:21
+   |
+LL | #[doc(auto_cfg(hide(foo::bar)))]
+   |                     ^^^^^^^^
+
+error: expected boolean for `#[doc(auto_cfg = ...)]`
+  --> $DIR/doc-cfg.rs:16:7
+   |
+LL | #[doc(auto_cfg = 42)]
+   |       ^^^^^^^^^^^^^
+
+error: expected boolean for `#[doc(auto_cfg = ...)]`
+  --> $DIR/doc-cfg.rs:17:7
+   |
+LL | #[doc(auto_cfg = "a")]
+   |       ^^^^^^^^^^^^^^
+
+warning: unexpected `cfg` condition name: `foo`
+  --> $DIR/doc-cfg.rs:6:11
+   |
+LL | #[doc(cfg(foo), cfg(bar))]
+   |           ^^^
+   |
+   = help: expected names are: `FALSE` and `test` and 31 more
+   = help: to expect this configuration use `--check-cfg=cfg(foo)`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+   = note: `#[warn(unexpected_cfgs)]` on by default
+
+warning: unexpected `cfg` condition name: `bar`
+  --> $DIR/doc-cfg.rs:6:21
+   |
+LL | #[doc(cfg(foo), cfg(bar))]
+   |                     ^^^
+   |
+   = help: to expect this configuration use `--check-cfg=cfg(bar)`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+
+error: `cfg` predicate is not specified
+  --> $DIR/doc-cfg.rs:3:7
+   |
+LL | #[doc(cfg(), cfg(foo, bar))]
+   |       ^^^^^ help: expected syntax is: `cfg(/* predicate */)`
+
+error: multiple `cfg` predicates are specified
+  --> $DIR/doc-cfg.rs:3:23
+   |
+LL | #[doc(cfg(), cfg(foo, bar))]
+   |                       ^^^
+
+error: `cfg` predicate is not specified
+  --> $DIR/doc-cfg.rs:9:7
+   |
+LL | #[doc(cfg())]
+   |       ^^^^^ help: expected syntax is: `cfg(/* predicate */)`
+
+error: multiple `cfg` predicates are specified
+  --> $DIR/doc-cfg.rs:10:16
+   |
+LL | #[doc(cfg(foo, bar))]
+   |                ^^^
+
+error: aborting due to 11 previous errors; 2 warnings emitted
+

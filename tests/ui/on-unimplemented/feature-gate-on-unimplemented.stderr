@@ -1,0 +1,13 @@
+error[E0658]: use of an internal attribute
+  --> $DIR/feature-gate-on-unimplemented.rs:3:1
+   |
+LL | #[rustc_on_unimplemented = "test error `{Self}` with `{Bar}`"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(rustc_attrs)]` to the crate attributes to enable
+   = note: the `#[rustc_on_unimplemented]` attribute is an internal implementation detail that will never be stable
+   = note: see `#[diagnostic::on_unimplemented]` for the stable equivalent of this attribute
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0658`.

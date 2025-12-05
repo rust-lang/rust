@@ -1,0 +1,47 @@
+error: called `skip(..).next()` on an iterator
+  --> tests/ui/iter_skip_next.rs:17:28
+   |
+LL |     let _ = some_vec.iter().skip(42).next();
+   |                            ^^^^^^^^^^^^^^^^ help: use `nth` instead: `.nth(42)`
+   |
+   = note: `-D clippy::iter-skip-next` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::iter_skip_next)]`
+
+error: called `skip(..).next()` on an iterator
+  --> tests/ui/iter_skip_next.rs:19:36
+   |
+LL |     let _ = some_vec.iter().cycle().skip(42).next();
+   |                                    ^^^^^^^^^^^^^^^^ help: use `nth` instead: `.nth(42)`
+
+error: called `skip(..).next()` on an iterator
+  --> tests/ui/iter_skip_next.rs:21:20
+   |
+LL |     let _ = (1..10).skip(10).next();
+   |                    ^^^^^^^^^^^^^^^^ help: use `nth` instead: `.nth(10)`
+
+error: called `skip(..).next()` on an iterator
+  --> tests/ui/iter_skip_next.rs:23:33
+   |
+LL |     let _ = &some_vec[..].iter().skip(3).next();
+   |                                 ^^^^^^^^^^^^^^^ help: use `nth` instead: `.nth(3)`
+
+error: called `skip(..).next()` on an iterator
+  --> tests/ui/iter_skip_next.rs:32:26
+   |
+LL |     let _: Vec<&str> = sp.skip(1).next().unwrap().split(' ').collect();
+   |                          ^^^^^^^^^^^^^^^ help: use `nth` instead: `.nth(1)`
+
+error: called `skip(..).next()` on an iterator
+  --> tests/ui/iter_skip_next.rs:35:29
+   |
+LL |         let _: Vec<&str> = s.skip(1).next().unwrap().split(' ').collect();
+   |                             ^^^^^^^^^^^^^^^ help: use `nth` instead: `.nth(1)`
+
+error: called `skip(..).next()` on an iterator
+  --> tests/ui/iter_skip_next.rs:42:29
+   |
+LL |         let _: Vec<&str> = s.skip(1).next().unwrap().split(' ').collect();
+   |                             ^^^^^^^^^^^^^^^ help: use `nth` instead: `.nth(1)`
+
+error: aborting due to 7 previous errors
+

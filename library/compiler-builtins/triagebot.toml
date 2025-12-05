@@ -1,0 +1,21 @@
+## See <https://forge.rust-lang.org/triagebot/index.html> for documentation
+## of these features.
+
+# Warns when a PR contains merge commits
+# Documentation at: https://forge.rust-lang.org/triagebot/no-merge.html
+[no-merges]
+exclude_titles = ["Rustc pull update"]
+
+# Canonicalize issue numbers to avoid closing the wrong issue
+# when commits are included in subtrees, as well as warning links in commits.
+# Documentation at: https://forge.rust-lang.org/triagebot/issue-links.html
+[issue-links]
+check-commits = false
+
+# Prevents mentions in commits to avoid users being spammed
+# Documentation at: https://forge.rust-lang.org/triagebot/no-mentions.html
+[no-mentions]
+
+# Enable issue transfers within the org
+# Documentation at: https://forge.rust-lang.org/triagebot/transfer.html
+[transfer]

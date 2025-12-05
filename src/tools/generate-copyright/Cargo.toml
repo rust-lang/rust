@@ -1,0 +1,15 @@
+[package]
+name = "generate-copyright"
+version = "0.1.0"
+edition = "2021"
+description = "Produces a manifest of all the copyrighted materials in the Rust Toolchain"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow = "1.0.65"
+askama = "0.14.0"
+cargo_metadata = "0.21"
+serde = { version = "1.0.147", features = ["derive"] }
+serde_json = "1.0.85"
+thiserror = "1"

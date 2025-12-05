@@ -1,0 +1,37 @@
+error: expected `}`, found `,`
+  --> $DIR/issue-112188.rs:10:17
+   |
+LL |     let Foo { .., } = f;
+   |               --^
+   |               | |
+   |               | expected `}`
+   |               | help: remove this comma
+   |               `..` must be at the end and cannot have a trailing comma
+
+error: expected `}`, found `,`
+  --> $DIR/issue-112188.rs:12:17
+   |
+LL |     let Foo { .., x } = f;
+   |               --^
+   |               | |
+   |               | expected `}`
+   |               `..` must be at the end and cannot have a trailing comma
+   |
+help: move the `..` to the end of the field list
+   |
+LL -     let Foo { .., x } = f;
+LL +     let Foo { x, .. } = f;
+   |
+
+error: expected `}`, found `,`
+  --> $DIR/issue-112188.rs:13:17
+   |
+LL |     let Foo { .., x, .. } = f;
+   |               --^-
+   |               | |
+   |               | expected `}`
+   |               `..` must be at the end and cannot have a trailing comma
+   |               help: remove the starting `..`
+
+error: aborting due to 3 previous errors
+

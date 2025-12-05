@@ -1,0 +1,51 @@
+error[E0107]: missing generics for struct `Vec`
+  --> $DIR/generic-type-less-params-with-defaults.rs:11:12
+   |
+LL |     let _: Vec;
+   |            ^^^ expected at least 1 generic argument
+   |
+note: struct defined here, with at least 1 generic parameter: `T`
+  --> $DIR/generic-type-less-params-with-defaults.rs:5:8
+   |
+LL | struct Vec<T, A = Heap>(
+   |        ^^^ -
+help: add missing generic argument
+   |
+LL |     let _: Vec<T>;
+   |               +++
+
+error[E0107]: missing generics for struct `HashMap`
+  --> $DIR/generic-type-less-params-with-defaults.rs:15:32
+   |
+LL |     let _x = (1..10).collect::<HashMap>();
+   |                                ^^^^^^^ expected at least 2 generic arguments
+   |
+note: struct defined here, with at least 2 generic parameters: `K`, `V`
+  --> $DIR/generic-type-less-params-with-defaults.rs:8:8
+   |
+LL | struct HashMap<K, V, S = ()>(marker::PhantomData<(K,V,S)>);
+   |        ^^^^^^^ -  -
+help: add missing generic arguments
+   |
+LL |     let _x = (1..10).collect::<HashMap<_, _>>();
+   |                                       ++++++
+
+error[E0107]: missing generics for struct `Vec`
+  --> $DIR/generic-type-less-params-with-defaults.rs:21:20
+   |
+LL |             let _: Vec;
+   |                    ^^^ expected at least 1 generic argument
+   |
+note: struct defined here, with at least 1 generic parameter: `T`
+  --> $DIR/generic-type-less-params-with-defaults.rs:5:8
+   |
+LL | struct Vec<T, A = Heap>(
+   |        ^^^ -
+help: add missing generic argument
+   |
+LL |             let _: Vec<T>;
+   |                       +++
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0107`.

@@ -1,0 +1,33 @@
+error[E0308]: mismatched types
+  --> $DIR/never-place-isnt-diverging.rs:4:5
+   |
+LL |   fn make_up_a_value<T>() -> T {
+   |                      - expected this type parameter
+LL | /     unsafe {
+LL | |
+LL | |         let x: *const ! = 0 as _;
+LL | |         &raw const *x;
+...  |
+LL | |     }
+   | |_____^ expected type parameter `T`, found `()`
+   |
+   = note: expected type parameter `T`
+                   found unit type `()`
+
+error[E0308]: mismatched types
+  --> $DIR/never-place-isnt-diverging.rs:17:9
+   |
+LL | fn make_up_a_pointer<T>() -> *const T {
+   |                      -       -------- expected `*const T` because of return type
+   |                      |
+   |                      expected this type parameter
+...
+LL |         &raw const *x
+   |         ^^^^^^^^^^^^^ expected `*const T`, found `*const !`
+   |
+   = note: expected raw pointer `*const T`
+              found raw pointer `*const !`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.
