@@ -707,7 +707,9 @@ pub(crate) unsafe fn llvm_optimize(
         llvm::set_value_name(new_fn, &name);
     }
 
-    if cgcx.target_is_like_gpu && config.offload.contains(&config::Offload::Enable) {
+    if cgcx.target_is_like_gpu
+        && config.offload.iter().any(|o| matches!(o, config::Offload::Device(_)))
+    {
         let cx =
             SimpleCx::new(module.module_llvm.llmod(), module.module_llvm.llcx, cgcx.pointer_size);
         // For now we only support up to 10 kernels named kernel_0 ... kernel_9, a follow-up PR is
@@ -773,36 +775,46 @@ pub(crate) unsafe fn llvm_optimize(
         )
     };
 
-    if cgcx.target_is_like_gpu && config.offload.contains(&config::Offload::Enable) {
-        let lib_bc_c = CString::new("/p/lustre1/drehwald1/prog/offload/r/lib.bc").unwrap();
-        let host_out_c = CString::new("/p/lustre1/drehwald1/prog/offload/r/host.out").unwrap();
-        let out_obj_c = CString::new("/p/lustre1/drehwald1/prog/offload/r/host.o").unwrap();
+    if cgcx.target_is_like_gpu {
+        if let Some(device_path) = config.offload.iter().find_map(|o| {
+            if let config::Offload::Device(path) = o {
+                Some(path) // &PathBuf
+            } else {
+                None
+            }
+        }) {
+            assert!(PathBuf::from(device_path).exists());
+            let lib_bc_c = CString::new(device_path.as_str()).unwrap();
+            //let lib_bc_c = CString::new("/p/lustre1/drehwald1/prog/offload/r/lib.bc").unwrap();
+            let host_out_c = CString::new("/p/lustre1/drehwald1/prog/offload/r/host.out").unwrap();
+            let out_obj_c = CString::new("/p/lustre1/drehwald1/prog/offload/r/host.o").unwrap();
 
-        unsafe {
-            llvm::LLVMRustBundleImages(
-                module.module_llvm.llmod(),
-                module.module_llvm.tm.raw(),
-                host_out_c.as_ptr(),
-            );
-        }
-        unsafe {
-            // 1) Bundle device module into offload image host.out (device TM)
-            let ok = llvm::LLVMRustBundleImages(
-                module.module_llvm.llmod(),
-                module.module_llvm.tm.raw(),
-                host_out_c.as_ptr(),
-            );
-            assert!(ok, "LLVMRustBundleImages (device -> host.out) failed");
+            unsafe {
+                llvm::LLVMRustBundleImages(
+                    module.module_llvm.llmod(),
+                    module.module_llvm.tm.raw(),
+                    host_out_c.as_ptr(),
+                );
+            }
+            unsafe {
+                // 1) Bundle device module into offload image host.out (device TM)
+                let ok = llvm::LLVMRustBundleImages(
+                    module.module_llvm.llmod(),
+                    module.module_llvm.tm.raw(),
+                    host_out_c.as_ptr(),
+                );
+                assert!(ok, "LLVMRustBundleImages (device -> host.out) failed");
 
-            // 2) Finalize host: lib.bc + host.out -> host.offload.o (host TM created in C++)
-            let ok = llvm::LLVMRustFinalizeOffload(
-                lib_bc_c.as_ptr(),
-                host_out_c.as_ptr(),
-                out_obj_c.as_ptr(),
-            );
-            assert!(ok, "LLVMRustFinalizeOffload (host finalize) failed");
+                // 2) Finalize host: lib.bc + host.out -> host.offload.o (host TM created in C++)
+                let ok = llvm::LLVMRustFinalizeOffload(
+                    lib_bc_c.as_ptr(),
+                    host_out_c.as_ptr(),
+                    out_obj_c.as_ptr(),
+                );
+                assert!(ok, "LLVMRustFinalizeOffload (host finalize) failed");
+            }
+            dbg!("done");
         }
-        dbg!("done");
     }
     result.into_result().unwrap_or_else(|()| llvm_err(dcx, LlvmError::RunLlvmPasses))
 }
