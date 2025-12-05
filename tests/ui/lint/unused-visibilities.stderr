@@ -4,6 +4,7 @@ warning: visibility qualifiers have no effect on `const _` declarations
 LL | pub const _: () = {};
    | ^^^ help: remove the qualifier
    |
+   = note: there is no declared name for the qualifier to affect
 note: the lint level is defined here
   --> $DIR/unused-visibilities.rs:4:9
    |
@@ -15,6 +16,8 @@ warning: visibility qualifiers have no effect on `const _` declarations
    |
 LL | pub(self) const _: () = {};
    | ^^^^^^^^^ help: remove the qualifier
+   |
+   = note: there is no declared name for the qualifier to affect
 
 warning: visibility qualifiers have no effect on `const _` declarations
   --> $DIR/unused-visibilities.rs:14:9
@@ -25,6 +28,7 @@ LL |         pub const _: () = {};
 LL | foo!();
    | ------ in this macro invocation
    |
+   = note: there is no declared name for the qualifier to affect
    = note: this warning originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 warning: 3 warnings emitted
