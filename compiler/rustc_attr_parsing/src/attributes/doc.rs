@@ -1,6 +1,3 @@
-// FIXME: to be removed
-#![allow(unused_imports)]
-
 use rustc_ast::ast::{AttrStyle, LitKind, MetaItemLit};
 use rustc_feature::template;
 use rustc_hir::attrs::{
@@ -13,7 +10,6 @@ use thin_vec::ThinVec;
 use super::prelude::{Allow, AllowedTargets, Error, MethodKind, Target};
 use super::{AcceptMapping, AttributeParser};
 use crate::context::{AcceptContext, FinalizeContext, Stage};
-use crate::fluent_generated as fluent;
 use crate::parser::{ArgParser, MetaItemOrLitParser, MetaItemParser, PathParser};
 use crate::session_diagnostics::{
     DocAliasBadChar, DocAliasEmpty, DocAliasMalformed, DocAliasStartEnd, DocAttributeNotAttribute,
@@ -355,6 +351,8 @@ impl DocParser {
 
                 // FIXME: It's errorring when the attribute is passed multiple times on the command
                 // line.
+                // The right fix for this would be to only check this rule if the attribute is
+                // not set on the command line but directly in the code.
                 // if self.attribute.$ident.is_some() {
                 //     cx.duplicate_key(path.span(), path.word_sym().unwrap());
                 //     return;
