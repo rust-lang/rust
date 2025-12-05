@@ -495,7 +495,7 @@ impl LenOutput {
 fn expected_is_empty_sig(len_output: LenOutput, len_self_kind: ImplicitSelfKind) -> String {
     let self_ref = match len_self_kind {
         ImplicitSelfKind::RefImm => "&",
-        ImplicitSelfKind::RefMut => "&mut ",
+        ImplicitSelfKind::RefMut => "&(mut) ",
         _ => "",
     };
     match len_output {
@@ -520,8 +520,12 @@ fn check_is_empty_sig<'tcx>(
         && len_output.matches_is_empty_output(cx, *is_empty_output)
     {
         match (is_empty_self_arg.kind(), len_self_kind) {
+            // if `len` takes `&self`, `is_empty` should do so as well
             (ty::Ref(_, _, Mutability::Not), ImplicitSelfKind::RefImm)
-            | (ty::Ref(_, _, Mutability::Mut), ImplicitSelfKind::RefMut) => true,
+            // if `len` takes `&mut self`, `is_empty` may take that _or_ `&self` (#16190)
+            | (ty::Ref(_, _, Mutability::Mut | Mutability::Not), ImplicitSelfKind::RefMut) => true,
+            // if len takes `self`, `is_empty` should do so as well
+            // XXX: we might want to relax this to allow `&self` and `&mut self`
             (_, ImplicitSelfKind::Imm | ImplicitSelfKind::Mut) if !is_empty_self_arg.is_ref() => true,
             _ => false,
         }
