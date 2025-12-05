@@ -1921,7 +1921,6 @@ pub enum PatExprKind<'hir> {
         // once instead of matching on unop neg expressions everywhere.
         negated: bool,
     },
-    ConstBlock(ConstBlock),
     /// A path pattern for a unit struct/variant or a (maybe-associated) constant.
     Path(QPath<'hir>),
 }

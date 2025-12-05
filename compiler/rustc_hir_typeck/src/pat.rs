@@ -925,9 +925,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 ty
             }
-            rustc_hir::PatExprKind::ConstBlock(c) => {
-                self.check_expr_const_block(c, Expectation::NoExpectation)
-            }
             rustc_hir::PatExprKind::Path(qpath) => {
                 let (res, opt_ty, segments) =
                     self.resolve_ty_and_res_fully_qualified_call(qpath, lt.hir_id, lt.span);
