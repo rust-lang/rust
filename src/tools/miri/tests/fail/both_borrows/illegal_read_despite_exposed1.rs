@@ -1,4 +1,6 @@
+//@revisions: stack tree
 //@compile-flags: -Zmiri-permissive-provenance
+//@[tree]compile-flags: -Zmiri-tree-borrows
 
 fn main() {
     unsafe {
@@ -12,6 +14,8 @@ fn main() {
         // And we test that it has uniqueness by doing a conflicting write.
         *exposed_ptr = 0;
         // Stack: Unknown(<N)
-        let _val = *root2; //~ ERROR: /read access .* tag does not exist in the borrow stack/
+        let _val = *root2;
+        //~[stack]^ ERROR: /read access .* tag does not exist in the borrow stack/
+        //~[tree]| ERROR: /read access through .* is forbidden/
     }
 }
