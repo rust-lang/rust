@@ -3270,7 +3270,7 @@ impl<T: ?Sized, A: Allocator> Weak<T, A> {
         // Acquire is necessary for the success case to synchronise with `Arc::new_cyclic`, when the inner
         // value can be initialized after `Weak` references have already been created. In that case, we
         // expect to observe the fully initialized value.
-        if self.inner()?.strong.fetch_update(Acquire, Relaxed, checked_increment).is_ok() {
+        if self.inner()?.strong.try_update(Acquire, Relaxed, checked_increment).is_ok() {
             // SAFETY: pointer is not null, verified in checked_increment
             unsafe { Some(Arc::from_inner_in(self.ptr, self.alloc.clone())) }
         } else {
