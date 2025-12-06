@@ -2837,12 +2837,20 @@ slice_interners!(
 );
 
 impl<'tcx> TyCtxt<'tcx> {
-    /// Given a `fn` type, returns an equivalent `unsafe fn` type;
+    /// Given a `fn` sig, returns an equivalent `unsafe fn` type;
     /// that is, a `fn` type that is equivalent in every way for being
     /// unsafe.
     pub fn safe_to_unsafe_fn_ty(self, sig: PolyFnSig<'tcx>) -> Ty<'tcx> {
         assert!(sig.safety().is_safe());
         Ty::new_fn_ptr(self, sig.map_bound(|sig| ty::FnSig { safety: hir::Safety::Unsafe, ..sig }))
+    }
+
+    /// Given a `fn` sig, returns an equivalent `unsafe fn` sig;
+    /// that is, a `fn` sig that is equivalent in every way for being
+    /// unsafe.
+    pub fn safe_to_unsafe_sig(self, sig: PolyFnSig<'tcx>) -> PolyFnSig<'tcx> {
+        assert!(sig.safety().is_safe());
+        sig.map_bound(|sig| ty::FnSig { safety: hir::Safety::Unsafe, ..sig })
     }
 
     /// Given the def_id of a Trait `trait_def_id` and the name of an associated item `assoc_name`

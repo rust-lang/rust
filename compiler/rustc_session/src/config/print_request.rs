@@ -22,6 +22,7 @@ pub struct PrintRequest {
 pub enum PrintKind {
     // tidy-alphabetical-start
     AllTargetSpecsJson,
+    BackendHasZstd,
     CallingConventions,
     Cfg,
     CheckCfg,
@@ -59,6 +60,7 @@ impl PrintKind {
         match self {
             // tidy-alphabetical-start
             AllTargetSpecsJson => "all-target-specs-json",
+            BackendHasZstd => "backend-has-zstd",
             CallingConventions => "calling-conventions",
             Cfg => "cfg",
             CheckCfg => "check-cfg",
@@ -111,6 +113,7 @@ impl PrintKind {
 
             // Unstable values:
             AllTargetSpecsJson => false,
+            BackendHasZstd => false, // (perma-unstable, for use by compiletest)
             CheckCfg => false,
             CrateRootLintLevels => false,
             SupportedCrateTypes => false,

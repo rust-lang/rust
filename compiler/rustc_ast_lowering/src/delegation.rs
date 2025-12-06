@@ -96,7 +96,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let generics = self.lower_delegation_generics(span);
                 DelegationResults { body_id, sig, ident, generics }
             }
-            Err(err) => self.generate_delegation_error(err, span),
+            Err(err) => self.generate_delegation_error(err, span, delegation),
         }
     }
 
@@ -404,6 +404,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         &mut self,
         err: ErrorGuaranteed,
         span: Span,
+        delegation: &Delegation,
     ) -> DelegationResults<'hir> {
         let generics = self.lower_delegation_generics(span);
 
@@ -418,8 +419,41 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let header = self.generate_header_error();
         let sig = hir::FnSig { decl, header, span };
 
-        let ident = Ident::dummy();
-        let body_id = self.lower_body(|this| (&[], this.mk_expr(hir::ExprKind::Err(err), span)));
+        let ident = self.lower_ident(delegation.ident);
+
+        let body_id = self.lower_body(|this| {
+            let body_expr = match delegation.body.as_ref() {
+                Some(box block) => {
+                    // Generates a block when we failed to resolve delegation, where a target expression is its only statement,
+                    // thus there will be no ICEs on further stages of analysis (see #144594)
+
+                    // As we generate a void function we want to convert target expression to statement to avoid additional
+                    // errors, such as mismatched return type
+                    let stmts = this.arena.alloc_from_iter([hir::Stmt {
+                        hir_id: this.next_id(),
+                        kind: rustc_hir::StmtKind::Semi(
+                            this.arena.alloc(this.lower_target_expr(block)),
+                        ),
+                        span,
+                    }]);
+
+                    let block = this.arena.alloc(hir::Block {
+                        stmts,
+                        expr: None,
+                        hir_id: this.next_id(),
+                        rules: hir::BlockCheckMode::DefaultBlock,
+                        span,
+                        targeted_by_break: false,
+                    });
+
+                    hir::ExprKind::Block(block, None)
+                }
+                None => hir::ExprKind::Err(err),
+            };
+
+            (&[], this.mk_expr(body_expr, span))
+        });
+
         DelegationResults { ident, generics, body_id, sig }
     }
 

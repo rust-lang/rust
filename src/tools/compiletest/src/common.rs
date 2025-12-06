@@ -1096,7 +1096,11 @@ fn supported_crate_types(config: &Config) -> HashSet<String> {
     crate_types
 }
 
-fn query_rustc_output(config: &Config, args: &[&str], envs: HashMap<String, String>) -> String {
+pub(crate) fn query_rustc_output(
+    config: &Config,
+    args: &[&str],
+    envs: HashMap<String, String>,
+) -> String {
     let query_rustc_path = config.query_rustc_path.as_deref().unwrap_or(&config.rustc_path);
 
     let mut command = Command::new(query_rustc_path);

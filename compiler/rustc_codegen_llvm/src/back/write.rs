@@ -75,7 +75,7 @@ fn write_output_file<'ll>(
     let result = unsafe {
         let pm = llvm::LLVMCreatePassManager();
         llvm::LLVMAddAnalysisPasses(target, pm);
-        llvm::LLVMRustAddLibraryInfo(pm, m, no_builtins);
+        llvm::LLVMRustAddLibraryInfo(target, pm, m, no_builtins);
         llvm::LLVMRustWriteOutputFile(
             target,
             pm,
