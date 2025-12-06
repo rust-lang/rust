@@ -1019,7 +1019,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             ResolutionError::ParamInTyOfConstParam { name } => {
                 self.dcx().create_err(errs::ParamInTyOfConstParam { span, name })
             }
-            ResolutionError::ParamInNonTrivialAnonConst { name, param_kind: is_type } => {
+            ResolutionError::ParamInNonTrivialAnonConst { name, param_kind: is_type, place } => {
                 self.dcx().create_err(errs::ParamInNonTrivialAnonConst {
                     span,
                     name,
@@ -1029,6 +1029,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         .sess
                         .is_nightly_build()
                         .then_some(errs::ParamInNonTrivialAnonConstHelp),
+                    place: place.unwrap(),
                 })
             }
             ResolutionError::ParamInEnumDiscriminant { name, param_kind: is_type } => self
