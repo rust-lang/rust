@@ -188,6 +188,6 @@ known to be uninitialized) to run these checks.
 
 [RFC 320]: https://rust-lang.github.io/rfcs/0320-nonzeroing-dynamic-drop.html
 [reference-drop]: https://doc.rust-lang.org/reference/destructors.html
-[drops]: https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc_mir_dataflow/src/elaborate_drops.rs
+[drops]: https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc_mir_transform/src/elaborate_drops.rs
 [drops-shim]: https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc_mir_transform/src/shim.rs
 [drops-transform]: https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc_mir_transform/src/elaborate_drops.rs
