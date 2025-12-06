@@ -290,7 +290,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             };
             (self.arenas.new_res_binding(res, vis, span, expansion), ambig_kind)
         });
+
         // Record primary definitions.
+        let define_extern = |ns| {
+            self.define_extern(parent, ident, ns, child_index, res, vis, span, expansion, ambig)
+        };
         match res {
             Res::Def(
                 DefKind::Mod
@@ -307,17 +311,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 _,
             )
             | Res::PrimTy(..)
-            | Res::ToolMod => self.define_extern(
-                parent,
-                ident,
-                TypeNS,
-                child_index,
-                res,
-                vis,
-                span,
-                expansion,
-                ambig,
-            ),
+            | Res::ToolMod => define_extern(TypeNS),
             Res::Def(
                 DefKind::Fn
                 | DefKind::AssocFn
@@ -326,28 +320,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 | DefKind::AssocConst
                 | DefKind::Ctor(..),
                 _,
-            ) => self.define_extern(
-                parent,
-                ident,
-                ValueNS,
-                child_index,
-                res,
-                vis,
-                span,
-                expansion,
-                ambig,
-            ),
-            Res::Def(DefKind::Macro(..), _) | Res::NonMacroAttr(..) => self.define_extern(
-                parent,
-                ident,
-                MacroNS,
-                child_index,
-                res,
-                vis,
-                span,
-                expansion,
-                ambig,
-            ),
+            ) => define_extern(ValueNS),
+            Res::Def(DefKind::Macro(..), _) | Res::NonMacroAttr(..) => define_extern(MacroNS),
             Res::Def(
                 DefKind::TyParam
                 | DefKind::ConstParam
