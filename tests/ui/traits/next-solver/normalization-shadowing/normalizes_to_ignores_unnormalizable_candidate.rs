@@ -1,3 +1,4 @@
+//@ check-pass
 //@ compile-flags: -Znext-solver
 
 // Checks whether the new solver is smart enough to infer `?0 = U` when solving:
@@ -5,7 +6,9 @@
 // with `normalizes-to(<Vec<U> as Trait>::Assoc, u8)` in the paramenv even when
 // there is a separate `Vec<T>: Trait` bound  in the paramenv.
 //
-// We currently intentionally do not guide inference this way.
+// Since we skip proving the trait goal in normalizes-to goal now, the normalizes-to
+// goal can successfully resolve the infer var via param env.
+// This causes the stalled ambiguous trait goal to succeed as well.
 
 trait Trait {
     type Assoc;
@@ -23,7 +26,6 @@ where
     Vec<U>: Trait<Assoc = u8>,
 {
     foo(unconstrained())
-    //~^ ERROR type annotations needed
 }
 
 fn main() {}
