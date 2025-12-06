@@ -218,7 +218,7 @@ use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::{cmp, fmt};
 
-use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
+use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::owned_slice::{OwnedSlice, slice_owned};
 use rustc_data_structures::svh::Svh;
@@ -401,7 +401,7 @@ impl<'a> CrateLocator<'a> {
 
         let mut candidates: FxIndexMap<
             _,
-            (FxIndexMap<_, _>, FxIndexMap<_, _>, FxIndexMap<_, _>, FxIndexMap<_, _>),
+            (FxIndexSet<_>, FxIndexSet<_>, FxIndexSet<_>, FxIndexSet<_>),
         > = Default::default();
 
         // First, find all possible candidate rlibs and dylibs purely based on
@@ -460,10 +460,10 @@ impl<'a> CrateLocator<'a> {
                         // filesystem code should not care, but this is nicer for diagnostics.
                         let path = spf.path.to_path_buf();
                         match kind {
-                            CrateFlavor::Rlib => rlibs.insert(path, search_path.kind),
-                            CrateFlavor::Rmeta => rmetas.insert(path, search_path.kind),
-                            CrateFlavor::Dylib => dylibs.insert(path, search_path.kind),
-                            CrateFlavor::SDylib => interfaces.insert(path, search_path.kind),
+                            CrateFlavor::Rlib => rlibs.insert(path),
+                            CrateFlavor::Rmeta => rmetas.insert(path),
+                            CrateFlavor::Dylib => dylibs.insert(path),
+                            CrateFlavor::SDylib => interfaces.insert(path),
                         };
                     }
                 }
@@ -524,10 +524,10 @@ impl<'a> CrateLocator<'a> {
     fn extract_lib(
         &self,
         crate_rejections: &mut CrateRejections,
-        rlibs: FxIndexMap<PathBuf, PathKind>,
-        rmetas: FxIndexMap<PathBuf, PathKind>,
-        dylibs: FxIndexMap<PathBuf, PathKind>,
-        interfaces: FxIndexMap<PathBuf, PathKind>,
+        rlibs: FxIndexSet<PathBuf>,
+        rmetas: FxIndexSet<PathBuf>,
+        dylibs: FxIndexSet<PathBuf>,
+        interfaces: FxIndexSet<PathBuf>,
     ) -> Result<Option<(Svh, Library)>, CrateError> {
         let mut slot = None;
         // Order here matters, rmeta should come first.
@@ -575,10 +575,10 @@ impl<'a> CrateLocator<'a> {
     fn extract_one(
         &self,
         crate_rejections: &mut CrateRejections,
-        m: FxIndexMap<PathBuf, PathKind>,
+        m: FxIndexSet<PathBuf>,
         flavor: CrateFlavor,
         slot: &mut Option<(Svh, MetadataBlob, PathBuf, CrateFlavor)>,
-    ) -> Result<Option<(PathBuf, PathKind)>, CrateError> {
+    ) -> Result<Option<PathBuf>, CrateError> {
         // If we are producing an rlib, and we've already loaded metadata, then
         // we should not attempt to discover further crate sources (unless we're
         // locating a proc macro; exact logic is in needs_crate_flavor). This means
@@ -594,9 +594,9 @@ impl<'a> CrateLocator<'a> {
             }
         }
 
-        let mut ret: Option<(PathBuf, PathKind)> = None;
+        let mut ret: Option<PathBuf> = None;
         let mut err_data: Option<Vec<PathBuf>> = None;
-        for (lib, kind) in m {
+        for lib in m {
             info!("{} reading metadata from: {}", flavor, lib.display());
             if flavor == CrateFlavor::Rmeta && lib.metadata().is_ok_and(|m| m.len() == 0) {
                 // Empty files will cause get_metadata_section to fail. Rmeta
@@ -640,7 +640,7 @@ impl<'a> CrateLocator<'a> {
                     info!("no metadata found: {}", err);
                     // Metadata was loaded from interface file earlier.
                     if let Some((.., CrateFlavor::SDylib)) = slot {
-                        ret = Some((lib, kind));
+                        ret = Some(lib);
                         continue;
                     }
                     // The file was present and created by the same compiler version, but we
@@ -689,7 +689,7 @@ impl<'a> CrateLocator<'a> {
             // As a result, we favor the sysroot crate here. Note that the
             // candidates are all canonicalized, so we canonicalize the sysroot
             // as well.
-            if let Some((prev, _)) = &ret {
+            if let Some(prev) = &ret {
                 let sysroot = self.sysroot;
                 let sysroot = try_canonicalize(sysroot).unwrap_or_else(|_| sysroot.to_path_buf());
                 if prev.starts_with(&sysroot) {
@@ -714,7 +714,7 @@ impl<'a> CrateLocator<'a> {
             } else {
                 *slot = Some((hash, metadata, lib.clone(), flavor));
             }
-            ret = Some((lib, kind));
+            ret = Some(lib);
         }
 
         if let Some(candidates) = err_data {
@@ -774,10 +774,10 @@ impl<'a> CrateLocator<'a> {
         // First, filter out all libraries that look suspicious. We only accept
         // files which actually exist that have the correct naming scheme for
         // rlibs/dylibs.
-        let mut rlibs = FxIndexMap::default();
-        let mut rmetas = FxIndexMap::default();
-        let mut dylibs = FxIndexMap::default();
-        let mut sdylib_interfaces = FxIndexMap::default();
+        let mut rlibs = FxIndexSet::default();
+        let mut rmetas = FxIndexSet::default();
+        let mut dylibs = FxIndexSet::default();
+        let mut sdylib_interfaces = FxIndexSet::default();
         for loc in &self.exact_paths {
             let loc_canon = loc.canonicalized();
             let loc_orig = loc.original();
@@ -798,21 +798,21 @@ impl<'a> CrateLocator<'a> {
             };
             if file.starts_with("lib") {
                 if file.ends_with(".rlib") {
-                    rlibs.insert(loc_canon.clone(), PathKind::ExternFlag);
+                    rlibs.insert(loc_canon.clone());
                     continue;
                 }
                 if file.ends_with(".rmeta") {
-                    rmetas.insert(loc_canon.clone(), PathKind::ExternFlag);
+                    rmetas.insert(loc_canon.clone());
                     continue;
                 }
                 if file.ends_with(".rs") {
-                    sdylib_interfaces.insert(loc_canon.clone(), PathKind::ExternFlag);
+                    sdylib_interfaces.insert(loc_canon.clone());
                 }
             }
             let dll_prefix = self.target.dll_prefix.as_ref();
             let dll_suffix = self.target.dll_suffix.as_ref();
             if file.starts_with(dll_prefix) && file.ends_with(dll_suffix) {
-                dylibs.insert(loc_canon.clone(), PathKind::ExternFlag);
+                dylibs.insert(loc_canon.clone());
                 continue;
             }
             crate_rejections
