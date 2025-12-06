@@ -21,7 +21,7 @@
 
 // tidy-alphabetical-start
 #![allow(internal_features)]
-#![feature(array_windows)]
+#![cfg_attr(bootstrap, feature(array_windows))]
 #![feature(assert_matches)]
 #![feature(box_patterns)]
 #![feature(if_let_guard)]

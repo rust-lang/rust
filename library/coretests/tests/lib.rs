@@ -5,7 +5,6 @@
 #![feature(array_ptr_get)]
 #![feature(array_try_from_fn)]
 #![feature(array_try_map)]
-#![feature(array_windows)]
 #![feature(ascii_char)]
 #![feature(ascii_char_variants)]
 #![feature(async_iter_from_iter)]
