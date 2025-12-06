@@ -1,3 +1,7 @@
+// Note: This file is publicly exported as various modules to reduce
+// duplication. Currently it is only `std::os::motor::ffi`, so the documentation
+// is specific to Motor OS.
+
 //! Motor OS-specific extensions to primitives in the [`std::ffi`] module.
 #![unstable(feature = "motor_ext", issue = "147456")]
 
