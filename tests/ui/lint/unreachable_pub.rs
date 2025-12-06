@@ -113,4 +113,6 @@ fn main() {
     let _ = private_mod::crate_in_private::CARBON;
     let _ = private_mod::pub_in_private::NITROGEN;
     let _ = unsafe { private_mod::catalyze() };
+    todo!();
+    let _ = 1;
 }
