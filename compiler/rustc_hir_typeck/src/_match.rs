@@ -173,7 +173,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // We won't diverge unless the scrutinee or all arms diverge.
         self.diverges.set(scrut_diverges | all_arms_diverge);
 
-        coercion.complete(self)
+        let ty = coercion.complete(self);
+        self.register_wf_obligation(ty.into(), expr.span, ObligationCauseCode::WellFormed(None));
+        ty
     }
 
     fn explain_never_type_coerced_to_unit(
