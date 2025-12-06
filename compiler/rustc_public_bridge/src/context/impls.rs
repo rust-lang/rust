@@ -10,7 +10,9 @@ use rustc_hir::{Attribute, LangItem};
 use rustc_middle::mir::interpret::{AllocId, ConstAllocation, ErrorHandled, GlobalAlloc, Scalar};
 use rustc_middle::mir::{BinOp, Body, Const as MirConst, ConstValue, UnOp};
 use rustc_middle::ty::layout::{FnAbiOf, LayoutOf};
-use rustc_middle::ty::print::{with_forced_trimmed_paths, with_no_trimmed_paths};
+use rustc_middle::ty::print::{
+    with_forced_trimmed_paths, with_no_trimmed_paths, with_resolve_crate_name,
+};
 use rustc_middle::ty::util::Discr;
 use rustc_middle::ty::{
     AdtDef, AdtKind, AssocItem, Binder, ClosureKind, CoroutineArgsExt, EarlyBinder,
@@ -264,7 +266,8 @@ impl<'tcx, B: Bridge> CompilerCtxt<'tcx, B> {
         if trimmed {
             with_forced_trimmed_paths!(self.tcx.def_path_str(def_id))
         } else {
-            with_no_trimmed_paths!(self.tcx.def_path_str(def_id))
+            // For local definitions, we need to prepend with crate name.
+            with_resolve_crate_name!(with_no_trimmed_paths!(self.tcx.def_path_str(def_id)))
         }
     }
 
@@ -724,9 +727,9 @@ impl<'tcx, B: Bridge> CompilerCtxt<'tcx, B> {
                 self.tcx.def_path_str_with_args(instance.def_id(), instance.args)
             )
         } else {
-            with_no_trimmed_paths!(
+            with_resolve_crate_name!(with_no_trimmed_paths!(
                 self.tcx.def_path_str_with_args(instance.def_id(), instance.args)
-            )
+            ))
         }
     }
 
