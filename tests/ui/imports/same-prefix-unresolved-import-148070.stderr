@@ -1,0 +1,43 @@
+error[E0432]: unresolved import `stat`
+  --> $DIR/same-prefix-unresolved-import-148070.rs:3:5
+   |
+LL | use stat;
+   |     ^^^^ no `stat` in the root
+   |
+help: consider importing this struct instead
+   |
+LL | use std::os::linux::raw::stat;
+   |     +++++++++++++++++++++
+
+error[E0432]: unresolved import `str`
+  --> $DIR/same-prefix-unresolved-import-148070.rs:4:5
+   |
+LL | use str;
+   |     ^^^ no `str` in the root
+   |
+help: a similar name exists in the module
+   |
+LL - use str;
+LL + use std;
+   |
+help: consider importing one of these items instead
+   |
+LL | use std::primitive::str;
+   |     ++++++++++++++++
+LL | use std::str;
+   |     +++++
+
+error[E0432]: unresolved import `sync`
+  --> $DIR/same-prefix-unresolved-import-148070.rs:5:5
+   |
+LL | use sync;
+   |     ^^^^ no `sync` in the root
+   |
+help: consider importing this module instead
+   |
+LL | use std::sync;
+   |     +++++
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0432`.
