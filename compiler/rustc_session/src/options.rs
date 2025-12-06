@@ -1459,8 +1459,21 @@ pub mod parse {
         let mut v: Vec<&str> = v.split(",").collect();
         v.sort_unstable();
         for &val in v.iter() {
-            let variant = match val {
-                "Enable" => Offload::Enable,
+            // Split each entry on '=' if it has an argument
+            let (key, arg) = match val.split_once('=') {
+                Some((k, a)) => (k, Some(a)),
+                None => (val, None),
+            };
+
+            let variant = match key {
+                "Host" => Offload::Host,
+                "Device" => {
+                    if let Some(p) = arg {
+                        Offload::Device(p.to_string())
+                    } else {
+                        return false;
+                    }
+                }
                 _ => {
                     // FIXME(ZuseZ4): print an error saying which value is not recognized
                     return false;

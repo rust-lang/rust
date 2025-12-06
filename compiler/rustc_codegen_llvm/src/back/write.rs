@@ -707,7 +707,9 @@ pub(crate) unsafe fn llvm_optimize(
         llvm::set_value_name(new_fn, &name);
     }
 
-    if cgcx.target_is_like_gpu && config.offload.contains(&config::Offload::Enable) {
+    if cgcx.target_is_like_gpu
+        && config.offload.iter().any(|o| matches!(o, config::Offload::Device(_)))
+    {
         let cx =
             SimpleCx::new(module.module_llvm.llmod(), module.module_llvm.llcx, cgcx.pointer_size);
         // For now we only support up to 10 kernels named kernel_0 ... kernel_9, a follow-up PR is
@@ -773,12 +775,97 @@ pub(crate) unsafe fn llvm_optimize(
         )
     };
 
-    if cgcx.target_is_like_gpu && config.offload.contains(&config::Offload::Enable) {
-        unsafe {
-            llvm::LLVMRustBundleImages(module.module_llvm.llmod(), module.module_llvm.tm.raw());
+    if cgcx.target_is_like_gpu {
+        if let Some(host_path) = config
+            .offload
+            .iter()
+            .find_map(|o| if let config::Offload::Device(path) = o { Some(path) } else { None })
+        {
+            let host_pathbuf = PathBuf::from(host_path);
+            if host_pathbuf.is_relative() {
+                panic!("Absolute path is needed");
+            }
+            assert!(host_pathbuf.exists());
+            let host_dir = host_pathbuf.parent().unwrap();
+            let lib_bc_c = path_to_c_string(host_pathbuf.as_path());
+            //let lib_bc_c = CString::new(host_path.as_str()).unwrap();
+            let host_out = host_dir.join("host.out");
+            let out_obj = host_dir.join("host.o");
+            let host_out_c = path_to_c_string(host_out.as_path());
+            let out_obj_c = path_to_c_string(out_obj.as_path());
+            //let s = host_out.to_str().expect("path is not valid UTF-8");
+            //let g = out_obj.to_str().expect("path is not valid UTF-8");
+            //let host_out_c = CString::new(s).unwrap();
+            //let out_obj_c = CString::new(g).unwrap();
+
+            unsafe {
+                // 1) Bundle device module into offload image host.out (device TM)
+                let ok = llvm::LLVMRustBundleImages(
+                    module.module_llvm.llmod(),
+                    module.module_llvm.tm.raw(),
+                    host_out_c.as_ptr(),
+                );
+                assert!(ok, "LLVMRustBundleImages (device -> host.out) failed");
+                if !host_out.exists() {
+                    dbg!("{:?} does not exist!", host_out);
+                    panic!("BundleImages failed!");
+                }
+
+                // 2) Finalize host: lib.bc + host.out -> host.offload.o (host TM created in C++)
+                let llmod = llvm::LLVMRustFinalizeOffload(
+                    lib_bc_c.as_ptr(),
+                    host_out_c.as_ptr(),
+                    out_obj_c.as_ptr(),
+                );
+                let target: OwnedTargetMachine = OwnedTargetMachine::new();
+                // pub(crate) fn new(
+                //     triple: &CStr,
+                //     cpu: &CStr,
+                //     features: &CStr,
+                //     abi: &CStr,
+                //     model: llvm::CodeModel,
+                //     reloc: llvm::RelocModel,
+                //     level: llvm::CodeGenOptLevel,
+                //     float_abi: llvm::FloatAbi,
+                //     function_sections: bool,
+                //     data_sections: bool,
+                //     unique_section_names: bool,
+                //     trap_unreachable: bool,
+                //     singlethread: bool,
+                //     verbose_asm: bool,
+                //     emit_stack_size_section: bool,
+                //     relax_elf_relocations: bool,
+                //     use_init_array: bool,
+                //     split_dwarf_file: &CStr,
+                //     output_obj_file: &CStr,
+                //     debug_info_compression: llvm::CompressionKind,
+                //     use_emulated_tls: bool,
+                //     use_wasm_eh: bool,
+                // TODO: write llmod to file out_obj_c
+                let pm = llvm::LLVMCreatePassManager();
+                llvm::LLVMAddAnalysisPasses(target.raw(), pm);
+                llvm::LLVMRustAddLibraryInfo(pm, llmod, true);
+                let ok = llvm::LLVMRustWriteOutputFile(
+                    target.raw(),
+                    pm,
+                    llmod,
+                    out_obj_c.as_ptr(),
+                    std::ptr::null(),
+                    llvm::FileType::ObjectFile,
+                    true,
+                );
+                assert!(ok, "LLVMRustFinalizeOffload or write to file (host finalize) failed");
+                if !out_obj.exists() {
+                    dbg!("{:?} does not exist!", out_obj);
+                    panic!("FinalizeOffload failed!");
+                }
+            }
+            if !cgcx.save_temps {
+                let _ = std::fs::remove_file(PathBuf::from(host_out_c.into_string().unwrap()));
+            }
+            dbg!("done");
         }
     }
-
     result.into_result().unwrap_or_else(|()| llvm_err(dcx, LlvmError::RunLlvmPasses))
 }
 
