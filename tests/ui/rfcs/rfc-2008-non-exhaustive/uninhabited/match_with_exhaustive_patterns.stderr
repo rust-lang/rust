@@ -1,11 +1,11 @@
 error[E0004]: non-exhaustive patterns: type `UninhabitedEnum` is non-empty
-  --> $DIR/match_with_exhaustive_patterns.rs:17:11
+  --> $DIR/match_with_exhaustive_patterns.rs:19:11
    |
 LL |     match x {}
    |           ^
    |
 note: `UninhabitedEnum` defined here
-  --> $DIR/auxiliary/uninhabited.rs:5:1
+  --> $DIR/auxiliary/uninhabited.rs:7:1
    |
 LL | pub enum UninhabitedEnum {
    | ^^^^^^^^^^^^^^^^^^^^^^^^

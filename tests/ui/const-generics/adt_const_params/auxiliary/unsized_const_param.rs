@@ -1,3 +1,5 @@
+#![allow(unconstructable_pub_struct)]
+
 #![feature(adt_const_params, unsized_const_params)]
 
 #[derive(std::marker::ConstParamTy, Eq, PartialEq)]

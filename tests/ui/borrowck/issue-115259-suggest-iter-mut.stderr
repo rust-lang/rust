@@ -1,5 +1,5 @@
 error[E0596]: cannot borrow `**layer` as mutable, as it is behind a `&` reference
-  --> $DIR/issue-115259-suggest-iter-mut.rs:15:65
+  --> $DIR/issue-115259-suggest-iter-mut.rs:17:65
    |
 LL |         self.layers.iter().fold(0, |result, mut layer| result + layer.process())
    |                                                                 ^^^^^ `layer` is a `&` reference, so it cannot be borrowed as mutable
