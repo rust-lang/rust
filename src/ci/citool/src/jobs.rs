@@ -349,6 +349,15 @@ fn calculate_jobs(
                 }
             }
 
+            // Special env var to unconditionally enable the
+            // `tests/run-make/version-verbose-commit-hash` test under CI environments. This is
+            // specifically to bypass bootstrap to guard against bugs in bootstrap's git hash
+            // availability logic.
+            env.insert(
+                "RUSTC_TEST_GIT_HASH".to_string(),
+                serde_json::value::Value::Number(1.into()),
+            );
+
             GithubActionsJob {
                 name: job.name,
                 full_name,
