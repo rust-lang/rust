@@ -745,6 +745,59 @@ impl<T> Vec<T> {
         unsafe { Self::from_parts_in(ptr, length, capacity, Global) }
     }
 
+    /// Creates a `Vec<T>` where each element is produced by calling `f` with
+    /// that element's index while walking forward through the `Vec<T>`.
+    ///
+    /// This is essentially the same as writing
+    ///
+    /// ```text
+    /// vec![f(0), f(1), f(2), …, f(length - 2), f(length - 1)]
+    /// ```
+    /// and is similar to `(0..i).map(f)`, just for `Vec<T>`s not iterators.
+    ///
+    /// If `length == 0`, this produces an empty `Vec<T>` without ever calling `f`.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// #![feature(vec_from_fn)]
+    ///
+    /// let vec = Vec::from_fn(5, |i| i);
+    ///
+    /// // indexes are:  0  1  2  3  4
+    /// assert_eq!(vec, [0, 1, 2, 3, 4]);
+    ///
+    /// let vec2 = Vec::from_fn(8, |i| i * 2);
+    ///
+    /// // indexes are:   0  1  2  3  4  5   6   7
+    /// assert_eq!(vec2, [0, 2, 4, 6, 8, 10, 12, 14]);
+    ///
+    /// let bool_vec = Vec::from_fn(5, |i| i % 2 == 0);
+    ///
+    /// // indexes are:       0     1      2     3      4
+    /// assert_eq!(bool_vec, [true, false, true, false, true]);
+    /// ```
+    ///
+    /// The `Vec<T>` is generated in ascending index order, starting from the front
+    /// and going towards the back, so you can use closures with mutable state:
+    /// ```
+    /// #![feature(vec_from_fn)]
+    ///
+    /// let mut state = 1;
+    /// let a = Vec::from_fn(6, |_| { let x = state; state *= 2; x });
+    ///
+    /// assert_eq!(a, [1, 2, 4, 8, 16, 32]);
+    /// ```
+    #[cfg(not(no_global_oom_handling))]
+    #[inline]
+    #[unstable(feature = "vec_from_fn", reason = "new API", issue = "149698")]
+    pub fn from_fn<F>(length: usize, f: F) -> Self
+    where
+        F: FnMut(usize) -> T,
+    {
+        (0..length).map(f).collect()
+    }
+
     /// Decomposes a `Vec<T>` into its raw components: `(pointer, length, capacity)`.
     ///
     /// Returns the raw pointer to the underlying data, the length of
