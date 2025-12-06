@@ -979,7 +979,7 @@ lint_unused_op = unused {$op} that must be used
 lint_unused_result = unused result of type `{$ty}`
 
 lint_unused_visibilities = visibility qualifiers have no effect on `const _` declarations
-    .note = there is no declared name for the qualifier to affect
+    .note = `const _` does not declare a name, so there is nothing for the qualifier to apply to
     .suggestion = remove the qualifier
 
 lint_use_let_underscore_ignore_suggestion = use `let _ = ...` to ignore the expression or result
