@@ -1113,6 +1113,19 @@ class RustBuild(object):
         else:
             env["RUSTFLAGS"] = "-Zallow-features="
 
+        if not os.path.isfile(self.cargo()):
+            raise Exception("no cargo executable found at `{}`".format(self.cargo()))
+        args = [
+            self.cargo(),
+            "build",
+            "--jobs=" + self.jobs,
+            "--manifest-path",
+            os.path.join(self.rust_root, "src/bootstrap/Cargo.toml"),
+            "-Zroot-dir=" + self.rust_root,
+        ]
+        # verbose cargo output is very noisy, so only enable it with -vv
+        args.extend("--verbose" for _ in range(self.verbose - 1))
+
         target_features = []
         if self.get_toml("crt-static", build_section) == "true":
             target_features += ["+crt-static"]
@@ -1131,27 +1144,14 @@ class RustBuild(object):
         else:
             deny_warnings = self.warnings == "deny"
         if deny_warnings:
-            env["RUSTFLAGS"] += " -Dwarnings"
+            args += ["-Zwarnings"]
+            env["CARGO_BUILD_WARNINGS"] = "deny"
 
         # Add RUSTFLAGS_BOOTSTRAP to RUSTFLAGS for bootstrap compilation.
         # Note that RUSTFLAGS_BOOTSTRAP should always be added to the end of
-        # RUSTFLAGS to be actually effective (e.g., if we have `-Dwarnings` in
-        # RUSTFLAGS, passing `-Awarnings` from RUSTFLAGS_BOOTSTRAP should override it).
+        # RUSTFLAGS, since that causes RUSTFLAGS_BOOTSTRAP to override RUSTFLAGS.
         if "RUSTFLAGS_BOOTSTRAP" in env:
             env["RUSTFLAGS"] += " " + env["RUSTFLAGS_BOOTSTRAP"]
-
-        if not os.path.isfile(self.cargo()):
-            raise Exception("no cargo executable found at `{}`".format(self.cargo()))
-        args = [
-            self.cargo(),
-            "build",
-            "--jobs=" + self.jobs,
-            "--manifest-path",
-            os.path.join(self.rust_root, "src/bootstrap/Cargo.toml"),
-            "-Zroot-dir=" + self.rust_root,
-        ]
-        # verbose cargo output is very noisy, so only enable it with -vv
-        args.extend("--verbose" for _ in range(self.verbose - 1))
 
         if "BOOTSTRAP_TRACING" in env:
             args.append("--features=tracing")
