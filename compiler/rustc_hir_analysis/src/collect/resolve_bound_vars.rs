@@ -66,6 +66,13 @@ struct BoundVarContext<'a, 'tcx> {
     rbv: &'a mut ResolveBoundVars,
     disambiguator: &'a mut DisambiguatorState,
     scope: ScopeRef<'a>,
+    opaque_capture_errors: RefCell<Option<OpaqueHigherRankedLifetimeCaptureErrors>>,
+}
+
+struct OpaqueHigherRankedLifetimeCaptureErrors {
+    bad_place: &'static str,
+    capture_spans: Vec<Span>,
+    decl_spans: Vec<Span>,
 }
 
 #[derive(Debug)]
@@ -253,6 +260,7 @@ fn resolve_bound_vars(tcx: TyCtxt<'_>, local_def_id: hir::OwnerId) -> ResolveBou
         rbv: &mut rbv,
         scope: &Scope::Root { opt_parent_item: None },
         disambiguator: &mut DisambiguatorState::new(),
+        opaque_capture_errors: RefCell::new(None),
     };
     match tcx.hir_owner_node(local_def_id) {
         hir::OwnerNode::Item(item) => visitor.visit_item(item),
@@ -596,6 +604,8 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                 this.with(scope, |this| intravisit::walk_opaque_ty(this, opaque))
             })
         });
+
+        self.emit_opaque_capture_errors();
 
         let captures = captures.into_inner().into_iter().collect();
         debug!(?captures);
@@ -1089,12 +1099,20 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
         F: for<'b> FnOnce(&mut BoundVarContext<'b, 'tcx>),
     {
         let BoundVarContext { tcx, rbv, disambiguator, .. } = self;
-        let mut this = BoundVarContext { tcx: *tcx, rbv, disambiguator, scope: &wrap_scope };
+        let nested_errors = RefCell::new(self.opaque_capture_errors.borrow_mut().take());
+        let mut this = BoundVarContext {
+            tcx: *tcx,
+            rbv,
+            disambiguator,
+            scope: &wrap_scope,
+            opaque_capture_errors: nested_errors,
+        };
         let span = debug_span!("scope", scope = ?this.scope.debug_truncated());
         {
             let _enter = span.enter();
             f(&mut this);
         }
+        *self.opaque_capture_errors.borrow_mut() = this.opaque_capture_errors.into_inner();
     }
 
     fn record_late_bound_vars(&mut self, hir_id: HirId, binder: Vec<ty::BoundVariableKind>) {
@@ -1424,21 +1442,52 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
         };
 
         let decl_span = self.tcx.def_span(lifetime_def_id);
-        let (span, label) = if capture_span != decl_span {
-            (capture_span, None)
-        } else {
-            let opaque_span = self.tcx.def_span(opaque_def_id);
-            (opaque_span, Some(opaque_span))
-        };
+        let opaque_span = self.tcx.def_span(opaque_def_id);
+
+        let mut errors = self.opaque_capture_errors.borrow_mut();
+        let error_info = errors.get_or_insert_with(|| OpaqueHigherRankedLifetimeCaptureErrors {
+            bad_place,
+            capture_spans: Vec::new(),
+            decl_spans: Vec::new(),
+        });
+
+        if error_info.capture_spans.is_empty() {
+            error_info.capture_spans.push(opaque_span);
+        }
+
+        if capture_span != decl_span && capture_span != opaque_span {
+            error_info.capture_spans.push(capture_span);
+        }
+
+        if !error_info.decl_spans.contains(&decl_span) {
+            error_info.decl_spans.push(decl_span);
+        }
+
+        // Errors should be emitted by `emit_opaque_capture_errors`.
+        Err(self.tcx.dcx().span_delayed_bug(capture_span, "opaque capture error not emitted"))
+    }
+
+    fn emit_opaque_capture_errors(&self) -> Option<ErrorGuaranteed> {
+        let errors = self.opaque_capture_errors.borrow_mut().take()?;
+        if errors.capture_spans.is_empty() {
+            return None;
+        }
+
+        let mut span = rustc_errors::MultiSpan::from_span(errors.capture_spans[0]);
+        for &capture_span in &errors.capture_spans[1..] {
+            span.push_span_label(capture_span, "");
+        }
+        let decl_span = rustc_errors::MultiSpan::from_spans(errors.decl_spans);
 
         // Ensure that the parent of the def is an item, not HRTB
         let guar = self.tcx.dcx().emit_err(errors::OpaqueCapturesHigherRankedLifetime {
             span,
-            label,
+            label: Some(errors.capture_spans[0]),
             decl_span,
-            bad_place,
+            bad_place: errors.bad_place,
         });
-        Err(guar)
+
+        Some(guar)
     }
 
     #[instrument(level = "trace", skip(self, opaque_capture_scopes), ret)]
