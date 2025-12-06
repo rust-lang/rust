@@ -732,6 +732,41 @@ pub enum AttributeLintKind {
         attribute_name_span: Span,
         sugg_spans: (Span, Span),
     },
+    DuplicateDocAlias {
+        first_definition: Span,
+    },
+    DocAutoCfgExpectsHideOrShow,
+    DocAutoCfgHideShowUnexpectedItem {
+        attr_name: Symbol,
+    },
+    DocAutoCfgHideShowExpectsList {
+        attr_name: Symbol,
+    },
+    DocInvalid,
+    DocUnknownInclude {
+        span: Span,
+        inner: &'static str,
+        value: Symbol,
+    },
+    DocUnknownSpotlight {
+        span: Span,
+    },
+    DocUnknownPasses {
+        name: Symbol,
+        span: Span,
+    },
+    DocUnknownPlugins {
+        span: Span,
+    },
+    DocUnknownAny {
+        name: Symbol,
+    },
+    DocAutoCfgWrongLiteral,
+    DocTestTakesList,
+    DocTestUnknown {
+        name: Symbol,
+    },
+    DocTestLiteral,
 }
 
 pub type RegisteredTools = FxIndexSet<Ident>;

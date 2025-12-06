@@ -1,0 +1,12 @@
+warning: `#[doc]` attribute cannot be used on struct fields
+  --> $DIR/issue-115264-expr-field.rs:14:9
+   |
+LL |         #[doc(alias = "StructItem")]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = help: `#[doc]` can be applied to associated consts, associated types, constants, crates, data types, enum variants, extern crates, foreign modules, foreign statics, functions, impl blocks, macro defs, modules, statics, struct fields, trait aliases, traits, type aliases, unions, and use statements
+   = note: requested on the command line with `-W unused-attributes`
+
+warning: 1 warning emitted
+

@@ -4,7 +4,7 @@ use std::fmt;
 
 use rustc_abi::ExternAbi;
 use rustc_ast::attr::AttributeExt;
-use rustc_ast::token::CommentKind;
+use rustc_ast::token::DocFragmentKind;
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_ast::{
     self as ast, FloatTy, InlineAsmOptions, InlineAsmTemplatePiece, IntTy, Label, LitIntType,
@@ -1376,7 +1376,6 @@ impl AttributeExt for Attribute {
     fn doc_str(&self) -> Option<Symbol> {
         match &self {
             Attribute::Parsed(AttributeKind::DocComment { comment, .. }) => Some(*comment),
-            Attribute::Unparsed(_) if self.has_name(sym::doc) => self.value_str(),
             _ => None,
         }
     }
@@ -1386,13 +1385,10 @@ impl AttributeExt for Attribute {
     }
 
     #[inline]
-    fn doc_str_and_comment_kind(&self) -> Option<(Symbol, CommentKind)> {
+    fn doc_str_and_fragment_kind(&self) -> Option<(Symbol, DocFragmentKind)> {
         match &self {
             Attribute::Parsed(AttributeKind::DocComment { kind, comment, .. }) => {
                 Some((*comment, *kind))
-            }
-            Attribute::Unparsed(_) if self.has_name(sym::doc) => {
-                self.value_str().map(|s| (s, CommentKind::Line))
             }
             _ => None,
         }
@@ -1417,6 +1413,14 @@ impl AttributeExt for Attribute {
                     | AttributeKind::ProcMacroDerive { .. }
             )
         )
+    }
+
+    fn is_doc_hidden(&self) -> bool {
+        matches!(self, Attribute::Parsed(AttributeKind::Doc(d)) if d.hidden.is_some())
+    }
+
+    fn is_doc_keyword_or_attribute(&self) -> bool {
+        matches!(self, Attribute::Parsed(AttributeKind::Doc(d)) if d.attribute.is_some() || d.keyword.is_some())
     }
 }
 
@@ -1503,8 +1507,8 @@ impl Attribute {
     }
 
     #[inline]
-    pub fn doc_str_and_comment_kind(&self) -> Option<(Symbol, CommentKind)> {
-        AttributeExt::doc_str_and_comment_kind(self)
+    pub fn doc_str_and_fragment_kind(&self) -> Option<(Symbol, DocFragmentKind)> {
+        AttributeExt::doc_str_and_fragment_kind(self)
     }
 }
 

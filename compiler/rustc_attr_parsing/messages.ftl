@@ -14,8 +14,40 @@ attr_parsing_deprecated_item_suggestion =
     .help = add `#![feature(deprecated_suggestion)]` to the crate root
     .note = see #94785 for more details
 
+attr_parsing_doc_alias_bad_char =
+    {$char_} character isn't allowed in {$attr_str}
+
+attr_parsing_doc_alias_empty =
+    {$attr_str} attribute cannot have empty value
+
+attr_parsing_doc_alias_malformed =
+    doc alias attribute expects a string `#[doc(alias = "a")]` or a list of strings `#[doc(alias("a", "b"))]`
+
+attr_parsing_doc_alias_start_end =
+    {$attr_str} cannot start or end with ' '
+
+attr_parsing_doc_attribute_not_attribute =
+    nonexistent builtin attribute `{$attribute}` used in `#[doc(attribute = "...")]`
+    .help = only existing builtin attributes are allowed in core/std
+
+attr_parsing_doc_keyword_not_keyword =
+    nonexistent keyword `{$keyword}` used in `#[doc(keyword = "...")]`
+    .help = only existing keywords are allowed in core/std
+
+attr_parsing_empty_attribute =
+    unused attribute
+    .suggestion = {$valid_without_list ->
+        [true] remove these parentheses
+        *[other] remove this attribute
+    }
+    .note = {$valid_without_list ->
+        [true] using `{$attr_path}` with an empty list is equivalent to not using a list at all
+        *[other] using `{$attr_path}` with an empty list has no effect
+    }
+
 attr_parsing_empty_confusables =
     expected at least one confusable name
+
 attr_parsing_empty_link_name =
     link name must not be empty
     .label = empty link name

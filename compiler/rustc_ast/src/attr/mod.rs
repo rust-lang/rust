@@ -13,7 +13,9 @@ use crate::ast::{
     Expr, ExprKind, LitKind, MetaItem, MetaItemInner, MetaItemKind, MetaItemLit, NormalAttr, Path,
     PathSegment, Safety,
 };
-use crate::token::{self, CommentKind, Delimiter, InvisibleOrigin, MetaVarKind, Token};
+use crate::token::{
+    self, CommentKind, Delimiter, DocFragmentKind, InvisibleOrigin, MetaVarKind, Token,
+};
 use crate::tokenstream::{
     DelimSpan, LazyAttrTokenStream, Spacing, TokenStream, TokenStreamIter, TokenTree,
 };
@@ -179,15 +181,21 @@ impl AttributeExt for Attribute {
     }
 
     /// Returns the documentation and its kind if this is a doc comment or a sugared doc comment.
-    /// * `///doc` returns `Some(("doc", CommentKind::Line))`.
-    /// * `/** doc */` returns `Some(("doc", CommentKind::Block))`.
-    /// * `#[doc = "doc"]` returns `Some(("doc", CommentKind::Line))`.
+    /// * `///doc` returns `Some(("doc", DocFragmentKind::Sugared(CommentKind::Line)))`.
+    /// * `/** doc */` returns `Some(("doc", DocFragmentKind::Sugared(CommentKind::Block)))`.
+    /// * `#[doc = "doc"]` returns `Some(("doc", DocFragmentKind::Raw))`.
     /// * `#[doc(...)]` returns `None`.
-    fn doc_str_and_comment_kind(&self) -> Option<(Symbol, CommentKind)> {
+    fn doc_str_and_fragment_kind(&self) -> Option<(Symbol, DocFragmentKind)> {
         match &self.kind {
-            AttrKind::DocComment(kind, data) => Some((*data, *kind)),
+            AttrKind::DocComment(kind, data) => Some((*data, DocFragmentKind::Sugared(*kind))),
             AttrKind::Normal(normal) if normal.item.path == sym::doc => {
-                normal.item.value_str().map(|s| (s, CommentKind::Line))
+                if let Some(value) = normal.item.value_str()
+                    && let Some(value_span) = normal.item.value_span()
+                {
+                    Some((value, DocFragmentKind::Raw(value_span)))
+                } else {
+                    None
+                }
             }
             _ => None,
         }
@@ -219,6 +227,24 @@ impl AttributeExt for Attribute {
 
     fn is_automatically_derived_attr(&self) -> bool {
         self.has_name(sym::automatically_derived)
+    }
+
+    fn is_doc_hidden(&self) -> bool {
+        self.has_name(sym::doc)
+            && self.meta_item_list().is_some_and(|l| list_contains_name(&l, sym::hidden))
+    }
+
+    fn is_doc_keyword_or_attribute(&self) -> bool {
+        if self.has_name(sym::doc)
+            && let Some(items) = self.meta_item_list()
+        {
+            for item in items {
+                if item.has_name(sym::keyword) || item.has_name(sym::attribute) {
+                    return true;
+                }
+            }
+        }
+        false
     }
 }
 
@@ -296,6 +322,25 @@ impl AttrItem {
                 }
                 _ => None,
             },
+            AttrArgs::Delimited(_) | AttrArgs::Empty => None,
+        }
+    }
+
+    /// Returns the span in:
+    ///
+    /// ```text
+    /// #[attribute = "value"]
+    ///               ^^^^^^^
+    /// ```
+    ///
+    /// It returns `None` in any other cases like:
+    ///
+    /// ```text
+    /// #[attr("value")]
+    /// ```
+    fn value_span(&self) -> Option<Span> {
+        match &self.args {
+            AttrArgs::Eq { expr, .. } => Some(expr.span),
             AttrArgs::Delimited(_) | AttrArgs::Empty => None,
         }
     }
@@ -820,7 +865,7 @@ pub trait AttributeExt: Debug {
     /// * `/** doc */` returns `Some(("doc", CommentKind::Block))`.
     /// * `#[doc = "doc"]` returns `Some(("doc", CommentKind::Line))`.
     /// * `#[doc(...)]` returns `None`.
-    fn doc_str_and_comment_kind(&self) -> Option<(Symbol, CommentKind)>;
+    fn doc_str_and_fragment_kind(&self) -> Option<(Symbol, DocFragmentKind)>;
 
     /// Returns outer or inner if this is a doc attribute or a sugared doc
     /// comment, otherwise None.
@@ -830,6 +875,12 @@ pub trait AttributeExt: Debug {
     /// commented module (for inner doc) vs within its parent module (for outer
     /// doc).
     fn doc_resolution_scope(&self) -> Option<AttrStyle>;
+
+    /// Returns `true` if this attribute contains `doc(hidden)`.
+    fn is_doc_hidden(&self) -> bool;
+
+    /// Returns `true` is this attribute contains `doc(keyword)` or `doc(attribute)`.
+    fn is_doc_keyword_or_attribute(&self) -> bool;
 }
 
 // FIXME(fn_delegation): use function delegation instead of manually forwarding
@@ -902,7 +953,7 @@ impl Attribute {
         AttributeExt::is_proc_macro_attr(self)
     }
 
-    pub fn doc_str_and_comment_kind(&self) -> Option<(Symbol, CommentKind)> {
-        AttributeExt::doc_str_and_comment_kind(self)
+    pub fn doc_str_and_fragment_kind(&self) -> Option<(Symbol, DocFragmentKind)> {
+        AttributeExt::doc_str_and_fragment_kind(self)
     }
 }

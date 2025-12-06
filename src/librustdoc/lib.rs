@@ -36,7 +36,6 @@ extern crate rustc_attr_parsing;
 extern crate rustc_data_structures;
 extern crate rustc_driver;
 extern crate rustc_errors;
-extern crate rustc_expand;
 extern crate rustc_feature;
 extern crate rustc_hir;
 extern crate rustc_hir_analysis;
@@ -77,6 +76,7 @@ use std::process;
 
 use rustc_errors::DiagCtxtHandle;
 use rustc_hir::def_id::LOCAL_CRATE;
+use rustc_hir::lints::DelayedLint;
 use rustc_interface::interface;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{ErrorOutputType, RustcOptGroup, make_crate_type_option};
@@ -900,6 +900,30 @@ fn main_args(early_dcx: &mut EarlyDiagCtxt, at_args: &[String]) {
                 // if we ran coverage, bail early, we don't need to also generate docs at this point
                 // (also we didn't load in any of the useful passes)
                 return;
+            }
+
+            for owner_id in tcx.hir_crate_items(()).delayed_lint_items() {
+                if let Some(delayed_lints) = tcx.opt_ast_lowering_delayed_lints(owner_id) {
+                    for lint in &delayed_lints.lints {
+                        match lint {
+                            DelayedLint::AttributeParsing(attribute_lint) => {
+                                tcx.node_span_lint(
+                                    attribute_lint.lint_id.lint,
+                                    attribute_lint.id,
+                                    attribute_lint.span,
+                                    |diag| {
+                                        rustc_lint::decorate_attribute_lint(
+                                            tcx.sess,
+                                            Some(tcx),
+                                            &attribute_lint.kind,
+                                            diag,
+                                        );
+                                    },
+                                );
+                            }
+                        }
+                    }
+                }
             }
 
             if render_opts.dep_info().is_some() {

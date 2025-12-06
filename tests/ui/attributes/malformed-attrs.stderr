@@ -182,27 +182,6 @@ LL | #[allow_internal_unsafe = 1]
    = help: add `#![feature(allow_internal_unsafe)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error: valid forms for the attribute are `#[doc(hidden)]`, `#[doc(inline)]`, and `#[doc = "string"]`
-  --> $DIR/malformed-attrs.rs:41:1
-   |
-LL | #[doc]
-   | ^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
-   = note: for more information, visit <https://doc.rust-lang.org/rustdoc/write-documentation/the-doc-attribute.html>
-   = note: `#[deny(ill_formed_attribute_input)]` (part of `#[deny(future_incompatible)]`) on by default
-
-error: valid forms for the attribute are `#[doc(hidden)]`, `#[doc(inline)]`, and `#[doc = "string"]`
-  --> $DIR/malformed-attrs.rs:77:1
-   |
-LL | #[doc]
-   | ^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
-   = note: for more information, visit <https://doc.rust-lang.org/rustdoc/write-documentation/the-doc-attribute.html>
-
 error[E0539]: malformed `windows_subsystem` attribute input
   --> $DIR/malformed-attrs.rs:26:1
    |
@@ -790,6 +769,16 @@ LL | #[diagnostic::on_unimplemented = 1]
    |
    = help: only `message`, `note` and `label` are allowed as options
 
+error: valid forms for the attribute are `#[doc = "string"]`, `#[doc(alias)]`, `#[doc(attribute)]`, `#[doc(auto_cfg)]`, `#[doc(cfg)]`, `#[doc(fake_variadic)]`, `#[doc(hidden)]`, `#[doc(html_favicon_url)]`, `#[doc(html_logo_url)]`, `#[doc(html_no_source)]`, `#[doc(html_playground_url)]`, `#[doc(html_root_url)]`, `#[doc(include)]`, `#[doc(inline)]`, `#[doc(issue_tracker_base_url)]`, `#[doc(keyword)]`, `#[doc(masked)]`, `#[doc(no_default_passes)]`, `#[doc(no_inline)]`, `#[doc(notable_trait)]`, `#[doc(passes)]`, `#[doc(plugins)]`, `#[doc(rust_logo)]`, `#[doc(search_unbox)]`, `#[doc(spotlight)]`, and `#[doc(test)]`
+  --> $DIR/malformed-attrs.rs:41:1
+   |
+LL | #[doc]
+   | ^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
+   = note: `#[deny(ill_formed_attribute_input)]` (part of `#[deny(future_incompatible)]`) on by default
+
 error: valid forms for the attribute are `#[inline(always)]`, `#[inline(never)]`, and `#[inline]`
   --> $DIR/malformed-attrs.rs:52:1
    |
@@ -813,6 +802,15 @@ LL | |     #[coroutine = 63] || {}
 ...  |
 LL | | }
    | |_^
+
+error: valid forms for the attribute are `#[doc = "string"]`, `#[doc(alias)]`, `#[doc(attribute)]`, `#[doc(auto_cfg)]`, `#[doc(cfg)]`, `#[doc(fake_variadic)]`, `#[doc(hidden)]`, `#[doc(html_favicon_url)]`, `#[doc(html_logo_url)]`, `#[doc(html_no_source)]`, `#[doc(html_playground_url)]`, `#[doc(html_root_url)]`, `#[doc(include)]`, `#[doc(inline)]`, `#[doc(issue_tracker_base_url)]`, `#[doc(keyword)]`, `#[doc(masked)]`, `#[doc(no_default_passes)]`, `#[doc(no_inline)]`, `#[doc(notable_trait)]`, `#[doc(passes)]`, `#[doc(plugins)]`, `#[doc(rust_logo)]`, `#[doc(search_unbox)]`, `#[doc(spotlight)]`, and `#[doc(test)]`
+  --> $DIR/malformed-attrs.rs:77:1
+   |
+LL | #[doc]
+   | ^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
 
 warning: `#[link_name]` attribute cannot be used on functions
   --> $DIR/malformed-attrs.rs:88:1
@@ -875,7 +873,7 @@ error: aborting due to 76 previous errors; 8 warnings emitted
 Some errors have detailed explanations: E0308, E0463, E0539, E0565, E0658, E0805.
 For more information about an error, try `rustc --explain E0308`.
 Future incompatibility report: Future breakage diagnostic:
-error: valid forms for the attribute are `#[doc(hidden)]`, `#[doc(inline)]`, and `#[doc = "string"]`
+error: valid forms for the attribute are `#[doc = "string"]`, `#[doc(alias)]`, `#[doc(attribute)]`, `#[doc(auto_cfg)]`, `#[doc(cfg)]`, `#[doc(fake_variadic)]`, `#[doc(hidden)]`, `#[doc(html_favicon_url)]`, `#[doc(html_logo_url)]`, `#[doc(html_no_source)]`, `#[doc(html_playground_url)]`, `#[doc(html_root_url)]`, `#[doc(include)]`, `#[doc(inline)]`, `#[doc(issue_tracker_base_url)]`, `#[doc(keyword)]`, `#[doc(masked)]`, `#[doc(no_default_passes)]`, `#[doc(no_inline)]`, `#[doc(notable_trait)]`, `#[doc(passes)]`, `#[doc(plugins)]`, `#[doc(rust_logo)]`, `#[doc(search_unbox)]`, `#[doc(spotlight)]`, and `#[doc(test)]`
   --> $DIR/malformed-attrs.rs:41:1
    |
 LL | #[doc]
@@ -883,19 +881,6 @@ LL | #[doc]
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
-   = note: for more information, visit <https://doc.rust-lang.org/rustdoc/write-documentation/the-doc-attribute.html>
-   = note: `#[deny(ill_formed_attribute_input)]` (part of `#[deny(future_incompatible)]`) on by default
-
-Future breakage diagnostic:
-error: valid forms for the attribute are `#[doc(hidden)]`, `#[doc(inline)]`, and `#[doc = "string"]`
-  --> $DIR/malformed-attrs.rs:77:1
-   |
-LL | #[doc]
-   | ^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
-   = note: for more information, visit <https://doc.rust-lang.org/rustdoc/write-documentation/the-doc-attribute.html>
    = note: `#[deny(ill_formed_attribute_input)]` (part of `#[deny(future_incompatible)]`) on by default
 
 Future breakage diagnostic:
@@ -904,6 +889,17 @@ error: valid forms for the attribute are `#[inline(always)]`, `#[inline(never)]`
    |
 LL | #[inline = 5]
    | ^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
+   = note: `#[deny(ill_formed_attribute_input)]` (part of `#[deny(future_incompatible)]`) on by default
+
+Future breakage diagnostic:
+error: valid forms for the attribute are `#[doc = "string"]`, `#[doc(alias)]`, `#[doc(attribute)]`, `#[doc(auto_cfg)]`, `#[doc(cfg)]`, `#[doc(fake_variadic)]`, `#[doc(hidden)]`, `#[doc(html_favicon_url)]`, `#[doc(html_logo_url)]`, `#[doc(html_no_source)]`, `#[doc(html_playground_url)]`, `#[doc(html_root_url)]`, `#[doc(include)]`, `#[doc(inline)]`, `#[doc(issue_tracker_base_url)]`, `#[doc(keyword)]`, `#[doc(masked)]`, `#[doc(no_default_passes)]`, `#[doc(no_inline)]`, `#[doc(notable_trait)]`, `#[doc(passes)]`, `#[doc(plugins)]`, `#[doc(rust_logo)]`, `#[doc(search_unbox)]`, `#[doc(spotlight)]`, and `#[doc(test)]`
+  --> $DIR/malformed-attrs.rs:77:1
+   |
+LL | #[doc]
+   | ^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>

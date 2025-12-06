@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use rustc_ast::AttrStyle;
-use rustc_ast::token::CommentKind;
+use rustc_ast::token::{CommentKind, DocFragmentKind};
 use rustc_errors::Applicability;
 use rustc_hir::Attribute;
 use rustc_hir::attrs::AttributeKind;
@@ -46,8 +46,8 @@ fn collect_doc_replacements(attrs: &[Attribute]) -> Vec<(Span, String)> {
                 && let Some(com) = comment.as_str().strip_prefix('!')
             {
                 let sugg = match kind {
-                    CommentKind::Line => format!("//!{com}"),
-                    CommentKind::Block => format!("/*!{com}*/"),
+                    DocFragmentKind::Sugared(CommentKind::Block) => format!("/*!{com}*/"),
+                    DocFragmentKind::Sugared(CommentKind::Line) | DocFragmentKind::Raw(_) => format!("//!{com}"),
                 };
                 Some((attr.span(), sugg))
             } else {

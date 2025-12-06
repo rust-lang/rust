@@ -3,9 +3,10 @@
 
 use std::mem;
 
+use rustc_ast::attr::AttributeExt;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_hir as hir;
-use rustc_hir::attrs::AttributeKind;
+use rustc_hir::attrs::{AttributeKind, DocInline};
 use rustc_hir::def::{DefKind, MacroKinds, Res};
 use rustc_hir::def_id::{DefId, DefIdMap, LocalDefId, LocalDefIdSet};
 use rustc_hir::intravisit::{Visitor, walk_body, walk_item};
@@ -14,11 +15,11 @@ use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::Span;
 use rustc_span::def_id::{CRATE_DEF_ID, LOCAL_CRATE};
-use rustc_span::symbol::{Symbol, kw, sym};
+use rustc_span::symbol::{Symbol, kw};
 use tracing::debug;
 
+use crate::clean::reexport_chain;
 use crate::clean::utils::{inherits_doc_hidden, should_ignore_res};
-use crate::clean::{NestedAttributesExt, hir_attr_lists, reexport_chain};
 use crate::core;
 
 /// This module is used to store stuff from Rust's AST in a more convenient
@@ -246,8 +247,12 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         let document_hidden = self.cx.document_hidden();
         let use_attrs = tcx.hir_attrs(tcx.local_def_id_to_hir_id(def_id));
         // Don't inline `doc(hidden)` imports so they can be stripped at a later stage.
-        let is_no_inline = hir_attr_lists(use_attrs, sym::doc).has_word(sym::no_inline)
-            || (document_hidden && hir_attr_lists(use_attrs, sym::doc).has_word(sym::hidden));
+        let is_no_inline = find_attr!(
+            use_attrs,
+            AttributeKind::Doc(d)
+            if d.inline.first().is_some_and(|(inline, _)| *inline == DocInline::NoInline)
+        ) || (document_hidden
+            && use_attrs.iter().any(|attr| attr.is_doc_hidden()));
 
         if is_no_inline {
             return false;
@@ -464,12 +469,11 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     // If there was a private module in the current path then don't bother inlining
                     // anything as it will probably be stripped anyway.
                     if is_pub && self.inside_public_path {
-                        let please_inline = attrs.iter().any(|item| match item.meta_item_list() {
-                            Some(ref list) if item.has_name(sym::doc) => {
-                                list.iter().any(|i| i.has_name(sym::inline))
-                            }
-                            _ => false,
-                        });
+                        let please_inline = find_attr!(
+                            attrs,
+                            AttributeKind::Doc(d)
+                            if d.inline.first().is_some_and(|(inline, _)| *inline == DocInline::Inline)
+                        );
                         let ident = match kind {
                             hir::UseKind::Single(ident) => Some(ident.name),
                             hir::UseKind::Glob => None,

@@ -15,7 +15,7 @@ fn select_arm(ecx: &ExtCtxt<'_>, branches: CfgSelectBranches) -> Option<(TokenSt
         if let EvalConfigResult::True = attr::eval_config_entry(
             &ecx.sess,
             &cfg,
-            ecx.current_expansion.lint_node_id,
+            &ecx.current_expansion.lint_node_id,
             ShouldEmit::ErrorsAndLints,
         ) {
             // FIXME(#149215) Ideally we should short-circuit here, but `eval_config_entry` currently emits lints so we cannot do this yet.

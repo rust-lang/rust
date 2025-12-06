@@ -1,7 +1,8 @@
-use rustc_hir::HirId;
+use rustc_attr_parsing::{ShouldEmit, eval_config_entry};
+use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def_id::LocalDefId;
+use rustc_hir::{Attribute, HirId};
 use rustc_middle::ty::TyCtxt;
-use rustc_span::sym;
 
 use super::Pass;
 use crate::clean::{Attributes, Crate, Item};
@@ -42,23 +43,18 @@ struct DocCfgChecker<'a, 'tcx> {
 
 impl DocCfgChecker<'_, '_> {
     fn check_attrs(&mut self, attrs: &Attributes, did: LocalDefId) {
-        let doc_cfgs = attrs
-            .other_attrs
-            .iter()
-            .filter(|attr| attr.has_name(sym::doc))
-            .flat_map(|attr| attr.meta_item_list().unwrap_or_default())
-            .filter(|attr| attr.has_name(sym::cfg));
+        for attr in &attrs.other_attrs {
+            let Attribute::Parsed(AttributeKind::Doc(d)) = attr else { continue };
 
-        for doc_cfg in doc_cfgs {
-            if let Some([cfg_mi]) = doc_cfg.meta_item_list() {
-                let _ = rustc_attr_parsing::cfg_matches(
-                    cfg_mi,
+            for doc_cfg in &d.cfg {
+                let _ = eval_config_entry(
                     &self.cx.tcx.sess,
-                    RustdocCfgMatchesLintEmitter(
+                    doc_cfg,
+                    &RustdocCfgMatchesLintEmitter(
                         self.cx.tcx,
                         self.cx.tcx.local_def_id_to_hir_id(did),
                     ),
-                    Some(self.cx.tcx.features()),
+                    ShouldEmit::ErrorsAndLints,
                 );
             }
         }
