@@ -21,6 +21,12 @@ if $SKIP; then
     exit 0
 fi
 
+if ! git diff --quiet || ! git diff --cached --quiet; then
+    echo "error: Uncommitted changes detected."
+    echo "Please commit or stash your changes before pushing."
+    exit 1
+fi
+
 ROOT_DIR="$(git rev-parse --show-toplevel)"
 
 echo "Running pre-push script $ROOT_DIR/x test tidy"
