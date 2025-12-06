@@ -18,9 +18,12 @@ help: the accessed tag <TAG> later transitioned to Reserved (conflicted) due to 
 LL |     let _v = *x;
    |              ^^
    = help: this transition corresponds to a temporary loss of write permissions until function exit
-   = note: BACKTRACE (of the first span):
-   = note: inside `safe` at tests/fail/both_borrows/aliasing_mut2.rs:LL:CC
-note: inside `main`
+note: error occurred inside `safe`
+  --> tests/fail/both_borrows/aliasing_mut2.rs:LL:CC
+   |
+LL | fn safe(x: &i32, y: &mut i32) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: which got called inside `main`
   --> tests/fail/both_borrows/aliasing_mut2.rs:LL:CC
    |
 LL |     safe_raw(xshr, xraw);

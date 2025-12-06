@@ -20,6 +20,7 @@ LL | |                 std::mem::size_of::<usize>(),
 LL | |                 std::mem::align_of::<usize>(),
 LL | |             )
    | |_____________^
+   = note: this is on thread `unnamed-ID`
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

@@ -19,16 +19,19 @@ help: the protected tag <TAG> was created here, in the initial state Frozen
    |
 LL | fn safe(x: &i32, y: &mut Cell<i32>) {
    |         ^
-   = note: BACKTRACE (of the first span):
-   = note: inside `std::mem::replace::<i32>` at RUSTLIB/core/src/mem/mod.rs:LL:CC
-   = note: inside `std::cell::Cell::<i32>::replace` at RUSTLIB/core/src/cell.rs:LL:CC
-   = note: inside `std::cell::Cell::<i32>::set` at RUSTLIB/core/src/cell.rs:LL:CC
-note: inside `safe`
+note: error occurred inside `std::mem::replace::<i32>`
+  --> RUSTLIB/core/src/mem/mod.rs:LL:CC
+   |
+LL | pub const fn replace<T>(dest: &mut T, src: T) -> T {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: which got called inside `std::cell::Cell::<i32>::replace` (at RUSTLIB/core/src/cell.rs:LL:CC)
+   = note: which got called inside `std::cell::Cell::<i32>::set` (at RUSTLIB/core/src/cell.rs:LL:CC)
+note: which got called inside `safe`
   --> tests/fail/both_borrows/aliasing_mut4.rs:LL:CC
    |
 LL |     y.set(1);
    |     ^^^^^^^^
-note: inside `main`
+note: which got called inside `main`
   --> tests/fail/both_borrows/aliasing_mut4.rs:LL:CC
    |
 LL |     safe_raw(xshr, xraw as *mut _);

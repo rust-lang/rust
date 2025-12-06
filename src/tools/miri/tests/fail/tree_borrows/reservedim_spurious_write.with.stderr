@@ -32,6 +32,7 @@ help: the accessed tag <TAG> later transitioned to Disabled due to a foreign wri
 LL |                 *x = 64;
    |                 ^^^^^^^
    = help: this transition corresponds to a loss of read and write permissions
+   = note: this is on thread `unnamed-ID`
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

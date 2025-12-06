@@ -13,9 +13,14 @@ help: <TAG> was created by a SharedReadOnly retag at offsets [0x0..0x1]
    |
 LL |         let x = core::ptr::addr_of!(x);
    |                 ^^^^^^^^^^^^^^^^^^^^^^
-   = note: BACKTRACE (of the first span):
-   = note: inside `std::ptr::drop_in_place::<u8> - shim(None)` at RUSTLIB/core/src/ptr/mod.rs:LL:CC
-note: inside `main`
+note: error occurred inside `std::ptr::drop_in_place::<u8> - shim(None)`
+  --> RUSTLIB/core/src/ptr/mod.rs:LL:CC
+   |
+LL | / pub const unsafe fn drop_in_place<T: PointeeSized>(to_drop: *mut T)
+LL | | where
+LL | |     T: [const] Destruct,
+   | |________________________^
+note: which got called inside `main`
   --> tests/fail/stacked_borrows/drop_in_place_retag.rs:LL:CC
    |
 LL |         core::ptr::drop_in_place(x.cast_mut());

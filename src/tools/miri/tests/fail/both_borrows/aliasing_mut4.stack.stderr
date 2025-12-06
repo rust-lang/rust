@@ -16,9 +16,12 @@ help: <TAG> is this argument
    |
 LL | fn safe(x: &i32, y: &mut Cell<i32>) {
    |         ^
-   = note: BACKTRACE (of the first span):
-   = note: inside `safe` at tests/fail/both_borrows/aliasing_mut4.rs:LL:CC
-note: inside `main`
+note: error occurred inside `safe`
+  --> tests/fail/both_borrows/aliasing_mut4.rs:LL:CC
+   |
+LL | fn safe(x: &i32, y: &mut Cell<i32>) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: which got called inside `main`
   --> tests/fail/both_borrows/aliasing_mut4.rs:LL:CC
    |
 LL |     safe_raw(xshr, xraw as *mut _);

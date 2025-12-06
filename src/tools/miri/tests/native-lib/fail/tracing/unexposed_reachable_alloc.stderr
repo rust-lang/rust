@@ -9,9 +9,8 @@ LL |     unsafe { do_one_deref(exposed) };
    = help: Miri also assumes that any part of this memory may be a pointer that is permitted to point to arbitrary exposed memory
    = help: what this means is that Miri will easily miss Undefined Behavior related to incorrect usage of this shared memory, so you should not take a clean Miri run as a signal that your FFI code is UB-free
    = help: tracing memory accesses in native code is not yet fully implemented, so there can be further imprecisions beyond what is documented here
-   = note: BACKTRACE:
-   = note: inside `unexposed_reachable_alloc` at tests/native-lib/fail/tracing/unexposed_reachable_alloc.rs:LL:CC
-note: inside `main`
+   = note: this is inside `unexposed_reachable_alloc`
+note: which got called inside `main`
   --> tests/native-lib/fail/tracing/unexposed_reachable_alloc.rs:LL:CC
    |
 LL |     unexposed_reachable_alloc();
@@ -25,9 +24,8 @@ LL |         let _not_ok = *invalid;
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
-   = note: BACKTRACE:
-   = note: inside `unexposed_reachable_alloc` at tests/native-lib/fail/tracing/unexposed_reachable_alloc.rs:LL:CC
-note: inside `main`
+   = note: this is inside `unexposed_reachable_alloc`
+note: which got called inside `main`
   --> tests/native-lib/fail/tracing/unexposed_reachable_alloc.rs:LL:CC
    |
 LL |     unexposed_reachable_alloc();

@@ -9,15 +9,14 @@ error: abnormal termination: the program aborted execution
 LL |     crate::process::abort();
    |     ^^^^^^^^^^^^^^^^^^^^^^^ abnormal termination occurred here
    |
-   = note: BACKTRACE:
-   = note: inside `std::rt::__rust_abort` at RUSTLIB/std/src/rt.rs:LL:CC
-   = note: inside `panic_abort::__rust_start_panic` at RUSTLIB/panic_abort/src/lib.rs:LL:CC
-   = note: inside `std::panicking::rust_panic` at RUSTLIB/std/src/panicking.rs:LL:CC
-   = note: inside `std::panicking::panic_with_hook` at RUSTLIB/std/src/panicking.rs:LL:CC
-   = note: inside closure at RUSTLIB/std/src/panicking.rs:LL:CC
-   = note: inside `std::sys::backtrace::__rust_end_short_backtrace::<{closure@std::panicking::panic_handler::{closure#0}}, !>` at RUSTLIB/std/src/sys/backtrace.rs:LL:CC
-   = note: inside `std::panicking::panic_handler` at RUSTLIB/std/src/panicking.rs:LL:CC
-note: inside `main`
+   = note: this is inside `std::rt::__rust_abort`
+   = note: which got called inside `panic_abort::__rust_start_panic` (at RUSTLIB/panic_abort/src/lib.rs:LL:CC)
+   = note: which got called inside `std::panicking::rust_panic` (at RUSTLIB/std/src/panicking.rs:LL:CC)
+   = note: which got called inside `std::panicking::panic_with_hook` (at RUSTLIB/std/src/panicking.rs:LL:CC)
+   = note: which got called inside closure (at RUSTLIB/std/src/panicking.rs:LL:CC)
+   = note: which got called inside `std::sys::backtrace::__rust_end_short_backtrace::<{closure@std::panicking::panic_handler::{closure#0}}, !>` (at RUSTLIB/std/src/sys/backtrace.rs:LL:CC)
+   = note: which got called inside `std::panicking::panic_handler` (at RUSTLIB/std/src/panicking.rs:LL:CC)
+note: which got called inside `main`
   --> tests/fail/panic/panic_abort3.rs:LL:CC
    |
 LL |     core::panic!("panicking from libcore");

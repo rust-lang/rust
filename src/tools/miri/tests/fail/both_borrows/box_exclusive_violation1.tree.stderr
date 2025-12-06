@@ -18,14 +18,17 @@ help: the accessed tag <TAG> later transitioned to Disabled due to a foreign wri
 LL |     *our = 5;
    |     ^^^^^^^^
    = help: this transition corresponds to a loss of read permissions
-   = note: BACKTRACE (of the first span):
-   = note: inside `unknown_code_2` at tests/fail/both_borrows/box_exclusive_violation1.rs:LL:CC
-note: inside `demo_box_advanced_unique`
+note: error occurred inside `unknown_code_2`
+  --> tests/fail/both_borrows/box_exclusive_violation1.rs:LL:CC
+   |
+LL | fn unknown_code_2() {
+   | ^^^^^^^^^^^^^^^^^^^
+note: which got called inside `demo_box_advanced_unique`
   --> tests/fail/both_borrows/box_exclusive_violation1.rs:LL:CC
    |
 LL |     unknown_code_2();
    |     ^^^^^^^^^^^^^^^^
-note: inside `main`
+note: which got called inside `main`
   --> tests/fail/both_borrows/box_exclusive_violation1.rs:LL:CC
    |
 LL |     demo_box_advanced_unique(Box::new(0));

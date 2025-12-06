@@ -2,9 +2,9 @@ error: the evaluated program deadlocked
   --> RUSTLIB/std/$FILE:LL:CC
    |
 LL | $CODE
-   | ^ thread `main` got stuck here
+   | ^ thread got stuck here
    |
-note: inside `main`
+note: which got called inside `main`
   --> tests/fail/concurrency/mutex-leak-move-deadlock.rs:LL:CC
    |
 LL | $CODE

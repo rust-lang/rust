@@ -250,7 +250,7 @@ pub fn report_result<'tcx>(
             StackedBorrowsUb { .. } | TreeBorrowsUb { .. } | DataRace { .. } =>
                 Some("Undefined Behavior"),
             LocalDeadlock => {
-                labels.push(format!("this thread got stuck here"));
+                labels.push(format!("thread got stuck here"));
                 None
             }
             GlobalDeadlock => {
@@ -264,10 +264,7 @@ pub fn report_result<'tcx>(
                     report_msg(
                         DiagLevel::Error,
                         format!("the evaluated program deadlocked"),
-                        vec![format!(
-                            "thread `{}` got stuck here",
-                            ecx.machine.threads.get_thread_display_name(thread)
-                        )],
+                        vec![format!("thread got stuck here")],
                         vec![],
                         vec![],
                         &stacktrace,
@@ -563,6 +560,7 @@ fn report_msg<'tcx>(
         None =>
             match thread {
                 Some(thread_id) => machine.threads.thread_ref(thread_id).origin_span,
+                // This fallback is super rare, but can happen e.g. when `main` has the wrong ABI
                 None => DUMMY_SP,
             },
     };
@@ -608,36 +606,53 @@ fn report_msg<'tcx>(
     }
 
     // Add backtrace
-    if stacktrace.len() > 1 {
-        let mut backtrace_title = String::from("BACKTRACE");
-        if extra_span {
-            write!(backtrace_title, " (of the first span)").unwrap();
+    if let Some((first, rest)) = stacktrace.split_first() {
+        // Start with the function and thread that contain the first span.
+        let mut fn_and_thread = String::new();
+        // Only print thread name if there are multiple threads.
+        if let Some(thread) = thread
+            && machine.threads.get_total_thread_count() > 1
+        {
+            write!(
+                fn_and_thread,
+                "on thread `{}`",
+                machine.threads.get_thread_display_name(thread)
+            )
+            .unwrap();
         }
-        if let Some(thread) = thread {
-            let thread_name = machine.threads.get_thread_display_name(thread);
-            if thread_name != "main" {
-                // Only print thread name if it is not `main`.
-                write!(backtrace_title, " on thread `{thread_name}`").unwrap();
-            };
+        // Only print function name if we show a backtrace
+        if rest.len() > 0 {
+            if !fn_and_thread.is_empty() {
+                fn_and_thread.push_str(", ");
+            }
+            write!(fn_and_thread, "{first}").unwrap();
         }
-        write!(backtrace_title, ":").unwrap();
-        err.note(backtrace_title);
-        for (idx, frame_info) in stacktrace.iter().enumerate() {
+        if !fn_and_thread.is_empty() {
+            if extra_span && rest.len() > 0 {
+                // Print a `span_note` as otherwise the backtrace looks attached to the last
+                // `span_help`. We somewhat arbitrarily use the span of the surrounding function.
+                err.span_note(
+                    machine.tcx.def_span(first.instance.def_id()),
+                    format!("{level} occurred {fn_and_thread}"),
+                );
+            } else {
+                err.note(format!("this is {fn_and_thread}"));
+            }
+        }
+        // Continue with where that function got called.
+        for frame_info in rest.iter() {
             let is_local = machine.is_local(frame_info.instance);
             // No span for non-local frames and the first frame (which is the error site).
-            if is_local && idx > 0 {
-                err.subdiagnostic(frame_info.as_note(machine.tcx));
+            if is_local {
+                err.span_note(frame_info.span, format!("which got called {frame_info}"));
             } else {
                 let sm = sess.source_map();
                 let span = sm.span_to_diagnostic_string(frame_info.span);
-                err.note(format!("{frame_info} at {span}"));
+                err.note(format!("which got called {frame_info} (at {span})"));
             }
         }
-    } else if stacktrace.len() == 0 && !span.is_dummy() {
-        err.note(format!(
-            "this {} occurred while pushing a call frame onto an empty stack",
-            level.to_str()
-        ));
+    } else if !span.is_dummy() {
+        err.note(format!("this {level} occurred while pushing a call frame onto an empty stack"));
         err.note("the span indicates which code caused the function to be called, but may not be the literal call site");
     }
 

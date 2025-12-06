@@ -6,13 +6,12 @@ LL |             AllocInit::Uninitialized => alloc.allocate(layout),
    |                                         ^^^^^^^^^^^^^^^^^^^^^^ resource exhaustion occurred here
    |
    = help: in GenMC mode, the address space is limited to 4GB per thread, and addresses cannot be reused
-   = note: BACKTRACE:
-   = note: inside `alloc::raw_vec::RawVecInner::try_allocate_in` at RUSTLIB/alloc/src/raw_vec/mod.rs:LL:CC
-   = note: inside `alloc::raw_vec::RawVecInner::with_capacity_in` at RUSTLIB/alloc/src/raw_vec/mod.rs:LL:CC
-   = note: inside `alloc::raw_vec::RawVec::<u8>::with_capacity_in` at RUSTLIB/alloc/src/raw_vec/mod.rs:LL:CC
-   = note: inside `std::vec::Vec::<u8>::with_capacity_in` at RUSTLIB/alloc/src/vec/mod.rs:LL:CC
-   = note: inside `std::vec::Vec::<u8>::with_capacity` at RUSTLIB/alloc/src/vec/mod.rs:LL:CC
-note: inside `miri_start`
+   = note: this is inside `alloc::raw_vec::RawVecInner::try_allocate_in`
+   = note: which got called inside `alloc::raw_vec::RawVecInner::with_capacity_in` (at RUSTLIB/alloc/src/raw_vec/mod.rs:LL:CC)
+   = note: which got called inside `alloc::raw_vec::RawVec::<u8>::with_capacity_in` (at RUSTLIB/alloc/src/raw_vec/mod.rs:LL:CC)
+   = note: which got called inside `std::vec::Vec::<u8>::with_capacity_in` (at RUSTLIB/alloc/src/vec/mod.rs:LL:CC)
+   = note: which got called inside `std::vec::Vec::<u8>::with_capacity` (at RUSTLIB/alloc/src/vec/mod.rs:LL:CC)
+note: which got called inside `miri_start`
   --> tests/genmc/fail/simple/alloc_large.rs:LL:CC
    |
 LL |             let _v = Vec::<u8>::with_capacity(1024 * 1024 * 1024);

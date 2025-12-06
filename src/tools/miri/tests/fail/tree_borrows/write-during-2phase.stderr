@@ -18,9 +18,12 @@ help: the accessed tag <TAG> later transitioned to Disabled due to a foreign wri
 LL |         *alias = 42;
    |         ^^^^^^^^^^^
    = help: this transition corresponds to a loss of read and write permissions
-   = note: BACKTRACE (of the first span):
-   = note: inside `Foo::add` at tests/fail/tree_borrows/write-during-2phase.rs:LL:CC
-note: inside `main`
+note: error occurred inside `Foo::add`
+  --> tests/fail/tree_borrows/write-during-2phase.rs:LL:CC
+   |
+LL |     fn add(&mut self, n: u64) -> u64 {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: which got called inside `main`
   --> tests/fail/tree_borrows/write-during-2phase.rs:LL:CC
    |
 LL |       let res = f.add(unsafe {

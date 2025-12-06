@@ -6,9 +6,8 @@ LL |         match v.0 {}
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
-   = note: BACKTRACE:
-   = note: inside `m::f` at tests/fail/never_transmute_void.rs:LL:CC
-note: inside `main`
+   = note: this is inside `m::f`
+note: which got called inside `main`
   --> tests/fail/never_transmute_void.rs:LL:CC
    |
 LL |     m::f(v);

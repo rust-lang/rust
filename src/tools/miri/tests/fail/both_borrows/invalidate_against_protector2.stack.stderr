@@ -16,9 +16,12 @@ help: <TAG> is this argument
    |
 LL | fn inner(x: *mut i32, _y: &i32) {
    |                       ^^
-   = note: BACKTRACE (of the first span):
-   = note: inside `inner` at tests/fail/both_borrows/invalidate_against_protector2.rs:LL:CC
-note: inside `main`
+note: error occurred inside `inner`
+  --> tests/fail/both_borrows/invalidate_against_protector2.rs:LL:CC
+   |
+LL | fn inner(x: *mut i32, _y: &i32) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: which got called inside `main`
   --> tests/fail/both_borrows/invalidate_against_protector2.rs:LL:CC
    |
 LL |     inner(xraw, xref);

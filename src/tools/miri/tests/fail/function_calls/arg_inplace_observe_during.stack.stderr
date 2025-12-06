@@ -21,9 +21,12 @@ help: <TAG> is this argument
    |
 LL |     x.0 = 0;
    |     ^^^^^^^
-   = note: BACKTRACE (of the first span):
-   = note: inside `change_arg` at tests/fail/function_calls/arg_inplace_observe_during.rs:LL:CC
-note: inside `main`
+note: error occurred inside `change_arg`
+  --> tests/fail/function_calls/arg_inplace_observe_during.rs:LL:CC
+   |
+LL | fn change_arg(mut x: S, ptr: *mut S) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: which got called inside `main`
   --> tests/fail/function_calls/arg_inplace_observe_during.rs:LL:CC
    |
 LL |             Call(_unit = change_arg(Move(*ptr), ptr), ReturnTo(after_call), UnwindContinue())

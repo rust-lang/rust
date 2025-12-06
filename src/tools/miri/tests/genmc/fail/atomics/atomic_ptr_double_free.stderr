@@ -17,15 +17,18 @@ help: ALLOC was deallocated here:
    |
 LL |     dealloc(ptr as *mut u8, Layout::new::<u64>())
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: BACKTRACE (of the first span) on thread `unnamed-ID`:
-   = note: inside `free` at tests/genmc/fail/atomics/atomic_ptr_double_free.rs:LL:CC
-note: inside closure
+note: error occurred on thread `unnamed-ID`, inside `free`
+  --> tests/genmc/fail/atomics/atomic_ptr_double_free.rs:LL:CC
+   |
+LL | unsafe fn free(ptr: *mut u64) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: which got called inside closure
   --> tests/genmc/fail/atomics/atomic_ptr_double_free.rs:LL:CC
    |
 LL |                     free(b);
    |                     ^^^^^^^
-   = note: inside `<std::boxed::Box<{closure@tests/genmc/fail/atomics/atomic_ptr_double_free.rs:LL:CC}> as std::ops::FnOnce<()>>::call_once` at RUSTLIB/alloc/src/boxed.rs:LL:CC
-note: inside `genmc::spawn_pthread_closure::thread_func::<{closure@tests/genmc/fail/atomics/atomic_ptr_double_free.rs:LL:CC}>`
+   = note: which got called inside `<std::boxed::Box<{closure@tests/genmc/fail/atomics/atomic_ptr_double_free.rs:LL:CC}> as std::ops::FnOnce<()>>::call_once` (at RUSTLIB/alloc/src/boxed.rs:LL:CC)
+note: which got called inside `genmc::spawn_pthread_closure::thread_func::<{closure@tests/genmc/fail/atomics/atomic_ptr_double_free.rs:LL:CC}>`
   --> tests/genmc/fail/atomics/../../../utils/genmc.rs:LL:CC
    |
 LL |         f();

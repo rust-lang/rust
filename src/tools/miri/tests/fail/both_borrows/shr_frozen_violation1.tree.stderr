@@ -12,14 +12,17 @@ help: the accessed tag <TAG> was created here, in the initial state Frozen
    |
 LL | fn unknown_code(x: &i32) {
    |                 ^
-   = note: BACKTRACE (of the first span):
-   = note: inside `unknown_code` at tests/fail/both_borrows/shr_frozen_violation1.rs:LL:CC
-note: inside `foo`
+note: error occurred inside `unknown_code`
+  --> tests/fail/both_borrows/shr_frozen_violation1.rs:LL:CC
+   |
+LL | fn unknown_code(x: &i32) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
+note: which got called inside `foo`
   --> tests/fail/both_borrows/shr_frozen_violation1.rs:LL:CC
    |
 LL |     unknown_code(&*x);
    |     ^^^^^^^^^^^^^^^^^
-note: inside `main`
+note: which got called inside `main`
   --> tests/fail/both_borrows/shr_frozen_violation1.rs:LL:CC
    |
 LL |     println!("{}", foo(&mut 0));

@@ -7,14 +7,13 @@ error: abnormal termination: the program aborted execution
 LL |         crate::process::abort()
    |         ^^^^^^^^^^^^^^^^^^^^^^^ abnormal termination occurred here
    |
-   = note: BACKTRACE:
-   = note: inside closure at RUSTLIB/std/src/alloc.rs:LL:CC
-   = note: inside `std::sys::backtrace::__rust_end_short_backtrace::<{closure@std::alloc::rust_oom::{closure#0}}, !>` at RUSTLIB/std/src/sys/backtrace.rs:LL:CC
-   = note: inside `std::alloc::rust_oom` at RUSTLIB/std/src/alloc.rs:LL:CC
-   = note: inside `std::alloc::_::__rust_alloc_error_handler` at RUSTLIB/std/src/alloc.rs:LL:CC
-   = note: inside `std::alloc::handle_alloc_error::rt_error` at RUSTLIB/alloc/src/alloc.rs:LL:CC
-   = note: inside `std::alloc::handle_alloc_error` at RUSTLIB/alloc/src/alloc.rs:LL:CC
-note: inside `main`
+   = note: this is inside closure
+   = note: which got called inside `std::sys::backtrace::__rust_end_short_backtrace::<{closure@std::alloc::rust_oom::{closure#0}}, !>` (at RUSTLIB/std/src/sys/backtrace.rs:LL:CC)
+   = note: which got called inside `std::alloc::rust_oom` (at RUSTLIB/std/src/alloc.rs:LL:CC)
+   = note: which got called inside `std::alloc::_::__rust_alloc_error_handler` (at RUSTLIB/std/src/alloc.rs:LL:CC)
+   = note: which got called inside `std::alloc::handle_alloc_error::rt_error` (at RUSTLIB/alloc/src/alloc.rs:LL:CC)
+   = note: which got called inside `std::alloc::handle_alloc_error` (at RUSTLIB/alloc/src/alloc.rs:LL:CC)
+note: which got called inside `main`
   --> tests/fail/alloc/alloc_error_handler.rs:LL:CC
    |
 LL |     handle_alloc_error(Layout::for_value(&0));

@@ -9,9 +9,8 @@ LL | |             }
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
-   = note: BACKTRACE:
-   = note: inside `switch_int` at tests/fail/validity/invalid_char_match.rs:LL:CC
-note: inside `main`
+   = note: this is inside `switch_int`
+note: which got called inside `main`
   --> tests/fail/validity/invalid_char_match.rs:LL:CC
    |
 LL |     switch_int(&v as *const u32 as *const char);

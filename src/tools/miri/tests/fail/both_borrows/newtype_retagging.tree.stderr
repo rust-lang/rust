@@ -25,21 +25,24 @@ help: the protected tag <TAG> later transitioned to Reserved (conflicted) due to
 LL |             || drop(Box::from_raw(ptr)),
    |                     ^^^^^^^^^^^^^^^^^^
    = help: this transition corresponds to a temporary loss of write permissions until function exit
-   = note: BACKTRACE (of the first span):
-   = note: inside `<std::boxed::Box<i32> as std::ops::Drop>::drop` at RUSTLIB/alloc/src/boxed.rs:LL:CC
-   = note: inside `std::ptr::drop_in_place::<std::boxed::Box<i32>> - shim(Some(std::boxed::Box<i32>))` at RUSTLIB/core/src/ptr/mod.rs:LL:CC
-   = note: inside `std::mem::drop::<std::boxed::Box<i32>>` at RUSTLIB/core/src/mem/mod.rs:LL:CC
-note: inside closure
+note: error occurred inside `<std::boxed::Box<i32> as std::ops::Drop>::drop`
+  --> RUSTLIB/alloc/src/boxed.rs:LL:CC
+   |
+LL |     fn drop(&mut self) {
+   |     ^^^^^^^^^^^^^^^^^^
+   = note: which got called inside `std::ptr::drop_in_place::<std::boxed::Box<i32>> - shim(Some(std::boxed::Box<i32>))` (at RUSTLIB/core/src/ptr/mod.rs:LL:CC)
+   = note: which got called inside `std::mem::drop::<std::boxed::Box<i32>>` (at RUSTLIB/core/src/mem/mod.rs:LL:CC)
+note: which got called inside closure
   --> tests/fail/both_borrows/newtype_retagging.rs:LL:CC
    |
 LL |             || drop(Box::from_raw(ptr)),
    |                ^^^^^^^^^^^^^^^^^^^^^^^^
-note: inside `dealloc_while_running::<{closure@tests/fail/both_borrows/newtype_retagging.rs:LL:CC}>`
+note: which got called inside `dealloc_while_running::<{closure@tests/fail/both_borrows/newtype_retagging.rs:LL:CC}>`
   --> tests/fail/both_borrows/newtype_retagging.rs:LL:CC
    |
 LL |     dealloc();
    |     ^^^^^^^^^
-note: inside `main`
+note: which got called inside `main`
   --> tests/fail/both_borrows/newtype_retagging.rs:LL:CC
    |
 LL | /         dealloc_while_running(

@@ -16,14 +16,17 @@ help: <TAG> was later invalidated at offsets [0x0..0x4] by a write access
    |
 LL |     *our = 5;
    |     ^^^^^^^^
-   = note: BACKTRACE (of the first span):
-   = note: inside `unknown_code_2` at tests/fail/both_borrows/mut_exclusive_violation1.rs:LL:CC
-note: inside `demo_mut_advanced_unique`
+note: error occurred inside `unknown_code_2`
+  --> tests/fail/both_borrows/mut_exclusive_violation1.rs:LL:CC
+   |
+LL | fn unknown_code_2() {
+   | ^^^^^^^^^^^^^^^^^^^
+note: which got called inside `demo_mut_advanced_unique`
   --> tests/fail/both_borrows/mut_exclusive_violation1.rs:LL:CC
    |
 LL |     unknown_code_2();
    |     ^^^^^^^^^^^^^^^^
-note: inside `main`
+note: which got called inside `main`
   --> tests/fail/both_borrows/mut_exclusive_violation1.rs:LL:CC
    |
 LL |     demo_mut_advanced_unique(&mut 0);

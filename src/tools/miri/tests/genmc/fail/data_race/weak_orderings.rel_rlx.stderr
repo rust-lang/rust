@@ -7,10 +7,9 @@ LL |                 X = 2;
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
-   = note: BACKTRACE on thread `unnamed-ID`:
-   = note: inside closure at tests/genmc/fail/data_race/weak_orderings.rs:LL:CC
-   = note: inside `<std::boxed::Box<{closure@tests/genmc/fail/data_race/weak_orderings.rs:LL:CC}> as std::ops::FnOnce<()>>::call_once` at RUSTLIB/alloc/src/boxed.rs:LL:CC
-note: inside `genmc::spawn_pthread_closure::thread_func::<{closure@tests/genmc/fail/data_race/weak_orderings.rs:LL:CC}>`
+   = note: this is on thread `unnamed-ID`, inside closure
+   = note: which got called inside `<std::boxed::Box<{closure@tests/genmc/fail/data_race/weak_orderings.rs:LL:CC}> as std::ops::FnOnce<()>>::call_once` (at RUSTLIB/alloc/src/boxed.rs:LL:CC)
+note: which got called inside `genmc::spawn_pthread_closure::thread_func::<{closure@tests/genmc/fail/data_race/weak_orderings.rs:LL:CC}>`
   --> tests/genmc/fail/data_race/../../../utils/genmc.rs:LL:CC
    |
 LL |         f();
