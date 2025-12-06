@@ -1,0 +1,76 @@
+error[E0589]: invalid `repr(align)` attribute: not an unsuffixed integer
+  --> $DIR/repr-align.rs:14:14
+   |
+LL | #[repr(align(16.0))]
+   |              ^^^^
+
+error[E0589]: invalid `repr(align)` attribute: not a power of two
+  --> $DIR/repr-align.rs:17:14
+   |
+LL | #[repr(align(15))]
+   |              ^^
+
+error[E0589]: invalid `repr(align)` attribute: larger than 2^29
+  --> $DIR/repr-align.rs:20:14
+   |
+LL | #[repr(align(4294967296))]
+   |              ^^^^^^^^^^
+
+error[E0589]: invalid `repr(align)` attribute: not a power of two
+  --> $DIR/repr-align.rs:27:14
+   |
+LL | #[repr(align(0))]
+   |              ^
+
+error[E0589]: invalid `repr(align)` attribute: not an unsuffixed integer
+  --> $DIR/repr-align.rs:33:14
+   |
+LL | #[repr(align(16.0))]
+   |              ^^^^
+
+error[E0589]: invalid `repr(align)` attribute: not a power of two
+  --> $DIR/repr-align.rs:36:14
+   |
+LL | #[repr(align(15))]
+   |              ^^
+
+error[E0589]: invalid `repr(align)` attribute: larger than 2^29
+  --> $DIR/repr-align.rs:39:14
+   |
+LL | #[repr(align(4294967296))]
+   |              ^^^^^^^^^^
+
+error[E0589]: invalid `repr(align)` attribute: not a power of two
+  --> $DIR/repr-align.rs:46:14
+   |
+LL | #[repr(align(0))]
+   |              ^
+
+error[E0806]: alignment must not be greater than 8192 bytes for COFF targets
+  --> $DIR/repr-align.rs:23:8
+   |
+LL | #[repr(align(536870912))]
+   |        ^^^^^^^^^^^^^^^^
+
+error[E0806]: alignment must not be greater than 8192 bytes for COFF targets
+  --> $DIR/repr-align.rs:30:8
+   |
+LL | #[repr(align(16384))]
+   |        ^^^^^^^^^^^^
+
+error[E0806]: alignment must not be greater than 8192 bytes for COFF targets
+  --> $DIR/repr-align.rs:42:8
+   |
+LL | #[repr(align(536870912))]
+   |        ^^^^^^^^^^^^^^^^
+
+error[E0806]: alignment must not be greater than 8192 bytes for COFF targets
+  --> $DIR/repr-align.rs:49:8
+   |
+LL | #[repr(align(16384))]
+   |        ^^^^^^^^^^^^
+
+error: aborting due to 12 previous errors
+
+Some errors have detailed explanations: E0589, E0806.
+For more information about an error, try `rustc --explain E0589`.
