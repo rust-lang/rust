@@ -81,6 +81,8 @@ pub struct OpenOptions {
     share_mode: u32,
     security_qos_flags: u32,
     inherit_handle: bool,
+    freeze_last_access_time: bool,
+    freeze_last_write_time: bool,
 }
 
 #[derive(Clone, PartialEq, Eq, Debug)]
@@ -246,6 +248,12 @@ impl OpenOptions {
     pub fn inherit_handle(&mut self, inherit: bool) {
         self.inherit_handle = inherit;
     }
+    fn freeze_last_access_time(&mut self, freeze: bool) {
+        self.freeze_last_access_time = freeze;
+    }
+    fn freeze_last_write_time(&mut self, freeze: bool) {
+        self.freeze_last_write_time = freeze;
+    }
 
     fn get_access_mode(&self) -> io::Result<u32> {
         match (self.read, self.write, self.append, self.access_mode) {
@@ -343,6 +351,18 @@ impl File {
         };
         let handle = unsafe { HandleOrInvalid::from_raw_handle(handle) };
         if let Ok(handle) = OwnedHandle::try_from(handle) {
+            if opts.freeze_last_access_time || opts.freeze_last_write_time {
+                let file_time =
+                    c::FILETIME { dwLowDateTime: 0xFFFFFFFF, dwHighDateTime: 0xFFFFFFFF };
+                cvt(unsafe {
+                    c::SetFileTime(
+                        handle.as_raw_handle(),
+                        core::ptr::null(),
+                        if opts.freeze_last_access_time { &file_time } else { core::ptr::null() },
+                        if opts.freeze_last_write_time { &file_time } else { core::ptr::null() },
+                    )
+                })?;
+            }
             // Manual truncation. See #115745.
             if opts.truncate
                 && creation == c::OPEN_ALWAYS
