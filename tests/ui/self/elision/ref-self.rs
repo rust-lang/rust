@@ -5,7 +5,7 @@
 #![allow(non_snake_case, dead_code)]
 
 use std::marker::PhantomData;
-use std::ops::Deref;
+use std::ops::{Deref, Receiver};
 use std::pin::Pin;
 
 struct Struct {}
@@ -17,6 +17,9 @@ impl<T, P> Deref for Wrap<T, P> {
     fn deref(&self) -> &T {
         &self.0
     }
+}
+impl<T, P> Receiver for Wrap<T, P> {
+    type Target = T;
 }
 
 impl Struct {

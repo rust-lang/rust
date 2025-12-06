@@ -2,11 +2,9 @@
 #![feature(arbitrary_self_types, unsize, coerce_unsized, dispatch_from_dyn)]
 #![feature(rustc_attrs)]
 
-use std::{
-    cell::Cell,
-    ops::{Deref, CoerceUnsized, DispatchFromDyn},
-    marker::Unsize,
-};
+use std::cell::Cell;
+use std::marker::Unsize;
+use std::ops::{CoerceUnsized, Deref, DispatchFromDyn, Receiver};
 
 struct Ptr<T: ?Sized>(Box<T>);
 
@@ -17,10 +15,12 @@ impl<T: ?Sized> Deref for Ptr<T> {
         &*self.0
     }
 }
+impl<T: ?Sized> Receiver for Ptr<T> {
+    type Target = T;
+}
 
 impl<T: Unsize<U> + ?Sized, U: ?Sized> CoerceUnsized<Ptr<U>> for Ptr<T> {}
 impl<T: Unsize<U> + ?Sized, U: ?Sized> DispatchFromDyn<Ptr<U>> for Ptr<T> {}
-
 
 struct CellPtr<'a, T: ?Sized>(Cell<&'a T>);
 
@@ -30,6 +30,9 @@ impl<'a, T: ?Sized> Deref for CellPtr<'a, T> {
     fn deref(&self) -> &T {
         self.0.get()
     }
+}
+impl<'a, T: ?Sized> Receiver for CellPtr<'a, T> {
+    type Target = T;
 }
 
 impl<'a, T: Unsize<U> + ?Sized, U: ?Sized> CoerceUnsized<CellPtr<'a, U>> for CellPtr<'a, T> {}
@@ -44,10 +47,11 @@ impl<T: ?Sized> Deref for Wrapper<T> {
         &self.0
     }
 }
-
+impl<T: ?Sized> Receiver for Wrapper<T> {
+    type Target = T;
+}
 impl<T: CoerceUnsized<U>, U> CoerceUnsized<Wrapper<U>> for Wrapper<T> {}
 impl<T: DispatchFromDyn<U>, U> DispatchFromDyn<Wrapper<U>> for Wrapper<T> {}
-
 
 trait Trait {
     fn ptr_wrapper(self: Ptr<Wrapper<Self>>) -> i32;

@@ -1,5 +1,5 @@
 error[E0038]: the trait `Trait` is not dyn compatible
-  --> $DIR/feature-gate-dispatch-from-dyn-missing-impl.rs:32:33
+  --> $DIR/feature-gate-dispatch-from-dyn-missing-impl.rs:33:33
    |
 LL |     fn ptr(self: Ptr<Self>);
    |                  --------- help: consider changing method `ptr`'s `self` parameter to be `&self`: `&Self`
@@ -9,7 +9,7 @@ LL |     Ptr(Box::new(4)) as Ptr<dyn Trait>;
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
       for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
-  --> $DIR/feature-gate-dispatch-from-dyn-missing-impl.rs:25:18
+  --> $DIR/feature-gate-dispatch-from-dyn-missing-impl.rs:26:18
    |
 LL | trait Trait {
    |       ----- this trait is not dyn compatible...

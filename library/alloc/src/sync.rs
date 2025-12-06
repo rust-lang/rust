@@ -21,7 +21,9 @@ use core::iter;
 use core::marker::{PhantomData, Unsize};
 use core::mem::{self, ManuallyDrop, align_of_val_raw};
 use core::num::NonZeroUsize;
-use core::ops::{CoerceUnsized, Deref, DerefMut, DerefPure, DispatchFromDyn, LegacyReceiver};
+use core::ops::{
+    CoerceUnsized, Deref, DerefMut, DerefPure, DispatchFromDyn, LegacyReceiver, Receiver,
+};
 #[cfg(not(no_global_oom_handling))]
 use core::ops::{Residual, Try};
 use core::panic::{RefUnwindSafe, UnwindSafe};
@@ -2434,6 +2436,10 @@ unsafe impl<T: ?Sized, A: Allocator> DerefPure for Arc<T, A> {}
 
 #[unstable(feature = "legacy_receiver_trait", issue = "none")]
 impl<T: ?Sized> LegacyReceiver for Arc<T> {}
+#[unstable(feature = "arbitrary_self_types", issue = "44874")]
+impl<T: ?Sized> Receiver for Arc<T> {
+    type Target = T;
+}
 
 #[cfg(not(no_global_oom_handling))]
 impl<T: ?Sized + CloneToUninit, A: Allocator + Clone> Arc<T, A> {
