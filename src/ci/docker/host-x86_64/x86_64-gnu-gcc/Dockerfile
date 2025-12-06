@@ -39,7 +39,8 @@ ENV RUST_CONFIGURE_ARGS \
  --enable-compiler-docs \
  --set llvm.libzstd=true \
  --set 'rust.codegen-backends=[\"llvm\",\"gcc\"]'
-ENV SCRIPT python3 ../x.py \
+ENV SCRIPT python3 ../x.py --stage 2 clippy compiler/rustc_codegen_gcc && \
+  ../x.py \
   --stage 2 \
   test tests \
   --test-codegen-backend gcc \

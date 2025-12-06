@@ -2763,6 +2763,8 @@ mod snapshot {
                 .render_steps(), @r"
         [build] llvm <host>
         [clippy] rustc 0 <host> -> rustc 1 <host>
+        [check] rustc 0 <host> -> rustc 1 <host>
+        [clippy] rustc 0 <host> -> rustc_codegen_gcc 1 <host>
         ");
     }
 
@@ -2780,6 +2782,8 @@ mod snapshot {
         [build] rustc 0 <host> -> clippy-driver 1 <host>
         [build] rustc 0 <host> -> cargo-clippy 1 <host>
         [clippy] rustc 1 <host> -> rustc 2 <host>
+        [check] rustc 1 <host> -> rustc 2 <host>
+        [clippy] rustc 1 <host> -> rustc_codegen_gcc 2 <host>
         ");
     }
 
