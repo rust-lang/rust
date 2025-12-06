@@ -2,7 +2,7 @@ use std::collections::hash_map::Entry;
 use std::marker::PhantomData;
 use std::ops::Range;
 
-use rustc_abi::{BackendRepr, FieldIdx, FieldsShape, Size, VariantIdx};
+use rustc_abi::{BackendRepr, FieldIdx, FieldsShape, ScalableElt, Size, VariantIdx};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_index::IndexVec;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
@@ -406,6 +406,49 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let attrs = bx.tcx().codegen_instance_attrs(self.instance.def);
                 if attrs.flags.contains(CodegenFnAttrFlags::NAKED) {
                     return;
+                }
+
+                // Don't spill `<vscale x N x i1>` for `N != 16`:
+                //
+                // SVE predicates are only one bit for each byte in an SVE vector (which makes
+                // sense, the predicate only needs to keep track of whether a lane is
+                // enabled/disabled). i.e. a `<vscale x 16 x i8>` vector has a `<vscale x 16 x i1>`
+                // predicate type. `<vscale x 16 x i1>` corresponds to two bytes of storage,
+                // multiplied by the `vscale`, with one bit for each of the sixteen lanes.
+                //
+                // For a vector with fewer elements, such as `svint32_t`/`<vscale x 4 x i32>`,
+                // while only a `<vscale x 4 x i1>` predicate type would be strictly necessary,
+                // relevant intrinsics still take a `svbool_t`/`<vscale x 16 x i1>` - this is
+                // because a `<vscale x 4 x i1>` is only half of a byte (for `vscale=1`), and with
+                // memory being byte-addressable, it's unclear how to store that.
+                //
+                // Due to this, LLVM ultimately decided not to support stores of `<vscale x N x i1>`
+                // for `N != 16`. As for `vscale=1` and `N` fewer than sixteen, partial bytes would
+                // need to be stored (except for `N=8`, but that also isn't supported). `N` can
+                // never be greater than sixteen as that ends up larger than the 128-bit increment
+                // size.
+                //
+                // Internally, with an intrinsic operating on a `svint32_t`/`<vscale x 4 x i32>`
+                // (for example), the intrinsic takes the `svbool_t`/`<vscale x 16 x i1>` predicate
+                // and casts it to a `svbool4_t`/`<vscale x 4 x i1>`. Therefore, it's important that
+                // the `<vscale x 4 x i32>` never spills because that'll cause errors during
+                // instruction selection. Spilling to the stack to create debuginfo for these
+                // intermediate values must be avoided and won't degrade the debugging experience
+                // anyway.
+                if operand.layout.ty.is_scalable_vector()
+                    && bx.sess().target.arch == rustc_target::spec::Arch::AArch64
+                    && let ty::Adt(adt, args) = &operand.layout.ty.kind()
+                    && let Some(marker_type_field) =
+                        adt.non_enum_variant().fields.get(FieldIdx::from_u32(0))
+                {
+                    let marker_type = marker_type_field.ty(bx.tcx(), args);
+                    // i.e. `<vscale x N x i1>` when `N != 16`
+                    if let ty::Slice(element_ty) = marker_type.kind()
+                        && element_ty.is_bool()
+                        && adt.repr().scalable != Some(ScalableElt::ElementCount(16))
+                    {
+                        return;
+                    }
                 }
 
                 Self::spill_operand_to_stack(*operand, name, bx)
