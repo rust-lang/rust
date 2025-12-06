@@ -360,6 +360,9 @@ impl<'tcx> Validator<'_, 'tcx> {
         match operand {
             Operand::Copy(place) | Operand::Move(place) => self.validate_place(place.as_ref()),
 
+            // Promoting a runtime check would transform a runtime error into a compile-time error.
+            Operand::RuntimeChecks(_) => Err(Unpromotable),
+
             // The qualifs for a constant (e.g. `HasMutInterior`) are checked in
             // `validate_rvalue` upon access.
             Operand::Constant(c) => {
@@ -448,10 +451,6 @@ impl<'tcx> Validator<'_, 'tcx> {
             Rvalue::Cast(_, operand, _) => {
                 self.validate_operand(operand)?;
             }
-
-            Rvalue::NullaryOp(op) => match op {
-                NullOp::RuntimeChecks(_) => {}
-            },
 
             Rvalue::ShallowInitBox(_, _) => return Err(Unpromotable),
 
