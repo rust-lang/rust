@@ -721,7 +721,13 @@ impl SerializedSearchIndex {
                         }
                     },
                 ),
-                self.alias_pointers[id].and_then(|alias| map.get(&alias).copied()),
+                self.alias_pointers[id].and_then(|alias| {
+                    if self.names[alias].is_empty() {
+                        None
+                    } else {
+                        map.get(&alias).copied()
+                    }
+                }),
             );
         }
         new.generic_inverted_index = self
