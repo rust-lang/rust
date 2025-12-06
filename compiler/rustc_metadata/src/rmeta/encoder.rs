@@ -2205,7 +2205,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             .incoherent_impls
             .iter()
             .map(|(&simp, impls)| IncoherentImpls {
-                self_ty: simp,
+                self_ty: self.lazy(simp),
                 impls: self.lazy_array(impls.iter().map(|def_id| def_id.local_def_index)),
             })
             .collect();

@@ -477,7 +477,7 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
     }
 
     fn get_proc_macro_quoted_span(&self, krate: CrateNum, id: usize) -> Span {
-        self.cstore().get_proc_macro_quoted_span_untracked(krate, id, self.tcx.sess)
+        self.cstore().get_proc_macro_quoted_span_untracked(self.tcx, krate, id)
     }
 
     fn declare_proc_macro(&mut self, id: NodeId) {

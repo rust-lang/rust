@@ -2316,7 +2316,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         match def_id.as_local() {
             Some(def_id) => self.tcx.source_span(def_id),
             // Query `def_span` is not used because hashing its result span is expensive.
-            None => self.cstore().def_span_untracked(def_id, self.tcx.sess),
+            None => self.cstore().def_span_untracked(self.tcx(), def_id),
         }
     }
 
