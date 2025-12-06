@@ -296,7 +296,6 @@ impl Step for Std {
             vec![],
             &stamp,
             target_deps,
-            self.is_for_mir_opt_tests, // is_check
             false,
         );
 
@@ -1170,7 +1169,6 @@ impl Step for Rustc {
             vec![],
             &stamp,
             vec![],
-            false,
             true, // Only ship rustc_driver.so and .rmeta files, not all intermediate .rlib files.
         );
 
@@ -1643,7 +1641,7 @@ impl Step for GccCodegenBackend {
 
         let _guard =
             builder.msg(Kind::Build, "codegen backend gcc", Mode::Codegen, build_compiler, target);
-        let files = run_cargo(builder, cargo, vec![], &stamp, vec![], false, false);
+        let files = run_cargo(builder, cargo, vec![], &stamp, vec![], false);
 
         GccCodegenBackendOutput {
             stamp: write_codegen_backend_stamp(stamp, files, builder.config.dry_run()),
@@ -1720,7 +1718,7 @@ impl Step for CraneliftCodegenBackend {
             build_compiler,
             target,
         );
-        let files = run_cargo(builder, cargo, vec![], &stamp, vec![], false, false);
+        let files = run_cargo(builder, cargo, vec![], &stamp, vec![], false);
         write_codegen_backend_stamp(stamp, files, builder.config.dry_run())
     }
 
@@ -2438,7 +2436,6 @@ pub fn run_cargo(
     tail_args: Vec<String>,
     stamp: &BuildStamp,
     additional_target_deps: Vec<(PathBuf, DependencyType)>,
-    is_check: bool,
     rlib_only_metadata: bool,
 ) -> Vec<PathBuf> {
     // `target_root_dir` looks like $dir/$target/release
@@ -2482,7 +2479,7 @@ pub fn run_cargo(
                 // Always keep native libraries, rust dylibs and debuginfo
                 keep = true;
             }
-            if is_check && filename.ends_with(".rmeta") {
+            if filename.ends_with(".rmeta") {
                 // During check builds we need to keep crate metadata
                 keep = true;
             } else if rlib_only_metadata {
