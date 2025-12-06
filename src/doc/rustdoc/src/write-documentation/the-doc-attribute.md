@@ -4,8 +4,8 @@ The `#[doc]` attribute lets you control various aspects of how `rustdoc` does
 its job.
 
 The most basic function of `#[doc]` is to handle the actual documentation
-text. That is, `///` is syntax sugar for `#[doc]`. This means that these two
-are the same:
+text. That is, `///` is syntax sugar for `#[doc]` (as is `//!` for `#![doc]`).
+This means that these two are the same:
 
 ```rust,no_run
 /// This is a doc comment.
