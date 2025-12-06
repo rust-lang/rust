@@ -1030,7 +1030,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         interp_ok(Scalar::from_maybe_pointer(entry.unwrap_or_else(Pointer::null), this))
     }
 
-    fn macos_fbsd_readdir_r(
+    fn macos_readdir_r(
         &mut self,
         dirp_op: &OpTy<'tcx>,
         entry_op: &OpTy<'tcx>,
@@ -1038,9 +1038,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
-        if !matches!(&this.tcx.sess.target.os, Os::MacOs | Os::FreeBsd) {
-            panic!("`macos_fbsd_readdir_r` should not be called on {}", this.tcx.sess.target.os);
-        }
+        this.assert_target_os(Os::MacOs, "readdir_r");
 
         let dirp = this.read_target_usize(dirp_op)?;
         let result_place = this.deref_pointer_as(result_op, this.machine.layouts.mut_raw_ptr)?;
@@ -1096,39 +1094,16 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
                 let file_type = this.file_type_to_d_type(dir_entry.file_type())?;
 
-                // Common fields.
                 this.write_int_fields_named(
                     &[
                         ("d_reclen", 0),
                         ("d_namlen", file_name_len.into()),
                         ("d_type", file_type.into()),
+                        ("d_ino", ino.into()),
+                        ("d_seekoff", 0),
                     ],
                     &entry_place,
                 )?;
-                // Special fields.
-                match this.tcx.sess.target.os {
-                    Os::MacOs => {
-                        #[rustfmt::skip]
-                        this.write_int_fields_named(
-                            &[
-                                ("d_ino", ino.into()),
-                                ("d_seekoff", 0),
-                            ],
-                            &entry_place,
-                        )?;
-                    }
-                    Os::FreeBsd => {
-                        #[rustfmt::skip]
-                        this.write_int_fields_named(
-                            &[
-                                ("d_fileno", ino.into()),
-                                ("d_off", 0),
-                            ],
-                            &entry_place,
-                        )?;
-                    }
-                    _ => unreachable!(),
-                }
                 this.write_scalar(this.read_scalar(entry_op)?, &result_place)?;
 
                 Scalar::from_i32(0)

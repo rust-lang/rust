@@ -69,7 +69,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "readdir_r" | "readdir_r$INODE64" => {
                 let [dirp, entry, result] =
                     this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
-                let result = this.macos_fbsd_readdir_r(dirp, entry, result)?;
+                let result = this.macos_readdir_r(dirp, entry, result)?;
                 this.write_scalar(result, dest)?;
             }
             "realpath$DARWIN_EXTSN" => {
