@@ -598,7 +598,8 @@ impl Clone for Box<ByteStr> {
 }
 
 #[unstable(feature = "bstr", issue = "134915")]
-impl<'a> From<&'a ByteStr> for Cow<'a, ByteStr> {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl<'a> const From<&'a ByteStr> for Cow<'a, ByteStr> {
     #[inline]
     fn from(s: &'a ByteStr) -> Self {
         Cow::Borrowed(s)
