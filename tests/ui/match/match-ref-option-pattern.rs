@@ -1,3 +1,4 @@
+//! regression test for issue #3500
 //@ run-pass
 
 pub fn main() {
