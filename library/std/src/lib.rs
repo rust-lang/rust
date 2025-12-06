@@ -344,6 +344,7 @@
 #![feature(hint_must_use)]
 #![feature(int_from_ascii)]
 #![feature(ip)]
+#![feature(ipv6_hop_limit)]
 #![feature(lazy_get)]
 #![feature(maybe_uninit_array_assume_init)]
 #![feature(panic_can_unwind)]
