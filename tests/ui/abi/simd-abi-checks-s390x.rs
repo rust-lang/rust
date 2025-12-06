@@ -1,16 +1,20 @@
 //@ add-minicore
 //@ revisions: z10 z13_no_vector z13_soft_float
-//@ build-fail
+//@[z10] build-fail
+//@[z13_no_vector] build-fail
+//@[z13_soft_float] check-fail
 //@[z10] compile-flags: --target s390x-unknown-linux-gnu -C target-cpu=z10
 //@[z10] needs-llvm-components: systemz
 //@[z13_no_vector] compile-flags: --target s390x-unknown-linux-gnu -C target-cpu=z13 -C target-feature=-vector
 //@[z13_no_vector] needs-llvm-components: systemz
 // FIXME: +soft-float itself doesn't set -vector
-//@[z13_soft_float] compile-flags: --target s390x-unknown-linux-gnu -C target-cpu=z13 -C target-feature=-vector,+soft-float
+//@[z13_soft_float] compile-flags: --target s390x-unknown-linux-gnu -C target-cpu=z13 -C target-feature=-vector
+//@[z13_soft_float] non-aux-compile-flags: -C target-feature=+soft-float
+
 //@[z13_soft_float] needs-llvm-components: systemz
 //@ ignore-backends: gcc
 //[z13_soft_float]~? WARN must be disabled to ensure that the ABI of the current target can be implemented correctly
-//[z13_soft_float]~? WARN target feature `soft-float` cannot be enabled with `-Ctarget-feature`
+//[z13_soft_float]~? ERROR target feature `soft-float` cannot be enabled with `-Ctarget-feature`
 
 #![feature(no_core, repr_simd)]
 #![no_core]
@@ -39,12 +43,14 @@ impl<T: Copy> Copy for TransparentWrapper<T> {}
 
 #[no_mangle]
 extern "C" fn vector_ret_small(x: &i8x8) -> i8x8 {
-    //~^ ERROR requires the `vector` target feature, which is not enabled
+    //[z10]~^ ERROR requires the `vector` target feature, which is not enabled
+    //[z13_no_vector]~^^ ERROR requires the `vector` target feature, which is not enabled
     *x
 }
 #[no_mangle]
 extern "C" fn vector_ret(x: &i8x16) -> i8x16 {
-    //~^ ERROR requires the `vector` target feature, which is not enabled
+    //[z10]~^ ERROR requires the `vector` target feature, which is not enabled
+    //[z13_no_vector]~^^ ERROR requires the `vector` target feature, which is not enabled
     *x
 }
 #[no_mangle]
@@ -92,14 +98,16 @@ extern "C" fn vector_wrapper_ret_large(x: &Wrapper<i8x32>) -> Wrapper<i8x32> {
 extern "C" fn vector_transparent_wrapper_ret_small(
     x: &TransparentWrapper<i8x8>,
 ) -> TransparentWrapper<i8x8> {
-    //~^^^ ERROR requires the `vector` target feature, which is not enabled
+    //[z10]~^^^ ERROR requires the `vector` target feature, which is not enabled
+    //[z13_no_vector]~^^^^ ERROR requires the `vector` target feature, which is not enabled
     *x
 }
 #[no_mangle]
 extern "C" fn vector_transparent_wrapper_ret(
     x: &TransparentWrapper<i8x16>,
 ) -> TransparentWrapper<i8x16> {
-    //~^^^ ERROR requires the `vector` target feature, which is not enabled
+    //[z10]~^^^ ERROR requires the `vector` target feature, which is not enabled
+    //[z13_no_vector]~^^^^ ERROR requires the `vector` target feature, which is not enabled
     *x
 }
 #[no_mangle]
@@ -112,12 +120,14 @@ extern "C" fn vector_transparent_wrapper_ret_large(
 
 #[no_mangle]
 extern "C" fn vector_arg_small(x: i8x8) -> i64 {
-    //~^ ERROR requires the `vector` target feature, which is not enabled
+    //[z10]~^ ERROR requires the `vector` target feature, which is not enabled
+    //[z13_no_vector]~^^ ERROR requires the `vector` target feature, which is not enabled
     unsafe { *(&raw const x as *const i64) }
 }
 #[no_mangle]
 extern "C" fn vector_arg(x: i8x16) -> i64 {
-    //~^ ERROR requires the `vector` target feature, which is not enabled
+    //[z10]~^ ERROR requires the `vector` target feature, which is not enabled
+    //[z13_no_vector]~^^ ERROR requires the `vector` target feature, which is not enabled
     unsafe { *(&raw const x as *const i64) }
 }
 #[no_mangle]
@@ -128,12 +138,14 @@ extern "C" fn vector_arg_large(x: i8x32) -> i64 {
 
 #[no_mangle]
 extern "C" fn vector_wrapper_arg_small(x: Wrapper<i8x8>) -> i64 {
-    //~^ ERROR requires the `vector` target feature, which is not enabled
+    //[z10]~^ ERROR requires the `vector` target feature, which is not enabled
+    //[z13_no_vector]~^^ ERROR requires the `vector` target feature, which is not enabled
     unsafe { *(&raw const x as *const i64) }
 }
 #[no_mangle]
 extern "C" fn vector_wrapper_arg(x: Wrapper<i8x16>) -> i64 {
-    //~^ ERROR requires the `vector` target feature, which is not enabled
+    //[z10]~^ ERROR requires the `vector` target feature, which is not enabled
+    //[z13_no_vector]~^^ ERROR requires the `vector` target feature, which is not enabled
     unsafe { *(&raw const x as *const i64) }
 }
 #[no_mangle]
@@ -144,12 +156,14 @@ extern "C" fn vector_wrapper_arg_large(x: Wrapper<i8x32>) -> i64 {
 
 #[no_mangle]
 extern "C" fn vector_transparent_wrapper_arg_small(x: TransparentWrapper<i8x8>) -> i64 {
-    //~^ ERROR requires the `vector` target feature, which is not enabled
+    //[z10]~^ ERROR requires the `vector` target feature, which is not enabled
+    //[z13_no_vector]~^^ ERROR requires the `vector` target feature, which is not enabled
     unsafe { *(&raw const x as *const i64) }
 }
 #[no_mangle]
 extern "C" fn vector_transparent_wrapper_arg(x: TransparentWrapper<i8x16>) -> i64 {
-    //~^ ERROR requires the `vector` target feature, which is not enabled
+    //[z10]~^ ERROR requires the `vector` target feature, which is not enabled
+    //[z13_no_vector]~^^ ERROR requires the `vector` target feature, which is not enabled
     unsafe { *(&raw const x as *const i64) }
 }
 #[no_mangle]
