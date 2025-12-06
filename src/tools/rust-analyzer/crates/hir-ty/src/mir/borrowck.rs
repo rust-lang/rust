@@ -436,8 +436,7 @@ fn place_case<'db>(
             | ProjectionElem::Index(_) => {
                 is_part_of = true;
             }
-            ProjectionElem::Downcast(_) |
-            ProjectionElem::OpaqueCast(_) => (),
+            ProjectionElem::Downcast(_) => (),
         }
         ty = ty.projection_ty(infcx, proj, env);
     }

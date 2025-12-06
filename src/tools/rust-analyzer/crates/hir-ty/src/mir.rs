@@ -181,7 +181,6 @@ pub enum ProjectionElem<V: PartialEq> {
     },
     /// "Downcast" to a variant of an enum or a coroutine.
     Downcast(VariantId),
-    OpaqueCast(std::convert::Infallible), // TODO remove this
 }
 
 impl<V: PartialEq> ProjectionElem<V> {
@@ -195,7 +194,6 @@ impl<V: PartialEq> ProjectionElem<V> {
             }
             ProjectionElem::Subslice { from, to } => ProjectionElem::Subslice { from, to },
             ProjectionElem::Downcast(variant_id) => ProjectionElem::Downcast(variant_id),
-            ProjectionElem::OpaqueCast(ty) => ProjectionElem::OpaqueCast(ty),
         }
     }
 
@@ -212,7 +210,6 @@ impl<V: PartialEq> ProjectionElem<V> {
             }
             ProjectionElem::Subslice { from, to } => ProjectionElem::Subslice { from, to },
             ProjectionElem::Downcast(variant_id) => ProjectionElem::Downcast(variant_id),
-            ProjectionElem::OpaqueCast(ty) => ProjectionElem::OpaqueCast(ty),
         })
     }
 }
@@ -1257,7 +1254,7 @@ impl<'db> PlaceTy<'db> {
                         .instantiate(infcx.interner, args)
                         .skip_norm_wip()
                 }
-                // TODO TyKind::Coroutine...
+                // FIXME TyKind::Coroutine...
                 _ => panic!("can't downcast non-adt non-coroutine type: {self_ty:?}"),
             }
         } else {
@@ -1272,7 +1269,7 @@ impl<'db> PlaceTy<'db> {
                 TyKind::Closure(_, args) => {
                     args.as_closure().tupled_upvars_ty().tuple_fields()[f.0 as usize]
                 }
-                // TODO TyKind::Coroutine / TyKind::CoroutineClosure...
+                // FIXME TyKind::Coroutine / TyKind::CoroutineClosure...
                 TyKind::Tuple(tys) => tys
                     .get(f.0 as usize)
                     .cloned()
@@ -1291,7 +1288,7 @@ impl<'db> PlaceTy<'db> {
     ) -> PlaceTy<'db> {
         self.projection_ty_core(
             infcx.interner,
-            &elem,
+            elem,
             |ty| {
                 if matches!(ty.kind(), TyKind::Alias(..)) {
                     let mut ocx = ObligationCtxt::new(infcx);
@@ -1311,16 +1308,13 @@ impl<'db> PlaceTy<'db> {
     /// projects `place_ty` onto `elem`, returning the appropriate
     /// `Ty` or downcast variant corresponding to that projection.
     /// The `handle_field` callback must map a `FieldIndex` to its `Ty`
-    pub fn projection_ty_core<V: PartialEq>(
+    pub fn projection_ty_core<V: PartialEq + ::std::fmt::Debug>(
         self,
         tcx: DbInterner<'db>,
         elem: &ProjectionElem<V>,
         mut structurally_normalize: impl FnMut(Ty<'db>) -> Ty<'db>,
         mut handle_field: impl FnMut(Ty<'db>, Option<VariantId>, FieldIndex /*, T*/) -> Ty<'db>,
-    ) -> PlaceTy<'db>
-    where
-        V: ::std::fmt::Debug,
-    {
+    ) -> PlaceTy<'db> {
         // we only bail on mir building when there are type mismatches
         // but error types may pop up resulting in us still attempting to build the mir
         // so just propagate the error type
@@ -1330,7 +1324,7 @@ impl<'db> PlaceTy<'db> {
         if self.variant_id.is_some() && !matches!(elem, ProjectionElem::Field(..)) {
             panic!("cannot use non field projection on downcasted place")
         }
-        let answer = match *elem {
+        match *elem {
             ProjectionElem::Deref => {
                 let ty = structurally_normalize(self.ty).builtin_deref(true).unwrap_or_else(|| {
                     panic!("deref projection of non-dereferenceable ty {:?}", self)
@@ -1355,13 +1349,9 @@ impl<'db> PlaceTy<'db> {
                 })
             }
             ProjectionElem::Downcast(index) => PlaceTy { ty: self.ty, variant_id: Some(index) },
-            ProjectionElem::Field(f) => PlaceTy::from_ty(handle_field(
-                structurally_normalize(self.ty),
-                self.variant_id.clone(),
-                f,
-            )),
-            ProjectionElem::OpaqueCast(_ty) => unimplemented!("not emitted, to be removed"),
-        };
-        answer
+            ProjectionElem::Field(f) => {
+                PlaceTy::from_ty(handle_field(structurally_normalize(self.ty), self.variant_id, f))
+            }
+        }
     }
 }

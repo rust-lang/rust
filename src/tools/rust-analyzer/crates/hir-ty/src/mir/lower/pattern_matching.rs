@@ -662,7 +662,7 @@ impl<'db> MirLowerCtx<'_, 'db> {
         let downcast_place = if matches!(v, VariantId::EnumVariantId(_)) {
             cond_place.project(ProjectionElem::Downcast(v))
         } else {
-            cond_place.clone()
+            *cond_place
         };
         Ok(match shape {
             AdtPatternShape::Record { args } => {

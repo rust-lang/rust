@@ -741,11 +741,11 @@ impl<'a, 'db: 'a> Evaluator<'a, 'db> {
     fn projected_ty(&self, ty: PlaceTy<'db>, proj: PlaceElem) -> PlaceTy<'db> {
         let pair = (ty, proj);
         if let Some(r) = self.projected_ty_cache.borrow().get(&pair) {
-            return r.clone();
+            return *r;
         }
         let (ty, proj) = pair;
-        let r = ty.clone().projection_ty(&self.infcx, &proj, self.param_env.param_env);
-        self.projected_ty_cache.borrow_mut().insert((ty, proj), r.clone());
+        let r = ty.projection_ty(&self.infcx, &proj, self.param_env.param_env);
+        self.projected_ty_cache.borrow_mut().insert((ty, proj), r);
         r
     }
 
@@ -852,7 +852,6 @@ impl<'a, 'db: 'a> Evaluator<'a, 'db> {
                 ProjectionElem::Downcast(_) => {
                     // no runtime effect
                 }
-                ProjectionElem::OpaqueCast(_) => not_supported!("opaque cast"),
             }
         }
         Ok((addr, ty.ty, metadata))

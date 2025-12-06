@@ -366,7 +366,8 @@ impl<'a, 'db> MirPrettyCtx<'a, 'db> {
                     } else {
                         match place_ty.ty.kind() {
                             TyKind::Adt(adt_def, _) if !adt_def.is_enum() => {
-                                let variant_id = VariantId::from_non_enum(adt_def.def_id()).unwrap();
+                                let variant_id =
+                                    VariantId::from_non_enum(adt_def.def_id()).unwrap();
                                 let fields = variant_id.fields(this.db);
                                 w!(
                                     this,
