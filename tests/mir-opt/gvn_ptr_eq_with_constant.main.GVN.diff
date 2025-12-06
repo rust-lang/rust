@@ -42,7 +42,7 @@
           StorageLive(_3);
 -         _3 = const std::ptr::Alignment::of::<u8>::{constant#0} as std::num::NonZero<usize> (Transmute);
 -         _2 = copy _3 as *mut u8 (Transmute);
-+         _3 = const NonZero::<usize>(core::num::niche_types::NonZeroUsizeInner(1_usize));
++         _3 = const NonZero::<usize>(core::num::niche_types::NonZeroUsizeInner(1_usize is 1..));
 +         _2 = const {0x1 as *mut u8};
           StorageDead(_3);
           StorageLive(_4);
