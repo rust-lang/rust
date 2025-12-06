@@ -19,7 +19,7 @@ fn slice_index_range(_1: &[u32], _2: std::ops::Range<usize>) -> &[u32] {
                 let mut _6: usize;
             }
             scope 4 (inlined core::slice::index::get_offset_len_noubcheck::<u32>) {
-                let _10: *const u32;
+                let mut _10: *const u32;
                 scope 5 {
                     let _11: *const u32;
                     scope 6 {

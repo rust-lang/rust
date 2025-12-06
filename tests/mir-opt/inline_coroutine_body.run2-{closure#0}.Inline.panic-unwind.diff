@@ -208,8 +208,8 @@
 +         StorageLive(_40);
 +         _40 = &raw mut _19;
 +         _39 = copy _40 as *mut std::pin::helper::PinHelper<&mut std::future::Ready<()>> (PtrToPtr);
-+         StorageDead(_40);
 +         _37 = copy ((*_39).0: &mut std::future::Ready<()>);
++         StorageDead(_40);
 +         StorageLive(_42);
 +         _42 = Option::<()>::None;
 +         _35 = copy ((*_37).0: std::option::Option<()>);
