@@ -621,4 +621,11 @@ unsafe impl CloneToUninit for Wtf8 {
         // SAFETY: we're just a transparent wrapper around [u8]
         unsafe { self.bytes.clone_to_uninit(dst) }
     }
+
+    #[inline]
+    #[cfg_attr(debug_assertions, track_caller)]
+    unsafe fn clone_to_init(&self, dst: *mut u8) {
+        // SAFETY: we're just a transparent wrapper around [u8]
+        unsafe { self.bytes.clone_to_init(dst) }
+    }
 }

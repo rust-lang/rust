@@ -2,19 +2,19 @@ error[E0599]: the method `clone` exists for struct `Box<R>`, but its trait bound
   --> $DIR/unique-pinned-nocopy.rs:12:16
    |
 LL | struct R {
-   | -------- doesn't satisfy `R: Clone`
+   | -------- doesn't satisfy `R: CloneToUninit`
 ...
 LL |     let _j = i.clone();
    |                ^^^^^ method cannot be called on `Box<R>` due to unsatisfied trait bounds
    |
    = note: the following trait bounds were not satisfied:
-           `R: Clone`
+           `R: CloneToUninit`
            which is required by `Box<R>: Clone`
-help: consider annotating `R` with `#[derive(Clone)]`
-   |
-LL + #[derive(Clone)]
-LL | struct R {
-   |
+note: the trait `CloneToUninit` must be implemented
+  --> $SRC_DIR/core/src/clone.rs:LL:COL
+   = help: items from traits can only be used if the trait is implemented and in scope
+   = note: the following trait defines an item `clone`, perhaps you need to implement it:
+           candidate #1: `Clone`
 
 error: aborting due to 1 previous error
 
