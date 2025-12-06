@@ -1,0 +1,25 @@
+error[E0228]: the lifetime bound for this object type cannot be deduced from context; please supply an explicit bound
+  --> $DIR/issue-89188-gat-hrtb.rs:27:56
+   |
+LL |         &'s mut T::Shim<dyn for<'t> Fn(&'s mut T::Shim<dyn for<'u> Trait<'s, 't, 'u>>)>,
+   |                                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0228]: the lifetime bound for this object type cannot be deduced from context; please supply an explicit bound
+  --> $DIR/issue-89188-gat-hrtb.rs:27:56
+   |
+LL |         &'s mut T::Shim<dyn for<'t> Fn(&'s mut T::Shim<dyn for<'u> Trait<'s, 't, 'u>>)>,
+   |                                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0228]: the lifetime bound for this object type cannot be deduced from context; please supply an explicit bound
+  --> $DIR/issue-89188-gat-hrtb.rs:27:56
+   |
+LL |         &'s mut T::Shim<dyn for<'t> Fn(&'s mut T::Shim<dyn for<'u> Trait<'s, 't, 'u>>)>,
+   |                                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0228`.
