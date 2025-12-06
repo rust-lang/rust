@@ -5,10 +5,7 @@ LL | struct A {}
    | -------- method `hello` not found for this struct
 ...
 LL |     _a.hello(1);
-   |     ---^^^^^---
-   |     |  |
-   |     |  this is an associated function, not a method
-   |     help: use associated function syntax instead: `A::hello(1)`
+   |        ^^^^^ this is an associated function, not a method
    |
    = note: found the following associated functions; to be used as methods, functions must have a `self` parameter
 note: the candidate is defined in an impl for the type `A`
@@ -16,6 +13,11 @@ note: the candidate is defined in an impl for the type `A`
    |
 LL |     fn hello(_a: i32) {}
    |     ^^^^^^^^^^^^^^^^^
+help: use associated function syntax instead
+   |
+LL -     _a.hello(1);
+LL +     A::hello(1);
+   |
 
 error[E0599]: no method named `test` found for struct `A` in the current scope
   --> $DIR/suggest-assoc-fn-call-without-receiver.rs:22:8
@@ -24,10 +26,7 @@ LL | struct A {}
    | -------- method `test` not found for this struct
 ...
 LL |     _a.test(1);
-   |     ---^^^^---
-   |     |  |
-   |     |  this is an associated function, not a method
-   |     help: use associated function syntax instead: `A::test(_a, 1)`
+   |        ^^^^ this is an associated function, not a method
    |
    = note: found the following associated functions; to be used as methods, functions must have a `self` parameter
 note: the candidate is defined in an impl for the type `A`
@@ -35,6 +34,11 @@ note: the candidate is defined in an impl for the type `A`
    |
 LL |     fn test(_a: Self, _b: i32) {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: use associated function syntax instead
+   |
+LL -     _a.test(1);
+LL +     A::test(_a, 1);
+   |
 
 error[E0599]: no method named `hello` found for struct `B<&str>` in the current scope
   --> $DIR/suggest-assoc-fn-call-without-receiver.rs:26:8
@@ -43,10 +47,7 @@ LL | struct B<T> {
    | ----------- method `hello` not found for this struct
 ...
 LL |     _b.hello(1);
-   |     ---^^^^^---
-   |     |  |
-   |     |  this is an associated function, not a method
-   |     help: use associated function syntax instead: `B::<&str>::hello(1)`
+   |        ^^^^^ this is an associated function, not a method
    |
    = note: found the following associated functions; to be used as methods, functions must have a `self` parameter
 note: the candidate is defined in an impl for the type `B<T>`
@@ -54,6 +55,11 @@ note: the candidate is defined in an impl for the type `B<T>`
    |
 LL |     fn hello(_a: i32) {}
    |     ^^^^^^^^^^^^^^^^^
+help: use associated function syntax instead
+   |
+LL -     _b.hello(1);
+LL +     B::<&str>::hello(1);
+   |
 
 error[E0599]: no method named `test` found for struct `B<&str>` in the current scope
   --> $DIR/suggest-assoc-fn-call-without-receiver.rs:28:8
@@ -62,10 +68,7 @@ LL | struct B<T> {
    | ----------- method `test` not found for this struct
 ...
 LL |     _b.test(1);
-   |     ---^^^^---
-   |     |  |
-   |     |  this is an associated function, not a method
-   |     help: use associated function syntax instead: `B::<&str>::test(_b, 1)`
+   |        ^^^^ this is an associated function, not a method
    |
    = note: found the following associated functions; to be used as methods, functions must have a `self` parameter
 note: the candidate is defined in an impl for the type `B<T>`
@@ -73,6 +76,11 @@ note: the candidate is defined in an impl for the type `B<T>`
    |
 LL |     fn test(_a: Self, _b: i32) {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: use associated function syntax instead
+   |
+LL -     _b.test(1);
+LL +     B::<&str>::test(_b, 1);
+   |
 
 error: aborting due to 4 previous errors
 
