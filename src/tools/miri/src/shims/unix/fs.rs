@@ -118,7 +118,7 @@ impl UnixFileDescription for FileHandle {
 
 impl<'tcx> EvalContextExtPrivate<'tcx> for crate::MiriInterpCx<'tcx> {}
 trait EvalContextExtPrivate<'tcx>: crate::MiriInterpCxExt<'tcx> {
-    fn macos_fbsd_solarish_write_stat_buf(
+    fn write_stat_buf(
         &mut self,
         metadata: FileMetadata,
         buf_op: &OpTy<'tcx>,
@@ -130,7 +130,11 @@ trait EvalContextExtPrivate<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let (modified_sec, modified_nsec) = metadata.modified.unwrap_or((0, 0));
         let mode = metadata.mode.to_uint(this.libc_ty_layout("mode_t").size)?;
 
-        let buf = this.deref_pointer_as(buf_op, this.libc_ty_layout("stat"))?;
+        // We do *not* use `deref_pointer_as` here since determining the right pointee type
+        // is highly non-trivial: it depends on which exact alias of the function was invoked
+        // (e.g. `fstat` vs `fstat64`), and then on FreeBSD it also depends on the ABI level
+        // which can be different between the libc used by std and the libc used by everyone else.
+        let buf = this.deref_pointer(buf_op)?;
         this.write_int_fields_named(
             &[
                 ("st_dev", metadata.dev.into()),
@@ -141,8 +145,11 @@ trait EvalContextExtPrivate<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 ("st_gid", metadata.gid.into()),
                 ("st_rdev", 0),
                 ("st_atime", access_sec.into()),
+                ("st_atime_nsec", access_nsec.into()),
                 ("st_mtime", modified_sec.into()),
+                ("st_mtime_nsec", modified_nsec.into()),
                 ("st_ctime", 0),
+                ("st_ctime_nsec", 0),
                 ("st_size", metadata.size.into()),
                 ("st_blocks", 0),
                 ("st_blksize", 0),
@@ -153,9 +160,6 @@ trait EvalContextExtPrivate<'tcx>: crate::MiriInterpCxExt<'tcx> {
         if matches!(&this.tcx.sess.target.os, Os::MacOs | Os::FreeBsd) {
             this.write_int_fields_named(
                 &[
-                    ("st_atime_nsec", access_nsec.into()),
-                    ("st_mtime_nsec", modified_nsec.into()),
-                    ("st_ctime_nsec", 0),
                     ("st_birthtime", created_sec.into()),
                     ("st_birthtime_nsec", created_nsec.into()),
                     ("st_flags", 0),
@@ -550,7 +554,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             Err(err) => return this.set_last_error_and_return_i32(err),
         };
 
-        interp_ok(Scalar::from_i32(this.macos_fbsd_solarish_write_stat_buf(metadata, buf_op)?))
+        interp_ok(Scalar::from_i32(this.write_stat_buf(metadata, buf_op)?))
     }
 
     // `lstat` is used to get symlink metadata.
@@ -583,22 +587,17 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             Err(err) => return this.set_last_error_and_return_i32(err),
         };
 
-        interp_ok(Scalar::from_i32(this.macos_fbsd_solarish_write_stat_buf(metadata, buf_op)?))
+        interp_ok(Scalar::from_i32(this.write_stat_buf(metadata, buf_op)?))
     }
 
-    fn macos_fbsd_solarish_fstat(
-        &mut self,
-        fd_op: &OpTy<'tcx>,
-        buf_op: &OpTy<'tcx>,
-    ) -> InterpResult<'tcx, Scalar> {
+    fn fstat(&mut self, fd_op: &OpTy<'tcx>, buf_op: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
-        if !matches!(&this.tcx.sess.target.os, Os::MacOs | Os::FreeBsd | Os::Solaris | Os::Illumos)
-        {
-            panic!(
-                "`macos_fbsd_solaris_fstat` should not be called on {}",
-                this.tcx.sess.target.os
-            );
+        if !matches!(
+            &this.tcx.sess.target.os,
+            Os::MacOs | Os::FreeBsd | Os::Solaris | Os::Illumos | Os::Linux
+        ) {
+            panic!("`fstat` should not be called on {}", this.tcx.sess.target.os);
         }
 
         let fd = this.read_scalar(fd_op)?.to_i32()?;
@@ -614,7 +613,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             Ok(metadata) => metadata,
             Err(err) => return this.set_last_error_and_return_i32(err),
         };
-        interp_ok(Scalar::from_i32(this.macos_fbsd_solarish_write_stat_buf(metadata, buf_op)?))
+        interp_ok(Scalar::from_i32(this.write_stat_buf(metadata, buf_op)?))
     }
 
     fn linux_statx(
@@ -1031,7 +1030,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         interp_ok(Scalar::from_maybe_pointer(entry.unwrap_or_else(Pointer::null), this))
     }
 
-    fn macos_fbsd_readdir_r(
+    fn macos_readdir_r(
         &mut self,
         dirp_op: &OpTy<'tcx>,
         entry_op: &OpTy<'tcx>,
@@ -1039,9 +1038,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
-        if !matches!(&this.tcx.sess.target.os, Os::MacOs | Os::FreeBsd) {
-            panic!("`macos_fbsd_readdir_r` should not be called on {}", this.tcx.sess.target.os);
-        }
+        this.assert_target_os(Os::MacOs, "readdir_r");
 
         let dirp = this.read_target_usize(dirp_op)?;
         let result_place = this.deref_pointer_as(result_op, this.machine.layouts.mut_raw_ptr)?;
@@ -1097,39 +1094,16 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
                 let file_type = this.file_type_to_d_type(dir_entry.file_type())?;
 
-                // Common fields.
                 this.write_int_fields_named(
                     &[
                         ("d_reclen", 0),
                         ("d_namlen", file_name_len.into()),
                         ("d_type", file_type.into()),
+                        ("d_ino", ino.into()),
+                        ("d_seekoff", 0),
                     ],
                     &entry_place,
                 )?;
-                // Special fields.
-                match this.tcx.sess.target.os {
-                    Os::MacOs => {
-                        #[rustfmt::skip]
-                        this.write_int_fields_named(
-                            &[
-                                ("d_ino", ino.into()),
-                                ("d_seekoff", 0),
-                            ],
-                            &entry_place,
-                        )?;
-                    }
-                    Os::FreeBsd => {
-                        #[rustfmt::skip]
-                        this.write_int_fields_named(
-                            &[
-                                ("d_fileno", ino.into()),
-                                ("d_off", 0),
-                            ],
-                            &entry_place,
-                        )?;
-                    }
-                    _ => unreachable!(),
-                }
                 this.write_scalar(this.read_scalar(entry_op)?, &result_place)?;
 
                 Scalar::from_i32(0)
