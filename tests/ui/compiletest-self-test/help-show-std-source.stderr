@@ -1,0 +1,39 @@
+error[E0107]: missing generics for enum `Foo`
+  --> $DIR/help-show-std-source.rs:8:10
+   |
+LL | fn f(x: &Foo) {
+   |          ^^^ expected 1 generic argument
+   |
+note: enum defined here, with 1 generic parameter: `T`
+  --> $DIR/help-show-std-source.rs:1:6
+   |
+LL | enum Foo<T> {
+   |      ^^^ -
+help: add missing generic argument
+   |
+LL | fn f(x: &Foo<T>) {
+   |             +++
+
+error[E0277]: can't compare `&isize` with `{integer}`
+  --> $DIR/help-show-std-source.rs:12:13
+   |
+LL |             assert_eq!(y, 2);
+   |             ^^^^^^^^^^^^^^^^ no implementation for `&isize == {integer}`
+   |
+   = help: the trait `PartialEq<{integer}>` is not implemented for `&isize`
+   = note: this error originates in the macro `assert_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: consider dereferencing here
+  --> $SRC_DIR/core/src/macros/mod.rs:LL:COL
+
+error[E0559]: variant `Foo<_>::Bar` has no field named `x`
+  --> $DIR/help-show-std-source.rs:18:24
+   |
+LL |     let x = Foo::Bar { x: 1, y: 2 };
+   |                        ^ `Foo<_>::Bar` does not have this field
+   |
+   = note: available fields are: `v23`
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0107, E0277, E0559.
+For more information about an error, try `rustc --explain E0107`.
