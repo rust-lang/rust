@@ -427,9 +427,9 @@ fn item_module(cx: &Context<'_>, item: &clean::Item, items: &[clean::Item]) -> i
                     clean::ImportItem(ref import) => {
                         if let Some(import_def_id) = import.source.did {
                             let depr = tcx.lookup_deprecation(import_def_id).is_some();
-                            let unst = tcx
-                                .lookup_stability(import_def_id)
-                                .is_some_and(|s| s.is_unstable() && s.feature != sym::rustc_private);
+                            let unst = tcx.lookup_stability(import_def_id).is_some_and(|s| {
+                                s.is_unstable() && s.feature != sym::rustc_private
+                            });
                             (depr, unst)
                         } else {
                             (false, false)
