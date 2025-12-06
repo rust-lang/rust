@@ -1,3 +1,4 @@
+use std::iter;
 use std::ops::ControlFlow;
 use std::sync::Arc;
 
@@ -804,6 +805,37 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }
     }
 
+    pub(super) fn forward_inline(&mut self, _span: Span, outer_hir_id: HirId, inner_hir_id: HirId) {
+        let Some(attrs) = self.attrs.get(&outer_hir_id.local_id) else {
+            return;
+        };
+
+        let Some((inline_attr, span)) =
+            find_attr!(*attrs, AttributeKind::Inline(attr, span) => (attr, span))
+        else {
+            return;
+        };
+
+        let filtered_iter = attrs
+            .iter()
+            .cloned()
+            .filter(|attr| !matches!(attr, hir::Attribute::Parsed(AttributeKind::Inline(_, _))));
+
+        let filtered_attrs = self.arena.alloc_from_iter(filtered_iter);
+
+        if filtered_attrs.is_empty() {
+            self.attrs.remove(&outer_hir_id.local_id);
+        } else {
+            self.attrs.insert(outer_hir_id.local_id, filtered_attrs);
+        }
+
+        let attr = self.arena.alloc_from_iter(iter::once(hir::Attribute::Parsed(
+            AttributeKind::Inline(*inline_attr, *span),
+        )));
+
+        self.attrs.insert(inner_hir_id.local_id, attr);
+    }
+
     /// Desugar `<expr>.await` into:
     /// ```ignore (pseudo-rust)
     /// match ::std::future::IntoFuture::into_future(<expr>) {
@@ -1167,6 +1199,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 );
 
                 this.maybe_forward_track_caller(body.span, closure_hir_id, expr.hir_id);
+                this.forward_inline(body.span, closure_hir_id, expr.hir_id);
 
                 (parameters, expr)
             });
