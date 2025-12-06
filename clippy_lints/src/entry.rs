@@ -3,11 +3,12 @@ use clippy_utils::source::{reindent_multiline, snippet_indent, snippet_with_appl
 use clippy_utils::ty::is_copy;
 use clippy_utils::visitors::for_each_expr;
 use clippy_utils::{
-    SpanlessEq, can_move_expr_to_closure_no_visit, higher, is_expr_final_block_expr, is_expr_used_or_unified,
-    peel_hir_expr_while,
+    SpanlessEq, can_move_expr_to_closure_no_visit, desugar_await, higher, is_expr_final_block_expr,
+    is_expr_used_or_unified, paths, peel_hir_expr_while,
 };
 use core::fmt::{self, Write};
 use rustc_errors::Applicability;
+use rustc_hir::def_id::DefId;
 use rustc_hir::hir_id::HirIdSet;
 use rustc_hir::intravisit::{Visitor, walk_body, walk_expr};
 use rustc_hir::{Block, Expr, ExprKind, HirId, Pat, Stmt, StmtKind, UnOp};
@@ -382,6 +383,8 @@ struct InsertSearcher<'cx, 'tcx> {
     loops: Vec<HirId>,
     /// Local variables created in the expression. These don't need to be captured.
     locals: HirIdSet,
+    /// Whether the map is a non-async-aware `MutexGuard`.
+    map_is_mutex_guard: bool,
 }
 impl<'tcx> InsertSearcher<'_, 'tcx> {
     /// Visit the expression as a branch in control flow. Multiple insert calls can be used, but
@@ -524,15 +527,22 @@ impl<'tcx> Visitor<'tcx> for InsertSearcher<'_, 'tcx> {
                 ExprKind::If(cond_expr, then_expr, Some(else_expr)) => {
                     self.is_single_insert = false;
                     self.visit_non_tail_expr(cond_expr);
-                    // Each branch may contain it's own insert expression.
+                    // Each branch may contain its own insert expression.
                     let mut is_map_used = self.visit_cond_arm(then_expr);
                     is_map_used |= self.visit_cond_arm(else_expr);
                     self.is_map_used = is_map_used;
                 },
                 ExprKind::Match(scrutinee_expr, arms, _) => {
+                    // If the map is a non-async-aware `MutexGuard` and
+                    // `.await` expression appears alongside map insertion in the same `then` or `else` block,
+                    // we cannot suggest using `entry()` because it would hold the lock across the await point,
+                    // triggering `await_holding_lock` and risking deadlock.
+                    if self.map_is_mutex_guard && desugar_await(expr).is_some() {
+                        self.can_use_entry = false;
+                    }
                     self.is_single_insert = false;
                     self.visit_non_tail_expr(scrutinee_expr);
-                    // Each branch may contain it's own insert expression.
+                    // Each branch may contain its own insert expression.
                     let mut is_map_used = self.is_map_used;
                     for arm in arms {
                         self.visit_pat(arm.pat);
@@ -725,16 +735,32 @@ fn find_insert_calls<'tcx>(
         edits: Vec::new(),
         loops: Vec::new(),
         locals: HirIdSet::default(),
+        map_is_mutex_guard: false,
     };
+    // Check if the map is a non-async-aware `MutexGuard`
+    if let rustc_middle::ty::Adt(adt, _) = cx.typeck_results().expr_ty(contains_expr.map).kind()
+        && is_mutex_guard(cx, adt.did())
+    {
+        s.map_is_mutex_guard = true;
+    }
+
     s.visit_expr(expr);
-    let allow_insert_closure = s.allow_insert_closure;
-    let is_single_insert = s.is_single_insert;
+    if !s.can_use_entry {
+        return None;
+    }
+
     let is_key_used_and_no_copy = s.is_key_used && !is_copy(cx, cx.typeck_results().expr_ty(contains_expr.key));
-    let edits = s.edits;
-    s.can_use_entry.then_some(InsertSearchResults {
-        edits,
-        allow_insert_closure,
-        is_single_insert,
+    Some(InsertSearchResults {
+        edits: s.edits,
+        allow_insert_closure: s.allow_insert_closure,
+        is_single_insert: s.is_single_insert,
         is_key_used_and_no_copy,
     })
+}
+
+fn is_mutex_guard(cx: &LateContext<'_>, def_id: DefId) -> bool {
+    match cx.tcx.get_diagnostic_name(def_id) {
+        Some(name) => matches!(name, sym::MutexGuard | sym::RwLockReadGuard | sym::RwLockWriteGuard),
+        None => paths::PARKING_LOT_GUARDS.iter().any(|guard| guard.matches(cx, def_id)),
+    }
 }
