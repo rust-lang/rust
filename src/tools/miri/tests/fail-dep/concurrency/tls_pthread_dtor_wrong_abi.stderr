@@ -1,8 +1,8 @@
-error: Undefined Behavior: calling a function with fewer arguments than it requires
-  --> tests/fail-dep/concurrency/libc_pthread_create_too_many_args.rs:LL:CC
+error: Undefined Behavior: calling a function with calling convention "Rust" using calling convention "C"
+  --> tests/fail-dep/concurrency/tls_pthread_dtor_wrong_abi.rs:LL:CC
    |
-LL |             libc::pthread_create(&mut native, ptr::null(), thread_start, ptr::null_mut()),
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Undefined Behavior occurred due to this code
+LL |     assert_eq!(libc::pthread_key_create(&mut key, mem::transmute(dtor)), 0);
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Undefined Behavior occurred due to this code
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
