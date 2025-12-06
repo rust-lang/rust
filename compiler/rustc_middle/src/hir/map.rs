@@ -321,7 +321,6 @@ impl<'tcx> TyCtxt<'tcx> {
             BodyOwnerKind::Fn | BodyOwnerKind::Closure if self.is_const_fn(def_id) => {
                 ConstContext::ConstFn
             }
-            BodyOwnerKind::Fn if self.is_const_default_method(def_id) => ConstContext::ConstFn,
             BodyOwnerKind::Fn | BodyOwnerKind::Closure | BodyOwnerKind::GlobalAsm => return None,
         };
 

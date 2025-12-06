@@ -1,4 +1,4 @@
-# Type checking
+# HIR Type checking
 
 The [`hir_analysis`] crate contains the source for "type collection" as well
 as a bunch of related functionality.
@@ -7,8 +7,8 @@ These crates draw heavily on the [type inference] and [trait solving].
 
 [`hir_analysis`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir_analysis/index.html
 [`hir_typeck`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir_typeck/index.html
-[type inference]: ./type-inference.md
-[trait solving]: ./traits/resolution.md
+[type inference]: ./../type-inference.md
+[trait solving]: ./../traits/resolution.md
 
 ## Type collection
 
@@ -40,7 +40,7 @@ type *checking*).
 
 For more details, see the [`collect`][collect] module.
 
-[queries]: ./query.md
+[queries]: ../query.md
 [collect]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir_analysis/collect/index.html
 
 **TODO**: actually talk about type checking... [#1161](https://github.com/rust-lang/rustc-dev-guide/issues/1161)

@@ -1132,8 +1132,7 @@ fn should_encode_mir(
                     && (generics.requires_monomorphization(tcx)
                         || tcx.cross_crate_inlinable(def_id)));
             // The function has a `const` modifier or is in a `const trait`.
-            let is_const_fn = tcx.is_const_fn(def_id.to_def_id())
-                || tcx.is_const_default_method(def_id.to_def_id());
+            let is_const_fn = tcx.is_const_fn(def_id.to_def_id());
             (is_const_fn, opt)
         }
         // The others don't have MIR.

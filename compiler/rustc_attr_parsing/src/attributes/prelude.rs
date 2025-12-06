@@ -4,8 +4,6 @@ pub(super) use rustc_feature::{AttributeTemplate, template};
 #[doc(hidden)]
 pub(super) use rustc_hir::attrs::AttributeKind;
 #[doc(hidden)]
-pub(super) use rustc_hir::lints::AttributeLintKind;
-#[doc(hidden)]
 pub(super) use rustc_hir::{MethodKind, Target};
 #[doc(hidden)]
 pub(super) use rustc_span::{DUMMY_SP, Ident, Span, Symbol, sym};
