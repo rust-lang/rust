@@ -11,11 +11,11 @@
 
 #![crate_type = "lib"]
 #![feature(new_range_api)]
-use std::range::{IterRangeFrom, RangeFrom};
+use std::range::{RangeFrom, RangeFromIter};
 
 // CHECK-LABEL: @iterrangefrom_remainder(
 #[no_mangle]
-pub unsafe fn iterrangefrom_remainder(x: IterRangeFrom<i32>) -> RangeFrom<i32> {
+pub unsafe fn iterrangefrom_remainder(x: RangeFromIter<i32>) -> RangeFrom<i32> {
     //        DEBUG: i32 noundef %x
     //     NOCHECKS: i32 noundef returned %x
     //        DEBUG: br i1

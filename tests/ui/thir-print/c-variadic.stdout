@@ -16,13 +16,13 @@ params: [
         )
     }
     Param {
-        ty: std::ffi::VaListImpl<'{erased}>
+        ty: std::ffi::VaList<'{erased}>
         ty_span: None
         self_kind: None
         hir_id: Some(HirId(DefId(0:3 ~ c_variadic[a5de]::foo).3))
         param: Some( 
             Pat: {
-                ty: std::ffi::VaListImpl<'{erased}>
+                ty: std::ffi::VaList<'{erased}>
                 span: $DIR/c-variadic.rs:7:34: 7:37 (#0)
                 kind: PatKind {
                     Missing

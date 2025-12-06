@@ -967,8 +967,15 @@ impl f64 {
 
     /// Returns the maximum of the two numbers, propagating NaN.
     ///
-    /// This returns NaN when *either* argument is NaN, as opposed to
-    /// [`f64::max`] which only returns NaN when *both* arguments are NaN.
+    /// If at least one of the arguments is NaN, the return value is NaN, with the bit pattern
+    /// picked using the usual [rules for arithmetic operations](f32#nan-bit-patterns). Furthermore,
+    /// `-0.0` is considered to be less than `+0.0`, making this function fully deterministic for
+    /// non-NaN inputs.
+    ///
+    /// This is in contrast to [`f64::max`] which only returns NaN when *both* arguments are NaN,
+    /// and which does not reliably order `-0.0` and `+0.0`.
+    ///
+    /// This follows the IEEE 754-2019 semantics for `maximum`.
     ///
     /// ```
     /// #![feature(float_minimum_maximum)]
@@ -978,13 +985,6 @@ impl f64 {
     /// assert_eq!(x.maximum(y), y);
     /// assert!(x.maximum(f64::NAN).is_nan());
     /// ```
-    ///
-    /// If one of the arguments is NaN, then NaN is returned. Otherwise this returns the greater
-    /// of the two numbers. For this operation, -0.0 is considered to be less than +0.0.
-    /// Note that this follows the IEEE 754-2019 semantics for `maximum`.
-    ///
-    /// Also note that "propagation" of NaNs here doesn't necessarily mean that the bitpattern of a NaN
-    /// operand is conserved; see the [specification of NaN bit patterns](f32#nan-bit-patterns) for more info.
     #[must_use = "this returns the result of the comparison, without modifying either input"]
     #[unstable(feature = "float_minimum_maximum", issue = "91079")]
     #[inline]
@@ -994,8 +994,15 @@ impl f64 {
 
     /// Returns the minimum of the two numbers, propagating NaN.
     ///
-    /// This returns NaN when *either* argument is NaN, as opposed to
-    /// [`f64::min`] which only returns NaN when *both* arguments are NaN.
+    /// If at least one of the arguments is NaN, the return value is NaN, with the bit pattern
+    /// picked using the usual [rules for arithmetic operations](f32#nan-bit-patterns). Furthermore,
+    /// `-0.0` is considered to be less than `+0.0`, making this function fully deterministic for
+    /// non-NaN inputs.
+    ///
+    /// This is in contrast to [`f64::min`] which only returns NaN when *both* arguments are NaN,
+    /// and which does not reliably order `-0.0` and `+0.0`.
+    ///
+    /// This follows the IEEE 754-2019 semantics for `minimum`.
     ///
     /// ```
     /// #![feature(float_minimum_maximum)]
@@ -1005,13 +1012,6 @@ impl f64 {
     /// assert_eq!(x.minimum(y), x);
     /// assert!(x.minimum(f64::NAN).is_nan());
     /// ```
-    ///
-    /// If one of the arguments is NaN, then NaN is returned. Otherwise this returns the lesser
-    /// of the two numbers. For this operation, -0.0 is considered to be less than +0.0.
-    /// Note that this follows the IEEE 754-2019 semantics for `minimum`.
-    ///
-    /// Also note that "propagation" of NaNs here doesn't necessarily mean that the bitpattern of a NaN
-    /// operand is conserved; see the [specification of NaN bit patterns](f32#nan-bit-patterns) for more info.
     #[must_use = "this returns the result of the comparison, without modifying either input"]
     #[unstable(feature = "float_minimum_maximum", issue = "91079")]
     #[inline]
