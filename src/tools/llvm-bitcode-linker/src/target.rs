@@ -18,3 +18,11 @@ impl std::str::FromStr for Target {
         }
     }
 }
+
+impl std::fmt::Display for Target {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Target::Nvptx64NvidiaCuda => f.write_str("nvptx64-nvidia-cuda"),
+        }
+    }
+}
