@@ -2191,7 +2191,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             };
             self.typeck_results.borrow_mut().fru_field_types_mut().insert(expr.hir_id, fru_tys);
-        } else if adt_kind != AdtKind::Union && !remaining_fields.is_empty() {
+        } else if adt_kind != AdtKind::Union
+            && !remaining_fields.is_empty()
+            //~ non_exhaustive already reported, which will only happen for extern modules
+            && !variant.field_list_has_applicable_non_exhaustive()
+        {
             debug!(?remaining_fields);
             let private_fields: Vec<&ty::FieldDef> = variant
                 .fields
