@@ -1183,6 +1183,21 @@ pub(crate) struct UnknownFeature {
     #[primary_span]
     pub span: Span,
     pub feature: Symbol,
+    #[subdiagnostic]
+    pub suggestion: Option<MisspelledFeature>,
+}
+
+#[derive(Subdiagnostic)]
+#[suggestion(
+    passes_misspelled_feature,
+    style = "verbose",
+    code = "{actual_name}",
+    applicability = "maybe-incorrect"
+)]
+pub(crate) struct MisspelledFeature {
+    #[primary_span]
+    pub span: Span,
+    pub actual_name: Symbol,
 }
 
 #[derive(Diagnostic)]
