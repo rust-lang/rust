@@ -978,6 +978,10 @@ lint_unused_op = unused {$op} that must be used
 
 lint_unused_result = unused result of type `{$ty}`
 
+lint_unused_visibilities = visibility qualifiers have no effect on `const _` declarations
+    .note = `const _` does not declare a name, so there is nothing for the qualifier to apply to
+    .suggestion = remove the qualifier
+
 lint_use_let_underscore_ignore_suggestion = use `let _ = ...` to ignore the expression or result
 
 lint_useless_ptr_null_checks_fn_ptr = function pointers are not nullable, so checking them for null will always return false

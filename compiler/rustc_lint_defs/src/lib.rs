@@ -696,6 +696,7 @@ pub enum BuiltinLintDiag {
         extern_crate: Symbol,
         local_crate: Symbol,
     },
+    UnusedVisibility(Span),
     AttributeLint(AttributeLintKind),
 }
 
