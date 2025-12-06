@@ -61,6 +61,28 @@ fn main() {
         .run();
     output3.assert_stderr_not_contains("error: the compiler unexpectedly panicked. this is a bug.");
 
+    // dep_missing is different, because --parts-out-dir is not supplied
+    rustdoc().input("dep_missing.rs").out_dir(&out_dir).run();
+    assert!(parts_out_dir.join("dep2.json").exists());
+
+    rustdoc()
+        .input("dep1.rs")
+        .out_dir(&out_dir)
+        .arg("-Zunstable-options")
+        .arg(format!("--parts-out-dir={}", parts_out_dir.display()))
+        .arg("--merge=none")
+        .run();
+    assert!(parts_out_dir.join("dep1.json").exists());
+
+    let output4 = rustdoc()
+        .arg("-Zunstable-options")
+        .out_dir(&out_dir)
+        .arg(format!("--include-parts-dir={}", parts_out_dir.display()))
+        .arg("--merge=finalize")
+        .run();
+    output4.assert_stderr_not_contains("error: the compiler unexpectedly panicked. this is a bug.");
+
     htmldocck().arg(&out_dir).arg("dep1.rs").run();
     htmldocck().arg(&out_dir).arg("dep2.rs").run();
+    htmldocck().arg(&out_dir).arg("dep_missing.rs").run();
 }
