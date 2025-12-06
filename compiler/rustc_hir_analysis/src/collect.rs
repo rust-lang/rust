@@ -1561,11 +1561,26 @@ fn const_param_default<'tcx>(
             "`const_param_default` expected a generic parameter with a constant"
         ),
     };
+
+    let param_def_id = def_id.to_def_id();
+    let parent_def_id = tcx.parent(param_def_id);
+    let parent_generics = tcx.generics_of(parent_def_id);
+    let parent_identity_args = ty::GenericArgs::identity_for_item(tcx, parent_def_id);
+
+    let lookup_index = parent_generics.param_def_id_to_index.get(&param_def_id).copied();
+    let param_index = lookup_index.unwrap_or_else(|| {
+        span_bug!(
+            tcx.def_span(def_id),
+            "missing const param index for `{param_def_id:?}` in `{parent_def_id:?}`"
+        )
+    }) as usize;
+    let slice_index = parent_identity_args.len().min(param_index);
+    let params_in_scope = parent_identity_args.split_at(slice_index).0;
+
     let icx = ItemCtxt::new(tcx, def_id);
-    let identity_args = ty::GenericArgs::identity_for_item(tcx, def_id);
     let ct = icx
         .lowerer()
-        .lower_const_arg(default_ct, FeedConstTy::Param(def_id.to_def_id(), identity_args));
+        .lower_const_arg(default_ct, FeedConstTy::Param(param_def_id, params_in_scope));
     ty::EarlyBinder::bind(ct)
 }
 
