@@ -6,6 +6,11 @@ LL |     fn come_on_a_little_more_effort(_: (), _: (), _: ()) -> impl Sized;
 ...
 LL |     fn come_on_a_little_more_effort() {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected 3 parameters, found 0
+   |
+help: modify the signature to match the trait definition
+   |
+LL |     fn come_on_a_little_more_effort(_: (), _: (), _: ()) {}
+   |                                     +++++++++++++++++++
 
 error: aborting due to 1 previous error
 
