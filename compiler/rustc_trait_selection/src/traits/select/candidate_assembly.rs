@@ -904,10 +904,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             "assemble_candidates_from_object_ty",
         );
 
-        if !self.tcx().trait_def(obligation.predicate.def_id()).implement_via_object {
-            return;
-        }
-
         self.infcx.probe(|_snapshot| {
             let poly_trait_predicate = self.infcx.resolve_vars_if_possible(obligation.predicate);
             self.infcx.enter_forall(poly_trait_predicate, |placeholder_trait_predicate| {

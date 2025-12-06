@@ -6,6 +6,7 @@ use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_macros::{Decodable, Encodable, HashStable};
+use rustc_span::Span;
 use rustc_span::symbol::sym;
 use tracing::debug;
 
@@ -69,10 +70,9 @@ pub struct TraitDef {
     /// must be implemented.
     pub must_implement_one_of: Option<Box<[Ident]>>,
 
-    /// Whether to add a builtin `dyn Trait: Trait` implementation.
-    /// This is enabled for all traits except ones marked with
-    /// `#[rustc_do_not_implement_via_object]`.
-    pub implement_via_object: bool,
+    /// Whether the trait should be considered dyn-incompatible, even if it otherwise
+    /// satisfies the requirements to be dyn-compatible.
+    pub force_dyn_incompatible: Option<Span>,
 
     /// Whether a trait is fully built-in, and any implementation is disallowed.
     /// This only applies to built-in traits, and is marked via
