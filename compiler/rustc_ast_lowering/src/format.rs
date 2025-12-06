@@ -1,10 +1,11 @@
 use std::borrow::Cow;
 
 use rustc_ast::*;
-use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_hir as hir;
 use rustc_session::config::FmtDebug;
 use rustc_span::{ByteSymbol, DesugaringKind, Ident, Span, Symbol, sym};
+use smallvec::SmallVec;
 
 use super::LoweringContext;
 
@@ -290,6 +291,7 @@ fn expand_format_args<'hir>(
     // We use usize::MAX for arguments that don't exist, because that can never be a valid index
     // into the arguments array.
     let mut argmap = FxIndexMap::default();
+    let mut might_be_const_capture_dups = FxIndexMap::default();
 
     let mut incomplete_lit = String::new();
 
@@ -306,6 +308,8 @@ fn expand_format_args<'hir>(
     };
 
     // See library/core/src/fmt/mod.rs for the format string encoding format.
+
+    let arguments = fmt.arguments.all_args();
 
     for (i, piece) in template.iter().enumerate() {
         match piece {
@@ -370,6 +374,16 @@ fn expand_format_args<'hir>(
                     )
                     .0 as u64;
 
+                if matches!(p.argument.kind, FormatArgPositionKind::Named)
+                    && let Some(arg) = arguments.get(p.argument.index.unwrap_or(usize::MAX))
+                    && matches!(arg.kind, FormatArgumentKind::Captured(_))
+                {
+                    let dups = might_be_const_capture_dups
+                        .entry(p.argument.index.unwrap_or(usize::MAX))
+                        .or_insert_with(|| (arg, SmallVec::<[_; 1]>::with_capacity(1)));
+                    dups.1.push(p.span);
+                }
+
                 // This needs to match the constants in library/core/src/fmt/mod.rs.
                 let o = &p.format_options;
                 let align = match o.alignment {
@@ -428,8 +442,6 @@ fn expand_format_args<'hir>(
         ctx.dcx().span_err(macsp, "too many format arguments");
     }
 
-    let arguments = fmt.arguments.all_args();
-
     let (let_statements, args) = if arguments.is_empty() {
         // Generate:
         //     []
@@ -439,8 +451,10 @@ fn expand_format_args<'hir>(
         //     super let args = (&arg0, &arg1, &…);
         let args_ident = Ident::new(sym::args, macsp);
         let (args_pat, args_hir_id) = ctx.pat_ident(macsp, args_ident);
+        let mut arg_exprs = FxHashMap::default();
         let elements = ctx.arena.alloc_from_iter(arguments.iter().map(|arg| {
             let arg_expr = ctx.lower_expr(&arg.expr);
+            arg_exprs.insert(arg.expr.node_id(), arg_expr);
             ctx.expr(
                 arg.expr.span.with_ctxt(macsp.ctxt()),
                 hir::ExprKind::AddrOf(hir::BorrowKind::Ref, hir::Mutability::Not, arg_expr),
@@ -487,10 +501,51 @@ fn expand_format_args<'hir>(
         let args = ctx.arena.alloc(ctx.expr(macsp, hir::ExprKind::Array(args)));
         let (args_pat, args_hir_id) = ctx.pat_ident(macsp, args_ident);
         let let_statement_2 = ctx.stmt_super_let_pat(macsp, args_pat, Some(args));
-        (
-            vec![let_statement_1, let_statement_2],
-            ctx.arena.alloc(ctx.expr_ident_mut(macsp, args_ident, args_hir_id)),
-        )
+
+        let mut let_statements = vec![let_statement_1, let_statement_2];
+
+        // Generate:
+        //      let __issue_145739 = (&x, (), (), ..);
+        // as many times as the number of duplicated captured arguments.
+        // These will be scrutinized with late lints for crater run for #145739
+        if might_be_const_capture_dups.values().any(|v| v.1.len() > 1) {
+            for (arg, dups) in might_be_const_capture_dups.values().filter(|v| v.1.len() > 1) {
+                let Some(&arg_expr) = arg_exprs.get(&arg.expr.node_id()) else { continue };
+                // HACK: In general, this would cause weird ICEs with nested expressions but okay in
+                // here since the arg here is a simple path.
+                let arg_expr = ctx.arena.alloc(ctx.expr(arg_expr.span, arg_expr.kind.clone()));
+                let dups_ident = Ident::new(sym::__issue_145739, arg.expr.span);
+                let (dups_pat, _) = ctx.pat_ident(arg.expr.span, dups_ident);
+                let elements = ctx.arena.alloc_from_iter(
+                    std::iter::once({
+                        ctx.expr(
+                            arg.expr.span.with_ctxt(macsp.ctxt()),
+                            hir::ExprKind::AddrOf(
+                                hir::BorrowKind::Ref,
+                                hir::Mutability::Not,
+                                arg_expr,
+                            ),
+                        )
+                    })
+                    .chain(dups.iter().map(|sp| {
+                        let sp = sp.unwrap_or(arg.expr.span).with_ctxt(macsp.ctxt());
+                        ctx.expr(sp, hir::ExprKind::Tup(&[]))
+                    })),
+                );
+                let dups_tuple =
+                    ctx.arena.alloc(ctx.expr(arg.expr.span, hir::ExprKind::Tup(elements)));
+                let let_statement = ctx.stmt_let_pat(
+                    None,
+                    arg.expr.span,
+                    Some(dups_tuple),
+                    dups_pat,
+                    hir::LocalSource::Normal,
+                );
+                let_statements.push(let_statement);
+            }
+        }
+
+        (let_statements, ctx.arena.alloc(ctx.expr_ident_mut(macsp, args_ident, args_hir_id)))
     };
 
     // Generate:

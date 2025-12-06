@@ -3126,3 +3126,17 @@ impl Subdiagnostic for MismatchedLifetimeSyntaxesSuggestion {
         }
     }
 }
+
+// issue_145739.rs
+#[derive(LintDiagnostic)]
+#[diag(lint_issue_145739)]
+pub(crate) struct Issue145738Diag<'a> {
+    #[note(lint_note1)]
+    pub const_span: Span,
+    pub kind: &'static str,
+    pub ty: Ty<'a>,
+    pub is_not_freeze: bool,
+    pub needs_drop: bool,
+    #[note(lint_note2)]
+    pub duplicates: MultiSpan,
+}
