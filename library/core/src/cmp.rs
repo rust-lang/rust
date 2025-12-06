@@ -1855,6 +1855,7 @@ mod impls {
     use crate::hint::unreachable_unchecked;
     use crate::marker::PointeeSized;
     use crate::ops::ControlFlow::{self, Break, Continue};
+    use crate::panic::const_assert;
 
     macro_rules! partial_eq_impl {
         ($($t:ty)*) => ($(
@@ -1996,6 +1997,26 @@ mod impls {
                 #[inline]
                 fn cmp(&self, other: &Self) -> Ordering {
                     crate::intrinsics::three_way_compare(*self, *other)
+                }
+
+                #[inline]
+                #[track_caller]
+                fn clamp(self, min: Self, max: Self) -> Self
+                {
+                    const_assert!(
+                        min <= max,
+                        "min > max",
+                        "min > max. min = {min:?}, max = {max:?}",
+                        min: $t,
+                        max: $t,
+                    );
+                    if self < min {
+                        min
+                    } else if self > max {
+                        max
+                    } else {
+                        self
+                    }
                 }
             }
         )*)
