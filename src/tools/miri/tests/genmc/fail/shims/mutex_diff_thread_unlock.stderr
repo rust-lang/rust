@@ -18,7 +18,7 @@ LL | |                 .compare_exchange_weak(state, state + READ_LOCKED, Acquir
    = note: inside `std::sys::env::PLATFORM::getenv` at RUSTLIB/std/src/sys/env/PLATFORM.rs:LL:CC
    = note: inside `std::env::_var_os` at RUSTLIB/std/src/env.rs:LL:CC
    = note: inside `std::env::var_os::<&str>` at RUSTLIB/std/src/env.rs:LL:CC
-   = note: inside closure at RUSTLIB/std/src/thread/mod.rs:LL:CC
+   = note: inside closure at RUSTLIB/std/src/thread/lifecycle.rs:LL:CC
 note: inside `miri_start`
   --> tests/genmc/fail/shims/mutex_diff_thread_unlock.rs:LL:CC
    |
@@ -48,7 +48,7 @@ LL | |                 .compare_exchange_weak(state, state + READ_LOCKED, Acquir
    = note: inside `std::sys::env::PLATFORM::getenv` at RUSTLIB/std/src/sys/env/PLATFORM.rs:LL:CC
    = note: inside `std::env::_var_os` at RUSTLIB/std/src/env.rs:LL:CC
    = note: inside `std::env::var_os::<&str>` at RUSTLIB/std/src/env.rs:LL:CC
-   = note: inside closure at RUSTLIB/std/src/thread/mod.rs:LL:CC
+   = note: inside closure at RUSTLIB/std/src/thread/lifecycle.rs:LL:CC
 note: inside `miri_start`
   --> tests/genmc/fail/shims/mutex_diff_thread_unlock.rs:LL:CC
    |

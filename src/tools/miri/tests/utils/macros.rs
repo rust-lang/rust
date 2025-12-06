@@ -9,7 +9,7 @@
 /// The id obtained can be passed directly to `print_state!`.
 macro_rules! alloc_id {
     ($ptr:expr) => {
-        $crate::utils::miri_get_alloc_id($ptr as *const u8 as *const ())
+        $crate::utils::miri_get_alloc_id($ptr as *const _ as *const ())
     };
 }
 
@@ -52,6 +52,6 @@ macro_rules! name {
     };
     ($ptr:expr => $nth_parent:expr, $name:expr) => {
         let name = $name.as_bytes();
-        $crate::utils::miri_pointer_name($ptr as *const u8 as *const (), $nth_parent, name);
+        $crate::utils::miri_pointer_name($ptr as *const _ as *const (), $nth_parent, name);
     };
 }

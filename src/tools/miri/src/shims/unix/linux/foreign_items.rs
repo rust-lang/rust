@@ -36,6 +36,80 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         match link_name.as_str() {
             // File related shims
+            "open64" => {
+                // `open64` is variadic, the third argument is only present when the second argument
+                // has O_CREAT (or on linux O_TMPFILE, but miri doesn't support that) set
+                let ([path_raw, flag], varargs) =
+                    this.check_shim_sig_variadic_lenient(abi, CanonAbi::C, link_name, args)?;
+                let result = this.open(path_raw, flag, varargs)?;
+                this.write_scalar(result, dest)?;
+            }
+            "pread64" => {
+                let [fd, buf, count, offset] = this.check_shim_sig(
+                    shim_sig!(extern "C" fn(i32, *mut _, usize, libc::off64_t) -> isize),
+                    link_name,
+                    abi,
+                    args,
+                )?;
+                let fd = this.read_scalar(fd)?.to_i32()?;
+                let buf = this.read_pointer(buf)?;
+                let count = this.read_target_usize(count)?;
+                let offset = this.read_scalar(offset)?.to_int(offset.layout.size)?;
+                this.read(fd, buf, count, Some(offset), dest)?;
+            }
+            "pwrite64" => {
+                let [fd, buf, n, offset] = this.check_shim_sig(
+                    shim_sig!(extern "C" fn(i32, *const _, usize, libc::off64_t) -> isize),
+                    link_name,
+                    abi,
+                    args,
+                )?;
+                let fd = this.read_scalar(fd)?.to_i32()?;
+                let buf = this.read_pointer(buf)?;
+                let count = this.read_target_usize(n)?;
+                let offset = this.read_scalar(offset)?.to_int(offset.layout.size)?;
+                trace!("Called pwrite64({:?}, {:?}, {:?}, {:?})", fd, buf, count, offset);
+                this.write(fd, buf, count, Some(offset), dest)?;
+            }
+            "lseek64" => {
+                let [fd, offset, whence] = this.check_shim_sig(
+                    shim_sig!(extern "C" fn(i32, libc::off64_t, i32) -> libc::off64_t),
+                    link_name,
+                    abi,
+                    args,
+                )?;
+                let fd = this.read_scalar(fd)?.to_i32()?;
+                let offset = this.read_scalar(offset)?.to_int(offset.layout.size)?;
+                let whence = this.read_scalar(whence)?.to_i32()?;
+                this.lseek64(fd, offset, whence, dest)?;
+            }
+            "ftruncate64" => {
+                let [fd, length] = this.check_shim_sig(
+                    shim_sig!(extern "C" fn(i32, libc::off64_t) -> i32),
+                    link_name,
+                    abi,
+                    args,
+                )?;
+                let fd = this.read_scalar(fd)?.to_i32()?;
+                let length = this.read_scalar(length)?.to_int(length.layout.size)?;
+                let result = this.ftruncate64(fd, length)?;
+                this.write_scalar(result, dest)?;
+            }
+            "posix_fallocate64" => {
+                let [fd, offset, len] = this.check_shim_sig(
+                    shim_sig!(extern "C" fn(i32, libc::off64_t, libc::off64_t) -> i32),
+                    link_name,
+                    abi,
+                    args,
+                )?;
+
+                let fd = this.read_scalar(fd)?.to_i32()?;
+                let offset = this.read_scalar(offset)?.to_i64()?;
+                let len = this.read_scalar(len)?.to_i64()?;
+
+                let result = this.posix_fallocate(fd, offset, len)?;
+                this.write_scalar(result, dest)?;
+            }
             "readdir64" => {
                 let [dirp] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
                 let result = this.readdir64("dirent64", dirp)?;
@@ -53,7 +127,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let result = this.linux_statx(dirfd, pathname, flags, mask, statxbuf)?;
                 this.write_scalar(result, dest)?;
             }
-
             // epoll, eventfd
             "epoll_create1" => {
                 let [flag] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;

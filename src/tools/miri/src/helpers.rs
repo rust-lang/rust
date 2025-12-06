@@ -472,6 +472,22 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         )
     }
 
+    /// Call a function in an "empty" thread.
+    fn call_thread_root_function(
+        &mut self,
+        f: ty::Instance<'tcx>,
+        caller_abi: ExternAbi,
+        args: &[ImmTy<'tcx>],
+        dest: Option<&MPlaceTy<'tcx>>,
+        span: Span,
+    ) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+        assert!(this.active_thread_stack().is_empty());
+        assert!(this.active_thread_ref().origin_span.is_dummy());
+        this.active_thread_mut().origin_span = span;
+        this.call_function(f, caller_abi, args, dest, ReturnContinuation::Stop { cleanup: true })
+    }
+
     /// Visits the memory covered by `place`, sensitive to freezing: the 2nd parameter
     /// of `action` will be true if this is frozen, false if this is in an `UnsafeCell`.
     /// The range is relative to `place`.
@@ -995,11 +1011,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         interp_ok(())
     }
 
-    /// Lookup an array of immediates from any linker sections matching the provided predicate.
+    /// Lookup an array of immediates from any linker sections matching the provided predicate,
+    /// with the spans of where they were found.
     fn lookup_link_section(
         &mut self,
         include_name: impl Fn(&str) -> bool,
-    ) -> InterpResult<'tcx, Vec<ImmTy<'tcx>>> {
+    ) -> InterpResult<'tcx, Vec<(ImmTy<'tcx>, Span)>> {
         let this = self.eval_context_mut();
         let tcx = this.tcx.tcx;
 
@@ -1012,6 +1029,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             };
             if include_name(link_section.as_str()) {
                 let instance = ty::Instance::mono(tcx, def_id);
+                let span = tcx.def_span(def_id);
                 let const_val = this.eval_global(instance).unwrap_or_else(|err| {
                     panic!(
                         "failed to evaluate static in required link_section: {def_id:?}\n{err:?}"
@@ -1019,12 +1037,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 });
                 match const_val.layout.ty.kind() {
                     ty::FnPtr(..) => {
-                        array.push(this.read_immediate(&const_val)?);
+                        array.push((this.read_immediate(&const_val)?, span));
                     }
                     ty::Array(elem_ty, _) if matches!(elem_ty.kind(), ty::FnPtr(..)) => {
                         let mut elems = this.project_array_fields(&const_val)?;
                         while let Some((_idx, elem)) = elems.next(this)? {
-                            array.push(this.read_immediate(&elem)?);
+                            array.push((this.read_immediate(&elem)?, span));
                         }
                     }
                     _ =>

@@ -1,6 +1,6 @@
 Running GenMC Verification...
 warning: GenMC currently does not model spurious failures of `compare_exchange_weak`. Miri with GenMC might miss bugs related to spurious failures.
-  --> RUSTLIB/std/src/thread/mod.rs:LL:CC
+  --> RUSTLIB/std/src/thread/id.rs:LL:CC
    |
 LL |                     match COUNTER.compare_exchange_weak(last, id, Ordering::Relaxed, Ordering::Relaxed) {
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ GenMC might miss possible behaviors of this code
@@ -20,7 +20,7 @@ LL | |                 .compare_exchange_weak(state, state + READ_LOCKED, Acquir
    |
    = note: BACKTRACE:
    = note: inside closure at RUSTLIB/std/src/sys/env/PLATFORM.rs:LL:CC
-   = note: inside closure at RUSTLIB/std/src/thread/mod.rs:LL:CC
+   = note: inside closure at RUSTLIB/std/src/thread/lifecycle.rs:LL:CC
 note: inside `main`
   --> tests/genmc/pass/std/thread_locals.rs:LL:CC
    |
@@ -42,7 +42,7 @@ LL | |                 .compare_exchange_weak(state, state + READ_LOCKED, Acquir
    |
    = note: BACKTRACE:
    = note: inside closure at RUSTLIB/std/src/sys/env/PLATFORM.rs:LL:CC
-   = note: inside closure at RUSTLIB/std/src/thread/mod.rs:LL:CC
+   = note: inside closure at RUSTLIB/std/src/thread/lifecycle.rs:LL:CC
 note: inside `main`
   --> tests/genmc/pass/std/thread_locals.rs:LL:CC
    |

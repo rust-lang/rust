@@ -151,7 +151,6 @@ fn protector_conflicted_release() {
 
 /// Analogous to same test in `../tree-borrows.rs` but with a protected wildcard reference.
 fn returned_mut_is_usable() {
-    // NOTE: Currently we ignore protectors on wildcard references.
     fn reborrow(x: &mut u8) -> &mut u8 {
         let y = &mut *x;
         // Activate the reference so that it is vulnerable to foreign reads.
