@@ -541,6 +541,23 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         self.add_placeholder_from_predicate_note(&mut diag, &path);
         self.add_sized_or_copy_bound_info(&mut diag, category, &path);
 
+        for constraint in &path {
+            if let ConstraintCategory::Cast { is_raw_ptr_dyn_type_cast: true, .. } =
+                constraint.category
+            {
+                diag.span_note(
+                    constraint.span,
+                    format!("raw pointer casts of trait objects cannot extend lifetimes"),
+                );
+                diag.note(format!(
+                    "this was previously accepted by the compiler but was changed recently"
+                ));
+                diag.help(format!(
+                    "see <https://github.com/rust-lang/rust/issues/141402> for more information"
+                ));
+            }
+        }
+
         self.buffer_error(diag);
     }
 

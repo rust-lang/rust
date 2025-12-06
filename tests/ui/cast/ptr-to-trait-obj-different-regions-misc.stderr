@@ -12,6 +12,13 @@ LL |     x as _
    = note: requirement occurs because of a mutable pointer to `dyn Trait<'_>`
    = note: mutable pointers are invariant over their type parameter
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+note: raw pointer casts of trait objects cannot extend lifetimes
+  --> $DIR/ptr-to-trait-obj-different-regions-misc.rs:7:5
+   |
+LL |     x as _
+   |     ^^^^^^
+   = note: this was previously accepted by the compiler but was changed recently
+   = help: see <https://github.com/rust-lang/rust/issues/141402> for more information
 
 error: lifetime may not live long enough
   --> $DIR/ptr-to-trait-obj-different-regions-misc.rs:7:5
@@ -27,6 +34,13 @@ LL |     x as _
    = note: requirement occurs because of a mutable pointer to `dyn Trait<'_>`
    = note: mutable pointers are invariant over their type parameter
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+note: raw pointer casts of trait objects cannot extend lifetimes
+  --> $DIR/ptr-to-trait-obj-different-regions-misc.rs:7:5
+   |
+LL |     x as _
+   |     ^^^^^^
+   = note: this was previously accepted by the compiler but was changed recently
+   = help: see <https://github.com/rust-lang/rust/issues/141402> for more information
 
 help: `'b` and `'a` must be the same: replace one with the other
 
@@ -44,6 +58,13 @@ LL |     x as _
    = note: requirement occurs because of a mutable pointer to `dyn Trait<'_>`
    = note: mutable pointers are invariant over their type parameter
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+note: raw pointer casts of trait objects cannot extend lifetimes
+  --> $DIR/ptr-to-trait-obj-different-regions-misc.rs:12:5
+   |
+LL |     x as _
+   |     ^^^^^^
+   = note: this was previously accepted by the compiler but was changed recently
+   = help: see <https://github.com/rust-lang/rust/issues/141402> for more information
 
 error: lifetime may not live long enough
   --> $DIR/ptr-to-trait-obj-different-regions-misc.rs:16:5
@@ -59,6 +80,13 @@ LL |     x as _
    = note: requirement occurs because of a mutable pointer to `dyn Trait<'_>`
    = note: mutable pointers are invariant over their type parameter
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+note: raw pointer casts of trait objects cannot extend lifetimes
+  --> $DIR/ptr-to-trait-obj-different-regions-misc.rs:16:5
+   |
+LL |     x as _
+   |     ^^^^^^
+   = note: this was previously accepted by the compiler but was changed recently
+   = help: see <https://github.com/rust-lang/rust/issues/141402> for more information
 
 error: lifetime may not live long enough
   --> $DIR/ptr-to-trait-obj-different-regions-misc.rs:20:5
@@ -97,6 +125,13 @@ LL |     x as _
    = note: requirement occurs because of a mutable pointer to `dyn Assocked<Assoc = dyn Send>`
    = note: mutable pointers are invariant over their type parameter
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+note: raw pointer casts of trait objects cannot extend lifetimes
+  --> $DIR/ptr-to-trait-obj-different-regions-misc.rs:32:5
+   |
+LL |     x as _
+   |     ^^^^^^
+   = note: this was previously accepted by the compiler but was changed recently
+   = help: see <https://github.com/rust-lang/rust/issues/141402> for more information
 
 error: lifetime may not live long enough
   --> $DIR/ptr-to-trait-obj-different-regions-misc.rs:32:5
@@ -113,6 +148,13 @@ LL |     x as _
    = note: requirement occurs because of a mutable pointer to `dyn Assocked<Assoc = dyn Send>`
    = note: mutable pointers are invariant over their type parameter
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+note: raw pointer casts of trait objects cannot extend lifetimes
+  --> $DIR/ptr-to-trait-obj-different-regions-misc.rs:32:5
+   |
+LL |     x as _
+   |     ^^^^^^
+   = note: this was previously accepted by the compiler but was changed recently
+   = help: see <https://github.com/rust-lang/rust/issues/141402> for more information
 
 help: `'b` and `'a` must be the same: replace one with the other
    |
@@ -133,6 +175,13 @@ LL |     x as _
    = note: requirement occurs because of a mutable pointer to `dyn Assocked<Assoc = dyn Trait<'_>>`
    = note: mutable pointers are invariant over their type parameter
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+note: raw pointer casts of trait objects cannot extend lifetimes
+  --> $DIR/ptr-to-trait-obj-different-regions-misc.rs:39:5
+   |
+LL |     x as _
+   |     ^^^^^^
+   = note: this was previously accepted by the compiler but was changed recently
+   = help: see <https://github.com/rust-lang/rust/issues/141402> for more information
 
 error: lifetime may not live long enough
   --> $DIR/ptr-to-trait-obj-different-regions-misc.rs:39:5
@@ -149,6 +198,13 @@ LL |     x as _
    = note: requirement occurs because of a mutable pointer to `dyn Assocked<Assoc = dyn Trait<'_>>`
    = note: mutable pointers are invariant over their type parameter
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+note: raw pointer casts of trait objects cannot extend lifetimes
+  --> $DIR/ptr-to-trait-obj-different-regions-misc.rs:39:5
+   |
+LL |     x as _
+   |     ^^^^^^
+   = note: this was previously accepted by the compiler but was changed recently
+   = help: see <https://github.com/rust-lang/rust/issues/141402> for more information
 
 help: `'b` and `'a` must be the same: replace one with the other
    |
@@ -168,6 +224,14 @@ LL |     require_static(ptr as _)
    |     |
    |     `ptr` escapes the function body here
    |     argument requires that `'a` must outlive `'static`
+   |
+note: raw pointer casts of trait objects cannot extend lifetimes
+  --> $DIR/ptr-to-trait-obj-different-regions-misc.rs:46:20
+   |
+LL |     require_static(ptr as _)
+   |                    ^^^^^^^^
+   = note: this was previously accepted by the compiler but was changed recently
+   = help: see <https://github.com/rust-lang/rust/issues/141402> for more information
 
 error: aborting due to 11 previous errors
 

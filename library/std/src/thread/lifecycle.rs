@@ -111,7 +111,12 @@ where
     // SAFETY: dynamic size and alignment of the Box remain the same. See below for why the
     // lifetime change is justified.
     let rust_start = unsafe {
-        Box::from_raw(Box::into_raw(Box::new(rust_start)) as *mut (dyn FnOnce() + Send + 'static))
+        let ptr = Box::into_raw(Box::new(rust_start));
+        let ptr = crate::mem::transmute::<
+            *mut (dyn FnOnce() + Send + '_),
+            *mut (dyn FnOnce() + Send + 'static),
+        >(ptr);
+        Box::from_raw(ptr)
     };
 
     let init = Box::new(ThreadInit { handle: thread.clone(), rust_start });
