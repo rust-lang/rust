@@ -32,12 +32,12 @@ impl Maxes {
 }
 
 impl Annotation for MaxReached {
-    fn merge_scc(self, other: Self) -> Self {
-        Self(std::cmp::max(other.0, self.0))
+    fn update_scc(&mut self, other: &Self) {
+        self.0 = self.0.max(other.0);
     }
 
-    fn merge_reached(self, other: Self) -> Self {
-        Self(std::cmp::max(other.0, self.0))
+    fn update_reachable(&mut self, other: &Self) {
+        self.0 = self.0.max(other.0);
     }
 }
 
@@ -75,13 +75,12 @@ impl Annotations<usize> for MinMaxes {
 }
 
 impl Annotation for MinMaxIn {
-    fn merge_scc(self, other: Self) -> Self {
-        Self { min: std::cmp::min(self.min, other.min), max: std::cmp::max(self.max, other.max) }
+    fn update_scc(&mut self, other: &Self) {
+        self.min = self.min.min(other.min);
+        self.max = self.max.max(other.max);
     }
 
-    fn merge_reached(self, _other: Self) -> Self {
-        self
-    }
+    fn update_reachable(&mut self, _other: &Self) {}
 }
 
 #[test]
