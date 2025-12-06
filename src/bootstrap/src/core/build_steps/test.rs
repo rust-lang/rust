@@ -2115,17 +2115,17 @@ Please disable assertions with `rust.debug-assertions = false`.
         );
 
         // Discover and set some flags related to running tests on Android targets.
-        if let Some(android::Android { adb_path, adb_test_dir, android_cross_path }) =
-            android::discover_android(builder, target)
-        {
+        let android = android::discover_android(builder, target);
+        if let Some(android::Android { adb_path, adb_test_dir, android_cross_path }) = &android {
             cmd.arg("--adb-path").arg(adb_path);
             cmd.arg("--adb-test-dir").arg(adb_test_dir);
             cmd.arg("--android-cross-path").arg(android_cross_path);
         }
 
         if mode == "debuginfo" {
-            if let Some(debuggers::Gdb { gdb }) = debuggers::discover_gdb(builder) {
-                cmd.arg("--gdb").arg(gdb);
+            if let Some(debuggers::Gdb { gdb }) = debuggers::discover_gdb(builder, android.as_ref())
+            {
+                cmd.arg("--gdb").arg(gdb.as_ref());
             }
 
             if let Some(debuggers::Lldb { lldb_exe, lldb_version }) =
