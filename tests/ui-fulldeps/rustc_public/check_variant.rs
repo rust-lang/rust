@@ -97,7 +97,7 @@ fn check_adt_poly2() {
 }
 
 fn get_fn(name: &str) -> CrateItem {
-    rustc_public::all_local_items().into_iter().find(|it| it.name().eq(name)).unwrap()
+    rustc_public::all_local_items().into_iter().find(|it| it.trimmed_name().eq(name)).unwrap()
 }
 
 fn check_statement_is_aggregate_assign(
