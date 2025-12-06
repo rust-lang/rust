@@ -24,6 +24,7 @@ use tracing::instrument;
 
 use crate::clean::types::{Function, Generics, ItemId, Type, WherePredicate};
 use crate::clean::{self, utils};
+use crate::config::ShouldMerge;
 use crate::error::Error;
 use crate::formats::cache::{Cache, OrphanImplItem};
 use crate::formats::item_type::ItemType;
@@ -721,7 +722,9 @@ impl SerializedSearchIndex {
                         }
                     },
                 ),
-                self.alias_pointers[id].and_then(|alias| map.get(&alias).copied()),
+                self.alias_pointers[id].and_then(|alias| {
+                    if self.names[alias].is_empty() { None } else { map.get(&alias).copied() }
+                }),
             );
         }
         new.generic_inverted_index = self
@@ -1248,6 +1251,7 @@ pub(crate) fn build_index(
     tcx: TyCtxt<'_>,
     doc_root: &Path,
     resource_suffix: &str,
+    should_merge: &ShouldMerge,
 ) -> Result<SerializedSearchIndex, Error> {
     let mut search_index = std::mem::take(&mut cache.search_index);
 
@@ -1298,7 +1302,11 @@ pub(crate) fn build_index(
     //
     // if there's already a search index, load it into memory and add the new entries to it
     // otherwise, do nothing
-    let mut serialized_index = SerializedSearchIndex::load(doc_root, resource_suffix)?;
+    let mut serialized_index = if should_merge.read_rendered_cci {
+        SerializedSearchIndex::load(doc_root, resource_suffix)?
+    } else {
+        SerializedSearchIndex::default()
+    };
 
     // The crate always goes first in this list
     let crate_name = krate.name(tcx);

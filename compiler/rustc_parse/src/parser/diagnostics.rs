@@ -16,7 +16,6 @@ use rustc_errors::{
     pluralize,
 };
 use rustc_session::errors::ExprParenthesesNeeded;
-use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::used_keywords;
 use rustc_span::{BytePos, DUMMY_SP, Ident, Span, SpanSnippetError, Symbol, kw, sym};
@@ -222,6 +221,8 @@ impl std::fmt::Display for UnaryFixity {
     style = "verbose"
 )]
 struct MisspelledKw {
+    // We use a String here because `Symbol::into_diag_arg` calls `Symbol::to_ident_string`, which
+    // prefix the keyword with a `r#` because it aims to print the symbol as an identifier.
     similar_kw: String,
     #[primary_span]
     span: Span,
@@ -229,20 +230,15 @@ struct MisspelledKw {
 }
 
 /// Checks if the given `lookup` identifier is similar to any keyword symbol in `candidates`.
+///
+/// This is a specialized version of [`Symbol::find_similar`] that constructs an error when a
+/// candidate is found.
 fn find_similar_kw(lookup: Ident, candidates: &[Symbol]) -> Option<MisspelledKw> {
-    let lowercase = lookup.name.as_str().to_lowercase();
-    let lowercase_sym = Symbol::intern(&lowercase);
-    if candidates.contains(&lowercase_sym) {
-        Some(MisspelledKw { similar_kw: lowercase, span: lookup.span, is_incorrect_case: true })
-    } else if let Some(similar_sym) = find_best_match_for_name(candidates, lookup.name, None) {
-        Some(MisspelledKw {
-            similar_kw: similar_sym.to_string(),
-            span: lookup.span,
-            is_incorrect_case: false,
-        })
-    } else {
-        None
-    }
+    lookup.name.find_similar(candidates).map(|(similar_kw, is_incorrect_case)| MisspelledKw {
+        similar_kw: similar_kw.to_string(),
+        is_incorrect_case,
+        span: lookup.span,
+    })
 }
 
 struct MultiSugg {

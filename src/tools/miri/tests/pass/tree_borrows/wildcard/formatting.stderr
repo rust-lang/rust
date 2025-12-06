@@ -1,0 +1,17 @@
+──────────────────────────────────────────────────
+Warning: this tree is indicative only. Some tags may have been hidden.
+0..   1
+| Act |    └─┬──<TAG=root of the allocation>
+| Frz |      └─┬──<TAG=x>
+| Frz |        ├────<TAG=xa>
+| Frz |        └────<TAG=xb> (exposed)
+|     |
+| Frz |    *─┬──<TAG=y>
+| Frz |      ├────<TAG=ya> (exposed)
+| Frz |      └────<TAG=yb>
+|     |
+| Frz |    *────<TAG=z>
+|     |
+| Frz |    *─┬──<TAG=u>
+| Frz |      └────<TAG=ua>
+──────────────────────────────────────────────────

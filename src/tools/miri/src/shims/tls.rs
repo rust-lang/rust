@@ -6,6 +6,7 @@ use std::task::Poll;
 
 use rustc_abi::{ExternAbi, HasDataLayout, Size};
 use rustc_middle::ty;
+use rustc_span::Span;
 use rustc_target::spec::Os;
 
 use crate::*;
@@ -17,7 +18,7 @@ pub struct TlsEntry<'tcx> {
     /// The data for this key. None is used to represent NULL.
     /// (We normalize this early to avoid having to do a NULL-ptr-test each time we access the data.)
     data: BTreeMap<ThreadId, Scalar>,
-    dtor: Option<ty::Instance<'tcx>>,
+    dtor: Option<(ty::Instance<'tcx>, Span)>,
 }
 
 #[derive(Default, Debug)]
@@ -38,7 +39,7 @@ pub struct TlsData<'tcx> {
 
     /// On macOS, each thread holds a list of destructor functions with their
     /// respective data arguments.
-    macos_thread_dtors: BTreeMap<ThreadId, Vec<(ty::Instance<'tcx>, Scalar)>>,
+    macos_thread_dtors: BTreeMap<ThreadId, Vec<(ty::Instance<'tcx>, Scalar, Span)>>,
 }
 
 impl<'tcx> Default for TlsData<'tcx> {
@@ -57,7 +58,7 @@ impl<'tcx> TlsData<'tcx> {
     #[expect(clippy::arithmetic_side_effects)]
     pub fn create_tls_key(
         &mut self,
-        dtor: Option<ty::Instance<'tcx>>,
+        dtor: Option<(ty::Instance<'tcx>, Span)>,
         max_size: Size,
     ) -> InterpResult<'tcx, TlsKey> {
         let new_key = self.next_key;
@@ -126,8 +127,9 @@ impl<'tcx> TlsData<'tcx> {
         thread: ThreadId,
         dtor: ty::Instance<'tcx>,
         data: Scalar,
+        span: Span,
     ) -> InterpResult<'tcx> {
-        self.macos_thread_dtors.entry(thread).or_default().push((dtor, data));
+        self.macos_thread_dtors.entry(thread).or_default().push((dtor, data, span));
         interp_ok(())
     }
 
@@ -154,7 +156,7 @@ impl<'tcx> TlsData<'tcx> {
         &mut self,
         key: Option<TlsKey>,
         thread_id: ThreadId,
-    ) -> Option<(ty::Instance<'tcx>, Scalar, TlsKey)> {
+    ) -> Option<(ty::Instance<'tcx>, Scalar, TlsKey, Span)> {
         use std::ops::Bound::*;
 
         let thread_local = &mut self.keys;
@@ -172,11 +174,10 @@ impl<'tcx> TlsData<'tcx> {
         for (&key, TlsEntry { data, dtor }) in thread_local.range_mut((start, Unbounded)) {
             match data.entry(thread_id) {
                 BTreeEntry::Occupied(entry) => {
-                    if let Some(dtor) = dtor {
+                    if let Some((dtor, span)) = dtor {
                         // Set TLS data to NULL, and call dtor with old value.
                         let data_scalar = entry.remove();
-                        let ret = Some((*dtor, data_scalar, key));
-                        return ret;
+                        return Some((*dtor, data_scalar, key, *span));
                     }
                 }
                 BTreeEntry::Vacant(_) => {}
@@ -205,7 +206,7 @@ impl VisitProvenance for TlsData<'_> {
         for scalar in keys.values().flat_map(|v| v.data.values()) {
             scalar.visit_provenance(visit);
         }
-        for (_, scalar) in macos_thread_dtors.values().flatten() {
+        for (_, scalar, _) in macos_thread_dtors.values().flatten() {
             scalar.visit_provenance(visit);
         }
     }
@@ -222,7 +223,7 @@ enum TlsDtorsStatePriv<'tcx> {
     PthreadDtors(RunningDtorState),
     /// For Windows Dtors, we store the list of functions that we still have to call.
     /// These are functions from the magic `.CRT$XLB` linker section.
-    WindowsDtors(Vec<ImmTy<'tcx>>),
+    WindowsDtors(Vec<(ImmTy<'tcx>, Span)>),
     Done,
 }
 
@@ -273,8 +274,8 @@ impl<'tcx> TlsDtorsState<'tcx> {
                     }
                 }
                 WindowsDtors(dtors) => {
-                    if let Some(dtor) = dtors.pop() {
-                        this.schedule_windows_tls_dtor(dtor)?;
+                    if let Some((dtor, span)) = dtors.pop() {
+                        this.schedule_windows_tls_dtor(dtor, span)?;
                         return interp_ok(Poll::Pending); // we stay in this state (but `dtors` got shorter)
                     } else {
                         // No more destructors to run.
@@ -297,7 +298,7 @@ impl<'tcx> EvalContextPrivExt<'tcx> for crate::MiriInterpCx<'tcx> {}
 trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// Schedule TLS destructors for Windows.
     /// On windows, TLS destructors are managed by std.
-    fn lookup_windows_tls_dtors(&mut self) -> InterpResult<'tcx, Vec<ImmTy<'tcx>>> {
+    fn lookup_windows_tls_dtors(&mut self) -> InterpResult<'tcx, Vec<(ImmTy<'tcx>, Span)>> {
         let this = self.eval_context_mut();
 
         // Windows has a special magic linker section that is run on certain events.
@@ -305,7 +306,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         interp_ok(this.lookup_link_section(|section| section == ".CRT$XLB")?)
     }
 
-    fn schedule_windows_tls_dtor(&mut self, dtor: ImmTy<'tcx>) -> InterpResult<'tcx> {
+    fn schedule_windows_tls_dtor(&mut self, dtor: ImmTy<'tcx>, span: Span) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
         let dtor = dtor.to_scalar().to_pointer(this)?;
@@ -320,12 +321,12 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // The signature of this function is `unsafe extern "system" fn(h: c::LPVOID, dwReason: c::DWORD, pv: c::LPVOID)`.
         // FIXME: `h` should be a handle to the current module and what `pv` should be is unknown
         // but both are ignored by std.
-        this.call_function(
+        this.call_thread_root_function(
             thread_callback,
             ExternAbi::System { unwind: false },
             &[null_ptr.clone(), ImmTy::from_scalar(reason, this.machine.layouts.u32), null_ptr],
             None,
-            ReturnContinuation::Stop { cleanup: true },
+            span,
         )?;
         interp_ok(())
     }
@@ -338,15 +339,15 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // registers another destructor, it will be run next.
         // See https://github.com/apple-oss-distributions/dyld/blob/d552c40cd1de105f0ec95008e0e0c0972de43456/dyld/DyldRuntimeState.cpp#L2277
         let dtor = this.machine.tls.macos_thread_dtors.get_mut(&thread_id).and_then(Vec::pop);
-        if let Some((instance, data)) = dtor {
+        if let Some((instance, data, span)) = dtor {
             trace!("Running macos dtor {:?} on {:?} at {:?}", instance, data, thread_id);
 
-            this.call_function(
+            this.call_thread_root_function(
                 instance,
                 ExternAbi::C { unwind: false },
                 &[ImmTy::from_scalar(data, this.machine.layouts.mut_raw_ptr)],
                 None,
-                ReturnContinuation::Stop { cleanup: true },
+                span,
             )?;
 
             return interp_ok(Poll::Pending);
@@ -370,7 +371,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // We ran each dtor once, start over from the beginning.
             None => this.machine.tls.fetch_tls_dtor(None, active_thread),
         };
-        if let Some((instance, ptr, key)) = dtor {
+        if let Some((instance, ptr, key, span)) = dtor {
             state.last_key = Some(key);
             trace!("Running TLS dtor {:?} on {:?} at {:?}", instance, ptr, active_thread);
             assert!(
@@ -378,12 +379,12 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 "data can't be NULL when dtor is called!"
             );
 
-            this.call_function(
+            this.call_thread_root_function(
                 instance,
                 ExternAbi::C { unwind: false },
                 &[ImmTy::from_scalar(ptr, this.machine.layouts.mut_raw_ptr)],
                 None,
-                ReturnContinuation::Stop { cleanup: true },
+                span,
             )?;
 
             return interp_ok(Poll::Pending);
