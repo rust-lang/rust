@@ -21,6 +21,7 @@ pub struct Cursor<'a> {
 pub(crate) const EOF_CHAR: char = '\0';
 
 impl<'a> Cursor<'a> {
+    #[inline]
     pub fn new(input: &'a str, frontmatter_allowed: FrontmatterAllowed) -> Cursor<'a> {
         Cursor {
             len_remaining: input.len(),
@@ -31,6 +32,7 @@ impl<'a> Cursor<'a> {
         }
     }
 
+    #[inline]
     pub fn as_str(&self) -> &'a str {
         self.chars.as_str()
     }
@@ -53,12 +55,14 @@ impl<'a> Cursor<'a> {
     /// If requested position doesn't exist, `EOF_CHAR` is returned.
     /// However, getting `EOF_CHAR` doesn't always mean actual end of file,
     /// it should be checked with `is_eof` method.
+    #[inline]
     pub fn first(&self) -> char {
         // `.next()` optimizes better than `.nth(0)`
         self.chars.clone().next().unwrap_or(EOF_CHAR)
     }
 
     /// Peeks the second symbol from the input stream without consuming it.
+    #[inline]
     pub(crate) fn second(&self) -> char {
         // `.next()` optimizes better than `.nth(1)`
         let mut iter = self.chars.clone();
@@ -67,6 +71,7 @@ impl<'a> Cursor<'a> {
     }
 
     /// Peeks the third symbol from the input stream without consuming it.
+    #[inline]
     pub fn third(&self) -> char {
         // `.next()` optimizes better than `.nth(2)`
         let mut iter = self.chars.clone();
@@ -76,21 +81,25 @@ impl<'a> Cursor<'a> {
     }
 
     /// Checks if there is nothing more to consume.
+    #[inline]
     pub(crate) fn is_eof(&self) -> bool {
         self.chars.as_str().is_empty()
     }
 
     /// Returns amount of already consumed symbols.
+    #[inline]
     pub(crate) fn pos_within_token(&self) -> u32 {
         (self.len_remaining - self.chars.as_str().len()) as u32
     }
 
     /// Resets the number of bytes consumed to 0.
+    #[inline]
     pub(crate) fn reset_pos_within_token(&mut self) {
         self.len_remaining = self.chars.as_str().len();
     }
 
     /// Moves to the next character.
+    #[inline]
     pub(crate) fn bump(&mut self) -> Option<char> {
         let c = self.chars.next()?;
 
@@ -102,12 +111,38 @@ impl<'a> Cursor<'a> {
         Some(c)
     }
 
+    #[inline]
+    pub(crate) fn bump_if(&mut self, expected: char) -> bool {
+        let mut chars = self.chars.clone();
+        if chars.next() == Some(expected) {
+            self.chars = chars;
+            true
+        } else {
+            false
+        }
+    }
+
+    /// Bumps the cursor if the next character is either of the two expected characters.
+    #[inline]
+    pub(crate) fn bump_if2(&mut self, expected1: char, expected2: char) -> bool {
+        let mut chars = self.chars.clone();
+        if let Some(c) = chars.next()
+            && (c == expected1 || c == expected2)
+        {
+            self.chars = chars;
+            return true;
+        }
+        false
+    }
+
     /// Moves to a substring by a number of bytes.
+    #[inline]
     pub(crate) fn bump_bytes(&mut self, n: usize) {
-        self.chars = self.as_str()[n..].chars();
+        self.chars = self.as_str().get(n..).unwrap_or("").chars();
     }
 
     /// Eats symbols while predicate returns true or until the end of file is reached.
+    #[inline]
     pub(crate) fn eat_while(&mut self, mut predicate: impl FnMut(char) -> bool) {
         // It was tried making optimized version of this for eg. line comments, but
         // LLVM can inline all of this and compile it down to fast iteration over bytes.
@@ -115,11 +150,37 @@ impl<'a> Cursor<'a> {
             self.bump();
         }
     }
+    /// Eats characters until the given byte is found.
+    /// Returns true if the byte was found, false if end of file was reached.
+    #[inline]
+    pub(crate) fn eat_until(&mut self, byte: u8) -> bool {
+        match memchr::memchr(byte, self.as_str().as_bytes()) {
+            Some(index) => {
+                self.bump_bytes(index);
+                true
+            }
+            None => {
+                self.chars = "".chars();
+                false
+            }
+        }
+    }
 
-    pub(crate) fn eat_until(&mut self, byte: u8) {
-        self.chars = match memchr::memchr(byte, self.as_str().as_bytes()) {
-            Some(index) => self.as_str()[index..].chars(),
-            None => "".chars(),
+    /// Eats characters until any of the given bytes is found, then consumes past it.
+    /// Returns the found byte if any, or None if end of file was reached.
+    #[inline]
+    pub(crate) fn eat_past2(&mut self, byte1: u8, byte2: u8) -> Option<u8> {
+        let bytes = self.as_str().as_bytes();
+        match memchr::memchr2(byte1, byte2, bytes) {
+            Some(index) => {
+                let found = bytes[index];
+                self.bump_bytes(index + 1);
+                Some(found)
+            }
+            None => {
+                self.chars = "".chars();
+                None
+            }
         }
     }
 }
