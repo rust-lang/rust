@@ -123,18 +123,19 @@ where
 
 #[cold]
 #[inline(never)]
-fn mk_cycle<Q, Qcx>(query: Q, qcx: Qcx, cycle_error: CycleError) -> Q::Value
+fn mk_cycle<Q, Qcx>(query: Q, qcx: Qcx, key: Q::Key, cycle_error: CycleError) -> Q::Value
 where
     Q: QueryConfig<Qcx>,
     Qcx: QueryContext,
 {
     let error = report_cycle(qcx.dep_context().sess(), &cycle_error);
-    handle_cycle_error(query, qcx, &cycle_error, error)
+    handle_cycle_error(query, qcx, key, &cycle_error, error)
 }
 
 fn handle_cycle_error<Q, Qcx>(
     query: Q,
     qcx: Qcx,
+    key: Q::Key,
     cycle_error: &CycleError,
     error: Diag<'_>,
 ) -> Q::Value
@@ -146,16 +147,21 @@ where
     match query.handle_cycle_error() {
         Error => {
             let guar = error.emit();
-            query.value_from_cycle_error(*qcx.dep_context(), cycle_error, guar)
+            query.execute_fallback(*qcx.dep_context(), key, cycle_error, guar)
         }
         Fatal => {
+            // NOTE: This branch doesn't execute a fallback query, as such for any query marked
+            // `fatal_cycle` field `providers.fallback_queries.<name>` to avoid confusion
+            // instead of being a function pointer becomes a zero-sized type named
+            // `rustc_middle::query::plumbing::DisabledWithFatalCycle`, making it impossible to
+            // assign a function.
             error.emit();
             qcx.dep_context().sess().dcx().abort_if_errors();
             unreachable!()
         }
         DelayBug => {
             let guar = error.delay_as_bug();
-            query.value_from_cycle_error(*qcx.dep_context(), cycle_error, guar)
+            query.execute_fallback(*qcx.dep_context(), key, cycle_error, guar)
         }
         Stash => {
             let guar = if let Some(root) = cycle_error.cycle.first()
@@ -165,7 +171,7 @@ where
             } else {
                 error.emit()
             };
-            query.value_from_cycle_error(*qcx.dep_context(), cycle_error, guar)
+            query.execute_fallback(*qcx.dep_context(), key, cycle_error, guar)
         }
     }
 }
@@ -276,6 +282,7 @@ fn cycle_error<Q, Qcx>(
     query: Q,
     qcx: Qcx,
     try_execute: QueryJobId,
+    key: Q::Key,
     span: Span,
 ) -> (Q::Value, Option<DepNodeIndex>)
 where
@@ -287,7 +294,7 @@ where
     let query_map = qcx.collect_active_jobs(false).ok().expect("failed to collect active queries");
 
     let error = try_execute.find_cycle_in_stack(query_map, &qcx.current_query_job(), span);
-    (mk_cycle(query, qcx, error.lift(qcx)), None)
+    (mk_cycle(query, qcx, key, error.lift(qcx)), None)
 }
 
 #[inline(always)]
@@ -336,7 +343,7 @@ where
 
             (v, Some(index))
         }
-        Err(cycle) => (mk_cycle(query, qcx, cycle.lift(qcx)), None),
+        Err(cycle) => (mk_cycle(query, qcx, key, cycle.lift(qcx)), None),
     }
 }
 
@@ -402,7 +409,7 @@ where
 
                     // If we are single-threaded we know that we have cycle error,
                     // so we just return the error.
-                    cycle_error(query, qcx, id, span)
+                    cycle_error(query, qcx, id, key, span)
                 }
                 QueryResult::Poisoned => FatalError.raise(),
             }

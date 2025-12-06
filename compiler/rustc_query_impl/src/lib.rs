@@ -14,17 +14,17 @@ use rustc_middle::query::erase::{Erase, erase, restore};
 use rustc_middle::query::on_disk_cache::{CacheEncoder, EncodedDepNodeIndex, OnDiskCache};
 use rustc_middle::query::plumbing::{DynamicQuery, QuerySystem, QuerySystemFns};
 use rustc_middle::query::{
-    AsLocalKey, DynamicQueries, ExternProviders, Providers, QueryCaches, QueryEngine, QueryStates,
-    queries,
+    AsLocalKey, DynamicQueries, ExternProviders, FallbackProviders, Providers, QueryCaches,
+    QueryEngine, QueryStates, queries,
 };
 use rustc_middle::ty::TyCtxt;
+use rustc_query_system::HandleCycleError;
 use rustc_query_system::dep_graph::SerializedDepNodeIndex;
 use rustc_query_system::ich::StableHashingContext;
 use rustc_query_system::query::{
     CycleError, HashResult, QueryCache, QueryConfig, QueryMap, QueryMode, QueryStackDeferred,
     QueryState, get_query_incr, get_query_non_incr,
 };
-use rustc_query_system::{HandleCycleError, Value};
 use rustc_span::{ErrorGuaranteed, Span};
 
 use crate::plumbing::{__rust_begin_short_backtrace, encode_all_query_results, try_mark_green};
@@ -144,13 +144,14 @@ where
         (self.dynamic.loadable_from_disk)(qcx.tcx, key, index)
     }
 
-    fn value_from_cycle_error(
+    fn execute_fallback(
         self,
         tcx: TyCtxt<'tcx>,
+        key: Self::Key,
         cycle_error: &CycleError,
         guar: ErrorGuaranteed,
     ) -> Self::Value {
-        (self.dynamic.value_from_cycle_error)(tcx, cycle_error, guar)
+        (self.dynamic.execute_fallback)(tcx, key, cycle_error, guar)
     }
 
     #[inline(always)]
@@ -210,6 +211,7 @@ trait QueryConfigRestored<'tcx> {
 pub fn query_system<'a>(
     local_providers: Providers,
     extern_providers: ExternProviders,
+    fallback_providers: FallbackProviders,
     on_disk_cache: Option<OnDiskCache>,
     incremental: bool,
 ) -> QuerySystem<'a> {
@@ -223,6 +225,7 @@ pub fn query_system<'a>(
             engine: engine(incremental),
             local_providers,
             extern_providers,
+            fallback_providers,
             encode_query_results: encode_all_query_results,
             try_mark_green,
         },

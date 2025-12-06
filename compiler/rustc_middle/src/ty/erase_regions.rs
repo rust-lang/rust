@@ -1,12 +1,14 @@
 use tracing::debug;
 
-use crate::query::Providers;
 use crate::ty::{
     self, Ty, TyCtxt, TypeFlags, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt,
 };
+use crate::util::Providers;
 
 pub(super) fn provide(providers: &mut Providers) {
-    *providers = Providers { erase_and_anonymize_regions_ty, ..*providers };
+    providers.erase_and_anonymize_regions_ty = erase_and_anonymize_regions_ty;
+    providers.fallback_queries.erase_and_anonymize_regions_ty =
+        |tcx, _, _, guar| Ty::new_error(tcx, guar)
 }
 
 fn erase_and_anonymize_regions_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
