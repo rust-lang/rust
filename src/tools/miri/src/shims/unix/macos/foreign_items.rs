@@ -158,7 +158,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let dtor = this.get_ptr_fn(dtor)?.as_instance()?;
                 let data = this.read_scalar(data)?;
                 let active_thread = this.active_thread();
-                this.machine.tls.add_macos_thread_dtor(active_thread, dtor, data)?;
+                this.machine.tls.add_macos_thread_dtor(
+                    active_thread,
+                    dtor,
+                    data,
+                    this.machine.current_user_relevant_span(),
+                )?;
             }
 
             // Querying system information
