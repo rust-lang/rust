@@ -7,14 +7,14 @@ use rustc_ast::ast;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_hir as hir;
-use rustc_hir::attrs::{self, DeprecatedSince};
+use rustc_hir::attrs::{self, DeprecatedSince, DocAttribute, DocInline, HideOrShow};
 use rustc_hir::def::CtorKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{HeaderSafety, Safety};
 use rustc_metadata::rendered_const;
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::{bug, ty};
-use rustc_span::{Pos, kw, sym};
+use rustc_span::{Pos, Symbol, kw, sym};
 use rustdoc_json_types::*;
 
 use crate::clean::{self, ItemId};
@@ -46,7 +46,7 @@ impl JsonRenderer<'_> {
             .attrs
             .other_attrs
             .iter()
-            .filter_map(|a| maybe_from_hir_attr(a, item.item_id, self.tcx))
+            .flat_map(|a| maybe_from_hir_attr(a, item.item_id, self.tcx))
             .collect();
         let span = item.span(self.tcx);
         let visibility = item.visibility(self.tcx);
@@ -902,11 +902,7 @@ impl FromClean<ItemType> for ItemKind {
 /// Maybe convert a attribute from hir to json.
 ///
 /// Returns `None` if the attribute shouldn't be in the output.
-fn maybe_from_hir_attr(
-    attr: &hir::Attribute,
-    item_id: ItemId,
-    tcx: TyCtxt<'_>,
-) -> Option<Attribute> {
+fn maybe_from_hir_attr(attr: &hir::Attribute, item_id: ItemId, tcx: TyCtxt<'_>) -> Vec<Attribute> {
     use attrs::AttributeKind as AK;
 
     let kind = match attr {
@@ -914,12 +910,12 @@ fn maybe_from_hir_attr(
 
         hir::Attribute::Unparsed(_) => {
             // FIXME: We should handle `#[doc(hidden)]`.
-            return Some(other_attr(tcx, attr));
+            return vec![other_attr(tcx, attr)];
         }
     };
 
-    Some(match kind {
-        AK::Deprecation { .. } => return None, // Handled separately into Item::deprecation.
+    vec![match kind {
+        AK::Deprecation { .. } => return Vec::new(), // Handled separately into Item::deprecation.
         AK::DocComment { .. } => unreachable!("doc comments stripped out earlier"),
 
         AK::MacroExport { .. } => Attribute::MacroExport,
@@ -939,9 +935,118 @@ fn maybe_from_hir_attr(
         AK::NoMangle(_) => Attribute::NoMangle,
         AK::NonExhaustive(_) => Attribute::NonExhaustive,
         AK::AutomaticallyDerived(_) => Attribute::AutomaticallyDerived,
+        AK::Doc(d) => {
+            fn toggle_attr(ret: &mut Vec<Attribute>, name: &str, v: &Option<rustc_span::Span>) {
+                if v.is_some() {
+                    ret.push(Attribute::Other(format!("#[doc({name})]")));
+                }
+            }
+
+            fn name_value_attr(
+                ret: &mut Vec<Attribute>,
+                name: &str,
+                v: &Option<(Symbol, rustc_span::Span)>,
+            ) {
+                if let Some((v, _)) = v {
+                    // We use `as_str` and debug display to have characters escaped and `"`
+                    // characters surrounding the string.
+                    ret.push(Attribute::Other(format!("#[doc({name} = {:?})]", v.as_str())));
+                }
+            }
+
+            let DocAttribute {
+                aliases,
+                hidden,
+                inline,
+                cfg,
+                auto_cfg,
+                auto_cfg_change,
+                fake_variadic,
+                keyword,
+                attribute,
+                masked,
+                notable_trait,
+                search_unbox,
+                html_favicon_url,
+                html_logo_url,
+                html_playground_url,
+                html_root_url,
+                html_no_source,
+                issue_tracker_base_url,
+                rust_logo,
+                test_attrs,
+                no_crate_inject,
+            } = &**d;
+
+            let mut ret = Vec::new();
+
+            for (alias, _) in aliases {
+                // We use `as_str` and debug display to have characters escaped and `"` characters
+                // surrounding the string.
+                ret.push(Attribute::Other(format!("#[doc(alias = {:?})]", alias.as_str())));
+            }
+            toggle_attr(&mut ret, "hidden", hidden);
+            if let Some(inline) = inline.first() {
+                ret.push(Attribute::Other(format!(
+                    "#[doc({})]",
+                    match inline.0 {
+                        DocInline::Inline => "inline",
+                        DocInline::NoInline => "no_inline",
+                    }
+                )));
+            }
+            for sub_cfg in cfg {
+                ret.push(Attribute::Other(format!("#[doc(cfg({sub_cfg}))]")));
+            }
+            for (auto_cfg, _) in auto_cfg {
+                let kind = match auto_cfg.kind {
+                    HideOrShow::Hide => "hide",
+                    HideOrShow::Show => "show",
+                };
+                let mut out = format!("#[doc(auto_cfg({kind}(");
+                for (pos, value) in auto_cfg.values.iter().enumerate() {
+                    if pos > 0 {
+                        out.push_str(", ");
+                    }
+                    out.push_str(value.name.as_str());
+                    if let Some((value, _)) = value.value {
+                        // We use `as_str` and debug display to have characters escaped and `"`
+                        // characters surrounding the string.
+                        out.push_str(&format!(" = {:?}", value.as_str()));
+                    }
+                }
+                out.push_str(")))]");
+                ret.push(Attribute::Other(out));
+            }
+            for (change, _) in auto_cfg_change {
+                ret.push(Attribute::Other(format!("#[doc(auto_cfg = {change})]")));
+            }
+            toggle_attr(&mut ret, "fake_variadic", fake_variadic);
+            name_value_attr(&mut ret, "keyword", keyword);
+            name_value_attr(&mut ret, "attribute", attribute);
+            toggle_attr(&mut ret, "masked", masked);
+            toggle_attr(&mut ret, "notable_trait", notable_trait);
+            toggle_attr(&mut ret, "search_unbox", search_unbox);
+            name_value_attr(&mut ret, "html_favicon_url", html_favicon_url);
+            name_value_attr(&mut ret, "html_logo_url", html_logo_url);
+            name_value_attr(&mut ret, "html_playground_url", html_playground_url);
+            name_value_attr(&mut ret, "html_root_url", html_root_url);
+            toggle_attr(&mut ret, "html_no_source", html_no_source);
+            name_value_attr(&mut ret, "issue_tracker_base_url", issue_tracker_base_url);
+            toggle_attr(&mut ret, "rust_logo", rust_logo);
+            let source_map = tcx.sess.source_map();
+            for attr_span in test_attrs {
+                // FIXME: This is ugly, remove when `test_attrs` has been ported to new attribute API.
+                if let Ok(snippet) = source_map.span_to_snippet(*attr_span) {
+                    ret.push(Attribute::Other(format!("#[doc(test(attr({snippet})))")));
+                }
+            }
+            toggle_attr(&mut ret, "no_crate_inject", no_crate_inject);
+            return ret;
+        }
 
         _ => other_attr(tcx, attr),
-    })
+    }]
 }
 
 fn other_attr(tcx: TyCtxt<'_>, attr: &hir::Attribute) -> Attribute {

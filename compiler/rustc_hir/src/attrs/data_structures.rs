@@ -1,4 +1,5 @@
 use std::borrow::Cow;
+use std::fmt;
 use std::path::PathBuf;
 
 pub use ReprAttr::*;
@@ -227,6 +228,43 @@ impl CfgEntry {
             }
             (Self::Version(a, _), Self::Version(b, _)) => a == b,
             _ => false,
+        }
+    }
+}
+
+impl fmt::Display for CfgEntry {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fn write_entries(
+            name: &str,
+            entries: &[CfgEntry],
+            f: &mut fmt::Formatter<'_>,
+        ) -> fmt::Result {
+            write!(f, "{name}(")?;
+            for (nb, entry) in entries.iter().enumerate() {
+                if nb != 0 {
+                    f.write_str(", ")?;
+                }
+                entry.fmt(f)?;
+            }
+            f.write_str(")")
+        }
+        match self {
+            Self::All(entries, _) => write_entries("all", entries, f),
+            Self::Any(entries, _) => write_entries("any", entries, f),
+            Self::Not(entry, _) => write!(f, "not({entry})"),
+            Self::Bool(value, _) => write!(f, "{value}"),
+            Self::NameValue { name, value, .. } => {
+                match value {
+                    // We use `as_str` and debug display to have characters escaped and `"`
+                    // characters surrounding the string.
+                    Some((value, _)) => write!(f, "{name} = {:?}", value.as_str()),
+                    None => write!(f, "{name}"),
+                }
+            }
+            Self::Version(version, _) => match version {
+                Some(version) => write!(f, "{version}"),
+                None => Ok(()),
+            },
         }
     }
 }
