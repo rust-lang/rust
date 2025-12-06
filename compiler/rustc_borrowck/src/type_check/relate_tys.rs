@@ -184,7 +184,7 @@ impl<'a, 'b, 'tcx> NllTypeRelating<'a, 'b, 'tcx> {
                         universe
                     });
 
-                    let placeholder = ty::PlaceholderRegion { universe, bound: br };
+                    let placeholder = ty::PlaceholderRegion::new(universe, br);
                     debug!(?placeholder);
                     let placeholder_reg = self.next_placeholder_region(placeholder);
                     debug!(?placeholder_reg);
@@ -257,7 +257,10 @@ impl<'a, 'b, 'tcx> NllTypeRelating<'a, 'b, 'tcx> {
     }
 
     #[instrument(skip(self), level = "debug")]
-    fn next_placeholder_region(&mut self, placeholder: ty::PlaceholderRegion) -> ty::Region<'tcx> {
+    fn next_placeholder_region(
+        &mut self,
+        placeholder: ty::PlaceholderRegion<'tcx>,
+    ) -> ty::Region<'tcx> {
         let reg =
             self.type_checker.constraints.placeholder_region(self.type_checker.infcx, placeholder);
 
