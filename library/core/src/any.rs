@@ -857,7 +857,7 @@ impl fmt::Debug for TypeId {
 /// ```rust
 /// assert_eq!(
 ///     std::any::type_name::<Option<String>>(),
-///     "core::option::Option<alloc::string::String>",
+///     "core::option::Option<alloc::string::generic::String>",
 /// );
 /// ```
 #[must_use]
