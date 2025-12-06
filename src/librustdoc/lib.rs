@@ -262,6 +262,14 @@ fn opts() -> Vec<RustcOptGroup> {
             "Hide items marked deprecated from listings, but pages and links still generated.",
             "",
         ),
+        opt(
+            Unstable,
+            FlagMulti,
+            "",
+            "hide-unstable-options",
+            "Hide items marked unstable from listings, but pages and links still generated.",
+            "",
+        ),
         opt(Stable, FlagMulti, "", "test", "run code examples as tests", ""),
         opt(Stable, Multi, "", "test-args", "arguments to pass to the test runner", "ARGS"),
         opt(

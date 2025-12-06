@@ -95,6 +95,8 @@ pub(crate) struct Cache {
     pub(crate) document_hidden: bool,
     /// Whether to hide items explicitly marked `#[deprecated]` from listings.
     pub(crate) hide_deprecated: bool,
+    /// Whether to hide items that are unstable from listings.
+    pub(crate) hide_unstable: bool,
 
     /// Crates marked with [`#[doc(masked)]`][doc_masked].
     ///
@@ -149,8 +151,15 @@ impl Cache {
         document_private: bool,
         document_hidden: bool,
         hide_deprecated: bool,
+        hide_unstable: bool,
     ) -> Self {
-        Cache { document_private, document_hidden, hide_deprecated, ..Cache::default() }
+        Cache {
+            document_private,
+            document_hidden,
+            hide_deprecated,
+            hide_unstable,
+            ..Cache::default()
+        }
     }
 
     fn parent_stack_last_impl_and_trait_id(&self) -> (Option<DefId>, Option<DefId>) {

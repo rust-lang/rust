@@ -314,6 +314,7 @@ impl<'tcx> Context<'tcx> {
         let mut inserted: FxHashMap<ItemType, FxHashSet<Symbol>> = FxHashMap::default();
 
         let hide_deprecated = self.shared.cache.hide_deprecated;
+        let hide_unstable = self.shared.cache.hide_unstable;
         let tcx = self.tcx();
 
         for item in &m.items {
@@ -321,8 +322,13 @@ impl<'tcx> Context<'tcx> {
                 continue;
             }
 
-            if hide_deprecated && item.deprecation(tcx).is_some() {
-                // Hide deprecated items from sidebar listings.
+            let is_deprecated = item.deprecation(tcx).is_some();
+            let is_unstable = item
+                .stability(tcx)
+                .is_some_and(|s| s.is_unstable() && s.feature != sym::rustc_private);
+
+            if (hide_deprecated && is_deprecated) || (hide_unstable && is_unstable) {
+                // Hide deprecated/unstable items from sidebar listings.
                 continue;
             }
 
@@ -875,8 +881,13 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
 
             if !self.info.render_redirect_pages {
                 let hide_deprecated = self.shared.cache.hide_deprecated;
-                let is_deprecated = item.deprecation(self.tcx()).is_some();
-                if !(hide_deprecated && is_deprecated) {
+                let hide_unstable = self.shared.cache.hide_unstable;
+                let tcx = self.tcx();
+                let is_deprecated = item.deprecation(tcx).is_some();
+                let is_unstable = item
+                    .stability(tcx)
+                    .is_some_and(|s| s.is_unstable() && s.feature != sym::rustc_private);
+                if !(hide_deprecated && is_deprecated) && !(hide_unstable && is_unstable) {
                     self.shared.all.borrow_mut().append(full_path(self, item), &item_type);
                 }
             }

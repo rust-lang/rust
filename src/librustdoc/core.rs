@@ -388,6 +388,7 @@ pub(crate) fn run_global_ctxt(
             render_options.document_private,
             render_options.document_hidden,
             render_options.hide_deprecated,
+            render_options.hide_unstable,
         ),
         inlined: FxHashSet::default(),
         output_format,

@@ -36,6 +36,9 @@ Options:
         --hide-deprecated-items 
                         Hide items marked deprecated from listings, but pages
                         and links still generated.
+        --hide-unstable-options 
+                        Hide items marked unstable from listings, but pages
+                        and links still generated.
         --test          run code examples as tests
         --test-args ARGS
                         arguments to pass to the test runner
