@@ -137,7 +137,7 @@ impl<'a, 'b: 'a> DebugStruct<'a, 'b> {
     ///
     /// This method is equivalent to [`DebugStruct::field`], but formats the
     /// value using a provided closure rather than by calling [`Debug::fmt`].
-    #[unstable(feature = "debug_closure_helpers", issue = "117729")]
+    #[stable(feature = "debug_closure_helpers", since = "CURRENT_RUSTC_VERSION")]
     pub fn field_with<F>(&mut self, name: &str, value_fmt: F) -> &mut Self
     where
         F: FnOnce(&mut fmt::Formatter<'_>) -> fmt::Result,
@@ -334,7 +334,7 @@ impl<'a, 'b: 'a> DebugTuple<'a, 'b> {
     ///
     /// This method is equivalent to [`DebugTuple::field`], but formats the
     /// value using a provided closure rather than by calling [`Debug::fmt`].
-    #[unstable(feature = "debug_closure_helpers", issue = "117729")]
+    #[stable(feature = "debug_closure_helpers", since = "CURRENT_RUSTC_VERSION")]
     pub fn field_with<F>(&mut self, value_fmt: F) -> &mut Self
     where
         F: FnOnce(&mut fmt::Formatter<'_>) -> fmt::Result,
@@ -554,7 +554,7 @@ impl<'a, 'b: 'a> DebugSet<'a, 'b> {
     ///
     /// This method is equivalent to [`DebugSet::entry`], but formats the
     /// entry using a provided closure rather than by calling [`Debug::fmt`].
-    #[unstable(feature = "debug_closure_helpers", issue = "117729")]
+    #[stable(feature = "debug_closure_helpers", since = "CURRENT_RUSTC_VERSION")]
     pub fn entry_with<F>(&mut self, entry_fmt: F) -> &mut Self
     where
         F: FnOnce(&mut fmt::Formatter<'_>) -> fmt::Result,
@@ -746,7 +746,7 @@ impl<'a, 'b: 'a> DebugList<'a, 'b> {
     ///
     /// This method is equivalent to [`DebugList::entry`], but formats the
     /// entry using a provided closure rather than by calling [`Debug::fmt`].
-    #[unstable(feature = "debug_closure_helpers", issue = "117729")]
+    #[stable(feature = "debug_closure_helpers", since = "CURRENT_RUSTC_VERSION")]
     pub fn entry_with<F>(&mut self, entry_fmt: F) -> &mut Self
     where
         F: FnOnce(&mut fmt::Formatter<'_>) -> fmt::Result,
@@ -976,7 +976,7 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
     ///
     /// This method is equivalent to [`DebugMap::key`], but formats the
     /// key using a provided closure rather than by calling [`Debug::fmt`].
-    #[unstable(feature = "debug_closure_helpers", issue = "117729")]
+    #[stable(feature = "debug_closure_helpers", since = "CURRENT_RUSTC_VERSION")]
     pub fn key_with<F>(&mut self, key_fmt: F) -> &mut Self
     where
         F: FnOnce(&mut fmt::Formatter<'_>) -> fmt::Result,
@@ -1052,7 +1052,7 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
     ///
     /// This method is equivalent to [`DebugMap::value`], but formats the
     /// value using a provided closure rather than by calling [`Debug::fmt`].
-    #[unstable(feature = "debug_closure_helpers", issue = "117729")]
+    #[stable(feature = "debug_closure_helpers", since = "CURRENT_RUSTC_VERSION")]
     pub fn value_with<F>(&mut self, value_fmt: F) -> &mut Self
     where
         F: FnOnce(&mut fmt::Formatter<'_>) -> fmt::Result,
