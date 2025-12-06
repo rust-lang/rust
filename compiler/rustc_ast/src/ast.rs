@@ -3769,7 +3769,7 @@ pub struct ConstItem {
     pub defaultness: Defaultness,
     pub ident: Ident,
     pub generics: Generics,
-    pub ty: Box<Ty>,
+    pub ty: FnRetTy,
     pub rhs: Option<ConstItemRhs>,
     pub define_opaque: Option<ThinVec<(NodeId, Path)>>,
 }

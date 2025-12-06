@@ -197,8 +197,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     id,
                     ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
                     |this| {
-                        let ty = this
-                            .lower_ty(ty, ImplTraitContext::Disallowed(ImplTraitPosition::ConstTy));
+                        let ty = this.lower_fn_ret_ty_or_unit(
+                            ty,
+                            ImplTraitContext::Disallowed(ImplTraitPosition::ConstTy),
+                        );
                         let rhs = this.lower_const_item_rhs(attrs, rhs.as_ref(), span);
                         (ty, rhs)
                     },
@@ -817,8 +819,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     i.id,
                     ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
                     |this| {
-                        let ty = this
-                            .lower_ty(ty, ImplTraitContext::Disallowed(ImplTraitPosition::ConstTy));
+                        let ty = this.lower_fn_ret_ty_or_unit(
+                            ty,
+                            ImplTraitContext::Disallowed(ImplTraitPosition::ConstTy),
+                        );
                         let rhs = rhs
                             .as_ref()
                             .map(|rhs| this.lower_const_item_rhs(attrs, Some(rhs), i.span));
@@ -1029,8 +1033,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     i.id,
                     ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
                     |this| {
-                        let ty = this
-                            .lower_ty(ty, ImplTraitContext::Disallowed(ImplTraitPosition::ConstTy));
+                        let ty = this.lower_fn_ret_ty_or_unit(
+                            ty,
+                            ImplTraitContext::Disallowed(ImplTraitPosition::ConstTy),
+                        );
                         this.lower_define_opaque(hir_id, &define_opaque);
                         let rhs = this.lower_const_item_rhs(attrs, rhs.as_ref(), i.span);
                         hir::ImplItemKind::Const(ty, rhs)

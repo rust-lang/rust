@@ -1042,7 +1042,7 @@ impl<'a> Parser<'a> {
                                 defaultness: Defaultness::Final,
                                 ident,
                                 generics: Generics::default(),
-                                ty,
+                                ty: FnRetTy::Ty(ty),
                                 rhs,
                                 define_opaque,
                             }))
@@ -1293,7 +1293,12 @@ impl<'a> Parser<'a> {
                             });
                             ForeignItemKind::Static(Box::new(StaticItem {
                                 ident,
-                                ty,
+                                ty: match ty {
+                                    FnRetTy::Default(span) => {
+                                        Self::default_ty_for_static_items(span)
+                                    }
+                                    FnRetTy::Ty(ty) => ty,
+                                },
                                 mutability: Mutability::Not,
                                 expr: rhs.map(|b| match b {
                                     ConstItemRhs::TypeConst(anon_const) => anon_const.value,
@@ -1395,6 +1400,10 @@ impl<'a> Parser<'a> {
         }
     }
 
+    fn default_ty_for_static_items(span: Span) -> Box<Ty> {
+        Box::new(Ty { kind: TyKind::Infer, span, id: ast::DUMMY_NODE_ID, tokens: None })
+    }
+
     /// Parse a static item with the prefix `"static" "mut"?` already parsed and stored in
     /// `mutability`.
     ///
@@ -1413,13 +1422,29 @@ impl<'a> Parser<'a> {
             self.dcx().emit_err(errors::StaticWithGenerics { span: generics.span });
         }
 
-        // Parse the type of a static item. That is, the `":" $ty` fragment.
-        // FIXME: This could maybe benefit from `.may_recover()`?
-        let ty = match (self.eat(exp!(Colon)), self.check(exp!(Eq)) | self.check(exp!(Semi))) {
-            (true, false) => self.parse_ty()?,
-            // If there wasn't a `:` or the colon was followed by a `=` or `;`, recover a missing
-            // type.
-            (colon, _) => self.recover_missing_global_item_type(colon, Some(mutability)),
+        let ty = match self.parse_global_item_type(false)? {
+            Ok(ty) => ty,
+            Err((span, colon_present)) => {
+                // Construct the error and stash it away with the hope
+                // that typeck will later enrich the error with a type.
+                self.dcx()
+                    .create_err(errors::MissingConstType {
+                        span,
+                        colon: match colon_present {
+                            true => "",
+                            false => ":",
+                        },
+                        kind: match mutability {
+                            Mutability::Mut => "static mut",
+                            Mutability::Not => "static",
+                        },
+                    })
+                    .stash(span, StashKey::ItemNoType);
+
+                // The user intended that the type be inferred,
+                // so treat this as if the user wrote e.g. `static A: _ = expr;`.
+                Self::default_ty_for_static_items(span)
+            }
         };
 
         let expr = if self.eat(exp!(Eq)) { Some(self.parse_expr()?) } else { None };
@@ -1438,7 +1463,7 @@ impl<'a> Parser<'a> {
     fn parse_const_item(
         &mut self,
         attrs: &[Attribute],
-    ) -> PResult<'a, (Ident, Generics, Box<Ty>, Option<ast::ConstItemRhs>)> {
+    ) -> PResult<'a, (Ident, Generics, FnRetTy, Option<ast::ConstItemRhs>)> {
         let ident = self.parse_ident_or_underscore()?;
 
         let mut generics = self.parse_generics()?;
@@ -1449,15 +1474,12 @@ impl<'a> Parser<'a> {
             self.psess.gated_spans.gate(sym::generic_const_items, generics.span);
         }
 
-        // Parse the type of a constant item. That is, the `":" $ty` fragment.
-        // FIXME: This could maybe benefit from `.may_recover()`?
-        let ty = match (
-            self.eat(exp!(Colon)),
-            self.check(exp!(Eq)) | self.check(exp!(Semi)) | self.check_keyword(exp!(Where)),
-        ) {
-            (true, false) => self.parse_ty()?,
-            // If there wasn't a `:` or the colon was followed by a `=`, `;` or `where`, recover a missing type.
-            (colon, _) => self.recover_missing_global_item_type(colon, None),
+        let ty = match self.parse_global_item_type(true)? {
+            Ok(ty) => FnRetTy::Ty(ty),
+            Err((span, _)) => {
+                self.psess.gated_spans.gate(sym::const_items_unit_type_default, span);
+                FnRetTy::Default(span)
+            }
         };
 
         // Proactively parse a where-clause to be able to provide a good error message in case we
@@ -1533,33 +1555,24 @@ impl<'a> Parser<'a> {
         Ok((ident, generics, ty, rhs))
     }
 
-    /// We were supposed to parse `":" $ty` but the `:` or the type was missing.
-    /// This means that the type is missing.
-    fn recover_missing_global_item_type(
+    // Parse the type of a constant item. That is, the `":" $ty` fragment.
+    // FIXME: This could maybe benefit from `.may_recover()`?
+    fn parse_global_item_type(
         &mut self,
-        colon_present: bool,
-        m: Option<Mutability>,
-    ) -> Box<Ty> {
-        // Construct the error and stash it away with the hope
-        // that typeck will later enrich the error with a type.
-        let kind = match m {
-            Some(Mutability::Mut) => "static mut",
-            Some(Mutability::Not) => "static",
-            None => "const",
-        };
-
-        let colon = match colon_present {
-            true => "",
-            false => ":",
-        };
-
-        let span = self.prev_token.span.shrink_to_hi();
-        let err = self.dcx().create_err(errors::MissingConstType { span, colon, kind });
-        err.stash(span, StashKey::ItemNoType);
-
-        // The user intended that the type be inferred,
-        // so treat this as if the user wrote e.g. `const A: _ = expr;`.
-        Box::new(Ty { kind: TyKind::Infer, span, id: ast::DUMMY_NODE_ID, tokens: None })
+        allow_where: bool,
+    ) -> PResult<'a, Result<Box<Ty>, (Span, bool)>> {
+        Ok(
+            match (
+                self.eat(exp!(Colon)),
+                self.check(exp!(Eq))
+                    | self.check(exp!(Semi))
+                    | (allow_where && self.check_keyword(exp!(Where))),
+            ) {
+                (true, false) => Ok(self.parse_ty()?),
+                // If there wasn't a `:` or the colon was followed by a `=`, `;` or `where`, recover a missing type.
+                (colon_present, _) => Err((self.prev_token.span.shrink_to_hi(), colon_present)),
+            },
+        )
     }
 
     /// Parses an enum declaration.
