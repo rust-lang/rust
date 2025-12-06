@@ -1514,7 +1514,7 @@ impl<'a> Parser<'a> {
                     },
                 )
             } else if this.check_inline_const(0) {
-                this.parse_const_block(lo, false)
+                this.parse_const_block(lo)
             } else if this.may_recover() && this.is_do_catch_block() {
                 this.recover_do_catch()
             } else if this.is_try_block() {
@@ -3949,6 +3949,18 @@ impl<'a> Parser<'a> {
                 UsePreAttrPos::No,
             ))
         })
+    }
+
+    /// Parses inline const expressions.
+    pub(super) fn parse_const_block(&mut self, span: Span) -> PResult<'a, Box<Expr>> {
+        self.expect_keyword(exp!(Const))?;
+        let (attrs, blk) = self.parse_inner_attrs_and_block(None)?;
+        let anon_const = AnonConst {
+            id: DUMMY_NODE_ID,
+            value: self.mk_expr(blk.span, ExprKind::Block(blk, None)),
+        };
+        let blk_span = anon_const.value.span;
+        Ok(self.mk_expr_with_attrs(span.to(blk_span), ExprKind::ConstBlock(anon_const), attrs))
     }
 
     /// Check for `=`. This means the source incorrectly attempts to

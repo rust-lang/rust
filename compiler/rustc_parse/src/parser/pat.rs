@@ -786,7 +786,7 @@ impl<'a> Parser<'a> {
             self.parse_pat_box()?
         } else if self.check_inline_const(0) {
             // Parse `const pat`
-            let const_expr = self.parse_const_block(lo.to(self.token.span), true)?;
+            let const_expr = self.parse_pat_const_block(lo.to(self.token.span))?;
 
             if let Some(re) = self.parse_range_end() {
                 self.parse_pat_range_begin_with(const_expr, re)?
@@ -1281,7 +1281,7 @@ impl<'a> Parser<'a> {
             .then_some(self.prev_token.span);
 
         let bound = if self.check_inline_const(0) {
-            self.parse_const_block(self.token.span, true)
+            self.parse_pat_const_block(self.token.span)
         } else if self.check_path() {
             let lo = self.token.span;
             let (qself, path) = if self.eat_lt() {
@@ -1765,6 +1765,20 @@ impl<'a> Parser<'a> {
             span: lo.to(hi),
             is_placeholder: false,
         })
+    }
+
+    /// Parse `const {}` in patterns - this syntax has been removed, but we still parse this
+    /// for now to provide a more useful error.
+    fn parse_pat_const_block(&mut self, span: Span) -> PResult<'a, Box<Expr>> {
+        let expr = self.parse_const_block(span)?;
+        let guar = self
+            .dcx()
+            .struct_span_err(expr.span, "const blocks cannot be used as patterns")
+            .with_help(
+                "use a named `const`-item or an `if`-guard (`x if x == const { ... }`) instead",
+            )
+            .emit();
+        Ok(self.mk_expr_err(expr.span, guar))
     }
 
     pub(super) fn mk_pat_ident(&self, span: Span, ann: BindingMode, ident: Ident) -> Pat {
