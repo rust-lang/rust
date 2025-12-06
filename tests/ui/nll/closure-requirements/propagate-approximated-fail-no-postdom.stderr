@@ -1,4 +1,4 @@
-note: no external requirements
+note: external requirements
   --> $DIR/propagate-approximated-fail-no-postdom.rs:43:9
    |
 LL |         |_outlives1, _outlives2, _outlives3, x, y| {
@@ -14,29 +14,66 @@ LL |         |_outlives1, _outlives2, _outlives3, x, y| {
    = note: late-bound region is '?4
    = note: late-bound region is '?5
    = note: late-bound region is '?6
-
-error: lifetime may not live long enough
-  --> $DIR/propagate-approximated-fail-no-postdom.rs:46:13
-   |
-LL |         |_outlives1, _outlives2, _outlives3, x, y| {
-   |          ----------              ---------- has type `Cell<&'2 &'?3 u32>`
-   |          |
-   |          has type `Cell<&'?1 &'1 u32>`
-...
-LL |             demand_y(x, y, p)
-   |             ^^^^^^^^^^^^^^^^^ argument requires that `'1` must outlive `'2`
-   |
-   = note: requirement occurs because of the type `Cell<&'?34 u32>`, which makes the generic argument `&'?34 u32` invariant
-   = note: the struct `Cell<T>` is invariant over the parameter `T`
-   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+   = note: number of external vids: 7
+   = note: where '?2: '?3
+   = note: where '?1: '?3
 
 note: no external requirements
-  --> $DIR/propagate-approximated-fail-no-postdom.rs:38:1
+  --> $DIR/propagate-approximated-fail-no-postdom.rs:36:1
    |
 LL | fn supply<'a, 'b, 'c>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>, cell_c: Cell<&'c u32>) {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: defining type: supply
 
-error: aborting due to 1 previous error
+error: lifetime may not live long enough
+  --> $DIR/propagate-approximated-fail-no-postdom.rs:39:5
+   |
+LL |   fn supply<'a, 'b, 'c>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>, cell_c: Cell<&'c u32>) {
+   |             --      -- lifetime `'c` defined here
+   |             |
+   |             lifetime `'a` defined here
+...
+LL | /     establish_relationships(
+LL | |         cell_a,
+LL | |         cell_b,
+LL | |         cell_c,
+...  |
+LL | |         },
+LL | |     );
+   | |_____^ argument requires that `'a` must outlive `'c`
+   |
+   = help: consider adding the following bound: `'a: 'c`
+   = note: requirement occurs because of the type `Cell<&'?10 u32>`, which makes the generic argument `&'?10 u32` invariant
+   = note: the struct `Cell<T>` is invariant over the parameter `T`
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+
+error: lifetime may not live long enough
+  --> $DIR/propagate-approximated-fail-no-postdom.rs:39:5
+   |
+LL |   fn supply<'a, 'b, 'c>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>, cell_c: Cell<&'c u32>) {
+   |                 --  -- lifetime `'c` defined here
+   |                 |
+   |                 lifetime `'b` defined here
+...
+LL | /     establish_relationships(
+LL | |         cell_a,
+LL | |         cell_b,
+LL | |         cell_c,
+...  |
+LL | |         },
+LL | |     );
+   | |_____^ argument requires that `'b` must outlive `'c`
+   |
+   = help: consider adding the following bound: `'b: 'c`
+   = note: requirement occurs because of the type `Cell<&'?10 u32>`, which makes the generic argument `&'?10 u32` invariant
+   = note: the struct `Cell<T>` is invariant over the parameter `T`
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+
+help: the following changes may resolve your lifetime errors
+   |
+   = help: add bound `'a: 'c`
+   = help: add bound `'b: 'c`
+
+error: aborting due to 2 previous errors
 
