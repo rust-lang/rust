@@ -227,6 +227,8 @@ declare_features! (
     (accepted, fn_must_use, "1.27.0", Some(43302)),
     /// Allows capturing variables in scope using format_args!
     (accepted, format_args_capture, "1.58.0", Some(67984)),
+    /// Frontmatter `---` blocks for use by external tools.
+    (accepted, frontmatter, "CURRENT_RUSTC_VERSION", Some(136889)),
     /// Infer generic args for both consts and types.
     (accepted, generic_arg_infer, "1.89.0", Some(85077)),
     /// Allows associated types to be generic, e.g., `type Foo<T>;` (RFC 1598).
