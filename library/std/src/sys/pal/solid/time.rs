@@ -10,6 +10,10 @@ pub struct SystemTime(abi::time_t);
 pub const UNIX_EPOCH: SystemTime = SystemTime(0);
 
 impl SystemTime {
+    pub const MAX: SystemTime = SystemTime(abi::time_t::MAX);
+
+    pub const MIN: SystemTime = SystemTime(abi::time_t::MIN);
+
     pub fn now() -> SystemTime {
         let rtc = unsafe {
             let mut out = MaybeUninit::zeroed();
