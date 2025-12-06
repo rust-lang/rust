@@ -9,12 +9,12 @@ use rustc_lint_defs::builtin::TAIL_CALL_TRACK_CALLER;
 use rustc_middle::mir::{self, AssertKind, InlineAsmMacro, SwitchTargets, UnwindTerminateReason};
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, ValidityRequirement};
 use rustc_middle::ty::print::{with_no_trimmed_paths, with_no_visible_paths};
-use rustc_middle::ty::{self, Instance, Ty};
+use rustc_middle::ty::{self, Instance, Ty, TypeVisitableExt};
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::OptLevel;
 use rustc_span::Span;
 use rustc_span::source_map::Spanned;
-use rustc_target::callconv::{ArgAbi, CastTarget, FnAbi, PassMode};
+use rustc_target::callconv::{ArgAbi, ArgAttributes, CastTarget, FnAbi, PassMode};
 use tracing::{debug, info};
 
 use super::operand::OperandRef;
@@ -1035,6 +1035,59 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             ty::FnPtr(..) => (None, Some(callee.immediate())),
             _ => bug!("{} is not callable", callee.layout.ty),
         };
+
+        if let Some(instance) = instance
+            && let Some(name) = bx.tcx().codegen_fn_attrs(instance.def_id()).symbol_name
+            && name.as_str().starts_with("llvm.")
+            // This is the only LLVM intrinsic we use that unwinds
+            // FIXME either add unwind support to codegen_llvm_intrinsic_call or replace usage of
+            // this intrinsic with something else
+            && name.as_str() != "llvm.wasm.throw"
+        {
+            assert!(!instance.args.has_infer());
+            assert!(!instance.args.has_escaping_bound_vars());
+
+            let result_layout =
+                self.cx.layout_of(self.monomorphized_place_ty(destination.as_ref()));
+
+            let return_dest = if result_layout.is_zst() {
+                ReturnDest::Nothing
+            } else if let Some(index) = destination.as_local() {
+                match self.locals[index] {
+                    LocalRef::Place(dest) => ReturnDest::Store(dest),
+                    LocalRef::UnsizedPlace(_) => bug!("return type must be sized"),
+                    LocalRef::PendingOperand => {
+                        // Handle temporary places, specifically `Operand` ones, as
+                        // they don't have `alloca`s.
+                        ReturnDest::DirectOperand(index)
+                    }
+                    LocalRef::Operand(_) => bug!("place local already assigned to"),
+                }
+            } else {
+                ReturnDest::Store(self.codegen_place(bx, destination.as_ref()))
+            };
+
+            let args =
+                args.into_iter().map(|arg| self.codegen_operand(bx, &arg.node)).collect::<Vec<_>>();
+
+            self.set_debug_loc(bx, source_info);
+
+            let llret =
+                bx.codegen_llvm_intrinsic_call(instance, &args, self.mir[helper.bb].is_cleanup);
+
+            if let Some(target) = target {
+                self.store_return(
+                    bx,
+                    return_dest,
+                    &ArgAbi { layout: result_layout, mode: PassMode::Direct(ArgAttributes::new()) },
+                    llret,
+                );
+                return helper.funclet_br(self, bx, target, mergeable_succ);
+            } else {
+                bx.unreachable();
+                return MergingSucc::False;
+            }
+        }
 
         // FIXME(eddyb) avoid computing this if possible, when `instance` is
         // available - right now `sig` is only needed for getting the `abi`
