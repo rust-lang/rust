@@ -6,8 +6,8 @@ use rustc_errors::{
     Applicability, Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level,
 };
 use rustc_feature::AttributeTemplate;
-use rustc_hir::{AttrPath, Target};
-use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
+use rustc_hir::AttrPath;
+use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{Span, Symbol};
 
 use crate::fluent_generated as fluent;
@@ -417,25 +417,6 @@ pub(crate) struct UnusedMultiple {
     pub name: Symbol,
 }
 
-#[derive(LintDiagnostic)]
-#[diag(attr_parsing_unused_duplicate)]
-pub(crate) struct UnusedDuplicate {
-    #[suggestion(code = "", applicability = "machine-applicable")]
-    pub this: Span,
-    #[note]
-    pub other: Span,
-    #[warning]
-    pub warning: bool,
-}
-
-// FIXME(jdonszelmann): duplicated in rustc_lints, should be moved here completely.
-#[derive(LintDiagnostic)]
-#[diag(attr_parsing_ill_formed_attribute_input)]
-pub(crate) struct IllFormedAttributeInput {
-    pub num_suggestions: usize,
-    pub suggestions: DiagArgValue,
-}
-
 #[derive(Diagnostic)]
 #[diag(attr_parsing_ill_formed_attribute_input)]
 pub(crate) struct IllFormedAttributeInputLint {
@@ -499,29 +480,6 @@ pub(crate) struct StabilityOutsideStd {
 pub(crate) struct EmptyConfusables {
     #[primary_span]
     pub span: Span,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(attr_parsing_empty_attribute)]
-#[note]
-pub(crate) struct EmptyAttributeList {
-    #[suggestion(code = "", applicability = "machine-applicable")]
-    pub attr_span: Span,
-    pub attr_path: AttrPath,
-    pub valid_without_list: bool,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(attr_parsing_invalid_target_lint)]
-#[warning]
-#[help]
-pub(crate) struct InvalidTargetLint {
-    pub name: AttrPath,
-    pub target: &'static str,
-    pub applied: DiagArgValue,
-    pub only: &'static str,
-    #[suggestion(code = "", applicability = "machine-applicable", style = "tool-only")]
-    pub attr_span: Span,
 }
 
 #[derive(Diagnostic)]
@@ -803,15 +761,6 @@ pub(crate) struct UnsafeAttrOutsideUnsafe {
     pub suggestion: UnsafeAttrOutsideUnsafeSuggestion,
 }
 
-#[derive(LintDiagnostic)]
-#[diag(attr_parsing_unsafe_attr_outside_unsafe)]
-pub(crate) struct UnsafeAttrOutsideUnsafeLint {
-    #[label]
-    pub span: Span,
-    #[subdiagnostic]
-    pub suggestion: UnsafeAttrOutsideUnsafeSuggestion,
-}
-
 #[derive(Subdiagnostic)]
 #[multipart_suggestion(
     attr_parsing_unsafe_attr_outside_unsafe_suggestion,
@@ -879,16 +828,6 @@ pub(crate) struct InvalidMetaItemRemoveNegSugg {
 pub(crate) struct SuffixedLiteralInAttribute {
     #[primary_span]
     pub span: Span,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(attr_parsing_invalid_style)]
-pub(crate) struct InvalidAttrStyle {
-    pub name: AttrPath,
-    pub is_used_as_inner: bool,
-    #[note]
-    pub target_span: Option<Span>,
-    pub target: Target,
 }
 
 #[derive(Diagnostic)]

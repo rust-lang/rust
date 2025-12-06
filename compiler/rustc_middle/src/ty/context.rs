@@ -30,7 +30,7 @@ use rustc_data_structures::sync::{
     self, DynSend, DynSync, FreezeReadGuard, Lock, RwLock, WorkerLocal,
 };
 use rustc_errors::{
-    Applicability, Diag, DiagCtxtHandle, ErrorGuaranteed, LintDiagnostic, LintEmitter, MultiSpan,
+    Applicability, Diag, DiagCtxtHandle, ErrorGuaranteed, LintDiagnostic, MultiSpan,
 };
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind};
@@ -1532,20 +1532,6 @@ impl<'tcx> TyCtxtFeed<'tcx, LocalDefId> {
 #[rustc_pass_by_value]
 pub struct TyCtxt<'tcx> {
     gcx: &'tcx GlobalCtxt<'tcx>,
-}
-
-impl<'tcx> LintEmitter for TyCtxt<'tcx> {
-    type Id = HirId;
-
-    fn emit_node_span_lint(
-        self,
-        lint: &'static Lint,
-        hir_id: HirId,
-        span: impl Into<MultiSpan>,
-        decorator: impl for<'a> LintDiagnostic<'a, ()>,
-    ) {
-        self.emit_node_span_lint(lint, hir_id, span, decorator);
-    }
 }
 
 // Explicitly implement `DynSync` and `DynSend` for `TyCtxt` to short circuit trait resolution. Its
