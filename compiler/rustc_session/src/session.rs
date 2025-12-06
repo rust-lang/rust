@@ -854,7 +854,7 @@ impl Session {
             scope.bits().count_ones() == 1,
             "one and only one scope should be passed to `Session::filename_display_preference`"
         );
-        if self.opts.unstable_opts.remap_path_scope.contains(scope) {
+        if self.opts.remap_path_scope.contains(scope) {
             FileNameDisplayPreference::Remapped
         } else {
             FileNameDisplayPreference::Local
@@ -1516,7 +1516,7 @@ impl RemapFileNameExt for rustc_span::FileName {
             scope.bits().count_ones() == 1,
             "one and only one scope should be passed to for_scope"
         );
-        if sess.opts.unstable_opts.remap_path_scope.contains(scope) {
+        if sess.opts.remap_path_scope.contains(scope) {
             self.prefer_remapped_unconditionally()
         } else {
             self.prefer_local()
@@ -1532,7 +1532,7 @@ impl RemapFileNameExt for rustc_span::RealFileName {
             scope.bits().count_ones() == 1,
             "one and only one scope should be passed to for_scope"
         );
-        if sess.opts.unstable_opts.remap_path_scope.contains(scope) {
+        if sess.opts.remap_path_scope.contains(scope) {
             self.remapped_path_if_available()
         } else {
             self.local_path_if_available()

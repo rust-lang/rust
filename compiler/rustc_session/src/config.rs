@@ -1331,6 +1331,29 @@ bitflags::bitflags! {
     }
 }
 
+pub(crate) fn parse_remap_path_scope(
+    early_dcx: &EarlyDiagCtxt,
+    matches: &getopts::Matches,
+) -> RemapPathScopeComponents {
+    if let Some(v) = matches.opt_str("remap-path-scope") {
+        let mut slot = RemapPathScopeComponents::empty();
+        for s in v.split(',') {
+            slot |= match s {
+                "macro" => RemapPathScopeComponents::MACRO,
+                "diagnostics" => RemapPathScopeComponents::DIAGNOSTICS,
+                "debuginfo" => RemapPathScopeComponents::DEBUGINFO,
+                "coverage" => RemapPathScopeComponents::COVERAGE,
+                "object" => RemapPathScopeComponents::OBJECT,
+                "all" => RemapPathScopeComponents::all(),
+                _ => early_dcx.early_fatal("argument for `--remap-path-scope` must be a comma separated list of scopes: `macro`, `diagnostics`, `debuginfo`, `coverage`, `object`, `all`"),
+            }
+        }
+        slot
+    } else {
+        RemapPathScopeComponents::all()
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct Sysroot {
     pub explicit: Option<PathBuf>,
@@ -1367,18 +1390,18 @@ pub fn host_tuple() -> &'static str {
 
 fn file_path_mapping(
     remap_path_prefix: Vec<(PathBuf, PathBuf)>,
-    unstable_opts: &UnstableOptions,
+    remap_path_scope: &RemapPathScopeComponents,
 ) -> FilePathMapping {
     FilePathMapping::new(
         remap_path_prefix.clone(),
-        if unstable_opts.remap_path_scope.contains(RemapPathScopeComponents::DIAGNOSTICS)
+        if remap_path_scope.contains(RemapPathScopeComponents::DIAGNOSTICS)
             && !remap_path_prefix.is_empty()
         {
             FileNameDisplayPreference::Remapped
         } else {
             FileNameDisplayPreference::Local
         },
-        if unstable_opts.remap_path_scope.is_all() {
+        if remap_path_scope.is_all() {
             FileNameEmbeddablePreference::RemappedOnly
         } else {
             FileNameEmbeddablePreference::LocalAndRemapped
@@ -1420,6 +1443,7 @@ impl Default for Options {
             cli_forced_codegen_units: None,
             cli_forced_local_thinlto_off: false,
             remap_path_prefix: Vec::new(),
+            remap_path_scope: RemapPathScopeComponents::all(),
             real_rust_source_base_dir: None,
             real_rustc_dev_source_base_dir: None,
             edition: DEFAULT_EDITION,
@@ -1446,7 +1470,7 @@ impl Options {
     }
 
     pub fn file_path_mapping(&self) -> FilePathMapping {
-        file_path_mapping(self.remap_path_prefix.clone(), &self.unstable_opts)
+        file_path_mapping(self.remap_path_prefix.clone(), &self.remap_path_scope)
     }
 
     /// Returns `true` if there will be an output file generated.
@@ -1882,6 +1906,14 @@ pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
             "remap-path-prefix",
             "Remap source names in all output (compiler messages and output files)",
             "<FROM>=<TO>",
+        ),
+        opt(
+            Stable,
+            Opt,
+            "",
+            "remap-path-scope",
+            "Defines which scopes of paths should be remapped by `--remap-path-prefix`",
+            "<macro,diagnostics,debuginfo,coverage,object,all>",
         ),
         opt(Unstable, Multi, "", "env-set", "Inject an environment variable", "<VAR>=<VALUE>"),
     ];
@@ -2723,6 +2755,7 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
     let externs = parse_externs(early_dcx, matches, &unstable_opts);
 
     let remap_path_prefix = parse_remap_path_prefix(early_dcx, matches, &unstable_opts);
+    let remap_path_scope = parse_remap_path_scope(early_dcx, matches);
 
     let pretty = parse_pretty(early_dcx, &unstable_opts);
 
@@ -2786,7 +2819,7 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
         early_dcx.early_fatal(format!("Current directory is invalid: {e}"));
     });
 
-    let file_mapping = file_path_mapping(remap_path_prefix.clone(), &unstable_opts);
+    let file_mapping = file_path_mapping(remap_path_prefix.clone(), &remap_path_scope);
     let working_dir = file_mapping.to_real_filename(&working_dir);
 
     let verbose = matches.opt_present("verbose") || unstable_opts.verbose_internals;
@@ -2823,6 +2856,7 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
         cli_forced_codegen_units: codegen_units,
         cli_forced_local_thinlto_off: disable_local_thinlto,
         remap_path_prefix,
+        remap_path_scope,
         real_rust_source_base_dir,
         real_rustc_dev_source_base_dir,
         edition,
