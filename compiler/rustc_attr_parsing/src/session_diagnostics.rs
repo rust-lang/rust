@@ -581,13 +581,6 @@ pub(crate) struct NakedFunctionIncompatibleAttribute {
     pub attr: String,
 }
 
-#[derive(LintDiagnostic)]
-#[diag(attr_parsing_doc_alias_duplicated)]
-pub(crate) struct DocAliasDuplicated {
-    #[label]
-    pub first_defn: Span,
-}
-
 #[derive(Diagnostic)]
 #[diag(attr_parsing_link_ordinal_out_of_range)]
 #[note]
@@ -992,87 +985,6 @@ pub(crate) struct CfgAttrBadDelim {
     #[subdiagnostic]
     pub sugg: MetaBadDelimSugg,
 }
-
-#[derive(LintDiagnostic)]
-#[diag(attr_parsing_doc_auto_cfg_expects_hide_or_show)]
-pub(crate) struct DocAutoCfgExpectsHideOrShow;
-
-#[derive(LintDiagnostic)]
-#[diag(attr_parsing_doc_auto_cfg_hide_show_unexpected_item)]
-pub(crate) struct DocAutoCfgHideShowUnexpectedItem {
-    pub attr_name: Symbol,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(attr_parsing_doc_auto_cfg_hide_show_expects_list)]
-pub(crate) struct DocAutoCfgHideShowExpectsList {
-    pub attr_name: Symbol,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(attr_parsing_doc_invalid)]
-pub(crate) struct DocInvalid;
-
-#[derive(LintDiagnostic)]
-#[diag(attr_parsing_doc_unknown_include)]
-pub(crate) struct DocUnknownInclude {
-    pub inner: &'static str,
-    pub value: Symbol,
-    #[suggestion(code = "#{inner}[doc = include_str!(\"{value}\")]")]
-    pub sugg: (Span, Applicability),
-}
-
-#[derive(LintDiagnostic)]
-#[diag(attr_parsing_doc_unknown_spotlight)]
-#[note]
-#[note(attr_parsing_no_op_note)]
-pub(crate) struct DocUnknownSpotlight {
-    #[suggestion(style = "short", applicability = "machine-applicable", code = "notable_trait")]
-    pub sugg_span: Span,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(attr_parsing_doc_unknown_passes)]
-#[note]
-#[note(attr_parsing_no_op_note)]
-pub(crate) struct DocUnknownPasses {
-    pub name: Symbol,
-    #[label]
-    pub note_span: Span,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(attr_parsing_doc_unknown_plugins)]
-#[note]
-#[note(attr_parsing_no_op_note)]
-pub(crate) struct DocUnknownPlugins {
-    #[label]
-    pub label_span: Span,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(attr_parsing_doc_unknown_any)]
-pub(crate) struct DocUnknownAny {
-    pub name: Symbol,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(attr_parsing_doc_auto_cfg_wrong_literal)]
-pub(crate) struct DocAutoCfgWrongLiteral;
-
-#[derive(LintDiagnostic)]
-#[diag(attr_parsing_doc_test_takes_list)]
-pub(crate) struct DocTestTakesList;
-
-#[derive(LintDiagnostic)]
-#[diag(attr_parsing_doc_test_unknown)]
-pub(crate) struct DocTestUnknown {
-    pub name: Symbol,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(attr_parsing_doc_test_literal)]
-pub(crate) struct DocTestLiteral;
 
 #[derive(Diagnostic)]
 #[diag(attr_parsing_doc_alias_malformed)]

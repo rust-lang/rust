@@ -2,7 +2,7 @@ use rustc_data_structures::fingerprint::Fingerprint;
 pub use rustc_lint_defs::AttributeLintKind;
 use rustc_lint_defs::LintId;
 use rustc_macros::HashStable_Generic;
-use rustc_span::{Span, Symbol};
+use rustc_span::Span;
 
 use crate::HirId;
 
@@ -30,72 +30,4 @@ pub struct AttributeLint<Id> {
     pub id: Id,
     pub span: Span,
     pub kind: AttributeLintKind,
-}
-
-#[derive(Debug, HashStable_Generic)]
-pub enum AttributeLintKind {
-    /// Copy of `IllFormedAttributeInput`
-    /// specifically for the `invalid_macro_export_arguments` lint until that is removed,
-    /// see <https://github.com/rust-lang/rust/pull/143857#issuecomment-3079175663>
-    InvalidMacroExportArguments {
-        suggestions: Vec<String>,
-    },
-    UnusedDuplicate {
-        this: Span,
-        other: Span,
-        warning: bool,
-    },
-    IllFormedAttributeInput {
-        suggestions: Vec<String>,
-    },
-    EmptyAttribute {
-        first_span: Span,
-        attr_path: AttrPath,
-        valid_without_list: bool,
-    },
-    InvalidTarget {
-        name: AttrPath,
-        target: Target,
-        applied: Vec<String>,
-        only: &'static str,
-    },
-    InvalidStyle {
-        name: AttrPath,
-        is_used_as_inner: bool,
-        target: Target,
-        target_span: Span,
-    },
-    UnsafeAttrOutsideUnsafe {
-        attribute_name_span: Span,
-        sugg_spans: (Span, Span),
-    },
-    DuplicateDocAlias {
-        first_definition: Span,
-    },
-    DocAutoCfgExpectsHideOrShow,
-    DocAutoCfgHideShowUnexpectedItem {
-        attr_name: Symbol,
-    },
-    DocAutoCfgHideShowExpectsList {
-        attr_name: Symbol,
-    },
-    DocInvalid,
-    DocUnknownInclude {
-        inner: &'static str,
-        value: Symbol,
-    },
-    DocUnknownSpotlight,
-    DocUnknownPasses {
-        name: Symbol,
-    },
-    DocUnknownPlugins,
-    DocUnknownAny {
-        name: Symbol,
-    },
-    DocAutoCfgWrongLiteral,
-    DocTestTakesList,
-    DocTestUnknown {
-        name: Symbol,
-    },
-    DocTestLiteral,
 }

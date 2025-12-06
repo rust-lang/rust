@@ -116,10 +116,18 @@ impl DocParser {
                 }
             }
             Some(name) => {
-                cx.emit_lint(AttributeLintKind::DocTestUnknown { name }, path.span());
+                cx.emit_lint(
+                    rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
+                    AttributeLintKind::DocTestUnknown { name },
+                    path.span(),
+                );
             }
             None => {
-                cx.emit_lint(AttributeLintKind::DocTestLiteral, path.span());
+                cx.emit_lint(
+                    rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
+                    AttributeLintKind::DocTestLiteral,
+                    path.span(),
+                );
             }
         }
     }
@@ -151,7 +159,11 @@ impl DocParser {
         }
 
         if let Some(first_definition) = self.attribute.aliases.get(&alias).copied() {
-            cx.emit_lint(AttributeLintKind::DuplicateDocAlias { first_definition }, span);
+            cx.emit_lint(
+                rustc_session::lint::builtin::UNUSED_ATTRIBUTES,
+                AttributeLintKind::DuplicateDocAlias { first_definition },
+                span,
+            );
         }
 
         self.attribute.aliases.insert(alias, span);
@@ -239,7 +251,11 @@ impl DocParser {
             ArgParser::List(list) => {
                 for meta in list.mixed() {
                     let MetaItemOrLitParser::MetaItemParser(item) = meta else {
-                        cx.emit_lint(AttributeLintKind::DocAutoCfgExpectsHideOrShow, meta.span());
+                        cx.emit_lint(
+                            rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
+                            AttributeLintKind::DocAutoCfgExpectsHideOrShow,
+                            meta.span(),
+                        );
                         continue;
                     };
                     let (kind, attr_name) = match item.path().word_sym() {
@@ -247,6 +263,7 @@ impl DocParser {
                         Some(sym::show) => (HideOrShow::Show, sym::show),
                         _ => {
                             cx.emit_lint(
+                                rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
                                 AttributeLintKind::DocAutoCfgExpectsHideOrShow,
                                 item.span(),
                             );
@@ -255,6 +272,7 @@ impl DocParser {
                     };
                     let ArgParser::List(list) = item.args() else {
                         cx.emit_lint(
+                            rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
                             AttributeLintKind::DocAutoCfgHideShowExpectsList { attr_name },
                             item.span(),
                         );
@@ -266,6 +284,7 @@ impl DocParser {
                     for item in list.mixed() {
                         let MetaItemOrLitParser::MetaItemParser(sub_item) = item else {
                             cx.emit_lint(
+                                rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
                                 AttributeLintKind::DocAutoCfgHideShowUnexpectedItem { attr_name },
                                 item.span(),
                             );
@@ -291,6 +310,7 @@ impl DocParser {
                             }
                             _ => {
                                 cx.emit_lint(
+                                    rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
                                     AttributeLintKind::DocAutoCfgHideShowUnexpectedItem {
                                         attr_name,
                                     },
@@ -306,7 +326,11 @@ impl DocParser {
             ArgParser::NameValue(nv) => {
                 let MetaItemLit { kind: LitKind::Bool(bool_value), span, .. } = nv.value_as_lit()
                 else {
-                    cx.emit_lint(AttributeLintKind::DocAutoCfgWrongLiteral, nv.value_span);
+                    cx.emit_lint(
+                        rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
+                        AttributeLintKind::DocAutoCfgWrongLiteral,
+                        nv.value_span,
+                    );
                     return;
                 };
                 self.attribute.auto_cfg_change.push((*bool_value, *span));
@@ -397,6 +421,7 @@ impl DocParser {
             Some(sym::test) => {
                 let Some(list) = args.list() else {
                     cx.emit_lint(
+                        rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
                         AttributeLintKind::DocTestTakesList,
                         args.span().unwrap_or(path.span()),
                     );
@@ -418,7 +443,11 @@ impl DocParser {
                 }
             }
             Some(sym::spotlight) => {
-                cx.emit_lint(AttributeLintKind::DocUnknownSpotlight, path.span());
+                cx.emit_lint(
+                    rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
+                    AttributeLintKind::DocUnknownSpotlight { span: path.span() },
+                    path.span(),
+                );
             }
             Some(sym::include) if let Some(nv) = args.name_value() => {
                 let inner = match cx.attr_style {
@@ -426,23 +455,41 @@ impl DocParser {
                     AttrStyle::Inner => "!",
                 };
                 cx.emit_lint(
-                    AttributeLintKind::DocUnknownInclude { inner, value: nv.value_as_lit().symbol },
+                    rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
+                    AttributeLintKind::DocUnknownInclude {
+                        inner,
+                        value: nv.value_as_lit().symbol,
+                        span: path.span(),
+                    },
                     path.span(),
                 );
             }
             Some(name @ (sym::passes | sym::no_default_passes)) => {
-                cx.emit_lint(AttributeLintKind::DocUnknownPasses { name }, path.span());
+                cx.emit_lint(
+                    rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
+                    AttributeLintKind::DocUnknownPasses { name, span: path.span() },
+                    path.span(),
+                );
             }
             Some(sym::plugins) => {
-                cx.emit_lint(AttributeLintKind::DocUnknownPlugins, path.span());
+                cx.emit_lint(
+                    rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
+                    AttributeLintKind::DocUnknownPlugins { span: path.span() },
+                    path.span(),
+                );
             }
             Some(name) => {
-                cx.emit_lint(AttributeLintKind::DocUnknownAny { name }, path.span());
+                cx.emit_lint(
+                    rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
+                    AttributeLintKind::DocUnknownAny { name },
+                    path.span(),
+                );
             }
             None => {
                 let full_name =
                     path.segments().map(|s| s.as_str()).intersperse("::").collect::<String>();
                 cx.emit_lint(
+                    rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
                     AttributeLintKind::DocUnknownAny { name: Symbol::intern(&full_name) },
                     path.span(),
                 );
@@ -459,7 +506,11 @@ impl DocParser {
             ArgParser::NoArgs => {
                 let suggestions = cx.suggestions();
                 let span = cx.attr_span;
-                cx.emit_lint(AttributeLintKind::IllFormedAttributeInput { suggestions }, span);
+                cx.emit_lint(
+                    rustc_session::lint::builtin::ILL_FORMED_ATTRIBUTE_INPUT,
+                    AttributeLintKind::IllFormedAttributeInput { suggestions, docs: None },
+                    span,
+                );
             }
             ArgParser::List(items) => {
                 for i in items.mixed() {
