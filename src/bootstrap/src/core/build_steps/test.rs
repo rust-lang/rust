@@ -3728,7 +3728,7 @@ impl Step for CodegenCranelift {
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.paths(&["compiler/rustc_codegen_cranelift"])
+        run.paths(&["compiler/rustc_codegen_cranelift"]).path("compiler")
     }
 
     fn is_default_step(_builder: &Builder<'_>) -> bool {
@@ -3849,7 +3849,7 @@ impl Step for CodegenGCC {
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.paths(&["compiler/rustc_codegen_gcc"])
+        run.paths(&["compiler/rustc_codegen_gcc"]).path("compiler")
     }
 
     fn is_default_step(_builder: &Builder<'_>) -> bool {
