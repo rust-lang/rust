@@ -129,7 +129,13 @@ pub fn utf8_error<E: EmissionGuarantee>(
         note.clone()
     };
     let contents = String::from_utf8_lossy(contents).to_string();
-    let source = sm.new_source_file(PathBuf::from(path).into(), contents);
+
+    // We only emit this error for files in the current session
+    // so the working directory can only be the current working directory
+    let filename = FileName::Real(
+        sm.path_mapping().to_real_filename(sm.working_dir(), PathBuf::from(path).as_path()),
+    );
+    let source = sm.new_source_file(filename, contents);
 
     // Avoid out-of-bounds span from lossy UTF-8 conversion.
     if start as u32 > source.normalized_source_len.0 {

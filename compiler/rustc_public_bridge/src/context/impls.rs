@@ -23,7 +23,7 @@ use rustc_middle::ty::{
 use rustc_middle::{mir, ty};
 use rustc_session::cstore::ForeignModule;
 use rustc_span::def_id::{CrateNum, DefId, LOCAL_CRATE};
-use rustc_span::{FileNameDisplayPreference, Span, Symbol};
+use rustc_span::{Span, Symbol};
 use rustc_target::callconv::FnAbi;
 
 use super::{AllocRangeHelpers, CompilerCtxt, TyHelpers, TypingEnvHelpers};
@@ -324,12 +324,7 @@ impl<'tcx, B: Bridge> CompilerCtxt<'tcx, B> {
 
     /// Return filename from given `Span`, for diagnostic purposes.
     pub fn get_filename(&self, span: Span) -> String {
-        self.tcx
-            .sess
-            .source_map()
-            .span_to_filename(span)
-            .display(FileNameDisplayPreference::Local)
-            .to_string()
+        self.tcx.sess.source_map().span_to_filename(span).prefer_local_unconditionally().to_string()
     }
 
     /// Return lines corresponding to this `Span`.

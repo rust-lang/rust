@@ -297,29 +297,11 @@ impl<'gcc, 'tcx> DebugInfoCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         let pos = span.lo();
         let DebugLoc { file, line, col } = self.lookup_debug_loc(pos);
         match file.name {
-            rustc_span::FileName::Real(ref name) => match *name {
-                rustc_span::RealFileName::LocalPath(ref name) => {
-                    if let Some(name) = name.to_str() {
-                        self.context.new_location(name, line as i32, col as i32)
-                    } else {
-                        Location::null()
-                    }
-                }
-                rustc_span::RealFileName::Remapped {
-                    ref local_path,
-                    virtual_name: ref _unused,
-                } => {
-                    if let Some(name) = local_path.as_ref() {
-                        if let Some(name) = name.to_str() {
-                            self.context.new_location(name, line as i32, col as i32)
-                        } else {
-                            Location::null()
-                        }
-                    } else {
-                        Location::null()
-                    }
-                }
-            },
+            rustc_span::FileName::Real(ref name) => self.context.new_location(
+                name.path(rustc_span::RemapPathScopeComponents::DEBUGINFO).to_string_lossy(),
+                line as i32,
+                col as i32,
+            ),
             _ => Location::null(),
         }
     }
