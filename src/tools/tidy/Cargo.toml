@@ -18,6 +18,7 @@ rustc-hash = "2.0.0"
 fluent-syntax = "0.12"
 similar = "2.5.0"
 toml = "0.7.8"
+tempfile = "3.15.0"
 
 [features]
 build-metrics = ["dep:serde"]
