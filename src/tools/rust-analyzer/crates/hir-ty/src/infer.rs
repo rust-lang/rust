@@ -75,7 +75,7 @@ use crate::{
         AliasTy, Const, DbInterner, ErrorGuaranteed, GenericArg, GenericArgs, Region,
         StoredGenericArgs, StoredTy, StoredTys, Ty, TyKind, Tys,
         abi::Safety,
-        infer::{InferCtxt, traits::ObligationCause},
+        infer::{InferCtxt, ObligationInspector, traits::ObligationCause},
     },
     traits::FnTrait,
     utils::TargetFeatureIsSafeInTarget,
@@ -94,10 +94,22 @@ pub(crate) use closure::analysis::{CaptureKind, CapturedItem, CapturedItemWithou
 
 /// The entry point of type inference.
 fn infer_query(db: &dyn HirDatabase, def: DefWithBodyId) -> InferenceResult {
+    infer_query_with_inspect(db, def, None)
+}
+
+pub fn infer_query_with_inspect<'db>(
+    db: &'db dyn HirDatabase,
+    def: DefWithBodyId,
+    inspect: Option<ObligationInspector<'db>>,
+) -> InferenceResult {
     let _p = tracing::info_span!("infer_query").entered();
     let resolver = def.resolver(db);
     let body = db.body(def);
     let mut ctx = InferenceContext::new(db, def, &body, resolver);
+
+    if let Some(inspect) = inspect {
+        ctx.table.infer_ctxt.attach_obligation_inspector(inspect);
+    }
 
     match def {
         DefWithBodyId::FunctionId(f) => {

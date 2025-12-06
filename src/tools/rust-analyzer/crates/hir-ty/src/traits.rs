@@ -23,7 +23,10 @@ use crate::{
     next_solver::{
         Canonical, DbInterner, GenericArgs, Goal, ParamEnv, Predicate, SolverContext, Span,
         StoredClauses, Ty, TyKind,
-        infer::{DbInternerInferExt, InferCtxt, traits::ObligationCause},
+        infer::{
+            DbInternerInferExt, InferCtxt,
+            traits::{Obligation, ObligationCause},
+        },
         obligation_ctxt::ObligationCtxt,
     },
 };
@@ -107,6 +110,16 @@ pub fn next_trait_solve_canonical_in_ctxt<'db>(
 
         let res = context.evaluate_root_goal(goal, Span::dummy(), None);
 
+        let obligation = Obligation {
+            cause: ObligationCause::dummy(),
+            param_env: goal.param_env,
+            recursion_depth: 0,
+            predicate: goal.predicate,
+        };
+        infer_ctxt.inspect_evaluated_obligation(&obligation, &res, || {
+            Some(context.evaluate_root_goal_for_proof_tree(goal, Span::dummy()).1)
+        });
+
         let res = res.map(|r| (r.has_changed, r.certainty));
 
         tracing::debug!("solve_nextsolver({:?}) => {:?}", goal, res);
@@ -129,6 +142,16 @@ pub fn next_trait_solve_in_ctxt<'db, 'a>(
     let context = <&SolverContext<'db>>::from(infer_ctxt);
 
     let res = context.evaluate_root_goal(goal, Span::dummy(), None);
+
+    let obligation = Obligation {
+        cause: ObligationCause::dummy(),
+        param_env: goal.param_env,
+        recursion_depth: 0,
+        predicate: goal.predicate,
+    };
+    infer_ctxt.inspect_evaluated_obligation(&obligation, &res, || {
+        Some(context.evaluate_root_goal_for_proof_tree(goal, Span::dummy()).1)
+    });
 
     let res = res.map(|r| (r.has_changed, r.certainty));
 

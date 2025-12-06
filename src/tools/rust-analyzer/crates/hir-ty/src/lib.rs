@@ -88,7 +88,7 @@ pub use infer::{
     InferenceTyDiagnosticSource, OverloadedDeref, PointerCast,
     cast::CastError,
     closure::analysis::{CaptureKind, CapturedItem},
-    could_coerce, could_unify, could_unify_deeply,
+    could_coerce, could_unify, could_unify_deeply, infer_query_with_inspect,
 };
 pub use lower::{
     GenericPredicates, ImplTraits, LifetimeElisionKind, TyDefId, TyLoweringContext, ValueTyDefId,
