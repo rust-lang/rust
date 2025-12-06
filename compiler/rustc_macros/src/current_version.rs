@@ -22,7 +22,11 @@ struct RustcVersion {
 
 impl RustcVersion {
     fn parse_cfg_release(env_var: &str) -> Result<Self, Box<dyn std::error::Error>> {
+        #[cfg(not(bootstrap))]
+        let value = proc_macro::tracked::env_var(env_var)?;
+        #[cfg(bootstrap)]
         let value = proc_macro::tracked_env::var(env_var)?;
+
         Self::parse_str(&value)
             .ok_or_else(|| format!("failed to parse rustc version: {:?}", value).into())
     }
