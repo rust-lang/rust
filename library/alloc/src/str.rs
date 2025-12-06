@@ -293,6 +293,66 @@ impl str {
         result
     }
 
+    /// Replaces all matches of a pattern with a dynamically computed string.
+    ///
+    /// `replace_with` creates a new [`String`], and copies the data from this string slice into it.
+    /// While doing so, it attempts to find matches of a pattern. If it finds any, it
+    /// replaces them with result of the `replacer` closure.
+    ///
+    /// # Examples
+    ///
+    /// Counter-based replacement:
+    ///
+    /// ```
+    /// #![feature(replace_with)]
+    /// let mut i = 0;
+    /// let out = "todo todo done todo".replace_with("todo", |_| { i += 1; format!("todo#{i}") });
+    /// assert_eq!(out, "todo#1 todo#2 done todo#3");
+    /// ```
+    ///
+    /// Custom transformation:
+    ///
+    /// ```
+    /// #![feature(replace_with)]
+    /// let mut seed = 42_u32;
+    /// let out = "phone number: 444-371-01-01"
+    ///     .replace_with(char::is_numeric, |s| {
+    ///         seed = (seed.wrapping_mul(1103515245).wrapping_add(12345)) & 0x7fffffff;
+    ///         let d = (seed % 10) as u32;
+    ///         std::char::from_digit(d, 10).unwrap().to_string()
+    ///     });
+    /// assert_eq!(out, "phone number: 743-652-36-92");
+    /// ```
+    ///
+    /// When the pattern doesn't match, it returns this string slice as [`String`]:
+    ///
+    /// ```
+    /// #![feature(replace_with)]
+    /// let s = "this is old";
+    /// assert_eq!(s, s.replace_with("cookie monster", |_| "little lamb"));
+    /// ```
+    #[cfg(not(no_global_oom_handling))]
+    #[rustc_allow_incoherent_impl]
+    #[must_use = "this returns the replaced string as a new allocation, \
+                  without modifying the original"]
+    #[unstable(feature = "replace_with", issue = "147731")]
+    #[inline]
+    pub fn replace_with<P: Pattern, S: AsRef<str>>(
+        &self,
+        from: P,
+        mut f: impl FnMut(&str) -> S,
+    ) -> String {
+        let mut result = String::new();
+        let mut last_end = 0;
+        for (start, part) in self.match_indices(from) {
+            result.push_str(unsafe { self.get_unchecked(last_end..start) });
+            result.push_str(f(part).as_ref());
+            last_end = start + part.len();
+        }
+        result.push_str(unsafe { self.get_unchecked(last_end..self.len()) });
+        result
+    }
+
     /// Replaces first N matches of a pattern with another string.
     ///
     /// `replacen` creates a new [`String`], and copies the data from this string slice into it.
@@ -327,6 +387,53 @@ impl str {
         for (start, part) in self.match_indices(pat).take(count) {
             result.push_str(unsafe { self.get_unchecked(last_end..start) });
             result.push_str(to);
+            last_end = start + part.len();
+        }
+        result.push_str(unsafe { self.get_unchecked(last_end..self.len()) });
+        result
+    }
+
+    /// Replaces first N matches of a pattern with another string.
+    ///
+    /// `replacen` creates a new [`String`], and copies the data from this string slice into it.
+    /// While doing so, it attempts to find matches of a pattern. If it finds any, it
+    /// replaces them with the replacement string slice at most `count` times.
+    ///
+    /// # Examples
+    ///
+    /// Counter-based replacement:
+    ///
+    /// ```
+    /// #![feature(replace_with)]
+    /// let mut i = 0;
+    /// let out = "todo todo done todo".replacen_with("todo", |_| { i += 1; format!("todo#{i}") }, 2);
+    /// assert_eq!(out, "todo#1 todo#2 done todo");
+    /// ```
+    ///
+    /// When the pattern doesn't match, it returns this string slice as [`String`]:
+    ///
+    /// ```
+    /// #![feature(replace_with)]
+    /// let s = "this is old";
+    /// assert_eq!(s, s.replacen_with("cookie monster", |_| "little lamb", 10));
+    /// ```
+    #[cfg(not(no_global_oom_handling))]
+    #[rustc_allow_incoherent_impl]
+    #[must_use = "this returns the replaced string as a new allocation, \
+                  without modifying the original"]
+    #[unstable(feature = "replace_with", issue = "147731")]
+    pub fn replacen_with<P: Pattern, S: AsRef<str>>(
+        &self,
+        pat: P,
+        mut f: impl FnMut(&str) -> S,
+        count: usize,
+    ) -> String {
+        // Hope to reduce the times of re-allocation
+        let mut result = String::with_capacity(32);
+        let mut last_end = 0;
+        for (start, part) in self.match_indices(pat).take(count) {
+            result.push_str(unsafe { self.get_unchecked(last_end..start) });
+            result.push_str(f(part).as_ref());
             last_end = start + part.len();
         }
         result.push_str(unsafe { self.get_unchecked(last_end..self.len()) });
