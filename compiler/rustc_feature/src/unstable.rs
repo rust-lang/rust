@@ -422,6 +422,8 @@ declare_features! (
     (unstable, const_destruct, "1.85.0", Some(133214)),
     /// Allows `for _ in _` loops in const contexts.
     (unstable, const_for, "1.56.0", Some(87575)),
+    /// Allows to omit `: ()` type in `const FOO: () = ...` similarly to `-> ()` in functions.
+    (unstable, const_items_unit_type_default, "CURRENT_RUSTC_VERSION", Some(149226)),
     /// Be more precise when looking for live drops in a const context.
     (unstable, const_precise_live_drops, "1.46.0", Some(73255)),
     /// Allows `impl const Trait for T` syntax.

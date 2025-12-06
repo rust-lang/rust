@@ -2878,12 +2878,12 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                                         this.with_rib(ValueNS, RibKind::ConstParamTy, |this| {
                                             this.with_lifetime_rib(
                                                 LifetimeRibKind::ConstParamTy,
-                                                |this| this.visit_ty(ty),
+                                                |this| this.visit_fn_ret_ty(ty),
                                             )
                                         })
                                     });
                                 } else {
-                                    this.visit_ty(ty);
+                                    this.visit_fn_ret_ty(ty)
                                 }
                             },
                         );
@@ -3268,12 +3268,12 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                                             this.with_rib(ValueNS, RibKind::ConstParamTy, |this| {
                                                 this.with_lifetime_rib(
                                                     LifetimeRibKind::ConstParamTy,
-                                                    |this| this.visit_ty(ty),
+                                                    |this| this.visit_fn_ret_ty(ty),
                                                 )
                                             })
                                         });
                                     } else {
-                                        this.visit_ty(ty);
+                                        this.visit_fn_ret_ty(ty)
                                     }
 
                                     // Only impose the restrictions of `ConstRibKind` for an
@@ -3519,13 +3519,13 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                                                     |this| {
                                                         this.with_lifetime_rib(
                                                             LifetimeRibKind::ConstParamTy,
-                                                            |this| this.visit_ty(ty),
+                                                            |this| this.visit_fn_ret_ty(ty),
                                                         )
                                                     },
                                                 )
                                             });
                                         } else {
-                                            this.visit_ty(ty);
+                                            this.visit_fn_ret_ty(ty);
                                         }
                                         if let Some(rhs) = rhs {
                                             // We allow arbitrary const expressions inside of associated consts,
