@@ -13,9 +13,12 @@ This tracks support for additional registers in architectures where inline assem
 | Architecture | Register class | Registers | LLVM constraint code |
 | ------------ | -------------- | --------- | -------------------- |
 | s390x | `vreg` | `v[0-31]` | `v` |
+| PowerPC | `spe_acc` | `spe_acc` | none |
 
 > **Notes**:
 > - s390x `vreg` is clobber-only in stable.
+>
+> - PowerPC `spe_acc` is clobber-only in stable.
 
 ## Register class supported types
 
