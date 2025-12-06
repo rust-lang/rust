@@ -1,12 +1,12 @@
 
 running 1 test
-test $DIR/failed-doctest-test-crate.rs - m (line 16) ... FAILED
+test $DIR/failed-doctest-test-crate.rs - m (line 18) ... FAILED
 
 failures:
 
----- $DIR/failed-doctest-test-crate.rs - m (line 16) stdout ----
+---- $DIR/failed-doctest-test-crate.rs - m (line 18) stdout ----
 error[E0432]: unresolved import `test`
-  --> $DIR/failed-doctest-test-crate.rs:17:5
+  --> $DIR/failed-doctest-test-crate.rs:19:5
    |
 LL | use test::*;
    |     ^^^^ use of unresolved module or unlinked crate `test`
@@ -22,7 +22,7 @@ For more information about this error, try `rustc --explain E0432`.
 Couldn't compile the test.
 
 failures:
-    $DIR/failed-doctest-test-crate.rs - m (line 16)
+    $DIR/failed-doctest-test-crate.rs - m (line 18)
 
 test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in $TIME
 
