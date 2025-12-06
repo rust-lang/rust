@@ -399,7 +399,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             ExprKind::Lit(lit) => {
                 hir::PatExprKind::Lit { lit: self.lower_lit(lit, span), negated: false }
             }
-            ExprKind::ConstBlock(c) => hir::PatExprKind::ConstBlock(self.lower_const_block(c)),
             ExprKind::IncludedBytes(byte_sym) => hir::PatExprKind::Lit {
                 lit: respan(span, LitKind::ByteStr(*byte_sym, StrStyle::Cooked)),
                 negated: false,
