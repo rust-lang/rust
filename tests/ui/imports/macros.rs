@@ -13,7 +13,7 @@ mod m1 {
 
 mod m2 {
     use two_macros::*;
-    m! { //~ ERROR ambiguous
+    m! { //~ ERROR `m` is ambiguous
         use crate::foo::m;
     }
 }
