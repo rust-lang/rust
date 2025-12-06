@@ -3070,7 +3070,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 continue;
             }
 
-            let item_was = if let CfgEntry::NameValue { value: Some((feature, _)), .. } = cfg.0 {
+            let item_was = if let CfgEntry::NameValue { value: Some(feature), .. } = cfg.0 {
                 errors::ItemWas::BehindFeature { feature, span: cfg.1 }
             } else {
                 errors::ItemWas::CfgOut { span: cfg.1 }

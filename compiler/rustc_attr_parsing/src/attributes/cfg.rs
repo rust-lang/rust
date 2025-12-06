@@ -2,16 +2,16 @@ use std::convert::identity;
 
 use rustc_ast::token::Delimiter;
 use rustc_ast::tokenstream::DelimSpan;
-use rustc_ast::{AttrItem, Attribute, CRATE_NODE_ID, LitKind, NodeId, ast, token};
+use rustc_ast::{AttrItem, Attribute, CRATE_NODE_ID, LitKind, ast, token};
 use rustc_errors::{Applicability, PResult};
 use rustc_feature::{AttrSuggestionStyle, AttributeTemplate, Features, template};
 use rustc_hir::attrs::CfgEntry;
+use rustc_hir::lints::AttributeLintKind;
 use rustc_hir::{AttrPath, RustcVersion};
 use rustc_parse::parser::{ForceCollect, Parser};
 use rustc_parse::{exp, parse_in};
 use rustc_session::Session;
 use rustc_session::config::ExpectedValues;
-use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::lint::builtin::UNEXPECTED_CFGS;
 use rustc_session::parse::{ParseSess, feature_err};
 use rustc_span::{ErrorGuaranteed, Span, Symbol, sym};
@@ -23,10 +23,7 @@ use crate::session_diagnostics::{
     AttributeParseError, AttributeParseErrorReason, CfgAttrBadDelim, MetaBadDelimSugg,
     ParsedDescription,
 };
-use crate::{
-    AttributeParser, CfgMatchesLintEmitter, fluent_generated, parse_version, session_diagnostics,
-    try_gate_cfg,
-};
+use crate::{AttributeParser, fluent_generated, parse_version, session_diagnostics, try_gate_cfg};
 
 pub const CFG_TEMPLATE: AttributeTemplate = template!(
     List: &["predicate"],
@@ -195,43 +192,46 @@ fn parse_name_value<S: Stage>(
         }
     };
 
-    Ok(CfgEntry::NameValue { name, name_span, value, span })
+    match cx.sess.psess.check_config.expecteds.get(&name) {
+        Some(ExpectedValues::Some(values)) if !values.contains(&value.map(|(v, _)| v)) => cx
+            .emit_lint(
+                UNEXPECTED_CFGS,
+                AttributeLintKind::UnexpectedCfgValue((name, name_span), value),
+                span,
+            ),
+        None if cx.sess.psess.check_config.exhaustive_names => cx.emit_lint(
+            UNEXPECTED_CFGS,
+            AttributeLintKind::UnexpectedCfgName((name, name_span), value),
+            span,
+        ),
+        _ => { /* not unexpected */ }
+    }
+
+    Ok(CfgEntry::NameValue { name, value: value.map(|(v, _)| v), span })
 }
 
-pub fn eval_config_entry(
-    sess: &Session,
-    cfg_entry: &CfgEntry,
-    id: NodeId,
-    emit_lints: ShouldEmit,
-) -> EvalConfigResult {
+pub fn eval_config_entry(sess: &Session, cfg_entry: &CfgEntry) -> EvalConfigResult {
     match cfg_entry {
         CfgEntry::All(subs, ..) => {
-            let mut all = None;
             for sub in subs {
-                let res = eval_config_entry(sess, sub, id, emit_lints);
-                // We cannot short-circuit because `eval_config_entry` emits some lints
+                let res = eval_config_entry(sess, sub);
                 if !res.as_bool() {
-                    all.get_or_insert(res);
+                    return res;
                 }
             }
-            all.unwrap_or_else(|| EvalConfigResult::True)
+            EvalConfigResult::True
         }
         CfgEntry::Any(subs, span) => {
-            let mut any = None;
             for sub in subs {
-                let res = eval_config_entry(sess, sub, id, emit_lints);
-                // We cannot short-circuit because `eval_config_entry` emits some lints
+                let res = eval_config_entry(sess, sub);
                 if res.as_bool() {
-                    any.get_or_insert(res);
+                    return res;
                 }
             }
-            any.unwrap_or_else(|| EvalConfigResult::False {
-                reason: cfg_entry.clone(),
-                reason_span: *span,
-            })
+            EvalConfigResult::False { reason: cfg_entry.clone(), reason_span: *span }
         }
         CfgEntry::Not(sub, span) => {
-            if eval_config_entry(sess, sub, id, emit_lints).as_bool() {
+            if eval_config_entry(sess, sub).as_bool() {
                 EvalConfigResult::False { reason: cfg_entry.clone(), reason_span: *span }
             } else {
                 EvalConfigResult::True
@@ -244,32 +244,8 @@ pub fn eval_config_entry(
                 EvalConfigResult::False { reason: cfg_entry.clone(), reason_span: *span }
             }
         }
-        CfgEntry::NameValue { name, name_span, value, span } => {
-            if let ShouldEmit::ErrorsAndLints = emit_lints {
-                match sess.psess.check_config.expecteds.get(name) {
-                    Some(ExpectedValues::Some(values))
-                        if !values.contains(&value.map(|(v, _)| v)) =>
-                    {
-                        id.emit_span_lint(
-                            sess,
-                            UNEXPECTED_CFGS,
-                            *span,
-                            BuiltinLintDiag::UnexpectedCfgValue((*name, *name_span), *value),
-                        );
-                    }
-                    None if sess.psess.check_config.exhaustive_names => {
-                        id.emit_span_lint(
-                            sess,
-                            UNEXPECTED_CFGS,
-                            *span,
-                            BuiltinLintDiag::UnexpectedCfgName((*name, *name_span), *value),
-                        );
-                    }
-                    _ => { /* not unexpected */ }
-                }
-            }
-
-            if sess.psess.config.contains(&(*name, value.map(|(v, _)| v))) {
+        CfgEntry::NameValue { name, value, span } => {
+            if sess.psess.config.contains(&(*name, *value)) {
                 EvalConfigResult::True
             } else {
                 EvalConfigResult::False { reason: cfg_entry.clone(), reason_span: *span }
