@@ -54,15 +54,6 @@ pub(crate) fn configure_lldb(config: &Config) -> Option<Arc<Config>> {
     Some(Arc::new(Config { debugger: Some(Debugger::Lldb), ..config.clone() }))
 }
 
-/// Returns `true` if the given target is an Android target for the
-/// purposes of GDB testing.
-pub(crate) fn is_android_gdb_target(target: &str) -> bool {
-    matches!(
-        &target[..],
-        "arm-linux-androideabi" | "armv7-linux-androideabi" | "aarch64-linux-android"
-    )
-}
-
 /// Returns `true` if the given target is a MSVC target for the purposes of CDB testing.
 fn is_pc_windows_msvc_target(target: &str) -> bool {
     target.ends_with("-pc-windows-msvc")
@@ -127,35 +118,6 @@ pub(crate) fn extract_cdb_version(full_version_line: &str) -> Option<[u16; 4]> {
     let patch: u16 = components.next().unwrap_or("0").parse().unwrap();
     let build: u16 = components.next().unwrap_or("0").parse().unwrap();
     Some([major, minor, patch, build])
-}
-
-pub(crate) fn discover_gdb(
-    gdb: Option<String>,
-    target: &str,
-    android_cross_path: &Utf8Path,
-) -> Option<Utf8PathBuf> {
-    #[cfg(not(windows))]
-    const GDB_FALLBACK: &str = "gdb";
-    #[cfg(windows)]
-    const GDB_FALLBACK: &str = "gdb.exe";
-
-    let fallback_gdb = || {
-        if is_android_gdb_target(target) {
-            let mut gdb_path = android_cross_path.to_string();
-            gdb_path.push_str("/bin/gdb");
-            gdb_path
-        } else {
-            GDB_FALLBACK.to_owned()
-        }
-    };
-
-    let gdb = match gdb {
-        None => fallback_gdb(),
-        Some(ref s) if s.is_empty() => fallback_gdb(), // may be empty if configure found no gdb
-        Some(ref s) => s.to_owned(),
-    };
-
-    Some(Utf8PathBuf::from(gdb))
 }
 
 pub(crate) fn query_gdb_version(gdb: &Utf8Path) -> Option<u32> {

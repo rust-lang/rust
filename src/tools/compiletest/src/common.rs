@@ -566,7 +566,7 @@ pub struct Config {
     ///
     /// FIXME: take a look at this; this is piggy-backing off of gdb code paths but only for
     /// `arm-linux-androideabi` target.
-    pub android_cross_path: Utf8PathBuf,
+    pub android_cross_path: Option<Utf8PathBuf>,
 
     /// Extra parameter to run adb on `arm-linux-androideabi`.
     ///
