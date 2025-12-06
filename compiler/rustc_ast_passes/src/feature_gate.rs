@@ -119,6 +119,14 @@ impl<'a> PostExpansionVisitor<'a> {
         ImplTraitVisitor { vis: self, in_associated_ty }.visit_ty(ty);
     }
 
+    fn check_ty_alias_after_where_clause(&self, clause: &ast::WhereClause) {
+        for predicate in &clause.predicates {
+            if let ast::WherePredicateKind::BoundPredicate(bound_pred) = &predicate.kind {
+                self.check_late_bound_lifetime_defs(&bound_pred.bound_generic_params);
+            }
+        }
+    }
+
     fn check_late_bound_lifetime_defs(&self, params: &[ast::GenericParam]) {
         // Check only lifetime parameters are present and that the
         // generic parameters that are present have no bounds.
@@ -410,7 +418,8 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
     fn visit_assoc_item(&mut self, i: &'a ast::AssocItem, ctxt: AssocCtxt) {
         let is_fn = match &i.kind {
             ast::AssocItemKind::Fn(_) => true,
-            ast::AssocItemKind::Type(box ast::TyAlias { ty, .. }) => {
+            ast::AssocItemKind::Type(box ast::TyAlias { ty, after_where_clause, .. }) => {
+                self.check_ty_alias_after_where_clause(after_where_clause);
                 if let (Some(_), AssocCtxt::Trait) = (ty, ctxt) {
                     gate!(
                         &self,
