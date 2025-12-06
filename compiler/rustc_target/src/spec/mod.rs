@@ -2955,11 +2955,13 @@ impl Target {
             matches!(self.linker_flavor, LinkerFlavor::Bpf),
             "`linker_flavor` must be `bpf` if and only if `arch` is `bpf`"
         );
-        check_eq!(
-            self.arch == Arch::Nvptx64,
-            matches!(self.linker_flavor, LinkerFlavor::Ptx),
-            "`linker_flavor` must be `ptc` if and only if `arch` is `nvptx64`"
-        );
+        if self.arch == Arch::Nvptx64 {
+            check_matches!(
+                self.linker_flavor,
+                LinkerFlavor::Llbc,
+                "`linker_flavor` must be `llbc` if `arch` is `nvptx64`"
+            );
+        }
 
         for args in [
             &self.pre_link_args,
