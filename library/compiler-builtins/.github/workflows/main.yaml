@@ -239,6 +239,8 @@ jobs:
         include:
         - target: x86_64-unknown-linux-gnu
           os: ubuntu-24.04
+        - target: aarch64-unknown-linux-gnu
+          os: ubuntu-24.04-arm
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@master
