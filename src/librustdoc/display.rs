@@ -1,6 +1,7 @@
 //! Various utilities for working with [`fmt::Display`] implementations.
 
 use std::fmt::{self, Display, Formatter, FormattingOptions};
+use std::io;
 
 pub(crate) trait Joined: IntoIterator {
     /// Takes an iterator over elements that implement [`Display`], and format them into `f`, separated by `sep`.
@@ -129,4 +130,38 @@ impl WithOpts {
             t.fmt(&mut f)
         })
     }
+}
+
+pub(crate) struct IoWriteToFmt<'a, 'b> {
+    f: &'a mut Formatter<'b>,
+}
+
+impl<'a, 'b> IoWriteToFmt<'a, 'b> {
+    pub(crate) fn new(f: &'a mut Formatter<'b>) -> Self {
+        Self { f }
+    }
+}
+
+impl io::Write for IoWriteToFmt<'_, '_> {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        let Ok(s) = str::from_utf8(buf) else {
+            return Err(io::Error::new(io::ErrorKind::InvalidInput, "invalid utf8"));
+        };
+        self.f.write_str(s).map_err(|e| io::Error::new(io::ErrorKind::Other, e)).map(|_| buf.len())
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        Ok(())
+    }
+
+    fn write_fmt(&mut self, args: fmt::Arguments<'_>) -> io::Result<()> {
+        self.f.write_fmt(args).map_err(|e| io::Error::new(io::ErrorKind::Other, e))
+    }
+}
+
+pub(crate) fn fmt_json<T: ?Sized + serde::Serialize>(
+    f: &mut Formatter<'_>,
+    value: &T,
+) -> serde_json::Result<()> {
+    serde_json::to_writer(IoWriteToFmt::new(f), value)
 }

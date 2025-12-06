@@ -1,7 +1,7 @@
 //! Calculates information used for the --show-coverage flag.
 
 use std::collections::BTreeMap;
-use std::ops;
+use std::{fmt, ops};
 
 use rustc_hir as hir;
 use rustc_lint::builtin::MISSING_DOCS;
@@ -13,6 +13,7 @@ use tracing::debug;
 
 use crate::clean;
 use crate::core::DocContext;
+use crate::display::fmt_json;
 use crate::html::markdown::{ErrorCodes, find_testable_code};
 use crate::passes::Pass;
 use crate::passes::check_doc_test_visibility::{Tests, should_have_doc_example};
@@ -119,15 +120,17 @@ fn limit_filename_len(filename: String) -> String {
 }
 
 impl CoverageCalculator<'_, '_> {
-    fn to_json(&self) -> String {
-        serde_json::to_string(
-            &self
+    fn to_json(&self) -> impl fmt::Display {
+        fmt::from_fn(|f| {
+            let map = &self
                 .items
                 .iter()
                 .map(|(k, v)| (k.prefer_local().to_string(), v))
-                .collect::<BTreeMap<String, &ItemCount>>(),
-        )
-        .expect("failed to convert JSON data to string")
+                .collect::<BTreeMap<_, &ItemCount>>();
+
+            fmt_json(f, &map).expect("failed to convert JSON data to string");
+            Ok(())
+        })
     }
 
     fn print_results(&self) {
