@@ -52,9 +52,9 @@ WORKDIR /tmp
 RUN mkdir /home/user
 COPY scripts/shared.sh /tmp/
 
-# Need at least GCC 5.1 to compile LLVM nowadays
+# Need at least GCC 9 to compile LLVM and LLD nowadays
 COPY scripts/build-gcc.sh /tmp/
-ENV GCC_VERSION=9.5.0
+ENV GCC_VERSION=9.2.0
 ENV GCC_BUILD_TARGET=x86_64-pc-linux-gnu
 RUN ./build-gcc.sh && yum remove -y gcc gcc-c++
 
