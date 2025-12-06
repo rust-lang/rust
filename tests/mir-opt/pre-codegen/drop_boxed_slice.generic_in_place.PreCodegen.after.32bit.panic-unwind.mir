@@ -25,17 +25,21 @@ fn generic_in_place(_1: *mut Box<[T]>) -> () {
                         }
                     }
                     scope 18 (inlined <std::alloc::Global as Allocator>::deallocate) {
-                        let mut _9: *mut u8;
-                        scope 19 (inlined Layout::size) {
-                        }
-                        scope 20 (inlined NonNull::<u8>::as_ptr) {
-                        }
-                        scope 21 (inlined std::alloc::dealloc) {
-                            let mut _10: usize;
-                            scope 22 (inlined Layout::size) {
-                            }
-                            scope 23 (inlined Layout::align) {
-                                scope 24 (inlined std::ptr::Alignment::as_usize) {
+                        scope 19 (inlined std::alloc::Global::deallocate_impl) {
+                            scope 20 (inlined std::alloc::Global::deallocate_impl_runtime) {
+                                let mut _9: *mut u8;
+                                scope 21 (inlined Layout::size) {
+                                }
+                                scope 22 (inlined NonNull::<u8>::as_ptr) {
+                                }
+                                scope 23 (inlined std::alloc::dealloc) {
+                                    let mut _10: usize;
+                                    scope 24 (inlined Layout::size) {
+                                    }
+                                    scope 25 (inlined Layout::align) {
+                                        scope 26 (inlined std::ptr::Alignment::as_usize) {
+                                        }
+                                    }
                                 }
                             }
                         }
