@@ -849,10 +849,28 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // uninhabited types (e.g. empty enums). The check above is used so
                 // that we do not emit the same warning twice if the uninhabited type
                 // is indeed `!`.
-                if !ty.is_never() {
+                let should_warn = match self.tcx.def_kind(self.def_id) {
+                    DefKind::Fn | DefKind::AssocFn => {
+                        let fn_sig = self
+                            .tcx
+                            .fn_sig(self.def_id)
+                            .instantiate_identity()
+                            .skip_binder()
+                            .output();
+
+                        !ty.is_never()
+                            && fn_sig.is_inhabited_from(
+                                self.tcx,
+                                self.parent_module,
+                                self.infcx.typing_env(self.param_env),
+                            )
+                    }
+                    _ => !ty.is_never(),
+                };
+
+                if should_warn {
                     lints.push((target_bb, ty, term.source_info.span));
                 }
-
                 // The presence or absence of a return edge affects control-flow sensitive
                 // MIR checks and ultimately whether code is accepted or not. We can only
                 // omit the return edge if a return type is visibly uninhabited to a module
