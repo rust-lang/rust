@@ -38,7 +38,7 @@ fn main() {
     test_posix_fadvise();
     #[cfg(not(target_os = "macos"))]
     test_posix_fallocate::<libc::off_t>(libc::posix_fallocate);
-    #[cfg(any(target_os = "linux", target_os = "android"))]
+    #[cfg(target_os = "linux")]
     test_posix_fallocate::<libc::off64_t>(libc::posix_fallocate64);
     #[cfg(target_os = "linux")]
     test_sync_file_range();
