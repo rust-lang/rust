@@ -663,6 +663,8 @@ declare_features! (
     (unstable, trivial_bounds, "1.28.0", Some(48214)),
     /// Allows using `try {...}` expressions.
     (unstable, try_blocks, "1.29.0", Some(31436)),
+    /// Allows using `try bikeshed TargetType {...}` expressions.
+    (unstable, try_blocks_heterogeneous, "CURRENT_RUSTC_VERSION", Some(149488)),
     /// Allows `impl Trait` to be used inside type aliases (RFC 2515).
     (unstable, type_alias_impl_trait, "1.38.0", Some(63063)),
     /// Allows creation of instances of a struct by moving fields that have
