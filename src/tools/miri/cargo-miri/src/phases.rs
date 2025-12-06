@@ -286,7 +286,7 @@ pub fn phase_rustc(args: impl Iterator<Item = String>, phase: RustcPhase) {
     fn is_runnable_crate() -> bool {
         // Determine whether this is cargo invoking rustc to get some infos. Ideally we'd check "is
         // there a filename passed to rustc", but that's very hard as we would have to know whether
-        // e.g. `--print foo` is a booolean flag `--print` followed by filename `foo` or equivalent
+        // e.g. `--print foo` is a boolean flag `--print` followed by filename `foo` or equivalent
         // to `--print=foo`. So instead we use this more fragile approach of detecting the presence
         // of a "query" flag rather than the absence of a filename.
         let info_query = get_arg_flag_value("--print").is_some() || has_arg_flag("-vV");
