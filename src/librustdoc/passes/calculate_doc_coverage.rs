@@ -7,7 +7,7 @@ use rustc_hir as hir;
 use rustc_lint::builtin::MISSING_DOCS;
 use rustc_middle::lint::{LevelAndSource, LintLevelSource};
 use rustc_session::lint;
-use rustc_span::FileName;
+use rustc_span::{FileName, RemapPathScopeComponents};
 use serde::Serialize;
 use tracing::debug;
 
@@ -124,7 +124,7 @@ impl CoverageCalculator<'_, '_> {
             &self
                 .items
                 .iter()
-                .map(|(k, v)| (k.prefer_local().to_string(), v))
+                .map(|(k, v)| (k.prefer_local_unconditionally().to_string(), v))
                 .collect::<BTreeMap<String, &ItemCount>>(),
         )
         .expect("failed to convert JSON data to string")
@@ -167,7 +167,11 @@ impl CoverageCalculator<'_, '_> {
         for (file, &count) in &self.items {
             if let Some(percentage) = count.percentage() {
                 print_table_record(
-                    &limit_filename_len(file.prefer_local().to_string_lossy().into()),
+                    &limit_filename_len(
+                        file.display(RemapPathScopeComponents::DIAGNOSTICS)
+                            .to_string_lossy()
+                            .into(),
+                    ),
                     count,
                     percentage,
                     count.examples_percentage().unwrap_or(0.),

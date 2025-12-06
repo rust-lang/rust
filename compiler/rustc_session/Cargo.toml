@@ -5,7 +5,6 @@ edition = "2024"
 
 [dependencies]
 # tidy-alphabetical-start
-bitflags = "2.4.1"
 getopts = "0.2"
 rand = "0.9.0"
 rustc_abi = { path = "../rustc_abi" }

@@ -2,7 +2,7 @@
 use std::assert_matches::assert_matches;
 use std::io::prelude::*;
 use std::iter::Peekable;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::{io, str};
 
@@ -29,11 +29,15 @@ fn psess() -> ParseSess {
     ParseSess::new(vec![crate::DEFAULT_LOCALE_RESOURCE])
 }
 
+fn filename(sm: &SourceMap, path: &str) -> FileName {
+    FileName::Real(sm.path_mapping().to_real_filename(sm.working_dir(), PathBuf::from(path)))
+}
+
 /// Map string to parser (via tts).
 fn string_to_parser(psess: &ParseSess, source_str: String) -> Parser<'_> {
     unwrap_or_emit_fatal(new_parser_from_source_str(
         psess,
-        PathBuf::from("bogofile").into(),
+        filename(psess.source_map(), "bogofile"),
         source_str,
         StripTokens::Nothing,
     ))
@@ -100,7 +104,7 @@ pub(crate) fn string_to_stream(source_str: String) -> TokenStream {
     let psess = psess();
     unwrap_or_emit_fatal(source_str_to_stream(
         &psess,
-        PathBuf::from("bogofile").into(),
+        filename(psess.source_map(), "bogofile"),
         source_str,
         None,
     ))
@@ -194,8 +198,7 @@ fn test_harness(
             (OutputTheme::Unicode, expected_output_unicode),
         ] {
             let (dcx, source_map, output) = create_test_handler(theme);
-            source_map
-                .new_source_file(Path::new("test.rs").to_owned().into(), file_text.to_owned());
+            source_map.new_source_file(filename(&source_map, "test.rs"), file_text.to_owned());
 
             let primary_span = make_span(&file_text, &span_labels[0].start, &span_labels[0].end);
             let mut msp = MultiSpan::from_span(primary_span);
@@ -2525,7 +2528,7 @@ fn ttdelim_span() {
     create_default_session_globals_then(|| {
         let psess = psess();
         let expr = parse_expr_from_source_str(
-            PathBuf::from("foo").into(),
+            filename(psess.source_map(), "foo"),
             "foo!( fn main() { body } )".to_string(),
             &psess,
         )
@@ -2888,10 +2891,11 @@ fn debug_lookahead() {
 #[test]
 fn out_of_line_mod() {
     create_default_session_globals_then(|| {
+        let psess = psess();
         let item = parse_item_from_source_str(
-            PathBuf::from("foo").into(),
+            filename(psess.source_map(), "foo"),
             "mod foo { struct S; mod this_does_not_exist; }".to_owned(),
-            &psess(),
+            &psess,
         )
         .unwrap()
         .unwrap();

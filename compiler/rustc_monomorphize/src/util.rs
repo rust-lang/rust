@@ -49,7 +49,7 @@ pub(crate) fn dump_closure_profile<'tcx>(tcx: TyCtxt<'tcx>, closure_instance: In
             .unwrap_or_else(|e| format!("Failed {e:?}"));
 
         let closure_span = tcx.def_span(closure_def_id);
-        let src_file = tcx.sess.source_map().span_to_filename(closure_span);
+        let src_file = tcx.sess.source_map().span_to_diagnostic_string(closure_span);
         let line_nos = tcx
             .sess
             .source_map()
@@ -57,14 +57,7 @@ pub(crate) fn dump_closure_profile<'tcx>(tcx: TyCtxt<'tcx>, closure_instance: In
             .map(|l| format!("{:?} {:?}", l.lines.first(), l.lines.last()))
             .unwrap_or_else(|e| format!("{e:?}"));
 
-        if let Err(e) = writeln!(
-            file,
-            "{}, {}, {}, {:?}",
-            old_size,
-            new_size,
-            src_file.prefer_local(),
-            line_nos
-        ) {
+        if let Err(e) = writeln!(file, "{}, {}, {}, {:?}", old_size, new_size, src_file, line_nos) {
             eprintln!("Error writing to file {e}")
         }
     }

@@ -208,15 +208,10 @@ impl<'tcx> CompileTimeInterpCx<'tcx> {
         let topmost = span.ctxt().outer_expn().expansion_cause().unwrap_or(span);
         let caller = self.tcx.sess.source_map().lookup_char_pos(topmost.lo());
 
-        use rustc_session::RemapFileNameExt;
-        use rustc_session::config::RemapPathScopeComponents;
+        use rustc_span::RemapPathScopeComponents;
         (
             Symbol::intern(
-                &caller
-                    .file
-                    .name
-                    .for_scope(self.tcx.sess, RemapPathScopeComponents::DIAGNOSTICS)
-                    .to_string_lossy(),
+                &caller.file.name.display(RemapPathScopeComponents::DIAGNOSTICS).to_string_lossy(),
             ),
             u32::try_from(caller.line).unwrap(),
             u32::try_from(caller.col_display).unwrap().checked_add(1).unwrap(),

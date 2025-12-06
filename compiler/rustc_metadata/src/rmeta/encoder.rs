@@ -541,8 +541,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         // is done.
         let required_source_files = self.required_source_files.take().unwrap();
 
-        let working_directory = &self.tcx.sess.opts.working_dir;
-
         let mut adapted = TableBuilder::default();
 
         let local_crate_stable_id = self.tcx.stable_crate_id(LOCAL_CRATE);
@@ -567,10 +565,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
             match source_file.name {
                 FileName::Real(ref original_file_name) => {
-                    let adapted_file_name = source_map
-                        .path_mapping()
-                        .to_embeddable_absolute_path(original_file_name.clone(), working_directory);
-
+                    let mut adapted_file_name = original_file_name.clone();
+                    adapted_file_name.update_for_crate_metadata();
                     adapted_source_file.name = FileName::Real(adapted_file_name);
                 }
                 _ => {

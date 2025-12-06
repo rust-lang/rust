@@ -81,7 +81,7 @@ pub struct ModStyle {
 
 impl EarlyLintPass for ModStyle {
     fn check_crate(&mut self, cx: &EarlyContext<'_>, _: &ast::Crate) {
-        self.working_dir = cx.sess().opts.working_dir.local_path().map(Path::to_path_buf);
+        self.working_dir = cx.sess().source_map().working_dir().local_path().map(Path::to_path_buf);
     }
 
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &ast::Item) {

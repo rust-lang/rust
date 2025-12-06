@@ -1,5 +1,5 @@
 use std::any::Any;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
@@ -28,7 +28,7 @@ use rustc_macros::HashStable_Generic;
 pub use rustc_span::def_id::StableCrateId;
 use rustc_span::edition::Edition;
 use rustc_span::source_map::{FilePathMapping, SourceMap};
-use rustc_span::{FileNameDisplayPreference, RealFileName, Span, Symbol};
+use rustc_span::{RealFileName, Span, Symbol};
 use rustc_target::asm::InlineAsmArch;
 use rustc_target::spec::{
     Arch, CodeModel, DebuginfoKind, Os, PanicStrategy, RelocModel, RelroLevel, SanitizerSet,
@@ -40,8 +40,7 @@ use crate::code_stats::CodeStats;
 pub use crate::code_stats::{DataTypeKind, FieldInfo, FieldKind, SizeKind, VariantInfo};
 use crate::config::{
     self, CoverageLevel, CoverageOptions, CrateType, DebugInfo, ErrorOutputType, FunctionReturn,
-    Input, InstrumentCoverage, OptLevel, OutFileName, OutputType, RemapPathScopeComponents,
-    SwitchWithOptPath,
+    Input, InstrumentCoverage, OptLevel, OutFileName, OutputType, SwitchWithOptPath,
 };
 use crate::filesearch::FileSearch;
 use crate::lint::LintId;
@@ -192,7 +191,11 @@ impl Session {
     }
 
     pub fn local_crate_source_file(&self) -> Option<RealFileName> {
-        Some(self.source_map().path_mapping().to_real_filename(self.io.input.opt_path()?))
+        Some(
+            self.source_map()
+                .path_mapping()
+                .to_real_filename(self.source_map().working_dir(), self.io.input.opt_path()?),
+        )
     }
 
     fn check_miri_unleashed_features(&self) -> Option<ErrorGuaranteed> {
@@ -846,21 +849,6 @@ impl Session {
         self.opts.cg.link_dead_code.unwrap_or(false)
     }
 
-    pub fn filename_display_preference(
-        &self,
-        scope: RemapPathScopeComponents,
-    ) -> FileNameDisplayPreference {
-        assert!(
-            scope.bits().count_ones() == 1,
-            "one and only one scope should be passed to `Session::filename_display_preference`"
-        );
-        if self.opts.unstable_opts.remap_path_scope.contains(scope) {
-            FileNameDisplayPreference::Remapped
-        } else {
-            FileNameDisplayPreference::Local
-        }
-    }
-
     /// Get the deployment target on Apple platforms based on the standard environment variables,
     /// or fall back to the minimum version supported by `rustc`.
     ///
@@ -1495,47 +1483,4 @@ fn mk_emitter(output: ErrorOutputType) -> Box<DynEmitter> {
         }
     };
     emitter
-}
-
-pub trait RemapFileNameExt {
-    type Output<'a>
-    where
-        Self: 'a;
-
-    /// Returns a possibly remapped filename based on the passed scope and remap cli options.
-    ///
-    /// One and only one scope should be passed to this method, it will panic otherwise.
-    fn for_scope(&self, sess: &Session, scope: RemapPathScopeComponents) -> Self::Output<'_>;
-}
-
-impl RemapFileNameExt for rustc_span::FileName {
-    type Output<'a> = rustc_span::FileNameDisplay<'a>;
-
-    fn for_scope(&self, sess: &Session, scope: RemapPathScopeComponents) -> Self::Output<'_> {
-        assert!(
-            scope.bits().count_ones() == 1,
-            "one and only one scope should be passed to for_scope"
-        );
-        if sess.opts.unstable_opts.remap_path_scope.contains(scope) {
-            self.prefer_remapped_unconditionally()
-        } else {
-            self.prefer_local()
-        }
-    }
-}
-
-impl RemapFileNameExt for rustc_span::RealFileName {
-    type Output<'a> = &'a Path;
-
-    fn for_scope(&self, sess: &Session, scope: RemapPathScopeComponents) -> Self::Output<'_> {
-        assert!(
-            scope.bits().count_ones() == 1,
-            "one and only one scope should be passed to for_scope"
-        );
-        if sess.opts.unstable_opts.remap_path_scope.contains(scope) {
-            self.remapped_path_if_available()
-        } else {
-            self.local_path_if_available()
-        }
-    }
 }

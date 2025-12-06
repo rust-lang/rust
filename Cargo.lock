@@ -4632,7 +4632,6 @@ dependencies = [
 name = "rustc_session"
 version = "0.0.0"
 dependencies = [
- "bitflags",
  "getopts",
  "libc",
  "rand 0.9.2",
@@ -4659,6 +4658,7 @@ dependencies = [
 name = "rustc_span"
 version = "0.0.0"
 dependencies = [
+ "bitflags",
  "blake3",
  "derive-where",
  "indexmap",

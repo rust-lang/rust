@@ -504,7 +504,7 @@ fn write_scope_tree(
                     "{0:1$} // at {2}",
                     indented_header,
                     ALIGN,
-                    tcx.sess.source_map().span_to_embeddable_string(span),
+                    tcx.sess.source_map().span_to_diagnostic_string(span),
                 )?;
             } else {
                 writeln!(w, "{indented_header}")?;
@@ -688,7 +688,7 @@ fn write_user_type_annotations(
             "| {:?}: user_ty: {}, span: {}, inferred_ty: {}",
             index.index(),
             annotation.user_ty,
-            tcx.sess.source_map().span_to_embeddable_string(annotation.span),
+            tcx.sess.source_map().span_to_diagnostic_string(annotation.span),
             with_no_trimmed_paths!(format!("{}", annotation.inferred_ty)),
         )?;
     }
@@ -1420,7 +1420,7 @@ impl<'tcx> Visitor<'tcx> for ExtraComments<'tcx> {
             self.push("mir::ConstOperand");
             self.push(&format!(
                 "+ span: {}",
-                self.tcx.sess.source_map().span_to_embeddable_string(*span)
+                self.tcx.sess.source_map().span_to_diagnostic_string(*span)
             ));
             if let Some(user_ty) = user_ty {
                 self.push(&format!("+ user_ty: {user_ty:?}"));
@@ -1503,7 +1503,7 @@ impl<'tcx> Visitor<'tcx> for ExtraComments<'tcx> {
 }
 
 fn comment(tcx: TyCtxt<'_>, SourceInfo { span, scope }: SourceInfo) -> String {
-    let location = tcx.sess.source_map().span_to_embeddable_string(span);
+    let location = tcx.sess.source_map().span_to_diagnostic_string(span);
     format!("scope {} at {}", scope.index(), location,)
 }
 
