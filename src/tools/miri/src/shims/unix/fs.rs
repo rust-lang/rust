@@ -130,7 +130,11 @@ trait EvalContextExtPrivate<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let (modified_sec, modified_nsec) = metadata.modified.unwrap_or((0, 0));
         let mode = metadata.mode.to_uint(this.libc_ty_layout("mode_t").size)?;
 
-        let buf = this.deref_pointer_as(buf_op, this.libc_ty_layout("stat"))?;
+        // We do *not* use `deref_pointer_as` here since determining the right pointee type
+        // is highly non-trivial: it depends on which exact alias of the function was invoked
+        // (e.g. `fstat` vs `fstat64`), and then on FreeBSD it also depends on the ABI level
+        // which can be different between the libc used by std and the libc used by everyone else.
+        let buf = this.deref_pointer(buf_op)?;
         this.write_int_fields_named(
             &[
                 ("st_dev", metadata.dev.into()),
@@ -156,9 +160,6 @@ trait EvalContextExtPrivate<'tcx>: crate::MiriInterpCxExt<'tcx> {
         if matches!(&this.tcx.sess.target.os, Os::MacOs | Os::FreeBsd) {
             this.write_int_fields_named(
                 &[
-                    ("st_atime_nsec", access_nsec.into()),
-                    ("st_mtime_nsec", modified_nsec.into()),
-                    ("st_ctime_nsec", 0),
                     ("st_birthtime", created_sec.into()),
                     ("st_birthtime_nsec", created_nsec.into()),
                     ("st_flags", 0),

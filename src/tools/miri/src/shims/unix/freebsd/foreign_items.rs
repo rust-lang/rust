@@ -148,7 +148,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let result = this.macos_fbsd_solarish_lstat(path, buf)?;
                 this.write_scalar(result, dest)?;
             }
-            "fstat" | "fstat@FBSD_1.0" => {
+            "fstat@FBSD_1.0" => {
                 let [fd, buf] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
                 let result = this.fstat(fd, buf)?;
                 this.write_scalar(result, dest)?;

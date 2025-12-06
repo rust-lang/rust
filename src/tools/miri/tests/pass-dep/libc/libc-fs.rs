@@ -461,13 +461,15 @@ fn test_fstat() {
     let file = File::open(&path).unwrap();
     let fd = file.as_raw_fd();
 
-    let mut stat: libc::stat = unsafe { MaybeUninit::zeroed().assume_init() };
-    let res = unsafe { libc::fstat(fd, &mut stat) };
+    let mut stat = MaybeUninit::<libc::stat>::uninit();
+    let res = unsafe { libc::fstat(fd, stat.as_mut_ptr()) };
     assert_eq!(res, 0);
+    let stat = unsafe { stat.assume_init_ref() };
 
     assert_eq!(stat.st_size, 5);
     assert_eq!(stat.st_mode & libc::S_IFMT, libc::S_IFREG);
 
+    // Check that all fields are initialized.
     let _st_nlink = stat.st_nlink;
     let _st_blksize = stat.st_blksize;
     let _st_blocks = stat.st_blocks;
