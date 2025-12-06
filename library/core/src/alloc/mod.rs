@@ -15,7 +15,7 @@ pub use self::layout::Layout;
     note = "Name does not follow std convention, use LayoutError",
     suggestion = "LayoutError"
 )]
-#[allow(deprecated, deprecated_in_future)]
+#[allow(deprecated)]
 pub use self::layout::LayoutErr;
 #[stable(feature = "alloc_layout_error", since = "1.50.0")]
 pub use self::layout::LayoutError;
