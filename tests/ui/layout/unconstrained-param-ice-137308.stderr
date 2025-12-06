@@ -3,6 +3,14 @@ error[E0207]: the type parameter `C` is not constrained by the impl trait, self 
    |
 LL | impl<C: ?Sized> A for u8 {
    |      ^ unconstrained type parameter
+   |
+help: either remove the unused type parameter `C`, or make use of it
+   |
+LL - impl<C: ?Sized> A for u8 {
+LL + impl A for u8 {
+   |
+LL | impl<C: ?Sized> A for u8<C> {
+   |                         +++
 
 error[E0282]: type annotations needed
   --> $DIR/unconstrained-param-ice-137308.rs:18:16
