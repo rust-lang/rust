@@ -1,0 +1,64 @@
+error[E0670]: `async fn` is not permitted in Rust 2015
+  --> $DIR/issue-138710.rs:16:1
+   |
+LL | async fn fun() -> Box<dyn A> {
+   | ^^^^^ to use `async fn`, switch to Rust 2018 or later
+   |
+   = help: pass `--edition 2024` to `rustc`
+   = note: for more on editions, read https://doc.rust-lang.org/edition-guide
+
+warning: the feature `min_generic_const_args` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/issue-138710.rs:6:12
+   |
+LL | #![feature(min_generic_const_args)]
+   |            ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #132980 <https://github.com/rust-lang/rust/issues/132980> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+error[E0277]: the trait bound `Vec<u32>: B` is not satisfied
+  --> $DIR/issue-138710.rs:17:18
+   |
+LL |     *(&mut [0; <<Vec<u32> as B>::N as A>::N])
+   |                  ^^^^^^^^ the trait `B` is not implemented for `Vec<u32>`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/issue-138710.rs:8:1
+   |
+LL | trait B {
+   | ^^^^^^^
+
+error[E0308]: mismatched types
+  --> $DIR/issue-138710.rs:17:5
+   |
+LL |     *(&mut [0; <<Vec<u32> as B>::N as A>::N])
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Box<dyn A>`, found `[{integer}; _]`
+   |
+   = note: expected struct `Box<(dyn A + 'static)>`
+               found array `[{integer}; _]`
+   = note: for more on the distinction between the stack and the heap, read https://doc.rust-lang.org/book/ch15-01-box.html, https://doc.rust-lang.org/rust-by-example/std/box.html, and https://doc.rust-lang.org/std/boxed/index.html
+help: store this in the heap by calling `Box::new`
+   |
+LL |     Box::new(*(&mut [0; <<Vec<u32> as B>::N as A>::N]))
+   |     +++++++++                                         +
+
+error[E0038]: the trait `A` is not dyn compatible
+  --> $DIR/issue-138710.rs:16:1
+   |
+LL | async fn fun() -> Box<dyn A> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `A` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/issue-138710.rs:13:11
+   |
+LL | trait A {
+   |       - this trait is not dyn compatible...
+LL |     const N: usize;
+   |           ^ ...because it contains this associated `const`
+   = help: consider moving `N` to another trait
+
+error: aborting due to 4 previous errors; 1 warning emitted
+
+Some errors have detailed explanations: E0038, E0277, E0308, E0670.
+For more information about an error, try `rustc --explain E0038`.
