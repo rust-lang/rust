@@ -6,7 +6,7 @@ use std::num::NonZero;
 use rustc_errors::codes::*;
 use rustc_errors::{
     Applicability, Diag, DiagArgValue, DiagMessage, DiagStyledString, ElidedLifetimeInPathSubdiag,
-    EmissionGuarantee, LintDiagnostic, MultiSpan, Subdiagnostic, SuggestionStyle,
+    EmissionGuarantee, IntoDiagArg, LintDiagnostic, MultiSpan, Subdiagnostic, SuggestionStyle,
 };
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
@@ -232,9 +232,41 @@ pub(crate) struct BuiltinConstNoMangle {
     pub suggestion: Option<Span>,
 }
 
+// This would be more convenient as `from: String` and `to: String` instead of `from` and `to`
+// being `ConversionBreadcrumbs`, but that'll mean we'll have to format the `Ty`s in the lint code,
+// and then we'll ICE when the lint is allowed, because formatting a `Ty` is expensive and so the
+// compiler panics if it is done when there aren't diagnostics.
+pub(crate) struct ConversionBreadcrumbs<'a> {
+    pub before_ty: &'static str,
+    pub ty: Ty<'a>,
+    pub after_ty: String,
+}
+
+impl IntoDiagArg for ConversionBreadcrumbs<'_> {
+    fn into_diag_arg(self, path: &mut Option<std::path::PathBuf>) -> DiagArgValue {
+        format!("{}{}{}", self.before_ty, self.ty, self.after_ty).into_diag_arg(path)
+    }
+}
+
+// mutable_transmutes.rs
 #[derive(LintDiagnostic)]
 #[diag(lint_builtin_mutable_transmutes)]
-pub(crate) struct BuiltinMutablesTransmutes;
+#[note]
+pub(crate) struct BuiltinMutablesTransmutes<'a> {
+    pub from: ConversionBreadcrumbs<'a>,
+    pub to: ConversionBreadcrumbs<'a>,
+}
+
+// mutable_transmutes.rs
+#[derive(LintDiagnostic)]
+#[diag(lint_unsafe_cell_transmutes)]
+#[note]
+pub(crate) struct UnsafeCellTransmutes<'a> {
+    #[label]
+    pub orig_cast: Option<Span>,
+    pub from: ConversionBreadcrumbs<'a>,
+    pub to: ConversionBreadcrumbs<'a>,
+}
 
 #[derive(LintDiagnostic)]
 #[diag(lint_builtin_unstable_features)]
