@@ -23,7 +23,7 @@ use core::{intrinsics, mem};
 #[cfg(target_feature = "ermsb")]
 pub unsafe fn copy_forward(dest: *mut u8, src: *const u8, count: usize) {
     asm!(
-        "repe movsb [rdi], [rsi]",
+        "rep movsb [rdi], [rsi]",
         inout("rcx") count => _,
         inout("rdi") dest => _,
         inout("rsi") src => _,
@@ -70,7 +70,6 @@ pub unsafe fn copy_backward(dest: *mut u8, src: *const u8, count: usize) {
         "sub rdi, 7",
         "mov rcx, {qword_count:r}",
         "rep movsq",
-        "test {pre_byte_count:e}, {pre_byte_count:e}",
         "add rsi, 7",
         "add rdi, 7",
         "mov ecx, {pre_byte_count:e}",
@@ -81,8 +80,7 @@ pub unsafe fn copy_backward(dest: *mut u8, src: *const u8, count: usize) {
         inout("ecx") byte_count => _,
         inout("rdi") dest.add(count - 1) => _,
         inout("rsi") src.add(count - 1) => _,
-        // We modify flags, but we restore it afterwards
-        options(nostack, preserves_flags)
+        options(nostack)
     );
 }
 
@@ -90,7 +88,7 @@ pub unsafe fn copy_backward(dest: *mut u8, src: *const u8, count: usize) {
 #[cfg(target_feature = "ermsb")]
 pub unsafe fn set_bytes(dest: *mut u8, c: u8, count: usize) {
     asm!(
-        "repe stosb [rdi], al",
+        "rep stosb [rdi], al",
         inout("rcx") count => _,
         inout("rdi") dest => _,
         inout("al") c => _,
