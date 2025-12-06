@@ -10,12 +10,12 @@ fn main() {
     || {
         let mut sub_coroutine = #[coroutine]
         || {
-            yield 2;
+            2.yield;
         };
 
         match Pin::new(&mut sub_coroutine).resume(()) {
             CoroutineState::Yielded(x) => {
-                yield x;
+                x.yield;
             }
             _ => panic!(),
         };

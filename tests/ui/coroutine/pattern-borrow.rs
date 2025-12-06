@@ -7,7 +7,7 @@ fn main() { }
 fn fun(test: Test) {
     #[coroutine] move || {
         if let Test::A(ref _a) = test { //~ ERROR borrow may still be in use when coroutine yields
-            yield ();
+            ().yield;
             _a.use_ref();
         }
     };

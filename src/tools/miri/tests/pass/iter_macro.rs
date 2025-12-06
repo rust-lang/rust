@@ -4,9 +4,9 @@ use std::iter::iter;
 
 fn main() {
     let i = iter! { || {
-        yield 0;
+        0.yield;
         for x in 5..10 {
-            yield x * 2;
+            (x * 2).yield;
         }
     } };
     let mut i = i();

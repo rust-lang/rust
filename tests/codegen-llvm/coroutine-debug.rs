@@ -14,9 +14,9 @@ use std::ops::Coroutine;
 fn coroutine_test() -> impl Coroutine<Yield = i32, Return = ()> {
     #[coroutine]
     || {
-        yield 0;
+        0.yield;
         let s = String::from("foo");
-        yield 1;
+        1.yield;
     }
 }
 

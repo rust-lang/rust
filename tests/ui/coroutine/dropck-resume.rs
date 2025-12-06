@@ -19,7 +19,7 @@ fn drop_using_coroutine() -> i32 {
         let mut g = #[coroutine]
         move |r| {
             let _s = SetToNone(r);
-            yield;
+            ().yield;
         };
         let mut g = Pin::new(&mut g);
         g.as_mut().resume(z);

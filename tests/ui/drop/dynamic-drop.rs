@@ -180,9 +180,9 @@ fn coroutine(a: &Allocator, run_count: usize) {
 
     let mut gen = #[coroutine] || {
         (a.alloc(),
-         yield a.alloc(),
+         a.alloc().yield,
          a.alloc(),
-         yield a.alloc()
+         a.alloc().yield
          );
     };
     for _ in 0..run_count {

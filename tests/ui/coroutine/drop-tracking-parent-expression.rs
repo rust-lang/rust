@@ -20,7 +20,7 @@ macro_rules! type_combinations {
             //~^ NOTE `significant_drop::Client` which is not `Send`
             //~| NOTE `insignificant_dtor::Client` which is not `Send`
             //~| NOTE `derived_drop::Client` which is not `Send`
-                _ => yield,
+                _ => ().yield,
             };
             assert_send(g);
             //~^ ERROR cannot be sent between threads
@@ -32,7 +32,7 @@ macro_rules! type_combinations {
         // even though the temporary expression doesn't end until after the yield.
         {
             let g = #[coroutine] move || match drop($name::Client::default()) {
-                _ => yield,
+                _ => ().yield,
             };
             assert_send(g);
         }

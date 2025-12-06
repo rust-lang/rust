@@ -19,7 +19,7 @@ fn main() {
         // - create a Box that is ignored for trait computations;
         // - compute fields (and yields);
         // - assign to `t`.
-        let t = std::boxed::box_new((5, yield));
+        let t = std::boxed::box_new((5, ().yield));
         drop(t);
     };
 

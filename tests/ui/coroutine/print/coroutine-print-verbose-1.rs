@@ -32,7 +32,7 @@ fn make_non_send_coroutine() -> impl Coroutine<Return = Arc<RefCell<i32>>> {
 fn test1() {
     let send_gen = #[coroutine] || {
         let _non_send_gen = make_non_send_coroutine();
-        yield;
+        ().yield;
     };
     require_send(send_gen);
     //~^ ERROR coroutine cannot be sent between threads
@@ -40,7 +40,7 @@ fn test1() {
 
 pub fn make_gen2<T>(t: T) -> impl Coroutine<Return = T> {
     #[coroutine] || {
-        yield;
+        ().yield;
         t
     }
 }
@@ -51,7 +51,7 @@ fn make_non_send_coroutine2() -> impl Coroutine<Return = Arc<RefCell<i32>>> {
 fn test2() {
     let send_gen = #[coroutine] || {
         let _non_send_gen = make_non_send_coroutine2();
-        yield;
+        ().yield;
     };
     require_send(send_gen);
     //~^ ERROR `RefCell<i32>` cannot be shared between threads safely

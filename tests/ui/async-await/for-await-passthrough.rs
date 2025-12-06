@@ -5,7 +5,7 @@
 async gen fn async_iter() -> i32 {
     let iter = core::async_iter::from_iter(0..3);
     for await i in iter {
-        yield i + 1;
+        (i + 1).yield;
     }
 }
 

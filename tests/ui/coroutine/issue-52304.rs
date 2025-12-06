@@ -8,7 +8,7 @@ use std::ops::Coroutine;
 
 pub fn example() -> impl Coroutine {
     #[coroutine]
-    || yield &1
+    || (&1).yield
 }
 
 fn main() {}

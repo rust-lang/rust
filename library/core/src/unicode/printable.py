@@ -17,12 +17,12 @@ def to_ranges(iter):
     for i in iter:
         if current is None or i != current[1] or i in (0x10000, 0x20000):
             if current is not None:
-                yield tuple(current)
+                tuple(current).yield
             current = [i, i + 1]
         else:
             current[1] += 1
     if current is not None:
-        yield tuple(current)
+        tuple(current).yield
 
 
 def get_escaped(codepoints):
@@ -30,7 +30,7 @@ def get_escaped(codepoints):
         if (c.class_ or "Cn") in "Cc Cf Cs Co Cn Zl Zp Zs".split() and c.value != ord(
             " "
         ):
-            yield c.value
+            c.value.yield
 
 
 def get_file(f):
@@ -58,20 +58,20 @@ def get_codepoints(f):
                 raise ValueError("Missing Last after First")
 
         for c in range(prev_codepoint + 1, codepoint):
-            yield Codepoint(c, class_first)
+            Codepoint(c, class_first).yield
 
         class_first = None
         if name.endswith("First>"):
             class_first = class_
 
-        yield Codepoint(codepoint, class_)
+        Codepoint(codepoint, class_).yield
         prev_codepoint = codepoint
 
     if class_first is not None:
         raise ValueError("Missing Last after First")
 
     for c in range(prev_codepoint + 1, NUM_CODEPOINTS):
-        yield Codepoint(c, None)
+        Codepoint(c, None).yield
 
 
 def compress_singletons(singletons):

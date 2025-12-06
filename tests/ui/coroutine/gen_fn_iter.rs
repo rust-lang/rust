@@ -5,9 +5,9 @@
 // make sure that a ridiculously simple gen fn works as an iterator.
 
 gen fn foo() -> i32 {
-    yield 1;
-    yield 2;
-    yield 3;
+    1.yield;
+    2.yield;
+    3.yield;
 }
 
 fn main() {

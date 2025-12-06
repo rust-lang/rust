@@ -5,10 +5,10 @@
 fn moved() -> impl Iterator<Item = u32> {
     let mut x = "foo".to_string();
     gen { //~ ERROR: gen block may outlive the current function
-        yield 42;
+        42.yield;
         if x == "foo" { return }
         x.clear();
-        for x in 3..6 { yield x }
+        for x in 3..6 { x.yield }
     }
 }
 

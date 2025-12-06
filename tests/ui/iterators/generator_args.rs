@@ -6,9 +6,9 @@ use std::iter::iter;
 
 fn main() {
     let i = iter! {|foo| {
-        yield foo;
+        foo.yield;
         for x in 5..10 {
-            yield x * 2;
+            (x * 2).yield;
         }
     }};
     let mut i = i(3);

@@ -9,7 +9,7 @@ fn check() -> impl Sized {
     #[coroutine]
     static || {
         //~^ ERROR E0373
-        yield;
+        ().yield;
         x
     }
 }

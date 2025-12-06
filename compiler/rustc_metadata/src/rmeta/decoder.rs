@@ -1275,20 +1275,20 @@ impl<'a> CrateMetadataRef<'a> {
                 // the view of this crate as a proc macro crate.
                 if id == CRATE_DEF_INDEX {
                     for child_index in data.macros.decode(self) {
-                        yield self.get_mod_child(child_index, sess);
+                        self.get_mod_child(child_index, sess).yield;
                     }
                 }
             } else {
                 // Iterate over all children.
                 let non_reexports = self.root.tables.module_children_non_reexports.get(self, id);
                 for child_index in non_reexports.unwrap().decode(self) {
-                    yield self.get_mod_child(child_index, sess);
+                    self.get_mod_child(child_index, sess).yield;
                 }
 
                 let reexports = self.root.tables.module_children_reexports.get(self, id);
                 if !reexports.is_default() {
                     for reexport in reexports.decode((self, sess)) {
-                        yield reexport;
+                        reexport.yield;
                     }
                 }
             }
@@ -2003,7 +2003,7 @@ impl CrateMetadata {
                     .decode(CrateMetadataRef { cdata: self, cstore })
                     .map(move |index| DefId { index, krate })
             }) {
-                yield def_id;
+                def_id.yield;
             }
         }
     }

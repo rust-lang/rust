@@ -11,10 +11,10 @@ note: gen block is returned here
   --> $DIR/gen_block_move.rs:7:5
    |
 LL | /     gen {
-LL | |         yield 42;
+LL | |         42.yield;
 LL | |         if x == "foo" { return }
 LL | |         x.clear();
-LL | |         for x in 3..6 { yield x }
+LL | |         for x in 3..6 { x.yield }
 LL | |     }
    | |_____^
 help: to force the gen block to take ownership of `x` (and any other referenced variables), use the `move` keyword

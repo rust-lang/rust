@@ -7,7 +7,7 @@ pub fn foo() -> impl Coroutine<(), Yield = (), Return = ()> {
     #[coroutine]
     || {
         if false {
-            yield;
+            ().yield;
         }
     }
 }
@@ -16,7 +16,7 @@ pub fn bar<T: 'static>(t: T) -> Box<dyn Coroutine<(), Yield = T, Return = ()> + 
     Box::new(
         #[coroutine]
         || {
-            yield t;
+            t.yield;
         },
     )
 }

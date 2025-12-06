@@ -5,7 +5,7 @@ LL |     #[coroutine] move || {
    |                  ------- within this coroutine
 LL |         if let Test::A(ref _a) = test {
    |                        ^^^^^^
-LL |             yield ();
+LL |             ().yield;
    |             -------- possible yield occurs here
    |
 help: add `static` to mark this coroutine as unmovable

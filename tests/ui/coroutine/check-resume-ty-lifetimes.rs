@@ -12,7 +12,7 @@ fn mk_static(s: &str) -> &'static str {
     let mut coroutine = pin!(
         #[coroutine]
         |_: &str| {
-            let x: &'static str = yield ();
+            let x: &'static str = ().yield;
             //~^ ERROR lifetime may not live long enough
             storage = Some(x);
         }

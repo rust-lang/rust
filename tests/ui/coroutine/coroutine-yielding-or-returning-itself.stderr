@@ -6,7 +6,7 @@ LL |       want_cyclic_coroutine_return(#[coroutine] || {
    | |     |
    | |     required by a bound introduced by this call
 LL | |
-LL | |         if false { yield None.unwrap(); }
+LL | |         if false { None.unwrap().yield; }
 LL | |         None.unwrap()
 LL | |     })
    | |_____^ cyclic type of infinite size
@@ -31,7 +31,7 @@ LL |       want_cyclic_coroutine_yield(#[coroutine] || {
    | |     |
    | |     required by a bound introduced by this call
 LL | |
-LL | |         if false { yield None.unwrap(); }
+LL | |         if false { None.unwrap().yield; }
 LL | |         None.unwrap()
 LL | |     })
    | |_____^ cyclic type of infinite size

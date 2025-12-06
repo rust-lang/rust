@@ -27,7 +27,7 @@ impl CoroutineProviderAlt for () {
             match ctx {
                 _ => (),
             }
-            yield ();
+            ().yield;
         }
     }
 }

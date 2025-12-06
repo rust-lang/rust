@@ -1,7 +1,7 @@
 error[E0658]: the `#[coroutine]` attribute is an experimental feature
   --> $DIR/gen_block.rs:20:13
    |
-LL |     let _ = #[coroutine] || yield true;
+LL |     let _ = #[coroutine] || true.yield;
    |             ^^^^^^^^^^^^
    |
    = note: see issue #43122 <https://github.com/rust-lang/rust/issues/43122> for more information
@@ -21,12 +21,12 @@ LL |     let _ = #[coroutine] || {};
 error: `yield` can only be used in `#[coroutine]` closures, or `gen` blocks
   --> $DIR/gen_block.rs:16:16
    |
-LL |     let _ = || yield true;
+LL |     let _ = || true.yield;
    |                ^^^^^^^^^^
    |
 help: use `#[coroutine]` to make this closure a coroutine
    |
-LL |     let _ = #[coroutine] || yield true;
+LL |     let _ = #[coroutine] || true.yield;
    |             ++++++++++++
 
 error[E0282]: type annotations needed
