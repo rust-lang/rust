@@ -1,6 +1,6 @@
-use rustc_ast::{BinOpKind, BorrowKind, Expr, ExprKind, MetaItem, Mutability, Safety};
+use rustc_ast::{BinOpKind, BorrowKind, Expr, ExprKind, GenericArg, MetaItem, Mutability, Safety};
 use rustc_expand::base::{Annotatable, ExtCtxt};
-use rustc_span::{Span, sym};
+use rustc_span::{Ident, Span, kw, sym};
 use thin_vec::thin_vec;
 
 use crate::deriving::generic::ty::*;
@@ -125,7 +125,7 @@ fn get_substructure_equality_expr(
 ) -> Box<Expr> {
     use SubstructureFields::*;
 
-    match substructure.fields {
+    let field_comparison = match substructure.fields {
         EnumMatching(.., fields) | Struct(.., fields) => {
             let combine = move |acc, field| {
                 let rhs = get_field_equality_expr(cx, field);
@@ -138,23 +138,35 @@ fn get_substructure_equality_expr(
                 Some(rhs)
             };
 
-            // First compare scalar fields, then compound fields, combining all
-            // with logical AND.
-            return fields
-                .iter()
-                .filter(|field| !field.maybe_scalar)
-                .fold(fields.iter().filter(|field| field.maybe_scalar).fold(None, combine), combine)
-                // If there are no fields, treat as always equal.
-                .unwrap_or_else(|| cx.expr_bool(span, true));
+            // If there are no fields, return true immediately.
+            // If there is just one, compare it.
+            // Otherwise, try to do a bitwise comparison.
+            match &fields[..] {
+                [] => return cx.expr_bool(span, true),
+                [field] => return get_field_equality_expr(cx, field),
+                _ => {
+                    // First compare scalar fields, then compound fields, combining all
+                    // with logical AND.
+                    fields
+                        .iter()
+                        .filter(|field| !field.maybe_scalar)
+                        .fold(
+                            fields.iter().filter(|field| field.maybe_scalar).fold(None, combine),
+                            combine,
+                        )
+                        .unwrap()
+                }
+            }
         }
         EnumDiscr(disc, match_expr) => {
             let lhs = get_field_equality_expr(cx, disc);
-            let Some(match_expr) = match_expr else {
-                return lhs;
-            };
-            // Compare the discriminant first (cheaper), then the rest of the
-            // fields.
-            return cx.expr_binary(disc.span, BinOpKind::And, lhs, match_expr.clone());
+            if let Some(match_expr) = match_expr {
+                // Compare the discriminant first (cheaper), then the rest of the
+                // fields.
+                cx.expr_binary(disc.span, BinOpKind::And, lhs, match_expr.clone())
+            } else {
+                lhs
+            }
         }
         StaticEnum(..) => cx.dcx().span_bug(
             span,
@@ -168,6 +180,31 @@ fn get_substructure_equality_expr(
             span,
             "unexpected all-fieldless enum encountered during `derive(PartialEq)` expansion",
         ),
+    };
+
+    if matches!(substructure.fields, Struct(..)) {
+        // Construct intrinsics::can_compare_bitwise<Self>()
+        let self_ty = cx.ty_path(cx.path_ident(span, Ident::with_dummy_span(kw::SelfUpper)));
+        let path = cx.expr_path(cx.path_all(
+            span,
+            true,
+            cx.std_path(&[sym::intrinsics, sym::can_compare_bitwise]),
+            vec![GenericArg::Type(self_ty)],
+        ));
+        let cond = cx.expr_call(span, path, thin_vec![]);
+
+        let [_self, rhs] = &substructure.selflike_args[..] else {
+            cx.dcx().span_bug(span, "not exactly 2 arguments in `derive(PartialEq)`");
+        };
+
+        // Construct intrinsics::compare_bitwise(self, other)
+        let compare_bitwise = cx.std_path(&[sym::intrinsics, sym::compare_bitwise]);
+        let call_compare_bitwise =
+            cx.expr_call_global(span, compare_bitwise, thin_vec![cx.expr_self(span), rhs.clone()]);
+
+        cx.expr_if(span, cond, call_compare_bitwise, Some(field_comparison))
+    } else {
+        field_comparison
     }
 }
 
