@@ -1,6 +1,8 @@
 use crate::cmp;
 use crate::iter::adapters::SourceIter;
-use crate::iter::{FusedIterator, InPlaceIterable, TrustedFused, TrustedLen, TrustedRandomAccess};
+use crate::iter::{
+    FusedIterator, InPlaceIterable, InfiniteIterator, TrustedFused, TrustedLen, TrustedRandomAccess,
+};
 use crate::num::NonZero;
 use crate::ops::{ControlFlow, Try};
 
@@ -361,15 +363,11 @@ impl<T: Clone> DoubleEndedIterator for Take<crate::iter::Repeat<T>> {
 // because we have no way to return value of nth invocation of repeater followed
 // by n-1st without remembering all results.
 
-#[stable(feature = "exact_size_take_repeat", since = "1.82.0")]
-impl<T: Clone> ExactSizeIterator for Take<crate::iter::Repeat<T>> {
-    fn len(&self) -> usize {
-        self.n
-    }
-}
-
-#[stable(feature = "exact_size_take_repeat", since = "1.82.0")]
-impl<F: FnMut() -> A, A> ExactSizeIterator for Take<crate::iter::RepeatWith<F>> {
+#[stable(feature = "infinite_iterator_trait", since = "CURRENT_RUSTC_VERSION")]
+impl<I> ExactSizeIterator for Take<I>
+where
+    I: InfiniteIterator,
+{
     fn len(&self) -> usize {
         self.n
     }

@@ -1,4 +1,4 @@
-use crate::iter::FusedIterator;
+use crate::iter::{FusedIterator, InfiniteIterator};
 use crate::num::NonZero;
 use crate::ops::Try;
 
@@ -107,3 +107,9 @@ where
 
 #[stable(feature = "fused", since = "1.26.0")]
 impl<I> FusedIterator for Cycle<I> where I: Clone + Iterator {}
+
+#[stable(feature = "infinite_iterator_trait", since = "CURRENT_RUSTC_VERSION")]
+impl<I> !ExactSizeIterator for Cycle<I> {}
+
+#[stable(feature = "infinite_iterator_trait", since = "CURRENT_RUSTC_VERSION")]
+impl<I: Clone + Iterator> InfiniteIterator for Cycle<I> {}
