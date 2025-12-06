@@ -46,12 +46,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let result = this.close(result)?;
                 this.write_scalar(result, dest)?;
             }
-            "stat" | "stat64" | "stat$INODE64" => {
+            "stat" | "stat$INODE64" => {
                 let [path, buf] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
                 let result = this.macos_fbsd_solarish_stat(path, buf)?;
                 this.write_scalar(result, dest)?;
             }
-            "lstat" | "lstat64" | "lstat$INODE64" => {
+            "lstat" | "lstat$INODE64" => {
                 let [path, buf] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
                 let result = this.macos_fbsd_solarish_lstat(path, buf)?;
                 this.write_scalar(result, dest)?;
