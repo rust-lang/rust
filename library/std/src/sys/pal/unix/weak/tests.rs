@@ -11,8 +11,8 @@ fn weak_existing() {
         fn strlen(cs: *const c_char) -> usize;
     }
 
-    let strlen = strlen.get().unwrap();
-    assert_eq!(unsafe { strlen(TEST_STRING.as_ptr()) }, TEST_STRING.count_bytes());
+    let len = strlen.get().unwrap();
+    assert_eq!(unsafe { len(TEST_STRING.as_ptr()) }, TEST_STRING.count_bytes());
 }
 
 #[test]
