@@ -1,5 +1,5 @@
 error[E0618]: expected function, found struct `Empty2`
-  --> $DIR/empty-struct-unit-expr.rs:15:14
+  --> $DIR/empty-struct-unit-expr.rs:16:14
    |
 LL | struct Empty2;
    | ------------- struct `Empty2` defined here
@@ -16,9 +16,9 @@ LL +     let e2 = Empty2;
    |
 
 error[E0618]: expected function, found enum variant `E::Empty4`
-  --> $DIR/empty-struct-unit-expr.rs:16:14
+  --> $DIR/empty-struct-unit-expr.rs:17:14
    |
-LL |     Empty4
+LL |     Empty4,
    |     ------ enum variant `E::Empty4` defined here
 ...
 LL |     let e4 = E::Empty4();
@@ -33,7 +33,7 @@ LL +     let e4 = E::Empty4;
    |
 
 error[E0618]: expected function, found struct `XEmpty2`
-  --> $DIR/empty-struct-unit-expr.rs:18:15
+  --> $DIR/empty-struct-unit-expr.rs:19:15
    |
 LL |     let xe2 = XEmpty2();
    |               ^^^^^^^--
@@ -47,7 +47,7 @@ LL +     let xe2 = XEmpty2;
    |
 
 error[E0618]: expected function, found enum variant `XE::XEmpty4`
-  --> $DIR/empty-struct-unit-expr.rs:19:15
+  --> $DIR/empty-struct-unit-expr.rs:20:15
    |
 LL |     let xe4 = XE::XEmpty4();
    |               ^^^^^^^^^^^--
