@@ -6,6 +6,7 @@ use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_span::Symbol;
 use rustc_target::spec::SanitizerSet;
 
+use crate::mir::mono::Visibility;
 use crate::ty::{InstanceKind, TyCtxt};
 
 impl<'tcx> TyCtxt<'tcx> {
@@ -62,6 +63,12 @@ pub struct CodegenFnAttrs {
     /// using the `#[export_name = "..."]` or `#[link_name = "..."]` attribute
     /// depending on if this is a function definition or foreign function.
     pub symbol_name: Option<Symbol>,
+    /// Defids of foreign items somewhere that this function should "satisfy".
+    /// i.e., if a foreign function has some symbol foo,
+    /// generate this function under its real name,
+    /// but *also* under the same name as this foreign function so that the foreign function has an implementation.
+    // FIXME: make "SymbolName<'tcx>"
+    pub foreign_item_symbol_aliases: Vec<(Symbol, Linkage, Visibility)>,
     /// The `#[link_ordinal = "..."]` attribute, indicating an ordinal an
     /// imported function has in the dynamic library. Note that this must not
     /// be set when `link_name` is set. This is for foreign items with the
@@ -207,6 +214,7 @@ impl CodegenFnAttrs {
             symbol_name: None,
             link_ordinal: None,
             target_features: vec![],
+            foreign_item_symbol_aliases: vec![],
             safe_target_features: false,
             linkage: None,
             import_linkage: None,

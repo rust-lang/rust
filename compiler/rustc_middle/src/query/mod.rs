@@ -76,7 +76,7 @@ use rustc_data_structures::steal::Steal;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::ErrorGuaranteed;
-use rustc_hir::attrs::StrippedCfgItem;
+use rustc_hir::attrs::{EiiDecl, EiiImpl, StrippedCfgItem};
 use rustc_hir::def::{DefKind, DocLinkResMap};
 use rustc_hir::def_id::{
     CrateNum, DefId, DefIdMap, LocalDefId, LocalDefIdMap, LocalDefIdSet, LocalModDefId,
@@ -2752,6 +2752,18 @@ rustc_queries! {
     query sanitizer_settings_for(key: LocalDefId) -> SanitizerFnAttrs {
         desc { |tcx| "checking what set of sanitizers are enabled on `{}`", tcx.def_path_str(key) }
         feedable
+    }
+
+    query check_externally_implementable_items(_: ()) {
+        desc { "check externally implementable items" }
+    }
+
+    /// Returns a list of all `externally implementable items` crate.
+    query externally_implementable_items(cnum: CrateNum) -> &'tcx FxIndexMap<DefId, (EiiDecl, FxIndexMap<DefId, EiiImpl>)> {
+        arena_cache
+        desc { "looking up the externally implementable items of a crate" }
+        cache_on_disk_if { *cnum == LOCAL_CRATE }
+        separate_provide_extern
     }
 }
 
