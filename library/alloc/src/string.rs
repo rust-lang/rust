@@ -2203,6 +2203,46 @@ impl String {
         let slice = self.vec.leak();
         unsafe { from_utf8_unchecked_mut(slice) }
     }
+
+    // SAFETY: the `impl AsRef<str> for S` must be stable
+    #[cfg(not(no_global_oom_handling))]
+    unsafe fn extend_many_chunked<S: AsRef<str>, I: IntoIterator<Item = S>>(&mut self, iter: I) {
+        let mut iter = iter.into_iter();
+
+        let mut repeat = true;
+        while repeat {
+            let chunk = match iter.next_chunk::<8>() {
+                Ok(chunk) => chunk.into_iter(),
+                Err(partial_chunk) => {
+                    repeat = false;
+                    partial_chunk
+                }
+            };
+
+            // SAFETY: the caller must ensure that `impl AsRef<str> for S` is stable
+            unsafe { self.extend_many(chunk.as_slice()) }
+        }
+    }
+
+    // SAFETY: the `AsRef<str>` implementation must be stable
+    #[cfg(not(no_global_oom_handling))]
+    unsafe fn extend_many<S: AsRef<str>>(&mut self, vals: &[S]) {
+        let additional = vals.iter().fold(0usize, |a, s| a.saturating_add(s.as_ref().len()));
+        self.reserve(additional);
+
+        let mut spare = self.vec.spare_capacity_mut().as_mut_ptr().cast_init();
+        for val in vals {
+            let val = val.as_ref();
+            // TODO: document safety
+            unsafe { ptr::copy_nonoverlapping(val.as_ptr(), spare, val.len()) }
+            // TODO: document safety
+            spare = unsafe { spare.add(val.len()) };
+        }
+
+        let new_len = self.vec.len() + additional;
+        // SAFETY: the elements have just been initialized
+        unsafe { self.vec.set_len(new_len) }
+    }
 }
 
 impl FromUtf8Error {
@@ -2502,7 +2542,8 @@ impl<'a> Extend<&'a char> for String {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> Extend<&'a str> for String {
     fn extend<I: IntoIterator<Item = &'a str>>(&mut self, iter: I) {
-        iter.into_iter().for_each(move |s| self.push_str(s));
+        // SAFETY: `impl AsRef<str> for &str` is stable
+        unsafe { self.extend_many_chunked(iter) }
     }
 
     #[inline]
@@ -2515,7 +2556,8 @@ impl<'a> Extend<&'a str> for String {
 #[stable(feature = "box_str2", since = "1.45.0")]
 impl<A: Allocator> Extend<Box<str, A>> for String {
     fn extend<I: IntoIterator<Item = Box<str, A>>>(&mut self, iter: I) {
-        iter.into_iter().for_each(move |s| self.push_str(&s));
+        // SAFETY: `impl AsRef<str> for Box<str, A>` is stable
+        unsafe { self.extend_many_chunked(iter) }
     }
 }
 
@@ -2523,7 +2565,8 @@ impl<A: Allocator> Extend<Box<str, A>> for String {
 #[stable(feature = "extend_string", since = "1.4.0")]
 impl Extend<String> for String {
     fn extend<I: IntoIterator<Item = String>>(&mut self, iter: I) {
-        iter.into_iter().for_each(move |s| self.push_str(&s));
+        // SAFETY: `impl AsRef<str> for String` is stable
+        unsafe { self.extend_many_chunked(iter) }
     }
 
     #[inline]
@@ -2536,7 +2579,8 @@ impl Extend<String> for String {
 #[stable(feature = "herd_cows", since = "1.19.0")]
 impl<'a> Extend<Cow<'a, str>> for String {
     fn extend<I: IntoIterator<Item = Cow<'a, str>>>(&mut self, iter: I) {
-        iter.into_iter().for_each(move |s| self.push_str(&s));
+        // SAFETY: `impl AsRef<str> for Cow<'a, str>` is stable
+        unsafe { self.extend_many_chunked(iter) }
     }
 
     #[inline]
