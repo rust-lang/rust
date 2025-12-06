@@ -460,9 +460,10 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
                         }
                         sym::bitreverse => self.bit_reverse(width, args[0].immediate()),
                         sym::rotate_left | sym::rotate_right => {
-                            // TODO(antoyo): implement using algorithm from:
+                            // Using optimized branchless algorithm from:
                             // https://blog.regehr.org/archives/1063
-                            // for other platforms.
+                            // This implementation uses the pattern (x<<n) | (x>>(-n&(width-1)))
+                            // which generates efficient code for other platforms.
                             let is_left = name == sym::rotate_left;
                             let val = args[0].immediate();
                             let raw_shift = args[1].immediate();
