@@ -250,10 +250,10 @@ impl OpenOptions {
     pub fn inherit_handle(&mut self, inherit: bool) {
         self.inherit_handle = inherit;
     }
-    fn freeze_last_access_time(&mut self, freeze: bool) {
+    pub fn freeze_last_access_time(&mut self, freeze: bool) {
         self.freeze_last_access_time = freeze;
     }
-    fn freeze_last_write_time(&mut self, freeze: bool) {
+    pub fn freeze_last_write_time(&mut self, freeze: bool) {
         self.freeze_last_write_time = freeze;
     }
 
