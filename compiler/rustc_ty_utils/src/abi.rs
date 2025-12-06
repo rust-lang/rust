@@ -472,7 +472,7 @@ fn fn_abi_sanity_check<'tcx>(
     fn_arg_sanity_check(cx, fn_abi, spec_abi, &fn_abi.ret);
 }
 
-#[tracing::instrument(level = "debug", skip(cx, instance))]
+// #[tracing::instrument(level = "debug", skip(cx, instance))]
 fn fn_abi_new_uncached<'tcx>(
     cx: &LayoutCx<'tcx>,
     sig: ty::FnSig<'tcx>,
