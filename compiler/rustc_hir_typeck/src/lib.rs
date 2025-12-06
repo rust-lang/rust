@@ -10,6 +10,7 @@
 #![feature(trim_prefix_suffix)]
 // tidy-alphabetical-end
 
+mod _if;
 mod _match;
 mod autoderef;
 mod callee;

@@ -39,8 +39,9 @@ use rustc_trait_selection::traits::{self, ObligationCauseCode, ObligationCtxt};
 use tracing::{debug, instrument, trace};
 use {rustc_ast as ast, rustc_hir as hir};
 
+use crate::_if::IfExprParts;
 use crate::Expectation::{self, ExpectCastableToType, ExpectHasType, NoExpectation};
-use crate::coercion::{CoerceMany, DynamicCoerceMany};
+use crate::coercion::CoerceMany;
 use crate::errors::{
     AddressOfTemporaryTaken, BaseExpressionDoubleDot, BaseExpressionDoubleDotAddExpr,
     BaseExpressionDoubleDotRemove, CantDereference, FieldMultiplySpecifiedInInitializer,
@@ -397,8 +398,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.demand_eqtype(e.span, ascribed_ty, ty);
                 ascribed_ty
             }
-            ExprKind::If(cond, then_expr, opt_else_expr) => {
-                self.check_expr_if(expr.hir_id, cond, then_expr, opt_else_expr, expr.span, expected)
+            ExprKind::If(cond, then_expr, else_branch) => {
+                let parts = IfExprParts { cond, then: then_expr, else_branch };
+                self.check_expr_if(expr.hir_id, expr.span, &parts, expected)
             }
             ExprKind::DropTemps(e) => self.check_expr_with_expectation(e, expected),
             ExprKind::Array(args) => self.check_expr_array(args, expected, expr),
@@ -1190,72 +1192,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     parent = self.tcx.parent_hir_id(parent);
                 }
             }
-        }
-    }
-
-    // A generic function for checking the 'then' and 'else' clauses in an 'if'
-    // or 'if-else' expression.
-    fn check_expr_if(
-        &self,
-        expr_id: HirId,
-        cond_expr: &'tcx hir::Expr<'tcx>,
-        then_expr: &'tcx hir::Expr<'tcx>,
-        opt_else_expr: Option<&'tcx hir::Expr<'tcx>>,
-        sp: Span,
-        orig_expected: Expectation<'tcx>,
-    ) -> Ty<'tcx> {
-        let cond_ty = self.check_expr_has_type_or_error(cond_expr, self.tcx.types.bool, |_| {});
-
-        self.warn_if_unreachable(
-            cond_expr.hir_id,
-            then_expr.span,
-            "block in `if` or `while` expression",
-        );
-
-        let cond_diverges = self.diverges.get();
-        self.diverges.set(Diverges::Maybe);
-
-        let expected = orig_expected.try_structurally_resolve_and_adjust_for_branches(self, sp);
-        let then_ty = self.check_expr_with_expectation(then_expr, expected);
-        let then_diverges = self.diverges.get();
-        self.diverges.set(Diverges::Maybe);
-
-        // We've already taken the expected type's preferences
-        // into account when typing the `then` branch. To figure
-        // out the initial shot at a LUB, we thus only consider
-        // `expected` if it represents a *hard* constraint
-        // (`only_has_type`); otherwise, we just go with a
-        // fresh type variable.
-        let coerce_to_ty = expected.coercion_target_type(self, sp);
-        let mut coerce: DynamicCoerceMany<'_> = CoerceMany::new(coerce_to_ty);
-
-        coerce.coerce(self, &self.misc(sp), then_expr, then_ty);
-
-        if let Some(else_expr) = opt_else_expr {
-            let else_ty = self.check_expr_with_expectation(else_expr, expected);
-            let else_diverges = self.diverges.get();
-
-            let tail_defines_return_position_impl_trait =
-                self.return_position_impl_trait_from_match_expectation(orig_expected);
-            let if_cause =
-                self.if_cause(expr_id, else_expr, tail_defines_return_position_impl_trait);
-
-            coerce.coerce(self, &if_cause, else_expr, else_ty);
-
-            // We won't diverge unless both branches do (or the condition does).
-            self.diverges.set(cond_diverges | then_diverges & else_diverges);
-        } else {
-            self.if_fallback_coercion(sp, cond_expr, then_expr, &mut coerce);
-
-            // If the condition is false we can't diverge.
-            self.diverges.set(cond_diverges);
-        }
-
-        let result_ty = coerce.complete(self);
-        if let Err(guar) = cond_ty.error_reported() {
-            Ty::new_error(self.tcx, guar)
-        } else {
-            result_ty
         }
     }
 
