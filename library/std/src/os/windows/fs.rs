@@ -309,11 +309,13 @@ pub trait OpenOptionsExt {
     /// If set to `true`, prevent the "last access time" of the file from being changed.
     ///
     /// Default to `false`.
+    #[unstable(feature = "windows_freeze_file_times", issue = "149715")]
     fn freeze_last_access_time(&mut self, freeze: bool) -> &mut Self;
 
     /// If set to `true`, prevent the "last write time" of the file from being changed.
     ///
     /// Default to `false`.
+    #[unstable(feature = "windows_freeze_file_times", issue = "149715")]
     fn freeze_last_write_time(&mut self, freeze: bool) -> &mut Self;
 }
 
