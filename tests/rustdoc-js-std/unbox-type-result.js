@@ -8,7 +8,6 @@ const EXPECTED = [
         query: "File -> Metadata",
         others: [
             { path: "std::fs::File", name: "metadata" },
-            { path: "std::fs::File", name: "metadata_at" },
         ]
     },
     {

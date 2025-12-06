@@ -5,6 +5,7 @@
     target_os = "redox",
     target_os = "hurd",
     target_os = "aix",
+    target_os = "wasi",
 )))]
 use crate::ffi::CStr;
 use crate::mem::{self, DropGuard, ManuallyDrop};
@@ -127,6 +128,7 @@ impl Thread {
         assert!(ret == 0, "failed to join thread: {}", io::Error::from_raw_os_error(ret));
     }
 
+    #[cfg(not(target_os = "wasi"))]
     pub fn id(&self) -> libc::pthread_t {
         self.id
     }
@@ -588,6 +590,7 @@ pub fn sleep(dur: Duration) {
     target_os = "hurd",
     target_os = "fuchsia",
     target_os = "vxworks",
+    target_os = "wasi",
 ))]
 pub fn sleep_until(deadline: crate::time::Instant) {
     use crate::time::Instant;
