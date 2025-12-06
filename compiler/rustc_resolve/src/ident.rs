@@ -491,6 +491,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             // Found another solution, if the first one was "weak", report an error.
                             if this.get_mut().maybe_push_ambiguity(
                                 orig_ident,
+                                ns,
+                                scope_set,
                                 parent_scope,
                                 binding,
                                 innermost_binding,
@@ -798,6 +800,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     fn maybe_push_ambiguity(
         &mut self,
         orig_ident: Ident,
+        ns: Namespace,
+        scope_set: ScopeSet<'ra>,
         parent_scope: &ParentScope<'ra>,
         binding: NameBinding<'ra>,
         innermost_binding: NameBinding<'ra>,
@@ -811,6 +815,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             return false;
         }
 
+        let module_only = matches!(scope_set, ScopeSet::Module(..));
         let is_builtin = |res| matches!(res, Res::NonMacroAttr(NonMacroAttrKind::Builtin(..)));
         let derive_helper = Res::NonMacroAttr(NonMacroAttrKind::DeriveHelper);
         let derive_helper_compat = Res::NonMacroAttr(NonMacroAttrKind::DeriveHelperCompat);
@@ -839,9 +844,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             )
         } else if innermost_binding.is_glob_import() {
             Some(AmbiguityKind::GlobVsOuter)
-        } else if innermost_binding.may_appear_after(parent_scope.expansion, binding) {
+        } else if !module_only
+            && innermost_binding.may_appear_after(parent_scope.expansion, binding)
+        {
             Some(AmbiguityKind::MoreExpandedVsOuter)
         } else if innermost_binding.expansion != LocalExpnId::ROOT
+            && (!module_only || ns == MacroNS)
             && binding.is_glob_import()
             && !innermost_binding.is_glob_import()
             && self.binding_parent_modules.get(&innermost_binding)
