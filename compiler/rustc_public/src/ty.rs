@@ -876,6 +876,9 @@ pub struct VariantDef {
 }
 
 impl VariantDef {
+    /// The name of the variant, struct or union.
+    ///
+    /// This will not include the name of the enum or qualified path.
     pub fn name(&self) -> Symbol {
         with(|cx| cx.variant_name(*self))
     }
