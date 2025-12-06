@@ -206,6 +206,8 @@ impl OpenOptions {
             attributes: 0,
             security_qos_flags: 0,
             inherit_handle: false,
+            freeze_last_access_time: false,
+            freeze_last_write_time: false,
         }
     }
 
