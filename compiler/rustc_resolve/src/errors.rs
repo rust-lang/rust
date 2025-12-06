@@ -106,6 +106,13 @@ pub(crate) struct MethodNotMemberOfTrait {
     pub(crate) sub: Option<AssociatedFnWithSimilarNameExists>,
 }
 
+#[derive(Diagnostic)]
+#[diag(resolve_auto_impl_outside_trait_or_impl_trait)]
+pub(crate) struct AutoImplOutsideTraitOrImplTrait {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
 #[derive(Subdiagnostic)]
 #[suggestion(
     resolve_associated_fn_with_similar_name_exists,

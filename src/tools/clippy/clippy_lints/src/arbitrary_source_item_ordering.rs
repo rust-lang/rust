@@ -478,6 +478,7 @@ fn convert_assoc_item_kind(cx: &LateContext<'_>, owner_id: OwnerId) -> SourceIte
         AssocKind::Const { .. } => Const,
         AssocKind::Type { .. } => Type,
         AssocKind::Fn { .. } => Fn,
+        AssocKind::AutoImpl => todo!(),
     }
 }
 

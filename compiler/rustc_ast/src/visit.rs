@@ -551,6 +551,7 @@ macro_rules! common_visitor_and_walkers {
                 //fn visit_assoc_item(AssocItem, _ctxt: AssocCtxt);
                 fn visit_assoc_item_constraint(AssocItemConstraint);
                 fn visit_attribute(Attribute);
+                fn visit_auto_impl(AutoImpl);
                 fn visit_block(Block);
                 //fn visit_nested_use_tree((UseTree, NodeId));
                 fn visit_capture_by(CaptureBy);
@@ -836,6 +837,8 @@ macro_rules! common_visitor_and_walkers {
                         visit_visitable!($($mut)? vis, ident, generics, variant_data),
                     ItemKind::Impl(impl_) =>
                         visit_visitable!($($mut)? vis, impl_),
+                    ItemKind::AutoImpl(auto_impl_) =>
+                        visit_visitable!($($mut)? vis, auto_impl_),
                     ItemKind::Trait(trait_) =>
                         visit_visitable!($($mut)? vis, trait_),
                     ItemKind::TraitAlias(box TraitAlias { constness, ident, generics, bounds}) => {
@@ -881,6 +884,8 @@ macro_rules! common_visitor_and_walkers {
                         visit_visitable!($($mut)? vis, delegation),
                     AssocItemKind::DelegationMac(dm) =>
                         visit_visitable!($($mut)? vis, dm),
+                    AssocItemKind::AutoImpl(ai) =>
+                        visit_visitable!($($mut)? vis, ai),
                 }
                 V::Result::output()
             }
@@ -942,6 +947,17 @@ macro_rules! common_visitor_and_walkers {
             }
             try_visit!(vis.visit_ty(self_ty));
             visit_visitable_with!($($mut)? vis, items, AssocCtxt::Impl { of_trait: of_trait.is_some() });
+            V::Result::output()
+        });
+
+        impl_walkable!(|&$($mut)? $($lt)? self: AutoImpl, vis: &mut V| {
+            let AutoImpl { generics, of_trait, items, constness } = self;
+            let TraitImplHeader { defaultness, safety, polarity, trait_ref } = &$($mut)? **of_trait;
+
+            try_visit!(vis.visit_generics(generics));
+            visit_visitable!($($mut)? vis, defaultness, safety, constness, polarity, trait_ref);
+
+            visit_visitable_with!($($mut)? vis, items, AssocCtxt::Impl { of_trait: true });
             V::Result::output()
         });
 

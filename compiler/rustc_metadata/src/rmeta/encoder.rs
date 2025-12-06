@@ -928,6 +928,7 @@ fn should_encode_span(def_kind: DefKind) -> bool {
         | DefKind::OpaqueTy
         | DefKind::Field
         | DefKind::Impl { .. }
+        | DefKind::AutoImpl
         | DefKind::Closure
         | DefKind::SyntheticCoroutineBody => true,
         DefKind::ForeignMod | DefKind::GlobalAsm => false,
@@ -953,6 +954,7 @@ fn should_encode_attrs(def_kind: DefKind) -> bool {
         | DefKind::AssocConst
         | DefKind::Macro(_)
         | DefKind::Field
+        | DefKind::AutoImpl
         | DefKind::Impl { .. } => true,
         // Tools may want to be able to detect their tool lints on
         // closures from upstream crates, too. This is used by
@@ -983,6 +985,7 @@ fn should_encode_expn_that_defined(def_kind: DefKind) -> bool {
         | DefKind::Enum
         | DefKind::Variant
         | DefKind::Trait
+        | DefKind::AutoImpl
         | DefKind::Impl { .. } => true,
         DefKind::TyAlias
         | DefKind::ForeignTy
@@ -1042,6 +1045,7 @@ fn should_encode_visibility(def_kind: DefKind) -> bool {
         | DefKind::OpaqueTy
         | DefKind::GlobalAsm
         | DefKind::Impl { .. }
+        | DefKind::AutoImpl
         | DefKind::Closure
         | DefKind::ExternCrate
         | DefKind::SyntheticCoroutineBody => false,
@@ -1069,6 +1073,7 @@ fn should_encode_stability(def_kind: DefKind) -> bool {
         | DefKind::Enum
         | DefKind::Union
         | DefKind::Impl { .. }
+        | DefKind::AutoImpl
         | DefKind::Trait
         | DefKind::TraitAlias
         | DefKind::Macro(..)
@@ -1163,6 +1168,7 @@ fn should_encode_variances<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, def_kind: Def
         | DefKind::Const
         | DefKind::ForeignMod
         | DefKind::Impl { .. }
+        | DefKind::AutoImpl
         | DefKind::Trait
         | DefKind::TraitAlias
         | DefKind::Macro(..)
@@ -1200,6 +1206,7 @@ fn should_encode_generics(def_kind: DefKind) -> bool {
         | DefKind::InlineConst
         | DefKind::OpaqueTy
         | DefKind::Impl { .. }
+        | DefKind::AutoImpl
         | DefKind::Field
         | DefKind::TyParam
         | DefKind::Closure
@@ -1229,6 +1236,7 @@ fn should_encode_type(tcx: TyCtxt<'_>, def_id: LocalDefId, def_kind: DefKind) ->
         | DefKind::TyAlias
         | DefKind::ForeignTy
         | DefKind::Impl { .. }
+        | DefKind::AutoImpl
         | DefKind::AssocFn
         | DefKind::AssocConst
         | DefKind::Closure
@@ -1292,6 +1300,7 @@ fn should_encode_fn_sig(def_kind: DefKind) -> bool {
         | DefKind::OpaqueTy
         | DefKind::ForeignTy
         | DefKind::Impl { .. }
+        | DefKind::AutoImpl
         | DefKind::AssocConst
         | DefKind::Closure
         | DefKind::ConstParam
@@ -1331,6 +1340,7 @@ fn should_encode_constness(def_kind: DefKind) -> bool {
         | DefKind::TyAlias
         | DefKind::OpaqueTy
         | DefKind::Impl { .. }
+        | DefKind::AutoImpl
         | DefKind::ForeignTy
         | DefKind::ConstParam
         | DefKind::InlineConst
@@ -1368,6 +1378,7 @@ fn should_encode_const(def_kind: DefKind) -> bool {
         | DefKind::OpaqueTy
         | DefKind::ForeignTy
         | DefKind::Impl { .. }
+        | DefKind::AutoImpl
         | DefKind::AssocFn
         | DefKind::Closure
         | DefKind::ConstParam

@@ -1065,6 +1065,7 @@ impl<'tcx> Stable<'tcx> for ty::AssocKind {
                     }
                 },
             },
+            ty::AssocKind::AutoImpl => AssocKind::AutoImpl,
         }
     }
 }

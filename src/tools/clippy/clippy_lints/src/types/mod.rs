@@ -484,7 +484,10 @@ impl<'tcx> LateLintPass<'tcx> for Types {
             // Methods are covered by check_fn.
             // Type aliases are ignored because oftentimes it's impossible to
             // make type alias declaration in trait simpler, see #1013
-            ImplItemKind::Fn(..) | ImplItemKind::Type(..) => (),
+            ImplItemKind::Fn(..)
+            | ImplItemKind::Type(..)
+            | ImplItemKind::AutoImpl(..)
+            | ImplItemKind::ExternImpl(..) => (),
         }
     }
 
@@ -524,7 +527,7 @@ impl<'tcx> LateLintPass<'tcx> for Types {
                     self.check_fn_decl(cx, sig.decl, context);
                 }
             },
-            TraitItemKind::Type(..) => (),
+            TraitItemKind::Type(..) | TraitItemKind::AutoImpl(..) => (),
         }
     }
 
