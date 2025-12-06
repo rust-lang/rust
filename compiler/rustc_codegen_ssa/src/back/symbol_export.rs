@@ -15,7 +15,7 @@ use rustc_middle::middle::exported_symbols::{
 use rustc_middle::query::LocalCrate;
 use rustc_middle::ty::{self, GenericArgKind, GenericArgsRef, Instance, SymbolName, Ty, TyCtxt};
 use rustc_middle::util::Providers;
-use rustc_session::config::{CrateType, OomStrategy};
+use rustc_session::config::CrateType;
 use rustc_symbol_mangling::mangle_internal_symbol;
 use rustc_target::spec::{Arch, Os, TlsModel};
 use tracing::debug;
@@ -493,7 +493,6 @@ pub(crate) fn allocator_shim_symbols(
         .map(move |method| mangle_internal_symbol(tcx, global_fn_name(method.name).as_str()))
         .chain([
             mangle_internal_symbol(tcx, global_fn_name(ALLOC_ERROR_HANDLER).as_str()),
-            mangle_internal_symbol(tcx, OomStrategy::SYMBOL),
             mangle_internal_symbol(tcx, NO_ALLOC_SHIM_IS_UNSTABLE),
         ])
         .map(move |symbol_name| {

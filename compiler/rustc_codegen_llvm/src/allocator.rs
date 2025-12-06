@@ -7,13 +7,13 @@ use rustc_codegen_ssa::traits::BaseTypeCodegenMethods as _;
 use rustc_middle::bug;
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc_middle::ty::TyCtxt;
-use rustc_session::config::{DebugInfo, OomStrategy};
+use rustc_session::config::DebugInfo;
 use rustc_symbol_mangling::mangle_internal_symbol;
 
 use crate::attributes::llfn_attrs_from_instance;
 use crate::builder::SBuilder;
 use crate::declare::declare_simple_fn;
-use crate::llvm::{self, FALSE, FromGeneric, TRUE, Type, Value};
+use crate::llvm::{self, FromGeneric, TRUE, Type};
 use crate::{SimpleCx, attributes, debuginfo};
 
 pub(crate) unsafe fn codegen(
@@ -28,7 +28,6 @@ pub(crate) unsafe fn codegen(
         64 => cx.type_i64(),
         tws => bug!("Unsupported target word size for int: {}", tws),
     };
-    let i8 = cx.type_i8();
     let i8p = cx.type_ptr();
 
     for method in methods {
@@ -87,17 +86,6 @@ pub(crate) unsafe fn codegen(
         );
     }
 
-    // __rust_alloc_error_handler_should_panic_v2
-    create_const_value_function(
-        tcx,
-        &cx,
-        &mangle_internal_symbol(tcx, OomStrategy::SYMBOL),
-        &i8,
-        unsafe {
-            llvm::LLVMConstInt(i8, tcx.sess.opts.unstable_opts.oom.should_panic() as u64, FALSE)
-        },
-    );
-
     // __rust_no_alloc_shim_is_unstable_v2
     create_wrapper_function(
         tcx,
@@ -115,34 +103,6 @@ pub(crate) unsafe fn codegen(
         debuginfo::metadata::build_compile_unit_di_node(tcx, module_name, &dbg_cx);
         dbg_cx.finalize(tcx.sess);
     }
-}
-
-fn create_const_value_function(
-    tcx: TyCtxt<'_>,
-    cx: &SimpleCx<'_>,
-    name: &str,
-    output: &Type,
-    value: &Value,
-) {
-    let ty = cx.type_func(&[], output);
-    let llfn = declare_simple_fn(
-        &cx,
-        name,
-        llvm::CallConv::CCallConv,
-        llvm::UnnamedAddr::Global,
-        llvm::Visibility::from_generic(tcx.sess.default_visibility()),
-        ty,
-    );
-
-    attributes::apply_to_llfn(
-        llfn,
-        llvm::AttributePlace::Function,
-        &[llvm::AttributeKind::AlwaysInline.create_attr(cx.llcx)],
-    );
-
-    let llbb = unsafe { llvm::LLVMAppendBasicBlockInContext(cx.llcx, llfn, c"entry".as_ptr()) };
-    let mut bx = SBuilder::build(&cx, llbb);
-    bx.ret(value);
 }
 
 fn create_wrapper_function(
