@@ -1645,9 +1645,7 @@ pub(crate) fn plain_text_from_events<'a>(
         match &event {
             Event::Text(text) => s.push_str(text),
             Event::Code(code) => {
-                s.push('`');
-                s.push_str(code);
-                s.push('`');
+                s.extend(["`", code, "`"]);
             }
             Event::HardBreak | Event::SoftBreak => s.push(' '),
             Event::Start(Tag::CodeBlock(..)) => break,
