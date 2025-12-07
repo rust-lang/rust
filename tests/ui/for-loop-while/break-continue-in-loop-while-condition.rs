@@ -1,3 +1,6 @@
+//! regression test for #37576, #50802
+//! Tests that using unlabeled `break` or `continue` within a loop or while's condition.
+
 fn main() {
     'test_1: while break 'test_1 {}
     while break {}
@@ -7,9 +10,13 @@ fn main() {
     while let true = break {}
     //~^ ERROR `break` or `continue` with no label
 
-    loop { 'test_3: while break 'test_3 {} }
-    loop { while break {} }
-    //~^ ERROR `break` or `continue` with no label
+    loop {
+        'test_3: while break 'test_3 {}
+    }
+    loop {
+        while break {}
+        //~^ ERROR `break` or `continue` with no label
+    }
 
     loop {
         'test_4: while break 'test_4 {}
@@ -29,9 +36,13 @@ fn main() {
     while let true = continue {}
     //~^ ERROR `break` or `continue` with no label
 
-    loop { 'test_7: while continue 'test_7 {} }
-    loop { while continue {} }
-    //~^ ERROR `break` or `continue` with no label
+    loop {
+        'test_7: while continue 'test_7 {}
+    }
+    loop {
+        while continue {}
+        //~^ ERROR `break` or `continue` with no label
+    }
 
     loop {
         'test_8: while continue 'test_8 {}
@@ -41,5 +52,14 @@ fn main() {
         while continue {}
         //~^ ERROR `break` or `continue` with no label
         continue;
+    }
+
+    'test_9: loop {
+        break while continue 'test_9 {};
+    }
+    loop {
+        break while continue {
+            //~^ ERROR `break` or `continue` with no label
+        };
     }
 }
