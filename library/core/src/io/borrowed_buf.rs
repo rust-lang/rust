@@ -3,11 +3,11 @@
 use crate::fmt::{self, Debug, Formatter};
 use crate::mem::{self, MaybeUninit};
 
-/// A borrowed buffer of initially uninitialized bytes, which is incrementally filled.
+/// A borrowed buffer of initially uninitialized data, which is incrementally filled.
 ///
 /// This type makes it safer to work with `MaybeUninit` buffers, such as to read into a buffer
-/// without having to initialize it first. It tracks the region of bytes that have been filled and
-/// the region that remains uninitialized.
+/// without having to initialize it first. It tracks the region of data that has been filled and the
+/// region that remains uninitialized.
 ///
 /// The contents of the buffer can be visualized as:
 /// ```not_rust
@@ -24,14 +24,16 @@ use crate::mem::{self, MaybeUninit};
 /// `BorrowedCursor`. The cursor has write-only access to the unfilled portion of the buffer.
 ///
 /// The lifetime `'data` is a bound on the lifetime of the underlying data.
-pub struct BorrowedBuf<'data> {
+///
+/// The type defaults to managing bytes, but can manage any type of data.
+pub struct BorrowedBuf<'data, T = u8> {
     /// The buffer's underlying data.
-    buf: &'data mut [MaybeUninit<u8>],
-    /// The length of `self.buf` which is known to be filled.
+    buf: &'data mut [MaybeUninit<T>],
+    /// The number of elements of `self.buf` that are known to be filled.
     filled: usize,
 }
 
-impl Debug for BorrowedBuf<'_> {
+impl<T> Debug for BorrowedBuf<'_, T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         f.debug_struct("BorrowedBuf")
             .field("filled", &self.filled)
@@ -41,13 +43,13 @@ impl Debug for BorrowedBuf<'_> {
 }
 
 /// Creates a new `BorrowedBuf` from a fully initialized slice.
-impl<'data> From<&'data mut [u8]> for BorrowedBuf<'data> {
+impl<'data, T> From<&'data mut [T]> for BorrowedBuf<'data, T> {
     #[inline]
-    fn from(slice: &'data mut [u8]) -> BorrowedBuf<'data> {
+    fn from(slice: &'data mut [T]) -> BorrowedBuf<'data, T> {
         BorrowedBuf {
             // SAFETY: Always in bounds. We treat the buffer as uninitialized, even though it's
             // already initialized.
-            buf: unsafe { (slice as *mut [u8]).as_uninit_slice_mut().unwrap() },
+            buf: unsafe { (slice as *mut [T]).as_uninit_slice_mut().unwrap() },
             filled: 0,
         }
     }
@@ -56,9 +58,9 @@ impl<'data> From<&'data mut [u8]> for BorrowedBuf<'data> {
 /// Creates a new `BorrowedBuf` from an uninitialized buffer.
 ///
 /// Use `set_filled` if part of the buffer is known to be already filled.
-impl<'data> From<&'data mut [MaybeUninit<u8>]> for BorrowedBuf<'data> {
+impl<'data, T> From<&'data mut [MaybeUninit<T>]> for BorrowedBuf<'data, T> {
     #[inline]
-    fn from(buf: &'data mut [MaybeUninit<u8>]) -> BorrowedBuf<'data> {
+    fn from(buf: &'data mut [MaybeUninit<T>]) -> BorrowedBuf<'data, T> {
         BorrowedBuf { buf, filled: 0 }
     }
 }
@@ -66,9 +68,9 @@ impl<'data> From<&'data mut [MaybeUninit<u8>]> for BorrowedBuf<'data> {
 /// Creates a new `BorrowedBuf` from a cursor.
 ///
 /// Use `BorrowedCursor::with_unfilled_buf` instead for a safer alternative.
-impl<'data> From<BorrowedCursor<'data>> for BorrowedBuf<'data> {
+impl<'data, T> From<BorrowedCursor<'data, T>> for BorrowedBuf<'data, T> {
     #[inline]
-    fn from(buf: BorrowedCursor<'data>) -> BorrowedBuf<'data> {
+    fn from(buf: BorrowedCursor<'data, T>) -> BorrowedBuf<'data, T> {
         BorrowedBuf {
             // SAFETY: Always in bounds. We treat the buffer as uninitialized.
             buf: unsafe { buf.buf.buf.get_unchecked_mut(buf.buf.filled..) },
@@ -77,7 +79,7 @@ impl<'data> From<BorrowedCursor<'data>> for BorrowedBuf<'data> {
     }
 }
 
-impl<'data> BorrowedBuf<'data> {
+impl<'data, T> BorrowedBuf<'data, T> {
     /// Returns the total capacity of the buffer.
     #[inline]
     pub fn capacity(&self) -> usize {
@@ -92,7 +94,7 @@ impl<'data> BorrowedBuf<'data> {
 
     /// Returns a shared reference to the filled portion of the buffer.
     #[inline]
-    pub fn filled(&self) -> &[u8] {
+    pub fn filled(&self) -> &[T] {
         // SAFETY: We only slice the filled part of the buffer, which is always valid
         unsafe {
             let buf = self.buf.get_unchecked(..self.filled);
@@ -102,7 +104,7 @@ impl<'data> BorrowedBuf<'data> {
 
     /// Returns a mutable reference to the filled portion of the buffer.
     #[inline]
-    pub fn filled_mut(&mut self) -> &mut [u8] {
+    pub fn filled_mut(&mut self) -> &mut [T] {
         // SAFETY: We only slice the filled part of the buffer, which is always valid
         unsafe {
             let buf = self.buf.get_unchecked_mut(..self.filled);
@@ -112,7 +114,7 @@ impl<'data> BorrowedBuf<'data> {
 
     /// Returns a shared reference to the filled portion of the buffer with its original lifetime.
     #[inline]
-    pub fn into_filled(self) -> &'data [u8] {
+    pub fn into_filled(self) -> &'data [T] {
         // SAFETY: We only slice the filled part of the buffer, which is always valid
         unsafe {
             let buf = self.buf.get_unchecked(..self.filled);
@@ -122,7 +124,7 @@ impl<'data> BorrowedBuf<'data> {
 
     /// Returns a mutable reference to the filled portion of the buffer with its original lifetime.
     #[inline]
-    pub fn into_filled_mut(self) -> &'data mut [u8] {
+    pub fn into_filled_mut(self) -> &'data mut [T] {
         // SAFETY: We only slice the filled part of the buffer, which is always valid
         unsafe {
             let buf = self.buf.get_unchecked_mut(..self.filled);
@@ -132,12 +134,14 @@ impl<'data> BorrowedBuf<'data> {
 
     /// Returns a cursor over the unfilled part of the buffer.
     #[inline]
-    pub fn unfilled<'this>(&'this mut self) -> BorrowedCursor<'this> {
+    pub fn unfilled<'this>(&'this mut self) -> BorrowedCursor<'this, T> {
         BorrowedCursor {
             // SAFETY: we never assign into `BorrowedCursor::buf`, so treating its
             // lifetime covariantly is safe.
             buf: unsafe {
-                mem::transmute::<&'this mut BorrowedBuf<'data>, &'this mut BorrowedBuf<'this>>(self)
+                mem::transmute::<&'this mut BorrowedBuf<'data, T>, &'this mut BorrowedBuf<'this, T>>(
+                    self,
+                )
             },
         }
     }
@@ -157,7 +161,7 @@ impl<'data> BorrowedBuf<'data> {
 /// Data can be written directly to the cursor by using [`append`](BorrowedCursor::append) or
 /// indirectly by getting a slice of part or all of the cursor and writing into the slice. In the
 /// indirect case, the caller must call [`advance`](BorrowedCursor::advance) after writing to inform
-/// the cursor how many bytes have been written.
+/// the cursor how many elements have been written.
 ///
 /// Once data is written to the cursor, it becomes part of the filled portion of the underlying
 /// `BorrowedBuf` and can no longer be accessed or re-written by the cursor. I.e., the cursor tracks
@@ -166,26 +170,26 @@ impl<'data> BorrowedBuf<'data> {
 /// The lifetime `'a` is a bound on the lifetime of the underlying buffer (which means it is a bound
 /// on the data in that buffer by transitivity).
 #[derive(Debug)]
-pub struct BorrowedCursor<'a> {
+pub struct BorrowedCursor<'a, T = u8> {
     /// The underlying buffer.
     // Safety invariant: we treat the type of buf as covariant in the lifetime of `BorrowedBuf` when
     // we create a `BorrowedCursor`. This is only safe if we never replace `buf` by assigning into
     // it, so don't do that!
-    buf: &'a mut BorrowedBuf<'a>,
+    buf: &'a mut BorrowedBuf<'a, T>,
 }
 
-impl<'a> BorrowedCursor<'a> {
+impl<'a, T> BorrowedCursor<'a, T> {
     /// Reborrows this cursor by cloning it with a smaller lifetime.
     ///
     /// Since a cursor maintains unique access to its underlying buffer, the borrowed cursor is
     /// not accessible while the new cursor exists.
     #[inline]
-    pub fn reborrow<'this>(&'this mut self) -> BorrowedCursor<'this> {
+    pub fn reborrow<'this>(&'this mut self) -> BorrowedCursor<'this, T> {
         BorrowedCursor {
             // SAFETY: we never assign into `BorrowedCursor::buf`, so treating its
             // lifetime covariantly is safe.
             buf: unsafe {
-                mem::transmute::<&'this mut BorrowedBuf<'a>, &'this mut BorrowedBuf<'this>>(
+                mem::transmute::<&'this mut BorrowedBuf<'a, T>, &'this mut BorrowedBuf<'this, T>>(
                     self.buf,
                 )
             },
@@ -210,22 +214,22 @@ impl<'a> BorrowedCursor<'a> {
     ///
     /// # Safety
     ///
-    /// The caller must not uninitialize any previously initialized bytes.
+    /// The caller must not uninitialize any previously initialized data.
     #[inline]
-    pub unsafe fn as_mut(&mut self) -> &mut [MaybeUninit<u8>] {
+    pub unsafe fn as_mut(&mut self) -> &mut [MaybeUninit<T>] {
         // SAFETY: always in bounds
         unsafe { self.buf.buf.get_unchecked_mut(self.buf.filled..) }
     }
 
-    /// Advances the cursor by asserting that `n` bytes have been filled.
+    /// Advances the cursor by asserting that `n` elements have been filled.
     ///
-    /// After advancing, the `n` bytes are no longer accessible via the cursor and can only be
+    /// After advancing, the `n` elements are no longer accessible via the cursor and can only be
     /// accessed via the underlying buffer. I.e., the buffer's filled portion grows by `n` elements
     /// and its unfilled portion (and the capacity of this cursor) shrinks by `n` elements.
     ///
     /// # Safety
     ///
-    /// The caller must ensure that the first `n` bytes of the cursor have been initialized. `n`
+    /// The caller must ensure that the first `n` elements of the cursor have been initialized. `n`
     /// must not exceed the remaining capacity of this cursor.
     #[inline]
     pub unsafe fn advance(&mut self, n: usize) -> &mut Self {
@@ -239,7 +243,10 @@ impl<'a> BorrowedCursor<'a> {
     ///
     /// Panics if `self.capacity()` is less than `buf.len()`.
     #[inline]
-    pub fn append(&mut self, buf: &[u8]) {
+    pub fn append(&mut self, buf: &[T])
+    where
+        T: Copy,
+    {
         assert!(self.capacity() >= buf.len());
 
         // SAFETY: we do not de-initialize any of the elements of the slice
@@ -259,7 +266,7 @@ impl<'a> BorrowedCursor<'a> {
     ///
     /// Panics if the `BorrowedBuf` given to the closure is replaced by another
     /// one.
-    pub fn with_unfilled_buf<T>(&mut self, f: impl FnOnce(&mut BorrowedBuf<'_>) -> T) -> T {
+    pub fn with_unfilled_buf<R>(&mut self, f: impl FnOnce(&mut BorrowedBuf<'_, T>) -> R) -> R {
         let mut buf = BorrowedBuf::from(self.reborrow());
         let prev_ptr = buf.buf as *const _;
         let res = f(&mut buf);
@@ -269,7 +276,7 @@ impl<'a> BorrowedCursor<'a> {
         // there, one could mark some bytes as initialized even though there aren't.
         assert!(core::ptr::addr_eq(prev_ptr, buf.buf));
 
-        // SAFETY: These bytes were filled in the `BorrowedBuf`, so they're filled in the cursor
+        // SAFETY: These elements were filled in the `BorrowedBuf`, so they're filled in the cursor
         // too, because the buffer wasn't replaced.
         self.buf.filled += buf.filled;
 
