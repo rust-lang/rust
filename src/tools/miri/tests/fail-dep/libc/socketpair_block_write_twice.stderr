@@ -19,7 +19,19 @@ error: the evaluated program deadlocked
 LL |         let res = unsafe { libc::write(fds[0], data.as_ptr() as *const libc::c_void, data.len()) };
    |                                                                                                ^ thread got stuck here
    |
-   = note: this is on thread `unnamed-ID`
+   = note: this is on thread `unnamed-ID`, inside closure
+note: which got called indirectly due to this code
+  --> tests/fail-dep/libc/socketpair_block_write_twice.rs:LL:CC
+   |
+LL |       let thread2 = thread::spawn(move || {
+   |  ___________________^
+LL | |         let data = "a".as_bytes();
+LL | |         // The write below will be blocked because the buffer is already full.
+LL | |         let res = unsafe { libc::write(fds[0], data.as_ptr() as *const libc::c_void, data.len()) };
+LL | |
+LL | |         assert_eq!(res, data.len().cast_signed());
+LL | |     });
+   | |______^
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

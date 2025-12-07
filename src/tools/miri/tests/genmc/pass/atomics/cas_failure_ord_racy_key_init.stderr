@@ -17,5 +17,15 @@ note: which got called inside `genmc::spawn_pthread_closure::thread_func::<{clos
    |
 LL |         f();
    |         ^^^
+note: which got called indirectly due to this code
+  --> tests/genmc/pass/atomics/../../../utils/genmc.rs:LL:CC
+   |
+LL | /         libc::pthread_create(
+LL | |             &raw mut thread_id,
+LL | |             attr,
+LL | |             thread_func::<F>,
+LL | |             Box::into_raw(f) as *mut c_void,
+LL | |         )
+   | |_________^
 
 Verification complete with 2 executions. No errors found.

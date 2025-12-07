@@ -19,7 +19,19 @@ error: the evaluated program deadlocked
 LL |             libc::read(fds[1], buf.as_mut_ptr().cast(), buf.len() as libc::size_t)
    |                                                                                  ^ thread got stuck here
    |
-   = note: this is on thread `unnamed-ID`
+   = note: this is on thread `unnamed-ID`, inside closure
+note: which got called indirectly due to this code
+  --> tests/fail-dep/libc/socketpair_block_read_twice.rs:LL:CC
+   |
+LL |       let thread2 = thread::spawn(move || {
+   |  ___________________^
+LL | |         // Let this thread block on read.
+LL | |         let mut buf: [u8; 1] = [0; 1];
+LL | |         let res = unsafe {
+...  |
+LL | |         assert_eq!(&buf, "a".as_bytes());
+LL | |     });
+   | |______^
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

@@ -19,7 +19,17 @@ error: the evaluated program deadlocked
 LL |         let res: i64 = unsafe { libc::read(fd, buf.as_mut_ptr().cast(), 8).try_into().unwrap() };
    |                                                                          ^ thread got stuck here
    |
-   = note: this is on thread `unnamed-ID`
+   = note: this is on thread `unnamed-ID`, inside closure
+note: which got called indirectly due to this code
+  --> tests/fail-dep/libc/eventfd_block_read_twice.rs:LL:CC
+   |
+LL |       let thread2 = thread::spawn(move || {
+   |  ___________________^
+LL | |         let mut buf: [u8; 8] = [0; 8];
+...  |
+LL | |         assert_eq!(counter, 1_u64);
+LL | |     });
+   | |______^
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

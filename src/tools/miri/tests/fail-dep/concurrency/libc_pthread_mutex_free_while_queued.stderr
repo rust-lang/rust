@@ -14,6 +14,15 @@ note: which got called inside closure
    |
 LL |             drop(unsafe { Box::from_raw(m.get().cast::<Mutex>()) });
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: which got called indirectly due to this code
+  --> tests/fail-dep/concurrency/libc_pthread_mutex_free_while_queued.rs:LL:CC
+   |
+LL | /         s.spawn(|| {
+LL | |             // Ensure we happen-after the initialization write.
+LL | |             assert!(initialized.load(Ordering::Acquire));
+...  |
+LL | |         });
+   | |__________^
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

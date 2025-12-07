@@ -19,7 +19,16 @@ error: the evaluated program deadlocked
 LL |         check_epoll_wait::<TAG>(epfd, &expected, -1);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ thread got stuck here
    |
-   = note: this is on thread `unnamed-ID`
+   = note: this is on thread `unnamed-ID`, inside closure
+note: which got called indirectly due to this code
+  --> tests/fail-dep/libc/libc_epoll_block_two_thread.rs:LL:CC
+   |
+LL |       let thread2 = thread::spawn(move || {
+   |  ___________________^
+LL | |         check_epoll_wait::<TAG>(epfd, &expected, -1);
+LL | |
+LL | |     });
+   | |______^
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

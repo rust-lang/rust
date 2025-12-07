@@ -16,6 +16,15 @@ note: which got called inside closure
    |
 LL |         drop(guard);
    |         ^^^^^^^^^^^
+note: which got called indirectly due to this code
+  --> tests/genmc/fail/shims/mutex_diff_thread_unlock.rs:LL:CC
+   |
+LL |       let handle = std::thread::spawn(move || {
+   |  __________________^
+LL | |         let guard = guard; // avoid field capturing
+LL | |         drop(guard);
+LL | |     });
+   | |______^
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

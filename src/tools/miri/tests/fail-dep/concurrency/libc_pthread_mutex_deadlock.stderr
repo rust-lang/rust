@@ -22,7 +22,14 @@ error: the evaluated program deadlocked
 LL |             assert_eq!(libc::pthread_mutex_lock(lock_copy.0.get() as *mut _), 0);
    |                                                                            ^ thread got stuck here
    |
-   = note: this is on thread `unnamed-ID`
+   = note: this is on thread `unnamed-ID`, inside closure
+note: which got called indirectly due to this code
+  --> tests/fail-dep/concurrency/libc_pthread_mutex_deadlock.rs:LL:CC
+   |
+LL | /         thread::spawn(move || {
+LL | |             assert_eq!(libc::pthread_mutex_lock(lock_copy.0.get() as *mut _), 0);
+LL | |         })
+   | |__________^
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

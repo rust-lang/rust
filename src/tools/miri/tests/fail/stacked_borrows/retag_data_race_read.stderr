@@ -24,6 +24,11 @@ note: which got called inside closure
    |
 LL |     let t2 = std::thread::spawn(move || thread_2(p));
    |                                         ^^^^^^^^^^^
+note: which got called indirectly due to this code
+  --> tests/fail/stacked_borrows/retag_data_race_read.rs:LL:CC
+   |
+LL |     let t2 = std::thread::spawn(move || thread_2(p));
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

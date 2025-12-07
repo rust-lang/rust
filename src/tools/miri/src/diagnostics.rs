@@ -555,35 +555,24 @@ fn report_msg<'tcx>(
     thread: Option<ThreadId>,
     machine: &MiriMachine<'tcx>,
 ) {
-    let span = match stacktrace.first() {
-        Some(fi) => fi.span,
-        None =>
-            match thread {
-                Some(thread_id) => machine.threads.thread_ref(thread_id).origin_span,
-                // This fallback is super rare, but can happen e.g. when `main` has the wrong ABI
-                None => DUMMY_SP,
-            },
-    };
-    let sess = machine.tcx.sess;
+    let origin_span = thread.map(|t| machine.threads.thread_ref(t).origin_span).unwrap_or(DUMMY_SP);
+    let span = stacktrace.first().map(|fi| fi.span).unwrap_or(origin_span);
+    // The only time we do not have an origin span is for `main`, and there we check the signature
+    // upfront. So we should always have a span here.
+    assert!(!span.is_dummy());
+
+    let tcx = machine.tcx;
     let level = match diag_level {
         DiagLevel::Error => Level::Error,
         DiagLevel::Warning => Level::Warning,
         DiagLevel::Note => Level::Note,
     };
-    let mut err = Diag::<()>::new(sess.dcx(), level, title);
+    let mut err = Diag::<()>::new(tcx.sess.dcx(), level, title);
     err.span(span);
 
     // Show main message.
-    if !span.is_dummy() {
-        for line in span_msg {
-            err.span_label(span, line);
-        }
-    } else {
-        // Make sure we show the message even when it is a dummy span.
-        for line in span_msg {
-            err.note(line);
-        }
-        err.note("(no span available)");
+    for line in span_msg {
+        err.span_label(span, line);
     }
 
     // Show note and help messages.
@@ -621,7 +610,7 @@ fn report_msg<'tcx>(
             .unwrap();
         }
         // Only print function name if we show a backtrace
-        if rest.len() > 0 {
+        if rest.len() > 0 || !origin_span.is_dummy() {
             if !fn_and_thread.is_empty() {
                 fn_and_thread.push_str(", ");
             }
@@ -632,7 +621,7 @@ fn report_msg<'tcx>(
                 // Print a `span_note` as otherwise the backtrace looks attached to the last
                 // `span_help`. We somewhat arbitrarily use the span of the surrounding function.
                 err.span_note(
-                    machine.tcx.def_span(first.instance.def_id()),
+                    tcx.def_span(first.instance.def_id()),
                     format!("{level} occurred {fn_and_thread}"),
                 );
             } else {
@@ -646,10 +635,13 @@ fn report_msg<'tcx>(
             if is_local {
                 err.span_note(frame_info.span, format!("which got called {frame_info}"));
             } else {
-                let sm = sess.source_map();
+                let sm = tcx.sess.source_map();
                 let span = sm.span_to_diagnostic_string(frame_info.span);
                 err.note(format!("which got called {frame_info} (at {span})"));
             }
+        }
+        if !origin_span.is_dummy() {
+            err.span_note(origin_span, format!("which got called indirectly due to this code"));
         }
     } else if !span.is_dummy() {
         err.note(format!("this {level} occurred while pushing a call frame onto an empty stack"));
