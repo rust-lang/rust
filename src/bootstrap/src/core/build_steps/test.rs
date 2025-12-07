@@ -1582,7 +1582,7 @@ test!(AssemblyLlvm {
 
 /// Runs the coverage test suite at `tests/coverage` in some or all of the
 /// coverage test modes.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Coverage {
     pub compiler: Compiler,
     pub target: TargetSelection,
