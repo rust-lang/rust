@@ -16,6 +16,19 @@ fn cmp_no_padding(a: &NoPadding, b: &NoPadding) -> bool {
 // EMIT_MIR derived_partialeq.cmp_no_padding.PreCodegen.after.mir
 
 #[derive(PartialEq)]
+pub struct Recursive {
+    x: NoPadding,
+    y: NoPadding,
+}
+
+// CHECK-LABEL: fn cmp_recursive(
+fn cmp_recursive(a: &Recursive, b: &Recursive) -> bool {
+    // CHECK: compare_bitwise::<Recursive>(
+    a == b
+}
+// EMIT_MIR derived_partialeq.cmp_recursive.PreCodegen.after.mir
+
+#[derive(PartialEq)]
 pub struct NoPaddingArray {
     x: [u16; 2],
     y: u16,

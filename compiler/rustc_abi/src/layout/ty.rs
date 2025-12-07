@@ -191,7 +191,7 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
         Ty::ty_and_layout_field(self, cx, i)
     }
 
-    pub fn is_pod_layout<C>(self, cx: &C) -> bool
+    pub fn is_gapless<C>(self, cx: &C) -> bool
     where
         Ty: TyAbiInterface<'a, C> + Copy,
     {

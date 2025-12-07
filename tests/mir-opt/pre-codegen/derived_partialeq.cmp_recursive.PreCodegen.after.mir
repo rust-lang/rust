@@ -1,0 +1,23 @@
+// MIR for `cmp_recursive` after PreCodegen
+
+fn cmp_recursive(_1: &Recursive, _2: &Recursive) -> bool {
+    debug a => _1;
+    debug b => _2;
+    let mut _0: bool;
+    scope 1 (inlined std::cmp::impls::<impl PartialEq for &Recursive>::eq) {
+        scope 2 (inlined <Recursive as PartialEq>::eq) {
+            scope 3 (inlined <NoPadding as PartialEq>::eq) {
+            }
+            scope 4 (inlined <NoPadding as PartialEq>::eq) {
+            }
+        }
+    }
+
+    bb0: {
+        _0 = compare_bitwise::<Recursive>(move _1, move _2) -> [return: bb1, unwind unreachable];
+    }
+
+    bb1: {
+        return;
+    }
+}
