@@ -690,15 +690,10 @@ impl<'db> inherent::AdtDef<DbInterner<'db>> for AdtDef {
         interner: DbInterner<'db>,
         sizedness: SizedTraitKind,
     ) -> Option<EarlyBinder<DbInterner<'db>, Ty<'db>>> {
-        if self.is_struct() {
-            let tail_ty = self.all_field_tys(interner).skip_binder().into_iter().last()?;
-
-            let constraint_ty = sizedness_constraint_for_ty(interner, sizedness, tail_ty)?;
-
-            Some(EarlyBinder::bind(constraint_ty))
-        } else {
-            None
-        }
+        let tail_ty = self.struct_tail_ty(interner)?;
+        tail_ty
+            .map_bound(|tail_ty| sizedness_constraint_for_ty(interner, sizedness, tail_ty))
+            .transpose()
     }
 
     fn destructor(
