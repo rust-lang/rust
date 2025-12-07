@@ -192,9 +192,10 @@ fn write_impl_header<'db>(impl_: &Impl, f: &mut HirFormatter<'_, 'db>) -> Result
     let def_id = GenericDefId::ImplId(impl_.id);
     write_generic_params(def_id, f)?;
 
-    if let Some(trait_) = impl_.trait_(db) {
-        let trait_data = db.trait_signature(trait_.id);
-        write!(f, " {} for", trait_data.name.display(db, f.edition()))?;
+    if let Some(trait_ref) = impl_.trait_ref(db) {
+        f.write_char(' ')?;
+        trait_ref.hir_fmt(f)?;
+        f.write_str(" for")?;
     }
 
     f.write_char(' ')?;
