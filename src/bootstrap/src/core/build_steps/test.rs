@@ -29,7 +29,7 @@ use crate::core::builder::{
 };
 use crate::core::config::TargetSelection;
 use crate::core::config::flags::{Subcommand, get_completion, top_level_help};
-use crate::core::debuggers;
+use crate::core::{android, debuggers};
 use crate::utils::build_stamp::{self, BuildStamp};
 use crate::utils::exec::{BootstrapCommand, command};
 use crate::utils::helpers::{
@@ -2114,12 +2114,9 @@ Please disable assertions with `rust.debug-assertions = false`.
             builder.config.python.as_ref().expect("python is required for running rustdoc tests"),
         );
 
-        // FIXME(#148099): Currently we set these Android-related flags in all
-        // modes, even though they should only be needed in "debuginfo" mode,
-        // because the GDB-discovery code in compiletest currently assumes that
-        // `--android-cross-path` is always set for Android targets.
-        if let Some(debuggers::Android { adb_path, adb_test_dir, android_cross_path }) =
-            debuggers::discover_android(builder, target)
+        // Discover and set some flags related to running tests on Android targets.
+        if let Some(android::Android { adb_path, adb_test_dir, android_cross_path }) =
+            android::discover_android(builder, target)
         {
             cmd.arg("--adb-path").arg(adb_path);
             cmd.arg("--adb-test-dir").arg(adb_test_dir);
