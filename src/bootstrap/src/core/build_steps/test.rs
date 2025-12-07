@@ -2818,10 +2818,15 @@ fn run_cargo_test<'a>(
     builder: &Builder<'_>,
 ) -> bool {
     let compiler = cargo.compiler();
+    let stage = match cargo.mode() {
+        Mode::Std => compiler.stage,
+        _ => compiler.stage + 1,
+    };
+
     let mut cargo = prepare_cargo_test(cargo, libtest_args, crates, target, builder);
     let _time = helpers::timeit(builder);
-    let _group =
-        description.into().and_then(|what| builder.msg_test(what, target, compiler.stage + 1));
+
+    let _group = description.into().and_then(|what| builder.msg_test(what, target, stage));
 
     #[cfg(feature = "build-metrics")]
     builder.metrics.begin_test_suite(
