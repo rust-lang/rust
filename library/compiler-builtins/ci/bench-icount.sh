@@ -10,6 +10,10 @@ if [ -z "$target" ]; then
     target="$host_target"
 fi
 
+# Print machine information
+uname -a
+lscpu || true
+
 gungraun_home="gungraun-home"
 
 # Use the arch as a tag to disambiguate artifacts
