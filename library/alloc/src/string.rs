@@ -42,6 +42,8 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+#[cfg(not(no_global_oom_handling))]
+use core::array;
 use core::error::Error;
 use core::iter::FusedIterator;
 #[cfg(not(no_global_oom_handling))]
@@ -2206,26 +2208,6 @@ impl String {
 
     /// SAFETY: When calling `<S as AsRef<str>>::as_ref()` multiple times, the same value must be returned.
     #[cfg(not(no_global_oom_handling))]
-    unsafe fn extend_many_chunked<S: AsRef<str>, I: IntoIterator<Item = S>>(&mut self, iter: I) {
-        let mut iter = iter.into_iter();
-
-        let mut repeat = true;
-        while repeat {
-            let chunk = match iter.next_chunk::<8>() {
-                Ok(chunk) => chunk.into_iter(),
-                Err(partial_chunk) => {
-                    repeat = false;
-                    partial_chunk
-                }
-            };
-
-            // SAFETY: the caller ensures that multiple calls to `<S as AsRef<str>>::as_ref()` return the same value.
-            unsafe { self.extend_many(chunk.as_slice()) }
-        }
-    }
-
-    /// SAFETY: When calling `<S as AsRef<str>>::as_ref()` multiple times, the same value must be returned.
-    #[cfg(not(no_global_oom_handling))]
     unsafe fn extend_many<S: AsRef<str>>(&mut self, vals: &[S]) {
         let additional = vals.iter().fold(0usize, |a, s| a.saturating_add(s.as_ref().len()));
         self.reserve(additional);
@@ -2553,7 +2535,7 @@ impl<'a> Extend<&'a char> for String {
 impl<'a> Extend<&'a str> for String {
     fn extend<I: IntoIterator<Item = &'a str>>(&mut self, iter: I) {
         // SAFETY: `<&str as AsRef<str>>::as_ref()` returns the same value when called multiple times
-        unsafe { self.extend_many_chunked(iter) }
+        unsafe { self.extend_many_chunked(iter.into_iter()) }
     }
 
     #[inline]
@@ -2567,7 +2549,7 @@ impl<'a> Extend<&'a str> for String {
 impl<A: Allocator> Extend<Box<str, A>> for String {
     fn extend<I: IntoIterator<Item = Box<str, A>>>(&mut self, iter: I) {
         // SAFETY: `<Box<str, A> as AsRef<str>>::as_ref()` returns the same value when called multiple times
-        unsafe { self.extend_many_chunked(iter) }
+        unsafe { self.extend_many_chunked(iter.into_iter()) }
     }
 }
 
@@ -2576,7 +2558,7 @@ impl<A: Allocator> Extend<Box<str, A>> for String {
 impl Extend<String> for String {
     fn extend<I: IntoIterator<Item = String>>(&mut self, iter: I) {
         // SAFETY: `<String as AsRef<str>>::as_ref()` returns the same value when called multiple times
-        unsafe { self.extend_many_chunked(iter) }
+        unsafe { self.extend_many_chunked(iter.into_iter()) }
     }
 
     #[inline]
@@ -2590,7 +2572,7 @@ impl Extend<String> for String {
 impl<'a> Extend<Cow<'a, str>> for String {
     fn extend<I: IntoIterator<Item = Cow<'a, str>>>(&mut self, iter: I) {
         // SAFETY: `<Cow<'a, str> as AsRef<str>>::as_ref()` returns the same value when called multiple times
-        unsafe { self.extend_many_chunked(iter) }
+        unsafe { self.extend_many_chunked(iter.into_iter()) }
     }
 
     #[inline]
@@ -2624,6 +2606,57 @@ impl<'a> Extend<&'a core::ascii::Char> for String {
     #[inline]
     fn extend_one(&mut self, c: &'a core::ascii::Char) {
         self.vec.push(c.to_u8());
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
+trait ExtendManySpec<S, I> {
+    /// SAFETY: When calling `<S as AsRef<str>>::as_ref()` multiple times, the same value must be returned.
+    unsafe fn extend_many_chunked(&mut self, iter: I);
+}
+
+#[cfg(not(no_global_oom_handling))]
+impl<S, I> ExtendManySpec<S, I> for String
+where
+    S: AsRef<str>,
+    I: Iterator<Item = S>,
+{
+    default unsafe fn extend_many_chunked(&mut self, mut iter: I) {
+        let mut repeat = true;
+        while repeat {
+            let chunk = match iter.next_chunk::<8>() {
+                Ok(chunk) => chunk.into_iter(),
+                Err(partial_chunk) => {
+                    repeat = false;
+                    partial_chunk
+                }
+            };
+
+            // SAFETY: the caller ensures that multiple calls to `<S as AsRef<str>>::as_ref()` return the same value.
+            unsafe { self.extend_many(chunk.as_slice()) }
+        }
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
+impl<S, const N: usize> ExtendManySpec<S, array::IntoIter<S, N>> for String
+where
+    S: AsRef<str>,
+{
+    unsafe fn extend_many_chunked(&mut self, iter: array::IntoIter<S, N>) {
+        // SAFETY: the caller ensures that multiple calls to `<S as AsRef<str>>::as_ref()` return the same value.
+        unsafe { self.extend_many(iter.as_slice()) }
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
+impl<S> ExtendManySpec<S, vec::IntoIter<S>> for String
+where
+    S: AsRef<str>,
+{
+    unsafe fn extend_many_chunked(&mut self, iter: vec::IntoIter<S>) {
+        // SAFETY: the caller ensures that multiple calls to `<S as AsRef<str>>::as_ref()` return the same value.
+        unsafe { self.extend_many(iter.as_slice()) }
     }
 }
 
