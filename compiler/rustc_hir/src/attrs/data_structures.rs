@@ -510,7 +510,7 @@ pub struct CfgHideShow {
     pub values: ThinVec<CfgInfo>,
 }
 
-#[derive(Clone, Debug, HashStable_Generic, Encodable, Decodable, PrintAttribute)]
+#[derive(Clone, Debug, Default, HashStable_Generic, Encodable, Decodable, PrintAttribute)]
 pub struct DocAttribute {
     pub aliases: FxIndexMap<Symbol, Span>,
     pub hidden: Option<Span>,
@@ -544,34 +544,6 @@ pub struct DocAttribute {
     // #[doc(test(...))]
     pub test_attrs: ThinVec<Span>,
     pub no_crate_inject: Option<Span>,
-}
-
-impl Default for DocAttribute {
-    fn default() -> Self {
-        Self {
-            aliases: FxIndexMap::default(),
-            hidden: None,
-            inline: ThinVec::new(),
-            cfg: ThinVec::new(),
-            auto_cfg: ThinVec::new(),
-            auto_cfg_change: ThinVec::new(),
-            fake_variadic: None,
-            keyword: None,
-            attribute: None,
-            masked: None,
-            notable_trait: None,
-            search_unbox: None,
-            html_favicon_url: None,
-            html_logo_url: None,
-            html_playground_url: None,
-            html_root_url: None,
-            html_no_source: None,
-            issue_tracker_base_url: None,
-            rust_logo: None,
-            test_attrs: ThinVec::new(),
-            no_crate_inject: None,
-        }
-    }
 }
 
 /// Represents parsed *built-in* inert attributes.

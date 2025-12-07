@@ -68,6 +68,9 @@ pub(crate) fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> 
             while let Some(did) = parent {
                 attr_buf.extend(tcx.get_all_attrs(did).iter().filter_map(|attr| match attr {
                     Attribute::Parsed(AttributeKind::Doc(d)) if !d.cfg.is_empty() => {
+                        // The only doc attributes we're interested into for trait impls are the
+                        // `cfg`s for the `doc_cfg` feature. So we create a new empty `DocAttribute`
+                        // and then only clone the actual `DocAttribute::cfg` field.
                         let mut new_attr = DocAttribute::default();
                         new_attr.cfg = d.cfg.clone();
                         Some(Attribute::Parsed(AttributeKind::Doc(Box::new(new_attr))))

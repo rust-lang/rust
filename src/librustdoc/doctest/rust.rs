@@ -143,6 +143,13 @@ impl HirCollector<'_> {
                         if let TokenTree::Ident(i) = token {
                             let i = i.to_string();
                             let peek = iter.peek();
+                            // From this ident, we can have things like:
+                            //
+                            // * Group: `allow(...)`
+                            // * Name/value: `crate_name = "..."`
+                            // * Tokens: `html_no_url`
+                            //
+                            // So we peek next element to know what case we are in.
                             match peek {
                                 Some(TokenTree::Group(g)) => {
                                     let g = g.to_string();
@@ -150,6 +157,8 @@ impl HirCollector<'_> {
                                     // Add the additional attributes to the global_crate_attrs vector
                                     self.collector.global_crate_attrs.push(format!("{i}{g}"));
                                 }
+                                // If next item is `=`, it means it's a name value so we will need
+                                // to get the value as well.
                                 Some(TokenTree::Punct(p)) if p.as_char() == '=' => {
                                     let p = p.to_string();
                                     iter.next();

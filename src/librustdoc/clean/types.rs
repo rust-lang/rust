@@ -229,34 +229,28 @@ impl ExternalCrate {
     }
 
     pub(crate) fn keywords(&self, tcx: TyCtxt<'_>) -> impl Iterator<Item = (DefId, Symbol)> {
-        self.retrieve_keywords_or_documented_attributes(tcx, true)
+        self.retrieve_keywords_or_documented_attributes(tcx, |d| d.keyword.map(|(v, _)| v))
     }
     pub(crate) fn documented_attributes(
         &self,
         tcx: TyCtxt<'_>,
     ) -> impl Iterator<Item = (DefId, Symbol)> {
-        self.retrieve_keywords_or_documented_attributes(tcx, false)
+        self.retrieve_keywords_or_documented_attributes(tcx, |d| d.attribute.map(|(v, _)| v))
     }
 
-    fn retrieve_keywords_or_documented_attributes(
+    fn retrieve_keywords_or_documented_attributes<F: Fn(&DocAttribute) -> Option<Symbol>>(
         &self,
         tcx: TyCtxt<'_>,
-        look_for_keyword: bool,
+        callback: F,
     ) -> impl Iterator<Item = (DefId, Symbol)> {
         let as_target = move |did: DefId, tcx: TyCtxt<'_>| -> Option<(DefId, Symbol)> {
             tcx.get_all_attrs(did)
                 .iter()
                 .find_map(|attr| match attr {
-                    Attribute::Parsed(AttributeKind::Doc(d)) => {
-                        if look_for_keyword {
-                            d.keyword
-                        } else {
-                            d.attribute
-                        }
-                    }
+                    Attribute::Parsed(AttributeKind::Doc(d)) => callback(d),
                     _ => None,
                 })
-                .map(|(value, _)| (did, value))
+                .map(|value| (did, value))
         };
         self.mapped_root_modules(tcx, as_target)
     }

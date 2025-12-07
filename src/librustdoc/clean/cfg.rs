@@ -59,11 +59,11 @@ fn is_all_cfg(cfg: &CfgEntry) -> bool {
     }
 }
 
-fn strip_hidden(cfg: &CfgEntry, hidden: &FxHashSet<SimpleCfg>) -> Option<CfgEntry> {
+fn strip_hidden(cfg: &CfgEntry, hidden: &FxHashSet<NameValueCfg>) -> Option<CfgEntry> {
     match cfg {
         CfgEntry::Bool(..) => Some(cfg.clone()),
         CfgEntry::NameValue { .. } => {
-            if !hidden.contains(&SimpleCfg::from(cfg)) {
+            if !hidden.contains(&NameValueCfg::from(cfg)) {
                 Some(cfg.clone())
             } else {
                 None
@@ -109,7 +109,7 @@ impl Cfg {
     /// Parses a `MetaItemInner` into a `Cfg`.
     fn parse_nested(
         nested_cfg: &MetaItemInner,
-        exclude: &FxHashSet<SimpleCfg>,
+        exclude: &FxHashSet<NameValueCfg>,
     ) -> Result<Option<Cfg>, InvalidCfgError> {
         match nested_cfg {
             MetaItemInner::MetaItem(cfg) => Cfg::parse_without(cfg, exclude),
@@ -124,7 +124,7 @@ impl Cfg {
 
     fn parse_without(
         cfg: &MetaItem,
-        exclude: &FxHashSet<SimpleCfg>,
+        exclude: &FxHashSet<NameValueCfg>,
     ) -> Result<Option<Cfg>, InvalidCfgError> {
         let name = match cfg.ident() {
             Some(ident) => ident.name,
@@ -137,7 +137,7 @@ impl Cfg {
         };
         match cfg.kind {
             MetaItemKind::Word => {
-                if exclude.contains(&SimpleCfg::new(name)) {
+                if exclude.contains(&NameValueCfg::new(name)) {
                     Ok(None)
                 } else {
                     Ok(Some(Cfg(CfgEntry::NameValue {
@@ -150,7 +150,7 @@ impl Cfg {
             }
             MetaItemKind::NameValue(ref lit) => match lit.kind {
                 LitKind::Str(value, _) => {
-                    if exclude.contains(&SimpleCfg::new_value(name, value)) {
+                    if exclude.contains(&NameValueCfg::new_value(name, value)) {
                         Ok(None)
                     } else {
                         Ok(Some(Cfg(CfgEntry::NameValue {
@@ -666,12 +666,12 @@ impl fmt::Display for Display<'_> {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-struct SimpleCfg {
+struct NameValueCfg {
     name: Symbol,
     value: Option<Symbol>,
 }
 
-impl SimpleCfg {
+impl NameValueCfg {
     fn new(name: Symbol) -> Self {
         Self { name, value: None }
     }
@@ -681,18 +681,18 @@ impl SimpleCfg {
     }
 }
 
-impl<'a> From<&'a CfgEntry> for SimpleCfg {
+impl<'a> From<&'a CfgEntry> for NameValueCfg {
     fn from(cfg: &'a CfgEntry) -> Self {
         match cfg {
             CfgEntry::NameValue { name, value, .. } => {
-                SimpleCfg { name: *name, value: (*value).map(|(v, _)| v) }
+                NameValueCfg { name: *name, value: (*value).map(|(v, _)| v) }
             }
-            _ => SimpleCfg { name: sym::empty, value: None },
+            _ => NameValueCfg { name: sym::empty, value: None },
         }
     }
 }
 
-impl<'a> From<&'a attrs::CfgInfo> for SimpleCfg {
+impl<'a> From<&'a attrs::CfgInfo> for NameValueCfg {
     fn from(cfg: &'a attrs::CfgInfo) -> Self {
         Self { name: cfg.name, value: cfg.value.map(|(value, _)| value) }
     }
@@ -703,7 +703,7 @@ impl<'a> From<&'a attrs::CfgInfo> for SimpleCfg {
 pub(crate) struct CfgInfo {
     /// List of currently active `doc(auto_cfg(hide(...)))` cfgs, minus currently active
     /// `doc(auto_cfg(show(...)))` cfgs.
-    hidden_cfg: FxHashSet<SimpleCfg>,
+    hidden_cfg: FxHashSet<NameValueCfg>,
     /// Current computed `cfg`. Each time we enter a new item, this field is updated as well while
     /// taking into account the `hidden_cfg` information.
     current_cfg: Cfg,
@@ -719,9 +719,9 @@ impl Default for CfgInfo {
     fn default() -> Self {
         Self {
             hidden_cfg: FxHashSet::from_iter([
-                SimpleCfg::new(sym::test),
-                SimpleCfg::new(sym::doc),
-                SimpleCfg::new(sym::doctest),
+                NameValueCfg::new(sym::test),
+                NameValueCfg::new(sym::doc),
+                NameValueCfg::new(sym::doctest),
             ]),
             current_cfg: Cfg(CfgEntry::Bool(true, DUMMY_SP)),
             auto_cfg_active: true,
@@ -761,7 +761,7 @@ fn handle_auto_cfg_hide_show(
     new_hide_attrs: &mut FxHashMap<(Symbol, Option<Symbol>), rustc_span::Span>,
 ) {
     for value in &attr.values {
-        let simple = SimpleCfg::from(value);
+        let simple = NameValueCfg::from(value);
         if attr.kind == HideOrShow::Show {
             if let Some(span) = new_hide_attrs.get(&(simple.name, simple.value)) {
                 show_hide_show_conflict_error(tcx, attr_span, *span);
