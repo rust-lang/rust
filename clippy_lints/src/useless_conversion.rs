@@ -354,7 +354,10 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                             return;
                         }
 
-                        let sugg = snippet(cx, recv.span, "<expr>").into_owned();
+                        let mut applicability = Applicability::MachineApplicable;
+                        let sugg = snippet_with_context(cx, recv.span, e.span.ctxt(), "<expr>", &mut applicability)
+                            .0
+                            .into_owned();
                         span_lint_and_sugg(
                             cx,
                             USELESS_CONVERSION,
