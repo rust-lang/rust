@@ -3,9 +3,9 @@
 #![crate_type="lib"]
 #![feature(coroutines, stmt_expr_attributes, const_async_blocks)]
 
-const A = 5;
-//~^ ERROR: missing type for `const` item
-//~| HELP: provide a type for the constant
+static A = 5;
+//~^ ERROR: missing type for `static` item
+//~| HELP: provide a type for the static variable
 
 static B: _ = "abc";
 //~^ ERROR: the placeholder `_` is not allowed within types on item signatures for static variables
@@ -14,26 +14,26 @@ static B: _ = "abc";
 
 
 // FIXME: this should also suggest a function pointer, as the closure is non-capturing
-const C: _ = || 42;
-//~^ ERROR: the placeholder `_` is not allowed within types on item signatures for constants
+static C: _ = || 42;
+//~^ ERROR: the placeholder `_` is not allowed within types on item signatures for static variables
 //~| NOTE: not allowed in type signatures
 //~| NOTE: however, the inferred type
 
 struct S<T> { t: T }
-const D = S { t: { let i = 0; move || -> i32 { i } } };
-//~^ ERROR: missing type for `const` item
+static D = S { t: { let i = 0; move || -> i32 { i } } };
+//~^ ERROR: missing type for `static` item
 //~| NOTE: however, the inferred type
 
 
 fn foo() -> i32 { 42 }
-const E = foo;
-//~^ ERROR: missing type for `const` item
-//~| HELP: provide a type for the constant
-const F = S { t: foo };
-//~^ ERROR: missing type for `const` item
-//~| HELP: provide a type for the constant
+static E = foo;
+//~^ ERROR: missing type for `static` item
+//~| HELP: provide a type for the static variable
+static F = S { t: foo };
+//~^ ERROR: missing type for `static` item
+//~| HELP: provide a type for the static variable
 
 
-const G = #[coroutine] || -> i32 { yield 0; return 1; };
-//~^ ERROR: missing type for `const` item
+static G = #[coroutine] || -> i32 { yield 0; return 1; };
+//~^ ERROR: missing type for `static` item
 //~| NOTE: however, the inferred type

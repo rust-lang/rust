@@ -1,16 +1,41 @@
-error: missing type for `const` item
+error[E0658]: omitting type on const item declaration is experimental
   --> $DIR/type_const-only-in-impl-omitted-type.rs:12:15
    |
 LL |     const NUM: = 84;
-   |               ^ help: provide a type for the associated constant: `usize`
+   |               ^
+   |
+   = note: see issue #149226 <https://github.com/rust-lang/rust/issues/149226> for more information
+   = help: add `#![feature(const_items_unit_type_default)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = help: consider specifying the type explicitly
+
+error[E0326]: implemented const `NUM` has an incompatible type for trait
+  --> $DIR/type_const-only-in-impl-omitted-type.rs:12:15
+   |
+LL |     const NUM: = 84;
+   |               ^ expected `usize`, found `()`
+   |
+note: type in trait
+  --> $DIR/type_const-only-in-impl-omitted-type.rs:5:16
+   |
+LL |     const NUM: usize;
+   |                ^^^^^
 
 error: use of trait associated const without `#[type_const]`
-  --> $DIR/type_const-only-in-impl-omitted-type.rs:17:43
+  --> $DIR/type_const-only-in-impl-omitted-type.rs:18:43
    |
 LL | fn accept_bad_tr<const N: usize, T: BadTr<NUM = { N }>>(_x: &T) {}
    |                                           ^^^^^^^^^^^
    |
    = note: the declaration in the trait must be marked with `#[type_const]`
 
-error: aborting due to 2 previous errors
+error[E0308]: mismatched types
+  --> $DIR/type_const-only-in-impl-omitted-type.rs:12:18
+   |
+LL |     const NUM: = 84;
+   |                  ^^ expected `()`, found integer
 
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0308, E0326, E0658.
+For more information about an error, try `rustc --explain E0308`.
