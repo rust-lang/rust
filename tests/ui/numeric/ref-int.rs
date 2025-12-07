@@ -1,4 +1,5 @@
 //@ run-pass
+//! regression test for <https://github.com/rust-lang/rust/issues/3091>
 
 pub fn main() {
     let x = 1;
