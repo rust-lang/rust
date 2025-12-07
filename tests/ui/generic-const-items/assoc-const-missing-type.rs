@@ -10,11 +10,12 @@ trait Trait {
 
 impl Trait for () {
     const K<T> = ();
-    //~^ ERROR missing type for `const` item
-    //~| ERROR mismatched types
+    //~^ ERROR omitting type on const item declaration is experimental [E0658]
+    //~| ERROR implemented const `K` has an incompatible type for trait [E0326]
     const Q = "";
-    //~^ ERROR missing type for `const` item
+    //~^ ERROR omitting type on const item declaration is experimental [E0658]
     //~| ERROR lifetime parameters or bounds on associated const `Q` do not match the trait declaration
+    //~| ERROR mismatched types
 }
 
 fn main() {}
