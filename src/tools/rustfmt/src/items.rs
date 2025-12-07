@@ -2005,7 +2005,7 @@ pub(crate) struct StaticPartsLhs<'a> {
     vis: &'a ast::Visibility,
     ident: symbol::Ident,
     generics: Option<&'a ast::Generics>,
-    ty: &'a ast::Ty,
+    ty: Option<&'a ast::Ty>,
     mutability: ast::Mutability,
     defaultness: Option<ast::Defaultness>,
 }
@@ -2026,7 +2026,7 @@ impl<'a> StaticParts<'a> {
                     vis: &item.vis,
                     ident: s.ident,
                     generics: None,
-                    ty: &s.ty,
+                    ty: Some(&s.ty),
                     mutability: s.mutability,
                     defaultness: None,
                 }),
@@ -2040,7 +2040,10 @@ impl<'a> StaticParts<'a> {
                     vis: &item.vis,
                     ident: c.ident,
                     generics: Some(&c.generics),
-                    ty: &c.ty,
+                    ty: match &c.ty {
+                        ast::FnRetTy::Default(_) => None,
+                        ast::FnRetTy::Ty(ty) => Some(ty),
+                    },
                     mutability: ast::Mutability::Not,
                     defaultness: Some(c.defaultness),
                 }),
@@ -2073,7 +2076,10 @@ impl<'a> StaticParts<'a> {
                 vis: &ti.vis,
                 ident,
                 generics,
-                ty,
+                ty: match ty {
+                    ast::FnRetTy::Default(_) => None,
+                    ast::FnRetTy::Ty(ty) => Some(ty),
+                },
                 mutability: ast::Mutability::Not,
                 defaultness: Some(defaultness),
             }),
@@ -2099,7 +2105,10 @@ impl<'a> StaticParts<'a> {
                 vis: &ii.vis,
                 ident,
                 generics,
-                ty,
+                ty: match ty {
+                    ast::FnRetTy::Default(_) => None,
+                    ast::FnRetTy::Ty(ty) => Some(&ty),
+                },
                 mutability: ast::Mutability::Not,
                 defaultness: Some(defaultness),
             }),
@@ -2130,34 +2139,38 @@ fn rewrite_static_lhs(
         return None;
     }
 
-    let colon = colon_spaces(context.config);
     let mut prefix = format!(
-        "{}{}{}{} {}{}{}",
+        "{}{}{}{} {}{}",
         format_visibility(context, vis),
         defaultness.map_or("", format_defaultness),
         format_safety(safety),
         prefix,
         format_mutability(mutability),
         rewrite_ident(context, ident),
-        colon,
     );
-    let ty_shape = Shape::indented(offset.block_only(), context.config)
-        .offset_left(prefix.len() + const { " =".len() })?;
-    let ty_str = match ty.rewrite(context, ty_shape) {
-        Some(ty_str) => ty_str,
-        None => {
-            if prefix.ends_with(' ') {
-                prefix.pop();
+    let ty_str = match ty {
+        Some(ty) => {
+            prefix.push_str(colon_spaces(context.config));
+            let ty_shape = Shape::indented(offset.block_only(), context.config)
+                .offset_left(prefix.len() + const { " =".len() })?;
+            match ty.rewrite(context, ty_shape) {
+                Some(ty_str) => ty_str,
+                None => {
+                    if prefix.ends_with(' ') {
+                        prefix.pop();
+                    }
+                    let nested_indent = offset.block_indent(context.config);
+                    let nested_shape = Shape::indented(nested_indent, context.config);
+                    let ty_str = ty.rewrite(context, nested_shape)?;
+                    format!(
+                        "{}{}",
+                        nested_indent.to_string_with_newline(context.config),
+                        ty_str
+                    )
+                }
             }
-            let nested_indent = offset.block_indent(context.config);
-            let nested_shape = Shape::indented(nested_indent, context.config);
-            let ty_str = ty.rewrite(context, nested_shape)?;
-            format!(
-                "{}{}",
-                nested_indent.to_string_with_newline(context.config),
-                ty_str
-            )
         }
+        None => "".to_string(),
     };
     Some([prefix, ty_str])
 }
