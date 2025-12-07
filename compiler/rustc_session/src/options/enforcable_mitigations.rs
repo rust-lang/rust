@@ -10,66 +10,66 @@ use crate::config::Options;
 use crate::options::CFGuard;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Encodable, BlobDecodable)]
-pub enum EnforcedMitigationLevel {
+pub enum EnforcableMitigationLevel {
     // Enabled(false) should be the bottom of the Ord hierarchy
     Enabled(bool),
     StackProtector(StackProtector),
 }
 
-impl EnforcedMitigationLevel {
+impl EnforcableMitigationLevel {
     pub fn level_str(&self) -> &'static str {
         match self {
-            EnforcedMitigationLevel::StackProtector(StackProtector::All) => "=all",
-            EnforcedMitigationLevel::StackProtector(StackProtector::Basic) => "=basic",
-            EnforcedMitigationLevel::StackProtector(StackProtector::Strong) => "=strong",
+            EnforcableMitigationLevel::StackProtector(StackProtector::All) => "=all",
+            EnforcableMitigationLevel::StackProtector(StackProtector::Basic) => "=basic",
+            EnforcableMitigationLevel::StackProtector(StackProtector::Strong) => "=strong",
             // currently `=disabled` should not appear
-            EnforcedMitigationLevel::Enabled(false) => "=disabled",
-            EnforcedMitigationLevel::StackProtector(StackProtector::None)
-            | EnforcedMitigationLevel::Enabled(true) => "",
+            EnforcableMitigationLevel::Enabled(false) => "=disabled",
+            EnforcableMitigationLevel::StackProtector(StackProtector::None)
+            | EnforcableMitigationLevel::Enabled(true) => "",
         }
     }
 }
 
-impl std::fmt::Display for EnforcedMitigationLevel {
+impl std::fmt::Display for EnforcableMitigationLevel {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            EnforcedMitigationLevel::StackProtector(StackProtector::All) => {
+            EnforcableMitigationLevel::StackProtector(StackProtector::All) => {
                 write!(f, "all")
             }
-            EnforcedMitigationLevel::StackProtector(StackProtector::Basic) => {
+            EnforcableMitigationLevel::StackProtector(StackProtector::Basic) => {
                 write!(f, "basic")
             }
-            EnforcedMitigationLevel::StackProtector(StackProtector::Strong) => {
+            EnforcableMitigationLevel::StackProtector(StackProtector::Strong) => {
                 write!(f, "strong")
             }
-            EnforcedMitigationLevel::Enabled(true) => {
+            EnforcableMitigationLevel::Enabled(true) => {
                 write!(f, "enabled")
             }
-            EnforcedMitigationLevel::StackProtector(StackProtector::None)
-            | EnforcedMitigationLevel::Enabled(false) => {
+            EnforcableMitigationLevel::StackProtector(StackProtector::None)
+            | EnforcableMitigationLevel::Enabled(false) => {
                 write!(f, "disabled")
             }
         }
     }
 }
 
-impl From<bool> for EnforcedMitigationLevel {
+impl From<bool> for EnforcableMitigationLevel {
     fn from(value: bool) -> Self {
-        EnforcedMitigationLevel::Enabled(value)
+        EnforcableMitigationLevel::Enabled(value)
     }
 }
 
-impl From<StackProtector> for EnforcedMitigationLevel {
+impl From<StackProtector> for EnforcableMitigationLevel {
     fn from(value: StackProtector) -> Self {
-        EnforcedMitigationLevel::StackProtector(value)
+        EnforcableMitigationLevel::StackProtector(value)
     }
 }
 
-pub struct EnforcedMitigationKindParseError;
+pub struct EnforcableMitigationKindParseError;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Encodable, BlobDecodable)]
 pub struct MitigationEnablement {
-    pub kind: EnforcedMitigationKind,
+    pub kind: EnforcableMitigationKind,
     pub enabled: bool,
 }
 
@@ -82,58 +82,58 @@ macro_rules! intersperse {
 macro_rules! enforced_mitigations {
     ([$self:ident] enum $kind:ident {$(($name:ident, $text:expr, $since:ident, $code:expr)),*}) => {
         #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Encodable, BlobDecodable)]
-        pub enum EnforcedMitigationKind {
+        pub enum EnforcableMitigationKind {
             $($name),*
         }
 
-        impl std::fmt::Display for EnforcedMitigationKind {
+        impl std::fmt::Display for EnforcableMitigationKind {
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
                 match self {
-                    $(EnforcedMitigationKind::$name => write!(f, $text)),*
+                    $(EnforcableMitigationKind::$name => write!(f, $text)),*
                 }
             }
         }
 
-        impl EnforcedMitigationKind {
+        impl EnforcableMitigationKind {
             pub(crate) const KINDS: &'static str = concat!("comma-separated list of mitigation kinds (available: ",
                 intersperse!(", ", ($(concat!("`", $text, "`")),*)), ")");
         }
 
-        impl FromStr for EnforcedMitigationKind {
-            type Err = EnforcedMitigationKindParseError;
+        impl FromStr for EnforcableMitigationKind {
+            type Err = EnforcableMitigationKindParseError;
 
-            fn from_str(v: &str) -> Result<EnforcedMitigationKind, EnforcedMitigationKindParseError> {
+            fn from_str(v: &str) -> Result<EnforcableMitigationKind, EnforcableMitigationKindParseError> {
                 match v {
-                    $($text => Ok(EnforcedMitigationKind::$name)),*
+                    $($text => Ok(EnforcableMitigationKind::$name)),*
                     ,
-                    _ => Err(EnforcedMitigationKindParseError),
+                    _ => Err(EnforcableMitigationKindParseError),
                 }
             }
         }
 
         #[allow(unused)]
-        impl EnforcedMitigationKind {
+        impl EnforcableMitigationKind {
             pub fn enforced_since(&self) -> Edition {
                 match self {
                     // Should change the enforced-since edition of StackProtector to 2015
                     // (all editions) when `-C stack-protector` is stabilized.
-                    $(EnforcedMitigationKind::$name => Edition::$since),*
+                    $(EnforcableMitigationKind::$name => Edition::$since),*
                 }
             }
         }
 
         impl Options {
-            pub fn all_enforced_mitigations(&self) -> impl Iterator<Item = EnforcedMitigationKind> {
-                [$(EnforcedMitigationKind::$name),*].into_iter()
+            pub fn all_enforced_mitigations(&self) -> impl Iterator<Item = EnforcableMitigationKind> {
+                [$(EnforcableMitigationKind::$name),*].into_iter()
             }
         }
 
         impl Session {
-            pub fn gather_enabled_enforced_mitigations(&$self) -> Vec<EnforcedMitigation> {
+            pub fn gather_enabled_enforcable_mitigations(&$self) -> Vec<EnforcableMitigation> {
                 let mut mitigations = [
                     $(
-                    EnforcedMitigation {
-                        kind: EnforcedMitigationKind::$name,
+                    EnforcableMitigation {
+                        kind: EnforcableMitigationKind::$name,
                         level: From::from($code),
                     }
                     ),*
@@ -147,7 +147,7 @@ macro_rules! enforced_mitigations {
 
 enforced_mitigations! {
     [self]
-    enum EnforcedMitigationKind {
+    enum EnforcableMitigationKind {
         (StackProtector, "stack-protector", EditionFuture, self.stack_protector()),
         (ControlFlowGuard, "control-flow-guard", EditionFuture, self.opts.cg.control_flow_guard == CFGuard::Checks)
     }
@@ -155,9 +155,9 @@ enforced_mitigations! {
 
 /// Enforced mitigations, see [RFC 3855](https://github.com/rust-lang/rfcs/pull/3855)
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Encodable, BlobDecodable)]
-pub struct EnforcedMitigation {
-    pub kind: EnforcedMitigationKind,
-    pub level: EnforcedMitigationLevel,
+pub struct EnforcableMitigation {
+    pub kind: EnforcableMitigationKind,
+    pub level: EnforcableMitigationLevel,
 }
 
 impl Options {
@@ -165,7 +165,7 @@ impl Options {
     pub fn allowed_partial_mitigations(
         &self,
         edition: Edition,
-    ) -> impl Iterator<Item = EnforcedMitigationKind> {
+    ) -> impl Iterator<Item = EnforcableMitigationKind> {
         let mut result: BTreeSet<_> = self
             .all_enforced_mitigations()
             .filter(|mitigation| mitigation.enforced_since() > edition)

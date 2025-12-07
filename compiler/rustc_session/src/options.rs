@@ -20,7 +20,7 @@ use rustc_target::spec::{
     TargetTuple, TlsModel,
 };
 
-use crate::config::enforced_mitigations::MitigationEnablement;
+use crate::config::enforcable_mitigations::MitigationEnablement;
 use crate::config::*;
 use crate::search_paths::SearchPath;
 use crate::utils::NativeLib;
@@ -85,7 +85,7 @@ pub struct TargetModifier {
     pub value_name: String,
 }
 
-pub mod enforced_mitigations;
+pub mod enforcable_mitigations;
 
 mod target_modifier_consistency_check {
     use super::*;
@@ -891,20 +891,16 @@ mod desc {
     pub(crate) const parse_mir_include_spans: &str =
         "either a boolean (`yes`, `no`, `on`, `off`, etc), or `nll` (default: `nll`)";
     pub(crate) const parse_align: &str = "a number that is a power of 2 between 1 and 2^29";
-<<<<<<< HEAD
     pub(crate) const parse_assert_incr_state: &str = "one of: `loaded`, `not-loaded`";
-    pub(crate) const parse_allow_partial_mitigations: &str = super::EnforcedMitigationKind::KINDS;
-=======
     pub(crate) const parse_allow_partial_mitigations: &str =
-        super::enforced_mitigations::EnforcedMitigationKind::KINDS;
->>>>>>> be3a932517e (address review comments)
+        super::enforcable_mitigations::EnforcableMitigationKind::KINDS;
 }
 
 pub mod parse {
     use std::str::FromStr;
 
     pub(crate) use super::*;
-    use crate::config::enforced_mitigations::MitigationEnablement;
+    use crate::config::enforcable_mitigations::MitigationEnablement;
     pub(crate) const MAX_THREADS_CAP: usize = 256;
 
     /// Ignore the value. Used for removed options where we don't actually want to store
