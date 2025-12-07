@@ -563,30 +563,10 @@ impl Cursor<'_> {
         self.eat_while(|ch| ch != '\n' && is_horizontal_whitespace(ch));
         let invalid_infostring = self.first() != '\n';
 
-        #[inline]
-        fn find_closing_fence(s: &str, dash_count: usize) -> Option<usize> {
-            let bytes = s.as_bytes();
-            let mut i = 0;
-            while i < bytes.len() {
-                if let Some(newline_pos) = memchr::memchr(b'\n', &bytes[i..]) {
-                    i += newline_pos + 1;
-                    let start = i;
-                    if start + dash_count <= bytes.len() {
-                        let slice = &bytes[start..start + dash_count];
-                        if slice.iter().all(|&b| b == b'-') {
-                            return Some(start + dash_count);
-                        }
-                    }
-                } else {
-                    break;
-                }
-            }
-            None
-        }
-
-        if let Some(closing) = find_closing_fence(self.as_str(), length_opening as usize) {
+        let nl_fence_pattern = format!("\n{:-<1$}", "", length_opening as usize);
+        if let Some(closing) = self.as_str().find(&nl_fence_pattern) {
             // candidate found
-            self.bump_bytes(closing);
+            self.bump_bytes(closing + nl_fence_pattern.len());
             // in case like
             // ---cargo
             // --- blahblah
@@ -672,7 +652,7 @@ impl Cursor<'_> {
         };
 
         let mut depth = 1usize;
-        while let Some(c) = self.eat_past2(b'/', b'*') {
+        while let Some(c) = self.eat_past_either(b'/', b'*') {
             match c {
                 b'/' => {
                     if self.bump_if('*') {
@@ -953,18 +933,12 @@ impl Cursor<'_> {
     /// if string is terminated.
     fn double_quoted_string(&mut self) -> bool {
         debug_assert!(self.prev() == '"');
-        while let Some(c) = self.eat_past2(b'"', b'\\') {
+        while let Some(c) = self.eat_past_either(b'"', b'\\') {
             match c {
                 b'"' => {
                     return true;
                 }
-                b'\\' => {
-                    let first = self.first();
-                    if first == '\\' || first == '"' {
-                        // Bump to skip escaped character.
-                        self.bump();
-                    }
-                }
+                b'\\' => _ = self.bump_if_either('\\', '"'),
                 _ => unreachable!(),
             }
         }
@@ -1133,7 +1107,7 @@ impl Cursor<'_> {
     /// and returns false otherwise.
     fn eat_float_exponent(&mut self) -> bool {
         debug_assert!(self.prev() == 'e' || self.prev() == 'E');
-        self.bump_if2('-', '+');
+        self.bump_if_either('-', '+');
         self.eat_decimal_digits()
     }
 
