@@ -1,12 +1,3 @@
-warning: the feature `contracts` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/contract-captures-via-closure-noncopy.rs:4:12
-   |
-LL | #![feature(contracts)]
-   |            ^^^^^^^^^
-   |
-   = note: see issue #128044 <https://github.com/rust-lang/rust/issues/128044> for more information
-   = note: `#[warn(incomplete_features)]` on by default
-
 error[E0277]: the trait bound `Baz: std::marker::Copy` is not satisfied in `{closure@$DIR/contract-captures-via-closure-noncopy.rs:13:42: 13:57}`
   --> $DIR/contract-captures-via-closure-noncopy.rs:13:1
    |
@@ -32,6 +23,6 @@ LL + #[derive(Copy)]
 LL | struct Baz {
    |
 
-error: aborting due to 1 previous error; 1 warning emitted
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0277`.
