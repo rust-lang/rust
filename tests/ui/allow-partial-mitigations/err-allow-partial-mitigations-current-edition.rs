@@ -10,8 +10,8 @@
 // disallowed by default)
 
 fn main() {}
-//~^ ERROR that is not protected by
-//~| ERROR that is not protected by
-//~| ERROR that is not protected by
-//~| ERROR that is not protected by
-//~| ERROR that is not protected by
+//~^ ERROR that is not compiled with
+//~| ERROR that is not compiled with
+//~| ERROR that is not compiled with
+//~| ERROR that is not compiled with
+//~| ERROR that is not compiled with
