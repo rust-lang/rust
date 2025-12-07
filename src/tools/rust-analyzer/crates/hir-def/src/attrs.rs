@@ -45,8 +45,8 @@ use syntax::{
 use tt::{TextRange, TextSize};
 
 use crate::{
-    AdtId, AstIdLoc, AttrDefId, FieldId, FunctionId, GenericDefId, HasModule, InternedModuleId,
-    LifetimeParamId, LocalFieldId, MacroId, TypeOrConstParamId, VariantId,
+    AdtId, AstIdLoc, AttrDefId, FieldId, FunctionId, GenericDefId, HasModule, LifetimeParamId,
+    LocalFieldId, MacroId, ModuleId, TypeOrConstParamId, VariantId,
     db::DefDatabase,
     hir::generics::{GenericParams, LocalLifetimeParamId, LocalTypeOrConstParamId},
     nameres::ModuleOrigin,
@@ -295,9 +295,8 @@ fn attrs_source(
 ) -> (InFile<ast::AnyHasAttrs>, Option<InFile<ast::Module>>, Crate) {
     let (owner, krate) = match owner {
         AttrDefId::ModuleId(id) => {
-            let id = id.loc(db);
             let def_map = id.def_map(db);
-            let (definition, declaration) = match def_map[id.local_id].origin {
+            let (definition, declaration) = match def_map[id].origin {
                 ModuleOrigin::CrateRoot { definition } => {
                     let file = db.parse(definition).tree();
                     (InFile::new(definition.into(), ast::AnyHasAttrs::from(file)), None)
@@ -318,7 +317,7 @@ fn attrs_source(
                     (block.with_value(definition.into()), None)
                 }
             };
-            return (definition, declaration, id.krate);
+            return (definition, declaration, def_map.krate());
         }
         AttrDefId::AdtId(AdtId::StructId(it)) => attrs_from_ast_id_loc(db, it),
         AttrDefId::AdtId(AdtId::UnionId(it)) => attrs_from_ast_id_loc(db, it),
@@ -1201,14 +1200,14 @@ impl AttrFlags {
     }
 
     #[inline]
-    pub fn doc_keyword(db: &dyn DefDatabase, owner: InternedModuleId) -> Option<Symbol> {
+    pub fn doc_keyword(db: &dyn DefDatabase, owner: ModuleId) -> Option<Symbol> {
         if !AttrFlags::query(db, AttrDefId::ModuleId(owner)).contains(AttrFlags::HAS_DOC_KEYWORD) {
             return None;
         }
         return doc_keyword(db, owner);
 
         #[salsa::tracked]
-        fn doc_keyword(db: &dyn DefDatabase, owner: InternedModuleId) -> Option<Symbol> {
+        fn doc_keyword(db: &dyn DefDatabase, owner: ModuleId) -> Option<Symbol> {
             collect_attrs(db, AttrDefId::ModuleId(owner), |attr| {
                 if let Meta::TokenTree { path, tt } = attr
                     && path.is1("doc")

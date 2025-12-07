@@ -20,7 +20,7 @@ fn eval_main(db: &TestDB, file_id: EditionedFileId) -> Result<(String, String), 
         let interner = DbInterner::new_no_crate(db);
         let module_id = db.module_for_file(file_id.file_id(db));
         let def_map = module_id.def_map(db);
-        let scope = &def_map[module_id.local_id].scope;
+        let scope = &def_map[module_id].scope;
         let func_id = scope
             .declarations()
             .find_map(|x| match x {
@@ -90,7 +90,7 @@ fn check_pass_and_stdio(
                         line_index(range.end())
                     )
                 };
-                let krate = db.module_for_file(file_id.file_id(&db)).krate();
+                let krate = db.module_for_file(file_id.file_id(&db)).krate(&db);
                 e.pretty_print(
                     &mut err,
                     &db,

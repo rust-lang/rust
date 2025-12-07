@@ -811,7 +811,7 @@ fn hint_iterator<'db>(
 ) -> Option<(hir::Trait, hir::TypeAlias, hir::Type<'db>)> {
     let db = sema.db;
     let strukt = ty.strip_references().as_adt()?;
-    let krate = strukt.module(db).krate();
+    let krate = strukt.module(db).krate(db);
     if krate != famous_defs.core()? {
         return None;
     }

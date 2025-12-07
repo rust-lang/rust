@@ -1689,7 +1689,7 @@ impl<'db> Interner for DbInterner<'db> {
         mut f: impl FnMut(Self::ImplId),
     ) {
         let krate = self.krate.expect("trait solving requires setting `DbInterner::krate`");
-        let trait_block = trait_def_id.0.loc(self.db).container.containing_block();
+        let trait_block = trait_def_id.0.loc(self.db).container.block(self.db);
         let mut consider_impls_for_simplified_type = |simp: SimplifiedType| {
             let type_block = simp.def().and_then(|def_id| {
                 let module = match def_id {
@@ -1708,7 +1708,7 @@ impl<'db> Interner for DbInterner<'db> {
                     | SolverDefId::EnumVariantId(_)
                     | SolverDefId::Ctor(_) => return None,
                 };
-                module.containing_block()
+                module.block(self.db)
             });
             TraitImpls::for_each_crate_and_block_trait_and_type(
                 self.db,
@@ -1823,7 +1823,7 @@ impl<'db> Interner for DbInterner<'db> {
 
     fn for_each_blanket_impl(self, trait_def_id: Self::TraitId, mut f: impl FnMut(Self::ImplId)) {
         let Some(krate) = self.krate else { return };
-        let block = trait_def_id.0.loc(self.db).container.containing_block();
+        let block = trait_def_id.0.loc(self.db).container.block(self.db);
 
         TraitImpls::for_each_crate_and_block(self.db, krate, block, &mut |impls| {
             for &impl_ in impls.blanket_impls(trait_def_id.0) {

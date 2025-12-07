@@ -286,7 +286,7 @@ pub fn resolve_completion_edits(
     let scope = ImportScope::find_insert_use_container(position_for_import, &sema)?;
 
     let current_module = sema.scope(position_for_import)?.module();
-    let current_crate = current_module.krate();
+    let current_crate = current_module.krate(db);
     let current_edition = current_crate.edition(db);
     let new_ast = scope.clone_for_update();
     let mut import_insert = TextEdit::builder();

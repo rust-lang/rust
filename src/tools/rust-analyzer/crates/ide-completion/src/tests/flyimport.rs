@@ -780,9 +780,9 @@ fn main() {
 }
 "#,
         expect![[r#"
-            me random_method(…) (use dep::test_mod::TestTrait) fn(&self) DEPRECATED
             fn weird_function() (use dep::test_mod::TestTrait)      fn() DEPRECATED
             ct SPECIAL_CONST (use dep::test_mod::TestTrait)           u8 DEPRECATED
+            me random_method(…) (use dep::test_mod::TestTrait) fn(&self) DEPRECATED
         "#]],
     );
 }

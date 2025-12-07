@@ -35,7 +35,7 @@ fn check_dyn_compatibility<'a>(
     for (trait_id, name) in file_ids.into_iter().flat_map(|file_id| {
         let module_id = db.module_for_file(file_id.file_id(&db));
         let def_map = module_id.def_map(&db);
-        let scope = &def_map[module_id.local_id].scope;
+        let scope = &def_map[module_id].scope;
         scope
             .declarations()
             .filter_map(|def| {

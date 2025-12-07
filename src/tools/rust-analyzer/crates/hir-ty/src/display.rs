@@ -18,7 +18,6 @@ use hir_def::{
     item_scope::ItemInNs,
     item_tree::FieldsShape,
     lang_item::LangItems,
-    nameres::DefMap,
     signatures::VariantFields,
     type_ref::{
         ConstRef, LifetimeRef, LifetimeRefId, TraitBoundModifier, TypeBound, TypeRef, TypeRefId,
@@ -310,7 +309,7 @@ pub trait HirDisplay<'db> {
         allow_opaque: bool,
     ) -> Result<String, DisplaySourceCodeError> {
         let mut result = String::new();
-        let interner = DbInterner::new_with(db, module_id.krate());
+        let interner = DbInterner::new_with(db, module_id.krate(db));
         match self.hir_fmt(&mut HirFormatter {
             db,
             interner,
@@ -321,7 +320,7 @@ pub trait HirDisplay<'db> {
             entity_limit: None,
             omit_verbose_types: false,
             closure_style: ClosureStyle::ImplFn,
-            display_target: DisplayTarget::from_crate(db, module_id.krate()),
+            display_target: DisplayTarget::from_crate(db, module_id.krate(db)),
             display_kind: DisplayKind::SourceCode { target_module_id: module_id, allow_opaque },
             show_container_bounds: false,
             display_lifetimes: DisplayLifetime::OnlyNamedOrStatic,
@@ -1516,7 +1515,7 @@ impl<'db> HirDisplay<'db> for Ty<'db> {
                                     _ => false,
                                 })
                                 .collect::<Vec<_>>();
-                            let krate = param.id.parent().module(db).krate();
+                            let krate = param.id.parent().module(db).krate(db);
                             write_bounds_like_dyn_trait_with_prefix(
                                 f,
                                 "impl",
@@ -2031,13 +2030,14 @@ pub fn write_visibility<'db>(
         Visibility::PubCrate(_) => write!(f, "pub(crate) "),
         Visibility::Module(vis_id, _) => {
             let def_map = module_id.def_map(f.db);
-            let root_module_id = def_map.module_id(DefMap::ROOT);
+            let root_module_id = def_map.root_module_id();
             if vis_id == module_id {
                 // pub(self) or omitted
                 Ok(())
-            } else if root_module_id == vis_id && !root_module_id.is_within_block() {
+            } else if root_module_id == vis_id && root_module_id.block(f.db).is_none() {
                 write!(f, "pub(crate) ")
-            } else if module_id.containing_module(f.db) == Some(vis_id) && !vis_id.is_block_module()
+            } else if module_id.containing_module(f.db) == Some(vis_id)
+                && !vis_id.is_block_module(f.db)
             {
                 write!(f, "pub(super) ")
             } else {

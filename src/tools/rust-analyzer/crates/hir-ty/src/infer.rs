@@ -653,19 +653,16 @@ impl<'db> InferenceResult<'db> {
     }
     pub fn type_of_expr_with_adjust(&self, id: ExprId) -> Option<Ty<'db>> {
         match self.expr_adjustments.get(&id).and_then(|adjustments| {
-            adjustments
-                .iter()
-                .filter(|adj| {
-                    // https://github.com/rust-lang/rust/blob/67819923ac8ea353aaa775303f4c3aacbf41d010/compiler/rustc_mir_build/src/thir/cx/expr.rs#L140
-                    !matches!(
-                        adj,
-                        Adjustment {
-                            kind: Adjust::NeverToAny,
-                            target,
-                        } if target.is_never()
-                    )
-                })
-                .next_back()
+            adjustments.iter().rfind(|adj| {
+                // https://github.com/rust-lang/rust/blob/67819923ac8ea353aaa775303f4c3aacbf41d010/compiler/rustc_mir_build/src/thir/cx/expr.rs#L140
+                !matches!(
+                    adj,
+                    Adjustment {
+                        kind: Adjust::NeverToAny,
+                        target,
+                    } if target.is_never()
+                )
+            })
         }) {
             Some(adjustment) => Some(adjustment.target),
             None => self.type_of_expr.get(id).copied(),
