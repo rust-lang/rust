@@ -345,7 +345,8 @@ fn test_test_coverage() {
         let config = configure_with_args(cmd, &[], &[TEST_TRIPLE_1]);
         let mut cache = run_build(&config.paths.clone(), config);
 
-        let modes = cache.inspect_all_steps_of_type::<test::Coverage, _>(|step, ()| step.mode);
+        let modes =
+            cache.inspect_all_steps_of_type::<test::Coverage, _>(|step, ()| step.mode.as_str());
         assert_eq!(modes, expected);
     }
 }
