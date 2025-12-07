@@ -31,16 +31,19 @@ fn bad(lines: &str, expected_msg: &str) {
 
 #[track_caller]
 fn bless_test(before: &str, after: &str) {
-    let tempfile = tempfile::Builder::new().tempfile().unwrap();
-    std::fs::write(tempfile.path(), before).unwrap();
+    // NB: convert to a temporary *path* (closing the file), so that `check_lines` can then
+    //     atomically replace the file with a blessed version (on windows that requires the file
+    //     to not be open)
+    let temp_path = tempfile::Builder::new().tempfile().unwrap().into_temp_path();
+    std::fs::write(&temp_path, before).unwrap();
 
-    let tidy_ctx = TidyCtx::new(Path::new("/aaaa"), false, TidyFlags::new(&["--bless".to_owned()]));
+    let tidy_ctx = TidyCtx::new(Path::new("/"), false, TidyFlags::new(&["--bless".to_owned()]));
 
     let mut check = tidy_ctx.start_check("alphabetical-test");
-    check_lines(tempfile.path(), before, &tidy_ctx, &mut check);
+    check_lines(&temp_path, before, &tidy_ctx, &mut check);
 
     assert!(!check.is_bad());
-    let new = std::fs::read_to_string(tempfile.path()).unwrap();
+    let new = std::fs::read_to_string(temp_path).unwrap();
     assert_eq!(new, after);
 
     good(&new);
