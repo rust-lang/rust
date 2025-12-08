@@ -1,4 +1,3 @@
-#![feature(cfg_select)]
 #![crate_type = "lib"]
 
 fn print() {

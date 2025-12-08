@@ -100,7 +100,6 @@
 #![feature(bigint_helper_methods)]
 #![feature(bstr)]
 #![feature(bstr_internals)]
-#![feature(cfg_select)]
 #![feature(cfg_target_has_reliable_f16_f128)]
 #![feature(const_carrying_mul_add)]
 #![feature(const_cmp)]
@@ -247,7 +246,7 @@ pub mod autodiff {
 #[unstable(feature = "contracts", issue = "128044")]
 pub mod contracts;
 
-#[unstable(feature = "cfg_select", issue = "115585")]
+#[stable(feature = "cfg_select", since = "CURRENT_RUSTC_VERSION")]
 pub use crate::macros::cfg_select;
 
 #[macro_use]

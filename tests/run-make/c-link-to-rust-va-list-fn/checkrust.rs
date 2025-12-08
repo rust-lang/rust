@@ -1,6 +1,5 @@
 #![crate_type = "staticlib"]
 #![feature(c_variadic)]
-#![feature(cfg_select)]
 
 use std::ffi::{CStr, CString, VaList, c_char, c_double, c_int, c_long, c_longlong};
 

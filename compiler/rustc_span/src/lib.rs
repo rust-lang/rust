@@ -18,8 +18,8 @@
 // tidy-alphabetical-start
 #![allow(internal_features)]
 #![cfg_attr(bootstrap, feature(array_windows))]
+#![cfg_attr(bootstrap, feature(cfg_select))]
 #![cfg_attr(target_arch = "loongarch64", feature(stdarch_loongarch))]
-#![feature(cfg_select)]
 #![feature(core_io_borrowed_buf)]
 #![feature(if_let_guard)]
 #![feature(map_try_insert)]

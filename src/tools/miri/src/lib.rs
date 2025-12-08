@@ -1,5 +1,4 @@
 #![feature(abort_unwind)]
-#![feature(cfg_select)]
 #![feature(rustc_private)]
 #![feature(float_gamma)]
 #![feature(float_erf)]
@@ -17,6 +16,7 @@
 #![feature(derive_coerce_pointee)]
 #![feature(arbitrary_self_types)]
 #![feature(iter_advance_by)]
+#![cfg_attr(bootstrap, feature(cfg_select))]
 #![cfg_attr(bootstrap, feature(duration_from_nanos_u128))]
 // Configure clippy and other lints
 #![allow(
