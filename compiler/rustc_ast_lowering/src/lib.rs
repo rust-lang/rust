@@ -225,13 +225,6 @@ struct SpanLowerer {
 impl SpanLowerer {
     fn lower(&self, span: Span) -> Span {
         if self.is_incremental {
-            // early return: span lowering takes some time since it accesses the query dependency graph
-            // to make sure we rerun the right code paths when spans change. When we've already lowered a span,
-            // or don't have to, bail out ASAP.
-            if span.is_dummy() || span.parent().is_some_and(|i| i == self.def_id) {
-                return span;
-            }
-
             span.with_parent(Some(self.def_id))
         } else {
             // Do not make spans relative when not using incremental compilation.
