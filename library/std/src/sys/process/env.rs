@@ -116,7 +116,7 @@ impl<'a> ExactSizeIterator for CommandEnvs<'a> {
 
 /// An iterator over the fully resolved environment variables.
 ///
-/// This struct is returned by `Command::get_resolved_envs`.
+/// This struct is returned by [`Command::get_resolved_envs`].
 #[derive(Debug)]
 pub struct ResolvedEnvs {
     inner: crate::collections::btree_map::IntoIter<EnvKey, OsString>,
