@@ -301,17 +301,12 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
         visit::walk_ty(self, ty)
     }
 
-    fn visit_generics(&mut self, g: &'a ast::Generics) {
-        for predicate in &g.where_clause.predicates {
-            match &predicate.kind {
-                ast::WherePredicateKind::BoundPredicate(bound_pred) => {
-                    // A type bound (e.g., `for<'c> Foo: Send + Clone + 'c`).
-                    self.check_late_bound_lifetime_defs(&bound_pred.bound_generic_params);
-                }
-                _ => {}
-            }
+    fn visit_where_predicate_kind(&mut self, kind: &'a ast::WherePredicateKind) {
+        if let ast::WherePredicateKind::BoundPredicate(bound) = kind {
+            // A type bound (e.g., `for<'c> Foo: Send + Clone + 'c`).
+            self.check_late_bound_lifetime_defs(&bound.bound_generic_params);
         }
-        visit::walk_generics(self, g);
+        visit::walk_where_predicate_kind(self, kind);
     }
 
     fn visit_fn_ret_ty(&mut self, ret_ty: &'a ast::FnRetTy) {
