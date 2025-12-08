@@ -158,7 +158,19 @@ pub fn provide(providers: &mut Providers) {
 fn emit_delayed_lint(lint: &DelayedLint, tcx: TyCtxt<'_>) {
     match lint {
         DelayedLint::AttributeParsing(attribute_lint) => {
-            rustc_attr_parsing::emit_attribute_lint(attribute_lint, tcx)
+            tcx.node_span_lint(
+                attribute_lint.lint_id.lint,
+                attribute_lint.id,
+                attribute_lint.span,
+                |diag| {
+                    rustc_lint::decorate_attribute_lint(
+                        tcx.sess,
+                        Some(tcx),
+                        &attribute_lint.kind,
+                        diag,
+                    );
+                },
+            );
         }
     }
 }

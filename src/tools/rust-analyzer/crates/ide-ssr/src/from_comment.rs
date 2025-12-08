@@ -17,7 +17,7 @@ pub fn ssr_from_comment(
     frange: FileRange,
 ) -> Option<(MatchFinder<'_>, TextRange)> {
     let comment = {
-        let file_id = EditionedFileId::current_edition(db, frange.file_id);
+        let file_id = EditionedFileId::current_edition_guess_origin(db, frange.file_id);
 
         let file = db.parse(file_id);
         file.tree().syntax().token_at_offset(frange.range.start()).find_map(ast::Comment::cast)

@@ -18,7 +18,7 @@ use ide_db::{
     helpers::pick_best_token,
 };
 use itertools::Itertools;
-use span::{Edition, FileId};
+use span::FileId;
 use syntax::{
     AstNode, AstToken,
     SyntaxKind::*,
@@ -50,8 +50,7 @@ pub(crate) fn goto_definition(
 ) -> Option<RangeInfo<Vec<NavigationTarget>>> {
     let sema = &Semantics::new(db);
     let file = sema.parse_guess_edition(file_id).syntax().clone();
-    let edition =
-        sema.attach_first_edition(file_id).map(|it| it.edition(db)).unwrap_or(Edition::CURRENT);
+    let edition = sema.attach_first_edition(file_id).edition(db);
     let original_token = pick_best_token(file.token_at_offset(offset), |kind| match kind {
         IDENT
         | INT_NUMBER

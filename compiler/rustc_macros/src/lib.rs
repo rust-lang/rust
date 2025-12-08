@@ -72,14 +72,80 @@ decl_derive!(
     hash_stable::hash_stable_no_context_derive
 );
 
-decl_derive!([Decodable_NoContext] => serialize::decodable_nocontext_derive);
+// Encoding and Decoding derives
+decl_derive!([Decodable_NoContext] =>
+    /// See docs on derive [`Decodable`].
+    ///
+    /// Derives `Decodable<D> for T where D: Decoder`.
+    serialize::decodable_nocontext_derive
+);
 decl_derive!([Encodable_NoContext] => serialize::encodable_nocontext_derive);
-decl_derive!([Decodable] => serialize::decodable_derive);
+decl_derive!([Decodable] =>
+    /// Derives `Decodable<D> for T where D: SpanDecoder`
+    ///
+    /// # Deriving decoding traits
+    ///
+    /// > Some shared docs about decoding traits, since this is likely the first trait you find
+    ///
+    /// The difference between these derives can be subtle!
+    /// At a high level, there's the `T: Decodable<D>` trait that says some type `T`
+    /// can be decoded using a decoder `D`. There are various decoders!
+    /// The different derives place different *trait* bounds on this type `D`.
+    ///
+    /// Even though this derive, based on its name, seems like the most vanilla one,
+    /// it actually places a pretty strict bound on `D`: `SpanDecoder`.
+    /// It means that types that derive this can contain spans, among other things,
+    /// and still be decoded. The reason this is hard is that at least in metadata,
+    /// spans can only be decoded later, once some information from the header
+    /// is already decoded to properly deal with spans.
+    ///
+    /// The hierarchy is roughly:
+    ///
+    /// - derive [`Decodable_NoContext`] is the most relaxed bounds that could be placed on `D`,
+    ///   and is only really suited for structs and enums containing primitive types.
+    /// - derive [`BlobDecodable`] may be a better default, than deriving `Decodable`:
+    ///   it places fewer requirements on `D`, while still allowing some complex types to be decoded.
+    /// - derive [`LazyDecodable`]: Only for types containing `Lazy{Array,Table,Value}`.
+    /// - derive [`Decodable`] for structures containing spans. Requires `D: SpanDecoder`
+    /// - derive [`TyDecodable`] for types that require access to the `TyCtxt` while decoding.
+    ///   For example: arena allocated types.
+    serialize::decodable_derive
+);
 decl_derive!([Encodable] => serialize::encodable_derive);
-decl_derive!([TyDecodable] => serialize::type_decodable_derive);
+decl_derive!([TyDecodable] =>
+    /// See docs on derive [`Decodable`].
+    ///
+    /// Derives `Decodable<D> for T where D: TyDecoder`.
+    serialize::type_decodable_derive
+);
 decl_derive!([TyEncodable] => serialize::type_encodable_derive);
-decl_derive!([MetadataDecodable] => serialize::meta_decodable_derive);
-decl_derive!([MetadataEncodable] => serialize::meta_encodable_derive);
+decl_derive!([LazyDecodable] =>
+    /// See docs on derive [`Decodable`].
+    ///
+    /// Derives `Decodable<D> for T where D: LazyDecoder`.
+    /// This constrains the decoder to be specifically the decoder that can decode
+    /// `LazyArray`s, `LazyValue`s amd `LazyTable`s in metadata.
+    /// Therefore, we only need this on things containing LazyArray really.
+    ///
+    /// Most decodable derives mirror an encodable derive.
+    /// [`LazyDecodable`] and [`BlobDecodable`] together roughly mirror [`MetadataEncodable`]
+    serialize::lazy_decodable_derive
+);
+decl_derive!([BlobDecodable] =>
+    /// See docs on derive [`Decodable`].
+    ///
+    /// Derives `Decodable<D> for T where D: BlobDecoder`.
+    ///
+    /// Most decodable derives mirror an encodable derive.
+    /// [`LazyDecodable`] and [`BlobDecodable`] together roughly mirror [`MetadataEncodable`]
+    serialize::blob_decodable_derive
+);
+decl_derive!([MetadataEncodable] =>
+    /// Most encodable derives mirror a decodable derive.
+    /// [`MetadataEncodable`] is roughly mirrored by the combination of [`LazyDecodable`] and [`BlobDecodable`]
+    serialize::meta_encodable_derive
+);
+
 decl_derive!(
     [TypeFoldable, attributes(type_foldable)] =>
     /// Derives `TypeFoldable` for the annotated `struct` or `enum` (`union` is not supported).

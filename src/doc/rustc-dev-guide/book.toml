@@ -15,9 +15,7 @@ edit-url-template = "https://github.com/rust-lang/rustc-dev-guide/edit/main/{pat
 additional-js = [
   "mermaid.min.js",
   "mermaid-init.js",
-  "pagetoc.js",
 ]
-additional-css = ["pagetoc.css"]
 
 [output.html.search]
 use-boolean-and = true

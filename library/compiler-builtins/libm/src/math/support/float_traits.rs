@@ -289,7 +289,10 @@ macro_rules! float_impl {
                 cfg_if! {
                     // fma is not yet available in `core`
                     if #[cfg(intrinsics_enabled)] {
-                        core::intrinsics::$fma_intrinsic(self, y, z)
+                        // FIXME(msrv,bench): once our benchmark rustc version is above the
+                        // 2022-09-23 nightly, this can be removed.
+                        #[allow(unused_unsafe)]
+                        unsafe { core::intrinsics::$fma_intrinsic(self, y, z) }
                     } else {
                         super::super::$fma_fn(self, y, z)
                     }

@@ -228,8 +228,8 @@ impl<'a> Parser<'a> {
                 body,
                 define_opaque: None,
             }))
-        } else if self.eat_keyword(exp!(Extern)) {
-            if self.eat_keyword(exp!(Crate)) {
+        } else if self.eat_keyword_case(exp!(Extern), case) {
+            if self.eat_keyword_case(exp!(Crate), case) {
                 // EXTERN CRATE
                 self.parse_item_extern_crate()?
             } else {
@@ -241,19 +241,17 @@ impl<'a> Parser<'a> {
             let safety = self.parse_safety(Case::Sensitive);
             self.expect_keyword(exp!(Extern))?;
             self.parse_item_foreign_mod(attrs, safety)?
-        } else if self.is_static_global() {
-            let safety = self.parse_safety(Case::Sensitive);
+        } else if let Some(safety) = self.parse_global_static_front_matter(case) {
             // STATIC ITEM
-            self.bump(); // `static`
             let mutability = self.parse_mutability();
             self.parse_static_item(safety, mutability)?
-        } else if self.check_keyword(exp!(Trait)) || self.check_trait_front_matter() {
+        } else if self.check_keyword_case(exp!(Trait), case) || self.check_trait_front_matter() {
             // TRAIT ITEM
             self.parse_item_trait(attrs, lo)?
         } else if self.check_impl_frontmatter() {
             // IMPL ITEM
             self.parse_item_impl(attrs, def_())?
-        } else if let Const::Yes(const_span) = self.parse_constness(Case::Sensitive) {
+        } else if let Const::Yes(const_span) = self.parse_constness(case) {
             // CONST ITEM
             self.recover_const_mut(const_span);
             self.recover_missing_kw_before_item()?;
@@ -268,18 +266,18 @@ impl<'a> Parser<'a> {
             }))
         } else if self.is_reuse_path_item() {
             self.parse_item_delegation()?
-        } else if self.check_keyword(exp!(Mod))
-            || self.check_keyword(exp!(Unsafe)) && self.is_keyword_ahead(1, &[kw::Mod])
+        } else if self.check_keyword_case(exp!(Mod), case)
+            || self.check_keyword_case(exp!(Unsafe), case) && self.is_keyword_ahead(1, &[kw::Mod])
         {
             // MODULE ITEM
             self.parse_item_mod(attrs)?
-        } else if self.eat_keyword(exp!(Type)) {
+        } else if self.eat_keyword_case(exp!(Type), case) {
             // TYPE ITEM
             self.parse_type_alias(def_())?
-        } else if self.eat_keyword(exp!(Enum)) {
+        } else if self.eat_keyword_case(exp!(Enum), case) {
             // ENUM ITEM
             self.parse_item_enum()?
-        } else if self.eat_keyword(exp!(Struct)) {
+        } else if self.eat_keyword_case(exp!(Struct), case) {
             // STRUCT ITEM
             self.parse_item_struct()?
         } else if self.is_kw_followed_by_ident(kw::Union) {
@@ -289,7 +287,7 @@ impl<'a> Parser<'a> {
         } else if self.is_builtin() {
             // BUILTIN# ITEM
             return self.parse_item_builtin();
-        } else if self.eat_keyword(exp!(Macro)) {
+        } else if self.eat_keyword_case(exp!(Macro), case) {
             // MACROS 2.0 ITEM
             self.parse_item_decl_macro(lo)?
         } else if let IsMacroRulesItem::Yes { has_bang } = self.is_macro_rules_item() {
@@ -1324,19 +1322,28 @@ impl<'a> Parser<'a> {
             == Some(true)
     }
 
-    fn is_static_global(&mut self) -> bool {
-        if self.check_keyword(exp!(Static)) {
+    fn parse_global_static_front_matter(&mut self, case: Case) -> Option<Safety> {
+        let is_global_static = if self.check_keyword_case(exp!(Static), case) {
             // Check if this could be a closure.
             !self.look_ahead(1, |token| {
-                if token.is_keyword(kw::Move) || token.is_keyword(kw::Use) {
+                if token.is_keyword_case(kw::Move, case) || token.is_keyword_case(kw::Use, case) {
                     return true;
                 }
                 matches!(token.kind, token::Or | token::OrOr)
             })
         } else {
             // `$qual static`
-            (self.check_keyword(exp!(Unsafe)) || self.check_keyword(exp!(Safe)))
-                && self.look_ahead(1, |t| t.is_keyword(kw::Static))
+            (self.check_keyword_case(exp!(Unsafe), case)
+                || self.check_keyword_case(exp!(Safe), case))
+                && self.look_ahead(1, |t| t.is_keyword_case(kw::Static, case))
+        };
+
+        if is_global_static {
+            let safety = self.parse_safety(case);
+            let _ = self.eat_keyword_case(exp!(Static), case);
+            Some(safety)
+        } else {
+            None
         }
     }
 

@@ -427,6 +427,10 @@ impl<'db> ParamEnv<'db> {
     pub fn empty() -> Self {
         ParamEnv { clauses: Clauses::new_from_iter(DbInterner::conjure(), []) }
     }
+
+    pub fn clauses(self) -> Clauses<'db> {
+        self.clauses
+    }
 }
 
 impl<'db> rustc_type_ir::inherent::ParamEnv<DbInterner<'db>> for ParamEnv<'db> {

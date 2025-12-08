@@ -18,9 +18,8 @@ pub struct File(!);
 pub struct FileAttr {
     attr: u64,
     size: u64,
-    accessed: SystemTime,
-    modified: SystemTime,
-    created: SystemTime,
+    file_time: FileTimes,
+    created: Option<SystemTime>,
 }
 
 pub struct ReadDir(!);
@@ -66,15 +65,20 @@ impl FileAttr {
     }
 
     pub fn modified(&self) -> io::Result<SystemTime> {
-        Ok(self.modified)
+        self.file_time
+            .modified
+            .ok_or(io::const_error!(io::ErrorKind::InvalidData, "modification time is not valid"))
     }
 
     pub fn accessed(&self) -> io::Result<SystemTime> {
-        Ok(self.accessed)
+        self.file_time
+            .accessed
+            .ok_or(io::const_error!(io::ErrorKind::InvalidData, "last access time is not valid"))
     }
 
     pub fn created(&self) -> io::Result<SystemTime> {
-        Ok(self.created)
+        self.created
+            .ok_or(io::const_error!(io::ErrorKind::InvalidData, "creation time is not valid"))
     }
 
     fn from_uefi(info: helpers::UefiBox<file::Info>) -> Self {
@@ -82,8 +86,10 @@ impl FileAttr {
             Self {
                 attr: (*info.as_ptr()).attribute,
                 size: (*info.as_ptr()).file_size,
-                modified: uefi_fs::uefi_to_systemtime((*info.as_ptr()).modification_time),
-                accessed: uefi_fs::uefi_to_systemtime((*info.as_ptr()).last_access_time),
+                file_time: FileTimes {
+                    modified: uefi_fs::uefi_to_systemtime((*info.as_ptr()).modification_time),
+                    accessed: uefi_fs::uefi_to_systemtime((*info.as_ptr()).last_access_time),
+                },
                 created: uefi_fs::uefi_to_systemtime((*info.as_ptr()).create_time),
             }
         }
@@ -344,8 +350,16 @@ pub fn readdir(_p: &Path) -> io::Result<ReadDir> {
     unsupported()
 }
 
-pub fn unlink(_p: &Path) -> io::Result<()> {
-    unsupported()
+pub fn unlink(p: &Path) -> io::Result<()> {
+    let f = uefi_fs::File::from_path(p, file::MODE_READ | file::MODE_WRITE, 0)?;
+    let file_info = f.file_info()?;
+    let file_attr = FileAttr::from_uefi(file_info);
+
+    if file_attr.file_type().is_file() {
+        f.delete()
+    } else {
+        Err(io::const_error!(io::ErrorKind::IsADirectory, "expected a file but got a directory"))
+    }
 }
 
 pub fn rename(_old: &Path, _new: &Path) -> io::Result<()> {
@@ -364,8 +378,16 @@ pub fn set_times_nofollow(_p: &Path, _times: FileTimes) -> io::Result<()> {
     unsupported()
 }
 
-pub fn rmdir(_p: &Path) -> io::Result<()> {
-    unsupported()
+pub fn rmdir(p: &Path) -> io::Result<()> {
+    let f = uefi_fs::File::from_path(p, file::MODE_READ | file::MODE_WRITE, 0)?;
+    let file_info = f.file_info()?;
+    let file_attr = FileAttr::from_uefi(file_info);
+
+    if file_attr.file_type().is_dir() {
+        f.delete()
+    } else {
+        Err(io::const_error!(io::ErrorKind::NotADirectory, "expected a directory but got a file"))
+    }
 }
 
 pub fn remove_dir_all(_path: &Path) -> io::Result<()> {
@@ -537,6 +559,16 @@ mod uefi_fs {
 
             if r.is_error() { Err(io::Error::from_raw_os_error(r.as_usize())) } else { Ok(info) }
         }
+
+        pub(crate) fn delete(self) -> io::Result<()> {
+            let file_ptr = self.0.as_ptr();
+            let r = unsafe { ((*file_ptr).delete)(file_ptr) };
+
+            // Spec states that even in case of failure, the file handle will be closed.
+            crate::mem::forget(self);
+
+            if r.is_error() { Err(io::Error::from_raw_os_error(r.as_usize())) } else { Ok(()) }
+        }
     }
 
     impl Drop for File {
@@ -601,9 +633,9 @@ mod uefi_fs {
 
     /// EDK2 FAT driver uses EFI_UNSPECIFIED_TIMEZONE to represent localtime. So for proper
     /// conversion to SystemTime, we use the current time to get the timezone in such cases.
-    pub(crate) fn uefi_to_systemtime(mut time: r_efi::efi::Time) -> SystemTime {
+    pub(crate) fn uefi_to_systemtime(mut time: r_efi::efi::Time) -> Option<SystemTime> {
         time.timezone = if time.timezone == r_efi::efi::UNSPECIFIED_TIMEZONE {
-            time::system_time_internal::now().unwrap().timezone
+            time::system_time_internal::now().timezone
         } else {
             time.timezone
         };
@@ -613,7 +645,7 @@ mod uefi_fs {
     /// Convert to UEFI Time with the current timezone.
     #[expect(dead_code)]
     fn systemtime_to_uefi(time: SystemTime) -> r_efi::efi::Time {
-        let now = time::system_time_internal::now().unwrap();
+        let now = time::system_time_internal::now();
         time.to_uefi_loose(now.timezone, now.daylight)
     }
 }

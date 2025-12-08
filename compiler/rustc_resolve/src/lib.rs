@@ -13,6 +13,7 @@
 #![feature(arbitrary_self_types)]
 #![feature(assert_matches)]
 #![feature(box_patterns)]
+#![feature(control_flow_into_value)]
 #![feature(decl_macro)]
 #![feature(default_field_values)]
 #![feature(if_let_guard)]
@@ -26,6 +27,7 @@
 use std::cell::Ref;
 use std::collections::BTreeSet;
 use std::fmt::{self};
+use std::ops::ControlFlow;
 use std::sync::Arc;
 
 use diagnostics::{ImportSuggestion, LabelSuggestion, Suggestion};
@@ -71,7 +73,6 @@ use rustc_middle::ty::{
     ResolverGlobalCtxt, TyCtxt, TyCtxtFeed, Visibility,
 };
 use rustc_query_system::ich::StableHashingContext;
-use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::lint::builtin::PRIVATE_MACRO_USE;
 use rustc_span::hygiene::{ExpnId, LocalExpnId, MacroKind, SyntaxContext, Transparency};
 use rustc_span::{DUMMY_SP, Ident, Macros20NormalizedIdent, Span, Symbol, kw, sym};
@@ -97,12 +98,6 @@ pub use macros::registered_tools_ast;
 use crate::ref_mut::{CmCell, CmRefCell};
 
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
-
-#[derive(Debug)]
-enum Weak {
-    Yes,
-    No,
-}
 
 #[derive(Copy, Clone, PartialEq, Debug)]
 enum Determinacy {
@@ -1917,7 +1912,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 | Scope::BuiltinTypes => {}
                 _ => unreachable!(),
             }
-            None::<()>
+            ControlFlow::<()>::Continue(())
         });
 
         found_traits
@@ -2071,7 +2066,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         PRIVATE_MACRO_USE,
                         import.root_id,
                         ident.span,
-                        BuiltinLintDiag::MacroIsPrivate(ident),
+                        errors::MacroIsPrivate { ident },
                     );
                 }
             }
@@ -2321,7 +2316,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         match def_id.as_local() {
             Some(def_id) => self.tcx.source_span(def_id),
             // Query `def_span` is not used because hashing its result span is expensive.
-            None => self.cstore().def_span_untracked(def_id, self.tcx.sess),
+            None => self.cstore().def_span_untracked(self.tcx(), def_id),
         }
     }
 
@@ -2489,6 +2484,7 @@ enum Stage {
     Late,
 }
 
+/// Invariant: if `Finalize` is used, expansion and import resolution must be complete.
 #[derive(Copy, Clone, Debug)]
 struct Finalize {
     /// Node ID for linting.

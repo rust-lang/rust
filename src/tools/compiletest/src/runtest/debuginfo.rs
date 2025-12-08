@@ -8,7 +8,7 @@ use tracing::debug;
 
 use super::debugger::DebuggerCommands;
 use super::{Debugger, Emit, ProcRes, TestCx, Truncated, WillExecute};
-use crate::debuggers::{extract_gdb_version, is_android_gdb_target};
+use crate::debuggers::extract_gdb_version;
 
 impl TestCx<'_> {
     pub(super) fn run_debuginfo_test(&self) {
@@ -90,7 +90,7 @@ impl TestCx<'_> {
 
         let debugger_run_result = self.compose_and_run(
             cdb,
-            self.config.run_lib_path.as_path(),
+            self.config.target_run_lib_path.as_path(),
             None, // aux_path
             None, // input
         );
@@ -122,13 +122,15 @@ impl TestCx<'_> {
         let exe_file = self.make_exe_name();
 
         let debugger_run_result;
-        if is_android_gdb_target(&self.config.target) {
+        // If bootstrap gave us an `--android-cross-path`, assume the target
+        // needs Android-specific handling.
+        if let Some(android_cross_path) = self.config.android_cross_path.as_deref() {
             cmds = cmds.replace("run", "continue");
 
             // write debugger script
             let mut script_str = String::with_capacity(2048);
             script_str.push_str(&format!("set charset {}\n", Self::charset()));
-            script_str.push_str(&format!("set sysroot {}\n", &self.config.android_cross_path));
+            script_str.push_str(&format!("set sysroot {android_cross_path}\n"));
             script_str.push_str(&format!("file {}\n", exe_file));
             script_str.push_str("target remote :5039\n");
             script_str.push_str(&format!(
@@ -313,7 +315,7 @@ impl TestCx<'_> {
             gdb.args(debugger_opts).env("PYTHONPATH", pythonpath);
 
             debugger_run_result =
-                self.compose_and_run(gdb, self.config.run_lib_path.as_path(), None, None);
+                self.compose_and_run(gdb, self.config.target_run_lib_path.as_path(), None, None);
         }
 
         if !debugger_run_result.status.success() {

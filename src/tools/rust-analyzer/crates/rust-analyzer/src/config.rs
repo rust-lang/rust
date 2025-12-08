@@ -562,7 +562,7 @@ config_data! {
         /// `DiscoverArgument::Path` is used to find and generate a `rust-project.json`, and
         /// therefore, a workspace, whereas `DiscoverArgument::buildfile` is used to to update an
         /// existing workspace. As a reference for implementors, buck2's `rust-project` will likely
-        /// be useful: https://github.com/facebook/buck2/tree/main/integrations/rust-project.
+        /// be useful: <https://github.com/facebook/buck2/tree/main/integrations/rust-project>.
         workspace_discoverConfig: Option<DiscoverWorkspaceConfig> = None,
     }
 }
@@ -3566,23 +3566,13 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
         },
         "ImportGranularityDef" => set! {
             "type": "string",
-            "anyOf": [
-                {
-                    "enum": ["crate", "module", "item", "one"],
-                    "enumDescriptions": [
-                        "Merge imports from the same crate into a single use statement. Conversely, imports from different crates are split into separate statements.",
-                        "Merge imports from the same module into a single use statement. Conversely, imports from different modules are split into separate statements.",
-                        "Flatten imports so that each has its own use statement.",
-                        "Merge all imports into a single use statement as long as they have the same visibility and attributes."
-                    ],
-                },
-                {
-                    "enum": ["preserve"],
-                    "enumDescriptions": [
-                        "Deprecated - unless `enforceGranularity` is `true`, the style of the current file is preferred over this setting. Behaves like `item`.",
-                    ],
-                    "deprecated": true,
-                }
+            "enum": ["crate", "module", "item", "one", "preserve"],
+            "enumDescriptions": [
+                "Merge imports from the same crate into a single use statement. Conversely, imports from different crates are split into separate statements.",
+                "Merge imports from the same module into a single use statement. Conversely, imports from different modules are split into separate statements.",
+                "Flatten imports so that each has its own use statement.",
+                "Merge all imports into a single use statement as long as they have the same visibility and attributes.",
+                "Deprecated - unless `enforceGranularity` is `true`, the style of the current file is preferred over this setting. Behaves like `item`."
             ],
         },
         "ImportPrefixDef" => set! {

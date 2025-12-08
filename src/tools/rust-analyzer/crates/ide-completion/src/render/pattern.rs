@@ -108,7 +108,7 @@ fn build_completion(
     label: SmolStr,
     lookup: SmolStr,
     pat: String,
-    def: impl HasDocs + Copy,
+    def: impl HasDocs,
     adt_ty: hir::Type<'_>,
     // Missing in context of match statement completions
     is_variant_missing: bool,

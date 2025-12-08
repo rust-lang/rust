@@ -1,1 +1,2 @@
 large-error-threshold = 512
+large-error-ignored = ["result_large_err::IgnoredError", "result_large_err::IgnoredErrorEnum"]

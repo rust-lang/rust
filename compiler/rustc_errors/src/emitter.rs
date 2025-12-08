@@ -3544,6 +3544,8 @@ pub fn detect_confusion_type(sm: &SourceMap, suggested: &str, sp: Span) -> Confu
         let mut has_digit_letter_confusable = false;
         let mut has_other_diff = false;
 
+        // Letters whose lowercase version is very similar to the uppercase
+        // version.
         let ascii_confusables = &['c', 'f', 'i', 'k', 'o', 's', 'u', 'v', 'w', 'x', 'y', 'z'];
 
         let digit_letter_confusables = [('0', 'O'), ('1', 'l'), ('5', 'S'), ('8', 'B'), ('9', 'g')];

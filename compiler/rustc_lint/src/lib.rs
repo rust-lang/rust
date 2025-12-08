@@ -21,7 +21,7 @@
 
 // tidy-alphabetical-start
 #![allow(internal_features)]
-#![feature(array_windows)]
+#![cfg_attr(bootstrap, feature(array_windows))]
 #![feature(assert_matches)]
 #![feature(box_patterns)]
 #![feature(if_let_guard)]
@@ -129,7 +129,7 @@ use unused::*;
 #[rustfmt::skip]
 pub use builtin::{MissingDoc, SoftLints};
 pub use context::{CheckLintNameResult, EarlyContext, LateContext, LintContext, LintStore};
-pub use early::diagnostics::decorate_builtin_lint;
+pub use early::diagnostics::{decorate_attribute_lint, decorate_builtin_lint};
 pub use early::{EarlyCheckNode, check_ast_node};
 pub use late::{check_crate, late_lint_mod, unerased_lint_store};
 pub use levels::LintLevelsBuilder;
@@ -291,6 +291,7 @@ fn register_builtins(store: &mut LintStore) {
         "unused",
         UNUSED_IMPORTS,
         UNUSED_VARIABLES,
+        UNUSED_VISIBILITIES,
         UNUSED_ASSIGNMENTS,
         DEAD_CODE,
         UNUSED_MUT,

@@ -1,5 +1,5 @@
 // tidy-alphabetical-start
-#![feature(array_windows)]
+#![cfg_attr(bootstrap, feature(array_windows))]
 #![feature(assert_matches)]
 #![feature(box_patterns)]
 #![feature(const_type_name)]
@@ -429,8 +429,7 @@ fn mir_promoted(
 
     let const_qualifs = match tcx.def_kind(def) {
         DefKind::Fn | DefKind::AssocFn | DefKind::Closure
-            if tcx.constness(def) == hir::Constness::Const
-                || tcx.is_const_default_method(def.to_def_id()) =>
+            if tcx.constness(def) == hir::Constness::Const =>
         {
             tcx.mir_const_qualif(def)
         }

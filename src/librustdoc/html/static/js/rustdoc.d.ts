@@ -148,7 +148,7 @@ declare namespace rustdoc {
 
     /**
      * A single parsed "atom" in a search query. For example,
-     * 
+     *
      *     std::fmt::Formatter, Write -> Result<()>
      *     ┏━━━━━━━━━━━━━━━━━━  ┌────    ┏━━━━━┅┅┅┅┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┐
      *     ┃                    │        ┗ QueryElement {          ┊
@@ -488,10 +488,10 @@ declare namespace rustdoc {
 
     /**
      * A decoded function type, made from real objects.
-     * `ty` will be negative for generics, positive for types, and 0 for placeholders.
+     * `ty` will be negative for generics, positive for types, and `null` for placeholders (zero is not used).
      */
     interface FunctionType {
-        id: null|number,
+        id: number|null,
         ty: ItemType,
         name: string|null,
         path: string|null,

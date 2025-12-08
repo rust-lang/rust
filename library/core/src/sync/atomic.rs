@@ -130,16 +130,18 @@
 //!
 //! * PowerPC and MIPS platforms with 32-bit pointers do not have `AtomicU64` or
 //!   `AtomicI64` types.
-//! * ARM platforms like `armv5te` that aren't for Linux only provide `load`
-//!   and `store` operations, and do not support Compare and Swap (CAS)
-//!   operations, such as `swap`, `fetch_add`, etc. Additionally on Linux,
-//!   these CAS operations are implemented via [operating system support], which
-//!   may come with a performance penalty.
-//! * ARM targets with `thumbv6m` only provide `load` and `store` operations,
-//!   and do not support Compare and Swap (CAS) operations, such as `swap`,
-//!   `fetch_add`, etc.
+//! * Legacy ARM platforms like ARMv4T and ARMv5TE have very limited hardware
+//!   support for atomics. The bare-metal targets disable this module
+//!   entirely, but the Linux targets [use the kernel] to assist (which comes
+//!   with a performance penalty). It's not until ARMv6K onwards that ARM CPUs
+//!   have support for load/store and Compare and Swap (CAS) atomics in hardware.
+//! * ARMv6-M and ARMv8-M baseline targets (`thumbv6m-*` and
+//!   `thumbv8m.base-*`) only provide `load` and `store` operations, and do
+//!   not support Compare and Swap (CAS) operations, such as `swap`,
+//!   `fetch_add`, etc. Full CAS support is available on ARMv7-M and ARMv8-M
+//!   Mainline (`thumbv7m-*`, `thumbv7em*` and `thumbv8m.main-*`).
 //!
-//! [operating system support]: https://www.kernel.org/doc/Documentation/arm/kernel_user_helpers.txt
+//! [use the kernel]: https://www.kernel.org/doc/Documentation/arm/kernel_user_helpers.txt
 //!
 //! Note that future platforms may be added that also do not have support for
 //! some atomic operations. Maximally portable code will want to be careful

@@ -362,6 +362,10 @@ pub fn report_result<'tcx>(
                 vec![
                     note!("this is likely not a bug in the program; it indicates that the program performed an operation that Miri does not support"),
                 ],
+            ResourceExhaustion(ResourceExhaustionInfo::AddressSpaceFull) if ecx.machine.data_race.as_genmc_ref().is_some() =>
+                vec![
+                    note!("in GenMC mode, the address space is limited to 4GB per thread, and addresses cannot be reused")
+                ],
             UndefinedBehavior(AlignmentCheckFailed { .. })
                 if ecx.machine.check_alignment == AlignmentCheck::Symbolic
             =>
@@ -440,7 +444,11 @@ pub fn report_result<'tcx>(
     write!(primary_msg, "{}", format_interp_error(ecx.tcx.dcx(), res)).unwrap();
 
     if labels.is_empty() {
-        labels.push(format!("{} occurred here", title.unwrap_or("error")));
+        labels.push(format!(
+            "{} occurred {}",
+            title.unwrap_or("error"),
+            if stacktrace.is_empty() { "due to this code" } else { "here" }
+        ));
     }
 
     report_msg(
@@ -548,7 +556,14 @@ pub fn report_msg<'tcx>(
     thread: Option<ThreadId>,
     machine: &MiriMachine<'tcx>,
 ) {
-    let span = stacktrace.first().map_or(DUMMY_SP, |fi| fi.span);
+    let span = match stacktrace.first() {
+        Some(fi) => fi.span,
+        None =>
+            match thread {
+                Some(thread_id) => machine.threads.thread_ref(thread_id).origin_span,
+                None => DUMMY_SP,
+            },
+    };
     let sess = machine.tcx.sess;
     let level = match diag_level {
         DiagLevel::Error => Level::Error,
@@ -616,6 +631,12 @@ pub fn report_msg<'tcx>(
                 err.note(format!("{frame_info} at {span}"));
             }
         }
+    } else if stacktrace.len() == 0 && !span.is_dummy() {
+        err.note(format!(
+            "this {} occurred while pushing a call frame onto an empty stack",
+            level.to_str()
+        ));
+        err.note("the span indicates which code caused the function to be called, but may not be the literal call site");
     }
 
     err.emit();

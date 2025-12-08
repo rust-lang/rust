@@ -314,6 +314,10 @@ double rust_interesting_average(uint64_t n, ...) {
     return sum;
 }
 
+int32_t rust_va_list_next_i32(va_list* ap) {
+    return va_arg(*ap, int32_t);
+}
+
 int32_t rust_int8_to_int32(int8_t x) {
     return (int32_t)x;
 }

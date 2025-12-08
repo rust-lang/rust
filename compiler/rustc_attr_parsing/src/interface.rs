@@ -1,13 +1,14 @@
 use std::borrow::Cow;
 
 use rustc_ast as ast;
-use rustc_ast::{AttrStyle, NodeId};
+use rustc_ast::{AttrStyle, NodeId, Safety};
 use rustc_errors::DiagCtxtHandle;
 use rustc_feature::{AttributeTemplate, Features};
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::lints::AttributeLint;
 use rustc_hir::{AttrArgs, AttrItem, AttrPath, Attribute, HashIgnoredAttrId, Target};
 use rustc_session::Session;
+use rustc_session::lint::BuiltinLintDiag;
 use rustc_span::{DUMMY_SP, Span, Symbol, sym};
 
 use crate::context::{AcceptContext, FinalizeContext, SharedContext, Stage};
@@ -115,7 +116,12 @@ impl<'sess> AttributeParser<'sess, Early> {
             OmitDoc::Skip,
             std::convert::identity,
             |lint| {
-                crate::lints::emit_attribute_lint(&lint, sess);
+                sess.psess.buffer_lint(
+                    lint.lint_id.lint,
+                    lint.span,
+                    lint.id,
+                    BuiltinLintDiag::AttributeLint(lint.kind),
+                )
             },
         )
     }
@@ -146,6 +152,7 @@ impl<'sess> AttributeParser<'sess, Early> {
             normal_attr.item.span(),
             attr.style,
             path.get_attribute_path(),
+            Some(normal_attr.item.unsafety),
             ParsedDescription::Attribute,
             target_span,
             target_node_id,
@@ -165,6 +172,7 @@ impl<'sess> AttributeParser<'sess, Early> {
         inner_span: Span,
         attr_style: AttrStyle,
         attr_path: AttrPath,
+        attr_safety: Option<Safety>,
         parsed_description: ParsedDescription,
         target_span: Span,
         target_node_id: NodeId,
@@ -181,14 +189,29 @@ impl<'sess> AttributeParser<'sess, Early> {
             sess,
             stage: Early { emit_errors },
         };
+        let mut emit_lint = |lint: AttributeLint<NodeId>| {
+            sess.psess.buffer_lint(
+                lint.lint_id.lint,
+                lint.span,
+                lint.id,
+                BuiltinLintDiag::AttributeLint(lint.kind),
+            )
+        };
+        if let Some(safety) = attr_safety {
+            parser.check_attribute_safety(
+                &attr_path,
+                inner_span,
+                safety,
+                &mut emit_lint,
+                target_node_id,
+            )
+        }
         let mut cx: AcceptContext<'_, 'sess, Early> = AcceptContext {
             shared: SharedContext {
                 cx: &mut parser,
                 target_span,
                 target_id: target_node_id,
-                emit_lint: &mut |lint| {
-                    crate::lints::emit_attribute_lint(&lint, sess);
-                },
+                emit_lint: &mut emit_lint,
             },
             attr_span,
             inner_span,
@@ -288,6 +311,15 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
                 // }
                 ast::AttrKind::Normal(n) => {
                     attr_paths.push(PathParser(Cow::Borrowed(&n.item.path)));
+                    let attr_path = AttrPath::from_ast(&n.item.path, lower_span);
+
+                    self.check_attribute_safety(
+                        &attr_path,
+                        lower_span(n.item.span()),
+                        n.item.unsafety,
+                        &mut emit_lint,
+                        target_id,
+                    );
 
                     let parts =
                         n.item.path.segments.iter().map(|seg| seg.ident.name).collect::<Vec<_>>();
@@ -301,7 +333,6 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
                         ) else {
                             continue;
                         };
-                        let path = parser.path();
                         let args = parser.args();
                         for accept in accepts {
                             let mut cx: AcceptContext<'_, 'sess, S> = AcceptContext {
@@ -312,11 +343,11 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
                                     emit_lint: &mut emit_lint,
                                 },
                                 attr_span: lower_span(attr.span),
-                                inner_span: lower_span(attr.get_normal_item().span()),
+                                inner_span: lower_span(n.item.span()),
                                 attr_style: attr.style,
                                 parsed_description: ParsedDescription::Attribute,
                                 template: &accept.template,
-                                attr_path: path.get_attribute_path(),
+                                attr_path: attr_path.clone(),
                             };
 
                             (accept.accept_fn)(&mut cx, args);
@@ -341,7 +372,7 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
                         // );
 
                         attributes.push(Attribute::Unparsed(Box::new(AttrItem {
-                            path: AttrPath::from_ast(&n.item.path),
+                            path: attr_path.clone(),
                             args: self.lower_attr_args(&n.item.args, lower_span),
                             id: HashIgnoredAttrId { attr_id: attr.id },
                             style: attr.style,

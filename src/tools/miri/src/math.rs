@@ -272,8 +272,9 @@ where
         ("pow", [base, exp]) if *base == one => {
             let rng = this.machine.rng.get_mut();
             // SNaN exponents get special treatment: they might return 1, or a NaN.
+            // This is non-deterministic because LLVM can treat SNaN as QNaN, and because
+            // implementation behavior differs between glibc and musl.
             let return_nan = exp.is_signaling() && this.machine.float_nondet && rng.random();
-            // Handle both the musl and glibc cases non-deterministically.
             if return_nan { this.generate_nan(args) } else { one }
         }
 
@@ -281,8 +282,9 @@ where
         ("pow", [base, exp]) if exp.is_zero() => {
             let rng = this.machine.rng.get_mut();
             // SNaN bases get special treatment: they might return 1, or a NaN.
+            // This is non-deterministic because LLVM can treat SNaN as QNaN, and because
+            // implementation behavior differs between glibc and musl.
             let return_nan = base.is_signaling() && this.machine.float_nondet && rng.random();
-            // Handle both the musl and glibc cases non-deterministically.
             if return_nan { this.generate_nan(args) } else { one }
         }
 
@@ -306,10 +308,9 @@ where
         0 => {
             let one = IeeeFloat::<S>::one();
             let rng = ecx.machine.rng.get_mut();
-            let return_nan = ecx.machine.float_nondet && rng.random() && base.is_signaling();
-            // For SNaN treatment, we are consistent with `powf`above.
-            // (We wouldn't have two, unlike powf all implementations seem to agree for powi,
-            // but for now we are maximally conservative.)
+            // SNaN bases get special treatment: they might return 1, or a NaN.
+            // This is non-deterministic because LLVM can treat SNaN as QNaN.
+            let return_nan = base.is_signaling() && ecx.machine.float_nondet && rng.random();
             Some(if return_nan { ecx.generate_nan(&[base]) } else { one })
         }
 

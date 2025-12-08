@@ -1,6 +1,9 @@
-use super::{Thread, ThreadId, imp};
+use super::id::ThreadId;
+use super::main_thread;
+use super::thread::Thread;
 use crate::mem::ManuallyDrop;
 use crate::ptr;
+use crate::sys::thread as imp;
 use crate::sys::thread_local::local_pointer;
 
 const NONE: *mut () = ptr::null_mut();
@@ -184,7 +187,7 @@ pub(crate) fn current_os_id() -> u64 {
 
 /// Gets a reference to the handle of the thread that invokes it, if the handle
 /// has been initialized.
-pub(super) fn try_with_current<F, R>(f: F) -> R
+fn try_with_current<F, R>(f: F) -> R
 where
     F: FnOnce(Option<&Thread>) -> R,
 {
@@ -200,6 +203,36 @@ where
     } else {
         f(None)
     }
+}
+
+/// Run a function with the current thread's name.
+///
+/// Modulo thread local accesses, this function is safe to call from signal
+/// handlers and in similar circumstances where allocations are not possible.
+pub(crate) fn with_current_name<F, R>(f: F) -> R
+where
+    F: FnOnce(Option<&str>) -> R,
+{
+    try_with_current(|thread| {
+        let name = if let Some(thread) = thread {
+            // If there is a current thread handle, try to use the name stored
+            // there.
+            thread.name()
+        } else if let Some(main) = main_thread::get()
+            && let Some(id) = id::get()
+            && id == main
+        {
+            // The main thread doesn't always have a thread handle, we must
+            // identify it through its ID instead. The checks are ordered so
+            // that the current ID is only loaded if it is actually needed,
+            // since loading it from TLS might need multiple expensive accesses.
+            Some("main")
+        } else {
+            None
+        };
+
+        f(name)
+    })
 }
 
 /// Gets a handle to the thread that invokes it. If the handle stored in thread-
@@ -269,22 +302,13 @@ fn init_current(current: *mut ()) -> Thread {
         // BUSY exists solely for this check, but as it is in the slow path, the
         // extra TLS write above shouldn't matter. The alternative is nearly always
         // a stack overflow.
-
-        // If you came across this message, contact the author of your allocator.
-        // If you are said author: A surprising amount of functions inside the
-        // standard library (e.g. `Mutex`, `thread_local!`, `File` when using long
-        // paths, even `panic!` when using unwinding), need memory allocation, so
-        // you'll get circular dependencies all over the place when using them.
-        // I (joboet) highly recommend using only APIs from core in your allocator
-        // and implementing your own system abstractions. Still, if you feel that
-        // a particular API should be entirely allocation-free, feel free to open
-        // an issue on the Rust repository, we'll see what we can do.
+        //
+        // If we reach this point it means our initialization routine ended up
+        // calling current() either directly, or indirectly through the global
+        // allocator, which is a bug either way as we may not call the global
+        // allocator in current().
         rtabort!(
-            "\n\
-            Attempted to access thread-local data while allocating said data.\n\
-            Do not access functions that allocate in the global allocator!\n\
-            This is a bug in the global allocator.\n\
-            "
+            "init_current() was re-entrant, which indicates a bug in the Rust threading implementation"
         )
     } else {
         debug_assert_eq!(current, DESTROYED);

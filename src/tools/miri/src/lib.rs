@@ -39,6 +39,7 @@
     clippy::needless_question_mark,
     clippy::needless_lifetimes,
     clippy::too_long_first_doc_paragraph,
+    clippy::len_zero,
     // We don't use translatable diagnostics
     rustc::diagnostic_outside_of_impl,
     // We are not implementing queries here so it's fine
@@ -165,7 +166,6 @@ pub use crate::shims::unwind::{CatchUnwindData, EvalContextExt as _};
 /// Also disable the MIR pass that inserts an alignment check on every pointer dereference. Miri
 /// does that too, and with a better error message.
 pub const MIRI_DEFAULT_ARGS: &[&str] = &[
-    "-Zcodegen-backend=dummy",
     "--cfg=miri",
     "-Zalways-encode-mir",
     "-Zextra-const-ub-checks",

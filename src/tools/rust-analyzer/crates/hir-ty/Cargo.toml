@@ -53,6 +53,7 @@ hir-expand.workspace = true
 base-db.workspace = true
 syntax.workspace = true
 span.workspace = true
+thin-vec = "0.2.14"
 
 [dev-dependencies]
 expect-test = "1.5.1"

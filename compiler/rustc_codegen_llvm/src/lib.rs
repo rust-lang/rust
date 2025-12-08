@@ -257,6 +257,10 @@ impl CodegenBackend for LlvmCodegenBackend {
                 }
                 writeln!(out).unwrap();
             }
+            PrintKind::BackendHasZstd => {
+                let has_zstd = llvm::LLVMRustLLVMHasZstdCompression();
+                writeln!(out, "{has_zstd}").unwrap();
+            }
             PrintKind::CodeModels => {
                 writeln!(out, "Available code models:").unwrap();
                 for name in &["tiny", "small", "kernel", "medium", "large"] {

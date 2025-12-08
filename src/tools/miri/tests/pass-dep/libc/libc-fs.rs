@@ -36,8 +36,13 @@ fn main() {
     test_posix_realpath_errors();
     #[cfg(target_os = "linux")]
     test_posix_fadvise();
+    #[cfg(not(target_os = "macos"))]
+    test_posix_fallocate::<libc::off_t>(libc::posix_fallocate);
+    #[cfg(target_os = "linux")]
+    test_posix_fallocate::<libc::off64_t>(libc::posix_fallocate64);
     #[cfg(target_os = "linux")]
     test_sync_file_range();
+    test_fstat();
     test_isatty();
     test_read_and_uninit();
     test_nofollow_not_symlink();
@@ -335,6 +340,74 @@ fn test_posix_fadvise() {
     assert_eq!(result, 0);
 }
 
+#[cfg(not(target_os = "macos"))]
+fn test_posix_fallocate<T: From<i32>>(
+    posix_fallocate: unsafe extern "C" fn(fd: libc::c_int, offset: T, len: T) -> libc::c_int,
+) {
+    // libc::off_t is i32 in target i686-unknown-linux-gnu
+    // https://docs.rs/libc/latest/i686-unknown-linux-gnu/libc/type.off_t.html
+
+    let test_errors = || {
+        // invalid fd
+        let ret = unsafe { posix_fallocate(42, T::from(0), T::from(10)) };
+        assert_eq!(ret, libc::EBADF);
+
+        let path = utils::prepare("miri_test_libc_posix_fallocate_errors.txt");
+        let file = File::create(&path).unwrap();
+
+        // invalid offset
+        let ret = unsafe { posix_fallocate(file.as_raw_fd(), T::from(-10), T::from(10)) };
+        assert_eq!(ret, libc::EINVAL);
+
+        // invalid len
+        let ret = unsafe { posix_fallocate(file.as_raw_fd(), T::from(0), T::from(-10)) };
+        assert_eq!(ret, libc::EINVAL);
+
+        // fd not writable
+        let c_path = CString::new(path.as_os_str().as_bytes()).expect("CString::new failed");
+        let fd = unsafe { libc::open(c_path.as_ptr(), libc::O_RDONLY) };
+        let ret = unsafe { posix_fallocate(fd, T::from(0), T::from(10)) };
+        assert_eq!(ret, libc::EBADF);
+    };
+
+    let test = || {
+        let bytes = b"hello";
+        let path = utils::prepare("miri_test_libc_posix_fallocate.txt");
+        let mut file = File::create(&path).unwrap();
+        file.write_all(bytes).unwrap();
+        file.sync_all().unwrap();
+        assert_eq!(file.metadata().unwrap().len(), 5);
+
+        let c_path = CString::new(path.as_os_str().as_bytes()).expect("CString::new failed");
+        let fd = unsafe { libc::open(c_path.as_ptr(), libc::O_RDWR) };
+
+        // Allocate to a bigger size from offset 0
+        let mut res = unsafe { posix_fallocate(fd, T::from(0), T::from(10)) };
+        assert_eq!(res, 0);
+        assert_eq!(file.metadata().unwrap().len(), 10);
+
+        // Write after allocation
+        file.write(b"dup").unwrap();
+        file.sync_all().unwrap();
+        assert_eq!(file.metadata().unwrap().len(), 10);
+
+        // Can't truncate to a smaller size with possix_fallocate
+        res = unsafe { posix_fallocate(fd, T::from(0), T::from(3)) };
+        assert_eq!(res, 0);
+        assert_eq!(file.metadata().unwrap().len(), 10);
+
+        // Allocate from offset
+        res = unsafe { posix_fallocate(fd, T::from(7), T::from(7)) };
+        assert_eq!(res, 0);
+        assert_eq!(file.metadata().unwrap().len(), 14);
+
+        remove_file(&path).unwrap();
+    };
+
+    test_errors();
+    test();
+}
+
 #[cfg(target_os = "linux")]
 fn test_sync_file_range() {
     use std::io::Write;
@@ -378,6 +451,41 @@ fn test_sync_file_range() {
     remove_file(&path).unwrap();
     assert_eq!(result_1, 0);
     assert_eq!(result_2, 0);
+}
+
+fn test_fstat() {
+    use std::mem::MaybeUninit;
+    use std::os::unix::io::AsRawFd;
+
+    let path = utils::prepare_with_content("miri_test_libc_fstat.txt", b"hello");
+    let file = File::open(&path).unwrap();
+    let fd = file.as_raw_fd();
+
+    let mut stat = MaybeUninit::<libc::stat>::uninit();
+    let res = unsafe { libc::fstat(fd, stat.as_mut_ptr()) };
+    assert_eq!(res, 0);
+    let stat = unsafe { stat.assume_init_ref() };
+
+    assert_eq!(stat.st_size, 5);
+    assert_eq!(stat.st_mode & libc::S_IFMT, libc::S_IFREG);
+
+    // Check that all fields are initialized.
+    let _st_nlink = stat.st_nlink;
+    let _st_blksize = stat.st_blksize;
+    let _st_blocks = stat.st_blocks;
+    let _st_ino = stat.st_ino;
+    let _st_dev = stat.st_dev;
+    let _st_uid = stat.st_uid;
+    let _st_gid = stat.st_gid;
+    let _st_rdev = stat.st_rdev;
+    let _st_atime = stat.st_atime;
+    let _st_mtime = stat.st_mtime;
+    let _st_ctime = stat.st_ctime;
+    let _st_atime_nsec = stat.st_atime_nsec;
+    let _st_mtime_nsec = stat.st_mtime_nsec;
+    let _st_ctime_nsec = stat.st_ctime_nsec;
+
+    remove_file(&path).unwrap();
 }
 
 fn test_isatty() {

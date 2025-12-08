@@ -1094,4 +1094,19 @@ fn main() {
             "#,
         );
     }
+
+    #[test]
+    fn multiple_target_feature_enable() {
+        check_diagnostics(
+            r#"
+#[target_feature(enable = "avx2,fma")]
+fn foo() {}
+
+#[target_feature(enable = "avx2", enable = "fma")]
+fn bar() {
+    foo();
+}
+        "#,
+        );
+    }
 }

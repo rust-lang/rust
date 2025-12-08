@@ -1181,6 +1181,10 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     ///
     /// If a key from `other` is already present in `self`, the respective
     /// value from `self` will be overwritten with the respective value from `other`.
+    /// Similar to [`insert`], though, the key is not overwritten,
+    /// which matters for types that can be `==` without being identical.
+    ///
+    /// [`insert`]: BTreeMap::insert
     ///
     /// # Examples
     ///
@@ -2440,7 +2444,7 @@ impl<K, V> Default for BTreeMap<K, V> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<K: PartialEq, V: PartialEq, A: Allocator + Clone> PartialEq for BTreeMap<K, V, A> {
     fn eq(&self, other: &BTreeMap<K, V, A>) -> bool {
-        self.iter().eq(other)
+        self.len() == other.len() && self.iter().zip(other).all(|(a, b)| a == b)
     }
 }
 

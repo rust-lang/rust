@@ -7,7 +7,7 @@
 #![allow(rustc::diagnostic_outside_of_impl)]
 #![allow(rustc::direct_use_of_rustc_type_ir)]
 #![allow(rustc::untranslatable_diagnostic)]
-#![feature(array_windows)]
+#![cfg_attr(bootstrap, feature(array_windows))]
 #![feature(assert_matches)]
 #![feature(associated_type_defaults)]
 #![feature(box_patterns)]
@@ -64,8 +64,8 @@ pub use rustc_error_messages::{
     fallback_fluent_bundle, fluent_bundle, into_diag_arg_using_display,
 };
 use rustc_hashes::Hash128;
+use rustc_lint_defs::LintExpectationId;
 pub use rustc_lint_defs::{Applicability, listify, pluralize};
-use rustc_lint_defs::{Lint, LintExpectationId};
 use rustc_macros::{Decodable, Encodable};
 pub use rustc_span::ErrorGuaranteed;
 pub use rustc_span::fatal_error::{FatalError, FatalErrorMarker};
@@ -105,20 +105,6 @@ rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 rustc_data_structures::static_assert_size!(PResult<'_, ()>, 24);
 #[cfg(target_pointer_width = "64")]
 rustc_data_structures::static_assert_size!(PResult<'_, bool>, 24);
-
-/// Used to avoid depending on `rustc_middle` in `rustc_attr_parsing`.
-/// Always the `TyCtxt`.
-pub trait LintEmitter: Copy {
-    type Id: Copy;
-    #[track_caller]
-    fn emit_node_span_lint(
-        self,
-        lint: &'static Lint,
-        hir_id: Self::Id,
-        span: impl Into<MultiSpan>,
-        decorator: impl for<'a> LintDiagnostic<'a, ()> + DynSend + 'static,
-    );
-}
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, Encodable, Decodable)]
 pub enum SuggestionStyle {
@@ -1366,7 +1352,7 @@ impl<'a> DiagCtxtHandle<'a> {
         self.create_err(err).emit()
     }
 
-    /// Ensures that an error is printed. See `Level::DelayedBug`.
+    /// Ensures that an error is printed. See [`Level::DelayedBug`].
     //
     // No `#[rustc_lint_diagnostics]` and no `impl Into<DiagMessage>` because bug messages aren't
     // user-facing.
@@ -2047,22 +2033,6 @@ pub fn elided_lifetime_in_path_suggestion(
     });
 
     ElidedLifetimeInPathSubdiag { expected, indicate }
-}
-
-pub fn report_ambiguity_error<'a, G: EmissionGuarantee>(
-    diag: &mut Diag<'a, G>,
-    ambiguity: rustc_lint_defs::AmbiguityErrorDiag,
-) {
-    diag.span_label(ambiguity.label_span, ambiguity.label_msg);
-    diag.note(ambiguity.note_msg);
-    diag.span_note(ambiguity.b1_span, ambiguity.b1_note_msg);
-    for help_msg in ambiguity.b1_help_msgs {
-        diag.help(help_msg);
-    }
-    diag.span_note(ambiguity.b2_span, ambiguity.b2_note_msg);
-    for help_msg in ambiguity.b2_help_msgs {
-        diag.help(help_msg);
-    }
 }
 
 /// Grammatical tool for displaying messages to end users in a nice form.

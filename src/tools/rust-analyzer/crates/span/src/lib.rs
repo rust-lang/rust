@@ -28,6 +28,33 @@ impl Span {
         let range = self.range.cover(other.range);
         Span { range, ..self }
     }
+
+    pub fn join(
+        self,
+        other: Span,
+        differing_anchor: impl FnOnce(Span, Span) -> Option<Span>,
+    ) -> Option<Span> {
+        // We can't modify the span range for fixup spans, those are meaningful to fixup, so just
+        // prefer the non-fixup span.
+        if self.anchor.ast_id == FIXUP_ERASED_FILE_AST_ID_MARKER {
+            return Some(other);
+        }
+        if other.anchor.ast_id == FIXUP_ERASED_FILE_AST_ID_MARKER {
+            return Some(self);
+        }
+        if self.anchor != other.anchor {
+            return differing_anchor(self, other);
+        }
+        // Differing context, we can't merge these so prefer the one that's root
+        if self.ctx != other.ctx {
+            if self.ctx.is_root() {
+                return Some(other);
+            } else if other.ctx.is_root() {
+                return Some(self);
+            }
+        }
+        Some(Span { range: self.range.cover(other.range), anchor: other.anchor, ctx: other.ctx })
+    }
 }
 
 /// Spans represent a region of code, used by the IDE to be able link macro inputs and outputs

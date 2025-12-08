@@ -1,3 +1,5 @@
+use std::convert::identity;
+
 use rustc_ast::token::Delimiter;
 use rustc_ast::tokenstream::DelimSpan;
 use rustc_ast::{AttrItem, Attribute, CRATE_NODE_ID, LitKind, NodeId, ast, token};
@@ -353,7 +355,7 @@ pub fn parse_cfg_attr(
                 span,
                 attr_span: cfg_attr.span,
                 template: CFG_ATTR_TEMPLATE,
-                path: AttrPath::from_ast(&cfg_attr.get_normal_item().path),
+                path: AttrPath::from_ast(&cfg_attr.get_normal_item().path, identity),
                 description: ParsedDescription::Attribute,
                 reason,
                 suggestions: CFG_ATTR_TEMPLATE
@@ -398,6 +400,7 @@ fn parse_cfg_attr_internal<'a>(
                 .into_boxed_slice(),
             span: attribute.span,
         },
+        Some(attribute.get_normal_item().unsafety),
         ParsedDescription::Attribute,
         pred_span,
         CRATE_NODE_ID,

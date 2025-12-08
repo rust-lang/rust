@@ -3,6 +3,7 @@
 //                      SingleAttributeParser which is what we have two of here.
 
 use rustc_hir::attrs::{AttributeKind, InlineAttr};
+use rustc_session::lint::builtin::ILL_FORMED_ATTRIBUTE_INPUT;
 
 use super::prelude::*;
 
@@ -56,9 +57,7 @@ impl<S: Stage> SingleAttributeParser<S> for InlineParser {
                 }
             }
             ArgParser::NameValue(_) => {
-                let suggestions = cx.suggestions();
-                let span = cx.attr_span;
-                cx.emit_lint(AttributeLintKind::IllFormedAttributeInput { suggestions }, span);
+                cx.warn_ill_formed_attribute_input(ILL_FORMED_ATTRIBUTE_INPUT);
                 return None;
             }
         }

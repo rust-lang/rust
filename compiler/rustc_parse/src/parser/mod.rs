@@ -606,7 +606,20 @@ impl<'a> Parser<'a> {
             // Do an ASCII case-insensitive match, because all keywords are ASCII.
             && ident.as_str().eq_ignore_ascii_case(exp.kw.as_str())
         {
-            self.dcx().emit_err(errors::KwBadCase { span: ident.span, kw: exp.kw.as_str() });
+            let kw = exp.kw.as_str();
+            let is_upper = kw.chars().all(char::is_uppercase);
+            let is_lower = kw.chars().all(char::is_lowercase);
+
+            let case = match (is_upper, is_lower) {
+                (true, true) => {
+                    unreachable!("keyword that is both fully upper- and fully lowercase")
+                }
+                (true, false) => errors::Case::Upper,
+                (false, true) => errors::Case::Lower,
+                (false, false) => errors::Case::Mixed,
+            };
+
+            self.dcx().emit_err(errors::KwBadCase { span: ident.span, kw, case });
             self.bump();
             true
         } else {

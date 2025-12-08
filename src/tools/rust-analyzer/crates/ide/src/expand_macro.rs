@@ -26,7 +26,7 @@ pub struct ExpandedMacro {
 // ![Expand Macro Recursively](https://user-images.githubusercontent.com/48062697/113020648-b3973180-917a-11eb-84a9-ecb921293dc5.gif)
 pub(crate) fn expand_macro(db: &RootDatabase, position: FilePosition) -> Option<ExpandedMacro> {
     let sema = Semantics::new(db);
-    let file_id = sema.attach_first_edition(position.file_id)?;
+    let file_id = sema.attach_first_edition(position.file_id);
     let file = sema.parse(file_id);
     let krate = sema.file_to_module_def(file_id.file_id(db))?.krate().into();
 
