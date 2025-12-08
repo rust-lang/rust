@@ -255,7 +255,9 @@ fn parse_config(args: Vec<String>) -> Config {
         }
     }
 
-    let target = opt_str2(matches.opt_str("target"));
+    let host = matches.opt_str("host").expect("`--host` must be unconditionally specified");
+    let target = matches.opt_str("target").expect("`--target` must be unconditionally specified");
+
     let android_cross_path = matches.opt_str("android-cross-path").map(Utf8PathBuf::from);
     // FIXME: `cdb_version` is *derived* from cdb, but it's *not* technically a config!
     let cdb = debuggers::discover_cdb(matches.opt_str("cdb"), &target);
@@ -433,7 +435,7 @@ fn parse_config(args: Vec<String>) -> Config {
         optimize_tests: matches.opt_present("optimize-tests"),
         rust_randomized_layout: matches.opt_present("rust-randomized-layout"),
         target,
-        host: opt_str2(matches.opt_str("host")),
+        host,
         cdb,
         cdb_version,
         gdb,
