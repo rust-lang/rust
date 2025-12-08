@@ -2204,7 +2204,7 @@ impl<'tcx> TyCtxt<'tcx> {
             // new ones.
             while i < { definitions.read().num_definitions() } {
                 let local_def_index = rustc_span::def_id::DefIndex::from_usize(i);
-                yield LocalDefId { local_def_index };
+                LocalDefId { local_def_index }.yield;
                 i += 1;
             }
 

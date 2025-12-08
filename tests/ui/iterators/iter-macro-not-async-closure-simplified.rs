@@ -20,7 +20,7 @@ fn call_async_once(_: impl AsyncFnOnce()) {}
 fn main() {
     let f = iter! { move || {
         for i in 0..10 {
-            yield i;
+            i.yield;
         }
     }};
 

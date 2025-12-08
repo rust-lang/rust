@@ -34,10 +34,10 @@ LL |     let mut h = copy(g);
 note: coroutine does not implement `Copy` as this value is used across a yield
   --> $DIR/issue-105084.rs:22:41
    |
-LL |         let t = std::boxed::box_new((5, yield));
-   |                 ------------------------^^^^^--
+LL |         let t = std::boxed::box_new((5, ().yield));
+   |                 ------------------------^^^^^^^^--
    |                 |                       |
-   |                 |                       yield occurs here, with `std::boxed::box_new((5, yield))` maybe used later
+   |                 |                       yield occurs here, with `std::boxed::box_new((5, ().yield))` maybe used later
    |                 has type `Box<(i32, ())>` which does not implement `Copy`
 note: required by a bound in `copy`
   --> $DIR/issue-105084.rs:10:12

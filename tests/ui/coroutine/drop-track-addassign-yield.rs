@@ -9,7 +9,7 @@ fn foo() {
     let _y = #[coroutine] static || {
         let x = &mut 0;
         *{
-            yield;
+            ().yield;
             x
         } += match String::new() {
             _ => 0,
@@ -22,12 +22,12 @@ fn foo() {
         *{
             let inner = &mut 1;
             *{
-                yield ();
+                ().yield;
                 inner
             } += match String::new() {
                 _ => 1,
             };
-            yield;
+            ().yield;
             x
         } += match String::new() {
             _ => 2,

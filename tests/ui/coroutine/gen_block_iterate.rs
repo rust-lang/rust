@@ -5,16 +5,16 @@
 #![feature(gen_blocks)]
 
 fn foo() -> impl Iterator<Item = u32> {
-    gen { yield 42; for x in 3..6 { yield x } }
+    gen { 42.yield; for x in 3..6 { x.yield } }
 }
 
 fn moved() -> impl Iterator<Item = u32> {
     let mut x = "foo".to_string();
     gen move {
-        yield 42;
+        42.yield;
         if x == "foo" { return }
         x.clear();
-        for x in 3..6 { yield x }
+        for x in 3..6 { x.yield }
     }
 }
 

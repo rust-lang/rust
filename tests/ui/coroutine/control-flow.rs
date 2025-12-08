@@ -24,29 +24,29 @@ fn finish<T>(mut amt: usize, mut t: T) -> T::Return
 }
 
 fn main() {
-    finish(1, #[coroutine] || yield);
+    finish(1, #[coroutine] || ().yield);
     finish(8, #[coroutine] || {
         for _ in 0..8 {
-            yield;
+            ().yield;
         }
     });
     finish(1, #[coroutine] || {
         if true {
-            yield;
+            ().yield;
         } else {
         }
     });
     finish(1, #[coroutine] || {
         if false {
         } else {
-            yield;
+            ().yield;
         }
     });
     finish(2, #[coroutine] || {
-        if { yield; false } {
-            yield;
+        if { ().yield; false } {
+            ().yield;
             panic!()
         }
-        yield
+        ().yield
     });
 }

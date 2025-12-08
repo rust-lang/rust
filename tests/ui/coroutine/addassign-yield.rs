@@ -10,12 +10,12 @@
 fn foo() {
     let _x = #[coroutine] static || {
         let mut s = String::new();
-        s += { yield; "" };
+        s += { ().yield; "" };
     };
 
     let _y = #[coroutine] static || {
         let x = &mut 0;
-        *{ yield; x } += match String::new() { _ => 0 };
+        *{ ().yield; x } += match String::new() { _ => 0 };
     };
 
     // Please don't ever actually write something like this
@@ -23,8 +23,8 @@ fn foo() {
         let x = &mut 0;
         *{
             let inner = &mut 1;
-            *{ yield (); inner } += match String::new() { _ => 1};
-            yield;
+            *{ ().yield; inner } += match String::new() { _ => 1};
+            ().yield;
             x
         } += match String::new() { _ => 2 };
     };

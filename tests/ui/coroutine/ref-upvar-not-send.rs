@@ -15,7 +15,7 @@ fn main() {
     assert_send(#[coroutine] move || {
         //~^ ERROR coroutine cannot be sent between threads safely
         //~| NOTE coroutine is not `Send`
-        yield;
+        ().yield;
         let _x = x;
     });
     //~^^ NOTE captured value is not `Send` because `&` references cannot be sent unless their referent is `Sync`
@@ -23,7 +23,7 @@ fn main() {
     assert_send(#[coroutine] move || {
         //~^ ERROR coroutine cannot be sent between threads safely
         //~| NOTE coroutine is not `Send`
-        yield;
+        ().yield;
         let _y = y;
     });
     //~^^ NOTE captured value is not `Send` because `&mut` references cannot be sent unless their referent is `Send`

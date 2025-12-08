@@ -16,7 +16,7 @@ use std::{
 fn main() {
     let mut g = #[coroutine] || {
         panic!();
-        yield;
+        ().yield;
     };
     panic::catch_unwind(panic::AssertUnwindSafe(|| {
         let x = Pin::new(&mut g).resume(());

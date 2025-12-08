@@ -7,7 +7,7 @@ use std::async_iter::AsyncIterator;
 
 fn deduce() -> impl AsyncIterator<Item = ()> {
     async gen {
-        yield Default::default();
+        Default::default().yield;
     }
 }
 

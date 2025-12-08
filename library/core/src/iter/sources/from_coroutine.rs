@@ -15,9 +15,9 @@ use crate::pin::Pin;
 /// #![feature(iter_from_coroutine)]
 ///
 /// let it = std::iter::from_coroutine(#[coroutine] || {
-///     yield 1;
-///     yield 2;
-///     yield 3;
+///     1.yield;
+///     2.yield;
+///     3.yield;
 /// });
 /// let v: Vec<_> = it.collect();
 /// assert_eq!(v, [1, 2, 3]);

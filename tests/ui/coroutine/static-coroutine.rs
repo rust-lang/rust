@@ -10,7 +10,7 @@ fn main() {
     static || {
         let a = true;
         let b = &a;
-        yield;
+        ().yield;
         assert_eq!(b as *const _, &a as *const _);
     };
     // SAFETY: We shadow the original coroutine variable so have no safe API to

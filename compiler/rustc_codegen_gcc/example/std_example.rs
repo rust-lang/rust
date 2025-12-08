@@ -104,7 +104,7 @@ fn main() {
     }
 
     Box::pin(#[coroutine] move |mut _task_context| {
-        yield ();
+        ().yield;
     }).as_mut().resume(0);
 
     println!("End");

@@ -7,7 +7,7 @@ fn main() {
         let _a = &mut true;
         let b = &mut true;
         //~^ ERROR borrow may still be in use when coroutine yields
-        yield ();
+        ().yield;
         println!("{}", b);
     };
 }

@@ -5,7 +5,7 @@
 
 fn main() {
     let _ = #[coroutine] static |x: u8| match x {
-        y if { yield } == y + 1 => (),
+        y if { ().yield } == y + 1 => (),
         _ => (),
     };
 }

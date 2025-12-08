@@ -8,7 +8,7 @@ fn main() {
             // Test that `opt` is not live across the yield, even when borrowed in a loop
             // See https://github.com/rust-lang/rust/issues/52792
             let opt = {
-                yield;
+                ().yield;
                 true
             };
             let _ = &opt;

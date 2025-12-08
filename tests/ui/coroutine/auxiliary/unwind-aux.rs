@@ -7,6 +7,6 @@ pub fn run<T>(a: T) {
     let _ = #[coroutine]
     move || {
         drop(a);
-        yield;
+        ().yield;
     };
 }

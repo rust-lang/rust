@@ -8,7 +8,7 @@ fn main() {
     let mut gen = #[coroutine]
     move || {
         //~^ ERROR the size for values of type
-        yield s[..];
+        s[..].yield;
     };
     Pin::new(&mut gen).resume(());
     //~^ ERROR the size for values of type

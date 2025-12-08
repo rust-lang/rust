@@ -11,7 +11,7 @@ fn main() {
         || {
             let guard = Foo;
             drop(guard);
-            yield;
+            ().yield;
         },
     )
 }

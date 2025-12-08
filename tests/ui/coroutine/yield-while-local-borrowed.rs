@@ -12,7 +12,7 @@ fn borrow_local_inline() {
     let mut b = #[coroutine] move || {
         let a = &mut 3;
         //~^ ERROR borrow may still be in use when coroutine yields
-        yield ();
+        ().yield;
         println!("{}", a);
     };
     Pin::new(&mut b).resume(());
@@ -24,7 +24,7 @@ fn borrow_local_inline_done() {
         {
             let a = &mut 3;
         }
-        yield ();
+        ().yield;
     };
     Pin::new(&mut b).resume(());
 }
@@ -39,7 +39,7 @@ fn borrow_local() {
         {
             let b = &a;
             //~^ ERROR borrow may still be in use when coroutine yields
-            yield ();
+            ().yield;
             println!("{}", b);
         }
     };

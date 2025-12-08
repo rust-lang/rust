@@ -13,7 +13,7 @@ use std::{ops::Coroutine, pin::Pin};
 fn main() {
     let mut g = #[coroutine]
     || {
-        yield;
+        ().yield;
     };
     Pin::new(&mut g).resume(()); // Yields once.
     Pin::new(&mut g).resume(()); // Completes here.

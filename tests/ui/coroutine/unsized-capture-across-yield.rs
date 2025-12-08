@@ -9,7 +9,7 @@ fn capture() -> impl Coroutine {
     move || {
         println!("{:?}", &b);
 
-        yield;
+        ().yield;
 
         for elem in b.iter() {}
     }

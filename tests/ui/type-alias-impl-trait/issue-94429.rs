@@ -16,7 +16,7 @@ impl Runnable for Implementor {
         //~^ ERROR: type mismatch resolving
         #[coroutine]
         move || {
-            yield 1;
+            1.yield;
         }
     }
 }

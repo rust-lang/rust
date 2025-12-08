@@ -6,9 +6,9 @@ fn main() {
     let i = {
         let s = String::new();
         iter! { || { //~ ERROR `s` does not live long enough
-            yield s.len();
+            s.len().yield;
             for x in 5..10 {
-                yield x * 2;
+                (x * 2).yield;
             }
         } }
     };

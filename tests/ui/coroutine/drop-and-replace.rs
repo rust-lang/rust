@@ -20,7 +20,7 @@ fn main() {
     let mut a = #[coroutine]
     || {
         let mut x = Foo(4);
-        yield;
+        ().yield;
         assert_eq!(x.0, 4);
 
         // At one point this tricked our dataflow analysis into thinking `x` was
@@ -30,7 +30,7 @@ fn main() {
 
         {
             let y = Foo(6);
-            yield;
+            ().yield;
             assert_eq!(y.0, 6);
         }
 

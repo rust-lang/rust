@@ -5,7 +5,7 @@ LL |       let coroutine: () = #[coroutine]
    |                      -- expected due to this
 LL | /     || {
 LL | |
-LL | |         yield 1i32;
+LL | |         1i32.yield;
 LL | |         return x;
 LL | |     };
    | |_____^ expected `()`, found coroutine

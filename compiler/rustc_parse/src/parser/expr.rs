@@ -1526,8 +1526,6 @@ impl<'a> Parser<'a> {
                 this.parse_expr_continue(lo)
             } else if this.eat_keyword(exp!(Break)) {
                 this.parse_expr_break()
-            } else if this.eat_keyword(exp!(Yield)) {
-                this.parse_expr_yield()
             } else if this.is_do_yeet() {
                 this.parse_expr_yeet()
             } else if this.eat_keyword(exp!(Become)) {
@@ -1951,16 +1949,6 @@ impl<'a> Parser<'a> {
 
         let kind = ExprKind::Continue(label);
         Ok(self.mk_expr(lo.to(self.prev_token.span), kind))
-    }
-
-    /// Parse `"yield" expr?`.
-    fn parse_expr_yield(&mut self) -> PResult<'a, Box<Expr>> {
-        let lo = self.prev_token.span;
-        let kind = ExprKind::Yield(YieldKind::Prefix(self.parse_expr_opt()?));
-        let span = lo.to(self.prev_token.span);
-        self.psess.gated_spans.gate(sym::yield_expr, span);
-        let expr = self.mk_expr(span, kind);
-        self.maybe_recover_from_bad_qpath(expr)
     }
 
     /// Parse `builtin # ident(args,*)`.

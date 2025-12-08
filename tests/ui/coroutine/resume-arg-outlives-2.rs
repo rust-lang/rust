@@ -9,8 +9,8 @@ fn demo<'not_static>(s: &'not_static str) -> thread::JoinHandle<()> {
     let mut generator = Box::pin({
         #[coroutine]
         move |_ctx| {
-            let ctx: &'not_static str = yield;
-            yield;
+            let ctx: &'not_static str = ().yield;
+            ().yield;
             dbg!(ctx);
         }
     });

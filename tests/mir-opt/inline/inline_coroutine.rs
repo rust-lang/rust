@@ -17,5 +17,5 @@ fn main() {
 pub fn g() -> impl Coroutine<bool> {
     #[inline]
     #[coroutine]
-    |a| yield if a { 7 } else { 13 }
+    |a| if a { 7 } else { 13 }.yield
 }

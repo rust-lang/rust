@@ -29,7 +29,7 @@ fn main() {
 fn t1() {
     let b = B;
     let mut foo = #[coroutine] || {
-        yield;
+        ().yield;
         drop(b);
     };
 
@@ -43,7 +43,7 @@ fn t1() {
 fn t2() {
     let b = B;
     let mut foo = #[coroutine] || {
-        yield b;
+        b.yield;
     };
 
     let n = A.load(Ordering::SeqCst);
@@ -56,7 +56,7 @@ fn t2() {
 fn t3() {
     let b = B;
     let foo = #[coroutine] || {
-        yield;
+        ().yield;
         drop(b);
     };
 

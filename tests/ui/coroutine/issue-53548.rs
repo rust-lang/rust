@@ -33,6 +33,6 @@ fn main() {
         let store = Store::<Box<dyn Trait>> {
             inner: Default::default(),
         };
-        yield ();
+        ().yield;
     });
 }

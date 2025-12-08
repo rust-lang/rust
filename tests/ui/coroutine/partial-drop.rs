@@ -15,7 +15,7 @@ fn main() {
         || {
             let guard = Bar { foo: Foo, x: 42 };
             drop(guard.foo);
-            yield;
+            ().yield;
         },
     );
 
@@ -25,7 +25,7 @@ fn main() {
             let mut guard = Bar { foo: Foo, x: 42 };
             drop(guard);
             guard = Bar { foo: Foo, x: 23 };
-            yield;
+            ().yield;
         },
     );
 
@@ -35,7 +35,7 @@ fn main() {
             let guard = Bar { foo: Foo, x: 42 };
             let Bar { foo, x } = guard;
             drop(foo);
-            yield;
+            ().yield;
         },
     );
 }

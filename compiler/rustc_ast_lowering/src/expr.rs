@@ -815,7 +815,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     ///             ::std::task::Poll::Ready(result) => break result,
     ///             ::std::task::Poll::Pending => {}
     ///         }
-    ///         task_context = yield ();
+    ///         task_context = ().yield;
     ///     }
     /// }
     /// ```
@@ -962,8 +962,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
         };
 
         // Depending on `async` of `async gen`:
-        // async     - task_context = yield ();
-        // async gen - task_context = yield ASYNC_GEN_PENDING;
+        // async     - task_context = ().yield;
+        // async gen - task_context = ASYNC_GEN_PENDING.yield;
         let yield_stmt = {
             let yielded = if is_async_gen {
                 self.arena.alloc(self.expr_lang_item_path(span, hir::LangItem::AsyncGenPending))
@@ -1713,7 +1713,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         };
 
         if is_async_gen {
-            // `yield $expr` is transformed into `task_context = yield async_gen_ready($expr)`.
+            // `$expr.yield` is transformed into `task_context = async_gen_ready($expr).yield`.
             // This ensures that we store our resumed `ResumeContext` correctly, and also that
             // the apparent value of the `yield` expression is `()`.
             let desugar_span = self.mark_span_with_reason(

@@ -24,7 +24,7 @@ fn test() -> impl Coroutine<(), Return = (), Yield = u8> + Unpin {
     #[coroutine]
     || {
         for i in 1..6 {
-            yield i
+            i.yield
         }
     }
 }
@@ -36,7 +36,7 @@ fn main() {
         #[coroutine]
         move || {
             for i in start..end {
-                yield i
+                i.yield
             }
         }
     };

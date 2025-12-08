@@ -11,13 +11,13 @@ fn firstn() -> impl Coroutine<Yield = u64, Return = ()> {
         let mut num = 0;
         let num = &mut num;
 
-        yield *num;
+        (*num).yield;
         *num += 1; // would fail here
 
-        yield *num;
+        (*num).yield;
         *num += 1;
 
-        yield *num;
+        (*num).yield;
         *num += 1;
     }
 }

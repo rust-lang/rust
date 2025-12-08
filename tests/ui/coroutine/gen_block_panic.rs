@@ -6,9 +6,9 @@
 
 fn main() {
     let mut iter = gen {
-        yield 42;
+        42.yield;
         panic!("foo");
-        yield 69; //~ WARN: unreachable statement
+        69.yield; //~ WARN: unreachable statement
     };
     assert_eq!(iter.next(), Some(42));
     let mut tmp = std::panic::AssertUnwindSafe(&mut iter);

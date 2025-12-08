@@ -142,9 +142,9 @@ fn main() {
     takes_pointeesized(async |a| { a });
 
     // `|a| { yield a }`
-    takes_sized(#[coroutine] |a| { yield a });
-    takes_metasized(#[coroutine] |a| { yield a });
-    takes_pointeesized(#[coroutine] |a| { yield a });
+    takes_sized(#[coroutine] |a| { a.yield });
+    takes_metasized(#[coroutine] |a| { a.yield });
+    takes_pointeesized(#[coroutine] |a| { a.yield });
 
     // `!`
     needs_sized::<!>();

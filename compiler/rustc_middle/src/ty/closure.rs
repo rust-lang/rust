@@ -454,10 +454,8 @@ pub fn analyze_coroutine_closure_captures<'a, 'tcx: 'a, T>(
                     child capture ({child_capture:#?})"
                 );
 
-                yield for_each(
-                    (parent_field_idx, parent_capture),
-                    (child_field_idx, child_capture),
-                );
+                for_each((parent_field_idx, parent_capture), (child_field_idx, child_capture))
+                    .yield;
 
                 field_used_at_least_once = true;
             }

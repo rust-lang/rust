@@ -13,14 +13,14 @@ fn main() {
         let gen_index = #[coroutine]
         static || {
             let u = A[{
-                yield;
+                ().yield;
                 1
             }];
         };
         let gen_match = #[coroutine]
         static || match A {
             i if {
-                yield;
+                ().yield;
                 true
             } =>
             {

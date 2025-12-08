@@ -1656,7 +1656,7 @@ pub enum ClosureKind {
     Closure,
     /// This is a coroutine expression -- i.e. a closure expression in which
     /// we've found a `yield`. These can arise either from "plain" coroutine
-    ///  usage (e.g. `let x = || { yield (); }`) or from a desugared expression
+    ///  usage (e.g. `let x = || { ().yield; }`) or from a desugared expression
     /// (e.g. `async` and `gen` blocks).
     Coroutine(CoroutineKind),
     /// This is a coroutine-closure, which is a special sugared closure that

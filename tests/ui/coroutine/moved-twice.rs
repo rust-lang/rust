@@ -15,12 +15,12 @@ impl Drop for Foo {
 fn overlap_move_points() -> impl Coroutine<Yield = ()> {
     #[coroutine] static || {
         let first = Foo([0; FOO_SIZE]);
-        yield;
+        ().yield;
         let second = first;
-        yield;
+        ().yield;
         let second = first;
         //~^ ERROR: use of moved value: `first` [E0382]
-        yield;
+        ().yield;
     }
 }
 

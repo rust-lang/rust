@@ -4,7 +4,7 @@ error: coroutine cannot be sent between threads safely
 LL | /     assert_send(#[coroutine] move || {
 LL | |
 LL | |
-LL | |         yield;
+LL | |         ().yield;
 LL | |         let _x = x;
 LL | |     });
    | |______^ coroutine is not `Send`
@@ -27,7 +27,7 @@ error: coroutine cannot be sent between threads safely
 LL | /     assert_send(#[coroutine] move || {
 LL | |
 LL | |
-LL | |         yield;
+LL | |         ().yield;
 LL | |         let _y = y;
 LL | |     });
    | |______^ coroutine is not `Send`

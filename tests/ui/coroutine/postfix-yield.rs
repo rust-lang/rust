@@ -11,7 +11,7 @@ use std::pin::pin;
 fn main() {
     // generators (i.e. yield doesn't return anything useful)
     let mut gn = gen {
-        yield 1;
+        1.yield;
         2.yield;
     };
 

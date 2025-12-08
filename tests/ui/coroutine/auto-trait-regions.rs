@@ -25,7 +25,7 @@ fn main() {
     let x: &'static _ = &OnlyFooIfStaticRef(No);
     let generator = #[coroutine] move || {
         let x = x;
-        yield;
+        ().yield;
         assert_foo(x);
     };
     assert_foo(generator);
@@ -35,7 +35,7 @@ fn main() {
     let x = &OnlyFooIfRef(No);
     let generator = #[coroutine] move || {
         let x = x;
-        yield;
+        ().yield;
         assert_foo(x);
     };
     assert_foo(generator); // ok
@@ -45,7 +45,7 @@ fn main() {
         let a = A(&mut true, &mut true, No);
         //~^ ERROR borrow may still be in use when coroutine yields
         //~| ERROR borrow may still be in use when coroutine yields
-        yield;
+        ().yield;
         assert_foo(a);
     };
     assert_foo(generator);

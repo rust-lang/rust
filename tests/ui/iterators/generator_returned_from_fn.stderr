@@ -3,9 +3,9 @@ error[E0515]: cannot return reference to function parameter `a`
    |
 LL |       iter! { || {
    |  _____________^
-LL | |         yield *a;
+LL | |         (*a).yield;
 LL | |         for x in 5..10 {
-LL | |             yield x * 2;
+LL | |             (x * 2).yield;
 LL | |         }
 LL | |     } }
    | |_____^ returns a reference to data owned by the current function
@@ -15,9 +15,9 @@ error: gen closure does not implement `Fn` because it captures state from its en
    |
 LL |       iter! { move || {
    |  _____________-^^^^^^
-LL | |         yield *a;
+LL | |         (*a).yield;
 LL | |         for x in 5..10 {
-LL | |             yield x * 2;
+LL | |             (x * 2).yield;
 LL | |         }
 LL | |     } }
    | |_____- return type was inferred to be `{gen closure@$DIR/generator_returned_from_fn.rs:34:13: 34:20}` here
@@ -33,7 +33,7 @@ LL |       iter! { move || {
    |  _____________^
 LL | |
 LL | |
-LL | |         yield *a;
+LL | |         (*a).yield;
 ...  |
 LL | |     } }
    | |_____^
@@ -54,7 +54,7 @@ LL |       iter! { move || {
    |  _____________^
 LL | |
 LL | |
-LL | |         yield *a;
+LL | |         (*a).yield;
 ...  |
 LL | |     } }
    | |_____^

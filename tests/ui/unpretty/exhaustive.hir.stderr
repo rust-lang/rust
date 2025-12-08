@@ -70,8 +70,8 @@ LL |         core::()::marker::()::PhantomData;
 error: `yield` can only be used in `#[coroutine]` closures, or `gen` blocks
   --> $DIR/exhaustive.rs:391:9
    |
-LL |         yield;
-   |         ^^^^^
+LL |         ().yield;
+   |         ^^^^^^^^
    |
 help: use `#[coroutine]` to make this closure a coroutine
    |

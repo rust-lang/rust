@@ -31,7 +31,7 @@ impl ExpnTree {
     ) -> impl Iterator<Item = &ExpnNode> {
         gen move {
             let Some(root_node) = self.get(root_expn_id) else { return };
-            yield root_node;
+            root_node.yield;
 
             // Stack of child-node-ID iterators that drives the depth-first traversal.
             let mut iter_stack = vec![root_node.child_expn_ids.iter()];
@@ -45,7 +45,7 @@ impl ExpnTree {
 
                 // Yield this node.
                 let Some(node) = self.get(curr_id) else { continue };
-                yield node;
+                node.yield;
 
                 // Push the node's children, to be traversed next.
                 if !node.child_expn_ids.is_empty() {

@@ -2195,7 +2195,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                     {
                         // Yield the trait's def id. Supertraits will be
                         // elaborated from that.
-                        yield item.owner_id.def_id.to_def_id();
+                        item.owner_id.def_id.to_def_id().yield;
                     } else if let Some(generics) = node.generics() {
                         for pred in generics.predicates {
                             let hir::WherePredicateKind::BoundPredicate(pred) = pred.kind else {
@@ -2216,7 +2216,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                                         if let Some(def_id) =
                                             poly_trait_ref.trait_ref.trait_def_id()
                                         {
-                                            yield def_id;
+                                            def_id.yield;
                                         }
                                     }
                                     hir::GenericBound::Outlives(_)

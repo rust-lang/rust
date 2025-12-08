@@ -191,7 +191,7 @@ LL |         s = 1;
 warning: value assigned to `s` is never read
   --> $DIR/liveness-upvars.rs:145:9
    |
-LL |         s = yield ();
+LL |         s = ().yield;
    |         ^^^^^^^^^^^^
    |
    = help: maybe it is overwritten before being read?

@@ -12,7 +12,7 @@
 pub fn foo<'a, 'b>() -> impl Clone {
     #[coroutine]
     move |_: ()| {
-        let () = yield ();
+        let () = ().yield;
     }
 }
 

@@ -221,13 +221,6 @@ pub(crate) fn format_expr(
                 Ok(format!("break{id_str}"))
             }
         }
-        ast::ExprKind::Yield(ast::YieldKind::Prefix(ref opt_expr)) => {
-            if let Some(ref expr) = *opt_expr {
-                rewrite_unary_prefix(context, "yield ", &**expr, shape)
-            } else {
-                Ok("yield".to_string())
-            }
-        }
         ast::ExprKind::Closure(ref cl) => closures::rewrite_closure(
             &cl.binder,
             cl.constness,

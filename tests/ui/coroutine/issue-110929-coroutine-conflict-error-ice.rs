@@ -6,7 +6,7 @@ fn main() {
     let x = &mut ();
     || {
         let _c = #[coroutine]
-        || yield *&mut *x;
+        || (*&mut *x).yield;
         || _ = &mut *x;
     };
 }
