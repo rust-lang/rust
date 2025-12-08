@@ -3138,6 +3138,16 @@ pub(crate) struct EmptyAttributeList {
 }
 
 #[derive(LintDiagnostic)]
+#[diag(lint_empty_cfg_predicate)]
+#[note]
+pub(crate) struct EmptyCfgPredicate {
+    #[suggestion(code = "{lit}", applicability = "machine-applicable", style = "verbose")]
+    pub predicate_span: Span,
+    pub predicate: Symbol,
+    pub lit: bool,
+}
+
+#[derive(LintDiagnostic)]
 #[diag(lint_invalid_target)]
 #[warning]
 #[help]

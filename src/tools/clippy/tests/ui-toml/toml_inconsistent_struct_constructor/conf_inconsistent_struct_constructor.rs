@@ -46,36 +46,36 @@ mod field_attributes {
 // https://github.com/rust-lang/rust-clippy/pull/13737#discussion_r1874539800
 mod cfgs_between_fields {
     #[allow(clippy::non_minimal_cfg)]
-    fn cfg_all() {
+    fn cfg_true() {
         struct S {
             a: i32,
             b: i32,
-            #[cfg(all())]
+            #[cfg(true)]
             c: i32,
             d: i32,
         }
         let s = S {
             d: 0,
             //~^ inconsistent_struct_constructor
-            #[cfg(all())]
+            #[cfg(true)]
             c: 1,
             b: 2,
             a: 3,
         };
     }
 
-    fn cfg_any() {
+    fn cfg_false() {
         struct S {
             a: i32,
             b: i32,
-            #[cfg(any())]
+            #[cfg(false)]
             c: i32,
             d: i32,
         }
         let s = S {
             d: 0,
             //~^ inconsistent_struct_constructor
-            #[cfg(any())]
+            #[cfg(false)]
             c: 1,
             b: 2,
             a: 3,

@@ -4,7 +4,7 @@
 //@ no-auto-check-cfg
 //@ revisions: empty_cfg without_names
 //@ [empty_cfg]compile-flags: --check-cfg=cfg()
-//@ [without_names]compile-flags: --check-cfg=cfg(any())
+//@ [without_names]compile-flags: --check-cfg=cfg(false)
 
 #[cfg(unix = "value")]
 //~^ WARNING unexpected `cfg` condition value

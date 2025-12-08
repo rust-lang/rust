@@ -1,7 +1,7 @@
 // Regression test for the ICE described in #86721.
 
 //@ revisions: rev1 rev2
-#![cfg_attr(any(), rev1, rev2)]
+#![cfg_attr(false, rev1, rev2)]
 #![crate_type = "lib"]
 
 #[cfg(any(rev1))]

@@ -1,0 +1,56 @@
+error[E0425]: cannot find value `A` in this scope
+  --> $DIR/empty-cfg-predicate.rs:12:5
+   |
+LL | struct B;
+   | --------- similarly named unit struct `B` defined here
+...
+LL |     A;
+   |     ^
+   |
+note: found an item that was configured out
+  --> $DIR/empty-cfg-predicate.rs:6:8
+   |
+LL | #[cfg(any())]
+   |          -- the item is gated here
+LL | struct A;
+   |        ^
+help: a unit struct with a similar name exists
+   |
+LL -     A;
+LL +     B;
+   |
+
+error: use of empty `cfg(any())`
+  --> $DIR/empty-cfg-predicate.rs:5:7
+   |
+LL | #[cfg(any())]
+   |       ^^^^^
+   |
+   = note: this used to be a common pattern before `cfg(true)` and `cfg(false)` were added to the language in Rust 1.88
+note: the lint level is defined here
+  --> $DIR/empty-cfg-predicate.rs:3:9
+   |
+LL | #![deny(empty_cfg_predicate)]
+   |         ^^^^^^^^^^^^^^^^^^^
+help: consider using a boolean literal
+   |
+LL - #[cfg(any())]
+LL + #[cfg(false)]
+   |
+
+error: use of empty `cfg(all())`
+  --> $DIR/empty-cfg-predicate.rs:7:7
+   |
+LL | #[cfg(all())]
+   |       ^^^^^
+   |
+   = note: this used to be a common pattern before `cfg(true)` and `cfg(false)` were added to the language in Rust 1.88
+help: consider using a boolean literal
+   |
+LL - #[cfg(all())]
+LL + #[cfg(true)]
+   |
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0425`.

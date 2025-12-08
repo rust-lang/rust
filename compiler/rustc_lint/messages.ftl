@@ -256,6 +256,10 @@ lint_empty_attribute =
         *[other] using `{$attr_path}` with an empty list has no effect
     }
 
+lint_empty_cfg_predicate = use of empty `cfg({$predicate}())`
+    .note = this used to be a common pattern before `cfg(true)` and `cfg(false)` were added to the language in Rust 1.88
+    .suggestion = consider using a boolean literal
+
 -lint_previously_accepted =
     this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 lint_enum_intrinsics_mem_discriminant =

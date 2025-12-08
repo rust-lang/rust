@@ -13,7 +13,7 @@ fn wasi() {}
 //~| non_minimal_cfg
 fn the_end() {}
 
-#[cfg(any())]
+#[cfg(false)]
 fn any() {}
 
 fn main() {}

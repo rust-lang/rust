@@ -4,7 +4,7 @@
 struct Baz<const N: usize>(i32);
 
 fn main() {
-    let _: Baz<#[cfg(any())]> = todo!();
+    let _: Baz<#[cfg(false)]> = todo!();
     //~^ ERROR attributes cannot be applied here
 }
 

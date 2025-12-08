@@ -12,7 +12,7 @@ use rustc_parse::parser::{ForceCollect, Parser};
 use rustc_parse::{exp, parse_in};
 use rustc_session::Session;
 use rustc_session::config::ExpectedValues;
-use rustc_session::lint::builtin::UNEXPECTED_CFGS;
+use rustc_session::lint::builtin::{EMPTY_CFG_PREDICATE, UNEXPECTED_CFGS};
 use rustc_session::parse::{ParseSess, feature_err};
 use rustc_span::{ErrorGuaranteed, Span, Symbol, sym};
 use thin_vec::ThinVec;
@@ -63,14 +63,42 @@ pub fn parse_cfg_entry<S: Stage>(
                     };
                     CfgEntry::Not(Box::new(parse_cfg_entry(cx, single)?), list.span)
                 }
-                Some(sym::any) => CfgEntry::Any(
-                    list.mixed().flat_map(|sub_item| parse_cfg_entry(cx, sub_item)).collect(),
-                    list.span,
-                ),
-                Some(sym::all) => CfgEntry::All(
-                    list.mixed().flat_map(|sub_item| parse_cfg_entry(cx, sub_item)).collect(),
-                    list.span,
-                ),
+                Some(sym::any) => {
+                    if list.is_empty() && !list.span.from_expansion() {
+                        let span = meta.span();
+                        cx.emit_lint(
+                            EMPTY_CFG_PREDICATE,
+                            AttributeLintKind::EmptyCfgPredictate {
+                                predicate_span: span,
+                                predicate: sym::any,
+                                lit: false,
+                            },
+                            span,
+                        );
+                    }
+                    CfgEntry::Any(
+                        list.mixed().flat_map(|sub_item| parse_cfg_entry(cx, sub_item)).collect(),
+                        list.span,
+                    )
+                }
+                Some(sym::all) => {
+                    if list.is_empty() && !list.span.from_expansion() {
+                        let span = meta.span();
+                        cx.emit_lint(
+                            EMPTY_CFG_PREDICATE,
+                            AttributeLintKind::EmptyCfgPredictate {
+                                predicate_span: span,
+                                predicate: sym::all,
+                                lit: true,
+                            },
+                            span,
+                        );
+                    }
+                    CfgEntry::All(
+                        list.mixed().flat_map(|sub_item| parse_cfg_entry(cx, sub_item)).collect(),
+                        list.span,
+                    )
+                }
                 Some(sym::target) => parse_cfg_entry_target(cx, list, meta.span())?,
                 Some(sym::version) => parse_cfg_entry_version(cx, list, meta.span())?,
                 _ => {
