@@ -62,10 +62,10 @@ impl<S: Stage> CombineAttributeParser<S> for LinkParser {
         ], "https://doc.rust-lang.org/reference/items/external-blocks.html#the-link-attribute");
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(ALL_TARGETS); //FIXME Still checked fully in `check_attr.rs`
 
-    fn extend<'c>(
-        cx: &'c mut AcceptContext<'_, '_, S>,
-        args: &'c ArgParser,
-    ) -> impl IntoIterator<Item = Self::Item> + 'c {
+    fn extend(
+        cx: &mut AcceptContext<'_, '_, S>,
+        args: &ArgParser,
+    ) -> impl IntoIterator<Item = Self::Item> {
         let items = match args {
             ArgParser::List(list) => list,
             // This is an edgecase added because making this a hard error would break too many crates

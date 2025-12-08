@@ -342,7 +342,7 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
                         // blob
                         // a
                         if is_doc_attribute
-                            && let ArgParser::NameValue(nv) = args
+                            && let ArgParser::NameValue(nv) = &args
                             // If not a string key/value, it should emit an error, but to make
                             // things simpler, it's handled in `DocParser` because it's simpler to
                             // emit an error with `AcceptContext`.

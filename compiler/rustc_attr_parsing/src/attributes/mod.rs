@@ -315,10 +315,10 @@ pub(crate) trait CombineAttributeParser<S: Stage>: 'static {
     const TEMPLATE: AttributeTemplate;
 
     /// Converts a single syntactical attribute to a number of elements of the semantic attribute, or [`AttributeKind`]
-    fn extend<'c>(
-        cx: &'c mut AcceptContext<'_, '_, S>,
-        args: &'c ArgParser,
-    ) -> impl IntoIterator<Item = Self::Item> + 'c;
+    fn extend(
+        cx: &mut AcceptContext<'_, '_, S>,
+        args: &ArgParser,
+    ) -> impl IntoIterator<Item = Self::Item>;
 }
 
 /// Use in combination with [`CombineAttributeParser`].

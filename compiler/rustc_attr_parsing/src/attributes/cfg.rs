@@ -35,9 +35,9 @@ const CFG_ATTR_TEMPLATE: AttributeTemplate = template!(
     "https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg_attr-attribute"
 );
 
-pub fn parse_cfg<'c, S: Stage>(
-    cx: &'c mut AcceptContext<'_, '_, S>,
-    args: &'c ArgParser,
+pub fn parse_cfg<S: Stage>(
+    cx: &mut AcceptContext<'_, '_, S>,
+    args: &ArgParser,
 ) -> Option<CfgEntry> {
     let ArgParser::List(list) = args else {
         cx.expected_list(cx.attr_span);

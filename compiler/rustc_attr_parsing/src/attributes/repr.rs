@@ -26,10 +26,10 @@ impl<S: Stage> CombineAttributeParser<S> for ReprParser {
         "https://doc.rust-lang.org/reference/type-layout.html#representations"
     );
 
-    fn extend<'c>(
-        cx: &'c mut AcceptContext<'_, '_, S>,
-        args: &'c ArgParser,
-    ) -> impl IntoIterator<Item = Self::Item> + 'c {
+    fn extend(
+        cx: &mut AcceptContext<'_, '_, S>,
+        args: &ArgParser,
+    ) -> impl IntoIterator<Item = Self::Item> {
         let mut reprs = Vec::new();
 
         let Some(list) = args.list() else {
@@ -275,7 +275,7 @@ impl AlignParser {
     const PATH: &'static [Symbol] = &[sym::rustc_align];
     const TEMPLATE: AttributeTemplate = template!(List: &["<alignment in bytes>"]);
 
-    fn parse<'c, S: Stage>(&mut self, cx: &'c mut AcceptContext<'_, '_, S>, args: &'c ArgParser) {
+    fn parse<S: Stage>(&mut self, cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) {
         match args {
             ArgParser::NoArgs | ArgParser::NameValue(_) => {
                 cx.expected_list(cx.attr_span);
@@ -332,7 +332,7 @@ impl AlignStaticParser {
     const PATH: &'static [Symbol] = &[sym::rustc_align_static];
     const TEMPLATE: AttributeTemplate = AlignParser::TEMPLATE;
 
-    fn parse<'c, S: Stage>(&mut self, cx: &'c mut AcceptContext<'_, '_, S>, args: &'c ArgParser) {
+    fn parse<S: Stage>(&mut self, cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) {
         self.0.parse(cx, args)
     }
 }

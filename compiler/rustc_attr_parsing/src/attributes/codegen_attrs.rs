@@ -472,10 +472,10 @@ impl<S: Stage> AttributeParser<S> for UsedParser {
     }
 }
 
-fn parse_tf_attribute<'c, S: Stage>(
-    cx: &'c mut AcceptContext<'_, '_, S>,
-    args: &'c ArgParser,
-) -> impl IntoIterator<Item = (Symbol, Span)> + 'c {
+fn parse_tf_attribute<S: Stage>(
+    cx: &mut AcceptContext<'_, '_, S>,
+    args: &ArgParser,
+) -> impl IntoIterator<Item = (Symbol, Span)> {
     let mut features = Vec::new();
     let ArgParser::List(list) = args else {
         cx.expected_list(cx.attr_span);
@@ -529,10 +529,10 @@ impl<S: Stage> CombineAttributeParser<S> for TargetFeatureParser {
     };
     const TEMPLATE: AttributeTemplate = template!(List: &["enable = \"feat1, feat2\""]);
 
-    fn extend<'c>(
-        cx: &'c mut AcceptContext<'_, '_, S>,
-        args: &'c ArgParser,
-    ) -> impl IntoIterator<Item = Self::Item> + 'c {
+    fn extend(
+        cx: &mut AcceptContext<'_, '_, S>,
+        args: &ArgParser,
+    ) -> impl IntoIterator<Item = Self::Item> {
         parse_tf_attribute(cx, args)
     }
 
@@ -567,10 +567,10 @@ impl<S: Stage> CombineAttributeParser<S> for ForceTargetFeatureParser {
         Allow(Target::Method(MethodKind::TraitImpl)),
     ]);
 
-    fn extend<'c>(
-        cx: &'c mut AcceptContext<'_, '_, S>,
-        args: &'c ArgParser,
-    ) -> impl IntoIterator<Item = Self::Item> + 'c {
+    fn extend(
+        cx: &mut AcceptContext<'_, '_, S>,
+        args: &ArgParser,
+    ) -> impl IntoIterator<Item = Self::Item> {
         parse_tf_attribute(cx, args)
     }
 }
