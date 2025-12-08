@@ -276,8 +276,9 @@ impl CStore {
             .filter_map(|(cnum, data)| data.as_deref().map(|data| (cnum, data)))
     }
 
-    pub fn all_proc_macro_def_ids(&self) -> impl Iterator<Item = DefId> {
-        self.iter_crate_data().flat_map(|(krate, data)| data.proc_macros_for_crate(krate, self))
+    pub fn all_proc_macro_def_ids(&self, tcx: TyCtxt<'_>) -> impl Iterator<Item = DefId> {
+        self.iter_crate_data()
+            .flat_map(move |(krate, data)| data.proc_macros_for_crate(tcx, krate, self))
     }
 
     fn push_dependencies_in_postorder(&self, deps: &mut IndexSet<CrateNum>, cnum: CrateNum) {
@@ -683,6 +684,7 @@ impl CStore {
         };
 
         let crate_metadata = CrateMetadata::new(
+            tcx,
             self,
             metadata,
             crate_root,
@@ -778,7 +780,7 @@ impl CStore {
         self.used_extern_options.insert(name);
         match self.maybe_resolve_crate(tcx, name, dep_kind, origin) {
             Ok(cnum) => {
-                self.set_used_recursively(cnum);
+                self.set_used_recursively(tcx, cnum);
                 Some(cnum)
             }
             Err(err) => {
