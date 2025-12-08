@@ -22,11 +22,9 @@ pub(crate) fn target() -> Target {
             linker: Some("rust-lld".into()),
             cpu: "generic-rv32".into(),
 
-            // Some crates (*cough* crossbeam) assume you have 64 bit
-            // atomics if the target name is not in a hardcoded list.
-            // Since OpenVM is singlethreaded and all operations are
-            // atomic, I guess we can just say we support 64-bit
-            // atomics.
+            // We set atomic_width to 64 for compatibility with crates such as crossbeam,
+            // but this should never be triggered since compilation should always lower
+            // atomics and be single-threaded.
             max_atomic_width: Some(64),
             atomic_cas: true,
 

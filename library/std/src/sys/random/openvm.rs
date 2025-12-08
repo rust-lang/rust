@@ -9,7 +9,7 @@ pub fn fill_bytes(bytes: &mut [u8]) {
     }
 
     let mut buf = [0u32; 2];
-    let len = (pre.len() + post.len() + size_of::<u32>() - 1) / size_of::<u32>();
+    let len = (pre.len() + post.len()).div_ceil(size_of::<u32>());
     if len != 0 {
         unsafe { abi::sys_rand(buf.as_mut_ptr(), len) };
     }

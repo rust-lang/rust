@@ -20,12 +20,12 @@ We provide a cargo extension called [cargo-openvm] that provides tools for cross
 ## Requirements
 
 The target supports cross-compilation from any host and does not support host tools. It supports `alloc` with a
-default allocator. Partial support for the Rust `std` library is provided using custom RISC-V instructions and requires the `openvm` crate with the `"std"` feature enabled. Further details and limitations of `std` support are documented [here](https://docs.openvm.dev/book/writing-apps/writing-a-program#rust-std-library-support). 
+default allocator. Partial support for the Rust `std` library is provided using custom RISC-V instructions and requires the `openvm` crate with the `"std"` feature enabled. Further details and limitations of `std` support are documented [here](https://docs.openvm.dev/book/writing-apps/writing-a-program#rust-std-library-support).
 
 The target's execution environment is single-threaded, non-preemptive, and does not support
 privileged instructions. At present, unaligned accesses are not supported and will result in execution traps. The binaries expect no operating system and can be thought
 of as running on bare-metal. The target does not use `#[target_feature(...)]` or
-`-C target-feature=` values. 
+`-C target-feature=` values.
 
 Binaries are expected to be ELF.
 
