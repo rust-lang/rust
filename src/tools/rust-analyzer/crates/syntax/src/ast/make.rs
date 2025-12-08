@@ -658,7 +658,7 @@ pub fn expr_if(
     };
     expr_from_text(&format!("if {condition} {then_branch} {else_branch}"))
 }
-pub fn expr_for_loop(pat: ast::Pat, expr: ast::Expr, block: ast::BlockExpr) -> ast::Expr {
+pub fn expr_for_loop(pat: ast::Pat, expr: ast::Expr, block: ast::BlockExpr) -> ast::ForExpr {
     expr_from_text(&format!("for {pat} in {expr} {block}"))
 }
 
