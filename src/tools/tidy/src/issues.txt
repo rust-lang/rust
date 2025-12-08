@@ -2892,7 +2892,6 @@ ui/typeck/issue-105946.rs
 ui/typeck/issue-106929.rs
 ui/typeck/issue-107087.rs
 ui/typeck/issue-107775.rs
-ui/typeck/issue-10969.rs
 ui/typeck/issue-110017-format-into-help-deletes-macro.rs
 ui/typeck/issue-110052.rs
 ui/typeck/issue-112007-leaked-writeln-macro-internals.rs
