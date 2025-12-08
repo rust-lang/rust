@@ -1157,10 +1157,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return this.set_last_error_and_return_i32(LibcError("EBADF"));
         };
 
-        // FIXME: Support ftruncate64 for all FDs
-        let file = fd.downcast::<FileHandle>().ok_or_else(|| {
-            err_unsup_format!("`ftruncate64` is only supported on file-backed file descriptors")
-        })?;
+        let Some(file) = fd.downcast::<FileHandle>() else {
+            // The docs say that EINVAL is returned when the FD "does not reference a regular file
+            // or a POSIX shared memory object" (and we don't support shmem objects).
+            return interp_ok(this.eval_libc("EINVAL"));
+        };
 
         if file.writable {
             if let Ok(length) = length.try_into() {
@@ -1202,10 +1203,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let Some(fd) = this.machine.fds.get(fd_num) else {
             return interp_ok(this.eval_libc("EBADF"));
         };
-        let file = match fd.downcast::<FileHandle>() {
-            Some(file_handle) => file_handle,
+        let Some(file) = fd.downcast::<FileHandle>() else {
             // Man page specifies to return ENODEV if `fd` is not a regular file.
-            None => return interp_ok(this.eval_libc("ENODEV")),
+            return interp_ok(this.eval_libc("ENODEV"));
         };
 
         if !file.writable {
