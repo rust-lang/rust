@@ -1,5 +1,5 @@
 warning: the feature `contracts` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/declared-vars-used-in-ensures.rs:3:12
+  --> $DIR/incomplete-feature.rs:7:12
    |
 LL | #![feature(contracts)]
    |            ^^^^^^^^^
