@@ -1,7 +1,5 @@
 use crate::cmp;
-use crate::io::{
-    BorrowedCursor, Error as IoError, ErrorKind, IoSlice, IoSliceMut, Result as IoResult,
-};
+use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut};
 use crate::random::random;
 use crate::time::{Duration, Instant};
 
@@ -18,7 +16,7 @@ use self::raw::*;
 /// This will do a single `read` usercall and scatter the read data among
 /// `bufs`. To read to a single buffer, just pass a slice of length one.
 #[unstable(feature = "sgx_platform", issue = "56975")]
-pub fn read(fd: Fd, bufs: &mut [IoSliceMut<'_>]) -> IoResult<usize> {
+pub fn read(fd: Fd, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
     unsafe {
         let total_len = bufs.iter().fold(0usize, |sum, buf| sum.saturating_add(buf.len()));
         let mut userbuf = alloc::User::<[u8]>::uninitialized(total_len);
@@ -41,7 +39,7 @@ pub fn read(fd: Fd, bufs: &mut [IoSliceMut<'_>]) -> IoResult<usize> {
 /// Usercall `read` with an uninitialized buffer. See the ABI documentation for
 /// more information.
 #[unstable(feature = "sgx_platform", issue = "56975")]
-pub fn read_buf(fd: Fd, mut buf: BorrowedCursor<'_>) -> IoResult<()> {
+pub fn read_buf(fd: Fd, mut buf: BorrowedCursor<'_>) -> io::Result<()> {
     unsafe {
         let mut userbuf = alloc::User::<[u8]>::uninitialized(buf.capacity());
         let len = raw::read(fd, userbuf.as_mut_ptr().cast(), userbuf.len()).from_sgx_result()?;
@@ -53,7 +51,7 @@ pub fn read_buf(fd: Fd, mut buf: BorrowedCursor<'_>) -> IoResult<()> {
 
 /// Usercall `read_alloc`. See the ABI documentation for more information.
 #[unstable(feature = "sgx_platform", issue = "56975")]
-pub fn read_alloc(fd: Fd) -> IoResult<Vec<u8>> {
+pub fn read_alloc(fd: Fd) -> io::Result<Vec<u8>> {
     unsafe {
         let userbuf = ByteBuffer { data: crate::ptr::null_mut(), len: 0 };
         let mut userbuf = alloc::User::new_from_enclave(&userbuf);
@@ -67,7 +65,7 @@ pub fn read_alloc(fd: Fd) -> IoResult<Vec<u8>> {
 /// This will do a single `write` usercall and gather the written data from
 /// `bufs`. To write from a single buffer, just pass a slice of length one.
 #[unstable(feature = "sgx_platform", issue = "56975")]
-pub fn write(fd: Fd, bufs: &[IoSlice<'_>]) -> IoResult<usize> {
+pub fn write(fd: Fd, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
     unsafe {
         let total_len = bufs.iter().fold(0usize, |sum, buf| sum.saturating_add(buf.len()));
         let mut userbuf = alloc::User::<[u8]>::uninitialized(total_len);
@@ -87,7 +85,7 @@ pub fn write(fd: Fd, bufs: &[IoSlice<'_>]) -> IoResult<usize> {
 
 /// Usercall `flush`. See the ABI documentation for more information.
 #[unstable(feature = "sgx_platform", issue = "56975")]
-pub fn flush(fd: Fd) -> IoResult<()> {
+pub fn flush(fd: Fd) -> io::Result<()> {
     unsafe { raw::flush(fd).from_sgx_result() }
 }
 
@@ -104,7 +102,7 @@ fn string_from_bytebuffer(buf: &alloc::UserRef<ByteBuffer>, usercall: &str, arg:
 
 /// Usercall `bind_stream`. See the ABI documentation for more information.
 #[unstable(feature = "sgx_platform", issue = "56975")]
-pub fn bind_stream(addr: &str) -> IoResult<(Fd, String)> {
+pub fn bind_stream(addr: &str) -> io::Result<(Fd, String)> {
     unsafe {
         let addr_user = alloc::User::new_from_enclave(addr.as_bytes());
         let mut local = alloc::User::<ByteBuffer>::uninitialized();
@@ -117,7 +115,7 @@ pub fn bind_stream(addr: &str) -> IoResult<(Fd, String)> {
 
 /// Usercall `accept_stream`. See the ABI documentation for more information.
 #[unstable(feature = "sgx_platform", issue = "56975")]
-pub fn accept_stream(fd: Fd) -> IoResult<(Fd, String, String)> {
+pub fn accept_stream(fd: Fd) -> io::Result<(Fd, String, String)> {
     unsafe {
         let mut bufs = alloc::User::<[ByteBuffer; 2]>::uninitialized();
         let mut buf_it = alloc::UserRef::iter_mut(&mut *bufs); // FIXME: can this be done
@@ -133,7 +131,7 @@ pub fn accept_stream(fd: Fd) -> IoResult<(Fd, String, String)> {
 
 /// Usercall `connect_stream`. See the ABI documentation for more information.
 #[unstable(feature = "sgx_platform", issue = "56975")]
-pub fn connect_stream(addr: &str) -> IoResult<(Fd, String, String)> {
+pub fn connect_stream(addr: &str) -> io::Result<(Fd, String, String)> {
     unsafe {
         let addr_user = alloc::User::new_from_enclave(addr.as_bytes());
         let mut bufs = alloc::User::<[ByteBuffer; 2]>::uninitialized();
@@ -155,7 +153,7 @@ pub fn connect_stream(addr: &str) -> IoResult<(Fd, String, String)> {
 
 /// Usercall `launch_thread`. See the ABI documentation for more information.
 #[unstable(feature = "sgx_platform", issue = "56975")]
-pub unsafe fn launch_thread() -> IoResult<()> {
+pub unsafe fn launch_thread() -> io::Result<()> {
     // SAFETY: The caller must uphold the safety contract for `launch_thread`.
     unsafe { raw::launch_thread().from_sgx_result() }
 }
@@ -168,7 +166,7 @@ pub fn exit(panic: bool) -> ! {
 
 /// Usercall `wait`. See the ABI documentation for more information.
 #[unstable(feature = "sgx_platform", issue = "56975")]
-pub fn wait(event_mask: u64, mut timeout: u64) -> IoResult<u64> {
+pub fn wait(event_mask: u64, mut timeout: u64) -> io::Result<u64> {
     if timeout != WAIT_NO && timeout != WAIT_INDEFINITE {
         // We don't want people to rely on accuracy of timeouts to make
         // security decisions in an SGX enclave. That's why we add a random
@@ -216,7 +214,9 @@ where
                 true
             }
             Err(e) => {
-                rtassert!(e.kind() == ErrorKind::TimedOut || e.kind() == ErrorKind::WouldBlock);
+                rtassert!(
+                    e.kind() == io::ErrorKind::TimedOut || e.kind() == io::ErrorKind::WouldBlock
+                );
                 false
             }
         }
@@ -260,7 +260,7 @@ where
 
 /// Usercall `send`. See the ABI documentation for more information.
 #[unstable(feature = "sgx_platform", issue = "56975")]
-pub fn send(event_set: u64, tcs: Option<Tcs>) -> IoResult<()> {
+pub fn send(event_set: u64, tcs: Option<Tcs>) -> io::Result<()> {
     unsafe { raw::send(event_set, tcs).from_sgx_result() }
 }
 
@@ -273,7 +273,7 @@ pub fn insecure_time() -> Duration {
 
 /// Usercall `alloc`. See the ABI documentation for more information.
 #[unstable(feature = "sgx_platform", issue = "56975")]
-pub fn alloc(size: usize, alignment: usize) -> IoResult<*mut u8> {
+pub fn alloc(size: usize, alignment: usize) -> io::Result<*mut u8> {
     unsafe { raw::alloc(size, alignment).from_sgx_result() }
 }
 
@@ -316,18 +316,18 @@ pub trait FromSgxResult {
     type Return;
 
     /// Translate the raw result of an SGX usercall.
-    fn from_sgx_result(self) -> IoResult<Self::Return>;
+    fn from_sgx_result(self) -> io::Result<Self::Return>;
 }
 
 #[unstable(feature = "sgx_platform", issue = "56975")]
 impl<T> FromSgxResult for (Result, T) {
     type Return = T;
 
-    fn from_sgx_result(self) -> IoResult<Self::Return> {
+    fn from_sgx_result(self) -> io::Result<Self::Return> {
         if self.0 == RESULT_SUCCESS {
             Ok(self.1)
         } else {
-            Err(IoError::from_raw_os_error(check_os_error(self.0)))
+            Err(io::Error::from_raw_os_error(check_os_error(self.0)))
         }
     }
 }
@@ -336,11 +336,11 @@ impl<T> FromSgxResult for (Result, T) {
 impl FromSgxResult for Result {
     type Return = ();
 
-    fn from_sgx_result(self) -> IoResult<Self::Return> {
+    fn from_sgx_result(self) -> io::Result<Self::Return> {
         if self == RESULT_SUCCESS {
             Ok(())
         } else {
-            Err(IoError::from_raw_os_error(check_os_error(self)))
+            Err(io::Error::from_raw_os_error(check_os_error(self)))
         }
     }
 }

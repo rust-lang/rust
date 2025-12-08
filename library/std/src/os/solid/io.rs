@@ -49,7 +49,7 @@
 use crate::marker::PhantomData;
 use crate::mem::ManuallyDrop;
 use crate::sys::{AsInner, FromInner, IntoInner};
-use crate::{fmt, net, sys};
+use crate::{fmt, io, net, sys};
 
 /// Raw file descriptors.
 pub type RawFd = i32;
@@ -110,7 +110,7 @@ impl BorrowedFd<'_> {
 impl OwnedFd {
     /// Creates a new `OwnedFd` instance that shares the same underlying file
     /// description as the existing `OwnedFd` instance.
-    pub fn try_clone(&self) -> crate::io::Result<Self> {
+    pub fn try_clone(&self) -> io::Result<Self> {
         self.as_fd().try_clone_to_owned()
     }
 }
@@ -118,7 +118,7 @@ impl OwnedFd {
 impl BorrowedFd<'_> {
     /// Creates a new `OwnedFd` instance that shares the same underlying file
     /// description as the existing `BorrowedFd` instance.
-    pub fn try_clone_to_owned(&self) -> crate::io::Result<OwnedFd> {
+    pub fn try_clone_to_owned(&self) -> io::Result<OwnedFd> {
         let fd = sys::net::cvt(unsafe { crate::sys::abi::sockets::dup(self.as_raw_fd()) })?;
         Ok(unsafe { OwnedFd::from_raw_fd(fd) })
     }
@@ -184,7 +184,7 @@ macro_rules! impl_is_terminal {
         impl crate::sealed::Sealed for $t {}
 
         #[stable(feature = "is_terminal", since = "1.70.0")]
-        impl crate::io::IsTerminal for $t {
+        impl io::IsTerminal for $t {
             #[inline]
             fn is_terminal(&self) -> bool {
                 crate::sys::io::is_terminal(self)

@@ -210,8 +210,6 @@ impl Builder {
     /// Unlike [`Scope::spawn`], this method yields an [`io::Result`] to
     /// capture any failure to create the thread at the OS level.
     ///
-    /// [`io::Result`]: crate::io::Result
-    ///
     /// # Panics
     ///
     /// Panics if a thread name was set and it contained null bytes.
