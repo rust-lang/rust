@@ -61,7 +61,7 @@ declare_features! (
     /// Allows explicit discriminants on non-unit enum variants.
     (accepted, arbitrary_enum_discriminant, "1.66.0", Some(60553)),
     /// Allows #[cfg(...)] on inline assembly templates and operands.
-    (accepted, asm_cfg, "CURRENT_RUSTC_VERSION", Some(140364)),
+    (accepted, asm_cfg, "1.93.0", Some(140364)),
     /// Allows using `const` operands in inline assembly.
     (accepted, asm_const, "1.82.0", Some(93332)),
     /// Allows using `label` operands in inline assembly.
@@ -218,7 +218,7 @@ declare_features! (
     /// Allows access to crate names passed via `--extern` through prelude.
     (accepted, extern_prelude, "1.30.0", Some(44660)),
     /// Allows using `system` as a calling convention with varargs.
-    (accepted, extern_system_varargs, "CURRENT_RUSTC_VERSION", Some(136946)),
+    (accepted, extern_system_varargs, "1.93.0", Some(136946)),
     /// Allows using F16C intrinsics from `core::arch::{x86, x86_64}`.
     (accepted, f16c_target_feature, "1.68.0", Some(44839)),
     /// Allows field shorthands (`x` meaning `x: x`) in struct literal expressions.
@@ -392,7 +392,7 @@ declare_features! (
     /// Allows code like `let x: &'static u32 = &42` to work (RFC 1414).
     (accepted, rvalue_static_promotion, "1.21.0", Some(38865)),
     /// Allows use of the `vector` and related s390x target features.
-    (accepted, s390x_target_feature_vector, "CURRENT_RUSTC_VERSION", Some(145649)),
+    (accepted, s390x_target_feature_vector, "1.93.0", Some(145649)),
     /// Allows `Self` in type definitions (RFC 2300).
     (accepted, self_in_typedefs, "1.32.0", Some(49303)),
     /// Allows `Self` struct constructor (RFC 2302).
