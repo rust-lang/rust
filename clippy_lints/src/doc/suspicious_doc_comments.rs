@@ -39,15 +39,15 @@ fn collect_doc_replacements(attrs: &[Attribute]) -> Vec<(Span, String)> {
         .filter_map(|attr| {
             if let Attribute::Parsed(AttributeKind::DocComment {
                 style: AttrStyle::Outer,
-                kind,
+                kind: DocFragmentKind::Sugared(comment_kind),
                 comment,
                 ..
             }) = attr
                 && let Some(com) = comment.as_str().strip_prefix('!')
             {
-                let sugg = match kind {
-                    DocFragmentKind::Sugared(CommentKind::Block) => format!("/*!{com}*/"),
-                    DocFragmentKind::Sugared(CommentKind::Line) | DocFragmentKind::Raw(_) => format!("//!{com}"),
+                let sugg = match comment_kind {
+                    CommentKind::Block => format!("/*!{com}*/"),
+                    CommentKind::Line => format!("//!{com}"),
                 };
                 Some((attr.span(), sugg))
             } else {
