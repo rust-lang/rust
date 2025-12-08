@@ -616,10 +616,9 @@ impl PathSource<'_, '_, '_> {
                         | DefKind::TyParam
                         | DefKind::OpaqueTy
                         | DefKind::AnonConst
-                        | DefKind::AssocConst
-                        | DefKind::Const
+                        | DefKind::AssocConst { is_type_const: _ }
+                        | DefKind::Const { is_type_const: _ }
                         | DefKind::ConstParam
-                        | DefKind::InlineConst
                         | DefKind::ForeignTy,
                     _,
                 ) | Res::PrimTy(..)
