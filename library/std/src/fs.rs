@@ -1324,7 +1324,7 @@ impl Read for &File {
     ///
     /// # Platform-specific behavior
     ///
-    /// This function currently returns `true` on Unix an `false` on Windows.
+    /// This function currently returns `true` on Unix and `false` on Windows.
     /// Note that this [may change in the future][changes].
     ///
     /// [changes]: io#platform-specific-behavior
@@ -1385,7 +1385,7 @@ impl Write for &File {
     ///
     /// # Platform-specific behavior
     ///
-    /// This function currently returns `true` on Unix an `false` on Windows.
+    /// This function currently returns `true` on Unix and `false` on Windows.
     /// Note that this [may change in the future][changes].
     ///
     /// [changes]: io#platform-specific-behavior
