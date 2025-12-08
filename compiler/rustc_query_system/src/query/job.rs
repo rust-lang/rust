@@ -5,10 +5,10 @@ use std::io::Write;
 use std::num::NonZero;
 use std::sync::{Arc, Weak};
 use std::thread::ThreadId;
-use std::{cmp, iter};
+use std::ops;
 
 use parking_lot::{Condvar, Mutex};
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::BranchKey;
 use rustc_errors::{Diag, DiagCtxtHandle};
 use rustc_hir::def::DefKind;
@@ -336,12 +336,11 @@ pub fn break_query_cycles<I: Clone + Debug>(
     query_map: QueryMap<I>,
     registry: &rustc_thread_pool::Registry,
 ) {
-    use std::cmp::Ordering::*;
-
     #[derive(Debug)]
-    struct QueryWaitIntermediate<I> {
-        depth: usize,
-        inner: Option<QueryWait<I>>,
+    struct QueryStackIntermediate<I> {
+        start: Option<QueryJobId>,
+        depth: ops::RangeInclusive<usize>,
+        wait: Option<QueryWait<I>>,
     }
 
     #[derive(Debug)]
@@ -352,89 +351,42 @@ pub fn break_query_cycles<I: Clone + Debug>(
         Direct { waited_on: Vec<QueryJobId> },
     }
 
-    impl<I> QueryWaitIntermediate<I> {
+    impl<I> QueryStackIntermediate<I> {
         fn from_depth(depth: usize) -> Self {
-            QueryWaitIntermediate { depth, inner: None }
+            QueryStackIntermediate { start: None, depth: depth..=depth, wait: None }
         }
 
-        fn try_finalize(self) -> Option<QueryWait<I>> {
-            self.inner
+        fn update_depth(&mut self, depth: usize) {
+            let (start, end) = self.depth.clone().into_inner();
+            if depth < start {
+                self.depth = depth..=end;
+            }
+            if end < depth {
+                self.depth = start..=depth
+            }
         }
     }
 
-    let mut waits = FxHashMap::<ThreadId, QueryWaitIntermediate<I>>::default();
+    let mut stacks = FxHashMap::<ThreadId, QueryStackIntermediate<I>>::default();
     for query in query_map.values() {
-        // Account for every query
         let query_depth = query.job.real_depth();
-        let entry = waits.entry(query.job.thread_id);
+        let entry = stacks.entry(query.job.thread_id);
         match entry {
             hash_map::Entry::Vacant(entry) => {
-                entry.insert(QueryWaitIntermediate::from_depth(query_depth));
+                entry.insert(QueryStackIntermediate::from_depth(query_depth));
             }
             hash_map::Entry::Occupied(mut entry) => {
-                let wait = entry.get_mut();
-                match (query_depth.cmp(&wait.depth), &mut wait.inner) {
-                    (Less, _) => (),
-                    (Equal, None) => {
-                        panic!("encountered two queries on the same thread but at the same depth")
-                    }
-                    // Update thread's depth
-                    (Greater, None) => wait.depth = query_depth,
-
-                    (Equal, Some(_)) => (),
-                    (Greater, Some(QueryWait::Waiter { .. })) => {
-                        panic!("query is deeper than thread's waiter")
-                    }
-                    // Overwrite direct wait cause a deeper query is found
-                    (Greater, Some(QueryWait::Direct { .. })) => {
-                        *wait = QueryWaitIntermediate::from_depth(query_depth)
-                    }
-                }
+                entry.get_mut().update_depth(query_depth);
             }
         }
 
         if let Some(inclusion) = query.job.parent {
             let parent = &query_map[&inclusion.id];
             if parent.job.thread_id != query.job.thread_id {
-                // Consider adding a `QueryWaitDep::Direct` wait
-                let depth = parent.job.real_depth();
-                let entry = waits.entry(parent.job.thread_id);
-                match entry {
-                    hash_map::Entry::Vacant(entry) => {
-                        entry.insert(QueryWaitIntermediate {
-                            depth,
-                            inner: Some(QueryWait::Direct { waited_on: vec![query.job.id] }),
-                        });
-                    }
-                    hash_map::Entry::Occupied(mut entry) => {
-                        let wait = entry.get_mut();
-                        match (depth.cmp(&wait.depth), &mut wait.inner) {
-                            (Less, _) => (),
-                            (Equal, None) | (Greater, None | Some(QueryWait::Direct { .. })) => {
-                                *wait = QueryWaitIntermediate {
-                                    depth,
-                                    inner: Some(QueryWait::Direct {
-                                        waited_on: vec![query.job.id],
-                                    }),
-                                }
-                            }
-                            (Equal, Some(QueryWait::Direct { waited_on })) => {
-                                if waited_on.contains(&query.job.id) {
-                                    panic!("trying to push another direct dependency")
-                                }
-                                waited_on.push(query.job.id)
-                            }
-                            (Equal, Some(QueryWait::Waiter { .. })) => {
-                                panic!(
-                                    "query can only wait on a running query or in `join`/`scope`"
-                                )
-                            }
-                            (Greater, Some(QueryWait::Waiter { .. })) => {
-                                panic!("query is deeper than thread's waiter")
-                            }
-                        }
-                    }
-                }
+                // Register the thread's query stack beginning
+                let stack = stacks.get_mut(&query.job.thread_id).unwrap();
+                assert!(stack.start.is_none(), "found two active queries at a thread's begining");
+                stack.start = Some(query.job.id);
             }
         }
 
@@ -444,44 +396,67 @@ pub fn break_query_cycles<I: Clone + Debug>(
         let lock = latch.info.try_lock().unwrap();
         assert!(!lock.complete);
         for waiter in &lock.waiters {
-            let depth = waiter.real_depth();
-            let old = waits.insert(
-                waiter.thread_id,
-                QueryWaitIntermediate {
-                    depth,
-                    inner: Some(QueryWait::Waiter {
-                        waited_on: query.job.id,
-                        waiter: waiter.clone(),
-                    }),
-                },
+            let waiting_stack = stacks
+                .entry(waiter.thread_id)
+                .or_insert_with(|| QueryStackIntermediate::from_depth(waiter.real_depth() - 1));
+            assert!(
+                waiting_stack.wait.is_none(),
+                "found two active queries a thread is waiting for"
             );
-            // waiter has to be in the thread's deepest query
-            if let Some(wait) = old {
-                assert!(wait.depth <= depth);
-                if wait.depth == depth {
-                    assert!(wait.inner.is_none())
-                }
-            }
+            waiting_stack.wait =
+                Some(QueryWait::Waiter { waited_on: query.job.id, waiter: Arc::clone(&waiter) });
         }
     }
 
-    let waits: FxHashMap<_, _> = waits
-        .into_iter()
-        .map(|(k, v)| (k, v.try_finalize().expect("failed to process a query cycle")))
-        .collect();
-    for wait in waits.values() {
-        match wait {
-            QueryWait::Waiter { .. } => continue,
+    // Figure out what queries leftover stacks are blocked on
+    let mut root_thread = None;
+    let thread_ids: Vec<_> = stacks.keys().copied().collect();
+    for thread_id in &thread_ids {
+        let stack = &stacks[thread_id];
+        if let Some(start_id) = stack.start {
+            let start = &query_map[&start_id];
+            let inclusion = start.job.parent.unwrap();
+            let parent = &query_map[&inclusion.id];
+            assert_eq!(inclusion.real_depth.get(), *stack.depth.start());
+            let waiting_stack = stacks.get_mut(&parent.job.thread_id).unwrap();
+            if *waiting_stack.depth.end() == (inclusion.real_depth.get() - 1) {
+                match &mut waiting_stack.wait {
+                    None => {
+                        waiting_stack.wait = Some(QueryWait::Direct { waited_on: vec![start_id] })
+                    }
+                    Some(QueryWait::Direct { waited_on }) => {
+                        assert!(!waited_on.contains(&start_id));
+                        waited_on.push(start_id);
+                    }
+                    Some(QueryWait::Waiter { .. }) => (),
+                }
+            }
+        } else {
+            assert!(root_thread.is_none(), "found multiple threads without start");
+            root_thread = Some(*thread_id);
+        }
+    }
+
+    let root_thread = root_thread.expect("no root thread was found");
+
+    for stack in stacks.values() {
+        match stack.wait.as_ref().expect("failed to figure out what active thread is waiting") {
+            QueryWait::Waiter { waited_on: _, waiter } => {
+                assert_eq!(waiter.real_depth() - 1, *stack.depth.end())
+            }
             QueryWait::Direct { waited_on } => {
-                let parent = waited_on[0].parent(&query_map).unwrap().id;
-                for waited_on in &waited_on[1..] {
-                    assert_eq!(parent, waited_on.parent(&query_map).unwrap().id)
+                let waited_on_query = &query_map[&waited_on[0]];
+                let query_inclusion = waited_on_query.job.parent.unwrap();
+                let parent_id = query_inclusion.id;
+                for waited_on_id in &waited_on[1..] {
+                    assert_eq!(parent_id, query_map[waited_on_id].job.parent.unwrap().id);
                 }
+                assert_eq!(query_inclusion.real_depth.get() - 1, *stack.depth.end());
             }
         }
     }
 
-    panic!("fuh: {waits:#?}")
+    panic!("fuh: {stacks:#x?}")
 
     // // Check that a cycle was found. It is possible for a deadlock to occur without
     // // a query cycle if a query which can be waited on uses Rayon to do multithreading
