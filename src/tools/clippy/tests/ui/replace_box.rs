@@ -70,3 +70,74 @@ fn main() {
     let bb: Box<u32>;
     bb = Default::default();
 }
+
+fn issue15951() {
+    struct Foo {
+        inner: String,
+    }
+
+    fn embedded_body() {
+        let mut x = Box::new(());
+        let y = x;
+        x = Box::new(());
+
+        let mut x = Box::new(Foo { inner: String::new() });
+        let y = x.inner;
+        x = Box::new(Foo { inner: String::new() });
+        //~^ replace_box
+    }
+
+    let mut x = Box::new(Foo { inner: String::new() });
+    let in_closure = || {
+        x = Box::new(Foo { inner: String::new() });
+        //~^ replace_box
+    };
+}
+
+static R: fn(&mut Box<String>) = |x| *x = Box::new(String::new());
+//~^ replace_box
+
+fn field() {
+    struct T {
+        content: String,
+    }
+
+    impl T {
+        fn new() -> Self {
+            Self { content: String::new() }
+        }
+    }
+
+    struct S {
+        b: Box<T>,
+    }
+
+    let mut s = S { b: Box::new(T::new()) };
+    let _b = s.b;
+    s.b = Box::new(T::new());
+
+    // Interestingly, the lint and fix are valid here as `s.b` is not really moved
+    let mut s = S { b: Box::new(T::new()) };
+    _ = s.b;
+    s.b = Box::new(T::new());
+    //~^ replace_box
+
+    let mut s = S { b: Box::new(T::new()) };
+    s.b = Box::new(T::new());
+    //~^ replace_box
+
+    struct Q(Box<T>);
+    let mut q = Q(Box::new(T::new()));
+    let _b = q.0;
+    q.0 = Box::new(T::new());
+
+    let mut q = Q(Box::new(T::new()));
+    _ = q.0;
+    q.0 = Box::new(T::new());
+    //~^ replace_box
+
+    // This one is a false negative, but it will need MIR analysis to work properly
+    let mut x = Box::new(String::new());
+    x = Box::new(String::new());
+    x;
+}
