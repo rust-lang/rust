@@ -434,7 +434,7 @@ pub struct ExprCollector<'db> {
     current_try_block_label: Option<LabelId>,
 
     label_ribs: Vec<LabelRib>,
-    current_binding_owner: Option<ExprId>,
+    unowned_bindings: Vec<BindingId>,
 
     awaitable_context: Option<Awaitable>,
     krate: base_db::Crate,
@@ -538,7 +538,7 @@ impl<'db> ExprCollector<'db> {
             current_try_block_label: None,
             is_lowering_coroutine: false,
             label_ribs: Vec::new(),
-            current_binding_owner: None,
+            unowned_bindings: Vec::new(),
             awaitable_context: None,
             current_block_legacy_macro_defs_count: FxHashMap::default(),
             outer_impl_trait: false,
@@ -1065,12 +1065,10 @@ impl<'db> ExprCollector<'db> {
                 Some(ast::BlockModifier::Const(_)) => {
                     self.with_label_rib(RibKind::Constant, |this| {
                         this.with_awaitable_block(Awaitable::No("constant block"), |this| {
-                            let (result_expr_id, prev_binding_owner) =
-                                this.initialize_binding_owner(syntax_ptr);
-                            let inner_expr = this.collect_block(e);
-                            this.store.exprs[result_expr_id] = Expr::Const(inner_expr);
-                            this.current_binding_owner = prev_binding_owner;
-                            result_expr_id
+                            this.with_binding_owner(|this| {
+                                let inner_expr = this.collect_block(e);
+                                this.alloc_expr(Expr::Const(inner_expr), syntax_ptr)
+                            })
                         })
                     })
                 }
@@ -1281,64 +1279,65 @@ impl<'db> ExprCollector<'db> {
                 }
             }
             ast::Expr::ClosureExpr(e) => self.with_label_rib(RibKind::Closure, |this| {
-                let (result_expr_id, prev_binding_owner) =
-                    this.initialize_binding_owner(syntax_ptr);
-                let mut args = Vec::new();
-                let mut arg_types = Vec::new();
-                if let Some(pl) = e.param_list() {
-                    let num_params = pl.params().count();
-                    args.reserve_exact(num_params);
-                    arg_types.reserve_exact(num_params);
-                    for param in pl.params() {
-                        let pat = this.collect_pat_top(param.pat());
-                        let type_ref =
-                            param.ty().map(|it| this.lower_type_ref_disallow_impl_trait(it));
-                        args.push(pat);
-                        arg_types.push(type_ref);
+                this.with_binding_owner(|this| {
+                    let mut args = Vec::new();
+                    let mut arg_types = Vec::new();
+                    if let Some(pl) = e.param_list() {
+                        let num_params = pl.params().count();
+                        args.reserve_exact(num_params);
+                        arg_types.reserve_exact(num_params);
+                        for param in pl.params() {
+                            let pat = this.collect_pat_top(param.pat());
+                            let type_ref =
+                                param.ty().map(|it| this.lower_type_ref_disallow_impl_trait(it));
+                            args.push(pat);
+                            arg_types.push(type_ref);
+                        }
                     }
-                }
-                let ret_type = e
-                    .ret_type()
-                    .and_then(|r| r.ty())
-                    .map(|it| this.lower_type_ref_disallow_impl_trait(it));
+                    let ret_type = e
+                        .ret_type()
+                        .and_then(|r| r.ty())
+                        .map(|it| this.lower_type_ref_disallow_impl_trait(it));
 
-                let prev_is_lowering_coroutine = mem::take(&mut this.is_lowering_coroutine);
-                let prev_try_block_label = this.current_try_block_label.take();
+                    let prev_is_lowering_coroutine = mem::take(&mut this.is_lowering_coroutine);
+                    let prev_try_block_label = this.current_try_block_label.take();
 
-                let awaitable = if e.async_token().is_some() {
-                    Awaitable::Yes
-                } else {
-                    Awaitable::No("non-async closure")
-                };
-                let body =
-                    this.with_awaitable_block(awaitable, |this| this.collect_expr_opt(e.body()));
-
-                let closure_kind = if this.is_lowering_coroutine {
-                    let movability = if e.static_token().is_some() {
-                        Movability::Static
+                    let awaitable = if e.async_token().is_some() {
+                        Awaitable::Yes
                     } else {
-                        Movability::Movable
+                        Awaitable::No("non-async closure")
                     };
-                    ClosureKind::Coroutine(movability)
-                } else if e.async_token().is_some() {
-                    ClosureKind::Async
-                } else {
-                    ClosureKind::Closure
-                };
-                let capture_by =
-                    if e.move_token().is_some() { CaptureBy::Value } else { CaptureBy::Ref };
-                this.is_lowering_coroutine = prev_is_lowering_coroutine;
-                this.current_binding_owner = prev_binding_owner;
-                this.current_try_block_label = prev_try_block_label;
-                this.store.exprs[result_expr_id] = Expr::Closure {
-                    args: args.into(),
-                    arg_types: arg_types.into(),
-                    ret_type,
-                    body,
-                    closure_kind,
-                    capture_by,
-                };
-                result_expr_id
+                    let body = this
+                        .with_awaitable_block(awaitable, |this| this.collect_expr_opt(e.body()));
+
+                    let closure_kind = if this.is_lowering_coroutine {
+                        let movability = if e.static_token().is_some() {
+                            Movability::Static
+                        } else {
+                            Movability::Movable
+                        };
+                        ClosureKind::Coroutine(movability)
+                    } else if e.async_token().is_some() {
+                        ClosureKind::Async
+                    } else {
+                        ClosureKind::Closure
+                    };
+                    let capture_by =
+                        if e.move_token().is_some() { CaptureBy::Value } else { CaptureBy::Ref };
+                    this.is_lowering_coroutine = prev_is_lowering_coroutine;
+                    this.current_try_block_label = prev_try_block_label;
+                    this.alloc_expr(
+                        Expr::Closure {
+                            args: args.into(),
+                            arg_types: arg_types.into(),
+                            ret_type,
+                            body,
+                            closure_kind,
+                            capture_by,
+                        },
+                        syntax_ptr,
+                    )
+                })
             }),
             ast::Expr::BinExpr(e) => {
                 let op = e.op_kind();
@@ -1374,11 +1373,7 @@ impl<'db> ExprCollector<'db> {
                         let initializer = self.collect_expr_opt(initializer);
                         let repeat = self.with_label_rib(RibKind::Constant, |this| {
                             if let Some(repeat) = repeat {
-                                let syntax_ptr = AstPtr::new(&repeat);
-                                this.collect_as_a_binding_owner_bad(
-                                    |this| this.collect_expr(repeat),
-                                    syntax_ptr,
-                                )
+                                this.with_binding_owner(|this| this.collect_expr(repeat))
                             } else {
                                 this.missing_expr()
                             }
@@ -1635,31 +1630,13 @@ impl<'db> ExprCollector<'db> {
         }
     }
 
-    fn initialize_binding_owner(
-        &mut self,
-        syntax_ptr: AstPtr<ast::Expr>,
-    ) -> (ExprId, Option<ExprId>) {
-        let result_expr_id = self.alloc_expr(Expr::Missing, syntax_ptr);
-        let prev_binding_owner = self.current_binding_owner.take();
-        self.current_binding_owner = Some(result_expr_id);
-
-        (result_expr_id, prev_binding_owner)
-    }
-
-    /// FIXME: This function is bad. It will produce a dangling `Missing` expr which wastes memory. Currently
-    /// it is used only for const blocks and repeat expressions, which are also hacky and ideally should have
-    /// their own body. Don't add more usage for this function so that we can remove this function after
-    /// separating those bodies.
-    fn collect_as_a_binding_owner_bad(
-        &mut self,
-        job: impl FnOnce(&mut ExprCollector<'_>) -> ExprId,
-        syntax_ptr: AstPtr<ast::Expr>,
-    ) -> ExprId {
-        let (id, prev_owner) = self.initialize_binding_owner(syntax_ptr);
-        let tmp = job(self);
-        self.store.exprs[id] = mem::replace(&mut self.store.exprs[tmp], Expr::Missing);
-        self.current_binding_owner = prev_owner;
-        id
+    fn with_binding_owner(&mut self, create_expr: impl FnOnce(&mut Self) -> ExprId) -> ExprId {
+        let prev_unowned_bindings_len = self.unowned_bindings.len();
+        let expr_id = create_expr(self);
+        for binding in self.unowned_bindings.drain(prev_unowned_bindings_len..) {
+            self.store.binding_owners.insert(binding, expr_id);
+        }
+        expr_id
     }
 
     /// Desugar `try { <stmts>; <expr> }` into `'<new_label>: { <stmts>; ::std::ops::Try::from_output(<expr>) }`,
@@ -2371,11 +2348,7 @@ impl<'db> ExprCollector<'db> {
             ast::Pat::ConstBlockPat(const_block_pat) => {
                 if let Some(block) = const_block_pat.block_expr() {
                     let expr_id = self.with_label_rib(RibKind::Constant, |this| {
-                        let syntax_ptr = AstPtr::new(&block.clone().into());
-                        this.collect_as_a_binding_owner_bad(
-                            |this| this.collect_block(block),
-                            syntax_ptr,
-                        )
+                        this.with_binding_owner(|this| this.collect_block(block))
                     });
                     Pat::ConstBlock(expr_id)
                 } else {
@@ -3379,9 +3352,7 @@ impl ExprCollector<'_> {
         hygiene: HygieneId,
     ) -> BindingId {
         let binding = self.store.bindings.alloc(Binding { name, mode, problems: None, hygiene });
-        if let Some(owner) = self.current_binding_owner {
-            self.store.binding_owners.insert(binding, owner);
-        }
+        self.unowned_bindings.push(binding);
         binding
     }
 
