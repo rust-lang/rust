@@ -5,7 +5,6 @@ const CONST: usize = 0;
 fn foo<const C: usize>() {}
 
 fn main() {
-    foo::<CONS>(); 
+    foo::<CONS>();
     //~^ ERROR cannot find type `CONS` in this scope
-    //~| ERROR unresolved item provided when a constant was expected
 }

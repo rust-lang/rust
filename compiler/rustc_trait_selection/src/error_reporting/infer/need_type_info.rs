@@ -498,6 +498,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             None
         };
 
+        let mut delay_as_bug = false;
         let mut infer_subdiags = Vec::new();
         let mut multi_suggestions = Vec::new();
         match kind {
@@ -513,7 +514,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     type_name: ty_to_string(self, ty, def_id),
                 });
             }
-            InferSourceKind::ClosureArg { insert_span, ty, .. } => {
+            InferSourceKind::ClosureArg { insert_span, ty, kind, .. } => {
+                if let PatKind::Err(_) = kind {
+                    // We will have already emitted an error about this pattern.
+                    delay_as_bug = true;
+                }
                 infer_subdiags.push(SourceKindSubdiag::LetLike {
                     span: insert_span,
                     name: String::new(),
@@ -532,7 +537,17 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 def_id: _,
                 generic_args,
                 have_turbofish,
+                hir_id,
             } => {
+                if let hir::Node::PathSegment(segment) = self.tcx.hir_node(hir_id)
+                    && let Some(args) = segment.args
+                    && let Some(hir::GenericArg::Type(ty)) = args.args.get(argument_index)
+                    && let hir::TyKind::Path(hir::QPath::Resolved(_, path)) = ty.kind
+                    && let Res::Err = path.res
+                {
+                    // We have already emitted a name resolution error.
+                    delay_as_bug = true;
+                }
                 let generics = self.tcx.generics_of(generics_def_id);
                 let is_type = term.as_type().is_some();
 
@@ -653,8 +668,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             }),
         };
         *err.long_ty_path() = long_ty_path;
-        if let InferSourceKind::ClosureArg { kind: PatKind::Err(_), .. } = kind {
-            // We will have already emitted an error about this pattern.
+        if delay_as_bug {
+            // We have already emitted an earlier more relevant error.
             err.downgrade_to_delayed_bug();
         }
         err
@@ -687,6 +702,7 @@ enum InferSourceKind<'tcx> {
         def_id: DefId,
         generic_args: &'tcx [GenericArg<'tcx>],
         have_turbofish: bool,
+        hir_id: HirId,
     },
     FullyQualifiedMethodCall {
         receiver: &'tcx Expr<'tcx>,
@@ -751,6 +767,7 @@ struct InsertableGenericArgs<'tcx> {
     generics_def_id: DefId,
     def_id: DefId,
     have_turbofish: bool,
+    hir_id: HirId,
 }
 
 /// A visitor which searches for the "best" spot to use in the inference error.
@@ -1013,6 +1030,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
                             generics_def_id: def_id,
                             def_id,
                             have_turbofish: false,
+                            hir_id: expr.hir_id,
                         }
                     };
                     return Box::new(insertable.into_iter());
@@ -1052,6 +1070,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
                 generics_def_id,
                 def_id: path.res.def_id(),
                 have_turbofish,
+                hir_id: path.segments.last().unwrap().hir_id,
             }
         };
 
@@ -1072,6 +1091,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
                     generics_def_id,
                     def_id: res.def_id(),
                     have_turbofish,
+                    hir_id: segment.hir_id,
                 })
             })
             .chain(last_segment_using_path_data)
@@ -1106,6 +1126,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
                         generics_def_id: def_id,
                         def_id,
                         have_turbofish: false,
+                        hir_id: segment.hir_id,
                     }
                 };
 
@@ -1233,6 +1254,7 @@ impl<'a, 'tcx> Visitor<'tcx> for FindInferSourceVisitor<'a, 'tcx> {
                 generics_def_id,
                 def_id,
                 have_turbofish,
+                hir_id,
             } = args;
             let generics = tcx.generics_of(generics_def_id);
             if let Some(mut argument_index) = generics
@@ -1260,6 +1282,7 @@ impl<'a, 'tcx> Visitor<'tcx> for FindInferSourceVisitor<'a, 'tcx> {
                         def_id,
                         generic_args,
                         have_turbofish,
+                        hir_id,
                     },
                 });
             }
