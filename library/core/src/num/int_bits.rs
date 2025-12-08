@@ -7,12 +7,12 @@
 //! inserting the zeros that gathering would delete.
 //!
 //! Key observation: Each bit that is gathered/scattered needs to be
-//! shifted by the count of zeroes up to the corresponding mask bit.
+//! shifted by the count of zeros up to the corresponding mask bit.
 //!
 //! With that in mind, the general idea is to decompose the operation into
-//! a sequence of stages `k in 0..log2(BITS)`, where each stage shifts
-//! some of the bits by `n = 1 << k`. The masks for each stage are computed
-//! via prefix counts of zeroes in the mask.
+//! a sequence of stages in `0..log2(BITS)`, where each stage shifts some
+//! of the bits by `n = 1 << stage`. The masks for each stage are computed
+//! via prefix counts of zeros in the mask.
 //!
 //! # Gathering
 //!
@@ -28,8 +28,7 @@
 //! ........ABCDEFGH
 //! ```
 //! What makes this nontrivial is that the lengths of the bitstrings are not
-//! the same and, using lowercase for individual bits, the above might look
-//! more like
+//! the same. Using lowercase for individual bits, the above might look like
 //! ```text
 //! .a.bbb.ccccc.dd.e..g.hh
 //! ..abbb..cccccdd..e..ghh
@@ -68,24 +67,24 @@ macro_rules! uint_impl {
         pub(super) mod $U {
             const STAGES: usize = $U::BITS.ilog2() as usize;
             #[inline]
-            const fn prepare(m: $U) -> [$U; STAGES] {
+            const fn prepare(sparse: $U) -> [$U; STAGES] {
                 // We'll start with `zeros` as a mask of the bits to be removed,
                 // and compute into `masks` the parts that shift at each stage.
-                let mut zeros = !m;
+                let mut zeros = !sparse;
                 let mut masks = [0; STAGES];
-                let mut n = 1;
-                let mut k = 0;
-                while n < $U::BITS {
+                let mut stage = 0;
+                while stage < STAGES {
+                    let n = 1 << stage;
                     // Suppose `zeros` has bits set at ranges `{ a..a+n, b..b+n, ... }`.
                     // Then `parity` will be computed as `{ a.. } XOR { b.. } XOR ...`,
-                    // which will be the ranges `{ a..b, c..d, e.. }`
+                    // which will be the ranges `{ a..b, c..d, e.. }`.
                     let mut parity = zeros;
-                    let mut j = n;
-                    while j < $U::BITS {
-                        parity ^= parity << j;
-                        j <<= 1;
+                    let mut len = n;
+                    while len < $U::BITS {
+                        parity ^= parity << len;
+                        len <<= 1;
                     }
-                    masks[k] = parity;
+                    masks[stage] = parity;
 
                     // Toggle off the bits that are shifted into:
                     // { a..a+n, b..b+n, ... } & !{ a..b, c..d, e.. }
@@ -95,8 +94,7 @@ macro_rules! uint_impl {
                     // shifted from: { b-n..b+n, d-n..d+n, ... }
                     zeros ^= zeros >> n;
 
-                    n <<= 1;
-                    k += 1;
+                    stage += 1;
                 }
                 masks
             }
@@ -105,9 +103,9 @@ macro_rules! uint_impl {
             pub(in super::super) const fn gather_impl(mut x: $U, sparse: $U) -> $U {
                 let masks = prepare(sparse);
                 x &= sparse;
-                let mut k = 0;
-                while k < STAGES {
-                    let n = 1 << k;
+                let mut stage = 0;
+                while stage < STAGES {
+                    let n = 1 << stage;
                     // Consider each two runs of data with their leading
                     // groups of `n` 0-bits. Suppose that the run that is
                     // shifted right has length `a`, and the other one has
@@ -124,21 +122,21 @@ macro_rules! uint_impl {
 
                     // In effect, the upper run of data is swapped with the
                     // group of `n` zeros below it.
-                    let q = x & masks[k];
+                    let q = x & masks[stage];
                     x ^= q;
                     x ^= q >> n;
 
-                    k += 1;
+                    stage += 1;
                 }
                 x
             }
             #[inline(always)]
             pub(in super::super) const fn scatter_impl(mut x: $U, sparse: $U) -> $U {
                 let masks = prepare(sparse);
-                let mut k = STAGES;
-                while k > 0 {
-                    k -= 1;
-                    let n = 1 << k;
+                let mut stage = STAGES;
+                while stage > 0 {
+                    stage -= 1;
+                    let n = 1 << stage;
                     // Consider each run of data with the `2 * n` arbitrary bits
                     // above it. Suppose that the run has length `a + b`, with
                     // `a` being the length of the part that needs to be
@@ -156,7 +154,7 @@ macro_rules! uint_impl {
                     // In effect, `n` 0-bits are inserted somewhere in each run
                     // of data to spread it, and the two groups of `n` bits
                     // above are XOR'd together.
-                    let q = x & masks[k];
+                    let q = x & masks[stage];
                     x ^= q;
                     x ^= q << n;
                 }
