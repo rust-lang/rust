@@ -23,7 +23,7 @@ impl<S: Stage> SingleAttributeParser<S> for OptimizeParser {
     ]);
     const TEMPLATE: AttributeTemplate = template!(List: &["size", "speed", "none"]);
 
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
         let Some(list) = args.list() else {
             cx.expected_list(cx.attr_span);
             return None;
@@ -84,7 +84,7 @@ impl<S: Stage> SingleAttributeParser<S> for CoverageParser {
     ]);
     const TEMPLATE: AttributeTemplate = template!(OneOf: &[sym::off, sym::on]);
 
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
         let Some(args) = args.list() else {
             cx.expected_specific_argument_and_list(cx.attr_span, &[sym::on, sym::off]);
             return None;
@@ -135,7 +135,7 @@ impl<S: Stage> SingleAttributeParser<S> for ExportNameParser {
     ]);
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "name");
 
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
         let Some(nv) = args.name_value() else {
             cx.expected_name_value(cx.attr_span, None);
             return None;
@@ -164,7 +164,7 @@ impl<S: Stage> SingleAttributeParser<S> for ObjcClassParser {
         AllowedTargets::AllowList(&[Allow(Target::ForeignStatic)]);
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "ClassName");
 
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
         let Some(nv) = args.name_value() else {
             cx.expected_name_value(cx.attr_span, None);
             return None;
@@ -196,7 +196,7 @@ impl<S: Stage> SingleAttributeParser<S> for ObjcSelectorParser {
         AllowedTargets::AllowList(&[Allow(Target::ForeignStatic)]);
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "methodName");
 
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
         let Some(nv) = args.name_value() else {
             cx.expected_name_value(cx.attr_span, None);
             return None;
@@ -474,7 +474,7 @@ impl<S: Stage> AttributeParser<S> for UsedParser {
 
 fn parse_tf_attribute<'c, S: Stage>(
     cx: &'c mut AcceptContext<'_, '_, S>,
-    args: &'c ArgParser<'_>,
+    args: &'c ArgParser,
 ) -> impl IntoIterator<Item = (Symbol, Span)> + 'c {
     let mut features = Vec::new();
     let ArgParser::List(list) = args else {
@@ -531,7 +531,7 @@ impl<S: Stage> CombineAttributeParser<S> for TargetFeatureParser {
 
     fn extend<'c>(
         cx: &'c mut AcceptContext<'_, '_, S>,
-        args: &'c ArgParser<'_>,
+        args: &'c ArgParser,
     ) -> impl IntoIterator<Item = Self::Item> + 'c {
         parse_tf_attribute(cx, args)
     }
@@ -569,7 +569,7 @@ impl<S: Stage> CombineAttributeParser<S> for ForceTargetFeatureParser {
 
     fn extend<'c>(
         cx: &'c mut AcceptContext<'_, '_, S>,
-        args: &'c ArgParser<'_>,
+        args: &'c ArgParser,
     ) -> impl IntoIterator<Item = Self::Item> + 'c {
         parse_tf_attribute(cx, args)
     }
@@ -599,7 +599,7 @@ impl<S: Stage> SingleAttributeParser<S> for SanitizeParser {
     const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
 
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
         let Some(list) = args.list() else {
             cx.expected_list(cx.attr_span);
             return None;

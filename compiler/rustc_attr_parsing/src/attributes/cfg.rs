@@ -37,7 +37,7 @@ const CFG_ATTR_TEMPLATE: AttributeTemplate = template!(
 
 pub fn parse_cfg<'c, S: Stage>(
     cx: &'c mut AcceptContext<'_, '_, S>,
-    args: &'c ArgParser<'_>,
+    args: &'c ArgParser,
 ) -> Option<CfgEntry> {
     let ArgParser::List(list) = args else {
         cx.expected_list(cx.attr_span);
@@ -52,7 +52,7 @@ pub fn parse_cfg<'c, S: Stage>(
 
 pub fn parse_cfg_entry<S: Stage>(
     cx: &mut AcceptContext<'_, '_, S>,
-    item: &MetaItemOrLitParser<'_>,
+    item: &MetaItemOrLitParser,
 ) -> Result<CfgEntry, ErrorGuaranteed> {
     Ok(match item {
         MetaItemOrLitParser::MetaItemParser(meta) => match meta.args() {
@@ -98,7 +98,7 @@ pub fn parse_cfg_entry<S: Stage>(
 
 fn parse_cfg_entry_version<S: Stage>(
     cx: &mut AcceptContext<'_, '_, S>,
-    list: &MetaItemListParser<'_>,
+    list: &MetaItemListParser,
     meta_span: Span,
 ) -> Result<CfgEntry, ErrorGuaranteed> {
     try_gate_cfg(sym::version, meta_span, cx.sess(), cx.features_option());
@@ -130,7 +130,7 @@ fn parse_cfg_entry_version<S: Stage>(
 
 fn parse_cfg_entry_target<S: Stage>(
     cx: &mut AcceptContext<'_, '_, S>,
-    list: &MetaItemListParser<'_>,
+    list: &MetaItemListParser,
     meta_span: Span,
 ) -> Result<CfgEntry, ErrorGuaranteed> {
     if let Some(features) = cx.features_option()

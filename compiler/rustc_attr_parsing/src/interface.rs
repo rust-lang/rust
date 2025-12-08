@@ -1,4 +1,3 @@
-use std::borrow::Cow;
 use std::convert::identity;
 
 use rustc_ast as ast;
@@ -14,7 +13,7 @@ use rustc_session::lint::BuiltinLintDiag;
 use rustc_span::{DUMMY_SP, Span, Symbol, sym};
 
 use crate::context::{AcceptContext, FinalizeContext, SharedContext, Stage};
-use crate::parser::{ArgParser, PathParser};
+use crate::parser::{ArgParser, PathParser, RefPathParser};
 use crate::session_diagnostics::ParsedDescription;
 use crate::{Early, Late, OmitDoc, ShouldEmit};
 
@@ -137,7 +136,7 @@ impl<'sess> AttributeParser<'sess, Early> {
         target_node_id: NodeId,
         features: Option<&'sess Features>,
         emit_errors: ShouldEmit,
-        parse_fn: fn(cx: &mut AcceptContext<'_, '_, Early>, item: &ArgParser<'_>) -> Option<T>,
+        parse_fn: fn(cx: &mut AcceptContext<'_, '_, Early>, item: &ArgParser) -> Option<T>,
         template: &AttributeTemplate,
     ) -> Option<T> {
         let ast::AttrKind::Normal(normal_attr) = &attr.kind else {
@@ -269,7 +268,7 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
         mut emit_lint: impl FnMut(AttributeLint<S::Id>),
     ) -> Vec<Attribute> {
         let mut attributes = Vec::new();
-        let mut attr_paths = Vec::new();
+        let mut attr_paths: Vec<RefPathParser<'_>> = Vec::new();
 
         for attr in attrs {
             // If we're only looking for a single attribute, skip all the ones we don't care about.
@@ -303,7 +302,7 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
                     }))
                 }
                 ast::AttrKind::Normal(n) => {
-                    attr_paths.push(PathParser(Cow::Borrowed(&n.item.path)));
+                    attr_paths.push(PathParser(&n.item.path));
                     let attr_path = AttrPath::from_ast(&n.item.path, lower_span);
 
                     self.check_attribute_safety(

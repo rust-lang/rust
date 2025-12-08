@@ -18,7 +18,7 @@ impl<S: Stage> CombineAttributeParser<S> for DebuggerViualizerParser {
 
     fn extend<'c>(
         cx: &'c mut AcceptContext<'_, '_, S>,
-        args: &'c ArgParser<'_>,
+        args: &'c ArgParser,
     ) -> impl IntoIterator<Item = Self::Item> + 'c {
         let Some(l) = args.list() else {
             cx.expected_list(args.span().unwrap_or(cx.attr_span));

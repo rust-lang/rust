@@ -28,7 +28,7 @@ impl<S: Stage> CombineAttributeParser<S> for ReprParser {
 
     fn extend<'c>(
         cx: &'c mut AcceptContext<'_, '_, S>,
-        args: &'c ArgParser<'_>,
+        args: &'c ArgParser,
     ) -> impl IntoIterator<Item = Self::Item> + 'c {
         let mut reprs = Vec::new();
 
@@ -98,10 +98,7 @@ fn int_type_of_word(s: Symbol) -> Option<IntType> {
     }
 }
 
-fn parse_repr<S: Stage>(
-    cx: &AcceptContext<'_, '_, S>,
-    param: &MetaItemParser<'_>,
-) -> Option<ReprAttr> {
+fn parse_repr<S: Stage>(cx: &AcceptContext<'_, '_, S>, param: &MetaItemParser) -> Option<ReprAttr> {
     use ReprAttr::*;
 
     // FIXME(jdonszelmann): invert the parsing here to match on the word first and then the
@@ -192,7 +189,7 @@ enum AlignKind {
 
 fn parse_repr_align<S: Stage>(
     cx: &AcceptContext<'_, '_, S>,
-    list: &MetaItemListParser<'_>,
+    list: &MetaItemListParser,
     param_span: Span,
     align_kind: AlignKind,
 ) -> Option<ReprAttr> {
@@ -278,11 +275,7 @@ impl AlignParser {
     const PATH: &'static [Symbol] = &[sym::rustc_align];
     const TEMPLATE: AttributeTemplate = template!(List: &["<alignment in bytes>"]);
 
-    fn parse<'c, S: Stage>(
-        &mut self,
-        cx: &'c mut AcceptContext<'_, '_, S>,
-        args: &'c ArgParser<'_>,
-    ) {
+    fn parse<'c, S: Stage>(&mut self, cx: &'c mut AcceptContext<'_, '_, S>, args: &'c ArgParser) {
         match args {
             ArgParser::NoArgs | ArgParser::NameValue(_) => {
                 cx.expected_list(cx.attr_span);
@@ -339,11 +332,7 @@ impl AlignStaticParser {
     const PATH: &'static [Symbol] = &[sym::rustc_align_static];
     const TEMPLATE: AttributeTemplate = AlignParser::TEMPLATE;
 
-    fn parse<'c, S: Stage>(
-        &mut self,
-        cx: &'c mut AcceptContext<'_, '_, S>,
-        args: &'c ArgParser<'_>,
-    ) {
+    fn parse<'c, S: Stage>(&mut self, cx: &'c mut AcceptContext<'_, '_, S>, args: &'c ArgParser) {
         self.0.parse(cx, args)
     }
 }

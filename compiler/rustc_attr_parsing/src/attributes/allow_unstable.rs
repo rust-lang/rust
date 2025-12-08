@@ -19,7 +19,7 @@ impl<S: Stage> CombineAttributeParser<S> for AllowInternalUnstableParser {
 
     fn extend<'c>(
         cx: &'c mut AcceptContext<'_, '_, S>,
-        args: &'c ArgParser<'_>,
+        args: &'c ArgParser,
     ) -> impl IntoIterator<Item = Self::Item> {
         parse_unstable(cx, args, <Self as CombineAttributeParser<S>>::PATH[0])
             .into_iter()
@@ -41,7 +41,7 @@ impl<S: Stage> CombineAttributeParser<S> for UnstableFeatureBoundParser {
 
     fn extend<'c>(
         cx: &'c mut AcceptContext<'_, '_, S>,
-        args: &'c ArgParser<'_>,
+        args: &'c ArgParser,
     ) -> impl IntoIterator<Item = Self::Item> {
         if !cx.features().staged_api() {
             cx.emit_err(session_diagnostics::StabilityOutsideStd { span: cx.attr_span });
@@ -69,7 +69,7 @@ impl<S: Stage> CombineAttributeParser<S> for AllowConstFnUnstableParser {
 
     fn extend<'c>(
         cx: &'c mut AcceptContext<'_, '_, S>,
-        args: &'c ArgParser<'_>,
+        args: &'c ArgParser,
     ) -> impl IntoIterator<Item = Self::Item> + 'c {
         parse_unstable(cx, args, <Self as CombineAttributeParser<S>>::PATH[0])
     }
@@ -77,7 +77,7 @@ impl<S: Stage> CombineAttributeParser<S> for AllowConstFnUnstableParser {
 
 fn parse_unstable<S: Stage>(
     cx: &AcceptContext<'_, '_, S>,
-    args: &ArgParser<'_>,
+    args: &ArgParser,
     symbol: Symbol,
 ) -> impl IntoIterator<Item = Symbol> {
     let mut res = Vec::new();
