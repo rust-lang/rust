@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use rustc_hir::attrs::Deprecation;
 use rustc_hir::def::{CtorKind, DefKind};
-use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LOCAL_CRATE};
+use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LOCAL_CRATE, LocalDefId};
 use rustc_hir::definitions::{DefKey, DefPath, DefPathHash};
 use rustc_middle::arena::ArenaAllocatable;
 use rustc_middle::bug;
@@ -18,7 +18,7 @@ use rustc_middle::util::Providers;
 use rustc_session::cstore::{CrateStore, ExternCrate};
 use rustc_session::{Session, StableCrateId};
 use rustc_span::hygiene::ExpnId;
-use rustc_span::{Span, Symbol, kw};
+use rustc_span::{Span, Symbol, kw, sym};
 
 use super::{Decodable, DecodeContext, DecodeIterator};
 use crate::creader::{CStore, LoadedMacro};
@@ -397,7 +397,7 @@ provide! { tcx, def_id, other, cdata,
     crate_extern_paths => { cdata.source().paths().cloned().collect() }
     expn_that_defined => { cdata.get_expn_that_defined(def_id.index, tcx.sess) }
     default_field => { cdata.get_default_field(def_id.index) }
-    is_doc_hidden => { cdata.get_attr_flags(def_id.index).contains(AttrFlags::IS_DOC_HIDDEN) }
+    is_doc_hidden_q => { cdata.get_attr_flags(def_id.index).contains(AttrFlags::IS_DOC_HIDDEN) }
     doc_link_resolutions => { tcx.arena.alloc(cdata.get_doc_link_resolutions(def_id.index)) }
     doc_link_traits_in_scope => {
         tcx.arena.alloc_from_iter(cdata.get_doc_link_traits_in_scope(def_id.index))
@@ -681,6 +681,29 @@ impl CrateStore for CStore {
     }
 }
 
+/// Determines whether an item is directly annotated with `doc(hidden)`.
+fn is_doc_hidden_local(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
+    tcx.get_attrs(def_id, sym::doc)
+        .filter_map(|attr| attr.meta_item_list())
+        .any(|items| items.iter().any(|item| item.has_name(sym::hidden)))
+}
+
+// Optimization of is_doc_hidden query in case of non-incremental build.
+// is_doc_hidden query itself renamed into is_doc_hidden_q.
+#[inline]
+fn is_doc_hidden(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
+    if let Some(local) = def_id.as_local() {
+        is_doc_hidden_local(tcx, local)
+    } else {
+        let cdata = rustc_data_structures::sync::FreezeReadGuard::map(CStore::from_tcx(tcx), |c| {
+            c.get_crate_data(def_id.krate).cdata
+        });
+        let cdata =
+            crate::creader::CrateMetadataRef { cdata: &cdata, cstore: &CStore::from_tcx(tcx) };
+        cdata.get_attr_flags(def_id.index).contains(AttrFlags::IS_DOC_HIDDEN)
+    }
+}
+
 fn provide_cstore_hooks(providers: &mut Providers) {
     providers.hooks.def_path_hash_to_def_id_extern = |tcx, hash, stable_crate_id| {
         // If this is a DefPathHash from an upstream crate, let the CrateStore map
@@ -708,4 +731,6 @@ fn provide_cstore_hooks(providers: &mut Providers) {
             cdata.imported_source_file(file_index as u32, tcx.sess);
         }
     };
+    providers.hooks.is_doc_hidden = is_doc_hidden;
+    providers.is_doc_hidden_q = is_doc_hidden_local;
 }

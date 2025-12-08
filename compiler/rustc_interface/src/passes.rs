@@ -971,6 +971,11 @@ pub fn create_and_enter_global_ctxt<T, F: for<'tcx> FnOnce(TyCtxt<'tcx>) -> T>(
 
     let incremental = dep_graph.is_fully_enabled();
 
+    // is_doc_hidden hook is reset to query call for incremental build (fallback for optimization)
+    if incremental {
+        providers.hooks.is_doc_hidden = |tcx, def_id| tcx.is_doc_hidden_q(def_id);
+    }
+
     let gcx_cell = OnceLock::new();
     let arena = WorkerLocal::new(|_| Arena::default());
     let hir_arena = WorkerLocal::new(|_| rustc_hir::Arena::default());
