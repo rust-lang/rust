@@ -695,14 +695,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let bodies = SortedMap::from_presorted_elements(bodies);
 
         // Don't hash unless necessary, because it's expensive.
-        let rustc_middle::hir::Hashes { opt_hash_including_bodies, attrs_hash, delayed_lints_hash } =
-            self.tcx.hash_owner_nodes(node, &bodies, &attrs, &delayed_lints, define_opaque);
+        let rustc_middle::hir::Hashes { opt_hash_including_bodies, attrs_hash } =
+            self.tcx.hash_owner_nodes(node, &bodies, &attrs, define_opaque);
         let num_nodes = self.item_local_id_counter.as_usize();
         let (nodes, parenting) = index::index_hir(self.tcx, node, &bodies, num_nodes);
         let nodes = hir::OwnerNodes { opt_hash_including_bodies, nodes, bodies };
         let attrs = hir::AttributeMap { map: attrs, opt_hash: attrs_hash, define_opaque };
-        let delayed_lints =
-            hir::lints::DelayedLints { lints: delayed_lints, opt_hash: delayed_lints_hash };
+        let delayed_lints = hir::lints::DelayedLints { lints: delayed_lints };
 
         self.arena.alloc(hir::OwnerInfo { nodes, parenting, attrs, trait_map, delayed_lints })
     }

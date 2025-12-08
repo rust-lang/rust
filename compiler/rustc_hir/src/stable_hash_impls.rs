@@ -81,10 +81,7 @@ impl<'tcx, HirCtx: crate::HashStableContext> HashStable<HirCtx> for OwnerNodes<'
 }
 
 impl<HirCtx: crate::HashStableContext> HashStable<HirCtx> for DelayedLints {
-    fn hash_stable(&self, hcx: &mut HirCtx, hasher: &mut StableHasher) {
-        let DelayedLints { opt_hash, .. } = *self;
-        opt_hash.unwrap().hash_stable(hcx, hasher);
-    }
+    fn hash_stable(&self, _hcx: &mut HirCtx, _hasher: &mut StableHasher) {}
 }
 
 impl<'tcx, HirCtx: crate::HashStableContext> HashStable<HirCtx> for AttributeMap<'tcx> {

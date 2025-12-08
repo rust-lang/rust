@@ -700,7 +700,7 @@ pub enum BuiltinLintDiag {
     AttributeLint(AttributeLintKind),
 }
 
-#[derive(Debug, HashStable_Generic)]
+#[derive(Debug)]
 pub enum AttributeLintKind {
     UnusedDuplicate {
         this: Span,
