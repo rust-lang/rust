@@ -137,10 +137,8 @@ impl DocParser {
         cx: &'c mut AcceptContext<'_, '_, S>,
         alias: Symbol,
         span: Span,
-        is_list: bool,
     ) {
-        let attr_str =
-            &format!("`#[doc(alias{})]`", if is_list { "(\"...\")" } else { " = \"...\"" });
+        let attr_str = "`#[doc(alias = \"...\")]`";
         if alias == sym::empty {
             cx.emit_err(DocAliasEmpty { span, attr_str });
             return;
@@ -186,7 +184,7 @@ impl DocParser {
                         continue;
                     };
 
-                    self.add_alias(cx, alias, i.span(), false);
+                    self.add_alias(cx, alias, i.span());
                 }
             }
             ArgParser::NameValue(nv) => {
@@ -194,7 +192,7 @@ impl DocParser {
                     cx.expected_string_literal(nv.value_span, Some(nv.value_as_lit()));
                     return;
                 };
-                self.add_alias(cx, alias, nv.value_span, false);
+                self.add_alias(cx, alias, nv.value_span);
             }
         }
     }
