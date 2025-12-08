@@ -6,7 +6,7 @@ use crate::rustc_info::get_file_name;
 use crate::shared_utils::{rustflags_from_env, rustflags_to_cmd_env};
 use crate::utils::{CargoProject, Compiler, LogGroup};
 
-static CG_CLIF: CargoProject = CargoProject::new(&RelPath::source("."), "cg_clif");
+static CG_CLIF: CargoProject = CargoProject::new(RelPath::source("."), "cg_clif");
 
 pub(crate) fn build_backend(
     dirs: &Dirs,
@@ -21,6 +21,11 @@ pub(crate) fn build_backend(
     let mut rustflags = rustflags_from_env("RUSTFLAGS");
     rustflags.push("-Zallow-features=rustc_private,f16,f128".to_owned());
     rustflags_to_cmd_env(&mut cmd, "RUSTFLAGS", &rustflags);
+
+    // Use incr comp despite release mode unless incremental builds are explicitly disabled
+    if env::var_os("CARGO_BUILD_INCREMENTAL").is_none() {
+        cmd.env("CARGO_BUILD_INCREMENTAL", "true");
+    }
 
     if env::var("CG_CLIF_EXPENSIVE_CHECKS").is_ok() {
         // Enabling debug assertions implicitly enables the clif ir verifier
