@@ -2053,7 +2053,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(deque, [1, 2, 3, 4]);
     /// assert_eq!(deque.pop_front_if(pred), None);
     /// ```
-    #[stable(feature = "vec_deque_pop_if", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "vec_deque_pop_if", since = "1.93.0")]
     pub fn pop_front_if(&mut self, predicate: impl FnOnce(&mut T) -> bool) -> Option<T> {
         let first = self.front_mut()?;
         if predicate(first) { self.pop_front() } else { None }
@@ -2075,7 +2075,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(deque, [0, 1, 2, 3]);
     /// assert_eq!(deque.pop_back_if(pred), None);
     /// ```
-    #[stable(feature = "vec_deque_pop_if", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "vec_deque_pop_if", since = "1.93.0")]
     pub fn pop_back_if(&mut self, predicate: impl FnOnce(&mut T) -> bool) -> Option<T> {
         let last = self.back_mut()?;
         if predicate(last) { self.pop_back() } else { None }
