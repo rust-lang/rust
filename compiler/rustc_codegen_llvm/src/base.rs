@@ -23,13 +23,14 @@ use rustc_middle::dep_graph;
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrs, SanitizerFnAttrs};
 use rustc_middle::mir::mono::Visibility;
 use rustc_middle::ty::TyCtxt;
-use rustc_session::config::DebugInfo;
+use rustc_session::config::{DebugInfo, Offload};
 use rustc_span::Symbol;
 use rustc_target::spec::SanitizerSet;
 
 use super::ModuleLlvm;
 use crate::attributes;
 use crate::builder::Builder;
+use crate::builder::gpu_offload::OffloadGlobals;
 use crate::context::CodegenCx;
 use crate::llvm::{self, Value};
 
@@ -85,6 +86,19 @@ pub(crate) fn compile_codegen_unit(
         let llvm_module = ModuleLlvm::new(tcx, cgu_name.as_str());
         {
             let mut cx = CodegenCx::new(tcx, cgu, &llvm_module);
+
+            // Declare and store globals shared by all offload kernels
+            //
+            // These globals are left in the LLVM-IR host module so all kernels can access them.
+            // They are necessary for correct offload execution. We do this here to simplify the
+            // `offload` intrinsic, avoiding the need for tracking whether it's the first
+            // intrinsic call or not.
+            if cx.sess().opts.unstable_opts.offload.contains(&Offload::Enable)
+                && !cx.sess().target.is_like_gpu
+            {
+                cx.offload_globals.replace(Some(OffloadGlobals::declare(&cx)));
+            }
+
             let mono_items = cx.codegen_unit.items_in_deterministic_order(cx.tcx);
             for &(mono_item, data) in &mono_items {
                 mono_item.predefine::<Builder<'_, '_, '_>>(
