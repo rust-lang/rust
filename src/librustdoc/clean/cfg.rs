@@ -47,7 +47,7 @@ fn is_simple_cfg(cfg: &CfgEntry) -> bool {
     }
 }
 
-/// Whether the configuration consists of just `Cfg`, `Not` or `All`.
+/// Returns `false` if is `Any`, otherwise returns `true`.
 fn is_all_cfg(cfg: &CfgEntry) -> bool {
     match cfg {
         CfgEntry::Bool(..)
@@ -756,7 +756,6 @@ fn handle_auto_cfg_hide_show(
     tcx: TyCtxt<'_>,
     cfg_info: &mut CfgInfo,
     attr: &CfgHideShow,
-    attr_span: Span,
     new_show_attrs: &mut FxHashMap<(Symbol, Option<Symbol>), rustc_span::Span>,
     new_hide_attrs: &mut FxHashMap<(Symbol, Option<Symbol>), rustc_span::Span>,
 ) {
@@ -764,16 +763,16 @@ fn handle_auto_cfg_hide_show(
         let simple = NameValueCfg::from(value);
         if attr.kind == HideOrShow::Show {
             if let Some(span) = new_hide_attrs.get(&(simple.name, simple.value)) {
-                show_hide_show_conflict_error(tcx, attr_span, *span);
+                show_hide_show_conflict_error(tcx, value.span_for_name_and_value(), *span);
             } else {
-                new_show_attrs.insert((simple.name, simple.value), attr_span);
+                new_show_attrs.insert((simple.name, simple.value), value.span_for_name_and_value());
             }
             cfg_info.hidden_cfg.remove(&simple);
         } else {
             if let Some(span) = new_show_attrs.get(&(simple.name, simple.value)) {
-                show_hide_show_conflict_error(tcx, attr_span, *span);
+                show_hide_show_conflict_error(tcx, value.span_for_name_and_value(), *span);
             } else {
-                new_hide_attrs.insert((simple.name, simple.value), attr_span);
+                new_hide_attrs.insert((simple.name, simple.value), value.span_for_name_and_value());
             }
             cfg_info.hidden_cfg.insert(simple);
         }
@@ -871,12 +870,11 @@ pub(crate) fn extract_cfg_from_attrs<'a, I: Iterator<Item = &'a hir::Attribute> 
                 ) {
                     return None;
                 }
-                for (value, span) in &d.auto_cfg {
+                for (value, _) in &d.auto_cfg {
                     handle_auto_cfg_hide_show(
                         tcx,
                         cfg_info,
                         value,
-                        *span,
                         &mut new_show_attrs,
                         &mut new_hide_attrs,
                     );

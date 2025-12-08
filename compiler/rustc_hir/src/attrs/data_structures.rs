@@ -504,6 +504,16 @@ pub struct CfgInfo {
     pub value: Option<(Symbol, Span)>,
 }
 
+impl CfgInfo {
+    pub fn span_for_name_and_value(&self) -> Span {
+        if let Some((_, value_span)) = self.value {
+            self.name_span.with_hi(value_span.hi())
+        } else {
+            self.name_span
+        }
+    }
+}
+
 #[derive(Clone, Debug, HashStable_Generic, Encodable, Decodable, PrintAttribute)]
 pub struct CfgHideShow {
     pub kind: HideOrShow,
