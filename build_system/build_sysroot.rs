@@ -140,7 +140,7 @@ impl SysrootTarget {
 
 static STDLIB_SRC: RelPath = RelPath::build("stdlib");
 static STANDARD_LIBRARY: CargoProject =
-    CargoProject::new(&RelPath::build("stdlib/library/sysroot"), "stdlib_target");
+    CargoProject::new(RelPath::build("stdlib/library/sysroot"), "stdlib_target");
 
 fn build_sysroot_for_triple(
     dirs: &Dirs,
@@ -161,35 +161,18 @@ fn build_sysroot_for_triple(
 fn build_llvm_sysroot_for_triple(compiler: Compiler) -> SysrootTarget {
     let default_sysroot = crate::rustc_info::get_default_sysroot(&compiler.rustc);
 
-    let mut target_libs = SysrootTarget { triple: compiler.triple, libs: vec![] };
+    let std_manifest_path = default_sysroot
+        .join("lib")
+        .join("rustlib")
+        .join(format!("manifest-rust-std-{}", compiler.triple));
 
-    for entry in fs::read_dir(
-        default_sysroot.join("lib").join("rustlib").join(&target_libs.triple).join("lib"),
-    )
-    .unwrap()
-    {
-        let entry = entry.unwrap();
-        if entry.file_type().unwrap().is_dir() {
-            continue;
-        }
-        let file = entry.path();
-        let file_name_str = file.file_name().unwrap().to_str().unwrap();
-        if (file_name_str.contains("rustc_")
-            && !file_name_str.contains("rustc_std_workspace_")
-            && !file_name_str.contains("rustc_demangle")
-            && !file_name_str.contains("rustc_literal_escaper"))
-            || file_name_str.contains("chalk")
-            || file_name_str.contains("tracing")
-            || file_name_str.contains("regex")
-        {
-            // These are large crates that are part of the rustc-dev component and are not
-            // necessary to run regular programs.
-            continue;
-        }
-        target_libs.libs.push(file);
-    }
+    let libs = fs::read_to_string(std_manifest_path)
+        .unwrap()
+        .lines()
+        .map(|entry| default_sysroot.join(entry.strip_prefix("file:").unwrap()))
+        .collect();
 
-    target_libs
+    SysrootTarget { triple: compiler.triple, libs }
 }
 
 fn build_clif_sysroot_for_triple(
@@ -250,6 +233,10 @@ fn build_clif_sysroot_for_triple(
     build_cmd.env("__CARGO_DEFAULT_LIB_METADATA", "cg_clif");
     if compiler.triple.contains("apple") {
         build_cmd.env("CARGO_PROFILE_RELEASE_SPLIT_DEBUGINFO", "packed");
+    }
+    // Use incr comp despite release mode unless incremental builds are explicitly disabled
+    if env::var_os("CARGO_BUILD_INCREMENTAL").is_none() {
+        build_cmd.env("CARGO_BUILD_INCREMENTAL", "true");
     }
     spawn_and_wait(build_cmd);
 
