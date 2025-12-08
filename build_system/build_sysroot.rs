@@ -161,18 +161,35 @@ fn build_sysroot_for_triple(
 fn build_llvm_sysroot_for_triple(compiler: Compiler) -> SysrootTarget {
     let default_sysroot = crate::rustc_info::get_default_sysroot(&compiler.rustc);
 
-    let std_manifest_path = default_sysroot
-        .join("lib")
-        .join("rustlib")
-        .join(format!("manifest-rust-std-{}", compiler.triple));
+    let mut target_libs = SysrootTarget { triple: compiler.triple, libs: vec![] };
 
-    let libs = fs::read_to_string(std_manifest_path)
-        .unwrap()
-        .lines()
-        .map(|entry| default_sysroot.join(entry.strip_prefix("file:").unwrap()))
-        .collect();
+    for entry in fs::read_dir(
+        default_sysroot.join("lib").join("rustlib").join(&target_libs.triple).join("lib"),
+    )
+    .unwrap()
+    {
+        let entry = entry.unwrap();
+        if entry.file_type().unwrap().is_dir() {
+            continue;
+        }
+        let file = entry.path();
+        let file_name_str = file.file_name().unwrap().to_str().unwrap();
+        if (file_name_str.contains("rustc_")
+            && !file_name_str.contains("rustc_std_workspace_")
+            && !file_name_str.contains("rustc_demangle")
+            && !file_name_str.contains("rustc_literal_escaper"))
+            || file_name_str.contains("chalk")
+            || file_name_str.contains("tracing")
+            || file_name_str.contains("regex")
+        {
+            // These are large crates that are part of the rustc-dev component and are not
+            // necessary to run regular programs.
+            continue;
+        }
+        target_libs.libs.push(file);
+    }
 
-    SysrootTarget { triple: compiler.triple, libs }
+    target_libs
 }
 
 fn build_clif_sysroot_for_triple(
