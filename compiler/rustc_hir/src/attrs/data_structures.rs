@@ -710,6 +710,9 @@ pub enum AttributeKind {
     Dummy,
 
     /// Implementation detail of `#[eii]`
+    EiiExternItem,
+
+    /// Implementation detail of `#[eii]`
     EiiExternTarget(EiiDecl),
 
     /// Implementation detail of `#[eii]`

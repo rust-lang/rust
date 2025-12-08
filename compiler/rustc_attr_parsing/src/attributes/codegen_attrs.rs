@@ -699,3 +699,12 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcPassIndirectlyInNonRusticAbisPa
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Struct)]);
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::RustcPassIndirectlyInNonRusticAbis;
 }
+
+pub(crate) struct EiiExternItemParser;
+
+impl<S: Stage> NoArgsAttributeParser<S> for EiiExternItemParser {
+    const PATH: &[Symbol] = &[sym::rustc_eii_extern_item];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::ForeignFn)]);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::EiiExternItem;
+}

@@ -209,6 +209,24 @@ fn eii_(
     }
 
     // extern "…" { safe fn item(); }
+    let mut extern_item_attrs = attrs.clone();
+    extern_item_attrs.push(ast::Attribute {
+        kind: ast::AttrKind::Normal(Box::new(ast::NormalAttr {
+            item: ast::AttrItem {
+                unsafety: ast::Safety::Default,
+                // Add the rustc_eii_extern_item on the foreign item. Usually, foreign items are mangled.
+                // This attribute makes sure that we later know that this foreign item's symbol should not be.
+                path: ast::Path::from_ident(Ident::new(sym::rustc_eii_extern_item, span)),
+                args: ast::AttrArgs::Empty,
+                tokens: None,
+            },
+            tokens: None,
+        })),
+        id: ecx.sess.psess.attr_id_generator.mk_attr_id(),
+        style: ast::AttrStyle::Outer,
+        span,
+    });
+
     let extern_block = Box::new(ast::Item {
         attrs: ast::AttrVec::default(),
         id: ast::DUMMY_NODE_ID,
@@ -219,7 +237,7 @@ fn eii_(
             safety: ast::Safety::Unsafe(span),
             abi,
             items: From::from([Box::new(ast::ForeignItem {
-                attrs: attrs.clone(),
+                attrs: extern_item_attrs,
                 id: ast::DUMMY_NODE_ID,
                 span: item_span,
                 vis,

@@ -43,6 +43,7 @@ impl AttributeKind {
             Doc(_) => Yes,
             DocComment { .. } => Yes,
             Dummy => No,
+            EiiExternItem => No,
             EiiExternTarget(_) => Yes,
             EiiImpls(..) => No,
             ExportName { .. } => Yes,

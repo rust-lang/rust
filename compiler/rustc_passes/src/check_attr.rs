@@ -217,6 +217,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 },
                 Attribute::Parsed(
                     AttributeKind::EiiExternTarget { .. }
+                    | AttributeKind::EiiExternItem
                     | AttributeKind::BodyStability { .. }
                     | AttributeKind::ConstStabilityIndirect
                     | AttributeKind::MacroTransparency(_)

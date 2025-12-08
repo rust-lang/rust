@@ -313,6 +313,9 @@ fn process_builtin_attrs(
                 AttributeKind::ObjcSelector { methname, .. } => {
                     codegen_fn_attrs.objc_selector = Some(*methname);
                 }
+                AttributeKind::EiiExternItem => {
+                    codegen_fn_attrs.flags |= CodegenFnAttrFlags::EXTERNALLY_IMPLEMENTABLE_ITEM;
+                }
                 AttributeKind::EiiImpls(impls) => {
                     for i in impls {
                         let extern_item = find_attr!(
@@ -344,7 +347,7 @@ fn process_builtin_attrs(
                             if i.is_default { Linkage::LinkOnceAny } else { Linkage::External },
                             Visibility::Default,
                         ));
-                        codegen_fn_attrs.flags |= CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL;
+                        codegen_fn_attrs.flags |= CodegenFnAttrFlags::EXTERNALLY_IMPLEMENTABLE_ITEM;
                     }
                 }
                 _ => {}
@@ -448,6 +451,12 @@ fn apply_overrides(tcx: TyCtxt<'_>, did: LocalDefId, codegen_fn_attrs: &mut Code
             // * `#[rustc_std_internal_symbol]` mangles the symbol name in a special way
             //   both for exports and imports through foreign items. This is handled further,
             //   during symbol mangling logic.
+        } else if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::EXTERNALLY_IMPLEMENTABLE_ITEM)
+        {
+            // * externally implementable items keep their mangled symbol name.
+            //   multiple EIIs can have the same name, so not mangling them would be a bug.
+            //   Implementing an EII does the appropriate name resolution to make sure the implementations
+            //   get the same symbol name as the *mangled* foreign item they refer to so that's all good.
         } else if codegen_fn_attrs.symbol_name.is_some() {
             // * This can be overridden with the `#[link_name]` attribute
         } else {
