@@ -500,13 +500,6 @@ fn parse_config(args: Vec<String>) -> Config {
     }
 }
 
-fn opt_str2(maybestr: Option<String>) -> String {
-    match maybestr {
-        None => "(none)".to_owned(),
-        Some(s) => s,
-    }
-}
-
 /// Called by `main` after the config has been parsed.
 fn run_tests(config: Arc<Config>) {
     debug!(?config, "run_tests");
