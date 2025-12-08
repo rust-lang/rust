@@ -1,4 +1,5 @@
 use std::borrow::Cow;
+use std::convert::identity;
 
 use rustc_ast as ast;
 use rustc_ast::token::DocFragmentKind;
@@ -13,7 +14,7 @@ use rustc_session::lint::BuiltinLintDiag;
 use rustc_span::{DUMMY_SP, Span, Symbol, sym};
 
 use crate::context::{AcceptContext, FinalizeContext, SharedContext, Stage};
-use crate::parser::{ArgParser, MetaItemParser, PathParser};
+use crate::parser::{ArgParser, PathParser};
 use crate::session_diagnostics::ParsedDescription;
 use crate::{Early, Late, OmitDoc, ShouldEmit};
 
@@ -144,22 +145,23 @@ impl<'sess> AttributeParser<'sess, Early> {
         };
         let parts =
             normal_attr.item.path.segments.iter().map(|seg| seg.ident.name).collect::<Vec<_>>();
-        let meta_parser = MetaItemParser::from_attr(normal_attr, &parts, &sess.psess, emit_errors)?;
-        let path = meta_parser.path();
-        let args = meta_parser.args();
+
+        let path = AttrPath::from_ast(&normal_attr.item.path, identity);
+        let args =
+            ArgParser::from_attr_args(&normal_attr.item.args, &parts, &sess.psess, emit_errors)?;
         Self::parse_single_args(
             sess,
             attr.span,
             normal_attr.item.span(),
             attr.style,
-            path.get_attribute_path(),
+            path,
             Some(normal_attr.item.unsafety),
             ParsedDescription::Attribute,
             target_span,
             target_node_id,
             features,
             emit_errors,
-            args,
+            &args,
             parse_fn,
             template,
         )
@@ -316,15 +318,14 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
                         n.item.path.segments.iter().map(|seg| seg.ident.name).collect::<Vec<_>>();
 
                     if let Some(accepts) = S::parsers().accepters.get(parts.as_slice()) {
-                        let Some(parser) = MetaItemParser::from_attr(
-                            n,
+                        let Some(args) = ArgParser::from_attr_args(
+                            &n.item.args,
                             &parts,
                             &self.sess.psess,
                             self.stage.should_emit(),
                         ) else {
                             continue;
                         };
-                        let args = parser.args();
 
                         // Special-case handling for `#[doc = "..."]`: if we go through with
                         // `DocParser`, the order of doc comments will be messed up because `///`
@@ -373,7 +374,7 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
                                 attr_path: attr_path.clone(),
                             };
 
-                            (accept.accept_fn)(&mut cx, args);
+                            (accept.accept_fn)(&mut cx, &args);
                             if !matches!(cx.stage.should_emit(), ShouldEmit::Nothing) {
                                 Self::check_target(&accept.allowed_targets, target, &mut cx);
                             }

@@ -8,7 +8,7 @@ use std::fmt::{Debug, Display};
 
 use rustc_ast::token::{self, Delimiter, MetaVarKind};
 use rustc_ast::tokenstream::TokenStream;
-use rustc_ast::{AttrArgs, Expr, ExprKind, LitKind, MetaItemLit, NormalAttr, Path, StmtKind, UnOp};
+use rustc_ast::{AttrArgs, Expr, ExprKind, LitKind, MetaItemLit, Path, StmtKind, UnOp};
 use rustc_ast_pretty::pprust;
 use rustc_errors::{Diag, PResult};
 use rustc_hir::{self as hir, AttrPath};
@@ -249,22 +249,6 @@ impl<'a> Debug for MetaItemParser<'a> {
             .field("path", &self.path)
             .field("args", &self.args)
             .finish()
-    }
-}
-
-impl<'a> MetaItemParser<'a> {
-    /// Create a new parser from a [`NormalAttr`], which is stored inside of any
-    /// [`ast::Attribute`](rustc_ast::Attribute)
-    pub fn from_attr<'sess>(
-        attr: &'a NormalAttr,
-        parts: &[Symbol],
-        psess: &'sess ParseSess,
-        should_emit: ShouldEmit,
-    ) -> Option<Self> {
-        Some(Self {
-            path: PathParser(Cow::Borrowed(&attr.item.path)),
-            args: ArgParser::from_attr_args(&attr.item.args, parts, psess, should_emit)?,
-        })
     }
 }
 
