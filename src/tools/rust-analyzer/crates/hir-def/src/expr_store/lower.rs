@@ -31,7 +31,7 @@ use triomphe::Arc;
 use tt::TextRange;
 
 use crate::{
-    AdtId, BlockId, BlockLoc, DefWithBodyId, FunctionId, GenericDefId, ImplId, MacroId,
+    AdtId, BlockId, BlockIdLt, DefWithBodyId, FunctionId, GenericDefId, ImplId, MacroId,
     ModuleDefId, ModuleId, TraitId, TypeAliasId, UnresolvedMacro,
     attrs::AttrFlags,
     builtin_type::BuiltinUint,
@@ -437,6 +437,7 @@ pub struct ExprCollector<'db> {
     current_binding_owner: Option<ExprId>,
 
     awaitable_context: Option<Awaitable>,
+    krate: base_db::Crate,
 }
 
 #[derive(Clone, Debug)]
@@ -524,9 +525,10 @@ impl<'db> ExprCollector<'db> {
     ) -> ExprCollector<'_> {
         let (def_map, local_def_map) = module.local_def_map(db);
         let expander = Expander::new(db, current_file_id, def_map);
+        let krate = module.krate(db);
         ExprCollector {
             db,
-            cfg_options: module.krate().cfg_options(db),
+            cfg_options: krate.cfg_options(db),
             module,
             def_map,
             local_def_map,
@@ -540,12 +542,13 @@ impl<'db> ExprCollector<'db> {
             awaitable_context: None,
             current_block_legacy_macro_defs_count: FxHashMap::default(),
             outer_impl_trait: false,
+            krate,
         }
     }
 
     #[inline]
     pub(crate) fn lang_items(&self) -> &'db LangItems {
-        self.lang_items.get_or_init(|| crate::lang_item::lang_items(self.db, self.module.krate))
+        self.lang_items.get_or_init(|| crate::lang_item::lang_items(self.db, self.def_map.krate()))
     }
 
     #[inline]
@@ -1915,9 +1918,8 @@ impl<'db> ExprCollector<'db> {
         T: ast::AstNode,
     {
         let macro_call_ptr = self.expander.in_file(syntax_ptr);
-        let module = self.module.local_id;
 
-        let block_call = self.def_map.modules[self.module.local_id].scope.macro_invoc(
+        let block_call = self.def_map.modules[self.module].scope.macro_invoc(
             self.expander.in_file(self.expander.ast_id_map().ast_id_for_ptr(syntax_ptr)),
         );
         let res = match block_call {
@@ -1929,7 +1931,7 @@ impl<'db> ExprCollector<'db> {
                         .resolve_path(
                             self.local_def_map,
                             self.db,
-                            module,
+                            self.module,
                             path,
                             crate::item_scope::BuiltinShadowMode::Other,
                             Some(MacroSubNs::Bang),
@@ -1940,7 +1942,7 @@ impl<'db> ExprCollector<'db> {
                 self.expander.enter_expand(
                     self.db,
                     mcall,
-                    self.module.krate(),
+                    self.krate,
                     resolver,
                     &mut |ptr, call| {
                         _ = self.store.expansions.insert(ptr.map(|(it, _)| it), call);
@@ -2058,7 +2060,8 @@ impl<'db> ExprCollector<'db> {
                     return;
                 };
                 let name = name.as_name();
-                let macro_id = self.def_map.modules[DefMap::ROOT].scope.get(&name).take_macros();
+                let macro_id =
+                    self.def_map.modules[self.def_map.root].scope.get(&name).take_macros();
                 self.collect_macro_def(statements, macro_id);
             }
             ast::Stmt::Item(ast::Item::MacroRules(macro_)) => {
@@ -2072,7 +2075,7 @@ impl<'db> ExprCollector<'db> {
                 let name = name.as_name();
                 let macro_defs_count =
                     self.current_block_legacy_macro_defs_count.entry(name.clone()).or_insert(0);
-                let macro_id = self.def_map.modules[DefMap::ROOT]
+                let macro_id = self.def_map.modules[self.def_map.root]
                     .scope
                     .get_legacy_macro(&name)
                     .and_then(|it| it.get(*macro_defs_count))
@@ -2111,14 +2114,14 @@ impl<'db> ExprCollector<'db> {
     ) -> ExprId {
         let block_id = self.expander.ast_id_map().ast_id_for_block(&block).map(|file_local_id| {
             let ast_id = self.expander.in_file(file_local_id);
-            self.db.intern_block(BlockLoc { ast_id, module: self.module })
+            unsafe { BlockIdLt::new(self.db, ast_id, self.module).to_static() }
         });
 
         let (module, def_map) =
             match block_id.map(|block_id| (block_def_map(self.db, block_id), block_id)) {
                 Some((def_map, block_id)) => {
                     self.store.block_scopes.push(block_id);
-                    (def_map.module_id(DefMap::ROOT), def_map)
+                    (def_map.root_module_id(), def_map)
                 }
                 None => (self.module, self.def_map),
             };
@@ -2201,7 +2204,7 @@ impl<'db> ExprCollector<'db> {
                     let (resolved, _) = self.def_map.resolve_path(
                         self.local_def_map,
                         self.db,
-                        self.module.local_id,
+                        self.module,
                         &name.clone().into(),
                         BuiltinShadowMode::Other,
                         None,
@@ -3131,7 +3134,7 @@ impl<'db> ExprCollector<'db> {
         let precision_expr = self.make_count(precision, argmap);
         let width_expr = self.make_count(width, argmap);
 
-        if self.module.krate().workspace_data(self.db).is_atleast_187() {
+        if self.krate.workspace_data(self.db).is_atleast_187() {
             // These need to match the constants in library/core/src/fmt/rt.rs.
             let align = match alignment {
                 Some(FormatAlignment::Left) => 0,

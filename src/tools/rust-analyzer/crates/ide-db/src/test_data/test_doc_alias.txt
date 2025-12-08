@@ -1,12 +1,8 @@
 [
     (
         Module {
-            id: ModuleId {
-                krate: Crate(
-                    Id(2c00),
-                ),
-                block: None,
-                local_id: Idx::<ModuleData>(0),
+            id: ModuleIdLt {
+                [salsa id]: Id(3800),
             },
         },
         [
@@ -16,7 +12,7 @@
                     Struct(
                         Struct {
                             id: StructId(
-                                3801,
+                                3c01,
                             ),
                         },
                     ),
@@ -50,7 +46,7 @@
                     Struct(
                         Struct {
                             id: StructId(
-                                3800,
+                                3c00,
                             ),
                         },
                     ),
@@ -84,7 +80,7 @@
                     Struct(
                         Struct {
                             id: StructId(
-                                3800,
+                                3c00,
                             ),
                         },
                     ),
@@ -118,7 +114,7 @@
                     Struct(
                         Struct {
                             id: StructId(
-                                3800,
+                                3c00,
                             ),
                         },
                     ),
@@ -152,7 +148,7 @@
                     Struct(
                         Struct {
                             id: StructId(
-                                3800,
+                                3c00,
                             ),
                         },
                     ),
@@ -186,7 +182,7 @@
                     Struct(
                         Struct {
                             id: StructId(
-                                3801,
+                                3c01,
                             ),
                         },
                     ),
@@ -220,7 +216,7 @@
                     Struct(
                         Struct {
                             id: StructId(
-                                3800,
+                                3c00,
                             ),
                         },
                     ),

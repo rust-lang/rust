@@ -3,7 +3,7 @@
 use std::iter;
 
 use hir::crate_def_map;
-use hir::{DefMap, InFile, ModuleSource};
+use hir::{InFile, ModuleSource};
 use ide_db::base_db::RootQueryDb;
 use ide_db::text_edit::TextEdit;
 use ide_db::{
@@ -106,7 +106,7 @@ fn fixes(
         // FIXME: This shouldnt need to access the crate def map directly
         let crate_def_map = crate_def_map(ctx.sema.db, krate);
 
-        let root_module = &crate_def_map[DefMap::ROOT];
+        let root_module = &crate_def_map[crate_def_map.root_module_id()];
         let Some(root_file_id) = root_module.origin.file_id() else { continue };
         let Some(crate_root_path) = source_root.path_for_file(&root_file_id.file_id(ctx.sema.db))
         else {

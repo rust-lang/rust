@@ -25,12 +25,12 @@ fn has_destructor(interner: DbInterner<'_>, adt: AdtId) -> bool {
     let Some(drop_trait) = interner.lang_items().Drop else {
         return false;
     };
-    let impls = match module.containing_block() {
+    let impls = match module.block(db) {
         Some(block) => match TraitImpls::for_block(db, block) {
             Some(it) => &**it,
             None => return false,
         },
-        None => TraitImpls::for_crate(db, module.krate()),
+        None => TraitImpls::for_crate(db, module.krate(db)),
     };
     !impls.for_trait_and_self_ty(drop_trait, &SimplifiedType::Adt(adt.into())).is_empty()
 }

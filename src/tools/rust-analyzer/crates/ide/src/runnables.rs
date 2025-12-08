@@ -372,7 +372,7 @@ pub(crate) fn runnable_mod(
         .rev()
         .filter_map(|module| {
             module.name(sema.db).map(|mod_name| {
-                mod_name.display(sema.db, module.krate().edition(sema.db)).to_string()
+                mod_name.display(sema.db, module.krate(sema.db).edition(sema.db)).to_string()
             })
         })
         .join("::");
@@ -401,7 +401,7 @@ pub(crate) fn runnable_impl(
     sema: &Semantics<'_, RootDatabase>,
     def: &hir::Impl,
 ) -> Option<Runnable> {
-    let display_target = def.module(sema.db).krate().to_display_target(sema.db);
+    let display_target = def.module(sema.db).krate(sema.db).to_display_target(sema.db);
     let edition = display_target.edition;
     let attrs = def.attrs(sema.db);
     if !has_runnable_doc_test(sema.db, &attrs) {
@@ -466,7 +466,7 @@ fn runnable_mod_outline_definition(
         .rev()
         .filter_map(|module| {
             module.name(sema.db).map(|mod_name| {
-                mod_name.display(sema.db, module.krate().edition(sema.db)).to_string()
+                mod_name.display(sema.db, module.krate(sema.db).edition(sema.db)).to_string()
             })
         })
         .join("::");

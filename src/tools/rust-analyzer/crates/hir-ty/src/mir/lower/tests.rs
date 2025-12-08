@@ -9,7 +9,7 @@ fn lower_mir(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
         let file_id = *file_ids.last().unwrap();
         let module_id = db.module_for_file(file_id.file_id(&db));
         let def_map = module_id.def_map(&db);
-        let scope = &def_map[module_id.local_id].scope;
+        let scope = &def_map[module_id].scope;
         let funcs = scope.declarations().filter_map(|x| match x {
             hir_def::ModuleDefId::FunctionId(it) => Some(it),
             _ => None,

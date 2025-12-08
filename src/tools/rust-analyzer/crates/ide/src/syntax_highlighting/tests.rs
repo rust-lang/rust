@@ -1183,7 +1183,7 @@ fn main() {
         foo!(Bar);
         fn func(_: y::Bar) {
             mod inner {
-                struct Innerest<const C: usize> { field: [(); {C}] }
+                struct Innerest<const C: usize> { field: [u32; {C}], field2: &Innerest }
             }
         }
     }

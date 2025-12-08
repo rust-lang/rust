@@ -152,7 +152,7 @@ impl<'a> PathTransform<'a> {
                     db,
                     node,
                     &db.expansion_span_map(file_id),
-                    self.target_scope.module().krate().into(),
+                    self.target_scope.module().krate(db).into(),
                 )
             }
         }
@@ -174,7 +174,7 @@ impl<'a> PathTransform<'a> {
         let mut type_substs: FxHashMap<hir::TypeParam, ast::Type> = Default::default();
         let mut const_substs: FxHashMap<hir::ConstParam, SyntaxNode> = Default::default();
         let mut defaulted_params: Vec<DefaultedParam> = Default::default();
-        let target_edition = target_module.krate().edition(self.source_scope.db);
+        let target_edition = target_module.krate(db).edition(self.source_scope.db);
         self.generic_def
             .into_iter()
             .flat_map(|it| it.type_or_const_params(db))
@@ -219,7 +219,7 @@ impl<'a> PathTransform<'a> {
                 }
                 (Either::Left(k), None) => {
                     if let Some(default) =
-                        k.default(db, target_module.krate().to_display_target(db))
+                        k.default(db, target_module.krate(db).to_display_target(db))
                         && let Some(default) = default.expr()
                     {
                         const_substs.insert(k, default.syntax().clone_for_update());

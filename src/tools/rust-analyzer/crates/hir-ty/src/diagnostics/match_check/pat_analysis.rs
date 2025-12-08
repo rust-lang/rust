@@ -113,7 +113,7 @@ impl<'a, 'db> MatchCheckCtx<'a, 'db> {
 
     /// Returns whether the given ADT is from another crate declared `#[non_exhaustive]`.
     fn is_foreign_non_exhaustive(&self, adt: hir_def::AdtId) -> bool {
-        let is_local = adt.krate(self.db) == self.module.krate();
+        let is_local = adt.krate(self.db) == self.module.krate(self.db);
         !is_local && AttrFlags::query(self.db, adt.into()).contains(AttrFlags::NON_EXHAUSTIVE)
     }
 

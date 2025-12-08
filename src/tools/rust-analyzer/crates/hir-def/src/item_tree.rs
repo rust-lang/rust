@@ -58,7 +58,7 @@ use syntax::{SyntaxKind, ast, match_ast};
 use thin_vec::ThinVec;
 use triomphe::Arc;
 
-use crate::{BlockId, Lookup, db::DefDatabase};
+use crate::{BlockId, db::DefDatabase};
 
 pub(crate) use crate::item_tree::{
     attrs::*,
@@ -150,10 +150,10 @@ pub(crate) fn block_item_tree_query(db: &dyn DefDatabase, block: BlockId) -> Arc
     let _p = tracing::info_span!("block_item_tree_query", ?block).entered();
     static EMPTY: OnceLock<Arc<ItemTree>> = OnceLock::new();
 
-    let loc = block.lookup(db);
-    let block = loc.ast_id.to_node(db);
+    let ast_id = block.ast_id(db);
+    let block = ast_id.to_node(db);
 
-    let ctx = lower::Ctx::new(db, loc.ast_id.file_id);
+    let ctx = lower::Ctx::new(db, ast_id.file_id);
     let mut item_tree = ctx.lower_block(&block);
     let ItemTree { top_level, top_attrs, attrs, vis, big_data, small_data } = &item_tree;
     if small_data.is_empty()
