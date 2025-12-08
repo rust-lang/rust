@@ -91,7 +91,7 @@ impl OwnedFd {
     /// Creates a new `OwnedFd` instance that shares the same underlying file
     /// description as the existing `OwnedFd` instance.
     #[stable(feature = "io_safety", since = "1.63.0")]
-    pub fn try_clone(&self) -> crate::io::Result<Self> {
+    pub fn try_clone(&self) -> io::Result<Self> {
         self.as_fd().try_clone_to_owned()
     }
 }
@@ -106,7 +106,7 @@ impl BorrowedFd<'_> {
         target_os = "motor"
     )))]
     #[stable(feature = "io_safety", since = "1.63.0")]
-    pub fn try_clone_to_owned(&self) -> crate::io::Result<OwnedFd> {
+    pub fn try_clone_to_owned(&self) -> io::Result<OwnedFd> {
         // We want to atomically duplicate this file descriptor and set the
         // CLOEXEC flag, and currently that's done via F_DUPFD_CLOEXEC. This
         // is a POSIX flag that was added to Linux in 2.6.24.
@@ -129,15 +129,15 @@ impl BorrowedFd<'_> {
     /// description as the existing `BorrowedFd` instance.
     #[cfg(any(target_arch = "wasm32", target_os = "hermit", target_os = "trusty"))]
     #[stable(feature = "io_safety", since = "1.63.0")]
-    pub fn try_clone_to_owned(&self) -> crate::io::Result<OwnedFd> {
-        Err(crate::io::Error::UNSUPPORTED_PLATFORM)
+    pub fn try_clone_to_owned(&self) -> io::Result<OwnedFd> {
+        Err(io::Error::UNSUPPORTED_PLATFORM)
     }
 
     /// Creates a new `OwnedFd` instance that shares the same underlying file
     /// description as the existing `BorrowedFd` instance.
     #[cfg(target_os = "motor")]
     #[stable(feature = "io_safety", since = "1.63.0")]
-    pub fn try_clone_to_owned(&self) -> crate::io::Result<OwnedFd> {
+    pub fn try_clone_to_owned(&self) -> io::Result<OwnedFd> {
         let fd = moto_rt::fs::duplicate(self.as_raw_fd()).map_err(crate::sys::map_motor_error)?;
         Ok(unsafe { OwnedFd::from_raw_fd(fd) })
     }
@@ -233,7 +233,7 @@ macro_rules! impl_is_terminal {
         impl crate::sealed::Sealed for $t {}
 
         #[stable(feature = "is_terminal", since = "1.70.0")]
-        impl crate::io::IsTerminal for $t {
+        impl io::IsTerminal for $t {
             #[inline]
             fn is_terminal(&self) -> bool {
                 crate::sys::io::is_terminal(self)

@@ -1,7 +1,7 @@
 use r_efi::efi::Status;
 use r_efi::efi::protocols::{device_path, loaded_image_device_path};
 
-use super::{RawOsError, helpers, unsupported_err};
+use super::{helpers, unsupported_err};
 use crate::ffi::{OsStr, OsString};
 use crate::marker::PhantomData;
 use crate::os::uefi;
@@ -9,11 +9,11 @@ use crate::path::{self, PathBuf};
 use crate::ptr::NonNull;
 use crate::{fmt, io};
 
-pub fn errno() -> RawOsError {
+pub fn errno() -> io::RawOsError {
     0
 }
 
-pub fn error_string(errno: RawOsError) -> String {
+pub fn error_string(errno: io::RawOsError) -> String {
     // Keep the List in Alphabetical Order
     // The Messages are taken from UEFI Specification Appendix D - Status Codes
     #[rustfmt::skip]
