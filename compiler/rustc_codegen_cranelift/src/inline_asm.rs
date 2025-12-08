@@ -44,14 +44,6 @@ pub(crate) fn codegen_inline_asm_terminator<'tcx>(
     options: InlineAsmOptions,
     destination: Option<mir::BasicBlock>,
 ) {
-    // Used by panic_abort on Windows, but uses a syntax which only happens to work with
-    // asm!() by accident and breaks with the GNU assembler as well as global_asm!() for
-    // the LLVM backend.
-    if template.len() == 1 && template[0] == InlineAsmTemplatePiece::String("int $$0x29".into()) {
-        fx.bcx.ins().trap(TrapCode::user(2).unwrap());
-        return;
-    }
-
     if fx.tcx.sess.target.arch == Arch::S390x
         && template.len() == 3
         && template[0] == InlineAsmTemplatePiece::String("stfle 0(".into())

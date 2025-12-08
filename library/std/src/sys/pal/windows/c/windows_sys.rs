@@ -2391,7 +2391,6 @@ pub type FACILITY_CODE = u32;
 pub const FACILITY_NT_BIT: FACILITY_CODE = 268435456u32;
 pub const FALSE: BOOL = 0i32;
 pub type FARPROC = Option<unsafe extern "system" fn() -> isize>;
-pub const FAST_FAIL_FATAL_APP_EXIT: u32 = 7u32;
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct FD_SET {
@@ -3647,7 +3646,6 @@ impl Default for XSAVE_FORMAT {
         unsafe { core::mem::zeroed() }
     }
 }
-
 #[cfg(target_arch = "arm")]
 #[repr(C)]
 pub struct WSADATA {
