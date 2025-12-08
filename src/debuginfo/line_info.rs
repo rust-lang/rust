@@ -117,8 +117,7 @@ impl DebugContext {
                 }
                 filename => {
                     // For anonymous sources, create an empty directory instead of using the default
-                    let empty_dir = LineString::new(b"", line_program.encoding(), line_strings);
-                    let dir_id = line_program.add_directory(empty_dir);
+                    let dir_id = line_program.default_directory();
 
                     let dummy_file_name = LineString::new(
                         filename.prefer_remapped_unconditionally().to_string().into_bytes(),
