@@ -164,10 +164,40 @@ LL |     'label: while let Some(n) = it.next() {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `'label: for n in it`
 
 error: this loop could be written as a `for` loop
-  --> tests/ui/while_let_on_iterator.rs:497:5
+  --> tests/ui/while_let_on_iterator.rs:499:13
+   |
+LL |             while let Some(r) = self.next() {
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for r in &mut *self`
+
+error: this loop could be written as a `for` loop
+  --> tests/ui/while_let_on_iterator.rs:515:13
+   |
+LL |             while let Some(r) = self.next() {
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for r in self.by_ref()`
+
+error: this loop could be written as a `for` loop
+  --> tests/ui/while_let_on_iterator.rs:541:9
+   |
+LL |         while let Some(_) = x.next() {}
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for _ in &mut ***x`
+
+error: this loop could be written as a `for` loop
+  --> tests/ui/while_let_on_iterator.rs:563:9
+   |
+LL |         while let Some(_) = x.next() {}
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for _ in &mut **x`
+
+error: this loop could be written as a `for` loop
+  --> tests/ui/while_let_on_iterator.rs:594:9
+   |
+LL |         while let Some(_) = x.next() {}
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for _ in x.by_ref()`
+
+error: this loop could be written as a `for` loop
+  --> tests/ui/while_let_on_iterator.rs:601:5
    |
 LL |     while let Some(..) = it.next() {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for _ in it`
 
-error: aborting due to 28 previous errors
+error: aborting due to 33 previous errors
 
