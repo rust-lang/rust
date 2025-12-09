@@ -4,7 +4,7 @@
 use crate::any::TypeId;
 use crate::fmt::{Debug, Display};
 
-#[unstable(feature = "error_generic_member_multi_access", issue = "99301")]
+#[unstable(feature = "error_generic_member_multi_access", issue = "149615")]
 pub mod provide;
 
 #[unstable(feature = "error_generic_member_access", issue = "99301")]
