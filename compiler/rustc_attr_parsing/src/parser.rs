@@ -31,7 +31,7 @@ pub struct PathParser<'a>(pub Cow<'a, Path>);
 impl<'a> PathParser<'a> {
     pub fn get_attribute_path(&self) -> hir::AttrPath {
         AttrPath {
-            segments: self.segments().copied().collect::<Vec<_>>().into_boxed_slice(),
+            segments: self.segments().map(|s| s.name).collect::<Vec<_>>().into_boxed_slice(),
             span: self.span(),
         }
     }

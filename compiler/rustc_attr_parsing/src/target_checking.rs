@@ -104,7 +104,7 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
                 let (applied, only) = allowed_targets_applied(allowed_targets, target, cx.features);
                 let name = cx.attr_path.clone();
 
-                let lint = if name.segments[0].name == sym::deprecated
+                let lint = if name.segments[0] == sym::deprecated
                     && ![
                         Target::Closure,
                         Target::Expression,
