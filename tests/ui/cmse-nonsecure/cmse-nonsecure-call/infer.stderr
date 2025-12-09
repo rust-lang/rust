@@ -1,23 +1,23 @@
 error[E0282]: type annotations needed
-  --> $DIR/infer.rs:16:13
+  --> $DIR/infer.rs:17:13
    |
 LL |     let _ = mem::transmute::<fn() -> _, extern "cmse-nonsecure-call" fn() -> _>;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type of the type parameter `Src` declared on the function `transmute`
 
 error[E0282]: type annotations needed
-  --> $DIR/infer.rs:21:13
+  --> $DIR/infer.rs:22:13
    |
 LL |     let _ = mem::transmute::<fn() -> (i32, _), extern "cmse-nonsecure-call" fn() -> (i32, _)>;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type of the type parameter `Src` declared on the function `transmute`
 
 error[E0282]: type annotations needed
-  --> $DIR/infer.rs:26:13
+  --> $DIR/infer.rs:27:13
    |
 LL |     let _ = mem::transmute::<fn(_: _) -> (), extern "cmse-nonsecure-call" fn(_: _) -> ()>;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type of the type parameter `Src` declared on the function `transmute`
 
 error[E0282]: type annotations needed
-  --> $DIR/infer.rs:32:9
+  --> $DIR/infer.rs:33:9
    |
 LL |         mem::transmute::<fn(_: (i32, _)) -> (), extern "cmse-nonsecure-call" fn(_: (i32, _)) -> ()>;
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type of the type parameter `Src` declared on the function `transmute`
