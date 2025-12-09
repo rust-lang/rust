@@ -1001,17 +1001,6 @@ pub(crate) struct CfgSelectNoMatches {
 }
 
 #[derive(Diagnostic)]
-#[diag(builtin_macros_cfg_select_unreachable)]
-pub(crate) struct CfgSelectUnreachable {
-    #[primary_span]
-    #[label(builtin_macros_label2)]
-    pub span: Span,
-
-    #[label]
-    pub wildcard_span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(builtin_macros_eii_extern_target_expected_macro)]
 pub(crate) struct EiiExternTargetExpectedMacro {
     #[primary_span]
