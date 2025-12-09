@@ -58,7 +58,9 @@ impl ProcMacroServerProcess {
             if v.pre.as_str() == "nightly" { *v > VERSION } else { *v >= VERSION }
         });
 
-        let formats: &[_] = if has_working_format_flag {
+        let formats: &[_] = if std::env::var_os("RUST_ANALYZER_USE_POSTCARD").is_some()
+            && has_working_format_flag
+        {
             &[
                 (Some("postcard-legacy"), Protocol::LegacyPostcard { mode: SpanMode::Id }),
                 (Some("json-legacy"), Protocol::LegacyJson { mode: SpanMode::Id }),
