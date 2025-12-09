@@ -12,5 +12,7 @@
 // Shouldn't lint
 #[doc(auto_cfg(hide(windows)))]
 #[doc(auto_cfg(hide(feature = "windows")))]
+//~^ WARN unexpected `cfg` condition name: `feature`
 #[doc(auto_cfg(hide(foo)))]
+//~^ WARN unexpected `cfg` condition name: `foo`
 pub fn foo() {}

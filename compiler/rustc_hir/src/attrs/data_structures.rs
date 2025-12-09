@@ -218,14 +218,7 @@ impl CfgEntry {
             (
                 Self::NameValue { name: name1, value: value1, .. },
                 Self::NameValue { name: name2, value: value2, .. },
-            ) => {
-                name1 == name2
-                    && match (value1, value2) {
-                        (Some((a, _)), Some((b, _))) => a == b,
-                        (None, None) => true,
-                        _ => false,
-                    }
-            }
+            ) => name1 == name2 && value1 == value2,
             (Self::Version(a, _), Self::Version(b, _)) => a == b,
             _ => false,
         }
@@ -257,7 +250,7 @@ impl fmt::Display for CfgEntry {
                 match value {
                     // We use `as_str` and debug display to have characters escaped and `"`
                     // characters surrounding the string.
-                    Some((value, _)) => write!(f, "{name} = {:?}", value.as_str()),
+                    Some(value) => write!(f, "{name} = {:?}", value.as_str()),
                     None => write!(f, "{name}"),
                 }
             }

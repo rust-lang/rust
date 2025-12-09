@@ -294,7 +294,7 @@ impl DocParser {
                                     cx.expected_identifier(sub_item.path().span());
                                     continue;
                                 };
-                                if let Ok(CfgEntry::NameValue { name, name_span, value, .. }) =
+                                if let Ok(CfgEntry::NameValue { name, value, .. }) =
                                     super::cfg::parse_name_value(
                                         name,
                                         sub_item.path().span(),
@@ -303,7 +303,14 @@ impl DocParser {
                                         cx,
                                     )
                                 {
-                                    cfg_hide_show.values.push(CfgInfo { name, name_span, value })
+                                    cfg_hide_show.values.push(CfgInfo {
+                                        name,
+                                        name_span: sub_item.path().span(),
+                                        // If `value` is `Some`, `a.name_value()` will always return
+                                        // `Some` as well.
+                                        value: value
+                                            .map(|v| (v, a.name_value().unwrap().value_span)),
+                                    })
                                 }
                             }
                             _ => {

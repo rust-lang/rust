@@ -2,7 +2,6 @@ use rustc_ast::{LitKind, MetaItem, MetaItemInner, MetaItemKind, MetaItemLit, Nod
 use rustc_ast_pretty::pprust;
 use rustc_feature::{Features, GatedCfg, find_gated_cfg};
 use rustc_hir::RustcVersion;
-use rustc_hir::lints::AttributeLintKind;
 use rustc_session::Session;
 use rustc_session::lint::{BuiltinLintDiag, Lint};
 use rustc_session::parse::feature_err;

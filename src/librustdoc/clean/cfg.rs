@@ -140,12 +140,7 @@ impl Cfg {
                 if exclude.contains(&NameValueCfg::new(name)) {
                     Ok(None)
                 } else {
-                    Ok(Some(Cfg(CfgEntry::NameValue {
-                        name,
-                        value: None,
-                        name_span: DUMMY_SP,
-                        span: DUMMY_SP,
-                    })))
+                    Ok(Some(Cfg(CfgEntry::NameValue { name, value: None, span: DUMMY_SP })))
                 }
             }
             MetaItemKind::NameValue(ref lit) => match lit.kind {
@@ -155,8 +150,7 @@ impl Cfg {
                     } else {
                         Ok(Some(Cfg(CfgEntry::NameValue {
                             name,
-                            value: Some((value, DUMMY_SP)),
-                            name_span: DUMMY_SP,
+                            value: Some(value),
                             span: DUMMY_SP,
                         })))
                     }
@@ -226,9 +220,7 @@ impl Cfg {
                 CfgEntry::Any(sub_cfgs, _) => {
                     sub_cfgs.iter().any(|sub_cfg| cfg_matches(sub_cfg, psess))
                 }
-                CfgEntry::NameValue { name, value, .. } => {
-                    psess.config.contains(&(*name, value.clone().map(|(s, _)| s)))
-                }
+                CfgEntry::NameValue { name, value, .. } => psess.config.contains(&(*name, *value)),
                 CfgEntry::Version(..) => {
                     // FIXME: should be handled.
                     false
@@ -497,7 +489,7 @@ impl Display<'_> {
             sub_cfgs
                 .iter()
                 .map(|sub_cfg| {
-                    if let CfgEntry::NameValue { value: Some((feat, _)), .. } = sub_cfg
+                    if let CfgEntry::NameValue { value: Some(feat), .. } = sub_cfg
                         && short_longhand
                     {
                         Either::Left(self.code_wrappers().wrap(feat))
@@ -557,7 +549,7 @@ impl fmt::Display for Display<'_> {
                     (sym::unix, None) => "Unix",
                     (sym::windows, None) => "Windows",
                     (sym::debug_assertions, None) => "debug-assertions enabled",
-                    (sym::target_os, Some((os, _))) => match os.as_str() {
+                    (sym::target_os, Some(os)) => match os.as_str() {
                         "android" => "Android",
                         "cygwin" => "Cygwin",
                         "dragonfly" => "DragonFly BSD",
@@ -582,7 +574,7 @@ impl fmt::Display for Display<'_> {
                         "visionos" => "visionOS",
                         _ => "",
                     },
-                    (sym::target_arch, Some((arch, _))) => match arch.as_str() {
+                    (sym::target_arch, Some(arch)) => match arch.as_str() {
                         "aarch64" => "AArch64",
                         "arm" => "ARM",
                         "loongarch32" => "LoongArch LA32",
@@ -605,14 +597,14 @@ impl fmt::Display for Display<'_> {
                         "x86_64" => "x86-64",
                         _ => "",
                     },
-                    (sym::target_vendor, Some((vendor, _))) => match vendor.as_str() {
+                    (sym::target_vendor, Some(vendor)) => match vendor.as_str() {
                         "apple" => "Apple",
                         "pc" => "PC",
                         "sun" => "Sun",
                         "fortanix" => "Fortanix",
                         _ => "",
                     },
-                    (sym::target_env, Some((env, _))) => match env.as_str() {
+                    (sym::target_env, Some(env)) => match env.as_str() {
                         "gnu" => "GNU",
                         "msvc" => "MSVC",
                         "musl" => "musl",
@@ -621,20 +613,20 @@ impl fmt::Display for Display<'_> {
                         "sgx" => "SGX",
                         _ => "",
                     },
-                    (sym::target_endian, Some((endian, _))) => {
+                    (sym::target_endian, Some(endian)) => {
                         return write!(fmt, "{endian}-endian");
                     }
-                    (sym::target_pointer_width, Some((bits, _))) => {
+                    (sym::target_pointer_width, Some(bits)) => {
                         return write!(fmt, "{bits}-bit");
                     }
-                    (sym::target_feature, Some((feat, _))) => match self.1 {
+                    (sym::target_feature, Some(feat)) => match self.1 {
                         Format::LongHtml => {
                             return write!(fmt, "target feature <code>{feat}</code>");
                         }
                         Format::LongPlain => return write!(fmt, "target feature `{feat}`"),
                         Format::ShortHtml => return write!(fmt, "<code>{feat}</code>"),
                     },
-                    (sym::feature, Some((feat, _))) => match self.1 {
+                    (sym::feature, Some(feat)) => match self.1 {
                         Format::LongHtml => {
                             return write!(fmt, "crate feature <code>{feat}</code>");
                         }
@@ -647,9 +639,7 @@ impl fmt::Display for Display<'_> {
                     fmt.write_str(human_readable)
                 } else {
                     let value = value
-                        .map(|(v, _)| {
-                            fmt::from_fn(move |f| write!(f, "={}", self.1.escape(v.as_str())))
-                        })
+                        .map(|v| fmt::from_fn(move |f| write!(f, "={}", self.1.escape(v.as_str()))))
                         .maybe_display();
                     self.code_wrappers()
                         .wrap(format_args!("{}{value}", self.1.escape(name.as_str())))
@@ -684,9 +674,7 @@ impl NameValueCfg {
 impl<'a> From<&'a CfgEntry> for NameValueCfg {
     fn from(cfg: &'a CfgEntry) -> Self {
         match cfg {
-            CfgEntry::NameValue { name, value, .. } => {
-                NameValueCfg { name: *name, value: (*value).map(|(v, _)| v) }
-            }
+            CfgEntry::NameValue { name, value, .. } => NameValueCfg { name: *name, value: *value },
             _ => NameValueCfg { name: sym::empty, value: None },
         }
     }
@@ -886,8 +874,7 @@ pub(crate) fn extract_cfg_from_attrs<'a, I: Iterator<Item = &'a hir::Attribute> 
             for (feature, _) in features {
                 cfg_info.current_cfg &= Cfg(CfgEntry::NameValue {
                     name: sym::target_feature,
-                    value: Some((*feature, DUMMY_SP)),
-                    name_span: DUMMY_SP,
+                    value: Some(*feature),
                     span: DUMMY_SP,
                 });
             }

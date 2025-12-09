@@ -12,12 +12,7 @@ fn word_cfg(name: &str) -> Cfg {
 }
 
 fn word_cfg_e(name: &str) -> CfgEntry {
-    CfgEntry::NameValue {
-        name: Symbol::intern(name),
-        name_span: DUMMY_SP,
-        value: None,
-        span: DUMMY_SP,
-    }
+    CfgEntry::NameValue { name: Symbol::intern(name), value: None, span: DUMMY_SP }
 }
 
 fn name_value_cfg(name: &str, value: &str) -> Cfg {
@@ -27,8 +22,8 @@ fn name_value_cfg(name: &str, value: &str) -> Cfg {
 fn name_value_cfg_e(name: &str, value: &str) -> CfgEntry {
     CfgEntry::NameValue {
         name: Symbol::intern(name),
-        name_span: DUMMY_SP,
-        value: Some((Symbol::intern(value), DUMMY_SP)),
+
+        value: Some(Symbol::intern(value)),
         span: DUMMY_SP,
     }
 }
