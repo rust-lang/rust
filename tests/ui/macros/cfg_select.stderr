@@ -27,11 +27,11 @@ error: expected a literal (`1u8`, `1.0f32`, `"string"`, etc.) here, found `=>`
 LL |     => {}
    |     ^^
 
-error: expected a literal (`1u8`, `1.0f32`, `"string"`, etc.) here, found `(`
+error: expected a literal (`1u8`, `1.0f32`, `"string"`, etc.) here, found expression
   --> $DIR/cfg_select.rs:70:5
    |
 LL |     () => {}
-   |     ^
+   |     ^^ expressions are not allowed here
 
 error[E0539]: malformed `cfg_select` macro input
   --> $DIR/cfg_select.rs:75:5
