@@ -598,9 +598,9 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
         let s = self.str_from(start);
         let real_start = s.find("---").unwrap();
         let frontmatter_opening_pos = BytePos(real_start as u32) + start;
-        let s_new = &s[real_start..];
-        let within = s_new.trim_start_matches('-');
-        let len_opening = s_new.len() - within.len();
+        let real_s = &s[real_start..];
+        let within = real_s.trim_start_matches('-');
+        let len_opening = real_s.len() - within.len();
 
         let frontmatter_opening_end_pos = frontmatter_opening_pos + BytePos(len_opening as u32);
         if has_invalid_preceding_whitespace {
