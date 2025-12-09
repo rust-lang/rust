@@ -137,7 +137,7 @@ impl<'a> Cursor<'a> {
         #[cfg(debug_assertions)]
         {
             if n > 0 {
-                self.prev = self.as_str()[n - 1..].chars().next().unwrap();
+                self.prev = self.as_str()[..n].chars().last().unwrap();
             }
         }
         self.chars = self.as_str()[n..].chars();
