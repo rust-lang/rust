@@ -636,8 +636,6 @@ pub enum BuiltinLintDiag {
     },
     BreakWithLabelAndLoop(Span),
     UnicodeTextFlow(Span, String),
-    UnexpectedCfgName((Symbol, Span), Option<(Symbol, Span)>),
-    UnexpectedCfgValue((Symbol, Span), Option<(Symbol, Span)>),
     DeprecatedWhereclauseLocation(Span, Option<(Span, String)>),
     SingleUseLifetime {
         /// Span of the parameter which declares this lifetime.
@@ -733,6 +731,8 @@ pub enum AttributeLintKind {
         attribute_name_span: Span,
         sugg_spans: (Span, Span),
     },
+    UnexpectedCfgName((Symbol, Span), Option<(Symbol, Span)>),
+    UnexpectedCfgValue((Symbol, Span), Option<(Symbol, Span)>),
 }
 
 pub type RegisteredTools = FxIndexSet<Ident>;
