@@ -1976,6 +1976,7 @@ crate::target_spec_enum! {
         Nto = "nto",
         NuttX = "nuttx",
         OpenBsd = "openbsd",
+        Openvm = "openvm",
         Psp = "psp",
         Psx = "psx",
         Qurt = "qurt",
@@ -1996,7 +1997,6 @@ crate::target_spec_enum! {
         Windows = "windows",
         Xous = "xous",
         Zkvm = "zkvm",
-        Openvm = "openvm",
         Unknown = "unknown",
     }
     other_variant = Other;
