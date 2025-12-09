@@ -394,6 +394,7 @@ impl Step for CodegenGcc {
             &[],
         );
         self.build_compiler.configure_cargo(&mut cargo);
+        println!("Now running clippy on `rustc_codegen_gcc` with `--no-default-features`");
         cargo.arg("--no-default-features");
         run_cargo(builder, cargo, args, &stamp, vec![], true, false);
     }
