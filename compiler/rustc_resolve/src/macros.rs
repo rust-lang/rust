@@ -167,7 +167,9 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
     }
 
     fn mark_scope_with_compile_error(&mut self, id: NodeId) {
-        if let Some(id) = self.opt_local_def_id(id) {
+        if let Some(id) = self.opt_local_def_id(id)
+            && self.tcx.def_kind(id).is_module_like()
+        {
             self.mods_with_parse_errors.insert(id.to_def_id());
         }
     }
