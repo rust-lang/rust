@@ -722,6 +722,7 @@ impl<'db> Evaluator<'db> {
         let (ty, proj) = pair;
         let r = proj.projected_ty(
             &self.infcx,
+            self.param_env.param_env,
             ty,
             |c, subst, f| {
                 let InternedClosure(def, _) = self.db.lookup_intern_closure(c);

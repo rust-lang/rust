@@ -25,7 +25,7 @@ use crate::{
     consteval::try_const_usize,
     db::HirDatabase,
     next_solver::{
-        DbInterner, GenericArgs, ParamEnv, Ty, TyKind, TypingMode,
+        DbInterner, GenericArgs, Ty, TyKind, TypingMode,
         infer::{DbInternerInferExt, traits::ObligationCause},
     },
 };
@@ -170,7 +170,7 @@ pub fn layout_of_ty_query<'db>(
     let cx = LayoutCx::new(dl);
     let infer_ctxt = interner.infer_ctxt().build(TypingMode::PostAnalysis);
     let cause = ObligationCause::dummy();
-    let ty = infer_ctxt.at(&cause, ParamEnv::empty()).deeply_normalize(ty).unwrap_or(ty);
+    let ty = infer_ctxt.at(&cause, trait_env.param_env).deeply_normalize(ty).unwrap_or(ty);
     let result = match ty.kind() {
         TyKind::Adt(def, args) => {
             match def.inner().id {

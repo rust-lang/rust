@@ -43,6 +43,7 @@ impl<'db> HirPlace<'db> {
         for p in &self.projections {
             ty = p.projected_ty(
                 &ctx.table.infer_ctxt,
+                ctx.table.param_env,
                 ty,
                 |_, _, _| {
                     unreachable!("Closure field only happens in MIR");
@@ -839,6 +840,7 @@ impl<'db> InferenceContext<'_, 'db> {
             for (i, p) in capture.place.projections.iter().enumerate() {
                 ty = p.projected_ty(
                     &self.table.infer_ctxt,
+                    self.table.param_env,
                     ty,
                     |_, _, _| {
                         unreachable!("Closure field only happens in MIR");
