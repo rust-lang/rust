@@ -1,4 +1,5 @@
-use core::error::{Error, MultiRequestBuilder, MultiResponse, Request, request_ref, request_value};
+use core::error::provide::{MultiRequestBuilder, MultiResponse, Request};
+use core::error::{Error, request_ref, request_value};
 
 // Test the `Request` API.
 #[derive(Debug)]

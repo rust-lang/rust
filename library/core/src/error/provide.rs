@@ -1,4 +1,4 @@
-//! Implementation of [Request]
+//! A mechanism to allow providing values of arbitrary types for errors
 
 use crate::any::TypeId;
 use crate::error::Error;
@@ -7,6 +7,9 @@ use crate::marker::PhantomData;
 use crate::ptr::NonNull;
 
 /// Requests a value of type `T` from the given `impl Error`.
+///
+/// If you are getting many different types from the same error, you
+/// might get better performance using [MultiRequestBuilder].
 ///
 /// # Examples
 ///
@@ -30,6 +33,9 @@ where
 }
 
 /// Requests a reference of type `T` from the given `impl Error`.
+///
+/// If you are getting many different types from the same error, you
+/// might get better performance using [MultiRequestBuilder].
 ///
 /// # Examples
 ///
@@ -506,7 +512,7 @@ impl<'a> Request<'a> {
     }
 }
 
-#[unstable(feature = "error_generic_member_access", issue = "99301")]
+#[unstable(feature = "error_generic_member_multi_access", issue = "99301")]
 impl<'a> Debug for Request<'a> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         f.debug_struct("Request").finish_non_exhaustive()
@@ -514,18 +520,18 @@ impl<'a> Debug for Request<'a> {
 }
 
 /// Base case for [IntoMultiRequest].
-#[unstable(feature = "error_generic_member_access", issue = "99301")]
+#[unstable(feature = "error_generic_member_multi_access", issue = "99301")]
 #[derive(Copy, Clone, Debug)]
 pub struct EmptyMultiRequestBuilder;
 
 /// Case of [IntoMultiRequest] that retrieves a type by value.
 ///
 /// Create via [MultiRequestBuilder::with_value].
-#[unstable(feature = "error_generic_member_access", issue = "99301")]
+#[unstable(feature = "error_generic_member_multi_access", issue = "99301")]
 #[derive(Copy, Clone, Debug)]
 pub struct ChainValMultiRequestBuilder<T, NEXT>(PhantomData<(T, NEXT)>);
 
-#[unstable(feature = "error_generic_member_access", issue = "99301")]
+#[unstable(feature = "error_generic_member_multi_access", issue = "99301")]
 /// Case of [IntoMultiRequest] that retrieves a type by value.
 ///
 /// Create via [MultiRequestBuilder::with_ref].
@@ -536,23 +542,23 @@ pub struct ChainRefMultiRequestBuilder<T: ?Sized, NEXT>(PhantomData<(*const T, N
 /// traits in parallel.
 ///
 /// There is no need to use this trait directly, use [MultiRequestBuilder] instead.
-#[unstable(feature = "error_generic_member_access", issue = "99301")]
+#[unstable(feature = "error_generic_member_multi_access", issue = "99301")]
 #[allow(private_bounds)]
 pub trait IntoMultiRequest: private::IntoMultiRequestInner + 'static {}
 
 mod private {
-    #[unstable(feature = "error_generic_member_access", issue = "99301")]
+    #[unstable(feature = "error_generic_member_multi_access", issue = "99301")]
     #[allow(private_bounds)]
     pub trait IntoMultiRequestInner {
-        #[unstable(feature = "error_generic_member_access", issue = "99301")]
+        #[unstable(feature = "error_generic_member_multi_access", issue = "99301")]
         type Request<'a>: super::Erased<'a> + MultiResponseInner<'a>
         where
             Self: 'a;
-        #[unstable(feature = "error_generic_member_access", issue = "99301")]
+        #[unstable(feature = "error_generic_member_multi_access", issue = "99301")]
         fn get_request<'a>() -> Self::Request<'a>;
     }
 
-    #[unstable(feature = "error_generic_member_access", issue = "99301")]
+    #[unstable(feature = "error_generic_member_multi_access", issue = "99301")]
     #[allow(private_bounds, private_interfaces)]
     pub trait MultiResponseInner<'a> {
         fn retrieve<I>(&mut self) -> Option<I::Reified>
@@ -561,9 +567,9 @@ mod private {
     }
 }
 
-#[unstable(feature = "error_generic_member_access", issue = "99301")]
+#[unstable(feature = "error_generic_member_multi_access", issue = "99301")]
 impl IntoMultiRequest for EmptyMultiRequestBuilder {}
-#[unstable(feature = "error_generic_member_access", issue = "99301")]
+#[unstable(feature = "error_generic_member_multi_access", issue = "99301")]
 impl private::IntoMultiRequestInner for EmptyMultiRequestBuilder {
     type Request<'a> = EmptyMultiResponse;
 
@@ -572,7 +578,7 @@ impl private::IntoMultiRequestInner for EmptyMultiRequestBuilder {
     }
 }
 
-#[unstable(feature = "error_generic_member_access", issue = "99301")]
+#[unstable(feature = "error_generic_member_multi_access", issue = "99301")]
 impl<T, NEXT> IntoMultiRequest for ChainValMultiRequestBuilder<T, NEXT>
 where
     T: 'static,
@@ -580,7 +586,7 @@ where
 {
 }
 
-#[unstable(feature = "error_generic_member_access", issue = "99301")]
+#[unstable(feature = "error_generic_member_multi_access", issue = "99301")]
 impl<T, NEXT> private::IntoMultiRequestInner for ChainValMultiRequestBuilder<T, NEXT>
 where
     T: 'static,
@@ -595,7 +601,7 @@ where
     }
 }
 
-#[unstable(feature = "error_generic_member_access", issue = "99301")]
+#[unstable(feature = "error_generic_member_multi_access", issue = "99301")]
 impl<T, NEXT> IntoMultiRequest for ChainRefMultiRequestBuilder<T, NEXT>
 where
     T: ?Sized + 'static,
@@ -603,7 +609,7 @@ where
 {
 }
 
-#[unstable(feature = "error_generic_member_access", issue = "99301")]
+#[unstable(feature = "error_generic_member_multi_access", issue = "99301")]
 impl<T, NEXT> private::IntoMultiRequestInner for ChainRefMultiRequestBuilder<T, NEXT>
 where
     T: ?Sized + 'static,
@@ -668,7 +674,7 @@ where
 
 /// A response from a [MultiRequestBuilder]. The types returned from
 /// [MultiRequestBuilder::request] implement this trait.
-#[unstable(feature = "error_generic_member_access", issue = "99301")]
+#[unstable(feature = "error_generic_member_multi_access", issue = "99301")]
 #[allow(private_bounds)]
 pub trait MultiResponse<'a> {
     /// Retrieve a reference with the type `R` from this multi response.
@@ -681,8 +687,8 @@ pub trait MultiResponse<'a> {
     /// [request_ref] - this is only an example.
     ///
     /// ```
-    /// #![feature(error_generic_member_access)]
-    /// use core::error::{Error, MultiRequestBuilder, MultiResponse};
+    /// #![feature(error_generic_member_access, error_generic_member_multi_access)]
+    /// use core::error::{Error, provide::{MultiRequestBuilder, MultiResponse}};
     ///
     /// fn get_str(e: &dyn Error) -> Option<&str> {
     ///     MultiRequestBuilder::new()
@@ -705,8 +711,8 @@ pub trait MultiResponse<'a> {
     /// [request_value] - this is only an example.
     ///
     /// ```
-    /// #![feature(error_generic_member_access)]
-    /// use core::error::{Error, MultiRequestBuilder, MultiResponse};
+    /// #![feature(error_generic_member_access, error_generic_member_multi_access)]
+    /// use core::error::{Error, provide::{MultiRequestBuilder, MultiResponse}};
     ///
     /// fn get_string(e: &dyn Error) -> Option<String> {
     ///     MultiRequestBuilder::new()
@@ -720,7 +726,7 @@ pub trait MultiResponse<'a> {
         V: 'static;
 }
 
-#[unstable(feature = "error_generic_member_access", issue = "99301")]
+#[unstable(feature = "error_generic_member_multi_access", issue = "99301")]
 impl<'a, T: private::MultiResponseInner<'a>> MultiResponse<'a> for T {
     fn retrieve_ref<R>(&mut self) -> Option<&'a R>
     where
@@ -736,7 +742,7 @@ impl<'a, T: private::MultiResponseInner<'a>> MultiResponse<'a> for T {
         self.retrieve::<tags::Value<V>>()
     }
 }
-#[unstable(feature = "error_generic_member_access", issue = "99301")]
+#[unstable(feature = "error_generic_member_multi_access", issue = "99301")]
 #[allow(private_bounds, private_interfaces)]
 impl<'a> private::MultiResponseInner<'a> for EmptyMultiResponse {
     fn retrieve<I>(&mut self) -> Option<I::Reified>
@@ -747,7 +753,7 @@ impl<'a> private::MultiResponseInner<'a> for EmptyMultiResponse {
     }
 }
 
-#[unstable(feature = "error_generic_member_access", issue = "99301")]
+#[unstable(feature = "error_generic_member_multi_access", issue = "99301")]
 impl<'a, J, NEXT> private::MultiResponseInner<'a> for ChainMultiResponse<'a, J, NEXT>
 where
     J: tags::Type<'a>,
@@ -772,7 +778,7 @@ where
         self.next.retrieve::<I>()
     }
 }
-#[unstable(feature = "error_generic_member_access", issue = "99301")]
+#[unstable(feature = "error_generic_member_multi_access", issue = "99301")]
 #[allow(private_bounds, private_interfaces)]
 impl<'a, T, NEXT> private::MultiResponseInner<'a> for ChainValMultiResponse<'a, T, NEXT>
 where
@@ -786,7 +792,7 @@ where
         self.inner.retrieve::<I>()
     }
 }
-#[unstable(feature = "error_generic_member_access", issue = "99301")]
+#[unstable(feature = "error_generic_member_multi_access", issue = "99301")]
 // SAFETY: delegates to inner impl
 unsafe impl<'a, T, NEXT> Erased<'a> for ChainValMultiResponse<'a, T, NEXT>
 where
@@ -807,7 +813,7 @@ where
     }
 }
 
-#[unstable(feature = "error_generic_member_access", issue = "99301")]
+#[unstable(feature = "error_generic_member_multi_access", issue = "99301")]
 #[allow(private_bounds, private_interfaces)]
 impl<'a, T, NEXT> private::MultiResponseInner<'a> for ChainRefMultiResponse<'a, T, NEXT>
 where
@@ -821,7 +827,7 @@ where
         self.inner.retrieve::<I>()
     }
 }
-#[unstable(feature = "error_generic_member_access", issue = "99301")]
+#[unstable(feature = "error_generic_member_multi_access", issue = "99301")]
 // SAFETY: delegates to inner impl
 unsafe impl<'a, T, NEXT> Erased<'a> for ChainRefMultiResponse<'a, T, NEXT>
 where
@@ -886,7 +892,7 @@ where
     }
 }
 
-#[unstable(feature = "error_generic_member_access", issue = "99301")]
+#[unstable(feature = "error_generic_member_multi_access", issue = "99301")]
 /// A [MultiRequestBuilder] is used to request multiple types from an [Error] at once.
 ///
 /// Requesting a type from an [Error] is fairly fast - normally faster than formatting
@@ -896,9 +902,9 @@ where
 /// # Examples
 ///
 /// ```
-/// #![feature(error_generic_member_access)]
+/// #![feature(error_generic_member_access, error_generic_member_multi_access)]
 /// use core::fmt;
-/// use core::error::{Error, MultiResponse, Request};
+/// use core::error::{Error, provide::{MultiResponse, MultiRequestBuilder}, Request};
 ///
 /// #[derive(Debug)]
 /// struct MyError {
@@ -929,7 +935,7 @@ where
 ///         val_field: MyExitCode(3),
 ///     };
 ///
-///     let mut request = core::error::MultiRequestBuilder::new()
+///     let mut request = MultiRequestBuilder::new()
 ///         // request by reference
 ///         .with_ref::<str>()
 ///         // and by value
@@ -950,17 +956,17 @@ pub struct MultiRequestBuilder<INNER: IntoMultiRequest> {
     inner: PhantomData<INNER>,
 }
 
-#[unstable(feature = "error_generic_member_access", issue = "99301")]
+#[unstable(feature = "error_generic_member_multi_access", issue = "99301")]
 impl<INNER: IntoMultiRequest> Debug for MultiRequestBuilder<INNER> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         f.debug_tuple("MultiRequestBuilder").field(&crate::any::type_name::<INNER>()).finish()
     }
 }
 
-#[unstable(feature = "error_generic_member_access", issue = "99301")]
+#[unstable(feature = "error_generic_member_multi_access", issue = "99301")]
 impl<INNER: IntoMultiRequest> Copy for MultiRequestBuilder<INNER> {}
 
-#[unstable(feature = "error_generic_member_access", issue = "99301")]
+#[unstable(feature = "error_generic_member_multi_access", issue = "99301")]
 impl<INNER: IntoMultiRequest> Clone for MultiRequestBuilder<INNER> {
     fn clone(&self) -> Self {
         *self
@@ -969,7 +975,7 @@ impl<INNER: IntoMultiRequest> Clone for MultiRequestBuilder<INNER> {
 
 impl MultiRequestBuilder<EmptyMultiRequestBuilder> {
     /// Create a new [MultiRequestBuilder]
-    #[unstable(feature = "error_generic_member_access", issue = "99301")]
+    #[unstable(feature = "error_generic_member_multi_access", issue = "99301")]
     pub fn new() -> Self {
         MultiRequestBuilder { inner: PhantomData }
     }
@@ -981,8 +987,8 @@ impl<INNER: IntoMultiRequest> MultiRequestBuilder<INNER> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(error_generic_member_access)]
-    /// use core::error::{Error, MultiRequestBuilder, MultiResponse};
+    /// #![feature(error_generic_member_access, error_generic_member_multi_access)]
+    /// use core::error::{Error, provide::{MultiRequestBuilder, MultiResponse}};
     ///
     /// fn get_string(e: &dyn Error) -> Option<String> {
     ///     MultiRequestBuilder::new()
@@ -991,7 +997,7 @@ impl<INNER: IntoMultiRequest> MultiRequestBuilder<INNER> {
     ///         .retrieve_value::<String>()
     /// }
     /// ```
-    #[unstable(feature = "error_generic_member_access", issue = "99301")]
+    #[unstable(feature = "error_generic_member_multi_access", issue = "99301")]
     pub fn with_value<V: 'static>(
         self,
     ) -> MultiRequestBuilder<ChainValMultiRequestBuilder<V, INNER>> {
@@ -1003,8 +1009,8 @@ impl<INNER: IntoMultiRequest> MultiRequestBuilder<INNER> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(error_generic_member_access)]
-    /// use core::error::{Error, MultiRequestBuilder, MultiResponse};
+    /// #![feature(error_generic_member_access, error_generic_member_multi_access)]
+    /// use core::error::{Error, provide::{MultiRequestBuilder, MultiResponse}};
     ///
     /// fn get_str<'a>(e: &dyn Error) -> Option<&str> {
     ///     MultiRequestBuilder::new()
@@ -1013,7 +1019,7 @@ impl<INNER: IntoMultiRequest> MultiRequestBuilder<INNER> {
     ///         .retrieve_ref::<str>()
     /// }
     /// ```
-    #[unstable(feature = "error_generic_member_access", issue = "99301")]
+    #[unstable(feature = "error_generic_member_multi_access", issue = "99301")]
     pub fn with_ref<R: 'static + ?Sized>(
         self,
     ) -> MultiRequestBuilder<ChainRefMultiRequestBuilder<R, INNER>> {
@@ -1021,7 +1027,7 @@ impl<INNER: IntoMultiRequest> MultiRequestBuilder<INNER> {
     }
 
     /// Request provided values from a given error.
-    #[unstable(feature = "error_generic_member_access", issue = "99301")]
+    #[unstable(feature = "error_generic_member_multi_access", issue = "99301")]
     pub fn request<'a>(self, err: &'a (impl Error + ?Sized)) -> impl MultiResponse<'a> {
         let mut tagged = Tagged::new_virtual(INNER::get_request());
         err.provide(tagged.as_request());
