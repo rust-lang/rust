@@ -1,6 +1,6 @@
 use rustc_data_structures::fx::FxHashSet;
-use rustc_middle::mir::{Body, Location, Statement, StatementKind, Terminator, TerminatorKind};
-use rustc_middle::ty::{TyCtxt, TypeVisitable};
+use rustc_middle::mir::{Body, Statement, StatementKind, Terminator, TerminatorKind};
+use rustc_middle::ty::TyCtxt;
 use rustc_mir_dataflow::points::PointIndex;
 
 use super::{LocalizedOutlivesConstraint, LocalizedOutlivesConstraintSet};
@@ -56,9 +56,7 @@ pub(super) fn convert_typeck_constraints<'tcx>(
                     let terminator = body[location.block].terminator();
                     localize_terminator_constraint(
                         tcx,
-                        body,
                         terminator,
-                        liveness,
                         &outlives_constraint,
                         point,
                         universal_regions,
@@ -72,7 +70,7 @@ pub(super) fn convert_typeck_constraints<'tcx>(
 
 /// For a given outlives constraint arising from a MIR statement, localize the constraint with the
 /// needed CFG `from`-`to` intra-block nodes.
-fn localize_statement_constraint<'tcx>(
+pub(crate) fn localize_statement_constraint<'tcx>(
     tcx: TyCtxt<'tcx>,
     body: &Body<'tcx>,
     stmt: &Statement<'tcx>,
@@ -140,11 +138,11 @@ fn localize_statement_constraint<'tcx>(
 
 /// For a given outlives constraint arising from a MIR terminator, localize the constraint with the
 /// needed CFG `from`-`to` inter-block nodes.
-fn localize_terminator_constraint<'tcx>(
+pub(crate) fn localize_terminator_constraint<'tcx>(
     tcx: TyCtxt<'tcx>,
-    body: &Body<'tcx>,
+    // body: &Body<'tcx>,
     terminator: &Terminator<'tcx>,
-    liveness: &LivenessValues,
+    // liveness: &LivenessValues,
     outlives_constraint: &OutlivesConstraint<'tcx>,
     current_point: PointIndex,
     universal_regions: &UniversalRegions<'tcx>,
@@ -171,48 +169,54 @@ fn localize_terminator_constraint<'tcx>(
             )
         }
         _ => {
-            // Typeck constraints guide loans between regions at the current point, so we do that in
-            // the general case, and liveness will take care of making them flow to the terminator's
-            // successors.
-            LocalizedOutlivesConstraint {
-                source: outlives_constraint.sup,
-                from: current_point,
-                target: outlives_constraint.sub,
-                to: current_point,
-            }
+            // FIXME: check if other terminators need the same assertion as `Call`s, in particular
+            // Assert/Yield/Drop.
         }
     }
-}
 
-/// For a given outlives constraint and CFG edge, returns the localized constraint with the
-/// appropriate `from`-`to` direction. This is computed according to whether the constraint flows to
-/// or from a free region in the given `value`, some kind of result for an effectful operation, like
-/// the LHS of an assignment.
-fn compute_constraint_direction<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    outlives_constraint: &OutlivesConstraint<'tcx>,
-    value: &impl TypeVisitable<TyCtxt<'tcx>>,
-    current_point: PointIndex,
-    successor_point: PointIndex,
-    universal_regions: &UniversalRegions<'tcx>,
-) -> LocalizedOutlivesConstraint {
-    let mut to = current_point;
-    let mut from = current_point;
-    tcx.for_each_free_region(value, |region| {
-        let region = universal_regions.to_region_vid(region);
-        if region == outlives_constraint.sub {
-            // This constraint flows into the result, its effects start becoming visible on exit.
-            to = successor_point;
-        } else if region == outlives_constraint.sup {
-            // This constraint flows from the result, its effects start becoming visible on exit.
-            from = successor_point;
-        }
-    });
-
+    // Typeck constraints guide loans between regions at the current point, so we do that in
+    // the general case, and liveness will take care of making them flow to the terminator's
+    // successors.
     LocalizedOutlivesConstraint {
         source: outlives_constraint.sup,
-        from,
+        from: current_point,
         target: outlives_constraint.sub,
-        to,
+        to: current_point,
+        tag: "T2",
     }
 }
+
+// /// For a given outlives constraint and CFG edge, returns the localized constraint with the
+// /// appropriate `from`-`to` direction. This is computed according to whether the constraint flows to
+// /// or from a free region in the given `value`, some kind of result for an effectful operation, like
+// /// the LHS of an assignment.
+// fn compute_constraint_direction<'tcx>(
+//     tcx: TyCtxt<'tcx>,
+//     outlives_constraint: &OutlivesConstraint<'tcx>,
+//     value: &impl TypeVisitable<TyCtxt<'tcx>>,
+//     current_point: PointIndex,
+//     successor_point: PointIndex,
+//     universal_regions: &UniversalRegions<'tcx>,
+// ) -> LocalizedOutlivesConstraint {
+//     use rustc_middle::ty::TypeVisitable;
+//     let mut to = current_point;
+//     let mut from = current_point;
+//     tcx.for_each_free_region(value, |region| {
+//         let region = universal_regions.to_region_vid(region);
+//         if region == outlives_constraint.sub {
+//             // This constraint flows into the result, its effects start becoming visible on exit.
+//             to = successor_point;
+//         } else if region == outlives_constraint.sup {
+//             // This constraint flows from the result, its effects start becoming visible on exit.
+//             from = successor_point;
+//         }
+//     });
+
+//     LocalizedOutlivesConstraint {
+//         source: outlives_constraint.sup,
+//         from,
+//         target: outlives_constraint.sub,
+//         to,
+//         tag: "X",
+//     }
+// }

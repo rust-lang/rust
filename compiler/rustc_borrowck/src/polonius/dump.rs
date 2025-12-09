@@ -216,7 +216,7 @@ fn emit_polonius_mir<'tcx>(
                 writeln!(out, "| Localized constraints")?;
 
                 for constraint in &localized_outlives_constraints.outlives {
-                    let LocalizedOutlivesConstraint { source, from, target, to } = constraint;
+                    let LocalizedOutlivesConstraint { source, from, target, to, .. } = constraint;
                     let from = liveness.location_from_point(*from);
                     let to = liveness.location_from_point(*to);
                     writeln!(out, "| {source:?} at {from:?} -> {target:?} at {to:?}")?;
