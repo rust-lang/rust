@@ -748,6 +748,10 @@ pub enum BuiltinLintDiag {
     },
     UnusedVisibility(Span),
     AttributeLint(AttributeLintKind),
+    UnreachableCfg {
+        span: Span,
+        wildcard_span: Span,
+    },
 }
 
 #[derive(Debug, HashStable_Generic)]
