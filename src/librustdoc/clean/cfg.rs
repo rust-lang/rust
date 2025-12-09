@@ -859,8 +859,8 @@ pub(crate) fn extract_cfg_from_attrs<'a, I: Iterator<Item = &'a hir::Attribute> 
             }
             continue;
         } else if !cfg_info.parent_is_doc_cfg
-            && let Some(ident) = attr.ident()
-            && matches!(ident.name, sym::cfg | sym::cfg_trace)
+            && let Some(name) = attr.name()
+            && matches!(name, sym::cfg | sym::cfg_trace)
             && let Some(attr) = single(attr.meta_item_list()?)
             && let Ok(new_cfg) = Cfg::parse(&attr)
         {

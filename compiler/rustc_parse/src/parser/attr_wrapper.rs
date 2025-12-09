@@ -86,9 +86,9 @@ fn has_cfg_or_cfg_attr(attrs: &[Attribute]) -> bool {
     // NOTE: Builtin attributes like `cfg` and `cfg_attr` cannot be renamed via imports.
     // Therefore, the absence of a literal `cfg` or `cfg_attr` guarantees that
     // we don't need to do any eager expansion.
-    attrs.iter().any(|attr| {
-        attr.ident().is_some_and(|ident| ident.name == sym::cfg || ident.name == sym::cfg_attr)
-    })
+    attrs
+        .iter()
+        .any(|attr| attr.name().is_some_and(|ident| ident == sym::cfg || ident == sym::cfg_attr))
 }
 
 impl<'a> Parser<'a> {
@@ -398,10 +398,8 @@ impl<'a> Parser<'a> {
 /// - any single-segment, non-builtin attributes are present, e.g. `derive`,
 ///   `test`, `global_allocator`.
 fn needs_tokens(attrs: &[ast::Attribute]) -> bool {
-    attrs.iter().any(|attr| match attr.ident() {
+    attrs.iter().any(|attr| match attr.name() {
         None => !attr.is_doc_comment(),
-        Some(ident) => {
-            ident.name == sym::cfg_attr || !rustc_feature::is_builtin_attr_name(ident.name)
-        }
+        Some(name) => name == sym::cfg_attr || !rustc_feature::is_builtin_attr_name(name),
     })
 }

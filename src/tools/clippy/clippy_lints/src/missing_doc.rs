@@ -287,8 +287,8 @@ fn is_doc_attr(attr: &Attribute) -> bool {
     match attr {
         Attribute::Parsed(AttributeKind::DocComment { .. }) => true,
         Attribute::Unparsed(attr)
-            if let [ident] = &*attr.path.segments
-                && ident.name == sym::doc =>
+            if let [name] = &*attr.path.segments
+                && *name == sym::doc =>
         {
             matches!(attr.args, AttrArgs::Eq { .. })
         },
