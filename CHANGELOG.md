@@ -6688,6 +6688,7 @@ Released 2018-09-13
 [`needless_return`]: https://rust-lang.github.io/rust-clippy/master/index.html#needless_return
 [`needless_return_with_question_mark`]: https://rust-lang.github.io/rust-clippy/master/index.html#needless_return_with_question_mark
 [`needless_splitn`]: https://rust-lang.github.io/rust-clippy/master/index.html#needless_splitn
+[`needless_type_cast`]: https://rust-lang.github.io/rust-clippy/master/index.html#needless_type_cast
 [`needless_update`]: https://rust-lang.github.io/rust-clippy/master/index.html#needless_update
 [`neg_cmp_op_on_partial_ord`]: https://rust-lang.github.io/rust-clippy/master/index.html#neg_cmp_op_on_partial_ord
 [`neg_multiply`]: https://rust-lang.github.io/rust-clippy/master/index.html#neg_multiply
