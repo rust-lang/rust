@@ -44,6 +44,7 @@
 #![feature(duration_constants)]
 #![feature(duration_constructors)]
 #![feature(error_generic_member_access)]
+#![feature(error_generic_member_multi_access)]
 #![feature(exact_div)]
 #![feature(exact_size_is_empty)]
 #![feature(extend_one)]

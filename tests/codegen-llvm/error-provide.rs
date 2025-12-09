@@ -2,11 +2,11 @@
 
 //@ compile-flags: -Copt-level=3
 #![crate_type = "lib"]
-#![feature(error_generic_member_access)]
+#![feature(error_generic_member_access, error_generic_member_multi_access)]
 
 extern crate core;
 
-use core::error::MultiResponse;
+use core::error::provide::MultiResponse;
 use std::error::Request;
 use std::fmt;
 
@@ -59,7 +59,7 @@ impl std::error::Error for MyError {
 pub fn provide_multi(
     e: &dyn std::error::Error,
 ) -> (Option<&[u8; 0]>, Option<&[u8; 1]>, Option<&[u8; 2]>) {
-    let mut request = core::error::MultiRequestBuilder::new()
+    let mut request = core::error::provide::MultiRequestBuilder::new()
         .with_ref::<[u8; 0]>()
         .with_ref::<[u8; 1]>()
         .with_ref::<[u8; 2]>()
