@@ -219,26 +219,18 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         };
 
         trace!("Reborrow of size {:?}", ptr_size);
-        let (alloc_id, base_offset, parent_prov) = match this.ptr_try_get_alloc_id(place.ptr(), 0) {
-            Ok(data) => {
-                // Unlike SB, we *do* a proper retag for size 0 if can identify the allocation.
-                // After all, the pointer may be lazily initialized outside this initial range.
-                data
-            }
-            Err(_) => {
-                assert_eq!(ptr_size, Size::ZERO); // we did the deref check above, size has to be 0 here
-                // This pointer doesn't come with an AllocId, so there's no
-                // memory to do retagging in.
-                let new_prov = place.ptr().provenance;
-                trace!(
-                    "reborrow of size 0: reusing {:?} (pointee {})",
-                    place.ptr(),
-                    place.layout.ty,
-                );
-                log_creation(this, None)?;
-                // Keep original provenance.
-                return interp_ok(new_prov);
-            }
+        // Unlike SB, we *do* a proper retag for size 0 if can identify the allocation.
+        // After all, the pointer may be lazily initialized outside this initial range.
+        let Ok((alloc_id, base_offset, parent_prov)) = this.ptr_try_get_alloc_id(place.ptr(), 0)
+        else {
+            assert_eq!(ptr_size, Size::ZERO); // we did the deref check above, size has to be 0 here
+            // This pointer doesn't come with an AllocId, so there's no
+            // memory to do retagging in.
+            let new_prov = place.ptr().provenance;
+            trace!("reborrow of size 0: reusing {:?} (pointee {})", place.ptr(), place.layout.ty,);
+            log_creation(this, None)?;
+            // Keep original provenance.
+            return interp_ok(new_prov);
         };
         let new_prov = Provenance::Concrete { alloc_id, tag: new_tag };
 
@@ -609,8 +601,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
         let (tag, alloc_id) = match ptr.provenance {
             Some(Provenance::Concrete { tag, alloc_id }) => (tag, alloc_id),
-            _ => {
-                eprintln!("Can't give the name {name} to Wildcard pointer");
+            Some(Provenance::Wildcard) => {
+                eprintln!("Can't give the name {name} to wildcard pointer");
+                return interp_ok(());
+            }
+            None => {
+                eprintln!("Can't give the name {name} to pointer without provenance");
                 return interp_ok(());
             }
         };

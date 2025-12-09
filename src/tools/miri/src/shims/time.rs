@@ -337,11 +337,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let duration = this.deref_pointer_as(duration, this.libc_ty_layout("timespec"))?;
         let _rem = this.read_pointer(rem)?; // Signal handlers are not supported, so rem will never be written to.
 
-        let duration = match this.read_timespec(&duration)? {
-            Some(duration) => duration,
-            None => {
-                return this.set_last_error_and_return_i32(LibcError("EINVAL"));
-            }
+        let Some(duration) = this.read_timespec(&duration)? else {
+            return this.set_last_error_and_return_i32(LibcError("EINVAL"));
         };
 
         this.block_thread(
@@ -378,11 +375,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             throw_unsup_format!("clock_nanosleep: only CLOCK_MONOTONIC is supported");
         }
 
-        let duration = match this.read_timespec(&timespec)? {
-            Some(duration) => duration,
-            None => {
-                return this.set_last_error_and_return_i32(LibcError("EINVAL"));
-            }
+        let Some(duration) = this.read_timespec(&timespec)? else {
+            return this.set_last_error_and_return_i32(LibcError("EINVAL"));
         };
 
         let timeout_anchor = if flags == 0 {

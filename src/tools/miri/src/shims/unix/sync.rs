@@ -887,15 +887,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let mutex_ref = mutex_get_data(this, mutex_op)?.mutex_ref.clone();
 
         // Extract the timeout.
-        let duration = match this
+        let Some(duration) = this
             .read_timespec(&this.deref_pointer_as(timeout_op, this.libc_ty_layout("timespec"))?)?
-        {
-            Some(duration) => duration,
-            None => {
-                let einval = this.eval_libc("EINVAL");
-                this.write_scalar(einval, dest)?;
-                return interp_ok(());
-            }
+        else {
+            let einval = this.eval_libc("EINVAL");
+            this.write_scalar(einval, dest)?;
+            return interp_ok(());
         };
 
         let (clock, anchor) = if macos_relative_np {
