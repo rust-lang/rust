@@ -1,14 +1,12 @@
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::{Expr, ast};
 use rustc_attr_parsing as attr;
-use rustc_attr_parsing::{
-    CfgSelectBranches, CfgSelectPredicate, EvalConfigResult, parse_cfg_select,
-};
+use rustc_attr_parsing::{CfgSelectBranches, EvalConfigResult, parse_cfg_select};
 use rustc_expand::base::{DummyResult, ExpandResult, ExtCtxt, MacResult, MacroExpanderResult};
 use rustc_span::{Ident, Span, sym};
 use smallvec::SmallVec;
 
-use crate::errors::{CfgSelectNoMatches, CfgSelectUnreachable};
+use crate::errors::CfgSelectNoMatches;
 
 /// This intermediate structure is used to emit parse errors for the branches that are not chosen.
 /// The `MacResult` instance below parses all branches, emitting any errors it encounters, but only
@@ -75,18 +73,6 @@ pub(super) fn expand_cfg_select<'cx>(
             ecx.current_expansion.lint_node_id,
         ) {
             Ok(mut branches) => {
-                if let Some((underscore, _, _)) = branches.wildcard {
-                    // Warn for every unreachable predicate. We store the fully parsed branch for rustfmt.
-                    for (predicate, _, _) in &branches.unreachable {
-                        let span = match predicate {
-                            CfgSelectPredicate::Wildcard(underscore) => underscore.span,
-                            CfgSelectPredicate::Cfg(cfg) => cfg.span(),
-                        };
-                        let err = CfgSelectUnreachable { span, wildcard_span: underscore.span };
-                        ecx.dcx().emit_warn(err);
-                    }
-                }
-
                 if let Some((selected_tts, selected_span)) = branches.pop_first_match(|cfg| {
                     matches!(attr::eval_config_entry(&ecx.sess, cfg), EvalConfigResult::True)
                 }) {

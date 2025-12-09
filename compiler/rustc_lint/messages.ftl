@@ -986,6 +986,10 @@ lint_unpredictable_fn_pointer_comparisons = function pointer comparisons do not 
 
 lint_unqualified_local_imports = `use` of a local item without leading `self::`, `super::`, or `crate::`
 
+lint_unreachable_cfg_select_predicate = unreachable configuration predicate
+    .label = always matches
+    .label2 = this configuration predicate is never reached
+
 lint_unsafe_attr_outside_unsafe = unsafe attribute used without unsafe
     .label = usage of unsafe attribute
 lint_unsafe_attr_outside_unsafe_suggestion = wrap the attribute in `unsafe(...)`
