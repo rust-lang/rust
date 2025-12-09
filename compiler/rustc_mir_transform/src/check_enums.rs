@@ -1,4 +1,5 @@
 use rustc_abi::{HasDataLayout, Scalar, Size, TagEncoding, Variants, WrappingRange};
+use rustc_const_eval::interpret::CTFE_ALLOC_SALT;
 use rustc_hir::LangItem;
 use rustc_index::IndexVec;
 use rustc_middle::bug;
@@ -7,6 +8,7 @@ use rustc_middle::mir::*;
 use rustc_middle::ty::layout::{IntegerExt, PrimitiveExt};
 use rustc_middle::ty::{self, AdtDef, Ty, TyCtxt, TypingEnv};
 use rustc_session::Session;
+use rustc_span::DUMMY_SP;
 use tracing::debug;
 
 /// This pass inserts checks for a valid enum discriminant where they are most
@@ -504,7 +506,7 @@ fn insert_direct_enum_check<'tcx>(
         tcx,
         local_decls,
         block_data,
-        source_op,
+        source_op.clone(),
         discr,
         op_size,
         None,
@@ -544,6 +546,9 @@ fn insert_direct_enum_check<'tcx>(
         },
     });
 
+    let debug_str = format!("{:#?}", source_op.ty(local_decls, tcx));
+    let allocation =
+        tcx.allocate_bytes_dedup(std::borrow::Cow::Borrowed(debug_str.as_bytes()), CTFE_ALLOC_SALT);
     // Abort in case of an invalid enum discriminant.
     basic_blocks[invalid_discr_block].terminator = Some(Terminator {
         source_info,
@@ -555,7 +560,17 @@ fn insert_direct_enum_check<'tcx>(
             })),
             expected: true,
             target: new_block,
-            msg: Box::new(AssertKind::InvalidEnumConstruction(Operand::Copy(discr_masked))),
+            msg: Box::new(AssertKind::InvalidEnumConstruction(
+                Operand::Constant(Box::new(ConstOperand {
+                    span: DUMMY_SP,
+                    user_ty: None,
+                    const_: Const::Val(
+                        ConstValue::Slice { alloc_id: allocation, meta: debug_str.len() as u64 },
+                        Ty::new_ref(tcx, tcx.lifetimes.re_erased, tcx.types.str_, Mutability::Not),
+                    ),
+                })),
+                Operand::Copy(discr_masked),
+            )),
             // This calls panic_invalid_enum_construction, which is #[rustc_nounwind].
             // We never want to insert an unwind into unsafe code, because unwinding could
             // make a failing UB check turn into much worse UB when we start unwinding.
@@ -585,19 +600,30 @@ fn insert_uninhabited_enum_check<'tcx>(
         ))),
     ));
 
+    let debug_str = "None".to_owned();
+    let allocation =
+        tcx.allocate_bytes_dedup(std::borrow::Cow::Borrowed(debug_str.as_bytes()), CTFE_ALLOC_SALT);
     block_data.terminator = Some(Terminator {
         source_info,
         kind: TerminatorKind::Assert {
             cond: Operand::Copy(is_ok),
             expected: true,
             target: new_block,
-            msg: Box::new(AssertKind::InvalidEnumConstruction(Operand::Constant(Box::new(
-                ConstOperand {
+            msg: Box::new(AssertKind::InvalidEnumConstruction(
+                Operand::Constant(Box::new(ConstOperand {
+                    span: DUMMY_SP,
+                    user_ty: None,
+                    const_: Const::Val(
+                        ConstValue::Slice { alloc_id: allocation, meta: debug_str.len() as u64 },
+                        Ty::new_ref(tcx, tcx.lifetimes.re_erased, tcx.types.str_, Mutability::Not),
+                    ),
+                })),
+                Operand::Constant(Box::new(ConstOperand {
                     span: source_info.span,
                     user_ty: None,
                     const_: Const::Val(ConstValue::from_u128(0), tcx.types.u128),
-                },
-            )))),
+                })),
+            )),
             // This calls panic_invalid_enum_construction, which is #[rustc_nounwind].
             // We never want to insert an unwind into unsafe code, because unwinding could
             // make a failing UB check turn into much worse UB when we start unwinding.
@@ -622,7 +648,7 @@ fn insert_niche_check<'tcx>(
         tcx,
         local_decls,
         block_data,
-        source_op,
+        source_op.clone(),
         discr,
         op_size,
         Some(offset),
@@ -668,13 +694,26 @@ fn insert_niche_check<'tcx>(
         ))),
     ));
 
+    let debug_str = format!("{:#?}", source_op.ty(local_decls, tcx));
+    let allocation =
+        tcx.allocate_bytes_dedup(std::borrow::Cow::Borrowed(debug_str.as_bytes()), CTFE_ALLOC_SALT);
     block_data.terminator = Some(Terminator {
         source_info,
         kind: TerminatorKind::Assert {
             cond: Operand::Copy(is_ok),
             expected: true,
             target: new_block,
-            msg: Box::new(AssertKind::InvalidEnumConstruction(Operand::Copy(discr))),
+            msg: Box::new(AssertKind::InvalidEnumConstruction(
+                Operand::Constant(Box::new(ConstOperand {
+                    span: DUMMY_SP,
+                    user_ty: None,
+                    const_: Const::Val(
+                        ConstValue::Slice { alloc_id: allocation, meta: debug_str.len() as u64 },
+                        Ty::new_ref(tcx, tcx.lifetimes.re_erased, tcx.types.str_, Mutability::Not),
+                    ),
+                })),
+                Operand::Copy(discr),
+            )),
             // This calls panic_invalid_enum_construction, which is #[rustc_nounwind].
             // We never want to insert an unwind into unsafe code, because unwinding could
             // make a failing UB check turn into much worse UB when we start unwinding.
