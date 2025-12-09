@@ -169,12 +169,6 @@ pub fn decorate_builtin_lint(
             }
             .decorate_lint(diag);
         }
-        BuiltinLintDiag::UnexpectedCfgName(name, value) => {
-            check_cfg::unexpected_cfg_name(sess, tcx, name, value).decorate_lint(diag);
-        }
-        BuiltinLintDiag::UnexpectedCfgValue(name, value) => {
-            check_cfg::unexpected_cfg_value(sess, tcx, name, value).decorate_lint(diag);
-        }
         BuiltinLintDiag::DeprecatedWhereclauseLocation(left_sp, sugg) => {
             let suggestion = match sugg {
                 Some((right_sp, sugg)) => lints::DeprecatedWhereClauseLocationSugg::MoveToEnd {
@@ -310,8 +304,8 @@ pub fn decorate_builtin_lint(
 }
 
 pub fn decorate_attribute_lint(
-    _sess: &Session,
-    _tcx: Option<TyCtxt<'_>>,
+    sess: &Session,
+    tcx: Option<TyCtxt<'_>>,
     kind: &AttributeLintKind,
     diag: &mut Diag<'_, ()>,
 ) {
@@ -367,5 +361,11 @@ pub fn decorate_attribute_lint(
             suggestion: lints::UnsafeAttrOutsideUnsafeSuggestion { left, right },
         }
         .decorate_lint(diag),
+        &AttributeLintKind::UnexpectedCfgName(name, value) => {
+            check_cfg::unexpected_cfg_name(sess, tcx, name, value).decorate_lint(diag)
+        }
+        &AttributeLintKind::UnexpectedCfgValue(name, value) => {
+            check_cfg::unexpected_cfg_value(sess, tcx, name, value).decorate_lint(diag)
+        }
     }
 }
