@@ -26,7 +26,7 @@ mod while_let_on_iterator;
 
 use clippy_config::Conf;
 use clippy_utils::msrvs::Msrv;
-use clippy_utils::{higher, sym};
+use clippy_utils::{higher, sym, ty};
 use rustc_ast::Label;
 use rustc_hir::{Expr, ExprKind, LoopSource, Pat};
 use rustc_lint::{LateContext, LateLintPass};
@@ -888,6 +888,22 @@ impl<'tcx> LateLintPass<'tcx> for Loops {
             )
         {
             unused_enumerate_index::check_method(cx, expr, recv, arg);
+        }
+
+        if let ExprKind::MethodCall(path, recv, args, _) = expr.kind
+            && matches!(
+                path.ident.name,
+                sym::for_each
+                    | sym::try_for_each
+                    | sym::fold
+                    | sym::try_fold
+                    | sym::reduce
+                    | sym::all
+                    | sym::any
+            )
+            && ty::get_iterator_item_ty(cx, cx.typeck_results().expr_ty(recv)).is_some()
+        {
+            never_loop::check_iterator_reduction(cx, expr, recv, args);
         }
     }
 }

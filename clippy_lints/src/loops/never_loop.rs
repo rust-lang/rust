@@ -4,13 +4,14 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::higher::ForLoop;
 use clippy_utils::macros::root_macro_call_first_node;
 use clippy_utils::source::snippet;
+use clippy_utils::sym;
 use clippy_utils::visitors::{Descend, for_each_expr_without_closures};
 use rustc_errors::Applicability;
 use rustc_hir::{
     Block, Destination, Expr, ExprKind, HirId, InlineAsm, InlineAsmOperand, Node, Pat, Stmt, StmtKind, StructTailExpr,
 };
 use rustc_lint::LateContext;
-use rustc_span::{BytePos, Span, sym};
+use rustc_span::{BytePos, Span};
 use std::iter::once;
 use std::ops::ControlFlow;
 
@@ -69,6 +70,55 @@ pub(super) fn check<'tcx>(
             });
         },
         NeverLoopResult::MayContinueMainLoop | NeverLoopResult::Normal => (),
+    }
+}
+
+pub(super) fn check_iterator_reduction<'tcx>(
+    cx: &LateContext<'tcx>,
+    expr: &'tcx Expr<'tcx>,
+    recv: &'tcx Expr<'tcx>,
+    args: &'tcx [Expr<'tcx>],
+) {
+    // identify which argument is the closure based on the method kind
+    let Some(method_name) = (match expr.kind {
+        ExprKind::MethodCall(path, ..) => Some(path.ident.name),
+        _ => None,
+    }) else {
+        return;
+    };
+
+    let closure_arg = match method_name {
+        sym::for_each | sym::try_for_each | sym::reduce | sym::all | sym::any => args.get(0),
+        sym::fold | sym::try_fold => args.get(1),
+        _ => None,
+    };
+
+    let Some(closure_arg) = closure_arg else {
+        return;
+    };
+
+    // extract the closure body
+    let closure_body = match closure_arg.kind {
+        ExprKind::Closure(closure) => cx.tcx.hir_body(closure.body).value,
+        _ => return,
+    };
+
+    let body_ty = cx.typeck_results().expr_ty(closure_body);
+    if body_ty.is_never() {
+        span_lint_and_then(
+            cx,
+            NEVER_LOOP,
+            expr.span,
+            "this iterator reduction never loops (closure always diverges)",
+            |diag| {
+                let mut app = Applicability::Unspecified;
+                let recv_snip = make_iterator_snippet(cx, recv, &mut app);
+                diag.note("if you only need one element, `if let Some(x) = iter.next()` is clearer");
+                let sugg = format!("if let Some(x) = {recv_snip}.next() {{ ... }}");
+                diag.span_suggestion_verbose(expr.span, "consider this pattern", sugg, app);
+            },
+        );
+        return;
     }
 }
 
