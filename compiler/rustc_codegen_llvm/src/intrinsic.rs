@@ -202,13 +202,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 return Ok(());
             }
             sym::offload => {
-                if !tcx
-                    .sess
-                    .opts
-                    .unstable_opts
-                    .offload
-                    .contains(&rustc_session::config::Offload::Enable)
-                {
+                if tcx.sess.opts.unstable_opts.offload.is_empty() {
                     let _ = tcx.dcx().emit_almost_fatal(OffloadWithoutEnable);
                 }
 
