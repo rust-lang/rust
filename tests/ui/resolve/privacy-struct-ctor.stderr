@@ -5,10 +5,13 @@ LL |     pub struct S(u8);
    |     ----------------- similarly named tuple struct `S` defined here
 ...
 LL |         Z;
-   |         ^
-   |         |
-   |         constructor is not visible here due to private fields
-   |         help: a tuple struct with a similar name exists: `S`
+   |         ^ constructor is not visible here due to private fields
+   |
+help: a tuple struct with a similar name exists
+   |
+LL -         Z;
+LL +         S;
+   |
 
 error[E0423]: expected value, found struct `S`
   --> $DIR/privacy-struct-ctor.rs:34:5

@@ -2,11 +2,15 @@ error[E0425]: cannot find type `n` in this scope
   --> $DIR/issue-90871.rs:4:22
    |
 LL |     type_ascribe!(2, n([u8; || 1]))
-   |                      ^ help: a trait with a similar name exists: `Fn`
+   |                      ^
    |
   --> $SRC_DIR/core/src/ops/function.rs:LL:COL
    |
    = note: similarly named trait `Fn` defined here
+help: a trait with a similar name exists
+   |
+LL |     type_ascribe!(2, Fn([u8; || 1]))
+   |                      +
 
 error[E0308]: mismatched types
   --> $DIR/issue-90871.rs:4:29
