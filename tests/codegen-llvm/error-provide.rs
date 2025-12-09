@@ -59,8 +59,7 @@ impl std::error::Error for MyError {
 pub fn provide_multi(
     e: &dyn std::error::Error,
 ) -> (Option<&[u8; 0]>, Option<&[u8; 1]>, Option<&[u8; 2]>) {
-    let (mut bt1, mut bt2, mut bt3) = (None, None, None);
-    let mut value = core::error::MultiRequestBuilder::new()
+    let mut request = core::error::MultiRequestBuilder::new()
         .with_ref::<[u8; 0]>()
         .with_ref::<[u8; 1]>()
         .with_ref::<[u8; 2]>()
@@ -69,11 +68,8 @@ pub fn provide_multi(
         .with_ref::<[u8; 5]>()
         .with_ref::<[u8; 6]>()
         .with_ref::<[u8; 7]>()
-        .request(e)
-        .retrieve_ref(|b| bt1 = Some(b))
-        .retrieve_ref(|b| bt2 = Some(b))
-        .retrieve_ref(|b| bt3 = Some(b));
-    (bt1, bt2, bt3)
+        .request(e);
+    (request.retrieve_ref(), request.retrieve_ref(), request.retrieve_ref())
 }
 
 // Check that the virtual function generated has a switch

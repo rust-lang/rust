@@ -526,10 +526,10 @@ pub struct EmptyMultiRequestBuilder;
 pub struct ChainValMultiRequestBuilder<T, NEXT>(PhantomData<(T, NEXT)>);
 
 #[unstable(feature = "error_generic_member_access", issue = "99301")]
-#[derive(Copy, Clone, Debug)]
 /// Case of [IntoMultiRequest] that retrieves a type by value.
 ///
 /// Create via [MultiRequestBuilder::with_ref].
+#[derive(Copy, Clone, Debug)]
 pub struct ChainRefMultiRequestBuilder<T: ?Sized, NEXT>(PhantomData<(*const T, NEXT)>);
 
 /// Internal trait for types that represent a request for multiple provided
@@ -553,9 +553,9 @@ mod private {
     }
 
     #[unstable(feature = "error_generic_member_access", issue = "99301")]
-    #[allow(private_bounds)]
+    #[allow(private_bounds, private_interfaces)]
     pub trait MultiResponseInner<'a> {
-        fn consume_with<I>(&mut self, fulfil: impl FnOnce(I::Reified)) -> &mut Self
+        fn retrieve<I>(&mut self) -> Option<I::Reified>
         where
             I: super::tags::Type<'a>;
     }
@@ -671,13 +671,9 @@ where
 #[unstable(feature = "error_generic_member_access", issue = "99301")]
 #[allow(private_bounds)]
 pub trait MultiResponse<'a> {
-    /// Retrieve a reference with the type `R` from this multi response,
+    /// Retrieve a reference with the type `R` from this multi response.
     ///
-    /// The reference will be passed to `fulfil` if present. This function
-    /// consumes the reference, so the next call to `retrieve_ref`
-    /// with the same type will not call `fulfil`.
-    ///
-    /// This function returns `self` to allow easy chained use.
+    /// If there is no reference of type `R` in the response, returns None.
     ///
     /// # Examples
     ///
@@ -689,25 +685,19 @@ pub trait MultiResponse<'a> {
     /// use core::error::{Error, MultiRequestBuilder, MultiResponse};
     ///
     /// fn get_str(e: &dyn Error) -> Option<&str> {
-    ///     let mut result = None;
     ///     MultiRequestBuilder::new()
     ///         .with_ref::<str>()
     ///         .request(e)
-    ///         .retrieve_ref(|res| result = Some(res));
-    ///     result
+    ///         .retrieve_ref::<str>()
     /// }
     /// ```
-    fn retrieve_ref<R>(&mut self, fulfil: impl FnOnce(&'a R)) -> &mut Self
+    fn retrieve_ref<R>(&mut self) -> Option<&'a R>
     where
         R: ?Sized + 'static;
 
-    /// Retrieve a value with the type `V` from this multi response,
+    /// Retrieve a value with the type `V` from this multi response.
     ///
-    /// The value will be passed to `fulfil` if present. This function
-    /// consumes the value, so the next call to `retrieve_value`
-    /// with the same type will not call `fulfil`.
-    ///
-    /// This function returns `self` to allow easy chained use.
+    /// If there is no value of type `V` in the response, returns None.
     ///
     /// # Examples
     ///
@@ -719,43 +709,41 @@ pub trait MultiResponse<'a> {
     /// use core::error::{Error, MultiRequestBuilder, MultiResponse};
     ///
     /// fn get_string(e: &dyn Error) -> Option<String> {
-    ///     let mut result = None;
     ///     MultiRequestBuilder::new()
     ///         .with_value::<String>()
     ///         .request(e)
-    ///         .retrieve_value(|res| result = Some(res));
-    ///     result
+    ///         .retrieve_value::<String>()
     /// }
     /// ```
-    fn retrieve_value<V>(&mut self, fulfil: impl FnOnce(V)) -> &mut Self
+    fn retrieve_value<V>(&mut self) -> Option<V>
     where
         V: 'static;
 }
 
 #[unstable(feature = "error_generic_member_access", issue = "99301")]
 impl<'a, T: private::MultiResponseInner<'a>> MultiResponse<'a> for T {
-    fn retrieve_ref<R>(&mut self, fulfil: impl FnOnce(&'a R)) -> &mut Self
+    fn retrieve_ref<R>(&mut self) -> Option<&'a R>
     where
         R: ?Sized + 'static,
     {
-        self.consume_with::<tags::Ref<tags::MaybeSizedValue<R>>>(fulfil)
+        self.retrieve::<tags::Ref<tags::MaybeSizedValue<R>>>()
     }
 
-    fn retrieve_value<V>(&mut self, fulfil: impl FnOnce(V)) -> &mut Self
+    fn retrieve_value<V>(&mut self) -> Option<V>
     where
         V: 'static,
     {
-        self.consume_with::<tags::Value<V>>(fulfil)
+        self.retrieve::<tags::Value<V>>()
     }
 }
 #[unstable(feature = "error_generic_member_access", issue = "99301")]
+#[allow(private_bounds, private_interfaces)]
 impl<'a> private::MultiResponseInner<'a> for EmptyMultiResponse {
-    #[allow(private_bounds)]
-    fn consume_with<I>(&mut self, _fulfil: impl FnOnce(I::Reified)) -> &mut Self
+    fn retrieve<I>(&mut self) -> Option<I::Reified>
     where
         I: tags::Type<'a>,
     {
-        self
+        None
     }
 }
 
@@ -765,7 +753,7 @@ where
     J: tags::Type<'a>,
     NEXT: private::MultiResponseInner<'a>,
 {
-    fn consume_with<I>(&mut self, fulfil: impl FnOnce(I::Reified)) -> &mut Self
+    fn retrieve<I>(&mut self) -> Option<I::Reified>
     where
         I: tags::Type<'a>,
     {
@@ -777,28 +765,25 @@ where
                 let cur =
                     &mut *(&mut self.cur as *mut Option<J::Reified> as *mut Option<I::Reified>);
                 if let Some(val) = cur.take() {
-                    fulfil(val);
-                    return self;
+                    return Some(val);
                 }
             }
         }
-        self.next.consume_with::<I>(fulfil);
-        self
+        self.next.retrieve::<I>()
     }
 }
 #[unstable(feature = "error_generic_member_access", issue = "99301")]
+#[allow(private_bounds, private_interfaces)]
 impl<'a, T, NEXT> private::MultiResponseInner<'a> for ChainValMultiResponse<'a, T, NEXT>
 where
     T: 'static,
     NEXT: private::MultiResponseInner<'a>,
 {
-    #[allow(private_bounds)]
-    fn consume_with<I>(&mut self, fulfil: impl FnOnce(I::Reified)) -> &mut Self
+    fn retrieve<I>(&mut self) -> Option<I::Reified>
     where
         I: tags::Type<'a>,
     {
-        self.inner.consume_with::<I>(fulfil);
-        self
+        self.inner.retrieve::<I>()
     }
 }
 #[unstable(feature = "error_generic_member_access", issue = "99301")]
@@ -823,18 +808,17 @@ where
 }
 
 #[unstable(feature = "error_generic_member_access", issue = "99301")]
+#[allow(private_bounds, private_interfaces)]
 impl<'a, T, NEXT> private::MultiResponseInner<'a> for ChainRefMultiResponse<'a, T, NEXT>
 where
     T: 'static + ?Sized,
     NEXT: private::MultiResponseInner<'a>,
 {
-    #[allow(private_bounds)]
-    fn consume_with<I>(&mut self, fulfil: impl FnOnce(I::Reified)) -> &mut Self
+    fn retrieve<I>(&mut self) -> Option<I::Reified>
     where
         I: tags::Type<'a>,
     {
-        self.inner.consume_with::<I>(fulfil);
-        self
+        self.inner.retrieve::<I>()
     }
 }
 #[unstable(feature = "error_generic_member_access", issue = "99301")]
@@ -903,7 +887,6 @@ where
 }
 
 #[unstable(feature = "error_generic_member_access", issue = "99301")]
-#[derive(Copy, Clone, Debug)]
 /// A [MultiRequestBuilder] is used to request multiple types from an [Error] at once.
 ///
 /// Requesting a type from an [Error] is fairly fast - normally faster than formatting
@@ -946,31 +929,42 @@ where
 ///         val_field: MyExitCode(3),
 ///     };
 ///
-///     let mut str_val = None;
-///     let mut exit_code_val = None;
-///     let mut string_val = None;
-///     let mut value = core::error::MultiRequestBuilder::new()
+///     let mut request = core::error::MultiRequestBuilder::new()
 ///         // request by reference
 ///         .with_ref::<str>()
 ///         // and by value
 ///         .with_value::<MyExitCode>()
 ///         // and some type that isn't in the error
 ///         .with_value::<String>()
-///         .request(&e)
-///         // The error has str by reference
-///         .retrieve_ref::<str>(|val| str_val = Some(val))
-///         // The error has MyExitCode by value
-///         .retrieve_value::<MyExitCode>(|val| exit_code_val = Some(val))
-///         // The error does not have a string field, consume will not be called
-///         .retrieve_value::<String>(|val| string_val = Some(val));
+///         .request(&e);
 ///
-///     assert_eq!(exit_code_val, Some(MyExitCode(3)));
-///     assert_eq!(str_val, Some("hello"));
-///     assert_eq!(string_val, None);
+///     // The error has MyExitCode by value
+///     assert_eq!(request.retrieve_value::<MyExitCode>(), Some(MyExitCode(3)));
+///     // The error has str by reference
+///     assert_eq!(request.retrieve_ref::<str>(), Some("hello"));
+///     // The error does not have a string field
+///     assert_eq!(request.retrieve_value::<String>(), None);
 /// }
 /// ```
 pub struct MultiRequestBuilder<INNER: IntoMultiRequest> {
     inner: PhantomData<INNER>,
+}
+
+#[unstable(feature = "error_generic_member_access", issue = "99301")]
+impl<INNER: IntoMultiRequest> Debug for MultiRequestBuilder<INNER> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        f.debug_tuple("MultiRequestBuilder").field(&crate::any::type_name::<INNER>()).finish()
+    }
+}
+
+#[unstable(feature = "error_generic_member_access", issue = "99301")]
+impl<INNER: IntoMultiRequest> Copy for MultiRequestBuilder<INNER> {}
+
+#[unstable(feature = "error_generic_member_access", issue = "99301")]
+impl<INNER: IntoMultiRequest> Clone for MultiRequestBuilder<INNER> {
+    fn clone(&self) -> Self {
+        *self
+    }
 }
 
 impl MultiRequestBuilder<EmptyMultiRequestBuilder> {
@@ -991,12 +985,10 @@ impl<INNER: IntoMultiRequest> MultiRequestBuilder<INNER> {
     /// use core::error::{Error, MultiRequestBuilder, MultiResponse};
     ///
     /// fn get_string(e: &dyn Error) -> Option<String> {
-    ///     let mut result = None;
     ///     MultiRequestBuilder::new()
     ///         .with_value::<String>()
     ///         .request(e)
-    ///         .retrieve_value(|res| result = Some(res));
-    ///     result
+    ///         .retrieve_value::<String>()
     /// }
     /// ```
     #[unstable(feature = "error_generic_member_access", issue = "99301")]
@@ -1014,13 +1006,11 @@ impl<INNER: IntoMultiRequest> MultiRequestBuilder<INNER> {
     /// #![feature(error_generic_member_access)]
     /// use core::error::{Error, MultiRequestBuilder, MultiResponse};
     ///
-    /// fn get_string(e: &dyn Error) -> Option<String> {
-    ///     let mut result = None;
+    /// fn get_str<'a>(e: &dyn Error) -> Option<&str> {
     ///     MultiRequestBuilder::new()
-    ///         .with_value::<String>()
+    ///         .with_ref::<str>()
     ///         .request(e)
-    ///         .retrieve_value(|res| result = Some(res));
-    ///     result
+    ///         .retrieve_ref::<str>()
     /// }
     /// ```
     #[unstable(feature = "error_generic_member_access", issue = "99301")]
