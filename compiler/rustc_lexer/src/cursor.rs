@@ -105,6 +105,10 @@ impl<'a> Cursor<'a> {
     pub(crate) fn bump_if(&mut self, byte: char) -> bool {
         let mut chars = self.chars.clone();
         if chars.next() == Some(byte) {
+            #[cfg(debug_assertions)]
+            {
+                self.prev = byte;
+            }
             self.chars = chars;
             true
         } else {
@@ -118,6 +122,10 @@ impl<'a> Cursor<'a> {
         if let Some(c) = chars.next()
             && (c == byte1 || c == byte2)
         {
+            #[cfg(debug_assertions)]
+            {
+                self.prev = c;
+            }
             self.chars = chars;
             return true;
         }
@@ -126,6 +134,12 @@ impl<'a> Cursor<'a> {
 
     /// Moves to a substring by a number of bytes.
     pub(crate) fn bump_bytes(&mut self, n: usize) {
+        #[cfg(debug_assertions)]
+        {
+            if n > 0 {
+                self.prev = self.as_str()[n - 1..].chars().next().unwrap();
+            }
+        }
         self.chars = self.as_str()[n..].chars();
     }
 
