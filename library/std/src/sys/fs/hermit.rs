@@ -11,7 +11,7 @@ use crate::path::{Path, PathBuf};
 use crate::sync::Arc;
 use crate::sys::common::small_c_string::run_path_with_cstr;
 use crate::sys::fd::FileDesc;
-pub use crate::sys::fs::common::{copy, exists};
+pub use crate::sys::fs::common::{Dir, copy, exists};
 use crate::sys::time::SystemTime;
 use crate::sys::{cvt, unsupported, unsupported_err};
 use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
@@ -19,6 +19,7 @@ use crate::{fmt, mem};
 
 #[derive(Debug)]
 pub struct File(FileDesc);
+
 #[derive(Clone)]
 pub struct FileAttr {
     stat_val: stat_struct,
