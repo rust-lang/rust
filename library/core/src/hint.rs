@@ -842,15 +842,26 @@ pub enum Locality {
     /// Data is expected to be reused eventually.
     ///
     /// Typically prefetches into L3 cache (if the CPU supports it).
-    L3 = 1,
+    L3,
     /// Data is expected to be reused in the near future.
     ///
     /// Typically prefetches into L2 cache.
-    L2 = 2,
+    L2,
     /// Data is expected to be reused very soon.
     ///
     /// Typically prefetches into L1 cache.
-    L1 = 3,
+    L1,
+}
+
+impl Locality {
+    /// Convert to the constant that LLVM associates with a locality.
+    const fn to_llvm(self) -> i32 {
+        match self {
+            Self::L3 => 1,
+            Self::L2 => 2,
+            Self::L1 => 3,
+        }
+    }
 }
 
 /// Prefetch the cache line containing `ptr` for a future read.
@@ -882,9 +893,9 @@ pub enum Locality {
 #[unstable(feature = "hint_prefetch", issue = "146941")]
 pub const fn prefetch_read<T>(ptr: *const T, locality: Locality) {
     match locality {
-        Locality::L3 => intrinsics::prefetch_read_data::<T, { Locality::L3 as i32 }>(ptr),
-        Locality::L2 => intrinsics::prefetch_read_data::<T, { Locality::L2 as i32 }>(ptr),
-        Locality::L1 => intrinsics::prefetch_read_data::<T, { Locality::L1 as i32 }>(ptr),
+        Locality::L3 => intrinsics::prefetch_read_data::<T, { Locality::L3.to_llvm() }>(ptr),
+        Locality::L2 => intrinsics::prefetch_read_data::<T, { Locality::L2.to_llvm() }>(ptr),
+        Locality::L1 => intrinsics::prefetch_read_data::<T, { Locality::L1.to_llvm() }>(ptr),
     }
 }
 
@@ -919,9 +930,9 @@ pub const fn prefetch_read_non_temporal<T>(ptr: *const T, locality: Locality) {
 #[unstable(feature = "hint_prefetch", issue = "146941")]
 pub const fn prefetch_write<T>(ptr: *mut T, locality: Locality) {
     match locality {
-        Locality::L3 => intrinsics::prefetch_write_data::<T, { Locality::L3 as i32 }>(ptr),
-        Locality::L2 => intrinsics::prefetch_write_data::<T, { Locality::L2 as i32 }>(ptr),
-        Locality::L1 => intrinsics::prefetch_write_data::<T, { Locality::L1 as i32 }>(ptr),
+        Locality::L3 => intrinsics::prefetch_write_data::<T, { Locality::L3.to_llvm() }>(ptr),
+        Locality::L2 => intrinsics::prefetch_write_data::<T, { Locality::L2.to_llvm() }>(ptr),
+        Locality::L1 => intrinsics::prefetch_write_data::<T, { Locality::L1.to_llvm() }>(ptr),
     }
 }
 
@@ -956,8 +967,8 @@ pub const fn prefetch_write_non_temporal<T>(ptr: *const T, locality: Locality) {
 #[unstable(feature = "hint_prefetch", issue = "146941")]
 pub const fn prefetch_read_instruction<T>(ptr: *const T, locality: Locality) {
     match locality {
-        Locality::L3 => intrinsics::prefetch_read_instruction::<T, { Locality::L3 as i32 }>(ptr),
-        Locality::L2 => intrinsics::prefetch_read_instruction::<T, { Locality::L2 as i32 }>(ptr),
-        Locality::L1 => intrinsics::prefetch_read_instruction::<T, { Locality::L1 as i32 }>(ptr),
+        Locality::L3 => intrinsics::prefetch_read_instruction::<T, { Locality::L3.to_llvm() }>(ptr),
+        Locality::L2 => intrinsics::prefetch_read_instruction::<T, { Locality::L2.to_llvm() }>(ptr),
+        Locality::L1 => intrinsics::prefetch_read_instruction::<T, { Locality::L1.to_llvm() }>(ptr),
     }
 }
