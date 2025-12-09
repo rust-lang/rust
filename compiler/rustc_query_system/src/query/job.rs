@@ -1,19 +1,21 @@
-use std::collections::hash_map;
+use std::collections::{BTreeMap, hash_map};
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::io::Write;
 use std::num::NonZero;
 use std::sync::{Arc, Weak};
 use std::thread::ThreadId;
-use std::ops;
+use std::{iter, ops};
 
 use parking_lot::{Condvar, Mutex};
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::indexmap::{self, IndexMap, IndexSet};
 use rustc_data_structures::sync::BranchKey;
 use rustc_errors::{Diag, DiagCtxtHandle};
 use rustc_hir::def::DefKind;
 use rustc_session::Session;
 use rustc_span::{DUMMY_SP, Span};
+use smallvec::SmallVec;
 
 use super::QueryStackFrameExtra;
 use crate::dep_graph::DepContext;
@@ -337,21 +339,13 @@ pub fn break_query_cycles<I: Clone + Debug>(
     registry: &rustc_thread_pool::Registry,
 ) {
     #[derive(Debug)]
-    struct QueryStackIntermediate<I> {
+    struct QueryStackIntermediate {
         start: Option<QueryJobId>,
         depth: ops::RangeInclusive<usize>,
-        wait: Option<QueryWait<I>>,
+        wait: Option<QueryWait>,
     }
 
-    #[derive(Debug)]
-    enum QueryWait<I> {
-        /// Waits on a running query
-        Waiter { waited_on: QueryJobId, waiter: Arc<QueryWaiter<I>> },
-        /// Waits other for tasks inside of `join` or `scope`
-        Direct { waited_on: Vec<QueryJobId> },
-    }
-
-    impl<I> QueryStackIntermediate<I> {
+    impl QueryStackIntermediate {
         fn from_depth(depth: usize) -> Self {
             QueryStackIntermediate { start: None, depth: depth..=depth, wait: None }
         }
@@ -367,27 +361,59 @@ pub fn break_query_cycles<I: Clone + Debug>(
         }
     }
 
-    let mut stacks = FxHashMap::<ThreadId, QueryStackIntermediate<I>>::default();
+    #[derive(Debug)]
+    enum QueryWait {
+        /// Waits on a running query
+        Waiter { waited_on: QueryJobId, waiter_idx: usize },
+        /// Waits other for tasks inside of `join` or `scope`
+        Direct { waited_on: Vec<QueryJobId> },
+    }
+
+    impl QueryWait {
+        fn waiting_query<I>(&self, query_map: &QueryMap<I>) -> QueryJobId {
+            match self {
+                QueryWait::Waiter { waited_on, waiter_idx } => {
+                    query_map[waited_on]
+                        .job
+                        .latch
+                        .upgrade()
+                        .unwrap()
+                        .info
+                        .try_lock()
+                        .unwrap()
+                        .waiters[*waiter_idx]
+                        .query
+                        .unwrap()
+                        .id
+                }
+                QueryWait::Direct { waited_on } => query_map[&waited_on[0]].job.parent.unwrap().id,
+            }
+        }
+    }
+
+    let mut stacks = FxHashMap::<ThreadId, QueryStackIntermediate>::default();
     for query in query_map.values() {
         let query_depth = query.job.real_depth();
         let entry = stacks.entry(query.job.thread_id);
-        match entry {
+        let stack = match entry {
             hash_map::Entry::Vacant(entry) => {
-                entry.insert(QueryStackIntermediate::from_depth(query_depth));
+                entry.insert(QueryStackIntermediate::from_depth(query_depth))
             }
             hash_map::Entry::Occupied(mut entry) => {
-                entry.get_mut().update_depth(query_depth);
+                let stack = entry.into_mut();
+                stack.update_depth(query_depth);
+                stack
             }
-        }
+        };
 
-        if let Some(inclusion) = query.job.parent {
-            let parent = &query_map[&inclusion.id];
-            if parent.job.thread_id != query.job.thread_id {
-                // Register the thread's query stack beginning
-                let stack = stacks.get_mut(&query.job.thread_id).unwrap();
-                assert!(stack.start.is_none(), "found two active queries at a thread's begining");
-                stack.start = Some(query.job.id);
-            }
+        if query
+            .job
+            .parent
+            .is_none_or(|inclusion| query_map[&inclusion.id].job.thread_id != query.job.thread_id)
+        {
+            // Register the thread's query stack beginning
+            assert!(stack.start.is_none(), "found two active queries at a thread's begining");
+            stack.start = Some(query.job.id);
         }
 
         let Some(latch) = query.job.latch.upgrade() else {
@@ -395,7 +421,7 @@ pub fn break_query_cycles<I: Clone + Debug>(
         };
         let lock = latch.info.try_lock().unwrap();
         assert!(!lock.complete);
-        for waiter in &lock.waiters {
+        for (waiter_idx, waiter) in lock.waiters.iter().enumerate() {
             let waiting_stack = stacks
                 .entry(waiter.thread_id)
                 .or_insert_with(|| QueryStackIntermediate::from_depth(waiter.real_depth() - 1));
@@ -403,46 +429,55 @@ pub fn break_query_cycles<I: Clone + Debug>(
                 waiting_stack.wait.is_none(),
                 "found two active queries a thread is waiting for"
             );
-            waiting_stack.wait =
-                Some(QueryWait::Waiter { waited_on: query.job.id, waiter: Arc::clone(&waiter) });
+            waiting_stack.wait = Some(QueryWait::Waiter { waited_on: query.job.id, waiter_idx });
         }
     }
 
     // Figure out what queries leftover stacks are blocked on
-    let mut root_thread = None;
-    let thread_ids: Vec<_> = stacks.keys().copied().collect();
+    let mut root_query = None;
+    let mut thread_ids: Vec<_> = stacks.keys().copied().collect();
     for thread_id in &thread_ids {
         let stack = &stacks[thread_id];
-        if let Some(start_id) = stack.start {
-            let start = &query_map[&start_id];
-            let inclusion = start.job.parent.unwrap();
+        let start = stack.start.unwrap();
+        if let Some(inclusion) = query_map[&start].job.parent {
             let parent = &query_map[&inclusion.id];
             assert_eq!(inclusion.real_depth.get(), *stack.depth.start());
             let waiting_stack = stacks.get_mut(&parent.job.thread_id).unwrap();
             if *waiting_stack.depth.end() == (inclusion.real_depth.get() - 1) {
                 match &mut waiting_stack.wait {
-                    None => {
-                        waiting_stack.wait = Some(QueryWait::Direct { waited_on: vec![start_id] })
-                    }
+                    None => waiting_stack.wait = Some(QueryWait::Direct { waited_on: vec![start] }),
                     Some(QueryWait::Direct { waited_on }) => {
-                        assert!(!waited_on.contains(&start_id));
-                        waited_on.push(start_id);
+                        assert!(!waited_on.contains(&start));
+                        waited_on.push(start);
                     }
                     Some(QueryWait::Waiter { .. }) => (),
                 }
             }
         } else {
-            assert!(root_thread.is_none(), "found multiple threads without start");
-            root_thread = Some(*thread_id);
+            assert!(root_query.is_none(), "found multiple threads without start");
+            root_query = Some(start);
         }
     }
 
-    let root_thread = root_thread.expect("no root thread was found");
+    let root_query = root_query.expect("no root query was found");
 
     for stack in stacks.values() {
         match stack.wait.as_ref().expect("failed to figure out what active thread is waiting") {
-            QueryWait::Waiter { waited_on: _, waiter } => {
-                assert_eq!(waiter.real_depth() - 1, *stack.depth.end())
+            QueryWait::Waiter { waited_on, waiter_idx } => {
+                assert_eq!(
+                    query_map[waited_on]
+                        .job
+                        .latch
+                        .upgrade()
+                        .unwrap()
+                        .info
+                        .try_lock()
+                        .unwrap()
+                        .waiters[*waiter_idx]
+                        .real_depth()
+                        - 1,
+                    *stack.depth.end()
+                )
             }
             QueryWait::Direct { waited_on } => {
                 let waited_on_query = &query_map[&waited_on[0]];
@@ -456,7 +491,121 @@ pub fn break_query_cycles<I: Clone + Debug>(
         }
     }
 
-    panic!("fuh: {stacks:#x?}")
+    fn collect_branches<I>(query_id: QueryJobId, query_map: &QueryMap<I>) -> Vec<BranchKey> {
+        let query = &query_map[&query_id];
+        let Some(inclusion) = query.job.parent.as_ref() else { return Vec::new() };
+        // Skip trivial branches
+        if inclusion.branch == BranchKey::root() {
+            return collect_branches(inclusion.id, query_map);
+        }
+        let mut out = collect_branches(inclusion.id, query_map);
+        out.push(inclusion.branch);
+        out
+    }
+    let branches: FxHashMap<_, _> = thread_ids
+        .iter()
+        .map(|t| {
+            (
+                *t,
+                collect_branches(
+                    stacks[t].wait.as_ref().unwrap().waiting_query(&query_map),
+                    &query_map,
+                ),
+            )
+        })
+        .collect();
+
+    thread_ids.sort_by_key(|t| branches[t].as_slice());
+
+    let branch_enumerations: FxHashMap<_, _> =
+        thread_ids.iter().enumerate().map(|(v, k)| (*k, v)).collect();
+
+    let mut subqueries = FxHashMap::<_, BTreeMap<BranchKey, _>>::default();
+    for query in query_map.values() {
+        let Some(inclusion) = &query.job.parent else {
+            continue;
+        };
+        let old = subqueries
+            .entry(inclusion.id)
+            .or_default()
+            .insert(inclusion.branch, (query.job.id, usize::MAX));
+        assert!(old.is_none());
+    }
+
+    for stack in stacks.values() {
+        let &QueryWait::Waiter { waited_on, waiter_idx } = stack.wait.as_ref().unwrap() else {
+            continue;
+        };
+
+        let inclusion =
+            query_map[&waited_on].job.latch.upgrade().unwrap().info.try_lock().unwrap().waiters
+                [waiter_idx]
+                .query
+                .unwrap();
+        let old = subqueries
+            .entry(inclusion.id)
+            .or_default()
+            .insert(inclusion.branch, (waited_on, waiter_idx));
+        assert!(old.is_none());
+    }
+
+    let mut visited = IndexMap::new();
+    let mut last_usage = None;
+    let mut last_waiter_idx = usize::MAX;
+    let mut current = root_query;
+    while let indexmap::map::Entry::Vacant(entry) = visited.entry(current) {
+        entry.insert((last_usage, last_waiter_idx));
+        last_usage = Some(current);
+        (current, last_waiter_idx) = *subqueries
+            .get(&current)
+            .unwrap_or_else(|| {
+                panic!(
+                    "deadlock detected as we're unable to find a query cycle to break\n\
+                current query map:\n{:#?}",
+                    query_map
+                )
+            })
+            .first_key_value()
+            .unwrap()
+            .1;
+    }
+    let usage = visited[&current].0;
+    let mut iter = visited.keys().rev();
+    let mut cycle = Vec::new();
+    loop {
+        let query_id = *iter.next().unwrap();
+        let query = &query_map[&query_id];
+        cycle.push(QueryInfo { span: query.job.span, query: query.query.clone() });
+        if query_id == current {
+            break;
+        }
+    }
+
+    cycle.reverse();
+    let cycle_error = CycleError {
+        usage: usage.map(|id| {
+            let query = &query_map[&id];
+            (query.job.span, query.query.clone())
+        }),
+        cycle,
+    };
+
+    let (waited_on, waiter_idx) = if last_waiter_idx != usize::MAX {
+        (current, last_waiter_idx)
+    } else {
+        let (&waited_on, &(_, waiter_idx)) =
+            visited.iter().rev().find(|(_, (_, waiter_idx))| *waiter_idx != usize::MAX).unwrap();
+        (waited_on, waiter_idx)
+    };
+    let waited_on = &query_map[&waited_on];
+    let latch = waited_on.job.latch.upgrade().unwrap();
+    let latch_info_lock = latch.info.try_lock().unwrap();
+    let waiter = &latch_info_lock.waiters[waiter_idx];
+    let mut cycle_lock = waiter.cycle.try_lock().unwrap();
+    assert!(cycle_lock.is_none());
+    *cycle_lock = Some(cycle_error);
+    rustc_thread_pool::mark_unblocked(registry);
+    waiter.condvar.notify_one();
 
     // // Check that a cycle was found. It is possible for a deadlock to occur without
     // // a query cycle if a query which can be waited on uses Rayon to do multithreading
