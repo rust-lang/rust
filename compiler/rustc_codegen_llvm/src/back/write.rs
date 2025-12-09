@@ -783,9 +783,8 @@ pub(crate) unsafe fn llvm_optimize(
                 module.module_llvm.tm.raw(),
                 device_out_c.as_ptr(),
             );
-            assert!(ok, "LLVMRustBundleImages (device -> host.out) failed");
-            if !device_out.exists() {
-                panic!("BundleImages failed, `host.out` was not created!");
+            if !ok || !device_out.exists() {
+                dcx.emit_err(crate::errors::OffloadBundleImagesFailed);
             }
         }
     }
@@ -803,15 +802,16 @@ pub(crate) unsafe fn llvm_optimize(
         {
             let device_pathbuf = PathBuf::from(device_path);
             if device_pathbuf.is_relative() {
-                panic!("Absolute path is needed");
+                dcx.emit_err(crate::errors::OffloadWithoutAbsPath);
             } else if device_pathbuf
                 .file_name()
                 .and_then(|n| n.to_str())
                 .is_some_and(|n| n != "host.out")
             {
-                panic!("Need path to the host.out file");
+                dcx.emit_err(crate::errors::OffloadWrongFileName);
+            } else if !device_pathbuf.exists() {
+                dcx.emit_err(crate::errors::OffloadNonexistingPath);
             }
-            assert!(device_pathbuf.exists());
             let host_path = cgcx.output_filenames.path(OutputType::Object);
             let host_dir = host_path.parent().unwrap();
             let out_obj = host_dir.join("host.o");
@@ -823,7 +823,9 @@ pub(crate) unsafe fn llvm_optimize(
             let llmod2 = llvm::LLVMCloneModule(module.module_llvm.llmod());
             let ok =
                 unsafe { llvm::LLVMRustOffloadEmbedBufferInModule(llmod2, host_out_c.as_ptr()) };
-            assert!(ok, "LLVMRustOffloadEmbedBufferInModule failed");
+            if !ok {
+                dcx.emit_err(crate::errors::OffloadEmbedFailed);
+            }
             write_output_file(
                 dcx,
                 module.module_llvm.tm.raw(),
@@ -835,10 +837,6 @@ pub(crate) unsafe fn llvm_optimize(
                 &cgcx.prof,
                 true,
             );
-            if !out_obj.exists() {
-                dbg!("{:?} does not exist!", out_obj);
-                panic!("FinalizeOffload failed!");
-            }
             // We ignore cgcx.save_temps here and unconditionally always keep our `host.out` artifact.
             // Otherwise, recompiling the host code would fail since we deleted that device artifact
             // in the previous host compilation, which would be confusing at best.
