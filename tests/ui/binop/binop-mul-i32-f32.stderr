@@ -8,13 +8,19 @@ LL |     x * y
 help: the following other types implement trait `Mul<Rhs>`
   --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
    |
-   = note: `&i32` implements `Mul<i32>`
+   = note: `i32` implements `Mul`
+  ::: $SRC_DIR/core/src/ops/arith.rs:LL:COL
    |
-   = note: `&i32` implements `Mul`
+   = note: in this macro invocation
+  --> $SRC_DIR/core/src/internal_macros.rs:LL:COL
+   |
+   = note: `&i32` implements `Mul<i32>`
+  ::: $SRC_DIR/core/src/internal_macros.rs:LL:COL
    |
    = note: `i32` implements `Mul<&i32>`
+  ::: $SRC_DIR/core/src/internal_macros.rs:LL:COL
    |
-   = note: `i32` implements `Mul`
+   = note: `&i32` implements `Mul`
    = note: this error originates in the macro `mul_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 1 previous error
