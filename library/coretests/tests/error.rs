@@ -1,4 +1,4 @@
-use core::error::{Request, request_ref, request_value};
+use core::error::{Error, MultiRequestBuilder, MultiResponse, Request, request_ref, request_value};
 
 // Test the `Request` API.
 #[derive(Debug)]
@@ -84,26 +84,23 @@ fn test_error_generic_member_access_concrete() {
 fn test_error_combined_access_concrete() {
     let obj = SomeConcreteType { some_string: "hello".to_owned() };
 
-    let mut string_val = None;
-    let mut string_ref = None;
-    let mut u8_val = None;
-    let mut valid_ref = None;
-
-    MultiRequestBuilder::new()
+    let mut request = MultiRequestBuilder::new()
         .with_value::<String>()
         .with_ref::<String>()
         .with_value::<u8>()
         .with_ref::<Valid>()
-        .request(&obj)
-        .retrieve_value::<String>(|val| string_val = Some(val))
-        .retrieve_ref::<String>(|val| string_ref = Some(val))
-        .retrieve_value::<u8>(|val| u8_val = Some(val))
-        .retrieve_ref::<Valid>(|val| valid_ref = Some(val));
+        .request(&obj);
 
-    assert_eq!(string_ref.unwrap(), "hello");
-    assert_eq!(string_val.unwrap(), "bye");
-    assert_eq!(u8_val, None);
-    assert_eq!(valid_ref.unwrap(), Valid);
+    assert_eq!(request.retrieve_ref::<String>().unwrap(), "hello");
+    assert_eq!(request.retrieve_value::<String>().unwrap(), "bye");
+    assert_eq!(request.retrieve_value::<u8>(), None);
+    assert_eq!(request.retrieve_ref::<Valid>().unwrap(), &Valid);
+
+    // second retrieve of same value returns none
+    assert_eq!(request.retrieve_ref::<Valid>(), None);
+    assert_eq!(request.retrieve_value::<String>(), None);
+    // retrieving an unknown type should return none
+    assert_eq!(request.retrieve_value::<*const ()>(), None);
 }
 
 #[test]
@@ -111,24 +108,36 @@ fn test_error_combined_access_dyn() {
     let obj = SomeConcreteType { some_string: "hello".to_owned() };
     let obj: &dyn Error = &obj;
 
-    let mut string_val = None;
-    let mut string_ref = None;
-    let mut u8_val = None;
-    let mut valid_ref = None;
-
-    MultiRequestBuilder::new()
+    let mut request = MultiRequestBuilder::new()
         .with_value::<String>()
         .with_ref::<String>()
         .with_value::<u8>()
         .with_ref::<Valid>()
-        .request(&obj)
-        .retrieve_value::<String>(|val| string_val = Some(val))
-        .retrieve_ref::<String>(|val| string_ref = Some(val))
-        .retrieve_value::<u8>(|val| u8_val = Some(val))
-        .retrieve_ref::<Valid>(|val| valid_ref = Some(val));
+        .request(&obj);
 
-    assert_eq!(string_ref.unwrap(), "hello");
-    assert_eq!(string_val.unwrap(), "bye");
-    assert_eq!(u8_val, None);
-    assert_eq!(valid_ref.unwrap(), Valid);
+    assert_eq!(request.retrieve_ref::<String>().unwrap(), "hello");
+    assert_eq!(request.retrieve_value::<String>().unwrap(), "bye");
+    assert_eq!(request.retrieve_value::<u8>(), None);
+    assert_eq!(request.retrieve_ref::<Valid>().unwrap(), &Valid);
+
+    // second retrieve of same value returns none
+    assert_eq!(request.retrieve_ref::<Valid>(), None);
+    assert_eq!(request.retrieve_value::<String>(), None);
+    // retrieving an unknown type should return none
+    assert_eq!(request.retrieve_value::<*const ()>(), None);
+}
+
+fn assert_copy<T: Copy>(_t: T) {}
+
+#[test]
+fn test_builder_copy_and_debug() {
+    // Check that MultiRequestBuilder implements Debug + Copy even if the contents doesn't (the exact contents don't matter)
+    // (Chain*MultiRequest don't, but their values are not really user-visible so it doesn't matter)
+    let builder = MultiRequestBuilder::new().with_value::<Valid>().with_ref::<Invalid>();
+    assert_copy(builder);
+    // check Debug
+    assert_eq!(
+        format!("{:?}", builder),
+        "MultiRequestBuilder(\"core::error::provide::ChainRefMultiRequestBuilder<coretests::error::Invalid, core::error::provide::ChainValMultiRequestBuilder<coretests::error::Valid, core::error::provide::EmptyMultiRequestBuilder>>\")"
+    );
 }

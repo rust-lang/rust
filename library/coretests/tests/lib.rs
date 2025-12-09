@@ -173,6 +173,7 @@ mod clone;
 mod cmp;
 mod const_ptr;
 mod convert;
+mod error;
 mod ffi;
 mod floats;
 mod fmt;
