@@ -274,3 +274,13 @@ mod issue15770 {
         Ok(())
     }
 }
+
+mod issue16176 {
+    pub async fn foo() -> u32 {
+        todo!()
+    }
+
+    pub async fn bar(cond: bool) -> Option<u32> {
+        if cond { Some(foo().await) } else { None } // OK
+    }
+}
