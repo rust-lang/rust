@@ -1,3 +1,4 @@
+//@ ignore-cross-compile (relocations in generic ELF against `arm-unknown-linux-gnueabihf`)
 //@ needs-target-std
 
 use run_make_support::{bin_name, cwd, run, rustc};
