@@ -185,6 +185,7 @@
         - [Proof trees](./solve/proof-trees.md)
         - [Opaque types](./solve/opaque-types.md)
         - [Significant changes and quirks](./solve/significant-changes.md)
+        - [Sharing the trait solver with rust-analyzer](./solve/sharing-crates-with-rust-analyzer.md)
     - [`Unsize` and `CoerceUnsized` traits](./traits/unsize.md)
 - [Variance](./variance.md)
 - [Coherence checking](./coherence.md)
