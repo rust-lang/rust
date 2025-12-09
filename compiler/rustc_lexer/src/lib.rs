@@ -652,25 +652,22 @@ impl Cursor<'_> {
         };
 
         let mut depth = 1usize;
-        while let Some(c) = self.eat_past_either(b'/', b'*') {
-            match c {
-                b'/' => {
-                    if self.bump_if('*') {
-                        depth += 1;
+        while let Some(c) = self.eat_past_either(b'*', b'/') {
+            if c == b'*' {
+                if self.bump_if('/') {
+                    depth -= 1;
+                    if depth == 0 {
+                        // This block comment is closed, so for a construction like "/* */ */"
+                        // there will be a successfully parsed block comment "/* */"
+                        // and " */" will be processed separately.
+                        break;
                     }
                 }
-                b'*' => {
-                    if self.bump_if('/') {
-                        depth -= 1;
-                        if depth == 0 {
-                            // This block comment is closed, so for a construction like "/* */ */"
-                            // there will be a successfully parsed block comment "/* */"
-                            // and " */" will be processed separately.
-                            break;
-                        }
-                    }
+            } else {
+                // c == b'/'
+                if self.bump_if('*') {
+                    depth += 1;
                 }
-                _ => unreachable!(),
             }
         }
 
@@ -934,14 +931,13 @@ impl Cursor<'_> {
     fn double_quoted_string(&mut self) -> bool {
         debug_assert!(self.prev() == '"');
         while let Some(c) = self.eat_past_either(b'"', b'\\') {
-            match c {
-                b'"' => {
-                    return true;
-                }
-                b'\\' => _ = self.bump_if_either('\\', '"'),
-                _ => unreachable!(),
+            if c == b'"' {
+                return true;
             }
+            // Current is '\\', bump again if next is an escaped character.
+            self.bump_if_either('\\', '"');
         }
+        // End of file reached.
         false
     }
 
