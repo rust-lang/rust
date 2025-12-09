@@ -1,17 +1,19 @@
-//! Test that out-of-memory conditions trigger catchable panics with `-Z oom=panic`.
+//! Test that out-of-memory conditions trigger catchable panics with `set_alloc_error_hook`.
 
-//@ compile-flags: -Z oom=panic
 //@ run-pass
-//@ no-prefer-dynamic
 //@ needs-unwind
 //@ only-linux
 //@ ignore-backends: gcc
+
+#![feature(alloc_error_hook)]
 
 use std::hint::black_box;
 use std::mem::forget;
 use std::panic::catch_unwind;
 
 fn main() {
+    std::alloc::set_alloc_error_hook(|_| panic!());
+
     let panic = catch_unwind(|| {
         // This is guaranteed to exceed even the size of the address space
         for _ in 0..16 {
