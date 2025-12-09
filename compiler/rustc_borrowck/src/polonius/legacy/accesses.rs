@@ -67,12 +67,11 @@ impl<'a, 'tcx> Visitor<'tcx> for AccessFactsExtractor<'a, 'tcx> {
         match context {
             PlaceContext::NonMutatingUse(_)
             | PlaceContext::MutatingUse(MutatingUseContext::Borrow) => {
-                let path = match self.move_data.rev_lookup.find(place.as_ref()) {
-                    LookupResult::Exact(path) | LookupResult::Parent(Some(path)) => path,
-                    _ => {
-                        // There's no path access to emit.
-                        return;
-                    }
+                let (LookupResult::Exact(path) | LookupResult::Parent(Some(path))) =
+                    self.move_data.rev_lookup.find(place.as_ref())
+                else {
+                    // There's no path access to emit.
+                    return;
                 };
                 debug!("AccessFactsExtractor - emit path access ({path:?}, {location:?})");
                 self.facts.path_accessed_at_base.push((path, self.location_to_index(location)));

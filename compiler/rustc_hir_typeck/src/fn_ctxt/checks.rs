@@ -1467,11 +1467,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             _ => None,
                         }
                     });
-                    if let Some(new_def_id) = new_def_id {
-                        def_id = new_def_id;
-                    } else {
-                        return;
-                    }
+                    let Some(new_def_id) = new_def_id else { return };
+                    def_id = new_def_id;
                 }
             }
         }

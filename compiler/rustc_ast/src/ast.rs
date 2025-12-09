@@ -1534,11 +1534,10 @@ impl Expr {
             // then type of result is trait object.
             // Otherwise we don't assume the result type.
             ExprKind::Binary(binop, lhs, rhs) if binop.node == BinOpKind::Add => {
-                if let (Some(lhs), Some(rhs)) = (lhs.to_bound(), rhs.to_bound()) {
-                    TyKind::TraitObject(vec![lhs, rhs], TraitObjectSyntax::None)
-                } else {
+                let (Some(lhs), Some(rhs)) = (lhs.to_bound(), rhs.to_bound()) else {
                     return None;
-                }
+                };
+                TyKind::TraitObject(vec![lhs, rhs], TraitObjectSyntax::None)
             }
 
             ExprKind::Underscore => TyKind::Infer,

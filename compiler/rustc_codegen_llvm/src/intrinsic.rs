@@ -1756,11 +1756,10 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             }};
         }
 
-        let elem_ty = if let ty::Float(f) = in_elem.kind() {
-            bx.cx.type_float_from_ty(*f)
-        } else {
+        let ty::Float(f) = in_elem.kind() else {
             return_error!(InvalidMonomorphization::FloatingPointType { span, name, in_ty });
         };
+        let elem_ty = bx.cx.type_float_from_ty(*f);
 
         let vec_ty = bx.type_vector(elem_ty, in_len);
 

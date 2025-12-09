@@ -100,11 +100,8 @@ impl<'tcx> MovePath<'tcx> {
         move_paths: &IndexSlice<MovePathIndex, MovePath<'_>>,
         f: impl Fn(MovePathIndex) -> bool,
     ) -> Option<MovePathIndex> {
-        let mut todo = if let Some(child) = self.first_child {
-            vec![child]
-        } else {
-            return None;
-        };
+        let Some(child) = self.first_child else { return None };
+        let mut todo = vec![child];
 
         while let Some(mpi) = todo.pop() {
             if f(mpi) {
@@ -331,11 +328,10 @@ impl<'tcx> MovePathLookup<'tcx> {
                 MoveSubPathResult::Stop => None,
             };
 
-            if let Some(&subpath) = subpath {
-                result = subpath;
-            } else {
+            let Some(&subpath) = subpath else {
                 return LookupResult::Parent(Some(result));
-            }
+            };
+            result = subpath;
         }
 
         LookupResult::Exact(result)

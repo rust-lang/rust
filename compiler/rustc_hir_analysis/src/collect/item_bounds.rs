@@ -188,29 +188,26 @@ fn remap_gat_vars_and_recurse_into_nested_projections<'tcx>(
     for (param, var) in std::iter::zip(&generics.own_params, gat_vars) {
         let existing = match var.kind() {
             ty::GenericArgKind::Lifetime(re) => {
-                if let ty::RegionKind::ReBound(ty::BoundVarIndexKind::Bound(ty::INNERMOST), bv) =
+                let ty::RegionKind::ReBound(ty::BoundVarIndexKind::Bound(ty::INNERMOST), bv) =
                     re.kind()
-                {
-                    mapping.insert(bv.var, tcx.mk_param_from_def(param))
-                } else {
+                else {
                     return None;
-                }
+                };
+                mapping.insert(bv.var, tcx.mk_param_from_def(param))
             }
             ty::GenericArgKind::Type(ty) => {
-                if let ty::Bound(ty::BoundVarIndexKind::Bound(ty::INNERMOST), bv) = *ty.kind() {
-                    mapping.insert(bv.var, tcx.mk_param_from_def(param))
-                } else {
+                let ty::Bound(ty::BoundVarIndexKind::Bound(ty::INNERMOST), bv) = *ty.kind() else {
                     return None;
-                }
+                };
+                mapping.insert(bv.var, tcx.mk_param_from_def(param))
             }
             ty::GenericArgKind::Const(ct) => {
-                if let ty::ConstKind::Bound(ty::BoundVarIndexKind::Bound(ty::INNERMOST), bv) =
+                let ty::ConstKind::Bound(ty::BoundVarIndexKind::Bound(ty::INNERMOST), bv) =
                     ct.kind()
-                {
-                    mapping.insert(bv.var, tcx.mk_param_from_def(param))
-                } else {
+                else {
                     return None;
-                }
+                };
+                mapping.insert(bv.var, tcx.mk_param_from_def(param))
             }
         };
 
