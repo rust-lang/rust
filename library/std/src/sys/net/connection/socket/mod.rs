@@ -211,6 +211,43 @@ unsafe fn socket_addr_from_c(
     }
 }
 
+// Structs that have sockaddr header and can be marshalled to and from sockaddr_storage
+pub(crate) trait SockaddrLike: Sized {
+    // used in recvmsg to parse the received addr
+    unsafe fn from_storage(storage: &c::sockaddr_storage, len: c::socklen_t) -> io::Result<Self>;
+
+    // used in sendmsg to write to a sockaddr_storage buffer
+    fn to_storage(&self, storage_ret: &mut c::sockaddr_storage) -> c::socklen_t;
+}
+
+impl SockaddrLike for SocketAddr {
+    unsafe fn from_storage(storage: &c::sockaddr_storage, len: c::socklen_t) -> io::Result<Self> {
+        socket_addr_from_c(storage as *const _, len as _)
+    }
+
+    fn to_storage(&self, storage_ret: &mut c::sockaddr_storage) -> c::socklen_t {
+        let (crep, len) = socket_addr_to_c(self);
+        unsafe {
+            crate::ptr::copy_nonoverlapping(
+                &raw const crep,
+                (storage_ret as *mut c::sockaddr_storage).cast(),
+                len as _,
+            );
+        }
+        len as _
+    }
+}
+
+impl SockaddrLike for () {
+    unsafe fn from_storage(_storage: &c::sockaddr_storage, _len: c::socklen_t) -> io::Result<Self> {
+        Ok(())
+    }
+
+    fn to_storage(&self, _storage_ret: &mut c::sockaddr_storage) -> c::socklen_t {
+        0
+    }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // sockaddr and misc bindings
 ////////////////////////////////////////////////////////////////////////////////
