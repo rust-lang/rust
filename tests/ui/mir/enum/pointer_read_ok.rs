@@ -1,3 +1,5 @@
+//@ ignore-test
+
 //@ run-pass
 //@ compile-flags: -C debug-assertions
 

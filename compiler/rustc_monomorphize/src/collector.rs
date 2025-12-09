@@ -905,7 +905,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
                 mir::AssertKind::NullPointerDereference => {
                     push_mono_lang_item(self, LangItem::PanicNullPointerDereference);
                 }
-                mir::AssertKind::InvalidEnumConstruction(_) => {
+                mir::AssertKind::InvalidEnumConstruction(..) => {
                     push_mono_lang_item(self, LangItem::PanicInvalidEnumConstruction);
                 }
                 _ => {

@@ -208,7 +208,7 @@ impl<O> AssertKind<O> {
                 LangItem::PanicGenFnNonePanic
             }
             NullPointerDereference => LangItem::PanicNullPointerDereference,
-            InvalidEnumConstruction(_) => LangItem::PanicInvalidEnumConstruction,
+            InvalidEnumConstruction(..) => LangItem::PanicInvalidEnumConstruction,
             ResumedAfterDrop(CoroutineKind::Coroutine(_)) => LangItem::PanicCoroutineResumedDrop,
             ResumedAfterDrop(CoroutineKind::Desugared(CoroutineDesugaring::Async, _)) => {
                 LangItem::PanicAsyncFnResumedDrop
@@ -285,8 +285,11 @@ impl<O> AssertKind<O> {
                 )
             }
             NullPointerDereference => write!(f, "\"null pointer dereference occurred\""),
-            InvalidEnumConstruction(source) => {
-                write!(f, "\"trying to construct an enum from an invalid value {{}}\", {source:?}")
+            InvalidEnumConstruction(ty, source) => {
+                write!(
+                    f,
+                    "\"trying to construct an enum from an invalid value {{}}; type {{}}\", {source:?}, {ty:?}"
+                )
             }
             ResumedAfterReturn(CoroutineKind::Coroutine(_)) => {
                 write!(f, "\"coroutine resumed after completion\"")
@@ -379,7 +382,7 @@ impl<O> AssertKind<O> {
                 msg!("coroutine resumed after panicking")
             }
             NullPointerDereference => msg!("null pointer dereference occurred"),
-            InvalidEnumConstruction(_) => {
+            InvalidEnumConstruction(..) => {
                 msg!("trying to construct an enum from an invalid value `{$source}`")
             }
             ResumedAfterDrop(CoroutineKind::Desugared(CoroutineDesugaring::Async, _)) => {
@@ -437,8 +440,9 @@ impl<O> AssertKind<O> {
                 add!("required", format!("{required:#?}"));
                 add!("found", format!("{found:#?}"));
             }
-            InvalidEnumConstruction(source) => {
+            InvalidEnumConstruction(ty, source) => {
                 add!("source", format!("{source:#?}"));
+                add!("ty", format!("{ty:#?}"));
             }
         }
     }
