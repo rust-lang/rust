@@ -70,6 +70,7 @@ pub static LINTS: &[&::declare_clippy_lint::LintInfo] = &[
     crate::casts::FN_TO_NUMERIC_CAST_ANY_INFO,
     crate::casts::FN_TO_NUMERIC_CAST_WITH_TRUNCATION_INFO,
     crate::casts::MANUAL_DANGLING_PTR_INFO,
+    crate::casts::NEEDLESS_TYPE_CAST_INFO,
     crate::casts::PTR_AS_PTR_INFO,
     crate::casts::PTR_CAST_CONSTNESS_INFO,
     crate::casts::REF_AS_PTR_INFO,
