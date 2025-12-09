@@ -21,3 +21,4 @@ tempfile = "3.5"
 derive_builder = "0.20"
 clap = { version = "4", features = ["derive"] }
 tabled = { version = "0.15", default-features = false, features = ["std"] }
+ureq = "3.1.4"
