@@ -615,7 +615,7 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
         }
 
         if invalid_infostring {
-            let line_end = s[real_start..].find('\n').unwrap_or(s[real_start..].len());
+            let line_end = real_s.find('\n').unwrap_or(real_s.len());
             let span = self.mk_sp(
                 frontmatter_opening_end_pos,
                 frontmatter_opening_pos + BytePos(line_end as u32),
