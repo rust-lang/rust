@@ -21,7 +21,7 @@ use rustc_index::bit_set::DenseBitSet;
 use rustc_macros::{
     BlobDecodable, Decodable, Encodable, LazyDecodable, MetadataEncodable, TyDecodable, TyEncodable,
 };
-use rustc_middle::metadata::ModChild;
+use rustc_middle::metadata::{AmbigModChild, ModChild};
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::middle::debugger_visualizer::DebuggerVisualizerFile;
 use rustc_middle::middle::deduced_param_attrs::DeducedParamAttrs;
@@ -399,6 +399,7 @@ define_tables! {
     // That's why the encoded list needs to contain `ModChild` structures describing all the names
     // individually instead of `DefId`s.
     module_children_reexports: Table<DefIndex, LazyArray<ModChild>>,
+    ambig_module_children: Table<DefIndex, LazyArray<AmbigModChild>>,
     cross_crate_inlinable: Table<DefIndex, bool>,
     asyncness: Table<DefIndex, ty::Asyncness>,
     constness: Table<DefIndex, hir::Constness>,
