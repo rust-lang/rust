@@ -5,6 +5,7 @@ use Namespace::*;
 use rustc_ast::{self as ast, NodeId};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::{DefKind, MacroKinds, Namespace, NonMacroAttrKind, PartialRes, PerNS};
+use rustc_middle::ty::Visibility;
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint::builtin::PROC_MACRO_DERIVE_RESOLUTION_FALLBACK;
 use rustc_session::parse::feature_err;
@@ -469,9 +470,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         // We do not need to report them if we are either in speculative resolution,
                         // or in late resolution when everything is already imported and expanded
                         // and no ambiguities exist.
-                        if matches!(finalize, None | Some(Finalize { stage: Stage::Late, .. })) {
-                            return ControlFlow::Break(Ok(binding));
-                        }
+                        let import_vis = match finalize {
+                            None | Some(Finalize { stage: Stage::Late, .. }) => {
+                                return ControlFlow::Break(Ok(binding));
+                            }
+                            Some(Finalize { import_vis, .. }) => import_vis,
+                        };
 
                         if let Some((innermost_binding, innermost_flags)) = innermost_result {
                             // Found another solution, if the first one was "weak", report an error.
@@ -482,6 +486,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                 innermost_binding,
                                 flags,
                                 innermost_flags,
+                                import_vis,
                                 extern_prelude_item_binding,
                                 extern_prelude_flag_binding,
                             ) {
@@ -730,11 +735,13 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         innermost_binding: NameBinding<'ra>,
         flags: Flags,
         innermost_flags: Flags,
+        import_vis: Option<Visibility>,
         extern_prelude_item_binding: Option<NameBinding<'ra>>,
         extern_prelude_flag_binding: Option<NameBinding<'ra>>,
     ) -> bool {
         let (res, innermost_res) = (binding.res(), innermost_binding.res());
-        if res == innermost_res {
+        let ambig_vis = self.ambig_vis(import_vis, binding, innermost_binding);
+        if res == innermost_res && ambig_vis.is_none() {
             return false;
         }
 
@@ -793,10 +800,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             };
             self.ambiguity_errors.push(AmbiguityError {
                 kind,
+                ambig_vis,
                 ident: orig_ident,
                 b1: innermost_binding,
                 b2: binding,
-                warning: false,
+                warning: ambig_vis.is_some(),
                 misc1: misc(innermost_flags),
                 misc2: misc(flags),
             });
@@ -1207,17 +1215,20 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             && shadowing == Shadowing::Restricted
             && finalize.stage == Stage::Early
             && binding.expansion != LocalExpnId::ROOT
-            && binding.res() != shadowed_glob.res()
         {
-            self.ambiguity_errors.push(AmbiguityError {
-                kind: AmbiguityKind::GlobVsExpanded,
-                ident,
-                b1: binding,
-                b2: shadowed_glob,
-                warning: false,
-                misc1: AmbiguityErrorMisc::None,
-                misc2: AmbiguityErrorMisc::None,
-            });
+            let ambig_vis = self.ambig_vis(finalize.import_vis, shadowed_glob, binding);
+            if shadowed_glob.res() != binding.res() || ambig_vis.is_some() {
+                self.ambiguity_errors.push(AmbiguityError {
+                    kind: AmbiguityKind::GlobVsExpanded,
+                    ambig_vis,
+                    ident,
+                    b1: binding,
+                    b2: shadowed_glob,
+                    warning: ambig_vis.is_some(),
+                    misc1: AmbiguityErrorMisc::None,
+                    misc2: AmbiguityErrorMisc::None,
+                });
+            }
         }
 
         if shadowing == Shadowing::Unrestricted
@@ -1322,6 +1333,23 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         }
 
         false
+    }
+
+    fn ambig_vis(
+        &self,
+        import_vis: Option<Visibility>,
+        binding: NameBinding<'ra>,
+        innermost_binding: NameBinding<'ra>,
+    ) -> Option<(Visibility, Visibility)> {
+        match import_vis {
+            Some(import_vis) if binding.res() == innermost_binding.res() => {
+                let min =
+                    |b: NameBinding<'_>| b.vis.min(import_vis.to_def_id(), self.tcx).expect_local();
+                let (min1, min2) = (min(binding), min(innermost_binding));
+                (min1 != min2).then_some((min1, min2))
+            }
+            _ => None,
+        }
     }
 
     /// Validate a local resolution (from ribs).

@@ -904,6 +904,7 @@ enum AmbiguityErrorMisc {
 
 struct AmbiguityError<'ra> {
     kind: AmbiguityKind,
+    ambig_vis: Option<(Visibility, Visibility)>,
     ident: Ident,
     b1: NameBinding<'ra>,
     b2: NameBinding<'ra>,
@@ -2032,6 +2033,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         if let Some((b2, kind)) = used_binding.ambiguity {
             let ambiguity_error = AmbiguityError {
                 kind,
+                ambig_vis: None,
                 ident,
                 b1: used_binding,
                 b2,
@@ -2502,6 +2504,8 @@ struct Finalize {
     used: Used = Used::Other,
     /// Finalizing early or late resolution.
     stage: Stage = Stage::Early,
+    /// Nominal visibility of the import item, in case we are resolving and import's final segment.
+    import_vis: Option<Visibility> = None,
 }
 
 impl Finalize {
