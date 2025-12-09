@@ -46,12 +46,16 @@ error[E0425]: cannot find type `i` in this scope
   --> $DIR/macro-context.rs:3:13
    |
 LL |     () => ( i ; typeof );
-   |             ^ help: a builtin type with a similar name exists: `i8`
+   |             ^
 ...
 LL |     let a: m!();
    |            ---- in this macro invocation
    |
    = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: a builtin type with a similar name exists
+   |
+LL |     () => ( i8 ; typeof );
+   |              +
 
 error[E0425]: cannot find value `i` in this scope
   --> $DIR/macro-context.rs:3:13
