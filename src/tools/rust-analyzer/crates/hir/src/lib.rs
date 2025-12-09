@@ -590,7 +590,7 @@ impl Module {
         while id.is_block_module(db) {
             id = id.containing_module(db).expect("block without parent module");
         }
-        Module { id: unsafe { id.to_static() } }
+        Module { id }
     }
 
     pub fn path_to_root(self, db: &dyn HirDatabase) -> Vec<Module> {
@@ -4352,7 +4352,7 @@ impl Impl {
                 module.block(db),
                 &mut |impls| extend_with_impls(impls.for_self_ty(&simplified_ty)),
             );
-            std::iter::successors(module.block(db), |block| block.module(db).block(db))
+            std::iter::successors(module.block(db), |block| block.loc(db).module.block(db))
                 .filter_map(|block| TraitImpls::for_block(db, block).as_deref())
                 .for_each(|impls| impls.for_self_ty(&simplified_ty, &mut extend_with_impls));
             for &krate in &**db.all_crates() {
