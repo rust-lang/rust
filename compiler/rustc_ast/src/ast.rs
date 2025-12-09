@@ -1259,6 +1259,19 @@ pub enum StmtKind {
     MacCall(Box<MacCallStmt>),
 }
 
+impl StmtKind {
+    pub fn descr(&self) -> &'static str {
+        match self {
+            StmtKind::Let(_) => "local",
+            StmtKind::Item(_) => "item",
+            StmtKind::Expr(_) => "expression",
+            StmtKind::Semi(_) => "statement",
+            StmtKind::Empty => "semicolon",
+            StmtKind::MacCall(_) => "macro call",
+        }
+    }
+}
+
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
 pub struct MacCallStmt {
     pub mac: Box<MacCall>,
