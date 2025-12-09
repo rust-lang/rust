@@ -990,7 +990,7 @@ fn default_emitter(
 #[allow(rustc::bad_opt_access)]
 #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
 pub fn build_session(
-    sopts: config::Options,
+    mut sopts: config::Options,
     io: CompilerIO,
     fluent_bundle: Option<Arc<rustc_errors::FluentBundle>>,
     registry: rustc_errors::registry::Registry,
@@ -1001,6 +1001,11 @@ pub fn build_session(
     ice_file: Option<PathBuf>,
     using_internal_features: &'static AtomicBool,
 ) -> Session {
+    match sopts.debuginfo {
+        DebugInfo::None | DebugInfo::LineDirectivesOnly | DebugInfo::LineTablesOnly => {}
+        DebugInfo::Limited | DebugInfo::Full => sopts.debuginfo = DebugInfo::LineTablesOnly,
+    }
+
     // FIXME: This is not general enough to make the warning lint completely override
     // normal diagnostic warnings, since the warning lint can also be denied and changed
     // later via the source code.
