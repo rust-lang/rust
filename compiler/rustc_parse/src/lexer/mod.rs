@@ -623,10 +623,10 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
             self.dcx().emit_err(errors::FrontmatterInvalidInfostring { span });
         }
 
-        let last_line_start = within.rfind('\n').map_or(0, |i| i + 1);
-        let last_line = &within[last_line_start..];
+        let last_line_start = real_s.rfind('\n').map_or(0, |i| i + 1);
+        let last_line = &real_s[last_line_start..];
         let last_line_trimmed = last_line.trim_start_matches(is_horizontal_whitespace);
-        let last_line_start_pos = frontmatter_opening_end_pos + BytePos(last_line_start as u32);
+        let last_line_start_pos = frontmatter_opening_pos + BytePos(last_line_start as u32);
 
         let frontmatter_span = self.mk_sp(frontmatter_opening_pos, self.pos);
         self.psess.gated_spans.gate(sym::frontmatter, frontmatter_span);
