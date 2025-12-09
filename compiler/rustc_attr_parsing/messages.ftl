@@ -87,6 +87,7 @@ attr_parsing_invalid_link_modifier =
 attr_parsing_invalid_meta_item = expected a literal (`1u8`, `1.0f32`, `"string"`, etc.) here, found {$descr}
     .remove_neg_sugg = negative numbers are not literals, try removing the `-` sign
     .quote_ident_sugg = surround the identifier with quotation marks to make it into a string literal
+    .label = {$descr}s are not allowed here
 
 attr_parsing_invalid_predicate =
     invalid predicate `{$predicate}`
