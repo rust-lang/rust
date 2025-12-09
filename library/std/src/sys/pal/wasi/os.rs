@@ -19,13 +19,20 @@ pub mod libc {
     }
 }
 
-pub fn errno() -> i32 {
-    unsafe extern "C" {
-        #[thread_local]
-        static errno: libc::c_int;
-    }
+unsafe extern "C" {
+    #[thread_local]
+    #[link_name = "errno"]
+    static mut libc_errno: libc::c_int;
+}
 
-    unsafe { errno as i32 }
+pub fn errno() -> i32 {
+    unsafe { libc_errno as i32 }
+}
+
+pub fn set_errno(val: i32) {
+    unsafe {
+        libc_errno = val;
+    }
 }
 
 pub fn error_string(errno: i32) -> String {
@@ -148,4 +155,17 @@ impl_is_minus_one! { i8 i16 i32 i64 isize }
 
 pub fn cvt<T: IsMinusOne>(t: T) -> io::Result<T> {
     if t.is_minus_one() { Err(io::Error::last_os_error()) } else { Ok(t) }
+}
+
+pub fn cvt_r<T, F>(mut f: F) -> crate::io::Result<T>
+where
+    T: IsMinusOne,
+    F: FnMut() -> T,
+{
+    loop {
+        match cvt(f()) {
+            Err(ref e) if e.is_interrupted() => {}
+            other => return other,
+        }
+    }
 }

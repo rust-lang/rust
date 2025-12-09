@@ -35,7 +35,7 @@ cfg_select! {
 
 use crate::cmp;
 use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut, Read};
-use crate::os::unix::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd};
+use crate::os::fd::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd};
 use crate::sys::cvt;
 #[cfg(all(target_os = "android", target_pointer_width = "64"))]
 use crate::sys::pal::weak::syscall;
@@ -152,7 +152,8 @@ impl FileDesc {
             target_os = "espidf",
             target_os = "horizon",
             target_os = "vita",
-            target_os = "nuttx"
+            target_os = "nuttx",
+            target_os = "wasi",
         )))
     }
 
@@ -385,7 +386,8 @@ impl FileDesc {
             target_os = "espidf",
             target_os = "horizon",
             target_os = "vita",
-            target_os = "nuttx"
+            target_os = "nuttx",
+            target_os = "wasi",
         )))
     }
 
@@ -560,6 +562,7 @@ impl FileDesc {
         target_os = "redox",
         target_os = "vxworks",
         target_os = "nto",
+        target_os = "wasi",
     )))]
     pub fn set_cloexec(&self) -> io::Result<()> {
         unsafe {
@@ -583,6 +586,7 @@ impl FileDesc {
         target_os = "redox",
         target_os = "vxworks",
         target_os = "nto",
+        target_os = "wasi",
     ))]
     pub fn set_cloexec(&self) -> io::Result<()> {
         unsafe {
