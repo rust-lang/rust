@@ -3199,3 +3199,13 @@ pub(crate) struct UnusedVisibility {
     #[suggestion(style = "short", code = "", applicability = "machine-applicable")]
     pub span: Span,
 }
+
+#[derive(LintDiagnostic)]
+#[diag(lint_unreachable_cfg)]
+pub(crate) struct UnreachableCfg {
+    #[label(lint_label2)]
+    pub span: Span,
+
+    #[label]
+    pub wildcard_span: Span,
+}

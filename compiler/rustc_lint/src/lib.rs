@@ -295,6 +295,7 @@ fn register_builtins(store: &mut LintStore) {
         UNUSED_ASSIGNMENTS,
         DEAD_CODE,
         UNUSED_MUT,
+        UNREACHABLE_CFGS,
         UNREACHABLE_CODE,
         UNREACHABLE_PATTERNS,
         UNUSED_MUST_USE,

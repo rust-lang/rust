@@ -7,6 +7,8 @@ use rustc_hir::attrs::CfgEntry;
 use rustc_parse::exp;
 use rustc_parse::parser::Parser;
 use rustc_session::Session;
+use rustc_session::lint::BuiltinLintDiag;
+use rustc_session::lint::builtin::UNREACHABLE_CFGS;
 use rustc_span::{ErrorGuaranteed, Ident, Span};
 
 use crate::parser::MetaItemOrLitParser;
@@ -83,6 +85,17 @@ pub fn parse_cfg_select(
                 None => branches.reachable.push((cfg, tts, span)),
                 Some(_) => branches.unreachable.push((CfgSelectPredicate::Cfg(cfg), tts, span)),
             }
+        }
+    }
+
+    if let Some((underscore, _, _)) = branches.wildcard {
+        for (_, _, span) in &branches.unreachable {
+            p.psess.buffer_lint(
+                UNREACHABLE_CFGS,
+                *span,
+                lint_node_id,
+                BuiltinLintDiag::UnreachableCfg { span: *span, wildcard_span: underscore.span },
+            );
         }
     }
 
