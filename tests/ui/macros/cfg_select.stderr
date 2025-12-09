@@ -60,12 +60,32 @@ LL |     a + 1 => {}
    |       ^ expected one of `(`, `::`, `=>`, or `=`
 
 error: expected one of `(`, `::`, `=>`, or `=`, found `!`
-  --> $DIR/cfg_select.rs:95:8
+  --> $DIR/cfg_select.rs:96:8
    |
 LL |     cfg!() => {}
    |        ^ expected one of `(`, `::`, `=>`, or `=`
 
-error: aborting due to 9 previous errors; 1 warning emitted
+warning: unexpected `cfg` condition name: `a`
+  --> $DIR/cfg_select.rs:90:5
+   |
+LL |     a + 1 => {}
+   |     ^ help: found config with similar value: `target_feature = "a"`
+   |
+   = help: expected names are: `FALSE` and `test` and 31 more
+   = help: to expect this configuration use `--check-cfg=cfg(a)`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+   = note: `#[warn(unexpected_cfgs)]` on by default
+
+warning: unexpected `cfg` condition name: `cfg`
+  --> $DIR/cfg_select.rs:96:5
+   |
+LL |     cfg!() => {}
+   |     ^^^
+   |
+   = help: to expect this configuration use `--check-cfg=cfg(cfg)`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+
+error: aborting due to 9 previous errors; 3 warnings emitted
 
 Some errors have detailed explanations: E0537, E0539.
 For more information about an error, try `rustc --explain E0537`.
