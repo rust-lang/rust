@@ -1,13 +1,28 @@
-mod some_module {
+pub mod some_module {
     compile_error!("Error in a module"); //~ ERROR: Error in a module
 
-    fn abc() {
+    fn abc() -> Hello {
         let _: self::SomeType = self::Hello::new();
         let _: SomeType = Hello::new();
     }
+
+    mod inner_module {
+        use super::Hello;
+        use crate::another_module::NotExist;  //~ ERROR: unresolved import `crate::another_module::NotExist`
+        use crate::some_module::World;
+        struct Foo {
+            bar: super::Xyz,
+            error: self::MissingType, //~ ERROR: cannot find type `MissingType` in module `self`
+        }
+    }
 }
 
-mod another_module {}
+pub mod another_module {
+    use crate::some_module::NotExist;
+    fn error_in_this_function() {
+        compile_error!("Error in a function"); //~ ERROR: Error in a function
+    }
+}
 
 fn main() {
     // these errors are suppressed because of the compile_error! macro
