@@ -150,12 +150,16 @@ impl TestCx<'_> {
             debug!("script_str = {}", script_str);
             self.dump_output_file(&script_str, "debugger.script");
 
-            let adb_path = &self.config.adb_path;
+            // Note: when `--android-cross-path` is specified, we expect both `adb_path` and
+            // `adb_test_dir` to be available.
+            let adb_path = self.config.adb_path.as_ref().expect("`adb_path` must be specified");
+            let adb_test_dir =
+                self.config.adb_test_dir.as_ref().expect("`adb_test_dir` must be specified");
 
             Command::new(adb_path)
                 .arg("push")
                 .arg(&exe_file)
-                .arg(&self.config.adb_test_dir)
+                .arg(adb_test_dir)
                 .status()
                 .unwrap_or_else(|e| panic!("failed to exec `{adb_path:?}`: {e:?}"));
 
@@ -167,9 +171,9 @@ impl TestCx<'_> {
             let adb_arg = format!(
                 "export LD_LIBRARY_PATH={}; \
                  gdbserver{} :5039 {}/{}",
-                self.config.adb_test_dir.clone(),
+                adb_test_dir,
                 if self.config.target.contains("aarch64") { "64" } else { "" },
-                self.config.adb_test_dir.clone(),
+                adb_test_dir,
                 exe_file.file_name().unwrap()
             );
 

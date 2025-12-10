@@ -260,11 +260,9 @@ fn parse_config(args: Vec<String>) -> Config {
 
     let android_cross_path = matches.opt_str("android-cross-path").map(Utf8PathBuf::from);
 
-    // FIXME: `adb_path` should be an `Option<Utf8PathBuf>`...
-    let adb_path = matches.opt_str("adb-path").map(Utf8PathBuf::from).unwrap_or_default();
-    // FIXME: `adb_test_dir` should be an `Option<Utf8PathBuf>`...
-    let adb_test_dir = matches.opt_str("adb-test-dir").map(Utf8PathBuf::from).unwrap_or_default();
-    let adb_device_status = target.contains("android") && !adb_test_dir.as_str().is_empty();
+    let adb_path = matches.opt_str("adb-path").map(Utf8PathBuf::from);
+    let adb_test_dir = matches.opt_str("adb-test-dir").map(Utf8PathBuf::from);
+    let adb_device_status = target.contains("android") && adb_test_dir.is_some();
 
     // FIXME: `cdb_version` is *derived* from cdb, but it's *not* technically a config!
     let cdb = debuggers::discover_cdb(matches.opt_str("cdb"), &target);
