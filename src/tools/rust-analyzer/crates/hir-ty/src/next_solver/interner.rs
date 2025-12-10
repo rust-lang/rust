@@ -1104,14 +1104,7 @@ impl<'db> Interner for DbInterner<'db> {
 
     fn type_of(self, def_id: Self::DefId) -> EarlyBinder<Self, Self::Ty> {
         match def_id {
-            SolverDefId::TypeAliasId(id) => {
-                use hir_def::Lookup;
-                match id.lookup(self.db()).container {
-                    ItemContainerId::ImplId(it) => it,
-                    _ => panic!("assoc ty value should be in impl"),
-                };
-                self.db().ty(id.into())
-            }
+            SolverDefId::TypeAliasId(id) => self.db().ty(id.into()),
             SolverDefId::AdtId(id) => self.db().ty(id.into()),
             // FIXME(next-solver): This uses the types of `query mir_borrowck` in rustc.
             //
