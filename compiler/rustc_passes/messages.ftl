@@ -494,6 +494,9 @@ passes_remove_fields =
      *[other] fields
     }
 
+passes_repr_align_greater_than_coff_max =
+    alignment must not be greater than 8192 bytes for COFF targets
+
 passes_repr_align_greater_than_target_max =
     alignment must not be greater than `isize::MAX` bytes
     .note = `isize::MAX` is {$size} for the current target

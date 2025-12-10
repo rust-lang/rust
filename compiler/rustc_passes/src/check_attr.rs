@@ -44,12 +44,17 @@ use rustc_session::lint::builtin::{
 use rustc_session::parse::feature_err;
 use rustc_span::edition::Edition;
 use rustc_span::{BytePos, DUMMY_SP, Span, Symbol, edition, sym};
+use rustc_target::spec::BinaryFormat;
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::infer::{TyCtxtInferExt, ValuePairs};
 use rustc_trait_selection::traits::ObligationCtxt;
 use tracing::debug;
 
 use crate::{errors, fluent_generated as fluent};
+
+// Max alignment supported for PE-COFF binary format.
+// See https://learn.microsoft.com/en-us/cpp/cpp/align-cpp?view=msvc-170
+const COFF_MAX_ALIGN_BYTES: u64 = 0x2000;
 
 #[derive(LintDiagnostic)]
 #[diag(passes_diagnostic_diagnostic_on_unimplemented_only_for_traits)]
@@ -1866,6 +1871,12 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     }
 
     fn check_align(&self, align: Align, span: Span) {
+        if self.tcx.sess.target.binary_format == BinaryFormat::Coff {
+            if align.bytes() > COFF_MAX_ALIGN_BYTES {
+                self.dcx().emit_err(errors::InvalidReprAlignForCoff { span });
+            }
+        }
+
         if align.bytes() > 2_u64.pow(29) {
             // for values greater than 2^29, a different error will be emitted, make sure that happens
             self.dcx().span_delayed_bug(
