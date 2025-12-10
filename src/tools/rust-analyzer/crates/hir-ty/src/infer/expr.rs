@@ -17,7 +17,7 @@ use hir_expand::name::Name;
 use rustc_ast_ir::Mutability;
 use rustc_type_ir::{
     CoroutineArgs, CoroutineArgsParts, InferTy, Interner,
-    inherent::{AdtDef, GenericArgs as _, IntoKind, SliceLike, Ty as _},
+    inherent::{AdtDef, GenericArgs as _, IntoKind, Ty as _},
 };
 use syntax::ast::RangeOp;
 use tracing::debug;
@@ -35,7 +35,7 @@ use crate::{
     lower::{GenericPredicates, lower_mutability},
     method_resolution::{self, CandidateId, MethodCallee, MethodError},
     next_solver::{
-        ErrorGuaranteed, FnSig, GenericArgs, TraitRef, Ty, TyKind, TypeError,
+        ErrorGuaranteed, FnSig, GenericArg, GenericArgs, TraitRef, Ty, TyKind, TypeError,
         infer::{
             BoundRegionConversionTime, InferOk,
             traits::{Obligation, ObligationCause},
@@ -68,10 +68,10 @@ impl<'db> InferenceContext<'_, 'db> {
         if let Some(expected_ty) = expected.only_has_type(&mut self.table) {
             let could_unify = self.unify(ty, expected_ty);
             if !could_unify {
-                self.result
-                    .type_mismatches
-                    .get_or_insert_default()
-                    .insert(tgt_expr.into(), TypeMismatch { expected: expected_ty, actual: ty });
+                self.result.type_mismatches.get_or_insert_default().insert(
+                    tgt_expr.into(),
+                    TypeMismatch { expected: expected_ty.store(), actual: ty.store() },
+                );
             }
         }
         ty
@@ -98,10 +98,10 @@ impl<'db> InferenceContext<'_, 'db> {
             match self.coerce(expr.into(), ty, target, AllowTwoPhase::No, is_read) {
                 Ok(res) => res,
                 Err(_) => {
-                    self.result
-                        .type_mismatches
-                        .get_or_insert_default()
-                        .insert(expr.into(), TypeMismatch { expected: target, actual: ty });
+                    self.result.type_mismatches.get_or_insert_default().insert(
+                        expr.into(),
+                        TypeMismatch { expected: target.store(), actual: ty.store() },
+                    );
                     target
                 }
             }
@@ -276,7 +276,7 @@ impl<'db> InferenceContext<'_, 'db> {
         if ty.is_never() {
             if let Some(adjustments) = self.result.expr_adjustments.get(&expr) {
                 return if let [Adjustment { kind: Adjust::NeverToAny, target }] = &**adjustments {
-                    *target
+                    target.as_ref()
                 } else {
                     self.err_ty()
                 };
@@ -292,10 +292,10 @@ impl<'db> InferenceContext<'_, 'db> {
             if let Some(expected_ty) = expected.only_has_type(&mut self.table) {
                 let could_unify = self.unify(ty, expected_ty);
                 if !could_unify {
-                    self.result
-                        .type_mismatches
-                        .get_or_insert_default()
-                        .insert(expr.into(), TypeMismatch { expected: expected_ty, actual: ty });
+                    self.result.type_mismatches.get_or_insert_default().insert(
+                        expr.into(),
+                        TypeMismatch { expected: expected_ty.store(), actual: ty.store() },
+                    );
                 }
             }
             ty
@@ -637,7 +637,7 @@ impl<'db> InferenceContext<'_, 'db> {
                                 }
                             };
                             let field_ty = field_def.map_or(self.err_ty(), |it| {
-                                field_types[it].instantiate(self.interner(), &substs)
+                                field_types[it].get().instantiate(self.interner(), &substs)
                             });
 
                             // Field type might have some unknown types
@@ -780,7 +780,7 @@ impl<'db> InferenceContext<'_, 'db> {
                     Ty::new_adt(
                         self.interner(),
                         adt,
-                        GenericArgs::new_from_iter(self.interner(), [ty.into()]),
+                        GenericArgs::new_from_iter(self.interner(), [GenericArg::from(ty)]),
                     )
                 };
                 match (range_type, lhs_ty, rhs_ty) {
@@ -947,7 +947,10 @@ impl<'db> InferenceContext<'_, 'db> {
                 // Underscore expression is an error, we render a specialized diagnostic
                 // to let the user know what type is expected though.
                 let expected = expected.to_option(&mut self.table).unwrap_or_else(|| self.err_ty());
-                self.push_diagnostic(InferenceDiagnostic::TypedHole { expr: tgt_expr, expected });
+                self.push_diagnostic(InferenceDiagnostic::TypedHole {
+                    expr: tgt_expr,
+                    expected: expected.store(),
+                });
                 expected
             }
             Expr::OffsetOf(_) => self.types.usize,
@@ -1183,10 +1186,10 @@ impl<'db> InferenceContext<'_, 'db> {
                 match this.coerce(tgt_expr.into(), ty, target, AllowTwoPhase::No, ExprIsRead::Yes) {
                     Ok(res) => res,
                     Err(_) => {
-                        this.result
-                            .type_mismatches
-                            .get_or_insert_default()
-                            .insert(tgt_expr.into(), TypeMismatch { expected: target, actual: ty });
+                        this.result.type_mismatches.get_or_insert_default().insert(
+                            tgt_expr.into(),
+                            TypeMismatch { expected: target.store(), actual: ty.store() },
+                        );
                         target
                     }
                 }
@@ -1234,7 +1237,7 @@ impl<'db> InferenceContext<'_, 'db> {
         &mut self,
         fn_x: FnTrait,
         derefed_callee: Ty<'db>,
-        adjustments: &mut Vec<Adjustment<'db>>,
+        adjustments: &mut Vec<Adjustment>,
         callee_ty: Ty<'db>,
         params: &[Ty<'db>],
         tgt_expr: ExprId,
@@ -1249,7 +1252,8 @@ impl<'db> InferenceContext<'_, 'db> {
                         .unwrap_or(true)
                     {
                         // prefer reborrow to move
-                        adjustments.push(Adjustment { kind: Adjust::Deref(None), target: inner });
+                        adjustments
+                            .push(Adjustment { kind: Adjust::Deref(None), target: inner.store() });
                         adjustments.push(Adjustment::borrow(
                             self.interner(),
                             Mutability::Mut,
@@ -1282,13 +1286,10 @@ impl<'db> InferenceContext<'_, 'db> {
         };
         let trait_data = trait_.trait_items(self.db);
         if let Some(func) = trait_data.method_by_name(&fn_x.method_name()) {
-            let subst = GenericArgs::new_from_iter(
-                self.interner(),
-                [
-                    callee_ty.into(),
-                    Ty::new_tup_from_iter(self.interner(), params.iter().copied()).into(),
-                ],
-            );
+            let subst = GenericArgs::new_from_slice(&[
+                callee_ty.into(),
+                Ty::new_tup(self.interner(), params).into(),
+            ]);
             self.write_method_resolution(tgt_expr, func, subst);
         }
     }
@@ -1549,7 +1550,10 @@ impl<'db> InferenceContext<'_, 'db> {
                         {
                             this.result.type_mismatches.get_or_insert_default().insert(
                                 expr.into(),
-                                TypeMismatch { expected: t, actual: this.types.unit },
+                                TypeMismatch {
+                                    expected: t.store(),
+                                    actual: this.types.unit.store(),
+                                },
                             );
                         }
                         t
@@ -1567,7 +1571,7 @@ impl<'db> InferenceContext<'_, 'db> {
         &mut self,
         receiver_ty: Ty<'db>,
         name: &Name,
-    ) -> Option<(Ty<'db>, Either<FieldId, TupleFieldId>, Vec<Adjustment<'db>>, bool)> {
+    ) -> Option<(Ty<'db>, Either<FieldId, TupleFieldId>, Vec<Adjustment>, bool)> {
         let interner = self.interner();
         let mut autoderef = self.table.autoderef_with_tracking(receiver_ty);
         let mut private_field = None;
@@ -1612,6 +1616,7 @@ impl<'db> InferenceContext<'_, 'db> {
                 return None;
             }
             let ty = self.db.field_types(field_id.parent)[field_id.local_id]
+                .get()
                 .instantiate(interner, parameters);
             Some((Either::Left(field_id), ty))
         });
@@ -1629,6 +1634,7 @@ impl<'db> InferenceContext<'_, 'db> {
                 let adjustments =
                     self.table.register_infer_ok(autoderef.adjust_steps_as_infer_ok());
                 let ty = self.db.field_types(field_id.parent)[field_id.local_id]
+                    .get()
                     .instantiate(self.interner(), subst);
                 let ty = self.process_remote_user_written_ty(ty);
 
@@ -1679,7 +1685,7 @@ impl<'db> InferenceContext<'_, 'db> {
                 );
                 self.push_diagnostic(InferenceDiagnostic::UnresolvedField {
                     expr: tgt_expr,
-                    receiver: receiver_ty,
+                    receiver: receiver_ty.store(),
                     name: name.clone(),
                     method_with_same_name_exists: resolved.is_ok(),
                 });
@@ -1755,7 +1761,7 @@ impl<'db> InferenceContext<'_, 'db> {
             None => {
                 self.push_diagnostic(InferenceDiagnostic::ExpectedFunction {
                     call_expr: tgt_expr,
-                    found: callee_ty,
+                    found: callee_ty.store(),
                 });
                 (Vec::new(), Ty::new_error(interner, ErrorGuaranteed))
             }
@@ -1867,9 +1873,9 @@ impl<'db> InferenceContext<'_, 'db> {
 
                 self.push_diagnostic(InferenceDiagnostic::UnresolvedMethodCall {
                     expr: tgt_expr,
-                    receiver: receiver_ty,
+                    receiver: receiver_ty.store(),
                     name: method_name.clone(),
-                    field_with_same_name: field_with_same_name_exists,
+                    field_with_same_name: field_with_same_name_exists.map(|it| it.store()),
                     assoc_func_with_same_name: assoc_func_with_same_name.map(|it| it.def_id),
                 });
 
@@ -2115,10 +2121,10 @@ impl<'db> InferenceContext<'_, 'db> {
                     && args_count_matches
                 {
                     // Don't report type mismatches if there is a mismatch in args count.
-                    self.result
-                        .type_mismatches
-                        .get_or_insert_default()
-                        .insert((*arg).into(), TypeMismatch { expected, actual: found });
+                    self.result.type_mismatches.get_or_insert_default().insert(
+                        (*arg).into(),
+                        TypeMismatch { expected: expected.store(), actual: found.store() },
+                    );
                 }
             }
         }

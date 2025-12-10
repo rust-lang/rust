@@ -9,7 +9,7 @@ use hir_def::{
 };
 use hir_expand::name::Name;
 use rustc_ast_ir::Mutability;
-use rustc_type_ir::inherent::{GenericArg as _, GenericArgs as _, IntoKind, SliceLike, Ty as _};
+use rustc_type_ir::inherent::{GenericArg as _, GenericArgs as _, IntoKind, Ty as _};
 use stdx::TupleExt;
 
 use crate::{
@@ -82,7 +82,7 @@ impl<'db> InferenceContext<'_, 'db> {
                                 {
                                     // FIXME(DIAGNOSE): private tuple field
                                 }
-                                let f = field_types[local_id];
+                                let f = field_types[local_id].get();
                                 let expected_ty = match substs {
                                     Some(substs) => f.instantiate(self.interner(), substs),
                                     None => f.instantiate(self.interner(), &[]),
@@ -146,7 +146,7 @@ impl<'db> InferenceContext<'_, 'db> {
                                         variant: def,
                                     });
                                 }
-                                let f = field_types[local_id];
+                                let f = field_types[local_id].get();
                                 let expected_ty = match substs {
                                     Some(substs) => f.instantiate(self.interner(), substs),
                                     None => f.instantiate(self.interner(), &[]),
@@ -270,7 +270,7 @@ impl<'db> InferenceContext<'_, 'db> {
         } else if self.is_non_ref_pat(self.body, pat) {
             let mut pat_adjustments = Vec::new();
             while let TyKind::Ref(_lifetime, inner, mutability) = expected.kind() {
-                pat_adjustments.push(expected);
+                pat_adjustments.push(expected.store());
                 expected = self.table.try_structurally_resolve_type(inner);
                 default_bm = match default_bm {
                     BindingMode::Move => BindingMode::Ref(mutability),
@@ -333,7 +333,10 @@ impl<'db> InferenceContext<'_, 'db> {
                     Err(_) => {
                         self.result.type_mismatches.get_or_insert_default().insert(
                             pat.into(),
-                            TypeMismatch { expected, actual: ty_inserted_vars },
+                            TypeMismatch {
+                                expected: expected.store(),
+                                actual: ty_inserted_vars.store(),
+                            },
                         );
                         self.write_pat_ty(pat, ty);
                         // We return `expected` to prevent cascading errors. I guess an alternative is to
@@ -413,10 +416,10 @@ impl<'db> InferenceContext<'_, 'db> {
                 ) {
                     Ok(ty) => ty,
                     Err(_) => {
-                        self.result
-                            .type_mismatches
-                            .get_or_insert_default()
-                            .insert(pat.into(), TypeMismatch { expected, actual: lhs_ty });
+                        self.result.type_mismatches.get_or_insert_default().insert(
+                            pat.into(),
+                            TypeMismatch { expected: expected.store(), actual: lhs_ty.store() },
+                        );
                         // `rhs_ty` is returned so no further type mismatches are
                         // reported because of this mismatch.
                         expected
@@ -432,22 +435,22 @@ impl<'db> InferenceContext<'_, 'db> {
         let ty = self.insert_type_vars_shallow(ty);
         // FIXME: This never check is odd, but required with out we do inference right now
         if !expected.is_never() && !self.unify(ty, expected) {
-            self.result
-                .type_mismatches
-                .get_or_insert_default()
-                .insert(pat.into(), TypeMismatch { expected, actual: ty });
+            self.result.type_mismatches.get_or_insert_default().insert(
+                pat.into(),
+                TypeMismatch { expected: expected.store(), actual: ty.store() },
+            );
         }
         self.write_pat_ty(pat, ty);
         self.pat_ty_after_adjustment(pat)
     }
 
     fn pat_ty_after_adjustment(&self, pat: PatId) -> Ty<'db> {
-        *self
-            .result
+        self.result
             .pat_adjustments
             .get(&pat)
             .and_then(|it| it.last())
-            .unwrap_or(&self.result.type_of_pat[pat])
+            .unwrap_or_else(|| &self.result.type_of_pat[pat])
+            .as_ref()
     }
 
     fn infer_ref_pat(

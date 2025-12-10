@@ -1675,7 +1675,7 @@ impl<'db> DefCollector<'db> {
                             derive_index: *derive_pos as u32,
                             derive_macro_id: *derive_macro_id,
                         },
-                        ast_id.path.as_ref().clone(),
+                        (*ast_id.path).clone(),
                     ));
                 }
                 // These are diagnosed by `reseed_with_unresolved_attribute`, as that function consumes them

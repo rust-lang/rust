@@ -61,11 +61,12 @@ use hir_def::{CallableDefId, TypeOrConstParamId, type_ref::Rawness};
 use hir_expand::name::Name;
 use indexmap::{IndexMap, map::Entry};
 use intern::{Symbol, sym};
+use macros::GenericTypeVisitable;
 use mir::{MirEvalError, VTableMap};
 use rustc_hash::{FxBuildHasher, FxHashMap, FxHashSet};
 use rustc_type_ir::{
     BoundVarIndexKind, TypeSuperVisitable, TypeVisitableExt, UpcastFrom,
-    inherent::{IntoKind, SliceLike, Ty as _},
+    inherent::{IntoKind, Ty as _},
 };
 use syntax::ast::{ConstArg, make};
 use traits::FnTrait;
@@ -104,7 +105,7 @@ pub use utils::{
 /// A constant can have reference to other things. Memory map job is holding
 /// the necessary bits of memory of the const eval session to keep the constant
 /// meaningful.
-#[derive(Debug, Default, Clone, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, GenericTypeVisitable)]
 pub enum MemoryMap<'db> {
     #[default]
     Empty,
@@ -112,7 +113,7 @@ pub enum MemoryMap<'db> {
     Complex(Box<ComplexMemoryMap<'db>>),
 }
 
-#[derive(Debug, Default, Clone, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, GenericTypeVisitable)]
 pub struct ComplexMemoryMap<'db> {
     memory: IndexMap<usize, Box<[u8]>, FxBuildHasher>,
     vtable: VTableMap<'db>,
@@ -134,7 +135,7 @@ impl ComplexMemoryMap<'_> {
 }
 
 impl<'db> MemoryMap<'db> {
-    pub fn vtable_ty(&self, id: usize) -> Result<Ty<'db>, MirEvalError<'db>> {
+    pub fn vtable_ty(&self, id: usize) -> Result<Ty<'db>, MirEvalError> {
         match self {
             MemoryMap::Empty | MemoryMap::Simple(_) => Err(MirEvalError::InvalidVTableId(id)),
             MemoryMap::Complex(cm) => cm.vtable.ty(id),
@@ -150,8 +151,8 @@ impl<'db> MemoryMap<'db> {
     /// allocator function as `f` and it will return a mapping of old addresses to new addresses.
     fn transform_addresses(
         &self,
-        mut f: impl FnMut(&[u8], usize) -> Result<usize, MirEvalError<'db>>,
-    ) -> Result<FxHashMap<usize, usize>, MirEvalError<'db>> {
+        mut f: impl FnMut(&[u8], usize) -> Result<usize, MirEvalError>,
+    ) -> Result<FxHashMap<usize, usize>, MirEvalError> {
         let mut transform = |(addr, val): (&usize, &[u8])| {
             let addr = *addr;
             let align = if addr == 0 { 64 } else { (addr - (addr & (addr - 1))).min(64) };
@@ -333,9 +334,9 @@ impl FnAbi {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]
-pub enum ImplTraitId<'db> {
-    ReturnTypeImplTrait(hir_def::FunctionId, next_solver::ImplTraitIdx<'db>),
-    TypeAliasImplTrait(hir_def::TypeAliasId, next_solver::ImplTraitIdx<'db>),
+pub enum ImplTraitId {
+    ReturnTypeImplTrait(hir_def::FunctionId, next_solver::ImplTraitIdx),
+    TypeAliasImplTrait(hir_def::TypeAliasId, next_solver::ImplTraitIdx),
 }
 
 /// 'Canonicalizes' the `t` by replacing any errors with new variables. Also

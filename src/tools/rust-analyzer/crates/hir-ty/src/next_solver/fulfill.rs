@@ -249,7 +249,7 @@ impl<'db> FulfillmentCtxt<'db> {
             | TypingMode::PostBorrowckAnalysis { defined_opaque_types: _ }
             | TypingMode::PostAnalysis => return Default::default(),
         };
-        let stalled_coroutines = stalled_coroutines.inner();
+        let stalled_coroutines = stalled_coroutines.as_slice();
 
         if stalled_coroutines.is_empty() {
             return Default::default();

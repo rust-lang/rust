@@ -21,8 +21,8 @@ use rustc_type_ir::{
 use crate::{
     db::HirDatabase,
     next_solver::{
-        Canonical, DbInterner, GenericArgs, Goal, ParamEnv, Predicate, SolverContext, Span, Ty,
-        TyKind,
+        Canonical, DbInterner, GenericArgs, Goal, ParamEnv, Predicate, SolverContext, Span,
+        StoredClauses, Ty, TyKind,
         infer::{DbInternerInferExt, InferCtxt, traits::ObligationCause},
         obligation_ctxt::ObligationCtxt,
     },
@@ -33,6 +33,31 @@ use crate::{
 pub struct ParamEnvAndCrate<'db> {
     pub param_env: ParamEnv<'db>,
     pub krate: Crate,
+}
+
+impl<'db> ParamEnvAndCrate<'db> {
+    #[inline]
+    pub fn store(self) -> StoredParamEnvAndCrate {
+        StoredParamEnvAndCrate { param_env: self.param_env.clauses.store(), krate: self.krate }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct StoredParamEnvAndCrate {
+    param_env: StoredClauses,
+    pub krate: Crate,
+}
+
+impl StoredParamEnvAndCrate {
+    #[inline]
+    pub fn param_env(&self) -> ParamEnv<'_> {
+        ParamEnv { clauses: self.param_env.as_ref() }
+    }
+
+    #[inline]
+    pub fn as_ref(&self) -> ParamEnvAndCrate<'_> {
+        ParamEnvAndCrate { param_env: self.param_env(), krate: self.krate }
+    }
 }
 
 /// This should be used in `hir` only.

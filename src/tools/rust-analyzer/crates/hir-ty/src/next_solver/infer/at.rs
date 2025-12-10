@@ -28,7 +28,7 @@
 use rustc_type_ir::{
     FnSig, GenericArgKind, TypeFoldable, TypingMode, Variance,
     error::ExpectedFound,
-    inherent::{IntoKind, Span as _},
+    inherent::Span as _,
     relate::{Relate, TypeRelation, solver_relating::RelateExt},
 };
 

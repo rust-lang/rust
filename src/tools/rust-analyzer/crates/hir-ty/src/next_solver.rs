@@ -1,6 +1,7 @@
 //! Things relevant to the next trait solver.
 
 pub mod abi;
+mod binder;
 mod consts;
 mod def_id;
 pub mod fold;
@@ -21,6 +22,7 @@ mod structural_normalize;
 mod ty;
 pub mod util;
 
+pub use binder::*;
 pub use consts::*;
 pub use def_id::*;
 pub use generic_arg::*;

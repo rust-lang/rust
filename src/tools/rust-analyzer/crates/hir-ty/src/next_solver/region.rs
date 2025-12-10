@@ -1,47 +1,50 @@
 //! Things related to regions.
 
 use hir_def::LifetimeParamId;
-use intern::Symbol;
+use intern::{Interned, InternedRef, Symbol, impl_internable};
 use rustc_type_ir::{
-    BoundVar, BoundVarIndexKind, DebruijnIndex, Flags, INNERMOST, RegionVid, TypeFlags,
-    TypeFoldable, TypeVisitable,
+    BoundVar, BoundVarIndexKind, DebruijnIndex, Flags, GenericTypeVisitable, INNERMOST, RegionVid,
+    TypeFlags, TypeFoldable, TypeVisitable,
     inherent::{IntoKind, PlaceholderLike, SliceLike},
     relate::Relate,
 };
 
-use crate::next_solver::{GenericArg, OutlivesPredicate};
+use crate::next_solver::{
+    GenericArg, OutlivesPredicate, impl_foldable_for_interned_slice, interned_slice,
+};
 
 use super::{
-    ErrorGuaranteed, SolverDefId, interned_vec_db,
+    ErrorGuaranteed, SolverDefId,
     interner::{BoundVarKind, DbInterner, Placeholder},
 };
 
 pub type RegionKind<'db> = rustc_type_ir::RegionKind<DbInterner<'db>>;
 
-#[salsa::interned(constructor = new_, unsafe(non_update_types))]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Region<'db> {
-    #[returns(ref)]
-    kind_: RegionKind<'db>,
+    pub(super) interned: InternedRef<'db, RegionInterned>,
 }
 
-impl std::fmt::Debug for Region<'_> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.kind().fmt(f)
-    }
-}
+#[derive(PartialEq, Eq, Hash)]
+#[repr(align(4))] // Required for `GenericArg` bit-tagging.
+pub(super) struct RegionInterned(RegionKind<'static>);
+
+impl_internable!(gc; RegionInterned);
+
+const _: () = {
+    const fn is_copy<T: Copy>() {}
+    is_copy::<Region<'static>>();
+};
 
 impl<'db> Region<'db> {
-    pub fn new(interner: DbInterner<'db>, kind: RegionKind<'db>) -> Self {
-        Region::new_(interner.db(), kind)
+    pub fn new(_interner: DbInterner<'db>, kind: RegionKind<'db>) -> Self {
+        let kind = unsafe { std::mem::transmute::<RegionKind<'db>, RegionKind<'static>>(kind) };
+        Self { interned: Interned::new_gc(RegionInterned(kind)) }
     }
 
     pub fn inner(&self) -> &RegionKind<'db> {
-        crate::with_attached_db(|db| {
-            let inner = self.kind_(db);
-            // SAFETY: The caller already has access to a `Region<'db>`, so borrowchecking will
-            // make sure that our returned value is valid for the lifetime `'db`.
-            unsafe { std::mem::transmute::<&RegionKind<'_>, &RegionKind<'db>>(inner) }
-        })
+        let inner = &self.interned.0;
+        unsafe { std::mem::transmute::<&RegionKind<'static>, &RegionKind<'db>>(inner) }
     }
 
     pub fn new_early_param(
@@ -256,6 +259,12 @@ impl BoundRegionKind {
     }
 }
 
+impl std::fmt::Debug for Region<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.kind().fmt(f)
+    }
+}
+
 impl<'db> IntoKind for Region<'db> {
     type Kind = RegionKind<'db>;
 
@@ -377,6 +386,19 @@ impl<'db> PlaceholderLike<DbInterner<'db>> for PlaceholderRegion {
     }
 }
 
+impl<'db, V: super::WorldExposer> GenericTypeVisitable<V> for Region<'db> {
+    fn generic_visit_with(&self, visitor: &mut V) {
+        visitor.on_interned(self.interned);
+        self.kind().generic_visit_with(visitor);
+    }
+}
+
 type GenericArgOutlivesPredicate<'db> = OutlivesPredicate<'db, GenericArg<'db>>;
 
-interned_vec_db!(RegionAssumptions, GenericArgOutlivesPredicate);
+interned_slice!(
+    RegionAssumptionsStorage,
+    RegionAssumptions,
+    GenericArgOutlivesPredicate<'db>,
+    GenericArgOutlivesPredicate<'static>,
+);
+impl_foldable_for_interned_slice!(RegionAssumptions);

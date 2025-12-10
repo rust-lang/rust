@@ -26,7 +26,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use rustc_type_ir::{
     TypeVisitableExt,
     fast_reject::{TreatParams, simplify_type},
-    inherent::{BoundExistentialPredicates, IntoKind, SliceLike},
+    inherent::{BoundExistentialPredicates, IntoKind},
 };
 use stdx::impl_from;
 use triomphe::Arc;

@@ -1215,6 +1215,7 @@ dependencies = [
  "dashmap",
  "hashbrown 0.14.5",
  "rustc-hash 2.1.1",
+ "smallvec",
  "triomphe",
 ]
 

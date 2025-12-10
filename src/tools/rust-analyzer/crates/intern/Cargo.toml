@@ -18,6 +18,7 @@ dashmap.workspace = true
 hashbrown.workspace = true
 rustc-hash.workspace = true
 triomphe.workspace = true
+smallvec.workspace = true
 
 [lints]
 workspace = true
