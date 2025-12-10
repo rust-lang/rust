@@ -386,7 +386,7 @@ macro_rules! dbg {
             let mut output = $crate::string::String::with_capacity(
                 // Make an educated guess about the final size to avoid
                 // multiple reallocations.
-                const { $(100 + $crate::file!().len() + $crate::stringify($val).len())++ },
+                const { 0 $(+ 100 + $crate::file!().len() + $crate::stringify!($val).len())+ },
             );
             let eager_eval = ($(
                 // Use of `match` here is intentional because it affects the lifetimes
