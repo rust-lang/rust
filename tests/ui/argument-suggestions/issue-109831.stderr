@@ -24,7 +24,13 @@ LL | struct A;
    | --------- similarly named unit struct `A` defined here
 ...
 LL |     f(A, A, B, C);
-   |                ^ help: a unit struct with a similar name exists: `A`
+   |                ^
+   |
+help: a unit struct with a similar name exists
+   |
+LL -     f(A, A, B, C);
+LL +     f(A, A, B, A);
+   |
 
 error[E0061]: this function takes 3 arguments but 4 arguments were supplied
   --> $DIR/issue-109831.rs:7:5

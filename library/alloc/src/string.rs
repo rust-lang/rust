@@ -619,16 +619,14 @@ impl String {
     pub fn from_utf8_lossy(v: &[u8]) -> Cow<'_, str> {
         let mut iter = v.utf8_chunks();
 
-        let first_valid = if let Some(chunk) = iter.next() {
-            let valid = chunk.valid();
-            if chunk.invalid().is_empty() {
-                debug_assert_eq!(valid.len(), v.len());
-                return Cow::Borrowed(valid);
-            }
-            valid
-        } else {
+        let Some(chunk) = iter.next() else {
             return Cow::Borrowed("");
         };
+        let first_valid = chunk.valid();
+        if chunk.invalid().is_empty() {
+            debug_assert_eq!(first_valid.len(), v.len());
+            return Cow::Borrowed(first_valid);
+        }
 
         const REPLACEMENT: &str = "\u{FFFD}";
 
@@ -720,11 +718,10 @@ impl String {
         // FIXME: the function can be simplified again when #48994 is closed.
         let mut ret = String::with_capacity(v.len());
         for c in char::decode_utf16(v.iter().cloned()) {
-            if let Ok(c) = c {
-                ret.push(c);
-            } else {
+            let Ok(c) = c else {
                 return Err(FromUtf16Error(()));
-            }
+            };
+            ret.push(c);
         }
         Ok(ret)
     }

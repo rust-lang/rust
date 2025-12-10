@@ -353,14 +353,14 @@ pub fn decorate_attribute_lint(
             }
             .decorate_lint(diag)
         }
-        &AttributeLintKind::UnsafeAttrOutsideUnsafe {
-            attribute_name_span,
-            sugg_spans: (left, right),
-        } => lints::UnsafeAttrOutsideUnsafeLint {
-            span: attribute_name_span,
-            suggestion: lints::UnsafeAttrOutsideUnsafeSuggestion { left, right },
+        &AttributeLintKind::UnsafeAttrOutsideUnsafe { attribute_name_span, sugg_spans } => {
+            lints::UnsafeAttrOutsideUnsafeLint {
+                span: attribute_name_span,
+                suggestion: sugg_spans
+                    .map(|(left, right)| lints::UnsafeAttrOutsideUnsafeSuggestion { left, right }),
+            }
+            .decorate_lint(diag)
         }
-        .decorate_lint(diag),
         &AttributeLintKind::UnexpectedCfgName(name, value) => {
             check_cfg::unexpected_cfg_name(sess, tcx, name, value).decorate_lint(diag)
         }
