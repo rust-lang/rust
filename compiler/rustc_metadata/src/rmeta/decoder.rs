@@ -30,7 +30,7 @@ use rustc_proc_macro::bridge::client::ProcMacro;
 use rustc_serialize::opaque::MemDecoder;
 use rustc_serialize::{Decodable, Decoder};
 use rustc_session::config::TargetModifier;
-use rustc_session::config::enforcable_mitigations::DeniedPartialMitigation;
+use rustc_session::config::enforceable_mitigations::DeniedPartialMitigation;
 use rustc_session::cstore::{CrateSource, ExternCrate};
 use rustc_span::hygiene::HygieneDecodeContext;
 use rustc_span::{
@@ -82,7 +82,7 @@ pub(crate) type CrateNumMap = IndexVec<CrateNum, CrateNum>;
 /// Target modifiers - abi or exploit mitigations flags that cause unsoundness when mixed
 pub(crate) type TargetModifiers = Vec<TargetModifier>;
 
-/// The set of enforcable mitigations (RFC 3855) that are currently enabled for this crate
+/// The set of enforceable mitigations (RFC 3855) that are currently enabled for this crate
 pub(crate) type DeniedPartialMitigations = Vec<DeniedPartialMitigation>;
 
 pub(crate) struct CrateMetadata {

@@ -19,7 +19,7 @@ use rustc_target::spec::{
     TargetTuple, TlsModel,
 };
 
-use crate::config::enforcable_mitigations::MitigationEnablement;
+use crate::config::enforceable_mitigations::MitigationEnablement;
 use crate::config::*;
 use crate::search_paths::SearchPath;
 use crate::utils::NativeLib;
@@ -84,7 +84,7 @@ pub struct TargetModifier {
     pub value_name: String,
 }
 
-pub mod enforcable_mitigations;
+pub mod enforceable_mitigations;
 
 mod target_modifier_consistency_check {
     use super::*;
@@ -888,16 +888,16 @@ mod desc {
         "either a boolean (`yes`, `no`, `on`, `off`, etc), or `nll` (default: `nll`)";
     pub(crate) const parse_align: &str = "a number that is a power of 2 between 1 and 2^29";
     pub(crate) const parse_allow_partial_mitigations: &str =
-        super::enforcable_mitigations::DeniedPartialMitigationKind::KINDS;
+        super::enforceable_mitigations::DeniedPartialMitigationKind::KINDS;
     pub(crate) const parse_deny_partial_mitigations: &str =
-        super::enforcable_mitigations::DeniedPartialMitigationKind::KINDS;
+        super::enforceable_mitigations::DeniedPartialMitigationKind::KINDS;
 }
 
 pub mod parse {
     use std::str::FromStr;
 
     pub(crate) use super::*;
-    use crate::config::enforcable_mitigations::MitigationEnablement;
+    use crate::config::enforceable_mitigations::MitigationEnablement;
     pub(crate) const MAX_THREADS_CAP: usize = 256;
 
     /// This is for boolean options that don't take a value, and are true simply
