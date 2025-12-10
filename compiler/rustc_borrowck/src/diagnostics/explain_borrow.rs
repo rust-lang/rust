@@ -410,6 +410,7 @@ impl<'tcx> BorrowExplanation<'tcx> {
                 cx.add_sized_or_copy_bound_info(err, category, &path);
 
                 if let ConstraintCategory::Cast {
+                    is_raw_ptr_dyn_type_cast: _,
                     is_implicit_coercion: true,
                     unsize_to: Some(unsize_ty),
                 } = category

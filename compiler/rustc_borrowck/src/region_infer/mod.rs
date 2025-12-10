@@ -1697,6 +1697,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 // should be as limited as possible; the note is prone to false positives and this
                 // constraint usually isn't best to blame.
                 ConstraintCategory::Cast {
+                    is_raw_ptr_dyn_type_cast: _,
                     unsize_to: Some(unsize_ty),
                     is_implicit_coercion: true,
                 } if to_region == self.universal_regions().fr_static
