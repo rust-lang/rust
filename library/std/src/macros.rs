@@ -376,6 +376,38 @@ macro_rules! dbg {
         }
     };
     ($($val:expr),+ $(,)?) => {
-        ($($crate::dbg!($val)),+,)
+        {
+            // Eagerly evaluate all arguments then print them all at once to
+            // avoid tearing prints. We can't simply hold the stderr lock while
+            // evaluating the arguments because that could lead to deadlocks if
+            // any of the expressions also attempt to write to stderr on another
+            // thread.
+            use $crate::fmt::Write;
+            let mut output = $crate::string::String::with_capacity(
+                // Make an educated guess about the final size to avoid
+                // multiple reallocations.
+                const { $(100 + $crate::file!().len() + $crate::stringify($val).len())++ },
+            );
+            let eager_eval = ($(
+                // Use of `match` here is intentional because it affects the lifetimes
+                // of temporaries - https://stackoverflow.com/a/48732525/1063961
+                match $val {
+                    tmp => {
+                        let _ = $crate::writeln!(&mut output, "[{}:{}:{}] {} = {:#?}",
+                            $crate::file!(),
+                            $crate::line!(),
+                            $crate::column!(),
+                            $crate::stringify!($val),
+                            // The `&T: Debug` check happens here (not in the format literal desugaring)
+                            // to avoid format literal related messages and suggestions.
+                            &&tmp as &dyn $crate::fmt::Debug,
+                        );
+                        tmp
+                    }
+                }
+            ),+,);
+            $crate::eprint!("{}", output);
+            eager_eval
+        }
     };
 }
