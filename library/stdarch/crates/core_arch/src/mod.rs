@@ -100,7 +100,9 @@ pub mod arch {
     /// See the [module documentation](../index.html) for more details.
     #[cfg(any(target_arch = "v810", doc))]
     #[doc(cfg(any(target_arch = "v810")))]
+    #[stable(feature = "v810_intrinsics", since = "1.94.0")]
     pub mod v810 {
+        #[stable(feature = "v810_intrinsics", since = "1.94.0")]
         pub use crate::core_arch::v810::*;
     }
 
