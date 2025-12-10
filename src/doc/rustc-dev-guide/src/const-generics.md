@@ -206,7 +206,7 @@ By feeding the type of an anon const with the type of the Const Parameter we gua
 
 Looking at the above example, this corresponds to `[u8; ANON]` being a well formed type because `ANON` has type `usize`, but the *body* of `ANON` being illformed and resulting in a type checking error because `true` can't be returned from a const item of type `usize`.
 
-[ambig-unambig-ty-and-consts]: ./hir/ambig-unambig-ty-and-consts.md
+[ambig-unambig-ty-and-consts]: ./ambig-unambig-ty-and-consts.md
 [`ConstKind`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/type.ConstKind.html
 [`ConstKind::Infer`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/type.ConstKind.html#variant.Infer
 [`ConstKind::Param`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/type.ConstKind.html#variant.Param
