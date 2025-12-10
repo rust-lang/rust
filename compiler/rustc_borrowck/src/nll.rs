@@ -95,6 +95,7 @@ pub(crate) fn compute_closure_requirements_modulo_opaques<'tcx>(
         constraints.clone(),
         &universal_region_relations,
         infcx,
+        &mut RegionErrors::new(infcx.tcx),
     );
     let mut regioncx = RegionInferenceContext::new(
         &infcx,
@@ -126,11 +127,16 @@ pub(crate) fn compute_regions<'tcx>(
     let polonius_output = root_cx.consumer.as_ref().map_or(false, |c| c.polonius_output())
         || infcx.tcx.sess.opts.unstable_opts.polonius.is_legacy_enabled();
 
+    let mut placeholder_errors = RegionErrors::new(infcx.tcx);
+
     let lowered_constraints = compute_sccs_applying_placeholder_outlives_constraints(
         constraints,
         &universal_region_relations,
         infcx,
+        &mut placeholder_errors,
     );
+
+    debug!("Placeholder errors: {placeholder_errors:?}");
 
     // If requested, emit legacy polonius facts.
     polonius::legacy::emit_facts(
@@ -179,8 +185,17 @@ pub(crate) fn compute_regions<'tcx>(
     });
 
     // Solve the region constraints.
-    let (closure_region_requirements, nll_errors) =
+    let (closure_region_requirements, region_inference_errors) =
         regioncx.solve(infcx, body, polonius_output.clone());
+
+    let nll_errors = if region_inference_errors.is_empty() {
+        // Only flag the higher-kinded bounds errors if there are no borrowck errors.
+        debug!("No region inference errors, using placeholder errors: {placeholder_errors:?}");
+        placeholder_errors
+    } else {
+        debug!("Errors already reported, skipping these: {placeholder_errors:?}");
+        region_inference_errors
+    };
 
     NllOutput {
         regioncx,
