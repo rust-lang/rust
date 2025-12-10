@@ -575,7 +575,7 @@ pub struct Config {
     ///
     /// FIXME: take a look at this; this is piggy-backing off of gdb code paths but only for
     /// `arm-linux-androideabi` target.
-    pub adb_path: Utf8PathBuf,
+    pub adb_path: Option<Utf8PathBuf>,
 
     /// Extra parameter to run test suite on `arm-linux-androideabi`.
     ///
@@ -584,7 +584,7 @@ pub struct Config {
     ///
     /// FIXME: take a look at this; this is piggy-backing off of gdb code paths but only for
     /// `arm-linux-androideabi` target.
-    pub adb_test_dir: Utf8PathBuf,
+    pub adb_test_dir: Option<Utf8PathBuf>,
 
     /// Status whether android device available or not. When unavailable, this will cause tests to
     /// panic when the test binary is attempted to be run.
