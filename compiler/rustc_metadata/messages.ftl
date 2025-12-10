@@ -156,7 +156,7 @@ metadata_missing_native_library =
 metadata_mitigation_less_strict_in_dependency =
     your program uses the crate `{$extern_crate}`, that is not compiled with `{$mitigation_name}{$mitigation_level}` enabled
     .note = recompile `{$extern_crate}` with `{$mitigation_name}{$mitigation_level}` enabled, or use `-Z allow-partial-mitigations={$mitigation_name}` to allow creating an artifact that has the mitigation only partially enabled
-    .help = it is possible to disable `-Z allow-partial-mitigations={$mitigation_name}` via `-Z allow-partial-mitigations=!{$mitigation_name}`
+    .help = it is possible to disable `-Z allow-partial-mitigations={$mitigation_name}` via `-Z deny-partial-mitigations={$mitigation_name}`
 
 metadata_multiple_candidates =
     multiple candidates for `{$flavor}` dependency `{$crate_name}` found

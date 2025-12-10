@@ -691,6 +691,9 @@ impl CodegenOptions {
 // Sometimes different options need to build a common structure.
 // That structure can be kept in one of the options' fields, the others become dummy.
 macro_rules! redirect_field {
+    ($cg:ident.deny_partial_mitigations) => {
+        $cg.allow_partial_mitigations
+    };
     ($cg:ident.link_arg) => {
         $cg.link_args
     };
@@ -885,6 +888,8 @@ mod desc {
         "either a boolean (`yes`, `no`, `on`, `off`, etc), or `nll` (default: `nll`)";
     pub(crate) const parse_align: &str = "a number that is a power of 2 between 1 and 2^29";
     pub(crate) const parse_allow_partial_mitigations: &str =
+        super::enforcable_mitigations::DeniedPartialMitigationKind::KINDS;
+    pub(crate) const parse_deny_partial_mitigations: &str =
         super::enforcable_mitigations::DeniedPartialMitigationKind::KINDS;
 }
 
@@ -2087,15 +2092,14 @@ pub mod parse {
         true
     }
 
-    pub(crate) fn parse_allow_partial_mitigations(
+    fn parse_partial_mitigations(
         slot: &mut Vec<MitigationEnablement>,
         v: Option<&str>,
+        enabled: bool,
     ) -> bool {
         match v {
             Some(s) => {
                 for sub in s.split(',') {
-                    let (sub, enabled) =
-                        if sub.starts_with('!') { (&sub[1..], false) } else { (sub, true) };
                     match sub.parse() {
                         Ok(kind) => slot.push(MitigationEnablement { kind, enabled }),
                         Err(_) => return false,
@@ -2105,6 +2109,20 @@ pub mod parse {
             }
             None => false,
         }
+    }
+
+    pub(crate) fn parse_allow_partial_mitigations(
+        slot: &mut Vec<MitigationEnablement>,
+        v: Option<&str>,
+    ) -> bool {
+        parse_partial_mitigations(slot, v, true)
+    }
+
+    pub(crate) fn parse_deny_partial_mitigations(
+        slot: &mut Vec<MitigationEnablement>,
+        v: Option<&str>,
+    ) -> bool {
+        parse_partial_mitigations(slot, v, false)
     }
 }
 
@@ -2333,6 +2351,8 @@ options! {
         "deduplicate identical diagnostics (default: yes)"),
     default_visibility: Option<SymbolVisibility> = (None, parse_opt_symbol_visibility, [TRACKED],
         "overrides the `default_visibility` setting of the target"),
+    deny_partial_mitigations: Vec<MitigationEnablement> = (Vec::new(), parse_deny_partial_mitigations, [UNTRACKED],
+        "Deny mitigations not enabled for all dependency crates (comma separated list)"),
     dep_info_omit_d_target: bool = (false, parse_bool, [TRACKED],
         "in dep-info output, omit targets for tracking dependencies of the dep-info files \
         themselves (default: no)"),
