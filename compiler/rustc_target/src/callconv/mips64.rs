@@ -34,7 +34,7 @@ where
     }
 }
 
-fn classify_ret<'a, Ty, C>(cx: &C, ret: &mut ArgAbi<'a, Ty>)
+fn classify_ret<'a, Ty, C>(cx: &C, ret: &mut ArgAbi<'a, Ty>, offset: &mut Size)
 where
     Ty: TyAbiInterface<'a, C> + Copy,
     C: HasDataLayout,
@@ -70,77 +70,82 @@ where
         ret.cast_to(Uniform::new(Reg::i64(), size));
     } else {
         ret.make_indirect();
+        *offset += cx.data_layout().pointer_size();
     }
 }
 
-fn classify_arg<'a, Ty, C>(cx: &C, arg: &mut ArgAbi<'a, Ty>)
+fn classify_arg<'a, Ty, C>(cx: &C, arg: &mut ArgAbi<'a, Ty>, offset: &mut Size)
 where
     Ty: TyAbiInterface<'a, C> + Copy,
     C: HasDataLayout,
 {
-    if !arg.layout.is_aggregate() {
-        extend_integer_width_mips(arg, 64);
-        return;
-    }
-    if arg.layout.pass_indirectly_in_non_rustic_abis(cx) {
-        arg.make_indirect();
-        return;
-    }
-
     let dl = cx.data_layout();
     let size = arg.layout.size;
     let mut prefix = [None; 8];
     let mut prefix_index = 0;
 
-    match arg.layout.fields {
-        FieldsShape::Primitive => unreachable!(),
-        FieldsShape::Array { .. } => {
-            // Arrays are passed indirectly
-            arg.make_indirect();
-            return;
-        }
-        FieldsShape::Union(_) => {
-            // Unions and are always treated as a series of 64-bit integer chunks
-        }
-        FieldsShape::Arbitrary { .. } => {
-            // Structures are split up into a series of 64-bit integer chunks, but any aligned
-            // doubles not part of another aggregate are passed as floats.
-            let mut last_offset = Size::ZERO;
+    // Detect need for padding
+    let align = Ord::clamp(arg.layout.align.abi, dl.i64_align, dl.i128_align);
+    let pad_i32 = !offset.is_aligned(align);
 
-            for i in 0..arg.layout.fields.count() {
-                let field = arg.layout.field(cx, i);
-                let offset = arg.layout.fields.offset(i);
+    if !arg.layout.is_aggregate() {
+        extend_integer_width_mips(arg, 64);
+    } else if arg.layout.pass_indirectly_in_non_rustic_abis(cx) {
+        arg.make_indirect();
+    } else {
+        match arg.layout.fields {
+            FieldsShape::Primitive => unreachable!(),
+            FieldsShape::Array { .. } => {
+                // Arrays are passed indirectly
+                arg.make_indirect();
+            }
+            FieldsShape::Union(_) => {
+                // Unions and are always treated as a series of 64-bit integer chunks
+            }
+            FieldsShape::Arbitrary { .. } => {
+                // Structures are split up into a series of 64-bit integer chunks, but any aligned
+                // doubles not part of another aggregate are passed as floats.
+                let mut last_offset = Size::ZERO;
 
-                // We only care about aligned doubles
-                if let BackendRepr::Scalar(scalar) = field.backend_repr {
-                    if scalar.primitive() == Primitive::Float(Float::F64) {
-                        if offset.is_aligned(dl.f64_align) {
-                            // Insert enough integers to cover [last_offset, offset)
-                            assert!(last_offset.is_aligned(dl.f64_align));
-                            for _ in 0..((offset - last_offset).bits() / 64)
-                                .min((prefix.len() - prefix_index) as u64)
-                            {
-                                prefix[prefix_index] = Some(Reg::i64());
+                for i in 0..arg.layout.fields.count() {
+                    let field = arg.layout.field(cx, i);
+                    let offset = arg.layout.fields.offset(i);
+
+                    // We only care about aligned doubles
+                    if let BackendRepr::Scalar(scalar) = field.backend_repr {
+                        if scalar.primitive() == Primitive::Float(Float::F64) {
+                            if offset.is_aligned(dl.f64_align) {
+                                // Insert enough integers to cover [last_offset, offset)
+                                assert!(last_offset.is_aligned(dl.f64_align));
+                                for _ in 0..((offset - last_offset).bits() / 64)
+                                    .min((prefix.len() - prefix_index) as u64)
+                                {
+                                    prefix[prefix_index] = Some(Reg::i64());
+                                    prefix_index += 1;
+                                }
+
+                                if prefix_index == prefix.len() {
+                                    break;
+                                }
+
+                                prefix[prefix_index] = Some(Reg::f64());
                                 prefix_index += 1;
+                                last_offset = offset + Reg::f64().size;
                             }
-
-                            if prefix_index == prefix.len() {
-                                break;
-                            }
-
-                            prefix[prefix_index] = Some(Reg::f64());
-                            prefix_index += 1;
-                            last_offset = offset + Reg::f64().size;
                         }
                     }
                 }
             }
-        }
-    };
+        };
 
-    // Extract first 8 chunks as the prefix
-    let rest_size = size - Size::from_bytes(8) * prefix_index as u64;
-    arg.cast_to(CastTarget::prefixed(prefix, Uniform::new(Reg::i64(), rest_size)));
+        // Extract first 8 chunks as the prefix
+        let rest_size = size - Size::from_bytes(8) * prefix_index as u64;
+        arg.cast_to_and_pad_i32(
+            CastTarget::prefixed(prefix, Uniform::new(Reg::i64(), rest_size)),
+            pad_i32,
+        );
+    }
+    *offset = offset.align_to(align) + size.align_to(align);
 }
 
 pub(crate) fn compute_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>)
@@ -148,14 +153,18 @@ where
     Ty: TyAbiInterface<'a, C> + Copy,
     C: HasDataLayout,
 {
+    // mips64 argument passing is also affected by the alignment of aggregates.
+    // see mips.rs for how the offset is used
+    let mut offset = Size::ZERO;
+
     if !fn_abi.ret.is_ignore() && fn_abi.ret.layout.is_sized() {
-        classify_ret(cx, &mut fn_abi.ret);
+        classify_ret(cx, &mut fn_abi.ret, &mut offset);
     }
 
     for arg in fn_abi.args.iter_mut() {
         if arg.is_ignore() || !arg.layout.is_sized() {
             continue;
         }
-        classify_arg(cx, arg);
+        classify_arg(cx, arg, &mut offset);
     }
 }
