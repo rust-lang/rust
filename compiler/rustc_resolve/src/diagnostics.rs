@@ -1964,7 +1964,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             };
             (span, msg, suggestion.candidate.to_ident_string())
         };
-        err.span_suggestion(span, msg, sugg, Applicability::MaybeIncorrect);
+        err.span_suggestion_verbose(span, msg, sugg, Applicability::MaybeIncorrect);
         true
     }
 
