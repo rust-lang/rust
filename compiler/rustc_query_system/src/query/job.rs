@@ -3,19 +3,18 @@ use std::fmt::Debug;
 use std::hash::Hash;
 use std::io::Write;
 use std::num::NonZero;
+use std::ops;
 use std::sync::{Arc, Weak};
 use std::thread::ThreadId;
-use std::{iter, ops};
 
 use parking_lot::{Condvar, Mutex};
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_data_structures::indexmap::{self, IndexMap, IndexSet};
+use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::indexmap::{self, IndexMap};
 use rustc_data_structures::sync::BranchKey;
 use rustc_errors::{Diag, DiagCtxtHandle};
 use rustc_hir::def::DefKind;
 use rustc_session::Session;
-use rustc_span::{DUMMY_SP, Span};
-use smallvec::SmallVec;
+use rustc_span::Span;
 
 use super::QueryStackFrameExtra;
 use crate::dep_graph::DepContext;
@@ -49,18 +48,6 @@ pub struct QueryJobId(pub NonZero<u64>);
 impl QueryJobId {
     fn query<I: Clone>(self, map: &QueryMap<I>) -> QueryStackFrame<I> {
         map.get(&self).unwrap().query.clone()
-    }
-
-    fn span<I>(self, map: &QueryMap<I>) -> Span {
-        map.get(&self).unwrap().job.span
-    }
-
-    fn parent<I>(self, map: &QueryMap<I>) -> Option<QueryInclusion> {
-        map.get(&self).unwrap().job.parent
-    }
-
-    fn latch<I>(self, map: &QueryMap<I>) -> &Weak<QueryLatch<I>> {
-        &map.get(&self).unwrap().job.latch
     }
 }
 
@@ -293,39 +280,6 @@ impl<I> QueryLatch<I> {
             waiter.condvar.notify_one();
         }
     }
-
-    /// Removes a single waiter from the list of waiters.
-    /// This is used to break query cycles.
-    fn extract_waiter(&self, waiter: usize) -> Arc<QueryWaiter<I>> {
-        let mut info = self.info.lock();
-        debug_assert!(!info.complete);
-        // Remove the waiter from the list of waiters
-        info.waiters.remove(waiter)
-    }
-}
-
-/// A resumable waiter of a query. The usize is the index into waiters in the query's latch
-type Waiter = (QueryJobId, usize);
-
-// Deterministically pick an query from a list
-fn pick_query<'a, I: Clone, T, F>(query_map: &QueryMap<I>, queries: &'a [T], f: F) -> &'a T
-where
-    F: Fn(&T) -> (Span, QueryJobId),
-{
-    // Deterministically pick an entry point
-    // FIXME: Sort this instead
-    queries
-        .iter()
-        .min_by_key(|v| {
-            let (span, query) = f(v);
-            let hash = query.query(query_map).hash;
-            // Prefer entry points which have valid spans for nicer error messages
-            // We add an integer to the tuple ensuring that entry points
-            // with valid spans are picked first
-            let span_cmp = if span == DUMMY_SP { 1 } else { 0 };
-            (span_cmp, hash)
-        })
-        .unwrap()
 }
 
 /// Detects query cycles by using depth first search over all active query jobs.
@@ -369,28 +323,6 @@ pub fn break_query_cycles<I: Clone + Debug>(
         Direct { waited_on: Vec<QueryJobId> },
     }
 
-    impl QueryWait {
-        fn waiting_query<I>(&self, query_map: &QueryMap<I>) -> QueryJobId {
-            match self {
-                QueryWait::Waiter { waited_on, waiter_idx } => {
-                    query_map[waited_on]
-                        .job
-                        .latch
-                        .upgrade()
-                        .unwrap()
-                        .info
-                        .try_lock()
-                        .unwrap()
-                        .waiters[*waiter_idx]
-                        .query
-                        .unwrap()
-                        .id
-                }
-                QueryWait::Direct { waited_on } => query_map[&waited_on[0]].job.parent.unwrap().id,
-            }
-        }
-    }
-
     let mut stacks = FxHashMap::<ThreadId, QueryStackIntermediate>::default();
     for query in query_map.values() {
         let query_depth = query.job.real_depth();
@@ -399,7 +331,7 @@ pub fn break_query_cycles<I: Clone + Debug>(
             hash_map::Entry::Vacant(entry) => {
                 entry.insert(QueryStackIntermediate::from_depth(query_depth))
             }
-            hash_map::Entry::Occupied(mut entry) => {
+            hash_map::Entry::Occupied(entry) => {
                 let stack = entry.into_mut();
                 stack.update_depth(query_depth);
                 stack
@@ -435,7 +367,7 @@ pub fn break_query_cycles<I: Clone + Debug>(
 
     // Figure out what queries leftover stacks are blocked on
     let mut root_query = None;
-    let mut thread_ids: Vec<_> = stacks.keys().copied().collect();
+    let thread_ids: Vec<_> = stacks.keys().copied().collect();
     for thread_id in &thread_ids {
         let stack = &stacks[thread_id];
         let start = stack.start.unwrap();
@@ -490,35 +422,6 @@ pub fn break_query_cycles<I: Clone + Debug>(
             }
         }
     }
-
-    fn collect_branches<I>(query_id: QueryJobId, query_map: &QueryMap<I>) -> Vec<BranchKey> {
-        let query = &query_map[&query_id];
-        let Some(inclusion) = query.job.parent.as_ref() else { return Vec::new() };
-        // Skip trivial branches
-        if inclusion.branch == BranchKey::root() {
-            return collect_branches(inclusion.id, query_map);
-        }
-        let mut out = collect_branches(inclusion.id, query_map);
-        out.push(inclusion.branch);
-        out
-    }
-    let branches: FxHashMap<_, _> = thread_ids
-        .iter()
-        .map(|t| {
-            (
-                *t,
-                collect_branches(
-                    stacks[t].wait.as_ref().unwrap().waiting_query(&query_map),
-                    &query_map,
-                ),
-            )
-        })
-        .collect();
-
-    thread_ids.sort_by_key(|t| branches[t].as_slice());
-
-    let branch_enumerations: FxHashMap<_, _> =
-        thread_ids.iter().enumerate().map(|(v, k)| (*k, v)).collect();
 
     let mut subqueries = FxHashMap::<_, BTreeMap<BranchKey, _>>::default();
     for query in query_map.values() {
