@@ -1,8 +1,8 @@
 error[E0618]: expected function, found `!`
-  --> $DIR/issue-18532.rs:6:5
+  --> $DIR/return-expression-invalid-callee.rs:7:5
    |
-LL |     (return)((),());
-   |     ^^^^^^^^-------
+LL |     (return)((), ());
+   |     ^^^^^^^^--------
    |     |
    |     call expression requires function
 

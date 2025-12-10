@@ -1,5 +1,5 @@
 error: cannot find macro `undef` in this scope
-  --> $DIR/issue-19734.rs:6:5
+  --> $DIR/undefined-macro-in-impl.rs:7:5
    |
 LL |     undef!();
    |     ^^^^^

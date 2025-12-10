@@ -1,5 +1,5 @@
 error[E0530]: match bindings cannot shadow unit variants
-  --> $DIR/issue-27033.rs:3:9
+  --> $DIR/match-at-pattern-shadows-name.rs:4:9
    |
 LL |         None @ _ => {}
    |         ^^^^ cannot be named the same as a unit variant
@@ -9,7 +9,7 @@ LL |         None @ _ => {}
    = note: the unit variant `None` is defined here
 
 error[E0530]: match bindings cannot shadow constants
-  --> $DIR/issue-27033.rs:7:9
+  --> $DIR/match-at-pattern-shadows-name.rs:8:9
    |
 LL |     const C: u8 = 1;
    |     ---------------- the constant `C` is defined here

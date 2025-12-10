@@ -1,16 +1,17 @@
 error[E0308]: mismatched types
-  --> $DIR/issue-4968.rs:7:16
+  --> $DIR/match-const-tuple-type-mismatch.rs:7:9
    |
-LL | const A: (isize,isize) = (4,2);
-   | ---------------------- constant defined here
+LL | const A: (isize, isize) = (4, 2);
+   | ----------------------- constant defined here
 LL | fn main() {
-LL |     match 42 { A => () }
-   |           --   ^
-   |           |    |
-   |           |    expected integer, found `(isize, isize)`
-   |           |    `A` is interpreted as a constant, not a new binding
-   |           |    help: introduce a new binding instead: `other_a`
-   |           this expression has type `{integer}`
+LL |     match 42 {
+   |           -- this expression has type `{integer}`
+LL |         A => (),
+   |         ^
+   |         |
+   |         expected integer, found `(isize, isize)`
+   |         `A` is interpreted as a constant, not a new binding
+   |         help: introduce a new binding instead: `other_a`
    |
    = note: expected type `{integer}`
              found tuple `(isize, isize)`

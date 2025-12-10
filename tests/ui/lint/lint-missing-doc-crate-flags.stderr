@@ -1,5 +1,5 @@
 error: missing documentation for the crate
-  --> $DIR/lint-missing-doc-crate.rs:4:47
+  --> $DIR/lint-missing-doc-crate-flags.rs:4:47
    |
 LL |
    |                                              ^
