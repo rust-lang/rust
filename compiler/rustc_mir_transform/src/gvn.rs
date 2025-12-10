@@ -382,7 +382,7 @@ struct VnState<'body, 'a, 'tcx> {
     dominators: Dominators<BasicBlock>,
     reused_locals: DenseBitSet<Local>,
     arena: &'a DroplessArena,
-    immutable_borrows: ImmutableBorrows,
+    immutable_borrows: ImmutableBorrows<'a>,
 }
 
 impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
@@ -394,7 +394,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
         dominators: Dominators<BasicBlock>,
         local_decls: &'body LocalDecls<'tcx>,
         arena: &'a DroplessArena,
-        immutable_borrows: ImmutableBorrows,
+        immutable_borrows: ImmutableBorrows<'a>,
     ) -> Self {
         // Compute a rough estimate of the number of values in the body from the number of
         // statements. This is meant to reduce the number of allocations, but it's all right if
@@ -1254,8 +1254,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
             // Allow introducing places with non-constant offsets, as those are still better than
             // reconstructing an aggregate. But avoid creating `*a = copy (*b)`, as they might be
             // aliases resulting in overlapping assignments.
-            let allow_complex_projection =
-                lhs.projection[..].iter().all(PlaceElem::is_stable_offset);
+            let allow_complex_projection = lhs.is_stable_offset();
             if let Some(place) = self.try_as_place(value, location, allow_complex_projection) {
                 self.reused_locals.insert(place.local);
                 *rvalue = Rvalue::Use(Operand::Copy(place));
@@ -1990,18 +1989,19 @@ impl<'tcx> MutVisitor<'tcx> for StorageRemover<'tcx> {
     }
 }
 
-struct ImmutableBorrows {
+struct ImmutableBorrows<'a> {
     locals: DenseBitSet<Local>,
     always_live: DenseBitSet<Local>,
+    ssa: &'a SsaLocals,
 }
 
-impl ImmutableBorrows {
+impl<'a> ImmutableBorrows<'a> {
     fn new<'tcx>(
         tcx: TyCtxt<'tcx>,
         body: &Body<'tcx>,
         typing_env: ty::TypingEnv<'tcx>,
-        ssa: &SsaLocals,
-    ) -> ImmutableBorrows {
+        ssa: &'a SsaLocals,
+    ) -> ImmutableBorrows<'a> {
         let mut locals: DenseBitSet<Local> = DenseBitSet::new_empty(body.local_decls().len());
         for (local, decl) in body.local_decls.iter_enumerated() {
             if let Some(Mutability::Not) = decl.ty.ref_mutability()
@@ -2017,7 +2017,7 @@ impl ImmutableBorrows {
                 always_live.insert(local);
             }
         }
-        let mut always_live_immutable_borrows = ImmutableBorrows { locals, always_live };
+        let mut always_live_immutable_borrows = ImmutableBorrows { locals, always_live, ssa };
         for (bb, bb_data) in body.basic_blocks.iter_enumerated() {
             always_live_immutable_borrows.visit_basic_block_data(bb, bb_data);
         }
@@ -2025,13 +2025,19 @@ impl ImmutableBorrows {
     }
 }
 
-impl<'tcx> Visitor<'tcx> for ImmutableBorrows {
+impl<'tcx, 'a> Visitor<'tcx> for ImmutableBorrows<'a> {
     fn visit_assign(&mut self, place: &Place<'tcx>, rvalue: &Rvalue<'tcx>, _: Location) {
         if let Some(local) = place.as_local()
             && self.locals.contains(local)
-            && let Rvalue::Use(Operand::Constant(_)) = rvalue
         {
-            self.always_live.insert(local);
+            if let Rvalue::Use(Operand::Constant(_)) = rvalue {
+                self.always_live.insert(local);
+            } else if let Rvalue::Ref(_, _, place) = rvalue
+                && place.is_stable_offset()
+                && self.ssa.is_ssa(place.local)
+            {
+                self.always_live.insert(local);
+            }
         };
     }
 }
