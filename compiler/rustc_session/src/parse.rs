@@ -150,7 +150,7 @@ pub fn feature_warn_issue(
     let future_incompatible = lint.future_incompatible.as_ref().unwrap();
     err.is_lint(lint.name_lower(), /* has_future_breakage */ false);
     err.warn(lint.desc);
-    err.note(format!("for more information, see {}", future_incompatible.reference));
+    err.note(format!("for more information, see {}", future_incompatible.reason.reference()));
 
     // A later feature_err call can steal and cancel this warning.
     err.stash(span, StashKey::EarlySyntaxWarning);

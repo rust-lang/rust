@@ -516,31 +516,29 @@ impl FutureIncompatibilityReason {
         }
     }
 
-    fn fmt_reason(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    pub fn reference(&self) -> String {
         match self {
             Self::FutureReleaseSemanticsChange(release_fcw)
             | Self::FutureReleaseError(release_fcw)
-            | Self::Custom(_, release_fcw) => release_fcw.fmt_reason(f),
+            | Self::Custom(_, release_fcw) => release_fcw.to_string(),
             Self::EditionError(edition_fcw)
             | Self::EditionSemanticsChange(edition_fcw)
             | Self::EditionAndFutureReleaseError(edition_fcw)
-            | Self::EditionAndFutureReleaseSemanticsChange(edition_fcw) => {
-                edition_fcw.fmt_reason(f)
-            }
+            | Self::EditionAndFutureReleaseSemanticsChange(edition_fcw) => edition_fcw.to_string(),
             Self::Unreachable => unreachable!(),
         }
     }
 }
 
-impl ReleaseFcw {
-    fn fmt_reason(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl Display for ReleaseFcw {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let issue_number = self.issue_number;
         write!(f, "issue #{issue_number} <https://github.com/rust-lang/rust/issues/{issue_number}>")
     }
 }
 
-impl EditionFcw {
-    fn fmt_reason(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl Display for EditionFcw {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
             "<https://doc.rust-lang.org/edition-guide/{}/{}.html>",

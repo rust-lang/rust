@@ -3400,7 +3400,6 @@ declare_lint! {
     "detects closures affected by Rust 2021 changes",
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(EditionSemanticsChange 2021 "disjoint-capture-in-closures"),
-        explain_reason: false,
     };
 }
 
