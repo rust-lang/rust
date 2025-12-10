@@ -77,17 +77,28 @@ impl LateLintPass<'_> for DbgMacro {
                     let mut applicability = Applicability::MachineApplicable;
                     let (sugg_span, suggestion) =
                         match is_async_move_desugar(expr).unwrap_or(expr).peel_drop_temps().kind {
-                            // dbg!()
-                            ExprKind::Block(..) => {
-                                // If the `dbg!` macro is a "free" statement and not contained within other expressions,
-                                // remove the whole statement.
-                                if let Node::Stmt(_) = cx.tcx.parent_hir_node(expr.hir_id)
-                                    && let Some(semi_span) =
-                                        cx.sess().source_map().mac_call_stmt_semi_span(macro_call.span)
-                                {
-                                    (macro_call.span.to(semi_span), String::new())
+                            ExprKind::Block(blk, _label) => {
+                                // dbg!(2, 3)
+                                if let Some((first, last)) = find_multi_input_exprs(&blk.stmts) {
+                                    let snippet = snippet_with_applicability(
+                                        cx,
+                                        first.span.source_callsite().to(last.span.source_callsite()),
+                                        "..",
+                                        &mut applicability,
+                                    );
+                                    (macro_call.span, format!("({snippet})"))
+                                // dbg!()
                                 } else {
-                                    (macro_call.span, String::from("()"))
+                                    // If the `dbg!` macro is a "free" statement and not contained within other
+                                    // expressions, remove the whole statement.
+                                    if let Node::Stmt(_) = cx.tcx.parent_hir_node(expr.hir_id)
+                                        && let Some(semi_span) =
+                                            cx.sess().source_map().mac_call_stmt_semi_span(macro_call.span)
+                                    {
+                                        (macro_call.span.to(semi_span), String::new())
+                                    } else {
+                                        (macro_call.span, String::from("()"))
+                                    }
                                 }
                             },
                             // dbg!(1)
@@ -96,28 +107,6 @@ impl LateLintPass<'_> for DbgMacro {
                                 snippet_with_applicability(cx, val.span.source_callsite(), "..", &mut applicability)
                                     .to_string(),
                             ),
-                            // dbg!(2, 3)
-                            ExprKind::Tup(
-                                [
-                                    Expr {
-                                        kind: ExprKind::Match(first, ..),
-                                        ..
-                                    },
-                                    ..,
-                                    Expr {
-                                        kind: ExprKind::Match(last, ..),
-                                        ..
-                                    },
-                                ],
-                            ) => {
-                                let snippet = snippet_with_applicability(
-                                    cx,
-                                    first.span.source_callsite().to(last.span.source_callsite()),
-                                    "..",
-                                    &mut applicability,
-                                );
-                                (macro_call.span, format!("({snippet})"))
-                            },
                             _ => unreachable!(),
                         };
 
@@ -168,4 +157,38 @@ fn is_async_move_desugar<'tcx>(expr: &'tcx Expr<'tcx>) -> Option<&'tcx Expr<'tcx
 
 fn first_dbg_macro_in_expansion(cx: &LateContext<'_>, span: Span) -> Option<MacroCall> {
     macro_backtrace(span).find(|mc| cx.tcx.is_diagnostic_item(sym::dbg_macro, mc.def_id))
+}
+
+fn find_multi_input_exprs<'a>(statements: &'a [Stmt<'a>]) -> Option<(Expr<'a>, Expr<'a>)> {
+    // Multi-input dbg!(a, b, ...) macro contains a statement of the form:
+    //     let eager_eval = ($( match $val { ... } ),*);
+    // which we're looking for here.
+    for stmt in statements {
+        if let StmtKind::Let(LetStmt {
+            init:
+                Some(Expr {
+                    kind:
+                        ExprKind::Tup(
+                            [
+                                Expr {
+                                    kind: ExprKind::Match(first, ..),
+                                    ..
+                                },
+                                ..,
+                                Expr {
+                                    kind: ExprKind::Match(last, ..),
+                                    ..
+                                },
+                            ],
+                        ),
+                    ..
+                }),
+            ..
+        }) = stmt.kind
+        {
+            return Some((**first, **last));
+        }
+    }
+
+    None
 }
