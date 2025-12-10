@@ -4,7 +4,7 @@
 //@ edition:future
 //@ revisions: default deny
 //@[default] compile-flags: -Z unstable-options -Z stack-protector=all
-//@[deny] compile-flags: -Z allow-partial-mitigations=!stack-protector -Z unstable-options -Z stack-protector=all
+//@[deny] compile-flags: -Z deny-partial-mitigations=stack-protector -Z unstable-options -Z stack-protector=all
 
 // ^ enables stack-protector for both minicore and this crate
 
