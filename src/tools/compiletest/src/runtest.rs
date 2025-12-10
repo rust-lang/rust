@@ -439,6 +439,9 @@ impl<'test> TestCx<'test> {
         };
 
         let mut rustc = Command::new(&self.config.rustc_path);
+
+        self.build_all_auxiliary(&self.aux_output_dir(), &mut rustc);
+
         rustc
             .arg(input)
             .args(&["-Z", &format!("unpretty={}", pretty_type)])
