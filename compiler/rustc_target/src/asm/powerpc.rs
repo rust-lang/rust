@@ -115,6 +115,16 @@ fn reserved_v20to31(
     }
 }
 
+fn spe_acc_target_check(
+    _arch: InlineAsmArch,
+    _reloc_model: RelocModel,
+    _target_features: &FxIndexSet<Symbol>,
+    target: &Target,
+    _is_clobber: bool,
+) -> Result<(), &'static str> {
+    if target.abi == Abi::Spe { Ok(()) } else { Err("spe_acc is only available on spe targets") }
+}
+
 def_regs! {
     PowerPC PowerPCInlineAsmReg PowerPCInlineAsmRegClass {
         r0: reg = ["r0", "0"],
@@ -286,7 +296,7 @@ def_regs! {
         ctr: ctr = ["ctr"],
         lr: lr = ["lr"],
         xer: xer = ["xer"],
-        spe_acc: spe_acc = ["spe_acc"],
+        spe_acc: spe_acc = ["spe_acc"] % spe_acc_target_check,
         #error = ["r1", "1", "sp"] =>
             "the stack pointer cannot be used as an operand for inline asm",
         #error = ["r2", "2"] =>
