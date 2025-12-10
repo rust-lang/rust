@@ -306,6 +306,7 @@ pub trait IntoIterator {
     /// assert_eq!(None, iter.next());
     /// ```
     #[lang = "into_iter"]
+    #[must_use = "Iterators do nothing unless iterated over"]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn into_iter(self) -> Self::IntoIter;
 }
