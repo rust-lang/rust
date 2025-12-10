@@ -1,3 +1,5 @@
+//! regression test for https://github.com/rust-lang/rust/issues/22644
+
 fn main() {
     let a: usize = 0;
     let long_name: usize = 0;

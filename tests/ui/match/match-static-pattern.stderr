@@ -1,7 +1,7 @@
 error[E0532]: expected unit struct, unit variant or constant, found static `self::X`
-  --> $DIR/issue-17933.rs:5:9
+  --> $DIR/match-static-pattern.rs:6:9
    |
-LL |         self::X => { },
+LL |         self::X => {}
    |         ^^^^^^^ not a unit struct, unit variant or constant
 
 error: aborting due to 1 previous error

@@ -1,4 +1,7 @@
-enum Foo { Bar }
+//! regression test for https://github.com/rust-lang/rust/issues/23253
+enum Foo {
+    Bar,
+}
 
 fn main() {
     Foo::Bar.a;

@@ -1,5 +1,6 @@
-// Test that regionck suggestions in a provided method of a trait
-// don't ICE
+//! regression test for https://github.com/rust-lang/rust/issues/17758
+//! Test that regionck suggestions in a provided method of a trait
+//! don't ICE
 
 trait Foo<'a> {
     fn foo(&'a self);

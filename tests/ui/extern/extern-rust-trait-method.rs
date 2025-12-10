@@ -1,3 +1,4 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/19398
 //@ check-pass
 
 trait T {

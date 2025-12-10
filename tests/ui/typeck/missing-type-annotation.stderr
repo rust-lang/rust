@@ -1,5 +1,5 @@
 error[E0282]: type annotations needed
-  --> $DIR/issue-18159.rs:2:9
+  --> $DIR/missing-type-annotation.rs:3:9
    |
 LL |     let x;
    |         ^

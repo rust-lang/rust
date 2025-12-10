@@ -1,5 +1,5 @@
 error[E0515]: cannot return reference to temporary value
-  --> $DIR/issue-46472.rs:2:5
+  --> $DIR/return-ref-to-temporary.rs:3:5
    |
 LL |     &mut 4
    |     ^^^^^-

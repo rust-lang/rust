@@ -1,3 +1,4 @@
+//! regression test for https://github.com/rust-lang/rust/issues/49854
 //@ run-pass
 use std::ffi::OsString;
 

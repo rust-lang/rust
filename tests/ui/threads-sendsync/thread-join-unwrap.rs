@@ -1,7 +1,6 @@
+//! Regression test for unwrapping the result of `join`, issue https://github.com/rust-lang/rust/issues/21291
 //@ run-pass
 //@ needs-threads
-
-// Regression test for unwrapping the result of `join`, issue #21291
 
 use std::thread;
 

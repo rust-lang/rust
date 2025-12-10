@@ -1,3 +1,4 @@
+//! regression test for https://github.com/rust-lang/rust/issues/24945
 //@ run-pass
 // This test is just checking that we continue to accept `-g -g -O -O`
 // as options to the compiler.
