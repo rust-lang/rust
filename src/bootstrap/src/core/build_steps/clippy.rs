@@ -214,7 +214,6 @@ impl Step for Std {
             lint_args(builder, &self.config, IGNORED_RULES_FOR_STD_AND_RUSTC),
             &build_stamp::libstd_stamp(builder, build_compiler, target),
             vec![],
-            true,
             false,
         );
     }
@@ -309,7 +308,6 @@ impl Step for Rustc {
             lint_args(builder, &self.config, IGNORED_RULES_FOR_STD_AND_RUSTC),
             &build_stamp::librustc_stamp(builder, build_compiler, target),
             vec![],
-            true,
             false,
         );
     }
@@ -379,15 +377,7 @@ impl Step for CodegenGcc {
         let stamp = BuildStamp::new(&builder.cargo_out(build_compiler, Mode::Codegen, target))
             .with_prefix("rustc_codegen_gcc-check");
 
-        run_cargo(
-            builder,
-            cargo,
-            lint_args(builder, &self.config, &[]),
-            &stamp,
-            vec![],
-            true,
-            false,
-        );
+        run_cargo(builder, cargo, lint_args(builder, &self.config, &[]), &stamp, vec![], false);
     }
 
     fn metadata(&self) -> Option<StepMetadata> {
@@ -469,7 +459,6 @@ macro_rules! lint_any {
                     lint_args(builder, &self.config, &[]),
                     &stamp,
                     vec![],
-                    true,
                     false,
                 );
             }
