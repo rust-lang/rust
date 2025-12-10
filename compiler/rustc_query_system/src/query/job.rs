@@ -195,6 +195,8 @@ struct QueryWaiter<I> {
     query: Option<QueryInclusion>,
     thread_id: ThreadId,
     condvar: Condvar,
+    // remove this after making sure PR it's ok to do
+    #[allow(dead_code)]
     span: Span,
     cycle: Mutex<Option<CycleError<I>>>,
 }
