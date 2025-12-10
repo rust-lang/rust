@@ -1551,11 +1551,11 @@ pub(crate) struct UnconstrainedGenericParameter {
 #[diag(hir_analysis_opaque_captures_higher_ranked_lifetime, code = E0657)]
 pub(crate) struct OpaqueCapturesHigherRankedLifetime {
     #[primary_span]
-    pub span: Span,
+    pub span: MultiSpan,
     #[label]
     pub label: Option<Span>,
     #[note]
-    pub decl_span: Span,
+    pub decl_span: MultiSpan,
     pub bad_place: &'static str,
 }
 
