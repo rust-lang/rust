@@ -18,8 +18,6 @@ fn foo() {
     /// a //~ ERROR unused doc comment
     #[doc(test(attr(allow(dead_code))))]
     //~^ ERROR unused doc comment
-    //~| ERROR `#[doc]` attribute cannot be used on statements
-    //~| WARN this was previously accepted by the compiler
     let x = 12;
 
     /// multi-line //~ ERROR unused doc comment
@@ -30,8 +28,6 @@ fn foo() {
         1 => {},
         #[doc(test(attr(allow(dead_code))))]
         //~^ ERROR unused doc comment
-        //~| ERROR `#[doc]` attribute cannot be used on match arms [unused_attributes]
-        //~| WARN this was previously accepted by the compiler
         _ => {}
     }
 
@@ -47,8 +43,6 @@ fn foo() {
 
     #[doc(test(attr(allow(dead_code))))]
     //~^ ERROR unused doc comment
-    //~| ERROR `#[doc]` attribute cannot be used on statements
-    //~| WARN this was previously accepted by the compiler
     let x = /** comment */ 47; //~ ERROR unused doc comment
 
     /// dox //~ ERROR unused doc comment

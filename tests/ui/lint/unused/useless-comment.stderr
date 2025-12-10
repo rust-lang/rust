@@ -33,7 +33,7 @@ LL | unsafe extern "C" { }
    = help: use `//` for a plain comment
 
 error: unused doc comment
-  --> $DIR/useless-comment.rs:45:5
+  --> $DIR/useless-comment.rs:41:5
    |
 LL |     /// bar
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ rustdoc does not generate documentation for macro invocations
@@ -56,14 +56,14 @@ error: unused doc comment
    |
 LL |     #[doc(test(attr(allow(dead_code))))]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-...
+LL |
 LL |     let x = 12;
    |     ----------- rustdoc does not generate documentation for statements
    |
    = help: use `//` for a plain comment
 
 error: unused doc comment
-  --> $DIR/useless-comment.rs:25:5
+  --> $DIR/useless-comment.rs:23:5
    |
 LL | /     /// multi-line
 LL | |     /// doc comment
@@ -73,7 +73,7 @@ LL | /     match x {
 LL | |         /// c
 LL | |         1 => {},
 LL | |         #[doc(test(attr(allow(dead_code))))]
-...  |
+LL | |
 LL | |         _ => {}
 LL | |     }
    | |_____- rustdoc does not generate documentation for expressions
@@ -81,7 +81,7 @@ LL | |     }
    = help: use `//` for a plain comment
 
 error: unused doc comment
-  --> $DIR/useless-comment.rs:29:9
+  --> $DIR/useless-comment.rs:27:9
    |
 LL |         /// c
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -91,18 +91,18 @@ LL |         1 => {},
    = help: use `//` for a plain comment
 
 error: unused doc comment
-  --> $DIR/useless-comment.rs:31:9
+  --> $DIR/useless-comment.rs:29:9
    |
 LL |         #[doc(test(attr(allow(dead_code))))]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-...
+LL |
 LL |         _ => {}
    |         ------- rustdoc does not generate documentation for match arms
    |
    = help: use `//` for a plain comment
 
 error: unused doc comment
-  --> $DIR/useless-comment.rs:38:5
+  --> $DIR/useless-comment.rs:34:5
    |
 LL |     /// foo
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -112,7 +112,7 @@ LL |     unsafe {}
    = help: use `//` for a plain comment
 
 error: unused doc comment
-  --> $DIR/useless-comment.rs:41:5
+  --> $DIR/useless-comment.rs:37:5
    |
 LL |     #[doc = "foo"]
    |     ^^^^^^^^^^^^^^
@@ -123,7 +123,7 @@ LL |     3;
    = help: use `//` for a plain comment
 
 error: unused doc comment
-  --> $DIR/useless-comment.rs:42:5
+  --> $DIR/useless-comment.rs:38:5
    |
 LL |     #[doc = "bar"]
    |     ^^^^^^^^^^^^^^
@@ -133,18 +133,18 @@ LL |     3;
    = help: use `//` for a plain comment
 
 error: unused doc comment
-  --> $DIR/useless-comment.rs:48:5
+  --> $DIR/useless-comment.rs:44:5
    |
 LL |     #[doc(test(attr(allow(dead_code))))]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-...
+LL |
 LL |     let x = /** comment */ 47;
    |     -------------------------- rustdoc does not generate documentation for statements
    |
    = help: use `//` for a plain comment
 
 error: unused doc comment
-  --> $DIR/useless-comment.rs:52:13
+  --> $DIR/useless-comment.rs:46:13
    |
 LL |     let x = /** comment */ 47;
    |             ^^^^^^^^^^^^^^ -- rustdoc does not generate documentation for expressions
@@ -152,7 +152,7 @@ LL |     let x = /** comment */ 47;
    = help: use `/* */` for a plain comment
 
 error: unused doc comment
-  --> $DIR/useless-comment.rs:54:5
+  --> $DIR/useless-comment.rs:48:5
    |
 LL |       /// dox
    |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -163,37 +163,5 @@ LL | |     }
    |
    = help: use `//` for a plain comment
 
-error: `#[doc]` attribute cannot be used on statements
-  --> $DIR/useless-comment.rs:19:5
-   |
-LL |     #[doc(test(attr(allow(dead_code))))]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = help: `#[doc]` can be applied to associated consts, associated types, constants, crates, data types, enum variants, extern crates, foreign modules, foreign statics, functions, impl blocks, macro defs, modules, statics, struct fields, trait aliases, traits, type aliases, unions, and use statements
-note: the lint level is defined here
-  --> $DIR/useless-comment.rs:4:9
-   |
-LL | #![deny(unused_attributes)]
-   |         ^^^^^^^^^^^^^^^^^
-
-error: `#[doc]` attribute cannot be used on match arms
-  --> $DIR/useless-comment.rs:31:9
-   |
-LL |         #[doc(test(attr(allow(dead_code))))]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = help: `#[doc]` can be applied to associated consts, associated types, constants, crates, data types, enum variants, extern crates, foreign modules, foreign statics, functions, impl blocks, macro defs, modules, statics, struct fields, trait aliases, traits, type aliases, unions, and use statements
-
-error: `#[doc]` attribute cannot be used on statements
-  --> $DIR/useless-comment.rs:48:5
-   |
-LL |     #[doc(test(attr(allow(dead_code))))]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = help: `#[doc]` can be applied to associated consts, associated types, constants, crates, data types, enum variants, extern crates, foreign modules, foreign statics, functions, impl blocks, macro defs, modules, statics, struct fields, trait aliases, traits, type aliases, unions, and use statements
-
-error: aborting due to 18 previous errors
+error: aborting due to 15 previous errors
 

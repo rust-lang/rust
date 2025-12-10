@@ -7,7 +7,7 @@ use rustc_hir::lints::AttributeLintKind;
 use rustc_span::{Span, Symbol, edition, sym};
 use thin_vec::ThinVec;
 
-use super::prelude::{Allow, AllowedTargets, Error, MethodKind, Target};
+use super::prelude::{ALL_TARGETS, AllowedTargets};
 use super::{AcceptMapping, AttributeParser};
 use crate::context::{AcceptContext, FinalizeContext, Stage};
 use crate::parser::{ArgParser, MetaItemOrLitParser, MetaItemParser, PathParser};
@@ -583,37 +583,39 @@ impl<S: Stage> AttributeParser<S> for DocParser {
             this.accept_single_doc_attr(cx, args);
         },
     )];
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowListWarnRest(&[
-        Allow(Target::ExternCrate),
-        Allow(Target::Use),
-        Allow(Target::Static),
-        Allow(Target::Const),
-        Allow(Target::Fn),
-        Allow(Target::Mod),
-        Allow(Target::ForeignMod),
-        Allow(Target::TyAlias),
-        Allow(Target::Enum),
-        Allow(Target::Variant),
-        Allow(Target::Struct),
-        Allow(Target::Field),
-        Allow(Target::Union),
-        Allow(Target::Trait),
-        Allow(Target::TraitAlias),
-        Allow(Target::Impl { of_trait: true }),
-        Allow(Target::Impl { of_trait: false }),
-        Allow(Target::AssocConst),
-        Allow(Target::Method(MethodKind::Inherent)),
-        Allow(Target::Method(MethodKind::Trait { body: true })),
-        Allow(Target::Method(MethodKind::Trait { body: false })),
-        Allow(Target::Method(MethodKind::TraitImpl)),
-        Allow(Target::AssocTy),
-        Allow(Target::ForeignFn),
-        Allow(Target::ForeignStatic),
-        Allow(Target::ForeignTy),
-        Allow(Target::MacroDef),
-        Allow(Target::Crate),
-        Error(Target::WherePredicate),
-    ]);
+    // FIXME: Currently emitted from 2 different places, generating duplicated warnings.
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(ALL_TARGETS);
+    // const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowListWarnRest(&[
+    //     Allow(Target::ExternCrate),
+    //     Allow(Target::Use),
+    //     Allow(Target::Static),
+    //     Allow(Target::Const),
+    //     Allow(Target::Fn),
+    //     Allow(Target::Mod),
+    //     Allow(Target::ForeignMod),
+    //     Allow(Target::TyAlias),
+    //     Allow(Target::Enum),
+    //     Allow(Target::Variant),
+    //     Allow(Target::Struct),
+    //     Allow(Target::Field),
+    //     Allow(Target::Union),
+    //     Allow(Target::Trait),
+    //     Allow(Target::TraitAlias),
+    //     Allow(Target::Impl { of_trait: true }),
+    //     Allow(Target::Impl { of_trait: false }),
+    //     Allow(Target::AssocConst),
+    //     Allow(Target::Method(MethodKind::Inherent)),
+    //     Allow(Target::Method(MethodKind::Trait { body: true })),
+    //     Allow(Target::Method(MethodKind::Trait { body: false })),
+    //     Allow(Target::Method(MethodKind::TraitImpl)),
+    //     Allow(Target::AssocTy),
+    //     Allow(Target::ForeignFn),
+    //     Allow(Target::ForeignStatic),
+    //     Allow(Target::ForeignTy),
+    //     Allow(Target::MacroDef),
+    //     Allow(Target::Crate),
+    //     Error(Target::WherePredicate),
+    // ]);
 
     fn finalize(self, _cx: &FinalizeContext<'_, '_, S>) -> Option<AttributeKind> {
         if self.nb_doc_attrs != 0 {
