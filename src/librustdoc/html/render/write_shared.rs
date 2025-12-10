@@ -747,7 +747,14 @@ impl TraitAliasPart {
             path.push(format!("{remote_item_type}.{}.js", remote_path[remote_path.len() - 1]));
 
             let mut implementors = implementors.collect::<Vec<_>>();
-            implementors.sort_unstable();
+            implementors.sort_unstable_by(|a, b| {
+                // We sort negative impls first.
+                match (a.is_negative, b.is_negative) {
+                    (false, true) => Ordering::Greater,
+                    (true, false) => Ordering::Less,
+                    _ => compare_names(&a.text, &b.text),
+                }
+            });
 
             let part = OrderedJson::array_unsorted(
                 implementors
@@ -762,7 +769,6 @@ impl TraitAliasPart {
     }
 }
 
-#[derive(Eq)]
 struct Implementor {
     text: String,
     synthetic: bool,
@@ -783,29 +789,6 @@ impl Serialize for Implementor {
             seq.serialize_element(&self.types)?;
         }
         seq.end()
-    }
-}
-
-impl PartialEq for Implementor {
-    fn eq(&self, other: &Self) -> bool {
-        self.cmp(other) == Ordering::Equal
-    }
-}
-
-impl PartialOrd for Implementor {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(Ord::cmp(self, other))
-    }
-}
-
-impl Ord for Implementor {
-    fn cmp(&self, other: &Self) -> Ordering {
-        // We sort negative impls first.
-        match (self.is_negative, other.is_negative) {
-            (false, true) => Ordering::Greater,
-            (true, false) => Ordering::Less,
-            _ => compare_names(&self.text, &other.text),
-        }
     }
 }
 

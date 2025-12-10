@@ -29,7 +29,7 @@ nav.sub {
 	display: none;
 }
 
-#synthetic-implementors-list, #implementors-list {
+#synthetic-implementors-list:not(.loaded), #implementors-list:not(.loaded) {
 	display: block;
 }
 

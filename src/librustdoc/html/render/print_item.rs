@@ -650,18 +650,18 @@ fn item_function(cx: &Context<'_>, it: &clean::Item, f: &clean::Function) -> imp
 ///
 /// This marker appears once in all trait impl lists to divide negative impls from positive impls.
 struct NegativeMarker {
-    inserted_negative_marker: bool,
+    inserted: bool,
 }
 
 impl NegativeMarker {
     fn new() -> Self {
-        Self { inserted_negative_marker: false }
+        Self { inserted: false }
     }
 
     fn insert_if_needed(&mut self, w: &mut fmt::Formatter<'_>, implementor: &Impl) -> fmt::Result {
-        if !self.inserted_negative_marker && !implementor.is_negative_trait_impl() {
-            write!(w, "<div class=\"negative-marker\"></div>")?;
-            self.inserted_negative_marker = true;
+        if !self.inserted && !implementor.is_negative_trait_impl() {
+            w.write_str("<div class=\"negative-marker\"></div>")?;
+            self.inserted = true;
         }
         Ok(())
     }

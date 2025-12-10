@@ -911,10 +911,10 @@ function preLoadCss(cssUrl) {
             }
         }
         if (implementors[0]) {
-            implementors[0].style.display = "block";
+            implementors[0].classList.add("loaded");
         }
         if (syntheticImplementors[0]) {
-            syntheticImplementors[0].style.display = "block";
+            syntheticImplementors[0].classList.add("loaded");
         }
     };
     if (window.pending_implementors) {
