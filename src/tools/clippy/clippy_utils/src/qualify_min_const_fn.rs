@@ -150,7 +150,7 @@ fn check_rvalue<'tcx>(
             CastKind::PointerCoercion(
                 PointerCoercion::UnsafeFnPointer
                 | PointerCoercion::ClosureFnPointer(_)
-                | PointerCoercion::ReifyFnPointer,
+                | PointerCoercion::ReifyFnPointer(_),
                 _,
             ),
             _,

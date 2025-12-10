@@ -217,6 +217,146 @@ impl<'tcx> TyCtxt<'tcx> {
         }
         None
     }
+
+    /// Whether this expression constitutes a read of value of the type that
+    /// it evaluates to.
+    ///
+    /// This is used to determine if we should consider the block to diverge
+    /// if the expression evaluates to `!`, and if we should insert a `NeverToAny`
+    /// coercion for values of type `!`.
+    ///
+    /// This function generally returns `false` if the expression is a place
+    /// expression and the *parent* expression is the scrutinee of a match or
+    /// the pointee of an `&` addr-of expression, since both of those parent
+    /// expressions take a *place* and not a value.
+    pub fn expr_guaranteed_to_constitute_read_for_never(self, expr: &Expr<'_>) -> bool {
+        // We only care about place exprs. Anything else returns an immediate
+        // which would constitute a read. We don't care about distinguishing
+        // "syntactic" place exprs since if the base of a field projection is
+        // not a place then it would've been UB to read from it anyways since
+        // that constitutes a read.
+        if !expr.is_syntactic_place_expr() {
+            return true;
+        }
+
+        let parent_node = self.parent_hir_node(expr.hir_id);
+        match parent_node {
+            Node::Expr(parent_expr) => {
+                match parent_expr.kind {
+                    // Addr-of, field projections, and LHS of assignment don't constitute reads.
+                    // Assignment does call `drop_in_place`, though, but its safety
+                    // requirements are not the same.
+                    ExprKind::AddrOf(..) | ExprKind::Field(..) => false,
+
+                    // Place-preserving expressions only constitute reads if their
+                    // parent expression constitutes a read.
+                    ExprKind::Type(..) | ExprKind::UnsafeBinderCast(..) => {
+                        self.expr_guaranteed_to_constitute_read_for_never(parent_expr)
+                    }
+
+                    ExprKind::Assign(lhs, _, _) => {
+                        // Only the LHS does not constitute a read
+                        expr.hir_id != lhs.hir_id
+                    }
+
+                    // See note on `PatKind::Or` in `Pat::is_guaranteed_to_constitute_read_for_never`
+                    // for why this is `all`.
+                    ExprKind::Match(scrutinee, arms, _) => {
+                        assert_eq!(scrutinee.hir_id, expr.hir_id);
+                        arms.iter().all(|arm| arm.pat.is_guaranteed_to_constitute_read_for_never())
+                    }
+                    ExprKind::Let(LetExpr { init, pat, .. }) => {
+                        assert_eq!(init.hir_id, expr.hir_id);
+                        pat.is_guaranteed_to_constitute_read_for_never()
+                    }
+
+                    // Any expression child of these expressions constitute reads.
+                    ExprKind::Array(_)
+                    | ExprKind::Call(_, _)
+                    | ExprKind::Use(_, _)
+                    | ExprKind::MethodCall(_, _, _, _)
+                    | ExprKind::Tup(_)
+                    | ExprKind::Binary(_, _, _)
+                    | ExprKind::Unary(_, _)
+                    | ExprKind::Cast(_, _)
+                    | ExprKind::DropTemps(_)
+                    | ExprKind::If(_, _, _)
+                    | ExprKind::Closure(_)
+                    | ExprKind::Block(_, _)
+                    | ExprKind::AssignOp(_, _, _)
+                    | ExprKind::Index(_, _, _)
+                    | ExprKind::Break(_, _)
+                    | ExprKind::Ret(_)
+                    | ExprKind::Become(_)
+                    | ExprKind::InlineAsm(_)
+                    | ExprKind::Struct(_, _, _)
+                    | ExprKind::Repeat(_, _)
+                    | ExprKind::Yield(_, _) => true,
+
+                    // These expressions have no (direct) sub-exprs.
+                    ExprKind::ConstBlock(_)
+                    | ExprKind::Loop(_, _, _, _)
+                    | ExprKind::Lit(_)
+                    | ExprKind::Path(_)
+                    | ExprKind::Continue(_)
+                    | ExprKind::OffsetOf(_, _)
+                    | ExprKind::Err(_) => unreachable!("no sub-expr expected for {:?}", expr.kind),
+                }
+            }
+
+            // If we have a subpattern that performs a read, we want to consider this
+            // to diverge for compatibility to support something like `let x: () = *never_ptr;`.
+            Node::LetStmt(LetStmt { init: Some(target), pat, .. }) => {
+                assert_eq!(target.hir_id, expr.hir_id);
+                pat.is_guaranteed_to_constitute_read_for_never()
+            }
+
+            // These nodes (if they have a sub-expr) do constitute a read.
+            Node::Block(_)
+            | Node::Arm(_)
+            | Node::ExprField(_)
+            | Node::AnonConst(_)
+            | Node::ConstBlock(_)
+            | Node::ConstArg(_)
+            | Node::Stmt(_)
+            | Node::Item(Item { kind: ItemKind::Const(..) | ItemKind::Static(..), .. })
+            | Node::TraitItem(TraitItem { kind: TraitItemKind::Const(..), .. })
+            | Node::ImplItem(ImplItem { kind: ImplItemKind::Const(..), .. }) => true,
+
+            Node::TyPat(_) | Node::Pat(_) => {
+                self.dcx().span_delayed_bug(expr.span, "place expr not allowed in pattern");
+                true
+            }
+
+            // These nodes do not have direct sub-exprs.
+            Node::Param(_)
+            | Node::Item(_)
+            | Node::ForeignItem(_)
+            | Node::TraitItem(_)
+            | Node::ImplItem(_)
+            | Node::Variant(_)
+            | Node::Field(_)
+            | Node::PathSegment(_)
+            | Node::Ty(_)
+            | Node::AssocItemConstraint(_)
+            | Node::TraitRef(_)
+            | Node::PatField(_)
+            | Node::PatExpr(_)
+            | Node::LetStmt(_)
+            | Node::Synthetic
+            | Node::Err(_)
+            | Node::Ctor(_)
+            | Node::Lifetime(_)
+            | Node::GenericParam(_)
+            | Node::Crate(_)
+            | Node::Infer(_)
+            | Node::WherePredicate(_)
+            | Node::PreciseCapturingNonLifetimeArg(_)
+            | Node::OpaqueTy(_) => {
+                unreachable!("no sub-expr expected for {parent_node:?}")
+            }
+        }
+    }
 }
 
 /// Hashes computed by [`TyCtxt::hash_owner_nodes`] if necessary.

@@ -245,6 +245,19 @@ lint_dropping_copy_types = calls to `std::mem::drop` with a value that implement
 lint_dropping_references = calls to `std::mem::drop` with a reference instead of an owned value does nothing
     .label = argument has type `{$arg_ty}`
 
+lint_empty_attribute =
+    unused attribute
+    .suggestion = {$valid_without_list ->
+        [true] remove these parentheses
+        *[other] remove this attribute
+    }
+    .note = {$valid_without_list ->
+        [true] using `{$attr_path}` with an empty list is equivalent to not using a list at all
+        *[other] using `{$attr_path}` with an empty list has no effect
+    }
+
+-lint_previously_accepted =
+    this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 lint_enum_intrinsics_mem_discriminant =
     the return value of `mem::discriminant` is unspecified when called with a non-enum type
     .note = the argument to `discriminant` should be a reference to an enum, but it was passed a reference to a `{$ty_param}`, which is not an enum
@@ -256,9 +269,6 @@ lint_enum_intrinsics_mem_variant =
 lint_expectation = this lint expectation is unfulfilled
     .note = the `unfulfilled_lint_expectations` lint can't be expected and will always produce this message
     .rationale = {$rationale}
-
-lint_extern_crate_not_idiomatic = `extern crate` is not idiomatic in the new edition
-    .suggestion = convert it to a `use`
 
 lint_for_loops_over_fallibles =
     for loop over {$article} `{$ref_prefix}{$ty}`. This is more readably written as an `if let` statement
@@ -461,15 +471,23 @@ lint_invalid_reference_casting_note_book = for more information, visit <https://
 
 lint_invalid_reference_casting_note_ty_has_interior_mutability = even for types with interior mutability, the only legal way to obtain a mutable pointer from a shared reference is through `UnsafeCell::get`
 
+lint_invalid_style = {$is_used_as_inner ->
+        [false] crate-level attribute should be an inner attribute: add an exclamation mark: `#![{$name}]`
+        *[other] the `#![{$name}]` attribute can only be used at the crate root
+    }
+    .note = This attribute does not have an `!`, which means it is applied to this {$target}
+
+lint_invalid_target = `#[{$name}]` attribute cannot be used on {$target}
+    .warn = {-lint_previously_accepted}
+    .help = `#[{$name}]` can {$only}be applied to {$applied}
+    .suggestion = remove the attribute
+
 lint_lintpass_by_hand = implementing `LintPass` by hand
     .help = try using `declare_lint_pass!` or `impl_lint_pass!` instead
 
 lint_macro_expr_fragment_specifier_2024_migration =
     the `expr` fragment specifier will accept more expressions in the 2024 edition
     .suggestion = to keep the existing behavior, use the `expr_2021` fragment specifier
-lint_macro_is_private = macro `{$ident}` is private
-
-lint_macro_rule_never_used = rule #{$n} of macro `{$name}` is never used
 
 lint_malformed_attribute = malformed lint attribute input
 
@@ -648,10 +666,6 @@ lint_opaque_hidden_inferred_bound = opaque type `{$ty}` does not satisfy its ass
 
 lint_opaque_hidden_inferred_bound_sugg = add this bound
 
-lint_out_of_scope_macro_calls = cannot find macro `{$path}` in the current scope when looking from {$location}
-    .label = not found from {$location}
-    .help = import `macro_rules` with `use` to make it callable above its definition
-
 lint_overflowing_bin_hex = literal out of range for `{$ty}`
     .negative_note = the literal `{$lit}` (decimal `{$dec}`) does not fit into the type `{$ty}`
     .negative_becomes_note = and the value `-{$lit}` will become `{$actually}{$ty}`
@@ -687,9 +701,6 @@ lint_pattern_in_bodiless = patterns aren't allowed in functions without bodies
 lint_pattern_in_foreign = patterns aren't allowed in foreign function declarations
     .label = pattern not allowed in foreign function
 
-lint_private_extern_crate_reexport = extern crate `{$ident}` is private and cannot be re-exported
-    .suggestion = consider making the `extern crate` item publicly accessible
-
 lint_query_instability = using `{$query}` can result in unstable query results
     .note = if you believe this case to be fine, allow this lint and add a comment explaining your rationale
 
@@ -714,10 +725,6 @@ lint_redundant_import = the item `{$ident}` is imported redundantly
     .label_defined_here = the item `{$ident}` is already defined here
     .label_imported_prelude = the item `{$ident}` is already imported by the extern prelude
     .label_defined_prelude = the item `{$ident}` is already defined by the extern prelude
-
-lint_redundant_import_visibility = glob import doesn't reexport anything with visibility `{$import_vis}` because no imported item is public enough
-    .note = the most public imported item is `{$max_vis}`
-    .help = reduce the glob import's visibility or increase visibility of imported items
 
 lint_redundant_semicolons =
     unnecessary trailing {$multiple ->
@@ -878,9 +885,6 @@ lint_unicode_text_flow = unicode codepoint changing visible direction of text pr
 lint_unit_bindings = binding has unit type `()`
     .label = this pattern is inferred to be the unit type `()`
 
-lint_unknown_diagnostic_attribute = unknown diagnostic attribute
-lint_unknown_diagnostic_attribute_typo_sugg = an attribute with a similar name exists
-
 lint_unknown_gated_lint =
     unknown lint: `{$name}`
     .note = the `{$name}` lint is unstable
@@ -946,6 +950,12 @@ lint_unused_def = unused {$pre}`{$def}`{$post} that must be used
 lint_unused_delim = unnecessary {$delim} around {$item}
     .suggestion = remove these {$delim}
 
+lint_unused_duplicate =
+    unused attribute
+    .suggestion = remove this attribute
+    .note = attribute also specified here
+    .warn = {-lint_previously_accepted}
+
 lint_unused_import_braces = braces around {$node} is unnecessary
 
 lint_unused_imports = {$num_snippets ->
@@ -962,13 +972,15 @@ lint_unused_imports = {$num_snippets ->
 lint_unused_lifetime = lifetime parameter `{$ident}` never used
     .suggestion = elide the unused lifetime
 
-lint_unused_macro_definition = unused macro definition: `{$name}`
-
 lint_unused_op = unused {$op} that must be used
     .label = the {$op} produces a value
     .suggestion = use `let _ = ...` to ignore the resulting value
 
 lint_unused_result = unused result of type `{$ty}`
+
+lint_unused_visibilities = visibility qualifiers have no effect on `const _` declarations
+    .note = `const _` does not declare a name, so there is nothing for the qualifier to apply to
+    .suggestion = remove the qualifier
 
 lint_use_let_underscore_ignore_suggestion = use `let _ = ...` to ignore the expression or result
 

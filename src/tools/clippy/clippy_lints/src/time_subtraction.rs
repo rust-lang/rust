@@ -1,5 +1,5 @@
 use clippy_config::Conf;
-use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg};
+use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::res::{MaybeDef, MaybeTypeckRes};
 use clippy_utils::sugg::Sugg;
@@ -109,36 +109,16 @@ impl LateLintPass<'_> for UncheckedTimeSubtraction {
                     && !expr.span.from_expansion()
                     && self.msrv.meets(cx, msrvs::TRY_FROM)
                 {
-                    // For chained subtraction like (instant - dur1) - dur2, avoid suggestions
-                    if is_chained_time_subtraction(cx, lhs) {
-                        span_lint(
-                            cx,
-                            UNCHECKED_TIME_SUBTRACTION,
-                            expr.span,
-                            "unchecked subtraction of a 'Duration' from an 'Instant'",
-                        );
-                    } else {
-                        // instant - duration
-                        print_unchecked_duration_subtraction_sugg(cx, lhs, rhs, expr);
-                    }
+                    print_unchecked_duration_subtraction_sugg(cx, lhs, rhs, expr);
                 }
-            } else if lhs_ty.is_diag_item(cx, sym::Duration)
+            }
+            // duration - duration
+            else if lhs_ty.is_diag_item(cx, sym::Duration)
                 && rhs_ty.is_diag_item(cx, sym::Duration)
                 && !expr.span.from_expansion()
                 && self.msrv.meets(cx, msrvs::TRY_FROM)
             {
-                // For chained subtraction like (dur1 - dur2) - dur3, avoid suggestions
-                if is_chained_time_subtraction(cx, lhs) {
-                    span_lint(
-                        cx,
-                        UNCHECKED_TIME_SUBTRACTION,
-                        expr.span,
-                        "unchecked subtraction between 'Duration' values",
-                    );
-                } else {
-                    // duration - duration
-                    print_unchecked_duration_subtraction_sugg(cx, lhs, rhs, expr);
-                }
+                print_unchecked_duration_subtraction_sugg(cx, lhs, rhs, expr);
             }
         }
     }
@@ -191,26 +171,26 @@ fn print_unchecked_duration_subtraction_sugg(
     right_expr: &Expr<'_>,
     expr: &Expr<'_>,
 ) {
-    let typeck = cx.typeck_results();
-    let left_ty = typeck.expr_ty(left_expr);
-
-    let lint_msg = if left_ty.is_diag_item(cx, sym::Instant) {
-        "unchecked subtraction of a 'Duration' from an 'Instant'"
-    } else {
-        "unchecked subtraction between 'Duration' values"
-    };
-
-    let mut applicability = Applicability::MachineApplicable;
-    let left_sugg = Sugg::hir_with_applicability(cx, left_expr, "<left>", &mut applicability);
-    let right_sugg = Sugg::hir_with_applicability(cx, right_expr, "<right>", &mut applicability);
-
-    span_lint_and_sugg(
+    span_lint_and_then(
         cx,
         UNCHECKED_TIME_SUBTRACTION,
         expr.span,
-        lint_msg,
-        "try",
-        format!("{}.checked_sub({}).unwrap()", left_sugg.maybe_paren(), right_sugg),
-        applicability,
+        "unchecked subtraction of a `Duration`",
+        |diag| {
+            // For chained subtraction, like `(dur1 - dur2) - dur3` or `(instant - dur1) - dur2`,
+            // avoid suggestions
+            if !is_chained_time_subtraction(cx, left_expr) {
+                let mut applicability = Applicability::MachineApplicable;
+                let left_sugg = Sugg::hir_with_applicability(cx, left_expr, "<left>", &mut applicability);
+                let right_sugg = Sugg::hir_with_applicability(cx, right_expr, "<right>", &mut applicability);
+
+                diag.span_suggestion(
+                    expr.span,
+                    "try",
+                    format!("{}.checked_sub({}).unwrap()", left_sugg.maybe_paren(), right_sugg),
+                    applicability,
+                );
+            }
+        },
     );
 }

@@ -334,7 +334,7 @@ impl<'a, 'db> MethodResolutionContext<'a, 'db> {
                     .infcx
                     .instantiate_query_response_and_region_obligations(
                         &ObligationCause::new(),
-                        self.env.env,
+                        self.param_env,
                         &orig_values,
                         ty,
                     )
@@ -394,7 +394,7 @@ impl<'a, 'db> MethodResolutionContext<'a, 'db> {
             // converted to, in order to find out which of those methods might actually
             // be callable.
             let mut autoderef_via_deref =
-                Autoderef::new(infcx, self.env, self_ty).include_raw_pointers();
+                Autoderef::new(infcx, self.param_env, self_ty).include_raw_pointers();
 
             let mut reached_raw_pointer = false;
             let arbitrary_self_types_enabled = self.unstable_features.arbitrary_self_types
@@ -403,7 +403,7 @@ impl<'a, 'db> MethodResolutionContext<'a, 'db> {
                 let reachable_via_deref =
                     autoderef_via_deref.by_ref().map(|_| true).chain(std::iter::repeat(false));
 
-                let mut autoderef_via_receiver = Autoderef::new(infcx, self.env, self_ty)
+                let mut autoderef_via_receiver = Autoderef::new(infcx, self.param_env, self_ty)
                     .include_raw_pointers()
                     .use_receiver_trait();
                 let steps = autoderef_via_receiver
@@ -835,7 +835,7 @@ impl<'a, 'db, Choice: ProbeChoice<'db>> ProbeContext<'a, 'db, Choice> {
 
     #[inline]
     fn param_env(&self) -> ParamEnv<'db> {
-        self.ctx.env.env
+        self.ctx.param_env
     }
 
     /// When we're looking up a method by path (UFCS), we relate the receiver

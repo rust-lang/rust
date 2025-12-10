@@ -3041,14 +3041,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             tcx.def_span(pick.item.def_id),
                             format!("the method `{item_name}` exists on the type `{self_ty}`"),
                         );
-                        let (article, kind, variant, question) =
-                            if tcx.is_diagnostic_item(sym::Result, kind.did()) {
-                                ("a", "Result", "Err", ret_ty_matches(sym::Result))
-                            } else if tcx.is_diagnostic_item(sym::Option, kind.did()) {
-                                ("an", "Option", "None", ret_ty_matches(sym::Option))
-                            } else {
-                                return;
-                            };
+                        let (article, kind, variant, question) = if tcx.is_diagnostic_item(sym::Result, kind.did())
+                            // Do not suggest `.expect()` in const context where it's not available. rust-lang/rust#149316
+                            && !tcx.hir_is_inside_const_context(expr.hir_id)
+                        {
+                            ("a", "Result", "Err", ret_ty_matches(sym::Result))
+                        } else if tcx.is_diagnostic_item(sym::Option, kind.did()) {
+                            ("an", "Option", "None", ret_ty_matches(sym::Option))
+                        } else {
+                            return;
+                        };
                         if question {
                             err.span_suggestion_verbose(
                                 expr.span.shrink_to_hi(),

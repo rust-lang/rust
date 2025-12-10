@@ -63,6 +63,8 @@ impl From<CfgAtom> for CfgExpr {
 }
 
 impl CfgExpr {
+    // FIXME: Parsing from `tt` is only used in a handful of places, reconsider
+    // if we should switch them to AST.
     #[cfg(feature = "tt")]
     pub fn parse<S: Copy>(tt: &tt::TopSubtree<S>) -> CfgExpr {
         next_cfg_expr(&mut tt.iter()).unwrap_or(CfgExpr::Invalid)
@@ -71,6 +73,13 @@ impl CfgExpr {
     #[cfg(feature = "tt")]
     pub fn parse_from_iter<S: Copy>(tt: &mut tt::iter::TtIter<'_, S>) -> CfgExpr {
         next_cfg_expr(tt).unwrap_or(CfgExpr::Invalid)
+    }
+
+    #[cfg(feature = "syntax")]
+    pub fn parse_from_ast(
+        ast: &mut std::iter::Peekable<syntax::ast::TokenTreeChildren>,
+    ) -> CfgExpr {
+        next_cfg_expr_from_ast(ast).unwrap_or(CfgExpr::Invalid)
     }
 
     /// Fold the cfg by querying all basic `Atom` and `KeyValue` predicates.
@@ -87,6 +96,56 @@ impl CfgExpr {
             CfgExpr::Not(pred) => pred.fold(query).map(|s| !s),
         }
     }
+}
+
+#[cfg(feature = "syntax")]
+fn next_cfg_expr_from_ast(
+    it: &mut std::iter::Peekable<syntax::ast::TokenTreeChildren>,
+) -> Option<CfgExpr> {
+    use intern::sym;
+    use syntax::{NodeOrToken, SyntaxKind, T, ast};
+
+    let name = match it.next() {
+        None => return None,
+        Some(NodeOrToken::Token(ident)) if ident.kind().is_any_identifier() => {
+            Symbol::intern(ident.text())
+        }
+        Some(_) => return Some(CfgExpr::Invalid),
+    };
+
+    let ret = match it.peek() {
+        Some(NodeOrToken::Token(eq)) if eq.kind() == T![=] => {
+            it.next();
+            if let Some(NodeOrToken::Token(literal)) = it.peek()
+                && matches!(literal.kind(), SyntaxKind::STRING)
+            {
+                let literal = tt::token_to_literal(literal.text(), ()).symbol;
+                it.next();
+                CfgAtom::KeyValue { key: name, value: literal.clone() }.into()
+            } else {
+                return Some(CfgExpr::Invalid);
+            }
+        }
+        Some(NodeOrToken::Node(subtree)) => {
+            let mut subtree_iter = ast::TokenTreeChildren::new(subtree).peekable();
+            it.next();
+            let mut subs = std::iter::from_fn(|| next_cfg_expr_from_ast(&mut subtree_iter));
+            match name {
+                s if s == sym::all => CfgExpr::All(subs.collect()),
+                s if s == sym::any => CfgExpr::Any(subs.collect()),
+                s if s == sym::not => {
+                    CfgExpr::Not(Box::new(subs.next().unwrap_or(CfgExpr::Invalid)))
+                }
+                _ => CfgExpr::Invalid,
+            }
+        }
+        _ => CfgAtom::Flag(name).into(),
+    };
+
+    // Eat comma separator
+    while it.next().is_some_and(|it| it.as_token().is_none_or(|it| it.kind() != T![,])) {}
+
+    Some(ret)
 }
 
 #[cfg(feature = "tt")]

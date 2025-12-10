@@ -26,7 +26,7 @@ macro_rules! eq_local {
 
 pub fn foo<I: Iterator>(mut iter: I, value: &I::Item)
 where
-    Item: Eq + Debug, //~ ERROR cannot find type `Item` in this scope [E0412]
+    Item: Eq + Debug, //~ ERROR cannot find type `Item` in this scope [E0425]
 {
     ext::eq!(assert iter.next(), Some(value)); //~ ERROR  mismatched types [E0308]
     eq_local!(assert iter.next(), Some(value));

@@ -664,7 +664,8 @@ fn reg_to_llvm(reg: InlineAsmRegOrRegClass, layout: Option<&TyAndLayout<'_>>) ->
                 PowerPCInlineAsmRegClass::cr
                 | PowerPCInlineAsmRegClass::ctr
                 | PowerPCInlineAsmRegClass::lr
-                | PowerPCInlineAsmRegClass::xer,
+                | PowerPCInlineAsmRegClass::xer
+                | PowerPCInlineAsmRegClass::spe_acc,
             ) => {
                 unreachable!("clobber-only")
             }
@@ -847,7 +848,8 @@ fn dummy_output_type<'ll>(cx: &CodegenCx<'ll, '_>, reg: InlineAsmRegClass) -> &'
             PowerPCInlineAsmRegClass::cr
             | PowerPCInlineAsmRegClass::ctr
             | PowerPCInlineAsmRegClass::lr
-            | PowerPCInlineAsmRegClass::xer,
+            | PowerPCInlineAsmRegClass::xer
+            | PowerPCInlineAsmRegClass::spe_acc,
         ) => {
             unreachable!("clobber-only")
         }

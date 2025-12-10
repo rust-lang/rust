@@ -25,7 +25,7 @@ use toolchain::Tool;
 use triomphe::Arc;
 
 use crate::{
-    command::{CargoParser, CommandHandle},
+    command::{CommandHandle, JsonLinesParser},
     diagnostics::DiagnosticsGeneration,
 };
 
@@ -753,7 +753,7 @@ enum CargoCheckMessage {
 
 struct CargoCheckParser;
 
-impl CargoParser<CargoCheckMessage> for CargoCheckParser {
+impl JsonLinesParser<CargoCheckMessage> for CargoCheckParser {
     fn from_line(&self, line: &str, error: &mut String) -> Option<CargoCheckMessage> {
         let mut deserializer = serde_json::Deserializer::from_str(line);
         deserializer.disable_recursion_limit();

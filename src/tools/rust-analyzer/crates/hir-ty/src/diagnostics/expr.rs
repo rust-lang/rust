@@ -8,7 +8,7 @@ use base_db::Crate;
 use either::Either;
 use hir_def::{
     AdtId, AssocItemId, DefWithBodyId, HasModule, ItemContainerId, Lookup,
-    lang_item::LangItem,
+    lang_item::LangItems,
     resolver::{HasResolver, ValueNs},
 };
 use intern::sym;
@@ -25,7 +25,7 @@ use triomphe::Arc;
 use typed_arena::Arena;
 
 use crate::{
-    Adjust, InferenceResult, TraitEnvironment,
+    Adjust, InferenceResult,
     db::HirDatabase,
     diagnostics::match_check::{
         self,
@@ -33,7 +33,7 @@ use crate::{
     },
     display::{DisplayTarget, HirDisplay},
     next_solver::{
-        DbInterner, Ty, TyKind, TypingMode,
+        DbInterner, ParamEnv, Ty, TyKind, TypingMode,
         infer::{DbInternerInferExt, InferCtxt},
     },
 };
@@ -76,10 +76,10 @@ impl BodyValidationDiagnostic {
         validate_lints: bool,
     ) -> Vec<BodyValidationDiagnostic> {
         let _p = tracing::info_span!("BodyValidationDiagnostic::collect").entered();
-        let infer = db.infer(owner);
+        let infer = InferenceResult::for_body(db, owner);
         let body = db.body(owner);
         let env = db.trait_environment_for_body(owner);
-        let interner = DbInterner::new_with(db, Some(env.krate), env.block);
+        let interner = DbInterner::new_with(db, owner.krate(db));
         let infcx =
             interner.infer_ctxt().build(TypingMode::typeck_for_body(interner, owner.into()));
         let mut validator = ExprValidator {
@@ -99,8 +99,8 @@ impl BodyValidationDiagnostic {
 struct ExprValidator<'db> {
     owner: DefWithBodyId,
     body: Arc<Body>,
-    infer: Arc<InferenceResult<'db>>,
-    env: Arc<TraitEnvironment<'db>>,
+    infer: &'db InferenceResult<'db>,
+    env: ParamEnv<'db>,
     diagnostics: Vec<BodyValidationDiagnostic>,
     validate_lints: bool,
     infcx: InferCtxt<'db>,
@@ -124,7 +124,7 @@ impl<'db> ExprValidator<'db> {
 
         for (id, expr) in body.exprs() {
             if let Some((variant, missed_fields, true)) =
-                record_literal_missing_fields(db, &self.infer, id, expr)
+                record_literal_missing_fields(db, self.infer, id, expr)
             {
                 self.diagnostics.push(BodyValidationDiagnostic::RecordMissingFields {
                     record: Either::Left(id),
@@ -155,7 +155,7 @@ impl<'db> ExprValidator<'db> {
 
         for (id, pat) in body.pats() {
             if let Some((variant, missed_fields, true)) =
-                record_pattern_missing_fields(db, &self.infer, id, pat)
+                record_pattern_missing_fields(db, self.infer, id, pat)
             {
                 self.diagnostics.push(BodyValidationDiagnostic::RecordMissingFields {
                     record: Either::Right(id),
@@ -187,7 +187,7 @@ impl<'db> ExprValidator<'db> {
             };
 
             let checker = filter_map_next_checker.get_or_insert_with(|| {
-                FilterMapNextChecker::new(&self.owner.resolver(self.db()), self.db())
+                FilterMapNextChecker::new(self.infcx.interner.lang_items(), self.db())
             });
 
             if checker.check(call_id, receiver, &callee).is_some() {
@@ -210,7 +210,7 @@ impl<'db> ExprValidator<'db> {
             return;
         }
 
-        let cx = MatchCheckCtx::new(self.owner.module(self.db()), &self.infcx, self.env.clone());
+        let cx = MatchCheckCtx::new(self.owner.module(self.db()), &self.infcx, self.env);
 
         let pattern_arena = Arena::new();
         let mut m_arms = Vec::with_capacity(arms.len());
@@ -240,7 +240,7 @@ impl<'db> ExprValidator<'db> {
                     .as_reference()
                     .map(|(match_expr_ty, ..)| match_expr_ty == pat_ty)
                     .unwrap_or(false))
-                && types_of_subpatterns_do_match(arm.pat, &self.body, &self.infer)
+                && types_of_subpatterns_do_match(arm.pat, &self.body, self.infer)
             {
                 // If we had a NotUsefulMatchArm diagnostic, we could
                 // check the usefulness of each pattern as we added it
@@ -332,7 +332,7 @@ impl<'db> ExprValidator<'db> {
             return;
         };
         let pattern_arena = Arena::new();
-        let cx = MatchCheckCtx::new(self.owner.module(self.db()), &self.infcx, self.env.clone());
+        let cx = MatchCheckCtx::new(self.owner.module(self.db()), &self.infcx, self.env);
         for stmt in &**statements {
             let &Statement::Let { pat, initializer, else_branch: None, .. } = stmt else {
                 continue;
@@ -388,7 +388,7 @@ impl<'db> ExprValidator<'db> {
         pat: PatId,
         have_errors: &mut bool,
     ) -> DeconstructedPat<'a, 'db> {
-        let mut patcx = match_check::PatCtxt::new(self.db(), &self.infer, &self.body);
+        let mut patcx = match_check::PatCtxt::new(self.db(), self.infer, &self.body);
         let pattern = patcx.lower_pattern(pat);
         let pattern = cx.lower_pat(&pattern);
         if !patcx.errors.is_empty() {
@@ -497,11 +497,9 @@ struct FilterMapNextChecker<'db> {
 }
 
 impl<'db> FilterMapNextChecker<'db> {
-    fn new(resolver: &hir_def::resolver::Resolver<'db>, db: &'db dyn HirDatabase) -> Self {
+    fn new(lang_items: &'db LangItems, db: &'db dyn HirDatabase) -> Self {
         // Find and store the FunctionIds for Iterator::filter_map and Iterator::next
-        let (next_function_id, filter_map_function_id) = match LangItem::IteratorNext
-            .resolve_function(db, resolver.krate())
-        {
+        let (next_function_id, filter_map_function_id) = match lang_items.IteratorNext {
             Some(next_function_id) => (
                 Some(next_function_id),
                 match next_function_id.lookup(db).container {

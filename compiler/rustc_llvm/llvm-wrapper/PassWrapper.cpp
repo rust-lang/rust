@@ -6,6 +6,9 @@
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/Analysis/Lint.h"
 #include "llvm/Analysis/TargetLibraryInfo.h"
+#if LLVM_VERSION_GE(22, 0)
+#include "llvm/Analysis/RuntimeLibcallInfo.h"
+#endif
 #include "llvm/Bitcode/BitcodeWriter.h"
 #include "llvm/Bitcode/BitcodeWriterPass.h"
 #include "llvm/CodeGen/CommandFlags.h"
@@ -379,13 +382,20 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
 
 // Unfortunately, the LLVM C API doesn't provide a way to create the
 // TargetLibraryInfo pass, so we use this method to do so.
-extern "C" void LLVMRustAddLibraryInfo(LLVMPassManagerRef PMR, LLVMModuleRef M,
+extern "C" void LLVMRustAddLibraryInfo(LLVMTargetMachineRef T,
+                                       LLVMPassManagerRef PMR, LLVMModuleRef M,
                                        bool DisableSimplifyLibCalls) {
   auto TargetTriple = Triple(unwrap(M)->getTargetTriple());
+  TargetOptions *Options = &unwrap(T)->Options;
   auto TLII = TargetLibraryInfoImpl(TargetTriple);
   if (DisableSimplifyLibCalls)
     TLII.disableAllFunctions();
   unwrap(PMR)->add(new TargetLibraryInfoWrapperPass(TLII));
+#if LLVM_VERSION_GE(22, 0)
+  unwrap(PMR)->add(new RuntimeLibraryInfoWrapper(
+      TargetTriple, Options->ExceptionModel, Options->FloatABIType,
+      Options->EABIVersion, Options->MCOptions.ABIName, Options->VecLib));
+#endif
 }
 
 extern "C" void LLVMRustSetLLVMOptions(int Argc, char **Argv) {

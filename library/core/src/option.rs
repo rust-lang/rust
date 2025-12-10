@@ -2008,6 +2008,30 @@ impl<T> Option<T> {
     }
 }
 
+impl<T: IntoIterator> Option<T> {
+    /// Transforms an optional iterator into an iterator.
+    ///
+    /// If `self` is `None`, the resulting iterator is empty.
+    /// Otherwise, an iterator is made from the `Some` value and returned.
+    /// # Examples
+    /// ```
+    /// #![feature(option_into_flat_iter)]
+    ///
+    /// let o1 = Some([1, 2]);
+    /// let o2 = None::<&[usize]>;
+    ///
+    /// assert_eq!(o1.into_flat_iter().collect::<Vec<_>>(), [1, 2]);
+    /// assert_eq!(o2.into_flat_iter().collect::<Vec<_>>(), Vec::<&usize>::new());
+    /// ```
+    #[unstable(feature = "option_into_flat_iter", issue = "148441")]
+    pub fn into_flat_iter<A>(self) -> OptionFlatten<A>
+    where
+        T: IntoIterator<IntoIter = A>,
+    {
+        OptionFlatten { iter: self.map(IntoIterator::into_iter) }
+    }
+}
+
 impl<T, U> Option<(T, U)> {
     /// Unzips an option containing a tuple of two options.
     ///
@@ -2574,6 +2598,42 @@ impl<A> FusedIterator for IntoIter<A> {}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
 unsafe impl<A> TrustedLen for IntoIter<A> {}
+
+/// The iterator produced by [`Option::into_flat_iter`]. See its documentation for more.
+#[derive(Clone, Debug)]
+#[unstable(feature = "option_into_flat_iter", issue = "148441")]
+pub struct OptionFlatten<A> {
+    iter: Option<A>,
+}
+
+#[unstable(feature = "option_into_flat_iter", issue = "148441")]
+impl<A: Iterator> Iterator for OptionFlatten<A> {
+    type Item = A::Item;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.iter.as_mut()?.next()
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.iter.as_ref().map(|i| i.size_hint()).unwrap_or((0, Some(0)))
+    }
+}
+
+#[unstable(feature = "option_into_flat_iter", issue = "148441")]
+impl<A: DoubleEndedIterator> DoubleEndedIterator for OptionFlatten<A> {
+    fn next_back(&mut self) -> Option<Self::Item> {
+        self.iter.as_mut()?.next_back()
+    }
+}
+
+#[unstable(feature = "option_into_flat_iter", issue = "148441")]
+impl<A: ExactSizeIterator> ExactSizeIterator for OptionFlatten<A> {}
+
+#[unstable(feature = "option_into_flat_iter", issue = "148441")]
+impl<A: FusedIterator> FusedIterator for OptionFlatten<A> {}
+
+#[unstable(feature = "option_into_flat_iter", issue = "148441")]
+unsafe impl<A: TrustedLen> TrustedLen for OptionFlatten<A> {}
 
 /////////////////////////////////////////////////////////////////////////////
 // FromIterator

@@ -1,4 +1,4 @@
-error[E0412]: cannot find type `FromOutside` in this scope
+error[E0425]: cannot find type `FromOutside` in this scope
   --> $DIR/generate-mod.rs:11:1
    |
 LL | generate_mod::check!();
@@ -8,7 +8,7 @@ LL | generate_mod::check!();
            FromOutside
    = note: this error originates in the macro `generate_mod::check` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0412]: cannot find type `Outer` in this scope
+error[E0425]: cannot find type `Outer` in this scope
   --> $DIR/generate-mod.rs:11:1
    |
 LL | generate_mod::check!();
@@ -18,7 +18,7 @@ LL | generate_mod::check!();
            Outer
    = note: this error originates in the macro `generate_mod::check` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0412]: cannot find type `FromOutside` in this scope
+error[E0425]: cannot find type `FromOutside` in this scope
   --> $DIR/generate-mod.rs:14:1
    |
 LL | #[generate_mod::check_attr]
@@ -28,7 +28,7 @@ LL | #[generate_mod::check_attr]
            FromOutside
    = note: this error originates in the attribute macro `generate_mod::check_attr` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0412]: cannot find type `OuterAttr` in this scope
+error[E0425]: cannot find type `OuterAttr` in this scope
   --> $DIR/generate-mod.rs:14:1
    |
 LL | #[generate_mod::check_attr]
@@ -81,7 +81,7 @@ LL |     #[derive(generate_mod::CheckDerive)]
 
 error: aborting due to 8 previous errors
 
-For more information about this error, try `rustc --explain E0412`.
+For more information about this error, try `rustc --explain E0425`.
 Future incompatibility report: Future breakage diagnostic:
 error: cannot find type `FromOutside` in this scope
   --> $DIR/generate-mod.rs:18:10

@@ -331,7 +331,7 @@ impl<'db> InferenceContext<'_, 'db> {
                         return self.pat_ty_after_adjustment(pat);
                     }
                     Err(_) => {
-                        self.result.type_mismatches.insert(
+                        self.result.type_mismatches.get_or_insert_default().insert(
                             pat.into(),
                             TypeMismatch { expected, actual: ty_inserted_vars },
                         );
@@ -415,6 +415,7 @@ impl<'db> InferenceContext<'_, 'db> {
                     Err(_) => {
                         self.result
                             .type_mismatches
+                            .get_or_insert_default()
                             .insert(pat.into(), TypeMismatch { expected, actual: lhs_ty });
                         // `rhs_ty` is returned so no further type mismatches are
                         // reported because of this mismatch.
@@ -431,7 +432,10 @@ impl<'db> InferenceContext<'_, 'db> {
         let ty = self.insert_type_vars_shallow(ty);
         // FIXME: This never check is odd, but required with out we do inference right now
         if !expected.is_never() && !self.unify(ty, expected) {
-            self.result.type_mismatches.insert(pat.into(), TypeMismatch { expected, actual: ty });
+            self.result
+                .type_mismatches
+                .get_or_insert_default()
+                .insert(pat.into(), TypeMismatch { expected, actual: ty });
         }
         self.write_pat_ty(pat, ty);
         self.pat_ty_after_adjustment(pat)

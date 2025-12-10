@@ -125,8 +125,11 @@ struct MiriGenmcShim : private GenMCDriver {
     void handle_fence(ThreadId thread_id, MemOrdering ord);
 
     /**** Memory (de)allocation ****/
+
     auto handle_malloc(ThreadId thread_id, uint64_t size, uint64_t alignment) -> uint64_t;
-    auto handle_free(ThreadId thread_id, uint64_t address) -> bool;
+
+    /** Returns null on success, or an error string if an error occurs. */
+    auto handle_free(ThreadId thread_id, uint64_t address) -> std::unique_ptr<std::string>;
 
     /**** Thread management ****/
     void handle_thread_create(ThreadId thread_id, ThreadId parent_id);

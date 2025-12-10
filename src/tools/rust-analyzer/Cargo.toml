@@ -4,7 +4,7 @@ exclude = ["crates/proc-macro-srv/proc-macro-test/imp"]
 resolver = "2"
 
 [workspace.package]
-rust-version = "1.88"
+rust-version = "1.91"
 edition = "2024"
 license = "MIT OR Apache-2.0"
 authors = ["rust-analyzer team"]
@@ -52,7 +52,7 @@ debug = 2
 # local crates
 macros = { path = "./crates/macros", version = "0.0.0" }
 base-db = { path = "./crates/base-db", version = "0.0.0" }
-cfg = { path = "./crates/cfg", version = "0.0.0", features = ["tt"] }
+cfg = { path = "./crates/cfg", version = "0.0.0", features = ["tt", "syntax"] }
 hir = { path = "./crates/hir", version = "0.0.0" }
 hir-def = { path = "./crates/hir-def", version = "0.0.0" }
 hir-expand = { path = "./crates/hir-expand", version = "0.0.0" }
@@ -132,7 +132,7 @@ process-wrap = { version = "8.2.1", features = ["std"] }
 pulldown-cmark-to-cmark = "10.0.4"
 pulldown-cmark = { version = "0.9.6", default-features = false }
 rayon = "1.10.0"
-rowan = "=0.15.15"
+rowan = "=0.15.17"
 # Ideally we'd not enable the macros feature but unfortunately the `tracked` attribute does not work
 # on impls without it
 salsa = { version = "0.24.0", default-features = false, features = [
@@ -170,6 +170,7 @@ tracing-subscriber = { version = "0.3.20", default-features = false, features = 
 triomphe = { version = "0.1.14", default-features = false, features = ["std"] }
 url = "2.5.4"
 xshell = "0.2.7"
+thin-vec = "0.2.14"
 petgraph = { version = "0.8.2", default-features = false }
 
 # We need to freeze the version of the crate, as the raw-api feature is considered unstable

@@ -4,6 +4,7 @@ use rustc_ast::util::unicode::TEXT_FLOW_CONTROL_CHARS;
 use rustc_errors::{
     Applicability, Diag, DiagArgValue, LintDiagnostic, elided_lifetime_in_path_suggestion,
 };
+use rustc_hir::lints::AttributeLintKind;
 use rustc_middle::middle::stability;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
@@ -251,15 +252,6 @@ pub fn decorate_builtin_lint(
             }
             .decorate_lint(diag);
         }
-        BuiltinLintDiag::ExternCrateNotIdiomatic { vis_span, ident_span } => {
-            let suggestion_span = vis_span.between(ident_span);
-            let code = if vis_span.is_empty() { "use " } else { " use " };
-
-            lints::ExternCrateNotIdiomatic { span: suggestion_span, code }.decorate_lint(diag);
-        }
-        BuiltinLintDiag::AmbiguousGlobImports { diag: ambiguity } => {
-            lints::AmbiguousGlobImports { ambiguity }.decorate_lint(diag);
-        }
         BuiltinLintDiag::AmbiguousGlobReexports {
             name,
             namespace,
@@ -292,16 +284,6 @@ pub fn decorate_builtin_lint(
         BuiltinLintDiag::UnusedQualifications { removal_span } => {
             lints::UnusedQualifications { removal_span }.decorate_lint(diag);
         }
-        BuiltinLintDiag::UnsafeAttrOutsideUnsafe {
-            attribute_name_span,
-            sugg_spans: (left, right),
-        } => {
-            lints::UnsafeAttrOutsideUnsafe {
-                span: attribute_name_span,
-                suggestion: lints::UnsafeAttrOutsideUnsafeSuggestion { left, right },
-            }
-            .decorate_lint(diag);
-        }
         BuiltinLintDiag::AssociatedConstElidedLifetime {
             elided,
             span: lt_span,
@@ -317,37 +299,27 @@ pub fn decorate_builtin_lint(
             }
             .decorate_lint(diag);
         }
-        BuiltinLintDiag::RedundantImportVisibility { max_vis, span: vis_span, import_vis } => {
-            lints::RedundantImportVisibility { span: vis_span, help: (), max_vis, import_vis }
-                .decorate_lint(diag);
-        }
-        BuiltinLintDiag::UnknownDiagnosticAttribute { span: typo_span, typo_name } => {
-            let typo = typo_name.map(|typo_name| lints::UnknownDiagnosticAttributeTypoSugg {
-                span: typo_span,
-                typo_name,
-            });
-            lints::UnknownDiagnosticAttribute { typo }.decorate_lint(diag);
-        }
-        BuiltinLintDiag::PrivateExternCrateReexport { source: ident, extern_crate_span } => {
-            lints::PrivateExternCrateReexport { ident, sugg: extern_crate_span.shrink_to_lo() }
-                .decorate_lint(diag);
-        }
-        BuiltinLintDiag::MacroIsPrivate(ident) => {
-            lints::MacroIsPrivate { ident }.decorate_lint(diag);
-        }
-        BuiltinLintDiag::UnusedMacroDefinition(name) => {
-            lints::UnusedMacroDefinition { name }.decorate_lint(diag);
-        }
-        BuiltinLintDiag::MacroRuleNeverUsed(n, name) => {
-            lints::MacroRuleNeverUsed { n: n + 1, name }.decorate_lint(diag);
-        }
-        BuiltinLintDiag::UnstableFeature(msg) => {
-            lints::UnstableFeature { msg }.decorate_lint(diag);
-        }
         BuiltinLintDiag::UnusedCrateDependency { extern_crate, local_crate } => {
             lints::UnusedCrateDependency { extern_crate, local_crate }.decorate_lint(diag)
         }
-        BuiltinLintDiag::IllFormedAttributeInput { suggestions, docs } => {
+        BuiltinLintDiag::UnusedVisibility(span) => {
+            lints::UnusedVisibility { span }.decorate_lint(diag)
+        }
+        BuiltinLintDiag::AttributeLint(kind) => decorate_attribute_lint(sess, tcx, &kind, diag),
+    }
+}
+
+pub fn decorate_attribute_lint(
+    _sess: &Session,
+    _tcx: Option<TyCtxt<'_>>,
+    kind: &AttributeLintKind,
+    diag: &mut Diag<'_, ()>,
+) {
+    match kind {
+        &AttributeLintKind::UnusedDuplicate { this, other, warning } => {
+            lints::UnusedDuplicate { this, other, warning }.decorate_lint(diag)
+        }
+        AttributeLintKind::IllFormedAttributeInput { suggestions, docs } => {
             lints::IllFormedAttributeInput {
                 num_suggestions: suggestions.len(),
                 suggestions: DiagArgValue::StrListSepByAnd(
@@ -358,8 +330,42 @@ pub fn decorate_builtin_lint(
             }
             .decorate_lint(diag)
         }
-        BuiltinLintDiag::OutOfScopeMacroCalls { span, path, location } => {
-            lints::OutOfScopeMacroCalls { span, path, location }.decorate_lint(diag)
+        AttributeLintKind::EmptyAttribute { first_span, attr_path, valid_without_list } => {
+            lints::EmptyAttributeList {
+                attr_span: *first_span,
+                attr_path: attr_path.clone(),
+                valid_without_list: *valid_without_list,
+            }
+            .decorate_lint(diag)
         }
+        AttributeLintKind::InvalidTarget { name, target, applied, only, attr_span } => {
+            lints::InvalidTargetLint {
+                name: name.clone(),
+                target,
+                applied: DiagArgValue::StrListSepByAnd(
+                    applied.into_iter().map(|i| Cow::Owned(i.to_string())).collect(),
+                ),
+                only,
+                attr_span: *attr_span,
+            }
+            .decorate_lint(diag)
+        }
+        &AttributeLintKind::InvalidStyle { ref name, is_used_as_inner, target, target_span } => {
+            lints::InvalidAttrStyle {
+                name: name.clone(),
+                is_used_as_inner,
+                target_span: (!is_used_as_inner).then_some(target_span),
+                target,
+            }
+            .decorate_lint(diag)
+        }
+        &AttributeLintKind::UnsafeAttrOutsideUnsafe {
+            attribute_name_span,
+            sugg_spans: (left, right),
+        } => lints::UnsafeAttrOutsideUnsafeLint {
+            span: attribute_name_span,
+            suggestion: lints::UnsafeAttrOutsideUnsafeSuggestion { left, right },
+        }
+        .decorate_lint(diag),
     }
 }

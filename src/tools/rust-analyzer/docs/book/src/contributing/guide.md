@@ -7,12 +7,10 @@ This guide describes the current state of rust-analyzer as of the 2024-01-01 rel
 architectural solutions related to the problem of building IDE-first compiler
 for Rust. There is a video version of this guide as well -
 however, it's based on an older 2019-01-20 release (git tag [guide-2019-01]):
-https://youtu.be/ANKBNiSWyfc.
+<https://youtu.be/ANKBNiSWyfc>.
 
 [guide-2019-01]: https://github.com/rust-lang/rust-analyzer/tree/guide-2019-01
 [2024-01-01]: https://github.com/rust-lang/rust-analyzer/tree/2024-01-01
-
-<!-- toc -->
 
 ## The big picture
 

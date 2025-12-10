@@ -54,7 +54,7 @@ LL |     self , _: ... ,   self ,   self , _: ... ) where F : FnOnce ( & 'a & 'b
    |
    = help: only `extern "C"` and `extern "C-unwind"` functions may have a C variable argument list
 
-error[E0412]: cannot find type `F` in this scope
+error[E0425]: cannot find type `F` in this scope
   --> $DIR/issue-86053-1.rs:11:54
    |
 LL |     self , _: ... ,   self ,   self , _: ... ) where F : FnOnce ( & 'a & 'b usize ) {
@@ -74,4 +74,4 @@ LL | fn ordering4 < 'a , 'b, F     > ( a :            ,   self , self ,   self ,
 
 error: aborting due to 10 previous errors
 
-For more information about this error, try `rustc --explain E0412`.
+For more information about this error, try `rustc --explain E0425`.

@@ -1,6 +1,7 @@
 //@ run-pass
+//@ edition: 2024
 
-#![feature(never_type, never_type_fallback)]
+#![feature(never_type)]
 #![feature(exhaustive_patterns)]
 
 #![allow(unreachable_patterns)]

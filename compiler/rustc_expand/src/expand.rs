@@ -2158,11 +2158,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
         let mut span: Option<Span> = None;
         while let Some(attr) = attrs.next() {
             rustc_ast_passes::feature_gate::check_attribute(attr, self.cx.sess, features);
-            validate_attr::check_attr(
-                &self.cx.sess.psess,
-                attr,
-                self.cx.current_expansion.lint_node_id,
-            );
+            validate_attr::check_attr(&self.cx.sess.psess, attr);
             AttributeParser::parse_limited_all(
                 self.cx.sess,
                 slice::from_ref(attr),

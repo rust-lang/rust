@@ -141,7 +141,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 }
 
                 // Query `def_kind` is not used because query system overhead is too expensive here.
-                let def_kind = self.cstore().def_kind_untracked(def_id);
+                let def_kind = self.cstore().def_kind_untracked(self.tcx, def_id);
                 if def_kind.is_module_like() {
                     let parent = self
                         .tcx
@@ -149,7 +149,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         .map(|parent_id| self.get_nearest_non_block_module(parent_id));
                     // Query `expn_that_defined` is not used because
                     // hashing spans in its result is expensive.
-                    let expn_id = self.cstore().expn_that_defined_untracked(def_id, self.tcx.sess);
+                    let expn_id = self.cstore().expn_that_defined_untracked(self.tcx, def_id);
                     return Some(self.new_extern_module(
                         parent,
                         ModuleKind::Def(def_kind, def_id, Some(self.tcx.item_name(def_id))),
@@ -196,7 +196,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         match def_id.as_local() {
             Some(local_def_id) => self.local_macro_map[&local_def_id],
             None => *self.extern_macro_map.borrow_mut().entry(def_id).or_insert_with(|| {
-                let loaded_macro = self.cstore().load_macro_untracked(def_id, self.tcx);
+                let loaded_macro = self.cstore().load_macro_untracked(self.tcx, def_id);
                 let macro_data = match loaded_macro {
                     LoadedMacro::MacroDef { def, ident, attrs, span, edition } => {
                         self.compile_macro(&def, ident, &attrs, span, ast::DUMMY_NODE_ID, edition)
@@ -213,7 +213,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     /// find them for suggestions.
     pub(crate) fn register_macros_for_all_crates(&mut self) {
         if !self.all_crate_macros_already_registered {
-            for def_id in self.cstore().all_proc_macro_def_ids() {
+            for def_id in self.cstore().all_proc_macro_def_ids(self.tcx) {
                 self.get_macro_by_def_id(def_id);
             }
             self.all_crate_macros_already_registered = true;

@@ -446,7 +446,7 @@ fn add_custom_postfix_completions(
             let body = snippet.postfix_snippet(receiver_text);
             let mut builder =
                 postfix_snippet(trigger, snippet.description.as_deref().unwrap_or_default(), &body);
-            builder.documentation(Documentation::new(format!("```rust\n{body}\n```")));
+            builder.documentation(Documentation::new_owned(format!("```rust\n{body}\n```")));
             for import in imports.into_iter() {
                 builder.add_import(import);
             }

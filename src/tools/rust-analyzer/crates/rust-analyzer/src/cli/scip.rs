@@ -189,6 +189,13 @@ impl flags::Scip {
                     symbol_roles |= scip_types::SymbolRole::Definition as i32;
                 }
 
+                let enclosing_range = match token.definition_body {
+                    Some(def_body) if def_body.file_id == file_id => {
+                        text_range_to_scip_range(&line_index, def_body.range)
+                    }
+                    _ => Vec::new(),
+                };
+
                 occurrences.push(scip_types::Occurrence {
                     range: text_range_to_scip_range(&line_index, text_range),
                     symbol,
@@ -197,7 +204,7 @@ impl flags::Scip {
                     syntax_kind: Default::default(),
                     diagnostics: Vec::new(),
                     special_fields: Default::default(),
-                    enclosing_range: Vec::new(),
+                    enclosing_range,
                 });
             }
 
@@ -508,18 +515,19 @@ fn moniker_descriptors(identifier: &MonikerIdentifier) -> Vec<scip_types::Descri
 #[cfg(test)]
 mod test {
     use super::*;
+    use hir::FileRangeWrapper;
     use ide::{FilePosition, TextSize};
     use test_fixture::ChangeFixture;
     use vfs::VfsPath;
 
     fn position(#[rust_analyzer::rust_fixture] ra_fixture: &str) -> (AnalysisHost, FilePosition) {
         let mut host = AnalysisHost::default();
-        let change_fixture = ChangeFixture::parse(host.raw_database(), ra_fixture);
+        let change_fixture = ChangeFixture::parse(ra_fixture);
         host.raw_database_mut().apply_change(change_fixture.change);
         let (file_id, range_or_offset) =
             change_fixture.file_position.expect("expected a marker ()");
         let offset = range_or_offset.expect_offset();
-        let position = FilePosition { file_id: file_id.file_id(host.raw_database()), offset };
+        let position = FilePosition { file_id: file_id.file_id(), offset };
         (host, position)
     }
 
@@ -870,7 +878,7 @@ pub mod example_mod {
         let s = "/// foo\nfn bar() {}";
 
         let mut host = AnalysisHost::default();
-        let change_fixture = ChangeFixture::parse(host.raw_database(), s);
+        let change_fixture = ChangeFixture::parse(s);
         host.raw_database_mut().apply_change(change_fixture.change);
 
         let analysis = host.analysis();
@@ -886,5 +894,33 @@ pub mod example_mod {
         let token = si.tokens.get(*token_id).unwrap();
 
         assert_eq!(token.documentation.as_ref().map(|d| d.as_str()), Some("foo"));
+    }
+
+    #[test]
+    fn function_has_enclosing_range() {
+        let s = "fn foo() {}";
+
+        let mut host = AnalysisHost::default();
+        let change_fixture = ChangeFixture::parse(s);
+        host.raw_database_mut().apply_change(change_fixture.change);
+
+        let analysis = host.analysis();
+        let si = StaticIndex::compute(
+            &analysis,
+            VendoredLibrariesConfig::Included {
+                workspace_root: &VfsPath::new_virtual_path("/workspace".to_owned()),
+            },
+        );
+
+        let file = si.files.first().unwrap();
+        let (_, token_id) = file.tokens.get(1).unwrap(); // first token is file module, second is `foo`
+        let token = si.tokens.get(*token_id).unwrap();
+
+        let expected_range = FileRangeWrapper {
+            file_id: FileId::from_raw(0),
+            range: TextRange::new(0.into(), 11.into()),
+        };
+
+        assert_eq!(token.definition_body, Some(expected_range));
     }
 }

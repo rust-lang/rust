@@ -4,7 +4,7 @@
 
 pub enum Request {
     TestSome(T),
-    //~^ ERROR cannot find type `T` in this scope [E0412]
+    //~^ ERROR cannot find type `T` in this scope [E0425]
 }
 
 pub async fn handle_event(event: Request) {

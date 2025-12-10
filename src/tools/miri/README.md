@@ -496,8 +496,6 @@ to Miri failing to detect cases of undefined behavior in a program.
   of Rust will be stricter than Tree Borrows. In other words, if you use Tree Borrows,
   even if your code is accepted today, it might be declared UB in the future.
   This is much less likely with Stacked Borrows.
-  Using Tree Borrows currently implies `-Zmiri-strict-provenance` because integer-to-pointer
-  casts are not supported in this mode, but that may change in the future.
 * `-Zmiri-tree-borrows-no-precise-interior-mut` makes Tree Borrows
   track interior mutable data on the level of references instead of on the
   byte-level as is done by default.  Therefore, with this flag, Tree
@@ -626,6 +624,7 @@ Definite bugs found:
 * [Mockall reading uninitialized memory when mocking `std::io::Read::read`, even if all expectations are satisfied](https://github.com/asomers/mockall/issues/647) (caught by Miri running Tokio's test suite)
 * [`ReentrantLock` not correctly dealing with reuse of addresses for TLS storage of different threads](https://github.com/rust-lang/rust/pull/141248)
 * [Rare Deadlock in the thread (un)parking example code](https://github.com/rust-lang/rust/issues/145816)
+* [`winit` registering a global constructor with the wrong ABI on Windows](https://github.com/rust-windowing/winit/issues/4435)
 
 Violations of [Stacked Borrows] found that are likely bugs (but Stacked Borrows is currently just an experiment):
 

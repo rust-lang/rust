@@ -67,6 +67,9 @@ LL +         wtf: Some(Box::new_in(_, _)),
 help: consider using the `Default` trait
    ╭╴
 LL -         wtf: Some(Box(U {
+LL -             wtf: None,
+LL -             x: (),
+LL -         })),
 LL +         wtf: Some(<Box as std::default::Default>::default()),
    ╰╴
 

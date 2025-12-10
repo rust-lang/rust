@@ -29,7 +29,7 @@ use crate::core::builder::{
 };
 use crate::core::config::TargetSelection;
 use crate::core::config::flags::{Subcommand, get_completion, top_level_help};
-use crate::core::debuggers;
+use crate::core::{android, debuggers};
 use crate::utils::build_stamp::{self, BuildStamp};
 use crate::utils::exec::{BootstrapCommand, command};
 use crate::utils::helpers::{
@@ -524,8 +524,7 @@ impl Step for Rustfmt {
 
     /// Runs `cargo test` for rustfmt.
     fn run(self, builder: &Builder<'_>) {
-        let tool_result = builder.ensure(tool::Rustfmt::from_compilers(self.compilers));
-        let build_compiler = tool_result.build_compiler;
+        let build_compiler = self.compilers.build_compiler();
         let target = self.compilers.target();
 
         let mut cargo = tool::prepare_tool_cargo(
@@ -869,11 +868,9 @@ impl Step for Clippy {
         // We need to carefully distinguish the compiler that builds clippy, and the compiler
         // that is linked into the clippy being tested. `target_compiler` is the latter,
         // and it must also be used by clippy's test runner to build tests and their dependencies.
-        let compilers = self.compilers;
-        let target_compiler = compilers.target_compiler();
+        let target_compiler = self.compilers.target_compiler();
+        let build_compiler = self.compilers.build_compiler();
 
-        let tool_result = builder.ensure(tool::Clippy::from_compilers(compilers));
-        let build_compiler = tool_result.build_compiler;
         let mut cargo = tool::prepare_tool_cargo(
             builder,
             build_compiler,
@@ -2117,21 +2114,18 @@ Please disable assertions with `rust.debug-assertions = false`.
             builder.config.python.as_ref().expect("python is required for running rustdoc tests"),
         );
 
-        // FIXME(#148099): Currently we set these Android-related flags in all
-        // modes, even though they should only be needed in "debuginfo" mode,
-        // because the GDB-discovery code in compiletest currently assumes that
-        // `--android-cross-path` is always set for Android targets.
-        if let Some(debuggers::Android { adb_path, adb_test_dir, android_cross_path }) =
-            debuggers::discover_android(builder, target)
-        {
+        // Discover and set some flags related to running tests on Android targets.
+        let android = android::discover_android(builder, target);
+        if let Some(android::Android { adb_path, adb_test_dir, android_cross_path }) = &android {
             cmd.arg("--adb-path").arg(adb_path);
             cmd.arg("--adb-test-dir").arg(adb_test_dir);
             cmd.arg("--android-cross-path").arg(android_cross_path);
         }
 
         if mode == "debuginfo" {
-            if let Some(debuggers::Gdb { gdb }) = debuggers::discover_gdb(builder) {
-                cmd.arg("--gdb").arg(gdb);
+            if let Some(debuggers::Gdb { gdb }) = debuggers::discover_gdb(builder, android.as_ref())
+            {
+                cmd.arg("--gdb").arg(gdb.as_ref());
             }
 
             if let Some(debuggers::Lldb { lldb_exe, lldb_version }) =
@@ -2821,10 +2815,15 @@ fn run_cargo_test<'a>(
     builder: &Builder<'_>,
 ) -> bool {
     let compiler = cargo.compiler();
+    let stage = match cargo.mode() {
+        Mode::Std => compiler.stage,
+        _ => compiler.stage + 1,
+    };
+
     let mut cargo = prepare_cargo_test(cargo, libtest_args, crates, target, builder);
     let _time = helpers::timeit(builder);
-    let _group =
-        description.into().and_then(|what| builder.msg_test(what, target, compiler.stage + 1));
+
+    let _group = description.into().and_then(|what| builder.msg_test(what, target, stage));
 
     #[cfg(feature = "build-metrics")]
     builder.metrics.begin_test_suite(

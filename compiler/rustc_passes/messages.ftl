@@ -98,6 +98,7 @@ passes_deprecated_attribute =
 
 passes_diagnostic_diagnostic_on_const_only_for_trait_impls =
     `#[diagnostic::on_const]` can only be applied to trait impls
+    .label = not a trait impl
 
 passes_diagnostic_diagnostic_on_unimplemented_only_for_traits =
     `#[diagnostic::on_unimplemented]` can only be applied to trait definitions
@@ -419,6 +420,8 @@ passes_missing_panic_handler =
 
 passes_missing_stability_attr =
     {$descr} has missing stability attribute
+
+passes_misspelled_feature = there is a feature with a similar name: `{$actual_name}`
 
 passes_mixed_export_name_and_no_mangle = `{$no_mangle_attr}` attribute may not be used in combination with `{$export_name_attr}`
     .label = `{$no_mangle_attr}` is ignored

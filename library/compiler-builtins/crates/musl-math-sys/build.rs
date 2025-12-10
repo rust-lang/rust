@@ -46,7 +46,7 @@ fn main() {
     let cfg = Config::from_env();
 
     if cfg.target_env == "msvc"
-        || cfg.target_family == "wasm"
+        || cfg.target_families.iter().any(|f| f == "wasm")
         || cfg.target_features.iter().any(|f| f == "thumb-mode")
     {
         println!(
@@ -69,7 +69,7 @@ struct Config {
     musl_arch: String,
     target_arch: String,
     target_env: String,
-    target_family: String,
+    target_families: Vec<String>,
     target_os: String,
     target_string: String,
     target_vendor: String,
@@ -79,6 +79,9 @@ struct Config {
 impl Config {
     fn from_env() -> Self {
         let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
+        let target_families = env::var("CARGO_CFG_TARGET_FAMILY")
+            .map(|feats| feats.split(',').map(ToOwned::to_owned).collect())
+            .unwrap_or_default();
         let target_features = env::var("CARGO_CFG_TARGET_FEATURE")
             .map(|feats| feats.split(',').map(ToOwned::to_owned).collect())
             .unwrap_or_default();
@@ -104,7 +107,7 @@ impl Config {
             musl_arch,
             target_arch,
             target_env: env::var("CARGO_CFG_TARGET_ENV").unwrap(),
-            target_family: env::var("CARGO_CFG_TARGET_FAMILY").unwrap(),
+            target_families,
             target_os: env::var("CARGO_CFG_TARGET_OS").unwrap(),
             target_string: env::var("TARGET").unwrap(),
             target_vendor: env::var("CARGO_CFG_TARGET_VENDOR").unwrap(),

@@ -52,7 +52,7 @@ help: consider importing this function
 LL + use foo2::Bar;
    |
 
-error[E0412]: cannot find type `Bar` in this scope
+error[E0425]: cannot find type `Bar` in this scope
   --> $DIR/privacy-ns1.rs:53:17
    |
 LL |     pub struct Baz;
@@ -90,5 +90,5 @@ LL |     let _x: Box<Bar>;
 
 error: aborting due to 4 previous errors
 
-Some errors have detailed explanations: E0412, E0423, E0425, E0747.
-For more information about an error, try `rustc --explain E0412`.
+Some errors have detailed explanations: E0423, E0425, E0747.
+For more information about an error, try `rustc --explain E0423`.

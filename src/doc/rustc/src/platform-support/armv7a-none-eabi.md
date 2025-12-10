@@ -63,10 +63,10 @@ and disable them via `.cargo/config.toml` file.
 
 ## Start-up and Low-Level Code
 
-The [Rust Embedded Devices Working Group Arm Team] maintain the [`cortex-ar`]
-and [`cortex-a-rt`] crates, which may be useful for writing bare-metal code
-using this target. The [`cortex-ar` repository](https://github.com/rust-embedded/cortex-ar)
-includes several examples which run in QEMU and build using these targets.
+The [Rust Embedded Devices Working Group Arm Team] maintain the [`aarch32-cpu`]
+and [`aarch32-rt`] crates, which may be useful for writing bare-metal code
+using this target. Those crates include several examples which run in QEMU and
+build using these targets.
 
-[`cortex-ar`]: https://docs.rs/cortex-ar
-[`cortex-a-rt`]: https://docs.rs/cortex-a-rt
+[`aarch32-cpu`]: https://docs.rs/aarch32-cpu
+[`aarch32-rt`]: https://docs.rs/aarch32-rt

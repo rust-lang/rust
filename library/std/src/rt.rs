@@ -109,14 +109,14 @@ fn handle_rt_panic<T>(e: Box<dyn Any + Send>) -> T {
 // `compiler/rustc_session/src/config/sigpipe.rs`.
 #[cfg_attr(test, allow(dead_code))]
 unsafe fn init(argc: isize, argv: *const *const u8, sigpipe: u8) {
+    // Remember the main thread ID to give it the correct name.
+    // SAFETY: this is the only time and place where we call this function.
+    unsafe { main_thread::set(thread::current_id()) };
+
     #[cfg_attr(target_os = "teeos", allow(unused_unsafe))]
     unsafe {
         sys::init(argc, argv, sigpipe)
     };
-
-    // Remember the main thread ID to give it the correct name.
-    // SAFETY: this is the only time and place where we call this function.
-    unsafe { main_thread::set(thread::current_id()) };
 }
 
 /// Clean up the thread-local runtime state. This *should* be run after all other

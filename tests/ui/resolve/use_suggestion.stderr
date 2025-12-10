@@ -9,7 +9,7 @@ help: consider importing this struct
 LL + use std::collections::HashMap;
    |
 
-error[E0412]: cannot find type `HashMap` in this scope
+error[E0425]: cannot find type `HashMap` in this scope
   --> $DIR/use_suggestion.rs:5:13
    |
 LL |     let y1: HashMap;
@@ -20,7 +20,7 @@ help: consider importing this struct
 LL + use std::collections::HashMap;
    |
 
-error[E0412]: cannot find type `GooMap` in this scope
+error[E0425]: cannot find type `GooMap` in this scope
   --> $DIR/use_suggestion.rs:6:13
    |
 LL |     let y2: GooMap;
@@ -34,5 +34,5 @@ LL |     let x2 = GooMap::new();
 
 error: aborting due to 4 previous errors
 
-Some errors have detailed explanations: E0412, E0433.
-For more information about an error, try `rustc --explain E0412`.
+Some errors have detailed explanations: E0425, E0433.
+For more information about an error, try `rustc --explain E0425`.

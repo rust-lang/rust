@@ -5,8 +5,8 @@ use rustc_span::Symbol;
 use rustc_target::callconv::FnAbi;
 
 use super::{
-    ShiftOp, horizontal_bin_op, mask_load, mask_store, mpsadbw, packssdw, packsswb, packusdw,
-    packuswb, pmulhrsw, psadbw, psign, shift_simd_by_scalar, shift_simd_by_simd,
+    ShiftOp, horizontal_bin_op, mpsadbw, packssdw, packsswb, packusdw, packuswb, permute, pmaddbw,
+    pmulhrsw, psadbw, psign, shift_simd_by_scalar,
 };
 use crate::*;
 
@@ -102,60 +102,11 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 }
             }
             // Used to implement the _mm256_maddubs_epi16 function.
-            // Multiplies packed 8-bit unsigned integers from `left` and packed
-            // signed 8-bit integers from `right` into 16-bit signed integers. Then,
-            // the saturating sum of the products with indices `2*i` and `2*i+1`
-            // produces the output at index `i`.
             "pmadd.ub.sw" => {
                 let [left, right] =
                     this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
 
-                let (left, left_len) = this.project_to_simd(left)?;
-                let (right, right_len) = this.project_to_simd(right)?;
-                let (dest, dest_len) = this.project_to_simd(dest)?;
-
-                assert_eq!(left_len, right_len);
-                assert_eq!(dest_len.strict_mul(2), left_len);
-
-                for i in 0..dest_len {
-                    let j1 = i.strict_mul(2);
-                    let left1 = this.read_scalar(&this.project_index(&left, j1)?)?.to_u8()?;
-                    let right1 = this.read_scalar(&this.project_index(&right, j1)?)?.to_i8()?;
-
-                    let j2 = j1.strict_add(1);
-                    let left2 = this.read_scalar(&this.project_index(&left, j2)?)?.to_u8()?;
-                    let right2 = this.read_scalar(&this.project_index(&right, j2)?)?.to_i8()?;
-
-                    let dest = this.project_index(&dest, i)?;
-
-                    // Multiplication of a u8 and an i8 into an i16 cannot overflow.
-                    let mul1 = i16::from(left1).strict_mul(right1.into());
-                    let mul2 = i16::from(left2).strict_mul(right2.into());
-                    let res = mul1.saturating_add(mul2);
-
-                    this.write_scalar(Scalar::from_i16(res), &dest)?;
-                }
-            }
-            // Used to implement the _mm_maskload_epi32, _mm_maskload_epi64,
-            // _mm256_maskload_epi32 and _mm256_maskload_epi64 functions.
-            // For the element `i`, if the high bit of the `i`-th element of `mask`
-            // is one, it is loaded from `ptr.wrapping_add(i)`, otherwise zero is
-            // loaded.
-            "maskload.d" | "maskload.q" | "maskload.d.256" | "maskload.q.256" => {
-                let [ptr, mask] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
-
-                mask_load(this, ptr, mask, dest)?;
-            }
-            // Used to implement the _mm_maskstore_epi32, _mm_maskstore_epi64,
-            // _mm256_maskstore_epi32 and _mm256_maskstore_epi64 functions.
-            // For the element `i`, if the high bit of the element `i`-th of `mask`
-            // is one, it is stored into `ptr.wapping_add(i)`.
-            // Unlike SSE2's _mm_maskmoveu_si128, these are not non-temporal stores.
-            "maskstore.d" | "maskstore.q" | "maskstore.d.256" | "maskstore.q.256" => {
-                let [ptr, mask, value] =
-                    this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
-
-                mask_store(this, ptr, mask, value)?;
+                pmaddbw(this, left, right, dest)?;
             }
             // Used to implement the _mm256_mpsadbw_epu8 function.
             // Compute the sum of absolute differences of quadruplets of unsigned
@@ -217,28 +168,12 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
                 packusdw(this, left, right, dest)?;
             }
-            // Used to implement the _mm256_permutevar8x32_epi32 and
-            // _mm256_permutevar8x32_ps function.
-            // Shuffles `left` using the three low bits of each element of `right`
-            // as indices.
+            // Used to implement _mm256_permutevar8x32_epi32 and _mm256_permutevar8x32_ps.
             "permd" | "permps" => {
                 let [left, right] =
                     this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
 
-                let (left, left_len) = this.project_to_simd(left)?;
-                let (right, right_len) = this.project_to_simd(right)?;
-                let (dest, dest_len) = this.project_to_simd(dest)?;
-
-                assert_eq!(dest_len, left_len);
-                assert_eq!(dest_len, right_len);
-
-                for i in 0..dest_len {
-                    let dest = this.project_index(&dest, i)?;
-                    let right = this.read_scalar(&this.project_index(&right, i)?)?.to_u32()?;
-                    let left = this.project_index(&left, (right & 0b111).into())?;
-
-                    this.copy_op(&left, &dest)?;
-                }
+                permute(this, left, right, dest)?;
             }
             // Used to implement the _mm256_sad_epu8 function.
             "psad.bw" => {
@@ -309,22 +244,6 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 };
 
                 shift_simd_by_scalar(this, left, right, which, dest)?;
-            }
-            // Used to implement the _mm{,256}_{sllv,srlv,srav}_epi{32,64} functions
-            // (except _mm{,256}_srav_epi64, which are not available in AVX2).
-            "psllv.d" | "psllv.d.256" | "psllv.q" | "psllv.q.256" | "psrlv.d" | "psrlv.d.256"
-            | "psrlv.q" | "psrlv.q.256" | "psrav.d" | "psrav.d.256" => {
-                let [left, right] =
-                    this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
-
-                let which = match unprefixed_name {
-                    "psllv.d" | "psllv.d.256" | "psllv.q" | "psllv.q.256" => ShiftOp::Left,
-                    "psrlv.d" | "psrlv.d.256" | "psrlv.q" | "psrlv.q.256" => ShiftOp::RightLogic,
-                    "psrav.d" | "psrav.d.256" => ShiftOp::RightArith,
-                    _ => unreachable!(),
-                };
-
-                shift_simd_by_simd(this, left, right, which, dest)?;
             }
             _ => return interp_ok(EmulateItemResult::NotSupported),
         }

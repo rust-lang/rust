@@ -4,6 +4,9 @@ on:
   merge_group:
   pull_request:
 
+env:
+  MDBOOK_VERSION: 0.5.1
+
 jobs:
   remark:
     runs-on: ubuntu-latest
@@ -11,7 +14,7 @@ jobs:
     steps:
     # Setup
     - name: Checkout
-      uses: actions/checkout@v5
+      uses: actions/checkout@v6
       with:
         # Unsetting this would make so that any malicious package could get our Github Token
         persist-credentials: false
@@ -27,7 +30,7 @@ jobs:
     - name: Install mdbook
       run: |
         mkdir mdbook
-        curl -Lf https://github.com/rust-lang/mdBook/releases/download/v0.4.43/mdbook-v0.4.43-x86_64-unknown-linux-gnu.tar.gz | tar -xz --directory=./mdbook
+        curl -Lf https://github.com/rust-lang/mdBook/releases/download/v${MDBOOK_VERSION}/mdbook-v${MDBOOK_VERSION}-x86_64-unknown-linux-gnu.tar.gz | tar -xz --directory=./mdbook
         echo `pwd`/mdbook >> $GITHUB_PATH
 
     # Run

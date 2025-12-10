@@ -3,9 +3,10 @@
 //! NOTE: The crate is undergoing refactors, don't believe everything the docs
 //! say :-)
 //!
-//! The parser doesn't know about concrete representation of tokens and syntax
-//! trees. Abstract [`TokenSource`] and [`TreeSink`] traits are used instead. As
-//! a consequence, this crate does not contain a lexer.
+//! The parser doesn't know about concrete representation of tokens
+//! and syntax trees. Abstract [`Input`] and [`Output`] traits are
+//! used to provide tokens instead. As a consequence, this crate does
+//! not contain a lexer.
 //!
 //! The [`Parser`] struct from the [`parser`] module is a cursor into the
 //! sequence of tokens.  Parsing routines use [`Parser`] to inspect current
@@ -88,7 +89,7 @@ pub enum TopEntryPoint {
 }
 
 impl TopEntryPoint {
-    pub fn parse(&self, input: &Input, edition: Edition) -> Output {
+    pub fn parse(&self, input: &Input) -> Output {
         let _p = tracing::info_span!("TopEntryPoint::parse", ?self).entered();
         let entry_point: fn(&'_ mut parser::Parser<'_>) = match self {
             TopEntryPoint::SourceFile => grammar::entry::top::source_file,
@@ -99,7 +100,7 @@ impl TopEntryPoint {
             TopEntryPoint::Expr => grammar::entry::top::expr,
             TopEntryPoint::MetaItem => grammar::entry::top::meta_item,
         };
-        let mut p = parser::Parser::new(input, edition);
+        let mut p = parser::Parser::new(input);
         entry_point(&mut p);
         let events = p.finish();
         let res = event::process(events);
@@ -151,7 +152,7 @@ pub enum PrefixEntryPoint {
 }
 
 impl PrefixEntryPoint {
-    pub fn parse(&self, input: &Input, edition: Edition) -> Output {
+    pub fn parse(&self, input: &Input) -> Output {
         let entry_point: fn(&'_ mut parser::Parser<'_>) = match self {
             PrefixEntryPoint::Vis => grammar::entry::prefix::vis,
             PrefixEntryPoint::Block => grammar::entry::prefix::block,
@@ -164,7 +165,7 @@ impl PrefixEntryPoint {
             PrefixEntryPoint::Item => grammar::entry::prefix::item,
             PrefixEntryPoint::MetaItem => grammar::entry::prefix::meta_item,
         };
-        let mut p = parser::Parser::new(input, edition);
+        let mut p = parser::Parser::new(input);
         entry_point(&mut p);
         let events = p.finish();
         event::process(events)
@@ -188,9 +189,9 @@ impl Reparser {
     ///
     /// Tokens must start with `{`, end with `}` and form a valid brace
     /// sequence.
-    pub fn parse(self, tokens: &Input, edition: Edition) -> Output {
+    pub fn parse(self, tokens: &Input) -> Output {
         let Reparser(r) = self;
-        let mut p = parser::Parser::new(tokens, edition);
+        let mut p = parser::Parser::new(tokens);
         r(&mut p);
         let events = p.finish();
         event::process(events)

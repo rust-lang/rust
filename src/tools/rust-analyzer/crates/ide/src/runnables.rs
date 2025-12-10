@@ -3,17 +3,13 @@ use std::{fmt, sync::OnceLock};
 use arrayvec::ArrayVec;
 use ast::HasName;
 use cfg::{CfgAtom, CfgExpr};
-use hir::{
-    AsAssocItem, AttrsWithOwner, HasAttrs, HasCrate, HasSource, Semantics, Symbol, db::HirDatabase,
-    sym,
-};
+use hir::{AsAssocItem, HasAttrs, HasCrate, HasSource, Semantics, Symbol, db::HirDatabase, sym};
 use ide_assists::utils::{has_test_related_attribute, test_related_attribute_syn};
 use ide_db::impl_empty_upmap_from_ra_fixture;
 use ide_db::{
     FilePosition, FxHashMap, FxIndexMap, FxIndexSet, RootDatabase, SymbolKind,
     base_db::RootQueryDb,
     defs::Definition,
-    documentation::docs_from_attrs,
     helpers::visit_file_defs,
     search::{FileReferenceNode, SearchScope},
 };
@@ -323,7 +319,7 @@ pub(crate) fn runnable_fn(
     def: hir::Function,
 ) -> Option<Runnable> {
     let edition = def.krate(sema.db).edition(sema.db);
-    let under_cfg_test = has_cfg_test(def.module(sema.db).attrs(sema.db));
+    let under_cfg_test = has_cfg_test(def.module(sema.db).attrs(sema.db).cfgs(sema.db));
     let kind = if !under_cfg_test && def.is_main(sema.db) {
         RunnableKind::Bin
     } else {
@@ -358,7 +354,7 @@ pub(crate) fn runnable_fn(
     let file_range = fn_source.syntax().original_file_range_with_macro_call_input(sema.db);
     let update_test = UpdateTest::find_snapshot_macro(sema, file_range);
 
-    let cfg = def.attrs(sema.db).cfg();
+    let cfg = def.attrs(sema.db).cfgs(sema.db).cloned();
     Some(Runnable { use_name_in_title: false, nav, kind, cfg, update_test })
 }
 
@@ -366,8 +362,8 @@ pub(crate) fn runnable_mod(
     sema: &Semantics<'_, RootDatabase>,
     def: hir::Module,
 ) -> Option<Runnable> {
-    if !has_test_function_or_multiple_test_submodules(sema, &def, has_cfg_test(def.attrs(sema.db)))
-    {
+    let cfg = def.attrs(sema.db).cfgs(sema.db);
+    if !has_test_function_or_multiple_test_submodules(sema, &def, has_cfg_test(cfg)) {
         return None;
     }
     let path = def
@@ -381,8 +377,7 @@ pub(crate) fn runnable_mod(
         })
         .join("::");
 
-    let attrs = def.attrs(sema.db);
-    let cfg = attrs.cfg();
+    let cfg = cfg.cloned();
     let nav = NavigationTarget::from_module_to_decl(sema.db, def).call_site();
 
     let module_source = sema.module_definition_node(def);
@@ -409,10 +404,10 @@ pub(crate) fn runnable_impl(
     let display_target = def.module(sema.db).krate().to_display_target(sema.db);
     let edition = display_target.edition;
     let attrs = def.attrs(sema.db);
-    if !has_runnable_doc_test(&attrs) {
+    if !has_runnable_doc_test(sema.db, &attrs) {
         return None;
     }
-    let cfg = attrs.cfg();
+    let cfg = attrs.cfgs(sema.db).cloned();
     let nav = def.try_to_nav(sema)?.call_site();
     let ty = def.self_ty(sema.db);
     let adt_name = ty.as_adt()?.name(sema.db);
@@ -442,8 +437,16 @@ pub(crate) fn runnable_impl(
     })
 }
 
-fn has_cfg_test(attrs: AttrsWithOwner) -> bool {
-    attrs.cfgs().any(|cfg| matches!(&cfg, CfgExpr::Atom(CfgAtom::Flag(s)) if *s == sym::test))
+fn has_cfg_test(cfg: Option<&CfgExpr>) -> bool {
+    return cfg.is_some_and(has_cfg_test_impl);
+
+    fn has_cfg_test_impl(cfg: &CfgExpr) -> bool {
+        match cfg {
+            CfgExpr::Atom(CfgAtom::Flag(s)) => *s == sym::test,
+            CfgExpr::Any(cfgs) | CfgExpr::All(cfgs) => cfgs.iter().any(has_cfg_test_impl),
+            _ => false,
+        }
+    }
 }
 
 /// Creates a test mod runnable for outline modules at the top of their definition.
@@ -453,8 +456,8 @@ fn runnable_mod_outline_definition(
 ) -> Option<Runnable> {
     def.as_source_file_id(sema.db)?;
 
-    if !has_test_function_or_multiple_test_submodules(sema, &def, has_cfg_test(def.attrs(sema.db)))
-    {
+    let cfg = def.attrs(sema.db).cfgs(sema.db);
+    if !has_test_function_or_multiple_test_submodules(sema, &def, has_cfg_test(cfg)) {
         return None;
     }
     let path = def
@@ -468,8 +471,7 @@ fn runnable_mod_outline_definition(
         })
         .join("::");
 
-    let attrs = def.attrs(sema.db);
-    let cfg = attrs.cfg();
+    let cfg = cfg.cloned();
 
     let mod_source = sema.module_definition_node(def);
     let mod_syntax = mod_source.file_syntax(sema.db);
@@ -508,7 +510,7 @@ fn module_def_doctest(sema: &Semantics<'_, RootDatabase>, def: Definition) -> Op
     let display_target = krate
         .unwrap_or_else(|| (*db.all_crates().last().expect("no crate graph present")).into())
         .to_display_target(db);
-    if !has_runnable_doc_test(&attrs) {
+    if !has_runnable_doc_test(db, &attrs) {
         return None;
     }
     let def_name = def.name(db)?;
@@ -554,7 +556,7 @@ fn module_def_doctest(sema: &Semantics<'_, RootDatabase>, def: Definition) -> Op
         use_name_in_title: false,
         nav,
         kind: RunnableKind::DocTest { test_id },
-        cfg: attrs.cfg(),
+        cfg: attrs.cfgs(db).cloned(),
         update_test: UpdateTest::default(),
     };
     Some(res)
@@ -571,15 +573,15 @@ impl TestAttr {
     }
 }
 
-fn has_runnable_doc_test(attrs: &hir::Attrs) -> bool {
+fn has_runnable_doc_test(db: &RootDatabase, attrs: &hir::AttrsWithOwner) -> bool {
     const RUSTDOC_FENCES: [&str; 2] = ["```", "~~~"];
     const RUSTDOC_CODE_BLOCK_ATTRIBUTES_RUNNABLE: &[&str] =
         &["", "rust", "should_panic", "edition2015", "edition2018", "edition2021"];
 
-    docs_from_attrs(attrs).is_some_and(|doc| {
+    attrs.hir_docs(db).is_some_and(|doc| {
         let mut in_code_block = false;
 
-        for line in doc.lines() {
+        for line in doc.docs().lines() {
             if let Some(header) =
                 RUSTDOC_FENCES.into_iter().find_map(|fence| line.strip_prefix(fence))
             {

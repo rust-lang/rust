@@ -1,6 +1,6 @@
 //! Renders a bit of code as HTML.
 
-use hir::{EditionedFileId, Semantics};
+use hir::Semantics;
 use ide_db::MiniCore;
 use oorandom::Rand32;
 use stdx::format_to;
@@ -18,9 +18,7 @@ pub(crate) fn highlight_as_html_with_config(
     rainbow: bool,
 ) -> String {
     let sema = Semantics::new(db);
-    let file_id = sema
-        .attach_first_edition(file_id)
-        .unwrap_or_else(|| EditionedFileId::current_edition(db, file_id));
+    let file_id = sema.attach_first_edition(file_id);
     let file = sema.parse(file_id);
     let file = file.syntax();
     fn rainbowify(seed: u64) -> String {

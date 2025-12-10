@@ -20,7 +20,7 @@ use crate::{
 pub trait HasSource {
     type Ast;
     /// Fetches the definition's source node.
-    /// Using [`crate::Semantics::source`] is preferred when working with [`crate::Semantics`],
+    /// Using [`crate::SemanticsImpl::source`] is preferred when working with [`crate::Semantics`],
     /// as that caches the parsed file in the semantics' cache.
     ///
     /// The current some implementations can return `InFile` instead of `Option<InFile>`.

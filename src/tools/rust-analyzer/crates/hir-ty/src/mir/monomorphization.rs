@@ -14,9 +14,11 @@ use rustc_type_ir::{
 };
 use triomphe::Arc;
 
-use crate::next_solver::{Const, ConstKind, Region, RegionKind};
 use crate::{
-    TraitEnvironment,
+    ParamEnvAndCrate,
+    next_solver::{Const, ConstKind, Region, RegionKind},
+};
+use crate::{
     db::{HirDatabase, InternedClosureId},
     next_solver::{
         DbInterner, GenericArgs, Ty, TyKind, TypingMode,
@@ -30,7 +32,7 @@ use super::{MirBody, MirLowerError, Operand, OperandKind, Rvalue, StatementKind,
 
 struct Filler<'db> {
     infcx: InferCtxt<'db>,
-    trait_env: Arc<TraitEnvironment<'db>>,
+    trait_env: ParamEnvAndCrate<'db>,
     subst: GenericArgs<'db>,
 }
 
@@ -53,7 +55,11 @@ impl<'db> FallibleTypeFolder<DbInterner<'db>> for Filler<'db> {
 
                 let mut ocx = ObligationCtxt::new(&self.infcx);
                 let ty = ocx
-                    .structurally_normalize_ty(&ObligationCause::dummy(), self.trait_env.env, ty)
+                    .structurally_normalize_ty(
+                        &ObligationCause::dummy(),
+                        self.trait_env.param_env,
+                        ty,
+                    )
                     .map_err(|_| MirLowerError::NotSupported("can't normalize alias".to_owned()))?;
                 ty.try_super_fold_with(self)
             }
@@ -93,12 +99,8 @@ impl<'db> FallibleTypeFolder<DbInterner<'db>> for Filler<'db> {
 }
 
 impl<'db> Filler<'db> {
-    fn new(
-        db: &'db dyn HirDatabase,
-        env: Arc<TraitEnvironment<'db>>,
-        subst: GenericArgs<'db>,
-    ) -> Self {
-        let interner = DbInterner::new_with(db, Some(env.krate), env.block);
+    fn new(db: &'db dyn HirDatabase, env: ParamEnvAndCrate<'db>, subst: GenericArgs<'db>) -> Self {
+        let interner = DbInterner::new_with(db, env.krate);
         let infcx = interner.infer_ctxt().build(TypingMode::PostAnalysis);
         Self { infcx, trait_env: env, subst }
     }
@@ -210,7 +212,7 @@ pub fn monomorphized_mir_body_query<'db>(
     db: &'db dyn HirDatabase,
     owner: DefWithBodyId,
     subst: GenericArgs<'db>,
-    trait_env: Arc<crate::TraitEnvironment<'db>>,
+    trait_env: ParamEnvAndCrate<'db>,
 ) -> Result<Arc<MirBody<'db>>, MirLowerError<'db>> {
     let mut filler = Filler::new(db, trait_env, subst);
     let body = db.mir_body(owner)?;
@@ -223,7 +225,7 @@ pub(crate) fn monomorphized_mir_body_cycle_result<'db>(
     _db: &'db dyn HirDatabase,
     _: DefWithBodyId,
     _: GenericArgs<'db>,
-    _: Arc<crate::TraitEnvironment<'db>>,
+    _: ParamEnvAndCrate<'db>,
 ) -> Result<Arc<MirBody<'db>>, MirLowerError<'db>> {
     Err(MirLowerError::Loop)
 }
@@ -232,7 +234,7 @@ pub fn monomorphized_mir_body_for_closure_query<'db>(
     db: &'db dyn HirDatabase,
     closure: InternedClosureId,
     subst: GenericArgs<'db>,
-    trait_env: Arc<crate::TraitEnvironment<'db>>,
+    trait_env: ParamEnvAndCrate<'db>,
 ) -> Result<Arc<MirBody<'db>>, MirLowerError<'db>> {
     let mut filler = Filler::new(db, trait_env, subst);
     let body = db.mir_body_for_closure(closure)?;
