@@ -6,7 +6,83 @@ document.
 
 ## Unreleased / Beta / In Rust Nightly
 
-[e9b7045...master](https://github.com/rust-lang/rust-clippy/compare/e9b7045...master)
+[d9fb15c...master](https://github.com/rust-lang/rust-clippy/compare/d9fb15c...master)
+
+## Rust 1.92
+
+Current stable, released 2025-12-11
+
+[View all 124 merged pull requests](https://github.com/rust-lang/rust-clippy/pulls?q=merged%3A2025-09-05T18%3A24%3A03Z..2025-10-16T14%3A13%3A43Z+base%3Amaster)
+
+### New Lints
+
+* Added [`unnecessary_option_map_or_else`] to `suspicious`
+  [#14662](https://github.com/rust-lang/rust-clippy/pull/14662)
+* Added [`replace_box`] to `perf`
+  [#14953](https://github.com/rust-lang/rust-clippy/pull/14953)
+* Added [`volatile_composites`] to `nursery`
+  [#15686](https://github.com/rust-lang/rust-clippy/pull/15686)
+* Added [`self_only_used_in_recursion`] to `pedantic`
+  [#14787](https://github.com/rust-lang/rust-clippy/pull/14787)
+* Added [`redundant_iter_cloned`] to `perf`
+  [#15277](https://github.com/rust-lang/rust-clippy/pull/15277)  
+
+### Moves and Deprecations
+
+* Renamed [`unchecked_duration_subtraction`] to [`unchecked_time_subtraction`]
+  [#13800](https://github.com/rust-lang/rust-clippy/pull/13800)
+
+### Enhancements
+
+* [`mutex_atomic`] and [`mutex_integer`] overhauled to only lint definitions, not uses; added suggestions
+  and better help messages
+  [#15632](https://github.com/rust-lang/rust-clippy/pull/15632)
+* [`manual_rotate`] now recognizes non-const rotation amounts
+  [#15402](https://github.com/rust-lang/rust-clippy/pull/15402)
+* [`multiple_inherent_impl`] added `inherent-impl-lint-scope` config option (`module`, `file`,
+  or `crate`)
+  [#15843](https://github.com/rust-lang/rust-clippy/pull/15843)
+* [`use_self`] now checks structs and enums
+  [#15566](https://github.com/rust-lang/rust-clippy/pull/15566)
+* [`while_let_loop`] extended to lint on `loop { let else }`
+  [#15701](https://github.com/rust-lang/rust-clippy/pull/15701)
+* [`mut_mut`] overhauled with structured suggestions and improved documentation
+  [#15417](https://github.com/rust-lang/rust-clippy/pull/15417)
+* [`nonstandard_macro_braces`] now suggests trailing semicolon when needed
+  [#15593](https://github.com/rust-lang/rust-clippy/pull/15593)
+* [`ptr_offset_with_cast`] now respects MSRV when suggesting fix, and lints more cases
+  [#15613](https://github.com/rust-lang/rust-clippy/pull/15613)
+* [`cast_sign_loss`] and [`cast_possible_wrap`] added suggestions using `cast_{un,}signed()` methods
+  (MSRV 1.87+)
+  [#15384](https://github.com/rust-lang/rust-clippy/pull/15384)
+* [`unchecked_time_subtraction`] extended to include `Duration - Duration` operations
+  [#13800](https://github.com/rust-lang/rust-clippy/pull/13800)
+* [`filter_next`] now suggests replacing `filter().next_back()` with `rfind()` for
+  `DoubleEndedIterator`
+  [#15748](https://github.com/rust-lang/rust-clippy/pull/15748)
+
+### False Positive Fixes
+
+* [`unnecessary_safety_comment`] fixed FPs with comments above attributes
+  [#15678](https://github.com/rust-lang/rust-clippy/pull/15678)
+* [`manual_unwrap_or`] fixed FP edge case
+  [#15812](https://github.com/rust-lang/rust-clippy/pull/15812)
+* [`needless_continue`] fixed FP when match type is not unit or never
+  [#15547](https://github.com/rust-lang/rust-clippy/pull/15547)
+* [`if_then_some_else_none`] fixed FP when return exists in block expr
+  [#15783](https://github.com/rust-lang/rust-clippy/pull/15783)
+* [`new_without_default`] fixed to copy `#[cfg]` onto `impl Default` and fixed FP on private type
+  with trait impl
+  [#15720](https://github.com/rust-lang/rust-clippy/pull/15720)
+  [#15782](https://github.com/rust-lang/rust-clippy/pull/15782)
+* [`question_mark`] fixed FP on variables used after
+  [#15644](https://github.com/rust-lang/rust-clippy/pull/15644)
+* [`needless_return`] fixed FP with `cfg`d code after `return`
+  [#15669](https://github.com/rust-lang/rust-clippy/pull/15669)
+* [`useless_attribute`] fixed FP on `deprecated_in_future`
+  [#15645](https://github.com/rust-lang/rust-clippy/pull/15645)
+* [`double_parens`] fixed FP when macros are involved
+  [#15420](https://github.com/rust-lang/rust-clippy/pull/15420)
 
 ## Rust 1.91
 
