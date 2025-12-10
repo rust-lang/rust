@@ -885,7 +885,7 @@ mod desc {
         "either a boolean (`yes`, `no`, `on`, `off`, etc), or `nll` (default: `nll`)";
     pub(crate) const parse_align: &str = "a number that is a power of 2 between 1 and 2^29";
     pub(crate) const parse_allow_partial_mitigations: &str =
-        super::enforcable_mitigations::EnforcableMitigationKind::KINDS;
+        super::enforcable_mitigations::DeniedPartialMitigationKind::KINDS;
 }
 
 pub mod parse {

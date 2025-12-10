@@ -27,7 +27,7 @@ use rustc_middle::ty::codec::TyEncoder;
 use rustc_middle::ty::fast_reject::{self, TreatParams};
 use rustc_middle::{bug, span_bug};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder, opaque};
-use rustc_session::config::enforcable_mitigations::EnforcableMitigation;
+use rustc_session::config::enforcable_mitigations::DeniedPartialMitigation;
 use rustc_session::config::{CrateType, OptLevel, TargetModifier};
 use rustc_span::hygiene::HygieneEncodeContext;
 use rustc_span::{
@@ -716,8 +716,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         // `SourceFiles` we actually need to encode.
         let source_map = stat!("source-map", || self.encode_source_map());
         let target_modifiers = stat!("target-modifiers", || self.encode_target_modifiers());
-        let enforcable_mitigations =
-            stat!("enforced-mitigations", || self.encode_enabled_enforcable_mitigations());
+        let denied_partial_mitigations =
+            stat!("enforced-mitigations", || self.encode_enabled_denied_partial_mitigations());
 
         let root = stat!("final", || {
             let attrs = tcx.hir_krate_attrs();
@@ -764,7 +764,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 foreign_modules,
                 source_map,
                 target_modifiers,
-                enforcable_mitigations,
+                denied_partial_mitigations,
                 traits,
                 impls,
                 incoherent_impls,
@@ -2105,10 +2105,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         self.lazy_array(tcx.sess.opts.gather_target_modifiers())
     }
 
-    fn encode_enabled_enforcable_mitigations(&mut self) -> LazyArray<EnforcableMitigation> {
+    fn encode_enabled_denied_partial_mitigations(&mut self) -> LazyArray<DeniedPartialMitigation> {
         empty_proc_macro!(self);
         let tcx = self.tcx;
-        self.lazy_array(tcx.sess.gather_enabled_enforcable_mitigations())
+        self.lazy_array(tcx.sess.gather_enabled_denied_partial_mitigations())
     }
 
     fn encode_lib_features(&mut self) -> LazyArray<(Symbol, FeatureStability)> {

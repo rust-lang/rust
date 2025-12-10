@@ -10,66 +10,66 @@ use crate::config::Options;
 use crate::options::CFGuard;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Encodable, BlobDecodable)]
-pub enum EnforcableMitigationLevel {
+pub enum DeniedPartialMitigationLevel {
     // Enabled(false) should be the bottom of the Ord hierarchy
     Enabled(bool),
     StackProtector(StackProtector),
 }
 
-impl EnforcableMitigationLevel {
+impl DeniedPartialMitigationLevel {
     pub fn level_str(&self) -> &'static str {
         match self {
-            EnforcableMitigationLevel::StackProtector(StackProtector::All) => "=all",
-            EnforcableMitigationLevel::StackProtector(StackProtector::Basic) => "=basic",
-            EnforcableMitigationLevel::StackProtector(StackProtector::Strong) => "=strong",
+            DeniedPartialMitigationLevel::StackProtector(StackProtector::All) => "=all",
+            DeniedPartialMitigationLevel::StackProtector(StackProtector::Basic) => "=basic",
+            DeniedPartialMitigationLevel::StackProtector(StackProtector::Strong) => "=strong",
             // currently `=disabled` should not appear
-            EnforcableMitigationLevel::Enabled(false) => "=disabled",
-            EnforcableMitigationLevel::StackProtector(StackProtector::None)
-            | EnforcableMitigationLevel::Enabled(true) => "",
+            DeniedPartialMitigationLevel::Enabled(false) => "=disabled",
+            DeniedPartialMitigationLevel::StackProtector(StackProtector::None)
+            | DeniedPartialMitigationLevel::Enabled(true) => "",
         }
     }
 }
 
-impl std::fmt::Display for EnforcableMitigationLevel {
+impl std::fmt::Display for DeniedPartialMitigationLevel {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            EnforcableMitigationLevel::StackProtector(StackProtector::All) => {
+            DeniedPartialMitigationLevel::StackProtector(StackProtector::All) => {
                 write!(f, "all")
             }
-            EnforcableMitigationLevel::StackProtector(StackProtector::Basic) => {
+            DeniedPartialMitigationLevel::StackProtector(StackProtector::Basic) => {
                 write!(f, "basic")
             }
-            EnforcableMitigationLevel::StackProtector(StackProtector::Strong) => {
+            DeniedPartialMitigationLevel::StackProtector(StackProtector::Strong) => {
                 write!(f, "strong")
             }
-            EnforcableMitigationLevel::Enabled(true) => {
+            DeniedPartialMitigationLevel::Enabled(true) => {
                 write!(f, "enabled")
             }
-            EnforcableMitigationLevel::StackProtector(StackProtector::None)
-            | EnforcableMitigationLevel::Enabled(false) => {
+            DeniedPartialMitigationLevel::StackProtector(StackProtector::None)
+            | DeniedPartialMitigationLevel::Enabled(false) => {
                 write!(f, "disabled")
             }
         }
     }
 }
 
-impl From<bool> for EnforcableMitigationLevel {
+impl From<bool> for DeniedPartialMitigationLevel {
     fn from(value: bool) -> Self {
-        EnforcableMitigationLevel::Enabled(value)
+        DeniedPartialMitigationLevel::Enabled(value)
     }
 }
 
-impl From<StackProtector> for EnforcableMitigationLevel {
+impl From<StackProtector> for DeniedPartialMitigationLevel {
     fn from(value: StackProtector) -> Self {
-        EnforcableMitigationLevel::StackProtector(value)
+        DeniedPartialMitigationLevel::StackProtector(value)
     }
 }
 
-pub struct EnforcableMitigationKindParseError;
+pub struct DeniedPartialMitigationKindParseError;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Encodable, BlobDecodable)]
 pub struct MitigationEnablement {
-    pub kind: EnforcableMitigationKind,
+    pub kind: DeniedPartialMitigationKind,
     pub enabled: bool,
 }
 
@@ -82,58 +82,58 @@ macro_rules! intersperse {
 macro_rules! enforced_mitigations {
     ([$self:ident] enum $kind:ident {$(($name:ident, $text:expr, $since:ident, $code:expr)),*}) => {
         #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Encodable, BlobDecodable)]
-        pub enum EnforcableMitigationKind {
+        pub enum DeniedPartialMitigationKind {
             $($name),*
         }
 
-        impl std::fmt::Display for EnforcableMitigationKind {
+        impl std::fmt::Display for DeniedPartialMitigationKind {
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
                 match self {
-                    $(EnforcableMitigationKind::$name => write!(f, $text)),*
+                    $(DeniedPartialMitigationKind::$name => write!(f, $text)),*
                 }
             }
         }
 
-        impl EnforcableMitigationKind {
+        impl DeniedPartialMitigationKind {
             pub(crate) const KINDS: &'static str = concat!("comma-separated list of mitigation kinds (available: ",
                 intersperse!(", ", ($(concat!("`", $text, "`")),*)), ")");
         }
 
-        impl FromStr for EnforcableMitigationKind {
-            type Err = EnforcableMitigationKindParseError;
+        impl FromStr for DeniedPartialMitigationKind {
+            type Err = DeniedPartialMitigationKindParseError;
 
-            fn from_str(v: &str) -> Result<EnforcableMitigationKind, EnforcableMitigationKindParseError> {
+            fn from_str(v: &str) -> Result<DeniedPartialMitigationKind, DeniedPartialMitigationKindParseError> {
                 match v {
-                    $($text => Ok(EnforcableMitigationKind::$name)),*
+                    $($text => Ok(DeniedPartialMitigationKind::$name)),*
                     ,
-                    _ => Err(EnforcableMitigationKindParseError),
+                    _ => Err(DeniedPartialMitigationKindParseError),
                 }
             }
         }
 
         #[allow(unused)]
-        impl EnforcableMitigationKind {
+        impl DeniedPartialMitigationKind {
             pub fn enforced_since(&self) -> Edition {
                 match self {
                     // Should change the enforced-since edition of StackProtector to 2015
                     // (all editions) when `-C stack-protector` is stabilized.
-                    $(EnforcableMitigationKind::$name => Edition::$since),*
+                    $(DeniedPartialMitigationKind::$name => Edition::$since),*
                 }
             }
         }
 
         impl Options {
-            pub fn all_enforced_mitigations(&self) -> impl Iterator<Item = EnforcableMitigationKind> {
-                [$(EnforcableMitigationKind::$name),*].into_iter()
+            pub fn all_enforced_mitigations(&self) -> impl Iterator<Item = DeniedPartialMitigationKind> {
+                [$(DeniedPartialMitigationKind::$name),*].into_iter()
             }
         }
 
         impl Session {
-            pub fn gather_enabled_enforcable_mitigations(&$self) -> Vec<EnforcableMitigation> {
+            pub fn gather_enabled_denied_partial_mitigations(&$self) -> Vec<DeniedPartialMitigation> {
                 let mut mitigations = [
                     $(
-                    EnforcableMitigation {
-                        kind: EnforcableMitigationKind::$name,
+                    DeniedPartialMitigation {
+                        kind: DeniedPartialMitigationKind::$name,
                         level: From::from($code),
                     }
                     ),*
@@ -147,7 +147,7 @@ macro_rules! enforced_mitigations {
 
 enforced_mitigations! {
     [self]
-    enum EnforcableMitigationKind {
+    enum DeniedPartialMitigationKind {
         (StackProtector, "stack-protector", EditionFuture, self.stack_protector()),
         (ControlFlowGuard, "control-flow-guard", EditionFuture, self.opts.cg.control_flow_guard == CFGuard::Checks)
     }
@@ -155,9 +155,9 @@ enforced_mitigations! {
 
 /// Enforced mitigations, see [RFC 3855](https://github.com/rust-lang/rfcs/pull/3855)
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Encodable, BlobDecodable)]
-pub struct EnforcableMitigation {
-    pub kind: EnforcableMitigationKind,
-    pub level: EnforcableMitigationLevel,
+pub struct DeniedPartialMitigation {
+    pub kind: DeniedPartialMitigationKind,
+    pub level: DeniedPartialMitigationLevel,
 }
 
 impl Options {
@@ -165,7 +165,7 @@ impl Options {
     pub fn allowed_partial_mitigations(
         &self,
         edition: Edition,
-    ) -> impl Iterator<Item = EnforcableMitigationKind> {
+    ) -> impl Iterator<Item = DeniedPartialMitigationKind> {
         let mut result: BTreeSet<_> = self
             .all_enforced_mitigations()
             .filter(|mitigation| mitigation.enforced_since() > edition)
