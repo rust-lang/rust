@@ -1,7 +1,7 @@
 // Test that target-cpu implies the correct target features
 //@only-target: x86_64
 //@compile-flags: -C target-cpu=x86-64-v4
-//@ignore-target: x86_64 (broken, idk why)
+//@ignore-target: x86_64
 
 fn main() {
     assert!(cfg!(target_feature = "avx2"));
