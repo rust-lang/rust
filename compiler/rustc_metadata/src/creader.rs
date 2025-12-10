@@ -25,7 +25,7 @@ use rustc_middle::ty::data_structures::IndexSet;
 use rustc_middle::ty::{TyCtxt, TyCtxtFeed};
 use rustc_proc_macro::bridge::client::ProcMacro;
 use rustc_session::Session;
-use rustc_session::config::enforcable_mitigations::DeniedPartialMitigationLevel;
+use rustc_session::config::enforceable_mitigations::DeniedPartialMitigationLevel;
 use rustc_session::config::{
     CrateType, ExtendedTargetModifierInfo, ExternLocation, Externs, OptionsTargetModifiers,
     TargetModifier,
