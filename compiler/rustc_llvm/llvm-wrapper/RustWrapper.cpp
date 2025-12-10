@@ -242,6 +242,61 @@ extern "C" void LLVMRustOffloadMapper(LLVMValueRef OldFn, LLVMValueRef NewFn) {
                           llvm::CloneFunctionChangeType::LocalChangesOnly,
                           returns);
 }
+
+#include "llvm/Bitcode/BitcodeWriter.h"
+#include "llvm/Frontend/Offloading/OffloadWrapper.h"
+#include "llvm/Frontend/Offloading/Utility.h"
+#include "llvm/Object/OffloadBinary.h"
+#include "llvm/Support/CommandLine.h"
+#include "llvm/Support/FileOutputBuffer.h"
+#include "llvm/Support/FileSystem.h"
+#include "llvm/Support/InitLLVM.h"
+#include "llvm/Support/MemoryBuffer.h"
+#include "llvm/Support/Path.h"
+#include "llvm/Support/Signals.h"
+#include "llvm/Support/StringSaver.h"
+#include "llvm/Support/WithColor.h"
+#include "llvm/TargetParser/Host.h"
+extern "C" bool LLVMRustWrapImages() {
+  LLVMContext Context;
+  Module M("offload.wrapper.module", Context);
+  M.setTargetTriple(llvm::Triple("x86_64-unknown-linux"));
+  //M.setTargetTriple(llvm::Triple("amdgcn-amd-amdhsa"));
+  SmallVector<std::unique_ptr<MemoryBuffer>> Buffers;
+  SmallVector<ArrayRef<char>> BuffersToWrap;
+  StringRef Input = "/p/lustre1/drehwald1/prog/offload/r/image";
+  //for (StringRef Input : InputFiles) {
+    ErrorOr<std::unique_ptr<MemoryBuffer>> BufferOrErr =
+        MemoryBuffer::getFileOrSTDIN(Input);
+    if (std::error_code EC = BufferOrErr.getError())
+      return false;
+    std::unique_ptr<MemoryBuffer> &Buffer =
+        Buffers.emplace_back(std::move(*BufferOrErr));
+    BuffersToWrap.emplace_back(
+        ArrayRef<char>(Buffer->getBufferStart(), Buffer->getBufferSize()));
+  //}
+  //static const char ImagePath[] = "/p/lustre1/drehwald1/prog/offload/r/image";
+
+  //ArrayRef<char> Buf(ImagePath, std::strlen(ImagePath));
+  //ArrayRef<ArrayRef<char>> BuffersToWrap(Buf);
+  llvm::errs() << "wraping\n";
+
+  if (Error Err = offloading::wrapOpenMPBinaries(
+          M, BuffersToWrap, offloading::getOffloadEntryArray(M),
+          /*Suffix=*/"", /*Relocatable=*/false))
+    return false;
+  llvm::errs() << "wraping\n";
+
+  int FD = -1;
+  std::string OutputFile = "/p/lustre1/drehwald1/prog/offload/r/out.bc";
+  if (std::error_code EC = sys::fs::openFileForWrite(OutputFile, FD))
+    return false;
+  llvm::raw_fd_ostream OS(FD, true);
+  WriteBitcodeToFile(M, OS);
+  llvm::errs() << "wraping\n";
+
+  return true;
+}
 #endif
 
 extern "C" LLVMValueRef LLVMRustGetNamedValue(LLVMModuleRef M, const char *Name,
