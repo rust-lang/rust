@@ -4947,7 +4947,7 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    /// ```rust,compile_fail"
+    /// ```rust,compile_fail
     /// #![feature(supertrait_item_shadowing)]
     /// #![deny(shadowing_supertrait_items)]
     ///
