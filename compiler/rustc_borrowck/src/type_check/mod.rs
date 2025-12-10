@@ -1023,7 +1023,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 // element, so we require the `Copy` trait.
                 if len.try_to_target_usize(tcx).is_none_or(|len| len > 1) {
                     match operand {
-                        Operand::Copy(..) | Operand::Constant(..) => {
+                        Operand::Copy(..) | Operand::Constant(..) | Operand::RuntimeChecks(_) => {
                             // These are always okay: direct use of a const, or a value that can
                             // evidently be copied.
                         }
@@ -1045,8 +1045,6 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     }
                 }
             }
-
-            &Rvalue::NullaryOp(NullOp::RuntimeChecks(_)) => {}
 
             Rvalue::ShallowInitBox(_operand, ty) => {
                 let trait_ref =
@@ -2276,7 +2274,6 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             | Rvalue::Cast(..)
             | Rvalue::ShallowInitBox(..)
             | Rvalue::BinaryOp(..)
-            | Rvalue::NullaryOp(..)
             | Rvalue::CopyForDeref(..)
             | Rvalue::UnaryOp(..)
             | Rvalue::Discriminant(..)

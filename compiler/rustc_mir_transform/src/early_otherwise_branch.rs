@@ -117,11 +117,7 @@ impl<'tcx> crate::MirPass<'tcx> for EarlyOtherwiseBranch {
                 unreachable!()
             };
             // Always correct since we can only switch on `Copy` types
-            let parent_op = match parent_op {
-                Operand::Move(x) => Operand::Copy(*x),
-                Operand::Copy(x) => Operand::Copy(*x),
-                Operand::Constant(x) => Operand::Constant(x.clone()),
-            };
+            let parent_op = parent_op.to_copy();
             let parent_ty = parent_op.ty(body.local_decls(), tcx);
             let statements_before = bbs[parent].statements.len();
             let parent_end = Location { block: parent, statement_index: statements_before };

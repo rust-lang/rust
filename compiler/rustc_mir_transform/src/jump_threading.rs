@@ -477,6 +477,7 @@ impl<'a, 'tcx> TOFinder<'a, 'tcx> {
                 let Some(rhs) = self.map.find(rhs.as_ref()) else { return };
                 self.process_copy(lhs, rhs, state)
             }
+            Operand::RuntimeChecks(_) => {}
         }
     }
 

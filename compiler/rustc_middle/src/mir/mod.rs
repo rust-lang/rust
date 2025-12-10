@@ -620,6 +620,10 @@ impl<'tcx> Body<'tcx> {
                 let bits = eval_mono_const(constant)?;
                 return Some((bits, targets));
             }
+            Operand::RuntimeChecks(check) => {
+                let bits = check.value(tcx.sess) as u128;
+                return Some((bits, targets));
+            }
             Operand::Move(place) | Operand::Copy(place) => place,
         };
 
@@ -649,9 +653,6 @@ impl<'tcx> Body<'tcx> {
         }
 
         match rvalue {
-            Rvalue::NullaryOp(NullOp::RuntimeChecks(kind)) => {
-                Some((kind.value(tcx.sess) as u128, targets))
-            }
             Rvalue::Use(Operand::Constant(constant)) => {
                 let bits = eval_mono_const(constant)?;
                 Some((bits, targets))
