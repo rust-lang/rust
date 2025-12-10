@@ -17,8 +17,8 @@
   // bar
    assert!(false)
   // baz
-   }
+   } // 123
 
 
   #[expect(unused)]
-const {  let a = 1;  assert!(true); }
+pub    const {  let a = 1;  assert!(true); }

@@ -1999,7 +1999,7 @@ pub(crate) fn rewrite_struct_field(
     combine_strs_with_missing_comments(context, &attrs_str, field_str, missing_span, shape, false)
 }
 
-pub(crate) struct StaticPartsLhs<'a> {
+pub(crate) struct StaticParts<'a> {
     prefix: &'a str,
     safety: ast::Safety,
     vis: &'a ast::Visibility,
@@ -2007,12 +2007,8 @@ pub(crate) struct StaticPartsLhs<'a> {
     generics: Option<&'a ast::Generics>,
     ty: &'a ast::Ty,
     mutability: ast::Mutability,
+    expr_opt: Option<&'a ast::Expr>,
     defaultness: Option<ast::Defaultness>,
-}
-
-pub(crate) struct StaticParts<'a> {
-    lhs: Option<StaticPartsLhs<'a>>,
-    rhs: Option<&'a ast::Expr>,
     span: Span,
 }
 
@@ -2020,36 +2016,27 @@ impl<'a> StaticParts<'a> {
     pub(crate) fn from_item(item: &'a ast::Item) -> Self {
         match &item.kind {
             ast::ItemKind::Static(s) => StaticParts {
-                lhs: Some(StaticPartsLhs {
-                    prefix: "static",
-                    safety: s.safety,
-                    vis: &item.vis,
-                    ident: s.ident,
-                    generics: None,
-                    ty: &s.ty,
-                    mutability: s.mutability,
-                    defaultness: None,
-                }),
-                rhs: s.expr.as_deref(),
+                prefix: "static",
+                safety: s.safety,
+                vis: &item.vis,
+                ident: s.ident,
+                generics: None,
+                ty: &s.ty,
+                mutability: s.mutability,
+                expr_opt: s.expr.as_deref(),
+                defaultness: None,
                 span: item.span,
             },
             ast::ItemKind::Const(c) => StaticParts {
-                lhs: Some(StaticPartsLhs {
-                    prefix: "const",
-                    safety: ast::Safety::Default,
-                    vis: &item.vis,
-                    ident: c.ident,
-                    generics: Some(&c.generics),
-                    ty: &c.ty,
-                    mutability: ast::Mutability::Not,
-                    defaultness: Some(c.defaultness),
-                }),
-                rhs: c.rhs.as_ref().map(|rhs| rhs.expr()),
-                span: item.span,
-            },
-            ast::ItemKind::ConstBlock(b) => StaticParts {
-                lhs: None,
-                rhs: Some(&b.body),
+                prefix: "const",
+                safety: ast::Safety::Default,
+                vis: &item.vis,
+                ident: c.ident,
+                generics: Some(&c.generics),
+                ty: &c.ty,
+                mutability: ast::Mutability::Not,
+                expr_opt: c.rhs.as_ref().map(|rhs| rhs.expr()),
+                defaultness: Some(c.defaultness),
                 span: item.span,
             },
             _ => unreachable!(),
@@ -2057,64 +2044,45 @@ impl<'a> StaticParts<'a> {
     }
 
     pub(crate) fn from_trait_item(ti: &'a ast::AssocItem, ident: Ident) -> Self {
-        let (defaultness, ty, expr_opt, generics) = match &ti.kind {
-            ast::AssocItemKind::Const(c) => (
-                c.defaultness,
-                &c.ty,
-                c.rhs.as_ref().map(|rhs| rhs.expr()),
-                Some(&c.generics),
-            ),
-            _ => unreachable!(),
-        };
-        StaticParts {
-            lhs: Some(StaticPartsLhs {
+        match &ti.kind {
+            ast::AssocItemKind::Const(c) => StaticParts {
                 prefix: "const",
                 safety: ast::Safety::Default,
                 vis: &ti.vis,
                 ident,
-                generics,
-                ty,
+                generics: Some(&c.generics),
+                ty: &c.ty,
                 mutability: ast::Mutability::Not,
-                defaultness: Some(defaultness),
-            }),
-            rhs: expr_opt,
-            span: ti.span,
+                expr_opt: c.rhs.as_ref().map(|rhs| rhs.expr()),
+                defaultness: Some(c.defaultness),
+                span: ti.span,
+            },
+            _ => unreachable!(),
         }
     }
 
     pub(crate) fn from_impl_item(ii: &'a ast::AssocItem, ident: Ident) -> Self {
-        let (defaultness, ty, expr_opt, generics) = match &ii.kind {
-            ast::AssocItemKind::Const(c) => (
-                c.defaultness,
-                &c.ty,
-                c.rhs.as_ref().map(|rhs| rhs.expr()),
-                Some(&c.generics),
-            ),
-            _ => unreachable!(),
-        };
-        StaticParts {
-            lhs: Some(StaticPartsLhs {
+        match &ii.kind {
+            ast::AssocItemKind::Const(c) => StaticParts {
                 prefix: "const",
                 safety: ast::Safety::Default,
                 vis: &ii.vis,
                 ident,
-                generics,
-                ty,
+                generics: Some(&c.generics),
+                ty: &c.ty,
                 mutability: ast::Mutability::Not,
-                defaultness: Some(defaultness),
-            }),
-            rhs: expr_opt,
-            span: ii.span,
+                expr_opt: c.rhs.as_ref().map(|rhs| rhs.expr()),
+                defaultness: Some(c.defaultness),
+                span: ii.span,
+            },
+            _ => unreachable!(),
         }
     }
 }
 
-fn rewrite_static_lhs(
+fn rewrite_static(
     context: &RewriteContext<'_>,
-    lhs: &StaticPartsLhs<'_>,
-    offset: Indent,
-) -> Option<[String; 2]> {
-    let StaticPartsLhs {
+    &StaticParts {
         prefix,
         safety,
         vis,
@@ -2123,8 +2091,11 @@ fn rewrite_static_lhs(
         ty,
         mutability,
         defaultness,
-    } = *lhs;
-
+        expr_opt,
+        span,
+    }: &StaticParts<'_>,
+    offset: Indent,
+) -> Option<String> {
     // For now, if this static (or const) has generics, then bail.
     if generics.is_some_and(|g| !g.params.is_empty() || !g.where_clause.is_empty()) {
         return None;
@@ -2159,76 +2130,31 @@ fn rewrite_static_lhs(
             )
         }
     };
-    Some([prefix, ty_str])
-}
 
-fn rewrite_static_rhs(
-    context: &RewriteContext<'_>,
-    lhs: String,
-    rhs: &ast::Expr,
-    span: Span,
-    offset: Indent,
-    end: &'static str,
-) -> Option<String> {
-    let comments_lo = context.snippet_provider.span_after(span, "=");
-    let expr_lo = rhs.span.lo();
-    let comments_span = mk_sp(comments_lo, expr_lo);
+    if let Some(expr) = expr_opt {
+        let comments_lo = context.snippet_provider.span_after(span, "=");
+        let expr_lo = expr.span.lo();
+        let comments_span = mk_sp(comments_lo, expr_lo);
 
-    let remaining_width = context.budget(offset.block_indent + end.len());
-    rewrite_assign_rhs_with_comments(
-        context,
-        &lhs,
-        rhs,
-        Shape::legacy(remaining_width, offset.block_only()),
-        &RhsAssignKind::Expr(&rhs.kind, rhs.span),
-        RhsTactics::Default,
-        comments_span,
-        true,
-    )
-    .ok()
-    .map(|res| recover_comment_removed(res, span, context))
-    .map(|s| if s.ends_with(end) { s } else { s + end })
-}
+        let lhs = format!("{prefix}{ty_str} =");
 
-fn rewrite_static(
-    context: &RewriteContext<'_>,
-    static_parts: &StaticParts<'_>,
-    offset: Indent,
-) -> Option<String> {
-    match *static_parts {
-        StaticParts {
-            lhs: Some(ref lhs),
-            rhs: None,
-            span: _,
-        } => {
-            let [prefix, ty] = rewrite_static_lhs(context, lhs, offset)?;
-            Some(format!("{prefix}{ty};"))
-        }
-        StaticParts {
-            lhs: Some(ref lhs),
-            rhs: Some(rhs),
-            span,
-        } => {
-            let [prefix, ty] = rewrite_static_lhs(context, lhs, offset)?;
-            let lhs = format!("{prefix}{ty} =");
-            rewrite_static_rhs(context, lhs, rhs, span, offset, ";")
-        }
-        StaticParts {
-            lhs: None,
-            rhs: Some(rhs),
-            span,
-        } => rhs
-            .rewrite_result(
-                context,
-                Shape::legacy(context.budget(offset.block_indent), offset.block_only()),
-            )
-            .ok()
-            .map(|res| recover_comment_removed(res, span, context)),
-        StaticParts {
-            lhs: None,
-            rhs: None,
-            span: _,
-        } => unreachable!(),
+        // 1 = ;
+        let remaining_width = context.budget(offset.block_indent + 1);
+        rewrite_assign_rhs_with_comments(
+            context,
+            &lhs,
+            expr,
+            Shape::legacy(remaining_width, offset.block_only()),
+            &RhsAssignKind::Expr(&expr.kind, expr.span),
+            RhsTactics::Default,
+            comments_span,
+            true,
+        )
+        .ok()
+        .map(|res| recover_comment_removed(res, span, context))
+        .map(|s| if s.ends_with(';') { s } else { s + ";" })
+    } else {
+        Some(format!("{prefix}{ty_str};"))
     }
 }
 
