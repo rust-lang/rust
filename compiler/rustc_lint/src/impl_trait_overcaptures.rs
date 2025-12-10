@@ -19,9 +19,8 @@ use rustc_middle::ty::{
     self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
 };
 use rustc_middle::{bug, span_bug};
-use rustc_session::lint::FutureIncompatibilityReason;
+use rustc_session::lint::fcw;
 use rustc_session::{declare_lint, declare_lint_pass};
-use rustc_span::edition::Edition;
 use rustc_span::{Span, Symbol};
 use rustc_trait_selection::errors::{
     AddPreciseCapturingForOvercapture, impl_trait_overcapture_suggestion,
@@ -71,8 +70,7 @@ declare_lint! {
     Allow,
     "`impl Trait` will capture more lifetimes than possibly intended in edition 2024",
     @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::EditionSemanticsChange(Edition::Edition2024),
-        reference: "<https://doc.rust-lang.org/edition-guide/rust-2024/rpit-lifetime-capture.html>",
+        reason: fcw!(EditionSemanticsChange 2024 "rpit-lifetime-capture"),
     };
 }
 
