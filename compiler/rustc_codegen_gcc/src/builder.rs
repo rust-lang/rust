@@ -500,11 +500,11 @@ impl<'gcc, 'tcx> BackendTypes for Builder<'_, 'gcc, 'tcx> {
 }
 
 fn set_rvalue_location<'a, 'gcc, 'tcx>(
-    bx: &mut Builder<'a, 'gcc, 'tcx>,
+    _bx: &mut Builder<'a, 'gcc, 'tcx>,
     rvalue: RValue<'gcc>,
 ) -> RValue<'gcc> {
-    if let Some(location) = bx.location {
-        #[cfg(feature = "master")]
+    #[cfg(feature = "master")]
+    if let Some(location) = _bx.location {
         rvalue.set_location(location);
     }
     rvalue
