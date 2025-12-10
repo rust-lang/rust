@@ -3177,7 +3177,7 @@ pub(crate) struct UnsafeAttrOutsideUnsafeLint {
     #[label]
     pub span: Span,
     #[subdiagnostic]
-    pub suggestion: UnsafeAttrOutsideUnsafeSuggestion,
+    pub suggestion: Option<UnsafeAttrOutsideUnsafeSuggestion>,
 }
 
 #[derive(Subdiagnostic)]

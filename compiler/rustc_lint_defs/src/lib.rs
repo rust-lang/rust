@@ -729,7 +729,7 @@ pub enum AttributeLintKind {
     },
     UnsafeAttrOutsideUnsafe {
         attribute_name_span: Span,
-        sugg_spans: (Span, Span),
+        sugg_spans: Option<(Span, Span)>,
     },
     UnexpectedCfgName((Symbol, Span), Option<(Symbol, Span)>),
     UnexpectedCfgValue((Symbol, Span), Option<(Symbol, Span)>),
