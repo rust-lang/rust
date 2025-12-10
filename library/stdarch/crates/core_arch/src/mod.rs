@@ -95,6 +95,15 @@ pub mod arch {
         pub use crate::core_arch::riscv_shared::*;
     }
 
+    /// Platform-specific intrinsics for the `v810` platform.
+    ///
+    /// See the [module documentation](../index.html) for more details.
+    #[cfg(any(target_arch = "v810", doc))]
+    #[doc(cfg(any(target_arch = "v810")))]
+    pub mod v810 {
+        pub use crate::core_arch::v810::*;
+    }
+
     /// Platform-specific intrinsics for the `wasm32` platform.
     ///
     /// This module provides intrinsics specific to the WebAssembly
@@ -344,6 +353,10 @@ mod powerpc;
 #[cfg(any(target_arch = "powerpc64", doc))]
 #[doc(cfg(target_arch = "powerpc64"))]
 mod powerpc64;
+
+#[cfg(any(target_arch = "v810", doc))]
+#[doc(cfg(target_arch = "v810"))]
+mod v810;
 
 #[cfg(any(target_arch = "nvptx64", doc))]
 #[doc(cfg(target_arch = "nvptx64"))]
