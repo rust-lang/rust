@@ -120,7 +120,7 @@ trivially_parameterized_over_tcx! {
     rustc_middle::ty::adjustment::CoerceUnsizedInfo,
     rustc_middle::ty::fast_reject::SimplifiedType,
     rustc_session::config::TargetModifier,
-    rustc_session::config::enforcable_mitigations::DeniedPartialMitigation,
+    rustc_session::config::enforceable_mitigations::DeniedPartialMitigation,
     rustc_session::cstore::ForeignModule,
     rustc_session::cstore::LinkagePreference,
     rustc_session::cstore::NativeLib,
