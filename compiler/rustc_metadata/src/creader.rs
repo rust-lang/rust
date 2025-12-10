@@ -25,7 +25,7 @@ use rustc_middle::ty::data_structures::IndexSet;
 use rustc_middle::ty::{TyCtxt, TyCtxtFeed};
 use rustc_proc_macro::bridge::client::ProcMacro;
 use rustc_session::Session;
-use rustc_session::config::enforcable_mitigations::EnforcableMitigationLevel;
+use rustc_session::config::enforcable_mitigations::DeniedPartialMitigationLevel;
 use rustc_session::config::{
     CrateType, ExtendedTargetModifierInfo, ExternLocation, Externs, OptionsTargetModifiers,
     TargetModifier,
@@ -461,7 +461,7 @@ impl CStore {
 
     pub fn report_session_incompatibilities(&self, tcx: TyCtxt<'_>, krate: &Crate) {
         self.report_incompatible_target_modifiers(tcx, krate);
-        self.report_incompatible_enforcable_mitigations(tcx, krate);
+        self.report_incompatible_denied_partial_mitigations(tcx, krate);
         self.report_incompatible_async_drop_feature(tcx, krate);
     }
 
@@ -486,8 +486,8 @@ impl CStore {
         }
     }
 
-    pub fn report_incompatible_enforcable_mitigations(&self, tcx: TyCtxt<'_>, krate: &Crate) {
-        let my_mitigations = tcx.sess.gather_enabled_enforcable_mitigations();
+    pub fn report_incompatible_denied_partial_mitigations(&self, tcx: TyCtxt<'_>, krate: &Crate) {
+        let my_mitigations = tcx.sess.gather_enabled_denied_partial_mitigations();
         let mut my_mitigations: BTreeMap<_, _> =
             my_mitigations.iter().map(|mitigation| (mitigation.kind, mitigation)).collect();
         for skipped_mitigation in tcx.sess.opts.allowed_partial_mitigations(tcx.sess.edition()) {
@@ -499,12 +499,12 @@ impl CStore {
             if data.is_proc_macro_crate() {
                 continue;
             }
-            let their_mitigations = data.enabled_enforcable_mitigations();
+            let their_mitigations = data.enabled_denied_partial_mitigations();
             for my_mitigation in my_mitigations.values() {
                 let their_mitigation = their_mitigations
                     .iter()
                     .find(|mitigation| mitigation.kind == my_mitigation.kind)
-                    .map_or(EnforcableMitigationLevel::Enabled(false), |m| m.level);
+                    .map_or(DeniedPartialMitigationLevel::Enabled(false), |m| m.level);
                 if their_mitigation < my_mitigation.level {
                     let errors = errors_per_mitigation.entry(my_mitigation.kind).or_insert(0);
                     if *errors >= MAX_ERRORS_PER_MITIGATION {
