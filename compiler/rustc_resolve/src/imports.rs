@@ -1171,7 +1171,16 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         }
                         if let Some(initial_res) = initial_res {
                             if res != initial_res {
-                                span_bug!(import.span, "inconsistent resolution for an import");
+                                // If we already have errors, ignore the inconsistency.
+                                if this.dcx().has_errors().is_some() {
+                                    return;
+                                }
+
+                                this.dcx().span_delayed_bug(
+                                    import.span,
+                                    "inconsistent resolution for an import",
+                                );
+                                return;
                             }
                         } else if this.privacy_errors.is_empty() {
                             this.dcx()
