@@ -349,11 +349,11 @@ where
         Const::Ty(_, ct) => match ct.kind() {
             ty::ConstKind::Param(_) | ty::ConstKind::Error(_) | ty::ConstKind::Value(_) => None,
             ty::ConstKind::Unevaluated(uv) => {
-                // Convert ty::UnevaluatedConst to mir::UnevaluatedConst
+                // FIXME(generic_const_exprs): remove this once the feature is replaced by gca
                 Some(mir::UnevaluatedConst {
                     def: uv.def,
                     args: uv.args,
-                    promoted: None, // <--- You need this field!
+                    promoted: None,
                 })
             }
             _ => bug!(
