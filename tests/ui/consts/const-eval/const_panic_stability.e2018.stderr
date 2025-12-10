@@ -4,6 +4,7 @@ warning: panic message is not a string literal
 LL |     panic!({ "foo" });
    |            ^^^^^^^^^
    |
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/panic-macro-consistency.html>
    = note: this usage of `panic!()` is deprecated; it will be a hard error in Rust 2021
    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/panic-macro-consistency.html>
    = note: `#[warn(non_fmt_panics)]` (part of `#[warn(rust_2021_compatibility)]`) on by default

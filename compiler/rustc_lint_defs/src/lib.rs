@@ -487,7 +487,7 @@ pub enum FutureIncompatibilityReason {
 
     /// Using the declare_lint macro a reason always needs to be specified.
     /// So, this case can't actually be reached but a variant needs to exist for it.
-    /// Any code panics on seeing this varaint. Do not use.
+    /// Any code panics on seeing this variant. Do not use.
     Unreachable,
 }
 

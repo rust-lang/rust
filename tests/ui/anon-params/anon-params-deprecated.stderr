@@ -5,7 +5,7 @@ LL |     fn foo(i32);
    |            ^^^ help: try naming the parameter or explicitly ignoring it: `_: i32`
    |
    = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2018!
-   = note: for more information, see issue #41686 <https://github.com/rust-lang/rust/issues/41686>
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2018/trait-fn-parameters.html>
 note: the lint level is defined here
   --> $DIR/anon-params-deprecated.rs:1:9
    |
@@ -19,7 +19,7 @@ LL |     fn bar_with_default_impl(String, String) {}
    |                              ^^^^^^ help: try naming the parameter or explicitly ignoring it: `_: String`
    |
    = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2018!
-   = note: for more information, see issue #41686 <https://github.com/rust-lang/rust/issues/41686>
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2018/trait-fn-parameters.html>
 
 warning: anonymous parameters are deprecated and will be removed in the next edition
   --> $DIR/anon-params-deprecated.rs:13:38
@@ -28,7 +28,7 @@ LL |     fn bar_with_default_impl(String, String) {}
    |                                      ^^^^^^ help: try naming the parameter or explicitly ignoring it: `_: String`
    |
    = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2018!
-   = note: for more information, see issue #41686 <https://github.com/rust-lang/rust/issues/41686>
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2018/trait-fn-parameters.html>
 
 warning: 3 warnings emitted
 
