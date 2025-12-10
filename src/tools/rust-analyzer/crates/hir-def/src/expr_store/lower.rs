@@ -31,7 +31,7 @@ use triomphe::Arc;
 use tt::TextRange;
 
 use crate::{
-    AdtId, BlockId, BlockIdLt, DefWithBodyId, FunctionId, GenericDefId, ImplId, MacroId,
+    AdtId, BlockId, BlockLoc, DefWithBodyId, FunctionId, GenericDefId, ImplId, MacroId,
     ModuleDefId, ModuleId, TraitId, TypeAliasId, UnresolvedMacro,
     attrs::AttrFlags,
     builtin_type::BuiltinUint,
@@ -2091,7 +2091,7 @@ impl<'db> ExprCollector<'db> {
     ) -> ExprId {
         let block_id = self.expander.ast_id_map().ast_id_for_block(&block).map(|file_local_id| {
             let ast_id = self.expander.in_file(file_local_id);
-            unsafe { BlockIdLt::new(self.db, ast_id, self.module).to_static() }
+            self.db.intern_block(BlockLoc { ast_id, module: self.module })
         });
 
         let (module, def_map) =
