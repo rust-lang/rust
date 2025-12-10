@@ -41,6 +41,8 @@ mod macros;
 mod binder;
 mod canonical;
 mod const_kind;
+#[cfg(not(feature = "nightly"))]
+mod customizable_visit;
 mod flags;
 mod fold;
 mod generic_arg;
@@ -64,6 +66,8 @@ pub use Variance::*;
 pub use binder::*;
 pub use canonical::*;
 pub use const_kind::*;
+#[cfg(not(feature = "nightly"))]
+pub use customizable_visit::*;
 pub use flags::*;
 pub use fold::*;
 pub use generic_arg::*;
@@ -75,6 +79,7 @@ pub use predicate::*;
 pub use predicate_kind::*;
 pub use region_kind::*;
 pub use rustc_ast_ir::{FloatTy, IntTy, Movability, Mutability, Pinnedness, UintTy};
+use rustc_type_ir_macros::CustomizableTypeVisitable;
 pub use ty_info::*;
 pub use ty_kind::*;
 pub use upcast::*;
@@ -213,7 +218,7 @@ pub fn debug_bound_var<T: std::fmt::Write>(
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, CustomizableTypeVisitable)]
 #[cfg_attr(feature = "nightly", derive(Decodable, Encodable, HashStable_NoContext))]
 #[cfg_attr(feature = "nightly", rustc_pass_by_value)]
 pub enum Variance {
