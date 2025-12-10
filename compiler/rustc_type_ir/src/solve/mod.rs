@@ -5,7 +5,9 @@ use std::hash::Hash;
 use derive_where::derive_where;
 #[cfg(feature = "nightly")]
 use rustc_macros::{Decodable_NoContext, Encodable_NoContext, HashStable_NoContext};
-use rustc_type_ir_macros::{Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic};
+use rustc_type_ir_macros::{
+    GenericTypeVisitable, Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic,
+};
 
 use crate::lang_items::SolverTraitLangItem;
 use crate::search_graph::PathKind;
@@ -33,7 +35,7 @@ pub struct NoSolution;
 /// we're currently typechecking while the `predicate` is some trait bound.
 #[derive_where(Clone, Hash, PartialEq, Debug; I: Interner, P)]
 #[derive_where(Copy; I: Interner, P: Copy)]
-#[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
+#[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic, Lift_Generic)]
 #[cfg_attr(
     feature = "nightly",
     derive(Decodable_NoContext, Encodable_NoContext, HashStable_NoContext)
@@ -95,7 +97,7 @@ pub enum GoalSource {
 
 #[derive_where(Clone, Hash, PartialEq, Debug; I: Interner, Goal<I, P>)]
 #[derive_where(Copy; I: Interner, Goal<I, P>: Copy)]
-#[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
+#[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic)]
 #[cfg_attr(
     feature = "nightly",
     derive(Decodable_NoContext, Encodable_NoContext, HashStable_NoContext)
@@ -206,7 +208,7 @@ pub enum ParamEnvSource {
 }
 
 #[derive(Clone, Copy, Hash, PartialEq, Eq, Debug)]
-#[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
+#[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic)]
 pub enum AliasBoundKind {
     /// Alias bound from the self type of a projection
     SelfBounds,
@@ -235,7 +237,7 @@ pub enum BuiltinImplSource {
 }
 
 #[derive_where(Clone, Copy, Hash, PartialEq, Debug; I: Interner)]
-#[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
+#[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic)]
 #[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
 pub struct Response<I: Interner> {
     pub certainty: Certainty,
@@ -248,7 +250,7 @@ impl<I: Interner> Eq for Response<I> {}
 
 /// Additional constraints returned on success.
 #[derive_where(Clone, Hash, PartialEq, Debug, Default; I: Interner)]
-#[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
+#[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic)]
 #[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
 pub struct ExternalConstraintsData<I: Interner> {
     pub region_constraints: Vec<ty::OutlivesPredicate<I, I::GenericArg>>,
@@ -267,7 +269,7 @@ impl<I: Interner> ExternalConstraintsData<I> {
 }
 
 #[derive_where(Clone, Hash, PartialEq, Debug, Default; I: Interner)]
-#[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
+#[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic)]
 #[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
 pub struct NestedNormalizationGoals<I: Interner>(pub Vec<(GoalSource, Goal<I, I::Predicate>)>);
 
