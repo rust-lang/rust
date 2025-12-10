@@ -28,13 +28,16 @@ pub struct Finder {
     path: OsString,
 }
 
-// During sanity checks, we search for target names to determine if they exist in the compiler's built-in
-// target list (`rustc --print target-list`). While a target name may be present in the stage2 compiler,
-// it might not yet be included in stage0. In such cases, we handle the targets missing from stage0 in this list.
+// During sanity checks, we search for target tuples to determine if they exist in the compiler's
+// built-in target list (`rustc --print target-list`). While a target tuple may be present in the
+// in-tree compiler, the stage 0 compiler might not yet know about it (assuming not operating with
+// local-rebuild). In such cases, we handle the targets missing from stage 0 in this list.
 //
-// Targets can be removed from this list once they are present in the stage0 compiler (usually by updating the beta compiler of the bootstrap).
+// Targets can be removed from this list once they are present in the stage 0 compiler during a
+// bootstrap compiler bump (typically updating the bootstrap compiler to a newer beta compiler that
+// *does* already know about the targets).
+#[rustfmt::skip]
 const STAGE0_MISSING_TARGETS: &[&str] = &[
-    // just a dummy comment so the list doesn't get onelined
 ];
 
 /// Minimum version threshold for libstdc++ required when using prebuilt LLVM
