@@ -113,7 +113,7 @@ store.register_future_incompatible(sess, vec![
     ...,
     FutureIncompatibleInfo {
         id: LintId::of(YOUR_ERROR_HERE),
-        reference: "issue #1234", // your tracking issue here!
+        reason: fcw!(FutureReleaseError #1234) // your tracking issue here!
     },
 ]);
 
@@ -238,7 +238,7 @@ compatibility lint":
 ```rust
 FutureIncompatibleInfo {
     id: LintId::of(OVERLAPPING_INHERENT_IMPLS),
-    reference: "issue #36889 <https://github.com/rust-lang/rust/issues/36889>",
+    reason: fcw!(FutureReleaseError #1234), // your tracking issue here!
 },
 ```
 
