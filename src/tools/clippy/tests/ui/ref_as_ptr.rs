@@ -3,6 +3,8 @@
 
 fn f<T>(_: T) {}
 
+static STATIC_I32: i32 = 42;
+
 fn main() {
     f(&1u8 as *const _);
     //~^ ref_as_ptr
@@ -63,6 +65,9 @@ fn main() {
     f(&val as *const i32 as *const f64);
     //~^ ref_as_ptr
 
+    let _ptr_from_local: *const i32 = &val as *const _;
+    //~^ ref_as_ptr
+
     let mut val: u8 = 2;
     f(&mut val as *mut u8);
     //~^ ref_as_ptr
@@ -84,6 +89,9 @@ fn main() {
     f(&mut std::array::from_fn(|i| i * i) as *const [usize; 8]);
     //~^ ref_as_ptr
     f(&mut std::array::from_fn(|i| i * i) as *mut [usize; 9]);
+    //~^ ref_as_ptr
+
+    let _ptr_from_static: *const i32 = &STATIC_I32 as *const _;
     //~^ ref_as_ptr
 
     let _ = &String::new() as *const _;
