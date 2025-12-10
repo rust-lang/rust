@@ -72,7 +72,6 @@ codegen_ssa_field_associated_value_expected = associated value expected for `{$n
 
 codegen_ssa_forbidden_ctarget_feature =
     target feature `{$feature}` cannot be {$enabled} with `-Ctarget-feature`: {$reason}
-    .note = this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 codegen_ssa_forbidden_ctarget_feature_issue = for more information, see issue #116344 <https://github.com/rust-lang/rust/issues/116344>
 
 codegen_ssa_forbidden_target_feature_attr =
