@@ -225,7 +225,9 @@ impl<'db> SolverDelegate for SolverContext<'db> {
         _src: Ty<'db>,
         _assume: <Self::Interner as rustc_type_ir::Interner>::Const,
     ) -> Result<Certainty, NoSolution> {
-        unimplemented!()
+        // It's better to return some value while not fully implement
+        // then panic in the mean time
+        Ok(Certainty::Yes)
     }
 
     fn evaluate_const(
