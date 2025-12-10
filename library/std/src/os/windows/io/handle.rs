@@ -182,6 +182,12 @@ impl Drop for HandleOrNull {
 }
 
 impl OwnedHandle {
+    /// Drops the handle, returning any errors encountered.
+    pub(crate) fn close(self) -> io::Result<()> {
+        let this = ManuallyDrop::new(self);
+        cvt(unsafe { sys::c::CloseHandle(this.handle) }).map(|_| ())
+    }
+
     /// Creates a new `OwnedHandle` instance that shares the same underlying
     /// object as the existing `OwnedHandle` instance.
     #[stable(feature = "io_safety", since = "1.63.0")]
