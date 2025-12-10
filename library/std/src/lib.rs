@@ -323,7 +323,6 @@
 #![feature(char_internals)]
 #![feature(clone_to_uninit)]
 #![feature(const_convert)]
-#![feature(const_mul_add)]
 #![feature(core_intrinsics)]
 #![feature(core_io_borrowed_buf)]
 #![feature(drop_guard)]

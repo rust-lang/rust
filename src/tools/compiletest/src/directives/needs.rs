@@ -432,6 +432,10 @@ fn has_symlinks() -> bool {
 }
 
 fn llvm_has_zstd(config: &Config) -> bool {
+    // FIXME(#149764): This actually queries the compiler's _default_ backend,
+    // which is usually LLVM, but can be another backend depending on the value
+    // of `rust.codegen-backends` in bootstrap.toml.
+
     // The compiler already knows whether LLVM was built with zstd or not,
     // so compiletest can just ask the compiler.
     let output = query_rustc_output(

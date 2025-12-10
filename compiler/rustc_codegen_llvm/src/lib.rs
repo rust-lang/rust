@@ -257,10 +257,6 @@ impl CodegenBackend for LlvmCodegenBackend {
                 }
                 writeln!(out).unwrap();
             }
-            PrintKind::BackendHasZstd => {
-                let has_zstd = llvm::LLVMRustLLVMHasZstdCompression();
-                writeln!(out, "{has_zstd}").unwrap();
-            }
             PrintKind::CodeModels => {
                 writeln!(out, "Available code models:").unwrap();
                 for name in &["tiny", "small", "kernel", "medium", "large"] {
@@ -312,6 +308,10 @@ impl CodegenBackend for LlvmCodegenBackend {
 
     fn print_version(&self) {
         llvm_util::print_version();
+    }
+
+    fn has_zstd(&self) -> bool {
+        llvm::LLVMRustLLVMHasZstdCompression()
     }
 
     fn target_config(&self, sess: &Session) -> TargetConfig {

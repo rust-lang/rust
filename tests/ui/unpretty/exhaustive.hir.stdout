@@ -27,6 +27,7 @@
 #![feature(trace_macros)]
 #![feature(trait_alias)]
 #![feature(try_blocks)]
+#![feature(try_blocks_heterogeneous)]
 #![feature(yeet_expr)]
 #![allow(incomplete_features)]
 #[attr = MacroUse {arguments: UseAll}]
@@ -253,7 +254,19 @@ mod expressions {
     }
 
     /// ExprKind::TryBlock
-    fn expr_try_block() { { from_output(()) } { return; from_output(()) } }
+    fn expr_try_block() {
+        { from_output(()) }
+        { return; from_output(()) }
+        type_ascribe!({ from_output(()) }, Option<_>);
+        type_ascribe!({
+                from_output(match branch(None) {
+                        Break {  0: residual } => #[allow(unreachable_code)]
+                            break from_residual(residual),
+                        Continue {  0: val } => #[allow(unreachable_code)]
+                            val,
+                    })
+            }, Option<String>)
+    }
 
     /// ExprKind::Assign
     fn expr_assign() { let expr; expr = true; }

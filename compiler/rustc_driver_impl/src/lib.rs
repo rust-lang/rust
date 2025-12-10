@@ -798,8 +798,11 @@ fn print_crate_info(
                 let calling_conventions = rustc_abi::all_names();
                 println_info!("{}", calling_conventions.join("\n"));
             }
+            BackendHasZstd => {
+                let has_zstd: bool = codegen_backend.has_zstd();
+                println_info!("{has_zstd}");
+            }
             RelocationModels
-            | BackendHasZstd
             | CodeModels
             | TlsModels
             | TargetCPUs
