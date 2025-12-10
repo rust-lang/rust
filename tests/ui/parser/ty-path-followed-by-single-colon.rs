@@ -12,7 +12,7 @@ mod garden {
 
     fn g(_: impl Take<path:to::somewhere>) {} // OK!
 
-    #[cfg(any())] fn h() where a::path:to::nowhere {} // OK!
+    #[cfg(false)] fn h() where a::path:to::nowhere {} // OK!
 
     fn i(_: impl Take<path::<>:to::somewhere>) {} // OK!
 
