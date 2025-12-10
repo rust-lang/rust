@@ -6,6 +6,7 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use proc_macro2::{TokenStream, TokenTree};
+use rustc_attr_parsing::eval_config_entry;
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def_id::{CRATE_DEF_ID, LocalDefId};
 use rustc_hir::{self as hir, Attribute, CRATE_HIR_ID, intravisit};
@@ -123,7 +124,7 @@ impl HirCollector<'_> {
         let ast_attrs = self.tcx.hir_attrs(self.tcx.local_def_id_to_hir_id(def_id));
         if let Some(ref cfg) =
             extract_cfg_from_attrs(ast_attrs.iter(), self.tcx, &mut CfgInfo::default())
-            && !cfg.matches(&self.tcx.sess.psess)
+            && !eval_config_entry(&self.tcx.sess, cfg.inner()).as_bool()
         {
             return;
         }

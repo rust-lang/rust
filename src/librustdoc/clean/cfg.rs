@@ -14,7 +14,6 @@ use rustc_hir as hir;
 use rustc_hir::Attribute;
 use rustc_hir::attrs::{self, AttributeKind, CfgEntry, CfgHideShow, HideOrShow};
 use rustc_middle::ty::TyCtxt;
-use rustc_session::parse::ParseSess;
 use rustc_span::symbol::{Symbol, sym};
 use rustc_span::{DUMMY_SP, Span};
 
@@ -206,30 +205,6 @@ impl Cfg {
         Self::parse_nested(cfg, &FxHashSet::default()).map(|ret| ret.unwrap())
     }
 
-    /// Checks whether the given configuration can be matched in the current session.
-    ///
-    /// Equivalent to `attr::cfg_matches`.
-    pub(crate) fn matches(&self, psess: &ParseSess) -> bool {
-        fn cfg_matches(cfg: &CfgEntry, psess: &ParseSess) -> bool {
-            match cfg {
-                CfgEntry::Bool(v, _) => *v,
-                CfgEntry::Not(child, _) => !cfg_matches(child, psess),
-                CfgEntry::All(sub_cfgs, _) => {
-                    sub_cfgs.iter().all(|sub_cfg| cfg_matches(sub_cfg, psess))
-                }
-                CfgEntry::Any(sub_cfgs, _) => {
-                    sub_cfgs.iter().any(|sub_cfg| cfg_matches(sub_cfg, psess))
-                }
-                CfgEntry::NameValue { name, value, .. } => psess.config.contains(&(*name, *value)),
-                CfgEntry::Version(..) => {
-                    // FIXME: should be handled.
-                    false
-                }
-            }
-        }
-        cfg_matches(&self.0, psess)
-    }
-
     /// Renders the configuration for human display, as a short HTML description.
     pub(crate) fn render_short_html(&self) -> String {
         let mut msg = Display(&self.0, Format::ShortHtml).to_string();
@@ -319,6 +294,10 @@ impl Cfg {
 
     fn omit_preposition(&self) -> bool {
         matches!(self.0, CfgEntry::Bool(..))
+    }
+
+    pub(crate) fn inner(&self) -> &CfgEntry {
+        &self.0
     }
 }
 
