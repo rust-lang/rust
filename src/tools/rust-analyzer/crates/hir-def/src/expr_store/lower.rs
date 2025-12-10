@@ -432,6 +432,8 @@ pub struct ExprCollector<'db> {
 
     awaitable_context: Option<Awaitable>,
     krate: base_db::Crate,
+
+    name_generator_index: usize,
 }
 
 #[derive(Clone, Debug)]
@@ -537,7 +539,14 @@ impl<'db> ExprCollector<'db> {
             current_block_legacy_macro_defs_count: FxHashMap::default(),
             outer_impl_trait: false,
             krate,
+            name_generator_index: 0,
         }
+    }
+
+    fn generate_new_name(&mut self) -> Name {
+        let index = self.name_generator_index;
+        self.name_generator_index += 1;
+        Name::generate_new_name(index)
     }
 
     #[inline]
@@ -1638,9 +1647,8 @@ impl<'db> ExprCollector<'db> {
     /// and save the `<new_label>` to use it as a break target for desugaring of the `?` operator.
     fn desugar_try_block(&mut self, e: BlockExpr) -> ExprId {
         let try_from_output = self.lang_path(self.lang_items().TryTraitFromOutput);
-        let label = self.alloc_label_desugared(Label {
-            name: Name::generate_new_name(self.store.labels.len()),
-        });
+        let label = self.generate_new_name();
+        let label = self.alloc_label_desugared(Label { name: label });
         let old_label = self.current_try_block_label.replace(label);
 
         let ptr = AstPtr::new(&e).upcast();
@@ -1768,7 +1776,7 @@ impl<'db> ExprCollector<'db> {
                 this.collect_expr_opt(e.loop_body().map(|it| it.into()))
             }),
         };
-        let iter_name = Name::generate_new_name(self.store.exprs.len());
+        let iter_name = self.generate_new_name();
         let iter_expr = self.alloc_expr(Expr::Path(Path::from(iter_name.clone())), syntax_ptr);
         let iter_expr_mut = self.alloc_expr(
             Expr::Ref { expr: iter_expr, rawness: Rawness::Ref, mutability: Mutability::Mut },
@@ -1829,7 +1837,7 @@ impl<'db> ExprCollector<'db> {
         let try_branch = self.alloc_expr(try_branch.map_or(Expr::Missing, Expr::Path), syntax_ptr);
         let expr = self
             .alloc_expr(Expr::Call { callee: try_branch, args: Box::new([operand]) }, syntax_ptr);
-        let continue_name = Name::generate_new_name(self.store.bindings.len());
+        let continue_name = self.generate_new_name();
         let continue_binding = self.alloc_binding(
             continue_name.clone(),
             BindingAnnotation::Unannotated,
@@ -1847,7 +1855,7 @@ impl<'db> ExprCollector<'db> {
             guard: None,
             expr: self.alloc_expr(Expr::Path(Path::from(continue_name)), syntax_ptr),
         };
-        let break_name = Name::generate_new_name(self.store.bindings.len());
+        let break_name = self.generate_new_name();
         let break_binding =
             self.alloc_binding(break_name.clone(), BindingAnnotation::Unannotated, HygieneId::ROOT);
         let break_bpat = self.alloc_pat_desugared(Pat::Bind { id: break_binding, subpat: None });
@@ -2628,9 +2636,17 @@ impl<'db> ExprCollector<'db> {
     fn ty_rel_lang_path(
         &self,
         lang: Option<impl Into<LangItemTarget>>,
-        relative_name: Name,
+        relative_name: Symbol,
     ) -> Option<Path> {
-        Some(Path::LangItem(lang?.into(), Some(relative_name)))
+        Some(Path::LangItem(lang?.into(), Some(Name::new_symbol_root(relative_name))))
+    }
+
+    fn ty_rel_lang_path_expr(
+        &self,
+        lang: Option<impl Into<LangItemTarget>>,
+        relative_name: Symbol,
+    ) -> Expr {
+        self.ty_rel_lang_path(lang, relative_name).map_or(Expr::Missing, Expr::Path)
     }
 }
 
