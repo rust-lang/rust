@@ -76,7 +76,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.51.0"]
     pub COLLAPSIBLE_ELSE_IF,
-    style,
+    pedantic,
     "nested `else`-`if` expressions that can be collapsed (e.g., `else { if x { ... } }`)"
 }
 
