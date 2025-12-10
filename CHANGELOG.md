@@ -84,11 +84,6 @@ Current stable, released 2025-12-11
 * [`double_parens`] fixed FP when macros are involved
   [#15420](https://github.com/rust-lang/rust-clippy/pull/15420)
 
-### ICE Fixes
-
-* [`len_zero`] fixed ICE when fn len has a return type without generic type params
-  [#15660](https://github.com/rust-lang/rust-clippy/pull/15660)
-
 ## Rust 1.91
 
 Current stable, released 2025-10-30
