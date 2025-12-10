@@ -2898,23 +2898,27 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 );
                 self.resolve_define_opaques(define_opaque);
             }
-            ItemKind::ConstBlock(ConstBlockItem { body }) => self.with_generic_param_rib(
-                &[],
-                RibKind::Item(HasGenericParams::No, def_kind),
-                item.id,
-                LifetimeBinderKind::ConstItem,
-                DUMMY_SP,
-                |this| {
-                    this.with_lifetime_rib(LifetimeRibKind::Elided(LifetimeRes::Infer), |this| {
-                        this.with_constant_rib(
-                            IsRepeatExpr::No,
-                            ConstantHasGenerics::Yes,
-                            Some((ConstBlockItem::IDENT, ConstantItemKind::Const)),
-                            |this| this.visit_expr(body),
+            ItemKind::ConstBlock(ConstBlockItem { id: _, span: _, block }) => self
+                .with_generic_param_rib(
+                    &[],
+                    RibKind::Item(HasGenericParams::No, def_kind),
+                    item.id,
+                    LifetimeBinderKind::ConstItem,
+                    DUMMY_SP,
+                    |this| {
+                        this.with_lifetime_rib(
+                            LifetimeRibKind::Elided(LifetimeRes::Infer),
+                            |this| {
+                                this.with_constant_rib(
+                                    IsRepeatExpr::No,
+                                    ConstantHasGenerics::Yes,
+                                    Some((ConstBlockItem::IDENT, ConstantItemKind::Const)),
+                                    |this| this.resolve_labeled_block(None, block.id, block),
+                                )
+                            },
                         );
-                    })
-                },
-            ),
+                    },
+                ),
 
             ItemKind::Use(use_tree) => {
                 let maybe_exported = match use_tree.kind {

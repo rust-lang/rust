@@ -275,15 +275,13 @@ impl<'a> Parser<'a> {
             self.parse_item_impl(attrs, def_(), false)?
         } else if let AllowConstBlockItems::Yes | AllowConstBlockItems::DoesNotMatter =
             allow_const_block_items
-            && self.token.is_keyword(kw::Const)
-            && self.look_ahead(1, |t| *t == token::OpenBrace || t.is_metavar_block())
+            && self.check_inline_const(0)
         {
             // CONST BLOCK ITEM
-            self.psess.gated_spans.gate(sym::const_block_items, self.token.span);
             if let AllowConstBlockItems::DoesNotMatter = allow_const_block_items {
                 debug!("Parsing a const block item that does not matter: {:?}", self.token.span);
             };
-            ItemKind::ConstBlock(ConstBlockItem { body: self.parse_expr()? })
+            ItemKind::ConstBlock(self.parse_const_block_item()?)
         } else if let Const::Yes(const_span) = self.parse_constness(case) {
             // CONST ITEM
             self.recover_const_mut(const_span);
@@ -1471,6 +1469,14 @@ impl<'a> Parser<'a> {
             let span = self.prev_token.span;
             self.dcx().emit_err(errors::ConstLetMutuallyExclusive { span: const_span.to(span) });
         }
+    }
+
+    fn parse_const_block_item(&mut self) -> PResult<'a, ConstBlockItem> {
+        self.expect_keyword(exp!(Const))?;
+        let const_span = self.prev_token.span;
+        self.psess.gated_spans.gate(sym::const_block_items, const_span);
+        let block = self.parse_block()?;
+        Ok(ConstBlockItem { id: DUMMY_NODE_ID, span: const_span.to(block.span), block })
     }
 
     /// Parse a static item with the prefix `"static" "mut"?` already parsed and stored in

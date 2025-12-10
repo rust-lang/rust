@@ -308,12 +308,16 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 self.lower_define_opaque(hir_id, &define_opaque);
                 hir::ItemKind::Const(ident, generics, ty, rhs)
             }
-            ItemKind::ConstBlock(ConstBlockItem { body }) => hir::ItemKind::Const(
+            ItemKind::ConstBlock(ConstBlockItem { span, id, block }) => hir::ItemKind::Const(
                 self.lower_ident(ConstBlockItem::IDENT),
                 hir::Generics::empty(),
                 self.arena.alloc(self.ty_tup(DUMMY_SP, &[])),
                 hir::ConstItemRhs::Body({
-                    let body = self.lower_expr_mut(body);
+                    let body = hir::Expr {
+                        hir_id: self.lower_node_id(*id),
+                        kind: hir::ExprKind::Block(self.lower_block(block, false), None),
+                        span: self.lower_span(*span),
+                    };
                     self.record_body(&[], body)
                 }),
             ),

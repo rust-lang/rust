@@ -205,8 +205,16 @@ impl<'a> State<'a> {
                     define_opaque.as_deref(),
                 );
             }
-            ast::ItemKind::ConstBlock(ast::ConstBlockItem { body }) => {
-                self.print_expr(body, FixupContext::default())
+            ast::ItemKind::ConstBlock(ast::ConstBlockItem { id: _, span: _, block }) => {
+                let ib = self.ibox(INDENT_UNIT);
+                self.word("const");
+                self.nbsp();
+                {
+                    let cb = self.cbox(0);
+                    let ib = self.ibox(0);
+                    self.print_block_with_attrs(block, &[], cb, ib);
+                }
+                self.end(ib);
             }
             ast::ItemKind::Const(box ast::ConstItem {
                 defaultness,
