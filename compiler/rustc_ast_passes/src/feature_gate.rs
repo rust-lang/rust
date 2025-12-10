@@ -334,8 +334,16 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
 
     fn visit_expr(&mut self, e: &'a ast::Expr) {
         match e.kind {
-            ast::ExprKind::TryBlock(_) => {
+            ast::ExprKind::TryBlock(_, None) => {
                 gate!(&self, try_blocks, e.span, "`try` expression is experimental");
+            }
+            ast::ExprKind::TryBlock(_, Some(_)) => {
+                gate!(
+                    &self,
+                    try_blocks_heterogeneous,
+                    e.span,
+                    "`try bikeshed` expression is experimental"
+                );
             }
             ast::ExprKind::Lit(token::Lit {
                 kind: token::LitKind::Float | token::LitKind::Integer,

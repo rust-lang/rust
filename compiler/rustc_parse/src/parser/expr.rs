@@ -3544,15 +3544,20 @@ impl<'a> Parser<'a> {
         self.token.is_keyword(kw::Builtin) && self.look_ahead(1, |t| *t == token::Pound)
     }
 
-    /// Parses a `try {...}` expression (`try` token already eaten).
+    /// Parses a `try {...}` or `try bikeshed Ty {...}` expression (`try` token already eaten).
     fn parse_try_block(&mut self, span_lo: Span) -> PResult<'a, Box<Expr>> {
+        let annotation =
+            if self.eat_keyword(exp!(Bikeshed)) { Some(self.parse_ty()?) } else { None };
+
         let (attrs, body) = self.parse_inner_attrs_and_block(None)?;
         if self.eat_keyword(exp!(Catch)) {
             Err(self.dcx().create_err(errors::CatchAfterTry { span: self.prev_token.span }))
         } else {
             let span = span_lo.to(body.span);
-            self.psess.gated_spans.gate(sym::try_blocks, span);
-            Ok(self.mk_expr_with_attrs(span, ExprKind::TryBlock(body), attrs))
+            let gate_sym =
+                if annotation.is_none() { sym::try_blocks } else { sym::try_blocks_heterogeneous };
+            self.psess.gated_spans.gate(gate_sym, span);
+            Ok(self.mk_expr_with_attrs(span, ExprKind::TryBlock(body, annotation), attrs))
         }
     }
 
@@ -3569,7 +3574,11 @@ impl<'a> Parser<'a> {
 
     fn is_try_block(&self) -> bool {
         self.token.is_keyword(kw::Try)
-            && self.look_ahead(1, |t| *t == token::OpenBrace || t.is_metavar_block())
+            && self.look_ahead(1, |t| {
+                *t == token::OpenBrace
+                    || t.is_metavar_block()
+                    || t.kind == TokenKind::Ident(sym::bikeshed, IdentIsRaw::No)
+            })
             && self.token_uninterpolated_span().at_least_rust_2018()
     }
 
@@ -4264,7 +4273,7 @@ impl MutVisitor for CondChecker<'_> {
             | ExprKind::Closure(_)
             | ExprKind::Block(_, _)
             | ExprKind::Gen(_, _, _, _)
-            | ExprKind::TryBlock(_)
+            | ExprKind::TryBlock(_, _)
             | ExprKind::Underscore
             | ExprKind::Path(_, _)
             | ExprKind::Break(_, _)
