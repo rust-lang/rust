@@ -756,10 +756,10 @@ fn replace_param_and_infer_args_with_placeholder<'tcx>(
                 self.idx += 1;
                 Ty::new_placeholder(
                     self.tcx,
-                    ty::PlaceholderType {
-                        universe: ty::UniverseIndex::ROOT,
-                        bound: ty::BoundTy { var: idx, kind: ty::BoundTyKind::Anon },
-                    },
+                    ty::PlaceholderType::new(
+                        ty::UniverseIndex::ROOT,
+                        ty::BoundTy { var: idx, kind: ty::BoundTyKind::Anon },
+                    ),
                 )
             } else {
                 t.super_fold_with(self)
@@ -772,10 +772,7 @@ fn replace_param_and_infer_args_with_placeholder<'tcx>(
                 self.idx += 1;
                 ty::Const::new_placeholder(
                     self.tcx,
-                    ty::PlaceholderConst {
-                        universe: ty::UniverseIndex::ROOT,
-                        bound: ty::BoundConst { var: idx },
-                    },
+                    ty::PlaceholderConst::new(ty::UniverseIndex::ROOT, ty::BoundConst { var: idx }),
                 )
             } else {
                 c.super_fold_with(self)

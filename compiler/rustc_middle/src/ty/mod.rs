@@ -887,20 +887,9 @@ impl<'tcx> DefinitionSiteHiddenType<'tcx> {
     }
 }
 
-/// The "placeholder index" fully defines a placeholder region, type, or const. Placeholders are
-/// identified by both a universe, as well as a name residing within that universe. Distinct bound
-/// regions/types/consts within the same universe simply have an unknown relationship to one
-/// another.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
-#[derive(HashStable, TyEncodable, TyDecodable)]
-pub struct Placeholder<T> {
-    pub universe: UniverseIndex,
-    pub bound: T,
-}
+pub type PlaceholderRegion<'tcx> = ty::Placeholder<TyCtxt<'tcx>, BoundRegion>;
 
-pub type PlaceholderRegion = Placeholder<BoundRegion>;
-
-impl<'tcx> rustc_type_ir::inherent::PlaceholderLike<TyCtxt<'tcx>> for PlaceholderRegion {
+impl<'tcx> rustc_type_ir::inherent::PlaceholderLike<TyCtxt<'tcx>> for PlaceholderRegion<'tcx> {
     type Bound = BoundRegion;
 
     fn universe(self) -> UniverseIndex {
@@ -912,21 +901,21 @@ impl<'tcx> rustc_type_ir::inherent::PlaceholderLike<TyCtxt<'tcx>> for Placeholde
     }
 
     fn with_updated_universe(self, ui: UniverseIndex) -> Self {
-        Placeholder { universe: ui, ..self }
+        ty::Placeholder::new(ui, self.bound)
     }
 
     fn new(ui: UniverseIndex, bound: BoundRegion) -> Self {
-        Placeholder { universe: ui, bound }
+        ty::Placeholder::new(ui, bound)
     }
 
     fn new_anon(ui: UniverseIndex, var: BoundVar) -> Self {
-        Placeholder { universe: ui, bound: BoundRegion { var, kind: BoundRegionKind::Anon } }
+        ty::Placeholder::new(ui, BoundRegion { var, kind: BoundRegionKind::Anon })
     }
 }
 
-pub type PlaceholderType = Placeholder<BoundTy>;
+pub type PlaceholderType<'tcx> = ty::Placeholder<TyCtxt<'tcx>, BoundTy>;
 
-impl<'tcx> rustc_type_ir::inherent::PlaceholderLike<TyCtxt<'tcx>> for PlaceholderType {
+impl<'tcx> rustc_type_ir::inherent::PlaceholderLike<TyCtxt<'tcx>> for PlaceholderType<'tcx> {
     type Bound = BoundTy;
 
     fn universe(self) -> UniverseIndex {
@@ -938,15 +927,15 @@ impl<'tcx> rustc_type_ir::inherent::PlaceholderLike<TyCtxt<'tcx>> for Placeholde
     }
 
     fn with_updated_universe(self, ui: UniverseIndex) -> Self {
-        Placeholder { universe: ui, ..self }
+        ty::Placeholder::new(ui, self.bound)
     }
 
     fn new(ui: UniverseIndex, bound: BoundTy) -> Self {
-        Placeholder { universe: ui, bound }
+        ty::Placeholder::new(ui, bound)
     }
 
     fn new_anon(ui: UniverseIndex, var: BoundVar) -> Self {
-        Placeholder { universe: ui, bound: BoundTy { var, kind: BoundTyKind::Anon } }
+        ty::Placeholder::new(ui, BoundTy { var, kind: BoundTyKind::Anon })
     }
 }
 
@@ -966,9 +955,9 @@ impl<'tcx> rustc_type_ir::inherent::BoundVarLike<TyCtxt<'tcx>> for BoundConst {
     }
 }
 
-pub type PlaceholderConst = Placeholder<BoundConst>;
+pub type PlaceholderConst<'tcx> = ty::Placeholder<TyCtxt<'tcx>, BoundConst>;
 
-impl<'tcx> rustc_type_ir::inherent::PlaceholderLike<TyCtxt<'tcx>> for PlaceholderConst {
+impl<'tcx> rustc_type_ir::inherent::PlaceholderLike<TyCtxt<'tcx>> for PlaceholderConst<'tcx> {
     type Bound = BoundConst;
 
     fn universe(self) -> UniverseIndex {
@@ -980,15 +969,15 @@ impl<'tcx> rustc_type_ir::inherent::PlaceholderLike<TyCtxt<'tcx>> for Placeholde
     }
 
     fn with_updated_universe(self, ui: UniverseIndex) -> Self {
-        Placeholder { universe: ui, ..self }
+        ty::Placeholder::new(ui, self.bound)
     }
 
     fn new(ui: UniverseIndex, bound: BoundConst) -> Self {
-        Placeholder { universe: ui, bound }
+        ty::Placeholder::new(ui, bound)
     }
 
     fn new_anon(ui: UniverseIndex, var: BoundVar) -> Self {
-        Placeholder { universe: ui, bound: BoundConst { var } }
+        ty::Placeholder::new(ui, BoundConst { var })
     }
 }
 
