@@ -1,5 +1,5 @@
 error: your program uses the crate `std`, that is not compiled with `stack-protector=all` enabled
-  --> $DIR/err-allow-partial-mitigations.rs:13:1
+  --> $DIR/err-allow-partial-mitigations.rs:14:1
    |
 LL | fn main() {}
    | ^
@@ -8,7 +8,7 @@ LL | fn main() {}
    = help: it is possible to disable `-Z allow-partial-mitigations=stack-protector` via `-Z deny-partial-mitigations=stack-protector`
 
 error: your program uses the crate `core`, that is not compiled with `stack-protector=all` enabled
-  --> $DIR/err-allow-partial-mitigations.rs:13:1
+  --> $DIR/err-allow-partial-mitigations.rs:14:1
    |
 LL | fn main() {}
    | ^
@@ -17,7 +17,7 @@ LL | fn main() {}
    = help: it is possible to disable `-Z allow-partial-mitigations=stack-protector` via `-Z deny-partial-mitigations=stack-protector`
 
 error: your program uses the crate `alloc`, that is not compiled with `stack-protector=all` enabled
-  --> $DIR/err-allow-partial-mitigations.rs:13:1
+  --> $DIR/err-allow-partial-mitigations.rs:14:1
    |
 LL | fn main() {}
    | ^
@@ -26,7 +26,7 @@ LL | fn main() {}
    = help: it is possible to disable `-Z allow-partial-mitigations=stack-protector` via `-Z deny-partial-mitigations=stack-protector`
 
 error: your program uses the crate `compiler_builtins`, that is not compiled with `stack-protector=all` enabled
-  --> $DIR/err-allow-partial-mitigations.rs:13:1
+  --> $DIR/err-allow-partial-mitigations.rs:14:1
    |
 LL | fn main() {}
    | ^
@@ -35,7 +35,7 @@ LL | fn main() {}
    = help: it is possible to disable `-Z allow-partial-mitigations=stack-protector` via `-Z deny-partial-mitigations=stack-protector`
 
 error: your program uses the crate `libc`, that is not compiled with `stack-protector=all` enabled
-  --> $DIR/err-allow-partial-mitigations.rs:13:1
+  --> $DIR/err-allow-partial-mitigations.rs:14:1
    |
 LL | fn main() {}
    | ^
