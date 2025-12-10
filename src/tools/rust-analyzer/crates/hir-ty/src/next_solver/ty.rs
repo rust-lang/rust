@@ -8,6 +8,7 @@ use hir_def::{
 };
 use hir_def::{TraitId, type_ref::Rawness};
 use intern::{Interned, InternedRef, impl_internable};
+use macros::GenericTypeVisitable;
 use rustc_abi::{Float, Integer, Size};
 use rustc_ast_ir::{Mutability, try_visit, visit::VisitorResult};
 use rustc_type_ir::{
@@ -51,7 +52,7 @@ pub struct Ty<'db> {
     pub(super) interned: InternedRef<'db, TyInterned>,
 }
 
-#[derive(PartialEq, Eq, Hash)]
+#[derive(PartialEq, Eq, Hash, GenericTypeVisitable)]
 #[repr(align(4))] // Required for `GenericArg` bit-tagging.
 pub(super) struct TyInterned(WithCachedTypeInfo<TyKind<'static>>);
 
@@ -750,8 +751,9 @@ impl<'db> IntoKind for Ty<'db> {
 
 impl<'db, V: super::WorldExposer> GenericTypeVisitable<V> for Ty<'db> {
     fn generic_visit_with(&self, visitor: &mut V) {
-        visitor.on_interned(self.interned);
-        self.kind().generic_visit_with(visitor);
+        if visitor.on_interned(self.interned).is_continue() {
+            self.kind().generic_visit_with(visitor);
+        }
     }
 }
 

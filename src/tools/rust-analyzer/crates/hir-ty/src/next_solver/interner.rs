@@ -1,8 +1,9 @@
 //! Things related to the Interner in the next-trait-solver.
 
-use std::fmt;
+use std::{fmt, ops::ControlFlow};
 
 use intern::{Interned, InternedRef, InternedSliceRef, impl_internable};
+use macros::GenericTypeVisitable;
 use rustc_ast_ir::{FloatTy, IntTy, UintTy};
 pub use tls_cache::clear_tls_solver_cache;
 pub use tls_db::{attach_db, attach_db_allow_change, with_attached_db};
@@ -21,8 +22,8 @@ use rustc_hash::FxHashSet;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_type_ir::{
     AliasTermKind, AliasTyKind, BoundVar, CollectAndApply, CoroutineWitnessTypes, DebruijnIndex,
-    EarlyBinder, FlagComputation, Flags, GenericArgKind, ImplPolarity, InferTy, Interner, TraitRef,
-    TypeFlags, TypeVisitableExt, UniverseIndex, Upcast, Variance,
+    EarlyBinder, FlagComputation, Flags, GenericArgKind, GenericTypeVisitable, ImplPolarity,
+    InferTy, Interner, TraitRef, TypeFlags, TypeVisitableExt, UniverseIndex, Upcast, Variance,
     elaborate::elaborate,
     error::TypeError,
     fast_reject,
@@ -169,8 +170,9 @@ macro_rules! interned_slice {
         {
             #[inline]
             fn generic_visit_with(&self, visitor: &mut V) {
-                visitor.on_interned_slice(self.interned);
-                self.as_slice().iter().for_each(|it| it.generic_visit_with(visitor));
+                if visitor.on_interned_slice(self.interned).is_continue() {
+                    self.as_slice().iter().for_each(|it| it.generic_visit_with(visitor));
+                }
             }
         }
     };
@@ -293,8 +295,14 @@ macro_rules! impl_stored_interned {
 pub(crate) use impl_stored_interned;
 
 pub trait WorldExposer {
-    fn on_interned<T: intern::Internable>(&mut self, interned: InternedRef<'_, T>);
-    fn on_interned_slice<T: intern::SliceInternable>(&mut self, interned: InternedSliceRef<'_, T>);
+    fn on_interned<T: intern::Internable>(
+        &mut self,
+        interned: InternedRef<'_, T>,
+    ) -> ControlFlow<()>;
+    fn on_interned_slice<T: intern::SliceInternable>(
+        &mut self,
+        interned: InternedSliceRef<'_, T>,
+    ) -> ControlFlow<()>;
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -803,7 +811,7 @@ pub struct Pattern<'db> {
     interned: InternedRef<'db, PatternInterned>,
 }
 
-#[derive(PartialEq, Eq, Hash)]
+#[derive(PartialEq, Eq, Hash, GenericTypeVisitable)]
 struct PatternInterned(PatternKind<'static>);
 
 impl_internable!(gc; PatternInterned);
@@ -884,8 +892,9 @@ impl<'db> rustc_type_ir::TypeVisitable<DbInterner<'db>> for Pattern<'db> {
 
 impl<'db, V: WorldExposer> rustc_type_ir::GenericTypeVisitable<V> for Pattern<'db> {
     fn generic_visit_with(&self, visitor: &mut V) {
-        visitor.on_interned(self.interned);
-        self.kind().generic_visit_with(visitor);
+        if visitor.on_interned(self.interned).is_continue() {
+            self.kind().generic_visit_with(visitor);
+        }
     }
 }
 
@@ -2559,3 +2568,106 @@ mod tls_cache {
         GLOBAL_CACHE.with_borrow_mut(|handle| *handle = None);
     }
 }
+
+impl WorldExposer for intern::GarbageCollector {
+    fn on_interned<T: intern::Internable>(
+        &mut self,
+        interned: InternedRef<'_, T>,
+    ) -> ControlFlow<()> {
+        self.mark_interned_alive(interned)
+    }
+
+    fn on_interned_slice<T: intern::SliceInternable>(
+        &mut self,
+        interned: InternedSliceRef<'_, T>,
+    ) -> ControlFlow<()> {
+        self.mark_interned_slice_alive(interned)
+    }
+}
+
+/// # Safety
+///
+/// This cannot be called if there are some not-yet-recorded type values. Generally, if you have a mutable
+/// reference to the database, and there are no other database - then you can call this safely, but you
+/// also need to make sure to maintain the mutable reference while this is running.
+pub unsafe fn collect_ty_garbage() {
+    let mut gc = intern::GarbageCollector::default();
+
+    gc.add_storage::<super::consts::ConstInterned>();
+    gc.add_storage::<super::consts::ValtreeInterned>();
+    gc.add_storage::<PatternInterned>();
+    gc.add_storage::<super::opaques::ExternalConstraintsInterned>();
+    gc.add_storage::<super::predicate::PredicateInterned>();
+    gc.add_storage::<super::region::RegionInterned>();
+    gc.add_storage::<super::ty::TyInterned>();
+
+    gc.add_slice_storage::<super::predicate::ClausesStorage>();
+    gc.add_slice_storage::<super::generic_arg::GenericArgsStorage>();
+    gc.add_slice_storage::<BoundVarKindsStorage>();
+    gc.add_slice_storage::<VariancesOfStorage>();
+    gc.add_slice_storage::<CanonicalVarsStorage>();
+    gc.add_slice_storage::<PatListStorage>();
+    gc.add_slice_storage::<super::opaques::PredefinedOpaquesStorage>();
+    gc.add_slice_storage::<super::opaques::SolverDefIdsStorage>();
+    gc.add_slice_storage::<super::predicate::BoundExistentialPredicatesStorage>();
+    gc.add_slice_storage::<super::region::RegionAssumptionsStorage>();
+    gc.add_slice_storage::<super::ty::TysStorage>();
+
+    unsafe { gc.collect() };
+}
+
+macro_rules! impl_gc_visit {
+    ( $($ty:ty),* $(,)? ) => {
+        $(
+            impl ::intern::GcInternedVisit for $ty {
+                #[inline]
+                fn visit_with(&self, gc: &mut ::intern::GarbageCollector) {
+                    self.generic_visit_with(gc);
+                }
+            }
+        )*
+    };
+}
+
+impl_gc_visit!(
+    super::consts::ConstInterned,
+    super::consts::ValtreeInterned,
+    PatternInterned,
+    super::opaques::ExternalConstraintsInterned,
+    super::predicate::PredicateInterned,
+    super::region::RegionInterned,
+    super::ty::TyInterned,
+    super::predicate::ClausesCachedTypeInfo,
+);
+
+macro_rules! impl_gc_visit_slice {
+    ( $($ty:ty),* $(,)? ) => {
+        $(
+            impl ::intern::GcInternedSliceVisit for $ty {
+                #[inline]
+                fn visit_header(header: &<Self as ::intern::SliceInternable>::Header, gc: &mut ::intern::GarbageCollector) {
+                    header.generic_visit_with(gc);
+                }
+
+                #[inline]
+                fn visit_slice(header: &[<Self as ::intern::SliceInternable>::SliceType], gc: &mut ::intern::GarbageCollector) {
+                    header.generic_visit_with(gc);
+                }
+            }
+        )*
+    };
+}
+
+impl_gc_visit_slice!(
+    super::predicate::ClausesStorage,
+    super::generic_arg::GenericArgsStorage,
+    BoundVarKindsStorage,
+    VariancesOfStorage,
+    CanonicalVarsStorage,
+    PatListStorage,
+    super::opaques::PredefinedOpaquesStorage,
+    super::opaques::SolverDefIdsStorage,
+    super::predicate::BoundExistentialPredicatesStorage,
+    super::region::RegionAssumptionsStorage,
+    super::ty::TysStorage,
+);

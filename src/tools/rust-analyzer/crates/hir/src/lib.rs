@@ -175,7 +175,7 @@ pub use {
         layout::LayoutError,
         mir::{MirEvalError, MirLowerError},
         next_solver::abi::Safety,
-        next_solver::clear_tls_solver_cache,
+        next_solver::{clear_tls_solver_cache, collect_ty_garbage},
     },
     // FIXME: These are needed for import assets, properly encapsulate them.
     hir_ty::{method_resolution::TraitImpls, next_solver::SimplifiedType},

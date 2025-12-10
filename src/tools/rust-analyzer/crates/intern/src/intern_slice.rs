@@ -256,6 +256,16 @@ impl<'a, T: SliceInternable> InternedSliceRef<'a, T> {
     pub unsafe fn decrement_refcount(self) {
         drop(ManuallyDrop::into_inner(self.arc()));
     }
+
+    #[inline]
+    pub(crate) fn strong_count(self) -> usize {
+        ThinArc::strong_count(&self.arc())
+    }
+
+    #[inline]
+    pub(crate) fn as_raw(self) -> *const c_void {
+        self.arc().as_ptr()
+    }
 }
 
 impl<T> Clone for InternedSliceRef<'_, T> {
@@ -318,15 +328,15 @@ impl<T: SliceInternable> InternSliceStorage<T> {
 }
 
 impl<T: SliceInternable> InternSliceStorage<T> {
-    fn get(&self) -> &InternMap<T> {
+    pub(crate) fn get(&self) -> &InternMap<T> {
         self.map.get_or_init(DashMap::default)
     }
 }
 
 pub trait SliceInternable: Sized + 'static {
     const USE_GC: bool;
-    type Header: Eq + Hash;
-    type SliceType: Eq + Hash + 'static;
+    type Header: Eq + Hash + Send + Sync;
+    type SliceType: Eq + Hash + Send + Sync + 'static;
     fn storage() -> &'static InternSliceStorage<Self>;
 }
 
@@ -335,6 +345,7 @@ pub trait SliceInternable: Sized + 'static {
 #[doc(hidden)]
 macro_rules! _impl_slice_internable {
     ( gc; $tag:ident, $h:ty, $t:ty $(,)? ) => {
+        #[allow(unreachable_pub)]
         pub struct $tag;
         impl $crate::SliceInternable for $tag {
             const USE_GC: bool = true;

@@ -26,6 +26,8 @@ unsafe impl<T: Send + Sync + Internable> Sync for Interned<T> {}
 impl<T: Internable> Interned<T> {
     #[inline]
     pub fn new(obj: T) -> Self {
+        const { assert!(!T::USE_GC) };
+
         let storage = T::storage().get();
         let (mut shard, hash) = Self::select(storage, &obj);
         // Atomically,
@@ -228,6 +230,11 @@ impl<'a, T: Internable> InternedRef<'a, T> {
     pub unsafe fn decrement_refcount(self) {
         unsafe { drop(Arc::from_raw(self.as_raw())) }
     }
+
+    #[inline]
+    pub(crate) fn strong_count(self) -> usize {
+        ArcBorrow::strong_count(&self.arc)
+    }
 }
 
 impl<T> Clone for InternedRef<'_, T> {
@@ -292,12 +299,12 @@ impl<T: ?Sized> InternStorage<T> {
 }
 
 impl<T: Internable + ?Sized> InternStorage<T> {
-    fn get(&self) -> &InternMap<T> {
+    pub(crate) fn get(&self) -> &InternMap<T> {
         self.map.get_or_init(DashMap::default)
     }
 }
 
-pub trait Internable: Hash + Eq + 'static {
+pub trait Internable: Hash + Eq + Send + Sync + 'static {
     const USE_GC: bool;
 
     fn storage() -> &'static InternStorage<Self>;

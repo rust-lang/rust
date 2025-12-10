@@ -29,9 +29,9 @@ pub struct Const<'db> {
     pub(super) interned: InternedRef<'db, ConstInterned>,
 }
 
-#[derive(PartialEq, Eq, Hash)]
+#[derive(PartialEq, Eq, Hash, GenericTypeVisitable)]
 #[repr(align(4))] // Required for `GenericArg` bit-tagging.
-pub(super) struct ConstInterned(WithCachedTypeInfo<ConstKind<'static>>);
+pub(super) struct ConstInterned(pub(super) WithCachedTypeInfo<ConstKind<'static>>);
 
 impl_internable!(gc; ConstInterned);
 impl_stored_interned!(ConstInterned, Const, StoredConst);
@@ -219,15 +219,14 @@ pub struct Valtree<'db> {
 
 impl<'db, V: super::WorldExposer> GenericTypeVisitable<V> for Valtree<'db> {
     fn generic_visit_with(&self, visitor: &mut V) {
-        visitor.on_interned(self.interned);
-        self.inner().generic_visit_with(visitor);
+        if visitor.on_interned(self.interned).is_continue() {
+            self.inner().generic_visit_with(visitor);
+        }
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Hash)]
-struct ValtreeInterned {
-    bytes: ConstBytes<'static>,
-}
+#[derive(Debug, PartialEq, Eq, Hash, GenericTypeVisitable)]
+pub(super) struct ValtreeInterned(ConstBytes<'static>);
 
 impl_internable!(gc; ValtreeInterned);
 
@@ -240,12 +239,12 @@ impl<'db> Valtree<'db> {
     #[inline]
     pub fn new(bytes: ConstBytes<'db>) -> Self {
         let bytes = unsafe { std::mem::transmute::<ConstBytes<'db>, ConstBytes<'static>>(bytes) };
-        Self { interned: Interned::new_gc(ValtreeInterned { bytes }) }
+        Self { interned: Interned::new_gc(ValtreeInterned(bytes)) }
     }
 
     #[inline]
     pub fn inner(&self) -> &ConstBytes<'db> {
-        let inner = &self.interned.bytes;
+        let inner = &self.interned.0;
         unsafe { std::mem::transmute::<&ConstBytes<'static>, &ConstBytes<'db>>(inner) }
     }
 }
@@ -277,8 +276,9 @@ impl<'db> IntoKind for Const<'db> {
 
 impl<'db, V: super::WorldExposer> GenericTypeVisitable<V> for Const<'db> {
     fn generic_visit_with(&self, visitor: &mut V) {
-        visitor.on_interned(self.interned);
-        self.kind().generic_visit_with(visitor);
+        if visitor.on_interned(self.interned).is_continue() {
+            self.kind().generic_visit_with(visitor);
+        }
     }
 }
 

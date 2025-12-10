@@ -1,6 +1,7 @@
 //! Things related to opaques in the next-trait-solver.
 
 use intern::{Interned, InternedRef, impl_internable};
+use macros::GenericTypeVisitable;
 use rustc_ast_ir::try_visit;
 use rustc_type_ir::inherent::SliceLike;
 
@@ -30,8 +31,8 @@ pub struct ExternalConstraints<'db> {
     interned: InternedRef<'db, ExternalConstraintsInterned>,
 }
 
-#[derive(PartialEq, Eq, Hash)]
-struct ExternalConstraintsInterned(ExternalConstraintsData<'static>);
+#[derive(PartialEq, Eq, Hash, GenericTypeVisitable)]
+pub(super) struct ExternalConstraintsInterned(ExternalConstraintsData<'static>);
 
 impl_internable!(gc; ExternalConstraintsInterned);
 

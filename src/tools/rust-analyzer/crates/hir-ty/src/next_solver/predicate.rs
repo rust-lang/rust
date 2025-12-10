@@ -186,8 +186,8 @@ pub struct Predicate<'db> {
     interned: InternedRef<'db, PredicateInterned>,
 }
 
-#[derive(PartialEq, Eq, Hash)]
-struct PredicateInterned(WithCachedTypeInfo<Binder<'static, PredicateKind<'static>>>);
+#[derive(PartialEq, Eq, Hash, GenericTypeVisitable)]
+pub(super) struct PredicateInterned(WithCachedTypeInfo<Binder<'static, PredicateKind<'static>>>);
 
 impl_internable!(gc; PredicateInterned);
 
@@ -252,7 +252,10 @@ impl<'db> std::fmt::Debug for Predicate<'db> {
     }
 }
 
-impl_slice_internable!(gc; ClausesStorage, WithCachedTypeInfo<()>, Clause<'static>);
+#[derive(Clone, Copy, PartialEq, Eq, Hash, GenericTypeVisitable)]
+pub struct ClausesCachedTypeInfo(WithCachedTypeInfo<()>);
+
+impl_slice_internable!(gc; ClausesStorage, ClausesCachedTypeInfo, Clause<'static>);
 impl_stored_interned_slice!(ClausesStorage, Clauses, StoredClauses);
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
@@ -277,11 +280,11 @@ impl<'db> Clauses<'db> {
     pub fn new_from_slice(slice: &[Clause<'db>]) -> Self {
         let slice = unsafe { ::std::mem::transmute::<&[Clause<'db>], &[Clause<'static>]>(slice) };
         let flags = FlagComputation::<DbInterner<'db>>::for_clauses(slice);
-        let flags = WithCachedTypeInfo {
+        let flags = ClausesCachedTypeInfo(WithCachedTypeInfo {
             internee: (),
             flags: flags.flags,
             outer_exclusive_binder: flags.outer_exclusive_binder,
-        };
+        });
         Self { interned: InternedSlice::from_header_and_slice(flags, slice) }
     }
 
@@ -400,20 +403,21 @@ impl<'db> rustc_type_ir::TypeVisitable<DbInterner<'db>> for Clauses<'db> {
 
 impl<'db, V: super::WorldExposer> rustc_type_ir::GenericTypeVisitable<V> for Clauses<'db> {
     fn generic_visit_with(&self, visitor: &mut V) {
-        visitor.on_interned_slice(self.interned);
-        self.as_slice().iter().for_each(|it| it.generic_visit_with(visitor));
+        if visitor.on_interned_slice(self.interned).is_continue() {
+            self.as_slice().iter().for_each(|it| it.generic_visit_with(visitor));
+        }
     }
 }
 
 impl<'db> rustc_type_ir::Flags for Clauses<'db> {
     #[inline]
     fn flags(&self) -> rustc_type_ir::TypeFlags {
-        self.interned.header.header.flags
+        self.interned.header.header.0.flags
     }
 
     #[inline]
     fn outer_exclusive_binder(&self) -> rustc_type_ir::DebruijnIndex {
-        self.interned.header.header.outer_exclusive_binder
+        self.interned.header.header.0.outer_exclusive_binder
     }
 }
 
@@ -430,7 +434,9 @@ impl<'db> rustc_type_ir::TypeSuperVisitable<DbInterner<'db>> for Clauses<'db> {
 pub struct Clause<'db>(pub(crate) Predicate<'db>);
 
 // We could cram the reveal into the clauses like rustc does, probably
-#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, TypeVisitable, TypeFoldable)]
+#[derive(
+    Copy, Clone, Debug, Hash, PartialEq, Eq, TypeVisitable, TypeFoldable, GenericTypeVisitable,
+)]
 pub struct ParamEnv<'db> {
     pub(crate) clauses: Clauses<'db>,
 }
@@ -474,8 +480,9 @@ impl<'db> TypeVisitable<DbInterner<'db>> for Predicate<'db> {
 
 impl<'db, V: super::WorldExposer> GenericTypeVisitable<V> for Predicate<'db> {
     fn generic_visit_with(&self, visitor: &mut V) {
-        visitor.on_interned(self.interned);
-        self.kind().generic_visit_with(visitor);
+        if visitor.on_interned(self.interned).is_continue() {
+            self.kind().generic_visit_with(visitor);
+        }
     }
 }
 

@@ -2,6 +2,7 @@
 
 use hir_def::LifetimeParamId;
 use intern::{Interned, InternedRef, Symbol, impl_internable};
+use macros::GenericTypeVisitable;
 use rustc_type_ir::{
     BoundVar, BoundVarIndexKind, DebruijnIndex, Flags, GenericTypeVisitable, INNERMOST, RegionVid,
     TypeFlags, TypeFoldable, TypeVisitable,
@@ -25,7 +26,7 @@ pub struct Region<'db> {
     pub(super) interned: InternedRef<'db, RegionInterned>,
 }
 
-#[derive(PartialEq, Eq, Hash)]
+#[derive(PartialEq, Eq, Hash, GenericTypeVisitable)]
 #[repr(align(4))] // Required for `GenericArg` bit-tagging.
 pub(super) struct RegionInterned(RegionKind<'static>);
 
@@ -388,8 +389,9 @@ impl<'db> PlaceholderLike<DbInterner<'db>> for PlaceholderRegion {
 
 impl<'db, V: super::WorldExposer> GenericTypeVisitable<V> for Region<'db> {
     fn generic_visit_with(&self, visitor: &mut V) {
-        visitor.on_interned(self.interned);
-        self.kind().generic_visit_with(visitor);
+        if visitor.on_interned(self.interned).is_continue() {
+            self.kind().generic_visit_with(visitor);
+        }
     }
 }
 

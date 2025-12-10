@@ -355,6 +355,7 @@ impl flags::AnalysisStats {
         }
 
         hir::clear_tls_solver_cache();
+        unsafe { hir::collect_ty_garbage() };
 
         let db = host.raw_database_mut();
         db.trigger_lru_eviction();
