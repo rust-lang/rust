@@ -1,6 +1,7 @@
 //! Checks the licenses of third-party dependencies.
 
 use std::collections::{HashMap, HashSet};
+use std::fmt::{Display, Formatter};
 use std::fs::{File, read_dir};
 use std::io::Write;
 use std::path::Path;
@@ -13,6 +14,25 @@ use crate::diagnostics::{RunningCheck, TidyCtx};
 
 #[path = "../../../bootstrap/src/utils/proc_macro_deps.rs"]
 mod proc_macro_deps;
+
+#[derive(Clone, Copy)]
+struct ListLocation {
+    path: &'static str,
+    line: u32,
+}
+
+impl Display for ListLocation {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}:{}", self.path, self.line)
+    }
+}
+
+/// Creates a [`ListLocation`] for the current location (with an additional offset to the actual list start);
+macro_rules! location {
+    (+ $offset:literal) => {
+        ListLocation { path: file!(), line: line!() + $offset }
+    };
+}
 
 /// These are licenses that are allowed for all crates, including the runtime,
 /// rustc, tools, etc.
@@ -86,6 +106,8 @@ pub(crate) struct WorkspaceInfo<'a> {
     /// Submodules required for the workspace
     pub(crate) submodules: &'a [&'a str],
 }
+
+const WORKSPACE_LOCATION: ListLocation = location!(+4);
 
 /// The workspaces to check for licensing and optionally permitted dependencies.
 // FIXME auto detect all cargo workspaces
@@ -241,19 +263,6 @@ const EXCEPTIONS_GCC: ExceptionList = &[
 const EXCEPTIONS_BOOTSTRAP: ExceptionList = &[];
 
 const EXCEPTIONS_UEFI_QEMU_TEST: ExceptionList = &[];
-
-#[derive(Clone, Copy)]
-struct ListLocation {
-    path: &'static str,
-    line: u32,
-}
-
-/// Creates a [`ListLocation`] for the current location (with an additional offset to the actual list start);
-macro_rules! location {
-    (+ $offset:literal) => {
-        ListLocation { path: file!(), line: line!() + $offset }
-    };
-}
 
 const PERMITTED_RUSTC_DEPS_LOCATION: ListLocation = location!(+6);
 
@@ -641,6 +650,13 @@ pub fn check(root: &Path, cargo: &Path, tidy_ctx: TidyCtx) {
             .other_options(vec!["--locked".to_owned()]);
         let metadata = t!(cmd.exec());
 
+        // Check for packages which have been moved into a different workspace and not updated
+        let canonicalized_root =
+            if path == "." { root.to_path_buf() } else { t!(root.join(path).canonicalize()) };
+        let canonicalized_root_real = t!(metadata.workspace_root.canonicalize());
+        if canonicalized_root_real != canonicalized_root {
+            check.error(format!("{path} is part of another workspace, remove from `WORKSPACES` ({WORKSPACE_LOCATION})"));
+        }
         check_license_exceptions(&metadata, path, exceptions, &mut check);
         if let Some((crates, permitted_deps, location)) = crates_and_deps {
             let descr = crates.get(0).unwrap_or(&path);
