@@ -4,7 +4,7 @@
 /// [`String::from`] is ambiguous as to which `From` impl
 /// [Vec::into_iter()] uses a disambiguator
 //@ has 'associated_items/fn.foo.html' '//a[@href="{{channel}}/alloc/collections/btree/map/struct.BTreeMap.html#method.into_iter"]' 'std::collections::BTreeMap::into_iter'
-//@ has 'associated_items/fn.foo.html' '//a[@href="{{channel}}/alloc/string/struct.String.html#method.from"]' 'String::from'
+//@ has 'associated_items/fn.foo.html' '//a[@href="{{channel}}/alloc/string/generic/struct.String.html#method.from"]' 'String::from'
 //@ has 'associated_items/fn.foo.html' '//a[@href="{{channel}}/alloc/vec/struct.Vec.html#method.into_iter"]' 'Vec::into_iter'
 pub fn foo() {}
 

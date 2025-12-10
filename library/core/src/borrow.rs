@@ -43,7 +43,7 @@
 /// [`Box<T>`]: ../../std/boxed/struct.Box.html
 /// [`Mutex<T>`]: ../../std/sync/struct.Mutex.html
 /// [`Rc<T>`]: ../../std/rc/struct.Rc.html
-/// [`String`]: ../../std/string/struct.String.html
+/// [`String`]: ../../std/string/type.String.html
 /// [`borrow`]: Borrow::borrow
 ///
 /// # Examples
@@ -151,7 +151,7 @@
 ///
 /// [`Hash`]: crate::hash::Hash
 /// [`HashMap<K, V>`]: ../../std/collections/struct.HashMap.html
-/// [`String`]: ../../std/string/struct.String.html
+/// [`String`]: ../../std/string/type.String.html
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_diagnostic_item = "Borrow"]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]

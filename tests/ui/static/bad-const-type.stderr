@@ -4,6 +4,8 @@ error[E0308]: mismatched types
 LL | static i: String = 10;
    |                    ^^ expected `String`, found integer
    |
+   = note: expected struct `String`
+                found type `{integer}`
 help: try using a conversion method
    |
 LL | static i: String = 10.to_string();
