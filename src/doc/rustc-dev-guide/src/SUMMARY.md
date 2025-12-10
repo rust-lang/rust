@@ -191,6 +191,7 @@
 - [HIR Type checking](./hir-typeck/summary.md)
     - [Coercions](./hir-typeck/coercions.md)
     - [Method lookup](./hir-typeck/method-lookup.md)
+- [Const Generics](./const-generics.md)
 - [Opaque types](./opaque-types-type-alias-impl-trait.md)
     - [Inference details](./opaque-types-impl-trait-inference.md)
     - [Return Position Impl Trait In Trait](./return-position-impl-trait-in-trait.md)
