@@ -114,28 +114,46 @@ error[E0425]: cannot find type `A` in this scope
   --> $DIR/equality-bound.rs:20:79
    |
 LL |     fn from_iter<T>(_: T) -> Self where T: IntoIterator, IntoIterator::Item = A,
-   |                                                                               ^ help: a struct with a similar name exists: `K`
+   |                                                                               ^
 ...
 LL | struct K {}
    | -------- similarly named struct `K` defined here
+   |
+help: a struct with a similar name exists
+   |
+LL -     fn from_iter<T>(_: T) -> Self where T: IntoIterator, IntoIterator::Item = A,
+LL +     fn from_iter<T>(_: T) -> Self where T: IntoIterator, IntoIterator::Item = K,
+   |
 
 error[E0425]: cannot find type `A` in this scope
   --> $DIR/equality-bound.rs:31:68
    |
 LL |     fn from_iter<T>(_: T) -> Self where T: IntoIterator, T::Item = A,
-   |                                                                    ^ help: a struct with a similar name exists: `K`
+   |                                                                    ^
 ...
 LL | struct K {}
    | -------- similarly named struct `K` defined here
+   |
+help: a struct with a similar name exists
+   |
+LL -     fn from_iter<T>(_: T) -> Self where T: IntoIterator, T::Item = A,
+LL +     fn from_iter<T>(_: T) -> Self where T: IntoIterator, T::Item = K,
+   |
 
 error[E0425]: cannot find type `A` in this scope
   --> $DIR/equality-bound.rs:42:76
    |
 LL |     fn from_iter<T: IntoIterator>(_: T) -> Self where IntoIterator::Item = A,
-   |                                                                            ^ help: a struct with a similar name exists: `K`
+   |                                                                            ^
 ...
 LL | struct K {}
    | -------- similarly named struct `K` defined here
+   |
+help: a struct with a similar name exists
+   |
+LL -     fn from_iter<T: IntoIterator>(_: T) -> Self where IntoIterator::Item = A,
+LL +     fn from_iter<T: IntoIterator>(_: T) -> Self where IntoIterator::Item = K,
+   |
 
 error[E0425]: cannot find type `A` in this scope
   --> $DIR/equality-bound.rs:53:65
@@ -144,7 +162,13 @@ LL | struct K {}
    | -------- similarly named struct `K` defined here
 ...
 LL |     fn from_iter<T: IntoIterator>(_: T) -> Self where T::Item = A,
-   |                                                                 ^ help: a struct with a similar name exists: `K`
+   |                                                                 ^
+   |
+help: a struct with a similar name exists
+   |
+LL -     fn from_iter<T: IntoIterator>(_: T) -> Self where T::Item = A,
+LL +     fn from_iter<T: IntoIterator>(_: T) -> Self where T::Item = K,
+   |
 
 error[E0425]: cannot find type `A` in this scope
   --> $DIR/equality-bound.rs:64:62
@@ -153,7 +177,13 @@ LL | struct K {}
    | -------- similarly named struct `K` defined here
 ...
 LL |     fn from_iter<T>(_: T) -> Self where IntoIterator::Item = A, T: IntoIterator,
-   |                                                              ^ help: a struct with a similar name exists: `K`
+   |                                                              ^
+   |
+help: a struct with a similar name exists
+   |
+LL -     fn from_iter<T>(_: T) -> Self where IntoIterator::Item = A, T: IntoIterator,
+LL +     fn from_iter<T>(_: T) -> Self where IntoIterator::Item = K, T: IntoIterator,
+   |
 
 error[E0425]: cannot find type `A` in this scope
   --> $DIR/equality-bound.rs:75:51
@@ -162,16 +192,25 @@ LL | struct K {}
    | -------- similarly named struct `K` defined here
 ...
 LL |     fn from_iter<T>(_: T) -> Self where T::Item = A, T: IntoIterator,
-   |                                                   ^ help: a struct with a similar name exists: `K`
+   |                                                   ^
+   |
+help: a struct with a similar name exists
+   |
+LL -     fn from_iter<T>(_: T) -> Self where T::Item = A, T: IntoIterator,
+LL +     fn from_iter<T>(_: T) -> Self where T::Item = K, T: IntoIterator,
+   |
 
 error[E0433]: failed to resolve: use of undeclared type `I`
   --> $DIR/equality-bound.rs:9:41
    |
 LL | fn sum3<J: Iterator>(i: J) -> i32 where I::Item = i32 {
-   |                                         ^
-   |                                         |
-   |                                         use of undeclared type `I`
-   |                                         help: a type parameter with a similar name exists: `J`
+   |                                         ^ use of undeclared type `I`
+   |
+help: a type parameter with a similar name exists
+   |
+LL - fn sum3<J: Iterator>(i: J) -> i32 where I::Item = i32 {
+LL + fn sum3<J: Iterator>(i: J) -> i32 where J::Item = i32 {
+   |
 
 error: aborting due to 16 previous errors
 

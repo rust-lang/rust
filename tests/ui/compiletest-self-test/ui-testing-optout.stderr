@@ -11,7 +11,13 @@ error[E0425]: cannot find type `D` in this scope
   | ----------- similarly named type alias `A` defined here
 ...
 7 | type C = D;
-  |          ^ help: a type alias with a similar name exists: `A`
+  |          ^
+  |
+help: a type alias with a similar name exists
+  |
+7 - type C = D;
+7 + type C = A;
+  |
 
 error[E0425]: cannot find type `F` in this scope
   --> $DIR/ui-testing-optout.rs:92:10
@@ -20,7 +26,13 @@ error[E0425]: cannot find type `F` in this scope
    | ----------- similarly named type alias `A` defined here
 ...
 92 | type E = F;
-   |          ^ help: a type alias with a similar name exists: `A`
+   |          ^
+   |
+help: a type alias with a similar name exists
+   |
+92 - type E = F;
+92 + type E = A;
+   |
 
 error: aborting due to 3 previous errors
 

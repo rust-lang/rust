@@ -149,13 +149,18 @@ LL |     pub enum E {
    |     ---------- similarly named enum `E` defined here
 ...
 LL |     let _: Z = m::n::Z;
-   |            ^ help: an enum with a similar name exists: `E`
+   |            ^
    |
 note: enum `m::Z` exists but is inaccessible
   --> $DIR/privacy-enum-ctor.rs:12:9
    |
 LL |         pub(in crate::m) enum Z {
    |         ^^^^^^^^^^^^^^^^^^^^^^^ not accessible
+help: an enum with a similar name exists
+   |
+LL -     let _: Z = m::n::Z;
+LL +     let _: E = m::n::Z;
+   |
 
 error[E0423]: expected value, found enum `m::n::Z`
   --> $DIR/privacy-enum-ctor.rs:58:16
@@ -192,13 +197,18 @@ LL |     pub enum E {
    |     ---------- similarly named enum `E` defined here
 ...
 LL |     let _: Z = m::n::Z::Fn;
-   |            ^ help: an enum with a similar name exists: `E`
+   |            ^
    |
 note: enum `m::Z` exists but is inaccessible
   --> $DIR/privacy-enum-ctor.rs:12:9
    |
 LL |         pub(in crate::m) enum Z {
    |         ^^^^^^^^^^^^^^^^^^^^^^^ not accessible
+help: an enum with a similar name exists
+   |
+LL -     let _: Z = m::n::Z::Fn;
+LL +     let _: E = m::n::Z::Fn;
+   |
 
 error[E0425]: cannot find type `Z` in this scope
   --> $DIR/privacy-enum-ctor.rs:65:12
@@ -207,13 +217,18 @@ LL |     pub enum E {
    |     ---------- similarly named enum `E` defined here
 ...
 LL |     let _: Z = m::n::Z::Struct;
-   |            ^ help: an enum with a similar name exists: `E`
+   |            ^
    |
 note: enum `m::Z` exists but is inaccessible
   --> $DIR/privacy-enum-ctor.rs:12:9
    |
 LL |         pub(in crate::m) enum Z {
    |         ^^^^^^^^^^^^^^^^^^^^^^^ not accessible
+help: an enum with a similar name exists
+   |
+LL -     let _: Z = m::n::Z::Struct;
+LL +     let _: E = m::n::Z::Struct;
+   |
 
 error[E0425]: cannot find type `Z` in this scope
   --> $DIR/privacy-enum-ctor.rs:69:12
@@ -222,13 +237,18 @@ LL |     pub enum E {
    |     ---------- similarly named enum `E` defined here
 ...
 LL |     let _: Z = m::n::Z::Unit {};
-   |            ^ help: an enum with a similar name exists: `E`
+   |            ^
    |
 note: enum `m::Z` exists but is inaccessible
   --> $DIR/privacy-enum-ctor.rs:12:9
    |
 LL |         pub(in crate::m) enum Z {
    |         ^^^^^^^^^^^^^^^^^^^^^^^ not accessible
+help: an enum with a similar name exists
+   |
+LL -     let _: Z = m::n::Z::Unit {};
+LL +     let _: E = m::n::Z::Unit {};
+   |
 
 error[E0603]: enum `Z` is private
   --> $DIR/privacy-enum-ctor.rs:58:22
