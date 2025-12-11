@@ -358,10 +358,14 @@ impl DocParser {
                     return;
                 }
 
-                if self.attribute.$ident.is_some() {
-                    cx.duplicate_key(path.span(), path.word_sym().unwrap());
-                    return;
-                }
+                // FIXME: It's errorring when the attribute is passed multiple times on the command
+                // line.
+                // The right fix for this would be to only check this rule if the attribute is
+                // not set on the command line but directly in the code.
+                // if self.attribute.$ident.is_some() {
+                //     cx.duplicate_key(path.span(), path.word_sym().unwrap());
+                //     return;
+                // }
 
                 self.attribute.$ident = Some(path.span());
             }};
