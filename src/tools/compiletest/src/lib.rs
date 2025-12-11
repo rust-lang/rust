@@ -24,7 +24,6 @@ use core::panic;
 use std::collections::HashSet;
 use std::fmt::Write;
 use std::io::{self, ErrorKind};
-use std::process::{Command, Stdio};
 use std::sync::{Arc, OnceLock};
 use std::time::SystemTime;
 use std::{env, fs, vec};
@@ -43,7 +42,7 @@ use crate::common::{
 };
 use crate::directives::{AuxProps, DirectivesCache, FileDirectives};
 use crate::edition::parse_edition;
-use crate::executor::{CollectedTest, ColorConfig};
+use crate::executor::CollectedTest;
 
 /// Creates the `Config` instance for this invocation of compiletest.
 ///
@@ -136,8 +135,9 @@ fn parse_config(args: Vec<String>) -> Config {
             "overwrite stderr/stdout files instead of complaining about a mismatch",
         )
         .optflag("", "fail-fast", "stop as soon as possible after any test fails")
-        .optopt("", "color", "coloring: auto, always, never", "WHEN")
         .optopt("", "target", "the target to build for", "TARGET")
+        // FIXME: Should be removed once `bootstrap` will be updated to not use this option.
+        .optopt("", "color", "coloring: auto, always, never", "WHEN")
         .optopt("", "host", "the host to build for", "HOST")
         .optopt("", "cdb", "path to CDB to use for CDB debuginfo tests", "PATH")
         .optopt("", "gdb", "path to GDB to use for GDB debuginfo tests", "PATH")
@@ -274,12 +274,6 @@ fn parse_config(args: Vec<String>) -> Config {
     let lldb = matches.opt_str("lldb").map(Utf8PathBuf::from);
     let lldb_version =
         matches.opt_str("lldb-version").as_deref().and_then(debuggers::extract_lldb_version);
-    let color = match matches.opt_str("color").as_deref() {
-        Some("auto") | None => ColorConfig::AutoColor,
-        Some("always") => ColorConfig::AlwaysColor,
-        Some("never") => ColorConfig::NeverColor,
-        Some(x) => panic!("argument for --color must be auto, always, or never, but found `{}`", x),
-    };
     // FIXME: this is very questionable, we really should be obtaining LLVM version info from
     // `bootstrap`, and not trying to be figuring out that in `compiletest` by running the
     // `FileCheck` binary.
@@ -304,16 +298,6 @@ fn parse_config(args: Vec<String>) -> Config {
     let with_rustc_debug_assertions = matches.opt_present("with-rustc-debug-assertions");
     let with_std_debug_assertions = matches.opt_present("with-std-debug-assertions");
     let mode = matches.opt_str("mode").unwrap().parse().expect("invalid mode");
-    let has_html_tidy = if mode == TestMode::Rustdoc {
-        Command::new("tidy")
-            .arg("--version")
-            .stdout(Stdio::null())
-            .status()
-            .map_or(false, |status| status.success())
-    } else {
-        // Avoid spawning an external command when we know html-tidy won't be used.
-        false
-    };
     let has_enzyme = matches.opt_present("has-enzyme");
     let filters = if mode == TestMode::RunMake {
         matches
@@ -455,11 +439,9 @@ fn parse_config(args: Vec<String>) -> Config {
         adb_device_status,
         verbose: matches.opt_present("verbose"),
         only_modified: matches.opt_present("only-modified"),
-        color,
         remote_test_client: matches.opt_str("remote-test-client").map(Utf8PathBuf::from),
         compare_mode,
         rustfix_coverage: matches.opt_present("rustfix-coverage"),
-        has_html_tidy,
         has_enzyme,
         channel: matches.opt_str("channel").unwrap(),
         git_hash: matches.opt_present("git-hash"),
@@ -1144,10 +1126,6 @@ fn check_for_overlapping_test_paths(found_path_stems: &HashSet<Utf8PathBuf>) {
 }
 
 fn early_config_check(config: &Config) {
-    if !config.has_html_tidy && config.mode == TestMode::Rustdoc {
-        warning!("`tidy` (html-tidy.org) is not installed; diffs will not be generated");
-    }
-
     if !config.profiler_runtime && config.mode == TestMode::CoverageRun {
         let actioned = if config.bless { "blessed" } else { "checked" };
         warning!("profiler runtime is not available, so `.coverage` files won't be {actioned}");
