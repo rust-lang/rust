@@ -46,7 +46,7 @@ pub use codes::*;
 pub use decorate_diag::{BufferedEarlyLint, DecorateDiagCompat, LintBuffer};
 pub use diagnostic::{
     BugAbort, Diag, DiagArgMap, DiagInner, DiagStyledString, Diagnostic, EmissionGuarantee,
-    FatalAbort, LintDiagnostic, LintDiagnosticBox, StringPart, Subdiag, Subdiagnostic,
+    FatalAbort, LintDiagnostic, LintDiagnosticBox, RustVersion, StringPart, Subdiag, Subdiagnostic,
 };
 pub use diagnostic_impls::{
     DiagSymbolList, ElidedLifetimeInPathSubdiag, ExpectedLifetimeParameter,
@@ -633,6 +633,9 @@ struct DiagCtxtInner {
     /// The file where the ICE information is stored. This allows delayed_span_bug backtraces to be
     /// stored along side the main panic backtrace.
     ice_file: Option<PathBuf>,
+
+    /// Controlled by `CARGO_PKG_RUST_VERSION`; this allows avoiding emitting lints which would raise MSRV.
+    msrv: Option<RustVersion>,
 }
 
 /// A key denoting where from a diagnostic was stashed.
@@ -822,6 +825,7 @@ impl DiagCtxt {
             future_breakage_diagnostics,
             fulfilled_expectations,
             ice_file: _,
+            msrv: _,
         } = inner.deref_mut();
 
         // For the `Vec`s and `HashMap`s, we overwrite with an empty container to free the
@@ -1503,6 +1507,7 @@ impl DiagCtxtInner {
             future_breakage_diagnostics: Vec::new(),
             fulfilled_expectations: Default::default(),
             ice_file: None,
+            msrv: std::env::var("CARGO_PKG_RUST_VERSION").ok().and_then(|vers| vers.parse().ok()),
         }
     }
 
@@ -1616,6 +1621,12 @@ impl DiagCtxtInner {
                 }
             }
         }
+
+        if let (Some(msrv), Some(rv)) = (self.msrv, diagnostic.rust_version)
+            && rv > msrv
+        {
+            return None;
+        };
 
         TRACK_DIAGNOSTIC(diagnostic, &mut |mut diagnostic| {
             if let Some(code) = diagnostic.code {
