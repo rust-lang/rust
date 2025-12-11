@@ -190,7 +190,7 @@
 # modifications to the `src/gcc` submodule.
 # Currently, this is only supported for the `x86_64-unknown-linux-gnu` target.
 #gcc.download-ci-gcc = false
-#libgccjit-libs-dir = "/path/to/libgccjit-libs-dir"
+#gcc.libgccjit-libs-dir = "/path/to/libgccjit-libs-dir"
 
 # =============================================================================
 # General build configuration options
