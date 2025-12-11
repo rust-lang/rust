@@ -351,7 +351,7 @@ you need to pull rustc changes into Miri first, and then re-do the rustc push.
 If this fails due to authentication problems, it can help to make josh push via ssh instead of
 https. Add the following to your `.gitconfig`:
 
-```toml
+```text
 [url "git@github.com:"]
     pushInsteadOf = https://github.com/
 ```
