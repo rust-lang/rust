@@ -725,17 +725,17 @@ impl Step for Libdir {
         if !builder.config.dry_run() {
             // Avoid deleting the `rustlib/` directory we just copied (in `impl Step for
             // Sysroot`).
-            if !builder.download_rustc() {
+            /*if !builder.download_rustc() {
                 let sysroot_target_libdir = sysroot.join(self.target).join("lib");
                 builder.do_if_verbose(|| {
                     eprintln!(
-                        "Removing sysroot {} to avoid caching bugs",
+                        "HERE Removing sysroot {} to avoid caching bugs",
                         sysroot_target_libdir.display()
                     )
                 });
                 let _ = fs::remove_dir_all(&sysroot_target_libdir);
                 t!(fs::create_dir_all(&sysroot_target_libdir));
-            }
+            }*/
 
             if self.compiler.stage == 0 {
                 // The stage 0 compiler for the build triple is always pre-built. Ensure that
