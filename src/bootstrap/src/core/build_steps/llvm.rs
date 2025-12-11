@@ -960,20 +960,27 @@ impl Step for OmpOffload {
         };
         trace!(?profile);
 
-        let cc = if let Some(p) = &builder.build.config.llvm_offload_cc {
-            p.clone()
-        } else {
-            builder.cc(target)
-        };
-        let cxx = if let Some(p) = &builder.build.config.llvm_offload_cxx {
-            p.clone()
-        } else {
-            builder.cxx(target).unwrap()
-        };
+        //let cc = if let Some(p) = &builder.build.config.llvm_offload_cc {
+        //    //p.clone()
+        //    builder.cc(target)
+        //} else {
+        //    builder.cc(target)
+        //};
+        //let cxx = if let Some(p) = &builder.build.config.llvm_offload_cxx {
+        //    //p.clone()
+        //    builder.cxx(target).unwrap()
+        //} else {
+        //    builder.cxx(target).unwrap()
+        //};
         let root = if let Some(p) = &builder.build.config.llvm_root_offload {
             p.clone()
         } else {
             builder.llvm_out(target).join("build")
+        };
+        let clang_dir = if !builder.config.llvm_clang {
+            &builder.build.config.llvm_clang_dir.unwrap()
+        } else {
+            None
         };
 
         cfg.out_dir(&out_dir)
@@ -982,26 +989,15 @@ impl Step for OmpOffload {
             .define("LLVM_ENABLE_ASSERTIONS", "ON")
             .define("LLVM_ENABLE_RUNTIMES", "openmp;offload")
             .define("LLVM_INCLUDE_TESTS", "OFF")
-            .define("LLVM_BUILD_TESTS", "OFF")
             .define("OFFLOAD_INCLUDE_TESTS", "OFF")
-            //.define(
-            //    "CMAKE_C_COMPILER",
-            //    "/tmp/drehwald1/prog/rust/build/x86_64-unknown-linux-gnu/llvm/bin/clang",
-            //)
-            //.define(
-            //    "CMAKE_CXX_COMPILER",
-            //    "/tmp/drehwald1/prog/rust/build/x86_64-unknown-linux-gnu/llvm/bin/clang++",
-            //)
-            .define("CMAKE_C_COMPILER", cc)
-            .define("CMAKE_CXX_COMPILER", cxx)
+            //.define("CMAKE_C_COMPILER", cc)
+            //.define("CMAKE_CXX_COMPILER", cxx)
             .define("Clang_DIR", "/tmp/drehwald1/prog/llvm/lib/cmake/clang")
             .define("OPENMP_STANDALONE_BUILD", "ON")
             .define("LLVM_ROOT", root)
-            //.define(
-            //    "LLVM_ROOT",
-            //    "/tmp/drehwald1/prog/rust/build/x86_64-unknown-linux-gnu/llvm/build/",
-            //)
             .define("LLVM_DIR", builder.llvm_out(target).join("lib").join("cmake").join("llvm"));
+        if let Some(p) = Clang_DIR {
+            cfg.define("CLANG_DIR", p);
         cfg.build();
 
         t!(stamp.write());

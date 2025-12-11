@@ -35,6 +35,7 @@ define_config! {
         offload_cc: Option<String> = "offload-cc",
         offload_cxx: Option<String> = "offload-cxx",
         root_offload: Option<String> = "root-offload",
+        clang_dir: Option<String> = "offload-clang-dir",
         allow_old_toolchain: Option<bool> = "allow-old-toolchain",
         offload: Option<bool> = "offload",
         polly: Option<bool> = "polly",
