@@ -453,14 +453,36 @@ fn sidebar_assoc_items<'a>(
             LinkBlock::new(
                 Link::new("implementations", "Associated Constants"),
                 "associatedconstant",
-                assoc_consts,
+                assoc_consts
+                    .into_iter()
+                    .map(|l| {
+                        // Inject non-visual marker for deprecated filtering in sidebar entries
+                        // by appending a hidden span to the displayed name.
+                        // Note: we rely on `Link::new` to accept enriched HTML for the name.
+                        Link::new(l.href.clone(), format!("{}<span class=\"depr-item\" hidden></span>", l.name))
+                    })
+                    .collect(),
             ),
             LinkBlock::new(
                 Link::new("implementations", "Associated Types"),
                 "associatedtype",
-                assoc_types,
+                assoc_types
+                    .into_iter()
+                    .map(|l| {
+                        Link::new(l.href.clone(), format!("{}<span class=\"depr-item\" hidden></span>", l.name))
+                    })
+                    .collect(),
             ),
-            LinkBlock::new(Link::new("implementations", "Methods"), "method", methods),
+            LinkBlock::new(
+                Link::new("implementations", "Methods"),
+                "method",
+                methods
+                    .into_iter()
+                    .map(|l| {
+                        Link::new(l.href.clone(), format!("{}<span class=\"depr-item\" hidden></span>", l.name))
+                    })
+                    .collect(),
+            ),
         ];
 
         if v.iter().any(|i| i.inner_impl().trait_.is_some()) {

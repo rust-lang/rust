@@ -1,4 +1,6 @@
 /* ignore-tidy-filelength */
+
+
 /*
 	When static files are updated, their suffixes need to be updated.
 	1. In the top directory run:
@@ -50,244 +52,271 @@ xmlns="http://www.w3.org/2000/svg" fill="black" height="18px">\
 	--prev-arrow-image: url('data:image/svg+xml,<svg width="16" height="16" viewBox="0 0 16 16" \
 	enable-background="new 0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path fill="none" \
 	d="M8,3l-4,5l4,5m-4,-5h10" stroke="black" stroke-width="2"/></svg>');
-	--next-arrow-image: url('data:image/svg+xml,<svg width="16" height="16" viewBox="0 0 16 16" \
+    --next-arrow-image: url('data:image/svg+xml,<svg width="16" height="16" viewBox="0 0 16 16" \
 	enable-background="new 0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path fill="none" \
 	d="M8,3l4,5l-4,5m4,-5h-10" stroke="black" stroke-width="2"/></svg>');
-	--expand-arrow-image: url('data:image/svg+xml,<svg width="16" height="16" viewBox="0 0 16 16" \
+    --expand-arrow-image: url('data:image/svg+xml,<svg width="16" height="16" viewBox="0 0 16 16" \
 	enable-background="new 0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path fill="none" \
 	d="M3,10l4,4l4,-4m-4,4M3,7l4,-4l4,4" stroke="black" stroke-width="2"/></svg>');
-	--collapse-arrow-image: url('data:image/svg+xml,<svg width="16" height="16" viewBox="0 0 16 16" \
+    --collapse-arrow-image: url('data:image/svg+xml,<svg width="16" height="16" viewBox="0 0 16 16" \
 	enable-background="new 0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path fill="none" \
 	d="M3,8l4,4l4,-4m-4,4M3,4l4,4l4,-4" stroke="black" stroke-width="2"/></svg>');
-	--hamburger-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" \
+    --hamburger-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" \
 		viewBox="0 0 22 22" fill="none" stroke="black">\
 		<path d="M3,5h16M3,11h16M3,17h16" stroke-width="2.75"/></svg>');
 }
 
 :root.sans-serif {
-	--font-family: "Fira Sans", sans-serif;
-	--font-family-code: "Fira Mono", monospace;
+    --font-family: "Fira Sans", sans-serif;
+    --font-family-code: "Fira Mono", monospace;
 }
 
 /* See FiraSans-LICENSE.txt for the Fira Sans license. */
 @font-face {
-	font-family: 'Fira Sans';
-	font-style: normal;
-	font-weight: 400;
-	src: local('Fira Sans'),
-		url("FiraSans-Regular-0fe48ade.woff2") format("woff2");
-	font-display: swap;
+    font-family: "Fira Sans";
+    font-style: normal;
+    font-weight: 400;
+    src:
+        local("Fira Sans"),
+        url("FiraSans-Regular-0fe48ade.woff2") format("woff2");
+    font-display: swap;
 }
 @font-face {
-	font-family: 'Fira Sans';
-	font-style: italic;
-	font-weight: 400;
-	src: local('Fira Sans Italic'),
-		url("FiraSans-Italic-81dc35de.woff2") format("woff2");
-	font-display: swap;
+    font-family: "Fira Sans";
+    font-style: italic;
+    font-weight: 400;
+    src:
+        local("Fira Sans Italic"),
+        url("FiraSans-Italic-81dc35de.woff2") format("woff2");
+    font-display: swap;
 }
 @font-face {
-	font-family: 'Fira Sans';
-	font-style: normal;
-	font-weight: 500;
-	src: local('Fira Sans Medium'),
-		url("FiraSans-Medium-e1aa3f0a.woff2") format("woff2");
-	font-display: swap;
+    font-family: "Fira Sans";
+    font-style: normal;
+    font-weight: 500;
+    src:
+        local("Fira Sans Medium"),
+        url("FiraSans-Medium-e1aa3f0a.woff2") format("woff2");
+    font-display: swap;
 }
 @font-face {
-	font-family: 'Fira Sans';
-	font-style: italic;
-	font-weight: 500;
-	src: local('Fira Sans Medium Italic'),
-		url("FiraSans-MediumItalic-ccf7e434.woff2") format("woff2");
-	font-display: swap;
+    font-family: "Fira Sans";
+    font-style: italic;
+    font-weight: 500;
+    src:
+        local("Fira Sans Medium Italic"),
+        url("FiraSans-MediumItalic-ccf7e434.woff2") format("woff2");
+    font-display: swap;
 }
 @font-face {
-	font-family: 'Fira Mono';
-	font-style: normal;
-	font-weight: 400;
-	src: local('Fira Mono'),
-		url("FiraMono-Regular-87c26294.woff2") format("woff2");
-	font-display: swap;
+    font-family: "Fira Mono";
+    font-style: normal;
+    font-weight: 400;
+    src:
+        local("Fira Mono"),
+        url("FiraMono-Regular-87c26294.woff2") format("woff2");
+    font-display: swap;
 }
 @font-face {
-	font-family: 'Fira Mono';
-	font-style: normal;
-	font-weight: 500;
-	src: local('Fira Mono Medium'),
-		url("FiraMono-Medium-86f75c8c.woff2") format("woff2");
-	font-display: swap;
+    font-family: "Fira Mono";
+    font-style: normal;
+    font-weight: 500;
+    src:
+        local("Fira Mono Medium"),
+        url("FiraMono-Medium-86f75c8c.woff2") format("woff2");
+    font-display: swap;
 }
 
 /* See SourceSerif4-LICENSE.md for the Source Serif 4 license. */
 @font-face {
-	font-family: 'Source Serif 4';
-	font-style: normal;
-	font-weight: 400;
-	src: local('Source Serif 4'),
-		url("SourceSerif4-Regular-6b053e98.ttf.woff2") format("woff2");
-	font-display: swap;
+    font-family: "Source Serif 4";
+    font-style: normal;
+    font-weight: 400;
+    src:
+        local("Source Serif 4"),
+        url("SourceSerif4-Regular-6b053e98.ttf.woff2") format("woff2");
+    font-display: swap;
 }
 @font-face {
-	font-family: 'Source Serif 4';
-	font-style: italic;
-	font-weight: 400;
-	src: local('Source Serif 4 Italic'),
-		url("SourceSerif4-It-ca3b17ed.ttf.woff2") format("woff2");
-	font-display: swap;
+    font-family: "Source Serif 4";
+    font-style: italic;
+    font-weight: 400;
+    src:
+        local("Source Serif 4 Italic"),
+        url("SourceSerif4-It-ca3b17ed.ttf.woff2") format("woff2");
+    font-display: swap;
 }
 @font-face {
-	font-family: 'Source Serif 4';
-	font-style: normal;
-	font-weight: 500;
-	src: local('Source Serif 4 Semibold'),
-		url("SourceSerif4-Semibold-457a13ac.ttf.woff2") format("woff2");
-	font-display: swap;
+    font-family: "Source Serif 4";
+    font-style: normal;
+    font-weight: 500;
+    src:
+        local("Source Serif 4 Semibold"),
+        url("SourceSerif4-Semibold-457a13ac.ttf.woff2") format("woff2");
+    font-display: swap;
 }
 @font-face {
-	font-family: 'Source Serif 4';
-	font-style: normal;
-	font-weight: 700;
-	src: local('Source Serif 4 Bold'),
-		url("SourceSerif4-Bold-6d4fd4c0.ttf.woff2") format("woff2");
-	font-display: swap;
+    font-family: "Source Serif 4";
+    font-style: normal;
+    font-weight: 700;
+    src:
+        local("Source Serif 4 Bold"),
+        url("SourceSerif4-Bold-6d4fd4c0.ttf.woff2") format("woff2");
+    font-display: swap;
 }
 
 /* See SourceCodePro-LICENSE.txt for the Source Code Pro license. */
 @font-face {
-	font-family: 'Source Code Pro';
-	font-style: normal;
-	font-weight: 400;
-	/* Avoid using locally installed font because bad versions are in circulation:
+    font-family: "Source Code Pro";
+    font-style: normal;
+    font-weight: 400;
+    /* Avoid using locally installed font because bad versions are in circulation:
 	 * see https://github.com/rust-lang/rust/issues/24355 */
-	src: url("SourceCodePro-Regular-8badfe75.ttf.woff2") format("woff2");
-	font-display: swap;
+    src: url("SourceCodePro-Regular-8badfe75.ttf.woff2") format("woff2");
+    font-display: swap;
 }
 @font-face {
-	font-family: 'Source Code Pro';
-	font-style: italic;
-	font-weight: 400;
-	src: url("SourceCodePro-It-fc8b9304.ttf.woff2") format("woff2");
-	font-display: swap;
+    font-family: "Source Code Pro";
+    font-style: italic;
+    font-weight: 400;
+    src: url("SourceCodePro-It-fc8b9304.ttf.woff2") format("woff2");
+    font-display: swap;
 }
 @font-face {
-	font-family: 'Source Code Pro';
-	font-style: normal;
-	font-weight: 600;
-	src: url("SourceCodePro-Semibold-aa29a496.ttf.woff2") format("woff2");
-	font-display: swap;
+    font-family: "Source Code Pro";
+    font-style: normal;
+    font-weight: 600;
+    src: url("SourceCodePro-Semibold-aa29a496.ttf.woff2") format("woff2");
+    font-display: swap;
 }
 
 /* Avoid using legacy CJK serif fonts in Windows like Batang. */
 @font-face {
-	font-family: 'NanumBarunGothic';
-	src: url("NanumBarunGothic-13b3dcba.ttf.woff2") format("woff2");
-	font-display: swap;
-	unicode-range: U+AC00-D7AF, U+1100-11FF, U+3130-318F, U+A960-A97F, U+D7B0-D7FF;
+    font-family: "NanumBarunGothic";
+    src: url("NanumBarunGothic-13b3dcba.ttf.woff2") format("woff2");
+    font-display: swap;
+    unicode-range:
+        U+AC00-D7AF, U+1100-11FF, U+3130-318F, U+A960-A97F, U+D7B0-D7FF;
 }
 
 * {
-	box-sizing: border-box;
+    box-sizing: border-box;
 }
 
 /* General structure and fonts */
 
+.hide-depr dt:has(.stab.deprecated),
+.hide-depr dt:has(.stab.deprecated) + dd {
+	display: none;
+}
+
 body {
-	/* Line spacing at least 1.5 per Web Content Accessibility Guidelines
+    /* Line spacing at least 1.5 per Web Content Accessibility Guidelines
 	   https://www.w3.org/WAI/WCAG21/Understanding/visual-presentation.html */
-	font: 1rem/1.5 var(--font-family);
-	margin: 0;
-	position: relative;
-	/* We use overflow-wrap: break-word for Safari, which doesn't recognize
+    font: 1rem/1.5 var(--font-family);
+    margin: 0;
+    position: relative;
+    /* We use overflow-wrap: break-word for Safari, which doesn't recognize
 	   `anywhere`: https://developer.mozilla.org/en-US/docs/Web/CSS/overflow-wrap */
-	overflow-wrap: break-word;
-	/* Then override it with `anywhere`, which is required to make non-Safari browsers break
+    overflow-wrap: break-word;
+    /* Then override it with `anywhere`, which is required to make non-Safari browsers break
 	   more aggressively when we want them to. */
-	overflow-wrap: anywhere;
-	font-feature-settings: "kern", "liga";
-	background-color: var(--main-background-color);
-	color: var(--main-color);
+    overflow-wrap: anywhere;
+    font-feature-settings: "kern", "liga";
+    background-color: var(--main-background-color);
+    color: var(--main-color);
 }
 
 h1 {
-	font-size: 1.5rem; /* 24px */
+    font-size: 1.5rem; /* 24px */
 }
 h2 {
-	font-size: 1.375rem; /* 22px */
+    font-size: 1.375rem; /* 22px */
 }
 h3 {
-	font-size: 1.25rem; /* 20px */
+    font-size: 1.25rem; /* 20px */
 }
-h1, h2, h3, h4, h5, h6 {
-	font-weight: 500;
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+    font-weight: 500;
 }
-h1, h2, h3, h4 {
-	margin: 25px 0 15px 0;
-	padding-bottom: 6px;
+h1,
+h2,
+h3,
+h4 {
+    margin: 25px 0 15px 0;
+    padding-bottom: 6px;
 }
-.docblock h3, .docblock h4, h5, h6 {
-	margin: 15px 0 5px 0;
+.docblock h3,
+.docblock h4,
+h5,
+h6 {
+    margin: 15px 0 5px 0;
 }
 .docblock > h2:first-child,
 .docblock > h3:first-child,
 .docblock > h4:first-child,
 .docblock > h5:first-child,
 .docblock > h6:first-child {
-	margin-top: 0;
+    margin-top: 0;
 }
 .main-heading h1 {
-	margin: 0;
-	padding: 0;
-	grid-area: main-heading-h1;
-	/* We use overflow-wrap: break-word for Safari, which doesn't recognize
+    margin: 0;
+    padding: 0;
+    grid-area: main-heading-h1;
+    /* We use overflow-wrap: break-word for Safari, which doesn't recognize
 	   `anywhere`: https://developer.mozilla.org/en-US/docs/Web/CSS/overflow-wrap */
-	overflow-wrap: break-word;
-	/* Then override it with `anywhere`, which is required to make non-Safari browsers break
+    overflow-wrap: break-word;
+    /* Then override it with `anywhere`, which is required to make non-Safari browsers break
 	   more aggressively when we want them to. */
-	overflow-wrap: anywhere;
+    overflow-wrap: anywhere;
 }
 .main-heading {
-	position: relative;
-	display: grid;
-	grid-template-areas:
-		"main-heading-breadcrumbs main-heading-breadcrumbs"
-		"main-heading-h1 main-heading-toolbar"
-		"main-heading-sub-heading main-heading-toolbar";
-	grid-template-columns: minmax(105px, 1fr) minmax(0, max-content);
-	grid-template-rows: minmax(25px, min-content) min-content min-content;
-	padding-bottom: 6px;
-	margin-bottom: 15px;
+    position: relative;
+    display: grid;
+    grid-template-areas:
+        "main-heading-breadcrumbs main-heading-breadcrumbs"
+        "main-heading-h1 main-heading-toolbar"
+        "main-heading-sub-heading main-heading-toolbar";
+    grid-template-columns: minmax(105px, 1fr) minmax(0, max-content);
+    grid-template-rows: minmax(25px, min-content) min-content min-content;
+    padding-bottom: 6px;
+    margin-bottom: 15px;
 }
 .search-results-main-heading {
-	grid-template-areas:
-		"main-heading-breadcrumbs main-heading-placeholder"
-		"main-heading-breadcrumbs main-heading-toolbar    "
-		"main-heading-h1          main-heading-toolbar    ";
+    grid-template-areas:
+        "main-heading-breadcrumbs main-heading-placeholder"
+        "main-heading-breadcrumbs main-heading-toolbar    "
+        "main-heading-h1          main-heading-toolbar    ";
 }
 .search-results-main-heading nav.sub {
-	grid-area: main-heading-h1;
-	align-items: end;
-	margin: 4px 0 8px 0;
+    grid-area: main-heading-h1;
+    align-items: end;
+    margin: 4px 0 8px 0;
 }
 .rustdoc-breadcrumbs {
-	grid-area: main-heading-breadcrumbs;
-	line-height: 1.25;
-	padding-top: 5px;
-	position: relative;
-	z-index: 1;
+    grid-area: main-heading-breadcrumbs;
+    line-height: 1.25;
+    padding-top: 5px;
+    position: relative;
+    z-index: 1;
 }
 .search-switcher {
-	grid-area: main-heading-breadcrumbs;
-	line-height: 1.5;
-	display: flex;
-	color: var(--main-color);
-	align-items: baseline;
-	white-space: nowrap;
-	padding-top: 8px;
-	min-height: 34px;
+    grid-area: main-heading-breadcrumbs;
+    line-height: 1.5;
+    display: flex;
+    color: var(--main-color);
+    align-items: baseline;
+    white-space: nowrap;
+    padding-top: 8px;
+    min-height: 34px;
 }
 .rustdoc-breadcrumbs a {
-	padding: 5px 0 7px;
+    padding: 5px 0 7px;
 }
 /* The only headings that get underlines are:
 	 Markdown-generated headings within the top-doc
@@ -297,30 +326,32 @@ h1, h2, h3, h4 {
 .content h2,
 .top-doc .docblock > h3,
 .top-doc .docblock > h4 {
-	border-bottom: 1px solid var(--headings-border-bottom-color);
+    border-bottom: 1px solid var(--headings-border-bottom-color);
 }
 /* while line-height 1.5 is required for any "block of text",
 	which WCAG defines as more than one sentence, it looks weird for
 	very large main headers */
-h1, h2 {
-	line-height: 1.25;
-	padding-top: 3px;
-	padding-bottom: 9px;
+h1,
+h2 {
+    line-height: 1.25;
+    padding-top: 3px;
+    padding-bottom: 9px;
 }
 h3.code-header {
-	font-size: 1.125rem; /* 18px */
+    font-size: 1.125rem; /* 18px */
 }
 h4.code-header {
-	font-size: 1rem;
+    font-size: 1rem;
 }
 .code-header {
-	font-weight: 600;
-	margin: 0;
-	padding: 0;
-	white-space: pre-wrap;
+    font-weight: 600;
+    margin: 0;
+    padding: 0;
+    white-space: pre-wrap;
 }
-.structfield, .sub-variant-field {
-	margin: 0.6em 0;
+.structfield,
+.sub-variant-field {
+    margin: 0.6em 0;
 }
 
 #crate-search,
@@ -341,7 +372,7 @@ summary.hideme,
 .search-switcher,
 /* This selector is for the items listed in the "all items" page. */
 ul.all-items {
-	font-family: "Fira Sans", Arial, NanumBarunGothic, sans-serif;
+    font-family: "Fira Sans", Arial, NanumBarunGothic, sans-serif;
 }
 
 #toggle-all-docs,
@@ -357,438 +388,475 @@ h1 a,
 .search-results li,
 .stab,
 .result-name i {
-	color: var(--main-color);
+    color: var(--main-color);
 }
 
-span.enum, a.enum,
-span.struct, a.struct,
-span.union, a.union,
-span.primitive, a.primitive,
-span.type, a.type,
-span.foreigntype, a.foreigntype {
-	color: var(--type-link-color);
+span.enum,
+a.enum,
+span.struct,
+a.struct,
+span.union,
+a.union,
+span.primitive,
+a.primitive,
+span.type,
+a.type,
+span.foreigntype,
+a.foreigntype {
+    color: var(--type-link-color);
 }
 
-span.trait, a.trait,
-span.traitalias, a.traitalias {
-	color: var(--trait-link-color);
+span.trait,
+a.trait,
+span.traitalias,
+a.traitalias {
+    color: var(--trait-link-color);
 }
 
-span.associatedtype, a.associatedtype,
-span.constant, a.constant,
-span.static, a.static {
-	color: var(--assoc-item-link-color);
+span.associatedtype,
+a.associatedtype,
+span.constant,
+a.constant,
+span.static,
+a.static {
+    color: var(--assoc-item-link-color);
 }
 
-span.fn, a.fn,
-span.method, a.method,
-span.tymethod, a.tymethod {
-	color: var(--function-link-color);
+span.fn,
+a.fn,
+span.method,
+a.method,
+span.tymethod,
+a.tymethod {
+    color: var(--function-link-color);
 }
 
-span.attr, a.attr,
-span.derive, a.derive,
-span.macro, a.macro {
-	color: var(--macro-link-color);
+span.attr,
+a.attr,
+span.derive,
+a.derive,
+span.macro,
+a.macro {
+    color: var(--macro-link-color);
 }
 
-span.mod, a.mod {
-	color: var(--mod-link-color);
+span.mod,
+a.mod {
+    color: var(--mod-link-color);
 }
 
-span.keyword, a.keyword {
-	color: var(--keyword-link-color);
+span.keyword,
+a.keyword {
+    color: var(--keyword-link-color);
 }
 
-span.attribute, a.attribute {
-	color: var(--attribute-link-color);
+span.attribute,
+a.attribute {
+    color: var(--attribute-link-color);
 }
 
 a {
-	color: var(--link-color);
-	text-decoration: none;
+    color: var(--link-color);
+    text-decoration: none;
 }
 
-ol, ul {
-	padding-left: 24px;
+ol,
+ul {
+    padding-left: 24px;
 }
-ul ul, ol ul, ul ol, ol ol {
-	margin-bottom: .625em;
+ul ul,
+ol ul,
+ul ol,
+ol ol {
+    margin-bottom: 0.625em;
 }
 
-p, .docblock > .warning {
-	/* Paragraph spacing at least 1.5 times line spacing per Web Content Accessibility Guidelines.
+p,
+.docblock > .warning {
+    /* Paragraph spacing at least 1.5 times line spacing per Web Content Accessibility Guidelines.
 	   Line-height is 1.5rem, so line spacing is .5rem; .75em is 1.5 times that.
 	   https://www.w3.org/WAI/WCAG21/Understanding/visual-presentation.html */
-	margin: 0 0 .75em 0;
+    margin: 0 0 0.75em 0;
 }
 /* For the last child of a div, the margin will be taken care of
 	by the margin-top of the next item. */
-p:last-child, .docblock > .warning:last-child {
-	margin: 0;
+p:last-child,
+.docblock > .warning:last-child {
+    margin: 0;
 }
 
 /* Fix some style changes due to normalize.css 8 */
 
 button {
-	/* Buttons on Safari have different default padding than other platforms. Make them the same. */
-	padding: 1px 6px;
-	/* Opinionated tweak: use pointer cursor as clickability signifier. */
-	cursor: pointer;
+    /* Buttons on Safari have different default padding than other platforms. Make them the same. */
+    padding: 1px 6px;
+    /* Opinionated tweak: use pointer cursor as clickability signifier. */
+    cursor: pointer;
 }
 
 /* end tweaks for normalize.css 8 */
 
 button#toggle-all-docs {
-	padding: 0;
-	background: none;
-	border: none;
-	/* iOS button gradient: https://stackoverflow.com/q/5438567 */
-	-webkit-appearance: none;
-	opacity: 1;
+    padding: 0;
+    background: none;
+    border: none;
+    /* iOS button gradient: https://stackoverflow.com/q/5438567 */
+    -webkit-appearance: none;
+    opacity: 1;
 }
 
 .rustdoc {
-	display: flex;
-	flex-direction: row;
-	flex-wrap: nowrap;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
 }
 
 main {
-	position: relative;
-	flex-grow: 1;
-	padding: 10px 15px 40px 45px;
-	min-width: 0; /* avoid growing beyond the size limit */
+    position: relative;
+    flex-grow: 1;
+    padding: 10px 15px 40px 45px;
+    min-width: 0; /* avoid growing beyond the size limit */
 }
 
 .src main {
-	padding: 15px;
+    padding: 15px;
 }
 
 .width-limiter {
-	max-width: 960px;
-	margin-right: auto;
+    max-width: 960px;
+    margin-right: auto;
 }
 
 details:not(.toggle) summary {
-	margin-bottom: .6em;
+    margin-bottom: 0.6em;
 }
 
-code, pre, .code-header, .type-signature {
-	font-family: var(--font-family-code);
+code,
+pre,
+.code-header,
+.type-signature {
+    font-family: var(--font-family-code);
 }
-.docblock code, .item-table dd code {
-	border-radius: 3px;
-	padding: 0 0.125em;
+.docblock code,
+.item-table dd code {
+    border-radius: 3px;
+    padding: 0 0.125em;
 }
-.docblock pre code, .item-table dd pre code {
-	padding: 0;
+.docblock pre code,
+.item-table dd pre code {
+    padding: 0;
 }
 pre {
-	padding: 14px;
-	line-height: 1.5; /* https://github.com/rust-lang/rust/issues/105906 */
+    padding: 14px;
+    line-height: 1.5; /* https://github.com/rust-lang/rust/issues/105906 */
 }
 pre.item-decl {
-	overflow-x: auto;
+    overflow-x: auto;
 }
 /* This rule allows to have scrolling on the X axis. */
 .item-decl .type-contents-toggle {
-	contain: initial;
+    contain: initial;
 }
 
 .src .content pre {
-	padding: 20px;
-	padding-left: 16px;
+    padding: 20px;
+    padding-left: 16px;
 }
 
 img {
-	max-width: 100%;
+    max-width: 100%;
 }
 
 .logo-container {
-	/* zero text boxes so that computed line height = image height exactly */
-	line-height: 0;
-	display: block;
+    /* zero text boxes so that computed line height = image height exactly */
+    line-height: 0;
+    display: block;
 }
 
 .rust-logo {
-	filter: var(--rust-logo-filter);
+    filter: var(--rust-logo-filter);
 }
 
 .sidebar {
-	font-size: 0.875rem;
-	flex: 0 0 var(--desktop-sidebar-width);
-	width: var(--desktop-sidebar-width);
-	overflow-y: scroll;
-	overscroll-behavior: contain;
-	position: sticky;
-	height: 100vh;
-	top: 0;
-	left: 0;
-	z-index: var(--desktop-sidebar-z-index);
-	/* resize indicator: hide this when on touch or mobile */
-	border-right: solid 1px var(--sidebar-border-color);
+    font-size: 0.875rem;
+    flex: 0 0 var(--desktop-sidebar-width);
+    width: var(--desktop-sidebar-width);
+    overflow-y: scroll;
+    overscroll-behavior: contain;
+    position: sticky;
+    height: 100vh;
+    top: 0;
+    left: 0;
+    z-index: var(--desktop-sidebar-z-index);
+    /* resize indicator: hide this when on touch or mobile */
+    border-right: solid 1px var(--sidebar-border-color);
 }
 
 .rustdoc.src .sidebar {
-	flex-basis: 50px;
-	width: 50px;
-	overflow-x: hidden;
-	/* The sidebar is by default hidden  */
-	overflow-y: hidden;
+    flex-basis: 50px;
+    width: 50px;
+    overflow-x: hidden;
+    /* The sidebar is by default hidden  */
+    overflow-y: hidden;
 }
 
 .hide-sidebar .sidebar,
 .hide-sidebar .sidebar-resizer {
-	display: none;
+    display: none;
 }
 
 .sidebar-resizer {
-	touch-action: none;
-	width: 9px;
-	cursor: ew-resize;
-	z-index: calc(var(--desktop-sidebar-z-index) + 1);
-	position: fixed;
-	height: 100%;
-	left: var(--desktop-sidebar-width);
-	display: flex;
-	align-items: center;
-	justify-content: flex-start;
-	color: var(--right-side-color);
+    touch-action: none;
+    width: 9px;
+    cursor: ew-resize;
+    z-index: calc(var(--desktop-sidebar-z-index) + 1);
+    position: fixed;
+    height: 100%;
+    left: var(--desktop-sidebar-width);
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    color: var(--right-side-color);
 }
 .sidebar-resizer::before {
-	content: "";
-	border-right: dotted 2px currentColor;
-	width: 2px;
-	height: 12px;
+    content: "";
+    border-right: dotted 2px currentColor;
+    width: 2px;
+    height: 12px;
 }
 .sidebar-resizer::after {
-	content: "";
-	border-right: dotted 2px currentColor;
-	width: 2px;
-	height: 16px;
+    content: "";
+    border-right: dotted 2px currentColor;
+    width: 2px;
+    height: 16px;
 }
 
 .rustdoc.src .sidebar-resizer {
-	/* when closed, place resizer glow on top of the normal src sidebar border (no need to
+    /* when closed, place resizer glow on top of the normal src sidebar border (no need to
 	worry about sidebar) */
-	left: 49px;
+    left: 49px;
 }
 
 .src-sidebar-expanded .src .sidebar-resizer {
-	/* for src sidebar, gap is already provided by 1px border on sidebar itself, so place resizer
+    /* for src sidebar, gap is already provided by 1px border on sidebar itself, so place resizer
 	   to right of it */
-	left: var(--src-sidebar-width);
+    left: var(--src-sidebar-width);
 }
 
 .sidebar-resizing {
-	-moz-user-select: none;
-	-webkit-user-select: none;
-	-ms-user-select: none;
-	user-select: none;
+    -moz-user-select: none;
+    -webkit-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
 }
 
 .sidebar-resizing * {
-	cursor: ew-resize !important;
+    cursor: ew-resize !important;
 }
 
 .sidebar-resizing .sidebar {
-	position: fixed;
-	border-right: solid 2px var(--sidebar-resizer-active);
+    position: fixed;
+    border-right: solid 2px var(--sidebar-resizer-active);
 }
 .sidebar-resizing > body {
-	padding-left: var(--resizing-sidebar-width);
+    padding-left: var(--resizing-sidebar-width);
 }
 
 .sidebar-resizer:hover,
 .sidebar-resizer:active,
 .sidebar-resizer:focus,
 .sidebar-resizer.active {
-	width: 10px;
-	margin: 0;
-	/* when active or hovered, place resizer glow on top of the sidebar (right next to, or even
+    width: 10px;
+    margin: 0;
+    /* when active or hovered, place resizer glow on top of the sidebar (right next to, or even
 	   on top of, the scrollbar) */
-	left: calc(var(--desktop-sidebar-width) - 1px);
-	border-left: solid 1px var(--sidebar-resizer-hover);
-	color: var(--sidebar-resizer-hover);
+    left: calc(var(--desktop-sidebar-width) - 1px);
+    border-left: solid 1px var(--sidebar-resizer-hover);
+    color: var(--sidebar-resizer-hover);
 }
 
 .src-sidebar-expanded .rustdoc.src .sidebar-resizer:hover,
 .src-sidebar-expanded .rustdoc.src .sidebar-resizer:active,
 .src-sidebar-expanded .rustdoc.src .sidebar-resizer:focus,
 .src-sidebar-expanded .rustdoc.src .sidebar-resizer.active {
-	/* when active or hovered, place resizer glow on top of the normal src sidebar border */
-	left: calc(var(--src-sidebar-width) - 1px);
+    /* when active or hovered, place resizer glow on top of the normal src sidebar border */
+    left: calc(var(--src-sidebar-width) - 1px);
 }
 
 @media (pointer: coarse) {
-	.sidebar-resizer {
-		/* too easy to hit the resizer while trying to hit the [-] toggle */
-		display: none !important;
-	}
-	.sidebar {
-		/* resize indicator: hide this when on touch or mobile */
-		border-right: none;
-	}
+    .sidebar-resizer {
+        /* too easy to hit the resizer while trying to hit the [-] toggle */
+        display: none !important;
+    }
+    .sidebar {
+        /* resize indicator: hide this when on touch or mobile */
+        border-right: none;
+    }
 }
 
 .sidebar-resizer.active {
-	/* make the resize tool bigger when actually resizing, to avoid :hover styles on other stuff
+    /* make the resize tool bigger when actually resizing, to avoid :hover styles on other stuff
 		while resizing */
-	padding: 0 140px;
-	width: calc(140px + 140px + 9px + 2px);
-	margin-left: -140px;
-	border-left: none;
-	color: var(--sidebar-resizer-active);
+    padding: 0 140px;
+    width: calc(140px + 140px + 9px + 2px);
+    margin-left: -140px;
+    border-left: none;
+    color: var(--sidebar-resizer-active);
 }
 
-.sidebar, rustdoc-topbar, .sidebar-menu-toggle,
+.sidebar,
+rustdoc-topbar,
+.sidebar-menu-toggle,
 #src-sidebar {
-	background-color: var(--sidebar-background-color);
+    background-color: var(--sidebar-background-color);
 }
 
 .src .sidebar > * {
-	visibility: hidden;
+    visibility: hidden;
 }
 
 .src-sidebar-expanded .src .sidebar {
-	overflow-y: auto;
-	flex-basis: var(--src-sidebar-width);
-	width: var(--src-sidebar-width);
+    overflow-y: auto;
+    flex-basis: var(--src-sidebar-width);
+    width: var(--src-sidebar-width);
 }
 
 .src-sidebar-expanded .src .sidebar > * {
-	visibility: visible;
+    visibility: visible;
 }
 
 #all-types {
-	margin-top: 1em;
+    margin-top: 1em;
 }
 
 /* Improve the scrollbar display on firefox */
 * {
-	scrollbar-width: initial;
-	scrollbar-color: var(--scrollbar-color);
+    scrollbar-width: initial;
+    scrollbar-color: var(--scrollbar-color);
 }
 .sidebar {
-	scrollbar-width: thin;
-	scrollbar-color: var(--scrollbar-color);
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-color);
 }
 
 /* Improve the scrollbar display on webkit-based browsers */
 ::-webkit-scrollbar {
-	width: 12px;
+    width: 12px;
 }
 .sidebar::-webkit-scrollbar {
-	width: 8px;
+    width: 8px;
 }
 ::-webkit-scrollbar-track {
-	-webkit-box-shadow: inset 0;
-	background-color: var(--scrollbar-track-background-color);
+    -webkit-box-shadow: inset 0;
+    background-color: var(--scrollbar-track-background-color);
 }
 .sidebar::-webkit-scrollbar-track {
-	background-color: var(--scrollbar-track-background-color);
+    background-color: var(--scrollbar-track-background-color);
 }
-::-webkit-scrollbar-thumb, .sidebar::-webkit-scrollbar-thumb {
-	background-color: var(--scrollbar-thumb-background-color);
+::-webkit-scrollbar-thumb,
+.sidebar::-webkit-scrollbar-thumb {
+    background-color: var(--scrollbar-thumb-background-color);
 }
 
 /* Everything else */
 
 .hidden {
-	display: none !important;
+    display: none !important;
 }
 
 .logo-container > img {
-	height: 48px;
-	width: 48px;
+    height: 48px;
+    width: 48px;
 }
 
-ul.block, .block li, .block ul {
-	padding: 0;
-	margin: 0;
-	list-style: none;
+ul.block,
+.block li,
+.block ul {
+    padding: 0;
+    margin: 0;
+    list-style: none;
 }
 
 .block ul a {
-	padding-left: 1rem;
+    padding-left: 1rem;
 }
 
 .sidebar-elems a,
 .sidebar > h2 a {
-	display: block;
-	padding: 0.25rem; /* 4px */
-	margin-right: 0.25rem;
-	/* extend click target to far edge of screen (mile wide bar) */
-	border-left: solid var(--sidebar-elems-left-padding) transparent;
-	margin-left: calc(-0.25rem - var(--sidebar-elems-left-padding));
-	background-clip: border-box;
+    display: block;
+    padding: 0.25rem; /* 4px */
+    margin-right: 0.25rem;
+    /* extend click target to far edge of screen (mile wide bar) */
+    border-left: solid var(--sidebar-elems-left-padding) transparent;
+    margin-left: calc(-0.25rem - var(--sidebar-elems-left-padding));
+    background-clip: border-box;
 }
 
-.hide-toc #rustdoc-toc, .hide-toc .in-crate {
-	display: none;
+.hide-toc #rustdoc-toc,
+.hide-toc .in-crate {
+    display: none;
 }
 
 .hide-modnav #rustdoc-modnav {
-	display: none;
+    display: none;
 }
 
 .sidebar h2 {
-	text-wrap: balance;
-	overflow-wrap: anywhere;
-	padding: 0;
-	margin: 0.7rem 0;
+    text-wrap: balance;
+    overflow-wrap: anywhere;
+    padding: 0;
+    margin: 0.7rem 0;
 }
 
 .sidebar h3 {
-	text-wrap: balance;
-	overflow-wrap: anywhere;
-	font-size: 1.125rem; /* 18px */
-	padding: 0;
-	margin: 0;
+    text-wrap: balance;
+    overflow-wrap: anywhere;
+    font-size: 1.125rem; /* 18px */
+    padding: 0;
+    margin: 0;
 }
 
 .sidebar-elems,
 .sidebar > .version,
 .sidebar > h2 {
-	padding-left: var(--sidebar-elems-left-padding);
+    padding-left: var(--sidebar-elems-left-padding);
 }
 
 .sidebar a {
-	color: var(--sidebar-link-color);
+    color: var(--sidebar-link-color);
 }
 .sidebar .current,
 .sidebar .current a,
 .sidebar-crate a.logo-container:hover + h2 a,
 .sidebar a:hover:not(.logo-container) {
-	background-color: var(--sidebar-current-link-background-color);
+    background-color: var(--sidebar-current-link-background-color);
 }
 
 .sidebar-elems .block {
-	margin-bottom: 2em;
+    margin-bottom: 2em;
 }
 
 .sidebar-elems .block li a {
-	white-space: nowrap;
-	text-overflow: ellipsis;
-	overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
 }
 
 .sidebar-crate {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	/* there's a 10px padding at the top of <main>, and a 4px margin at the
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    /* there's a 10px padding at the top of <main>, and a 4px margin at the
 		top of the search form. To line them up, add them. */
-	margin: 14px 32px 1rem;
-	row-gap: 10px;
-	column-gap: 32px;
-	flex-wrap: wrap;
+    margin: 14px 32px 1rem;
+    row-gap: 10px;
+    column-gap: 32px;
+    flex-wrap: wrap;
 }
 
 .sidebar-crate h2 {
-	flex-grow: 1;
-	/* This setup with the margins and row-gap is designed to make flex-wrap
+    flex-grow: 1;
+    /* This setup with the margins and row-gap is designed to make flex-wrap
 		work the way we want. If they're in the side-by-side lockup, there
 		should be a 16px margin to the left of the logo (visually the same as
 		the 24px one on everything else, which are not giant circles) and 8px
@@ -796,22 +864,22 @@ ul.block, .block li, .block ul {
 		the logo needs to have the same margin on both sides of itself (to
 		center properly) and the crate name and version need 24px on their
 		left margin. */
-	margin: 0 -8px;
-	/* To align this with the search bar, it should not be centered, even when
+    margin: 0 -8px;
+    /* To align this with the search bar, it should not be centered, even when
 		the logo is. */
-	align-self: start;
+    align-self: start;
 }
 
 .sidebar-crate .logo-container {
-	/* The logo is expected to have 8px "slop" along its edges, so we can optically
+    /* The logo is expected to have 8px "slop" along its edges, so we can optically
 		center it. */
-	margin: 0 calc(-16px - var(--sidebar-elems-left-padding));
-	padding: 0 var(--sidebar-elems-left-padding);
-	text-align: center;
+    margin: 0 calc(-16px - var(--sidebar-elems-left-padding));
+    padding: 0 var(--sidebar-elems-left-padding);
+    text-align: center;
 }
 
 .sidebar-crate .logo-container img {
-	/* When in a horizontal logo lockup, the highlight color of the crate name menu item
+    /* When in a horizontal logo lockup, the highlight color of the crate name menu item
 		extends underneath the actual logo (in a vertical lockup, that background highlight
 		extends to the left edge of the screen).
 
@@ -840,21 +908,22 @@ ul.block, .block li, .block ul {
 		|    (R) │ std │
 		|        └─────┘
 		*/
-	margin-top: -16px;
-	border-top: solid 16px transparent;
-	box-sizing: content-box;
-	position: relative;
-	background-clip: border-box;
-	z-index: 1;
+    margin-top: -16px;
+    border-top: solid 16px transparent;
+    box-sizing: content-box;
+    position: relative;
+    background-clip: border-box;
+    z-index: 1;
 }
 
 .sidebar-crate h2 a {
-	display: block;
-	/* extend click target to far edge of screen (mile wide bar) */
-	border-left: solid var(--sidebar-elems-left-padding) transparent;
-	background-clip: border-box;
-	margin: 0 calc(-24px + 0.25rem) 0 calc(-0.2rem - var(--sidebar-elems-left-padding));
-	/* Align the sidebar crate link with the search bar, which have different
+    display: block;
+    /* extend click target to far edge of screen (mile wide bar) */
+    border-left: solid var(--sidebar-elems-left-padding) transparent;
+    background-clip: border-box;
+    margin: 0 calc(-24px + 0.25rem) 0
+        calc(-0.2rem - var(--sidebar-elems-left-padding));
+    /* Align the sidebar crate link with the search bar, which have different
 		font sizes.
 
 		|        | font-size | line-height | total line-height | padding-y |     total    |
@@ -867,366 +936,408 @@ ul.block, .block li, .block ul {
 		2x = 16px - 0.57rem
 		x = ( 16px - 0.57rem ) / 2
 	*/
-	padding: calc( ( 16px - 0.57rem ) / 2 ) 0.25rem;
-	padding-left: 0.2rem;
+    padding: calc((16px - 0.57rem) / 2) 0.25rem;
+    padding-left: 0.2rem;
 }
 
 .sidebar-crate h2 .version {
-	display: block;
-	font-weight: normal;
-	font-size: 1rem;
-	overflow-wrap: break-word;
+    display: block;
+    font-weight: normal;
+    font-size: 1rem;
+    overflow-wrap: break-word;
 }
 
 .sidebar-crate + .version {
-	margin-top: -1rem;
-	margin-bottom: 1rem;
+    margin-top: -1rem;
+    margin-bottom: 1rem;
 }
 
 rustdoc-topbar {
-	display: none;
+    display: none;
 }
 
 .rustdoc .example-wrap {
-	display: flex;
-	position: relative;
-	margin-bottom: 10px;
+    display: flex;
+    position: relative;
+    margin-bottom: 10px;
 }
 
 .rustdoc .example-wrap > pre,
 .rustdoc .scraped-example .src-line-numbers,
 .rustdoc .scraped-example .src-line-numbers > pre {
-	border-radius: 6px;
+    border-radius: 6px;
 }
 
 .rustdoc .scraped-example {
-	position: relative;
+    position: relative;
 }
 
 /* For the last child of a div, the margin will be taken care of
 	by the margin-top of the next item. */
 .rustdoc .example-wrap:last-child {
-	margin-bottom: 0px;
+    margin-bottom: 0px;
 }
 
 .rustdoc .example-wrap pre {
-	margin: 0;
-	flex-grow: 1;
+    margin: 0;
+    flex-grow: 1;
 }
 
 .scraped-example:not(.expanded) .example-wrap {
-	/* scrape-examples.js has a constant DEFAULT_MAX_LINES (call it N) for the number
+    /* scrape-examples.js has a constant DEFAULT_MAX_LINES (call it N) for the number
 	 * of lines shown in the un-expanded example code viewer. This pre needs to have
 	 * a max-height equal to line-height * N. The line-height is currently 1.5em,
 	 * and we include additional 10px for padding. */
-	max-height: calc(1.5em * 5 + 10px);
+    max-height: calc(1.5em * 5 + 10px);
 }
 .more-scraped-examples .scraped-example:not(.expanded) .example-wrap {
-	max-height: calc(1.5em * 10 + 10px);
+    max-height: calc(1.5em * 10 + 10px);
 }
 
 .rustdoc:not(.src) .scraped-example:not(.expanded) .src-line-numbers,
 .rustdoc:not(.src) .scraped-example:not(.expanded) .src-line-numbers > pre,
 .rustdoc:not(.src) .scraped-example:not(.expanded) pre.rust {
-	padding-bottom: 0;
-	/* See above comment, should be the same max-height. */
-	overflow: auto hidden;
+    padding-bottom: 0;
+    /* See above comment, should be the same max-height. */
+    overflow: auto hidden;
 }
 .rustdoc:not(.src) .scraped-example .src-line-numbers {
-	padding-top: 0;
+    padding-top: 0;
 }
 .rustdoc:not(.src) .scraped-example.expanded .src-line-numbers {
-	padding-bottom: 0;
+    padding-bottom: 0;
 }
 
 .rustdoc:not(.src) .example-wrap pre {
-	overflow: auto;
+    overflow: auto;
 }
 
 .example-wrap code {
-	position: relative;
+    position: relative;
 }
 .example-wrap pre code span {
-	display: inline;
+    display: inline;
 }
 
-.example-wrap.digits-1 { --example-wrap-digits-count: 1ch; }
-.example-wrap.digits-2 { --example-wrap-digits-count: 2ch; }
-.example-wrap.digits-3 { --example-wrap-digits-count: 3ch; }
-.example-wrap.digits-4 { --example-wrap-digits-count: 4ch; }
-.example-wrap.digits-5 { --example-wrap-digits-count: 5ch; }
-.example-wrap.digits-6 { --example-wrap-digits-count: 6ch; }
-.example-wrap.digits-7 { --example-wrap-digits-count: 7ch; }
-.example-wrap.digits-8 { --example-wrap-digits-count: 8ch; }
-.example-wrap.digits-9 { --example-wrap-digits-count: 9ch; }
+.example-wrap.digits-1 {
+    --example-wrap-digits-count: 1ch;
+}
+.example-wrap.digits-2 {
+    --example-wrap-digits-count: 2ch;
+}
+.example-wrap.digits-3 {
+    --example-wrap-digits-count: 3ch;
+}
+.example-wrap.digits-4 {
+    --example-wrap-digits-count: 4ch;
+}
+.example-wrap.digits-5 {
+    --example-wrap-digits-count: 5ch;
+}
+.example-wrap.digits-6 {
+    --example-wrap-digits-count: 6ch;
+}
+.example-wrap.digits-7 {
+    --example-wrap-digits-count: 7ch;
+}
+.example-wrap.digits-8 {
+    --example-wrap-digits-count: 8ch;
+}
+.example-wrap.digits-9 {
+    --example-wrap-digits-count: 9ch;
+}
 
 .example-wrap .expansion {
-	position: relative;
-	display: inline;
+    position: relative;
+    display: inline;
 }
 .example-wrap .expansion > input {
-	display: block;
-	position: absolute;
-	appearance: none;
-	content: '↕';
-	left: -20px;
-	top: 0;
-	border: 1px solid var(--border-color);
-	border-radius: 4px;
-	cursor: pointer;
-	color: var(--main-color);
-	padding: 0 2px;
-	line-height: 20px;
+    display: block;
+    position: absolute;
+    appearance: none;
+    content: "↕";
+    left: -20px;
+    top: 0;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    cursor: pointer;
+    color: var(--main-color);
+    padding: 0 2px;
+    line-height: 20px;
 }
 .example-wrap .expansion > input::after {
-	content: "↕";
+    content: "↕";
 }
 .example-wrap .expansion .expanded {
-	display: none;
-	color: var(--main-color);
+    display: none;
+    color: var(--main-color);
 }
 .example-wrap .expansion > input:checked ~ .expanded,
 .example-wrap .expansion > input:checked ~ * .expanded {
-	display: inherit;
+    display: inherit;
 }
 .example-wrap .expansion > input:checked ~ .original,
 .example-wrap .expansion > input:checked ~ * .original {
-	display: none;
+    display: none;
 }
 
 .example-wrap [data-nosnippet] {
-	width: calc(var(--example-wrap-digits-count) + var(--line-number-padding) * 2);
+    width: calc(
+        var(--example-wrap-digits-count) + var(--line-number-padding) * 2
+    );
 }
 .example-wrap pre > code {
-	padding-left: calc(
-		var(--example-wrap-digits-count) + var(--line-number-padding) * 2
-		+ var(--line-number-right-margin));
+    padding-left: calc(
+        var(--example-wrap-digits-count) + var(--line-number-padding) * 2 +
+            var(--line-number-right-margin)
+    );
 }
 .src .example-wrap .expansion [data-nosnippet] {
-	/* FIXME: Once <https://bugzilla.mozilla.org/show_bug.cgi?id=1949948> is solved, uncomment
+    /* FIXME: Once <https://bugzilla.mozilla.org/show_bug.cgi?id=1949948> is solved, uncomment
 	   next line and remove the two other rules. */
-	/*left: calc((
+    /*left: calc((
 		var(--example-wrap-digits-count) + var(--line-number-padding) * 2
 		+ var(--line-number-right-margin)) * -1);*/
-	position: initial;
-	margin-left: calc((
-		var(--example-wrap-digits-count) + var(--line-number-padding) * 2
-		+ var(--line-number-right-margin)) * -1);
+    position: initial;
+    margin-left: calc(
+        (
+                var(--example-wrap-digits-count) + var(--line-number-padding) *
+                    2 + var(--line-number-right-margin)
+            ) *
+            -1
+    );
 }
 
 .example-wrap [data-nosnippet] {
-	color: var(--src-line-numbers-span-color);
-	text-align: right;
-	display: inline-block;
-	margin-right: var(--line-number-right-margin);
-	-moz-user-select: none;
-	-webkit-user-select: none;
-	-ms-user-select: none;
-	user-select: none;
-	padding: 0 var(--line-number-padding);
-	position: absolute;
-	left: 0;
+    color: var(--src-line-numbers-span-color);
+    text-align: right;
+    display: inline-block;
+    margin-right: var(--line-number-right-margin);
+    -moz-user-select: none;
+    -webkit-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    padding: 0 var(--line-number-padding);
+    position: absolute;
+    left: 0;
 }
 .example-wrap pre > code {
-	position: relative;
-	display: block;
+    position: relative;
+    display: block;
 }
 :root.word-wrap-source-code .example-wrap pre > code {
-	word-break: break-all;
-	white-space: pre-wrap;
+    word-break: break-all;
+    white-space: pre-wrap;
 }
 :root.word-wrap-source-code .example-wrap pre > code * {
-	word-break: break-all;
+    word-break: break-all;
 }
 .example-wrap [data-nosnippet]:target {
-	border-right: none;
+    border-right: none;
 }
 .example-wrap .line-highlighted[data-nosnippet] {
-	background-color: var(--src-line-number-highlighted-background-color);
+    background-color: var(--src-line-number-highlighted-background-color);
 }
 .example-wrap.hide-lines [data-nosnippet] {
-	display: none;
+    display: none;
 }
 
 .search-loading {
-	text-align: center;
+    text-align: center;
 }
 
 .item-table dd {
-	overflow-wrap: break-word;
-	overflow-wrap: anywhere;
+    overflow-wrap: break-word;
+    overflow-wrap: anywhere;
 }
 /* Wrap non-pre code blocks (`text`) but not (```text```). */
 .docblock :not(pre) > code,
 .item-table dd code {
-	white-space: pre-wrap;
+    white-space: pre-wrap;
 }
 
-.top-doc .docblock h2 { font-size: 1.375rem; }
-.top-doc .docblock h3 { font-size: 1.25rem; }
+.top-doc .docblock h2 {
+    font-size: 1.375rem;
+}
+.top-doc .docblock h3 {
+    font-size: 1.25rem;
+}
 .top-doc .docblock h4,
 .top-doc .docblock h5 {
-	font-size: 1.125rem;
+    font-size: 1.125rem;
 }
 .top-doc .docblock h6 {
-	font-size: 1rem;
+    font-size: 1rem;
 }
 
-.docblock h5 { font-size: 1rem; }
-.docblock h6 { font-size: 0.875rem; }
+.docblock h5 {
+    font-size: 1rem;
+}
+.docblock h6 {
+    font-size: 0.875rem;
+}
 
 .docblock {
-	margin-left: var(--docblock-indent);
-	position: relative;
+    margin-left: var(--docblock-indent);
+    position: relative;
 }
 
 .docblock > :not(.more-examples-toggle):not(.example-wrap) {
-	max-width: 100%;
-	overflow-x: auto;
+    max-width: 100%;
+    overflow-x: auto;
 }
 
 .sub-heading {
-	font-size: 1rem;
-	flex-grow: 0;
-	grid-area: main-heading-sub-heading;
-	line-height: 1.25;
-	padding-bottom: 4px;
+    font-size: 1rem;
+    flex-grow: 0;
+    grid-area: main-heading-sub-heading;
+    line-height: 1.25;
+    padding-bottom: 4px;
 }
 
-.main-heading rustdoc-toolbar, .main-heading .out-of-band {
-	grid-area: main-heading-toolbar;
+.main-heading rustdoc-toolbar,
+.main-heading .out-of-band {
+    grid-area: main-heading-toolbar;
 }
 rustdoc-toolbar {
-	display: flex;
-	flex-direction: row;
-	flex-wrap: nowrap;
-	min-height: 60px;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    min-height: 60px;
 }
 
-.docblock code, .item-table dd code,
-pre, .rustdoc.src .example-wrap, .example-wrap .src-line-numbers {
-	background-color: var(--code-block-background-color);
-	border-radius: var(--code-block-border-radius);
-	/* code blocks within links (such as in most intra-doc links) should be underlined */
-	text-decoration: inherit;
+.docblock code,
+.item-table dd code,
+pre,
+.rustdoc.src .example-wrap,
+.example-wrap .src-line-numbers {
+    background-color: var(--code-block-background-color);
+    border-radius: var(--code-block-border-radius);
+    /* code blocks within links (such as in most intra-doc links) should be underlined */
+    text-decoration: inherit;
 }
 
 #main-content {
-	position: relative;
+    position: relative;
 }
 
 .docblock table {
-	margin: .5em 0;
-	border-collapse: collapse;
+    margin: 0.5em 0;
+    border-collapse: collapse;
 }
 
-.docblock table td, .docblock table th {
-	padding: .5em;
-	border: 1px solid var(--border-color);
+.docblock table td,
+.docblock table th {
+    padding: 0.5em;
+    border: 1px solid var(--border-color);
 }
 
 .docblock table tbody tr:nth-child(2n) {
-	background: var(--table-alt-row-background-color);
+    background: var(--table-alt-row-background-color);
 }
 
-.docblock .stab, .item-table dd .stab, .docblock p code {
-	display: inline-block;
+.docblock .stab,
+.item-table dd .stab,
+.docblock p code {
+    display: inline-block;
 }
 
 .docblock li {
-	margin-bottom: .4em;
+    margin-bottom: 0.4em;
 }
 .docblock li p:not(:last-child) {
-	/* This margin is voluntarily smaller than `.docblock li` to keep the visual
+    /* This margin is voluntarily smaller than `.docblock li` to keep the visual
 	   list element items separated while also having a visual separation (although
 	   smaller) for paragraphs. */
-	margin-bottom: .3em;
+    margin-bottom: 0.3em;
 }
 
 /* "where ..." clauses with block display are also smaller */
 div.where {
-	white-space: pre-wrap;
-	font-size: 0.875rem;
+    white-space: pre-wrap;
+    font-size: 0.875rem;
 }
 
 .item-info {
-	display: block;
-	margin-left: var(--docblock-indent);
+    display: block;
+    margin-left: var(--docblock-indent);
 }
 .impl-items > .item-info {
-	/* Margin of docblocks + margin of impl block items. */
-	margin-left: calc(var(--docblock-indent) + var(--impl-items-indent));
+    /* Margin of docblocks + margin of impl block items. */
+    margin-left: calc(var(--docblock-indent) + var(--impl-items-indent));
 }
 
 .item-info code {
-	font-size: 0.875rem;
+    font-size: 0.875rem;
 }
 
 #main-content > .item-info {
-	margin-left: 0;
+    margin-left: 0;
 }
 
 nav.sub {
-	flex-grow: 1;
-	flex-flow: row nowrap;
-	display: flex;
-	align-items: start;
-	margin-top: 4px;
+    flex-grow: 1;
+    flex-flow: row nowrap;
+    display: flex;
+    align-items: start;
+    margin-top: 4px;
 }
 .search-form {
-	position: relative;
-	display: flex;
-	height: 34px;
-	flex-grow: 1;
+    position: relative;
+    display: flex;
+    height: 34px;
+    flex-grow: 1;
 }
 .src nav.sub {
-	margin: 0 0 -10px 0;
+    margin: 0 0 -10px 0;
 }
 
 .section-header {
-	/* fields use <span> tags, but should get their own lines */
-	display: block;
-	position: relative;
+    /* fields use <span> tags, but should get their own lines */
+    display: block;
+    position: relative;
 }
 
-.section-header:hover > .anchor, .impl:hover > .anchor,
-.trait-impl:hover > .anchor, .variant:hover > .anchor {
-	display: initial;
+.section-header:hover > .anchor,
+.impl:hover > .anchor,
+.trait-impl:hover > .anchor,
+.variant:hover > .anchor {
+    display: initial;
 }
 .anchor {
-	display: none;
-	position: absolute;
-	left: -0.5em;
-	background: none !important;
+    display: none;
+    position: absolute;
+    left: -0.5em;
+    background: none !important;
 }
 .anchor.field {
-	left: -5px;
+    left: -5px;
 }
 .section-header > .anchor {
-	left: -15px;
-	padding-right: 8px;
+    left: -15px;
+    padding-right: 8px;
 }
 h2.section-header > .anchor {
-	padding-right: 6px;
+    padding-right: 6px;
 }
 a.doc-anchor {
-	color: var(--main-color);
-	display: none;
-	position: absolute;
-	left: -17px;
-	/* We add this padding so that when the cursor moves from the heading's text to the anchor,
+    color: var(--main-color);
+    display: none;
+    position: absolute;
+    left: -17px;
+    /* We add this padding so that when the cursor moves from the heading's text to the anchor,
 	   the anchor doesn't disappear. */
-	padding-right: 10px;
-	/* And this padding is used to make the anchor larger and easier to click on. */
-	padding-left: 3px;
+    padding-right: 10px;
+    /* And this padding is used to make the anchor larger and easier to click on. */
+    padding-left: 3px;
 }
 *:hover > .doc-anchor {
-	display: block;
+    display: block;
 }
 /* If the first element of the top doc block is a heading, we don't want to ever display its anchor
 because of the `[-]` element which would overlap with it. */
 .top-doc > .docblock > *:first-child > .doc-anchor {
-	display: none !important;
+    display: none !important;
 }
 
 .main-heading a:hover,
@@ -1235,10 +1346,12 @@ because of the `[-]` element which would overlap with it. */
 .docblock a:not(.scrape-help):not(.tooltip):hover:not(.doc-anchor),
 .item-table dd a:not(.scrape-help):not(.tooltip):hover,
 .item-info a {
-	text-decoration: underline;
+    text-decoration: underline;
 }
 
-.crate.block li.current a { font-weight: 500; }
+.crate.block li.current a {
+    font-weight: 500;
+}
 
 /*  In most contexts we use `overflow-wrap: anywhere` to ensure that we can wrap
 	as much as needed on mobile (see
@@ -1262,519 +1375,529 @@ because of the `[-]` element which would overlap with it. */
 */
 table,
 .item-table {
-	overflow-wrap: break-word;
+    overflow-wrap: break-word;
 }
 
 .item-table {
-	padding: 0;
-	margin: 0;
-	width: 100%;
+    padding: 0;
+    margin: 0;
+    width: 100%;
 }
 .item-table > dt {
-	padding-right: 1.25rem;
+    padding-right: 1.25rem;
 }
 .item-table > dd {
-	margin-inline-start: 0;
-	margin-left: 0;
+    margin-inline-start: 0;
+    margin-left: 0;
 }
 
 #crate-search-div {
-	/* ensures that 100% in properties of #crate-search-div:after
+    /* ensures that 100% in properties of #crate-search-div:after
 	are relative to the size of this div */
-	position: relative;
-	/* allows this div (and with it the <select>-element "#crate-search") to be shrunk */
-	min-width: 0;
-	/* keep label text for switcher from moving down when this appears */
-	margin-top: -1px;
+    position: relative;
+    /* allows this div (and with it the <select>-element "#crate-search") to be shrunk */
+    min-width: 0;
+    /* keep label text for switcher from moving down when this appears */
+    margin-top: -1px;
 }
 #crate-search {
-	padding: 0 23px 0 4px;
-	/* prevents the <select> from overflowing the containing div in case it's shrunk */
-	max-width: 100%;
-	/* contents can overflow because of max-width limit, then show ellipsis */
-	text-overflow: ellipsis;
-	border: 1px solid var(--border-color);
-	border-radius: 4px;
-	outline: none;
-	cursor: pointer;
-	-moz-appearance: none;
-	-webkit-appearance: none;
-	/* Removes default arrow from firefox */
-	text-indent: 0.01px;
-	background-color: var(--main-background-color);
-	color: inherit;
-	line-height: 1.5;
-	font-weight: 500;
+    padding: 0 23px 0 4px;
+    /* prevents the <select> from overflowing the containing div in case it's shrunk */
+    max-width: 100%;
+    /* contents can overflow because of max-width limit, then show ellipsis */
+    text-overflow: ellipsis;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    outline: none;
+    cursor: pointer;
+    -moz-appearance: none;
+    -webkit-appearance: none;
+    /* Removes default arrow from firefox */
+    text-indent: 0.01px;
+    background-color: var(--main-background-color);
+    color: inherit;
+    line-height: 1.5;
+    font-weight: 500;
 }
-#crate-search:hover, #crate-search:focus {
-	border-color: var(--crate-search-hover-border);
+#crate-search:hover,
+#crate-search:focus {
+    border-color: var(--crate-search-hover-border);
 }
 /* pseudo-element for holding the dropdown-arrow image; needs to be a separate thing
 so that we can apply CSS-filters to change the arrow color in themes */
 #crate-search-div::after {
-	/* lets clicks through! */
-	pointer-events: none;
-	/* completely covers the underlying div */
-	width: 100%;
-	height: 100%;
-	position: absolute;
-	top: 0;
-	left: 0;
-	content: "";
-	background-repeat: no-repeat;
-	background-size: 20px;
-	background-position: calc(100% - 2px) 56%;
-	/* down arrow (image is black color) */
-	background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" \
+    /* lets clicks through! */
+    pointer-events: none;
+    /* completely covers the underlying div */
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+    content: "";
+    background-repeat: no-repeat;
+    background-size: 20px;
+    background-position: calc(100% - 2px) 56%;
+    /* down arrow (image is black color) */
+    background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" \
 	width="128" height="128" viewBox="-30 -20 176 176"><path d="M111,40.5L64,87.499L17,40.5" \
 	fill="none" stroke="black" strike-linecap="square" stroke-miterlimit="10" stroke-width="12"/> \
 	</svg>');
-	/* changes the arrow image color */
-	filter: var(--crate-search-div-filter);
+    /* changes the arrow image color */
+    filter: var(--crate-search-div-filter);
 }
-#crate-search-div:hover::after, #crate-search-div:focus-within::after {
-	filter: var(--crate-search-div-hover-filter);
+#crate-search-div:hover::after,
+#crate-search-div:focus-within::after {
+    filter: var(--crate-search-div-hover-filter);
 }
 #crate-search > option {
-	font-size: 1rem;
+    font-size: 1rem;
 }
 .search-input {
-	/* Override Normalize.css: it has a rule that sets
+    /* Override Normalize.css: it has a rule that sets
 	   -webkit-appearance: textfield for search inputs. That
 	   causes rounded corners and no border on iOS Safari. */
-	-webkit-appearance: none;
-	outline: none;
-	border: 1px solid var(--border-color);
-	border-radius: 2px;
-	padding: 8px;
-	font-size: 1rem;
-	flex-grow: 1;
-	background-color: var(--button-background-color);
-	color: var(--search-color);
-	max-width: 100%;
+    -webkit-appearance: none;
+    outline: none;
+    border: 1px solid var(--border-color);
+    border-radius: 2px;
+    padding: 8px;
+    font-size: 1rem;
+    flex-grow: 1;
+    background-color: var(--button-background-color);
+    color: var(--search-color);
+    max-width: 100%;
 }
 .search-input:focus {
-	border-color: var(--search-input-focused-border-color);
+    border-color: var(--search-input-focused-border-color);
 }
 
 .search-results {
-	display: none;
+    display: none;
 }
 
 .search-results.active {
-	display: block;
-	margin: 0;
-	padding: 0;
+    display: block;
+    margin: 0;
+    padding: 0;
 }
 
 .search-results > a {
-	display: grid;
-	grid-template-areas:
-		"search-result-name search-result-desc"
-		"search-result-type-signature search-result-type-signature";
-	grid-template-columns: .6fr .4fr;
-	/* A little margin ensures the browser's outlining of focused links has room to display. */
-	margin-left: 2px;
-	margin-right: 2px;
-	border-bottom: 1px solid var(--search-result-border-color);
-	column-gap: 1em;
+    display: grid;
+    grid-template-areas:
+        "search-result-name search-result-desc"
+        "search-result-type-signature search-result-type-signature";
+    grid-template-columns: 0.6fr 0.4fr;
+    /* A little margin ensures the browser's outlining of focused links has room to display. */
+    margin-left: 2px;
+    margin-right: 2px;
+    border-bottom: 1px solid var(--search-result-border-color);
+    column-gap: 1em;
 }
 
 .search-results > a > div.desc {
-	white-space: nowrap;
-	text-overflow: ellipsis;
-	overflow: hidden;
-	grid-area: search-result-desc;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    grid-area: search-result-desc;
 }
 
 .search-results a:hover,
 .search-results a:focus {
-	background-color: var(--search-result-link-focus-background-color);
+    background-color: var(--search-result-link-focus-background-color);
 }
 
 .search-results .result-name {
-	display: flex;
-	align-items: center;
-	justify-content: start;
-	grid-area: search-result-name;
+    display: flex;
+    align-items: center;
+    justify-content: start;
+    grid-area: search-result-name;
 }
 .search-results .result-name .alias {
-	color: var(--search-results-alias-color);
+    color: var(--search-results-alias-color);
 }
 .search-results .result-name .grey {
-	color: var(--search-results-grey-color);
+    color: var(--search-results-grey-color);
 }
 .search-results .result-name .typename {
-	color: var(--search-results-grey-color);
-	font-size: 0.875rem;
-	width: var(--search-typename-width);
+    color: var(--search-results-grey-color);
+    font-size: 0.875rem;
+    width: var(--search-typename-width);
 }
 .search-results .result-name .path {
-	word-break: break-all;
-	max-width: calc(100% - var(--search-typename-width));
-	display: inline-block;
+    word-break: break-all;
+    max-width: calc(100% - var(--search-typename-width));
+    display: inline-block;
 }
 .search-results .result-name .path > * {
-	display: inline;
+    display: inline;
 }
 .search-results .type-signature {
-	grid-area: search-result-type-signature;
-	white-space: pre-wrap;
+    grid-area: search-result-type-signature;
+    white-space: pre-wrap;
 }
 
 .popover {
-	position: absolute;
-	top: 100%;
-	right: 0;
-	z-index: calc(var(--desktop-sidebar-z-index) + 1);
-	margin-top: 7px;
-	border-radius: 3px;
-	border: 1px solid var(--border-color);
-	background-color: var(--main-background-color);
-	color: var(--main-color);
-	--popover-arrow-offset: 11px;
+    position: absolute;
+    top: 100%;
+    right: 0;
+    z-index: calc(var(--desktop-sidebar-z-index) + 1);
+    margin-top: 7px;
+    border-radius: 3px;
+    border: 1px solid var(--border-color);
+    background-color: var(--main-background-color);
+    color: var(--main-color);
+    --popover-arrow-offset: 11px;
 }
 
 /* This rule is to draw the little arrow connecting the settings menu to the gear icon. */
 .popover::before {
-	content: '';
-	position: absolute;
-	right: var(--popover-arrow-offset);
-	border: solid var(--border-color);
-	border-width: 1px 1px 0 0;
-	background-color: var(--main-background-color);
-	padding: 4px;
-	transform: rotate(-45deg);
-	top: -5px;
+    content: "";
+    position: absolute;
+    right: var(--popover-arrow-offset);
+    border: solid var(--border-color);
+    border-width: 1px 1px 0 0;
+    background-color: var(--main-background-color);
+    padding: 4px;
+    transform: rotate(-45deg);
+    top: -5px;
 }
 
 .setting-line {
-	margin: 1.2em 0.6em;
+    margin: 1.2em 0.6em;
 }
 
-.setting-radio input, .setting-check input {
-	margin-right: 0.3em;
-	height: 1.2rem;
-	width: 1.2rem;
-	border: 2px solid var(--settings-input-border-color);
-	outline: none;
-	-webkit-appearance: none;
-	cursor: pointer;
+.setting-radio input,
+.setting-check input {
+    margin-right: 0.3em;
+    height: 1.2rem;
+    width: 1.2rem;
+    border: 2px solid var(--settings-input-border-color);
+    outline: none;
+    -webkit-appearance: none;
+    cursor: pointer;
 }
 .setting-radio input {
-	border-radius: 50%;
+    border-radius: 50%;
 }
 
-.setting-radio span, .setting-check span {
-	padding-bottom: 1px;
+.setting-radio span,
+.setting-check span {
+    padding-bottom: 1px;
 }
 
 .setting-radio {
-	margin-top: 0.1em;
-	margin-bottom: 0.1em;
-	min-width: 3.8em;
-	padding: 0.3em;
-	display: inline-flex;
-	align-items: center;
-	cursor: pointer;
+    margin-top: 0.1em;
+    margin-bottom: 0.1em;
+    min-width: 3.8em;
+    padding: 0.3em;
+    display: inline-flex;
+    align-items: center;
+    cursor: pointer;
 }
 .setting-radio + .setting-radio {
-	margin-left: 0.5em;
+    margin-left: 0.5em;
 }
 
 .setting-check {
-	margin-right: 20px;
-	display: flex;
-	align-items: center;
-	cursor: pointer;
+    margin-right: 20px;
+    display: flex;
+    align-items: center;
+    cursor: pointer;
 }
 .setting-check input {
-	flex-shrink: 0;
+    flex-shrink: 0;
 }
 
 .setting-radio input:checked {
-	box-shadow: inset 0 0 0 3px var(--main-background-color);
-	background-color: var(--settings-input-color);
+    box-shadow: inset 0 0 0 3px var(--main-background-color);
+    background-color: var(--settings-input-color);
 }
 .setting-check input:checked {
-	background-color: var(--settings-input-color);
-	border-width: 1px;
-	/* cross-mark image in the settings checkboxes */
-	content: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40">\
+    background-color: var(--settings-input-color);
+    border-width: 1px;
+    /* cross-mark image in the settings checkboxes */
+    content: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40">\
 		<path d="M7,25L17,32L33,12" fill="none" stroke="black" stroke-width="5"/>\
 		<path d="M7,23L17,30L33,10" fill="none" stroke="white" stroke-width="5"/></svg>');
 }
-.setting-radio input:focus, .setting-check input:focus {
-	box-shadow: 0 0 1px 1px var(--settings-input-color);
+.setting-radio input:focus,
+.setting-check input:focus {
+    box-shadow: 0 0 1px 1px var(--settings-input-color);
 }
 /* In here we combine both `:focus` and `:checked` properties. */
 .setting-radio input:checked:focus {
-	box-shadow: inset 0 0 0 3px var(--main-background-color),
-		0 0 2px 2px var(--settings-input-color);
+    box-shadow:
+        inset 0 0 0 3px var(--main-background-color),
+        0 0 2px 2px var(--settings-input-color);
 }
-.setting-radio input:hover, .setting-check input:hover {
-	border-color: var(--settings-input-color) !important;
+.setting-radio input:hover,
+.setting-check input:hover {
+    border-color: var(--settings-input-color) !important;
 }
 
 #settings.popover {
-	--popover-arrow-offset: 196px;
-	top: calc(100% - 16px);
+    --popover-arrow-offset: 196px;
+    top: calc(100% - 16px);
 }
 
 /* use larger max-width for help popover, but not for help.html */
 #help.popover {
-	max-width: 600px;
-	--popover-arrow-offset: 115px;
-	top: calc(100% - 16px);
+    max-width: 600px;
+    --popover-arrow-offset: 115px;
+    top: calc(100% - 16px);
 }
 
 #help dt {
-	float: left;
-	clear: left;
-	margin-right: 0.5rem;
+    float: left;
+    clear: left;
+    margin-right: 0.5rem;
 }
 #help dd {
-	margin-bottom: 0.5rem;
+    margin-bottom: 0.5rem;
 }
-#help span.top, #help span.bottom {
-	text-align: center;
-	display: block;
-	font-size: 1.125rem;
-	padding: 0 0.5rem;
-	text-wrap-style: balance;
+#help span.top,
+#help span.bottom {
+    text-align: center;
+    display: block;
+    font-size: 1.125rem;
+    padding: 0 0.5rem;
+    text-wrap-style: balance;
 }
 #help span.top {
-	margin: 10px 0;
-	border-bottom: 1px solid var(--border-color);
-	padding-bottom: 4px;
-	margin-bottom: 6px;
+    margin: 10px 0;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 4px;
+    margin-bottom: 6px;
 }
 #help span.bottom {
-	clear: both;
-	border-top: 1px solid var(--border-color);
+    clear: both;
+    border-top: 1px solid var(--border-color);
 }
 .side-by-side {
-	display: flex;
-	margin-bottom: 20px;
+    display: flex;
+    margin-bottom: 20px;
 }
 .side-by-side > div {
-	width: 50%;
-	padding: 0 20px 0 17px;
+    width: 50%;
+    padding: 0 20px 0 17px;
 }
 
 .item-info .stab {
-	display: block;
-	padding: 3px;
-	margin-bottom: 5px;
+    display: block;
+    padding: 3px;
+    margin-bottom: 5px;
 }
 .item-table dt .stab {
-	margin-left: 0.3125em;
+    margin-left: 0.3125em;
 }
 .stab {
-	padding: 0 2px;
-	font-size: 0.875rem;
-	font-weight: normal;
-	color: var(--main-color);
-	background-color: var(--stab-background-color);
-	width: fit-content;
-	white-space: pre-wrap;
-	border-radius: 3px;
-	display: inline;
-	vertical-align: baseline;
+    padding: 0 2px;
+    font-size: 0.875rem;
+    font-weight: normal;
+    color: var(--main-color);
+    background-color: var(--stab-background-color);
+    width: fit-content;
+    white-space: pre-wrap;
+    border-radius: 3px;
+    display: inline;
+    vertical-align: baseline;
 }
 
 .stab.portability > code {
-	background: none;
-	color: var(--stab-code-color);
+    background: none;
+    color: var(--stab-code-color);
 }
 
-.stab .emoji, .item-info .stab::before {
-	font-size: 1.25rem;
+.stab .emoji,
+.item-info .stab::before {
+    font-size: 1.25rem;
 }
 .stab .emoji {
-	margin-right: 0.3rem;
+    margin-right: 0.3rem;
 }
 .item-info .stab::before {
-	/* ensure badges with emoji and without it have same height */
-	content: "\0";
-	width: 0;
-	display: inline-block;
-	color: transparent;
+    /* ensure badges with emoji and without it have same height */
+    content: "\0";
+    width: 0;
+    display: inline-block;
+    color: transparent;
 }
 
 /* Black one-pixel outline around emoji shapes */
 .emoji {
-	text-shadow:
-		1px 0 0 black,
-		-1px 0 0 black,
-		0 1px 0 black,
-		0 -1px 0 black;
+    text-shadow:
+        1px 0 0 black,
+        -1px 0 0 black,
+        0 1px 0 black,
+        0 -1px 0 black;
 }
 
 .since {
-	font-weight: normal;
-	font-size: initial;
+    font-weight: normal;
+    font-size: initial;
 }
 
 .rightside {
-	padding-left: 12px;
-	float: right;
+    padding-left: 12px;
+    float: right;
 }
 
 .rightside:not(a),
 .out-of-band,
 .sub-heading,
 rustdoc-toolbar {
-	color: var(--right-side-color);
+    color: var(--right-side-color);
 }
 
 pre.rust {
-	tab-size: 4;
-	-moz-tab-size: 4;
+    tab-size: 4;
+    -moz-tab-size: 4;
 }
 
 /* Code highlighting */
 pre.rust .kw {
-	color: var(--code-highlight-kw-color);
+    color: var(--code-highlight-kw-color);
 }
 pre.rust .kw-2 {
-	color: var(--code-highlight-kw-2-color);
+    color: var(--code-highlight-kw-2-color);
 }
 pre.rust .lifetime {
-	color: var(--code-highlight-lifetime-color);
+    color: var(--code-highlight-lifetime-color);
 }
 pre.rust .prelude-ty {
-	color: var(--code-highlight-prelude-color);
+    color: var(--code-highlight-prelude-color);
 }
 pre.rust .prelude-val {
-	color: var(--code-highlight-prelude-val-color);
+    color: var(--code-highlight-prelude-val-color);
 }
 pre.rust .string {
-	color: var(--code-highlight-string-color);
+    color: var(--code-highlight-string-color);
 }
 pre.rust .number {
-	color: var(--code-highlight-number-color);
+    color: var(--code-highlight-number-color);
 }
 pre.rust .bool-val {
-	color: var(--code-highlight-literal-color);
+    color: var(--code-highlight-literal-color);
 }
 pre.rust .self {
-	color: var(--code-highlight-self-color);
+    color: var(--code-highlight-self-color);
 }
 pre.rust .attr {
-	color: var(--code-highlight-attribute-color);
+    color: var(--code-highlight-attribute-color);
 }
 pre.rust .macro,
 pre.rust .macro-nonterminal {
-	color: var(--code-highlight-macro-color);
+    color: var(--code-highlight-macro-color);
 }
 pre.rust .question-mark {
-	font-weight: bold;
-	color: var(--code-highlight-question-mark-color);
+    font-weight: bold;
+    color: var(--code-highlight-question-mark-color);
 }
 pre.rust .comment {
-	color: var(--code-highlight-comment-color);
+    color: var(--code-highlight-comment-color);
 }
 pre.rust .doccomment {
-	color: var(--code-highlight-doc-comment-color);
+    color: var(--code-highlight-doc-comment-color);
 }
 
 .rustdoc.src .example-wrap pre.rust a:not([data-nosnippet]) {
-	background: var(--codeblock-link-background);
+    background: var(--codeblock-link-background);
 }
 
 .example-wrap.compile_fail,
 .example-wrap.should_panic {
-	border-left: 2px solid var(--codeblock-error-color);
+    border-left: 2px solid var(--codeblock-error-color);
 }
 
 .ignore.example-wrap {
-	border-left: 2px solid var(--codeblock-ignore-color);
+    border-left: 2px solid var(--codeblock-ignore-color);
 }
 
 .example-wrap.compile_fail:hover,
 .example-wrap.should_panic:hover {
-	border-left: 2px solid var(--codeblock-error-hover-color);
+    border-left: 2px solid var(--codeblock-error-hover-color);
 }
 
 .example-wrap.ignore:hover {
-	border-left: 2px solid var(--codeblock-ignore-hover-color);
+    border-left: 2px solid var(--codeblock-ignore-hover-color);
 }
 
 .example-wrap.compile_fail .tooltip,
 .example-wrap.should_panic .tooltip {
-	color: var(--codeblock-error-color);
+    color: var(--codeblock-error-color);
 }
 
 .example-wrap.ignore .tooltip {
-	color: var(--codeblock-ignore-color);
+    color: var(--codeblock-ignore-color);
 }
 
 .example-wrap.compile_fail:hover .tooltip,
 .example-wrap.should_panic:hover .tooltip {
-	color: var(--codeblock-error-hover-color);
+    color: var(--codeblock-error-hover-color);
 }
 
 .example-wrap.ignore:hover .tooltip {
-	color: var(--codeblock-ignore-hover-color);
+    color: var(--codeblock-ignore-hover-color);
 }
 
 .example-wrap .tooltip {
-	position: absolute;
-	display: block;
-	left: -25px;
-	top: 5px;
-	margin: 0;
-	line-height: 1;
+    position: absolute;
+    display: block;
+    left: -25px;
+    top: 5px;
+    margin: 0;
+    line-height: 1;
 }
 
 .example-wrap.compile_fail .tooltip,
 .example-wrap.should_panic .tooltip,
 .example-wrap.ignore .tooltip {
-	font-weight: bold;
-	font-size: 1.25rem;
+    font-weight: bold;
+    font-size: 1.25rem;
 }
 
 /* This class only exists for users who want to draw attention to a particular element in their
 documentation. */
 .content .docblock .warning {
-	border-left: 2px solid var(--warning-border-color);
-	padding: 14px;
-	position: relative;
-	/* The "!important" part is required because the rule is otherwise overruled in this CSS
+    border-left: 2px solid var(--warning-border-color);
+    padding: 14px;
+    position: relative;
+    /* The "!important" part is required because the rule is otherwise overruled in this CSS
 	selector: ".docblock > :not(.more-examples-toggle):not(.example-wrap)" */
-	overflow-x: visible !important;
+    overflow-x: visible !important;
 }
 .content .docblock .warning::before {
-	color: var(--warning-border-color);
-	content: "ⓘ";
-	position: absolute;
-	left: -25px;
-	top: 5px;
-	font-weight: bold;
-	font-size: 1.25rem;
+    color: var(--warning-border-color);
+    content: "ⓘ";
+    position: absolute;
+    left: -25px;
+    top: 5px;
+    font-weight: bold;
+    font-size: 1.25rem;
 }
-.top-doc > .docblock >.warning:first-child::before {
-	top: 20px;
+.top-doc > .docblock > .warning:first-child::before {
+    top: 20px;
 }
 
-.example-wrap > a.test-arrow, .example-wrap .button-holder {
-	visibility: hidden;
-	position: absolute;
-	top: 4px;
-	right: 4px;
-	z-index: 1;
+.example-wrap > a.test-arrow,
+.example-wrap .button-holder {
+    visibility: hidden;
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    z-index: 1;
 }
 a.test-arrow {
-	height: var(--copy-path-height);
-	padding: 6px 4px 0 11px;
+    height: var(--copy-path-height);
+    padding: 6px 4px 0 11px;
 }
 a.test-arrow::before {
-	content: url('data:image/svg+xml,<svg viewBox="0 0 20 20" width="18" height="20" \
+    content: url('data:image/svg+xml,<svg viewBox="0 0 20 20" width="18" height="20" \
 		xmlns="http://www.w3.org/2000/svg"><path d="M0 0l18 10-18 10z"/></svg>');
 }
 .example-wrap .button-holder {
-	display: flex;
+    display: flex;
 }
 
 /*
@@ -1786,233 +1909,235 @@ However, using `@media (hover: hover)` makes this rule never to be applied in GU
 instead, we check that it's not a "finger" cursor.
 */
 @media not (pointer: coarse) {
-	.example-wrap:hover > a.test-arrow, .example-wrap:hover > .button-holder {
-		visibility: visible;
-	}
+    .example-wrap:hover > a.test-arrow,
+    .example-wrap:hover > .button-holder {
+        visibility: visible;
+    }
 }
 .example-wrap .button-holder.keep-visible {
-	visibility: visible;
+    visibility: visible;
 }
 .example-wrap .button-holder > * {
-	background: var(--main-background-color);
-	cursor: pointer;
-	border-radius: var(--button-border-radius);
-	height: var(--copy-path-height);
-	width: var(--copy-path-width);
-	border: 0;
-	color: var(--code-example-button-color);
+    background: var(--main-background-color);
+    cursor: pointer;
+    border-radius: var(--button-border-radius);
+    height: var(--copy-path-height);
+    width: var(--copy-path-width);
+    border: 0;
+    color: var(--code-example-button-color);
 }
 .example-wrap .button-holder > *:hover {
-	color: var(--code-example-button-hover-color);
+    color: var(--code-example-button-hover-color);
 }
 .example-wrap .button-holder > *:not(:first-child) {
-	margin-left: var(--button-left-margin);
+    margin-left: var(--button-left-margin);
 }
 .example-wrap .button-holder .copy-button {
-	padding: 2px 0 0 4px;
+    padding: 2px 0 0 4px;
 }
 .example-wrap .button-holder .copy-button::before,
 .example-wrap .test-arrow::before,
 .example-wrap .button-holder .prev::before,
 .example-wrap .button-holder .next::before,
 .example-wrap .button-holder .expand::before {
-	filter: var(--copy-path-img-filter);
+    filter: var(--copy-path-img-filter);
 }
 .example-wrap .button-holder .copy-button::before {
-	content: var(--clipboard-image);
+    content: var(--clipboard-image);
 }
 .example-wrap .button-holder .copy-button:hover::before,
 .example-wrap .test-arrow:hover::before {
-	filter: var(--copy-path-img-hover-filter);
+    filter: var(--copy-path-img-hover-filter);
 }
 .example-wrap .button-holder .copy-button.clicked::before {
-	content: var(--checkmark-image);
-	padding-right: 5px;
+    content: var(--checkmark-image);
+    padding-right: 5px;
 }
 
 .example-wrap .button-holder .prev,
 .example-wrap .button-holder .next,
 .example-wrap .button-holder .expand {
-	line-height: 0px;
+    line-height: 0px;
 }
 .example-wrap .button-holder .prev::before {
-	content: var(--prev-arrow-image);
+    content: var(--prev-arrow-image);
 }
 .example-wrap .button-holder .next::before {
-	content: var(--next-arrow-image);
+    content: var(--next-arrow-image);
 }
 .example-wrap .button-holder .expand::before {
-	content: var(--expand-arrow-image);
+    content: var(--expand-arrow-image);
 }
 .example-wrap .button-holder .expand.collapse::before {
-	content: var(--collapse-arrow-image);
+    content: var(--collapse-arrow-image);
 }
 
 .code-attribute {
-	font-weight: 300;
-	color: var(--code-attribute-color);
+    font-weight: 300;
+    color: var(--code-attribute-color);
 }
 
 .item-spacer {
-	width: 100%;
-	height: 12px;
-	display: block;
+    width: 100%;
+    height: 12px;
+    display: block;
 }
 
 .main-heading span.since::before {
-	content: "Since ";
+    content: "Since ";
 }
 
 .sub-variant h4 {
-	font-size: 1rem;
-	font-weight: 400;
-	margin-top: 0;
-	margin-bottom: 0;
+    font-size: 1rem;
+    font-weight: 400;
+    margin-top: 0;
+    margin-bottom: 0;
 }
 
 .sub-variant {
-	margin-left: 24px;
-	margin-bottom: 40px;
+    margin-left: 24px;
+    margin-bottom: 40px;
 }
 
 .sub-variant > .sub-variant-field {
-	margin-left: 24px;
+    margin-left: 24px;
 }
 
 @keyframes targetfadein {
-	from {
-		background-color: var(--main-background-color);
-	}
-	10% {
-		background-color: var(--target-border-color);
-	}
-	to {
-		background-color: var(--target-background-color);
-	}
+    from {
+        background-color: var(--main-background-color);
+    }
+    10% {
+        background-color: var(--target-border-color);
+    }
+    to {
+        background-color: var(--target-background-color);
+    }
 }
 
 :target:not([data-nosnippet]) {
-	background-color: var(--target-background-color);
-	border-right: 3px solid var(--target-border-color);
+    background-color: var(--target-background-color);
+    border-right: 3px solid var(--target-border-color);
 }
 
 a.tooltip {
-	font-family: var(--font-family);
+    font-family: var(--font-family);
 }
 
 .code-header a.tooltip {
-	color: inherit;
-	margin-right: 15px;
-	position: relative;
+    color: inherit;
+    margin-right: 15px;
+    position: relative;
 }
 
 .code-header a.tooltip:hover {
-	color: var(--link-color);
+    color: var(--link-color);
 }
 
 /* placeholder thunk so that the mouse can easily travel from "(i)" to popover
 	the resulting "hover tunnel" is a stepped triangle, approximating
 	https://bjk5.com/post/44698559168/breaking-down-amazons-mega-dropdown */
 a.tooltip:hover::after {
-	position: absolute;
-	top: calc(100% - 10px);
-	left: -15px;
-	right: -15px;
-	height: 20px;
-	content: "\00a0";
+    position: absolute;
+    top: calc(100% - 10px);
+    left: -15px;
+    right: -15px;
+    height: 20px;
+    content: "\00a0";
 }
 
 @media not (prefers-reduced-motion) {
-	:target {
-		animation: 0.65s cubic-bezier(0, 0, 0.1, 1.0) 0.1s targetfadein;
-	}
+    :target {
+        animation: 0.65s cubic-bezier(0, 0, 0.1, 1) 0.1s targetfadein;
+    }
 
-	/* This animation is layered onto the mistake-proofing delay for dismissing
+    /* This animation is layered onto the mistake-proofing delay for dismissing
 		a hovered tooltip, to ensure it feels responsive even with the delay.
 		*/
-	.fade-out {
-		opacity: 0;
-		transition: opacity 0.45s cubic-bezier(0, 0, 0.1, 1.0);
-	}
+    .fade-out {
+        opacity: 0;
+        transition: opacity 0.45s cubic-bezier(0, 0, 0.1, 1);
+    }
 }
 
 .popover.tooltip .content {
-	margin: 0.25em 0.5em;
+    margin: 0.25em 0.5em;
 }
 
-.popover.tooltip .content pre, .popover.tooltip .content code {
-	background: transparent;
-	margin: 0;
-	padding: 0;
-	font-size: 1.25rem;
-	white-space: pre-wrap;
+.popover.tooltip .content pre,
+.popover.tooltip .content code {
+    background: transparent;
+    margin: 0;
+    padding: 0;
+    font-size: 1.25rem;
+    white-space: pre-wrap;
 }
 
 .popover.tooltip .content > h3:first-child {
-	margin: 0 0 5px 0;
+    margin: 0 0 5px 0;
 }
 
 .search-failed {
-	text-align: center;
-	margin-top: 20px;
-	display: none;
+    text-align: center;
+    margin-top: 20px;
+    display: none;
 }
 
 .search-failed.active {
-	display: block;
+    display: block;
 }
 
 .search-failed > ul {
-	text-align: left;
-	max-width: 570px;
-	margin-left: auto;
-	margin-right: auto;
+    text-align: left;
+    max-width: 570px;
+    margin-left: auto;
+    margin-right: auto;
 }
 
 #search-tabs {
-	margin-top: 0.25rem;
-	display: flex;
-	flex-direction: row;
-	gap: 1px;
-	margin-bottom: 4px;
+    margin-top: 0.25rem;
+    display: flex;
+    flex-direction: row;
+    gap: 1px;
+    margin-bottom: 4px;
 }
 
 #search-tabs button {
-	text-align: center;
-	font-size: 1.125rem;
-	border: 0;
-	border-top: 2px solid;
-	flex: 1;
-	line-height: 1.5;
-	color: inherit;
+    text-align: center;
+    font-size: 1.125rem;
+    border: 0;
+    border-top: 2px solid;
+    flex: 1;
+    line-height: 1.5;
+    color: inherit;
 }
 #search-tabs button:not(.selected) {
-	background-color: var(--search-tab-button-not-selected-background);
-	border-top-color: var(--search-tab-button-not-selected-border-top-color);
+    background-color: var(--search-tab-button-not-selected-background);
+    border-top-color: var(--search-tab-button-not-selected-border-top-color);
 }
-#search-tabs button:hover, #search-tabs button.selected {
-	background-color: var(--search-tab-button-selected-background);
-	border-top-color: var(--search-tab-button-selected-border-top-color);
+#search-tabs button:hover,
+#search-tabs button.selected {
+    background-color: var(--search-tab-button-selected-background);
+    border-top-color: var(--search-tab-button-selected-border-top-color);
 }
 
 #search-tabs .count {
-	font-size: 1rem;
-	font-variant-numeric: tabular-nums;
-	color: var(--search-tab-title-count-color);
-	position: relative;
+    font-size: 1rem;
+    font-variant-numeric: tabular-nums;
+    color: var(--search-tab-title-count-color);
+    position: relative;
 }
 
 #search-tabs .count.loading {
-	color: transparent;
+    color: transparent;
 }
 
-.search-form.loading::after
-{
-	width: 18px;
-	height: 18px;
-	border-radius: 18px;
-	/* hourglass */
-	content: url('data:image/svg+xml,\
+.search-form.loading::after {
+    width: 18px;
+    height: 18px;
+    border-radius: 18px;
+    /* hourglass */
+    content: url('data:image/svg+xml,\
 	<svg width="16" height="16" viewBox="0 0 8 8" xmlns="http://www.w3.org/2000/svg">\
 		<g fill="none">\
 			<path d="m3.019 1.496v1.496l0.5878 1.018-0.5751 0.996v1.494" stroke="%233f3f3f"/>\
@@ -2023,139 +2148,155 @@ a.tooltip:hover::after {
 		<path d="m4.005 5.301-0.3987 0.6905h0.7977z" fill="%237f7f7f"/>\
 		<path d="m4.011 3.712-0.3987-0.6905h0.7977z" fill="%237f7f7f"/>\
 	</svg>');
-	position: absolute;
-	right: 8px;
-	top: 8px;
-	filter: var(--settings-menu-filter);
+    position: absolute;
+    right: 8px;
+    top: 8px;
+    filter: var(--settings-menu-filter);
 }
 
 #search .error code {
-	border-radius: 3px;
-	background-color: var(--search-error-code-background-color);
+    border-radius: 3px;
+    background-color: var(--search-error-code-background-color);
 }
 
 .search-corrections {
-	font-weight: normal;
+    font-weight: normal;
 }
 
 #src-sidebar {
-	width: 100%;
-	overflow: auto;
+    width: 100%;
+    overflow: auto;
 }
-#src-sidebar div.files > a:hover, details.dir-entry summary:hover,
-#src-sidebar div.files > a:focus, details.dir-entry summary:focus {
-	background-color: var(--src-sidebar-background-hover);
+#src-sidebar div.files > a:hover,
+details.dir-entry summary:hover,
+#src-sidebar div.files > a:focus,
+details.dir-entry summary:focus {
+    background-color: var(--src-sidebar-background-hover);
 }
 #src-sidebar div.files > a.selected {
-	background-color: var(--src-sidebar-background-selected);
+    background-color: var(--src-sidebar-background-selected);
 }
 
 .src-sidebar-title {
-	position: sticky;
-	top: 0;
-	display: flex;
-	padding: 8px 8px 0 48px;
-	margin-bottom: 7px;
-	background: var(--sidebar-background-color);
-	border-bottom: 1px solid var(--border-color);
+    position: sticky;
+    top: 0;
+    display: flex;
+    padding: 8px 8px 0 48px;
+    margin-bottom: 7px;
+    background: var(--sidebar-background-color);
+    border-bottom: 1px solid var(--border-color);
 }
 
-#search-button, .settings-menu, .help-menu, button#toggle-all-docs {
-	margin-left: var(--button-left-margin);
-	display: flex;
-	line-height: 1.25;
-	min-width: 14px;
+#search-button,
+.settings-menu,
+.help-menu,
+button#toggle-all-docs {
+    margin-left: var(--button-left-margin);
+    display: flex;
+    line-height: 1.25;
+    min-width: 14px;
 }
 #sidebar-button {
-	display: none;
-	line-height: 0;
+    display: none;
+    line-height: 0;
 }
 .hide-sidebar #sidebar-button,
 .src #sidebar-button {
-	display: flex;
-	margin-right: 4px;
-	position: fixed;
-	margin-top: 25px;
-	left: 6px;
-	height: 34px;
-	width: 34px;
-	z-index: calc(var(--desktop-sidebar-z-index) + 1);
+    display: flex;
+    margin-right: 4px;
+    position: fixed;
+    margin-top: 25px;
+    left: 6px;
+    height: 34px;
+    width: 34px;
+    z-index: calc(var(--desktop-sidebar-z-index) + 1);
 }
 .hide-sidebar #sidebar-button {
-	left: 6px;
-	background-color: var(--main-background-color);
+    left: 6px;
+    background-color: var(--main-background-color);
 }
 .src #sidebar-button {
-	margin-top: 0;
-	top: 8px;
-	left: 8px;
-	border-color: var(--border-color);
+    margin-top: 0;
+    top: 8px;
+    left: 8px;
+    border-color: var(--border-color);
 }
 .hide-sidebar .src #sidebar-button {
-	position: static;
+    position: static;
 }
 #search-button > a,
 .settings-menu > a,
 .help-menu > a,
 #sidebar-button > a,
 button#toggle-all-docs {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	flex-direction: column;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
 }
 #search-button > a,
 .settings-menu > a,
 .help-menu > a,
 button#toggle-all-docs {
-	border: 1px solid transparent;
-	border-radius: var(--button-border-radius);
-	color: var(--main-color);
+    border: 1px solid transparent;
+    border-radius: var(--button-border-radius);
+    color: var(--main-color);
 }
-#search-button > a, .settings-menu > a, .help-menu > a, button#toggle-all-docs {
-	width: 80px;
-	border-radius: var(--toolbar-button-border-radius);
+#search-button > a,
+.settings-menu > a,
+.help-menu > a,
+button#toggle-all-docs {
+    width: 80px;
+    border-radius: var(--toolbar-button-border-radius);
 }
-#search-button > a, .settings-menu > a, .help-menu > a {
-	min-width: 0;
+#search-button > a,
+.settings-menu > a,
+.help-menu > a {
+    min-width: 0;
 }
 #sidebar-button > a {
-	border: solid 1px transparent;
-	border-radius: var(--button-border-radius);
-	background-color: var(--button-background-color);
-	width: 33px;
+    border: solid 1px transparent;
+    border-radius: var(--button-border-radius);
+    background-color: var(--button-background-color);
+    width: 33px;
 }
 .src #sidebar-button > a {
-	background-color: var(--sidebar-background-color);
-	border-color: var(--border-color);
+    background-color: var(--sidebar-background-color);
+    border-color: var(--border-color);
 }
 
-#search-button > a:hover, #search-button > a:focus-visible,
-.settings-menu > a:hover, .settings-menu > a:focus-visible,
-.help-menu > a:hover, #help-menu > a:focus-visible,
-#sidebar-button > a:hover, #sidebar-button > a:focus-visible,
-#copy-path:hover, #copy-path:focus-visible,
-button#toggle-all-docs:hover, button#toggle-all-docs:focus-visible {
-	border-color: var(--settings-button-border-focus);
-	text-decoration: none;
+#search-button > a:hover,
+#search-button > a:focus-visible,
+.settings-menu > a:hover,
+.settings-menu > a:focus-visible,
+.help-menu > a:hover,
+#help-menu > a:focus-visible,
+#sidebar-button > a:hover,
+#sidebar-button > a:focus-visible,
+#copy-path:hover,
+#copy-path:focus-visible,
+button#toggle-all-docs:hover,
+button#toggle-all-docs:focus-visible {
+    border-color: var(--settings-button-border-focus);
+    text-decoration: none;
 }
 
 #search-button > a::before {
-	/* Magnifying glass */
-	content: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" \
+    /* Magnifying glass */
+    content: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" \
 		width="18" height="18" viewBox="0 0 16 16">\
 	    <circle r="5" cy="7" cx="7" style="fill:none;stroke:black;stroke-width:3"/><path \
 	    d="M14.5,14.5 12,12" style="fill:none;stroke:black;stroke-width:3;stroke-linecap:round">\
 	    </path><desc>Search</desc>\
 	    </svg>');
-	width: 18px;
-	height: 18px;
-	filter: var(--settings-menu-filter);
+    width: 18px;
+    height: 18px;
+    filter: var(--settings-menu-filter);
 }
 
 .settings-menu > a::before {
-	/* Wheel <https://www.svgrepo.com/svg/384069/settings-cog-gear> */
-	content: url('data:image/svg+xml,<svg width="18" height="18" viewBox="0 0 12 12" \
+    /* Wheel <https://www.svgrepo.com/svg/384069/settings-cog-gear> */
+    content: url('data:image/svg+xml,<svg width="18" height="18" viewBox="0 0 12 12" \
 	enable-background="new 0 0 12 12" xmlns="http://www.w3.org/2000/svg">\
 	<path d="m4.75 0s-0.32117 1.286-0.53906 2.1576c-0.2276 0.1062-0.44625 \
 	0.2266-0.64974 0.36979l-2.1328-0.60938-1.25 2.1641s0.9644 0.93231 1.6081 1.5547c-0.010437 \
@@ -2169,24 +2310,24 @@ button#toggle-all-docs:hover, button#toggle-all-docs:focus-visible {
 	3.4505-1.9058 2.877e-4 -3.4508-1.5447-3.4505-3.4505-2.877e-4 -1.9058 1.5447-3.4508 \
 	3.4505-3.4505z" fill="black"/>\
 	<circle cx="6" cy="6" r="1.75" fill="none" stroke="black" stroke-width="1"/></svg>');
-	width: 18px;
-	height: 18px;
-	filter: var(--settings-menu-filter);
+    width: 18px;
+    height: 18px;
+    filter: var(--settings-menu-filter);
 }
 
 button#toggle-all-docs::before {
-	/* Custom arrow icon */
-	content: url('data:image/svg+xml,<svg width="18" height="18" viewBox="0 0 12 12" \
+    /* Custom arrow icon */
+    content: url('data:image/svg+xml,<svg width="18" height="18" viewBox="0 0 12 12" \
 	enable-background="new 0 0 12 12" xmlns="http://www.w3.org/2000/svg">\
 	<path d="M2,2l4,4l4,-4M2,6l4,4l4,-4" stroke="black" fill="none" stroke-width="2px"/></svg>');
-	width: 18px;
-	height: 18px;
-	filter: var(--settings-menu-filter);
+    width: 18px;
+    height: 18px;
+    filter: var(--settings-menu-filter);
 }
 
 .help-menu > a::before {
-	/* Question mark with "circle" */
-	content: url('data:image/svg+xml,\
+    /* Question mark with "circle" */
+    content: url('data:image/svg+xml,\
 		<svg width="18" height="18" enable-background="new 0 0 12 12" fill="none" \
 		version="1.1" viewBox="0 0 12 12" xmlns="http://www.w3.org/2000/svg"> \
 		<path d="m6.007 0.6931c2.515 0 5.074 1.908 5.074 5.335 0 3.55-2.567 5.278-5.088 \
@@ -2200,135 +2341,136 @@ button#toggle-all-docs::before {
 		1.595-0.05728 0.2939 0.0134 0.9812 0.0134 1.205" fill="none" stroke="black" \
 		stroke-width="1.25"/>\
 		</svg>');
-	width: 18px;
-	height: 18px;
-	filter: var(--settings-menu-filter);
+    width: 18px;
+    height: 18px;
+    filter: var(--settings-menu-filter);
 }
 
 /* design hack to cope with "Help" being far shorter than "Settings" etc */
 .help-menu > a {
-	width: 74px;
+    width: 74px;
 }
 .help-menu > a > .label {
-	padding-right: 1px;
+    padding-right: 1px;
 }
 #toggle-all-docs:not(.will-expand) > .label {
-	padding-left: 1px;
+    padding-left: 1px;
 }
 
 #search-button > a::before,
 button#toggle-all-docs::before,
 .help-menu > a::before,
 .settings-menu > a::before {
-	filter: var(--settings-menu-filter);
-	margin: 8px;
+    filter: var(--settings-menu-filter);
+    margin: 8px;
 }
 
 @media not (pointer: coarse) {
-	#search-button > a:hover::before,
-	button#toggle-all-docs:hover::before,
-	.help-menu > a:hover::before,
-	.settings-menu > a:hover::before {
-		filter: var(--settings-menu-hover-filter);
-	}
+    #search-button > a:hover::before,
+    button#toggle-all-docs:hover::before,
+    .help-menu > a:hover::before,
+    .settings-menu > a:hover::before {
+        filter: var(--settings-menu-hover-filter);
+    }
 }
 
 button[disabled]#toggle-all-docs {
-	opacity: 0.25;
-	border: solid 1px var(--main-background-color);
-	background-size: cover;
+    opacity: 0.25;
+    border: solid 1px var(--main-background-color);
+    background-size: cover;
 }
 
 button[disabled]#toggle-all-docs:hover {
-	border: solid 1px var(--main-background-color);
-	cursor: not-allowed;
+    border: solid 1px var(--main-background-color);
+    cursor: not-allowed;
 }
 
 rustdoc-toolbar span.label {
-	font-size: 1rem;
-	flex-grow: 1;
-	padding-bottom: 4px;
+    font-size: 1rem;
+    flex-grow: 1;
+    padding-bottom: 4px;
 }
 
 #sidebar-button > a::before {
-	/* sidebar resizer image */
-	content: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 22 22" \
+    /* sidebar resizer image */
+    content: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 22 22" \
 		fill="none" stroke="black">\
 		<rect x="1" y="2" width="20" height="18" ry="1.5" stroke-width="1.5" stroke="%23777"/>\
 		<circle cx="4.375" cy="5.375" r="1" stroke-width=".75"/>\
 		<path d="m7.6121 4v14 M5.375 8.625h-2 m2 3h-2 m2 3h-2" stroke-width="1.25"/></svg>');
-	width: 22px;
-	height: 22px;
+    width: 22px;
+    height: 22px;
 }
 
 #copy-path {
-	color: var(--copy-path-button-color);
-	background: var(--main-background-color);
-	height: var(--copy-path-height);
-	width: var(--copy-path-width);
-	margin-left: 10px;
-	padding: 0;
-	padding-left: 2px;
-	border: solid 1px transparent;
-	border-radius: var(--button-border-radius);
-	font-size: 0;
+    color: var(--copy-path-button-color);
+    background: var(--main-background-color);
+    height: var(--copy-path-height);
+    width: var(--copy-path-width);
+    margin-left: 10px;
+    padding: 0;
+    padding-left: 2px;
+    border: solid 1px transparent;
+    border-radius: var(--button-border-radius);
+    font-size: 0;
 }
 #copy-path::before {
-	filter: var(--copy-path-img-filter);
-	content: var(--clipboard-image);
+    filter: var(--copy-path-img-filter);
+    content: var(--clipboard-image);
 }
 #copy-path:hover::before {
-	filter: var(--copy-path-img-hover-filter);
+    filter: var(--copy-path-img-hover-filter);
 }
 #copy-path.clicked::before {
-	content: var(--checkmark-image);
+    content: var(--checkmark-image);
 }
 
 @keyframes rotating {
-	from {
-		transform: rotate(0deg);
-	}
-	to {
-		transform: rotate(360deg);
-	}
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
 }
 .settings-menu.rotate > a img {
-	animation: rotating 2s linear infinite;
+    animation: rotating 2s linear infinite;
 }
 
 kbd {
-	display: inline-block;
-	padding: 3px 5px;
-	font: 15px monospace;
-	line-height: 10px;
-	vertical-align: middle;
-	border: solid 1px var(--border-color);
-	border-radius: 3px;
-	color: var(--kbd-color);
-	background-color: var(--kbd-background);
-	box-shadow: inset 0 -1px 0 var(--kbd-box-shadow-color);
+    display: inline-block;
+    padding: 3px 5px;
+    font: 15px monospace;
+    line-height: 10px;
+    vertical-align: middle;
+    border: solid 1px var(--border-color);
+    border-radius: 3px;
+    color: var(--kbd-color);
+    background-color: var(--kbd-background);
+    box-shadow: inset 0 -1px 0 var(--kbd-box-shadow-color);
 }
 
 ul.all-items > li {
-	list-style: none;
+    list-style: none;
 }
 
 details.dir-entry {
-	padding-left: 4px;
+    padding-left: 4px;
 }
 
 details.dir-entry > summary {
-	margin: 0 0 0 -4px;
-	padding: 0 0 0 4px;
-	cursor: pointer;
+    margin: 0 0 0 -4px;
+    padding: 0 0 0 4px;
+    cursor: pointer;
 }
 
-details.dir-entry div.folders, details.dir-entry div.files {
-	padding-left: 23px;
+details.dir-entry div.folders,
+details.dir-entry div.files {
+    padding-left: 23px;
 }
 
 details.dir-entry a {
-	display: block;
+    display: block;
 }
 
 /* We use CSS containment on the details elements because most sizeable elements
@@ -2338,104 +2480,105 @@ details.dir-entry a {
 	because the [-]/[+] toggles extend past the boundaries of the <details>
 	https://developer.mozilla.org/en-US/docs/Web/CSS/contain */
 details.toggle {
-	contain: layout;
-	position: relative;
+    contain: layout;
+    position: relative;
 }
 
 details.big-toggle {
-	/* This makes [-] on the same line as <summary>. */
-	contain: inline-size;
+    /* This makes [-] on the same line as <summary>. */
+    contain: inline-size;
 }
 
 /* The hideme class is used on summary tags that contain a span with
 	placeholder text shown only when the toggle is closed. For instance,
 	"Expand description" or "Show methods". */
 details.toggle > summary.hideme {
-	cursor: pointer;
-	font-size: 1rem;
+    cursor: pointer;
+    font-size: 1rem;
 }
 
 details.toggle > summary {
-	list-style: none;
-	/* focus outline is shown on `::before` instead of this */
-	outline: none;
+    list-style: none;
+    /* focus outline is shown on `::before` instead of this */
+    outline: none;
 }
 details.toggle > summary::-webkit-details-marker,
 details.toggle > summary::marker {
-	display: none;
+    display: none;
 }
 
 details.toggle > summary.hideme > span {
-	margin-left: 9px;
+    margin-left: 9px;
 }
 
 details.toggle > summary::before {
-	/* arrow pointing left */
-	background: url('data:image/svg+xml,<svg width="16" height="16" viewBox="0 0 12 12" \
+    /* arrow pointing left */
+    background: url('data:image/svg+xml,<svg width="16" height="16" viewBox="0 0 12 12" \
 	enable-background="new 0 0 12 12" xmlns="http://www.w3.org/2000/svg">\
 	<path d="M4,2l4,4l-4,4" stroke="black" fill="none" stroke-width="1px"/></svg>');
-	content: "";
-	cursor: pointer;
-	width: 16px;
-	height: 16px;
-	display: inline-block;
-	vertical-align: middle;
-	opacity: .5;
-	filter: var(--toggle-filter);
+    content: "";
+    cursor: pointer;
+    width: 16px;
+    height: 16px;
+    display: inline-block;
+    vertical-align: middle;
+    opacity: 0.5;
+    filter: var(--toggle-filter);
 }
 
 details.toggle > summary.hideme > span,
-.more-examples-toggle summary, .more-examples-toggle .hide-more {
-	color: var(--toggles-color);
+.more-examples-toggle summary,
+.more-examples-toggle .hide-more {
+    color: var(--toggles-color);
 }
 
 /* Screen readers see the text version at the end the line.
 	Visual readers see the icon at the start of the line, but small and transparent. */
 details.toggle > summary::after {
-	content: "Expand";
-	overflow: hidden;
-	width: 0;
-	height: 0;
-	position: absolute;
+    content: "Expand";
+    overflow: hidden;
+    width: 0;
+    height: 0;
+    position: absolute;
 }
 
 details.toggle > summary.hideme::after {
-	/* "hideme" toggles already have a description when they're contracted */
-	content: "";
+    /* "hideme" toggles already have a description when they're contracted */
+    content: "";
 }
 
 details.toggle > summary:focus::before,
 details.toggle > summary:hover::before {
-	opacity: 1;
+    opacity: 1;
 }
 
 details.toggle > summary:focus-visible::before {
-	/* The SVG is black, and gets turned white using a filter in the dark themes.
+    /* The SVG is black, and gets turned white using a filter in the dark themes.
 	   Do the same with the outline.
 	   The dotted 1px style is copied from Firefox's focus ring style.
 	*/
-	outline: 1px dotted #000;
-	outline-offset: 1px;
+    outline: 1px dotted #000;
+    outline-offset: 1px;
 }
 
 details.non-exhaustive {
-	margin-bottom: 8px;
+    margin-bottom: 8px;
 }
 
 details.toggle > summary.hideme::before {
-	position: relative;
+    position: relative;
 }
 
 details.toggle > summary:not(.hideme)::before {
-	position: absolute;
-	left: -24px;
-	top: 4px;
+    position: absolute;
+    left: -24px;
+    top: 4px;
 }
 
 .impl-items > details.toggle > summary:not(.hideme)::before,
 #main-content > .methods > details.toggle > summary:not(.hideme)::before {
-	position: absolute;
-	left: -24px;
+    position: absolute;
+    left: -24px;
 }
 
 /* We indent items of an impl block to have a visual marker that these items are part
@@ -2449,12 +2592,12 @@ details.toggle > summary:not(.hideme)::before {
 .impl > .item-info,
 .impl > .docblock,
 .impl + .docblock {
-	margin-left: var(--impl-items-indent);
+    margin-left: var(--impl-items-indent);
 }
 
 details.big-toggle > summary:not(.hideme)::before {
-	left: -34px;
-	top: 9px;
+    left: -34px;
+    top: 9px;
 }
 
 /* When a "hideme" summary is open and the "Expand description" or "Show
@@ -2463,60 +2606,63 @@ details.big-toggle > summary:not(.hideme)::before {
 	absolute positioning. Note that we also set position: relative
 	on the parent <details> to make this work properly. */
 details.toggle[open] > summary.hideme {
-	position: absolute;
+    position: absolute;
 }
 
 details.toggle[open] > summary.hideme > span {
-	display: none;
+    display: none;
 }
 
 details.toggle[open] > summary::before {
-	/* arrow pointing down */
-	background: url('data:image/svg+xml,<svg width="16" height="16" viewBox="0 0 12 12" \
+    /* arrow pointing down */
+    background: url('data:image/svg+xml,<svg width="16" height="16" viewBox="0 0 12 12" \
 	enable-background="new 0 0 12 12" xmlns="http://www.w3.org/2000/svg">\
 	<path d="M2,4l4,4l4,-4" stroke="black" fill="none" stroke-width="1px"/></svg>');
 }
 
 details.toggle[open] > summary::after {
-	content: "Collapse";
+    content: "Collapse";
 }
 
 details.toggle:not([open]) > summary .docblock {
-	max-height: calc(1.5em + 0.75em);
-	overflow-y: hidden;
+    max-height: calc(1.5em + 0.75em);
+    overflow-y: hidden;
 }
 details.toggle:not([open]) > summary .docblock > :first-child {
-	max-width: 100%;
-	overflow: hidden;
-	width: fit-content;
-	white-space: nowrap;
-	position: relative;
-	padding-right: 1em;
+    max-width: 100%;
+    overflow: hidden;
+    width: fit-content;
+    white-space: nowrap;
+    position: relative;
+    padding-right: 1em;
 }
 details.toggle:not([open]) > summary .docblock > :first-child::after {
-	content: "…";
-	position: absolute;
-	right: 0;
-	top: 0;
-	bottom: 0;
-	z-index: 1;
-	background-color: var(--main-background-color);
-	font: 1rem/1.5 "Source Serif 4", NanumBarunGothic, serif;
-	/* To make it look a bit better and not have it stuck to the preceding element. */
-	padding-left: 0.2em;
+    content: "…";
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    z-index: 1;
+    background-color: var(--main-background-color);
+    font:
+        1rem/1.5 "Source Serif 4",
+        NanumBarunGothic,
+        serif;
+    /* To make it look a bit better and not have it stuck to the preceding element. */
+    padding-left: 0.2em;
 }
 details.toggle:not([open]) > summary .docblock > div:first-child::after {
-	/* This is to make the "..." always appear at the bottom. */
-	padding-top: calc(1.5em + 0.75em - 1.2rem);
+    /* This is to make the "..." always appear at the bottom. */
+    padding-top: calc(1.5em + 0.75em - 1.2rem);
 }
 
 details.toggle > summary .docblock {
-	margin-top: 0.75em;
+    margin-top: 0.75em;
 }
 
 /* This is needed in docblocks to have the "▶" element to be on the same line. */
 .docblock summary > * {
-	display: inline-block;
+    display: inline-block;
 }
 
 /* In case there is no documentation before a code block, we need to add some margin at the top
@@ -2524,114 +2670,114 @@ to prevent an overlay between the "collapse toggle" and the information tooltip.
 However, it's not needed with smaller screen width because the doc/code block is always put
 "one line" below. */
 .docblock > .example-wrap:first-child .tooltip {
-	margin-top: 16px;
+    margin-top: 16px;
 }
 
 /* sidebar button opens modal
 	use hamburger button */
-.src #sidebar-button > a::before, .sidebar-menu-toggle::before {
-	/* hamburger button image */
-	content: var(--hamburger-image);
-	opacity: 0.75;
-	filter: var(--mobile-sidebar-menu-filter);
+.src #sidebar-button > a::before,
+.sidebar-menu-toggle::before {
+    /* hamburger button image */
+    content: var(--hamburger-image);
+    opacity: 0.75;
+    filter: var(--mobile-sidebar-menu-filter);
 }
 .src #sidebar-button > a:hover {
-	background: var(--main-background-color);
+    background: var(--main-background-color);
 }
 .sidebar-menu-toggle:hover::before,
 .sidebar-menu-toggle:active::before,
 .sidebar-menu-toggle:focus::before {
-	opacity: 1;
+    opacity: 1;
 }
 
 /* Media Queries */
 
 @media (max-width: 850px) {
-	/* Make sure all the buttons line wrap at the same time */
-	#search-tabs .count {
-		display: block;
-	}
-	.side-by-side {
-		flex-direction: column-reverse;
-	}
-	.side-by-side > div {
-		width: auto;
-	}
+    /* Make sure all the buttons line wrap at the same time */
+    #search-tabs .count {
+        display: block;
+    }
+    .side-by-side {
+        flex-direction: column-reverse;
+    }
+    .side-by-side > div {
+        width: auto;
+    }
 
-	/* Text label takes up too much space at this size. */
-	.main-heading {
-		grid-template-areas:
-			"main-heading-breadcrumbs main-heading-toolbar"
-			"main-heading-h1 main-heading-toolbar"
-			"main-heading-sub-heading main-heading-toolbar";
-	}
-	.search-results-main-heading {
-		display: grid;
-		grid-template-areas:
-			"main-heading-breadcrumbs main-heading-toolbar"
-			"main-heading-breadcrumbs main-heading-toolbar"
-			"main-heading-h1 main-heading-toolbar";
-	}
-	rustdoc-toolbar {
-		margin-top: -10px;
-		display: grid;
-		grid-template-areas:
-			"x settings help"
-			"search summary summary";
-		grid-template-rows: 35px 1fr;
-	}
-	.search-results-main-heading rustdoc-toolbar {
-		display: grid;
-		grid-template-areas:
-			"settings help"
-			"search search";
-	}
-	.search-results-main-heading #toggle-all-docs {
-		display: none;
-	}
-	rustdoc-toolbar .settings-menu span.label,
-	rustdoc-toolbar .help-menu span.label
-	{
-		display: none;
-	}
-	rustdoc-toolbar .settings-menu {
-		grid-area: settings;
-	}
-	rustdoc-toolbar .help-menu {
-		grid-area: help;
-	}
-	rustdoc-toolbar .settings-menu {
-		grid-area: settings;
-	}
-	rustdoc-toolbar #search-button {
-		grid-area: search;
-	}
-	rustdoc-toolbar #toggle-all-docs {
-		grid-area: summary;
-	}
-	rustdoc-toolbar .settings-menu,
-	rustdoc-toolbar .help-menu {
-		height: 35px;
-	}
-	rustdoc-toolbar .settings-menu > a,
-	rustdoc-toolbar .help-menu > a {
-		border-radius: 2px;
-		text-align: center;
-		width: 34px;
-		padding: 5px 0;
-	}
-	rustdoc-toolbar .settings-menu > a:before,
-	rustdoc-toolbar .help-menu > a:before {
-		margin: 0 4px;
-	}
-	#settings.popover {
-		top: 16px;
-		--popover-arrow-offset: 58px;
-	}
-	#help.popover {
-		top: 16px;
-		--popover-arrow-offset: 16px;
-	}
+    /* Text label takes up too much space at this size. */
+    .main-heading {
+        grid-template-areas:
+            "main-heading-breadcrumbs main-heading-toolbar"
+            "main-heading-h1 main-heading-toolbar"
+            "main-heading-sub-heading main-heading-toolbar";
+    }
+    .search-results-main-heading {
+        display: grid;
+        grid-template-areas:
+            "main-heading-breadcrumbs main-heading-toolbar"
+            "main-heading-breadcrumbs main-heading-toolbar"
+            "main-heading-h1 main-heading-toolbar";
+    }
+    rustdoc-toolbar {
+        margin-top: -10px;
+        display: grid;
+        grid-template-areas:
+            "x settings help"
+            "search summary summary";
+        grid-template-rows: 35px 1fr;
+    }
+    .search-results-main-heading rustdoc-toolbar {
+        display: grid;
+        grid-template-areas:
+            "settings help"
+            "search search";
+    }
+    .search-results-main-heading #toggle-all-docs {
+        display: none;
+    }
+    rustdoc-toolbar .settings-menu span.label,
+    rustdoc-toolbar .help-menu span.label {
+        display: none;
+    }
+    rustdoc-toolbar .settings-menu {
+        grid-area: settings;
+    }
+    rustdoc-toolbar .help-menu {
+        grid-area: help;
+    }
+    rustdoc-toolbar .settings-menu {
+        grid-area: settings;
+    }
+    rustdoc-toolbar #search-button {
+        grid-area: search;
+    }
+    rustdoc-toolbar #toggle-all-docs {
+        grid-area: summary;
+    }
+    rustdoc-toolbar .settings-menu,
+    rustdoc-toolbar .help-menu {
+        height: 35px;
+    }
+    rustdoc-toolbar .settings-menu > a,
+    rustdoc-toolbar .help-menu > a {
+        border-radius: 2px;
+        text-align: center;
+        width: 34px;
+        padding: 5px 0;
+    }
+    rustdoc-toolbar .settings-menu > a:before,
+    rustdoc-toolbar .help-menu > a:before {
+        margin: 0 4px;
+    }
+    #settings.popover {
+        top: 16px;
+        --popover-arrow-offset: 58px;
+    }
+    #help.popover {
+        top: 16px;
+        --popover-arrow-offset: 16px;
+    }
 }
 
 /*
@@ -2640,186 +2786,188 @@ If you update this line, then you also need to update the line with the same war
 in src-script.js and main.js
 */
 @media (max-width: 700px) {
-	:root {
-		--impl-items-indent: 0.7em;
-	}
+    :root {
+        --impl-items-indent: 0.7em;
+    }
 
-	/* When linking to an item with an `id` (for instance, by clicking a link in the sidebar,
+    /* When linking to an item with an `id` (for instance, by clicking a link in the sidebar,
 	   or visiting a URL with a fragment like `#method.new`, we don't want the item to be obscured
 	   by the topbar. Anything with an `id` gets scroll-margin-top equal to rustdoc-topbar's size.
 	*/
-	*[id] {
-		scroll-margin-top: 45px;
-	}
+    *[id] {
+        scroll-margin-top: 45px;
+    }
 
-	/* We don't display this button on mobile devices. */
-	#copy-path {
-		/* display: none; avoided as a layout hack.
+    /* We don't display this button on mobile devices. */
+    #copy-path {
+        /* display: none; avoided as a layout hack.
 			When there's one line, we get an effective line-height of 34px,
 			because that's how big the image is, but if the header wraps,
 			they're packed more tightly than that. */
-		width: 0;
-		visibility: hidden;
-	}
+        width: 0;
+        visibility: hidden;
+    }
 
+    /* Pull settings and help up into the top bar. */
+    rustdoc-topbar span.label,
+    html:not(.hide-sidebar)
+        .rustdoc:not(.src)
+        rustdoc-toolbar
+        .settings-menu
+        > a,
+    html:not(.hide-sidebar) .rustdoc:not(.src) rustdoc-toolbar .help-menu > a {
+        display: none;
+    }
+    rustdoc-topbar .settings-menu > a,
+    rustdoc-topbar .help-menu > a {
+        width: 33px;
+        line-height: 0;
+    }
+    rustdoc-topbar .settings-menu > a:hover,
+    rustdoc-topbar .help-menu > a:hover {
+        border: none;
+        background: var(--main-background-color);
+        border-radius: 0;
+    }
+    #settings.popover {
+        top: 32px;
+        --popover-arrow-offset: 48px;
+    }
+    #help.popover {
+        top: 32px;
+        --popover-arrow-offset: 12px;
+    }
 
-	/* Pull settings and help up into the top bar. */
-	rustdoc-topbar span.label,
-	html:not(.hide-sidebar) .rustdoc:not(.src) rustdoc-toolbar .settings-menu > a,
-	html:not(.hide-sidebar) .rustdoc:not(.src) rustdoc-toolbar .help-menu > a
-	{
-		display: none;
-	}
-	rustdoc-topbar .settings-menu > a,
-	rustdoc-topbar .help-menu > a {
-		width: 33px;
-		line-height: 0;
-	}
-	rustdoc-topbar .settings-menu > a:hover,
-	rustdoc-topbar .help-menu > a:hover {
-		border: none;
-		background: var(--main-background-color);
-		border-radius: 0;
-	}
-	#settings.popover {
-		top: 32px;
-		--popover-arrow-offset: 48px;
-	}
-	#help.popover {
-		top: 32px;
-		--popover-arrow-offset: 12px;
-	}
-
-	.rustdoc {
-		/* Sidebar should overlay main content, rather than pushing main content to the right.
+    .rustdoc {
+        /* Sidebar should overlay main content, rather than pushing main content to the right.
 		   Turn off `display: flex` on the body element. */
-		display: block;
-	}
+        display: block;
+    }
 
-	html:not(.hide-sidebar) main {
-		padding-left: 15px;
-		padding-top: 0px;
-	}
+    html:not(.hide-sidebar) main {
+        padding-left: 15px;
+        padding-top: 0px;
+    }
 
-	/* Hide the logo and item name from the sidebar. Those are displayed
+    /* Hide the logo and item name from the sidebar. Those are displayed
 	   in the rustdoc-topbar instead. */
-	.sidebar .logo-container,
-	.sidebar .location,
-	.sidebar-resizer {
-		display: none;
-	}
+    .sidebar .logo-container,
+    .sidebar .location,
+    .sidebar-resizer {
+        display: none;
+    }
 
-	.sidebar {
-		position: fixed;
-		top: 45px;
-		/* Hide the sidebar offscreen while not in use. Doing this instead of display: none means
+    .sidebar {
+        position: fixed;
+        top: 45px;
+        /* Hide the sidebar offscreen while not in use. Doing this instead of display: none means
 		   the sidebar stays visible for screen readers, which is useful for navigation. */
-		left: -1000px;
-		z-index: 11;
-		/* Reduce height slightly to account for mobile topbar. */
-		height: calc(100vh - 45px);
-		/* resize indicator: hide this when on touch or mobile */
-		border-right: none;
-		width: 100%;
-	}
-	.sidebar-elems .block li a {
-		white-space: wrap;
-	}
+        left: -1000px;
+        z-index: 11;
+        /* Reduce height slightly to account for mobile topbar. */
+        height: calc(100vh - 45px);
+        /* resize indicator: hide this when on touch or mobile */
+        border-right: none;
+        width: 100%;
+    }
+    .sidebar-elems .block li a {
+        white-space: wrap;
+    }
 
-	/* The source view uses a different design for the sidebar toggle, and doesn't have a topbar,
+    /* The source view uses a different design for the sidebar toggle, and doesn't have a topbar,
 	   so don't bump down the main content or the sidebar. */
-	.src main,
-	.rustdoc.src .sidebar {
-		top: 0;
-		padding: 0;
-		height: 100vh;
-		border: 0;
-	}
-	html .src main {
-		padding: 18px 0;
-	}
-	.src .search-form {
-		margin-left: 40px;
-	}
-	.src .main-heading {
-		margin-left: 8px;
-	}
-	.hide-sidebar .search-form {
-		margin-left: 32px;
-	}
-	.hide-sidebar .src .search-form {
-		margin-left: 0;
-	}
+    .src main,
+    .rustdoc.src .sidebar {
+        top: 0;
+        padding: 0;
+        height: 100vh;
+        border: 0;
+    }
+    html .src main {
+        padding: 18px 0;
+    }
+    .src .search-form {
+        margin-left: 40px;
+    }
+    .src .main-heading {
+        margin-left: 8px;
+    }
+    .hide-sidebar .search-form {
+        margin-left: 32px;
+    }
+    .hide-sidebar .src .search-form {
+        margin-left: 0;
+    }
 
-	.sidebar.shown,
-	.src-sidebar-expanded .src .sidebar,
-	.rustdoc:not(.src) .sidebar:focus-within {
-		left: 0;
-	}
+    .sidebar.shown,
+    .src-sidebar-expanded .src .sidebar,
+    .rustdoc:not(.src) .sidebar:focus-within {
+        left: 0;
+    }
 
-	rustdoc-topbar > h2 {
-		padding-bottom: 0;
-		margin: auto;
-		overflow: hidden;
-		/* Rare exception to specifying font sizes in rem. Since the topbar
+    rustdoc-topbar > h2 {
+        padding-bottom: 0;
+        margin: auto;
+        overflow: hidden;
+        /* Rare exception to specifying font sizes in rem. Since the topbar
 		   height is specified in pixels, this also has to be specified in
 		   pixels to avoid overflowing the topbar when the user sets a bigger
 		   font size. */
-		font-size: 24px;
-		white-space: nowrap;
-		text-overflow: ellipsis;
-		text-align: center;
-	}
+        font-size: 24px;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        text-align: center;
+    }
 
-	rustdoc-topbar .logo-container > img {
-		max-width: 35px;
-		max-height: 35px;
-		margin: 5px 0 5px 20px;
-	}
+    rustdoc-topbar .logo-container > img {
+        max-width: 35px;
+        max-height: 35px;
+        margin: 5px 0 5px 20px;
+    }
 
-	rustdoc-topbar {
-		display: flex;
-		flex-direction: row;
-		position: sticky;
-		z-index: 10;
-		height: 45px;
-		width: 100%;
-		left: 0;
-		top: 0;
-	}
+    rustdoc-topbar {
+        display: flex;
+        flex-direction: row;
+        position: sticky;
+        z-index: 10;
+        height: 45px;
+        width: 100%;
+        left: 0;
+        top: 0;
+    }
 
-	.hide-sidebar rustdoc-topbar {
-		display: none;
-	}
+    .hide-sidebar rustdoc-topbar {
+        display: none;
+    }
 
-	.sidebar-menu-toggle {
-		/* prevent flexbox shrinking */
-		width: 41px;
-		min-width: 41px;
-		border: none;
-		line-height: 0;
-	}
+    .sidebar-menu-toggle {
+        /* prevent flexbox shrinking */
+        width: 41px;
+        min-width: 41px;
+        border: none;
+        line-height: 0;
+    }
 
-	.hide-sidebar .sidebar-menu-toggle {
-		display: none;
-	}
+    .hide-sidebar .sidebar-menu-toggle {
+        display: none;
+    }
 
-	.sidebar-elems {
-		margin-top: 1em;
-	}
+    .sidebar-elems {
+        margin-top: 1em;
+    }
 
-	.anchor {
-		display: none !important;
-	}
+    .anchor {
+        display: none !important;
+    }
 
-	#main-content > details.toggle > summary::before,
-	#main-content > div > details.toggle > summary::before {
-		left: -11px;
-	}
+    #main-content > details.toggle > summary::before,
+    #main-content > div > details.toggle > summary::before {
+        left: -11px;
+    }
 
-	/* sidebar button becomes topbar button */
-	#sidebar-button > a::before {
-		content: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" \
+    /* sidebar button becomes topbar button */
+    #sidebar-button > a::before {
+        content: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" \
 			viewBox="0 0 22 22" fill="none" stroke="black">\
 			<rect x="1" y="2" width="20" height="18" ry="1.5" stroke-width="1.5" stroke="%23777"/>\
 			<g fill="black" stroke="none">\
@@ -2828,80 +2976,82 @@ in src-script.js and main.js
 			<circle cx="14.375" cy="5.375" r="1" stroke-width=".75"/>\
 			</g>\
 			<path d="m3 8.375h16" stroke-width="1.25"/></svg>');
-		width: 22px;
-		height: 22px;
-	}
-	.sidebar-menu-toggle:hover {
-		background: var(--main-background-color);
-	}
+        width: 22px;
+        height: 22px;
+    }
+    .sidebar-menu-toggle:hover {
+        background: var(--main-background-color);
+    }
 
-	/* Display an alternating layout on tablets and phones */
-	.search-results > a, .search-results > a > div {
-		display: block;
-	}
+    /* Display an alternating layout on tablets and phones */
+    .search-results > a,
+    .search-results > a > div {
+        display: block;
+    }
 
-	/* Display an alternating layout on tablets and phones */
-	.search-results > a {
-		padding: 5px 0px;
-	}
-	.search-results > a > div.desc, .item-table dd {
-		padding-left: 2em;
-	}
-	.search-results .result-name {
-		display: block;
-	}
-	.search-results .result-name .typename {
-		width: initial;
-		margin-right: 0;
-	}
-	.search-results .result-name .typename, .search-results .result-name .path {
-		display: inline;
-	}
+    /* Display an alternating layout on tablets and phones */
+    .search-results > a {
+        padding: 5px 0px;
+    }
+    .search-results > a > div.desc,
+    .item-table dd {
+        padding-left: 2em;
+    }
+    .search-results .result-name {
+        display: block;
+    }
+    .search-results .result-name .typename {
+        width: initial;
+        margin-right: 0;
+    }
+    .search-results .result-name .typename,
+    .search-results .result-name .path {
+        display: inline;
+    }
 
-	.src-sidebar-expanded .src .sidebar {
-		position: fixed;
-		max-width: 100vw;
-		width: 100vw;
-	}
-	.src .src-sidebar-title {
-		padding-top: 0;
-	}
+    .src-sidebar-expanded .src .sidebar {
+        position: fixed;
+        max-width: 100vw;
+        width: 100vw;
+    }
+    .src .src-sidebar-title {
+        padding-top: 0;
+    }
 
-	details.implementors-toggle:not(.top-doc) > summary  {
-		margin-left: 10px;
-	}
+    details.implementors-toggle:not(.top-doc) > summary {
+        margin-left: 10px;
+    }
 
-	.impl-items > details.toggle > summary:not(.hideme)::before,
-	#main-content > .methods > details.toggle > summary:not(.hideme)::before {
-		left: -20px;
-	}
+    .impl-items > details.toggle > summary:not(.hideme)::before,
+    #main-content > .methods > details.toggle > summary:not(.hideme)::before {
+        left: -20px;
+    }
 
-	/* Align summary-nested and unnested item-info gizmos. */
-	summary > .item-info {
-		margin-left: 10px;
-	}
-	.impl-items > .item-info {
-		margin-left: calc(var(--impl-items-indent) + 10px);
-	}
+    /* Align summary-nested and unnested item-info gizmos. */
+    summary > .item-info {
+        margin-left: 10px;
+    }
+    .impl-items > .item-info {
+        margin-left: calc(var(--impl-items-indent) + 10px);
+    }
 
-	.src nav.sub {
-		margin: 0 0 -25px 0;
-		padding: var(--nav-sub-mobile-padding);
-	}
+    .src nav.sub {
+        margin: 0 0 -25px 0;
+        padding: var(--nav-sub-mobile-padding);
+    }
 
-	html:not(.src-sidebar-expanded) .src #sidebar-button > a {
-		background-color: var(--main-background-color);
-	}
-	html:not(.src-sidebar-expanded) .src #sidebar-button > a:hover,
-	html:not(.src-sidebar-expanded) .src #sidebar-button > a:focus-visible {
-		background-color: var(--sidebar-background-color);
-	}
+    html:not(.src-sidebar-expanded) .src #sidebar-button > a {
+        background-color: var(--main-background-color);
+    }
+    html:not(.src-sidebar-expanded) .src #sidebar-button > a:hover,
+    html:not(.src-sidebar-expanded) .src #sidebar-button > a:focus-visible {
+        background-color: var(--sidebar-background-color);
+    }
 }
-
 
 /* Should have min-width: (N + 1)px where N is the mobile breakpoint above. */
 @media (min-width: 701px) {
-	/* Places file-link for a scraped example on top of the example to save space.
+    /* Places file-link for a scraped example on top of the example to save space.
 	   We only do this on large screens so the file-link doesn't overlap too much
 		 with the example's content. */
 	.scraped-example-title {
@@ -2928,41 +3078,62 @@ in src-script.js and main.js
 	.item-table > dd {
 		grid-column-start: 2;
 	}
+
+	/* Hide deprecated items in module summaries (dt/dd pairs) when setting is off */
+    .hide-depr dt:has(.depr-item),
+    .hide-depr dt:has(.depr-item) + dd {
+        display: none;
+    }
+
+    /* Hide deprecated items in the sidebar blocks */
+    .hide-depr nav.sidebar li:has(.depr-item) {
+        display: none;
+    }
+
+    /* Hide deprecated items in the all items page */
+    .hide-depr ul.all-items li:has(.depr-item) {
+        display: none;
+    }
 }
 
 @media print {
-	:root {
-		--docblock-indent: 0;
-	}
+    :root {
+        --docblock-indent: 0;
+    }
 
-	nav.sidebar, nav.sub, .out-of-band, a.src, #copy-path,
-	details.toggle[open] > summary::before, details.toggle > summary::before,
-	details.toggle.top-doc > summary {
-		display: none;
-	}
+    nav.sidebar,
+    nav.sub,
+    .out-of-band,
+    a.src,
+    #copy-path,
+    details.toggle[open] > summary::before,
+    details.toggle > summary::before,
+    details.toggle.top-doc > summary {
+        display: none;
+    }
 
-	main {
-		padding: 10px;
-	}
+    main {
+        padding: 10px;
+    }
 }
 
 @media (max-width: 464px) {
-	:root {
-		--docblock-indent: 12px;
-	}
+    :root {
+        --docblock-indent: 12px;
+    }
 
-	.docblock code {
-		overflow-wrap: break-word;
-		overflow-wrap: anywhere;
-	}
+    .docblock code {
+        overflow-wrap: break-word;
+        overflow-wrap: anywhere;
+    }
 
-	nav.sub {
-		flex-direction: column;
-	}
+    nav.sub {
+        flex-direction: column;
+    }
 
-	.search-form {
-		align-self: stretch;
-	}
+    .search-form {
+        align-self: stretch;
+    }
 }
 
 .variant,
