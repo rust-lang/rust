@@ -995,12 +995,11 @@ impl Step for OmpOffload {
             .define("OFFLOAD_INCLUDE_TESTS", "OFF")
             //.define("CMAKE_C_COMPILER", cc)
             //.define("CMAKE_CXX_COMPILER", cxx)
-            .define("Clang_DIR", "/tmp/drehwald1/prog/llvm/lib/cmake/clang")
             .define("OPENMP_STANDALONE_BUILD", "ON")
             .define("LLVM_ROOT", root)
             .define("LLVM_DIR", builder.llvm_out(target).join("lib").join("cmake").join("llvm"));
         if let Some(p) = clang_dir {
-            cfg.define("CLANG_DIR", p);
+            cfg.define("Clang_DIR", p);
         }
         cfg.build();
 
