@@ -110,7 +110,7 @@ impl Step for Gcc {
         // If GCC has already been built, we avoid building it again.
         let metadata = match get_gcc_build_status(builder, target) {
             GccBuildStatus::AlreadyBuilt(path) => return GccOutput { libgccjit: Some(path), target },
-            GccBuildStatus::InLibsDir => return GccOutput { libgccjit: None },
+            GccBuildStatus::InLibsDir => return GccOutput { libgccjit: None, target },
             GccBuildStatus::ShouldBuild(m) => m,
         };
 
