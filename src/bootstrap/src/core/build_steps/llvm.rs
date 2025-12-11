@@ -938,34 +938,34 @@ impl Step for OmpOffload {
 
         let out_dir = builder.llvm_out(target);
         static STAMP_HASH_MEMO: OnceLock<String> = OnceLock::new();
-        //let smart_stamp_hash = STAMP_HASH_MEMO.get_or_init(|| {
-        //    generate_smart_stamp_hash(
-        //        builder,
-        //        &builder.config.src.join("src/llvm-project/offload"),
-        //        builder.offload_info.sha().unwrap_or_default(),
-        //    )
-        //});
-        //let stamp = BuildStamp::new(&out_dir).with_prefix("enzyme").add_stamp(smart_stamp_hash);
+        let smart_stamp_hash = STAMP_HASH_MEMO.get_or_init(|| {
+            generate_smart_stamp_hash(
+                builder,
+                &builder.config.src.join("src/llvm-project/offload"),
+                builder.offload_info.sha().unwrap_or_default(),
+            )
+        });
+        let stamp = BuildStamp::new(&out_dir).with_prefix("offload").add_stamp(smart_stamp_hash);
 
         trace!("checking build stamp to see if we need to rebuild offload/openmp artifacts");
-        //if stamp.is_up_to_date() {
-        //    trace!(?out_dir, "offload/openmp build artifacts are up to date");
-        //    if stamp.stamp().is_empty() {
-        //        builder.info(
-        //            "Could not determine the Offload submodule commit hash. \
-        //             Assuming that an Offload rebuild is not necessary.",
-        //        );
-        //        builder.info(&format!(
-        //            "To force Offload to rebuild, remove the file `{}`",
-        //            stamp.path().display()
-        //        ));
-        //    }
-        //    return out_dir;
-        //}
+        if stamp.is_up_to_date() {
+            trace!(?out_dir, "offload/openmp build artifacts are up to date");
+            if stamp.stamp().is_empty() {
+                builder.info(
+                    "Could not determine the Offload submodule commit hash. \
+                     Assuming that an Offload rebuild is not necessary.",
+                );
+                builder.info(&format!(
+                    "To force Offload/OpenMP to rebuild, remove the file `{}`",
+                    stamp.path().display()
+                ));
+            }
+            return out_dir;
+        }
 
-        trace!(?target, "(re)building offload artifacts");
-        builder.info(&format!("Building Omp/Offload for {target}"));
-        //t!(stamp.remove());
+        trace!(?target, "(re)building offload/openmp artifacts");
+        builder.info(&format!("Building OpenMP/Offload for {target}"));
+        t!(stamp.remove());
         let _time = helpers::timeit(builder);
         t!(fs::create_dir_all(&out_dir));
 
@@ -983,6 +983,17 @@ impl Step for OmpOffload {
         };
         trace!(?profile);
 
+        let cc = if let Some(p) = &builder.build.config.llvm_offload_cc {
+            p.clone()
+        } else {
+            builder.cc(target)
+        };
+        let cxx = if let Some(p) = &builder.build.config.llvm_offload_cxx {
+            p.clone()
+        } else {
+            builder.cxx(target).unwrap()
+        };
+
         cfg.out_dir(&out_dir)
             .profile(profile)
             .env("LLVM_CONFIG_REAL", &host_llvm_config)
@@ -996,9 +1007,8 @@ impl Step for OmpOffload {
             //    "CMAKE_CXX_COMPILER",
             //    "/tmp/drehwald1/prog/rust/build/x86_64-unknown-linux-gnu/llvm/bin/clang++",
             //)
-            .define("CMAKE_C_COMPILER", builder.cc(target))
-            .define("CMAKE_CXX_COMPILER", builder.cxx(target).unwrap())
-            //.define("LLVM_DEFAULT_TARGET_TRIPLE", &target.triple)
+            .define("CMAKE_C_COMPILER", cc)
+            .define("CMAKE_CXX_COMPILER", cxx)
             .define("OPENMP_STANDALONE_BUILD", "ON")
             .define("LLVM_ROOT", builder.llvm_out(target).join("build"))
             //.define(

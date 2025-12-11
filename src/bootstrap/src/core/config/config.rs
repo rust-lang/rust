@@ -169,6 +169,8 @@ pub struct Config {
     pub llvm_link_jobs: Option<u32>,
     pub llvm_version_suffix: Option<String>,
     pub llvm_use_linker: Option<String>,
+    pub llvm_offload_cc: Option<PathBuf>,
+    pub llvm_offload_cxx: Option<PathBuf>,
     pub llvm_allow_old_toolchain: bool,
     pub llvm_polly: bool,
     pub llvm_clang: bool,
@@ -291,6 +293,7 @@ pub struct Config {
     pub miri_info: channel::GitInfo,
     pub rustfmt_info: channel::GitInfo,
     pub enzyme_info: channel::GitInfo,
+    pub offload_info: channel::GitInfo,
     pub in_tree_llvm_info: channel::GitInfo,
     pub in_tree_gcc_info: channel::GitInfo,
 
@@ -602,6 +605,8 @@ impl Config {
             ldflags: llvm_ldflags,
             use_libcxx: llvm_use_libcxx,
             use_linker: llvm_use_linker,
+            offload_cc: llvm_offload_cc,
+            offload_cxx: llvm_offload_cxx,
             allow_old_toolchain: llvm_allow_old_toolchain,
             offload: llvm_offload,
             polly: llvm_polly,
@@ -1261,6 +1266,8 @@ impl Config {
         let in_tree_gcc_info = git_info(&exec_ctx, false, &src.join("src/gcc"));
         let in_tree_llvm_info = git_info(&exec_ctx, false, &src.join("src/llvm-project"));
         let enzyme_info = git_info(&exec_ctx, omit_git_hash, &src.join("src/tools/enzyme"));
+        let offload_info =
+            git_info(&exec_ctx, omit_git_hash, &src.join("src/llvm-project/offload"));
         let miri_info = git_info(&exec_ctx, omit_git_hash, &src.join("src/tools/miri"));
         let rust_analyzer_info =
             git_info(&exec_ctx, omit_git_hash, &src.join("src/tools/rust-analyzer"));
@@ -1324,6 +1331,7 @@ impl Config {
             ehcont_guard: rust_ehcont_guard.unwrap_or(false),
             enable_bolt_settings: flags_enable_bolt_settings,
             enzyme_info,
+            offload_info,
             exec_ctx,
             explicit_stage_from_cli: flags_stage.is_some(),
             explicit_stage_from_config,
@@ -1365,6 +1373,8 @@ impl Config {
             llvm_enable_warnings: llvm_enable_warnings.unwrap_or(false),
             llvm_enzyme: llvm_enzyme.unwrap_or(false),
             llvm_experimental_targets,
+            llvm_offload_cc: llvm_offload_cc.map(PathBuf::from),
+            llvm_offload_cxx: llvm_offload_cxx.map(PathBuf::from),
             llvm_from_ci,
             llvm_ldflags,
             llvm_libunwind_default: rust_llvm_libunwind
