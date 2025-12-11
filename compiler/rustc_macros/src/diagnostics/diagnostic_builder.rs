@@ -1,5 +1,7 @@
 #![deny(unused_must_use)]
 
+use std::str::FromStr;
+
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::{format_ident, quote, quote_spanned};
 use syn::spanned::Spanned;
@@ -215,9 +217,22 @@ impl DiagnosticDeriveVariantBuilder {
                     tokens.extend(quote! {
                         diag.code(#code);
                     });
+                } else if path.is_ident("msrv") {
+                    let msrv = nested.parse::<syn::LitStr>()?;
+                    if let Ok(RustVersion { major, minor, patch }) = msrv.value().parse() {
+                        tokens.extend(quote! {
+                            diag.set_rust_version(::rustc_errors::RustVersion {
+                                major: #major,
+                                minor: #minor,
+                                patch: #patch,
+                            });
+                        });
+                    } else {
+                        span_err(msrv.span().unwrap(), "failed to parse rust version").emit();
+                    };
                 } else {
                     span_err(path.span().unwrap(), "unknown argument")
-                        .note("only the `code` parameter is valid after the slug")
+                        .note("only `code` or `msrv`are valid after the slug")
                         .emit();
 
                     // consume the buffer so we don't have syntax errors from syn
@@ -502,5 +517,36 @@ impl DiagnosticDeriveVariantBuilder {
                 )
             }),
         }
+    }
+}
+
+// FIXME: Duplicated in `rustc_errors`
+#[derive(Copy, Clone, Debug)]
+struct RustVersion {
+    major: u64,
+    minor: u64,
+    patch: u64,
+}
+
+impl FromStr for RustVersion {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        fn get_number(s: &str) -> Result<(u64, &str), ()> {
+            let end = s.chars().take_while(char::is_ascii_digit).count();
+            if end == 0 {
+                return Err(());
+            }
+            // `is_ascii_digit` ensures that this will be on a char boundary
+            let (num, rest) = s.split_at(end);
+            Ok((num.parse().map_err(|_| ())?, rest))
+        }
+
+        let (major, s) = get_number(s)?;
+        let s = s.strip_prefix(".").ok_or(())?;
+        let (minor, s) = get_number(s)?;
+        let s = s.strip_prefix(".").ok_or(())?;
+        let (patch, _) = get_number(s)?;
+        Ok(Self { major, minor, patch })
     }
 }

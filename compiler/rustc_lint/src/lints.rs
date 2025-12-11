@@ -3138,7 +3138,7 @@ pub(crate) struct EmptyAttributeList {
 }
 
 #[derive(LintDiagnostic)]
-#[diag(lint_empty_cfg_predicate)]
+#[diag(lint_empty_cfg_predicate, msrv = "1.88.0")]
 #[note]
 pub(crate) struct EmptyCfgPredicate {
     #[suggestion(code = "{lit}", applicability = "machine-applicable", style = "verbose")]
