@@ -69,7 +69,7 @@ impl GccOutput {
                 .map(|target| target.triple)
                 .chain(std::iter::once(host_target));
 
-            let target_filename = "libgccjit.so.0";
+            let target_filename = "libgccjit.so";
             for target in targets {
                 let source = source.join(target).join(target_filename);
                 // To support symlinks in libgccjit-libs-dir, we have to resolve it first,
@@ -78,7 +78,7 @@ impl GccOutput {
                     source.canonicalize(),
                     format!("Cannot find libgccjit at {}", source.display())
                 );
-                let target_dir = dst.join(target);
+                let target_dir = dst.join("rustlib").join(target).join("lib");
                 t!(
                     std::fs::create_dir_all(&target_dir),
                     format!("Cannot create target dir {} for libgccjit", target_dir.display())
