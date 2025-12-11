@@ -50,9 +50,11 @@ macro_rules! vec {
         // Using `write_box_via_move` produces a dramatic improvement in stack usage for unoptimized
         // programs using this code path to construct large Vecs. We can't use `write_via_move`
         // because this entire invocation has to remain a call chain without `let` bindings, or else
-        // inference and temporary lifetimes change and things break (see `vec-macro-rvalue-scope`
-        // and `autoderef-vec-box-fn-36786` tests). This function isn't actually safe but the way we
-        // use it here is. We can't use an unsafe block as that would also wrap `$x`.
+        // inference and temporary lifetimes change and things break (see `vec-macro-rvalue-scope`,
+        // `vec-macro-coercions`, and `autoderef-vec-box-fn-36786` tests).
+        //
+        // `box_uninit_array_into_vec_unsafe` isn't actually safe but the way we use it here is. We
+        // can't use an unsafe block as that would also wrap `$x`.
         $crate::boxed::box_uninit_array_into_vec_unsafe(
             $crate::intrinsics::write_box_via_move($crate::boxed::Box::new_uninit(), [$($x),+])
         )
