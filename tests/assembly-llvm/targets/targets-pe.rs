@@ -67,6 +67,9 @@
 //@ revisions: x86_64_pc_windows_msvc
 //@ [x86_64_pc_windows_msvc] compile-flags: --target x86_64-pc-windows-msvc
 //@ [x86_64_pc_windows_msvc] needs-llvm-components: x86
+//@ revisions: x86_64_asan_windows_msvc
+//@ [x86_64_asan_windows_msvc] compile-flags: --target x86_64-asan-windows-msvc
+//@ [x86_64_asan_windows_msvc] needs-llvm-components: x86
 //@ revisions: x86_64_unknown_uefi
 //@ [x86_64_unknown_uefi] compile-flags: --target x86_64-unknown-uefi
 //@ [x86_64_unknown_uefi] needs-llvm-components: x86
