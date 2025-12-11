@@ -468,6 +468,19 @@ impl Step for RustAnalyzer {
         let build_compiler = self.compilers.build_compiler();
         let target = self.compilers.target();
 
+        // NOTE: rust-analyzer repo currently (as of 2025-12-11) does not run tests against 32-bit
+        // targets, so we also don't run them in rust-lang/rust CI (because that will just mean that
+        // subtree syncs will keep getting 32-bit-specific failures that are not observed in
+        // rust-analyzer repo CI).
+        //
+        // Some 32-bit specific failures include e.g. target pointer width specific hashes.
+
+        // FIXME: eventually, we should probably reduce the amount of target tuple substring
+        // matching in bootstrap.
+        if target.starts_with("i686") {
+            return;
+        }
+
         let mut cargo = tool::prepare_tool_cargo(
             builder,
             build_compiler,
