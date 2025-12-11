@@ -4521,7 +4521,9 @@ struct BreakFinder {
 impl<'hir> Visitor<'hir> for BreakFinder {
     fn visit_expr(&mut self, ex: &'hir hir::Expr<'hir>) {
         match ex.kind {
-            hir::ExprKind::Break(destination, _) => {
+            hir::ExprKind::Break(destination, _)
+                if !ex.span.is_desugaring(DesugaringKind::ForLoop) =>
+            {
                 self.found_breaks.push((destination, ex.span));
             }
             hir::ExprKind::Continue(destination) => {
