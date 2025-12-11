@@ -34,6 +34,49 @@ pub(crate) struct InvalidPredicate {
     pub predicate: String,
 }
 
+#[derive(Diagnostic)]
+#[diag(attr_parsing_doc_alias_empty)]
+pub(crate) struct DocAliasEmpty<'a> {
+    #[primary_span]
+    pub span: Span,
+    pub attr_str: &'a str,
+}
+
+#[derive(Diagnostic)]
+#[diag(attr_parsing_doc_alias_bad_char)]
+pub(crate) struct DocAliasBadChar<'a> {
+    #[primary_span]
+    pub span: Span,
+    pub attr_str: &'a str,
+    pub char_: char,
+}
+
+#[derive(Diagnostic)]
+#[diag(attr_parsing_doc_alias_start_end)]
+pub(crate) struct DocAliasStartEnd<'a> {
+    #[primary_span]
+    pub span: Span,
+    pub attr_str: &'a str,
+}
+
+#[derive(Diagnostic)]
+#[diag(attr_parsing_doc_keyword_not_keyword)]
+#[help]
+pub(crate) struct DocKeywordNotKeyword {
+    #[primary_span]
+    pub span: Span,
+    pub keyword: Symbol,
+}
+
+#[derive(Diagnostic)]
+#[diag(attr_parsing_doc_attribute_not_attribute)]
+#[help]
+pub(crate) struct DocAttributeNotAttribute {
+    #[primary_span]
+    pub span: Span,
+    pub attribute: Symbol,
+}
+
 /// Error code: E0541
 pub(crate) struct UnknownMetaItem<'a> {
     pub span: Span,
@@ -943,4 +986,11 @@ pub(crate) struct CfgAttrBadDelim {
     pub span: Span,
     #[subdiagnostic]
     pub sugg: MetaBadDelimSugg,
+}
+
+#[derive(Diagnostic)]
+#[diag(attr_parsing_doc_alias_malformed)]
+pub(crate) struct DocAliasMalformed {
+    #[primary_span]
+    pub span: Span,
 }

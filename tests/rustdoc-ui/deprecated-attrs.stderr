@@ -17,7 +17,7 @@ error: unknown `doc` attribute `passes`
   --> $DIR/deprecated-attrs.rs:9:8
    |
 LL | #![doc(passes = "collapse-docs unindent-comments")]
-   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no longer functions
+   |        ^^^^^^ no longer functions
    |
    = note: `doc` attribute `passes` no longer functions; see issue #44136 <https://github.com/rust-lang/rust/issues/44136>
    = note: `doc(passes)` is now a no-op
@@ -26,7 +26,7 @@ error: unknown `doc` attribute `plugins`
   --> $DIR/deprecated-attrs.rs:14:8
    |
 LL | #![doc(plugins = "xxx")]
-   |        ^^^^^^^^^^^^^^^ no longer functions
+   |        ^^^^^^^ no longer functions
    |
    = note: `doc` attribute `plugins` no longer functions; see issue #44136 <https://github.com/rust-lang/rust/issues/44136> and CVE-2018-1000622 <https://nvd.nist.gov/vuln/detail/CVE-2018-1000622>
    = note: `doc(plugins)` is now a no-op

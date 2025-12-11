@@ -2,10 +2,7 @@ use rustc_ast::{LitKind, MetaItem, MetaItemInner, MetaItemKind, MetaItemLit, Nod
 use rustc_ast_pretty::pprust;
 use rustc_feature::{Features, GatedCfg, find_gated_cfg};
 use rustc_hir::RustcVersion;
-use rustc_hir::lints::AttributeLintKind;
 use rustc_session::Session;
-use rustc_session::config::ExpectedValues;
-use rustc_session::lint::builtin::UNEXPECTED_CFGS;
 use rustc_session::lint::{BuiltinLintDiag, Lint};
 use rustc_session::parse::feature_err;
 use rustc_span::{Span, Symbol, sym};
@@ -35,44 +32,6 @@ pub struct Condition {
     pub value: Option<Symbol>,
     pub value_span: Option<Span>,
     pub span: Span,
-}
-
-/// Tests if a cfg-pattern matches the cfg set
-pub fn cfg_matches(
-    cfg: &MetaItemInner,
-    sess: &Session,
-    lint_emitter: impl CfgMatchesLintEmitter,
-    features: Option<&Features>,
-) -> bool {
-    eval_condition(cfg, sess, features, &mut |cfg| {
-        try_gate_cfg(cfg.name, cfg.span, sess, features);
-        match sess.psess.check_config.expecteds.get(&cfg.name) {
-            Some(ExpectedValues::Some(values)) if !values.contains(&cfg.value) => {
-                lint_emitter.emit_span_lint(
-                    sess,
-                    UNEXPECTED_CFGS,
-                    cfg.span,
-                    BuiltinLintDiag::AttributeLint(AttributeLintKind::UnexpectedCfgValue(
-                        (cfg.name, cfg.name_span),
-                        cfg.value.map(|v| (v, cfg.value_span.unwrap())),
-                    )),
-                );
-            }
-            None if sess.psess.check_config.exhaustive_names => {
-                lint_emitter.emit_span_lint(
-                    sess,
-                    UNEXPECTED_CFGS,
-                    cfg.span,
-                    BuiltinLintDiag::AttributeLint(AttributeLintKind::UnexpectedCfgName(
-                        (cfg.name, cfg.name_span),
-                        cfg.value.map(|v| (v, cfg.value_span.unwrap())),
-                    )),
-                );
-            }
-            _ => { /* not unexpected */ }
-        }
-        sess.psess.config.contains(&(cfg.name, cfg.value))
-    })
 }
 
 pub fn try_gate_cfg(name: Symbol, span: Span, sess: &Session, features: Option<&Features>) {

@@ -25,7 +25,7 @@ use rustc_attr_parsing::AttributeParser;
 use rustc_errors::{Applicability, LintDiagnostic};
 use rustc_feature::GateIssue;
 use rustc_hir as hir;
-use rustc_hir::attrs::AttributeKind;
+use rustc_hir::attrs::{AttributeKind, DocAttribute};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LocalDefId};
 use rustc_hir::intravisit::FnKind as HirFnKind;
@@ -396,24 +396,14 @@ pub struct MissingDoc;
 impl_lint_pass!(MissingDoc => [MISSING_DOCS]);
 
 fn has_doc(attr: &hir::Attribute) -> bool {
-    if attr.is_doc_comment().is_some() {
+    if matches!(attr, hir::Attribute::Parsed(AttributeKind::DocComment { .. })) {
         return true;
     }
 
-    if !attr.has_name(sym::doc) {
-        return false;
-    }
-
-    if attr.value_str().is_some() {
+    if let hir::Attribute::Parsed(AttributeKind::Doc(d)) = attr
+        && matches!(d.as_ref(), DocAttribute { hidden: Some(..), .. })
+    {
         return true;
-    }
-
-    if let Some(list) = attr.meta_item_list() {
-        for meta in list {
-            if meta.has_name(sym::hidden) {
-                return true;
-            }
-        }
     }
 
     false
@@ -822,19 +812,23 @@ fn warn_if_doc(cx: &EarlyContext<'_>, node_span: Span, node_kind: &str, attrs: &
     let mut sugared_span: Option<Span> = None;
 
     while let Some(attr) = attrs.next() {
-        let is_doc_comment = attr.is_doc_comment();
+        let (is_doc_comment, is_doc_attribute) = match &attr.kind {
+            AttrKind::DocComment(..) => (true, false),
+            AttrKind::Normal(normal) if normal.item.path == sym::doc => (true, true),
+            _ => (false, false),
+        };
         if is_doc_comment {
             sugared_span =
                 Some(sugared_span.map_or(attr.span, |span| span.with_hi(attr.span.hi())));
         }
 
-        if attrs.peek().is_some_and(|next_attr| next_attr.is_doc_comment()) {
+        if !is_doc_attribute && attrs.peek().is_some_and(|next_attr| next_attr.is_doc_comment()) {
             continue;
         }
 
         let span = sugared_span.take().unwrap_or(attr.span);
 
-        if is_doc_comment || attr.has_name(sym::doc) {
+        if is_doc_comment || is_doc_attribute {
             let sub = match attr.kind {
                 AttrKind::DocComment(CommentKind::Line, _) | AttrKind::Normal(..) => {
                     BuiltinUnusedDocCommentSub::PlainHelp

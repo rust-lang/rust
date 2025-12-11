@@ -171,7 +171,7 @@ fn parse_cfg_entry_target<S: Stage>(
     Ok(CfgEntry::All(result, list.span))
 }
 
-fn parse_name_value<S: Stage>(
+pub(crate) fn parse_name_value<S: Stage>(
     name: Symbol,
     name_span: Span,
     value: Option<&NameValueParser>,

@@ -15,6 +15,7 @@ base64 = "0.21.7"
 indexmap = { version = "2", features = ["serde"] }
 itertools = "0.12"
 minifier = { version = "0.3.5", default-features = false }
+proc-macro2 = "1.0.103"
 pulldown-cmark-escape = { version = "0.11.0", features = ["simd"] }
 regex = "1"
 rustdoc-json-types = { path = "../rustdoc-json-types" }

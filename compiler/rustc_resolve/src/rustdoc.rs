@@ -10,6 +10,7 @@ use pulldown_cmark::{
 use rustc_ast as ast;
 use rustc_ast::attr::AttributeExt;
 use rustc_ast::join_path_syms;
+use rustc_ast::token::DocFragmentKind;
 use rustc_ast::util::comments::beautify_doc_string;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::unord::UnordSet;
@@ -22,14 +23,6 @@ use tracing::{debug, trace};
 
 #[cfg(test)]
 mod tests;
-
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub enum DocFragmentKind {
-    /// A doc fragment created from a `///` or `//!` doc comment.
-    SugaredDoc,
-    /// A doc fragment created from a "raw" `#[doc=""]` attribute.
-    RawDoc,
-}
 
 /// A portion of documentation, extracted from a `#[doc]` attribute.
 ///
@@ -125,7 +118,7 @@ pub fn unindent_doc_fragments(docs: &mut [DocFragment]) {
     //
     // In this case, you want "hello! another" and not "hello!  another".
     let add = if docs.windows(2).any(|arr| arr[0].kind != arr[1].kind)
-        && docs.iter().any(|d| d.kind == DocFragmentKind::SugaredDoc)
+        && docs.iter().any(|d| d.kind.is_sugared())
     {
         // In case we have a mix of sugared doc comments and "raw" ones, we want the sugared one to
         // "decide" how much the minimum indent will be.
@@ -155,8 +148,7 @@ pub fn unindent_doc_fragments(docs: &mut [DocFragment]) {
                     // Compare against either space or tab, ignoring whether they are
                     // mixed or not.
                     let whitespace = line.chars().take_while(|c| *c == ' ' || *c == '\t').count();
-                    whitespace
-                        + (if fragment.kind == DocFragmentKind::SugaredDoc { 0 } else { add })
+                    whitespace + (if fragment.kind.is_sugared() { 0 } else { add })
                 })
                 .min()
                 .unwrap_or(usize::MAX)
@@ -171,7 +163,7 @@ pub fn unindent_doc_fragments(docs: &mut [DocFragment]) {
             continue;
         }
 
-        let indent = if fragment.kind != DocFragmentKind::SugaredDoc && min_indent > 0 {
+        let indent = if !fragment.kind.is_sugared() && min_indent > 0 {
             min_indent - add
         } else {
             min_indent
@@ -214,19 +206,17 @@ pub fn attrs_to_doc_fragments<'a, A: AttributeExt + Clone + 'a>(
     let mut doc_fragments = Vec::with_capacity(size_hint);
     let mut other_attrs = ThinVec::<A>::with_capacity(if doc_only { 0 } else { size_hint });
     for (attr, item_id) in attrs {
-        if let Some((doc_str, comment_kind)) = attr.doc_str_and_comment_kind() {
-            let doc = beautify_doc_string(doc_str, comment_kind);
-            let (span, kind, from_expansion) = if let Some(span) = attr.is_doc_comment() {
-                (span, DocFragmentKind::SugaredDoc, span.from_expansion())
-            } else {
-                let attr_span = attr.span();
-                let (span, from_expansion) = match attr.value_span() {
-                    Some(sp) => (sp.with_ctxt(attr_span.ctxt()), sp.from_expansion()),
-                    None => (attr_span, attr_span.from_expansion()),
-                };
-                (span, DocFragmentKind::RawDoc, from_expansion)
+        if let Some((doc_str, fragment_kind)) = attr.doc_str_and_fragment_kind() {
+            let doc = beautify_doc_string(doc_str, fragment_kind.comment_kind());
+            let attr_span = attr.span();
+            let (span, from_expansion) = match fragment_kind {
+                DocFragmentKind::Sugared(_) => (attr_span, attr_span.from_expansion()),
+                DocFragmentKind::Raw(value_span) => {
+                    (value_span.with_ctxt(attr_span.ctxt()), value_span.from_expansion())
+                }
             };
-            let fragment = DocFragment { span, doc, kind, item_id, indent: 0, from_expansion };
+            let fragment =
+                DocFragment { span, doc, kind: fragment_kind, item_id, indent: 0, from_expansion };
             doc_fragments.push(fragment);
         } else if !doc_only {
             other_attrs.push(attr.clone());
@@ -377,16 +367,8 @@ pub fn inner_docs(attrs: &[impl AttributeExt]) -> bool {
 /// Has `#[rustc_doc_primitive]` or `#[doc(keyword)]` or `#[doc(attribute)]`.
 pub fn has_primitive_or_keyword_or_attribute_docs(attrs: &[impl AttributeExt]) -> bool {
     for attr in attrs {
-        if attr.has_name(sym::rustc_doc_primitive) {
+        if attr.has_name(sym::rustc_doc_primitive) || attr.is_doc_keyword_or_attribute() {
             return true;
-        } else if attr.has_name(sym::doc)
-            && let Some(items) = attr.meta_item_list()
-        {
-            for item in items {
-                if item.has_name(sym::keyword) || item.has_name(sym::attribute) {
-                    return true;
-                }
-            }
         }
     }
     false
@@ -571,7 +553,7 @@ pub fn source_span_for_markdown_range_inner(
     use rustc_span::BytePos;
 
     if let &[fragment] = &fragments
-        && fragment.kind == DocFragmentKind::RawDoc
+        && !fragment.kind.is_sugared()
         && let Ok(snippet) = map.span_to_snippet(fragment.span)
         && snippet.trim_end() == markdown.trim_end()
         && let Ok(md_range_lo) = u32::try_from(md_range.start)
@@ -589,7 +571,7 @@ pub fn source_span_for_markdown_range_inner(
         ));
     }
 
-    let is_all_sugared_doc = fragments.iter().all(|frag| frag.kind == DocFragmentKind::SugaredDoc);
+    let is_all_sugared_doc = fragments.iter().all(|frag| frag.kind.is_sugared());
 
     if !is_all_sugared_doc {
         // This case ignores the markdown outside of the range so that it can

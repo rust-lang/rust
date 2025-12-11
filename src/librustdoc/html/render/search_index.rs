@@ -1609,7 +1609,9 @@ pub(crate) fn build_index(
             let Cache { ref paths, ref external_paths, ref exact_paths, .. } = *cache;
             let search_unbox = match id {
                 RenderTypeId::Mut => false,
-                RenderTypeId::DefId(defid) => utils::has_doc_flag(tcx, defid, sym::search_unbox),
+                RenderTypeId::DefId(defid) => {
+                    utils::has_doc_flag(tcx, defid, |d| d.search_unbox.is_some())
+                }
                 RenderTypeId::Primitive(
                     PrimitiveType::Reference | PrimitiveType::RawPointer | PrimitiveType::Tuple,
                 ) => true,
