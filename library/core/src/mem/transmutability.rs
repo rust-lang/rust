@@ -86,7 +86,7 @@ use crate::marker::ConstParamTy_;
 #[unstable_feature_bound(transmutability)]
 #[lang = "transmute_trait"]
 #[rustc_deny_explicit_impl]
-#[rustc_do_not_implement_via_object]
+#[rustc_dyn_incompatible_trait]
 #[rustc_coinductive]
 pub unsafe trait TransmuteFrom<Src, const ASSUME: Assume = { Assume::NOTHING }>
 where
