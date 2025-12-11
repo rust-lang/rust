@@ -85,7 +85,7 @@ impl Baz for Quux {
 ```
 
 For this you would also need to use `nightly` and the (different) `#![feature(impl_trait_in_assoc_type)]` annotation.
-Note that you don't need a `#[define_opaque(Foo)]` on the method anymore.
+Note that you don't need a `#[define_opaque(Foo)]` on the method anymore as the opaque type is mentioned in the function signature (behind the associated type).
 Complete example:
 
 ```
