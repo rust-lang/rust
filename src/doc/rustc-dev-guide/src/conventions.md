@@ -21,6 +21,9 @@ Instead, formatting should be done using `./x fmt`. It's a good habit to run
 Formatting is checked by the `tidy` script. It runs automatically when you do
 `./x test` and can be run in isolation with `./x fmt --check`.
 
+We do not check that tests under the `tests/` directory are formatted, and
+similarly the `./x fmt` command will not format any files under that directory.
+
 If you want to use format-on-save in your editor, the pinned version of
 `rustfmt` is built under `build/<target>/stage0/bin/rustfmt`.
 
