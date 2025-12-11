@@ -171,6 +171,7 @@ pub struct Config {
     pub llvm_use_linker: Option<String>,
     pub llvm_offload_cc: Option<PathBuf>,
     pub llvm_offload_cxx: Option<PathBuf>,
+    pub llvm_root_offload: Option<PathBuf>,
     pub llvm_allow_old_toolchain: bool,
     pub llvm_polly: bool,
     pub llvm_clang: bool,
@@ -607,6 +608,7 @@ impl Config {
             use_linker: llvm_use_linker,
             offload_cc: llvm_offload_cc,
             offload_cxx: llvm_offload_cxx,
+            root_offload: llvm_root_offload,
             allow_old_toolchain: llvm_allow_old_toolchain,
             offload: llvm_offload,
             polly: llvm_polly,
@@ -1375,6 +1377,7 @@ impl Config {
             llvm_experimental_targets,
             llvm_offload_cc: llvm_offload_cc.map(PathBuf::from),
             llvm_offload_cxx: llvm_offload_cxx.map(PathBuf::from),
+            llvm_root_offload: llvm_root_offload.map(PathBuf::from),
             llvm_from_ci,
             llvm_ldflags,
             llvm_libunwind_default: rust_llvm_libunwind

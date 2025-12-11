@@ -970,12 +970,20 @@ impl Step for OmpOffload {
         } else {
             builder.cxx(target).unwrap()
         };
+        let root = if let Some(p) = &builder.build.config.llvm_root_offload {
+            p.clone()
+        } else {
+            builder.llvm_out(target).join("build")
+        };
 
         cfg.out_dir(&out_dir)
             .profile(profile)
             .env("LLVM_CONFIG_REAL", &host_llvm_config)
             .define("LLVM_ENABLE_ASSERTIONS", "ON")
             .define("LLVM_ENABLE_RUNTIMES", "openmp;offload")
+            .define("LLVM_INCLUDE_TESTS", "OFF")
+            .define("LLVM_BUILD_TESTS", "OFF")
+            .define("OFFLOAD_INCLUDE_TESTS", "OFF")
             //.define(
             //    "CMAKE_C_COMPILER",
             //    "/tmp/drehwald1/prog/rust/build/x86_64-unknown-linux-gnu/llvm/bin/clang",
@@ -986,8 +994,9 @@ impl Step for OmpOffload {
             //)
             .define("CMAKE_C_COMPILER", cc)
             .define("CMAKE_CXX_COMPILER", cxx)
+            .define("Clang_DIR", "/tmp/drehwald1/prog/llvm/lib/cmake/clang")
             .define("OPENMP_STANDALONE_BUILD", "ON")
-            .define("LLVM_ROOT", builder.llvm_out(target).join("build"))
+            .define("LLVM_ROOT", root)
             //.define(
             //    "LLVM_ROOT",
             //    "/tmp/drehwald1/prog/rust/build/x86_64-unknown-linux-gnu/llvm/build/",
@@ -995,7 +1004,7 @@ impl Step for OmpOffload {
             .define("LLVM_DIR", builder.llvm_out(target).join("lib").join("cmake").join("llvm"));
         cfg.build();
 
-        //t!(stamp.write());
+        t!(stamp.write());
         out_dir
     }
 }
