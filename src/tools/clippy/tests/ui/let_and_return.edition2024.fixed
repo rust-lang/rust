@@ -212,7 +212,7 @@ fn_in_macro!({
 
 fn issue9150() -> usize {
     let x = 1;
-    #[cfg(any())]
+    #[cfg(false)]
     panic!("can't see me");
     x
 }

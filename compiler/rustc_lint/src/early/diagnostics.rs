@@ -367,5 +367,8 @@ pub fn decorate_attribute_lint(
         &AttributeLintKind::UnexpectedCfgValue(name, value) => {
             check_cfg::unexpected_cfg_value(sess, tcx, name, value).decorate_lint(diag)
         }
+        &AttributeLintKind::EmptyCfgPredictate { predicate_span, predicate, lit } => {
+            lints::EmptyCfgPredicate { predicate_span, predicate, lit }.decorate_lint(diag)
+        }
     }
 }

@@ -44,7 +44,7 @@ error: struct constructor field order is inconsistent with struct definition fie
    |
 LL | /             d: 0,
 LL | |
-LL | |             #[cfg(all())]
+LL | |             #[cfg(true)]
 LL | |             c: 1,
 LL | |             b: 2,
 LL | |             a: 3,
@@ -55,7 +55,7 @@ help: if the field evaluation order doesn't matter, try
 LL ~             a: 3,
 LL +
 LL +             b: 2,
-LL +             #[cfg(all())]
+LL +             #[cfg(true)]
 LL +             c: 1,
 LL ~             d: 0,
    |
@@ -65,7 +65,7 @@ error: struct constructor field order is inconsistent with struct definition fie
    |
 LL | /             d: 0,
 LL | |
-LL | |             #[cfg(any())]
+LL | |             #[cfg(false)]
 LL | |             c: 1,
 LL | |             b: 2,
 LL | |             a: 3,
@@ -75,7 +75,7 @@ help: if the field evaluation order doesn't matter, try
    |
 LL ~             a: 3,
 LL +
-LL +             #[cfg(any())]
+LL +             #[cfg(false)]
 LL +             c: 1,
 LL +             b: 2,
 LL ~             d: 0,

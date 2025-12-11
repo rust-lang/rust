@@ -5,6 +5,7 @@ use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
 use std::panic;
 use std::path::PathBuf;
+use std::str::FromStr;
 use std::thread::panicking;
 
 use rustc_data_structures::fx::FxIndexMap;
@@ -263,6 +264,38 @@ pub struct DiagInner {
     /// With `-Ztrack_diagnostics` enabled,
     /// we print where in rustc this error was emitted.
     pub(crate) emitted_at: DiagLocation,
+    /// Used to avoid lints which would affect MSRV
+    pub rust_version: Option<RustVersion>,
+}
+
+#[derive(Copy, Clone, Debug, Encodable, Decodable, PartialEq, Eq, PartialOrd, Ord)]
+pub struct RustVersion {
+    pub major: u64,
+    pub minor: u64,
+    pub patch: u64,
+}
+
+impl FromStr for RustVersion {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        fn get_number(s: &str) -> Result<(u64, &str), ()> {
+            let end = s.chars().take_while(char::is_ascii_digit).count();
+            if end == 0 {
+                return Err(());
+            }
+            // `is_ascii_digit` ensures that this will be on a char boundary
+            let (num, rest) = s.split_at(end);
+            Ok((num.parse().map_err(|_| ())?, rest))
+        }
+
+        let (major, s) = get_number(s)?;
+        let s = s.strip_prefix(".").ok_or(())?;
+        let (minor, s) = get_number(s)?;
+        let s = s.strip_prefix(".").ok_or(())?;
+        let (patch, _) = get_number(s)?;
+        Ok(Self { major, minor, patch })
+    }
 }
 
 impl DiagInner {
@@ -287,6 +320,7 @@ impl DiagInner {
             is_lint: None,
             long_ty_path: None,
             emitted_at: DiagLocation::caller(),
+            rust_version: None,
         }
     }
 
@@ -377,6 +411,10 @@ impl DiagInner {
         self.args = std::mem::take(&mut self.reserved_args);
     }
 
+    pub fn set_rust_version(&mut self, version: RustVersion) {
+        self.rust_version = Some(version);
+    }
+
     pub fn emitted_at_sub_diag(&self) -> Subdiag {
         let track = format!("-Ztrack-diagnostics: created at {}", self.emitted_at);
         Subdiag {
@@ -410,6 +448,7 @@ impl DiagInner {
             // omit self.sort_span
             &self.is_lint,
             // omit self.emitted_at
+            // omit rust_version
         )
     }
 }

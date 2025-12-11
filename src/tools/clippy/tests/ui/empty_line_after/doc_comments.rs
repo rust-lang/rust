@@ -137,7 +137,7 @@ pub struct EmptyInBlockComment;
 pub struct BlockComment;
 
 /// Ignore the empty line inside a cfg_attr'd out attribute
-#[cfg_attr(any(), multiline(
+#[cfg_attr(false, multiline(
     foo = 1
 
     bar = 2

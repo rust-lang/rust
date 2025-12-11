@@ -39,14 +39,6 @@ fn check_nested_cfg(cx: &EarlyContext<'_>, items: &[MetaItemInner]) {
                             }
                         },
                     );
-                } else if list.is_empty() && meta.has_name(sym::all) {
-                    span_lint_and_then(
-                        cx,
-                        NON_MINIMAL_CFG,
-                        meta.span,
-                        "unneeded sub `cfg` when there is no condition",
-                        |_| {},
-                    );
                 }
             }
         }

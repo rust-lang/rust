@@ -785,6 +785,14 @@ pub enum AttributeLintKind {
     },
     UnexpectedCfgName((Symbol, Span), Option<(Symbol, Span)>),
     UnexpectedCfgValue((Symbol, Span), Option<(Symbol, Span)>),
+    EmptyCfgPredictate {
+        /// Span of `any()`/`all()`
+        predicate_span: Span,
+        /// Either `any` or `all`
+        predicate: Symbol,
+        /// The boolean literal to replace with
+        lit: bool,
+    },
 }
 
 pub type RegisteredTools = FxIndexSet<Ident>;
