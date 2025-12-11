@@ -9,13 +9,14 @@ use crate::spec::{Abi, HasTargetSpec, Target};
 /// Used to accommodate Apple and Microsoft's deviations from the usual AAPCS ABI.
 ///
 /// Corresponds to Clang's `AArch64ABIInfo::ABIKind`.
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub(crate) enum AbiKind {
     AAPCS,
     DarwinPCS,
     Win64,
 }
 
+#[tracing::instrument(skip(cx), level = "debug")]
 fn is_homogeneous_aggregate<'a, Ty, C>(cx: &C, arg: &mut ArgAbi<'a, Ty>) -> Option<Uniform>
 where
     Ty: TyAbiInterface<'a, C> + Copy,
@@ -73,6 +74,7 @@ fn softfloat_float_abi<Ty>(target: &Target, arg: &mut ArgAbi<'_, Ty>) {
     }
 }
 
+#[tracing::instrument(skip(cx), level = "debug")]
 fn classify_ret<'a, Ty, C>(cx: &C, ret: &mut ArgAbi<'a, Ty>, kind: AbiKind)
 where
     Ty: TyAbiInterface<'a, C> + Copy,
@@ -105,6 +107,7 @@ where
     ret.make_indirect();
 }
 
+#[tracing::instrument(skip(cx), level = "debug")]
 fn classify_arg<'a, Ty, C>(cx: &C, arg: &mut ArgAbi<'a, Ty>, kind: AbiKind)
 where
     Ty: TyAbiInterface<'a, C> + Copy,
