@@ -47,7 +47,7 @@ impl<'db> HirPlace<'db> {
                 |_, _, _| {
                     unreachable!("Closure field only happens in MIR");
                 },
-                ctx.owner.module(ctx.db).krate(),
+                ctx.owner.module(ctx.db).krate(ctx.db),
             );
         }
         ty
@@ -149,7 +149,7 @@ impl<'db> CapturedItem<'db> {
                 }
             }
         }
-        if is_raw_identifier(&result, owner.module(db).krate().data(db).edition) {
+        if is_raw_identifier(&result, owner.module(db).krate(db).data(db).edition) {
             result.insert_str(0, "r#");
         }
         result
@@ -843,7 +843,7 @@ impl<'db> InferenceContext<'_, 'db> {
                     |_, _, _| {
                         unreachable!("Closure field only happens in MIR");
                     },
-                    self.owner.module(self.db).krate(),
+                    self.owner.module(self.db).krate(self.db),
                 );
                 if ty.is_raw_ptr() || ty.is_union() {
                     capture.kind = CaptureKind::ByRef(BorrowKind::Shared);

@@ -48,11 +48,11 @@ use arrayvec::ArrayVec;
 use base_db::{CrateDisplayName, CrateOrigin, LangCrateOrigin};
 use either::Either;
 use hir_def::{
-    AdtId, AssocItemId, AssocItemLoc, CallableDefId, ConstId, ConstParamId, CrateRootModuleId,
-    DefWithBodyId, EnumId, EnumVariantId, ExternBlockId, ExternCrateId, FunctionId, GenericDefId,
-    GenericParamId, HasModule, ImplId, InternedModuleId, ItemContainerId, LifetimeParamId,
-    LocalFieldId, Lookup, MacroExpander, MacroId, StaticId, StructId, SyntheticSyntax, TupleId,
-    TypeAliasId, TypeOrConstParamId, TypeParamId, UnionId,
+    AdtId, AssocItemId, AssocItemLoc, CallableDefId, ConstId, ConstParamId, DefWithBodyId, EnumId,
+    EnumVariantId, ExternBlockId, ExternCrateId, FunctionId, GenericDefId, GenericParamId,
+    HasModule, ImplId, ItemContainerId, LifetimeParamId, LocalFieldId, Lookup, MacroExpander,
+    MacroId, StaticId, StructId, SyntheticSyntax, TupleId, TypeAliasId, TypeOrConstParamId,
+    TypeParamId, UnionId,
     attrs::AttrFlags,
     expr_store::{ExpressionStoreDiagnostics, ExpressionStoreSourceMap},
     hir::{
@@ -117,8 +117,8 @@ pub use crate::{
     diagnostics::*,
     has_source::HasSource,
     semantics::{
-        PathResolution, PathResolutionPerNs, Semantics, SemanticsImpl, SemanticsScope, TypeInfo,
-        VisibleTraits,
+        LintAttr, PathResolution, PathResolutionPerNs, Semantics, SemanticsImpl, SemanticsScope,
+        TypeInfo, VisibleTraits,
     },
 };
 
@@ -258,13 +258,13 @@ impl Crate {
             .flatten()
     }
 
-    pub fn root_module(self) -> Module {
-        Module { id: CrateRootModuleId::from(self.id).into() }
+    pub fn root_module(self, db: &dyn HirDatabase) -> Module {
+        Module { id: crate_def_map(db, self.id).root_module_id() }
     }
 
     pub fn modules(self, db: &dyn HirDatabase) -> Vec<Module> {
         let def_map = crate_def_map(db, self.id);
-        def_map.modules().map(|(id, _)| def_map.module_id(id).into()).collect()
+        def_map.modules().map(|(id, _)| id.into()).collect()
     }
 
     pub fn root_file(self, db: &dyn HirDatabase) -> FileId {
@@ -520,7 +520,7 @@ impl ModuleDef {
 impl HasCrate for ModuleDef {
     fn krate(&self, db: &dyn HirDatabase) -> Crate {
         match self.module(db) {
-            Some(module) => module.krate(),
+            Some(module) => module.krate(db),
             None => Crate::core(db).unwrap_or_else(|| db.all_crates()[0].into()),
         }
     }
@@ -550,29 +550,29 @@ impl Module {
     }
 
     /// Returns the crate this module is part of.
-    pub fn krate(self) -> Crate {
-        Crate { id: self.id.krate() }
+    pub fn krate(self, db: &dyn HirDatabase) -> Crate {
+        Crate { id: self.id.krate(db) }
     }
 
     /// Topmost parent of this module. Every module has a `crate_root`, but some
     /// might be missing `krate`. This can happen if a module's file is not included
     /// in the module tree of any target in `Cargo.toml`.
     pub fn crate_root(self, db: &dyn HirDatabase) -> Module {
-        let def_map = crate_def_map(db, self.id.krate());
-        Module { id: def_map.crate_root().into() }
+        let def_map = crate_def_map(db, self.id.krate(db));
+        Module { id: def_map.crate_root(db) }
     }
 
-    pub fn is_crate_root(self) -> bool {
-        DefMap::ROOT == self.id.local_id
+    pub fn is_crate_root(self, db: &dyn HirDatabase) -> bool {
+        self.crate_root(db) == self
     }
 
     /// Iterates over all child modules.
     pub fn children(self, db: &dyn HirDatabase) -> impl Iterator<Item = Module> {
         let def_map = self.id.def_map(db);
-        let children = def_map[self.id.local_id]
+        let children = def_map[self.id]
             .children
             .values()
-            .map(|module_id| Module { id: def_map.module_id(*module_id) })
+            .map(|module_id| Module { id: *module_id })
             .collect::<Vec<_>>();
         children.into_iter()
     }
@@ -580,17 +580,17 @@ impl Module {
     /// Finds a parent module.
     pub fn parent(self, db: &dyn HirDatabase) -> Option<Module> {
         let def_map = self.id.def_map(db);
-        let parent_id = def_map.containing_module(self.id.local_id)?;
+        let parent_id = def_map.containing_module(self.id)?;
         Some(Module { id: parent_id })
     }
 
     /// Finds nearest non-block ancestor `Module` (`self` included).
     pub fn nearest_non_block_module(self, db: &dyn HirDatabase) -> Module {
         let mut id = self.id;
-        while id.is_block_module() {
+        while id.is_block_module(db) {
             id = id.containing_module(db).expect("block without parent module");
         }
-        Module { id }
+        Module { id: unsafe { id.to_static() } }
     }
 
     pub fn path_to_root(self, db: &dyn HirDatabase) -> Vec<Module> {
@@ -609,7 +609,7 @@ impl Module {
         db: &dyn HirDatabase,
         visible_from: Option<Module>,
     ) -> Vec<(Name, ScopeDef)> {
-        self.id.def_map(db)[self.id.local_id]
+        self.id.def_map(db)[self.id]
             .scope
             .entries()
             .filter_map(|(name, def)| {
@@ -646,19 +646,19 @@ impl Module {
         style_lints: bool,
     ) {
         let _p = tracing::info_span!("diagnostics", name = ?self.name(db)).entered();
-        let edition = self.id.krate().data(db).edition;
+        let edition = self.id.krate(db).data(db).edition;
         let def_map = self.id.def_map(db);
         for diag in def_map.diagnostics() {
-            if diag.in_module != self.id.local_id {
+            if diag.in_module != self.id {
                 // FIXME: This is accidentally quadratic.
                 continue;
             }
             emit_def_diagnostic(db, acc, diag, edition, def_map.krate());
         }
 
-        if !self.id.is_block_module() {
+        if !self.id.is_block_module(db) {
             // These are reported by the body of block modules
-            let scope = &def_map[self.id.local_id].scope;
+            let scope = &def_map[self.id].scope;
             scope.all_macro_calls().for_each(|it| macro_call_diagnostics(db, it, acc));
         }
 
@@ -666,7 +666,7 @@ impl Module {
             match def {
                 ModuleDef::Module(m) => {
                     // Only add diagnostics from inline modules
-                    if def_map[m.id.local_id].origin.is_inline() {
+                    if def_map[m.id].origin.is_inline() {
                         m.diagnostics(db, acc, style_lints)
                     }
                     acc.extend(def.diagnostics(db, style_lints))
@@ -765,7 +765,7 @@ impl Module {
         }
         self.legacy_macros(db).into_iter().for_each(|m| emit_macro_def_diagnostics(db, acc, m));
 
-        let interner = DbInterner::new_with(db, self.id.krate());
+        let interner = DbInterner::new_with(db, self.id.krate(db));
         let infcx = interner.infer_ctxt().build(TypingMode::non_body_analysis());
 
         let mut impl_assoc_items_scratch = vec![];
@@ -790,7 +790,7 @@ impl Module {
             let ast_id_map = db.ast_id_map(file_id);
 
             for diag in impl_def.id.impl_items_with_diagnostics(db).1.iter() {
-                emit_def_diagnostic(db, acc, diag, edition, loc.container.krate());
+                emit_def_diagnostic(db, acc, diag, edition, loc.container.krate(db));
             }
 
             if impl_signature.target_trait.is_none()
@@ -939,7 +939,7 @@ impl Module {
 
     pub fn declarations(self, db: &dyn HirDatabase) -> Vec<ModuleDef> {
         let def_map = self.id.def_map(db);
-        let scope = &def_map[self.id.local_id].scope;
+        let scope = &def_map[self.id].scope;
         scope
             .declarations()
             .map(ModuleDef::from)
@@ -949,13 +949,13 @@ impl Module {
 
     pub fn legacy_macros(self, db: &dyn HirDatabase) -> Vec<Macro> {
         let def_map = self.id.def_map(db);
-        let scope = &def_map[self.id.local_id].scope;
+        let scope = &def_map[self.id].scope;
         scope.legacy_macros().flat_map(|(_, it)| it).map(|&it| it.into()).collect()
     }
 
     pub fn impl_defs(self, db: &dyn HirDatabase) -> Vec<Impl> {
         let def_map = self.id.def_map(db);
-        def_map[self.id.local_id].scope.impls().map(Impl::from).collect()
+        def_map[self.id].scope.impls().map(Impl::from).collect()
     }
 
     /// Finds a path that can be used to refer to the given item from within
@@ -990,7 +990,7 @@ impl Module {
 
     #[inline]
     pub fn doc_keyword(self, db: &dyn HirDatabase) -> Option<Symbol> {
-        AttrFlags::doc_keyword(db, InternedModuleId::new(db, self.id))
+        AttrFlags::doc_keyword(db, self.id)
     }
 
     /// Whether it has `#[path = "..."]` attribute.
@@ -1196,7 +1196,7 @@ fn precise_macro_call_location(
 impl HasVisibility for Module {
     fn visibility(&self, db: &dyn HirDatabase) -> Visibility {
         let def_map = self.id.def_map(db);
-        let module_data = &def_map[self.id.local_id];
+        let module_data = &def_map[self.id];
         module_data.visibility
     }
 }
@@ -1541,7 +1541,7 @@ impl Enum {
     pub fn variant_body_ty<'db>(self, db: &'db dyn HirDatabase) -> Type<'db> {
         let interner = DbInterner::new_no_crate(db);
         Type::new_for_crate(
-            self.id.lookup(db).container.krate(),
+            self.id.lookup(db).container.krate(db),
             match EnumSignature::variant_body_type(db, self.id) {
                 layout::IntegerType::Pointer(sign) => match sign {
                     true => Ty::new_int(interner, rustc_type_ir::IntTy::Isize),
@@ -1927,7 +1927,7 @@ impl DefWithBody {
     pub fn debug_mir(self, db: &dyn HirDatabase) -> String {
         let body = db.mir_body(self.id());
         match body {
-            Ok(body) => body.pretty_print(db, self.module(db).krate().to_display_target(db)),
+            Ok(body) => body.pretty_print(db, self.module(db).krate(db).to_display_target(db)),
             Err(e) => format!("error:\n{e:?}"),
         }
     }
@@ -1938,7 +1938,7 @@ impl DefWithBody {
         acc: &mut Vec<AnyDiagnostic<'db>>,
         style_lints: bool,
     ) {
-        let krate = self.module(db).id.krate();
+        let krate = self.module(db).id.krate(db);
 
         let (body, source_map) = db.body_with_source_map(self.into());
         let sig_source_map = match self {
@@ -1952,7 +1952,7 @@ impl DefWithBody {
         };
 
         for (_, def_map) in body.blocks(db) {
-            Module { id: def_map.module_id(DefMap::ROOT) }.diagnostics(db, acc, style_lints);
+            Module { id: def_map.root_module_id() }.diagnostics(db, acc, style_lints);
         }
 
         expr_store_diagnostics(db, acc, &source_map);
@@ -2398,7 +2398,7 @@ impl Function {
     /// is this a `fn main` or a function with an `export_name` of `main`?
     pub fn is_main(self, db: &dyn HirDatabase) -> bool {
         self.exported_main(db)
-            || self.module(db).is_crate_root() && db.function_signature(self.id).name == sym::main
+            || self.module(db).is_crate_root(db) && db.function_signature(self.id).name == sym::main
     }
 
     /// Is this a function with an `export_name` of `main`?
@@ -2475,7 +2475,7 @@ impl Function {
             GenericArgs::new_from_iter(interner, []),
             ParamEnvAndCrate {
                 param_env: db.trait_environment(self.id.into()),
-                krate: self.id.module(db).krate(),
+                krate: self.id.module(db).krate(db),
             },
         )?;
         let (result, output) = interpret_mir(db, body, false, None)?;
@@ -2657,7 +2657,7 @@ impl ExternCrateDecl {
 
     pub fn resolved_crate(self, db: &dyn HirDatabase) -> Option<Crate> {
         let loc = self.id.lookup(db);
-        let krate = loc.container.krate();
+        let krate = loc.container.krate(db);
         let name = self.name(db);
         if name == sym::self_ {
             Some(krate.into())
@@ -3239,8 +3239,8 @@ impl ItemInNs {
     /// Returns the crate defining this item (or `None` if `self` is built-in).
     pub fn krate(&self, db: &dyn HirDatabase) -> Option<Crate> {
         match self {
-            ItemInNs::Types(did) | ItemInNs::Values(did) => did.module(db).map(|m| m.krate()),
-            ItemInNs::Macros(id) => Some(id.module(db).krate()),
+            ItemInNs::Types(did) | ItemInNs::Values(did) => did.module(db).map(|m| m.krate(db)),
+            ItemInNs::Macros(id) => Some(id.module(db).krate(db)),
         }
     }
 
@@ -4323,7 +4323,7 @@ impl Impl {
     }
 
     pub fn all_in_module(db: &dyn HirDatabase, module: Module) -> Vec<Impl> {
-        module.id.def_map(db)[module.id.local_id].scope.impls().map(Into::into).collect()
+        module.id.def_map(db)[module.id].scope.impls().map(Into::into).collect()
     }
 
     /// **Note:** This is an **approximation** that strives to give the *human-perceived notion* of an "impl for type",
@@ -4348,15 +4348,13 @@ impl Impl {
         if let Some(module) = method_resolution::simplified_type_module(db, &simplified_ty) {
             InherentImpls::for_each_crate_and_block(
                 db,
-                module.krate(),
-                module.containing_block(),
+                module.krate(db),
+                module.block(db),
                 &mut |impls| extend_with_impls(impls.for_self_ty(&simplified_ty)),
             );
-            std::iter::successors(module.containing_block(), |block| {
-                block.loc(db).module.containing_block()
-            })
-            .filter_map(|block| TraitImpls::for_block(db, block).as_deref())
-            .for_each(|impls| impls.for_self_ty(&simplified_ty, &mut extend_with_impls));
+            std::iter::successors(module.block(db), |block| block.module(db).block(db))
+                .filter_map(|block| TraitImpls::for_block(db, block).as_deref())
+                .for_each(|impls| impls.for_self_ty(&simplified_ty, &mut extend_with_impls));
             for &krate in &**db.all_crates() {
                 TraitImpls::for_crate(db, krate)
                     .for_self_ty(&simplified_ty, &mut extend_with_impls);
@@ -4376,10 +4374,10 @@ impl Impl {
         let mut handle_impls = |impls: &TraitImpls| {
             impls.for_trait(trait_.id, |impls| all.extend(impls.iter().copied().map(Impl::from)));
         };
-        for krate in module.krate().transitive_rev_deps(db) {
+        for krate in module.krate(db).transitive_rev_deps(db) {
             handle_impls(TraitImpls::for_crate(db, krate));
         }
-        if let Some(block) = module.containing_block()
+        if let Some(block) = module.block(db)
             && let Some(impls) = TraitImpls::for_block(db, block)
         {
             handle_impls(impls);
@@ -4431,7 +4429,7 @@ impl Impl {
             MacroCallKind::Derive { ast_id, derive_attr_index, derive_index, .. } => {
                 let module_id = self.id.lookup(db).container;
                 (
-                    crate_def_map(db, module_id.krate())[module_id.local_id]
+                    module_id.def_map(db)[module_id]
                         .scope
                         .derive_macro_invoc(ast_id, derive_attr_index)?,
                     derive_index,
@@ -5329,8 +5327,8 @@ impl<'db> Type<'db> {
         if let Some(module) = method_resolution::simplified_type_module(db, &simplified_type) {
             InherentImpls::for_each_crate_and_block(
                 db,
-                module.krate(),
-                module.containing_block(),
+                module.krate(db),
+                module.block(db),
                 &mut |impls| {
                     handle_impls(impls.for_self_ty(&simplified_type));
                 },
@@ -5466,7 +5464,7 @@ impl<'db> Type<'db> {
         f: impl FnOnce(&MethodResolutionContext<'_, 'db>) -> R,
     ) -> R {
         let module = resolver.module();
-        let interner = DbInterner::new_with(db, module.krate());
+        let interner = DbInterner::new_with(db, module.krate(db));
         let infcx = interner.infer_ctxt().build(TypingMode::PostAnalysis);
         let unstable_features =
             MethodResolutionUnstableFeatures::from_def_map(resolver.top_level_def_map());
@@ -6140,12 +6138,12 @@ impl ScopeDef {
 
     pub fn krate(&self, db: &dyn HirDatabase) -> Option<Crate> {
         match self {
-            ScopeDef::ModuleDef(it) => it.module(db).map(|m| m.krate()),
-            ScopeDef::GenericParam(it) => Some(it.module(db).krate()),
+            ScopeDef::ModuleDef(it) => it.module(db).map(|m| m.krate(db)),
+            ScopeDef::GenericParam(it) => Some(it.module(db).krate(db)),
             ScopeDef::ImplSelfType(_) => None,
-            ScopeDef::AdtSelfType(it) => Some(it.module(db).krate()),
-            ScopeDef::Local(it) => Some(it.module(db).krate()),
-            ScopeDef::Label(it) => Some(it.module(db).krate()),
+            ScopeDef::AdtSelfType(it) => Some(it.module(db).krate(db)),
+            ScopeDef::Local(it) => Some(it.module(db).krate(db)),
+            ScopeDef::Label(it) => Some(it.module(db).krate(db)),
             ScopeDef::Unknown => None,
         }
     }
@@ -6205,61 +6203,61 @@ pub trait HasCrate {
 
 impl<T: hir_def::HasModule> HasCrate for T {
     fn krate(&self, db: &dyn HirDatabase) -> Crate {
-        self.module(db).krate().into()
+        self.module(db).krate(db).into()
     }
 }
 
 impl HasCrate for AssocItem {
     fn krate(&self, db: &dyn HirDatabase) -> Crate {
-        self.module(db).krate()
+        self.module(db).krate(db)
     }
 }
 
 impl HasCrate for Struct {
     fn krate(&self, db: &dyn HirDatabase) -> Crate {
-        self.module(db).krate()
+        self.module(db).krate(db)
     }
 }
 
 impl HasCrate for Union {
     fn krate(&self, db: &dyn HirDatabase) -> Crate {
-        self.module(db).krate()
+        self.module(db).krate(db)
     }
 }
 
 impl HasCrate for Enum {
     fn krate(&self, db: &dyn HirDatabase) -> Crate {
-        self.module(db).krate()
+        self.module(db).krate(db)
     }
 }
 
 impl HasCrate for Field {
     fn krate(&self, db: &dyn HirDatabase) -> Crate {
-        self.parent_def(db).module(db).krate()
+        self.parent_def(db).module(db).krate(db)
     }
 }
 
 impl HasCrate for Variant {
     fn krate(&self, db: &dyn HirDatabase) -> Crate {
-        self.module(db).krate()
+        self.module(db).krate(db)
     }
 }
 
 impl HasCrate for Function {
     fn krate(&self, db: &dyn HirDatabase) -> Crate {
-        self.module(db).krate()
+        self.module(db).krate(db)
     }
 }
 
 impl HasCrate for Const {
     fn krate(&self, db: &dyn HirDatabase) -> Crate {
-        self.module(db).krate()
+        self.module(db).krate(db)
     }
 }
 
 impl HasCrate for TypeAlias {
     fn krate(&self, db: &dyn HirDatabase) -> Crate {
-        self.module(db).krate()
+        self.module(db).krate(db)
     }
 }
 
@@ -6271,37 +6269,37 @@ impl HasCrate for Type<'_> {
 
 impl HasCrate for Macro {
     fn krate(&self, db: &dyn HirDatabase) -> Crate {
-        self.module(db).krate()
+        self.module(db).krate(db)
     }
 }
 
 impl HasCrate for Trait {
     fn krate(&self, db: &dyn HirDatabase) -> Crate {
-        self.module(db).krate()
+        self.module(db).krate(db)
     }
 }
 
 impl HasCrate for Static {
     fn krate(&self, db: &dyn HirDatabase) -> Crate {
-        self.module(db).krate()
+        self.module(db).krate(db)
     }
 }
 
 impl HasCrate for Adt {
     fn krate(&self, db: &dyn HirDatabase) -> Crate {
-        self.module(db).krate()
+        self.module(db).krate(db)
     }
 }
 
 impl HasCrate for Impl {
     fn krate(&self, db: &dyn HirDatabase) -> Crate {
-        self.module(db).krate()
+        self.module(db).krate(db)
     }
 }
 
 impl HasCrate for Module {
-    fn krate(&self, _: &dyn HirDatabase) -> Crate {
-        Module::krate(*self)
+    fn krate(&self, db: &dyn HirDatabase) -> Crate {
+        Module::krate(*self, db)
     }
 }
 
@@ -6319,8 +6317,8 @@ impl HasContainer for Module {
     fn container(&self, db: &dyn HirDatabase) -> ItemContainer {
         // FIXME: handle block expressions as modules (their parent is in a different DefMap)
         let def_map = self.id.def_map(db);
-        match def_map[self.id.local_id].parent {
-            Some(parent_id) => ItemContainer::Module(Module { id: def_map.module_id(parent_id) }),
+        match def_map[self.id].parent {
+            Some(parent_id) => ItemContainer::Module(Module { id: parent_id }),
             None => ItemContainer::Crate(def_map.krate().into()),
         }
     }
@@ -6479,7 +6477,7 @@ pub fn resolve_absolute_path<'a, I: Iterator<Item = Symbol> + Clone + 'a>(
                 .filter_map(|&krate| {
                     let segments = segments.clone();
                     let mut def_map = crate_def_map(db, krate);
-                    let mut module = &def_map[DefMap::ROOT];
+                    let mut module = &def_map[def_map.root_module_id()];
                     let mut segments = segments.with_position().peekable();
                     while let Some((_, segment)) = segments.next_if(|&(position, _)| {
                         !matches!(position, itertools::Position::Last | itertools::Position::Only)
@@ -6493,7 +6491,7 @@ pub fn resolve_absolute_path<'a, I: Iterator<Item = Symbol> + Clone + 'a>(
                                 _ => None,
                             })?;
                         def_map = res.def_map(db);
-                        module = &def_map[res.local_id];
+                        module = &def_map[res];
                     }
                     let (_, item_name) = segments.next()?;
                     let res = module.scope.get(&Name::new_symbol_root(item_name));

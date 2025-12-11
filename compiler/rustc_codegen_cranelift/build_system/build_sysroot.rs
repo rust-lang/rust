@@ -140,7 +140,7 @@ impl SysrootTarget {
 
 static STDLIB_SRC: RelPath = RelPath::build("stdlib");
 static STANDARD_LIBRARY: CargoProject =
-    CargoProject::new(&RelPath::build("stdlib/library/sysroot"), "stdlib_target");
+    CargoProject::new(RelPath::build("stdlib/library/sysroot"), "stdlib_target");
 
 fn build_sysroot_for_triple(
     dirs: &Dirs,
@@ -250,6 +250,10 @@ fn build_clif_sysroot_for_triple(
     build_cmd.env("__CARGO_DEFAULT_LIB_METADATA", "cg_clif");
     if compiler.triple.contains("apple") {
         build_cmd.env("CARGO_PROFILE_RELEASE_SPLIT_DEBUGINFO", "packed");
+    }
+    // Use incr comp despite release mode unless incremental builds are explicitly disabled
+    if env::var_os("CARGO_BUILD_INCREMENTAL").is_none() {
+        build_cmd.env("CARGO_BUILD_INCREMENTAL", "true");
     }
     spawn_and_wait(build_cmd);
 

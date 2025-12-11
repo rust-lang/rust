@@ -16,11 +16,11 @@ use syntax::ast::HasName;
 use triomphe::Arc;
 
 use crate::{
-    AdtId, AstIdLoc, ConstId, ConstParamId, CrateRootModuleId, DefWithBodyId, EnumId,
-    EnumVariantId, ExternBlockId, ExternCrateId, FunctionId, FxIndexMap, GenericDefId,
-    GenericParamId, HasModule, ImplId, ItemContainerId, LifetimeParamId, LocalModuleId, Lookup,
-    Macro2Id, MacroId, MacroRulesId, ModuleDefId, ModuleId, ProcMacroId, StaticId, StructId,
-    TraitId, TypeAliasId, TypeOrConstParamId, TypeParamId, UseId, VariantId,
+    AdtId, AstIdLoc, ConstId, ConstParamId, DefWithBodyId, EnumId, EnumVariantId, ExternBlockId,
+    ExternCrateId, FunctionId, FxIndexMap, GenericDefId, GenericParamId, HasModule, ImplId,
+    ItemContainerId, LifetimeParamId, Lookup, Macro2Id, MacroId, MacroRulesId, ModuleDefId,
+    ModuleId, ProcMacroId, StaticId, StructId, TraitId, TypeAliasId, TypeOrConstParamId,
+    TypeParamId, UseId, VariantId,
     builtin_type::BuiltinType,
     db::DefDatabase,
     expr_store::{
@@ -55,7 +55,7 @@ pub struct Resolver<'db> {
 struct ModuleItemMap<'db> {
     def_map: &'db DefMap,
     local_def_map: &'db LocalDefMap,
-    module_id: LocalModuleId,
+    module_id: ModuleId,
 }
 
 impl fmt::Debug for ModuleItemMap<'_> {
@@ -608,14 +608,14 @@ impl<'db> Resolver<'db> {
             },
         );
         local_def_map.extern_prelude().for_each(|(name, (def, _extern_crate))| {
-            res.add(name, ScopeDef::ModuleDef(ModuleDefId::ModuleId(def.into())));
+            res.add(name, ScopeDef::ModuleDef(ModuleDefId::ModuleId(def)));
         });
         BUILTIN_SCOPE.iter().for_each(|(name, &def)| {
             res.add_per_ns(name, def);
         });
         if let Some((prelude, _use)) = def_map.prelude() {
             let prelude_def_map = prelude.def_map(db);
-            for (name, def) in prelude_def_map[prelude.local_id].scope.entries() {
+            for (name, def) in prelude_def_map[prelude].scope.entries() {
                 res.add_per_ns(name, def)
             }
         }
@@ -647,7 +647,7 @@ impl<'db> Resolver<'db> {
         self.module_scope
             .local_def_map
             .extern_prelude()
-            .map(|(name, module_id)| (name.clone(), module_id.0.into()))
+            .map(|(name, module_id)| (name.clone(), module_id.0))
     }
 
     pub fn traits_in_scope(&self, db: &dyn DefDatabase) -> FxHashSet<TraitId> {
@@ -674,7 +674,7 @@ impl<'db> Resolver<'db> {
         // Fill in the prelude traits
         if let Some((prelude, _use)) = self.module_scope.def_map.prelude() {
             let prelude_def_map = prelude.def_map(db);
-            traits.extend(prelude_def_map[prelude.local_id].scope.traits());
+            traits.extend(prelude_def_map[prelude].scope.traits());
         }
         // Fill in module visible traits
         traits.extend(self.module_scope.def_map[self.module_scope.module_id].scope.traits());
@@ -691,8 +691,7 @@ impl<'db> Resolver<'db> {
     }
 
     pub fn module(&self) -> ModuleId {
-        let (def_map, _, local_id) = self.item_scope_();
-        def_map.module_id(local_id)
+        self.item_scope_().2
     }
 
     pub fn item_scope(&self) -> &ItemScope {
@@ -882,11 +881,11 @@ impl<'db> Resolver<'db> {
             }));
             if let Some(block) = expr_scopes.block(scope_id) {
                 let def_map = block_def_map(db, block);
-                let local_def_map = block.lookup(db).module.only_local_def_map(db);
+                let local_def_map = block.module(db).only_local_def_map(db);
                 resolver.scopes.push(Scope::BlockScope(ModuleItemMap {
                     def_map,
                     local_def_map,
-                    module_id: DefMap::ROOT,
+                    module_id: def_map.root,
                 }));
                 // FIXME: This adds as many module scopes as there are blocks, but resolving in each
                 // already traverses all parents, so this is O(n²). I think we could only store the
@@ -985,7 +984,7 @@ impl<'db> Resolver<'db> {
     }
 
     /// The innermost block scope that contains items or the module scope that contains this resolver.
-    fn item_scope_(&self) -> (&DefMap, &LocalDefMap, LocalModuleId) {
+    fn item_scope_(&self) -> (&DefMap, &LocalDefMap, ModuleId) {
         self.scopes()
             .find_map(|scope| match scope {
                 Scope::BlockScope(m) => Some((m.def_map, m.local_def_map, m.module_id)),
@@ -1088,10 +1087,10 @@ fn resolver_for_scope_<'db>(
     for scope in scope_chain.into_iter().rev() {
         if let Some(block) = scopes.block(scope) {
             let def_map = block_def_map(db, block);
-            let local_def_map = block.lookup(db).module.only_local_def_map(db);
+            let local_def_map = block.module(db).only_local_def_map(db);
             // Using `DefMap::ROOT` is okay here since inside modules other than the root,
             // there can't directly be expressions.
-            r = r.push_block_scope(def_map, local_def_map, DefMap::ROOT);
+            r = r.push_block_scope(def_map, local_def_map, def_map.root);
             // FIXME: This adds as many module scopes as there are blocks, but resolving in each
             // already traverses all parents, so this is O(n²). I think we could only store the
             // innermost module scope instead?
@@ -1124,7 +1123,7 @@ impl<'db> Resolver<'db> {
         self,
         def_map: &'db DefMap,
         local_def_map: &'db LocalDefMap,
-        module_id: LocalModuleId,
+        module_id: ModuleId,
     ) -> Resolver<'db> {
         self.push_scope(Scope::BlockScope(ModuleItemMap { def_map, local_def_map, module_id }))
     }
@@ -1284,9 +1283,9 @@ pub trait HasResolver: Copy {
 impl HasResolver for ModuleId {
     fn resolver(self, db: &dyn DefDatabase) -> Resolver<'_> {
         let (mut def_map, local_def_map) = self.local_def_map(db);
-        let mut module_id = self.local_id;
+        let mut module_id = self;
 
-        if !self.is_within_block() {
+        if self.block(db).is_none() {
             return Resolver {
                 scopes: vec![],
                 module_scope: ModuleItemMap { def_map, local_def_map, module_id },
@@ -1296,9 +1295,9 @@ impl HasResolver for ModuleId {
         let mut modules: SmallVec<[_; 1]> = smallvec![];
         while let Some(parent) = def_map.parent() {
             let block_def_map = mem::replace(&mut def_map, parent.def_map(db));
-            let block_module_id = mem::replace(&mut module_id, parent.local_id);
+            let block_module_id = mem::replace(&mut module_id, parent);
             modules.push((block_def_map, block_module_id));
-            if !parent.is_within_block() {
+            if parent.block(db).is_none() {
                 break;
             }
         }
@@ -1310,16 +1309,6 @@ impl HasResolver for ModuleId {
             resolver = resolver.push_block_scope(def_map, local_def_map, module_id);
         }
         resolver
-    }
-}
-
-impl HasResolver for CrateRootModuleId {
-    fn resolver(self, db: &dyn DefDatabase) -> Resolver<'_> {
-        let (def_map, local_def_map) = self.local_def_map(db);
-        Resolver {
-            scopes: vec![],
-            module_scope: ModuleItemMap { def_map, local_def_map, module_id: DefMap::ROOT },
-        }
     }
 }
 

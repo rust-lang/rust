@@ -11,6 +11,7 @@ use rustc_hir::attrs::AttributeKind;
 use rustc_hir::lints::{AttributeLint, AttributeLintKind};
 use rustc_hir::{AttrPath, CRATE_HIR_ID, HirId};
 use rustc_session::Session;
+use rustc_session::lint::{Lint, LintId};
 use rustc_span::{ErrorGuaranteed, Span, Symbol};
 
 use crate::AttributeParser;
@@ -381,7 +382,7 @@ impl<'f, 'sess: 'f, S: Stage> SharedContext<'f, 'sess, S> {
     /// Emit a lint. This method is somewhat special, since lints emitted during attribute parsing
     /// must be delayed until after HIR is built. This method will take care of the details of
     /// that.
-    pub(crate) fn emit_lint(&mut self, lint: AttributeLintKind, span: Span) {
+    pub(crate) fn emit_lint(&mut self, lint: &'static Lint, kind: AttributeLintKind, span: Span) {
         if !matches!(
             self.stage.should_emit(),
             ShouldEmit::ErrorsAndLints | ShouldEmit::EarlyFatal { also_emit_lints: true }
@@ -389,11 +390,12 @@ impl<'f, 'sess: 'f, S: Stage> SharedContext<'f, 'sess, S> {
             return;
         }
         let id = self.target_id;
-        (self.emit_lint)(AttributeLint { id, span, kind: lint });
+        (self.emit_lint)(AttributeLint { lint_id: LintId::of(lint), id, span, kind });
     }
 
     pub(crate) fn warn_unused_duplicate(&mut self, used_span: Span, unused_span: Span) {
         self.emit_lint(
+            rustc_session::lint::builtin::UNUSED_ATTRIBUTES,
             AttributeLintKind::UnusedDuplicate {
                 this: unused_span,
                 other: used_span,
@@ -409,6 +411,7 @@ impl<'f, 'sess: 'f, S: Stage> SharedContext<'f, 'sess, S> {
         unused_span: Span,
     ) {
         self.emit_lint(
+            rustc_session::lint::builtin::UNUSED_ATTRIBUTES,
             AttributeLintKind::UnusedDuplicate {
                 this: unused_span,
                 other: used_span,
@@ -632,10 +635,21 @@ impl<'f, 'sess: 'f, S: Stage> AcceptContext<'f, 'sess, S> {
     }
 
     pub(crate) fn warn_empty_attribute(&mut self, span: Span) {
-        let attr_path = self.attr_path.clone();
+        let attr_path = self.attr_path.clone().to_string();
         let valid_without_list = self.template.word;
         self.emit_lint(
+            rustc_session::lint::builtin::UNUSED_ATTRIBUTES,
             AttributeLintKind::EmptyAttribute { first_span: span, attr_path, valid_without_list },
+            span,
+        );
+    }
+
+    pub(crate) fn warn_ill_formed_attribute_input(&mut self, lint: &'static Lint) {
+        let suggestions = self.suggestions();
+        let span = self.attr_span;
+        self.emit_lint(
+            lint,
+            AttributeLintKind::IllFormedAttributeInput { suggestions, docs: None },
             span,
         );
     }

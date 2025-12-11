@@ -255,13 +255,20 @@ fn parse_config(args: Vec<String>) -> Config {
         }
     }
 
-    let target = opt_str2(matches.opt_str("target"));
-    let android_cross_path = opt_path(matches, "android-cross-path");
+    let host = matches.opt_str("host").expect("`--host` must be unconditionally specified");
+    let target = matches.opt_str("target").expect("`--target` must be unconditionally specified");
+
+    let android_cross_path = matches.opt_str("android-cross-path").map(Utf8PathBuf::from);
+
+    let adb_path = matches.opt_str("adb-path").map(Utf8PathBuf::from);
+    let adb_test_dir = matches.opt_str("adb-test-dir").map(Utf8PathBuf::from);
+    let adb_device_status = target.contains("android") && adb_test_dir.is_some();
+
     // FIXME: `cdb_version` is *derived* from cdb, but it's *not* technically a config!
     let cdb = debuggers::discover_cdb(matches.opt_str("cdb"), &target);
     let cdb_version = cdb.as_deref().and_then(debuggers::query_cdb_version);
     // FIXME: `gdb_version` is *derived* from gdb, but it's *not* technically a config!
-    let gdb = debuggers::discover_gdb(matches.opt_str("gdb"), &target, &android_cross_path);
+    let gdb = matches.opt_str("gdb").map(Utf8PathBuf::from);
     let gdb_version = gdb.as_deref().and_then(debuggers::query_gdb_version);
     // FIXME: `lldb_version` is *derived* from lldb, but it's *not* technically a config!
     let lldb = matches.opt_str("lldb").map(Utf8PathBuf::from);
@@ -433,7 +440,7 @@ fn parse_config(args: Vec<String>) -> Config {
         optimize_tests: matches.opt_present("optimize-tests"),
         rust_randomized_layout: matches.opt_present("rust-randomized-layout"),
         target,
-        host: opt_str2(matches.opt_str("host")),
+        host,
         cdb,
         cdb_version,
         gdb,
@@ -443,11 +450,9 @@ fn parse_config(args: Vec<String>) -> Config {
         llvm_version,
         system_llvm: matches.opt_present("system-llvm"),
         android_cross_path,
-        adb_path: Utf8PathBuf::from(opt_str2(matches.opt_str("adb-path"))),
-        adb_test_dir: Utf8PathBuf::from(opt_str2(matches.opt_str("adb-test-dir"))),
-        adb_device_status: opt_str2(matches.opt_str("target")).contains("android")
-            && "(none)" != opt_str2(matches.opt_str("adb-test-dir"))
-            && !opt_str2(matches.opt_str("adb-test-dir")).is_empty(),
+        adb_path,
+        adb_test_dir,
+        adb_device_status,
         verbose: matches.opt_present("verbose"),
         only_modified: matches.opt_present("only-modified"),
         color,
@@ -490,13 +495,6 @@ fn parse_config(args: Vec<String>) -> Config {
         default_codegen_backend,
         override_codegen_backend,
         bypass_ignore_backends: matches.opt_present("bypass-ignore-backends"),
-    }
-}
-
-fn opt_str2(maybestr: Option<String>) -> String {
-    match maybestr {
-        None => "(none)".to_owned(),
-        Some(s) => s,
     }
 }
 

@@ -270,16 +270,18 @@ impl Cache {
 
 #[cfg(test)]
 impl Cache {
-    pub fn all<S: Ord + Step>(&mut self) -> Vec<(S, S::Output)> {
-        let cache = self.cache.get_mut();
-        let type_id = TypeId::of::<S>();
-        let mut v = cache
-            .remove(&type_id)
-            .map(|b| b.downcast::<HashMap<S, S::Output>>().expect("correct type"))
-            .map(|m| m.into_iter().collect::<Vec<_>>())
+    pub(crate) fn inspect_all_steps_of_type<S: Step, T: Ord>(
+        &self,
+        map_fn: impl Fn(&S, &S::Output) -> T,
+    ) -> Vec<T> {
+        let cache = self.cache.borrow();
+        let mut values = cache
+            .get(&TypeId::of::<S>())
+            .map(|any| any.downcast_ref::<HashMap<S, S::Output>>().expect("correct type"))
+            .map(|m| m.iter().map(|(step, output)| map_fn(step, output)).collect::<Vec<_>>())
             .unwrap_or_default();
-        v.sort_by_key(|(s, _)| s.clone());
-        v
+        values.sort();
+        values
     }
 
     pub fn contains<S: Step>(&self) -> bool {

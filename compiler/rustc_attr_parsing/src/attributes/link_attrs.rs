@@ -2,6 +2,7 @@ use rustc_feature::Features;
 use rustc_hir::attrs::AttributeKind::{LinkName, LinkOrdinal, LinkSection};
 use rustc_hir::attrs::*;
 use rustc_session::Session;
+use rustc_session::lint::builtin::ILL_FORMED_ATTRIBUTE_INPUT;
 use rustc_session::parse::feature_err;
 use rustc_span::kw;
 use rustc_target::spec::{Arch, BinaryFormat};
@@ -71,9 +72,7 @@ impl<S: Stage> CombineAttributeParser<S> for LinkParser {
             // Specifically `#[link = "dl"]` is accepted with a FCW
             // For more information, see https://github.com/rust-lang/rust/pull/143193
             ArgParser::NameValue(nv) if nv.value_as_str().is_some_and(|v| v == sym::dl) => {
-                let suggestions = cx.suggestions();
-                let span = cx.attr_span;
-                cx.emit_lint(AttributeLintKind::IllFormedAttributeInput { suggestions }, span);
+                cx.warn_ill_formed_attribute_input(ILL_FORMED_ATTRIBUTE_INPUT);
                 return None;
             }
             _ => {

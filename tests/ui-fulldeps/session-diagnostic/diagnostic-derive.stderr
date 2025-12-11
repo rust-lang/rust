@@ -570,19 +570,37 @@ error: cannot find attribute `warn_` in this scope
   --> $DIR/diagnostic-derive.rs:590:3
    |
 LL | #[warn_(no_crate_example, code = E0123)]
-   |   ^^^^^ help: a built-in attribute with a similar name exists: `warn`
+   |   ^^^^^
+   |
+help: a built-in attribute with a similar name exists
+   |
+LL - #[warn_(no_crate_example, code = E0123)]
+LL + #[warn(no_crate_example, code = E0123)]
+   |
 
 error: cannot find attribute `lint` in this scope
   --> $DIR/diagnostic-derive.rs:597:3
    |
 LL | #[lint(no_crate_example, code = E0123)]
-   |   ^^^^ help: a built-in attribute with a similar name exists: `link`
+   |   ^^^^
+   |
+help: a built-in attribute with a similar name exists
+   |
+LL - #[lint(no_crate_example, code = E0123)]
+LL + #[link(no_crate_example, code = E0123)]
+   |
 
 error: cannot find attribute `lint` in this scope
   --> $DIR/diagnostic-derive.rs:604:3
    |
 LL | #[lint(no_crate_example, code = E0123)]
-   |   ^^^^ help: a built-in attribute with a similar name exists: `link`
+   |   ^^^^
+   |
+help: a built-in attribute with a similar name exists
+   |
+LL - #[lint(no_crate_example, code = E0123)]
+LL + #[link(no_crate_example, code = E0123)]
+   |
 
 error: cannot find attribute `multipart_suggestion` in this scope
   --> $DIR/diagnostic-derive.rs:644:3

@@ -12,7 +12,7 @@ use rustc_hir::def_id::{
     CrateNum, DefId, LOCAL_CRATE, LocalDefId, StableCrateId, StableCrateIdMap,
 };
 use rustc_hir::definitions::{DefKey, DefPath, DefPathHash, Definitions};
-use rustc_macros::{Decodable, Encodable, HashStable_Generic};
+use rustc_macros::{BlobDecodable, Decodable, Encodable, HashStable_Generic};
 use rustc_span::{Span, Symbol};
 
 use crate::search_paths::PathKind;
@@ -36,7 +36,7 @@ impl CrateSource {
     }
 }
 
-#[derive(Encodable, Decodable, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Debug)]
+#[derive(Encodable, BlobDecodable, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Debug)]
 #[derive(HashStable_Generic)]
 pub enum CrateDepKind {
     /// A dependency that is only used for its macros.
@@ -59,7 +59,7 @@ impl CrateDepKind {
     }
 }
 
-#[derive(Copy, Debug, PartialEq, Clone, Encodable, Decodable, HashStable_Generic)]
+#[derive(Copy, Debug, PartialEq, Clone, Encodable, BlobDecodable, HashStable_Generic)]
 pub enum LinkagePreference {
     RequireDynamic,
     RequireStatic,

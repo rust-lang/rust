@@ -110,7 +110,7 @@ mod m1 {
 }
 
 //~[no_short]v absolute_paths
-pub const _: crate::S = {
+const _: crate::S = {
     let crate::S = m1::S; //~[no_short] absolute_paths
 
     crate::m1::S

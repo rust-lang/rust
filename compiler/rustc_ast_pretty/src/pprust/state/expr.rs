@@ -818,10 +818,15 @@ impl<'a> State<'a> {
                 );
                 self.word("?")
             }
-            ast::ExprKind::TryBlock(blk) => {
+            ast::ExprKind::TryBlock(blk, opt_ty) => {
                 let cb = self.cbox(0);
                 let ib = self.ibox(0);
                 self.word_nbsp("try");
+                if let Some(ty) = opt_ty {
+                    self.word_nbsp("bikeshed");
+                    self.print_type(ty);
+                    self.space();
+                }
                 self.print_block_with_attrs(blk, attrs, cb, ib)
             }
             ast::ExprKind::UnsafeBinderCast(kind, expr, ty) => {

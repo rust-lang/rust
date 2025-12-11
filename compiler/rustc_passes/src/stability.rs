@@ -6,7 +6,7 @@ use std::num::NonZero;
 use rustc_ast_lowering::stability::extern_abi_stability;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::unord::{ExtendUnord, UnordMap, UnordSet};
-use rustc_feature::{EnabledLangFeature, EnabledLibFeature};
+use rustc_feature::{EnabledLangFeature, EnabledLibFeature, UNSTABLE_LANG_FEATURES};
 use rustc_hir::attrs::{AttributeKind, DeprecatedSince};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CRATE_DEF_ID, LOCAL_CRATE, LocalDefId, LocalModDefId};
@@ -1062,11 +1062,13 @@ pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
     // no unknown features, because the collection also does feature attribute validation.
     let local_defined_features = tcx.lib_features(LOCAL_CRATE);
     if !remaining_lib_features.is_empty() || !remaining_implications.is_empty() {
+        let crates = tcx.crates(());
+
         // Loading the implications of all crates is unavoidable to be able to emit the partial
         // stabilization diagnostic, but it can be avoided when there are no
         // `remaining_lib_features`.
         let mut all_implications = remaining_implications.clone();
-        for &cnum in tcx.crates(()) {
+        for &cnum in crates {
             all_implications
                 .extend_unord(tcx.stability_implications(cnum).items().map(|(k, v)| (*k, *v)));
         }
@@ -1079,7 +1081,7 @@ pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
             &all_implications,
         );
 
-        for &cnum in tcx.crates(()) {
+        for &cnum in crates {
             if remaining_lib_features.is_empty() && remaining_implications.is_empty() {
                 break;
             }
@@ -1091,10 +1093,26 @@ pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
                 &all_implications,
             );
         }
-    }
 
-    for (feature, span) in remaining_lib_features {
-        tcx.dcx().emit_err(errors::UnknownFeature { span, feature });
+        if !remaining_lib_features.is_empty() {
+            let lang_features =
+                UNSTABLE_LANG_FEATURES.iter().map(|feature| feature.name).collect::<Vec<_>>();
+            let lib_features = crates
+                .into_iter()
+                .flat_map(|&cnum| {
+                    tcx.lib_features(cnum).stability.keys().copied().into_sorted_stable_ord()
+                })
+                .collect::<Vec<_>>();
+
+            let valid_feature_names = [lang_features, lib_features].concat();
+
+            for (feature, span) in remaining_lib_features {
+                let suggestion = feature
+                    .find_similar(&valid_feature_names)
+                    .map(|(actual_name, _)| errors::MisspelledFeature { span, actual_name });
+                tcx.dcx().emit_err(errors::UnknownFeature { span, feature, suggestion });
+            }
+        }
     }
 
     for (&implied_by, &feature) in remaining_implications.to_sorted_stable_ord() {

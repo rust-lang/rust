@@ -8,13 +8,12 @@ use la_arena::ArenaMap;
 use triomphe::Arc;
 
 use crate::{
-    AssocItemId, AttrDefId, BlockId, BlockLoc, ConstId, ConstLoc, CrateRootModuleId, DefWithBodyId,
-    EnumId, EnumLoc, EnumVariantId, EnumVariantLoc, ExternBlockId, ExternBlockLoc, ExternCrateId,
-    ExternCrateLoc, FunctionId, FunctionLoc, GenericDefId, HasModule, ImplId, ImplLoc,
-    InternedModuleId, LocalFieldId, Macro2Id, Macro2Loc, MacroExpander, MacroId, MacroRulesId,
-    MacroRulesLoc, MacroRulesLocFlags, ProcMacroId, ProcMacroLoc, StaticId, StaticLoc, StructId,
-    StructLoc, TraitId, TraitLoc, TypeAliasId, TypeAliasLoc, UnionId, UnionLoc, UseId, UseLoc,
-    VariantId,
+    AssocItemId, AttrDefId, ConstId, ConstLoc, DefWithBodyId, EnumId, EnumLoc, EnumVariantId,
+    EnumVariantLoc, ExternBlockId, ExternBlockLoc, ExternCrateId, ExternCrateLoc, FunctionId,
+    FunctionLoc, GenericDefId, ImplId, ImplLoc, LocalFieldId, Macro2Id, Macro2Loc, MacroExpander,
+    MacroId, MacroRulesId, MacroRulesLoc, MacroRulesLocFlags, ProcMacroId, ProcMacroLoc, StaticId,
+    StaticLoc, StructId, StructLoc, TraitId, TraitLoc, TypeAliasId, TypeAliasLoc, UnionId,
+    UnionLoc, UseId, UseLoc, VariantId,
     attrs::AttrFlags,
     expr_store::{
         Body, BodySourceMap, ExpressionStore, ExpressionStoreSourceMap, scope::ExprScopes,
@@ -83,9 +82,6 @@ pub trait InternDatabase: RootQueryDb {
     #[salsa::interned]
     fn intern_macro_rules(&self, loc: MacroRulesLoc) -> MacroRulesId;
     // endregion: items
-
-    #[salsa::interned]
-    fn intern_block(&self, loc: BlockLoc) -> BlockId;
 }
 
 #[query_group::query_group]
@@ -276,8 +272,8 @@ fn include_macro_invoc(
 }
 
 fn crate_supports_no_std(db: &dyn DefDatabase, crate_id: Crate) -> bool {
-    let root_module = CrateRootModuleId::from(crate_id).module(db);
-    let attrs = AttrFlags::query(db, AttrDefId::ModuleId(InternedModuleId::new(db, root_module)));
+    let root_module = crate_def_map(db, crate_id).root_module_id();
+    let attrs = AttrFlags::query(db, AttrDefId::ModuleId(root_module));
     attrs.contains(AttrFlags::IS_NO_STD)
 }
 
@@ -298,7 +294,7 @@ fn macro_def(db: &dyn DefDatabase, id: MacroId) -> MacroDefId {
             let loc: Macro2Loc = it.lookup(db);
 
             MacroDefId {
-                krate: loc.container.krate,
+                krate: loc.container.krate(db),
                 kind: kind(loc.expander, loc.id.file_id, loc.id.value.upcast()),
                 local_inner: false,
                 allow_internal_unsafe: loc.allow_internal_unsafe,
@@ -309,7 +305,7 @@ fn macro_def(db: &dyn DefDatabase, id: MacroId) -> MacroDefId {
             let loc: MacroRulesLoc = it.lookup(db);
 
             MacroDefId {
-                krate: loc.container.krate,
+                krate: loc.container.krate(db),
                 kind: kind(loc.expander, loc.id.file_id, loc.id.value.upcast()),
                 local_inner: loc.flags.contains(MacroRulesLocFlags::LOCAL_INNER),
                 allow_internal_unsafe: loc
@@ -322,7 +318,7 @@ fn macro_def(db: &dyn DefDatabase, id: MacroId) -> MacroDefId {
             let loc = it.lookup(db);
 
             MacroDefId {
-                krate: loc.container.krate,
+                krate: loc.container.krate(db),
                 kind: MacroDefKind::ProcMacro(loc.id, loc.expander, loc.kind),
                 local_inner: false,
                 allow_internal_unsafe: false,

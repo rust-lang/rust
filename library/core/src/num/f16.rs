@@ -687,14 +687,15 @@ impl f16 {
 
     /// Returns the maximum of the two numbers, ignoring NaN.
     ///
-    /// If exactly one of the arguments is NaN, then the other argument is returned. If both
-    /// arguments are NaN, the return value is NaN, with the bit pattern picked using the usual
-    /// [rules for arithmetic operations](f32#nan-bit-patterns). If the inputs compare equal (such
-    /// as for the case of `+0.0` and `-0.0`), either input may be returned non-deterministically.
+    /// If exactly one of the arguments is NaN (quiet or signaling), then the other argument is
+    /// returned. If both arguments are NaN, the return value is NaN, with the bit pattern picked
+    /// using the usual [rules for arithmetic operations](f32#nan-bit-patterns). If the inputs
+    /// compare equal (such as for the case of `+0.0` and `-0.0`), either input may be returned
+    /// non-deterministically.
     ///
-    /// This follows the IEEE 754-2008 semantics for `maxNum`, except for handling of signaling NaNs;
-    /// this function handles all NaNs the same way and avoids `maxNum`'s problems with associativity.
-    /// This also matches the behavior of libm’s `fmax`.
+    /// The handling of NaNs follows the IEEE 754-2019 semantics for `maximumNumber`, treating all
+    /// NaNs the same way to ensure the operation is associative. The handling of signed zeros
+    /// follows the IEEE 754-2008 semantics for `maxNum`.
     ///
     /// ```
     /// #![feature(f16)]
@@ -717,14 +718,15 @@ impl f16 {
 
     /// Returns the minimum of the two numbers, ignoring NaN.
     ///
-    /// If exactly one of the arguments is NaN, then the other argument is returned. If both
-    /// arguments are NaN, the return value is NaN, with the bit pattern picked using the usual
-    /// [rules for arithmetic operations](f32#nan-bit-patterns). If the inputs compare equal (such
-    /// as for the case of `+0.0` and `-0.0`), either input may be returned non-deterministically.
+    /// If exactly one of the arguments is NaN (quiet or signaling), then the other argument is
+    /// returned. If both arguments are NaN, the return value is NaN, with the bit pattern picked
+    /// using the usual [rules for arithmetic operations](f32#nan-bit-patterns). If the inputs
+    /// compare equal (such as for the case of `+0.0` and `-0.0`), either input may be returned
+    /// non-deterministically.
     ///
-    /// This follows the IEEE 754-2008 semantics for `minNum`, except for handling of signaling NaNs;
-    /// this function handles all NaNs the same way and avoids `minNum`'s problems with associativity.
-    /// This also matches the behavior of libm’s `fmin`.
+    /// The handling of NaNs follows the IEEE 754-2019 semantics for `minimumNumber`, treating all
+    /// NaNs the same way to ensure the operation is associative. The handling of signed zeros
+    /// follows the IEEE 754-2008 semantics for `minNum`.
     ///
     /// ```
     /// #![feature(f16)]
@@ -1682,7 +1684,6 @@ impl f16 {
     #[unstable(feature = "f16", issue = "116909")]
     #[doc(alias = "fmaf16", alias = "fusedMultiplyAdd")]
     #[must_use = "method returns a new number and does not mutate the original value"]
-    #[rustc_const_unstable(feature = "const_mul_add", issue = "146724")]
     pub const fn mul_add(self, a: f16, b: f16) -> f16 {
         intrinsics::fmaf16(self, a, b)
     }
@@ -1726,7 +1727,8 @@ impl f16 {
         q
     }
 
-    /// Calculates the least nonnegative remainder of `self (mod rhs)`.
+    /// Calculates the least nonnegative remainder of `self` when
+    /// divided by `rhs`.
     ///
     /// In particular, the return value `r` satisfies `0.0 <= r < rhs.abs()` in
     /// most cases. However, due to a floating point round-off error it can

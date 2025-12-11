@@ -545,7 +545,7 @@ fn ident_difference_expr_with_base_location(
         | (Field(_, _), Field(_, _))
         | (AssignOp(_, _, _), AssignOp(_, _, _))
         | (Assign(_, _, _), Assign(_, _, _))
-        | (TryBlock(_), TryBlock(_))
+        | (TryBlock(_, _), TryBlock(_, _))
         | (Await(_, _), Await(_, _))
         | (Gen(_, _, _, _), Gen(_, _, _, _))
         | (Block(_, _), Block(_, _))

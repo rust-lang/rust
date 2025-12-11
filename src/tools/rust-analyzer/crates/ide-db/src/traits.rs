@@ -34,7 +34,7 @@ pub fn get_missing_assoc_items(
     // may share the same name as a function or constant.
     let mut impl_fns_consts = FxHashSet::default();
     let mut impl_type = FxHashSet::default();
-    let edition = imp.module(sema.db).krate().edition(sema.db);
+    let edition = imp.module(sema.db).krate(sema.db).edition(sema.db);
 
     for item in imp.items(sema.db) {
         match item {

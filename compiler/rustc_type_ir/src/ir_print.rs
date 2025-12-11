@@ -3,7 +3,8 @@ use std::fmt;
 use crate::{
     AliasTerm, AliasTy, Binder, ClosureKind, CoercePredicate, ExistentialProjection,
     ExistentialTraitRef, FnSig, HostEffectPredicate, Interner, NormalizesTo, OutlivesPredicate,
-    PatternKind, ProjectionPredicate, SubtypePredicate, TraitPredicate, TraitRef, UnevaluatedConst,
+    PatternKind, Placeholder, ProjectionPredicate, SubtypePredicate, TraitPredicate, TraitRef,
+    UnevaluatedConst,
 };
 
 pub trait IrPrint<T> {
@@ -20,15 +21,6 @@ macro_rules! define_display_via_print {
                 }
             }
         )*
-    }
-}
-
-impl<I: Interner, T> fmt::Display for Binder<I, T>
-where
-    I: IrPrint<Binder<I, T>>,
-{
-    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        <I as IrPrint<Binder<I, T>>>::print(self, fmt)
     }
 }
 
@@ -68,6 +60,24 @@ where
 {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         <I as IrPrint<OutlivesPredicate<I, T>>>::print(self, fmt)
+    }
+}
+
+impl<I: Interner, T> fmt::Display for Binder<I, T>
+where
+    I: IrPrint<Binder<I, T>>,
+{
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        <I as IrPrint<Binder<I, T>>>::print(self, fmt)
+    }
+}
+
+impl<I: Interner, T> fmt::Display for Placeholder<I, T>
+where
+    I: IrPrint<Placeholder<I, T>>,
+{
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        <I as IrPrint<Placeholder<I, T>>>::print(self, fmt)
     }
 }
 

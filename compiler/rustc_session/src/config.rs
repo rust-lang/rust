@@ -21,7 +21,7 @@ use rustc_errors::emitter::HumanReadableErrorType;
 use rustc_errors::{ColorConfig, DiagArgValue, DiagCtxtFlags, IntoDiagArg};
 use rustc_feature::UnstableFeatures;
 use rustc_hashes::Hash64;
-use rustc_macros::{Decodable, Encodable, HashStable_Generic};
+use rustc_macros::{BlobDecodable, Decodable, Encodable, HashStable_Generic};
 use rustc_span::edition::{DEFAULT_EDITION, EDITION_NAME_LIST, Edition, LATEST_STABLE_EDITION};
 use rustc_span::source_map::FilePathMapping;
 use rustc_span::{
@@ -543,7 +543,7 @@ impl SwitchWithOptPath {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, HashStable_Generic)]
-#[derive(Encodable, Decodable)]
+#[derive(Encodable, BlobDecodable)]
 pub enum SymbolManglingVersion {
     Legacy,
     V0,
@@ -1521,7 +1521,7 @@ pub enum EntryFnType {
     },
 }
 
-#[derive(Copy, PartialEq, PartialOrd, Clone, Ord, Eq, Hash, Debug, Encodable, Decodable)]
+#[derive(Copy, PartialEq, PartialOrd, Clone, Ord, Eq, Hash, Debug, Encodable, BlobDecodable)]
 #[derive(HashStable_Generic)]
 pub enum CrateType {
     Executable,
@@ -3127,8 +3127,8 @@ pub(crate) mod dep_tracking {
         AnnotateMoves, AutoDiff, BranchProtection, CFGuard, CFProtection, CollapseMacroDebuginfo,
         CoverageOptions, CrateType, DebugInfo, DebugInfoCompression, ErrorOutputType, FmtDebug,
         FunctionReturn, InliningThreshold, InstrumentCoverage, InstrumentXRay, LinkerPluginLto,
-        LocationDetail, LtoCli, MirStripDebugInfo, NextSolverConfig, Offload, OomStrategy,
-        OptLevel, OutFileName, OutputType, OutputTypes, PatchableFunctionEntry, Polonius,
+        LocationDetail, LtoCli, MirStripDebugInfo, NextSolverConfig, Offload, OptLevel,
+        OutFileName, OutputType, OutputTypes, PatchableFunctionEntry, Polonius,
         RemapPathScopeComponents, ResolveDocLinks, SourceFileHashAlgorithm, SplitDwarfKind,
         SwitchWithOptPath, SymbolManglingVersion, WasiExecModel,
     };
@@ -3227,7 +3227,6 @@ pub(crate) mod dep_tracking {
         LocationDetail,
         FmtDebug,
         BranchProtection,
-        OomStrategy,
         LanguageIdentifier,
         NextSolverConfig,
         PatchableFunctionEntry,
@@ -3336,27 +3335,6 @@ pub(crate) mod dep_tracking {
             Hash::hash(&key.len(), hasher);
             Hash::hash(key, hasher);
             sub_hash.hash(hasher, error_format, for_crate_hash);
-        }
-    }
-}
-
-/// Default behavior to use in out-of-memory situations.
-#[derive(Clone, Copy, PartialEq, Hash, Debug, Encodable, Decodable, HashStable_Generic)]
-pub enum OomStrategy {
-    /// Generate a panic that can be caught by `catch_unwind`.
-    Panic,
-
-    /// Abort the process immediately.
-    Abort,
-}
-
-impl OomStrategy {
-    pub const SYMBOL: &'static str = "__rust_alloc_error_handler_should_panic_v2";
-
-    pub fn should_panic(self) -> u8 {
-        match self {
-            OomStrategy::Panic => 1,
-            OomStrategy::Abort => 0,
         }
     }
 }

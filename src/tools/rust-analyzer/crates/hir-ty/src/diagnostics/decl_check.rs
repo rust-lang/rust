@@ -164,7 +164,7 @@ impl<'a> DeclValidator<'a> {
         else {
             return;
         };
-        let module_data = &module_id.def_map(self.db)[module_id.local_id];
+        let module_data = &module_id.def_map(self.db)[module_id];
         let Some(module_src) = module_data.declaration_source(self.db) else {
             return;
         };

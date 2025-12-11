@@ -1,10 +1,10 @@
 use std::fmt;
 use std::str::FromStr;
 
-use rustc_macros::{Decodable, Encodable, HashStable_Generic};
+use rustc_macros::{BlobDecodable, Encodable, HashStable_Generic};
 
 /// The edition of the compiler. (See [RFC 2052](https://github.com/rust-lang/rfcs/blob/master/text/2052-epochs.md).)
-#[derive(Clone, Copy, Hash, PartialEq, PartialOrd, Debug, Encodable, Decodable, Eq)]
+#[derive(Clone, Copy, Hash, PartialEq, PartialOrd, Debug, Encodable, BlobDecodable, Eq)]
 #[derive(HashStable_Generic)]
 pub enum Edition {
     // When adding new editions, be sure to do the following:

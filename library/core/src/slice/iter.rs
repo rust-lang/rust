@@ -2165,8 +2165,6 @@ unsafe impl<T> Sync for ChunksExactMut<'_, T> where T: Sync {}
 /// # Example
 ///
 /// ```
-/// #![feature(array_windows)]
-///
 /// let slice = [0, 1, 2, 3];
 /// let mut iter = slice.array_windows::<2>();
 /// assert_eq!(iter.next(), Some(&[0, 1]));
@@ -2178,7 +2176,7 @@ unsafe impl<T> Sync for ChunksExactMut<'_, T> where T: Sync {}
 /// [`array_windows`]: slice::array_windows
 /// [slices]: slice
 #[derive(Debug, Clone, Copy)]
-#[unstable(feature = "array_windows", issue = "75027")]
+#[stable(feature = "array_windows", since = "CURRENT_RUSTC_VERSION")]
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 pub struct ArrayWindows<'a, T: 'a, const N: usize> {
     v: &'a [T],
@@ -2191,7 +2189,7 @@ impl<'a, T: 'a, const N: usize> ArrayWindows<'a, T, N> {
     }
 }
 
-#[unstable(feature = "array_windows", issue = "75027")]
+#[stable(feature = "array_windows", since = "CURRENT_RUSTC_VERSION")]
 impl<'a, T, const N: usize> Iterator for ArrayWindows<'a, T, N> {
     type Item = &'a [T; N];
 
@@ -2228,7 +2226,7 @@ impl<'a, T, const N: usize> Iterator for ArrayWindows<'a, T, N> {
     }
 }
 
-#[unstable(feature = "array_windows", issue = "75027")]
+#[stable(feature = "array_windows", since = "CURRENT_RUSTC_VERSION")]
 impl<'a, T, const N: usize> DoubleEndedIterator for ArrayWindows<'a, T, N> {
     #[inline]
     fn next_back(&mut self) -> Option<&'a [T; N]> {
@@ -2247,7 +2245,7 @@ impl<'a, T, const N: usize> DoubleEndedIterator for ArrayWindows<'a, T, N> {
     }
 }
 
-#[unstable(feature = "array_windows", issue = "75027")]
+#[stable(feature = "array_windows", since = "CURRENT_RUSTC_VERSION")]
 impl<T, const N: usize> ExactSizeIterator for ArrayWindows<'_, T, N> {
     fn is_empty(&self) -> bool {
         self.v.len() < N

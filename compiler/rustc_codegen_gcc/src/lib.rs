@@ -98,6 +98,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_middle::util::Providers;
 use rustc_session::Session;
 use rustc_session::config::{OptLevel, OutputFilenames};
+use rustc_session::filesearch::make_target_lib_path;
 use rustc_span::Symbol;
 use rustc_target::spec::{Arch, RelocModel};
 use tempfile::TempDir;
@@ -181,18 +182,12 @@ pub struct GccCodegenBackend {
 
 static LTO_SUPPORTED: AtomicBool = AtomicBool::new(false);
 
-fn libgccjit_path(sysroot_path: &Path) -> PathBuf {
-    let sysroot_lib_dir = sysroot_path.join("lib");
-    sysroot_lib_dir.join("libgccjit.so")
-}
-
-fn load_libgccjit_if_needed(sysroot_path: &Path) {
+fn load_libgccjit_if_needed(libgccjit_target_lib_file: &Path) {
     if gccjit::is_loaded() {
         // Do not load a libgccjit second time.
         return;
     }
 
-    let libgccjit_target_lib_file = libgccjit_path(sysroot_path);
     let path = libgccjit_target_lib_file.to_str().expect("libgccjit path");
 
     let string = CString::new(path).expect("string to libgccjit path");
@@ -216,9 +211,10 @@ impl CodegenBackend for GccCodegenBackend {
         // invalid.
         // This is the case for instance in Rust for Linux where they specify --sysroot=/dev/null.
         for path in sess.opts.sysroot.all_paths() {
-            let libgccjit_target_lib_file = libgccjit_path(path);
-            if let Ok(true) = fs::exists(libgccjit_target_lib_file) {
-                load_libgccjit_if_needed(path);
+            let libgccjit_target_lib_file =
+                make_target_lib_path(path, &sess.target.llvm_target).join("libgccjit.so");
+            if let Ok(true) = fs::exists(&libgccjit_target_lib_file) {
+                load_libgccjit_if_needed(&libgccjit_target_lib_file);
                 break;
             }
         }

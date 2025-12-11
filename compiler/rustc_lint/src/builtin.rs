@@ -35,9 +35,9 @@ use rustc_middle::lint::LevelAndSource;
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, AssocContainer, Ty, TyCtxt, TypeVisitableExt, Upcast, VariantDef};
-use rustc_session::lint::FutureIncompatibilityReason;
 // hardwired lints from rustc_lint_defs
 pub use rustc_session::lint::builtin::*;
+use rustc_session::lint::fcw;
 use rustc_session::{declare_lint, declare_lint_pass, impl_lint_pass};
 use rustc_span::edition::Edition;
 use rustc_span::source_map::Spanned;
@@ -777,8 +777,7 @@ declare_lint! {
     Warn,
     "detects anonymous parameters",
     @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::EditionError(Edition::Edition2018),
-        reference: "issue #41686 <https://github.com/rust-lang/rust/issues/41686>",
+        reason: fcw!(EditionError 2018 "trait-fn-parameters"),
     };
 }
 
@@ -1664,8 +1663,7 @@ declare_lint! {
     Warn,
     "`...` range patterns are deprecated",
     @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::EditionError(Edition::Edition2021),
-        reference: "<https://doc.rust-lang.org/edition-guide/rust-2021/warnings-promoted-to-error.html>",
+        reason: fcw!(EditionError 2021 "warnings-promoted-to-error"),
     };
 }
 
@@ -1800,8 +1798,7 @@ declare_lint! {
     Allow,
     "detects edition keywords being used as an identifier",
     @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::EditionError(Edition::Edition2018),
-        reference: "issue #49716 <https://github.com/rust-lang/rust/issues/49716>",
+        reason: fcw!(EditionError 2018 "new-keywords"),
     };
 }
 
@@ -1845,8 +1842,7 @@ declare_lint! {
     Allow,
     "detects edition keywords being used as an identifier",
     @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::EditionError(Edition::Edition2024),
-        reference: "<https://doc.rust-lang.org/edition-guide/rust-2024/gen-keyword.html>",
+        reason: fcw!(EditionError 2024 "gen-keyword"),
     };
 }
 

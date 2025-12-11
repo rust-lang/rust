@@ -45,7 +45,7 @@ fn find_and_interpret(db: &RootDatabase, position: FilePosition) -> Option<(Dura
             None => format!("file://{path} range {text_range:?}"),
         }
     };
-    let display_target = def.module(db).krate().to_display_target(db);
+    let display_target = def.module(db).krate(db).to_display_target(db);
     let start_time = Instant::now();
     let res = match def {
         DefWithBody::Function(it) => it.eval(db, span_formatter),

@@ -241,7 +241,7 @@ impl SymbolIndex {
                 SymbolIndex::new(SymbolCollector::new_module(
                     db,
                     module,
-                    !module.krate().origin(db).is_local(),
+                    !module.krate(db).origin(db).is_local(),
                 ))
             })
         }

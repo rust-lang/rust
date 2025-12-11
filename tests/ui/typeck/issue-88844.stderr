@@ -5,7 +5,12 @@ LL | struct Struct { value: i32 }
    | ------------- similarly named struct `Struct` defined here
 ...
 LL | impl Stuct {
-   |      ^^^^^ help: a struct with a similar name exists: `Struct`
+   |      ^^^^^
+   |
+help: a struct with a similar name exists
+   |
+LL | impl Struct {
+   |        +
 
 error: aborting due to 1 previous error
 

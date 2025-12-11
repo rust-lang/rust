@@ -5,6 +5,7 @@ use rustc_errors::DiagArgValue;
 use rustc_feature::Features;
 use rustc_hir::lints::AttributeLintKind;
 use rustc_hir::{MethodKind, Target};
+use rustc_span::sym;
 
 use crate::AttributeParser;
 use crate::context::{AcceptContext, Stage};
@@ -102,13 +103,31 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
                 let allowed_targets = allowed_targets.allowed_targets();
                 let (applied, only) = allowed_targets_applied(allowed_targets, target, cx.features);
                 let name = cx.attr_path.clone();
+
+                let lint = if name.segments[0].name == sym::deprecated
+                    && ![
+                        Target::Closure,
+                        Target::Expression,
+                        Target::Statement,
+                        Target::Arm,
+                        Target::MacroCall,
+                    ]
+                    .contains(&target)
+                {
+                    rustc_session::lint::builtin::USELESS_DEPRECATED
+                } else {
+                    rustc_session::lint::builtin::UNUSED_ATTRIBUTES
+                };
+
                 let attr_span = cx.attr_span;
                 cx.emit_lint(
+                    lint,
                     AttributeLintKind::InvalidTarget {
-                        name,
-                        target,
+                        name: name.to_string(),
+                        target: target.plural_name(),
                         only: if only { "only " } else { "" },
                         applied,
+                        attr_span,
                     },
                     attr_span,
                 );
@@ -145,15 +164,15 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
             return;
         }
 
-        let lint = AttributeLintKind::InvalidStyle {
-            name: cx.attr_path.clone(),
+        let kind = AttributeLintKind::InvalidStyle {
+            name: cx.attr_path.to_string(),
             is_used_as_inner: cx.attr_style == AttrStyle::Inner,
-            target,
+            target: target.name(),
             target_span: cx.target_span,
         };
         let attr_span = cx.attr_span;
 
-        cx.emit_lint(lint, attr_span);
+        cx.emit_lint(rustc_session::lint::builtin::UNUSED_ATTRIBUTES, kind, attr_span);
     }
 }
 
