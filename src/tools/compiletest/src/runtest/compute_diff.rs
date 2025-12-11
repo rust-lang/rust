@@ -1,9 +1,4 @@
 use std::collections::VecDeque;
-use std::fs::{File, FileType};
-
-use camino::Utf8Path;
-
-use crate::runtest::TestCx;
 
 #[derive(Debug, PartialEq)]
 pub enum DiffLine {
@@ -108,56 +103,4 @@ pub(crate) fn write_diff(expected: &str, actual: &str, context_size: usize) -> S
         writeln!(output).unwrap();
     }
     output
-}
-
-/// Filters based on filetype and extension whether to diff a file.
-///
-/// Returns whether any data was actually written.
-pub(crate) fn write_filtered_diff<Filter>(
-    cx: &TestCx<'_>,
-    diff_filename: &str,
-    out_dir: &Utf8Path,
-    compare_dir: &Utf8Path,
-    verbose: bool,
-    filter: Filter,
-) -> bool
-where
-    Filter: Fn(FileType, Option<&str>) -> bool,
-{
-    use std::io::{Read, Write};
-    let mut diff_output = File::create(diff_filename).unwrap();
-    let mut wrote_data = false;
-    for entry in walkdir::WalkDir::new(out_dir.as_std_path()) {
-        let entry = entry.expect("failed to read file");
-        let extension = entry.path().extension().and_then(|p| p.to_str());
-        if filter(entry.file_type(), extension) {
-            let expected_path = compare_dir
-                .as_std_path()
-                .join(entry.path().strip_prefix(&out_dir.as_std_path()).unwrap());
-            let expected = if let Ok(s) = std::fs::read(&expected_path) { s } else { continue };
-            let actual_path = entry.path();
-            let actual = std::fs::read(&actual_path).unwrap();
-            let diff = unified_diff::diff(
-                &expected,
-                &expected_path.to_str().unwrap(),
-                &actual,
-                &actual_path.to_str().unwrap(),
-                3,
-            );
-            wrote_data |= !diff.is_empty();
-            diff_output.write_all(&diff).unwrap();
-        }
-    }
-
-    if !wrote_data {
-        writeln!(cx.stdout, "note: diff is identical to nightly rustdoc");
-        assert!(diff_output.metadata().unwrap().len() == 0);
-        return false;
-    } else if verbose {
-        writeln!(cx.stderr, "printing diff:");
-        let mut buf = Vec::new();
-        diff_output.read_to_end(&mut buf).unwrap();
-        std::io::stderr().lock().write_all(&mut buf).unwrap();
-    }
-    true
 }
