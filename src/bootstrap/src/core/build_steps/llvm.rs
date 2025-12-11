@@ -778,6 +778,10 @@ fn configure_cmake(
     if builder.config.llvm_clang_cl.is_some() {
         cflags.push(format!(" --target={target}"));
     }
+    // Manuel
+    let base = builder.llvm_out(target).join("include");
+    let inc_dir = base.display();
+    cflags.push(format!(" -I {inc_dir}"));
     cfg.define("CMAKE_C_FLAGS", cflags);
     let mut cxxflags: OsString = builder
         .cc_handled_clags(target, CLang::Cxx)
@@ -791,6 +795,7 @@ fn configure_cmake(
         .collect::<Vec<String>>()
         .join(" ")
         .into();
+    cxxflags.push(format!(" -I {inc_dir}"));
     if let Some(ref s) = builder.config.llvm_cxxflags {
         cxxflags.push(" ");
         cxxflags.push(s);
