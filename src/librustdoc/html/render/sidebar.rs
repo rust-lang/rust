@@ -91,6 +91,8 @@ pub(crate) struct Link<'a> {
     href: Cow<'a, str>,
     /// Nested list of links (used only in top-toc)
     children: Vec<Link<'a>>,
+    /// Whether this link represents a deprecated item
+    deprecated: bool,
 }
 
 impl Ord for Link<'_> {
@@ -115,7 +117,7 @@ impl PartialOrd for Link<'_> {
 
 impl<'a> Link<'a> {
     pub fn new(href: impl Into<Cow<'a, str>>, name: impl Into<Cow<'a, str>>) -> Self {
-        Self { href: href.into(), name: name.into(), children: vec![], name_html: None }
+        Self { href: href.into(), name: name.into(), children: vec![], name_html: None, deprecated: false }
     }
     pub fn empty() -> Link<'static> {
         Link::new("", "")
@@ -153,7 +155,7 @@ pub(super) fn print_sidebar(
         clean::EnumItem(ref e) => sidebar_enum(cx, it, e, &mut blocks, &deref_id_map),
         clean::TypeAliasItem(ref t) => sidebar_type_alias(cx, it, t, &mut blocks, &deref_id_map),
         clean::ModuleItem(ref m) => {
-            blocks.push(sidebar_module(&m.items, &mut ids, ModuleLike::from(it)))
+            blocks.extend(sidebar_module(cx, &m.items, &mut ids, ModuleLike::from(it)));
         }
         clean::ForeignTypeItem => sidebar_foreign_type(cx, it, &mut blocks, &deref_id_map),
         _ => {}
@@ -243,20 +245,24 @@ fn docblock_toc<'a>(
                     .children
                     .entries
                     .into_iter()
-                    .map(|entry| Link {
-                        name_html: if entry.html == entry.name {
-                            None
-                        } else {
-                            Some(entry.html.into())
-                        },
-                        name: entry.name.into(),
-                        href: entry.id.into(),
-                        // Only a single level of nesting is shown here.
-                        // Going the full six could break the layout,
-                        // so we have to cut it off somewhere.
-                        children: vec![],
+                    .map(|entry| {
+                        Link {
+                            name_html: if entry.html == entry.name {
+                                None
+                            } else {
+                                Some(entry.html.into())
+                            },
+                            name: entry.name.into(),
+                            href: entry.id.into(),
+                            // Only a single level of nesting is shown here.
+                            // Going the full six could break the layout,
+                            // so we have to cut it off somewhere.
+                            children: vec![],
+                            deprecated: false,
+                        }
                     })
                     .collect(),
+                deprecated: false,
             }
         })
         .collect();
@@ -439,8 +445,8 @@ fn sidebar_assoc_items<'a>(
         {
             let used_links_bor = &mut used_links;
             for impl_ in v.iter().map(|i| i.inner_impl()).filter(|i| i.trait_.is_none()) {
-                assoc_consts.extend(get_associated_constants(impl_, used_links_bor));
-                assoc_types.extend(get_associated_types(impl_, used_links_bor));
+                assoc_consts.extend(get_associated_constants(impl_, used_links_bor, cx.tcx()));
+                assoc_types.extend(get_associated_types(impl_, used_links_bor, cx.tcx()));
                 methods.extend(get_methods(impl_, false, used_links_bor, false, cx.tcx()));
             }
             // We want links' order to be reproducible so we don't use unstable sort.
@@ -655,10 +661,12 @@ pub(crate) fn sidebar_module_like(
 }
 
 fn sidebar_module(
+    cx: &Context<'_>,
     items: &[clean::Item],
     ids: &mut IdMap,
     module_like: ModuleLike,
-) -> LinkBlock<'static> {
+) -> Vec<LinkBlock<'static>> {
+    // Header block linking to the module/crate items section
     let item_sections_in_use: FxHashSet<_> = items
         .iter()
         .filter(|it| {
@@ -679,7 +687,122 @@ fn sidebar_module(
         .map(|it| item_ty_to_section(it.type_()))
         .collect();
 
-    sidebar_module_like(item_sections_in_use, ids, module_like)
+    let mut blocks = vec![sidebar_module_like(item_sections_in_use, ids, module_like)];
+
+    // Collect per-item lists for module-scope entries
+    let mut structs: Vec<Link<'static>> = Vec::new();
+    let mut functions: Vec<Link<'static>> = Vec::new();
+    let mut enums: Vec<Link<'static>> = Vec::new();
+    let mut type_aliases: Vec<Link<'static>> = Vec::new();
+    let mut constants: Vec<Link<'static>> = Vec::new();
+    let mut modules: Vec<Link<'static>> = Vec::new();
+
+    for it in items.iter() {
+        if it.is_stripped() {
+            continue;
+        }
+        let Some(name) = it.name.as_ref() else { continue };
+        let name_str = name.as_str();
+        match it.kind {
+            clean::StructItem(..) => {
+                let mut l = Link::new(format!("struct.{name_str}"), name_str.to_string());
+                if it.deprecation(cx.tcx()).is_some_and(|d| d.is_in_effect()) {
+                    l.deprecated = true;
+                    l.name_html = Some(format!(
+                        "{} <span class=\"stab deprecated\">Deprecated</span>",
+                        name_str
+                    ).into());
+                }
+                structs.push(l);
+            }
+            clean::FunctionItem(..) => {
+                let mut l = Link::new(format!("fn.{name_str}"), name_str.to_string());
+                if it.deprecation(cx.tcx()).is_some_and(|d| d.is_in_effect()) {
+                    l.deprecated = true;
+                    l.name_html = Some(format!(
+                        "{} <span class=\"stab deprecated\">Deprecated</span>",
+                        name_str
+                    ).into());
+                }
+                functions.push(l);
+            }
+            clean::EnumItem(..) => {
+                let mut l = Link::new(format!("enum.{name_str}"), name_str.to_string());
+                if it.deprecation(cx.tcx()).is_some_and(|d| d.is_in_effect()) {
+                    l.deprecated = true;
+                    l.name_html = Some(format!(
+                        "{} <span class=\"stab deprecated\">Deprecated</span>",
+                        name_str
+                    ).into());
+                }
+                enums.push(l);
+            }
+            clean::TypeAliasItem(..) => {
+                let mut l = Link::new(format!("type.{name_str}"), name_str.to_string());
+                if it.deprecation(cx.tcx()).is_some_and(|d| d.is_in_effect()) {
+                    l.deprecated = true;
+                    l.name_html = Some(format!(
+                        "{} <span class=\"stab deprecated\">Deprecated</span>",
+                        name_str
+                    ).into());
+                }
+                type_aliases.push(l);
+            }
+            clean::ConstantItem(..) => {
+                let mut l = Link::new(format!("constant.{name_str}"), name_str.to_string());
+                if it.deprecation(cx.tcx()).is_some_and(|d| d.is_in_effect()) {
+                    l.deprecated = true;
+                    l.name_html = Some(format!(
+                        "{} <span class=\"stab deprecated\">Deprecated</span>",
+                        name_str
+                    ).into());
+                }
+                constants.push(l);
+            }
+            clean::ModuleItem(..) => {
+                let mut l = Link::new(format!("mod.{name_str}"), name_str.to_string());
+                if it.deprecation(cx.tcx()).is_some_and(|d| d.is_in_effect()) {
+                    l.deprecated = true;
+                    l.name_html = Some(format!(
+                        "{} <span class=\"stab deprecated\">Deprecated</span>",
+                        name_str
+                    ).into());
+                }
+                modules.push(l);
+            }
+            _ => {}
+        }
+    }
+
+    // Sort lists
+    structs.sort();
+    functions.sort();
+    enums.sort();
+    type_aliases.sort();
+    constants.sort();
+    modules.sort();
+
+    // Append blocks for each non-empty category with specific block classes
+    if !modules.is_empty() {
+        blocks.push(LinkBlock::new(Link::new("modules", "Modules"), "mod", modules));
+    }
+    if !structs.is_empty() {
+        blocks.push(LinkBlock::new(Link::new("structs", "Structs"), "struct", structs));
+    }
+    if !enums.is_empty() {
+        blocks.push(LinkBlock::new(Link::new("enums", "Enums"), "enum", enums));
+    }
+    if !type_aliases.is_empty() {
+        blocks.push(LinkBlock::new(Link::new("types", "Type Aliases"), "type", type_aliases));
+    }
+    if !constants.is_empty() {
+        blocks.push(LinkBlock::new(Link::new("constants", "Constants"), "constant", constants));
+    }
+    if !functions.is_empty() {
+        blocks.push(LinkBlock::new(Link::new("functions", "Functions"), "fn", functions));
+    }
+
+    blocks
 }
 
 fn sidebar_foreign_type<'a>(
@@ -768,10 +891,25 @@ fn get_methods<'a>(
                 && item.is_method()
                 && (!for_deref || super::should_render_item(item, deref_mut, tcx))
             {
-                Some(Link::new(
-                    get_next_url(used_links, format!("{typ}.{name}", typ = ItemType::Method)),
-                    name.as_str(),
-                ))
+                {
+                    let mut link = Link::new(
+                        get_next_url(used_links, format!("{typ}.{name}", typ = ItemType::Method)),
+                        name.as_str(),
+                    );
+                    if item
+                        .deprecation(tcx)
+                        .is_some_and(|d| d.is_in_effect())
+                    {
+                        // Mark as deprecated for template-based class insertion
+                        link.deprecated = true;
+                        // Also render the native deprecation tag in the link label
+                        link.name_html = Some(format!(
+                            "{} <span class=\"stab deprecated\">Deprecated</span>",
+                            name
+                        ).into());
+                    }
+                    Some(link)
+                }
             } else {
                 None
             }
@@ -782,6 +920,7 @@ fn get_methods<'a>(
 fn get_associated_constants<'a>(
     i: &'a clean::Impl,
     used_links: &mut FxHashSet<String>,
+    tcx: TyCtxt<'_>,
 ) -> Vec<Link<'a>> {
     i.items
         .iter()
@@ -789,10 +928,25 @@ fn get_associated_constants<'a>(
             if let Some(ref name) = item.name
                 && item.is_associated_const()
             {
-                Some(Link::new(
-                    get_next_url(used_links, format!("{typ}.{name}", typ = ItemType::AssocConst)),
-                    name.as_str(),
-                ))
+                {
+                    let mut link = Link::new(
+                        get_next_url(used_links, format!("{typ}.{name}", typ = ItemType::AssocConst)),
+                        name.as_str(),
+                    );
+                    if item
+                        .deprecation(tcx)
+                        .is_some_and(|d| d.is_in_effect())
+                    {
+                        // Mark for template-based class insertion
+                        link.deprecated = true;
+                        // Also render the native deprecation tag in the link label
+                        link.name_html = Some(format!(
+                            "{} <span class=\"stab deprecated\">Deprecated</span>",
+                            name
+                        ).into());
+                    }
+                    Some(link)
+                }
             } else {
                 None
             }
@@ -803,6 +957,7 @@ fn get_associated_constants<'a>(
 fn get_associated_types<'a>(
     i: &'a clean::Impl,
     used_links: &mut FxHashSet<String>,
+    tcx: TyCtxt<'_>,
 ) -> Vec<Link<'a>> {
     i.items
         .iter()
@@ -810,10 +965,21 @@ fn get_associated_types<'a>(
             if let Some(ref name) = item.name
                 && item.is_associated_type()
             {
-                Some(Link::new(
+                let mut link = Link::new(
                     get_next_url(used_links, format!("{typ}.{name}", typ = ItemType::AssocType)),
                     name.as_str(),
-                ))
+                );
+                if item
+                    .deprecation(tcx)
+                    .is_some_and(|d| d.is_in_effect())
+                {
+                    link.deprecated = true;
+                    link.name_html = Some(format!(
+                        "{} <span class=\"stab deprecated\">Deprecated</span>",
+                        name
+                    ).into());
+                }
+                Some(link)
             } else {
                 None
             }

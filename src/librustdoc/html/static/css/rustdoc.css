@@ -210,6 +210,12 @@ xmlns="http://www.w3.org/2000/svg" fill="black" height="18px">\
 	display: none;
 }
 
+.hide-depr ul.block.struct li.depr-item { display: none; }
+.hide-depr ul.block.fn li.depr-item { display: none; }
+.hide-depr ul.block.enum li.depr-item { display: none; }
+.hide-depr ul.block.type li.depr-item { display: none; }
+.hide-depr ul.block.constant li.depr-item { display: none; }
+
 body {
     /* Line spacing at least 1.5 per Web Content Accessibility Guidelines
 	   https://www.w3.org/WAI/WCAG21/Understanding/visual-presentation.html */
@@ -3078,22 +3084,6 @@ in src-script.js and main.js
 	.item-table > dd {
 		grid-column-start: 2;
 	}
-
-	/* Hide deprecated items in module summaries (dt/dd pairs) when setting is off */
-    .hide-depr dt:has(.depr-item),
-    .hide-depr dt:has(.depr-item) + dd {
-        display: none;
-    }
-
-    /* Hide deprecated items in the sidebar blocks */
-    .hide-depr nav.sidebar li:has(.depr-item) {
-        display: none;
-    }
-
-    /* Hide deprecated items in the all items page */
-    .hide-depr ul.all-items li:has(.depr-item) {
-        display: none;
-    }
 }
 
 @media print {
