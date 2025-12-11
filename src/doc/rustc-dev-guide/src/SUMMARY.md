@@ -66,6 +66,7 @@
     - [ARM](notification-groups/arm.md)
     - [Emscripten](notification-groups/emscripten.md)
     - [Fuchsia](notification-groups/fuchsia.md)
+    - [LoongArch](notification-groups/loongarch.md)
     - [RISC-V](notification-groups/risc-v.md)
     - [Rust for Linux](notification-groups/rust-for-linux.md)
     - [WASI](notification-groups/wasi.md)
