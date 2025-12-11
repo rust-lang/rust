@@ -978,8 +978,11 @@ impl Step for OmpOffload {
             builder.llvm_out(target).join("build")
         };
         let clang_dir = if !builder.config.llvm_clang {
-            &builder.build.config.llvm_clang_dir.unwrap()
+            // We must have an external clang to use.
+            assert!(&builder.build.config.llvm_clang_dir.is_some());
+            builder.build.config.llvm_clang_dir.clone()
         } else {
+            // No need to specify it, since we use the in-tree clang
             None
         };
 
@@ -996,8 +999,9 @@ impl Step for OmpOffload {
             .define("OPENMP_STANDALONE_BUILD", "ON")
             .define("LLVM_ROOT", root)
             .define("LLVM_DIR", builder.llvm_out(target).join("lib").join("cmake").join("llvm"));
-        if let Some(p) = Clang_DIR {
+        if let Some(p) = clang_dir {
             cfg.define("CLANG_DIR", p);
+        }
         cfg.build();
 
         t!(stamp.write());
