@@ -54,6 +54,23 @@ class RoaringBitmap {
             }
             this.consumed_len_bytes = pspecial - i;
             return this;
+        } else if (u8array[i] > 0xe0) {
+            // Special representation of tiny sets that are runs
+            const lspecial = u8array[i] & 0x0f;
+            this.keysAndCardinalities = new Uint8Array(lspecial * 4);
+            i += 1;
+            const key = u8array[i + 2] | (u8array[i + 3] << 8);
+            const value = u8array[i] | (u8array[i + 1] << 8);
+            const container = new RoaringBitmapRun(1, new Uint8Array(4));
+            container.array[0] = value & 0xFF;
+            container.array[1] = (value >> 8) & 0xFF;
+            container.array[2] = lspecial - 1;
+            this.containers.push(container);
+            this.keysAndCardinalities[0] = key & 0xFF;
+            this.keysAndCardinalities[1] = (key >> 8) & 0xFF;
+            this.keysAndCardinalities[2] = lspecial - 1;
+            this.consumed_len_bytes = 5;
+            return this;
         } else if (u8array[i] < 0x3a) {
             // Special representation of tiny sets with arbitrary 32-bit integers
             const lspecial = u8array[i];
@@ -2282,7 +2299,7 @@ function loadDatabase(hooks) {
      */
     class InlineNeighborsTree {
         /**
-         * @param {Uint8Array<ArrayBuffer>} encoded
+         * @param {Uint8Array} encoded
          * @param {number} start
          */
         constructor(
@@ -2654,7 +2671,7 @@ function loadDatabase(hooks) {
 
     /**
      * @param {string} inputBase64
-     * @returns {[Uint8Array<ArrayBuffer>, SearchTree]}
+     * @returns {[Uint8Array, SearchTree]}
      */
     function makeSearchTreeFromBase64(inputBase64) {
         const input = makeUint8ArrayFromBase64(inputBase64);
@@ -3305,7 +3322,7 @@ if (typeof window !== "undefined") {
 // eslint-disable-next-line max-len
 // polyfill https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Uint8Array/fromBase64
 /**
- * @type {function(string): Uint8Array<ArrayBuffer>} base64
+ * @type {function(string): Uint8Array} base64
  */
 //@ts-expect-error
 const makeUint8ArrayFromBase64 = Uint8Array.fromBase64 ? Uint8Array.fromBase64 : (string => {
@@ -3318,7 +3335,7 @@ const makeUint8ArrayFromBase64 = Uint8Array.fromBase64 ? Uint8Array.fromBase64 :
     return bytes;
 });
 /**
- * @type {function(string): Uint8Array<ArrayBuffer>} base64
+ * @type {function(string): Uint8Array} base64
  */
 //@ts-expect-error
 const makeUint8ArrayFromHex = Uint8Array.fromHex ? Uint8Array.fromHex : (string => {
