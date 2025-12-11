@@ -217,7 +217,7 @@ impl f64 {
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    #[rustc_const_unstable(feature = "const_mul_add", issue = "146724")]
+    #[rustc_const_stable(feature = "const_mul_add", since = "CURRENT_RUSTC_VERSION")]
     pub const fn mul_add(self, a: f64, b: f64) -> f64 {
         core::f64::math::mul_add(self, a, b)
     }
@@ -252,7 +252,8 @@ impl f64 {
         core::f64::math::div_euclid(self, rhs)
     }
 
-    /// Calculates the least nonnegative remainder of `self (mod rhs)`.
+    /// Calculates the least nonnegative remainder of `self` when divided by
+    /// `rhs`.
     ///
     /// In particular, the return value `r` satisfies `0.0 <= r < rhs.abs()` in
     /// most cases. However, due to a floating point round-off error it can

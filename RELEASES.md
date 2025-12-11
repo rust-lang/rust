@@ -1,3 +1,88 @@
+Version 1.92.0 (2025-12-11)
+==========================
+
+<a id="1.92.0-Language"></a>
+
+Language
+--------
+- [Document `MaybeUninit` representation and validity](https://github.com/rust-lang/rust/pull/140463)
+- [Allow `&raw [mut | const]` for union field in safe code](https://github.com/rust-lang/rust/pull/141469)
+- [Prefer item bounds of associated types over where-bounds for auto-traits and `Sized`](https://github.com/rust-lang/rust/pull/144064)
+- [Do not materialize `X` in `[X; 0]` when `X` is unsizing a const](https://github.com/rust-lang/rust/pull/145277)
+- [Support combining `#[track_caller]` and `#[no_mangle]` (requires every declaration specifying `#[track_caller]` as well)](https://github.com/rust-lang/rust/pull/145724)
+- [Make never type lints `never_type_fallback_flowing_into_unsafe` and `dependency_on_unit_never_type_fallback` deny-by-default](https://github.com/rust-lang/rust/pull/146167)
+- [Allow specifying multiple bounds for same associated item, except in trait objects](https://github.com/rust-lang/rust/pull/146593)
+- [Slightly strengthen higher-ranked region handling in coherence](https://github.com/rust-lang/rust/pull/146725)
+- [The `unused_must_use` lint no longer warns on `Result<(), Uninhabited>` (for instance, `Result<(), !>`), or `ControlFlow<Uninhabited, ()>`](https://github.com/rust-lang/rust/pull/147382). This avoids having to check for an error that can never happen.
+
+<a id="1.92.0-Compiler"></a>
+
+Compiler
+--------
+- [Make `mips64el-unknown-linux-muslabi64` link dynamically](https://github.com/rust-lang/rust/pull/146858)
+- [Remove current code for embedding command-line args in PDB](https://github.com/rust-lang/rust/pull/147022)
+  Command-line information is typically not needed by debugging tools, and the removed code
+  was causing problems for incremental builds even on targets that don't use PDB debuginfo.
+
+<a id="1.92.0-Libraries"></a>
+
+Libraries
+---------
+- [Specialize `Iterator::eq{_by}` for `TrustedLen` iterators](https://github.com/rust-lang/rust/pull/137122)
+- [Simplify `Extend` for tuples](https://github.com/rust-lang/rust/pull/138799)
+- [Added details to `Debug` for `EncodeWide`](https://github.com/rust-lang/rust/pull/140153).
+- [`iter::Repeat::last`](https://github.com/rust-lang/rust/pull/147258) and [`count`](https://github.com/rust-lang/rust/pull/146410) will now panic, rather than looping infinitely.
+
+<a id="1.92.0-Stabilized-APIs"></a>
+
+Stabilized APIs
+---------------
+
+- [`NonZero<u{N}>::div_ceil`](https://doc.rust-lang.org/stable/std/num/struct.NonZero.html#method.div_ceil)
+- [`Location::file_as_c_str`](https://doc.rust-lang.org/stable/std/panic/struct.Location.html#method.file_as_c_str)
+- [`RwLockWriteGuard::downgrade`](https://doc.rust-lang.org/stable/std/sync/struct.RwLockWriteGuard.html#method.downgrade)
+- [`Box::new_zeroed`](https://doc.rust-lang.org/stable/std/boxed/struct.Box.html#method.new_zeroed)
+- [`Box::new_zeroed_slice`](https://doc.rust-lang.org/stable/std/boxed/struct.Box.html#method.new_zeroed_slice)
+- [`Rc::new_zeroed`](https://doc.rust-lang.org/stable/std/rc/struct.Rc.html#method.new_zeroed)
+- [`Rc::new_zeroed_slice`](https://doc.rust-lang.org/stable/std/rc/struct.Rc.html#method.new_zeroed_slice)
+- [`Arc::new_zeroed`](https://doc.rust-lang.org/stable/std/sync/struct.Arc.html#method.new_zeroed)
+- [`Arc::new_zeroed_slice`](https://doc.rust-lang.org/stable/std/sync/struct.Arc.html#method.new_zeroed_slice)
+- [`btree_map::Entry::insert_entry`](https://doc.rust-lang.org/stable/std/collections/btree_map/enum.Entry.html#method.insert_entry)
+- [`btree_map::VacantEntry::insert_entry`](https://doc.rust-lang.org/stable/std/collections/btree_map/struct.VacantEntry.html#method.insert_entry)
+- [`impl Extend<proc_macro::Group> for proc_macro::TokenStream`](https://doc.rust-lang.org/stable/proc_macro/struct.TokenStream.html#impl-Extend%3CGroup%3E-for-TokenStream)
+- [`impl Extend<proc_macro::Literal> for proc_macro::TokenStream`](https://doc.rust-lang.org/stable/proc_macro/struct.TokenStream.html#impl-Extend%3CLiteral%3E-for-TokenStream)
+- [`impl Extend<proc_macro::Punct> for proc_macro::TokenStream`](https://doc.rust-lang.org/stable/proc_macro/struct.TokenStream.html#impl-Extend%3CPunct%3E-for-TokenStream)
+- [`impl Extend<proc_macro::Ident> for proc_macro::TokenStream`](https://doc.rust-lang.org/stable/proc_macro/struct.TokenStream.html#impl-Extend%3CIdent%3E-for-TokenStream)
+
+These previously stable APIs are now stable in const contexts:
+
+- [`<[_]>::rotate_left`](https://doc.rust-lang.org/stable/std/primitive.slice.html#method.rotate_left)
+- [`<[_]>::rotate_right`](https://doc.rust-lang.org/stable/std/primitive.slice.html#method.rotate_right)
+
+<a id="1.92.0-Cargo"></a>
+
+Cargo
+-----
+- [Added a new chapter](https://github.com/rust-lang/cargo/issues/16119) to the Cargo book, ["Optimizing Build Performance"](https://doc.rust-lang.org/stable/cargo/guide/build-performance.html).
+
+<a id="1.92.0-Rustdoc"></a>
+
+Rustdoc
+-----
+- [If a trait item appears in rustdoc search, hide the corresponding impl items](https://github.com/rust-lang/rust/pull/145898).  Previously a search for "last" would show both `Iterator::last` as well as impl methods like `std::vec::IntoIter::last`.  Now these impl methods will be hidden, freeing up space for inherent methods like `BTreeSet::last`.
+- [Relax rules for identifiers in search](https://github.com/rust-lang/rust/pull/147860).  Previously you could only search for identifiers that were valid in rust code, now searches only need to be valid as part of an identifier.  For example, you can now perform a search that starts with a digit.
+
+<a id="1.92.0-Compatibility-Notes"></a>
+
+Compatibility Notes
+-------------------
+* [Fix backtraces with `-C panic=abort` on Linux by generating unwind tables by default](https://github.com/rust-lang/rust/pull/143613). Build with `-C force-unwind-tables=no` to keep omitting unwind tables.
+- As part of the larger effort refactoring compiler built-in attributes and their diagnostics, [the future-compatibility lint `invalid_macro_export_arguments` is upgraded to deny-by-default and will be reported in dependencies too.](https://github.com/rust-lang/rust/pull/143857)
+- [Update the minimum external LLVM to 20](https://github.com/rust-lang/rust/pull/145071)
+- [Prevent downstream `impl DerefMut for Pin<LocalType>`](https://github.com/rust-lang/rust/pull/145608)
+- [Don't apply temporary lifetime extension rules to the arguments of non-extended `pin!` and formatting macros](https://github.com/rust-lang/rust/pull/145838)
+
+
 Version 1.91.1 (2025-11-10)
 ===========================
 

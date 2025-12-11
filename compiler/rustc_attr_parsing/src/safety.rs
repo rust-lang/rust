@@ -2,6 +2,8 @@ use rustc_ast::Safety;
 use rustc_feature::{AttributeSafety, BUILTIN_ATTRIBUTE_MAP};
 use rustc_hir::AttrPath;
 use rustc_hir::lints::{AttributeLint, AttributeLintKind};
+use rustc_session::lint::LintId;
+use rustc_session::lint::builtin::UNSAFE_ATTR_OUTSIDE_UNSAFE;
 use rustc_span::{Span, sym};
 
 use crate::context::Stage;
@@ -60,25 +62,39 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
                     Some(unsafe_since) => path_span.edition() >= unsafe_since,
                 };
 
+                let mut not_from_proc_macro = true;
+                if diag_span.from_expansion()
+                    && let Ok(mut snippet) = self.sess.source_map().span_to_snippet(diag_span)
+                {
+                    snippet.retain(|c| !c.is_whitespace());
+                    if snippet.contains("!(") || snippet.starts_with("#[") && snippet.ends_with("]")
+                    {
+                        not_from_proc_macro = false;
+                    }
+                }
+
                 if emit_error {
                     self.stage.emit_err(
                         self.sess,
                         crate::session_diagnostics::UnsafeAttrOutsideUnsafe {
                             span: path_span,
-                            suggestion:
+                            suggestion: not_from_proc_macro.then(|| {
                                 crate::session_diagnostics::UnsafeAttrOutsideUnsafeSuggestion {
                                     left: diag_span.shrink_to_lo(),
                                     right: diag_span.shrink_to_hi(),
-                                },
+                                }
+                            }),
                         },
                     );
                 } else {
                     emit_lint(AttributeLint {
+                        lint_id: LintId::of(UNSAFE_ATTR_OUTSIDE_UNSAFE),
                         id: target_id,
                         span: path_span,
                         kind: AttributeLintKind::UnsafeAttrOutsideUnsafe {
                             attribute_name_span: path_span,
-                            sugg_spans: (diag_span.shrink_to_lo(), diag_span.shrink_to_hi()),
+                            sugg_spans: not_from_proc_macro
+                                .then(|| (diag_span.shrink_to_lo(), diag_span.shrink_to_hi())),
                         },
                     })
                 }

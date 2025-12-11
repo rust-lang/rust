@@ -73,20 +73,15 @@ pub trait TypeRelation<I: Interner>: Sized {
         Relate::relate(self, a, b)
     }
 
-    /// Relate the two args for the given item. The default
-    /// is to look up the variance for the item and proceed
-    /// accordingly.
-    #[instrument(skip(self), level = "trace")]
-    fn relate_item_args(
+    fn relate_ty_args(
         &mut self,
-        item_def_id: I::DefId,
+        a_ty: I::Ty,
+        b_ty: I::Ty,
+        ty_def_id: I::DefId,
         a_arg: I::GenericArgs,
         b_arg: I::GenericArgs,
-    ) -> RelateResult<I, I::GenericArgs> {
-        let cx = self.cx();
-        let opt_variances = cx.variances_of(item_def_id);
-        relate_args_with_variances(self, item_def_id, opt_variances, a_arg, b_arg, true)
-    }
+        mk: impl FnOnce(I::GenericArgs) -> I::Ty,
+    ) -> RelateResult<I, I::Ty>;
 
     /// Switch variance for the purpose of relating `a` and `b`.
     fn relate_with_variance<T: Relate<I>>(
@@ -138,27 +133,17 @@ pub fn relate_args_invariantly<I: Interner, R: TypeRelation<I>>(
 
 pub fn relate_args_with_variances<I: Interner, R: TypeRelation<I>>(
     relation: &mut R,
-    ty_def_id: I::DefId,
     variances: I::VariancesOf,
-    a_arg: I::GenericArgs,
-    b_arg: I::GenericArgs,
-    fetch_ty_for_diag: bool,
+    a_args: I::GenericArgs,
+    b_args: I::GenericArgs,
 ) -> RelateResult<I, I::GenericArgs> {
     let cx = relation.cx();
-
-    let mut cached_ty = None;
-    let params = iter::zip(a_arg.iter(), b_arg.iter()).enumerate().map(|(i, (a, b))| {
+    let args = iter::zip(a_args.iter(), b_args.iter()).enumerate().map(|(i, (a, b))| {
         let variance = variances.get(i).unwrap();
-        let variance_info = if variance == ty::Invariant && fetch_ty_for_diag {
-            let ty = *cached_ty.get_or_insert_with(|| cx.type_of(ty_def_id).instantiate(cx, a_arg));
-            VarianceDiagInfo::Invariant { ty, param_index: i.try_into().unwrap() }
-        } else {
-            VarianceDiagInfo::default()
-        };
-        relation.relate_with_variance(variance, variance_info, a, b)
+        relation.relate_with_variance(variance, VarianceDiagInfo::None, a, b)
     });
-
-    cx.mk_args_from_iter(params)
+    // FIXME: We can probably try to reuse `a_args` here if it did not change.
+    cx.mk_args_from_iter(args)
 }
 
 impl<I: Interner> Relate<I> for ty::FnSig<I> {
@@ -240,10 +225,7 @@ impl<I: Interner> Relate<I> for ty::AliasTy<I> {
         } else {
             let cx = relation.cx();
             let args = if let Some(variances) = cx.opt_alias_variances(a.kind(cx), a.def_id) {
-                relate_args_with_variances(
-                    relation, a.def_id, variances, a.args, b.args,
-                    false, // do not fetch `type_of(a_def_id)`, as it will cause a cycle
-                )?
+                relate_args_with_variances(relation, variances, a.args, b.args)?
             } else {
                 relate_args_invariantly(relation, a.args, b.args)?
             };
@@ -268,11 +250,9 @@ impl<I: Interner> Relate<I> for ty::AliasTerm<I> {
             let args = match a.kind(relation.cx()) {
                 ty::AliasTermKind::OpaqueTy => relate_args_with_variances(
                     relation,
-                    a.def_id,
                     relation.cx().variances_of(a.def_id),
                     a.args,
                     b.args,
-                    false, // do not fetch `type_of(a_def_id)`, as it will cause a cycle
                 )?,
                 ty::AliasTermKind::ProjectionTy
                 | ty::AliasTermKind::FreeConst
@@ -402,12 +382,13 @@ pub fn structurally_relate_tys<I: Interner, R: TypeRelation<I>>(
         (ty::Placeholder(p1), ty::Placeholder(p2)) if p1 == p2 => Ok(a),
 
         (ty::Adt(a_def, a_args), ty::Adt(b_def, b_args)) if a_def == b_def => {
-            Ok(if a_args.is_empty() {
-                a
+            if a_args.is_empty() {
+                Ok(a)
             } else {
-                let args = relation.relate_item_args(a_def.def_id().into(), a_args, b_args)?;
-                if args == a_args { a } else { Ty::new_adt(cx, a_def, args) }
-            })
+                relation.relate_ty_args(a, b, a_def.def_id().into(), a_args, b_args, |args| {
+                    Ty::new_adt(cx, a_def, args)
+                })
+            }
         }
 
         (ty::Foreign(a_id), ty::Foreign(b_id)) if a_id == b_id => Ok(Ty::new_foreign(cx, a_id)),
@@ -516,12 +497,13 @@ pub fn structurally_relate_tys<I: Interner, R: TypeRelation<I>>(
         }
 
         (ty::FnDef(a_def_id, a_args), ty::FnDef(b_def_id, b_args)) if a_def_id == b_def_id => {
-            Ok(if a_args.is_empty() {
-                a
+            if a_args.is_empty() {
+                Ok(a)
             } else {
-                let args = relation.relate_item_args(a_def_id.into(), a_args, b_args)?;
-                if args == a_args { a } else { Ty::new_fn_def(cx, a_def_id, args) }
-            })
+                relation.relate_ty_args(a, b, a_def_id.into(), a_args, b_args, |args| {
+                    Ty::new_fn_def(cx, a_def_id, args)
+                })
+            }
         }
 
         (ty::FnPtr(a_sig_tys, a_hdr), ty::FnPtr(b_sig_tys, b_hdr)) => {

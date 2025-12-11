@@ -1259,6 +1259,19 @@ pub enum StmtKind {
     MacCall(Box<MacCallStmt>),
 }
 
+impl StmtKind {
+    pub fn descr(&self) -> &'static str {
+        match self {
+            StmtKind::Let(_) => "local",
+            StmtKind::Item(_) => "item",
+            StmtKind::Expr(_) => "expression",
+            StmtKind::Semi(_) => "statement",
+            StmtKind::Empty => "semicolon",
+            StmtKind::MacCall(_) => "macro call",
+        }
+    }
+}
+
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
 pub struct MacCallStmt {
     pub mac: Box<MacCall>,
@@ -1806,8 +1819,14 @@ pub enum ExprKind {
     /// A use expression (`x.use`). Span is of use keyword.
     Use(Box<Expr>, Span),
 
-    /// A try block (`try { ... }`).
-    TryBlock(Box<Block>),
+    /// A try block (`try { ... }`), if the type is `None`, or
+    /// A try block (`try bikeshed Ty { ... }`) if the type is `Some`.
+    ///
+    /// Note that `try bikeshed` is a *deliberately ridiculous* placeholder
+    /// syntax to avoid deciding what keyword or symbol should go there.
+    /// It's that way for experimentation only; an RFC to decide the final
+    /// semantics and syntax would be needed to put it on stabilization-track.
+    TryBlock(Box<Block>, Option<Box<Ty>>),
 
     /// An assignment (`a = foo()`).
     /// The `Span` argument is the span of the `=` token.

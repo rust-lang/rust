@@ -1,3 +1,4 @@
+use std::mem;
 use std::ops::ControlFlow;
 use std::sync::Arc;
 
@@ -27,7 +28,9 @@ use super::{
     GenericArgsMode, ImplTraitContext, LoweringContext, ParamMode, ResolverAstLoweringExt,
 };
 use crate::errors::{InvalidLegacyConstGenericArg, UseConstGenericArg, YieldInClosure};
-use crate::{AllowReturnTypeNotation, FnDeclKind, ImplTraitPosition, fluent_generated};
+use crate::{
+    AllowReturnTypeNotation, FnDeclKind, ImplTraitPosition, TryBlockScope, fluent_generated,
+};
 
 struct WillCreateDefIdsVisitor {}
 
@@ -199,7 +202,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         )
                     })
                 }
-                ExprKind::TryBlock(body) => self.lower_expr_try_block(body),
+                ExprKind::TryBlock(body, opt_ty) => {
+                    self.lower_expr_try_block(body, opt_ty.as_deref())
+                }
                 ExprKind::Match(expr, arms, kind) => hir::ExprKind::Match(
                     self.lower_expr(expr),
                     self.arena.alloc_from_iter(arms.iter().map(|x| self.lower_arm(x))),
@@ -562,9 +567,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
     /// Desugar `try { <stmts>; <expr> }` into `{ <stmts>; ::std::ops::Try::from_output(<expr>) }`,
     /// `try { <stmts>; }` into `{ <stmts>; ::std::ops::Try::from_output(()) }`
     /// and save the block id to use it as a break target for desugaring of the `?` operator.
-    fn lower_expr_try_block(&mut self, body: &Block) -> hir::ExprKind<'hir> {
+    fn lower_expr_try_block(&mut self, body: &Block, opt_ty: Option<&Ty>) -> hir::ExprKind<'hir> {
         let body_hir_id = self.lower_node_id(body.id);
-        self.with_catch_scope(body_hir_id, |this| {
+        let new_scope = if opt_ty.is_some() {
+            TryBlockScope::Heterogeneous(body_hir_id)
+        } else {
+            TryBlockScope::Homogeneous(body_hir_id)
+        };
+        let whole_block = self.with_try_block_scope(new_scope, |this| {
             let mut block = this.lower_block_noalloc(body_hir_id, body, true);
 
             // Final expression of the block (if present) or `()` with span at the end of block
@@ -598,8 +608,16 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ok_wrapped_span,
             ));
 
-            hir::ExprKind::Block(this.arena.alloc(block), None)
-        })
+            this.arena.alloc(block)
+        });
+
+        if let Some(ty) = opt_ty {
+            let ty = self.lower_ty(ty, ImplTraitContext::Disallowed(ImplTraitPosition::Path));
+            let block_expr = self.arena.alloc(self.expr_block(whole_block));
+            hir::ExprKind::Type(block_expr, ty)
+        } else {
+            hir::ExprKind::Block(whole_block, None)
+        }
     }
 
     fn wrap_in_try_constructor(
@@ -1617,10 +1635,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }
     }
 
-    fn with_catch_scope<T>(&mut self, catch_id: hir::HirId, f: impl FnOnce(&mut Self) -> T) -> T {
-        let old_scope = self.catch_scope.replace(catch_id);
+    fn with_try_block_scope<T>(
+        &mut self,
+        scope: TryBlockScope,
+        f: impl FnOnce(&mut Self) -> T,
+    ) -> T {
+        let old_scope = mem::replace(&mut self.try_block_scope, scope);
         let result = f(self);
-        self.catch_scope = old_scope;
+        self.try_block_scope = old_scope;
         result
     }
 
@@ -1978,18 +2000,25 @@ impl<'hir> LoweringContext<'_, 'hir> {
             let residual_ident = Ident::with_dummy_span(sym::residual);
             let (residual_local, residual_local_nid) = self.pat_ident(try_span, residual_ident);
             let residual_expr = self.expr_ident_mut(try_span, residual_ident, residual_local_nid);
+
+            let (constructor_item, target_id) = match self.try_block_scope {
+                TryBlockScope::Function => {
+                    (hir::LangItem::TryTraitFromResidual, Err(hir::LoopIdError::OutsideLoopScope))
+                }
+                TryBlockScope::Homogeneous(block_id) => {
+                    (hir::LangItem::ResidualIntoTryType, Ok(block_id))
+                }
+                TryBlockScope::Heterogeneous(block_id) => {
+                    (hir::LangItem::TryTraitFromResidual, Ok(block_id))
+                }
+            };
             let from_residual_expr = self.wrap_in_try_constructor(
-                if self.catch_scope.is_some() {
-                    hir::LangItem::ResidualIntoTryType
-                } else {
-                    hir::LangItem::TryTraitFromResidual
-                },
+                constructor_item,
                 try_span,
                 self.arena.alloc(residual_expr),
                 unstable_span,
             );
-            let ret_expr = if let Some(catch_id) = self.catch_scope {
-                let target_id = Ok(catch_id);
+            let ret_expr = if target_id.is_ok() {
                 self.arena.alloc(self.expr(
                     try_span,
                     hir::ExprKind::Break(
@@ -2044,11 +2073,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
             yeeted_span,
         );
 
-        if let Some(catch_id) = self.catch_scope {
-            let target_id = Ok(catch_id);
-            hir::ExprKind::Break(hir::Destination { label: None, target_id }, Some(from_yeet_expr))
-        } else {
-            self.checked_return(Some(from_yeet_expr))
+        match self.try_block_scope {
+            TryBlockScope::Homogeneous(block_id) | TryBlockScope::Heterogeneous(block_id) => {
+                hir::ExprKind::Break(
+                    hir::Destination { label: None, target_id: Ok(block_id) },
+                    Some(from_yeet_expr),
+                )
+            }
+            TryBlockScope::Function => self.checked_return(Some(from_yeet_expr)),
         }
     }
 

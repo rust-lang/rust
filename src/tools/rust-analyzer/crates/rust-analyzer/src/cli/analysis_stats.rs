@@ -206,7 +206,7 @@ impl flags::AnalysisStats {
         let mut visited_modules = FxHashSet::default();
         let mut visit_queue = Vec::new();
         for &krate in &krates {
-            let module = krate.root_module();
+            let module = krate.root_module(db);
             let file_id = module.definition_source_file_id(db);
             let file_id = file_id.original_file(db);
 
@@ -769,7 +769,7 @@ impl flags::AnalysisStats {
         for &body_id in bodies {
             let name = body_id.name(db).unwrap_or_else(Name::missing);
             let module = body_id.module(db);
-            let display_target = module.krate().to_display_target(db);
+            let display_target = module.krate(db).to_display_target(db);
             if let Some(only_name) = self.only.as_deref()
                 && name.display(db, Edition::LATEST).to_string() != only_name
                 && full_name(db, body_id, module) != only_name
@@ -1222,6 +1222,7 @@ impl flags::AnalysisStats {
                     implied_dyn_trait_hints: true,
                     lifetime_elision_hints: ide::LifetimeElisionHints::Always,
                     param_names_for_lifetime_elision_hints: true,
+                    hide_inferred_type_hints: false,
                     hide_named_constructor_hints: false,
                     hide_closure_initialization_hints: false,
                     hide_closure_parameter_hints: false,
@@ -1289,7 +1290,7 @@ impl flags::AnalysisStats {
 
 fn full_name(db: &RootDatabase, body_id: DefWithBody, module: hir::Module) -> String {
     module
-        .krate()
+        .krate(db)
         .display_name(db)
         .map(|it| it.canonical_name().as_str().to_owned())
         .into_iter()

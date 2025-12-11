@@ -656,7 +656,7 @@ impl<'db> Ty<'db> {
             }
             TyKind::Coroutine(coroutine_id, _args) => {
                 let InternedCoroutine(owner, _) = coroutine_id.0.loc(db);
-                let krate = owner.module(db).krate();
+                let krate = owner.module(db).krate(db);
                 if let Some(future_trait) = hir_def::lang_item::lang_items(db, krate).Future {
                     // This is only used by type walking.
                     // Parameters will be walked outside, and projection predicate is not used.

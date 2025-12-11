@@ -6,7 +6,7 @@ use proc_macro::*;
 
 #[proc_macro]
 pub fn access_env_vars(_: TokenStream) -> TokenStream {
-    let _ = tracked_env::var("EXISTING_PROC_MACRO_ENV");
-    let _ = tracked_env::var("NONEXISTENT_PROC_MACEO_ENV");
+    let _ = tracked::env_var("EXISTING_PROC_MACRO_ENV");
+    let _ = tracked::env_var("NONEXISTENT_PROC_MACEO_ENV");
     TokenStream::new()
 }

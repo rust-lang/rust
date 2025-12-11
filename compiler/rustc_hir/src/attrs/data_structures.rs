@@ -190,7 +190,7 @@ pub enum CfgEntry {
     Any(ThinVec<CfgEntry>, Span),
     Not(Box<CfgEntry>, Span),
     Bool(bool, Span),
-    NameValue { name: Symbol, name_span: Span, value: Option<(Symbol, Span)>, span: Span },
+    NameValue { name: Symbol, value: Option<Symbol>, span: Span },
     Version(Option<RustcVersion>, Span),
 }
 

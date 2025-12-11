@@ -2024,7 +2024,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 let struct_ctor = match def_id.as_local() {
                     Some(def_id) => self.r.struct_constructors.get(&def_id).cloned(),
                     None => {
-                        let ctor = self.r.cstore().ctor_untracked(def_id);
+                        let ctor = self.r.cstore().ctor_untracked(self.r.tcx(), def_id);
                         ctor.map(|(ctor_kind, ctor_def_id)| {
                             let ctor_res =
                                 Res::Def(DefKind::Ctor(CtorOf::Struct, ctor_kind), ctor_def_id);

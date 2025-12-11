@@ -454,8 +454,6 @@ struct UniversalRegionsBuilder<'infcx, 'tcx> {
     mir_def: LocalDefId,
 }
 
-const FR: NllRegionVariableOrigin = NllRegionVariableOrigin::FreeRegion;
-
 impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
     fn build(self) -> UniversalRegions<'tcx> {
         debug!("build(mir_def={:?})", self.mir_def);
@@ -466,8 +464,12 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
         assert_eq!(FIRST_GLOBAL_INDEX, self.infcx.num_region_vars());
 
         // Create the "global" region that is always free in all contexts: 'static.
-        let fr_static =
-            self.infcx.next_nll_region_var(FR, || RegionCtxt::Free(kw::Static)).as_var();
+        let fr_static = self
+            .infcx
+            .next_nll_region_var(NllRegionVariableOrigin::FreeRegion, || {
+                RegionCtxt::Free(kw::Static)
+            })
+            .as_var();
 
         // We've now added all the global regions. The next ones we
         // add will be external.
@@ -500,7 +502,9 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                     debug!(?r);
                     let region_vid = {
                         let name = r.get_name_or_anon(self.infcx.tcx);
-                        self.infcx.next_nll_region_var(FR, || RegionCtxt::LateBound(name))
+                        self.infcx.next_nll_region_var(NllRegionVariableOrigin::FreeRegion, || {
+                            RegionCtxt::LateBound(name)
+                        })
                     };
 
                     debug!(?region_vid);
@@ -526,7 +530,9 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                 let r = ty::Region::new_late_param(self.infcx.tcx, self.mir_def.to_def_id(), kind);
                 let region_vid = {
                     let name = r.get_name_or_anon(self.infcx.tcx);
-                    self.infcx.next_nll_region_var(FR, || RegionCtxt::LateBound(name))
+                    self.infcx.next_nll_region_var(NllRegionVariableOrigin::FreeRegion, || {
+                        RegionCtxt::LateBound(name)
+                    })
                 };
 
                 debug!(?region_vid);
@@ -553,7 +559,9 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
 
                 let reg_vid = self
                     .infcx
-                    .next_nll_region_var(FR, || RegionCtxt::Free(sym::c_dash_variadic))
+                    .next_nll_region_var(NllRegionVariableOrigin::FreeRegion, || {
+                        RegionCtxt::Free(sym::c_dash_variadic)
+                    })
                     .as_var();
 
                 let region = ty::Region::new_var(self.infcx.tcx, reg_vid);
@@ -569,8 +577,12 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
             }
         }
 
-        let fr_fn_body =
-            self.infcx.next_nll_region_var(FR, || RegionCtxt::Free(sym::fn_body)).as_var();
+        let fr_fn_body = self
+            .infcx
+            .next_nll_region_var(NllRegionVariableOrigin::FreeRegion, || {
+                RegionCtxt::Free(sym::fn_body)
+            })
+            .as_var();
 
         let num_universals = self.infcx.num_region_vars();
 
@@ -613,8 +625,10 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
 
                 debug!("defining_ty (pre-replacement): {:?}", defining_ty);
 
-                let defining_ty =
-                    self.infcx.replace_free_regions_with_nll_infer_vars(FR, defining_ty);
+                let defining_ty = self.infcx.replace_free_regions_with_nll_infer_vars(
+                    NllRegionVariableOrigin::FreeRegion,
+                    defining_ty,
+                );
 
                 match *defining_ty.kind() {
                     ty::Closure(def_id, args) => DefiningTy::Closure(def_id, args),
@@ -638,8 +652,10 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                     // Do not ICE when checking default_field_values consts with lifetimes (#135649)
                     && DefKind::Field != tcx.def_kind(tcx.parent(typeck_root_def_id))
                 {
-                    let args =
-                        self.infcx.replace_free_regions_with_nll_infer_vars(FR, identity_args);
+                    let args = self.infcx.replace_free_regions_with_nll_infer_vars(
+                        NllRegionVariableOrigin::FreeRegion,
+                        identity_args,
+                    );
                     DefiningTy::Const(self.mir_def.to_def_id(), args)
                 } else {
                     // FIXME this line creates a dependency between borrowck and typeck.
@@ -659,7 +675,10 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                         InlineConstArgsParts { parent_args: identity_args, ty },
                     )
                     .args;
-                    let args = self.infcx.replace_free_regions_with_nll_infer_vars(FR, args);
+                    let args = self.infcx.replace_free_regions_with_nll_infer_vars(
+                        NllRegionVariableOrigin::FreeRegion,
+                        args,
+                    );
                     DefiningTy::InlineConst(self.mir_def.to_def_id(), args)
                 }
             }
@@ -856,7 +875,7 @@ impl<'tcx> BorrowckInferCtxt<'tcx> {
     #[instrument(skip(self), level = "debug")]
     fn replace_free_regions_with_nll_infer_vars<T>(
         &self,
-        origin: NllRegionVariableOrigin,
+        origin: NllRegionVariableOrigin<'tcx>,
         value: T,
     ) -> T
     where

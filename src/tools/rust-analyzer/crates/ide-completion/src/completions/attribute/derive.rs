@@ -56,7 +56,7 @@ pub(crate) fn complete_derive_path(
                     _ => return,
                 };
 
-                match (core, mac.module(ctx.db).krate()) {
+                match (core, mac.module(ctx.db).krate(ctx.db)) {
                     // show derive dependencies for `core`/`std` derives
                     (Some(core), mac_krate) if core == mac_krate => {}
                     _ => return acc.add_macro(ctx, path_ctx, mac, name),

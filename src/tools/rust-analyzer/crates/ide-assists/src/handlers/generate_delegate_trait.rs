@@ -124,7 +124,7 @@ impl Field {
         let db = ctx.sema.db;
 
         let module = ctx.sema.file_to_module_def(ctx.vfs_file_id())?;
-        let edition = module.krate().edition(ctx.db());
+        let edition = module.krate(ctx.db()).edition(ctx.db());
 
         let (name, range, ty) = match f {
             Either::Left(f) => {

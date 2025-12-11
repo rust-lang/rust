@@ -41,8 +41,8 @@ use rustc_hir::{LangItem, attrs as attr, find_attr};
 use rustc_index::IndexVec;
 use rustc_index::bit_set::BitMatrix;
 use rustc_macros::{
-    Decodable, Encodable, HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable,
-    extension,
+    BlobDecodable, Decodable, Encodable, HashStable, TyDecodable, TyEncodable, TypeFoldable,
+    TypeVisitable, extension,
 };
 use rustc_query_system::ich::StableHashingContext;
 use rustc_serialize::{Decodable, Encodable};
@@ -108,7 +108,7 @@ pub use self::typeck_results::{
     Rust2024IncompatiblePatInfo, TypeckResults, UserType, UserTypeAnnotationIndex, UserTypeKind,
 };
 use crate::error::{OpaqueHiddenTypeMismatch, TypeMismatchReason};
-use crate::metadata::ModChild;
+use crate::metadata::{AmbigModChild, ModChild};
 use crate::middle::privacy::EffectiveVisibilities;
 use crate::mir::{Body, CoroutineLayout, CoroutineSavedLocal, SourceInfo};
 use crate::query::{IntoQueryParam, Providers};
@@ -173,6 +173,7 @@ pub struct ResolverGlobalCtxt {
     pub extern_crate_map: UnordMap<LocalDefId, CrateNum>,
     pub maybe_unused_trait_imports: FxIndexSet<LocalDefId>,
     pub module_children: LocalDefIdMap<Vec<ModChild>>,
+    pub ambig_module_children: LocalDefIdMap<Vec<AmbigModChild>>,
     pub glob_map: FxIndexMap<LocalDefId, FxIndexSet<Symbol>>,
     pub main_def: Option<MainDefinition>,
     pub trait_impls: FxIndexMap<DefId, Vec<LocalDefId>>,
@@ -264,7 +265,7 @@ impl Asyncness {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Copy, Hash, Encodable, Decodable, HashStable)]
+#[derive(Clone, Debug, PartialEq, Eq, Copy, Hash, Encodable, BlobDecodable, HashStable)]
 pub enum Visibility<Id = LocalDefId> {
     /// Visible everywhere (including in other crates).
     Public,
@@ -886,20 +887,9 @@ impl<'tcx> DefinitionSiteHiddenType<'tcx> {
     }
 }
 
-/// The "placeholder index" fully defines a placeholder region, type, or const. Placeholders are
-/// identified by both a universe, as well as a name residing within that universe. Distinct bound
-/// regions/types/consts within the same universe simply have an unknown relationship to one
-/// another.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
-#[derive(HashStable, TyEncodable, TyDecodable)]
-pub struct Placeholder<T> {
-    pub universe: UniverseIndex,
-    pub bound: T,
-}
+pub type PlaceholderRegion<'tcx> = ty::Placeholder<TyCtxt<'tcx>, BoundRegion>;
 
-pub type PlaceholderRegion = Placeholder<BoundRegion>;
-
-impl<'tcx> rustc_type_ir::inherent::PlaceholderLike<TyCtxt<'tcx>> for PlaceholderRegion {
+impl<'tcx> rustc_type_ir::inherent::PlaceholderLike<TyCtxt<'tcx>> for PlaceholderRegion<'tcx> {
     type Bound = BoundRegion;
 
     fn universe(self) -> UniverseIndex {
@@ -911,21 +901,21 @@ impl<'tcx> rustc_type_ir::inherent::PlaceholderLike<TyCtxt<'tcx>> for Placeholde
     }
 
     fn with_updated_universe(self, ui: UniverseIndex) -> Self {
-        Placeholder { universe: ui, ..self }
+        ty::Placeholder::new(ui, self.bound)
     }
 
     fn new(ui: UniverseIndex, bound: BoundRegion) -> Self {
-        Placeholder { universe: ui, bound }
+        ty::Placeholder::new(ui, bound)
     }
 
     fn new_anon(ui: UniverseIndex, var: BoundVar) -> Self {
-        Placeholder { universe: ui, bound: BoundRegion { var, kind: BoundRegionKind::Anon } }
+        ty::Placeholder::new(ui, BoundRegion { var, kind: BoundRegionKind::Anon })
     }
 }
 
-pub type PlaceholderType = Placeholder<BoundTy>;
+pub type PlaceholderType<'tcx> = ty::Placeholder<TyCtxt<'tcx>, BoundTy>;
 
-impl<'tcx> rustc_type_ir::inherent::PlaceholderLike<TyCtxt<'tcx>> for PlaceholderType {
+impl<'tcx> rustc_type_ir::inherent::PlaceholderLike<TyCtxt<'tcx>> for PlaceholderType<'tcx> {
     type Bound = BoundTy;
 
     fn universe(self) -> UniverseIndex {
@@ -937,15 +927,15 @@ impl<'tcx> rustc_type_ir::inherent::PlaceholderLike<TyCtxt<'tcx>> for Placeholde
     }
 
     fn with_updated_universe(self, ui: UniverseIndex) -> Self {
-        Placeholder { universe: ui, ..self }
+        ty::Placeholder::new(ui, self.bound)
     }
 
     fn new(ui: UniverseIndex, bound: BoundTy) -> Self {
-        Placeholder { universe: ui, bound }
+        ty::Placeholder::new(ui, bound)
     }
 
     fn new_anon(ui: UniverseIndex, var: BoundVar) -> Self {
-        Placeholder { universe: ui, bound: BoundTy { var, kind: BoundTyKind::Anon } }
+        ty::Placeholder::new(ui, BoundTy { var, kind: BoundTyKind::Anon })
     }
 }
 
@@ -965,9 +955,9 @@ impl<'tcx> rustc_type_ir::inherent::BoundVarLike<TyCtxt<'tcx>> for BoundConst {
     }
 }
 
-pub type PlaceholderConst = Placeholder<BoundConst>;
+pub type PlaceholderConst<'tcx> = ty::Placeholder<TyCtxt<'tcx>, BoundConst>;
 
-impl<'tcx> rustc_type_ir::inherent::PlaceholderLike<TyCtxt<'tcx>> for PlaceholderConst {
+impl<'tcx> rustc_type_ir::inherent::PlaceholderLike<TyCtxt<'tcx>> for PlaceholderConst<'tcx> {
     type Bound = BoundConst;
 
     fn universe(self) -> UniverseIndex {
@@ -979,15 +969,15 @@ impl<'tcx> rustc_type_ir::inherent::PlaceholderLike<TyCtxt<'tcx>> for Placeholde
     }
 
     fn with_updated_universe(self, ui: UniverseIndex) -> Self {
-        Placeholder { universe: ui, ..self }
+        ty::Placeholder::new(ui, self.bound)
     }
 
     fn new(ui: UniverseIndex, bound: BoundConst) -> Self {
-        Placeholder { universe: ui, bound }
+        ty::Placeholder::new(ui, bound)
     }
 
     fn new_anon(ui: UniverseIndex, var: BoundVar) -> Self {
-        Placeholder { universe: ui, bound: BoundConst { var } }
+        ty::Placeholder::new(ui, BoundConst { var })
     }
 }
 
@@ -2222,11 +2212,6 @@ impl<'tcx> TyCtxt<'tcx> {
     #[inline]
     pub fn is_const_trait(self, def_id: DefId) -> bool {
         self.trait_def(def_id).constness == hir::Constness::Const
-    }
-
-    #[inline]
-    pub fn is_const_default_method(self, def_id: DefId) -> bool {
-        matches!(self.trait_of_assoc(def_id), Some(trait_id) if self.is_const_trait(trait_id))
     }
 
     pub fn impl_method_has_trait_impl_trait_tys(self, def_id: DefId) -> bool {

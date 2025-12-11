@@ -661,7 +661,7 @@ impl<'tcx> BorrowckInferCtxt<'tcx> {
 
     pub(crate) fn next_region_var<F>(
         &self,
-        origin: RegionVariableOrigin,
+        origin: RegionVariableOrigin<'tcx>,
         get_ctxt_fn: F,
     ) -> ty::Region<'tcx>
     where
@@ -683,7 +683,7 @@ impl<'tcx> BorrowckInferCtxt<'tcx> {
     #[instrument(skip(self, get_ctxt_fn), level = "debug")]
     pub(crate) fn next_nll_region_var<F>(
         &self,
-        origin: NllRegionVariableOrigin,
+        origin: NllRegionVariableOrigin<'tcx>,
         get_ctxt_fn: F,
     ) -> ty::Region<'tcx>
     where

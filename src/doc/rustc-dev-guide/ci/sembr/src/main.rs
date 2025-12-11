@@ -27,7 +27,7 @@ static REGEX_IGNORE_END: LazyLock<Regex> =
 static REGEX_IGNORE_LINK_TARGETS: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"^\[.+\]: ").unwrap());
 static REGEX_SPLIT: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"([^\.\d\-\*]\.|[^r]\?|;|!)\s").unwrap());
+    LazyLock::new(|| Regex::new(r"([^\.\d\-\*]\.|[^r]\?|!)\s").unwrap());
 // list elements, numbered (1.) or not  (- and *)
 static REGEX_LIST_ENTRY: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"^\s*(\d\.|\-|\*)\s+").unwrap());
@@ -196,7 +196,7 @@ fn lengthen_lines(content: &str, limit: usize) -> String {
 fn test_sembr() {
     let original = "
 # some. heading
-must! be; split?
+must! be. split?
 1. ignore a dot after number. but no further
 ignore | tables
 ignore e.g. and
@@ -214,7 +214,7 @@ git log main.. compiler
     let expected = "
 # some. heading
 must!
-be;
+be.
 split?
 1. ignore a dot after number.
    but no further

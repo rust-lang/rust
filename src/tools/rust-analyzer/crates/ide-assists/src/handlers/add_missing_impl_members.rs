@@ -130,7 +130,7 @@ fn add_missing_impl_members_inner(
     if let IgnoreAssocItems::DocHiddenAttrPresent = ignore_items {
         // Relax condition for local crates.
         let db = ctx.db();
-        if trait_.module(db).krate().origin(db).is_local() {
+        if trait_.module(db).krate(db).origin(db).is_local() {
             ign_item = IgnoreAssocItems::No;
         }
     }

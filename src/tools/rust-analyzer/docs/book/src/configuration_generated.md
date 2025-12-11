@@ -1118,6 +1118,13 @@ Default: `false`
 Hide inlay parameter type hints for closures.
 
 
+## rust-analyzer.inlayHints.typeHints.hideInferredTypes {#inlayHints.typeHints.hideInferredTypes}
+
+Default: `false`
+
+Hide inlay type hints for inferred types.
+
+
 ## rust-analyzer.inlayHints.typeHints.hideNamedConstructor {#inlayHints.typeHints.hideNamedConstructor}
 
 Default: `false`

@@ -10,7 +10,7 @@ use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_errors::{ColorConfig, LanguageIdentifier, TerminalUrl};
 use rustc_feature::UnstableFeatures;
 use rustc_hashes::Hash64;
-use rustc_macros::{Decodable, Encodable};
+use rustc_macros::{BlobDecodable, Encodable};
 use rustc_span::edition::Edition;
 use rustc_span::{RealFileName, SourceFileHashAlgorithm};
 use rustc_target::spec::{
@@ -75,7 +75,7 @@ pub struct ExtendedTargetModifierInfo {
 
 /// A recorded -Zopt_name=opt_value (or -Copt_name=opt_value)
 /// which alter the ABI or effectiveness of exploit mitigations.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Encodable, Decodable)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Encodable, BlobDecodable)]
 pub struct TargetModifier {
     /// Option enum value
     pub opt: OptionsTargetModifiers,
@@ -248,7 +248,7 @@ macro_rules! top_level_tmod_enum {
         ($user_value:ident){$($pout:tt)*};
     ) => {
         #[allow(non_camel_case_types)]
-        #[derive(PartialEq, Eq, PartialOrd, Ord, Debug, Copy, Clone, Encodable, Decodable)]
+        #[derive(PartialEq, Eq, PartialOrd, Ord, Debug, Copy, Clone, Encodable, BlobDecodable)]
         pub enum OptionsTargetModifiers {
             $($variant($substruct_enum)),*
         }
@@ -520,7 +520,7 @@ macro_rules! tmod_enum {
         ($user_value:ident){$($pout:tt)*};
     ) => {
         #[allow(non_camel_case_types)]
-        #[derive(PartialEq, Eq, PartialOrd, Ord, Debug, Copy, Clone, Encodable, Decodable)]
+        #[derive(PartialEq, Eq, PartialOrd, Ord, Debug, Copy, Clone, Encodable, BlobDecodable)]
         pub enum $tmod_enum_name {
             $($eout),*
         }
@@ -806,7 +806,6 @@ mod desc {
     pub(crate) const parse_on_broken_pipe: &str = "either `kill`, `error`, or `inherit`";
     pub(crate) const parse_patchable_function_entry: &str = "either two comma separated integers (total_nops,prefix_nops), with prefix_nops <= total_nops, or one integer (total_nops)";
     pub(crate) const parse_opt_panic_strategy: &str = parse_panic_strategy;
-    pub(crate) const parse_oom_strategy: &str = "either `panic` or `abort`";
     pub(crate) const parse_relro_level: &str = "one of: `full`, `partial`, or `off`";
     pub(crate) const parse_sanitizers: &str = "comma separated list of sanitizers: `address`, `cfi`, `dataflow`, `hwaddress`, `kcfi`, `kernel-address`, `leak`, `memory`, `memtag`, `safestack`, `shadow-call-stack`, `thread`, or 'realtime'";
     pub(crate) const parse_sanitizer_memory_track_origins: &str = "0, 1, or 2";
@@ -1240,15 +1239,6 @@ pub mod parse {
             return true;
         }
         false
-    }
-
-    pub(crate) fn parse_oom_strategy(slot: &mut OomStrategy, v: Option<&str>) -> bool {
-        match v {
-            Some("panic") => *slot = OomStrategy::Panic,
-            Some("abort") => *slot = OomStrategy::Abort,
-            _ => return false,
-        }
-        true
     }
 
     pub(crate) fn parse_relro_level(slot: &mut Option<RelroLevel>, v: Option<&str>) -> bool {
@@ -2529,8 +2519,6 @@ options! {
         Currently the only option available"),
     on_broken_pipe: OnBrokenPipe = (OnBrokenPipe::Default, parse_on_broken_pipe, [TRACKED],
         "behavior of std::io::ErrorKind::BrokenPipe (SIGPIPE)"),
-    oom: OomStrategy = (OomStrategy::Abort, parse_oom_strategy, [TRACKED],
-        "panic strategy for out-of-memory handling"),
     osx_rpath_install_name: bool = (false, parse_bool, [TRACKED],
         "pass `-install_name @rpath/...` to the macOS linker (default: no)"),
     packed_bundled_libs: bool = (false, parse_bool, [TRACKED],

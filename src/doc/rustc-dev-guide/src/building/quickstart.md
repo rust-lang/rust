@@ -66,6 +66,6 @@ questions, [the full chapter](./how-to-build-and-run.md) might contain the
 answers, and if it doesn't, feel free to ask for help on
 [Zulip](https://rust-lang.zulipchat.com/#narrow/stream/182449-t-compiler.2Fhelp).
 
-If you use VSCode, Vim, Emacs or Helix, `./x setup` will ask you if you want to
+If you use VSCode, Vim, Emacs, Helix or Zed, `./x setup` will ask you if you want to
 set up the editor config. For more information, check out [suggested
 workflows](./suggested.md).

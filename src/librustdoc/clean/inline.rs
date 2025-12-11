@@ -239,7 +239,7 @@ pub(crate) fn get_item_path(tcx: TyCtxt<'_>, def_id: DefId, kind: ItemType) -> V
         // Check to see if it is a macro 2.0 or built-in macro
         // More information in <https://rust-lang.github.io/rfcs/1584-macros.html>.
         if matches!(
-            CStore::from_tcx(tcx).load_macro_untracked(def_id, tcx),
+            CStore::from_tcx(tcx).load_macro_untracked(tcx, def_id),
             LoadedMacro::MacroDef { def, .. } if !def.macro_rules
         ) {
             once(crate_name).chain(relative).collect()
@@ -772,7 +772,7 @@ fn build_macro(
     name: Symbol,
     macro_kinds: MacroKinds,
 ) -> clean::ItemKind {
-    match CStore::from_tcx(cx.tcx).load_macro_untracked(def_id, cx.tcx) {
+    match CStore::from_tcx(cx.tcx).load_macro_untracked(cx.tcx, def_id) {
         // FIXME: handle attributes and derives that aren't proc macros, and macros with multiple
         // kinds
         LoadedMacro::MacroDef { def, .. } => match macro_kinds {

@@ -2,6 +2,7 @@ use rustc_ast::{LitKind, MetaItem, MetaItemInner, MetaItemKind, MetaItemLit, Nod
 use rustc_ast_pretty::pprust;
 use rustc_feature::{Features, GatedCfg, find_gated_cfg};
 use rustc_hir::RustcVersion;
+use rustc_hir::lints::AttributeLintKind;
 use rustc_session::Session;
 use rustc_session::config::ExpectedValues;
 use rustc_session::lint::builtin::UNEXPECTED_CFGS;
@@ -51,10 +52,10 @@ pub fn cfg_matches(
                     sess,
                     UNEXPECTED_CFGS,
                     cfg.span,
-                    BuiltinLintDiag::UnexpectedCfgValue(
+                    BuiltinLintDiag::AttributeLint(AttributeLintKind::UnexpectedCfgValue(
                         (cfg.name, cfg.name_span),
                         cfg.value.map(|v| (v, cfg.value_span.unwrap())),
-                    ),
+                    )),
                 );
             }
             None if sess.psess.check_config.exhaustive_names => {
@@ -62,10 +63,10 @@ pub fn cfg_matches(
                     sess,
                     UNEXPECTED_CFGS,
                     cfg.span,
-                    BuiltinLintDiag::UnexpectedCfgName(
+                    BuiltinLintDiag::AttributeLint(AttributeLintKind::UnexpectedCfgName(
                         (cfg.name, cfg.name_span),
                         cfg.value.map(|v| (v, cfg.value_span.unwrap())),
-                    ),
+                    )),
                 );
             }
             _ => { /* not unexpected */ }

@@ -455,8 +455,7 @@ trigger_files = [
 
 [autolabel."O-wasi"]
 trigger_files = [
-    "library/std/src/sys/pal/wasip1",
-    "library/std/src/sys/pal/wasip2",
+    "library/std/src/sys/pal/wasi",
     "library/std/src/os/wasi"
 ]
 
@@ -1679,12 +1678,6 @@ days-threshold = 28
 # when commits are included in subtrees, as well as warning links in commits.
 # Documentation at: https://forge.rust-lang.org/triagebot/issue-links.html
 [issue-links]
-
-# Prevents mentions in commits to avoid users being spammed
-# Documentation at: https://forge.rust-lang.org/triagebot/no-mentions.html
-[no-mentions]
-# Subtree update authors can't fix it, no point in warning.
-exclude-titles = ["subtree update"]
 
 # Allow members to formally register concerns (`@rustbot concern my concern`)
 # Documentation at: https://forge.rust-lang.org/triagebot/concern.html

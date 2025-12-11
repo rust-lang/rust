@@ -255,11 +255,7 @@ fn biased_fp_to_float<F: RawFloat>(x: BiasedFp) -> F {
 #[inline(always)] // Will be inlined into a function with `#[inline(never)]`, see above
 pub fn dec2flt<F: RawFloat>(s: &str) -> Result<F, ParseFloatError> {
     let mut s = s.as_bytes();
-    let c = if let Some(&c) = s.first() {
-        c
-    } else {
-        return Err(pfe_empty());
-    };
+    let Some(&c) = s.first() else { return Err(pfe_empty()) };
     let negative = c == b'-';
     if c == b'-' || c == b'+' {
         s = &s[1..];
