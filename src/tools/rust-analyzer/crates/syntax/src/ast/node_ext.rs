@@ -813,13 +813,16 @@ pub enum TypeBoundKind {
 }
 
 impl ast::TypeBound {
-    pub fn kind(&self) -> TypeBoundKind {
+    pub fn kind(&self) -> Option<TypeBoundKind> {
         if let Some(path_type) = support::children(self.syntax()).next() {
-            TypeBoundKind::PathType(self.for_binder(), path_type)
+            Some(TypeBoundKind::PathType(self.for_binder(), path_type))
+        } else if let Some(for_binder) = support::children::<ast::ForType>(&self.syntax).next() {
+            let Some(ast::Type::PathType(path_type)) = for_binder.ty() else { return None };
+            Some(TypeBoundKind::PathType(for_binder.for_binder(), path_type))
         } else if let Some(args) = self.use_bound_generic_args() {
-            TypeBoundKind::Use(args)
+            Some(TypeBoundKind::Use(args))
         } else if let Some(lifetime) = self.lifetime() {
-            TypeBoundKind::Lifetime(lifetime)
+            Some(TypeBoundKind::Lifetime(lifetime))
         } else {
             unreachable!()
         }

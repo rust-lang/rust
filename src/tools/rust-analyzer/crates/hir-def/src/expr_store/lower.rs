@@ -949,7 +949,8 @@ impl<'db> ExprCollector<'db> {
         node: ast::TypeBound,
         impl_trait_lower_fn: ImplTraitLowerFn<'_>,
     ) -> TypeBound {
-        match node.kind() {
+        let Some(kind) = node.kind() else { return TypeBound::Error };
+        match kind {
             ast::TypeBoundKind::PathType(binder, path_type) => {
                 let binder = match binder.and_then(|it| it.generic_param_list()) {
                     Some(gpl) => gpl
