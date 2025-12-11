@@ -1584,10 +1584,6 @@ fn render_deref_methods(
 }
 
 fn should_render_item(item: &clean::Item, deref_mut_: bool, tcx: TyCtxt<'_>) -> bool {
-    if item.deprecation(tcx).is_some() {
-        return false;
-    }
-
     let self_type_opt = match item.kind {
         clean::MethodItem(ref method, _) => method.decl.receiver_type(),
         clean::RequiredMethodItem(ref method) => method.decl.receiver_type(),
@@ -1790,18 +1786,6 @@ fn render_impl(
                         should_render_item(item, deref_mut_, cx.tcx())
                     }
                 };
-
-            // Skip deprecated/unstable associated items when flags are enabled.
-            let hide_deprecated = cx.shared.cache.hide_deprecated;
-            let hide_unstable = cx.shared.cache.hide_unstable;
-            let tcx = cx.tcx();
-            let is_deprecated = item.deprecation(tcx).is_some();
-            let is_unstable = item
-                .stability(tcx)
-                .is_some_and(|s| s.is_unstable() && s.feature != sym::rustc_private);
-            if (hide_deprecated && is_deprecated) || (hide_unstable && is_unstable) {
-                return Ok(());
-            }
 
             let in_trait_class = if trait_.is_some() { " trait-impl" } else { "" };
 

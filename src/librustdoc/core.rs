@@ -384,12 +384,7 @@ pub(crate) fn run_global_ctxt(
         impl_trait_bounds: Default::default(),
         generated_synthetics: Default::default(),
         auto_traits,
-        cache: Cache::new(
-            render_options.document_private,
-            render_options.document_hidden,
-            render_options.hide_deprecated,
-            render_options.hide_unstable,
-        ),
+        cache: Cache::new(render_options.document_private, render_options.document_hidden),
         inlined: FxHashSet::default(),
         output_format,
         show_coverage,

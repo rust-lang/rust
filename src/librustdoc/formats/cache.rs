@@ -93,10 +93,6 @@ pub(crate) struct Cache {
     /// Whether to document hidden items.
     /// This is stored in `Cache` so it doesn't need to be passed through all rustdoc functions.
     pub(crate) document_hidden: bool,
-    /// Whether to hide items explicitly marked `#[deprecated]` from listings.
-    pub(crate) hide_deprecated: bool,
-    /// Whether to hide items that are unstable from listings.
-    pub(crate) hide_unstable: bool,
 
     /// Crates marked with [`#[doc(masked)]`][doc_masked].
     ///
@@ -147,19 +143,8 @@ struct CacheBuilder<'a, 'tcx> {
 }
 
 impl Cache {
-    pub(crate) fn new(
-        document_private: bool,
-        document_hidden: bool,
-        hide_deprecated: bool,
-        hide_unstable: bool,
-    ) -> Self {
-        Cache {
-            document_private,
-            document_hidden,
-            hide_deprecated,
-            hide_unstable,
-            ..Cache::default()
-        }
+    pub(crate) fn new(document_private: bool, document_hidden: bool) -> Self {
+        Cache { document_private, document_hidden, ..Cache::default() }
     }
 
     fn parent_stack_last_impl_and_trait_id(&self) -> (Option<DefId>, Option<DefId>) {

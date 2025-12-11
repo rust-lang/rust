@@ -313,22 +313,8 @@ impl<'tcx> Context<'tcx> {
         let mut map: BTreeMap<_, Vec<_>> = BTreeMap::new();
         let mut inserted: FxHashMap<ItemType, FxHashSet<Symbol>> = FxHashMap::default();
 
-        let hide_deprecated = self.shared.cache.hide_deprecated;
-        let hide_unstable = self.shared.cache.hide_unstable;
-        let tcx = self.tcx();
-
         for item in &m.items {
             if item.is_stripped() {
-                continue;
-            }
-
-            let is_deprecated = item.deprecation(tcx).is_some();
-            let is_unstable = item
-                .stability(tcx)
-                .is_some_and(|s| s.is_unstable() && s.feature != sym::rustc_private);
-
-            if (hide_deprecated && is_deprecated) || (hide_unstable && is_unstable) {
-                // Hide deprecated/unstable items from sidebar listings.
                 continue;
             }
 
@@ -880,16 +866,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             self.shared.fs.write(joint_dst, buf)?;
 
             if !self.info.render_redirect_pages {
-                let hide_deprecated = self.shared.cache.hide_deprecated;
-                let hide_unstable = self.shared.cache.hide_unstable;
-                let tcx = self.tcx();
-                let is_deprecated = item.deprecation(tcx).is_some();
-                let is_unstable = item
-                    .stability(tcx)
-                    .is_some_and(|s| s.is_unstable() && s.feature != sym::rustc_private);
-                if !(hide_deprecated && is_deprecated) && !(hide_unstable && is_unstable) {
-                    self.shared.all.borrow_mut().append(full_path(self, item), &item_type);
-                }
+                self.shared.all.borrow_mut().append(full_path(self, item), &item_type);
             }
             // If the item is a macro, redirect from the old macro URL (with !)
             // to the new one (without).

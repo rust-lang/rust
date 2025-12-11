@@ -412,45 +412,6 @@ fn item_module(cx: &Context<'_>, item: &clean::Item, items: &[clean::Item]) -> i
             )?;
 
             for (_, myitem) in &not_stripped_items[&type_] {
-                // Skip deprecated/unstable items in module listings when the flags are enabled.
-                let hide_deprecated = cx.shared.cache.hide_deprecated;
-                let hide_unstable = cx.shared.cache.hide_unstable;
-
-                // Direct attributes on the item
-                let is_deprecated_item = myitem.deprecation(tcx).is_some();
-                let is_unstable_item = myitem
-                    .stability(tcx)
-                    .is_some_and(|s| s.is_unstable() && s.feature != sym::rustc_private);
-
-                // Reexports/imports/extern crate metadata
-                let (is_deprecated_reexport, is_unstable_reexport) = match myitem.kind {
-                    clean::ImportItem(ref import) => {
-                        if let Some(import_def_id) = import.source.did {
-                            let depr = tcx.lookup_deprecation(import_def_id).is_some();
-                            let unst = tcx.lookup_stability(import_def_id).is_some_and(|s| {
-                                s.is_unstable() && s.feature != sym::rustc_private
-                            });
-                            (depr, unst)
-                        } else {
-                            (false, false)
-                        }
-                    }
-                    clean::ExternCrateItem { .. } => {
-                        let def_id = myitem.item_id.expect_def_id();
-                        let depr = tcx.lookup_deprecation(def_id).is_some();
-                        let unst = tcx
-                            .lookup_stability(def_id)
-                            .is_some_and(|s| s.is_unstable() && s.feature != sym::rustc_private);
-                        (depr, unst)
-                    }
-                    _ => (false, false),
-                };
-
-                if (hide_deprecated && (is_deprecated_item || is_deprecated_reexport))
-                    || (hide_unstable && (is_unstable_item || is_unstable_reexport))
-                {
-                    continue;
-                }
                 match myitem.kind {
                     clean::ExternCrateItem { ref src } => {
                         use crate::html::format::print_anchor;
