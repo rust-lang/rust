@@ -96,7 +96,7 @@ For example:
 Not all important or beginner work has issue labels.
 See below for how to find work that isn't labelled.
 
-[help-wanted-search]: https://github.com/issues?q=is%3Aopen+is%3Aissue+org%3Arust-lang+no%3Aassignee+label%3AE-easy%2C%22good+first+issue%22%2Cgood-first-issue%2CE-medium%2CEasy%2CE-help-wanted%2CE-mentor+-label%3AS-blocked+-linked%3Apr+
+[help-wanted-search]: https://github.com/issues?q=is%3Aopen%20is%3Aissue%20org%3Arust-lang%20no%3Aassignee%20label%3AE-easy%2CE-medium%2CE-help-wanted%2CE-mentor%20-label%3AS-blocked%20-linked%3Apr
 [Triage]: ./contributing.md#issue-triage
 
 ### Recurring work
