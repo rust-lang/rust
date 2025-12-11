@@ -2,7 +2,7 @@
 
 **Tier: 3**
 
-Target mirror `x86_64-pc-windows-msvc` with AddressSanitizer enabled by default.
+Target mirrors `x86_64-pc-windows-msvc` with AddressSanitizer enabled by default.
 
 ## Target maintainers
 
