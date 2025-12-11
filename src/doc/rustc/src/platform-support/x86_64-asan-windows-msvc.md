@@ -49,7 +49,8 @@ rustc --target x86_64-asan-windows-msvc my_program.rs
 Programs compiled for this target require `clang_rt.asan_dynamic-x86_64.dll` to
 be available. This can be installed by using the Visual Studio Installer to
 install the C++ AddressSanitizer component. Once installed, add the directory
-containing the DLL to your `PATH`.
+containing the DLL to your `PATH` or run your program from a Visual Studio
+Developer Command Prompt.
 
 ## Cross-compilation toolchains and C code
 
