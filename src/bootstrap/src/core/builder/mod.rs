@@ -801,6 +801,7 @@ impl<'a> Builder<'a> {
                 llvm::CrtBeginEnd,
                 tool::RustdocGUITest,
                 tool::OptimizedDist,
+                tool::ReproCheck,
                 tool::CoverageDump,
                 tool::LlvmBitcodeLinker,
                 tool::RustcPerf,
