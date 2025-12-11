@@ -215,7 +215,7 @@ impl CodegenBackend for GccCodegenBackend {
         // invalid.
         // This is the case for instance in Rust for Linux where they specify --sysroot=/dev/null.
         for path in sess.opts.sysroot.all_paths() {
-            let libgccjit_target_lib_file = file_path(path, &sess);
+            let libgccjit_target_lib_file = file_path(path, sess);
             if let Ok(true) = fs::exists(&libgccjit_target_lib_file) {
                 load_libgccjit_if_needed(&libgccjit_target_lib_file);
                 break;
@@ -225,7 +225,7 @@ impl CodegenBackend for GccCodegenBackend {
         if !gccjit::is_loaded() {
             let mut paths = vec![];
             for path in sess.opts.sysroot.all_paths() {
-                let libgccjit_target_lib_file = file_path(path, &sess);
+                let libgccjit_target_lib_file = file_path(path, sess);
                 paths.push(libgccjit_target_lib_file);
             }
 
