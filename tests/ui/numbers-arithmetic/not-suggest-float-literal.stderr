@@ -8,13 +8,19 @@ LL |     x + 100.0
 help: the following other types implement trait `Add<Rhs>`
   --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
    |
-   = note: `&u8` implements `Add<u8>`
+   = note: `u8` implements `Add`
+  ::: $SRC_DIR/core/src/ops/arith.rs:LL:COL
    |
-   = note: `&u8` implements `Add`
+   = note: in this macro invocation
+  --> $SRC_DIR/core/src/internal_macros.rs:LL:COL
+   |
+   = note: `&u8` implements `Add<u8>`
+  ::: $SRC_DIR/core/src/internal_macros.rs:LL:COL
    |
    = note: `u8` implements `Add<&u8>`
+  ::: $SRC_DIR/core/src/internal_macros.rs:LL:COL
    |
-   = note: `u8` implements `Add`
+   = note: `&u8` implements `Add`
    = note: this error originates in the macro `add_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: cannot add `&str` to `f64`
@@ -27,13 +33,19 @@ LL |     x + "foo"
 help: the following other types implement trait `Add<Rhs>`
   --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
    |
-   = note: `&f64` implements `Add<f64>`
+   = note: `f64` implements `Add`
+  ::: $SRC_DIR/core/src/ops/arith.rs:LL:COL
    |
-   = note: `&f64` implements `Add`
+   = note: in this macro invocation
+  --> $SRC_DIR/core/src/internal_macros.rs:LL:COL
+   |
+   = note: `&f64` implements `Add<f64>`
+  ::: $SRC_DIR/core/src/internal_macros.rs:LL:COL
    |
    = note: `f64` implements `Add<&f64>`
+  ::: $SRC_DIR/core/src/internal_macros.rs:LL:COL
    |
-   = note: `f64` implements `Add`
+   = note: `&f64` implements `Add`
    = note: this error originates in the macro `add_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: cannot add `{integer}` to `f64`
@@ -46,13 +58,19 @@ LL |     x + y
 help: the following other types implement trait `Add<Rhs>`
   --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
    |
-   = note: `&f64` implements `Add<f64>`
+   = note: `f64` implements `Add`
+  ::: $SRC_DIR/core/src/ops/arith.rs:LL:COL
    |
-   = note: `&f64` implements `Add`
+   = note: in this macro invocation
+  --> $SRC_DIR/core/src/internal_macros.rs:LL:COL
+   |
+   = note: `&f64` implements `Add<f64>`
+  ::: $SRC_DIR/core/src/internal_macros.rs:LL:COL
    |
    = note: `f64` implements `Add<&f64>`
+  ::: $SRC_DIR/core/src/internal_macros.rs:LL:COL
    |
-   = note: `f64` implements `Add`
+   = note: `&f64` implements `Add`
    = note: this error originates in the macro `add_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: cannot subtract `{float}` from `u8`
@@ -65,13 +83,19 @@ LL |     x - 100.0
 help: the following other types implement trait `Sub<Rhs>`
   --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
    |
-   = note: `&u8` implements `Sub<u8>`
+   = note: `u8` implements `Sub`
+  ::: $SRC_DIR/core/src/ops/arith.rs:LL:COL
    |
-   = note: `&u8` implements `Sub`
+   = note: in this macro invocation
+  --> $SRC_DIR/core/src/internal_macros.rs:LL:COL
+   |
+   = note: `&u8` implements `Sub<u8>`
+  ::: $SRC_DIR/core/src/internal_macros.rs:LL:COL
    |
    = note: `u8` implements `Sub<&u8>`
+  ::: $SRC_DIR/core/src/internal_macros.rs:LL:COL
    |
-   = note: `u8` implements `Sub`
+   = note: `&u8` implements `Sub`
    = note: this error originates in the macro `sub_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: cannot subtract `&str` from `f64`
@@ -84,13 +108,19 @@ LL |     x - "foo"
 help: the following other types implement trait `Sub<Rhs>`
   --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
    |
-   = note: `&f64` implements `Sub<f64>`
+   = note: `f64` implements `Sub`
+  ::: $SRC_DIR/core/src/ops/arith.rs:LL:COL
    |
-   = note: `&f64` implements `Sub`
+   = note: in this macro invocation
+  --> $SRC_DIR/core/src/internal_macros.rs:LL:COL
+   |
+   = note: `&f64` implements `Sub<f64>`
+  ::: $SRC_DIR/core/src/internal_macros.rs:LL:COL
    |
    = note: `f64` implements `Sub<&f64>`
+  ::: $SRC_DIR/core/src/internal_macros.rs:LL:COL
    |
-   = note: `f64` implements `Sub`
+   = note: `&f64` implements `Sub`
    = note: this error originates in the macro `sub_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: cannot subtract `{integer}` from `f64`
@@ -103,13 +133,19 @@ LL |     x - y
 help: the following other types implement trait `Sub<Rhs>`
   --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
    |
-   = note: `&f64` implements `Sub<f64>`
+   = note: `f64` implements `Sub`
+  ::: $SRC_DIR/core/src/ops/arith.rs:LL:COL
    |
-   = note: `&f64` implements `Sub`
+   = note: in this macro invocation
+  --> $SRC_DIR/core/src/internal_macros.rs:LL:COL
+   |
+   = note: `&f64` implements `Sub<f64>`
+  ::: $SRC_DIR/core/src/internal_macros.rs:LL:COL
    |
    = note: `f64` implements `Sub<&f64>`
+  ::: $SRC_DIR/core/src/internal_macros.rs:LL:COL
    |
-   = note: `f64` implements `Sub`
+   = note: `&f64` implements `Sub`
    = note: this error originates in the macro `sub_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: cannot multiply `u8` by `{float}`
@@ -122,13 +158,19 @@ LL |     x * 100.0
 help: the following other types implement trait `Mul<Rhs>`
   --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
    |
-   = note: `&u8` implements `Mul<u8>`
+   = note: `u8` implements `Mul`
+  ::: $SRC_DIR/core/src/ops/arith.rs:LL:COL
    |
-   = note: `&u8` implements `Mul`
+   = note: in this macro invocation
+  --> $SRC_DIR/core/src/internal_macros.rs:LL:COL
+   |
+   = note: `&u8` implements `Mul<u8>`
+  ::: $SRC_DIR/core/src/internal_macros.rs:LL:COL
    |
    = note: `u8` implements `Mul<&u8>`
+  ::: $SRC_DIR/core/src/internal_macros.rs:LL:COL
    |
-   = note: `u8` implements `Mul`
+   = note: `&u8` implements `Mul`
    = note: this error originates in the macro `mul_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: cannot multiply `f64` by `&str`
@@ -141,13 +183,19 @@ LL |     x * "foo"
 help: the following other types implement trait `Mul<Rhs>`
   --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
    |
-   = note: `&f64` implements `Mul<f64>`
+   = note: `f64` implements `Mul`
+  ::: $SRC_DIR/core/src/ops/arith.rs:LL:COL
    |
-   = note: `&f64` implements `Mul`
+   = note: in this macro invocation
+  --> $SRC_DIR/core/src/internal_macros.rs:LL:COL
+   |
+   = note: `&f64` implements `Mul<f64>`
+  ::: $SRC_DIR/core/src/internal_macros.rs:LL:COL
    |
    = note: `f64` implements `Mul<&f64>`
+  ::: $SRC_DIR/core/src/internal_macros.rs:LL:COL
    |
-   = note: `f64` implements `Mul`
+   = note: `&f64` implements `Mul`
    = note: this error originates in the macro `mul_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: cannot multiply `f64` by `{integer}`
@@ -160,13 +208,19 @@ LL |     x * y
 help: the following other types implement trait `Mul<Rhs>`
   --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
    |
-   = note: `&f64` implements `Mul<f64>`
+   = note: `f64` implements `Mul`
+  ::: $SRC_DIR/core/src/ops/arith.rs:LL:COL
    |
-   = note: `&f64` implements `Mul`
+   = note: in this macro invocation
+  --> $SRC_DIR/core/src/internal_macros.rs:LL:COL
+   |
+   = note: `&f64` implements `Mul<f64>`
+  ::: $SRC_DIR/core/src/internal_macros.rs:LL:COL
    |
    = note: `f64` implements `Mul<&f64>`
+  ::: $SRC_DIR/core/src/internal_macros.rs:LL:COL
    |
-   = note: `f64` implements `Mul`
+   = note: `&f64` implements `Mul`
    = note: this error originates in the macro `mul_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: cannot divide `u8` by `{float}`
@@ -193,13 +247,19 @@ LL |     x / "foo"
 help: the following other types implement trait `Div<Rhs>`
   --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
    |
-   = note: `&f64` implements `Div<f64>`
+   = note: `f64` implements `Div`
+  ::: $SRC_DIR/core/src/ops/arith.rs:LL:COL
    |
-   = note: `&f64` implements `Div`
+   = note: in this macro invocation
+  --> $SRC_DIR/core/src/internal_macros.rs:LL:COL
+   |
+   = note: `&f64` implements `Div<f64>`
+  ::: $SRC_DIR/core/src/internal_macros.rs:LL:COL
    |
    = note: `f64` implements `Div<&f64>`
+  ::: $SRC_DIR/core/src/internal_macros.rs:LL:COL
    |
-   = note: `f64` implements `Div`
+   = note: `&f64` implements `Div`
    = note: this error originates in the macro `div_impl_float` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: cannot divide `f64` by `{integer}`
@@ -212,13 +272,19 @@ LL |     x / y
 help: the following other types implement trait `Div<Rhs>`
   --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
    |
-   = note: `&f64` implements `Div<f64>`
+   = note: `f64` implements `Div`
+  ::: $SRC_DIR/core/src/ops/arith.rs:LL:COL
    |
-   = note: `&f64` implements `Div`
+   = note: in this macro invocation
+  --> $SRC_DIR/core/src/internal_macros.rs:LL:COL
+   |
+   = note: `&f64` implements `Div<f64>`
+  ::: $SRC_DIR/core/src/internal_macros.rs:LL:COL
    |
    = note: `f64` implements `Div<&f64>`
+  ::: $SRC_DIR/core/src/internal_macros.rs:LL:COL
    |
-   = note: `f64` implements `Div`
+   = note: `&f64` implements `Div`
    = note: this error originates in the macro `div_impl_float` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 12 previous errors
