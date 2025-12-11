@@ -1,6 +1,9 @@
 //@ add-minicore
 //@ assembly-output: emit-asm
 // ignore-tidy-linelength
+//@ revisions: aarch64_asan_windows_msvc
+//@ [aarch64_asan_windows_msvc] compile-flags: --target aarch64-asan-windows-msvc
+//@ [aarch64_asan_windows_msvc] needs-llvm-components: arm
 //@ revisions: aarch64_pc_windows_msvc
 //@ [aarch64_pc_windows_msvc] compile-flags: --target aarch64-pc-windows-msvc
 //@ [aarch64_pc_windows_msvc] needs-llvm-components: aarch64

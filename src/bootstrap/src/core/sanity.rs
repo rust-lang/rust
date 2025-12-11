@@ -42,6 +42,7 @@ const STAGE0_MISSING_TARGETS: &[&str] = &[
     // just a dummy comment so the list doesn't get onelined
     "riscv64gc-unknown-redox",
     "hexagon-unknown-qurt",
+    "aarch64-asan-windows-msvc",
     "x86_64-asan-windows-msvc",
 ];
 
