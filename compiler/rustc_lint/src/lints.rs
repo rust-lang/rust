@@ -2401,6 +2401,17 @@ pub(crate) mod unexpected_cfg_name {
             #[subdiagnostic]
             expected_names: Option<ExpectedNames>,
         },
+        #[suggestion(
+            lint_unexpected_cfg_boolean,
+            applicability = "machine-applicable",
+            style = "verbose",
+            code = "{literal}"
+        )]
+        BooleanLiteral {
+            #[primary_span]
+            span: Span,
+            literal: bool,
+        },
     }
 
     #[derive(Subdiagnostic)]
