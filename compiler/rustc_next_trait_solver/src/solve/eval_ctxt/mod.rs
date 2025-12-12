@@ -810,16 +810,18 @@ where
     pub(super) fn term_is_fully_unconstrained(&self, goal: Goal<I, ty::NormalizesTo<I>>) -> bool {
         let universe_of_term = match goal.predicate.term.kind() {
             ty::TermKind::Ty(ty) => {
-                let ty::Infer(ty::TyVar(vid)) = ty.kind() else {
+                if let ty::Infer(ty::TyVar(vid)) = ty.kind() {
+                    self.delegate.universe_of_ty(vid).unwrap()
+                } else {
                     return false;
-                };
-                self.delegate.universe_of_ty(vid).unwrap()
+                }
             }
             ty::TermKind::Const(ct) => {
-                let ty::ConstKind::Infer(ty::InferConst::Var(vid)) = ct.kind() else {
+                if let ty::ConstKind::Infer(ty::InferConst::Var(vid)) = ct.kind() {
+                    self.delegate.universe_of_ct(vid).unwrap()
+                } else {
                     return false;
-                };
-                self.delegate.universe_of_ct(vid).unwrap()
+                }
             }
         };
 

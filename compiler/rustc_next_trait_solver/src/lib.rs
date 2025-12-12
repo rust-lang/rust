@@ -8,7 +8,6 @@
 #![allow(rustc::direct_use_of_rustc_type_ir)]
 #![allow(rustc::usage_of_type_ir_inherent)]
 #![allow(rustc::usage_of_type_ir_traits)]
-#![deny(clippy::manual_let_else)]
 // tidy-alphabetical-end
 
 pub mod canonical;
