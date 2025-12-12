@@ -621,8 +621,10 @@ impl Config {
             vendor: dist_vendor,
         } = toml.dist.unwrap_or_default();
 
-        let Gcc { download_ci_gcc: gcc_download_ci_gcc, libgccjit_libs_dir } =
-            toml.gcc.unwrap_or_default();
+        let Gcc {
+            download_ci_gcc: gcc_download_ci_gcc,
+            libgccjit_libs_dir: gcc_libgccjit_libs_dir,
+        } = toml.gcc.unwrap_or_default();
 
         if rust_bootstrap_override_lld.is_some() && rust_bootstrap_override_lld_legacy.is_some() {
             panic!(
@@ -1220,13 +1222,12 @@ impl Config {
             Warnings::Default => rust_deny_warnings.unwrap_or(true),
         };
 
-        let gcc_ci_mode = match (&libgccjit_libs_dir, gcc_download_ci_gcc) {
-            (Some(_), _) => GccCiMode::CopyFromLibsDir,
-            (None, Some(value)) => match value {
+        let gcc_ci_mode = match gcc_download_ci_gcc {
+            Some(value) => match value {
                 true => GccCiMode::DownloadFromCi,
                 false => GccCiMode::BuildLocally,
             },
-            (None, None) => GccCiMode::default(),
+            None => GccCiMode::default(),
         };
 
         let targets = flags_target
@@ -1349,7 +1350,7 @@ impl Config {
             keep_stage: flags_keep_stage,
             keep_stage_std: flags_keep_stage_std,
             libdir: install_libdir.map(PathBuf::from),
-            libgccjit_libs_dir,
+            libgccjit_libs_dir: gcc_libgccjit_libs_dir,
             library_docs_private_items: build_library_docs_private_items.unwrap_or(false),
             lld_enabled,
             lldb: build_lldb.map(PathBuf::from),

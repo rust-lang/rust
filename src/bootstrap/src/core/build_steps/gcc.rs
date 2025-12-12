@@ -201,25 +201,28 @@ fn try_download_gcc(_builder: &Builder<'_>, _target: TargetSelection) -> Option<
 /// It's used to avoid busting caches during x.py check -- if we've already built
 /// GCC, it's fine for us to not try to avoid doing so.
 pub fn get_gcc_build_status(builder: &Builder<'_>, target: TargetSelection) -> GccBuildStatus {
-    if matches!(builder.config.gcc_ci_mode, crate::core::config::GccCiMode::CopyFromLibsDir) {
-        let directory = builder
-            .config
-            .libgccjit_libs_dir
-            .as_ref()
-            .expect("libgccjit_libs_dir should be set when the mode is CopyFromLibsDir")
-            .join(builder.build.host_target);
-        let path = directory.join(target).join("libgccjit.so");
+    // Prefer taking externally provided prebuilt libgccjit dylib
+    if let Some(dir) = &builder.config.libgccjit_libs_dir {
+        // The dir structure should be <root>/<host>/<target>/libgccjit.so
+        let host_dir = dir.join(builder.build.host_target);
+        let path = host_dir.join(target).join("libgccjit.so");
         if path.exists() {
             return GccBuildStatus::AlreadyBuilt(path);
         } else {
-            builder.info(&format!("libgccjit.so not found at `{}`", path.display()));
+            builder.info(&format!(
+                "libgccjit.so for host `{}` and target `{target}` was not found at `{}`",
+                builder.build.host_target,
+                path.display()
+            ));
         }
     }
 
+    // If not available, try to download from CI
     if let Some(path) = try_download_gcc(builder, target) {
         return GccBuildStatus::AlreadyBuilt(path);
     }
 
+    // If not available, try to build (or use already built libgccjit from disk)
     static STAMP_HASH_MEMO: OnceLock<String> = OnceLock::new();
     let smart_stamp_hash = STAMP_HASH_MEMO.get_or_init(|| {
         generate_smart_stamp_hash(
