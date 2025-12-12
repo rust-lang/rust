@@ -161,11 +161,17 @@ impl Builder {
     /// [`io::Result`] to capture any failure to create the thread at
     /// the OS level.
     ///
-    /// [`io::Result`]: crate::io::Result
+    /// Like [`spawn`], this method will still call the main thread functions
+    /// added by [`add_spawn_hook`] (unless [`Builder::no_hooks`] was called),
+    /// but won't execute the returned functions if thread creation fails at the
+    /// OS level.
     ///
     /// # Panics
     ///
     /// Panics if a thread name was set and it contained null bytes.
+    ///
+    /// Unlike the [`spawn`] free function, if it panics for this reason, the
+    /// parent thread functions added by [`add_spawn_hook`] will _not_ be called.
     ///
     /// # Examples
     ///
@@ -181,8 +187,10 @@ impl Builder {
     /// handler.join().unwrap();
     /// ```
     ///
+    /// [`io::Result`]: crate::io::Result
     /// [`thread::spawn`]: super::spawn
     /// [`spawn`]: super::spawn
+    /// [`add_spawn_hook`]: crate::thread::add_spawn_hook
     #[stable(feature = "rust1", since = "1.0.0")]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub fn spawn<F, T>(self, f: F) -> io::Result<JoinHandle<T>>
@@ -212,9 +220,17 @@ impl Builder {
     /// [`io::Result`] to capture any failure to create the thread at
     /// the OS level.
     ///
+    /// Like [`spawn`], this method will still call the main thread functions
+    /// added by [`add_spawn_hook`] (unless [`Builder::no_hooks`] was called),
+    /// but won't execute the returned functions if thread creation fails at the
+    /// OS level.
+    ///
     /// # Panics
     ///
     /// Panics if a thread name was set and it contained null bytes.
+    ///
+    /// Unlike the [`spawn`] free function, if it panics for this reason, the
+    /// parent thread functions added by [`add_spawn_hook`] will _not_ be called.
     ///
     /// # Safety
     ///
@@ -253,6 +269,7 @@ impl Builder {
     /// [`io::Result`]: crate::io::Result
     /// [`thread::spawn`]: super::spawn
     /// [`spawn`]: super::spawn
+    /// [`add_spawn_hook`]: crate::thread::add_spawn_hook
     #[stable(feature = "thread_spawn_unchecked", since = "1.82.0")]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub unsafe fn spawn_unchecked<F, T>(self, f: F) -> io::Result<JoinHandle<T>>

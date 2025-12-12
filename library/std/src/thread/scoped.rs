@@ -193,7 +193,13 @@ impl<'scope, 'env> Scope<'scope, 'env> {
     /// Panics if the OS fails to create a thread; use [`Builder::spawn_scoped`]
     /// to recover from such errors.
     ///
+    /// like the free [`spawn`] function, if hooks were added via [`add_spawn_hook`],
+    /// they will still be called in the parent thread, but the returned functions will
+    /// not be executed.
+    ///
     /// [`join`]: ScopedJoinHandle::join
+    /// [`add_spawn_hook`]: crate::thread::add_spawn_hook
+    /// [`spawn`]: crate::thread::spawn
     #[stable(feature = "scoped_threads", since = "1.63.0")]
     pub fn spawn<F, T>(&'scope self, f: F) -> ScopedJoinHandle<'scope, T>
     where
@@ -210,11 +216,17 @@ impl Builder {
     /// Unlike [`Scope::spawn`], this method yields an [`io::Result`] to
     /// capture any failure to create the thread at the OS level.
     ///
-    /// [`io::Result`]: crate::io::Result
+    /// Like [`Scope::spawn`], this method will still call the main thread functions
+    /// added by [`add_spawn_hook`] (unless [`Builder::no_hooks`] was called),
+    /// but won't execute the returned functions if thread creation fails at the
+    /// OS level.
     ///
     /// # Panics
     ///
     /// Panics if a thread name was set and it contained null bytes.
+    ///
+    /// Unlike with [`Scope::spawn`], if it panics for this reason, the hooks
+    /// added by [`add_spawn_hook`] will _not_ be called.
     ///
     /// # Example
     ///
@@ -251,6 +263,9 @@ impl Builder {
     /// a.push(4);
     /// assert_eq!(x, a.len());
     /// ```
+    ///
+    /// [`io::Result`]: crate::io::Result
+    /// [`add_spawn_hook`]: crate::thread::add_spawn_hook
     #[stable(feature = "scoped_threads", since = "1.63.0")]
     pub fn spawn_scoped<'scope, 'env, F, T>(
         self,
