@@ -134,12 +134,6 @@ impl<'a> Cursor<'a> {
 
     /// Moves to a substring by a number of bytes.
     pub(crate) fn bump_bytes(&mut self, n: usize) {
-        #[cfg(debug_assertions)]
-        {
-            if n > 0 {
-                self.prev = self.as_str()[..n].chars().last().unwrap();
-            }
-        }
         self.chars = self.as_str()[n..].chars();
     }
 
@@ -151,17 +145,14 @@ impl<'a> Cursor<'a> {
             self.bump();
         }
     }
-    /// Eats characters until the given byte is found.
-    /// Returns true if the byte was found, false if end of file was reached.
+
     pub(crate) fn eat_until(&mut self, byte: u8) {
         self.chars = match memchr::memchr(byte, self.as_str().as_bytes()) {
             Some(index) => self.as_str()[index..].chars(),
             None => "".chars(),
-        };
+        }
     }
 
-    /// Eats characters until any of the given bytes is found, then consumes past it.
-    /// Returns the found byte if any, or None if end of file was reached.
     pub(crate) fn eat_past_either(&mut self, byte1: u8, byte2: u8) -> Option<u8> {
         let bytes = self.as_str().as_bytes();
         if let Some(index) = memchr::memchr2(byte1, byte2, bytes) {
