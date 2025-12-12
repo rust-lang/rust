@@ -168,10 +168,8 @@ impl Builder {
     ///
     /// # Panics
     ///
-    /// Panics if a thread name was set and it contained null bytes.
-    ///
-    /// Unlike the [`spawn`] free function, if it panics for this reason, the
-    /// parent thread functions added by [`add_spawn_hook`] will _not_ be called.
+    /// Panics if a thread name was set and it contained null bytes. In that case,
+    /// functions added by [`add_spawn_hook`] won't be called.
     ///
     /// # Examples
     ///
@@ -227,10 +225,8 @@ impl Builder {
     ///
     /// # Panics
     ///
-    /// Panics if a thread name was set and it contained null bytes.
-    ///
-    /// Unlike the [`spawn`] free function, if it panics for this reason, the
-    /// parent thread functions added by [`add_spawn_hook`] will _not_ be called.
+    /// Panics if a thread name was set and it contained null bytes. In that case,
+    /// functions added by [`add_spawn_hook`] won't be called.
     ///
     /// # Safety
     ///
