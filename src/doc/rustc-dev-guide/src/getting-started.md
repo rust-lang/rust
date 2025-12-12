@@ -151,6 +151,9 @@ Issues that have been resolved but do not have a regression test are marked with
 Writing unit tests is a low-risk,
 lower-priority task that offers new contributors a great opportunity to familiarize themselves
 with the testing infrastructure and contribution workflow.
+You can see a list of needs test issues [here][needs-test-issues].
+
+[needs-test-issues]: https://github.com/rust-lang/rust/issues?q=is%3Aissue%20is%3Aopen%20label%3AE-needs-test%20no%3Aassignee
 
 ### Contributing to std (standard library)
 
