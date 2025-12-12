@@ -1154,7 +1154,7 @@ cc = ["@davidtwco", "@compiler-errors", "@TaKO8Ki"]
 
 [mentions."compiler/rustc_public"]
 message = "This PR changes rustc_public"
-cc = ["@oli-obk", "@celinval", "@ouz-a"]
+cc = ["@oli-obk", "@celinval", "@ouz-a", "@makai410"]
 
 [mentions."compiler/rustc_target/src/spec"]
 message = """
@@ -1542,6 +1542,7 @@ project-stable-mir = [
     "@celinval",
     "@oli-obk",
     "@scottmcm",
+    "@makai410",
 ]
 project-exploit-mitigations = [
     "@cuviper",
