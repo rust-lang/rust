@@ -13,6 +13,7 @@
 #![feature(box_patterns)]
 #![feature(default_field_values)]
 #![feature(error_reporter)]
+#![feature(macro_metavar_expr_concat)]
 #![feature(negative_impls)]
 #![feature(never_type)]
 #![feature(rustc_attrs)]
