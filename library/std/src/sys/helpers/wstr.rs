@@ -1,5 +1,4 @@
 //! This module contains constructs to work with 16-bit characters (UCS-2 or UTF-16)
-#![allow(dead_code)]
 
 use crate::marker::PhantomData;
 use crate::num::NonZero;

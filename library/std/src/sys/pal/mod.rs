@@ -22,8 +22,6 @@
 
 #![allow(missing_debug_implementations)]
 
-pub mod common;
-
 cfg_select! {
     unix => {
         mod unix;
