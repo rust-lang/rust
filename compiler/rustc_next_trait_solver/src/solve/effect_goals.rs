@@ -451,6 +451,8 @@ where
         self.assemble_and_merge_candidates(proven_via, goal)
     }
 
+    // FIXME(const_traits): this was copied from the old projection normalization behavior
+    // and might not be what we actually want here.
     #[instrument(level = "debug", skip(self), ret)]
     fn assemble_and_merge_candidates(
         &mut self,
@@ -460,7 +462,7 @@ where
         let Some(proven_via) = proven_via else {
             // We don't care about overflow. If proving the trait goal overflowed, then
             // it's enough to report an overflow error for that, we don't also have to
-            // overflow during normalization.
+            // overflow for the const bound.
             //
             // We use `forced_ambiguity` here over `make_ambiguous_response_no_constraints`
             // because the former will also record a built-in candidate in the inspector.

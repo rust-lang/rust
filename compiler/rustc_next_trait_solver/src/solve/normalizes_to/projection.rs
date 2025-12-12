@@ -44,7 +44,7 @@ where
     D: SolverDelegate<Interner = I>,
     I: Interner,
 {
-    pub(super) fn normalize_trait_associated_term(
+    pub(super) fn normalize_projection_term(
         &mut self,
         goal: Goal<I, ty::NormalizesTo<I>>,
     ) -> QueryResult<I> {
@@ -115,9 +115,9 @@ where
             return None;
         }
 
+        // FIXME(generic_associated_types): Addresses aggressive inference in #92917.
         // If we're normalizing an GAT, we bail if using a where-bound would constrain
         // its generic arguments.
-        // FIXME(generic_associated_types): Addresses aggressive inference in #92917.
         //
         // If this type is a GAT with currently unconstrained arguments, we do not
         // want to normalize it via a candidate which only applies for a specific
@@ -161,6 +161,8 @@ where
         &mut self,
         goal: Goal<I, ty::NormalizesTo<I>>,
     ) -> QueryResult<I> {
+        // We already looked for param env and alias bound candidates on the fast path
+        // so we don't have to assemble them again.
         let (mut candidates, _) =
             self.assemble_and_evaluate_candidates(goal, AssembleCandidatesFrom::Impl);
 

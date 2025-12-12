@@ -33,7 +33,7 @@ where
         let cx = self.cx();
         match goal.predicate.alias.kind(cx) {
             ty::AliasTermKind::ProjectionTy | ty::AliasTermKind::ProjectionConst => {
-                self.normalize_trait_associated_term(goal)
+                self.normalize_projection_term(goal)
             }
             ty::AliasTermKind::InherentTy | ty::AliasTermKind::InherentConst => {
                 self.normalize_inherent_associated_term(goal)
