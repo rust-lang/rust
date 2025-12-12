@@ -22,8 +22,8 @@ use windows_sys::Win32::Storage::FileSystem::{
     FILE_ALLOCATION_INFO, FILE_ATTRIBUTE_DIRECTORY, FILE_ATTRIBUTE_NORMAL, FILE_BEGIN,
     FILE_CURRENT, FILE_END_OF_FILE_INFO, FILE_FLAG_BACKUP_SEMANTICS, FILE_FLAG_OPEN_REPARSE_POINT,
     FILE_SHARE_DELETE, FILE_SHARE_READ, FILE_SHARE_WRITE, FileAllocationInfo, FileEndOfFileInfo,
-    GetFileInformationByHandle, OPEN_ALWAYS, OPEN_EXISTING, SetFileInformationByHandle,
-    SetFilePointerEx,
+    FlushFileBuffers, GetFileInformationByHandle, OPEN_ALWAYS, OPEN_EXISTING,
+    SetFileInformationByHandle, SetFilePointerEx,
 };
 use windows_sys::Win32::System::IO::IO_STATUS_BLOCK;
 use windows_sys::Win32::System::Threading::GetCurrentProcess;
@@ -41,6 +41,7 @@ fn main() {
         test_file_seek();
         test_set_file_info();
         test_dup_handle();
+        test_flush_buffers();
     }
 }
 
@@ -360,6 +361,19 @@ unsafe fn test_file_seek() {
     file.read_exact(&mut buf).unwrap();
     assert_eq!(buf, b", ");
     assert_eq!(pos, 5);
+}
+
+unsafe fn test_flush_buffers() {
+    let temp = utils::tmp().join("test_flush_buffers.txt");
+    let file = fs::File::options().create(true).write(true).read(true).open(&temp).unwrap();
+    if FlushFileBuffers(file.as_raw_handle()) == 0 {
+        panic!("Failed to flush buffers");
+    }
+
+    let file = fs::File::options().read(true).open(&temp).unwrap();
+    if FlushFileBuffers(file.as_raw_handle()) != 0 {
+        panic!("Successfully flushed buffers on read-only file");
+    }
 }
 
 fn to_wide_cstr(path: &Path) -> Vec<u16> {
