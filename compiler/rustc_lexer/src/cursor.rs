@@ -164,16 +164,12 @@ impl<'a> Cursor<'a> {
     /// Returns the found byte if any, or None if end of file was reached.
     pub(crate) fn eat_past_either(&mut self, byte1: u8, byte2: u8) -> Option<u8> {
         let bytes = self.as_str().as_bytes();
-        match memchr::memchr2(byte1, byte2, bytes) {
-            Some(index) => {
-                let found = bytes[index];
-                self.bump_bytes(index + 1);
-                Some(found)
-            }
-            None => {
-                self.chars = "".chars();
-                None
-            }
+        if let Some(index) = memchr::memchr2(byte1, byte2, bytes) {
+            let found = Some(bytes[index]);
+            self.chars = self.as_str()[index + 1..].chars();
+            return found;
         }
+        self.chars = "".chars();
+        None
     }
 }
