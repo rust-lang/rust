@@ -12,19 +12,6 @@ use rustc_span::{Span, Symbol};
 
 use crate::fluent_generated as fluent;
 
-pub(crate) enum UnsupportedLiteralReason {
-    Generic,
-    CfgString,
-    CfgBoolean,
-}
-
-#[derive(Diagnostic)]
-#[diag(attr_parsing_expected_one_cfg_pattern, code = E0536)]
-pub(crate) struct ExpectedOneCfgPattern {
-    #[primary_span]
-    pub span: Span,
-}
-
 #[derive(Diagnostic)]
 #[diag(attr_parsing_invalid_predicate, code = E0537)]
 pub(crate) struct InvalidPredicate {
@@ -234,28 +221,13 @@ pub(crate) struct InvalidReprHintNoValue {
 // FIXME(jdonszelmann): slowly phased out
 pub(crate) struct UnsupportedLiteral {
     pub span: Span,
-    pub reason: UnsupportedLiteralReason,
     pub is_bytestr: bool,
     pub start_point_span: Span,
 }
 
 impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for UnsupportedLiteral {
     fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, G> {
-        let mut diag = Diag::new(
-            dcx,
-            level,
-            match self.reason {
-                UnsupportedLiteralReason::Generic => {
-                    fluent::attr_parsing_unsupported_literal_generic
-                }
-                UnsupportedLiteralReason::CfgString => {
-                    fluent::attr_parsing_unsupported_literal_cfg_string
-                }
-                UnsupportedLiteralReason::CfgBoolean => {
-                    fluent::attr_parsing_unsupported_literal_cfg_boolean
-                }
-            },
-        );
+        let mut diag = Diag::new(dcx, level, fluent::attr_parsing_unsupported_literal_generic);
         diag.span(self.span);
         diag.code(E0565);
         if self.is_bytestr {
@@ -371,13 +343,6 @@ pub(crate) struct RustcPromotablePairing {
 #[derive(Diagnostic)]
 #[diag(attr_parsing_rustc_allowed_unstable_pairing, code = E0789)]
 pub(crate) struct RustcAllowedUnstablePairing {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(attr_parsing_cfg_predicate_identifier)]
-pub(crate) struct CfgPredicateIdentifier {
     #[primary_span]
     pub span: Span,
 }

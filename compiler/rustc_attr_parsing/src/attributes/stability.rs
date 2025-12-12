@@ -8,7 +8,7 @@ use rustc_hir::{
 
 use super::prelude::*;
 use super::util::parse_version;
-use crate::session_diagnostics::{self, UnsupportedLiteralReason};
+use crate::session_diagnostics::{self};
 
 macro_rules! reject_outside_std {
     ($cx: ident) => {
@@ -304,7 +304,6 @@ pub(crate) fn parse_stability<S: Stage>(
         let Some(param) = param.meta_item() else {
             cx.emit_err(session_diagnostics::UnsupportedLiteral {
                 span: param_span,
-                reason: UnsupportedLiteralReason::Generic,
                 is_bytestr: false,
                 start_point_span: cx.sess().source_map().start_point(param_span),
             });
@@ -384,7 +383,6 @@ pub(crate) fn parse_unstability<S: Stage>(
         let Some(param) = param.meta_item() else {
             cx.emit_err(session_diagnostics::UnsupportedLiteral {
                 span: param.span(),
-                reason: UnsupportedLiteralReason::Generic,
                 is_bytestr: false,
                 start_point_span: cx.sess().source_map().start_point(param.span()),
             });
