@@ -15,8 +15,7 @@ use crate::sys::pal::api::{self, WinError, set_file_information_by_handle};
 use crate::sys::pal::{IoResult, fill_utf16_buf, to_u16s, truncate_utf16_at_nul};
 use crate::sys::path::{WCStr, maybe_verbatim};
 use crate::sys::time::SystemTime;
-use crate::sys::{Align8, c, cvt};
-use crate::sys_common::{AsInner, FromInner, IntoInner};
+use crate::sys::{Align8, AsInner, FromInner, IntoInner, c, cvt};
 use crate::{fmt, ptr, slice};
 
 mod remove_dir_all;

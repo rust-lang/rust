@@ -8,9 +8,8 @@ use crate::net::{Shutdown, SocketAddr};
 use crate::os::windows::io::{
     AsRawSocket, AsSocket, BorrowedSocket, FromRawSocket, IntoRawSocket, OwnedSocket, RawSocket,
 };
-use crate::sys::c;
 use crate::sys::pal::winsock::last_error;
-use crate::sys_common::{AsInner, FromInner, IntoInner};
+use crate::sys::{AsInner, FromInner, IntoInner, c};
 use crate::time::Duration;
 use crate::{cmp, mem, ptr, sys};
 

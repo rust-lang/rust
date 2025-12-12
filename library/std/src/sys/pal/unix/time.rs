@@ -1,6 +1,6 @@
 use core::num::niche_types::Nanoseconds;
 
-use crate::sys_common::AsInner;
+use crate::sys::AsInner;
 use crate::time::Duration;
 use crate::{fmt, io};
 

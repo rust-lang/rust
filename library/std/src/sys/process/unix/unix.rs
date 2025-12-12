@@ -966,7 +966,7 @@ impl Process {
     /// [I/O Safety]: crate::io#io-safety
     unsafe fn new(pid: pid_t, pidfd: pid_t) -> Self {
         use crate::os::unix::io::FromRawFd;
-        use crate::sys_common::FromInner;
+        use crate::sys::FromInner;
         // Safety: If `pidfd` is nonnegative, we assume it's valid and otherwise unowned.
         let pidfd = (pidfd >= 0).then(|| PidFd::from_inner(sys::fd::FileDesc::from_raw_fd(pidfd)));
         Process { pid, status: None, pidfd }
@@ -1264,8 +1264,8 @@ impl ExitStatusError {
 mod linux_child_ext {
     use crate::io::ErrorKind;
     use crate::os::linux::process as os;
+    use crate::sys::FromInner;
     use crate::sys::pal::linux::pidfd as imp;
-    use crate::sys_common::FromInner;
     use crate::{io, mem};
 
     #[unstable(feature = "linux_pidfd", issue = "82971")]

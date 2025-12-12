@@ -1,6 +1,6 @@
 use crate::fmt;
 use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut};
-use crate::sys_common::{FromInner, IntoInner};
+use crate::sys::{FromInner, IntoInner};
 
 pub struct AnonPipe(!);
 
@@ -72,7 +72,7 @@ impl IntoInner<!> for AnonPipe {
 mod unix_traits {
     use super::AnonPipe;
     use crate::os::fd::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd};
-    use crate::sys_common::FromInner;
+    use crate::sys::FromInner;
 
     impl AsRawFd for AnonPipe {
         #[inline]

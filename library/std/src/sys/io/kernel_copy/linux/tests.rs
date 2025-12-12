@@ -89,7 +89,7 @@ fn dont_splice_pipes_from_files() -> Result<()> {
     use crate::io::SeekFrom;
     use crate::os::unix::fs::FileExt;
     use crate::process::{ChildStdin, ChildStdout};
-    use crate::sys_common::FromInner;
+    use crate::sys::FromInner;
 
     let (read_end, write_end) = crate::sys::pipe::anon_pipe()?;
 
@@ -221,7 +221,7 @@ fn bench_socket_pipe_socket_copy(b: &mut test::Bencher) {
     use super::CopyResult;
     use crate::io::ErrorKind;
     use crate::process::{ChildStdin, ChildStdout};
-    use crate::sys_common::FromInner;
+    use crate::sys::FromInner;
 
     let (read_end, write_end) = crate::sys::pipe::anon_pipe().unwrap();
 
