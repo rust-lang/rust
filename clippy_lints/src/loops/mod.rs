@@ -893,13 +893,7 @@ impl<'tcx> LateLintPass<'tcx> for Loops {
         if let ExprKind::MethodCall(path, recv, args, _) = expr.kind
             && matches!(
                 path.ident.name,
-                sym::for_each
-                    | sym::try_for_each
-                    | sym::fold
-                    | sym::try_fold
-                    | sym::reduce
-                    | sym::all
-                    | sym::any
+                sym::for_each | sym::try_for_each | sym::fold | sym::try_fold | sym::reduce | sym::all | sym::any
             )
             && ty::get_iterator_item_ty(cx, cx.typeck_results().expr_ty(recv)).is_some()
         {

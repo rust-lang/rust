@@ -88,7 +88,7 @@ pub(super) fn check_iterator_reduction<'tcx>(
     };
 
     let closure_arg = match method_name {
-        sym::for_each | sym::try_for_each | sym::reduce | sym::all | sym::any => args.get(0),
+        sym::for_each | sym::try_for_each | sym::reduce | sym::all | sym::any => args.first(),
         sym::fold | sym::try_fold => args.get(1),
         _ => None,
     };
@@ -118,7 +118,6 @@ pub(super) fn check_iterator_reduction<'tcx>(
                 diag.span_suggestion_verbose(expr.span, "consider this pattern", sugg, app);
             },
         );
-        return;
     }
 }
 
