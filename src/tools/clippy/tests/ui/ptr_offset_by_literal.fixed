@@ -1,0 +1,50 @@
+#![warn(clippy::ptr_offset_by_literal)]
+#![allow(clippy::inconsistent_digit_grouping)]
+
+fn main() {
+    let arr = [b'a', b'b', b'c'];
+    let ptr = arr.as_ptr();
+
+    let var = 32;
+    const CONST: isize = 42;
+
+    unsafe {
+        let _ = ptr;
+        //~^ ptr_offset_by_literal
+        let _ = ptr;
+        //~^ ptr_offset_by_literal
+
+        let _ = ptr.add(5);
+        //~^ ptr_offset_by_literal
+        let _ = ptr.sub(5);
+        //~^ ptr_offset_by_literal
+
+        let _ = ptr.offset(var);
+        let _ = ptr.offset(CONST);
+
+        let _ = ptr.wrapping_add(5);
+        //~^ ptr_offset_by_literal
+        let _ = ptr.wrapping_sub(5);
+        //~^ ptr_offset_by_literal
+
+        let _ = ptr.sub(5);
+        //~^ ptr_offset_by_literal
+        let _ = ptr.wrapping_sub(5);
+        //~^ ptr_offset_by_literal
+
+        // isize::MAX and isize::MIN on 32-bit systems.
+        let _ = ptr.add(2_147_483_647);
+        //~^ ptr_offset_by_literal
+        let _ = ptr.sub(2_147_483_648);
+        //~^ ptr_offset_by_literal
+
+        let _ = ptr.add(5_0);
+        //~^ ptr_offset_by_literal
+        let _ = ptr.sub(5_0);
+        //~^ ptr_offset_by_literal
+
+        macro_rules! offs { { $e:expr, $offs:expr } => { $e.offset($offs) }; }
+        offs!(ptr, 6);
+        offs!(ptr, var);
+    }
+}
