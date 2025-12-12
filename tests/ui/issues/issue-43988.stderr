@@ -60,17 +60,6 @@ LL |     #[repr]
    |     ^^^^^^^ expected this to be a list
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/type-layout.html#representations>
-help: try changing it to one of the following valid forms of the attribute
-   |
-LL |     #[repr(<integer type>)]
-   |           ++++++++++++++++
-LL |     #[repr(C)]
-   |           +++
-LL |     #[repr(Rust)]
-   |           ++++++
-LL |     #[repr(align(...))]
-   |           ++++++++++++
-   = and 2 other candidates
 
 error[E0539]: malformed `inline` attribute input
   --> $DIR/issue-43988.rs:31:5
@@ -108,17 +97,6 @@ LL |     let _z = #[repr] 1;
    |              ^^^^^^^ expected this to be a list
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/type-layout.html#representations>
-help: try changing it to one of the following valid forms of the attribute
-   |
-LL |     let _z = #[repr(<integer type>)] 1;
-   |                    ++++++++++++++++
-LL |     let _z = #[repr(C)] 1;
-   |                    +++
-LL |     let _z = #[repr(Rust)] 1;
-   |                    ++++++
-LL |     let _z = #[repr(align(...))] 1;
-   |                    ++++++++++++
-   = and 2 other candidates
 
 error: aborting due to 9 previous errors
 

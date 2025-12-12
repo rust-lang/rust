@@ -5,22 +5,6 @@ LL | #![doc(test(""))]
    | ^^^^^^^^^^^^--^^^
    |             |
    |             didn't expect a literal here
-   |
-help: try changing it to one of the following valid forms of the attribute
-   |
-LL - #![doc(test(""))]
-LL + #![doc = "string"]
-   |
-LL - #![doc(test(""))]
-LL + #![doc(alias)]
-   |
-LL - #![doc(test(""))]
-LL + #![doc(attribute)]
-   |
-LL - #![doc(test(""))]
-LL + #![doc(auto_cfg)]
-   |
-   = and 22 other candidates
 
 error: aborting due to 1 previous error
 

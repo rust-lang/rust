@@ -5,22 +5,6 @@ LL | #![doc(html_favicon_url)]
    | ^^^^^^^----------------^^
    |        |
    |        expected this to be of the form `html_favicon_url = "..."`
-   |
-help: try changing it to one of the following valid forms of the attribute
-   |
-LL - #![doc(html_favicon_url)]
-LL + #![doc = "string"]
-   |
-LL - #![doc(html_favicon_url)]
-LL + #![doc(alias)]
-   |
-LL - #![doc(html_favicon_url)]
-LL + #![doc(attribute)]
-   |
-LL - #![doc(html_favicon_url)]
-LL + #![doc(auto_cfg)]
-   |
-   = and 21 other candidates
 
 error[E0539]: malformed `doc` attribute input
   --> $DIR/bad-render-options.rs:6:1
@@ -29,22 +13,6 @@ LL | #![doc(html_logo_url)]
    | ^^^^^^^-------------^^
    |        |
    |        expected this to be of the form `html_logo_url = "..."`
-   |
-help: try changing it to one of the following valid forms of the attribute
-   |
-LL - #![doc(html_logo_url)]
-LL + #![doc = "string"]
-   |
-LL - #![doc(html_logo_url)]
-LL + #![doc(alias)]
-   |
-LL - #![doc(html_logo_url)]
-LL + #![doc(attribute)]
-   |
-LL - #![doc(html_logo_url)]
-LL + #![doc(auto_cfg)]
-   |
-   = and 21 other candidates
 
 error[E0539]: malformed `doc` attribute input
   --> $DIR/bad-render-options.rs:9:1
@@ -53,22 +21,6 @@ LL | #![doc(html_playground_url)]
    | ^^^^^^^-------------------^^
    |        |
    |        expected this to be of the form `html_playground_url = "..."`
-   |
-help: try changing it to one of the following valid forms of the attribute
-   |
-LL - #![doc(html_playground_url)]
-LL + #![doc = "string"]
-   |
-LL - #![doc(html_playground_url)]
-LL + #![doc(alias)]
-   |
-LL - #![doc(html_playground_url)]
-LL + #![doc(attribute)]
-   |
-LL - #![doc(html_playground_url)]
-LL + #![doc(auto_cfg)]
-   |
-   = and 21 other candidates
 
 error[E0539]: malformed `doc` attribute input
   --> $DIR/bad-render-options.rs:12:1
@@ -77,22 +29,6 @@ LL | #![doc(issue_tracker_base_url)]
    | ^^^^^^^----------------------^^
    |        |
    |        expected this to be of the form `issue_tracker_base_url = "..."`
-   |
-help: try changing it to one of the following valid forms of the attribute
-   |
-LL - #![doc(issue_tracker_base_url)]
-LL + #![doc = "string"]
-   |
-LL - #![doc(issue_tracker_base_url)]
-LL + #![doc(alias)]
-   |
-LL - #![doc(issue_tracker_base_url)]
-LL + #![doc(attribute)]
-   |
-LL - #![doc(issue_tracker_base_url)]
-LL + #![doc(auto_cfg)]
-   |
-   = and 21 other candidates
 
 error[E0539]: malformed `doc` attribute input
   --> $DIR/bad-render-options.rs:15:1
@@ -101,22 +37,6 @@ LL | #![doc(html_favicon_url = 1)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^-^^
    |                           |
    |                           expected a string literal here
-   |
-help: try changing it to one of the following valid forms of the attribute
-   |
-LL - #![doc(html_favicon_url = 1)]
-LL + #![doc = "string"]
-   |
-LL - #![doc(html_favicon_url = 1)]
-LL + #![doc(alias)]
-   |
-LL - #![doc(html_favicon_url = 1)]
-LL + #![doc(attribute)]
-   |
-LL - #![doc(html_favicon_url = 1)]
-LL + #![doc(auto_cfg)]
-   |
-   = and 22 other candidates
 
 error[E0539]: malformed `doc` attribute input
   --> $DIR/bad-render-options.rs:18:1
@@ -125,22 +45,6 @@ LL | #![doc(html_logo_url = 2)]
    | ^^^^^^^^^^^^^^^^^^^^^^^-^^
    |                        |
    |                        expected a string literal here
-   |
-help: try changing it to one of the following valid forms of the attribute
-   |
-LL - #![doc(html_logo_url = 2)]
-LL + #![doc = "string"]
-   |
-LL - #![doc(html_logo_url = 2)]
-LL + #![doc(alias)]
-   |
-LL - #![doc(html_logo_url = 2)]
-LL + #![doc(attribute)]
-   |
-LL - #![doc(html_logo_url = 2)]
-LL + #![doc(auto_cfg)]
-   |
-   = and 22 other candidates
 
 error[E0539]: malformed `doc` attribute input
   --> $DIR/bad-render-options.rs:21:1
@@ -149,22 +53,6 @@ LL | #![doc(html_playground_url = 3)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-^^
    |                              |
    |                              expected a string literal here
-   |
-help: try changing it to one of the following valid forms of the attribute
-   |
-LL - #![doc(html_playground_url = 3)]
-LL + #![doc = "string"]
-   |
-LL - #![doc(html_playground_url = 3)]
-LL + #![doc(alias)]
-   |
-LL - #![doc(html_playground_url = 3)]
-LL + #![doc(attribute)]
-   |
-LL - #![doc(html_playground_url = 3)]
-LL + #![doc(auto_cfg)]
-   |
-   = and 22 other candidates
 
 error[E0539]: malformed `doc` attribute input
   --> $DIR/bad-render-options.rs:24:1
@@ -173,22 +61,6 @@ LL | #![doc(issue_tracker_base_url = 4)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-^^
    |                                 |
    |                                 expected a string literal here
-   |
-help: try changing it to one of the following valid forms of the attribute
-   |
-LL - #![doc(issue_tracker_base_url = 4)]
-LL + #![doc = "string"]
-   |
-LL - #![doc(issue_tracker_base_url = 4)]
-LL + #![doc(alias)]
-   |
-LL - #![doc(issue_tracker_base_url = 4)]
-LL + #![doc(attribute)]
-   |
-LL - #![doc(issue_tracker_base_url = 4)]
-LL + #![doc(auto_cfg)]
-   |
-   = and 22 other candidates
 
 error[E0565]: malformed `doc` attribute input
   --> $DIR/bad-render-options.rs:27:1
@@ -197,22 +69,6 @@ LL | #![doc(html_no_source = "asdf")]
    | ^^^^^^^^^^^^^^^^^^^^^^--------^^
    |                       |
    |                       didn't expect any arguments here
-   |
-help: try changing it to one of the following valid forms of the attribute
-   |
-LL - #![doc(html_no_source = "asdf")]
-LL + #![doc = "string"]
-   |
-LL - #![doc(html_no_source = "asdf")]
-LL + #![doc(alias)]
-   |
-LL - #![doc(html_no_source = "asdf")]
-LL + #![doc(attribute)]
-   |
-LL - #![doc(html_no_source = "asdf")]
-LL + #![doc(auto_cfg)]
-   |
-   = and 22 other candidates
 
 error: aborting due to 9 previous errors
 

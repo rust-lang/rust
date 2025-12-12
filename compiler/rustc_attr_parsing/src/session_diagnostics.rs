@@ -709,16 +709,20 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for AttributeParseError<'_> {
             diag.note(format!("for more information, visit <{link}>"));
         }
 
-        diag.span_suggestions(
-            self.attr_span,
-            if self.suggestions.len() == 1 {
-                "must be of the form".to_string()
-            } else {
-                format!("try changing it to one of the following valid forms of the {description}")
-            },
-            self.suggestions,
-            Applicability::HasPlaceholders,
-        );
+        if self.suggestions.len() < 4 {
+            diag.span_suggestions(
+                self.attr_span,
+                if self.suggestions.len() == 1 {
+                    "must be of the form".to_string()
+                } else {
+                    format!(
+                        "try changing it to one of the following valid forms of the {description}"
+                    )
+                },
+                self.suggestions,
+                Applicability::HasPlaceholders,
+            );
+        }
 
         diag
     }
