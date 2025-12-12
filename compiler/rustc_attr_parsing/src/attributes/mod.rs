@@ -32,7 +32,6 @@ mod prelude;
 pub(crate) mod allow_unstable;
 pub(crate) mod body;
 pub(crate) mod cfg;
-pub(crate) mod cfg_old;
 pub(crate) mod cfg_select;
 pub(crate) mod codegen_attrs;
 pub(crate) mod confusables;
