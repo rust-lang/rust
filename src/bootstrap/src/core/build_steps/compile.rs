@@ -1721,7 +1721,7 @@ impl Step for GccCodegenBackend {
         cargo.arg("--manifest-path").arg(builder.src.join("compiler/rustc_codegen_gcc/Cargo.toml"));
         rustc_cargo_env(builder, &mut cargo, target);
 
-        add_cg_gcc_cargo_flags(&mut cargo, &dylib_set.host_dylib());
+        add_cg_gcc_cargo_flags(&mut cargo, dylib_set.host_dylib());
 
         let _guard =
             builder.msg(Kind::Build, "codegen backend gcc", Mode::Codegen, build_compiler, target);
