@@ -13,7 +13,7 @@ use std::str::FromStr;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
-use std::{panic, str};
+use std::{fmt, panic, str};
 
 pub(crate) use make::{BuildDocTestBuilder, DocTestBuilder};
 pub(crate) use markdown::test as test_markdown;
@@ -36,6 +36,7 @@ use tracing::debug;
 
 use self::rust::HirCollector;
 use crate::config::{Options as RustdocOptions, OutputFormat};
+use crate::display::fmt_json;
 use crate::html::markdown::{ErrorCodes, Ignore, LangString, MdRelLine};
 use crate::lint::init_lints;
 
@@ -310,7 +311,7 @@ pub(crate) fn run(dcx: DiagCtxtHandle<'_>, input: Input, options: RustdocOptions
                 .unwrap_or("warn")
                 .to_string();
             let uext = UnusedExterns { lint_level, unused_extern_names };
-            let unused_extern_json = serde_json::to_string(&uext).unwrap();
+            let unused_extern_json = fmt::from_fn(|f| Ok(fmt_json(f, &uext).unwrap()));
             eprintln!("{unused_extern_json}");
         }
     }
