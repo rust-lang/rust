@@ -367,7 +367,6 @@ generate! {
     truncate,
     try_fold,
     try_for_each,
-    try_reduce,
     unreachable_pub,
     unsafe_removed_from_name,
     unused,
