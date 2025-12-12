@@ -117,7 +117,7 @@ impl<'a> Cursor<'a> {
     }
 
     /// Bumps the cursor if the next character is either of the two expected characters.
-    pub(crate) fn bump_if_either(&mut self, byte1: char, byte2: char) -> bool {
+    pub(crate) fn bump_either(&mut self, byte1: char, byte2: char) -> bool {
         let mut chars = self.chars.clone();
         if let Some(c) = chars.next()
             && (c == byte1 || c == byte2)

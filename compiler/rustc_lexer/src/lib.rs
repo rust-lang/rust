@@ -935,7 +935,7 @@ impl Cursor<'_> {
                 return true;
             }
             // Current is '\\', bump again if next is an escaped character.
-            self.bump_if_either('\\', '"');
+            self.bump_either('\\', '"');
         }
         // End of file reached.
         false
@@ -1105,7 +1105,7 @@ impl Cursor<'_> {
     /// and returns false otherwise.
     fn eat_float_exponent(&mut self) -> bool {
         debug_assert!(self.prev() == 'e' || self.prev() == 'E');
-        self.bump_if_either('-', '+');
+        self.bump_either('-', '+');
         self.eat_decimal_digits()
     }
 
