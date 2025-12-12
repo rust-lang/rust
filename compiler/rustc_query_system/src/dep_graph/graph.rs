@@ -1363,7 +1363,10 @@ impl DepNodeColorMap {
             Ordering::Relaxed,
         ) {
             Ok(_) => Ok(()),
-            Err(v) => Err(DepNodeIndex::from_u32(v)),
+            Err(v) => Err({
+                assert_ne!(v, COMPRESSED_RED, "tried to mark a red node as green");
+                DepNodeIndex::from_u32(v)
+            }),
         }
     }
 
