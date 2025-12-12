@@ -121,9 +121,9 @@ o("llvm-assertions", "llvm.assertions", "build LLVM with assertions")
 o("llvm-enzyme", "llvm.enzyme", "build LLVM with enzyme")
 o("llvm-offload", "llvm.offload", "build LLVM with gpu offload support")
 o(
-        "llvm-offload-clang-dir",
-        "llvm.offload-clang-dir",
-        "pass the absolute directory of ClangConfig.cmake",
+    "llvm-offload-clang-dir",
+    "llvm.offload-clang-dir",
+    "pass the absolute directory of ClangConfig.cmake",
 )
 o("llvm-plugins", "llvm.plugins", "build LLVM with plugin interface")
 o("debug-assertions", "rust.debug-assertions", "build with debugging assertions")
