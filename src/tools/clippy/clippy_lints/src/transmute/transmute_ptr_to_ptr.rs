@@ -14,11 +14,9 @@ pub(super) fn check<'tcx>(
     e: &'tcx Expr<'_>,
     from_ty: Ty<'tcx>,
     to_ty: Ty<'tcx>,
-    arg: &'tcx Expr<'_>,
+    arg: sugg::Sugg<'_>,
     msrv: Msrv,
 ) -> bool {
-    let mut applicability = Applicability::MachineApplicable;
-    let arg_sugg = sugg::Sugg::hir_with_context(cx, arg, e.span.ctxt(), "..", &mut applicability);
     match (from_ty.kind(), to_ty.kind()) {
         (ty::RawPtr(from_pointee_ty, from_mutbl), ty::RawPtr(to_pointee_ty, to_mutbl)) => {
             span_lint_and_then(
@@ -34,7 +32,7 @@ pub(super) fn check<'tcx>(
                         diag.span_suggestion_verbose(
                             e.span,
                             "use `pointer::cast` instead",
-                            format!("{}.cast::<{to_pointee_ty}>()", arg_sugg.maybe_paren()),
+                            format!("{}.cast::<{to_pointee_ty}>()", arg.maybe_paren()),
                             Applicability::MaybeIncorrect,
                         );
                     } else if from_pointee_ty == to_pointee_ty
@@ -49,14 +47,14 @@ pub(super) fn check<'tcx>(
                         diag.span_suggestion_verbose(
                             e.span,
                             format!("use `pointer::{method}` instead"),
-                            format!("{}.{method}()", arg_sugg.maybe_paren()),
+                            format!("{}.{method}()", arg.maybe_paren()),
                             Applicability::MaybeIncorrect,
                         );
                     } else {
                         diag.span_suggestion_verbose(
                             e.span,
                             "use an `as` cast instead",
-                            arg_sugg.as_ty(to_ty),
+                            arg.as_ty(to_ty),
                             Applicability::MaybeIncorrect,
                         );
                     }

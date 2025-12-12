@@ -22,9 +22,6 @@ allow-unauthenticated = [
 [mentions."clippy_lints/src/doc"]
 cc = ["@notriddle"]
 
-# Prevents mentions in commits to avoid users being spammed
-[no-mentions]
-
 # Have rustbot inform users about the *No Merge Policy*
 [no-merges]
 exclude_titles = ["Rustup"] # exclude syncs from rust-lang/rust
@@ -65,6 +62,7 @@ users_on_vacation = [
     "Manishearth",
     "Alexendoo",
     "y21",
+    "blyxyas",
 ]
 
 [assign.owners]
@@ -77,7 +75,6 @@ users_on_vacation = [
     "@Alexendoo",
     "@dswij",
     "@Jarcho",
-    "@blyxyas",
     "@y21",
     "@samueltardieu",
 ]

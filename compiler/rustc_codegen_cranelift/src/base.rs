@@ -167,7 +167,7 @@ pub(crate) fn compile_fn(
     context.clear();
     context.func = codegened_func.func;
 
-    #[cfg(any())] // This is never true
+    #[cfg(false)]
     let _clif_guard = {
         use std::fmt::Write;
 

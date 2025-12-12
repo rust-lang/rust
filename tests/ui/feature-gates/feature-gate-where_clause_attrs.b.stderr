@@ -21,8 +21,8 @@ LL |     #[cfg(b)] T: TraitB,
 error[E0658]: attributes in `where` clause are unstable
   --> $DIR/feature-gate-where_clause_attrs.rs:35:5
    |
-LL |     #[cfg(all())] T: TraitAll,
-   |     ^^^^^^^^^^^^^
+LL |     #[cfg(true)] T: TraitAll,
+   |     ^^^^^^^^^^^^
    |
    = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
@@ -31,7 +31,7 @@ LL |     #[cfg(all())] T: TraitAll,
 error[E0658]: attributes in `where` clause are unstable
   --> $DIR/feature-gate-where_clause_attrs.rs:36:5
    |
-LL |     #[cfg(any())] T: TraitAny,
+LL |     #[cfg(false)] T: TraitAny,
    |     ^^^^^^^^^^^^^
    |
    = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
@@ -61,8 +61,8 @@ LL |     #[cfg_attr(b, cfg(b))] T: TraitBB,
 error[E0658]: attributes in `where` clause are unstable
   --> $DIR/feature-gate-where_clause_attrs.rs:39:5
    |
-LL |     #[cfg_attr(all(), cfg(all()))] T: TraitAllAll,
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     #[cfg_attr(true, cfg(true))] T: TraitAllAll,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
@@ -71,7 +71,7 @@ LL |     #[cfg_attr(all(), cfg(all()))] T: TraitAllAll,
 error[E0658]: attributes in `where` clause are unstable
   --> $DIR/feature-gate-where_clause_attrs.rs:40:5
    |
-LL |     #[cfg_attr(any(), cfg(any()))] T: TraitAnyAny,
+LL |     #[cfg_attr(false, cfg(false))] T: TraitAnyAny,
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
@@ -101,8 +101,8 @@ LL |         #[cfg(b)] U: TraitB,
 error[E0658]: attributes in `where` clause are unstable
   --> $DIR/feature-gate-where_clause_attrs.rs:46:9
    |
-LL |         #[cfg(all())] U: TraitAll,
-   |         ^^^^^^^^^^^^^
+LL |         #[cfg(true)] U: TraitAll,
+   |         ^^^^^^^^^^^^
    |
    = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
@@ -111,7 +111,7 @@ LL |         #[cfg(all())] U: TraitAll,
 error[E0658]: attributes in `where` clause are unstable
   --> $DIR/feature-gate-where_clause_attrs.rs:47:9
    |
-LL |         #[cfg(any())] U: TraitAny,
+LL |         #[cfg(false)] U: TraitAny,
    |         ^^^^^^^^^^^^^
    |
    = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
@@ -141,8 +141,8 @@ LL |         #[cfg_attr(b, cfg(b))] U: TraitBB,
 error[E0658]: attributes in `where` clause are unstable
   --> $DIR/feature-gate-where_clause_attrs.rs:50:9
    |
-LL |         #[cfg_attr(all(), cfg(all()))] U: TraitAllAll,
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |         #[cfg_attr(true, cfg(true))] U: TraitAllAll,
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
@@ -151,7 +151,7 @@ LL |         #[cfg_attr(all(), cfg(all()))] U: TraitAllAll,
 error[E0658]: attributes in `where` clause are unstable
   --> $DIR/feature-gate-where_clause_attrs.rs:51:9
    |
-LL |         #[cfg_attr(any(), cfg(any()))] U: TraitAnyAny;
+LL |         #[cfg_attr(false, cfg(false))] U: TraitAnyAny;
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
@@ -181,8 +181,8 @@ LL |         #[cfg(b)] U: TraitB,
 error[E0658]: attributes in `where` clause are unstable
   --> $DIR/feature-gate-where_clause_attrs.rs:57:9
    |
-LL |         #[cfg(all())] U: TraitAll,
-   |         ^^^^^^^^^^^^^
+LL |         #[cfg(true)] U: TraitAll,
+   |         ^^^^^^^^^^^^
    |
    = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
@@ -191,7 +191,7 @@ LL |         #[cfg(all())] U: TraitAll,
 error[E0658]: attributes in `where` clause are unstable
   --> $DIR/feature-gate-where_clause_attrs.rs:58:9
    |
-LL |         #[cfg(any())] U: TraitAny,
+LL |         #[cfg(false)] U: TraitAny,
    |         ^^^^^^^^^^^^^
    |
    = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
@@ -221,8 +221,8 @@ LL |         #[cfg_attr(b, cfg(b))] U: TraitBB,
 error[E0658]: attributes in `where` clause are unstable
   --> $DIR/feature-gate-where_clause_attrs.rs:61:9
    |
-LL |         #[cfg_attr(all(), cfg(all()))] U: TraitAllAll,
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |         #[cfg_attr(true, cfg(true))] U: TraitAllAll,
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
@@ -231,7 +231,7 @@ LL |         #[cfg_attr(all(), cfg(all()))] U: TraitAllAll,
 error[E0658]: attributes in `where` clause are unstable
   --> $DIR/feature-gate-where_clause_attrs.rs:62:9
    |
-LL |         #[cfg_attr(any(), cfg(any()))] U: TraitAnyAny;
+LL |         #[cfg_attr(false, cfg(false))] U: TraitAnyAny;
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
@@ -261,8 +261,8 @@ LL |     #[cfg(b)] T: TraitB,
 error[E0658]: attributes in `where` clause are unstable
   --> $DIR/feature-gate-where_clause_attrs.rs:69:5
    |
-LL |     #[cfg(all())] T: TraitAll,
-   |     ^^^^^^^^^^^^^
+LL |     #[cfg(true)] T: TraitAll,
+   |     ^^^^^^^^^^^^
    |
    = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
@@ -271,7 +271,7 @@ LL |     #[cfg(all())] T: TraitAll,
 error[E0658]: attributes in `where` clause are unstable
   --> $DIR/feature-gate-where_clause_attrs.rs:70:5
    |
-LL |     #[cfg(any())] T: TraitAny,
+LL |     #[cfg(false)] T: TraitAny,
    |     ^^^^^^^^^^^^^
    |
    = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
@@ -301,8 +301,8 @@ LL |     #[cfg_attr(b, cfg(b))] T: TraitBB,
 error[E0658]: attributes in `where` clause are unstable
   --> $DIR/feature-gate-where_clause_attrs.rs:73:5
    |
-LL |     #[cfg_attr(all(), cfg(all()))] T: TraitAllAll,
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     #[cfg_attr(true, cfg(true))] T: TraitAllAll,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
@@ -311,7 +311,7 @@ LL |     #[cfg_attr(all(), cfg(all()))] T: TraitAllAll,
 error[E0658]: attributes in `where` clause are unstable
   --> $DIR/feature-gate-where_clause_attrs.rs:74:5
    |
-LL |     #[cfg_attr(any(), cfg(any()))] T: TraitAnyAny,
+LL |     #[cfg_attr(false, cfg(false))] T: TraitAnyAny,
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
@@ -341,8 +341,8 @@ LL |         #[cfg(b)] U: TraitB,
 error[E0658]: attributes in `where` clause are unstable
   --> $DIR/feature-gate-where_clause_attrs.rs:79:9
    |
-LL |         #[cfg(all())] U: TraitAll,
-   |         ^^^^^^^^^^^^^
+LL |         #[cfg(true)] U: TraitAll,
+   |         ^^^^^^^^^^^^
    |
    = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
@@ -351,7 +351,7 @@ LL |         #[cfg(all())] U: TraitAll,
 error[E0658]: attributes in `where` clause are unstable
   --> $DIR/feature-gate-where_clause_attrs.rs:80:9
    |
-LL |         #[cfg(any())] U: TraitAny,
+LL |         #[cfg(false)] U: TraitAny,
    |         ^^^^^^^^^^^^^
    |
    = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
@@ -381,8 +381,8 @@ LL |         #[cfg_attr(b, cfg(b))] U: TraitBB,
 error[E0658]: attributes in `where` clause are unstable
   --> $DIR/feature-gate-where_clause_attrs.rs:83:9
    |
-LL |         #[cfg_attr(all(), cfg(all()))] U: TraitAllAll,
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |         #[cfg_attr(true, cfg(true))] U: TraitAllAll,
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
@@ -391,7 +391,7 @@ LL |         #[cfg_attr(all(), cfg(all()))] U: TraitAllAll,
 error[E0658]: attributes in `where` clause are unstable
   --> $DIR/feature-gate-where_clause_attrs.rs:84:9
    |
-LL |         #[cfg_attr(any(), cfg(any()))] U: TraitAnyAny;
+LL |         #[cfg_attr(false, cfg(false))] U: TraitAnyAny;
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
@@ -421,8 +421,8 @@ LL |         #[cfg(b)] U: TraitB,
 error[E0658]: attributes in `where` clause are unstable
   --> $DIR/feature-gate-where_clause_attrs.rs:90:9
    |
-LL |         #[cfg(all())] T: TraitAll,
-   |         ^^^^^^^^^^^^^
+LL |         #[cfg(true)] T: TraitAll,
+   |         ^^^^^^^^^^^^
    |
    = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
@@ -431,7 +431,7 @@ LL |         #[cfg(all())] T: TraitAll,
 error[E0658]: attributes in `where` clause are unstable
   --> $DIR/feature-gate-where_clause_attrs.rs:91:9
    |
-LL |         #[cfg(any())] T: TraitAny,
+LL |         #[cfg(false)] T: TraitAny,
    |         ^^^^^^^^^^^^^
    |
    = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
@@ -461,8 +461,8 @@ LL |         #[cfg_attr(b, cfg(b))] U: TraitBB,
 error[E0658]: attributes in `where` clause are unstable
   --> $DIR/feature-gate-where_clause_attrs.rs:94:9
    |
-LL |         #[cfg_attr(all(), cfg(all()))] T: TraitAllAll,
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |         #[cfg_attr(true, cfg(true))] T: TraitAllAll,
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
@@ -471,7 +471,7 @@ LL |         #[cfg_attr(all(), cfg(all()))] T: TraitAllAll,
 error[E0658]: attributes in `where` clause are unstable
   --> $DIR/feature-gate-where_clause_attrs.rs:95:9
    |
-LL |         #[cfg_attr(any(), cfg(any()))] T: TraitAnyAny,
+LL |         #[cfg_attr(false, cfg(false))] T: TraitAnyAny,
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
@@ -501,8 +501,8 @@ LL |     #[cfg(b)] T: TraitB,
 error[E0658]: attributes in `where` clause are unstable
   --> $DIR/feature-gate-where_clause_attrs.rs:103:5
    |
-LL |     #[cfg(all())] T: TraitAll,
-   |     ^^^^^^^^^^^^^
+LL |     #[cfg(true)] T: TraitAll,
+   |     ^^^^^^^^^^^^
    |
    = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
@@ -511,7 +511,7 @@ LL |     #[cfg(all())] T: TraitAll,
 error[E0658]: attributes in `where` clause are unstable
   --> $DIR/feature-gate-where_clause_attrs.rs:104:5
    |
-LL |     #[cfg(any())] T: TraitAny,
+LL |     #[cfg(false)] T: TraitAny,
    |     ^^^^^^^^^^^^^
    |
    = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
@@ -541,8 +541,8 @@ LL |     #[cfg_attr(b, cfg(b))] T: TraitBB,
 error[E0658]: attributes in `where` clause are unstable
   --> $DIR/feature-gate-where_clause_attrs.rs:107:5
    |
-LL |     #[cfg_attr(all(), cfg(all()))] T: TraitAllAll,
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     #[cfg_attr(true, cfg(true))] T: TraitAllAll,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
@@ -551,7 +551,7 @@ LL |     #[cfg_attr(all(), cfg(all()))] T: TraitAllAll,
 error[E0658]: attributes in `where` clause are unstable
   --> $DIR/feature-gate-where_clause_attrs.rs:108:5
    |
-LL |     #[cfg_attr(any(), cfg(any()))] T: TraitAnyAny,
+LL |     #[cfg_attr(false, cfg(false))] T: TraitAnyAny,
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
@@ -581,8 +581,8 @@ LL |     #[cfg(b)] T: TraitB,
 error[E0658]: attributes in `where` clause are unstable
   --> $DIR/feature-gate-where_clause_attrs.rs:117:5
    |
-LL |     #[cfg(all())] T: TraitAll,
-   |     ^^^^^^^^^^^^^
+LL |     #[cfg(true)] T: TraitAll,
+   |     ^^^^^^^^^^^^
    |
    = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
@@ -591,7 +591,7 @@ LL |     #[cfg(all())] T: TraitAll,
 error[E0658]: attributes in `where` clause are unstable
   --> $DIR/feature-gate-where_clause_attrs.rs:118:5
    |
-LL |     #[cfg(any())] T: TraitAny,
+LL |     #[cfg(false)] T: TraitAny,
    |     ^^^^^^^^^^^^^
    |
    = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
@@ -621,8 +621,8 @@ LL |     #[cfg_attr(b, cfg(b))] T: TraitBB,
 error[E0658]: attributes in `where` clause are unstable
   --> $DIR/feature-gate-where_clause_attrs.rs:121:5
    |
-LL |     #[cfg_attr(all(), cfg(all()))] T: TraitAllAll,
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     #[cfg_attr(true, cfg(true))] T: TraitAllAll,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
@@ -631,7 +631,7 @@ LL |     #[cfg_attr(all(), cfg(all()))] T: TraitAllAll,
 error[E0658]: attributes in `where` clause are unstable
   --> $DIR/feature-gate-where_clause_attrs.rs:122:5
    |
-LL |     #[cfg_attr(any(), cfg(any()))] T: TraitAnyAny,
+LL |     #[cfg_attr(false, cfg(false))] T: TraitAnyAny,
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
@@ -661,8 +661,8 @@ LL |     #[cfg(b)] T: TraitB,
 error[E0658]: attributes in `where` clause are unstable
   --> $DIR/feature-gate-where_clause_attrs.rs:132:5
    |
-LL |     #[cfg(all())] T: TraitAll,
-   |     ^^^^^^^^^^^^^
+LL |     #[cfg(true)] T: TraitAll,
+   |     ^^^^^^^^^^^^
    |
    = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
@@ -671,7 +671,7 @@ LL |     #[cfg(all())] T: TraitAll,
 error[E0658]: attributes in `where` clause are unstable
   --> $DIR/feature-gate-where_clause_attrs.rs:133:5
    |
-LL |     #[cfg(any())] T: TraitAny,
+LL |     #[cfg(false)] T: TraitAny,
    |     ^^^^^^^^^^^^^
    |
    = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
@@ -701,8 +701,8 @@ LL |     #[cfg_attr(b, cfg(b))] T: TraitBB,
 error[E0658]: attributes in `where` clause are unstable
   --> $DIR/feature-gate-where_clause_attrs.rs:136:5
    |
-LL |     #[cfg_attr(all(), cfg(all()))] T: TraitAllAll,
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     #[cfg_attr(true, cfg(true))] T: TraitAllAll,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
@@ -711,7 +711,7 @@ LL |     #[cfg_attr(all(), cfg(all()))] T: TraitAllAll,
 error[E0658]: attributes in `where` clause are unstable
   --> $DIR/feature-gate-where_clause_attrs.rs:137:5
    |
-LL |     #[cfg_attr(any(), cfg(any()))] T: TraitAnyAny,
+LL |     #[cfg_attr(false, cfg(false))] T: TraitAnyAny,
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
@@ -741,8 +741,8 @@ LL |     #[cfg(b)] T: TraitB,
 error[E0658]: attributes in `where` clause are unstable
   --> $DIR/feature-gate-where_clause_attrs.rs:145:5
    |
-LL |     #[cfg(all())] T: TraitAll,
-   |     ^^^^^^^^^^^^^
+LL |     #[cfg(true)] T: TraitAll,
+   |     ^^^^^^^^^^^^
    |
    = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
@@ -751,7 +751,7 @@ LL |     #[cfg(all())] T: TraitAll,
 error[E0658]: attributes in `where` clause are unstable
   --> $DIR/feature-gate-where_clause_attrs.rs:146:5
    |
-LL |     #[cfg(any())] T: TraitAny,
+LL |     #[cfg(false)] T: TraitAny,
    |     ^^^^^^^^^^^^^
    |
    = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
@@ -781,8 +781,8 @@ LL |     #[cfg_attr(b, cfg(b))] T: TraitBB,
 error[E0658]: attributes in `where` clause are unstable
   --> $DIR/feature-gate-where_clause_attrs.rs:149:5
    |
-LL |     #[cfg_attr(all(), cfg(all()))] T: TraitAllAll,
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     #[cfg_attr(true, cfg(true))] T: TraitAllAll,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
@@ -791,7 +791,7 @@ LL |     #[cfg_attr(all(), cfg(all()))] T: TraitAllAll,
 error[E0658]: attributes in `where` clause are unstable
   --> $DIR/feature-gate-where_clause_attrs.rs:150:5
    |
-LL |     #[cfg_attr(any(), cfg(any()))] T: TraitAnyAny,
+LL |     #[cfg_attr(false, cfg(false))] T: TraitAnyAny,
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
@@ -821,8 +821,8 @@ LL |         #[cfg(b)] U: TraitB,
 error[E0658]: attributes in `where` clause are unstable
   --> $DIR/feature-gate-where_clause_attrs.rs:155:9
    |
-LL |         #[cfg(all())] U: TraitAll,
-   |         ^^^^^^^^^^^^^
+LL |         #[cfg(true)] U: TraitAll,
+   |         ^^^^^^^^^^^^
    |
    = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
@@ -831,7 +831,7 @@ LL |         #[cfg(all())] U: TraitAll,
 error[E0658]: attributes in `where` clause are unstable
   --> $DIR/feature-gate-where_clause_attrs.rs:156:9
    |
-LL |         #[cfg(any())] U: TraitAny,
+LL |         #[cfg(false)] U: TraitAny,
    |         ^^^^^^^^^^^^^
    |
    = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
@@ -861,8 +861,8 @@ LL |         #[cfg_attr(b, cfg(b))] U: TraitBB,
 error[E0658]: attributes in `where` clause are unstable
   --> $DIR/feature-gate-where_clause_attrs.rs:159:9
    |
-LL |         #[cfg_attr(all(), cfg(all()))] U: TraitAllAll,
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |         #[cfg_attr(true, cfg(true))] U: TraitAllAll,
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
@@ -871,7 +871,7 @@ LL |         #[cfg_attr(all(), cfg(all()))] U: TraitAllAll,
 error[E0658]: attributes in `where` clause are unstable
   --> $DIR/feature-gate-where_clause_attrs.rs:160:9
    |
-LL |         #[cfg_attr(any(), cfg(any()))] U: TraitAnyAny,
+LL |         #[cfg_attr(false, cfg(false))] U: TraitAnyAny,
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
