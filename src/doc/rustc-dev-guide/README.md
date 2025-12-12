@@ -38,6 +38,11 @@ In general, when writing about a particular part of the compiler's code, we
 recommend that you link to the relevant parts of the [rustc
 rustdocs][rustdocs].
 
+The guide has a much lower bar for what it takes for a PR to be merged. Check out
+the forge documentation for [our policy][forge_policy].
+
+[forge_policy]: https://forge.rust-lang.org/rustc-dev-guide/index.html#review-policy
+
 ### Build Instructions
 
 To build a local static HTML site, install [`mdbook`](https://github.com/rust-lang/mdBook) with:
