@@ -226,7 +226,7 @@ struct SpanLowerer {
 impl SpanLowerer {
     fn lower(&self, span: Span) -> Span {
         if self.is_incremental {
-            span.with_parent(Some(self.def_id))
+            span.with_parent_untracked(Some(self.def_id))
         } else {
             // Do not make spans relative when not using incremental compilation.
             span

@@ -430,6 +430,36 @@ impl Span {
     }
 
     #[inline]
+    pub fn with_parent_untracked(self, parent: Option<LocalDefId>) -> Span {
+        let data = match_span_kind! {
+            self,
+            InlineCtxt(span) => {
+                // This format occurs 1-2 orders of magnitude more often than others (#126544),
+                // so it makes sense to micro-optimize it to avoid `span.data()` and `Span::new()`.
+                // Copypaste from `Span::new`, the small len & ctxt conditions are known to hold.
+                match parent {
+                    None => return self,
+                    Some(parent) => {
+                        let parent32 = parent.local_def_index.as_u32();
+                        if span.ctxt == 0 && parent32 <= MAX_CTXT {
+                            return InlineParent::span(span.lo, span.len, parent32 as u16);
+                        }
+                    }
+                }
+                span.data()
+            },
+            InlineParent(span) => span.data(),
+            PartiallyInterned(span) => span.data(),
+            Interned(span) => span.data(),
+        };
+
+        if let Some(_old_parent) = data.parent {
+            // (*SPAN_TRACK)(old_parent);
+        }
+        data.with_parent(parent)
+    }
+
+    #[inline]
     pub fn parent(self) -> Option<LocalDefId> {
         let interned_parent =
             |index: u32| with_span_interner(|interner| interner.spans[index as usize].parent);
