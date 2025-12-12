@@ -103,13 +103,8 @@ impl<'a> Cursor<'a> {
     }
 
     pub(crate) fn bump_if(&mut self, byte: char) -> bool {
-        let mut chars = self.chars.clone();
-        if chars.next() == Some(byte) {
-            #[cfg(debug_assertions)]
-            {
-                self.prev = byte;
-            }
-            self.chars = chars;
+        if self.first() == byte {
+            self.bump();
             true
         } else {
             false
@@ -118,15 +113,9 @@ impl<'a> Cursor<'a> {
 
     /// Bumps the cursor if the next character is either of the two expected characters.
     pub(crate) fn bump_either(&mut self, byte1: char, byte2: char) -> bool {
-        let mut chars = self.chars.clone();
-        if let Some(c) = chars.next()
-            && (c == byte1 || c == byte2)
-        {
-            #[cfg(debug_assertions)]
-            {
-                self.prev = c;
-            }
-            self.chars = chars;
+        let c = self.first();
+        if c == byte1 || c == byte2 {
+            self.bump();
             return true;
         }
         false
