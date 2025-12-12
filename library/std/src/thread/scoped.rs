@@ -193,9 +193,8 @@ impl<'scope, 'env> Scope<'scope, 'env> {
     /// Panics if the OS fails to create a thread; use [`Builder::spawn_scoped`]
     /// to recover from such errors.
     ///
-    /// like the free [`spawn`] function, if hooks were added via [`add_spawn_hook`],
-    /// they will still be called in the parent thread, but the returned functions will
-    /// not be executed.
+    /// If functions were added via [`add_spawn_hook`], they will still be called in
+    /// the parent thread, but the returned functions will not be executed.
     ///
     /// [`join`]: ScopedJoinHandle::join
     /// [`add_spawn_hook`]: crate::thread::add_spawn_hook
@@ -223,10 +222,8 @@ impl Builder {
     ///
     /// # Panics
     ///
-    /// Panics if a thread name was set and it contained null bytes.
-    ///
-    /// Unlike with [`Scope::spawn`], if it panics for this reason, the hooks
-    /// added by [`add_spawn_hook`] will _not_ be called.
+    /// Panics if a thread name was set and it contained null bytes. In that case,
+    /// functions added by [`add_spawn_hook`] won't be called.
     ///
     /// # Example
     ///
