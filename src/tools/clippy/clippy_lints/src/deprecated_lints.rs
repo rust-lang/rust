@@ -34,7 +34,7 @@ declare_with_version! { DEPRECATED(DEPRECATED_VERSION) = [
     #[clippy::version = "pre 1.29.0"]
     ("clippy::should_assert_eq", "`assert!(a == b)` can now print the values the same way `assert_eq!(a, b) can"),
     #[clippy::version = "1.91.0"]
-    ("clippy::string_to_string", "`clippy:implicit_clone` covers those cases"),
+    ("clippy::string_to_string", "`clippy::implicit_clone` covers those cases"),
     #[clippy::version = "pre 1.29.0"]
     ("clippy::unsafe_vector_initialization", "the suggested alternative could be substantially slower"),
     #[clippy::version = "pre 1.29.0"]
