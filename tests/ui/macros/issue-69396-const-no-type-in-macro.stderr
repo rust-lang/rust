@@ -1,8 +1,8 @@
 error[E0428]: the name `A` is defined multiple times
   --> $DIR/issue-69396-const-no-type-in-macro.rs:4:13
    |
-LL |               const A = "A".$fn();
-   |               ^^^^^^^^^^^^^^^^^^^^ `A` redefined here
+LL |               static A = "A".$fn();
+   |               ^^^^^^^^^^^^^^^^^^^^^ `A` redefined here
 ...
 LL | / suite! {
 LL | |     len;
@@ -13,11 +13,11 @@ LL | | }
    = note: `A` must be defined only once in the value namespace of this module
    = note: this error originates in the macro `suite` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: missing type for `const` item
-  --> $DIR/issue-69396-const-no-type-in-macro.rs:4:20
+error: missing type for `static` item
+  --> $DIR/issue-69396-const-no-type-in-macro.rs:4:21
    |
-LL |               const A = "A".$fn();
-   |                      ^ help: provide a type for the constant: `: usize`
+LL |               static A = "A".$fn();
+   |                       ^ help: provide a type for the static variable: `: usize`
 ...
 LL | / suite! {
 LL | |     len;
@@ -28,10 +28,10 @@ LL | | }
    = note: this error originates in the macro `suite` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0121]: missing type for item
-  --> $DIR/issue-69396-const-no-type-in-macro.rs:4:20
+  --> $DIR/issue-69396-const-no-type-in-macro.rs:4:21
    |
-LL |               const A = "A".$fn();
-   |                      ^ not allowed in type signatures
+LL |               static A = "A".$fn();
+   |                       ^ not allowed in type signatures
 ...
 LL | / suite! {
 LL | |     len;

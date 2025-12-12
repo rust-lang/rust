@@ -725,7 +725,7 @@ impl<'a> ExtCtxt<'a> {
         &self,
         span: Span,
         ident: Ident,
-        ty: Box<ast::Ty>,
+        ty: ast::FnRetTy,
         rhs: ast::ConstItemRhs,
     ) -> Box<ast::Item> {
         let defaultness = ast::Defaultness::Final;

@@ -47,7 +47,7 @@ impl<'a> State<'a> {
                 *ident,
                 Some(*mutability),
                 &ast::Generics::default(),
-                ty,
+                Some(ty),
                 expr.as_deref(),
                 vis,
                 *safety,
@@ -87,7 +87,7 @@ impl<'a> State<'a> {
         ident: Ident,
         mutbl: Option<ast::Mutability>,
         generics: &ast::Generics,
-        ty: &ast::Ty,
+        ty: Option<&ast::Ty>,
         body: Option<&ast::Expr>,
         vis: &ast::Visibility,
         safety: ast::Safety,
@@ -107,8 +107,10 @@ impl<'a> State<'a> {
         self.word_space(leading);
         self.print_ident(ident);
         self.print_generic_params(&generics.params);
-        self.word_space(":");
-        self.print_type(ty);
+        if let Some(ty) = ty {
+            self.word_space(":");
+            self.print_type(ty);
+        }
         if body.is_some() {
             self.space();
         }
@@ -197,13 +199,16 @@ impl<'a> State<'a> {
                     *ident,
                     Some(*mutbl),
                     &ast::Generics::default(),
-                    ty,
+                    Some(ty),
                     body.as_deref(),
                     &item.vis,
                     ast::Safety::Default,
                     ast::Defaultness::Final,
                     define_opaque.as_deref(),
                 );
+            }
+            ast::ItemKind::ConstBlock(ast::ConstBlockItem { body }) => {
+                self.print_expr(body, FixupContext::default())
             }
             ast::ItemKind::Const(box ast::ConstItem {
                 defaultness,
@@ -217,7 +222,10 @@ impl<'a> State<'a> {
                     *ident,
                     None,
                     generics,
-                    ty,
+                    match ty {
+                        ast::FnRetTy::Default(_) => None,
+                        ast::FnRetTy::Ty(ty) => Some(ty),
+                    },
                     rhs.as_ref().map(|ct| ct.expr()),
                     &item.vis,
                     ast::Safety::Default,
@@ -569,7 +577,10 @@ impl<'a> State<'a> {
                     *ident,
                     None,
                     generics,
-                    ty,
+                    match ty {
+                        ast::FnRetTy::Default(_) => None,
+                        ast::FnRetTy::Ty(ty) => Some(ty),
+                    },
                     rhs.as_ref().map(|ct| ct.expr()),
                     vis,
                     ast::Safety::Default,

@@ -1813,6 +1813,17 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         hir::FnRetTy::Return(self.arena.alloc(opaque_ty))
     }
 
+    fn lower_fn_ret_ty_or_unit(
+        &mut self,
+        fn_ret_ty: &FnRetTy,
+        ictxt: ImplTraitContext,
+    ) -> &'hir hir::Ty<'hir> {
+        match fn_ret_ty {
+            FnRetTy::Ty(ty) => self.lower_ty(ty, ictxt),
+            FnRetTy::Default(span) => self.arena.alloc(self.ty_tup(*span, &[])),
+        }
+    }
+
     /// Transforms `-> T` into `Future<Output = T>`.
     fn lower_coroutine_fn_output_type_to_bound(
         &mut self,
@@ -1822,15 +1833,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         itctx: ImplTraitContext,
     ) -> hir::GenericBound<'hir> {
         // Compute the `T` in `Future<Output = T>` from the return type.
-        let output_ty = match output {
-            FnRetTy::Ty(ty) => {
-                // Not `OpaqueTyOrigin::AsyncFn`: that's only used for the
-                // `impl Future` opaque type that `async fn` implicitly
-                // generates.
-                self.lower_ty(ty, itctx)
-            }
-            FnRetTy::Default(ret_ty_span) => self.arena.alloc(self.ty_tup(*ret_ty_span, &[])),
-        };
+        // Not `OpaqueTyOrigin::AsyncFn`: that's only used for the
+        // `impl Future` opaque type that `async fn` implicitly
+        // generates.
+        let output_ty = self.lower_fn_ret_ty_or_unit(output, itctx);
 
         // "<$assoc_ty_name = T>"
         let (assoc_ty_name, trait_lang_item) = match coro {

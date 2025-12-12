@@ -514,6 +514,11 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
     gate_all!(generic_const_items, "generic const items are experimental");
     gate_all!(guard_patterns, "guard patterns are experimental", "consider using match arm guards");
     gate_all!(default_field_values, "default values on fields are experimental");
+    gate_all!(
+        const_items_unit_type_default,
+        "omitting type on const item declaration is experimental",
+        "consider specifying the type explicitly"
+    );
     gate_all!(fn_delegation, "functions delegation is not yet fully implemented");
     gate_all!(postfix_match, "postfix match is experimental");
     gate_all!(mut_ref, "mutable by-reference bindings are experimental");
@@ -528,6 +533,7 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
     gate_all!(super_let, "`super let` is experimental");
     gate_all!(frontmatter, "frontmatters are experimental");
     gate_all!(coroutines, "coroutine syntax is experimental");
+    gate_all!(const_block_items, "const block items are experimental");
 
     if !visitor.features.never_patterns() {
         if let Some(spans) = spans.get(&sym::never_patterns) {

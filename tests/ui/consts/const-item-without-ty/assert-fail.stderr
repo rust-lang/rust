@@ -1,0 +1,15 @@
+error[E0080]: evaluation panicked: assertion failed: false
+  --> $DIR/assert-fail.rs:5:11
+   |
+LL | const _ = assert!(false);
+   |           ^^^^^^^^^^^^^^ evaluation of `_` failed here
+
+error[E0080]: evaluation panicked: assertion failed: 2 + 2 == 5
+  --> $DIR/assert-fail.rs:7:11
+   |
+LL | const _ = assert!(2 + 2 == 5);
+   |           ^^^^^^^^^^^^^^^^^^^ evaluation of `_` failed here
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0080`.

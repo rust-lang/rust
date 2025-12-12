@@ -2,7 +2,7 @@ use rustc_ast::ast;
 use rustc_ast::token::{Delimiter, NonterminalKind, NtExprKind::*, NtPatKind::*, TokenKind};
 use rustc_ast::tokenstream::TokenStream;
 use rustc_parse::MACRO_ARGUMENTS;
-use rustc_parse::parser::{ForceCollect, Parser, Recovery};
+use rustc_parse::parser::{AllowConstBlockItems, ForceCollect, Parser, Recovery};
 use rustc_session::parse::ParseSess;
 use rustc_span::symbol;
 
@@ -67,7 +67,7 @@ fn parse_macro_arg<'a, 'b: 'a>(parser: &'a mut Parser<'b>) -> Option<MacroArg> {
     parse_macro_arg!(
         Item,
         NonterminalKind::Item,
-        |parser: &mut Parser<'b>| parser.parse_item(ForceCollect::No),
+        |parser: &mut Parser<'b>| parser.parse_item(ForceCollect::No, AllowConstBlockItems::Yes),
         |x: Option<Box<ast::Item>>| x
     );
 
