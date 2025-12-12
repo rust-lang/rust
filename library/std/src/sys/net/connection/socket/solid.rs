@@ -353,7 +353,6 @@ impl Socket {
         if raw == 0 { Ok(None) } else { Ok(Some(io::Error::from_raw_os_error(raw as i32))) }
     }
 
-    // This method is used by sys_common code to abstract over targets.
     pub fn as_raw(&self) -> c_int {
         self.as_raw_fd()
     }

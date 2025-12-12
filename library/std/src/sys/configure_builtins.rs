@@ -1,3 +1,7 @@
+//! The configure builtins provides runtime support compiler-builtin features
+//! which require dynamic initialization to work as expected, e.g. aarch64
+//! outline-atomics.
+
 /// Enable LSE atomic operations at startup, if supported.
 ///
 /// Linker sections are based on what [`ctor`] does, with priorities to run slightly before user
