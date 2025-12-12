@@ -30,7 +30,7 @@ impl<S: Stage> SingleAttributeParser<S> for ProcMacroDeriveParser {
         "https://doc.rust-lang.org/reference/procedural-macros.html#derive-macros"
     );
 
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
         let (trait_name, helper_attrs) = parse_derive_like(cx, args, true)?;
         Some(AttributeKind::ProcMacroDerive {
             trait_name: trait_name.expect("Trait name is mandatory, so it is present"),
@@ -49,7 +49,7 @@ impl<S: Stage> SingleAttributeParser<S> for RustcBuiltinMacroParser {
     const TEMPLATE: AttributeTemplate =
         template!(List: &["TraitName", "TraitName, attributes(name1, name2, ...)"]);
 
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
         let (builtin_name, helper_attrs) = parse_derive_like(cx, args, false)?;
         Some(AttributeKind::RustcBuiltinMacro { builtin_name, helper_attrs, span: cx.attr_span })
     }
@@ -57,7 +57,7 @@ impl<S: Stage> SingleAttributeParser<S> for RustcBuiltinMacroParser {
 
 fn parse_derive_like<S: Stage>(
     cx: &mut AcceptContext<'_, '_, S>,
-    args: &ArgParser<'_>,
+    args: &ArgParser,
     trait_name_mandatory: bool,
 ) -> Option<(Option<Symbol>, ThinVec<Symbol>)> {
     let Some(list) = args.list() else {

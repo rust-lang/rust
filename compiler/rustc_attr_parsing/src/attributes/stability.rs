@@ -267,7 +267,7 @@ impl<S: Stage> AttributeParser<S> for ConstStabilityParser {
 /// `name = value`
 fn insert_value_into_option_or_error<S: Stage>(
     cx: &AcceptContext<'_, '_, S>,
-    param: &MetaItemParser<'_>,
+    param: &MetaItemParser,
     item: &mut Option<Symbol>,
     name: Ident,
 ) -> Option<()> {
@@ -289,7 +289,7 @@ fn insert_value_into_option_or_error<S: Stage>(
 /// its stability information.
 pub(crate) fn parse_stability<S: Stage>(
     cx: &AcceptContext<'_, '_, S>,
-    args: &ArgParser<'_>,
+    args: &ArgParser,
 ) -> Option<(Symbol, StabilityLevel)> {
     let mut feature = None;
     let mut since = None;
@@ -365,7 +365,7 @@ pub(crate) fn parse_stability<S: Stage>(
 /// attribute, and return the feature name and its stability information.
 pub(crate) fn parse_unstability<S: Stage>(
     cx: &AcceptContext<'_, '_, S>,
-    args: &ArgParser<'_>,
+    args: &ArgParser,
 ) -> Option<(Symbol, StabilityLevel)> {
     let mut feature = None;
     let mut reason = None;
