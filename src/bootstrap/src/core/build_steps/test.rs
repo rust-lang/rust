@@ -3959,13 +3959,14 @@ impl Step for CodegenGCC {
             .arg("test")
             .arg("--use-backend")
             .arg("gcc")
+            .arg("--gcc-path")
+            .arg(gcc.libgccjit.parent().unwrap())
             .arg("--out-dir")
             .arg(builder.stage_out(compilers.build_compiler(), Mode::Codegen).join("cg_gcc"))
             .arg("--release")
             .arg("--mini-tests")
             .arg("--std-tests");
 
-        cargo.arg("--gcc-path").arg(gcc.libgccjit.parent().unwrap());
         cargo.args(builder.config.test_args());
 
         cargo.into_cmd().run(builder);
