@@ -768,6 +768,17 @@ fn configure_cmake(
         .collect::<Vec<String>>()
         .join(" ")
         .into();
+
+    // If we use an external clang as opposed to building our own llvm_clang, than that clang will
+    // come with it's own set of default include directories, which are based on a potentially older
+    // LLVM. This can cause issues, so we overwrite it to include headers based on our
+    // `src/llvm-project` submodule instead.
+    // FIXME(offload): With LLVM-22 we hopefully won't need an external clang anymore.
+    let base = builder.llvm_out(target).join("include");
+    let inc_dir = base.display();
+    if builder.config.llvm_offload && !builder.config.llvm_clang {
+        cflags.push(format!(" -I {inc_dir}"));
+    }
     if let Some(ref s) = builder.config.llvm_cflags {
         cflags.push(" ");
         cflags.push(s);
@@ -778,11 +789,8 @@ fn configure_cmake(
     if builder.config.llvm_clang_cl.is_some() {
         cflags.push(format!(" --target={target}"));
     }
-    // Manuel
-    let base = builder.llvm_out(target).join("include");
-    let inc_dir = base.display();
-    cflags.push(format!(" -I {inc_dir}"));
     cfg.define("CMAKE_C_FLAGS", cflags);
+
     let mut cxxflags: OsString = builder
         .cc_handled_clags(target, CLang::Cxx)
         .into_iter()
@@ -795,7 +803,9 @@ fn configure_cmake(
         .collect::<Vec<String>>()
         .join(" ")
         .into();
-    cxxflags.push(format!(" -I {inc_dir}"));
+    if builder.config.llvm_offload && !builder.config.llvm_clang {
+        cxxflags.push(format!(" -I {inc_dir}"));
+    }
     if let Some(ref s) = builder.config.llvm_cxxflags {
         cxxflags.push(" ");
         cxxflags.push(s);
