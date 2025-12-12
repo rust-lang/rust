@@ -901,7 +901,7 @@ fn get_var(var_base: &str, host: &str, target: &str) -> Option<OsString> {
 // a Clang_DIR bootstrap option, which allows us tell CMake to use an external clang for these two
 // runtimes. This external clang will try to use it's own (older) include dirs when building our
 // in-tree LLVM submodule, which will cause build failures. To prevent those, we now also
-// explicitely set our include dirs.
+// explicitly set our include dirs.
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct OmpOffload {
     pub target: TargetSelection,
