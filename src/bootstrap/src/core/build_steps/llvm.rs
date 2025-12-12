@@ -894,7 +894,7 @@ fn get_var(var_base: &str, host: &str, target: &str) -> Option<OsString> {
 // FIXME(offload): In an ideal world, we would just enable the offload runtime in our previous LLVM
 // build step. For now, we still depend on the openmp runtime since we use some of it's API, so we
 // build both. However, when building those runtimes as part of the LLVM step, then LLVM's cmake
-// implicitely assumes that Clang has also been build and will try to use it. In the Rust CI, we
+// implicitly assumes that Clang has also been build and will try to use it. In the Rust CI, we
 // don't always build clang (due to compile times), but instead use a slightly older external clang.
 // LLVM tries to remove this build dependency of offload/openmp on Clang for LLVM-22, so in the
 // future we might be able to integrate this step into the LLVM step. For now, we instead introduce
