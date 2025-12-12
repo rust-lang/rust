@@ -122,7 +122,7 @@ pub extern "C" fn __rust_abort() {
     abort_internal();
 }
 
-pub use crate::sys_common::{AsInner, FromInner, IntoInner};
+pub use crate::sys::{AsInner, FromInner, IntoInner};
 
 pub trait TryIntoInner<Inner>: Sized {
     fn try_into_inner(self) -> Result<Inner, Self>;

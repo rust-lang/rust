@@ -1,7 +1,7 @@
 use crate::io;
+use crate::sys::IntoInner;
 use crate::sys::fd::FileDesc;
 use crate::sys::pipe::anon_pipe;
-use crate::sys_common::IntoInner;
 
 pub type AnonPipe = FileDesc;
 

@@ -1,8 +1,7 @@
 use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut};
 use crate::os::fd::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd};
 use crate::sys::fd::FileDesc;
-use crate::sys::map_motor_error;
-use crate::sys_common::{FromInner, IntoInner};
+use crate::sys::{FromInner, IntoInner, map_motor_error};
 
 #[derive(Debug)]
 pub struct AnonPipe(FileDesc);

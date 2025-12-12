@@ -3,8 +3,7 @@ use core::ops::Neg;
 
 use crate::cmp::Ordering;
 use crate::ptr::null;
-use crate::sys::c;
-use crate::sys_common::IntoInner;
+use crate::sys::{IntoInner, c};
 use crate::time::Duration;
 use crate::{fmt, mem};
 
