@@ -12,7 +12,7 @@ fn get<S: Stage>(
     cx: &AcceptContext<'_, '_, S>,
     name: Symbol,
     param_span: Span,
-    arg: &ArgParser<'_>,
+    arg: &ArgParser,
     item: &Option<Symbol>,
 ) -> Option<Symbol> {
     if item.is_some() {
@@ -68,7 +68,7 @@ impl<S: Stage> SingleAttributeParser<S> for DeprecationParser {
         NameValueStr: "reason"
     );
 
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
         let features = cx.features();
 
         let mut since = None;

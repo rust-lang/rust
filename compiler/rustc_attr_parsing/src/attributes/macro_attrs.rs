@@ -148,7 +148,7 @@ impl<S: Stage> SingleAttributeParser<S> for MacroExportParser {
         Error(Target::Crate),
     ]);
 
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
         let local_inner_macros = match args {
             ArgParser::NoArgs => false,
             ArgParser::List(list) => {
