@@ -912,19 +912,23 @@ impl Step for OmpOffload {
     #[allow(unused)]
     fn run(self, builder: &Builder<'_>) -> PathBuf {
         if builder.config.dry_run() {
-            return PathBuf::from("/");
+            return builder.config.tempdir().join("llvm-offload-dry-run");
         }
         let target = self.target;
 
         let LlvmResult { host_llvm_config, .. } = builder.ensure(Llvm { target: self.target });
 
-        let out_dir = builder.llvm_out(target);
+        let out_dir = builder.llvm_out(target).join("offload-outdir");
+        if std::fs::exists(&out_dir).is_ok_and(|x| x == false) {
+            std::fs::DirBuilder::new().create(&out_dir).unwrap();
+            dbg!("Created out subdir!");
+        }
         static STAMP_HASH_MEMO: OnceLock<String> = OnceLock::new();
         let smart_stamp_hash = STAMP_HASH_MEMO.get_or_init(|| {
             generate_smart_stamp_hash(
                 builder,
                 &builder.config.src.join("src/llvm-project/offload"),
-                builder.offload_info.sha().unwrap_or_default(),
+                builder.in_tree_llvm_info.sha().unwrap_or_default(),
             )
         });
         let stamp = BuildStamp::new(&out_dir).with_prefix("offload").add_stamp(smart_stamp_hash);
@@ -951,7 +955,7 @@ impl Step for OmpOffload {
         let _time = helpers::timeit(builder);
         t!(fs::create_dir_all(&out_dir));
 
-        builder.config.update_submodule(Path::new("src").join("llvm-project").to_str().unwrap());
+        builder.config.update_submodule("src/llvm-project");
         let mut cfg = cmake::Config::new(builder.src.join("src/llvm-project/runtimes/"));
         configure_cmake(builder, target, &mut cfg, true, LdFlags::default(), &[]);
 
