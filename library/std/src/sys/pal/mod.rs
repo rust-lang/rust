@@ -86,9 +86,3 @@ cfg_select! {
         pub use self::unsupported::*;
     }
 }
-
-pub const FULL_BACKTRACE_DEFAULT: bool = cfg_select! {
-    // Fuchsia components default to full backtrace.
-    target_os = "fuchsia" => true,
-    _ => false,
-};
