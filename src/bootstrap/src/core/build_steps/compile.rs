@@ -1598,8 +1598,8 @@ impl GccDylibSet {
             return;
         }
 
-        // <rustc>/lib
-        let lib_sysroot = builder.rustc_libdir(compiler);
+        // <rustc>/lib/<host-target>/codegen-backends
+        let cg_sysroot = builder.sysroot_codegen_backends(compiler);
 
         for (target, libgccjit) in &self.dylibs {
             let libgccjit = libgccjit.libgccjit();
@@ -1613,8 +1613,8 @@ impl GccDylibSet {
                 format!("Cannot find libgccjit at {}", libgccjit.display())
             );
 
-            // <rustc>/lib/rustlib/<target>/lib/libgccjit.so
-            let dest_dir = lib_sysroot.join("rustlib").join(target).join("lib");
+            // <cg-sysroot>/lib/<target>/libgccjit.so
+            let dest_dir = cg_sysroot.join("lib").join(target);
             t!(fs::create_dir_all(&dest_dir));
             let dst = dest_dir.join(target_filename);
             builder.copy_link(&actual_libgccjit_path, &dst, FileType::NativeLibrary);
