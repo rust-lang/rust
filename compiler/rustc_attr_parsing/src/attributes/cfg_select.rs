@@ -28,6 +28,33 @@ pub struct CfgSelectBranches {
     pub unreachable: Vec<(CfgSelectPredicate, TokenStream, Span)>,
 }
 
+impl CfgSelectBranches {
+    /// Removes the top-most branch for which `predicate` returns `true`,
+    /// or the wildcard if none of the reachable branches satisfied the predicate.
+    pub fn pop_first_match<F>(&mut self, predicate: F) -> Option<(TokenStream, Span)>
+    where
+        F: Fn(&CfgEntry) -> bool,
+    {
+        for (index, (cfg, _, _)) in self.reachable.iter().enumerate() {
+            if predicate(cfg) {
+                let matched = self.reachable.remove(index);
+                return Some((matched.1, matched.2));
+            }
+        }
+
+        self.wildcard.take().map(|(_, tts, span)| (tts, span))
+    }
+
+    /// Consume this value and iterate over all the `TokenStream`s that it stores.
+    pub fn into_iter_tts(self) -> impl Iterator<Item = (TokenStream, Span)> {
+        let it1 = self.reachable.into_iter().map(|(_, tts, span)| (tts, span));
+        let it2 = self.wildcard.into_iter().map(|(_, tts, span)| (tts, span));
+        let it3 = self.unreachable.into_iter().map(|(_, tts, span)| (tts, span));
+
+        it1.chain(it2).chain(it3)
+    }
+}
+
 pub fn parse_cfg_select(
     p: &mut Parser<'_>,
     sess: &Session,
