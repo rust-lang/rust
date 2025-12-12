@@ -1211,7 +1211,8 @@ impl Step for Src {
 }
 
 /// Tarball for people who want to build rustc and other components from the source.
-/// Does not contain GPL code for licensing reasons.
+/// Does not contain GPL code, which is separated into `PlainSourceTarballGpl`
+/// for licensing reasons.
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct PlainSourceTarball;
 
@@ -1261,7 +1262,39 @@ impl Step for PlainSourceTarball {
     }
 }
 
-fn prepare_source_tarball(builder: &Builder<'_>, name: &str, exclude_dirs: &[&str]) -> Tarball {
+/// Tarball with *all* source code for source builds, including GPL-licensed code.
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+pub struct PlainSourceTarballGpl;
+
+impl Step for PlainSourceTarballGpl {
+    /// Produces the location of the tarball generated
+    type Output = GeneratedTarball;
+    const IS_HOST: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.alias("rustc-src-gpl")
+    }
+
+    fn is_default_step(builder: &Builder<'_>) -> bool {
+        builder.config.rust_dist_src
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(PlainSourceTarballGpl);
+    }
+
+    /// Creates the plain source tarball
+    fn run(self, builder: &Builder<'_>) -> GeneratedTarball {
+        let tarball = prepare_source_tarball(builder, "src-gpl", &[]);
+        tarball.bare()
+    }
+}
+
+fn prepare_source_tarball<'a>(
+    builder: &'a Builder<'a>,
+    name: &str,
+    exclude_dirs: &[&str],
+) -> Tarball<'a> {
     // NOTE: This is a strange component in a lot of ways. It uses `src` as the target, which
     // means neither rustup nor rustup-toolchain-install-master know how to download it.
     // It also contains symbolic links, unlike other any other dist tarball.
