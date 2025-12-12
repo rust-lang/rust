@@ -360,6 +360,11 @@ pub(super) enum AssembleCandidatesFrom {
     /// user-written and built-in impls. We only expect `ParamEnv` and `AliasBound`
     /// candidates to be assembled.
     EnvAndBounds,
+    /// FIXME: only for the fast path of normalizes-to goal. The fast path is incomplete and
+    /// we shouldn't force ambiguity if no candidate exist when assembling for opaque self_ty.
+    /// See `try_assemble_bounds_via_registered_opaques`.
+    EnvAndBoundsFastPath,
+    Object,
     Impl,
 }
 
@@ -368,6 +373,8 @@ impl AssembleCandidatesFrom {
         match self {
             AssembleCandidatesFrom::All => true,
             AssembleCandidatesFrom::EnvAndBounds => false,
+            AssembleCandidatesFrom::EnvAndBoundsFastPath => false,
+            AssembleCandidatesFrom::Object => false,
             AssembleCandidatesFrom::Impl => true,
         }
     }
@@ -458,25 +465,21 @@ where
                     self.assemble_object_bound_candidates(goal, &mut candidates);
                 }
             }
-            AssembleCandidatesFrom::EnvAndBounds => {
+            AssembleCandidatesFrom::EnvAndBounds | AssembleCandidatesFrom::EnvAndBoundsFastPath => {
                 self.assemble_alias_bound_candidates(goal, &mut candidates);
                 self.assemble_param_env_candidates(
                     goal,
                     &mut candidates,
                     &mut failed_candidate_info,
                 );
-                // This is somewhat inconsistent and may make #57893 slightly easier to exploit.
-                // However, it matches the behavior of the old solver. See
-                // `tests/ui/traits/next-solver/normalization-shadowing/use_object_if_empty_env.rs`.
-                if matches!(normalized_self_ty.kind(), ty::Dynamic(..))
-                    && !candidates.iter().any(|c| matches!(c.source, CandidateSource::ParamEnv(_)))
-                {
-                    self.assemble_object_bound_candidates(goal, &mut candidates);
-                }
+            }
+            AssembleCandidatesFrom::Object => {
+                self.assemble_object_bound_candidates(goal, &mut candidates);
             }
             AssembleCandidatesFrom::Impl => {
                 self.assemble_builtin_impl_candidates(goal, &mut candidates);
                 self.assemble_impl_candidates(goal, &mut candidates);
+                self.assemble_object_bound_candidates(goal, &mut candidates);
             }
         }
 
@@ -1096,7 +1099,12 @@ where
             });
         }
 
-        if candidates.is_empty() {
+        // If we're on the fast path, it's possible that we still have applicable impl candidates.
+        // We should return empty list here rather than bail out with fallback candidate.
+        if candidates.is_empty()
+            && !matches!(assemble_from, AssembleCandidatesFrom::EnvAndBoundsFastPath)
+        {
+            debug!("no candidates found via registered opaques for self ty {self_ty:?}");
             let source = CandidateSource::BuiltinImpl(BuiltinImplSource::Misc);
             let certainty = Certainty::Maybe {
                 cause: MaybeCause::Ambiguity,

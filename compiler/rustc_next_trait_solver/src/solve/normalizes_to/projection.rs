@@ -48,7 +48,7 @@ where
         &mut self,
         goal: Goal<I, ty::NormalizesTo<I>>,
     ) -> QueryResult<I> {
-        // Fast path via preferred env, alias bound and object candidates.
+        // Fast path via preferred env and alias bound candidates.
         if let Some(result) = self.assemble_and_merge_env_candidates(goal) {
             return result;
         }
@@ -64,6 +64,18 @@ where
         if let Some(proven_via) = proven_via {
             match proven_via {
                 TraitGoalProvenVia::ParamEnv | TraitGoalProvenVia::AliasBound => {
+                    // This is somewhat inconsistent and may make #57893 slightly easier to exploit.
+                    // However, it matches the behavior of the old solver. See
+                    // `tests/ui/traits/next-solver/normalization-shadowing/use_object_if_empty_env.rs`.
+                    // FIXME: predicates with opaque self type rely on assembly call to force
+                    // ambiguous fallback candidate. It happens to be this object assembly call
+                    // here.
+                    let (candidates, _) =
+                        self.assemble_and_evaluate_candidates(goal, AssembleCandidatesFrom::Object);
+                    if !candidates.is_empty() {
+                        debug_assert_eq!(candidates.len(), 1);
+                        return Ok(candidates[0].result);
+                    }
                     // If the trait goal has been proven by using the environment, we want to treat
                     // aliases as rigid if there are no applicable projection bounds in the environment.
                     self.probe(|&result| ProbeKind::RigidAlias { result }).enter(|this| {
@@ -95,8 +107,8 @@ where
         // Even when a trait bound has been proven using a where-bound, we
         // still need to consider alias-bounds for normalization, see
         // `tests/ui/next-solver/alias-bound-shadowed-by-env.rs`.
-        let (mut candidates, _) =
-            self.assemble_and_evaluate_candidates(goal, AssembleCandidatesFrom::EnvAndBounds);
+        let (mut candidates, _) = self
+            .assemble_and_evaluate_candidates(goal, AssembleCandidatesFrom::EnvAndBoundsFastPath);
         debug!(?candidates);
 
         if candidates.is_empty() {
