@@ -341,15 +341,6 @@ pub(crate) struct CollectedTestDesc {
     pub(crate) should_fail: ShouldFail,
 }
 
-/// Whether console output should be colored or not.
-#[derive(Copy, Clone, Default, Debug)]
-pub enum ColorConfig {
-    #[default]
-    AutoColor,
-    AlwaysColor,
-    NeverColor,
-}
-
 /// Tests with `//@ should-fail` are tests of compiletest itself, and should
 /// be reported as successful if and only if they would have _failed_.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]

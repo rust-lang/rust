@@ -546,6 +546,14 @@ fn opts() -> Vec<RustcOptGroup> {
         opt(Unstable, FlagMulti, "", "no-run", "Compile doctests without running them", ""),
         opt(
             Unstable,
+            Opt,
+            "",
+            "merge-doctests",
+            "Force all doctests to be compiled as a single binary, instead of one binary per test. If merging fails, rustdoc will emit a hard error.",
+            "yes|no|auto",
+        ),
+        opt(
+            Unstable,
             Multi,
             "",
             "remap-path-prefix",
@@ -822,7 +830,7 @@ fn main_args(early_dcx: &mut EarlyDiagCtxt, at_args: &[String]) {
         options.should_test || output_format == config::OutputFormat::Doctest,
         config::markdown_input(&input),
     ) {
-        (true, Some(_)) => return wrap_return(dcx, doctest::test_markdown(&input, options)),
+        (true, Some(_)) => return wrap_return(dcx, doctest::test_markdown(&input, options, dcx)),
         (true, None) => return doctest::run(dcx, input, options),
         (false, Some(md_input)) => {
             let md_input = md_input.to_owned();

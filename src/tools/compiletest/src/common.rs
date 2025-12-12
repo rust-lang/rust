@@ -9,7 +9,6 @@ use camino::{Utf8Path, Utf8PathBuf};
 use semver::Version;
 
 use crate::edition::Edition;
-use crate::executor::ColorConfig;
 use crate::fatal;
 use crate::util::{Utf8PathBufExt, add_dylib_path, string_enum};
 
@@ -597,11 +596,6 @@ pub struct Config {
     /// FIXME: this is *way* too coarse; the user can't select *which* info to verbosely dump.
     pub verbose: bool,
 
-    /// Whether to use colors in test output.
-    ///
-    /// Note: the exact control mechanism is delegated to [`colored`].
-    pub color: ColorConfig,
-
     /// Where to find the remote test client process, if we're using it.
     ///
     /// Note: this is *only* used for target platform executables created by `run-make` test
@@ -622,9 +616,6 @@ pub struct Config {
     /// diagnostics but are missing `run-rustfix` annotations. The generated coverage file is
     /// created in `$test_suite_build_root/rustfix_missing_coverage.txt`
     pub rustfix_coverage: bool,
-
-    /// Whether to run `tidy` (html-tidy) when a rustdoc test fails.
-    pub has_html_tidy: bool,
 
     /// Whether to run `enzyme` autodiff tests.
     pub has_enzyme: bool,

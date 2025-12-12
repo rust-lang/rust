@@ -1583,7 +1583,6 @@ ui/macros/issue-6596-1.rs
 ui/macros/issue-6596-2.rs
 ui/macros/issue-68058.rs
 ui/macros/issue-68060.rs
-ui/macros/issue-69396-const-no-type-in-macro.rs
 ui/macros/issue-69838-mods-relative-to-included-path.rs
 ui/macros/issue-70446.rs
 ui/macros/issue-75982-foreign-macro-weird-mod.rs
@@ -2100,7 +2099,6 @@ ui/parser/issues/issue-88770.rs
 ui/parser/issues/issue-88818.rs
 ui/parser/issues/issue-89388.rs
 ui/parser/issues/issue-89396.rs
-ui/parser/issues/issue-89574.rs
 ui/parser/issues/issue-89971-outer-attr-following-inner-attr-ice.rs
 ui/parser/issues/issue-90728.rs
 ui/parser/issues/issue-90993.rs
@@ -2880,7 +2878,6 @@ ui/type/type-check/issue-88577-check-fn-with-more-than-65535-arguments.rs
 ui/typeck/auxiliary/issue-29181.rs
 ui/typeck/auxiliary/issue-36708.rs
 ui/typeck/auxiliary/issue-81943-lib.rs
-ui/typeck/issue-100164.rs
 ui/typeck/issue-100246.rs
 ui/typeck/issue-100285.rs
 ui/typeck/issue-103899.rs
@@ -2937,7 +2934,6 @@ ui/typeck/issue-74933.rs
 ui/typeck/issue-75883.rs
 ui/typeck/issue-75889.rs
 ui/typeck/issue-7813.rs
-ui/typeck/issue-79040.rs
 ui/typeck/issue-80207-unsized-return.rs
 ui/typeck/issue-80779.rs
 ui/typeck/issue-81293.rs

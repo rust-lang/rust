@@ -14,6 +14,7 @@ impl<T: ?Sized> Mirror for () {
 
 pub trait First {
     async fn first() -> <() as Mirror>::Assoc;
+    //~^ ERROR type annotations needed
 }
 
 impl First for () {

@@ -1158,6 +1158,12 @@ div.where {
 	margin-left: calc(var(--docblock-indent) + var(--impl-items-indent));
 }
 
+#synthetic-implementors-list:not(.loaded), #implementors-list:not(.loaded) {
+	/* To prevent layout shift when loading the page with extra implementors being loaded
+	   from JS, we hide the list until it's complete. */
+	display: none;
+}
+
 .item-info code {
 	font-size: 0.875rem;
 }
@@ -2975,6 +2981,9 @@ in src-script.js and main.js
 .methods > .toggle > summary
 {
 	margin-bottom: 0.75em;
+}
+.negative-marker {
+	display: none;
 }
 
 .variants > .docblock,

@@ -1,12 +1,11 @@
 use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
 use std::ffi::OsString;
-use std::fs::{self, File, create_dir_all};
+use std::fs::{self, create_dir_all};
 use std::hash::{DefaultHasher, Hash, Hasher};
 use std::io::prelude::*;
-use std::io::{self, BufReader};
 use std::process::{Child, Command, ExitStatus, Output, Stdio};
-use std::{env, fmt, iter, str};
+use std::{env, fmt, io, iter, str};
 
 use build_helper::fs::remove_and_create_dir_all;
 use camino::{Utf8Path, Utf8PathBuf};
@@ -23,9 +22,9 @@ use crate::directives::TestProps;
 use crate::errors::{Error, ErrorKind, load_errors};
 use crate::output_capture::ConsoleOut;
 use crate::read2::{Truncated, read2_abbreviated};
-use crate::runtest::compute_diff::{DiffLine, make_diff, write_diff, write_filtered_diff};
+use crate::runtest::compute_diff::{DiffLine, make_diff, write_diff};
 use crate::util::{Utf8PathBufExt, add_dylib_path, static_regex};
-use crate::{ColorConfig, help, json, stamp_file_path, warning};
+use crate::{json, stamp_file_path};
 
 // Helper modules that implement test running logic for each test suite.
 // tidy-alphabetical-start
@@ -2163,161 +2162,6 @@ impl<'test> TestCx<'test> {
     fn charset() -> &'static str {
         // FreeBSD 10.1 defaults to GDB 6.1.1 which doesn't support "auto" charset
         if cfg!(target_os = "freebsd") { "ISO-8859-1" } else { "UTF-8" }
-    }
-
-    fn compare_to_default_rustdoc(&self, out_dir: &Utf8Path) {
-        if !self.config.has_html_tidy {
-            return;
-        }
-        writeln!(self.stdout, "info: generating a diff against nightly rustdoc");
-
-        let suffix =
-            self.safe_revision().map_or("nightly".into(), |path| path.to_owned() + "-nightly");
-        let compare_dir = output_base_dir(self.config, self.testpaths, Some(&suffix));
-        remove_and_create_dir_all(&compare_dir).unwrap_or_else(|e| {
-            panic!("failed to remove and recreate output directory `{compare_dir}`: {e}")
-        });
-
-        // We need to create a new struct for the lifetimes on `config` to work.
-        let new_rustdoc = TestCx {
-            config: &Config {
-                // FIXME: use beta or a user-specified rustdoc instead of
-                // hardcoding the default toolchain
-                rustdoc_path: Some("rustdoc".into()),
-                // Needed for building auxiliary docs below
-                rustc_path: "rustc".into(),
-                ..self.config.clone()
-            },
-            ..*self
-        };
-
-        let output_file = TargetLocation::ThisDirectory(new_rustdoc.aux_output_dir_name());
-        let mut rustc = new_rustdoc.make_compile_args(
-            &new_rustdoc.testpaths.file,
-            output_file,
-            Emit::None,
-            AllowUnused::Yes,
-            LinkToAux::Yes,
-            Vec::new(),
-        );
-        let aux_dir = new_rustdoc.aux_output_dir();
-        new_rustdoc.build_all_auxiliary(&aux_dir, &mut rustc);
-
-        let proc_res = new_rustdoc.document(&compare_dir, DocKind::Html);
-        if !proc_res.status.success() {
-            writeln!(self.stderr, "failed to run nightly rustdoc");
-            return;
-        }
-
-        #[rustfmt::skip]
-        let tidy_args = [
-            "--new-blocklevel-tags", "rustdoc-search,rustdoc-toolbar,rustdoc-topbar",
-            "--indent", "yes",
-            "--indent-spaces", "2",
-            "--wrap", "0",
-            "--show-warnings", "no",
-            "--markup", "yes",
-            "--quiet", "yes",
-            "-modify",
-        ];
-        let tidy_dir = |dir| {
-            for entry in walkdir::WalkDir::new(dir) {
-                let entry = entry.expect("failed to read file");
-                if entry.file_type().is_file()
-                    && entry.path().extension().and_then(|p| p.to_str()) == Some("html")
-                {
-                    let status =
-                        Command::new("tidy").args(&tidy_args).arg(entry.path()).status().unwrap();
-                    // `tidy` returns 1 if it modified the file.
-                    assert!(status.success() || status.code() == Some(1));
-                }
-            }
-        };
-        tidy_dir(out_dir);
-        tidy_dir(&compare_dir);
-
-        let pager = {
-            let output = Command::new("git").args(&["config", "--get", "core.pager"]).output().ok();
-            output.and_then(|out| {
-                if out.status.success() {
-                    Some(String::from_utf8(out.stdout).expect("invalid UTF8 in git pager"))
-                } else {
-                    None
-                }
-            })
-        };
-
-        let diff_filename = format!("build/tmp/rustdoc-compare-{}.diff", std::process::id());
-
-        if !write_filtered_diff(
-            self,
-            &diff_filename,
-            out_dir,
-            &compare_dir,
-            self.config.verbose,
-            |file_type, extension| {
-                file_type.is_file() && (extension == Some("html") || extension == Some("js"))
-            },
-        ) {
-            return;
-        }
-
-        match self.config.color {
-            ColorConfig::AlwaysColor => colored::control::set_override(true),
-            ColorConfig::NeverColor => colored::control::set_override(false),
-            _ => {}
-        }
-
-        if let Some(pager) = pager {
-            let pager = pager.trim();
-            if self.config.verbose {
-                writeln!(self.stderr, "using pager {}", pager);
-            }
-            let output = Command::new(pager)
-                // disable paging; we want this to be non-interactive
-                .env("PAGER", "")
-                .stdin(File::open(&diff_filename).unwrap())
-                // Capture output and print it explicitly so it will in turn be
-                // captured by output-capture.
-                .output()
-                .unwrap();
-            assert!(output.status.success());
-            writeln!(self.stdout, "{}", String::from_utf8_lossy(&output.stdout));
-            writeln!(self.stderr, "{}", String::from_utf8_lossy(&output.stderr));
-        } else {
-            warning!("no pager configured, falling back to unified diff");
-            help!(
-                "try configuring a git pager (e.g. `delta`) with \
-                `git config --global core.pager delta`"
-            );
-            let mut out = io::stdout();
-            let mut diff = BufReader::new(File::open(&diff_filename).unwrap());
-            let mut line = Vec::new();
-            loop {
-                line.truncate(0);
-                match diff.read_until(b'\n', &mut line) {
-                    Ok(0) => break,
-                    Ok(_) => {}
-                    Err(e) => writeln!(self.stderr, "ERROR: {:?}", e),
-                }
-                match String::from_utf8(line.clone()) {
-                    Ok(line) => {
-                        if line.starts_with('+') {
-                            write!(&mut out, "{}", line.green()).unwrap();
-                        } else if line.starts_with('-') {
-                            write!(&mut out, "{}", line.red()).unwrap();
-                        } else if line.starts_with('@') {
-                            write!(&mut out, "{}", line.blue()).unwrap();
-                        } else {
-                            out.write_all(line.as_bytes()).unwrap();
-                        }
-                    }
-                    Err(_) => {
-                        write!(&mut out, "{}", String::from_utf8_lossy(&line).reversed()).unwrap();
-                    }
-                }
-            }
-        };
     }
 
     fn get_lines(&self, path: &Utf8Path, mut other_files: Option<&mut Vec<String>>) -> Vec<usize> {

@@ -38,6 +38,20 @@ help: consider adding an explicit lifetime bound
 LL | enum RefDouble<'a, 'b, T: 'b> {
    |                         ++++
 
-error: aborting due to 3 previous errors
+error[E0309]: the parameter type `T` may not live long enough
+  --> $DIR/regions-enum-not-wf.rs:35:23
+   |
+LL | enum RefDouble<'a, 'b, T> {
+   |                    -- the parameter type `T` must be valid for the lifetime `'b` as defined here...
+LL |     RefDoubleVariant1(&'a RequireOutlives<'b, T>),
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^ ...so that the type `T` will meet its required lifetime bounds
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: consider adding an explicit lifetime bound
+   |
+LL | enum RefDouble<'a, 'b, T: 'b> {
+   |                         ++++
+
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0309`.

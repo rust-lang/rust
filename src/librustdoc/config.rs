@@ -63,6 +63,15 @@ pub(crate) enum InputMode {
     HasFile(Input),
 }
 
+/// Whether to run multiple doctests in the same binary.
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
+pub(crate) enum MergeDoctests {
+    #[default]
+    Never,
+    Always,
+    Auto,
+}
+
 /// Configuration options for rustdoc.
 #[derive(Clone)]
 pub(crate) struct Options {
@@ -121,6 +130,8 @@ pub(crate) struct Options {
     /// Optional path to persist the doctest executables to, defaults to a
     /// temporary directory if not set.
     pub(crate) persist_doctests: Option<PathBuf>,
+    /// Whether to merge
+    pub(crate) merge_doctests: MergeDoctests,
     /// Runtool to run doctests with
     pub(crate) test_runtool: Option<String>,
     /// Arguments to pass to the runtool
@@ -801,6 +812,8 @@ impl Options {
             Ok(result) => result,
             Err(e) => dcx.fatal(format!("--merge option error: {e}")),
         };
+        let merge_doctests = parse_merge_doctests(matches, edition, dcx);
+        tracing::debug!("merge_doctests: {merge_doctests:?}");
 
         if generate_link_to_definition && (show_coverage || output_format != OutputFormat::Html) {
             dcx.struct_warn(
@@ -852,6 +865,7 @@ impl Options {
             crate_version,
             test_run_directory,
             persist_doctests,
+            merge_doctests,
             test_runtool,
             test_runtool_args,
             test_builder,
@@ -1046,5 +1060,22 @@ fn parse_merge(m: &getopts::Matches) -> Result<ShouldMerge, &'static str> {
         }
         Some("finalize") => Ok(ShouldMerge { read_rendered_cci: false, write_rendered_cci: true }),
         Some(_) => Err("argument to --merge must be `none`, `shared`, or `finalize`"),
+    }
+}
+
+fn parse_merge_doctests(
+    m: &getopts::Matches,
+    edition: Edition,
+    dcx: DiagCtxtHandle<'_>,
+) -> MergeDoctests {
+    match m.opt_str("merge-doctests").as_deref() {
+        Some("y") | Some("yes") | Some("on") | Some("true") => MergeDoctests::Always,
+        Some("n") | Some("no") | Some("off") | Some("false") => MergeDoctests::Never,
+        Some("auto") => MergeDoctests::Auto,
+        None if edition < Edition::Edition2024 => MergeDoctests::Never,
+        None => MergeDoctests::Auto,
+        Some(_) => {
+            dcx.fatal("argument to --merge-doctests must be a boolean (true/false) or 'auto'")
+        }
     }
 }

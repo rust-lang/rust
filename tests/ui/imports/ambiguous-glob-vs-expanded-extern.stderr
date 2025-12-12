@@ -8,10 +8,13 @@ LL |     glob_vs_expanded::mac!();
    = note: for more information, see issue #114095 <https://github.com/rust-lang/rust/issues/114095>
    = note: ambiguous because of a conflict between a name from a glob import and a macro-expanded name in the same module during import or macro resolution
 note: `mac` could refer to the macro defined here
-  --> $DIR/auxiliary/glob-vs-expanded.rs:11:1
+  --> $DIR/auxiliary/glob-vs-expanded.rs:9:13
    |
+LL |     () => { pub macro mac() {} }
+   |             ^^^^^^^^^^^^^
+LL | }
 LL | define_mac!();
-   | ^^^^^^^^^^^^^
+   | ------------- in this macro invocation
 note: `mac` could also refer to the macro defined here
   --> $DIR/auxiliary/glob-vs-expanded.rs:5:9
    |
@@ -33,10 +36,13 @@ LL |     glob_vs_expanded::mac!();
    = note: for more information, see issue #114095 <https://github.com/rust-lang/rust/issues/114095>
    = note: ambiguous because of a conflict between a name from a glob import and a macro-expanded name in the same module during import or macro resolution
 note: `mac` could refer to the macro defined here
-  --> $DIR/auxiliary/glob-vs-expanded.rs:11:1
+  --> $DIR/auxiliary/glob-vs-expanded.rs:9:13
    |
+LL |     () => { pub macro mac() {} }
+   |             ^^^^^^^^^^^^^
+LL | }
 LL | define_mac!();
-   | ^^^^^^^^^^^^^
+   | ------------- in this macro invocation
 note: `mac` could also refer to the macro defined here
   --> $DIR/auxiliary/glob-vs-expanded.rs:5:9
    |

@@ -29,6 +29,10 @@ nav.sub {
 	display: none;
 }
 
+#synthetic-implementors-list:not(.loaded), #implementors-list:not(.loaded) {
+	display: block;
+}
+
 /* Begin: styles for themes
 	Keep the default light and dark themes synchronized with the ones
 	in rustdoc.css */

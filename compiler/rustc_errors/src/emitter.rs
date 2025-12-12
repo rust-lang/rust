@@ -474,9 +474,12 @@ pub trait Emitter {
             .chain(span.span_labels().iter().map(|sp_label| sp_label.span))
             .filter_map(|sp| {
                 if !sp.is_dummy() && source_map.is_imported(sp) {
-                    let maybe_callsite = sp.source_callsite();
-                    if sp != maybe_callsite {
-                        return Some((sp, maybe_callsite));
+                    let mut span = sp;
+                    while let Some(callsite) = span.parent_callsite() {
+                        span = callsite;
+                        if !source_map.is_imported(span) {
+                            return Some((sp, span));
+                        }
                     }
                 }
                 None

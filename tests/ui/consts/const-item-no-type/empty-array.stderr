@@ -1,11 +1,11 @@
 error[E0282]: type annotations needed
-  --> $DIR/issue-89574.rs:2:25
+  --> $DIR/empty-array.rs:2:25
    |
 LL |     const EMPTY_ARRAY = [];
    |                         ^^ cannot infer type
 
 error: missing type for `const` item
-  --> $DIR/issue-89574.rs:2:22
+  --> $DIR/empty-array.rs:2:22
    |
 LL |     const EMPTY_ARRAY = [];
    |                      ^
