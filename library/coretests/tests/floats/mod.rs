@@ -1557,7 +1557,7 @@ float_test! {
     name: exp,
     attrs: {
         const: #[cfg(false)],
-        f16: #[cfg(all(not(miri), target_has_reliable_f16_math, not(bootstrap_cg_clif)))],
+        f16: #[cfg(all(not(miri), target_has_reliable_f16_math))],
         f128: #[cfg(all(not(miri), target_has_reliable_f128_math))],
     },
     test<Float> {
@@ -1578,7 +1578,7 @@ float_test! {
     name: exp2,
     attrs: {
         const: #[cfg(false)],
-        f16: #[cfg(all(not(miri), target_has_reliable_f16_math, not(bootstrap_cg_clif)))],
+        f16: #[cfg(all(not(miri), target_has_reliable_f16_math))],
         f128: #[cfg(all(not(miri), target_has_reliable_f128_math))],
     },
     test<Float> {
@@ -1598,7 +1598,7 @@ float_test! {
     name: ln,
     attrs: {
         const: #[cfg(false)],
-        f16: #[cfg(all(not(miri), target_has_reliable_f16_math, not(bootstrap_cg_clif)))],
+        f16: #[cfg(all(not(miri), target_has_reliable_f16_math))],
         f128: #[cfg(all(not(miri), target_has_reliable_f128_math))],
     },
     test<Float> {
@@ -1620,7 +1620,7 @@ float_test! {
     name: log_generic,
     attrs: {
         const: #[cfg(false)],
-        f16: #[cfg(all(not(miri), target_has_reliable_f16_math, not(bootstrap_cg_clif)))],
+        f16: #[cfg(all(not(miri), target_has_reliable_f16_math))],
         f128: #[cfg(all(not(miri), target_has_reliable_f128_math))],
     },
     test<Float> {
@@ -1645,7 +1645,7 @@ float_test! {
     name: log2,
     attrs: {
         const: #[cfg(false)],
-        f16: #[cfg(all(not(miri), target_has_reliable_f16_math, not(bootstrap_cg_clif)))],
+        f16: #[cfg(all(not(miri), target_has_reliable_f16_math))],
         f128: #[cfg(all(not(miri), target_has_reliable_f128_math))],
     },
     test<Float> {
@@ -1668,7 +1668,7 @@ float_test! {
     name: log10,
     attrs: {
         const: #[cfg(false)],
-        f16: #[cfg(all(not(miri), target_has_reliable_f16_math, not(bootstrap_cg_clif)))],
+        f16: #[cfg(all(not(miri), target_has_reliable_f16_math))],
         f128: #[cfg(all(not(miri), target_has_reliable_f128_math))],
     },
     test<Float> {
@@ -1706,8 +1706,8 @@ float_test! {
         assert_biteq!(neg_inf.asinh(), neg_inf);
         assert!(nan.asinh().is_nan());
         assert!((-0.0 as Float).asinh().is_sign_negative());
-        assert_approx_eq!((2.0 as Float).asinh(), 1.443635475178810342493276740273105f128, Float::ASINH_APPROX);
-        assert_approx_eq!((-2.0 as Float).asinh(), -1.443635475178810342493276740273105f128, Float::ASINH_APPROX);
+        assert_approx_eq!((2.0 as Float).asinh(), 1.443635475178810342493276740273105f128 as Float, Float::ASINH_APPROX);
+        assert_approx_eq!((-2.0 as Float).asinh(), -1.443635475178810342493276740273105f128 as Float, Float::ASINH_APPROX);
     }
 }
 
@@ -1728,8 +1728,8 @@ float_test! {
         assert_biteq!(inf.acosh(), inf);
         assert!(neg_inf.acosh().is_nan());
         assert!(nan.acosh().is_nan());
-        assert_approx_eq!((2.0 as Float).acosh(), 1.31695789692481670862504634730796844f128, Float::ACOSH_APPROX);
-        assert_approx_eq!((3.0 as Float).acosh(), 1.76274717403908605046521864995958461f128, Float::ACOSH_APPROX);
+        assert_approx_eq!((2.0 as Float).acosh(), 1.31695789692481670862504634730796844f128 as Float, Float::ACOSH_APPROX);
+        assert_approx_eq!((3.0 as Float).acosh(), 1.76274717403908605046521864995958461f128 as Float, Float::ACOSH_APPROX);
     }
 }
 
@@ -1754,8 +1754,8 @@ float_test! {
         assert!(neg_inf.atanh().is_nan());
         assert!(nan.atanh().is_nan());
 
-        assert_approx_eq!((0.5 as Float).atanh(), 0.54930614433405484569762261846126285f128, Float::ATANH_APPROX);
-        assert_approx_eq!((-0.5 as Float).atanh(), -0.54930614433405484569762261846126285f128, Float::ATANH_APPROX);
+        assert_approx_eq!((0.5 as Float).atanh(), 0.54930614433405484569762261846126285f128 as Float, Float::ATANH_APPROX);
+        assert_approx_eq!((-0.5 as Float).atanh(), -0.54930614433405484569762261846126285f128 as Float, Float::ATANH_APPROX);
     }
 }
 
