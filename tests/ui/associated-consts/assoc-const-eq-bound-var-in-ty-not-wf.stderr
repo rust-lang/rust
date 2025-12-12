@@ -1,14 +1,14 @@
 error: higher-ranked subtype error
-  --> $DIR/assoc-const-eq-bound-var-in-ty-not-wf.rs:21:13
+  --> $DIR/assoc-const-eq-bound-var-in-ty-not-wf.rs:21:19
    |
-LL |         K = { () }
-   |             ^^^^^^
+LL |         K = const { () }
+   |                   ^^^^^^
 
 error: higher-ranked subtype error
-  --> $DIR/assoc-const-eq-bound-var-in-ty-not-wf.rs:21:13
+  --> $DIR/assoc-const-eq-bound-var-in-ty-not-wf.rs:21:19
    |
-LL |         K = { () }
-   |             ^^^^^^
+LL |         K = const { () }
+   |                   ^^^^^^
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 

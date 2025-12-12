@@ -1,11 +1,13 @@
 error[E0271]: type mismatch resolving `<T as TraitWAssocConst>::A == 1`
-  --> $DIR/const-projection-err.rs:16:11
+  --> $DIR/const-projection-err.rs:12:11
    |
 LL |     foo::<T>();
-   |           ^ expected `0`, found `1`
+   |           ^ expected `1`, found `0`
    |
+   = note: expected constant `1`
+              found constant `0`
 note: required by a bound in `foo`
-  --> $DIR/const-projection-err.rs:13:28
+  --> $DIR/const-projection-err.rs:9:28
    |
 LL | fn foo<T: TraitWAssocConst<A = 1>>() {}
    |                            ^^^^^ required by this bound in `foo`

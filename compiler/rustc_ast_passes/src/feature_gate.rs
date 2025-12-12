@@ -517,6 +517,7 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
     gate_all!(fn_delegation, "functions delegation is not yet fully implemented");
     gate_all!(postfix_match, "postfix match is experimental");
     gate_all!(mut_ref, "mutable by-reference bindings are experimental");
+    gate_all!(min_generic_const_args, "unbraced const blocks as const args are experimental");
     gate_all!(global_registration, "global registration is experimental");
     gate_all!(return_type_notation, "return type notation is experimental");
     gate_all!(pin_ergonomics, "pinned reference syntax is experimental");

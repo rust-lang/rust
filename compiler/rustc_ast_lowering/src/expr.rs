@@ -489,7 +489,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     arg
                 };
 
-                let anon_const = AnonConst { id: node_id, value: const_value };
+                let anon_const = AnonConst {
+                    id: node_id,
+                    value: const_value,
+                    mgca_disambiguation: MgcaDisambiguation::AnonConst,
+                };
                 generic_args.push(AngleBracketedArg::Arg(GenericArg::Const(anon_const)));
             } else {
                 real_args.push(arg);
