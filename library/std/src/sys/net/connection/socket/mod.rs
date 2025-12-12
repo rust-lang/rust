@@ -7,7 +7,7 @@ use crate::mem::MaybeUninit;
 use crate::net::{
     Ipv4Addr, Ipv6Addr, Shutdown, SocketAddr, SocketAddrV4, SocketAddrV6, ToSocketAddrs,
 };
-use crate::sys::common::small_c_string::run_with_cstr;
+use crate::sys::helpers::run_with_cstr;
 use crate::sys::net::connection::each_addr;
 use crate::sys::{AsInner, FromInner};
 use crate::time::Duration;

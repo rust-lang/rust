@@ -6,8 +6,8 @@ use crate::fs::TryLockError;
 use crate::hash::Hash;
 use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut, SeekFrom};
 use crate::path::{Path, PathBuf};
+use crate::sys::pal::{helpers, unsupported};
 use crate::sys::time::SystemTime;
-use crate::sys::{helpers, unsupported};
 
 #[expect(dead_code)]
 const FILE_PERMISSIONS_MASK: u64 = r_efi::protocols::file::READ_ONLY;
@@ -440,7 +440,7 @@ mod uefi_fs {
     use crate::io;
     use crate::path::Path;
     use crate::ptr::NonNull;
-    use crate::sys::helpers::{self, UefiBox};
+    use crate::sys::pal::helpers::{self, UefiBox};
     use crate::sys::time::{self, SystemTime};
 
     pub(crate) struct File(NonNull<file::Protocol>);

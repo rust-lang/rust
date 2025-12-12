@@ -4,7 +4,7 @@ use crate::ffi::{CStr, OsStr, OsString};
 use crate::marker::PhantomData;
 use crate::os::wasi::prelude::*;
 use crate::path::{self, PathBuf};
-use crate::sys::common::small_c_string::run_path_with_cstr;
+use crate::sys::helpers::run_path_with_cstr;
 use crate::sys::unsupported;
 use crate::{fmt, io, str};
 
