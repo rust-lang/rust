@@ -75,7 +75,7 @@ use crate::attributes::traits::{
 };
 use crate::attributes::transparency::TransparencyParser;
 use crate::attributes::{AttributeParser as _, Combine, Single, WithoutArgs};
-use crate::parser::{ArgParser, PathParser};
+use crate::parser::{ArgParser, RefPathParser};
 use crate::session_diagnostics::{
     AttributeParseError, AttributeParseErrorReason, ParsedDescription, UnknownMetaItem,
 };
@@ -95,7 +95,7 @@ pub(super) struct GroupTypeInnerAccept<S: Stage> {
 }
 
 type AcceptFn<S> =
-    Box<dyn for<'sess, 'a> Fn(&mut AcceptContext<'_, 'sess, S>, &ArgParser<'a>) + Send + Sync>;
+    Box<dyn for<'sess, 'a> Fn(&mut AcceptContext<'_, 'sess, S>, &ArgParser) + Send + Sync>;
 type FinalizeFn<S> =
     Box<dyn Send + Sync + Fn(&mut FinalizeContext<'_, '_, S>) -> Option<AttributeKind>>;
 
@@ -713,7 +713,7 @@ pub(crate) struct FinalizeContext<'p, 'sess, S: Stage> {
     ///
     /// Usually, you should use normal attribute parsing logic instead,
     /// especially when making a *denylist* of other attributes.
-    pub(crate) all_attrs: &'p [PathParser<'p>],
+    pub(crate) all_attrs: &'p [RefPathParser<'p>],
 }
 
 impl<'p, 'sess: 'p, S: Stage> Deref for FinalizeContext<'p, 'sess, S> {

@@ -19,7 +19,7 @@ impl<S: Stage> SingleAttributeParser<S> for RustcLayoutScalarValidRangeStartPars
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Struct)]);
     const TEMPLATE: AttributeTemplate = template!(List: &["start"]);
 
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
         parse_single_integer(cx, args)
             .map(|n| AttributeKind::RustcLayoutScalarValidRangeStart(Box::new(n), cx.attr_span))
     }
@@ -34,7 +34,7 @@ impl<S: Stage> SingleAttributeParser<S> for RustcLayoutScalarValidRangeEndParser
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Struct)]);
     const TEMPLATE: AttributeTemplate = template!(List: &["end"]);
 
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
         parse_single_integer(cx, args)
             .map(|n| AttributeKind::RustcLayoutScalarValidRangeEnd(Box::new(n), cx.attr_span))
     }
@@ -49,7 +49,7 @@ impl<S: Stage> SingleAttributeParser<S> for RustcObjectLifetimeDefaultParser {
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Struct)]);
     const TEMPLATE: AttributeTemplate = template!(Word);
 
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
         if let Err(span) = args.no_args() {
             cx.expected_no_args(span);
             return None;
@@ -68,7 +68,7 @@ impl<S: Stage> SingleAttributeParser<S> for RustcSimdMonomorphizeLaneLimitParser
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Struct)]);
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "N");
 
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
         let ArgParser::NameValue(nv) = args else {
             cx.expected_name_value(cx.attr_span, None);
             return None;

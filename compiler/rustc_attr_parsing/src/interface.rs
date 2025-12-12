@@ -1,4 +1,4 @@
-use std::borrow::Cow;
+use std::convert::identity;
 
 use rustc_ast as ast;
 use rustc_ast::token::DocFragmentKind;
@@ -13,7 +13,7 @@ use rustc_session::lint::BuiltinLintDiag;
 use rustc_span::{DUMMY_SP, Span, Symbol, sym};
 
 use crate::context::{AcceptContext, FinalizeContext, SharedContext, Stage};
-use crate::parser::{ArgParser, MetaItemParser, PathParser};
+use crate::parser::{ArgParser, PathParser, RefPathParser};
 use crate::session_diagnostics::ParsedDescription;
 use crate::{Early, Late, OmitDoc, ShouldEmit};
 
@@ -136,7 +136,7 @@ impl<'sess> AttributeParser<'sess, Early> {
         target_node_id: NodeId,
         features: Option<&'sess Features>,
         emit_errors: ShouldEmit,
-        parse_fn: fn(cx: &mut AcceptContext<'_, '_, Early>, item: &ArgParser<'_>) -> Option<T>,
+        parse_fn: fn(cx: &mut AcceptContext<'_, '_, Early>, item: &ArgParser) -> Option<T>,
         template: &AttributeTemplate,
     ) -> Option<T> {
         let ast::AttrKind::Normal(normal_attr) = &attr.kind else {
@@ -144,22 +144,23 @@ impl<'sess> AttributeParser<'sess, Early> {
         };
         let parts =
             normal_attr.item.path.segments.iter().map(|seg| seg.ident.name).collect::<Vec<_>>();
-        let meta_parser = MetaItemParser::from_attr(normal_attr, &parts, &sess.psess, emit_errors)?;
-        let path = meta_parser.path();
-        let args = meta_parser.args();
+
+        let path = AttrPath::from_ast(&normal_attr.item.path, identity);
+        let args =
+            ArgParser::from_attr_args(&normal_attr.item.args, &parts, &sess.psess, emit_errors)?;
         Self::parse_single_args(
             sess,
             attr.span,
             normal_attr.item.span(),
             attr.style,
-            path.get_attribute_path(),
+            path,
             Some(normal_attr.item.unsafety),
             ParsedDescription::Attribute,
             target_span,
             target_node_id,
             features,
             emit_errors,
-            args,
+            &args,
             parse_fn,
             template,
         )
@@ -267,7 +268,7 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
         mut emit_lint: impl FnMut(AttributeLint<S::Id>),
     ) -> Vec<Attribute> {
         let mut attributes = Vec::new();
-        let mut attr_paths = Vec::new();
+        let mut attr_paths: Vec<RefPathParser<'_>> = Vec::new();
 
         for attr in attrs {
             // If we're only looking for a single attribute, skip all the ones we don't care about.
@@ -301,7 +302,7 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
                     }))
                 }
                 ast::AttrKind::Normal(n) => {
-                    attr_paths.push(PathParser(Cow::Borrowed(&n.item.path)));
+                    attr_paths.push(PathParser(&n.item.path));
                     let attr_path = AttrPath::from_ast(&n.item.path, lower_span);
 
                     self.check_attribute_safety(
@@ -316,15 +317,14 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
                         n.item.path.segments.iter().map(|seg| seg.ident.name).collect::<Vec<_>>();
 
                     if let Some(accepts) = S::parsers().accepters.get(parts.as_slice()) {
-                        let Some(parser) = MetaItemParser::from_attr(
-                            n,
+                        let Some(args) = ArgParser::from_attr_args(
+                            &n.item.args,
                             &parts,
                             &self.sess.psess,
                             self.stage.should_emit(),
                         ) else {
                             continue;
                         };
-                        let args = parser.args();
 
                         // Special-case handling for `#[doc = "..."]`: if we go through with
                         // `DocParser`, the order of doc comments will be messed up because `///`
@@ -342,7 +342,7 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
                         // blob
                         // a
                         if is_doc_attribute
-                            && let ArgParser::NameValue(nv) = args
+                            && let ArgParser::NameValue(nv) = &args
                             // If not a string key/value, it should emit an error, but to make
                             // things simpler, it's handled in `DocParser` because it's simpler to
                             // emit an error with `AcceptContext`.
@@ -373,7 +373,7 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
                                 attr_path: attr_path.clone(),
                             };
 
-                            (accept.accept_fn)(&mut cx, args);
+                            (accept.accept_fn)(&mut cx, &args);
                             if !matches!(cx.stage.should_emit(), ShouldEmit::Nothing) {
                                 Self::check_target(&accept.allowed_targets, target, &mut cx);
                             }
