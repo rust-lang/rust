@@ -3960,7 +3960,7 @@ impl Step for CodegenGCC {
             .arg("--use-backend")
             .arg("gcc")
             .arg("--gcc-path")
-            .arg(gcc.libgccjit.parent().unwrap())
+            .arg(gcc.libgccjit().parent().unwrap())
             .arg("--out-dir")
             .arg(builder.stage_out(compilers.build_compiler(), Mode::Codegen).join("cg_gcc"))
             .arg("--release")

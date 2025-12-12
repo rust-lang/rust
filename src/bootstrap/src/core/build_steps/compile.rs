@@ -7,7 +7,7 @@
 //! goes along from the output of the previous stage.
 
 use std::borrow::Cow;
-use std::collections::HashSet;
+use std::collections::{BTreeMap, HashSet};
 use std::ffi::OsStr;
 use std::io::BufReader;
 use std::io::prelude::*;
@@ -1576,17 +1576,77 @@ impl Step for RustcLink {
     }
 }
 
+/// Set of `libgccjit` dylibs that can be used by `cg_gcc` to compile code for a set of targets.
+#[derive(Clone)]
+pub struct GccDylibSet {
+    dylibs: BTreeMap<TargetSelection, GccOutput>,
+}
+
+impl GccDylibSet {
+    /// Install the libgccjit dylibs to the corresponding target directories of the given compiler.
+    pub fn install_to(&self, builder: &Builder<'_>, compiler: Compiler) {
+        if builder.config.dry_run() {
+            return;
+        }
+
+        // <rustc>/lib
+        let lib_sysroot = builder.rustc_libdir(compiler);
+
+        for (target, libgccjit) in &self.dylibs {
+            let libgccjit = libgccjit.libgccjit();
+            let target_filename = libgccjit.file_name().unwrap().to_str().unwrap();
+
+            // If we build libgccjit ourselves, then `libgccjit` can actually be a symlink.
+            // In that case, we have to resolve it first, otherwise we'd create a symlink to a
+            // symlink, which wouldn't work.
+            let actual_libgccjit_path = t!(
+                libgccjit.canonicalize(),
+                format!("Cannot find libgccjit at {}", libgccjit.display())
+            );
+
+            // <rustc>/lib/rustlib/<target>/lib/libgccjit.so
+            let dest_dir = lib_sysroot.join("rustlib").join(target).join("lib");
+            t!(fs::create_dir_all(&dest_dir));
+            let dst = dest_dir.join(target_filename);
+            builder.copy_link(&actual_libgccjit_path, &dst, FileType::NativeLibrary);
+        }
+    }
+}
+
 /// Output of the `compile::GccCodegenBackend` step.
-/// It includes the path to the libgccjit library on which this backend depends.
+///
+/// It contains paths to all built libgccjit libraries on which this backend depends here.
 #[derive(Clone)]
 pub struct GccCodegenBackendOutput {
     stamp: BuildStamp,
-    gcc: GccOutput,
+    dylib_set: GccDylibSet,
 }
 
+/// Builds the GCC codegen backend (`cg_gcc`).
+/// The `cg_gcc` backend uses `libgccjit`, which requires a separate build for each
+/// `host -> target` pair. So if you are on linux-x64 and build for linux-aarch64,
+/// you will need at least:
+/// - linux-x64 -> linux-x64 libgccjit (for building host code like proc macros)
+/// - linux-x64 -> linux-aarch64 libgccjit (for the aarch64 target code)
+///
+/// We model this by having a single cg_gcc for a given host target, which contains one
+/// libgccjit per (host, target) pair.
+/// Note that the host target is taken from `self.compilers.build_compiler.host`.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct GccCodegenBackend {
     compilers: RustcPrivateCompilers,
+    targets: Vec<TargetSelection>,
+}
+
+impl GccCodegenBackend {
+    /// Create a cg_gcc backend that can compile code for all targets for which we build the
+    /// standard library.
+    pub fn for_all_std_targets(builder: &Builder<'_>, compilers: RustcPrivateCompilers) -> Self {
+        let mut targets = builder.targets.clone();
+        // Sort targets to improve step cache hits
+        targets.sort();
+        Self { compilers, targets }
+    }
 }
 
 impl Step for GccCodegenBackend {
@@ -1599,9 +1659,10 @@ impl Step for GccCodegenBackend {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(GccCodegenBackend {
-            compilers: RustcPrivateCompilers::new(run.builder, run.builder.top_stage, run.target),
-        });
+        run.builder.ensure(GccCodegenBackend::for_all_std_targets(
+            run.builder,
+            RustcPrivateCompilers::new(run.builder, run.builder.top_stage, run.target),
+        ));
     }
 
     fn run(self, builder: &Builder<'_>) -> Self::Output {
@@ -1615,7 +1676,13 @@ impl Step for GccCodegenBackend {
             &CodegenBackendKind::Gcc,
         );
 
-        let gcc = builder.ensure(Gcc { target });
+        let dylib_set = GccDylibSet {
+            dylibs: self
+                .targets
+                .iter()
+                .map(|&target| (target, builder.ensure(Gcc { target })))
+                .collect(),
+        };
 
         if builder.config.keep_stage.contains(&build_compiler.stage) {
             trace!("`keep-stage` requested");
@@ -1625,7 +1692,7 @@ impl Step for GccCodegenBackend {
             );
             // Codegen backends are linked separately from this step today, so we don't do
             // anything here.
-            return GccCodegenBackendOutput { stamp, gcc };
+            return GccCodegenBackendOutput { stamp, dylib_set };
         }
 
         let mut cargo = builder::Cargo::new(
@@ -1639,7 +1706,13 @@ impl Step for GccCodegenBackend {
         cargo.arg("--manifest-path").arg(builder.src.join("compiler/rustc_codegen_gcc/Cargo.toml"));
         rustc_cargo_env(builder, &mut cargo, target);
 
-        add_cg_gcc_cargo_flags(&mut cargo, &gcc);
+        add_cg_gcc_cargo_flags(
+            &mut cargo,
+            &dylib_set
+                .dylibs
+                .get(&build_compiler.host)
+                .expect("libgccjit was not build for the host target"),
+        );
 
         let _guard =
             builder.msg(Kind::Build, "codegen backend gcc", Mode::Codegen, build_compiler, target);
@@ -1647,7 +1720,7 @@ impl Step for GccCodegenBackend {
 
         GccCodegenBackendOutput {
             stamp: write_codegen_backend_stamp(stamp, files, builder.config.dry_run()),
-            gcc,
+            dylib_set,
         }
     }
 
@@ -2324,12 +2397,14 @@ impl Step for Assemble {
                         copy_codegen_backends_to_sysroot(builder, stamp, target_compiler);
                     }
                     CodegenBackendKind::Gcc => {
-                        let output =
-                            builder.ensure(GccCodegenBackend { compilers: prepare_compilers() });
+                        let output = builder.ensure(GccCodegenBackend::for_all_std_targets(
+                            builder,
+                            prepare_compilers(),
+                        ));
                         copy_codegen_backends_to_sysroot(builder, output.stamp, target_compiler);
-                        // Also copy libgccjit to the library sysroot, so that it is available for
-                        // the codegen backend.
-                        output.gcc.install_to(builder, &rustc_libdir);
+                        // Also copy all requires libgccjit dylibs to the corresponding
+                        // library sysroots, so that they are available for the codegen backend.
+                        output.dylib_set.install_to(builder, target_compiler);
                     }
                     CodegenBackendKind::Llvm | CodegenBackendKind::Custom(_) => continue,
                 }
