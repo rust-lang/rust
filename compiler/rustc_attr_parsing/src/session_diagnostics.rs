@@ -217,31 +217,6 @@ pub(crate) struct InvalidReprHintNoValue {
     pub name: Symbol,
 }
 
-/// Error code: E0565
-// FIXME(jdonszelmann): slowly phased out
-pub(crate) struct UnsupportedLiteral {
-    pub span: Span,
-    pub is_bytestr: bool,
-    pub start_point_span: Span,
-}
-
-impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for UnsupportedLiteral {
-    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, G> {
-        let mut diag = Diag::new(dcx, level, fluent::attr_parsing_unsupported_literal_generic);
-        diag.span(self.span);
-        diag.code(E0565);
-        if self.is_bytestr {
-            diag.span_suggestion(
-                self.start_point_span,
-                fluent::attr_parsing_unsupported_literal_suggestion,
-                "",
-                Applicability::MaybeIncorrect,
-            );
-        }
-        diag
-    }
-}
-
 #[derive(Diagnostic)]
 #[diag(attr_parsing_invalid_repr_align_need_arg, code = E0589)]
 pub(crate) struct InvalidReprAlignNeedArg {

@@ -235,8 +235,6 @@ attr_parsing_unstable_cfg_target_compact =
 attr_parsing_unstable_feature_bound_incompatible_stability = item annotated with `#[unstable_feature_bound]` should not be stable
     .help = If this item is meant to be stable, do not use any functions annotated with `#[unstable_feature_bound]`. Otherwise, mark this item as unstable with `#[unstable]`
 
-attr_parsing_unsupported_literal_generic =
-    unsupported literal
 attr_parsing_unsupported_literal_suggestion =
     consider removing the prefix
 
