@@ -94,6 +94,7 @@ mod or_fun_call;
 mod or_then_unwrap;
 mod path_buf_push_overwrite;
 mod path_ends_with_ext;
+mod ptr_offset_by_literal;
 mod ptr_offset_with_cast;
 mod range_zip_with_len;
 mod read_line_without_trim;
@@ -1726,6 +1727,40 @@ declare_clippy_lint! {
     pub ZST_OFFSET,
     correctness,
     "Check for offset calculations on raw pointers to zero-sized types"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for usage of the `offset` pointer method with an integer
+    /// literal.
+    ///
+    /// ### Why is this bad?
+    /// The `add` and `sub` methods more accurately express the intent.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// let vec = vec![b'a', b'b', b'c'];
+    /// let ptr = vec.as_ptr();
+    ///
+    /// unsafe {
+    ///     ptr.offset(-8);
+    /// }
+    /// ```
+    ///
+    /// Could be written:
+    ///
+    /// ```no_run
+    /// let vec = vec![b'a', b'b', b'c'];
+    /// let ptr = vec.as_ptr();
+    ///
+    /// unsafe {
+    ///     ptr.sub(8);
+    /// }
+    /// ```
+    #[clippy::version = "1.92.0"]
+    pub PTR_OFFSET_BY_LITERAL,
+    pedantic,
+    "unneeded pointer offset"
 }
 
 declare_clippy_lint! {
@@ -4635,7 +4670,7 @@ declare_clippy_lint! {
     /// let x = vec![String::new()];
     /// let _ = x.iter().map(|x| x.len());
     /// ```
-    #[clippy::version = "1.90.0"]
+    #[clippy::version = "1.92.0"]
     pub REDUNDANT_ITER_CLONED,
     perf,
     "detects redundant calls to `Iterator::cloned`"
@@ -4659,7 +4694,7 @@ declare_clippy_lint! {
     /// let x: Option<u32> = Some(4);
     /// let y = x.unwrap_or_else(|| 2 * k);
     /// ```
-    #[clippy::version = "1.88.0"]
+    #[clippy::version = "1.92.0"]
     pub UNNECESSARY_OPTION_MAP_OR_ELSE,
     suspicious,
     "making no use of the \"map closure\" when calling `.map_or_else(|| 2 * k, |n| n)`"
@@ -4803,6 +4838,7 @@ impl_lint_pass!(Methods => [
     UNINIT_ASSUMED_INIT,
     MANUAL_SATURATING_ARITHMETIC,
     ZST_OFFSET,
+    PTR_OFFSET_BY_LITERAL,
     PTR_OFFSET_WITH_CAST,
     FILETYPE_IS_FILE,
     OPTION_AS_REF_DEREF,
@@ -5426,6 +5462,7 @@ impl Methods {
                     zst_offset::check(cx, expr, recv);
 
                     ptr_offset_with_cast::check(cx, name, expr, recv, arg, self.msrv);
+                    ptr_offset_by_literal::check(cx, expr, self.msrv);
                 },
                 (sym::ok_or_else, [arg]) => {
                     unnecessary_lazy_eval::check(cx, expr, recv, arg, "ok_or");
@@ -5567,14 +5604,7 @@ impl Methods {
                 (sym::unwrap_or, [u_arg]) => {
                     match method_call(recv) {
                         Some((arith @ (sym::checked_add | sym::checked_sub | sym::checked_mul), lhs, [rhs], _, _)) => {
-                            manual_saturating_arithmetic::check(
-                                cx,
-                                expr,
-                                lhs,
-                                rhs,
-                                u_arg,
-                                &arith.as_str()[const { "checked_".len() }..],
-                            );
+                            manual_saturating_arithmetic::check_unwrap_or(cx, expr, lhs, rhs, u_arg, arith);
                         },
                         Some((sym::map, m_recv, [m_arg], span, _)) => {
                             option_map_unwrap_or::check(cx, expr, m_recv, m_arg, recv, u_arg, span, self.msrv);
@@ -5595,6 +5625,9 @@ impl Methods {
                 },
                 (sym::unwrap_or_default, []) => {
                     match method_call(recv) {
+                        Some((sym::checked_sub, lhs, [rhs], _, _)) => {
+                            manual_saturating_arithmetic::check_sub_unwrap_or_default(cx, expr, lhs, rhs);
+                        },
                         Some((sym::map, m_recv, [arg], span, _)) => {
                             manual_is_variant_and::check(cx, expr, m_recv, arg, span, self.msrv);
                         },
