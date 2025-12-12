@@ -98,7 +98,6 @@ use rustc_middle::ty::TyCtxt;
 use rustc_middle::util::Providers;
 use rustc_session::Session;
 use rustc_session::config::{OptLevel, OutputFilenames};
-use rustc_session::filesearch::make_target_lib_path;
 use rustc_span::Symbol;
 use rustc_target::spec::{Arch, RelocModel};
 use tempfile::TempDir;
@@ -207,8 +206,15 @@ impl CodegenBackend for GccCodegenBackend {
     }
 
     fn init(&self, sess: &Session) {
-        fn file_path(path: &Path, sess: &Session) -> PathBuf {
-            make_target_lib_path(path, &sess.target.llvm_target).join("libgccjit.so")
+        fn file_path(sysroot_path: &Path, sess: &Session) -> PathBuf {
+            let rustlib_path =
+                rustc_target::relative_target_rustlib_path(sysroot_path, &sess.host.llvm_target);
+            sysroot_path
+                .join(rustlib_path)
+                .join("codegen-backends")
+                .join("lib")
+                .join(sess.target.llvm_target.as_ref())
+                .join("libgccjit.so")
         }
 
         // We use all_paths() instead of only path() in case the path specified by --sysroot is
