@@ -855,6 +855,7 @@ fn short_item_info(
     parent: Option<&clean::Item>,
 ) -> Vec<ShortItemInfo> {
     let mut extra_info = vec![];
+    let edition = item.span(cx.tcx()).expect("unable to get edition of span").inner().edition();
 
     if let Some(depr @ Deprecation { note, since, suggestion: _ }) = item.deprecation(cx.tcx()) {
         // We display deprecation messages for #[deprecated], but only display
@@ -877,7 +878,7 @@ fn short_item_info(
         if let Some(note) = note {
             let note = note.as_str();
             let mut id_map = cx.id_map.borrow_mut();
-            let html = MarkdownItemInfo(note, &mut id_map);
+            let html = MarkdownItemInfo(note, &mut id_map, edition);
             message.push_str(": ");
             html.write_into(&mut message).unwrap();
         }
