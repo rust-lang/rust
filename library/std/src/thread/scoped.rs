@@ -198,7 +198,6 @@ impl<'scope, 'env> Scope<'scope, 'env> {
     ///
     /// [`join`]: ScopedJoinHandle::join
     /// [`add_spawn_hook`]: crate::thread::add_spawn_hook
-    /// [`spawn`]: crate::thread::spawn
     #[stable(feature = "scoped_threads", since = "1.63.0")]
     pub fn spawn<F, T>(&'scope self, f: F) -> ScopedJoinHandle<'scope, T>
     where
