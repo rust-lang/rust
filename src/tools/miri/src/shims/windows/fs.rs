@@ -457,6 +457,39 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
     }
 
+    fn FlushFileBuffers(
+        &mut self,
+        file: &OpTy<'tcx>, // HANDLE
+    ) -> InterpResult<'tcx, Scalar> {
+        // ^ returns BOOL (i32 on Windows)
+        let this = self.eval_context_mut();
+        this.assert_target_os(Os::Windows, "FlushFileBuffers");
+
+        let file = this.read_handle(file, "FlushFileBuffers")?;
+        let Handle::File(fd_num) = file else { this.invalid_handle("FlushFileBuffers")? };
+        let Some(desc) = this.machine.fds.get(fd_num) else {
+            this.invalid_handle("FlushFileBuffers")?
+        };
+        let file = desc.downcast::<FileHandle>().ok_or_else(|| {
+            err_unsup_format!(
+                "`FlushFileBuffers` is only supported on file-backed file descriptors"
+            )
+        })?;
+
+        if !file.writable {
+            this.set_last_error(IoError::WindowsError("ERROR_ACCESS_DENIED"))?;
+            return interp_ok(this.eval_windows("c", "FALSE"));
+        }
+
+        match file.file.sync_all() {
+            Ok(_) => interp_ok(this.eval_windows("c", "TRUE")),
+            Err(e) => {
+                this.set_last_error(e)?;
+                interp_ok(this.eval_windows("c", "FALSE"))
+            }
+        }
+    }
+
     fn DeleteFileW(
         &mut self,
         file_name: &OpTy<'tcx>, // LPCWSTR
