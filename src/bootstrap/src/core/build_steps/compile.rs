@@ -1580,9 +1580,18 @@ impl Step for RustcLink {
 #[derive(Clone)]
 pub struct GccDylibSet {
     dylibs: BTreeMap<TargetSelection, GccOutput>,
+    host_target: TargetSelection,
 }
 
 impl GccDylibSet {
+    /// Returns the libgccjit.so dylib that corresponds to a host target on which `cg_gcc` will be
+    /// executed.
+    fn host_dylib(&self) -> &GccOutput {
+        self.dylibs.get(&self.host_target).unwrap_or_else(|| {
+            panic!("libgccjit.so was not build for host target {}", self.host_target)
+        })
+    }
+
     /// Install the libgccjit dylibs to the corresponding target directories of the given compiler.
     pub fn install_to(&self, builder: &Builder<'_>, compiler: Compiler) {
         if builder.config.dry_run() {
@@ -1640,9 +1649,14 @@ pub struct GccCodegenBackend {
 
 impl GccCodegenBackend {
     /// Create a cg_gcc backend that can compile code for all targets for which we build the
-    /// standard library.
+    /// standard library, plus the host target on which `cg_gcc` will run, so that it can compile
+    /// host code (e.g. proc macros).
     pub fn for_all_std_targets(builder: &Builder<'_>, compilers: RustcPrivateCompilers) -> Self {
-        let mut targets = builder.targets.clone();
+        // All std targets + the cg_gcc host target
+        let target_set: HashSet<TargetSelection> =
+            builder.targets.iter().copied().chain(std::iter::once(compilers.target())).collect();
+
+        let mut targets: Vec<TargetSelection> = target_set.into_iter().collect();
         // Sort targets to improve step cache hits
         targets.sort();
         Self { compilers, targets }
@@ -1682,6 +1696,7 @@ impl Step for GccCodegenBackend {
                 .iter()
                 .map(|&target| (target, builder.ensure(Gcc { target })))
                 .collect(),
+            host_target: target,
         };
 
         if builder.config.keep_stage.contains(&build_compiler.stage) {
@@ -1706,13 +1721,7 @@ impl Step for GccCodegenBackend {
         cargo.arg("--manifest-path").arg(builder.src.join("compiler/rustc_codegen_gcc/Cargo.toml"));
         rustc_cargo_env(builder, &mut cargo, target);
 
-        add_cg_gcc_cargo_flags(
-            &mut cargo,
-            &dylib_set
-                .dylibs
-                .get(&build_compiler.host)
-                .expect("libgccjit was not build for the host target"),
-        );
+        add_cg_gcc_cargo_flags(&mut cargo, &dylib_set.host_dylib());
 
         let _guard =
             builder.msg(Kind::Build, "codegen backend gcc", Mode::Codegen, build_compiler, target);
