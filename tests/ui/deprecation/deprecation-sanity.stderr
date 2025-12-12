@@ -11,22 +11,6 @@ LL |     #[deprecated(since = "a", note)]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^----^^
    |                               |
    |                               expected this to be of the form `note = "..."`
-   |
-help: try changing it to one of the following valid forms of the attribute
-   |
-LL -     #[deprecated(since = "a", note)]
-LL +     #[deprecated = "reason"]
-   |
-LL -     #[deprecated(since = "a", note)]
-LL +     #[deprecated(note = "reason")]
-   |
-LL -     #[deprecated(since = "a", note)]
-LL +     #[deprecated(since = "version")]
-   |
-LL -     #[deprecated(since = "a", note)]
-LL +     #[deprecated(since = "version", note = "reason")]
-   |
-   = and 1 other candidate
 
 error[E0539]: malformed `deprecated` attribute input
   --> $DIR/deprecation-sanity.rs:12:5
@@ -35,22 +19,6 @@ LL |     #[deprecated(since, note = "a")]
    |     ^^^^^^^^^^^^^-----^^^^^^^^^^^^^^
    |                  |
    |                  expected this to be of the form `since = "..."`
-   |
-help: try changing it to one of the following valid forms of the attribute
-   |
-LL -     #[deprecated(since, note = "a")]
-LL +     #[deprecated = "reason"]
-   |
-LL -     #[deprecated(since, note = "a")]
-LL +     #[deprecated(note = "reason")]
-   |
-LL -     #[deprecated(since, note = "a")]
-LL +     #[deprecated(since = "version")]
-   |
-LL -     #[deprecated(since, note = "a")]
-LL +     #[deprecated(since = "version", note = "reason")]
-   |
-   = and 1 other candidate
 
 error[E0539]: malformed `deprecated` attribute input
   --> $DIR/deprecation-sanity.rs:15:5
@@ -59,22 +27,6 @@ LL |     #[deprecated(since = "a", note(b))]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^-------^^
    |                               |
    |                               expected this to be of the form `note = "..."`
-   |
-help: try changing it to one of the following valid forms of the attribute
-   |
-LL -     #[deprecated(since = "a", note(b))]
-LL +     #[deprecated = "reason"]
-   |
-LL -     #[deprecated(since = "a", note(b))]
-LL +     #[deprecated(note = "reason")]
-   |
-LL -     #[deprecated(since = "a", note(b))]
-LL +     #[deprecated(since = "version")]
-   |
-LL -     #[deprecated(since = "a", note(b))]
-LL +     #[deprecated(since = "version", note = "reason")]
-   |
-   = and 1 other candidate
 
 error[E0539]: malformed `deprecated` attribute input
   --> $DIR/deprecation-sanity.rs:18:5
@@ -83,22 +35,6 @@ LL |     #[deprecated(since(b), note = "a")]
    |     ^^^^^^^^^^^^^--------^^^^^^^^^^^^^^
    |                  |
    |                  expected this to be of the form `since = "..."`
-   |
-help: try changing it to one of the following valid forms of the attribute
-   |
-LL -     #[deprecated(since(b), note = "a")]
-LL +     #[deprecated = "reason"]
-   |
-LL -     #[deprecated(since(b), note = "a")]
-LL +     #[deprecated(note = "reason")]
-   |
-LL -     #[deprecated(since(b), note = "a")]
-LL +     #[deprecated(since = "version")]
-   |
-LL -     #[deprecated(since(b), note = "a")]
-LL +     #[deprecated(since = "version", note = "reason")]
-   |
-   = and 1 other candidate
 
 error[E0539]: malformed `deprecated` attribute input
   --> $DIR/deprecation-sanity.rs:21:5
@@ -117,22 +53,6 @@ LL |     #[deprecated("test")]
    |     ^^^^^^^^^^^^^------^^
    |                  |
    |                  didn't expect a literal here
-   |
-help: try changing it to one of the following valid forms of the attribute
-   |
-LL -     #[deprecated("test")]
-LL +     #[deprecated = "reason"]
-   |
-LL -     #[deprecated("test")]
-LL +     #[deprecated(note = "reason")]
-   |
-LL -     #[deprecated("test")]
-LL +     #[deprecated(since = "version")]
-   |
-LL -     #[deprecated("test")]
-LL +     #[deprecated(since = "version", note = "reason")]
-   |
-   = and 1 other candidate
 
 error: multiple `deprecated` attributes
   --> $DIR/deprecation-sanity.rs:29:1
@@ -153,22 +73,6 @@ LL | #[deprecated(since = "a", since = "b", note = "c")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^-----------^^^^^^^^^^^^^^
    |                           |
    |                           found `since` used as a key more than once
-   |
-help: try changing it to one of the following valid forms of the attribute
-   |
-LL - #[deprecated(since = "a", since = "b", note = "c")]
-LL + #[deprecated = "reason"]
-   |
-LL - #[deprecated(since = "a", since = "b", note = "c")]
-LL + #[deprecated(note = "reason")]
-   |
-LL - #[deprecated(since = "a", since = "b", note = "c")]
-LL + #[deprecated(since = "version")]
-   |
-LL - #[deprecated(since = "a", since = "b", note = "c")]
-LL + #[deprecated(since = "version", note = "reason")]
-   |
-   = and 1 other candidate
 
 error: `#[deprecated]` attribute cannot be used on trait impl blocks
   --> $DIR/deprecation-sanity.rs:37:1

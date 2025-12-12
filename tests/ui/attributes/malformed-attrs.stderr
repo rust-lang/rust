@@ -240,22 +240,6 @@ LL | #[deprecated = 5]
    | ^^^^^^^^^^^^^^^-^
    |                |
    |                expected a string literal here
-   |
-help: try changing it to one of the following valid forms of the attribute
-   |
-LL - #[deprecated = 5]
-LL + #[deprecated = "reason"]
-   |
-LL - #[deprecated = 5]
-LL + #[deprecated(note = "reason")]
-   |
-LL - #[deprecated = 5]
-LL + #[deprecated(since = "version")]
-   |
-LL - #[deprecated = 5]
-LL + #[deprecated(since = "version", note = "reason")]
-   |
-   = and 1 other candidate
 
 error[E0539]: malformed `rustc_macro_transparency` attribute input
   --> $DIR/malformed-attrs.rs:44:1
@@ -287,17 +271,6 @@ LL | #[repr]
    | ^^^^^^^ expected this to be a list
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/type-layout.html#representations>
-help: try changing it to one of the following valid forms of the attribute
-   |
-LL | #[repr(<integer type>)]
-   |       ++++++++++++++++
-LL | #[repr(C)]
-   |       +++
-LL | #[repr(Rust)]
-   |       ++++++
-LL | #[repr(align(...))]
-   |       ++++++++++++
-   = and 2 other candidates
 
 error[E0565]: malformed `rustc_as_ptr` attribute input
   --> $DIR/malformed-attrs.rs:50:1
@@ -437,17 +410,6 @@ LL | #[link]
    | ^^^^^^^ expected this to be a list
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/items/external-blocks.html#the-link-attribute>
-help: try changing it to one of the following valid forms of the attribute
-   |
-LL | #[link(name = "...")]
-   |       ++++++++++++++
-LL | #[link(name = "...", import_name_type = "decorated|noprefix|undecorated")]
-   |       +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-LL | #[link(name = "...", kind = "dylib|static|...")]
-   |       +++++++++++++++++++++++++++++++++++++++++
-LL | #[link(name = "...", kind = "dylib|static|...", wasm_import_module = "...", import_name_type = "decorated|noprefix|undecorated")]
-   |       ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-   = and 1 other candidate
 
 error[E0539]: malformed `link_name` attribute input
   --> $DIR/malformed-attrs.rs:88:1
@@ -483,18 +445,6 @@ error[E0539]: malformed `sanitize` attribute input
    |
 LL | #[sanitize]
    | ^^^^^^^^^^^ expected this to be a list
-   |
-help: try changing it to one of the following valid forms of the attribute
-   |
-LL | #[sanitize(address = "on|off")]
-   |           ++++++++++++++++++++
-LL | #[sanitize(cfi = "on|off")]
-   |           ++++++++++++++++
-LL | #[sanitize(hwaddress = "on|off")]
-   |           ++++++++++++++++++++++
-LL | #[sanitize(kcfi = "on|off")]
-   |           +++++++++++++++++
-   = and 6 other candidates
 
 error[E0565]: malformed `no_implicit_prelude` attribute input
   --> $DIR/malformed-attrs.rs:101:1
@@ -634,18 +584,6 @@ error[E0539]: malformed `linkage` attribute input
    |
 LL |     #[linkage]
    |     ^^^^^^^^^^ expected this to be of the form `linkage = "..."`
-   |
-help: try changing it to one of the following valid forms of the attribute
-   |
-LL |     #[linkage = "available_externally"]
-   |               ++++++++++++++++++++++++
-LL |     #[linkage = "common"]
-   |               ++++++++++
-LL |     #[linkage = "extern_weak"]
-   |               +++++++++++++++
-LL |     #[linkage = "external"]
-   |               ++++++++++++
-   = and 5 other candidates
 
 error[E0539]: malformed `debugger_visualizer` attribute input
   --> $DIR/malformed-attrs.rs:194:1
