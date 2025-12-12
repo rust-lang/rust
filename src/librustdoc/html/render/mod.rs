@@ -81,7 +81,6 @@ use crate::html::format::{
 use crate::html::markdown::{
     HeadingOffset, IdMap, Markdown, MarkdownItemInfo, MarkdownSummaryLine, short_markdown_summary,
 };
-use crate::html::render::search_index::get_function_type_for_search;
 use crate::html::static_files::SCRAPE_EXAMPLES_HELP_MD;
 use crate::html::{highlight, sources};
 use crate::scrape_examples::{CallData, CallLocation};
@@ -125,6 +124,31 @@ enum RenderMode {
 // Helper structs for rendering items/sidebars and carrying along contextual
 // information
 
+#[derive(Debug)]
+pub(crate) struct IndexItemSubStruct {
+    pub(crate) desc: String,
+    pub(crate) search_type: Option<IndexItemFunctionType>,
+    pub(crate) aliases: Box<[Symbol]>,
+    pub(crate) deprecation: Option<Deprecation>,
+}
+
+impl IndexItemSubStruct {
+    pub(crate) fn new(
+        tcx: TyCtxt<'_>,
+        cache: &Cache,
+        item: &Item,
+        parent_did: Option<DefId>,
+        impl_generics: Option<&(clean::Type, clean::Generics)>,
+    ) -> Self {
+        let desc = short_markdown_summary(&item.doc_value(), &item.link_names(cache));
+        let search_type =
+            search_index::get_function_type_for_search(item, tcx, impl_generics, parent_did, cache);
+        let aliases = item.attrs.get_doc_aliases();
+        let deprecation = item.deprecation(tcx);
+        Self { desc, search_type, aliases, deprecation }
+    }
+}
+
 /// Struct representing one entry in the JS search index. These are all emitted
 /// by hand to a large JS file at the end of cache-creation.
 #[derive(Debug)]
@@ -133,53 +157,13 @@ pub(crate) struct IndexItem {
     pub(crate) defid: Option<DefId>,
     pub(crate) name: Symbol,
     pub(crate) module_path: Vec<Symbol>,
-    pub(crate) desc: String,
     pub(crate) parent: Option<DefId>,
     pub(crate) parent_idx: Option<usize>,
     pub(crate) trait_parent: Option<DefId>,
     pub(crate) trait_parent_idx: Option<usize>,
     pub(crate) exact_module_path: Option<Vec<Symbol>>,
     pub(crate) impl_id: Option<DefId>,
-    pub(crate) search_type: Option<IndexItemFunctionType>,
-    pub(crate) aliases: Box<[Symbol]>,
-    pub(crate) deprecation: Option<Deprecation>,
-}
-
-impl IndexItem {
-    pub(crate) fn new(
-        tcx: TyCtxt<'_>,
-        cache: &Cache,
-        item: &Item,
-        name: Option<Symbol>,
-        defid: Option<DefId>,
-        module_path: Vec<Symbol>,
-        parent_did: Option<DefId>,
-        impl_id: Option<DefId>,
-        trait_parent: Option<DefId>,
-        impl_generics: Option<&(clean::Type, clean::Generics)>,
-    ) -> Self {
-        let desc = short_markdown_summary(&item.doc_value(), &item.link_names(cache));
-        let search_type = get_function_type_for_search(item, tcx, impl_generics, parent_did, cache);
-        let aliases = item.attrs.get_doc_aliases();
-        let deprecation = item.deprecation(tcx);
-
-        Self {
-            ty: item.type_(),
-            defid: defid.or_else(|| item.item_id.as_def_id()),
-            name: name.or(item.name).unwrap(),
-            module_path,
-            desc,
-            parent: parent_did,
-            parent_idx: None,
-            trait_parent,
-            trait_parent_idx: None,
-            exact_module_path: None,
-            impl_id,
-            search_type,
-            aliases,
-            deprecation,
-        }
-    }
+    pub(crate) sub_struct: IndexItemSubStruct,
 }
 
 /// A type used for the search index.

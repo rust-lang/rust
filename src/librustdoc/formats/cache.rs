@@ -15,7 +15,7 @@ use crate::core::DocContext;
 use crate::fold::DocFolder;
 use crate::formats::Impl;
 use crate::formats::item_type::ItemType;
-use crate::html::render::IndexItem;
+use crate::html::render::{IndexItem, IndexItemSubStruct};
 use crate::visit_lib::RustdocEffectiveVisibilities;
 
 /// This cache is used to store information about the [`clean::Crate`] being
@@ -582,18 +582,26 @@ fn add_item_to_search_index(tcx: TyCtxt<'_>, cache: &mut Cache, item: &clean::It
         _ => item_def_id,
     };
     let (impl_id, trait_parent) = cache.parent_stack_last_impl_and_trait_id();
-    let index_item = IndexItem::new(
+    let sub_struct = IndexItemSubStruct::new(
         tcx,
         cache,
         item,
-        Some(name),
-        Some(defid),
-        parent_path.to_vec(),
         parent_did,
-        impl_id,
-        trait_parent,
         clean_impl_generics(cache.parent_stack.last()).as_ref(),
     );
+    let index_item = IndexItem {
+        ty: item.type_(),
+        defid: Some(defid),
+        name,
+        module_path: parent_path.to_vec(),
+        parent: parent_did,
+        parent_idx: None,
+        trait_parent,
+        trait_parent_idx: None,
+        exact_module_path: None,
+        impl_id,
+        sub_struct,
+    };
 
     cache.search_index.push(index_item);
 }

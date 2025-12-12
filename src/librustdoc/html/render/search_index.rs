@@ -29,7 +29,9 @@ use crate::error::Error;
 use crate::formats::cache::{Cache, OrphanImplItem};
 use crate::formats::item_type::ItemType;
 use crate::html::markdown::short_markdown_summary;
-use crate::html::render::{self, IndexItem, IndexItemFunctionType, RenderType, RenderTypeId};
+use crate::html::render::{
+    self, IndexItem, IndexItemFunctionType, IndexItemSubStruct, RenderType, RenderTypeId,
+};
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub(crate) struct SerializedSearchIndex {
@@ -1261,18 +1263,21 @@ pub(crate) fn build_index(
         &cache.orphan_impl_items
     {
         if let Some((fqp, _)) = cache.paths.get(&parent) {
-            search_index.push(IndexItem::new(
-                tcx,
-                cache,
-                item,
-                None,
-                None,
-                fqp[..fqp.len() - 1].to_vec(),
-                Some(parent),
-                impl_id,
+            let sub_struct =
+                IndexItemSubStruct::new(tcx, cache, item, Some(parent), impl_generics.as_ref());
+            search_index.push(IndexItem {
+                ty: item.type_(),
+                defid: item.item_id.as_def_id(),
+                name: item.name.unwrap(),
+                module_path: fqp[..fqp.len() - 1].to_vec(),
+                parent: Some(parent),
+                parent_idx: None,
                 trait_parent,
-                impl_generics.as_ref(),
-            ));
+                trait_parent_idx: None,
+                exact_module_path: None,
+                impl_id,
+                sub_struct,
+            });
         }
     }
 
@@ -1508,7 +1513,7 @@ pub(crate) fn build_index(
                 trait_parent: item.trait_parent_idx,
                 module_path,
                 exact_module_path,
-                deprecated: item.deprecation.is_some(),
+                deprecated: item.sub_struct.deprecation.is_some(),
                 associated_item_disambiguator: if let Some(impl_id) = item.impl_id
                     && let Some(parent_idx) = item.parent_idx
                     && associated_item_duplicates
@@ -1523,12 +1528,12 @@ pub(crate) fn build_index(
                 },
                 krate: crate_idx,
             },
-            item.desc.to_string(),
+            item.sub_struct.desc.to_string(),
         );
 
         // Aliases
         // -------
-        for alias in &item.aliases[..] {
+        for alias in &item.sub_struct.aliases {
             serialized_index.push_alias(alias.as_str().to_string(), new_entry_id);
         }
 
@@ -1801,7 +1806,7 @@ pub(crate) fn build_index(
                 _ => {}
             }
         }
-        if let Some(search_type) = &mut item.search_type {
+        if let Some(search_type) = &mut item.sub_struct.search_type {
             let mut used_in_function_inputs = BTreeSet::new();
             let mut used_in_function_output = BTreeSet::new();
             for item in &mut search_type.inputs {
