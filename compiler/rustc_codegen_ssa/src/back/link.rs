@@ -669,6 +669,14 @@ struct LinkerOutput {
     inner: String,
 }
 
+fn is_msvc_link_exe(sess: &Session) -> bool {
+    let (linker_path, flavor) = linker_and_flavor(sess);
+    sess.target.is_like_msvc
+        && flavor == LinkerFlavor::Msvc(Lld::No)
+        // Match exactly "link.exe"
+        && linker_path.to_str() == Some("link.exe")
+}
+
 /// Create a dynamic library or executable.
 ///
 /// This will invoke the system linker/cc to create the resulting file. This links to all upstream
@@ -855,11 +863,6 @@ fn link_natively(
 
     match prog {
         Ok(prog) => {
-            let is_msvc_link_exe = sess.target.is_like_msvc
-                && flavor == LinkerFlavor::Msvc(Lld::No)
-                // Match exactly "link.exe"
-                && linker_path.to_str() == Some("link.exe");
-
             if !prog.status.success() {
                 let mut output = prog.stderr.clone();
                 output.extend_from_slice(&prog.stdout);
@@ -879,7 +882,7 @@ fn link_natively(
                 if let Some(code) = prog.status.code() {
                     // All Microsoft `link.exe` linking ror codes are
                     // four digit numbers in the range 1000 to 9999 inclusive
-                    if is_msvc_link_exe && (code < 1000 || code > 9999) {
+                    if is_msvc_link_exe(sess) && (code < 1000 || code > 9999) {
                         let is_vs_installed = find_msvc_tools::find_vs_version().is_ok();
                         let has_linker =
                             find_msvc_tools::find_tool(sess.target.arch.desc(), "link.exe")
@@ -918,7 +921,7 @@ fn link_natively(
 
             // Hide some progress messages from link.exe that we don't care about.
             // See https://github.com/chromium/chromium/blob/bfa41e41145ffc85f041384280caf2949bb7bd72/build/toolchain/win/tool_wrapper.py#L144-L146
-            if is_msvc_link_exe {
+            if is_msvc_link_exe(sess) {
                 if let Ok(str) = str::from_utf8(&prog.stdout) {
                     let mut output = String::with_capacity(str.len());
                     for line in stdout.lines() {
