@@ -212,15 +212,12 @@ pub struct Build {
     src: PathBuf,
     out: PathBuf,
     bootstrap_out: PathBuf,
-    //offload_cc: PathBuf,
-    //offload_cxx: PathBuf,
     cargo_info: GitInfo,
     rust_analyzer_info: GitInfo,
     clippy_info: GitInfo,
     miri_info: GitInfo,
     rustfmt_info: GitInfo,
     enzyme_info: GitInfo,
-    offload_info: GitInfo,
     in_tree_llvm_info: GitInfo,
     in_tree_gcc_info: GitInfo,
     local_rebuild: bool,
@@ -479,7 +476,6 @@ impl Build {
         let miri_info = config.miri_info.clone();
         let rustfmt_info = config.rustfmt_info.clone();
         let enzyme_info = config.enzyme_info.clone();
-        let offload_info = config.offload_info.clone();
         let in_tree_llvm_info = config.in_tree_llvm_info.clone();
         let in_tree_gcc_info = config.in_tree_gcc_info.clone();
 
@@ -572,7 +568,6 @@ impl Build {
             miri_info,
             rustfmt_info,
             enzyme_info,
-            offload_info,
             in_tree_llvm_info,
             in_tree_gcc_info,
             cc: HashMap::new(),
