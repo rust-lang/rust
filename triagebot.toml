@@ -1542,6 +1542,7 @@ project-stable-mir = [
     "@celinval",
     "@oli-obk",
     "@scottmcm",
+    "@makai410",
 ]
 project-exploit-mitigations = [
     "@cuviper",
