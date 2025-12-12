@@ -61,7 +61,7 @@ error: lint `clippy::should_assert_eq` has been removed: `assert!(a == b)` can n
 LL | #![warn(clippy::should_assert_eq)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: lint `clippy::string_to_string` has been removed: `clippy:implicit_clone` covers those cases
+error: lint `clippy::string_to_string` has been removed: `clippy::implicit_clone` covers those cases
   --> tests/ui/deprecated.rs:15:9
    |
 LL | #![warn(clippy::string_to_string)]

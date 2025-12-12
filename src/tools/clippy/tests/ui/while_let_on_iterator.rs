@@ -492,6 +492,110 @@ fn issue13123() {
     }
 }
 
+fn issue16089() {
+    trait CertainTrait: Iterator<Item = u8> {
+        fn iter_over_self(&mut self) {
+            let mut a = 0;
+            while let Some(r) = self.next() {
+                //~^ while_let_on_iterator
+                a = r;
+            }
+            self.use_after_iter()
+        }
+
+        fn use_after_iter(&mut self) {}
+    }
+}
+
+fn issue16089_sized_trait_not_reborrowed() {
+    trait CertainTrait: Iterator<Item = u8> + Sized {
+        fn iter_over_self(&mut self) {
+            let mut a = 0;
+            // Check that the suggestion is just "self", since the trait is sized.
+            while let Some(r) = self.next() {
+                //~^ while_let_on_iterator
+                a = r;
+            }
+            self.use_after_iter()
+        }
+
+        fn use_after_iter(&mut self) {}
+    }
+}
+
+fn issue16089_nested_derefs() {
+    struct S<T>(T);
+    impl<T> core::ops::Deref for S<T> {
+        type Target = T;
+        fn deref(&self) -> &Self::Target {
+            &self.0
+        }
+    }
+    impl<T> core::ops::DerefMut for S<T> {
+        fn deref_mut(&mut self) -> &mut Self::Target {
+            &mut self.0
+        }
+    }
+
+    fn f(mut x: S<S<&mut dyn Iterator<Item = u32>>>) {
+        while let Some(_) = x.next() {}
+        //~^ while_let_on_iterator
+    }
+}
+
+fn issue16089_nested_derefs_last_not_sized() {
+    struct WithSize<T>(T);
+    impl<T> core::ops::Deref for WithSize<T> {
+        type Target = T;
+        fn deref(&self) -> &Self::Target {
+            &self.0
+        }
+    }
+    impl<T> core::ops::DerefMut for WithSize<T> {
+        fn deref_mut(&mut self) -> &mut Self::Target {
+            &mut self.0
+        }
+    }
+    // The suggestion must use `&mut **x`. Using `x.by_ref()` doesn't work in this
+    // case, since the last type adjustment for `x` in the expression `x.next()` is
+    // to dereference a `?Sized` trait.
+    fn f(mut x: WithSize<&mut dyn Iterator<Item = u32>>) {
+        while let Some(_) = x.next() {}
+        //~^ while_let_on_iterator
+    }
+}
+
+fn issue16089_nested_derefs_last_sized() {
+    struct NoSize<T: ?Sized>(T);
+    impl<T: ?Sized> core::ops::Deref for NoSize<T> {
+        type Target = T;
+        fn deref(&self) -> &Self::Target {
+            &self.0
+        }
+    }
+    impl<T: ?Sized> core::ops::DerefMut for NoSize<T> {
+        fn deref_mut(&mut self) -> &mut Self::Target {
+            &mut self.0
+        }
+    }
+
+    struct SizedIter {}
+
+    impl Iterator for SizedIter {
+        type Item = u32;
+        fn next(&mut self) -> Option<u32> {
+            Some(0)
+        }
+    }
+
+    // We want the suggestion to be `x.by_ref()`. It works in this case since the last type
+    // adjustment for `x` in the expression `x.next()` is to dereference a Sized type.
+    fn f(mut x: NoSize<NoSize<SizedIter>>) {
+        while let Some(_) = x.next() {}
+        //~^ while_let_on_iterator
+    }
+}
+
 fn main() {
     let mut it = 0..20;
     while let Some(..) = it.next() {

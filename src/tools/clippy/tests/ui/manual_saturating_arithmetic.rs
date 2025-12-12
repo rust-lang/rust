@@ -73,3 +73,13 @@ fn main() {
     let _ = 1i8.checked_sub(1).unwrap_or(127); // ok
     let _ = 1i8.checked_sub(-1).unwrap_or(-128); // ok
 }
+
+fn issue15655() {
+    let _ = 5u32.checked_sub(1u32).unwrap_or_default(); //~ manual_saturating_arithmetic
+    let _ = 5u32.checked_add(1u32).unwrap_or_default(); // ok
+    let _ = 5u32.checked_mul(1u32).unwrap_or_default(); // ok
+
+    let _ = 5i32.checked_sub(1i32).unwrap_or_default(); // ok
+    let _ = 5i32.checked_add(1i32).unwrap_or_default(); // ok
+    let _ = 5i32.checked_mul(1i32).unwrap_or_default(); // ok
+}

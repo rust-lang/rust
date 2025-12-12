@@ -389,5 +389,11 @@ error: useless conversion to the same type: `std::ops::Range<u32>`
 LL |     let _ = R.into_iter().map(|_x| 0);
    |             ^^^^^^^^^^^^^ help: consider removing `.into_iter()`: `R`
 
-error: aborting due to 43 previous errors
+error: useless conversion to the same type: `std::slice::Iter<'_, i32>`
+  --> tests/ui/useless_conversion.rs:453:14
+   |
+LL |     for _ in mac!(iter [1, 2]).into_iter() {}
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider removing `.into_iter()`: `mac!(iter [1, 2])`
+
+error: aborting due to 44 previous errors
 

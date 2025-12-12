@@ -3,6 +3,7 @@ mod assign_op_pattern;
 mod bit_mask;
 mod cmp_owned;
 mod const_comparisons;
+mod decimal_bitwise_operands;
 mod double_comparison;
 mod duration_subsec;
 mod eq_op;
@@ -935,6 +936,28 @@ declare_clippy_lint! {
     "use of disallowed default division and remainder operations"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for decimal literals used as bit masks in bitwise operations.
+    ///
+    /// ### Why is this bad?
+    /// Using decimal literals for bit masks can make the code less readable and obscure the intended bit pattern.
+    /// Binary, hexadecimal, or octal literals make the bit pattern more explicit and easier to understand at a glance.
+    ///
+    /// ### Example
+    /// ```rust,no_run
+    /// let a = 14 & 6; // Bit pattern is not immediately clear
+    /// ```
+    /// Use instead:
+    /// ```rust,no_run
+    /// let a = 0b1110 & 0b0110;
+    /// ```
+    #[clippy::version = "1.93.0"]
+    pub DECIMAL_BITWISE_OPERANDS,
+    pedantic,
+    "use binary, hex, or octal literals for bitwise operations"
+}
+
 pub struct Operators {
     arithmetic_context: numeric_arithmetic::Context,
     verbose_bit_mask_threshold: u64,
@@ -984,6 +1007,7 @@ impl_lint_pass!(Operators => [
     MANUAL_IS_MULTIPLE_OF,
     MANUAL_DIV_CEIL,
     INVALID_UPCAST_COMPARISONS,
+    DECIMAL_BITWISE_OPERANDS
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for Operators {
@@ -1003,6 +1027,7 @@ impl<'tcx> LateLintPass<'tcx> for Operators {
                     needless_bitwise_bool::check(cx, e, op.node, lhs, rhs);
                     manual_midpoint::check(cx, e, op.node, lhs, rhs, self.msrv);
                     manual_is_multiple_of::check(cx, e, op.node, lhs, rhs, self.msrv);
+                    decimal_bitwise_operands::check(cx, op.node, lhs, rhs);
                 }
                 self.arithmetic_context.check_binary(cx, e, op.node, lhs, rhs);
                 bit_mask::check(cx, e, op.node, lhs, rhs);
@@ -1028,6 +1053,9 @@ impl<'tcx> LateLintPass<'tcx> for Operators {
             },
             ExprKind::AssignOp(op, lhs, rhs) => {
                 let bin_op = op.node.into();
+                if !e.span.from_expansion() {
+                    decimal_bitwise_operands::check(cx, bin_op, lhs, rhs);
+                }
                 self.arithmetic_context.check_binary(cx, e, bin_op, lhs, rhs);
                 misrefactored_assign_op::check(cx, e, bin_op, lhs, rhs);
                 modulo_arithmetic::check(cx, e, bin_op, lhs, rhs, false);
