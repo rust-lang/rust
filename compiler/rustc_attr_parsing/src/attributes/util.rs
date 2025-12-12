@@ -40,7 +40,7 @@ pub fn is_builtin_attr(attr: &impl AttributeExt) -> bool {
 /// `args` is the parser for the attribute arguments.
 pub(crate) fn parse_single_integer<S: Stage>(
     cx: &mut AcceptContext<'_, '_, S>,
-    args: &ArgParser<'_>,
+    args: &ArgParser,
 ) -> Option<u128> {
     let Some(list) = args.list() else {
         cx.expected_list(cx.attr_span);
