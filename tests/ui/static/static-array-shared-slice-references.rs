@@ -1,11 +1,10 @@
+//! regression test for <https://github.com/rust-lang/rust/issues/21891>
 //@ build-pass
 #![allow(dead_code)]
-#![allow(non_upper_case_globals)]
 
+static FOO: [usize; 3] = [1, 2, 3];
 
-static foo: [usize; 3] = [1, 2, 3];
-
-static slice_1: &'static [usize] = &foo;
-static slice_2: &'static [usize] = &foo;
+static SLICE_1: &'static [usize] = &FOO;
+static SLICE_2: &'static [usize] = &FOO;
 
 fn main() {}
