@@ -892,8 +892,8 @@ impl Step for Std {
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct RustcDev {
     /// The compiler that will build rustc which will be shipped in this component.
-    build_compiler: Compiler,
-    target: TargetSelection,
+    pub build_compiler: Compiler,
+    pub target: TargetSelection,
 }
 
 impl RustcDev {
