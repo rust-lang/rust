@@ -1031,7 +1031,9 @@ impl Cursor<'_> {
         // Skip the string contents and on each '#' character met, check if this is
         // a raw string termination.
         loop {
-            if !self.eat_until(b'"') {
+            self.eat_until(b'"');
+
+            if self.is_eof() {
                 return Err(RawStrError::NoTerminator {
                     expected: n_start_hashes,
                     found: max_hashes,

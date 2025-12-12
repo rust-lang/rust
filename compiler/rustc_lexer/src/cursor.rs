@@ -153,17 +153,11 @@ impl<'a> Cursor<'a> {
     }
     /// Eats characters until the given byte is found.
     /// Returns true if the byte was found, false if end of file was reached.
-    pub(crate) fn eat_until(&mut self, byte: u8) -> bool {
-        match memchr::memchr(byte, self.as_str().as_bytes()) {
-            Some(index) => {
-                self.bump_bytes(index);
-                true
-            }
-            None => {
-                self.chars = "".chars();
-                false
-            }
-        }
+    pub(crate) fn eat_until(&mut self, byte: u8) {
+        self.chars = match memchr::memchr(byte, self.as_str().as_bytes()) {
+            Some(index) => self.as_str()[index..].chars(),
+            None => "".chars(),
+        };
     }
 
     /// Eats characters until any of the given bytes is found, then consumes past it.
