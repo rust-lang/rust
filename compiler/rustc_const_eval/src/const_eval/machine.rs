@@ -408,8 +408,8 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
     }
 
     #[inline(always)]
-    fn enforce_validity(ecx: &InterpCx<'tcx, Self>, layout: TyAndLayout<'tcx>) -> bool {
-        ecx.tcx.sess.opts.unstable_opts.extra_const_ub_checks || layout.is_uninhabited()
+    fn enforce_validity(_ecx: &InterpCx<'tcx, Self>, _layout: TyAndLayout<'tcx>) -> bool {
+        true
     }
 
     fn load_mir(
