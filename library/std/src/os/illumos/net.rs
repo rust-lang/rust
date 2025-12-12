@@ -5,7 +5,7 @@
 use crate::io;
 use crate::os::unix::net;
 use crate::sealed::Sealed;
-use crate::sys_common::AsInner;
+use crate::sys::AsInner;
 
 /// illumos-specific functionality for `AF_UNIX` sockets [`UnixDatagram`]
 /// and [`UnixStream`].

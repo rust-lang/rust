@@ -6,8 +6,7 @@ use crate::ffi::CStr;
 use crate::io::{self, BorrowedBuf, BorrowedCursor, ErrorKind, IoSlice, IoSliceMut};
 use crate::net::{Shutdown, SocketAddr};
 use crate::os::solid::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd};
-use crate::sys::abi;
-use crate::sys_common::{FromInner, IntoInner};
+use crate::sys::{FromInner, IntoInner, abi};
 use crate::time::Duration;
 use crate::{cmp, mem, ptr, str};
 

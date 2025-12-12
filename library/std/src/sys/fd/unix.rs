@@ -36,12 +36,11 @@ cfg_select! {
 use crate::cmp;
 use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut, Read};
 use crate::os::fd::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd};
-use crate::sys::cvt;
 #[cfg(all(target_os = "android", target_pointer_width = "64"))]
 use crate::sys::pal::weak::syscall;
 #[cfg(any(all(target_os = "android", target_pointer_width = "32"), target_vendor = "apple"))]
 use crate::sys::pal::weak::weak;
-use crate::sys_common::{AsInner, FromInner, IntoInner};
+use crate::sys::{AsInner, FromInner, IntoInner, cvt};
 
 #[derive(Debug)]
 pub struct FileDesc(OwnedFd);

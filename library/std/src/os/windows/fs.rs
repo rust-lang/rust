@@ -8,7 +8,7 @@ use crate::fs::{self, Metadata, OpenOptions};
 use crate::io::BorrowedCursor;
 use crate::path::Path;
 use crate::sealed::Sealed;
-use crate::sys_common::{AsInner, AsInnerMut, IntoInner};
+use crate::sys::{AsInner, AsInnerMut, IntoInner};
 use crate::time::SystemTime;
 use crate::{io, sys};
 

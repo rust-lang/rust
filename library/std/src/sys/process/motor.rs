@@ -8,8 +8,7 @@ use crate::os::motor::ffi::OsStrExt;
 use crate::path::Path;
 use crate::process::StdioPipes;
 use crate::sys::fs::File;
-use crate::sys::map_motor_error;
-use crate::sys_common::{AsInner, FromInner};
+use crate::sys::{AsInner, FromInner, map_motor_error};
 use crate::{fmt, io};
 
 pub enum Stdio {

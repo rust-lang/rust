@@ -10,14 +10,13 @@ use crate::ffi::{CStr, CString, OsStr, OsString};
 use crate::os::unix::prelude::*;
 use crate::path::Path;
 use crate::process::StdioPipes;
-use crate::sys::cvt_r;
 use crate::sys::fd::FileDesc;
 use crate::sys::fs::File;
 #[cfg(not(target_os = "fuchsia"))]
 use crate::sys::fs::OpenOptions;
 use crate::sys::pipe::pipe;
 use crate::sys::process::env::{CommandEnv, CommandEnvs};
-use crate::sys_common::{FromInner, IntoInner};
+use crate::sys::{FromInner, IntoInner, cvt_r};
 use crate::{fmt, io, mem};
 
 mod cstring_array;

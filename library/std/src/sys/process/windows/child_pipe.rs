@@ -2,8 +2,7 @@ use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut};
 use crate::ops::Neg;
 use crate::os::windows::prelude::*;
 use crate::sys::handle::Handle;
-use crate::sys::{api, c};
-use crate::sys_common::{FromInner, IntoInner};
+use crate::sys::{FromInner, IntoInner, api, c};
 use crate::{mem, ptr};
 
 pub struct ChildPipe {

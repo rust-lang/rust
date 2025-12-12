@@ -5,8 +5,7 @@ use crate::net::SocketAddr::{V4, V6};
 use crate::net::{Ipv4Addr, Ipv6Addr, Shutdown, SocketAddr, ToSocketAddrs};
 use crate::os::fd::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, RawFd};
 use crate::sys::fd::FileDesc;
-use crate::sys::map_motor_error;
-use crate::sys_common::{AsInner, FromInner, IntoInner};
+use crate::sys::{AsInner, FromInner, IntoInner, map_motor_error};
 use crate::time::Duration;
 
 // We want to re-use as much of Rust's stdlib code as possible,
