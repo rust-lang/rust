@@ -930,13 +930,11 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
             match inner.kind() {
                 GenericArgKind::Lifetime(_) => {}
                 GenericArgKind::Type(ty) => {
-                    if matches!(
-                        ty.kind(),
-                        ty::Alias(ty::Opaque, ..)
-                            | ty::Closure(..)
-                            | ty::CoroutineClosure(..)
-                            | ty::Coroutine(..)
-                    ) {
+                    if let ty::Alias(ty::Opaque, ..)
+                    | ty::Closure(..)
+                    | ty::CoroutineClosure(..)
+                    | ty::Coroutine(..) = ty.kind()
+                    {
                         // Opaque types can't be named by the user right now.
                         //
                         // Both the generic arguments of closures and coroutines can
@@ -951,7 +949,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
                     }
                 }
                 GenericArgKind::Const(ct) => {
-                    if matches!(ct.kind(), ty::ConstKind::Unevaluated(..)) {
+                    if let ty::ConstKind::Unevaluated(..) = ct.kind() {
                         // You can't write the generic arguments for
                         // unevaluated constants.
                         walker.skip_current_subtree();
@@ -990,7 +988,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
             //
             // See the `need_type_info/issue-103053.rs` test for
             // a example.
-            if matches!(path.res, Res::Def(DefKind::Struct | DefKind::Enum | DefKind::Union, _)) => {
+            if let Res::Def(DefKind::Struct | DefKind::Enum | DefKind::Union, _) = path.res => {
                 if let Some(ty) = self.opt_node_type(expr.hir_id)
                     && let ty::Adt(_, args) = ty.kind()
                 {
@@ -1274,7 +1272,7 @@ impl<'a, 'tcx> Visitor<'tcx> for FindInferSourceVisitor<'a, 'tcx> {
                 let output = args.as_closure().sig().output().skip_binder();
                 if self.generic_arg_contains_target(output.into()) {
                     let body = self.tecx.tcx.hir_body(body);
-                    let should_wrap_expr = if matches!(body.value.kind, ExprKind::Block(..)) {
+                    let should_wrap_expr = if let ExprKind::Block(..) = body.value.kind {
                         None
                     } else {
                         Some(body.value.span.shrink_to_hi())

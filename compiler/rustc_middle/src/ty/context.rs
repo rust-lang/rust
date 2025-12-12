@@ -1703,14 +1703,12 @@ impl<'tcx> TyCtxt<'tcx> {
         let def_kind = self.def_kind(def_id);
         if def_kind.has_codegen_attrs() {
             self.codegen_fn_attrs(def_id)
-        } else if matches!(
-            def_kind,
-            DefKind::AnonConst
-                | DefKind::AssocConst
-                | DefKind::Const
-                | DefKind::InlineConst
-                | DefKind::GlobalAsm
-        ) {
+        } else if let DefKind::AnonConst
+        | DefKind::AssocConst
+        | DefKind::Const
+        | DefKind::InlineConst
+        | DefKind::GlobalAsm = def_kind
+        {
             CodegenFnAttrs::EMPTY
         } else {
             bug!(
@@ -2171,7 +2169,7 @@ impl<'tcx> TyCtxt<'tcx> {
         // They have visibilities inherited from the module they are defined in.
         // Visibilities for opaque types are meaningless, but still provided
         // so that all items have visibilities.
-        if matches!(def_kind, DefKind::Closure | DefKind::OpaqueTy) {
+        if let DefKind::Closure | DefKind::OpaqueTy = def_kind {
             let parent_mod = self.parent_module_from_def_id(def_id).to_def_id();
             feed.visibility(ty::Visibility::Restricted(parent_mod));
         }

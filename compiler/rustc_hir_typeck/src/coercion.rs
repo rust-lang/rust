@@ -182,7 +182,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             // In order to actually ensure that equating the binders *does*
             // result in equal binders, and that the lhs is actually a supertype
             // of the rhs, we must perform a leak check here.
-            if matches!(leak_check, ForceLeakCheck::Yes) {
+            if let ForceLeakCheck::Yes = leak_check {
                 self.leak_check(outer_universe, Some(snapshot))?;
             }
 
@@ -1101,7 +1101,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         let fn_attrs = tcx.codegen_fn_attrs(def_id);
-        if matches!(fn_attrs.inline, InlineAttr::Force { .. }) {
+        if let InlineAttr::Force { .. } = fn_attrs.inline {
             return Err(TypeError::ForceInlineCast);
         }
 
@@ -1111,7 +1111,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // needed to call the coercee safely.
             match tcx.adjust_target_feature_sig(def_id, sig, self.body_id.into()) {
                 Some(adjusted_sig) => adjusted_sig,
-                None if matches!(expected_safety, Some(hir::Safety::Safe)) => {
+                None if let Some(hir::Safety::Safe) = expected_safety => {
                     return Err(TypeError::TargetFeatureCast(def_id));
                 }
                 None => sig,

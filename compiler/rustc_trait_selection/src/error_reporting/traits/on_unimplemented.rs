@@ -451,7 +451,7 @@ impl<'tcx> OnUnimplementedDirective {
                 .own_params
                 .iter()
                 .filter_map(|param| {
-                    if matches!(param.kind, GenericParamDefKind::Lifetime) {
+                    if let GenericParamDefKind::Lifetime = param.kind {
                         None
                     } else {
                         Some(param.name)

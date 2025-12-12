@@ -2042,7 +2042,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     (xform_self_ty, xform_ret_ty) =
                         self.xform_self_ty(probe.item, trait_ref.self_ty(), trait_ref.args);
 
-                    if matches!(probe.kind, WhereClauseCandidate(_)) {
+                    if let WhereClauseCandidate(_) = probe.kind {
                         // `WhereClauseCandidate` requires that the self type is a param,
                         // because it has special behavior with candidate preference as an
                         // inherent pick.

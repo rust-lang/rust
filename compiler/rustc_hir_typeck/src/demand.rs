@@ -91,7 +91,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // FIXME(#73154): For now, we do leak check when coercing function
         // pointers in typeck, instead of only during borrowck. This can lead
         // to these `RegionsInsufficientlyPolymorphic` errors that aren't helpful.
-        if matches!(error, Some(TypeError::RegionsInsufficientlyPolymorphic(..))) {
+        if let Some(TypeError::RegionsInsufficientlyPolymorphic(..)) = error {
             return;
         }
 
@@ -531,7 +531,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // of our inference guesses in `emit_type_mismatch_suggestions`, so
                     // only suggest things when we know our type error is precisely due to
                     // a type mismatch, and not via some projection or something. See #116155.
-                    if matches!(source, TypeMismatchSource::Ty(_))
+                    if let TypeMismatchSource::Ty(_) = source
                         && let Some(ideal_method) = ideal_method
                         && Some(ideal_method.def_id)
                             == self
@@ -1214,13 +1214,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 return;
             }
             let fn_sig = fn_ty.fn_sig(self.tcx).skip_binder();
-            let Some(&arg) = fn_sig
-                .inputs()
-                .get(arg_idx + if matches!(kind, CallableKind::Method) { 1 } else { 0 })
+            let Some(&arg) =
+                fn_sig.inputs().get(arg_idx + if let CallableKind::Method = kind { 1 } else { 0 })
             else {
                 return;
             };
-            if matches!(arg.kind(), ty::Param(_))
+            if let ty::Param(_) = arg.kind()
                 && fn_sig.output().contains(arg)
                 && self.node_ty(args[arg_idx].hir_id) == checked_ty
             {
@@ -1229,11 +1228,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     args[arg_idx].span,
                     format!(
                         "this argument influences the {} of `{}`",
-                        if matches!(kind, CallableKind::Constructor) {
-                            "type"
-                        } else {
-                            "return type"
-                        },
+                        if let CallableKind::Constructor = kind { "type" } else { "return type" },
                         callable
                     ),
                 );
@@ -1259,7 +1254,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let hir::def::Res::Def(kind, def_id) = path.res else {
                     return;
                 };
-                let callable_kind = if matches!(kind, hir::def::DefKind::Ctor(_, _)) {
+                let callable_kind = if let hir::def::DefKind::Ctor(_, _) = kind {
                     CallableKind::Constructor
                 } else {
                     CallableKind::Function

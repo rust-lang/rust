@@ -216,7 +216,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Don't write user type annotations for const param types, since we give them
         // identity args just so that we can trivially substitute their `EarlyBinder`.
         // We enforce that they match their type in MIR later on.
-        if matches!(self.tcx.def_kind(def_id), DefKind::ConstParam) {
+        if self.tcx.def_kind(def_id) == DefKind::ConstParam {
             return;
         }
 

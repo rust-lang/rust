@@ -326,7 +326,7 @@ pub(crate) fn check_trait_item<'tcx>(
 
     let mut res = Ok(());
 
-    if matches!(tcx.def_kind(def_id), DefKind::AssocFn) {
+    if tcx.def_kind(def_id) == DefKind::AssocFn {
         for &assoc_ty_def_id in
             tcx.associated_types_for_impl_traits_in_associated_fn(def_id.to_def_id())
         {
@@ -2330,7 +2330,7 @@ fn lint_redundant_lifetimes<'tcx>(
         ty::GenericArgs::identity_for_item(tcx, owner_id).iter().filter_map(|arg| arg.as_region()),
     );
     // If we are in a function, add its late-bound lifetimes too.
-    if matches!(def_kind, DefKind::Fn | DefKind::AssocFn) {
+    if let DefKind::Fn | DefKind::AssocFn = def_kind {
         for (idx, var) in
             tcx.fn_sig(owner_id).instantiate_identity().bound_vars().iter().enumerate()
         {

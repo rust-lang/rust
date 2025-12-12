@@ -176,7 +176,9 @@ impl<'a> Parser<'a> {
                     Ok((expr, Trailing::No, UsePreAttrPos::Yes))
                 },
             )?;
-            if matches!(e.kind, ExprKind::Assign(..)) && self.eat_keyword(exp!(Else)) {
+            if let ExprKind::Assign(..) = e.kind
+                && self.eat_keyword(exp!(Else))
+            {
                 let bl = self.parse_block()?;
                 // Destructuring assignment ... else.
                 // This is not allowed, but point it out in a nice way.

@@ -1064,7 +1064,7 @@ impl<'a> Parser<'a> {
         for c in float_str.chars() {
             if c == '_' || c.is_ascii_alphanumeric() {
                 ident_like.push(c);
-            } else if matches!(c, '.' | '+' | '-') {
+            } else if let '.' | '+' | '-' = c {
                 if !ident_like.is_empty() {
                     components.push(IdentLike(mem::take(&mut ident_like)));
                 }
@@ -2977,7 +2977,7 @@ impl<'a> Parser<'a> {
         let (pat, expr) = self.parse_for_head()?;
         let pat = Box::new(pat);
         // Recover from missing expression in `for` loop
-        if matches!(expr.kind, ExprKind::Block(..))
+        if let ExprKind::Block(..) = expr.kind
             && self.token.kind != token::OpenBrace
             && self.may_recover()
         {
@@ -3082,7 +3082,7 @@ impl<'a> Parser<'a> {
     pub(crate) fn eat_label(&mut self) -> Option<Label> {
         if let Some((ident, is_raw)) = self.token.lifetime() {
             // Disallow `'fn`, but with a better error message than `expect_lifetime`.
-            if matches!(is_raw, IdentIsRaw::No) && ident.without_first_quote().is_reserved() {
+            if is_raw == IdentIsRaw::No && ident.without_first_quote().is_reserved() {
                 self.dcx().emit_err(errors::KeywordLabel { span: ident.span });
             }
 
@@ -3282,10 +3282,9 @@ impl<'a> Parser<'a> {
                             "=>",
                             Applicability::MachineApplicable,
                         );
-                        if matches!(
-                            (&this.prev_token.kind, &this.token.kind),
-                            (token::DotDotEq, token::Gt)
-                        ) {
+                        if let token::DotDotEq = this.prev_token.kind
+                            && let token::Gt = this.token.kind
+                        {
                             // `error_inclusive_range_match_arrow` handles cases like `0..=> {}`,
                             // so we suppress the error here
                             err.delay_as_bug();

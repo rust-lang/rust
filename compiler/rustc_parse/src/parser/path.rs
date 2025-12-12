@@ -414,7 +414,7 @@ impl<'a> Parser<'a> {
                                     named_param_span: param.pat.span,
                                 });
                             }
-                            if matches!(param.ty.kind, TyKind::CVarArgs) {
+                            if let TyKind::CVarArgs = param.ty.kind {
                                 dcx.emit_err(PathFoundCVariadicParams { span: param.pat.span });
                             }
                             if !param.attrs.is_empty() {
@@ -816,7 +816,7 @@ impl<'a> Parser<'a> {
                 let mut err = self
                     .dcx()
                     .struct_span_err(after_eq.to(before_next), "missing type to the right of `=`");
-                if matches!(self.token.kind, token::Comma | token::Gt) {
+                if let token::Comma | token::Gt = self.token.kind {
                     err.span_suggestion(
                         self.psess.source_map().next_point(eq_span).to(before_next),
                         "to constrain the associated type, add a type after `=`",

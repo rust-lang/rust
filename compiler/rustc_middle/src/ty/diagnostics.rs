@@ -490,7 +490,7 @@ pub fn suggest_constraining_type_params<'a>(
         //    Suggestion:
         //      trait Foo<T=()> {... }
         //                     - insert: `where T: Zar`
-        if matches!(param.kind, hir::GenericParamKind::Type { default: Some(_), .. }) {
+        if let hir::GenericParamKind::Type { default: Some(_), .. } = param.kind {
             // If we are here and the where clause span is of non-zero length
             // it means we're dealing with an empty where clause like this:
             //      fn foo<X>(x: X) where { ... }

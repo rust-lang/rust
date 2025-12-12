@@ -1658,7 +1658,7 @@ impl DiagCtxtInner {
 
                 if is_error {
                     self.deduplicated_err_count += 1;
-                } else if matches!(diagnostic.level, ForceWarning | Warning) {
+                } else if let ForceWarning | Warning = diagnostic.level {
                     self.deduplicated_warn_count += 1;
                 }
                 self.has_printed = true;

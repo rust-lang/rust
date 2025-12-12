@@ -679,7 +679,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             span_bug!(self.cur_span(), "primitive read not possible for type: {}", op.layout().ty);
         }
         let imm = self.read_immediate_raw(op)?.right().unwrap();
-        if matches!(*imm, Immediate::Uninit) {
+        if let Immediate::Uninit = *imm {
             throw_ub!(InvalidUninitBytes(None));
         }
         interp_ok(imm)
@@ -748,7 +748,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
         let layout = self.layout_of_local(frame, local, layout)?;
         let op = *frame.locals[local].access()?;
-        if matches!(op, Operand::Immediate(_)) {
+        if let Operand::Immediate(_) = op {
             assert!(!layout.is_unsized());
         }
         M::after_local_read(self, frame, local)?;

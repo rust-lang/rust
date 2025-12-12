@@ -174,7 +174,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     pub fn get_impl_future_output_ty(&self, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
         let (def_id, args) = match *ty.kind() {
             ty::Alias(_, ty::AliasTy { def_id, args, .. })
-                if matches!(self.tcx.def_kind(def_id), DefKind::OpaqueTy) =>
+                if self.tcx.def_kind(def_id) == DefKind::OpaqueTy =>
             {
                 (def_id, args)
             }

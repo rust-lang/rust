@@ -422,10 +422,10 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
         // Reset provenance: ensure slice tail metadata does not preserve provenance,
         // and ensure all pointers do not preserve partial provenance.
         if self.reset_provenance_and_padding {
-            if matches!(imm.layout.backend_repr, BackendRepr::Scalar(..)) {
+            if let BackendRepr::Scalar(..) = imm.layout.backend_repr {
                 // A thin pointer. If it has provenance, we don't have to do anything.
                 // If it does not, ensure we clear the provenance in memory.
-                if matches!(imm.to_scalar(), Scalar::Int(..)) {
+                if let Scalar::Int(..) = imm.to_scalar() {
                     self.ecx.clear_provenance(val)?;
                 }
             } else {
@@ -651,7 +651,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
                 // and then puts the value in there, so briefly we have a box with uninit contents.
                 // FIXME: should we also skip `UnsafeCell` behind shared references? Currently that is not
                 // needed since validation reads bypass Stacked Borrows and data race checks.
-                if matches!(ptr_kind, PointerKind::Box) {
+                if let PointerKind::Box = ptr_kind {
                     return interp_ok(());
                 }
             }
@@ -714,7 +714,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
                 // types below!
                 self.read_scalar(
                     value,
-                    if matches!(ty.kind(), ty::Float(..)) {
+                    if let ty::Float(..) = ty.kind() {
                         ExpectedKind::Float
                     } else {
                         ExpectedKind::Int
@@ -762,7 +762,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
                 if self.reset_provenance_and_padding {
                     // Make sure we do not preserve partial provenance. This matches the thin
                     // pointer handling in `deref_pointer`.
-                    if matches!(scalar, Scalar::Int(..)) {
+                    if let Scalar::Int(..) = scalar {
                         self.ecx.clear_provenance(value)?;
                     }
                     self.add_data_range_place(value);

@@ -762,7 +762,9 @@ impl<'a> Parser<'a> {
         }
 
         // Check for misspelled keywords if there are no suggestions added to the diagnostic.
-        if matches!(&err.suggestions, Suggestions::Enabled(list) if list.is_empty()) {
+        if let Suggestions::Enabled(list) = &err.suggestions
+            && list.is_empty()
+        {
             self.check_for_misspelled_kw(&mut err, &expected);
         }
         Err(err)
@@ -2280,7 +2282,7 @@ impl<'a> Parser<'a> {
         {
             let maybe_emit_anon_params_note = |this: &mut Self, err: &mut Diag<'_>| {
                 let ed = this.token.span.with_neighbor(this.prev_token.span).edition();
-                if matches!(fn_parse_mode.context, crate::parser::item::FnContext::Trait)
+                if let crate::parser::item::FnContext::Trait = fn_parse_mode.context
                     && (fn_parse_mode.req_name)(ed, IsDotDotDot::No)
                 {
                     err.note("anonymous parameters are removed in the 2018 edition (see RFC 1685)");

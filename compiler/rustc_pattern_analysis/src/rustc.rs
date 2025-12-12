@@ -753,7 +753,9 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
     fn print_pat_range(&self, range: &IntRange, ty: RevealedTy<'tcx>) -> String {
         use MaybeInfiniteInt::*;
         let cx = self;
-        if matches!((range.lo, range.hi), (NegInfinity, PosInfinity)) {
+        if let NegInfinity = range.lo
+            && let PosInfinity = range.hi
+        {
             "_".to_string()
         } else if range.is_singleton() {
             let lo = cx.hoist_pat_range_bdy(range.lo, ty);
@@ -763,7 +765,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
             // We convert to an inclusive range for diagnostics.
             let mut end = rustc_hir::RangeEnd::Included;
             let mut lo = cx.hoist_pat_range_bdy(range.lo, ty);
-            if matches!(lo, PatRangeBoundary::PosInfinity) {
+            if let PatRangeBoundary::PosInfinity = lo {
                 // The only reason to get `PosInfinity` here is the special case where
                 // `hoist_pat_range_bdy` found `{u,i}size::MAX+1`. So the range denotes the
                 // fictitious values after `{u,i}size::MAX` (see [`IntRange::split`] for why we do
