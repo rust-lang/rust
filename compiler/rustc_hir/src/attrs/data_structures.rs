@@ -549,6 +549,21 @@ pub struct DocAttribute {
     pub no_crate_inject: Option<Span>,
 }
 
+impl DocAttribute {
+    /// Returns `true` if contains `doc(inline)` and doesn't contain `doc(no_inline)`.
+    pub fn is_inline(&self) -> bool {
+        let mut is_no_inline = false;
+        let mut is_inline = false;
+        for (inline, _) in &self.inline {
+            match inline {
+                DocInline::Inline => is_inline = true,
+                DocInline::NoInline => is_no_inline = true,
+            }
+        }
+        is_inline && !is_no_inline
+    }
+}
+
 /// Represents parsed *built-in* inert attributes.
 ///
 /// ## Overview
