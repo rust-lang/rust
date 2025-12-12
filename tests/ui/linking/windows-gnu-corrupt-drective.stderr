@@ -1,0 +1,12 @@
+error: Warning: .drectve `-exclude-symbols:_ZN28windows_gnu_corrupt_drective4main17h291ed884c1aada69E ' unrecognized
+       Warning: corrupt .drectve at end of def file
+       
+   |
+note: the lint level is defined here
+  --> $DIR/windows-gnu-corrupt-drective.rs:3:9
+   |
+LL | #![deny(linker_info)]
+   |         ^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
