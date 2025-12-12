@@ -946,7 +946,6 @@ impl Step for OmpOffload {
         let out_dir = builder.llvm_out(target).join("offload-outdir");
         if std::fs::exists(&out_dir).is_ok_and(|x| x == false) {
             std::fs::DirBuilder::new().create(&out_dir).unwrap();
-            dbg!("Created out subdir!");
         }
 
         // Offload/OpenMP are just subfolders of LLVM, so we can use the LLVM sha.
