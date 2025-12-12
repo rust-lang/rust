@@ -729,7 +729,7 @@ impl Step for Libdir {
                 let sysroot_target_libdir = sysroot.join(self.target).join("lib");
                 builder.do_if_verbose(|| {
                     eprintln!(
-                        "HERE Removing sysroot {} to avoid caching bugs",
+                        "Removing sysroot {} to avoid caching bugs",
                         sysroot_target_libdir.display()
                     )
                 });
