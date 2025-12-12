@@ -1384,7 +1384,9 @@ impl DepNodeColorMap {
 
     #[inline]
     pub(super) fn insert_red(&self, index: SerializedDepNodeIndex) {
-        self.values[index].store(COMPRESSED_RED, Ordering::Release)
+        let value = self.values[index].swap(COMPRESSED_RED, Ordering::Release);
+        // Sanity check for duplicate nodes
+        assert_eq!(value, COMPRESSED_UNKNOWN, "trying to encode a dep node twice");
     }
 }
 
