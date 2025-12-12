@@ -1,4 +1,4 @@
-error[E0412]: cannot find type `D` in this scope
+error[E0425]: cannot find type `D` in this scope
   --> $DIR/malformed-pattern-issue-140011.rs:3:7
    |
 LL |     C(D),
@@ -25,12 +25,12 @@ LL | enum B {
 LL |     C(D),
    |     - not covered
    = note: the matched value is of type `B`
-help: you might want to use `let else` to handle the variant that isn't matched
+help: you might want to use `let...else` to handle the variant that isn't matched
    |
 LL |         let B::E(a) = h else { todo!() };
    |                         ++++++++++++++++
 
 error: aborting due to 2 previous errors
 
-Some errors have detailed explanations: E0005, E0412.
+Some errors have detailed explanations: E0005, E0425.
 For more information about an error, try `rustc --explain E0005`.
