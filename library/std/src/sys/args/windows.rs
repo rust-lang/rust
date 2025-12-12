@@ -11,11 +11,11 @@ use crate::ffi::{OsStr, OsString};
 use crate::num::NonZero;
 use crate::os::windows::prelude::*;
 use crate::path::{Path, PathBuf};
+use crate::sys::helpers::WStrUnits;
 use crate::sys::pal::os::current_exe;
 use crate::sys::pal::{ensure_no_nuls, fill_utf16_buf};
 use crate::sys::path::get_long_path;
 use crate::sys::{AsInner, c, to_u16s};
-use crate::sys_common::wstr::WStrUnits;
 use crate::{io, iter, ptr};
 
 pub fn args() -> Args {

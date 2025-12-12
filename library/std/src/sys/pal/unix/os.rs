@@ -10,8 +10,8 @@ use libc::{c_char, c_int, c_void};
 use crate::ffi::{CStr, OsStr, OsString};
 use crate::os::unix::prelude::*;
 use crate::path::{self, PathBuf};
-use crate::sys::common::small_c_string::run_path_with_cstr;
 use crate::sys::cvt;
+use crate::sys::helpers::run_path_with_cstr;
 use crate::{fmt, io, iter, mem, ptr, slice, str};
 
 const TMPBUF_SZ: usize = 128;
