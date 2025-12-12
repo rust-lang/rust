@@ -4,6 +4,8 @@ mod markdown;
 mod runner;
 mod rust;
 
+#[cfg(bootstrap)]
+use std::fmt;
 use std::fs::File;
 use std::hash::{Hash, Hasher};
 use std::io::{self, Write};
@@ -32,12 +34,46 @@ use rustc_span::edition::Edition;
 use rustc_span::{FileName, Span};
 use rustc_target::spec::{Target, TargetTuple};
 use tempfile::{Builder as TempFileBuilder, TempDir};
+#[cfg(not(bootstrap))]
+use test::test::{RustdocResult, get_rustdoc_result};
 use tracing::debug;
 
 use self::rust::HirCollector;
 use crate::config::{Options as RustdocOptions, OutputFormat};
 use crate::html::markdown::{ErrorCodes, Ignore, LangString, MdRelLine};
 use crate::lint::init_lints;
+
+#[cfg(bootstrap)]
+#[allow(dead_code)]
+pub enum RustdocResult {
+    /// The test failed to compile.
+    CompileError,
+    /// The test is marked `compile_fail` but compiled successfully.
+    UnexpectedCompilePass,
+    /// The test failed to compile (as expected) but the compiler output did not contain all
+    /// expected error codes.
+    MissingErrorCodes(Vec<String>),
+    /// The test binary was unable to be executed.
+    ExecutionError(io::Error),
+    /// The test binary exited with a non-zero exit code.
+    ///
+    /// This typically means an assertion in the test failed or another form of panic occurred.
+    ExecutionFailure(process::Output),
+    /// The test is marked `should_panic` but the test binary executed successfully.
+    NoPanic(Option<String>),
+}
+
+#[cfg(bootstrap)]
+impl fmt::Display for RustdocResult {
+    fn fmt(&self, _: &mut fmt::Formatter<'_>) -> fmt::Result {
+        Ok(())
+    }
+}
+
+#[cfg(bootstrap)]
+fn get_rustdoc_result(_: process::Output, _: bool) -> Result<(), RustdocResult> {
+    Ok(())
+}
 
 /// Type used to display times (compilation and total) information for merged doctests.
 struct MergedDoctestTimes {
@@ -352,7 +388,7 @@ pub(crate) fn run_tests(
         );
 
         for (doctest, scraped_test) in &doctests {
-            tests_runner.add_test(doctest, scraped_test, &target_str);
+            tests_runner.add_test(doctest, scraped_test, &target_str, rustdoc_options);
         }
         let (duration, ret) = tests_runner.run_merged_tests(
             rustdoc_test_options,
@@ -454,25 +490,6 @@ fn scrape_test_config(
     opts
 }
 
-/// Documentation test failure modes.
-enum TestFailure {
-    /// The test failed to compile.
-    CompileError,
-    /// The test is marked `compile_fail` but compiled successfully.
-    UnexpectedCompilePass,
-    /// The test failed to compile (as expected) but the compiler output did not contain all
-    /// expected error codes.
-    MissingErrorCodes(Vec<String>),
-    /// The test binary was unable to be executed.
-    ExecutionError(io::Error),
-    /// The test binary exited with a non-zero exit code.
-    ///
-    /// This typically means an assertion in the test failed or another form of panic occurred.
-    ExecutionFailure(process::Output),
-    /// The test is marked `should_panic` but the test binary executed successfully.
-    UnexpectedRunPass,
-}
-
 enum DirState {
     Temp(TempDir),
     Perm(PathBuf),
@@ -551,6 +568,90 @@ impl RunnableDocTest {
     }
 }
 
+fn compile_merged_doctest_and_caller_binary(
+    mut child: process::Child,
+    doctest: &RunnableDocTest,
+    rustdoc_options: &RustdocOptions,
+    rustc_binary: &Path,
+    output_file: &Path,
+    compiler_args: Vec<String>,
+    test_code: &str,
+    instant: Instant,
+) -> Result<process::Output, (Duration, Result<(), RustdocResult>)> {
+    // compile-fail tests never get merged, so this should always pass
+    let status = child.wait().expect("Failed to wait");
+
+    // the actual test runner is a separate component, built with nightly-only features;
+    // build it now
+    let runner_input_file = doctest.path_for_merged_doctest_runner();
+
+    let mut runner_compiler =
+        wrapped_rustc_command(&rustdoc_options.test_builder_wrappers, rustc_binary);
+    // the test runner does not contain any user-written code, so this doesn't allow
+    // the user to exploit nightly-only features on stable
+    runner_compiler.env("RUSTC_BOOTSTRAP", "1");
+    runner_compiler.args(compiler_args);
+    runner_compiler.args(["--crate-type=bin", "-o"]).arg(output_file);
+    let mut extern_path = std::ffi::OsString::from(format!(
+        "--extern=doctest_bundle_{edition}=",
+        edition = doctest.edition
+    ));
+
+    // Deduplicate passed -L directory paths, since usually all dependencies will be in the
+    // same directory (e.g. target/debug/deps from Cargo).
+    let mut seen_search_dirs = FxHashSet::default();
+    for extern_str in &rustdoc_options.extern_strs {
+        if let Some((_cratename, path)) = extern_str.split_once('=') {
+            // Direct dependencies of the tests themselves are
+            // indirect dependencies of the test runner.
+            // They need to be in the library search path.
+            let dir = Path::new(path)
+                .parent()
+                .filter(|x| x.components().count() > 0)
+                .unwrap_or(Path::new("."));
+            if seen_search_dirs.insert(dir) {
+                runner_compiler.arg("-L").arg(dir);
+            }
+        }
+    }
+
+    let output_bundle_file = doctest
+        .test_opts
+        .outdir
+        .path()
+        .join(format!("libdoctest_bundle_{edition}.rlib", edition = doctest.edition));
+    extern_path.push(&output_bundle_file);
+    runner_compiler.arg(extern_path);
+    runner_compiler.arg(&runner_input_file);
+    if std::fs::write(&runner_input_file, test_code).is_err() {
+        // If we cannot write this file for any reason, we leave. All combined tests will be
+        // tested as standalone tests.
+        return Err((instant.elapsed(), Err(RustdocResult::CompileError)));
+    }
+    if !rustdoc_options.no_capture {
+        // If `no_capture` is disabled, then we don't display rustc's output when compiling
+        // the merged doctests.
+        runner_compiler.stderr(Stdio::null());
+    }
+    runner_compiler.arg("--error-format=short");
+    debug!("compiler invocation for doctest runner: {runner_compiler:?}");
+
+    let status = if !status.success() {
+        status
+    } else {
+        let mut child_runner = match runner_compiler.spawn() {
+            Ok(child) => child,
+            Err(error) => {
+                eprintln!("Failed to spawn {:?}: {error:?}", runner_compiler.get_program());
+                return Err((Duration::default(), Err(RustdocResult::CompileError)));
+            }
+        };
+        child_runner.wait().expect("Failed to wait")
+    };
+
+    Ok(process::Output { status, stdout: Vec::new(), stderr: Vec::new() })
+}
+
 /// Execute a `RunnableDoctest`.
 ///
 /// This is the function that calculates the compiler command line, invokes the compiler, then
@@ -562,7 +663,7 @@ fn run_test(
     rustdoc_options: &RustdocOptions,
     supports_color: bool,
     report_unused_externs: impl Fn(UnusedExterns),
-) -> (Duration, Result<(), TestFailure>) {
+) -> (Duration, Result<(), RustdocResult>) {
     let langstr = &doctest.langstr;
     // Make sure we emit well-formed executable names for our target.
     let rust_out = add_exe_suffix("rust_out".to_owned(), &rustdoc_options.target);
@@ -651,7 +752,7 @@ fn run_test(
         if std::fs::write(&input_file, &doctest.full_test_code).is_err() {
             // If we cannot write this file for any reason, we leave. All combined tests will be
             // tested as standalone tests.
-            return (Duration::default(), Err(TestFailure::CompileError));
+            return (Duration::default(), Err(RustdocResult::CompileError));
         }
         if !rustdoc_options.no_capture {
             // If `no_capture` is disabled, then we don't display rustc's output when compiling
@@ -666,7 +767,6 @@ fn run_test(
             .arg(input_file);
     } else {
         compiler.arg("--crate-type=bin").arg("-o").arg(&output_file);
-        // Setting these environment variables is unneeded if this is a merged doctest.
         compiler.env("UNSTABLE_RUSTDOC_TEST_PATH", &doctest.test_opts.path);
         compiler.env(
             "UNSTABLE_RUSTDOC_TEST_LINE",
@@ -683,81 +783,23 @@ fn run_test(
         Ok(child) => child,
         Err(error) => {
             eprintln!("Failed to spawn {:?}: {error:?}", compiler.get_program());
-            return (Duration::default(), Err(TestFailure::CompileError));
+            return (Duration::default(), Err(RustdocResult::CompileError));
         }
     };
     let output = if let Some(merged_test_code) = &doctest.merged_test_code {
-        // compile-fail tests never get merged, so this should always pass
-        let status = child.wait().expect("Failed to wait");
-
-        // the actual test runner is a separate component, built with nightly-only features;
-        // build it now
-        let runner_input_file = doctest.path_for_merged_doctest_runner();
-
-        let mut runner_compiler =
-            wrapped_rustc_command(&rustdoc_options.test_builder_wrappers, rustc_binary);
-        // the test runner does not contain any user-written code, so this doesn't allow
-        // the user to exploit nightly-only features on stable
-        runner_compiler.env("RUSTC_BOOTSTRAP", "1");
-        runner_compiler.args(compiler_args);
-        runner_compiler.args(["--crate-type=bin", "-o"]).arg(&output_file);
-        let mut extern_path = std::ffi::OsString::from(format!(
-            "--extern=doctest_bundle_{edition}=",
-            edition = doctest.edition
-        ));
-
-        // Deduplicate passed -L directory paths, since usually all dependencies will be in the
-        // same directory (e.g. target/debug/deps from Cargo).
-        let mut seen_search_dirs = FxHashSet::default();
-        for extern_str in &rustdoc_options.extern_strs {
-            if let Some((_cratename, path)) = extern_str.split_once('=') {
-                // Direct dependencies of the tests themselves are
-                // indirect dependencies of the test runner.
-                // They need to be in the library search path.
-                let dir = Path::new(path)
-                    .parent()
-                    .filter(|x| x.components().count() > 0)
-                    .unwrap_or(Path::new("."));
-                if seen_search_dirs.insert(dir) {
-                    runner_compiler.arg("-L").arg(dir);
-                }
-            }
+        match compile_merged_doctest_and_caller_binary(
+            child,
+            &doctest,
+            rustdoc_options,
+            rustc_binary,
+            &output_file,
+            compiler_args,
+            merged_test_code,
+            instant,
+        ) {
+            Ok(out) => out,
+            Err(err) => return err,
         }
-        let output_bundle_file = doctest
-            .test_opts
-            .outdir
-            .path()
-            .join(format!("libdoctest_bundle_{edition}.rlib", edition = doctest.edition));
-        extern_path.push(&output_bundle_file);
-        runner_compiler.arg(extern_path);
-        runner_compiler.arg(&runner_input_file);
-        if std::fs::write(&runner_input_file, merged_test_code).is_err() {
-            // If we cannot write this file for any reason, we leave. All combined tests will be
-            // tested as standalone tests.
-            return (instant.elapsed(), Err(TestFailure::CompileError));
-        }
-        if !rustdoc_options.no_capture {
-            // If `no_capture` is disabled, then we don't display rustc's output when compiling
-            // the merged doctests.
-            runner_compiler.stderr(Stdio::null());
-        }
-        runner_compiler.arg("--error-format=short");
-        debug!("compiler invocation for doctest runner: {runner_compiler:?}");
-
-        let status = if !status.success() {
-            status
-        } else {
-            let mut child_runner = match runner_compiler.spawn() {
-                Ok(child) => child,
-                Err(error) => {
-                    eprintln!("Failed to spawn {:?}: {error:?}", runner_compiler.get_program());
-                    return (Duration::default(), Err(TestFailure::CompileError));
-                }
-            };
-            child_runner.wait().expect("Failed to wait")
-        };
-
-        process::Output { status, stdout: Vec::new(), stderr: Vec::new() }
     } else {
         let stdin = child.stdin.as_mut().expect("Failed to open stdin");
         stdin.write_all(doctest.full_test_code.as_bytes()).expect("could write out test sources");
@@ -793,7 +835,7 @@ fn run_test(
     let _bomb = Bomb(&out);
     match (output.status.success(), langstr.compile_fail) {
         (true, true) => {
-            return (instant.elapsed(), Err(TestFailure::UnexpectedCompilePass));
+            return (instant.elapsed(), Err(RustdocResult::UnexpectedCompilePass));
         }
         (true, false) => {}
         (false, true) => {
@@ -809,12 +851,15 @@ fn run_test(
                     .collect();
 
                 if !missing_codes.is_empty() {
-                    return (instant.elapsed(), Err(TestFailure::MissingErrorCodes(missing_codes)));
+                    return (
+                        instant.elapsed(),
+                        Err(RustdocResult::MissingErrorCodes(missing_codes)),
+                    );
                 }
             }
         }
         (false, false) => {
-            return (instant.elapsed(), Err(TestFailure::CompileError));
+            return (instant.elapsed(), Err(RustdocResult::CompileError));
         }
     }
 
@@ -852,17 +897,9 @@ fn run_test(
         cmd.output()
     };
     match result {
-        Err(e) => return (duration, Err(TestFailure::ExecutionError(e))),
-        Ok(out) => {
-            if langstr.should_panic && out.status.success() {
-                return (duration, Err(TestFailure::UnexpectedRunPass));
-            } else if !langstr.should_panic && !out.status.success() {
-                return (duration, Err(TestFailure::ExecutionFailure(out)));
-            }
-        }
+        Err(e) => (duration, Err(RustdocResult::ExecutionError(e))),
+        Ok(output) => (duration, get_rustdoc_result(output, langstr.should_panic)),
     }
-
-    (duration, Ok(()))
 }
 
 /// Converts a path intended to use as a command to absolute if it is
@@ -1129,6 +1166,10 @@ fn doctest_run_fn(
     rustdoc_options: Arc<RustdocOptions>,
     unused_externs: Arc<Mutex<Vec<UnusedExterns>>>,
 ) -> Result<(), String> {
+    #[cfg(not(bootstrap))]
+    if scraped_test.langstr.should_panic && test::cannot_handle_should_panic() {
+        return Ok(());
+    }
     let report_unused_externs = |uext| {
         unused_externs.lock().unwrap().push(uext);
     };
@@ -1153,54 +1194,7 @@ fn doctest_run_fn(
         run_test(runnable_test, &rustdoc_options, doctest.supports_color, report_unused_externs);
 
     if let Err(err) = res {
-        match err {
-            TestFailure::CompileError => {
-                eprint!("Couldn't compile the test.");
-            }
-            TestFailure::UnexpectedCompilePass => {
-                eprint!("Test compiled successfully, but it's marked `compile_fail`.");
-            }
-            TestFailure::UnexpectedRunPass => {
-                eprint!("Test executable succeeded, but it's marked `should_panic`.");
-            }
-            TestFailure::MissingErrorCodes(codes) => {
-                eprint!("Some expected error codes were not found: {codes:?}");
-            }
-            TestFailure::ExecutionError(err) => {
-                eprint!("Couldn't run the test: {err}");
-                if err.kind() == io::ErrorKind::PermissionDenied {
-                    eprint!(" - maybe your tempdir is mounted with noexec?");
-                }
-            }
-            TestFailure::ExecutionFailure(out) => {
-                eprintln!("Test executable failed ({reason}).", reason = out.status);
-
-                // FIXME(#12309): An unfortunate side-effect of capturing the test
-                // executable's output is that the relative ordering between the test's
-                // stdout and stderr is lost. However, this is better than the
-                // alternative: if the test executable inherited the parent's I/O
-                // handles the output wouldn't be captured at all, even on success.
-                //
-                // The ordering could be preserved if the test process' stderr was
-                // redirected to stdout, but that functionality does not exist in the
-                // standard library, so it may not be portable enough.
-                let stdout = str::from_utf8(&out.stdout).unwrap_or_default();
-                let stderr = str::from_utf8(&out.stderr).unwrap_or_default();
-
-                if !stdout.is_empty() || !stderr.is_empty() {
-                    eprintln!();
-
-                    if !stdout.is_empty() {
-                        eprintln!("stdout:\n{stdout}");
-                    }
-
-                    if !stderr.is_empty() {
-                        eprintln!("stderr:\n{stderr}");
-                    }
-                }
-            }
-        }
-
+        eprint!("{err}");
         panic::resume_unwind(Box::new(()));
     }
     Ok(())
