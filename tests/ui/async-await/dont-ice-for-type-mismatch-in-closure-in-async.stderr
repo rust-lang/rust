@@ -6,7 +6,7 @@ LL | |             false
    | |             ^^^^^ expected `()`, found `bool`
 LL | |
 LL | |         }
-   | |_________- expected this to be `()`
+   | |_________- expected this `if` expression to be `()` because it has no `else` arm
 
 error[E0308]: mismatched types
   --> $DIR/dont-ice-for-type-mismatch-in-closure-in-async.rs:12:9

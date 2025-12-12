@@ -200,7 +200,7 @@ LL |         if x == E::V { field } {}
    |         ---------------^^^^^--
    |         |              |
    |         |              expected `()`, found `bool`
-   |         expected this to be `()`
+   |         expected this `if` expression to be `()` because it has no `else` arm
    |
 help: you might have meant to return this value
    |

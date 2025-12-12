@@ -15,7 +15,7 @@ LL | |         x?
    | |         ^^ expected `()`, found integer
 ...  |
 LL | |     }
-   | |_____- expected this to be `()`
+   | |_____- expected this `if` expression to be `()` because it has no `else` arm
    |
 help: consider using a semicolon here
    |

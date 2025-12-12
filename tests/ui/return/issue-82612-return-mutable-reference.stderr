@@ -6,7 +6,7 @@ LL | |             let value = unsafe { self.values.get_unchecked_mut(index) };
 LL | |             value.get_or_insert_with(func)
    | |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `()`, found `&mut V`
 LL | |         }
-   | |_________- expected this to be `()`
+   | |_________- expected this `if` expression to be `()` because it has no `else` arm
    |
    = note:      expected unit type `()`
            found mutable reference `&mut V`

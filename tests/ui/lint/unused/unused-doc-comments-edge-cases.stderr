@@ -105,7 +105,7 @@ LL | /     if num == 3 {
 LL | |         true
    | |         ^^^^ expected `()`, found `bool`
 LL | |     }
-   | |_____- expected this to be `()`
+   | |_____- expected this `if` expression to be `()` because it has no `else` arm
    |
 help: you might have meant to return this value
    |

@@ -6,7 +6,7 @@ LL | |         Err(42)
    | |         ^^^^^^^ expected `()`, found `Result<_, {integer}>`
 ...  |
 LL | |     }
-   | |_____- expected this to be `()`
+   | |_____- expected this `if` expression to be `()` because it has no `else` arm
    |
    = note: expected unit type `()`
                    found enum `Result<_, {integer}>`
@@ -23,7 +23,7 @@ LL | |         1i32
    | |         ^^^^ expected `()`, found `i32`
 ...  |
 LL | |     }
-   | |_____- expected this to be `()`
+   | |_____- expected this `if` expression to be `()` because it has no `else` arm
    |
 help: you might have meant to return this value
    |
@@ -38,7 +38,7 @@ LL | |         Err(42)
    | |         ^^^^^^^ expected `()`, found `Result<_, {integer}>`
 ...  |
 LL | |     }
-   | |_____- expected this to be `()`
+   | |_____- expected this `if` expression to be `()` because it has no `else` arm
    |
    = note: expected unit type `()`
                    found enum `Result<_, {integer}>`
