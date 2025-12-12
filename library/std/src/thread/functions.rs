@@ -48,8 +48,8 @@ use crate::{io, panicking};
 /// Panics if the OS fails to create a thread; use [`Builder::spawn`] to recover
 /// from such errors.
 ///
-/// Additionally, if hooks were added via [`add_spawn_hook`], they will still be
-/// called in the parent thread, but the returned functions will not be executed.
+/// If functions were added via [`add_spawn_hook`], they will still be called in
+/// the parent thread, but the returned functions will not be executed.
 ///
 /// # Examples
 ///
