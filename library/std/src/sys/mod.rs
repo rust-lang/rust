@@ -11,6 +11,7 @@ mod configure_builtins;
 mod pal;
 
 mod alloc;
+mod helpers;
 mod personality;
 
 pub mod args;
