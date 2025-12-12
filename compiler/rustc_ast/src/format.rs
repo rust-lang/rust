@@ -77,14 +77,14 @@ pub struct FormatArguments {
     arguments: Vec<FormatArgument>,
     num_unnamed_args: usize,
     num_explicit_args: usize,
-    names: FxHashMap<Symbol, usize>,
+    explicit_names: FxHashMap<Symbol, usize>,
 }
 
 impl FormatArguments {
     pub fn new() -> Self {
         Self {
             arguments: Vec::new(),
-            names: FxHashMap::default(),
+            explicit_names: FxHashMap::default(),
             num_unnamed_args: 0,
             num_explicit_args: 0,
         }
@@ -93,13 +93,16 @@ impl FormatArguments {
     pub fn add(&mut self, arg: FormatArgument) -> usize {
         let index = self.arguments.len();
         if let Some(name) = arg.kind.ident() {
-            self.names.insert(name.name, index);
-        } else if self.names.is_empty() {
+            self.explicit_names.insert(name.name, index);
+        } else if let FormatArgumentKind::Normal = arg.kind
+            && self.explicit_names.is_empty()
+            && self.arguments.len() == self.num_unnamed_args
+        {
             // Only count the unnamed args before the first named arg.
             // (Any later ones are errors.)
             self.num_unnamed_args += 1;
         }
-        if !matches!(arg.kind, FormatArgumentKind::Captured(..)) {
+        if !matches!(arg.kind, FormatArgumentKind::Captured) {
             // This is an explicit argument.
             // Make sure that all arguments so far are explicit.
             assert_eq!(
@@ -113,8 +116,8 @@ impl FormatArguments {
         index
     }
 
-    pub fn by_name(&self, name: Symbol) -> Option<(usize, &FormatArgument)> {
-        let i = *self.names.get(&name)?;
+    pub fn by_explicit_name(&self, name: Symbol) -> Option<(usize, &FormatArgument)> {
+        let i = *self.explicit_names.get(&name)?;
         Some((i, &self.arguments[i]))
     }
 
@@ -156,7 +159,7 @@ pub enum FormatArgumentKind {
     /// `format_args(…, arg = 1)`
     Named(Ident),
     /// `format_args("… {arg} …")`
-    Captured(Ident),
+    Captured,
 }
 
 impl FormatArgumentKind {
@@ -164,7 +167,7 @@ impl FormatArgumentKind {
         match self {
             &Self::Normal => None,
             &Self::Named(id) => Some(id),
-            &Self::Captured(id) => Some(id),
+            &Self::Captured => None,
         }
     }
 }
