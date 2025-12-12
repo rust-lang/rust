@@ -59,7 +59,7 @@ use super::rpath::{self, RPathConfig};
 use super::{apple, versioned_llvm_target};
 use crate::base::needs_allocator_shim_for_linking;
 use crate::{
-    CodegenResults, CompiledModule, CrateInfo, NativeLib, errors, looks_like_rust_object_file,
+    CodegenLintLevels, CodegenResults, CompiledModule, CrateInfo, NativeLib, errors, looks_like_rust_object_file
 };
 
 pub fn ensure_removed(dcx: DiagCtxtHandle<'_>, path: &Path) {
@@ -677,6 +677,51 @@ fn is_msvc_link_exe(sess: &Session) -> bool {
         && linker_path.to_str() == Some("link.exe")
 }
 
+fn report_linker_output(sess: &Session, levels: CodegenLintLevels, stdout: &[u8], stderr: &[u8]) {
+    let escaped_stderr = escape_string(&stderr);
+    let mut escaped_stdout = escape_string(&stdout);
+    info!("linker stderr:\n{}", &escaped_stderr);
+    info!("linker stdout:\n{}", &escaped_stdout);
+
+    // Hide some progress messages from link.exe that we don't care about.
+    // See https://github.com/chromium/chromium/blob/bfa41e41145ffc85f041384280caf2949bb7bd72/build/toolchain/win/tool_wrapper.py#L144-L146
+    if is_msvc_link_exe(sess) {
+        if let Ok(str) = str::from_utf8(&stdout) {
+            let mut output = String::with_capacity(str.len());
+            for line in str.lines() {
+                if line.starts_with("   Creating library")
+                    || line.starts_with("Generating code")
+                        || line.starts_with("Finished generating code")
+                {
+                    continue;
+                } else {
+                    output += line;
+                    output += "\r\n"
+                }
+            }
+            escaped_stdout = escape_string(output.trim().as_bytes())
+        }
+    }
+
+    let lint_msg = |msg| {
+        lint_level(sess, LINKER_MESSAGES, levels.linker_messages, None, |diag| {
+            LinkerOutput { inner: msg }.decorate_lint(diag)
+        })
+    };
+
+    if !escaped_stderr.is_empty() {
+        // We already print `warning:` at the start of the diagnostic. Remove it from the linker output if present.
+        let stderr = escaped_stderr
+            .strip_prefix("warning: ")
+            .unwrap_or(&escaped_stderr)
+            .replace(": warning: ", ": ");
+        lint_msg(format!("linker stderr: {stderr}"));
+    }
+    if !escaped_stdout.is_empty() {
+        lint_msg(format!("linker stdout: {}", escaped_stdout))
+    }
+}
+
 /// Create a dynamic library or executable.
 ///
 /// This will invoke the system linker/cc to create the resulting file. This links to all upstream
@@ -914,48 +959,7 @@ fn link_natively(
                 sess.dcx().abort_if_errors();
             }
 
-            let stderr = escape_string(&prog.stderr);
-            let mut stdout = escape_string(&prog.stdout);
-            info!("linker stderr:\n{}", &stderr);
-            info!("linker stdout:\n{}", &stdout);
-
-            // Hide some progress messages from link.exe that we don't care about.
-            // See https://github.com/chromium/chromium/blob/bfa41e41145ffc85f041384280caf2949bb7bd72/build/toolchain/win/tool_wrapper.py#L144-L146
-            if is_msvc_link_exe(sess) {
-                if let Ok(str) = str::from_utf8(&prog.stdout) {
-                    let mut output = String::with_capacity(str.len());
-                    for line in stdout.lines() {
-                        if line.starts_with("   Creating library")
-                            || line.starts_with("Generating code")
-                            || line.starts_with("Finished generating code")
-                        {
-                            continue;
-                        }
-                        output += line;
-                        output += "\r\n"
-                    }
-                    stdout = escape_string(output.trim().as_bytes())
-                }
-            }
-
-            let level = codegen_results.crate_info.lint_levels.linker_messages;
-            let lint = |msg| {
-                lint_level(sess, LINKER_MESSAGES, level, None, |diag| {
-                    LinkerOutput { inner: msg }.decorate_lint(diag)
-                })
-            };
-
-            if !prog.stderr.is_empty() {
-                // We already print `warning:` at the start of the diagnostic. Remove it from the linker output if present.
-                let stderr = stderr
-                    .strip_prefix("warning: ")
-                    .unwrap_or(&stderr)
-                    .replace(": warning: ", ": ");
-                lint(format!("linker stderr: {stderr}"));
-            }
-            if !stdout.is_empty() {
-                lint(format!("linker stdout: {}", stdout))
-            }
+            report_linker_output(sess, codegen_results.crate_info.lint_levels, &prog.stdout, &prog.stderr);
         }
         Err(e) => {
             let linker_not_found = e.kind() == io::ErrorKind::NotFound;
