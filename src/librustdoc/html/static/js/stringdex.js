@@ -71,6 +71,35 @@ class RoaringBitmap {
             this.keysAndCardinalities[2] = lspecial - 1;
             this.consumed_len_bytes = 5;
             return this;
+        } else if (u8array[i] > 0xd0) {
+            // Special representation of tiny sets that are close together
+            const lspecial = u8array[i] & 0x0f;
+            this.keysAndCardinalities = new Uint8Array(lspecial * 4);
+            let pspecial = i + 1;
+            let key = u8array[pspecial + 2] | (u8array[pspecial + 3] << 8);
+            let value = u8array[pspecial] | (u8array[pspecial + 1] << 8);
+            let entry = (key << 16) | value;
+            let container;
+            container = new RoaringBitmapArray(1, new Uint8Array(4));
+            container.array[0] = value & 0xFF;
+            container.array[1] = (value >> 8) & 0xFF;
+            this.containers.push(container);
+            this.keysAndCardinalities[0] = key;
+            this.keysAndCardinalities[1] = key >> 8;
+            pspecial += 4;
+            for (let ispecial = 1; ispecial < lspecial; ispecial += 1) {
+                entry += u8array[pspecial];
+                value = entry & 0xffff;
+                key = entry >> 16;
+                container = this.addToArrayAt(key);
+                const cardinalityOld = container.cardinality;
+                container.array[cardinalityOld * 2] = value & 0xFF;
+                container.array[(cardinalityOld * 2) + 1] = (value >> 8) & 0xFF;
+                container.cardinality = cardinalityOld + 1;
+                pspecial += 1;
+            }
+            this.consumed_len_bytes = pspecial - i;
+            return this;
         } else if (u8array[i] < 0x3a) {
             // Special representation of tiny sets with arbitrary 32-bit integers
             const lspecial = u8array[i];
@@ -2330,6 +2359,7 @@ function loadDatabase(hooks) {
                 leaves_count = 0;
             }
             i += 1;
+            /** @type {Uint8Array} */
             let data = EMPTY_UINT8;
             if (!is_suffixes_only && dlen !== 0) {
                 data = encoded.subarray(i, i + dlen);
@@ -2343,6 +2373,7 @@ function loadDatabase(hooks) {
                 const branch_dlen = encoded[i] & 0x0f;
                 const branch_leaves_count = ((encoded[i] >> 4) & 0x0f) + 1;
                 i += 1;
+                /** @type {Uint8Array} */
                 let branch_data = EMPTY_UINT8;
                 if (!is_suffixes_only && branch_dlen !== 0) {
                     branch_data = encoded.subarray(i, i + branch_dlen);
