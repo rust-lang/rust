@@ -5,8 +5,8 @@
 For the purposes of this guide, *fuzzing* is any testing methodology that
 involves compiling a wide variety of programs in an attempt to uncover bugs in rustc.
 Fuzzing is often used to find internal compiler errors (ICEs).
-Fuzzing can be beneficial, because it can find bugs before users run into them and
-provide small, self-contained programs that make the bug easier to track down.
+Fuzzing can be beneficial, because it can find bugs before users run into them.
+It also provides small, self-contained programs that make the bug easier to track down.
 However, some common mistakes can reduce the helpfulness of fuzzing and end up
 making contributors' lives harder.
 To maximize your positive impact on the Rust
@@ -144,7 +144,7 @@ To enable debug assertions, add this to `bootstrap.toml` when compiling rustc:
 debug-assertions = true
 ```
 
-ICEs that require debug assertions to reproduce should be tagged 
+ICEs that require debug assertions to reproduce should be tagged
 [`requires-debug-assertions`][requires-debug-assertions].
 
 [requires-debug-assertions]: https://github.com/rust-lang/rust/labels/requires-debug-assertions
