@@ -2395,9 +2395,7 @@ fn typetree_from_ty_impl_inner<'tcx>(
     }
 
     if ty.is_ref() || ty.is_raw_ptr() || ty.is_box() {
-        let inner_ty = if let Some(inner) = ty.builtin_deref(true) {
-            inner
-        } else {
+        let Some(inner_ty) = ty.builtin_deref(true) else {
             return TypeTree::new();
         };
 

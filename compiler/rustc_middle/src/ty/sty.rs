@@ -1528,18 +1528,13 @@ impl<'tcx> Ty<'tcx> {
         let mut cor_ty = self;
         let mut ty = cor_ty;
         loop {
-            if let ty::Coroutine(def_id, args) = ty.kind() {
-                cor_ty = ty;
-                f(ty);
-                if tcx.is_async_drop_in_place_coroutine(*def_id) {
-                    ty = args.first().unwrap().expect_ty();
-                    continue;
-                } else {
-                    return cor_ty;
-                }
-            } else {
+            let ty::Coroutine(def_id, args) = ty.kind() else { return cor_ty };
+            cor_ty = ty;
+            f(ty);
+            if !tcx.is_async_drop_in_place_coroutine(*def_id) {
                 return cor_ty;
             }
+            ty = args.first().unwrap().expect_ty();
         }
     }
 
