@@ -6,6 +6,7 @@ use std::sync::atomic::{AtomicI32, Ordering};
 fn main() {
     static X: i32 = 0;
     let x = &X as *const i32 as *const AtomicI32;
+    #[expect(unsafe_cell_transmutes)]
     let x = unsafe { &*x };
     // Some targets can implement atomic loads via compare_exchange, so we cannot allow them on
     // read-only memory.

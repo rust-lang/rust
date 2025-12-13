@@ -12,6 +12,7 @@ struct AlignedI64(#[allow(dead_code)] i64);
 fn main() {
     static X: AlignedI64 = AlignedI64(0);
     let x = &X as *const AlignedI64 as *const AtomicI64;
+    #[expect(unsafe_cell_transmutes)]
     let x = unsafe { &*x };
     // Some targets can implement atomic loads via compare_exchange, so we cannot allow them on
     // read-only memory.
