@@ -68,7 +68,7 @@ body:
                                             )
                                             else_block: None
                                             lint_level: Explicit(HirId(DefId(offset_of::concrete).10))
-                                            span: $DIR/offset_of.rs:37:5: 1433:57 (#0)
+                                            span: $DIR/offset_of.rs:37:5: 1437:57 (#0)
                                         }
                                     }
                                     Stmt {
@@ -117,7 +117,7 @@ body:
                                             )
                                             else_block: None
                                             lint_level: Explicit(HirId(DefId(offset_of::concrete).20))
-                                            span: $DIR/offset_of.rs:38:5: 1433:57 (#0)
+                                            span: $DIR/offset_of.rs:38:5: 1437:57 (#0)
                                         }
                                     }
                                     Stmt {
@@ -166,7 +166,7 @@ body:
                                             )
                                             else_block: None
                                             lint_level: Explicit(HirId(DefId(offset_of::concrete).30))
-                                            span: $DIR/offset_of.rs:39:5: 1433:57 (#0)
+                                            span: $DIR/offset_of.rs:39:5: 1437:57 (#0)
                                         }
                                     }
                                     Stmt {
@@ -215,7 +215,7 @@ body:
                                             )
                                             else_block: None
                                             lint_level: Explicit(HirId(DefId(offset_of::concrete).40))
-                                            span: $DIR/offset_of.rs:40:5: 1433:57 (#0)
+                                            span: $DIR/offset_of.rs:40:5: 1437:57 (#0)
                                         }
                                     }
                                     Stmt {
@@ -264,7 +264,7 @@ body:
                                             )
                                             else_block: None
                                             lint_level: Explicit(HirId(DefId(offset_of::concrete).50))
-                                            span: $DIR/offset_of.rs:41:5: 1433:57 (#0)
+                                            span: $DIR/offset_of.rs:41:5: 1437:57 (#0)
                                         }
                                     }
                                 ]
@@ -864,7 +864,7 @@ body:
                                             )
                                             else_block: None
                                             lint_level: Explicit(HirId(DefId(offset_of::generic).12))
-                                            span: $DIR/offset_of.rs:45:5: 1433:57 (#0)
+                                            span: $DIR/offset_of.rs:45:5: 1437:57 (#0)
                                         }
                                     }
                                     Stmt {
@@ -913,7 +913,7 @@ body:
                                             )
                                             else_block: None
                                             lint_level: Explicit(HirId(DefId(offset_of::generic).24))
-                                            span: $DIR/offset_of.rs:46:5: 1433:57 (#0)
+                                            span: $DIR/offset_of.rs:46:5: 1437:57 (#0)
                                         }
                                     }
                                     Stmt {
@@ -962,7 +962,7 @@ body:
                                             )
                                             else_block: None
                                             lint_level: Explicit(HirId(DefId(offset_of::generic).36))
-                                            span: $DIR/offset_of.rs:47:5: 1433:57 (#0)
+                                            span: $DIR/offset_of.rs:47:5: 1437:57 (#0)
                                         }
                                     }
                                     Stmt {
@@ -1011,7 +1011,7 @@ body:
                                             )
                                             else_block: None
                                             lint_level: Explicit(HirId(DefId(offset_of::generic).48))
-                                            span: $DIR/offset_of.rs:48:5: 1433:57 (#0)
+                                            span: $DIR/offset_of.rs:48:5: 1437:57 (#0)
                                         }
                                     }
                                 ]

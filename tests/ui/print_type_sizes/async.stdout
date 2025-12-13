@@ -12,6 +12,8 @@ print-type-size     variant `Panicked`: 8192 bytes
 print-type-size         upvar `.arg`: 8192 bytes
 print-type-size type: `std::mem::ManuallyDrop<[u8; 8192]>`: 8192 bytes, alignment: 1 bytes
 print-type-size     field `.value`: 8192 bytes
+print-type-size type: `std::mem::MaybeDangling<[u8; 8192]>`: 8192 bytes, alignment: 1 bytes
+print-type-size     field `.0`: 8192 bytes
 print-type-size type: `std::mem::MaybeUninit<[u8; 8192]>`: 8192 bytes, alignment: 1 bytes
 print-type-size     variant `MaybeUninit`: 8192 bytes
 print-type-size         field `.uninit`: 0 bytes
@@ -47,6 +49,8 @@ print-type-size type: `std::ptr::NonNull<std::ptr::metadata::VTable>`: 8 bytes, 
 print-type-size     field `.pointer`: 8 bytes
 print-type-size type: `std::mem::ManuallyDrop<{async fn body of wait()}>`: 1 bytes, alignment: 1 bytes
 print-type-size     field `.value`: 1 bytes
+print-type-size type: `std::mem::MaybeDangling<{async fn body of wait()}>`: 1 bytes, alignment: 1 bytes
+print-type-size     field `.0`: 1 bytes
 print-type-size type: `std::mem::MaybeUninit<{async fn body of wait()}>`: 1 bytes, alignment: 1 bytes
 print-type-size     variant `MaybeUninit`: 1 bytes
 print-type-size         field `.uninit`: 0 bytes

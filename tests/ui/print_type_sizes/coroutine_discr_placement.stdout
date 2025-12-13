@@ -11,6 +11,8 @@ print-type-size     variant `Returned`: 0 bytes
 print-type-size     variant `Panicked`: 0 bytes
 print-type-size type: `std::mem::ManuallyDrop<i32>`: 4 bytes, alignment: 4 bytes
 print-type-size     field `.value`: 4 bytes
+print-type-size type: `std::mem::MaybeDangling<i32>`: 4 bytes, alignment: 4 bytes
+print-type-size     field `.0`: 4 bytes
 print-type-size type: `std::mem::MaybeUninit<i32>`: 4 bytes, alignment: 4 bytes
 print-type-size     variant `MaybeUninit`: 4 bytes
 print-type-size         field `.uninit`: 0 bytes
