@@ -270,11 +270,12 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
                         // Try to highlight with arborium if enabled and we have a language
                         let code_html = if self.highlight_foreign_code {
                             lang.and_then(|l| {
-                                highlight::highlight_foreign_code(l, original_text.trim_suffix('\n'))
+                                highlight::highlight_foreign_code(
+                                    l,
+                                    original_text.trim_suffix('\n'),
+                                )
                             })
-                            .unwrap_or_else(|| {
-                                Escape(original_text.trim_suffix('\n')).to_string()
-                            })
+                            .unwrap_or_else(|| Escape(original_text.trim_suffix('\n')).to_string())
                         } else {
                             Escape(original_text.trim_suffix('\n')).to_string()
                         };

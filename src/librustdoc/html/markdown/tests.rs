@@ -544,3 +544,138 @@ fn test_ascii_with_prepending_hashtag() {
 # hello</code></pre></div>",
     );
 }
+
+#[test]
+fn test_foreign_code_highlighting_enabled() {
+    fn t(input: &str, expected_contains: &str) {
+        let mut map = IdMap::new();
+        let mut output = String::new();
+        Markdown {
+            content: input,
+            links: &[],
+            ids: &mut map,
+            error_codes: ErrorCodes::Yes,
+            edition: DEFAULT_EDITION,
+            playground: &None,
+            heading_offset: HeadingOffset::H2,
+            highlight_foreign_code: true,
+        }
+        .write_into(&mut output)
+        .unwrap();
+        assert!(
+            output.contains(expected_contains),
+            "expected output to contain {:?}, got: {}",
+            expected_contains,
+            output
+        );
+    }
+
+    // Python: keywords should be wrapped in <a-k>
+    t(
+        r#"```python
+def hello():
+    pass
+```"#,
+        "<a-k>def</a-k>",
+    );
+
+    // JavaScript: keywords and numbers
+    t(
+        r#"```javascript
+let x = 42;
+```"#,
+        "<a-k>let</a-k>",
+    );
+
+    // JSON: strings should be highlighted
+    t(
+        r#"```json
+{"key": "value"}
+```"#,
+        "<a-s>",
+    );
+
+    // Language aliases should work
+    t(
+        r#"```py
+def foo():
+    pass
+```"#,
+        "<a-k>def</a-k>",
+    );
+
+    t(
+        r#"```js
+const x = 1;
+```"#,
+        "<a-k>const</a-k>",
+    );
+}
+
+#[test]
+fn test_foreign_code_highlighting_disabled() {
+    fn t(input: &str, should_not_contain: &str) {
+        let mut map = IdMap::new();
+        let mut output = String::new();
+        Markdown {
+            content: input,
+            links: &[],
+            ids: &mut map,
+            error_codes: ErrorCodes::Yes,
+            edition: DEFAULT_EDITION,
+            playground: &None,
+            heading_offset: HeadingOffset::H2,
+            highlight_foreign_code: false,
+        }
+        .write_into(&mut output)
+        .unwrap();
+        assert!(
+            !output.contains(should_not_contain),
+            "expected output NOT to contain {:?}, got: {}",
+            should_not_contain,
+            output
+        );
+    }
+
+    // With highlighting disabled, no arborium tags should appear
+    t(
+        r#"```python
+def hello():
+    pass
+```"#,
+        "<a-k>",
+    );
+
+    t(
+        r#"```javascript
+let x = 42;
+```"#,
+        "<a-k>",
+    );
+}
+
+#[test]
+fn test_foreign_code_unsupported_language_fallback() {
+    // Unsupported languages should fall back to plain text even with highlighting enabled
+    let mut map = IdMap::new();
+    let mut output = String::new();
+    Markdown {
+        content: r#"```someunknownlang
+hello world
+```"#,
+        links: &[],
+        ids: &mut map,
+        error_codes: ErrorCodes::Yes,
+        edition: DEFAULT_EDITION,
+        playground: &None,
+        heading_offset: HeadingOffset::H2,
+        highlight_foreign_code: true,
+    }
+    .write_into(&mut output)
+    .unwrap();
+
+    // Should have the language class but no arborium tags
+    assert!(output.contains("language-someunknownlang"));
+    assert!(!output.contains("<a-"));
+    assert!(output.contains("hello world"));
+}
