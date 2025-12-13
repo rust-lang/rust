@@ -30,7 +30,7 @@ pub extern "C" fn inline_never() {
 }
 
 #[unsafe(naked)]
-#[cfg_attr(all(), inline(never))]
+#[cfg_attr(true, inline(never))]
 //~^ ERROR [E0736]
 pub extern "C" fn conditional_inline_never() {
     naked_asm!("");

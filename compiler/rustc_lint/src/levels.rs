@@ -657,11 +657,7 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
             }
 
             // `#[doc(hidden)]` disables missing_docs check.
-            if attr.has_name(sym::doc)
-                && attr
-                    .meta_item_list()
-                    .is_some_and(|l| ast::attr::list_contains_name(&l, sym::hidden))
-            {
+            if attr.is_doc_hidden() {
                 self.insert(
                     LintId::of(MISSING_DOCS),
                     LevelAndSource {

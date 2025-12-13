@@ -141,16 +141,11 @@ impl Path {
     /// Check if this path is potentially a trivial const arg, i.e., one that can _potentially_
     /// be represented without an anon const in the HIR.
     ///
-    /// If `allow_mgca_arg` is true (as should be the case in most situations when
-    /// `#![feature(min_generic_const_args)]` is enabled), then this always returns true
-    /// because all paths are valid.
-    ///
-    /// Otherwise, it returns true iff the path has exactly one segment, and it has no generic args
+    /// Returns true iff the path has exactly one segment, and it has no generic args
     /// (i.e., it is _potentially_ a const parameter).
     #[tracing::instrument(level = "debug", ret)]
-    pub fn is_potential_trivial_const_arg(&self, allow_mgca_arg: bool) -> bool {
-        allow_mgca_arg
-            || self.segments.len() == 1 && self.segments.iter().all(|seg| seg.args.is_none())
+    pub fn is_potential_trivial_const_arg(&self) -> bool {
+        self.segments.len() == 1 && self.segments.iter().all(|seg| seg.args.is_none())
     }
 }
 
@@ -1385,6 +1380,15 @@ pub enum UnsafeSource {
     UserProvided,
 }
 
+/// Track whether under `feature(min_generic_const_args)` this anon const
+/// was explicitly disambiguated as an anon const or not through the use of
+/// `const { ... }` syntax.
+#[derive(Clone, PartialEq, Encodable, Decodable, Debug, Copy, Walkable)]
+pub enum MgcaDisambiguation {
+    AnonConst,
+    Direct,
+}
+
 /// A constant (expression) that's not an item or associated item,
 /// but needs its own `DefId` for type-checking, const-eval, etc.
 /// These are usually found nested inside types (e.g., array lengths)
@@ -1394,6 +1398,7 @@ pub enum UnsafeSource {
 pub struct AnonConst {
     pub id: NodeId,
     pub value: Box<Expr>,
+    pub mgca_disambiguation: MgcaDisambiguation,
 }
 
 /// An expression.
@@ -1412,26 +1417,20 @@ impl Expr {
     ///
     /// This will unwrap at most one block level (curly braces). After that, if the expression
     /// is a path, it mostly dispatches to [`Path::is_potential_trivial_const_arg`].
-    /// See there for more info about `allow_mgca_arg`.
     ///
-    /// The only additional thing to note is that when `allow_mgca_arg` is false, this function
-    /// will only allow paths with no qself, before dispatching to the `Path` function of
-    /// the same name.
+    /// This function will only allow paths with no qself, before dispatching to the `Path`
+    /// function of the same name.
     ///
     /// Does not ensure that the path resolves to a const param/item, the caller should check this.
     /// This also does not consider macros, so it's only correct after macro-expansion.
-    pub fn is_potential_trivial_const_arg(&self, allow_mgca_arg: bool) -> bool {
+    pub fn is_potential_trivial_const_arg(&self) -> bool {
         let this = self.maybe_unwrap_block();
-        if allow_mgca_arg {
-            matches!(this.kind, ExprKind::Path(..))
+        if let ExprKind::Path(None, path) = &this.kind
+            && path.is_potential_trivial_const_arg()
+        {
+            true
         } else {
-            if let ExprKind::Path(None, path) = &this.kind
-                && path.is_potential_trivial_const_arg(allow_mgca_arg)
-            {
-                true
-            } else {
-                false
-            }
+            false
         }
     }
 

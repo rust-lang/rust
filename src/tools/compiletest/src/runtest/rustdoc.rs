@@ -28,9 +28,7 @@ impl TestCx<'_> {
             }
             let res = self.run_command_to_procres(&mut cmd);
             if !res.status.success() {
-                self.fatal_proc_rec_general("htmldocck failed!", None, &res, || {
-                    self.compare_to_default_rustdoc(&out_dir);
-                });
+                self.fatal_proc_rec("htmldocck failed!", &res);
             }
         }
     }

@@ -2,7 +2,6 @@
 
 use crate::source::SpanRangeExt;
 use crate::{sym, tokenize_with_text};
-use rustc_ast::attr;
 use rustc_ast::attr::AttributeExt;
 use rustc_errors::Applicability;
 use rustc_hir::attrs::AttributeKind;
@@ -87,11 +86,7 @@ pub fn is_proc_macro(attrs: &[impl AttributeExt]) -> bool {
 
 /// Checks whether `attrs` contain `#[doc(hidden)]`
 pub fn is_doc_hidden(attrs: &[impl AttributeExt]) -> bool {
-    attrs
-        .iter()
-        .filter(|attr| attr.has_name(sym::doc))
-        .filter_map(AttributeExt::meta_item_list)
-        .any(|l| attr::list_contains_name(&l, sym::hidden))
+    attrs.iter().any(|attr| attr.is_doc_hidden())
 }
 
 /// Checks whether the given ADT, or any of its fields/variants, are marked as `#[non_exhaustive]`

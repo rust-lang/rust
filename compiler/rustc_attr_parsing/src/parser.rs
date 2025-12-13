@@ -3,12 +3,12 @@
 //!
 //! FIXME(jdonszelmann): delete `rustc_ast/attr/mod.rs`
 
-use std::borrow::Cow;
+use std::borrow::Borrow;
 use std::fmt::{Debug, Display};
 
 use rustc_ast::token::{self, Delimiter, MetaVarKind};
 use rustc_ast::tokenstream::TokenStream;
-use rustc_ast::{AttrArgs, Expr, ExprKind, LitKind, MetaItemLit, NormalAttr, Path, StmtKind, UnOp};
+use rustc_ast::{AttrArgs, Expr, ExprKind, LitKind, MetaItemLit, Path, StmtKind, UnOp};
 use rustc_ast_pretty::pprust;
 use rustc_errors::{Diag, PResult};
 use rustc_hir::{self as hir, AttrPath};
@@ -26,9 +26,12 @@ use crate::session_diagnostics::{
 };
 
 #[derive(Clone, Debug)]
-pub struct PathParser<'a>(pub Cow<'a, Path>);
+pub struct PathParser<P: Borrow<Path>>(pub P);
 
-impl<'a> PathParser<'a> {
+pub type OwnedPathParser = PathParser<Path>;
+pub type RefPathParser<'p> = PathParser<&'p Path>;
+
+impl<P: Borrow<Path>> PathParser<P> {
     pub fn get_attribute_path(&self) -> hir::AttrPath {
         AttrPath {
             segments: self.segments().copied().collect::<Vec<_>>().into_boxed_slice(),
@@ -36,16 +39,16 @@ impl<'a> PathParser<'a> {
         }
     }
 
-    pub fn segments(&'a self) -> impl Iterator<Item = &'a Ident> {
-        self.0.segments.iter().map(|seg| &seg.ident)
+    pub fn segments(&self) -> impl Iterator<Item = &Ident> {
+        self.0.borrow().segments.iter().map(|seg| &seg.ident)
     }
 
     pub fn span(&self) -> Span {
-        self.0.span
+        self.0.borrow().span
     }
 
     pub fn len(&self) -> usize {
-        self.0.segments.len()
+        self.0.borrow().segments.len()
     }
 
     pub fn segments_is(&self, segments: &[Symbol]) -> bool {
@@ -76,21 +79,21 @@ impl<'a> PathParser<'a> {
     }
 }
 
-impl Display for PathParser<'_> {
+impl<P: Borrow<Path>> Display for PathParser<P> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", pprust::path_to_string(&self.0))
+        write!(f, "{}", pprust::path_to_string(self.0.borrow()))
     }
 }
 
 #[derive(Clone, Debug)]
 #[must_use]
-pub enum ArgParser<'a> {
+pub enum ArgParser {
     NoArgs,
-    List(MetaItemListParser<'a>),
+    List(MetaItemListParser),
     NameValue(NameValueParser),
 }
 
-impl<'a> ArgParser<'a> {
+impl ArgParser {
     pub fn span(&self) -> Option<Span> {
         match self {
             Self::NoArgs => None,
@@ -100,7 +103,7 @@ impl<'a> ArgParser<'a> {
     }
 
     pub fn from_attr_args<'sess>(
-        value: &'a AttrArgs,
+        value: &AttrArgs,
         parts: &[Symbol],
         psess: &'sess ParseSess,
         should_emit: ShouldEmit,
@@ -144,7 +147,7 @@ impl<'a> ArgParser<'a> {
     ///
     /// - `#[allow(clippy::complexity)]`: `(clippy::complexity)` is a list
     /// - `#[rustfmt::skip::macros(target_macro_name)]`: `(target_macro_name)` is a list
-    pub fn list(&self) -> Option<&MetaItemListParser<'a>> {
+    pub fn list(&self) -> Option<&MetaItemListParser> {
         match self {
             Self::List(l) => Some(l),
             Self::NameValue(_) | Self::NoArgs => None,
@@ -184,17 +187,17 @@ impl<'a> ArgParser<'a> {
 ///
 /// Choose which one you want using the provided methods.
 #[derive(Debug, Clone)]
-pub enum MetaItemOrLitParser<'a> {
-    MetaItemParser(MetaItemParser<'a>),
+pub enum MetaItemOrLitParser {
+    MetaItemParser(MetaItemParser),
     Lit(MetaItemLit),
     Err(Span, ErrorGuaranteed),
 }
 
-impl<'sess> MetaItemOrLitParser<'sess> {
-    pub fn parse_single(
+impl MetaItemOrLitParser {
+    pub fn parse_single<'sess>(
         parser: &mut Parser<'sess>,
         should_emit: ShouldEmit,
-    ) -> PResult<'sess, MetaItemOrLitParser<'static>> {
+    ) -> PResult<'sess, MetaItemOrLitParser> {
         let mut this = MetaItemListParserContext { parser, should_emit };
         this.parse_meta_item_inner()
     }
@@ -216,7 +219,7 @@ impl<'sess> MetaItemOrLitParser<'sess> {
         }
     }
 
-    pub fn meta_item(&self) -> Option<&MetaItemParser<'sess>> {
+    pub fn meta_item(&self) -> Option<&MetaItemParser> {
         match self {
             MetaItemOrLitParser::MetaItemParser(parser) => Some(parser),
             _ => None,
@@ -238,12 +241,12 @@ impl<'sess> MetaItemOrLitParser<'sess> {
 ///
 /// The syntax of MetaItems can be found at <https://doc.rust-lang.org/reference/attributes.html>
 #[derive(Clone)]
-pub struct MetaItemParser<'a> {
-    path: PathParser<'a>,
-    args: ArgParser<'a>,
+pub struct MetaItemParser {
+    path: OwnedPathParser,
+    args: ArgParser,
 }
 
-impl<'a> Debug for MetaItemParser<'a> {
+impl Debug for MetaItemParser {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("MetaItemParser")
             .field("path", &self.path)
@@ -252,28 +255,12 @@ impl<'a> Debug for MetaItemParser<'a> {
     }
 }
 
-impl<'a> MetaItemParser<'a> {
-    /// Create a new parser from a [`NormalAttr`], which is stored inside of any
-    /// [`ast::Attribute`](rustc_ast::Attribute)
-    pub fn from_attr<'sess>(
-        attr: &'a NormalAttr,
-        parts: &[Symbol],
-        psess: &'sess ParseSess,
-        should_emit: ShouldEmit,
-    ) -> Option<Self> {
-        Some(Self {
-            path: PathParser(Cow::Borrowed(&attr.item.path)),
-            args: ArgParser::from_attr_args(&attr.item.args, parts, psess, should_emit)?,
-        })
-    }
-}
-
-impl<'a> MetaItemParser<'a> {
+impl MetaItemParser {
     pub fn span(&self) -> Span {
         if let Some(other) = self.args.span() {
-            self.path.span().with_hi(other.hi())
+            self.path.borrow().span().with_hi(other.hi())
         } else {
-            self.path.span()
+            self.path.borrow().span()
         }
     }
 
@@ -282,12 +269,12 @@ impl<'a> MetaItemParser<'a> {
     /// - `#[rustfmt::skip]`: `rustfmt::skip` is a path
     /// - `#[allow(clippy::complexity)]`: `clippy::complexity` is a path
     /// - `#[inline]`: `inline` is a single segment path
-    pub fn path(&self) -> &PathParser<'a> {
+    pub fn path(&self) -> &OwnedPathParser {
         &self.path
     }
 
     /// Gets just the args parser, without caring about the path.
-    pub fn args(&self) -> &ArgParser<'a> {
+    pub fn args(&self) -> &ArgParser {
         &self.args
     }
 
@@ -297,7 +284,7 @@ impl<'a> MetaItemParser<'a> {
     /// - `#[inline]`: `inline` is a word
     /// - `#[rustfmt::skip]`: `rustfmt::skip` is a path,
     ///   and not a word and should instead be parsed using [`path`](Self::path)
-    pub fn word_is(&self, sym: Symbol) -> Option<&ArgParser<'a>> {
+    pub fn word_is(&self, sym: Symbol) -> Option<&ArgParser> {
         self.path().word_is(sym).then(|| self.args())
     }
 }
@@ -421,7 +408,7 @@ impl<'a, 'sess> MetaItemListParserContext<'a, 'sess> {
         Ok(lit)
     }
 
-    fn parse_attr_item(&mut self) -> PResult<'sess, MetaItemParser<'static>> {
+    fn parse_attr_item(&mut self) -> PResult<'sess, MetaItemParser> {
         if let Some(MetaVarKind::Meta { has_meta_form }) = self.parser.token.is_metavar_seq() {
             return if has_meta_form {
                 let attr_item = self
@@ -457,10 +444,10 @@ impl<'a, 'sess> MetaItemListParserContext<'a, 'sess> {
             ArgParser::NoArgs
         };
 
-        Ok(MetaItemParser { path: PathParser(Cow::Owned(path)), args })
+        Ok(MetaItemParser { path: PathParser(path), args })
     }
 
-    fn parse_meta_item_inner(&mut self) -> PResult<'sess, MetaItemOrLitParser<'static>> {
+    fn parse_meta_item_inner(&mut self) -> PResult<'sess, MetaItemOrLitParser> {
         if let Some(token_lit) = self.parser.eat_token_lit() {
             // If a literal token is parsed, we commit to parsing a MetaItemLit for better errors
             Ok(MetaItemOrLitParser::Lit(self.unsuffixed_meta_item_from_lit(token_lit)?))
@@ -547,7 +534,7 @@ impl<'a, 'sess> MetaItemListParserContext<'a, 'sess> {
         psess: &'sess ParseSess,
         span: Span,
         should_emit: ShouldEmit,
-    ) -> PResult<'sess, MetaItemListParser<'static>> {
+    ) -> PResult<'sess, MetaItemListParser> {
         let mut parser = Parser::new(psess, tokens, None);
         let mut this = MetaItemListParserContext { parser: &mut parser, should_emit };
 
@@ -570,14 +557,14 @@ impl<'a, 'sess> MetaItemListParserContext<'a, 'sess> {
 }
 
 #[derive(Debug, Clone)]
-pub struct MetaItemListParser<'a> {
-    sub_parsers: ThinVec<MetaItemOrLitParser<'a>>,
+pub struct MetaItemListParser {
+    sub_parsers: ThinVec<MetaItemOrLitParser>,
     pub span: Span,
 }
 
-impl<'a> MetaItemListParser<'a> {
+impl MetaItemListParser {
     pub(crate) fn new<'sess>(
-        tokens: &'a TokenStream,
+        tokens: &TokenStream,
         span: Span,
         psess: &'sess ParseSess,
         should_emit: ShouldEmit,
@@ -586,7 +573,7 @@ impl<'a> MetaItemListParser<'a> {
     }
 
     /// Lets you pick and choose as what you want to parse each element in the list
-    pub fn mixed(&self) -> impl Iterator<Item = &MetaItemOrLitParser<'a>> {
+    pub fn mixed(&self) -> impl Iterator<Item = &MetaItemOrLitParser> {
         self.sub_parsers.iter()
     }
 
@@ -601,7 +588,7 @@ impl<'a> MetaItemListParser<'a> {
     /// Returns Some if the list contains only a single element.
     ///
     /// Inside the Some is the parser to parse this single element.
-    pub fn single(&self) -> Option<&MetaItemOrLitParser<'a>> {
+    pub fn single(&self) -> Option<&MetaItemOrLitParser> {
         let mut iter = self.mixed();
         iter.next().filter(|_| iter.next().is_none())
     }

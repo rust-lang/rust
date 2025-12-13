@@ -1,6 +1,6 @@
 #[derive(Debug)]
 struct Foo {
-    #[cfg(all())]
+    #[cfg(true)]
     field: fn(($),), //~ ERROR expected pattern, found `$`
     //~^ ERROR expected pattern, found `$`
 }
