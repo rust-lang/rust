@@ -2585,14 +2585,6 @@ pub(crate) mod unexpected_cfg_value {
     }
 }
 
-#[derive(LintDiagnostic)]
-#[diag(lint_unused_crate_dependency)]
-#[help]
-pub(crate) struct UnusedCrateDependency {
-    pub extern_crate: Symbol,
-    pub local_crate: Symbol,
-}
-
 // FIXME(jdonszelmann): duplicated in rustc_attr_parsing, should be moved there completely.
 #[derive(LintDiagnostic)]
 #[diag(lint_ill_formed_attribute_input)]
@@ -2716,20 +2708,6 @@ pub(crate) struct UnusedLifetime {
     pub deletion_span: Option<Span>,
 
     pub ident: Ident,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(lint_named_argument_used_positionally)]
-pub(crate) struct NamedArgumentUsedPositionally {
-    #[label(lint_label_named_arg)]
-    pub named_arg_sp: Span,
-    #[label(lint_label_position_arg)]
-    pub position_label_sp: Option<Span>,
-    #[suggestion(style = "verbose", code = "{name}", applicability = "maybe-incorrect")]
-    pub suggestion: Option<Span>,
-
-    pub name: String,
-    pub named_arg_name: String,
 }
 
 #[derive(LintDiagnostic)]

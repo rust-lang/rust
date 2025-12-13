@@ -135,41 +135,6 @@ pub fn decorate_builtin_lint(
         BuiltinLintDiag::SingleUseLifetime { use_span: None, deletion_span, ident, .. } => {
             lints::UnusedLifetime { deletion_span, ident }.decorate_lint(diag);
         }
-        BuiltinLintDiag::NamedArgumentUsedPositionally {
-            position_sp_to_replace,
-            position_sp_for_msg,
-            named_arg_sp,
-            named_arg_name,
-            is_formatting_arg,
-        } => {
-            let (suggestion, name) = if let Some(positional_arg_to_replace) = position_sp_to_replace
-            {
-                let mut name = named_arg_name.clone();
-                if is_formatting_arg {
-                    name.push('$')
-                };
-                let span_to_replace = if let Ok(positional_arg_content) =
-                    sess.source_map().span_to_snippet(positional_arg_to_replace)
-                    && positional_arg_content.starts_with(':')
-                {
-                    positional_arg_to_replace.shrink_to_lo()
-                } else {
-                    positional_arg_to_replace
-                };
-                (Some(span_to_replace), name)
-            } else {
-                (None, String::new())
-            };
-
-            lints::NamedArgumentUsedPositionally {
-                named_arg_sp,
-                position_label_sp: position_sp_for_msg,
-                suggestion,
-                name,
-                named_arg_name,
-            }
-            .decorate_lint(diag);
-        }
         BuiltinLintDiag::AmbiguousGlobReexports {
             name,
             namespace,
@@ -216,9 +181,6 @@ pub fn decorate_builtin_lint(
                 lifetimes_in_scope,
             }
             .decorate_lint(diag);
-        }
-        BuiltinLintDiag::UnusedCrateDependency { extern_crate, local_crate } => {
-            lints::UnusedCrateDependency { extern_crate, local_crate }.decorate_lint(diag)
         }
         BuiltinLintDiag::AttributeLint(kind) => decorate_attribute_lint(sess, tcx, &kind, diag),
     }

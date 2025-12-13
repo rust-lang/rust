@@ -23,15 +23,14 @@ use rustc_middle::bug;
 use rustc_middle::ty::data_structures::IndexSet;
 use rustc_middle::ty::{TyCtxt, TyCtxtFeed};
 use rustc_proc_macro::bridge::client::ProcMacro;
-use rustc_session::Session;
 use rustc_session::config::{
     CrateType, ExtendedTargetModifierInfo, ExternLocation, Externs, OptionsTargetModifiers,
     TargetModifier,
 };
 use rustc_session::cstore::{CrateDepKind, CrateSource, ExternCrate, ExternCrateSource};
-use rustc_session::lint::{self, BuiltinLintDiag};
 use rustc_session::output::validate_crate_name;
 use rustc_session::search_paths::PathKind;
+use rustc_session::{Session, lint};
 use rustc_span::def_id::DefId;
 use rustc_span::edition::Edition;
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, sym};
@@ -1205,7 +1204,7 @@ impl CStore {
                 lint::builtin::UNUSED_CRATE_DEPENDENCIES,
                 span,
                 ast::CRATE_NODE_ID,
-                BuiltinLintDiag::UnusedCrateDependency {
+                errors::UnusedCrateDependency {
                     extern_crate: name_interned,
                     local_crate: tcx.crate_name(LOCAL_CRATE),
                 },

@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 
 use rustc_errors::codes::*;
 use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level};
-use rustc_macros::{Diagnostic, Subdiagnostic};
+use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_span::{Span, Symbol, sym};
 use rustc_target::spec::{PanicStrategy, TargetTuple};
 
@@ -614,4 +614,12 @@ pub struct AsyncDropTypesInDependency {
 pub struct RawDylibMalformed {
     #[primary_span]
     pub span: Span,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(metadata_unused_crate_dependency)]
+#[help]
+pub(crate) struct UnusedCrateDependency {
+    pub extern_crate: Symbol,
+    pub local_crate: Symbol,
 }

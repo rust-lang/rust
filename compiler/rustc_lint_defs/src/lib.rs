@@ -684,19 +684,6 @@ pub enum BuiltinLintDiag {
         use_span: Option<(Span, bool)>,
         ident: Ident,
     },
-    NamedArgumentUsedPositionally {
-        /// Span where the named argument is used by position and will be replaced with the named
-        /// argument name
-        position_sp_to_replace: Option<Span>,
-        /// Span where the named argument is used by position and is used for lint messages
-        position_sp_for_msg: Option<Span>,
-        /// Span where the named argument's name is (so we know where to put the warning message)
-        named_arg_sp: Span,
-        /// String containing the named arguments name
-        named_arg_name: String,
-        /// Indicates if the named argument is used as a width/precision for formatting
-        is_formatting_arg: bool,
-    },
     AmbiguousGlobReexports {
         /// The name for which collision(s) have occurred.
         name: String,
@@ -725,10 +712,6 @@ pub enum BuiltinLintDiag {
         elided: bool,
         span: Span,
         lifetimes_in_scope: MultiSpan,
-    },
-    UnusedCrateDependency {
-        extern_crate: Symbol,
-        local_crate: Symbol,
     },
     AttributeLint(AttributeLintKind),
 }

@@ -270,6 +270,11 @@ builtin_macros_naked_functions_testing_attribute =
     .label = function marked with testing attribute here
     .naked_attribute = `#[unsafe(naked)]` is incompatible with testing attributes
 
+builtin_macros_named_argument_used_positionally = named argument `{$named_arg_name}` is not used by name
+    .label_named_arg = this named argument is referred to by position in formatting string
+    .label_position_arg = this formatting argument uses named argument `{$named_arg_name}` by position
+    .suggestion = use the named argument by name to avoid ambiguity
+
 builtin_macros_no_default_variant = `#[derive(Default)]` on enum with no `#[default]`
     .label = this enum needs a unit variant marked with `#[default]`
     .suggestion = make this unit variant default by placing `#[default]` on it

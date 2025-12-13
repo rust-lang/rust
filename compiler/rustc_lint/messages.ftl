@@ -596,11 +596,6 @@ lint_mixed_script_confusables =
 
 lint_multiple_supertrait_upcastable = `{$ident}` is dyn-compatible and has multiple supertraits
 
-lint_named_argument_used_positionally = named argument `{$named_arg_name}` is not used by name
-    .label_named_arg = this named argument is referred to by position in formatting string
-    .label_position_arg = this formatting argument uses named argument `{$named_arg_name}` by position
-    .suggestion = use the named argument by name to avoid ambiguity
-
 lint_node_source = `forbid` level set here
     .note = {$reason}
 
@@ -954,9 +949,6 @@ lint_unused_coroutine =
         *[other] coroutine
     }{$post} that must be used
     .note = coroutines are lazy and do nothing unless resumed
-
-lint_unused_crate_dependency = extern crate `{$extern_crate}` is unused in crate `{$local_crate}`
-    .help = remove the dependency or add `use {$extern_crate} as _;` to the crate root
 
 lint_unused_def = unused {$pre}`{$def}`{$post} that must be used
     .suggestion = use `let _ = ...` to ignore the resulting value
