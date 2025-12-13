@@ -480,6 +480,14 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 let use_integer_compare = match layout.backend_repr() {
                     Scalar(_) | ScalarPair(_, _) => true,
                     SimdVector { .. } => false,
+                    ScalableVector { .. } => {
+                        tcx.dcx().emit_err(InvalidMonomorphization::NonScalableType {
+                            span,
+                            name: sym::raw_eq,
+                            ty: tp_ty,
+                        });
+                        return Ok(());
+                    }
                     Memory { .. } => {
                         // For rusty ABIs, small aggregates are actually passed
                         // as `RegKind::Integer` (see `FnAbi::adjust_for_abi`),
@@ -1679,11 +1687,27 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             m_len == v_len,
             InvalidMonomorphization::MismatchedLengths { span, name, m_len, v_len }
         );
-        let in_elem_bitwidth = require_int_or_uint_ty!(
-            m_elem_ty.kind(),
-            InvalidMonomorphization::MaskWrongElementType { span, name, ty: m_elem_ty }
-        );
-        let m_i1s = vector_mask_to_bitmask(bx, args[0].immediate(), in_elem_bitwidth, m_len);
+
+        let m_i1s = if args[1].layout.ty.is_scalable_vector() {
+            match m_elem_ty.kind() {
+                ty::Bool => {}
+                _ => return_error!(InvalidMonomorphization::MaskWrongElementType {
+                    span,
+                    name,
+                    ty: m_elem_ty
+                }),
+            };
+            let i1 = bx.type_i1();
+            let i1xn = bx.type_scalable_vector(i1, m_len as u64);
+            bx.trunc(args[0].immediate(), i1xn)
+        } else {
+            let in_elem_bitwidth = require_int_or_uint_ty!(
+                m_elem_ty.kind(),
+                InvalidMonomorphization::MaskWrongElementType { span, name, ty: m_elem_ty }
+            );
+            vector_mask_to_bitmask(bx, args[0].immediate(), in_elem_bitwidth, m_len)
+        };
+
         return Ok(bx.select(m_i1s, args[1].immediate(), args[2].immediate()));
     }
 

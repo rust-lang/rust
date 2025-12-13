@@ -943,6 +943,10 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
             .get_address(self.location)
     }
 
+    fn scalable_alloca(&mut self, _elt: u64, _align: Align, _element_ty: Ty<'_>) -> RValue<'gcc> {
+        todo!()
+    }
+
     fn load(&mut self, pointee_ty: Type<'gcc>, ptr: RValue<'gcc>, align: Align) -> RValue<'gcc> {
         let block = self.llbb();
         let function = block.get_function();

@@ -60,6 +60,7 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
     /// This is public so that it can be used in unit tests, but
     /// should generally only be relevant to the ABI details of
     /// specific targets.
+    #[tracing::instrument(skip(cx), level = "debug")]
     pub fn homogeneous_aggregate<C>(&self, cx: &C) -> Result<HomogeneousAggregate, Heterogeneous>
     where
         Ty: TyAbiInterface<'a, C> + Copy,
@@ -80,6 +81,10 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
                     kind: RegKind::Vector,
                     size: self.size,
                 }))
+            }
+
+            BackendRepr::ScalableVector { .. } => {
+                unreachable!("`homogeneous_aggregate` should not be called for scalable vectors")
             }
 
             BackendRepr::ScalarPair(..) | BackendRepr::Memory { sized: true } => {
