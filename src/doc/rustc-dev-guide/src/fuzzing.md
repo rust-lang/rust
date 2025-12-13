@@ -36,7 +36,7 @@ project, please read this guide before reporting fuzzer-generated bugs!
 If you're not sure whether or not an ICE is a duplicate of one that's already
 been reported, please go ahead and report it and link to issues you think might be related.
 In general, ICEs on the same line but with different *query stacks* are usually distinct bugs.
-For example, [#109020][#109020] and [#109129][#109129] had similar error messages:
+For example, [#109020] and [#109129] had similar error messages:
 
 > error: internal compiler error: compiler/rustc_middle/src/ty/normalize_erasing_regions.rs:195:90: Failed to normalize <[closure@src/main.rs:36:25: 36:28] as std::ops::FnOnce<(Emplacable<()>,)>>::Output, maybe try to call `try_normalize_erasing_regions` instead
 
@@ -71,7 +71,7 @@ To build a corpus, you may want to use:
 - The rustc/rust-analyzer/clippy test suites (or even source code) --- though avoid
   tests that are already known to cause failures, which often begin with comments
   like `//@ failure-status: 101` or `//@ known-bug: #NNN`.
-- The already-fixed ICEs in the archived [Glacier][glacier] repository --- though
+- The already-fixed ICEs in the archived [Glacier] repository --- though
   avoid the unfixed ones in `ices/`!
 
 [glacier]: https://github.com/rust-lang/glacier
@@ -142,9 +142,9 @@ rust.debug-assertions = true
 ```
 
 ICEs that require debug assertions to reproduce should be tagged
-[`requires-debug-assertions`][requires-debug-assertions].
+[`requires-debug-assertions`].
 
-[requires-debug-assertions]: https://github.com/rust-lang/rust/labels/requires-debug-assertions
+[`requires-debug-assertions`]: https://github.com/rust-lang/rust/labels/requires-debug-assertions
 
 ## Existing projects
 
