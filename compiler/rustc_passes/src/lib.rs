@@ -5,7 +5,7 @@
 //! This API is completely unstable and subject to change.
 
 // tidy-alphabetical-start
-#![feature(if_let_guard)]
+#![cfg_attr(bootstrap, feature(if_let_guard))]
 #![feature(map_try_insert)]
 // tidy-alphabetical-end
 

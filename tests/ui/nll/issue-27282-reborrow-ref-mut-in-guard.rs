@@ -6,8 +6,6 @@
 // reject it. But I want to make sure that we continue to reject it
 // (under NLL) even when that conservative check goes away.
 
-#![feature(if_let_guard)]
-
 fn main() {
     let mut b = &mut true;
     match b {
