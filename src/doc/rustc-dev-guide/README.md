@@ -72,4 +72,4 @@ You can use the [rustc-josh-sync](https://github.com/rust-lang/josh-sync) tool t
 
 You can find a guide on how to perform the synchronization [here](./src/external-repos.md#synchronizing-a-josh-subtree).
 
-[rustc API docs]: https://doc.rust-lang.org/nightly/nightly-rustc
+[rustc API docs]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle
