@@ -62,7 +62,7 @@ end of query stack
 
 When building a corpus, be sure to avoid collecting tests that are already known to crash rustc.
 A fuzzer that is seeded with such tests is more likely to
-generate bugs with the same root cause, wasting everyone's time.
+generate bugs with the same root cause.
 The simplest way to avoid this is to loop over each file in the corpus, see if it causes an
 ICE, and remove it if so.
 
