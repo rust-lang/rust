@@ -278,16 +278,16 @@ fn main() {
             let are = "are";
             let count = 10;
             {
-                let args = (&"fancy", &(), &"!", &count, &are, );
-                let args = [
+                let <ra@gennew>0 = (&"fancy", &(), &"!", &count, &are, );
+                let <ra@gennew>0 = [
                     builtin#lang(Argument::new_display)(
-                        args.3,
+                        <ra@gennew>0.3,
                     ), builtin#lang(Argument::new_display)(
-                        args.0,
+                        <ra@gennew>0.0,
                     ), builtin#lang(Argument::new_debug)(
-                        args.4,
+                        <ra@gennew>0.4,
                     ), builtin#lang(Argument::new_display)(
-                        args.2,
+                        <ra@gennew>0.2,
                     ),
                 ];
                 unsafe {
@@ -295,7 +295,7 @@ fn main() {
                         &[
                             "\u{1b}hello ", " ", " friends, we ", " ", "",
                         ],
-                        &args,
+                        &<ra@gennew>0,
                         &[
                             builtin#lang(Placeholder::new)(
                                 0usize,

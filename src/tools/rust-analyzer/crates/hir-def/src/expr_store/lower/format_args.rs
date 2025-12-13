@@ -655,7 +655,7 @@ impl<'db> ExprCollector<'db> {
                 .collect();
             let args =
                 self.alloc_expr_desugared(Expr::Array(Array::ElementList { elements: args }));
-            let args_name = Name::new_symbol_root(sym::args);
+            let args_name = self.generate_new_name();
             let args_binding = self.alloc_binding(
                 args_name.clone(),
                 BindingAnnotation::Unannotated,
@@ -674,7 +674,7 @@ impl<'db> ExprCollector<'db> {
         } else {
             // Generate:
             //     super let args = (&arg0, &arg1, &...);
-            let args_name = Name::new_symbol_root(sym::args);
+            let args_name = self.generate_new_name();
             let args_binding = self.alloc_binding(
                 args_name.clone(),
                 BindingAnnotation::Unannotated,
