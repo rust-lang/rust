@@ -466,7 +466,7 @@ pub(crate) mod Fallback_AD {
     #![allow(unused_variables)]
 
     use std::ffi::c_void;
-    use std::sync::Mutex;
+    use std::sync::{Mutex, MutexGuard};
 
     use libc::c_char;
     use rustc_codegen_ssa::back::write::CodegenContext;
@@ -479,13 +479,19 @@ pub(crate) mod Fallback_AD {
     }
 
     impl EnzymeWrapper {
+        pub(crate) fn get_or_init(
+            _sysroot: &rustc_session::config::Sysroot,
+        ) -> MutexGuard<'static, Self> {
+            unimplemented!("Enzyme not available: build with llvm_enzyme feature")
+        }
+
         pub(crate) fn init<'a, B: WriteBackendMethods>(
             _cgcx: &'a CodegenContext<B>,
         ) -> &'static Mutex<Self> {
             unimplemented!("Enzyme not available: build with llvm_enzyme feature")
         }
 
-        pub(crate) fn get_instance() -> &'static Mutex<Self> {
+        pub(crate) fn get_instance() -> MutexGuard<'static, Self> {
             unimplemented!("Enzyme not available: build with llvm_enzyme feature")
         }
 
