@@ -2229,12 +2229,17 @@ impl Step for Assemble {
                 let rust_version = builder.rust_version();
                 // e.g. libLLVMOffload.so.21.1
                 let lib_ext = std::env::consts::DLL_EXTENSION;
-                let libenzyme = format!("libLLVMOffload.{lib_ext}.{llvm_version}");
-                let dst_lib = libdir.join(&libenzyme);
-                let target_dst_lib = target_libdir.join(&libenzyme);
-                let src_lib = src_dir.join(&libenzyme);
-                builder.copy_link(&src_lib, &dst_lib, FileType::NativeLibrary);
-                builder.copy_link(&src_lib, &target_dst_lib, FileType::NativeLibrary);
+                let libenzyme = format!("libLLVMOffload");
+                //let libenzyme = format!("libLLVMOffload.{lib_ext}.{llvm_version}");
+                let dst_lib = libdir.join(&libenzyme).with_extension(lib_ext);
+                let target_dst_lib = target_libdir.join(&libenzyme).with_extension(lib_ext);
+                let src_lib = src_dir.join(&libenzyme).with_extension(lib_ext);
+                builder.resolve_symlink_and_copy(&src_lib, &dst_lib); //, FileType::NativeLibrary
+                builder.resolve_symlink_and_copy(
+                    &src_lib,
+                    &target_dst_lib,
+                    //FileType::NativeLibrary,
+                );
 
                 // libomp.so, libomptarget.so
                 //let omp = src_dir.join("libomp").with_extension(lib_ext);
