@@ -22,7 +22,7 @@ project, please read this guide before reporting fuzzer-generated bugs!
 - Include a reasonably minimal, standalone example along with any bug report
 - Include all of the information requested in the bug report template
 - Search for existing reports with the same message and query stack
-- Format the test case with `rustfmt`, if it maintains the bug
+- Format the test case with `rustfmt`
 - Indicate that the bug was found by fuzzing
 
 *Please don't:*
