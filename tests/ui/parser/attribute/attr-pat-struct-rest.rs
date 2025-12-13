@@ -3,6 +3,6 @@
 struct S {}
 
 fn main() {
-    let S { #[cfg(any())] .. } = S {};
+    let S { #[cfg(false)] .. } = S {};
     //~^ ERROR expected identifier, found `..`
 }

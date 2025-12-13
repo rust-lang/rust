@@ -589,6 +589,7 @@ const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[
     "region",
     "rustc-hash",
     "serde",
+    "serde_core",
     "serde_derive",
     "smallvec",
     "stable_deref_trait",

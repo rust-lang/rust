@@ -20,7 +20,7 @@ pub(super) fn type_hints(
     display_target: DisplayTarget,
     placeholder: InferType,
 ) -> Option<()> {
-    if !config.type_hints {
+    if !config.type_hints || config.hide_inferred_type_hints {
         return None;
     }
 
@@ -71,6 +71,24 @@ fn foo() {
                                                    //^ = [bool; 1]
 }
 "#,
+        );
+    }
+
+    #[test]
+    fn hide_inferred_types() {
+        check_with_config(
+            InlayHintsConfig {
+                type_hints: true,
+                hide_inferred_type_hints: true,
+                ..DISABLED_CONFIG
+            },
+            r#"
+struct S<T>(T);
+
+fn foo() {
+    let t: (_, _, [_; _]) = (1_u32, S(2), [false] as _);
+}
+        "#,
         );
     }
 }

@@ -39,8 +39,8 @@ use smallvec::{SmallVec, smallvec};
 use span::{FileId, SyntaxContext};
 use stdx::{TupleExt, always};
 use syntax::{
-    AstNode, AstToken, Direction, SyntaxKind, SyntaxNode, SyntaxNodePtr, SyntaxToken, TextRange,
-    TextSize,
+    AstNode, AstToken, Direction, SmolStr, SmolStrBuilder, SyntaxElement, SyntaxKind, SyntaxNode,
+    SyntaxNodePtr, SyntaxToken, T, TextRange, TextSize,
     algo::skip_trivia_token,
     ast::{self, HasAttrs as _, HasGenericParams},
 };
@@ -174,6 +174,15 @@ impl<'db, DB: ?Sized> ops::Deref for Semantics<'db, DB> {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum LintAttr {
+    Allow,
+    Expect,
+    Warn,
+    Deny,
+    Forbid,
+}
+
 // Note: while this variant of `Semantics<'_, _>` might seem unused, as it does not
 // find actual use within the rust-analyzer project itself, it exists to enable the use
 // within e.g. tracked salsa functions in third-party crates that build upon `ra_ap_hir`.
@@ -252,6 +261,59 @@ impl<DB: HirDatabase + ?Sized> Semantics<'_, DB> {
             // See algo::ancestors_at_offset, which uses the same approach
             .kmerge_by(|left, right| left.text_range().len().lt(&right.text_range().len()))
             .filter_map(ast::NameLike::cast)
+    }
+
+    pub fn lint_attrs(
+        &self,
+        krate: Crate,
+        item: ast::AnyHasAttrs,
+    ) -> impl Iterator<Item = (LintAttr, SmolStr)> {
+        let mut cfg_options = None;
+        let cfg_options = || *cfg_options.get_or_insert_with(|| krate.id.cfg_options(self.db));
+        let mut result = Vec::new();
+        hir_expand::attrs::expand_cfg_attr::<Infallible>(
+            ast::attrs_including_inner(&item),
+            cfg_options,
+            |attr, _, _, _| {
+                let hir_expand::attrs::Meta::TokenTree { path, tt } = attr else {
+                    return ControlFlow::Continue(());
+                };
+                if path.segments.len() != 1 {
+                    return ControlFlow::Continue(());
+                }
+                let lint_attr = match path.segments[0].text() {
+                    "allow" => LintAttr::Allow,
+                    "expect" => LintAttr::Expect,
+                    "warn" => LintAttr::Warn,
+                    "deny" => LintAttr::Deny,
+                    "forbid" => LintAttr::Forbid,
+                    _ => return ControlFlow::Continue(()),
+                };
+                let mut lint = SmolStrBuilder::new();
+                for token in
+                    tt.syntax().children_with_tokens().filter_map(SyntaxElement::into_token)
+                {
+                    match token.kind() {
+                        T![:] | T![::] => lint.push_str(token.text()),
+                        kind if kind.is_any_identifier() => lint.push_str(token.text()),
+                        T![,] => {
+                            let lint = mem::replace(&mut lint, SmolStrBuilder::new()).finish();
+                            if !lint.is_empty() {
+                                result.push((lint_attr, lint));
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+                let lint = lint.finish();
+                if !lint.is_empty() {
+                    result.push((lint_attr, lint));
+                }
+
+                ControlFlow::Continue(())
+            },
+        );
+        result.into_iter()
     }
 
     pub fn resolve_range_pat(&self, range_pat: &ast::RangePat) -> Option<Struct> {
@@ -380,13 +442,13 @@ impl<'db> SemanticsImpl<'db> {
     /// If not crate is found for the file, try to return the last crate in topological order.
     pub fn first_crate(&self, file: FileId) -> Option<Crate> {
         match self.file_to_module_defs(file).next() {
-            Some(module) => Some(module.krate()),
+            Some(module) => Some(module.krate(self.db)),
             None => self.db.all_crates().last().copied().map(Into::into),
         }
     }
 
     pub fn attach_first_edition_opt(&self, file: FileId) -> Option<EditionedFileId> {
-        let krate = self.file_to_module_defs(file).next()?.krate();
+        let krate = self.file_to_module_defs(file).next()?.krate(self.db);
         Some(EditionedFileId::new(self.db, file, krate.edition(self.db), krate.id))
     }
 
@@ -416,8 +478,8 @@ impl<'db> SemanticsImpl<'db> {
         match file_id {
             HirFileId::FileId(file_id) => {
                 let module = self.file_to_module_defs(file_id.file_id(self.db)).next()?;
-                let def_map = crate_def_map(self.db, module.krate().id);
-                match def_map[module.id.local_id].origin {
+                let def_map = crate_def_map(self.db, module.krate(self.db).id);
+                match def_map[module.id].origin {
                     ModuleOrigin::CrateRoot { .. } => None,
                     ModuleOrigin::File { declaration, declaration_tree_id, .. } => {
                         let file_id = declaration_tree_id.file_id();
@@ -443,7 +505,7 @@ impl<'db> SemanticsImpl<'db> {
     /// the `SyntaxNode` of the *definition* file, not of the *declaration*.
     pub fn module_definition_node(&self, module: Module) -> InFile<SyntaxNode> {
         let def_map = module.id.def_map(self.db);
-        let definition = def_map[module.id.local_id].origin.definition_source(self.db);
+        let definition = def_map[module.id].origin.definition_source(self.db);
         let definition = definition.map(|it| it.node());
         let root_node = find_root(&definition.value);
         self.cache(root_node, definition.file_id);
@@ -472,7 +534,7 @@ impl<'db> SemanticsImpl<'db> {
         let file_id = self.find_file(attr.syntax()).file_id;
         let krate = match file_id {
             HirFileId::FileId(file_id) => {
-                self.file_to_module_defs(file_id.file_id(self.db)).next()?.krate().id
+                self.file_to_module_defs(file_id.file_id(self.db)).next()?.krate(self.db).id
             }
             HirFileId::MacroFile(macro_file) => self.db.lookup_intern_macro_call(macro_file).krate,
         };

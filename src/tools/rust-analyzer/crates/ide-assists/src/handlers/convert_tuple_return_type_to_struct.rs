@@ -199,7 +199,8 @@ fn augment_references_with_imports(
             {
                 visited_modules.insert(ref_module);
 
-                let cfg = ctx.config.find_path_config(ctx.sema.is_nightly(ref_module.krate()));
+                let cfg =
+                    ctx.config.find_path_config(ctx.sema.is_nightly(ref_module.krate(ctx.sema.db)));
                 let import_scope =
                     ImportScope::find_insert_use_container(new_name.syntax(), &ctx.sema);
                 let path = ref_module
@@ -211,7 +212,10 @@ fn augment_references_with_imports(
                     )
                     .map(|mod_path| {
                         make::path_concat(
-                            mod_path_to_ast(&mod_path, target_module.krate().edition(ctx.db())),
+                            mod_path_to_ast(
+                                &mod_path,
+                                target_module.krate(ctx.db()).edition(ctx.db()),
+                            ),
                             make::path_from_text(struct_name),
                         )
                     });

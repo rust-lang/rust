@@ -35,9 +35,9 @@ use rustc_ast::tokenstream::{
 };
 use rustc_ast::util::case::Case;
 use rustc_ast::{
-    self as ast, AnonConst, AttrArgs, AttrId, ByRef, Const, CoroutineKind, DUMMY_NODE_ID,
-    DelimArgs, Expr, ExprKind, Extern, HasAttrs, HasTokens, Mutability, Recovered, Safety, StrLit,
-    Visibility, VisibilityKind,
+    self as ast, AnonConst, AttrArgs, AttrId, BlockCheckMode, ByRef, Const, CoroutineKind,
+    DUMMY_NODE_ID, DelimArgs, Expr, ExprKind, Extern, HasAttrs, HasTokens, MgcaDisambiguation,
+    Mutability, Recovered, Safety, StrLit, Visibility, VisibilityKind,
 };
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashMap;
@@ -727,7 +727,10 @@ impl<'a> Parser<'a> {
     }
 
     fn check_const_arg(&mut self) -> bool {
-        self.check_or_expected(self.token.can_begin_const_arg(), TokenType::Const)
+        let is_mcg_arg = self.check_or_expected(self.token.can_begin_const_arg(), TokenType::Const);
+        let is_mgca_arg = self.is_keyword_ahead(0, &[kw::Const])
+            && self.look_ahead(1, |t| *t == token::OpenBrace);
+        is_mcg_arg || is_mgca_arg
     }
 
     fn check_const_closure(&self) -> bool {
@@ -1299,6 +1302,20 @@ impl<'a> Parser<'a> {
         }
     }
 
+    fn parse_mgca_const_block(&mut self, gate_syntax: bool) -> PResult<'a, AnonConst> {
+        self.expect_keyword(exp!(Const))?;
+        let kw_span = self.token.span;
+        let value = self.parse_expr_block(None, self.token.span, BlockCheckMode::Default)?;
+        if gate_syntax {
+            self.psess.gated_spans.gate(sym::min_generic_const_args, kw_span.to(value.span));
+        }
+        Ok(AnonConst {
+            id: ast::DUMMY_NODE_ID,
+            value,
+            mgca_disambiguation: MgcaDisambiguation::AnonConst,
+        })
+    }
+
     /// Parses inline const expressions.
     fn parse_const_block(&mut self, span: Span, pat: bool) -> PResult<'a, Box<Expr>> {
         self.expect_keyword(exp!(Const))?;
@@ -1306,6 +1323,7 @@ impl<'a> Parser<'a> {
         let anon_const = AnonConst {
             id: DUMMY_NODE_ID,
             value: self.mk_expr(blk.span, ExprKind::Block(blk, None)),
+            mgca_disambiguation: MgcaDisambiguation::AnonConst,
         };
         let blk_span = anon_const.value.span;
         let kind = if pat {

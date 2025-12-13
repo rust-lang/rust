@@ -160,7 +160,7 @@ impl NavigationTarget {
                         );
                         res.docs = module.docs(db).map(Documentation::into_owned);
                         res.description = Some(
-                            module.display(db, module.krate().to_display_target(db)).to_string(),
+                            module.display(db, module.krate(db).to_display_target(db)).to_string(),
                         );
                         res
                     },
@@ -468,7 +468,7 @@ impl ToNav for hir::Module {
 
 impl ToNav for hir::Crate {
     fn to_nav(&self, db: &RootDatabase) -> UpmappingResult<NavigationTarget> {
-        self.root_module().to_nav(db)
+        self.root_module(db).to_nav(db)
     }
 }
 
@@ -511,7 +511,7 @@ impl TryToNav for hir::ExternCrateDecl {
         let focus = value
             .rename()
             .map_or_else(|| value.name_ref().map(Either::Left), |it| it.name().map(Either::Right));
-        let krate = self.module(db).krate();
+        let krate = self.module(db).krate(db);
 
         Some(orig_range_with_focus(db, file_id, value.syntax(), focus).map(
             |(FileRange { file_id, range: full_range }, focus_range)| {
@@ -539,7 +539,7 @@ impl TryToNav for hir::Field {
     ) -> Option<UpmappingResult<NavigationTarget>> {
         let db = sema.db;
         let src = self.source(db)?;
-        let krate = self.parent_def(db).module(db).krate();
+        let krate = self.parent_def(db).module(db).krate(db);
 
         let field_source = match &src.value {
             FieldSource::Named(it) => {

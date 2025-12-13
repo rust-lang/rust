@@ -2,11 +2,15 @@ error[E0425]: cannot find type `F` in this scope
   --> $DIR/issue-83693.rs:6:6
    |
 LL | impl F {
-   |      ^ help: a trait with a similar name exists: `Fn`
+   |      ^
    |
   --> $SRC_DIR/core/src/ops/function.rs:LL:COL
    |
    = note: similarly named trait `Fn` defined here
+help: a trait with a similar name exists
+   |
+LL | impl Fn {
+   |       +
 
 error[E0425]: cannot find type `TestResult` in this scope
   --> $DIR/issue-83693.rs:9:22

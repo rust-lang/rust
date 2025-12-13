@@ -20,10 +20,10 @@ LL | use builtin_attrs::*;
    = help: use `crate::repr` to refer to this attribute macro unambiguously
 
 error[E0659]: `repr` is ambiguous
-  --> $DIR/ambiguous-builtin-attrs.rs:12:19
+  --> $DIR/ambiguous-builtin-attrs.rs:12:18
    |
-LL | #[cfg_attr(all(), repr(C))]
-   |                   ^^^^ ambiguous name
+LL | #[cfg_attr(true, repr(C))]
+   |                  ^^^^ ambiguous name
    |
    = note: ambiguous because of a name conflict with a builtin attribute
    = note: `repr` could refer to a built-in attribute

@@ -189,10 +189,63 @@ fn f() {
 }
     "#,
         expect![[r#"
-            BlockId(3801) in BlockRelativeModuleId { block: Some(BlockId(3800)), local_id: Idx::<ModuleData>(1) }
-            BlockId(3800) in BlockRelativeModuleId { block: None, local_id: Idx::<ModuleData>(0) }
-            crate scope
-        "#]],
+            ModuleIdLt {
+                [salsa id]: Id(3003),
+                krate: Crate(
+                    Id(1c00),
+                ),
+                block: Some(
+                    BlockIdLt {
+                        [salsa id]: Id(3c01),
+                        ast_id: InFileWrapper {
+                            file_id: FileId(
+                                EditionedFileIdData {
+                                    editioned_file_id: EditionedFileId(
+                                        0,
+                                        Edition2024,
+                                    ),
+                                    krate: Crate(
+                                        Id(1c00),
+                                    ),
+                                },
+                            ),
+                            value: FileAstId::<syntax::ast::generated::nodes::BlockExpr>(ErasedFileAstId { kind: BlockExpr, index: 0, hash: F9BF }),
+                        },
+                        module: ModuleIdLt {
+                            [salsa id]: Id(3002),
+                            krate: Crate(
+                                Id(1c00),
+                            ),
+                            block: Some(
+                                BlockIdLt {
+                                    [salsa id]: Id(3c00),
+                                    ast_id: InFileWrapper {
+                                        file_id: FileId(
+                                            EditionedFileIdData {
+                                                editioned_file_id: EditionedFileId(
+                                                    0,
+                                                    Edition2024,
+                                                ),
+                                                krate: Crate(
+                                                    Id(1c00),
+                                                ),
+                                            },
+                                        ),
+                                        value: FileAstId::<syntax::ast::generated::nodes::BlockExpr>(ErasedFileAstId { kind: BlockExpr, index: 0, hash: C181 }),
+                                    },
+                                    module: ModuleIdLt {
+                                        [salsa id]: Id(3000),
+                                        krate: Crate(
+                                            Id(1c00),
+                                        ),
+                                        block: None,
+                                    },
+                                },
+                            ),
+                        },
+                    },
+                ),
+            }"#]],
     );
 }
 
@@ -460,7 +513,7 @@ fn foo() {
 }
 
 #[test]
-fn is_visible_from_same_def_map() {
+fn is_visible_from_same_def_map_regression_9481() {
     // Regression test for https://github.com/rust-lang/rust-analyzer/issues/9481
     check_at(
         r#"
@@ -478,7 +531,6 @@ fn outer() {
             - tests : type
 
             (block scope)::tests
-            - name : _
             - outer : value (glob)
 
             crate

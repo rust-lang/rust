@@ -860,7 +860,7 @@ fn lower_fields<Field: ast::HasAttrs + ast::HasVisibility>(
     mut field_name: impl FnMut(usize, &Field) -> Name,
     override_visibility: Option<Option<ast::Visibility>>,
 ) -> Option<(Arena<FieldData>, ExpressionStore, ExpressionStoreSourceMap)> {
-    let cfg_options = module.krate.cfg_options(db);
+    let cfg_options = module.krate(db).cfg_options(db);
     let mut col = ExprCollector::new(db, module, fields.file_id);
     let override_visibility = override_visibility.map(|vis| {
         LazyCell::new(|| {
@@ -938,7 +938,7 @@ impl EnumVariants {
         let ast_id_map = db.ast_id_map(source.file_id);
 
         let mut diagnostics = ThinVec::new();
-        let cfg_options = loc.container.krate.cfg_options(db);
+        let cfg_options = loc.container.krate(db).cfg_options(db);
         let mut index = 0;
         let Some(variants) = source.value.variant_list() else {
             return (EnumVariants { variants: Box::default() }, None);

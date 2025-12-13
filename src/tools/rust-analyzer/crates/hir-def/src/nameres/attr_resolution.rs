@@ -12,7 +12,7 @@ use syntax::ast;
 use triomphe::Arc;
 
 use crate::{
-    AstIdWithPath, LocalModuleId, MacroId, UnresolvedMacro,
+    AstIdWithPath, MacroId, ModuleId, UnresolvedMacro,
     db::DefDatabase,
     item_scope::BuiltinShadowMode,
     nameres::{LocalDefMap, path_resolution::ResolveMode},
@@ -33,7 +33,7 @@ impl DefMap {
         &self,
         local_def_map: &LocalDefMap,
         db: &dyn DefDatabase,
-        original_module: LocalModuleId,
+        original_module: ModuleId,
         ast_id: AstIdWithPath<ast::Item>,
         attr: &Attr,
         attr_id: AttrId,

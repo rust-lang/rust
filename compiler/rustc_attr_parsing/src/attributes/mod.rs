@@ -39,6 +39,7 @@ pub(crate) mod confusables;
 pub(crate) mod crate_level;
 pub(crate) mod debugger;
 pub(crate) mod deprecation;
+pub(crate) mod doc;
 pub(crate) mod dummy;
 pub(crate) mod inline;
 pub(crate) mod link_attrs;
@@ -61,7 +62,7 @@ pub(crate) mod traits;
 pub(crate) mod transparency;
 pub(crate) mod util;
 
-type AcceptFn<T, S> = for<'sess> fn(&mut T, &mut AcceptContext<'_, 'sess, S>, &ArgParser<'_>);
+type AcceptFn<T, S> = for<'sess> fn(&mut T, &mut AcceptContext<'_, 'sess, S>, &ArgParser);
 type AcceptMapping<T, S> = &'static [(&'static [Symbol], AttributeTemplate, AcceptFn<T, S>)];
 
 /// An [`AttributeParser`] is a type which searches for syntactic attributes.
@@ -132,7 +133,7 @@ pub(crate) trait SingleAttributeParser<S: Stage>: 'static {
     const TEMPLATE: AttributeTemplate;
 
     /// Converts a single syntactical attribute to a single semantic attribute, or [`AttributeKind`]
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind>;
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind>;
 }
 
 /// Use in combination with [`SingleAttributeParser`].
@@ -281,7 +282,7 @@ impl<T: NoArgsAttributeParser<S>, S: Stage> SingleAttributeParser<S> for Without
     const ALLOWED_TARGETS: AllowedTargets = T::ALLOWED_TARGETS;
     const TEMPLATE: AttributeTemplate = template!(Word);
 
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
         if let Err(span) = args.no_args() {
             cx.expected_no_args(span);
         }
@@ -314,10 +315,10 @@ pub(crate) trait CombineAttributeParser<S: Stage>: 'static {
     const TEMPLATE: AttributeTemplate;
 
     /// Converts a single syntactical attribute to a number of elements of the semantic attribute, or [`AttributeKind`]
-    fn extend<'c>(
-        cx: &'c mut AcceptContext<'_, '_, S>,
-        args: &'c ArgParser<'_>,
-    ) -> impl IntoIterator<Item = Self::Item> + 'c;
+    fn extend(
+        cx: &mut AcceptContext<'_, '_, S>,
+        args: &ArgParser,
+    ) -> impl IntoIterator<Item = Self::Item>;
 }
 
 /// Use in combination with [`CombineAttributeParser`].

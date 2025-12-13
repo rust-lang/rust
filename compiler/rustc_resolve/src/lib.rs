@@ -64,7 +64,7 @@ use rustc_hir::definitions::DisambiguatorState;
 use rustc_hir::{PrimTy, TraitCandidate};
 use rustc_index::bit_set::DenseBitSet;
 use rustc_metadata::creader::CStore;
-use rustc_middle::metadata::ModChild;
+use rustc_middle::metadata::{AmbigModChild, ModChild, Reexport};
 use rustc_middle::middle::privacy::EffectiveVisibilities;
 use rustc_middle::query::Providers;
 use rustc_middle::span_bug;
@@ -73,6 +73,7 @@ use rustc_middle::ty::{
     ResolverGlobalCtxt, TyCtxt, TyCtxtFeed, Visibility,
 };
 use rustc_query_system::ich::StableHashingContext;
+use rustc_session::config::CrateType;
 use rustc_session::lint::builtin::PRIVATE_MACRO_USE;
 use rustc_span::hygiene::{ExpnId, LocalExpnId, MacroKind, SyntaxContext, Transparency};
 use rustc_span::{DUMMY_SP, Ident, Macros20NormalizedIdent, Span, Symbol, kw, sym};
@@ -927,6 +928,18 @@ impl<'ra> NameBindingData<'ra> {
         }
     }
 
+    fn descent_to_ambiguity(
+        self: NameBinding<'ra>,
+    ) -> Option<(NameBinding<'ra>, NameBinding<'ra>, AmbiguityKind)> {
+        match self.ambiguity {
+            Some((ambig_binding, ambig_kind)) => Some((self, ambig_binding, ambig_kind)),
+            None => match self.kind {
+                NameBindingKind::Import { binding, .. } => binding.descent_to_ambiguity(),
+                _ => None,
+            },
+        }
+    }
+
     fn is_ambiguity_recursive(&self) -> bool {
         self.ambiguity.is_some()
             || match self.kind {
@@ -988,6 +1001,16 @@ impl<'ra> NameBindingData<'ra> {
 
     fn macro_kinds(&self) -> Option<MacroKinds> {
         self.res().macro_kinds()
+    }
+
+    fn reexport_chain(self: NameBinding<'ra>, r: &Resolver<'_, '_>) -> SmallVec<[Reexport; 2]> {
+        let mut reexport_chain = SmallVec::new();
+        let mut next_binding = self;
+        while let NameBindingKind::Import { binding, import, .. } = next_binding.kind {
+            reexport_chain.push(import.simplify(r));
+            next_binding = binding;
+        }
+        reexport_chain
     }
 
     // Suppose that we resolved macro invocation with `invoc_parent_expansion` to binding `binding`
@@ -1123,6 +1146,7 @@ pub struct Resolver<'ra, 'tcx> {
     /// `CrateNum` resolutions of `extern crate` items.
     extern_crate_map: UnordMap<LocalDefId, CrateNum>,
     module_children: LocalDefIdMap<Vec<ModChild>>,
+    ambig_module_children: LocalDefIdMap<Vec<AmbigModChild>>,
     trait_map: NodeMap<Vec<TraitCandidate>>,
 
     /// A map from nodes to anonymous modules.
@@ -1580,6 +1604,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             extra_lifetime_params_map: Default::default(),
             extern_crate_map: Default::default(),
             module_children: Default::default(),
+            ambig_module_children: Default::default(),
             trait_map: NodeMap::default(),
             empty_module,
             local_modules,
@@ -1766,6 +1791,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             effective_visibilities,
             extern_crate_map,
             module_children: self.module_children,
+            ambig_module_children: self.ambig_module_children,
             glob_map,
             maybe_unused_trait_imports,
             main_def,
@@ -2405,6 +2431,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     }
 
     fn resolve_main(&mut self) {
+        let any_exe = self.tcx.crate_types().contains(&CrateType::Executable);
+        // Don't try to resolve main unless it's an executable
+        if !any_exe {
+            return;
+        }
+
         let module = self.graph_root;
         let ident = Ident::with_dummy_span(sym::main);
         let parent_scope = &ParentScope::module(module, self.arenas);

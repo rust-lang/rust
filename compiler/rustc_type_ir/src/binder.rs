@@ -1,3 +1,4 @@
+use std::fmt;
 use std::marker::PhantomData;
 use std::ops::{ControlFlow, Deref};
 
@@ -12,7 +13,7 @@ use crate::fold::{FallibleTypeFolder, TypeFoldable, TypeFolder, TypeSuperFoldabl
 use crate::inherent::*;
 use crate::lift::Lift;
 use crate::visit::{Flags, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor};
-use crate::{self as ty, DebruijnIndex, Interner};
+use crate::{self as ty, DebruijnIndex, Interner, UniverseIndex};
 
 /// `Binder` is a binder for higher-ranked lifetimes or types. It is part of the
 /// compiler's representation for things like `for<'a> Fn(&'a isize)`
@@ -947,4 +948,56 @@ impl<'a, I: Interner> ArgFolder<'a, I> {
 pub enum BoundVarIndexKind {
     Bound(DebruijnIndex),
     Canonical,
+}
+
+/// The "placeholder index" fully defines a placeholder region, type, or const. Placeholders are
+/// identified by both a universe, as well as a name residing within that universe. Distinct bound
+/// regions/types/consts within the same universe simply have an unknown relationship to one
+/// another.
+#[derive_where(Clone, PartialEq, Ord, Hash; I: Interner, T)]
+#[derive_where(PartialOrd; I: Interner, T: Ord)]
+#[derive_where(Copy; I: Interner, T: Copy, T)]
+#[derive_where(Eq; T)]
+#[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
+#[cfg_attr(
+    feature = "nightly",
+    derive(Encodable_NoContext, Decodable_NoContext, HashStable_NoContext)
+)]
+pub struct Placeholder<I: Interner, T> {
+    pub universe: UniverseIndex,
+    pub bound: T,
+    #[type_foldable(identity)]
+    #[type_visitable(ignore)]
+    _tcx: PhantomData<fn() -> I>,
+}
+
+impl<I: Interner, T> Placeholder<I, T> {
+    pub fn new(universe: UniverseIndex, bound: T) -> Self {
+        Placeholder { universe, bound, _tcx: PhantomData }
+    }
+}
+
+impl<I: Interner, T: fmt::Debug> fmt::Debug for ty::Placeholder<I, T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.universe == ty::UniverseIndex::ROOT {
+            write!(f, "!{:?}", self.bound)
+        } else {
+            write!(f, "!{}_{:?}", self.universe.index(), self.bound)
+        }
+    }
+}
+
+impl<I: Interner, U: Interner, T> Lift<U> for Placeholder<I, T>
+where
+    T: Lift<U>,
+{
+    type Lifted = Placeholder<U, T::Lifted>;
+
+    fn lift_to_interner(self, cx: U) -> Option<Self::Lifted> {
+        Some(Placeholder {
+            universe: self.universe,
+            bound: self.bound.lift_to_interner(cx)?,
+            _tcx: PhantomData,
+        })
+    }
 }

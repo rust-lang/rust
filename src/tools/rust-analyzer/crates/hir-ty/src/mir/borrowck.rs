@@ -97,7 +97,7 @@ pub fn borrowck_query<'db>(
 ) -> Result<Arc<[BorrowckResult<'db>]>, MirLowerError<'db>> {
     let _p = tracing::info_span!("borrowck_query").entered();
     let module = def.module(db);
-    let interner = DbInterner::new_with(db, module.krate());
+    let interner = DbInterner::new_with(db, module.krate(db));
     let env = db.trait_environment_for_body(def);
     let mut res = vec![];
     // This calculates opaques defining scope which is a bit costly therefore is put outside `all_mir_bodies()`.
@@ -148,7 +148,7 @@ fn moved_out_of_ref<'db>(
                     infcx,
                     ty,
                     make_fetch_closure_field(db),
-                    body.owner.module(db).krate(),
+                    body.owner.module(db).krate(db),
                 );
             }
             if is_dereference_of_ref
@@ -244,7 +244,7 @@ fn partially_moved<'db>(
                     infcx,
                     ty,
                     make_fetch_closure_field(db),
-                    body.owner.module(db).krate(),
+                    body.owner.module(db).krate(db),
                 );
             }
             if !infcx.type_is_copy_modulo_regions(env, ty) && !ty.references_non_lt_error() {
@@ -397,7 +397,7 @@ fn place_case<'db>(
             infcx,
             ty,
             make_fetch_closure_field(db),
-            body.owner.module(db).krate(),
+            body.owner.module(db).krate(db),
         );
     }
     if is_part_of { ProjectionCase::DirectPart } else { ProjectionCase::Direct }

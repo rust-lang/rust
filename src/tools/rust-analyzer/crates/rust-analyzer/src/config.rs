@@ -304,6 +304,9 @@ config_data! {
         /// Hide inlay parameter type hints for closures.
         inlayHints_typeHints_hideClosureParameter: bool = false,
 
+        /// Hide inlay type hints for inferred types.
+        inlayHints_typeHints_hideInferredTypes: bool = false,
+
         /// Hide inlay type hints for constructors.
         inlayHints_typeHints_hideNamedConstructor: bool = false,
 
@@ -1937,6 +1940,7 @@ impl Config {
             hide_named_constructor_hints: self
                 .inlayHints_typeHints_hideNamedConstructor()
                 .to_owned(),
+            hide_inferred_type_hints: self.inlayHints_typeHints_hideInferredTypes().to_owned(),
             hide_closure_initialization_hints: self
                 .inlayHints_typeHints_hideClosureInitialization()
                 .to_owned(),

@@ -148,7 +148,7 @@ impl HasChildSource<LocalFieldId> for VariantId {
         let mut map = ArenaMap::new();
         match &src.value {
             ast::StructKind::Tuple(fl) => {
-                let cfg_options = container.krate.cfg_options(db);
+                let cfg_options = container.krate(db).cfg_options(db);
                 let mut idx = 0;
                 for fd in fl.fields() {
                     let enabled = AttrFlags::is_cfg_enabled_for(&fd, cfg_options).is_ok();
@@ -163,7 +163,7 @@ impl HasChildSource<LocalFieldId> for VariantId {
                 }
             }
             ast::StructKind::Record(fl) => {
-                let cfg_options = container.krate.cfg_options(db);
+                let cfg_options = container.krate(db).cfg_options(db);
                 let mut idx = 0;
                 for fd in fl.fields() {
                     let enabled = AttrFlags::is_cfg_enabled_for(&fd, cfg_options).is_ok();

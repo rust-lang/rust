@@ -68,8 +68,12 @@ impl flags::Diagnostics {
             if !visited_files.contains(&file_id) {
                 let message = format!("processing {}", _vfs.file_path(file_id.file_id(db)));
                 bar.set_message(move || message.clone());
-                let crate_name =
-                    module.krate().display_name(db).as_deref().unwrap_or(&sym::unknown).to_owned();
+                let crate_name = module
+                    .krate(db)
+                    .display_name(db)
+                    .as_deref()
+                    .unwrap_or(&sym::unknown)
+                    .to_owned();
                 for diagnostic in analysis
                     .full_diagnostics(
                         &DiagnosticsConfig::test_sample(),
@@ -122,7 +126,7 @@ impl flags::Diagnostics {
 
 fn all_modules(db: &dyn HirDatabase) -> Vec<Module> {
     let mut worklist: Vec<_> =
-        Crate::all(db).into_iter().map(|krate| krate.root_module()).collect();
+        Crate::all(db).into_iter().map(|krate| krate.root_module(db)).collect();
     let mut modules = Vec::new();
 
     while let Some(module) = worklist.pop() {

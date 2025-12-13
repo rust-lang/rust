@@ -3,6 +3,7 @@
 use std::fs::read_to_string;
 use std::sync::{Arc, Mutex};
 
+use rustc_errors::DiagCtxtHandle;
 use rustc_session::config::Input;
 use rustc_span::{DUMMY_SP, FileName};
 use tempfile::tempdir;
@@ -78,7 +79,7 @@ impl DocTestVisitor for MdCollector {
 }
 
 /// Runs any tests/code examples in the markdown file `options.input`.
-pub(crate) fn test(input: &Input, options: Options) -> Result<(), String> {
+pub(crate) fn test(input: &Input, options: Options, dcx: DiagCtxtHandle<'_>) -> Result<(), String> {
     let input_str = match input {
         Input::File(path) => {
             read_to_string(path).map_err(|err| format!("{}: {err}", path.display()))?
@@ -118,6 +119,7 @@ pub(crate) fn test(input: &Input, options: Options) -> Result<(), String> {
     let CreateRunnableDocTests { opts, rustdoc_options, standalone_tests, mergeable_tests, .. } =
         collector;
     crate::doctest::run_tests(
+        dcx,
         opts,
         &rustdoc_options,
         &Arc::new(Mutex::new(Vec::new())),

@@ -629,7 +629,7 @@ checksum = "a1d728cc89cf3aee9ff92b05e62b19ee65a02b5702cff7d5a377e32c6ae29d8d"
 
 [[package]]
 name = "clippy"
-version = "0.1.93"
+version = "0.1.94"
 dependencies = [
  "anstream",
  "askama",
@@ -656,7 +656,7 @@ dependencies = [
 
 [[package]]
 name = "clippy_config"
-version = "0.1.93"
+version = "0.1.94"
 dependencies = [
  "clippy_utils",
  "itertools",
@@ -679,7 +679,7 @@ dependencies = [
 
 [[package]]
 name = "clippy_lints"
-version = "0.1.93"
+version = "0.1.94"
 dependencies = [
  "arrayvec",
  "cargo_metadata 0.18.1",
@@ -711,7 +711,7 @@ dependencies = [
 
 [[package]]
 name = "clippy_utils"
-version = "0.1.93"
+version = "0.1.94"
 dependencies = [
  "arrayvec",
  "itertools",
@@ -1115,7 +1115,7 @@ dependencies = [
 
 [[package]]
 name = "declare_clippy_lint"
-version = "0.1.93"
+version = "0.1.94"
 
 [[package]]
 name = "derive-where"
@@ -4019,7 +4019,6 @@ dependencies = [
  "itertools",
  "rustc_abi",
  "rustc_ast",
- "rustc_attr_parsing",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_fluent_macro",
@@ -4441,7 +4440,6 @@ dependencies = [
  "rustc_abi",
  "rustc_ast",
  "rustc_ast_lowering",
- "rustc_ast_pretty",
  "rustc_attr_parsing",
  "rustc_data_structures",
  "rustc_errors",
@@ -4878,6 +4876,7 @@ dependencies = [
  "indexmap",
  "itertools",
  "minifier",
+ "proc-macro2",
  "pulldown-cmark-escape",
  "regex",
  "rustdoc-json-types",

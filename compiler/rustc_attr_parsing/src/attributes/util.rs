@@ -5,7 +5,7 @@ use rustc_ast::attr::AttributeExt;
 use rustc_feature::is_builtin_attr_name;
 use rustc_hir::RustcVersion;
 use rustc_hir::limit::Limit;
-use rustc_span::{Symbol, sym};
+use rustc_span::Symbol;
 
 use crate::context::{AcceptContext, Stage};
 use crate::parser::{ArgParser, NameValueParser};
@@ -32,36 +32,6 @@ pub fn is_builtin_attr(attr: &impl AttributeExt) -> bool {
         || attr.ident().is_some_and(|ident| is_builtin_attr_name(ident.name))
 }
 
-pub fn is_doc_alias_attrs_contain_symbol<'tcx, T: AttributeExt + 'tcx>(
-    attrs: impl Iterator<Item = &'tcx T>,
-    symbol: Symbol,
-) -> bool {
-    let doc_attrs = attrs.filter(|attr| attr.has_name(sym::doc));
-    for attr in doc_attrs {
-        let Some(values) = attr.meta_item_list() else {
-            continue;
-        };
-        let alias_values = values.iter().filter(|v| v.has_name(sym::alias));
-        for v in alias_values {
-            if let Some(nested) = v.meta_item_list() {
-                // #[doc(alias("foo", "bar"))]
-                let mut iter = nested.iter().filter_map(|item| item.lit()).map(|item| item.symbol);
-                if iter.any(|s| s == symbol) {
-                    return true;
-                }
-            } else if let Some(meta) = v.meta_item()
-                && let Some(lit) = meta.name_value_literal()
-            {
-                // #[doc(alias = "foo")]
-                if lit.symbol == symbol {
-                    return true;
-                }
-            }
-        }
-    }
-    false
-}
-
 /// Parse a single integer.
 ///
 /// Used by attributes that take a single integer as argument, such as
@@ -70,7 +40,7 @@ pub fn is_doc_alias_attrs_contain_symbol<'tcx, T: AttributeExt + 'tcx>(
 /// `args` is the parser for the attribute arguments.
 pub(crate) fn parse_single_integer<S: Stage>(
     cx: &mut AcceptContext<'_, '_, S>,
-    args: &ArgParser<'_>,
+    args: &ArgParser,
 ) -> Option<u128> {
     let Some(list) = args.list() else {
         cx.expected_list(cx.attr_span);

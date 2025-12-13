@@ -3274,6 +3274,16 @@ define_print! {
         p.reset_type_limit();
         self.term.print(p)?;
     }
+
+    ty::PlaceholderType<'tcx> {
+        match self.bound.kind {
+            ty::BoundTyKind::Anon => write!(p, "{self:?}")?,
+            ty::BoundTyKind::Param(def_id) => match p.should_print_verbose() {
+                true => write!(p, "{self:?}")?,
+                false => write!(p, "{}", p.tcx().item_name(def_id))?,
+            },
+        }
+    }
 }
 
 define_print_and_forward_display! {
@@ -3336,16 +3346,6 @@ define_print_and_forward_display! {
 
     ty::ParamTy {
         write!(p, "{}", self.name)?;
-    }
-
-    ty::PlaceholderType {
-        match self.bound.kind {
-            ty::BoundTyKind::Anon => write!(p, "{self:?}")?,
-            ty::BoundTyKind::Param(def_id) => match p.should_print_verbose() {
-                true => write!(p, "{self:?}")?,
-                false => write!(p, "{}", p.tcx().item_name(def_id))?,
-            },
-        }
     }
 
     ty::ParamConst {

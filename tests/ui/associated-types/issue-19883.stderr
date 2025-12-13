@@ -5,10 +5,13 @@ LL |     type Output;
    |     ------------ associated type `Output` defined here
 ...
 LL |         <Dst as From<Self>>::Dst
-   |                              ^^^
-   |                              |
-   |                              not found in `From`
-   |                              help: maybe you meant this associated type: `Output`
+   |                              ^^^ not found in `From`
+   |
+help: maybe you meant this associated type
+   |
+LL -         <Dst as From<Self>>::Dst
+LL +         <Dst as From<Self>>::Output
+   |
 
 error: aborting due to 1 previous error
 

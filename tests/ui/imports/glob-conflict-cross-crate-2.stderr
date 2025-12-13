@@ -1,9 +1,45 @@
-error[E0425]: cannot find type `C` in this scope
+error: `C` is ambiguous
   --> $DIR/glob-conflict-cross-crate-2.rs:8:13
    |
 LL |     let _a: C = 1;
-   |             ^ not found in this scope
+   |             ^ ambiguous name
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #114095 <https://github.com/rust-lang/rust/issues/114095>
+   = note: ambiguous because of multiple glob imports of a name in the same module
+note: `C` could refer to the type alias defined here
+  --> $DIR/auxiliary/glob-conflict-cross-crate-2-extern.rs:9:9
+   |
+LL | pub use a::*;
+   |         ^
+note: `C` could also refer to the type alias defined here
+  --> $DIR/auxiliary/glob-conflict-cross-crate-2-extern.rs:10:9
+   |
+LL | pub use b::*;
+   |         ^
+   = note: `#[deny(ambiguous_glob_imports)]` (part of `#[deny(future_incompatible)]`) on by default
 
 error: aborting due to 1 previous error
 
-For more information about this error, try `rustc --explain E0425`.
+Future incompatibility report: Future breakage diagnostic:
+error: `C` is ambiguous
+  --> $DIR/glob-conflict-cross-crate-2.rs:8:13
+   |
+LL |     let _a: C = 1;
+   |             ^ ambiguous name
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #114095 <https://github.com/rust-lang/rust/issues/114095>
+   = note: ambiguous because of multiple glob imports of a name in the same module
+note: `C` could refer to the type alias defined here
+  --> $DIR/auxiliary/glob-conflict-cross-crate-2-extern.rs:9:9
+   |
+LL | pub use a::*;
+   |         ^
+note: `C` could also refer to the type alias defined here
+  --> $DIR/auxiliary/glob-conflict-cross-crate-2-extern.rs:10:9
+   |
+LL | pub use b::*;
+   |         ^
+   = note: `#[deny(ambiguous_glob_imports)]` (part of `#[deny(future_incompatible)]`) on by default
+

@@ -1,5 +1,6 @@
 use core::num::niche_types::Nanoseconds;
 
+use crate::sys_common::AsInner;
 use crate::time::Duration;
 use crate::{fmt, io};
 
@@ -295,6 +296,12 @@ impl Instant {
     )]
     pub(crate) fn into_timespec(self) -> Timespec {
         self.t
+    }
+}
+
+impl AsInner<Timespec> for Instant {
+    fn as_inner(&self) -> &Timespec {
+        &self.t
     }
 }
 

@@ -24,7 +24,6 @@ use core::panic;
 use std::collections::HashSet;
 use std::fmt::Write;
 use std::io::{self, ErrorKind};
-use std::process::{Command, Stdio};
 use std::sync::{Arc, OnceLock};
 use std::time::SystemTime;
 use std::{env, fs, vec};
@@ -43,7 +42,7 @@ use crate::common::{
 };
 use crate::directives::{AuxProps, DirectivesCache, FileDirectives};
 use crate::edition::parse_edition;
-use crate::executor::{CollectedTest, ColorConfig};
+use crate::executor::CollectedTest;
 
 /// Creates the `Config` instance for this invocation of compiletest.
 ///
@@ -136,8 +135,9 @@ fn parse_config(args: Vec<String>) -> Config {
             "overwrite stderr/stdout files instead of complaining about a mismatch",
         )
         .optflag("", "fail-fast", "stop as soon as possible after any test fails")
-        .optopt("", "color", "coloring: auto, always, never", "WHEN")
         .optopt("", "target", "the target to build for", "TARGET")
+        // FIXME: Should be removed once `bootstrap` will be updated to not use this option.
+        .optopt("", "color", "coloring: auto, always, never", "WHEN")
         .optopt("", "host", "the host to build for", "HOST")
         .optopt("", "cdb", "path to CDB to use for CDB debuginfo tests", "PATH")
         .optopt("", "gdb", "path to GDB to use for GDB debuginfo tests", "PATH")
@@ -255,8 +255,15 @@ fn parse_config(args: Vec<String>) -> Config {
         }
     }
 
-    let target = opt_str2(matches.opt_str("target"));
+    let host = matches.opt_str("host").expect("`--host` must be unconditionally specified");
+    let target = matches.opt_str("target").expect("`--target` must be unconditionally specified");
+
     let android_cross_path = matches.opt_str("android-cross-path").map(Utf8PathBuf::from);
+
+    let adb_path = matches.opt_str("adb-path").map(Utf8PathBuf::from);
+    let adb_test_dir = matches.opt_str("adb-test-dir").map(Utf8PathBuf::from);
+    let adb_device_status = target.contains("android") && adb_test_dir.is_some();
+
     // FIXME: `cdb_version` is *derived* from cdb, but it's *not* technically a config!
     let cdb = debuggers::discover_cdb(matches.opt_str("cdb"), &target);
     let cdb_version = cdb.as_deref().and_then(debuggers::query_cdb_version);
@@ -267,12 +274,6 @@ fn parse_config(args: Vec<String>) -> Config {
     let lldb = matches.opt_str("lldb").map(Utf8PathBuf::from);
     let lldb_version =
         matches.opt_str("lldb-version").as_deref().and_then(debuggers::extract_lldb_version);
-    let color = match matches.opt_str("color").as_deref() {
-        Some("auto") | None => ColorConfig::AutoColor,
-        Some("always") => ColorConfig::AlwaysColor,
-        Some("never") => ColorConfig::NeverColor,
-        Some(x) => panic!("argument for --color must be auto, always, or never, but found `{}`", x),
-    };
     // FIXME: this is very questionable, we really should be obtaining LLVM version info from
     // `bootstrap`, and not trying to be figuring out that in `compiletest` by running the
     // `FileCheck` binary.
@@ -297,16 +298,6 @@ fn parse_config(args: Vec<String>) -> Config {
     let with_rustc_debug_assertions = matches.opt_present("with-rustc-debug-assertions");
     let with_std_debug_assertions = matches.opt_present("with-std-debug-assertions");
     let mode = matches.opt_str("mode").unwrap().parse().expect("invalid mode");
-    let has_html_tidy = if mode == TestMode::Rustdoc {
-        Command::new("tidy")
-            .arg("--version")
-            .stdout(Stdio::null())
-            .status()
-            .map_or(false, |status| status.success())
-    } else {
-        // Avoid spawning an external command when we know html-tidy won't be used.
-        false
-    };
     let has_enzyme = matches.opt_present("has-enzyme");
     let filters = if mode == TestMode::RunMake {
         matches
@@ -433,7 +424,7 @@ fn parse_config(args: Vec<String>) -> Config {
         optimize_tests: matches.opt_present("optimize-tests"),
         rust_randomized_layout: matches.opt_present("rust-randomized-layout"),
         target,
-        host: opt_str2(matches.opt_str("host")),
+        host,
         cdb,
         cdb_version,
         gdb,
@@ -443,18 +434,14 @@ fn parse_config(args: Vec<String>) -> Config {
         llvm_version,
         system_llvm: matches.opt_present("system-llvm"),
         android_cross_path,
-        adb_path: Utf8PathBuf::from(opt_str2(matches.opt_str("adb-path"))),
-        adb_test_dir: Utf8PathBuf::from(opt_str2(matches.opt_str("adb-test-dir"))),
-        adb_device_status: opt_str2(matches.opt_str("target")).contains("android")
-            && "(none)" != opt_str2(matches.opt_str("adb-test-dir"))
-            && !opt_str2(matches.opt_str("adb-test-dir")).is_empty(),
+        adb_path,
+        adb_test_dir,
+        adb_device_status,
         verbose: matches.opt_present("verbose"),
         only_modified: matches.opt_present("only-modified"),
-        color,
         remote_test_client: matches.opt_str("remote-test-client").map(Utf8PathBuf::from),
         compare_mode,
         rustfix_coverage: matches.opt_present("rustfix-coverage"),
-        has_html_tidy,
         has_enzyme,
         channel: matches.opt_str("channel").unwrap(),
         git_hash: matches.opt_present("git-hash"),
@@ -490,13 +477,6 @@ fn parse_config(args: Vec<String>) -> Config {
         default_codegen_backend,
         override_codegen_backend,
         bypass_ignore_backends: matches.opt_present("bypass-ignore-backends"),
-    }
-}
-
-fn opt_str2(maybestr: Option<String>) -> String {
-    match maybestr {
-        None => "(none)".to_owned(),
-        Some(s) => s,
     }
 }
 
@@ -1146,10 +1126,6 @@ fn check_for_overlapping_test_paths(found_path_stems: &HashSet<Utf8PathBuf>) {
 }
 
 fn early_config_check(config: &Config) {
-    if !config.has_html_tidy && config.mode == TestMode::Rustdoc {
-        warning!("`tidy` (html-tidy.org) is not installed; diffs will not be generated");
-    }
-
     if !config.profiler_runtime && config.mode == TestMode::CoverageRun {
         let actioned = if config.bless { "blessed" } else { "checked" };
         warning!("profiler runtime is not available, so `.coverage` files won't be {actioned}");

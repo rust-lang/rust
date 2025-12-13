@@ -1845,7 +1845,6 @@ pub mod math {
     #[doc(alias = "fmaf", alias = "fusedMultiplyAdd")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[unstable(feature = "core_float_math", issue = "137578")]
-    #[rustc_const_unstable(feature = "const_mul_add", issue = "146724")]
     pub const fn mul_add(x: f32, y: f32, z: f32) -> f32 {
         intrinsics::fmaf32(x, y, z)
     }

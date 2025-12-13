@@ -24,7 +24,7 @@ fn check_closure_captures(#[rust_analyzer::rust_fixture] ra_fixture: &str, expec
         let def_map = module.def_map(&db);
 
         let mut defs = Vec::new();
-        visit_module(&db, def_map, module.local_id, &mut |it| defs.push(it));
+        visit_module(&db, def_map, module, &mut |it| defs.push(it));
 
         let mut captures_info = Vec::new();
         for def in defs {
@@ -75,7 +75,7 @@ fn check_closure_captures(#[rust_analyzer::rust_fixture] ra_fixture: &str, expec
                         let capture_ty = capture
                             .ty
                             .skip_binder()
-                            .display_test(db, DisplayTarget::from_crate(db, module.krate()))
+                            .display_test(db, DisplayTarget::from_crate(db, module.krate(db)))
                             .to_string();
                         let spans = capture
                             .spans()

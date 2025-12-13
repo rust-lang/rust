@@ -28,7 +28,7 @@ pub(crate) fn expand_macro(db: &RootDatabase, position: FilePosition) -> Option<
     let sema = Semantics::new(db);
     let file_id = sema.attach_first_edition(position.file_id);
     let file = sema.parse(file_id);
-    let krate = sema.file_to_module_def(file_id.file_id(db))?.krate().into();
+    let krate = sema.file_to_module_def(file_id.file_id(db))?.krate(db).into();
 
     let tok = pick_best_token(file.syntax().token_at_offset(position.offset), |kind| match kind {
         SyntaxKind::IDENT => 1,

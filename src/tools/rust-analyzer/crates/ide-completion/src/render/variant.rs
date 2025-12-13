@@ -106,7 +106,7 @@ pub(crate) fn visible_fields(
         .collect::<Vec<_>>();
     let has_invisible_field = n_fields - fields.len() > 0;
     let is_foreign_non_exhaustive =
-        item.attrs(ctx.db).is_non_exhaustive() && item.krate(ctx.db) != module.krate();
+        item.attrs(ctx.db).is_non_exhaustive() && item.krate(ctx.db) != module.krate(ctx.db);
     let fields_omitted = has_invisible_field || is_foreign_non_exhaustive;
     Some((fields, fields_omitted))
 }
