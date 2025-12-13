@@ -35,3 +35,13 @@ fn main() {
     let _ = 2 * dur1 - dur2;
     //~^ unchecked_time_subtraction
 }
+
+fn issue16230() {
+    use std::ops::Sub as _;
+
+    Duration::ZERO.sub(Duration::MAX);
+    //~^ unchecked_time_subtraction
+
+    let _ = Duration::ZERO - Duration::MAX;
+    //~^ unchecked_time_subtraction
+}

@@ -8,7 +8,6 @@ use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::Ty;
 use rustc_session::impl_lint_pass;
-use rustc_span::source_map::Spanned;
 use rustc_span::sym;
 
 declare_clippy_lint! {
@@ -84,42 +83,40 @@ impl_lint_pass!(UncheckedTimeSubtraction => [MANUAL_INSTANT_ELAPSED, UNCHECKED_T
 
 impl LateLintPass<'_> for UncheckedTimeSubtraction {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &'_ Expr<'_>) {
-        if let ExprKind::Binary(
-            Spanned {
-                node: BinOpKind::Sub, ..
+        let (lhs, rhs) = match expr.kind {
+            ExprKind::Binary(op, lhs, rhs) if matches!(op.node, BinOpKind::Sub,) => (lhs, rhs),
+            ExprKind::MethodCall(fn_name, lhs, [rhs], _) if cx.ty_based_def(expr).is_diag_item(cx, sym::sub) => {
+                (lhs, rhs)
             },
-            lhs,
-            rhs,
-        ) = expr.kind
-        {
-            let typeck = cx.typeck_results();
-            let lhs_ty = typeck.expr_ty(lhs);
-            let rhs_ty = typeck.expr_ty(rhs);
+            _ => return,
+        };
+        let typeck = cx.typeck_results();
+        let lhs_ty = typeck.expr_ty(lhs);
+        let rhs_ty = typeck.expr_ty(rhs);
 
-            if lhs_ty.is_diag_item(cx, sym::Instant) {
-                // Instant::now() - instant
-                if is_instant_now_call(cx, lhs)
-                    && rhs_ty.is_diag_item(cx, sym::Instant)
-                    && let Some(sugg) = Sugg::hir_opt(cx, rhs)
-                {
-                    print_manual_instant_elapsed_sugg(cx, expr, sugg);
-                }
-                // instant - duration
-                else if rhs_ty.is_diag_item(cx, sym::Duration)
-                    && !expr.span.from_expansion()
-                    && self.msrv.meets(cx, msrvs::TRY_FROM)
-                {
-                    print_unchecked_duration_subtraction_sugg(cx, lhs, rhs, expr);
-                }
+        if lhs_ty.is_diag_item(cx, sym::Instant) {
+            // Instant::now() - instant
+            if is_instant_now_call(cx, lhs)
+                && rhs_ty.is_diag_item(cx, sym::Instant)
+                && let Some(sugg) = Sugg::hir_opt(cx, rhs)
+            {
+                print_manual_instant_elapsed_sugg(cx, expr, sugg);
             }
-            // duration - duration
-            else if lhs_ty.is_diag_item(cx, sym::Duration)
-                && rhs_ty.is_diag_item(cx, sym::Duration)
+            // instant - duration
+            else if rhs_ty.is_diag_item(cx, sym::Duration)
                 && !expr.span.from_expansion()
                 && self.msrv.meets(cx, msrvs::TRY_FROM)
             {
                 print_unchecked_duration_subtraction_sugg(cx, lhs, rhs, expr);
             }
+        }
+        // duration - duration
+        else if lhs_ty.is_diag_item(cx, sym::Duration)
+            && rhs_ty.is_diag_item(cx, sym::Duration)
+            && !expr.span.from_expansion()
+            && self.msrv.meets(cx, msrvs::TRY_FROM)
+        {
+            print_unchecked_duration_subtraction_sugg(cx, lhs, rhs, expr);
         }
     }
 }

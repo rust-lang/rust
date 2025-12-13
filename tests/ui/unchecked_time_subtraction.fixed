@@ -35,3 +35,13 @@ fn main() {
     let _ = (2 * dur1).checked_sub(dur2).unwrap();
     //~^ unchecked_time_subtraction
 }
+
+fn issue16230() {
+    use std::ops::Sub as _;
+
+    Duration::ZERO.checked_sub(Duration::MAX).unwrap();
+    //~^ unchecked_time_subtraction
+
+    let _ = Duration::ZERO.checked_sub(Duration::MAX).unwrap();
+    //~^ unchecked_time_subtraction
+}
