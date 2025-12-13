@@ -5,7 +5,6 @@
 //! This API is completely unstable and subject to change.
 
 // tidy-alphabetical-start
-#![cfg_attr(bootstrap, feature(slice_as_array))]
 #![feature(assert_matches)]
 #![feature(extern_types)]
 #![feature(file_buffered)]

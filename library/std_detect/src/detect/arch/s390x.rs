@@ -9,7 +9,7 @@ features! {
     ///
     /// When the feature is known to be enabled at compile time (e.g. via `-Ctarget-feature`)
     /// the macro expands to `true`.
-    #[stable(feature = "stdarch_s390x_feature_detection", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "stdarch_s390x_feature_detection", since = "1.93.0")]
     @FEATURE: #[unstable(feature = "s390x_target_feature", issue = "44839")] concurrent_functions: "concurrent-functions";
     /// s390x concurrent-functions facility
     @FEATURE: #[unstable(feature = "s390x_target_feature", issue = "44839")] deflate_conversion: "deflate-conversion";
@@ -32,30 +32,30 @@ features! {
     /// s390x message-security-assist-extension9 facility
     @FEATURE: #[unstable(feature = "s390x_target_feature", issue = "44839")] message_security_assist_extension12: "message-security-assist-extension12";
     /// s390x message-security-assist-extension12 facility
-    @FEATURE: #[stable(feature = "s390x_target_feature_vector", since = "CURRENT_RUSTC_VERSION")] miscellaneous_extensions_2: "miscellaneous-extensions-2";
+    @FEATURE: #[stable(feature = "s390x_target_feature_vector", since = "1.93.0")] miscellaneous_extensions_2: "miscellaneous-extensions-2";
     /// s390x miscellaneous-extensions-2 facility
-    @FEATURE: #[stable(feature = "s390x_target_feature_vector", since = "CURRENT_RUSTC_VERSION")] miscellaneous_extensions_3: "miscellaneous-extensions-3";
+    @FEATURE: #[stable(feature = "s390x_target_feature_vector", since = "1.93.0")] miscellaneous_extensions_3: "miscellaneous-extensions-3";
     /// s390x miscellaneous-extensions-3 facility
-    @FEATURE: #[stable(feature = "s390x_target_feature_vector", since = "CURRENT_RUSTC_VERSION")] miscellaneous_extensions_4: "miscellaneous-extensions-4";
+    @FEATURE: #[stable(feature = "s390x_target_feature_vector", since = "1.93.0")] miscellaneous_extensions_4: "miscellaneous-extensions-4";
     /// s390x miscellaneous-extensions-4 facility
-    @FEATURE: #[stable(feature = "s390x_target_feature_vector", since = "CURRENT_RUSTC_VERSION")] nnp_assist: "nnp-assist";
+    @FEATURE: #[stable(feature = "s390x_target_feature_vector", since = "1.93.0")] nnp_assist: "nnp-assist";
     /// s390x nnp-assist facility
     @FEATURE: #[unstable(feature = "s390x_target_feature", issue = "44839")] transactional_execution: "transactional-execution";
     /// s390x transactional-execution facility
-    @FEATURE: #[stable(feature = "s390x_target_feature_vector", since = "CURRENT_RUSTC_VERSION")] vector: "vector";
+    @FEATURE: #[stable(feature = "s390x_target_feature_vector", since = "1.93.0")] vector: "vector";
     /// s390x vector facility
-    @FEATURE: #[stable(feature = "s390x_target_feature_vector", since = "CURRENT_RUSTC_VERSION")] vector_enhancements_1: "vector-enhancements-1";
+    @FEATURE: #[stable(feature = "s390x_target_feature_vector", since = "1.93.0")] vector_enhancements_1: "vector-enhancements-1";
     /// s390x vector-enhancements-1 facility
-    @FEATURE: #[stable(feature = "s390x_target_feature_vector", since = "CURRENT_RUSTC_VERSION")] vector_enhancements_2: "vector-enhancements-2";
+    @FEATURE: #[stable(feature = "s390x_target_feature_vector", since = "1.93.0")] vector_enhancements_2: "vector-enhancements-2";
     /// s390x vector-enhancements-2 facility
-    @FEATURE: #[stable(feature = "s390x_target_feature_vector", since = "CURRENT_RUSTC_VERSION")] vector_enhancements_3: "vector-enhancements-3";
+    @FEATURE: #[stable(feature = "s390x_target_feature_vector", since = "1.93.0")] vector_enhancements_3: "vector-enhancements-3";
     /// s390x vector-enhancements-3 facility
-    @FEATURE: #[stable(feature = "s390x_target_feature_vector", since = "CURRENT_RUSTC_VERSION")] vector_packed_decimal: "vector-packed-decimal";
+    @FEATURE: #[stable(feature = "s390x_target_feature_vector", since = "1.93.0")] vector_packed_decimal: "vector-packed-decimal";
     /// s390x vector-packed-decimal facility
-    @FEATURE: #[stable(feature = "s390x_target_feature_vector", since = "CURRENT_RUSTC_VERSION")] vector_packed_decimal_enhancement: "vector-packed-decimal-enhancement";
+    @FEATURE: #[stable(feature = "s390x_target_feature_vector", since = "1.93.0")] vector_packed_decimal_enhancement: "vector-packed-decimal-enhancement";
     /// s390x vector-packed-decimal-enhancement facility
-    @FEATURE: #[stable(feature = "s390x_target_feature_vector", since = "CURRENT_RUSTC_VERSION")] vector_packed_decimal_enhancement_2: "vector-packed-decimal-enhancement-2";
+    @FEATURE: #[stable(feature = "s390x_target_feature_vector", since = "1.93.0")] vector_packed_decimal_enhancement_2: "vector-packed-decimal-enhancement-2";
     /// s390x vector-packed-decimal-enhancement-2 facility
-    @FEATURE: #[stable(feature = "s390x_target_feature_vector", since = "CURRENT_RUSTC_VERSION")] vector_packed_decimal_enhancement_3: "vector-packed-decimal-enhancement-3";
+    @FEATURE: #[stable(feature = "s390x_target_feature_vector", since = "1.93.0")] vector_packed_decimal_enhancement_3: "vector-packed-decimal-enhancement-3";
     /// s390x vector-packed-decimal-enhancement-3 facility
 }
