@@ -43,13 +43,15 @@ use hir::def::{DefKind, PartialRes, Res};
 use hir::{BodyId, HirId};
 use rustc_abi::ExternAbi;
 use rustc_ast::*;
+use rustc_attr_parsing::{AttributeParser, ShouldEmit};
 use rustc_errors::ErrorGuaranteed;
+use rustc_hir::Target;
 use rustc_hir::attrs::{AttributeKind, InlineAttr};
 use rustc_hir::def_id::DefId;
 use rustc_middle::span_bug;
-use rustc_middle::ty::{Asyncness, ResolverAstLowering};
+use rustc_middle::ty::{Asyncness, DelegationFnSigAttrs, ResolverAstLowering};
 use rustc_span::symbol::kw;
-use rustc_span::{Ident, Span, Symbol};
+use rustc_span::{DUMMY_SP, Ident, Span, Symbol};
 use {rustc_ast as ast, rustc_hir as hir};
 
 use super::{GenericArgsMode, ImplTraitContext, LoweringContext, ParamMode};
@@ -61,6 +63,41 @@ pub(crate) struct DelegationResults<'hir> {
     pub ident: Ident,
     pub generics: &'hir hir::Generics<'hir>,
 }
+
+struct AttributeAdditionInfo {
+    pub equals: fn(&hir::Attribute) -> bool,
+    pub kind: AttributeAdditionKind,
+}
+
+enum AttributeAdditionKind {
+    Default { factory: fn(Span) -> hir::Attribute },
+    Inherit { flag: DelegationFnSigAttrs, factory: fn(Span, &hir::Attribute) -> hir::Attribute },
+}
+
+const PARENT_ID: hir::ItemLocalId = hir::ItemLocalId::ZERO;
+
+static ATTRIBUTES_ADDITIONS: &[AttributeAdditionInfo] = &[
+    AttributeAdditionInfo {
+        equals: |a| matches!(a, hir::Attribute::Parsed(AttributeKind::MustUse { .. })),
+        kind: AttributeAdditionKind::Inherit {
+            factory: |span, original_attribute| {
+                let reason = match original_attribute {
+                    hir::Attribute::Parsed(AttributeKind::MustUse { reason, .. }) => *reason,
+                    _ => None,
+                };
+
+                hir::Attribute::Parsed(AttributeKind::MustUse { span, reason })
+            },
+            flag: DelegationFnSigAttrs::MUST_USE,
+        },
+    },
+    AttributeAdditionInfo {
+        equals: |a| matches!(a, hir::Attribute::Parsed(AttributeKind::Inline(..))),
+        kind: AttributeAdditionKind::Default {
+            factory: |span| hir::Attribute::Parsed(AttributeKind::Inline(InlineAttr::Hint, span)),
+        },
+    },
+];
 
 impl<'hir> LoweringContext<'_, 'hir> {
     fn is_method(&self, def_id: DefId, span: Span) -> bool {
@@ -88,7 +125,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let sig_id = self.get_delegation_sig_id(item_id, delegation.id, span, is_in_trait_impl);
         match sig_id {
             Ok(sig_id) => {
-                self.add_inline_attribute_if_needed(span);
+                self.add_attributes_if_needed(span, sig_id);
 
                 let is_method = self.is_method(sig_id, span);
                 let (param_count, c_variadic) = self.param_count(sig_id);
@@ -103,29 +140,100 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }
     }
 
-    fn add_inline_attribute_if_needed(&mut self, span: Span) {
-        const PARENT_ID: hir::ItemLocalId = hir::ItemLocalId::ZERO;
-        let create_inline_attr_slice =
-            || [hir::Attribute::Parsed(AttributeKind::Inline(InlineAttr::Hint, span))];
+    fn add_attributes_if_needed(&mut self, span: Span, sig_id: DefId) {
+        let new_attributes = self.create_new_attributes(
+            ATTRIBUTES_ADDITIONS,
+            span,
+            sig_id,
+            self.attrs.get(&PARENT_ID),
+        );
 
-        let new_attributes = match self.attrs.get(&PARENT_ID) {
-            Some(attrs) => {
-                // Check if reuse already specifies any inline attribute, if so, do nothing
-                if attrs
-                    .iter()
-                    .any(|a| matches!(a, hir::Attribute::Parsed(AttributeKind::Inline(..))))
-                {
-                    return;
-                }
+        if new_attributes.is_empty() {
+            return;
+        }
 
-                self.arena.alloc_from_iter(
-                    attrs.into_iter().map(|a| a.clone()).chain(create_inline_attr_slice()),
-                )
-            }
-            None => self.arena.alloc_from_iter(create_inline_attr_slice()),
+        let new_arena_allocated_attributes = match self.attrs.get(&PARENT_ID) {
+            Some(existing_attrs) => self.arena.alloc_from_iter(
+                existing_attrs.iter().map(|a| a.clone()).chain(new_attributes.into_iter()),
+            ),
+            None => self.arena.alloc_from_iter(new_attributes.into_iter()),
         };
 
-        self.attrs.insert(PARENT_ID, new_attributes);
+        self.attrs.insert(PARENT_ID, new_arena_allocated_attributes);
+    }
+
+    fn create_new_attributes(
+        &self,
+        candidate_additions: &[AttributeAdditionInfo],
+        span: Span,
+        sig_id: DefId,
+        existing_attrs: Option<&&[hir::Attribute]>,
+    ) -> Vec<hir::Attribute> {
+        let local_original_attributes = self.parse_local_original_attributes(sig_id);
+
+        candidate_additions
+            .iter()
+            .filter_map(|addition_info| {
+                if let Some(existing_attrs) = existing_attrs
+                    && existing_attrs
+                        .iter()
+                        .any(|existing_attr| (addition_info.equals)(existing_attr))
+                {
+                    return None;
+                }
+
+                match addition_info.kind {
+                    AttributeAdditionKind::Default { factory } => Some(factory(span)),
+                    AttributeAdditionKind::Inherit { flag, factory } => {
+                        let original_attribute = match sig_id.as_local() {
+                            Some(local_id) => self
+                                .resolver
+                                .delegation_fn_sigs
+                                .get(&local_id)
+                                .is_some_and(|sig| sig.attrs_flags.contains(flag))
+                                .then(|| {
+                                    local_original_attributes
+                                        .as_ref()
+                                        .map(|attrs| {
+                                            attrs
+                                                .iter()
+                                                .find(|base_attr| (addition_info.equals)(base_attr))
+                                        })
+                                        .flatten()
+                                })
+                                .flatten(),
+                            None => self
+                                .tcx
+                                .get_all_attrs(sig_id)
+                                .iter()
+                                .find(|base_attr| (addition_info.equals)(base_attr)),
+                        };
+
+                        original_attribute.map(|a| factory(span, a))
+                    }
+                }
+            })
+            .collect::<Vec<_>>()
+    }
+
+    fn parse_local_original_attributes(&self, sig_id: DefId) -> Option<Vec<hir::Attribute>> {
+        if let Some(local_id) = sig_id.as_local()
+            && let Some(info) = self.resolver.delegation_fn_sigs.get(&local_id)
+            && !info.to_inherit_attrs.is_empty()
+        {
+            Some(AttributeParser::parse_limited_all(
+                self.tcx.sess,
+                info.to_inherit_attrs.as_slice(),
+                None,
+                Target::Fn,
+                DUMMY_SP,
+                DUMMY_NODE_ID,
+                Some(self.tcx.features()),
+                ShouldEmit::Nothing,
+            ))
+        } else {
+            None
+        }
     }
 
     fn get_delegation_sig_id(
@@ -220,7 +328,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     // We are not forwarding the attributes, as the delegation fn sigs are collected on the ast,
                     // and here we need the hir attributes.
                     let default_safety =
-                        if sig.target_feature || self.tcx.def_kind(parent) == DefKind::ForeignMod {
+                        if sig.attrs_flags.contains(DelegationFnSigAttrs::TARGET_FEATURE)
+                            || self.tcx.def_kind(parent) == DefKind::ForeignMod
+                        {
                             hir::Safety::Unsafe
                         } else {
                             hir::Safety::Safe
