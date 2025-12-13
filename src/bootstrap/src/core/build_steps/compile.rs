@@ -2219,7 +2219,7 @@ impl Step for Assemble {
         if builder.config.llvm_offload && !builder.config.dry_run() {
             debug!("`llvm_offload` requested");
             let offload_install = builder.ensure(llvm::OmpOffload { target: build_compiler.host });
-            if let Some(llvm_config) = builder.llvm_config(builder.config.host_target) {
+            if let Some(_llvm_config) = builder.llvm_config(builder.config.host_target) {
                 let src_dir = offload_install.join("lib");
                 let libdir = builder.sysroot_target_libdir(build_compiler, build_compiler.host);
                 let target_libdir =
@@ -2251,6 +2251,18 @@ impl Step for Assemble {
                 // The last one is slightly more tricky, since we have the same file twice, in two
                 // subfolders for amdgcn and nvptx64. We'll likely find two more in the future, once
                 // Intel and Spir-V support lands in offload.
+                let gpu_tgts = ["amdgcn-amd-amdhsa", "nvptx64-nvidia-cuda"];
+                let device = format!("libompdevice.a");
+                for tgt in gpu_tgts {
+                    let dst_tgt_dir = libdir.join(&tgt);
+                    let target_tgt_dst_dir = target_libdir.join(&tgt);
+                    t!(fs::create_dir_all(&dst_tgt_dir));
+                    t!(fs::create_dir_all(&target_tgt_dst_dir));
+                    let dst_tgt_lib = dst_tgt_dir.join(&device);
+                    let target_tgt_dst_lib = target_tgt_dst_dir.join(&device);
+                    builder.resolve_symlink_and_copy(&src_tgt, &dst_tgt_lib);
+                    builder.resolve_symlink_and_copy(&src_tgt, &target_tgt_dst_lib);
+                }
                 //[\u@\h:\W]$ ls ../offload-outdir/lib
                 // amdgcn-amd-amdhsa  libarcher.so        libgomp.so    libiomp5.so	libLLVMOffload.so.21.1	libomp.so	 libomptarget.so.21.1
                 // cmake		   libarcher_static.a  libgomp.so.1  libLLVMOffload.so	libompd.so		libomptarget.so  nvptx64-nvidia-cuda
