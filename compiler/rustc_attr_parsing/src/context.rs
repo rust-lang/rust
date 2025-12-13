@@ -468,6 +468,10 @@ impl<'f, 'sess: 'f, S: Stage> AcceptContext<'f, 'sess, S> {
         self.emit_parse_error(span, AttributeParseErrorReason::ExpectedList)
     }
 
+    pub(crate) fn expected_list_or_no_args(&self, span: Span) -> ErrorGuaranteed {
+        self.emit_parse_error(span, AttributeParseErrorReason::ExpectedListOrNoArgs)
+    }
+
     pub(crate) fn expected_no_args(&self, span: Span) -> ErrorGuaranteed {
         self.emit_parse_error(span, AttributeParseErrorReason::ExpectedNoArgs)
     }

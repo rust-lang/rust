@@ -3,7 +3,7 @@ use rustc_hir::attrs::MacroUseArgs;
 use rustc_session::lint::builtin::INVALID_MACRO_EXPORT_ARGUMENTS;
 
 use super::prelude::*;
-use crate::session_diagnostics::IllFormedAttributeInputLint;
+use crate::session_diagnostics::{AttributeParseErrorReason, IllFormedAttributeInputLint};
 
 pub(crate) struct MacroEscapeParser;
 impl<S: Stage> NoArgsAttributeParser<S> for MacroEscapeParser {
@@ -102,14 +102,7 @@ impl<S: Stage> AttributeParser<S> for MacroUseParser {
                     }
                 }
                 ArgParser::NameValue(_) => {
-                    let suggestions = cx.suggestions();
-                    cx.emit_err(IllFormedAttributeInputLint {
-                        num_suggestions: suggestions.len(),
-                        suggestions: DiagArgValue::StrListSepByAnd(
-                            suggestions.into_iter().map(|s| format!("`{s}`").into()).collect(),
-                        ),
-                        span,
-                    });
+                    cx.expected_list_or_no_args(span);
                 }
             }
         },

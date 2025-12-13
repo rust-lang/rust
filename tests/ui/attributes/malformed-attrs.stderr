@@ -614,11 +614,21 @@ LL | #[non_exhaustive = 1]
    | |                didn't expect any arguments here
    | help: must be of the form: `#[non_exhaustive]`
 
-error: valid forms for the attribute are `#[macro_use(name1, name2, ...)]` and `#[macro_use]`
+error[E0539]: malformed `macro_use` attribute input
   --> $DIR/malformed-attrs.rs:216:1
    |
 LL | #[macro_use = 1]
-   | ^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^ expected a list or no arguments here
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/macros-by-example.html#the-macro_use-attribute>
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #[macro_use = 1]
+LL + #[macro_use(name1, name2, ...)]
+   |
+LL - #[macro_use = 1]
+LL + #[macro_use]
+   |
 
 error: valid forms for the attribute are `#[macro_export(local_inner_macros)]` and `#[macro_export]`
   --> $DIR/malformed-attrs.rs:221:1
