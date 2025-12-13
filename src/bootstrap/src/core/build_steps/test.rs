@@ -2401,7 +2401,6 @@ Please disable assertions with `rust.debug-assertions = false`.
         let git_config = builder.config.git_config();
         cmd.arg("--nightly-branch").arg(git_config.nightly_branch);
         cmd.arg("--git-merge-commit-email").arg(git_config.git_merge_commit_email);
-        cmd.force_coloring_in_ci();
 
         #[cfg(feature = "build-metrics")]
         builder.metrics.begin_test_suite(
