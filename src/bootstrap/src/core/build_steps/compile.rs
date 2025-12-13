@@ -19,7 +19,7 @@ use serde_derive::Deserialize;
 #[cfg(feature = "tracing")]
 use tracing::span;
 
-use crate::core::build_steps::gcc::{Gcc, GccOutput, add_cg_gcc_cargo_flags};
+use crate::core::build_steps::gcc::{Gcc, GccOutput, GccTargetPair, add_cg_gcc_cargo_flags};
 use crate::core::build_steps::tool::{RustcPrivateCompilers, SourceType, copy_lld_artifacts};
 use crate::core::build_steps::{dist, llvm};
 use crate::core::builder;
@@ -1579,16 +1579,16 @@ impl Step for RustcLink {
 /// Set of `libgccjit` dylibs that can be used by `cg_gcc` to compile code for a set of targets.
 #[derive(Clone)]
 pub struct GccDylibSet {
-    dylibs: BTreeMap<TargetSelection, GccOutput>,
-    host_target: TargetSelection,
+    dylibs: BTreeMap<GccTargetPair, GccOutput>,
+    host_pair: GccTargetPair,
 }
 
 impl GccDylibSet {
     /// Returns the libgccjit.so dylib that corresponds to a host target on which `cg_gcc` will be
     /// executed.
     fn host_dylib(&self) -> &GccOutput {
-        self.dylibs.get(&self.host_target).unwrap_or_else(|| {
-            panic!("libgccjit.so was not build for host target {}", self.host_target)
+        self.dylibs.get(&self.host_pair).unwrap_or_else(|| {
+            panic!("libgccjit.so was not build for host target {}", self.host_pair)
         })
     }
 
@@ -1601,7 +1601,13 @@ impl GccDylibSet {
         // <rustc>/lib/<host-target>/codegen-backends
         let cg_sysroot = builder.sysroot_codegen_backends(compiler);
 
-        for (target, libgccjit) in &self.dylibs {
+        for (target_pair, libgccjit) in &self.dylibs {
+            assert_eq!(
+                target_pair.host(),
+                compiler.host,
+                "Trying to install libgccjit ({target_pair}) to a compiler with a different host ({})",
+                compiler.host
+            );
             let libgccjit = libgccjit.libgccjit();
             let target_filename = libgccjit.file_name().unwrap().to_str().unwrap();
 
@@ -1614,7 +1620,7 @@ impl GccDylibSet {
             );
 
             // <cg-sysroot>/lib/<target>/libgccjit.so
-            let dest_dir = cg_sysroot.join("lib").join(target);
+            let dest_dir = cg_sysroot.join("lib").join(target_pair.target());
             t!(fs::create_dir_all(&dest_dir));
             let dst = dest_dir.join(target_filename);
             builder.copy_link(&actual_libgccjit_path, &dst, FileType::NativeLibrary);
@@ -1648,15 +1654,12 @@ pub struct GccCodegenBackend {
 }
 
 impl GccCodegenBackend {
-    /// Create a cg_gcc backend that can compile code for all targets for which we build the
-    /// standard library, plus the host target on which `cg_gcc` will run, so that it can compile
-    /// host code (e.g. proc macros).
-    pub fn for_all_std_targets(builder: &Builder<'_>, compilers: RustcPrivateCompilers) -> Self {
-        // All std targets + the cg_gcc host target
-        let target_set: HashSet<TargetSelection> =
-            builder.targets.iter().copied().chain(std::iter::once(compilers.target())).collect();
-
-        let mut targets: Vec<TargetSelection> = target_set.into_iter().collect();
+    /// Build `cg_gcc` that will run on host `H` (`compilers.target_compiler.host`) and will be
+    /// able to produce code target pairs (`H`, `T`) for all `T` from `targets`.
+    pub fn for_targets(
+        compilers: RustcPrivateCompilers,
+        mut targets: Vec<TargetSelection>,
+    ) -> Self {
         // Sort targets to improve step cache hits
         targets.sort();
         Self { compilers, targets }
@@ -1673,20 +1676,20 @@ impl Step for GccCodegenBackend {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(GccCodegenBackend::for_all_std_targets(
-            run.builder,
-            RustcPrivateCompilers::new(run.builder, run.builder.top_stage, run.target),
-        ));
+        // By default, build cg_gcc that will only be able to compile native code for the given
+        // host target.
+        let compilers = RustcPrivateCompilers::new(run.builder, run.builder.top_stage, run.target);
+        run.builder.ensure(GccCodegenBackend { compilers, targets: vec![run.target] });
     }
 
     fn run(self, builder: &Builder<'_>) -> Self::Output {
-        let target = self.compilers.target();
+        let host = self.compilers.target();
         let build_compiler = self.compilers.build_compiler();
 
         let stamp = build_stamp::codegen_backend_stamp(
             builder,
             build_compiler,
-            target,
+            host,
             &CodegenBackendKind::Gcc,
         );
 
@@ -1694,9 +1697,12 @@ impl Step for GccCodegenBackend {
             dylibs: self
                 .targets
                 .iter()
-                .map(|&target| (target, builder.ensure(Gcc { target })))
+                .map(|&target| {
+                    let target_pair = GccTargetPair::for_cross_build(host, target);
+                    (target_pair, builder.ensure(Gcc { target_pair }))
+                })
                 .collect(),
-            host_target: target,
+            host_pair: GccTargetPair::for_native_build(host),
         };
 
         if builder.config.keep_stage.contains(&build_compiler.stage) {
@@ -1715,16 +1721,16 @@ impl Step for GccCodegenBackend {
             build_compiler,
             Mode::Codegen,
             SourceType::InTree,
-            target,
+            host,
             Kind::Build,
         );
         cargo.arg("--manifest-path").arg(builder.src.join("compiler/rustc_codegen_gcc/Cargo.toml"));
-        rustc_cargo_env(builder, &mut cargo, target);
+        rustc_cargo_env(builder, &mut cargo, host);
 
         add_cg_gcc_cargo_flags(&mut cargo, dylib_set.host_dylib());
 
         let _guard =
-            builder.msg(Kind::Build, "codegen backend gcc", Mode::Codegen, build_compiler, target);
+            builder.msg(Kind::Build, "codegen backend gcc", Mode::Codegen, build_compiler, host);
         let files = run_cargo(builder, cargo, vec![], &stamp, vec![], false, false);
 
         GccCodegenBackendOutput {
@@ -2406,9 +2412,59 @@ impl Step for Assemble {
                         copy_codegen_backends_to_sysroot(builder, stamp, target_compiler);
                     }
                     CodegenBackendKind::Gcc => {
-                        let output = builder.ensure(GccCodegenBackend::for_all_std_targets(
-                            builder,
-                            prepare_compilers(),
+                        // We need to build cg_gcc for the host target of the compiler which we
+                        // build here, which is `target_compiler`.
+                        // But we also need to build libgccjit for some additional targets, in
+                        // the most general case.
+                        // 1. We need to build (target_compiler.host, stdlib target) libgccjit
+                        // for all stdlibs that we build, so that cg_gcc can be used to build code
+                        // for all those targets.
+                        // 2. We need to build (target_compiler.host, target_compiler.host)
+                        // libgccjit, so that the target compiler can compile host code (e.g. proc
+                        // macros).
+                        // 3. We need to build (target_compiler.host, host target) libgccjit
+                        // for all *host targets* that we build, so that cg_gcc can be used to
+                        // build a (possibly cross-compiled) stage 2+ rustc.
+                        //
+                        // Assume that we are on host T1 and we do a stage2 build of rustc for T2.
+                        // We want the T2 rustc compiler to be able to use cg_gcc and build code
+                        // for T2 (host) and T3 (target). We also want to build the stage2 compiler
+                        // itself using cg_gcc.
+                        // This could correspond to the following bootstrap invocation:
+                        // `x build rustc --build T1 --host T2 --target T3 --set codegen-backends=['gcc', 'llvm']`
+                        //
+                        // For that, we will need the following GCC target pairs:
+                        // 1. T1 -> T2 (to cross-compile a T2 rustc using cg_gcc running on T1)
+                        // 2. T2 -> T2 (to build host code with the stage 2 rustc running on T2)
+                        // 3. T2 -> T3 (to cross-compile code with the stage 2 rustc running on T2)
+                        //
+                        // Note that this set of targets is *maximal*, in reality we might need
+                        // less libgccjits at this current build stage. So below we try to determine
+                        // which target pairs we actually need at this stage.
+
+                        let compilers = prepare_compilers();
+
+                        // The left side of the target pairs below is implied. It has to match the
+                        // host target on which cg_gcc will run, which is the host target of
+                        // `target_compiler`. We only pass the right side of the target pairs to
+                        // the `GccCodegenBackend` constructor.
+                        let mut targets = HashSet::new();
+                        // Add all host targets, so that we are able to build host code in this
+                        // bootstrap invocation using cg_gcc.
+                        for target in &builder.hosts {
+                            targets.insert(*target);
+                        }
+                        // Add all stdlib targets, so that the built rustc can produce code for them
+                        for target in &builder.targets {
+                            targets.insert(*target);
+                        }
+                        // Add the host target of the built rustc itself, so that it can build
+                        // host code (e.g. proc macros) using cg_gcc.
+                        targets.insert(compilers.target_compiler().host);
+
+                        let output = builder.ensure(GccCodegenBackend::for_targets(
+                            compilers,
+                            targets.into_iter().collect(),
                         ));
                         copy_codegen_backends_to_sysroot(builder, output.stamp, target_compiler);
                         // Also copy all requires libgccjit dylibs to the corresponding
