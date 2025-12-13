@@ -178,8 +178,9 @@ fn print_unchecked_duration_subtraction_sugg(
             // avoid suggestions
             if !is_chained_time_subtraction(cx, left_expr) {
                 let mut applicability = Applicability::MachineApplicable;
-                let left_sugg = Sugg::hir_with_applicability(cx, left_expr, "<left>", &mut applicability);
-                let right_sugg = Sugg::hir_with_applicability(cx, right_expr, "<right>", &mut applicability);
+                let left_sugg = Sugg::hir_with_context(cx, left_expr, expr.span.ctxt(), "<left>", &mut applicability);
+                let right_sugg =
+                    Sugg::hir_with_context(cx, right_expr, expr.span.ctxt(), "<right>", &mut applicability);
 
                 diag.span_suggestion(
                     expr.span,

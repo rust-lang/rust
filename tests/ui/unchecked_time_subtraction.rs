@@ -45,3 +45,18 @@ fn issue16230() {
     let _ = Duration::ZERO - Duration::MAX;
     //~^ unchecked_time_subtraction
 }
+
+fn issue16234() {
+    use std::ops::Sub as _;
+
+    macro_rules! duration {
+        ($secs:expr) => {
+            Duration::from_secs($secs)
+        };
+    }
+
+    duration!(0).sub(duration!(1));
+    //~^ unchecked_time_subtraction
+    let _ = duration!(0) - duration!(1);
+    //~^ unchecked_time_subtraction
+}
