@@ -44,6 +44,7 @@ use hir::{BodyId, HirId};
 use rustc_abi::ExternAbi;
 use rustc_ast::*;
 use rustc_errors::ErrorGuaranteed;
+use rustc_hir::attrs::{AttributeKind, InlineAttr};
 use rustc_hir::def_id::DefId;
 use rustc_middle::span_bug;
 use rustc_middle::ty::{Asyncness, ResolverAstLowering};
@@ -87,6 +88,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let sig_id = self.get_delegation_sig_id(item_id, delegation.id, span, is_in_trait_impl);
         match sig_id {
             Ok(sig_id) => {
+                self.add_inline_attribute_if_needed(span);
+
                 let is_method = self.is_method(sig_id, span);
                 let (param_count, c_variadic) = self.param_count(sig_id);
                 let decl = self.lower_delegation_decl(sig_id, param_count, c_variadic, span);
@@ -98,6 +101,31 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }
             Err(err) => self.generate_delegation_error(err, span, delegation),
         }
+    }
+
+    fn add_inline_attribute_if_needed(&mut self, span: Span) {
+        const PARENT_ID: hir::ItemLocalId = hir::ItemLocalId::ZERO;
+        let create_inline_attr_slice =
+            || [hir::Attribute::Parsed(AttributeKind::Inline(InlineAttr::Hint, span))];
+
+        let new_attributes = match self.attrs.get(&PARENT_ID) {
+            Some(attrs) => {
+                // Check if reuse already specifies any inline attribute, if so, do nothing
+                if attrs
+                    .iter()
+                    .any(|a| matches!(a, hir::Attribute::Parsed(AttributeKind::Inline(..))))
+                {
+                    return;
+                }
+
+                self.arena.alloc_from_iter(
+                    attrs.into_iter().map(|a| a.clone()).chain(create_inline_attr_slice()),
+                )
+            }
+            None => self.arena.alloc_from_iter(create_inline_attr_slice()),
+        };
+
+        self.attrs.insert(PARENT_ID, new_attributes);
     }
 
     fn get_delegation_sig_id(

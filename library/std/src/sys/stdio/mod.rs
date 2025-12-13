@@ -1,7 +1,7 @@
 #![forbid(unsafe_op_in_unsafe_fn)]
 
 cfg_select! {
-    any(target_family = "unix", target_os = "hermit") => {
+    any(target_family = "unix", target_os = "hermit", target_os = "wasi") => {
         mod unix;
         pub use unix::*;
     }
@@ -36,14 +36,6 @@ cfg_select! {
     target_os = "vexos" => {
         mod vexos;
         pub use vexos::*;
-    }
-    all(target_os = "wasi", target_env = "p1") => {
-        mod wasip1;
-        pub use wasip1::*;
-    }
-    all(target_os = "wasi", any(target_env = "p2", target_env = "p3")) => {
-        mod wasip2;
-        pub use wasip2::*;
     }
     target_os = "xous" => {
         mod xous;

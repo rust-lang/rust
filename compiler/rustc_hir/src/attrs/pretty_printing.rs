@@ -1,9 +1,10 @@
 use std::num::NonZero;
 
 use rustc_abi::Align;
-use rustc_ast::token::CommentKind;
+use rustc_ast::token::{CommentKind, DocFragmentKind};
 use rustc_ast::{AttrStyle, IntTy, UintTy};
 use rustc_ast_pretty::pp::Printer;
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_span::hygiene::Transparency;
 use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol};
 use rustc_target::spec::SanitizerSet;
@@ -64,6 +65,25 @@ impl<T: PrintAttribute> PrintAttribute for ThinVec<T> {
         p.word("]");
     }
 }
+impl<T: PrintAttribute> PrintAttribute for FxIndexMap<T, Span> {
+    fn should_render(&self) -> bool {
+        self.is_empty() || self[0].should_render()
+    }
+
+    fn print_attribute(&self, p: &mut Printer) {
+        let mut last_printed = false;
+        p.word("[");
+        for (i, _) in self {
+            if last_printed {
+                p.word_space(",");
+            }
+            i.print_attribute(p);
+            last_printed = i.should_render();
+        }
+        p.word("]");
+    }
+}
+
 macro_rules! print_skip {
     ($($t: ty),* $(,)?) => {$(
         impl PrintAttribute for $t {
@@ -147,6 +167,7 @@ print_debug!(
     Align,
     AttrStyle,
     CommentKind,
+    DocFragmentKind,
     Transparency,
     SanitizerSet,
 );

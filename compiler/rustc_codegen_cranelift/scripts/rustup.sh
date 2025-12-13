@@ -43,7 +43,7 @@ case $1 in
 
         cg_clif=$(pwd)
         pushd ../rust
-        git pull origin master
+        git pull origin main
         branch=sync_cg_clif-$(date +%Y-%m-%d)
         git checkout -b "$branch"
         "$cg_clif/git-fixed-subtree.sh" pull --prefix=compiler/rustc_codegen_cranelift/ https://github.com/rust-lang/rustc_codegen_cranelift.git main
@@ -63,7 +63,7 @@ case $1 in
 
         cg_clif=$(pwd)
         pushd ../rust
-        git fetch origin master
+        git fetch origin main
         git -c advice.detachedHead=false checkout "$RUST_VERS"
         "$cg_clif/git-fixed-subtree.sh" push --prefix=compiler/rustc_codegen_cranelift/ "$cg_clif" sync_from_rust
         popd

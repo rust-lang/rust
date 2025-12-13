@@ -14,8 +14,29 @@ attr_parsing_deprecated_item_suggestion =
     .help = add `#![feature(deprecated_suggestion)]` to the crate root
     .note = see #94785 for more details
 
+attr_parsing_doc_alias_bad_char =
+    {$char_} character isn't allowed in {$attr_str}
+
+attr_parsing_doc_alias_empty =
+    {$attr_str} attribute cannot have empty value
+
+attr_parsing_doc_alias_malformed =
+    doc alias attribute expects a string `#[doc(alias = "a")]` or a list of strings `#[doc(alias("a", "b"))]`
+
+attr_parsing_doc_alias_start_end =
+    {$attr_str} cannot start or end with ' '
+
+attr_parsing_doc_attribute_not_attribute =
+    nonexistent builtin attribute `{$attribute}` used in `#[doc(attribute = "...")]`
+    .help = only existing builtin attributes are allowed in core/std
+
+attr_parsing_doc_keyword_not_keyword =
+    nonexistent keyword `{$keyword}` used in `#[doc(keyword = "...")]`
+    .help = only existing keywords are allowed in core/std
+
 attr_parsing_empty_confusables =
     expected at least one confusable name
+
 attr_parsing_empty_link_name =
     link name must not be empty
     .label = empty link name
@@ -87,6 +108,7 @@ attr_parsing_invalid_link_modifier =
 attr_parsing_invalid_meta_item = expected a literal (`1u8`, `1.0f32`, `"string"`, etc.) here, found {$descr}
     .remove_neg_sugg = negative numbers are not literals, try removing the `-` sign
     .quote_ident_sugg = surround the identifier with quotation marks to make it into a string literal
+    .label = {$descr}s are not allowed here
 
 attr_parsing_invalid_predicate =
     invalid predicate `{$predicate}`

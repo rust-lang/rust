@@ -148,7 +148,7 @@ pub(crate) fn specializes(
     // `#[allow_internal_unstable(specialization)]`, but `#[allow_internal_unstable]`
     // is an internal feature, std is not using it for specialization nor is likely to
     // ever use it, and we don't have the span information necessary to replicate that.
-    let def_map = crate_def_map(db, module.krate());
+    let def_map = crate_def_map(db, module.krate(db));
     if !def_map.is_unstable_feature_enabled(&sym::specialization)
         && !def_map.is_unstable_feature_enabled(&sym::min_specialization)
     {

@@ -42,14 +42,14 @@ pub(crate) struct DebugContext {
     created_files: FxHashMap<(StableSourceFileId, SourceFileHash), FileId>,
     stack_pointer_register: Register,
     namespace_map: DefIdMap<UnitEntryId>,
-    array_size_type: UnitEntryId,
+    array_size_type: Option<UnitEntryId>,
 
     filename_display_preference: FileNameDisplayPreference,
     embed_source: bool,
 }
 
 pub(crate) struct FunctionDebugContext {
-    entry_id: UnitEntryId,
+    entry_id: Option<UnitEntryId>,
     function_source_loc: (FileId, u64, u64),
     source_loc_set: IndexSet<(FileId, u64, u64)>,
 }
@@ -154,18 +154,23 @@ impl DebugContext {
             root.set(gimli::DW_AT_low_pc, AttributeValue::Address(Address::Constant(0)));
         }
 
-        let array_size_type = dwarf.unit.add(dwarf.unit.root(), gimli::DW_TAG_base_type);
-        let array_size_type_entry = dwarf.unit.get_mut(array_size_type);
-        array_size_type_entry.set(
-            gimli::DW_AT_name,
-            AttributeValue::StringRef(dwarf.strings.add("__ARRAY_SIZE_TYPE__")),
-        );
-        array_size_type_entry
-            .set(gimli::DW_AT_encoding, AttributeValue::Encoding(gimli::DW_ATE_unsigned));
-        array_size_type_entry.set(
-            gimli::DW_AT_byte_size,
-            AttributeValue::Udata(isa.frontend_config().pointer_bytes().into()),
-        );
+        let array_size_type = if tcx.sess.opts.debuginfo == DebugInfo::LineTablesOnly {
+            None
+        } else {
+            let array_size_type = dwarf.unit.add(dwarf.unit.root(), gimli::DW_TAG_base_type);
+            let array_size_type_entry = dwarf.unit.get_mut(array_size_type);
+            array_size_type_entry.set(
+                gimli::DW_AT_name,
+                AttributeValue::StringRef(dwarf.strings.add("__ARRAY_SIZE_TYPE__")),
+            );
+            array_size_type_entry
+                .set(gimli::DW_AT_encoding, AttributeValue::Encoding(gimli::DW_ATE_unsigned));
+            array_size_type_entry.set(
+                gimli::DW_AT_byte_size,
+                AttributeValue::Udata(isa.frontend_config().pointer_bytes().into()),
+            );
+            Some(array_size_type)
+        };
 
         Some(DebugContext {
             endian,
@@ -216,6 +221,14 @@ impl DebugContext {
         function_span: Span,
     ) -> FunctionDebugContext {
         let (file_id, line, column) = self.get_span_loc(tcx, function_span, function_span);
+
+        if tcx.sess.opts.debuginfo == DebugInfo::LineTablesOnly {
+            return FunctionDebugContext {
+                entry_id: None,
+                function_source_loc: (file_id, line, column),
+                source_loc_set: IndexSet::new(),
+            };
+        }
 
         let scope = self.item_namespace(tcx, tcx.parent(instance.def_id()));
 
@@ -274,7 +287,7 @@ impl DebugContext {
         }
 
         FunctionDebugContext {
-            entry_id,
+            entry_id: Some(entry_id),
             function_source_loc: (file_id, line, column),
             source_loc_set: IndexSet::new(),
         }
@@ -288,6 +301,10 @@ impl DebugContext {
         def_id: DefId,
         data_id: DataId,
     ) {
+        if tcx.sess.opts.debuginfo == DebugInfo::LineTablesOnly {
+            return;
+        }
+
         let DefKind::Static { nested, .. } = tcx.def_kind(def_id) else { bug!() };
         if nested {
             return;
@@ -353,10 +370,12 @@ impl FunctionDebugContext {
             .0
             .push(Range::StartLength { begin: address_for_func(func_id), length: u64::from(end) });
 
-        let func_entry = debug_context.dwarf.unit.get_mut(self.entry_id);
-        // Gdb requires both DW_AT_low_pc and DW_AT_high_pc. Otherwise the DW_TAG_subprogram is skipped.
-        func_entry.set(gimli::DW_AT_low_pc, AttributeValue::Address(address_for_func(func_id)));
-        // Using Udata for DW_AT_high_pc requires at least DWARF4
-        func_entry.set(gimli::DW_AT_high_pc, AttributeValue::Udata(u64::from(end)));
+        if let Some(entry_id) = self.entry_id {
+            let entry = debug_context.dwarf.unit.get_mut(entry_id);
+            // Gdb requires both DW_AT_low_pc and DW_AT_high_pc. Otherwise the DW_TAG_subprogram is skipped.
+            entry.set(gimli::DW_AT_low_pc, AttributeValue::Address(address_for_func(func_id)));
+            // Using Udata for DW_AT_high_pc requires at least DWARF4
+            entry.set(gimli::DW_AT_high_pc, AttributeValue::Udata(u64::from(end)));
+        }
     }
 }

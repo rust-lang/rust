@@ -1,12 +1,11 @@
 #[cfg(feature = "master")]
 use gccjit::FnAttribute;
-use gccjit::{Context, FunctionType, RValue, ToRValue, Type};
+use gccjit::{Context, FunctionType, ToRValue, Type};
 use rustc_ast::expand::allocator::{
     AllocatorMethod, AllocatorTy, NO_ALLOC_SHIM_IS_UNSTABLE, default_fn_name, global_fn_name,
 };
 use rustc_middle::bug;
 use rustc_middle::ty::TyCtxt;
-use rustc_session::config::OomStrategy;
 use rustc_symbol_mangling::mangle_internal_symbol;
 
 use crate::GccContext;
@@ -59,14 +58,6 @@ pub(crate) unsafe fn codegen(
         create_wrapper_function(tcx, context, &from_name, Some(&to_name), &types, output);
     }
 
-    create_const_value_function(
-        tcx,
-        context,
-        &mangle_internal_symbol(tcx, OomStrategy::SYMBOL),
-        i8,
-        context.new_rvalue_from_int(i8, tcx.sess.opts.unstable_opts.oom.should_panic() as i32),
-    );
-
     create_wrapper_function(
         tcx,
         context,
@@ -75,34 +66,6 @@ pub(crate) unsafe fn codegen(
         &[],
         None,
     );
-}
-
-fn create_const_value_function(
-    tcx: TyCtxt<'_>,
-    context: &Context<'_>,
-    name: &str,
-    output: Type<'_>,
-    value: RValue<'_>,
-) {
-    let func = context.new_function(None, FunctionType::Exported, output, &[], name, false);
-
-    #[cfg(feature = "master")]
-    {
-        func.add_attribute(FnAttribute::Visibility(symbol_visibility_to_gcc(
-            tcx.sess.default_visibility(),
-        )));
-
-        // FIXME(antoyo): cg_llvm sets AlwaysInline, but AlwaysInline is different in GCC and using
-        // it here will causes linking errors when using LTO.
-        func.add_attribute(FnAttribute::Inline);
-    }
-
-    if tcx.sess.must_emit_unwind_tables() {
-        // TODO(antoyo): emit unwind tables.
-    }
-
-    let block = func.new_block("entry");
-    block.end_with_return(None, value);
 }
 
 fn create_wrapper_function(

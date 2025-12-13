@@ -1043,7 +1043,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             }
                         }
                     }
-                    lint.note("for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/disjoint-capture-in-closures.html>");
 
                     let diagnostic_msg = format!(
                         "add a dummy let to cause {migrated_variables_concat} to be fully captured"

@@ -379,15 +379,24 @@ impl Step for CodegenGcc {
         let stamp = BuildStamp::new(&builder.cargo_out(build_compiler, Mode::Codegen, target))
             .with_prefix("rustc_codegen_gcc-check");
 
-        run_cargo(
+        let args = lint_args(builder, &self.config, &[]);
+        run_cargo(builder, cargo, args.clone(), &stamp, vec![], true, false);
+
+        // Same but we disable the features enabled by default.
+        let mut cargo = prepare_tool_cargo(
             builder,
-            cargo,
-            lint_args(builder, &self.config, &[]),
-            &stamp,
-            vec![],
-            true,
-            false,
+            build_compiler,
+            Mode::Codegen,
+            target,
+            Kind::Clippy,
+            "compiler/rustc_codegen_gcc",
+            SourceType::InTree,
+            &[],
         );
+        self.build_compiler.configure_cargo(&mut cargo);
+        println!("Now running clippy on `rustc_codegen_gcc` with `--no-default-features`");
+        cargo.arg("--no-default-features");
+        run_cargo(builder, cargo, args, &stamp, vec![], true, false);
     }
 
     fn metadata(&self) -> Option<StepMetadata> {

@@ -2296,7 +2296,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let suggested_name =
                     find_best_match_for_name(&[field.name], pat_field.ident.name, None);
                 if let Some(suggested_name) = suggested_name {
-                    err.span_suggestion(
+                    err.span_suggestion_verbose(
                         pat_field.ident.span,
                         "a field with a similar name exists",
                         suggested_name,

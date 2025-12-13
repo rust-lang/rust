@@ -1,7 +1,7 @@
 error: expected identifier, found `..`
   --> $DIR/attr-pat-struct-rest.rs:6:27
    |
-LL |     let S { #[cfg(any())] .. } = S {};
+LL |     let S { #[cfg(false)] .. } = S {};
    |         -                 ^^ expected identifier
    |         |
    |         while parsing the fields for this pattern

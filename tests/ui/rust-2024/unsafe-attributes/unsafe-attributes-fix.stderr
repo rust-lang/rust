@@ -77,10 +77,10 @@ LL |         #[unsafe($e = $l)]
    |           +++++++       +
 
 error: unsafe attribute used without unsafe
-  --> $DIR/unsafe-attributes-fix.rs:46:27
+  --> $DIR/unsafe-attributes-fix.rs:46:26
    |
-LL |         #[cfg_attr(all(), link_section = ".custom_section")]
-   |                           ^^^^^^^^^^^^ usage of unsafe attribute
+LL |         #[cfg_attr(true, link_section = ".custom_section")]
+   |                          ^^^^^^^^^^^^ usage of unsafe attribute
 ...
 LL | with_cfg_attr!();
    | ---------------- in this macro invocation
@@ -90,8 +90,8 @@ LL | with_cfg_attr!();
    = note: this error originates in the macro `with_cfg_attr` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: wrap the attribute in `unsafe(...)`
    |
-LL |         #[cfg_attr(all(), unsafe(link_section = ".custom_section"))]
-   |                           +++++++                                +
+LL |         #[cfg_attr(true, unsafe(link_section = ".custom_section"))]
+   |                          +++++++                                +
 
 error: unsafe attribute used without unsafe
   --> $DIR/unsafe-attributes-fix.rs:67:3

@@ -2,16 +2,19 @@
 
 use std::cell::Cell;
 use std::env;
+use std::str::FromStr;
 use std::sync::Arc;
 
-use rustc_ast_pretty::pprust;
+use proc_macro2::{TokenStream, TokenTree};
+use rustc_attr_parsing::eval_config_entry;
+use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def_id::{CRATE_DEF_ID, LocalDefId};
-use rustc_hir::{self as hir, CRATE_HIR_ID, intravisit};
+use rustc_hir::{self as hir, Attribute, CRATE_HIR_ID, intravisit};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::TyCtxt;
 use rustc_resolve::rustdoc::span_of_fragments;
 use rustc_span::source_map::SourceMap;
-use rustc_span::{BytePos, DUMMY_SP, FileName, Pos, Span, sym};
+use rustc_span::{BytePos, DUMMY_SP, FileName, Pos, Span};
 
 use super::{DocTestVisitor, ScrapedDocTest};
 use crate::clean::{Attributes, CfgInfo, extract_cfg_from_attrs};
@@ -121,28 +124,60 @@ impl HirCollector<'_> {
         let ast_attrs = self.tcx.hir_attrs(self.tcx.local_def_id_to_hir_id(def_id));
         if let Some(ref cfg) =
             extract_cfg_from_attrs(ast_attrs.iter(), self.tcx, &mut CfgInfo::default())
-            && !cfg.matches(&self.tcx.sess.psess)
+            && !eval_config_entry(&self.tcx.sess, cfg.inner()).as_bool()
         {
             return;
         }
 
+        let source_map = self.tcx.sess.source_map();
         // Try collecting `#[doc(test(attr(...)))]`
         let old_global_crate_attrs_len = self.collector.global_crate_attrs.len();
-        for doc_test_attrs in ast_attrs
-            .iter()
-            .filter(|a| a.has_name(sym::doc))
-            .flat_map(|a| a.meta_item_list().unwrap_or_default())
-            .filter(|a| a.has_name(sym::test))
-        {
-            let Some(doc_test_attrs) = doc_test_attrs.meta_item_list() else { continue };
-            for attr in doc_test_attrs
-                .iter()
-                .filter(|a| a.has_name(sym::attr))
-                .flat_map(|a| a.meta_item_list().unwrap_or_default())
-                .map(pprust::meta_list_item_to_string)
-            {
-                // Add the additional attributes to the global_crate_attrs vector
-                self.collector.global_crate_attrs.push(attr);
+        for attr in ast_attrs {
+            let Attribute::Parsed(AttributeKind::Doc(d)) = attr else { continue };
+            for attr_span in &d.test_attrs {
+                // FIXME: This is ugly, remove when `test_attrs` has been ported to new attribute API.
+                if let Ok(snippet) = source_map.span_to_snippet(*attr_span)
+                    && let Ok(stream) = TokenStream::from_str(&snippet)
+                {
+                    let mut iter = stream.into_iter().peekable();
+                    while let Some(token) = iter.next() {
+                        if let TokenTree::Ident(i) = token {
+                            let i = i.to_string();
+                            let peek = iter.peek();
+                            // From this ident, we can have things like:
+                            //
+                            // * Group: `allow(...)`
+                            // * Name/value: `crate_name = "..."`
+                            // * Tokens: `html_no_url`
+                            //
+                            // So we peek next element to know what case we are in.
+                            match peek {
+                                Some(TokenTree::Group(g)) => {
+                                    let g = g.to_string();
+                                    iter.next();
+                                    // Add the additional attributes to the global_crate_attrs vector
+                                    self.collector.global_crate_attrs.push(format!("{i}{g}"));
+                                }
+                                // If next item is `=`, it means it's a name value so we will need
+                                // to get the value as well.
+                                Some(TokenTree::Punct(p)) if p.as_char() == '=' => {
+                                    let p = p.to_string();
+                                    iter.next();
+                                    if let Some(last) = iter.next() {
+                                        // Add the additional attributes to the global_crate_attrs vector
+                                        self.collector
+                                            .global_crate_attrs
+                                            .push(format!("{i}{p}{last}"));
+                                    }
+                                }
+                                _ => {
+                                    // Add the additional attributes to the global_crate_attrs vector
+                                    self.collector.global_crate_attrs.push(i.to_string());
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
 

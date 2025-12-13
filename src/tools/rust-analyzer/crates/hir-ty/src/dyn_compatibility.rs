@@ -3,9 +3,9 @@
 use std::ops::ControlFlow;
 
 use hir_def::{
-    AssocItemId, ConstId, CrateRootModuleId, FunctionId, GenericDefId, HasModule, TraitId,
-    TypeAliasId, TypeOrConstParamId, TypeParamId, hir::generics::LocalTypeOrConstParamId,
-    signatures::TraitFlags,
+    AssocItemId, ConstId, FunctionId, GenericDefId, HasModule, TraitId, TypeAliasId,
+    TypeOrConstParamId, TypeParamId, hir::generics::LocalTypeOrConstParamId,
+    nameres::crate_def_map, signatures::TraitFlags,
 };
 use rustc_hash::FxHashSet;
 use rustc_type_ir::{
@@ -130,7 +130,7 @@ pub fn dyn_compatibility_of_trait_query(
 }
 
 pub fn generics_require_sized_self(db: &dyn HirDatabase, def: GenericDefId) -> bool {
-    let krate = def.module(db).krate();
+    let krate = def.module(db).krate(db);
     let interner = DbInterner::new_with(db, krate);
     let Some(sized) = interner.lang_items().Sized else {
         return false;
@@ -295,7 +295,7 @@ where
             })
         }
         AssocItemId::TypeAliasId(it) => {
-            let def_map = CrateRootModuleId::from(trait_.krate(db)).def_map(db);
+            let def_map = crate_def_map(db, trait_.krate(db));
             if def_map.is_unstable_feature_enabled(&intern::sym::generic_associated_type_extended) {
                 ControlFlow::Continue(())
             } else {
@@ -402,7 +402,7 @@ fn receiver_is_dispatchable<'db>(
     let sig = sig.instantiate_identity();
 
     let module = trait_.module(db);
-    let interner = DbInterner::new_with(db, module.krate());
+    let interner = DbInterner::new_with(db, module.krate(db));
     let self_param_id = TypeParamId::from_unchecked(TypeOrConstParamId {
         parent: trait_.into(),
         local_id: LocalTypeOrConstParamId::from_raw(la_arena::RawIdx::from_u32(0)),

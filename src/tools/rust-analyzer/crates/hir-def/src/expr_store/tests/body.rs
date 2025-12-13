@@ -32,14 +32,14 @@ fn def_map_at(#[rust_analyzer::rust_fixture] ra_fixture: &str) -> String {
     let (db, position) = TestDB::with_position(ra_fixture);
 
     let module = db.module_at_position(position);
-    module.def_map(&db).dump(&db)
+    salsa::plumbing::attach(&db, || module.def_map(&db).dump(&db))
 }
 
 fn check_block_scopes_at(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
     let (db, position) = TestDB::with_position(ra_fixture);
 
     let module = db.module_at_position(position);
-    let actual = module.def_map(&db).dump_block_scopes(&db);
+    let actual = salsa::plumbing::attach(&db, || format!("{module:#?}"));
     expect.assert_eq(&actual);
 }
 

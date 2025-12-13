@@ -102,7 +102,7 @@ pub struct StaticIndexedFile {
 
 fn all_modules(db: &dyn HirDatabase) -> Vec<Module> {
     let mut worklist: Vec<_> =
-        Crate::all(db).into_iter().map(|krate| krate.root_module()).collect();
+        Crate::all(db).into_iter().map(|krate| krate.root_module(db)).collect();
     let mut modules = Vec::new();
 
     while let Some(module) = worklist.pop() {
@@ -183,6 +183,7 @@ impl StaticIndex<'_> {
                     adjustment_hints_hide_outside_unsafe: false,
                     implicit_drop_hints: false,
                     implied_dyn_trait_hints: false,
+                    hide_inferred_type_hints: false,
                     hide_named_constructor_hints: false,
                     hide_closure_initialization_hints: false,
                     hide_closure_parameter_hints: false,

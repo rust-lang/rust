@@ -64,9 +64,9 @@ impl Definition {
 
     pub fn krate(&self, db: &RootDatabase) -> Option<Crate> {
         Some(match self {
-            Definition::Module(m) => m.krate(),
+            Definition::Module(m) => m.krate(db),
             &Definition::Crate(it) => it,
-            _ => self.module(db)?.krate(),
+            _ => self.module(db)?.krate(db),
         })
     }
 
@@ -93,7 +93,7 @@ impl Definition {
             Definition::ExternCrateDecl(it) => it.module(db),
             Definition::DeriveHelper(it) => it.derive().module(db),
             Definition::InlineAsmOperand(it) => it.parent(db).module(db),
-            Definition::ToolModule(t) => t.krate().root_module(),
+            Definition::ToolModule(t) => t.krate().root_module(db),
             Definition::BuiltinAttr(_)
             | Definition::BuiltinType(_)
             | Definition::BuiltinLifetime(_)
@@ -374,7 +374,7 @@ pub fn find_std_module(
 ) -> Option<hir::Module> {
     let db = famous_defs.0.db;
     let std_crate = famous_defs.std()?;
-    let std_root_module = std_crate.root_module();
+    let std_root_module = std_crate.root_module(famous_defs.0.db);
     std_root_module.children(db).find(|module| {
         module.name(db).is_some_and(|module| module.display(db, edition).to_string() == name)
     })

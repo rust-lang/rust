@@ -55,6 +55,8 @@ jobs:
           images=(
             # Mirrored because used by the tidy job, which doesn't cache Docker images
             "ubuntu:22.04"
+            # Mirrored because used by x86-64-gnu-miri
+            "ubuntu:24.04"
             # Mirrored because used by all linux CI jobs, including tidy
             "moby/buildkit:buildx-stable-1"
             # Mirrored because used when CI is running inside a Docker container

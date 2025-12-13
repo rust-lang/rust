@@ -591,7 +591,7 @@ impl () {}
 /// # pub unsafe fn malloc(_size: usize) -> *mut core::ffi::c_void { core::ptr::NonNull::dangling().as_ptr() }
 /// # pub unsafe fn free(_ptr: *mut core::ffi::c_void) {}
 /// # }
-/// # #[cfg(any())]
+/// # #[cfg(false)]
 /// #[allow(unused_extern_crates)]
 /// extern crate libc;
 ///
