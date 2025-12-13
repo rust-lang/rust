@@ -198,6 +198,11 @@ fn emit_malformed_attribute(
             suggestions.push(format!("#{inner}[{name} = \"{descr}\"]"));
         }
     }
+    // If there are too many suggestions, better remove all of them as it's just noise at this
+    // point.
+    if suggestions.len() > 3 {
+        suggestions.clear();
+    }
     if should_warn(name) {
         psess.buffer_lint(
             ILL_FORMED_ATTRIBUTE_INPUT,

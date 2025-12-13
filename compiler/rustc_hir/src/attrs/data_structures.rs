@@ -1,10 +1,12 @@
 use std::borrow::Cow;
+use std::fmt;
 use std::path::PathBuf;
 
 pub use ReprAttr::*;
 use rustc_abi::Align;
-use rustc_ast::token::CommentKind;
+use rustc_ast::token::DocFragmentKind;
 use rustc_ast::{AttrStyle, ast};
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_error_messages::{DiagArgValue, IntoDiagArg};
 use rustc_macros::{Decodable, Encodable, HashStable_Generic, PrintAttribute};
 use rustc_span::def_id::DefId;
@@ -196,13 +198,67 @@ pub enum CfgEntry {
 
 impl CfgEntry {
     pub fn span(&self) -> Span {
-        let (CfgEntry::All(_, span)
-        | CfgEntry::Any(_, span)
-        | CfgEntry::Not(_, span)
-        | CfgEntry::Bool(_, span)
-        | CfgEntry::NameValue { span, .. }
-        | CfgEntry::Version(_, span)) = self;
+        let (Self::All(_, span)
+        | Self::Any(_, span)
+        | Self::Not(_, span)
+        | Self::Bool(_, span)
+        | Self::NameValue { span, .. }
+        | Self::Version(_, span)) = self;
         *span
+    }
+
+    /// Same as `PartialEq` but doesn't check spans and ignore order of cfgs.
+    pub fn is_equivalent_to(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::All(a, _), Self::All(b, _)) | (Self::Any(a, _), Self::Any(b, _)) => {
+                a.len() == b.len() && a.iter().all(|a| b.iter().any(|b| a.is_equivalent_to(b)))
+            }
+            (Self::Not(a, _), Self::Not(b, _)) => a.is_equivalent_to(b),
+            (Self::Bool(a, _), Self::Bool(b, _)) => a == b,
+            (
+                Self::NameValue { name: name1, value: value1, .. },
+                Self::NameValue { name: name2, value: value2, .. },
+            ) => name1 == name2 && value1 == value2,
+            (Self::Version(a, _), Self::Version(b, _)) => a == b,
+            _ => false,
+        }
+    }
+}
+
+impl fmt::Display for CfgEntry {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fn write_entries(
+            name: &str,
+            entries: &[CfgEntry],
+            f: &mut fmt::Formatter<'_>,
+        ) -> fmt::Result {
+            write!(f, "{name}(")?;
+            for (nb, entry) in entries.iter().enumerate() {
+                if nb != 0 {
+                    f.write_str(", ")?;
+                }
+                entry.fmt(f)?;
+            }
+            f.write_str(")")
+        }
+        match self {
+            Self::All(entries, _) => write_entries("all", entries, f),
+            Self::Any(entries, _) => write_entries("any", entries, f),
+            Self::Not(entry, _) => write!(f, "not({entry})"),
+            Self::Bool(value, _) => write!(f, "{value}"),
+            Self::NameValue { name, value, .. } => {
+                match value {
+                    // We use `as_str` and debug display to have characters escaped and `"`
+                    // characters surrounding the string.
+                    Some(value) => write!(f, "{name} = {:?}", value.as_str()),
+                    None => write!(f, "{name}"),
+                }
+            }
+            Self::Version(version, _) => match version {
+                Some(version) => write!(f, "{version}"),
+                None => Ok(()),
+            },
+        }
     }
 }
 
@@ -420,6 +476,79 @@ impl WindowsSubsystemKind {
     }
 }
 
+#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(HashStable_Generic, Encodable, Decodable, PrintAttribute)]
+pub enum DocInline {
+    Inline,
+    NoInline,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(HashStable_Generic, Encodable, Decodable, PrintAttribute)]
+pub enum HideOrShow {
+    Hide,
+    Show,
+}
+
+#[derive(Clone, Debug, HashStable_Generic, Encodable, Decodable, PrintAttribute)]
+pub struct CfgInfo {
+    pub name: Symbol,
+    pub name_span: Span,
+    pub value: Option<(Symbol, Span)>,
+}
+
+impl CfgInfo {
+    pub fn span_for_name_and_value(&self) -> Span {
+        if let Some((_, value_span)) = self.value {
+            self.name_span.with_hi(value_span.hi())
+        } else {
+            self.name_span
+        }
+    }
+}
+
+#[derive(Clone, Debug, HashStable_Generic, Encodable, Decodable, PrintAttribute)]
+pub struct CfgHideShow {
+    pub kind: HideOrShow,
+    pub values: ThinVec<CfgInfo>,
+}
+
+#[derive(Clone, Debug, Default, HashStable_Generic, Encodable, Decodable, PrintAttribute)]
+pub struct DocAttribute {
+    pub aliases: FxIndexMap<Symbol, Span>,
+    pub hidden: Option<Span>,
+    // Because we need to emit the error if there is more than one `inline` attribute on an item
+    // at the same time as the other doc attributes, we store a list instead of using `Option`.
+    pub inline: ThinVec<(DocInline, Span)>,
+
+    // unstable
+    pub cfg: ThinVec<CfgEntry>,
+    pub auto_cfg: ThinVec<(CfgHideShow, Span)>,
+    /// This is for `#[doc(auto_cfg = false|true)]`/`#[doc(auto_cfg)]`.
+    pub auto_cfg_change: ThinVec<(bool, Span)>,
+
+    // builtin
+    pub fake_variadic: Option<Span>,
+    pub keyword: Option<(Symbol, Span)>,
+    pub attribute: Option<(Symbol, Span)>,
+    pub masked: Option<Span>,
+    pub notable_trait: Option<Span>,
+    pub search_unbox: Option<Span>,
+
+    // valid on crate
+    pub html_favicon_url: Option<(Symbol, Span)>,
+    pub html_logo_url: Option<(Symbol, Span)>,
+    pub html_playground_url: Option<(Symbol, Span)>,
+    pub html_root_url: Option<(Symbol, Span)>,
+    pub html_no_source: Option<Span>,
+    pub issue_tracker_base_url: Option<(Symbol, Span)>,
+    pub rust_logo: Option<Span>,
+
+    // #[doc(test(...))]
+    pub test_attrs: ThinVec<Span>,
+    pub no_crate_inject: Option<Span>,
+}
+
 /// Represents parsed *built-in* inert attributes.
 ///
 /// ## Overview
@@ -551,8 +680,14 @@ pub enum AttributeKind {
     /// Represents `#[rustc_do_not_implement_via_object]`.
     DoNotImplementViaObject(Span),
 
-    /// Represents [`#[doc = "..."]`](https://doc.rust-lang.org/stable/rustdoc/write-documentation/the-doc-attribute.html).
-    DocComment { style: AttrStyle, kind: CommentKind, span: Span, comment: Symbol },
+    /// Represents [`#[doc]`](https://doc.rust-lang.org/stable/rustdoc/write-documentation/the-doc-attribute.html).
+    /// Represents all other uses of the [`#[doc]`](https://doc.rust-lang.org/stable/rustdoc/write-documentation/the-doc-attribute.html)
+    /// attribute.
+    Doc(Box<DocAttribute>),
+
+    /// Represents specifically [`#[doc = "..."]`](https://doc.rust-lang.org/stable/rustdoc/write-documentation/the-doc-attribute.html).
+    /// i.e. doc comments.
+    DocComment { style: AttrStyle, kind: DocFragmentKind, span: Span, comment: Symbol },
 
     /// Represents `#[rustc_dummy]`.
     Dummy,

@@ -1222,7 +1222,7 @@ impl<'ast, 'ra, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'ra, 'tc
                 if let TyKind::Path(None, ref path) = ty.kind
                     // We cannot disambiguate multi-segment paths right now as that requires type
                     // checking.
-                    && path.is_potential_trivial_const_arg(false)
+                    && path.is_potential_trivial_const_arg()
                 {
                     let mut check_ns = |ns| {
                         self.maybe_resolve_ident_in_lexical_scope(path.segments[0].ident, ns)
@@ -4840,9 +4840,12 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             constant, anon_const_kind
         );
 
-        let is_trivial_const_arg = constant
-            .value
-            .is_potential_trivial_const_arg(self.r.tcx.features().min_generic_const_args());
+        let is_trivial_const_arg = if self.r.tcx.features().min_generic_const_args() {
+            matches!(constant.mgca_disambiguation, MgcaDisambiguation::Direct)
+        } else {
+            constant.value.is_potential_trivial_const_arg()
+        };
+
         self.resolve_anon_const_manual(is_trivial_const_arg, anon_const_kind, |this| {
             this.resolve_expr(&constant.value, None)
         })
@@ -5023,9 +5026,9 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     // Constant arguments need to be treated as AnonConst since
                     // that is how they will be later lowered to HIR.
                     if const_args.contains(&idx) {
-                        let is_trivial_const_arg = argument.is_potential_trivial_const_arg(
-                            self.r.tcx.features().min_generic_const_args(),
-                        );
+                        // FIXME(mgca): legacy const generics doesn't support mgca but maybe
+                        // that's okay.
+                        let is_trivial_const_arg = argument.is_potential_trivial_const_arg();
                         self.resolve_anon_const_manual(
                             is_trivial_const_arg,
                             AnonConstKind::ConstArg(IsRepeatExpr::No),

@@ -233,6 +233,58 @@ lint_deprecated_where_clause_location = where clause not allowed here
 lint_diag_out_of_impl =
     diagnostics should only be created in `Diagnostic`/`Subdiagnostic`/`LintDiagnostic` impls
 
+lint_doc_alias_duplicated = doc alias is duplicated
+    .label = first defined here
+
+lint_doc_auto_cfg_expects_hide_or_show =
+    only `hide` or `show` are allowed in `#[doc(auto_cfg(...))]`
+
+lint_doc_auto_cfg_hide_show_expects_list =
+    `#![doc(auto_cfg({$attr_name}(...)))]` expects a list of items
+
+lint_doc_auto_cfg_hide_show_unexpected_item =
+    `#![doc(auto_cfg({$attr_name}(...)))]` only accepts identifiers or key/value items
+
+lint_doc_auto_cfg_wrong_literal =
+    expected boolean for `#[doc(auto_cfg = ...)]`
+
+lint_doc_invalid =
+    invalid `doc` attribute
+
+lint_doc_test_literal = `#![doc(test(...)]` does not take a literal
+
+lint_doc_test_takes_list =
+    `#[doc(test(...)]` takes a list of attributes
+
+lint_doc_test_unknown =
+    unknown `doc(test)` attribute `{$name}`
+
+lint_doc_unknown_any =
+    unknown `doc` attribute `{$name}`
+
+lint_doc_unknown_include =
+    unknown `doc` attribute `include`
+    .suggestion = use `doc = include_str!` instead
+
+lint_doc_unknown_passes =
+    unknown `doc` attribute `{$name}`
+    .note = `doc` attribute `{$name}` no longer functions; see issue #44136 <https://github.com/rust-lang/rust/issues/44136>
+    .label = no longer functions
+    .no_op_note = `doc({$name})` is now a no-op
+
+lint_doc_unknown_plugins =
+    unknown `doc` attribute `plugins`
+    .note = `doc` attribute `plugins` no longer functions; see issue #44136 <https://github.com/rust-lang/rust/issues/44136> and CVE-2018-1000622 <https://nvd.nist.gov/vuln/detail/CVE-2018-1000622>
+    .label = no longer functions
+    .no_op_note = `doc(plugins)` is now a no-op
+
+lint_doc_unknown_spotlight =
+    unknown `doc` attribute `spotlight`
+    .note = `doc(spotlight)` was renamed to `doc(notable_trait)`
+    .suggestion = use `notable_trait` instead
+    .no_op_note = `doc(spotlight)` is now a no-op
+
+
 lint_drop_glue =
     types that do not implement `Drop` can still have drop glue, consider instead using `{$needs_drop}` to detect whether a type is trivially dropped
 
@@ -831,6 +883,7 @@ lint_unexpected_cfg_add_build_rs_println = or consider adding `{$build_rs_printl
 lint_unexpected_cfg_add_cargo_feature = consider using a Cargo feature instead
 lint_unexpected_cfg_add_cargo_toml_lint_cfg = or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:{$cargo_toml_lint_cfg}
 lint_unexpected_cfg_add_cmdline_arg = to expect this configuration use `{$cmdline_arg}`
+lint_unexpected_cfg_boolean = you may have meant to use `{$literal}` (notice the capitalization). Doing so makes this predicate evaluate to `{$literal}` unconditionally
 lint_unexpected_cfg_cargo_update = the {$macro_kind} `{$macro_name}` may come from an old version of the `{$crate_name}` crate, try updating your dependency with `cargo update -p {$crate_name}`
 
 lint_unexpected_cfg_define_features = consider defining some features in `Cargo.toml`

@@ -6,8 +6,8 @@ use rustc_ast::token::{self, Lit, LitKind, Token, TokenKind};
 use rustc_ast::util::parser::AssocOp;
 use rustc_ast::{
     self as ast, AngleBracketedArg, AngleBracketedArgs, AnonConst, AttrVec, BinOpKind, BindingMode,
-    Block, BlockCheckMode, Expr, ExprKind, GenericArg, Generics, Item, ItemKind, Param, Pat,
-    PatKind, Path, PathSegment, QSelf, Recovered, Ty, TyKind,
+    Block, BlockCheckMode, Expr, ExprKind, GenericArg, Generics, Item, ItemKind,
+    MgcaDisambiguation, Param, Pat, PatKind, Path, PathSegment, QSelf, Recovered, Ty, TyKind,
 };
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
@@ -31,16 +31,15 @@ use crate::errors::{
     AddParen, AmbiguousPlus, AsyncMoveBlockIn2015, AsyncUseBlockIn2015, AttributeOnParamType,
     AwaitSuggestion, BadQPathStage2, BadTypePlus, BadTypePlusSub, ColonAsSemi,
     ComparisonOperatorsCannotBeChained, ComparisonOperatorsCannotBeChainedSugg,
-    ConstGenericWithoutBraces, ConstGenericWithoutBracesSugg, DocCommentDoesNotDocumentAnything,
-    DocCommentOnParamType, DoubleColonInBound, ExpectedIdentifier, ExpectedSemi, ExpectedSemiSugg,
-    GenericParamsWithoutAngleBrackets, GenericParamsWithoutAngleBracketsSugg,
-    HelpIdentifierStartsWithNumber, HelpUseLatestEdition, InInTypo, IncorrectAwait,
-    IncorrectSemicolon, IncorrectUseOfAwait, IncorrectUseOfUse, PatternMethodParamWithoutBody,
-    QuestionMarkInType, QuestionMarkInTypeSugg, SelfParamNotFirst, StructLiteralBodyWithoutPath,
-    StructLiteralBodyWithoutPathSugg, SuggAddMissingLetStmt, SuggEscapeIdentifier, SuggRemoveComma,
-    TernaryOperator, TernaryOperatorSuggestion, UnexpectedConstInGenericParam,
-    UnexpectedConstParamDeclaration, UnexpectedConstParamDeclarationSugg, UnmatchedAngleBrackets,
-    UseEqInstead, WrapType,
+    DocCommentDoesNotDocumentAnything, DocCommentOnParamType, DoubleColonInBound,
+    ExpectedIdentifier, ExpectedSemi, ExpectedSemiSugg, GenericParamsWithoutAngleBrackets,
+    GenericParamsWithoutAngleBracketsSugg, HelpIdentifierStartsWithNumber, HelpUseLatestEdition,
+    InInTypo, IncorrectAwait, IncorrectSemicolon, IncorrectUseOfAwait, IncorrectUseOfUse,
+    PatternMethodParamWithoutBody, QuestionMarkInType, QuestionMarkInTypeSugg, SelfParamNotFirst,
+    StructLiteralBodyWithoutPath, StructLiteralBodyWithoutPathSugg, SuggAddMissingLetStmt,
+    SuggEscapeIdentifier, SuggRemoveComma, TernaryOperator, TernaryOperatorSuggestion,
+    UnexpectedConstInGenericParam, UnexpectedConstParamDeclaration,
+    UnexpectedConstParamDeclarationSugg, UnmatchedAngleBrackets, UseEqInstead, WrapType,
 };
 use crate::parser::FnContext;
 use crate::parser::attr::InnerAttrPolicy;
@@ -2558,36 +2557,6 @@ impl<'a> Parser<'a> {
         Ok(false) // Don't continue.
     }
 
-    /// Attempt to parse a generic const argument that has not been enclosed in braces.
-    /// There are a limited number of expressions that are permitted without being encoded
-    /// in braces:
-    /// - Literals.
-    /// - Single-segment paths (i.e. standalone generic const parameters).
-    /// All other expressions that can be parsed will emit an error suggesting the expression be
-    /// wrapped in braces.
-    pub(super) fn handle_unambiguous_unbraced_const_arg(&mut self) -> PResult<'a, Box<Expr>> {
-        let start = self.token.span;
-        let attrs = self.parse_outer_attributes()?;
-        let (expr, _) =
-            self.parse_expr_res(Restrictions::CONST_EXPR, attrs).map_err(|mut err| {
-                err.span_label(
-                    start.shrink_to_lo(),
-                    "while parsing a const generic argument starting here",
-                );
-                err
-            })?;
-        if !self.expr_is_valid_const_arg(&expr) {
-            self.dcx().emit_err(ConstGenericWithoutBraces {
-                span: expr.span,
-                sugg: ConstGenericWithoutBracesSugg {
-                    left: expr.span.shrink_to_lo(),
-                    right: expr.span.shrink_to_hi(),
-                },
-            });
-        }
-        Ok(expr)
-    }
-
     fn recover_const_param_decl(&mut self, ty_generics: Option<&Generics>) -> Option<GenericArg> {
         let snapshot = self.create_snapshot_for_diagnostic();
         let param = match self.parse_const_param(AttrVec::new()) {
@@ -2623,7 +2592,11 @@ impl<'a> Parser<'a> {
             self.dcx().emit_err(UnexpectedConstParamDeclaration { span: param.span(), sugg });
 
         let value = self.mk_expr_err(param.span(), guar);
-        Some(GenericArg::Const(AnonConst { id: ast::DUMMY_NODE_ID, value }))
+        Some(GenericArg::Const(AnonConst {
+            id: ast::DUMMY_NODE_ID,
+            value,
+            mgca_disambiguation: MgcaDisambiguation::Direct,
+        }))
     }
 
     pub(super) fn recover_const_param_declaration(
@@ -2707,7 +2680,11 @@ impl<'a> Parser<'a> {
                     );
                     let guar = err.emit();
                     let value = self.mk_expr_err(start.to(expr.span), guar);
-                    return Ok(GenericArg::Const(AnonConst { id: ast::DUMMY_NODE_ID, value }));
+                    return Ok(GenericArg::Const(AnonConst {
+                        id: ast::DUMMY_NODE_ID,
+                        value,
+                        mgca_disambiguation: MgcaDisambiguation::Direct,
+                    }));
                 } else if snapshot.token == token::Colon
                     && expr.span.lo() == snapshot.token.span.hi()
                     && matches!(expr.kind, ExprKind::Path(..))
@@ -2776,7 +2753,11 @@ impl<'a> Parser<'a> {
         );
         let guar = err.emit();
         let value = self.mk_expr_err(span, guar);
-        GenericArg::Const(AnonConst { id: ast::DUMMY_NODE_ID, value })
+        GenericArg::Const(AnonConst {
+            id: ast::DUMMY_NODE_ID,
+            value,
+            mgca_disambiguation: MgcaDisambiguation::Direct,
+        })
     }
 
     /// Some special error handling for the "top-level" patterns in a match arm,

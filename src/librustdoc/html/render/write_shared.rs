@@ -14,6 +14,7 @@
 //!    or contains "invocation-specific".
 
 use std::cell::RefCell;
+use std::cmp::Ordering;
 use std::ffi::{OsStr, OsString};
 use std::fs::File;
 use std::io::{self, Write as _};
@@ -47,6 +48,7 @@ use crate::formats::item_type::ItemType;
 use crate::html::format::{print_impl, print_path};
 use crate::html::layout;
 use crate::html::render::ordered_json::{EscapedJson, OrderedJson};
+use crate::html::render::print_item::compare_names;
 use crate::html::render::search_index::{SerializedSearchIndex, build_index};
 use crate::html::render::sorted_template::{self, FileFormat, SortedTemplate};
 use crate::html::render::{AssocItemLink, ImplRenderingParameters, StylePath};
@@ -667,7 +669,7 @@ impl TraitAliasPart {
     fn blank() -> SortedTemplate<<Self as CciPart>::FileFormat> {
         SortedTemplate::from_before_after(
             r"(function() {
-    var implementors = Object.fromEntries([",
+    const implementors = Object.fromEntries([",
             r"]);
     if (window.register_implementors) {
         window.register_implementors(implementors);
@@ -720,10 +722,12 @@ impl TraitAliasPart {
                     {
                         None
                     } else {
+                        let impl_ = imp.inner_impl();
                         Some(Implementor {
-                            text: print_impl(imp.inner_impl(), false, cx).to_string(),
+                            text: print_impl(impl_, false, cx).to_string(),
                             synthetic: imp.inner_impl().kind.is_auto(),
                             types: collect_paths_for_type(&imp.inner_impl().for_, cache),
+                            is_negative: impl_.is_negative_trait_impl(),
                         })
                     }
                 })
@@ -742,8 +746,22 @@ impl TraitAliasPart {
             }
             path.push(format!("{remote_item_type}.{}.js", remote_path[remote_path.len() - 1]));
 
-            let part = OrderedJson::array_sorted(
-                implementors.map(|implementor| OrderedJson::serialize(implementor).unwrap()),
+            let mut implementors = implementors.collect::<Vec<_>>();
+            implementors.sort_unstable_by(|a, b| {
+                // We sort negative impls first.
+                match (a.is_negative, b.is_negative) {
+                    (false, true) => Ordering::Greater,
+                    (true, false) => Ordering::Less,
+                    _ => compare_names(&a.text, &b.text),
+                }
+            });
+
+            let part = OrderedJson::array_unsorted(
+                implementors
+                    .iter()
+                    .map(OrderedJson::serialize)
+                    .collect::<Result<Vec<_>, _>>()
+                    .unwrap(),
             );
             path_parts.push(path, OrderedJson::array_unsorted([crate_name_json, &part]));
         }
@@ -755,6 +773,7 @@ struct Implementor {
     text: String,
     synthetic: bool,
     types: Vec<String>,
+    is_negative: bool,
 }
 
 impl Serialize for Implementor {
@@ -764,6 +783,7 @@ impl Serialize for Implementor {
     {
         let mut seq = serializer.serialize_seq(None)?;
         seq.serialize_element(&self.text)?;
+        seq.serialize_element(if self.is_negative { &1 } else { &0 })?;
         if self.synthetic {
             seq.serialize_element(&1)?;
             seq.serialize_element(&self.types)?;

@@ -7,8 +7,6 @@ fn foo() {
     //~^ NOTE this reinitialization might get skipped
     //~| NOTE move occurs because `foo` has type `String`
     //~| NOTE inside of this loop
-    //~| HELP consider moving the expression out of the loop
-    //~| NOTE in this expansion of desugaring of `for` loop
     //~| NOTE
     //~| NOTE
         baz.push(foo);
@@ -35,8 +33,6 @@ fn main() {
     //~| NOTE
         for bar in &bars {
         //~^ NOTE inside of this loop
-        //~| HELP consider moving the expression out of the loop
-        //~| NOTE in this expansion of desugaring of `for` loop
         //~| NOTE
             if foo == *bar {
                 baz.push(foo);
@@ -44,7 +40,7 @@ fn main() {
                 //~| HELP consider cloning the value
                 continue;
                 //~^ NOTE verify that your loop breaking logic is correct
-                //~| NOTE this `continue` advances the loop at line 36
+                //~| NOTE this `continue` advances the loop at line 34
             }
         }
         qux.push(foo);

@@ -1,4 +1,4 @@
 #![doc(test(""))]
-//~^ ERROR `#![doc(test(...)]` does not take a literal
+//~^ ERROR malformed `doc` attribute input
 
 fn main() {}

@@ -3,8 +3,8 @@
 #![deny(unused_attributes)] // c.f #35584
 
 mod auxiliary {
-    #[cfg_attr(any(), path = "nonexistent_file.rs")] pub mod namespaced_enums;
-    #[cfg_attr(all(), path = "namespaced_enums.rs")] pub mod nonexistent_file;
+    #[cfg_attr(false, path = "nonexistent_file.rs")] pub mod namespaced_enums;
+    #[cfg_attr(true, path = "namespaced_enums.rs")] pub mod nonexistent_file;
 }
 
 fn main() {

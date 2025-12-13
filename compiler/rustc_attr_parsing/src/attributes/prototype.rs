@@ -25,7 +25,7 @@ impl<S: Stage> SingleAttributeParser<S> for CustomMirParser {
 
     const TEMPLATE: AttributeTemplate = template!(List: &[r#"dialect = "...", phase = "...""#]);
 
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
         let Some(list) = args.list() else {
             cx.expected_list(cx.attr_span);
             return None;
@@ -70,7 +70,7 @@ impl<S: Stage> SingleAttributeParser<S> for CustomMirParser {
 fn extract_value<S: Stage>(
     cx: &mut AcceptContext<'_, '_, S>,
     key: Symbol,
-    arg: &ArgParser<'_>,
+    arg: &ArgParser,
     span: Span,
     out_val: &mut Option<(Symbol, Span)>,
     failed: &mut bool,
