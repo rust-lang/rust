@@ -514,7 +514,9 @@ impl SystemTime {
     /// Represents the maximum value representable by [`SystemTime`] on this platform.
     ///
     /// This value differs a lot between platforms, but it is always the case
-    /// that any positive addition to [`SystemTime::MAX`] will fail.
+    /// that any positive addition of a [`Duration`], whose value is greater
+    /// than or equal to the time precision of the operating system, to
+    /// [`SystemTime::MAX`] will fail.
     ///
     /// # Examples
     ///
@@ -525,8 +527,13 @@ impl SystemTime {
     /// // Adding zero will change nothing.
     /// assert_eq!(SystemTime::MAX.checked_add(Duration::ZERO), Some(SystemTime::MAX));
     ///
-    /// // But adding just 1ns will already fail.
-    /// assert_eq!(SystemTime::MAX.checked_add(Duration::new(0, 1)), None);
+    /// // But adding just one second will already fail ...
+    /// //
+    /// // Keep in mind that this in fact may succeed, if the Duration is
+    /// // smaller than the time precision of the operating system, which
+    /// // happens to be 1ns on most operating systems, with Windows being the
+    /// // notable exception by using 100ns, hence why this example uses 1s.
+    /// assert_eq!(SystemTime::MAX.checked_add(Duration::new(1, 0)), None);
     ///
     /// // Utilize this for saturating arithmetic to improve error handling.
     /// // In this case, we will use a certificate with a timestamp in the
@@ -543,7 +550,9 @@ impl SystemTime {
     /// Represents the minimum value representable by [`SystemTime`] on this platform.
     ///
     /// This value differs a lot between platforms, but it is always the case
-    /// that any positive subtraction from [`SystemTime::MIN`] will fail.
+    /// that any positive subtraction of a [`Duration`] from, whose value is
+    /// greater than or equal to the time precision of the operating system, to
+    /// [`SystemTime::MIN`] will fail.
     ///
     /// Depending on the platform, this may be either less than or equal to
     /// [`SystemTime::UNIX_EPOCH`], depending on whether the operating system
@@ -560,8 +569,13 @@ impl SystemTime {
     /// // Subtracting zero will change nothing.
     /// assert_eq!(SystemTime::MIN.checked_sub(Duration::ZERO), Some(SystemTime::MIN));
     ///
-    /// // But subtracting just 1ns will already fail.
-    /// assert_eq!(SystemTime::MIN.checked_sub(Duration::new(0, 1)), None);
+    /// // But subtracting just one second will already fail.
+    /// //
+    /// // Keep in mind that this in fact may succeed, if the Duration is
+    /// // smaller than the time precision of the operating system, which
+    /// // happens to be 1ns on most operating systems, with Windows being the
+    /// // notable exception by using 100ns, hence why this example uses 1s.
+    /// assert_eq!(SystemTime::MIN.checked_sub(Duration::new(1, 0)), None);
     ///
     /// // Utilize this for saturating arithmetic to improve error handling.
     /// // In this case, we will use a cache expiry as a practical example.
@@ -651,6 +665,9 @@ impl SystemTime {
     /// Returns `Some(t)` where `t` is the time `self + duration` if `t` can be represented as
     /// `SystemTime` (which means it's inside the bounds of the underlying data structure), `None`
     /// otherwise.
+    ///
+    /// In the case that the `duration` is smaller than the time precision of the operating
+    /// system, `Some(self)` will be returned.
     #[stable(feature = "time_checked_add", since = "1.34.0")]
     pub fn checked_add(&self, duration: Duration) -> Option<SystemTime> {
         self.0.checked_add_duration(&duration).map(SystemTime)
@@ -659,6 +676,9 @@ impl SystemTime {
     /// Returns `Some(t)` where `t` is the time `self - duration` if `t` can be represented as
     /// `SystemTime` (which means it's inside the bounds of the underlying data structure), `None`
     /// otherwise.
+    ///
+    /// In the case that the `duration` is smaller than the time precision of the operating
+    /// system, `Some(self)` will be returned.
     #[stable(feature = "time_checked_add", since = "1.34.0")]
     pub fn checked_sub(&self, duration: Duration) -> Option<SystemTime> {
         self.0.checked_sub_duration(&duration).map(SystemTime)
