@@ -630,11 +630,20 @@ LL - #[macro_use = 1]
 LL + #[macro_use]
    |
 
-error: valid forms for the attribute are `#[macro_export(local_inner_macros)]` and `#[macro_export]`
+error[E0539]: malformed `macro_export` attribute input
   --> $DIR/malformed-attrs.rs:221:1
    |
 LL | #[macro_export = 18]
-   | ^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^ expected a list or no arguments here
+   |
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #[macro_export = 18]
+LL + #[macro_export(local_inner_macros)]
+   |
+LL - #[macro_export = 18]
+LL + #[macro_export]
+   |
 
 error[E0565]: malformed `allow_internal_unsafe` attribute input
   --> $DIR/malformed-attrs.rs:223:1
