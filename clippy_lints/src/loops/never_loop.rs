@@ -3,7 +3,7 @@ use super::utils::make_iterator_snippet;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::higher::ForLoop;
 use clippy_utils::macros::root_macro_call_first_node;
-use clippy_utils::source::snippet;
+use clippy_utils::source::{snippet, snippet_with_context};
 use clippy_utils::sym;
 use clippy_utils::visitors::{Descend, for_each_expr_without_closures};
 use rustc_errors::Applicability;
@@ -111,8 +111,8 @@ pub(super) fn check_iterator_reduction<'tcx>(
             expr.span,
             "this iterator reduction never loops (closure always diverges)",
             |diag| {
-                let mut app = Applicability::Unspecified;
-                let recv_snip = make_iterator_snippet(cx, recv, &mut app);
+                let mut app = Applicability::HasPlaceholders;
+                let recv_snip = snippet_with_context(cx, recv.span, expr.span.ctxt(), "<iter>", &mut app).0;
                 diag.note("if you only need one element, `if let Some(x) = iter.next()` is clearer");
                 let sugg = format!("if let Some(x) = {recv_snip}.next() {{ ... }}");
                 diag.span_suggestion_verbose(expr.span, "consider this pattern", sugg, app);
