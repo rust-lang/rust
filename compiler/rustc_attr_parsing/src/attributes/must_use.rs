@@ -41,8 +41,8 @@ impl<S: Stage> SingleAttributeParser<S> for MustUseParser {
                     };
                     Some(value_str)
                 }
-                ArgParser::List(_) => {
-                    cx.expected_name_value(cx.attr_span, None);
+                ArgParser::List(list) => {
+                    cx.expected_nv_or_no_args(list.span);
                     return None;
                 }
             },

@@ -511,6 +511,7 @@ pub(crate) enum AttributeParseErrorReason<'a> {
     ExpectedSingleArgument,
     ExpectedList,
     ExpectedListOrNoArgs,
+    ExpectedNameValueOrNoArgs,
     UnexpectedLiteral,
     ExpectedNameValue(Option<Symbol>),
     DuplicateKey(Symbol),
@@ -585,6 +586,9 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for AttributeParseError<'_> {
             }
             AttributeParseErrorReason::ExpectedListOrNoArgs => {
                 diag.span_label(self.span, "expected a list or no arguments here");
+            }
+            AttributeParseErrorReason::ExpectedNameValueOrNoArgs => {
+                diag.span_label(self.span, "didn't expect a list here");
             }
             AttributeParseErrorReason::DuplicateKey(key) => {
                 diag.span_label(self.span, format!("found `{key}` used as a key more than once"));

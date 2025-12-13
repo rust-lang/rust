@@ -99,8 +99,8 @@ impl<S: Stage> AttributeParser<S> for MacroUseParser {
                         }
                     }
                 }
-                ArgParser::NameValue(_) => {
-                    cx.expected_list_or_no_args(span);
+                ArgParser::NameValue(nv) => {
+                    cx.expected_list_or_no_args(nv.args_span());
                 }
             }
         },
@@ -155,8 +155,8 @@ impl<S: Stage> SingleAttributeParser<S> for MacroExportParser {
                     }
                 }
             }
-            ArgParser::NameValue(_) => {
-                cx.expected_list_or_no_args(cx.attr_span);
+            ArgParser::NameValue(nv) => {
+                cx.expected_list_or_no_args(nv.args_span());
                 return None;
             }
         };

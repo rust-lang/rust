@@ -295,7 +295,7 @@ pub(crate) fn parse_stability<S: Stage>(
     let mut since = None;
 
     let ArgParser::List(list) = args else {
-        cx.expected_list(cx.attr_span);
+        cx.expected_list(cx.attr_span, args);
         return None;
     };
 
@@ -367,7 +367,7 @@ pub(crate) fn parse_unstability<S: Stage>(
     let mut old_name = None;
 
     let ArgParser::List(list) = args else {
-        cx.expected_list(cx.attr_span);
+        cx.expected_list(cx.attr_span, args);
         return None;
     };
 

@@ -27,7 +27,7 @@ impl<S: Stage> SingleAttributeParser<S> for CustomMirParser {
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
         let Some(list) = args.list() else {
-            cx.expected_list(cx.attr_span);
+            cx.expected_list(cx.attr_span, args);
             return None;
         };
 

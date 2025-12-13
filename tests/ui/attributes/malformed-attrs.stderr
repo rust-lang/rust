@@ -318,7 +318,9 @@ error[E0539]: malformed `must_use` attribute input
   --> $DIR/malformed-attrs.rs:61:1
    |
 LL | #[must_use()]
-   | ^^^^^^^^^^^^^
+   | ^^^^^^^^^^--^
+   |           |
+   |           didn't expect a list here
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/diagnostics.html#the-must_use-attribute>
 help: try changing it to one of the following valid forms of the attribute
@@ -628,7 +630,9 @@ error[E0539]: malformed `macro_use` attribute input
   --> $DIR/malformed-attrs.rs:216:1
    |
 LL | #[macro_use = 1]
-   | ^^^^^^^^^^^^^^^^ expected a list or no arguments here
+   | ^^^^^^^^^^^^---^
+   |             |
+   |             expected a list or no arguments here
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/macros-by-example.html#the-macro_use-attribute>
 help: try changing it to one of the following valid forms of the attribute
@@ -644,7 +648,9 @@ error[E0539]: malformed `macro_export` attribute input
   --> $DIR/malformed-attrs.rs:221:1
    |
 LL | #[macro_export = 18]
-   | ^^^^^^^^^^^^^^^^^^^^ expected a list or no arguments here
+   | ^^^^^^^^^^^^^^^----^
+   |                |
+   |                expected a list or no arguments here
    |
 help: try changing it to one of the following valid forms of the attribute
    |
