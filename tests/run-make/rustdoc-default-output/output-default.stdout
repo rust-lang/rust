@@ -201,6 +201,9 @@ Options:
         --generate-macro-expansion 
                         Add possibility to expand macros in the HTML source
                         code pages
+        --highlight-foreign-code 
+                        Syntax-highlight non-Rust code blocks using
+                        tree-sitter (arborium)
         --plugin-path DIR
                         removed, see issue #44136
                         <https://github.com/rust-lang/rust/issues/44136> for
