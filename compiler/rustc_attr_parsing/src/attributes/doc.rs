@@ -106,7 +106,7 @@ impl DocParser {
             }
             Some(sym::attr) => {
                 let Some(list) = args.list() else {
-                    cx.expected_list(cx.attr_span);
+                    cx.expected_list(cx.attr_span, args);
                     return;
                 };
 

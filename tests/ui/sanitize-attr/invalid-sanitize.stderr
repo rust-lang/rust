@@ -42,7 +42,9 @@ error[E0539]: malformed `sanitize` attribute input
   --> $DIR/invalid-sanitize.rs:18:1
    |
 LL | #[sanitize = "off"]
-   | ^^^^^^^^^^^^^^^^^^^ expected this to be a list
+   | ^^^^^^^^^^^-------^
+   |            |
+   |            expected this to be a list
 
 error[E0539]: malformed `sanitize` attribute input
   --> $DIR/invalid-sanitize.rs:21:1
