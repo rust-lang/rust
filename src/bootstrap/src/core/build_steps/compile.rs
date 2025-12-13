@@ -2217,9 +2217,11 @@ impl Step for Assemble {
         }
 
         if builder.config.llvm_offload && !builder.config.dry_run() {
+            debug!("`llvm_offload` requested");
             let offload_install = builder.ensure(llvm::OmpOffload { target: build_compiler.host });
             if let Some(llvm_config) = builder.llvm_config(builder.config.host_target) {
                 let src_dir = offload_install.join("lib");
+                let libdir = builder.sysroot_target_libdir(build_compiler, build_compiler.host);
                 let target_libdir =
                     builder.sysroot_target_libdir(target_compiler, target_compiler.host);
                 let llvm = llvm::get_llvm_version(builder, &llvm_config);
@@ -2228,20 +2230,19 @@ impl Step for Assemble {
                 // e.g. libLLVMOffload.so.21.1
                 let lib_ext = std::env::consts::DLL_EXTENSION;
                 let libenzyme = format!("libLLVMOffload.{lib_ext}.{llvm_version}");
-                dbg!(&libenzyme);
-                let dst_lib = libdir.join(&libenzyme).with_extension(lib_ext);
-                let target_dst_lib = target_libdir.join(&libenzyme).with_extension(lib_ext);
+                let dst_lib = libdir.join(&libenzyme);
+                let target_dst_lib = target_libdir.join(&libenzyme);
                 let src_lib = src_dir.join(&libenzyme);
                 builder.copy_link(&src_lib, &dst_lib, FileType::NativeLibrary);
                 builder.copy_link(&src_lib, &target_dst_lib, FileType::NativeLibrary);
 
                 // libomp.so, libomptarget.so
-                let omp = src_dir.join("libomp").with_extension(lib_ext);
-                let tgt = src_dir.join("libomptarget").with_extension(lib_ext);
-                builder.copy_link(&omp, &dst_lib, FileType::NativeLibrary);
-                builder.copy_link(&omp, &dst_lib, FileType::NativeLibrary);
-                builder.copy_link(&tgt, &dst_lib, FileType::NativeLibrary);
-                builder.copy_link(&tgt, &dst_lib, FileType::NativeLibrary);
+                //let omp = src_dir.join("libomp").with_extension(lib_ext);
+                //let tgt = src_dir.join("libomptarget").with_extension(lib_ext);
+                //builder.copy_link(&omp, &dst_lib, FileType::NativeLibrary);
+                //builder.copy_link(&omp, &dst_lib, FileType::NativeLibrary);
+                //builder.copy_link(&tgt, &dst_lib, FileType::NativeLibrary);
+                //builder.copy_link(&tgt, &dst_lib, FileType::NativeLibrary);
                 //[\u@\h:\W]$ ls ../offload-outdir/lib
                 // amdgcn-amd-amdhsa  libarcher.so        libgomp.so    libiomp5.so	libLLVMOffload.so.21.1	libomp.so	 libomptarget.so.21.1
                 // cmake		   libarcher_static.a  libgomp.so.1  libLLVMOffload.so	libompd.so		libomptarget.so  nvptx64-nvidia-cuda
