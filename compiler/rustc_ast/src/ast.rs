@@ -31,7 +31,9 @@ use rustc_data_structures::tagged_ptr::Tag;
 use rustc_macros::{Decodable, Encodable, HashStable_Generic, Walkable};
 pub use rustc_span::AttrId;
 use rustc_span::source_map::{Spanned, respan};
-use rustc_span::{ByteSymbol, DUMMY_SP, ErrorGuaranteed, Ident, Span, Symbol, kw, sym};
+use rustc_span::{
+    ByteSymbol, DUMMY_SP, ErrorGuaranteed, Ident, Span, Symbol, kw, sym, with_session_globals,
+};
 use thin_vec::{ThinVec, thin_vec};
 
 pub use crate::format::*;
@@ -170,16 +172,18 @@ pub fn join_path_syms(path: impl IntoIterator<Item = impl Borrow<Symbol>>) -> St
     let mut s = String::with_capacity(len_hint * 8);
 
     let first_sym = *iter.next().unwrap().borrow();
-    if first_sym != kw::PathRoot {
-        s.push_str(first_sym.as_str());
-    }
-    for sym in iter {
-        let sym = *sym.borrow();
-        debug_assert_ne!(sym, kw::PathRoot);
-        s.push_str("::");
-        s.push_str(sym.as_str());
-    }
-    s
+    with_session_globals(|globals| {
+        if first_sym != kw::PathRoot {
+            s.push_str(first_sym.get_str_from_session_globals(globals));
+        }
+        for sym in iter {
+            let sym = *sym.borrow();
+            debug_assert_ne!(sym, kw::PathRoot);
+            s.push_str("::");
+            s.push_str(sym.get_str_from_session_globals(globals));
+        }
+        s
+    })
 }
 
 /// Like `join_path_syms`, but for `Ident`s. This function is necessary because

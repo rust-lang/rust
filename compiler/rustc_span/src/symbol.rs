@@ -15,7 +15,7 @@ use rustc_data_structures::sync::Lock;
 use rustc_macros::{Decodable, Encodable, HashStable_Generic, symbols};
 
 use crate::edit_distance::find_best_match_for_name;
-use crate::{DUMMY_SP, Edition, Span, with_session_globals};
+use crate::{DUMMY_SP, Edition, SessionGlobals, Span, with_session_globals};
 
 #[cfg(test)]
 mod tests;
@@ -2830,6 +2830,13 @@ impl Symbol {
         })
     }
 
+    pub fn get_str_from_session_globals<'sess>(
+        &self,
+        session_globals: &'sess SessionGlobals,
+    ) -> &'sess str {
+        session_globals.symbol_interner.get_str(*self)
+    }
+
     pub fn as_u32(self) -> u32 {
         self.0.as_u32()
     }
@@ -2900,7 +2907,10 @@ impl StableCompare for Symbol {
     const CAN_USE_UNSTABLE_SORT: bool = true;
 
     fn stable_cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.as_str().cmp(other.as_str())
+        with_session_globals(|session_globals| {
+            self.get_str_from_session_globals(session_globals)
+                .cmp(other.get_str_from_session_globals(session_globals))
+        })
     }
 }
 
