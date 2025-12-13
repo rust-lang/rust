@@ -2,8 +2,7 @@ use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut};
 use crate::mem;
 use crate::os::unix::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, RawFd};
 use crate::sys::fd::FileDesc;
-use crate::sys::{cvt, cvt_r};
-use crate::sys_common::{FromInner, IntoInner};
+use crate::sys::{FromInner, IntoInner, cvt, cvt_r};
 
 ////////////////////////////////////////////////////////////////////////////////
 // Anonymous pipes

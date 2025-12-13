@@ -24,8 +24,7 @@ use crate::sys::handle::Handle;
 use crate::sys::pal::api::{self, WinError, utf16};
 use crate::sys::pal::{ensure_no_nuls, fill_utf16_buf};
 use crate::sys::pipe::{self, AnonPipe};
-use crate::sys::{cvt, path, stdio};
-use crate::sys_common::IntoInner;
+use crate::sys::{IntoInner, cvt, path, stdio};
 use crate::{cmp, env, fmt, ptr};
 
 ////////////////////////////////////////////////////////////////////////////////

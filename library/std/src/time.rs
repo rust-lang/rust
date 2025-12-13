@@ -39,8 +39,7 @@ pub use core::time::TryFromFloatSecsError;
 use crate::error::Error;
 use crate::fmt;
 use crate::ops::{Add, AddAssign, Sub, SubAssign};
-use crate::sys::time;
-use crate::sys_common::{FromInner, IntoInner};
+use crate::sys::{FromInner, IntoInner, time};
 
 /// A measurement of a monotonically nondecreasing clock.
 /// Opaque and useful only with [`Duration`].
