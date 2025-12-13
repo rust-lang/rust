@@ -1,8 +1,10 @@
 use std::collections::hash_map::Entry;
 
 use rustc_data_structures::fx::FxHashMap;
+use rustc_hir::def_id::DefId;
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
+use rustc_type_ir::relate::relate_args_with_variances;
 use tracing::instrument;
 
 use crate::infer::region_constraints::VerifyIfEq;
@@ -137,6 +139,20 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for MatchAgainstHigherRankedOutlives<'tcx>
         self.tcx
     }
 
+    fn relate_ty_args(
+        &mut self,
+        a_ty: Ty<'tcx>,
+        _: Ty<'tcx>,
+        def_id: DefId,
+        a_args: ty::GenericArgsRef<'tcx>,
+        b_args: ty::GenericArgsRef<'tcx>,
+        _: impl FnOnce(ty::GenericArgsRef<'tcx>) -> Ty<'tcx>,
+    ) -> RelateResult<'tcx, Ty<'tcx>> {
+        let variances = self.cx().variances_of(def_id);
+        relate_args_with_variances(self, variances, a_args, b_args)?;
+        Ok(a_ty)
+    }
+
     #[instrument(level = "trace", skip(self))]
     fn relate_with_variance<T: Relate<TyCtxt<'tcx>>>(
         &mut self,
@@ -145,6 +161,10 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for MatchAgainstHigherRankedOutlives<'tcx>
         a: T,
         b: T,
     ) -> RelateResult<'tcx, T> {
+        // FIXME(@lcnr): This is weird. We are ignoring the ambient variance
+        // here, effectively treating everything as being in either a covariant
+        // or contravariant context.
+        //
         // Opaque types args have lifetime parameters.
         // We must not check them to be equal, as we never insert anything to make them so.
         if variance != ty::Bivariant { self.relate(a, b) } else { Ok(a) }

@@ -1,50 +1,60 @@
-error: `cfg` is not followed by parentheses
-  --> $DIR/invalid-cfg.rs:2:7
+error[E0539]: malformed `doc` attribute input
+  --> $DIR/invalid-cfg.rs:2:1
    |
 LL | #[doc(cfg = "x")]
-   |       ^^^^^^^^^ help: expected syntax is: `cfg(/* predicate */)`
+   | ^^^^^^^^^^^^^^^^^ expected this to be a list
 
-error: multiple `cfg` predicates are specified
-  --> $DIR/invalid-cfg.rs:3:14
+error[E0805]: malformed `doc` attribute input
+  --> $DIR/invalid-cfg.rs:3:1
    |
 LL | #[doc(cfg(x, y))]
-   |              ^
+   | ^^^^^^^^^------^^
+   |          |
+   |          expected a single argument here
 
-error: `cfg` is not followed by parentheses
-  --> $DIR/invalid-cfg.rs:7:7
+error[E0539]: malformed `doc` attribute input
+  --> $DIR/invalid-cfg.rs:7:1
    |
 LL | #[doc(cfg = "x")]
-   |       ^^^^^^^^^ help: expected syntax is: `cfg(/* predicate */)`
+   | ^^^^^^^^^^^^^^^^^ expected this to be a list
 
-error: multiple `cfg` predicates are specified
-  --> $DIR/invalid-cfg.rs:8:14
+error[E0805]: malformed `doc` attribute input
+  --> $DIR/invalid-cfg.rs:8:1
    |
 LL | #[doc(cfg(x, y))]
-   |              ^
+   | ^^^^^^^^^------^^
+   |          |
+   |          expected a single argument here
 
-error: `cfg` is not followed by parentheses
-  --> $DIR/invalid-cfg.rs:12:7
+error[E0539]: malformed `doc` attribute input
+  --> $DIR/invalid-cfg.rs:12:1
    |
 LL | #[doc(cfg = "x")]
-   |       ^^^^^^^^^ help: expected syntax is: `cfg(/* predicate */)`
+   | ^^^^^^^^^^^^^^^^^ expected this to be a list
 
-error: multiple `cfg` predicates are specified
-  --> $DIR/invalid-cfg.rs:13:14
+error[E0805]: malformed `doc` attribute input
+  --> $DIR/invalid-cfg.rs:13:1
    |
 LL | #[doc(cfg(x, y))]
-   |              ^
+   | ^^^^^^^^^------^^
+   |          |
+   |          expected a single argument here
 
-error: `cfg` is not followed by parentheses
-  --> $DIR/invalid-cfg.rs:18:7
+error[E0539]: malformed `doc` attribute input
+  --> $DIR/invalid-cfg.rs:18:1
    |
 LL | #[doc(cfg = "x")]
-   |       ^^^^^^^^^ help: expected syntax is: `cfg(/* predicate */)`
+   | ^^^^^^^^^^^^^^^^^ expected this to be a list
 
-error: multiple `cfg` predicates are specified
-  --> $DIR/invalid-cfg.rs:19:14
+error[E0805]: malformed `doc` attribute input
+  --> $DIR/invalid-cfg.rs:19:1
    |
 LL | #[doc(cfg(x, y))]
-   |              ^
+   | ^^^^^^^^^------^^
+   |          |
+   |          expected a single argument here
 
 error: aborting due to 8 previous errors
 
+Some errors have detailed explanations: E0539, E0805.
+For more information about an error, try `rustc --explain E0539`.

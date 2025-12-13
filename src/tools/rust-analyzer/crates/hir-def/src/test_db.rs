@@ -13,7 +13,7 @@ use syntax::{AstNode, algo, ast};
 use triomphe::Arc;
 
 use crate::{
-    LocalModuleId, Lookup, ModuleDefId, ModuleId,
+    Lookup, ModuleDefId, ModuleId,
     db::DefDatabase,
     nameres::{DefMap, ModuleSource, block_def_map, crate_def_map},
     src::HasSource,
@@ -154,7 +154,7 @@ impl TestDB {
             let crate_def_map = crate_def_map(self, krate);
             for (local_id, data) in crate_def_map.modules() {
                 if data.origin.file_id().map(|file_id| file_id.file_id(self)) == Some(file_id) {
-                    return crate_def_map.module_id(local_id);
+                    return local_id;
                 }
             }
         }
@@ -168,7 +168,7 @@ impl TestDB {
 
         def_map = match self.block_at_position(def_map, position) {
             Some(it) => it,
-            None => return def_map.module_id(module),
+            None => return module,
         };
         loop {
             let new_map = self.block_at_position(def_map, position);
@@ -178,19 +178,27 @@ impl TestDB {
                 }
                 _ => {
                     // FIXME: handle `mod` inside block expression
-                    return def_map.module_id(DefMap::ROOT);
+                    return def_map.root;
                 }
             }
         }
     }
 
     /// Finds the smallest/innermost module in `def_map` containing `position`.
-    fn mod_at_position(&self, def_map: &DefMap, position: FilePosition) -> LocalModuleId {
+    fn mod_at_position(&self, def_map: &DefMap, position: FilePosition) -> ModuleId {
         let mut size = None;
-        let mut res = DefMap::ROOT;
+        let mut res = def_map.root;
         for (module, data) in def_map.modules() {
             let src = data.definition_source(self);
-            if src.file_id != position.file_id {
+            // We're not comparing the `base_db::EditionedFileId`, but rather the VFS `FileId`, because
+            // `position.file_id` is created before the def map, causing it to have to wrong crate
+            // attached often, which means it won't compare equal. This should not be a problem in real
+            // r-a session, only in tests, because in real r-a we only guess the crate on syntactic-only
+            // (e.g. on-enter) handlers. The rest pick the `EditionedFileId` from the def map.
+            let Some(file_id) = src.file_id.file_id() else {
+                continue;
+            };
+            if file_id.file_id(self) != position.file_id.file_id(self) {
                 continue;
             }
 
@@ -230,7 +238,15 @@ impl TestDB {
         let mut fn_def = None;
         for (_, module) in def_map.modules() {
             let file_id = module.definition_source(self).file_id;
-            if file_id != position.file_id {
+            // We're not comparing the `base_db::EditionedFileId`, but rather the VFS `FileId`, because
+            // `position.file_id` is created before the def map, causing it to have to wrong crate
+            // attached often, which means it won't compare equal. This should not be a problem in real
+            // r-a session, only in tests, because in real r-a we only guess the crate on syntactic-only
+            // (e.g. on-enter) handlers. The rest pick the `EditionedFileId` from the def map.
+            let Some(file_id) = file_id.file_id() else {
+                continue;
+            };
+            if file_id.file_id(self) != position.file_id.file_id(self) {
                 continue;
             }
             for decl in module.scope.declarations() {
@@ -253,26 +269,25 @@ impl TestDB {
                     };
                     if size != Some(new_size) {
                         size = Some(new_size);
-                        fn_def = Some(it);
+                        fn_def = Some((it, file_id));
                     }
                 }
             }
         }
 
         // Find the innermost block expression that has a `DefMap`.
-        let def_with_body = fn_def?.into();
+        let (def_with_body, file_id) = fn_def?;
+        let def_with_body = def_with_body.into();
         let source_map = self.body_with_source_map(def_with_body).1;
         let scopes = self.expr_scopes(def_with_body);
 
-        let root_syntax_node = self.parse(position.file_id).syntax_node();
+        let root_syntax_node = self.parse(file_id).syntax_node();
         let scope_iter =
             algo::ancestors_at_offset(&root_syntax_node, position.offset).filter_map(|node| {
                 let block = ast::BlockExpr::cast(node)?;
                 let expr = ast::Expr::from(block);
-                let expr_id = source_map
-                    .node_expr(InFile::new(position.file_id.into(), &expr))?
-                    .as_expr()
-                    .unwrap();
+                let expr_id =
+                    source_map.node_expr(InFile::new(file_id.into(), &expr))?.as_expr().unwrap();
                 let scope = scopes.scope_for(expr_id).unwrap();
                 Some(scope)
             });

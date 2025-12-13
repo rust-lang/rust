@@ -1,6 +1,6 @@
 //! `rust-project.json` file format.
 //!
-//! This format is spiritually a serialization of [`base_db::CrateGraph`]. The
+//! This format is spiritually a serialization of `base_db::CrateGraph`. The
 //! idea here is that people who do not use Cargo, can instead teach their build
 //! system to generate `rust-project.json` which can be ingested by
 //! rust-analyzer.

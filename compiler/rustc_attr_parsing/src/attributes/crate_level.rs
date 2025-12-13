@@ -11,7 +11,7 @@ impl<S: Stage> SingleAttributeParser<S> for CrateNameParser {
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "name");
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::CrateLevel;
 
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
         let ArgParser::NameValue(n) = args else {
             cx.expected_name_value(cx.attr_span, None);
             return None;
@@ -35,7 +35,7 @@ impl<S: Stage> SingleAttributeParser<S> for RecursionLimitParser {
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "N", "https://doc.rust-lang.org/reference/attributes/limits.html#the-recursion_limit-attribute");
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::CrateLevel;
 
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
         let ArgParser::NameValue(nv) = args else {
             cx.expected_name_value(cx.attr_span, None);
             return None;
@@ -58,7 +58,7 @@ impl<S: Stage> SingleAttributeParser<S> for MoveSizeLimitParser {
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "N");
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::CrateLevel;
 
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
         let ArgParser::NameValue(nv) = args else {
             cx.expected_name_value(cx.attr_span, None);
             return None;
@@ -81,7 +81,7 @@ impl<S: Stage> SingleAttributeParser<S> for TypeLengthLimitParser {
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "N");
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::CrateLevel;
 
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
         let ArgParser::NameValue(nv) = args else {
             cx.expected_name_value(cx.attr_span, None);
             return None;
@@ -104,7 +104,7 @@ impl<S: Stage> SingleAttributeParser<S> for PatternComplexityLimitParser {
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "N");
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::CrateLevel;
 
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
         let ArgParser::NameValue(nv) = args else {
             cx.expected_name_value(cx.attr_span, None);
             return None;
@@ -154,7 +154,7 @@ impl<S: Stage> SingleAttributeParser<S> for WindowsSubsystemParser {
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::CrateLevel;
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: ["windows", "console"], "https://doc.rust-lang.org/reference/runtime.html#the-windows_subsystem-attribute");
 
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
         let Some(nv) = args.name_value() else {
             cx.expected_name_value(
                 args.span().unwrap_or(cx.inner_span),

@@ -2,6 +2,8 @@
 //@ check-pass
 //@ edition:2021
 
+// Regression test for https://github.com/rust-lang/rust/issues/129865.
+
 pub async fn cleanse_old_array_async(_: &[u8; BUCKET_LEN]) {}
 
 pub const BUCKET_LEN: usize = 0;

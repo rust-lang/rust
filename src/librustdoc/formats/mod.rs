@@ -76,4 +76,8 @@ impl Impl {
         };
         true
     }
+
+    pub(crate) fn is_negative_trait_impl(&self) -> bool {
+        self.inner_impl().is_negative_trait_impl()
+    }
 }

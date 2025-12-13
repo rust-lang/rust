@@ -273,6 +273,9 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                             teach: self.tcx.sess.teach(E0030),
                         })
                     }
+                    RangeEnd::Excluded if lo_expr.is_none() => {
+                        self.tcx.dcx().emit_err(UpperRangeBoundCannotBeMin { span })
+                    }
                     RangeEnd::Excluded => {
                         self.tcx.dcx().emit_err(LowerRangeBoundMustBeLessThanUpper { span })
                     }

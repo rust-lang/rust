@@ -1,3 +1,5 @@
+use rustc_session::lint::builtin::ILL_FORMED_ATTRIBUTE_INPUT;
+
 use super::prelude::*;
 
 pub(crate) struct IgnoreParser;
@@ -13,27 +15,20 @@ impl<S: Stage> SingleAttributeParser<S> for IgnoreParser {
         "https://doc.rust-lang.org/reference/attributes/testing.html#the-ignore-attribute"
     );
 
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
         Some(AttributeKind::Ignore {
             span: cx.attr_span,
             reason: match args {
                 ArgParser::NoArgs => None,
                 ArgParser::NameValue(name_value) => {
                     let Some(str_value) = name_value.value_as_str() else {
-                        let suggestions = cx.suggestions();
-                        let span = cx.attr_span;
-                        cx.emit_lint(
-                            AttributeLintKind::IllFormedAttributeInput { suggestions },
-                            span,
-                        );
+                        cx.warn_ill_formed_attribute_input(ILL_FORMED_ATTRIBUTE_INPUT);
                         return None;
                     };
                     Some(str_value)
                 }
                 ArgParser::List(_) => {
-                    let suggestions = cx.suggestions();
-                    let span = cx.attr_span;
-                    cx.emit_lint(AttributeLintKind::IllFormedAttributeInput { suggestions }, span);
+                    cx.warn_ill_formed_attribute_input(ILL_FORMED_ATTRIBUTE_INPUT);
                     return None;
                 }
             },
@@ -54,7 +49,7 @@ impl<S: Stage> SingleAttributeParser<S> for ShouldPanicParser {
         "https://doc.rust-lang.org/reference/attributes/testing.html#the-should_panic-attribute"
     );
 
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
         Some(AttributeKind::ShouldPanic {
             span: cx.attr_span,
             reason: match args {

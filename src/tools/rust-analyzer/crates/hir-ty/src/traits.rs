@@ -1,12 +1,11 @@
 //! Trait solving using next trait solver.
 
-use core::fmt;
 use std::hash::Hash;
 
 use base_db::Crate;
 use hir_def::{
-    AdtId, AssocItemId, BlockId, HasModule, ImplId, Lookup, TraitId,
-    lang_item::LangItem,
+    AdtId, AssocItemId, HasModule, ImplId, Lookup, TraitId,
+    lang_item::LangItems,
     nameres::DefMap,
     signatures::{ConstFlags, EnumFlags, FnFlags, StructFlags, TraitFlags, TypeAliasFlags},
 };
@@ -18,7 +17,6 @@ use rustc_type_ir::{
     inherent::{AdtDef, BoundExistentialPredicates, IntoKind, Span as _},
     solve::Certainty,
 };
-use triomphe::Arc;
 
 use crate::{
     db::HirDatabase,
@@ -30,60 +28,22 @@ use crate::{
     },
 };
 
-/// A set of clauses that we assume to be true. E.g. if we are inside this function:
-/// ```rust
-/// fn foo<T: Default>(t: T) {}
-/// ```
-/// we assume that `T: Default`.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct TraitEnvironment<'db> {
+/// Type for `hir`, because commonly we want both param env and a crate in an exported API.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct ParamEnvAndCrate<'db> {
+    pub param_env: ParamEnv<'db>,
     pub krate: Crate,
-    pub block: Option<BlockId>,
-    // FIXME make this a BTreeMap
-    traits_from_clauses: Box<[(Ty<'db>, TraitId)]>,
-    pub env: ParamEnv<'db>,
-}
-
-impl<'db> TraitEnvironment<'db> {
-    pub fn empty(krate: Crate) -> Arc<Self> {
-        Arc::new(TraitEnvironment {
-            krate,
-            block: None,
-            traits_from_clauses: Box::default(),
-            env: ParamEnv::empty(),
-        })
-    }
-
-    pub fn new(
-        krate: Crate,
-        block: Option<BlockId>,
-        traits_from_clauses: Box<[(Ty<'db>, TraitId)]>,
-        env: ParamEnv<'db>,
-    ) -> Arc<Self> {
-        Arc::new(TraitEnvironment { krate, block, traits_from_clauses, env })
-    }
-
-    // pub fn with_block(self: &mut Arc<Self>, block: BlockId) {
-    pub fn with_block(this: &mut Arc<Self>, block: BlockId) {
-        Arc::make_mut(this).block = Some(block);
-    }
-
-    pub fn traits_in_scope_from_clauses(&self, ty: Ty<'db>) -> impl Iterator<Item = TraitId> + '_ {
-        self.traits_from_clauses
-            .iter()
-            .filter_map(move |(self_ty, trait_id)| (*self_ty == ty).then_some(*trait_id))
-    }
 }
 
 /// This should be used in `hir` only.
 pub fn structurally_normalize_ty<'db>(
     infcx: &InferCtxt<'db>,
     ty: Ty<'db>,
-    env: Arc<TraitEnvironment<'db>>,
+    env: ParamEnv<'db>,
 ) -> Ty<'db> {
     let TyKind::Alias(..) = ty.kind() else { return ty };
     let mut ocx = ObligationCtxt::new(infcx);
-    let ty = ocx.structurally_normalize_ty(&ObligationCause::dummy(), env.env, ty).unwrap_or(ty);
+    let ty = ocx.structurally_normalize_ty(&ObligationCause::dummy(), env, ty).unwrap_or(ty);
     ty.replace_infer_with_error(infcx.interner)
 }
 
@@ -152,7 +112,7 @@ pub fn next_trait_solve_in_ctxt<'db, 'a>(
     res
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, salsa::Update)]
 pub enum FnTrait {
     // Warning: Order is important. If something implements `x` it should also implement
     // `y` if `y <= x`.
@@ -165,54 +125,7 @@ pub enum FnTrait {
     AsyncFn,
 }
 
-impl fmt::Display for FnTrait {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            FnTrait::FnOnce => write!(f, "FnOnce"),
-            FnTrait::FnMut => write!(f, "FnMut"),
-            FnTrait::Fn => write!(f, "Fn"),
-            FnTrait::AsyncFnOnce => write!(f, "AsyncFnOnce"),
-            FnTrait::AsyncFnMut => write!(f, "AsyncFnMut"),
-            FnTrait::AsyncFn => write!(f, "AsyncFn"),
-        }
-    }
-}
-
 impl FnTrait {
-    pub const fn function_name(&self) -> &'static str {
-        match self {
-            FnTrait::FnOnce => "call_once",
-            FnTrait::FnMut => "call_mut",
-            FnTrait::Fn => "call",
-            FnTrait::AsyncFnOnce => "async_call_once",
-            FnTrait::AsyncFnMut => "async_call_mut",
-            FnTrait::AsyncFn => "async_call",
-        }
-    }
-
-    const fn lang_item(self) -> LangItem {
-        match self {
-            FnTrait::FnOnce => LangItem::FnOnce,
-            FnTrait::FnMut => LangItem::FnMut,
-            FnTrait::Fn => LangItem::Fn,
-            FnTrait::AsyncFnOnce => LangItem::AsyncFnOnce,
-            FnTrait::AsyncFnMut => LangItem::AsyncFnMut,
-            FnTrait::AsyncFn => LangItem::AsyncFn,
-        }
-    }
-
-    pub const fn from_lang_item(lang_item: LangItem) -> Option<Self> {
-        match lang_item {
-            LangItem::FnOnce => Some(FnTrait::FnOnce),
-            LangItem::FnMut => Some(FnTrait::FnMut),
-            LangItem::Fn => Some(FnTrait::Fn),
-            LangItem::AsyncFnOnce => Some(FnTrait::AsyncFnOnce),
-            LangItem::AsyncFnMut => Some(FnTrait::AsyncFnMut),
-            LangItem::AsyncFn => Some(FnTrait::AsyncFn),
-            _ => None,
-        }
-    }
-
     pub fn method_name(self) -> Name {
         match self {
             FnTrait::FnOnce => Name::new_symbol_root(sym::call_once),
@@ -224,8 +137,15 @@ impl FnTrait {
         }
     }
 
-    pub fn get_id(self, db: &dyn HirDatabase, krate: Crate) -> Option<TraitId> {
-        self.lang_item().resolve_trait(db, krate)
+    pub fn get_id(self, lang_items: &LangItems) -> Option<TraitId> {
+        match self {
+            FnTrait::FnOnce => lang_items.FnOnce,
+            FnTrait::FnMut => lang_items.FnMut,
+            FnTrait::Fn => lang_items.Fn,
+            FnTrait::AsyncFnOnce => lang_items.AsyncFnOnce,
+            FnTrait::AsyncFnMut => lang_items.AsyncFnMut,
+            FnTrait::AsyncFn => lang_items.AsyncFn,
+        }
     }
 }
 
@@ -233,7 +153,7 @@ impl FnTrait {
 pub fn implements_trait_unique<'db>(
     ty: Ty<'db>,
     db: &'db dyn HirDatabase,
-    env: Arc<TraitEnvironment<'db>>,
+    env: ParamEnvAndCrate<'db>,
     trait_: TraitId,
 ) -> bool {
     implements_trait_unique_impl(db, env, trait_, &mut |infcx| {
@@ -244,7 +164,7 @@ pub fn implements_trait_unique<'db>(
 /// This should not be used in `hir-ty`, only in `hir`.
 pub fn implements_trait_unique_with_args<'db>(
     db: &'db dyn HirDatabase,
-    env: Arc<TraitEnvironment<'db>>,
+    env: ParamEnvAndCrate<'db>,
     trait_: TraitId,
     args: GenericArgs<'db>,
 ) -> bool {
@@ -253,17 +173,17 @@ pub fn implements_trait_unique_with_args<'db>(
 
 fn implements_trait_unique_impl<'db>(
     db: &'db dyn HirDatabase,
-    env: Arc<TraitEnvironment<'db>>,
+    env: ParamEnvAndCrate<'db>,
     trait_: TraitId,
     create_args: &mut dyn FnMut(&InferCtxt<'db>) -> GenericArgs<'db>,
 ) -> bool {
-    let interner = DbInterner::new_with(db, Some(env.krate), env.block);
+    let interner = DbInterner::new_with(db, env.krate);
     // FIXME(next-solver): I believe this should be `PostAnalysis`.
     let infcx = interner.infer_ctxt().build(TypingMode::non_body_analysis());
 
     let args = create_args(&infcx);
     let trait_ref = rustc_type_ir::TraitRef::new_from_args(interner, trait_.into(), args);
-    let goal = Goal::new(interner, env.env, trait_ref);
+    let goal = Goal::new(interner, env.param_env, trait_ref);
 
     let result = crate::traits::next_trait_solve_in_ctxt(&infcx, goal);
     matches!(result, Ok((_, Certainty::Yes)))
@@ -287,10 +207,10 @@ pub fn is_inherent_impl_coherent(db: &dyn HirDatabase, def_map: &DefMap, impl_id
         | TyKind::Uint(_)
         | TyKind::Float(_) => def_map.is_rustc_coherence_is_core(),
 
-        TyKind::Adt(adt_def, _) => adt_def.def_id().0.module(db).krate() == def_map.krate(),
+        TyKind::Adt(adt_def, _) => adt_def.def_id().0.module(db).krate(db) == def_map.krate(),
         TyKind::Dynamic(it, _) => it
             .principal_def_id()
-            .is_some_and(|trait_id| trait_id.0.module(db).krate() == def_map.krate()),
+            .is_some_and(|trait_id| trait_id.0.module(db).krate(db) == def_map.krate()),
 
         _ => true,
     };
@@ -363,12 +283,12 @@ pub fn check_orphan_rules<'db>(db: &'db dyn HirDatabase, impl_: ImplId) -> bool 
         return true;
     };
 
-    let local_crate = impl_.lookup(db).container.krate();
+    let local_crate = impl_.lookup(db).container.krate(db);
     let is_local = |tgt_crate| tgt_crate == local_crate;
 
     let trait_ref = impl_trait.instantiate_identity();
     let trait_id = trait_ref.def_id.0;
-    if is_local(trait_id.module(db).krate()) {
+    if is_local(trait_id.module(db).krate(db)) {
         // trait to be implemented is local
         return true;
     }
@@ -402,10 +322,10 @@ pub fn check_orphan_rules<'db>(db: &'db dyn HirDatabase, impl_: ImplId) -> bool 
     // FIXME: param coverage
     //   - No uncovered type parameters `P1..=Pn` may appear in `T0..Ti`` (excluding `Ti`)
     let is_not_orphan = trait_ref.args.types().any(|ty| match unwrap_fundamental(ty).kind() {
-        TyKind::Adt(adt_def, _) => is_local(adt_def.def_id().0.module(db).krate()),
+        TyKind::Adt(adt_def, _) => is_local(adt_def.def_id().0.module(db).krate(db)),
         TyKind::Error(_) => true,
         TyKind::Dynamic(it, _) => {
-            it.principal_def_id().is_some_and(|trait_id| is_local(trait_id.0.module(db).krate()))
+            it.principal_def_id().is_some_and(|trait_id| is_local(trait_id.0.module(db).krate(db)))
         }
         _ => false,
     });

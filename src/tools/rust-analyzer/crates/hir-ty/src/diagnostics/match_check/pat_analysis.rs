@@ -2,7 +2,9 @@
 
 use std::{cell::LazyCell, fmt};
 
-use hir_def::{EnumId, EnumVariantId, HasModule, LocalFieldId, ModuleId, VariantId};
+use hir_def::{
+    EnumId, EnumVariantId, HasModule, LocalFieldId, ModuleId, VariantId, attrs::AttrFlags,
+};
 use intern::sym;
 use rustc_pattern_analysis::{
     IndexVec, PatCx, PrivateUninhabitedField,
@@ -12,14 +14,12 @@ use rustc_pattern_analysis::{
 use rustc_type_ir::inherent::{AdtDef, IntoKind, SliceLike};
 use smallvec::{SmallVec, smallvec};
 use stdx::never;
-use triomphe::Arc;
 
 use crate::{
-    TraitEnvironment,
     db::HirDatabase,
     inhabitedness::{is_enum_variant_uninhabited_from, is_ty_uninhabited_from},
     next_solver::{
-        Ty, TyKind,
+        ParamEnv, Ty, TyKind,
         infer::{InferCtxt, traits::ObligationCause},
     },
 };
@@ -74,16 +74,12 @@ pub(crate) struct MatchCheckCtx<'a, 'db> {
     module: ModuleId,
     pub(crate) db: &'db dyn HirDatabase,
     exhaustive_patterns: bool,
-    env: Arc<TraitEnvironment<'db>>,
+    env: ParamEnv<'db>,
     infcx: &'a InferCtxt<'db>,
 }
 
 impl<'a, 'db> MatchCheckCtx<'a, 'db> {
-    pub(crate) fn new(
-        module: ModuleId,
-        infcx: &'a InferCtxt<'db>,
-        env: Arc<TraitEnvironment<'db>>,
-    ) -> Self {
+    pub(crate) fn new(module: ModuleId, infcx: &'a InferCtxt<'db>, env: ParamEnv<'db>) -> Self {
         let db = infcx.interner.db;
         let def_map = module.crate_def_map(db);
         let exhaustive_patterns = def_map.is_unstable_feature_enabled(&sym::exhaustive_patterns);
@@ -112,13 +108,13 @@ impl<'a, 'db> MatchCheckCtx<'a, 'db> {
     }
 
     fn is_uninhabited(&self, ty: Ty<'db>) -> bool {
-        is_ty_uninhabited_from(self.infcx, ty, self.module, self.env.clone())
+        is_ty_uninhabited_from(self.infcx, ty, self.module, self.env)
     }
 
     /// Returns whether the given ADT is from another crate declared `#[non_exhaustive]`.
     fn is_foreign_non_exhaustive(&self, adt: hir_def::AdtId) -> bool {
-        let is_local = adt.krate(self.db) == self.module.krate();
-        !is_local && self.db.attrs(adt.into()).by_key(sym::non_exhaustive).exists()
+        let is_local = adt.krate(self.db) == self.module.krate(self.db);
+        !is_local && AttrFlags::query(self.db, adt.into()).contains(AttrFlags::NON_EXHAUSTIVE)
     }
 
     fn variant_id_for_adt(
@@ -157,7 +153,7 @@ impl<'a, 'db> MatchCheckCtx<'a, 'db> {
             let ty = field_tys[fid].instantiate(self.infcx.interner, substs);
             let ty = self
                 .infcx
-                .at(&ObligationCause::dummy(), self.env.env)
+                .at(&ObligationCause::dummy(), self.env)
                 .deeply_normalize(ty)
                 .unwrap_or(ty);
             (fid, ty)
@@ -444,11 +440,7 @@ impl<'a, 'db> PatCx for MatchCheckCtx<'a, 'db> {
                             let mut variants = IndexVec::with_capacity(enum_data.variants.len());
                             for &(variant, _, _) in enum_data.variants.iter() {
                                 let is_uninhabited = is_enum_variant_uninhabited_from(
-                                    cx.infcx,
-                                    variant,
-                                    subst,
-                                    cx.module,
-                                    self.env.clone(),
+                                    cx.infcx, variant, subst, cx.module, self.env,
                                 );
                                 let visibility = if is_uninhabited {
                                     VariantVisibility::Empty

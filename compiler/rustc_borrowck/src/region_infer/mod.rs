@@ -110,7 +110,7 @@ pub struct RegionInferenceContext<'tcx> {
     /// The final inferred values of the region variables; we compute
     /// one value per SCC. To get the value for any given *region*,
     /// you first find which scc it is a part of.
-    scc_values: RegionValues<ConstraintSccIndex>,
+    scc_values: RegionValues<'tcx, ConstraintSccIndex>,
 
     /// Type constraints that we check after solving.
     type_tests: Vec<TypeTest<'tcx>>,
@@ -125,7 +125,7 @@ pub(crate) struct RegionDefinition<'tcx> {
     /// What kind of variable is this -- a free region? existential
     /// variable? etc. (See the `NllRegionVariableOrigin` for more
     /// info.)
-    pub(crate) origin: NllRegionVariableOrigin,
+    pub(crate) origin: NllRegionVariableOrigin<'tcx>,
 
     /// Which universe is this region variable defined in? This is
     /// most often `ty::UniverseIndex::ROOT`, but when we encounter
@@ -453,7 +453,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// Returns `true` if the region `r` contains the point `p`.
     ///
     /// Panics if called before `solve()` executes,
-    pub(crate) fn region_contains(&self, r: RegionVid, p: impl ToElementIndex) -> bool {
+    pub(crate) fn region_contains(&self, r: RegionVid, p: impl ToElementIndex<'tcx>) -> bool {
         let scc = self.constraint_sccs.scc(r);
         self.scc_values.contains(scc, p)
     }
@@ -481,7 +481,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     pub(crate) fn placeholders_contained_in(
         &self,
         r: RegionVid,
-    ) -> impl Iterator<Item = ty::PlaceholderRegion> {
+    ) -> impl Iterator<Item = ty::PlaceholderRegion<'tcx>> {
         let scc = self.constraint_sccs.scc(r);
         self.scc_values.placeholders_contained_in(scc)
     }
@@ -1311,7 +1311,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     fn check_bound_universal_region(
         &self,
         longer_fr: RegionVid,
-        placeholder: ty::PlaceholderRegion,
+        placeholder: ty::PlaceholderRegion<'tcx>,
         errors_buffer: &mut RegionErrors<'tcx>,
     ) {
         debug!("check_bound_universal_region(fr={:?}, placeholder={:?})", longer_fr, placeholder,);
@@ -1523,7 +1523,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     pub(crate) fn region_from_element(
         &self,
         longer_fr: RegionVid,
-        element: &RegionElement,
+        element: &RegionElement<'tcx>,
     ) -> RegionVid {
         match *element {
             RegionElement::Location(l) => self.find_sub_region_live_at(longer_fr, l),
@@ -1564,7 +1564,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     pub(crate) fn best_blame_constraint(
         &self,
         from_region: RegionVid,
-        from_region_origin: NllRegionVariableOrigin,
+        from_region_origin: NllRegionVariableOrigin<'tcx>,
         to_region: RegionVid,
     ) -> (BlameConstraint<'tcx>, Vec<OutlivesConstraint<'tcx>>) {
         assert!(from_region != to_region, "Trying to blame a region for itself!");
@@ -1697,6 +1697,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 // should be as limited as possible; the note is prone to false positives and this
                 // constraint usually isn't best to blame.
                 ConstraintCategory::Cast {
+                    is_raw_ptr_dyn_type_cast: _,
                     unsize_to: Some(unsize_ty),
                     is_implicit_coercion: true,
                 } if to_region == self.universal_regions().fr_static

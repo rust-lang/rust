@@ -125,9 +125,7 @@ impl<'db> MatchFinder<'db> {
     ) -> Result<MatchFinder<'db>, SsrError> {
         restrict_ranges.retain(|range| !range.range.is_empty());
         let sema = Semantics::new(db);
-        let file_id = sema
-            .attach_first_edition(lookup_context.file_id)
-            .unwrap_or_else(|| EditionedFileId::current_edition(db, lookup_context.file_id));
+        let file_id = sema.attach_first_edition(lookup_context.file_id);
         let resolution_scope = resolving::ResolutionScope::new(
             &sema,
             hir::FilePosition { file_id, offset: lookup_context.offset },

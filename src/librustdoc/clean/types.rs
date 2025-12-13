@@ -9,11 +9,11 @@ use itertools::Either;
 use rustc_abi::{ExternAbi, VariantIdx};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::thin_vec::ThinVec;
-use rustc_hir::attrs::{AttributeKind, DeprecatedSince, Deprecation};
+use rustc_hir::attrs::{AttributeKind, DeprecatedSince, Deprecation, DocAttribute};
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::lang_items::LangItem;
-use rustc_hir::{BodyId, ConstStability, Mutability, Stability, StableSince, find_attr};
+use rustc_hir::{Attribute, BodyId, ConstStability, Mutability, Stability, StableSince, find_attr};
 use rustc_index::IndexVec;
 use rustc_metadata::rendered_const;
 use rustc_middle::span_bug;
@@ -190,12 +190,13 @@ impl ExternalCrate {
         // Failing that, see if there's an attribute specifying where to find this
         // external crate
         let did = self.crate_num.as_def_id();
-        tcx.get_attrs(did, sym::doc)
-            .flat_map(|attr| attr.meta_item_list().unwrap_or_default())
-            .filter(|a| a.has_name(sym::html_root_url))
-            .filter_map(|a| a.value_str())
+        tcx.get_all_attrs(did)
+            .iter()
+            .find_map(|a| match a {
+                Attribute::Parsed(AttributeKind::Doc(d)) => d.html_root_url.map(|(url, _)| url),
+                _ => None,
+            })
             .map(to_remote)
-            .next()
             .or_else(|| extern_url.map(to_remote)) // NOTE: only matters if `extern_url_takes_precedence` is false
             .unwrap_or(Unknown) // Well, at least we tried.
     }
@@ -228,25 +229,27 @@ impl ExternalCrate {
     }
 
     pub(crate) fn keywords(&self, tcx: TyCtxt<'_>) -> impl Iterator<Item = (DefId, Symbol)> {
-        self.retrieve_keywords_or_documented_attributes(tcx, sym::keyword)
+        self.retrieve_keywords_or_documented_attributes(tcx, |d| d.keyword.map(|(v, _)| v))
     }
     pub(crate) fn documented_attributes(
         &self,
         tcx: TyCtxt<'_>,
     ) -> impl Iterator<Item = (DefId, Symbol)> {
-        self.retrieve_keywords_or_documented_attributes(tcx, sym::attribute)
+        self.retrieve_keywords_or_documented_attributes(tcx, |d| d.attribute.map(|(v, _)| v))
     }
 
-    fn retrieve_keywords_or_documented_attributes(
+    fn retrieve_keywords_or_documented_attributes<F: Fn(&DocAttribute) -> Option<Symbol>>(
         &self,
         tcx: TyCtxt<'_>,
-        name: Symbol,
+        callback: F,
     ) -> impl Iterator<Item = (DefId, Symbol)> {
         let as_target = move |did: DefId, tcx: TyCtxt<'_>| -> Option<(DefId, Symbol)> {
-            tcx.get_attrs(did, sym::doc)
-                .flat_map(|attr| attr.meta_item_list().unwrap_or_default())
-                .filter(|meta| meta.has_name(name))
-                .find_map(|meta| meta.value_str())
+            tcx.get_all_attrs(did)
+                .iter()
+                .find_map(|attr| match attr {
+                    Attribute::Parsed(AttributeKind::Doc(d)) => callback(d),
+                    _ => None,
+                })
                 .map(|value| (did, value))
         };
         self.mapped_root_modules(tcx, as_target)
@@ -920,37 +923,6 @@ pub(crate) struct Module {
     pub(crate) span: Span,
 }
 
-pub(crate) fn hir_attr_lists<'a, I: IntoIterator<Item = &'a hir::Attribute>>(
-    attrs: I,
-    name: Symbol,
-) -> impl Iterator<Item = ast::MetaItemInner> + use<'a, I> {
-    attrs
-        .into_iter()
-        .filter(move |attr| attr.has_name(name))
-        .filter_map(ast::attr::AttributeExt::meta_item_list)
-        .flatten()
-}
-
-pub(crate) trait NestedAttributesExt {
-    /// Returns `true` if the attribute list contains a specific `word`
-    fn has_word(self, word: Symbol) -> bool
-    where
-        Self: Sized,
-    {
-        <Self as NestedAttributesExt>::get_word_attr(self, word).is_some()
-    }
-
-    /// Returns `Some(attr)` if the attribute list contains 'attr'
-    /// corresponding to a specific `word`
-    fn get_word_attr(self, word: Symbol) -> Option<ast::MetaItemInner>;
-}
-
-impl<I: Iterator<Item = ast::MetaItemInner>> NestedAttributesExt for I {
-    fn get_word_attr(mut self, word: Symbol) -> Option<ast::MetaItemInner> {
-        self.find(|attr| attr.is_word() && attr.has_name(word))
-    }
-}
-
 /// A link that has not yet been rendered.
 ///
 /// This link will be turned into a rendered link by [`Item::links`].
@@ -993,28 +965,14 @@ pub(crate) struct Attributes {
 }
 
 impl Attributes {
-    pub(crate) fn lists(&self, name: Symbol) -> impl Iterator<Item = ast::MetaItemInner> {
-        hir_attr_lists(&self.other_attrs[..], name)
-    }
-
-    pub(crate) fn has_doc_flag(&self, flag: Symbol) -> bool {
-        for attr in &self.other_attrs {
-            if !attr.has_name(sym::doc) {
-                continue;
-            }
-
-            if let Some(items) = attr.meta_item_list()
-                && items.iter().filter_map(|i| i.meta_item()).any(|it| it.has_name(flag))
-            {
-                return true;
-            }
-        }
-
-        false
+    pub(crate) fn has_doc_flag<F: Fn(&DocAttribute) -> bool>(&self, callback: F) -> bool {
+        self.other_attrs
+            .iter()
+            .any(|a| matches!(a, Attribute::Parsed(AttributeKind::Doc(d)) if callback(d)))
     }
 
     pub(crate) fn is_doc_hidden(&self) -> bool {
-        self.has_doc_flag(sym::hidden)
+        find_attr!(&self.other_attrs, AttributeKind::Doc(d) if d.hidden.is_some())
     }
 
     pub(crate) fn from_hir(attrs: &[hir::Attribute]) -> Attributes {
@@ -1061,19 +1019,11 @@ impl Attributes {
     pub(crate) fn get_doc_aliases(&self) -> Box<[Symbol]> {
         let mut aliases = FxIndexSet::default();
 
-        for attr in
-            hir_attr_lists(&self.other_attrs[..], sym::doc).filter(|a| a.has_name(sym::alias))
-        {
-            if let Some(values) = attr.meta_item_list() {
-                for l in values {
-                    if let Some(lit) = l.lit()
-                        && let ast::LitKind::Str(s, _) = lit.kind
-                    {
-                        aliases.insert(s);
-                    }
+        for attr in &self.other_attrs {
+            if let Attribute::Parsed(AttributeKind::Doc(d)) = attr {
+                for (alias, _) in &d.aliases {
+                    aliases.insert(*alias);
                 }
-            } else if let Some(value) = attr.value_str() {
-                aliases.insert(value);
             }
         }
         aliases.into_iter().collect::<Vec<_>>().into()
@@ -2416,7 +2366,7 @@ mod size_asserts {
     use super::*;
     // tidy-alphabetical-start
     static_assert_size!(Crate, 16); // frequently moved by-value
-    static_assert_size!(DocFragment, 32);
+    static_assert_size!(DocFragment, 48);
     static_assert_size!(GenericArg, 32);
     static_assert_size!(GenericArgs, 24);
     static_assert_size!(GenericParamDef, 40);

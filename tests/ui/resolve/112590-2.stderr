@@ -63,12 +63,14 @@ error[E0433]: failed to resolve: use of unresolved module or unlinked crate `vec
   --> $DIR/112590-2.rs:24:24
    |
 LL |     let _t: Vec<i32> = vec::new();
-   |                        ^^^
-   |                        |
-   |                        use of unresolved module or unlinked crate `vec`
-   |                        help: a struct with a similar name exists (notice the capitalization): `Vec`
+   |                        ^^^ use of unresolved module or unlinked crate `vec`
    |
    = help: you might be missing a crate named `vec`
+help: a struct with a similar name exists (notice the capitalization)
+   |
+LL -     let _t: Vec<i32> = vec::new();
+LL +     let _t: Vec<i32> = Vec::new();
+   |
 
 error: aborting due to 5 previous errors
 

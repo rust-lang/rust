@@ -32,7 +32,7 @@ use crate::{
 
 pub(crate) fn variances_of(db: &dyn HirDatabase, def: GenericDefId) -> VariancesOf<'_> {
     tracing::debug!("variances_of(def={:?})", def);
-    let interner = DbInterner::new_with(db, None, None);
+    let interner = DbInterner::new_no_crate(db);
     match def {
         GenericDefId::FunctionId(_) => (),
         GenericDefId::AdtId(adt) => {
@@ -107,7 +107,7 @@ pub(crate) fn variances_of_cycle_initial(
     db: &dyn HirDatabase,
     def: GenericDefId,
 ) -> VariancesOf<'_> {
-    let interner = DbInterner::new_with(db, None, None);
+    let interner = DbInterner::new_no_crate(db);
     let generics = generics(db, def);
     let count = generics.len();
 
@@ -874,7 +874,7 @@ struct FixedPoint<T, U, V>(&'static FixedPoint<(), T, U>, V);
             let mut defs: Vec<GenericDefId> = Vec::new();
             let module = db.module_for_file_opt(file_id.file_id(&db)).unwrap();
             let def_map = module.def_map(&db);
-            crate::tests::visit_module(&db, def_map, module.local_id, &mut |it| {
+            crate::tests::visit_module(&db, def_map, module, &mut |it| {
                 defs.push(match it {
                     ModuleDefId::FunctionId(it) => it.into(),
                     ModuleDefId::AdtId(it) => it.into(),

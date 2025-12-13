@@ -1,4 +1,4 @@
-error[E0412]: cannot find type `MissingType` in this scope
+error[E0425]: cannot find type `MissingType` in this scope
   --> $DIR/macro-rules-derive.rs:10:20
    |
 LL |             field: MissingType
@@ -11,4 +11,4 @@ LL | produce_it!(MyName);
 
 error: aborting due to 1 previous error
 
-For more information about this error, try `rustc --explain E0412`.
+For more information about this error, try `rustc --explain E0425`.

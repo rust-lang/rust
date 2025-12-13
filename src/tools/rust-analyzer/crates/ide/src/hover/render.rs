@@ -1,5 +1,5 @@
 //! Logic for rendering the different hover messages
-use std::{env, mem, ops::Not};
+use std::{borrow::Cow, env, mem, ops::Not};
 
 use either::Either;
 use hir::{
@@ -11,7 +11,7 @@ use hir::{
 use ide_db::{
     RootDatabase,
     defs::{Definition, find_std_module},
-    documentation::{DocsRangeMap, HasDocs},
+    documentation::{Documentation, HasDocs},
     famous_defs::FamousDefs,
     generated::lints::{CLIPPY_LINTS, DEFAULT_LINTS, FEATURES},
     syntax_helpers::prettify_macro_expansion,
@@ -278,9 +278,9 @@ pub(super) fn keyword(
         keyword_hints(sema, token, parent, edition, display_target);
 
     let doc_owner = find_std_module(&famous_defs, &keyword_mod, edition)?;
-    let (docs, range_map) = doc_owner.docs_with_rangemap(sema.db)?;
+    let docs = doc_owner.docs_with_rangemap(sema.db)?;
     let (markup, range_map) =
-        markup(Some(docs.into()), Some(range_map), description, None, None, String::new());
+        markup(Some(Either::Left(docs)), description, None, None, String::new());
     let markup = process_markup(sema.db, Definition::Module(doc_owner), &markup, range_map, config);
     Some(HoverResult { markup, actions })
 }
@@ -370,12 +370,12 @@ pub(super) fn process_markup(
     db: &RootDatabase,
     def: Definition,
     markup: &Markup,
-    markup_range_map: Option<DocsRangeMap>,
+    markup_range_map: Option<hir::Docs>,
     config: &HoverConfig<'_>,
 ) -> Markup {
     let markup = markup.as_str();
     let markup = if config.links_in_hover {
-        rewrite_links(db, markup, def, markup_range_map)
+        rewrite_links(db, markup, def, markup_range_map.as_ref())
     } else {
         remove_links(markup)
     };
@@ -464,7 +464,7 @@ pub(super) fn path(
     item_name: Option<String>,
     edition: Edition,
 ) -> String {
-    let crate_name = module.krate().display_name(db).as_ref().map(|it| it.to_string());
+    let crate_name = module.krate(db).display_name(db).as_ref().map(|it| it.to_string());
     let module_path = module
         .path_to_root(db)
         .into_iter()
@@ -484,7 +484,7 @@ pub(super) fn definition(
     config: &HoverConfig<'_>,
     edition: Edition,
     display_target: DisplayTarget,
-) -> (Markup, Option<DocsRangeMap>) {
+) -> (Markup, Option<hir::Docs>) {
     let mod_path = definition_path(db, &def, edition);
     let label = match def {
         Definition::Trait(trait_) => trait_
@@ -520,12 +520,7 @@ pub(super) fn definition(
         }
         _ => def.label(db, display_target),
     };
-    let (docs, range_map) =
-        if let Some((docs, doc_range)) = def.docs_with_rangemap(db, famous_defs, display_target) {
-            (Some(docs), doc_range)
-        } else {
-            (None, None)
-        };
+    let docs = def.docs_with_rangemap(db, famous_defs, display_target);
     let value = || match def {
         Definition::Variant(it) => {
             if !it.parent_enum(db).is_data_carrying(db) {
@@ -842,14 +837,7 @@ pub(super) fn definition(
         }
     };
 
-    markup(
-        docs.map(Into::into),
-        range_map,
-        desc,
-        extra.is_empty().not().then_some(extra),
-        mod_path,
-        subst_types,
-    )
+    markup(docs, desc, extra.is_empty().not().then_some(extra), mod_path, subst_types)
 }
 
 #[derive(Debug)]
@@ -1083,8 +1071,8 @@ fn closure_ty(
     };
     let mut markup = format!("```rust\n{}\n```", c.display_with_impl(sema.db, display_target));
 
-    if let Some(trait_) = c.fn_trait(sema.db).get_id(sema.db, original.krate(sema.db).into()) {
-        push_new_def(hir::Trait::from(trait_).into())
+    if let Some(trait_) = c.fn_trait(sema.db).get_id(sema.db, original.krate(sema.db)) {
+        push_new_def(trait_.into())
     }
     if let Some(layout) = render_memory_layout(
         config.memory_layout,
@@ -1124,13 +1112,12 @@ fn definition_path(db: &RootDatabase, &def: &Definition, edition: Edition) -> Op
 }
 
 fn markup(
-    docs: Option<String>,
-    range_map: Option<DocsRangeMap>,
+    docs: Option<Either<Cow<'_, hir::Docs>, Documentation<'_>>>,
     rust: String,
     extra: Option<String>,
     mod_path: Option<String>,
     subst_types: String,
-) -> (Markup, Option<DocsRangeMap>) {
+) -> (Markup, Option<hir::Docs>) {
     let mut buf = String::new();
 
     if let Some(mod_path) = mod_path
@@ -1151,10 +1138,21 @@ fn markup(
     if let Some(doc) = docs {
         format_to!(buf, "\n___\n\n");
         let offset = TextSize::new(buf.len() as u32);
-        let buf_range_map = range_map.map(|range_map| range_map.shift_docstring_line_range(offset));
-        format_to!(buf, "{}", doc);
+        let docs_str = match &doc {
+            Either::Left(docs) => docs.docs(),
+            Either::Right(docs) => docs.as_str(),
+        };
+        format_to!(buf, "{}", docs_str);
+        let range_map = match doc {
+            Either::Left(range_map) => {
+                let mut range_map = range_map.into_owned();
+                range_map.shift_by(offset);
+                Some(range_map)
+            }
+            Either::Right(_) => None,
+        };
 
-        (buf.into(), buf_range_map)
+        (buf.into(), range_map)
     } else {
         (buf.into(), None)
     }

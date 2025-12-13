@@ -1,8 +1,6 @@
 //! Configuration for skipping or changing the result for individual test cases (inputs) rather
 //! than ignoring entire tests.
 
-use core::f32;
-
 use CheckBasis::{Mpfr, Musl};
 use libm::support::CastFrom;
 use {BaseName as Bn, Identifier as Id};

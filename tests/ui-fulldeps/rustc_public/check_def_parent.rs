@@ -47,44 +47,47 @@ fn test_stable_mir() -> ControlFlow<()> {
     let krate = rustc_public::local_crate();
     for it in rustc_public::all_local_items() {
         match &*it.0.name() {
-            "wrapper_mod::CONST_ITEM" => {
+            "input::wrapper_mod::CONST_ITEM" => {
                 set_once(&mut const_item, it.0);
             }
-            "wrapper_mod::STATIC_ITEM" => {
+            "input::wrapper_mod::STATIC_ITEM" => {
                 set_once(&mut static_item, it.0);
             }
-            "<wrapper_mod::MyStruct as wrapper_mod::MyTrait>::trait_method" => {
+            "<input::wrapper_mod::MyStruct as input::wrapper_mod::MyTrait>::trait_method" => {
                 set_once(&mut trait_method, it.0);
             }
-            "<wrapper_mod::MyStruct as wrapper_mod::MyTrait>::trait_method::trait_method_helper" => {
+            "<input::wrapper_mod::MyStruct as input::wrapper_mod::MyTrait>::trait_method::trait_method_helper" =>
+            {
                 set_once(&mut trait_method_helper, it.0);
             }
-            "wrapper_mod::MyStruct::inherent_method" => {
+            "input::wrapper_mod::MyStruct::inherent_method" => {
                 set_once(&mut inherent_method, it.0);
             }
-            "wrapper_mod::MyStruct::inherent_method::inherent_method_helper" => {
+            "input::wrapper_mod::MyStruct::inherent_method::inherent_method_helper" => {
                 set_once(&mut inherent_method_helper, it.0);
             }
-            "main" => {
+            "input::main" => {
                 set_once(&mut main, it.0);
             }
-            "wrapper_mod::MyStruct" => {
+            "input::wrapper_mod::MyStruct" => {
                 set_once(&mut mystruct_ctor, it.0);
                 mystruct_ctor_ty = Some(it.ty());
             }
-            _ => (),
+            name => panic!("Unexpected item: `{name}`"),
         }
     }
     for it in krate.trait_decls() {
         match &*it.0.name() {
-            "wrapper_mod::MyTrait" => set_once(&mut trait_decl, it.0),
+            "input::wrapper_mod::MyTrait" => set_once(&mut trait_decl, it.0),
             _ => (),
         }
     }
     for it in krate.trait_impls() {
         match &*it.0.name() {
-            "<wrapper_mod::MyStruct as wrapper_mod::MyTrait>" => set_once(&mut trait_impl, it.0),
-            _ => (),
+            "<input::wrapper_mod::MyStruct as input::wrapper_mod::MyTrait>" => {
+                set_once(&mut trait_impl, it.0)
+            }
+            name => panic!("Unexpected trait impl: `{name}`"),
         }
     }
 
@@ -106,9 +109,10 @@ fn test_stable_mir() -> ControlFlow<()> {
     let inherent_impl = inherent_method.parent().unwrap();
     let wrapper_mod = const_item.parent().unwrap();
     let crate_root = wrapper_mod.parent().unwrap();
-    assert_eq!(&*wrapper_mod.name(), "wrapper_mod");
+    assert_eq!(&*wrapper_mod.name(), "input::wrapper_mod");
 
     // Check that each def-id has the correct parent
+    assert_eq!(crate_root.name(), "input");
     assert_eq!(crate_root.parent(), None);
     assert_eq!(inherent_impl.parent(), Some(wrapper_mod));
     assert_eq!(const_item.parent(), Some(wrapper_mod));

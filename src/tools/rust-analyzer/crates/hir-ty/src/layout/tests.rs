@@ -1,6 +1,6 @@
 use base_db::target::TargetData;
 use either::Either;
-use hir_def::db::DefDatabase;
+use hir_def::{HasModule, db::DefDatabase};
 use project_model::{Sysroot, toolchain_info::QueryConfig};
 use rustc_hash::FxHashMap;
 use rustc_type_ir::inherent::GenericArgs as _;
@@ -9,6 +9,7 @@ use test_fixture::WithFixture;
 use triomphe::Arc;
 
 use crate::{
+    InferenceResult, ParamEnvAndCrate,
     db::HirDatabase,
     layout::{Layout, LayoutError},
     next_solver::{DbInterner, GenericArgs},
@@ -44,7 +45,7 @@ fn eval_goal(
         .find_map(|file_id| {
             let module_id = db.module_for_file(file_id.file_id(&db));
             let def_map = module_id.def_map(&db);
-            let scope = &def_map[module_id.local_id].scope;
+            let scope = &def_map[module_id].scope;
             let adt_or_type_alias_id = scope.declarations().find_map(|x| match x {
                 hir_def::ModuleDefId::AdtId(x) => {
                     let name = match x {
@@ -80,7 +81,7 @@ fn eval_goal(
         })
         .unwrap();
     crate::attach_db(&db, || {
-        let interner = DbInterner::new_with(&db, None, None);
+        let interner = DbInterner::new_no_crate(&db);
         let goal_ty = match adt_or_type_alias_id {
             Either::Left(adt_id) => crate::next_solver::Ty::new_adt(
                 interner,
@@ -89,13 +90,15 @@ fn eval_goal(
             ),
             Either::Right(ty_id) => db.ty(ty_id.into()).instantiate_identity(),
         };
-        db.layout_of_ty(
-            goal_ty,
-            db.trait_environment(match adt_or_type_alias_id {
-                Either::Left(adt) => hir_def::GenericDefId::AdtId(adt),
-                Either::Right(ty) => hir_def::GenericDefId::TypeAliasId(ty),
-            }),
-        )
+        let param_env = db.trait_environment(match adt_or_type_alias_id {
+            Either::Left(adt) => hir_def::GenericDefId::AdtId(adt),
+            Either::Right(ty) => hir_def::GenericDefId::TypeAliasId(ty),
+        });
+        let krate = match adt_or_type_alias_id {
+            Either::Left(it) => it.krate(&db),
+            Either::Right(it) => it.krate(&db),
+        };
+        db.layout_of_ty(goal_ty, ParamEnvAndCrate { param_env, krate })
     })
 }
 
@@ -115,7 +118,7 @@ fn eval_expr(
     crate::attach_db(&db, || {
         let module_id = db.module_for_file(file_id.file_id(&db));
         let def_map = module_id.def_map(&db);
-        let scope = &def_map[module_id.local_id].scope;
+        let scope = &def_map[module_id].scope;
         let function_id = scope
             .declarations()
             .find_map(|x| match x {
@@ -136,9 +139,11 @@ fn eval_expr(
             .find(|x| x.1.name.display_no_db(file_id.edition(&db)).to_smolstr() == "goal")
             .unwrap()
             .0;
-        let infer = db.infer(function_id.into());
+        let infer = InferenceResult::for_body(&db, function_id.into());
         let goal_ty = infer.type_of_binding[b];
-        db.layout_of_ty(goal_ty, db.trait_environment(function_id.into()))
+        let param_env = db.trait_environment(function_id.into());
+        let krate = function_id.krate(&db);
+        db.layout_of_ty(goal_ty, ParamEnvAndCrate { param_env, krate })
     })
 }
 

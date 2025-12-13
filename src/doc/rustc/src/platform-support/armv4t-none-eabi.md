@@ -8,7 +8,8 @@ group, and all the information there applies.
 
 Both of these targets can be used on the Game Boy Advance (GBA), among other
 things. On the GBA, one should usually use the `thumb` target to get the best
-overall performance.
+overall performance.  Note that this architecture only supports the old
+Thumb-1 instruction set, not the later Thumb-2 instruction set.
 
 ## Target Maintainers
 

@@ -12,16 +12,6 @@ LL | |             drop((x.0, x.1, x.2));
    | |                   --- use occurs due to use in closure
 LL | |         });
    | |_________- value moved here, in previous iteration of loop
-   |
-help: consider moving the expression out of the loop so it is only moved once
-   |
-LL ~     let mut value = std::thread::spawn(use || {
-LL +
-LL +             drop((x.0, x.1, x.2));
-LL +         });
-LL ~     for _ in 0..10 {
-LL ~         let handler = value;
-   |
 
 error: aborting due to 1 previous error
 

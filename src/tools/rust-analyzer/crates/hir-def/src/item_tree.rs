@@ -30,6 +30,7 @@
 //! In general, any item in the `ItemTree` stores its `AstId`, which allows mapping it back to its
 //! surface syntax.
 
+mod attrs;
 mod lower;
 mod pretty;
 #[cfg(test)]
@@ -43,10 +44,8 @@ use std::{
 };
 
 use ast::{AstNode, StructKind};
-use base_db::Crate;
 use hir_expand::{
     ExpandTo, HirFileId,
-    attrs::RawAttrs,
     mod_path::{ModPath, PathKind},
     name::Name,
 };
@@ -59,9 +58,12 @@ use syntax::{SyntaxKind, ast, match_ast};
 use thin_vec::ThinVec;
 use triomphe::Arc;
 
-use crate::{BlockId, Lookup, attr::Attrs, db::DefDatabase};
+use crate::{BlockId, db::DefDatabase};
 
-pub(crate) use crate::item_tree::lower::{lower_use_tree, visibility_from_ast};
+pub(crate) use crate::item_tree::{
+    attrs::*,
+    lower::{lower_use_tree, visibility_from_ast},
+};
 
 #[derive(Copy, Clone, Eq, PartialEq)]
 pub(crate) struct RawVisibilityId(u32);
@@ -96,7 +98,7 @@ pub(crate) fn file_item_tree_query(db: &dyn DefDatabase, file_id: HirFileId) -> 
     let mut item_tree = match_ast! {
         match syntax {
             ast::SourceFile(file) => {
-                let top_attrs = RawAttrs::new(db, &file, ctx.span_map());
+                let top_attrs = ctx.lower_attrs(&file);
                 let mut item_tree = ctx.lower_module_items(&file);
                 item_tree.top_attrs = top_attrs;
                 item_tree
@@ -132,7 +134,7 @@ pub(crate) fn file_item_tree_query(db: &dyn DefDatabase, file_id: HirFileId) -> 
                     attrs: FxHashMap::default(),
                     small_data: FxHashMap::default(),
                     big_data: FxHashMap::default(),
-                    top_attrs: RawAttrs::EMPTY,
+                    top_attrs: AttrsOrCfg::empty(),
                     vis: ItemVisibilities { arena: ThinVec::new() },
                 })
             })
@@ -148,10 +150,10 @@ pub(crate) fn block_item_tree_query(db: &dyn DefDatabase, block: BlockId) -> Arc
     let _p = tracing::info_span!("block_item_tree_query", ?block).entered();
     static EMPTY: OnceLock<Arc<ItemTree>> = OnceLock::new();
 
-    let loc = block.lookup(db);
-    let block = loc.ast_id.to_node(db);
+    let ast_id = block.ast_id(db);
+    let block = ast_id.to_node(db);
 
-    let ctx = lower::Ctx::new(db, loc.ast_id.file_id);
+    let ctx = lower::Ctx::new(db, ast_id.file_id);
     let mut item_tree = ctx.lower_block(&block);
     let ItemTree { top_level, top_attrs, attrs, vis, big_data, small_data } = &item_tree;
     if small_data.is_empty()
@@ -168,7 +170,7 @@ pub(crate) fn block_item_tree_query(db: &dyn DefDatabase, block: BlockId) -> Arc
                     attrs: FxHashMap::default(),
                     small_data: FxHashMap::default(),
                     big_data: FxHashMap::default(),
-                    top_attrs: RawAttrs::EMPTY,
+                    top_attrs: AttrsOrCfg::empty(),
                     vis: ItemVisibilities { arena: ThinVec::new() },
                 })
             })
@@ -182,8 +184,8 @@ pub(crate) fn block_item_tree_query(db: &dyn DefDatabase, block: BlockId) -> Arc
 #[derive(Debug, Default, Eq, PartialEq)]
 pub struct ItemTree {
     top_level: Box<[ModItemId]>,
-    top_attrs: RawAttrs,
-    attrs: FxHashMap<FileAstId<ast::Item>, RawAttrs>,
+    top_attrs: AttrsOrCfg,
+    attrs: FxHashMap<FileAstId<ast::Item>, AttrsOrCfg>,
     vis: ItemVisibilities,
     big_data: FxHashMap<FileAstId<ast::Item>, BigModItem>,
     small_data: FxHashMap<FileAstId<ast::Item>, SmallModItem>,
@@ -197,26 +199,12 @@ impl ItemTree {
     }
 
     /// Returns the inner attributes of the source file.
-    pub(crate) fn top_level_raw_attrs(&self) -> &RawAttrs {
+    pub(crate) fn top_level_attrs(&self) -> &AttrsOrCfg {
         &self.top_attrs
     }
 
-    /// Returns the inner attributes of the source file.
-    pub(crate) fn top_level_attrs(&self, db: &dyn DefDatabase, krate: Crate) -> Attrs {
-        Attrs::expand_cfg_attr(db, krate, self.top_attrs.clone())
-    }
-
-    pub(crate) fn raw_attrs(&self, of: FileAstId<ast::Item>) -> &RawAttrs {
-        self.attrs.get(&of).unwrap_or(&RawAttrs::EMPTY)
-    }
-
-    pub(crate) fn attrs(
-        &self,
-        db: &dyn DefDatabase,
-        krate: Crate,
-        of: FileAstId<ast::Item>,
-    ) -> Attrs {
-        Attrs::expand_cfg_attr(db, krate, self.raw_attrs(of).clone())
+    pub(crate) fn attrs(&self, of: FileAstId<ast::Item>) -> Option<&AttrsOrCfg> {
+        self.attrs.get(&of)
     }
 
     /// Returns a count of a few, expensive items.

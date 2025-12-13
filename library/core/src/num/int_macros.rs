@@ -3147,7 +3147,8 @@ macro_rules! int_impl {
         }
 
 
-        /// Calculates the least nonnegative remainder of `self (mod rhs)`.
+        /// Calculates the least nonnegative remainder of `self` when
+        /// divided by `rhs`.
         ///
         /// This is done as if by the Euclidean division algorithm -- given
         /// `r = self.rem_euclid(rhs)`, the result satisfies
@@ -3527,11 +3528,7 @@ macro_rules! int_impl {
                       without modifying the original"]
         #[inline]
         pub const fn checked_ilog10(self) -> Option<u32> {
-            if self > 0 {
-                Some(int_log10::$ActualT(self as $ActualT))
-            } else {
-                None
-            }
+            int_log10::$ActualT(self as $ActualT)
         }
 
         /// Computes the absolute value of `self`.
@@ -3877,6 +3874,33 @@ macro_rules! int_impl {
         #[rustc_diagnostic_item = concat!(stringify!($SelfT), "_legacy_fn_max_value")]
         pub const fn max_value() -> Self {
             Self::MAX
+        }
+
+        /// Clamps this number to a symmetric range centred around zero.
+        ///
+        /// The method clamps the number's magnitude (absolute value) to be at most `limit`.
+        ///
+        /// This is functionally equivalent to `self.clamp(-limit, limit)`, but is more
+        /// explicit about the intent.
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(clamp_magnitude)]
+        #[doc = concat!("assert_eq!(120", stringify!($SelfT), ".clamp_magnitude(100), 100);")]
+        #[doc = concat!("assert_eq!(-120", stringify!($SelfT), ".clamp_magnitude(100), -100);")]
+        #[doc = concat!("assert_eq!(80", stringify!($SelfT), ".clamp_magnitude(100), 80);")]
+        #[doc = concat!("assert_eq!(-80", stringify!($SelfT), ".clamp_magnitude(100), -80);")]
+        /// ```
+        #[must_use = "this returns the clamped value and does not modify the original"]
+        #[unstable(feature = "clamp_magnitude", issue = "148519")]
+        #[inline]
+        pub fn clamp_magnitude(self, limit: $UnsignedT) -> Self {
+            if let Ok(limit) = core::convert::TryInto::<$SelfT>::try_into(limit) {
+                self.clamp(-limit, limit)
+            } else {
+                self
+            }
         }
     }
 }

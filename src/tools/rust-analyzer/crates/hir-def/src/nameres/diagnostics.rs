@@ -7,7 +7,7 @@ use hir_expand::{ErasedAstId, ExpandErrorKind, MacroCallKind, attrs::AttrId, mod
 use la_arena::Idx;
 use syntax::ast;
 
-use crate::{AstId, nameres::LocalModuleId};
+use crate::{AstId, nameres::ModuleId};
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum DefDiagnosticKind {
@@ -17,8 +17,8 @@ pub enum DefDiagnosticKind {
     UnconfiguredCode { ast_id: ErasedAstId, cfg: CfgExpr, opts: CfgOptions },
     UnresolvedMacroCall { ast: MacroCallKind, path: ModPath },
     UnimplementedBuiltinMacro { ast: AstId<ast::Macro> },
-    InvalidDeriveTarget { ast: AstId<ast::Item>, id: usize },
-    MalformedDerive { ast: AstId<ast::Adt>, id: usize },
+    InvalidDeriveTarget { ast: AstId<ast::Item>, id: AttrId },
+    MalformedDerive { ast: AstId<ast::Adt>, id: AttrId },
     MacroDefError { ast: AstId<ast::Macro>, message: String },
     MacroError { ast: AstId<ast::Item>, path: ModPath, err: ExpandErrorKind },
 }
@@ -43,13 +43,13 @@ impl DefDiagnostics {
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct DefDiagnostic {
-    pub in_module: LocalModuleId,
+    pub in_module: ModuleId,
     pub kind: DefDiagnosticKind,
 }
 
 impl DefDiagnostic {
     pub(super) fn unresolved_module(
-        container: LocalModuleId,
+        container: ModuleId,
         declaration: AstId<ast::Module>,
         candidates: Box<[String]>,
     ) -> Self {
@@ -60,7 +60,7 @@ impl DefDiagnostic {
     }
 
     pub(super) fn unresolved_extern_crate(
-        container: LocalModuleId,
+        container: ModuleId,
         declaration: AstId<ast::ExternCrate>,
     ) -> Self {
         Self {
@@ -70,7 +70,7 @@ impl DefDiagnostic {
     }
 
     pub(super) fn unresolved_import(
-        container: LocalModuleId,
+        container: ModuleId,
         id: AstId<ast::Use>,
         index: Idx<ast::UseTree>,
     ) -> Self {
@@ -78,7 +78,7 @@ impl DefDiagnostic {
     }
 
     pub fn macro_error(
-        container: LocalModuleId,
+        container: ModuleId,
         ast: AstId<ast::Item>,
         path: ModPath,
         err: ExpandErrorKind,
@@ -87,7 +87,7 @@ impl DefDiagnostic {
     }
 
     pub fn unconfigured_code(
-        container: LocalModuleId,
+        container: ModuleId,
         ast_id: ErasedAstId,
         cfg: CfgExpr,
         opts: CfgOptions,
@@ -100,39 +100,26 @@ impl DefDiagnostic {
 
     // FIXME: Whats the difference between this and unresolved_proc_macro
     pub(crate) fn unresolved_macro_call(
-        container: LocalModuleId,
+        container: ModuleId,
         ast: MacroCallKind,
         path: ModPath,
     ) -> Self {
         Self { in_module: container, kind: DefDiagnosticKind::UnresolvedMacroCall { ast, path } }
     }
 
-    pub(super) fn unimplemented_builtin_macro(
-        container: LocalModuleId,
-        ast: AstId<ast::Macro>,
-    ) -> Self {
+    pub(super) fn unimplemented_builtin_macro(container: ModuleId, ast: AstId<ast::Macro>) -> Self {
         Self { in_module: container, kind: DefDiagnosticKind::UnimplementedBuiltinMacro { ast } }
     }
 
     pub(super) fn invalid_derive_target(
-        container: LocalModuleId,
+        container: ModuleId,
         ast: AstId<ast::Item>,
         id: AttrId,
     ) -> Self {
-        Self {
-            in_module: container,
-            kind: DefDiagnosticKind::InvalidDeriveTarget { ast, id: id.ast_index() },
-        }
+        Self { in_module: container, kind: DefDiagnosticKind::InvalidDeriveTarget { ast, id } }
     }
 
-    pub(super) fn malformed_derive(
-        container: LocalModuleId,
-        ast: AstId<ast::Adt>,
-        id: AttrId,
-    ) -> Self {
-        Self {
-            in_module: container,
-            kind: DefDiagnosticKind::MalformedDerive { ast, id: id.ast_index() },
-        }
+    pub(super) fn malformed_derive(container: ModuleId, ast: AstId<ast::Adt>, id: AttrId) -> Self {
+        Self { in_module: container, kind: DefDiagnosticKind::MalformedDerive { ast, id } }
     }
 }

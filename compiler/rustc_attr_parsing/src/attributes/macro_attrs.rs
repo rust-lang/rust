@@ -1,5 +1,6 @@
 use rustc_errors::DiagArgValue;
 use rustc_hir::attrs::MacroUseArgs;
+use rustc_session::lint::builtin::INVALID_MACRO_EXPORT_ARGUMENTS;
 
 use super::prelude::*;
 use crate::session_diagnostics::IllFormedAttributeInputLint;
@@ -147,28 +148,18 @@ impl<S: Stage> SingleAttributeParser<S> for MacroExportParser {
         Error(Target::Crate),
     ]);
 
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
         let local_inner_macros = match args {
             ArgParser::NoArgs => false,
             ArgParser::List(list) => {
                 let Some(l) = list.single() else {
-                    let span = cx.attr_span;
-                    let suggestions = cx.suggestions();
-                    cx.emit_lint(
-                        AttributeLintKind::InvalidMacroExportArguments { suggestions },
-                        span,
-                    );
+                    cx.warn_ill_formed_attribute_input(INVALID_MACRO_EXPORT_ARGUMENTS);
                     return None;
                 };
                 match l.meta_item().and_then(|i| i.path().word_sym()) {
                     Some(sym::local_inner_macros) => true,
                     _ => {
-                        let span = cx.attr_span;
-                        let suggestions = cx.suggestions();
-                        cx.emit_lint(
-                            AttributeLintKind::InvalidMacroExportArguments { suggestions },
-                            span,
-                        );
+                        cx.warn_ill_formed_attribute_input(INVALID_MACRO_EXPORT_ARGUMENTS);
                         return None;
                     }
                 }

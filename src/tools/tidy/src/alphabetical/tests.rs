@@ -7,7 +7,7 @@ use crate::diagnostics::{TidyCtx, TidyFlags};
 fn test(lines: &str, name: &str, expected_msg: &str, expected_bad: bool) {
     let tidy_ctx = TidyCtx::new(Path::new("/"), false, TidyFlags::default());
     let mut check = tidy_ctx.start_check("alphabetical-test");
-    check_lines(&name, lines.lines().enumerate(), &mut check);
+    check_lines(Path::new(name), lines, &tidy_ctx, &mut check);
 
     assert_eq!(expected_bad, check.is_bad());
     let errors = check.get_errors();
@@ -27,6 +27,26 @@ fn good(lines: &str) {
 #[track_caller]
 fn bad(lines: &str, expected_msg: &str) {
     test(lines, "bad", expected_msg, true);
+}
+
+#[track_caller]
+fn bless_test(before: &str, after: &str) {
+    // NB: convert to a temporary *path* (closing the file), so that `check_lines` can then
+    //     atomically replace the file with a blessed version (on windows that requires the file
+    //     to not be open)
+    let temp_path = tempfile::Builder::new().tempfile().unwrap().into_temp_path();
+    std::fs::write(&temp_path, before).unwrap();
+
+    let tidy_ctx = TidyCtx::new(Path::new("/"), false, TidyFlags::new(&["--bless".to_owned()]));
+
+    let mut check = tidy_ctx.start_check("alphabetical-test");
+    check_lines(&temp_path, before, &tidy_ctx, &mut check);
+
+    assert!(!check.is_bad());
+    let new = std::fs::read_to_string(temp_path).unwrap();
+    assert_eq!(new, after);
+
+    good(&new);
 }
 
 #[test]
@@ -95,7 +115,7 @@ fn test_rust_bad() {
         def
         // tidy-alphabetical-end
     ";
-    bad(lines, "bad:4: line not in alphabetical order");
+    bad(lines, "bad:2: line not in alphabetical order (tip: use --bless to sort this list)");
 }
 
 #[test]
@@ -107,7 +127,7 @@ fn test_toml_bad() {
         def
         # tidy-alphabetical-end
     ";
-    bad(lines, "bad:4: line not in alphabetical order");
+    bad(lines, "bad:2: line not in alphabetical order (tip: use --bless to sort this list)");
 }
 
 #[test]
@@ -121,7 +141,7 @@ fn test_features_bad() {
         #![feature(def)]
         tidy-alphabetical-end
     ";
-    bad(lines, "bad:4: line not in alphabetical order");
+    bad(lines, "bad:2: line not in alphabetical order (tip: use --bless to sort this list)");
 }
 
 #[test]
@@ -134,7 +154,7 @@ fn test_indent_bad() {
             def
         $ tidy-alphabetical-end
     ";
-    bad(lines, "bad:4: line not in alphabetical order");
+    bad(lines, "bad:2: line not in alphabetical order (tip: use --bless to sort this list)");
 }
 
 #[test]
@@ -150,7 +170,7 @@ fn test_split_bad() {
         )
         && tidy-alphabetical-end
     ";
-    bad(lines, "bad:7: line not in alphabetical order");
+    bad(lines, "bad:3: line not in alphabetical order (tip: use --bless to sort this list)");
 }
 
 #[test]
@@ -160,7 +180,7 @@ fn test_double_start() {
         abc
         tidy-alphabetical-start
     ";
-    bad(lines, "bad:3 found `tidy-alphabetical-start` expecting `tidy-alphabetical-end`");
+    bad(lines, "bad:0 `tidy-alphabetical-start` without a matching `tidy-alphabetical-end`");
 }
 
 #[test]
@@ -179,7 +199,7 @@ fn test_missing_end() {
         tidy-alphabetical-start
         abc
     ";
-    bad(lines, "bad: reached end of file expecting `tidy-alphabetical-end`");
+    bad(lines, "bad:0 `tidy-alphabetical-start` without a matching `tidy-alphabetical-end`");
 }
 
 #[test]
@@ -319,7 +339,7 @@ fn test_numeric_bad() {
         item2
         # tidy-alphabetical-end
     ";
-    bad(lines, "bad:4: line not in alphabetical order");
+    bad(lines, "bad:2: line not in alphabetical order (tip: use --bless to sort this list)");
 
     let lines = "\
         # tidy-alphabetical-start
@@ -327,7 +347,7 @@ fn test_numeric_bad() {
         zve64d
         # tidy-alphabetical-end
     ";
-    bad(lines, "bad:3: line not in alphabetical order");
+    bad(lines, "bad:1: line not in alphabetical order (tip: use --bless to sort this list)");
 
     let lines = "\
         # tidy-alphabetical-start
@@ -335,5 +355,154 @@ fn test_numeric_bad() {
         00
         # tidy-alphabetical-end
     ";
-    bad(lines, "bad:3: line not in alphabetical order");
+    bad(lines, "bad:1: line not in alphabetical order (tip: use --bless to sort this list)");
+}
+
+#[test]
+fn multiline() {
+    let lines = "\
+        tidy-alphabetical-start
+        (b,
+         a);
+        (
+          b,
+          a
+        );
+        tidy-alphabetical-end
+    ";
+    good(lines);
+
+    let lines = "\
+        tidy-alphabetical-start
+        (
+          b,
+          a
+        );
+        (b,
+         a);
+        tidy-alphabetical-end
+    ";
+    good(lines);
+
+    let lines = "\
+        tidy-alphabetical-start
+        (c,
+         a);
+        (
+          b,
+          a
+        );
+        tidy-alphabetical-end
+    ";
+    bad(lines, "bad:1: line not in alphabetical order (tip: use --bless to sort this list)");
+
+    let lines = "\
+        tidy-alphabetical-start
+        (
+          c,
+          a
+        );
+        (b,
+         a);
+        tidy-alphabetical-end
+    ";
+    bad(lines, "bad:1: line not in alphabetical order (tip: use --bless to sort this list)");
+
+    let lines = "\
+        force_unwind_tables: Option<bool> = (None, parse_opt_bool, [TRACKED],
+             'force use of unwind tables'),
+        incremental: Option<String> = (None, parse_opt_string, [UNTRACKED],
+            'enable incremental compilation'),
+    ";
+    good(lines);
+}
+
+#[test]
+fn bless_smoke() {
+    let before = "\
+        tidy-alphabetical-start
+        08
+        1
+        11
+        03
+        tidy-alphabetical-end
+    ";
+    let after = "\
+        tidy-alphabetical-start
+        1
+        03
+        08
+        11
+        tidy-alphabetical-end
+    ";
+
+    bless_test(before, after);
+}
+
+#[test]
+fn bless_multiline() {
+    let before = "\
+        tidy-alphabetical-start
+        08 {
+             z}
+        08 {
+           x
+        }
+        1
+        08 {y}
+        02
+        11 (
+          0
+        )
+        03
+            addition
+    notaddition
+        tidy-alphabetical-end
+    ";
+    let after = "\
+        tidy-alphabetical-start
+        1
+        02
+        03
+            addition
+        08 {
+           x
+        }
+        08 {y}
+        08 {
+             z}
+        11 (
+          0
+        )
+    notaddition
+        tidy-alphabetical-end
+    ";
+
+    bless_test(before, after);
+}
+
+#[test]
+fn bless_funny_numbers() {
+    // Because `2` is indented it gets merged into one entry with `1` and gets
+    // interpreted by version sort as `12`, which is greater than `3`.
+    //
+    // This is neither a wanted nor an unwanted behavior, this test just checks
+    // that it hasn't changed.
+
+    let before = "\
+        tidy-alphabetical-start
+        1
+          2
+        3
+        tidy-alphabetical-end
+    ";
+    let after = "\
+        tidy-alphabetical-start
+        3
+        1
+          2
+        tidy-alphabetical-end
+    ";
+
+    bless_test(before, after);
 }

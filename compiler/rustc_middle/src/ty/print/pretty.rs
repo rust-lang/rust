@@ -105,7 +105,7 @@ define_helper!(
     ///
     /// Overrides `with_crate_prefix`.
 
-    // This function is not currently used in-tree, but it's used by a downstream rustc-driver in
+    // This function is used by `rustc_public` and downstream rustc-driver in
     // Ferrocene. Please check with them before removing it.
     fn with_resolve_crate_name(CrateNamePrefixGuard, SHOULD_PREFIX_WITH_CRATE_NAME);
     /// Adds the `crate::` prefix to paths where appropriate.
@@ -3274,6 +3274,16 @@ define_print! {
         p.reset_type_limit();
         self.term.print(p)?;
     }
+
+    ty::PlaceholderType<'tcx> {
+        match self.bound.kind {
+            ty::BoundTyKind::Anon => write!(p, "{self:?}")?,
+            ty::BoundTyKind::Param(def_id) => match p.should_print_verbose() {
+                true => write!(p, "{self:?}")?,
+                false => write!(p, "{}", p.tcx().item_name(def_id))?,
+            },
+        }
+    }
 }
 
 define_print_and_forward_display! {
@@ -3336,16 +3346,6 @@ define_print_and_forward_display! {
 
     ty::ParamTy {
         write!(p, "{}", self.name)?;
-    }
-
-    ty::PlaceholderType {
-        match self.bound.kind {
-            ty::BoundTyKind::Anon => write!(p, "{self:?}")?,
-            ty::BoundTyKind::Param(def_id) => match p.should_print_verbose() {
-                true => write!(p, "{self:?}")?,
-                false => write!(p, "{}", p.tcx().item_name(def_id))?,
-            },
-        }
     }
 
     ty::ParamConst {

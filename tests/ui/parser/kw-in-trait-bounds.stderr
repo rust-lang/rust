@@ -94,37 +94,61 @@ error[E0405]: cannot find trait `r#struct` in this scope
   --> $DIR/kw-in-trait-bounds.rs:16:10
    |
 LL | fn _g<A: struct, B>(_: impl struct, _: &dyn struct)
-   |          ^^^^^^ help: a trait with a similar name exists (notice the capitalization): `Struct`
+   |          ^^^^^^
 ...
 LL | trait Struct {}
    | ------------ similarly named trait `Struct` defined here
+   |
+help: a trait with a similar name exists (notice the capitalization)
+   |
+LL - fn _g<A: struct, B>(_: impl struct, _: &dyn struct)
+LL + fn _g<A: Struct, B>(_: impl struct, _: &dyn struct)
+   |
 
 error[E0405]: cannot find trait `r#struct` in this scope
   --> $DIR/kw-in-trait-bounds.rs:30:8
    |
 LL |     B: struct,
-   |        ^^^^^^ help: a trait with a similar name exists (notice the capitalization): `Struct`
+   |        ^^^^^^
 ...
 LL | trait Struct {}
    | ------------ similarly named trait `Struct` defined here
+   |
+help: a trait with a similar name exists (notice the capitalization)
+   |
+LL -     B: struct,
+LL +     B: Struct,
+   |
 
 error[E0405]: cannot find trait `r#struct` in this scope
   --> $DIR/kw-in-trait-bounds.rs:16:29
    |
 LL | fn _g<A: struct, B>(_: impl struct, _: &dyn struct)
-   |                             ^^^^^^ help: a trait with a similar name exists (notice the capitalization): `Struct`
+   |                             ^^^^^^
 ...
 LL | trait Struct {}
    | ------------ similarly named trait `Struct` defined here
+   |
+help: a trait with a similar name exists (notice the capitalization)
+   |
+LL - fn _g<A: struct, B>(_: impl struct, _: &dyn struct)
+LL + fn _g<A: struct, B>(_: impl Struct, _: &dyn struct)
+   |
 
 error[E0405]: cannot find trait `r#struct` in this scope
   --> $DIR/kw-in-trait-bounds.rs:16:45
    |
 LL | fn _g<A: struct, B>(_: impl struct, _: &dyn struct)
-   |                                             ^^^^^^ help: a trait with a similar name exists (notice the capitalization): `Struct`
+   |                                             ^^^^^^
 ...
 LL | trait Struct {}
    | ------------ similarly named trait `Struct` defined here
+   |
+help: a trait with a similar name exists (notice the capitalization)
+   |
+LL - fn _g<A: struct, B>(_: impl struct, _: &dyn struct)
+LL + fn _g<A: struct, B>(_: impl struct, _: &dyn Struct)
+   |
 
 error: aborting due to 12 previous errors
 

@@ -5,7 +5,7 @@
 //! node for a *child*, and get its hir.
 
 use either::Either;
-use hir_expand::{HirFileId, attrs::collect_attrs};
+use hir_expand::HirFileId;
 use span::AstIdNode;
 use syntax::{AstPtr, ast};
 
@@ -20,7 +20,6 @@ use hir_def::{
     },
     hir::generics::GenericParams,
     item_scope::ItemScope,
-    nameres::DefMap,
     src::{HasChildSource, HasSource},
 };
 
@@ -87,13 +86,14 @@ impl ChildBySource for ImplId {
 impl ChildBySource for ModuleId {
     fn child_by_source_to(&self, db: &dyn DefDatabase, res: &mut DynMap, file_id: HirFileId) {
         let def_map = self.def_map(db);
-        let module_data = &def_map[self.local_id];
+        let module_data = &def_map[*self];
         module_data.scope.child_by_source_to(db, res, file_id);
     }
 }
 
 impl ChildBySource for ItemScope {
     fn child_by_source_to(&self, db: &dyn DefDatabase, res: &mut DynMap, file_id: HirFileId) {
+        let krate = file_id.krate(db);
         self.declarations().for_each(|item| add_module_def(db, res, file_id, item));
         self.impls().for_each(|imp| insert_item_loc(db, res, file_id, imp, keys::IMPL));
         self.extern_blocks().for_each(|extern_block| {
@@ -123,12 +123,10 @@ impl ChildBySource for ItemScope {
             |(ast_id, calls)| {
                 let adt = ast_id.to_node(db);
                 calls.for_each(|(attr_id, call_id, calls)| {
-                    if let Some((_, Either::Left(attr))) =
-                        collect_attrs(&adt).nth(attr_id.ast_index())
-                    {
-                        res[keys::DERIVE_MACRO_CALL]
-                            .insert(AstPtr::new(&attr), (attr_id, call_id, calls.into()));
-                    }
+                    // FIXME: Fix cfg_attr handling.
+                    let (attr, _, _, _) = attr_id.find_attr_range_with_source(db, krate, &adt);
+                    res[keys::DERIVE_MACRO_CALL]
+                        .insert(AstPtr::new(&attr), (attr_id, call_id, calls.into()));
                 });
             },
         );
@@ -227,8 +225,8 @@ impl ChildBySource for DefWithBodyId {
         for (block, def_map) in body.blocks(db) {
             // All block expressions are merged into the same map, because they logically all add
             // inner items to the containing `DefWithBodyId`.
-            def_map[DefMap::ROOT].scope.child_by_source_to(db, res, file_id);
-            res[keys::BLOCK].insert(block.lookup(db).ast_id.to_ptr(db), block);
+            def_map[def_map.root].scope.child_by_source_to(db, res, file_id);
+            res[keys::BLOCK].insert(block.ast_id(db).to_ptr(db), block);
         }
     }
 }

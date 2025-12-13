@@ -7,7 +7,7 @@ use crate::{ExpandResult, MacroCallId, MacroCallKind, db::ExpandDatabase, name, 
 use super::quote;
 
 macro_rules! register_builtin {
-    ($(($name:ident, $variant:ident) => $expand:ident),* ) => {
+    ($(($name:ident, $variant:ident) => $expand:ident),* $(,)? ) => {
         #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
         pub enum BuiltinAttrExpander {
             $($variant),*
@@ -65,7 +65,8 @@ register_builtin! {
     (derive_const, DeriveConst) => derive_expand,
     (global_allocator, GlobalAllocator) => dummy_attr_expand,
     (test, Test) => dummy_gate_test_expand,
-    (test_case, TestCase) => dummy_gate_test_expand
+    (test_case, TestCase) => dummy_gate_test_expand,
+    (define_opaque, DefineOpaque) => dummy_attr_expand,
 }
 
 pub fn find_builtin_attr(ident: &name::Name) -> Option<BuiltinAttrExpander> {

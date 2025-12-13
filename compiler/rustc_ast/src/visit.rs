@@ -415,6 +415,7 @@ macro_rules! common_visitor_and_walkers {
             UnsafeBinderCastKind,
             BinOpKind,
             BlockCheckMode,
+            MgcaDisambiguation,
             BorrowKind,
             BoundAsyncness,
             BoundConstness,
@@ -1048,8 +1049,8 @@ macro_rules! common_visitor_and_walkers {
                     visit_visitable!($($mut)? vis, kind),
                 ExprKind::Try(subexpression) =>
                     visit_visitable!($($mut)? vis, subexpression),
-                ExprKind::TryBlock(body) =>
-                    visit_visitable!($($mut)? vis, body),
+                ExprKind::TryBlock(body, optional_type) =>
+                    visit_visitable!($($mut)? vis, body, optional_type),
                 ExprKind::Lit(token) =>
                     visit_visitable!($($mut)? vis, token),
                 ExprKind::IncludedBytes(bytes) =>

@@ -42,7 +42,7 @@ pub fn missing_unsafe(db: &dyn HirDatabase, def: DefWithBodyId) -> MissingUnsafe
 
     let mut res = MissingUnsafeResult { fn_is_unsafe: is_unsafe, ..MissingUnsafeResult::default() };
     let body = db.body(def);
-    let infer = db.infer(def);
+    let infer = InferenceResult::for_body(db, def);
     let mut callback = |diag| match diag {
         UnsafeDiagnostic::UnsafeOperation { node, inside_unsafe_block, reason } => {
             if inside_unsafe_block == InsideUnsafeBlock::No {
@@ -55,7 +55,7 @@ pub fn missing_unsafe(db: &dyn HirDatabase, def: DefWithBodyId) -> MissingUnsafe
             }
         }
     };
-    let mut visitor = UnsafeVisitor::new(db, &infer, &body, def, &mut callback);
+    let mut visitor = UnsafeVisitor::new(db, infer, &body, def, &mut callback);
     visitor.walk_expr(body.body_expr);
 
     if !is_unsafe {
@@ -144,7 +144,7 @@ struct UnsafeVisitor<'db> {
     inside_assignment: bool,
     inside_union_destructure: bool,
     callback: &'db mut dyn FnMut(UnsafeDiagnostic),
-    def_target_features: TargetFeatures,
+    def_target_features: TargetFeatures<'db>,
     // FIXME: This needs to be the edition of the span of each call.
     edition: Edition,
     /// On some targets (WASM), calling safe functions with `#[target_feature]` is always safe, even when
@@ -162,10 +162,10 @@ impl<'db> UnsafeVisitor<'db> {
     ) -> Self {
         let resolver = def.resolver(db);
         let def_target_features = match def {
-            DefWithBodyId::FunctionId(func) => TargetFeatures::from_attrs(&db.attrs(func.into())),
+            DefWithBodyId::FunctionId(func) => TargetFeatures::from_fn(db, func),
             _ => TargetFeatures::default(),
         };
-        let krate = resolver.module().krate();
+        let krate = resolver.krate();
         let edition = krate.data(db).edition;
         let target_feature_is_safe = match &krate.workspace_data(db).target {
             Ok(target) => target_feature_is_safe_in_target(target),

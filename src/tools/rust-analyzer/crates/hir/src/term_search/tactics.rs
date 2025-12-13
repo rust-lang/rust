@@ -597,7 +597,7 @@ pub(super) fn famous_types<'a, 'lt, 'db, DB: HirDatabase>(
 ) -> impl Iterator<Item = Expr<'db>> + use<'a, 'db, 'lt, DB> {
     let db = ctx.sema.db;
     let module = ctx.scope.module();
-    let interner = DbInterner::new_with(db, None, None);
+    let interner = DbInterner::new_no_crate(db);
     let bool_ty = Ty::new_bool(interner);
     let unit_ty = Ty::new_unit(interner);
     [
@@ -762,7 +762,7 @@ pub(super) fn make_tuple<'a, 'lt, 'db, DB: HirDatabase>(
                 .filter(|_| should_continue())
                 .map(|params| {
                     let tys: Vec<Type<'_>> = params.iter().map(|it| it.ty(db)).collect();
-                    let tuple_ty = Type::new_tuple(module.krate().into(), &tys);
+                    let tuple_ty = Type::new_tuple(module.krate(db).into(), &tys);
 
                     let expr = Expr::Tuple { ty: tuple_ty.clone(), params };
                     lookup.insert(tuple_ty, iter::once(expr.clone()));

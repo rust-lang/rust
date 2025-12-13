@@ -7,10 +7,10 @@ LL |     a()
    = help: the trait `Future` is not implemented for `()`
 
 error[E0277]: `()` is not a future
-  --> $DIR/recurse-ice-129215.rs:3:1
+  --> $DIR/recurse-ice-129215.rs:3:13
    |
 LL | async fn a() {
-   | ^^^^^^^^^^^^ `()` is not a future
+   |             ^ `()` is not a future
    |
    = help: the trait `Future` is not implemented for `()`
 

@@ -18,7 +18,7 @@ use core::cmp::Ordering::{self, Less};
 use core::mem::MaybeUninit;
 #[cfg(not(no_global_oom_handling))]
 use core::ptr;
-#[unstable(feature = "array_windows", issue = "75027")]
+#[stable(feature = "array_windows", since = "CURRENT_RUSTC_VERSION")]
 pub use core::slice::ArrayWindows;
 #[stable(feature = "inherent_ascii_escape", since = "1.60.0")]
 pub use core::slice::EscapeAscii;

@@ -315,7 +315,7 @@ impl<'db> ImportAssets<'db> {
             allow_unstable: sema.is_nightly(scope.krate()),
         };
         let db = sema.db;
-        let krate = self.module_with_candidate.krate();
+        let krate = self.module_with_candidate.krate(sema.db);
         let scope_definitions = self.scope_definitions(sema);
         let mod_path = |item| {
             get_mod_path(

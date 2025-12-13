@@ -23,7 +23,7 @@ mod leak_check;
 #[derive(Clone, Default)]
 pub struct RegionConstraintStorage<'tcx> {
     /// For each `RegionVid`, the corresponding `RegionVariableOrigin`.
-    pub(super) var_infos: IndexVec<RegionVid, RegionVariableInfo>,
+    pub(super) var_infos: IndexVec<RegionVid, RegionVariableInfo<'tcx>>,
 
     pub(super) data: RegionConstraintData<'tcx>,
 
@@ -57,7 +57,7 @@ pub struct RegionConstraintCollector<'a, 'tcx> {
     undo_log: &'a mut InferCtxtUndoLogs<'tcx>,
 }
 
-pub type VarInfos = IndexVec<RegionVid, RegionVariableInfo>;
+pub type VarInfos<'tcx> = IndexVec<RegionVid, RegionVariableInfo<'tcx>>;
 
 /// The full set of region constraints gathered up by the collector.
 /// Describes constraints between the region variables and other
@@ -125,7 +125,7 @@ pub struct Verify<'tcx> {
 #[derive(Copy, Clone, PartialEq, Eq, Hash, TypeFoldable, TypeVisitable)]
 pub enum GenericKind<'tcx> {
     Param(ty::ParamTy),
-    Placeholder(ty::PlaceholderType),
+    Placeholder(ty::PlaceholderType<'tcx>),
     Alias(ty::AliasTy<'tcx>),
 }
 
@@ -269,8 +269,8 @@ pub(crate) enum CombineMapType {
 type CombineMap<'tcx> = FxHashMap<TwoRegions<'tcx>, RegionVid>;
 
 #[derive(Debug, Clone, Copy)]
-pub struct RegionVariableInfo {
-    pub origin: RegionVariableOrigin,
+pub struct RegionVariableInfo<'tcx> {
+    pub origin: RegionVariableOrigin<'tcx>,
     // FIXME: This is only necessary for `fn take_and_reset_data` and
     // `lexical_region_resolve`. We should rework `lexical_region_resolve`
     // in the near/medium future anyways and could move the unverse info
@@ -374,7 +374,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
     pub(super) fn new_region_var(
         &mut self,
         universe: ty::UniverseIndex,
-        origin: RegionVariableOrigin,
+        origin: RegionVariableOrigin<'tcx>,
     ) -> RegionVid {
         let vid = self.storage.var_infos.push(RegionVariableInfo { origin, universe });
 
@@ -386,7 +386,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
     }
 
     /// Returns the origin for the given variable.
-    pub(super) fn var_origin(&self, vid: RegionVid) -> RegionVariableOrigin {
+    pub(super) fn var_origin(&self, vid: RegionVid) -> RegionVariableOrigin<'tcx> {
         self.storage.var_infos[vid].origin
     }
 
@@ -624,10 +624,10 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
         }
     }
 
-    pub fn vars_since_snapshot(
-        &self,
+    pub fn vars_since_snapshot<'a>(
+        &'a self,
         value_count: usize,
-    ) -> (Range<RegionVid>, Vec<RegionVariableOrigin>) {
+    ) -> (Range<RegionVid>, Vec<RegionVariableOrigin<'tcx>>) {
         let range =
             RegionVid::from(value_count)..RegionVid::from(self.storage.unification_table.len());
         (

@@ -152,8 +152,10 @@ fn build_expanded_import(
         (false, current_module)
     } else {
         match get_export_visibility_kind(&use_item) {
-            VisibilityKind::Pub => (true, current_module.krate().root_module()),
-            VisibilityKind::PubCrate => (false, current_module.krate().root_module()),
+            VisibilityKind::Pub => (true, current_module.krate(ctx.db()).root_module(ctx.db())),
+            VisibilityKind::PubCrate => {
+                (false, current_module.krate(ctx.db()).root_module(ctx.db()))
+            }
             _ => (false, current_module),
         }
     };
@@ -167,7 +169,7 @@ fn build_expanded_import(
     let names_to_import = find_names_to_import(filtered_defs, imported_defs);
     let expanded = make::use_tree_list(names_to_import.iter().map(|n| {
         let path = make::ext::ident_path(
-            &n.display(ctx.db(), current_module.krate().edition(ctx.db())).to_string(),
+            &n.display(ctx.db(), current_module.krate(ctx.db()).edition(ctx.db())).to_string(),
         );
         make::use_tree(path, None, None, false)
     }))

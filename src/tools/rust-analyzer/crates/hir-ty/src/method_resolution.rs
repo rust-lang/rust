@@ -13,8 +13,9 @@ use tracing::{debug, instrument};
 
 use base_db::Crate;
 use hir_def::{
-    AssocItemId, BlockId, ConstId, FunctionId, GenericParamId, HasModule, ImplId, ItemContainerId,
-    ModuleId, TraitId,
+    AssocItemId, BlockIdLt, ConstId, FunctionId, GenericParamId, HasModule, ImplId,
+    ItemContainerId, ModuleId, TraitId,
+    attrs::AttrFlags,
     expr_store::path::GenericArgs as HirGenericArgs,
     hir::ExprId,
     nameres::{DefMap, block_def_map, crate_def_map},
@@ -31,13 +32,13 @@ use stdx::impl_from;
 use triomphe::Arc;
 
 use crate::{
-    TraitEnvironment, all_super_traits,
+    all_super_traits,
     db::HirDatabase,
     infer::{InferenceContext, unify::InferenceTable},
     lower::GenericPredicates,
     next_solver::{
-        Binder, ClauseKind, DbInterner, FnSig, GenericArgs, PredicateKind, SimplifiedType,
-        SolverDefId, TraitRef, Ty, TyKind, TypingMode,
+        Binder, ClauseKind, DbInterner, FnSig, GenericArgs, ParamEnv, PredicateKind,
+        SimplifiedType, SolverDefId, TraitRef, Ty, TyKind, TypingMode,
         infer::{
             BoundRegionConversionTime, DbInternerInferExt, InferCtxt, InferOk,
             select::ImplSource,
@@ -46,6 +47,7 @@ use crate::{
         obligation_ctxt::ObligationCtxt,
         util::clauses_as_obligations,
     },
+    traits::ParamEnvAndCrate,
 };
 
 pub use self::probe::{
@@ -74,13 +76,13 @@ impl MethodResolutionUnstableFeatures {
 pub struct MethodResolutionContext<'a, 'db> {
     pub infcx: &'a InferCtxt<'db>,
     pub resolver: &'a Resolver<'db>,
-    pub env: &'a TraitEnvironment<'db>,
+    pub param_env: ParamEnv<'db>,
     pub traits_in_scope: &'a FxHashSet<TraitId>,
     pub edition: Edition,
     pub unstable_features: &'a MethodResolutionUnstableFeatures,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa::Update)]
 pub enum CandidateId {
     FunctionId(FunctionId),
     ConstId(ConstId),
@@ -193,7 +195,7 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
         let ctx = MethodResolutionContext {
             infcx: &self.table.infer_ctxt,
             resolver: &self.resolver,
-            env: &self.table.trait_env,
+            param_env: self.table.param_env,
             traits_in_scope,
             edition: self.edition,
             unstable_features: &self.unstable_features,
@@ -263,7 +265,7 @@ impl<'db> InferenceTable<'db> {
         let obligation = Obligation::new(
             self.interner(),
             cause,
-            self.trait_env.env,
+            self.param_env,
             TraitRef::new_from_args(self.interner(), trait_def_id.into(), args),
         );
 
@@ -321,7 +323,7 @@ impl<'db> InferenceTable<'db> {
         let bounds = clauses_as_obligations(
             bounds.iter_instantiated_copied(interner, args.as_slice()),
             ObligationCause::new(),
-            self.trait_env.env,
+            self.param_env,
         );
 
         obligations.extend(bounds);
@@ -335,7 +337,7 @@ impl<'db> InferenceTable<'db> {
             obligations.push(Obligation::new(
                 interner,
                 obligation.cause.clone(),
-                self.trait_env.env,
+                self.param_env,
                 Binder::dummy(PredicateKind::Clause(ClauseKind::WellFormed(ty.into()))),
             ));
         }
@@ -349,7 +351,7 @@ impl<'db> InferenceTable<'db> {
 
 pub fn lookup_impl_const<'db>(
     infcx: &InferCtxt<'db>,
-    env: Arc<TraitEnvironment<'db>>,
+    env: ParamEnv<'db>,
     const_id: ConstId,
     subs: GenericArgs<'db>,
 ) -> (ConstId, GenericArgs<'db>) {
@@ -379,7 +381,7 @@ pub fn lookup_impl_const<'db>(
 /// call the method using the vtable.
 pub fn is_dyn_method<'db>(
     interner: DbInterner<'db>,
-    _env: Arc<TraitEnvironment<'db>>,
+    _env: ParamEnv<'db>,
     func: FunctionId,
     fn_subst: GenericArgs<'db>,
 ) -> Option<usize> {
@@ -414,11 +416,11 @@ pub fn is_dyn_method<'db>(
 /// Returns `func` if it's not a method defined in a trait or the lookup failed.
 pub(crate) fn lookup_impl_method_query<'db>(
     db: &'db dyn HirDatabase,
-    env: Arc<TraitEnvironment<'db>>,
+    env: ParamEnvAndCrate<'db>,
     func: FunctionId,
     fn_subst: GenericArgs<'db>,
 ) -> (FunctionId, GenericArgs<'db>) {
-    let interner = DbInterner::new_with(db, Some(env.krate), env.block);
+    let interner = DbInterner::new_with(db, env.krate);
     let infcx = interner.infer_ctxt().build(TypingMode::PostAnalysis);
 
     let ItemContainerId::TraitId(trait_id) = func.loc(db).container else {
@@ -432,11 +434,15 @@ pub(crate) fn lookup_impl_method_query<'db>(
     );
 
     let name = &db.function_signature(func).name;
-    let Some((impl_fn, impl_subst)) =
-        lookup_impl_assoc_item_for_trait_ref(&infcx, trait_ref, env, name).and_then(|assoc| {
-            if let (AssocItemId::FunctionId(id), subst) = assoc { Some((id, subst)) } else { None }
-        })
-    else {
+    let Some((impl_fn, impl_subst)) = lookup_impl_assoc_item_for_trait_ref(
+        &infcx,
+        trait_ref,
+        env.param_env,
+        name,
+    )
+    .and_then(|assoc| {
+        if let (AssocItemId::FunctionId(id), subst) = assoc { Some((id, subst)) } else { None }
+    }) else {
         return (func, fn_subst);
     };
 
@@ -452,10 +458,10 @@ pub(crate) fn lookup_impl_method_query<'db>(
 fn lookup_impl_assoc_item_for_trait_ref<'db>(
     infcx: &InferCtxt<'db>,
     trait_ref: TraitRef<'db>,
-    env: Arc<TraitEnvironment<'db>>,
+    env: ParamEnv<'db>,
     name: &Name,
 ) -> Option<(AssocItemId, GenericArgs<'db>)> {
-    let (impl_id, impl_subst) = find_matching_impl(infcx, &env, trait_ref)?;
+    let (impl_id, impl_subst) = find_matching_impl(infcx, env, trait_ref)?;
     let item =
         impl_id.impl_items(infcx.interner.db).items.iter().find_map(|(n, it)| match *it {
             AssocItemId::FunctionId(f) => (n == name).then_some(AssocItemId::FunctionId(f)),
@@ -467,13 +473,12 @@ fn lookup_impl_assoc_item_for_trait_ref<'db>(
 
 pub(crate) fn find_matching_impl<'db>(
     infcx: &InferCtxt<'db>,
-    env: &TraitEnvironment<'db>,
+    env: ParamEnv<'db>,
     trait_ref: TraitRef<'db>,
 ) -> Option<(ImplId, GenericArgs<'db>)> {
-    let trait_ref =
-        infcx.at(&ObligationCause::dummy(), env.env).deeply_normalize(trait_ref).ok()?;
+    let trait_ref = infcx.at(&ObligationCause::dummy(), env).deeply_normalize(trait_ref).ok()?;
 
-    let obligation = Obligation::new(infcx.interner, ObligationCause::dummy(), env.env, trait_ref);
+    let obligation = Obligation::new(infcx.interner, ObligationCause::dummy(), env, trait_ref);
 
     let selection = infcx.select(&obligation).ok()??;
 
@@ -509,9 +514,8 @@ fn crates_containing_incoherent_inherent_impls(db: &dyn HirDatabase) -> Box<[Cra
 pub fn incoherent_inherent_impls(db: &dyn HirDatabase, self_ty: SimplifiedType) -> &[ImplId] {
     let has_incoherent_impls = match self_ty.def() {
         Some(def_id) => match def_id.try_into() {
-            Ok(def_id) => {
-                db.attrs(def_id).by_key(sym::rustc_has_incoherent_inherent_impls).exists()
-            }
+            Ok(def_id) => AttrFlags::query(db, def_id)
+                .contains(AttrFlags::RUSTC_HAS_INCOHERENT_INHERENT_IMPLS),
             Err(()) => true,
         },
         _ => true,
@@ -554,9 +558,9 @@ pub struct InherentImpls {
 }
 
 #[salsa::tracked]
-impl InherentImpls {
+impl<'db> InherentImpls {
     #[salsa::tracked(returns(ref))]
-    pub fn for_crate(db: &dyn HirDatabase, krate: Crate) -> Self {
+    pub fn for_crate(db: &'db dyn HirDatabase, krate: Crate) -> Self {
         let _p = tracing::info_span!("inherent_impls_in_crate_query", ?krate).entered();
 
         let crate_def_map = crate_def_map(db, krate);
@@ -565,7 +569,7 @@ impl InherentImpls {
     }
 
     #[salsa::tracked(returns(ref))]
-    pub fn for_block(db: &dyn HirDatabase, block: BlockId) -> Option<Box<Self>> {
+    pub fn for_block(db: &'db dyn HirDatabase, block: BlockIdLt<'db>) -> Option<Box<Self>> {
         let _p = tracing::info_span!("inherent_impls_in_block_query").entered();
 
         let block_def_map = block_def_map(db, block);
@@ -597,7 +601,7 @@ impl InherentImpls {
                         continue;
                     }
 
-                    let interner = DbInterner::new_with(db, None, None);
+                    let interner = DbInterner::new_no_crate(db);
                     let self_ty = db.impl_self_ty(impl_id);
                     let self_ty = self_ty.instantiate_identity();
                     if let Some(self_ty) =
@@ -623,13 +627,13 @@ impl InherentImpls {
         self.map.get(self_ty).map(|it| &**it).unwrap_or_default()
     }
 
-    pub fn for_each_crate_and_block(
-        db: &dyn HirDatabase,
+    pub fn for_each_crate_and_block<'db>(
+        db: &'db dyn HirDatabase,
         krate: Crate,
-        block: Option<BlockId>,
+        block: Option<BlockIdLt<'db>>,
         for_each: &mut dyn FnMut(&InherentImpls),
     ) {
-        let blocks = std::iter::successors(block, |block| block.loc(db).module.containing_block());
+        let blocks = std::iter::successors(block, |block| block.module(db).block(db));
         blocks.filter_map(|block| Self::for_block(db, block).as_deref()).for_each(&mut *for_each);
         for_each(Self::for_crate(db, krate));
     }
@@ -666,9 +670,9 @@ pub struct TraitImpls {
 }
 
 #[salsa::tracked]
-impl TraitImpls {
+impl<'db> TraitImpls {
     #[salsa::tracked(returns(ref))]
-    pub fn for_crate(db: &dyn HirDatabase, krate: Crate) -> Arc<Self> {
+    pub fn for_crate(db: &'db dyn HirDatabase, krate: Crate) -> Arc<Self> {
         let _p = tracing::info_span!("inherent_impls_in_crate_query", ?krate).entered();
 
         let crate_def_map = crate_def_map(db, krate);
@@ -677,7 +681,7 @@ impl TraitImpls {
     }
 
     #[salsa::tracked(returns(ref))]
-    pub fn for_block(db: &dyn HirDatabase, block: BlockId) -> Option<Box<Self>> {
+    pub fn for_block(db: &'db dyn HirDatabase, block: BlockIdLt<'db>) -> Option<Box<Self>> {
         let _p = tracing::info_span!("inherent_impls_in_block_query").entered();
 
         let block_def_map = block_def_map(db, block);
@@ -686,7 +690,7 @@ impl TraitImpls {
     }
 
     #[salsa::tracked(returns(ref))]
-    pub fn for_crate_and_deps(db: &dyn HirDatabase, krate: Crate) -> Box<[Arc<Self>]> {
+    pub fn for_crate_and_deps(db: &'db dyn HirDatabase, krate: Crate) -> Box<[Arc<Self>]> {
         krate.transitive_deps(db).iter().map(|&dep| Self::for_crate(db, dep).clone()).collect()
     }
 }
@@ -715,7 +719,9 @@ impl TraitImpls {
                     // FIXME: Reservation impls should be considered during coherence checks. If we are
                     // (ever) to implement coherence checks, this filtering should be done by the trait
                     // solver.
-                    if db.attrs(impl_id.into()).by_key(sym::rustc_reservation_impl).exists() {
+                    if AttrFlags::query(db, impl_id.into())
+                        .contains(AttrFlags::RUSTC_RESERVATION_IMPL)
+                    {
                         continue;
                     }
                     let trait_ref = match db.impl_trait(impl_id) {
@@ -723,7 +729,7 @@ impl TraitImpls {
                         None => continue,
                     };
                     let self_ty = trait_ref.self_ty();
-                    let interner = DbInterner::new_with(db, None, None);
+                    let interner = DbInterner::new_no_crate(db);
                     let entry = map.entry(trait_ref.def_id.0).or_default();
                     match simplify_type(interner, self_ty, TreatParams::InstantiateWithInfer) {
                         Some(self_ty) => {
@@ -786,23 +792,23 @@ impl TraitImpls {
         }
     }
 
-    pub fn for_each_crate_and_block(
-        db: &dyn HirDatabase,
+    pub fn for_each_crate_and_block<'db>(
+        db: &'db dyn HirDatabase,
         krate: Crate,
-        block: Option<BlockId>,
+        block: Option<BlockIdLt<'db>>,
         for_each: &mut dyn FnMut(&TraitImpls),
     ) {
-        let blocks = std::iter::successors(block, |block| block.loc(db).module.containing_block());
+        let blocks = std::iter::successors(block, |block| block.module(db).block(db));
         blocks.filter_map(|block| Self::for_block(db, block).as_deref()).for_each(&mut *for_each);
         Self::for_crate_and_deps(db, krate).iter().map(|it| &**it).for_each(for_each);
     }
 
     /// Like [`Self::for_each_crate_and_block()`], but takes in account two blocks, one for a trait and one for a self type.
-    pub fn for_each_crate_and_block_trait_and_type(
-        db: &dyn HirDatabase,
+    pub fn for_each_crate_and_block_trait_and_type<'db>(
+        db: &'db dyn HirDatabase,
         krate: Crate,
-        type_block: Option<BlockId>,
-        trait_block: Option<BlockId>,
+        type_block: Option<BlockIdLt<'db>>,
+        trait_block: Option<BlockIdLt<'db>>,
         for_each: &mut dyn FnMut(&TraitImpls),
     ) {
         let in_self_and_deps = TraitImpls::for_crate_and_deps(db, krate);
@@ -813,10 +819,11 @@ impl TraitImpls {
         // that means there can't be duplicate impls; if they meet, we stop the search of the deeper block.
         // This breaks when they are equal (both will stop immediately), therefore we handle this case
         // specifically.
-        let blocks_iter = |block: Option<BlockId>| {
-            std::iter::successors(block, |block| block.loc(db).module.containing_block())
+        let blocks_iter = |block: Option<BlockIdLt<'db>>| {
+            std::iter::successors(block, |block| block.module(db).block(db))
         };
-        let for_each_block = |current_block: Option<BlockId>, other_block: Option<BlockId>| {
+        let for_each_block = |current_block: Option<BlockIdLt<'db>>,
+                              other_block: Option<BlockIdLt<'db>>| {
             blocks_iter(current_block)
                 .take_while(move |&block| {
                     other_block.is_none_or(|other_block| other_block != block)

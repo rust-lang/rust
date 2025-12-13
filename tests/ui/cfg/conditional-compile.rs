@@ -151,5 +151,5 @@ mod test_methods {
     }
 }
 
-#[cfg(any())]
+#[cfg(false)]
 mod nonexistent_file; // Check that unconfigured non-inline modules are not loaded or parsed.

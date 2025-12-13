@@ -13,22 +13,23 @@ pub fn demo_le(a: &MultiField, b: &MultiField) -> bool {
     // CHECK: inlined{{.+}}is_some_and
     // CHECK: inlined <MultiField as PartialOrd>::partial_cmp
 
-    // CHECK: [[A0:_[0-9]+]] = copy ((*_1).0: char);
-    // CHECK: [[B0:_[0-9]+]] = copy ((*_2).0: char);
-    // CHECK: Cmp(move [[A0]], move [[B0]]);
+    // CHECK: bb0: {
+    // CHECK:     [[A0:_[0-9]+]] = copy ((*_1).0: char);
+    // CHECK:     [[B0:_[0-9]+]] = copy ((*_2).0: char);
+    // CHECK:     Cmp(move [[A0]], move [[B0]]);
+    // CHECK:     [[D0:_[0-9]+]] = discriminant({{.+}});
+    // CHECK:     switchInt(move [[D0]]) -> [0: bb1, otherwise: bb2];
 
-    // CHECK: [[D0:_[0-9]+]] = discriminant({{.+}});
-    // CHECK: switchInt(move [[D0]]) -> [0: bb{{[0-9]+}}, otherwise: bb{{[0-9]+}}];
+    // CHECK: bb1: {
+    // CHECK:     [[A1:_[0-9]+]] = copy ((*_1).1: i16);
+    // CHECK:     [[B1:_[0-9]+]] = copy ((*_2).1: i16);
+    // CHECK:     Cmp(move [[A1]], move [[B1]]);
+    // CHECK:     goto -> bb2;
 
-    // CHECK: [[A1:_[0-9]+]] = copy ((*_1).1: i16);
-    // CHECK: [[B1:_[0-9]+]] = copy ((*_2).1: i16);
-    // CHECK: Cmp(move [[A1]], move [[B1]]);
-
-    // CHECK: [[D1:_[0-9]+]] = discriminant({{.+}});
-    // CHECK: switchInt(move [[D1]]) -> [0: bb{{[0-9]+}}, 1: bb{{[0-9]+}}, otherwise: bb{{[0-9]+}}];
-
-    // CHECK: [[D2:_[0-9]+]] = discriminant({{.+}});
-    // CHECK: _0 = Le(move [[D2]], const 0_i8);
+    // CHECK: bb2: {
+    // CHECK:     [[D2:_[0-9]+]] = discriminant({{.+}});
+    // CHECK:     _0 = Le(move [[D2]], const 0_i8);
+    // CHECK:     return;
     *a <= *b
 }
 

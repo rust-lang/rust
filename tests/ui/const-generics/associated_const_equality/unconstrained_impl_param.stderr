@@ -1,8 +1,8 @@
 error[E0658]: associated const equality is incomplete
   --> $DIR/unconstrained_impl_param.rs:15:45
    |
-LL | impl<U> Trait for () where (U,): AssocConst<A = { 0 }> {}
-   |                                             ^^^^^^^^^
+LL | impl<U> Trait for () where (U,): AssocConst<A = 0> {}
+   |                                             ^^^^^
    |
    = note: see issue #92827 <https://github.com/rust-lang/rust/issues/92827> for more information
    = help: add `#![feature(associated_const_equality)]` to the crate attributes to enable
@@ -11,7 +11,7 @@ LL | impl<U> Trait for () where (U,): AssocConst<A = { 0 }> {}
 error[E0207]: the type parameter `U` is not constrained by the impl trait, self type, or predicates
   --> $DIR/unconstrained_impl_param.rs:15:6
    |
-LL | impl<U> Trait for () where (U,): AssocConst<A = { 0 }> {}
+LL | impl<U> Trait for () where (U,): AssocConst<A = 0> {}
    |      ^ unconstrained type parameter
 
 error[E0282]: type annotations needed

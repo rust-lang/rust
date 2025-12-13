@@ -34,7 +34,7 @@ pub fn get_missing_assoc_items(
     // may share the same name as a function or constant.
     let mut impl_fns_consts = FxHashSet::default();
     let mut impl_type = FxHashSet::default();
-    let edition = imp.module(sema.db).krate().edition(sema.db);
+    let edition = imp.module(sema.db).krate(sema.db).edition(sema.db);
 
     for item in imp.items(sema.db) {
         match item {
@@ -114,8 +114,7 @@ fn assoc_item_of_trait(
 #[cfg(test)]
 mod tests {
     use expect_test::{Expect, expect};
-    use hir::FilePosition;
-    use hir::Semantics;
+    use hir::{EditionedFileId, FilePosition, Semantics};
     use span::Edition;
     use syntax::ast::{self, AstNode};
     use test_fixture::ChangeFixture;
@@ -127,10 +126,11 @@ mod tests {
         #[rust_analyzer::rust_fixture] ra_fixture: &str,
     ) -> (RootDatabase, FilePosition) {
         let mut database = RootDatabase::default();
-        let change_fixture = ChangeFixture::parse(&database, ra_fixture);
+        let change_fixture = ChangeFixture::parse(ra_fixture);
         database.apply_change(change_fixture.change);
         let (file_id, range_or_offset) =
             change_fixture.file_position.expect("expected a marker ($0)");
+        let file_id = EditionedFileId::from_span_guess_origin(&database, file_id);
         let offset = range_or_offset.expect_offset();
         (database, FilePosition { file_id, offset })
     }
