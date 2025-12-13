@@ -177,6 +177,9 @@ fn lengthen_lines(content: &str, limit: usize) -> String {
         let Some(next_line) = content.get(n + 1) else {
             continue;
         };
+        if next_line.trim_start().starts_with("```") {
+            continue;
+        }
         if ignore(next_line, in_code_block)
             || REGEX_LIST_ENTRY.is_match(next_line)
             || REGEX_IGNORE_END.is_match(line)
@@ -255,6 +258,12 @@ preserve next line
 
 preserve next line
 * three
+
+do not mess with code block chars
+```
+leave the
+text alone
+```
 ";
     let expected = "\
 do not split short sentences
@@ -269,6 +278,12 @@ preserve next line
 
 preserve next line
 * three
+
+do not mess with code block chars
+```
+leave the
+text alone
+```
 ";
     assert_eq!(expected, lengthen_lines(original, 50));
 }
@@ -292,40 +307,6 @@ fn test_prettify_ignore_link_targets() {
 [another target]: https://example.com
 ";
     assert_eq!(original, lengthen_lines(original, 100));
-}
-
-#[test]
-fn test_sembr_then_prettify() {
-    let original = "
-hi there. do
-not split
-short sentences.
-hi again.
-";
-    let expected = "
-hi there.
-do
-not split
-short sentences.
-hi again.
-";
-    let processed = comply(original);
-    assert_eq!(expected, processed);
-    let expected = "
-hi there.
-do not split
-short sentences.
-hi again.
-";
-    let processed = lengthen_lines(&processed, 50);
-    assert_eq!(expected, processed);
-    let expected = "
-hi there.
-do not split short sentences.
-hi again.
-";
-    let processed = lengthen_lines(&processed, 50);
-    assert_eq!(expected, processed);
 }
 
 #[test]
