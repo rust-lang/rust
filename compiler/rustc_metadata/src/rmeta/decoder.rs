@@ -33,8 +33,8 @@ use rustc_session::config::TargetModifier;
 use rustc_session::cstore::{CrateSource, ExternCrate};
 use rustc_span::hygiene::HygieneDecodeContext;
 use rustc_span::{
-    BlobDecoder, BytePos, ByteSymbol, DUMMY_SP, Pos, SpanData, SpanDecoder, Symbol, SyntaxContext,
-    kw,
+    BlobDecoder, BytePos, ByteSymbol, DUMMY_SP, Pos, RemapPathScopeComponents, SpanData,
+    SpanDecoder, Symbol, SyntaxContext, kw,
 };
 use tracing::debug;
 
@@ -1669,15 +1669,15 @@ impl<'a> CrateMetadataRef<'a> {
                 for virtual_dir in virtual_source_base_dir.iter().flatten() {
                     if let Some(real_dir) = &real_source_base_dir
                         && let rustc_span::FileName::Real(old_name) = name
-                        && let rustc_span::RealFileName::Remapped { local_path: _, virtual_name } =
-                            old_name
-                        && let Ok(rest) = virtual_name.strip_prefix(virtual_dir)
+                        && let (_working_dir, embeddable_name) =
+                            old_name.embeddable_name(RemapPathScopeComponents::MACRO)
+                        && let Ok(rest) = embeddable_name.strip_prefix(virtual_dir)
                     {
                         let new_path = real_dir.join(rest);
 
                         debug!(
                             "try_to_translate_virtual_to_real: `{}` -> `{}`",
-                            virtual_name.display(),
+                            embeddable_name.display(),
                             new_path.display(),
                         );
 
@@ -1686,17 +1686,12 @@ impl<'a> CrateMetadataRef<'a> {
                         // Note that this is a special case for imported rust-src paths specified by
                         // https://rust-lang.github.io/rfcs/3127-trim-paths.html#handling-sysroot-paths.
                         // Other imported paths are not currently remapped (see #66251).
-                        let (user_remapped, applied) =
-                            tcx.sess.source_map().path_mapping().map_prefix(&new_path);
-                        let new_name = if applied {
-                            rustc_span::RealFileName::Remapped {
-                                local_path: Some(new_path.clone()),
-                                virtual_name: user_remapped.to_path_buf(),
-                            }
-                        } else {
-                            rustc_span::RealFileName::LocalPath(new_path)
-                        };
-                        *old_name = new_name;
+                        *name = rustc_span::FileName::Real(
+                            tcx.sess
+                                .source_map()
+                                .path_mapping()
+                                .to_real_filename(&rustc_span::RealFileName::empty(), new_path),
+                        );
                     }
                 }
             };
@@ -1711,15 +1706,12 @@ impl<'a> CrateMetadataRef<'a> {
                     && let Some(real_dir) = real_source_base_dir
                     && let rustc_span::FileName::Real(old_name) = name
                 {
-                    let relative_path = match old_name {
-                        rustc_span::RealFileName::LocalPath(local) => {
-                            local.strip_prefix(real_dir).ok()
-                        }
-                        rustc_span::RealFileName::Remapped { virtual_name, .. } => {
-                            virtual_source_base_dir
-                                .and_then(|virtual_dir| virtual_name.strip_prefix(virtual_dir).ok())
-                        }
-                    };
+                    let (_working_dir, embeddable_path) =
+                        old_name.embeddable_name(RemapPathScopeComponents::MACRO);
+                    let relative_path = embeddable_path.strip_prefix(real_dir).ok().or_else(|| {
+                        virtual_source_base_dir
+                            .and_then(|virtual_dir| embeddable_path.strip_prefix(virtual_dir).ok())
+                    });
                     debug!(
                         ?relative_path,
                         ?virtual_dir,
@@ -1727,10 +1719,10 @@ impl<'a> CrateMetadataRef<'a> {
                         "simulate_remapped_rust_src_base"
                     );
                     if let Some(rest) = relative_path.and_then(|p| p.strip_prefix(subdir).ok()) {
-                        *old_name = rustc_span::RealFileName::Remapped {
-                            local_path: None,
-                            virtual_name: virtual_dir.join(subdir).join(rest),
-                        };
+                        *name =
+                            rustc_span::FileName::Real(rustc_span::RealFileName::from_virtual_path(
+                                &virtual_dir.join(subdir).join(rest),
+                            ))
                     }
                 }
             };

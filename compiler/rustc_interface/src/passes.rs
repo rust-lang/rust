@@ -40,8 +40,7 @@ use rustc_session::output::{collect_crate_types, filename_for_input};
 use rustc_session::parse::feature_err;
 use rustc_session::search_paths::PathKind;
 use rustc_span::{
-    DUMMY_SP, ErrorGuaranteed, ExpnKind, FileName, SourceFileHash, SourceFileHashAlgorithm, Span,
-    Symbol, sym,
+    DUMMY_SP, ErrorGuaranteed, ExpnKind, SourceFileHash, SourceFileHashAlgorithm, Span, Symbol, sym,
 };
 use rustc_trait_selection::{solve, traits};
 use tracing::{info, instrument};
@@ -595,7 +594,7 @@ fn write_out_deps(tcx: TyCtxt<'_>, outputs: &OutputFilenames, out_filenames: &[P
             .filter(|fmap| !fmap.is_imported())
             .map(|fmap| {
                 (
-                    escape_dep_filename(&fmap.name.prefer_local().to_string()),
+                    escape_dep_filename(&fmap.name.prefer_local_unconditionally().to_string()),
                     // This needs to be unnormalized,
                     // as external tools wouldn't know how rustc normalizes them
                     fmap.unnormalized_source_len as u64,
@@ -610,10 +609,7 @@ fn write_out_deps(tcx: TyCtxt<'_>, outputs: &OutputFilenames, out_filenames: &[P
         // (e.g. accessed in proc macros).
         let file_depinfo = sess.psess.file_depinfo.borrow();
 
-        let normalize_path = |path: PathBuf| {
-            let file = FileName::from(path);
-            escape_dep_filename(&file.prefer_local().to_string())
-        };
+        let normalize_path = |path: PathBuf| escape_dep_filename(&path.to_string_lossy());
 
         // The entries will be used to declare dependencies between files in a
         // Makefile-like output, so the iteration order does not matter.
