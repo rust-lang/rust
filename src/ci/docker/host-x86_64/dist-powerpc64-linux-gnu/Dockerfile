@@ -11,7 +11,7 @@ RUN sh /scripts/rustbuild-setup.sh
 WORKDIR /tmp
 
 COPY scripts/crosstool-ng-build.sh /scripts/
-COPY host-x86_64/dist-powerpc64-linux/powerpc64-linux-gnu.defconfig /tmp/crosstool.defconfig
+COPY host-x86_64/dist-powerpc64-linux-gnu/powerpc64-linux-gnu.defconfig /tmp/crosstool.defconfig
 RUN /scripts/crosstool-ng-build.sh
 
 COPY scripts/sccache.sh /scripts/

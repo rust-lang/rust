@@ -460,6 +460,7 @@ pub(crate) fn is_download_ci_available(target_triple: &str, llvm_assertions: boo
         "loongarch64-unknown-linux-gnu",
         "powerpc-unknown-linux-gnu",
         "powerpc64-unknown-linux-gnu",
+        "powerpc64-unknown-linux-musl",
         "powerpc64le-unknown-linux-gnu",
         "powerpc64le-unknown-linux-musl",
         "riscv64gc-unknown-linux-gnu",
