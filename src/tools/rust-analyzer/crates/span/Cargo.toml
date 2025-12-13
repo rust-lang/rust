@@ -27,6 +27,7 @@ syntax.workspace = true
 
 [features]
 default = ["salsa"]
+in-rust-tree = []
 
 [lints]
 workspace = true
