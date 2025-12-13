@@ -847,11 +847,9 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
 
             let fn_returns = self.infcx.tcx.return_type_impl_or_dyn_traits(suitable_region.scope);
 
-            let param = if let Some(param) =
+            let Some(param) =
                 find_param_with_region(self.infcx.tcx, self.mir_def_id(), f, outlived_f)
-            {
-                param
-            } else {
+            else {
                 return;
             };
 
@@ -930,37 +928,27 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
 
         let tcx = self.infcx.tcx;
 
-        let instance = if let ConstraintCategory::CallArgument(Some(func_ty)) = category {
-            let (fn_did, args) = match func_ty.kind() {
-                ty::FnDef(fn_did, args) => (fn_did, args),
-                _ => return,
-            };
-            debug!(?fn_did, ?args);
+        let ConstraintCategory::CallArgument(Some(func_ty)) = category else { return };
+        let ty::FnDef(fn_did, args) = func_ty.kind() else { return };
+        debug!(?fn_did, ?args);
 
-            // Only suggest this on function calls, not closures
-            let ty = tcx.type_of(fn_did).instantiate_identity();
-            debug!("ty: {:?}, ty.kind: {:?}", ty, ty.kind());
-            if let ty::Closure(_, _) = ty.kind() {
-                return;
-            }
-
-            if let Ok(Some(instance)) = ty::Instance::try_resolve(
-                tcx,
-                self.infcx.typing_env(self.infcx.param_env),
-                *fn_did,
-                self.infcx.resolve_vars_if_possible(args),
-            ) {
-                instance
-            } else {
-                return;
-            }
-        } else {
+        // Only suggest this on function calls, not closures
+        let ty = tcx.type_of(fn_did).instantiate_identity();
+        debug!("ty: {:?}, ty.kind: {:?}", ty, ty.kind());
+        if let ty::Closure(_, _) = ty.kind() {
+            return;
+        }
+        let Ok(Some(instance)) = ty::Instance::try_resolve(
+            tcx,
+            self.infcx.typing_env(self.infcx.param_env),
+            *fn_did,
+            self.infcx.resolve_vars_if_possible(args),
+        ) else {
             return;
         };
 
-        let param = match find_param_with_region(tcx, self.mir_def_id(), f, o) {
-            Some(param) => param,
-            None => return,
+        let Some(param) = find_param_with_region(tcx, self.mir_def_id(), f, o) else {
+            return;
         };
         debug!(?param);
 
