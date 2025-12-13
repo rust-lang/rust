@@ -96,11 +96,8 @@ impl LateLintPass<'_> for UncheckedTimeSubtraction {
 
         if lhs_ty.is_diag_item(cx, sym::Instant) {
             // Instant::now() - instant
-            if is_instant_now_call(cx, lhs)
-                && rhs_ty.is_diag_item(cx, sym::Instant)
-                && let Some(sugg) = Sugg::hir_opt(cx, rhs)
-            {
-                print_manual_instant_elapsed_sugg(cx, expr, sugg);
+            if is_instant_now_call(cx, lhs) && rhs_ty.is_diag_item(cx, sym::Instant) {
+                print_manual_instant_elapsed_sugg(cx, expr, rhs);
             }
             // instant - duration
             else if rhs_ty.is_diag_item(cx, sym::Duration)
@@ -150,7 +147,9 @@ fn is_time_type(cx: &LateContext<'_>, ty: Ty<'_>) -> bool {
     ty.is_diag_item(cx, sym::Duration) || ty.is_diag_item(cx, sym::Instant)
 }
 
-fn print_manual_instant_elapsed_sugg(cx: &LateContext<'_>, expr: &Expr<'_>, sugg: Sugg<'_>) {
+fn print_manual_instant_elapsed_sugg(cx: &LateContext<'_>, expr: &Expr<'_>, rhs: &Expr<'_>) {
+    let mut applicability = Applicability::MachineApplicable;
+    let sugg = Sugg::hir_with_context(cx, rhs, expr.span.ctxt(), "<instant>", &mut applicability);
     span_lint_and_sugg(
         cx,
         MANUAL_INSTANT_ELAPSED,
@@ -158,7 +157,7 @@ fn print_manual_instant_elapsed_sugg(cx: &LateContext<'_>, expr: &Expr<'_>, sugg
         "manual implementation of `Instant::elapsed`",
         "try",
         format!("{}.elapsed()", sugg.maybe_paren()),
-        Applicability::MachineApplicable,
+        applicability,
     );
 }
 
