@@ -16,7 +16,7 @@ help: ALLOC was deallocated here:
    |
 LL |     };
    |     ^
-   = note: this error originates in the macro `dbg` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `$crate::macros::dbg_internal` which comes from the expansion of the macro `dbg` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 
