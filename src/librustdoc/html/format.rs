@@ -14,7 +14,6 @@ use std::slice;
 
 use itertools::{Either, Itertools};
 use rustc_abi::ExternAbi;
-use rustc_ast::join_path_syms;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, MacroKinds};
@@ -36,6 +35,15 @@ use crate::formats::item_type::ItemType;
 use crate::html::escape::{Escape, EscapeBodyText};
 use crate::html::render::Context;
 use crate::passes::collect_intra_doc_links::UrlFragment;
+
+pub(crate) fn join_path_syms_lazy(path: &[Symbol]) -> impl Display + '_ {
+    fmt::from_fn(move |f| {
+        path.iter()
+            .copied()
+            .map(|seg| Some(seg).filter(|seg| *seg != kw::PathRoot).maybe_display())
+            .joined("::", f)
+    })
+}
 
 pub(crate) fn print_generic_bounds(
     bounds: &[clean::GenericBound],
@@ -674,7 +682,7 @@ pub(crate) fn link_tooltip(
             write!(f, "{}", cx.tcx().item_name(id))?;
         } else if !fqp.is_empty() {
             write!(f, "{shortty} ")?;
-            write!(f, "{}", join_path_syms(fqp))?;
+            write!(f, "{}", join_path_syms_lazy(fqp))?;
         }
         Ok(())
     })
@@ -705,7 +713,7 @@ fn resolved_path(
                     write!(
                         f,
                         "{path}::{anchor}",
-                        path = join_path_syms(&rust_path[..rust_path.len() - 1]),
+                        path = join_path_syms_lazy(&rust_path[..rust_path.len() - 1]),
                         anchor = print_anchor(did, *rust_path.last().unwrap(), cx)
                     )
                 } else {
@@ -863,7 +871,7 @@ pub(crate) fn print_anchor(did: DefId, text: Symbol, cx: &Context<'_>) -> impl D
                 f,
                 r#"<a class="{kind}" href="{url}{anchor}" title="{kind} {path}">{text}</a>"#,
                 anchor = fragment(did, cx.tcx()),
-                path = join_path_syms(rust_path),
+                path = join_path_syms_lazy(&rust_path),
                 text = EscapeBodyText(text.as_str()),
             )
         } else {
@@ -1097,7 +1105,7 @@ fn print_qpath_data(qpath_data: &clean::QPathData, cx: &Context<'_>) -> impl Dis
                                 title=\"type {path}::{name}\">{name}</a>",
                     shortty = ItemType::AssocType,
                     name = assoc.name,
-                    path = join_path_syms(rust_path),
+                    path = join_path_syms_lazy(&rust_path),
                 )
             } else {
                 write!(f, "{}", assoc.name)
