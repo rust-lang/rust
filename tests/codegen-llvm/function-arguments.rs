@@ -85,7 +85,7 @@ pub fn option_nonzero_int(x: Option<NonZero<u64>>) -> Option<NonZero<u64>> {
 #[no_mangle]
 pub fn readonly_borrow(_: &i32) {}
 
-// CHECK: noundef align 4 dereferenceable(4) ptr @readonly_borrow_ret()
+// CHECK: noundef nonnull align 4 ptr @readonly_borrow_ret()
 #[no_mangle]
 pub fn readonly_borrow_ret() -> &'static i32 {
     loop {}
@@ -116,7 +116,7 @@ pub fn mutable_unsafe_borrow(_: &mut UnsafeInner) {}
 #[no_mangle]
 pub fn mutable_borrow(_: &mut i32) {}
 
-// CHECK: noundef align 4 dereferenceable(4) ptr @mutable_borrow_ret()
+// CHECK: noundef nonnull align 4 ptr @mutable_borrow_ret()
 #[no_mangle]
 pub fn mutable_borrow_ret() -> &'static mut i32 {
     loop {}
