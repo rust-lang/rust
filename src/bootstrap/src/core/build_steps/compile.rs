@@ -2224,30 +2224,33 @@ impl Step for Assemble {
                 let libdir = builder.sysroot_target_libdir(build_compiler, build_compiler.host);
                 let target_libdir =
                     builder.sysroot_target_libdir(target_compiler, target_compiler.host);
-                let llvm = llvm::get_llvm_version(builder, &llvm_config);
-                let llvm_version = llvm.split('.').take(2).collect::<Vec<_>>().join(".");
-                let rust_version = builder.rust_version();
-                // e.g. libLLVMOffload.so.21.1
                 let lib_ext = std::env::consts::DLL_EXTENSION;
+
                 let libenzyme = format!("libLLVMOffload");
-                //let libenzyme = format!("libLLVMOffload.{lib_ext}.{llvm_version}");
+                let src_lib = src_dir.join(&libenzyme).with_extension(lib_ext);
                 let dst_lib = libdir.join(&libenzyme).with_extension(lib_ext);
                 let target_dst_lib = target_libdir.join(&libenzyme).with_extension(lib_ext);
-                let src_lib = src_dir.join(&libenzyme).with_extension(lib_ext);
-                builder.resolve_symlink_and_copy(&src_lib, &dst_lib); //, FileType::NativeLibrary
-                builder.resolve_symlink_and_copy(
-                    &src_lib,
-                    &target_dst_lib,
-                    //FileType::NativeLibrary,
-                );
+                builder.resolve_symlink_and_copy(&src_lib, &dst_lib);
+                builder.resolve_symlink_and_copy(&src_lib, &target_dst_lib);
 
-                // libomp.so, libomptarget.so
-                //let omp = src_dir.join("libomp").with_extension(lib_ext);
-                //let tgt = src_dir.join("libomptarget").with_extension(lib_ext);
-                //builder.copy_link(&omp, &dst_lib, FileType::NativeLibrary);
-                //builder.copy_link(&omp, &dst_lib, FileType::NativeLibrary);
-                //builder.copy_link(&tgt, &dst_lib, FileType::NativeLibrary);
-                //builder.copy_link(&tgt, &dst_lib, FileType::NativeLibrary);
+                // FIXME(offload): With LLVM-22, we should be able to drop everything below here.
+                let omp = format!("libomp");
+                let src_omp = src_dir.join(&omp).with_extension(lib_ext);
+                let dst_omp_lib = libdir.join(&omp).with_extension(lib_ext);
+                let target_omp_dst_lib = target_libdir.join(&omp).with_extension(lib_ext);
+                builder.resolve_symlink_and_copy(&src_omp, &dst_omp_lib);
+                builder.resolve_symlink_and_copy(&src_omp, &target_omp_dst_lib);
+
+                let tgt = format!("libomptarget");
+                let src_tgt = src_dir.join(&tgt).with_extension(lib_ext);
+                let dst_tgt_lib = libdir.join(&tgt).with_extension(lib_ext);
+                let target_tgt_dst_lib = target_libdir.join(&tgt).with_extension(lib_ext);
+                builder.resolve_symlink_and_copy(&src_tgt, &dst_tgt_lib);
+                builder.resolve_symlink_and_copy(&src_tgt, &target_tgt_dst_lib);
+
+                // The last one is slightly more tricky, since we have the same file twice, in two
+                // subfolders for amdgcn and nvptx64. We'll likely find two more in the future, once
+                // Intel and Spir-V support lands in offload.
                 //[\u@\h:\W]$ ls ../offload-outdir/lib
                 // amdgcn-amd-amdhsa  libarcher.so        libgomp.so    libiomp5.so	libLLVMOffload.so.21.1	libomp.so	 libomptarget.so.21.1
                 // cmake		   libarcher_static.a  libgomp.so.1  libLLVMOffload.so	libompd.so		libomptarget.so  nvptx64-nvidia-cuda
