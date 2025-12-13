@@ -22,6 +22,15 @@ if [[ "${DEPLOY-0}" -eq "1" ]] || [[ "${DEPLOY_ALT-0}" -eq "1" ]]; then
     mv "${dist_dir}"/* "${upload_dir}"
 fi
 
+# We write the release channel into the output so that
+# `rustup-toolchain-install-master` or other, similar, tools can automatically
+# detect the appropriate name to use for downloading artifacts.
+#
+# For nightly and beta this isn't strictly necessary as just trying both is
+# enough, but stable builds produce artifacts with a version (e.g.,
+# rust-src-1.92.0.tar.xz) which can't be easily guessed otherwise.
+releaseChannel > "${upload_dir}/channel"
+
 # CPU usage statistics.
 cp build/cpu-usage.csv "${upload_dir}/cpu-${CI_JOB_NAME}.csv"
 
