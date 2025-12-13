@@ -136,8 +136,6 @@ fn parse_config(args: Vec<String>) -> Config {
         )
         .optflag("", "fail-fast", "stop as soon as possible after any test fails")
         .optopt("", "target", "the target to build for", "TARGET")
-        // FIXME: Should be removed once `bootstrap` will be updated to not use this option.
-        .optopt("", "color", "coloring: auto, always, never", "WHEN")
         .optopt("", "host", "the host to build for", "HOST")
         .optopt("", "cdb", "path to CDB to use for CDB debuginfo tests", "PATH")
         .optopt("", "gdb", "path to GDB to use for GDB debuginfo tests", "PATH")

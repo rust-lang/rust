@@ -721,11 +721,8 @@ impl<'tcx> Map<'tcx> {
                 // Enum variant fields and enum discriminants alias each another.
                 self.for_each_variant_sibling(index, sub, f);
             }
-            if let Some(sub) = sub {
-                index = sub
-            } else {
-                return;
-            }
+            let Some(sub) = sub else { return };
+            index = sub;
         }
         self.for_each_value_inside(index, f);
     }

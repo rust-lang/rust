@@ -1170,7 +1170,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             return;
                         }
                         if let Some(initial_res) = initial_res {
-                            if res != initial_res {
+                            if res != initial_res && !this.issue_145575_hack_applied {
                                 span_bug!(import.span, "inconsistent resolution for an import");
                             }
                         } else if this.privacy_errors.is_empty() {

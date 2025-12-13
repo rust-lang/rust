@@ -1072,11 +1072,8 @@ impl<'tcx> LateLintPass<'tcx> for MutableTransmutes {
             cx: &LateContext<'tcx>,
             expr: &hir::Expr<'_>,
         ) -> Option<(Ty<'tcx>, Ty<'tcx>)> {
-            let def = if let hir::ExprKind::Path(ref qpath) = expr.kind {
-                cx.qpath_res(qpath, expr.hir_id)
-            } else {
-                return None;
-            };
+            let hir::ExprKind::Path(ref qpath) = expr.kind else { return None };
+            let def = cx.qpath_res(qpath, expr.hir_id);
             if let Res::Def(DefKind::Fn, did) = def {
                 if !def_id_is_transmute(cx, did) {
                     return None;
