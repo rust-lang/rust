@@ -59,7 +59,7 @@
 #[cold = 1]
 //~^ ERROR malformed
 #[must_use()]
-//~^ ERROR valid forms for the attribute are
+//~^ ERROR malformed
 #[no_mangle = 1]
 //~^ ERROR malformed
 #[unsafe(naked())]

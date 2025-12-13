@@ -381,15 +381,6 @@ pub(crate) struct UnusedMultiple {
 }
 
 #[derive(Diagnostic)]
-#[diag(attr_parsing_ill_formed_attribute_input)]
-pub(crate) struct IllFormedAttributeInputLint {
-    #[primary_span]
-    pub span: Span,
-    pub num_suggestions: usize,
-    pub suggestions: DiagArgValue,
-}
-
-#[derive(Diagnostic)]
 #[diag(attr_parsing_null_on_export, code = E0648)]
 pub(crate) struct NullOnExport {
     #[primary_span]

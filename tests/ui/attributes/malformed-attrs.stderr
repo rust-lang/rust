@@ -314,11 +314,21 @@ LL | #[cold = 1]
    | |      didn't expect any arguments here
    | help: must be of the form: `#[cold]`
 
-error: valid forms for the attribute are `#[must_use = "reason"]` and `#[must_use]`
+error[E0539]: malformed `must_use` attribute input
   --> $DIR/malformed-attrs.rs:61:1
    |
 LL | #[must_use()]
    | ^^^^^^^^^^^^^
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/diagnostics.html#the-must_use-attribute>
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #[must_use()]
+LL + #[must_use = "reason"]
+   |
+LL - #[must_use()]
+LL + #[must_use]
+   |
 
 error[E0565]: malformed `no_mangle` attribute input
   --> $DIR/malformed-attrs.rs:63:1

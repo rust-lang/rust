@@ -50,11 +50,6 @@ attr_parsing_expects_feature_list =
 attr_parsing_expects_features =
     `{$name}` expects feature names
 
-attr_parsing_ill_formed_attribute_input = {$num_suggestions ->
-        [1] attribute must be of the form {$suggestions}
-        *[other] valid forms for the attribute are {$suggestions}
-    }
-
 attr_parsing_import_name_type_raw =
     import name type can only be used with link kind `raw-dylib`
 
