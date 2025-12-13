@@ -30,7 +30,6 @@ use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::{DiagCtxtHandle, LintBuffer};
 use rustc_feature::Features;
 use rustc_session::Session;
-use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::lint::builtin::{
     DEPRECATED_WHERE_CLAUSE_LOCATION, MISSING_ABI, MISSING_UNSAFE_ON_EXTERN,
     PATTERNS_IN_FNS_WITHOUT_BODY, UNUSED_VISIBILITIES,
@@ -166,13 +165,13 @@ impl<'a> AstValidator<'a> {
                 state.print_where_predicate(p);
             }
 
-            errors::WhereClauseBeforeTypeAliasSugg::Move {
+            errors::ModifyLeadingTyAliasWhereClause::Move {
                 left: span,
                 snippet: state.s.eof(),
                 right: ty_alias.after_where_clause.span.shrink_to_hi(),
             }
         } else {
-            errors::WhereClauseBeforeTypeAliasSugg::Remove { span }
+            errors::ModifyLeadingTyAliasWhereClause::Remove { span }
         };
 
         Err(errors::WhereClauseBeforeTypeAlias { span, sugg })
@@ -230,14 +229,12 @@ impl<'a> AstValidator<'a> {
         });
     }
 
-    fn check_decl_no_pat(decl: &FnDecl, mut report_err: impl FnMut(Span, Option<Ident>, bool)) {
+    fn check_decl_no_pat(decl: &FnDecl, mut report_err: impl FnMut(Span, Option<Ident>)) {
         for Param { pat, .. } in &decl.inputs {
             match pat.kind {
                 PatKind::Missing | PatKind::Ident(BindingMode::NONE, _, None) | PatKind::Wild => {}
-                PatKind::Ident(BindingMode::MUT, ident, None) => {
-                    report_err(pat.span, Some(ident), true)
-                }
-                _ => report_err(pat.span, None, false),
+                PatKind::Ident(BindingMode::MUT, ident, None) => report_err(pat.span, Some(ident)),
+                _ => report_err(pat.span, None),
             }
         }
     }
@@ -929,7 +926,7 @@ impl<'a> AstValidator<'a> {
             TyKind::FnPtr(bfty) => {
                 self.check_fn_ptr_safety(bfty.decl_span, bfty.safety);
                 self.check_fn_decl(&bfty.decl, SelfSemantic::No);
-                Self::check_decl_no_pat(&bfty.decl, |span, _, _| {
+                Self::check_decl_no_pat(&bfty.decl, |span, _| {
                     self.dcx().emit_err(errors::PatternFnPointer { span });
                 });
                 if let Extern::Implicit(extern_span) = bfty.ext {
@@ -1360,7 +1357,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                         UNUSED_VISIBILITIES,
                         item.id,
                         item.vis.span,
-                        BuiltinLintDiag::UnusedVisibility(item.vis.span),
+                        errors::UnusedVisibility { span: item.vis.span },
                     )
                 }
 
@@ -1646,25 +1643,20 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
 
         // Functions without bodies cannot have patterns.
         if let FnKind::Fn(ctxt, _, Fn { body: None, sig, .. }) = fk {
-            Self::check_decl_no_pat(&sig.decl, |span, ident, mut_ident| {
-                if mut_ident && matches!(ctxt, FnCtxt::Assoc(_)) {
-                    if let Some(ident) = ident {
-                        self.lint_buffer.buffer_lint(
-                            PATTERNS_IN_FNS_WITHOUT_BODY,
-                            id,
-                            span,
-                            BuiltinLintDiag::PatternsInFnsWithoutBody {
-                                span,
-                                ident,
-                                is_foreign: matches!(ctxt, FnCtxt::Foreign),
-                            },
-                        )
-                    }
-                } else {
-                    match ctxt {
-                        FnCtxt::Foreign => self.dcx().emit_err(errors::PatternInForeign { span }),
-                        _ => self.dcx().emit_err(errors::PatternInBodiless { span }),
-                    };
+            Self::check_decl_no_pat(&sig.decl, |span, mut_ident| match ctxt {
+                FnCtxt::Assoc(_) if let Some(mut_ident) = mut_ident => {
+                    self.lint_buffer.buffer_lint(
+                        PATTERNS_IN_FNS_WITHOUT_BODY,
+                        id,
+                        span,
+                        errors::PatternInBodilessLint { removal: span.until(mut_ident.span) },
+                    );
+                }
+                FnCtxt::Foreign => {
+                    self.dcx().emit_err(errors::PatternInForeign { span });
+                }
+                _ => {
+                    self.dcx().emit_err(errors::PatternInBodiless { span });
                 }
             });
         }
@@ -1728,17 +1720,11 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         if let AssocItemKind::Type(ty_alias) = &item.kind
             && let Err(err) = self.check_type_alias_where_clause_location(ty_alias)
         {
-            let sugg = match err.sugg {
-                errors::WhereClauseBeforeTypeAliasSugg::Remove { .. } => None,
-                errors::WhereClauseBeforeTypeAliasSugg::Move { snippet, right, .. } => {
-                    Some((right, snippet))
-                }
-            };
             self.lint_buffer.buffer_lint(
                 DEPRECATED_WHERE_CLAUSE_LOCATION,
                 item.id,
                 err.span,
-                BuiltinLintDiag::DeprecatedWhereclauseLocation(err.span, sugg),
+                errors::DeprecatedWhereClauseLocation { sugg: err.sugg },
             );
         }
 

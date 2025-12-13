@@ -2686,55 +2686,6 @@ pub(crate) enum RedundantImportSub {
 }
 
 #[derive(LintDiagnostic)]
-pub(crate) enum PatternsInFnsWithoutBody {
-    #[diag(lint_pattern_in_foreign)]
-    Foreign {
-        #[subdiagnostic]
-        sub: PatternsInFnsWithoutBodySub,
-    },
-    #[diag(lint_pattern_in_bodiless)]
-    Bodiless {
-        #[subdiagnostic]
-        sub: PatternsInFnsWithoutBodySub,
-    },
-}
-
-#[derive(Subdiagnostic)]
-#[suggestion(lint_remove_mut_from_pattern, code = "{ident}", applicability = "machine-applicable")]
-pub(crate) struct PatternsInFnsWithoutBodySub {
-    #[primary_span]
-    pub span: Span,
-
-    pub ident: Ident,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(lint_deprecated_where_clause_location)]
-#[note]
-pub(crate) struct DeprecatedWhereClauseLocation {
-    #[subdiagnostic]
-    pub suggestion: DeprecatedWhereClauseLocationSugg,
-}
-
-#[derive(Subdiagnostic)]
-pub(crate) enum DeprecatedWhereClauseLocationSugg {
-    #[multipart_suggestion(lint_suggestion_move_to_end, applicability = "machine-applicable")]
-    MoveToEnd {
-        #[suggestion_part(code = "")]
-        left: Span,
-        #[suggestion_part(code = "{sugg}")]
-        right: Span,
-
-        sugg: String,
-    },
-    #[suggestion(lint_suggestion_remove_where, code = "", applicability = "machine-applicable")]
-    RemoveWhere {
-        #[primary_span]
-        span: Span,
-    },
-}
-
-#[derive(LintDiagnostic)]
 #[diag(lint_single_use_lifetime)]
 pub(crate) struct SingleUseLifetime {
     #[label(lint_label_param)]
@@ -3122,14 +3073,6 @@ pub(crate) struct UnsafeAttrOutsideUnsafeSuggestion {
     pub left: Span,
     #[suggestion_part(code = ")")]
     pub right: Span,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(lint_unused_visibilities)]
-#[note]
-pub(crate) struct UnusedVisibility {
-    #[suggestion(style = "short", code = "", applicability = "machine-applicable")]
-    pub span: Span,
 }
 
 #[derive(LintDiagnostic)]

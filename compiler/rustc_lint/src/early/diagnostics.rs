@@ -104,26 +104,6 @@ pub fn decorate_builtin_lint(
             stability::Deprecated { sub, kind: "macro".to_owned(), path, note, since_kind }
                 .decorate_lint(diag);
         }
-        BuiltinLintDiag::PatternsInFnsWithoutBody { span: remove_span, ident, is_foreign } => {
-            let sub = lints::PatternsInFnsWithoutBodySub { ident, span: remove_span };
-            if is_foreign {
-                lints::PatternsInFnsWithoutBody::Foreign { sub }
-            } else {
-                lints::PatternsInFnsWithoutBody::Bodiless { sub }
-            }
-            .decorate_lint(diag);
-        }
-        BuiltinLintDiag::DeprecatedWhereclauseLocation(left_sp, sugg) => {
-            let suggestion = match sugg {
-                Some((right_sp, sugg)) => lints::DeprecatedWhereClauseLocationSugg::MoveToEnd {
-                    left: left_sp,
-                    right: right_sp,
-                    sugg,
-                },
-                None => lints::DeprecatedWhereClauseLocationSugg::RemoveWhere { span: left_sp },
-            };
-            lints::DeprecatedWhereClauseLocation { suggestion }.decorate_lint(diag);
-        }
         BuiltinLintDiag::SingleUseLifetime {
             param_span,
             use_span: Some((use_span, elide)),
@@ -239,9 +219,6 @@ pub fn decorate_builtin_lint(
         }
         BuiltinLintDiag::UnusedCrateDependency { extern_crate, local_crate } => {
             lints::UnusedCrateDependency { extern_crate, local_crate }.decorate_lint(diag)
-        }
-        BuiltinLintDiag::UnusedVisibility(span) => {
-            lints::UnusedVisibility { span }.decorate_lint(diag)
         }
         BuiltinLintDiag::AttributeLint(kind) => decorate_attribute_lint(sess, tcx, &kind, diag),
     }

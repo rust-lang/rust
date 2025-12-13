@@ -222,11 +222,6 @@ lint_deprecated_lint_name =
     .suggestion = change it to
     .help = change it to {$replace}
 
-lint_deprecated_where_clause_location = where clause not allowed here
-    .note = see issue #89122 <https://github.com/rust-lang/rust/issues/89122> for more information
-    .suggestion_move_to_end = move it to the end of the type declaration
-    .suggestion_remove_where = remove this `where`
-
 lint_diag_out_of_impl =
     diagnostics should only be created in `Diagnostic`/`Subdiagnostic`/`LintDiagnostic` impls
 
@@ -746,12 +741,6 @@ lint_path_statement_drop = path statement drops value
 
 lint_path_statement_no_effect = path statement with no effect
 
-lint_pattern_in_bodiless = patterns aren't allowed in functions without bodies
-    .label = pattern not allowed in function without body
-
-lint_pattern_in_foreign = patterns aren't allowed in foreign function declarations
-    .label = pattern not allowed in foreign function
-
 lint_query_instability = using `{$query}` can result in unstable query results
     .note = if you believe this case to be fine, allow this lint and add a comment explaining your rationale
 
@@ -782,8 +771,6 @@ lint_redundant_semicolons_suggestion = remove {$multiple_semicolons ->
         [true] these semicolons
         *[false] this semicolon
     }
-
-lint_remove_mut_from_pattern = remove `mut` from the parameter
 
 lint_removed_lint = lint `{$name}` has been removed: {$reason}
 
@@ -1004,10 +991,6 @@ lint_unused_op = unused {$op} that must be used
     .suggestion = use `let _ = ...` to ignore the resulting value
 
 lint_unused_result = unused result of type `{$ty}`
-
-lint_unused_visibilities = visibility qualifiers have no effect on `const _` declarations
-    .note = `const _` does not declare a name, so there is nothing for the qualifier to apply to
-    .suggestion = remove the qualifier
 
 lint_use_let_underscore_ignore_suggestion = use `let _ = ...` to ignore the expression or result
 

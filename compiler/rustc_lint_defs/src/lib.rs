@@ -673,12 +673,6 @@ pub enum BuiltinLintDiag {
         path: String,
         since_kind: DeprecatedSinceKind,
     },
-    PatternsInFnsWithoutBody {
-        span: Span,
-        ident: Ident,
-        is_foreign: bool,
-    },
-    DeprecatedWhereclauseLocation(Span, Option<(Span, String)>),
     SingleUseLifetime {
         /// Span of the parameter which declares this lifetime.
         param_span: Span,
@@ -736,7 +730,6 @@ pub enum BuiltinLintDiag {
         extern_crate: Symbol,
         local_crate: Symbol,
     },
-    UnusedVisibility(Span),
     AttributeLint(AttributeLintKind),
 }
 
