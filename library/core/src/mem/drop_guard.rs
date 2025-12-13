@@ -79,30 +79,30 @@ where
     ///
     /// let value = String::from("Nori likes chicken");
     /// let guard = DropGuard::new(value, |s| println!("{s}"));
-    /// assert_eq!(guard.dismiss(), "Nori likes chicken");
+    /// assert_eq!(DropGuard::dismiss(guard), "Nori likes chicken");
     /// ```
     #[unstable(feature = "drop_guard", issue = "144426")]
     #[rustc_const_unstable(feature = "const_drop_guard", issue = "none")]
     #[inline]
-    pub const fn dismiss(self) -> T
+    pub const fn dismiss(guard: Self) -> T
     where
         F: [const] Destruct,
     {
         // First we ensure that dropping the guard will not trigger
         // its destructor
-        let mut this = ManuallyDrop::new(self);
+        let mut guard = ManuallyDrop::new(guard);
 
         // Next we manually read the stored value from the guard.
         //
         // SAFETY: this is safe because we've taken ownership of the guard.
-        let value = unsafe { ManuallyDrop::take(&mut this.inner) };
+        let value = unsafe { ManuallyDrop::take(&mut guard.inner) };
 
         // Finally we drop the stored closure. We do this *after* having read
         // the value, so that even if the closure's `drop` function panics,
         // unwinding still tries to drop the value.
         //
         // SAFETY: this is safe because we've taken ownership of the guard.
-        unsafe { ManuallyDrop::drop(&mut this.f) };
+        unsafe { ManuallyDrop::drop(&mut guard.f) };
         value
     }
 }
