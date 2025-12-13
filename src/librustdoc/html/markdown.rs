@@ -250,21 +250,27 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
                         LangString::parse_without_check(lang, self.check_error_codes);
                     if !parse_result.rust {
                         let added_classes = parse_result.added_classes;
-                        let lang_string = if let Some(lang) = parse_result.unknown.first() {
-                            format!("language-{lang}")
-                        } else {
-                            String::new()
-                        };
+                        let lang = parse_result.unknown.first().map(|s| s.as_str());
+                        let lang_string = lang.map(|l| format!("language-{l}")).unwrap_or_default();
                         let whitespace = if added_classes.is_empty() { "" } else { " " };
+
+                        // Try to highlight with arborium if we have a language
+                        let code_html = lang
+                            .and_then(|l| {
+                                highlight::highlight_foreign_code(l, original_text.trim_suffix('\n'))
+                            })
+                            .unwrap_or_else(|| {
+                                Escape(original_text.trim_suffix('\n')).to_string()
+                            });
+
                         return Some(Event::Html(
                             format!(
                                 "<div class=\"example-wrap\">\
                                  <pre class=\"{lang_string}{whitespace}{added_classes}\">\
-                                     <code>{text}</code>\
+                                     <code>{code_html}</code>\
                                  </pre>\
                              </div>",
                                 added_classes = added_classes.join(" "),
-                                text = Escape(original_text.trim_suffix('\n')),
                             )
                             .into(),
                         ));

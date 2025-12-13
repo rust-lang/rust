@@ -1475,5 +1475,31 @@ fn string_without_closing_tag<T: Display>(
     }
 }
 
+/// Highlights non-Rust code using arborium (tree-sitter based).
+/// Returns `None` if the language is not supported, in which case
+/// the caller should fall back to plain escaped text.
+pub(crate) fn highlight_foreign_code(lang: &str, code: &str) -> Option<String> {
+    use std::cell::RefCell;
+
+    thread_local! {
+        static HIGHLIGHTER: RefCell<arborium::Highlighter> =
+            RefCell::new(arborium::Highlighter::new());
+    }
+
+    // Map common language aliases to arborium grammar names
+    let lang = match lang {
+        "js" => "javascript",
+        "ts" => "typescript",
+        "py" => "python",
+        "rb" => "ruby",
+        "sh" | "shell" | "zsh" => "bash",
+        "yml" => "yaml",
+        "c++" | "cxx" => "cpp",
+        other => other,
+    };
+
+    HIGHLIGHTER.with_borrow_mut(|h| h.highlight_to_html(lang, code).ok())
+}
+
 #[cfg(test)]
 mod tests;

@@ -9,6 +9,23 @@ path = "lib.rs"
 
 [dependencies]
 # tidy-alphabetical-start
+arborium = { version = "1.2.3", default-features = false, features = [
+    "lang-bash",
+    "lang-c",
+    "lang-cpp",
+    "lang-css",
+    "lang-go",
+    "lang-html",
+    "lang-java",
+    "lang-javascript",
+    "lang-json",
+    "lang-python",
+    "lang-ruby",
+    "lang-sql",
+    "lang-toml",
+    "lang-typescript",
+    "lang-yaml",
+] }
 arrayvec = { version = "0.7", default-features = false }
 askama = { version = "0.14", default-features = false, features = ["alloc", "config", "derive"] }
 base64 = "0.21.7"
