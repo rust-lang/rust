@@ -1,18 +1,14 @@
 [![CI](https://github.com/rust-lang/rustc-dev-guide/actions/workflows/ci.yml/badge.svg)](https://github.com/rust-lang/rustc-dev-guide/actions/workflows/ci.yml)
 
-
 This is a collaborative effort to build a guide that explains how rustc works.
 The aim of the guide is to help new contributors get oriented to rustc,
 as well as to help more experienced folks in figuring out
 some new part of the compiler that they haven't worked on before.
 
-[You can read the latest version of the guide here.](https://rustc-dev-guide.rust-lang.org/)
+You may also find the [rustc API docs] useful.
 
-You may also find the rustdocs [for the compiler itself][rustdocs] useful.
 Note that these are not intended as a guide; it's recommended that you search
 for the docs you're looking for instead of reading them top to bottom.
-
-[rustdocs]: https://doc.rust-lang.org/nightly/nightly-rustc
 
 For documentation on developing the standard library, see
 [`std-dev-guide`](https://std-dev-guide.rust-lang.org/).
@@ -32,10 +28,10 @@ If you think something is missing, please open an issue about it!
 problem!** In that case, what we will do is to schedule a bit of time
 for you to talk with someone who **does** know the code, or who wants
 to pair with you and figure it out.
- Then you can work on writing up what you learned.
+Then you can work on writing up what you learned.
 
 In general, when writing about a particular part of the compiler's code, we
-recommend that you link to the relevant parts of the [rustc rustdocs][rustdocs].
+recommend that you link to the relevant parts of the [rustc API docs].
 
 The guide has a much lower bar for what it takes for a PR to be merged.
 Check out the forge documentation for [our policy][forge_policy].
@@ -75,3 +71,5 @@ This repository is linked to `rust-lang/rust` as a [josh](https://josh-project.g
 You can use the [rustc-josh-sync](https://github.com/rust-lang/josh-sync) tool to perform synchronization.
 
 You can find a guide on how to perform the synchronization [here](./src/external-repos.md#synchronizing-a-josh-subtree).
+
+[rustc API docs]: https://doc.rust-lang.org/nightly/nightly-rustc
