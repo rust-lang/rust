@@ -138,8 +138,7 @@ requiring extra work for every execution.
 To enable debug assertions, add this to `bootstrap.toml` when compiling rustc:
 
 ```toml
-[rust]
-debug-assertions = true
+rust.debug-assertions = true
 ```
 
 ICEs that require debug assertions to reproduce should be tagged
