@@ -1206,8 +1206,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         }
                     }
                 }
-                Scope::Module(module, _) => {
+                Scope::ModuleNonGlobs(module, _) => {
                     this.add_module_candidates(module, suggestions, filter_fn, None);
+                }
+                Scope::ModuleGlobs(..) => {
+                    // Already handled in `ModuleNonGlobs`.
                 }
                 Scope::MacroUsePrelude => {
                     suggestions.extend(this.macro_use_prelude.iter().filter_map(
