@@ -9,6 +9,14 @@ use crate::builder::Builder;
 use crate::builder::matches::test::is_switch_ty;
 use crate::builder::matches::{Candidate, Test, TestBranch, TestCase, TestKind};
 
+/// Output of [`Builder::partition_candidates_into_buckets`].
+pub(crate) struct PartitionedCandidates<'tcx, 'b, 'c> {
+    /// For each possible outcome of the test, the candidates that are matched in that outcome.
+    pub(crate) target_candidates: FxIndexMap<TestBranch<'tcx>, Vec<&'b mut Candidate<'tcx>>>,
+    /// The remaining candidates that weren't associated with any test outcome.
+    pub(crate) remaining_candidates: &'b mut [&'c mut Candidate<'tcx>],
+}
+
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Given a test, we partition the input candidates into several buckets.
     /// If a candidate matches in exactly one of the branches of `test`
@@ -19,10 +27,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Importantly, we also **mutate** the branched candidates to remove match pairs
     /// that are entailed by the outcome of the test, and add any sub-pairs of the
     /// removed pairs.
-    ///
-    /// This returns a pair of
-    /// - the candidates that weren't sorted;
-    /// - for each possible outcome of the test, the candidates that match in that outcome.
     ///
     /// For example:
     /// ```
@@ -41,36 +45,33 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// - If the outcome is that `x` is false, candidates {1, 2} are possible
     ///
     /// Following our algorithm:
-    /// - Candidate 0 is sorted into outcome `x == true`
-    /// - Candidate 1 is sorted into outcome `x == false`
-    /// - Candidate 2 remains unsorted, because testing `x` has no effect on it
-    /// - Candidate 3 remains unsorted, because a previous candidate (2) was unsorted
+    /// - Candidate 0 is bucketed into outcome `x == true`
+    /// - Candidate 1 is bucketed into outcome `x == false`
+    /// - Candidate 2 remains unbucketed, because testing `x` has no effect on it
+    /// - Candidate 3 remains unbucketed, because a previous candidate (2) was unbucketed
     ///   - This helps preserve the illusion that candidates are tested "in order"
     ///
-    /// The sorted candidates are mutated to remove entailed match pairs:
+    /// The bucketed candidates are mutated to remove entailed match pairs:
     /// - candidate 0 becomes `[z @ true]` since we know that `x` was `true`;
     /// - candidate 1 becomes `[y @ false]` since we know that `x` was `false`.
-    pub(super) fn sort_candidates<'b, 'c>(
+    pub(super) fn partition_candidates_into_buckets<'b, 'c>(
         &mut self,
         match_place: Place<'tcx>,
         test: &Test<'tcx>,
         mut candidates: &'b mut [&'c mut Candidate<'tcx>],
-    ) -> (
-        &'b mut [&'c mut Candidate<'tcx>],
-        FxIndexMap<TestBranch<'tcx>, Vec<&'b mut Candidate<'tcx>>>,
-    ) {
-        // For each of the possible outcomes, collect vector of candidates that apply if the test
+    ) -> PartitionedCandidates<'tcx, 'b, 'c> {
+        // For each of the possible outcomes, collect a vector of candidates that apply if the test
         // has that particular outcome.
         let mut target_candidates: FxIndexMap<_, Vec<&mut Candidate<'_>>> = Default::default();
 
         let total_candidate_count = candidates.len();
 
-        // Sort the candidates into the appropriate vector in `target_candidates`. Note that at some
-        // point we may encounter a candidate where the test is not relevant; at that point, we stop
-        // sorting.
+        // Partition the candidates into the appropriate vector in `target_candidates`.
+        // Note that at some point we may encounter a candidate where the test is not relevant;
+        // at that point, we stop partitioning.
         while let Some(candidate) = candidates.first_mut() {
             let Some(branch) =
-                self.sort_candidate(match_place, test, candidate, &target_candidates)
+                self.choose_bucket_for_candidate(match_place, test, candidate, &target_candidates)
             else {
                 break;
             };
@@ -87,7 +88,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         debug!("tested_candidates: {}", total_candidate_count - candidates.len());
         debug!("untested_candidates: {}", candidates.len());
 
-        (candidates, target_candidates)
+        PartitionedCandidates { target_candidates, remaining_candidates: candidates }
     }
 
     /// Given that we are performing `test` against `test_place`, this job
@@ -115,12 +116,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// that it *doesn't* apply. For now, we return false, indicate that the
     /// test does not apply to this candidate, but it might be we can get
     /// tighter match code if we do something a bit different.
-    fn sort_candidate(
+    fn choose_bucket_for_candidate(
         &mut self,
         test_place: Place<'tcx>,
         test: &Test<'tcx>,
         candidate: &mut Candidate<'tcx>,
-        sorted_candidates: &FxIndexMap<TestBranch<'tcx>, Vec<&mut Candidate<'tcx>>>,
+        // Other candidates that have already been partitioned into a bucket for this test, if any
+        prior_candidates: &FxIndexMap<TestBranch<'tcx>, Vec<&mut Candidate<'tcx>>>,
     ) -> Option<TestBranch<'tcx>> {
         // Find the match_pair for this place (if any). At present,
         // afaik, there can be at most one. (In the future, if we
@@ -155,13 +157,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             //
             // FIXME(#29623) we could use PatKind::Range to rule
             // things out here, in some cases.
+            //
+            // FIXME(Zalathar): Is the `is_switch_ty` test unnecessary?
             (TestKind::SwitchInt, &TestCase::Constant { value })
                 if is_switch_ty(match_pair.pattern_ty) =>
             {
-                // An important invariant of candidate sorting is that a candidate
+                // An important invariant of candidate bucketing is that a candidate
                 // must not match in multiple branches. For `SwitchInt` tests, adding
                 // a new value might invalidate that property for range patterns that
-                // have already been sorted into the failure arm, so we must take care
+                // have already been partitioned into the failure arm, so we must take care
                 // not to add such values here.
                 let is_covering_range = |test_case: &TestCase<'tcx>| {
                     test_case.as_range().is_some_and(|range| {
@@ -174,7 +178,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         .iter()
                         .any(|mp| mp.place == Some(test_place) && is_covering_range(&mp.test_case))
                 };
-                if sorted_candidates
+                if prior_candidates
                     .get(&TestBranch::Failure)
                     .is_some_and(|candidates| candidates.iter().any(is_conflicting_candidate))
                 {
@@ -191,7 +195,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // the values being tested. (This restricts what values can be
                 // added to the test by subsequent candidates.)
                 fully_matched = false;
-                let not_contained = sorted_candidates
+                let not_contained = prior_candidates
                     .keys()
                     .filter_map(|br| br.as_constant())
                     .all(|val| matches!(range.contains(val, self.tcx), Some(false)));

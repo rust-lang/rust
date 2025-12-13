@@ -27,6 +27,7 @@ use tracing::{debug, instrument};
 
 use crate::builder::ForGuard::{self, OutsideGuard, RefWithinGuard};
 use crate::builder::expr::as_place::PlaceBuilder;
+use crate::builder::matches::buckets::PartitionedCandidates;
 use crate::builder::matches::user_ty::ProjectedUserTypesNode;
 use crate::builder::scope::DropKind;
 use crate::builder::{
@@ -1069,7 +1070,7 @@ struct Candidate<'tcx> {
     /// Key mutations include:
     ///
     /// - When a match pair is fully satisfied by a test, it is removed from the
-    ///   list, and its subpairs are added instead (see [`Builder::sort_candidate`]).
+    ///   list, and its subpairs are added instead (see [`Builder::choose_bucket_for_candidate`]).
     /// - During or-pattern expansion, any leading or-pattern is removed, and is
     ///   converted into subcandidates (see [`Builder::expand_and_match_or_candidates`]).
     /// - After a candidate's subcandidates have been lowered, a copy of any remaining
@@ -1254,7 +1255,7 @@ struct Ascription<'tcx> {
 ///
 /// Created by [`MatchPairTree::for_pattern`], and then inspected primarily by:
 /// - [`Builder::pick_test_for_match_pair`] (to choose a test)
-/// - [`Builder::sort_candidate`] (to see how the test interacts with a match pair)
+/// - [`Builder::choose_bucket_for_candidate`] (to see how the test interacts with a match pair)
 ///
 /// Note that or-patterns are not tested directly like the other variants.
 /// Instead they participate in or-pattern expansion, where they are transformed into
@@ -2284,8 +2285,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // For each of the N possible test outcomes, build the vector of candidates that applies if
         // the test has that particular outcome. This also mutates the candidates to remove match
         // pairs that are fully satisfied by the relevant outcome.
-        let (remaining_candidates, target_candidates) =
-            self.sort_candidates(match_place, &test, candidates);
+        let PartitionedCandidates { target_candidates, remaining_candidates } =
+            self.partition_candidates_into_buckets(match_place, &test, candidates);
 
         // The block that we should branch to if none of the `target_candidates` match.
         let remainder_start = self.cfg.start_new_block();
