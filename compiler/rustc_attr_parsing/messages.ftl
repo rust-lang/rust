@@ -213,10 +213,6 @@ attr_parsing_stability_outside_std = stability attributes may not be used outsid
 attr_parsing_suffixed_literal_in_attribute = suffixed literals are not allowed in attributes
     .help = instead of using a suffixed literal (`1u8`, `1.0f32`, etc.), use an unsuffixed version (`1`, `1.0`, etc.)
 
-attr_parsing_unknown_meta_item =
-    unknown meta item '{$item}'
-    .label = expected one of {$expected}
-
 attr_parsing_unknown_version_literal =
     unknown version literal format, assuming it refers to a future version
 

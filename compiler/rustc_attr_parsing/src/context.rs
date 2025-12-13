@@ -77,7 +77,7 @@ use crate::attributes::transparency::TransparencyParser;
 use crate::attributes::{AttributeParser as _, Combine, Single, WithoutArgs};
 use crate::parser::{ArgParser, RefPathParser};
 use crate::session_diagnostics::{
-    AttributeParseError, AttributeParseErrorReason, ParsedDescription, UnknownMetaItem,
+    AttributeParseError, AttributeParseErrorReason, ParsedDescription,
 };
 use crate::target_checking::AllowedTargets;
 
@@ -425,15 +425,6 @@ impl<'f, 'sess: 'f, S: Stage> SharedContext<'f, 'sess, S> {
 }
 
 impl<'f, 'sess: 'f, S: Stage> AcceptContext<'f, 'sess, S> {
-    pub(crate) fn unknown_key(
-        &self,
-        span: Span,
-        found: String,
-        options: &[&'static str],
-    ) -> ErrorGuaranteed {
-        self.emit_err(UnknownMetaItem { span, item: found, expected: options })
-    }
-
     fn emit_parse_error(
         &self,
         span: Span,
