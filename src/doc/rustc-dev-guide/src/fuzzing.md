@@ -78,7 +78,7 @@ To build a corpus, you may want to use:
 
 ## Extra credit
 
-Here are a few things you can do to help the Rust project after filing an ICE.
+Here are a few things you can do to help the Rust project after filing an ICE:
 
 - [Bisect][bisect] the bug to figure out when it was introduced.
   If you find the regressing PR / commit, you can mark the issue with the label `S-has-bisection`.
