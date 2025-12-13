@@ -12,7 +12,6 @@
 #![feature(rustc_private)]
 
 extern crate rustc_driver;
-extern crate rustc_lexer;
 extern crate rustc_parse;
 
 fn main() {
@@ -22,9 +21,5 @@ fn main() {
          it should also be updated in the reference at \
          https://github.com/rust-lang/reference/blob/HEAD/src/identifiers.md."
     );
-    println!("Unicode version of unicode-ident is: {:?}", rustc_lexer::UNICODE_IDENT_VERSION);
-    println!(
-        "Unicode version of unicode-normalization is: {:?}",
-        rustc_parse::UNICODE_NORMALIZATION_VERSION
-    );
+    println!("Unicode version used in rustc_parse is: {:?}", rustc_parse::UNICODE_VERSION);
 }

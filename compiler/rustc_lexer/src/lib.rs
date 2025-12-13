@@ -34,8 +34,25 @@ use LiteralKind::*;
 use TokenKind::*;
 use cursor::EOF_CHAR;
 pub use cursor::{Cursor, FrontmatterAllowed};
-pub use unicode_ident::UNICODE_VERSION as UNICODE_IDENT_VERSION;
+pub use unicode_ident::UNICODE_VERSION;
 use unicode_properties::UnicodeEmoji;
+
+// Make sure that the Unicode version of the dependencies is the same.
+const _: () = {
+    let properties = unicode_properties::UNICODE_VERSION;
+    let ident = unicode_ident::UNICODE_VERSION;
+
+    if properties.0 != ident.0 as u64
+        || properties.1 != ident.1 as u64
+        || properties.2 != ident.2 as u64
+    {
+        panic!(
+            "unicode-properties and unicode-ident must use the same Unicode version, \
+            `unicode_properties::UNICODE_VERSION` and `unicode_ident::UNICODE_VERSION` are \
+            different."
+        );
+    }
+};
 
 /// Parsed token.
 /// It doesn't contain information about data that has been parsed,
