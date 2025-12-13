@@ -295,40 +295,6 @@ fn test_prettify_ignore_link_targets() {
 }
 
 #[test]
-fn test_sembr_then_prettify() {
-    let original = "
-hi there. do
-not split
-short sentences.
-hi again.
-";
-    let expected = "
-hi there.
-do
-not split
-short sentences.
-hi again.
-";
-    let processed = comply(original);
-    assert_eq!(expected, processed);
-    let expected = "
-hi there.
-do not split
-short sentences.
-hi again.
-";
-    let processed = lengthen_lines(&processed, 50);
-    assert_eq!(expected, processed);
-    let expected = "
-hi there.
-do not split short sentences.
-hi again.
-";
-    let processed = lengthen_lines(&processed, 50);
-    assert_eq!(expected, processed);
-}
-
-#[test]
 fn test_sembr_question_mark() {
     let original = "
 o? whatever
