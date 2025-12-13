@@ -1,6 +1,8 @@
 //@ run-pass
 //@ check-run-results
 //@ ignore-backends: gcc
+// FIXME: linking on windows (speciifcally mingw) not yet supported, see tracking issue #125418
+//@ ignore-windows
 // Tests whether one function could implement two EIIs.
 #![feature(extern_item_impls)]
 

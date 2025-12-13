@@ -3,6 +3,8 @@
 //@ run-pass
 //@ check-run-results
 //@ ignore-backends: gcc
+// FIXME: linking on windows (speciifcally mingw) not yet supported, see tracking issue #125418
+//@ ignore-windows
 // Functions can have target-cpu applied. On apple-darwin this is super important,
 // since you can have binaries which mix x86 and aarch64 code that are compatible
 // with both architectures. So we can't just reject target_cpu on EIIs since apple

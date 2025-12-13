@@ -1,5 +1,5 @@
 warning: function `decl1` is never used
-  --> $DIR/local_crate_explicit.rs:9:8
+  --> $DIR/local_crate_explicit.rs:11:8
    |
 LL | pub fn decl1(x: u64) {
    |        ^^^^^
