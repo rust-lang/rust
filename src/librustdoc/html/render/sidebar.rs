@@ -229,6 +229,7 @@ fn docblock_toc<'a>(
         error_codes: cx.shared.codes,
         edition: cx.shared.edition(),
         playground: &cx.shared.playground,
+        highlight_foreign_code: cx.shared.highlight_foreign_code,
     }
     .into_parts();
     let links: Vec<Link<'_>> = toc

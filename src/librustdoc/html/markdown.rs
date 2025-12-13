@@ -20,6 +20,7 @@
 //!     edition: Edition::Edition2015,
 //!     playground: &None,
 //!     heading_offset: HeadingOffset::H2,
+//!     highlight_foreign_code: false,
 //! };
 //! let mut html = String::new();
 //! md.write_into(&mut html).unwrap();
@@ -99,6 +100,8 @@ pub struct Markdown<'a> {
     /// Offset at which we render headings.
     /// E.g. if `heading_offset: HeadingOffset::H2`, then `# something` renders an `<h2>`.
     pub heading_offset: HeadingOffset,
+    /// Whether to syntax-highlight non-Rust code blocks using tree-sitter.
+    pub highlight_foreign_code: bool,
 }
 /// A struct like `Markdown` that renders the markdown with a table of contents.
 pub(crate) struct MarkdownWithToc<'a> {
@@ -108,6 +111,7 @@ pub(crate) struct MarkdownWithToc<'a> {
     pub(crate) error_codes: ErrorCodes,
     pub(crate) edition: Edition,
     pub(crate) playground: &'a Option<Playground>,
+    pub(crate) highlight_foreign_code: bool,
 }
 /// A tuple struct like `Markdown` that renders the markdown escaping HTML tags
 /// and includes no paragraph tags.
@@ -210,6 +214,8 @@ struct CodeBlocks<'p, 'a, I: Iterator<Item = Event<'a>>> {
     // Information about the playground if a URL has been specified, containing an
     // optional crate name and the URL.
     playground: &'p Option<Playground>,
+    // Whether to use tree-sitter highlighting for non-Rust code blocks.
+    highlight_foreign_code: bool,
 }
 
 impl<'p, 'a, I: Iterator<Item = Event<'a>>> CodeBlocks<'p, 'a, I> {
@@ -218,8 +224,15 @@ impl<'p, 'a, I: Iterator<Item = Event<'a>>> CodeBlocks<'p, 'a, I> {
         error_codes: ErrorCodes,
         edition: Edition,
         playground: &'p Option<Playground>,
+        highlight_foreign_code: bool,
     ) -> Self {
-        CodeBlocks { inner: iter, check_error_codes: error_codes, edition, playground }
+        CodeBlocks {
+            inner: iter,
+            check_error_codes: error_codes,
+            edition,
+            playground,
+            highlight_foreign_code,
+        }
     }
 }
 
@@ -254,14 +267,17 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
                         let lang_string = lang.map(|l| format!("language-{l}")).unwrap_or_default();
                         let whitespace = if added_classes.is_empty() { "" } else { " " };
 
-                        // Try to highlight with arborium if we have a language
-                        let code_html = lang
-                            .and_then(|l| {
+                        // Try to highlight with arborium if enabled and we have a language
+                        let code_html = if self.highlight_foreign_code {
+                            lang.and_then(|l| {
                                 highlight::highlight_foreign_code(l, original_text.trim_suffix('\n'))
                             })
                             .unwrap_or_else(|| {
                                 Escape(original_text.trim_suffix('\n')).to_string()
-                            });
+                            })
+                        } else {
+                            Escape(original_text.trim_suffix('\n')).to_string()
+                        };
 
                         return Some(Event::Html(
                             format!(
@@ -1354,6 +1370,7 @@ impl<'a> Markdown<'a> {
             edition,
             playground,
             heading_offset,
+            highlight_foreign_code,
         } = self;
 
         let replacer = move |broken_link: BrokenLink<'_>| {
@@ -1371,7 +1388,7 @@ impl<'a> Markdown<'a> {
             let p = SpannedLinkReplacer::new(p, links);
             let p = footnotes::Footnotes::new(p, existing_footnotes);
             let p = TableWrapper::new(p.map(|(ev, _)| ev));
-            CodeBlocks::new(p, codes, edition, playground)
+            CodeBlocks::new(p, codes, edition, playground, highlight_foreign_code)
         })
     }
 
@@ -1427,8 +1444,15 @@ impl<'a> Markdown<'a> {
 
 impl MarkdownWithToc<'_> {
     pub(crate) fn into_parts(self) -> (Toc, String) {
-        let MarkdownWithToc { content: md, links, ids, error_codes: codes, edition, playground } =
-            self;
+        let MarkdownWithToc {
+            content: md,
+            links,
+            ids,
+            error_codes: codes,
+            edition,
+            playground,
+            highlight_foreign_code,
+        } = self;
 
         // This is actually common enough to special-case
         if md.is_empty() {
@@ -1452,7 +1476,7 @@ impl MarkdownWithToc<'_> {
             let p = HeadingLinks::new(p, Some(&mut toc), ids, HeadingOffset::H1);
             let p = footnotes::Footnotes::new(p, existing_footnotes);
             let p = TableWrapper::new(p.map(|(ev, _)| ev));
-            let p = CodeBlocks::new(p, codes, edition, playground);
+            let p = CodeBlocks::new(p, codes, edition, playground, highlight_foreign_code);
             html::push_html(&mut s, p);
         });
 

@@ -654,6 +654,14 @@ fn opts() -> Vec<RustcOptGroup> {
             "Add possibility to expand macros in the HTML source code pages",
             "",
         ),
+        opt(
+            Unstable,
+            Flag,
+            "",
+            "highlight-foreign-code",
+            "Syntax-highlight non-Rust code blocks using tree-sitter (arborium)",
+            "",
+        ),
         // deprecated / removed options
         opt(
             Stable,

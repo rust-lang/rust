@@ -651,6 +651,7 @@ fn scrape_examples_help(shared: &SharedContext<'_>) -> String {
             edition: shared.edition(),
             playground: &shared.playground,
             heading_offset: HeadingOffset::H1,
+            highlight_foreign_code: shared.highlight_foreign_code,
         }
         .write_into(f))
     )
@@ -693,6 +694,7 @@ fn render_markdown(
             edition: cx.shared.edition(),
             playground: &cx.shared.playground,
             heading_offset,
+            highlight_foreign_code: cx.shared.highlight_foreign_code,
         }
         .write_into(&mut *f)?;
         f.write_str("</div>")
@@ -2164,6 +2166,7 @@ fn render_impl(
                         edition: cx.shared.edition(),
                         playground: &cx.shared.playground,
                         heading_offset: HeadingOffset::H4,
+                        highlight_foreign_code: cx.shared.highlight_foreign_code,
                     }
                     .split_summary_and_content()
                 })

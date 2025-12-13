@@ -47,6 +47,7 @@ impl ExternalHtml {
                 edition,
                 playground,
                 heading_offset: HeadingOffset::H2,
+                highlight_foreign_code: false,
             }
             .write_into(&mut bc)
             .unwrap();
@@ -63,6 +64,7 @@ impl ExternalHtml {
                 edition,
                 playground,
                 heading_offset: HeadingOffset::H2,
+                highlight_foreign_code: false,
             }
             .write_into(&mut ac)
             .unwrap();

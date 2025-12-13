@@ -306,6 +306,7 @@ fn test_header() {
             edition: DEFAULT_EDITION,
             playground: &None,
             heading_offset: HeadingOffset::H2,
+            highlight_foreign_code: false,
         }
         .write_into(&mut output)
         .unwrap();
@@ -359,6 +360,7 @@ fn test_header_ids_multiple_blocks() {
             edition: DEFAULT_EDITION,
             playground: &None,
             heading_offset: HeadingOffset::H2,
+            highlight_foreign_code: false,
         }
         .write_into(&mut output)
         .unwrap();
@@ -510,6 +512,7 @@ fn test_ascii_with_prepending_hashtag() {
             edition: DEFAULT_EDITION,
             playground: &None,
             heading_offset: HeadingOffset::H2,
+            highlight_foreign_code: false,
         }
         .write_into(&mut output)
         .unwrap();
