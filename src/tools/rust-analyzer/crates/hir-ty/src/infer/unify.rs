@@ -2,7 +2,8 @@
 
 use std::fmt;
 
-use hir_def::{AdtId, DefWithBodyId, GenericParamId, lang_item::LangItem};
+use base_db::Crate;
+use hir_def::{AdtId, DefWithBodyId, GenericParamId};
 use hir_expand::name::Name;
 use intern::sym;
 use rustc_hash::FxHashSet;
@@ -12,15 +13,13 @@ use rustc_type_ir::{
     solve::Certainty,
 };
 use smallvec::SmallVec;
-use triomphe::Arc;
 
 use crate::{
-    TraitEnvironment,
     db::HirDatabase,
     next_solver::{
         AliasTy, Canonical, ClauseKind, Const, DbInterner, ErrorGuaranteed, GenericArg,
-        GenericArgs, Goal, Predicate, PredicateKind, Region, SolverDefId, Term, TraitRef, Ty,
-        TyKind, TypingMode,
+        GenericArgs, Goal, ParamEnv, Predicate, PredicateKind, Region, SolverDefId, Term, TraitRef,
+        Ty, TyKind, TypingMode,
         fulfill::{FulfillmentCtxt, NextSolverError},
         infer::{
             DbInternerInferExt, InferCtxt, InferOk, InferResult,
@@ -32,7 +31,8 @@ use crate::{
         obligation_ctxt::ObligationCtxt,
     },
     traits::{
-        FnTrait, NextTraitSolveResult, next_trait_solve_canonical_in_ctxt, next_trait_solve_in_ctxt,
+        FnTrait, NextTraitSolveResult, ParamEnvAndCrate, next_trait_solve_canonical_in_ctxt,
+        next_trait_solve_in_ctxt,
     },
 };
 
@@ -89,7 +89,7 @@ impl<'a, 'db> ProofTreeVisitor<'db> for NestedObligationsForSelfTy<'a, 'db> {
 /// unresolved goal `T = U`.
 pub fn could_unify<'db>(
     db: &'db dyn HirDatabase,
-    env: Arc<TraitEnvironment<'db>>,
+    env: ParamEnvAndCrate<'db>,
     tys: &Canonical<'db, (Ty<'db>, Ty<'db>)>,
 ) -> bool {
     could_unify_impl(db, env, tys, |ctxt| ctxt.try_evaluate_obligations())
@@ -101,7 +101,7 @@ pub fn could_unify<'db>(
 /// them. For example `Option<T>` and `Option<U>` do not unify as we cannot show that `T = U`
 pub fn could_unify_deeply<'db>(
     db: &'db dyn HirDatabase,
-    env: Arc<TraitEnvironment<'db>>,
+    env: ParamEnvAndCrate<'db>,
     tys: &Canonical<'db, (Ty<'db>, Ty<'db>)>,
 ) -> bool {
     could_unify_impl(db, env, tys, |ctxt| ctxt.evaluate_obligations_error_on_ambiguity())
@@ -109,14 +109,14 @@ pub fn could_unify_deeply<'db>(
 
 fn could_unify_impl<'db>(
     db: &'db dyn HirDatabase,
-    env: Arc<TraitEnvironment<'db>>,
+    env: ParamEnvAndCrate<'db>,
     tys: &Canonical<'db, (Ty<'db>, Ty<'db>)>,
     select: for<'a> fn(&mut ObligationCtxt<'a, 'db>) -> Vec<NextSolverError<'db>>,
 ) -> bool {
-    let interner = DbInterner::new_with(db, Some(env.krate), env.block);
+    let interner = DbInterner::new_with(db, env.krate);
     let infcx = interner.infer_ctxt().build(TypingMode::PostAnalysis);
     let cause = ObligationCause::dummy();
-    let at = infcx.at(&cause, env.env);
+    let at = infcx.at(&cause, env.param_env);
     let ((ty1_with_vars, ty2_with_vars), _) = infcx.instantiate_canonical(tys);
     let mut ctxt = ObligationCtxt::new(&infcx);
     let can_unify = at
@@ -129,7 +129,7 @@ fn could_unify_impl<'db>(
 #[derive(Clone)]
 pub(crate) struct InferenceTable<'db> {
     pub(crate) db: &'db dyn HirDatabase,
-    pub(crate) trait_env: Arc<TraitEnvironment<'db>>,
+    pub(crate) param_env: ParamEnv<'db>,
     pub(crate) infer_ctxt: InferCtxt<'db>,
     pub(super) fulfillment_cx: FulfillmentCtxt<'db>,
     pub(super) diverging_type_vars: FxHashSet<Ty<'db>>,
@@ -145,10 +145,11 @@ impl<'db> InferenceTable<'db> {
     /// Outside it, always pass `owner = None`.
     pub(crate) fn new(
         db: &'db dyn HirDatabase,
-        trait_env: Arc<TraitEnvironment<'db>>,
+        trait_env: ParamEnv<'db>,
+        krate: Crate,
         owner: Option<DefWithBodyId>,
     ) -> Self {
-        let interner = DbInterner::new_with(db, Some(trait_env.krate), trait_env.block);
+        let interner = DbInterner::new_with(db, krate);
         let typing_mode = match owner {
             Some(owner) => TypingMode::typeck_for_body(interner, owner.into()),
             // IDE things wants to reveal opaque types.
@@ -157,7 +158,7 @@ impl<'db> InferenceTable<'db> {
         let infer_ctxt = interner.infer_ctxt().build(typing_mode);
         InferenceTable {
             db,
-            trait_env,
+            param_env: trait_env,
             fulfillment_cx: FulfillmentCtxt::new(&infer_ctxt),
             infer_ctxt,
             diverging_type_vars: FxHashSet::default(),
@@ -170,11 +171,11 @@ impl<'db> InferenceTable<'db> {
     }
 
     pub(crate) fn type_is_copy_modulo_regions(&self, ty: Ty<'db>) -> bool {
-        self.infer_ctxt.type_is_copy_modulo_regions(self.trait_env.env, ty)
+        self.infer_ctxt.type_is_copy_modulo_regions(self.param_env, ty)
     }
 
     pub(crate) fn type_var_is_sized(&self, self_ty: TyVid) -> bool {
-        let Some(sized_did) = LangItem::Sized.resolve_trait(self.db, self.trait_env.krate) else {
+        let Some(sized_did) = self.interner().lang_items().Sized else {
             return true;
         };
         self.obligations_for_self_ty(self_ty).into_iter().any(|obligation| {
@@ -272,7 +273,7 @@ impl<'db> InferenceTable<'db> {
 
     pub(crate) fn normalize_alias_ty(&mut self, alias: Ty<'db>) -> Ty<'db> {
         self.infer_ctxt
-            .at(&ObligationCause::new(), self.trait_env.env)
+            .at(&ObligationCause::new(), self.param_env)
             .structurally_normalize_ty(alias, &mut self.fulfillment_cx)
             .unwrap_or(alias)
     }
@@ -332,7 +333,7 @@ impl<'db> InferenceTable<'db> {
     }
 
     pub(crate) fn at<'a>(&'a self, cause: &'a ObligationCause) -> At<'a, 'db> {
-        self.infer_ctxt.at(cause, self.trait_env.env)
+        self.infer_ctxt.at(cause, self.param_env)
     }
 
     pub(crate) fn shallow_resolve(&self, ty: Ty<'db>) -> Ty<'db> {
@@ -374,7 +375,7 @@ impl<'db> InferenceTable<'db> {
             // in a reentrant borrow, causing an ICE.
             let result = self
                 .infer_ctxt
-                .at(&ObligationCause::misc(), self.trait_env.env)
+                .at(&ObligationCause::misc(), self.param_env)
                 .structurally_normalize_ty(ty, &mut self.fulfillment_cx);
             match result {
                 Ok(normalized_ty) => normalized_ty,
@@ -422,14 +423,14 @@ impl<'db> InferenceTable<'db> {
     /// choice (during e.g. method resolution or deref).
     #[tracing::instrument(level = "debug", skip(self))]
     pub(crate) fn try_obligation(&mut self, predicate: Predicate<'db>) -> NextTraitSolveResult {
-        let goal = Goal { param_env: self.trait_env.env, predicate };
+        let goal = Goal { param_env: self.param_env, predicate };
         let canonicalized = self.canonicalize(goal);
 
         next_trait_solve_canonical_in_ctxt(&self.infer_ctxt, canonicalized)
     }
 
     pub(crate) fn register_obligation(&mut self, predicate: Predicate<'db>) {
-        let goal = Goal { param_env: self.trait_env.env, predicate };
+        let goal = Goal { param_env: self.param_env, predicate };
         self.register_obligation_in_env(goal)
     }
 
@@ -486,7 +487,7 @@ impl<'db> InferenceTable<'db> {
         self.register_predicate(Obligation::new(
             self.interner(),
             cause,
-            self.trait_env.env,
+            self.param_env,
             ClauseKind::WellFormed(term),
         ));
     }
@@ -520,13 +521,13 @@ impl<'db> InferenceTable<'db> {
         ty: Ty<'db>,
         num_args: usize,
     ) -> Option<(FnTrait, Vec<Ty<'db>>, Ty<'db>)> {
+        let lang_items = self.interner().lang_items();
         for (fn_trait_name, output_assoc_name, subtraits) in [
             (FnTrait::FnOnce, sym::Output, &[FnTrait::Fn, FnTrait::FnMut][..]),
             (FnTrait::AsyncFnMut, sym::CallRefFuture, &[FnTrait::AsyncFn]),
             (FnTrait::AsyncFnOnce, sym::CallOnceFuture, &[]),
         ] {
-            let krate = self.trait_env.krate;
-            let fn_trait = fn_trait_name.get_id(self.db, krate)?;
+            let fn_trait = fn_trait_name.get_id(lang_items)?;
             let trait_data = fn_trait.trait_items(self.db);
             let output_assoc_type =
                 trait_data.associated_type_by_name(&Name::new_symbol_root(output_assoc_name))?;
@@ -558,7 +559,7 @@ impl<'db> InferenceTable<'db> {
                 self.register_obligation(pred);
                 let return_ty = self.normalize_alias_ty(projection);
                 for &fn_x in subtraits {
-                    let fn_x_trait = fn_x.get_id(self.db, krate)?;
+                    let fn_x_trait = fn_x.get_id(lang_items)?;
                     let trait_ref = TraitRef::new(self.interner(), fn_x_trait.into(), args);
                     let pred = Predicate::upcast_from(trait_ref, self.interner());
                     if !self.try_obligation(pred).no_solution() {
@@ -658,7 +659,7 @@ impl<'db> InferenceTable<'db> {
             }
         }
 
-        let Some(sized) = LangItem::Sized.resolve_trait(self.db, self.trait_env.krate) else {
+        let Some(sized) = self.interner().lang_items().Sized else {
             return false;
         };
         let sized_pred = Predicate::upcast_from(

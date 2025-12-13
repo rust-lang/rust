@@ -70,25 +70,19 @@ impl<'tcx> InferCtxt<'tcx> {
         //
         // We then relate `generalized_ty <: source_ty`, adding constraints like `'x: '?2` and
         // `?1 <: ?3`.
-        let Generalization { value_may_be_infer: generalized_ty, has_unconstrained_ty_var } = self
-            .generalize(
-                relation.span(),
-                relation.structurally_relate_aliases(),
-                target_vid,
-                instantiation_variance,
-                source_ty,
-            )?;
+        let Generalization { value_may_be_infer: generalized_ty } = self.generalize(
+            relation.span(),
+            relation.structurally_relate_aliases(),
+            target_vid,
+            instantiation_variance,
+            source_ty,
+        )?;
 
         // Constrain `b_vid` to the generalized type `generalized_ty`.
         if let &ty::Infer(ty::TyVar(generalized_vid)) = generalized_ty.kind() {
             self.inner.borrow_mut().type_variables().equate(target_vid, generalized_vid);
         } else {
             self.inner.borrow_mut().type_variables().instantiate(target_vid, generalized_ty);
-        }
-
-        // See the comment on `Generalization::has_unconstrained_ty_var`.
-        if has_unconstrained_ty_var {
-            relation.register_predicates([ty::ClauseKind::WellFormed(generalized_ty.into())]);
         }
 
         // Finally, relate `generalized_ty` to `source_ty`, as described in previous comment.
@@ -210,19 +204,15 @@ impl<'tcx> InferCtxt<'tcx> {
     ) -> RelateResult<'tcx, ()> {
         // FIXME(generic_const_exprs): Occurs check failures for unevaluated
         // constants and generic expressions are not yet handled correctly.
-        let Generalization { value_may_be_infer: generalized_ct, has_unconstrained_ty_var } = self
-            .generalize(
-                relation.span(),
-                relation.structurally_relate_aliases(),
-                target_vid,
-                ty::Invariant,
-                source_ct,
-            )?;
+        let Generalization { value_may_be_infer: generalized_ct } = self.generalize(
+            relation.span(),
+            relation.structurally_relate_aliases(),
+            target_vid,
+            ty::Invariant,
+            source_ct,
+        )?;
 
         debug_assert!(!generalized_ct.is_ct_infer());
-        if has_unconstrained_ty_var {
-            bug!("unconstrained ty var when generalizing `{source_ct:?}`");
-        }
 
         self.inner
             .borrow_mut()
@@ -281,12 +271,10 @@ impl<'tcx> InferCtxt<'tcx> {
             ambient_variance,
             in_alias: false,
             cache: Default::default(),
-            has_unconstrained_ty_var: false,
         };
 
         let value_may_be_infer = generalizer.relate(source_term, source_term)?;
-        let has_unconstrained_ty_var = generalizer.has_unconstrained_ty_var;
-        Ok(Generalization { value_may_be_infer, has_unconstrained_ty_var })
+        Ok(Generalization { value_may_be_infer })
     }
 }
 
@@ -376,9 +364,6 @@ struct Generalizer<'me, 'tcx> {
     in_alias: bool,
 
     cache: SsoHashMap<(Ty<'tcx>, ty::Variance, bool), Ty<'tcx>>,
-
-    /// See the field `has_unconstrained_ty_var` in `Generalization`.
-    has_unconstrained_ty_var: bool,
 }
 
 impl<'tcx> Generalizer<'_, 'tcx> {
@@ -391,10 +376,8 @@ impl<'tcx> Generalizer<'_, 'tcx> {
     }
 
     /// Create a new type variable in the universe of the target when
-    /// generalizing an alias. This has to set `has_unconstrained_ty_var`
-    /// if we're currently in a bivariant context.
-    fn next_ty_var_for_alias(&mut self) -> Ty<'tcx> {
-        self.has_unconstrained_ty_var |= self.ambient_variance == ty::Bivariant;
+    /// generalizing an alias.
+    fn next_ty_var_for_alias(&self) -> Ty<'tcx> {
         self.infcx.next_ty_var_in_universe(self.span, self.for_universe)
     }
 
@@ -461,29 +444,26 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for Generalizer<'_, 'tcx> {
         self.infcx.tcx
     }
 
-    fn relate_item_args(
+    fn relate_ty_args(
         &mut self,
-        item_def_id: DefId,
-        a_arg: ty::GenericArgsRef<'tcx>,
-        b_arg: ty::GenericArgsRef<'tcx>,
-    ) -> RelateResult<'tcx, ty::GenericArgsRef<'tcx>> {
-        if self.ambient_variance == ty::Invariant {
+        a_ty: Ty<'tcx>,
+        _: Ty<'tcx>,
+        def_id: DefId,
+        a_args: ty::GenericArgsRef<'tcx>,
+        b_args: ty::GenericArgsRef<'tcx>,
+        mk: impl FnOnce(ty::GenericArgsRef<'tcx>) -> Ty<'tcx>,
+    ) -> RelateResult<'tcx, Ty<'tcx>> {
+        let args = if self.ambient_variance == ty::Invariant {
             // Avoid fetching the variance if we are in an invariant
             // context; no need, and it can induce dependency cycles
             // (e.g., #41849).
-            relate::relate_args_invariantly(self, a_arg, b_arg)
+            relate::relate_args_invariantly(self, a_args, b_args)
         } else {
             let tcx = self.cx();
-            let opt_variances = tcx.variances_of(item_def_id);
-            relate::relate_args_with_variances(
-                self,
-                item_def_id,
-                opt_variances,
-                a_arg,
-                b_arg,
-                false,
-            )
-        }
+            let variances = tcx.variances_of(def_id);
+            relate::relate_args_with_variances(self, variances, a_args, b_args)
+        }?;
+        if args == a_args { Ok(a_ty) } else { Ok(mk(args)) }
     }
 
     #[instrument(level = "debug", skip(self, variance, b), ret)]
@@ -545,14 +525,8 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for Generalizer<'_, 'tcx> {
                                     }
                                 }
 
-                                // Bivariant: make a fresh var, but remember that
-                                // it is unconstrained. See the comment in
-                                // `Generalization`.
-                                ty::Bivariant => self.has_unconstrained_ty_var = true,
-
-                                // Co/contravariant: this will be
-                                // sufficiently constrained later on.
-                                ty::Covariant | ty::Contravariant => (),
+                                // We do need a fresh type variable otherwise.
+                                ty::Bivariant | ty::Covariant | ty::Contravariant => (),
                             }
 
                             let origin = inner.type_variables().var_origin(vid);
@@ -771,32 +745,8 @@ struct Generalization<T> {
     /// for `?0` generalization returns an inference
     /// variable.
     ///
-    /// This has to be handled wotj care as it can
+    /// This has to be handled with care as it can
     /// otherwise very easily result in infinite
     /// recursion.
     pub value_may_be_infer: T,
-
-    /// In general, we do not check whether all types which occur during
-    /// type checking are well-formed. We only check wf of user-provided types
-    /// and when actually using a type, e.g. for method calls.
-    ///
-    /// This means that when subtyping, we may end up with unconstrained
-    /// inference variables if a generalized type has bivariant parameters.
-    /// A parameter may only be bivariant if it is constrained by a projection
-    /// bound in a where-clause. As an example, imagine a type:
-    ///
-    ///     struct Foo<A, B> where A: Iterator<Item = B> {
-    ///         data: A
-    ///     }
-    ///
-    /// here, `A` will be covariant, but `B` is unconstrained.
-    ///
-    /// However, whatever it is, for `Foo` to be WF, it must be equal to `A::Item`.
-    /// If we have an input `Foo<?A, ?B>`, then after generalization we will wind
-    /// up with a type like `Foo<?C, ?D>`. When we enforce `Foo<?A, ?B> <: Foo<?C, ?D>`,
-    /// we will wind up with the requirement that `?A <: ?C`, but no particular
-    /// relationship between `?B` and `?D` (after all, these types may be completely
-    /// different). If we do nothing else, this may mean that `?D` goes unconstrained
-    /// (as in #41677). To avoid this we emit a `WellFormed` obligation in these cases.
-    pub has_unconstrained_ty_var: bool,
 }

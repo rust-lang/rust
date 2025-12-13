@@ -48,33 +48,28 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         let uninstantiated_pred = match flavor {
-            ClauseFlavor::Where => {
+            ClauseFlavor::Where
                 if let Some(pred) = self
                     .tcx
                     .predicates_of(def_id)
                     .instantiate_identity(self.tcx)
                     .predicates
                     .into_iter()
-                    .nth(idx)
-                {
-                    pred
-                } else {
-                    return false;
-                }
+                    .nth(idx) =>
+            {
+                pred
             }
-            ClauseFlavor::Const => {
+            ClauseFlavor::Const
                 if let Some((pred, _)) = self
                     .tcx
                     .const_conditions(def_id)
                     .instantiate_identity(self.tcx)
                     .into_iter()
-                    .nth(idx)
-                {
-                    pred.to_host_effect_clause(self.tcx, ty::BoundConstness::Maybe)
-                } else {
-                    return false;
-                }
+                    .nth(idx) =>
+            {
+                pred.to_host_effect_clause(self.tcx, ty::BoundConstness::Maybe)
             }
+            _ => return false,
         };
 
         let generics = self.tcx.generics_of(def_id);

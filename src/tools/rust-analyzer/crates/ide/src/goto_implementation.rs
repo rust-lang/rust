@@ -384,7 +384,7 @@ trait Bar {}
 
 fn test() {
     #[derive(Copy)]
-  //^^^^^^^^^^^^^^^
+          // ^^^^
     struct Foo$0;
 
     impl Foo {}

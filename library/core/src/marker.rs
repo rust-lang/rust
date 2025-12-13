@@ -860,7 +860,7 @@ impl<T: PointeeSized> Clone for PhantomData<T> {
 
 #[doc(hidden)]
 #[unstable(feature = "trivial_clone", issue = "none")]
-unsafe impl<T: ?Sized> TrivialClone for PhantomData<T> {}
+unsafe impl<T: PointeeSized> TrivialClone for PhantomData<T> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_default", issue = "143894")]

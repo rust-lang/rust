@@ -1,5 +1,4 @@
 //@ignore-target: windows # No pthreads on Windows
-//~^ERROR: calling a function with fewer arguments than it requires
 
 //! The thread function must have exactly one argument.
 
@@ -17,6 +16,7 @@ fn main() {
             mem::transmute(thread_start);
         assert_eq!(
             libc::pthread_create(&mut native, ptr::null(), thread_start, ptr::null_mut()),
+            //~^ERROR: calling a function with fewer arguments than it requires
             0
         );
         assert_eq!(libc::pthread_join(native, ptr::null_mut()), 0);

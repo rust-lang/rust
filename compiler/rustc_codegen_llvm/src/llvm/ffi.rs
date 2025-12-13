@@ -2379,6 +2379,7 @@ unsafe extern "C" {
     ) -> *mut TargetMachine;
 
     pub(crate) fn LLVMRustAddLibraryInfo<'a>(
+        T: &TargetMachine,
         PM: &PassManager<'a>,
         M: &'a Module,
         DisableSimplifyLibCalls: bool,

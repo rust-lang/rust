@@ -52,8 +52,8 @@ impl<'tcx> UniverseInfo<'tcx> {
     pub(crate) fn report_erroneous_element(
         &self,
         mbcx: &mut MirBorrowckCtxt<'_, '_, 'tcx>,
-        placeholder: ty::PlaceholderRegion,
-        error_element: RegionElement,
+        placeholder: ty::PlaceholderRegion<'tcx>,
+        error_element: RegionElement<'tcx>,
         cause: ObligationCause<'tcx>,
     ) {
         match *self {
@@ -152,8 +152,8 @@ pub(crate) trait TypeOpInfo<'tcx> {
     fn report_erroneous_element(
         &self,
         mbcx: &mut MirBorrowckCtxt<'_, '_, 'tcx>,
-        placeholder: ty::PlaceholderRegion,
-        error_element: RegionElement,
+        placeholder: ty::PlaceholderRegion<'tcx>,
+        error_element: RegionElement<'tcx>,
         cause: ObligationCause<'tcx>,
     ) {
         let tcx = mbcx.infcx.tcx;
@@ -169,23 +169,22 @@ pub(crate) trait TypeOpInfo<'tcx> {
 
         let placeholder_region = ty::Region::new_placeholder(
             tcx,
-            ty::Placeholder { universe: adjusted_universe.into(), bound: placeholder.bound },
+            ty::Placeholder::new(adjusted_universe.into(), placeholder.bound),
         );
 
-        let error_region = if let RegionElement::PlaceholderRegion(error_placeholder) =
-            error_element
-        {
-            let adjusted_universe =
-                error_placeholder.universe.as_u32().checked_sub(base_universe.as_u32());
-            adjusted_universe.map(|adjusted| {
-                ty::Region::new_placeholder(
-                    tcx,
-                    ty::Placeholder { universe: adjusted.into(), bound: error_placeholder.bound },
-                )
-            })
-        } else {
-            None
-        };
+        let error_region =
+            if let RegionElement::PlaceholderRegion(error_placeholder) = error_element {
+                let adjusted_universe =
+                    error_placeholder.universe.as_u32().checked_sub(base_universe.as_u32());
+                adjusted_universe.map(|adjusted| {
+                    ty::Region::new_placeholder(
+                        tcx,
+                        ty::Placeholder::new(adjusted.into(), error_placeholder.bound),
+                    )
+                })
+            } else {
+                None
+            };
 
         debug!(?placeholder_region);
 
@@ -440,7 +439,7 @@ fn try_extract_error_from_region_constraints<'a, 'tcx>(
     placeholder_region: ty::Region<'tcx>,
     error_region: Option<ty::Region<'tcx>>,
     region_constraints: &RegionConstraintData<'tcx>,
-    mut region_var_origin: impl FnMut(RegionVid) -> RegionVariableOrigin,
+    mut region_var_origin: impl FnMut(RegionVid) -> RegionVariableOrigin<'tcx>,
     mut universe_of_region: impl FnMut(RegionVid) -> UniverseIndex,
 ) -> Option<Diag<'a>> {
     let placeholder_universe = match placeholder_region.kind() {

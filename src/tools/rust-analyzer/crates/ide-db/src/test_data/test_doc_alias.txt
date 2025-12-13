@@ -1,12 +1,8 @@
 [
     (
         Module {
-            id: ModuleId {
-                krate: Crate(
-                    Id(3000),
-                ),
-                block: None,
-                local_id: Idx::<ModuleData>(0),
+            id: ModuleIdLt {
+                [salsa id]: Id(3800),
             },
         },
         [
@@ -16,7 +12,7 @@
                     Struct(
                         Struct {
                             id: StructId(
-                                3401,
+                                3c01,
                             ),
                         },
                     ),
@@ -24,7 +20,7 @@
                 loc: DeclarationLocation {
                     hir_file_id: FileId(
                         EditionedFileId(
-                            Id(2000),
+                            Id(3000),
                         ),
                     ),
                     ptr: SyntaxNodePtr {
@@ -50,7 +46,7 @@
                     Struct(
                         Struct {
                             id: StructId(
-                                3400,
+                                3c00,
                             ),
                         },
                     ),
@@ -58,7 +54,7 @@
                 loc: DeclarationLocation {
                     hir_file_id: FileId(
                         EditionedFileId(
-                            Id(2000),
+                            Id(3000),
                         ),
                     ),
                     ptr: SyntaxNodePtr {
@@ -84,7 +80,7 @@
                     Struct(
                         Struct {
                             id: StructId(
-                                3400,
+                                3c00,
                             ),
                         },
                     ),
@@ -92,7 +88,7 @@
                 loc: DeclarationLocation {
                     hir_file_id: FileId(
                         EditionedFileId(
-                            Id(2000),
+                            Id(3000),
                         ),
                     ),
                     ptr: SyntaxNodePtr {
@@ -118,7 +114,7 @@
                     Struct(
                         Struct {
                             id: StructId(
-                                3400,
+                                3c00,
                             ),
                         },
                     ),
@@ -126,7 +122,7 @@
                 loc: DeclarationLocation {
                     hir_file_id: FileId(
                         EditionedFileId(
-                            Id(2000),
+                            Id(3000),
                         ),
                     ),
                     ptr: SyntaxNodePtr {
@@ -152,7 +148,7 @@
                     Struct(
                         Struct {
                             id: StructId(
-                                3400,
+                                3c00,
                             ),
                         },
                     ),
@@ -160,7 +156,7 @@
                 loc: DeclarationLocation {
                     hir_file_id: FileId(
                         EditionedFileId(
-                            Id(2000),
+                            Id(3000),
                         ),
                     ),
                     ptr: SyntaxNodePtr {
@@ -186,7 +182,7 @@
                     Struct(
                         Struct {
                             id: StructId(
-                                3401,
+                                3c01,
                             ),
                         },
                     ),
@@ -194,7 +190,7 @@
                 loc: DeclarationLocation {
                     hir_file_id: FileId(
                         EditionedFileId(
-                            Id(2000),
+                            Id(3000),
                         ),
                     ),
                     ptr: SyntaxNodePtr {
@@ -220,7 +216,7 @@
                     Struct(
                         Struct {
                             id: StructId(
-                                3400,
+                                3c00,
                             ),
                         },
                     ),
@@ -228,7 +224,7 @@
                 loc: DeclarationLocation {
                     hir_file_id: FileId(
                         EditionedFileId(
-                            Id(2000),
+                            Id(3000),
                         ),
                     ),
                     ptr: SyntaxNodePtr {

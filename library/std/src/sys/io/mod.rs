@@ -2,17 +2,13 @@
 
 mod io_slice {
     cfg_select! {
-        any(target_family = "unix", target_os = "hermit", target_os = "solid_asp3", target_os = "trusty") => {
+        any(target_family = "unix", target_os = "hermit", target_os = "solid_asp3", target_os = "trusty", target_os = "wasi") => {
             mod iovec;
             pub use iovec::*;
         }
         target_os = "windows" => {
             mod windows;
             pub use windows::*;
-        }
-        target_os = "wasi" => {
-            mod wasi;
-            pub use wasi::*;
         }
         target_os = "uefi" => {
             mod uefi;

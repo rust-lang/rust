@@ -1044,7 +1044,7 @@ impl ProjectWorkspace {
 
     /// Returns `true` if the project workspace is [`Json`].
     ///
-    /// [`Json`]: ProjectWorkspace::Json
+    /// [`Json`]: ProjectWorkspaceKind::Json
     #[must_use]
     pub fn is_json(&self) -> bool {
         matches!(self.kind, ProjectWorkspaceKind::Json { .. })

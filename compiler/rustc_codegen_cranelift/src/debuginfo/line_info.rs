@@ -5,7 +5,7 @@ use std::path::{Component, Path};
 
 use cranelift_codegen::MachSrcLoc;
 use cranelift_codegen::binemit::CodeOffset;
-use gimli::write::{AttributeValue, FileId, FileInfo, LineProgram, LineString, LineStringTable};
+use gimli::write::{FileId, FileInfo, LineProgram, LineString, LineStringTable};
 use rustc_span::{FileName, Pos, SourceFile, SourceFileAndLine, SourceFileHashAlgorithm, hygiene};
 
 use crate::debuginfo::FunctionDebugContext;
@@ -117,8 +117,7 @@ impl DebugContext {
                 }
                 filename => {
                     // For anonymous sources, create an empty directory instead of using the default
-                    let empty_dir = LineString::new(b"", line_program.encoding(), line_strings);
-                    let dir_id = line_program.add_directory(empty_dir);
+                    let dir_id = line_program.default_directory();
 
                     let dummy_file_name = LineString::new(
                         filename.prefer_remapped_unconditionally().to_string().into_bytes(),
@@ -175,10 +174,6 @@ impl FunctionDebugContext {
         let func_end = mcr.buffer.total_size();
 
         assert_ne!(func_end, 0);
-
-        let entry = debug_context.dwarf.unit.get_mut(self.entry_id);
-        entry.set(gimli::DW_AT_low_pc, AttributeValue::Address(address_for_func(func_id)));
-        entry.set(gimli::DW_AT_high_pc, AttributeValue::Udata(u64::from(func_end)));
 
         func_end
     }

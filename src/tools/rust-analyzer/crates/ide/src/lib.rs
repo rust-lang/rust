@@ -332,7 +332,8 @@ impl Analysis {
     pub fn parse(&self, file_id: FileId) -> Cancellable<SourceFile> {
         // FIXME edition
         self.with_db(|db| {
-            let editioned_file_id_wrapper = EditionedFileId::current_edition(&self.db, file_id);
+            let editioned_file_id_wrapper =
+                EditionedFileId::current_edition_guess_origin(&self.db, file_id);
 
             db.parse(editioned_file_id_wrapper).tree()
         })
@@ -361,7 +362,7 @@ impl Analysis {
     /// supported).
     pub fn matching_brace(&self, position: FilePosition) -> Cancellable<Option<TextSize>> {
         self.with_db(|db| {
-            let file_id = EditionedFileId::current_edition(&self.db, position.file_id);
+            let file_id = EditionedFileId::current_edition_guess_origin(&self.db, position.file_id);
             let parse = db.parse(file_id);
             let file = parse.tree();
             matching_brace::matching_brace(&file, position.offset)
@@ -422,7 +423,7 @@ impl Analysis {
     pub fn join_lines(&self, config: &JoinLinesConfig, frange: FileRange) -> Cancellable<TextEdit> {
         self.with_db(|db| {
             let editioned_file_id_wrapper =
-                EditionedFileId::current_edition(&self.db, frange.file_id);
+                EditionedFileId::current_edition_guess_origin(&self.db, frange.file_id);
             let parse = db.parse(editioned_file_id_wrapper);
             join_lines::join_lines(config, &parse.tree(), frange.range)
         })
@@ -463,7 +464,8 @@ impl Analysis {
     ) -> Cancellable<Vec<StructureNode>> {
         // FIXME: Edition
         self.with_db(|db| {
-            let editioned_file_id_wrapper = EditionedFileId::current_edition(&self.db, file_id);
+            let editioned_file_id_wrapper =
+                EditionedFileId::current_edition_guess_origin(&self.db, file_id);
             let source_file = db.parse(editioned_file_id_wrapper).tree();
             file_structure::file_structure(&source_file, config)
         })
@@ -494,7 +496,8 @@ impl Analysis {
     /// Returns the set of folding ranges.
     pub fn folding_ranges(&self, file_id: FileId) -> Cancellable<Vec<Fold>> {
         self.with_db(|db| {
-            let editioned_file_id_wrapper = EditionedFileId::current_edition(&self.db, file_id);
+            let editioned_file_id_wrapper =
+                EditionedFileId::current_edition_guess_origin(&self.db, file_id);
 
             folding_ranges::folding_ranges(&db.parse(editioned_file_id_wrapper).tree())
         })

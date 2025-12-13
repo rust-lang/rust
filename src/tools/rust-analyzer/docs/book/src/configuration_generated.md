@@ -1118,6 +1118,13 @@ Default: `false`
 Hide inlay parameter type hints for closures.
 
 
+## rust-analyzer.inlayHints.typeHints.hideInferredTypes {#inlayHints.typeHints.hideInferredTypes}
+
+Default: `false`
+
+Hide inlay type hints for inferred types.
+
+
 ## rust-analyzer.inlayHints.typeHints.hideNamedConstructor {#inlayHints.typeHints.hideNamedConstructor}
 
 Default: `false`
@@ -1630,7 +1637,7 @@ Similarly, the JSON representation of `DiscoverArgument::Buildfile` is:
 `DiscoverArgument::Path` is used to find and generate a `rust-project.json`, and
 therefore, a workspace, whereas `DiscoverArgument::buildfile` is used to to update an
 existing workspace. As a reference for implementors, buck2's `rust-project` will likely
-be useful: https://github.com/facebook/buck2/tree/main/integrations/rust-project.
+be useful: <https://github.com/facebook/buck2/tree/main/integrations/rust-project>.
 
 
 ## rust-analyzer.workspace.symbol.search.excludeImports {#workspace.symbol.search.excludeImports}

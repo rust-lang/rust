@@ -1,29 +1,16 @@
 use std::num::IntErrorKind;
 
-use rustc_ast::{self as ast, Path};
+use rustc_ast::{self as ast};
 use rustc_errors::codes::*;
 use rustc_errors::{
     Applicability, Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level,
 };
 use rustc_feature::AttributeTemplate;
-use rustc_hir::{AttrPath, Target};
-use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
+use rustc_hir::AttrPath;
+use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{Span, Symbol};
 
 use crate::fluent_generated as fluent;
-
-pub(crate) enum UnsupportedLiteralReason {
-    Generic,
-    CfgString,
-    CfgBoolean,
-}
-
-#[derive(Diagnostic)]
-#[diag(attr_parsing_expected_one_cfg_pattern, code = E0536)]
-pub(crate) struct ExpectedOneCfgPattern {
-    #[primary_span]
-    pub span: Span,
-}
 
 #[derive(Diagnostic)]
 #[diag(attr_parsing_invalid_predicate, code = E0537)]
@@ -32,6 +19,49 @@ pub(crate) struct InvalidPredicate {
     pub span: Span,
 
     pub predicate: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(attr_parsing_doc_alias_empty)]
+pub(crate) struct DocAliasEmpty<'a> {
+    #[primary_span]
+    pub span: Span,
+    pub attr_str: &'a str,
+}
+
+#[derive(Diagnostic)]
+#[diag(attr_parsing_doc_alias_bad_char)]
+pub(crate) struct DocAliasBadChar<'a> {
+    #[primary_span]
+    pub span: Span,
+    pub attr_str: &'a str,
+    pub char_: char,
+}
+
+#[derive(Diagnostic)]
+#[diag(attr_parsing_doc_alias_start_end)]
+pub(crate) struct DocAliasStartEnd<'a> {
+    #[primary_span]
+    pub span: Span,
+    pub attr_str: &'a str,
+}
+
+#[derive(Diagnostic)]
+#[diag(attr_parsing_doc_keyword_not_keyword)]
+#[help]
+pub(crate) struct DocKeywordNotKeyword {
+    #[primary_span]
+    pub span: Span,
+    pub keyword: Symbol,
+}
+
+#[derive(Diagnostic)]
+#[diag(attr_parsing_doc_attribute_not_attribute)]
+#[help]
+pub(crate) struct DocAttributeNotAttribute {
+    #[primary_span]
+    pub span: Span,
+    pub attribute: Symbol,
 }
 
 /// Error code: E0541
@@ -187,46 +217,6 @@ pub(crate) struct InvalidReprHintNoValue {
     pub name: Symbol,
 }
 
-/// Error code: E0565
-// FIXME(jdonszelmann): slowly phased out
-pub(crate) struct UnsupportedLiteral {
-    pub span: Span,
-    pub reason: UnsupportedLiteralReason,
-    pub is_bytestr: bool,
-    pub start_point_span: Span,
-}
-
-impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for UnsupportedLiteral {
-    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, G> {
-        let mut diag = Diag::new(
-            dcx,
-            level,
-            match self.reason {
-                UnsupportedLiteralReason::Generic => {
-                    fluent::attr_parsing_unsupported_literal_generic
-                }
-                UnsupportedLiteralReason::CfgString => {
-                    fluent::attr_parsing_unsupported_literal_cfg_string
-                }
-                UnsupportedLiteralReason::CfgBoolean => {
-                    fluent::attr_parsing_unsupported_literal_cfg_boolean
-                }
-            },
-        );
-        diag.span(self.span);
-        diag.code(E0565);
-        if self.is_bytestr {
-            diag.span_suggestion(
-                self.start_point_span,
-                fluent::attr_parsing_unsupported_literal_suggestion,
-                "",
-                Applicability::MaybeIncorrect,
-            );
-        }
-        diag
-    }
-}
-
 #[derive(Diagnostic)]
 #[diag(attr_parsing_invalid_repr_align_need_arg, code = E0589)]
 pub(crate) struct InvalidReprAlignNeedArg {
@@ -333,13 +323,6 @@ pub(crate) struct RustcAllowedUnstablePairing {
 }
 
 #[derive(Diagnostic)]
-#[diag(attr_parsing_cfg_predicate_identifier)]
-pub(crate) struct CfgPredicateIdentifier {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(attr_parsing_deprecated_item_suggestion)]
 pub(crate) struct DeprecatedItemSuggestion {
     #[primary_span]
@@ -417,25 +400,6 @@ pub(crate) struct UnusedMultiple {
     pub name: Symbol,
 }
 
-#[derive(LintDiagnostic)]
-#[diag(attr_parsing_unused_duplicate)]
-pub(crate) struct UnusedDuplicate {
-    #[suggestion(code = "", applicability = "machine-applicable")]
-    pub this: Span,
-    #[note]
-    pub other: Span,
-    #[warning]
-    pub warning: bool,
-}
-
-// FIXME(jdonszelmann): duplicated in rustc_lints, should be moved here completely.
-#[derive(LintDiagnostic)]
-#[diag(attr_parsing_ill_formed_attribute_input)]
-pub(crate) struct IllFormedAttributeInput {
-    pub num_suggestions: usize,
-    pub suggestions: DiagArgValue,
-}
-
 #[derive(Diagnostic)]
 #[diag(attr_parsing_ill_formed_attribute_input)]
 pub(crate) struct IllFormedAttributeInputLint {
@@ -499,29 +463,6 @@ pub(crate) struct StabilityOutsideStd {
 pub(crate) struct EmptyConfusables {
     #[primary_span]
     pub span: Span,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(attr_parsing_empty_attribute)]
-#[note]
-pub(crate) struct EmptyAttributeList {
-    #[suggestion(code = "", applicability = "machine-applicable")]
-    pub attr_span: Span,
-    pub attr_path: AttrPath,
-    pub valid_without_list: bool,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(attr_parsing_invalid_target_lint)]
-#[warning]
-#[help]
-pub(crate) struct InvalidTargetLint {
-    pub name: AttrPath,
-    pub target: &'static str,
-    pub applied: DiagArgValue,
-    pub only: &'static str,
-    #[suggestion(code = "", applicability = "machine-applicable", style = "tool-only")]
-    pub attr_span: Span,
 }
 
 #[derive(Diagnostic)]
@@ -768,16 +709,20 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for AttributeParseError<'_> {
             diag.note(format!("for more information, visit <{link}>"));
         }
 
-        diag.span_suggestions(
-            self.attr_span,
-            if self.suggestions.len() == 1 {
-                "must be of the form".to_string()
-            } else {
-                format!("try changing it to one of the following valid forms of the {description}")
-            },
-            self.suggestions,
-            Applicability::HasPlaceholders,
-        );
+        if self.suggestions.len() < 4 {
+            diag.span_suggestions(
+                self.attr_span,
+                if self.suggestions.len() == 1 {
+                    "must be of the form".to_string()
+                } else {
+                    format!(
+                        "try changing it to one of the following valid forms of the {description}"
+                    )
+                },
+                self.suggestions,
+                Applicability::HasPlaceholders,
+            );
+        }
 
         diag
     }
@@ -790,7 +735,7 @@ pub(crate) struct InvalidAttrUnsafe {
     #[primary_span]
     #[label]
     pub span: Span,
-    pub name: Path,
+    pub name: AttrPath,
 }
 
 #[derive(Diagnostic)]
@@ -800,7 +745,7 @@ pub(crate) struct UnsafeAttrOutsideUnsafe {
     #[label]
     pub span: Span,
     #[subdiagnostic]
-    pub suggestion: UnsafeAttrOutsideUnsafeSuggestion,
+    pub suggestion: Option<UnsafeAttrOutsideUnsafeSuggestion>,
 }
 
 #[derive(Subdiagnostic)]
@@ -846,6 +791,8 @@ pub(crate) struct InvalidMetaItem {
     pub quote_ident_sugg: Option<InvalidMetaItemQuoteIdentSugg>,
     #[subdiagnostic]
     pub remove_neg_sugg: Option<InvalidMetaItemRemoveNegSugg>,
+    #[label]
+    pub label: Option<Span>,
 }
 
 #[derive(Subdiagnostic)]
@@ -870,16 +817,6 @@ pub(crate) struct InvalidMetaItemRemoveNegSugg {
 pub(crate) struct SuffixedLiteralInAttribute {
     #[primary_span]
     pub span: Span,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(attr_parsing_invalid_style)]
-pub(crate) struct InvalidAttrStyle {
-    pub name: AttrPath,
-    pub is_used_as_inner: bool,
-    #[note]
-    pub target_span: Option<Span>,
-    pub target: Target,
 }
 
 #[derive(Diagnostic)]
@@ -993,4 +930,11 @@ pub(crate) struct CfgAttrBadDelim {
     pub span: Span,
     #[subdiagnostic]
     pub sugg: MetaBadDelimSugg,
+}
+
+#[derive(Diagnostic)]
+#[diag(attr_parsing_doc_alias_malformed)]
+pub(crate) struct DocAliasMalformed {
+    #[primary_span]
+    pub span: Span,
 }

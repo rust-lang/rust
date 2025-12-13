@@ -30,7 +30,6 @@ help: otherwise remove the non-wildcard arms
    |
 LL -         2 => 'b',
 LL -         3 => 'b',
-LL +         _ => 'b',
    |
 
 error: these match arms have identical bodies

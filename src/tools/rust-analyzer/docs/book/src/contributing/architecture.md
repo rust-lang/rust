@@ -20,8 +20,6 @@ For older, by now mostly outdated stuff, see the [guide](./guide.md) and [anothe
 
 ![](https://user-images.githubusercontent.com/4789492/107129398-0ab70f00-687a-11eb-9bfc-d4eb023aec06.png)
 
-<!-- toc -->
-
 On the highest level, rust-analyzer is a thing which accepts input source code from the client and produces a structured semantic model of the code.
 
 More specifically, input data consists of a set of test files (`(PathBuf, String)` pairs) and information about project structure, captured in the so called `CrateGraph`.
@@ -120,7 +118,7 @@ See [#93](https://github.com/rust-lang/rust-analyzer/pull/93) for an example PR 
 **Architecture Invariant:** `syntax` crate is completely independent from the rest of rust-analyzer. It knows nothing about salsa or LSP.
 This is important because it is possible to make useful tooling using only the syntax tree.
 Without semantic information, you don't need to be able to _build_ code, which makes the tooling more robust.
-See also https://mlfbrown.com/paper.pdf.
+See also <https://mlfbrown.com/paper.pdf>.
 You can view the `syntax` crate as an entry point to rust-analyzer.
 `syntax` crate is an **API Boundary**.
 

@@ -1,10 +1,10 @@
-error[E0412]: cannot find type `Missing` in this scope
+error[E0425]: cannot find type `Missing` in this scope
   --> $DIR/issue-110157.rs:6:12
    |
 LL |     F: Fn(&Missing) -> Result<I, ()>,
    |            ^^^^^^^ not found in this scope
 
-error[E0412]: cannot find type `Missing` in this scope
+error[E0425]: cannot find type `Missing` in this scope
   --> $DIR/issue-110157.rs:8:24
    |
 LL |     I: Iterator<Item = Missing>,
@@ -26,5 +26,5 @@ LL | |     I: Iterator<Item = Missing>,
 
 error: aborting due to 3 previous errors
 
-Some errors have detailed explanations: E0046, E0412.
+Some errors have detailed explanations: E0046, E0425.
 For more information about an error, try `rustc --explain E0046`.

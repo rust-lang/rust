@@ -39,6 +39,7 @@ pub type FnSig<'tcx> = ir::FnSig<TyCtxt<'tcx>>;
 pub type Binder<'tcx, T> = ir::Binder<TyCtxt<'tcx>, T>;
 pub type EarlyBinder<'tcx, T> = ir::EarlyBinder<TyCtxt<'tcx>, T>;
 pub type TypingMode<'tcx> = ir::TypingMode<TyCtxt<'tcx>>;
+pub type Placeholder<'tcx, T> = ir::Placeholder<TyCtxt<'tcx>, T>;
 
 pub trait Article {
     fn article(&self) -> &'static str;
@@ -508,7 +509,7 @@ impl<'tcx> Ty<'tcx> {
     }
 
     #[inline]
-    pub fn new_placeholder(tcx: TyCtxt<'tcx>, placeholder: ty::PlaceholderType) -> Ty<'tcx> {
+    pub fn new_placeholder(tcx: TyCtxt<'tcx>, placeholder: ty::PlaceholderType<'tcx>) -> Ty<'tcx> {
         Ty::new(tcx, Placeholder(placeholder))
     }
 
@@ -957,7 +958,7 @@ impl<'tcx> rustc_type_ir::inherent::Ty<TyCtxt<'tcx>> for Ty<'tcx> {
         Ty::new_param(tcx, param.index, param.name)
     }
 
-    fn new_placeholder(tcx: TyCtxt<'tcx>, placeholder: ty::PlaceholderType) -> Self {
+    fn new_placeholder(tcx: TyCtxt<'tcx>, placeholder: ty::PlaceholderType<'tcx>) -> Self {
         Ty::new_placeholder(tcx, placeholder)
     }
 
@@ -1527,18 +1528,13 @@ impl<'tcx> Ty<'tcx> {
         let mut cor_ty = self;
         let mut ty = cor_ty;
         loop {
-            if let ty::Coroutine(def_id, args) = ty.kind() {
-                cor_ty = ty;
-                f(ty);
-                if tcx.is_async_drop_in_place_coroutine(*def_id) {
-                    ty = args.first().unwrap().expect_ty();
-                    continue;
-                } else {
-                    return cor_ty;
-                }
-            } else {
+            let ty::Coroutine(def_id, args) = ty.kind() else { return cor_ty };
+            cor_ty = ty;
+            f(ty);
+            if !tcx.is_async_drop_in_place_coroutine(*def_id) {
                 return cor_ty;
             }
+            ty = args.first().unwrap().expect_ty();
         }
     }
 

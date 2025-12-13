@@ -131,8 +131,7 @@ pub fn identity_when_valid(_attr: TokenStream, item: TokenStream) -> TokenStream
     let db = TestDB::with_files_extra_proc_macros(ra_fixture, extra_proc_macros);
     let krate = db.fetch_test_crate();
     let def_map = crate_def_map(&db, krate);
-    let local_id = DefMap::ROOT;
-    let source = def_map[local_id].definition_source(&db);
+    let source = def_map[def_map.root].definition_source(&db);
     let source_file = match source.value {
         ModuleSource::SourceFile(it) => it,
         ModuleSource::Module(_) | ModuleSource::BlockExpr(_) => panic!(),
@@ -209,7 +208,7 @@ pub fn identity_when_valid(_attr: TokenStream, item: TokenStream) -> TokenStream
         expanded_text.replace_range(range, &text);
     }
 
-    for decl_id in def_map[local_id].scope.declarations() {
+    for decl_id in def_map[def_map.root].scope.declarations() {
         // FIXME: I'm sure there's already better way to do this
         let src = match decl_id {
             ModuleDefId::AdtId(AdtId::StructId(struct_id)) => {
@@ -245,7 +244,22 @@ pub fn identity_when_valid(_attr: TokenStream, item: TokenStream) -> TokenStream
         }
     }
 
-    for impl_id in def_map[local_id].scope.impls() {
+    for (_, module) in def_map.modules() {
+        let Some(src) = module.declaration_source(&db) else {
+            continue;
+        };
+        if let Some(macro_file) = src.file_id.macro_file() {
+            let pp = pretty_print_macro_expansion(
+                src.value.syntax().clone(),
+                db.span_map(macro_file.into()).as_ref(),
+                false,
+                false,
+            );
+            format_to!(expanded_text, "\n{}", pp)
+        }
+    }
+
+    for impl_id in def_map[def_map.root].scope.impls() {
         let src = impl_id.lookup(&db).source(&db);
         if let Some(macro_file) = src.file_id.macro_file()
             && let MacroKind::DeriveBuiltIn | MacroKind::Derive = macro_file.kind(&db)
@@ -372,7 +386,6 @@ impl ProcMacroExpander for IdentityWhenValidProcMacroExpander {
             subtree,
             syntax_bridge::TopEntryPoint::MacroItems,
             &mut |_| span::Edition::CURRENT,
-            span::Edition::CURRENT,
         );
         if parse.errors().is_empty() {
             Ok(subtree.clone())
@@ -413,10 +426,7 @@ fn regression_20171() {
         #dollar_crate::panic::panic_2021!();
     }}
         };
-    token_tree_to_syntax_node(
-        &tt,
-        syntax_bridge::TopEntryPoint::MacroStmts,
-        &mut |_| Edition::CURRENT,
-        Edition::CURRENT,
-    );
+    token_tree_to_syntax_node(&tt, syntax_bridge::TopEntryPoint::MacroStmts, &mut |_| {
+        Edition::CURRENT
+    });
 }

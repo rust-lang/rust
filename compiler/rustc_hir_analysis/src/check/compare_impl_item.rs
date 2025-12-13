@@ -590,10 +590,10 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
                 ty,
                 Ty::new_placeholder(
                     tcx,
-                    ty::Placeholder {
+                    ty::Placeholder::new(
                         universe,
-                        bound: ty::BoundTy { var: idx, kind: ty::BoundTyKind::Anon },
-                    },
+                        ty::BoundTy { var: idx, kind: ty::BoundTyKind::Anon },
+                    ),
                 ),
             )
         })

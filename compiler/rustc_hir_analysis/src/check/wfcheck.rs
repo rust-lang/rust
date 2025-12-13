@@ -13,7 +13,7 @@ use rustc_hir::lang_items::LangItem;
 use rustc_hir::{AmbigArg, ItemKind, find_attr};
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::{self, InferCtxt, SubregionOrigin, TyCtxtInferExt};
-use rustc_lint_defs::builtin::SUPERTRAIT_ITEM_SHADOWING_DEFINITION;
+use rustc_lint_defs::builtin::SHADOWING_SUPERTRAIT_ITEMS;
 use rustc_macros::LintDiagnostic;
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::traits::solve::NoSolution;
@@ -797,7 +797,7 @@ fn lint_item_shadowing_supertrait_item<'tcx>(tcx: TyCtxt<'tcx>, trait_item_def_i
         };
 
         tcx.emit_node_span_lint(
-            SUPERTRAIT_ITEM_SHADOWING_DEFINITION,
+            SHADOWING_SUPERTRAIT_ITEMS,
             tcx.local_def_id_to_hir_id(trait_item_def_id),
             tcx.def_span(trait_item_def_id),
             errors::SupertraitItemShadowing {
@@ -1147,17 +1147,16 @@ fn check_trait(tcx: TyCtxt<'_>, item: &hir::Item<'_>) -> Result<(), ErrorGuarant
 ///
 /// Assuming the defaults are used, check that all predicates (bounds on the
 /// assoc type and where clauses on the trait) hold.
-fn check_associated_type_bounds(wfcx: &WfCheckingCtxt<'_, '_>, item: ty::AssocItem, span: Span) {
+fn check_associated_type_bounds(wfcx: &WfCheckingCtxt<'_, '_>, item: ty::AssocItem, _span: Span) {
     let bounds = wfcx.tcx().explicit_item_bounds(item.def_id);
 
     debug!("check_associated_type_bounds: bounds={:?}", bounds);
     let wf_obligations = bounds.iter_identity_copied().flat_map(|(bound, bound_span)| {
-        let normalized_bound = wfcx.normalize(span, None, bound);
         traits::wf::clause_obligations(
             wfcx.infcx,
             wfcx.param_env,
             wfcx.body_def_id,
-            normalized_bound,
+            bound,
             bound_span,
         )
     });
@@ -1525,7 +1524,6 @@ pub(super) fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, def_id:
 
     assert_eq!(predicates.predicates.len(), predicates.spans.len());
     let wf_obligations = predicates.into_iter().flat_map(|(p, sp)| {
-        let p = wfcx.normalize(sp, None, p);
         traits::wf::clause_obligations(infcx, wfcx.param_env, wfcx.body_def_id, p, sp)
     });
     let obligations: Vec<_> = wf_obligations.chain(default_obligations).collect();

@@ -347,6 +347,7 @@ parse_frontmatter_invalid_opening_preceding_whitespace = invalid preceding white
 parse_frontmatter_length_mismatch = frontmatter close does not match the opening
     .label_opening = the opening here has {$len_opening} dashes...
     .label_close = ...while the close has {$len_close} dashes
+parse_frontmatter_too_many_dashes = too many `-` symbols: frontmatter openings may be delimited by up to 255 `-` symbols, but found {$len_opening}
 parse_frontmatter_unclosed = unclosed frontmatter
     .note = frontmatter opening here was not closed
 
@@ -512,7 +513,7 @@ parse_keyword_lifetime =
     lifetimes cannot use keyword names
 
 parse_kw_bad_case = keyword `{$kw}` is written in the wrong case
-    .suggestion = write it in the correct case
+    .suggestion = write it in {$case}
 
 parse_label_inner_attr_does_not_annotate_this = the inner attribute doesn't annotate this {$item}
 parse_label_unexpected_token = unexpected token

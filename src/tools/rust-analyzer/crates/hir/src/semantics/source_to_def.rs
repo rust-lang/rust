@@ -183,11 +183,7 @@ impl SourceToDefCtx<'_, '_> {
                 // Note: `mod` declarations in block modules cannot be supported here
                 let crate_def_map = crate_def_map(self.db, crate_id);
                 let n_mods = mods.len();
-                let modules = |file| {
-                    crate_def_map
-                        .modules_for_file(self.db, file)
-                        .map(|local_id| crate_def_map.module_id(local_id))
-                };
+                let modules = |file| crate_def_map.modules_for_file(self.db, file);
                 mods.extend(modules(file));
                 if mods.len() == n_mods {
                     mods.extend(
@@ -239,8 +235,8 @@ impl SourceToDefCtx<'_, '_> {
 
         let child_name = src.value.name()?.as_name();
         let def_map = parent_module.def_map(self.db);
-        let &child_id = def_map[parent_module.local_id].children.get(&child_name)?;
-        Some(def_map.module_id(child_id))
+        let &child_id = def_map[parent_module].children.get(&child_name)?;
+        Some(child_id)
     }
 
     pub(super) fn source_file_to_def(&mut self, src: InFile<&ast::SourceFile>) -> Option<ModuleId> {

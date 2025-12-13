@@ -19,11 +19,9 @@ Requests, which are likely to always remain specific to `rust-analyzer` are unde
 
 If you want to be notified about the changes to this document, subscribe to [#4604](https://github.com/rust-lang/rust-analyzer/issues/4604).
 
-<!-- toc -->
-
 ## Configuration in `initializationOptions`
 
-**Upstream Issue:** https://github.com/microsoft/language-server-protocol/issues/567
+**Upstream Issue:** <https://github.com/microsoft/language-server-protocol/issues/567>
 
 The `initializationOptions` field of the `InitializeParams` of the initialization request should contain the `"rust-analyzer"` section of the configuration.
 
@@ -39,7 +37,7 @@ If a language client does not know about `rust-analyzer`'s configuration options
 
 ## Snippet `TextEdit`
 
-**Upstream Issue:** https://github.com/microsoft/language-server-protocol/issues/724
+**Upstream Issue:** <https://github.com/microsoft/language-server-protocol/issues/724>
 
 **Experimental Client Capability:** `{ "snippetTextEdit": boolean }`
 
@@ -74,7 +72,7 @@ Any additional `TextDocumentEdit`s will only have edits which are `InsertTextFor
 
 ## `CodeAction` Groups
 
-**Upstream Issue:** https://github.com/microsoft/language-server-protocol/issues/994
+**Upstream Issue:** <https://github.com/microsoft/language-server-protocol/issues/994>
 
 **Experimental Client Capability:** `{ "codeActionGroup": boolean }`
 
@@ -121,7 +119,7 @@ Invoking code action at this position will yield two code actions for importing 
 
 ## Parent Module
 
-**Upstream Issue:** https://github.com/microsoft/language-server-protocol/issues/1002
+**Upstream Issue:** <https://github.com/microsoft/language-server-protocol/issues/1002>
 
 **Experimental Server Capability:** `{ "parentModule": boolean }`
 
@@ -155,7 +153,7 @@ mod foo;
 
 ## Join Lines
 
-**Upstream Issue:** https://github.com/microsoft/language-server-protocol/issues/992
+**Upstream Issue:** <https://github.com/microsoft/language-server-protocol/issues/992>
 
 **Experimental Server Capability:** `{ "joinLines": boolean }`
 
@@ -202,7 +200,7 @@ fn main() {
 
 ## On Enter
 
-**Upstream Issue:** https://github.com/microsoft/language-server-protocol/issues/1001
+**Upstream Issue:** <https://github.com/microsoft/language-server-protocol/issues/1001>
 
 **Experimental Server Capability:** `{ "onEnter": boolean }`
 
@@ -297,7 +295,7 @@ SSR with query `foo($a, $b) ==>> ($a).foo($b)` will transform, eg `foo(y + 5, z)
 
 ## Matching Brace
 
-**Upstream Issue:** https://github.com/microsoft/language-server-protocol/issues/999
+**Upstream Issue:** <https://github.com/microsoft/language-server-protocol/issues/999>
 
 **Experimental Server Capability:** `{ "matchingBrace": boolean }`
 
@@ -342,7 +340,7 @@ Moreover, it would be cool if editors didn't need to implement even basic langua
 
 ## Runnables
 
-**Upstream Issue:** https://github.com/microsoft/language-server-protocol/issues/944
+**Upstream Issue:** <https://github.com/microsoft/language-server-protocol/issues/944>
 
 **Experimental Server Capability:** `{ "runnables": { "kinds": string[] } }`
 
@@ -854,7 +852,7 @@ Such actions on the client side are appended to a hover bottom as command links:
 
 ## Open Cargo.toml
 
-**Upstream Issue:** https://github.com/rust-lang/rust-analyzer/issues/6462
+**Upstream Issue:** <https://github.com/rust-lang/rust-analyzer/issues/6462>
 
 **Experimental Server Capability:** `{ "openCargoToml": boolean }`
 
@@ -897,7 +895,7 @@ interface TestInfo {
 
 ## Hover Range
 
-**Upstream Issue:** https://github.com/microsoft/language-server-protocol/issues/377
+**Upstream Issue:** <https://github.com/microsoft/language-server-protocol/issues/377>
 
 **Experimental Server Capability:** { "hoverRange": boolean }
 
@@ -924,7 +922,7 @@ Triggering a hover inside the selection above will show a result of `i32`.
 
 ## Move Item
 
-**Upstream Issue:** https://github.com/rust-lang/rust-analyzer/issues/6823
+**Upstream Issue:** <https://github.com/rust-lang/rust-analyzer/issues/6823>
 
 This request is sent from client to server to move item under cursor or selection in some direction.
 
@@ -949,7 +947,7 @@ export const enum Direction {
 
 ## Workspace Symbols Filtering
 
-**Upstream Issue:** https://github.com/microsoft/language-server-protocol/issues/941
+**Upstream Issue:** <https://github.com/microsoft/language-server-protocol/issues/941>
 
 **Experimental Server Capability:** `{ "workspaceSymbolScopeKindFiltering": boolean }`
 
@@ -983,7 +981,7 @@ const enum WorkspaceSymbolSearchKind {
 
 ## Client Commands
 
-**Upstream Issue:** https://github.com/microsoft/language-server-protocol/issues/642
+**Upstream Issue:** <https://github.com/microsoft/language-server-protocol/issues/642>
 
 **Experimental Client Capability:** `{ "commands?": ClientCommandOptions }`
 

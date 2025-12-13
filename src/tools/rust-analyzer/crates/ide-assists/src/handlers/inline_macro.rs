@@ -38,7 +38,7 @@ use crate::{AssistContext, AssistId, Assists};
 pub(crate) fn inline_macro(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let unexpanded = ctx.find_node_at_offset::<ast::MacroCall>()?;
     let macro_call = ctx.sema.to_def(&unexpanded)?;
-    let target_crate_id = ctx.sema.file_to_module_def(ctx.vfs_file_id())?.krate().into();
+    let target_crate_id = ctx.sema.file_to_module_def(ctx.vfs_file_id())?.krate(ctx.db()).into();
     let text_range = unexpanded.syntax().text_range();
 
     acc.add(

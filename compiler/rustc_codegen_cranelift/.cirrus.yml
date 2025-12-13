@@ -1,7 +1,7 @@
 task:
   name: freebsd
   freebsd_instance:
-    image_family: freebsd-14-2
+    image_family: freebsd-15-0-amd64-ufs
   setup_rust_script:
     - pkg install -y git-tiny binutils
     - curl https://sh.rustup.rs -sSf --output rustup.sh

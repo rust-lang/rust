@@ -83,26 +83,23 @@ mod handlers {
 #[cfg(test)]
 mod tests;
 
-use std::{iter, sync::LazyLock};
+use std::sync::LazyLock;
 
-use either::Either;
 use hir::{
     Crate, DisplayTarget, InFile, Semantics, db::ExpandDatabase, diagnostics::AnyDiagnostic,
 };
 use ide_db::{
-    EditionedFileId, FileId, FileRange, FxHashMap, FxHashSet, RootDatabase, Severity, SnippetCap,
+    FileId, FileRange, FxHashMap, FxHashSet, RootDatabase, Severity, SnippetCap,
     assists::{Assist, AssistId, AssistResolveStrategy, ExprFillDefaultMode},
     base_db::{ReleaseChannel, RootQueryDb as _},
     generated::lints::{CLIPPY_LINT_GROUPS, DEFAULT_LINT_GROUPS, DEFAULT_LINTS, Lint, LintGroup},
     imports::insert_use::InsertUseConfig,
     label::Label,
     source_change::SourceChange,
-    syntax_helpers::node_ext::parse_tt_as_comma_sep_paths,
 };
-use itertools::Itertools;
 use syntax::{
-    AstPtr, Edition, NodeOrToken, SmolStr, SyntaxKind, SyntaxNode, SyntaxNodePtr, T, TextRange,
-    ast::{self, AstNode, HasAttrs},
+    AstPtr, Edition, SmolStr, SyntaxNode, SyntaxNodePtr, TextRange,
+    ast::{self, AstNode},
 };
 
 // FIXME: Make this an enum
@@ -277,31 +274,6 @@ struct DiagnosticsContext<'a> {
     is_nightly: bool,
 }
 
-impl DiagnosticsContext<'_> {
-    fn resolve_precise_location(
-        &self,
-        node: &InFile<SyntaxNodePtr>,
-        precise_location: Option<TextRange>,
-    ) -> FileRange {
-        let sema = &self.sema;
-        (|| {
-            let precise_location = precise_location?;
-            let root = sema.parse_or_expand(node.file_id);
-            match root.covering_element(precise_location) {
-                syntax::NodeOrToken::Node(it) => Some(sema.original_range(&it)),
-                syntax::NodeOrToken::Token(it) => {
-                    node.with_value(it).original_file_range_opt(sema.db)
-                }
-            }
-        })()
-        .map(|frange| ide_db::FileRange {
-            file_id: frange.file_id.file_id(self.sema.db),
-            range: frange.range,
-        })
-        .unwrap_or_else(|| sema.diagnostics_display_range(*node))
-    }
-}
-
 /// Request parser level diagnostics for the given [`FileId`].
 pub fn syntax_diagnostics(
     db: &RootDatabase,
@@ -315,9 +287,7 @@ pub fn syntax_diagnostics(
     }
 
     let sema = Semantics::new(db);
-    let editioned_file_id = sema
-        .attach_first_edition(file_id)
-        .unwrap_or_else(|| EditionedFileId::current_edition(db, file_id));
+    let editioned_file_id = sema.attach_first_edition(file_id);
 
     let (file_id, _) = editioned_file_id.unpack(db);
 
@@ -346,9 +316,7 @@ pub fn semantic_diagnostics(
 ) -> Vec<Diagnostic> {
     let _p = tracing::info_span!("semantic_diagnostics").entered();
     let sema = Semantics::new(db);
-    let editioned_file_id = sema
-        .attach_first_edition(file_id)
-        .unwrap_or_else(|| EditionedFileId::current_edition(db, file_id));
+    let editioned_file_id = sema.attach_first_edition(file_id);
 
     let (file_id, edition) = editioned_file_id.unpack(db);
     let mut res = Vec::new();
@@ -374,12 +342,12 @@ pub fn semantic_diagnostics(
     let module = sema.file_to_module_def(file_id);
 
     let is_nightly = matches!(
-        module.and_then(|m| db.toolchain_channel(m.krate().into())),
+        module.and_then(|m| db.toolchain_channel(m.krate(db).into())),
         Some(ReleaseChannel::Nightly) | None
     );
 
     let krate = match module {
-        Some(module) => module.krate(),
+        Some(module) => module.krate(db),
         None => {
             match db.all_crates().last() {
                 Some(last) => (*last).into(),
@@ -426,7 +394,7 @@ pub fn semantic_diagnostics(
                         Diagnostic::new(
                             DiagnosticCode::SyntaxError,
                             format!("Syntax Error in Expansion: {err}"),
-                            ctx.resolve_precise_location(&d.node.clone(), d.precise_location),
+                            ctx.sema.diagnostics_display_range_for_range(d.range),
                         )
                 }));
                 continue;
@@ -512,7 +480,7 @@ pub fn semantic_diagnostics(
 
     // The edition isn't accurate (each diagnostics may have its own edition due to macros),
     // but it's okay as it's only being used for error recovery.
-    handle_lints(&ctx.sema, &mut lints, editioned_file_id.edition(db));
+    handle_lints(&ctx.sema, krate, &mut lints, editioned_file_id.edition(db));
 
     res.retain(|d| d.severity != Severity::Allow);
 
@@ -620,6 +588,7 @@ fn build_lints_map(
 
 fn handle_lints(
     sema: &Semantics<'_, RootDatabase>,
+    krate: hir::Crate,
     diagnostics: &mut [(InFile<SyntaxNode>, &mut Diagnostic)],
     edition: Edition,
 ) {
@@ -635,10 +604,10 @@ fn handle_lints(
         }
 
         let mut diag_severity =
-            lint_severity_at(sema, node, &lint_groups(&diag.code, edition), edition);
+            lint_severity_at(sema, krate, node, &lint_groups(&diag.code, edition));
 
         if let outline_diag_severity @ Some(_) =
-            find_outline_mod_lint_severity(sema, node, diag, edition)
+            find_outline_mod_lint_severity(sema, krate, node, diag, edition)
         {
             diag_severity = outline_diag_severity;
         }
@@ -661,6 +630,7 @@ fn default_lint_severity(lint: &Lint, edition: Edition) -> Severity {
 
 fn find_outline_mod_lint_severity(
     sema: &Semantics<'_, RootDatabase>,
+    krate: hir::Crate,
     node: &InFile<SyntaxNode>,
     diag: &Diagnostic,
     edition: Edition,
@@ -677,8 +647,8 @@ fn find_outline_mod_lint_severity(
     let lint_groups = lint_groups(&diag.code, edition);
     lint_attrs(
         sema,
+        krate,
         ast::AnyHasAttrs::cast(module_source_file.value).expect("SourceFile always has attrs"),
-        edition,
     )
     .for_each(|(lint, severity)| {
         if lint_groups.contains(&lint) {
@@ -690,106 +660,36 @@ fn find_outline_mod_lint_severity(
 
 fn lint_severity_at(
     sema: &Semantics<'_, RootDatabase>,
+    krate: hir::Crate,
     node: &InFile<SyntaxNode>,
     lint_groups: &LintGroups,
-    edition: Edition,
 ) -> Option<Severity> {
     node.value
         .ancestors()
         .filter_map(ast::AnyHasAttrs::cast)
         .find_map(|ancestor| {
-            lint_attrs(sema, ancestor, edition)
+            lint_attrs(sema, krate, ancestor)
                 .find_map(|(lint, severity)| lint_groups.contains(&lint).then_some(severity))
         })
         .or_else(|| {
-            lint_severity_at(sema, &sema.find_parent_file(node.file_id)?, lint_groups, edition)
+            lint_severity_at(sema, krate, &sema.find_parent_file(node.file_id)?, lint_groups)
         })
 }
 
-fn lint_attrs<'a>(
-    sema: &'a Semantics<'a, RootDatabase>,
-    ancestor: ast::AnyHasAttrs,
-    edition: Edition,
-) -> impl Iterator<Item = (SmolStr, Severity)> + 'a {
-    ancestor
-        .attrs_including_inner()
-        .filter_map(|attr| {
-            attr.as_simple_call().and_then(|(name, value)| match &*name {
-                "allow" | "expect" => Some(Either::Left(iter::once((Severity::Allow, value)))),
-                "warn" => Some(Either::Left(iter::once((Severity::Warning, value)))),
-                "forbid" | "deny" => Some(Either::Left(iter::once((Severity::Error, value)))),
-                "cfg_attr" => {
-                    let mut lint_attrs = Vec::new();
-                    cfg_attr_lint_attrs(sema, &value, &mut lint_attrs);
-                    Some(Either::Right(lint_attrs.into_iter()))
-                }
-                _ => None,
-            })
-        })
-        .flatten()
-        .flat_map(move |(severity, lints)| {
-            parse_tt_as_comma_sep_paths(lints, edition).into_iter().flat_map(move |lints| {
-                // Rejoin the idents with `::`, so we have no spaces in between.
-                lints.into_iter().map(move |lint| {
-                    (
-                        lint.segments().filter_map(|segment| segment.name_ref()).join("::").into(),
-                        severity,
-                    )
-                })
-            })
-        })
-}
-
-fn cfg_attr_lint_attrs(
+// FIXME: Switch this to analysis' `expand_cfg_attr`.
+fn lint_attrs(
     sema: &Semantics<'_, RootDatabase>,
-    value: &ast::TokenTree,
-    lint_attrs: &mut Vec<(Severity, ast::TokenTree)>,
-) {
-    let prev_len = lint_attrs.len();
-
-    let mut iter = value.token_trees_and_tokens().filter(|it| match it {
-        NodeOrToken::Node(_) => true,
-        NodeOrToken::Token(it) => !it.kind().is_trivia(),
-    });
-
-    // Skip the condition.
-    for value in &mut iter {
-        if value.as_token().is_some_and(|it| it.kind() == T![,]) {
-            break;
-        }
-    }
-
-    while let Some(value) = iter.next() {
-        if let Some(token) = value.as_token()
-            && token.kind() == SyntaxKind::IDENT
-        {
-            let severity = match token.text() {
-                "allow" | "expect" => Some(Severity::Allow),
-                "warn" => Some(Severity::Warning),
-                "forbid" | "deny" => Some(Severity::Error),
-                "cfg_attr" => {
-                    if let Some(NodeOrToken::Node(value)) = iter.next() {
-                        cfg_attr_lint_attrs(sema, &value, lint_attrs);
-                    }
-                    None
-                }
-                _ => None,
-            };
-            if let Some(severity) = severity {
-                let lints = iter.next();
-                if let Some(NodeOrToken::Node(lints)) = lints {
-                    lint_attrs.push((severity, lints));
-                }
-            }
-        }
-    }
-
-    if prev_len != lint_attrs.len()
-        && let Some(false) | None = sema.check_cfg_attr(value)
-    {
-        // Discard the attributes when the condition is false.
-        lint_attrs.truncate(prev_len);
-    }
+    krate: hir::Crate,
+    ancestor: ast::AnyHasAttrs,
+) -> impl Iterator<Item = (SmolStr, Severity)> {
+    sema.lint_attrs(krate, ancestor).map(|(lint_attr, lint)| {
+        let severity = match lint_attr {
+            hir::LintAttr::Allow | hir::LintAttr::Expect => Severity::Allow,
+            hir::LintAttr::Warn => Severity::Warning,
+            hir::LintAttr::Deny | hir::LintAttr::Forbid => Severity::Error,
+        };
+        (lint, severity)
+    })
 }
 
 #[derive(Debug)]

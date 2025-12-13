@@ -681,7 +681,7 @@ pub fn try_evaluate_const<'tcx>(
 
                     (args, typing_env)
                 }
-                _ => {
+                Some(ty::AnonConstKind::MCG) | Some(ty::AnonConstKind::NonTypeSystem) | None => {
                     // We are only dealing with "truly" generic/uninferred constants here:
                     // - GCEConsts have been handled separately
                     // - Repeat expr count back compat consts have also been handled separately
@@ -700,7 +700,7 @@ pub fn try_evaluate_const<'tcx>(
 
                     // Since there is no generic parameter, we can just drop the environment
                     // to prevent query cycle.
-                    let typing_env = infcx.typing_env(ty::ParamEnv::empty());
+                    let typing_env = ty::TypingEnv::fully_monomorphized();
 
                     (uv.args, typing_env)
                 }
@@ -756,10 +756,10 @@ fn replace_param_and_infer_args_with_placeholder<'tcx>(
                 self.idx += 1;
                 Ty::new_placeholder(
                     self.tcx,
-                    ty::PlaceholderType {
-                        universe: ty::UniverseIndex::ROOT,
-                        bound: ty::BoundTy { var: idx, kind: ty::BoundTyKind::Anon },
-                    },
+                    ty::PlaceholderType::new(
+                        ty::UniverseIndex::ROOT,
+                        ty::BoundTy { var: idx, kind: ty::BoundTyKind::Anon },
+                    ),
                 )
             } else {
                 t.super_fold_with(self)
@@ -772,10 +772,7 @@ fn replace_param_and_infer_args_with_placeholder<'tcx>(
                 self.idx += 1;
                 ty::Const::new_placeholder(
                     self.tcx,
-                    ty::PlaceholderConst {
-                        universe: ty::UniverseIndex::ROOT,
-                        bound: ty::BoundConst { var: idx },
-                    },
+                    ty::PlaceholderConst::new(ty::UniverseIndex::ROOT, ty::BoundConst { var: idx }),
                 )
             } else {
                 c.super_fold_with(self)

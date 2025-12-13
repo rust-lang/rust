@@ -13,7 +13,7 @@ use std::{
 use either::Either;
 use hir_def::{
     DefWithBodyId, FunctionId, MacroId, StructId, TraitId, VariantId,
-    expr_store::{Body, ExprOrPatSource, path::Path},
+    expr_store::{Body, ExprOrPatSource, HygieneId, path::Path},
     hir::{BindingId, Expr, ExprId, ExprOrPatId, Pat},
     nameres::{ModuleOrigin, crate_def_map},
     resolver::{self, HasResolver, Resolver, TypeNs},
@@ -21,7 +21,6 @@ use hir_def::{
 };
 use hir_expand::{
     EditionedFileId, ExpandResult, FileRange, HirFileId, InMacroFile, MacroCallId,
-    attrs::collect_attrs,
     builtin::{BuiltinFnLikeExpander, EagerExpander},
     db::ExpandDatabase,
     files::{FileRangeWrapper, HirFileRange, InRealFile},
@@ -29,6 +28,7 @@ use hir_expand::{
     name::AsName,
 };
 use hir_ty::{
+    InferenceResult,
     diagnostics::{unsafe_operations, unsafe_operations_for_body},
     next_solver::DbInterner,
 };
@@ -36,11 +36,11 @@ use intern::{Interned, Symbol, sym};
 use itertools::Itertools;
 use rustc_hash::{FxHashMap, FxHashSet};
 use smallvec::{SmallVec, smallvec};
-use span::{Edition, FileId, SyntaxContext};
+use span::{FileId, SyntaxContext};
 use stdx::{TupleExt, always};
 use syntax::{
-    AstNode, AstToken, Direction, SyntaxKind, SyntaxNode, SyntaxNodePtr, SyntaxToken, TextRange,
-    TextSize,
+    AstNode, AstToken, Direction, SmolStr, SmolStrBuilder, SyntaxElement, SyntaxKind, SyntaxNode,
+    SyntaxNodePtr, SyntaxToken, T, TextRange, TextSize,
     algo::skip_trivia_token,
     ast::{self, HasAttrs as _, HasGenericParams},
 };
@@ -53,7 +53,7 @@ use crate::{
     TypeAlias, TypeParam, Union, Variant, VariantDef,
     db::HirDatabase,
     semantics::source_to_def::{ChildContainer, SourceToDefCache, SourceToDefCtx},
-    source_analyzer::{SourceAnalyzer, name_hygiene, resolve_hir_path},
+    source_analyzer::{SourceAnalyzer, resolve_hir_path},
 };
 
 const CONTINUE_NO_BREAKS: ControlFlow<Infallible, ()> = ControlFlow::Continue(());
@@ -174,6 +174,15 @@ impl<'db, DB: ?Sized> ops::Deref for Semantics<'db, DB> {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum LintAttr {
+    Allow,
+    Expect,
+    Warn,
+    Deny,
+    Forbid,
+}
+
 // Note: while this variant of `Semantics<'_, _>` might seem unused, as it does not
 // find actual use within the rust-analyzer project itself, it exists to enable the use
 // within e.g. tracked salsa functions in third-party crates that build upon `ra_ap_hir`.
@@ -252,6 +261,59 @@ impl<DB: HirDatabase + ?Sized> Semantics<'_, DB> {
             // See algo::ancestors_at_offset, which uses the same approach
             .kmerge_by(|left, right| left.text_range().len().lt(&right.text_range().len()))
             .filter_map(ast::NameLike::cast)
+    }
+
+    pub fn lint_attrs(
+        &self,
+        krate: Crate,
+        item: ast::AnyHasAttrs,
+    ) -> impl Iterator<Item = (LintAttr, SmolStr)> {
+        let mut cfg_options = None;
+        let cfg_options = || *cfg_options.get_or_insert_with(|| krate.id.cfg_options(self.db));
+        let mut result = Vec::new();
+        hir_expand::attrs::expand_cfg_attr::<Infallible>(
+            ast::attrs_including_inner(&item),
+            cfg_options,
+            |attr, _, _, _| {
+                let hir_expand::attrs::Meta::TokenTree { path, tt } = attr else {
+                    return ControlFlow::Continue(());
+                };
+                if path.segments.len() != 1 {
+                    return ControlFlow::Continue(());
+                }
+                let lint_attr = match path.segments[0].text() {
+                    "allow" => LintAttr::Allow,
+                    "expect" => LintAttr::Expect,
+                    "warn" => LintAttr::Warn,
+                    "deny" => LintAttr::Deny,
+                    "forbid" => LintAttr::Forbid,
+                    _ => return ControlFlow::Continue(()),
+                };
+                let mut lint = SmolStrBuilder::new();
+                for token in
+                    tt.syntax().children_with_tokens().filter_map(SyntaxElement::into_token)
+                {
+                    match token.kind() {
+                        T![:] | T![::] => lint.push_str(token.text()),
+                        kind if kind.is_any_identifier() => lint.push_str(token.text()),
+                        T![,] => {
+                            let lint = mem::replace(&mut lint, SmolStrBuilder::new()).finish();
+                            if !lint.is_empty() {
+                                result.push((lint_attr, lint));
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+                let lint = lint.finish();
+                if !lint.is_empty() {
+                    result.push((lint_attr, lint));
+                }
+
+                ControlFlow::Continue(())
+            },
+        );
+        result.into_iter()
     }
 
     pub fn resolve_range_pat(&self, range_pat: &ast::RangePat) -> Option<Struct> {
@@ -380,23 +442,23 @@ impl<'db> SemanticsImpl<'db> {
     /// If not crate is found for the file, try to return the last crate in topological order.
     pub fn first_crate(&self, file: FileId) -> Option<Crate> {
         match self.file_to_module_defs(file).next() {
-            Some(module) => Some(module.krate()),
+            Some(module) => Some(module.krate(self.db)),
             None => self.db.all_crates().last().copied().map(Into::into),
         }
     }
 
-    pub fn attach_first_edition(&self, file: FileId) -> Option<EditionedFileId> {
-        Some(EditionedFileId::new(
-            self.db,
-            file,
-            self.file_to_module_defs(file).next()?.krate().edition(self.db),
-        ))
+    pub fn attach_first_edition_opt(&self, file: FileId) -> Option<EditionedFileId> {
+        let krate = self.file_to_module_defs(file).next()?.krate(self.db);
+        Some(EditionedFileId::new(self.db, file, krate.edition(self.db), krate.id))
+    }
+
+    pub fn attach_first_edition(&self, file: FileId) -> EditionedFileId {
+        self.attach_first_edition_opt(file)
+            .unwrap_or_else(|| EditionedFileId::current_edition_guess_origin(self.db, file))
     }
 
     pub fn parse_guess_edition(&self, file_id: FileId) -> ast::SourceFile {
-        let file_id = self
-            .attach_first_edition(file_id)
-            .unwrap_or_else(|| EditionedFileId::new(self.db, file_id, Edition::CURRENT));
+        let file_id = self.attach_first_edition(file_id);
 
         let tree = self.db.parse(file_id).tree();
         self.cache(tree.syntax().clone(), file_id.into());
@@ -405,7 +467,7 @@ impl<'db> SemanticsImpl<'db> {
 
     pub fn adjust_edition(&self, file_id: HirFileId) -> HirFileId {
         if let Some(editioned_file_id) = file_id.file_id() {
-            self.attach_first_edition(editioned_file_id.file_id(self.db))
+            self.attach_first_edition_opt(editioned_file_id.file_id(self.db))
                 .map_or(file_id, Into::into)
         } else {
             file_id
@@ -416,8 +478,8 @@ impl<'db> SemanticsImpl<'db> {
         match file_id {
             HirFileId::FileId(file_id) => {
                 let module = self.file_to_module_defs(file_id.file_id(self.db)).next()?;
-                let def_map = crate_def_map(self.db, module.krate().id);
-                match def_map[module.id.local_id].origin {
+                let def_map = crate_def_map(self.db, module.krate(self.db).id);
+                match def_map[module.id].origin {
                     ModuleOrigin::CrateRoot { .. } => None,
                     ModuleOrigin::File { declaration, declaration_tree_id, .. } => {
                         let file_id = declaration_tree_id.file_id();
@@ -443,7 +505,7 @@ impl<'db> SemanticsImpl<'db> {
     /// the `SyntaxNode` of the *definition* file, not of the *declaration*.
     pub fn module_definition_node(&self, module: Module) -> InFile<SyntaxNode> {
         let def_map = module.id.def_map(self.db);
-        let definition = def_map[module.id.local_id].origin.definition_source(self.db);
+        let definition = def_map[module.id].origin.definition_source(self.db);
         let definition = definition.map(|it| it.node());
         let root_node = find_root(&definition.value);
         self.cache(root_node, definition.file_id);
@@ -472,7 +534,7 @@ impl<'db> SemanticsImpl<'db> {
         let file_id = self.find_file(attr.syntax()).file_id;
         let krate = match file_id {
             HirFileId::FileId(file_id) => {
-                self.file_to_module_defs(file_id.file_id(self.db)).next()?.krate().id
+                self.file_to_module_defs(file_id.file_id(self.db)).next()?.krate(self.db).id
             }
             HirFileId::MacroFile(macro_file) => self.db.lookup_intern_macro_call(macro_file).krate,
         };
@@ -1197,33 +1259,34 @@ impl<'db> SemanticsImpl<'db> {
                                     .zip(Some(item))
                             })
                             .map(|(call_id, item)| {
-                                let attr_id = match db.lookup_intern_macro_call(call_id).kind {
+                                let item_range = item.syntax().text_range();
+                                let loc = db.lookup_intern_macro_call(call_id);
+                                let text_range = match loc.kind {
                                     hir_expand::MacroCallKind::Attr {
-                                        invoc_attr_index, ..
-                                    } => invoc_attr_index.ast_index(),
-                                    _ => 0,
+                                        censored_attr_ids: attr_ids,
+                                        ..
+                                    } => {
+                                        // FIXME: here, the attribute's text range is used to strip away all
+                                        // entries from the start of the attribute "list" up the invoking
+                                        // attribute. But in
+                                        // ```
+                                        // mod foo {
+                                        //     #![inner]
+                                        // }
+                                        // ```
+                                        // we don't wanna strip away stuff in the `mod foo {` range, that is
+                                        // here if the id corresponds to an inner attribute we got strip all
+                                        // text ranges of the outer ones, and then all of the inner ones up
+                                        // to the invoking attribute so that the inbetween is ignored.
+                                        // FIXME: Should cfg_attr be handled differently?
+                                        let (attr, _, _, _) = attr_ids
+                                            .invoc_attr()
+                                            .find_attr_range_with_source(db, loc.krate, &item);
+                                        let start = attr.syntax().text_range().start();
+                                        TextRange::new(start, item_range.end())
+                                    }
+                                    _ => item_range,
                                 };
-                                // FIXME: here, the attribute's text range is used to strip away all
-                                // entries from the start of the attribute "list" up the invoking
-                                // attribute. But in
-                                // ```
-                                // mod foo {
-                                //     #![inner]
-                                // }
-                                // ```
-                                // we don't wanna strip away stuff in the `mod foo {` range, that is
-                                // here if the id corresponds to an inner attribute we got strip all
-                                // text ranges of the outer ones, and then all of the inner ones up
-                                // to the invoking attribute so that the inbetween is ignored.
-                                let text_range = item.syntax().text_range();
-                                let start = collect_attrs(&item)
-                                    .nth(attr_id)
-                                    .map(|attr| match attr.1 {
-                                        Either::Left(it) => it.syntax().text_range().start(),
-                                        Either::Right(it) => it.syntax().text_range().start(),
-                                    })
-                                    .unwrap_or_else(|| text_range.start());
-                                let text_range = TextRange::new(start, text_range.end());
                                 filter_duplicates(tokens, text_range);
                                 process_expansion_for_token(ctx, &mut stack, call_id)
                             })
@@ -1473,6 +1536,14 @@ impl<'db> SemanticsImpl<'db> {
         FileRangeWrapper { file_id: file_id.file_id(self.db), range }
     }
 
+    pub fn diagnostics_display_range_for_range(
+        &self,
+        src: InFile<TextRange>,
+    ) -> FileRangeWrapper<FileId> {
+        let FileRange { file_id, range } = src.original_node_file_range_rooted(self.db);
+        FileRangeWrapper { file_id: file_id.file_id(self.db), range }
+    }
+
     fn token_ancestors_with_macros(
         &self,
         token: SyntaxToken,
@@ -1655,7 +1726,7 @@ impl<'db> SemanticsImpl<'db> {
         func: Function,
         subst: impl IntoIterator<Item = Type<'db>>,
     ) -> Option<Function> {
-        let interner = DbInterner::new_with(self.db, None, None);
+        let interner = DbInterner::new_no_crate(self.db);
         let mut subst = subst.into_iter();
         let substs =
             hir_ty::next_solver::GenericArgs::for_item(interner, trait_.id.into(), |_, id, _| {
@@ -1769,9 +1840,9 @@ impl<'db> SemanticsImpl<'db> {
     pub fn get_unsafe_ops(&self, def: DefWithBody) -> FxHashSet<ExprOrPatSource> {
         let def = DefWithBodyId::from(def);
         let (body, source_map) = self.db.body_with_source_map(def);
-        let infer = self.db.infer(def);
+        let infer = InferenceResult::for_body(self.db, def);
         let mut res = FxHashSet::default();
-        unsafe_operations_for_body(self.db, &infer, def, &body, &mut |node| {
+        unsafe_operations_for_body(self.db, infer, def, &body, &mut |node| {
             if let Ok(node) = source_map.expr_or_pat_syntax(node) {
                 res.insert(node);
             }
@@ -1785,12 +1856,12 @@ impl<'db> SemanticsImpl<'db> {
         let Some(def) = self.body_for(block.syntax()) else { return Vec::new() };
         let def = def.into();
         let (body, source_map) = self.db.body_with_source_map(def);
-        let infer = self.db.infer(def);
+        let infer = InferenceResult::for_body(self.db, def);
         let Some(ExprOrPatId::ExprId(block)) = source_map.node_expr(block.as_ref()) else {
             return Vec::new();
         };
         let mut res = Vec::default();
-        unsafe_operations(self.db, &infer, def, &body, block, &mut |node, _| {
+        unsafe_operations(self.db, infer, def, &body, block, &mut |node, _| {
             if let Ok(node) = source_map.expr_or_pat_syntax(node) {
                 res.push(node);
             }
@@ -2330,7 +2401,7 @@ impl<'db> SemanticsScope<'db> {
             self.db,
             &self.resolver,
             &Path::BarePath(Interned::new(ModPath::from_segments(kind, segments))),
-            name_hygiene(self.db, InFile::new(self.file_id, ast_path.syntax())),
+            HygieneId::ROOT,
             None,
         )
     }

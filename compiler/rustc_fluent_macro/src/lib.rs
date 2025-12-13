@@ -1,7 +1,8 @@
 // tidy-alphabetical-start
 #![allow(rustc::default_hash_types)]
+#![cfg_attr(bootstrap, feature(track_path))]
+#![cfg_attr(not(bootstrap), feature(proc_macro_tracked_path))]
 #![feature(proc_macro_diagnostic)]
-#![feature(track_path)]
 // tidy-alphabetical-end
 
 use proc_macro::TokenStream;

@@ -82,7 +82,7 @@ pub(crate) fn qualify_path(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option
     proposed_imports.dedup_by(|a, b| a.import_path == b.import_path);
 
     let current_edition =
-        current_module.map(|it| it.krate().edition(ctx.db())).unwrap_or(Edition::CURRENT);
+        current_module.map(|it| it.krate(ctx.db()).edition(ctx.db())).unwrap_or(Edition::CURRENT);
     // prioritize more relevant imports
     proposed_imports.sort_by_key(|import| {
         Reverse(super::auto_import::relevance_score(

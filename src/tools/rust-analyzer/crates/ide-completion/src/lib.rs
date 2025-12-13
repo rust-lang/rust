@@ -1,5 +1,8 @@
 //! `completions` crate provides utilities for generating completions of user input.
 
+// It's useful to refer to code that is private in doc comments.
+#![allow(rustdoc::private_intra_doc_links)]
+
 mod completions;
 mod config;
 mod context;
@@ -274,7 +277,7 @@ pub fn resolve_completion_edits(
     let _p = tracing::info_span!("resolve_completion_edits").entered();
     let sema = hir::Semantics::new(db);
 
-    let editioned_file_id = sema.attach_first_edition(file_id)?;
+    let editioned_file_id = sema.attach_first_edition(file_id);
 
     let original_file = sema.parse(editioned_file_id);
     let original_token =
@@ -283,7 +286,7 @@ pub fn resolve_completion_edits(
     let scope = ImportScope::find_insert_use_container(position_for_import, &sema)?;
 
     let current_module = sema.scope(position_for_import)?.module();
-    let current_crate = current_module.krate();
+    let current_crate = current_module.krate(db);
     let current_edition = current_crate.edition(db);
     let new_ast = scope.clone_for_update();
     let mut import_insert = TextEdit::builder();

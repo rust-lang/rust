@@ -488,6 +488,8 @@ struct DisplayFmtPadding {
     indent_middle: S,
     /// Indentation for the last child.
     indent_last: S,
+    /// Replaces `join_last` for a wildcard root.
+    wildcard_root: S,
 }
 /// How to show whether a location has been accessed
 ///
@@ -561,6 +563,11 @@ impl DisplayFmt {
             })
             .unwrap_or("")
     }
+
+    /// Print extra text if the tag is exposed.
+    fn print_exposed(&self, exposed: bool) -> S {
+        if exposed { " (exposed)" } else { "" }
+    }
 }
 
 /// Track the indentation of the tree.
@@ -607,23 +614,21 @@ fn char_repeat(c: char, n: usize) -> String {
 struct DisplayRepr {
     tag: BorTag,
     name: Option<String>,
+    exposed: bool,
     rperm: Vec<Option<LocationState>>,
     children: Vec<DisplayRepr>,
 }
 
 impl DisplayRepr {
-    fn from(tree: &Tree, show_unnamed: bool) -> Option<Self> {
+    fn from(tree: &Tree, root: UniIndex, show_unnamed: bool) -> Option<Self> {
         let mut v = Vec::new();
-        extraction_aux(tree, tree.root, show_unnamed, &mut v);
+        extraction_aux(tree, root, show_unnamed, &mut v);
         let Some(root) = v.pop() else {
             if show_unnamed {
                 unreachable!(
                     "This allocation contains no tags, not even a root. This should not happen."
                 );
             }
-            eprintln!(
-                "This allocation does not contain named tags. Use `miri_print_borrow_state(_, true)` to also print unnamed tags."
-            );
             return None;
         };
         assert!(v.is_empty());
@@ -637,6 +642,7 @@ impl DisplayRepr {
         ) {
             let node = tree.nodes.get(idx).unwrap();
             let name = node.debug_info.name.clone();
+            let exposed = node.is_exposed;
             let children_sorted = {
                 let mut children = node.children.iter().cloned().collect::<Vec<_>>();
                 children.sort_by_key(|idx| tree.nodes.get(*idx).unwrap().tag);
@@ -661,12 +667,13 @@ impl DisplayRepr {
                 for child_idx in children_sorted {
                     extraction_aux(tree, child_idx, show_unnamed, &mut children);
                 }
-                acc.push(DisplayRepr { tag: node.tag, name, rperm, children });
+                acc.push(DisplayRepr { tag: node.tag, name, rperm, children, exposed });
             }
         }
     }
     fn print(
-        &self,
+        main_root: &Option<DisplayRepr>,
+        wildcard_subtrees: &[DisplayRepr],
         fmt: &DisplayFmt,
         indenter: &mut DisplayIndent,
         protected_tags: &FxHashMap<BorTag, ProtectorKind>,
@@ -703,15 +710,41 @@ impl DisplayRepr {
             block.push(s);
         }
         // This is the actual work
-        print_aux(
-            self,
-            &range_padding,
-            fmt,
-            indenter,
-            protected_tags,
-            true, /* root _is_ the last child */
-            &mut block,
-        );
+        if let Some(root) = main_root {
+            print_aux(
+                root,
+                &range_padding,
+                fmt,
+                indenter,
+                protected_tags,
+                true,  /* root _is_ the last child */
+                false, /* not a wildcard_root*/
+                &mut block,
+            );
+        }
+        for tree in wildcard_subtrees.iter() {
+            let mut gap_line = String::new();
+            gap_line.push_str(fmt.perm.open);
+            for (i, &pad) in range_padding.iter().enumerate() {
+                if i > 0 {
+                    gap_line.push_str(fmt.perm.sep);
+                }
+                gap_line.push_str(&format!("{}{}", char_repeat(' ', pad), "     "));
+            }
+            gap_line.push_str(fmt.perm.close);
+            block.push(gap_line);
+
+            print_aux(
+                tree,
+                &range_padding,
+                fmt,
+                indenter,
+                protected_tags,
+                true, /* root _is_ the last child */
+                true, /* wildcard_root*/
+                &mut block,
+            );
+        }
         // Then it's just prettifying it with a border of dashes.
         {
             let wr = &fmt.wrapper;
@@ -741,6 +774,7 @@ impl DisplayRepr {
             indent: &mut DisplayIndent,
             protected_tags: &FxHashMap<BorTag, ProtectorKind>,
             is_last_child: bool,
+            is_wildcard_root: bool,
             acc: &mut Vec<String>,
         ) {
             let mut line = String::new();
@@ -760,7 +794,9 @@ impl DisplayRepr {
             indent.write(&mut line);
             {
                 // padding
-                line.push_str(if is_last_child {
+                line.push_str(if is_wildcard_root {
+                    fmt.padding.wildcard_root
+                } else if is_last_child {
                     fmt.padding.join_last
                 } else {
                     fmt.padding.join_middle
@@ -777,12 +813,22 @@ impl DisplayRepr {
             line.push_str(&fmt.print_tag(tree.tag, &tree.name));
             let protector = protected_tags.get(&tree.tag);
             line.push_str(fmt.print_protector(protector));
+            line.push_str(fmt.print_exposed(tree.exposed));
             // Push the line to the accumulator then recurse.
             acc.push(line);
             let nb_children = tree.children.len();
             for (i, child) in tree.children.iter().enumerate() {
                 indent.increment(fmt, is_last_child);
-                print_aux(child, padding, fmt, indent, protected_tags, i + 1 == nb_children, acc);
+                print_aux(
+                    child,
+                    padding,
+                    fmt,
+                    indent,
+                    protected_tags,
+                    /* is_last_child */ i + 1 == nb_children,
+                    /* is_wildcard_root */ false,
+                    acc,
+                );
                 indent.decrement(fmt);
             }
         }
@@ -803,6 +849,7 @@ const DEFAULT_FORMATTER: DisplayFmt = DisplayFmt {
         indent_last: "  ",
         join_haschild: "┬",
         join_default: "─",
+        wildcard_root: "*",
     },
     accessed: DisplayFmtAccess { yes: " ", no: "?", meh: "-" },
 };
@@ -816,15 +863,27 @@ impl<'tcx> Tree {
     ) -> InterpResult<'tcx> {
         let mut indenter = DisplayIndent::new();
         let ranges = self.locations.iter_all().map(|(range, _loc)| range).collect::<Vec<_>>();
-        if let Some(repr) = DisplayRepr::from(self, show_unnamed) {
-            repr.print(
-                &DEFAULT_FORMATTER,
-                &mut indenter,
-                protected_tags,
-                ranges,
-                /* print warning message about tags not shown */ !show_unnamed,
+        let main_tree = DisplayRepr::from(self, self.roots[0], show_unnamed);
+        let wildcard_subtrees = self.roots[1..]
+            .iter()
+            .filter_map(|root| DisplayRepr::from(self, *root, show_unnamed))
+            .collect::<Vec<_>>();
+
+        if main_tree.is_none() && wildcard_subtrees.is_empty() {
+            eprintln!(
+                "This allocation does not contain named tags. Use `miri_print_borrow_state(_, true)` to also print unnamed tags."
             );
         }
+
+        DisplayRepr::print(
+            &main_tree,
+            wildcard_subtrees.as_slice(),
+            &DEFAULT_FORMATTER,
+            &mut indenter,
+            protected_tags,
+            ranges,
+            /* print warning message about tags not shown */ !show_unnamed,
+        );
         interp_ok(())
     }
 }

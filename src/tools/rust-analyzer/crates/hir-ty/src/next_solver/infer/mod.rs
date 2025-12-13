@@ -8,7 +8,6 @@ use std::sync::Arc;
 pub use BoundRegionConversionTime::*;
 use ena::unify as ut;
 use hir_def::GenericParamId;
-use hir_def::lang_item::LangItem;
 use opaque_types::{OpaqueHiddenType, OpaqueTypeStorage};
 use region_constraints::{RegionConstraintCollector, RegionConstraintStorage};
 use rustc_next_trait_solver::solve::SolverDelegateEvalExt;
@@ -403,7 +402,7 @@ impl<'db> InferCtxt<'db> {
         self.evaluate_obligation(obligation).may_apply()
     }
 
-    /// See the comment on [OpaqueTypesJank](crate::solve::OpaqueTypesJank)
+    /// See the comment on `GeneralAutoderef::overloaded_deref_ty`
     /// for more details.
     pub fn predicate_may_hold_opaque_types_jank(
         &self,
@@ -533,7 +532,7 @@ impl<'db> InferCtxt<'db> {
         })
     }
 
-    /// See the comment on [OpaqueTypesJank](crate::solve::OpaqueTypesJank)
+    /// See the comment on `GeneralAutoderef::overloaded_deref_ty`
     /// for more details.
     pub fn goal_may_hold_opaque_types_jank(&self, goal: Goal<'db, Predicate<'db>>) -> bool {
         <&SolverContext<'db>>::from(self).root_goal_may_hold_opaque_types_jank(goal)
@@ -542,9 +541,7 @@ impl<'db> InferCtxt<'db> {
     pub fn type_is_copy_modulo_regions(&self, param_env: ParamEnv<'db>, ty: Ty<'db>) -> bool {
         let ty = self.resolve_vars_if_possible(ty);
 
-        let Some(copy_def_id) =
-            LangItem::Copy.resolve_trait(self.interner.db, self.interner.krate.unwrap())
-        else {
+        let Some(copy_def_id) = self.interner.lang_items().Copy else {
             return false;
         };
 

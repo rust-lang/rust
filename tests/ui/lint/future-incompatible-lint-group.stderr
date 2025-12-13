@@ -5,7 +5,7 @@ LL |     fn f(u8) {}
    |          ^^ help: try naming the parameter or explicitly ignoring it: `_: u8`
    |
    = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2018!
-   = note: for more information, see issue #41686 <https://github.com/rust-lang/rust/issues/41686>
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2018/trait-fn-parameters.html>
    = note: `#[warn(anonymous_parameters)]` (part of `#[warn(rust_2018_compatibility)]`) on by default
 
 error: ambiguous associated item

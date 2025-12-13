@@ -3,6 +3,7 @@
 use std::task::Poll;
 
 use rustc_abi::ExternAbi;
+use rustc_span::Span;
 use rustc_target::spec::BinaryFormat;
 
 use crate::*;
@@ -15,7 +16,7 @@ enum GlobalCtorStatePriv<'tcx> {
     #[default]
     Init,
     /// The list of constructor functions that we still have to call.
-    Ctors(Vec<ImmTy<'tcx>>),
+    Ctors(Vec<(ImmTy<'tcx>, Span)>),
     Done,
 }
 
@@ -67,19 +68,19 @@ impl<'tcx> GlobalCtorState<'tcx> {
                     break 'new_state Ctors(ctors);
                 }
                 Ctors(ctors) => {
-                    if let Some(ctor) = ctors.pop() {
+                    if let Some((ctor, span)) = ctors.pop() {
                         let this = this.eval_context_mut();
 
                         let ctor = ctor.to_scalar().to_pointer(this)?;
                         let thread_callback = this.get_ptr_fn(ctor)?.as_instance()?;
 
                         // The signature of this function is `unsafe extern "C" fn()`.
-                        this.call_function(
+                        this.call_thread_root_function(
                             thread_callback,
                             ExternAbi::C { unwind: false },
                             &[],
                             None,
-                            ReturnContinuation::Stop { cleanup: true },
+                            span,
                         )?;
 
                         return interp_ok(Poll::Pending); // we stay in this state (but `ctors` got shorter)

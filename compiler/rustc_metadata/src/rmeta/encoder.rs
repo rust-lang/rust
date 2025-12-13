@@ -870,25 +870,20 @@ fn analyze_attr(attr: &hir::Attribute, state: &mut AnalyzeAttrState<'_>) -> bool
         && !rustc_feature::encode_cross_crate(name)
     {
         // Attributes not marked encode-cross-crate don't need to be encoded for downstream crates.
-    } else if attr.doc_str().is_some() {
+    } else if let hir::Attribute::Parsed(AttributeKind::DocComment { .. }) = attr {
         // We keep all doc comments reachable to rustdoc because they might be "imported" into
         // downstream crates if they use `#[doc(inline)]` to copy an item's documentation into
         // their own.
         if state.is_exported {
             should_encode = true;
         }
-    } else if attr.has_name(sym::doc) {
+    } else if let hir::Attribute::Parsed(AttributeKind::Doc(d)) = attr {
         // If this is a `doc` attribute that doesn't have anything except maybe `inline` (as in
         // `#[doc(inline)]`), then we can remove it. It won't be inlinable in downstream crates.
-        if let Some(item_list) = attr.meta_item_list() {
-            for item in item_list {
-                if !item.has_name(sym::inline) {
-                    should_encode = true;
-                    if item.has_name(sym::hidden) {
-                        state.is_doc_hidden = true;
-                        break;
-                    }
-                }
+        if d.inline.is_empty() {
+            should_encode = true;
+            if d.hidden.is_some() {
+                state.is_doc_hidden = true;
             }
         }
     } else if let &[sym::diagnostic, seg] = &*attr.path() {
@@ -1132,8 +1127,7 @@ fn should_encode_mir(
                     && (generics.requires_monomorphization(tcx)
                         || tcx.cross_crate_inlinable(def_id)));
             // The function has a `const` modifier or is in a `const trait`.
-            let is_const_fn = tcx.is_const_fn(def_id.to_def_id())
-                || tcx.is_const_default_method(def_id.to_def_id());
+            let is_const_fn = tcx.is_const_fn(def_id.to_def_id());
             (is_const_fn, opt)
         }
         // The others don't have MIR.
@@ -1732,6 +1726,14 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
             record_defaulted_array!(self.tables.module_children_reexports[def_id] <-
                 module_children.iter().filter(|child| !child.reexport_chain.is_empty()));
+
+            let ambig_module_children = tcx
+                .resolutions(())
+                .ambig_module_children
+                .get(&local_def_id)
+                .map_or_default(|v| &v[..]);
+            record_defaulted_array!(self.tables.ambig_module_children[def_id] <-
+                ambig_module_children);
         }
     }
 
@@ -2206,7 +2208,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             .incoherent_impls
             .iter()
             .map(|(&simp, impls)| IncoherentImpls {
-                self_ty: simp,
+                self_ty: self.lazy(simp),
                 impls: self.lazy_array(impls.iter().map(|def_id| def_id.local_def_index)),
             })
             .collect();

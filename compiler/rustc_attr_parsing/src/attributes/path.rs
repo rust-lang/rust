@@ -13,7 +13,7 @@ impl<S: Stage> SingleAttributeParser<S> for PathParser {
         "https://doc.rust-lang.org/reference/items/modules.html#the-path-attribute"
     );
 
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
         let Some(nv) = args.name_value() else {
             cx.expected_name_value(cx.attr_span, None);
             return None;

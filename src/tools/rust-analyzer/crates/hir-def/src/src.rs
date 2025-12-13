@@ -7,7 +7,7 @@ use syntax::{AstNode, AstPtr, ast};
 
 use crate::{
     AstIdLoc, GenericDefId, LocalFieldId, LocalLifetimeParamId, LocalTypeOrConstParamId, Lookup,
-    UseId, VariantId, attr::Attrs, db::DefDatabase,
+    UseId, VariantId, attrs::AttrFlags, db::DefDatabase,
 };
 
 pub trait HasSource {
@@ -145,15 +145,13 @@ impl HasChildSource<LocalFieldId> for VariantId {
                 (lookup.source(db).map(|it| it.kind()), lookup.container)
             }
         };
-        let span_map = db.span_map(src.file_id);
         let mut map = ArenaMap::new();
         match &src.value {
             ast::StructKind::Tuple(fl) => {
-                let cfg_options = container.krate.cfg_options(db);
+                let cfg_options = container.krate(db).cfg_options(db);
                 let mut idx = 0;
                 for fd in fl.fields() {
-                    let enabled =
-                        Attrs::is_cfg_enabled_for(db, &fd, span_map.as_ref(), cfg_options).is_ok();
+                    let enabled = AttrFlags::is_cfg_enabled_for(&fd, cfg_options).is_ok();
                     if !enabled {
                         continue;
                     }
@@ -165,11 +163,10 @@ impl HasChildSource<LocalFieldId> for VariantId {
                 }
             }
             ast::StructKind::Record(fl) => {
-                let cfg_options = container.krate.cfg_options(db);
+                let cfg_options = container.krate(db).cfg_options(db);
                 let mut idx = 0;
                 for fd in fl.fields() {
-                    let enabled =
-                        Attrs::is_cfg_enabled_for(db, &fd, span_map.as_ref(), cfg_options).is_ok();
+                    let enabled = AttrFlags::is_cfg_enabled_for(&fd, cfg_options).is_ok();
                     if !enabled {
                         continue;
                     }

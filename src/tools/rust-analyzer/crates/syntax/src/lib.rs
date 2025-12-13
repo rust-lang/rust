@@ -282,7 +282,7 @@ fn api_walkthrough() {
     assert!(parse.errors().is_empty());
 
     // The `tree` method returns an owned syntax node of type `SourceFile`.
-    // Owned nodes are cheap: inside, they are `Rc` handles to the underling data.
+    // Owned nodes are cheap: inside, they are `Rc` handles to the underlying data.
     let file: SourceFile = parse.tree();
 
     // `SourceFile` is the root of the syntax tree. We can iterate file's items.

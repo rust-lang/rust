@@ -55,30 +55,6 @@ impl From<FilePosition> for HirFilePosition {
     }
 }
 
-impl FilePositionWrapper<span::FileId> {
-    pub fn with_edition(self, db: &dyn ExpandDatabase, edition: span::Edition) -> FilePosition {
-        FilePositionWrapper {
-            file_id: EditionedFileId::new(db, self.file_id, edition),
-            offset: self.offset,
-        }
-    }
-}
-
-impl FileRangeWrapper<span::FileId> {
-    pub fn with_edition(self, db: &dyn ExpandDatabase, edition: span::Edition) -> FileRange {
-        FileRangeWrapper {
-            file_id: EditionedFileId::new(db, self.file_id, edition),
-            range: self.range,
-        }
-    }
-}
-
-impl<T> InFileWrapper<span::FileId, T> {
-    pub fn with_edition(self, db: &dyn ExpandDatabase, edition: span::Edition) -> InRealFile<T> {
-        InRealFile { file_id: EditionedFileId::new(db, self.file_id, edition), value: self.value }
-    }
-}
-
 impl HirFileRange {
     pub fn file_range(self) -> Option<FileRange> {
         Some(FileRange { file_id: self.file_id.file_id()?, range: self.range })
@@ -319,7 +295,7 @@ impl<SN: Borrow<SyntaxNode>> InFile<SN> {
     /// Falls back to the macro call range if the node cannot be mapped up fully.
     ///
     /// For attributes and derives, this will point back to the attribute only.
-    /// For the entire item use [`InFile::original_file_range_full`].
+    /// For the entire item use `InFile::original_file_range_full`.
     pub fn original_file_range_rooted(self, db: &dyn db::ExpandDatabase) -> FileRange {
         self.borrow().map(SyntaxNode::text_range).original_node_file_range_rooted(db)
     }
@@ -407,7 +383,7 @@ impl InFile<SyntaxToken> {
 
                 // Fall back to whole macro call.
                 let loc = db.lookup_intern_macro_call(mac_file);
-                loc.kind.original_call_range(db)
+                loc.kind.original_call_range(db, loc.krate)
             }
         }
     }
@@ -453,7 +429,10 @@ impl InFile<TextRange> {
                     Some(it) => it,
                     None => {
                         let loc = db.lookup_intern_macro_call(mac_file);
-                        (loc.kind.original_call_range(db), SyntaxContext::root(loc.def.edition))
+                        (
+                            loc.kind.original_call_range(db, loc.krate),
+                            SyntaxContext::root(loc.def.edition),
+                        )
                     }
                 }
             }
@@ -468,7 +447,7 @@ impl InFile<TextRange> {
                     Some(it) => it,
                     _ => {
                         let loc = db.lookup_intern_macro_call(mac_file);
-                        loc.kind.original_call_range(db)
+                        loc.kind.original_call_range(db, loc.krate)
                     }
                 }
             }

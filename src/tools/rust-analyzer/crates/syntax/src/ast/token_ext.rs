@@ -40,8 +40,8 @@ impl ast::Comment {
     }
 
     /// Returns the textual content of a doc comment node as a single string with prefix and suffix
-    /// removed.
-    pub fn doc_comment(&self) -> Option<&str> {
+    /// removed, plus the offset of the returned string from the beginning of the comment.
+    pub fn doc_comment(&self) -> Option<(&str, TextSize)> {
         let kind = self.kind();
         match kind {
             CommentKind { shape, doc: Some(_) } => {
@@ -52,7 +52,7 @@ impl ast::Comment {
                 } else {
                     text
                 };
-                Some(text)
+                Some((text, TextSize::of(prefix)))
             }
             _ => None,
         }

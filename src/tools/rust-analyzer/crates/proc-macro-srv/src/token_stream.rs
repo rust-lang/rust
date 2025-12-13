@@ -40,6 +40,13 @@ impl<S> TokenStream<S> {
         TokenStreamIter::new(self)
     }
 
+    pub fn as_single_group(&self) -> Option<&Group<S>> {
+        match &**self.0 {
+            [TokenTree::Group(group)] => Some(group),
+            _ => None,
+        }
+    }
+
     pub(crate) fn from_str(s: &str, span: S) -> Result<Self, String>
     where
         S: SpanLike + Copy,
