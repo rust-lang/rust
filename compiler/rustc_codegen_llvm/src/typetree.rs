@@ -76,11 +76,12 @@ pub(crate) fn add_tt<'ll>(
     let attr_name = "enzyme_type";
     let c_attr_name = CString::new(attr_name).unwrap();
 
-    let enzyme_wrapper = EnzymeWrapper::get_or_init(sysroot);
+    drop(EnzymeWrapper::get_or_init(sysroot));
 
     for (i, input) in inputs.iter().enumerate() {
         unsafe {
             let enzyme_tt = to_enzyme_typetree(input.clone(), llvm_data_layout, llcx);
+            let enzyme_wrapper = EnzymeWrapper::get_instance();
             let c_str = enzyme_wrapper.tree_to_string(enzyme_tt.inner);
             let c_str = std::ffi::CStr::from_ptr(c_str);
 
@@ -99,6 +100,7 @@ pub(crate) fn add_tt<'ll>(
 
     unsafe {
         let enzyme_tt = to_enzyme_typetree(ret_tt, llvm_data_layout, llcx);
+        let enzyme_wrapper = EnzymeWrapper::get_instance();
         let c_str = enzyme_wrapper.tree_to_string(enzyme_tt.inner);
         let c_str = std::ffi::CStr::from_ptr(c_str);
 
