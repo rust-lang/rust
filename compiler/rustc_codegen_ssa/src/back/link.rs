@@ -712,10 +712,10 @@ fn report_linker_output(sess: &Session, levels: CodegenLintLevels, stdout: &[u8]
         escape_string(output.trim().as_bytes())
     }
 
-    // Hide some progress messages from link.exe that we don't care about.
-    // See https://github.com/chromium/chromium/blob/bfa41e41145ffc85f041384280caf2949bb7bd72/build/toolchain/win/tool_wrapper.py#L144-L146
     if is_msvc_link_exe(sess) {
         escaped_stdout = for_each(&stdout, |line, output| {
+            // Hide some progress messages from link.exe that we don't care about.
+            // See https://github.com/chromium/chromium/blob/bfa41e41145ffc85f041384280caf2949bb7bd72/build/toolchain/win/tool_wrapper.py#L144-L146
             if line.starts_with("   Creating library")
                 || line.starts_with("Generating code")
                 || line.starts_with("Finished generating code")
@@ -728,15 +728,19 @@ fn report_linker_output(sess: &Session, levels: CodegenLintLevels, stdout: &[u8]
             }
         });
     } else if is_macos_ld(sess) {
+        // FIXME: Tracked by https://github.com/rust-lang/rust/issues/136113
         let deployment_mismatch = |line: &str| {
             line.starts_with("ld: warning: object file (")
                 && line.contains("was built for newer 'macOS' version")
                 && line.contains("than being linked")
         };
+        // FIXME: This is a real warning we would like to show, but it hits too many crates
+        // to want to turn it on immediately.
         let search_path = |line: &str| {
             line.starts_with("ld: warning: search path '") && line.ends_with("' not found")
         };
         escaped_stderr = for_each(&stderr, |line, output| {
+            // This duplicate library warning is just not helpful at all.
             if line.starts_with("ld: warning: ignoring duplicate libraries: ")
                 || deployment_mismatch(line)
                 || search_path(line)
@@ -750,11 +754,12 @@ fn report_linker_output(sess: &Session, levels: CodegenLintLevels, stdout: &[u8]
         });
     } else if is_windows_gnu_ld(sess) {
         let mut saw_exclude_symbol = false;
+        // See https://github.com/rust-lang/rust/issues/112368.
+        // FIXME: maybe check that binutils is older than 2.40 before downgrading this warning?
         let exclude_symbols = |line: &str| {
             line.starts_with("Warning: .drectve `-exclude-symbols:")
                 && line.ends_with("' unrecognized")
         };
-        // FIXME: are we sure this is stderr and not stdout?
         escaped_stderr = for_each(&stderr, |line, output| {
             if exclude_symbols(line) {
                 saw_exclude_symbol = true;
@@ -785,6 +790,7 @@ fn report_linker_output(sess: &Session, levels: CodegenLintLevels, stdout: &[u8]
         // We already print `warning:` at the start of the diagnostic. Remove it from the linker output if present.
         escaped_stderr =
             escaped_stderr.strip_prefix("warning: ").unwrap_or(&escaped_stderr).to_owned();
+        // Windows GNU LD prints uppercase Warning
         escaped_stderr = escaped_stderr
             .strip_prefix("Warning: ")
             .unwrap_or(&escaped_stderr)
