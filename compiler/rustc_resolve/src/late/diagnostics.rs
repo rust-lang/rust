@@ -1411,7 +1411,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
 
                 err.span_suggestion_verbose(
                     pat.span,
-                    "if you meant to destructure a `Range`, use the struct pattern",
+                    "if you meant to destructure a `Range`, use a struct pattern",
                     format!("std::ops::Range {{ start: {}, end: {} }}", start_name, end_name),
                     Applicability::MaybeIncorrect,
                 );

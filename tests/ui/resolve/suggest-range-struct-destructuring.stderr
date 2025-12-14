@@ -4,7 +4,7 @@ error[E0425]: cannot find value `start` in this scope
 LL |     let start..end = r;
    |         ^^^^^ not found in this scope
    |
-help: if you meant to destructure a `Range`, use the struct pattern
+help: if you meant to destructure a `Range`, use a struct pattern
    |
 LL -     let start..end = r;
 LL +     let std::ops::Range { start: start, end: end } = r;
@@ -16,7 +16,7 @@ error[E0425]: cannot find value `end` in this scope
 LL |     let start..end = r;
    |                ^^^ not found in this scope
    |
-help: if you meant to destructure a `Range`, use the struct pattern
+help: if you meant to destructure a `Range`, use a struct pattern
    |
 LL -     let start..end = r;
 LL +     let std::ops::Range { start: start, end: end } = r;
@@ -31,7 +31,7 @@ LL |     let min..max = r;
 LL | fn main() {}
    | --------- similarly named function `main` defined here
    |
-help: if you meant to destructure a `Range`, use the struct pattern
+help: if you meant to destructure a `Range`, use a struct pattern
    |
 LL -     let min..max = r;
 LL +     let std::ops::Range { start: min, end: max } = r;
@@ -51,7 +51,7 @@ error[E0425]: cannot find value `max` in this scope
 LL |     let min..max = r;
    |              ^^^ not found in this scope
    |
-help: if you meant to destructure a `Range`, use the struct pattern
+help: if you meant to destructure a `Range`, use a struct pattern
    |
 LL -     let min..max = r;
 LL +     let std::ops::Range { start: min, end: max } = r;
