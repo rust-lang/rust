@@ -1385,38 +1385,81 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
     }
 
     fn suggest_range_struct_destructuring(
-        &self,
+        &mut self,
         err: &mut Diag<'_>,
         path: &[Segment],
         source: PathSource<'_, '_, '_>,
     ) {
-        // We accept Expr here because range bounds (start..end) are parsed as expressions
         if !matches!(source, PathSource::Pat | PathSource::TupleStruct(..) | PathSource::Expr(..)) {
             return;
         }
 
-        if let Some(pat) = self.diag_metadata.current_pat
-            && let ast::PatKind::Range(Some(start_expr), Some(end_expr), _) = &pat.kind
-            && let (ast::ExprKind::Path(None, start_path), ast::ExprKind::Path(None, end_path)) =
-                (&start_expr.kind, &end_expr.kind)
-            && path.len() == 1
-        {
-            let ident = path[0].ident;
+        let Some(pat) = self.diag_metadata.current_pat else { return };
+        let ast::PatKind::Range(start, end, end_kind) = &pat.kind else { return };
 
-            if (start_path.segments.len() == 1 && start_path.segments[0].ident == ident)
-                || (end_path.segments.len() == 1 && end_path.segments[0].ident == ident)
-            {
-                let start_name = start_path.segments[0].ident;
-                let end_name = end_path.segments[0].ident;
+        let [segment] = path else { return };
+        let failing_span = segment.ident.span;
 
-                err.span_suggestion_verbose(
-                    pat.span,
-                    "if you meant to destructure a `Range`, use a struct pattern",
-                    format!("std::ops::Range {{ start: {}, end: {} }}", start_name, end_name),
-                    Applicability::MaybeIncorrect,
-                );
-            }
+        let in_start = start.as_ref().is_some_and(|e| e.span.contains(failing_span));
+        let in_end = end.as_ref().is_some_and(|e| e.span.contains(failing_span));
+
+        if !in_start && !in_end {
+            return;
         }
+
+        let start_snippet =
+            start.as_ref().and_then(|e| self.r.tcx.sess.source_map().span_to_snippet(e.span).ok());
+        let end_snippet =
+            end.as_ref().and_then(|e| self.r.tcx.sess.source_map().span_to_snippet(e.span).ok());
+
+        let field = |name: &str, val: String| {
+            if val == name { val } else { format!("{name}: {val}") }
+        };
+
+        let mut resolve_short_name = |short: Symbol, full: &str| -> String {
+            let ident = Ident::with_dummy_span(short);
+            let path = Segment::from_path(&Path::from_ident(ident));
+
+            match self.resolve_path(&path, Some(TypeNS), None, PathSource::Type) {
+                PathResult::NonModule(..) => short.to_string(),
+                _ => full.to_string(),
+            }
+        };
+        // FIXME(new_range): Also account for new range types
+        let (struct_path, fields) = match (start_snippet, end_snippet, &end_kind.node) {
+            (Some(start), Some(end), ast::RangeEnd::Excluded) => (
+                resolve_short_name(sym::Range, "std::ops::Range"),
+                vec![field("start", start), field("end", end)],
+            ),
+            (Some(start), Some(end), ast::RangeEnd::Included(_)) => (
+                resolve_short_name(sym::RangeInclusive, "std::ops::RangeInclusive"),
+                vec![field("start", start), field("end", end)],
+            ),
+            (Some(start), None, _) => (
+                resolve_short_name(sym::RangeFrom, "std::ops::RangeFrom"),
+                vec![field("start", start)],
+            ),
+            (None, Some(end), ast::RangeEnd::Excluded) => {
+                (resolve_short_name(sym::RangeTo, "std::ops::RangeTo"), vec![field("end", end)])
+            }
+            (None, Some(end), ast::RangeEnd::Included(_)) => (
+                resolve_short_name(sym::RangeToInclusive, "std::ops::RangeToInclusive"),
+                vec![field("end", end)],
+            ),
+            _ => return,
+        };
+
+        err.span_suggestion_verbose(
+            pat.span,
+            format!("if you meant to destructure a range use a struct pattern"),
+            format!("{} {{ {} }}", struct_path, fields.join(", ")),
+            Applicability::MaybeIncorrect,
+        );
+
+        err.note(
+            "range patterns match against the start and end of a range; \
+             to bind the components, use a struct pattern",
+        );
     }
 
     fn suggest_swapping_misplaced_self_ty_and_trait(
