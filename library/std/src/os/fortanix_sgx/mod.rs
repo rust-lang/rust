@@ -38,6 +38,7 @@ pub mod mem {
 }
 
 pub mod arch;
+#[path = "../../sys/ffi/bytes.rs"]
 pub mod ffi;
 pub mod io;
 
