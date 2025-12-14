@@ -1,0 +1,115 @@
+warning: ambiguous glob re-exports
+  --> $DIR/import-after-macro-expand-6.rs:4:13
+   |
+LL |     pub use crate::b::*;
+   |             ^^^^^^^^^^^
+   |             |
+   |             the name `HeaderMap` in the type namespace is first re-exported here
+   |             but the name `HeaderMap` in the type namespace is also re-exported here
+   |
+   = note: `#[warn(ambiguous_glob_reexports)]` on by default
+
+warning: ambiguous glob re-exports
+  --> $DIR/import-after-macro-expand-6.rs:4:13
+   |
+LL |     pub use crate::b::*;
+   |             ^^^^^^^^^^^
+   |             |
+   |             the name `HeaderMap` in the value namespace is first re-exported here
+   |             but the name `HeaderMap` in the value namespace is also re-exported here
+
+error: `HeaderMap` is ambiguous
+  --> $DIR/import-after-macro-expand-6.rs:19:15
+   |
+LL | use crate::a::HeaderMap;
+   |               ^^^^^^^^^ ambiguous name
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #114095 <https://github.com/rust-lang/rust/issues/114095>
+   = note: ambiguous because of multiple glob imports of a name in the same module
+note: `HeaderMap` could refer to the struct imported here
+  --> $DIR/import-after-macro-expand-6.rs:4:13
+   |
+LL |     pub use crate::b::*;
+   |             ^^^^^^^^^^^
+   = help: consider adding an explicit import of `HeaderMap` to disambiguate
+note: `HeaderMap` could also refer to the struct imported here
+  --> $DIR/import-after-macro-expand-6.rs:4:13
+   |
+LL |     pub use crate::b::*;
+   |             ^^^^^^^^^^^
+   = help: consider adding an explicit import of `HeaderMap` to disambiguate
+   = note: `#[deny(ambiguous_glob_imports)]` (part of `#[deny(future_incompatible)]`) on by default
+
+error: `HeaderMap` is ambiguous
+  --> $DIR/import-after-macro-expand-6.rs:24:34
+   |
+LL |     let h: crate::b::HeaderMap = HeaderMap;
+   |                                  ^^^^^^^^^ ambiguous name
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #114095 <https://github.com/rust-lang/rust/issues/114095>
+   = note: ambiguous because of multiple glob imports of a name in the same module
+note: `HeaderMap` could refer to the unit struct imported here
+  --> $DIR/import-after-macro-expand-6.rs:4:13
+   |
+LL |     pub use crate::b::*;
+   |             ^^^^^^^^^^^
+   = help: consider adding an explicit import of `HeaderMap` to disambiguate
+note: `HeaderMap` could also refer to the unit struct imported here
+  --> $DIR/import-after-macro-expand-6.rs:4:13
+   |
+LL |     pub use crate::b::*;
+   |             ^^^^^^^^^^^
+   = help: consider adding an explicit import of `HeaderMap` to disambiguate
+
+error: aborting due to 2 previous errors; 2 warnings emitted
+
+Future incompatibility report: Future breakage diagnostic:
+error: `HeaderMap` is ambiguous
+  --> $DIR/import-after-macro-expand-6.rs:19:15
+   |
+LL | use crate::a::HeaderMap;
+   |               ^^^^^^^^^ ambiguous name
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #114095 <https://github.com/rust-lang/rust/issues/114095>
+   = note: ambiguous because of multiple glob imports of a name in the same module
+note: `HeaderMap` could refer to the struct imported here
+  --> $DIR/import-after-macro-expand-6.rs:4:13
+   |
+LL |     pub use crate::b::*;
+   |             ^^^^^^^^^^^
+   = help: consider adding an explicit import of `HeaderMap` to disambiguate
+note: `HeaderMap` could also refer to the struct imported here
+  --> $DIR/import-after-macro-expand-6.rs:4:13
+   |
+LL |     pub use crate::b::*;
+   |             ^^^^^^^^^^^
+   = help: consider adding an explicit import of `HeaderMap` to disambiguate
+   = note: `#[deny(ambiguous_glob_imports)]` (part of `#[deny(future_incompatible)]`) on by default
+
+Future breakage diagnostic:
+error: `HeaderMap` is ambiguous
+  --> $DIR/import-after-macro-expand-6.rs:24:34
+   |
+LL |     let h: crate::b::HeaderMap = HeaderMap;
+   |                                  ^^^^^^^^^ ambiguous name
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #114095 <https://github.com/rust-lang/rust/issues/114095>
+   = note: ambiguous because of multiple glob imports of a name in the same module
+note: `HeaderMap` could refer to the unit struct imported here
+  --> $DIR/import-after-macro-expand-6.rs:4:13
+   |
+LL |     pub use crate::b::*;
+   |             ^^^^^^^^^^^
+   = help: consider adding an explicit import of `HeaderMap` to disambiguate
+note: `HeaderMap` could also refer to the unit struct imported here
+  --> $DIR/import-after-macro-expand-6.rs:4:13
+   |
+LL |     pub use crate::b::*;
+   |             ^^^^^^^^^^^
+   = help: consider adding an explicit import of `HeaderMap` to disambiguate
+   = note: `#[deny(ambiguous_glob_imports)]` (part of `#[deny(future_incompatible)]`) on by default
+

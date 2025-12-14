@@ -1,5 +1,3 @@
-//@ check-pass
-
 #[derive(Debug)]
 struct H;
 
@@ -14,6 +12,8 @@ mod p {
 
         fn f() {
            let h: crate::p::H = H;
+           //~^ ERROR `H` is ambiguous
+           //~| WARN this was previously accepted
         }
     }
 }

@@ -1,4 +1,3 @@
-//@ check-pass
 // https://github.com/rust-lang/rust/pull/113242#issuecomment-1616034904
 // similar with `import-after-macro-expand-2.rs`
 
@@ -11,6 +10,8 @@ pub use a::*;
 mod c {
     use crate::*;
     pub struct S(Vec<P>);
+    //~^ ERROR `P` is ambiguous
+    //~| WARN this was previously accepted
 }
 
 #[derive(Clone)]
