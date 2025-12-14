@@ -362,8 +362,11 @@ macro_rules! make_mir_visitor {
                     }
                     AssertMessage::OverflowNeg(op)
                     | AssertMessage::DivisionByZero(op)
-                    | AssertMessage::RemainderByZero(op)
-                    | AssertMessage::InvalidEnumConstruction(op) => {
+                    | AssertMessage::RemainderByZero(op) => {
+                        self.visit_operand(op, location);
+                    }
+                    AssertMessage::InvalidEnumConstruction(ty, op) => {
+                        self.visit_operand(ty, location);
                         self.visit_operand(op, location);
                     }
                     AssertMessage::ResumedAfterReturn(_)

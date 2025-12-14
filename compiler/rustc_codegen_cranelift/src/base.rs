@@ -422,14 +422,15 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
                             source_info.span,
                         )
                     }
-                    AssertKind::InvalidEnumConstruction(source) => {
+                    AssertKind::InvalidEnumConstruction(ty, source) => {
+                        let ty = codegen_operand(fx, ty).load_scalar(fx);
                         let source = codegen_operand(fx, source).load_scalar(fx);
                         let location = fx.get_caller_location(source_info).load_scalar(fx);
 
                         codegen_panic_inner(
                             fx,
                             rustc_hir::LangItem::PanicInvalidEnumConstruction,
-                            &[source, location],
+                            &[ty, source, location],
                             *unwind,
                             source_info.span,
                         )
