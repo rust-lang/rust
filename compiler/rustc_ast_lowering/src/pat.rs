@@ -399,7 +399,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             ExprKind::Lit(lit) => {
                 hir::PatExprKind::Lit { lit: self.lower_lit(lit, span), negated: false }
             }
-            ExprKind::ConstBlock(c) => hir::PatExprKind::ConstBlock(self.lower_const_block(c)),
             ExprKind::IncludedBytes(byte_sym) => hir::PatExprKind::Lit {
                 lit: respan(span, LitKind::ByteStr(*byte_sym, StrStyle::Cooked)),
                 negated: false,
@@ -419,10 +418,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 hir::PatExprKind::Lit { lit: self.lower_lit(lit, span), negated: true }
             }
             _ => {
+                let is_const_block = matches!(expr.kind, ExprKind::ConstBlock(_));
                 let pattern_from_macro = expr.is_approximately_pattern();
                 let guar = self.dcx().emit_err(ArbitraryExpressionInPattern {
                     span,
                     pattern_from_macro_note: pattern_from_macro,
+                    const_block_in_pattern_help: is_const_block,
                 });
                 err(guar)
             }

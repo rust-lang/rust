@@ -1,10 +1,90 @@
-error: const blocks cannot be used as patterns
-  --> $DIR/in-pat-recovery.rs:6:15
+error: arbitrary expressions aren't allowed in patterns
+  --> $DIR/in-pat-recovery.rs:6:9
    |
 LL |         const { 1 + 7 } => {}
-   |               ^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^
    |
    = help: use a named `const`-item or an `if`-guard (`x if x == const { ... }`) instead
 
-error: aborting due to 1 previous error
+error: arbitrary expressions aren't allowed in patterns
+  --> $DIR/in-pat-recovery.rs:13:9
+   |
+LL |         const { 1 } ..= 10 => {}
+   |         ^^^^^^^^^^^
+   |
+   = help: use a named `const`-item or an `if`-guard (`x if x == const { ... }`) instead
+
+error: arbitrary expressions aren't allowed in patterns
+  --> $DIR/in-pat-recovery.rs:19:15
+   |
+LL |         1 ..= const { 10 } => {}
+   |               ^^^^^^^^^^^^
+   |
+   = help: use a named `const`-item or an `if`-guard (`x if x == const { ... }`) instead
+
+error: arbitrary expressions aren't allowed in patterns
+  --> $DIR/in-pat-recovery.rs:25:9
+   |
+LL |         const { 1 } ..= const { 10 } => {}
+   |         ^^^^^^^^^^^
+   |
+   = help: use a named `const`-item or an `if`-guard (`x if x == const { ... }`) instead
+
+error: arbitrary expressions aren't allowed in patterns
+  --> $DIR/in-pat-recovery.rs:25:25
+   |
+LL |         const { 1 } ..= const { 10 } => {}
+   |                         ^^^^^^^^^^^^
+   |
+   = help: use a named `const`-item or an `if`-guard (`x if x == const { ... }`) instead
+
+error: arbitrary expressions aren't allowed in patterns
+  --> $DIR/in-pat-recovery.rs:32:9
+   |
+LL |         const { 1 } .. 10 => {}
+   |         ^^^^^^^^^^^
+   |
+   = help: use a named `const`-item or an `if`-guard (`x if x == const { ... }`) instead
+
+error: arbitrary expressions aren't allowed in patterns
+  --> $DIR/in-pat-recovery.rs:38:14
+   |
+LL |         1 .. const { 10 } => {}
+   |              ^^^^^^^^^^^^
+   |
+   = help: use a named `const`-item or an `if`-guard (`x if x == const { ... }`) instead
+
+error: arbitrary expressions aren't allowed in patterns
+  --> $DIR/in-pat-recovery.rs:44:9
+   |
+LL |         const { 1 + 2 } ..= 10 => {}
+   |         ^^^^^^^^^^^^^^^
+   |
+   = help: use a named `const`-item or an `if`-guard (`x if x == const { ... }`) instead
+
+error: arbitrary expressions aren't allowed in patterns
+  --> $DIR/in-pat-recovery.rs:50:15
+   |
+LL |         1 ..= const { 5 + 5 } => {}
+   |               ^^^^^^^^^^^^^^^
+   |
+   = help: use a named `const`-item or an `if`-guard (`x if x == const { ... }`) instead
+
+error: arbitrary expressions aren't allowed in patterns
+  --> $DIR/in-pat-recovery.rs:56:9
+   |
+LL |         const { 3 } .. => {}
+   |         ^^^^^^^^^^^
+   |
+   = help: use a named `const`-item or an `if`-guard (`x if x == const { ... }`) instead
+
+error: arbitrary expressions aren't allowed in patterns
+  --> $DIR/in-pat-recovery.rs:62:13
+   |
+LL |         ..= const { 7 } => {}
+   |             ^^^^^^^^^^^
+   |
+   = help: use a named `const`-item or an `if`-guard (`x if x == const { ... }`) instead
+
+error: aborting due to 11 previous errors
 
