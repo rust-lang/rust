@@ -7,7 +7,7 @@ use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::stable_hasher::{
     HashStable, StableCompare, StableHasher, ToStableHashKey,
 };
-use rustc_error_messages::{DiagArgValue, IntoDiagArg, MultiSpan};
+use rustc_error_messages::{DiagArgValue, IntoDiagArg};
 use rustc_hir_id::{HashStableContext, HirId, ItemLocalId};
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_span::def_id::DefPathHash;
@@ -683,35 +683,6 @@ pub enum BuiltinLintDiag {
         /// If true, the lifetime will be fully elided.
         use_span: Option<(Span, bool)>,
         ident: Ident,
-    },
-    AmbiguousGlobReexports {
-        /// The name for which collision(s) have occurred.
-        name: String,
-        /// The name space for which the collision(s) occurred in.
-        namespace: String,
-        /// Span where the name is first re-exported.
-        first_reexport_span: Span,
-        /// Span where the same name is also re-exported.
-        duplicate_reexport_span: Span,
-    },
-    HiddenGlobReexports {
-        /// The name of the local binding which shadows the glob re-export.
-        name: String,
-        /// The namespace for which the shadowing occurred in.
-        namespace: String,
-        /// The glob reexport that is shadowed by the local binding.
-        glob_reexport_span: Span,
-        /// The local binding that shadows the glob reexport.
-        private_item_span: Span,
-    },
-    UnusedQualifications {
-        /// The span of the unnecessarily-qualified path to remove.
-        removal_span: Span,
-    },
-    AssociatedConstElidedLifetime {
-        elided: bool,
-        span: Span,
-        lifetimes_in_scope: MultiSpan,
     },
     AttributeLint(AttributeLintKind),
 }

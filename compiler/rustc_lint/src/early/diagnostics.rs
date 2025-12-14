@@ -135,53 +135,6 @@ pub fn decorate_builtin_lint(
         BuiltinLintDiag::SingleUseLifetime { use_span: None, deletion_span, ident, .. } => {
             lints::UnusedLifetime { deletion_span, ident }.decorate_lint(diag);
         }
-        BuiltinLintDiag::AmbiguousGlobReexports {
-            name,
-            namespace,
-            first_reexport_span,
-            duplicate_reexport_span,
-        } => {
-            lints::AmbiguousGlobReexports {
-                first_reexport: first_reexport_span,
-                duplicate_reexport: duplicate_reexport_span,
-                name,
-                namespace,
-            }
-            .decorate_lint(diag);
-        }
-        BuiltinLintDiag::HiddenGlobReexports {
-            name,
-            namespace,
-            glob_reexport_span,
-            private_item_span,
-        } => {
-            lints::HiddenGlobReexports {
-                glob_reexport: glob_reexport_span,
-                private_item: private_item_span,
-
-                name,
-                namespace,
-            }
-            .decorate_lint(diag);
-        }
-        BuiltinLintDiag::UnusedQualifications { removal_span } => {
-            lints::UnusedQualifications { removal_span }.decorate_lint(diag);
-        }
-        BuiltinLintDiag::AssociatedConstElidedLifetime {
-            elided,
-            span: lt_span,
-            lifetimes_in_scope,
-        } => {
-            let lt_span = if elided { lt_span.shrink_to_hi() } else { lt_span };
-            let code = if elided { "'static " } else { "'static" };
-            lints::AssociatedConstElidedLifetime {
-                span: lt_span,
-                code,
-                elided,
-                lifetimes_in_scope,
-            }
-            .decorate_lint(diag);
-        }
         BuiltinLintDiag::AttributeLint(kind) => decorate_attribute_lint(sess, tcx, &kind, diag),
     }
 }

@@ -8,6 +8,10 @@ resolve_add_as_non_derive =
 resolve_added_macro_use =
     have you added the `#[macro_use]` on the module/import?
 
+resolve_ambiguous_glob_reexport = ambiguous glob re-exports
+    .label_first_reexport = the name `{$name}` in the {$namespace} namespace is first re-exported here
+    .label_duplicate_reexport = but the name `{$name}` in the {$namespace} namespace is also re-exported here
+
 resolve_ancestor_only =
     visibilities can only be restricted to ancestor modules
 
@@ -16,6 +20,13 @@ resolve_anonymous_lifetime_non_gat_report_error = missing lifetime in associated
     .note = in the trait the associated type is declared without lifetime parameters, so using a borrowed type for them requires that lifetime to come from the implemented type
 
 resolve_arguments_macro_use_not_allowed = arguments to `macro_use` are not allowed here
+
+resolve_associated_const_elided_lifetime = {$elided ->
+        [true] `&` without an explicit lifetime name cannot be used here
+        *[false] `'_` cannot be used here
+    }
+    .suggestion = use the `'static` lifetime
+    .note = cannot automatically infer `'static` because of other lifetimes in scope
 
 resolve_associated_const_with_similar_name_exists =
     there is an associated constant with a similar name
@@ -196,6 +207,10 @@ resolve_generic_params_from_outer_item_self_ty_param = can't use `Self` here
 resolve_generic_params_from_outer_item_static = a `static` is a separate item from the item that contains it
 
 resolve_generic_params_from_outer_item_ty_param = type parameter from outer item
+
+resolve_hidden_glob_reexport = private item shadows public glob re-export
+    .note_glob_reexport = the name `{$name}` in the {$namespace} namespace is supposed to be publicly re-exported here
+    .note_private_item = but the private item here shadows it
 
 resolve_ident_bound_more_than_once_in_parameter_list =
     identifier `{$identifier}` is bound more than once in this parameter list
@@ -489,6 +504,9 @@ resolve_unknown_diagnostic_attribute_typo_sugg = an attribute with a similar nam
 
 resolve_unnamed_crate_root_import =
     crate root imports need to be explicitly named: `use crate as name;`
+
+resolve_unnecessary_qualification = unnecessary qualification
+    .suggestion = remove the unnecessary path segments
 
 resolve_unreachable_label =
     use of unreachable label `{$name}`

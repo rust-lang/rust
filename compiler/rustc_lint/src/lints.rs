@@ -6,7 +6,7 @@ use std::num::NonZero;
 use rustc_errors::codes::*;
 use rustc_errors::{
     Applicability, Diag, DiagArgValue, DiagMessage, DiagStyledString, ElidedLifetimeInPathSubdiag,
-    EmissionGuarantee, LintDiagnostic, MultiSpan, Subdiagnostic, SuggestionStyle,
+    EmissionGuarantee, LintDiagnostic, Subdiagnostic, SuggestionStyle,
 };
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
@@ -2708,51 +2708,6 @@ pub(crate) struct UnusedLifetime {
     pub deletion_span: Option<Span>,
 
     pub ident: Ident,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(lint_ambiguous_glob_reexport)]
-pub(crate) struct AmbiguousGlobReexports {
-    #[label(lint_label_first_reexport)]
-    pub first_reexport: Span,
-    #[label(lint_label_duplicate_reexport)]
-    pub duplicate_reexport: Span,
-
-    pub name: String,
-    // FIXME: make this translatable
-    pub namespace: String,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(lint_hidden_glob_reexport)]
-pub(crate) struct HiddenGlobReexports {
-    #[note(lint_note_glob_reexport)]
-    pub glob_reexport: Span,
-    #[note(lint_note_private_item)]
-    pub private_item: Span,
-
-    pub name: String,
-    // FIXME: make this translatable
-    pub namespace: String,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(lint_unnecessary_qualification)]
-pub(crate) struct UnusedQualifications {
-    #[suggestion(style = "verbose", code = "", applicability = "machine-applicable")]
-    pub removal_span: Span,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(lint_associated_const_elided_lifetime)]
-pub(crate) struct AssociatedConstElidedLifetime {
-    #[suggestion(style = "verbose", code = "{code}", applicability = "machine-applicable")]
-    pub span: Span,
-
-    pub code: &'static str,
-    pub elided: bool,
-    #[note]
-    pub lifetimes_in_scope: MultiSpan,
 }
 
 #[derive(LintDiagnostic)]

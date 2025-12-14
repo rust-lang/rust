@@ -666,11 +666,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         AMBIGUOUS_GLOB_REEXPORTS,
                         import.root_id,
                         import.root_span,
-                        BuiltinLintDiag::AmbiguousGlobReexports {
+                        crate::errors::AmbiguousGlobReexports {
+                            first_reexport: import.root_span,
+                            duplicate_reexport: amb_binding.span,
                             name: key.ident.to_string(),
-                            namespace: key.ns.descr().to_string(),
-                            first_reexport_span: import.root_span,
-                            duplicate_reexport_span: amb_binding.span,
+                            namespace: key.ns.descr(),
                         },
                     );
                 }
@@ -699,11 +699,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                 HIDDEN_GLOB_REEXPORTS,
                                 binding_id,
                                 binding.span,
-                                BuiltinLintDiag::HiddenGlobReexports {
-                                    name: key.ident.name.to_string(),
-                                    namespace: key.ns.descr().to_owned(),
-                                    glob_reexport_span: glob_binding.span,
-                                    private_item_span: binding.span,
+                                crate::errors::HiddenGlobReexports {
+                                    glob_reexport: glob_binding.span,
+                                    private_item: binding.span,
+                                    name: key.ident.name,
+                                    namespace: key.ns.descr(),
                                 },
                             );
                         }

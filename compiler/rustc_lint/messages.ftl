@@ -1,10 +1,6 @@
 lint_abs_path_with_module = absolute paths must start with `self`, `super`, `crate`, or an external crate name in the 2018 edition
     .suggestion = use `crate`
 
-lint_ambiguous_glob_reexport = ambiguous glob re-exports
-    .label_first_reexport = the name `{$name}` in the {$namespace} namespace is first re-exported here
-    .label_duplicate_reexport = but the name `{$name}` in the {$namespace} namespace is also re-exported here
-
 lint_ambiguous_negative_literals = `-` has lower precedence than method calls, which might be unexpected
     .example = e.g. `-4.abs()` equals `-4`; while `(-4).abs()` equals `4`
     .negative_literal = add parentheses around the `-` and the literal to call the method on a negative literal
@@ -15,13 +11,6 @@ lint_ambiguous_wide_pointer_comparisons = ambiguous wide pointer comparison, the
     .addr_suggestion = use `std::ptr::addr_eq` or untyped pointers to only compare their addresses
     .cast_suggestion = use untyped pointers to only compare their addresses
     .expect_suggestion = or expect the lint to compare the pointers metadata and addresses
-
-lint_associated_const_elided_lifetime = {$elided ->
-        [true] `&` without an explicit lifetime name cannot be used here
-        *[false] `'_` cannot be used here
-    }
-    .suggestion = use the `'static` lifetime
-    .note = cannot automatically infer `'static` because of other lifetimes in scope
 
 lint_async_fn_in_trait = use of `async fn` in public traits is discouraged as auto trait bounds cannot be specified
     .note = you can suppress this lint if you plan to use the trait only in your own code, or do not care about auto traits like `Send` on the `Future`
@@ -329,10 +318,6 @@ lint_forgetting_references = calls to `std::mem::forget` with a reference instea
 
 lint_function_casts_as_integer = direct cast of function item into an integer
     .cast_as_fn = first cast to a pointer `as *const ()`
-
-lint_hidden_glob_reexport = private item shadows public glob re-export
-    .note_glob_reexport = the name `{$name}` in the {$namespace} namespace is supposed to be publicly re-exported here
-    .note_private_item = but the private item here shadows it
 
 lint_hidden_lifetime_parameters = hidden lifetime parameters in types are deprecated
 
@@ -911,9 +896,6 @@ lint_unknown_lint =
 
 lint_unknown_tool_in_scoped_lint = unknown tool name `{$tool_name}` found in scoped lint: `{$tool_name}::{$lint_name}`
     .help = add `#![register_tool({$tool_name})]` to the crate root
-
-lint_unnecessary_qualification = unnecessary qualification
-    .suggestion = remove the unnecessary path segments
 
 lint_unpredictable_fn_pointer_comparisons = function pointer comparisons do not produce meaningful results since their addresses are not guaranteed to be unique
     .note_duplicated_fn = the address of the same function can vary between different codegen units
