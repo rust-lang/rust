@@ -12,8 +12,14 @@ impl std::ops::Deref for Bar {
     }
 }
 
+impl std::ops::Receiver for Bar {
+    type Target = Foo;
+}
+
 impl Foo {
-    fn bar(self: Bar) -> i32 { 3 }
+    fn bar(self: Bar) -> i32 {
+        3
+    }
 }
 
 fn main() {

@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/method-deref-to-same-trait-object-with-separate-params.rs:88:24
+  --> $DIR/method-deref-to-same-trait-object-with-separate-params.rs:94:24
    |
 LL |     let _seetype: () = z;
    |                   --   ^ expected `()`, found `u32`
@@ -7,7 +7,7 @@ LL |     let _seetype: () = z;
    |                   expected due to this
 
 error[E0308]: mismatched types
-  --> $DIR/method-deref-to-same-trait-object-with-separate-params.rs:105:24
+  --> $DIR/method-deref-to-same-trait-object-with-separate-params.rs:111:24
    |
 LL |     let _seetype: () = z;
    |                   --   ^ expected `()`, found `u64`
@@ -15,18 +15,18 @@ LL |     let _seetype: () = z;
    |                   expected due to this
 
 error[E0034]: multiple applicable items in scope
-  --> $DIR/method-deref-to-same-trait-object-with-separate-params.rs:123:15
+  --> $DIR/method-deref-to-same-trait-object-with-separate-params.rs:129:15
    |
 LL |     let z = x.foo();
    |               ^^^ multiple `foo` found
    |
 note: candidate #1 is defined in an impl of the trait `NuisanceFoo` for the type `T`
-  --> $DIR/method-deref-to-same-trait-object-with-separate-params.rs:73:9
+  --> $DIR/method-deref-to-same-trait-object-with-separate-params.rs:79:9
    |
 LL |         fn foo(self) {}
    |         ^^^^^^^^^^^^
 note: candidate #2 is defined in an impl of the trait `X` for the type `T`
-  --> $DIR/method-deref-to-same-trait-object-with-separate-params.rs:46:9
+  --> $DIR/method-deref-to-same-trait-object-with-separate-params.rs:49:9
    |
 LL |         fn foo(self: Smaht<Self, u64>) -> u64 {
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -42,7 +42,7 @@ LL +     let z = X::foo(x);
    |
 
 error[E0308]: mismatched types
-  --> $DIR/method-deref-to-same-trait-object-with-separate-params.rs:140:24
+  --> $DIR/method-deref-to-same-trait-object-with-separate-params.rs:146:24
    |
 LL |     let _seetype: () = z;
    |                   --   ^ expected `()`, found `u8`
@@ -50,7 +50,7 @@ LL |     let _seetype: () = z;
    |                   expected due to this
 
 error[E0308]: mismatched types
-  --> $DIR/method-deref-to-same-trait-object-with-separate-params.rs:158:24
+  --> $DIR/method-deref-to-same-trait-object-with-separate-params.rs:164:24
    |
 LL |     let _seetype: () = z;
    |                   --   ^ expected `()`, found `u32`
@@ -58,7 +58,7 @@ LL |     let _seetype: () = z;
    |                   expected due to this
 
 error[E0308]: mismatched types
-  --> $DIR/method-deref-to-same-trait-object-with-separate-params.rs:175:24
+  --> $DIR/method-deref-to-same-trait-object-with-separate-params.rs:181:24
    |
 LL |     let _seetype: () = z;
    |                   --   ^ expected `()`, found `u32`

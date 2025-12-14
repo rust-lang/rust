@@ -6,10 +6,9 @@
 #![feature(dispatch_from_dyn)]
 #![feature(arbitrary_self_types)]
 
-use std::ops::Deref;
-use std::ops::DispatchFromDyn;
+use std::ops::{Deref, DispatchFromDyn, Receiver};
 
-trait Trait<T: Deref<Target = Self>>
+trait Trait<T: Deref<Target = Self> + Receiver<Target = Self>>
 where
     for<'a> &'a T: DispatchFromDyn<&'a T>,
 {
