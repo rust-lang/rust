@@ -5,7 +5,7 @@ LL | /     if true {
 LL | |         ""
    | |         ^^ expected `()`, found `&str`
 LL | |     }
-   | |_____- expected this to be `()`
+   | |_____- expected this `if` expression to be `()` because it has no `else` arm
 
 error: aborting due to 1 previous error
 

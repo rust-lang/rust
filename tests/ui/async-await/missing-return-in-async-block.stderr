@@ -5,7 +5,7 @@ LL | /         if true {
 LL | |             Ok(S)
    | |             ^^^^^ expected `()`, found `Result<S, _>`
 LL | |         }
-   | |_________- expected this to be `()`
+   | |_________- expected this `if` expression to be `()` because it has no `else` arm
    |
    = note: expected unit type `()`
                    found enum `Result<S, _>`
@@ -21,7 +21,7 @@ LL | /         if true {
 LL | |             Ok(S)
    | |             ^^^^^ expected `()`, found `Result<S, _>`
 LL | |         }
-   | |_________- expected this to be `()`
+   | |_________- expected this `if` expression to be `()` because it has no `else` arm
    |
    = note: expected unit type `()`
                    found enum `Result<S, _>`
