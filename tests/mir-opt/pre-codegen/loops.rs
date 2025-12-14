@@ -2,6 +2,7 @@
 //@ compile-flags: -O -Zmir-opt-level=2 -g
 //@ ignore-std-debug-assertions (debug assertions result in different inlines)
 //@ needs-unwind
+// EMIT_MIR_FOR_EACH_BIT_WIDTH
 
 #![crate_type = "lib"]
 

@@ -479,7 +479,18 @@ pub(crate) fn spanned_type_di_node<'ll, 'tcx>(
             AdtKind::Enum => enums::build_enum_type_di_node(cx, unique_type_id, span),
         },
         ty::Tuple(_) => build_tuple_type_di_node(cx, unique_type_id),
-        _ => bug!("debuginfo: unexpected type in type_di_node(): {:?}", t),
+        ty::Pat(base, _) => return type_di_node(cx, base),
+        // FIXME(unsafe_binders): impl debug info
+        ty::UnsafeBinder(_) => unimplemented!(),
+        ty::Alias(..)
+        | ty::Param(_)
+        | ty::Bound(..)
+        | ty::Infer(_)
+        | ty::Placeholder(_)
+        | ty::CoroutineWitness(..)
+        | ty::Error(_) => {
+            bug!("debuginfo: unexpected type in type_di_node(): {:?}", t)
+        }
     };
 
     {
