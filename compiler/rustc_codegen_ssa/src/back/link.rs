@@ -21,6 +21,7 @@ use rustc_errors::{DiagCtxtHandle, LintDiagnostic};
 use rustc_fs_util::{TempDirBuilder, fix_windows_verbatim_for_gcc, try_canonicalize};
 use rustc_hir::attrs::NativeLibKind;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
+use rustc_lint_defs::builtin::LINKER_INFO;
 use rustc_macros::LintDiagnostic;
 use rustc_metadata::fs::{METADATA_FILENAME, copy_to_stdout, emit_wrapper_file};
 use rustc_metadata::{
@@ -59,7 +60,8 @@ use super::rpath::{self, RPathConfig};
 use super::{apple, versioned_llvm_target};
 use crate::base::needs_allocator_shim_for_linking;
 use crate::{
-    CodegenResults, CompiledModule, CrateInfo, NativeLib, errors, looks_like_rust_object_file,
+    CodegenLintLevels, CodegenResults, CompiledModule, CrateInfo, NativeLib, errors,
+    looks_like_rust_object_file,
 };
 
 pub fn ensure_removed(dcx: DiagCtxtHandle<'_>, path: &Path) {
@@ -669,6 +671,139 @@ struct LinkerOutput {
     inner: String,
 }
 
+fn is_msvc_link_exe(sess: &Session) -> bool {
+    let (linker_path, flavor) = linker_and_flavor(sess);
+    sess.target.is_like_msvc
+        && flavor == LinkerFlavor::Msvc(Lld::No)
+        // Match exactly "link.exe"
+        && linker_path.to_str() == Some("link.exe")
+}
+
+fn is_macos_ld(sess: &Session) -> bool {
+    let (_, flavor) = linker_and_flavor(sess);
+    sess.target.is_like_darwin && matches!(flavor, LinkerFlavor::Darwin(_, Lld::No))
+}
+
+fn is_windows_gnu_ld(sess: &Session) -> bool {
+    let (_, flavor) = linker_and_flavor(sess);
+    sess.target.is_like_windows
+        && !sess.target.is_like_msvc
+        && matches!(flavor, LinkerFlavor::Gnu(_, Lld::No))
+}
+
+fn report_linker_output(sess: &Session, levels: CodegenLintLevels, stdout: &[u8], stderr: &[u8]) {
+    let mut escaped_stderr = escape_string(&stderr);
+    let mut escaped_stdout = escape_string(&stdout);
+    let mut linker_info = String::new();
+
+    info!("linker stderr:\n{}", &escaped_stderr);
+    info!("linker stdout:\n{}", &escaped_stdout);
+
+    fn for_each(bytes: &[u8], mut f: impl FnMut(&str, &mut String)) -> String {
+        let mut output = String::new();
+        if let Ok(str) = str::from_utf8(bytes) {
+            info!("line: {str}");
+            output = String::with_capacity(str.len());
+            for line in str.lines() {
+                f(line.trim(), &mut output);
+            }
+        }
+        escape_string(output.trim().as_bytes())
+    }
+
+    if is_msvc_link_exe(sess) {
+        escaped_stdout = for_each(&stdout, |line, output| {
+            // Hide some progress messages from link.exe that we don't care about.
+            // See https://github.com/chromium/chromium/blob/bfa41e41145ffc85f041384280caf2949bb7bd72/build/toolchain/win/tool_wrapper.py#L144-L146
+            if line.starts_with("   Creating library")
+                || line.starts_with("Generating code")
+                || line.starts_with("Finished generating code")
+            {
+                linker_info += line;
+                linker_info += "\r\n";
+            } else {
+                *output += line;
+                *output += "\r\n"
+            }
+        });
+    } else if is_macos_ld(sess) {
+        // FIXME: Tracked by https://github.com/rust-lang/rust/issues/136113
+        let deployment_mismatch = |line: &str| {
+            line.starts_with("ld: warning: object file (")
+                && line.contains("was built for newer 'macOS' version")
+                && line.contains("than being linked")
+        };
+        // FIXME: This is a real warning we would like to show, but it hits too many crates
+        // to want to turn it on immediately.
+        let search_path = |line: &str| {
+            line.starts_with("ld: warning: search path '") && line.ends_with("' not found")
+        };
+        escaped_stderr = for_each(&stderr, |line, output| {
+            // This duplicate library warning is just not helpful at all.
+            if line.starts_with("ld: warning: ignoring duplicate libraries: ")
+                || deployment_mismatch(line)
+                || search_path(line)
+            {
+                linker_info += line;
+                linker_info += "\n";
+            } else {
+                *output += line;
+                *output += "\n"
+            }
+        });
+    } else if is_windows_gnu_ld(sess) {
+        let mut saw_exclude_symbol = false;
+        // See https://github.com/rust-lang/rust/issues/112368.
+        // FIXME: maybe check that binutils is older than 2.40 before downgrading this warning?
+        let exclude_symbols = |line: &str| {
+            line.starts_with("Warning: .drectve `-exclude-symbols:")
+                && line.ends_with("' unrecognized")
+        };
+        escaped_stderr = for_each(&stderr, |line, output| {
+            if exclude_symbols(line) {
+                saw_exclude_symbol = true;
+                linker_info += line;
+                linker_info += "\n";
+            } else if saw_exclude_symbol && line == "Warning: corrupt .drectve at end of def file" {
+                linker_info += line;
+                linker_info += "\n";
+            } else {
+                *output += line;
+                *output += "\n"
+            }
+        });
+    }
+
+    let lint_msg = |msg| {
+        lint_level(sess, LINKER_MESSAGES, levels.linker_messages, None, |diag| {
+            LinkerOutput { inner: msg }.decorate_lint(diag)
+        })
+    };
+    let lint_info = |msg| {
+        lint_level(sess, LINKER_INFO, levels.linker_info, None, |diag| {
+            LinkerOutput { inner: msg }.decorate_lint(diag)
+        })
+    };
+
+    if !escaped_stderr.is_empty() {
+        // We already print `warning:` at the start of the diagnostic. Remove it from the linker output if present.
+        escaped_stderr =
+            escaped_stderr.strip_prefix("warning: ").unwrap_or(&escaped_stderr).to_owned();
+        // Windows GNU LD prints uppercase Warning
+        escaped_stderr = escaped_stderr
+            .strip_prefix("Warning: ")
+            .unwrap_or(&escaped_stderr)
+            .replace(": warning: ", ": ");
+        lint_msg(format!("linker stderr: {escaped_stderr}"));
+    }
+    if !escaped_stdout.is_empty() {
+        lint_msg(format!("linker stdout: {}", escaped_stdout))
+    }
+    if !linker_info.is_empty() {
+        lint_info(linker_info);
+    }
+}
+
 /// Create a dynamic library or executable.
 ///
 /// This will invoke the system linker/cc to create the resulting file. This links to all upstream
@@ -855,11 +990,6 @@ fn link_natively(
 
     match prog {
         Ok(prog) => {
-            let is_msvc_link_exe = sess.target.is_like_msvc
-                && flavor == LinkerFlavor::Msvc(Lld::No)
-                // Match exactly "link.exe"
-                && linker_path.to_str() == Some("link.exe");
-
             if !prog.status.success() {
                 let mut output = prog.stderr.clone();
                 output.extend_from_slice(&prog.stdout);
@@ -879,7 +1009,7 @@ fn link_natively(
                 if let Some(code) = prog.status.code() {
                     // All Microsoft `link.exe` linking ror codes are
                     // four digit numbers in the range 1000 to 9999 inclusive
-                    if is_msvc_link_exe && (code < 1000 || code > 9999) {
+                    if is_msvc_link_exe(sess) && (code < 1000 || code > 9999) {
                         let is_vs_installed = find_msvc_tools::find_vs_version().is_ok();
                         let has_linker =
                             find_msvc_tools::find_tool(sess.target.arch.desc(), "link.exe")
@@ -911,48 +1041,12 @@ fn link_natively(
                 sess.dcx().abort_if_errors();
             }
 
-            let stderr = escape_string(&prog.stderr);
-            let mut stdout = escape_string(&prog.stdout);
-            info!("linker stderr:\n{}", &stderr);
-            info!("linker stdout:\n{}", &stdout);
-
-            // Hide some progress messages from link.exe that we don't care about.
-            // See https://github.com/chromium/chromium/blob/bfa41e41145ffc85f041384280caf2949bb7bd72/build/toolchain/win/tool_wrapper.py#L144-L146
-            if is_msvc_link_exe {
-                if let Ok(str) = str::from_utf8(&prog.stdout) {
-                    let mut output = String::with_capacity(str.len());
-                    for line in stdout.lines() {
-                        if line.starts_with("   Creating library")
-                            || line.starts_with("Generating code")
-                            || line.starts_with("Finished generating code")
-                        {
-                            continue;
-                        }
-                        output += line;
-                        output += "\r\n"
-                    }
-                    stdout = escape_string(output.trim().as_bytes())
-                }
-            }
-
-            let level = codegen_results.crate_info.lint_levels.linker_messages;
-            let lint = |msg| {
-                lint_level(sess, LINKER_MESSAGES, level, None, |diag| {
-                    LinkerOutput { inner: msg }.decorate_lint(diag)
-                })
-            };
-
-            if !prog.stderr.is_empty() {
-                // We already print `warning:` at the start of the diagnostic. Remove it from the linker output if present.
-                let stderr = stderr
-                    .strip_prefix("warning: ")
-                    .unwrap_or(&stderr)
-                    .replace(": warning: ", ": ");
-                lint(format!("linker stderr: {stderr}"));
-            }
-            if !stdout.is_empty() {
-                lint(format!("linker stdout: {}", stdout))
-            }
+            report_linker_output(
+                sess,
+                codegen_results.crate_info.lint_levels,
+                &prog.stdout,
+                &prog.stderr,
+            );
         }
         Err(e) => {
             let linker_not_found = e.kind() == io::ErrorKind::NotFound;
