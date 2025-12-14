@@ -1,5 +1,5 @@
 use rustc_middle::mir::BinOp;
-use rustc_middle::ty::AtomicOrdering;
+use rustc_middle::ty::{AtomicOrdering, ValTreeKindExt};
 use rustc_middle::{mir, ty};
 
 use super::check_intrinsic_arg_count;
@@ -31,7 +31,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         let get_ord_at = |i: usize| {
             let ordering = generic_args.const_at(i).to_value();
-            ordering.valtree.unwrap_branch()[0].unwrap_leaf().to_atomic_ordering()
+            ordering.valtree.unwrap_branch()[0].to_value().valtree.unwrap_leaf().to_atomic_ordering()
         };
 
         fn read_ord(ord: AtomicOrdering) -> AtomicReadOrd {

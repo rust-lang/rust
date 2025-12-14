@@ -74,6 +74,12 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
         self.invocation_parent.impl_trait_context = orig_itc;
     }
 
+    fn with_direct_const_arg<F: FnOnce(&mut Self)>(&mut self, is_direct: bool, f: F) {
+        let orig = mem::replace(&mut self.invocation_parent.in_direct_const_arg, is_direct);
+        f(self);
+        self.invocation_parent.in_direct_const_arg = orig;
+    }
+
     fn collect_field(&mut self, field: &'a FieldDef, index: Option<usize>) {
         let index = |this: &Self| {
             index.unwrap_or_else(|| {
@@ -357,24 +363,72 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
     }
 
     fn visit_anon_const(&mut self, constant: &'a AnonConst) {
-        let parent = self.create_def(constant.id, None, DefKind::AnonConst, constant.value.span);
-        self.with_parent(parent, |this| visit::walk_anon_const(this, constant));
+        if let MgcaDisambiguation::Direct = constant.mgca_disambiguation
+            && self.resolver.tcx.features().min_generic_const_args()
+        {
+            self.with_direct_const_arg(true, |this| {
+                visit::walk_anon_const(this, constant);
+            });
+        } else {
+            self.with_direct_const_arg(false, |this| {
+                let parent =
+                    this.create_def(constant.id, None, DefKind::AnonConst, constant.value.span);
+                this.with_parent(parent, |this| visit::walk_anon_const(this, constant));
+            })
+        }
     }
 
     fn visit_expr(&mut self, expr: &'a Expr) {
+        let handle_const_block = |this: &mut Self, constant: &'a AnonConst, def_kind: DefKind| {
+            for attr in &expr.attrs {
+                visit::walk_attribute(this, attr);
+            }
+
+            let def = this.create_def(constant.id, None, def_kind, constant.value.span);
+            this.with_direct_const_arg(false, |this| {
+                this.with_parent(def, |this| visit::walk_anon_const(this, constant));
+            });
+        };
+
         let parent_def = match expr.kind {
             ExprKind::MacCall(..) => return self.visit_macro_invoc(expr.id),
             ExprKind::Closure(..) | ExprKind::Gen(..) => {
                 self.create_def(expr.id, None, DefKind::Closure, expr.span)
             }
             ExprKind::ConstBlock(ref constant) => {
-                for attr in &expr.attrs {
-                    visit::walk_attribute(self, attr);
-                }
-                let def =
-                    self.create_def(constant.id, None, DefKind::InlineConst, constant.value.span);
-                self.with_parent(def, |this| visit::walk_anon_const(this, constant));
+                handle_const_block(self, constant, DefKind::InlineConst);
                 return;
+            }
+            ExprKind::Struct(ref se) if self.invocation_parent.in_direct_const_arg => {
+                let StructExpr { qself, path, fields, rest } = &**se;
+
+                for init_expr in fields {
+                    if let ExprKind::ConstBlock(ref constant) = init_expr.expr.kind {
+                        handle_const_block(self, constant, DefKind::AnonConst);
+                    } else {
+                        visit::walk_expr_field(self, init_expr);
+                    }
+                }
+
+                if let Some(qself) = qself {
+                    self.visit_qself(qself);
+                }
+                self.visit_path(path);
+
+                match rest {
+                    StructRest::Base(expr) => self.visit_expr(expr),
+                    _ => (),
+                }
+
+                return;
+            }
+            ExprKind::Field(ref init_expr, _) if self.invocation_parent.in_direct_const_arg => {
+                if let ExprKind::ConstBlock(ref constant) = init_expr.kind {
+                    handle_const_block(self, constant, DefKind::AnonConst);
+                    return;
+                } else {
+                    self.invocation_parent.parent_def
+                }
             }
             _ => self.invocation_parent.parent_def,
         };

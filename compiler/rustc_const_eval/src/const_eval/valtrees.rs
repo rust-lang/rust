@@ -3,7 +3,7 @@ use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_middle::mir::interpret::{EvalToValTreeResult, GlobalId, ValTreeCreationError};
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::layout::{LayoutCx, TyAndLayout};
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{self, Ty, TyCtxt, ValTreeKindExt};
 use rustc_middle::{bug, mir};
 use rustc_span::DUMMY_SP;
 use tracing::{debug, instrument, trace};
@@ -36,13 +36,17 @@ fn branches<'tcx>(
     // For enums, we prepend their variant index before the variant's fields so we can figure out
     // the variant again when just seeing a valtree.
     if let Some(variant) = variant {
-        branches.push(ty::ValTree::from_scalar_int(*ecx.tcx, variant.as_u32().into()));
+        branches.push(ty::Const::new_value(
+            *ecx.tcx,
+            ty::ValTree::from_scalar_int(*ecx.tcx, variant.as_u32().into()),
+            ecx.tcx.types.u32,
+        ));
     }
 
     for i in 0..field_count {
         let field = ecx.project_field(&place, FieldIdx::from_usize(i)).unwrap();
         let valtree = const_to_valtree_inner(ecx, &field, num_nodes)?;
-        branches.push(valtree);
+        branches.push(ty::Const::new_value(*ecx.tcx, valtree, field.layout.ty));
     }
 
     // Have to account for ZSTs here
@@ -65,7 +69,7 @@ fn slice_branches<'tcx>(
     for i in 0..n {
         let place_elem = ecx.project_index(place, i).unwrap();
         let valtree = const_to_valtree_inner(ecx, &place_elem, num_nodes)?;
-        elems.push(valtree);
+        elems.push(ty::Const::new_value(*ecx.tcx, valtree, place_elem.layout.ty));
     }
 
     Ok(ty::ValTree::from_branches(*ecx.tcx, elems))
@@ -201,7 +205,7 @@ fn reconstruct_place_meta<'tcx>(
         |ty| ty,
         || {
             let branches = last_valtree.unwrap_branch();
-            last_valtree = *branches.last().unwrap();
+            last_valtree = branches.last().unwrap().to_value().valtree;
             debug!(?branches, ?last_valtree);
         },
     );
@@ -306,7 +310,8 @@ pub fn valtree_to_const_value<'tcx>(
                 for (i, &inner_valtree) in branches.iter().enumerate() {
                     let field = layout.field(&LayoutCx::new(tcx, typing_env), i);
                     if !field.is_zst() {
-                        let cv = ty::Value { valtree: inner_valtree, ty: field.ty };
+                        let cv =
+                            ty::Value { valtree: inner_valtree.to_value().valtree, ty: field.ty };
                         return valtree_to_const_value(tcx, typing_env, cv);
                     }
                 }
@@ -397,7 +402,7 @@ fn valtree_into_mplace<'tcx>(
             let (place_adjusted, branches, variant_idx) = match ty.kind() {
                 ty::Adt(def, _) if def.is_enum() => {
                     // First element of valtree corresponds to variant
-                    let scalar_int = branches[0].unwrap_leaf();
+                    let scalar_int = branches[0].to_value().valtree.unwrap_leaf();
                     let variant_idx = VariantIdx::from_u32(scalar_int.to_u32());
                     let variant = def.variant(variant_idx);
                     debug!(?variant);
@@ -425,7 +430,7 @@ fn valtree_into_mplace<'tcx>(
                 };
 
                 debug!(?place_inner);
-                valtree_into_mplace(ecx, &place_inner, *inner_valtree);
+                valtree_into_mplace(ecx, &place_inner, inner_valtree.to_value().valtree);
                 dump_place(ecx, &place_inner);
             }
 

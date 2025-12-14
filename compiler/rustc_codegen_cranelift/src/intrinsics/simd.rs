@@ -2,7 +2,7 @@
 
 use cranelift_codegen::ir::immediates::Offset32;
 use rustc_abi::Endian;
-use rustc_middle::ty::SimdAlign;
+use rustc_middle::ty::{SimdAlign, ValTreeKindExt};
 
 use super::*;
 use crate::prelude::*;
@@ -143,7 +143,10 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
 
             let total_len = lane_count * 2;
 
-            let indexes = idx.iter().map(|idx| idx.unwrap_leaf().to_u32()).collect::<Vec<u32>>();
+            let indexes = idx
+                .iter()
+                .map(|idx| idx.to_value().valtree.unwrap_leaf().to_u32())
+                .collect::<Vec<u32>>();
 
             for &idx in &indexes {
                 assert!(u64::from(idx) < total_len, "idx {} out of range 0..{}", idx, total_len);
@@ -962,6 +965,8 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             let ptr_val = ptr.load_scalar(fx);
 
             let alignment = generic_args[3].expect_const().to_value().valtree.unwrap_branch()[0]
+                .to_value()
+                .valtree
                 .unwrap_leaf()
                 .to_simd_alignment();
 
@@ -1007,6 +1012,8 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             let ret_lane_layout = fx.layout_of(ret_lane_ty);
 
             let alignment = generic_args[3].expect_const().to_value().valtree.unwrap_branch()[0]
+                .to_value()
+                .valtree
                 .unwrap_leaf()
                 .to_simd_alignment();
 
@@ -1060,6 +1067,8 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             let ptr_val = ptr.load_scalar(fx);
 
             let alignment = generic_args[3].expect_const().to_value().valtree.unwrap_branch()[0]
+                .to_value()
+                .valtree
                 .unwrap_leaf()
                 .to_simd_alignment();
 
