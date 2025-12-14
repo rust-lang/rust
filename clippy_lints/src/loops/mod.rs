@@ -883,23 +883,29 @@ impl<'tcx> LateLintPass<'tcx> for Loops {
         }
 
         if let ExprKind::MethodCall(path, recv, args, _) = expr.kind {
-            if matches!(
-                path.ident.name,
-                sym::all | sym::any | sym::filter_map | sym::find_map | sym::flat_map | sym::for_each | sym::map
-            ) && let [arg] = args
-            {
-                unused_enumerate_index::check_method(cx, expr, recv, arg);
-            }
-
-            if matches!(
-                path.ident.name,
-                sym::all | sym::any | sym::for_each | sym::try_for_each | sym::fold | sym::try_fold | sym::reduce
-            ) && cx
+            let name = path.ident.name;
+            let is_iterator_method = cx
                 .ty_based_def(expr)
                 .assoc_fn_parent(cx)
-                .is_diag_item(cx, sym::Iterator)
-            {
-                never_loop::check_iterator_reduction(cx, expr, recv, args);
+                .is_diag_item(cx, sym::Iterator);
+
+            match (name, args) {
+                (sym::for_each | sym::all | sym::any, [arg]) => {
+                    unused_enumerate_index::check_method(cx, expr, recv, arg);
+                    if is_iterator_method {
+                        never_loop::check_iterator_reduction(cx, expr, recv, args);
+                    }
+                },
+
+                (sym::filter_map | sym::find_map | sym::flat_map | sym::map, [arg]) => {
+                    unused_enumerate_index::check_method(cx, expr, recv, arg);
+                },
+
+                (sym::try_for_each | sym::reduce | sym::fold | sym::try_fold, args) if is_iterator_method => {
+                    never_loop::check_iterator_reduction(cx, expr, recv, args);
+                },
+
+                _ => {},
             }
         }
     }
