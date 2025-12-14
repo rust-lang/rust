@@ -837,7 +837,7 @@ fn test_unstable_options_tracking_hash() {
     tracked!(no_profiler_runtime, true);
     tracked!(no_trait_vptr, true);
     tracked!(no_unique_section_names, true);
-    tracked!(offload, vec![Offload::Enable]);
+    tracked!(offload, vec![Offload::Device]);
     tracked!(on_broken_pipe, OnBrokenPipe::Kill);
     tracked!(osx_rpath_install_name, true);
     tracked!(packed_bundled_libs, true);
