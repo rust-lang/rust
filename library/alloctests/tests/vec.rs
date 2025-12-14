@@ -2717,3 +2717,35 @@ fn vec_null_ptr_roundtrip() {
     let new = roundtripped.with_addr(ptr.addr());
     unsafe { new.read() };
 }
+
+// Regression test for Undefined Behavior (UB) caused by IntoIter::nth_back (#148682)
+// when dealing with high-aligned Zero-Sized Types (ZSTs).
+use std::collections::{BTreeMap, BinaryHeap, HashMap, LinkedList, VecDeque};
+#[test]
+fn zst_collections_iter_nth_back_regression() {
+    #[repr(align(8))]
+    #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Copy)]
+    struct Thing;
+    let v = vec![Thing, Thing];
+    let _ = v.into_iter().nth_back(1);
+    let mut d = VecDeque::new();
+    d.push_back(Thing);
+    d.push_back(Thing);
+    let _ = d.into_iter().nth_back(1);
+    let mut map = BTreeMap::new();
+    map.insert(0, Thing);
+    map.insert(1, Thing);
+    let _ = map.into_values().nth_back(0);
+    let mut hash_map = HashMap::new();
+    hash_map.insert(1, Thing);
+    hash_map.insert(2, Thing);
+    let _ = hash_map.into_values().nth(1);
+    let mut heap = BinaryHeap::new();
+    heap.push(Thing);
+    heap.push(Thing);
+    let _ = heap.into_iter().nth_back(1);
+    let mut list = LinkedList::new();
+    list.push_back(Thing);
+    list.push_back(Thing);
+    let _ = list.into_iter().nth_back(1);
+}

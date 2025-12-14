@@ -411,7 +411,12 @@ impl<T, A: Allocator> DoubleEndedIterator for IntoIter<T, A> {
             // SAFETY: same as for advance_by()
             self.end = unsafe { self.end.sub(step_size) };
         }
-        let to_drop = ptr::slice_from_raw_parts_mut(self.end as *mut T, step_size);
+        let to_drop = if T::IS_ZST {
+            // ZST may cause unalignment
+            ptr::slice_from_raw_parts_mut(ptr::NonNull::<T>::dangling().as_ptr(), step_size)
+        } else {
+            ptr::slice_from_raw_parts_mut(self.end as *mut T, step_size)
+        };
         // SAFETY: same as for advance_by()
         unsafe {
             ptr::drop_in_place(to_drop);
