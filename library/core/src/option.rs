@@ -584,7 +584,7 @@
 use crate::clone::TrivialClone;
 use crate::iter::{self, FusedIterator, TrustedLen};
 use crate::marker::Destruct;
-use crate::ops::{self, ControlFlow, Deref, DerefMut};
+use crate::ops::{self, ControlFlow, Deref, DerefMut, Residual, Try};
 use crate::panicking::{panic, panic_display};
 use crate::pin::Pin;
 use crate::{cmp, convert, hint, mem, slice};
@@ -1814,6 +1814,49 @@ impl<T> Option<T> {
         // SAFETY: a `None` variant for `self` would have been replaced by a `Some`
         // variant in the code above.
         unsafe { self.as_mut().unwrap_unchecked() }
+    }
+
+    /// If the option is `None`, calls the closure and inserts its output if successful.
+    ///
+    /// If the closure returns a residual value such as `Err` or `None`,
+    /// that residual value is returned and nothing is inserted.
+    ///
+    /// If the option is `Some`, nothing is inserted.
+    ///
+    /// Unless a residual is returned, a mutable reference to the value
+    /// of the option will be output.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(option_get_or_try_insert_with)]
+    /// let mut o1: Option<u32> = None;
+    /// let mut o2: Option<u8> = None;
+    ///
+    /// let number = "12345";
+    ///
+    /// assert_eq!(o1.get_or_try_insert_with(|| number.parse()).copied(), Ok(12345));
+    /// assert!(o2.get_or_try_insert_with(|| number.parse()).is_err());
+    /// assert_eq!(o1, Some(12345));
+    /// assert_eq!(o2, None);
+    /// ```
+    #[inline]
+    #[unstable(feature = "option_get_or_try_insert_with", issue = "143648")]
+    pub fn get_or_try_insert_with<'a, R, F>(
+        &'a mut self,
+        f: F,
+    ) -> <R::Residual as Residual<&'a mut T>>::TryType
+    where
+        F: FnOnce() -> R,
+        R: Try<Output = T, Residual: Residual<&'a mut T>>,
+    {
+        if let None = self {
+            *self = Some(f()?);
+        }
+        // SAFETY: a `None` variant for `self` would have been replaced by a `Some`
+        // variant in the code above.
+
+        Try::from_output(unsafe { self.as_mut().unwrap_unchecked() })
     }
 
     /////////////////////////////////////////////////////////////////////////
