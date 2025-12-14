@@ -467,12 +467,31 @@ fn test_plain_text_summary() {
 }
 
 #[test]
-fn test_markdown_html_escape() {
+fn test_markdown_html_escape_legacy() {
     fn t(input: &str, expect: &str) {
         let mut idmap = IdMap::new();
         let mut output = String::new();
-        MarkdownItemInfo(input, &mut idmap).write_into(&mut output).unwrap();
-        assert_eq!(output, expect, "original: {}", input);
+        MarkdownItemInfo(input, &mut idmap, Edition::Edition2015).write_into(&mut output).unwrap();
+        assert_eq!(
+            output,
+            format!("<span class=\"legacy-wrap\">{}</span>", expect),
+            "original: {}",
+            input
+        );
+    }
+
+    t("`Struct<'a, T>`", "<code>Struct&lt;'a, T&gt;</code>");
+    t("Struct<'a, T>", "Struct&lt;’a, T&gt;");
+    t("Struct<br>", "Struct&lt;br&gt;");
+}
+
+#[test]
+fn test_markdown_html_escape_new() {
+    fn t(input: &str, expect: &str) {
+        let mut idmap = IdMap::new();
+        let mut output = String::new();
+        MarkdownItemInfo(input, &mut idmap, Edition::Edition2015).write_into(&mut output).unwrap();
+        assert_eq!(output, format!("<p>{}</p>", expect), "original: {}", input);
     }
 
     t("`Struct<'a, T>`", "<code>Struct&lt;'a, T&gt;</code>");

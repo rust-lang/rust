@@ -111,7 +111,11 @@ pub(crate) struct MarkdownWithToc<'a> {
 }
 /// A tuple struct like `Markdown` that renders the markdown escaping HTML tags
 /// and includes no paragraph tags.
-pub(crate) struct MarkdownItemInfo<'a>(pub(crate) &'a str, pub(crate) &'a mut IdMap);
+pub(crate) struct MarkdownItemInfo<'a>(
+    pub(crate) &'a str,
+    pub(crate) &'a mut IdMap,
+    pub(crate) Edition,
+);
 /// A tuple struct like `Markdown` that renders only the first paragraph.
 pub(crate) struct MarkdownSummaryLine<'a>(pub &'a str, pub &'a [RenderedLink]);
 
@@ -1461,7 +1465,8 @@ impl MarkdownWithToc<'_> {
 
 impl MarkdownItemInfo<'_> {
     pub(crate) fn write_into(self, mut f: impl fmt::Write) -> fmt::Result {
-        let MarkdownItemInfo(md, ids) = self;
+        let MarkdownItemInfo(md, ids, edition) = self;
+        let legacy_wrap = edition != Edition::EditionFuture;
 
         // This is actually common enough to special-case
         if md.is_empty() {
@@ -1479,10 +1484,23 @@ impl MarkdownItemInfo<'_> {
             let p = HeadingLinks::new(p, None, ids, HeadingOffset::H1);
             let p = footnotes::Footnotes::new(p, existing_footnotes);
             let p = TableWrapper::new(p.map(|(ev, _)| ev));
+            // in legacy wrap mode, strip <p> elements to avoid them inserting newlines
             let p = p.filter(|event| {
-                !matches!(event, Event::Start(Tag::Paragraph) | Event::End(TagEnd::Paragraph))
+                !legacy_wrap
+                    || !matches!(
+                        event,
+                        Event::Start(Tag::Paragraph) | Event::End(TagEnd::Paragraph)
+                    )
             });
-            html::write_html_fmt(&mut f, p)
+            if legacy_wrap {
+                f.write_str("<span class=\"legacy-wrap\">")?;
+            }
+            html::write_html_fmt(&mut f, p)?;
+            if legacy_wrap {
+                f.write_str("</span>")?;
+            }
+
+            Ok(())
         })
     }
 }
