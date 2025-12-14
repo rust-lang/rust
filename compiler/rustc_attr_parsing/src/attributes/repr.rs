@@ -33,7 +33,7 @@ impl<S: Stage> CombineAttributeParser<S> for ReprParser {
         let mut reprs = Vec::new();
 
         let Some(list) = args.list() else {
-            cx.expected_list(cx.attr_span);
+            cx.expected_list(cx.attr_span, args);
             return reprs;
         };
 
@@ -278,7 +278,7 @@ impl AlignParser {
     fn parse<S: Stage>(&mut self, cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) {
         match args {
             ArgParser::NoArgs | ArgParser::NameValue(_) => {
-                cx.expected_list(cx.attr_span);
+                cx.expected_list(cx.attr_span, args);
             }
             ArgParser::List(list) => {
                 let Some(align) = list.single() else {
