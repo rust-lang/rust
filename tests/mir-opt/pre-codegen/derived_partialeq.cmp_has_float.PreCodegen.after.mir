@@ -1,0 +1,51 @@
+// MIR for `cmp_has_float` after PreCodegen
+
+fn cmp_has_float(_1: &HasFloat, _2: &HasFloat) -> bool {
+    debug a => _1;
+    debug b => _2;
+    let mut _0: bool;
+    scope 1 (inlined std::cmp::impls::<impl PartialEq for &HasFloat>::eq) {
+        scope 2 (inlined <HasFloat as PartialEq>::eq) {
+            let mut _3: f32;
+            let mut _4: f32;
+            let mut _5: bool;
+            let mut _6: u32;
+            let mut _7: u32;
+        }
+    }
+
+    bb0: {
+        StorageLive(_5);
+        StorageLive(_3);
+        _3 = copy ((*_1).0: f32);
+        StorageLive(_4);
+        _4 = copy ((*_2).0: f32);
+        _5 = Eq(move _3, move _4);
+        switchInt(move _5) -> [0: bb1, otherwise: bb2];
+    }
+
+    bb1: {
+        StorageDead(_4);
+        StorageDead(_3);
+        _0 = const false;
+        goto -> bb3;
+    }
+
+    bb2: {
+        StorageDead(_4);
+        StorageDead(_3);
+        StorageLive(_6);
+        _6 = copy ((*_1).1: u32);
+        StorageLive(_7);
+        _7 = copy ((*_2).1: u32);
+        _0 = Eq(move _6, move _7);
+        StorageDead(_7);
+        StorageDead(_6);
+        goto -> bb3;
+    }
+
+    bb3: {
+        StorageDead(_5);
+        return;
+    }
+}

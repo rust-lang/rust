@@ -255,6 +255,11 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             return None;
         }
 
+        // Don't try to evaluate the Operand::Const of calls to a concrete fn
+        if matches!(c.ty().kind(), ty::FnDef(..)) {
+            return None;
+        }
+
         // Normalization needed b/c known panics lint runs in
         // `mir_drops_elaborated_and_const_checked`, which happens before
         // optimized MIR. Only after optimizing the MIR can we guarantee
