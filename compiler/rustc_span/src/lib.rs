@@ -370,7 +370,11 @@ impl RealFileName {
     ///
     /// May not exists if the filename was imported from another crate.
     pub fn local_path(&self) -> Option<&Path> {
-        self.local.as_ref().map(|lp| lp.name.as_ref())
+        if self.was_not_remapped() {
+            Some(&self.maybe_remapped.name)
+        } else {
+            self.local.as_ref().map(|lp| lp.name.as_ref())
+        }
     }
 
     /// Returns the path suitable for reading from the file system on the local host,
@@ -378,12 +382,28 @@ impl RealFileName {
     ///
     /// May not exists if the filename was imported from another crate.
     pub fn into_local_path(self) -> Option<PathBuf> {
-        self.local.map(|lp| lp.name)
+        if self.was_not_remapped() {
+            Some(self.maybe_remapped.name)
+        } else {
+            self.local.map(|lp| lp.name)
+        }
     }
 
     /// Returns whenever the filename was remapped.
     pub(crate) fn was_remapped(&self) -> bool {
         !self.scopes.is_empty()
+    }
+
+    /// Returns whenever the filename was fully remapped.
+    #[inline]
+    fn was_fully_remapped(&self) -> bool {
+        self.scopes.is_all()
+    }
+
+    /// Returns whenever the filename was not remapped.
+    #[inline]
+    fn was_not_remapped(&self) -> bool {
+        self.scopes.is_empty()
     }
 
     /// Returns an empty `RealFileName`
@@ -420,9 +440,14 @@ impl RealFileName {
     /// Update the filename for encoding in the crate metadata.
     ///
     /// Currently it's about removing the local part when the filename
-    /// is fully remapped.
+    /// is either fully remapped or not remapped at all.
+    #[inline]
     pub fn update_for_crate_metadata(&mut self) {
-        if self.scopes.is_all() {
+        if self.was_fully_remapped() || self.was_not_remapped() {
+            // NOTE: This works because when the filename is fully
+            // remapped, we don't care about the `local` part,
+            // and when the filename is not remapped at all,
+            // `maybe_remapped` and `local` are equal.
             self.local = None;
         }
     }
