@@ -1,0 +1,9 @@
+error[E0080]: encountered static that tried to access itself during initialization
+  --> $DIR/static-ref-cycle-lib-invariants-issue-143047.rs:18:20
+   |
+LL |     index([0; 32], &IDX);
+   |                    ^^^^ evaluation of `IDX` failed here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0080`.

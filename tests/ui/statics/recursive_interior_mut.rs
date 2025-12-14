@@ -13,7 +13,7 @@ unsafe impl Sync for EmptyChunkFooter {}
 
 static EMPTY_CHUNK: EmptyChunkFooter = EmptyChunkFooter(ChunkFooter {
     prev: Cell::new(unsafe {
-        NonNull::new_unchecked(&EMPTY_CHUNK as *const EmptyChunkFooter as *mut ChunkFooter)
+        NonNull::new_unchecked(&raw const EMPTY_CHUNK as *mut ChunkFooter)
     }),
 });
 
