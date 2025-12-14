@@ -33,6 +33,7 @@ members = [
   "src/tools/remote-test-client",
   "src/tools/remote-test-server",
   "src/tools/replace-version-placeholder",
+  "src/tools/repro-check",
   "src/tools/run-make-support",
   "src/tools/rust-installer",
   "src/tools/rustdoc",
