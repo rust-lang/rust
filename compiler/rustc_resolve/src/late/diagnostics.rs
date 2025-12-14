@@ -440,6 +440,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
 
         self.detect_missing_binding_available_from_pattern(&mut err, path, following_seg);
         self.suggest_at_operator_in_slice_pat_with_range(&mut err, path);
+        self.suggest_range_struct_destructuring(&mut err, path, source);
         self.suggest_swapping_misplaced_self_ty_and_trait(&mut err, source, res, base_error.span);
 
         if let Some((span, label)) = base_error.span_label {
@@ -1380,6 +1381,41 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         enum Side {
             Start,
             End,
+        }
+    }
+
+    fn suggest_range_struct_destructuring(
+        &self,
+        err: &mut Diag<'_>,
+        path: &[Segment],
+        source: PathSource<'_, '_, '_>,
+    ) {
+        // We accept Expr here because range bounds (start..end) are parsed as expressions
+        if !matches!(source, PathSource::Pat | PathSource::TupleStruct(..) | PathSource::Expr(..)) {
+            return;
+        }
+
+        if let Some(pat) = self.diag_metadata.current_pat
+            && let ast::PatKind::Range(Some(start_expr), Some(end_expr), _) = &pat.kind
+            && let (ast::ExprKind::Path(None, start_path), ast::ExprKind::Path(None, end_path)) =
+                (&start_expr.kind, &end_expr.kind)
+            && path.len() == 1
+        {
+            let ident = path[0].ident;
+
+            if (start_path.segments.len() == 1 && start_path.segments[0].ident == ident)
+                || (end_path.segments.len() == 1 && end_path.segments[0].ident == ident)
+            {
+                let start_name = start_path.segments[0].ident;
+                let end_name = end_path.segments[0].ident;
+
+                err.span_suggestion_verbose(
+                    pat.span,
+                    "if you meant to destructure a `Range`, use the struct pattern",
+                    format!("std::ops::Range {{ start: {}, end: {} }}", start_name, end_name),
+                    Applicability::MaybeIncorrect,
+                );
+            }
         }
     }
 

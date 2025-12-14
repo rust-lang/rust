@@ -1,0 +1,66 @@
+error[E0425]: cannot find value `start` in this scope
+  --> $DIR/suggest-range-struct-destructuring.rs:4:9
+   |
+LL |     let start..end = r;
+   |         ^^^^^ not found in this scope
+   |
+help: if you meant to destructure a `Range`, use the struct pattern
+   |
+LL -     let start..end = r;
+LL +     let std::ops::Range { start: start, end: end } = r;
+   |
+
+error[E0425]: cannot find value `end` in this scope
+  --> $DIR/suggest-range-struct-destructuring.rs:4:16
+   |
+LL |     let start..end = r;
+   |                ^^^ not found in this scope
+   |
+help: if you meant to destructure a `Range`, use the struct pattern
+   |
+LL -     let start..end = r;
+LL +     let std::ops::Range { start: start, end: end } = r;
+   |
+
+error[E0425]: cannot find value `min` in this scope
+  --> $DIR/suggest-range-struct-destructuring.rs:10:9
+   |
+LL |     let min..max = r;
+   |         ^^^
+...
+LL | fn main() {}
+   | --------- similarly named function `main` defined here
+   |
+help: if you meant to destructure a `Range`, use the struct pattern
+   |
+LL -     let min..max = r;
+LL +     let std::ops::Range { start: min, end: max } = r;
+   |
+help: a function with a similar name exists
+   |
+LL |     let main..max = r;
+   |          +
+help: consider importing this function
+   |
+LL + use std::cmp::min;
+   |
+
+error[E0425]: cannot find value `max` in this scope
+  --> $DIR/suggest-range-struct-destructuring.rs:10:14
+   |
+LL |     let min..max = r;
+   |              ^^^ not found in this scope
+   |
+help: if you meant to destructure a `Range`, use the struct pattern
+   |
+LL -     let min..max = r;
+LL +     let std::ops::Range { start: min, end: max } = r;
+   |
+help: consider importing this function
+   |
+LL + use std::cmp::max;
+   |
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0425`.
