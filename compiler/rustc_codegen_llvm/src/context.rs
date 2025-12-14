@@ -35,6 +35,7 @@ use smallvec::SmallVec;
 
 use crate::abi::to_llvm_calling_convention;
 use crate::back::write::to_llvm_code_model;
+use crate::builder::gpu_offload::{OffloadGlobals, OffloadKernelGlobals};
 use crate::callee::get_fn;
 use crate::debuginfo::metadata::apply_vcall_visibility_metadata;
 use crate::llvm::{self, Metadata, MetadataKindId, Module, Type, Value};
@@ -156,6 +157,12 @@ pub(crate) struct FullCx<'ll, 'tcx> {
 
     /// Cache of Objective-C selector references
     pub objc_selrefs: RefCell<FxHashMap<Symbol, &'ll Value>>,
+
+    /// Globals shared by the offloading runtime
+    pub offload_globals: RefCell<Option<OffloadGlobals<'ll>>>,
+
+    /// Cache of kernel-specific globals
+    pub offload_kernel_cache: RefCell<FxHashMap<String, OffloadKernelGlobals<'ll>>>,
 }
 
 fn to_llvm_tls_model(tls_model: TlsModel) -> llvm::ThreadLocalMode {
@@ -639,6 +646,8 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
                 objc_class_t: Cell::new(None),
                 objc_classrefs: Default::default(),
                 objc_selrefs: Default::default(),
+                offload_globals: Default::default(),
+                offload_kernel_cache: Default::default(),
             },
             PhantomData,
         )
