@@ -42,7 +42,7 @@ pub fn parse_cfg<S: Stage>(
     args: &ArgParser,
 ) -> Option<CfgEntry> {
     let ArgParser::List(list) = args else {
-        cx.expected_list(cx.attr_span);
+        cx.expected_list(cx.attr_span, args);
         return None;
     };
     let Some(single) = list.single() else {

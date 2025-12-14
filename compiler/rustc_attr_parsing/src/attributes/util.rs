@@ -43,7 +43,7 @@ pub(crate) fn parse_single_integer<S: Stage>(
     args: &ArgParser,
 ) -> Option<u128> {
     let Some(list) = args.list() else {
-        cx.expected_list(cx.attr_span);
+        cx.expected_list(cx.attr_span, args);
         return None;
     };
     let Some(single) = list.single() else {

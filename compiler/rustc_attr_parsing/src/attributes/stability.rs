@@ -295,7 +295,7 @@ pub(crate) fn parse_stability<S: Stage>(
     let mut since = None;
 
     let ArgParser::List(list) = args else {
-        cx.expected_list(cx.attr_span);
+        cx.expected_list(cx.attr_span, args);
         return None;
     };
 
@@ -315,11 +315,7 @@ pub(crate) fn parse_stability<S: Stage>(
                 insert_value_into_option_or_error(cx, &param, &mut since, word.unwrap())?
             }
             _ => {
-                cx.emit_err(session_diagnostics::UnknownMetaItem {
-                    span: param_span,
-                    item: param.path().to_string(),
-                    expected: &["feature", "since"],
-                });
+                cx.expected_specific_argument(param_span, &[sym::feature, sym::since]);
                 return None;
             }
         }
@@ -371,7 +367,7 @@ pub(crate) fn parse_unstability<S: Stage>(
     let mut old_name = None;
 
     let ArgParser::List(list) = args else {
-        cx.expected_list(cx.attr_span);
+        cx.expected_list(cx.attr_span, args);
         return None;
     };
 
@@ -426,11 +422,17 @@ pub(crate) fn parse_unstability<S: Stage>(
                 insert_value_into_option_or_error(cx, &param, &mut old_name, word.unwrap())?
             }
             _ => {
-                cx.emit_err(session_diagnostics::UnknownMetaItem {
-                    span: param.span(),
-                    item: param.path().to_string(),
-                    expected: &["feature", "reason", "issue", "soft", "implied_by", "old_name"],
-                });
+                cx.expected_specific_argument(
+                    param.span(),
+                    &[
+                        sym::feature,
+                        sym::reason,
+                        sym::issue,
+                        sym::soft,
+                        sym::implied_by,
+                        sym::old_name,
+                    ],
+                );
                 return None;
             }
         }

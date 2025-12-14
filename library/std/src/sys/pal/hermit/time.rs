@@ -15,6 +15,10 @@ struct Timespec {
 }
 
 impl Timespec {
+    const MAX: Timespec = Self::new(i64::MAX, 1_000_000_000 - 1);
+
+    const MIN: Timespec = Self::new(i64::MIN, 0);
+
     const fn zero() -> Timespec {
         Timespec { t: timespec { tv_sec: 0, tv_nsec: 0 } }
     }
@@ -209,6 +213,10 @@ pub struct SystemTime(Timespec);
 pub const UNIX_EPOCH: SystemTime = SystemTime(Timespec::zero());
 
 impl SystemTime {
+    pub const MAX: SystemTime = SystemTime { t: Timespec::MAX };
+
+    pub const MIN: SystemTime = SystemTime { t: Timespec::MIN };
+
     pub fn new(tv_sec: i64, tv_nsec: i32) -> SystemTime {
         SystemTime(Timespec::new(tv_sec, tv_nsec))
     }
