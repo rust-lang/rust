@@ -222,10 +222,14 @@ const EXCEPTIONS_RUSTC_PERF: ExceptionList = &[
 
 const EXCEPTIONS_RUSTBOOK: ExceptionList = &[
     // tidy-alphabetical-start
-    ("cssparser", "MPL-2.0"),
-    ("cssparser-macros", "MPL-2.0"),
-    ("dtoa-short", "MPL-2.0"),
-    ("mdbook", "MPL-2.0"),
+    ("font-awesome-as-a-crate", "CC-BY-4.0 AND MIT"),
+    ("mdbook-core", "MPL-2.0"),
+    ("mdbook-driver", "MPL-2.0"),
+    ("mdbook-html", "MPL-2.0"),
+    ("mdbook-markdown", "MPL-2.0"),
+    ("mdbook-preprocessor", "MPL-2.0"),
+    ("mdbook-renderer", "MPL-2.0"),
+    ("mdbook-summary", "MPL-2.0"),
     // tidy-alphabetical-end
 ];
 

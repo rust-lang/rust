@@ -5,7 +5,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 mod bogus_attribute_types_1 {
-    #[stable(feature = "a", since = "4.4.4", reason)] //~ ERROR unknown meta item 'reason' [E0541]
+    #[stable(feature = "a", since = "4.4.4", reason)] //~ ERROR malformed `stable` attribute input [E0539]
     fn f1() { }
 
     #[stable(feature = "a", since)] //~ ERROR malformed `stable` attribute input [E0539]

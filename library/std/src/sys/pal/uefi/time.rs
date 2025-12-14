@@ -70,6 +70,23 @@ impl Instant {
 }
 
 impl SystemTime {
+    pub const MAX: SystemTime = MAX_UEFI_TIME;
+
+    pub const MIN: SystemTime = SystemTime::from_uefi(r_efi::efi::Time {
+        year: 1900,
+        month: 1,
+        day: 1,
+        hour: 0,
+        minute: 0,
+        second: 0,
+        nanosecond: 0,
+        timezone: -1440,
+        daylight: 0,
+        pad1: 0,
+        pad2: 0,
+    })
+    .unwrap();
+
     pub(crate) const fn from_uefi(t: r_efi::efi::Time) -> Option<Self> {
         match system_time_internal::from_uefi(&t) {
             Some(x) => Some(Self(x)),

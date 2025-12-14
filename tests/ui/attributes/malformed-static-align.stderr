@@ -2,9 +2,9 @@ error[E0539]: malformed `rustc_align_static` attribute input
   --> $DIR/malformed-static-align.rs:4:1
    |
 LL | #[rustc_align_static = 16]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
-   | |
-   | expected this to be a list
+   | ^^^^^^^^^^^^^^^^^^^^^----^
+   | |                    |
+   | |                    expected this to be a list
    | help: must be of the form: `#[rustc_align_static(<alignment in bytes>)]`
 
 error[E0589]: invalid alignment value: not an unsuffixed integer
