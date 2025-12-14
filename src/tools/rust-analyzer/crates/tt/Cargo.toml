@@ -21,6 +21,7 @@ intern.workspace = true
 ra-ap-rustc_lexer.workspace = true
 
 [features]
+default = []
 in-rust-tree = []
 
 [lints]

@@ -3180,6 +3180,40 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             err.span_label(within_macro_span, "due to this macro variable");
         }
 
+        // Check if there is an associated function with the same name.
+        if let Some(def_id) = base_ty.peel_refs().ty_adt_def().map(|d| d.did()) {
+            for impl_def_id in self.tcx.inherent_impls(def_id) {
+                for item in self.tcx.associated_items(impl_def_id).in_definition_order() {
+                    if let ExprKind::Field(base_expr, _) = expr.kind
+                        && item.name() == field.name
+                        && matches!(item.kind, ty::AssocKind::Fn { has_self: false, .. })
+                    {
+                        err.span_label(field.span, "this is an associated function, not a method");
+                        err.note("found the following associated function; to be used as method, it must have a `self` parameter");
+                        let impl_ty = self.tcx.type_of(impl_def_id).instantiate_identity();
+                        err.span_note(
+                            self.tcx.def_span(item.def_id),
+                            format!("the candidate is defined in an impl for the type `{impl_ty}`"),
+                        );
+
+                        let ty_str = match base_ty.peel_refs().kind() {
+                            ty::Adt(def, args) => self.tcx.def_path_str_with_args(def.did(), args),
+                            _ => base_ty.peel_refs().to_string(),
+                        };
+                        err.multipart_suggestion(
+                            "use associated function syntax instead",
+                            vec![
+                                (base_expr.span, ty_str),
+                                (base_expr.span.between(field.span), "::".to_string()),
+                            ],
+                            Applicability::MaybeIncorrect,
+                        );
+                        return err;
+                    }
+                }
+            }
+        }
+
         // try to add a suggestion in case the field is a nested field of a field of the Adt
         let mod_id = self.tcx.parent_module(expr.hir_id).to_def_id();
         let (ty, unwrap) = if let ty::Adt(def, args) = base_ty.kind()

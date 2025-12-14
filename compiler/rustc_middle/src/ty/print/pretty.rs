@@ -16,7 +16,7 @@ use rustc_hir::definitions::{DefKey, DefPathDataName};
 use rustc_hir::limit::Limit;
 use rustc_macros::{Lift, extension};
 use rustc_session::cstore::{ExternCrate, ExternCrateSource};
-use rustc_span::{FileNameDisplayPreference, Ident, Symbol, kw, sym};
+use rustc_span::{Ident, RemapPathScopeComponents, Symbol, kw, sym};
 use rustc_type_ir::{Upcast as _, elaborate};
 use smallvec::SmallVec;
 
@@ -890,7 +890,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                             "@{}",
                             // This may end up in stderr diagnostics but it may also be emitted
                             // into MIR. Hence we use the remapped path if available
-                            self.tcx().sess.source_map().span_to_embeddable_string(span)
+                            self.tcx().sess.source_map().span_to_diagnostic_string(span)
                         )?;
                     } else {
                         write!(self, "@")?;
@@ -921,7 +921,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                             "@{}",
                             // This may end up in stderr diagnostics but it may also be emitted
                             // into MIR. Hence we use the remapped path if available
-                            self.tcx().sess.source_map().span_to_embeddable_string(span)
+                            self.tcx().sess.source_map().span_to_diagnostic_string(span)
                         )?;
                     } else {
                         write!(self, "@")?;
@@ -947,10 +947,13 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                                 self.print_def_path(did.to_def_id(), args)?;
                             } else {
                                 let span = self.tcx().def_span(did);
-                                let preference = if with_forced_trimmed_paths() {
-                                    FileNameDisplayPreference::Short
+                                let loc = if with_forced_trimmed_paths() {
+                                    self.tcx().sess.source_map().span_to_short_string(
+                                        span,
+                                        RemapPathScopeComponents::DIAGNOSTICS,
+                                    )
                                 } else {
-                                    FileNameDisplayPreference::Remapped
+                                    self.tcx().sess.source_map().span_to_diagnostic_string(span)
                                 };
                                 write!(
                                     self,
@@ -958,7 +961,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                                     // This may end up in stderr diagnostics but it may also be
                                     // emitted into MIR. Hence we use the remapped path if
                                     // available
-                                    self.tcx().sess.source_map().span_to_string(span, preference)
+                                    loc
                                 )?;
                             }
                         } else {
@@ -1004,18 +1007,17 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                             self.print_def_path(did.to_def_id(), args)?;
                         } else {
                             let span = self.tcx().def_span(did);
-                            let preference = if with_forced_trimmed_paths() {
-                                FileNameDisplayPreference::Short
+                            // This may end up in stderr diagnostics but it may also be emitted
+                            // into MIR. Hence we use the remapped path if available
+                            let loc = if with_forced_trimmed_paths() {
+                                self.tcx().sess.source_map().span_to_short_string(
+                                    span,
+                                    RemapPathScopeComponents::DIAGNOSTICS,
+                                )
                             } else {
-                                FileNameDisplayPreference::Remapped
+                                self.tcx().sess.source_map().span_to_diagnostic_string(span)
                             };
-                            write!(
-                                self,
-                                "@{}",
-                                // This may end up in stderr diagnostics but it may also be emitted
-                                // into MIR. Hence we use the remapped path if available
-                                self.tcx().sess.source_map().span_to_string(span, preference)
-                            )?;
+                            write!(self, "@{loc}")?;
                         }
                     } else {
                         write!(self, "@")?;
@@ -2258,7 +2260,7 @@ impl<'tcx> Printer<'tcx> for FmtPrinter<'_, 'tcx> {
                     "<impl at {}>",
                     // This may end up in stderr diagnostics but it may also be emitted
                     // into MIR. Hence we use the remapped path if available
-                    self.tcx.sess.source_map().span_to_embeddable_string(span)
+                    self.tcx.sess.source_map().span_to_diagnostic_string(span)
                 )?;
                 self.empty_path = false;
 

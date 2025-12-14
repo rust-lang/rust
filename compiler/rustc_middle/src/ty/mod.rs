@@ -25,6 +25,7 @@ pub use generic_args::{GenericArgKind, TermKind, *};
 pub use generics::*;
 pub use intrinsic::IntrinsicDef;
 use rustc_abi::{Align, FieldIdx, Integer, IntegerType, ReprFlags, ReprOptions, VariantIdx};
+use rustc_ast::AttrVec;
 use rustc_ast::expand::typetree::{FncTree, Kind, Type, TypeTree};
 use rustc_ast::node_id::NodeMap;
 pub use rustc_ast_ir::{Movability, Mutability, try_visit};
@@ -221,13 +222,24 @@ pub struct ResolverAstLowering {
     pub delegation_fn_sigs: LocalDefIdMap<DelegationFnSig>,
 }
 
+bitflags::bitflags! {
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+    pub struct DelegationFnSigAttrs: u8 {
+        const TARGET_FEATURE = 1 << 0;
+        const MUST_USE = 1 << 1;
+    }
+}
+
+pub const DELEGATION_INHERIT_ATTRS_START: DelegationFnSigAttrs = DelegationFnSigAttrs::MUST_USE;
+
 #[derive(Debug)]
 pub struct DelegationFnSig {
     pub header: ast::FnHeader,
     pub param_count: usize,
     pub has_self: bool,
     pub c_variadic: bool,
-    pub target_feature: bool,
+    pub attrs_flags: DelegationFnSigAttrs,
+    pub to_inherit_attrs: AttrVec,
 }
 
 #[derive(Clone, Copy, Debug, HashStable)]
@@ -2395,9 +2407,7 @@ fn typetree_from_ty_impl_inner<'tcx>(
     }
 
     if ty.is_ref() || ty.is_raw_ptr() || ty.is_box() {
-        let inner_ty = if let Some(inner) = ty.builtin_deref(true) {
-            inner
-        } else {
+        let Some(inner_ty) = ty.builtin_deref(true) else {
             return TypeTree::new();
         };
 
