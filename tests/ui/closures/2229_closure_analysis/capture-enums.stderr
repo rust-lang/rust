@@ -9,7 +9,7 @@ LL |     let c = #[rustc_capture_analysis]
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes on expressions are experimental
-  --> $DIR/capture-enums.rs:48:13
+  --> $DIR/capture-enums.rs:50:13
    |
 LL |     let c = #[rustc_capture_analysis]
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -34,18 +34,28 @@ note: Capturing point[] -> Immutable
    |
 LL |         if let Info::Point(_, _, str) = point {
    |                                         ^^^^^
+note: Capturing point[] -> Immutable
+  --> $DIR/capture-enums.rs:23:41
+   |
+LL |         if let Info::Point(_, _, str) = point {
+   |                                         ^^^^^
 note: Capturing point[(2, 0)] -> ByValue
   --> $DIR/capture-enums.rs:23:41
    |
 LL |         if let Info::Point(_, _, str) = point {
    |                                         ^^^^^
 note: Capturing meta[] -> Immutable
-  --> $DIR/capture-enums.rs:30:35
+  --> $DIR/capture-enums.rs:31:35
+   |
+LL |         if let Info::Meta(_, v) = meta {
+   |                                   ^^^^
+note: Capturing meta[] -> Immutable
+  --> $DIR/capture-enums.rs:31:35
    |
 LL |         if let Info::Meta(_, v) = meta {
    |                                   ^^^^
 note: Capturing meta[(1, 1)] -> ByValue
-  --> $DIR/capture-enums.rs:30:35
+  --> $DIR/capture-enums.rs:31:35
    |
 LL |         if let Info::Meta(_, v) = meta {
    |                                   ^^^^
@@ -67,13 +77,13 @@ note: Min Capture point[] -> ByValue
 LL |         if let Info::Point(_, _, str) = point {
    |                                         ^^^^^
 note: Min Capture meta[] -> ByValue
-  --> $DIR/capture-enums.rs:30:35
+  --> $DIR/capture-enums.rs:31:35
    |
 LL |         if let Info::Meta(_, v) = meta {
    |                                   ^^^^
 
 error: First Pass analysis includes:
-  --> $DIR/capture-enums.rs:52:5
+  --> $DIR/capture-enums.rs:54:5
    |
 LL | /     || {
 LL | |
@@ -85,13 +95,13 @@ LL | |     };
    | |_____^
    |
 note: Capturing point[(2, 0)] -> ByValue
-  --> $DIR/capture-enums.rs:55:47
+  --> $DIR/capture-enums.rs:57:47
    |
 LL |         let SingleVariant::Point(_, _, str) = point;
    |                                               ^^^^^
 
 error: Min Capture analysis includes:
-  --> $DIR/capture-enums.rs:52:5
+  --> $DIR/capture-enums.rs:54:5
    |
 LL | /     || {
 LL | |
@@ -103,7 +113,7 @@ LL | |     };
    | |_____^
    |
 note: Min Capture point[(2, 0)] -> ByValue
-  --> $DIR/capture-enums.rs:55:47
+  --> $DIR/capture-enums.rs:57:47
    |
 LL |         let SingleVariant::Point(_, _, str) = point;
    |                                               ^^^^^

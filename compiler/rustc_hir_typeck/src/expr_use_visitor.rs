@@ -7,9 +7,7 @@
 
 use std::cell::{Ref, RefCell};
 use std::ops::Deref;
-use std::slice::from_ref;
 
-use hir::Expr;
 use hir::def::DefKind;
 use hir::pat_util::EnumerateAndAdjustIterator as _;
 use rustc_abi::{FIRST_VARIANT, FieldIdx, VariantIdx};
@@ -313,7 +311,8 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
 
             let param_place = self.cat_rvalue(param.hir_id, param_ty);
 
-            self.walk_irrefutable_pat(&param_place, param.pat)?;
+            self.fake_read_scrutinee(&param_place, false)?;
+            self.walk_pat(&param_place, param.pat, false)?;
         }
 
         self.consume_expr(body.value)?;
@@ -455,13 +454,9 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
 
             hir::ExprKind::Match(discr, arms, _) => {
                 let discr_place = self.cat_expr(discr)?;
-                self.maybe_read_scrutinee(
-                    discr,
-                    discr_place.clone(),
-                    arms.iter().map(|arm| arm.pat),
-                )?;
+                self.fake_read_scrutinee(&discr_place, true)?;
+                self.walk_expr(discr)?;
 
-                // treatment of the discriminant is handled while walking the arms.
                 for arm in arms {
                     self.walk_arm(&discr_place, arm)?;
                 }
@@ -598,116 +593,25 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
         Ok(())
     }
 
-    fn maybe_read_scrutinee<'t>(
+    #[instrument(skip(self), level = "debug")]
+    fn fake_read_scrutinee(
         &self,
-        discr: &Expr<'_>,
-        discr_place: PlaceWithHirId<'tcx>,
-        pats: impl Iterator<Item = &'t hir::Pat<'t>>,
+        discr_place: &PlaceWithHirId<'tcx>,
+        refutable: bool,
     ) -> Result<(), Cx::Error> {
-        // Matching should not always be considered a use of the place, hence
-        // discr does not necessarily need to be borrowed.
-        // We only want to borrow discr if the pattern contain something other
-        // than wildcards.
-        let mut needs_to_be_read = false;
-        for pat in pats {
-            self.cat_pattern(discr_place.clone(), pat, &mut |place, pat| {
-                match &pat.kind {
-                    PatKind::Missing => unreachable!(),
-                    PatKind::Binding(.., opt_sub_pat) => {
-                        // If the opt_sub_pat is None, then the binding does not count as
-                        // a wildcard for the purpose of borrowing discr.
-                        if opt_sub_pat.is_none() {
-                            needs_to_be_read = true;
-                        }
-                    }
-                    PatKind::Never => {
-                        // A never pattern reads the value.
-                        // FIXME(never_patterns): does this do what I expect?
-                        needs_to_be_read = true;
-                    }
-                    PatKind::Expr(PatExpr { kind: PatExprKind::Path(qpath), hir_id, span }) => {
-                        // A `Path` pattern is just a name like `Foo`. This is either a
-                        // named constant or else it refers to an ADT variant
+        let closure_def_id = match discr_place.place.base {
+            PlaceBase::Upvar(upvar_id) => Some(upvar_id.closure_expr_id),
+            _ => None,
+        };
 
-                        let res = self.cx.typeck_results().qpath_res(qpath, *hir_id);
-                        match res {
-                            Res::Def(DefKind::Const, _) | Res::Def(DefKind::AssocConst, _) => {
-                                // Named constants have to be equated with the value
-                                // being matched, so that's a read of the value being matched.
-                                //
-                                // FIXME: We don't actually reads for ZSTs.
-                                needs_to_be_read = true;
-                            }
-                            _ => {
-                                // Otherwise, this is a struct/enum variant, and so it's
-                                // only a read if we need to read the discriminant.
-                                needs_to_be_read |=
-                                    self.is_multivariant_adt(place.place.ty(), *span);
-                            }
-                        }
-                    }
-                    PatKind::TupleStruct(..) | PatKind::Struct(..) | PatKind::Tuple(..) => {
-                        // For `Foo(..)`, `Foo { ... }` and `(...)` patterns, check if we are matching
-                        // against a multivariant enum or struct. In that case, we have to read
-                        // the discriminant. Otherwise this kind of pattern doesn't actually
-                        // read anything (we'll get invoked for the `...`, which may indeed
-                        // perform some reads).
-
-                        let place_ty = place.place.ty();
-                        needs_to_be_read |= self.is_multivariant_adt(place_ty, pat.span);
-                    }
-                    PatKind::Expr(_) | PatKind::Range(..) => {
-                        // If the PatKind is a Lit or a Range then we want
-                        // to borrow discr.
-                        needs_to_be_read = true;
-                    }
-                    PatKind::Slice(lhs, wild, rhs) => {
-                        // We don't need to test the length if the pattern is `[..]`
-                        if matches!((lhs, wild, rhs), (&[], Some(_), &[]))
-                            // Arrays have a statically known size, so
-                            // there is no need to read their length
-                            || place.place.ty().peel_refs().is_array()
-                        {
-                        } else {
-                            needs_to_be_read = true;
-                        }
-                    }
-                    PatKind::Or(_)
-                    | PatKind::Box(_)
-                    | PatKind::Deref(_)
-                    | PatKind::Ref(..)
-                    | PatKind::Guard(..)
-                    | PatKind::Wild
-                    | PatKind::Err(_) => {
-                        // If the PatKind is Or, Box, or Ref, the decision is made later
-                        // as these patterns contains subpatterns
-                        // If the PatKind is Wild or Err, the decision is made based on the other patterns
-                        // being examined
-                    }
-                }
-
-                Ok(())
-            })?
-        }
-
-        if needs_to_be_read {
-            self.borrow_expr(discr, BorrowKind::Immutable)?;
+        let cause = if refutable {
+            FakeReadCause::ForMatchedPlace(closure_def_id)
         } else {
-            let closure_def_id = match discr_place.place.base {
-                PlaceBase::Upvar(upvar_id) => Some(upvar_id.closure_expr_id),
-                _ => None,
-            };
+            FakeReadCause::ForLet(closure_def_id)
+        };
 
-            self.delegate.borrow_mut().fake_read(
-                &discr_place,
-                FakeReadCause::ForMatchedPlace(closure_def_id),
-                discr_place.hir_id,
-            );
+        self.delegate.borrow_mut().fake_read(discr_place, cause, discr_place.hir_id);
 
-            // We always want to walk the discriminant. We want to make sure, for instance,
-            // that the discriminant has been initialized.
-            self.walk_expr(discr)?;
-        }
         Ok(())
     }
 
@@ -724,12 +628,11 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
         self.walk_expr(expr)?;
         let expr_place = self.cat_expr(expr)?;
         f()?;
+        self.fake_read_scrutinee(&expr_place, els.is_some())?;
+        self.walk_pat(&expr_place, pat, false)?;
         if let Some(els) = els {
-            // borrowing because we need to test the discriminant
-            self.maybe_read_scrutinee(expr, expr_place.clone(), from_ref(pat).iter())?;
             self.walk_block(els)?;
         }
-        self.walk_irrefutable_pat(&expr_place, pat)?;
         Ok(())
     }
 
@@ -901,16 +804,6 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
         discr_place: &PlaceWithHirId<'tcx>,
         arm: &hir::Arm<'_>,
     ) -> Result<(), Cx::Error> {
-        let closure_def_id = match discr_place.place.base {
-            PlaceBase::Upvar(upvar_id) => Some(upvar_id.closure_expr_id),
-            _ => None,
-        };
-
-        self.delegate.borrow_mut().fake_read(
-            discr_place,
-            FakeReadCause::ForMatchedPlace(closure_def_id),
-            discr_place.hir_id,
-        );
         self.walk_pat(discr_place, arm.pat, arm.guard.is_some())?;
 
         if let Some(ref e) = arm.guard {
@@ -921,28 +814,20 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
         Ok(())
     }
 
-    /// Walks a pat that occurs in isolation (i.e., top-level of fn argument or
-    /// let binding, and *not* a match arm or nested pat.)
-    fn walk_irrefutable_pat(
-        &self,
-        discr_place: &PlaceWithHirId<'tcx>,
-        pat: &hir::Pat<'_>,
-    ) -> Result<(), Cx::Error> {
-        let closure_def_id = match discr_place.place.base {
-            PlaceBase::Upvar(upvar_id) => Some(upvar_id.closure_expr_id),
-            _ => None,
-        };
-
-        self.delegate.borrow_mut().fake_read(
-            discr_place,
-            FakeReadCause::ForLet(closure_def_id),
-            discr_place.hir_id,
-        );
-        self.walk_pat(discr_place, pat, false)?;
-        Ok(())
-    }
-
     /// The core driver for walking a pattern
+    ///
+    /// This should mirror how pattern-matching gets lowered to MIR, as
+    /// otherwise lowering will ICE when trying to resolve the upvars.
+    ///
+    /// However, it is okay to approximate it here by doing *more* accesses than
+    /// the actual MIR builder will, which is useful when some checks are too
+    /// cumbersome to perform here. For example, if after typeck it becomes
+    /// clear that only one variant of an enum is inhabited, and therefore a
+    /// read of the discriminant is not necessary, `walk_pat` will have
+    /// over-approximated the necessary upvar capture granularity.
+    ///
+    /// Do note that discrepancies like these do still create obscure corners
+    /// in the semantics of the language, and should be avoided if possible.
     #[instrument(skip(self), level = "debug")]
     fn walk_pat(
         &self,
@@ -952,6 +837,11 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
     ) -> Result<(), Cx::Error> {
         let tcx = self.cx.tcx();
         self.cat_pattern(discr_place.clone(), pat, &mut |place, pat| {
+            debug!("walk_pat: pat.kind={:?}", pat.kind);
+            let read_discriminant = || {
+                self.delegate.borrow_mut().borrow(place, discr_place.hir_id, BorrowKind::Immutable);
+            };
+
             match pat.kind {
                 PatKind::Binding(_, canonical_id, ..) => {
                     debug!("walk_pat: binding place={:?} pat={:?}", place, pat);
@@ -974,11 +864,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                     // binding when lowering pattern guards to ensure that the guard does not
                     // modify the scrutinee.
                     if has_guard {
-                        self.delegate.borrow_mut().borrow(
-                            place,
-                            discr_place.hir_id,
-                            BorrowKind::Immutable,
-                        );
+                        read_discriminant();
                     }
 
                     // It is also a borrow or copy/move of the value being matched.
@@ -1014,13 +900,73 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                 PatKind::Never => {
                     // A `!` pattern always counts as an immutable read of the discriminant,
                     // even in an irrefutable pattern.
-                    self.delegate.borrow_mut().borrow(
-                        place,
-                        discr_place.hir_id,
-                        BorrowKind::Immutable,
-                    );
+                    read_discriminant();
                 }
-                _ => {}
+                PatKind::Expr(PatExpr { kind: PatExprKind::Path(qpath), hir_id, span }) => {
+                    // A `Path` pattern is just a name like `Foo`. This is either a
+                    // named constant or else it refers to an ADT variant
+
+                    let res = self.cx.typeck_results().qpath_res(qpath, *hir_id);
+                    match res {
+                        Res::Def(DefKind::Const, _) | Res::Def(DefKind::AssocConst, _) => {
+                            // Named constants have to be equated with the value
+                            // being matched, so that's a read of the value being matched.
+                            //
+                            // FIXME: Does the MIR code skip this read when matching on a ZST?
+                            // If so, we can also skip it here.
+                            read_discriminant();
+                        }
+                        _ => {
+                            // Otherwise, this is a struct/enum variant, and so it's
+                            // only a read if we need to read the discriminant.
+                            if self.is_multivariant_adt(place.place.ty(), *span) {
+                                read_discriminant();
+                            }
+                        }
+                    }
+                }
+                PatKind::Expr(_) | PatKind::Range(..) => {
+                    // When matching against a literal or range, we need to
+                    // borrow the place to compare it against the pattern.
+                    //
+                    // Note that we do this read even if the range matches all
+                    // possible values, such as 0..=u8::MAX. This is because
+                    // we don't want to depend on consteval here.
+                    //
+                    // FIXME: What if the type being matched only has one
+                    // possible value?
+                    read_discriminant();
+                }
+                PatKind::Struct(..) | PatKind::TupleStruct(..) => {
+                    if self.is_multivariant_adt(place.place.ty(), pat.span) {
+                        read_discriminant();
+                    }
+                }
+                PatKind::Slice(lhs, wild, rhs) => {
+                    // We don't need to test the length if the pattern is `[..]`
+                    if matches!((lhs, wild, rhs), (&[], Some(_), &[]))
+                        // Arrays have a statically known size, so
+                        // there is no need to read their length
+                        || place.place.ty().peel_refs().is_array()
+                    {
+                        // No read necessary
+                    } else {
+                        read_discriminant();
+                    }
+                }
+                PatKind::Or(_)
+                | PatKind::Box(_)
+                | PatKind::Ref(..)
+                | PatKind::Guard(..)
+                | PatKind::Tuple(..)
+                | PatKind::Wild
+                | PatKind::Missing
+                | PatKind::Err(_) => {
+                    // If the PatKind is Or, Box, Ref, Guard, or Tuple, the relevant accesses
+                    // are made later as these patterns contains subpatterns.
+                    // If the PatKind is Missing, Wild or Err, any relevant accesses are made when processing
+                    // the other patterns that are part of the match
+                }
             }
 
             Ok(())
@@ -1904,6 +1850,20 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
         }
     }
 
+    /// Checks whether a type has multiple variants, and therefore, whether a
+    /// read of the discriminant might be necessary. Note that the actual MIR
+    /// builder code does a more specific check, filtering out variants that
+    /// happen to be uninhabited.
+    ///
+    /// Here, it is not practical to perform such a check, because inhabitedness
+    /// queries require typeck results, and typeck requires closure capture analysis.
+    ///
+    /// Moreover, the language is moving towards uninhabited variants still semantically
+    /// causing a discriminant read, so we *shouldn't* perform any such check.
+    ///
+    /// FIXME(never_patterns): update this comment once the aforementioned MIR builder
+    /// code is changed to be insensitive to inhhabitedness.
+    #[instrument(skip(self, span), level = "debug")]
     fn is_multivariant_adt(&self, ty: Ty<'tcx>, span: Span) -> bool {
         if let ty::Adt(def, _) = self.cx.structurally_resolve_type(span, ty).kind() {
             // Note that if a non-exhaustive SingleVariant is defined in another crate, we need
