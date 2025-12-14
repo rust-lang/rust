@@ -126,9 +126,10 @@ pub(crate) struct CoroutineTooManyParameters {
 
 #[derive(Diagnostic)]
 #[diag(ast_lowering_closure_cannot_be_static, code = E0697)]
-pub(crate) struct ClosureCannotBeStatic {
+pub(crate) struct ClosureCannotBeStatic<'a> {
     #[primary_span]
     pub fn_decl_span: Span,
+    pub modifier: &'a str,
 }
 
 #[derive(Diagnostic)]
