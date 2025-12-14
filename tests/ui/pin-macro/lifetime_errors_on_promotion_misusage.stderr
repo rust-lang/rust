@@ -10,7 +10,6 @@ LL |     stuff(phantom_pinned)
    |           -------------- borrow later used here
    |
    = note: consider using a `let` binding to create a longer lived value
-   = note: this error originates in the macro `pin` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0716]: temporary value dropped while borrowed
   --> $DIR/lifetime_errors_on_promotion_misusage.rs:18:30
@@ -24,7 +23,6 @@ LL |     };
    |     - temporary value is freed at the end of this statement
    |
    = note: consider using a `let` binding to create a longer lived value
-   = note: this error originates in the macro `pin` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 2 previous errors
 
