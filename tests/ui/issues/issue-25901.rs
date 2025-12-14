@@ -2,7 +2,7 @@ struct A;
 struct B;
 
 static S: &'static B = &A;
-//~^ ERROR cannot perform non-const deref coercion
+//~^ ERROR the trait bound `A: const Deref` is not satisfied
 
 use std::ops::Deref;
 
