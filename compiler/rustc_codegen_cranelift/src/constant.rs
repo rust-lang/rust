@@ -540,10 +540,7 @@ pub(crate) fn mir_operand_get_const_val<'tcx>(
     operand: &Operand<'tcx>,
 ) -> Option<ScalarInt> {
     match operand {
-        Operand::RuntimeChecks(checks) => {
-            let int = checks.value(fx.tcx.sess);
-            ScalarInt::try_from_uint(int, Size::from_bits(1))
-        }
+        Operand::RuntimeChecks(checks) => Some(checks.value(fx.tcx.sess).into()),
         Operand::Constant(const_) => eval_mir_constant(fx, const_).0.try_to_scalar_int(),
         // FIXME(rust-lang/rust#85105): Casts like `IMM8 as u32` result in the const being stored
         // inside a temporary before being passed to the intrinsic requiring the const argument.
