@@ -820,47 +820,47 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             };
 
             let mut suggs = vec![];
-            let lt_name = self.suggest_name_region(generic_param_scope, sub, &mut suggs);
-
-            if let Some((sp, suggestion_type)) = type_param_sugg_span
-                && suggestion_scope == type_scope
-            {
-                match suggestion_type {
-                    LifetimeSuggestion::NeedsPlus(open_paren_sp) => {
-                        let suggestion = format!(" + {lt_name}");
-                        if let Some(open_paren_sp) = open_paren_sp {
-                            suggs.push((open_paren_sp, "(".to_string()));
-                            suggs.push((sp, format!("){suggestion}")));
-                        } else {
-                            suggs.push((sp, suggestion));
+            if let Some(lt_name) = self.suggest_name_region(generic_param_scope, sub, &mut suggs) {
+                if let Some((sp, suggestion_type)) = type_param_sugg_span
+                    && suggestion_scope == type_scope
+                {
+                    match suggestion_type {
+                        LifetimeSuggestion::NeedsPlus(open_paren_sp) => {
+                            let suggestion = format!(" + {lt_name}");
+                            if let Some(open_paren_sp) = open_paren_sp {
+                                suggs.push((open_paren_sp, "(".to_string()));
+                                suggs.push((sp, format!("){suggestion}")));
+                            } else {
+                                suggs.push((sp, suggestion));
+                            }
                         }
+                        LifetimeSuggestion::NeedsColon => suggs.push((sp, format!(": {lt_name}"))),
+                        LifetimeSuggestion::HasColon => suggs.push((sp, format!(" {lt_name}"))),
                     }
-                    LifetimeSuggestion::NeedsColon => suggs.push((sp, format!(": {lt_name}"))),
-                    LifetimeSuggestion::HasColon => suggs.push((sp, format!(" {lt_name}"))),
+                } else if let GenericKind::Alias(ref p) = bound_kind
+                    && let ty::Projection = p.kind(self.tcx)
+                    && let DefKind::AssocTy = self.tcx.def_kind(p.def_id)
+                    && let Some(ty::ImplTraitInTraitData::Trait { .. }) =
+                        self.tcx.opt_rpitit_info(p.def_id)
+                {
+                    // The lifetime found in the `impl` is longer than the one on the RPITIT.
+                    // Do not suggest `<Type as Trait>::{opaque}: 'static`.
+                } else if let Some(generics) = self.tcx.hir_get_generics(suggestion_scope) {
+                    let pred = format!("{bound_kind}: {lt_name}");
+                    let suggestion = format!("{} {}", generics.add_where_or_trailing_comma(), pred);
+                    suggs.push((generics.tail_span_for_predicate_suggestion(), suggestion))
+                } else {
+                    let consider = format!("{msg} `{bound_kind}: {sub}`...");
+                    err.help(consider);
                 }
-            } else if let GenericKind::Alias(ref p) = bound_kind
-                && let ty::Projection = p.kind(self.tcx)
-                && let DefKind::AssocTy = self.tcx.def_kind(p.def_id)
-                && let Some(ty::ImplTraitInTraitData::Trait { .. }) =
-                    self.tcx.opt_rpitit_info(p.def_id)
-            {
-                // The lifetime found in the `impl` is longer than the one on the RPITIT.
-                // Do not suggest `<Type as Trait>::{opaque}: 'static`.
-            } else if let Some(generics) = self.tcx.hir_get_generics(suggestion_scope) {
-                let pred = format!("{bound_kind}: {lt_name}");
-                let suggestion = format!("{} {}", generics.add_where_or_trailing_comma(), pred);
-                suggs.push((generics.tail_span_for_predicate_suggestion(), suggestion))
-            } else {
-                let consider = format!("{msg} `{bound_kind}: {sub}`...");
-                err.help(consider);
-            }
 
-            if !suggs.is_empty() {
-                err.multipart_suggestion_verbose(
-                    msg,
-                    suggs,
-                    Applicability::MaybeIncorrect, // Issue #41966
-                );
+                if !suggs.is_empty() {
+                    err.multipart_suggestion_verbose(
+                        msg,
+                        suggs,
+                        Applicability::MaybeIncorrect, // Issue #41966
+                    );
+                }
             }
         }
 
@@ -908,7 +908,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         generic_param_scope: LocalDefId,
         lifetime: Region<'tcx>,
         add_lt_suggs: &mut Vec<(Span, String)>,
-    ) -> String {
+    ) -> Option<String> {
         struct LifetimeReplaceVisitor<'a> {
             needle: hir::LifetimeKind,
             new_lt: &'a str,
@@ -928,7 +928,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 Some(info) if !lifetime.is_named(self.tcx) => {
                     (info.region_def_id.expect_local(), info.scope)
                 }
-                _ => return lifetime.get_name_or_anon(self.tcx).to_string(),
+                _ => return Some(lifetime.get_name(self.tcx)?.to_string()),
             };
 
         let new_lt = {
@@ -974,7 +974,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             .unwrap_or_else(|| (ast_generics.span, format!("<{new_lt}>")));
         add_lt_suggs.push(sugg);
 
-        new_lt
+        Some(new_lt)
     }
 
     fn report_sub_sup_conflict(
