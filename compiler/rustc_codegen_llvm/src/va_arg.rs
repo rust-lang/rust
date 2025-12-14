@@ -7,7 +7,7 @@ use rustc_codegen_ssa::traits::{
 };
 use rustc_middle::ty::Ty;
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf};
-use rustc_target::spec::{Abi, Arch};
+use rustc_target::spec::{Abi, Arch, Env};
 
 use crate::builder::Builder;
 use crate::llvm::{Type, Value};
@@ -780,6 +780,91 @@ fn x86_64_sysv64_va_arg_from_memory<'ll, 'tcx>(
     mem_addr
 }
 
+fn emit_hexagon_va_arg<'ll, 'tcx>(
+    bx: &mut Builder<'_, 'll, 'tcx>,
+    list: OperandRef<'tcx, &'ll Value>,
+    target_ty: Ty<'tcx>,
+) -> &'ll Value {
+    // Implementation of va_arg for Hexagon musl target.
+    // Based on LLVM's HexagonBuiltinVaList implementation.
+    //
+    // struct __va_list_tag {
+    //   void *__current_saved_reg_area_pointer;
+    //   void *__saved_reg_area_end_pointer;
+    //   void *__overflow_area_pointer;
+    // };
+    //
+    // All variadic arguments are passed on the stack, but the musl implementation
+    //  uses a register save area for compatibility.
+    let va_list_addr = list.immediate();
+    let layout = bx.cx.layout_of(target_ty);
+    let ptr_align_abi = bx.tcx().data_layout.pointer_align().abi;
+    let ptr_size = bx.tcx().data_layout.pointer_size().bytes();
+
+    // Check if argument fits in register save area
+    let maybe_reg = bx.append_sibling_block("va_arg.maybe_reg");
+    let from_overflow = bx.append_sibling_block("va_arg.from_overflow");
+    let end = bx.append_sibling_block("va_arg.end");
+
+    // Load the three pointers from va_list
+    let current_ptr_addr = va_list_addr;
+    let end_ptr_addr = bx.inbounds_ptradd(va_list_addr, bx.const_usize(ptr_size));
+    let overflow_ptr_addr = bx.inbounds_ptradd(va_list_addr, bx.const_usize(2 * ptr_size));
+
+    let current_ptr = bx.load(bx.type_ptr(), current_ptr_addr, ptr_align_abi);
+    let end_ptr = bx.load(bx.type_ptr(), end_ptr_addr, ptr_align_abi);
+    let overflow_ptr = bx.load(bx.type_ptr(), overflow_ptr_addr, ptr_align_abi);
+
+    // Align current pointer based on argument type size (following LLVM's implementation)
+    // Arguments <= 32 bits (4 bytes) use 4-byte alignment, > 32 bits use 8-byte alignment
+    let type_size_bits = bx.cx.size_of(target_ty).bits();
+    let arg_align = if type_size_bits > 32 {
+        Align::from_bytes(8).unwrap()
+    } else {
+        Align::from_bytes(4).unwrap()
+    };
+    let aligned_current = round_pointer_up_to_alignment(bx, current_ptr, arg_align, bx.type_ptr());
+
+    // Calculate next pointer position (following LLVM's logic)
+    // Arguments <= 32 bits take 4 bytes, > 32 bits take 8 bytes
+    let arg_size = if type_size_bits > 32 { 8 } else { 4 };
+    let next_ptr = bx.inbounds_ptradd(aligned_current, bx.const_usize(arg_size));
+
+    // Check if argument fits in register save area
+    let fits_in_regs = bx.icmp(IntPredicate::IntULE, next_ptr, end_ptr);
+    bx.cond_br(fits_in_regs, maybe_reg, from_overflow);
+
+    // Load from register save area
+    bx.switch_to_block(maybe_reg);
+    let reg_value_addr = aligned_current;
+    // Update current pointer
+    bx.store(next_ptr, current_ptr_addr, ptr_align_abi);
+    bx.br(end);
+
+    // Load from overflow area (stack)
+    bx.switch_to_block(from_overflow);
+
+    // Align overflow pointer using the same alignment rules
+    let aligned_overflow =
+        round_pointer_up_to_alignment(bx, overflow_ptr, arg_align, bx.type_ptr());
+
+    let overflow_value_addr = aligned_overflow;
+    // Update overflow pointer - use the same size calculation
+    let next_overflow = bx.inbounds_ptradd(aligned_overflow, bx.const_usize(arg_size));
+    bx.store(next_overflow, overflow_ptr_addr, ptr_align_abi);
+
+    // IMPORTANT: Also update the current saved register area pointer to match
+    // This synchronizes the pointers when switching to overflow area
+    bx.store(next_overflow, current_ptr_addr, ptr_align_abi);
+    bx.br(end);
+
+    // Return the value
+    bx.switch_to_block(end);
+    let value_addr =
+        bx.phi(bx.type_ptr(), &[reg_value_addr, overflow_value_addr], &[maybe_reg, from_overflow]);
+    bx.load(layout.llvm_type(bx), value_addr, layout.align.abi)
+}
+
 fn emit_xtensa_va_arg<'ll, 'tcx>(
     bx: &mut Builder<'_, 'll, 'tcx>,
     list: OperandRef<'tcx, &'ll Value>,
@@ -964,6 +1049,7 @@ pub(super) fn emit_va_arg<'ll, 'tcx>(
         // This includes `target.is_like_darwin`, which on x86_64 targets is like sysv64.
         Arch::X86_64 => emit_x86_64_sysv64_va_arg(bx, addr, target_ty),
         Arch::Xtensa => emit_xtensa_va_arg(bx, addr, target_ty),
+        Arch::Hexagon if target.env == Env::Musl => emit_hexagon_va_arg(bx, addr, target_ty),
         // For all other architecture/OS combinations fall back to using
         // the LLVM va_arg instruction.
         // https://llvm.org/docs/LangRef.html#va-arg-instruction
