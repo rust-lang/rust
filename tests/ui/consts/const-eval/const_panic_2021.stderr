@@ -21,8 +21,6 @@ error[E0080]: evaluation panicked: not implemented
    |
 LL | const D: () = std::unimplemented!();
    |               ^^^^^^^^^^^^^^^^^^^^^ evaluation of `D` failed here
-   |
-   = note: this error originates in the macro `std::unimplemented` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0080]: evaluation panicked: hello
   --> $DIR/const_panic_2021.rs:18:15
@@ -53,8 +51,6 @@ error[E0080]: evaluation panicked: not implemented
    |
 LL | const D_CORE: () = core::unimplemented!();
    |                    ^^^^^^^^^^^^^^^^^^^^^^ evaluation of `D_CORE` failed here
-   |
-   = note: this error originates in the macro `core::unimplemented` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0080]: evaluation panicked: hello
   --> $DIR/const_panic_2021.rs:33:20

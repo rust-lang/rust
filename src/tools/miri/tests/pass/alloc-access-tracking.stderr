@@ -15,8 +15,6 @@ note: read access at ALLOC[0..1]
    |
 LL |         assert_eq!(*ptr, 42);
    |         ^^^^^^^^^^^^^^^^^^^^ tracking was triggered here
-   |
-   = note: this note originates in the macro `assert_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 note: freed allocation ALLOC
   --> RUSTLIB/alloc/src/boxed.rs:LL:CC
