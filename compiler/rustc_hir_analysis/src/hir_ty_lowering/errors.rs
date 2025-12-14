@@ -1810,5 +1810,7 @@ pub(crate) fn assoc_tag_str(assoc_tag: ty::AssocTag) -> &'static str {
         ty::AssocTag::Fn => "function",
         ty::AssocTag::Const => "constant",
         ty::AssocTag::Type => "type",
+        ty::AssocTag::AutoImpl => "automatic implementation",
+        ty::AssocTag::ExternImpl => "external implementation",
     }
 }

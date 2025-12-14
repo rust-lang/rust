@@ -11,6 +11,7 @@ use rustc_hir::{
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::span_bug;
 use rustc_middle::ty::{ResolverAstLowering, TyCtxt};
+use rustc_session::parse::feature_err;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::{DUMMY_SP, DesugaringKind, Ident, Span, Symbol, kw, sym};
 use smallvec::{SmallVec, smallvec};
@@ -388,6 +389,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     constness,
                 })
             }
+            ItemKind::AutoImpl(box AutoImpl { .. }) => todo!("we should implement lowering to HIR"),
             ItemKind::Trait(box Trait {
                 constness,
                 is_auto,
@@ -887,6 +889,48 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     true,
                 )
             }
+            AssocItemKind::AutoImpl(ai) => {
+                let tcx = self.tcx;
+                if !tcx.features().supertrait_auto_impl() {
+                    feature_err(
+                        &tcx.sess,
+                        sym::supertrait_auto_impl,
+                        i.span,
+                        "feature is under construction",
+                    )
+                    .emit();
+                }
+                let generics = tcx.arena.alloc(hir::Generics {
+                    has_where_clause_predicates: false,
+                    params: &[],
+                    predicates: &[],
+                    where_clause_span: DUMMY_SP,
+                    span: DUMMY_SP,
+                });
+                (
+                    Ident::dummy(),
+                    &*generics,
+                    hir::TraitItemKind::AutoImpl(
+                        tcx.arena.alloc(self.lower_poly_trait_ref_inner(
+                            &ai.generics.params,
+                            &TraitBoundModifiers {
+                                constness: BoundConstness::Never,
+                                asyncness: BoundAsyncness::Normal,
+                                polarity: match ai.of_trait.polarity {
+                                    ImplPolarity::Positive => BoundPolarity::Positive,
+                                    ImplPolarity::Negative(span) => BoundPolarity::Negative(span),
+                                },
+                            },
+                            &ai.of_trait.trait_ref,
+                            ai.of_trait.trait_ref.path.span,
+                            RelaxedBoundPolicy::Forbidden(RelaxedBoundForbiddenReason::SuperTrait),
+                            ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
+                        )),
+                        &[],
+                    ),
+                    false,
+                )
+            }
             AssocItemKind::Type(box TyAlias {
                 ident,
                 generics,
@@ -1090,6 +1134,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     ),
                 )
             }
+            AssocItemKind::AutoImpl(_) => todo!(),
             AssocItemKind::Delegation(box delegation) => {
                 let delegation_results = self.lower_delegation(delegation, i.id, is_in_trait_impl);
                 (

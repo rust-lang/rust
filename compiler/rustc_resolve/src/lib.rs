@@ -1332,6 +1332,7 @@ pub struct ResolverArenas<'ra> {
 }
 
 impl<'ra> ResolverArenas<'ra> {
+    /// Create a binding to a resolved name `res`, with a visibility `vis`
     fn new_res_binding(
         &'ra self,
         res: Res,

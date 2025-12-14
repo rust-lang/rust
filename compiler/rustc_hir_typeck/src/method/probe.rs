@@ -2443,7 +2443,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         match self.mode {
             Mode::MethodCall => item.is_method(),
             Mode::Path => match item.kind {
-                ty::AssocKind::Type { .. } => false,
+                ty::AssocKind::Type { .. } | ty::AssocKind::AutoImpl => false,
                 ty::AssocKind::Fn { .. } | ty::AssocKind::Const { .. } => true,
             },
         }

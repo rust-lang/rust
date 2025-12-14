@@ -352,6 +352,9 @@ pub fn dyn_compatibility_violations_for_assoc_item(
                 Vec::new()
             }
         }
+        ty::AssocKind::AutoImpl => {
+            vec![]
+        }
     }
 }
 

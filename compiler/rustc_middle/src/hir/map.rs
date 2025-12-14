@@ -711,6 +711,8 @@ impl<'tcx> TyCtxt<'tcx> {
                         _ => "method",
                     },
                     ImplItemKind::Type(_) => "associated type",
+                    ImplItemKind::AutoImpl(..) => "automatic implementation",
+                    ImplItemKind::ExternImpl(..) => "external implementation",
                 };
                 format!("{id} ({kind} `{}` in {})", ii.ident, path_str(ii.owner_id.def_id))
             }
@@ -722,6 +724,7 @@ impl<'tcx> TyCtxt<'tcx> {
                         _ => "trait method",
                     },
                     TraitItemKind::Type(..) => "associated type",
+                    TraitItemKind::AutoImpl(..) => "automatic implementation",
                 };
 
                 format!("{id} ({kind} `{}` in {})", ti.ident, path_str(ti.owner_id.def_id))

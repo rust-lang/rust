@@ -9,7 +9,7 @@ use std::sync::Arc;
 
 use rustc_ast::visit::{self, AssocCtxt, Visitor, WalkItemKind};
 use rustc_ast::{
-    self as ast, AssocItem, AssocItemKind, Block, ConstItem, Delegation, Fn, ForeignItem,
+    self as ast, AssocItem, AssocItemKind, AutoImpl, Block, ConstItem, Delegation, Fn, ForeignItem,
     ForeignItemKind, Inline, Item, ItemKind, NodeId, StaticItem, StmtKind, TraitAlias, TyAlias,
 };
 use rustc_attr_parsing as attr;
@@ -28,7 +28,7 @@ use rustc_middle::{bug, span_bug};
 use rustc_span::hygiene::{ExpnId, LocalExpnId, MacroKind};
 use rustc_span::{Ident, Macros20NormalizedIdent, Span, Symbol, kw, sym};
 use thin_vec::ThinVec;
-use tracing::debug;
+use tracing::{debug, instrument};
 
 use crate::Namespace::{MacroNS, TypeNS, ValueNS};
 use crate::def_collector::collect_definitions;
@@ -58,6 +58,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         }
     }
 
+    #[instrument(level = "debug", skip(self, parent))]
     fn define_local(
         &mut self,
         parent: Module<'ra>,
@@ -335,6 +336,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 | DefKind::GlobalAsm
                 | DefKind::Closure
                 | DefKind::SyntheticCoroutineBody
+                | DefKind::AutoImpl
                 | DefKind::Impl { .. },
                 _,
             )
@@ -960,7 +962,10 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
             }
 
             // These items do not add names to modules.
-            ItemKind::Impl { .. } | ItemKind::ForeignMod(..) | ItemKind::GlobalAsm(..) => {}
+            ItemKind::Impl(..)
+            | ItemKind::AutoImpl(..)
+            | ItemKind::ForeignMod(..)
+            | ItemKind::GlobalAsm(..) => {}
 
             ItemKind::MacroDef(..) | ItemKind::MacCall(_) | ItemKind::DelegationMac(..) => {
                 unreachable!()
@@ -1447,6 +1452,11 @@ impl<'a, 'ra, 'tcx> Visitor<'a> for BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
             | AssocItemKind::Fn(box Fn { ident, .. })
             | AssocItemKind::Delegation(box Delegation { ident, .. }) => (ident, ValueNS),
 
+            AssocItemKind::AutoImpl(box AutoImpl { .. }) => {
+                // This should be dummy id
+                (Ident::new(kw::Underscore, rustc_span::DUMMY_SP), TypeNS)
+            }
+
             AssocItemKind::Type(box TyAlias { ident, .. }) => (ident, TypeNS),
 
             AssocItemKind::MacCall(_) => {
@@ -1485,7 +1495,10 @@ impl<'a, 'ra, 'tcx> Visitor<'a> for BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
             self.r.feed_visibility(feed, vis);
         }
 
-        if ctxt == AssocCtxt::Trait {
+        if let AssocItemKind::AutoImpl(_) = item.kind {
+            // We do not define any local names.
+            // We will now recursively descend into `auto impl`
+        } else if let AssocCtxt::Trait = ctxt {
             let parent = self.parent_scope.module;
             let expansion = self.parent_scope.expansion;
             self.r.define_local(parent, ident, ns, self.res(def_id), vis, item.span, expansion);

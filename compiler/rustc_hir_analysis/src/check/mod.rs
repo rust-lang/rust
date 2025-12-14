@@ -566,6 +566,7 @@ fn suggestion_signature<'tcx>(
                 .unwrap_or_else(|| "value".to_string());
             format!("const {}: {} = {};", name, ty, val)
         }
+        ty::AssocKind::AutoImpl => todo!(),
     }
 }
 

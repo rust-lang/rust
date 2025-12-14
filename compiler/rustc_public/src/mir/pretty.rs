@@ -25,6 +25,7 @@ impl Display for AssocKind {
             AssocKind::Fn { has_self: false, .. } => write!(f, "associated function"),
             AssocKind::Const { .. } => write!(f, "associated const"),
             AssocKind::Type { .. } => write!(f, "associated type"),
+            AssocKind::AutoImpl => write!(f, "automatic implementation"),
         }
     }
 }

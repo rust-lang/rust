@@ -1642,6 +1642,7 @@ pub enum AssocKind {
     Const { name: Symbol },
     Fn { name: Symbol, has_self: bool },
     Type { data: AssocTypeData },
+    AutoImpl,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]

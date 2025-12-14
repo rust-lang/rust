@@ -647,6 +647,8 @@ declare_features! (
     (unstable, string_deref_patterns, "1.67.0", Some(87121)),
     /// Allows `super let` statements.
     (unstable, super_let, "1.88.0", Some(139076)),
+    /// Allows supertraits to be implemented with automatic defaults
+    (unstable, supertrait_auto_impl, "CURRENT_RUSTC_VERSION", Some(99999)),
     /// Allows subtrait items to shadow supertrait items.
     (unstable, supertrait_item_shadowing, "1.86.0", Some(89151)),
     /// Allows the use of target_feature when a function is marked inline(always).
