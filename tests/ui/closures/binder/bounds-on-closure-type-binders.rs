@@ -10,5 +10,4 @@ fn main() {
     // Regression test for issue #119067
     let _ = for<T: Trait> || -> () {};
     //~^ ERROR bounds cannot be used in this context
-    //~| ERROR late-bound type parameter not allowed on closures
 }
