@@ -61,12 +61,10 @@ declare_clippy_lint! {
     /// xs.push(123); // Vec::push is _not_ disallowed in the config.
     /// ```
     ///
-    /// Profiles allow scoping different disallow lists:
+    /// Disallowed profiles allow scoping different disallow lists:
     /// ```toml
-    /// [disallowed-methods-profiles.forward_pass]
-    /// paths = [
-    ///     { path = "crate::devices::Buffer::copy_to_host", reason = "Forward code must not touch host buffers" }
-    /// ]
+    /// [profiles.forward_pass]
+    /// disallowed-methods = [{ path = "crate::devices::Buffer::copy_to_host", reason = "Forward code must not touch host buffers" }]
     /// ```
     ///
     /// ```rust,ignore
@@ -109,14 +107,15 @@ impl DisallowedMethods {
         );
 
         let mut profiles = FxHashMap::default();
-        let mut names: Vec<_> = conf.disallowed_methods_profiles.keys().collect();
+        let mut names: Vec<_> = conf.profiles.keys().collect();
         names.sort();
         for name in names {
             let symbol = Symbol::intern(name.as_str());
-            let paths = conf
-                .disallowed_methods_profiles
-                .get(name)
-                .expect("profile entry must exist");
+            let profile = conf.profiles.get(name).expect("profile entry must exist");
+            let paths = profile.disallowed_methods.as_slice();
+            if paths.is_empty() {
+                continue;
+            }
             let (map, _) = create_disallowed_map(
                 tcx,
                 paths,
@@ -134,11 +133,7 @@ impl DisallowedMethods {
         }
 
         let mut known_profiles = FxHashSet::default();
-        for name in conf
-            .disallowed_methods_profiles
-            .keys()
-            .chain(conf.disallowed_types_profiles.keys())
-        {
+        for name in conf.profiles.keys() {
             known_profiles.insert(Symbol::intern(name.as_str()));
         }
 

@@ -1,7 +1,7 @@
 use crate::ClippyConfiguration;
 use crate::types::{
-    DisallowedPath, DisallowedPathWithoutReplacement, InherentImplLintScope, MacroMatcher, MatchLintBehaviour,
-    PubUnderscoreFieldsBehaviour, Rename, SourceItemOrdering, SourceItemOrderingCategory,
+    DisallowedPath, DisallowedPathWithoutReplacement, DisallowedProfile, InherentImplLintScope, MacroMatcher,
+    MatchLintBehaviour, PubUnderscoreFieldsBehaviour, Rename, SourceItemOrdering, SourceItemOrderingCategory,
     SourceItemOrderingModuleItemGroupings, SourceItemOrderingModuleItemKind, SourceItemOrderingTraitAssocItemKind,
     SourceItemOrderingTraitAssocItemKinds, SourceItemOrderingWithinModuleItemGroupings,
 };
@@ -229,7 +229,7 @@ macro_rules! parse_conf_value {
         $errors:expr,
         $file:expr,
         $field_span:expr,
-        profile @[$($profile:expr)?],
+        profiles @[$($profiles:expr)?],
         disallowed @[$($disallowed:expr)?]
     ) => {
         parse_conf_value_impl!(
@@ -238,29 +238,39 @@ macro_rules! parse_conf_value {
             $errors,
             $file,
             $field_span,
-            ($($profile)?),
+            ($($profiles)?),
             ($($disallowed)?)
         )
     };
 }
 
 macro_rules! parse_conf_value_impl {
-    ($map:expr, $ty:ty, $errors:expr, $file:expr, $field_span:expr, (), ()) => {
+    ($map:expr, $ty:ty, $errors:expr, $file:expr, $field_span:expr, (), ()) => {{
+        let _ = &$field_span;
         deserialize!($map, $ty, $errors, $file)
+    }};
+    ($map:expr, $ty:ty, $errors:expr, $file:expr, $field_span:expr, ($profiles:expr), ()) => {
+        deserialize_profiles!($map, $errors, $file, $field_span)
     };
-    ($map:expr, $ty:ty, $errors:expr, $file:expr, $field_span:expr, ($profile:expr), ()) => {
-        deserialize_profiles!($map, $errors, $file, $field_span, $profile)
-    };
-    ($map:expr, $ty:ty, $errors:expr, $file:expr, $field_span:expr, (), ($disallowed:expr)) => {
+    ($map:expr, $ty:ty, $errors:expr, $file:expr, $field_span:expr, (), ($disallowed:expr)) => {{
+        let _ = &$field_span;
         deserialize!($map, $ty, $errors, $file, $disallowed)
-    };
-    ($map:expr, $ty:ty, $errors:expr, $file:expr, $field_span:expr, ($profile:expr), ($disallowed:expr)) => {
-        compile_error!("field cannot specify both disallowed profile table and disallowed path attributes")
+    }};
+    (
+        $map:expr,
+        $ty:ty,
+        $errors:expr,
+        $file:expr,
+        $field_span:expr,
+        ($profiles:expr),
+        ($disallowed:expr)
+    ) => {
+        compile_error!("field cannot specify both profiles and disallowed-paths attributes")
     };
 }
 
 macro_rules! deserialize_profiles {
-    ($map:expr, $errors:expr, $file:expr, $field_span:expr, $replacements_allowed:expr) => {{
+    ($map:expr, $errors:expr, $file:expr, $field_span:expr) => {{
         let raw_value = $map.next_value::<toml::Value>()?;
         let value_span = $field_span.clone();
         let toml::Value::Table(table) = raw_value else {
@@ -273,8 +283,7 @@ macro_rules! deserialize_profiles {
             continue;
         };
 
-        let map =
-            parse_disallowed_profiles::<{ $replacements_allowed }>(table, $file, value_span.clone(), &mut $errors);
+        let map = parse_profiles(table, $file, value_span.clone(), &mut $errors);
 
         (map, value_span)
     }};
@@ -286,7 +295,7 @@ macro_rules! define_Conf {
         $(#[conf_deprecated($dep:literal, $new_conf:ident)])?
         $(#[default_text = $default_text:expr])?
         $(#[disallowed_paths_allow_replacements = $replacements_allowed:expr])?
-        $(#[disallowed_paths_profile(replacements_allowed = $profile_replacements_allowed:expr)])?
+        $(#[profiles = $profiles:expr])?
         $(#[lints($($for_lints:ident),* $(,)?)])?
         $name:ident: $ty:ty = $default:expr,
     )*) => {
@@ -341,7 +350,7 @@ macro_rules! define_Conf {
 
                     match field {
                         $(Field::$name => {
-                            let _field_span = name.span();
+                            let field_span = name.span();
                             // Is this a deprecated field, i.e., is `$dep` set? If so, push a warning.
                             $(warnings.push(ConfError::spanned(self.0, format!("deprecated field `{}`. {}", name.get_ref(), $dep), None, name.span()));)?
                             let (value, value_span) = parse_conf_value!(
@@ -349,8 +358,10 @@ macro_rules! define_Conf {
                                 $ty,
                                 errors,
                                 self.0,
-                                _field_span,
-                                profile @[$($profile_replacements_allowed)?],
+                                field_span,
+                                // Disallowed-profile table parsing is special-cased to preserve spans for
+                                // diagnostics in disallowed-path entries.
+                                profiles @[$($profiles)?],
                                 disallowed @[$($replacements_allowed)?]
                             );
                             // Was this field set previously?
@@ -409,12 +420,12 @@ fn span_from_toml_range(file: &SourceFile, span: Range<usize>) -> Span {
     )
 }
 
-fn parse_disallowed_profiles<const REPLACEMENT_ALLOWED: bool>(
+fn parse_profiles(
     table: toml::value::Table,
     file: &SourceFile,
     value_span: Range<usize>,
     errors: &mut Vec<ConfError>,
-) -> FxHashMap<String, Vec<DisallowedPath<REPLACEMENT_ALLOWED>>> {
+) -> FxHashMap<String, DisallowedProfile> {
     let mut profiles = FxHashMap::default();
     let config_span = span_from_toml_range(file, value_span.clone());
 
@@ -422,21 +433,43 @@ fn parse_disallowed_profiles<const REPLACEMENT_ALLOWED: bool>(
         let toml::Value::Table(mut profile_table) = profile_value else {
             errors.push(ConfError::spanned(
                 file,
-                format!("invalid profile `{profile_name}`: expected table with `paths` entry"),
+                format!("invalid profile `{profile_name}`: expected table"),
                 None,
                 value_span.clone(),
             ));
             continue;
         };
 
-        let Some(paths_value) = profile_table.remove("paths") else {
-            errors.push(ConfError::spanned(
+        let disallowed_methods = match profile_table
+            .remove("disallowed-methods")
+            .or_else(|| profile_table.remove("disallowed_methods"))
+        {
+            Some(value) => parse_profile_list(
                 file,
-                format!("profile `{profile_name}` missing `paths` entry"),
-                None,
+                &profile_name,
+                "disallowed-methods",
+                value,
                 value_span.clone(),
-            ));
-            continue;
+                config_span,
+                errors,
+            ),
+            None => Vec::new(),
+        };
+
+        let disallowed_types = match profile_table
+            .remove("disallowed-types")
+            .or_else(|| profile_table.remove("disallowed_types"))
+        {
+            Some(value) => parse_profile_list(
+                file,
+                &profile_name,
+                "disallowed-types",
+                value,
+                value_span.clone(),
+                config_span,
+                errors,
+            ),
+            None => Vec::new(),
         };
 
         if !profile_table.is_empty() {
@@ -449,39 +482,57 @@ fn parse_disallowed_profiles<const REPLACEMENT_ALLOWED: bool>(
             ));
         }
 
-        let toml::Value::Array(entries) = paths_value else {
-            errors.push(ConfError::spanned(
-                file,
-                format!("profile `{profile_name}`: `paths` must be an array"),
-                None,
-                value_span.clone(),
-            ));
-            continue;
-        };
-
-        let mut disallowed = Vec::with_capacity(entries.len());
-        for entry in entries {
-            match DisallowedPath::<REPLACEMENT_ALLOWED>::deserialize(entry.clone()) {
-                Ok(mut path) => {
-                    path.set_span(config_span);
-                    disallowed.push(path);
-                },
-                Err(err) => errors.push(ConfError::spanned(
-                    file,
-                    format!(
-                        "profile `{profile_name}`: {}",
-                        err.to_string().replace('\n', " ").trim()
-                    ),
-                    None,
-                    value_span.clone(),
-                )),
-            }
-        }
-
-        profiles.insert(profile_name, disallowed);
+        profiles.insert(
+            profile_name,
+            DisallowedProfile {
+                disallowed_methods,
+                disallowed_types,
+            },
+        );
     }
 
     profiles
+}
+
+fn parse_profile_list(
+    file: &SourceFile,
+    profile_name: &str,
+    key_name: &str,
+    value: toml::Value,
+    value_span: Range<usize>,
+    config_span: Span,
+    errors: &mut Vec<ConfError>,
+) -> Vec<DisallowedPath> {
+    let toml::Value::Array(entries) = value else {
+        errors.push(ConfError::spanned(
+            file,
+            format!("profile `{profile_name}`: `{key_name}` must be an array"),
+            None,
+            value_span,
+        ));
+        return Vec::new();
+    };
+
+    let mut disallowed = Vec::with_capacity(entries.len());
+    for entry in entries {
+        match DisallowedPath::deserialize(entry.clone()) {
+            Ok(mut path) => {
+                path.set_span(config_span);
+                disallowed.push(path);
+            },
+            Err(err) => errors.push(ConfError::spanned(
+                file,
+                format!(
+                    "profile `{profile_name}`: {}",
+                    err.to_string().replace('\n', " ").trim()
+                ),
+                None,
+                value_span.clone(),
+            )),
+        }
+    }
+
+    disallowed
 }
 
 define_Conf! {
@@ -766,24 +817,6 @@ define_Conf! {
     #[disallowed_paths_allow_replacements = true]
     #[lints(disallowed_methods)]
     disallowed_methods: Vec<DisallowedPath> = Vec::new(),
-    /// Named profiles of disallowed methods, keyed by profile name.
-    ///
-    /// #### Example
-    ///
-    /// ```toml
-    /// [disallowed-methods-profiles.forward_pass]
-    /// paths = [
-    ///     { path = "crate::io::DeviceBuffer::copy_to_host", reason = "Forward code stays on the device" }
-    /// ]
-    ///
-    /// [disallowed-methods-profiles.export]
-    /// paths = [
-    ///     { path = "crate::io::DeviceBuffer::into_host_slice" }
-    /// ]
-    /// ```
-    #[disallowed_paths_profile(replacements_allowed = true)]
-    #[lints(disallowed_methods)]
-    disallowed_methods_profiles: FxHashMap<String, Vec<DisallowedPath>> = FxHashMap::default(),
     /// The list of disallowed names to lint about. NB: `bar` is not here since it has legitimate uses. The value
     /// `".."` can be used as part of the list to indicate that the configured values should be appended to the
     /// default configuration of Clippy. By default, any configuration will replace the default value.
@@ -800,19 +833,6 @@ define_Conf! {
     #[disallowed_paths_allow_replacements = true]
     #[lints(disallowed_types)]
     disallowed_types: Vec<DisallowedPath> = Vec::new(),
-    /// Named profiles of disallowed types, keyed by profile name.
-    ///
-    /// #### Example
-    ///
-    /// ```toml
-    /// [disallowed-types-profiles.forward_pass]
-    /// paths = [
-    ///     { path = "crate::io::HostBuffer", reason = "Prefer device buffers" }
-    /// ]
-    /// ```
-    #[disallowed_paths_profile(replacements_allowed = true)]
-    #[lints(disallowed_types)]
-    disallowed_types_profiles: FxHashMap<String, Vec<DisallowedPath>> = FxHashMap::default(),
     /// The list of words this lint should not consider as identifiers needing ticks. The value
     /// `".."` can be used as part of the list to indicate that the configured values should be appended to the
     /// default configuration of Clippy. By default, any configuration will replace the default value. For example:
@@ -1014,6 +1034,21 @@ define_Conf! {
     /// The minimum size (in bytes) to consider a type for passing by reference instead of by value.
     #[lints(large_types_passed_by_value)]
     pass_by_value_size_limit: u64 = 256,
+    /// Named profiles of disallowed items (unrelated to Cargo build profiles).
+    ///
+    /// #### Example
+    ///
+    /// ```toml
+    /// [profiles.persistent]
+    /// disallowed-methods = [{ path = "std::env::temp_dir" }]
+    /// disallowed-types = [{ path = "std::time::Instant", reason = "use our custom time API" }]
+    ///
+    /// [profiles.single_threaded]
+    /// disallowed-methods = [{ path = "std::thread::spawn" }]
+    /// ```
+    #[profiles = true]
+    #[lints(disallowed_methods, disallowed_types)]
+    profiles: FxHashMap<String, DisallowedProfile> = FxHashMap::default(),
     /// Lint "public" fields in a struct that are prefixed with an underscore based on their
     /// exported visibility, or whether they are marked as "pub".
     #[lints(pub_underscore_fields)]

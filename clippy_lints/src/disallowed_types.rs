@@ -55,12 +55,10 @@ declare_clippy_lint! {
     /// use std::collections::HashMap;
     /// ```
     ///
-    /// Profiles can scope lists to specific modules:
+    /// Disallowed profiles can scope lists to specific modules:
     /// ```toml
-    /// [disallowed-types-profiles.forward_pass]
-    /// paths = [
-    ///     { path = "crate::buffers::HostBuffer", reason = "Prefer device buffers in forward computations" }
-    /// ]
+    /// [profiles.forward_pass]
+    /// disallowed-types = [{ path = "crate::buffers::HostBuffer", reason = "Prefer device buffers in forward computations" }]
     /// ```
     ///
     /// ```rust,ignore
@@ -109,23 +107,20 @@ impl DisallowedTypes {
         let default = TypeLookup::from_config(tcx, &conf.disallowed_types);
 
         let mut profiles = FxHashMap::default();
-        let mut names: Vec<_> = conf.disallowed_types_profiles.keys().collect();
+        let mut names: Vec<_> = conf.profiles.keys().collect();
         names.sort();
         for name in names {
             let symbol = Symbol::intern(name.as_str());
-            let paths = conf
-                .disallowed_types_profiles
-                .get(name)
-                .expect("profile entry must exist");
+            let profile = conf.profiles.get(name).expect("profile entry must exist");
+            let paths = profile.disallowed_types.as_slice();
+            if paths.is_empty() {
+                continue;
+            }
             profiles.insert(symbol, TypeLookup::from_config(tcx, paths));
         }
 
         let mut known_profiles = FxHashSet::default();
-        for name in conf
-            .disallowed_types_profiles
-            .keys()
-            .chain(conf.disallowed_methods_profiles.keys())
-        {
+        for name in conf.profiles.keys() {
             known_profiles.insert(Symbol::intern(name.as_str()));
         }
 

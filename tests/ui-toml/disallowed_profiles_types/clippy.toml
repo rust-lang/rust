@@ -2,12 +2,12 @@ disallowed-types = [
     { path = "std::rc::Rc" }
 ]
 
-[disallowed-types-profiles.forward_pass]
-paths = [
+[profiles.forward_pass]
+disallowed-types = [
     { path = "std::cell::RefCell", reason = "Prefer shared references" }
 ]
 
-[disallowed-types-profiles.export]
-paths = [
+[profiles.export]
+disallowed-types = [
     { path = "std::sync::Mutex" }
 ]

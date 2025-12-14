@@ -573,30 +573,6 @@ The list of disallowed methods, written as fully qualified paths.
 * [`disallowed_methods`](https://rust-lang.github.io/rust-clippy/master/index.html#disallowed_methods)
 
 
-## `disallowed-methods-profiles`
-Named profiles of disallowed methods, keyed by profile name.
-
-#### Example
-
-```toml
-[disallowed-methods-profiles.forward_pass]
-paths = [
-    { path = "crate::io::DeviceBuffer::copy_to_host", reason = "Forward code stays on the device" }
-]
-
-[disallowed-methods-profiles.export]
-paths = [
-    { path = "crate::io::DeviceBuffer::into_host_slice" }
-]
-```
-
-**Default Value:** `{}`
-
----
-**Affected lints:**
-* [`disallowed_methods`](https://rust-lang.github.io/rust-clippy/master/index.html#disallowed_methods)
-
-
 ## `disallowed-names`
 The list of disallowed names to lint about. NB: `bar` is not here since it has legitimate uses. The value
 `".."` can be used as part of the list to indicate that the configured values should be appended to the
@@ -620,25 +596,6 @@ The list of disallowed types, written as fully qualified paths.
   if the path doesn't exist, instead of emitting an error
 
 **Default Value:** `[]`
-
----
-**Affected lints:**
-* [`disallowed_types`](https://rust-lang.github.io/rust-clippy/master/index.html#disallowed_types)
-
-
-## `disallowed-types-profiles`
-Named profiles of disallowed types, keyed by profile name.
-
-#### Example
-
-```toml
-[disallowed-types-profiles.forward_pass]
-paths = [
-    { path = "crate::io::HostBuffer", reason = "Prefer device buffers" }
-]
-```
-
-**Default Value:** `{}`
 
 ---
 **Affected lints:**
@@ -1027,6 +984,28 @@ The minimum size (in bytes) to consider a type for passing by reference instead 
 ---
 **Affected lints:**
 * [`large_types_passed_by_value`](https://rust-lang.github.io/rust-clippy/master/index.html#large_types_passed_by_value)
+
+
+## `profiles`
+Named profiles of disallowed items (unrelated to Cargo build profiles).
+
+#### Example
+
+```toml
+[profiles.persistent]
+disallowed-methods = [{ path = "std::env::temp_dir" }]
+disallowed-types = [{ path = "std::time::Instant", reason = "use our custom time API" }]
+
+[profiles.single_threaded]
+disallowed-methods = [{ path = "std::thread::spawn" }]
+```
+
+**Default Value:** `{}`
+
+---
+**Affected lints:**
+* [`disallowed_methods`](https://rust-lang.github.io/rust-clippy/master/index.html#disallowed_methods)
+* [`disallowed_types`](https://rust-lang.github.io/rust-clippy/master/index.html#disallowed_types)
 
 
 ## `pub-underscore-fields-behavior`

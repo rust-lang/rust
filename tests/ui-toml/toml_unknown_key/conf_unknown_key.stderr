@@ -41,10 +41,8 @@ error: error reading Clippy's configuration file: unknown field `foobar`, expect
            disallowed-fields
            disallowed-macros
            disallowed-methods
-           disallowed-methods-profiles
            disallowed-names
            disallowed-types
-           disallowed-types-profiles
            doc-valid-idents
            enable-raw-pointer-heuristic-for-send
            enforce-iter-loop-reborrow
@@ -72,6 +70,7 @@ error: error reading Clippy's configuration file: unknown field `foobar`, expect
            module-items-ordered-within-groupings
            msrv
            pass-by-value-size-limit
+           profiles
            pub-underscore-fields-behavior
            recursive-self-in-type-definitions
            semicolon-inside-block-ignore-singleline
@@ -144,10 +143,8 @@ error: error reading Clippy's configuration file: unknown field `barfoo`, expect
            disallowed-fields
            disallowed-macros
            disallowed-methods
-           disallowed-methods-profiles
            disallowed-names
            disallowed-types
-           disallowed-types-profiles
            doc-valid-idents
            enable-raw-pointer-heuristic-for-send
            enforce-iter-loop-reborrow
@@ -175,6 +172,7 @@ error: error reading Clippy's configuration file: unknown field `barfoo`, expect
            module-items-ordered-within-groupings
            msrv
            pass-by-value-size-limit
+           profiles
            pub-underscore-fields-behavior
            recursive-self-in-type-definitions
            semicolon-inside-block-ignore-singleline
@@ -247,10 +245,8 @@ error: error reading Clippy's configuration file: unknown field `allow_mixed_uni
            disallowed-fields
            disallowed-macros
            disallowed-methods
-           disallowed-methods-profiles
            disallowed-names
            disallowed-types
-           disallowed-types-profiles
            doc-valid-idents
            enable-raw-pointer-heuristic-for-send
            enforce-iter-loop-reborrow
@@ -278,6 +274,7 @@ error: error reading Clippy's configuration file: unknown field `allow_mixed_uni
            module-items-ordered-within-groupings
            msrv
            pass-by-value-size-limit
+           profiles
            pub-underscore-fields-behavior
            recursive-self-in-type-definitions
            semicolon-inside-block-ignore-singleline
