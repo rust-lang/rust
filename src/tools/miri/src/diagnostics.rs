@@ -3,8 +3,8 @@ use std::num::NonZero;
 use std::sync::Mutex;
 
 use rustc_abi::{Align, Size};
+use rustc_data_structures::fx::{FxBuildHasher, FxHashSet};
 use rustc_errors::{Diag, DiagMessage, Level};
-use rustc_hash::FxHashSet;
 use rustc_span::{DUMMY_SP, Span, SpanData, Symbol};
 
 use crate::borrow_tracker::stacked_borrows::diagnostics::TagHistory;
@@ -899,6 +899,6 @@ pub struct SpanDedupDiagnostic(Mutex<FxHashSet<Span>>);
 
 impl SpanDedupDiagnostic {
     pub const fn new() -> Self {
-        Self(Mutex::new(FxHashSet::with_hasher(rustc_hash::FxBuildHasher)))
+        Self(Mutex::new(FxHashSet::with_hasher(FxBuildHasher)))
     }
 }

@@ -6,7 +6,7 @@ use std::{cmp, iter};
 use rand::RngCore;
 use rustc_abi::{Align, ExternAbi, FieldIdx, FieldsShape, Size, Variants};
 use rustc_apfloat::Float;
-use rustc_hash::FxHashSet;
+use rustc_data_structures::fx::{FxBuildHasher, FxHashSet};
 use rustc_hir::Safety;
 use rustc_hir::def::{DefKind, Namespace};
 use rustc_hir::def_id::{CRATE_DEF_INDEX, CrateNum, DefId, LOCAL_CRATE};
@@ -663,7 +663,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             RejectOpWith::WarningWithoutBacktrace => {
                 // Deduplicate these warnings *by shim* (not by span)
                 static DEDUP: Mutex<FxHashSet<String>> =
-                    Mutex::new(FxHashSet::with_hasher(rustc_hash::FxBuildHasher));
+                    Mutex::new(FxHashSet::with_hasher(FxBuildHasher));
                 let mut emitted_warnings = DEDUP.lock().unwrap();
                 if !emitted_warnings.contains(op_name) {
                     // First time we are seeing this.
