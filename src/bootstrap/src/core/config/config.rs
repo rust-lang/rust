@@ -188,6 +188,7 @@ pub struct Config {
 
     // gcc codegen options
     pub gcc_ci_mode: GccCiMode,
+    pub libgccjit_libs_dir: Option<PathBuf>,
 
     // rust codegen options
     pub rust_optimize: RustOptimize,
@@ -620,7 +621,10 @@ impl Config {
             vendor: dist_vendor,
         } = toml.dist.unwrap_or_default();
 
-        let Gcc { download_ci_gcc: gcc_download_ci_gcc } = toml.gcc.unwrap_or_default();
+        let Gcc {
+            download_ci_gcc: gcc_download_ci_gcc,
+            libgccjit_libs_dir: gcc_libgccjit_libs_dir,
+        } = toml.gcc.unwrap_or_default();
 
         if rust_bootstrap_override_lld.is_some() && rust_bootstrap_override_lld_legacy.is_some() {
             panic!(
@@ -1346,6 +1350,7 @@ impl Config {
             keep_stage: flags_keep_stage,
             keep_stage_std: flags_keep_stage_std,
             libdir: install_libdir.map(PathBuf::from),
+            libgccjit_libs_dir: gcc_libgccjit_libs_dir,
             library_docs_private_items: build_library_docs_private_items.unwrap_or(false),
             lld_enabled,
             lldb: build_lldb.map(PathBuf::from),

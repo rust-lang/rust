@@ -21,6 +21,7 @@ use tracing::instrument;
 
 use crate::core::build_steps::compile::{get_codegen_backend_file, normalize_codegen_backend_name};
 use crate::core::build_steps::doc::DocumentationFormat;
+use crate::core::build_steps::gcc::GccTargetPair;
 use crate::core::build_steps::tool::{
     self, RustcPrivateCompilers, ToolTargetBuildMode, get_tool_target_compiler,
 };
@@ -2856,8 +2857,9 @@ impl Step for Gcc {
 
     fn run(self, builder: &Builder<'_>) -> Self::Output {
         let tarball = Tarball::new(builder, "gcc", &self.target.triple);
-        let output = builder.ensure(super::gcc::Gcc { target: self.target });
-        tarball.add_file(&output.libgccjit, "lib", FileType::NativeLibrary);
+        let output = builder
+            .ensure(super::gcc::Gcc { target_pair: GccTargetPair::for_native_build(self.target) });
+        tarball.add_file(output.libgccjit(), "lib", FileType::NativeLibrary);
         tarball.generate()
     }
 

@@ -601,4 +601,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Info,
         summary: "New options `rust.rustflags` for all targets and per-target `rustflags` that will pass specified flags to rustc for all stages. Target-specific flags override global `rust.rustflags` ones.",
     },
+    ChangeInfo {
+        change_id: 149354,
+        severity: ChangeSeverity::Info,
+        summary: "New option `gcc.libgccjit-libs-dir` to specify which libgccjit.so to use per target.",
+    },
 ];
