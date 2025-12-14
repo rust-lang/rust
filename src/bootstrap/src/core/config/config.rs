@@ -169,6 +169,7 @@ pub struct Config {
     pub llvm_link_jobs: Option<u32>,
     pub llvm_version_suffix: Option<String>,
     pub llvm_use_linker: Option<String>,
+    pub llvm_clang_dir: Option<PathBuf>,
     pub llvm_allow_old_toolchain: bool,
     pub llvm_polly: bool,
     pub llvm_clang: bool,
@@ -290,6 +291,7 @@ pub struct Config {
     pub miri_info: channel::GitInfo,
     pub rustfmt_info: channel::GitInfo,
     pub enzyme_info: channel::GitInfo,
+    pub offload_info: channel::GitInfo,
     pub in_tree_llvm_info: channel::GitInfo,
     pub in_tree_gcc_info: channel::GitInfo,
 
@@ -601,6 +603,7 @@ impl Config {
             ldflags: llvm_ldflags,
             use_libcxx: llvm_use_libcxx,
             use_linker: llvm_use_linker,
+            clang_dir: llvm_clang_dir,
             allow_old_toolchain: llvm_allow_old_toolchain,
             offload: llvm_offload,
             polly: llvm_polly,
@@ -1257,6 +1260,8 @@ impl Config {
         let in_tree_gcc_info = git_info(&exec_ctx, false, &src.join("src/gcc"));
         let in_tree_llvm_info = git_info(&exec_ctx, false, &src.join("src/llvm-project"));
         let enzyme_info = git_info(&exec_ctx, omit_git_hash, &src.join("src/tools/enzyme"));
+        let offload_info =
+            git_info(&exec_ctx, omit_git_hash, &src.join("src/llvm-project/offload"));
         let miri_info = git_info(&exec_ctx, omit_git_hash, &src.join("src/tools/miri"));
         let rust_analyzer_info =
             git_info(&exec_ctx, omit_git_hash, &src.join("src/tools/rust-analyzer"));
@@ -1356,6 +1361,7 @@ impl Config {
             llvm_cflags,
             llvm_clang: llvm_clang.unwrap_or(false),
             llvm_clang_cl,
+            llvm_clang_dir: llvm_clang_dir.map(PathBuf::from),
             llvm_cxxflags,
             llvm_enable_warnings: llvm_enable_warnings.unwrap_or(false),
             llvm_enzyme: llvm_enzyme.unwrap_or(false),
@@ -1396,6 +1402,7 @@ impl Config {
             musl_root: rust_musl_root.map(PathBuf::from),
             ninja_in_file: llvm_ninja.unwrap_or(true),
             nodejs: build_nodejs.map(PathBuf::from),
+            offload_info,
             omit_git_hash,
             on_fail: flags_on_fail,
             optimized_compiler_builtins,

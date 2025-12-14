@@ -601,4 +601,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Info,
         summary: "New options `rust.rustflags` for all targets and per-target `rustflags` that will pass specified flags to rustc for all stages. Target-specific flags override global `rust.rustflags` ones.",
     },
+    ChangeInfo {
+        change_id: 148671,
+        severity: ChangeSeverity::Info,
+        summary: "New option `llvm.offload-clang-dir` to allow building an in-tree llvm offload and openmp runtime with an external clang.",
+    },
 ];
