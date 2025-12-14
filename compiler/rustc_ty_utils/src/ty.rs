@@ -332,7 +332,11 @@ fn unsizing_params_for_adt<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> DenseBitSe
     // Ensure none of the other fields mention the parameters used
     // in unsizing.
     for field in prefix_fields {
-        for arg in tcx.type_of(field.did).instantiate_identity().walk() {
+        let field_ty = tcx.type_of(field.did).instantiate_identity();
+        if field_ty.is_phantom_data() {
+            continue;
+        }
+        for arg in field_ty.walk() {
             if let Some(i) = maybe_unsizing_param_idx(arg) {
                 unsizing_params.remove(i);
             }
