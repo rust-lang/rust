@@ -64,6 +64,16 @@ impl Instant {
 }
 
 impl SystemTime {
+    pub const MAX: SystemTime = SystemTime {
+        t: c::FILETIME {
+            dwLowDateTime: (i64::MAX & 0xFFFFFFFF) as u32,
+            dwHighDateTime: (i64::MAX >> 32) as u32,
+        },
+    };
+
+    pub const MIN: SystemTime =
+        SystemTime { t: c::FILETIME { dwLowDateTime: 0, dwHighDateTime: 0 } };
+
     pub fn now() -> SystemTime {
         unsafe {
             let mut t: SystemTime = mem::zeroed();
@@ -101,8 +111,13 @@ impl SystemTime {
     }
 
     pub fn checked_sub_duration(&self, other: &Duration) -> Option<SystemTime> {
-        let intervals = self.intervals().checked_sub(checked_dur2intervals(other)?)?;
-        Some(SystemTime::from_intervals(intervals))
+        // Windows does not support times before 1601, hence why we don't
+        // support negatives. In order to tackle this, we try to convert the
+        // resulting value into an u64, which should obviously fail in the case
+        // that the value is below zero.
+        let intervals: u64 =
+            self.intervals().checked_sub(checked_dur2intervals(other)?)?.try_into().ok()?;
+        Some(SystemTime::from_intervals(intervals as i64))
     }
 }
 
