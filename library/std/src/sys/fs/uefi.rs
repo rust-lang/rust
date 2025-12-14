@@ -22,9 +22,16 @@ pub struct FileAttr {
     created: Option<SystemTime>,
 }
 
-pub struct ReadDir(!);
+pub struct ReadDir {
+    file: uefi_fs::File,
+    path: PathBuf,
+}
 
-pub struct DirEntry(!);
+pub struct DirEntry {
+    attr: FileAttr,
+    file_name: OsString,
+    path: PathBuf,
+}
 
 #[derive(Clone, Debug)]
 pub struct OpenOptions {
@@ -145,8 +152,10 @@ impl FileType {
 }
 
 impl fmt::Debug for ReadDir {
-    fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.0
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut b = f.debug_struct("ReadDir");
+        b.field("path", &self.path);
+        b.finish()
     }
 }
 
@@ -154,25 +163,35 @@ impl Iterator for ReadDir {
     type Item = io::Result<DirEntry>;
 
     fn next(&mut self) -> Option<io::Result<DirEntry>> {
-        self.0
+        match self.file.read_dir_entry() {
+            Ok(None) => None,
+            Ok(Some(x)) => Some(Ok(DirEntry::from_uefi(x, &self.path))),
+            Err(e) => Some(Err(e)),
+        }
     }
 }
 
 impl DirEntry {
     pub fn path(&self) -> PathBuf {
-        self.0
+        self.path.clone()
     }
 
     pub fn file_name(&self) -> OsString {
-        self.0
+        self.file_name.clone()
     }
 
     pub fn metadata(&self) -> io::Result<FileAttr> {
-        self.0
+        Ok(self.attr.clone())
     }
 
     pub fn file_type(&self) -> io::Result<FileType> {
-        self.0
+        Ok(self.attr.file_type())
+    }
+
+    fn from_uefi(info: helpers::UefiBox<file::Info>, parent: &Path) -> Self {
+        let file_name = uefi_fs::file_name_from_uefi(&info);
+        let path = parent.join(&file_name);
+        Self { file_name, path, attr: FileAttr::from_uefi(info) }
     }
 }
 
@@ -346,8 +365,17 @@ impl fmt::Debug for File {
     }
 }
 
-pub fn readdir(_p: &Path) -> io::Result<ReadDir> {
-    unsupported()
+pub fn readdir(p: &Path) -> io::Result<ReadDir> {
+    let path = crate::path::absolute(p)?;
+    let f = uefi_fs::File::from_path(&path, file::MODE_READ, 0)?;
+    let file_info = f.file_info()?;
+    let file_attr = FileAttr::from_uefi(file_info);
+
+    if file_attr.file_type().is_dir() {
+        Ok(ReadDir { path, file: f })
+    } else {
+        Err(io::const_error!(io::ErrorKind::NotADirectory, "expected a directory but got a file"))
+    }
 }
 
 pub fn unlink(p: &Path) -> io::Result<()> {
@@ -437,7 +465,9 @@ mod uefi_fs {
     use r_efi::protocols::{device_path, file, simple_file_system};
 
     use crate::boxed::Box;
+    use crate::ffi::OsString;
     use crate::io;
+    use crate::os::uefi::ffi::OsStringExt;
     use crate::path::Path;
     use crate::ptr::NonNull;
     use crate::sys::helpers::{self, UefiBox};
@@ -527,6 +557,32 @@ mod uefi_fs {
             // Since no error was returned, file protocol should be non-NULL.
             let p = NonNull::new(file_opened).unwrap();
             Ok(File(p))
+        }
+
+        pub(crate) fn read_dir_entry(&self) -> io::Result<Option<UefiBox<file::Info>>> {
+            let file_ptr = self.0.as_ptr();
+            let mut buf_size = 0;
+
+            let r = unsafe { ((*file_ptr).read)(file_ptr, &mut buf_size, crate::ptr::null_mut()) };
+
+            if buf_size == 0 {
+                return Ok(None);
+            }
+
+            assert!(r.is_error());
+            if r != r_efi::efi::Status::BUFFER_TOO_SMALL {
+                return Err(io::Error::from_raw_os_error(r.as_usize()));
+            }
+
+            let mut info: UefiBox<file::Info> = UefiBox::new(buf_size)?;
+            let r =
+                unsafe { ((*file_ptr).read)(file_ptr, &mut buf_size, info.as_mut_ptr().cast()) };
+
+            if r.is_error() {
+                Err(io::Error::from_raw_os_error(r.as_usize()))
+            } else {
+                Ok(Some(info))
+            }
         }
 
         pub(crate) fn file_info(&self) -> io::Result<UefiBox<file::Info>> {
@@ -647,5 +703,15 @@ mod uefi_fs {
     fn systemtime_to_uefi(time: SystemTime) -> r_efi::efi::Time {
         let now = time::system_time_internal::now();
         time.to_uefi_loose(now.timezone, now.daylight)
+    }
+
+    pub(crate) fn file_name_from_uefi(info: &UefiBox<file::Info>) -> OsString {
+        let file_name = {
+            let size = unsafe { (*info.as_ptr()).size };
+            let strlen = (size as usize - crate::mem::size_of::<file::Info<0>>() - 1) / 2;
+            unsafe { crate::slice::from_raw_parts((*info.as_ptr()).file_name.as_ptr(), strlen) }
+        };
+
+        OsString::from_wide(file_name)
     }
 }
