@@ -13,6 +13,7 @@ use libc::{gid_t, uid_t};
 use super::common::*;
 use crate::io::{self, Error, ErrorKind};
 use crate::num::NonZero;
+use crate::os::fd::AsRawFd;
 use crate::process::StdioPipes;
 use crate::sys::cvt;
 #[cfg(target_os = "linux")]
@@ -71,8 +72,12 @@ impl Command {
         let (ours, theirs) = self.setup_io(default, needs_stdin)?;
 
         if let Some(ret) = self.posix_spawn(&theirs, envp.as_ref())? {
+            self.last_spawn_was_posix_spawn(true);
+            // Close fds in the parent that have been duplicated in the child
+            self.close_owned_fds();
             return Ok((ret, ours));
         }
+        self.last_spawn_was_posix_spawn(false);
 
         #[cfg(target_os = "linux")]
         let (input, output) = sys::net::Socket::new_pair(libc::AF_UNIX, libc::SOCK_SEQPACKET)?;
@@ -123,6 +128,9 @@ impl Command {
 
         drop(env_lock);
         drop(output);
+
+        // Close fds in the parent that have been duplicated in the child
+        self.close_owned_fds();
 
         #[cfg(target_os = "linux")]
         let pidfd = if self.get_create_pidfd() { self.recv_pidfd(&input) } else { -1 };
@@ -292,6 +300,11 @@ impl Command {
             cvt_r(|| libc::dup2(fd, libc::STDERR_FILENO))?;
         }
 
+        for &(ref old_fd, new_fd) in self.get_fds() {
+            cvt_r(|| libc::dup2(old_fd.as_raw_fd(), new_fd))?;
+            cvt_r(|| libc::close(old_fd.as_raw_fd()))?;
+        }
+
         #[cfg(not(target_os = "l4re"))]
         {
             if let Some(_g) = self.get_groups() {
@@ -455,6 +468,7 @@ impl Command {
         use core::sync::atomic::{Atomic, AtomicU8, Ordering};
 
         use crate::mem::MaybeUninit;
+        use crate::os::fd::AsRawFd;
         use crate::sys::{self, cvt_nz, on_broken_pipe_flag_used};
 
         if self.get_gid().is_some()
@@ -715,6 +729,17 @@ impl Command {
                     file_actions.0.as_mut_ptr(),
                     fd,
                     libc::STDERR_FILENO,
+                ))?;
+            }
+            for &(ref old_fd, new_fd) in self.get_fds() {
+                cvt_nz(libc::posix_spawn_file_actions_adddup2(
+                    file_actions.0.as_mut_ptr(),
+                    old_fd.as_raw_fd(),
+                    new_fd,
+                ))?;
+                cvt_nz(libc::posix_spawn_file_actions_addclose(
+                    file_actions.0.as_mut_ptr(),
+                    old_fd.as_raw_fd(),
                 ))?;
             }
             if let Some((f, cwd)) = addchdir {
