@@ -274,6 +274,7 @@
 #![feature(cfg_sanitizer_cfi)]
 #![feature(cfg_target_thread_local)]
 #![feature(cfi_encoding)]
+#![feature(const_default)]
 #![feature(const_trait_impl)]
 #![feature(core_float_math)]
 #![feature(decl_macro)]
