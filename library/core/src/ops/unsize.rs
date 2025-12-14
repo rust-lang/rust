@@ -71,35 +71,59 @@ impl<T: PointeeSized + Unsize<U>, U: PointeeSized> CoerceUnsized<*const U> for *
 /// `DispatchFromDyn` is used in the implementation of dyn-compatibility[^1] checks (specifically
 /// allowing arbitrary self types), to guarantee that a method's receiver type can be dispatched on.
 ///
-/// Note: `DispatchFromDyn` was briefly named `CoerceSized` (and had a slightly different
-/// interpretation).
+/// *Note*: `DispatchFromDyn` was briefly named `CoerceSized` which had a slightly different
+/// interpretation.
 ///
 /// Imagine we have a trait object `t` with type `&dyn Tr`, where `Tr` is some trait with a method
-/// `m` defined as `fn m(&self);`. When calling `t.m()`, the receiver `t` is a wide pointer, but an
-/// implementation of `m` will expect a narrow pointer as `&self` (a reference to the concrete
-/// type). The compiler must generate an implicit conversion from the trait object/wide pointer to
-/// the concrete reference/narrow pointer. Implementing `DispatchFromDyn` indicates that that
-/// conversion is allowed and thus that the type implementing `DispatchFromDyn` is safe to use as
-/// the self type in an dyn-compatible method. (in the above example, the compiler will require
-/// `DispatchFromDyn` is implemented for `&'a U`).
+/// `m` defined as `fn m(&self);`.
+/// When calling `t.m()`, the receiver `t` is a wide pointer, but an implementation of `m` will
+/// expect a narrow pointer as `&self`, specifically a reference to the concrete type.
+/// The compiler must generate an implicit conversion from the trait object `&dyn Trait` or
+/// wide pointer `&UnsizedType` to a concrete reference `&ConcreteType` or narrow pointer `&SizedType`
+/// respectively.
 ///
-/// `DispatchFromDyn` does not specify the conversion from wide pointer to narrow pointer; the
-/// conversion is hard-wired into the compiler. For the conversion to work, the following
-/// properties must hold (i.e., it is only safe to implement `DispatchFromDyn` for types which have
-/// these properties, these are also checked by the compiler):
+/// Implementing `DispatchFromDyn` indicates that such conversion is allowed and, thus, that the
+/// type implementing `DispatchFromDyn` is safe to use as the type of `self`, also known as a method
+/// receiver type, in an dyn-compatible method.
+/// In the above example, the compiler will require `DispatchFromDyn` is implemented for `&'a T`
+/// against `&'a dyn Tr`, given any `T` with `T: Unsize<dyn Tr>`.
 ///
-/// * EITHER `Self` and `T` are either both references or both raw pointers; in either case, with
-///   the same mutability.
-/// * OR, all of the following hold
+/// `DispatchFromDyn` does not specify the conversion from wide pointer to narrow pointer.
+/// The conversion is *hard-wired* into the compiler.
+/// Therefore, the compiler will check that the following properties must hold,
+/// so that it is only safe to implement `DispatchFromDyn` for types with these properties.
+///
+/// * *Either* `Self := &A` and `T := &B` are either both references or both raw pointers to
+///   generic types `A` and `B`, so that `A: Unsize<B>`[^2].
+///   In addition, the mutability of the references or raw pointers must match.
+///   In other words, `&A`/`&B` and `&mut A`/`&mut B` are valid pairings.
+/// * *Or*, all of the following hold:
 ///   - `Self` and `T` must have the same type constructor, and only vary in a single type parameter
-///     formal (the *coerced type*, e.g., `impl DispatchFromDyn<Rc<T>> for Rc<U>` is ok and the
-///     single type parameter (instantiated with `T` or `U`) is the coerced type,
-///     `impl DispatchFromDyn<Arc<T>> for Rc<U>` is not ok).
-///   - The definition for `Self` must be a struct.
+///     formal which is undergoing *coercion*.
+///     For instance, `impl<T: Unsize<T> + PointeeSized, U + PointeeSized> DispatchFromDyn<Rc<U>> for Rc<T>`
+///     is acceptable because the single type parameter, the `T` and `U` respectively, is the coerced type.
+///     `impl<T: Unsize<T> + PointeeSized, U + PointeeSized> DispatchFromDyn<Arc<U>> for Rc<T>` is
+///     unacceptable because `Arc<U>` and `Rc<T>` does not match on the type constructor.
+///     One is `Arc<_>` and the other is `Rc<_>`.
+///   - The definition for `Self` must be a `struct`.
 ///   - The definition for `Self` must not be `#[repr(packed)]` or `#[repr(C)]`.
-///   - Other than one-aligned, zero-sized fields, the definition for `Self` must have exactly one
-///     field and that field's type must be the coerced type. Furthermore, `Self`'s field type must
-///     implement `DispatchFromDyn<F>` where `F` is the type of `T`'s field type.
+///   - Excluding one-aligned zero-sized fields, the definition for `Self` must have exactly one
+///     field and that field's type must be of the coerced type.
+///     Furthermore, the type `FSelf` of this cocerced field type in `Self` must also implement
+///     `DispatchFromDyn<FTarget>` where `FTarget` is the type of the corresponding coerced field in
+///     `T`.
+///
+/// Note that we do not support the case where multiple pointer narrowings or downcasting of trait
+/// objects into concrete objects are involved in coercing one type to another through
+/// the `DispatchFromDyn` trait.
+/// For instance, we do not support dispatch from `&Arc<dyn Tr>` to `&Arc<T>`.
+/// `&Arc<dyn Tr>` is already behind an immutable reference while the coercion would require a
+/// downcasting of the trait object `Arc<dyn Tr>` by chipping of the virtual table.
+/// This will break the invariant of an immutable reference that the place behind shall remain
+/// not mutated during the access.
+/// Similarly, the dispatch from `Box<Box<dyn Tr>>` to `Box<Box<T>>` also requires a similar memory
+/// layout change.
+/// Therefore, this category of coercion is not supported.
 ///
 /// An example implementation of the trait:
 ///
@@ -114,6 +138,7 @@ impl<T: PointeeSized + Unsize<U>, U: PointeeSized> CoerceUnsized<*const U> for *
 /// ```
 ///
 /// [^1]: Formerly known as *object safety*.
+/// [^2]: crate::marker::Unsize
 #[unstable(feature = "dispatch_from_dyn", issue = "none")]
 #[lang = "dispatch_from_dyn"]
 pub trait DispatchFromDyn<T> {
