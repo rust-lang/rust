@@ -366,6 +366,10 @@ impl File {
         }
     }
 
+    pub fn close(self) -> io::Result<()> {
+        self.handle.close()
+    }
+
     pub fn fsync(&self) -> io::Result<()> {
         cvt(unsafe { c::FlushFileBuffers(self.handle.as_raw_handle()) })?;
         Ok(())
