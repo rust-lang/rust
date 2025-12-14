@@ -1498,7 +1498,7 @@ pub(crate) fn highlight_foreign_code(lang: &str, code: &str) -> Option<String> {
         other => other,
     };
 
-    HIGHLIGHTER.with_borrow_mut(|h| h.highlight_to_html(lang, code).ok())
+    HIGHLIGHTER.with_borrow_mut(|h| h.highlight(lang, code).ok())
 }
 
 #[cfg(test)]

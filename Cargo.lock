@@ -172,9 +172,9 @@ dependencies = [
 
 [[package]]
 name = "arborium"
-version = "1.2.3"
+version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d7ae3fd5b382cf9f09e1613da6214d8020c4868eb1358627eb3628bf87bb30fb"
+checksum = "f00a72aec131b90c1c6495c565c4e4842fdbaf137ea4cacec110d353937ab99d"
 dependencies = [
  "arborium-bash",
  "arborium-c",
@@ -199,9 +199,9 @@ dependencies = [
 
 [[package]]
 name = "arborium-bash"
-version = "1.2.3"
+version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b4be4da1f6f020cbed670305d2942818323064f1e0667fc5a780cfe48638ee5a"
+checksum = "34c6fd5230512b1191480100dd7876e972d1d6fd8e04fc62950a46b2a185405a"
 dependencies = [
  "arborium-sysroot",
  "cc",
@@ -210,9 +210,9 @@ dependencies = [
 
 [[package]]
 name = "arborium-c"
-version = "1.2.3"
+version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4931371886b262191c6679945103b3679d358a70697e6c7d59cdf3cbe8b6e4e9"
+checksum = "6eb49d9d4d314d39e3ad41f891f3c46a417e21127c572621d3bb2b8acb0f67d2"
 dependencies = [
  "arborium-sysroot",
  "cc",
@@ -221,9 +221,9 @@ dependencies = [
 
 [[package]]
 name = "arborium-cpp"
-version = "1.2.3"
+version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "01a0e5539a2cc0e8ed13b20bd52fa7511e2843baac1a775a577013e6e645c644"
+checksum = "b3813b0fd9e61425fe387333eb77ff5a3ea890f66d89e1262a66372ecad1274f"
 dependencies = [
  "arborium-c",
  "arborium-sysroot",
@@ -233,9 +233,9 @@ dependencies = [
 
 [[package]]
 name = "arborium-css"
-version = "1.2.3"
+version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f5f81a6fa983b8f12118ec33cda27da8e06e63fdeaeb1c71532590c399513102"
+checksum = "5d95540ee6ea2c33f40b45d9c40283a5c396e0ceb8529c4f2151932e43858a3b"
 dependencies = [
  "arborium-sysroot",
  "cc",
@@ -244,9 +244,9 @@ dependencies = [
 
 [[package]]
 name = "arborium-go"
-version = "1.2.3"
+version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "12618f8df880cfbf268e2d35f392302ec8b26397addff3fb154db79e981ef391"
+checksum = "1d7f8df9adca3da8c9e36889e0f52ab359dd36d168bc677e65fce5f43ca66b0d"
 dependencies = [
  "arborium-sysroot",
  "cc",
@@ -255,9 +255,9 @@ dependencies = [
 
 [[package]]
 name = "arborium-highlight"
-version = "1.2.3"
+version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e185c18bb04a51252e2c60d0d19324c438a6d3a71468ffa63674a116685d45de"
+checksum = "2f2df668f0c80bfa2e437f74d45a4922a0e9256c2476560200774be4b60686f3"
 dependencies = [
  "arborium-theme",
  "arborium-tree-sitter",
@@ -266,10 +266,12 @@ dependencies = [
 
 [[package]]
 name = "arborium-html"
-version = "1.2.3"
+version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "17704d9e8ebc4a338e810cb1cc2aaedd770041773762902a397f17ac245f371e"
+checksum = "a8d898910e534cddb0dca62ff3789b94637979b16d5354f153235438f58d29d6"
 dependencies = [
+ "arborium-css",
+ "arborium-javascript",
  "arborium-sysroot",
  "cc",
  "tree-sitter-language",
@@ -277,9 +279,9 @@ dependencies = [
 
 [[package]]
 name = "arborium-java"
-version = "1.2.3"
+version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1ca33a5c1bbe5b3e38f47cf82461b04bdfad8b4fe0362824805f7447ea96a0f8"
+checksum = "b91053783a4c3806cdcf92a7009bfe765ebcf0a13cd49ee361751a68f1f2c10f"
 dependencies = [
  "arborium-sysroot",
  "cc",
@@ -288,9 +290,9 @@ dependencies = [
 
 [[package]]
 name = "arborium-javascript"
-version = "1.2.3"
+version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b2069654043459d341aded42e5061242ab1298806a1603617ad5286d4cf2af73"
+checksum = "7220c71b1056508a028a4acfa4a10d8ca1713420ac3a36853dfd4a55bb335a4b"
 dependencies = [
  "arborium-sysroot",
  "cc",
@@ -299,9 +301,9 @@ dependencies = [
 
 [[package]]
 name = "arborium-json"
-version = "1.2.3"
+version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c85dacbcb3dc01dd26ba6004307873d4d3a2376adc218793d28e55f14758a5e9"
+checksum = "775321ffff8b71819c6dfead9e62bcd1efc1616306e59f2e1317ba7bef282e1f"
 dependencies = [
  "arborium-sysroot",
  "cc",
@@ -310,9 +312,9 @@ dependencies = [
 
 [[package]]
 name = "arborium-python"
-version = "1.2.3"
+version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "411a3f3a95b92f41b41c07b8b62cd0abbe42f5dcf7178223928b9f2e793b1f65"
+checksum = "45c5db8f67870cc64b67933a644fb296b3c367e9bfd85aa222a1ff6d49883e25"
 dependencies = [
  "arborium-sysroot",
  "cc",
@@ -321,9 +323,9 @@ dependencies = [
 
 [[package]]
 name = "arborium-ruby"
-version = "1.2.3"
+version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "45c9a92f48efc376408177358507e22406ad8338cb371d79b696fba94dd9ab20"
+checksum = "7391c3561e43b892241ef216aafa974e1c3a59cd4e29d9cb9a7febc41645c0a8"
 dependencies = [
  "arborium-sysroot",
  "cc",
@@ -332,9 +334,9 @@ dependencies = [
 
 [[package]]
 name = "arborium-sql"
-version = "1.2.3"
+version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d479480c7beac1e789be25235f1dea72e27ddb11919789befb84c51bb1139ba5"
+checksum = "dc2c5bd1ed383d8ed8f0269d0cfddb475af9c98580d43f76cc4bb85a6f052633"
 dependencies = [
  "arborium-sysroot",
  "cc",
@@ -343,24 +345,25 @@ dependencies = [
 
 [[package]]
 name = "arborium-sysroot"
-version = "1.2.3"
+version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5942714de3eb1c3d0c5607e30284e314ddea3698a76a0cf3e7686274ac57802f"
-
-[[package]]
-name = "arborium-theme"
-version = "1.2.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ac1ce1ffd21913c61768880c08567e3fbe3a966e7501ce1751f1238316b6fb45"
+checksum = "6d25c6fe8f35b7803048ca9f0846432011510d5196eb1089cf3a4bb37c35d094"
 dependencies = [
- "toml 0.8.23",
+ "cc",
+ "dlmalloc",
 ]
 
 [[package]]
-name = "arborium-toml"
-version = "1.2.3"
+name = "arborium-theme"
+version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8671c543a4c77cf32cd39e446c7d25e8cfd74cf6032873a25b35b76b663c9fe5"
+checksum = "9da38b2109b8af45b7e0bce0c96f7db1c17831a62a23ae586c5705efac635758"
+
+[[package]]
+name = "arborium-toml"
+version = "2.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b391b5bf276950b457d0b05efc0089c74b94e2f0939f8a63d98b4b84da5ebf12"
 dependencies = [
  "arborium-sysroot",
  "cc",
@@ -369,9 +372,9 @@ dependencies = [
 
 [[package]]
 name = "arborium-tree-sitter"
-version = "1.2.3"
+version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e056bac05e8c35fdc66754d7028e32f14bbf190e30ff6b2e5a67162749ccfe26"
+checksum = "936e30ab0ba24131c37823d6d087b4ab6b7d59c6dd26fd1f1470e50582dc07ba"
 dependencies = [
  "arborium-sysroot",
  "cc",
@@ -383,9 +386,9 @@ dependencies = [
 
 [[package]]
 name = "arborium-typescript"
-version = "1.2.3"
+version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "243273d737c8c0d26b5e7ed2a09c3eb772b95df508313678494058551e3ad53d"
+checksum = "9cd96fae6737d469b2042e2f7c37e37e6276465ba1c15162182e4106c189fc41"
 dependencies = [
  "arborium-javascript",
  "arborium-sysroot",
@@ -395,9 +398,9 @@ dependencies = [
 
 [[package]]
 name = "arborium-yaml"
-version = "1.2.3"
+version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "748abb1f9d238ae3f3be5b9adb9416edf68a2b331fe7c2b5ef566c72fc20391f"
+checksum = "ef47437d2fe489ba8aa718dd1be3152b80b988b976183e84cfb1865a17cae1e8"
 dependencies = [
  "arborium-sysroot",
  "cc",

@@ -9,7 +9,7 @@ path = "lib.rs"
 
 [dependencies]
 # tidy-alphabetical-start
-arborium = { version = "1.2.3", default-features = false, features = [
+arborium = { version = "2.0.0", default-features = false, features = [
     "lang-bash",
     "lang-c",
     "lang-cpp",
