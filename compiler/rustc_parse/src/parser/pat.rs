@@ -661,7 +661,7 @@ impl<'a> Parser<'a> {
                     // Sub-patterns
                     // FIXME: this doesn't work with recursive subpats (`&mut &mut <err>`)
                     PatKind::Box(subpat) | PatKind::Ref(subpat, _, _)
-                        if matches!(subpat.kind, PatKind::Err(_) | PatKind::Expr(_)) =>
+                        if let PatKind::Err(_) | PatKind::Expr(_) = subpat.kind =>
                     {
                         self.maybe_add_suggestions_then_emit(subpat.span, p.span, false)
                     }
@@ -1096,7 +1096,7 @@ impl<'a> Parser<'a> {
             self.ban_mut_general_pat(mut_span, &pat, changed_any_binding);
         }
 
-        if matches!(pat.kind, PatKind::Ident(BindingMode(ByRef::Yes(..), Mutability::Mut), ..)) {
+        if let PatKind::Ident(BindingMode(ByRef::Yes(..), Mutability::Mut), ..) = pat.kind {
             self.psess.gated_spans.gate(sym::mut_ref, pat.span);
         }
         Ok(pat.kind)

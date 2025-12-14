@@ -62,7 +62,7 @@ pub(crate) fn provide(providers: &mut Providers) {
 /// requires calling [`InhabitedPredicate::instantiate`]
 fn inhabited_predicate_adt(tcx: TyCtxt<'_>, def_id: DefId) -> InhabitedPredicate<'_> {
     if let Some(def_id) = def_id.as_local() {
-        if matches!(tcx.representability(def_id), ty::Representability::Infinite(_)) {
+        if let ty::Representability::Infinite(_) = tcx.representability(def_id) {
             return InhabitedPredicate::True;
         }
     }

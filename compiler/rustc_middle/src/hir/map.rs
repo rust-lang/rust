@@ -575,7 +575,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     // expr.
                     Node::Block(Block { expr: Some(e), .. }) if cur_id != e.hir_id => return None,
                     Node::Block(Block { expr: Some(e), .. })
-                        if matches!(e.kind, ExprKind::If(_, _, None)) =>
+                        if let ExprKind::If(_, _, None) = e.kind =>
                     {
                         return None;
                     }

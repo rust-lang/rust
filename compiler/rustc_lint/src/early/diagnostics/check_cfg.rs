@@ -70,7 +70,9 @@ fn cargo_help_sub(
     // `build_script_build`) to try to figure out if we are building a Cargo build script
 
     let unescaped = &inst(EscapeQuotes::No);
-    if matches!(&sess.opts.crate_name, Some(crate_name) if crate_name == "build_script_build") {
+    if let Some(crate_name) = &sess.opts.crate_name
+        && crate_name == "build_script_build"
+    {
         lints::UnexpectedCfgCargoHelp::lint_cfg(unescaped)
     } else {
         lints::UnexpectedCfgCargoHelp::lint_cfg_and_build_rs(unescaped, &inst(EscapeQuotes::Yes))

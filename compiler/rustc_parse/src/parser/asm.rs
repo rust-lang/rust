@@ -77,7 +77,7 @@ fn eat_operand_keyword<'a>(
     exp: ExpKeywordPair,
     asm_macro: AsmMacro,
 ) -> PResult<'a, bool> {
-    if matches!(asm_macro, AsmMacro::Asm) {
+    if asm_macro == AsmMacro::Asm {
         Ok(p.eat_keyword(exp))
     } else {
         let span = p.token.span;
@@ -259,10 +259,7 @@ pub fn parse_asm_args<'a>(
             // things it could have been.
             match template.kind {
                 ast::ExprKind::Lit(token_lit)
-                    if matches!(
-                        token_lit.kind,
-                        token::LitKind::Str | token::LitKind::StrRaw(_)
-                    ) => {}
+                    if let token::LitKind::Str | token::LitKind::StrRaw(_) = token_lit.kind => {}
                 ast::ExprKind::MacCall(..) => {}
                 _ => {
                     let err = dcx.create_err(errors::AsmExpectedOther {

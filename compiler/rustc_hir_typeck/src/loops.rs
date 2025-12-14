@@ -169,17 +169,15 @@ impl<'hir> Visitor<'hir> for CheckLoopVisitor<'hir> {
                 self.with_context(LabeledBlock, |v| v.visit_block(b));
             }
             hir::ExprKind::Block(b, None)
-                if matches!(self.cx_stack.last(), Some(&Fn) | Some(&ConstBlock)) =>
+                if let Some(Fn) | Some(ConstBlock) = self.cx_stack.last() =>
             {
                 self.with_context(Normal, |v| v.visit_block(b));
             }
             hir::ExprKind::Block(
                 b @ hir::Block { rules: hir::BlockCheckMode::DefaultBlock, .. },
                 None,
-            ) if matches!(
-                self.cx_stack.last(),
-                Some(&Normal) | Some(&AnonConst) | Some(&UnlabeledBlock(_))
-            ) =>
+            ) if let Some(Normal) | Some(AnonConst) | Some(UnlabeledBlock(_)) =
+                self.cx_stack.last() =>
             {
                 self.with_context(UnlabeledBlock(b.span.shrink_to_lo()), |v| v.visit_block(b));
             }

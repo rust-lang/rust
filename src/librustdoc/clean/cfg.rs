@@ -225,7 +225,7 @@ impl Cfg {
             " on "
         };
 
-        let mut msg = if matches!(format, Format::LongHtml) {
+        let mut msg = if format == Format::LongHtml {
             format!("Available{on}<strong>{}</strong>", Display(&self.0, format))
         } else {
             format!("Available{on}{}", Display(&self.0, format))
@@ -860,7 +860,7 @@ pub(crate) fn extract_cfg_from_attrs<'a, I: Iterator<Item = &'a hir::Attribute> 
             continue;
         } else if !cfg_info.parent_is_doc_cfg
             && let Some(ident) = attr.ident()
-            && matches!(ident.name, sym::cfg | sym::cfg_trace)
+            && let sym::cfg | sym::cfg_trace = ident.name
             && let Some(attr) = single(attr.meta_item_list()?)
             && let Ok(new_cfg) = Cfg::parse(&attr)
         {
@@ -873,7 +873,7 @@ pub(crate) fn extract_cfg_from_attrs<'a, I: Iterator<Item = &'a hir::Attribute> 
     if !cfg_info.auto_cfg_active && !cfg_info.parent_is_doc_cfg {
         None
     } else if cfg_info.parent_is_doc_cfg {
-        if matches!(cfg_info.current_cfg.0, CfgEntry::Bool(true, _)) {
+        if let CfgEntry::Bool(true, _) = cfg_info.current_cfg.0 {
             None
         } else {
             Some(Arc::new(cfg_info.current_cfg.clone()))

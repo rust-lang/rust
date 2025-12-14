@@ -281,7 +281,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             debug!("convert_place_derefs_to_mutable: i={} expr={:?}", i, expr);
 
             let mut source = self.node_ty(expr.hir_id);
-            if matches!(expr.kind, hir::ExprKind::Unary(hir::UnOp::Deref, _)) {
+            if let hir::ExprKind::Unary(hir::UnOp::Deref, _) = expr.kind {
                 // Clear previous flag; after a pointer indirection it does not apply any more.
                 inside_union = false;
             }

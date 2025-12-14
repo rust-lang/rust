@@ -134,7 +134,7 @@ pub(crate) struct RegionTracker {
 impl RegionTracker {
     pub(crate) fn new(rvid: RegionVid, definition: &RegionDefinition<'_>) -> Self {
         let reachable_placeholders =
-            if matches!(definition.origin, NllRegionVariableOrigin::Placeholder(_)) {
+            if let NllRegionVariableOrigin::Placeholder(_) = definition.origin {
                 PlaceholderReachability::Placeholders {
                     max_universe: (definition.universe, rvid),
                     min_placeholder: rvid,

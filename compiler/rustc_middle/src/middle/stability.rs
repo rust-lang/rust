@@ -403,7 +403,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     return EvalResult::Allow;
                 }
 
-                if matches!(allow_unstable, AllowUnstable::Yes) {
+                if let AllowUnstable::Yes = allow_unstable {
                     return EvalResult::Allow;
                 }
 

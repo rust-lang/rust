@@ -472,7 +472,7 @@ impl<'a> Parser<'a> {
     fn parse_ident_common(&mut self, recover: bool) -> PResult<'a, Ident> {
         let (ident, is_raw) = self.ident_or_err(recover)?;
 
-        if matches!(is_raw, IdentIsRaw::No) && ident.is_reserved() {
+        if is_raw == IdentIsRaw::No && ident.is_reserved() {
             let err = self.expected_ident_found_err();
             if recover {
                 err.emit();
@@ -1074,7 +1074,9 @@ impl<'a> Parser<'a> {
         f: impl FnMut(&mut Parser<'a>) -> PResult<'a, T>,
     ) -> PResult<'a, (ThinVec<T>, Trailing)> {
         let (val, trailing, recovered) = self.parse_seq_to_before_end(close, sep, f)?;
-        if matches!(recovered, Recovered::No) && !self.eat(close) {
+        if let Recovered::No = recovered
+            && !self.eat(close)
+        {
             self.dcx().span_delayed_bug(
                 self.token.span,
                 "recovered but `parse_seq_to_before_end` did not give us the close token",
@@ -1203,10 +1205,9 @@ impl<'a> Parser<'a> {
         let mut token = Token::dummy();
         while i < dist {
             token = cursor.next().0;
-            if matches!(
-                token.kind,
-                token::OpenInvisible(origin) | token::CloseInvisible(origin) if origin.skip()
-            ) {
+            if let token::OpenInvisible(origin) | token::CloseInvisible(origin) = token.kind
+                && origin.skip()
+            {
                 continue;
             }
             i += 1;

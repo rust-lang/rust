@@ -81,7 +81,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return;
         }
 
-        if matches!(pick.kind, probe::PickKind::InherentImplPick | probe::PickKind::ObjectPick) {
+        if let probe::PickKind::InherentImplPick | probe::PickKind::ObjectPick = pick.kind {
             // avoid repeatedly adding unneeded `&*`s
             if pick.autoderefs == 1
                 && matches!(
@@ -274,7 +274,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // No need to lint if this is an inherent method called on a specific type, like `Vec::foo(...)`,
         // since such methods take precedence over trait methods.
-        if matches!(pick.kind, probe::PickKind::InherentImplPick) {
+        if let probe::PickKind::InherentImplPick = pick.kind {
             return;
         }
 

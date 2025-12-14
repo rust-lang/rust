@@ -835,7 +835,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             .collect::<Vec<_>>()
             .join(", ");
 
-        if matches!(obligation.cause.code(), ObligationCauseCode::FunctionArg { .. })
+        if let ObligationCauseCode::FunctionArg { .. } = obligation.cause.code()
             && obligation.cause.span.can_be_used_for_suggestions()
         {
             let (span, sugg) = if let Some(snippet) =
@@ -1303,10 +1303,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 }
                 c
             }
-            c if matches!(
-                span.ctxt().outer_expn_data().kind,
-                ExpnKind::Desugaring(DesugaringKind::ForLoop)
-            ) =>
+            c if let ExpnKind::Desugaring(DesugaringKind::ForLoop) =
+                span.ctxt().outer_expn_data().kind =>
             {
                 c
             }
@@ -3119,7 +3117,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     "the `Copy` trait is required because this value will be copied for each element of the array",
                 );
                 let sm = tcx.sess.source_map();
-                if matches!(is_constable, IsConstable::Fn | IsConstable::Ctor)
+                if let IsConstable::Fn | IsConstable::Ctor = is_constable
                     && let Ok(_) = sm.span_to_snippet(elt_span)
                 {
                     err.multipart_suggestion(
@@ -4688,7 +4686,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         // slices of `element_ty` with `mutability`.
         let mut is_slice = |candidate: Ty<'tcx>| match *candidate.kind() {
             ty::RawPtr(t, m) | ty::Ref(_, t, m) => {
-                if matches!(*t.kind(), ty::Slice(e) if e == element_ty)
+                if let ty::Slice(e) = *t.kind()
+                    && e == element_ty
                     && m == mutability.unwrap_or(m)
                 {
                     // Use the candidate's mutability going forward.
@@ -5234,7 +5233,7 @@ fn hint_missing_borrow<'tcx>(
     found_node: Node<'_>,
     err: &mut Diag<'_>,
 ) {
-    if matches!(found_node, Node::TraitItem(..)) {
+    if let Node::TraitItem(..) = found_node {
         return;
     }
 

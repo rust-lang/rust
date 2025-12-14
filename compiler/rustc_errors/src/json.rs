@@ -148,7 +148,7 @@ impl Emitter for JsonEmitter {
                 //
                 // So to avoid ICEs and confused users we "upgrade" the lint level for
                 // those `FutureBreakageItem` to warn.
-                if matches!(diag.level, crate::Level::Allow | crate::Level::Expect) {
+                if let crate::Level::Allow | crate::Level::Expect = diag.level {
                     diag.level = crate::Level::Warning;
                 }
                 FutureBreakageItem {

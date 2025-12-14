@@ -327,7 +327,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             return Err(ConstEvalErrKind::ConstMakeGlobalWithOffset(ptr)).into();
         }
 
-        if matches!(self.tcx.try_get_global_alloc(alloc_id), Some(_)) {
+        if self.tcx.try_get_global_alloc(alloc_id).is_some() {
             // This points to something outside the current interpreter.
             return Err(ConstEvalErrKind::ConstMakeGlobalPtrIsNonHeap(ptr)).into();
         }
@@ -981,7 +981,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         msg: CheckInAllocMsg,
     ) -> InterpResult<'tcx, (Size, Align)> {
         let info = self.get_alloc_info(id);
-        if matches!(info.kind, AllocKind::Dead) {
+        if info.kind == AllocKind::Dead {
             throw_ub!(PointerUseAfterFree(id, msg))
         }
         interp_ok((info.size, info.align))
@@ -1072,7 +1072,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             // Recurse, if there is data here.
             // Do this *before* invoking the callback, as the callback might mutate the
             // allocation and e.g. replace all provenance by wildcards!
-            if matches!(info.kind, AllocKind::LiveData) {
+            if info.kind == AllocKind::LiveData {
                 let alloc = self.get_alloc_raw(id)?;
                 for prov in alloc.provenance().provenances() {
                     if let Some(id) = prov.get_alloc_id() {
@@ -1605,7 +1605,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 match self.ptr_try_get_alloc_id(ptr, 0) {
                     Ok((alloc_id, offset, _)) => {
                         let info = self.get_alloc_info(alloc_id);
-                        if matches!(info.kind, AllocKind::TypeId) {
+                        if info.kind == AllocKind::TypeId {
                             // We *could* actually precisely answer this question since here,
                             // the offset *is* the integer value. But the entire point of making
                             // this a pointer is not to leak the integer value, so we say everything

@@ -358,7 +358,7 @@ fn emit_mismatch_diagnostic<'tcx>(
             }
         }
 
-        if matches!(lifetime.source, Path { .. } | OutlivesBound | PreciseCapturing) {
+        if let Path { .. } | OutlivesBound | PreciseCapturing = lifetime.source {
             allow_suggesting_implicit = false;
         }
 

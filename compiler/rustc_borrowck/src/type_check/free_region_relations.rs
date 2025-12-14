@@ -295,7 +295,7 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
         }
 
         // Add implied bounds from impl header.
-        if matches!(tcx.def_kind(defining_ty_def_id), DefKind::AssocFn | DefKind::AssocConst) {
+        if let DefKind::AssocFn | DefKind::AssocConst = tcx.def_kind(defining_ty_def_id) {
             for &(ty, _) in tcx.assumed_wf_types(tcx.local_parent(defining_ty_def_id)) {
                 let result: Result<_, ErrorGuaranteed> = param_env
                     .and(DeeplyNormalize { value: ty })

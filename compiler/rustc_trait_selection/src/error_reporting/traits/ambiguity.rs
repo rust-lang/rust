@@ -206,10 +206,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 // avoid inundating the user with unnecessary errors, but we now
                 // check upstream for type errors and don't add the obligations to
                 // begin with in those cases.
-                if matches!(
-                    self.tcx.as_lang_item(trait_pred.def_id()),
-                    Some(LangItem::Sized | LangItem::MetaSized)
-                ) {
+                if let Some(LangItem::Sized | LangItem::MetaSized) =
+                    self.tcx.as_lang_item(trait_pred.def_id())
+                {
                     return match self.tainted_by_errors() {
                         None => self
                             .emit_inference_failure_err(

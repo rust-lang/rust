@@ -253,7 +253,7 @@ impl<'a> Parser<'a> {
         // pre-attribute position supplied, if `f` indicated it is necessary.
         // (The caller is responsible for providing a non-`None` `pre_attr_pos`
         // if this is a possibility.)
-        if matches!(use_pre_attr_pos, UsePreAttrPos::Yes) {
+        if let UsePreAttrPos::Yes = use_pre_attr_pos {
             collect_pos = pre_attr_pos.unwrap();
         }
 
@@ -372,7 +372,7 @@ impl<'a> Parser<'a> {
             self.capture_state
                 .parser_replacements
                 .push((ParserRange(start_pos..end_pos), Some(target)));
-        } else if matches!(self.capture_state.capturing, Capturing::No) {
+        } else if let Capturing::No = self.capture_state.capturing {
             // Only clear the ranges once we've finished capturing entirely, i.e. we've finished
             // the outermost call to this method.
             self.capture_state.parser_replacements.clear();

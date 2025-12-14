@@ -469,7 +469,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         // We do not need to report them if we are either in speculative resolution,
                         // or in late resolution when everything is already imported and expanded
                         // and no ambiguities exist.
-                        if matches!(finalize, None | Some(Finalize { stage: Stage::Late, .. })) {
+                        if let None | Some(Finalize { stage: Stage::Late, .. }) = finalize {
                             return ControlFlow::Break(Ok(binding));
                         }
 
@@ -581,7 +581,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             },
             Scope::Module(module, derive_fallback_lint_id) => {
                 let (adjusted_parent_scope, adjusted_finalize) =
-                    if matches!(scope_set, ScopeSet::ModuleAndExternPrelude(..)) {
+                    if let ScopeSet::ModuleAndExternPrelude(..) = scope_set {
                         (parent_scope, finalize)
                     } else {
                         (
@@ -687,7 +687,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             }
             Scope::BuiltinTypes => match self.builtin_types_bindings.get(&ident.name) {
                 Some(binding) => {
-                    if matches!(ident.name, sym::f16)
+                    if let sym::f16 = ident.name
                         && !self.tcx.features().f16()
                         && !ident.span.allows_unstable(sym::f16)
                         && finalize.is_some()
@@ -700,7 +700,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         )
                         .emit();
                     }
-                    if matches!(ident.name, sym::f128)
+                    if let sym::f128 = ident.name
                         && !self.tcx.features().f128()
                         && !ident.span.allows_unstable(sym::f128)
                         && finalize.is_some()
