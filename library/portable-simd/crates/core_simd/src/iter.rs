@@ -48,6 +48,7 @@ macro_rules! impl_traits {
     }
 }
 
+impl_traits! { f16 }
 impl_traits! { f32 }
 impl_traits! { f64 }
 impl_traits! { u8 }
