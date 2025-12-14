@@ -73,6 +73,7 @@ You might also find the following sites useful:
 - [compiler-team] -- the home-base for the Rust compiler team, with description
   of the team procedures, active working groups, and the team calendar.
 - [std-dev-guide] -- a similar guide for developing the standard library.
+- [rust-analyzer book][r-a book] -- documentation for the rust-analyzer.
 - [The t-compiler Zulip][z]
 - The [Rust Internals forum][rif], a place to ask questions and
   discuss Rust's internals
@@ -110,4 +111,5 @@ You might also find the following sites useful:
 [Forge]: https://forge.rust-lang.org/
 [compiler-team]: https://github.com/rust-lang/compiler-team/
 [std-dev-guide]: https://std-dev-guide.rust-lang.org/
+[r-a book]: https://rust-analyzer.github.io/book/
 [z]: https://rust-lang.zulipchat.com/#narrow/stream/131828-t-compiler
