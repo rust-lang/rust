@@ -313,7 +313,7 @@ impl Hash for RealFileName {
         // remapped path if that exists. This is because remapped paths to
         // sysroot crates (/rust/$hash or /rust/$version) remain stable even
         // if the corresponding local path changes.
-        if !self.scopes.is_all() {
+        if !self.was_fully_remapped() {
             self.local.hash(state);
         }
         self.maybe_remapped.hash(state);
