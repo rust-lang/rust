@@ -116,7 +116,14 @@ pub(crate) fn check_externally_implementable_items<'tcx>(tcx: TyCtxt<'tcx>, (): 
         }
 
         if default_impls.len() > 1 {
-            panic!("multiple not supported right now");
+            tcx.dcx().span_err(
+                decl.span,
+                format!(
+                    "`{}` has more than one default implementation which is not supported",
+                    tcx.item_name(decl_did)
+                ),
+            );
+            return;
         }
 
         let (local_impl, is_default) =

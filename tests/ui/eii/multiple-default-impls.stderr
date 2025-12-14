@@ -1,0 +1,26 @@
+error[E0428]: the name `eii1` is defined multiple times
+  --> $DIR/multiple-default-impls.rs:9:1
+   |
+LL | #[eii(eii1)]
+   | ------------ previous definition of the macro `eii1` here
+...
+LL | #[eii(eii1)]
+   | ^^^^^^^^^^^^ `eii1` redefined here
+   |
+   = note: `eii1` must be defined only once in the macro namespace of this module
+
+error: the `main` function cannot be declared in an `extern` block
+  --> $DIR/multiple-default-impls.rs:11:1
+   |
+LL | fn main() {}
+   | ^^^^^^^^^
+
+error: `eii1` has more than one default implementation which is not supported
+  --> $DIR/multiple-default-impls.rs:5:1
+   |
+LL | #[eii(eii1)]
+   | ^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0428`.
