@@ -252,7 +252,7 @@ pub fn is_inside_always_const_context(tcx: TyCtxt<'_>, hir_id: HirId) -> bool {
     };
     match ctx {
         ConstFn => false,
-        Static(_) | Const { inline: _ } => true,
+        Static(_) | Const { allow_const_fn_promotion: _ } => true,
     }
 }
 

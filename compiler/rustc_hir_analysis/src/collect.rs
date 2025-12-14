@@ -1363,7 +1363,7 @@ fn check_impl_constness(
     constness: hir::Constness,
     hir_trait_ref: &hir::TraitRef<'_>,
 ) {
-    if let hir::Constness::NotConst = constness {
+    if let hir::Constness::Never = constness {
         return;
     }
 

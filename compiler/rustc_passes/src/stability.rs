@@ -658,7 +658,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
                     }
 
                     if features.const_trait_impl()
-                        && let hir::Constness::Const = constness
+                        && let hir::Constness::Maybe = constness
                     {
                         let stable_or_implied_stable = match const_stab {
                             None => true,
@@ -702,7 +702,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
                     }
                 }
 
-                if let hir::Constness::Const = constness
+                if let hir::Constness::Maybe = constness
                     && let Some(def_id) = of_trait.trait_ref.trait_def_id()
                 {
                     // FIXME(const_trait_impl): Improve the span here.

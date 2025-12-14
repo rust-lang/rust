@@ -698,7 +698,7 @@ impl<'a> State<'a> {
 
                 match of_trait {
                     None => {
-                        if let hir::Constness::Const = constness {
+                        if let hir::Constness::Maybe = constness {
                             self.word_nbsp("const");
                         }
                         impl_generics(self)
@@ -715,7 +715,7 @@ impl<'a> State<'a> {
 
                         impl_generics(self);
 
-                        if let hir::Constness::Const = constness {
+                        if let hir::Constness::Maybe = constness {
                             self.word_nbsp("const");
                         }
 
@@ -2524,7 +2524,7 @@ impl<'a> State<'a> {
             hir::FnHeader {
                 safety: safety.into(),
                 abi,
-                constness: hir::Constness::NotConst,
+                constness: hir::Constness::Never,
                 asyncness: hir::IsAsync::NotAsync,
             },
             name,
@@ -2564,8 +2564,9 @@ impl<'a> State<'a> {
 
     fn print_constness(&mut self, s: hir::Constness) {
         match s {
-            hir::Constness::NotConst => {}
-            hir::Constness::Const => self.word_nbsp("const"),
+            hir::Constness::Never => {}
+            hir::Constness::Maybe => self.word_nbsp("const"),
+            hir::Constness::Always => { /* printed as an attribute */ }
         }
     }
 

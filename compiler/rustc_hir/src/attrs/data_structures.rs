@@ -636,6 +636,9 @@ pub enum AttributeKind {
     /// Represents `#[cold]`.
     Cold(Span),
 
+    /// Represents `#[rustc_comptime]`
+    Comptime(Span),
+
     /// Represents `#[rustc_confusables]`.
     Confusables {
         symbols: ThinVec<Symbol>,
