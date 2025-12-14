@@ -1685,6 +1685,35 @@ pre.rust .doccomment {
 	color: var(--code-highlight-doc-comment-color);
 }
 
+/* Arborium (tree-sitter) syntax highlighting for non-Rust code blocks */
+a-k { color: var(--code-highlight-kw-color); }
+a-f { color: var(--code-highlight-kw-2-color); }
+a-s { color: var(--code-highlight-string-color); }
+a-c { color: var(--code-highlight-comment-color); }
+a-t { color: var(--code-highlight-prelude-color); }
+a-v { color: var(--code-highlight-self-color); }
+a-co { color: var(--code-highlight-literal-color); }
+a-n { color: var(--code-highlight-number-color); }
+a-o { color: var(--code-highlight-kw-2-color); }
+a-p { /* punctuation: inherit */ }
+a-pr { color: var(--code-highlight-prelude-val-color); }
+a-at { color: var(--code-highlight-attribute-color); }
+a-tg { color: var(--code-highlight-attribute-color); }
+a-m { color: var(--code-highlight-macro-color); }
+a-l { color: var(--code-highlight-lifetime-color); }
+a-ns { color: var(--code-highlight-prelude-color); }
+a-cr { color: var(--code-highlight-prelude-val-color); }
+a-tt { color: var(--code-highlight-doc-comment-color); font-weight: bold; }
+a-st { font-weight: bold; }
+a-em { font-style: italic; }
+a-tu { color: var(--code-highlight-string-color); text-decoration: underline; }
+a-tl { color: var(--code-highlight-literal-color); }
+a-tx { text-decoration: line-through; }
+a-da { color: #83a300; }
+a-dd { color: #ee6868; }
+a-eb { color: var(--code-highlight-macro-color); }
+a-er { color: #ee6868; text-decoration: wavy underline; }
+
 .rustdoc.src .example-wrap pre.rust a:not([data-nosnippet]) {
 	background: var(--codeblock-link-background);
 }

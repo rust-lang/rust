@@ -150,6 +150,8 @@ pub(crate) struct SharedContext<'tcx> {
     /// Controls whether we read / write to cci files in the doc root. Defaults read=true,
     /// write=true
     should_merge: ShouldMerge,
+    /// Whether to syntax-highlight non-Rust code blocks using tree-sitter.
+    pub(super) highlight_foreign_code: bool,
 }
 
 impl SharedContext<'_> {
@@ -495,6 +497,7 @@ impl<'tcx> Context<'tcx> {
             call_locations,
             no_emit_shared,
             html_no_source,
+            highlight_foreign_code,
             ..
         } = options;
 
@@ -580,6 +583,7 @@ impl<'tcx> Context<'tcx> {
             call_locations,
             should_merge: options.should_merge,
             expanded_codes,
+            highlight_foreign_code,
         };
 
         let dst = output;

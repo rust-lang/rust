@@ -87,6 +87,7 @@ pub(crate) fn render_and_write<P: AsRef<Path>>(
                 error_codes,
                 edition,
                 playground: &playground,
+                highlight_foreign_code: options.highlight_foreign_code,
             }
             .write_into(f)
         } else {
@@ -98,6 +99,7 @@ pub(crate) fn render_and_write<P: AsRef<Path>>(
                 edition,
                 playground: &playground,
                 heading_offset: HeadingOffset::H1,
+                highlight_foreign_code: options.highlight_foreign_code,
             }
             .write_into(f)
         }

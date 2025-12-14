@@ -312,6 +312,8 @@ pub(crate) struct RenderOptions {
     pub(crate) disable_minification: bool,
     /// If `true`, HTML source pages will generate the possibility to expand macros.
     pub(crate) generate_macro_expansion: bool,
+    /// If `true`, non-Rust code blocks will be syntax-highlighted using tree-sitter.
+    pub(crate) highlight_foreign_code: bool,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -805,6 +807,7 @@ impl Options {
         let no_capture = matches.opt_present("no-capture");
         let generate_link_to_definition = matches.opt_present("generate-link-to-definition");
         let generate_macro_expansion = matches.opt_present("generate-macro-expansion");
+        let highlight_foreign_code = matches.opt_present("highlight-foreign-code");
         let extern_html_root_takes_precedence =
             matches.opt_present("extern-html-root-takes-precedence");
         let html_no_source = matches.opt_present("html-no-source");
@@ -916,6 +919,7 @@ impl Options {
             include_parts_dir,
             parts_out_dir,
             disable_minification,
+            highlight_foreign_code,
         };
         Some((input, options, render_options, loaded_paths))
     }
