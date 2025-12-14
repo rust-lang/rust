@@ -23,6 +23,7 @@
 +         let mut _6: &mut {coroutine@$DIR/inline_coroutine.rs:20:5: 20:8};
 +         let mut _7: u32;
 +         let mut _8: i32;
++         let mut _9: bool;
 +     }
   
       bb0: {
@@ -39,6 +40,7 @@
 +         _5 = const false;
 +         StorageLive(_6);
 +         StorageLive(_7);
++         StorageLive(_9);
 +         _6 = copy (_2.0: &mut {coroutine@$DIR/inline_coroutine.rs:20:5: 20:8});
 +         _7 = discriminant((*_6));
 +         switchInt(move _7) -> [0: bb5, 1: bb9, 3: bb10, otherwise: bb11];
@@ -72,6 +74,7 @@
 -         _0 = const ();
 -         StorageDead(_1);
 -         return;
++         StorageDead(_9);
 +         StorageDead(_7);
 +         StorageDead(_6);
 +         StorageDead(_5);
@@ -111,8 +114,9 @@
 + 
 +     bb10: {
 +         StorageLive(_8);
++         _9 = move _5;
 +         StorageDead(_8);
-+         _1 = CoroutineState::<i32, bool>::Complete(copy _5);
++         _1 = CoroutineState::<i32, bool>::Complete(move _9);
 +         discriminant((*_6)) = 1;
 +         goto -> bb4;
 +     }
