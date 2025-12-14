@@ -1,5 +1,7 @@
 //@ aux-build:trait_object_lt_defaults_lib.rs
 //@ run-pass
+#![allow(unconstructable_pub_struct)]
+
 #![allow(dead_code, unused)]
 extern crate trait_object_lt_defaults_lib;
 

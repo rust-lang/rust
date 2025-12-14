@@ -6,6 +6,8 @@
 // This test makes sure that we still find the proc-macro registrar function
 // when we compile proc-macros incrementally (see #47292).
 
+#![allow(unconstructable_pub_struct)]
+
 #![crate_type = "rlib"]
 
 #[macro_use]

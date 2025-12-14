@@ -1,6 +1,7 @@
 //@ compile-flags: -Copt-level=0 -Zmir-opt-level=1 -Cdebuginfo=limited
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 
+#![allow(unconstructable_pub_struct)]
 #![crate_type = "lib"]
 
 #[derive(PartialOrd, Ord, PartialEq, Eq)]

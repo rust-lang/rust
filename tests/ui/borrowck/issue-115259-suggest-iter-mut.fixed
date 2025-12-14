@@ -1,4 +1,6 @@
 //@ run-rustfix
+#![allow(unconstructable_pub_struct)]
+
 #![allow(unused_mut)]
 #![allow(dead_code)]
 

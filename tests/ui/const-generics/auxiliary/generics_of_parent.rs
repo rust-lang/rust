@@ -1,3 +1,5 @@
+#![allow(unconstructable_pub_struct)]
+
 #![feature(generic_const_exprs)]
 
 // library portion of regression test for #87674

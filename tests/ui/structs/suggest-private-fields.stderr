@@ -1,5 +1,5 @@
 error[E0560]: struct `B` has no field named `aa`
-  --> $DIR/suggest-private-fields.rs:15:9
+  --> $DIR/suggest-private-fields.rs:17:9
    |
 LL |         aa: 20,
    |         ^^ unknown field
@@ -11,7 +11,7 @@ LL +         a: 20,
    |
 
 error[E0560]: struct `B` has no field named `bb`
-  --> $DIR/suggest-private-fields.rs:17:9
+  --> $DIR/suggest-private-fields.rs:19:9
    |
 LL |         bb: 20,
    |         ^^ `B` does not have this field
@@ -19,7 +19,7 @@ LL |         bb: 20,
    = note: available fields are: `a`
 
 error[E0560]: struct `A` has no field named `aa`
-  --> $DIR/suggest-private-fields.rs:22:9
+  --> $DIR/suggest-private-fields.rs:24:9
    |
 LL |         aa: 20,
    |         ^^ unknown field
@@ -31,7 +31,7 @@ LL +         a: 20,
    |
 
 error[E0560]: struct `A` has no field named `bb`
-  --> $DIR/suggest-private-fields.rs:24:9
+  --> $DIR/suggest-private-fields.rs:26:9
    |
 LL |         bb: 20,
    |         ^^ unknown field
