@@ -961,6 +961,11 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         allow_internal_unsafe, Normal, template!(Word), WarnFollowing,
         EncodeCrossCrate::No, "allow_internal_unsafe side-steps the unsafe_code lint",
     ),
+    gated!(
+        rustc_eii_extern_item, Normal, template!(Word),
+        ErrorFollowing, EncodeCrossCrate::Yes, eii_internals,
+        "used internally to mark types with a `transparent` representation when it is guaranteed by the documentation",
+    ),
     rustc_attr!(
         rustc_allowed_through_unstable_modules, Normal, template!(NameValueStr: "deprecation message"),
         WarnFollowing, EncodeCrossCrate::No,

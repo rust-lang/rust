@@ -164,6 +164,17 @@ passes_duplicate_diagnostic_item_in_crate =
     duplicate diagnostic item in crate `{$crate_name}`: `{$name}`
     .note = the diagnostic item is first defined in crate `{$orig_crate_name}`
 
+passes_duplicate_eii_impls =
+    multiple implementations of `#[{$name}]`
+    .first = first implemented here in crate `{$first_crate}`
+    .second = also implemented here in crate `{$second_crate}`
+    .note = in addition to these two, { $num_additional_crates ->
+         [one] another implementation was found in crate {$additional_crate_names}
+         *[other] more implementations were also found in the following crates: {$additional_crate_names}
+    }
+
+    .help = an "externally implementable item" can only have a single implementation in the final artifact. When multiple implementations are found, also in different crates, they conflict
+
 passes_duplicate_feature_err =
     the feature `{$feature}` has already been enabled
 
@@ -196,6 +207,22 @@ passes_duplicate_lang_item_crate_depends =
     .second_definition_local = second definition in the local crate (`{$crate_name}`)
     .first_definition_path = first definition in `{$orig_crate_name}` loaded from {$orig_path}
     .second_definition_path = second definition in `{$crate_name}` loaded from {$path}
+
+passes_eii_fn_with_track_caller =
+    `#[{$name}]` is not allowed to have `#[track_caller]`
+    .label = `#[{$name}]` is not allowed to have `#[track_caller]`
+
+passes_eii_impl_not_function =
+    `eii_macro_for` is only valid on functions
+
+passes_eii_impl_requires_unsafe =
+    `#[{$name}]` is unsafe to implement
+passes_eii_impl_requires_unsafe_suggestion = wrap the attribute in `unsafe(...)`
+
+passes_eii_without_impl =
+    `#[{$name}]` required, but not found
+    .label = expected because `#[{$name}]` was declared here in crate `{$decl_crate_name}`
+    .help = expected at least one implementation in crate `{$current_crate_name}` or any of its dependencies
 
 passes_enum_variant_same_name =
     it is impossible to refer to the {$dead_descr} `{$dead_name}` because it is shadowed by this enum variant with the same name

@@ -2107,6 +2107,19 @@ pub struct MacroDef {
     pub body: Box<DelimArgs>,
     /// `true` if macro was defined with `macro_rules`.
     pub macro_rules: bool,
+
+    /// If this is a macro used for externally implementable items,
+    /// it refers to an extern item which is its "target". This requires
+    /// name resolution so can't just be an attribute, so we store it in this field.
+    pub eii_extern_target: Option<EiiExternTarget>,
+}
+
+#[derive(Clone, Encodable, Decodable, Debug, HashStable_Generic, Walkable)]
+pub struct EiiExternTarget {
+    /// path to the extern item we're targetting
+    pub extern_item_path: Path,
+    pub impl_unsafe: bool,
+    pub span: Span,
 }
 
 #[derive(Clone, Encodable, Decodable, Debug, Copy, Hash, Eq, PartialEq)]
@@ -3746,6 +3759,21 @@ pub struct Fn {
     pub contract: Option<Box<FnContract>>,
     pub define_opaque: Option<ThinVec<(NodeId, Path)>>,
     pub body: Option<Box<Block>>,
+
+    /// This function is an implementation of an externally implementable item (EII).
+    /// This means, there was an EII declared somewhere and this function is the
+    /// implementation that should be run when the declaration is called.
+    pub eii_impls: ThinVec<EiiImpl>,
+}
+
+#[derive(Clone, Encodable, Decodable, Debug, Walkable)]
+pub struct EiiImpl {
+    pub node_id: NodeId,
+    pub eii_macro_path: Path,
+    pub impl_safety: Safety,
+    pub span: Span,
+    pub inner_span: Span,
+    pub is_default: bool,
 }
 
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
@@ -4112,7 +4140,7 @@ mod size_asserts {
     static_assert_size!(Block, 32);
     static_assert_size!(Expr, 72);
     static_assert_size!(ExprKind, 40);
-    static_assert_size!(Fn, 184);
+    static_assert_size!(Fn, 192);
     static_assert_size!(ForeignItem, 80);
     static_assert_size!(ForeignItemKind, 16);
     static_assert_size!(GenericArg, 24);

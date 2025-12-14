@@ -25,7 +25,7 @@ use super::{Decodable, DecodeIterator};
 use crate::creader::{CStore, LoadedMacro};
 use crate::rmeta::AttrFlags;
 use crate::rmeta::table::IsDefault;
-use crate::{foreign_modules, native_libs};
+use crate::{eii, foreign_modules, native_libs};
 
 trait ProcessQueryValue<'tcx, T> {
     fn process_decoded(self, _tcx: TyCtxt<'tcx>, _err: impl Fn() -> !) -> T;
@@ -330,9 +330,22 @@ provide! { tcx, def_id, other, cdata,
     is_private_dep => { cdata.private_dep }
     is_panic_runtime => { cdata.root.panic_runtime }
     is_compiler_builtins => { cdata.root.compiler_builtins }
+
+    // FIXME: to be replaced with externally_implementable_items below
     has_global_allocator => { cdata.root.has_global_allocator }
+    // FIXME: to be replaced with externally_implementable_items below
     has_alloc_error_handler => { cdata.root.has_alloc_error_handler }
+    // FIXME: to be replaced with externally_implementable_items below
     has_panic_handler => { cdata.root.has_panic_handler }
+
+    externally_implementable_items => {
+        cdata.get_externally_implementable_items(tcx)
+            .map(|(decl_did, (decl, impls))| (
+                decl_did,
+                (decl, impls.into_iter().collect())
+            )).collect()
+    }
+
     is_profiler_runtime => { cdata.root.profiler_runtime }
     required_panic_strategy => { cdata.root.required_panic_strategy }
     panic_in_drop_strategy => { cdata.root.panic_in_drop_strategy }
@@ -430,6 +443,7 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
         },
         native_libraries: native_libs::collect,
         foreign_modules: foreign_modules::collect,
+        externally_implementable_items: eii::collect,
 
         // Returns a map from a sufficiently visible external item (i.e., an
         // external item that is visible from at least one local module) to a

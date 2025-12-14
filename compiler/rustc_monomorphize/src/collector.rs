@@ -1643,11 +1643,13 @@ impl<'v> RootCollector<'_, 'v> {
                 MonoItemCollectionStrategy::Lazy => {
                     self.entry_fn.and_then(|(id, _)| id.as_local()) == Some(def_id)
                         || self.tcx.is_reachable_non_generic(def_id)
-                        || self
-                            .tcx
-                            .codegen_fn_attrs(def_id)
-                            .flags
-                            .contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL)
+                        || {
+                            let flags = self.tcx.codegen_fn_attrs(def_id).flags;
+                            flags.intersects(
+                                CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL
+                                    | CodegenFnAttrFlags::EXTERNALLY_IMPLEMENTABLE_ITEM,
+                            )
+                        }
                 }
             }
     }

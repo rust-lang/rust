@@ -39,6 +39,7 @@ use rustc_span::{
 use tracing::debug;
 
 use crate::creader::CStore;
+use crate::eii::EiiMapEncodedKeyValue;
 use crate::rmeta::table::IsDefault;
 use crate::rmeta::*;
 
@@ -1487,6 +1488,13 @@ impl<'a> CrateMetadataRef<'a> {
         )
     }
 
+    fn get_externally_implementable_items(
+        self,
+        tcx: TyCtxt<'_>,
+    ) -> impl Iterator<Item = EiiMapEncodedKeyValue> {
+        self.root.externally_implementable_items.decode((self, tcx))
+    }
+
     fn get_missing_lang_items<'tcx>(self, tcx: TyCtxt<'tcx>) -> &'tcx [LangItem] {
         tcx.arena.alloc_from_iter(self.root.lang_items_missing.decode((self, tcx)))
     }
@@ -1530,7 +1538,7 @@ impl<'a> CrateMetadataRef<'a> {
                     .get((self, tcx), id)
                     .unwrap()
                     .decode((self, tcx));
-                ast::MacroDef { macro_rules, body: Box::new(body) }
+                ast::MacroDef { macro_rules, body: Box::new(body), eii_extern_target: None }
             }
             _ => bug!(),
         }

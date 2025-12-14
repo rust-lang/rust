@@ -227,6 +227,7 @@ impl<'a> Parser<'a> {
                 contract,
                 body,
                 define_opaque: None,
+                eii_impls: ThinVec::new(),
             }))
         } else if self.eat_keyword_case(exp!(Extern), case) {
             if self.eat_keyword_case(exp!(Crate), case) {
@@ -2203,7 +2204,10 @@ impl<'a> Parser<'a> {
         };
 
         self.psess.gated_spans.gate(sym::decl_macro, lo.to(self.prev_token.span));
-        Ok(ItemKind::MacroDef(ident, ast::MacroDef { body, macro_rules: false }))
+        Ok(ItemKind::MacroDef(
+            ident,
+            ast::MacroDef { body, macro_rules: false, eii_extern_target: None },
+        ))
     }
 
     /// Is this a possibly malformed start of a `macro_rules! foo` item definition?
@@ -2250,7 +2254,10 @@ impl<'a> Parser<'a> {
         self.eat_semi_for_macro_if_needed(&body);
         self.complain_if_pub_macro(vis, true);
 
-        Ok(ItemKind::MacroDef(ident, ast::MacroDef { body, macro_rules: true }))
+        Ok(ItemKind::MacroDef(
+            ident,
+            ast::MacroDef { body, macro_rules: true, eii_extern_target: None },
+        ))
     }
 
     /// Item macro invocations or `macro_rules!` definitions need inherited visibility.

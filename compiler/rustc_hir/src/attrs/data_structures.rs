@@ -19,6 +19,23 @@ use crate::attrs::pretty_printing::PrintAttribute;
 use crate::limit::Limit;
 use crate::{DefaultBodyStability, PartialConstStability, RustcVersion, Stability};
 
+#[derive(Copy, Clone, Debug, HashStable_Generic, Encodable, Decodable, PrintAttribute)]
+pub struct EiiImpl {
+    pub eii_macro: DefId,
+    pub impl_marked_unsafe: bool,
+    pub span: Span,
+    pub inner_span: Span,
+    pub is_default: bool,
+}
+
+#[derive(Copy, Clone, Debug, HashStable_Generic, Encodable, Decodable, PrintAttribute)]
+pub struct EiiDecl {
+    pub eii_extern_target: DefId,
+    /// whether or not it is unsafe to implement this EII
+    pub impl_unsafe: bool,
+    pub span: Span,
+}
+
 #[derive(Copy, Clone, PartialEq, Encodable, Decodable, Debug, HashStable_Generic, PrintAttribute)]
 pub enum InlineAttr {
     None,
@@ -691,6 +708,15 @@ pub enum AttributeKind {
 
     /// Represents `#[rustc_dummy]`.
     Dummy,
+
+    /// Implementation detail of `#[eii]`
+    EiiExternItem,
+
+    /// Implementation detail of `#[eii]`
+    EiiExternTarget(EiiDecl),
+
+    /// Implementation detail of `#[eii]`
+    EiiImpls(ThinVec<EiiImpl>),
 
     /// Represents [`#[export_name]`](https://doc.rust-lang.org/reference/abi.html#the-export_name-attribute).
     ExportName {
