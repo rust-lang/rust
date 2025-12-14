@@ -64,10 +64,12 @@ please see the corresponding [subsection on writing documentation in this guide]
 
 ## Other places to find information
 
+This guide, the one you are currently reading,
+contains information about how various parts of the compiler work,
+and how to contribute to the compiler.
+
 You might also find the following sites useful:
 
-- This guide contains information about how various parts of the
-  compiler work and how to contribute to the compiler.
 - [rustc API docs] -- rustdoc documentation for the compiler, devtools, and internal tools
 - [Forge] -- contains documentation about Rust infrastructure, team procedures, and more
 - [compiler-team] -- the home-base for the Rust compiler team, with description
