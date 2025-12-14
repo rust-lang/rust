@@ -680,6 +680,10 @@ mod link_section {
     //~| HELP remove the attribute
     trait Tr {
         #[link_section = "1800"]
+        //~^ WARN attribute cannot be used on
+        //~| WARN previously accepted
+        //~| HELP can be applied to
+        //~| HELP remove the attribute
         fn inside_tr_no_default(&self);
 
         #[link_section = "1800"]
