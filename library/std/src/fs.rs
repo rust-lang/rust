@@ -3329,7 +3329,9 @@ impl DirBuilder {
     }
 
     fn create_dir_all(&self, path: &Path) -> io::Result<()> {
-        if path == Path::new("") {
+        // if path's parent is None, it is "/" path, which should
+        // return Ok immediately
+        if path == Path::new("") || path.parent() == None {
             return Ok(());
         }
 
@@ -3340,7 +3342,7 @@ impl DirBuilder {
             // for relative paths like "foo/bar", the parent of
             // "foo" will be "" which there's no need to invoke
             // a mkdir syscall on
-            if ancestor == Path::new("") {
+            if ancestor == Path::new("") || ancestor.parent() == None {
                 break;
             }
 
