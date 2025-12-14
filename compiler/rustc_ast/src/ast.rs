@@ -176,8 +176,7 @@ pub fn join_path_syms(path: impl IntoIterator<Item = impl Borrow<Symbol>>) -> St
     for sym in iter {
         let sym = *sym.borrow();
         debug_assert_ne!(sym, kw::PathRoot);
-        s.push_str("::");
-        s.push_str(sym.as_str());
+        s.extend(["::", sym.as_str()]);
     }
     s
 }
@@ -196,8 +195,7 @@ pub fn join_path_idents(path: impl IntoIterator<Item = impl Borrow<Ident>>) -> S
     for ident in iter {
         let ident = *ident.borrow();
         debug_assert_ne!(ident.name, kw::PathRoot);
-        s.push_str("::");
-        s.push_str(&ident.to_string());
+        s.extend(["::", &ident.to_string()]);
     }
     s
 }
