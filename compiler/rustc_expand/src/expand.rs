@@ -2110,7 +2110,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
         let mut attr_pos = None;
         for (pos, attr) in item.attrs().iter().enumerate() {
             if !attr.is_doc_comment() && !self.cx.expanded_inert_attrs.is_marked(attr) {
-                let name = attr.ident().map(|ident| ident.name);
+                let name = attr.name();
                 if name == Some(sym::cfg) || name == Some(sym::cfg_attr) {
                     cfg_pos = Some(pos); // a cfg attr found, no need to search anymore
                     break;
@@ -2187,7 +2187,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
             } else if rustc_attr_parsing::is_builtin_attr(attr)
                 && !AttributeParser::<Early>::is_parsed_attribute(&attr.path())
             {
-                let attr_name = attr.ident().unwrap().name;
+                let attr_name = attr.name().unwrap();
                 // `#[cfg]` and `#[cfg_attr]` are special - they are
                 // eagerly evaluated.
                 if attr_name != sym::cfg_trace && attr_name != sym::cfg_attr_trace {

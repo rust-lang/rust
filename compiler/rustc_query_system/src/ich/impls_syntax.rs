@@ -24,7 +24,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for [hir::Attribute] {
             .filter(|attr| {
                 attr.is_doc_comment().is_none()
                     // FIXME(jdonszelmann) have a better way to handle ignored attrs
-                    && !attr.ident().is_some_and(|ident| hcx.is_ignored_attr(ident.name))
+                    && !attr.name().is_some_and(|ident| hcx.is_ignored_attr(ident))
             })
             .collect();
 
