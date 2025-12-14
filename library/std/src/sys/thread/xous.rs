@@ -87,7 +87,7 @@ impl Thread {
             // dealloc calls from being reordered to after the TLS has been destroyed.
             // See https://github.com/rust-lang/rust/pull/144465#pullrequestreview-3289729950
             // for more context.
-            run_main_thread_not_inlined(init);
+            rust_main_thread_not_inlined(init);
 
             // Destroy TLS, which will free the TLS page and call the destructor for
             // any thread local storage (if any).

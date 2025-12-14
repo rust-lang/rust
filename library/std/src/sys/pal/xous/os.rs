@@ -11,7 +11,7 @@ pub(crate) mod params;
 static PARAMS_ADDRESS: Atomic<*mut u8> = AtomicPtr::new(core::ptr::null_mut());
 
 #[cfg(not(test))]
-#[cfg(feature = "panic_unwind")]
+#[cfg(feature = "panic-unwind")]
 mod eh_unwinding {
     pub(crate) struct EhFrameFinder;
     pub(crate) static mut EH_FRAME_ADDRESS: usize = 0;
@@ -45,7 +45,7 @@ mod c_compat {
 
     #[unsafe(no_mangle)]
     pub extern "C" fn _start(eh_frame: usize, params_address: usize) {
-        #[cfg(feature = "panic_unwind")]
+        #[cfg(feature = "panic-unwind")]
         {
             unsafe { super::eh_unwinding::EH_FRAME_ADDRESS = eh_frame };
             unwind::set_custom_eh_frame_finder(&super::eh_unwinding::EH_FRAME_SETTINGS).ok();
