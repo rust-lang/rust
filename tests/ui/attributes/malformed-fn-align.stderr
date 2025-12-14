@@ -20,9 +20,9 @@ error[E0539]: malformed `rustc_align` attribute input
   --> $DIR/malformed-fn-align.rs:17:1
    |
 LL | #[rustc_align = 16]
-   | ^^^^^^^^^^^^^^^^^^^
-   | |
-   | expected this to be a list
+   | ^^^^^^^^^^^^^^----^
+   | |             |
+   | |             expected this to be a list
    | help: must be of the form: `#[rustc_align(<alignment in bytes>)]`
 
 error[E0589]: invalid alignment value: not an unsuffixed integer

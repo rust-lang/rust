@@ -16,11 +16,23 @@ error: arguments to `macro_use` are not allowed here
 LL | #![macro_use(my_macro)]
    | ^^^^^^^^^^^^^^^^^^^^^^^
 
-error: valid forms for the attribute are `#[macro_use(name1, name2, ...)]` and `#[macro_use]`
+error[E0539]: malformed `macro_use` attribute input
   --> $DIR/issue-43106-gating-of-macro_use.rs:15:5
    |
 LL |     #[macro_use = "2700"] struct S;
-   |     ^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^--------^
+   |                 |
+   |                 expected a list or no arguments here
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/macros-by-example.html#the-macro_use-attribute>
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL -     #[macro_use = "2700"] struct S;
+LL +     #[macro_use(name1, name2, ...)] struct S;
+   |
+LL -     #[macro_use = "2700"] struct S;
+LL +     #[macro_use] struct S;
+   |
 
 warning: `#[macro_use]` attribute cannot be used on structs
   --> $DIR/issue-43106-gating-of-macro_use.rs:15:5
@@ -61,3 +73,4 @@ LL |     #[macro_use] impl S { }
 
 error: aborting due to 4 previous errors; 4 warnings emitted
 
+For more information about this error, try `rustc --explain E0539`.

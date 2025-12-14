@@ -2,7 +2,9 @@
 //~^ NOTE the lint level is defined here
 
 #[macro_use = 5]
-//~^ ERROR valid forms for the attribute are `#[macro_use(name1, name2, ...)]` and `#[macro_use]`
+//~^ ERROR malformed `macro_use` attribute input
+//~| NOTE expected a list or no arguments here
+//~| NOTE for more information, visit
 extern crate std as s1;
 
 #[macro_use(5)]

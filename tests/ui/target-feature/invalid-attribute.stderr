@@ -26,9 +26,9 @@ error[E0539]: malformed `target_feature` attribute input
   --> $DIR/invalid-attribute.rs:17:1
    |
 LL | #[target_feature = "+sse2"]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   | |
-   | expected this to be a list
+   | ^^^^^^^^^^^^^^^^^---------^
+   | |                |
+   | |                expected this to be a list
    | help: must be of the form: `#[target_feature(enable = "feat1, feat2")]`
 
 error[E0539]: malformed `target_feature` attribute input

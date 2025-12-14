@@ -177,7 +177,7 @@ impl ArgParser {
         match self {
             Self::NoArgs => Ok(()),
             Self::List(args) => Err(args.span),
-            Self::NameValue(args) => Err(args.eq_span.to(args.value_span)),
+            Self::NameValue(args) => Err(args.args_span()),
         }
     }
 }
@@ -313,6 +313,10 @@ impl NameValueParser {
 
     pub fn value_as_str(&self) -> Option<Symbol> {
         self.value_as_lit().kind.str()
+    }
+
+    pub fn args_span(&self) -> Span {
+        self.eq_span.to(self.value_span)
     }
 }
 

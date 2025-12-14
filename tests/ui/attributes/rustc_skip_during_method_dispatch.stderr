@@ -11,9 +11,9 @@ error[E0539]: malformed `rustc_skip_during_method_dispatch` attribute input
   --> $DIR/rustc_skip_during_method_dispatch.rs:7:1
    |
 LL | #[rustc_skip_during_method_dispatch = "array"]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   | |
-   | expected this to be a list
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---------^
+   | |                                   |
+   | |                                   expected this to be a list
    | help: must be of the form: `#[rustc_skip_during_method_dispatch(array, boxed_slice)]`
 
 error[E0539]: malformed `rustc_skip_during_method_dispatch` attribute input

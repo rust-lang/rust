@@ -65,7 +65,7 @@ fn parse_derive_like<S: Stage>(
         if args.no_args().is_ok() && !trait_name_mandatory {
             return Some((None, ThinVec::new()));
         }
-        cx.expected_list(cx.attr_span);
+        cx.expected_list(cx.attr_span, args);
         return None;
     };
     let mut items = list.mixed();
@@ -96,7 +96,7 @@ fn parse_derive_like<S: Stage>(
     let mut attributes = ThinVec::new();
     if let Some(attrs) = items.next() {
         let Some(attr_list) = attrs.meta_item() else {
-            cx.expected_list(attrs.span());
+            cx.unexpected_literal(attrs.span());
             return None;
         };
         if !attr_list.path().word_is(sym::attributes) {
@@ -104,7 +104,7 @@ fn parse_derive_like<S: Stage>(
             return None;
         }
         let Some(attr_list) = attr_list.args().list() else {
-            cx.expected_list(attrs.span());
+            cx.expected_list(attrs.span(), attr_list.args());
             return None;
         };
 
