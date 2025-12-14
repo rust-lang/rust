@@ -37,4 +37,40 @@ const MIXED_PTR: MaybeUninit<*const u8> = { //~ERROR: partial pointer in final v
     }
 };
 
+/// This has pointer bytes in the padding of the memory that the final value is read from.
+/// To ensure consistent behavior, we want to *always* copy that padding, even if the value
+/// could be represented as a more efficient ScalarPair. Hence this must fail to compile.
+fn fragment_in_padding() -> impl Copy {
+    // We can't use `repr(align)` here as that would make this not a `ScalarPair` any more.
+    #[repr(C)]
+    #[derive(Clone, Copy)]
+    struct Thing {
+        x: u128,
+        y: usize,
+        // at least one pointer worth of padding
+    }
+    // Ensure there is indeed padding.
+    const _: () = assert!(mem::size_of::<Thing>() > 16 + mem::size_of::<usize>());
+
+    #[derive(Clone, Copy)]
+    union PreservePad {
+        thing: Thing,
+        bytes: [u8; mem::size_of::<Thing>()],
+    }
+
+    const A: Thing = unsafe { //~ERROR: partial pointer in final value
+        let mut buffer = [PreservePad { bytes: [0u8; mem::size_of::<Thing>()] }; 2];
+        // The offset half a pointer from the end, so that copying a `Thing` copies exactly
+        // half the pointer.
+        let offset = mem::size_of::<Thing>() - mem::size_of::<usize>()/2;
+        // Ensure this is inside the padding.
+        assert!(offset >= std::mem::offset_of!(Thing, y) + mem::size_of::<usize>());
+
+        (&raw mut buffer).cast::<&i32>().byte_add(offset).write_unaligned(&1);
+        buffer[0].thing
+    };
+
+    A
+}
+
 fn main() {}
