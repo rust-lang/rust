@@ -373,6 +373,13 @@ impl rustc_driver::Callbacks for MiriDepCompilerCalls {
 }
 
 fn exit(exit_code: i32) -> ! {
+    // MIR validation uses delayed bugs. Flush them as we won't return for `run_compiler` to do it.
+    ty::tls::with_opt(|opt_tcx| {
+        if let Some(tcx) = opt_tcx {
+            tcx.dcx().flush_delayed()
+        }
+    });
+
     // Drop the tracing guard before exiting, so tracing calls are flushed correctly.
     deinit_loggers();
     // Make sure the supervisor knows about the exit code.
