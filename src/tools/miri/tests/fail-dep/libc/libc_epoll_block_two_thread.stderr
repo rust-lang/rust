@@ -2,7 +2,7 @@ error: the evaluated program deadlocked
   --> RUSTLIB/std/src/sys/thread/PLATFORM.rs:LL:CC
    |
 LL |         let ret = unsafe { libc::pthread_join(id, ptr::null_mut()) };
-   |                                                                  ^ this thread got stuck here
+   |                                                                  ^ thread `main` got stuck here
    |
    = note: BACKTRACE:
    = note: inside `std::sys::thread::PLATFORM::Thread::join` at RUSTLIB/std/src/sys/thread/PLATFORM.rs:LL:CC
@@ -18,7 +18,7 @@ error: the evaluated program deadlocked
   --> tests/fail-dep/libc/libc_epoll_block_two_thread.rs:LL:CC
    |
 LL |         check_epoll_wait::<TAG>(epfd, &expected, -1);
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this thread got stuck here
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ thread `unnamed-ID` got stuck here
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

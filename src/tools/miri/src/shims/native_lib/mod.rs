@@ -459,12 +459,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx, bool> {
         let this = self.eval_context_mut();
         // Get the pointer to the function in the shared object file if it exists.
-        let code_ptr = match this.get_func_ptr_explicitly_from_lib(link_name) {
-            Some(ptr) => ptr,
-            None => {
-                // Shared object file does not export this function -- try the shims next.
-                return interp_ok(false);
-            }
+        let Some(code_ptr) = this.get_func_ptr_explicitly_from_lib(link_name) else {
+            // Shared object file does not export this function -- try the shims next.
+            return interp_ok(false);
         };
 
         // Do we have ptrace?
