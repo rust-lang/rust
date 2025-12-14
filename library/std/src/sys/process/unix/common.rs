@@ -16,7 +16,7 @@ use crate::sys::fs::File;
 use crate::sys::fs::OpenOptions;
 use crate::sys::pipe::{self, AnonPipe};
 use crate::sys::process::env::{CommandEnv, CommandEnvs};
-use crate::sys_common::{FromInner, IntoInner};
+use crate::sys::{FromInner, IntoInner};
 use crate::{fmt, io};
 
 mod cstring_array;

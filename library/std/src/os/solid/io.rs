@@ -48,7 +48,7 @@
 
 use crate::marker::PhantomData;
 use crate::mem::ManuallyDrop;
-use crate::sys_common::{AsInner, FromInner, IntoInner};
+use crate::sys::{AsInner, FromInner, IntoInner};
 use crate::{fmt, net, sys};
 
 /// Raw file descriptors.

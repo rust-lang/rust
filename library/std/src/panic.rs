@@ -523,7 +523,7 @@ pub fn get_backtrace_style() -> Option<BacktraceStyle> {
         Some(x) if &x == "0" => BacktraceStyle::Off,
         Some(x) if &x == "full" => BacktraceStyle::Full,
         Some(_) => BacktraceStyle::Short,
-        None if crate::sys::FULL_BACKTRACE_DEFAULT => BacktraceStyle::Full,
+        None if crate::sys::backtrace::FULL_BACKTRACE_DEFAULT => BacktraceStyle::Full,
         None => BacktraceStyle::Off,
     };
 

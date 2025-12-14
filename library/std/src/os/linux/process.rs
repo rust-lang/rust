@@ -8,9 +8,9 @@ use crate::io::Result;
 use crate::os::unix::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd};
 use crate::process::{self, ExitStatus};
 use crate::sealed::Sealed;
+use crate::sys::{AsInner, AsInnerMut, FromInner, IntoInner};
 #[cfg(not(doc))]
 use crate::sys::{fd::FileDesc, linux::pidfd::PidFd as InnerPidFd};
-use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
 
 #[cfg(doc)]
 struct InnerPidFd;

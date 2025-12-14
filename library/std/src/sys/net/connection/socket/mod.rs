@@ -9,7 +9,7 @@ use crate::net::{
 };
 use crate::sys::common::small_c_string::run_with_cstr;
 use crate::sys::net::connection::each_addr;
-use crate::sys_common::{AsInner, FromInner};
+use crate::sys::{AsInner, FromInner};
 use crate::time::Duration;
 use crate::{cmp, fmt, mem, ptr};
 

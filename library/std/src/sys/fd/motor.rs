@@ -2,8 +2,7 @@
 
 use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut, Read};
 use crate::os::fd::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd};
-use crate::sys::map_motor_error;
-use crate::sys_common::{AsInner, FromInner, IntoInner};
+use crate::sys::{AsInner, FromInner, IntoInner, map_motor_error};
 
 #[derive(Debug)]
 pub struct FileDesc(OwnedFd);

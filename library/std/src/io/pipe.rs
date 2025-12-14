@@ -1,6 +1,6 @@
 use crate::io;
 use crate::sys::anonymous_pipe::{AnonPipe, pipe as pipe_inner};
-use crate::sys_common::{FromInner, IntoInner};
+use crate::sys::{FromInner, IntoInner};
 
 /// Creates an anonymous pipe.
 ///

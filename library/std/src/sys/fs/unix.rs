@@ -97,8 +97,7 @@ use crate::sys::time::SystemTime;
 use crate::sys::weak::syscall;
 #[cfg(target_os = "android")]
 use crate::sys::weak::weak;
-use crate::sys::{cvt, cvt_r};
-use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
+use crate::sys::{AsInner, AsInnerMut, FromInner, IntoInner, cvt, cvt_r};
 use crate::{mem, ptr};
 
 pub struct File(FileDesc);

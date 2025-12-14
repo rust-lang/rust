@@ -4,10 +4,10 @@ use crate::ffi::OsString;
 use crate::num::NonZero;
 use crate::ops::Try;
 use crate::sync::atomic::{Atomic, AtomicUsize, Ordering};
+use crate::sys::FromInner;
 use crate::sys::os_str::Buf;
 use crate::sys::pal::abi::usercalls::alloc;
 use crate::sys::pal::abi::usercalls::raw::ByteBuffer;
-use crate::sys_common::FromInner;
 use crate::{fmt, slice};
 
 // Specifying linkage/symbol name is solely to ensure a single instance between this crate and its unit tests

@@ -10,7 +10,7 @@ use crate::os::windows::io::{
     AsHandle, AsRawHandle, BorrowedHandle, FromRawHandle, IntoRawHandle, OwnedHandle, RawHandle,
 };
 use crate::sealed::Sealed;
-use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
+use crate::sys::{AsInner, AsInnerMut, FromInner, IntoInner};
 use crate::{io, marker, process, ptr, sys};
 
 #[stable(feature = "process_extensions", since = "1.2.0")]

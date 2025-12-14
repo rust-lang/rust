@@ -55,3 +55,8 @@ pub use kernel_copy::{CopyState, kernel_copy};
 // Bare metal platforms usually have very small amounts of RAM
 // (in the order of hundreds of KB)
 pub const DEFAULT_BUF_SIZE: usize = if cfg!(target_os = "espidf") { 512 } else { 8 * 1024 };
+
+pub type RawOsError = cfg_select! {
+    target_os = "uefi" => usize,
+    _ => i32,
+};
