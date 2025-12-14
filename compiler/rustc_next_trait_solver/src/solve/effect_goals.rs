@@ -7,13 +7,15 @@ use rustc_type_ir::lang_items::SolverTraitLangItem;
 use rustc_type_ir::solve::inspect::ProbeKind;
 use rustc_type_ir::solve::{AliasBoundKind, SizedTraitKind};
 use rustc_type_ir::{self as ty, Interner, TypingMode, elaborate};
-use tracing::instrument;
+use tracing::{debug, instrument};
 
 use super::assembly::{Candidate, structural_traits};
 use crate::delegate::SolverDelegate;
+use crate::solve::assembly::{AllowInferenceConstraints, AssembleCandidatesFrom};
+use crate::solve::trait_goals::TraitGoalProvenVia;
 use crate::solve::{
-    BuiltinImplSource, CandidateSource, Certainty, EvalCtxt, Goal, GoalSource, NoSolution,
-    QueryResult, assembly,
+    BuiltinImplSource, CandidateSource, Certainty, EvalCtxt, Goal, GoalSource, MaybeCause,
+    NoSolution, QueryResult, assembly,
 };
 
 impl<D, I> assembly::GoalKind<D> for ty::HostEffectPredicate<I>
@@ -447,6 +449,63 @@ where
                 goal.with(ecx.cx(), goal.predicate.trait_ref);
             ecx.compute_trait_goal(trait_goal)
         })?;
-        self.assemble_and_merge_candidates(proven_via, goal, |_ecx| None, |_ecx| Err(NoSolution))
+        self.assemble_and_merge_candidates(proven_via, goal)
+    }
+
+    // FIXME(const_traits): this was copied from the old projection normalization behavior
+    // and might not be what we actually want here.
+    #[instrument(level = "debug", skip(self), ret)]
+    fn assemble_and_merge_candidates(
+        &mut self,
+        proven_via: Option<TraitGoalProvenVia>,
+        goal: Goal<I, ty::HostEffectPredicate<I>>,
+    ) -> QueryResult<I> {
+        let Some(proven_via) = proven_via else {
+            // We don't care about overflow. If proving the trait goal overflowed, then
+            // it's enough to report an overflow error for that, we don't also have to
+            // overflow for the const bound.
+            //
+            // We use `forced_ambiguity` here over `make_ambiguous_response_no_constraints`
+            // because the former will also record a built-in candidate in the inspector.
+            return self.forced_ambiguity(MaybeCause::Ambiguity).map(|cand| cand.result);
+        };
+
+        match proven_via {
+            TraitGoalProvenVia::ParamEnv | TraitGoalProvenVia::AliasBound => {
+                let (mut candidates, _) = self
+                    .assemble_and_evaluate_candidates(goal, AssembleCandidatesFrom::EnvAndBounds);
+                debug!(?candidates);
+
+                if candidates.iter().any(|c| matches!(c.source, CandidateSource::ParamEnv(_))) {
+                    candidates.retain(|c| matches!(c.source, CandidateSource::ParamEnv(_)));
+                }
+
+                if let Some((response, _)) = self.try_merge_candidates(&candidates) {
+                    Ok(response)
+                } else {
+                    self.flounder(&candidates)
+                }
+            }
+            TraitGoalProvenVia::Misc => {
+                let (mut candidates, _) =
+                    self.assemble_and_evaluate_candidates(goal, AssembleCandidatesFrom::All);
+
+                if candidates.iter().any(|c| matches!(c.source, CandidateSource::ParamEnv(_))) {
+                    candidates.retain(|c| matches!(c.source, CandidateSource::ParamEnv(_)));
+                }
+
+                // We drop specialized impls to allow normalization via a final impl here. In case
+                // the specializing impl has different inference constraints from the specialized
+                // impl, proving the trait goal is already ambiguous, so we never get here. This
+                // means we can just ignore inference constraints and don't have to special-case
+                // constraining the normalized-to `term`.
+                self.filter_specialized_impls(AllowInferenceConstraints::Yes, &mut candidates);
+                if let Some((response, _)) = self.try_merge_candidates(&candidates) {
+                    Ok(response)
+                } else {
+                    self.flounder(&candidates)
+                }
+            }
+        }
     }
 }
