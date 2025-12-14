@@ -7,7 +7,7 @@
 //! goes along from the output of the previous stage.
 
 use std::borrow::Cow;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::ffi::OsStr;
 use std::io::BufReader;
 use std::io::prelude::*;
@@ -1562,7 +1562,7 @@ impl Step for RustcLink {
         run.never()
     }
 
-    /// Same as `std_link`, only for librustc
+    /// Same as `StdLink`, only for librustc
     fn run(self, builder: &Builder<'_>) {
         let build_compiler = self.build_compiler;
         let sysroot_compiler = self.sysroot_compiler;
@@ -2422,13 +2422,52 @@ pub fn add_to_sysroot(
     t!(fs::create_dir_all(sysroot_dst));
     t!(fs::create_dir_all(sysroot_host_dst));
     t!(fs::create_dir_all(self_contained_dst));
+
+    let mut crates = HashMap::new();
     for (path, dependency_type) in builder.read_stamp_file(stamp) {
+        let filename = path.file_name().unwrap().to_str().unwrap();
         let dst = match dependency_type {
-            DependencyType::Host => sysroot_host_dst,
-            DependencyType::Target => sysroot_dst,
+            DependencyType::Host => {
+                if sysroot_dst == sysroot_host_dst {
+                    // Only insert the part before the . to deduplicate different files for the same crate.
+                    // For example foo-1234.dll and foo-1234.dll.lib.
+                    crates.insert(filename.split_once('.').unwrap().0.to_owned(), path.clone());
+                }
+
+                sysroot_host_dst
+            }
+            DependencyType::Target => {
+                // Only insert the part before the . to deduplicate different files for the same crate.
+                // For example foo-1234.dll and foo-1234.dll.lib.
+                crates.insert(filename.split_once('.').unwrap().0.to_owned(), path.clone());
+
+                sysroot_dst
+            }
             DependencyType::TargetSelfContained => self_contained_dst,
         };
-        builder.copy_link(&path, &dst.join(path.file_name().unwrap()), FileType::Regular);
+        builder.copy_link(&path, &dst.join(filename), FileType::Regular);
+    }
+
+    // Check that none of the rustc_* crates have multiple versions. Otherwise using them from
+    // the sysroot would cause ambiguity errors. We do allow rustc_hash however as it is an
+    // external dependency that we build multiple copies of. It is re-exported by
+    // rustc_data_structures, so not being able to use extern crate rustc_hash; is not a big
+    // issue.
+    let mut seen_crates = HashMap::new();
+    for (filestem, path) in crates {
+        if !filestem.contains("rustc_") || filestem.contains("rustc_hash") {
+            continue;
+        }
+        if let Some(other_path) =
+            seen_crates.insert(filestem.split_once('-').unwrap().0.to_owned(), path.clone())
+        {
+            panic!(
+                "duplicate rustc crate {}\n-  first copy at {}\n- second copy at {}",
+                filestem.split_once('-').unwrap().0.to_owned(),
+                other_path.display(),
+                path.display(),
+            );
+        }
     }
 }
 
@@ -2515,7 +2554,13 @@ pub fn run_cargo(
             if filename.starts_with(&host_root_dir) {
                 // Unless it's a proc macro used in the compiler
                 if crate_types.iter().any(|t| t == "proc-macro") {
-                    deps.push((filename.to_path_buf(), DependencyType::Host));
+                    // Cargo will compile proc-macros that are part of the rustc workspace twice.
+                    // Once as libmacro-hash.so as build dependency and once as libmacro.so as
+                    // output artifact. Only keep the former to avoid ambiguity when trying to use
+                    // the proc macro from the sysroot.
+                    if filename.file_name().unwrap().to_str().unwrap().contains("-") {
+                        deps.push((filename.to_path_buf(), DependencyType::Host));
+                    }
                 }
                 continue;
             }

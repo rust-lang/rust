@@ -680,19 +680,19 @@ fn write_out_deps(tcx: TyCtxt<'_>, outputs: &OutputFilenames, out_filenames: &[P
 
             for &cnum in tcx.crates(()) {
                 let source = tcx.used_crate_source(cnum);
-                if let Some((path, _)) = &source.dylib {
+                if let Some(path) = &source.dylib {
                     files.extend(hash_iter_files(
                         iter::once(escape_dep_filename(&path.display().to_string())),
                         checksum_hash_algo,
                     ));
                 }
-                if let Some((path, _)) = &source.rlib {
+                if let Some(path) = &source.rlib {
                     files.extend(hash_iter_files(
                         iter::once(escape_dep_filename(&path.display().to_string())),
                         checksum_hash_algo,
                     ));
                 }
-                if let Some((path, _)) = &source.rmeta {
+                if let Some(path) = &source.rmeta {
                     files.extend(hash_iter_files(
                         iter::once(escape_dep_filename(&path.display().to_string())),
                         checksum_hash_algo,
