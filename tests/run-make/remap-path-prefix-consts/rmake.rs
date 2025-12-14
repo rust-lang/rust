@@ -97,7 +97,7 @@ fn main() {
         location_caller
             .crate_type("lib")
             .remap_path_prefix(cwd(), "/remapped")
-            .arg("-Zremap-path-scope=object")
+            .arg("--remap-path-scope=object")
             .input(cwd().join("location-caller.rs"));
         location_caller.run();
 
@@ -105,7 +105,7 @@ fn main() {
         runner
             .crate_type("bin")
             .remap_path_prefix(cwd(), "/remapped")
-            .arg("-Zremap-path-scope=diagnostics")
+            .arg("--remap-path-scope=diagnostics")
             .input(cwd().join("runner.rs"))
             .output(&runner_bin);
         runner.run();
