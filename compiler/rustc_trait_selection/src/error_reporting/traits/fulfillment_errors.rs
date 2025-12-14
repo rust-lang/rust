@@ -1229,7 +1229,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         chain.push((expr.span, prev_ty));
 
         let mut prev = None;
-        for (span, err_ty) in chain.into_iter().rev() {
+        let mut iter = chain.into_iter().rev().peekable();
+        while let Some((span, err_ty)) = iter.next() {
+            let is_last = iter.peek().is_none();
             let err_ty = get_e_type(err_ty);
             let err_ty = match (err_ty, prev) {
                 (Some(err_ty), Some(prev)) if !self.can_eq(obligation.param_env, err_ty, prev) => {
@@ -1241,27 +1243,27 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     continue;
                 }
             };
-            if self
+
+            let implements_from = self
                 .infcx
                 .type_implements_trait(
                     self.tcx.get_diagnostic_item(sym::From).unwrap(),
                     [self_ty, err_ty],
                     obligation.param_env,
                 )
-                .must_apply_modulo_regions()
-            {
-                if !suggested {
-                    let err_ty = self.tcx.short_string(err_ty, err.long_ty_path());
-                    err.span_label(span, format!("this has type `Result<_, {err_ty}>`"));
-                }
+                .must_apply_modulo_regions();
+
+            let err_ty_str = self.tcx.short_string(err_ty, err.long_ty_path());
+            let label = if !implements_from && is_last {
+                format!(
+                    "this can't be annotated with `?` because it has type `Result<_, {err_ty_str}>`"
+                )
             } else {
-                let err_ty = self.tcx.short_string(err_ty, err.long_ty_path());
-                err.span_label(
-                    span,
-                    format!(
-                        "this can't be annotated with `?` because it has type `Result<_, {err_ty}>`",
-                    ),
-                );
+                format!("this has type `Result<_, {err_ty_str}>`")
+            };
+
+            if !suggested || !implements_from {
+                err.span_label(span, label);
             }
             prev = Some(err_ty);
         }
