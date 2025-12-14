@@ -1,4 +1,5 @@
 #![feature(duration_constants)]
+#![feature(time_systemtime_limits)]
 
 use std::fmt::Debug;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
@@ -237,9 +238,34 @@ fn system_time_duration_since_max_range_on_unix() {
     let min = SystemTime::UNIX_EPOCH - (Duration::new(i64::MAX as u64 + 1, 0));
     let max = SystemTime::UNIX_EPOCH + (Duration::new(i64::MAX as u64, 999_999_999));
 
+    assert_eq!(min, SystemTime::MIN);
+    assert_eq!(max, SystemTime::MAX);
+
     let delta_a = max.duration_since(min).expect("duration_since overflow");
     let delta_b = min.duration_since(max).expect_err("duration_since overflow").duration();
 
     assert_eq!(Duration::MAX, delta_a);
     assert_eq!(Duration::MAX, delta_b);
+}
+
+#[test]
+fn system_time_max_min() {
+    #[cfg(not(target_os = "windows"))]
+    /// Most (all?) non-Windows systems have nanosecond precision.
+    const MIN_INTERVAL: Duration = Duration::new(0, 1);
+    #[cfg(target_os = "windows")]
+    /// Windows' time precision is at 100ns.
+    const MIN_INTERVAL: Duration = Duration::new(0, 100);
+
+    // First, test everything with checked_* and Duration::ZERO.
+    assert_eq!(SystemTime::MAX.checked_add(Duration::ZERO), Some(SystemTime::MAX));
+    assert_eq!(SystemTime::MAX.checked_sub(Duration::ZERO), Some(SystemTime::MAX));
+    assert_eq!(SystemTime::MIN.checked_add(Duration::ZERO), Some(SystemTime::MIN));
+    assert_eq!(SystemTime::MIN.checked_sub(Duration::ZERO), Some(SystemTime::MIN));
+
+    // Now do the same again with checked_* but try by ± the lowest time precision.
+    assert!(SystemTime::MAX.checked_add(MIN_INTERVAL).is_none());
+    assert!(SystemTime::MAX.checked_sub(MIN_INTERVAL).is_some());
+    assert!(SystemTime::MIN.checked_add(MIN_INTERVAL).is_some());
+    assert!(SystemTime::MIN.checked_sub(MIN_INTERVAL).is_none());
 }
