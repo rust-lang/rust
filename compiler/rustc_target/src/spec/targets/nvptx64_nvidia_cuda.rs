@@ -19,9 +19,7 @@ pub(crate) fn target() -> Target {
         options: TargetOptions {
             os: Os::Cuda,
             vendor: "nvidia".into(),
-            linker_flavor: LinkerFlavor::Ptx,
-            // The linker can be installed from `crates.io`.
-            linker: Some("rust-ptx-linker".into()),
+            linker_flavor: LinkerFlavor::Llbc,
 
             // With `ptx-linker` approach, it can be later overridden via link flags.
             cpu: "sm_30".into(),
