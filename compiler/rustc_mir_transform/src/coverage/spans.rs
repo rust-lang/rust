@@ -39,8 +39,7 @@ pub(super) fn extract_refined_covspans<'tcx>(
     // For each expansion with its call-site in the body span, try to
     // distill a corresponding covspan.
     for &child_expn_id in &node.child_expn_ids {
-        if let Some(covspan) = single_covspan_for_child_expn(tcx, graph, &expn_tree, child_expn_id)
-        {
+        if let Some(covspan) = single_covspan_for_child_expn(tcx, &expn_tree, child_expn_id) {
             covspans.push(covspan);
         }
     }
@@ -127,24 +126,21 @@ pub(super) fn extract_refined_covspans<'tcx>(
 /// For a single child expansion, try to distill it into a single span+BCB mapping.
 fn single_covspan_for_child_expn(
     tcx: TyCtxt<'_>,
-    graph: &CoverageGraph,
     expn_tree: &ExpnTree,
     expn_id: ExpnId,
 ) -> Option<Covspan> {
     let node = expn_tree.get(expn_id)?;
-
-    let bcbs =
-        expn_tree.iter_node_and_descendants(expn_id).flat_map(|n| n.spans.iter().map(|s| s.bcb));
+    let minmax_bcbs = node.minmax_bcbs?;
 
     let bcb = match node.expn_kind {
         // For bang-macros (e.g. `assert!`, `trace!`) and for `await`, taking
         // the "first" BCB in dominator order seems to give good results.
         ExpnKind::Macro(MacroKind::Bang, _) | ExpnKind::Desugaring(DesugaringKind::Await) => {
-            bcbs.min_by(|&a, &b| graph.cmp_in_dominator_order(a, b))?
+            minmax_bcbs.min
         }
         // For other kinds of expansion, taking the "last" (most-dominated) BCB
         // seems to give good results.
-        _ => bcbs.max_by(|&a, &b| graph.cmp_in_dominator_order(a, b))?,
+        _ => minmax_bcbs.max,
     };
 
     // For bang-macro expansions, limit the call-site span to just the macro
