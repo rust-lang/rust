@@ -33,7 +33,7 @@ use rustc_session::parse::feature_err;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::source_map::Spanned;
-use rustc_span::{Ident, Span, Symbol, kw, sym};
+use rustc_span::{Ident, Span, Symbol, SyntaxContext, kw, sym};
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::{self, ObligationCauseCode, ObligationCtxt};
 use tracing::{debug, instrument, trace};
@@ -220,6 +220,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.check_expr_with_expectation_and_needs(expr, NoExpectation, needs)
     }
 
+    fn is_todo_macro(&self, span: Span) -> bool {
+        let mut ctxt = span.ctxt();
+        while ctxt != SyntaxContext::root() {
+            let data = ctxt.outer_expn_data();
+            if let Some(def_id) = data.macro_def_id
+                && self.tcx.is_diagnostic_item(sym::todo_macro, def_id)
+            {
+                return true;
+            }
+            ctxt = data.call_site.ctxt();
+        }
+        false
+    }
+
     /// Check an expr with an expectation type which may be used to eagerly
     /// guide inference when evaluating that expr.
     #[instrument(skip(self, expr), level = "debug")]
@@ -322,7 +336,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if self.try_structurally_resolve_type(expr.span, ty).is_never()
             && self.tcx.expr_guaranteed_to_constitute_read_for_never(expr)
         {
-            self.diverges.set(self.diverges.get() | Diverges::always(expr.span));
+            let diverges = if self.is_todo_macro(expr.span) {
+                // We don't warn for `todo!()` that diverges to avoid flooding the
+                // user with warnings while they are still working on their code.
+                Diverges::WarnedAlways
+            } else {
+                Diverges::always(expr.span)
+            };
+            self.diverges.set(self.diverges.get() | diverges);
         }
 
         // Record the type, which applies it effects.
