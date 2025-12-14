@@ -123,7 +123,7 @@ pub(crate) fn check_externally_implementable_items<'tcx>(tcx: TyCtxt<'tcx>, (): 
                     tcx.item_name(decl_did)
                 ),
             );
-            return;
+            continue;
         }
 
         let (local_impl, is_default) =
