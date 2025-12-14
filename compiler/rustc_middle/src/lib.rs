@@ -85,7 +85,6 @@ pub mod thir;
 pub mod traits;
 pub mod ty;
 pub mod util;
-mod values;
 
 #[macro_use]
 pub mod query;

@@ -13,7 +13,7 @@
 #![feature(never_type)]
 // tidy-alphabetical-end
 
-use rustc_middle::query::Providers;
+use rustc_middle::util::Providers;
 
 mod abi;
 mod assoc;
