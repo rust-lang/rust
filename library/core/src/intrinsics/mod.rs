@@ -362,7 +362,38 @@ pub fn rustc_peek<T>(_: T) -> T;
 /// on most platforms.
 /// On Unix, the
 /// process will probably terminate with a signal like `SIGABRT`, `SIGILL`, `SIGTRAP`, `SIGSEGV` or
-/// `SIGBUS`.  The precise behavior is not guaranteed and not stable.
+/// `SIGBUS`.
+/// On Windows, the
+/// process will use `__fastfail` to terminate the process, which will terminate the process
+/// immediately without running any in-process exception handlers. In earlier versions of Windows,
+/// this sequence of instructions will be treated as an access violation, which
+/// will still terminate the process but might run some exception handlers.
+///
+/// The precise behavior is not guaranteed and not stable.
+
+#[cfg(all(
+    not(miri),
+    windows,
+    any(
+        any(target_arch = "x86", target_arch = "x86_64"),
+        all(target_arch = "arm", target_feature = "thumb-mode"),
+        any(target_arch = "aarch64", target_arch = "arm64ec")
+    )
+))]
+#[rustc_nounwind]
+pub fn abort() -> ! {
+    crate::os::windows::fastfail();
+}
+
+#[cfg(not(all(
+    not(miri),
+    windows,
+    any(
+        any(target_arch = "x86", target_arch = "x86_64"),
+        all(target_arch = "arm", target_feature = "thumb-mode"),
+        any(target_arch = "aarch64", target_arch = "arm64ec")
+    )
+)))]
 #[rustc_nounwind]
 #[rustc_intrinsic]
 pub fn abort() -> !;
