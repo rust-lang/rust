@@ -1,16 +1,14 @@
 use crate::fmt;
 use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut};
-use crate::sys_common::{FromInner, IntoInner};
 
-pub struct AnonPipe(!);
+pub struct Pipe(!);
 
-impl fmt::Debug for AnonPipe {
-    fn fmt(&self, _: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.0
-    }
+#[inline]
+pub fn pipe() -> io::Result<(Pipe, Pipe)> {
+    Err(io::Error::UNSUPPORTED_PLATFORM)
 }
 
-impl AnonPipe {
+impl Pipe {
     pub fn try_clone(&self) -> io::Result<Self> {
         self.0
     }
@@ -52,56 +50,52 @@ impl AnonPipe {
     }
 }
 
-pub fn read2(p1: AnonPipe, _v1: &mut Vec<u8>, _p2: AnonPipe, _v2: &mut Vec<u8>) -> io::Result<()> {
-    match p1.0 {}
-}
-
-impl FromInner<!> for AnonPipe {
-    fn from_inner(inner: !) -> Self {
-        inner
-    }
-}
-
-impl IntoInner<!> for AnonPipe {
-    fn into_inner(self) -> ! {
+impl fmt::Debug for Pipe {
+    fn fmt(&self, _: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.0
     }
 }
 
 #[cfg(any(unix, target_os = "hermit", target_os = "wasi"))]
 mod unix_traits {
-    use super::AnonPipe;
+    use super::Pipe;
     use crate::os::fd::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd};
-    use crate::sys_common::FromInner;
+    use crate::sys_common::{FromInner, IntoInner};
 
-    impl AsRawFd for AnonPipe {
+    impl AsRawFd for Pipe {
         #[inline]
         fn as_raw_fd(&self) -> RawFd {
             self.0
         }
     }
 
-    impl AsFd for AnonPipe {
+    impl AsFd for Pipe {
         fn as_fd(&self) -> BorrowedFd<'_> {
             self.0
         }
     }
 
-    impl IntoRawFd for AnonPipe {
+    impl IntoRawFd for Pipe {
         fn into_raw_fd(self) -> RawFd {
             self.0
         }
     }
 
-    impl FromRawFd for AnonPipe {
+    impl FromRawFd for Pipe {
         unsafe fn from_raw_fd(_: RawFd) -> Self {
             panic!("creating pipe on this platform is unsupported!")
         }
     }
 
-    impl FromInner<OwnedFd> for AnonPipe {
+    impl FromInner<OwnedFd> for Pipe {
         fn from_inner(_: OwnedFd) -> Self {
             panic!("creating pipe on this platform is unsupported!")
+        }
+    }
+
+    impl IntoInner<OwnedFd> for Pipe {
+        fn into_inner(self) -> OwnedFd {
+            self.0
         }
     }
 }

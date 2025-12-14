@@ -6,39 +6,37 @@ use crate::sys::{api, c};
 use crate::sys_common::{FromInner, IntoInner};
 use crate::{mem, ptr};
 
-////////////////////////////////////////////////////////////////////////////////
-// Anonymous pipes
-////////////////////////////////////////////////////////////////////////////////
-
-pub struct AnonPipe {
+pub struct ChildPipe {
     inner: Handle,
 }
 
-impl IntoInner<Handle> for AnonPipe {
+impl IntoInner<Handle> for ChildPipe {
     fn into_inner(self) -> Handle {
         self.inner
     }
 }
 
-impl FromInner<Handle> for AnonPipe {
-    fn from_inner(inner: Handle) -> AnonPipe {
+impl FromInner<Handle> for ChildPipe {
+    fn from_inner(inner: Handle) -> ChildPipe {
         Self { inner }
     }
 }
 
-pub struct Pipes {
-    pub ours: AnonPipe,
-    pub theirs: AnonPipe,
+pub(super) struct Pipes {
+    pub ours: ChildPipe,
+    pub theirs: ChildPipe,
 }
 
-/// Although this looks similar to `anon_pipe` in the Unix module it's actually
-/// subtly different. Here we'll return two pipes in the `Pipes` return value,
-/// but one is intended for "us" where as the other is intended for "someone
-/// else".
+/// Creates an anonymous pipe suitable for communication with a child process.
 ///
-/// Currently the only use case for this function is pipes for stdio on
-/// processes in the standard library, so "ours" is the one that'll stay in our
-/// process whereas "theirs" will be inherited to a child.
+/// Windows unfortunately does not have a way of performing asynchronous operations
+/// on a handle originally created for synchronous operation. As `read_output` can
+/// only be correctly implemented with asynchronous reads but the pipe created by
+/// `CreatePipe` is synchronous, we cannot use it (and thus [`io::pipe`]) to create
+/// a pipe for communicating with a child. Instead, this function uses the NT API
+/// to create a pipe where one pipe handle (`ours`) is asynchronous and one is
+/// synchronous and can be inherited by a child for use as a console handle
+/// (`theirs`).
 ///
 /// The ours/theirs pipes are *not* specifically readable or writable. Each
 /// one only supports a read or a write, but which is which depends on the
@@ -50,7 +48,11 @@ pub struct Pipes {
 /// mode. This means that technically speaking it should only ever be used
 /// with `OVERLAPPED` instances, but also works out ok if it's only ever used
 /// once at a time (which we do indeed guarantee).
-pub fn anon_pipe(ours_readable: bool, their_handle_inheritable: bool) -> io::Result<Pipes> {
+// FIXME(joboet): No, we don't guarantee that? E.g. `&Stdout` is both `Read`
+//                and `Sync`, so there could be multiple operations at the same
+//                time. All the functions below that forward to the inner handle
+//                methods could abort if used concurrently.
+pub(super) fn child_pipe(ours_readable: bool, their_handle_inheritable: bool) -> io::Result<Pipes> {
     // A 64kb pipe capacity is the same as a typical Linux default.
     const PIPE_BUFFER_CAPACITY: u32 = 64 * 1024;
 
@@ -166,7 +168,7 @@ pub fn anon_pipe(ours_readable: bool, their_handle_inheritable: bool) -> io::Res
             }
         };
 
-        Ok(Pipes { ours: AnonPipe { inner: ours }, theirs: AnonPipe { inner: theirs } })
+        Ok(Pipes { ours: ChildPipe { inner: ours }, theirs: ChildPipe { inner: theirs } })
     }
 }
 
@@ -175,16 +177,16 @@ pub fn anon_pipe(ours_readable: bool, their_handle_inheritable: bool) -> io::Res
 ///
 /// This is achieved by creating a new set of pipes and spawning a thread that
 /// relays messages between the source and the synchronous pipe.
-pub fn spawn_pipe_relay(
-    source: &AnonPipe,
+pub(super) fn spawn_pipe_relay(
+    source: &ChildPipe,
     ours_readable: bool,
     their_handle_inheritable: bool,
-) -> io::Result<AnonPipe> {
+) -> io::Result<ChildPipe> {
     // We need this handle to live for the lifetime of the thread spawned below.
     let source = source.try_clone()?;
 
     // create a new pair of anon pipes.
-    let Pipes { theirs, ours } = anon_pipe(ours_readable, their_handle_inheritable)?;
+    let Pipes { theirs, ours } = child_pipe(ours_readable, their_handle_inheritable)?;
 
     // Spawn a thread that passes messages from one pipe to the other.
     // Any errors will simply cause the thread to exit.
@@ -210,7 +212,7 @@ pub fn spawn_pipe_relay(
     Ok(theirs)
 }
 
-impl AnonPipe {
+impl ChildPipe {
     pub fn handle(&self) -> &Handle {
         &self.inner
     }
@@ -219,7 +221,7 @@ impl AnonPipe {
     }
 
     pub fn try_clone(&self) -> io::Result<Self> {
-        self.inner.duplicate(0, false, c::DUPLICATE_SAME_ACCESS).map(|inner| AnonPipe { inner })
+        self.inner.duplicate(0, false, c::DUPLICATE_SAME_ACCESS).map(|inner| ChildPipe { inner })
     }
 
     pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
@@ -347,18 +349,17 @@ impl AnonPipe {
 
         // STEP 3: The callback.
         unsafe extern "system" fn callback(
-            dwErrorCode: u32,
-            dwNumberOfBytesTransferred: u32,
-            lpOverlapped: *mut c::OVERLAPPED,
+            error: u32,
+            transferred: u32,
+            overlapped: *mut c::OVERLAPPED,
         ) {
             // Set `async_result` using a pointer smuggled through `hEvent`.
             // SAFETY:
             // At this point, the OVERLAPPED struct will have been written to by the OS,
             // except for our `hEvent` field which we set to a valid AsyncResult pointer (see below)
             unsafe {
-                let result =
-                    AsyncResult { error: dwErrorCode, transferred: dwNumberOfBytesTransferred };
-                *(*lpOverlapped).hEvent.cast::<Option<AsyncResult>>() = Some(result);
+                let result = AsyncResult { error, transferred };
+                *(*overlapped).hEvent.cast::<Option<AsyncResult>>() = Some(result);
             }
         }
 
@@ -395,7 +396,12 @@ impl AnonPipe {
     }
 }
 
-pub fn read2(p1: AnonPipe, v1: &mut Vec<u8>, p2: AnonPipe, v2: &mut Vec<u8>) -> io::Result<()> {
+pub fn read_output(
+    p1: ChildPipe,
+    v1: &mut Vec<u8>,
+    p2: ChildPipe,
+    v2: &mut Vec<u8>,
+) -> io::Result<()> {
     let p1 = p1.into_handle();
     let p2 = p2.into_handle();
 
