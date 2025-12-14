@@ -447,20 +447,17 @@ impl MetaItem {
                     thin_vec![PathSegment::path_root(span)]
                 };
                 loop {
-                    if let Some(&TokenTree::Token(Token { kind: token::Ident(name, _), span }, _)) =
+                    let Some(&TokenTree::Token(Token { kind: token::Ident(name, _), span }, _)) =
                         iter.next().map(|tt| TokenTree::uninterpolate(tt)).as_deref()
-                    {
-                        segments.push(PathSegment::from_ident(Ident::new(name, span)));
-                    } else {
+                    else {
                         return None;
-                    }
-                    if let Some(TokenTree::Token(Token { kind: token::PathSep, .. }, _)) =
-                        iter.peek()
-                    {
-                        iter.next();
-                    } else {
+                    };
+                    segments.push(PathSegment::from_ident(Ident::new(name, span)));
+                    let Some(TokenTree::Token(Token { kind: token::PathSep, .. }, _)) = iter.peek()
+                    else {
                         break;
-                    }
+                    };
+                    iter.next();
                 }
                 let span = span.with_hi(segments.last().unwrap().ident.span.hi());
                 Path { span, segments, tokens: None }

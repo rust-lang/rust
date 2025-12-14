@@ -771,36 +771,39 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         } else {
             None
         };
-        // Skip ambiguity errors for extern flag bindings "overridden"
-        // by extern item bindings.
-        // FIXME: Remove with lang team approval.
-        let issue_145575_hack = Some(binding) == extern_prelude_flag_binding
-            && extern_prelude_item_binding.is_some()
-            && extern_prelude_item_binding != Some(innermost_binding);
-        if let Some(kind) = ambiguity_error_kind
-            && !issue_145575_hack
-        {
-            let misc = |f: Flags| {
-                if f.contains(Flags::MISC_SUGGEST_CRATE) {
-                    AmbiguityErrorMisc::SuggestCrate
-                } else if f.contains(Flags::MISC_SUGGEST_SELF) {
-                    AmbiguityErrorMisc::SuggestSelf
-                } else if f.contains(Flags::MISC_FROM_PRELUDE) {
-                    AmbiguityErrorMisc::FromPrelude
-                } else {
-                    AmbiguityErrorMisc::None
-                }
-            };
-            self.ambiguity_errors.push(AmbiguityError {
-                kind,
-                ident: orig_ident,
-                b1: innermost_binding,
-                b2: binding,
-                warning: false,
-                misc1: misc(innermost_flags),
-                misc2: misc(flags),
-            });
-            return true;
+        if let Some(kind) = ambiguity_error_kind {
+            // Skip ambiguity errors for extern flag bindings "overridden"
+            // by extern item bindings.
+            // FIXME: Remove with lang team approval.
+            let issue_145575_hack = Some(binding) == extern_prelude_flag_binding
+                && extern_prelude_item_binding.is_some()
+                && extern_prelude_item_binding != Some(innermost_binding);
+
+            if issue_145575_hack {
+                self.issue_145575_hack_applied = true;
+            } else {
+                let misc = |f: Flags| {
+                    if f.contains(Flags::MISC_SUGGEST_CRATE) {
+                        AmbiguityErrorMisc::SuggestCrate
+                    } else if f.contains(Flags::MISC_SUGGEST_SELF) {
+                        AmbiguityErrorMisc::SuggestSelf
+                    } else if f.contains(Flags::MISC_FROM_PRELUDE) {
+                        AmbiguityErrorMisc::FromPrelude
+                    } else {
+                        AmbiguityErrorMisc::None
+                    }
+                };
+                self.ambiguity_errors.push(AmbiguityError {
+                    kind,
+                    ident: orig_ident,
+                    b1: innermost_binding,
+                    b2: binding,
+                    warning: false,
+                    misc1: misc(innermost_flags),
+                    misc2: misc(flags),
+                });
+                return true;
+            }
         }
 
         false

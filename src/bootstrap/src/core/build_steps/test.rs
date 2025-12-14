@@ -465,35 +465,73 @@ impl Step for RustAnalyzer {
 
     /// Runs `cargo test` for rust-analyzer
     fn run(self, builder: &Builder<'_>) {
-        let host = self.compilers.target();
+        let build_compiler = self.compilers.build_compiler();
+        let target = self.compilers.target();
 
-        let workspace_path = "src/tools/rust-analyzer";
-        // until the whole RA test suite runs on `i686`, we only run
-        // `proc-macro-srv` tests
-        let crate_path = "src/tools/rust-analyzer/crates/proc-macro-srv";
+        // NOTE: rust-analyzer repo currently (as of 2025-12-11) does not run tests against 32-bit
+        // targets, so we also don't run them in rust-lang/rust CI (because that will just mean that
+        // subtree syncs will keep getting 32-bit-specific failures that are not observed in
+        // rust-analyzer repo CI).
+        //
+        // Some 32-bit specific failures include e.g. target pointer width specific hashes.
+
+        // FIXME: eventually, we should probably reduce the amount of target tuple substring
+        // matching in bootstrap.
+        if target.starts_with("i686") {
+            return;
+        }
+
         let mut cargo = tool::prepare_tool_cargo(
             builder,
-            self.compilers.build_compiler(),
+            build_compiler,
             Mode::ToolRustcPrivate,
-            host,
+            target,
             Kind::Test,
-            crate_path,
+            "src/tools/rust-analyzer",
             SourceType::InTree,
             &["in-rust-tree".to_owned()],
         );
         cargo.allow_features(tool::RustAnalyzer::ALLOW_FEATURES);
 
-        let dir = builder.src.join(workspace_path);
-        // needed by rust-analyzer to find its own text fixtures, cf.
-        // https://github.com/rust-analyzer/expect-test/issues/33
-        cargo.env("CARGO_WORKSPACE_DIR", &dir);
+        // N.B. it turns out _setting_ `CARGO_WORKSPACE_DIR` actually somehow breaks `expect-test`,
+        // even though previously we actually needed to set that hack to allow `expect-test` to
+        // correctly discover the r-a workspace instead of the outer r-l/r workspace.
 
-        // RA's test suite tries to write to the source directory, that can't
-        // work in Rust CI
+        // FIXME: RA's test suite tries to write to the source directory, that can't work in Rust CI
+        // without properly wiring up the writable test dir.
         cargo.env("SKIP_SLOW_TESTS", "1");
 
+        // NOTE: we need to skip `src/tools/rust-analyzer/xtask` as they seem to exercise rustup /
+        // stable rustfmt.
+        //
+        // NOTE: you can only skip a specific workspace package via `--exclude=...` if you *also*
+        // specify `--workspace`.
+        cargo.arg("--workspace");
+        cargo.arg("--exclude=xtask");
+
+        let mut skip_tests = vec![];
+
+        // NOTE: the following test skips is a bit cheeky in that it assumes there are no
+        // identically named tests across different r-a packages, where we want to run the
+        // identically named test in one package but not another. If we want to support that use
+        // case, we'd have to run the r-a tests in two batches (with one excluding the package that
+        // we *don't* want to run the test for, and the other batch including).
+
+        // Across all platforms.
+        skip_tests.extend_from_slice(&[
+            // FIXME: this test wants to find a `rustc`. We need to provide it with a path to staged
+            // in-tree `rustc`, but setting `RUSTC` env var requires some reworking of bootstrap.
+            "tests::smoke_test_real_sysroot_cargo",
+            // NOTE: part of `smol-str` test suite; this tries to access a stable rustfmt from the
+            // environment, which is not something we want to do.
+            "check_code_formatting",
+        ]);
+
+        let skip_tests = skip_tests.iter().map(|name| format!("--skip={name}")).collect::<Vec<_>>();
+        let skip_tests = skip_tests.iter().map(|s| s.as_str()).collect::<Vec<_>>();
+
         cargo.add_rustc_lib_path(builder);
-        run_cargo_test(cargo, &[], &[], "rust-analyzer", host, builder);
+        run_cargo_test(cargo, skip_tests.as_slice(), &[], "rust-analyzer", target, builder);
     }
 
     fn metadata(&self) -> Option<StepMetadata> {
@@ -2401,7 +2439,6 @@ Please disable assertions with `rust.debug-assertions = false`.
         let git_config = builder.config.git_config();
         cmd.arg("--nightly-branch").arg(git_config.nightly_branch);
         cmd.arg("--git-merge-commit-email").arg(git_config.git_merge_commit_email);
-        cmd.force_coloring_in_ci();
 
         #[cfg(feature = "build-metrics")]
         builder.metrics.begin_test_suite(

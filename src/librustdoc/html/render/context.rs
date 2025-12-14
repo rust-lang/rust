@@ -365,7 +365,7 @@ impl<'tcx> Context<'tcx> {
 
         // We can safely ignore synthetic `SourceFile`s.
         let file = match span.filename(self.sess()) {
-            FileName::Real(ref path) => path.local_path_if_available().to_path_buf(),
+            FileName::Real(ref path) => path.local_path()?.to_path_buf(),
             _ => return None,
         };
         let file = &file;
@@ -499,7 +499,7 @@ impl<'tcx> Context<'tcx> {
         } = options;
 
         let src_root = match krate.src(tcx) {
-            FileName::Real(ref p) => match p.local_path_if_available().parent() {
+            FileName::Real(ref p) => match p.local_path().map(|p| p.parent()).flatten() {
                 Some(p) => p.to_path_buf(),
                 None => PathBuf::new(),
             },

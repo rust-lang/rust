@@ -120,10 +120,8 @@ impl Expr2024 {
 
     fn check_ident_token(&mut self, cx: &crate::EarlyContext<'_>, token: &Token) {
         debug!("check_ident_token: {:?}", token);
-        let (sym, edition) = match token.kind {
-            TokenKind::Ident(sym, _) => (sym, Edition::Edition2024),
-            _ => return,
-        };
+        let TokenKind::Ident(sym, _) = token.kind else { return };
+        let edition = Edition::Edition2024;
 
         debug!("token.span.edition(): {:?}", token.span.edition());
         if token.span.edition() >= edition {

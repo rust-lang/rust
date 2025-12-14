@@ -721,11 +721,10 @@ pub fn autodiff_attrs(tcx: TyCtxt<'_>, id: DefId) -> Option<AutoDiffAttrs> {
     };
 
     // First read the ret symbol from the attribute
-    let ret_symbol = if let MetaItemInner::MetaItem(MetaItem { path: p1, .. }) = ret_activity {
-        p1.segments.first().unwrap().ident
-    } else {
+    let MetaItemInner::MetaItem(MetaItem { path: p1, .. }) = ret_activity else {
         span_bug!(attr.span(), "rustc_autodiff attribute must contain the return activity");
     };
+    let ret_symbol = p1.segments.first().unwrap().ident;
 
     // Then parse it into an actual DiffActivity
     let Ok(ret_activity) = DiffActivity::from_str(ret_symbol.as_str()) else {

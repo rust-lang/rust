@@ -1,4 +1,5 @@
 // tidy-alphabetical-start
+#![deny(clippy::manual_let_else)]
 #![feature(assert_matches)]
 #![feature(box_patterns)]
 #![feature(if_let_guard)]

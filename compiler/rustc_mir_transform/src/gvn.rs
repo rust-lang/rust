@@ -590,31 +590,30 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
                 let fields =
                     fields.iter().map(|&f| self.eval_to_const(f)).collect::<Option<Vec<_>>>()?;
                 let variant = if ty.ty.is_enum() { Some(variant) } else { None };
-                if matches!(ty.backend_repr, BackendRepr::Scalar(..) | BackendRepr::ScalarPair(..))
-                {
-                    let dest = self.ecx.allocate(ty, MemoryKind::Stack).discard_err()?;
-                    let variant_dest = if let Some(variant) = variant {
-                        self.ecx.project_downcast(&dest, variant).discard_err()?
-                    } else {
-                        dest.clone()
-                    };
-                    for (field_index, op) in fields.into_iter().enumerate() {
-                        let field_dest = self
-                            .ecx
-                            .project_field(&variant_dest, FieldIdx::from_usize(field_index))
-                            .discard_err()?;
-                        self.ecx.copy_op(op, &field_dest).discard_err()?;
-                    }
-                    self.ecx
-                        .write_discriminant(variant.unwrap_or(FIRST_VARIANT), &dest)
-                        .discard_err()?;
-                    self.ecx
-                        .alloc_mark_immutable(dest.ptr().provenance.unwrap().alloc_id())
-                        .discard_err()?;
-                    dest.into()
-                } else {
+                let (BackendRepr::Scalar(..) | BackendRepr::ScalarPair(..)) = ty.backend_repr
+                else {
                     return None;
+                };
+                let dest = self.ecx.allocate(ty, MemoryKind::Stack).discard_err()?;
+                let variant_dest = if let Some(variant) = variant {
+                    self.ecx.project_downcast(&dest, variant).discard_err()?
+                } else {
+                    dest.clone()
+                };
+                for (field_index, op) in fields.into_iter().enumerate() {
+                    let field_dest = self
+                        .ecx
+                        .project_field(&variant_dest, FieldIdx::from_usize(field_index))
+                        .discard_err()?;
+                    self.ecx.copy_op(op, &field_dest).discard_err()?;
                 }
+                self.ecx
+                    .write_discriminant(variant.unwrap_or(FIRST_VARIANT), &dest)
+                    .discard_err()?;
+                self.ecx
+                    .alloc_mark_immutable(dest.ptr().provenance.unwrap().alloc_id())
+                    .discard_err()?;
+                dest.into()
             }
             Union(active_field, field) => {
                 let field = self.eval_to_const(field)?;

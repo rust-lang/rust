@@ -10,6 +10,7 @@
 #![allow(internal_features)]
 #![allow(rustc::diagnostic_outside_of_impl)]
 #![allow(rustc::untranslatable_diagnostic)]
+#![deny(clippy::manual_let_else)]
 #![feature(arbitrary_self_types)]
 #![feature(assert_matches)]
 #![feature(box_patterns)]
@@ -1187,6 +1188,7 @@ pub struct Resolver<'ra, 'tcx> {
     privacy_errors: Vec<PrivacyError<'ra>> = Vec::new(),
     /// Ambiguity errors are delayed for deduplication.
     ambiguity_errors: Vec<AmbiguityError<'ra>> = Vec::new(),
+    issue_145575_hack_applied: bool = false,
     /// `use` injections are delayed for better placement and deduplication.
     use_injections: Vec<UseError<'tcx>> = Vec::new(),
     /// Crate-local macro expanded `macro_export` referred to by a module-relative path.

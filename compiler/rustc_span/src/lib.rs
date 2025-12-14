@@ -221,99 +221,227 @@ pub fn with_metavar_spans<R>(f: impl FnOnce(&MetavarSpansMap) -> R) -> R {
     with_session_globals(|session_globals| f(&session_globals.metavar_spans))
 }
 
-// FIXME: We should use this enum or something like it to get rid of the
-// use of magic `/rust/1.x/...` paths across the board.
+bitflags::bitflags! {
+    /// Scopes used to determined if it need to apply to `--remap-path-prefix`
+    #[derive(Debug, Eq, PartialEq, Clone, Copy, Ord, PartialOrd, Hash)]
+    pub struct RemapPathScopeComponents: u8 {
+        /// Apply remappings to the expansion of `std::file!()` macro
+        const MACRO = 1 << 0;
+        /// Apply remappings to printed compiler diagnostics
+        const DIAGNOSTICS = 1 << 1;
+        /// Apply remappings to debug information
+        const DEBUGINFO = 1 << 3;
+        /// Apply remappings to coverage information
+        const COVERAGE = 1 << 4;
+
+        /// An alias for `macro`, `debuginfo` and `coverage`. This ensures all paths in compiled
+        /// executables, libraries and objects are remapped but not elsewhere.
+        const OBJECT = Self::MACRO.bits() | Self::DEBUGINFO.bits() | Self::COVERAGE.bits();
+    }
+}
+
+impl<E: Encoder> Encodable<E> for RemapPathScopeComponents {
+    fn encode(&self, s: &mut E) {
+        s.emit_u8(self.bits());
+    }
+}
+
+impl<D: Decoder> Decodable<D> for RemapPathScopeComponents {
+    fn decode(s: &mut D) -> RemapPathScopeComponents {
+        RemapPathScopeComponents::from_bits(s.read_u8())
+            .expect("invalid bits for RemapPathScopeComponents")
+    }
+}
+
+/// A self-contained "real" filename.
+///
+/// It is produced by `SourceMap::to_real_filename`.
+///
+/// `RealFileName` represents a filename that may have been (partly) remapped
+/// by `--remap-path-prefix` and `-Zremap-path-scope`.
+///
+/// It also contains an embedabble component which gives a working directory
+/// and a maybe-remapped maybe-aboslote name. This is useful for debuginfo where
+/// some formats and tools highly prefer absolute paths.
+///
+/// ## Consistency across compiler sessions
+///
+/// The type-system, const-eval and other parts of the compiler rely on `FileName`
+/// and by extension `RealFileName` to be consistent across compiler sessions.
+///
+/// Otherwise unsoudness (like rust-lang/rust#148328) may occur.
+///
+/// As such this type is self-sufficient and consistent in it's output.
+///
+/// The [`RealFileName::path`] and [`RealFileName::embeddable_name`] methods
+/// are guaranteed to always return the same output across compiler sessions.
+///
+/// ## Usage
+///
+/// Creation of a [`RealFileName`] should be done using
+/// [`FilePathMapping::to_real_filename`][rustc_span::source_map::FilePathMapping::to_real_filename].
+///
+/// Retrieving a path can be done in two main ways:
+///  - by using [`RealFileName::path`] with a given scope (should be preferred)
+///  - or by using [`RealFileName::embeddable_name`] with a given scope
 #[derive(Debug, Eq, PartialEq, Clone, Ord, PartialOrd, Decodable, Encodable)]
-pub enum RealFileName {
-    LocalPath(PathBuf),
-    /// For remapped paths (namely paths into libstd that have been mapped
-    /// to the appropriate spot on the local host's file system, and local file
-    /// system paths that have been remapped with `FilePathMapping`),
-    Remapped {
-        /// `local_path` is the (host-dependent) local path to the file. This is
-        /// None if the file was imported from another crate
-        local_path: Option<PathBuf>,
-        /// `virtual_name` is the stable path rustc will store internally within
-        /// build artifacts.
-        virtual_name: PathBuf,
-    },
+pub struct RealFileName {
+    /// The local name (always present in the original crate)
+    local: Option<InnerRealFileName>,
+    /// The maybe remapped part. Correspond to `local` when no remapped happened.
+    maybe_remapped: InnerRealFileName,
+    /// The remapped scopes. Any active scope MUST use `maybe_virtual`
+    scopes: RemapPathScopeComponents,
+}
+
+/// The inner workings of `RealFileName`.
+///
+/// It contains the `name`, `working_directory` and `embeddable_name` components.
+#[derive(Debug, Eq, PartialEq, Clone, Ord, PartialOrd, Decodable, Encodable, Hash)]
+struct InnerRealFileName {
+    /// The name.
+    name: PathBuf,
+    /// The working directory associated with the embeddable name.
+    working_directory: PathBuf,
+    /// The embeddable name.
+    embeddable_name: PathBuf,
 }
 
 impl Hash for RealFileName {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         // To prevent #70924 from happening again we should only hash the
-        // remapped (virtualized) path if that exists. This is because
-        // virtualized paths to sysroot crates (/rust/$hash or /rust/$version)
-        // remain stable even if the corresponding local_path changes
-        self.remapped_path_if_available().hash(state)
+        // remapped path if that exists. This is because remapped paths to
+        // sysroot crates (/rust/$hash or /rust/$version) remain stable even
+        // if the corresponding local path changes.
+        if !self.scopes.is_all() {
+            self.local.hash(state);
+        }
+        self.maybe_remapped.hash(state);
+        self.scopes.bits().hash(state);
     }
 }
 
 impl RealFileName {
-    /// Returns the path suitable for reading from the file system on the local host,
-    /// if this information exists.
-    /// Avoid embedding this in build artifacts; see `remapped_path_if_available()` for that.
-    pub fn local_path(&self) -> Option<&Path> {
-        match self {
-            RealFileName::LocalPath(p) => Some(p),
-            RealFileName::Remapped { local_path, virtual_name: _ } => local_path.as_deref(),
-        }
-    }
-
-    /// Returns the path suitable for reading from the file system on the local host,
-    /// if this information exists.
-    /// Avoid embedding this in build artifacts; see `remapped_path_if_available()` for that.
-    pub fn into_local_path(self) -> Option<PathBuf> {
-        match self {
-            RealFileName::LocalPath(p) => Some(p),
-            RealFileName::Remapped { local_path: p, virtual_name: _ } => p,
-        }
-    }
-
-    /// Returns the path suitable for embedding into build artifacts. This would still
-    /// be a local path if it has not been remapped. A remapped path will not correspond
-    /// to a valid file system path: see `local_path_if_available()` for something that
-    /// is more likely to return paths into the local host file system.
-    pub fn remapped_path_if_available(&self) -> &Path {
-        match self {
-            RealFileName::LocalPath(p)
-            | RealFileName::Remapped { local_path: _, virtual_name: p } => p,
-        }
-    }
-
-    /// Returns the path suitable for reading from the file system on the local host,
-    /// if this information exists. Otherwise returns the remapped name.
-    /// Avoid embedding this in build artifacts; see `remapped_path_if_available()` for that.
-    pub fn local_path_if_available(&self) -> &Path {
-        match self {
-            RealFileName::LocalPath(path)
-            | RealFileName::Remapped { local_path: None, virtual_name: path }
-            | RealFileName::Remapped { local_path: Some(path), virtual_name: _ } => path,
-        }
-    }
-
-    /// Return the path remapped or not depending on the [`FileNameDisplayPreference`].
+    /// Returns the associated path for the given remapping scope.
     ///
-    /// For the purpose of this function, local and short preference are equal.
-    pub fn to_path(&self, display_pref: FileNameDisplayPreference) -> &Path {
-        match display_pref {
-            FileNameDisplayPreference::Local | FileNameDisplayPreference::Short => {
-                self.local_path_if_available()
-            }
-            FileNameDisplayPreference::Remapped => self.remapped_path_if_available(),
+    /// ## Panic
+    ///
+    /// Only one scope components can be given to this function.
+    pub fn path(&self, scope: RemapPathScopeComponents) -> &Path {
+        assert!(
+            scope.bits().count_ones() == 1,
+            "one and only one scope should be passed to `RealFileName::path`: {scope:?}"
+        );
+        if !self.scopes.contains(scope)
+            && let Some(local_name) = &self.local
+        {
+            local_name.name.as_path()
+        } else {
+            self.maybe_remapped.name.as_path()
         }
     }
 
-    pub fn to_string_lossy(&self, display_pref: FileNameDisplayPreference) -> Cow<'_, str> {
+    /// Returns the working directory and embeddable path for the given remapping scope.
+    ///
+    /// Useful for embedding a mostly abosolute path (modulo remapping) in the compiler outputs.
+    ///
+    /// The embedabble path is not guaranteed to be an absolute path, nor is it garuenteed
+    /// that the working directory part is always a prefix of embeddable path.
+    ///
+    /// ## Panic
+    ///
+    /// Only one scope components can be given to this function.
+    pub fn embeddable_name(&self, scope: RemapPathScopeComponents) -> (&Path, &Path) {
+        assert!(
+            scope.bits().count_ones() == 1,
+            "one and only one scope should be passed to `RealFileName::embeddable_path`: {scope:?}"
+        );
+        if !self.scopes.contains(scope)
+            && let Some(local_name) = &self.local
+        {
+            (&local_name.working_directory, &local_name.embeddable_name)
+        } else {
+            (&self.maybe_remapped.working_directory, &self.maybe_remapped.embeddable_name)
+        }
+    }
+
+    /// Returns the path suitable for reading from the file system on the local host,
+    /// if this information exists.
+    ///
+    /// May not exists if the filename was imported from another crate.
+    pub fn local_path(&self) -> Option<&Path> {
+        self.local.as_ref().map(|lp| lp.name.as_ref())
+    }
+
+    /// Returns the path suitable for reading from the file system on the local host,
+    /// if this information exists.
+    ///
+    /// May not exists if the filename was imported from another crate.
+    pub fn into_local_path(self) -> Option<PathBuf> {
+        self.local.map(|lp| lp.name)
+    }
+
+    /// Returns whenever the filename was remapped.
+    pub(crate) fn was_remapped(&self) -> bool {
+        !self.scopes.is_empty()
+    }
+
+    /// Returns an empty `RealFileName`
+    ///
+    /// Useful as the working directory input to `SourceMap::to_real_filename`.
+    pub fn empty() -> RealFileName {
+        RealFileName {
+            local: Some(InnerRealFileName {
+                name: PathBuf::new(),
+                working_directory: PathBuf::new(),
+                embeddable_name: PathBuf::new(),
+            }),
+            maybe_remapped: InnerRealFileName {
+                name: PathBuf::new(),
+                working_directory: PathBuf::new(),
+                embeddable_name: PathBuf::new(),
+            },
+            scopes: RemapPathScopeComponents::empty(),
+        }
+    }
+
+    /// Returns a `RealFileName` that is completely remapped without any local components.
+    ///
+    /// Only exposed for the purpose of `-Zsimulate-remapped-rust-src-base`.
+    pub fn from_virtual_path(path: &Path) -> RealFileName {
+        let name = InnerRealFileName {
+            name: path.to_owned(),
+            embeddable_name: path.to_owned(),
+            working_directory: PathBuf::new(),
+        };
+        RealFileName { local: None, maybe_remapped: name, scopes: RemapPathScopeComponents::all() }
+    }
+
+    /// Update the filename for encoding in the crate metadata.
+    ///
+    /// Currently it's about removing the local part when the filename
+    /// is fully remapped.
+    pub fn update_for_crate_metadata(&mut self) {
+        if self.scopes.is_all() {
+            self.local = None;
+        }
+    }
+
+    /// Internal routine to display the filename.
+    ///
+    /// Users should always use the `RealFileName::path` method or `FileName` methods instead.
+    fn to_string_lossy<'a>(&'a self, display_pref: FileNameDisplayPreference) -> Cow<'a, str> {
         match display_pref {
-            FileNameDisplayPreference::Local => self.local_path_if_available().to_string_lossy(),
-            FileNameDisplayPreference::Remapped => {
-                self.remapped_path_if_available().to_string_lossy()
+            FileNameDisplayPreference::Remapped => self.maybe_remapped.name.to_string_lossy(),
+            FileNameDisplayPreference::Local => {
+                self.local.as_ref().unwrap_or(&self.maybe_remapped).name.to_string_lossy()
             }
             FileNameDisplayPreference::Short => self
-                .local_path_if_available()
+                .maybe_remapped
+                .name
                 .file_name()
                 .map_or_else(|| "".into(), |f| f.to_string_lossy()),
+            FileNameDisplayPreference::Scope(scope) => self.path(scope).to_string_lossy(),
         }
     }
 }
@@ -339,38 +467,18 @@ pub enum FileName {
     InlineAsm(Hash64),
 }
 
-impl From<PathBuf> for FileName {
-    fn from(p: PathBuf) -> Self {
-        FileName::Real(RealFileName::LocalPath(p))
-    }
-}
-
-#[derive(Clone, Copy, Eq, PartialEq, Hash, Debug)]
-pub enum FileNameEmbeddablePreference {
-    /// If a remapped path is available, only embed the `virtual_path` and omit the `local_path`.
-    ///
-    /// Otherwise embed the local-path into the `virtual_path`.
-    RemappedOnly,
-    /// Embed the original path as well as its remapped `virtual_path` component if available.
-    LocalAndRemapped,
-}
-
-#[derive(Clone, Copy, Eq, PartialEq, Hash, Debug)]
-pub enum FileNameDisplayPreference {
-    /// Display the path after the application of rewrite rules provided via `--remap-path-prefix`.
-    /// This is appropriate for paths that get embedded into files produced by the compiler.
-    Remapped,
-    /// Display the path before the application of rewrite rules provided via `--remap-path-prefix`.
-    /// This is appropriate for use in user-facing output (such as diagnostics).
-    Local,
-    /// Display only the filename, as a way to reduce the verbosity of the output.
-    /// This is appropriate for use in user-facing output (such as diagnostics).
-    Short,
-}
-
 pub struct FileNameDisplay<'a> {
     inner: &'a FileName,
     display_pref: FileNameDisplayPreference,
+}
+
+// Internal enum. Should not be exposed.
+#[derive(Clone, Copy)]
+enum FileNameDisplayPreference {
+    Remapped,
+    Local,
+    Short,
+    Scope(RemapPathScopeComponents),
 }
 
 impl fmt::Display for FileNameDisplay<'_> {
@@ -417,18 +525,30 @@ impl FileName {
         }
     }
 
+    /// Returns the path suitable for reading from the file system on the local host,
+    /// if this information exists.
+    ///
+    /// Avoid embedding this in build artifacts. Prefer using the `display` method.
     pub fn prefer_remapped_unconditionally(&self) -> FileNameDisplay<'_> {
         FileNameDisplay { inner: self, display_pref: FileNameDisplayPreference::Remapped }
     }
 
-    /// This may include transient local filesystem information.
-    /// Must not be embedded in build outputs.
-    pub fn prefer_local(&self) -> FileNameDisplay<'_> {
+    /// Returns the path suitable for reading from the file system on the local host,
+    /// if this information exists.
+    ///
+    /// Avoid embedding this in build artifacts. Prefer using the `display` method.
+    pub fn prefer_local_unconditionally(&self) -> FileNameDisplay<'_> {
         FileNameDisplay { inner: self, display_pref: FileNameDisplayPreference::Local }
     }
 
-    pub fn display(&self, display_pref: FileNameDisplayPreference) -> FileNameDisplay<'_> {
-        FileNameDisplay { inner: self, display_pref }
+    /// Returns a short (either the filename or an empty string).
+    pub fn short(&self) -> FileNameDisplay<'_> {
+        FileNameDisplay { inner: self, display_pref: FileNameDisplayPreference::Short }
+    }
+
+    /// Returns a `Display`-able path for the given scope.
+    pub fn display(&self, scope: RemapPathScopeComponents) -> FileNameDisplay<'_> {
+        FileNameDisplay { inner: self, display_pref: FileNameDisplayPreference::Scope(scope) }
     }
 
     pub fn macro_expansion_source_code(src: &str) -> FileName {
@@ -473,7 +593,8 @@ impl FileName {
 
     /// Returns the path suitable for reading from the file system on the local host,
     /// if this information exists.
-    /// Avoid embedding this in build artifacts; see `remapped_path_if_available()` for that.
+    ///
+    /// Avoid embedding this in build artifacts.
     pub fn into_local_path(self) -> Option<PathBuf> {
         match self {
             FileName::Real(path) => path.into_local_path(),

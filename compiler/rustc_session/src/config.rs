@@ -24,10 +24,7 @@ use rustc_hashes::Hash64;
 use rustc_macros::{BlobDecodable, Decodable, Encodable, HashStable_Generic};
 use rustc_span::edition::{DEFAULT_EDITION, EDITION_NAME_LIST, Edition, LATEST_STABLE_EDITION};
 use rustc_span::source_map::FilePathMapping;
-use rustc_span::{
-    FileName, FileNameDisplayPreference, FileNameEmbeddablePreference, RealFileName,
-    SourceFileHashAlgorithm, Symbol, sym,
-};
+use rustc_span::{FileName, RealFileName, SourceFileHashAlgorithm, Symbol, sym};
 use rustc_target::spec::{
     FramePointer, LinkSelfContainedComponents, LinkerFeatures, PanicStrategy, SplitDebuginfo,
     Target, TargetTuple,
@@ -1022,9 +1019,15 @@ impl Input {
         "rust_out"
     }
 
-    pub fn source_name(&self) -> FileName {
+    pub fn file_name(&self, session: &Session) -> FileName {
         match *self {
-            Input::File(ref ifile) => ifile.clone().into(),
+            Input::File(ref ifile) => FileName::Real(
+                session
+                    .psess
+                    .source_map()
+                    .path_mapping()
+                    .to_real_filename(session.psess.source_map().working_dir(), ifile.as_path()),
+            ),
             Input::Str { ref name, .. } => name.clone(),
         }
     }
@@ -1312,25 +1315,6 @@ impl OutputFilenames {
     }
 }
 
-bitflags::bitflags! {
-    /// Scopes used to determined if it need to apply to --remap-path-prefix
-    #[derive(Clone, Copy, PartialEq, Eq, Hash)]
-    pub struct RemapPathScopeComponents: u8 {
-        /// Apply remappings to the expansion of std::file!() macro
-        const MACRO = 1 << 0;
-        /// Apply remappings to printed compiler diagnostics
-        const DIAGNOSTICS = 1 << 1;
-        /// Apply remappings to debug information
-        const DEBUGINFO = 1 << 3;
-        /// Apply remappings to coverage information
-        const COVERAGE = 1 << 4;
-
-        /// An alias for `macro`, `debuginfo` and `coverage`. This ensures all paths in compiled
-        /// executables, libraries and objects are remapped but not elsewhere.
-        const OBJECT = Self::MACRO.bits() | Self::DEBUGINFO.bits() | Self::COVERAGE.bits();
-    }
-}
-
 #[derive(Clone, Debug)]
 pub struct Sysroot {
     pub explicit: Option<PathBuf>,
@@ -1369,25 +1353,22 @@ fn file_path_mapping(
     remap_path_prefix: Vec<(PathBuf, PathBuf)>,
     unstable_opts: &UnstableOptions,
 ) -> FilePathMapping {
-    FilePathMapping::new(
-        remap_path_prefix.clone(),
-        if unstable_opts.remap_path_scope.contains(RemapPathScopeComponents::DIAGNOSTICS)
-            && !remap_path_prefix.is_empty()
-        {
-            FileNameDisplayPreference::Remapped
-        } else {
-            FileNameDisplayPreference::Local
-        },
-        if unstable_opts.remap_path_scope.is_all() {
-            FileNameEmbeddablePreference::RemappedOnly
-        } else {
-            FileNameEmbeddablePreference::LocalAndRemapped
-        },
-    )
+    FilePathMapping::new(remap_path_prefix.clone(), unstable_opts.remap_path_scope)
 }
 
 impl Default for Options {
     fn default() -> Options {
+        let unstable_opts = UnstableOptions::default();
+
+        // FIXME(Urgau): This is a hack that ideally shouldn't exist, but rustdoc
+        // currently uses this `Default` implementation, so we have no choice but
+        // to create a default working directory.
+        let working_dir = {
+            let working_dir = std::env::current_dir().unwrap();
+            let file_mapping = file_path_mapping(Vec::new(), &unstable_opts);
+            file_mapping.to_real_filename(&RealFileName::empty(), &working_dir)
+        };
+
         Options {
             assert_incr_state: None,
             crate_types: Vec::new(),
@@ -1404,7 +1385,7 @@ impl Default for Options {
             test: false,
             incremental: None,
             untracked_state_hash: Default::default(),
-            unstable_opts: Default::default(),
+            unstable_opts,
             prints: Vec::new(),
             cg: Default::default(),
             error_format: ErrorOutputType::default(),
@@ -1428,7 +1409,7 @@ impl Default for Options {
             json_unused_externs: JsonUnusedExterns::No,
             json_future_incompat: false,
             pretty: None,
-            working_dir: RealFileName::LocalPath(std::env::current_dir().unwrap()),
+            working_dir,
             color: ColorConfig::Auto,
             logical_env: FxIndexMap::default(),
             verbose: false,
@@ -2782,12 +2763,16 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
             .collect()
     };
 
-    let working_dir = std::env::current_dir().unwrap_or_else(|e| {
-        early_dcx.early_fatal(format!("Current directory is invalid: {e}"));
-    });
+    // Ideally we would use `SourceMap::working_dir` instead, but we don't have access to it
+    // so we manually create the potentially-remapped working directory
+    let working_dir = {
+        let working_dir = std::env::current_dir().unwrap_or_else(|e| {
+            early_dcx.early_fatal(format!("Current directory is invalid: {e}"));
+        });
 
-    let file_mapping = file_path_mapping(remap_path_prefix.clone(), &unstable_opts);
-    let working_dir = file_mapping.to_real_filename(&working_dir);
+        let file_mapping = file_path_mapping(remap_path_prefix.clone(), &unstable_opts);
+        file_mapping.to_real_filename(&RealFileName::empty(), &working_dir)
+    };
 
     let verbose = matches.opt_present("verbose") || unstable_opts.verbose_internals;
 
@@ -3115,8 +3100,8 @@ pub(crate) mod dep_tracking {
     use rustc_errors::LanguageIdentifier;
     use rustc_feature::UnstableFeatures;
     use rustc_hashes::Hash64;
-    use rustc_span::RealFileName;
     use rustc_span::edition::Edition;
+    use rustc_span::{RealFileName, RemapPathScopeComponents};
     use rustc_target::spec::{
         CodeModel, FramePointer, MergeFunctions, OnBrokenPipe, PanicStrategy, RelocModel,
         RelroLevel, SanitizerSet, SplitDebuginfo, StackProtector, SymbolVisibility, TargetTuple,
@@ -3128,9 +3113,9 @@ pub(crate) mod dep_tracking {
         CoverageOptions, CrateType, DebugInfo, DebugInfoCompression, ErrorOutputType, FmtDebug,
         FunctionReturn, InliningThreshold, InstrumentCoverage, InstrumentXRay, LinkerPluginLto,
         LocationDetail, LtoCli, MirStripDebugInfo, NextSolverConfig, Offload, OptLevel,
-        OutFileName, OutputType, OutputTypes, PatchableFunctionEntry, Polonius,
-        RemapPathScopeComponents, ResolveDocLinks, SourceFileHashAlgorithm, SplitDwarfKind,
-        SwitchWithOptPath, SymbolManglingVersion, WasiExecModel,
+        OutFileName, OutputType, OutputTypes, PatchableFunctionEntry, Polonius, ResolveDocLinks,
+        SourceFileHashAlgorithm, SplitDwarfKind, SwitchWithOptPath, SymbolManglingVersion,
+        WasiExecModel,
     };
     use crate::lint;
     use crate::utils::NativeLib;

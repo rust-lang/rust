@@ -6,9 +6,6 @@ attr_parsing_bundle_needs_static =
 
 attr_parsing_cfg_attr_bad_delim = wrong `cfg_attr` delimiters
 
-attr_parsing_cfg_predicate_identifier =
-    `cfg` predicate key must be an identifier
-
 attr_parsing_deprecated_item_suggestion =
     suggestions on deprecated items are unstable
     .help = add `#![feature(deprecated_suggestion)]` to the crate root
@@ -40,9 +37,6 @@ attr_parsing_empty_confusables =
 attr_parsing_empty_link_name =
     link name must not be empty
     .label = empty link name
-
-attr_parsing_expected_one_cfg_pattern =
-    expected 1 cfg-pattern
 
 attr_parsing_expected_single_version_literal =
     expected single version literal
@@ -241,12 +235,6 @@ attr_parsing_unstable_cfg_target_compact =
 attr_parsing_unstable_feature_bound_incompatible_stability = item annotated with `#[unstable_feature_bound]` should not be stable
     .help = If this item is meant to be stable, do not use any functions annotated with `#[unstable_feature_bound]`. Otherwise, mark this item as unstable with `#[unstable]`
 
-attr_parsing_unsupported_literal_cfg_boolean =
-    literal in `cfg` predicate value must be a boolean
-attr_parsing_unsupported_literal_cfg_string =
-    literal in `cfg` predicate value must be a string
-attr_parsing_unsupported_literal_generic =
-    unsupported literal
 attr_parsing_unsupported_literal_suggestion =
     consider removing the prefix
 

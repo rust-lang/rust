@@ -7,9 +7,7 @@ use rustc_codegen_ssa::traits::{BaseTypeCodegenMethods, ConstCodegenMethods};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_index::IndexVec;
 use rustc_middle::ty::TyCtxt;
-use rustc_session::RemapFileNameExt;
-use rustc_session::config::RemapPathScopeComponents;
-use rustc_span::{SourceFile, StableSourceFileId};
+use rustc_span::{RemapPathScopeComponents, SourceFile, StableSourceFileId};
 use tracing::debug;
 
 use crate::common::CodegenCx;
@@ -127,10 +125,7 @@ impl GlobalFileTable {
 
         for file in all_files {
             raw_file_table.entry(file.stable_id).or_insert_with(|| {
-                file.name
-                    .for_scope(tcx.sess, RemapPathScopeComponents::COVERAGE)
-                    .to_string_lossy()
-                    .into_owned()
+                file.name.display(RemapPathScopeComponents::COVERAGE).to_string_lossy().into_owned()
             });
         }
 
@@ -145,9 +140,10 @@ impl GlobalFileTable {
         // resolve any other entries that are stored as relative paths.
         let base_dir = tcx
             .sess
-            .opts
-            .working_dir
-            .for_scope(tcx.sess, RemapPathScopeComponents::COVERAGE)
+            .psess
+            .source_map()
+            .working_dir()
+            .path(RemapPathScopeComponents::COVERAGE)
             .to_string_lossy();
         table.push(base_dir.as_ref());
 
