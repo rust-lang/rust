@@ -72,6 +72,9 @@ if isWindows && isKnownToBeMingwBuild; then
             ;;
     esac
 
+    # Prevent adding /mingw64/bin Git for Windows to PATH
+    echo "MSYSTEM=" >> "$GITHUB_ENV"
+
     ciCommandAddPath "$(cygpath -m "$(pwd)/${mingw_dir}/bin")"
 
     # MSYS2 is not installed on AArch64 runners
