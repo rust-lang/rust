@@ -14,8 +14,12 @@ where
 }
 
 trait Check {}
-impl<'a, T> Eq for T where <T as Iterate<'a>>::Ty: Valid {}
+impl<'a, T> Eq for T
 //~^ ERROR type parameter `T` must be used as the type parameter for some local type
+where
+    T: Iterate<'a>,
+    <T as Iterate<'a>>::Ty: Valid,
+{}
 
 trait Valid {}
 

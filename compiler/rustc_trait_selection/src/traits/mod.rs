@@ -257,6 +257,7 @@ fn do_normalize_predicates<'tcx>(
     predicates: Vec<ty::Clause<'tcx>>,
 ) -> Result<Vec<ty::Clause<'tcx>>, ErrorGuaranteed> {
     let span = cause.span;
+    let original_predicates = predicates.clone();
 
     // FIXME. We should really... do something with these region
     // obligations. But this call just continues the older
@@ -296,8 +297,8 @@ fn do_normalize_predicates<'tcx>(
         );
     }
 
-    match infcx.fully_resolve(predicates) {
-        Ok(predicates) => Ok(predicates),
+    let predicates = match infcx.fully_resolve(predicates) {
+        Ok(predicates) => predicates,
         Err(fixup_err) => {
             // If we encounter a fixup error, it means that some type
             // variable wound up unconstrained. I actually don't know
@@ -314,7 +315,64 @@ fn do_normalize_predicates<'tcx>(
                 fixup_err
             );
         }
+    };
+    // The next solver returns nothing for values that contains type error.
+    // And type error should cause failure later. So we skip the consistency check.
+    // `generic_const_exprs` is incompatible with next solver now.
+    if !tcx.next_trait_solver_globally()
+        && !predicates.references_error()
+        && !tcx.features().generic_const_exprs()
+    {
+        let infcx = tcx
+            .infer_ctxt()
+            .with_next_trait_solver(true)
+            .ignoring_regions()
+            .build(TypingMode::non_body_analysis());
+        let predicates_by_next: Vec<Option<_>> = original_predicates
+            .iter()
+            .cloned()
+            .map(|p| {
+                crate::solve::deeply_normalize::<_, ScrubbedTraitError<'tcx>>(
+                    infcx.at(&cause, elaborated_env),
+                    p,
+                )
+                .ok()
+            })
+            .collect();
+
+        // FIXME: next solver adds region constraints that contains placeholders to infcx.
+        // `infcx.considering_regions` is not checked.
+        let _errors = infcx.resolve_regions(cause.body_id, elaborated_env, []);
+
+        let predicates_by_next = match infcx.fully_resolve(predicates_by_next) {
+            Ok(predicates) => predicates,
+            Err(fixup_err) => {
+                span_bug!(
+                    span,
+                    "inference variables in normalized parameter environment: {}",
+                    fixup_err
+                );
+            }
+        };
+
+        for ((orig_pred, old_pred), next_pred) in
+            original_predicates.iter().zip(&predicates).zip(&predicates_by_next)
+        {
+            if let Some(next_pred) = next_pred
+                && next_pred == old_pred
+            {
+                continue;
+            }
+            tcx.dcx().span_err(
+                span,
+                format!(
+                    "inconsistency during normalizing env `{:#?}`, old={:#?}, next={:#?}",
+                    orig_pred, old_pred, next_pred
+                ),
+            );
+        }
     }
+    Ok(predicates)
 }
 
 // FIXME: this is gonna need to be removed ...

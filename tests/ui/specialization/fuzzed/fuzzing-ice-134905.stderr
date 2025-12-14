@@ -15,7 +15,7 @@ LL |     default type Ty = ();
    |                       ^^ the trait `Valid` is not implemented for `()`
    |
 help: this trait has no implementations, consider adding one
-  --> $DIR/fuzzing-ice-134905.rs:20:1
+  --> $DIR/fuzzing-ice-134905.rs:24:1
    |
 LL | trait Valid {}
    | ^^^^^^^^^^^
@@ -28,7 +28,7 @@ LL |     type Ty: Valid;
 error[E0210]: type parameter `T` must be used as the type parameter for some local type (e.g., `MyStruct<T>`)
   --> $DIR/fuzzing-ice-134905.rs:17:10
    |
-LL | impl<'a, T> Eq for T where <T as Iterate<'a>>::Ty: Valid {}
+LL | impl<'a, T> Eq for T
    |          ^ type parameter `T` must be used as the type parameter for some local type
    |
    = note: implementing a foreign trait is only possible if at least one of the types for which it is implemented is local
