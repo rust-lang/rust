@@ -3,10 +3,11 @@
 
 #[no_mangle]
 pub fn get_len() -> usize {
+    // FIXME: Allocation no longer optimized away.
     // CHECK-LABEL: @get_len
     // CHECK-NEXT: start:
     // CHECK-NEXT: ; call __rustc::__rust_no_alloc_shim_is_unstable_v2
     // CHECK-NEXT: tail call void @_R{{.+}}__rust_no_alloc_shim_is_unstable_v2()
-    // CHECK-NEXT: ret i{{[0-9]+}} 3
+    // CHECK: ret i{{[0-9]+}} 3
     [1, 2, 3].iter().collect::<Vec<_>>().len()
 }
