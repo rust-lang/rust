@@ -81,6 +81,9 @@ pub struct RwLockReadGuard<'rwlock, T: ?Sized + 'rwlock> {
     data: NonNull<T>,
     /// A reference to the internal [`sys::RwLock`] that we have read-locked.
     inner_lock: &'rwlock sys::RwLock,
+    /// The unlocked state is used to prevent double unlocking of guards upon panicking in
+    /// unlocked scopes.
+    unlocked: bool,
 }
 
 #[unstable(feature = "nonpoison_rwlock", issue = "134645")]
@@ -107,6 +110,9 @@ unsafe impl<T: ?Sized + Sync> Sync for RwLockReadGuard<'_, T> {}
 pub struct RwLockWriteGuard<'rwlock, T: ?Sized + 'rwlock> {
     /// A reference to the [`RwLock`] that we have write-locked.
     lock: &'rwlock RwLock<T>,
+    /// The unlocked state is used to prevent double unlocking of guards upon panicking in
+    /// unlocked scopes.
+    unlocked: bool,
 }
 
 #[unstable(feature = "nonpoison_rwlock", issue = "134645")]
@@ -607,6 +613,7 @@ impl<'rwlock, T: ?Sized> RwLockReadGuard<'rwlock, T> {
         RwLockReadGuard {
             data: unsafe { NonNull::new_unchecked(lock.data.get()) },
             inner_lock: &lock.inner,
+            unlocked: false,
         }
     }
 
@@ -684,7 +691,7 @@ impl<'rwlock, T: ?Sized> RwLockWriteGuard<'rwlock, T> {
     /// `lock.inner.write()`, `lock.inner.try_write()`, or `lock.inner.try_upgrade` before
     /// instantiating this object.
     unsafe fn new(lock: &'rwlock RwLock<T>) -> RwLockWriteGuard<'rwlock, T> {
-        RwLockWriteGuard { lock }
+        RwLockWriteGuard { lock, unlocked: false }
     }
 
     /// Downgrades a write-locked `RwLockWriteGuard` into a read-locked [`RwLockReadGuard`].
@@ -976,9 +983,11 @@ impl<'rwlock, T: ?Sized> MappedRwLockWriteGuard<'rwlock, T> {
 #[unstable(feature = "nonpoison_rwlock", issue = "134645")]
 impl<T: ?Sized> Drop for RwLockReadGuard<'_, T> {
     fn drop(&mut self) {
-        // SAFETY: the conditions of `RwLockReadGuard::new` were satisfied when created.
-        unsafe {
-            self.inner_lock.read_unlock();
+        if !self.unlocked {
+            // SAFETY: the conditions of `RwLockReadGuard::new` were satisfied when created.
+            unsafe {
+                self.inner_lock.read_unlock();
+            }
         }
     }
 }
@@ -986,9 +995,11 @@ impl<T: ?Sized> Drop for RwLockReadGuard<'_, T> {
 #[unstable(feature = "nonpoison_rwlock", issue = "134645")]
 impl<T: ?Sized> Drop for RwLockWriteGuard<'_, T> {
     fn drop(&mut self) {
-        // SAFETY: the conditions of `RwLockWriteGuard::new` were satisfied when created.
-        unsafe {
-            self.lock.inner.write_unlock();
+        if !self.unlocked {
+            // SAFETY: the conditions of `RwLockWriteGuard::new` were satisfied when created.
+            unsafe {
+                self.lock.inner.write_unlock();
+            }
         }
     }
 }
@@ -1136,5 +1147,89 @@ impl<T: ?Sized + fmt::Debug> fmt::Debug for MappedRwLockWriteGuard<'_, T> {
 impl<T: ?Sized + fmt::Display> fmt::Display for MappedRwLockWriteGuard<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         (**self).fmt(f)
+    }
+}
+
+impl<'rw_lock, T: ?Sized> RwLockReadGuard<'rw_lock, T> {
+    /// Unlocks the [`RwLockReadGuard`] for the scope of `func` and acquires it again after.
+    /// Panics won't lock the guard again.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #[feature(unlockable_guards)]
+    ///
+    /// use std::sync::nonpoison::RwLock;
+    /// use std::sync::nonpoison::RwLockReadGuard;
+    /// use std::sync::nonpoison::TryLockResult;
+    ///
+    /// let rw_lock = RwLock::new(1usize);
+    /// let mut read_guard = rw_lock.read();
+    ///
+    /// // guard is locked and can be used here
+    /// assert_eq!(*read_guard, 1);
+    ///
+    /// RwLockReadGuard::unlocked(&mut read_guard, || {
+    ///     // guard is locked and can be acquired potentially from another thread
+    ///     assert!(matches!(rw_lock.try_write(), TryLockResult::Ok(_)));
+    /// });
+    ///
+    /// // guard is locked again
+    /// assert_eq!(*read_guard, 1);
+    /// ```
+    #[unstable(feature = "unlockable_guards", issue = "148568")]
+    pub fn unlocked<F>(self: &mut Self, func: F) -> ()
+    where
+        F: FnOnce() -> (),
+    {
+        self.unlocked = true;
+        unsafe { self.inner_lock.read_unlock() };
+
+        func();
+
+        self.inner_lock.read();
+        self.unlocked = false;
+    }
+}
+
+impl<'rw_lock, T: ?Sized> RwLockWriteGuard<'rw_lock, T> {
+    /// Unlocks the [`RwLockWriteGuard`] for the scope of `func` and acquires it again after.
+    /// Panics won't lock the guard again.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #[feature(unlockable_guards)]
+    ///
+    /// use std::sync::nonpoison::RwLock;
+    /// use std::sync::nonpoison::RwLockWriteGuard;
+    /// use std::sync::nonpoison::TryLockResult;
+    ///
+    /// let rw_lock = RwLock::new(1usize);
+    /// let mut write_guard = rw_lock.write();
+    ///
+    /// // guard is locked and can be used here
+    /// *write_guard = 5;
+    ///
+    /// RwLockWriteGuard::unlocked(&mut write_guard, || {
+    ///     // guard is locked and can be acquired potentially from another thread
+    ///     assert!(matches!(rw_lock.try_write(), TryLockResult::Ok(_)));
+    /// });
+    ///
+    /// // guard is locked again
+    /// assert_eq!(*write_guard, 5);
+    /// ```
+    #[unstable(feature = "unlockable_guards", issue = "148568")]
+    pub fn unlocked<F>(self: &mut Self, func: F) -> ()
+    where
+        F: FnOnce() -> (),
+    {
+        self.unlocked = true;
+        unsafe { self.lock.inner.write_unlock() };
+
+        func();
+
+        self.lock.inner.write();
+        self.unlocked = false;
     }
 }
