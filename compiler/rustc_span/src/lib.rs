@@ -374,12 +374,16 @@ impl RealFileName {
     /// if this information exists.
     ///
     /// May not exists if the filename was imported from another crate.
+    ///
+    /// Avoid embedding this in build artifacts; prefer `path()` or `embeddable_name()`.
     #[inline]
     pub fn local_path(&self) -> Option<&Path> {
         if self.was_not_remapped() {
             Some(&self.maybe_remapped.name)
+        } else if let Some(local) = &self.local {
+            Some(&local.name)
         } else {
-            self.local.as_ref().map(|lp| lp.name.as_ref())
+            None
         }
     }
 
@@ -387,12 +391,16 @@ impl RealFileName {
     /// if this information exists.
     ///
     /// May not exists if the filename was imported from another crate.
+    ///
+    /// Avoid embedding this in build artifacts; prefer `path()` or `embeddable_name()`.
     #[inline]
     pub fn into_local_path(self) -> Option<PathBuf> {
         if self.was_not_remapped() {
             Some(self.maybe_remapped.name)
+        } else if let Some(local) = self.local {
+            Some(local.name)
         } else {
-            self.local.map(|lp| lp.name)
+            None
         }
     }
 
