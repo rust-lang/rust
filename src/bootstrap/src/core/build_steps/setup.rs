@@ -484,6 +484,52 @@ impl Step for Hook {
     }
 }
 
+/// It handles Git hook setup
+#[derive(Clone, Debug, Eq, PartialEq)]
+enum GitHookKind {
+    Tidy,
+    TidyWithSpellcheck,
+}
+
+impl GitHookKind {
+    fn prompt_user() -> io::Result<Option<GitHookKind>> {
+        let prompt_str = "Available options:
+1. Set tidy as pre-push hook
+2. Set tidy with spellcheck as pre-push hook
+
+Please select [default: None]:";
+
+        let mut input = String::new();
+        loop {
+            print!("{prompt_str}");
+            io::stdout().flush()?;
+            io::stdin().read_line(&mut input)?;
+
+            let mut modified_input = input.to_lowercase();
+            modified_input.retain(|ch| !ch.is_whitespace());
+
+            match modified_input.as_str() {
+                "1" => return Ok(Some(GitHookKind::Tidy)),
+                "2" => return Ok(Some(GitHookKind::TidyWithSpellcheck)),
+                "" | "none" => return Ok(None),
+                _ => {
+                    eprintln!("ERROR: unrecognized option '{}'", input.trim());
+                    eprintln!("NOTE: press Ctrl+C to exit");
+                }
+            }
+
+            input.clear();
+        }
+    }
+
+    fn settings_path(&self) -> PathBuf {
+        PathBuf::new().join("src").join("etc").join(match self {
+            GitHookKind::Tidy => "pre-push.sh",
+            GitHookKind::TidyWithSpellcheck => "pre-push-spellcheck.sh",
+        })
+    }
+}
+
 // install a git hook to automatically run tidy, if they want
 fn install_git_hook_maybe(builder: &Builder<'_>, config: &Config) -> io::Result<()> {
     let git = helpers::git(Some(&config.src))
@@ -493,37 +539,51 @@ fn install_git_hook_maybe(builder: &Builder<'_>, config: &Config) -> io::Result<
     let git = PathBuf::from(git.trim());
     let hooks_dir = git.join("hooks");
     let dst = hooks_dir.join("pre-push");
-    if dst.exists() {
-        // The git hook has already been set up, or the user already has a custom hook.
-        return Ok(());
-    }
 
     println!(
         "\nRust's CI will automatically fail if it doesn't pass `tidy`, the internal tool for ensuring code quality.
 If you'd like, x.py can install a git hook for you that will automatically run `test tidy` before
 pushing your code to ensure your code is up to par. If you decide later that this behavior is
-undesirable, simply delete the `pre-push` file from .git/hooks."
+undesirable, simply delete the `pre-push` file from .git/hooks.
+You have two choices of hooks, the first just runs `test tidy`, the second runs the tidy command with spellcheck.
+Since the spellcheck will be installed if the binary doesn't exist under `build/`, we'll recommend you to choose the first one if you frequently clean up the build directory.
+It overrides the existing pre-push hook if you already have."
     );
 
-    if prompt_user("Would you like to install the git hook?: [y/N]")? != Some(PromptResult::Yes) {
-        println!("Ok, skipping installation!");
-        return Ok(());
-    }
+    let src = match GitHookKind::prompt_user() {
+        Ok(git_hook_kind) => {
+            if let Some(git_hook_kind) = git_hook_kind {
+                git_hook_kind.settings_path()
+            } else {
+                println!("Skip setting pre-push hook");
+                return Ok(());
+            }
+        }
+        Err(e) => {
+            eprintln!("ERROR: could not determine pre push hook: {e}");
+            return Err(e);
+        }
+    };
+
     if !hooks_dir.exists() {
         // We need to (try to) create the hooks directory first.
         let _ = fs::create_dir(hooks_dir);
     }
-    let src = config.src.join("src").join("etc").join("pre-push.sh");
-    match fs::hard_link(src, &dst) {
-        Err(e) => {
-            eprintln!(
-                "ERROR: could not create hook {}: do you already have the git hook installed?\n{}",
-                dst.display(),
-                e
-            );
+
+    if let Ok(true) = fs::exists(&dst) {
+        // Remove the existing pre-push file.
+        if let Err(e) = fs::remove_file(&dst) {
+            eprintln!("ERROR: could not remove the existing hook\n{}", e);
             return Err(e);
         }
-        Ok(_) => println!("Linked `src/etc/pre-push.sh` to `.git/hooks/pre-push`"),
+    }
+
+    match fs::hard_link(config.src.join(&src), &dst) {
+        Err(e) => {
+            eprintln!("ERROR: could not create hook {}:\n{}", dst.display(), e);
+            return Err(e);
+        }
+        Ok(_) => println!("Linked `{}` to `{}`", src.display(), dst.display()),
     };
     Ok(())
 }
