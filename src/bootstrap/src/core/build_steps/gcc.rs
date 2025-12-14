@@ -217,6 +217,15 @@ pub fn get_gcc_build_status(builder: &Builder<'_>, target_pair: GccTargetPair) -
                 "libgccjit.so for `{target_pair}` was not found at `{}`",
                 path.display()
             ));
+
+            if target_pair.host != target_pair.target || target_pair.host != builder.host_target {
+                eprintln!(
+                    "info: libgccjit.so for `{target_pair}` was not found at `{}`",
+                    path.display()
+                );
+                eprintln!("error: we do not support downloading or building a GCC cross-compiler");
+                std::process::exit(1);
+            }
         }
     }
 
