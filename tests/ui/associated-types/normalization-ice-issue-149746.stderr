@@ -1,0 +1,60 @@
+error[E0277]: expected a `FnMut()` closure, found `T`
+  --> $DIR/normalization-ice-issue-149746.rs:6:24
+   |
+LL |     _significant_drop: <() as Owner>::Ty<T>,
+   |                        ^^^^^^^^^^^^^^^^^^^^ expected an `FnMut()` closure, found `T`
+   |
+   = note: wrap the `T` in a closure with no arguments: `|| { /* code */ }`
+note: required by a bound in `Owner::Ty`
+  --> $DIR/normalization-ice-issue-149746.rs:3:26
+   |
+LL | trait Owner { type Ty<T: FnMut()>; }
+   |                          ^^^^^^^ required by this bound in `Owner::Ty`
+help: consider restricting type parameter `T` with trait `FnMut`
+   |
+LL | pub struct Warns<T: FnMut()> {
+   |                   +++++++++
+
+error[E0277]: expected a `FnMut()` closure, found `T`
+  --> $DIR/normalization-ice-issue-149746.rs:12:9
+   |
+LL |     _ = || w.field
+   |         ^^^^^^^^^^ expected an `FnMut()` closure, found `T`
+   |
+   = note: wrap the `T` in a closure with no arguments: `|| { /* code */ }`
+note: required by a bound in `Owner::Ty`
+  --> $DIR/normalization-ice-issue-149746.rs:3:26
+   |
+LL | trait Owner { type Ty<T: FnMut()>; }
+   |                          ^^^^^^^ required by this bound in `Owner::Ty`
+
+error[E0277]: expected a `FnMut()` closure, found `T`
+  --> $DIR/normalization-ice-issue-149746.rs:10:16
+   |
+LL | pub fn test<T>(w: Warns<T>) {
+   |                ^ expected an `FnMut()` closure, found `T`
+   |
+   = note: wrap the `T` in a closure with no arguments: `|| { /* code */ }`
+note: required by a bound in `Owner::Ty`
+  --> $DIR/normalization-ice-issue-149746.rs:3:26
+   |
+LL | trait Owner { type Ty<T: FnMut()>; }
+   |                          ^^^^^^^ required by this bound in `Owner::Ty`
+
+error[E0277]: expected a `FnMut()` closure, found `T`
+  --> $DIR/normalization-ice-issue-149746.rs:12:9
+   |
+LL |     _ = || w.field
+   |         ^^^^^^^^^^ expected an `FnMut()` closure, found `T`
+   |
+   = note: wrap the `T` in a closure with no arguments: `|| { /* code */ }`
+note: required by a bound in `Owner::Ty`
+  --> $DIR/normalization-ice-issue-149746.rs:3:26
+   |
+LL | trait Owner { type Ty<T: FnMut()>; }
+   |                          ^^^^^^^ required by this bound in `Owner::Ty`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

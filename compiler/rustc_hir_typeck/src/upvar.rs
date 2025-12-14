@@ -1552,10 +1552,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> bool {
         // FIXME(#132279): Using `non_body_analysis` here feels wrong.
         let needs_drop = |ty: Ty<'tcx>| {
-            ty.has_significant_drop(
-                self.tcx,
-                ty::TypingEnv::non_body_analysis(self.tcx, closure_def_id),
-            )
+            let typing_env = ty::TypingEnv::non_body_analysis(self.tcx, closure_def_id);
+
+            // FIX for ICE #149746:
+            // We try to normalize the type first.
+            // If normalization fails, we assume it doesn't have a significant drop (false)
+            // to avoid crashing, allowing the compiler to emit the underlying type error later.
+            self.tcx
+                .try_normalize_erasing_regions(typing_env, ty)
+                .map(|normalized_ty| normalized_ty.has_significant_drop(self.tcx, typing_env))
+                .unwrap_or(false)
         };
 
         let is_drop_defined_for_ty = |ty: Ty<'tcx>| {
