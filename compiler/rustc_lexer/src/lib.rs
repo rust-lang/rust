@@ -563,7 +563,6 @@ impl Cursor<'_> {
         self.eat_while(|ch| ch != '\n' && is_horizontal_whitespace(ch));
         let invalid_infostring = self.first() != '\n';
 
-        let mut found = false;
         let nl_fence_pattern = format!("\n{:-<1$}", "", length_opening as usize);
         if let Some(closing) = self.as_str().find(&nl_fence_pattern) {
             // candidate found
@@ -576,10 +575,7 @@ impl Cursor<'_> {
             // ----
             // combine those stuff into this frontmatter token such that it gets detected later.
             self.eat_until(b'\n');
-            found = true;
-        }
-
-        if !found {
+        } else {
             // recovery strategy: a closing statement might have preceding whitespace/newline
             // but not have enough dashes to properly close. In this case, we eat until there,
             // and report a mismatch in the parser.
@@ -656,14 +652,9 @@ impl Cursor<'_> {
         };
 
         let mut depth = 1usize;
-        while let Some(c) = self.bump() {
-            match c {
-                '/' if self.first() == '*' => {
-                    self.bump();
-                    depth += 1;
-                }
-                '*' if self.first() == '/' => {
-                    self.bump();
+        while let Some(c) = self.eat_past_either(b'*', b'/') {
+            if c == b'*' {
+                if self.bump_if('/') {
                     depth -= 1;
                     if depth == 0 {
                         // This block comment is closed, so for a construction like "/* */ */"
@@ -672,7 +663,11 @@ impl Cursor<'_> {
                         break;
                     }
                 }
-                _ => (),
+            } else {
+                // c == b'/'
+                if self.bump_if('*') {
+                    depth += 1;
+                }
             }
         }
 
@@ -935,17 +930,12 @@ impl Cursor<'_> {
     /// if string is terminated.
     fn double_quoted_string(&mut self) -> bool {
         debug_assert!(self.prev() == '"');
-        while let Some(c) = self.bump() {
-            match c {
-                '"' => {
-                    return true;
-                }
-                '\\' if self.first() == '\\' || self.first() == '"' => {
-                    // Bump again to skip escaped character.
-                    self.bump();
-                }
-                _ => (),
+        while let Some(c) = self.eat_past_either(b'"', b'\\') {
+            if c == b'"' {
+                return true;
             }
+            // Current is '\\', bump again if next is an escaped character.
+            self.bump_either('\\', '"');
         }
         // End of file reached.
         false
@@ -963,9 +953,8 @@ impl Cursor<'_> {
         debug_assert!(self.prev() != '#');
 
         let mut n_start_hashes: u32 = 0;
-        while self.first() == '#' {
+        while self.bump_if('#') {
             n_start_hashes += 1;
-            self.bump();
         }
 
         if self.first() != '"' {
@@ -1025,9 +1014,8 @@ impl Cursor<'_> {
 
         // Count opening '#' symbols.
         let mut eaten = 0;
-        while self.first() == '#' {
+        while self.bump_if('#') {
             eaten += 1;
-            self.bump();
         }
         let n_start_hashes = eaten;
 
@@ -1117,9 +1105,7 @@ impl Cursor<'_> {
     /// and returns false otherwise.
     fn eat_float_exponent(&mut self) -> bool {
         debug_assert!(self.prev() == 'e' || self.prev() == 'E');
-        if self.first() == '-' || self.first() == '+' {
-            self.bump();
-        }
+        self.bump_either('-', '+');
         self.eat_decimal_digits()
     }
 

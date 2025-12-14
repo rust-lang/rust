@@ -102,6 +102,25 @@ impl<'a> Cursor<'a> {
         Some(c)
     }
 
+    pub(crate) fn bump_if(&mut self, byte: char) -> bool {
+        if self.first() == byte {
+            self.bump();
+            true
+        } else {
+            false
+        }
+    }
+
+    /// Bumps the cursor if the next character is either of the two expected characters.
+    pub(crate) fn bump_either(&mut self, byte1: char, byte2: char) -> bool {
+        let c = self.first();
+        if c == byte1 || c == byte2 {
+            self.bump();
+            return true;
+        }
+        false
+    }
+
     /// Moves to a substring by a number of bytes.
     pub(crate) fn bump_bytes(&mut self, n: usize) {
         self.chars = self.as_str()[n..].chars();
@@ -121,5 +140,16 @@ impl<'a> Cursor<'a> {
             Some(index) => self.as_str()[index..].chars(),
             None => "".chars(),
         }
+    }
+
+    pub(crate) fn eat_past_either(&mut self, byte1: u8, byte2: u8) -> Option<u8> {
+        let bytes = self.as_str().as_bytes();
+        if let Some(index) = memchr::memchr2(byte1, byte2, bytes) {
+            let found = Some(bytes[index]);
+            self.chars = self.as_str()[index + 1..].chars();
+            return found;
+        }
+        self.chars = "".chars();
+        None
     }
 }
