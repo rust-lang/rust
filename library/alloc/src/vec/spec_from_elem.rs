@@ -12,7 +12,7 @@ pub(super) trait SpecFromElem: Sized {
 impl<T: Clone> SpecFromElem for T {
     default fn from_elem<A: Allocator>(elem: Self, n: usize, alloc: A) -> Vec<Self, A> {
         let mut v = Vec::with_capacity_in(n, alloc);
-        v.extend_with(n, elem);
+        v.extend_elem(n, elem);
         v
     }
 }
@@ -24,7 +24,7 @@ impl<T: Clone + IsZero> SpecFromElem for T {
             return Vec { buf: RawVec::with_capacity_zeroed_in(n, alloc), len: n };
         }
         let mut v = Vec::with_capacity_in(n, alloc);
-        v.extend_with(n, elem);
+        v.extend_elem(n, elem);
         v
     }
 }
@@ -53,21 +53,6 @@ impl SpecFromElem for u8 {
         let mut v = Vec::with_capacity_in(n, alloc);
         unsafe {
             ptr::write_bytes(v.as_mut_ptr(), elem, n);
-            v.set_len(n);
-        }
-        v
-    }
-}
-
-// A better way would be to implement this for all ZSTs which are `Copy` and have trivial `Clone`
-// but the latter cannot be detected currently
-impl SpecFromElem for () {
-    #[inline]
-    fn from_elem<A: Allocator>(_elem: (), n: usize, alloc: A) -> Vec<(), A> {
-        let mut v = Vec::with_capacity_in(n, alloc);
-        // SAFETY: the capacity has just been set to `n`
-        // and `()` is a ZST with trivial `Clone` implementation
-        unsafe {
             v.set_len(n);
         }
         v
