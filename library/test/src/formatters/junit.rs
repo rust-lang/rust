@@ -189,8 +189,10 @@ impl<T: Write> OutputFormatter for JunitFormatter<T> {
         compilation_time: f64,
     ) -> io::Result<()> {
         self.write_message(&format!(
-            "<report total_time=\"{total_time}\" compilation_time=\"{compilation_time}\"></report>\n",
-        ))
+            "<report total_time=\"{total_time}\" compilation_time=\"{compilation_time}\"></report>",
+        ))?;
+        self.out.write_all(b"\n")?;
+        Ok(())
     }
 }
 
