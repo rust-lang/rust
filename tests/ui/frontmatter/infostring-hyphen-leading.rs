@@ -4,6 +4,4 @@
 
 // infostrings cannot have leading hyphens
 
-#![feature(frontmatter)]
-
 fn main() {}
