@@ -314,15 +314,14 @@ fn parse_opts_impl(matches: getopts::Matches) -> OptRes {
     Ok(test_opts)
 }
 
-// FIXME: Copied from librustc_ast until linkage errors are resolved. Issue #47566
 fn is_nightly() -> bool {
-    // Whether this is a feature-staged build, i.e., on the beta or stable channel
-    let disable_unstable_features =
-        option_env!("CFG_DISABLE_UNSTABLE_FEATURES").map(|s| s != "0").unwrap_or(false);
-    // Whether we should enable unstable features for bootstrapping
+    // Whether the current rustc version should allow unstable features
+    let enable_unstable_features = cfg!(enable_unstable_features);
+
+    // The runtime override for unstable features
     let bootstrap = env::var("RUSTC_BOOTSTRAP").is_ok();
 
-    bootstrap || !disable_unstable_features
+    bootstrap || enable_unstable_features
 }
 
 // Gets the CLI options associated with `report-time` feature.
