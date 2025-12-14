@@ -2605,35 +2605,6 @@ pub(crate) struct IllFormedAttributeInput {
 }
 
 #[derive(LintDiagnostic)]
-#[diag(lint_unicode_text_flow)]
-#[note]
-pub(crate) struct UnicodeTextFlow {
-    #[label]
-    pub comment_span: Span,
-    #[subdiagnostic]
-    pub characters: Vec<UnicodeCharNoteSub>,
-    #[subdiagnostic]
-    pub suggestions: Option<UnicodeTextFlowSuggestion>,
-
-    pub num_codepoints: usize,
-}
-
-#[derive(Subdiagnostic)]
-#[label(lint_label_comment_char)]
-pub(crate) struct UnicodeCharNoteSub {
-    #[primary_span]
-    pub span: Span,
-    pub c_debug: String,
-}
-
-#[derive(Subdiagnostic)]
-#[multipart_suggestion(lint_suggestion, applicability = "machine-applicable", style = "hidden")]
-pub(crate) struct UnicodeTextFlowSuggestion {
-    #[suggestion_part(code = "")]
-    pub spans: Vec<Span>,
-}
-
-#[derive(LintDiagnostic)]
 #[diag(lint_abs_path_with_module)]
 pub(crate) struct AbsPathWithModule {
     #[subdiagnostic]
@@ -2735,42 +2706,6 @@ pub(crate) struct PatternsInFnsWithoutBodySub {
     pub span: Span,
 
     pub ident: Ident,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(lint_reserved_prefix)]
-pub(crate) struct ReservedPrefix {
-    #[label]
-    pub label: Span,
-    #[suggestion(code = " ", applicability = "machine-applicable")]
-    pub suggestion: Span,
-
-    pub prefix: String,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(lint_raw_prefix)]
-pub(crate) struct RawPrefix {
-    #[label]
-    pub label: Span,
-    #[suggestion(code = " ", applicability = "machine-applicable")]
-    pub suggestion: Span,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(lint_break_with_label_and_loop)]
-pub(crate) struct BreakWithLabelAndLoop {
-    #[subdiagnostic]
-    pub sub: BreakWithLabelAndLoopSub,
-}
-
-#[derive(Subdiagnostic)]
-#[multipart_suggestion(lint_suggestion, applicability = "machine-applicable")]
-pub(crate) struct BreakWithLabelAndLoopSub {
-    #[suggestion_part(code = "(")]
-    pub left: Span,
-    #[suggestion_part(code = ")")]
-    pub right: Span,
 }
 
 #[derive(LintDiagnostic)]
@@ -2926,20 +2861,6 @@ pub(crate) enum MutRefSugg {
 #[derive(LintDiagnostic)]
 #[diag(lint_unqualified_local_imports)]
 pub(crate) struct UnqualifiedLocalImportsDiag {}
-
-#[derive(LintDiagnostic)]
-#[diag(lint_reserved_string)]
-pub(crate) struct ReservedString {
-    #[suggestion(code = " ", applicability = "machine-applicable")]
-    pub suggestion: Span,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(lint_reserved_multihash)]
-pub(crate) struct ReservedMultihash {
-    #[suggestion(code = " ", applicability = "machine-applicable")]
-    pub suggestion: Span,
-}
 
 #[derive(LintDiagnostic)]
 #[diag(lint_function_casts_as_integer)]

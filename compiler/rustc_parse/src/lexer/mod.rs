@@ -9,7 +9,6 @@ use rustc_lexer::{
     Base, Cursor, DocStyle, FrontmatterAllowed, LiteralKind, RawStrError, is_horizontal_whitespace,
 };
 use rustc_literal_escaper::{EscapeError, Mode, check_for_errors};
-use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::lint::builtin::{
     RUST_2021_PREFIXES_INCOMPATIBLE_SYNTAX, RUST_2024_GUARDED_STRING_INCOMPATIBLE_SYNTAX,
     TEXT_DIRECTION_CODEPOINT_IN_COMMENT, TEXT_DIRECTION_CODEPOINT_IN_LITERAL,
@@ -384,7 +383,7 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
                             RUST_2021_PREFIXES_INCOMPATIBLE_SYNTAX,
                             prefix_span,
                             ast::CRATE_NODE_ID,
-                            BuiltinLintDiag::RawPrefix(prefix_span),
+                            errors::RawPrefix { label: prefix_span, suggestion: prefix_span.shrink_to_hi() },
                         );
 
                         // Reset the state so we just lex the `'r`.
@@ -497,7 +496,7 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
                 TEXT_DIRECTION_CODEPOINT_IN_COMMENT,
                 span,
                 ast::CRATE_NODE_ID,
-                BuiltinLintDiag::UnicodeTextFlow(span, content.to_string()),
+                errors::UnicodeTextFlow { comment_span: span, content: content.to_string() },
             );
         }
     }
@@ -1025,7 +1024,11 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
                 RUST_2021_PREFIXES_INCOMPATIBLE_SYNTAX,
                 prefix_span,
                 ast::CRATE_NODE_ID,
-                BuiltinLintDiag::ReservedPrefix(prefix_span, prefix.to_string()),
+                errors::ReservedPrefix {
+                    label: prefix_span,
+                    suggestion: prefix_span.shrink_to_hi(),
+                    prefix: prefix.to_owned(),
+                },
             );
         }
     }
@@ -1079,21 +1082,17 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
                     .emit()
             }
 
-            let sugg = if span.from_expansion() {
-                None
-            } else {
-                Some(errors::GuardedStringSugg(space_span))
-            };
+            let sugg = if span.from_expansion() { None } else { Some(space_span) };
 
             // In Edition 2024 and later, emit a hard error.
-            let err = if is_string {
-                self.dcx().emit_err(errors::ReservedString { span, sugg })
+            let guar = self.dcx().emit_err(if is_string {
+                errors::ReservedHashPrefixedToken::String { span, sugg }
             } else {
-                self.dcx().emit_err(errors::ReservedMultihash { span, sugg })
-            };
+                errors::ReservedHashPrefixedToken::Hash { span, sugg }
+            });
 
             token::Literal(token::Lit {
-                kind: token::Err(err),
+                kind: token::Err(guar),
                 symbol: self.symbol_from_to(start, self.pos),
                 suffix: None,
             })
@@ -1103,7 +1102,11 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
                 RUST_2024_GUARDED_STRING_INCOMPATIBLE_SYNTAX,
                 span,
                 ast::CRATE_NODE_ID,
-                BuiltinLintDiag::ReservedString { is_string, suggestion: space_span },
+                if is_string {
+                    errors::ReservedHashPrefixedTokenLint::String { sugg: space_span }
+                } else {
+                    errors::ReservedHashPrefixedTokenLint::Hash { sugg: space_span }
+                },
             );
 
             // For backwards compatibility, roll back to after just the first `#`

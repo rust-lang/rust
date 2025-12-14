@@ -44,9 +44,6 @@ lint_bad_attribute_argument = bad attribute argument
 
 lint_bad_opt_access = {$msg}
 
-lint_break_with_label_and_loop = this labeled break expression is easy to confuse with an unlabeled break with a labeled value expression
-    .suggestion = wrap this expression in parentheses
-
 lint_builtin_allow_internal_unsafe =
     `allow_internal_unsafe` allows defining macros using unsafe without triggering the `unsafe_code` lint at their call site
 
@@ -765,11 +762,6 @@ lint_range_endpoint_out_of_range = range endpoint is out of range for `{$ty}`
 
 lint_range_use_inclusive_range = use an inclusive range instead
 
-
-lint_raw_prefix = prefix `'r` is reserved
-    .label = reserved prefix
-    .suggestion = insert whitespace here to avoid this being parsed as a prefix in Rust 2021
-
 lint_reason_must_be_string_literal = reason must be a string literal
 
 lint_reason_must_come_last = reason in lint attribute must come last
@@ -800,16 +792,6 @@ lint_renamed_lint = lint `{$name}` has been renamed to `{$replace}`
     .help = use the new name `{$replace}`
 
 lint_requested_level = requested on the command line with `{$level} {$lint_name}`
-
-lint_reserved_multihash = reserved token in Rust 2024
-    .suggestion = insert whitespace here to avoid this being parsed as a forbidden token in Rust 2024
-
-lint_reserved_prefix = prefix `{$prefix}` is unknown
-    .label = unknown prefix
-    .suggestion = insert whitespace here to avoid this being parsed as a prefix in Rust 2021
-
-lint_reserved_string = will be parsed as a guarded string in Rust 2024
-    .suggestion = insert whitespace here to avoid this being parsed as a guarded string in Rust 2024
 
 lint_shadowed_into_iter =
     this method call resolves to `<&{$target} as IntoIterator>::into_iter` (due to backwards compatibility), but will resolve to `<{$target} as IntoIterator>::into_iter` in Rust {$edition}
@@ -926,16 +908,6 @@ lint_unexpected_cfg_value_specify_value = specify a config value
 
 lint_ungated_async_fn_track_caller = `#[track_caller]` on async functions is a no-op
      .label = this function will not propagate the caller location
-
-lint_unicode_text_flow = unicode codepoint changing visible direction of text present in comment
-    .label = {$num_codepoints ->
-            [1] this comment contains an invisible unicode text flow control codepoint
-            *[other] this comment contains invisible unicode text flow control codepoints
-        }
-    .note = these kind of unicode codepoints change the way text flows on applications that support them, but can cause confusion because they change the order of characters on the screen
-    .suggestion = if their presence wasn't intentional, you can remove them
-    .label_comment_char = {$c_debug}
-
 
 lint_unit_bindings = binding has unit type `()`
     .label = this pattern is inferred to be the unit type `()`

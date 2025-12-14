@@ -1,6 +1,5 @@
 use std::borrow::Cow;
 
-use rustc_ast::util::unicode::TEXT_FLOW_CONTROL_CHARS;
 use rustc_errors::{
     Applicability, Diag, DiagArgValue, LintDiagnostic, elided_lifetime_in_path_suggestion,
 };
@@ -9,7 +8,6 @@ use rustc_middle::middle::stability;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_session::lint::BuiltinLintDiag;
-use rustc_span::BytePos;
 use tracing::debug;
 
 use crate::lints;
@@ -23,32 +21,6 @@ pub fn decorate_builtin_lint(
     diag: &mut Diag<'_, ()>,
 ) {
     match diagnostic {
-        BuiltinLintDiag::UnicodeTextFlow(comment_span, content) => {
-            let spans: Vec<_> = content
-                .char_indices()
-                .filter_map(|(i, c)| {
-                    TEXT_FLOW_CONTROL_CHARS.contains(&c).then(|| {
-                        let lo = comment_span.lo() + BytePos(2 + i as u32);
-                        (c, comment_span.with_lo(lo).with_hi(lo + BytePos(c.len_utf8() as u32)))
-                    })
-                })
-                .collect();
-            let characters = spans
-                .iter()
-                .map(|&(c, span)| lints::UnicodeCharNoteSub { span, c_debug: format!("{c:?}") })
-                .collect();
-            let suggestions = (!spans.is_empty()).then_some(lints::UnicodeTextFlowSuggestion {
-                spans: spans.iter().map(|(_c, span)| *span).collect(),
-            });
-
-            lints::UnicodeTextFlow {
-                comment_span,
-                characters,
-                suggestions,
-                num_codepoints: spans.len(),
-            }
-            .decorate_lint(diag);
-        }
         BuiltinLintDiag::AbsPathWithModule(mod_span) => {
             let (replacement, applicability) = match sess.source_map().span_to_snippet(mod_span) {
                 Ok(ref s) => {
@@ -138,34 +110,6 @@ pub fn decorate_builtin_lint(
                 lints::PatternsInFnsWithoutBody::Foreign { sub }
             } else {
                 lints::PatternsInFnsWithoutBody::Bodiless { sub }
-            }
-            .decorate_lint(diag);
-        }
-        BuiltinLintDiag::ReservedPrefix(label_span, prefix) => {
-            lints::ReservedPrefix {
-                label: label_span,
-                suggestion: label_span.shrink_to_hi(),
-                prefix,
-            }
-            .decorate_lint(diag);
-        }
-        BuiltinLintDiag::RawPrefix(label_span) => {
-            lints::RawPrefix { label: label_span, suggestion: label_span.shrink_to_hi() }
-                .decorate_lint(diag);
-        }
-        BuiltinLintDiag::ReservedString { is_string, suggestion } => {
-            if is_string {
-                lints::ReservedString { suggestion }.decorate_lint(diag);
-            } else {
-                lints::ReservedMultihash { suggestion }.decorate_lint(diag);
-            }
-        }
-        BuiltinLintDiag::BreakWithLabelAndLoop(sugg_span) => {
-            lints::BreakWithLabelAndLoop {
-                sub: lints::BreakWithLabelAndLoopSub {
-                    left: sugg_span.shrink_to_lo(),
-                    right: sugg_span.shrink_to_hi(),
-                },
             }
             .decorate_lint(diag);
         }
