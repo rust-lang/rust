@@ -841,8 +841,8 @@ impl Build {
             features.insert("profiler");
         }
 
-        // If zkvm target, generate memcpy, etc.
-        if target.contains("zkvm") {
+        // If zkvm or openvm target, generate memcpy, etc.
+        if target.contains("zkvm") || target.contains("openvm") {
             features.insert("compiler-builtins-mem");
         }
 

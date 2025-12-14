@@ -17,5 +17,5 @@ core = { path = "../rustc-std-workspace-core", package = "rustc-std-workspace-co
 [target.'cfg(target_os = "android")'.dependencies]
 libc = { version = "0.2", default-features = false }
 
-[target.'cfg(any(target_os = "android", target_os = "zkvm"))'.dependencies]
+[target.'cfg(any(target_os = "android", target_os = "zkvm", target_os = "openvm"))'.dependencies]
 alloc = { path = "../alloc" }
