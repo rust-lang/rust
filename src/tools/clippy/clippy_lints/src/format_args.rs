@@ -447,7 +447,7 @@ impl<'tcx> FormatArgsExpr<'_, 'tcx> {
         let index = pos.index.unwrap();
         let arg = &self.format_args.arguments.all_args()[index];
 
-        if !matches!(arg.kind, FormatArgumentKind::Captured(_))
+        if !matches!(arg.kind, FormatArgumentKind::Captured)
             && let rustc_ast::ExprKind::Path(None, path) = &arg.expr.kind
             && let [segment] = path.segments.as_slice()
             && segment.args.is_none()
@@ -467,7 +467,7 @@ impl<'tcx> FormatArgsExpr<'_, 'tcx> {
             // * if we can't inline a numbered argument, e.g. `print!("{0} ...", foo.bar, ...)`
             // * if allow_mixed_uninlined_format_args is false and this arg hasn't been inlined already
             pos.kind != FormatArgPositionKind::Number
-                && (!self.ignore_mixed || matches!(arg.kind, FormatArgumentKind::Captured(_)))
+                && (!self.ignore_mixed || matches!(arg.kind, FormatArgumentKind::Captured))
         }
     }
 
