@@ -174,8 +174,7 @@
 +         nop;
           StorageDead(_8);
           StorageDead(_7);
--         StorageLive(_29);
-+         nop;
+          StorageLive(_29);
           StorageLive(_30);
           _30 = &(*_1);
           _29 = move _30 as &[u8] (Transmute);
@@ -183,8 +182,7 @@
           StorageLive(_31);
           StorageLive(_32);
           _32 = copy _29;
--         _31 = opaque::<&[u8]>(move _32) -> [return: bb7, unwind continue];
-+         _31 = opaque::<&[u8]>(copy _29) -> [return: bb7, unwind continue];
+          _31 = opaque::<&[u8]>(move _32) -> [return: bb7, unwind continue];
       }
   
       bb6: {
@@ -282,8 +280,7 @@
           StorageDead(_34);
           StorageDead(_33);
           _0 = const ();
--         StorageDead(_29);
-+         nop;
+          StorageDead(_29);
           StorageDead(_4);
 -         StorageDead(_1);
 +         nop;
