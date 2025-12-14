@@ -8,5 +8,6 @@ fn a() {}
 
 #[eii(eii1)]
 //~^ ERROR the name `eii1` is defined multiple times
+//~| ERROR `#[eii1]` required, but not found
 fn main() {}
 //~^ ERROR the `main` function cannot be declared in an `extern` block

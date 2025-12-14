@@ -10,7 +10,7 @@ LL | #[eii(eii1)]
    = note: `eii1` must be defined only once in the macro namespace of this module
 
 error: the `main` function cannot be declared in an `extern` block
-  --> $DIR/multiple-default-impls.rs:11:1
+  --> $DIR/multiple-default-impls.rs:12:1
    |
 LL | fn main() {}
    | ^^^^^^^^^
@@ -21,6 +21,14 @@ error: `eii1` has more than one default implementation which is not supported
 LL | #[eii(eii1)]
    | ^^^^^^^^^^^^
 
-error: aborting due to 3 previous errors
+error: `#[eii1]` required, but not found
+  --> $DIR/multiple-default-impls.rs:9:1
+   |
+LL | #[eii(eii1)]
+   | ^^^^^^^^^^^^ expected because `#[eii1]` was declared here in crate `multiple_default_impls`
+   |
+   = help: expected at least one implementation in crate `multiple_default_impls` or any of its dependencies
+
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0428`.
