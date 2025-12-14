@@ -13,7 +13,7 @@ help: the trait `PartialEq` is implemented for `i32`
   ::: $SRC_DIR/core/src/cmp.rs:LL:COL
    |
    = note: in this macro invocation
-   = note: this error originates in the macro `partial_eq_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `impl_partial_eq_for_primitive` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: can't compare `&i32` with `(i32, Foo<'a, 'b>::{opaque#0}<'a, 'b>)`
   --> $DIR/self-referential.rs:14:31
@@ -30,7 +30,7 @@ help: the trait `PartialEq` is implemented for `i32`
   ::: $SRC_DIR/core/src/cmp.rs:LL:COL
    |
    = note: in this macro invocation
-   = note: this error originates in the macro `partial_eq_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `impl_partial_eq_for_primitive` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: can't compare `&i32` with `(i32, Moo<'b, 'a>::{opaque#0}<'b, 'a>)`
   --> $DIR/self-referential.rs:22:31
@@ -47,7 +47,7 @@ help: the trait `PartialEq` is implemented for `i32`
   ::: $SRC_DIR/core/src/cmp.rs:LL:COL
    |
    = note: in this macro invocation
-   = note: this error originates in the macro `partial_eq_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `impl_partial_eq_for_primitive` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 3 previous errors
 
