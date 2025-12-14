@@ -2411,7 +2411,7 @@ unsafe extern "C" {
         LoopVectorize: bool,
         DisableSimplifyLibCalls: bool,
         EmitLifetimeMarkers: bool,
-        RunEnzyme: bool,
+        RunEnzyme: *const c_void,
         PrintBeforeEnzyme: bool,
         PrintAfterEnzyme: bool,
         PrintPasses: bool,

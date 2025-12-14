@@ -41,7 +41,7 @@ use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::util::Providers;
 use rustc_session::Session;
-use rustc_session::config::{OptLevel, OutputFilenames, PrintKind, PrintRequest};
+use rustc_session::config::{AutoDiff, OptLevel, OutputFilenames, PrintKind, PrintRequest};
 use rustc_span::Symbol;
 use rustc_target::spec::{RelocModel, TlsModel};
 
@@ -240,6 +240,13 @@ impl CodegenBackend for LlvmCodegenBackend {
 
     fn init(&self, sess: &Session) {
         llvm_util::init(sess); // Make sure llvm is inited
+
+        if sess.opts.unstable_opts.autodiff.contains(&AutoDiff::Enable) {
+            #[cfg(feature = "llvm_enzyme")]
+            {
+                drop(llvm::EnzymeWrapper::get_or_init(&sess.opts.sysroot));
+            }
+        }
     }
 
     fn provide(&self, providers: &mut Providers) {
