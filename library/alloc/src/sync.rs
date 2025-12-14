@@ -26,7 +26,7 @@ use core::ops::{CoerceUnsized, Deref, DerefMut, DerefPure, DispatchFromDyn, Lega
 use core::ops::{Residual, Try};
 use core::panic::{RefUnwindSafe, UnwindSafe};
 use core::pin::{Pin, PinCoerceUnsized};
-use core::ptr::{self, NonNull};
+use core::ptr::{self, Alignment, NonNull};
 #[cfg(not(no_global_oom_handling))]
 use core::slice::from_raw_parts_mut;
 use core::sync::atomic::Ordering::{Acquire, Relaxed, Release};
@@ -4208,11 +4208,11 @@ unsafe fn data_offset<T: ?Sized>(ptr: *const T) -> usize {
     // and extern types, the input safety requirement is currently enough to
     // satisfy the requirements of align_of_val_raw; this is an implementation
     // detail of the language that must not be relied upon outside of std.
-    unsafe { data_offset_align(align_of_val_raw(ptr)) }
+    unsafe { data_offset_align(Alignment::new_unchecked(align_of_val_raw(ptr))) }
 }
 
 #[inline]
-fn data_offset_align(align: usize) -> usize {
+fn data_offset_align(align: Alignment) -> usize {
     let layout = Layout::new::<ArcInner<()>>();
     layout.size() + layout.padding_needed_for(align)
 }
@@ -4258,7 +4258,7 @@ impl<T: ?Sized, A: Allocator> UniqueArcUninit<T, A> {
 
     /// Returns the pointer to be written into to initialize the [`Arc`].
     fn data_ptr(&mut self) -> *mut T {
-        let offset = data_offset_align(self.layout_for_value.align());
+        let offset = data_offset_align(self.layout_for_value.alignment());
         unsafe { self.ptr.as_ptr().byte_add(offset) as *mut T }
     }
 
