@@ -9,8 +9,6 @@
 pub mod futex;
 
 pub mod os;
-#[path = "../unsupported/pipe.rs"]
-pub mod pipe;
 pub mod stack_overflow;
 #[path = "../unix/time.rs"]
 pub mod time;

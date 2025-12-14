@@ -10,7 +10,6 @@ use crate::process::StdioPipes;
 use crate::sys::fs::File;
 use crate::sys::pal::helpers;
 use crate::sys::pal::os::error_string;
-use crate::sys::pipe::AnonPipe;
 use crate::sys::unsupported;
 use crate::{fmt, io};
 
@@ -204,8 +203,8 @@ pub fn output(command: &mut Command) -> io::Result<(ExitStatus, Vec<u8>, Vec<u8>
     Ok((ExitStatus(stat), stdout, stderr))
 }
 
-impl From<AnonPipe> for Stdio {
-    fn from(pipe: AnonPipe) -> Stdio {
+impl From<ChildPipe> for Stdio {
+    fn from(pipe: ChildPipe) -> Stdio {
         pipe.diverge()
     }
 }
@@ -354,6 +353,17 @@ impl<'a> fmt::Debug for CommandArgs<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list().entries(self.iter.clone()).finish()
     }
+}
+
+pub type ChildPipe = crate::sys::pipe::Pipe;
+
+pub fn read_output(
+    out: ChildPipe,
+    _stdout: &mut Vec<u8>,
+    _err: ChildPipe,
+    _stderr: &mut Vec<u8>,
+) -> io::Result<()> {
+    match out.diverge() {}
 }
 
 #[allow(dead_code)]
