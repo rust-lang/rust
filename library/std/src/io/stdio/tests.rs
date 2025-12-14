@@ -1,6 +1,8 @@
 use super::*;
+use crate::assert_matches::assert_matches;
+use crate::os::fd::{FromRawFd, OwnedFd};
 use crate::panic::{RefUnwindSafe, UnwindSafe};
-use crate::sync::mpsc::sync_channel;
+use crate::sync::mpsc::{TryRecvError, sync_channel};
 use crate::thread;
 
 #[test]
@@ -163,4 +165,96 @@ where
         *log.lock().unwrap(),
         [Start1, Acquire1, Start2, Release1, Acquire2, Release2, Acquire1, Release1]
     );
+}
+
+#[test]
+#[cfg(unix)]
+fn stdiobufwriter_line_buffered() {
+    let mut fd1 = -1;
+    let mut fd2 = -1;
+
+    if unsafe {
+        libc::openpty(
+            &raw mut fd1,
+            &raw mut fd2,
+            crate::ptr::null_mut(),
+            crate::ptr::null(),
+            crate::ptr::null(),
+        )
+    } < 0
+    {
+        panic!("openpty() failed with {:?}", io::Error::last_os_error());
+    }
+
+    let writer = unsafe { File::from_raw_fd(fd1) };
+    let mut reader = unsafe { File::from_raw_fd(fd2) };
+
+    assert!(writer.is_terminal(), "file descriptor returned by openpty() must be a terminal");
+    assert!(reader.is_terminal(), "file descriptor returned by openpty() must be a terminal");
+
+    let (sender, receiver) = sync_channel(64);
+
+    thread::spawn(move || {
+        loop {
+            let mut buf = vec![0u8; 1024];
+            let size = reader.read(&mut buf[..]).expect("read failed");
+            buf.truncate(size);
+            sender.send(buf);
+        }
+    });
+
+    let mut writer = StdioBufWriter::new(writer);
+    assert_matches!(
+        writer,
+        StdioBufWriter::LineBuffered(_),
+        "StdioBufWriter should be line-buffered when created from a terminal"
+    );
+
+    writer.write_all(b"line 1\n").expect("write failed");
+    assert_eq!(receiver.recv().expect("recv failed"), b"line 1\n");
+
+    writer.write_all(b"line 2\nextra ").expect("write failed");
+    assert_eq!(receiver.recv().expect("recv failed"), b"line 2\n");
+
+    writer.write_all(b"line 3\n").expect("write failed");
+    assert_eq!(receiver.recv().expect("recv failed"), b"extra line 3\n");
+}
+
+#[test]
+fn stdiobufwriter_block_buffered() {
+    let (mut reader, mut writer) = io::pipe().expect("pipe() failed");
+
+    // Need to convert to an OwnedFd and then into a File because PipeReader/PipeWriter don't
+    // implement IsTerminal, but that is required by StdioBufWriter
+    let mut reader = File::from(OwnedFd::from(reader));
+    let mut writer = File::from(OwnedFd::from(writer));
+
+    assert!(!reader.is_terminal(), "file returned by pipe() cannot be a terminal");
+    assert!(!writer.is_terminal(), "file returned by pipe() cannot be a terminal");
+
+    let (sender, receiver) = sync_channel(64);
+
+    thread::spawn(move || {
+        loop {
+            let mut buf = vec![0u8; 1024];
+            let size = reader.read(&mut buf[..]).expect("read failed");
+            buf.truncate(size);
+            sender.send(buf);
+        }
+    });
+
+    let mut writer = StdioBufWriter::new(writer);
+    assert_matches!(
+        writer,
+        StdioBufWriter::BlockBuffered(_),
+        "StdioBufWriter should be block-buffered when created from a file that is not a terminal"
+    );
+
+    writer.write_all(b"line 1\n").expect("write failed");
+    writer.write_all(b"line 2\n").expect("write failed");
+    writer.write_all(b"line 3\n").expect("write failed");
+    assert_matches!(receiver.try_recv(), Err(TryRecvError::Empty));
+
+    writer.flush().expect("flush failed");
+    assert_eq!(receiver.recv().expect("recv failed"), b"line 1\nline 2\nline 3\n");
 }
