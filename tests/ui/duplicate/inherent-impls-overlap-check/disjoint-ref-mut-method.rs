@@ -1,6 +1,6 @@
+//! regression test for <https://github.com/rust-lang/rust/issues/19097>
 //@ check-pass
 #![allow(dead_code)]
-// regression test for #19097
 
 struct Foo<T>(T);
 

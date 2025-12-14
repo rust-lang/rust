@@ -1,3 +1,4 @@
+//! regression test for <https://github.com/rust-lang/rust/issues/29540>
 //@ build-pass
 #[derive(Debug)]
 pub struct Config {

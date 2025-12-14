@@ -1,3 +1,4 @@
+//! regression test for <https://github.com/rust-lang/rust/issues/26646>
 //@ check-pass
 #![deny(unused_attributes)]
 
@@ -9,4 +10,4 @@ pub struct Foo;
 #[repr(C)]
 pub struct Bar;
 
-fn main() { }
+fn main() {}
