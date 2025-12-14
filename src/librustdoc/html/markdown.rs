@@ -1479,9 +1479,6 @@ impl MarkdownItemInfo<'_> {
             let p = HeadingLinks::new(p, None, ids, HeadingOffset::H1);
             let p = footnotes::Footnotes::new(p, existing_footnotes);
             let p = TableWrapper::new(p.map(|(ev, _)| ev));
-            let p = p.filter(|event| {
-                !matches!(event, Event::Start(Tag::Paragraph) | Event::End(TagEnd::Paragraph))
-            });
             html::write_html_fmt(&mut f, p)
         })
     }
