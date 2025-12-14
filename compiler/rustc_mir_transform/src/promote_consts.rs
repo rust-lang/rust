@@ -360,7 +360,8 @@ impl<'tcx> Validator<'_, 'tcx> {
         match operand {
             Operand::Copy(place) | Operand::Move(place) => self.validate_place(place.as_ref()),
 
-            // Promoting a runtime check would transform a runtime error into a compile-time error.
+            // `RuntimeChecks` behaves different in const-eval and runtime MIR,
+            // so we do not promote it.
             Operand::RuntimeChecks(_) => Err(Unpromotable),
 
             // The qualifs for a constant (e.g. `HasMutInterior`) are checked in
