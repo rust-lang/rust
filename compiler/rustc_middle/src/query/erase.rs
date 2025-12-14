@@ -296,6 +296,8 @@ trivial! {
     rustc_ast::expand::allocator::AllocatorKind,
     rustc_hir::DefaultBodyStability,
     rustc_hir::attrs::Deprecation,
+    rustc_hir::attrs::EiiDecl,
+    rustc_hir::attrs::EiiImpl,
     rustc_data_structures::svh::Svh,
     rustc_errors::ErrorGuaranteed,
     rustc_hir::Constness,

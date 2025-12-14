@@ -90,6 +90,7 @@ fn generate_handler(cx: &ExtCtxt<'_>, handler: Ident, span: Span, sig_span: Span
         contract: None,
         body,
         define_opaque: None,
+        eii_impls: ThinVec::new(),
     }));
 
     let attrs = thin_vec![cx.attr_word(sym::rustc_std_internal_symbol, span)];

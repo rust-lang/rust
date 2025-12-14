@@ -152,6 +152,17 @@ builtin_macros_derive_path_args_value = traits in `#[derive(...)]` don't accept 
 
 builtin_macros_duplicate_macro_attribute = duplicated attribute
 
+builtin_macros_eii_extern_target_expected_list = `#[eii_extern_target(...)]` expects a list of one or two elements
+builtin_macros_eii_extern_target_expected_macro = `#[eii_extern_target(...)]` is only valid on macros
+builtin_macros_eii_extern_target_expected_unsafe = expected this argument to be "unsafe"
+    .note = the second argument is optional
+
+builtin_macros_eii_only_once = `#[{$name}]` can only be specified once
+    .note = specified again here
+
+builtin_macros_eii_shared_macro_expected_function = `#[{$name}]` is only valid on functions
+builtin_macros_eii_shared_macro_expected_max_one_argument = `#[{$name}]` expected no arguments or a single argument: `#[{$name}(default)]`
+
 builtin_macros_env_not_defined = environment variable `{$var}` not defined at compile time
     .cargo = Cargo sets build script variables at run time. Use `std::env::var({$var_expr})` instead
     .cargo_typo = there is a similar Cargo environment variable: `{$suggested_var}`
