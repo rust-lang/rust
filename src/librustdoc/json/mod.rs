@@ -27,7 +27,7 @@ use tracing::{debug, trace};
 
 use crate::clean::ItemKind;
 use crate::clean::types::{ExternalCrate, ExternalLocation};
-use crate::config::RenderOptions;
+use crate::config::{self, RenderOptions};
 use crate::docfs::PathError;
 use crate::error::Error;
 use crate::formats::FormatRenderer;
@@ -40,10 +40,7 @@ pub(crate) struct JsonRenderer<'tcx> {
     /// A mapping of IDs that contains all local items for this crate which gets output as a top
     /// level field of the JSON blob.
     index: FxHashMap<types::Id, types::Item>,
-    /// The directory where the JSON blob should be written to.
-    ///
-    /// If this is `None`, the blob will be printed to `stdout` instead.
-    out_dir: Option<PathBuf>,
+    output: config::Output,
     cache: Rc<Cache>,
     imported_items: DefIdSet,
     id_interner: RefCell<ids::IdInterner>,
@@ -137,7 +134,7 @@ impl<'tcx> JsonRenderer<'tcx> {
             JsonRenderer {
                 tcx,
                 index: FxHashMap::default(),
-                out_dir: if options.output_to_stdout { None } else { Some(options.output) },
+                output: options.output,
                 cache: Rc::new(cache),
                 imported_items,
                 id_interner: Default::default(),
@@ -316,20 +313,36 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
             target,
             format_version: types::FORMAT_VERSION,
         };
-        if let Some(ref out_dir) = self.out_dir {
-            try_err!(create_dir_all(out_dir), out_dir);
 
-            let mut p = out_dir.clone();
-            p.push(output_crate.index.get(&output_crate.root).unwrap().name.clone().unwrap());
-            p.set_extension("json");
+        match &self.output {
+            config::Output::OutDir(out_dir) => {
+                try_err!(create_dir_all(out_dir), out_dir);
 
-            self.serialize_and_write(
-                output_crate,
-                try_err!(File::create_buffered(&p), p),
-                &p.display().to_string(),
-            )
-        } else {
-            self.serialize_and_write(output_crate, BufWriter::new(stdout().lock()), "<stdout>")
+                let mut p = PathBuf::from(out_dir);
+                p.push(output_crate.index.get(&output_crate.root).unwrap().name.clone().unwrap());
+                p.set_extension("json");
+
+                self.serialize_and_write(
+                    output_crate,
+                    try_err!(File::create_buffered(&p), p),
+                    &p.display().to_string(),
+                )
+            }
+            config::Output::Output(p) => {
+                if p == "-" {
+                    self.serialize_and_write(
+                        output_crate,
+                        BufWriter::new(stdout().lock()),
+                        "<stdout>",
+                    )
+                } else {
+                    self.serialize_and_write(
+                        output_crate,
+                        try_err!(File::create_buffered(p), p),
+                        &p.display().to_string(),
+                    )
+                }
+            }
         }
     }
 }
