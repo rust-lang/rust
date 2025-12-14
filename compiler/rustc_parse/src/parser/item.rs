@@ -15,7 +15,9 @@ use rustc_errors::{Applicability, PResult, StashKey, struct_span_code_err};
 use rustc_session::lint::builtin::VARARGS_WITHOUT_PATTERN;
 use rustc_span::edit_distance::edit_distance;
 use rustc_span::edition::Edition;
-use rustc_span::{DUMMY_SP, ErrorGuaranteed, Ident, Span, Symbol, kw, source_map, sym};
+use rustc_span::{
+    DUMMY_SP, ErrorGuaranteed, Ident, Span, Symbol, kw, source_map, sym, with_session_globals,
+};
 use thin_vec::{ThinVec, thin_vec};
 use tracing::debug;
 
@@ -2653,9 +2655,9 @@ impl<'a> Parser<'a> {
                                     && i.is_reserved()
                             )
                             || case == Case::Insensitive
-                                && t.is_non_raw_ident_where(|i| quals.iter().any(|exp| {
-                                    exp.kw.as_str() == i.name.as_str().to_lowercase()
-                                }))
+                                && with_session_globals(|globals| t.is_non_raw_ident_where(|i| quals.iter().any(|exp| {
+                                    exp.kw.get_str_from_session_globals(globals) == i.name.get_str_from_session_globals(globals).to_lowercase()
+                                })))
                         )
                         // Rule out `unsafe extern {`.
                         && !self.is_unsafe_foreign_mod()

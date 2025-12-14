@@ -8,7 +8,7 @@ pub use TokenKind::*;
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_span::edition::Edition;
 use rustc_span::symbol::IdentPrintMode;
-use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, kw, sym};
+use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, kw, sym, with_session_globals};
 #[allow(clippy::useless_attribute)] // FIXME: following use of `hidden_glob_reexports` incorrectly triggers `useless_attribute` lint.
 #[allow(hidden_glob_reexports)]
 use rustc_span::{Ident, Symbol};
@@ -927,8 +927,12 @@ impl Token {
         self.is_keyword(kw)
             || (case == Case::Insensitive
                 && self.is_non_raw_ident_where(|id| {
-                    // Do an ASCII case-insensitive match, because all keywords are ASCII.
-                    id.name.as_str().eq_ignore_ascii_case(kw.as_str())
+                    with_session_globals(|globals| {
+                        // Do an ASCII case-insensitive match, because all keywords are ASCII.
+                        id.name
+                            .get_str_from_session_globals(globals)
+                            .eq_ignore_ascii_case(kw.get_str_from_session_globals(globals))
+                    })
                 }))
     }
 
