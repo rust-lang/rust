@@ -539,7 +539,10 @@ fn parse_source(
 
     let mut prev_span_hi = 0;
     let not_crate_attrs = &[sym::forbid, sym::allow, sym::warn, sym::deny, sym::expect];
-    let parsed = parser.parse_item(rustc_parse::parser::ForceCollect::No);
+    let parsed = parser.parse_item(
+        rustc_parse::parser::ForceCollect::No,
+        rustc_parse::parser::AllowConstBlockItems::No,
+    );
 
     let result = match parsed {
         Ok(Some(ref item))
