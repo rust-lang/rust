@@ -505,7 +505,7 @@ impl Build {
                 .strip_prefix(&config.initial_sysroot)
                 .unwrap_or_else(|_| {
                     panic!(
-                        "Couldn’t resolve the initial relative libdir from {}",
+                        "Couldn't resolve the initial relative libdir from {}",
                         initial_target_dir.display()
                     )
                 })
@@ -642,10 +642,16 @@ impl Build {
         if host.is_symlink() {
             // Left over from a previous build; overwrite it.
             // This matters if `build.build` has changed between invocations.
-            #[cfg(windows)]
-            t!(fs::remove_dir(&host));
-            #[cfg(not(windows))]
-            t!(fs::remove_file(&host));
+            // Try remove_dir first (for directory symlinks), then remove_file (for file symlinks).
+            // On Windows, there are two types of symlinks: directory and file symlinks.
+            // remove_dir only works on directory symlinks, remove_file only works on file symlinks.
+            if let Err(e) = fs::remove_dir(&host) {
+                if e.kind() == io::ErrorKind::NotADirectory {
+                    t!(fs::remove_file(&host));
+                } else {
+                    panic!("failed to remove symlink: {e}");
+                }
+            }
         }
         t!(
             symlink_dir(&build.config, &build_triple, &host),
