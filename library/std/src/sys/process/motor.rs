@@ -9,7 +9,6 @@ use crate::path::Path;
 use crate::process::StdioPipes;
 use crate::sys::fs::File;
 use crate::sys::map_motor_error;
-use crate::sys::pipe::AnonPipe;
 use crate::sys_common::{AsInner, FromInner};
 use crate::{fmt, io};
 
@@ -150,17 +149,23 @@ impl Command {
         Ok((
             Process { handle },
             StdioPipes {
-                stdin: if stdin >= 0 { Some(stdin.into()) } else { None },
-                stdout: if stdout >= 0 { Some(stdout.into()) } else { None },
-                stderr: if stderr >= 0 { Some(stderr.into()) } else { None },
+                stdin: if stdin >= 0 {
+                    Some(unsafe { ChildPipe::from_raw_fd(stdin) })
+                } else {
+                    None
+                },
+                stdout: if stdout >= 0 {
+                    Some(unsafe { ChildPipe::from_raw_fd(stdout) })
+                } else {
+                    None
+                },
+                stderr: if stderr >= 0 {
+                    Some(unsafe { ChildPipe::from_raw_fd(stderr) })
+                } else {
+                    None
+                },
             },
         ))
-    }
-}
-
-impl From<AnonPipe> for Stdio {
-    fn from(pipe: AnonPipe) -> Stdio {
-        unsafe { Stdio::Fd(crate::sys::fd::FileDesc::from_raw_fd(pipe.into_raw_fd())) }
     }
 }
 
@@ -314,4 +319,15 @@ impl<'a> fmt::Debug for CommandArgs<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list().entries(self.iter.clone()).finish()
     }
+}
+
+pub type ChildPipe = crate::sys::pipe::Pipe;
+
+pub fn read_output(
+    _out: ChildPipe,
+    _stdout: &mut Vec<u8>,
+    _err: ChildPipe,
+    _stderr: &mut Vec<u8>,
+) -> io::Result<()> {
+    Err(io::Error::from_raw_os_error(moto_rt::E_NOT_IMPLEMENTED.into()))
 }
