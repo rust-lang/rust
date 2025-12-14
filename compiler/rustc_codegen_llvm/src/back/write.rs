@@ -704,11 +704,9 @@ pub(crate) unsafe fn llvm_optimize(
         llvm::set_value_name(new_fn, &name);
     }
 
-    if cgcx.target_is_like_gpu && config.offload.contains(&config::Offload::Enable) {
+    if cgcx.target_is_like_gpu && config.offload.contains(&config::Offload::Device) {
         let cx =
             SimpleCx::new(module.module_llvm.llmod(), module.module_llvm.llcx, cgcx.pointer_size);
-        // For now we only support up to 10 kernels named kernel_0 ... kernel_9, a follow-up PR is
-        // introducing a proper offload intrinsic to solve this limitation.
         for func in cx.get_functions() {
             let offload_kernel = "offload-kernel";
             if attributes::has_string_attr(func, offload_kernel) {
@@ -770,12 +768,96 @@ pub(crate) unsafe fn llvm_optimize(
         )
     };
 
-    if cgcx.target_is_like_gpu && config.offload.contains(&config::Offload::Enable) {
+    if cgcx.target_is_like_gpu && config.offload.contains(&config::Offload::Device) {
+        let device_path = cgcx.output_filenames.path(OutputType::Object);
+        let device_dir = device_path.parent().unwrap();
+        let device_out = device_dir.join("host.out");
+        let device_out_c = path_to_c_string(device_out.as_path());
         unsafe {
-            llvm::LLVMRustBundleImages(module.module_llvm.llmod(), module.module_llvm.tm.raw());
+            // 1) Bundle device module into offload image host.out (device TM)
+            let ok = llvm::LLVMRustBundleImages(
+                module.module_llvm.llmod(),
+                module.module_llvm.tm.raw(),
+                device_out_c.as_ptr(),
+            );
+            if !ok || !device_out.exists() {
+                dcx.emit_err(crate::errors::OffloadBundleImagesFailed);
+            }
         }
     }
 
+    // This assumes that we previously compiled our kernels for a gpu target, which created a
+    // `host.out` artifact. The user is supposed to provide us with a path to this artifact, we
+    // don't need any other artifacts from the previous run. We will embed this artifact into our
+    // LLVM-IR host module, to create a `host.o` ObjectFile, which we will write to disk.
+    // The last, not yet automated steps uses the `clang-linker-wrapper` to process `host.o`.
+    if !cgcx.target_is_like_gpu {
+        if let Some(device_path) = config
+            .offload
+            .iter()
+            .find_map(|o| if let config::Offload::Host(path) = o { Some(path) } else { None })
+        {
+            let device_pathbuf = PathBuf::from(device_path);
+            if device_pathbuf.is_relative() {
+                dcx.emit_err(crate::errors::OffloadWithoutAbsPath);
+            } else if device_pathbuf
+                .file_name()
+                .and_then(|n| n.to_str())
+                .is_some_and(|n| n != "host.out")
+            {
+                dcx.emit_err(crate::errors::OffloadWrongFileName);
+            } else if !device_pathbuf.exists() {
+                dcx.emit_err(crate::errors::OffloadNonexistingPath);
+            }
+            let host_path = cgcx.output_filenames.path(OutputType::Object);
+            let host_dir = host_path.parent().unwrap();
+            let out_obj = host_dir.join("host.o");
+            let host_out_c = path_to_c_string(device_pathbuf.as_path());
+
+            // 2) Finalize host: lib.bc + host.out -> host.o (host TM)
+            // We create a full clone of our LLVM host module, since we will embed the device IR
+            // into it, and this might break caching or incremental compilation otherwise.
+            let llmod2 = llvm::LLVMCloneModule(module.module_llvm.llmod());
+            let ok =
+                unsafe { llvm::LLVMRustOffloadEmbedBufferInModule(llmod2, host_out_c.as_ptr()) };
+            if !ok {
+                dcx.emit_err(crate::errors::OffloadEmbedFailed);
+            }
+            write_output_file(
+                dcx,
+                module.module_llvm.tm.raw(),
+                config.no_builtins,
+                llmod2,
+                &out_obj,
+                None,
+                llvm::FileType::ObjectFile,
+                &cgcx.prof,
+                true,
+            );
+            // We ignore cgcx.save_temps here and unconditionally always keep our `host.out` artifact.
+            // Otherwise, recompiling the host code would fail since we deleted that device artifact
+            // in the previous host compilation, which would be confusing at best.
+
+            // New, replace linker-wrapper:
+            // $ llvm-offload-binary host.o --image=file=dev.o,arch=gfx942
+            // $ clang --target=amdgcn-amd-amdhsa -mcpu=gfx942 dev.o -o image -l<libraries>
+            // $ llvm-offload-wrapper --triple=x86_64-unknown-linux -kind=hip image -o out.bc
+            // $ clang --target=x86_64-unknown-linux out.bc -o reg.o
+            // $ ld.lld host.o reg.o -o a.out
+            //let ok = unsafe {
+            //    llvm::LLVMRustBundleImages(
+            //        module.module_llvm.llmod(),
+            //        module.module_llvm.tm.raw(),
+            //        device_out_c.as_ptr(),
+            //    )
+            //};
+            //if !ok || !device_out.exists() {
+            //    dcx.emit_err(crate::errors::OffloadBundleImagesFailed);
+            //}
+            unsafe { llvm::LLVMRustWrapImages() };
+            // call c++
+        }
+    }
     result.into_result().unwrap_or_else(|()| llvm_err(dcx, LlvmError::RunLlvmPasses))
 }
 

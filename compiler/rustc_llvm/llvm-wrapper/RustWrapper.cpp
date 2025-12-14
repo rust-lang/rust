@@ -43,8 +43,10 @@
 // available. As such, we only try to build it in the first place, if
 // llvm.offload is enabled.
 #ifdef OFFLOAD
+#include "llvm/Bitcode/BitcodeReader.h"
 #include "llvm/Object/OffloadBinary.h"
 #include "llvm/Target/TargetMachine.h"
+#include "llvm/Transforms/Utils/ModuleUtils.h"
 #endif
 
 // for raw `write` in the bad-alloc handler
@@ -174,12 +176,13 @@ static Error writeFile(StringRef Filename, StringRef Data) {
 //  --image=file=device.bc,triple=amdgcn-amd-amdhsa,arch=gfx90a,kind=openmp
 // The input module is the rust code compiled for a gpu target like amdgpu.
 // Based on clang/tools/clang-offload-packager/ClangOffloadPackager.cpp
-extern "C" bool LLVMRustBundleImages(LLVMModuleRef M, TargetMachine &TM) {
+extern "C" bool LLVMRustBundleImages(LLVMModuleRef M, TargetMachine &TM,
+                                     const char *HostOutPath) {
   std::string Storage;
   llvm::raw_string_ostream OS1(Storage);
   llvm::WriteBitcodeToFile(*unwrap(M), OS1);
   OS1.flush();
-  auto MB = llvm::MemoryBuffer::getMemBufferCopy(Storage, "module.bc");
+  auto MB = llvm::MemoryBuffer::getMemBufferCopy(Storage, "device.bc");
 
   SmallVector<char, 1024> BinaryData;
   raw_svector_ostream OS2(BinaryData);
@@ -188,16 +191,35 @@ extern "C" bool LLVMRustBundleImages(LLVMModuleRef M, TargetMachine &TM) {
   ImageBinary.TheImageKind = object::IMG_Bitcode;
   ImageBinary.Image = std::move(MB);
   ImageBinary.TheOffloadKind = object::OFK_OpenMP;
-  ImageBinary.StringData["triple"] = TM.getTargetTriple().str();
-  ImageBinary.StringData["arch"] = TM.getTargetCPU();
+
+  std::string TripleStr = TM.getTargetTriple().str();
+  llvm::StringRef CPURef = TM.getTargetCPU();
+  ImageBinary.StringData["triple"] = TripleStr;
+  ImageBinary.StringData["arch"] = CPURef;
   llvm::SmallString<0> Buffer = OffloadBinary::write(ImageBinary);
   if (Buffer.size() % OffloadBinary::getAlignment() != 0)
     // Offload binary has invalid size alignment
     return false;
   OS2 << Buffer;
-  if (Error E = writeFile("host.out",
+  if (Error E = writeFile(HostOutPath,
                           StringRef(BinaryData.begin(), BinaryData.size())))
     return false;
+  return true;
+}
+
+extern "C" bool LLVMRustOffloadEmbedBufferInModule(LLVMModuleRef HostM,
+                                                   const char *HostOutPath) {
+  auto MBOrErr = MemoryBuffer::getFile(HostOutPath);
+  if (!MBOrErr) {
+    auto E = MBOrErr.getError();
+    auto _B = errorCodeToError(E);
+    return false;
+  }
+  MemoryBufferRef Buf = (*MBOrErr)->getMemBufferRef();
+  Module *M = unwrap(HostM);
+  StringRef SectionName = ".llvm.offloading";
+  Align Alignment = Align(8);
+  llvm::embedBufferInModule(*M, Buf, SectionName, Alignment);
   return true;
 }
 
@@ -219,6 +241,61 @@ extern "C" void LLVMRustOffloadMapper(LLVMValueRef OldFn, LLVMValueRef NewFn) {
   llvm::CloneFunctionInto(newFn, oldFn, vmap,
                           llvm::CloneFunctionChangeType::LocalChangesOnly,
                           returns);
+}
+
+#include "llvm/Bitcode/BitcodeWriter.h"
+#include "llvm/Frontend/Offloading/OffloadWrapper.h"
+#include "llvm/Frontend/Offloading/Utility.h"
+#include "llvm/Object/OffloadBinary.h"
+#include "llvm/Support/CommandLine.h"
+#include "llvm/Support/FileOutputBuffer.h"
+#include "llvm/Support/FileSystem.h"
+#include "llvm/Support/InitLLVM.h"
+#include "llvm/Support/MemoryBuffer.h"
+#include "llvm/Support/Path.h"
+#include "llvm/Support/Signals.h"
+#include "llvm/Support/StringSaver.h"
+#include "llvm/Support/WithColor.h"
+#include "llvm/TargetParser/Host.h"
+extern "C" bool LLVMRustWrapImages() {
+  LLVMContext Context;
+  Module M("offload.wrapper.module", Context);
+  M.setTargetTriple(llvm::Triple("x86_64-unknown-linux"));
+  //M.setTargetTriple(llvm::Triple("amdgcn-amd-amdhsa"));
+  SmallVector<std::unique_ptr<MemoryBuffer>> Buffers;
+  SmallVector<ArrayRef<char>> BuffersToWrap;
+  StringRef Input = "/p/lustre1/drehwald1/prog/offload/r/image";
+  //for (StringRef Input : InputFiles) {
+    ErrorOr<std::unique_ptr<MemoryBuffer>> BufferOrErr =
+        MemoryBuffer::getFileOrSTDIN(Input);
+    if (std::error_code EC = BufferOrErr.getError())
+      return false;
+    std::unique_ptr<MemoryBuffer> &Buffer =
+        Buffers.emplace_back(std::move(*BufferOrErr));
+    BuffersToWrap.emplace_back(
+        ArrayRef<char>(Buffer->getBufferStart(), Buffer->getBufferSize()));
+  //}
+  //static const char ImagePath[] = "/p/lustre1/drehwald1/prog/offload/r/image";
+
+  //ArrayRef<char> Buf(ImagePath, std::strlen(ImagePath));
+  //ArrayRef<ArrayRef<char>> BuffersToWrap(Buf);
+  llvm::errs() << "wraping\n";
+
+  if (Error Err = offloading::wrapOpenMPBinaries(
+          M, BuffersToWrap, offloading::getOffloadEntryArray(M),
+          /*Suffix=*/"", /*Relocatable=*/false))
+    return false;
+  llvm::errs() << "wraping\n";
+
+  int FD = -1;
+  std::string OutputFile = "/p/lustre1/drehwald1/prog/offload/r/out.bc";
+  if (std::error_code EC = sys::fs::openFileForWrite(OutputFile, FD))
+    return false;
+  llvm::raw_fd_ostream OS(FD, true);
+  WriteBitcodeToFile(M, OS);
+  llvm::errs() << "wraping\n";
+
+  return true;
 }
 #endif
 
