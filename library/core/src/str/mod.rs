@@ -15,6 +15,7 @@ mod validations;
 
 use self::pattern::{DoubleEndedSearcher, Pattern, ReverseSearcher, Searcher};
 use crate::char::{self, EscapeDebugExtArgs};
+use crate::hint::assert_unchecked;
 use crate::ops::Range;
 use crate::slice::{self, SliceIndex};
 use crate::ub_checks::assert_unsafe_precondition;
@@ -409,21 +410,44 @@ impl str {
     #[inline]
     pub const fn floor_char_boundary(&self, index: usize) -> usize {
         if index >= self.len() {
-            self.len()
-        } else {
-            let mut i = index;
-            while i > 0 {
-                if self.as_bytes()[i].is_utf8_char_boundary() {
-                    break;
-                }
-                i -= 1;
-            }
-
-            //  The character boundary will be within four bytes of the index
-            debug_assert!(i >= index.saturating_sub(3));
-
-            i
+            return self.len();
         }
+
+        let bytes = self.as_bytes();
+        let boundary_index = if bytes[index].is_utf8_char_boundary() {
+            index
+        } else {
+            // SAFETY: `bytes[index]` is a UTF-8 continuation byte, therefore there must be a byte before it.
+            // Note: `index.unchecked_sub(1)` would be preferable, but it doesn't the remove bounds check
+            // from `bytes[previous_index]`.
+            let previous_index = unsafe { index.checked_sub(1).unwrap_unchecked() };
+            if bytes[previous_index].is_utf8_char_boundary() {
+                previous_index
+            } else {
+                // SAFETY: `bytes[index - 1]` is a UTF-8 continuation byte, therefore there must be a byte before it
+                let previous_previous_index = unsafe { index.checked_sub(2).unwrap_unchecked() };
+                if bytes[previous_previous_index].is_utf8_char_boundary() {
+                    previous_previous_index
+                } else {
+                    // UTF-8 character sequences are at most 4 bytes long.
+                    // `bytes[index - 2]`, `bytes[index - 1]`, and `bytes[index]` are all continuation bytes,
+                    // therefore `bytes[index - 3]` must be the 1st byte in a 4-byte UTF-8 character sequence.
+                    debug_assert!(bytes[index - 3].is_utf8_char_boundary());
+                    index - 3
+                }
+            }
+        };
+
+        // Inform compiler that returned index is `<= index` and on a char boundary.
+        // This removes bounds check from e.g. `String::truncate` call after this.
+        // SAFETY: Calculations above only deduct from `index`, and cannot wrap around.
+        // `boundary_index` is a char boundary.
+        unsafe {
+            assert_unchecked(boundary_index <= index);
+            assert_unchecked(bytes[boundary_index].is_utf8_char_boundary());
+        }
+
+        boundary_index
     }
 
     /// Finds the closest `x` not below `index` where [`is_char_boundary(x)`] is `true`.
