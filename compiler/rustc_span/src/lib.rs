@@ -241,12 +241,14 @@ bitflags::bitflags! {
 }
 
 impl<E: Encoder> Encodable<E> for RemapPathScopeComponents {
+    #[inline]
     fn encode(&self, s: &mut E) {
         s.emit_u8(self.bits());
     }
 }
 
 impl<D: Decoder> Decodable<D> for RemapPathScopeComponents {
+    #[inline]
     fn decode(s: &mut D) -> RemapPathScopeComponents {
         RemapPathScopeComponents::from_bits(s.read_u8())
             .expect("invalid bits for RemapPathScopeComponents")
@@ -308,6 +310,7 @@ struct InnerRealFileName {
 }
 
 impl Hash for RealFileName {
+    #[inline]
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         // To prevent #70924 from happening again we should only hash the
         // remapped path if that exists. This is because remapped paths to
@@ -327,6 +330,7 @@ impl RealFileName {
     /// ## Panic
     ///
     /// Only one scope components can be given to this function.
+    #[inline]
     pub fn path(&self, scope: RemapPathScopeComponents) -> &Path {
         assert!(
             scope.bits().count_ones() == 1,
@@ -351,6 +355,7 @@ impl RealFileName {
     /// ## Panic
     ///
     /// Only one scope components can be given to this function.
+    #[inline]
     pub fn embeddable_name(&self, scope: RemapPathScopeComponents) -> (&Path, &Path) {
         assert!(
             scope.bits().count_ones() == 1,
@@ -369,6 +374,7 @@ impl RealFileName {
     /// if this information exists.
     ///
     /// May not exists if the filename was imported from another crate.
+    #[inline]
     pub fn local_path(&self) -> Option<&Path> {
         if self.was_not_remapped() {
             Some(&self.maybe_remapped.name)
@@ -381,6 +387,7 @@ impl RealFileName {
     /// if this information exists.
     ///
     /// May not exists if the filename was imported from another crate.
+    #[inline]
     pub fn into_local_path(self) -> Option<PathBuf> {
         if self.was_not_remapped() {
             Some(self.maybe_remapped.name)
@@ -390,6 +397,7 @@ impl RealFileName {
     }
 
     /// Returns whenever the filename was remapped.
+    #[inline]
     pub(crate) fn was_remapped(&self) -> bool {
         !self.scopes.is_empty()
     }
@@ -409,6 +417,7 @@ impl RealFileName {
     /// Returns an empty `RealFileName`
     ///
     /// Useful as the working directory input to `SourceMap::to_real_filename`.
+    #[inline]
     pub fn empty() -> RealFileName {
         RealFileName {
             local: Some(InnerRealFileName {
@@ -554,6 +563,7 @@ impl FileName {
     /// if this information exists.
     ///
     /// Avoid embedding this in build artifacts. Prefer using the `display` method.
+    #[inline]
     pub fn prefer_remapped_unconditionally(&self) -> FileNameDisplay<'_> {
         FileNameDisplay { inner: self, display_pref: FileNameDisplayPreference::Remapped }
     }
@@ -562,16 +572,19 @@ impl FileName {
     /// if this information exists.
     ///
     /// Avoid embedding this in build artifacts. Prefer using the `display` method.
+    #[inline]
     pub fn prefer_local_unconditionally(&self) -> FileNameDisplay<'_> {
         FileNameDisplay { inner: self, display_pref: FileNameDisplayPreference::Local }
     }
 
     /// Returns a short (either the filename or an empty string).
+    #[inline]
     pub fn short(&self) -> FileNameDisplay<'_> {
         FileNameDisplay { inner: self, display_pref: FileNameDisplayPreference::Short }
     }
 
     /// Returns a `Display`-able path for the given scope.
+    #[inline]
     pub fn display(&self, scope: RemapPathScopeComponents) -> FileNameDisplay<'_> {
         FileNameDisplay { inner: self, display_pref: FileNameDisplayPreference::Scope(scope) }
     }
