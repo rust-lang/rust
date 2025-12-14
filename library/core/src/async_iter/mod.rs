@@ -121,6 +121,7 @@
 //! warning: unused result that must be used: async iterators do nothing unless polled
 //! ```
 
+#[allow(module_inception)]
 mod async_iter;
 mod from_iter;
 

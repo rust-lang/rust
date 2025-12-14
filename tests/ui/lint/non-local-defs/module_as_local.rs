@@ -17,6 +17,7 @@ fn simple_one() {
 
 fn simple_two() {
     mod posts {
+        #[allow(module_inception)]
         pub mod posts {
             #[allow(non_camel_case_types)]
             pub struct table {}
