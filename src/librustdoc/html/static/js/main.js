@@ -54,6 +54,339 @@ function showMain() {
 window.rootPath = getVar("root-path");
 window.currentCrate = getVar("current-crate");
 
+// Tag deprecated entries in the current page and sidebar, and expose an updater
+function rustdocTagDeprecated() {
+    // Mark any entry in the current page that contains the native deprecation tag
+    onEachLazy(document.querySelectorAll(".stab.deprecated"), el => {
+        let p = el.parentElement;
+        while (p && p !== document.body) {
+            if (p.tagName === "LI" || p.tagName === "TR" || p.tagName === "DD") {
+                addClass(p, "depr-item");
+                break;
+            }
+            if (p.classList &&
+                (p.classList.contains("item-row") ||
+                 p.classList.contains("module-item") ||
+                 p.classList.contains("item"))) {
+                addClass(p, "depr-item");
+                break;
+            }
+            p = p.parentElement;
+        }
+    });
+
+    // Tag sidebar entries that link to deprecated items within this page
+    onEachLazy(document.querySelectorAll(".sidebar li a[href*='#']"), a => {
+        const href = a.getAttribute("href");
+        if (!href) {
+            return;
+        }
+        const idx = href.indexOf("#");
+        if (idx === -1) {
+            return;
+        }
+        const frag = href.slice(idx + 1);
+
+        // Locate target element by id or name (anchors sometimes use name)
+        let target = document.getElementById(frag);
+        if (!target) {
+            target = document.querySelector(`[id="${frag}"], [name="${frag}"]`);
+        }
+        if (!target) {
+            return;
+        }
+
+        // Search broadly around the target for a native deprecation tag
+        // - check the target subtree
+        // - walk up ancestors
+        // - check immediate siblings (common in summary/detail structures)
+        let found = false;
+        let scope = target;
+
+        // 1) target subtree
+        if (scope.querySelector && scope.querySelector(".stab.deprecated")) {
+            found = true;
+        }
+
+        // 2) ancestor walk (up to a reasonable depth)
+        for (let i = 0; !found && i < 8 && scope; i += 1) {
+            if (scope.classList && scope.classList.contains("stab") &&
+                scope.classList.contains("deprecated")) {
+                found = true;
+                break;
+            }
+            if (scope.querySelector && scope.querySelector(".stab.deprecated")) {
+                found = true;
+                break;
+            }
+            scope = scope.parentElement;
+        }
+
+        // 3) siblings near the anchor (covers dt/dd, li/ul, table row patterns)
+        if (!found) {
+            const parent = target.parentElement;
+            if (parent) {
+                const sibs = parent.children;
+                for (let i = 0; i < sibs.length; i += 1) {
+                    const s = sibs[i];
+                    if (s === target) {
+                        continue;
+                    }
+                    if (s.classList && s.classList.contains("stab") &&
+                        s.classList.contains("deprecated")) {
+                        found = true;
+                        break;
+                    }
+                    if (s.querySelector && s.querySelector(".stab.deprecated")) {
+                        found = true;
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (!found) {
+            return;
+        }
+
+        // Tag only the actual item entry in the sidebar (closest <li> that owns this link)
+        const li = a.closest("li");
+        if (li && li.querySelector("a") === a) {
+            addClass(li, "depr-item");
+        }
+    });
+}
+
+function rustdocApplyHideDeprecatedVisibility() {
+    const hide = document.documentElement.classList.contains("hide-depr");
+    onEachLazy(document.querySelectorAll(".depr-item"), el => {
+        if (hide) {
+            addClass(el, "hidden");
+        } else {
+            removeClass(el, "hidden");
+        }
+    });
+}
+
+// Expose an updater so other code can re-run visibility application if needed.
+window.rustdocUpdateDeprecatedVisibility = rustdocApplyHideDeprecatedVisibility;
+
+// Run once on load
+rustdocTagDeprecated();
+rustdocApplyHideDeprecatedVisibility();
+
+// Keep in sync with the setting toggle by watching <html> class changes
+new MutationObserver(mutations => {
+    for (const m of mutations) {
+        if (m.attributeName === "class") {
+            rustdocApplyHideDeprecatedVisibility();
+            break;
+        }
+    }
+}).observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+window.rootPath = getVar("root-path");
+window.currentCrate = getVar("current-crate");
+
+// Tag deprecated entries in the current page and sidebar, and expose an updater
+function rustdocTagDeprecated() {
+    // Collect anchor fragments (id or name) for deprecated items by inspecting item headings
+    /** @type {Set<string>} */
+    const deprecatedFragments = new Set();
+
+    // Heuristic: item headings typically are anchors or have an id/name on the first child.
+    // We walk through elements that are potential anchors and look for a nearby .stab.deprecated.
+    onEachLazy(document.querySelectorAll("[id], [name]"), el => {
+        // Skip elements that are unlikely to be item anchors (like container sections without text)
+        const tag = el.tagName.toLowerCase();
+        if (tag === "section" || tag === "div" || tag === "nav") {
+            return;
+        }
+
+        // Determine fragment name
+        const frag = el.getAttribute("id") || el.getAttribute("name");
+        if (!frag) {
+            return;
+        }
+
+        // Search around this element to determine deprecation:
+        // 1) inside subtree, 2) up ancestors, 3) immediate siblings
+        let found = false;
+
+        // 1) subtree
+        if (el.querySelector && el.querySelector(".stab.deprecated")) {
+            found = true;
+        }
+
+        // 2) ancestors
+    let scope = el.parentElement;
+        for (let i = 0; !found && i < 8 && scope; i += 1) {
+            if (scope.classList && scope.classList.contains("stab") &&
+                scope.classList.contains("deprecated")) {
+                found = true;
+                break;
+            }
+            if (scope.querySelector && scope.querySelector(".stab.deprecated")) {
+                found = true;
+                break;
+            }
+            scope = scope.parentElement;
+        }
+
+        // 3) siblings
+        if (!found && el.parentElement) {
+            const sibs = el.parentElement.children;
+            for (let i = 0; i < sibs.length; i += 1) {
+                const s = sibs[i];
+                if (s === el) {
+                    continue;
+                }
+                if (s.classList && s.classList.contains("stab") &&
+                    s.classList.contains("deprecated")) {
+                    found = true;
+                    break;
+                }
+                if (s.querySelector && s.querySelector(".stab.deprecated")) {
+                    found = true;
+                    break;
+                }
+            }
+        }
+
+        if (found) {
+            deprecatedFragments.add(frag);
+        }
+    });
+
+    // Also tag container elements in the main content that already show the native deprecation tag
+    onEachLazy(document.querySelectorAll(".stab.deprecated"), el => {
+        let p = el.parentElement;
+        while (p && p !== document.body) {
+            if (p.tagName === "LI" || p.tagName === "TR" || p.tagName === "DD") {
+                addClass(p, "depr-item");
+                break;
+            }
+            if (p.classList &&
+                (p.classList.contains("item-row") ||
+                 p.classList.contains("module-item") ||
+                 p.classList.contains("item"))) {
+                addClass(p, "depr-item");
+                break;
+            }
+            p = p.parentElement;
+        }
+    });
+
+    // Tag only actual sidebar item entries (closest <li> owning the link) if they point to deprecated fragments
+    onEachLazy(document.querySelectorAll(".sidebar li a[href*='#']"), a => {
+        const href = a.getAttribute("href");
+        if (!href) {
+            return;
+        }
+        const idx = href.indexOf("#");
+        if (idx === -1) {
+            return;
+        }
+        const frag = href.slice(idx + 1);
+
+        // If anchor matches a known deprecated fragment, mark its li
+        if (deprecatedFragments.has(frag)) {
+            const li = a.closest("li");
+            if (li && li.querySelector("a") === a) {
+                addClass(li, "depr-item");
+            }
+            return;
+        }
+
+        // Fallback: resolve target by id or name and search locally for deprecation marker
+        let target = document.getElementById(frag);
+        if (!target) {
+            target = document.querySelector(`[id="${frag}"], [name="${frag}"]`);
+        }
+        if (!target) {
+            return;
+        }
+
+        let found = false;
+
+        // target subtree
+        if (target.querySelector && target.querySelector(".stab.deprecated")) {
+            found = true;
+        }
+
+        // ancestor walk
+        let scope = target;
+        for (let i = 0; !found && i < 8 && scope; i += 1) {
+            if (scope.classList && scope.classList.contains("stab") &&
+                scope.classList.contains("deprecated")) {
+                found = true;
+                break;
+            }
+            if (scope.querySelector && scope.querySelector(".stab.deprecated")) {
+                found = true;
+                break;
+            }
+            scope = scope.parentElement;
+        }
+
+        // siblings near target
+        if (!found && target.parentElement) {
+            const sibs = target.parentElement.children;
+            for (let i = 0; i < sibs.length; i += 1) {
+                const s = sibs[i];
+                if (s === target) {
+                    continue;
+                }
+                if (s.classList && s.classList.contains("stab") &&
+                    s.classList.contains("deprecated")) {
+                    found = true;
+                    break;
+                }
+                if (s.querySelector && s.querySelector(".stab.deprecated")) {
+                    found = true;
+                    break;
+                }
+            }
+        }
+
+        if (!found) {
+            return;
+        }
+
+        const li = a.closest("li");
+        if (li && li.querySelector("a") === a) {
+            addClass(li, "depr-item");
+        }
+    });
+}
+
+function rustdocApplyHideDeprecatedVisibility() {
+    const hide = document.documentElement.classList.contains("hide-depr");
+    onEachLazy(document.querySelectorAll(".depr-item"), el => {
+        if (hide) {
+            addClass(el, "hidden");
+        } else {
+            removeClass(el, "hidden");
+        }
+    });
+}
+
+// Expose an updater so other code can re-run visibility application if needed.
+window.rustdocUpdateDeprecatedVisibility = rustdocApplyHideDeprecatedVisibility;
+
+// Run once on load
+rustdocTagDeprecated();
+rustdocApplyHideDeprecatedVisibility();
+
+// Keep in sync with the setting toggle by watching <html> class changes
+new MutationObserver(mutations => {
+    for (const m of mutations) {
+        if (m.attributeName === "class") {
+            rustdocApplyHideDeprecatedVisibility();
+            break;
+        }
+    }
+}).observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+
 /**
  * Gets the human-readable string for the virtual-key code of the
  * given KeyboardEvent, ev.

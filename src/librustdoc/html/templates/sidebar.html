@@ -22,7 +22,7 @@
                     {% if !block.links.is_empty() %}
                         <ul class="block{% if !block.class.is_empty() +%} {{+block.class}}{% endif %}">
                             {% for link in block.links %}
-                                <li> {# #}
+                                <li{% if (block.heading.name == "Structs" || block.heading.name == "Functions") && link.deprecated +%} class="depr-item"{% endif %}> {# #}
                                     <a href="#{{link.href|safe}}" title="{{link.name}}">
                                         {% match link.name_html %}
                                             {% when Some with (html) %}
@@ -34,7 +34,7 @@
                                     {% if !link.children.is_empty() %}
                                         <ul>
                                             {% for child in link.children %}
-                                                <li><a href="#{{child.href|safe}}" title="{{child.name}}">
+                                                <li{% if (block.heading.name == "Structs" || block.heading.name == "Functions") && child.deprecated +%} class="depr-item"{% endif %}><a href="#{{child.href|safe}}" title="{{child.name}}">
                                                     {% match child.name_html %}
                                                         {% when Some with (html) %}
                                                             {{html|safe}}

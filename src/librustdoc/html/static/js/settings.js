@@ -78,6 +78,13 @@
                     removeClass(document.documentElement, "word-wrap-source-code");
                 }
                 break;
+            case "hide-deprecated-items":
+                if (value === true) {
+                    addClass(document.documentElement, "hide-depr");
+                } else {
+                    removeClass(document.documentElement, "hide-depr");
+                }
+                break;
         }
     }
 
@@ -272,6 +279,11 @@
             {
                 "name": "Word wrap source code",
                 "js_name": "word-wrap-source-code",
+                "default": false,
+            },
+            {
+                "name": "Hide deprecated items",
+                "js_name": "hide-deprecated-items",
                 "default": false,
             },
         ];

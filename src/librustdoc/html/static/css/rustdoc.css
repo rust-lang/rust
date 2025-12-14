@@ -191,6 +191,16 @@ xmlns="http://www.w3.org/2000/svg" fill="black" height="18px">\
 }
 
 /* General structure and fonts */
+.hide-depr dt:has(.stab.deprecated),
+.hide-depr dt:has(.stab.deprecated) + dd {
+	display: none;
+}
+
+.hide-depr ul.block.struct li.depr-item { display: none; }
+.hide-depr ul.block.fn li.depr-item { display: none; }
+.hide-depr ul.block.enum li.depr-item { display: none; }
+.hide-depr ul.block.type li.depr-item { display: none; }
+.hide-depr ul.block.constant li.depr-item { display: none; }
 
 body {
 	/* Line spacing at least 1.5 per Web Content Accessibility Guidelines
