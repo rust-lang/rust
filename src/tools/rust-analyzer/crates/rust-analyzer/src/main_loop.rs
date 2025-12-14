@@ -437,11 +437,17 @@ impl GlobalState {
                 }
             }
             Event::Flycheck(message) => {
-                let _p = tracing::info_span!("GlobalState::handle_event/flycheck").entered();
-                self.handle_flycheck_msg(message);
+                let mut cargo_finished = false;
+                self.handle_flycheck_msg(message, &mut cargo_finished);
                 // Coalesce many flycheck updates into a single loop turn
                 while let Ok(message) = self.flycheck_receiver.try_recv() {
-                    self.handle_flycheck_msg(message);
+                    self.handle_flycheck_msg(message, &mut cargo_finished);
+                }
+                if cargo_finished {
+                    self.send_request::<lsp_types::request::WorkspaceDiagnosticRefresh>(
+                        (),
+                        |_, _| (),
+                    );
                 }
             }
             Event::TestResult(message) => {
@@ -1109,7 +1115,7 @@ impl GlobalState {
         }
     }
 
-    fn handle_flycheck_msg(&mut self, message: FlycheckMessage) {
+    fn handle_flycheck_msg(&mut self, message: FlycheckMessage, cargo_finished: &mut bool) {
         match message {
             FlycheckMessage::AddDiagnostic {
                 id,
@@ -1167,6 +1173,7 @@ impl GlobalState {
                     flycheck::Progress::DidCheckCrate(target) => (Progress::Report, Some(target)),
                     flycheck::Progress::DidCancel => {
                         self.last_flycheck_error = None;
+                        *cargo_finished = true;
                         (Progress::End, None)
                     }
                     flycheck::Progress::DidFailToRestart(err) => {
@@ -1177,6 +1184,7 @@ impl GlobalState {
                     flycheck::Progress::DidFinish(result) => {
                         self.last_flycheck_error =
                             result.err().map(|err| format!("cargo check failed to start: {err}"));
+                        *cargo_finished = true;
                         (Progress::End, None)
                     }
                 };
