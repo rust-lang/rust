@@ -120,6 +120,7 @@ declare_lint_pass! {
         UNKNOWN_LINTS,
         UNNAMEABLE_TEST_ITEMS,
         UNNAMEABLE_TYPES,
+        UNREACHABLE_CFGS,
         UNREACHABLE_CODE,
         UNREACHABLE_PATTERNS,
         UNSAFE_ATTR_OUTSIDE_UNSAFE,
@@ -850,6 +851,33 @@ declare_lint! {
     pub UNREACHABLE_PATTERNS,
     Warn,
     "detects unreachable patterns"
+}
+
+declare_lint! {
+    /// The `unreachable_cfgs` lint detects unreachable configuration
+    /// predicates.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// #![feature(cfg_select)]
+    /// cfg_select! {
+    ///     _ => (),
+    ///     windows => (),
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// This usually indicates a mistake in how the predicates are specified or
+    /// ordered. In this example, the `_` predicate will always match, so the
+    /// `windows` is impossible to reach. Remember, arms match in order, you
+    /// probably wanted to put the `windows` case above the `_` case.
+    pub UNREACHABLE_CFGS,
+    Warn,
+    "detects unreachable configuration predicates"
 }
 
 declare_lint! {
