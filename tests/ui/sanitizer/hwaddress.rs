@@ -1,7 +1,7 @@
 //@ needs-sanitizer-support
 //@ needs-sanitizer-hwaddress
 //
-//@ compile-flags: -Z sanitizer=hwaddress -O -g -C target-feature=+tagged-globals -C unsafe-allow-abi-mismatch=sanitizer
+//@ compile-flags: -Cunsafe-allow-abi-mismatch=sanitize -Zunstable-options -Z sanitizer=hwaddress -O -g -C target-feature=+tagged-globals
 //
 //@ run-fail
 //@ error-pattern: HWAddressSanitizer: tag-mismatch

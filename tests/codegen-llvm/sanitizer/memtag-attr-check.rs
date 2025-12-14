@@ -2,7 +2,7 @@
 // applied when enabling the memtag sanitizer.
 //
 //@ needs-sanitizer-memtag
-//@ compile-flags: -C unsafe-allow-abi-mismatch=sanitizer -Zsanitizer=memtag -Ctarget-feature=+mte -Copt-level=0
+//@ compile-flags: -Ctarget-feature=+mte -Cunsafe-allow-abi-mismatch=sanitize -Zunstable-options -Csanitize=memtag
 
 #![crate_type = "lib"]
 

@@ -5,13 +5,13 @@
 //@ compile-flags: -Cpanic=abort
 
 //@ revisions: ok wrong_flag wrong_sanitizer
-//@[ok] compile-flags: -Zsanitizer=kcfi -Zsanitizer-cfi-normalize-integers
-//@[wrong_flag] compile-flags: -Zsanitizer=kcfi
+//@[ok] compile-flags: -Zunstable-options -Csanitize=kcfi -Zsanitizer-cfi-normalize-integers
+//@[wrong_flag] compile-flags: -Zunstable-options -Csanitize=kcfi
 //@[ok] check-pass
 
 #![feature(no_core)]
 //[wrong_flag]~^ ERROR mixing `-Zsanitizer-cfi-normalize-integers` will cause an ABI mismatch in crate `sanitizer_kcfi_normalize_ints`
-//[wrong_sanitizer]~^^ ERROR mixing `-Zsanitizer` will cause an ABI mismatch in crate `sanitizer_kcfi_normalize_ints`
+//[wrong_sanitizer]~^^ ERROR mixing `-Csanitize` will cause an ABI mismatch in crate `sanitizer_kcfi_normalize_ints`
 #![crate_type = "rlib"]
 #![no_core]
 

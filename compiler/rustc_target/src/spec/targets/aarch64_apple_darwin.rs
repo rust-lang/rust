@@ -22,8 +22,9 @@ pub(crate) fn target() -> Target {
             // FIXME: The leak sanitizer currently fails the tests, see #88132.
             supported_sanitizers: SanitizerSet::ADDRESS
                 | SanitizerSet::CFI
-                | SanitizerSet::THREAD
-                | SanitizerSet::REALTIME,
+                | SanitizerSet::REALTIME
+                | SanitizerSet::THREAD,
+            stable_sanitizers: SanitizerSet::ADDRESS,
             supports_xray: true,
             ..opts
         },

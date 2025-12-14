@@ -2,7 +2,6 @@
 // the kernel address sanitizer.
 //
 //@ add-minicore
-//@ compile-flags: -Zsanitizer=kernel-address -Ctarget-feature=-crt-static -Copt-level=0
 //@ revisions: aarch64 riscv64imac riscv64gc x86_64
 //@[aarch64] compile-flags: --target aarch64-unknown-none
 //@[aarch64] needs-llvm-components: aarch64
@@ -12,6 +11,7 @@
 //@[riscv64gc] needs-llvm-components: riscv
 //@[x86_64] compile-flags: --target x86_64-unknown-none
 //@[x86_64] needs-llvm-components: x86
+//@ compile-flags: -Copt-level=0 -Ctarget-feature=-crt-static -Cunsafe-allow-abi-mismatch=sanitize -Zunstable-options -Csanitize=kernel-address
 
 #![crate_type = "rlib"]
 #![feature(no_core, sanitize, lang_items)]

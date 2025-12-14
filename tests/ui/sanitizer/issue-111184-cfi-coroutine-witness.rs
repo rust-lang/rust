@@ -2,7 +2,7 @@
 // encode_ty and caused the compiler to ICE.
 //
 //@ needs-sanitizer-cfi
-//@ compile-flags: -Ccodegen-units=1 -Clto -Ctarget-feature=-crt-static -Zsanitizer=cfi -C unsafe-allow-abi-mismatch=sanitizer
+//@ compile-flags: -Ccodegen-units=1 -Clto -Ctarget-feature=-crt-static -Cunsafe-allow-abi-mismatch=sanitize -Zunstable-options -Csanitize=cfi
 //@ edition: 2021
 //@ no-prefer-dynamic
 //@ only-x86_64-unknown-linux-gnu
