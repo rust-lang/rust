@@ -249,6 +249,7 @@ late_lint_methods!(
             FunctionCastsAsInteger: FunctionCastsAsInteger,
             CheckTransmutes: CheckTransmutes,
             LifetimeSyntax: LifetimeSyntax,
+            EqAssertReceiverIsTotalEq: EqAssertReceiverIsTotalEq,
         ]
     ]
 );
