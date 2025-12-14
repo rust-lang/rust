@@ -786,7 +786,7 @@ fn payload_as_str(payload: &dyn Any) -> &str {
 #[optimize(size)]
 fn panic_with_hook(
     payload: &mut dyn PanicPayload,
-    location: &Location<'_>,
+    location: &'static Location<'static>,
     can_unwind: bool,
     force_no_backtrace: bool,
 ) -> ! {
