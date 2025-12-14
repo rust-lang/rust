@@ -830,6 +830,13 @@ pub(crate) struct FrontmatterTooManyDashes {
 }
 
 #[derive(Diagnostic)]
+#[diag(parse_bare_cr_in_frontmatter)]
+pub(crate) struct BareCrFrontmatter {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(parse_leading_plus_not_supported)]
 pub(crate) struct LeadingPlusNotSupported {
     #[primary_span]
