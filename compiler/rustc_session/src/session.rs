@@ -574,10 +574,16 @@ impl Session {
     }
 
     pub fn mir_opt_level(&self) -> usize {
-        self.opts
-            .unstable_opts
-            .mir_opt_level
-            .unwrap_or_else(|| if self.opts.optimize != OptLevel::No { 2 } else { 1 })
+        if self.target.is_like_gpu {
+            // Special care needs to be taken for convergent operations (i.e. not duplicating them).
+            // We do not want to handle these, so do not run any optimizations.
+            0
+        } else {
+            self.opts
+                .unstable_opts
+                .mir_opt_level
+                .unwrap_or_else(|| if self.opts.optimize != OptLevel::No { 2 } else { 1 })
+        }
     }
 
     /// Calculates the flavor of LTO to use for this compilation.
