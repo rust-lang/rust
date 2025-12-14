@@ -38,13 +38,42 @@ pub use self::va_list::{VaArgSafe, VaList};
 pub mod va_list;
 
 mod primitives;
-#[stable(feature = "core_ffi_c", since = "1.64.0")]
-pub use self::primitives::{
-    c_char, c_double, c_float, c_int, c_long, c_longlong, c_schar, c_short, c_uchar, c_uint,
-    c_ulong, c_ulonglong, c_ushort,
-};
-#[unstable(feature = "c_size_t", issue = "88345")]
-pub use self::primitives::{c_ptrdiff_t, c_size_t, c_ssize_t};
+
+macro_rules! type_alias {
+    {
+      $Docfile:tt, $Alias:ident = $Real:ty;
+      $( $Cfg:tt )*
+    } => {
+        #[doc = include_str!($Docfile)]
+        #[doc(cfg(all()))]
+        $( $Cfg )*
+        pub type $Alias = $Real;
+    }
+}
+
+type_alias! { "c_char.md", c_char = self::primitives::c_char; #[stable(feature = "core_ffi_c", since = "1.64.0")]}
+
+type_alias! { "c_schar.md", c_schar = self::primitives::c_schar; #[stable(feature = "core_ffi_c", since = "1.64.0")]}
+type_alias! { "c_uchar.md", c_uchar = self::primitives::c_uchar; #[stable(feature = "core_ffi_c", since = "1.64.0")]}
+
+type_alias! { "c_short.md", c_short = self::primitives::c_short; #[stable(feature = "core_ffi_c", since = "1.64.0")]}
+type_alias! { "c_ushort.md", c_ushort = self::primitives::c_ushort; #[stable(feature = "core_ffi_c", since = "1.64.0")]}
+
+type_alias! { "c_int.md", c_int = self::primitives::c_int; #[stable(feature = "core_ffi_c", since = "1.64.0")]}
+type_alias! { "c_uint.md", c_uint = self::primitives::c_uint; #[stable(feature = "core_ffi_c", since = "1.64.0")]}
+
+type_alias! { "c_long.md", c_long = self::primitives::c_long; #[stable(feature = "core_ffi_c", since = "1.64.0")]}
+type_alias! { "c_ulong.md", c_ulong = self::primitives::c_ulong; #[stable(feature = "core_ffi_c", since = "1.64.0")]}
+
+type_alias! { "c_longlong.md", c_longlong = self::primitives::c_longlong; #[stable(feature = "core_ffi_c", since = "1.64.0")]}
+type_alias! { "c_ulonglong.md", c_ulonglong = self::primitives::c_ulonglong; #[stable(feature = "core_ffi_c", since = "1.64.0")]}
+
+type_alias! { "c_float.md", c_float = self::primitives::c_float; #[stable(feature = "core_ffi_c", since = "1.64.0")]}
+type_alias! { "c_double.md", c_double = self::primitives::c_double; #[stable(feature = "core_ffi_c", since = "1.64.0")]}
+
+type_alias! { "c_size_t.md", c_size_t = self::primitives::c_size_t; #[unstable(feature = "c_size_t", issue = "88345")]}
+type_alias! { "c_ptrdiff_t.md", c_ptrdiff_t = self::primitives::c_ptrdiff_t; #[unstable(feature = "c_size_t", issue = "88345")]}
+type_alias! { "c_ssize_t.md", c_ssize_t = self::primitives::c_ssize_t; #[unstable(feature = "c_size_t", issue = "88345")]}
 
 // N.B., for LLVM to recognize the void pointer type and by extension
 //     functions like malloc(), we need to have it represented as i8* in
