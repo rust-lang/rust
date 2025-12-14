@@ -3440,6 +3440,43 @@ pub(crate) const fn miri_promise_symbolic_alignment(ptr: *const (), align: usize
     )
 }
 
+/// Returns the pointer to dynamic group-shared memory on GPUs.
+///
+/// Group-shared memory is a memory region that is shared between all threads in
+/// the same work-group. It is faster to access than other memory but pointers do not
+/// work outside the work-group where they were obtained.
+/// Dynamic group-shared memory is in the group-shared memory region, the allocated
+/// size is specified late, after compilation, when launching a gpu-kernel.
+/// The size can differ between launches of a gpu-kernel, therefore it is called dynamic.
+/// However, the alignment is fixed by the kernel itself (at compile-time).
+///
+/// The returned pointer is the start of the dynamic group-shared memory region.
+/// All calls to `gpu_dynamic_groupshared_mem` in a work-group, independent of the
+/// generic type, return the same address, so alias the same memory.
+/// The returned pointer is aligned by at least the alignment of `T`.
+///
+/// # Safety
+///
+/// The pointer is safe to dereference from the start (the returned pointer) up to the
+/// size of dynamic group-shared memory that was specified when launching the current
+/// gpu-kernel.
+///
+/// The user must take care of synchronizing access to group-shared memory between
+/// threads in a work-group. The usual data race requirements apply.
+///
+/// # Other APIs
+///
+/// CUDA and HIP call this shared memory, shared between threads in a block.
+/// OpenCL and SYCL call this local memory, shared between threads in a work-group.
+/// GLSL calls this shared memory, shared between invocations in a work group.
+/// DirectX calls this groupshared memory, shared between threads in a thread-group.
+#[must_use = "returns a pointer that does nothing unless used"]
+#[rustc_intrinsic]
+#[rustc_nounwind]
+#[unstable(feature = "gpu_dynamic_groupshared_mem", issue = "135513")]
+#[cfg(any(target_arch = "amdgpu", target_arch = "nvptx64"))]
+pub fn gpu_dynamic_groupshared_mem<T>() -> *mut T;
+
 /// Copies the current location of arglist `src` to the arglist `dst`.
 ///
 /// # Safety
