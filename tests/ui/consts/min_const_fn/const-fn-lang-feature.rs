@@ -16,5 +16,8 @@ const fn my_fun2() {
 }
 
 fn main() {
-    const { my_fun2() };
+    #[rustc_const_unstable(feature = "abi_unadjusted", issue = "42")]
+    const {
+        my_fun2()
+    };
 }

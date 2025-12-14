@@ -86,16 +86,6 @@ pub(crate) struct CollapseMacroDebuginfoIllegal {
 }
 
 #[derive(Diagnostic)]
-#[diag(expand_macro_const_stability)]
-pub(crate) struct MacroConstStability {
-    #[primary_span]
-    #[label]
-    pub span: Span,
-    #[label(expand_label2)]
-    pub head_span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(expand_macro_body_stability)]
 pub(crate) struct MacroBodyStability {
     #[primary_span]
