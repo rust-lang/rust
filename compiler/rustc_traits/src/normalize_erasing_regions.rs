@@ -4,7 +4,7 @@ use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::{self, PseudoCanonicalInput, TyCtxt, TypeFoldable, TypeVisitableExt};
 use rustc_trait_selection::traits::query::normalize::QueryNormalizeExt;
 use rustc_trait_selection::traits::{Normalized, ObligationCause};
-use tracing::debug;
+use tracing::{debug, instrument};
 
 pub(crate) fn provide(p: &mut Providers) {
     *p = Providers {
@@ -17,6 +17,7 @@ pub(crate) fn provide(p: &mut Providers) {
     };
 }
 
+#[instrument(level = "debug", skip(tcx))]
 fn try_normalize_after_erasing_regions<'tcx, T: TypeFoldable<TyCtxt<'tcx>> + PartialEq + Copy>(
     tcx: TyCtxt<'tcx>,
     goal: PseudoCanonicalInput<'tcx, T>,

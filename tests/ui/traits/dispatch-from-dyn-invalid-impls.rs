@@ -68,4 +68,16 @@ where
 {
 }
 
+struct Ptr<T: ?Sized>(Box<T>);
+
+impl<'a, T: ?Sized, U: ?Sized> DispatchFromDyn<&'a Ptr<U>> for &'a Ptr<T> {}
+//~^ ERROR conflicting implementations of trait `DispatchFromDyn<&Ptr<_>>` for type `&Ptr<_>`
+
+struct Inner<T: ?Sized>(T);
+#[repr(transparent)]
+struct Outer<T: ?Sized>(PhantomData<T>, Inner<T>);
+
+impl<'a, T: Unsize<U> + ?Sized, U: ?Sized> DispatchFromDyn<&'a Outer<U>> for &'a Outer<T> {}
+//~^ ERROR  conflicting implementations of trait `DispatchFromDyn<&Outer<_>>` for type `&Outer<_>`
+
 fn main() {}
