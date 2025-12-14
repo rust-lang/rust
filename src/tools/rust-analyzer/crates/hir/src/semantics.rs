@@ -267,7 +267,7 @@ impl<DB: HirDatabase + ?Sized> Semantics<'_, DB> {
         &self,
         krate: Crate,
         item: ast::AnyHasAttrs,
-    ) -> impl Iterator<Item = (LintAttr, SmolStr)> {
+    ) -> impl DoubleEndedIterator<Item = (LintAttr, SmolStr)> {
         let mut cfg_options = None;
         let cfg_options = || *cfg_options.get_or_insert_with(|| krate.id.cfg_options(self.db));
         let mut result = Vec::new();
