@@ -61,6 +61,7 @@ impl AbiMap {
             Arch::RiscV32 | Arch::RiscV64 => ArchKind::Riscv,
             Arch::X86 => ArchKind::X86,
             Arch::X86_64 => ArchKind::X86_64,
+            Arch::LoongArch64 => ArchKind::LoongArch64,
             _ => ArchKind::Other,
         };
 
@@ -108,7 +109,10 @@ impl AbiMap {
 
             (ExternAbi::EfiApi, ArchKind::Arm(..)) => CanonAbi::Arm(ArmCall::Aapcs),
             (ExternAbi::EfiApi, ArchKind::X86_64) => CanonAbi::X86(X86Call::Win64),
-            (ExternAbi::EfiApi, ArchKind::Aarch64 | ArchKind::Riscv | ArchKind::X86) => CanonAbi::C,
+            (
+                ExternAbi::EfiApi,
+                ArchKind::Aarch64 | ArchKind::Riscv | ArchKind::X86 | ArchKind::LoongArch64,
+            ) => CanonAbi::C,
             (ExternAbi::EfiApi, _) => return AbiMapping::Invalid,
 
             /* arm */
@@ -201,6 +205,7 @@ enum ArchKind {
     Riscv,
     X86,
     X86_64,
+    LoongArch64,
     /// Architectures which don't need other considerations for ABI lowering
     Other,
 }
