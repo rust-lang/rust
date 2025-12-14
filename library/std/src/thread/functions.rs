@@ -45,8 +45,11 @@ use crate::{io, panicking};
 ///
 /// # Panics
 ///
-/// Panics if the OS fails to create a thread; use [`Builder::spawn`]
-/// to recover from such errors.
+/// Panics if the OS fails to create a thread; use [`Builder::spawn`] to recover
+/// from such errors.
+///
+/// If functions were added via [`add_spawn_hook`], they will still be called in
+/// the parent thread, but the returned functions will not be executed.
 ///
 /// # Examples
 ///
@@ -120,6 +123,7 @@ use crate::{io, panicking};
 /// [`channels`]: crate::sync::mpsc
 /// [`join`]: JoinHandle::join
 /// [`Err`]: crate::result::Result::Err
+/// [`add_spawn_hook`]: crate::thread::add_spawn_hook
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 pub fn spawn<F, T>(f: F) -> JoinHandle<T>
