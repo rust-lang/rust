@@ -918,6 +918,7 @@ const AARCH64_FEATURES_FOR_CORRECT_VECTOR_ABI: &'static [(u64, &'static str)] = 
 // We might want to add "helium" too.
 const ARM_FEATURES_FOR_CORRECT_VECTOR_ABI: &'static [(u64, &'static str)] = &[(128, "neon")];
 
+const AMDGPU_FEATURES_FOR_CORRECT_VECTOR_ABI: &'static [(u64, &'static str)] = &[(1024, "")];
 const POWERPC_FEATURES_FOR_CORRECT_VECTOR_ABI: &'static [(u64, &'static str)] = &[(128, "altivec")];
 const WASM_FEATURES_FOR_CORRECT_VECTOR_ABI: &'static [(u64, &'static str)] = &[(128, "simd128")];
 const S390X_FEATURES_FOR_CORRECT_VECTOR_ABI: &'static [(u64, &'static str)] = &[(128, "vector")];
@@ -996,12 +997,12 @@ impl Target {
             Arch::Mips | Arch::Mips32r6 | Arch::Mips64 | Arch::Mips64r6 => {
                 MIPS_FEATURES_FOR_CORRECT_VECTOR_ABI
             }
+            Arch::AmdGpu => AMDGPU_FEATURES_FOR_CORRECT_VECTOR_ABI,
             Arch::Nvptx64 | Arch::Bpf | Arch::M68k => &[], // no vector ABI
             Arch::CSky => CSKY_FEATURES_FOR_CORRECT_VECTOR_ABI,
             // FIXME: for some tier3 targets, we are overly cautious and always give warnings
             // when passing args in vector registers.
-            Arch::AmdGpu
-            | Arch::Avr
+            Arch::Avr
             | Arch::Msp430
             | Arch::PowerPC64LE
             | Arch::SpirV
