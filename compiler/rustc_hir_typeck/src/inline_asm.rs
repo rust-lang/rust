@@ -178,19 +178,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
             ty::Never if is_input => return None,
             _ if ty.references_error() => return None,
             ty::Adt(adt, args) if self.tcx().is_lang_item(adt.did(), LangItem::MaybeUninit) => {
-                let fields = &adt.non_enum_variant().fields;
-                let ty = fields[FieldIdx::ONE].ty(self.tcx(), args);
-                // FIXME: Are we just trying to map to the `T` in `MaybeUninit<T>`?
-                // If so, just get it from the args.
-                let ty::Adt(ty, args) = ty.kind() else {
-                    unreachable!("expected first field of `MaybeUninit` to be an ADT")
-                };
-                assert!(
-                    ty.is_manually_drop(),
-                    "expected first field of `MaybeUninit` to be `ManuallyDrop`"
-                );
-                let fields = &ty.non_enum_variant().fields;
-                let ty = fields[FieldIdx::ZERO].ty(self.tcx(), args);
+                let ty = args.type_at(0);
                 self.get_asm_ty(expr.span, ty)
             }
             _ => self.get_asm_ty(expr.span, ty),
