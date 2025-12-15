@@ -2298,7 +2298,11 @@ impl Step for Assemble {
             }
         }
 
-        if builder.config.llvm_offload && !builder.config.dry_run() {
+        if builder.config.llvm_offload
+            && !builder.config.dry_run()
+            && !builder.config.llvm_profile_generate
+            && builder.config.llvm_profile_use.is_none()
+        {
             debug!("`llvm_offload` requested");
             let offload_install = builder.ensure(llvm::OmpOffload { target: build_compiler.host });
             if let Some(_llvm_config) = builder.llvm_config(builder.config.host_target) {
