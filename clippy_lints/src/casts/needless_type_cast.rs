@@ -182,12 +182,7 @@ fn is_generic_res(cx: &LateContext<'_>, res: Res) -> bool {
             .iter()
             .any(|p| p.kind.is_ty_or_const())
     };
-    match res {
-        Res::Def(DefKind::Fn | DefKind::AssocFn, def_id) => has_type_params(def_id),
-        // Ctor → Variant → ADT: constructor's parent is variant, variant's parent is the ADT
-        Res::Def(DefKind::Ctor(..), def_id) => has_type_params(cx.tcx.parent(cx.tcx.parent(def_id))),
-        _ => false,
-    }
+    cx.tcx.res_generics_def_id(res).is_some_and(has_type_params)
 }
 
 fn is_cast_in_generic_context<'a>(cx: &LateContext<'a>, cast_expr: &Expr<'a>) -> bool {
