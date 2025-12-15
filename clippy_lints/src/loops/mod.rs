@@ -884,25 +884,38 @@ impl<'tcx> LateLintPass<'tcx> for Loops {
 
         if let ExprKind::MethodCall(path, recv, args, _) = expr.kind {
             let name = path.ident.name;
-            let is_iterator_method = cx
-                .ty_based_def(expr)
-                .assoc_fn_parent(cx)
-                .is_diag_item(cx, sym::Iterator);
 
+            let is_iterator_method = || {
+                cx.ty_based_def(expr)
+                    .assoc_fn_parent(cx)
+                    .is_diag_item(cx, sym::Iterator)
+            };
+
+            // is_iterator_method is a bit expensive, so we call it last in each match arm
             match (name, args) {
                 (sym::for_each | sym::all | sym::any, [arg]) => {
-                    unused_enumerate_index::check_method(cx, expr, recv, arg);
-                    if is_iterator_method {
-                        never_loop::check_iterator_reduction(cx, expr, recv, args);
+                    if let ExprKind::Closure(closure) = arg.kind
+                        && is_iterator_method()
+                    {
+                        unused_enumerate_index::check_method(cx, recv, arg, closure);
+                        never_loop::check_iterator_reduction(cx, expr, recv, closure);
                     }
                 },
 
                 (sym::filter_map | sym::find_map | sym::flat_map | sym::map, [arg]) => {
-                    unused_enumerate_index::check_method(cx, expr, recv, arg);
+                    if let ExprKind::Closure(closure) = arg.kind
+                        && is_iterator_method()
+                    {
+                        unused_enumerate_index::check_method(cx, recv, arg, closure);
+                    }
                 },
 
-                (sym::try_for_each | sym::reduce | sym::fold | sym::try_fold, args) if is_iterator_method => {
-                    never_loop::check_iterator_reduction(cx, expr, recv, args);
+                (sym::try_for_each | sym::reduce, [arg]) | (sym::fold | sym::try_fold, [_, arg]) => {
+                    if let ExprKind::Closure(closure) = arg.kind
+                        && is_iterator_method()
+                    {
+                        never_loop::check_iterator_reduction(cx, expr, recv, closure);
+                    }
                 },
 
                 _ => {},

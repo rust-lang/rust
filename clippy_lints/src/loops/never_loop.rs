@@ -8,7 +8,8 @@ use clippy_utils::sym;
 use clippy_utils::visitors::{Descend, for_each_expr_without_closures};
 use rustc_errors::Applicability;
 use rustc_hir::{
-    Block, Destination, Expr, ExprKind, HirId, InlineAsm, InlineAsmOperand, Node, Pat, Stmt, StmtKind, StructTailExpr,
+    Block, Closure, Destination, Expr, ExprKind, HirId, InlineAsm, InlineAsmOperand, Node, Pat, Stmt, StmtKind,
+    StructTailExpr,
 };
 use rustc_lint::LateContext;
 use rustc_span::{BytePos, Span};
@@ -77,32 +78,9 @@ pub(super) fn check_iterator_reduction<'tcx>(
     cx: &LateContext<'tcx>,
     expr: &'tcx Expr<'tcx>,
     recv: &'tcx Expr<'tcx>,
-    args: &'tcx [Expr<'tcx>],
+    closure: &'tcx Closure<'tcx>,
 ) {
-    // identify which argument is the closure based on the method kind
-    let Some(method_name) = (match expr.kind {
-        ExprKind::MethodCall(path, ..) => Some(path.ident.name),
-        _ => None,
-    }) else {
-        return;
-    };
-
-    let closure_arg = match method_name {
-        sym::for_each | sym::try_for_each | sym::reduce | sym::all | sym::any => args.first(),
-        sym::fold | sym::try_fold => args.get(1),
-        _ => None,
-    };
-
-    let Some(closure_arg) = closure_arg else {
-        return;
-    };
-
-    // extract the closure body
-    let closure_body = match closure_arg.kind {
-        ExprKind::Closure(closure) => cx.tcx.hir_body(closure.body).value,
-        _ => return,
-    };
-
+    let closure_body = cx.tcx.hir_body(closure.body).value;
     let body_ty = cx.typeck_results().expr_ty(closure_body);
     if body_ty.is_never() {
         span_lint_and_then(

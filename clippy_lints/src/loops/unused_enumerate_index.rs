@@ -1,10 +1,10 @@
 use super::UNUSED_ENUMERATE_INDEX;
 use clippy_utils::diagnostics::span_lint_hir_and_then;
-use clippy_utils::res::{MaybeDef, MaybeTypeckRes};
+use clippy_utils::res::MaybeDef;
 use clippy_utils::source::{SpanRangeExt, walk_span_to_context};
 use clippy_utils::{expr_or_init, pat_is_wild};
 use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind, Pat, PatKind, TyKind};
+use rustc_hir::{Closure, Expr, ExprKind, Pat, PatKind, TyKind};
 use rustc_lint::LateContext;
 use rustc_span::{Span, SyntaxContext, sym};
 
@@ -60,14 +60,12 @@ pub(super) fn check<'tcx>(
 
 pub(super) fn check_method<'tcx>(
     cx: &LateContext<'tcx>,
-    e: &'tcx Expr<'tcx>,
     recv: &'tcx Expr<'tcx>,
     arg: &'tcx Expr<'tcx>,
+    closure: &'tcx Closure<'tcx>,
 ) {
-    if let ExprKind::Closure(closure) = arg.kind
-        && let body = cx.tcx.hir_body(closure.body)
-        && let [param] = body.params
-        && cx.ty_based_def(e).opt_parent(cx).is_diag_item(cx, sym::Iterator)
+    let body = cx.tcx.hir_body(closure.body);
+    if let [param] = body.params
         && let [input] = closure.fn_decl.inputs
         && !arg.span.from_expansion()
         && !input.span.from_expansion()
