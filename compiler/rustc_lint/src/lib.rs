@@ -200,6 +200,7 @@ late_lint_methods!(
             InvalidFromUtf8: InvalidFromUtf8,
             VariantSizeDifferences: VariantSizeDifferences,
             PathStatements: PathStatements,
+            BlackBoxZstCalls: BlackBoxZstCalls,
             LetUnderscore: LetUnderscore,
             InvalidReferenceCasting: InvalidReferenceCasting,
             ImplicitAutorefs: ImplicitAutorefs,
