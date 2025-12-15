@@ -31,7 +31,7 @@ fn main() -> std::io::Result<()> {
             clap::Arg::new("format")
                 .long("format")
                 .action(clap::ArgAction::Set)
-                .default_value("json-legacy")
+                .default_value("json-new")
                 .value_parser(clap::builder::EnumValueParser::<ProtocolFormat>::new()),
             clap::Arg::new("version")
                 .long("version")
@@ -58,7 +58,12 @@ enum ProtocolFormat {
 
 impl ValueEnum for ProtocolFormat {
     fn value_variants<'a>() -> &'a [Self] {
-        &[ProtocolFormat::JsonLegacy, ProtocolFormat::PostcardLegacy]
+        &[
+            ProtocolFormat::JsonLegacy,
+            ProtocolFormat::PostcardLegacy,
+            ProtocolFormat::JsonNew,
+            ProtocolFormat::PostcardNew,
+        ]
     }
 
     fn to_possible_value(&self) -> Option<clap::builder::PossibleValue> {
