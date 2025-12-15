@@ -2181,6 +2181,10 @@ Please disable assertions with `rust.debug-assertions = false`.
         }
 
         if mode == CompiletestMode::Debuginfo {
+            if let Some(debuggers::Cdb { cdb }) = debuggers::discover_cdb(target) {
+                cmd.arg("--cdb").arg(cdb);
+            }
+
             if let Some(debuggers::Gdb { gdb }) = debuggers::discover_gdb(builder, android.as_ref())
             {
                 cmd.arg("--gdb").arg(gdb.as_ref());
