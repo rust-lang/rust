@@ -10,9 +10,10 @@ use std::collections::hash_map::Entry;
 use std::slice;
 
 use rustc_abi::{Align, ExternAbi, Size};
-use rustc_ast::{AttrStyle, LitKind, MetaItemKind, ast};
+use rustc_ast::{AttrStyle, MetaItemKind, ast};
 use rustc_attr_parsing::{AttributeParser, Late};
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::{DiagCtxtHandle, IntoDiagArg, MultiSpan, StashKey};
 use rustc_feature::{
     ACCEPTED_LANG_FEATURES, AttributeDuplicates, AttributeType, BUILTIN_ATTRIBUTE_MAP,
@@ -211,6 +212,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 Attribute::Parsed(AttributeKind::MacroExport { span, .. }) => {
                     self.check_macro_export(hir_id, *span, target)
                 },
+                Attribute::Parsed(AttributeKind::RustcLegacyConstGenerics{attr_span, fn_indexes}) => {
+                    self.check_rustc_legacy_const_generics(item, *attr_span, fn_indexes)
+                },
                 Attribute::Parsed(AttributeKind::Doc(attr)) => self.check_doc_attrs(attr, hir_id, target),
                 Attribute::Parsed(AttributeKind::EiiImpls(impls)) => {
                      self.check_eii_impl(impls, target)
@@ -304,9 +308,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         }
                         [sym::rustc_never_returns_null_ptr, ..] => {
                             self.check_applied_to_fn_or_method(hir_id, attr.span(), span, target)
-                        }
-                        [sym::rustc_legacy_const_generics, ..] => {
-                            self.check_rustc_legacy_const_generics(hir_id, attr, span, target, item)
                         }
                         [sym::rustc_lint_query_instability, ..] => {
                             self.check_applied_to_fn_or_method(hir_id, attr.span(), span, target)
@@ -1217,33 +1218,17 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     /// Checks if `#[rustc_legacy_const_generics]` is applied to a function and has a valid argument.
     fn check_rustc_legacy_const_generics(
         &self,
-        hir_id: HirId,
-        attr: &Attribute,
-        span: Span,
-        target: Target,
         item: Option<ItemLike<'_>>,
+        attr_span: Span,
+        index_list: &ThinVec<(usize, Span)>,
     ) {
-        let is_function = matches!(target, Target::Fn);
-        if !is_function {
-            self.dcx().emit_err(errors::AttrShouldBeAppliedToFn {
-                attr_span: attr.span(),
-                defn_span: span,
-                on_crate: hir_id == CRATE_HIR_ID,
-            });
-            return;
-        }
-
-        let Some(list) = attr.meta_item_list() else {
-            // The attribute form is validated on AST.
-            return;
-        };
-
         let Some(ItemLike::Item(Item {
             kind: ItemKind::Fn { sig: FnSig { decl, .. }, generics, .. },
             ..
         })) = item
         else {
-            bug!("should be a function item");
+            // No error here, since it's already given by the parser
+            return;
         };
 
         for param in generics.params {
@@ -1251,7 +1236,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 hir::GenericParamKind::Const { .. } => {}
                 _ => {
                     self.dcx().emit_err(errors::RustcLegacyConstGenericsOnly {
-                        attr_span: attr.span(),
+                        attr_span,
                         param_span: param.span,
                     });
                     return;
@@ -1259,33 +1244,22 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             }
         }
 
-        if list.len() != generics.params.len() {
+        if index_list.len() != generics.params.len() {
             self.dcx().emit_err(errors::RustcLegacyConstGenericsIndex {
-                attr_span: attr.span(),
+                attr_span,
                 generics_span: generics.span,
             });
             return;
         }
 
-        let arg_count = decl.inputs.len() as u128 + generics.params.len() as u128;
-        let mut invalid_args = vec![];
-        for meta in list {
-            if let Some(LitKind::Int(val, _)) = meta.lit().map(|lit| &lit.kind) {
-                if *val >= arg_count {
-                    let span = meta.span();
-                    self.dcx().emit_err(errors::RustcLegacyConstGenericsIndexExceed {
-                        span,
-                        arg_count: arg_count as usize,
-                    });
-                    return;
-                }
-            } else {
-                invalid_args.push(meta.span());
+        let arg_count = decl.inputs.len() + generics.params.len();
+        for (index, span) in index_list {
+            if *index >= arg_count {
+                self.dcx().emit_err(errors::RustcLegacyConstGenericsIndexExceed {
+                    span: *span,
+                    arg_count,
+                });
             }
-        }
-
-        if !invalid_args.is_empty() {
-            self.dcx().emit_err(errors::RustcLegacyConstGenericsIndexNegative { invalid_args });
         }
     }
 

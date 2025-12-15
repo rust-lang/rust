@@ -1,3 +1,5 @@
+use rustc_ast::{LitIntType, LitKind, MetaItemLit};
+
 use super::prelude::*;
 use super::util::parse_single_integer;
 
@@ -74,5 +76,49 @@ impl<S: Stage> SingleAttributeParser<S> for RustcSimdMonomorphizeLaneLimitParser
             return None;
         };
         Some(AttributeKind::RustcSimdMonomorphizeLaneLimit(cx.parse_limit_int(nv)?))
+    }
+}
+
+pub(crate) struct RustcLegacyConstGenericsParser;
+
+impl<S: Stage> SingleAttributeParser<S> for RustcLegacyConstGenericsParser {
+    const PATH: &[Symbol] = &[sym::rustc_legacy_const_generics];
+    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepInnermost;
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Fn)]);
+    const TEMPLATE: AttributeTemplate = template!(List: &["N"]);
+
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
+        let ArgParser::List(meta_items) = args else {
+            cx.expected_list(cx.attr_span, args);
+            return None;
+        };
+
+        let mut parsed_indexes = ThinVec::new();
+        let mut errored = false;
+
+        for possible_index in meta_items.mixed() {
+            if let MetaItemOrLitParser::Lit(MetaItemLit {
+                kind: LitKind::Int(index, LitIntType::Unsuffixed),
+                ..
+            }) = possible_index
+            {
+                parsed_indexes.push((index.0 as usize, possible_index.span()));
+            } else {
+                cx.expected_integer_literal(possible_index.span());
+                errored = true;
+            }
+        }
+        if errored {
+            return None;
+        } else if parsed_indexes.is_empty() {
+            cx.expected_at_least_one_argument(args.span()?);
+            return None;
+        }
+
+        Some(AttributeKind::RustcLegacyConstGenerics {
+            fn_indexes: parsed_indexes,
+            attr_span: cx.attr_span,
+        })
     }
 }
