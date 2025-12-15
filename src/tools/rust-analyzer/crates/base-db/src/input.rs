@@ -465,7 +465,7 @@ impl Crate {
     /// including the crate itself.
     ///
     /// **Warning**: do not use this query in `hir-*` crates! It kills incrementality across crate metadata modifications.
-    pub fn transitive_deps(self, db: &dyn salsa::Database) -> Box<[Crate]> {
+    pub fn transitive_deps(self, db: &dyn salsa::Database) -> Vec<Crate> {
         // There is a bit of duplication here and in `CrateGraphBuilder` in the same method, but it's not terrible
         // and removing that is a bit difficult.
         let mut worklist = vec![self];
@@ -480,7 +480,7 @@ impl Crate {
 
             worklist.extend(krate.data(db).dependencies.iter().map(|dep| dep.crate_id));
         }
-        deps.into_boxed_slice()
+        deps
     }
 
     /// Returns all transitive reverse dependencies of the given crate,

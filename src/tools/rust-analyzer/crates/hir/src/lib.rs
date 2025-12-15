@@ -4331,10 +4331,7 @@ impl Impl {
     /// blanket impls, and only does a shallow type constructor check. In fact, this should've probably been on `Adt`
     /// etc., and not on `Type`. If you would want to create a precise list of all impls applying to a type,
     /// you would need to include blanket impls, and try to prove to predicates for each candidate.
-    pub fn all_for_type<'db>(
-        db: &'db dyn HirDatabase,
-        Type { ty, env: _ }: Type<'db>,
-    ) -> Vec<Impl> {
+    pub fn all_for_type<'db>(db: &'db dyn HirDatabase, Type { ty, env }: Type<'db>) -> Vec<Impl> {
         let mut result = Vec::new();
         let interner = DbInterner::new_no_crate(db);
         let Some(simplified_ty) =
@@ -4344,7 +4341,12 @@ impl Impl {
         };
         let mut extend_with_impls =
             |impls: &[ImplId]| result.extend(impls.iter().copied().map(Impl::from));
-        extend_with_impls(method_resolution::incoherent_inherent_impls(db, simplified_ty));
+        method_resolution::with_incoherent_inherent_impls(
+            db,
+            env.krate,
+            &simplified_ty,
+            &mut extend_with_impls,
+        );
         if let Some(module) = method_resolution::simplified_type_module(db, &simplified_ty) {
             InherentImpls::for_each_crate_and_block(
                 db,
@@ -5322,7 +5324,12 @@ impl<'db> Type<'db> {
             return;
         };
 
-        handle_impls(method_resolution::incoherent_inherent_impls(db, simplified_type));
+        method_resolution::with_incoherent_inherent_impls(
+            db,
+            self.env.krate,
+            &simplified_type,
+            &mut handle_impls,
+        );
 
         if let Some(module) = method_resolution::simplified_type_module(db, &simplified_type) {
             InherentImpls::for_each_crate_and_block(
