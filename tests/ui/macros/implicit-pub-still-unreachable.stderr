@@ -1,0 +1,9 @@
+error[E0433]: failed to resolve: could not find `fake_pub` in `inner`
+  --> $DIR/implicit-pub-still-unreachable.rs:7:26
+   |
+LL |     implicit_pub::inner::fake_pub!();
+   |                          ^^^^^^^^ could not find `fake_pub` in `inner`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0433`.
