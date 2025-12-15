@@ -8,49 +8,69 @@
 //! GCC and compiler-rt are essentially just wired up to everything else to
 //! ensure that they're always in place if needed.
 
+use std::fmt::{Display, Formatter};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 
-use crate::FileType;
 use crate::core::builder::{Builder, Cargo, Kind, RunConfig, ShouldRun, Step};
 use crate::core::config::TargetSelection;
 use crate::utils::build_stamp::{BuildStamp, generate_smart_stamp_hash};
 use crate::utils::exec::command;
 use crate::utils::helpers::{self, t};
 
+/// GCC cannot cross-compile from a single binary to multiple targets.
+/// So we need to have a separate GCC dylib for each (host, target) pair.
+/// We represent this explicitly using this struct.
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
+pub struct GccTargetPair {
+    /// Target on which the libgccjit.so dylib will be executed.
+    host: TargetSelection,
+    /// Target for which the libgccjit.so dylib will generate assembly.
+    target: TargetSelection,
+}
+
+impl GccTargetPair {
+    /// Create a target pair for a GCC that will run on `target` and generate assembly for `target`.
+    pub fn for_native_build(target: TargetSelection) -> Self {
+        Self { host: target, target }
+    }
+
+    /// Create a target pair for a GCC that will run on `host` and generate assembly for `target`.
+    /// This may be cross-compilation if `host != target`.
+    pub fn for_target_pair(host: TargetSelection, target: TargetSelection) -> Self {
+        Self { host, target }
+    }
+
+    pub fn host(&self) -> TargetSelection {
+        self.host
+    }
+
+    pub fn target(&self) -> TargetSelection {
+        self.target
+    }
+}
+
+impl Display for GccTargetPair {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{} -> {}", self.host, self.target)
+    }
+}
+
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct Gcc {
-    pub target: TargetSelection,
+    pub target_pair: GccTargetPair,
 }
 
 #[derive(Clone)]
 pub struct GccOutput {
-    pub libgccjit: PathBuf,
-    target: TargetSelection,
+    /// Path to a built or downloaded libgccjit.
+    libgccjit: PathBuf,
 }
 
 impl GccOutput {
-    /// Install the required libgccjit library file(s) to the specified `path`.
-    pub fn install_to(&self, builder: &Builder<'_>, directory: &Path) {
-        if builder.config.dry_run() {
-            return;
-        }
-
-        let target_filename = self.libgccjit.file_name().unwrap().to_str().unwrap().to_string();
-
-        // If we build libgccjit ourselves, then `self.libgccjit` can actually be a symlink.
-        // In that case, we have to resolve it first, otherwise we'd create a symlink to a symlink,
-        // which wouldn't work.
-        let actual_libgccjit_path = t!(
-            self.libgccjit.canonicalize(),
-            format!("Cannot find libgccjit at {}", self.libgccjit.display())
-        );
-
-        let dest_dir = directory.join("rustlib").join(self.target).join("lib");
-        t!(fs::create_dir_all(&dest_dir));
-        let dst = dest_dir.join(target_filename);
-        builder.copy_link(&actual_libgccjit_path, &dst, FileType::NativeLibrary);
+    pub fn libgccjit(&self) -> &Path {
+        &self.libgccjit
     }
 }
 
@@ -64,33 +84,38 @@ impl Step for Gcc {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(Gcc { target: run.target });
+        // By default, we build libgccjit that can do native compilation (no cross-compilation)
+        // on a given target.
+        run.builder
+            .ensure(Gcc { target_pair: GccTargetPair { host: run.target, target: run.target } });
     }
 
     /// Compile GCC (specifically `libgccjit`) for `target`.
     fn run(self, builder: &Builder<'_>) -> Self::Output {
-        let target = self.target;
+        let target_pair = self.target_pair;
 
         // If GCC has already been built, we avoid building it again.
-        let metadata = match get_gcc_build_status(builder, target) {
-            GccBuildStatus::AlreadyBuilt(path) => return GccOutput { libgccjit: path, target },
+        let metadata = match get_gcc_build_status(builder, target_pair) {
+            GccBuildStatus::AlreadyBuilt(path) => return GccOutput { libgccjit: path },
             GccBuildStatus::ShouldBuild(m) => m,
         };
 
-        let _guard = builder.msg_unstaged(Kind::Build, "GCC", target);
+        let action = Kind::Build.description();
+        let msg = format!("{action} GCC for {target_pair}");
+        let _guard = builder.group(&msg);
         t!(metadata.stamp.remove());
         let _time = helpers::timeit(builder);
 
         let libgccjit_path = libgccjit_built_path(&metadata.install_dir);
         if builder.config.dry_run() {
-            return GccOutput { libgccjit: libgccjit_path, target };
+            return GccOutput { libgccjit: libgccjit_path };
         }
 
-        build_gcc(&metadata, builder, target);
+        build_gcc(&metadata, builder, target_pair);
 
         t!(metadata.stamp.write());
 
-        GccOutput { libgccjit: libgccjit_path, target }
+        GccOutput { libgccjit: libgccjit_path }
     }
 }
 
@@ -111,15 +136,27 @@ pub enum GccBuildStatus {
 /// are available for the given target.
 /// Returns a path to the libgccjit.so file.
 #[cfg(not(test))]
-fn try_download_gcc(builder: &Builder<'_>, target: TargetSelection) -> Option<PathBuf> {
+fn try_download_gcc(builder: &Builder<'_>, target_pair: GccTargetPair) -> Option<PathBuf> {
     use build_helper::git::PathFreshness;
 
     // Try to download GCC from CI if configured and available
     if !matches!(builder.config.gcc_ci_mode, crate::core::config::GccCiMode::DownloadFromCi) {
         return None;
     }
-    if target != "x86_64-unknown-linux-gnu" {
-        eprintln!("GCC CI download is only available for the `x86_64-unknown-linux-gnu` target");
+
+    // We currently do not support downloading CI GCC if the host/target pair doesn't match.
+    if target_pair.host != target_pair.target {
+        eprintln!(
+            "GCC CI download is not available when the host ({}) does not equal the compilation target ({}).",
+            target_pair.host, target_pair.target
+        );
+        return None;
+    }
+
+    if target_pair.host != "x86_64-unknown-linux-gnu" {
+        eprintln!(
+            "GCC CI download is only available for the `x86_64-unknown-linux-gnu` host/target"
+        );
         return None;
     }
     let source = detect_gcc_freshness(
@@ -132,7 +169,7 @@ fn try_download_gcc(builder: &Builder<'_>, target: TargetSelection) -> Option<Pa
     match source {
         PathFreshness::LastModifiedUpstream { upstream } => {
             // Download from upstream CI
-            let root = ci_gcc_root(&builder.config, target);
+            let root = ci_gcc_root(&builder.config, target_pair.target);
             let gcc_stamp = BuildStamp::new(&root).with_prefix("gcc").add_stamp(&upstream);
             if !gcc_stamp.is_up_to_date() && !builder.config.dry_run() {
                 builder.config.download_ci_gcc(&upstream, &root);
@@ -158,7 +195,7 @@ fn try_download_gcc(builder: &Builder<'_>, target: TargetSelection) -> Option<Pa
 }
 
 #[cfg(test)]
-fn try_download_gcc(_builder: &Builder<'_>, _target: TargetSelection) -> Option<PathBuf> {
+fn try_download_gcc(_builder: &Builder<'_>, _target_pair: GccTargetPair) -> Option<PathBuf> {
     None
 }
 
@@ -167,11 +204,37 @@ fn try_download_gcc(_builder: &Builder<'_>, _target: TargetSelection) -> Option<
 ///
 /// It's used to avoid busting caches during x.py check -- if we've already built
 /// GCC, it's fine for us to not try to avoid doing so.
-pub fn get_gcc_build_status(builder: &Builder<'_>, target: TargetSelection) -> GccBuildStatus {
-    if let Some(path) = try_download_gcc(builder, target) {
+pub fn get_gcc_build_status(builder: &Builder<'_>, target_pair: GccTargetPair) -> GccBuildStatus {
+    // Prefer taking externally provided prebuilt libgccjit dylib
+    if let Some(dir) = &builder.config.libgccjit_libs_dir {
+        // The dir structure should be <root>/<host>/<target>/libgccjit.so
+        let host_dir = dir.join(target_pair.host);
+        let path = host_dir.join(target_pair.target).join("libgccjit.so");
+        if path.exists() {
+            return GccBuildStatus::AlreadyBuilt(path);
+        } else {
+            builder.info(&format!(
+                "libgccjit.so for `{target_pair}` was not found at `{}`",
+                path.display()
+            ));
+
+            if target_pair.host != target_pair.target || target_pair.host != builder.host_target {
+                eprintln!(
+                    "info: libgccjit.so for `{target_pair}` was not found at `{}`",
+                    path.display()
+                );
+                eprintln!("error: we do not support downloading or building a GCC cross-compiler");
+                std::process::exit(1);
+            }
+        }
+    }
+
+    // If not available, try to download from CI
+    if let Some(path) = try_download_gcc(builder, target_pair) {
         return GccBuildStatus::AlreadyBuilt(path);
     }
 
+    // If not available, try to build (or use already built libgccjit from disk)
     static STAMP_HASH_MEMO: OnceLock<String> = OnceLock::new();
     let smart_stamp_hash = STAMP_HASH_MEMO.get_or_init(|| {
         generate_smart_stamp_hash(
@@ -185,8 +248,8 @@ pub fn get_gcc_build_status(builder: &Builder<'_>, target: TargetSelection) -> G
     builder.config.update_submodule("src/gcc");
 
     let root = builder.src.join("src/gcc");
-    let out_dir = builder.gcc_out(target).join("build");
-    let install_dir = builder.gcc_out(target).join("install");
+    let out_dir = gcc_out(builder, target_pair).join("build");
+    let install_dir = gcc_out(builder, target_pair).join("install");
 
     let stamp = BuildStamp::new(&out_dir).with_prefix("gcc").add_stamp(smart_stamp_hash);
 
@@ -215,15 +278,20 @@ pub fn get_gcc_build_status(builder: &Builder<'_>, target: TargetSelection) -> G
     GccBuildStatus::ShouldBuild(Meta { stamp, out_dir, install_dir, root })
 }
 
+fn gcc_out(builder: &Builder<'_>, pair: GccTargetPair) -> PathBuf {
+    builder.out.join(pair.host).join("gcc").join(pair.target)
+}
+
 /// Returns the path to a libgccjit.so file in the install directory of GCC.
 fn libgccjit_built_path(install_dir: &Path) -> PathBuf {
     install_dir.join("lib/libgccjit.so")
 }
 
-fn build_gcc(metadata: &Meta, builder: &Builder<'_>, target: TargetSelection) {
-    if builder.build.cc_tool(target).is_like_clang()
-        || builder.build.cxx_tool(target).is_like_clang()
-    {
+fn build_gcc(metadata: &Meta, builder: &Builder<'_>, target_pair: GccTargetPair) {
+    // Target on which libgccjit.so will be executed. Here we will generate a dylib with
+    // instructions for that target.
+    let host = target_pair.host;
+    if builder.build.cc_tool(host).is_like_clang() || builder.build.cxx_tool(host).is_like_clang() {
         panic!(
             "Attempting to build GCC using Clang, which is known to misbehave. Please use GCC as the host C/C++ compiler. "
         );
@@ -241,7 +309,7 @@ fn build_gcc(metadata: &Meta, builder: &Builder<'_>, target: TargetSelection) {
     // builds.
     // Therefore, we first copy the whole source directory to the build directory, and perform the
     // build from there.
-    let src_dir = builder.gcc_out(target).join("src");
+    let src_dir = gcc_out(builder, target_pair).join("src");
     if src_dir.exists() {
         builder.remove_dir(&src_dir);
     }
@@ -259,7 +327,7 @@ fn build_gcc(metadata: &Meta, builder: &Builder<'_>, target: TargetSelection) {
         .arg("--disable-multilib")
         .arg(format!("--prefix={}", install_dir.display()));
 
-    let cc = builder.build.cc(target).display().to_string();
+    let cc = builder.build.cc(host).display().to_string();
     let cc = builder
         .build
         .config
@@ -268,7 +336,7 @@ fn build_gcc(metadata: &Meta, builder: &Builder<'_>, target: TargetSelection) {
         .map_or_else(|| cc.clone(), |ccache| format!("{ccache} {cc}"));
     configure_cmd.env("CC", cc);
 
-    if let Ok(ref cxx) = builder.build.cxx(target) {
+    if let Ok(ref cxx) = builder.build.cxx(host) {
         let cxx = cxx.display().to_string();
         let cxx = builder
             .build

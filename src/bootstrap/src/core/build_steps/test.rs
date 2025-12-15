@@ -16,7 +16,7 @@ use build_helper::exit;
 
 use crate::core::build_steps::compile::{Std, run_cargo};
 use crate::core::build_steps::doc::{DocumentationFormat, prepare_doc_compiler};
-use crate::core::build_steps::gcc::{Gcc, add_cg_gcc_cargo_flags};
+use crate::core::build_steps::gcc::{Gcc, GccTargetPair, add_cg_gcc_cargo_flags};
 use crate::core::build_steps::llvm::get_llvm_version;
 use crate::core::build_steps::run::{get_completion_paths, get_help_path};
 use crate::core::build_steps::synthetic_targets::MirOptPanicAbortSyntheticTarget;
@@ -3960,7 +3960,7 @@ impl Step for CodegenGCC {
         let compilers = self.compilers;
         let target = self.target;
 
-        let gcc = builder.ensure(Gcc { target });
+        let gcc = builder.ensure(Gcc { target_pair: GccTargetPair::for_native_build(target) });
 
         builder.ensure(
             compile::Std::new(compilers.build_compiler(), target)
@@ -4001,12 +4001,13 @@ impl Step for CodegenGCC {
             .arg("--use-backend")
             .arg("gcc")
             .arg("--gcc-path")
-            .arg(gcc.libgccjit.parent().unwrap())
+            .arg(gcc.libgccjit().parent().unwrap())
             .arg("--out-dir")
             .arg(builder.stage_out(compilers.build_compiler(), Mode::Codegen).join("cg_gcc"))
             .arg("--release")
             .arg("--mini-tests")
             .arg("--std-tests");
+
         cargo.args(builder.config.test_args());
 
         cargo.into_cmd().run(builder);
