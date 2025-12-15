@@ -2,7 +2,7 @@
 #![allow(unused_variables)]
 #![stable(feature = "rust1", since = "1.0.0")]
 
-#[path = "../unix/ffi/os_str.rs"]
+#[path = "../../sys/ffi/bytes.rs"]
 mod os_str;
 
 #[stable(feature = "rust1", since = "1.0.0")]

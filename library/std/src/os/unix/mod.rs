@@ -87,6 +87,7 @@ mod platform {
     pub use crate::os::vxworks::*;
 }
 
+#[path = "../../sys/ffi/bytes.rs"]
 pub mod ffi;
 pub mod fs;
 pub mod io;
