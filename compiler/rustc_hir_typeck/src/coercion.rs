@@ -1287,29 +1287,29 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut coerce = Coerce::new(self, cause.clone(), AllowTwoPhase::No, true);
         coerce.use_lub = true;
 
-        // First try to coerce the new expression to the type of the previous ones,
-        // but only if the new expression has no coercion already applied to it.
-        let mut first_error = None;
-        if !self.typeck_results.borrow().adjustments().contains_key(new.hir_id) {
-            let result = self.commit_if_ok(|_| coerce.coerce(new_ty, prev_ty));
-            match result {
-                Ok(ok) => {
-                    let (adjustments, target) = self.register_infer_ok_obligations(ok);
-                    self.apply_adjustments(new, adjustments);
-                    debug!(
-                        "coercion::try_find_coercion_lub: was able to coerce from new type {:?} to previous type {:?} ({:?})",
-                        new_ty, prev_ty, target
-                    );
-                    return Ok(target);
-                }
-                Err(e) => first_error = Some(e),
+        // This might be okay, but we previously branched on this without any
+        // test, so I'm just keeping the assert to avoid surprising behavior.
+        assert!(!self.typeck_results.borrow().adjustments().contains_key(new.hir_id));
+
+        // First try to coerce the new expression to the type of the previous ones.
+        let result = self.commit_if_ok(|_| coerce.coerce(new_ty, prev_ty));
+        let first_error = match result {
+            Ok(ok) => {
+                let (adjustments, target) = self.register_infer_ok_obligations(ok);
+                self.apply_adjustments(new, adjustments);
+                debug!(
+                    "coercion::try_find_coercion_lub: was able to coerce from new type {:?} to previous type {:?} ({:?})",
+                    new_ty, prev_ty, target
+                );
+                return Ok(target);
             }
-        }
+            Err(e) => e,
+        };
 
         let ok = self
             .commit_if_ok(|_| coerce.coerce(prev_ty, new_ty))
             // Avoid giving strange errors on failed attempts.
-            .map_err(|e| first_error.unwrap_or(e))?;
+            .map_err(|_| first_error)?;
 
         let (adjustments, target) = self.register_infer_ok_obligations(ok);
         for expr in exprs {
