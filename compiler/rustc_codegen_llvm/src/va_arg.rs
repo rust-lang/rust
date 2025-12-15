@@ -780,7 +780,7 @@ fn x86_64_sysv64_va_arg_from_memory<'ll, 'tcx>(
     mem_addr
 }
 
-fn emit_hexagon_va_arg<'ll, 'tcx>(
+fn emit_hexagon_va_arg_musl<'ll, 'tcx>(
     bx: &mut Builder<'_, 'll, 'tcx>,
     list: OperandRef<'tcx, &'ll Value>,
     target_ty: Ty<'tcx>,
@@ -863,6 +863,57 @@ fn emit_hexagon_va_arg<'ll, 'tcx>(
     let value_addr =
         bx.phi(bx.type_ptr(), &[reg_value_addr, overflow_value_addr], &[maybe_reg, from_overflow]);
     bx.load(layout.llvm_type(bx), value_addr, layout.align.abi)
+}
+
+fn emit_hexagon_va_arg_bare_metal<'ll, 'tcx>(
+    bx: &mut Builder<'_, 'll, 'tcx>,
+    list: OperandRef<'tcx, &'ll Value>,
+    target_ty: Ty<'tcx>,
+) -> &'ll Value {
+    // Implementation of va_arg for Hexagon bare-metal (non-musl) targets.
+    // Based on LLVM's EmitVAArgForHexagon implementation.
+    //
+    // va_list is a simple pointer (char *)
+    let va_list_addr = list.immediate();
+    let layout = bx.cx.layout_of(target_ty);
+    let ptr_align_abi = bx.tcx().data_layout.pointer_align().abi;
+
+    // Load current pointer from va_list
+    let current_ptr = bx.load(bx.type_ptr(), va_list_addr, ptr_align_abi);
+
+    // Handle address alignment for types with alignment > 4 bytes
+    let ty_align = layout.align.abi;
+    let aligned_ptr = if ty_align.bytes() > 4 {
+        // Ensure alignment is a power of 2
+        debug_assert!(ty_align.bytes().is_power_of_two(), "Alignment is not power of 2!");
+        round_pointer_up_to_alignment(bx, current_ptr, ty_align, bx.type_ptr())
+    } else {
+        current_ptr
+    };
+
+    // Calculate offset: round up type size to 4-byte boundary (minimum stack slot size)
+    let type_size = layout.size.bytes();
+    let offset = ((type_size + 3) / 4) * 4; // align to 4 bytes
+
+    // Update va_list to point to next argument
+    let next_ptr = bx.inbounds_ptradd(aligned_ptr, bx.const_usize(offset));
+    bx.store(next_ptr, va_list_addr, ptr_align_abi);
+
+    // Load and return the argument value
+    bx.load(layout.llvm_type(bx), aligned_ptr, layout.align.abi)
+}
+
+fn emit_hexagon_va_arg<'ll, 'tcx>(
+    bx: &mut Builder<'_, 'll, 'tcx>,
+    list: OperandRef<'tcx, &'ll Value>,
+    target_ty: Ty<'tcx>,
+    is_musl: bool,
+) -> &'ll Value {
+    if is_musl {
+        emit_hexagon_va_arg_musl(bx, list, target_ty)
+    } else {
+        emit_hexagon_va_arg_bare_metal(bx, list, target_ty)
+    }
 }
 
 fn emit_xtensa_va_arg<'ll, 'tcx>(
@@ -1049,7 +1100,7 @@ pub(super) fn emit_va_arg<'ll, 'tcx>(
         // This includes `target.is_like_darwin`, which on x86_64 targets is like sysv64.
         Arch::X86_64 => emit_x86_64_sysv64_va_arg(bx, addr, target_ty),
         Arch::Xtensa => emit_xtensa_va_arg(bx, addr, target_ty),
-        Arch::Hexagon if target.env == Env::Musl => emit_hexagon_va_arg(bx, addr, target_ty),
+        Arch::Hexagon => emit_hexagon_va_arg(bx, addr, target_ty, target.env == Env::Musl),
         // For all other architecture/OS combinations fall back to using
         // the LLVM va_arg instruction.
         // https://llvm.org/docs/LangRef.html#va-arg-instruction
