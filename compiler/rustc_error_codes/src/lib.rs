@@ -543,6 +543,7 @@ macro_rules! error_codes {
 0803,
 0804,
 0805,
+0806,
         );
     )
 }

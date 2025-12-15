@@ -12,8 +12,10 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
-use mdbook::book::{BookItem, Chapter, parse_summary};
-use mdbook::{Config, MDBook};
+use mdbook_driver::MDBook;
+use mdbook_driver::book::{BookItem, Chapter};
+use mdbook_driver::config::Config;
+use mdbook_summary::parse_summary;
 use rustc_errors::codes::DIAGNOSTICS;
 
 enum OutputFormat {
@@ -121,7 +123,7 @@ This page lists all the error codes emitted by the Rust compiler.
         source_path: None,
         parent_names: Vec::new(),
     };
-    book.book.sections.push(BookItem::Chapter(chapter));
+    book.book.items.push(BookItem::Chapter(chapter));
     book.build()?;
 
     // The error-index used to be generated manually (without mdbook), and the
