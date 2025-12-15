@@ -739,7 +739,10 @@ pub fn register_lint_passes(store: &mut rustc_lint::LintStore, conf: &'static Co
         Box::new(move |_| Box::new(cargo::Cargo::new(conf))),
         Box::new(|_| Box::new(empty_with_brackets::EmptyWithBrackets::default())),
         Box::new(|_| Box::new(unnecessary_owned_empty_strings::UnnecessaryOwnedEmptyStrings)),
-        Box::new(|_| Box::new(format_push_string::FormatPushString)),
+        {
+            let format_args = format_args_storage.clone();
+            Box::new(move |_| Box::new(format_push_string::FormatPushString::new(format_args.clone())))
+        },
         Box::new(move |_| Box::new(large_include_file::LargeIncludeFile::new(conf))),
         Box::new(|_| Box::new(strings::TrimSplitWhitespace)),
         Box::new(|_| Box::new(rc_clone_in_vec_init::RcCloneInVecInit)),
