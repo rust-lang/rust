@@ -325,12 +325,12 @@ impl StaticIndex<'_> {
             };
             let mut visited_files = FxHashSet::default();
             for module in work {
-                let file_id = module.definition_source_file_id(db).original_file(db);
+                let file_id =
+                    module.definition_source_file_id(db).original_file(db).file_id(&analysis.db);
                 if visited_files.contains(&file_id) {
                     continue;
                 }
-                this.add_file(file_id.file_id(&analysis.db));
-                // mark the file
+                this.add_file(file_id);
                 visited_files.insert(file_id);
             }
             this
