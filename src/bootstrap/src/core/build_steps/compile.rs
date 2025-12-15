@@ -1428,10 +1428,7 @@ fn rustc_llvm_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetSelect
         cargo.env("LLVM_ENZYME", "1");
     }
     let llvm::LlvmResult { host_llvm_config, .. } = builder.ensure(llvm::Llvm { target });
-    if builder.config.llvm_offload
-        && !builder.config.llvm_profile_generate
-        && builder.config.llvm_profile_use.is_none()
-    {
+    if builder.config.llvm_offload {
         builder.ensure(llvm::OmpOffload { target });
         cargo.env("LLVM_OFFLOAD", "1");
     }
@@ -2298,11 +2295,7 @@ impl Step for Assemble {
             }
         }
 
-        if builder.config.llvm_offload
-            && !builder.config.dry_run()
-            && !builder.config.llvm_profile_generate
-            && builder.config.llvm_profile_use.is_none()
-        {
+        if builder.config.llvm_offload && !builder.config.dry_run() {
             debug!("`llvm_offload` requested");
             let offload_install = builder.ensure(llvm::OmpOffload { target: build_compiler.host });
             if let Some(_llvm_config) = builder.llvm_config(builder.config.host_target) {

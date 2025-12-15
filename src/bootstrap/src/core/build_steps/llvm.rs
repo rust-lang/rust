@@ -935,9 +935,10 @@ impl Step for OmpOffload {
         if builder.config.dry_run() {
             return builder.config.tempdir().join("llvm-offload-dry-run");
         }
+
         let target = self.target;
 
-        let LlvmResult { host_llvm_config, .. } = builder.ensure(Llvm { target: self.target });
+        let LlvmResult { host_llvm_config, .. } = builder.ensure(Llvm { target });
 
         // Running cmake twice in the same folder is known to cause issues, like deleting existing
         // binaries. We therefore write our offload artifacts into it's own subfolder. We use a
@@ -946,6 +947,14 @@ impl Step for OmpOffload {
         let out_dir = builder.llvm_out(target).join("offload-outdir");
         if std::fs::exists(&out_dir).is_ok_and(|x| !x) {
             std::fs::DirBuilder::new().create(&out_dir).unwrap();
+        }
+
+        if !builder.config.llvm_offload
+            || builder.config.dry_run()
+            || builder.config.llvm_profile_generate
+            || builder.config.llvm_profile_use.is_some()
+        {
+            return out_dir;
         }
 
         // Offload/OpenMP are just subfolders of LLVM, so we can use the LLVM sha.
