@@ -197,7 +197,6 @@ pub struct ResolverGlobalCtxt {
 #[derive(Debug)]
 pub struct ResolverAstLowering {
     pub legacy_const_generic_args: FxHashMap<DefId, Option<Vec<usize>>>,
-
     /// Resolutions for nodes that have a single resolution.
     pub partial_res_map: NodeMap<hir::def::PartialRes>,
     /// Resolutions for import nodes, which have multiple resolutions in different namespaces.

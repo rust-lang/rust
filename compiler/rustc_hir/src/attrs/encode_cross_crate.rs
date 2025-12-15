@@ -92,6 +92,7 @@ impl AttributeKind {
             RustcCoherenceIsCore(..) => No,
             RustcLayoutScalarValidRangeEnd(..) => Yes,
             RustcLayoutScalarValidRangeStart(..) => Yes,
+            RustcLegacyConstGenerics { .. } => Yes,
             RustcMain => No,
             RustcObjectLifetimeDefault => No,
             RustcPassIndirectlyInNonRusticAbis(..) => No,
