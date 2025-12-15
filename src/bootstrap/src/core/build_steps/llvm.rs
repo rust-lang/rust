@@ -1018,6 +1018,8 @@ impl Step for OmpOffload {
             .define("OPENMP_STANDALONE_BUILD", "ON")
             .define("LLVM_ROOT", builder.llvm_out(target).join("build"))
             .define("LLVM_DIR", builder.llvm_out(target).join("lib").join("cmake").join("llvm"));
+
+        cfg.define("LLVM_USE_LINKER", "lld");
         if let Some(p) = clang_dir {
             cfg.define("Clang_DIR", p);
         }
