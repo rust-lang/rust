@@ -2,7 +2,7 @@ error: the evaluated program deadlocked
   --> RUSTLIB/std/src/sys/thread/PLATFORM.rs:LL:CC
    |
 LL |         let ret = unsafe { libc::pthread_join(id, ptr::null_mut()) };
-   |                                                                  ^ this thread got stuck here
+   |                                                                  ^ thread `main` got stuck here
    |
    = note: BACKTRACE:
    = note: inside `std::sys::thread::PLATFORM::Thread::join` at RUSTLIB/std/src/sys/thread/PLATFORM.rs:LL:CC
@@ -18,7 +18,7 @@ error: the evaluated program deadlocked
   --> tests/fail-dep/libc/socketpair_block_write_twice.rs:LL:CC
    |
 LL |         let res = unsafe { libc::write(fds[0], data.as_ptr() as *const libc::c_void, data.len()) };
-   |                                                                                                ^ this thread got stuck here
+   |                                                                                                ^ thread `unnamed-ID` got stuck here
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

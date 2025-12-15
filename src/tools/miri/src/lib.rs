@@ -46,7 +46,12 @@
     rustc::potential_query_instability,
     rustc::untranslatable_diagnostic,
 )]
-#![warn(rust_2018_idioms, unqualified_local_imports, clippy::as_conversions)]
+#![warn(
+    rust_2018_idioms,
+    unqualified_local_imports,
+    clippy::as_conversions,
+    clippy::manual_let_else
+)]
 // Needed for rustdoc from bootstrap (with `-Znormalize-docs`).
 #![recursion_limit = "256"]
 

@@ -834,7 +834,7 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
             // sleep until the first callback.
             interp_ok(SchedulingAction::Sleep(sleep_time))
         } else {
-            throw_machine_stop!(TerminationInfo::Deadlock);
+            throw_machine_stop!(TerminationInfo::GlobalDeadlock);
         }
     }
 }

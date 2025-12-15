@@ -1,7 +1,6 @@
 #![allow(unsafe_op_in_unsafe_fn)]
 
 pub mod os;
-pub mod pipe;
 pub mod time;
 
 pub use moto_rt::futex;
