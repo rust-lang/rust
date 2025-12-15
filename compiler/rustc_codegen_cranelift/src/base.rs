@@ -167,7 +167,7 @@ pub(crate) fn compile_fn(
     context.clear();
     context.func = codegened_func.func;
 
-    #[cfg(any())] // This is never true
+    #[cfg(false)]
     let _clif_guard = {
         use std::fmt::Write;
 
@@ -689,7 +689,7 @@ fn codegen_stmt<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, cur_block: Block, stmt:
                     lval.write_cvalue(fx, res);
                 }
                 Rvalue::Cast(
-                    CastKind::PointerCoercion(PointerCoercion::ReifyFnPointer, _),
+                    CastKind::PointerCoercion(PointerCoercion::ReifyFnPointer(_), _),
                     ref operand,
                     to_ty,
                 ) => {

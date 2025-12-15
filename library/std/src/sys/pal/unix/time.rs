@@ -1,5 +1,6 @@
 use core::num::niche_types::Nanoseconds;
 
+use crate::sys_common::AsInner;
 use crate::time::Duration;
 use crate::{fmt, io};
 
@@ -29,6 +30,10 @@ pub(crate) struct Timespec {
 }
 
 impl SystemTime {
+    pub const MAX: SystemTime = SystemTime { t: Timespec::MAX };
+
+    pub const MIN: SystemTime = SystemTime { t: Timespec::MIN };
+
     #[cfg_attr(any(target_os = "horizon", target_os = "hurd"), allow(unused))]
     pub fn new(tv_sec: i64, tv_nsec: i64) -> Result<SystemTime, io::Error> {
         Ok(SystemTime { t: Timespec::new(tv_sec, tv_nsec)? })
@@ -61,6 +66,13 @@ impl fmt::Debug for SystemTime {
 }
 
 impl Timespec {
+    const MAX: Timespec = unsafe { Self::new_unchecked(i64::MAX, 1_000_000_000 - 1) };
+
+    // As described below, on Apple OS, dates before epoch are represented differently.
+    // This is not an issue here however, because we are using tv_sec = i64::MIN,
+    // which will cause the compatibility wrapper to not be executed at all.
+    const MIN: Timespec = unsafe { Self::new_unchecked(i64::MIN, 0) };
+
     const unsafe fn new_unchecked(tv_sec: i64, tv_nsec: i64) -> Timespec {
         Timespec { tv_sec, tv_nsec: unsafe { Nanoseconds::new_unchecked(tv_nsec as u32) } }
     }
@@ -295,6 +307,12 @@ impl Instant {
     )]
     pub(crate) fn into_timespec(self) -> Timespec {
         self.t
+    }
+}
+
+impl AsInner<Timespec> for Instant {
+    fn as_inner(&self) -> &Timespec {
+        &self.t
     }
 }
 

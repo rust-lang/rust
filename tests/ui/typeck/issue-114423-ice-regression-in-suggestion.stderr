@@ -14,7 +14,13 @@ error[E0425]: cannot find value `g` in this scope
   --> $DIR/issue-114423-ice-regression-in-suggestion.rs:11:22
    |
 LL |     let _ = RGB { r, g, b };
-   |                      ^ help: a local variable with a similar name exists: `b`
+   |                      ^
+   |
+help: a local variable with a similar name exists
+   |
+LL -     let _ = RGB { r, g, b };
+LL +     let _ = RGB { r, b, b };
+   |
 
 error[E0308]: mismatched types
   --> $DIR/issue-114423-ice-regression-in-suggestion.rs:7:50

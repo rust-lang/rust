@@ -154,6 +154,10 @@ Options:
                         Comma separated list of types of output for rustdoc to
                         emit
         --no-run        Compile doctests without running them
+        --merge-doctests yes|no|auto
+                        Force all doctests to be compiled as a single binary,
+                        instead of one binary per test. If merging fails,
+                        rustdoc will emit a hard error.
         --remap-path-prefix FROM=TO
                         Remap source names in compiler messages
         --show-type-layout 

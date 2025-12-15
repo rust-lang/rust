@@ -39,6 +39,7 @@
     clippy::needless_question_mark,
     clippy::needless_lifetimes,
     clippy::too_long_first_doc_paragraph,
+    clippy::len_zero,
     // We don't use translatable diagnostics
     rustc::diagnostic_outside_of_impl,
     // We are not implementing queries here so it's fine
@@ -57,7 +58,6 @@ extern crate rustc_codegen_ssa;
 extern crate rustc_const_eval;
 extern crate rustc_data_structures;
 extern crate rustc_errors;
-extern crate rustc_hash;
 extern crate rustc_hir;
 extern crate rustc_index;
 extern crate rustc_log;

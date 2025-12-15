@@ -38,6 +38,7 @@ mod define_opaque;
 mod derive;
 mod deriving;
 mod edition_panic;
+mod eii;
 mod env;
 mod errors;
 mod format;
@@ -117,9 +118,13 @@ pub fn register_builtin_macros(resolver: &mut dyn ResolverExpand) {
         define_opaque: define_opaque::expand,
         derive: derive::Expander { is_const: false },
         derive_const: derive::Expander { is_const: true },
+        eii: eii::eii,
+        eii_extern_target: eii::eii_extern_target,
+        eii_shared_macro: eii::eii_shared_macro,
         global_allocator: global_allocator::expand,
         test: test::expand_test,
         test_case: test::expand_test_case,
+        unsafe_eii: eii::unsafe_eii,
         // tidy-alphabetical-end
     }
 

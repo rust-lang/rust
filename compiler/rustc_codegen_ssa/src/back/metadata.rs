@@ -86,8 +86,7 @@ impl MetadataLoader for DefaultMetadataLoader {
                     format!("failed to parse aix dylib '{}': {}", path.display(), e)
                 })?;
 
-                // FIXME: rewrite in terms of `#![feature(exact_length_collection)]`. See: #149266
-                match Itertools::exactly_one(archive.members()) {
+                match archive.members().exactly_one() {
                     Ok(lib) => {
                         let lib = lib.map_err(|e| {
                             format!("failed to parse aix dylib '{}': {}", path.display(), e)

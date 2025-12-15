@@ -53,13 +53,9 @@ cfg_select! {
         mod vexos;
         pub use self::vexos::*;
     }
-    all(target_os = "wasi", any(target_env = "p2", target_env = "p3")) => {
-        mod wasip2;
-        pub use self::wasip2::*;
-    }
-    all(target_os = "wasi", target_env = "p1") => {
-        mod wasip1;
-        pub use self::wasip1::*;
+    target_os = "wasi" => {
+        mod wasi;
+        pub use self::wasi::*;
     }
     target_family = "wasm" => {
         mod wasm;

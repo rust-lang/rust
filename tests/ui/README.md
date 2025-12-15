@@ -113,12 +113,6 @@ See [Tracking Issue for autodiff #124509](https://github.com/rust-lang/rust/issu
 
 Tests for automatic referencing and dereferencing behavior, such as automatically adding reference operations (`&` or `&mut`) to make a value match a method's receiver type. Sometimes abbreviated as "auto-ref" or "auto-deref".
 
-## `tests/ui/auxiliary/`: Auxiliary files for tests directly under `tests/ui`.
-
-This top-level `auxiliary` subdirectory contains support files for tests immediately under `tests/ui/`.
-
-**FIXME(#133895)**: tests immediately under `tests/ui/` should be rehomed to more suitable subdirectories, after which this subdirectory can be removed.
-
 ## `tests/ui/backtrace/`: Backtraces
 
 Runtime panics and error handling generate backtraces to assist in debugging and diagnostics.
@@ -542,12 +536,6 @@ These tests are about very different topics, only unified by the fact that they 
 
 Accompanies `tests/ui/error-codes/`, exercises the `--explain` cli flag.
 
-## `tests/ui/explicit/`: Errors involving the concept of "explicit"
-
-This category contains three tests: two which are about the specific error `explicit use of destructor method`, and one which is about explicit annotation of lifetimes: https://doc.rust-lang.org/stable/rust-by-example/scope/lifetime/explicit.html.
-
-**FIXME**: Rehome the two tests about the destructor method with `drop`-related categories, and rehome the last test with a category related to lifetimes.
-
 ## `tests/ui/explicit-tail-calls/`
 
 Exercises `#![feature(explicit_tail_calls)]` and the `become` keyword. See [Explicit Tail Calls #3407](https://github.com/rust-lang/rfcs/pull/3407).
@@ -584,12 +572,6 @@ Exercises the `format!` macro.
 ## `tests/ui/fn/`
 
 A broad category of tests on functions.
-
-## `tests/ui/for/`: `for` keyword
-
-Tests on the `for` keyword and some of its associated errors, such as attempting to write the faulty pattern `for _ in 0..1 {} else {}`.
-
-**FIXME**: Should be merged with `ui/for-loop-while`.
 
 ## `tests/ui/force-inlining/`: `#[rustc_force_inline]`
 
@@ -733,10 +715,6 @@ See [Instrument coverage | The rustc book](https://doc.rust-lang.org/rustc/instr
 
 See [Tracking issue for `-Z instrument-xray` #102921](https://github.com/rust-lang/rust/issues/102921).
 
-## `tests/ui/interior-mutability/`
-
-**FIXME**: contains a single test, probably better rehomed.
-
 ## `tests/ui/internal/`
 
 Tests for `internal_unstable` and the attribute header `#![feature(allow_internal_unstable)]`, which lets compiler developers mark features as internal to the compiler, and unstable for standard library use.
@@ -758,16 +736,6 @@ Various tests related to rejecting invalid inputs.
 ## `tests/ui/invalid-compile-flags/`
 
 Tests for checking that invalid usage of compiler flags are rejected.
-
-## `tests/ui/invalid-module-declaration/`
-
-**FIXME**: Consider merging into module/resolve directories.
-
-## `tests/ui/invalid-self-argument/`: `self` as a function argument incorrectly
-
-Tests with erroneous ways of using `self`, such as having it not be the first argument, or using it in a non-associated function (no `impl` or `trait`).
-
-**FIXME**: Maybe merge with `ui/self`.
 
 ## `tests/ui/io-checks/`
 
@@ -966,6 +934,8 @@ Contains a single test. It imports a massive amount of very similar types from a
 **FIXME**: Move under either `tests/ui/modules/` or `tests/ui/resolve/`.
 
 ## `tests/ui/never_type/`
+
+Tests relating to the never type. Most tests are specifically about the never type fallback behavior.
 
 See [Tracking issue for promoting `!` to a type (RFC 1216) #35121](https://github.com/rust-lang/rust/issues/35121).
 
@@ -1544,10 +1514,6 @@ Tests on `enum` variants.
 ## `tests/ui/version/`
 
 **FIXME**: Contains a single test described as "Check that rustc accepts various version info flags.", should be rehomed.
-
-## `tests/ui/warnings/`
-
-**FIXME**: Contains a single test on non-explicit paths (`::one()`). Should be rehomed probably to `tests/ui/resolve/`.
 
 ## `tests/ui/wasm/`
 

@@ -181,7 +181,7 @@ impl<'tcx> pprust_hir::PpAnn for HirTypedAnn<'tcx> {
 }
 
 fn get_source(sess: &Session) -> (String, FileName) {
-    let src_name = sess.io.input.source_name();
+    let src_name = sess.io.input.file_name(&sess);
     let src = String::clone(
         sess.source_map()
             .get_source_file(&src_name)

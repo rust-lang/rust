@@ -2511,7 +2511,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 applicability = Applicability::HasPlaceholders;
                 "(...)".to_owned()
             };
-            err.span_suggestion(
+            err.span_suggestion_verbose(
                 sugg_span,
                 "use associated function syntax instead",
                 format!("{ty_str}::{item_name}{args}"),
@@ -3041,14 +3041,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             tcx.def_span(pick.item.def_id),
                             format!("the method `{item_name}` exists on the type `{self_ty}`"),
                         );
-                        let (article, kind, variant, question) =
-                            if tcx.is_diagnostic_item(sym::Result, kind.did()) {
-                                ("a", "Result", "Err", ret_ty_matches(sym::Result))
-                            } else if tcx.is_diagnostic_item(sym::Option, kind.did()) {
-                                ("an", "Option", "None", ret_ty_matches(sym::Option))
-                            } else {
-                                return;
-                            };
+                        let (article, kind, variant, question) = if tcx.is_diagnostic_item(sym::Result, kind.did())
+                            // Do not suggest `.expect()` in const context where it's not available. rust-lang/rust#149316
+                            && !tcx.hir_is_inside_const_context(expr.hir_id)
+                        {
+                            ("a", "Result", "Err", ret_ty_matches(sym::Result))
+                        } else if tcx.is_diagnostic_item(sym::Option, kind.did()) {
+                            ("an", "Option", "None", ret_ty_matches(sym::Option))
+                        } else {
+                            return;
+                        };
                         if question {
                             err.span_suggestion_verbose(
                                 expr.span.shrink_to_hi(),
@@ -3541,10 +3543,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         span: Span,
         return_type: Option<Ty<'tcx>>,
     ) {
-        let output_ty = match self.err_ctxt().get_impl_future_output_ty(ty) {
-            Some(output_ty) => self.resolve_vars_if_possible(output_ty),
-            _ => return,
-        };
+        let Some(output_ty) = self.err_ctxt().get_impl_future_output_ty(ty) else { return };
+        let output_ty = self.resolve_vars_if_possible(output_ty);
         let method_exists =
             self.method_exists_for_diagnostic(item_name, output_ty, call.hir_id, return_type);
         debug!("suggest_await_before_method: is_method_exist={}", method_exists);

@@ -2,7 +2,13 @@ error[E0425]: cannot find value `fina` in this scope
   --> $DIR/suggestion-raw-68962.rs:7:5
    |
 LL |     fina;
-   |     ^^^^ help: a local variable with a similar name exists: `r#final`
+   |     ^^^^
+   |
+help: a local variable with a similar name exists
+   |
+LL -     fina;
+LL +     r#final;
+   |
 
 error[E0425]: cannot find function `f` in this scope
   --> $DIR/suggestion-raw-68962.rs:10:5
@@ -11,7 +17,13 @@ LL | fn r#fn() {}
    | --------- similarly named function `r#fn` defined here
 ...
 LL |     f();
-   |     ^ help: a function with a similar name exists: `r#fn`
+   |     ^
+   |
+help: a function with a similar name exists
+   |
+LL -     f();
+LL +     r#fn();
+   |
 
 error: aborting due to 2 previous errors
 

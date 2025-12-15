@@ -1,4 +1,4 @@
-use rustc_ast::{self as ast, AsmMacro};
+use rustc_ast::{self as ast, AsmMacro, MgcaDisambiguation};
 use rustc_span::{Span, Symbol, kw};
 
 use super::{ExpKeywordPair, ForceCollect, IdentIsRaw, Trailing, UsePreAttrPos};
@@ -149,7 +149,7 @@ fn parse_asm_operand<'a>(
         let block = p.parse_block()?;
         ast::InlineAsmOperand::Label { block }
     } else if p.eat_keyword(exp!(Const)) {
-        let anon_const = p.parse_expr_anon_const()?;
+        let anon_const = p.parse_expr_anon_const(|_, _| MgcaDisambiguation::AnonConst)?;
         ast::InlineAsmOperand::Const { anon_const }
     } else if p.eat_keyword(exp!(Sym)) {
         let expr = p.parse_expr()?;

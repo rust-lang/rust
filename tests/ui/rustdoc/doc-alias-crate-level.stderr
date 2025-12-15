@@ -5,10 +5,10 @@ LL | #[doc(alias = "shouldn't work!")]
    |               ^^^^^^^^^^^^^^^^^
 
 error: `#![doc(alias = "...")]` isn't allowed as a crate-level attribute
-  --> $DIR/doc-alias-crate-level.rs:5:8
+  --> $DIR/doc-alias-crate-level.rs:5:16
    |
 LL | #![doc(alias = "not working!")]
-   |        ^^^^^^^^^^^^^^^^^^^^^^
+   |                ^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

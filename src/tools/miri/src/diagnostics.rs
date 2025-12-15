@@ -3,8 +3,8 @@ use std::num::NonZero;
 use std::sync::Mutex;
 
 use rustc_abi::{Align, Size};
+use rustc_data_structures::fx::{FxBuildHasher, FxHashSet};
 use rustc_errors::{Diag, DiagMessage, Level};
-use rustc_hash::FxHashSet;
 use rustc_span::{DUMMY_SP, Span, SpanData, Symbol};
 
 use crate::borrow_tracker::stacked_borrows::diagnostics::TagHistory;
@@ -444,7 +444,11 @@ pub fn report_result<'tcx>(
     write!(primary_msg, "{}", format_interp_error(ecx.tcx.dcx(), res)).unwrap();
 
     if labels.is_empty() {
-        labels.push(format!("{} occurred here", title.unwrap_or("error")));
+        labels.push(format!(
+            "{} occurred {}",
+            title.unwrap_or("error"),
+            if stacktrace.is_empty() { "due to this code" } else { "here" }
+        ));
     }
 
     report_msg(
@@ -552,7 +556,14 @@ pub fn report_msg<'tcx>(
     thread: Option<ThreadId>,
     machine: &MiriMachine<'tcx>,
 ) {
-    let span = stacktrace.first().map_or(DUMMY_SP, |fi| fi.span);
+    let span = match stacktrace.first() {
+        Some(fi) => fi.span,
+        None =>
+            match thread {
+                Some(thread_id) => machine.threads.thread_ref(thread_id).origin_span,
+                None => DUMMY_SP,
+            },
+    };
     let sess = machine.tcx.sess;
     let level = match diag_level {
         DiagLevel::Error => Level::Error,
@@ -616,10 +627,16 @@ pub fn report_msg<'tcx>(
                 err.subdiagnostic(frame_info.as_note(machine.tcx));
             } else {
                 let sm = sess.source_map();
-                let span = sm.span_to_embeddable_string(frame_info.span);
+                let span = sm.span_to_diagnostic_string(frame_info.span);
                 err.note(format!("{frame_info} at {span}"));
             }
         }
+    } else if stacktrace.len() == 0 && !span.is_dummy() {
+        err.note(format!(
+            "this {} occurred while pushing a call frame onto an empty stack",
+            level.to_str()
+        ));
+        err.note("the span indicates which code caused the function to be called, but may not be the literal call site");
     }
 
     err.emit();
@@ -882,6 +899,6 @@ pub struct SpanDedupDiagnostic(Mutex<FxHashSet<Span>>);
 
 impl SpanDedupDiagnostic {
     pub const fn new() -> Self {
-        Self(Mutex::new(FxHashSet::with_hasher(rustc_hash::FxBuildHasher)))
+        Self(Mutex::new(FxHashSet::with_hasher(FxBuildHasher)))
     }
 }

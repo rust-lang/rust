@@ -73,9 +73,13 @@ LL |     pub const I: i32 = 1;
    |     --------------------- similarly named constant `I` defined here
 ...
 LL |     v.push(a::b);
-   |            ^^^-
-   |               |
-   |               help: a constant with a similar name exists: `I`
+   |            ^^^^
+   |
+help: a constant with a similar name exists
+   |
+LL -     v.push(a::b);
+LL +     v.push(a::I);
+   |
 
 error[E0423]: expected value, found module `a::b`
   --> $DIR/suggest-path-instead-of-mod-dot-item.rs:52:5
@@ -104,9 +108,13 @@ LL |     pub const I: i32 = 1;
    |     --------------------- similarly named constant `I` defined here
 ...
 LL |     a::b
-   |     ^^^-
-   |        |
-   |        help: a constant with a similar name exists: `I`
+   |     ^^^^
+   |
+help: a constant with a similar name exists
+   |
+LL -     a::b
+LL +     a::I
+   |
 
 error[E0423]: expected function, found module `a::b`
   --> $DIR/suggest-path-instead-of-mod-dot-item.rs:65:5
@@ -115,9 +123,13 @@ LL |     pub const I: i32 = 1;
    |     --------------------- similarly named constant `I` defined here
 ...
 LL |     a::b()
-   |     ^^^-
-   |        |
-   |        help: a constant with a similar name exists: `I`
+   |     ^^^^
+   |
+help: a constant with a similar name exists
+   |
+LL -     a::b()
+LL +     a::I()
+   |
 
 error[E0423]: expected value, found module `a`
   --> $DIR/suggest-path-instead-of-mod-dot-item.rs:72:9

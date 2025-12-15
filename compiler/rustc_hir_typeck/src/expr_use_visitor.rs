@@ -1561,19 +1561,15 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
         base_place: PlaceWithHirId<'tcx>,
     ) -> Result<PlaceWithHirId<'tcx>, Cx::Error> {
         let base_curr_ty = base_place.place.ty();
-        let deref_ty = match self
+        let Some(deref_ty) = self
             .cx
             .structurally_resolve_type(self.cx.tcx().hir_span(base_place.hir_id), base_curr_ty)
             .builtin_deref(true)
-        {
-            Some(ty) => ty,
-            None => {
-                debug!("explicit deref of non-derefable type: {:?}", base_curr_ty);
-                return Err(self.cx.report_bug(
-                    self.cx.tcx().hir_span(node),
-                    "explicit deref of non-derefable type",
-                ));
-            }
+        else {
+            debug!("explicit deref of non-derefable type: {:?}", base_curr_ty);
+            return Err(self
+                .cx
+                .report_bug(self.cx.tcx().hir_span(node), "explicit deref of non-derefable type"));
         };
         let mut projections = base_place.place.projections;
         projections.push(Projection { kind: ProjectionKind::Deref, ty: deref_ty });

@@ -108,6 +108,7 @@ pub enum ConstraintCategory<'tcx> {
     UseAsStatic,
     TypeAnnotation(AnnotationSource),
     Cast {
+        is_raw_ptr_dyn_type_cast: bool,
         /// Whether this cast is a coercion that was automatically inserted by the compiler.
         is_implicit_coercion: bool,
         /// Whether this is an unsizing coercion and if yes, this contains the target type.

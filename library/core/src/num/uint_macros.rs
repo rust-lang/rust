@@ -3481,7 +3481,8 @@ macro_rules! uint_impl {
         }
 
 
-        /// Calculates the least remainder of `self (mod rhs)`.
+        /// Calculates the least remainder of `self` when divided by
+        /// `rhs`.
         ///
         /// Since, for the positive integers, all common
         /// definitions of division are equal, this

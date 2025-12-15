@@ -310,6 +310,10 @@ impl CodegenBackend for LlvmCodegenBackend {
         llvm_util::print_version();
     }
 
+    fn has_zstd(&self) -> bool {
+        llvm::LLVMRustLLVMHasZstdCompression()
+    }
+
     fn target_config(&self, sess: &Session) -> TargetConfig {
         target_config(sess)
     }

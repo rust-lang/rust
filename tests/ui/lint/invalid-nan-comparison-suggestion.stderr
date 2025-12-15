@@ -131,6 +131,9 @@ LL | |         };
 help: use `f32::is_nan()` or `f64::is_nan()` instead
    |
 LL -         b != {
+LL -
+LL -             &f32::NAN
+LL -         };
 LL +         !b.is_nan();
    |
 

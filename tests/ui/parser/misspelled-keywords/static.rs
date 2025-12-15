@@ -1,4 +1,3 @@
-Static a = 0;
-//~^ ERROR expected one of
-
+Static a: u32 = 0;
+//~^ ERROR keyword `static` is written in the wrong case
 fn main() {}

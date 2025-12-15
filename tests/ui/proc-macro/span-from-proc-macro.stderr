@@ -1,4 +1,4 @@
-error[E0412]: cannot find type `MissingType` in this scope
+error[E0425]: cannot find type `MissingType` in this scope
   --> $DIR/auxiliary/span-from-proc-macro.rs:33:20
    |
 LL | pub fn error_from_attribute(_args: TokenStream, _input: TokenStream) -> TokenStream {
@@ -12,7 +12,7 @@ LL |             field: MissingType
 LL | #[error_from_attribute]
    | ----------------------- in this attribute macro expansion
 
-error[E0412]: cannot find type `OtherMissingType` in this scope
+error[E0425]: cannot find type `OtherMissingType` in this scope
   --> $DIR/auxiliary/span-from-proc-macro.rs:42:21
    |
 LL | pub fn error_from_derive(_input: TokenStream) -> TokenStream {
@@ -58,5 +58,5 @@ LL |     error_from_bang!();
 
 error: aborting due to 4 previous errors
 
-Some errors have detailed explanations: E0308, E0412, E0425.
+Some errors have detailed explanations: E0308, E0425.
 For more information about an error, try `rustc --explain E0308`.

@@ -9,6 +9,11 @@
 //! The `cli` submodule implements some batch-processing analysis, primarily as
 //! a debugging aid.
 
+#![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
+
+#[cfg(feature = "in-rust-tree")]
+extern crate rustc_driver as _;
+
 extern crate ra_ap_rustc_type_ir as rustc_type_ir;
 
 /// Any toolchain less than this version will likely not work with rust-analyzer built from this revision.

@@ -2,6 +2,7 @@ use tracing::{debug, instrument};
 
 use self::combine::{PredicateEmittingRelation, super_combine_consts, super_combine_tys};
 use crate::data_structures::DelayedSet;
+use crate::relate::combine::combine_ty_args;
 pub use crate::relate::*;
 use crate::solve::Goal;
 use crate::{self as ty, InferCtxtLike, Interner};
@@ -139,24 +140,26 @@ where
         self.infcx.cx()
     }
 
-    fn relate_item_args(
+    fn relate_ty_args(
         &mut self,
-        item_def_id: I::DefId,
-        a_arg: I::GenericArgs,
-        b_arg: I::GenericArgs,
-    ) -> RelateResult<I, I::GenericArgs> {
+        a_ty: I::Ty,
+        b_ty: I::Ty,
+        def_id: I::DefId,
+        a_args: I::GenericArgs,
+        b_args: I::GenericArgs,
+        _: impl FnOnce(I::GenericArgs) -> I::Ty,
+    ) -> RelateResult<I, I::Ty> {
         if self.ambient_variance == ty::Invariant {
             // Avoid fetching the variance if we are in an invariant
             // context; no need, and it can induce dependency cycles
             // (e.g., #41849).
-            relate_args_invariantly(self, a_arg, b_arg)
+            relate_args_invariantly(self, a_args, b_args)?;
+            Ok(a_ty)
         } else {
-            let tcx = self.cx();
-            let opt_variances = tcx.variances_of(item_def_id);
-            relate_args_with_variances(self, item_def_id, opt_variances, a_arg, b_arg, false)
+            let variances = self.cx().variances_of(def_id);
+            combine_ty_args(self.infcx, self, a_ty, b_ty, variances, a_args, b_args, |_| a_ty)
         }
     }
-
     fn relate_with_variance<T: Relate<I>>(
         &mut self,
         variance: ty::Variance,

@@ -6,7 +6,7 @@ LL |     let str::<{fn str() { let str::T>>::as_bytes; }}, T>::as_bytes;
    |
    = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 
-error[E0412]: cannot find type `T` in this scope
+error[E0425]: cannot find type `T` in this scope
   --> $DIR/ensure-overriding-bindings-in-pattern-with-ty-err-doesnt-ice.rs:2:55
    |
 LL |     let str::<{fn str() { let str::T>>::as_bytes; }}, T>::as_bytes;
@@ -47,5 +47,5 @@ LL |     let str::<{fn str() { let str::T>>::as_bytes: /* Type */; }}, T>::as_by
 
 error: aborting due to 5 previous errors
 
-Some errors have detailed explanations: E0109, E0282, E0412, E0533.
+Some errors have detailed explanations: E0109, E0282, E0425, E0533.
 For more information about an error, try `rustc --explain E0109`.

@@ -17,7 +17,7 @@ mod llvm_enzyme {
     use rustc_ast::{
         self as ast, AngleBracketedArg, AngleBracketedArgs, AnonConst, AssocItemKind, BindingMode,
         FnRetTy, FnSig, GenericArg, GenericArgs, GenericParamKind, Generics, ItemKind,
-        MetaItemInner, PatKind, Path, PathSegment, TyKind, Visibility,
+        MetaItemInner, MgcaDisambiguation, PatKind, Path, PathSegment, TyKind, Visibility,
     };
     use rustc_expand::base::{Annotatable, ExtCtxt};
     use rustc_span::{Ident, Span, Symbol, sym};
@@ -346,6 +346,7 @@ mod llvm_enzyme {
             contract: None,
             body: Some(d_body),
             define_opaque: None,
+            eii_impls: ThinVec::new(),
         });
         let mut rustc_ad_attr =
             Box::new(ast::NormalAttr::from_ident(Ident::with_dummy_span(sym::rustc_autodiff)));
@@ -558,7 +559,11 @@ mod llvm_enzyme {
                 }
                 GenericParamKind::Const { .. } => {
                     let expr = ecx.expr_path(ast::Path::from_ident(p.ident));
-                    let anon_const = AnonConst { id: ast::DUMMY_NODE_ID, value: expr };
+                    let anon_const = AnonConst {
+                        id: ast::DUMMY_NODE_ID,
+                        value: expr,
+                        mgca_disambiguation: MgcaDisambiguation::Direct,
+                    };
                     Some(AngleBracketedArg::Arg(GenericArg::Const(anon_const)))
                 }
                 GenericParamKind::Lifetime { .. } => None,
@@ -813,6 +818,7 @@ mod llvm_enzyme {
                     let anon_const = rustc_ast::AnonConst {
                         id: ast::DUMMY_NODE_ID,
                         value: ecx.expr_usize(span, 1 + x.width as usize),
+                        mgca_disambiguation: MgcaDisambiguation::Direct,
                     };
                     TyKind::Array(ty.clone(), anon_const)
                 };
@@ -827,6 +833,7 @@ mod llvm_enzyme {
                     let anon_const = rustc_ast::AnonConst {
                         id: ast::DUMMY_NODE_ID,
                         value: ecx.expr_usize(span, x.width as usize),
+                        mgca_disambiguation: MgcaDisambiguation::Direct,
                     };
                     let kind = TyKind::Array(ty.clone(), anon_const);
                     let ty =

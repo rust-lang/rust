@@ -1,6 +1,5 @@
 // tidy-alphabetical-start
 #![feature(clone_to_uninit)]
-#![feature(maybe_uninit_slice)]
 #![feature(normalize_lexically)]
 #![feature(path_trailing_sep)]
 // tidy-alphabetical-end

@@ -36,11 +36,15 @@ impl<T: Write> Write for Shared<T> {
     }
 }
 
+fn filename(sm: &SourceMap, path: &str) -> FileName {
+    FileName::Real(sm.path_mapping().to_real_filename(sm.working_dir(), PathBuf::from(path)))
+}
+
 /// Test the span yields correct positions in JSON.
 fn test_positions(code: &str, span: (u32, u32), expected_output: SpanTestData) {
     rustc_span::create_default_session_globals_then(|| {
         let sm = Arc::new(SourceMap::new(FilePathMapping::empty()));
-        sm.new_source_file(Path::new("test.rs").to_owned().into(), code.to_owned());
+        sm.new_source_file(filename(&sm, "test.rs"), code.to_owned());
         let translator =
             Translator::with_fallback_bundle(vec![crate::DEFAULT_LOCALE_RESOURCE], false);
 

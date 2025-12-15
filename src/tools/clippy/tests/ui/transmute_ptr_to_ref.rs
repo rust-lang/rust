@@ -55,6 +55,52 @@ fn issue1231() {
     //~^ transmute_ptr_to_ref
 }
 
+#[derive(Clone, Copy)]
+struct PtrRefNamed<'a> {
+    ptr: *const &'a u32,
+}
+#[derive(Clone, Copy)]
+struct PtrRef<'a>(*const &'a u32);
+#[derive(Clone, Copy)]
+struct PtrSliceRef<'a>(*const [&'a str]);
+#[derive(Clone, Copy)]
+struct PtrSlice(*const [i32]);
+#[derive(Clone, Copy)]
+struct Ptr(*const u32);
+impl std::ops::Add for Ptr {
+    type Output = Self;
+    fn add(self, _: Self) -> Self {
+        self
+    }
+}
+mod ptr_mod {
+    #[derive(Clone, Copy)]
+    pub struct Ptr(*const u32);
+}
+fn issue1966(u: PtrSlice, v: PtrSliceRef, w: Ptr, x: PtrRefNamed, y: PtrRef, z: ptr_mod::Ptr) {
+    unsafe {
+        let _: &i32 = std::mem::transmute(w);
+        //~^ transmute_ptr_to_ref
+        let _: &u32 = std::mem::transmute(w);
+        //~^ transmute_ptr_to_ref
+        let _: &&u32 = core::mem::transmute(x);
+        //~^ transmute_ptr_to_ref
+        // The field is not accessible. The program should not generate code
+        // that accesses the field.
+        let _: &u32 = std::mem::transmute(z);
+        let _ = std::mem::transmute::<_, &u32>(w);
+        //~^ transmute_ptr_to_ref
+        let _: &[&str] = core::mem::transmute(v);
+        //~^ transmute_ptr_to_ref
+        let _ = std::mem::transmute::<_, &[i32]>(u);
+        //~^ transmute_ptr_to_ref
+        let _: &&u32 = std::mem::transmute(y);
+        //~^ transmute_ptr_to_ref
+        let _: &u32 = std::mem::transmute(w + w);
+        //~^ transmute_ptr_to_ref
+    }
+}
+
 fn issue8924<'a, 'b, 'c>(x: *const &'a u32, y: *const &'b u32) -> &'c &'b u32 {
     unsafe {
         match 0 {
@@ -89,7 +135,7 @@ fn meets_msrv<'a, 'b, 'c>(x: *const &'a u32) -> &'c &'b u32 {
 }
 
 #[clippy::msrv = "1.37"]
-fn under_msrv<'a, 'b, 'c>(x: *const &'a u32) -> &'c &'b u32 {
+fn under_msrv<'a, 'b, 'c>(x: *const &'a u32, y: PtrRef) -> &'c &'b u32 {
     unsafe {
         let a = 0u32;
         let a = &a as *const u32;
@@ -97,10 +143,16 @@ fn under_msrv<'a, 'b, 'c>(x: *const &'a u32) -> &'c &'b u32 {
         //~^ transmute_ptr_to_ref
         let _: &u32 = std::mem::transmute::<_, &u32>(a);
         //~^ transmute_ptr_to_ref
+        let _ = std::mem::transmute::<_, &u32>(Ptr(a));
+        //~^ transmute_ptr_to_ref
         match 0 {
             0 => std::mem::transmute(x),
             //~^ transmute_ptr_to_ref
-            _ => std::mem::transmute::<_, &&'b u32>(x),
+            1 => std::mem::transmute::<_, &&'b u32>(x),
+            //~^ transmute_ptr_to_ref
+            2 => std::mem::transmute(y),
+            //~^ transmute_ptr_to_ref
+            _ => std::mem::transmute::<_, &&'b u32>(y),
             //~^ transmute_ptr_to_ref
         }
     }

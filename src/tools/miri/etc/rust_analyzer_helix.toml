@@ -28,5 +28,7 @@ overrideCommand = [
     "./miri",
     "check",
     "--no-default-features",
+    "-Zunstable-options",
+    "--compile-time-deps",
     "--message-format=json",
 ]

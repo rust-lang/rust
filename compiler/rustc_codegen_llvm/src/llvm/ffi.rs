@@ -2379,6 +2379,7 @@ unsafe extern "C" {
     ) -> *mut TargetMachine;
 
     pub(crate) fn LLVMRustAddLibraryInfo<'a>(
+        T: &TargetMachine,
         PM: &PassManager<'a>,
         M: &'a Module,
         DisableSimplifyLibCalls: bool,
@@ -2582,4 +2583,12 @@ unsafe extern "C" {
 
     pub(crate) fn LLVMRustSetNoSanitizeAddress(Global: &Value);
     pub(crate) fn LLVMRustSetNoSanitizeHWAddress(Global: &Value);
+
+    pub(crate) fn LLVMAddAlias2<'ll>(
+        M: &'ll Module,
+        ValueTy: &Type,
+        AddressSpace: c_uint,
+        Aliasee: &Value,
+        Name: *const c_char,
+    ) -> &'ll Value;
 }

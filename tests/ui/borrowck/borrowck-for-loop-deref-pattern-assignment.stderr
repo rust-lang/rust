@@ -1,0 +1,16 @@
+error[E0384]: cannot assign twice to immutable variable `num`
+  --> $DIR/borrowck-for-loop-deref-pattern-assignment.rs:7:9
+   |
+LL |     for &num in nums {
+   |          --- first assignment to `num`
+LL |         num *= 2;
+   |         ^^^^^^^^ cannot assign twice to immutable variable
+   |
+help: consider making this binding mutable
+   |
+LL |     for &(mut num) num in nums {
+   |          +++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0384`.

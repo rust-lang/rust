@@ -25,6 +25,8 @@
 extern crate ra_ap_rustc_lexer as rustc_lexer;
 #[cfg(feature = "in-rust-tree")]
 extern crate rustc_lexer;
+#[cfg(feature = "in-rust-tree")]
+extern crate rustc_driver as _;
 
 mod event;
 mod frontmatter;

@@ -98,12 +98,16 @@ syntax-bridge.workspace = true
 jemalloc = ["jemallocator", "profile/jemalloc"]
 force-always-assert = ["stdx/force-always-assert"]
 in-rust-tree = [
-  "syntax/in-rust-tree",
-  "parser/in-rust-tree",
-  "hir/in-rust-tree",
+  "cfg/in-rust-tree",
   "hir-def/in-rust-tree",
   "hir-ty/in-rust-tree",
+  "hir/in-rust-tree",
+  "ide-ssr/in-rust-tree",
+  "ide/in-rust-tree",
   "load-cargo/in-rust-tree",
+  "parser/in-rust-tree",
+  "proc-macro-api/in-rust-tree",
+  "syntax/in-rust-tree",
 ]
 dhat = ["dep:dhat"]
 

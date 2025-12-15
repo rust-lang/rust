@@ -97,7 +97,10 @@ impl<'tcx> Region<'tcx> {
     }
 
     #[inline]
-    pub fn new_placeholder(tcx: TyCtxt<'tcx>, placeholder: ty::PlaceholderRegion) -> Region<'tcx> {
+    pub fn new_placeholder(
+        tcx: TyCtxt<'tcx>,
+        placeholder: ty::PlaceholderRegion<'tcx>,
+    ) -> Region<'tcx> {
         tcx.intern_region(ty::RePlaceholder(placeholder))
     }
 
@@ -170,7 +173,7 @@ impl<'tcx> rustc_type_ir::inherent::Region<TyCtxt<'tcx>> for Region<'tcx> {
         Region::new_canonical_bound(tcx, var)
     }
 
-    fn new_placeholder(tcx: TyCtxt<'tcx>, placeholder: ty::PlaceholderRegion) -> Self {
+    fn new_placeholder(tcx: TyCtxt<'tcx>, placeholder: ty::PlaceholderRegion<'tcx>) -> Self {
         Region::new_placeholder(tcx, placeholder)
     }
 

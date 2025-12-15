@@ -168,7 +168,7 @@ impl<T: PointeeSized> Copy for Unique<T> {}
 
 #[doc(hidden)]
 #[unstable(feature = "trivial_clone", issue = "none")]
-unsafe impl<T: ?Sized> TrivialClone for Unique<T> {}
+unsafe impl<T: PointeeSized> TrivialClone for Unique<T> {}
 
 #[unstable(feature = "ptr_internals", issue = "none")]
 impl<T: PointeeSized, U: PointeeSized> CoerceUnsized<Unique<U>> for Unique<T> where T: Unsize<U> {}

@@ -177,7 +177,11 @@ fn find_best_leaf_obligation<'tcx>(
                 )
                 .break_value()
                 .ok_or(())
+                // walk around the fact that the cause in `Obligation` is ignored by folders so that
+                // we can properly fudge the infer vars in cause code.
+                .map(|o| (o.cause.clone(), o))
         })
+        .map(|(cause, o)| PredicateObligation { cause, ..o })
         .unwrap_or(obligation);
     deeply_normalize_for_diagnostics(infcx, obligation.param_env, obligation)
 }

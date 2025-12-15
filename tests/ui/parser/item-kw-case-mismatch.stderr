@@ -4,7 +4,7 @@ error: keyword `use` is written in the wrong case
 LL | Use std::ptr::read;
    | ^^^
    |
-help: write it in the correct case (notice the capitalization)
+help: write it in lowercase (notice the capitalization)
    |
 LL - Use std::ptr::read;
 LL + use std::ptr::read;
@@ -16,7 +16,7 @@ error: keyword `use` is written in the wrong case
 LL | USE std::ptr::write;
    | ^^^
    |
-help: write it in the correct case
+help: write it in lowercase
    |
 LL - USE std::ptr::write;
 LL + use std::ptr::write;
@@ -28,7 +28,7 @@ error: keyword `fn` is written in the wrong case
 LL | async Fn _a() {}
    |       ^^
    |
-help: write it in the correct case (notice the capitalization)
+help: write it in lowercase (notice the capitalization)
    |
 LL - async Fn _a() {}
 LL + async fn _a() {}
@@ -40,7 +40,7 @@ error: keyword `fn` is written in the wrong case
 LL | Fn _b() {}
    | ^^
    |
-help: write it in the correct case (notice the capitalization)
+help: write it in lowercase (notice the capitalization)
    |
 LL - Fn _b() {}
 LL + fn _b() {}
@@ -52,7 +52,7 @@ error: keyword `async` is written in the wrong case
 LL | aSYNC fN _c() {}
    | ^^^^^
    |
-help: write it in the correct case
+help: write it in lowercase
    |
 LL - aSYNC fN _c() {}
 LL + async fN _c() {}
@@ -64,7 +64,7 @@ error: keyword `fn` is written in the wrong case
 LL | aSYNC fN _c() {}
    |       ^^
    |
-help: write it in the correct case
+help: write it in lowercase
    |
 LL - aSYNC fN _c() {}
 LL + aSYNC fn _c() {}
@@ -76,7 +76,7 @@ error: keyword `async` is written in the wrong case
 LL | Async fn _d() {}
    | ^^^^^
    |
-help: write it in the correct case
+help: write it in lowercase
    |
 LL - Async fn _d() {}
 LL + async fn _d() {}
@@ -88,7 +88,7 @@ error: keyword `const` is written in the wrong case
 LL | CONST UNSAFE FN _e() {}
    | ^^^^^
    |
-help: write it in the correct case
+help: write it in lowercase
    |
 LL - CONST UNSAFE FN _e() {}
 LL + const UNSAFE FN _e() {}
@@ -100,7 +100,7 @@ error: keyword `unsafe` is written in the wrong case
 LL | CONST UNSAFE FN _e() {}
    |       ^^^^^^
    |
-help: write it in the correct case
+help: write it in lowercase
    |
 LL - CONST UNSAFE FN _e() {}
 LL + CONST unsafe FN _e() {}
@@ -112,7 +112,7 @@ error: keyword `fn` is written in the wrong case
 LL | CONST UNSAFE FN _e() {}
    |              ^^
    |
-help: write it in the correct case
+help: write it in lowercase
    |
 LL - CONST UNSAFE FN _e() {}
 LL + CONST UNSAFE fn _e() {}
@@ -124,7 +124,7 @@ error: keyword `unsafe` is written in the wrong case
 LL | unSAFE EXTern "C" fn _f() {}
    | ^^^^^^
    |
-help: write it in the correct case
+help: write it in lowercase
    |
 LL - unSAFE EXTern "C" fn _f() {}
 LL + unsafe EXTern "C" fn _f() {}
@@ -136,7 +136,7 @@ error: keyword `extern` is written in the wrong case
 LL | unSAFE EXTern "C" fn _f() {}
    |        ^^^^^^
    |
-help: write it in the correct case
+help: write it in lowercase
    |
 LL - unSAFE EXTern "C" fn _f() {}
 LL + unSAFE extern "C" fn _f() {}
@@ -148,7 +148,7 @@ error: keyword `extern` is written in the wrong case
 LL | EXTERN "C" FN _g() {}
    | ^^^^^^
    |
-help: write it in the correct case
+help: write it in lowercase
    |
 LL - EXTERN "C" FN _g() {}
 LL + extern "C" FN _g() {}
@@ -160,7 +160,7 @@ error: keyword `fn` is written in the wrong case
 LL | EXTERN "C" FN _g() {}
    |            ^^
    |
-help: write it in the correct case
+help: write it in lowercase
    |
 LL - EXTERN "C" FN _g() {}
 LL + EXTERN "C" fn _g() {}
