@@ -13,14 +13,14 @@
 //! [`OsString`]: crate::ffi::OsString
 #![forbid(unsafe_op_in_unsafe_fn)]
 
+use crate::io::RawOsError;
+
 pub mod helpers;
 pub mod os;
 pub mod time;
 
 #[cfg(test)]
 mod tests;
-
-pub type RawOsError = usize;
 
 use crate::io as std_io;
 use crate::os::uefi;

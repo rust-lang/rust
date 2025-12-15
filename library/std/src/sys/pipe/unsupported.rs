@@ -60,7 +60,7 @@ impl fmt::Debug for Pipe {
 mod unix_traits {
     use super::Pipe;
     use crate::os::fd::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd};
-    use crate::sys_common::{FromInner, IntoInner};
+    use crate::sys::{FromInner, IntoInner};
 
     impl AsRawFd for Pipe {
         #[inline]

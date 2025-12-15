@@ -1,6 +1,5 @@
 use crate::io;
-use crate::sys::pipe as imp;
-use crate::sys_common::{FromInner, IntoInner};
+use crate::sys::{FromInner, IntoInner, pipe as imp};
 
 /// Creates an anonymous pipe.
 ///

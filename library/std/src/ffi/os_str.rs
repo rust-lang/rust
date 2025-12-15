@@ -13,7 +13,7 @@ use crate::rc::Rc;
 use crate::str::FromStr;
 use crate::sync::Arc;
 use crate::sys::os_str::{Buf, Slice};
-use crate::sys_common::{AsInner, FromInner, IntoInner};
+use crate::sys::{AsInner, FromInner, IntoInner};
 use crate::{cmp, fmt, slice};
 
 /// A type that can represent owned, mutable platform-native strings, but is

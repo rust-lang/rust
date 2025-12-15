@@ -9,7 +9,7 @@ use crate::os::unix::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, Owned
 use crate::path::Path;
 use crate::sealed::Sealed;
 use crate::sys::process::ChildPipe;
-use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
+use crate::sys::{AsInner, AsInnerMut, FromInner, IntoInner};
 use crate::{io, process, sys};
 
 cfg_select! {
