@@ -6313,4 +6313,66 @@ fn $0fun_name(v1: u32, v2: u32) -> u32 {
 }"#,
         );
     }
+
+    #[test]
+    fn pattern_assignment() {
+        check_assist(
+            extract_function,
+            r#"
+struct Point {x: u32, y: u32};
+
+fn point() -> Point {
+    Point { x: 45, y: 50 };
+}
+
+fn foo() {
+    let mut a = 1;
+    let mut b = 3;
+    $0Point { x: a, y: b } = point();$0
+}
+"#,
+            r#"
+struct Point {x: u32, y: u32};
+
+fn point() -> Point {
+    Point { x: 45, y: 50 };
+}
+
+fn foo() {
+    let mut a = 1;
+    let mut b = 3;
+    fun_name(a, b);
+}
+
+fn $0fun_name(mut a: u32, mut b: u32) {
+    Point { x: a, y: b } = point();
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn tuple_assignment() {
+        check_assist(
+            extract_function,
+            r#"
+fn foo() {
+    let mut a = 3;
+    let mut b = 4;
+    $0(a, b) = (b, a);$0
+}
+"#,
+            r#"
+fn foo() {
+    let mut a = 3;
+    let mut b = 4;
+    fun_name(a, b);
+}
+
+fn $0fun_name(mut a: i32, mut b: i32) {
+    (a, b) = (b, a);
+}
+"#,
+        );
+    }
 }

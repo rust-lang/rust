@@ -10,6 +10,7 @@ use std::{
     ops::{self, ControlFlow, Not},
 };
 
+use base_db::FxIndexSet;
 use either::Either;
 use hir_def::{
     DefWithBodyId, FunctionId, MacroId, StructId, TraitId, VariantId,
@@ -2197,7 +2198,7 @@ impl<'db> SemanticsImpl<'db> {
         &self,
         element: Either<&ast::Expr, &ast::StmtList>,
         text_range: TextRange,
-    ) -> Option<Vec<Local>> {
+    ) -> Option<FxIndexSet<Local>> {
         let sa = self.analyze(element.either(|e| e.syntax(), |s| s.syntax()))?;
         let store = sa.store()?;
         let mut resolver = sa.resolver.clone();
@@ -2245,31 +2246,49 @@ impl<'db> SemanticsImpl<'db> {
         let mut exprs: Vec<_> =
             exprs.into_iter().filter_map(|e| sa.expr_id(e).and_then(|e| e.as_expr())).collect();
 
-        let mut locals: Vec<Local> = Vec::new();
-        let mut add_to_locals_used = |expr_id| {
-            if let Expr::Path(path) = &store[expr_id]
+        let mut locals: FxIndexSet<Local> = FxIndexSet::default();
+        let mut add_to_locals_used = |id, parent_expr| {
+            let path = match id {
+                ExprOrPatId::ExprId(expr_id) => {
+                    if let Expr::Path(path) = &store[expr_id] {
+                        Some(path)
+                    } else {
+                        None
+                    }
+                }
+                ExprOrPatId::PatId(pat_id) => {
+                    if let Pat::Path(path) = &store[pat_id] {
+                        Some(path)
+                    } else {
+                        None
+                    }
+                }
+            };
+
+            if let Some(path) = path
                 && is_not_generated(path)
             {
-                let _ = resolver.update_to_inner_scope(self.db, def, expr_id);
-                resolver
-                    .resolve_path_in_value_ns_fully(self.db, path, store.expr_path_hygiene(expr_id))
-                    .inspect(|value| {
-                        if let ValueNs::LocalBinding(id) = value {
-                            locals.push((def, *id).into());
-                        }
-                    });
+                let _ = resolver.update_to_inner_scope(self.db, def, parent_expr);
+                let hygiene = store.expr_or_pat_path_hygiene(id);
+                resolver.resolve_path_in_value_ns_fully(self.db, path, hygiene).inspect(|value| {
+                    if let ValueNs::LocalBinding(id) = value {
+                        locals.insert((def, *id).into());
+                    }
+                });
             }
         };
 
         while let Some(expr_id) = exprs.pop() {
-            let mut has_child = false;
+            if let Expr::Assignment { target, .. } = store[expr_id] {
+                store.walk_pats(target, &mut |id| {
+                    add_to_locals_used(ExprOrPatId::PatId(id), expr_id)
+                });
+            };
             store.walk_child_exprs(expr_id, |id| {
-                has_child = true;
                 exprs.push(id);
             });
-            if !has_child {
-                add_to_locals_used(expr_id)
-            }
+
+            add_to_locals_used(ExprOrPatId::ExprId(expr_id), expr_id)
         }
 
         Some(locals)

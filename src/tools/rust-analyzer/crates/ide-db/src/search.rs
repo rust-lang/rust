@@ -1345,7 +1345,7 @@ impl ReferenceCategory {
                             // If the variable or field ends on the LHS's end then it's a Write
                             // (covers fields and locals). FIXME: This is not terribly accurate.
                             if let Some(lhs) = expr.lhs()
-                                && lhs.syntax().text_range().end() == r.syntax().text_range().end() {
+                            && lhs.syntax().text_range().contains_range(r.syntax().text_range()) {
                                     return Some(ReferenceCategory::WRITE)
                                 }
                         }
