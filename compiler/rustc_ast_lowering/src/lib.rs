@@ -237,25 +237,27 @@ impl SpanLowerer {
 #[extension(trait ResolverAstLoweringExt)]
 impl ResolverAstLowering {
     fn legacy_const_generic_args(&self, expr: &Expr) -> Option<Vec<usize>> {
-        if let ExprKind::Path(None, path) = &expr.kind {
-            // Don't perform legacy const generics rewriting if the path already
-            // has generic arguments.
-            if path.segments.last().unwrap().args.is_some() {
-                return None;
-            }
+        let ExprKind::Path(None, path) = &expr.kind else {
+            return None;
+        };
 
-            if let Res::Def(DefKind::Fn, def_id) = self.partial_res_map.get(&expr.id)?.full_res()? {
-                // We only support cross-crate argument rewriting. Uses
-                // within the same crate should be updated to use the new
-                // const generics style.
-                if def_id.is_local() {
-                    return None;
-                }
+        // Don't perform legacy const generics rewriting if the path already
+        // has generic arguments.
+        if path.segments.last().unwrap().args.is_some() {
+            return None;
+        }
 
-                if let Some(v) = self.legacy_const_generic_args.get(&def_id) {
-                    return v.clone();
-                }
-            }
+        let def_id = self.partial_res_map.get(&expr.id)?.full_res()?.opt_def_id()?;
+
+        // We only support cross-crate argument rewriting. Uses
+        // within the same crate should be updated to use the new
+        // const generics style.
+        if def_id.is_local() {
+            return None;
+        }
+
+        if let Some(v) = self.legacy_const_generic_args.get(&def_id) {
+            return v.clone();
         }
 
         None
