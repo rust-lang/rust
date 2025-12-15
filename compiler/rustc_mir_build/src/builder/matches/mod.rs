@@ -27,6 +27,7 @@ use tracing::{debug, instrument};
 
 use crate::builder::ForGuard::{self, OutsideGuard, RefWithinGuard};
 use crate::builder::expr::as_place::PlaceBuilder;
+use crate::builder::matches::buckets::PartitionedCandidates;
 use crate::builder::matches::user_ty::ProjectedUserTypesNode;
 use crate::builder::scope::DropKind;
 use crate::builder::{
@@ -34,6 +35,7 @@ use crate::builder::{
 };
 
 // helper functions, broken out by category:
+mod buckets;
 mod match_pair;
 mod test;
 mod user_ty;
@@ -1068,7 +1070,7 @@ struct Candidate<'tcx> {
     /// Key mutations include:
     ///
     /// - When a match pair is fully satisfied by a test, it is removed from the
-    ///   list, and its subpairs are added instead (see [`Builder::sort_candidate`]).
+    ///   list, and its subpairs are added instead (see [`Builder::choose_bucket_for_candidate`]).
     /// - During or-pattern expansion, any leading or-pattern is removed, and is
     ///   converted into subcandidates (see [`Builder::expand_and_match_or_candidates`]).
     /// - After a candidate's subcandidates have been lowered, a copy of any remaining
@@ -1253,7 +1255,7 @@ struct Ascription<'tcx> {
 ///
 /// Created by [`MatchPairTree::for_pattern`], and then inspected primarily by:
 /// - [`Builder::pick_test_for_match_pair`] (to choose a test)
-/// - [`Builder::sort_candidate`] (to see how the test interacts with a match pair)
+/// - [`Builder::choose_bucket_for_candidate`] (to see how the test interacts with a match pair)
 ///
 /// Note that or-patterns are not tested directly like the other variants.
 /// Instead they participate in or-pattern expansion, where they are transformed into
@@ -2172,86 +2174,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         (match_place, test)
     }
 
-    /// Given a test, we partition the input candidates into several buckets.
-    /// If a candidate matches in exactly one of the branches of `test`
-    /// (and no other branches), we put it into the corresponding bucket.
-    /// If it could match in more than one of the branches of `test`, the test
-    /// doesn't usefully apply to it, and we stop partitioning candidates.
-    ///
-    /// Importantly, we also **mutate** the branched candidates to remove match pairs
-    /// that are entailed by the outcome of the test, and add any sub-pairs of the
-    /// removed pairs.
-    ///
-    /// This returns a pair of
-    /// - the candidates that weren't sorted;
-    /// - for each possible outcome of the test, the candidates that match in that outcome.
-    ///
-    /// For example:
-    /// ```
-    /// # let (x, y, z) = (true, true, true);
-    /// match (x, y, z) {
-    ///     (true , _    , true ) => true,  // (0)
-    ///     (false, false, _    ) => false, // (1)
-    ///     (_    , true , _    ) => true,  // (2)
-    ///     (true , _    , false) => false, // (3)
-    /// }
-    /// # ;
-    /// ```
-    ///
-    /// Assume we are testing on `x`. Conceptually, there are 2 overlapping candidate sets:
-    /// - If the outcome is that `x` is true, candidates {0, 2, 3} are possible
-    /// - If the outcome is that `x` is false, candidates {1, 2} are possible
-    ///
-    /// Following our algorithm:
-    /// - Candidate 0 is sorted into outcome `x == true`
-    /// - Candidate 1 is sorted into outcome `x == false`
-    /// - Candidate 2 remains unsorted, because testing `x` has no effect on it
-    /// - Candidate 3 remains unsorted, because a previous candidate (2) was unsorted
-    ///   - This helps preserve the illusion that candidates are tested "in order"
-    ///
-    /// The sorted candidates are mutated to remove entailed match pairs:
-    /// - candidate 0 becomes `[z @ true]` since we know that `x` was `true`;
-    /// - candidate 1 becomes `[y @ false]` since we know that `x` was `false`.
-    fn sort_candidates<'b, 'c>(
-        &mut self,
-        match_place: Place<'tcx>,
-        test: &Test<'tcx>,
-        mut candidates: &'b mut [&'c mut Candidate<'tcx>],
-    ) -> (
-        &'b mut [&'c mut Candidate<'tcx>],
-        FxIndexMap<TestBranch<'tcx>, Vec<&'b mut Candidate<'tcx>>>,
-    ) {
-        // For each of the possible outcomes, collect vector of candidates that apply if the test
-        // has that particular outcome.
-        let mut target_candidates: FxIndexMap<_, Vec<&mut Candidate<'_>>> = Default::default();
-
-        let total_candidate_count = candidates.len();
-
-        // Sort the candidates into the appropriate vector in `target_candidates`. Note that at some
-        // point we may encounter a candidate where the test is not relevant; at that point, we stop
-        // sorting.
-        while let Some(candidate) = candidates.first_mut() {
-            let Some(branch) =
-                self.sort_candidate(match_place, test, candidate, &target_candidates)
-            else {
-                break;
-            };
-            let (candidate, rest) = candidates.split_first_mut().unwrap();
-            target_candidates.entry(branch).or_insert_with(Vec::new).push(candidate);
-            candidates = rest;
-        }
-
-        // At least the first candidate ought to be tested
-        assert!(
-            total_candidate_count > candidates.len(),
-            "{total_candidate_count}, {candidates:#?}"
-        );
-        debug!("tested_candidates: {}", total_candidate_count - candidates.len());
-        debug!("untested_candidates: {}", candidates.len());
-
-        (candidates, target_candidates)
-    }
-
     /// This is the most subtle part of the match lowering algorithm. At this point, there are
     /// no fully-satisfied candidates, and no or-patterns to expand, so we actually need to
     /// perform some sort of test to make progress.
@@ -2363,8 +2285,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // For each of the N possible test outcomes, build the vector of candidates that applies if
         // the test has that particular outcome. This also mutates the candidates to remove match
         // pairs that are fully satisfied by the relevant outcome.
-        let (remaining_candidates, target_candidates) =
-            self.sort_candidates(match_place, &test, candidates);
+        let PartitionedCandidates { target_candidates, remaining_candidates } =
+            self.partition_candidates_into_buckets(match_place, &test, candidates);
 
         // The block that we should branch to if none of the `target_candidates` match.
         let remainder_start = self.cfg.start_new_block();
