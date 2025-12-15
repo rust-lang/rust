@@ -2,6 +2,7 @@ use rustc_ast::expand::typetree::FncTree;
 #[cfg(feature = "llvm_enzyme")]
 use {
     crate::attributes,
+    crate::llvm::EnzymeWrapper,
     rustc_ast::expand::typetree::TypeTree as RustTypeTree,
     std::ffi::{CString, c_char, c_uint},
 };
@@ -77,7 +78,8 @@ pub(crate) fn add_tt<'ll>(
     for (i, input) in inputs.iter().enumerate() {
         unsafe {
             let enzyme_tt = to_enzyme_typetree(input.clone(), llvm_data_layout, llcx);
-            let c_str = llvm::EnzymeTypeTreeToString(enzyme_tt.inner);
+            let enzyme_wrapper = EnzymeWrapper::get_instance();
+            let c_str = enzyme_wrapper.tree_to_string(enzyme_tt.inner);
             let c_str = std::ffi::CStr::from_ptr(c_str);
 
             let attr = llvm::LLVMCreateStringAttribute(
@@ -89,13 +91,14 @@ pub(crate) fn add_tt<'ll>(
             );
 
             attributes::apply_to_llfn(fn_def, llvm::AttributePlace::Argument(i as u32), &[attr]);
-            llvm::EnzymeTypeTreeToStringFree(c_str.as_ptr());
+            enzyme_wrapper.tree_to_string_free(c_str.as_ptr());
         }
     }
 
     unsafe {
         let enzyme_tt = to_enzyme_typetree(ret_tt, llvm_data_layout, llcx);
-        let c_str = llvm::EnzymeTypeTreeToString(enzyme_tt.inner);
+        let enzyme_wrapper = EnzymeWrapper::get_instance();
+        let c_str = enzyme_wrapper.tree_to_string(enzyme_tt.inner);
         let c_str = std::ffi::CStr::from_ptr(c_str);
 
         let ret_attr = llvm::LLVMCreateStringAttribute(
@@ -107,7 +110,7 @@ pub(crate) fn add_tt<'ll>(
         );
 
         attributes::apply_to_llfn(fn_def, llvm::AttributePlace::ReturnValue, &[ret_attr]);
-        llvm::EnzymeTypeTreeToStringFree(c_str.as_ptr());
+        enzyme_wrapper.tree_to_string_free(c_str.as_ptr());
     }
 }
 
