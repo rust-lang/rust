@@ -41,6 +41,7 @@ pub struct SymbolExportInfo {
     /// Was the symbol marked as `#[used(compiler)]` or `#[used(linker)]`?
     pub used: bool,
     /// Was the symbol marked as `#[rustc_std_internal_symbol]`?
+    /// We also use this for externally implementable items.
     pub rustc_std_internal_symbol: bool,
 }
 

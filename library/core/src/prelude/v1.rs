@@ -117,3 +117,16 @@ pub use crate::macros::builtin::deref;
     reason = "`type_alias_impl_trait` has open design concerns"
 )]
 pub use crate::macros::builtin::define_opaque;
+
+#[unstable(
+    feature = "derive_from",
+    issue = "144889",
+    reason = "`derive(From)` is unstable"
+)]
+pub use crate::macros::builtin::From;
+
+#[unstable(feature = "extern_item_impls", issue = "125418")]
+pub use crate::macros::builtin::{eii, unsafe_eii};
+
+#[unstable(feature = "eii_internals", issue = "none")]
+pub use crate::macros::builtin::eii_extern_target;

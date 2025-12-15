@@ -184,7 +184,13 @@ impl<'tcx> ReachableContext<'tcx> {
                 CodegenFnAttrs::EMPTY
             };
             let is_extern = codegen_attrs.contains_extern_indicator();
-            if is_extern {
+            // Right now, the only way to get "foreign item symbol aliases" is by being an EII-implementation.
+            // EII implementations will generate under their own name but also under the name of some foreign item
+            // (hence alias) that may be in another crate. These functions are marked as always-reachable since
+            // it's very hard to track whether the original foreign item was reachable. It may live in another crate
+            // and may be reachable from sibling crates.
+            let has_foreign_aliases_eii = !codegen_attrs.foreign_item_symbol_aliases.is_empty();
+            if is_extern || has_foreign_aliases_eii {
                 self.reachable_symbols.insert(search_item);
             }
         } else {
@@ -429,6 +435,12 @@ fn has_custom_linkage(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
         // `SymbolExportLevel::Rust` export level but may end up being exported in dylibs.
         || codegen_attrs.flags.contains(CodegenFnAttrFlags::USED_COMPILER)
         || codegen_attrs.flags.contains(CodegenFnAttrFlags::USED_LINKER)
+        // Right now, the only way to get "foreign item symbol aliases" is by being an EII-implementation.
+        // EII implementations will generate under their own name but also under the name of some foreign item
+        // (hence alias) that may be in another crate. These functions are marked as always-reachable since
+        // it's very hard to track whether the original foreign item was reachable. It may live in another crate
+        // and may be reachable from sibling crates.
+        || !codegen_attrs.foreign_item_symbol_aliases.is_empty()
 }
 
 /// See module-level doc comment above.

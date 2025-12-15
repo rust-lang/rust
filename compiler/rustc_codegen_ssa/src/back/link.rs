@@ -277,7 +277,7 @@ pub fn each_linked_rlib(
         }
         let crate_name = info.crate_name[&cnum];
         let used_crate_source = &info.used_crate_source[&cnum];
-        if let Some((path, _)) = &used_crate_source.rlib {
+        if let Some(path) = &used_crate_source.rlib {
             f(cnum, path);
         } else if used_crate_source.rmeta.is_some() {
             return Err(errors::LinkRlibError::OnlyRmetaFound { crate_name });
@@ -541,7 +541,7 @@ fn link_staticlib(
         };
         let crate_name = codegen_results.crate_info.crate_name[&cnum];
         let used_crate_source = &codegen_results.crate_info.used_crate_source[&cnum];
-        if let Some((path, _)) = &used_crate_source.dylib {
+        if let Some(path) = &used_crate_source.dylib {
             all_rust_dylibs.push(&**path);
         } else if used_crate_source.rmeta.is_some() {
             sess.dcx().emit_fatal(errors::LinkRlibError::OnlyRmetaFound { crate_name });
@@ -619,7 +619,6 @@ fn link_dwarf_object(sess: &Session, cg_results: &CodegenResults, executable_out
             .used_crate_source
             .items()
             .filter_map(|(_, csource)| csource.rlib.as_ref())
-            .map(|(path, _)| path)
             .into_sorted_stable_ord();
 
         for input_rlib in input_rlibs {
@@ -2173,12 +2172,7 @@ fn add_rpath_args(
             .crate_info
             .used_crates
             .iter()
-            .filter_map(|cnum| {
-                codegen_results.crate_info.used_crate_source[cnum]
-                    .dylib
-                    .as_ref()
-                    .map(|(path, _)| &**path)
-            })
+            .filter_map(|cnum| codegen_results.crate_info.used_crate_source[cnum].dylib.as_deref())
             .collect::<Vec<_>>();
         let rpath_config = RPathConfig {
             libs: &*libs,
@@ -2656,7 +2650,7 @@ fn add_native_libs_from_crate(
 
     if link_static && cnum != LOCAL_CRATE && !bundled_libs.is_empty() {
         // If rlib contains native libs as archives, unpack them to tmpdir.
-        let rlib = &codegen_results.crate_info.used_crate_source[&cnum].rlib.as_ref().unwrap().0;
+        let rlib = codegen_results.crate_info.used_crate_source[&cnum].rlib.as_ref().unwrap();
         archive_builder_builder
             .extract_bundled_libs(rlib, tmpdir, bundled_libs)
             .unwrap_or_else(|e| sess.dcx().emit_fatal(e));
@@ -2827,7 +2821,7 @@ fn add_upstream_rust_crates(
             }
             Linkage::Dynamic => {
                 let src = &codegen_results.crate_info.used_crate_source[&cnum];
-                add_dynamic_crate(cmd, sess, &src.dylib.as_ref().unwrap().0);
+                add_dynamic_crate(cmd, sess, src.dylib.as_ref().unwrap());
             }
         }
 
@@ -2955,7 +2949,7 @@ fn add_static_crate(
     bundled_lib_file_names: &FxIndexSet<Symbol>,
 ) {
     let src = &codegen_results.crate_info.used_crate_source[&cnum];
-    let cratepath = &src.rlib.as_ref().unwrap().0;
+    let cratepath = src.rlib.as_ref().unwrap();
 
     let mut link_upstream =
         |path: &Path| cmd.link_staticlib_by_path(&rehome_lib_path(sess, path), false);

@@ -680,19 +680,19 @@ fn write_out_deps(tcx: TyCtxt<'_>, outputs: &OutputFilenames, out_filenames: &[P
 
             for &cnum in tcx.crates(()) {
                 let source = tcx.used_crate_source(cnum);
-                if let Some((path, _)) = &source.dylib {
+                if let Some(path) = &source.dylib {
                     files.extend(hash_iter_files(
                         iter::once(escape_dep_filename(&path.display().to_string())),
                         checksum_hash_algo,
                     ));
                 }
-                if let Some((path, _)) = &source.rlib {
+                if let Some(path) = &source.rlib {
                     files.extend(hash_iter_files(
                         iter::once(escape_dep_filename(&path.display().to_string())),
                         checksum_hash_algo,
                     ));
                 }
-                if let Some((path, _)) = &source.rmeta {
+                if let Some(path) = &source.rmeta {
                     files.extend(hash_iter_files(
                         iter::once(escape_dep_filename(&path.display().to_string())),
                         checksum_hash_algo,
@@ -1057,6 +1057,9 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
         parallel!(
             {
                 sess.time("looking_for_entry_point", || tcx.ensure_ok().entry_fn(()));
+                sess.time("check_externally_implementable_items", || {
+                    tcx.ensure_ok().check_externally_implementable_items(())
+                });
 
                 sess.time("looking_for_derive_registrar", || {
                     tcx.ensure_ok().proc_macro_decls_static(())

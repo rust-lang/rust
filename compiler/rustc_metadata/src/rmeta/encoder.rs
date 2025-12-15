@@ -35,6 +35,7 @@ use rustc_span::{
 };
 use tracing::{debug, instrument, trace};
 
+use crate::eii::EiiMapEncodedKeyValue;
 use crate::errors::{FailCreateFileEncoder, FailWriteFile};
 use crate::rmeta::*;
 
@@ -616,6 +617,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         // We have already encoded some things. Get their combined size from the current position.
         stats.push(("preamble", self.position()));
 
+        let externally_implementable_items = stat!("externally-implementable-items", || self
+            .encode_externally_implementable_items());
+
         let (crate_deps, dylib_dependency_formats) =
             stat!("dep", || (self.encode_crate_deps(), self.encode_dylib_dependency_formats()));
 
@@ -734,6 +738,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     attrs,
                     sym::default_lib_allocator,
                 ),
+                externally_implementable_items,
                 proc_macro_data,
                 debugger_visualizers,
                 compiler_builtins: ast::attr::contains_name(attrs, sym::compiler_builtins),
@@ -1643,6 +1648,15 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         for (def_id, traits) in &tcx.resolutions(()).doc_link_traits_in_scope {
             record_array!(self.tables.doc_link_traits_in_scope[def_id.to_def_id()] <- traits);
         }
+    }
+
+    fn encode_externally_implementable_items(&mut self) -> LazyArray<EiiMapEncodedKeyValue> {
+        empty_proc_macro!(self);
+        let externally_implementable_items = self.tcx.externally_implementable_items(LOCAL_CRATE);
+
+        self.lazy_array(externally_implementable_items.iter().map(|(decl_did, (decl, impls))| {
+            (*decl_did, (decl.clone(), impls.iter().map(|(impl_did, i)| (*impl_did, *i)).collect()))
+        }))
     }
 
     #[instrument(level = "trace", skip(self))]
