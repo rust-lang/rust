@@ -279,3 +279,13 @@ mod issue_16173 {
 }
 
 fn main() {}
+
+fn issue15781(m: &mut std::collections::HashMap<i32, i32>, k: i32, v: i32) {
+    fn very_important_fn() {}
+    if !m.contains_key(&k) {
+        //~^ map_entry
+        #[cfg(test)]
+        very_important_fn();
+        m.insert(k, v);
+    }
+}
