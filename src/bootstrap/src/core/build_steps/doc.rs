@@ -932,6 +932,7 @@ impl Step for Rustc {
         // see https://github.com/rust-lang/rust/pull/122066#issuecomment-1983049222
         // If there is any bug, please comment out the next line.
         cargo.rustdocflag("--generate-link-to-definition");
+        cargo.rustdocflag("--generate-macro-expansion");
 
         compile::rustc_cargo(builder, &mut cargo, target, &build_compiler, &self.crates);
         cargo.arg("-Zskip-rustdoc-fingerprint");
