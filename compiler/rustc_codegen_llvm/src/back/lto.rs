@@ -529,11 +529,8 @@ fn thin_lto(
 }
 
 #[cfg(feature = "llvm_enzyme")]
-pub(crate) fn enable_autodiff_settings(
-    sysroot: &rustc_session::config::Sysroot,
-    ad: &[config::AutoDiff],
-) {
-    let mut enzyme = llvm::EnzymeWrapper::get_or_init(sysroot);
+pub(crate) fn enable_autodiff_settings(ad: &[config::AutoDiff]) {
+    let mut enzyme = llvm::EnzymeWrapper::get_instance();
 
     for val in ad {
         // We intentionally don't use a wildcard, to not forget handling anything new.

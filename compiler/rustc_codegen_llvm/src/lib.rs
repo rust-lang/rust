@@ -244,12 +244,11 @@ impl CodegenBackend for LlvmCodegenBackend {
         #[cfg(feature = "llvm_enzyme")]
         {
             use rustc_session::config::AutoDiff;
-            if sess.opts.unstable_opts.autodiff.contains(&AutoDiff::Enable) {
-                {
-                    use crate::back::lto::enable_autodiff_settings;
 
-                    enable_autodiff_settings(&sess.opts.sysroot, &sess.opts.unstable_opts.autodiff);
-                }
+            use crate::back::lto::enable_autodiff_settings;
+            if sess.opts.unstable_opts.autodiff.contains(&AutoDiff::Enable) {
+                drop(llvm::EnzymeWrapper::get_or_init(&sess.opts.sysroot));
+                enable_autodiff_settings(&sess.opts.unstable_opts.autodiff);
             }
         }
     }

@@ -731,7 +731,7 @@ pub(crate) unsafe fn llvm_optimize(
     let llvm_plugins = config.llvm_plugins.join(",");
 
     let enzyme_fn = if consider_ad {
-        let wrapper = llvm::EnzymeWrapper::get_or_init(&cgcx.sysroot);
+        let wrapper = llvm::EnzymeWrapper::get_instance();
         wrapper.registerEnzymeAndPassPipeline
     } else {
         std::ptr::null()
