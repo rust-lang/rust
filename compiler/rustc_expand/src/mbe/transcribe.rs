@@ -558,24 +558,19 @@ fn metavar_expr_concat<'tx>(
             MetaVarExprConcatElem::Ident(elem) => elem.name,
             MetaVarExprConcatElem::Literal(elem) => *elem,
             MetaVarExprConcatElem::Var(ident) => {
-                match matched_from_ident(dcx, *ident, tscx.interp)? {
-                    NamedMatch::MatchedSeq(named_matches) => {
-                        let Some((curr_idx, _)) = tscx.repeats.last() else {
-                            return Err(dcx.struct_span_err(dspan.entire(), "invalid syntax"));
-                        };
-                        match &named_matches[*curr_idx] {
-                            // FIXME(c410-f3r) Nested repetitions are unimplemented
-                            MatchedSeq(_) => {
-                                return Err(dcx.struct_span_err(
-                                    ident.span,
-                                    "nested repetitions with `${concat(...)}` metavariable expressions are not yet supported",
-                                ));
-                            }
-                            MatchedSingle(pnr) => extract_symbol_from_pnr(dcx, pnr, ident.span)?,
-                        }
-                    }
-                    NamedMatch::MatchedSingle(pnr) => {
+                let key = MacroRulesNormalizedIdent::new(*ident);
+                match lookup_cur_matched(key, tscx.interp, &tscx.repeats) {
+                    Some(NamedMatch::MatchedSingle(pnr)) => {
                         extract_symbol_from_pnr(dcx, pnr, ident.span)?
+                    }
+                    Some(NamedMatch::MatchedSeq(..)) => {
+                        return Err(dcx.struct_span_err(
+                            ident.span,
+                            "`${concat(...)}` variable is still repeating at this depth",
+                        ));
+                    }
+                    None => {
+                        return Err(dcx.create_err(MveUnrecognizedVar { span: ident.span, key }));
                     }
                 }
             }
