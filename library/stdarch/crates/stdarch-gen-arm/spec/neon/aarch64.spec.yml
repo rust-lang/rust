@@ -1506,7 +1506,6 @@ intrinsics:
     return_type: "{neon_type[0]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcvtn2]]}]]
-      - *neon-fp16
       - *neon-unstable-f16
       - *target-not-arm64ec
     safety: safe
@@ -1524,7 +1523,6 @@ intrinsics:
     return_type: "{neon_type[0]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcvtl2]]}]]
-      - *neon-fp16
       - *neon-unstable-f16
       - *target-not-arm64ec
     safety: safe
@@ -8793,7 +8791,6 @@ intrinsics:
     arguments: ["a: {type[0]}"]
     return_type: "{type[1]}"
     attr:
-      - *neon-fp16
       - *neon-unstable-f16
       - *target-not-arm64ec
     assert_instr: [nop]
