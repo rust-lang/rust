@@ -1430,7 +1430,7 @@ fn rustc_llvm_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetSelect
     let llvm::LlvmResult { host_llvm_config, .. } = builder.ensure(llvm::Llvm { target });
     if builder.config.llvm_offload
         && !builder.config.llvm_profile_generate
-        && !builder.config.llvm_profile_use
+        && builder.config.llvm_profile_use.is_none()
     {
         builder.ensure(llvm::OmpOffload { target });
         cargo.env("LLVM_OFFLOAD", "1");
