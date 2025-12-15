@@ -724,7 +724,10 @@ pub struct $0Foo;
 /// [`foo`]: Foo
 pub struct $0Foo;
 "#,
-        expect![["[`foo`]"]],
+        expect![[r#"
+            [`foo`]
+
+            [`foo`]: https://docs.rs/foo/*/foo/struct.Foo.html"#]],
     );
 }
 
