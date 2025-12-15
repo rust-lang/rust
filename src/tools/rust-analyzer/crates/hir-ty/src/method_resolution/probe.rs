@@ -27,7 +27,7 @@ use crate::{
     lower::GenericPredicates,
     method_resolution::{
         CandidateId, CandidateSource, InherentImpls, MethodError, MethodResolutionContext,
-        incoherent_inherent_impls, simplified_type_module,
+        simplified_type_module, with_incoherent_inherent_impls,
     },
     next_solver::{
         Binder, Canonical, ClauseKind, DbInterner, FnSig, GenericArg, GenericArgs, Goal, ParamEnv,
@@ -965,9 +965,11 @@ impl<'a, 'db, Choice: ProbeChoice<'db>> ProbeContext<'a, 'db, Choice> {
         else {
             panic!("unexpected incoherent type: {:?}", self_ty)
         };
-        for &impl_def_id in incoherent_inherent_impls(self.db(), simp) {
-            self.assemble_inherent_impl_probe(impl_def_id, receiver_steps);
-        }
+        with_incoherent_inherent_impls(self.db(), self.ctx.resolver.krate(), &simp, |impls| {
+            for &impl_def_id in impls {
+                self.assemble_inherent_impl_probe(impl_def_id, receiver_steps);
+            }
+        });
     }
 
     fn assemble_inherent_impl_candidates_for_type(
