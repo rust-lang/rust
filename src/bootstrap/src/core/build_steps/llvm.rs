@@ -944,7 +944,7 @@ impl Step for OmpOffload {
         // subfolder, so that all the logic that processes our build artifacts (hopefully) also
         // automatically manages our artifacts in the subfolder.
         let out_dir = builder.llvm_out(target).join("offload-outdir");
-        if std::fs::exists(&out_dir).is_ok_and(|x| x == false) {
+        if std::fs::exists(&out_dir).is_ok_and(|x| !x) {
             std::fs::DirBuilder::new().create(&out_dir).unwrap();
         }
 
