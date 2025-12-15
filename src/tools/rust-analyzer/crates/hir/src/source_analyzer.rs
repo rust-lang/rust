@@ -240,7 +240,7 @@ impl<'db> SourceAnalyzer<'db> {
         )
     }
 
-    fn expr_id(&self, expr: ast::Expr) -> Option<ExprOrPatId> {
+    pub(crate) fn expr_id(&self, expr: ast::Expr) -> Option<ExprOrPatId> {
         let src = InFile { file_id: self.file_id, value: expr };
         self.store_sm()?.node_expr(src.as_ref())
     }
