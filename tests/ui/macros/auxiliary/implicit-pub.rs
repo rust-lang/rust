@@ -1,10 +1,10 @@
 //@ edition:2018
+#![feature(macro_implicit_pub)]
 #[allow(unused_macros)]
 macro_rules! fake_pub {
     () => {}
 }
 
-#[macro_export]
 macro_rules! real_pub {
     () => {}
 }

@@ -1,8 +1,8 @@
 //@ edition:2018
 #![crate_type = "lib"]
+#![feature(macro_implicit_pub)]
 #![deny(unreachable_pub)]
 
-#[macro_export]
 macro_rules! not_reexported {
     () => {}
 }
