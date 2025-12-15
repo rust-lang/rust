@@ -1257,6 +1257,20 @@ impl<'tcx> ThirBuildCx<'tcx> {
             Res::Def(DefKind::Static { .. }, id) => {
                 // this is &raw for extern static or static mut, and & for other statics
                 let ty = self.tcx.static_ptr_ty(id, self.typing_env);
+
+                // If this is behind a `&raw`, set `ty` as a raw ptr to discern it from normal ref
+                let ty = if let hir::Node::Expr(&hir::Expr {
+                    kind: hir::ExprKind::AddrOf(hir::BorrowKind::Raw, mutbl, _),
+                    ..
+                }) = self.tcx.parent_hir_node(expr.hir_id)
+                    && let ty::Ref(_, ty, mutbl_) = ty.kind()
+                    && mutbl == *mutbl_
+                {
+                    Ty::new_ptr(self.tcx, *ty, mutbl)
+                } else {
+                    ty
+                };
+
                 let kind = if self.tcx.is_thread_local_static(id) {
                     ExprKind::ThreadLocalRef(id)
                 } else {
