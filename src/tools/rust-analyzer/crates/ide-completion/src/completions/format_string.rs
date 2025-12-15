@@ -22,13 +22,8 @@ pub(crate) fn format_string(
     let cursor_in_lit = cursor - lit_start;
 
     let prefix = &original.text()[..cursor_in_lit.into()];
-    let braces = prefix.char_indices().rev().skip_while(|&(_, c)| c.is_alphanumeric()).next_tuple();
-    let brace_offset = match braces {
-        // escaped brace
-        Some(((_, '{'), (_, '{'))) => return,
-        Some(((idx, '{'), _)) => lit_start + TextSize::from(idx as u32 + 1),
-        _ => return,
-    };
+    let Some(brace_offset) = unescaped_brace(prefix) else { return };
+    let brace_offset = lit_start + brace_offset + TextSize::of('{');
 
     let source_range = TextRange::new(brace_offset, cursor);
     ctx.locals.iter().sorted_by_key(|&(k, _)| k.clone()).for_each(|(name, _)| {
@@ -57,6 +52,15 @@ pub(crate) fn format_string(
             .add_to(acc, ctx.db);
         }
     });
+}
+
+fn unescaped_brace(prefix: &str) -> Option<TextSize> {
+    let is_ident_char = |ch: char| ch.is_alphanumeric() || ch == '_';
+    prefix
+        .trim_end_matches(is_ident_char)
+        .strip_suffix('{')
+        .filter(|it| it.chars().rev().take_while(|&ch| ch == '{').count() % 2 == 0)
+        .map(|s| TextSize::new(s.len() as u32))
 }
 
 #[cfg(test)]
@@ -93,6 +97,82 @@ fn main() {
 }
 "#,
             expect![[]],
+        );
+    }
+
+    #[test]
+    fn no_completion_after_escaped() {
+        check_no_kw(
+            r#"
+//- minicore: fmt
+fn main() {
+    let foobar = 1;
+    format_args!("{{f$0");
+}
+"#,
+            expect![[]],
+        );
+        check_no_kw(
+            r#"
+//- minicore: fmt
+fn main() {
+    let foobar = 1;
+    format_args!("some text {{{{f$0");
+}
+"#,
+            expect![[]],
+        );
+    }
+
+    #[test]
+    fn completes_unescaped_after_escaped() {
+        check_edit(
+            "foobar",
+            r#"
+//- minicore: fmt
+fn main() {
+    let foobar = 1;
+    format_args!("{{{f$0");
+}
+"#,
+            r#"
+fn main() {
+    let foobar = 1;
+    format_args!("{{{foobar");
+}
+"#,
+        );
+        check_edit(
+            "foobar",
+            r#"
+//- minicore: fmt
+fn main() {
+    let foobar = 1;
+    format_args!("{{{{{f$0");
+}
+"#,
+            r#"
+fn main() {
+    let foobar = 1;
+    format_args!("{{{{{foobar");
+}
+"#,
+        );
+        check_edit(
+            "foobar",
+            r#"
+//- minicore: fmt
+fn main() {
+    let foobar = 1;
+    format_args!("}}{f$0");
+}
+"#,
+            r#"
+fn main() {
+    let foobar = 1;
+    format_args!("}}{foobar");
+}
+"#,
         );
     }
 

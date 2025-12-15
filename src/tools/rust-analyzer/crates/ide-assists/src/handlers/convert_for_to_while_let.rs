@@ -1,11 +1,8 @@
-use hir::{
-    Name,
-    sym::{self},
-};
+use hir::{Name, sym};
 use ide_db::{famous_defs::FamousDefs, syntax_helpers::suggest_name};
 use syntax::{
     AstNode,
-    ast::{self, HasLoopBody, edit::IndentLevel, make, syntax_factory::SyntaxFactory},
+    ast::{self, HasAttrs, HasLoopBody, edit::IndentLevel, make, syntax_factory::SyntaxFactory},
     syntax_editor::Position,
 };
 
@@ -82,6 +79,18 @@ pub(crate) fn convert_for_loop_to_while_let(
                 Some(iterable),
             );
             let indent = IndentLevel::from_node(for_loop.syntax());
+
+            if let Some(label) = for_loop.label() {
+                let label = label.syntax().clone_for_update();
+                editor.insert(Position::before(for_loop.syntax()), make.whitespace(" "));
+                editor.insert(Position::before(for_loop.syntax()), label);
+            }
+            crate::utils::insert_attributes(
+                for_loop.syntax(),
+                &mut editor,
+                for_loop.attrs().map(|it| it.clone_for_update()),
+            );
+
             editor.insert(
                 Position::before(for_loop.syntax()),
                 make::tokens::whitespace(format!("\n{indent}").as_str()),
@@ -179,6 +188,56 @@ fn main() {
 fn main() {
     let mut x = vec![1, 2, 3];
     let mut tmp = x.into_iter();
+    while let Some(v) = tmp.next() {
+        v *= 2;
+    };
+}",
+        )
+    }
+
+    #[test]
+    fn each_to_for_with_label() {
+        check_assist(
+            convert_for_loop_to_while_let,
+            r"
+fn main() {
+    let mut x = vec![1, 2, 3];
+    'a: for $0v in x {
+        v *= 2;
+        break 'a;
+    };
+}",
+            r"
+fn main() {
+    let mut x = vec![1, 2, 3];
+    let mut tmp = x.into_iter();
+    'a: while let Some(v) = tmp.next() {
+        v *= 2;
+        break 'a;
+    };
+}",
+        )
+    }
+
+    #[test]
+    fn each_to_for_with_attributes() {
+        check_assist(
+            convert_for_loop_to_while_let,
+            r"
+fn main() {
+    let mut x = vec![1, 2, 3];
+    #[allow(unused)]
+    #[deny(unsafe_code)]
+    for $0v in x {
+        v *= 2;
+    };
+}",
+            r"
+fn main() {
+    let mut x = vec![1, 2, 3];
+    let mut tmp = x.into_iter();
+    #[allow(unused)]
+    #[deny(unsafe_code)]
     while let Some(v) = tmp.next() {
         v *= 2;
     };

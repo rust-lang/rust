@@ -183,6 +183,61 @@ fn main2() {
     }
 
     #[test]
+    fn apply_last_lint_attribute_when_multiple_are_present() {
+        check_diagnostics(
+            r#"
+#![allow(unused_variables)]
+#![warn(unused_variables)]
+#![deny(unused_variables)]
+
+fn main() {
+    let x = 2;
+      //^ 💡 error: unused variable
+
+    #[deny(unused_variables)]
+    #[warn(unused_variables)]
+    #[allow(unused_variables)]
+    let y = 0;
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn prefer_closest_ancestor_lint_attribute() {
+        check_diagnostics(
+            r#"
+#![allow(unused_variables)]
+
+fn main() {
+    #![warn(unused_variables)]
+
+    #[deny(unused_variables)]
+    let x = 2;
+      //^ 💡 error: unused variable
+}
+
+#[warn(unused_variables)]
+fn main2() {
+    #[deny(unused_variables)]
+    let x = 2;
+      //^ 💡 error: unused variable
+}
+
+#[warn(unused_variables)]
+fn main3() {
+    let x = 2;
+      //^ 💡 warn: unused variable
+}
+
+fn main4() {
+    let x = 2;
+}
+"#,
+        );
+    }
+
+    #[test]
     fn fix_unused_variable() {
         check_fix(
             r#"

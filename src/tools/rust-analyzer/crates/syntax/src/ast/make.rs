@@ -658,7 +658,7 @@ pub fn expr_if(
     };
     expr_from_text(&format!("if {condition} {then_branch} {else_branch}"))
 }
-pub fn expr_for_loop(pat: ast::Pat, expr: ast::Expr, block: ast::BlockExpr) -> ast::Expr {
+pub fn expr_for_loop(pat: ast::Pat, expr: ast::Expr, block: ast::BlockExpr) -> ast::ForExpr {
     expr_from_text(&format!("for {pat} in {expr} {block}"))
 }
 
@@ -1016,7 +1016,19 @@ pub fn item_static(
 }
 
 pub fn unnamed_param(ty: ast::Type) -> ast::Param {
-    ast_from_text(&format!("fn f({ty}) {{ }}"))
+    quote! {
+        Param {
+            #ty
+        }
+    }
+}
+
+pub fn untyped_param(pat: ast::Pat) -> ast::Param {
+    quote! {
+        Param {
+            #pat
+        }
+    }
 }
 
 pub fn param(pat: ast::Pat, ty: ast::Type) -> ast::Param {
@@ -1454,5 +1466,88 @@ pub mod tokens {
         pub fn ws(&self) -> SyntaxToken {
             self.0.syntax().first_child_or_token().unwrap().into_token().unwrap()
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use expect_test::expect;
+
+    use super::*;
+
+    #[track_caller]
+    fn check(node: impl AstNode, expect: expect_test::Expect) {
+        let node_debug = format!("{:#?}", node.syntax());
+        expect.assert_eq(&node_debug);
+    }
+
+    #[test]
+    fn test_unnamed_param() {
+        check(
+            unnamed_param(ty("Vec")),
+            expect![[r#"
+                PARAM@0..3
+                  PATH_TYPE@0..3
+                    PATH@0..3
+                      PATH_SEGMENT@0..3
+                        NAME_REF@0..3
+                          IDENT@0..3 "Vec"
+            "#]],
+        );
+
+        check(
+            unnamed_param(ty("Vec<T>")),
+            expect![[r#"
+                PARAM@0..6
+                  PATH_TYPE@0..6
+                    PATH@0..6
+                      PATH_SEGMENT@0..6
+                        NAME_REF@0..3
+                          IDENT@0..3 "Vec"
+                        GENERIC_ARG_LIST@3..6
+                          L_ANGLE@3..4 "<"
+                          TYPE_ARG@4..5
+                            PATH_TYPE@4..5
+                              PATH@4..5
+                                PATH_SEGMENT@4..5
+                                  NAME_REF@4..5
+                                    IDENT@4..5 "T"
+                          R_ANGLE@5..6 ">"
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_untyped_param() {
+        check(
+            untyped_param(path_pat(ext::ident_path("name"))),
+            expect![[r#"
+                PARAM@0..4
+                  IDENT_PAT@0..4
+                    NAME@0..4
+                      IDENT@0..4 "name"
+            "#]],
+        );
+
+        check(
+            untyped_param(
+                range_pat(
+                    Some(path_pat(ext::ident_path("start"))),
+                    Some(path_pat(ext::ident_path("end"))),
+                )
+                .into(),
+            ),
+            expect![[r#"
+                PARAM@0..10
+                  RANGE_PAT@0..10
+                    IDENT_PAT@0..5
+                      NAME@0..5
+                        IDENT@0..5 "start"
+                    DOT2@5..7 ".."
+                    IDENT_PAT@7..10
+                      NAME@7..10
+                        IDENT@7..10 "end"
+            "#]],
+        );
     }
 }
