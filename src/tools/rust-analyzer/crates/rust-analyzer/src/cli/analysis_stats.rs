@@ -1205,6 +1205,7 @@ impl flags::AnalysisStats {
                     sized_bound: false,
                     discriminant_hints: ide::DiscriminantHints::Always,
                     parameter_hints: true,
+                    parameter_hints_for_missing_arguments: false,
                     generic_parameter_hints: ide::GenericParameterHints {
                         type_hints: true,
                         lifetime_hints: true,

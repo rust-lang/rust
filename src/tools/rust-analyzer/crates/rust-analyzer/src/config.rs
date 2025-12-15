@@ -280,6 +280,9 @@ config_data! {
         /// Show function parameter name inlay hints at the call site.
         inlayHints_parameterHints_enable: bool = true,
 
+        /// Show parameter name inlay hints for missing arguments at the call site.
+        inlayHints_parameterHints_missingArguments_enable: bool = false,
+
         /// Show exclusive range inlay hints.
         inlayHints_rangeExclusiveHints_enable: bool = false,
 
@@ -1916,6 +1919,9 @@ impl Config {
             type_hints: self.inlayHints_typeHints_enable().to_owned(),
             sized_bound: self.inlayHints_implicitSizedBoundHints_enable().to_owned(),
             parameter_hints: self.inlayHints_parameterHints_enable().to_owned(),
+            parameter_hints_for_missing_arguments: self
+                .inlayHints_parameterHints_missingArguments_enable()
+                .to_owned(),
             generic_parameter_hints: GenericParameterHints {
                 type_hints: self.inlayHints_genericParameterHints_type_enable().to_owned(),
                 lifetime_hints: self.inlayHints_genericParameterHints_lifetime_enable().to_owned(),

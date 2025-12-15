@@ -1070,6 +1070,13 @@ Default: `true`
 Show function parameter name inlay hints at the call site.
 
 
+## rust-analyzer.inlayHints.parameterHints.missingArguments.enable {#inlayHints.parameterHints.missingArguments.enable}
+
+Default: `false`
+
+Show parameter name inlay hints for missing arguments at the call site.
+
+
 ## rust-analyzer.inlayHints.rangeExclusiveHints.enable {#inlayHints.rangeExclusiveHints.enable}
 
 Default: `false`

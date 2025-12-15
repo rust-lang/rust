@@ -307,6 +307,7 @@ pub struct InlayHintsConfig<'a> {
     pub sized_bound: bool,
     pub discriminant_hints: DiscriminantHints,
     pub parameter_hints: bool,
+    pub parameter_hints_for_missing_arguments: bool,
     pub generic_parameter_hints: GenericParameterHints,
     pub chaining_hints: bool,
     pub adjustment_hints: AdjustmentHints,
@@ -886,6 +887,7 @@ mod tests {
         render_colons: false,
         type_hints: false,
         parameter_hints: false,
+        parameter_hints_for_missing_arguments: false,
         sized_bound: false,
         generic_parameter_hints: GenericParameterHints {
             type_hints: false,

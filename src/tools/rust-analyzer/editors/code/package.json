@@ -2399,6 +2399,16 @@
             {
                 "title": "Inlay Hints",
                 "properties": {
+                    "rust-analyzer.inlayHints.parameterHints.missingArguments.enable": {
+                        "markdownDescription": "Show parameter name inlay hints for missing arguments at the call site.",
+                        "default": false,
+                        "type": "boolean"
+                    }
+                }
+            },
+            {
+                "title": "Inlay Hints",
+                "properties": {
                     "rust-analyzer.inlayHints.rangeExclusiveHints.enable": {
                         "markdownDescription": "Show exclusive range inlay hints.",
                         "default": false,

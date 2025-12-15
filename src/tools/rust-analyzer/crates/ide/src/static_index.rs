@@ -169,6 +169,7 @@ impl StaticIndex<'_> {
                     type_hints: true,
                     sized_bound: false,
                     parameter_hints: true,
+                    parameter_hints_for_missing_arguments: false,
                     generic_parameter_hints: crate::GenericParameterHints {
                         type_hints: false,
                         lifetime_hints: false,
