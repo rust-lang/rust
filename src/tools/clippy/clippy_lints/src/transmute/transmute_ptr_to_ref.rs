@@ -15,7 +15,7 @@ pub(super) fn check<'tcx>(
     e: &'tcx Expr<'_>,
     from_ty: Ty<'tcx>,
     to_ty: Ty<'tcx>,
-    arg: &'tcx Expr<'_>,
+    arg: sugg::Sugg<'_>,
     path: &'tcx Path<'_>,
     msrv: Msrv,
 ) -> bool {
@@ -27,7 +27,6 @@ pub(super) fn check<'tcx>(
                 e.span,
                 format!("transmute from a pointer type (`{from_ty}`) to a reference type (`{to_ty}`)"),
                 |diag| {
-                    let arg = sugg::Sugg::hir(cx, arg, "..");
                     let (deref, cast) = match mutbl {
                         Mutability::Mut => ("&mut *", "*mut"),
                         Mutability::Not => ("&*", "*const"),

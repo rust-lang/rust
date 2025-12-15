@@ -4,8 +4,8 @@ use ast::token::IdentIsRaw;
 use rustc_ast::token::{self, MetaVarKind, Token, TokenKind};
 use rustc_ast::{
     self as ast, AngleBracketedArg, AngleBracketedArgs, AnonConst, AssocItemConstraint,
-    AssocItemConstraintKind, BlockCheckMode, GenericArg, GenericArgs, Generics, ParenthesizedArgs,
-    Path, PathSegment, QSelf,
+    AssocItemConstraintKind, BlockCheckMode, GenericArg, GenericArgs, Generics, MgcaDisambiguation,
+    ParenthesizedArgs, Path, PathSegment, QSelf,
 };
 use rustc_errors::{Applicability, Diag, PResult};
 use rustc_span::{BytePos, Ident, Span, kw, sym};
@@ -16,12 +16,13 @@ use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
 use super::{Parser, Restrictions, TokenType};
 use crate::ast::{PatKind, TyKind};
 use crate::errors::{
-    self, AttributeOnEmptyType, AttributeOnGenericArg, FnPathFoundNamedParams,
-    PathFoundAttributeInParams, PathFoundCVariadicParams, PathSingleColon, PathTripleColon,
+    self, AttributeOnEmptyType, AttributeOnGenericArg, ConstGenericWithoutBraces,
+    ConstGenericWithoutBracesSugg, FnPathFoundNamedParams, PathFoundAttributeInParams,
+    PathFoundCVariadicParams, PathSingleColon, PathTripleColon,
 };
 use crate::exp;
 use crate::parser::{
-    CommaRecoveryMode, ExprKind, FnContext, FnParseMode, RecoverColon, RecoverComma,
+    CommaRecoveryMode, Expr, ExprKind, FnContext, FnParseMode, RecoverColon, RecoverComma,
 };
 
 /// Specifies how to parse a path.
@@ -870,12 +871,75 @@ impl<'a> Parser<'a> {
     /// the caller.
     pub(super) fn parse_const_arg(&mut self) -> PResult<'a, AnonConst> {
         // Parse const argument.
-        let value = if self.token.kind == token::OpenBrace {
-            self.parse_expr_block(None, self.token.span, BlockCheckMode::Default)?
+        let (value, mgca_disambiguation) = if self.token.kind == token::OpenBrace {
+            let value = self.parse_expr_block(None, self.token.span, BlockCheckMode::Default)?;
+            (value, MgcaDisambiguation::Direct)
+        } else if self.token.is_keyword(kw::Const) {
+            // While we could just disambiguate `Direct` from `AnonConst` by
+            // treating all const block exprs as `AnonConst`, that would
+            // complicate the DefCollector and likely all other visitors.
+            // So we strip the const blockiness and just store it as a block
+            // in the AST with the extra disambiguator on the AnonConst
+            let value = self.parse_mgca_const_block(true)?;
+            (value.value, MgcaDisambiguation::AnonConst)
         } else {
-            self.handle_unambiguous_unbraced_const_arg()?
+            self.parse_unambiguous_unbraced_const_arg()?
         };
-        Ok(AnonConst { id: ast::DUMMY_NODE_ID, value })
+        Ok(AnonConst { id: ast::DUMMY_NODE_ID, value, mgca_disambiguation })
+    }
+
+    /// Attempt to parse a const argument that has not been enclosed in braces.
+    /// There are a limited number of expressions that are permitted without being
+    /// enclosed in braces:
+    /// - Literals.
+    /// - Single-segment paths (i.e. standalone generic const parameters).
+    /// All other expressions that can be parsed will emit an error suggesting the expression be
+    /// wrapped in braces.
+    pub(super) fn parse_unambiguous_unbraced_const_arg(
+        &mut self,
+    ) -> PResult<'a, (Box<Expr>, MgcaDisambiguation)> {
+        let start = self.token.span;
+        let attrs = self.parse_outer_attributes()?;
+        let (expr, _) =
+            self.parse_expr_res(Restrictions::CONST_EXPR, attrs).map_err(|mut err| {
+                err.span_label(
+                    start.shrink_to_lo(),
+                    "while parsing a const generic argument starting here",
+                );
+                err
+            })?;
+        if !self.expr_is_valid_const_arg(&expr) {
+            self.dcx().emit_err(ConstGenericWithoutBraces {
+                span: expr.span,
+                sugg: ConstGenericWithoutBracesSugg {
+                    left: expr.span.shrink_to_lo(),
+                    right: expr.span.shrink_to_hi(),
+                },
+            });
+        }
+
+        let mgca_disambiguation = self.mgca_direct_lit_hack(&expr);
+        Ok((expr, mgca_disambiguation))
+    }
+
+    /// Under `min_generic_const_args` we still allow *some* anon consts to be written without
+    /// a `const` block as it makes things quite a lot nicer. This function is useful for contexts
+    /// where we would like to use `MgcaDisambiguation::Direct` but need to fudge it to be `AnonConst`
+    /// in the presence of literals.
+    //
+    /// FIXME(min_generic_const_args): In the long term it would be nice to have a way to directly
+    /// represent literals in `hir::ConstArgKind` so that we can remove this special case by not
+    /// needing an anon const.
+    pub fn mgca_direct_lit_hack(&self, expr: &Expr) -> MgcaDisambiguation {
+        match &expr.kind {
+            ast::ExprKind::Lit(_) => MgcaDisambiguation::AnonConst,
+            ast::ExprKind::Unary(ast::UnOp::Neg, expr)
+                if matches!(expr.kind, ast::ExprKind::Lit(_)) =>
+            {
+                MgcaDisambiguation::AnonConst
+            }
+            _ => MgcaDisambiguation::Direct,
+        }
     }
 
     /// Parse a generic argument in a path segment.
@@ -976,7 +1040,11 @@ impl<'a> Parser<'a> {
                 GenericArg::Type(_) => GenericArg::Type(self.mk_ty(attr_span, TyKind::Err(guar))),
                 GenericArg::Const(_) => {
                     let error_expr = self.mk_expr(attr_span, ExprKind::Err(guar));
-                    GenericArg::Const(AnonConst { id: ast::DUMMY_NODE_ID, value: error_expr })
+                    GenericArg::Const(AnonConst {
+                        id: ast::DUMMY_NODE_ID,
+                        value: error_expr,
+                        mgca_disambiguation: MgcaDisambiguation::Direct,
+                    })
                 }
                 GenericArg::Lifetime(lt) => GenericArg::Lifetime(lt),
             }));

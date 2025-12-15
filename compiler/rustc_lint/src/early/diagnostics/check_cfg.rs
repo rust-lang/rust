@@ -138,6 +138,16 @@ pub(super) fn unexpected_cfg_name(
     let is_from_external_macro = name_span.in_external_macro(sess.source_map());
     let mut is_feature_cfg = name == sym::feature;
 
+    fn miscapitalized_boolean(name: Symbol) -> Option<bool> {
+        if name.as_str().eq_ignore_ascii_case("false") {
+            Some(false)
+        } else if name.as_str().eq_ignore_ascii_case("true") {
+            Some(true)
+        } else {
+            None
+        }
+    }
+
     let code_sugg = if is_feature_cfg && is_from_cargo {
         lints::unexpected_cfg_name::CodeSuggestion::DefineFeatures
     // Suggest correct `version("..")` predicate syntax
@@ -147,6 +157,21 @@ pub(super) fn unexpected_cfg_name(
         lints::unexpected_cfg_name::CodeSuggestion::VersionSyntax {
             between_name_and_value: name_span.between(value_span),
             after_value: value_span.shrink_to_hi(),
+        }
+    // Suggest a literal `false` instead
+    // Detect miscapitalized `False`/`FALSE` etc, ensuring that this isn't `r#false`
+    } else if value.is_none()
+        // If this is a miscapitalized False/FALSE, suggest the boolean literal instead
+        && let Some(boolean) = miscapitalized_boolean(name)
+        // Check this isn't a raw identifier
+        && sess
+            .source_map()
+            .span_to_snippet(name_span)
+            .map_or(true, |snippet| !snippet.contains("r#"))
+    {
+        lints::unexpected_cfg_name::CodeSuggestion::BooleanLiteral {
+            span: name_span,
+            literal: boolean,
         }
     // Suggest the most probable if we found one
     } else if let Some(best_match) = find_best_match_for_name(&possibilities, name, None) {

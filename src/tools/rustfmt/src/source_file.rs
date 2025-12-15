@@ -65,18 +65,6 @@ where
         }
     }
 
-    #[allow(non_local_definitions)]
-    impl From<&FileName> for rustc_span::FileName {
-        fn from(filename: &FileName) -> rustc_span::FileName {
-            match filename {
-                FileName::Real(path) => {
-                    rustc_span::FileName::Real(rustc_span::RealFileName::LocalPath(path.to_owned()))
-                }
-                FileName::Stdin => rustc_span::FileName::Custom("stdin".to_owned()),
-            }
-        }
-    }
-
     // SourceFile's in the SourceMap will always have Unix-style line endings
     // See: https://github.com/rust-lang/rustfmt/issues/3850
     // So if the user has explicitly overridden the rustfmt `newline_style`

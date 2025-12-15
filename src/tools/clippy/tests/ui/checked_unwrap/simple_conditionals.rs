@@ -472,3 +472,22 @@ fn issue15321() {
         //~^ unnecessary_unwrap
     }
 }
+
+mod issue16188 {
+    struct Foo {
+        value: Option<i32>,
+    }
+
+    impl Foo {
+        pub fn bar(&mut self) {
+            let print_value = |v: i32| {
+                println!("{}", v);
+            };
+
+            if self.value.is_none() {
+                self.value = Some(10);
+                print_value(self.value.unwrap());
+            }
+        }
+    }
+}

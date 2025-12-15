@@ -14,9 +14,9 @@ jobs:
     if: github.repository == 'rust-lang/rustc-dev-guide'
     runs-on: ubuntu-latest
     env:
-      MDBOOK_VERSION: 0.4.52
-      MDBOOK_LINKCHECK2_VERSION: 0.9.1
-      MDBOOK_MERMAID_VERSION: 0.12.6
+      MDBOOK_VERSION: 0.5.1
+      MDBOOK_LINKCHECK2_VERSION: 0.11.0
+      MDBOOK_MERMAID_VERSION: 0.17.0
       MDBOOK_OUTPUT__LINKCHECK__FOLLOW_WEB_LINKS: ${{ github.event_name != 'pull_request' }}
       DEPLOY_DIR: book/html
       BASE_SHA: ${{ github.event.pull_request.base.sha }}

@@ -63,6 +63,7 @@ pub fn parse_cfg_select(
                     segments: vec![Ident::from_str("cfg_select")].into_boxed_slice(),
                     span: cfg_span,
                 },
+                None,
                 ParsedDescription::Macro,
                 cfg_span,
                 lint_node_id,

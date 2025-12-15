@@ -9,16 +9,16 @@ mod local {
 }
 
 pub fn test(_: Foo) {}
-//~^ ERROR [E0412]
+//~^ ERROR [E0425]
 
 pub fn test2(_: Bar) {}
-//~^ ERROR [E0412]
+//~^ ERROR [E0425]
 
 pub fn test3(_: Baz) {}
-//~^ ERROR [E0412]
+//~^ ERROR [E0425]
 
 pub fn test4(_: Quux) {}
-//~^ ERROR [E0412]
+//~^ ERROR [E0425]
 
 fn test5<T: hidden_struct::Marker>() {}
 

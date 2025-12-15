@@ -52,6 +52,7 @@ the CI to build and test their PR (e.g. when developing on a slow machine).
 Rust has strong backwards-compatibility guarantees.
 Thus, new features can't just be implemented directly in stable Rust.
 Instead, we have 3 release channels: stable, beta, and nightly.
+See [The Rust Book] for more details on Rust’s train release model.
 
 - **Stable**: this is the latest stable release for general usage.
 - **Beta**: this is the next release (will be stable within 6 weeks).
@@ -61,6 +62,8 @@ Instead, we have 3 release channels: stable, beta, and nightly.
 
 See [this chapter on implementing new features](./implementing_new_features.md) for more
 information.
+
+[The Rust Book]: https://doc.rust-lang.org/book/appendix-07-nightly-rust.html
 
 ### Breaking changes
 
@@ -465,7 +468,7 @@ Just a few things to keep in mind:
 #### ⚠️ Note: Where to contribute `rustc-dev-guide` changes
 
 For detailed information about where to contribute rustc-dev-guide changes and the benefits of doing so,
-see [the rustc-dev-guide working group documentation].
+see [the rustc-dev-guide team documentation].
 
 ## Issue triage
 
@@ -482,7 +485,7 @@ Please see <https://forge.rust-lang.org/release/issue-triaging.html>.
 [regression-]: https://github.com/rust-lang/rust/labels?q=regression
 [relnotes]: https://github.com/rust-lang/rust/labels/relnotes
 [S-tracking-]: https://github.com/rust-lang/rust/labels?q=s-tracking
-[the rustc-dev-guide working group documentation]: https://forge.rust-lang.org/wg-rustc-dev-guide/index.html#where-to-contribute-rustc-dev-guide-changes
+[the rustc-dev-guide team documentation]: https://forge.rust-lang.org/rustc-dev-guide/index.html#where-to-contribute-rustc-dev-guide-changes
 
 ### rfcbot labels
 

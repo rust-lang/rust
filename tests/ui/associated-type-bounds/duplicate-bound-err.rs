@@ -81,7 +81,9 @@ fn uncallable(_: impl Iterator<Item = i32, Item = u32>) {}
 
 fn uncallable_const(_: impl Trait<ASSOC = 3, ASSOC = 4>) {}
 
-fn uncallable_rtn(_: impl Trait<foo(..): Trait<ASSOC = 3>, foo(..): Trait<ASSOC = 4>>) {}
+fn uncallable_rtn(
+    _: impl Trait<foo(..): Trait<ASSOC = 3>, foo(..): Trait<ASSOC = 4>>
+) {}
 
 type MustFail = dyn Iterator<Item = i32, Item = u32>;
 //~^ ERROR [E0719]

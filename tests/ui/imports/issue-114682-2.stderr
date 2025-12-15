@@ -1,9 +1,87 @@
-error[E0573]: expected type, found function `issue_114682_2_extern::max`
-  --> $DIR/issue-114682-2.rs:8:10
+error: `max` is ambiguous
+  --> $DIR/issue-114682-2.rs:6:28
+   |
+LL | use issue_114682_2_extern::max;
+   |                            ^^^ ambiguous name
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #114095 <https://github.com/rust-lang/rust/issues/114095>
+   = note: ambiguous because of multiple glob imports of a name in the same module
+note: `max` could refer to the type alias defined here
+  --> $DIR/auxiliary/issue-114682-2-extern.rs:17:9
+   |
+LL | pub use self::e::*;
+   |         ^^^^^^^
+note: `max` could also refer to the module defined here
+  --> $DIR/auxiliary/issue-114682-2-extern.rs:16:9
+   |
+LL | pub use self::d::*;
+   |         ^^^^^^^
+   = note: `#[deny(ambiguous_glob_imports)]` (part of `#[deny(future_incompatible)]`) on by default
+
+error: `max` is ambiguous
+  --> $DIR/issue-114682-2.rs:9:33
    |
 LL | type A = issue_114682_2_extern::max;
-   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^ not a type
+   |                                 ^^^ ambiguous name
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #114095 <https://github.com/rust-lang/rust/issues/114095>
+   = note: ambiguous because of multiple glob imports of a name in the same module
+note: `max` could refer to the type alias defined here
+  --> $DIR/auxiliary/issue-114682-2-extern.rs:17:9
+   |
+LL | pub use self::e::*;
+   |         ^^^^^^^
+note: `max` could also refer to the module defined here
+  --> $DIR/auxiliary/issue-114682-2-extern.rs:16:9
+   |
+LL | pub use self::d::*;
+   |         ^^^^^^^
 
-error: aborting due to 1 previous error
+error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0573`.
+Future incompatibility report: Future breakage diagnostic:
+error: `max` is ambiguous
+  --> $DIR/issue-114682-2.rs:6:28
+   |
+LL | use issue_114682_2_extern::max;
+   |                            ^^^ ambiguous name
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #114095 <https://github.com/rust-lang/rust/issues/114095>
+   = note: ambiguous because of multiple glob imports of a name in the same module
+note: `max` could refer to the type alias defined here
+  --> $DIR/auxiliary/issue-114682-2-extern.rs:17:9
+   |
+LL | pub use self::e::*;
+   |         ^^^^^^^
+note: `max` could also refer to the module defined here
+  --> $DIR/auxiliary/issue-114682-2-extern.rs:16:9
+   |
+LL | pub use self::d::*;
+   |         ^^^^^^^
+   = note: `#[deny(ambiguous_glob_imports)]` (part of `#[deny(future_incompatible)]`) on by default
+
+Future breakage diagnostic:
+error: `max` is ambiguous
+  --> $DIR/issue-114682-2.rs:9:33
+   |
+LL | type A = issue_114682_2_extern::max;
+   |                                 ^^^ ambiguous name
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #114095 <https://github.com/rust-lang/rust/issues/114095>
+   = note: ambiguous because of multiple glob imports of a name in the same module
+note: `max` could refer to the type alias defined here
+  --> $DIR/auxiliary/issue-114682-2-extern.rs:17:9
+   |
+LL | pub use self::e::*;
+   |         ^^^^^^^
+note: `max` could also refer to the module defined here
+  --> $DIR/auxiliary/issue-114682-2-extern.rs:16:9
+   |
+LL | pub use self::d::*;
+   |         ^^^^^^^
+   = note: `#[deny(ambiguous_glob_imports)]` (part of `#[deny(future_incompatible)]`) on by default
+

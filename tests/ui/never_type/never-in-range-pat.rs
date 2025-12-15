@@ -1,5 +1,5 @@
 // Regression test for <https://github.com/rust-lang/rust/issues/133947>.
-
+//
 // Make sure we don't ICE when there's `!` in a range pattern.
 //
 // This shouldn't be allowed anyways, but we only deny it during MIR

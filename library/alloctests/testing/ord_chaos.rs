@@ -2,6 +2,8 @@ use std::cell::Cell;
 use std::cmp::Ordering::{self, *};
 use std::ptr;
 
+use crate::string::String;
+
 // Minimal type with an `Ord` implementation violating transitivity.
 #[derive(Debug)]
 pub(crate) enum Cyclic3 {
@@ -79,3 +81,31 @@ impl<T: PartialEq> PartialEq for Governed<'_, T> {
 }
 
 impl<T: Eq> Eq for Governed<'_, T> {}
+
+// Comparison based only on the ID, the name is ignored.
+#[derive(Debug)]
+pub(crate) struct IdBased {
+    pub id: u32,
+    #[allow(dead_code)]
+    pub name: String,
+}
+
+impl PartialEq for IdBased {
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id
+    }
+}
+
+impl Eq for IdBased {}
+
+impl PartialOrd for IdBased {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for IdBased {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.id.cmp(&other.id)
+    }
+}

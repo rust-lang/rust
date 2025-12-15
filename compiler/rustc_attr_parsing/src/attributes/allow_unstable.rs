@@ -17,9 +17,9 @@ impl<S: Stage> CombineAttributeParser<S> for AllowInternalUnstableParser {
     ]);
     const TEMPLATE: AttributeTemplate = template!(Word, List: &["feat1, feat2, ..."]);
 
-    fn extend<'c>(
-        cx: &'c mut AcceptContext<'_, '_, S>,
-        args: &'c ArgParser<'_>,
+    fn extend(
+        cx: &mut AcceptContext<'_, '_, S>,
+        args: &ArgParser,
     ) -> impl IntoIterator<Item = Self::Item> {
         parse_unstable(cx, args, <Self as CombineAttributeParser<S>>::PATH[0])
             .into_iter()
@@ -39,9 +39,9 @@ impl<S: Stage> CombineAttributeParser<S> for UnstableFeatureBoundParser {
     ]);
     const TEMPLATE: AttributeTemplate = template!(Word, List: &["feat1, feat2, ..."]);
 
-    fn extend<'c>(
-        cx: &'c mut AcceptContext<'_, '_, S>,
-        args: &'c ArgParser<'_>,
+    fn extend(
+        cx: &mut AcceptContext<'_, '_, S>,
+        args: &ArgParser,
     ) -> impl IntoIterator<Item = Self::Item> {
         if !cx.features().staged_api() {
             cx.emit_err(session_diagnostics::StabilityOutsideStd { span: cx.attr_span });
@@ -67,17 +67,17 @@ impl<S: Stage> CombineAttributeParser<S> for AllowConstFnUnstableParser {
     ]);
     const TEMPLATE: AttributeTemplate = template!(Word, List: &["feat1, feat2, ..."]);
 
-    fn extend<'c>(
-        cx: &'c mut AcceptContext<'_, '_, S>,
-        args: &'c ArgParser<'_>,
-    ) -> impl IntoIterator<Item = Self::Item> + 'c {
+    fn extend(
+        cx: &mut AcceptContext<'_, '_, S>,
+        args: &ArgParser,
+    ) -> impl IntoIterator<Item = Self::Item> {
         parse_unstable(cx, args, <Self as CombineAttributeParser<S>>::PATH[0])
     }
 }
 
 fn parse_unstable<S: Stage>(
     cx: &AcceptContext<'_, '_, S>,
-    args: &ArgParser<'_>,
+    args: &ArgParser,
     symbol: Symbol,
 ) -> impl IntoIterator<Item = Symbol> {
     let mut res = Vec::new();

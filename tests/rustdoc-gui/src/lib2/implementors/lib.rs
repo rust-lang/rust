@@ -1,3 +1,5 @@
+#![feature(negative_impls)]
+
 pub trait Whatever {
     type Foo;
 
@@ -5,10 +7,13 @@ pub trait Whatever {
 }
 
 pub struct Struct;
+pub struct Struct2;
 
 impl Whatever for Struct {
     type Foo = u8;
 }
+
+impl !Whatever for Struct2 {}
 
 impl http::HttpTrait for Struct {}
 

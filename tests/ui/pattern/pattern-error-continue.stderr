@@ -56,10 +56,13 @@ error[E0433]: failed to resolve: use of undeclared type `E`
   --> $DIR/pattern-error-continue.rs:35:9
    |
 LL |         E::V => {}
-   |         ^
-   |         |
-   |         use of undeclared type `E`
-   |         help: an enum with a similar name exists: `A`
+   |         ^ use of undeclared type `E`
+   |
+help: an enum with a similar name exists
+   |
+LL -         E::V => {}
+LL +         A::V => {}
+   |
 
 error: aborting due to 5 previous errors
 

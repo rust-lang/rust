@@ -3,8 +3,8 @@
 //@ compile-flags: --crate-type=lib
 //@ check-pass
 
+#![expect(incomplete_features)]
 #![feature(contracts)]
-//~^ WARN the feature `contracts` is incomplete and may not be safe to use
 
 extern crate core;
 

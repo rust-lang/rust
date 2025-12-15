@@ -10,7 +10,7 @@ help: the trait `std::fmt::Display` is not implemented for `A`
 LL | struct A;
    | ^^^^^^^^
 note: required by a bound in `Trait`
-  --> $DIR/auxiliary/trait-diag.rs:LL:COL
+  --> remapped/errors/auxiliary/trait-diag.rs:LL:COL
    |
 LL | pub trait Trait: std::fmt::Display {}
    |                  ^^^^^^^^^^^^^^^^^ required by this bound in `Trait`

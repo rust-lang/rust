@@ -2,9 +2,15 @@ error[E0425]: cannot find value `x` in this scope
   --> $DIR/error_in_ty.rs:6:31
    |
 LL | pub struct A<const z: [usize; x]> {}
-   |                    -          ^ help: a const parameter with a similar name exists: `z`
+   |                    -          ^
    |                    |
    |                    similarly named const parameter `z` defined here
+   |
+help: a const parameter with a similar name exists
+   |
+LL - pub struct A<const z: [usize; x]> {}
+LL + pub struct A<const z: [usize; z]> {}
+   |
 
 error: `[usize; x]` is forbidden as the type of a const generic parameter
   --> $DIR/error_in_ty.rs:6:23

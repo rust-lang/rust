@@ -5,8 +5,11 @@ use std::path::{Component, Path};
 
 use cranelift_codegen::MachSrcLoc;
 use cranelift_codegen::binemit::CodeOffset;
-use gimli::write::{AttributeValue, FileId, FileInfo, LineProgram, LineString, LineStringTable};
-use rustc_span::{FileName, Pos, SourceFile, SourceFileAndLine, SourceFileHashAlgorithm, hygiene};
+use gimli::write::{FileId, FileInfo, LineProgram, LineString, LineStringTable};
+use rustc_span::{
+    FileName, Pos, RemapPathScopeComponents, SourceFile, SourceFileAndLine,
+    SourceFileHashAlgorithm, hygiene,
+};
 
 use crate::debuginfo::FunctionDebugContext;
 use crate::debuginfo::emit::address_for_func;
@@ -95,7 +98,7 @@ impl DebugContext {
             match &source_file.name {
                 FileName::Real(path) => {
                     let (dir_path, file_name) =
-                        split_path_dir_and_file(path.to_path(self.filename_display_preference));
+                        split_path_dir_and_file(path.path(RemapPathScopeComponents::DEBUGINFO));
                     let dir_name = osstr_as_utf8_bytes(dir_path.as_os_str());
                     let file_name = osstr_as_utf8_bytes(file_name);
 
@@ -117,8 +120,7 @@ impl DebugContext {
                 }
                 filename => {
                     // For anonymous sources, create an empty directory instead of using the default
-                    let empty_dir = LineString::new(b"", line_program.encoding(), line_strings);
-                    let dir_id = line_program.add_directory(empty_dir);
+                    let dir_id = line_program.default_directory();
 
                     let dummy_file_name = LineString::new(
                         filename.prefer_remapped_unconditionally().to_string().into_bytes(),
@@ -175,10 +177,6 @@ impl FunctionDebugContext {
         let func_end = mcr.buffer.total_size();
 
         assert_ne!(func_end, 0);
-
-        let entry = debug_context.dwarf.unit.get_mut(self.entry_id);
-        entry.set(gimli::DW_AT_low_pc, AttributeValue::Address(address_for_func(func_id)));
-        entry.set(gimli::DW_AT_high_pc, AttributeValue::Udata(u64::from(func_end)));
 
         func_end
     }

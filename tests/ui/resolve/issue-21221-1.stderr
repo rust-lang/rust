@@ -13,7 +13,7 @@ LL + use mul1::Mul;
 LL + use mul2::Mul;
    |
 
-error[E0412]: cannot find type `Mul` in this scope
+error[E0425]: cannot find type `Mul` in this scope
   --> $DIR/issue-21221-1.rs:59:16
    |
 LL | fn getMul() -> Mul {
@@ -58,5 +58,5 @@ LL + use std::ops::Div;
 
 error: aborting due to 4 previous errors
 
-Some errors have detailed explanations: E0405, E0412.
+Some errors have detailed explanations: E0405, E0425.
 For more information about an error, try `rustc --explain E0405`.

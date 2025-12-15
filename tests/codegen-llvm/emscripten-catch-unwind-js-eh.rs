@@ -1,4 +1,4 @@
-//@ compile-flags: -Copt-level=3 --target wasm32-unknown-emscripten
+//@ compile-flags: -Copt-level=3 --target wasm32-unknown-emscripten -Z emscripten-wasm-eh=false
 //@ needs-llvm-components: webassembly
 
 // Emscripten has its own unique implementation of catch_unwind (in `codegen_emcc_try`),

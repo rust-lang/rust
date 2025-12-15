@@ -68,52 +68,67 @@ help: consider importing this function
 LL + use other::import;
    |
 
-error[E0412]: cannot find type `A` in this scope
+error[E0425]: cannot find type `A` in this scope
   --> $DIR/glob-resolve1.rs:33:11
    |
 LL |     pub enum B {
    |     ---------- similarly named enum `B` defined here
 ...
 LL |     foo::<A>();
-   |           ^ help: an enum with a similar name exists: `B`
+   |           ^
    |
 note: enum `bar::A` exists but is inaccessible
   --> $DIR/glob-resolve1.rs:12:5
    |
 LL |     enum A {
    |     ^^^^^^ not accessible
+help: an enum with a similar name exists
+   |
+LL -     foo::<A>();
+LL +     foo::<B>();
+   |
 
-error[E0412]: cannot find type `C` in this scope
+error[E0425]: cannot find type `C` in this scope
   --> $DIR/glob-resolve1.rs:34:11
    |
 LL |     pub enum B {
    |     ---------- similarly named enum `B` defined here
 ...
 LL |     foo::<C>();
-   |           ^ help: an enum with a similar name exists: `B`
+   |           ^
    |
 note: struct `bar::C` exists but is inaccessible
   --> $DIR/glob-resolve1.rs:19:5
    |
 LL |     struct C;
    |     ^^^^^^^^^ not accessible
+help: an enum with a similar name exists
+   |
+LL -     foo::<C>();
+LL +     foo::<B>();
+   |
 
-error[E0412]: cannot find type `D` in this scope
+error[E0425]: cannot find type `D` in this scope
   --> $DIR/glob-resolve1.rs:35:11
    |
 LL |     pub enum B {
    |     ---------- similarly named enum `B` defined here
 ...
 LL |     foo::<D>();
-   |           ^ help: an enum with a similar name exists: `B`
+   |           ^
    |
 note: type alias `bar::D` exists but is inaccessible
   --> $DIR/glob-resolve1.rs:21:5
    |
 LL |     type D = isize;
    |     ^^^^^^^^^^^^^^^ not accessible
+help: an enum with a similar name exists
+   |
+LL -     foo::<D>();
+LL +     foo::<B>();
+   |
 
 error: aborting due to 8 previous errors
 
-Some errors have detailed explanations: E0412, E0423, E0425.
-For more information about an error, try `rustc --explain E0412`.
+Some errors have detailed explanations: E0423, E0425.
+For more information about an error, try `rustc --explain E0423`.

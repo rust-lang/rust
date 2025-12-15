@@ -109,15 +109,15 @@ pub(crate) enum RegionErrorKind<'tcx> {
         /// The placeholder free region.
         longer_fr: RegionVid,
         /// The region element that erroneously must be outlived by `longer_fr`.
-        error_element: RegionElement,
+        error_element: RegionElement<'tcx>,
         /// The placeholder region.
-        placeholder: ty::PlaceholderRegion,
+        placeholder: ty::PlaceholderRegion<'tcx>,
     },
 
     /// Any other lifetime error.
     RegionError {
         /// The origin of the region.
-        fr_origin: NllRegionVariableOrigin,
+        fr_origin: NllRegionVariableOrigin<'tcx>,
         /// The region that should outlive `shorter_fr`.
         longer_fr: RegionVid,
         /// The region that should be shorter, but we can't prove it.
@@ -427,7 +427,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
     pub(crate) fn report_region_error(
         &mut self,
         fr: RegionVid,
-        fr_origin: NllRegionVariableOrigin,
+        fr_origin: NllRegionVariableOrigin<'tcx>,
         outlived_fr: RegionVid,
         outlives_suggestion: &mut OutlivesSuggestionBuilder,
     ) {
@@ -540,6 +540,23 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
 
         self.add_placeholder_from_predicate_note(&mut diag, &path);
         self.add_sized_or_copy_bound_info(&mut diag, category, &path);
+
+        for constraint in &path {
+            if let ConstraintCategory::Cast { is_raw_ptr_dyn_type_cast: true, .. } =
+                constraint.category
+            {
+                diag.span_note(
+                    constraint.span,
+                    format!("raw pointer casts of trait objects cannot extend lifetimes"),
+                );
+                diag.note(format!(
+                    "this was previously accepted by the compiler but was changed recently"
+                ));
+                diag.help(format!(
+                    "see <https://github.com/rust-lang/rust/issues/141402> for more information"
+                ));
+            }
+        }
 
         self.buffer_error(diag);
     }
@@ -830,11 +847,9 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
 
             let fn_returns = self.infcx.tcx.return_type_impl_or_dyn_traits(suitable_region.scope);
 
-            let param = if let Some(param) =
+            let Some(param) =
                 find_param_with_region(self.infcx.tcx, self.mir_def_id(), f, outlived_f)
-            {
-                param
-            } else {
+            else {
                 return;
             };
 
@@ -913,37 +928,27 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
 
         let tcx = self.infcx.tcx;
 
-        let instance = if let ConstraintCategory::CallArgument(Some(func_ty)) = category {
-            let (fn_did, args) = match func_ty.kind() {
-                ty::FnDef(fn_did, args) => (fn_did, args),
-                _ => return,
-            };
-            debug!(?fn_did, ?args);
+        let ConstraintCategory::CallArgument(Some(func_ty)) = category else { return };
+        let ty::FnDef(fn_did, args) = func_ty.kind() else { return };
+        debug!(?fn_did, ?args);
 
-            // Only suggest this on function calls, not closures
-            let ty = tcx.type_of(fn_did).instantiate_identity();
-            debug!("ty: {:?}, ty.kind: {:?}", ty, ty.kind());
-            if let ty::Closure(_, _) = ty.kind() {
-                return;
-            }
-
-            if let Ok(Some(instance)) = ty::Instance::try_resolve(
-                tcx,
-                self.infcx.typing_env(self.infcx.param_env),
-                *fn_did,
-                self.infcx.resolve_vars_if_possible(args),
-            ) {
-                instance
-            } else {
-                return;
-            }
-        } else {
+        // Only suggest this on function calls, not closures
+        let ty = tcx.type_of(fn_did).instantiate_identity();
+        debug!("ty: {:?}, ty.kind: {:?}", ty, ty.kind());
+        if let ty::Closure(_, _) = ty.kind() {
+            return;
+        }
+        let Ok(Some(instance)) = ty::Instance::try_resolve(
+            tcx,
+            self.infcx.typing_env(self.infcx.param_env),
+            *fn_did,
+            self.infcx.resolve_vars_if_possible(args),
+        ) else {
             return;
         };
 
-        let param = match find_param_with_region(tcx, self.mir_def_id(), f, o) {
-            Some(param) => param,
-            None => return,
+        let Some(param) = find_param_with_region(tcx, self.mir_def_id(), f, o) else {
+            return;
         };
         debug!(?param);
 

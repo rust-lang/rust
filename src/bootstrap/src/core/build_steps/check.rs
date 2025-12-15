@@ -662,6 +662,7 @@ macro_rules! tool_check_step {
             $(, allow_features: $allow_features:expr )?
             // Features that should be enabled when checking
             $(, enable_features: [$($enable_features:expr),*] )?
+            $(, default_features: $default_features:expr )?
             $(, default: $default:literal )?
             $( , )?
         }
@@ -708,8 +709,13 @@ macro_rules! tool_check_step {
                     _value
                 };
                 let extra_features: &[&str] = &[$($($enable_features),*)?];
+                let default_features = {
+                    let mut _value = true;
+                    $( _value = $default_features; )?
+                    _value
+                };
                 let mode: Mode = $mode;
-                run_tool_check_step(builder, compiler, target, $path, mode, allow_features, extra_features);
+                run_tool_check_step(builder, compiler, target, $path, mode, allow_features, extra_features, default_features);
             }
 
             fn metadata(&self) -> Option<StepMetadata> {
@@ -720,6 +726,7 @@ macro_rules! tool_check_step {
 }
 
 /// Used by the implementation of `Step::run` in `tool_check_step!`.
+#[allow(clippy::too_many_arguments)]
 fn run_tool_check_step(
     builder: &Builder<'_>,
     compiler: CompilerForCheck,
@@ -728,6 +735,7 @@ fn run_tool_check_step(
     mode: Mode,
     allow_features: &str,
     extra_features: &[&str],
+    default_features: bool,
 ) {
     let display_name = path.rsplit('/').next().unwrap();
 
@@ -761,6 +769,10 @@ fn run_tool_check_step(
         cargo.arg("--all-targets");
     }
 
+    if !default_features {
+        cargo.arg("--no-default-features");
+    }
+
     let stamp = BuildStamp::new(&builder.cargo_out(build_compiler, mode, target))
         .with_prefix(&format!("{display_name}-check"));
 
@@ -778,7 +790,12 @@ tool_check_step!(Rustdoc {
 // behavior, treat it as in-tree so that any new warnings in clippy will be
 // rejected.
 tool_check_step!(Clippy { path: "src/tools/clippy", mode: Mode::ToolRustcPrivate });
-tool_check_step!(Miri { path: "src/tools/miri", mode: Mode::ToolRustcPrivate });
+tool_check_step!(Miri {
+    path: "src/tools/miri",
+    mode: Mode::ToolRustcPrivate,
+    enable_features: ["stack-cache"],
+    default_features: false,
+});
 tool_check_step!(CargoMiri { path: "src/tools/miri/cargo-miri", mode: Mode::ToolRustcPrivate });
 tool_check_step!(Rustfmt { path: "src/tools/rustfmt", mode: Mode::ToolRustcPrivate });
 tool_check_step!(RustAnalyzer {

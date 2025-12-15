@@ -1,0 +1,13 @@
+error[E0767]: use of unreachable label `'foo`
+  --> $DIR/unreachable-label-ice-148889.rs:15:59
+   |
+LL |     'foo: loop {
+   |     ---- unreachable label defined here
+LL |         reuse <S as Trait>::static_method2 { loop { break 'foo; } }
+   |                                                           ^^^^ unreachable label `'foo`
+   |
+   = note: labels are unreachable through functions, closures, async blocks and modules
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0767`.

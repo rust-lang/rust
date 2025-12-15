@@ -10,7 +10,6 @@ use rustc_ast::{
     Item, ItemKind, MethodCall, NodeId, Path, PathSegment, Ty, TyKind,
 };
 use rustc_ast_pretty::pprust::where_bound_predicate_to_string;
-use rustc_attr_parsing::is_doc_alias_attrs_contain_symbol;
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_errors::codes::*;
 use rustc_errors::{
@@ -18,6 +17,7 @@ use rustc_errors::{
     struct_span_code_err,
 };
 use rustc_hir as hir;
+use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{self, CtorKind, CtorOf, DefKind, MacroKinds};
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId};
@@ -705,7 +705,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             if !enum_candidates.is_empty() {
                 enum_candidates.sort();
 
-                // Contextualize for E0412 "cannot find type", but don't belabor the point
+                // Contextualize for E0425 "cannot find type", but don't belabor the point
                 // (that it's a variant) for E0573 "expected type, found variant".
                 let preamble = if res.is_none() {
                     let others = match enum_candidates.len() {
@@ -903,7 +903,10 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                     // confused by them.
                     continue;
                 }
-                if is_doc_alias_attrs_contain_symbol(r.tcx.get_attrs(did, sym::doc), item_name) {
+                if let Some(d) =
+                    hir::find_attr!(r.tcx.get_all_attrs(did), AttributeKind::Doc(d) => d)
+                    && d.aliases.contains_key(&item_name)
+                {
                     return Some(did);
                 }
             }
@@ -1135,7 +1138,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 }
 
                 self.suggest_ident_hidden_by_hygiene(err, path, span);
-            } else if err_code == E0412 {
+                // cannot find type in this scope
                 if let Some(correct) = Self::likely_rust_type(path) {
                     err.span_suggestion(
                         span,
@@ -1155,6 +1158,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         let callsite_span = span.source_callsite();
         for rib in self.ribs[ValueNS].iter().rev() {
             for (binding_ident, _) in &rib.bindings {
+                // Case 1: the identifier is defined in the same scope as the macro is called
                 if binding_ident.name == ident.name
                     && !binding_ident.span.eq_ctxt(span)
                     && !binding_ident.span.from_expansion()
@@ -1163,6 +1167,19 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                     err.span_help(
                         binding_ident.span,
                         "an identifier with the same name exists, but is not accessible due to macro hygiene",
+                    );
+                    return;
+                }
+
+                // Case 2: the identifier is defined in a macro call in the same scope
+                if binding_ident.name == ident.name
+                    && binding_ident.span.from_expansion()
+                    && binding_ident.span.source_callsite().eq_ctxt(callsite_span)
+                    && binding_ident.span.source_callsite().lo() < callsite_span.lo()
+                {
+                    err.span_help(
+                        binding_ident.span,
+                        "an identifier with the same name is defined here, but is not accessible due to macro hygiene",
                     );
                     return;
                 }
@@ -1520,86 +1537,80 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
     /// Given `where <T as Bar>::Baz: String`, suggest `where T: Bar<Baz = String>`.
     fn restrict_assoc_type_in_where_clause(&self, span: Span, err: &mut Diag<'_>) -> bool {
         // Detect that we are actually in a `where` predicate.
-        let (bounded_ty, bounds, where_span) = if let Some(ast::WherePredicate {
+        let Some(ast::WherePredicate {
             kind:
                 ast::WherePredicateKind::BoundPredicate(ast::WhereBoundPredicate {
                     bounded_ty,
                     bound_generic_params,
                     bounds,
                 }),
-            span,
+            span: where_span,
             ..
         }) = self.diag_metadata.current_where_predicate
-        {
-            if !bound_generic_params.is_empty() {
-                return false;
-            }
-            (bounded_ty, bounds, span)
-        } else {
+        else {
             return false;
         };
+        if !bound_generic_params.is_empty() {
+            return false;
+        }
 
         // Confirm that the target is an associated type.
-        let (ty, _, path) = if let ast::TyKind::Path(Some(qself), path) = &bounded_ty.kind {
-            // use this to verify that ident is a type param.
-            let Some(partial_res) = self.r.partial_res_map.get(&bounded_ty.id) else {
-                return false;
-            };
-            if !matches!(
-                partial_res.full_res(),
-                Some(hir::def::Res::Def(hir::def::DefKind::AssocTy, _))
-            ) {
-                return false;
-            }
-            (&qself.ty, qself.position, path)
-        } else {
+        let ast::TyKind::Path(Some(qself), path) = &bounded_ty.kind else { return false };
+        // use this to verify that ident is a type param.
+        let Some(partial_res) = self.r.partial_res_map.get(&bounded_ty.id) else { return false };
+        if !matches!(
+            partial_res.full_res(),
+            Some(hir::def::Res::Def(hir::def::DefKind::AssocTy, _))
+        ) {
+            return false;
+        }
+
+        let peeled_ty = qself.ty.peel_refs();
+        let ast::TyKind::Path(None, type_param_path) = &peeled_ty.kind else { return false };
+        // Confirm that the `SelfTy` is a type parameter.
+        let Some(partial_res) = self.r.partial_res_map.get(&peeled_ty.id) else {
             return false;
         };
-
-        let peeled_ty = ty.peel_refs();
-        if let ast::TyKind::Path(None, type_param_path) = &peeled_ty.kind {
-            // Confirm that the `SelfTy` is a type parameter.
-            let Some(partial_res) = self.r.partial_res_map.get(&peeled_ty.id) else {
+        if !matches!(
+            partial_res.full_res(),
+            Some(hir::def::Res::Def(hir::def::DefKind::TyParam, _))
+        ) {
+            return false;
+        }
+        let ([ast::PathSegment { args: None, .. }], [ast::GenericBound::Trait(poly_trait_ref)]) =
+            (&type_param_path.segments[..], &bounds[..])
+        else {
+            return false;
+        };
+        let [ast::PathSegment { ident, args: None, id }] =
+            &poly_trait_ref.trait_ref.path.segments[..]
+        else {
+            return false;
+        };
+        if poly_trait_ref.modifiers != ast::TraitBoundModifiers::NONE {
+            return false;
+        }
+        if ident.span == span {
+            let Some(partial_res) = self.r.partial_res_map.get(&id) else {
                 return false;
             };
-            if !matches!(
-                partial_res.full_res(),
-                Some(hir::def::Res::Def(hir::def::DefKind::TyParam, _))
-            ) {
+            if !matches!(partial_res.full_res(), Some(hir::def::Res::Def(..))) {
                 return false;
             }
-            if let (
-                [ast::PathSegment { args: None, .. }],
-                [ast::GenericBound::Trait(poly_trait_ref)],
-            ) = (&type_param_path.segments[..], &bounds[..])
-                && let [ast::PathSegment { ident, args: None, id }] =
-                    &poly_trait_ref.trait_ref.path.segments[..]
-                && poly_trait_ref.modifiers == ast::TraitBoundModifiers::NONE
-            {
-                if ident.span == span {
-                    let Some(partial_res) = self.r.partial_res_map.get(&id) else {
-                        return false;
-                    };
-                    if !matches!(partial_res.full_res(), Some(hir::def::Res::Def(..))) {
-                        return false;
-                    }
 
-                    let Some(new_where_bound_predicate) =
-                        mk_where_bound_predicate(path, poly_trait_ref, ty)
-                    else {
-                        return false;
-                    };
-                    err.span_suggestion_verbose(
-                        *where_span,
-                        format!("constrain the associated type to `{ident}`"),
-                        where_bound_predicate_to_string(&new_where_bound_predicate),
-                        Applicability::MaybeIncorrect,
-                    );
-                }
-                return true;
-            }
+            let Some(new_where_bound_predicate) =
+                mk_where_bound_predicate(path, poly_trait_ref, &qself.ty)
+            else {
+                return false;
+            };
+            err.span_suggestion_verbose(
+                *where_span,
+                format!("constrain the associated type to `{ident}`"),
+                where_bound_predicate_to_string(&new_where_bound_predicate),
+                Applicability::MaybeIncorrect,
+            );
         }
-        false
+        true
     }
 
     /// Check if the source is call expression and the first argument is `self`. If true,
@@ -2010,7 +2021,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 let struct_ctor = match def_id.as_local() {
                     Some(def_id) => self.r.struct_constructors.get(&def_id).cloned(),
                     None => {
-                        let ctor = self.r.cstore().ctor_untracked(def_id);
+                        let ctor = self.r.cstore().ctor_untracked(self.r.tcx(), def_id);
                         ctor.map(|(ctor_kind, ctor_def_id)| {
                             let ctor_res =
                                 Res::Def(DefKind::Ctor(CtorOf::Struct, ctor_kind), ctor_def_id);

@@ -68,7 +68,7 @@ cfg_select! {
 
 cfg_select! {
     () => {}
-    //~^ ERROR expected a literal (`1u8`, `1.0f32`, `"string"`, etc.) here, found `(`
+    //~^ ERROR expected a literal (`1u8`, `1.0f32`, `"string"`, etc.) here, found expression
 }
 
 cfg_select! {
@@ -89,9 +89,11 @@ cfg_select! {
 cfg_select! {
     a + 1 => {}
     //~^ ERROR expected one of `(`, `::`, `=>`, or `=`, found `+`
+    //~| WARN unexpected `cfg` condition name
 }
 
 cfg_select! {
     cfg!() => {}
     //~^ ERROR expected one of `(`, `::`, `=>`, or `=`, found `!`
+    //~| WARN unexpected `cfg` condition name
 }
