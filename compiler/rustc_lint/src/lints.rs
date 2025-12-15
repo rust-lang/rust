@@ -119,6 +119,16 @@ pub(crate) struct BuiltinNonShorthandFieldPatterns {
 }
 
 #[derive(LintDiagnostic)]
+#[diag(lint_builtin_black_box_zst_call)]
+#[note(lint_builtin_black_box_zst_note)]
+#[help(lint_builtin_black_box_zst_help)]
+pub(crate) struct BuiltinBlackBoxZstCall {
+    #[label]
+    pub arg_span: Span,
+    pub ty: String,
+}
+
+#[derive(LintDiagnostic)]
 pub(crate) enum BuiltinUnsafe {
     #[diag(lint_builtin_allow_internal_unsafe)]
     AllowInternalUnsafe,
