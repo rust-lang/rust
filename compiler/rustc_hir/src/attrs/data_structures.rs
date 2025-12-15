@@ -530,7 +530,7 @@ pub struct CfgHideShow {
     pub values: ThinVec<CfgInfo>,
 }
 
-#[derive(Clone, Debug, Default, HashStable_Generic, Encodable, Decodable, PrintAttribute)]
+#[derive(Clone, Debug, Default, HashStable_Generic, Decodable, PrintAttribute)]
 pub struct DocAttribute {
     pub aliases: FxIndexMap<Symbol, Span>,
     pub hidden: Option<Span>,
@@ -564,6 +564,62 @@ pub struct DocAttribute {
     // #[doc(test(...))]
     pub test_attrs: ThinVec<Span>,
     pub no_crate_inject: Option<Span>,
+}
+
+impl<E: rustc_span::SpanEncoder> rustc_serialize::Encodable<E> for DocAttribute {
+    fn encode(&self, encoder: &mut E) {
+        let DocAttribute {
+            aliases,
+            hidden,
+            inline,
+            cfg,
+            auto_cfg,
+            auto_cfg_change,
+            fake_variadic,
+            keyword,
+            attribute,
+            masked,
+            notable_trait,
+            search_unbox,
+            html_favicon_url,
+            html_logo_url,
+            html_playground_url,
+            html_root_url,
+            html_no_source,
+            issue_tracker_base_url,
+            rust_logo,
+            test_attrs,
+            no_crate_inject,
+        } = self;
+        rustc_serialize::Encodable::<E>::encode(aliases, encoder);
+        rustc_serialize::Encodable::<E>::encode(hidden, encoder);
+
+        // FIXME: The `doc(inline)` attribute is never encoded, but is it actually the right thing
+        // to do? I suspect the condition was broken, should maybe instead not encode anything if we
+        // have `doc(no_inline)`.
+        let inline: ThinVec<_> =
+            inline.iter().filter(|(i, _)| *i != DocInline::Inline).cloned().collect();
+        rustc_serialize::Encodable::<E>::encode(&inline, encoder);
+
+        rustc_serialize::Encodable::<E>::encode(cfg, encoder);
+        rustc_serialize::Encodable::<E>::encode(auto_cfg, encoder);
+        rustc_serialize::Encodable::<E>::encode(auto_cfg_change, encoder);
+        rustc_serialize::Encodable::<E>::encode(fake_variadic, encoder);
+        rustc_serialize::Encodable::<E>::encode(keyword, encoder);
+        rustc_serialize::Encodable::<E>::encode(attribute, encoder);
+        rustc_serialize::Encodable::<E>::encode(masked, encoder);
+        rustc_serialize::Encodable::<E>::encode(notable_trait, encoder);
+        rustc_serialize::Encodable::<E>::encode(search_unbox, encoder);
+        rustc_serialize::Encodable::<E>::encode(html_favicon_url, encoder);
+        rustc_serialize::Encodable::<E>::encode(html_logo_url, encoder);
+        rustc_serialize::Encodable::<E>::encode(html_playground_url, encoder);
+        rustc_serialize::Encodable::<E>::encode(html_root_url, encoder);
+        rustc_serialize::Encodable::<E>::encode(html_no_source, encoder);
+        rustc_serialize::Encodable::<E>::encode(issue_tracker_base_url, encoder);
+        rustc_serialize::Encodable::<E>::encode(rust_logo, encoder);
+        rustc_serialize::Encodable::<E>::encode(test_attrs, encoder);
+        rustc_serialize::Encodable::<E>::encode(no_crate_inject, encoder);
+    }
 }
 
 /// Represents parsed *built-in* inert attributes.
