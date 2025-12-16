@@ -13,6 +13,7 @@
 #![feature(impl_trait_in_assoc_type)]
 #![feature(iter_intersperse)]
 #![feature(macro_derive)]
+#![feature(once_cell_try)]
 #![feature(trim_prefix_suffix)]
 #![feature(try_blocks)]
 // tidy-alphabetical-end
@@ -247,7 +248,9 @@ impl CodegenBackend for LlvmCodegenBackend {
 
             use crate::back::lto::enable_autodiff_settings;
             if sess.opts.unstable_opts.autodiff.contains(&AutoDiff::Enable) {
-                drop(llvm::EnzymeWrapper::get_or_init(&sess.opts.sysroot));
+                if let Err(_) = llvm::EnzymeWrapper::get_or_init(&sess.opts.sysroot) {
+                    sess.dcx().emit_fatal(crate::errors::AutoDiffComponentUnavailable);
+                }
                 enable_autodiff_settings(&sess.opts.unstable_opts.autodiff);
             }
         }
