@@ -25,7 +25,7 @@ use rustc_type_ir::{
     elaborate::elaborate,
     error::TypeError,
     fast_reject,
-    inherent::{self, GenericsOf, IntoKind, SliceLike as _, Span as _, Ty as _},
+    inherent::{self, Const as _, GenericsOf, IntoKind, SliceLike as _, Span as _, Ty as _},
     lang_items::{SolverAdtLangItem, SolverLangItem, SolverTraitLangItem},
     solve::SizedTraitKind,
 };
@@ -39,7 +39,7 @@ use crate::{
         AdtIdWrapper, BoundConst, CallableIdWrapper, CanonicalVarKind, ClosureIdWrapper,
         CoroutineIdWrapper, Ctor, FnSig, FxIndexMap, GeneralConstIdWrapper, ImplIdWrapper,
         OpaqueTypeKey, RegionAssumptions, SimplifiedType, SolverContext, SolverDefIds,
-        TraitIdWrapper, TypeAliasIdWrapper, util::explicit_item_bounds,
+        TraitIdWrapper, TypeAliasIdWrapper, UnevaluatedConst, util::explicit_item_bounds,
     },
 };
 
@@ -1512,6 +1512,7 @@ impl<'db> Interner for DbInterner<'db> {
             SolverTraitLangItem::BikeshedGuaranteedNoDrop => {
                 unimplemented!()
             }
+            SolverTraitLangItem::TrivialClone => lang_items.TrivialClone,
         };
         lang_item.expect("Lang item required but not found.").into()
     }
@@ -1565,6 +1566,7 @@ impl<'db> Interner for DbInterner<'db> {
             AsyncFn,
             AsyncFnMut,
             AsyncFnOnce,
+            TrivialClone,
         )
     }
 
@@ -1651,6 +1653,7 @@ impl<'db> Interner for DbInterner<'db> {
             AsyncFn,
             AsyncFnMut,
             AsyncFnOnce,
+            TrivialClone,
         )
     }
 
@@ -2166,6 +2169,18 @@ impl<'db> Interner for DbInterner<'db> {
             self.as_trait_lang_item(def_id),
             Some(SolverTraitLangItem::Sized | SolverTraitLangItem::MetaSized)
         )
+    }
+
+    fn const_of_item(self, def_id: Self::DefId) -> rustc_type_ir::EarlyBinder<Self, Self::Const> {
+        let id = match def_id {
+            SolverDefId::StaticId(id) => id.into(),
+            SolverDefId::ConstId(id) => id.into(),
+            _ => unreachable!(),
+        };
+        EarlyBinder::bind(Const::new_unevaluated(
+            self,
+            UnevaluatedConst { def: GeneralConstIdWrapper(id), args: GenericArgs::empty(self) },
+        ))
     }
 }
 

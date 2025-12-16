@@ -237,6 +237,7 @@ language_item_table! { LangItems =>
     StructuralTeq,           sym::structural_teq,      structural_teq_trait,       TraitId,                GenericRequirement::None;
     Copy,                    sym::copy,                copy_trait,                 TraitId,                GenericRequirement::Exact(0);
     Clone,                   sym::clone,               clone_trait,                TraitId,                GenericRequirement::None;
+    TrivialClone,            sym::trivial_clone,       clone_trait,                TraitId,                GenericRequirement::None;
     Sync,                    sym::sync,                sync_trait,                 TraitId,                GenericRequirement::Exact(0);
     DiscriminantKind,        sym::discriminant_kind,   discriminant_kind_trait,    TraitId,                GenericRequirement::None;
     /// The associated item of the `DiscriminantKind` trait.
