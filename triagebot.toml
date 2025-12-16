@@ -229,6 +229,7 @@ exclude_labels = [
     "T-infra",
     "T-release",
     "requires-nightly",
+    "F-*",
 ]
 
 [autolabel."T-rustdoc"]
