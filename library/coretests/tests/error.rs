@@ -1,6 +1,10 @@
 use core::error::provide::{MultiRequestBuilder, MultiResponse, Request};
 use core::error::{Error, request_ref, request_value};
 
+struct Invalid;
+#[derive(Debug, PartialEq, Eq)]
+struct Valid;
+
 // Test the `Request` API.
 #[derive(Debug)]
 struct SomeConcreteType {
@@ -12,10 +16,6 @@ impl std::fmt::Display for SomeConcreteType {
         write!(f, "A")
     }
 }
-
-struct Invalid;
-#[derive(Debug, PartialEq, Eq)]
-struct Valid;
 
 impl std::error::Error for SomeConcreteType {
     fn provide<'a>(&'a self, request: &mut Request<'a>) {
@@ -126,6 +126,54 @@ fn test_error_combined_access_dyn() {
     assert_eq!(request.retrieve_value::<String>(), None);
     // retrieving an unknown type should return none
     assert_eq!(request.retrieve_value::<*const ()>(), None);
+}
+
+#[derive(Debug)]
+struct ProvideMultipleTimes;
+
+impl std::fmt::Display for ProvideMultipleTimes {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "A")
+    }
+}
+
+impl std::error::Error for ProvideMultipleTimes {
+    fn provide<'a>(&'a self, request: &mut Request<'a>) {
+        let previous_satisfied_by_ref_of_string = request.would_be_satisfied_by_ref_of::<String>();
+        request.provide_value::<String>("good".to_string());
+        assert!(
+            !request.would_be_satisfied_by_value_of::<String>(),
+            "already provided String by value"
+        );
+        // "overwriting" the String should just be ignored
+        request.provide_value::<String>("bad".to_string());
+        // but providing a ref works
+        if previous_satisfied_by_ref_of_string {
+            assert!(request.would_be_satisfied_by_ref_of::<String>());
+            request.provide_ref::<String>(const { &String::new() });
+        }
+    }
+}
+
+#[test]
+fn test_provide_multiple_times_single() {
+    let obj = ProvideMultipleTimes;
+    let obj: &dyn Error = &obj;
+
+    assert_eq!(*request_ref::<String>(&*obj).unwrap(), String::new());
+    assert_eq!(request_value::<String>(&*obj).unwrap(), "good");
+}
+
+#[test]
+fn test_provide_multiple_times_multi() {
+    let obj = ProvideMultipleTimes;
+    let obj: &dyn Error = &obj;
+
+    let mut request =
+        MultiRequestBuilder::new().with_value::<String>().with_ref::<String>().request(obj);
+
+    assert_eq!(*request.retrieve_ref::<String>().unwrap(), String::new());
+    assert_eq!(request.retrieve_value::<String>().unwrap(), "good");
 }
 
 fn assert_copy<T: Copy>(_t: T) {}
