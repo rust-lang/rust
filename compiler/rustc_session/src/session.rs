@@ -13,9 +13,7 @@ use rustc_data_structures::profiling::{SelfProfiler, SelfProfilerRef};
 use rustc_data_structures::sync::{DynSend, DynSync, Lock, MappedReadGuard, ReadGuard, RwLock};
 use rustc_errors::annotate_snippet_emitter_writer::AnnotateSnippetEmitter;
 use rustc_errors::codes::*;
-use rustc_errors::emitter::{
-    DynEmitter, HumanEmitter, HumanReadableErrorType, OutputTheme, stderr_destination,
-};
+use rustc_errors::emitter::{DynEmitter, HumanReadableErrorType, OutputTheme, stderr_destination};
 use rustc_errors::json::JsonEmitter;
 use rustc_errors::timings::TimingSectionHandler;
 use rustc_errors::translation::Translator;
@@ -920,7 +918,7 @@ fn default_emitter(
 
     match sopts.error_format {
         config::ErrorOutputType::HumanReadable { kind, color_config } => match kind {
-            HumanReadableErrorType::AnnotateSnippet { short, unicode } => {
+            HumanReadableErrorType { short, unicode } => {
                 let emitter =
                     AnnotateSnippetEmitter::new(stderr_destination(color_config), translator)
                         .sm(source_map)
@@ -936,20 +934,6 @@ fn default_emitter(
                                 .ignore_directory_in_diagnostics_source_blocks
                                 .clone(),
                         );
-                Box::new(emitter.ui_testing(sopts.unstable_opts.ui_testing))
-            }
-            HumanReadableErrorType::Default { short } => {
-                let emitter = HumanEmitter::new(stderr_destination(color_config), translator)
-                    .sm(source_map)
-                    .short_message(short)
-                    .diagnostic_width(sopts.diagnostic_width)
-                    .macro_backtrace(macro_backtrace)
-                    .track_diagnostics(track_diagnostics)
-                    .terminal_url(terminal_url)
-                    .theme(OutputTheme::Ascii)
-                    .ignored_directories_in_source_blocks(
-                        sopts.unstable_opts.ignore_directory_in_diagnostics_source_blocks.clone(),
-                    );
                 Box::new(emitter.ui_testing(sopts.unstable_opts.ui_testing))
             }
         },
@@ -1460,14 +1444,9 @@ fn mk_emitter(output: ErrorOutputType) -> Box<DynEmitter> {
         Translator::with_fallback_bundle(vec![rustc_errors::DEFAULT_LOCALE_RESOURCE], false);
     let emitter: Box<DynEmitter> = match output {
         config::ErrorOutputType::HumanReadable { kind, color_config } => match kind {
-            HumanReadableErrorType::AnnotateSnippet { short, unicode } => Box::new(
+            HumanReadableErrorType { short, unicode } => Box::new(
                 AnnotateSnippetEmitter::new(stderr_destination(color_config), translator)
                     .theme(if unicode { OutputTheme::Unicode } else { OutputTheme::Ascii })
-                    .short_message(short),
-            ),
-            HumanReadableErrorType::Default { short } => Box::new(
-                HumanEmitter::new(stderr_destination(color_config), translator)
-                    .theme(OutputTheme::Ascii)
                     .short_message(short),
             ),
         },
