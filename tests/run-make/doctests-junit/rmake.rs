@@ -1,6 +1,7 @@
 // Check rustdoc's test JUnit (XML) output against snapshots.
 
 //@ ignore-cross-compile (running doctests)
+//@ ignore-stage1 (rustdoc depends on a fix in libtest)
 //@ needs-unwind (test file contains `should_panic` test)
 
 use std::path::Path;
