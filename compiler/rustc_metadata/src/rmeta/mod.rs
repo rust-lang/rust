@@ -44,6 +44,7 @@ use table::TableBuilder;
 use {rustc_ast as ast, rustc_hir as hir};
 
 use crate::creader::CrateMetadataRef;
+use crate::eii::EiiMapEncodedKeyValue;
 
 mod decoder;
 mod def_path_hash_map;
@@ -250,6 +251,7 @@ pub(crate) struct CrateRoot {
     has_alloc_error_handler: bool,
     has_panic_handler: bool,
     has_default_lib_allocator: bool,
+    externally_implementable_items: LazyArray<EiiMapEncodedKeyValue>,
 
     crate_deps: LazyArray<CrateDep>,
     dylib_dependency_formats: LazyArray<Option<LinkagePreference>>,

@@ -3,7 +3,7 @@
 use crate::fs::Metadata;
 #[allow(deprecated)]
 use crate::os::espidf::raw;
-use crate::sys_common::AsInner;
+use crate::sys::AsInner;
 
 /// OS-specific extensions to [`fs::Metadata`].
 ///

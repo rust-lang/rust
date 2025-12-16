@@ -23,6 +23,11 @@
 //! There are also a couple of ad-hoc diagnostics implemented directly here, we
 //! don't yet have a great pattern for how to do them properly.
 
+#![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
+
+#[cfg(feature = "in-rust-tree")]
+extern crate rustc_driver as _;
+
 mod handlers {
     pub(crate) mod await_outside_of_async;
     pub(crate) mod bad_rtn;
@@ -643,19 +648,13 @@ fn find_outline_mod_lint_severity(
 
     let mod_def = sema.to_module_def(&mod_node)?;
     let module_source_file = sema.module_definition_node(mod_def);
-    let mut result = None;
     let lint_groups = lint_groups(&diag.code, edition);
     lint_attrs(
         sema,
         krate,
         ast::AnyHasAttrs::cast(module_source_file.value).expect("SourceFile always has attrs"),
     )
-    .for_each(|(lint, severity)| {
-        if lint_groups.contains(&lint) {
-            result = Some(severity);
-        }
-    });
-    result
+    .find_map(|(lint, severity)| lint_groups.contains(&lint).then_some(severity))
 }
 
 fn lint_severity_at(
@@ -682,7 +681,7 @@ fn lint_attrs(
     krate: hir::Crate,
     ancestor: ast::AnyHasAttrs,
 ) -> impl Iterator<Item = (SmolStr, Severity)> {
-    sema.lint_attrs(krate, ancestor).map(|(lint_attr, lint)| {
+    sema.lint_attrs(krate, ancestor).rev().map(|(lint_attr, lint)| {
         let severity = match lint_attr {
             hir::LintAttr::Allow | hir::LintAttr::Expect => Severity::Allow,
             hir::LintAttr::Warn => Severity::Warning,

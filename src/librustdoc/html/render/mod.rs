@@ -60,7 +60,7 @@ use rustc_hir::{ConstStability, Mutability, RustcVersion, StabilityLevel, Stable
 use rustc_middle::ty::print::PrintTraitRefExt;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::symbol::{Symbol, sym};
-use rustc_span::{BytePos, DUMMY_SP, FileName, RealFileName};
+use rustc_span::{BytePos, DUMMY_SP, FileName};
 use tracing::{debug, info};
 
 pub(crate) use self::context::*;
@@ -2772,7 +2772,7 @@ fn render_call_locations<W: fmt::Write>(
             files
                 .iter()
                 .find(|file| match &file.name {
-                    FileName::Real(RealFileName::LocalPath(other_path)) => rel_path == other_path,
+                    FileName::Real(real) => real.local_path().map_or(false, |p| p == rel_path),
                     _ => false,
                 })
                 .map(|file| file.start_pos)

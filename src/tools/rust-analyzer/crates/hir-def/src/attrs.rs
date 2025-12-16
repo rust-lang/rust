@@ -155,6 +155,9 @@ fn match_attr_flags(attr_flags: &mut AttrFlags, attr: Meta) -> ControlFlow<Infal
                 "rustc_skip_during_method_dispatch" => {
                     extract_rustc_skip_during_method_dispatch(attr_flags, tt)
                 }
+                "rustc_deprecated_safe_2024" => {
+                    attr_flags.insert(AttrFlags::RUSTC_DEPRECATED_SAFE_2024)
+                }
                 _ => {}
             },
             2 => match path.segments[0].text() {

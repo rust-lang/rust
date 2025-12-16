@@ -33,5 +33,9 @@ syntax.workspace = true
 # tt is needed for testing
 cfg = { path = ".", default-features = false, features = ["tt"] }
 
+[features]
+default = []
+in-rust-tree = []
+
 [lints]
 workspace = true

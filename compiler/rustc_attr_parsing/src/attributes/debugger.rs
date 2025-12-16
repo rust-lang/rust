@@ -21,7 +21,7 @@ impl<S: Stage> CombineAttributeParser<S> for DebuggerViualizerParser {
         args: &ArgParser,
     ) -> impl IntoIterator<Item = Self::Item> {
         let Some(l) = args.list() else {
-            cx.expected_list(args.span().unwrap_or(cx.attr_span));
+            cx.expected_list(cx.attr_span, args);
             return None;
         };
         let Some(single) = l.single() else {

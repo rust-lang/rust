@@ -1,7 +1,6 @@
 //! Doctest functionality used only for doctests in `.rs` source files.
 
 use std::cell::Cell;
-use std::env;
 use std::str::FromStr;
 use std::sync::Arc;
 
@@ -31,15 +30,6 @@ struct RustCollector {
 impl RustCollector {
     fn get_filename(&self) -> FileName {
         let filename = self.source_map.span_to_filename(self.position);
-        if let FileName::Real(ref filename) = filename {
-            let path = filename.remapped_path_if_available();
-            // Strip the cwd prefix from the path. This will likely exist if
-            // the path was not remapped.
-            let path = env::current_dir()
-                .map(|cur_dir| path.strip_prefix(&cur_dir).unwrap_or(path))
-                .unwrap_or(path);
-            return path.to_owned().into();
-        }
         filename
     }
 

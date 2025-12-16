@@ -64,26 +64,6 @@ pub(crate) struct DocAttributeNotAttribute {
     pub attribute: Symbol,
 }
 
-/// Error code: E0541
-pub(crate) struct UnknownMetaItem<'a> {
-    pub span: Span,
-    pub item: String,
-    pub expected: &'a [&'a str],
-}
-
-// Manual implementation to be able to format `expected` items correctly.
-impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for UnknownMetaItem<'_> {
-    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, G> {
-        let expected = self.expected.iter().map(|name| format!("`{name}`")).collect::<Vec<_>>();
-        Diag::new(dcx, level, fluent::attr_parsing_unknown_meta_item)
-            .with_span(self.span)
-            .with_code(E0541)
-            .with_arg("item", self.item)
-            .with_arg("expected", expected.join(", "))
-            .with_span_label(self.span, fluent::attr_parsing_label)
-    }
-}
-
 #[derive(Diagnostic)]
 #[diag(attr_parsing_missing_since, code = E0542)]
 pub(crate) struct MissingSince {
@@ -401,15 +381,6 @@ pub(crate) struct UnusedMultiple {
 }
 
 #[derive(Diagnostic)]
-#[diag(attr_parsing_ill_formed_attribute_input)]
-pub(crate) struct IllFormedAttributeInputLint {
-    #[primary_span]
-    pub span: Span,
-    pub num_suggestions: usize,
-    pub suggestions: DiagArgValue,
-}
-
-#[derive(Diagnostic)]
 #[diag(attr_parsing_null_on_export, code = E0648)]
 pub(crate) struct NullOnExport {
     #[primary_span]
@@ -539,6 +510,8 @@ pub(crate) enum AttributeParseErrorReason<'a> {
     ExpectedAtLeastOneArgument,
     ExpectedSingleArgument,
     ExpectedList,
+    ExpectedListOrNoArgs,
+    ExpectedNameValueOrNoArgs,
     UnexpectedLiteral,
     ExpectedNameValue(Option<Symbol>),
     DuplicateKey(Symbol),
@@ -610,6 +583,12 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for AttributeParseError<'_> {
             }
             AttributeParseErrorReason::ExpectedList => {
                 diag.span_label(self.span, "expected this to be a list");
+            }
+            AttributeParseErrorReason::ExpectedListOrNoArgs => {
+                diag.span_label(self.span, "expected a list or no arguments here");
+            }
+            AttributeParseErrorReason::ExpectedNameValueOrNoArgs => {
+                diag.span_label(self.span, "didn't expect a list here");
             }
             AttributeParseErrorReason::DuplicateKey(key) => {
                 diag.span_label(self.span, format!("found `{key}` used as a key more than once"));

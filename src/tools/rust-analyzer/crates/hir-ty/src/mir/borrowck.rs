@@ -106,7 +106,7 @@ pub fn borrowck_query<'db>(
         // FIXME(next-solver): Opaques.
         let infcx = interner.infer_ctxt().build(typing_mode);
         res.push(BorrowckResult {
-            mutability_of_locals: mutability_of_locals(&infcx, &body),
+            mutability_of_locals: mutability_of_locals(&infcx, env, &body),
             moved_out_of_ref: moved_out_of_ref(&infcx, env, &body),
             partially_moved: partially_moved(&infcx, env, &body),
             borrow_regions: borrow_regions(db, &body),
@@ -146,6 +146,7 @@ fn moved_out_of_ref<'db>(
                 }
                 ty = proj.projected_ty(
                     infcx,
+                    env,
                     ty,
                     make_fetch_closure_field(db),
                     body.owner.module(db).krate(db),
@@ -242,6 +243,7 @@ fn partially_moved<'db>(
             for proj in p.projection.lookup(&body.projection_store) {
                 ty = proj.projected_ty(
                     infcx,
+                    env,
                     ty,
                     make_fetch_closure_field(db),
                     body.owner.module(db).krate(db),
@@ -374,6 +376,7 @@ enum ProjectionCase {
 
 fn place_case<'db>(
     infcx: &InferCtxt<'db>,
+    env: ParamEnv<'db>,
     body: &MirBody<'db>,
     lvalue: &Place<'db>,
 ) -> ProjectionCase {
@@ -395,6 +398,7 @@ fn place_case<'db>(
         }
         ty = proj.projected_ty(
             infcx,
+            env,
             ty,
             make_fetch_closure_field(db),
             body.owner.module(db).krate(db),
@@ -535,6 +539,7 @@ fn record_usage_for_operand<'db>(
 
 fn mutability_of_locals<'db>(
     infcx: &InferCtxt<'db>,
+    env: ParamEnv<'db>,
     body: &MirBody<'db>,
 ) -> ArenaMap<LocalId<'db>, MutabilityReason> {
     let db = infcx.interner.db;
@@ -547,7 +552,7 @@ fn mutability_of_locals<'db>(
         for statement in &block.statements {
             match &statement.kind {
                 StatementKind::Assign(place, value) => {
-                    match place_case(infcx, body, place) {
+                    match place_case(infcx, env, body, place) {
                         ProjectionCase::Direct => {
                             if ever_init_map.get(place.local).copied().unwrap_or_default() {
                                 push_mut_span(place.local, statement.span, &mut result);
@@ -596,7 +601,7 @@ fn mutability_of_locals<'db>(
                         },
                         p,
                     ) = value
-                        && place_case(infcx, body, p) != ProjectionCase::Indirect
+                        && place_case(infcx, env, body, p) != ProjectionCase::Indirect
                     {
                         push_mut_span(p.local, statement.span, &mut result);
                     }

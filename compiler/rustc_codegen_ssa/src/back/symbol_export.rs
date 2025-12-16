@@ -127,7 +127,10 @@ fn reachable_non_generics_provider(tcx: TyCtxt<'_>, _: LocalCrate) -> DefIdMap<S
                     || codegen_attrs.flags.contains(CodegenFnAttrFlags::USED_LINKER),
                 rustc_std_internal_symbol: codegen_attrs
                     .flags
-                    .contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL),
+                    .contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL)
+                    || codegen_attrs
+                        .flags
+                        .contains(CodegenFnAttrFlags::EXTERNALLY_IMPLEMENTABLE_ITEM),
             };
             (def_id.to_def_id(), info)
         })
@@ -519,10 +522,12 @@ fn symbol_export_level(tcx: TyCtxt<'_>, sym_def_id: DefId) -> SymbolExportLevel 
     let is_extern = codegen_fn_attrs.contains_extern_indicator();
     let std_internal =
         codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL);
+    let eii = codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::EXTERNALLY_IMPLEMENTABLE_ITEM);
 
-    if is_extern && !std_internal {
+    if is_extern && !std_internal && !eii {
         let target = &tcx.sess.target.llvm_target;
         // WebAssembly cannot export data symbols, so reduce their export level
+        // FIXME(jdonszelmann) don't do a substring match here.
         if target.contains("emscripten") {
             if let DefKind::Static { .. } = tcx.def_kind(sym_def_id) {
                 return SymbolExportLevel::Rust;

@@ -11,9 +11,9 @@ error[E0539]: malformed `unstable` attribute input
   --> $DIR/stability-attribute-sanity-4.rs:11:5
    |
 LL |     #[unstable = "b"]
-   |     ^^^^^^^^^^^^^^^^^
-   |     |
-   |     expected this to be a list
+   |     ^^^^^^^^^^^-----^
+   |     |          |
+   |     |          expected this to be a list
    |     help: must be of the form: `#[unstable(feature = "name", reason = "...", issue = "N")]`
 
 error[E0539]: malformed `stable` attribute input
@@ -29,9 +29,9 @@ error[E0539]: malformed `stable` attribute input
   --> $DIR/stability-attribute-sanity-4.rs:17:5
    |
 LL |     #[stable = "a"]
-   |     ^^^^^^^^^^^^^^^
-   |     |
-   |     expected this to be a list
+   |     ^^^^^^^^^-----^
+   |     |        |
+   |     |        expected this to be a list
    |     help: must be of the form: `#[stable(feature = "name", since = "version")]`
 
 error[E0542]: missing 'since'

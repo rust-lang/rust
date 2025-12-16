@@ -135,16 +135,16 @@ impl<'a> std::fmt::Debug for CrateDump<'a> {
             writeln!(fmt, "  priv: {:?}", data.is_private_dep())?;
             let CrateSource { dylib, rlib, rmeta, sdylib_interface } = data.source();
             if let Some(dylib) = dylib {
-                writeln!(fmt, "  dylib: {}", dylib.0.display())?;
+                writeln!(fmt, "  dylib: {}", dylib.display())?;
             }
             if let Some(rlib) = rlib {
-                writeln!(fmt, "   rlib: {}", rlib.0.display())?;
+                writeln!(fmt, "   rlib: {}", rlib.display())?;
             }
             if let Some(rmeta) = rmeta {
-                writeln!(fmt, "   rmeta: {}", rmeta.0.display())?;
+                writeln!(fmt, "   rmeta: {}", rmeta.display())?;
             }
             if let Some(sdylib_interface) = sdylib_interface {
-                writeln!(fmt, "   sdylib interface: {}", sdylib_interface.0.display())?;
+                writeln!(fmt, "   sdylib interface: {}", sdylib_interface.display())?;
             }
         }
         Ok(())
@@ -515,73 +515,19 @@ impl CStore {
         }
     }
 
-    fn existing_match(
-        &self,
-        externs: &Externs,
-        name: Symbol,
-        hash: Option<Svh>,
-        kind: PathKind,
-    ) -> Option<CrateNum> {
+    fn existing_match(&self, name: Symbol, hash: Option<Svh>) -> Option<CrateNum> {
+        let hash = hash?;
+
         for (cnum, data) in self.iter_crate_data() {
             if data.name() != name {
                 trace!("{} did not match {}", data.name(), name);
                 continue;
             }
 
-            match hash {
-                Some(hash) if hash == data.hash() => return Some(cnum),
-                Some(hash) => {
-                    debug!("actual hash {} did not match expected {}", hash, data.hash());
-                    continue;
-                }
-                None => {}
-            }
-
-            // When the hash is None we're dealing with a top-level dependency
-            // in which case we may have a specification on the command line for
-            // this library. Even though an upstream library may have loaded
-            // something of the same name, we have to make sure it was loaded
-            // from the exact same location as well.
-            //
-            // We're also sure to compare *paths*, not actual byte slices. The
-            // `source` stores paths which are normalized which may be different
-            // from the strings on the command line.
-            let source = data.source();
-            if let Some(entry) = externs.get(name.as_str()) {
-                // Only use `--extern crate_name=path` here, not `--extern crate_name`.
-                if let Some(mut files) = entry.files() {
-                    if files.any(|l| {
-                        let l = l.canonicalized();
-                        source.dylib.as_ref().map(|(p, _)| p) == Some(l)
-                            || source.rlib.as_ref().map(|(p, _)| p) == Some(l)
-                            || source.rmeta.as_ref().map(|(p, _)| p) == Some(l)
-                    }) {
-                        return Some(cnum);
-                    }
-                }
-                continue;
-            }
-
-            // Alright, so we've gotten this far which means that `data` has the
-            // right name, we don't have a hash, and we don't have a --extern
-            // pointing for ourselves. We're still not quite yet done because we
-            // have to make sure that this crate was found in the crate lookup
-            // path (this is a top-level dependency) as we don't want to
-            // implicitly load anything inside the dependency lookup path.
-            let prev_kind = source
-                .dylib
-                .as_ref()
-                .or(source.rlib.as_ref())
-                .or(source.rmeta.as_ref())
-                .expect("No sources for crate")
-                .1;
-            if kind.matches(prev_kind) {
+            if hash == data.hash() {
                 return Some(cnum);
             } else {
-                debug!(
-                    "failed to load existing crate {}; kind {:?} did not match prev_kind {:?}",
-                    name, kind, prev_kind
-                );
+                debug!("actual hash {} did not match expected {}", hash, data.hash());
             }
         }
 
@@ -678,7 +624,7 @@ impl CStore {
                 None => (&source, &crate_root),
             };
             let dlsym_dylib = dlsym_source.dylib.as_ref().expect("no dylib for a proc-macro crate");
-            Some(self.dlsym_proc_macros(tcx.sess, &dlsym_dylib.0, dlsym_root.stable_crate_id())?)
+            Some(self.dlsym_proc_macros(tcx.sess, dlsym_dylib, dlsym_root.stable_crate_id())?)
         } else {
             None
         };
@@ -819,9 +765,7 @@ impl CStore {
         let path_kind = if dep.is_some() { PathKind::Dependency } else { PathKind::Crate };
         let private_dep = origin.private_dep();
 
-        let result = if let Some(cnum) =
-            self.existing_match(&tcx.sess.opts.externs, name, hash, path_kind)
-        {
+        let result = if let Some(cnum) = self.existing_match(name, hash) {
             (LoadResult::Previous(cnum), None)
         } else {
             info!("falling back to a load");

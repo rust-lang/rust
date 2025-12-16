@@ -5,7 +5,7 @@
 
 use crate::fs::{self, Metadata};
 use crate::sealed::Sealed;
-use crate::sys_common::{AsInner, AsInnerMut, IntoInner};
+use crate::sys::{AsInner, AsInnerMut, IntoInner};
 use crate::time::SystemTime;
 
 /// OS-specific extensions to [`fs::Metadata`].
