@@ -79,6 +79,10 @@ pub enum TypingMode<I: Interner> {
     /// This is currently only used by the new solver, but should be implemented in
     /// the old solver as well.
     PostBorrowckAnalysis { defined_opaque_types: I::LocalDefIds },
+    /// During the evaluation of reflection logic that ignores lifetimes, we can only
+    /// handle impls that are fully generic over all lifetimes without constraints on
+    /// those lifetimes (other than implied bounds).
+    Reflection,
     /// After analysis, mostly during codegen and MIR optimizations, we're able to
     /// reveal all opaque types. As the hidden type should *never* be observable
     /// directly by the user, this should not be used by checks which may expose

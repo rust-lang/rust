@@ -1345,6 +1345,7 @@ fn impl_trait_header(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::ImplTraitHeader
         .unwrap_or_else(|| panic!("expected impl trait, found inherent impl on {def_id:?}"));
     let selfty = tcx.type_of(def_id).instantiate_identity();
     let is_rustc_reservation = tcx.has_attr(def_id, sym::rustc_reservation_impl);
+    let is_fully_generic_for_reflection = impl_.is_fully_generic_for_reflection();
 
     check_impl_constness(tcx, impl_.constness, &of_trait.trait_ref);
 
@@ -1355,6 +1356,7 @@ fn impl_trait_header(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::ImplTraitHeader
         safety: of_trait.safety,
         polarity: polarity_of_impl(tcx, of_trait, is_rustc_reservation),
         constness: impl_.constness,
+        is_fully_generic_for_reflection,
     }
 }
 

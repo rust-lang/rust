@@ -126,7 +126,7 @@ where
                 self.eq(goal.param_env, expected, actual)?;
                 self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
             }
-            TypingMode::PostAnalysis => {
+            TypingMode::Reflection | TypingMode::PostAnalysis => {
                 // FIXME: Add an assertion that opaque type storage is empty.
                 let actual = cx.type_of(opaque_ty.def_id).instantiate(cx, opaque_ty.args);
                 self.eq(goal.param_env, expected, actual)?;

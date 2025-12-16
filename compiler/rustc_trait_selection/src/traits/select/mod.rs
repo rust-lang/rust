@@ -1467,6 +1467,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             TypingMode::Coherence => {}
             TypingMode::Analysis { .. }
             | TypingMode::Borrowck { .. }
+            | TypingMode::Reflection
             | TypingMode::PostBorrowckAnalysis { .. }
             | TypingMode::PostAnalysis => return Ok(()),
         }
@@ -1519,6 +1520,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 defining_opaque_types.is_empty()
                     || (!pred.has_opaque_types() && !pred.has_coroutines())
             }
+            // Impls that are not fully generic are completely ignored as "nonexistent"
+            // in this mode, so the results wildly differ from normal trait solving.
+            TypingMode::Reflection => false,
             // The hidden types of `defined_opaque_types` is not local to the current
             // inference context, so we can freely move this to the global cache.
             TypingMode::PostBorrowckAnalysis { .. } => true,
@@ -2548,6 +2552,12 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             debug!("reservation impls only apply in intercrate mode");
             return Err(());
         }
+        if !impl_trait_header.is_fully_generic_for_reflection
+            && matches!(self.infcx.typing_mode(), TypingMode::Reflection)
+        {
+            debug!("reflection mode only allows fully generic impls");
+            return Err(());
+        }
 
         Ok(Normalized { value: impl_args, obligations: nested_obligations })
     }
@@ -2884,6 +2894,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             }
             TypingMode::Coherence
             | TypingMode::PostAnalysis
+            | TypingMode::Reflection
             | TypingMode::Borrowck { defining_opaque_types: _ }
             | TypingMode::PostBorrowckAnalysis { defined_opaque_types: _ } => false,
         }
