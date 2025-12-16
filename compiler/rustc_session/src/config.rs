@@ -2027,10 +2027,6 @@ pub fn parse_error_format(
             None | Some("human") => {
                 ErrorOutputType::HumanReadable { color_config, kind: default_kind }
             }
-            Some("human-annotate-rs") => ErrorOutputType::HumanReadable {
-                kind: HumanReadableErrorType { short: false, unicode: false },
-                color_config,
-            },
             Some("json") => {
                 ErrorOutputType::Json { pretty: false, json_rendered, color_config: json_color }
             }
@@ -2051,8 +2047,8 @@ pub fn parse_error_format(
                     kind: default_kind,
                 });
                 early_dcx.early_fatal(format!(
-                    "argument for `--error-format` must be `human`, `human-annotate-rs`, \
-                    `human-unicode`, `json`, `pretty-json` or `short` (instead was `{arg}`)"
+                    "argument for `--error-format` must be `human`, `human-unicode`, \
+                    `json`, `pretty-json` or `short` (instead was `{arg}`)"
                 ))
             }
         }
@@ -2114,7 +2110,6 @@ fn check_error_format_stability(
     let format = match format {
         ErrorOutputType::Json { pretty: true, .. } => "pretty-json",
         ErrorOutputType::HumanReadable { kind, .. } => match kind {
-            HumanReadableErrorType { unicode: false, .. } => "human-annotate-rs",
             HumanReadableErrorType { unicode: true, .. } => "human-unicode",
             _ => return,
         },
