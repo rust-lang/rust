@@ -800,7 +800,7 @@ fn const_maybe_uninit_zeroed() {
 #[test]
 fn drop_guards_only_dropped_by_closure_when_run() {
     let value_drops = Cell::new(0);
-    let value = defer(|| value_drops.set(1 + value_drops.get()));
+    let value = defer! { value_drops.set(1 + value_drops.get()) };
     let closure_drops = Cell::new(0);
     let guard = DropGuard::new(value, |_| closure_drops.set(1 + closure_drops.get()));
     assert_eq!(value_drops.get(), 0);
@@ -825,10 +825,10 @@ fn drop_guard_into_inner() {
 fn drop_guard_always_drops_value_if_closure_drop_unwinds() {
     // Create a value with a destructor, which we will validate ran successfully.
     let mut value_was_dropped = false;
-    let value_with_tracked_destruction = defer(|| value_was_dropped = true);
+    let value_with_tracked_destruction = defer! { value_was_dropped = true };
 
     // Create a closure that will begin unwinding when dropped.
-    let drop_bomb = defer(|| panic!());
+    let drop_bomb = defer! { panic!() };
     let closure_that_panics_on_drop = move |_| {
         let _drop_bomb = drop_bomb;
     };
@@ -840,4 +840,12 @@ fn drop_guard_always_drops_value_if_closure_drop_unwinds() {
         DropGuard::dismiss(guard);
     }));
     assert!(value_was_dropped);
+}
+
+#[test]
+fn defer_moved_value() {
+    let data = "owned data".to_string();
+    let _guard = defer! {
+       std::thread::spawn(move || { assert_eq!(data.as_str(), "owned data") }).join().ok();
+    };
 }

@@ -19,7 +19,7 @@ use crate::ops::{Deref, DerefMut};
 /// {
 ///     // Create a new guard that will do something
 ///     // when dropped.
-///     let _guard = defer(|| println!("Goodbye, world!"));
+///     let _guard = defer! { println!("Goodbye, world!") };
 ///
 ///     // The guard will be dropped here, printing:
 ///     // "Goodbye, world!"
@@ -59,12 +59,11 @@ where
 ///
 /// use std::mem::defer;
 ///
-/// let guard = defer(|| println!("Goodbye, world!"));
+/// let _guard = defer! { println!("Goodbye, world!") };
 /// ```
 #[unstable(feature = "drop_guard", issue = "144426")]
-#[must_use]
-pub const fn defer(f: impl FnOnce()) -> DropGuard<(), impl FnOnce(())> {
-    guard((), move |_| f())
+pub macro defer($($t:tt)*) {
+    $crate::mem::DropGuard::new((), |()| { $($t)* })
 }
 
 impl<T, F> DropGuard<T, F>
@@ -86,7 +85,7 @@ where
     /// ```
     #[unstable(feature = "drop_guard", issue = "144426")]
     #[must_use]
-    pub const fn new<T, F>(value: T, f: F) -> DropGuard<T, F>
+    pub const fn new(value: T, f: F) -> DropGuard<T, F>
     where
         F: FnOnce(T),
     {
