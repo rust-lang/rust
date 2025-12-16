@@ -1,0 +1,22 @@
+error[E0277]: the trait bound `TopTypeNoTrait: Trait` is not satisfied
+  --> $DIR/multistep-fail.rs:104:14
+   |
+LL |         1 => &TopTypeNoTrait as &FinalType as &dyn Trait,
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unsatisfied trait bound
+   |
+help: the trait `Trait` is not implemented for `TopTypeNoTrait`
+  --> $DIR/multistep-fail.rs:18:1
+   |
+LL | pub struct TopTypeNoTrait;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: the following other types implement trait `Trait`:
+             FinalType
+             IntWrapper
+             TopType
+             Wrap<[i32; 0]>
+             Wrap<[i32]>
+   = note: required for the cast from `&TopTypeNoTrait` to `&dyn Trait`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

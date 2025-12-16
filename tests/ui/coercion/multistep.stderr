@@ -1,0 +1,230 @@
+note: no errors encountered even though delayed bugs were created
+
+note: those delayed bugs will now be shown as internal compiler errors
+
+error: internal compiler error: while adjusting Expr { hir_id: HirId(DefId(0:49 ~ multistep[afa8]::long_chain).8), kind: Cast(Expr { hir_id: HirId(DefId(0:49 ~ multistep[afa8]::long_chain).9), kind: AddrOf(Ref, Not, Expr { hir_id: HirId(DefId(0:49 ~ multistep[afa8]::long_chain).10), kind: Path(Resolved(None, Path { span: $DIR/multistep.rs:113:15: 113:22 (#0), res: Def(Ctor(Struct, Const), DefId(0:10 ~ multistep[afa8]::TopType::{constructor#0})), segments: [PathSegment { ident: TopType#0, hir_id: HirId(DefId(0:49 ~ multistep[afa8]::long_chain).11), res: Def(Ctor(Struct, Const), DefId(0:10 ~ multistep[afa8]::TopType::{constructor#0})), args: None, infer_args: true }] })), span: $DIR/multistep.rs:113:15: 113:22 (#0) }), span: $DIR/multistep.rs:113:14: 113:22 (#0) }, Ty { hir_id: HirId(DefId(0:49 ~ multistep[afa8]::long_chain).15), span: $DIR/multistep.rs:113:31: 113:39 (#0), kind: Ref(Lifetime { hir_id: HirId(DefId(0:49 ~ multistep[afa8]::long_chain).12), ident: '_#0, kind: Infer, source: Reference, syntax: Implicit }, MutTy { ty: Ty { hir_id: HirId(DefId(0:49 ~ multistep[afa8]::long_chain).13), span: $DIR/multistep.rs:113:32: 113:39 (#0), kind: Path(Resolved(None, Path { span: $DIR/multistep.rs:113:32: 113:39 (#0), res: Def(Struct, DefId(0:9 ~ multistep[afa8]::TopType)), segments: [PathSegment { ident: TopType#0, hir_id: HirId(DefId(0:49 ~ multistep[afa8]::long_chain).14), res: Def(Struct, DefId(0:9 ~ multistep[afa8]::TopType)), args: None, infer_args: false }] })) }, mutbl: Not }) }), span: $DIR/multistep.rs:113:14: 113:39 (#0) }, can't compose [Deref(None) -> TopType, Deref(Some(OverloadedDeref { mutbl: Not, span: $DIR/multistep.rs:114:14: 114:44 (#0) })) -> Wrap<[i32; 0]>, Borrow(Ref(Not)) -> &Wrap<[i32; 0]>] and [Deref(None) -> Wrap<[i32; 0]>, Deref(Some(OverloadedDeref { mutbl: Not, span: $DIR/multistep.rs:115:14: 115:42 (#0) })) -> IntWrapper, Borrow(Ref(Not)) -> &IntWrapper]
+  --> $DIR/multistep.rs:113:14
+   |
+LL |         0 => &TopType      as &TopType,
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: delayed at compiler/rustc_hir_typeck/src/fn_ctxt/_impl.rs:343:36 - disabled backtrace
+  --> $DIR/multistep.rs:113:14
+   |
+LL |         0 => &TopType      as &TopType,
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: internal compiler error: while adjusting Expr { hir_id: HirId(DefId(0:49 ~ multistep[afa8]::long_chain).8), kind: Cast(Expr { hir_id: HirId(DefId(0:49 ~ multistep[afa8]::long_chain).9), kind: AddrOf(Ref, Not, Expr { hir_id: HirId(DefId(0:49 ~ multistep[afa8]::long_chain).10), kind: Path(Resolved(None, Path { span: $DIR/multistep.rs:113:15: 113:22 (#0), res: Def(Ctor(Struct, Const), DefId(0:10 ~ multistep[afa8]::TopType::{constructor#0})), segments: [PathSegment { ident: TopType#0, hir_id: HirId(DefId(0:49 ~ multistep[afa8]::long_chain).11), res: Def(Ctor(Struct, Const), DefId(0:10 ~ multistep[afa8]::TopType::{constructor#0})), args: None, infer_args: true }] })), span: $DIR/multistep.rs:113:15: 113:22 (#0) }), span: $DIR/multistep.rs:113:14: 113:22 (#0) }, Ty { hir_id: HirId(DefId(0:49 ~ multistep[afa8]::long_chain).15), span: $DIR/multistep.rs:113:31: 113:39 (#0), kind: Ref(Lifetime { hir_id: HirId(DefId(0:49 ~ multistep[afa8]::long_chain).12), ident: '_#0, kind: Infer, source: Reference, syntax: Implicit }, MutTy { ty: Ty { hir_id: HirId(DefId(0:49 ~ multistep[afa8]::long_chain).13), span: $DIR/multistep.rs:113:32: 113:39 (#0), kind: Path(Resolved(None, Path { span: $DIR/multistep.rs:113:32: 113:39 (#0), res: Def(Struct, DefId(0:9 ~ multistep[afa8]::TopType)), segments: [PathSegment { ident: TopType#0, hir_id: HirId(DefId(0:49 ~ multistep[afa8]::long_chain).14), res: Def(Struct, DefId(0:9 ~ multistep[afa8]::TopType)), args: None, infer_args: false }] })) }, mutbl: Not }) }), span: $DIR/multistep.rs:113:14: 113:39 (#0) }, can't compose [Deref(None) -> Wrap<[i32; 0]>, Deref(Some(OverloadedDeref { mutbl: Not, span: $DIR/multistep.rs:115:14: 115:42 (#0) })) -> IntWrapper, Borrow(Ref(Not)) -> &IntWrapper] and [Deref(None) -> IntWrapper, Deref(Some(OverloadedDeref { mutbl: Not, span: $DIR/multistep.rs:116:14: 116:44 (#0) })) -> Wrap<[i32]>, Borrow(Ref(Not)) -> &Wrap<[i32]>]
+  --> $DIR/multistep.rs:113:14
+   |
+LL |         0 => &TopType      as &TopType,
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: delayed at compiler/rustc_hir_typeck/src/fn_ctxt/_impl.rs:343:36 - disabled backtrace
+  --> $DIR/multistep.rs:113:14
+   |
+LL |         0 => &TopType      as &TopType,
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: internal compiler error: while adjusting Expr { hir_id: HirId(DefId(0:49 ~ multistep[afa8]::long_chain).19), kind: Cast(Expr { hir_id: HirId(DefId(0:49 ~ multistep[afa8]::long_chain).20), kind: AddrOf(Ref, Not, Expr { hir_id: HirId(DefId(0:49 ~ multistep[afa8]::long_chain).21), kind: Call(Expr { hir_id: HirId(DefId(0:49 ~ multistep[afa8]::long_chain).22), kind: Path(Resolved(None, Path { span: $DIR/multistep.rs:114:15: 114:19 (#0), res: Def(Ctor(Struct, Fn), DefId(0:6 ~ multistep[afa8]::Wrap::{constructor#0})), segments: [PathSegment { ident: Wrap#0, hir_id: HirId(DefId(0:49 ~ multistep[afa8]::long_chain).23), res: Def(Ctor(Struct, Fn), DefId(0:6 ~ multistep[afa8]::Wrap::{constructor#0})), args: None, infer_args: true }] })), span: $DIR/multistep.rs:114:15: 114:19 (#0) }, [Expr { hir_id: HirId(DefId(0:49 ~ multistep[afa8]::long_chain).24), kind: Array([]), span: $DIR/multistep.rs:114:20: 114:22 (#0) }]), span: $DIR/multistep.rs:114:15: 114:23 (#0) }), span: $DIR/multistep.rs:114:14: 114:23 (#0) }, Ty { hir_id: HirId(DefId(0:49 ~ multistep[afa8]::long_chain).28), span: $DIR/multistep.rs:114:31: 114:44 (#0), kind: Ref(Lifetime { hir_id: HirId(DefId(0:49 ~ multistep[afa8]::long_chain).25), ident: '_#0, kind: Infer, source: Reference, syntax: Implicit }, MutTy { ty: Ty { hir_id: HirId(DefId(0:49 ~ multistep[afa8]::long_chain).26), span: $DIR/multistep.rs:114:32: 114:44 (#0), kind: Path(Resolved(None, Path { span: $DIR/multistep.rs:114:32: 114:44 (#0), res: Def(TyAlias, DefId(0:11 ~ multistep[afa8]::ArrayWrapper)), segments: [PathSegment { ident: ArrayWrapper#0, hir_id: HirId(DefId(0:49 ~ multistep[afa8]::long_chain).27), res: Def(TyAlias, DefId(0:11 ~ multistep[afa8]::ArrayWrapper)), args: None, infer_args: false }] })) }, mutbl: Not }) }), span: $DIR/multistep.rs:114:14: 114:44 (#0) }, can't compose [Deref(None) -> Wrap<[i32; 0]>, Deref(Some(OverloadedDeref { mutbl: Not, span: $DIR/multistep.rs:115:14: 115:42 (#0) })) -> IntWrapper, Borrow(Ref(Not)) -> &IntWrapper] and [Deref(None) -> IntWrapper, Deref(Some(OverloadedDeref { mutbl: Not, span: $DIR/multistep.rs:116:14: 116:44 (#0) })) -> Wrap<[i32]>, Borrow(Ref(Not)) -> &Wrap<[i32]>]
+  --> $DIR/multistep.rs:114:14
+   |
+LL |         1 => &Wrap([])     as &ArrayWrapper,
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: delayed at compiler/rustc_hir_typeck/src/fn_ctxt/_impl.rs:343:36 - disabled backtrace
+  --> $DIR/multistep.rs:114:14
+   |
+LL |         1 => &Wrap([])     as &ArrayWrapper,
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: internal compiler error: while adjusting Expr { hir_id: HirId(DefId(0:49 ~ multistep[afa8]::long_chain).8), kind: Cast(Expr { hir_id: HirId(DefId(0:49 ~ multistep[afa8]::long_chain).9), kind: AddrOf(Ref, Not, Expr { hir_id: HirId(DefId(0:49 ~ multistep[afa8]::long_chain).10), kind: Path(Resolved(None, Path { span: $DIR/multistep.rs:113:15: 113:22 (#0), res: Def(Ctor(Struct, Const), DefId(0:10 ~ multistep[afa8]::TopType::{constructor#0})), segments: [PathSegment { ident: TopType#0, hir_id: HirId(DefId(0:49 ~ multistep[afa8]::long_chain).11), res: Def(Ctor(Struct, Const), DefId(0:10 ~ multistep[afa8]::TopType::{constructor#0})), args: None, infer_args: true }] })), span: $DIR/multistep.rs:113:15: 113:22 (#0) }), span: $DIR/multistep.rs:113:14: 113:22 (#0) }, Ty { hir_id: HirId(DefId(0:49 ~ multistep[afa8]::long_chain).15), span: $DIR/multistep.rs:113:31: 113:39 (#0), kind: Ref(Lifetime { hir_id: HirId(DefId(0:49 ~ multistep[afa8]::long_chain).12), ident: '_#0, kind: Infer, source: Reference, syntax: Implicit }, MutTy { ty: Ty { hir_id: HirId(DefId(0:49 ~ multistep[afa8]::long_chain).13), span: $DIR/multistep.rs:113:32: 113:39 (#0), kind: Path(Resolved(None, Path { span: $DIR/multistep.rs:113:32: 113:39 (#0), res: Def(Struct, DefId(0:9 ~ multistep[afa8]::TopType)), segments: [PathSegment { ident: TopType#0, hir_id: HirId(DefId(0:49 ~ multistep[afa8]::long_chain).14), res: Def(Struct, DefId(0:9 ~ multistep[afa8]::TopType)), args: None, infer_args: false }] })) }, mutbl: Not }) }), span: $DIR/multistep.rs:113:14: 113:39 (#0) }, can't compose [Deref(None) -> IntWrapper, Deref(Some(OverloadedDeref { mutbl: Not, span: $DIR/multistep.rs:116:14: 116:44 (#0) })) -> Wrap<[i32]>, Borrow(Ref(Not)) -> &Wrap<[i32]>] and [Deref(None) -> Wrap<[i32]>, Deref(Some(OverloadedDeref { mutbl: Not, span: $DIR/multistep.rs:117:14: 117:41 (#0) })) -> FinalType, Borrow(Ref(Not)) -> &FinalType]
+  --> $DIR/multistep.rs:113:14
+   |
+LL |         0 => &TopType      as &TopType,
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: delayed at compiler/rustc_hir_typeck/src/fn_ctxt/_impl.rs:343:36 - disabled backtrace
+  --> $DIR/multistep.rs:113:14
+   |
+LL |         0 => &TopType      as &TopType,
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: internal compiler error: while adjusting Expr { hir_id: HirId(DefId(0:49 ~ multistep[afa8]::long_chain).19), kind: Cast(Expr { hir_id: HirId(DefId(0:49 ~ multistep[afa8]::long_chain).20), kind: AddrOf(Ref, Not, Expr { hir_id: HirId(DefId(0:49 ~ multistep[afa8]::long_chain).21), kind: Call(Expr { hir_id: HirId(DefId(0:49 ~ multistep[afa8]::long_chain).22), kind: Path(Resolved(None, Path { span: $DIR/multistep.rs:114:15: 114:19 (#0), res: Def(Ctor(Struct, Fn), DefId(0:6 ~ multistep[afa8]::Wrap::{constructor#0})), segments: [PathSegment { ident: Wrap#0, hir_id: HirId(DefId(0:49 ~ multistep[afa8]::long_chain).23), res: Def(Ctor(Struct, Fn), DefId(0:6 ~ multistep[afa8]::Wrap::{constructor#0})), args: None, infer_args: true }] })), span: $DIR/multistep.rs:114:15: 114:19 (#0) }, [Expr { hir_id: HirId(DefId(0:49 ~ multistep[afa8]::long_chain).24), kind: Array([]), span: $DIR/multistep.rs:114:20: 114:22 (#0) }]), span: $DIR/multistep.rs:114:15: 114:23 (#0) }), span: $DIR/multistep.rs:114:14: 114:23 (#0) }, Ty { hir_id: HirId(DefId(0:49 ~ multistep[afa8]::long_chain).28), span: $DIR/multistep.rs:114:31: 114:44 (#0), kind: Ref(Lifetime { hir_id: HirId(DefId(0:49 ~ multistep[afa8]::long_chain).25), ident: '_#0, kind: Infer, source: Reference, syntax: Implicit }, MutTy { ty: Ty { hir_id: HirId(DefId(0:49 ~ multistep[afa8]::long_chain).26), span: $DIR/multistep.rs:114:32: 114:44 (#0), kind: Path(Resolved(None, Path { span: $DIR/multistep.rs:114:32: 114:44 (#0), res: Def(TyAlias, DefId(0:11 ~ multistep[afa8]::ArrayWrapper)), segments: [PathSegment { ident: ArrayWrapper#0, hir_id: HirId(DefId(0:49 ~ multistep[afa8]::long_chain).27), res: Def(TyAlias, DefId(0:11 ~ multistep[afa8]::ArrayWrapper)), args: None, infer_args: false }] })) }, mutbl: Not }) }), span: $DIR/multistep.rs:114:14: 114:44 (#0) }, can't compose [Deref(None) -> IntWrapper, Deref(Some(OverloadedDeref { mutbl: Not, span: $DIR/multistep.rs:116:14: 116:44 (#0) })) -> Wrap<[i32]>, Borrow(Ref(Not)) -> &Wrap<[i32]>] and [Deref(None) -> Wrap<[i32]>, Deref(Some(OverloadedDeref { mutbl: Not, span: $DIR/multistep.rs:117:14: 117:41 (#0) })) -> FinalType, Borrow(Ref(Not)) -> &FinalType]
+  --> $DIR/multistep.rs:114:14
+   |
+LL |         1 => &Wrap([])     as &ArrayWrapper,
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: delayed at compiler/rustc_hir_typeck/src/fn_ctxt/_impl.rs:343:36 - disabled backtrace
+  --> $DIR/multistep.rs:114:14
+   |
+LL |         1 => &Wrap([])     as &ArrayWrapper,
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: internal compiler error: while adjusting Expr { hir_id: HirId(DefId(0:49 ~ multistep[afa8]::long_chain).32), kind: Cast(Expr { hir_id: HirId(DefId(0:49 ~ multistep[afa8]::long_chain).33), kind: AddrOf(Ref, Not, Expr { hir_id: HirId(DefId(0:49 ~ multistep[afa8]::long_chain).34), kind: Path(Resolved(None, Path { span: $DIR/multistep.rs:115:15: 115:25 (#0), res: Def(Ctor(Struct, Const), DefId(0:14 ~ multistep[afa8]::IntWrapper::{constructor#0})), segments: [PathSegment { ident: IntWrapper#0, hir_id: HirId(DefId(0:49 ~ multistep[afa8]::long_chain).35), res: Def(Ctor(Struct, Const), DefId(0:14 ~ multistep[afa8]::IntWrapper::{constructor#0})), args: None, infer_args: true }] })), span: $DIR/multistep.rs:115:15: 115:25 (#0) }), span: $DIR/multistep.rs:115:14: 115:25 (#0) }, Ty { hir_id: HirId(DefId(0:49 ~ multistep[afa8]::long_chain).39), span: $DIR/multistep.rs:115:31: 115:42 (#0), kind: Ref(Lifetime { hir_id: HirId(DefId(0:49 ~ multistep[afa8]::long_chain).36), ident: '_#0, kind: Infer, source: Reference, syntax: Implicit }, MutTy { ty: Ty { hir_id: HirId(DefId(0:49 ~ multistep[afa8]::long_chain).37), span: $DIR/multistep.rs:115:32: 115:42 (#0), kind: Path(Resolved(None, Path { span: $DIR/multistep.rs:115:32: 115:42 (#0), res: Def(Struct, DefId(0:13 ~ multistep[afa8]::IntWrapper)), segments: [PathSegment { ident: IntWrapper#0, hir_id: HirId(DefId(0:49 ~ multistep[afa8]::long_chain).38), res: Def(Struct, DefId(0:13 ~ multistep[afa8]::IntWrapper)), args: None, infer_args: false }] })) }, mutbl: Not }) }), span: $DIR/multistep.rs:115:14: 115:42 (#0) }, can't compose [Deref(None) -> IntWrapper, Deref(Some(OverloadedDeref { mutbl: Not, span: $DIR/multistep.rs:116:14: 116:44 (#0) })) -> Wrap<[i32]>, Borrow(Ref(Not)) -> &Wrap<[i32]>] and [Deref(None) -> Wrap<[i32]>, Deref(Some(OverloadedDeref { mutbl: Not, span: $DIR/multistep.rs:117:14: 117:41 (#0) })) -> FinalType, Borrow(Ref(Not)) -> &FinalType]
+  --> $DIR/multistep.rs:115:14
+   |
+LL |         2 => &IntWrapper   as &IntWrapper,
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: delayed at compiler/rustc_hir_typeck/src/fn_ctxt/_impl.rs:343:36 - disabled backtrace
+  --> $DIR/multistep.rs:115:14
+   |
+LL |         2 => &IntWrapper   as &IntWrapper,
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: internal compiler error: while adjusting Expr { hir_id: HirId(DefId(0:50 ~ multistep[afa8]::mixed_coercion).8), kind: Cast(Expr { hir_id: HirId(DefId(0:50 ~ multistep[afa8]::mixed_coercion).9), kind: AddrOf(Ref, Not, Expr { hir_id: HirId(DefId(0:50 ~ multistep[afa8]::mixed_coercion).10), kind: Path(Resolved(None, Path { span: $DIR/multistep.rs:134:15: 134:22 (#0), res: Def(Ctor(Struct, Const), DefId(0:10 ~ multistep[afa8]::TopType::{constructor#0})), segments: [PathSegment { ident: TopType#0, hir_id: HirId(DefId(0:50 ~ multistep[afa8]::mixed_coercion).11), res: Def(Ctor(Struct, Const), DefId(0:10 ~ multistep[afa8]::TopType::{constructor#0})), args: None, infer_args: true }] })), span: $DIR/multistep.rs:134:15: 134:22 (#0) }), span: $DIR/multistep.rs:134:14: 134:22 (#0) }, Ty { hir_id: HirId(DefId(0:50 ~ multistep[afa8]::mixed_coercion).15), span: $DIR/multistep.rs:134:31: 134:39 (#0), kind: Ref(Lifetime { hir_id: HirId(DefId(0:50 ~ multistep[afa8]::mixed_coercion).12), ident: '_#0, kind: Infer, source: Reference, syntax: Implicit }, MutTy { ty: Ty { hir_id: HirId(DefId(0:50 ~ multistep[afa8]::mixed_coercion).13), span: $DIR/multistep.rs:134:32: 134:39 (#0), kind: Path(Resolved(None, Path { span: $DIR/multistep.rs:134:32: 134:39 (#0), res: Def(Struct, DefId(0:9 ~ multistep[afa8]::TopType)), segments: [PathSegment { ident: TopType#0, hir_id: HirId(DefId(0:50 ~ multistep[afa8]::mixed_coercion).14), res: Def(Struct, DefId(0:9 ~ multistep[afa8]::TopType)), args: None, infer_args: false }] })) }, mutbl: Not }) }), span: $DIR/multistep.rs:134:14: 134:39 (#0) }, can't compose [Deref(None) -> TopType, Deref(Some(OverloadedDeref { mutbl: Not, span: $DIR/multistep.rs:135:14: 135:44 (#0) })) -> Wrap<[i32; 0]>, Borrow(Ref(Not)) -> &Wrap<[i32; 0]>] and [Deref(None) -> Wrap<[i32; 0]>, Borrow(Ref(Not)) -> &Wrap<[i32; 0]>, Pointer(Unsize) -> _]
+  --> $DIR/multistep.rs:134:14
+   |
+LL |         0 => &TopType      as &TopType,
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: delayed at compiler/rustc_hir_typeck/src/fn_ctxt/_impl.rs:343:36 - disabled backtrace
+  --> $DIR/multistep.rs:134:14
+   |
+LL |         0 => &TopType      as &TopType,
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: internal compiler error: while adjusting Expr { hir_id: HirId(DefId(0:50 ~ multistep[afa8]::mixed_coercion).8), kind: Cast(Expr { hir_id: HirId(DefId(0:50 ~ multistep[afa8]::mixed_coercion).9), kind: AddrOf(Ref, Not, Expr { hir_id: HirId(DefId(0:50 ~ multistep[afa8]::mixed_coercion).10), kind: Path(Resolved(None, Path { span: $DIR/multistep.rs:134:15: 134:22 (#0), res: Def(Ctor(Struct, Const), DefId(0:10 ~ multistep[afa8]::TopType::{constructor#0})), segments: [PathSegment { ident: TopType#0, hir_id: HirId(DefId(0:50 ~ multistep[afa8]::mixed_coercion).11), res: Def(Ctor(Struct, Const), DefId(0:10 ~ multistep[afa8]::TopType::{constructor#0})), args: None, infer_args: true }] })), span: $DIR/multistep.rs:134:15: 134:22 (#0) }), span: $DIR/multistep.rs:134:14: 134:22 (#0) }, Ty { hir_id: HirId(DefId(0:50 ~ multistep[afa8]::mixed_coercion).15), span: $DIR/multistep.rs:134:31: 134:39 (#0), kind: Ref(Lifetime { hir_id: HirId(DefId(0:50 ~ multistep[afa8]::mixed_coercion).12), ident: '_#0, kind: Infer, source: Reference, syntax: Implicit }, MutTy { ty: Ty { hir_id: HirId(DefId(0:50 ~ multistep[afa8]::mixed_coercion).13), span: $DIR/multistep.rs:134:32: 134:39 (#0), kind: Path(Resolved(None, Path { span: $DIR/multistep.rs:134:32: 134:39 (#0), res: Def(Struct, DefId(0:9 ~ multistep[afa8]::TopType)), segments: [PathSegment { ident: TopType#0, hir_id: HirId(DefId(0:50 ~ multistep[afa8]::mixed_coercion).14), res: Def(Struct, DefId(0:9 ~ multistep[afa8]::TopType)), args: None, infer_args: false }] })) }, mutbl: Not }) }), span: $DIR/multistep.rs:134:14: 134:39 (#0) }, can't compose [Deref(None) -> Wrap<[i32; 0]>, Borrow(Ref(Not)) -> &Wrap<[i32; 0]>, Pointer(Unsize) -> _] and [Deref(None) -> Wrap<[i32]>, Deref(Some(OverloadedDeref { mutbl: Not, span: $DIR/multistep.rs:138:14: 138:41 (#0) })) -> FinalType, Borrow(Ref(Not)) -> &FinalType]
+  --> $DIR/multistep.rs:134:14
+   |
+LL |         0 => &TopType      as &TopType,
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: delayed at compiler/rustc_hir_typeck/src/fn_ctxt/_impl.rs:343:36 - disabled backtrace
+  --> $DIR/multistep.rs:134:14
+   |
+LL |         0 => &TopType      as &TopType,
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: internal compiler error: while adjusting Expr { hir_id: HirId(DefId(0:50 ~ multistep[afa8]::mixed_coercion).19), kind: Cast(Expr { hir_id: HirId(DefId(0:50 ~ multistep[afa8]::mixed_coercion).20), kind: AddrOf(Ref, Not, Expr { hir_id: HirId(DefId(0:50 ~ multistep[afa8]::mixed_coercion).21), kind: Call(Expr { hir_id: HirId(DefId(0:50 ~ multistep[afa8]::mixed_coercion).22), kind: Path(Resolved(None, Path { span: $DIR/multistep.rs:135:15: 135:19 (#0), res: Def(Ctor(Struct, Fn), DefId(0:6 ~ multistep[afa8]::Wrap::{constructor#0})), segments: [PathSegment { ident: Wrap#0, hir_id: HirId(DefId(0:50 ~ multistep[afa8]::mixed_coercion).23), res: Def(Ctor(Struct, Fn), DefId(0:6 ~ multistep[afa8]::Wrap::{constructor#0})), args: None, infer_args: true }] })), span: $DIR/multistep.rs:135:15: 135:19 (#0) }, [Expr { hir_id: HirId(DefId(0:50 ~ multistep[afa8]::mixed_coercion).24), kind: Array([]), span: $DIR/multistep.rs:135:20: 135:22 (#0) }]), span: $DIR/multistep.rs:135:15: 135:23 (#0) }), span: $DIR/multistep.rs:135:14: 135:23 (#0) }, Ty { hir_id: HirId(DefId(0:50 ~ multistep[afa8]::mixed_coercion).28), span: $DIR/multistep.rs:135:31: 135:44 (#0), kind: Ref(Lifetime { hir_id: HirId(DefId(0:50 ~ multistep[afa8]::mixed_coercion).25), ident: '_#0, kind: Infer, source: Reference, syntax: Implicit }, MutTy { ty: Ty { hir_id: HirId(DefId(0:50 ~ multistep[afa8]::mixed_coercion).26), span: $DIR/multistep.rs:135:32: 135:44 (#0), kind: Path(Resolved(None, Path { span: $DIR/multistep.rs:135:32: 135:44 (#0), res: Def(TyAlias, DefId(0:11 ~ multistep[afa8]::ArrayWrapper)), segments: [PathSegment { ident: ArrayWrapper#0, hir_id: HirId(DefId(0:50 ~ multistep[afa8]::mixed_coercion).27), res: Def(TyAlias, DefId(0:11 ~ multistep[afa8]::ArrayWrapper)), args: None, infer_args: false }] })) }, mutbl: Not }) }), span: $DIR/multistep.rs:135:14: 135:44 (#0) }, can't compose [Deref(None) -> Wrap<[i32; 0]>, Borrow(Ref(Not)) -> &Wrap<[i32; 0]>, Pointer(Unsize) -> _] and [Deref(None) -> Wrap<[i32]>, Deref(Some(OverloadedDeref { mutbl: Not, span: $DIR/multistep.rs:138:14: 138:41 (#0) })) -> FinalType, Borrow(Ref(Not)) -> &FinalType]
+  --> $DIR/multistep.rs:135:14
+   |
+LL |         1 => &Wrap([])     as &ArrayWrapper,
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: delayed at compiler/rustc_hir_typeck/src/fn_ctxt/_impl.rs:343:36 - disabled backtrace
+  --> $DIR/multistep.rs:135:14
+   |
+LL |         1 => &Wrap([])     as &ArrayWrapper,
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: internal compiler error: while adjusting Expr { hir_id: HirId(DefId(0:51 ~ multistep[afa8]::order_dependence).8), kind: Cast(Expr { hir_id: HirId(DefId(0:51 ~ multistep[afa8]::order_dependence).9), kind: AddrOf(Ref, Not, Expr { hir_id: HirId(DefId(0:51 ~ multistep[afa8]::order_dependence).10), kind: Call(Expr { hir_id: HirId(DefId(0:51 ~ multistep[afa8]::order_dependence).11), kind: Path(Resolved(None, Path { span: $DIR/multistep.rs:153:15: 153:19 (#0), res: Def(Ctor(Struct, Fn), DefId(0:6 ~ multistep[afa8]::Wrap::{constructor#0})), segments: [PathSegment { ident: Wrap#0, hir_id: HirId(DefId(0:51 ~ multistep[afa8]::order_dependence).12), res: Def(Ctor(Struct, Fn), DefId(0:6 ~ multistep[afa8]::Wrap::{constructor#0})), args: None, infer_args: true }] })), span: $DIR/multistep.rs:153:15: 153:19 (#0) }, [Expr { hir_id: HirId(DefId(0:51 ~ multistep[afa8]::order_dependence).13), kind: Array([]), span: $DIR/multistep.rs:153:20: 153:22 (#0) }]), span: $DIR/multistep.rs:153:15: 153:23 (#0) }), span: $DIR/multistep.rs:153:14: 153:23 (#0) }, Ty { hir_id: HirId(DefId(0:51 ~ multistep[afa8]::order_dependence).17), span: $DIR/multistep.rs:153:29: 153:42 (#0), kind: Ref(Lifetime { hir_id: HirId(DefId(0:51 ~ multistep[afa8]::order_dependence).14), ident: '_#0, kind: Infer, source: Reference, syntax: Implicit }, MutTy { ty: Ty { hir_id: HirId(DefId(0:51 ~ multistep[afa8]::order_dependence).15), span: $DIR/multistep.rs:153:30: 153:42 (#0), kind: Path(Resolved(None, Path { span: $DIR/multistep.rs:153:30: 153:42 (#0), res: Def(TyAlias, DefId(0:11 ~ multistep[afa8]::ArrayWrapper)), segments: [PathSegment { ident: ArrayWrapper#0, hir_id: HirId(DefId(0:51 ~ multistep[afa8]::order_dependence).16), res: Def(TyAlias, DefId(0:11 ~ multistep[afa8]::ArrayWrapper)), args: None, infer_args: false }] })) }, mutbl: Not }) }), span: $DIR/multistep.rs:153:14: 153:42 (#0) }, can't compose [Deref(None) -> Wrap<[i32; 0]>, Deref(Some(OverloadedDeref { mutbl: Not, span: $DIR/multistep.rs:154:14: 154:40 (#0) })) -> IntWrapper, Borrow(Ref(Not)) -> &IntWrapper] and [Deref(None) -> IntWrapper, Deref(Some(OverloadedDeref { mutbl: Not, span: $DIR/multistep.rs:155:14: 155:42 (#0) })) -> Wrap<[i32]>, Borrow(Ref(Not)) -> &Wrap<[i32]>]
+  --> $DIR/multistep.rs:153:14
+   |
+LL |         0 => &Wrap([])   as &ArrayWrapper,
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: delayed at compiler/rustc_hir_typeck/src/fn_ctxt/_impl.rs:343:36 - disabled backtrace
+  --> $DIR/multistep.rs:153:14
+   |
+LL |         0 => &Wrap([])   as &ArrayWrapper,
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: internal compiler error: while adjusting Expr { hir_id: HirId(DefId(0:52 ~ multistep[afa8]::deref_to_dyn).8), kind: Cast(Expr { hir_id: HirId(DefId(0:52 ~ multistep[afa8]::deref_to_dyn).9), kind: AddrOf(Ref, Not, Expr { hir_id: HirId(DefId(0:52 ~ multistep[afa8]::deref_to_dyn).10), kind: Path(Resolved(None, Path { span: $DIR/multistep.rs:179:15: 179:29 (#0), res: Def(Ctor(Struct, Const), DefId(0:19 ~ multistep[afa8]::TopTypeNoTrait::{constructor#0})), segments: [PathSegment { ident: TopTypeNoTrait#0, hir_id: HirId(DefId(0:52 ~ multistep[afa8]::deref_to_dyn).11), res: Def(Ctor(Struct, Const), DefId(0:19 ~ multistep[afa8]::TopTypeNoTrait::{constructor#0})), args: None, infer_args: true }] })), span: $DIR/multistep.rs:179:15: 179:29 (#0) }), span: $DIR/multistep.rs:179:14: 179:29 (#0) }, Ty { hir_id: HirId(DefId(0:52 ~ multistep[afa8]::deref_to_dyn).15), span: $DIR/multistep.rs:179:33: 179:48 (#0), kind: Ref(Lifetime { hir_id: HirId(DefId(0:52 ~ multistep[afa8]::deref_to_dyn).12), ident: '_#0, kind: Infer, source: Reference, syntax: Implicit }, MutTy { ty: Ty { hir_id: HirId(DefId(0:52 ~ multistep[afa8]::deref_to_dyn).13), span: $DIR/multistep.rs:179:34: 179:48 (#0), kind: Path(Resolved(None, Path { span: $DIR/multistep.rs:179:34: 179:48 (#0), res: Def(Struct, DefId(0:18 ~ multistep[afa8]::TopTypeNoTrait)), segments: [PathSegment { ident: TopTypeNoTrait#0, hir_id: HirId(DefId(0:52 ~ multistep[afa8]::deref_to_dyn).14), res: Def(Struct, DefId(0:18 ~ multistep[afa8]::TopTypeNoTrait)), args: None, infer_args: false }] })) }, mutbl: Not }) }), span: $DIR/multistep.rs:179:14: 179:48 (#0) }, can't compose [Deref(None) -> TopTypeNoTrait, Deref(Some(OverloadedDeref { mutbl: Not, span: $DIR/multistep.rs:180:14: 180:43 (#0) })) -> Wrap<[i32; 0]>, Deref(Some(OverloadedDeref { mutbl: Not, span: $DIR/multistep.rs:180:14: 180:43 (#0) })) -> IntWrapper, Deref(Some(OverloadedDeref { mutbl: Not, span: $DIR/multistep.rs:180:14: 180:43 (#0) })) -> Wrap<[i32]>, Deref(Some(OverloadedDeref { mutbl: Not, span: $DIR/multistep.rs:180:14: 180:43 (#0) })) -> FinalType, Borrow(Ref(Not)) -> &FinalType] and [Deref(None) -> FinalType, Borrow(Ref(Not)) -> &FinalType, Pointer(Unsize) -> _]
+  --> $DIR/multistep.rs:179:14
+   |
+LL |         0 => &TopTypeNoTrait as &TopTypeNoTrait,
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: delayed at compiler/rustc_hir_typeck/src/fn_ctxt/_impl.rs:343:36 - disabled backtrace
+  --> $DIR/multistep.rs:179:14
+   |
+LL |         0 => &TopTypeNoTrait as &TopTypeNoTrait,
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: internal compiler error: broken MIR in DefId(0:49 ~ multistep[afa8]::long_chain) (_15 = &(*_16)): bad assignment (&'?79 Wrap<[i32]> = &'?23 IntWrapper): NoSolution
+  --> $DIR/multistep.rs:115:14
+   |
+LL |         2 => &IntWrapper   as &IntWrapper,
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: delayed at compiler/rustc_borrowck/src/type_check/mod.rs:676:21 - disabled backtrace
+  --> $DIR/multistep.rs:115:14
+   |
+LL |         2 => &IntWrapper   as &IntWrapper,
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: internal compiler error: broken MIR in DefId(0:49 ~ multistep[afa8]::long_chain) (_9 = &(*_10)): bad assignment (&'?75 Wrap<[i32]> = &'?27 Wrap<[i32; 0_usize]>): NoSolution
+  --> $DIR/multistep.rs:114:14
+   |
+LL |         1 => &Wrap([])     as &ArrayWrapper,
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: delayed at compiler/rustc_borrowck/src/type_check/mod.rs:676:21 - disabled backtrace
+  --> $DIR/multistep.rs:114:14
+   |
+LL |         1 => &Wrap([])     as &ArrayWrapper,
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: internal compiler error: broken MIR in DefId(0:49 ~ multistep[afa8]::long_chain) (_4 = &(*_5)): bad assignment (&'?71 Wrap<[i32]> = &'?31 TopType): NoSolution
+  --> $DIR/multistep.rs:113:14
+   |
+LL |         0 => &TopType      as &TopType,
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: delayed at compiler/rustc_borrowck/src/type_check/mod.rs:676:21 - disabled backtrace
+  --> $DIR/multistep.rs:113:14
+   |
+LL |         0 => &TopType      as &TopType,
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: internal compiler error: broken MIR in DefId(0:50 ~ multistep[afa8]::mixed_coercion) (_9 = &(*_10)): bad assignment (&'?64 Wrap<[i32]> = &'?21 Wrap<[i32; 0_usize]>): NoSolution
+  --> $DIR/multistep.rs:135:14
+   |
+LL |         1 => &Wrap([])     as &ArrayWrapper,
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: delayed at compiler/rustc_borrowck/src/type_check/mod.rs:676:21 - disabled backtrace
+  --> $DIR/multistep.rs:135:14
+   |
+LL |         1 => &Wrap([])     as &ArrayWrapper,
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: internal compiler error: broken MIR in DefId(0:50 ~ multistep[afa8]::mixed_coercion) (_4 = &(*_5)): bad assignment (&'?60 Wrap<[i32]> = &'?25 TopType): NoSolution
+  --> $DIR/multistep.rs:134:14
+   |
+LL |         0 => &TopType      as &TopType,
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: delayed at compiler/rustc_borrowck/src/type_check/mod.rs:676:21 - disabled backtrace
+  --> $DIR/multistep.rs:134:14
+   |
+LL |         0 => &TopType      as &TopType,
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: internal compiler error: broken MIR in DefId(0:51 ~ multistep[afa8]::order_dependence) (_4 = &(*_5)): bad assignment (&'?101 IntWrapper = &'?25 Wrap<[i32; 0_usize]>): NoSolution
+  --> $DIR/multistep.rs:153:14
+   |
+LL |         0 => &Wrap([])   as &ArrayWrapper,
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: delayed at compiler/rustc_borrowck/src/type_check/mod.rs:676:21 - disabled backtrace
+  --> $DIR/multistep.rs:153:14
+   |
+LL |         0 => &Wrap([])   as &ArrayWrapper,
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: internal compiler error: broken MIR in DefId(0:52 ~ multistep[afa8]::deref_to_dyn) (_3 = &(*_4)): bad assignment (&'?70 FinalType = &'?17 TopTypeNoTrait): NoSolution
+  --> $DIR/multistep.rs:179:14
+   |
+LL |         0 => &TopTypeNoTrait as &TopTypeNoTrait,
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: delayed at compiler/rustc_borrowck/src/type_check/mod.rs:676:21 - disabled backtrace
+  --> $DIR/multistep.rs:179:14
+   |
+LL |         0 => &TopTypeNoTrait as &TopTypeNoTrait,
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: please make sure that you have updated to the latest nightly
+
+note: rustc 1.94.0-dev running on aarch64-unknown-linux-gnu
+
+note: compiler flags: -Z threads=1 -Z simulate-remapped-rust-src-base=/rustc/FAKE_PREFIX -Z translate-remapped-path-to-local-path=no -Z ignore-directory-in-diagnostics-source-blocks=/home/gh-jackh726/.cargo -Z ignore-directory-in-diagnostics-source-blocks=/home/gh-jackh726/rust2/vendor -C codegen-units=1 -Z ui-testing -Z deduplicate-diagnostics=no -Z write-long-types-to-disk=no -C strip=debuginfo -C prefer-dynamic -C rpath -C debuginfo=0
+
+query stack during panic:
+end of query stack
