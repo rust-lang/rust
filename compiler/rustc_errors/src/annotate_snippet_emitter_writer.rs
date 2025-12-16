@@ -303,17 +303,6 @@ impl AnnotateSnippetEmitter {
             }
         }
 
-        let suggestions_expected = suggestions
-            .iter()
-            .filter(|s| {
-                matches!(
-                    s.style,
-                    SuggestionStyle::HideCodeInline
-                        | SuggestionStyle::ShowCode
-                        | SuggestionStyle::ShowAlways
-                )
-            })
-            .count();
         for suggestion in suggestions {
             match suggestion.style {
                 SuggestionStyle::CompletelyHidden => {
@@ -524,12 +513,6 @@ impl AnnotateSnippetEmitter {
                     }
                 }
             }
-        }
-
-        // FIXME: This hack should be removed once annotate_snippets is the
-        // default emitter.
-        if suggestions_expected > 0 && report.is_empty() {
-            group = group.element(Padding);
         }
 
         if !group.is_empty() {

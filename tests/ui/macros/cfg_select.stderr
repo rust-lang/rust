@@ -38,14 +38,12 @@ error[E0539]: malformed `cfg_select` macro input
    |
 LL |     "str" => {}
    |     ^^^^^ expected a valid identifier here
-   |
 
 error[E0539]: malformed `cfg_select` macro input
   --> $DIR/cfg_select.rs:80:5
    |
 LL |     a::b => {}
    |     ^^^^ expected a valid identifier here
-   |
 
 error[E0537]: invalid predicate `a`
   --> $DIR/cfg_select.rs:85:5
