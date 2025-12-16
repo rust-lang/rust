@@ -12,11 +12,11 @@ LL | trait Foo {
 LL |     type Item: Copy
    |          ^^^^ this trait's associated type doesn't have the requirement `String: Copy`
 
-error[E0275]: overflow evaluating the requirement `<() as Foo>::Item == String`
-  --> $DIR/alias-bound-unsound.rs:28:43
+error[E0275]: overflow evaluating the requirement `String == <() as Foo>::Item`
+  --> $DIR/alias-bound-unsound.rs:28:22
    |
 LL |     let _ = identity(<() as Foo>::copy_me(&x));
-   |                                           ^^
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0275]: overflow evaluating the requirement `<() as Foo>::Item == _`
   --> $DIR/alias-bound-unsound.rs:28:22
