@@ -5669,7 +5669,7 @@ intrinsics:
       - *neon-fp16
       - *neon-unstable-f16
       - *target-not-arm64ec
-    assert_instr: [nop]
+    assert_instr: [fdiv]
     safety: safe
     types:
       - [f16, 'h']
@@ -5694,7 +5694,7 @@ intrinsics:
     arguments: ["a: {type[1]}", "b: {type[1]}"]
     return_type: "{type[1]}"
     attr: [*neon-stable]
-    assert_instr: [nop]
+    assert_instr: [sub]
     safety: safe
     types:
       - ['d_s64', 'i64']
@@ -5710,7 +5710,7 @@ intrinsics:
       - *neon-fp16
       - *neon-unstable-f16
       - *target-not-arm64ec
-    assert_instr: [nop]
+    assert_instr: [fsub]
     safety: safe
     types:
       - ['h_f16', 'f16']
@@ -11271,7 +11271,7 @@ intrinsics:
       - *neon-fp16
       - *neon-unstable-f16
       - *target-not-arm64ec
-    assert_instr: [nop]
+    assert_instr: [fmul]
     safety: safe
     types:
       - [f16, 'h']

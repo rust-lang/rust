@@ -9487,7 +9487,7 @@ pub fn vdivq_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
 #[cfg(not(target_arch = "arm64ec"))]
-#[cfg_attr(test, assert_instr(nop))]
+#[cfg_attr(test, assert_instr(fdiv))]
 pub fn vdivh_f16(a: f16, b: f16) -> f16 {
     a / b
 }
@@ -14829,7 +14829,7 @@ pub fn vmuld_lane_f64<const LANE: i32>(a: f64, b: float64x1_t) -> f64 {
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
 #[cfg(not(target_arch = "arm64ec"))]
-#[cfg_attr(test, assert_instr(nop))]
+#[cfg_attr(test, assert_instr(fmul))]
 pub fn vmulh_f16(a: f16, b: f16) -> f16 {
     a * b
 }
@@ -26719,7 +26719,7 @@ pub fn vsubq_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
 #[inline]
 #[target_feature(enable = "neon")]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
-#[cfg_attr(test, assert_instr(nop))]
+#[cfg_attr(test, assert_instr(sub))]
 pub fn vsubd_s64(a: i64, b: i64) -> i64 {
     a.wrapping_sub(b)
 }
@@ -26728,7 +26728,7 @@ pub fn vsubd_s64(a: i64, b: i64) -> i64 {
 #[inline]
 #[target_feature(enable = "neon")]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
-#[cfg_attr(test, assert_instr(nop))]
+#[cfg_attr(test, assert_instr(sub))]
 pub fn vsubd_u64(a: u64, b: u64) -> u64 {
     a.wrapping_sub(b)
 }
@@ -26738,7 +26738,7 @@ pub fn vsubd_u64(a: u64, b: u64) -> u64 {
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
 #[cfg(not(target_arch = "arm64ec"))]
-#[cfg_attr(test, assert_instr(nop))]
+#[cfg_attr(test, assert_instr(fsub))]
 pub fn vsubh_f16(a: f16, b: f16) -> f16 {
     a - b
 }

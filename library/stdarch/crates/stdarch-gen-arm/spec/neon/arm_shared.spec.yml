@@ -10732,7 +10732,7 @@ intrinsics:
     return_type: "{neon_type[1]}"
     attr:
       - *neon-v7
-      - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [vcvt.f16.f32]]}]]
+      - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [vcvt]]}]]
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [fcvtn]]}]]
       - *arm-fp16
       - *neon-unstable-f16

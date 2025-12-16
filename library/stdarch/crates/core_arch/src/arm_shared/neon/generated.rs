@@ -8310,7 +8310,7 @@ pub fn vcreate_p64(a: u64) -> poly64x1_t {
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-# [cfg_attr (all (test , target_arch = "arm") , assert_instr (vcvt . f16 . f32))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vcvt))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(fcvtn)
