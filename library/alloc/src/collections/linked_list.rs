@@ -1855,9 +1855,11 @@ impl<'a, T, A: Allocator> CursorMut<'a, T, A> {
             // node at index 0, which is expected.
             if self.list.head == self.current {
                 self.move_next();
-            } else {
-                self.index -= 1;
             }
+            // An element was removed before (or at) our current position, so
+            // the index must be decremented. `saturating_sub` handles the
+            // ghost node case where index could be 0.
+            self.index = self.index.saturating_sub(1);
             self.list.pop_front()
         }
     }
