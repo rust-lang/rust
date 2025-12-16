@@ -64,17 +64,35 @@ mod no_link {
     mod inner { #![no_link] }
     //~^ ERROR `#[no_link]` attribute cannot be used on modules
 
-    #[no_link] fn f() { }
-    //~^ ERROR `#[no_link]` attribute cannot be used on functions
+    #[no_link] fn f() {
+        //~^ ERROR `#[no_link]` attribute cannot be used on functions
+        match () {
+            #[no_link]
+            //~^ WARN `#[no_link]` attribute cannot be used on match arms [unused_attributes]
+            //~| WARN this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+            _ => ()
+        }
+    }
 
-    #[no_link] struct S;
+    #[no_link]
     //~^ ERROR `#[no_link]` attribute cannot be used on structs
+    struct S {
+        #[no_link]
+        //~^ WARN `#[no_link]` attribute cannot be used on struct fields [unused_attributes]
+        //~| WARN this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+        field: ()
+    }
 
     #[no_link]type T = S;
     //~^ ERROR `#[no_link]` attribute cannot be used on type aliases
 
     #[no_link] impl S { }
     //~^ ERROR `#[no_link]` attribute cannot be used on inherent impl blocks
+
+    #[no_link]
+    //~^ WARN `#[no_link]` attribute cannot be used on macro defs
+    //~| WARN this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+    macro_rules! m{() => {}}
 }
 
 #[export_name = "2200"]
