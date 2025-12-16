@@ -79,6 +79,7 @@ rm -r tests/run-make/lto-*
 rm -r tests/run-make/reproducible-build-2
 rm -r tests/run-make/no-builtins-lto
 rm -r tests/run-make/reachable-extern-fn-available-lto
+rm -r tests/run-make/no-builtins-linker-plugin-lto
 
 # coverage instrumentation
 rm tests/ui/consts/precise-drop-with-coverage.rs
