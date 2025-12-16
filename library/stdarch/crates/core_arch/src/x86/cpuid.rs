@@ -59,6 +59,10 @@ pub struct CpuidResult {
 #[cfg_attr(test, assert_instr(cpuid))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn __cpuid_count(leaf: u32, sub_leaf: u32) -> CpuidResult {
+    if cfg!(target_env = "sgx") {
+        panic!("`__cpuid` cannot be used in SGX");
+    }
+
     let eax;
     let ebx;
     let ecx;
