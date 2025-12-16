@@ -1,6 +1,13 @@
 #[cfg(test)]
 mod tests;
 
+// On 64-bit platforms, `io::Error` may use a bit-packed representation to
+// reduce size. However, this representation assumes that error codes are
+// always 32-bit wide.
+//
+// This assumption is invalid on 64-bit UEFI, where error codes are 64-bit.
+// Therefore, the packed representation is explicitly disabled for UEFI
+// targets, and the unpacked representation must be used instead.
 #[cfg(all(target_pointer_width = "64", not(target_os = "uefi")))]
 mod repr_bitpacked;
 #[cfg(all(target_pointer_width = "64", not(target_os = "uefi")))]
