@@ -1,4 +1,3 @@
-//~ NOTE: not an `extern crate` item
 // This is testing whether various builtin attributes signals an
 // error or warning when put in "weird" places.
 //
@@ -29,7 +28,7 @@
 //~| WARN cannot be used on crates
 //~| WARN previously accepted
 #![no_link]
-//~^ ERROR: attribute should be applied to an `extern crate` item
+//~^ ERROR: `#[no_link]` attribute cannot be used on crates
 #![export_name = "2200"]
 //~^ ERROR: attribute cannot be used on
 //~| NOTE takes precedence
@@ -60,29 +59,22 @@ mod inline {
 }
 
 #[no_link]
-//~^ ERROR attribute should be applied to an `extern crate` item
+//~^ ERROR `#[no_link]` attribute cannot be used on modules
 mod no_link {
-    //~^ NOTE not an `extern crate` item
-
     mod inner { #![no_link] }
-    //~^ ERROR attribute should be applied to an `extern crate` item
-    //~| NOTE not an `extern crate` item
+    //~^ ERROR `#[no_link]` attribute cannot be used on modules
 
     #[no_link] fn f() { }
-    //~^ ERROR attribute should be applied to an `extern crate` item
-    //~| NOTE not an `extern crate` item
+    //~^ ERROR `#[no_link]` attribute cannot be used on functions
 
     #[no_link] struct S;
-    //~^ ERROR attribute should be applied to an `extern crate` item
-    //~| NOTE not an `extern crate` item
+    //~^ ERROR `#[no_link]` attribute cannot be used on structs
 
     #[no_link]type T = S;
-    //~^ ERROR attribute should be applied to an `extern crate` item
-    //~| NOTE not an `extern crate` item
+    //~^ ERROR `#[no_link]` attribute cannot be used on type aliases
 
     #[no_link] impl S { }
-    //~^ ERROR attribute should be applied to an `extern crate` item
-    //~| NOTE not an `extern crate` item
+    //~^ ERROR `#[no_link]` attribute cannot be used on inherent impl blocks
 }
 
 #[export_name = "2200"]

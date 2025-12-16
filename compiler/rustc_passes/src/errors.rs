@@ -80,12 +80,6 @@ pub(crate) struct OuterCrateLevelAttrSuggestion {
 #[diag(passes_inner_crate_level_attr)]
 pub(crate) struct InnerCrateLevelAttr;
 
-#[derive(LintDiagnostic)]
-#[diag(passes_ignored_attr_with_macro)]
-pub(crate) struct IgnoredAttrWithMacro<'a> {
-    pub sym: &'a str,
-}
-
 #[derive(Diagnostic)]
 #[diag(passes_should_be_applied_to_fn)]
 pub(crate) struct AttrShouldBeAppliedToFn {
@@ -252,15 +246,6 @@ pub(crate) struct MustNotSuspend {
 pub(crate) struct Link {
     #[label]
     pub span: Option<Span>,
-}
-
-#[derive(Diagnostic)]
-#[diag(passes_no_link)]
-pub(crate) struct NoLink {
-    #[primary_span]
-    pub attr_span: Span,
-    #[label]
-    pub span: Span,
 }
 
 #[derive(Diagnostic)]
