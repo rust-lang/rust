@@ -351,6 +351,7 @@ where
                             | ty::TypingMode::PostTypeckUntilBorrowck { .. }
                             | ty::TypingMode::PostBorrowck { .. }
                             | ty::TypingMode::PostAnalysis
+                            | ty::TypingMode::Reflection
                             | ty::TypingMode::Codegen => {
                                 ecx.structurally_instantiate_normalizes_to_term(
                                     goal,

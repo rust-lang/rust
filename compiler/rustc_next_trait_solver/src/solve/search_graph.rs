@@ -70,6 +70,7 @@ where
                 }
                 TypingMode::Typeck { .. }
                 | TypingMode::PostTypeckUntilBorrowck { .. }
+                | TypingMode::Reflection
                 | TypingMode::PostBorrowck { .. }
                 | TypingMode::PostAnalysis
                 | TypingMode::Codegen
