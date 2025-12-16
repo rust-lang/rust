@@ -17,8 +17,9 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
         attr_safety: Safety,
         emit_lint: &mut impl FnMut(AttributeLint<S::Id>),
         target_id: S::Id,
+        should_emit: ShouldEmit,
     ) {
-        if matches!(self.stage.should_emit(), ShouldEmit::Nothing) {
+        if matches!(should_emit, ShouldEmit::Nothing) {
             return;
         }
 

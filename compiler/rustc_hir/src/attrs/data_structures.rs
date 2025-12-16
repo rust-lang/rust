@@ -647,6 +647,14 @@ pub enum AttributeKind {
         span: Span,
     },
 
+    /// Represents `#[cfg_attr]` trace attributes
+    /// These are attributes left behind in the HIR after `#[cfg_attr]` attributes are processed
+    CfgAttrTrace(ThinVec<()>, Span),
+
+    /// Represents `#[cfg]` trace attributes
+    /// These are attributes left behind in the HIR after `#[cfg]` attributes are processed
+    CfgTrace(ThinVec<CfgEntry>, Span),
+
     /// Represents `#[rustc_coinductive]`.
     Coinductive(Span),
 

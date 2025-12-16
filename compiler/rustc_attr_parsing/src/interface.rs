@@ -206,6 +206,7 @@ impl<'sess> AttributeParser<'sess, Early> {
                 safety,
                 &mut emit_lint,
                 target_node_id,
+                emit_errors,
             )
         }
         let mut cx: AcceptContext<'_, 'sess, Early> = AcceptContext {
@@ -304,6 +305,12 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
                 ast::AttrKind::Normal(n) => {
                     attr_paths.push(PathParser(&n.item.path));
                     let attr_path = AttrPath::from_ast(&n.item.path, lower_span);
+                    let mut should_emit = self.stage.should_emit();
+
+                    // Don't emit anything for trace attributes
+                    if attr.has_any_name(&[sym::cfg_trace, sym::cfg_attr_trace]) {
+                        should_emit = ShouldEmit::Nothing;
+                    }
 
                     self.check_attribute_safety(
                         &attr_path,
@@ -311,6 +318,7 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
                         n.item.unsafety,
                         &mut emit_lint,
                         target_id,
+                        should_emit,
                     );
 
                     let parts =
@@ -321,7 +329,7 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
                             &n.item.args,
                             &parts,
                             &self.sess.psess,
-                            self.stage.should_emit(),
+                            should_emit,
                         ) else {
                             continue;
                         };
@@ -374,7 +382,7 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
                             };
 
                             (accept.accept_fn)(&mut cx, &args);
-                            if !matches!(cx.stage.should_emit(), ShouldEmit::Nothing) {
+                            if !matches!(should_emit, ShouldEmit::Nothing) {
                                 Self::check_target(&accept.allowed_targets, target, &mut cx);
                             }
                         }

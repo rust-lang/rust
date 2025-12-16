@@ -62,6 +62,13 @@ impl Attribute {
         }
     }
 
+    pub fn get_mut_normal_item(&mut self) -> &mut AttrItem {
+        match &mut self.kind {
+            AttrKind::Normal(normal) => &mut normal.item,
+            AttrKind::DocComment(..) => panic!("unexpected doc comment"),
+        }
+    }
+
     pub fn unwrap_normal_item(self) -> AttrItem {
         match self.kind {
             AttrKind::Normal(normal) => normal.item,
