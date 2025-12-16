@@ -600,9 +600,25 @@ fn expected_type_and_name<'db>(
                 Some(it) => it,
                 None => return ty,
             };
-            for _ in top_syn.ancestors().skip(1).map_while(ast::RefExpr::cast) {
+            let refs_level = top_syn
+                .ancestors()
+                .skip(1)
+                .map_while(Either::<ast::RefExpr, ast::PrefixExpr>::cast)
+                .take_while(|it| match it {
+                    Either::Left(_) => true,
+                    Either::Right(prefix) => prefix.op_kind() == Some(ast::UnaryOp::Deref),
+                })
+                .fold(0i32, |level, expr| match expr {
+                    Either::Left(_) => level + 1,
+                    Either::Right(_) => level - 1,
+                });
+            for _ in 0..refs_level {
                 cov_mark::hit!(expected_type_fn_param_ref);
                 ty = ty.strip_reference();
+            }
+            for _ in refs_level..0 {
+                cov_mark::hit!(expected_type_fn_param_deref);
+                ty = ty.add_reference(hir::Mutability::Shared);
             }
             ty
         }
