@@ -53,17 +53,21 @@ rm tests/ui/sanitizer/kcfi-c-variadic.rs # same
 rm tests/ui/c-variadic/same-program-multiple-abis-x86_64.rs # variadics for calling conventions other than C unsupported
 rm tests/ui/delegation/fn-header.rs
 
+# inline assembly features
+rm tests/ui/asm/x86_64/issue-96797.rs # const and sym inline asm operands don't work entirely correctly
+rm tests/ui/asm/global-asm-mono-sym-fn.rs # same
+rm tests/ui/asm/naked-asm-mono-sym-fn.rs # same
+rm tests/ui/asm/x86_64/goto.rs # inline asm labels not supported
+rm tests/ui/asm/label-operand.rs # same
+rm tests/ui/asm/may_unwind.rs # asm unwinding not supported
+rm tests/ui/asm/aarch64/may_unwind.rs # same
+
 # misc unimplemented things
 rm tests/ui/target-feature/missing-plusminus.rs # error not implemented
 rm -r tests/run-make/repr128-dwarf # debuginfo test
 rm -r tests/run-make/split-debuginfo # same
 rm -r tests/run-make/target-specs # i686 not supported by Cranelift
 rm -r tests/run-make/mismatching-target-triples # same
-rm tests/ui/asm/x86_64/issue-96797.rs # const and sym inline asm operands don't work entirely correctly
-rm tests/ui/asm/global-asm-mono-sym-fn.rs # same
-rm tests/ui/asm/naked-asm-mono-sym-fn.rs # same
-rm tests/ui/asm/x86_64/goto.rs # inline asm labels not supported
-rm tests/ui/asm/label-operand.rs # same
 rm tests/ui/simd/simd-bitmask-notpow2.rs # non-pow-of-2 simd vector sizes
 rm -r tests/run-make/used-proc-macro # used(linker) isn't supported yet
 rm tests/ui/linking/no-gc-encapsulation-symbols.rs # same
@@ -71,6 +75,7 @@ rm tests/ui/attributes/fn-align-dyn.rs # per-function alignment not supported
 rm -r tests/ui/explicit-tail-calls # tail calls
 rm -r tests/run-make/pointer-auth-link-with-c # pointer auth
 rm -r tests/ui/eii # EII not yet implemented
+rm -r tests/run-make/forced-unwind-terminate-pof # forced unwinding doesn't take precedence
 
 # requires LTO
 rm -r tests/run-make/cdylib
@@ -89,6 +94,7 @@ rm -r tests/ui/instrument-coverage/
 # ==================
 rm tests/ui/codegen/issue-28950.rs # depends on stack size optimizations
 rm tests/ui/codegen/init-large-type.rs # same
+rm tests/ui/codegen/StackColoring-not-blowup-stack-issue-40883.rs # same
 rm tests/ui/statics/const_generics.rs # tests an optimization
 rm tests/ui/linking/executable-no-mangle-strip.rs # requires --gc-sections to work for statics
 
@@ -167,6 +173,7 @@ rm tests/ui/lint/non-snake-case/lint-non-snake-case-crate.rs # same
 rm tests/ui/async-await/async-drop/async-drop-initial.rs # same (rust-lang/rust#140493)
 rm -r tests/ui/codegen/equal-pointers-unequal # make incorrect assumptions about the location of stack variables
 rm -r tests/run-make-cargo/rustdoc-scrape-examples-paths # FIXME(rust-lang/rust#145580) incr comp bug
+rm -r tests/incremental/extern_static/issue-49153.rs # assumes reference to undefined static gets optimized away
 
 rm tests/ui/intrinsics/panic-uninitialized-zeroed.rs # really slow with unoptimized libstd
 rm tests/ui/process/process-panic-after-fork.rs # same
