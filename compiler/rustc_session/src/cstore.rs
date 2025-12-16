@@ -39,12 +39,13 @@ impl CrateSource {
 pub enum CrateDepKind {
     /// A dependency that is only used for its macros.
     MacrosOnly,
-    /// A dependency that is always injected into the dependency list and so
-    /// doesn't need to be linked to an rlib, e.g., the injected panic runtime.
-    Implicit,
+    /// A dependency that is injected into the crate graph but which only
+    /// sometimes needs to actually be linked in, e.g., the injected panic runtime.
+    Conditional,
     /// A dependency that is required by an rlib version of this crate.
-    /// Ordinary `extern crate`s result in `Explicit` dependencies.
-    Explicit,
+    /// Ordinary `extern crate`s as well as most injected dependencies result
+    /// in `Unconditional` dependencies.
+    Unconditional,
 }
 
 impl CrateDepKind {
@@ -52,7 +53,7 @@ impl CrateDepKind {
     pub fn macros_only(self) -> bool {
         match self {
             CrateDepKind::MacrosOnly => true,
-            CrateDepKind::Implicit | CrateDepKind::Explicit => false,
+            CrateDepKind::Conditional | CrateDepKind::Unconditional => false,
         }
     }
 }

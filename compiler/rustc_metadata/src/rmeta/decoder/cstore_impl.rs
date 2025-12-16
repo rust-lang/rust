@@ -623,15 +623,15 @@ impl CStore {
         self.get_crate_data(cnum).get_proc_macro_quoted_span(tcx, id)
     }
 
-    pub fn set_used_recursively(&mut self, tcx: TyCtxt<'_>, cnum: CrateNum) {
+    pub fn set_used_recursively(&mut self, cnum: CrateNum) {
         let cmeta = self.get_crate_data_mut(cnum);
         if !cmeta.used {
             cmeta.used = true;
-            let dependencies = mem::take(&mut cmeta.dependencies);
-            for &dep_cnum in &dependencies {
-                self.set_used_recursively(tcx, dep_cnum);
+            let cnum_map = mem::take(&mut cmeta.cnum_map);
+            for &dep_cnum in cnum_map.iter() {
+                self.set_used_recursively(dep_cnum);
             }
-            self.get_crate_data_mut(cnum).dependencies = dependencies;
+            self.get_crate_data_mut(cnum).cnum_map = cnum_map;
         }
     }
 
@@ -663,11 +663,11 @@ impl CStore {
         if cmeta.update_extern_crate_diagnostics(extern_crate) {
             // Propagate the extern crate info to dependencies if it was updated.
             let extern_crate = ExternCrate { dependency_of: cnum, ..extern_crate };
-            let dependencies = mem::take(&mut cmeta.dependencies);
-            for &dep_cnum in &dependencies {
+            let cnum_map = mem::take(&mut cmeta.cnum_map);
+            for &dep_cnum in cnum_map.iter() {
                 self.update_transitive_extern_crate_diagnostics(dep_cnum, extern_crate);
             }
-            self.get_crate_data_mut(cnum).dependencies = dependencies;
+            self.get_crate_data_mut(cnum).cnum_map = cnum_map;
         }
     }
 }
