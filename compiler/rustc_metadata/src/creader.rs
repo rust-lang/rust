@@ -25,7 +25,7 @@ use rustc_middle::ty::data_structures::IndexSet;
 use rustc_middle::ty::{TyCtxt, TyCtxtFeed};
 use rustc_proc_macro::bridge::client::ProcMacro;
 use rustc_session::Session;
-use rustc_session::config::enforceable_mitigations::DeniedPartialMitigationLevel;
+use rustc_session::config::mitigation_coverage::DeniedPartialMitigationLevel;
 use rustc_session::config::{
     CrateType, ExtendedTargetModifierInfo, ExternLocation, Externs, OptionsTargetModifiers,
     TargetModifier,
@@ -461,7 +461,7 @@ impl CStore {
 
     pub fn report_session_incompatibilities(&self, tcx: TyCtxt<'_>, krate: &Crate) {
         self.report_incompatible_target_modifiers(tcx, krate);
-        self.report_incompatible_denied_partial_mitigations(tcx, krate);
+        self.report_incompatible_partial_mitigations(tcx, krate);
         self.report_incompatible_async_drop_feature(tcx, krate);
     }
 
@@ -486,7 +486,7 @@ impl CStore {
         }
     }
 
-    pub fn report_incompatible_denied_partial_mitigations(&self, tcx: TyCtxt<'_>, krate: &Crate) {
+    pub fn report_incompatible_partial_mitigations(&self, tcx: TyCtxt<'_>, krate: &Crate) {
         let my_mitigations = tcx.sess.gather_enabled_denied_partial_mitigations();
         let mut my_mitigations: BTreeMap<_, _> =
             my_mitigations.iter().map(|mitigation| (mitigation.kind, mitigation)).collect();

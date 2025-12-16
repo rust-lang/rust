@@ -34,7 +34,7 @@ use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::{self, Ty, TyCtxt, UnusedGenericParams};
 use rustc_middle::util::Providers;
 use rustc_serialize::opaque::FileEncoder;
-use rustc_session::config::enforceable_mitigations::DeniedPartialMitigation;
+use rustc_session::config::mitigation_coverage::DeniedPartialMitigation;
 use rustc_session::config::{SymbolManglingVersion, TargetModifier};
 use rustc_session::cstore::{CrateDepKind, ForeignModule, LinkagePreference, NativeLib};
 use rustc_span::edition::Edition;
