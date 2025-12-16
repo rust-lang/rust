@@ -6,7 +6,9 @@ use derive_where::derive_where;
 use rustc_macros::{
     Decodable, Decodable_NoContext, Encodable, Encodable_NoContext, HashStable_NoContext,
 };
-use rustc_type_ir_macros::{Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic};
+use rustc_type_ir_macros::{
+    GenericTypeVisitable, Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic,
+};
 
 use crate::inherent::*;
 use crate::lift::Lift;
@@ -17,7 +19,7 @@ use crate::{self as ty, Interner};
 /// `A: 'region`
 #[derive_where(Clone, Hash, PartialEq, Debug; I: Interner, A)]
 #[derive_where(Copy; I: Interner, A: Copy)]
-#[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
+#[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic)]
 #[cfg_attr(
     feature = "nightly",
     derive(Decodable_NoContext, Encodable_NoContext, HashStable_NoContext)
@@ -52,7 +54,7 @@ where
 /// Trait references also appear in object types like `Foo<U>`, but in
 /// that case the `Self` parameter is absent from the generic parameters.
 #[derive_where(Clone, Copy, Hash, PartialEq; I: Interner)]
-#[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
+#[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic, Lift_Generic)]
 #[cfg_attr(
     feature = "nightly",
     derive(Decodable_NoContext, Encodable_NoContext, HashStable_NoContext)
@@ -129,7 +131,7 @@ impl<I: Interner> ty::Binder<I, TraitRef<I>> {
 }
 
 #[derive_where(Clone, Copy, Hash, PartialEq; I: Interner)]
-#[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
+#[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic, Lift_Generic)]
 #[cfg_attr(
     feature = "nightly",
     derive(Decodable_NoContext, Encodable_NoContext, HashStable_NoContext)
@@ -274,7 +276,7 @@ impl fmt::Display for PredicatePolarity {
 }
 
 #[derive_where(Clone, Copy, Hash, PartialEq, Debug; I: Interner)]
-#[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
+#[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic, Lift_Generic)]
 #[cfg_attr(
     feature = "nightly",
     derive(Decodable_NoContext, Encodable_NoContext, HashStable_NoContext)
@@ -325,7 +327,7 @@ impl<I: Interner> ty::Binder<I, ExistentialPredicate<I>> {
 /// The generic parameters don't include the erased `Self`, only trait
 /// type and lifetime parameters (`[X, Y]` and `['a, 'b]` above).
 #[derive_where(Clone, Copy, Hash, PartialEq; I: Interner)]
-#[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
+#[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic, Lift_Generic)]
 #[cfg_attr(
     feature = "nightly",
     derive(Decodable_NoContext, Encodable_NoContext, HashStable_NoContext)
@@ -394,7 +396,7 @@ impl<I: Interner> ty::Binder<I, ExistentialTraitRef<I>> {
 
 /// A `ProjectionPredicate` for an `ExistentialTraitRef`.
 #[derive_where(Clone, Copy, Hash, PartialEq, Debug; I: Interner)]
-#[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
+#[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic, Lift_Generic)]
 #[cfg_attr(
     feature = "nightly",
     derive(Decodable_NoContext, Encodable_NoContext, HashStable_NoContext)
@@ -552,7 +554,7 @@ impl From<ty::AliasTyKind> for AliasTermKind {
 /// * For an inherent projection, this would be `Ty::N<...>`.
 /// * For an opaque type, there is no explicit syntax.
 #[derive_where(Clone, Copy, Hash, PartialEq, Debug; I: Interner)]
-#[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
+#[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic, Lift_Generic)]
 #[cfg_attr(
     feature = "nightly",
     derive(Decodable_NoContext, Encodable_NoContext, HashStable_NoContext)
@@ -764,7 +766,7 @@ impl<I: Interner> From<ty::UnevaluatedConst<I>> for AliasTerm<I> {
 /// Form #2 eventually yields one of these `ProjectionPredicate`
 /// instances to normalize the LHS.
 #[derive_where(Clone, Copy, Hash, PartialEq; I: Interner)]
-#[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
+#[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic, Lift_Generic)]
 #[cfg_attr(
     feature = "nightly",
     derive(Decodable_NoContext, Encodable_NoContext, HashStable_NoContext)
@@ -827,7 +829,7 @@ impl<I: Interner> fmt::Debug for ProjectionPredicate<I> {
 /// Used by the new solver to normalize an alias. This always expects the `term` to
 /// be an unconstrained inference variable which is used as the output.
 #[derive_where(Clone, Copy, Hash, PartialEq; I: Interner)]
-#[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
+#[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic, Lift_Generic)]
 #[cfg_attr(
     feature = "nightly",
     derive(Decodable_NoContext, Encodable_NoContext, HashStable_NoContext)
@@ -864,7 +866,7 @@ impl<I: Interner> fmt::Debug for NormalizesTo<I> {
 }
 
 #[derive_where(Clone, Copy, Hash, PartialEq, Debug; I: Interner)]
-#[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
+#[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic, Lift_Generic)]
 #[cfg_attr(
     feature = "nightly",
     derive(Encodable_NoContext, Decodable_NoContext, HashStable_NoContext)
@@ -910,7 +912,7 @@ impl<I: Interner> ty::Binder<I, HostEffectPredicate<I>> {
 /// whether the `a` type is the type that we should label as "expected" when
 /// presenting user diagnostics.
 #[derive_where(Clone, Copy, Hash, PartialEq, Debug; I: Interner)]
-#[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
+#[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic, Lift_Generic)]
 #[cfg_attr(
     feature = "nightly",
     derive(Decodable_NoContext, Encodable_NoContext, HashStable_NoContext)
@@ -925,7 +927,7 @@ impl<I: Interner> Eq for SubtypePredicate<I> {}
 
 /// Encodes that we have to coerce *from* the `a` type to the `b` type.
 #[derive_where(Clone, Copy, Hash, PartialEq, Debug; I: Interner)]
-#[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
+#[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic, Lift_Generic)]
 #[cfg_attr(
     feature = "nightly",
     derive(Decodable_NoContext, Encodable_NoContext, HashStable_NoContext)
