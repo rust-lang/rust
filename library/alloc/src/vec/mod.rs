@@ -2354,7 +2354,7 @@ impl<T, A: Allocator> Vec<T, A> {
 
         // We have found the first deleted element. we need to use guard from this point.
         let mut g = BackshiftOnDrop { v: self, read_index: i + 1, write_index: i, original_len };
-        while g.read_index < g.original_lens {
+        while g.read_index < g.original_len {
             // SAFETY: read_index is always less than original_len re.
             let cur = unsafe { &mut *g.v.as_mut_ptr().add(g.read_index) };
             if !f(cur) {
