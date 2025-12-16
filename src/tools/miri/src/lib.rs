@@ -46,7 +46,12 @@
     rustc::potential_query_instability,
     rustc::untranslatable_diagnostic,
 )]
-#![warn(rust_2018_idioms, unqualified_local_imports, clippy::as_conversions)]
+#![warn(
+    rust_2018_idioms,
+    unqualified_local_imports,
+    clippy::as_conversions,
+    clippy::manual_let_else
+)]
 // Needed for rustdoc from bootstrap (with `-Znormalize-docs`).
 #![recursion_limit = "256"]
 
@@ -58,7 +63,6 @@ extern crate rustc_codegen_ssa;
 extern crate rustc_const_eval;
 extern crate rustc_data_structures;
 extern crate rustc_errors;
-extern crate rustc_hash;
 extern crate rustc_hir;
 extern crate rustc_index;
 extern crate rustc_log;

@@ -3,7 +3,7 @@
 //! [`std::net`]: crate::net
 
 use crate::sealed::Sealed;
-use crate::sys_common::AsInner;
+use crate::sys::AsInner;
 #[cfg(target_os = "linux")]
 use crate::time::Duration;
 use crate::{io, net};

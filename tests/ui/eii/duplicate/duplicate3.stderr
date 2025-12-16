@@ -1,0 +1,16 @@
+error: multiple implementations of `#[eii1]`
+  --> $DIR/auxiliary/impl1.rs:10:1
+   |
+LL | fn other(x: u64) {
+   | ^^^^^^^^^^^^^^^^ first implemented here in crate `impl1`
+   |
+  ::: $DIR/auxiliary/impl2.rs:10:1
+   |
+LL | fn other(x: u64) {
+   | ---------------- also implemented here in crate `impl2`
+   |
+   = note: in addition to these two, more implementations were also found in the following crates: `impl3`, `impl4`
+   = help: an "externally implementable item" can only have a single implementation in the final artifact. When multiple implementations are found, also in different crates, they conflict
+
+error: aborting due to 1 previous error
+

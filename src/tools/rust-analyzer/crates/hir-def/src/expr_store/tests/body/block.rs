@@ -195,55 +195,9 @@ fn f() {
                     Id(1c00),
                 ),
                 block: Some(
-                    BlockIdLt {
-                        [salsa id]: Id(3c01),
-                        ast_id: InFileWrapper {
-                            file_id: FileId(
-                                EditionedFileIdData {
-                                    editioned_file_id: EditionedFileId(
-                                        0,
-                                        Edition2024,
-                                    ),
-                                    krate: Crate(
-                                        Id(1c00),
-                                    ),
-                                },
-                            ),
-                            value: FileAstId::<syntax::ast::generated::nodes::BlockExpr>(ErasedFileAstId { kind: BlockExpr, index: 0, hash: F9BF }),
-                        },
-                        module: ModuleIdLt {
-                            [salsa id]: Id(3002),
-                            krate: Crate(
-                                Id(1c00),
-                            ),
-                            block: Some(
-                                BlockIdLt {
-                                    [salsa id]: Id(3c00),
-                                    ast_id: InFileWrapper {
-                                        file_id: FileId(
-                                            EditionedFileIdData {
-                                                editioned_file_id: EditionedFileId(
-                                                    0,
-                                                    Edition2024,
-                                                ),
-                                                krate: Crate(
-                                                    Id(1c00),
-                                                ),
-                                            },
-                                        ),
-                                        value: FileAstId::<syntax::ast::generated::nodes::BlockExpr>(ErasedFileAstId { kind: BlockExpr, index: 0, hash: C181 }),
-                                    },
-                                    module: ModuleIdLt {
-                                        [salsa id]: Id(3000),
-                                        krate: Crate(
-                                            Id(1c00),
-                                        ),
-                                        block: None,
-                                    },
-                                },
-                            ),
-                        },
-                    },
+                    BlockId(
+                        3c01,
+                    ),
                 ),
             }"#]],
     );

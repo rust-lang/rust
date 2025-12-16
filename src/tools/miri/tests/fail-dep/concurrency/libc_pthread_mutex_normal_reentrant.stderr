@@ -1,4 +1,4 @@
-error: the evaluated program deadlocked
+error: a thread deadlocked
   --> tests/fail-dep/concurrency/libc_pthread_mutex_normal_reentrant.rs:LL:CC
    |
 LL |         libc::pthread_mutex_lock(&mut mutex as *mut _);

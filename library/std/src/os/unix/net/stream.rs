@@ -36,9 +36,8 @@ use crate::net::Shutdown;
 use crate::os::unix::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd};
 use crate::path::Path;
 use crate::sealed::Sealed;
-use crate::sys::cvt;
 use crate::sys::net::Socket;
-use crate::sys_common::{AsInner, FromInner};
+use crate::sys::{AsInner, FromInner, cvt};
 use crate::time::Duration;
 
 /// A Unix stream socket.

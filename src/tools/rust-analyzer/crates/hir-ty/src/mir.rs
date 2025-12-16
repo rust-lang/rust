@@ -157,6 +157,7 @@ impl<'db, V: PartialEq> ProjectionElem<'db, V> {
     pub fn projected_ty(
         &self,
         infcx: &InferCtxt<'db>,
+        env: ParamEnv<'db>,
         mut base: Ty<'db>,
         closure_field: impl FnOnce(InternedClosureId, GenericArgs<'db>, usize) -> Ty<'db>,
         krate: Crate,
@@ -173,8 +174,6 @@ impl<'db, V: PartialEq> ProjectionElem<'db, V> {
 
         if matches!(base.kind(), TyKind::Alias(..)) {
             let mut ocx = ObligationCtxt::new(infcx);
-            // FIXME: we should get this from caller
-            let env = ParamEnv::empty();
             match ocx.structurally_normalize_ty(&ObligationCause::dummy(), env, base) {
                 Ok(it) => base = it,
                 Err(_) => return Ty::new_error(interner, ErrorGuaranteed),

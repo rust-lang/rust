@@ -1,5 +1,10 @@
 //! base_db defines basic database traits. The concrete DB is defined by ide.
 
+#![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
+
+#[cfg(feature = "in-rust-tree")]
+extern crate rustc_driver as _;
+
 pub use salsa;
 pub use salsa_macros;
 
@@ -57,6 +62,28 @@ macro_rules! impl_intern_key {
             }
         }
     };
+}
+
+/// # SAFETY
+///
+/// `old_pointer` must be valid for unique writes
+pub unsafe fn unsafe_update_eq<T>(old_pointer: *mut T, new_value: T) -> bool
+where
+    T: PartialEq,
+{
+    // SAFETY: Caller obligation
+    let old_ref: &mut T = unsafe { &mut *old_pointer };
+
+    if *old_ref != new_value {
+        *old_ref = new_value;
+        true
+    } else {
+        // Subtle but important: Eq impls can be buggy or define equality
+        // in surprising ways. If it says that the value has not changed,
+        // we do not modify the existing value, and thus do not have to
+        // update the revision, as downstream code will not see the new value.
+        false
+    }
 }
 
 pub const DEFAULT_FILE_TEXT_LRU_CAP: u16 = 16;

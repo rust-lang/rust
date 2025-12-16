@@ -22,15 +22,15 @@ pub unsafe extern "C" fn use_foreign_c_variadic_1_0(ap: VaList) {
 
 // CHECK-LABEL: use_foreign_c_variadic_1_1
 pub unsafe extern "C" fn use_foreign_c_variadic_1_1(ap: VaList) {
-    // CHECK: call void ({{.*}}, ...) @foreign_c_variadic_1({{.*}} %ap, i32 noundef 42)
+    // CHECK: call void ({{.*}}, ...) @foreign_c_variadic_1({{.*}} %ap, i32 noundef{{( signext)?}} 42)
     foreign_c_variadic_1(ap, 42i32);
 }
 pub unsafe extern "C" fn use_foreign_c_variadic_1_2(ap: VaList) {
-    // CHECK: call void ({{.*}}, ...) @foreign_c_variadic_1({{.*}} %ap, i32 noundef 2, i32 noundef 42)
+    // CHECK: call void ({{.*}}, ...) @foreign_c_variadic_1({{.*}} %ap, i32 noundef{{( signext)?}} 2, i32 noundef{{( signext)?}} 42)
     foreign_c_variadic_1(ap, 2i32, 42i32);
 }
 
 pub unsafe extern "C" fn use_foreign_c_variadic_1_3(ap: VaList) {
-    // CHECK: call void ({{.*}}, ...) @foreign_c_variadic_1({{.*}} %ap, i32 noundef 2, i32 noundef 42, i32 noundef 0)
+    // CHECK: call void ({{.*}}, ...) @foreign_c_variadic_1({{.*}} %ap, i32 noundef{{( signext)?}} 2, i32 noundef{{( signext)?}} 42, i32 noundef{{( signext)?}} 0)
     foreign_c_variadic_1(ap, 2i32, 42i32, 0i32);
 }

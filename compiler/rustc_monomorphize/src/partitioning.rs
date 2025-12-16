@@ -872,7 +872,7 @@ fn mono_item_visibility<'tcx>(
         // visibility. In some situations though we'll want to prevent this
         // symbol from being internalized.
         //
-        // There's two categories of items here:
+        // There's three categories of items here:
         //
         // * First is weak lang items. These are basically mechanisms for
         //   libcore to forward-reference symbols defined later in crates like
@@ -902,8 +902,16 @@ fn mono_item_visibility<'tcx>(
         //   visibility below. Like the weak lang items, though, we can't let
         //   LLVM internalize them as this decision is left up to the linker to
         //   omit them, so prevent them from being internalized.
+        //
+        // * Externally implementable items. They work (in this case) pretty much the same as
+        //   RUSTC_STD_INTERNAL_SYMBOL in that their implementation is also chosen later in
+        //   the compilation process and we can't let them be internalized and they can't
+        //   show up as an external interface.
         let attrs = tcx.codegen_fn_attrs(def_id);
-        if attrs.flags.contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL) {
+        if attrs.flags.intersects(
+            CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL
+                | CodegenFnAttrFlags::EXTERNALLY_IMPLEMENTABLE_ITEM,
+        ) {
             *can_be_internalized = false;
         }
 

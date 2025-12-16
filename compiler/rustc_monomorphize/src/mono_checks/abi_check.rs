@@ -54,7 +54,7 @@ fn do_check_simd_vector_abi<'tcx>(
                     continue;
                 }
             };
-            if !have_feature(Symbol::intern(feature)) {
+            if !feature.is_empty() && !have_feature(Symbol::intern(feature)) {
                 // Emit error.
                 let (span, _hir_id) = loc();
                 tcx.dcx().emit_err(errors::AbiErrorDisabledVectorType {

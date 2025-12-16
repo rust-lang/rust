@@ -1000,7 +1000,8 @@ mod OtherBadCase;
  // ^^^^^^^^^^^^ 💡 error: Module `OtherBadCase` should have snake_case name, e.g. `other_bad_case`
 
 //- /BAD_CASE/OtherBadCase.rs
-#![deny(non_snake_case)]
+#![allow(non_snake_case)]
+#![deny(non_snake_case)] // The lint level has been overridden.
 
 fn FOO() {}
 // ^^^ 💡 error: Function `FOO` should have snake_case name, e.g. `foo`

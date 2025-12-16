@@ -29,7 +29,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{self, CrateType, ErrorOutputType, Input};
 use rustc_session::lint;
 use rustc_span::edition::Edition;
-use rustc_span::{FileName, Span};
+use rustc_span::{FileName, RemapPathScopeComponents, Span};
 use rustc_target::spec::{Target, TargetTuple};
 use tempfile::{Builder as TempFileBuilder, TempDir};
 use tracing::debug;
@@ -971,14 +971,7 @@ impl ScrapedDocTest {
     }
     fn path(&self) -> PathBuf {
         match &self.filename {
-            FileName::Real(path) => {
-                if let Some(local_path) = path.local_path() {
-                    local_path.to_path_buf()
-                } else {
-                    // Somehow we got the filename from the metadata of another crate, should never happen
-                    unreachable!("doctest from a different crate");
-                }
-            }
+            FileName::Real(name) => name.path(RemapPathScopeComponents::DIAGNOSTICS).to_path_buf(),
             _ => PathBuf::from(r"doctest.rs"),
         }
     }
@@ -1025,7 +1018,7 @@ impl CreateRunnableDocTests {
         // For example `module/file.rs` would become `module_file_rs`
         let file = scraped_test
             .filename
-            .prefer_local()
+            .prefer_local_unconditionally()
             .to_string_lossy()
             .chars()
             .map(|c| if c.is_ascii_alphanumeric() { c } else { '_' })

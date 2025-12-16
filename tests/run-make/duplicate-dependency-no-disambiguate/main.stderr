@@ -1,0 +1,12 @@
+error[E0464]: multiple candidates for `rlib` dependency `foo` found
+  --> main.rs:8:5
+   |
+LL | use foo as _;
+   |     ^^^
+   |
+   = note: candidate #1: /build-root/test/run-make/duplicate-dependency-no-disambiguate/rmake_out/libfoo-v1.rlib
+   = note: candidate #2: /build-root/test/run-make/duplicate-dependency-no-disambiguate/rmake_out/libfoo-v2.rlib
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0464`.

@@ -1,14 +1,8 @@
 error: the evaluated program deadlocked
-  --> tests/fail-dep/concurrency/libc_pthread_rwlock_write_write_deadlock.rs:LL:CC
-   |
-LL |             assert_eq!(libc::pthread_rwlock_wrlock(lock_copy.0.get() as *mut _), 0);
-   |                                                                               ^ this thread got stuck here
-
-error: the evaluated program deadlocked
   --> RUSTLIB/std/src/sys/thread/PLATFORM.rs:LL:CC
    |
 LL |         let ret = unsafe { libc::pthread_join(id, ptr::null_mut()) };
-   |                                                                  ^ this thread got stuck here
+   |                                                                  ^ thread `main` got stuck here
    |
    = note: BACKTRACE:
    = note: inside `std::sys::thread::PLATFORM::Thread::join` at RUSTLIB/std/src/sys/thread/PLATFORM.rs:LL:CC
@@ -22,6 +16,12 @@ LL | |             assert_eq!(libc::pthread_rwlock_wrlock(lock_copy.0.get() as *
 LL | |         })
 LL | |         .join()
    | |_______________^
+
+error: the evaluated program deadlocked
+  --> tests/fail-dep/concurrency/libc_pthread_rwlock_write_write_deadlock.rs:LL:CC
+   |
+LL |             assert_eq!(libc::pthread_rwlock_wrlock(lock_copy.0.get() as *mut _), 0);
+   |                                                                               ^ thread `unnamed-ID` got stuck here
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

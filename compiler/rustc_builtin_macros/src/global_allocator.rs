@@ -84,6 +84,7 @@ impl AllocFnFactory<'_, '_> {
             contract: None,
             body,
             define_opaque: None,
+            eii_impls: ThinVec::new(),
         }));
         let item = self.cx.item(self.span, self.attrs(method), kind);
         self.cx.stmt_item(self.ty_span, item)
