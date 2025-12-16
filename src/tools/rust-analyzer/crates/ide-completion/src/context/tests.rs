@@ -147,6 +147,18 @@ fn bar(x: &u32) {}
 }
 
 #[test]
+fn expected_type_fn_param_deref() {
+    cov_mark::check!(expected_type_fn_param_deref);
+    check_expected_type_and_name(
+        r#"
+fn foo() { bar(*$0); }
+fn bar(x: &u32) {}
+"#,
+        expect!["ty: &'_ &'_ u32, name: x"],
+    );
+}
+
+#[test]
 fn expected_type_struct_field_without_leading_char() {
     cov_mark::check!(expected_type_struct_field_without_leading_char);
     check_expected_type_and_name(
