@@ -98,7 +98,7 @@ impl<'a> FnKind<'a> {
     }
 
     pub fn constness(self) -> Constness {
-        self.header().map_or(Constness::NotConst, |header| header.constness)
+        self.header().map_or(Constness::Never, |header| header.constness)
     }
 
     pub fn asyncness(self) -> IsAsync {

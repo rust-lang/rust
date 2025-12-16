@@ -788,7 +788,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             fn_decl_span: self.lower_span(fn_decl_span),
             fn_arg_span: None,
             kind: hir::ClosureKind::Coroutine(coroutine_kind),
-            constness: hir::Constness::NotConst,
+            constness: hir::Constness::Never,
         }))
     }
 
@@ -1215,7 +1215,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             // knows that a `FnDecl` output type like `-> &str` actually means
             // "coroutine that returns &str", rather than directly returning a `&str`.
             kind: hir::ClosureKind::CoroutineClosure(coroutine_desugaring),
-            constness: hir::Constness::NotConst,
+            constness: hir::Constness::Never,
         });
         hir::ExprKind::Closure(c)
     }

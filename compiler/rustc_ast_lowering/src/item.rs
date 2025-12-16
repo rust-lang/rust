@@ -24,6 +24,7 @@ use super::{
     AstOwner, FnDeclKind, ImplTraitContext, ImplTraitPosition, LoweringContext, ParamMode,
     RelaxedBoundForbiddenReason, RelaxedBoundPolicy, ResolverAstLoweringExt,
 };
+use crate::errors::ConstComptimeFn;
 
 pub(super) struct ItemLowerer<'a, 'hir> {
     pub(super) tcx: TyCtxt<'hir>,
@@ -1642,12 +1643,23 @@ impl<'hir> LoweringContext<'_, 'hir> {
             safety.into()
         };
 
-        hir::FnHeader {
-            safety,
-            asyncness,
-            constness: self.lower_constness(h.constness),
-            abi: self.lower_extern(h.ext),
+        let mut constness = self.lower_constness(h.constness);
+        if let Some(&attr_span) = find_attr!(attrs, AttributeKind::Comptime(span) => span) {
+            match std::mem::replace(&mut constness, rustc_hir::Constness::Always) {
+                rustc_hir::Constness::Always => {
+                    unreachable!("lower_constness cannot produce comptime")
+                }
+                // A function can't be `const` and `comptime` at the same time
+                rustc_hir::Constness::Maybe => {
+                    let Const::Yes(span) = h.constness else { unreachable!() };
+                    self.dcx().emit_err(ConstComptimeFn { span, attr_span });
+                }
+                // Good
+                rustc_hir::Constness::Never => {}
+            }
         }
+
+        hir::FnHeader { safety, asyncness, constness, abi: self.lower_extern(h.ext) }
     }
 
     pub(super) fn lower_abi(&mut self, abi_str: StrLit) -> ExternAbi {
@@ -1709,8 +1721,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     pub(super) fn lower_constness(&mut self, c: Const) -> hir::Constness {
         match c {
-            Const::Yes(_) => hir::Constness::Const,
-            Const::No => hir::Constness::NotConst,
+            Const::Yes(_) => hir::Constness::Maybe,
+            Const::No => hir::Constness::Never,
         }
     }
 

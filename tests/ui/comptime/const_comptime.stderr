@@ -1,0 +1,10 @@
+error: a function cannot be both `comptime` and `const`
+  --> $DIR/const_comptime.rs:4:1
+   |
+LL | #[rustc_comptime]
+   | ----------------- `comptime` because of this
+LL | const fn foo() {}
+   | ^^^^^ help: remove the `const`
+
+error: aborting due to 1 previous error
+

@@ -1919,6 +1919,7 @@ symbols! {
         rustc_clean,
         rustc_coherence_is_core,
         rustc_coinductive,
+        rustc_comptime,
         rustc_confusables,
         rustc_const_stable,
         rustc_const_stable_indirect,

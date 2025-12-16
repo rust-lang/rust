@@ -258,7 +258,7 @@ fn remap_mir_for_const_eval_select<'tcx>(
                 let fields = ty.tuple_fields();
                 let num_args = fields.len();
                 let func =
-                    if context == hir::Constness::Const { called_in_const } else { called_at_rt };
+                    if context == hir::Constness::Maybe { called_in_const } else { called_at_rt };
                 let (method, place): (fn(Place<'tcx>) -> Operand<'tcx>, Place<'tcx>) =
                     match tupled_args.node {
                         Operand::Constant(_) => {
@@ -429,7 +429,7 @@ fn mir_promoted(
 
     let const_qualifs = match tcx.def_kind(def) {
         DefKind::Fn | DefKind::AssocFn | DefKind::Closure
-            if tcx.constness(def) == hir::Constness::Const =>
+            if tcx.constness(def) == hir::Constness::Maybe =>
         {
             tcx.mir_const_qualif(def)
         }
@@ -502,7 +502,7 @@ fn inner_mir_for_ctfe(tcx: TyCtxt<'_>, def: LocalDefId) -> Body<'_> {
         None => bug!("`mir_for_ctfe` called on non-const {def:?}"),
     };
 
-    let mut body = remap_mir_for_const_eval_select(tcx, body, hir::Constness::Const);
+    let mut body = remap_mir_for_const_eval_select(tcx, body, hir::Constness::Maybe);
     pm::run_passes(tcx, &mut body, &[&ctfe_limit::CtfeLimit], None, pm::Optimizations::Allowed);
 
     body
@@ -796,7 +796,7 @@ fn inner_optimized_mir(tcx: TyCtxt<'_>, did: LocalDefId) -> Body<'_> {
     }
     debug!("about to call mir_drops_elaborated...");
     let body = tcx.mir_drops_elaborated_and_const_checked(did).steal();
-    let mut body = remap_mir_for_const_eval_select(tcx, body, hir::Constness::NotConst);
+    let mut body = remap_mir_for_const_eval_select(tcx, body, hir::Constness::Never);
 
     if body.tainted_by_errors.is_some() {
         return body;

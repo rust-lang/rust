@@ -714,12 +714,12 @@ impl Item {
                     && let ty::AssocContainer::Trait | ty::AssocContainer::TraitImpl(_) =
                         assoc.container
                 {
-                    hir::Constness::NotConst
+                    hir::Constness::Never
                 } else {
-                    hir::Constness::Const
+                    hir::Constness::Maybe
                 }
             } else {
-                hir::Constness::NotConst
+                hir::Constness::Never
             };
             let asyncness = match asyncness {
                 ty::Asyncness::Yes => hir::IsAsync::Async(DUMMY_SP),
@@ -748,9 +748,9 @@ impl Item {
                     },
                     abi,
                     constness: if tcx.is_const_fn(def_id) {
-                        hir::Constness::Const
+                        hir::Constness::Maybe
                     } else {
-                        hir::Constness::NotConst
+                        hir::Constness::Never
                     },
                     asyncness: hir::IsAsync::NotAsync,
                 }

@@ -231,6 +231,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::Marker(..)
                     | AttributeKind::SkipDuringMethodDispatch { .. }
                     | AttributeKind::Coinductive(..)
+                    | AttributeKind::Comptime(..)
                     | AttributeKind::DenyExplicitImpl(..)
                     | AttributeKind::DoNotImplementViaObject(..)
                     | AttributeKind::SpecializationTrait(..)
@@ -545,8 +546,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         if matches!(target, Target::Impl { of_trait: true }) {
             match item.unwrap() {
                 ItemLike::Item(it) => match it.expect_impl().constness {
-                    Constness::Const => {}
-                    Constness::NotConst => return,
+                    Constness::Maybe | Constness::Always => {}
+                    Constness::Never => return,
                 },
                 ItemLike::ForeignItem => {}
             }

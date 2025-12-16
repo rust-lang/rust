@@ -2140,7 +2140,10 @@ impl<'tcx> TyCtxt<'tcx> {
         matches!(
             self.def_kind(def_id),
             DefKind::Fn | DefKind::AssocFn | DefKind::Ctor(_, CtorKind::Fn) | DefKind::Closure
-        ) && self.constness(def_id) == hir::Constness::Const
+        ) && match self.constness(def_id) {
+            hir::Constness::Always | hir::Constness::Maybe => true,
+            hir::Constness::Never => false,
+        }
     }
 
     /// Whether this item is conditionally constant for the purposes of the
@@ -2154,12 +2157,12 @@ impl<'tcx> TyCtxt<'tcx> {
         match self.def_kind(def_id) {
             DefKind::Impl { of_trait: true } => {
                 let header = self.impl_trait_header(def_id);
-                header.constness == hir::Constness::Const
+                header.constness == hir::Constness::Maybe
                     && self.is_const_trait(header.trait_ref.skip_binder().def_id)
             }
-            DefKind::Impl { of_trait: false } => self.constness(def_id) == hir::Constness::Const,
+            DefKind::Impl { of_trait: false } => self.constness(def_id) == hir::Constness::Maybe,
             DefKind::Fn | DefKind::Ctor(_, CtorKind::Fn) => {
-                self.constness(def_id) == hir::Constness::Const
+                self.constness(def_id) == hir::Constness::Maybe
             }
             DefKind::TraitAlias | DefKind::Trait => self.is_const_trait(def_id),
             DefKind::AssocTy => {
@@ -2176,7 +2179,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 let parent_def_id = self.parent(def_id);
                 match self.def_kind(parent_def_id) {
                     DefKind::Impl { of_trait: false } => {
-                        self.constness(def_id) == hir::Constness::Const
+                        self.constness(def_id) == hir::Constness::Maybe
                     }
                     DefKind::Impl { of_trait: true } | DefKind::Trait => {
                         self.is_conditionally_const(parent_def_id)
@@ -2223,7 +2226,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[inline]
     pub fn is_const_trait(self, def_id: DefId) -> bool {
-        self.trait_def(def_id).constness == hir::Constness::Const
+        self.trait_def(def_id).constness == hir::Constness::Maybe
     }
 
     pub fn impl_method_has_trait_impl_trait_tys(self, def_id: DefId) -> bool {

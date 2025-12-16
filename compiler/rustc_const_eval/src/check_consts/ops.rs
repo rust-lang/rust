@@ -402,7 +402,7 @@ fn build_error_for_const_call<'tcx>(
                         err.help("const traits are not yet supported on stable Rust");
                     }
                 }
-            } else if ccx.tcx.constness(callee) != hir::Constness::Const {
+            } else if ccx.tcx.constness(callee) != hir::Constness::Maybe {
                 let name = ccx.tcx.item_name(callee);
                 err.span_note(
                     ccx.tcx.def_span(callee),
