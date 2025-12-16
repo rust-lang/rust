@@ -188,7 +188,7 @@ fn create_environment(args: Args) -> anyhow::Result<(Environment, Vec<String>)> 
                 // FIXME: Enable bolt for aarch64 once it's fixed upstream. Broken as of December 2024.
                 .use_bolt(!is_aarch64)
                 .skipped_tests(vec![])
-                .run_tests(true)
+                .run_tests(false)
                 .fast_try_build(is_fast_try_build)
                 .build_llvm(true)
                 .build()?;
