@@ -30,7 +30,7 @@ use rustc_proc_macro::bridge::client::ProcMacro;
 use rustc_serialize::opaque::MemDecoder;
 use rustc_serialize::{Decodable, Decoder};
 use rustc_session::config::TargetModifier;
-use rustc_session::config::enforceable_mitigations::DeniedPartialMitigation;
+use rustc_session::config::mitigation_coverage::DeniedPartialMitigation;
 use rustc_session::cstore::{CrateSource, ExternCrate};
 use rustc_span::hygiene::HygieneDecodeContext;
 use rustc_span::{
