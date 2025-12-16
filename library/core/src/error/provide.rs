@@ -1225,7 +1225,17 @@ impl<'a> Tagged<dyn Erased<'a> + 'a> {
         if self.is_virtual() {
             // consume returns None if the space is not satisfied
             // SAFETY: `&raw const self.value` is valid
-            unsafe { (&raw const self.value).consume(TypeId::of::<I>()).is_some() }
+            // SAFETY: consume is defined to return either None or Some(I::Reified)
+            unsafe {
+                if let Some(res) = (&raw const self.value).consume(TypeId::of::<I>()) {
+                    let ptr: NonNull<Option<I::Reified>> = res.cast();
+                    // cast is fine since consume returns a pointer to an Option<I::Reified>
+                    // value can be satisfied if the cell is empty
+                    ptr.as_ref().is_none()
+                } else {
+                    false
+                }
+            }
         } else {
             matches!(self.downcast::<I>(), Some(TaggedOption(None)))
         }
@@ -1242,8 +1252,10 @@ impl<'a> Tagged<dyn Erased<'a> + 'a> {
                 if let Some(res) = (&raw const self.value).consume(TypeId::of::<I>()) {
                     let mut ptr: NonNull<Option<I::Reified>> = res.cast();
                     // cast is fine since consume_mut returns a pointer to an Option<I::Reified>
-                    // could use `ptr::write` here, but this is not expected to be important enough
-                    *ptr.as_mut() = Some(value);
+                    let opt: &mut Option<I::Reified> = ptr.as_mut();
+                    if opt.is_none() {
+                        *opt = Some(value);
+                    }
                 }
             }
         } else {
@@ -1259,13 +1271,15 @@ impl<'a> Tagged<dyn Erased<'a> + 'a> {
         I: tags::Type<'a>,
     {
         if self.is_virtual() {
-            // SAFETY: consume_mut is defined to return either None or Some(I::Reified)
+            // SAFETY: consume is defined to return either None or Some(I::Reified)
             unsafe {
                 if let Some(res) = (&raw const self.value).consume(TypeId::of::<I>()) {
                     let mut ptr: NonNull<Option<I::Reified>> = res.cast();
-                    // cast is fine since consume_mut returns a pointer to an Option<I::Reified>
-                    // could use `ptr::write` here, but this is not expected to be important enough
-                    *ptr.as_mut() = Some(fulfil());
+                    // cast is fine since consume returns a pointer to an Option<I::Reified>
+                    let opt: &mut Option<I::Reified> = ptr.as_mut();
+                    if opt.is_none() {
+                        *opt = Some(fulfil());
+                    }
                 }
             }
         } else {
