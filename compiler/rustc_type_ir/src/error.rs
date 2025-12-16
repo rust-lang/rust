@@ -1,11 +1,11 @@
 use derive_where::derive_where;
-use rustc_type_ir_macros::{TypeFoldable_Generic, TypeVisitable_Generic};
+use rustc_type_ir_macros::{GenericTypeVisitable, TypeFoldable_Generic, TypeVisitable_Generic};
 
 use crate::solve::NoSolution;
 use crate::{self as ty, Interner};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-#[derive(TypeFoldable_Generic, TypeVisitable_Generic)]
+#[derive(TypeFoldable_Generic, TypeVisitable_Generic, GenericTypeVisitable)]
 pub struct ExpectedFound<T> {
     pub expected: T,
     pub found: T,
@@ -19,7 +19,7 @@ impl<T> ExpectedFound<T> {
 
 // Data structures used in type unification
 #[derive_where(Clone, Copy, PartialEq, Debug; I: Interner)]
-#[derive(TypeVisitable_Generic)]
+#[derive(TypeVisitable_Generic, GenericTypeVisitable)]
 #[cfg_attr(feature = "nightly", rustc_pass_by_value)]
 pub enum TypeError<I: Interner> {
     Mismatch,

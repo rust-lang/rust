@@ -12,6 +12,10 @@ decl_derive!(
 decl_derive!(
     [Lift_Generic] => lift_derive
 );
+#[cfg(not(feature = "nightly"))]
+decl_derive!(
+    [GenericTypeVisitable] => customizable_type_visitable_derive
+);
 
 fn has_ignore_attr(attrs: &[Attribute], name: &'static str, meta: &'static str) -> bool {
     let mut ignored = false;
@@ -210,4 +214,40 @@ fn lift(mut ty: syn::Type) -> syn::Type {
     ItoJ.visit_type_mut(&mut ty);
 
     ty
+}
+
+#[cfg(not(feature = "nightly"))]
+fn customizable_type_visitable_derive(
+    mut s: synstructure::Structure<'_>,
+) -> proc_macro2::TokenStream {
+    if let syn::Data::Union(_) = s.ast().data {
+        panic!("cannot derive on union")
+    }
+
+    s.add_impl_generic(parse_quote!(__V));
+    s.add_bounds(synstructure::AddBounds::Fields);
+    let body_visit = s.each(|bind| {
+        quote! {
+            ::rustc_type_ir::GenericTypeVisitable::<__V>::generic_visit_with(#bind, __visitor);
+        }
+    });
+    s.bind_with(|_| synstructure::BindStyle::Move);
+
+    s.bound_impl(
+        quote!(::rustc_type_ir::GenericTypeVisitable<__V>),
+        quote! {
+            fn generic_visit_with(
+                &self,
+                __visitor: &mut __V
+            ) {
+                match *self { #body_visit }
+            }
+        },
+    )
+}
+
+#[cfg(feature = "nightly")]
+#[proc_macro_derive(GenericTypeVisitable)]
+pub fn customizable_type_visitable_derive(_: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    proc_macro::TokenStream::new()
 }
