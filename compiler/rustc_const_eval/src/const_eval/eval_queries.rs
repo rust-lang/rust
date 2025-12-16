@@ -377,6 +377,7 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
         match key.typing_env.typing_mode() {
             ty::TypingMode::PostAnalysis => {}
             ty::TypingMode::Coherence
+            | ty::TypingMode::Reflection
             | ty::TypingMode::Analysis { .. }
             | ty::TypingMode::Borrowck { .. }
             | ty::TypingMode::PostBorrowckAnalysis { .. } => {

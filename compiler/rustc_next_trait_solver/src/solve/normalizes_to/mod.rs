@@ -303,6 +303,7 @@ where
                         // Outside of coherence, we treat the associated item as rigid instead.
                         ty::TypingMode::Analysis { .. }
                         | ty::TypingMode::Borrowck { .. }
+                        | ty::TypingMode::Reflection
                         | ty::TypingMode::PostBorrowckAnalysis { .. }
                         | ty::TypingMode::PostAnalysis => {
                             ecx.structurally_instantiate_normalizes_to_term(
@@ -341,6 +342,7 @@ where
                         }
                         ty::TypingMode::Analysis { .. }
                         | ty::TypingMode::Borrowck { .. }
+                        | ty::TypingMode::Reflection
                         | ty::TypingMode::PostBorrowckAnalysis { .. }
                         | ty::TypingMode::PostAnalysis => {
                             ecx.structurally_instantiate_normalizes_to_term(

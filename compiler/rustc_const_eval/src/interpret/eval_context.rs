@@ -246,6 +246,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             match typing_env.typing_mode() {
                 TypingMode::PostAnalysis => {}
                 TypingMode::Coherence
+                | TypingMode::Reflection
                 | TypingMode::Analysis { .. }
                 | TypingMode::Borrowck { .. }
                 | TypingMode::PostBorrowckAnalysis { .. } => {
