@@ -2309,40 +2309,42 @@ impl Step for Assemble {
                 let src_lib = src_dir.join(&libenzyme).with_extension(lib_ext);
                 let dst_lib = libdir.join(&libenzyme).with_extension(lib_ext);
                 let target_dst_lib = target_libdir.join(&libenzyme).with_extension(lib_ext);
-                builder.resolve_symlink_and_copy(&src_lib, &dst_lib);
-                builder.resolve_symlink_and_copy(&src_lib, &target_dst_lib);
+                if src_lib.exists() {
+                    builder.resolve_symlink_and_copy(&src_lib, &dst_lib);
+                    builder.resolve_symlink_and_copy(&src_lib, &target_dst_lib);
 
-                // FIXME(offload): With LLVM-22, we should be able to drop everything below here.
-                let omp = format!("libomp");
-                let src_omp = src_dir.join(&omp).with_extension(lib_ext);
-                let dst_omp_lib = libdir.join(&omp).with_extension(lib_ext);
-                let target_omp_dst_lib = target_libdir.join(&omp).with_extension(lib_ext);
-                builder.resolve_symlink_and_copy(&src_omp, &dst_omp_lib);
-                builder.resolve_symlink_and_copy(&src_omp, &target_omp_dst_lib);
+                    // FIXME(offload): With LLVM-22, we should be able to drop everything below here.
+                    let omp = format!("libomp");
+                    let src_omp = src_dir.join(&omp).with_extension(lib_ext);
+                    let dst_omp_lib = libdir.join(&omp).with_extension(lib_ext);
+                    let target_omp_dst_lib = target_libdir.join(&omp).with_extension(lib_ext);
+                    builder.resolve_symlink_and_copy(&src_omp, &dst_omp_lib);
+                    builder.resolve_symlink_and_copy(&src_omp, &target_omp_dst_lib);
 
-                let tgt = format!("libomptarget");
-                let src_tgt = src_dir.join(&tgt).with_extension(lib_ext);
-                let dst_tgt_lib = libdir.join(&tgt).with_extension(lib_ext);
-                let target_tgt_dst_lib = target_libdir.join(&tgt).with_extension(lib_ext);
-                builder.resolve_symlink_and_copy(&src_tgt, &dst_tgt_lib);
-                builder.resolve_symlink_and_copy(&src_tgt, &target_tgt_dst_lib);
-
-                // The last one is slightly more tricky, since we have the same file twice, in two
-                // subfolders for amdgcn and nvptx64. We'll likely find two more in the future, once
-                // Intel and Spir-V support lands in offload.
-                let gpu_tgts = ["amdgcn-amd-amdhsa", "nvptx64-nvidia-cuda"];
-                let device = format!("libompdevice.a");
-                for tgt in gpu_tgts {
-                    let dst_tgt_dir = libdir.join(&tgt);
-                    let target_tgt_dst_dir = target_libdir.join(&tgt);
-                    t!(fs::create_dir_all(&dst_tgt_dir));
-                    t!(fs::create_dir_all(&target_tgt_dst_dir));
-                    let dst_tgt_lib = dst_tgt_dir.join(&device);
-                    let target_tgt_dst_lib = target_tgt_dst_dir.join(&device);
+                    let tgt = format!("libomptarget");
+                    let src_tgt = src_dir.join(&tgt).with_extension(lib_ext);
+                    let dst_tgt_lib = libdir.join(&tgt).with_extension(lib_ext);
+                    let target_tgt_dst_lib = target_libdir.join(&tgt).with_extension(lib_ext);
                     builder.resolve_symlink_and_copy(&src_tgt, &dst_tgt_lib);
                     builder.resolve_symlink_and_copy(&src_tgt, &target_tgt_dst_lib);
-                    // FIXME(offload): copy the files within the directories as well, but figure out
-                    // the naming scheme before.
+
+                    // The last one is slightly more tricky, since we have the same file twice, in two
+                    // subfolders for amdgcn and nvptx64. We'll likely find two more in the future, once
+                    // Intel and Spir-V support lands in offload.
+                    let gpu_tgts = ["amdgcn-amd-amdhsa", "nvptx64-nvidia-cuda"];
+                    let device = format!("libompdevice.a");
+                    for tgt in gpu_tgts {
+                        let dst_tgt_dir = libdir.join(&tgt);
+                        let target_tgt_dst_dir = target_libdir.join(&tgt);
+                        t!(fs::create_dir_all(&dst_tgt_dir));
+                        t!(fs::create_dir_all(&target_tgt_dst_dir));
+                        let dst_tgt_lib = dst_tgt_dir.join(&device);
+                        let target_tgt_dst_lib = target_tgt_dst_dir.join(&device);
+                        builder.resolve_symlink_and_copy(&src_tgt, &dst_tgt_lib);
+                        builder.resolve_symlink_and_copy(&src_tgt, &target_tgt_dst_lib);
+                        // FIXME(offload): copy the files within the directories as well, but figure out
+                        // the naming scheme before.
+                    }
                 }
             }
         }
