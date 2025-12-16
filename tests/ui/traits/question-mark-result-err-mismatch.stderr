@@ -9,7 +9,7 @@ LL |           .map_err(|e| {
 LL | |             e;
    | |              - help: remove this semicolon
 LL | |         })
-   | |__________- this can't be annotated with `?` because it has type `Result<_, ()>`
+   | |__________- this has type `Result<_, ()>`
 LL |           .map(|()| "")?;
    |                        ^ the trait `From<()>` is not implemented for `String`
    |
