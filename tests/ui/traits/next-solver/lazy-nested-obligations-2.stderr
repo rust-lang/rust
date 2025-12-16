@@ -1,0 +1,15 @@
+error[E0271]: type mismatch resolving `fn(&str) {f} == fn(&str)`
+  --> $DIR/lazy-nested-obligations-2.rs:18:21
+   |
+LL |     let _: V<i32> = V(f);
+   |                     ^^^^ types differ
+
+error[E0271]: type mismatch resolving `fn(&str) {f} == fn(&str)`
+  --> $DIR/lazy-nested-obligations-2.rs:25:22
+   |
+LL |     let _: E3<i32> = E3::Var(f);
+   |                      ^^^^^^^^^^ types differ
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0271`.

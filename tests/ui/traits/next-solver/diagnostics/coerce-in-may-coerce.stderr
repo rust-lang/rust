@@ -4,7 +4,7 @@ error[E0308]: arguments to this function are incorrect
 LL |     arg_error((), || ());
    |     ^^^^^^^^^ --  ----- expected `()`, found `{closure@$DIR/coerce-in-may-coerce.rs:17:19: 17:21}`
    |               |
-   |               expected `<fn() as Mirror>::Assoc`, found `()`
+   |               expected `fn()`, found `()`
    |
 note: function defined here
   --> $DIR/coerce-in-may-coerce.rs:12:4
