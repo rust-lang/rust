@@ -107,6 +107,9 @@ ast_passes_coroutine_and_c_variadic = functions cannot be both `{$coroutine_kind
     .const = `{$coroutine_kind}` because of this
     .variadic = C-variadic because of this
 
+ast_passes_deprecated_where_clause_location = where clause not allowed here
+    .note = see issue #89122 <https://github.com/rust-lang/rust/issues/89122> for more information
+
 ast_passes_equality_in_where = equality constraints are not yet supported in `where` clauses
     .label = not supported
     .suggestion = if `{$ident}` is an associated type you're trying to set, use the associated type binding syntax
@@ -237,6 +240,8 @@ ast_passes_missing_unsafe_on_extern_lint = extern blocks should be unsafe
 ast_passes_module_nonascii = trying to load file for module `{$name}` with non-ascii identifier name
     .help = consider using the `#[path]` attribute to specify filesystem path
 
+ast_passes_move_leading_ty_alias_where_clause = move it to the end of the type declaration
+
 ast_passes_negative_bound_not_supported =
     negative bounds are not supported
 
@@ -259,6 +264,7 @@ ast_passes_out_of_order_params = {$param_ord} parameters must be declared prior 
 
 ast_passes_pattern_in_bodiless = patterns aren't allowed in functions without bodies
     .label = pattern not allowed in function without body
+    .remove_mut_sugg = remove `mut` from the parameter
 
 ast_passes_pattern_in_fn_pointer = patterns aren't allowed in function pointer types
 
@@ -269,6 +275,8 @@ ast_passes_precise_capturing_duplicated = duplicate `use<...>` precise capturing
     .label = second `use<...>` here
 
 ast_passes_precise_capturing_not_allowed_here = `use<...>` precise capturing syntax not allowed in {$loc}
+
+ast_passes_remove_leading_ty_alias_where_clause = remove this `where`
 
 ast_passes_static_without_body =
     free static item without body
@@ -322,6 +330,10 @@ ast_passes_unsafe_negative_impl = negative impls cannot be unsafe
 ast_passes_unsafe_static =
     static items cannot be declared with `unsafe` safety qualifier outside of `extern` block
 
+ast_passes_unused_visibilities = visibility qualifiers have no effect on `const _` declarations
+    .note = `const _` does not declare a name, so there is nothing for the qualifier to apply to
+    .suggestion = remove the qualifier
+
 ast_passes_visibility_not_permitted =
     visibility qualifiers are not permitted here
     .enum_variant = enum variants and their fields always share the visibility of the enum they are in
@@ -336,5 +348,3 @@ ast_passes_where_clause_after_type_alias = where clauses are not allowed after t
 
 ast_passes_where_clause_before_type_alias = where clauses are not allowed before the type for type aliases
     .note = see issue #89122 <https://github.com/rust-lang/rust/issues/89122> for more information
-    .remove_suggestion = remove this `where`
-    .move_suggestion = move it to the end of the type declaration

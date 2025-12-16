@@ -1,10 +1,12 @@
 use rustc_errors::codes::*;
 use rustc_errors::{
-    Diag, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level, MultiSpan, SingleLabelManySpans,
-    Subdiagnostic,
+    Applicability, Diag, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level, LintDiagnostic,
+    MultiSpan, SingleLabelManySpans, Subdiagnostic,
 };
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_span::{Ident, Span, Symbol};
+
+use crate::fluent_generated as fluent;
 
 #[derive(LintDiagnostic)]
 #[diag(builtin_macros_avoid_intel_syntax)]
@@ -1057,4 +1059,36 @@ pub(crate) struct EiiMacroExpectedMaxOneArgument {
     #[primary_span]
     pub span: Span,
     pub name: String,
+}
+
+pub(crate) struct NamedArgumentUsedPositionally {
+    pub position_sp_to_replace: Option<Span>,
+    pub position_sp_for_msg: Option<Span>,
+    pub named_arg_sp: Span,
+    pub named_arg_name: Symbol,
+    pub is_formatting_arg: bool,
+}
+
+impl<'a> LintDiagnostic<'a, ()> for NamedArgumentUsedPositionally {
+    fn decorate_lint<'b>(self, diag: &'b mut Diag<'a, ()>) {
+        diag.primary_message(fluent::builtin_macros_named_argument_used_positionally);
+        diag.span_label(self.named_arg_sp, fluent::builtin_macros_label_named_arg);
+        if let Some(span) = self.position_sp_for_msg {
+            diag.span_label(span, fluent::builtin_macros_label_position_arg);
+        }
+        diag.arg("named_arg_name", self.named_arg_name);
+
+        if let Some(positional_arg_to_replace) = self.position_sp_to_replace {
+            let mut name = self.named_arg_name.to_string();
+            if self.is_formatting_arg {
+                name.push('$')
+            };
+            diag.span_suggestion_verbose(
+                positional_arg_to_replace,
+                fluent::builtin_macros_suggestion,
+                name,
+                Applicability::MaybeIncorrect,
+            );
+        }
+    }
 }

@@ -236,5 +236,8 @@ metadata_two_panic_runtimes =
 
 metadata_unknown_target_modifier_unsafe_allowed = unknown target modifier `{$flag_name}`, requested by `-Cunsafe-allow-abi-mismatch={$flag_name}`
 
+metadata_unused_crate_dependency = extern crate `{$extern_crate}` is unused in crate `{$local_crate}`
+    .help = remove the dependency or add `use {$extern_crate} as _;` to the crate root
+
 metadata_wasm_c_abi =
     older versions of the `wasm-bindgen` crate are incompatible with current versions of Rust; please update to `wasm-bindgen` v0.2.88

@@ -23,7 +23,6 @@ use rustc_errors::{Applicability, Diag, PResult, StashKey, Subdiagnostic};
 use rustc_literal_escaper::unescape_char;
 use rustc_macros::Subdiagnostic;
 use rustc_session::errors::{ExprParenthesesNeeded, report_lit_error};
-use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::lint::builtin::BREAK_WITH_LABEL_AND_LOOP;
 use rustc_span::edition::Edition;
 use rustc_span::source_map::{self, Spanned};
@@ -1930,7 +1929,12 @@ impl<'a> Parser<'a> {
                         BREAK_WITH_LABEL_AND_LOOP,
                         lo.to(expr.span),
                         ast::CRATE_NODE_ID,
-                        BuiltinLintDiag::BreakWithLabelAndLoop(expr.span),
+                        errors::BreakWithLabelAndLoop {
+                            sub: errors::BreakWithLabelAndLoopSub {
+                                left: expr.span.shrink_to_lo(),
+                                right: expr.span.shrink_to_hi(),
+                            },
+                        },
                     );
                 }
 

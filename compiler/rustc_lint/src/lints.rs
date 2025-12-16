@@ -6,7 +6,7 @@ use std::num::NonZero;
 use rustc_errors::codes::*;
 use rustc_errors::{
     Applicability, Diag, DiagArgValue, DiagMessage, DiagStyledString, ElidedLifetimeInPathSubdiag,
-    EmissionGuarantee, LintDiagnostic, MultiSpan, Subdiagnostic, SuggestionStyle,
+    EmissionGuarantee, LintDiagnostic, Subdiagnostic, SuggestionStyle,
 };
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
@@ -2586,14 +2586,6 @@ pub(crate) mod unexpected_cfg_value {
     }
 }
 
-#[derive(LintDiagnostic)]
-#[diag(lint_unused_crate_dependency)]
-#[help]
-pub(crate) struct UnusedCrateDependency {
-    pub extern_crate: Symbol,
-    pub local_crate: Symbol,
-}
-
 // FIXME(jdonszelmann): duplicated in rustc_attr_parsing, should be moved there completely.
 #[derive(LintDiagnostic)]
 #[diag(lint_ill_formed_attribute_input)]
@@ -2603,35 +2595,6 @@ pub(crate) struct IllFormedAttributeInput {
     #[note]
     pub has_docs: bool,
     pub docs: &'static str,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(lint_unicode_text_flow)]
-#[note]
-pub(crate) struct UnicodeTextFlow {
-    #[label]
-    pub comment_span: Span,
-    #[subdiagnostic]
-    pub characters: Vec<UnicodeCharNoteSub>,
-    #[subdiagnostic]
-    pub suggestions: Option<UnicodeTextFlowSuggestion>,
-
-    pub num_codepoints: usize,
-}
-
-#[derive(Subdiagnostic)]
-#[label(lint_label_comment_char)]
-pub(crate) struct UnicodeCharNoteSub {
-    #[primary_span]
-    pub span: Span,
-    pub c_debug: String,
-}
-
-#[derive(Subdiagnostic)]
-#[multipart_suggestion(lint_suggestion, applicability = "machine-applicable", style = "hidden")]
-pub(crate) struct UnicodeTextFlowSuggestion {
-    #[suggestion_part(code = "")]
-    pub spans: Vec<Span>,
 }
 
 #[derive(LintDiagnostic)]
@@ -2716,91 +2679,6 @@ pub(crate) enum RedundantImportSub {
 }
 
 #[derive(LintDiagnostic)]
-pub(crate) enum PatternsInFnsWithoutBody {
-    #[diag(lint_pattern_in_foreign)]
-    Foreign {
-        #[subdiagnostic]
-        sub: PatternsInFnsWithoutBodySub,
-    },
-    #[diag(lint_pattern_in_bodiless)]
-    Bodiless {
-        #[subdiagnostic]
-        sub: PatternsInFnsWithoutBodySub,
-    },
-}
-
-#[derive(Subdiagnostic)]
-#[suggestion(lint_remove_mut_from_pattern, code = "{ident}", applicability = "machine-applicable")]
-pub(crate) struct PatternsInFnsWithoutBodySub {
-    #[primary_span]
-    pub span: Span,
-
-    pub ident: Ident,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(lint_reserved_prefix)]
-pub(crate) struct ReservedPrefix {
-    #[label]
-    pub label: Span,
-    #[suggestion(code = " ", applicability = "machine-applicable")]
-    pub suggestion: Span,
-
-    pub prefix: String,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(lint_raw_prefix)]
-pub(crate) struct RawPrefix {
-    #[label]
-    pub label: Span,
-    #[suggestion(code = " ", applicability = "machine-applicable")]
-    pub suggestion: Span,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(lint_break_with_label_and_loop)]
-pub(crate) struct BreakWithLabelAndLoop {
-    #[subdiagnostic]
-    pub sub: BreakWithLabelAndLoopSub,
-}
-
-#[derive(Subdiagnostic)]
-#[multipart_suggestion(lint_suggestion, applicability = "machine-applicable")]
-pub(crate) struct BreakWithLabelAndLoopSub {
-    #[suggestion_part(code = "(")]
-    pub left: Span,
-    #[suggestion_part(code = ")")]
-    pub right: Span,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(lint_deprecated_where_clause_location)]
-#[note]
-pub(crate) struct DeprecatedWhereClauseLocation {
-    #[subdiagnostic]
-    pub suggestion: DeprecatedWhereClauseLocationSugg,
-}
-
-#[derive(Subdiagnostic)]
-pub(crate) enum DeprecatedWhereClauseLocationSugg {
-    #[multipart_suggestion(lint_suggestion_move_to_end, applicability = "machine-applicable")]
-    MoveToEnd {
-        #[suggestion_part(code = "")]
-        left: Span,
-        #[suggestion_part(code = "{sugg}")]
-        right: Span,
-
-        sugg: String,
-    },
-    #[suggestion(lint_suggestion_remove_where, code = "", applicability = "machine-applicable")]
-    RemoveWhere {
-        #[primary_span]
-        span: Span,
-    },
-}
-
-#[derive(LintDiagnostic)]
 #[diag(lint_single_use_lifetime)]
 pub(crate) struct SingleUseLifetime {
     #[label(lint_label_param)]
@@ -2831,65 +2709,6 @@ pub(crate) struct UnusedLifetime {
     pub deletion_span: Option<Span>,
 
     pub ident: Ident,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(lint_named_argument_used_positionally)]
-pub(crate) struct NamedArgumentUsedPositionally {
-    #[label(lint_label_named_arg)]
-    pub named_arg_sp: Span,
-    #[label(lint_label_position_arg)]
-    pub position_label_sp: Option<Span>,
-    #[suggestion(style = "verbose", code = "{name}", applicability = "maybe-incorrect")]
-    pub suggestion: Option<Span>,
-
-    pub name: String,
-    pub named_arg_name: String,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(lint_ambiguous_glob_reexport)]
-pub(crate) struct AmbiguousGlobReexports {
-    #[label(lint_label_first_reexport)]
-    pub first_reexport: Span,
-    #[label(lint_label_duplicate_reexport)]
-    pub duplicate_reexport: Span,
-
-    pub name: String,
-    // FIXME: make this translatable
-    pub namespace: String,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(lint_hidden_glob_reexport)]
-pub(crate) struct HiddenGlobReexports {
-    #[note(lint_note_glob_reexport)]
-    pub glob_reexport: Span,
-    #[note(lint_note_private_item)]
-    pub private_item: Span,
-
-    pub name: String,
-    // FIXME: make this translatable
-    pub namespace: String,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(lint_unnecessary_qualification)]
-pub(crate) struct UnusedQualifications {
-    #[suggestion(style = "verbose", code = "", applicability = "machine-applicable")]
-    pub removal_span: Span,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(lint_associated_const_elided_lifetime)]
-pub(crate) struct AssociatedConstElidedLifetime {
-    #[suggestion(style = "verbose", code = "{code}", applicability = "machine-applicable")]
-    pub span: Span,
-
-    pub code: &'static str,
-    pub elided: bool,
-    #[note]
-    pub lifetimes_in_scope: MultiSpan,
 }
 
 #[derive(LintDiagnostic)]
@@ -2927,20 +2746,6 @@ pub(crate) enum MutRefSugg {
 #[derive(LintDiagnostic)]
 #[diag(lint_unqualified_local_imports)]
 pub(crate) struct UnqualifiedLocalImportsDiag {}
-
-#[derive(LintDiagnostic)]
-#[diag(lint_reserved_string)]
-pub(crate) struct ReservedString {
-    #[suggestion(code = " ", applicability = "machine-applicable")]
-    pub suggestion: Span,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(lint_reserved_multihash)]
-pub(crate) struct ReservedMultihash {
-    #[suggestion(code = " ", applicability = "machine-applicable")]
-    pub suggestion: Span,
-}
 
 #[derive(LintDiagnostic)]
 #[diag(lint_function_casts_as_integer)]
@@ -3202,14 +3007,6 @@ pub(crate) struct UnsafeAttrOutsideUnsafeSuggestion {
     pub left: Span,
     #[suggestion_part(code = ")")]
     pub right: Span,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(lint_unused_visibilities)]
-#[note]
-pub(crate) struct UnusedVisibility {
-    #[suggestion(style = "short", code = "", applicability = "machine-applicable")]
-    pub span: Span,
 }
 
 #[derive(LintDiagnostic)]

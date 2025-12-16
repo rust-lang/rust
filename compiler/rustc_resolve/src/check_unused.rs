@@ -554,7 +554,7 @@ impl Resolver<'_, '_> {
                 UNUSED_QUALIFICATIONS,
                 unn_qua.node_id,
                 unn_qua.path_span,
-                BuiltinLintDiag::UnusedQualifications { removal_span: unn_qua.removal_span },
+                crate::errors::UnusedQualifications { removal_span: unn_qua.removal_span },
             );
         }
 

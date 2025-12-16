@@ -1,10 +1,6 @@
 lint_abs_path_with_module = absolute paths must start with `self`, `super`, `crate`, or an external crate name in the 2018 edition
     .suggestion = use `crate`
 
-lint_ambiguous_glob_reexport = ambiguous glob re-exports
-    .label_first_reexport = the name `{$name}` in the {$namespace} namespace is first re-exported here
-    .label_duplicate_reexport = but the name `{$name}` in the {$namespace} namespace is also re-exported here
-
 lint_ambiguous_negative_literals = `-` has lower precedence than method calls, which might be unexpected
     .example = e.g. `-4.abs()` equals `-4`; while `(-4).abs()` equals `4`
     .negative_literal = add parentheses around the `-` and the literal to call the method on a negative literal
@@ -15,13 +11,6 @@ lint_ambiguous_wide_pointer_comparisons = ambiguous wide pointer comparison, the
     .addr_suggestion = use `std::ptr::addr_eq` or untyped pointers to only compare their addresses
     .cast_suggestion = use untyped pointers to only compare their addresses
     .expect_suggestion = or expect the lint to compare the pointers metadata and addresses
-
-lint_associated_const_elided_lifetime = {$elided ->
-        [true] `&` without an explicit lifetime name cannot be used here
-        *[false] `'_` cannot be used here
-    }
-    .suggestion = use the `'static` lifetime
-    .note = cannot automatically infer `'static` because of other lifetimes in scope
 
 lint_async_fn_in_trait = use of `async fn` in public traits is discouraged as auto trait bounds cannot be specified
     .note = you can suppress this lint if you plan to use the trait only in your own code, or do not care about auto traits like `Send` on the `Future`
@@ -43,9 +32,6 @@ lint_atomic_ordering_store = atomic stores cannot have `Acquire` or `AcqRel` ord
 lint_bad_attribute_argument = bad attribute argument
 
 lint_bad_opt_access = {$msg}
-
-lint_break_with_label_and_loop = this labeled break expression is easy to confuse with an unlabeled break with a labeled value expression
-    .suggestion = wrap this expression in parentheses
 
 lint_builtin_allow_internal_unsafe =
     `allow_internal_unsafe` allows defining macros using unsafe without triggering the `unsafe_code` lint at their call site
@@ -227,11 +213,6 @@ lint_deprecated_lint_name =
     .suggestion = change it to
     .help = change it to {$replace}
 
-lint_deprecated_where_clause_location = where clause not allowed here
-    .note = see issue #89122 <https://github.com/rust-lang/rust/issues/89122> for more information
-    .suggestion_move_to_end = move it to the end of the type declaration
-    .suggestion_remove_where = remove this `where`
-
 lint_diag_out_of_impl =
     diagnostics should only be created in `Diagnostic`/`Subdiagnostic`/`LintDiagnostic` impls
 
@@ -339,10 +320,6 @@ lint_forgetting_references = calls to `std::mem::forget` with a reference instea
 
 lint_function_casts_as_integer = direct cast of function item into an integer
     .cast_as_fn = first cast to a pointer `as *const ()`
-
-lint_hidden_glob_reexport = private item shadows public glob re-export
-    .note_glob_reexport = the name `{$name}` in the {$namespace} namespace is supposed to be publicly re-exported here
-    .note_private_item = but the private item here shadows it
 
 lint_hidden_lifetime_parameters = hidden lifetime parameters in types are deprecated
 
@@ -606,11 +583,6 @@ lint_mixed_script_confusables =
 
 lint_multiple_supertrait_upcastable = `{$ident}` is dyn-compatible and has multiple supertraits
 
-lint_named_argument_used_positionally = named argument `{$named_arg_name}` is not used by name
-    .label_named_arg = this named argument is referred to by position in formatting string
-    .label_position_arg = this formatting argument uses named argument `{$named_arg_name}` by position
-    .suggestion = use the named argument by name to avoid ambiguity
-
 lint_node_source = `forbid` level set here
     .note = {$reason}
 
@@ -751,12 +723,6 @@ lint_path_statement_drop = path statement drops value
 
 lint_path_statement_no_effect = path statement with no effect
 
-lint_pattern_in_bodiless = patterns aren't allowed in functions without bodies
-    .label = pattern not allowed in function without body
-
-lint_pattern_in_foreign = patterns aren't allowed in foreign function declarations
-    .label = pattern not allowed in foreign function
-
 lint_query_instability = using `{$query}` can result in unstable query results
     .note = if you believe this case to be fine, allow this lint and add a comment explaining your rationale
 
@@ -766,11 +732,6 @@ lint_query_untracked = `{$method}` accesses information that is not tracked by t
 lint_range_endpoint_out_of_range = range endpoint is out of range for `{$ty}`
 
 lint_range_use_inclusive_range = use an inclusive range instead
-
-
-lint_raw_prefix = prefix `'r` is reserved
-    .label = reserved prefix
-    .suggestion = insert whitespace here to avoid this being parsed as a prefix in Rust 2021
 
 lint_reason_must_be_string_literal = reason must be a string literal
 
@@ -793,8 +754,6 @@ lint_redundant_semicolons_suggestion = remove {$multiple_semicolons ->
         *[false] this semicolon
     }
 
-lint_remove_mut_from_pattern = remove `mut` from the parameter
-
 lint_removed_lint = lint `{$name}` has been removed: {$reason}
 
 lint_renamed_lint = lint `{$name}` has been renamed to `{$replace}`
@@ -802,16 +761,6 @@ lint_renamed_lint = lint `{$name}` has been renamed to `{$replace}`
     .help = use the new name `{$replace}`
 
 lint_requested_level = requested on the command line with `{$level} {$lint_name}`
-
-lint_reserved_multihash = reserved token in Rust 2024
-    .suggestion = insert whitespace here to avoid this being parsed as a forbidden token in Rust 2024
-
-lint_reserved_prefix = prefix `{$prefix}` is unknown
-    .label = unknown prefix
-    .suggestion = insert whitespace here to avoid this being parsed as a prefix in Rust 2021
-
-lint_reserved_string = will be parsed as a guarded string in Rust 2024
-    .suggestion = insert whitespace here to avoid this being parsed as a guarded string in Rust 2024
 
 lint_shadowed_into_iter =
     this method call resolves to `<&{$target} as IntoIterator>::into_iter` (due to backwards compatibility), but will resolve to `<{$target} as IntoIterator>::into_iter` in Rust {$edition}
@@ -929,16 +878,6 @@ lint_unexpected_cfg_value_specify_value = specify a config value
 lint_ungated_async_fn_track_caller = `#[track_caller]` on async functions is a no-op
      .label = this function will not propagate the caller location
 
-lint_unicode_text_flow = unicode codepoint changing visible direction of text present in comment
-    .label = {$num_codepoints ->
-            [1] this comment contains an invisible unicode text flow control codepoint
-            *[other] this comment contains invisible unicode text flow control codepoints
-        }
-    .note = these kind of unicode codepoints change the way text flows on applications that support them, but can cause confusion because they change the order of characters on the screen
-    .suggestion = if their presence wasn't intentional, you can remove them
-    .label_comment_char = {$c_debug}
-
-
 lint_unit_bindings = binding has unit type `()`
     .label = this pattern is inferred to be the unit type `()`
 
@@ -959,9 +898,6 @@ lint_unknown_lint =
 
 lint_unknown_tool_in_scoped_lint = unknown tool name `{$tool_name}` found in scoped lint: `{$tool_name}::{$lint_name}`
     .help = add `#![register_tool({$tool_name})]` to the crate root
-
-lint_unnecessary_qualification = unnecessary qualification
-    .suggestion = remove the unnecessary path segments
 
 lint_unpredictable_fn_pointer_comparisons = function pointer comparisons do not produce meaningful results since their addresses are not guaranteed to be unique
     .note_duplicated_fn = the address of the same function can vary between different codegen units
@@ -998,9 +934,6 @@ lint_unused_coroutine =
     }{$post} that must be used
     .note = coroutines are lazy and do nothing unless resumed
 
-lint_unused_crate_dependency = extern crate `{$extern_crate}` is unused in crate `{$local_crate}`
-    .help = remove the dependency or add `use {$extern_crate} as _;` to the crate root
-
 lint_unused_def = unused {$pre}`{$def}`{$post} that must be used
     .suggestion = use `let _ = ...` to ignore the resulting value
 
@@ -1034,10 +967,6 @@ lint_unused_op = unused {$op} that must be used
     .suggestion = use `let _ = ...` to ignore the resulting value
 
 lint_unused_result = unused result of type `{$ty}`
-
-lint_unused_visibilities = visibility qualifiers have no effect on `const _` declarations
-    .note = `const _` does not declare a name, so there is nothing for the qualifier to apply to
-    .suggestion = remove the qualifier
 
 lint_use_let_underscore_ignore_suggestion = use `let _ = ...` to ignore the expression or result
 

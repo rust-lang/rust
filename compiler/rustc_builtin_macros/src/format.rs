@@ -14,8 +14,8 @@ use rustc_errors::{
     pluralize,
 };
 use rustc_expand::base::*;
+use rustc_lint_defs::LintId;
 use rustc_lint_defs::builtin::NAMED_ARGUMENTS_USED_POSITIONALLY;
-use rustc_lint_defs::{BuiltinLintDiag, LintId};
 use rustc_parse::exp;
 use rustc_parse_format as parse;
 use rustc_span::{BytePos, ErrorGuaranteed, Ident, InnerSpan, Span, Symbol};
@@ -589,11 +589,11 @@ fn make_format_args(
                 span: Some(arg_name.span.into()),
                 node_id: rustc_ast::CRATE_NODE_ID,
                 lint_id: LintId::of(NAMED_ARGUMENTS_USED_POSITIONALLY),
-                diagnostic: BuiltinLintDiag::NamedArgumentUsedPositionally {
+                diagnostic: errors::NamedArgumentUsedPositionally {
                     position_sp_to_replace,
                     position_sp_for_msg,
                     named_arg_sp: arg_name.span,
-                    named_arg_name: arg_name.name.to_string(),
+                    named_arg_name: arg_name.name,
                     is_formatting_arg: matches!(used_as, Width | Precision),
                 }
                 .into(),

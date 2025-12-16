@@ -1486,3 +1486,45 @@ impl<'a> LintDiagnostic<'a, ()> for Ambiguity {
         self.decorate(diag);
     }
 }
+
+#[derive(LintDiagnostic)]
+#[diag(resolve_unnecessary_qualification)]
+pub(crate) struct UnusedQualifications {
+    #[suggestion(style = "verbose", code = "", applicability = "machine-applicable")]
+    pub removal_span: Span,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(resolve_associated_const_elided_lifetime)]
+pub(crate) struct AssociatedConstElidedLifetime {
+    #[suggestion(style = "verbose", code = "{code}", applicability = "machine-applicable")]
+    pub span: Span,
+    pub code: &'static str,
+    pub elided: bool,
+    #[note]
+    pub lifetimes_in_scope: MultiSpan,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(resolve_ambiguous_glob_reexport)]
+pub(crate) struct AmbiguousGlobReexports {
+    #[label(resolve_label_first_reexport)]
+    pub first_reexport: Span,
+    #[label(resolve_label_duplicate_reexport)]
+    pub duplicate_reexport: Span,
+    pub name: String,
+    // FIXME: make this translatable
+    pub namespace: &'static str,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(resolve_hidden_glob_reexport)]
+pub(crate) struct HiddenGlobReexports {
+    #[note(resolve_note_glob_reexport)]
+    pub glob_reexport: Span,
+    #[note(resolve_note_private_item)]
+    pub private_item: Span,
+    pub name: Symbol,
+    // FIXME: make this translatable
+    pub namespace: &'static str,
+}

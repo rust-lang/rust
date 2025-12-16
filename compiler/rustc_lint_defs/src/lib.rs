@@ -7,7 +7,7 @@ use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::stable_hasher::{
     HashStable, StableCompare, StableHasher, ToStableHashKey,
 };
-use rustc_error_messages::{DiagArgValue, IntoDiagArg, MultiSpan};
+use rustc_error_messages::{DiagArgValue, IntoDiagArg};
 use rustc_hir_id::{HashStableContext, HirId, ItemLocalId};
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_span::def_id::DefPathHash;
@@ -673,22 +673,6 @@ pub enum BuiltinLintDiag {
         path: String,
         since_kind: DeprecatedSinceKind,
     },
-    PatternsInFnsWithoutBody {
-        span: Span,
-        ident: Ident,
-        is_foreign: bool,
-    },
-    ReservedPrefix(Span, String),
-    /// `'r#` in edition < 2021.
-    RawPrefix(Span),
-    /// `##` or `#"` in edition < 2024.
-    ReservedString {
-        is_string: bool,
-        suggestion: Span,
-    },
-    BreakWithLabelAndLoop(Span),
-    UnicodeTextFlow(Span, String),
-    DeprecatedWhereclauseLocation(Span, Option<(Span, String)>),
     SingleUseLifetime {
         /// Span of the parameter which declares this lifetime.
         param_span: Span,
@@ -700,53 +684,6 @@ pub enum BuiltinLintDiag {
         use_span: Option<(Span, bool)>,
         ident: Ident,
     },
-    NamedArgumentUsedPositionally {
-        /// Span where the named argument is used by position and will be replaced with the named
-        /// argument name
-        position_sp_to_replace: Option<Span>,
-        /// Span where the named argument is used by position and is used for lint messages
-        position_sp_for_msg: Option<Span>,
-        /// Span where the named argument's name is (so we know where to put the warning message)
-        named_arg_sp: Span,
-        /// String containing the named arguments name
-        named_arg_name: String,
-        /// Indicates if the named argument is used as a width/precision for formatting
-        is_formatting_arg: bool,
-    },
-    AmbiguousGlobReexports {
-        /// The name for which collision(s) have occurred.
-        name: String,
-        /// The name space for which the collision(s) occurred in.
-        namespace: String,
-        /// Span where the name is first re-exported.
-        first_reexport_span: Span,
-        /// Span where the same name is also re-exported.
-        duplicate_reexport_span: Span,
-    },
-    HiddenGlobReexports {
-        /// The name of the local binding which shadows the glob re-export.
-        name: String,
-        /// The namespace for which the shadowing occurred in.
-        namespace: String,
-        /// The glob reexport that is shadowed by the local binding.
-        glob_reexport_span: Span,
-        /// The local binding that shadows the glob reexport.
-        private_item_span: Span,
-    },
-    UnusedQualifications {
-        /// The span of the unnecessarily-qualified path to remove.
-        removal_span: Span,
-    },
-    AssociatedConstElidedLifetime {
-        elided: bool,
-        span: Span,
-        lifetimes_in_scope: MultiSpan,
-    },
-    UnusedCrateDependency {
-        extern_crate: Symbol,
-        local_crate: Symbol,
-    },
-    UnusedVisibility(Span),
     AttributeLint(AttributeLintKind),
 }
 

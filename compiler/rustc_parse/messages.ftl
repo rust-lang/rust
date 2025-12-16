@@ -115,6 +115,9 @@ parse_box_not_pat = expected pattern, found {$descr}
 parse_box_syntax_removed = `box_syntax` has been removed
 parse_box_syntax_removed_suggestion = use `Box::new()` instead
 
+parse_break_with_label_and_loop = this labeled break expression is easy to confuse with an unlabeled break with a labeled value expression
+    .suggestion = wrap this expression in parentheses
+
 parse_cannot_be_raw_ident = `{$ident}` cannot be a raw identifier
 
 parse_cannot_be_raw_lifetime = `{$ident}` cannot be a raw lifetime
@@ -773,6 +776,10 @@ parse_question_mark_in_type = invalid `?` in type
     .label = `?` is only allowed on expressions, not types
     .suggestion = if you meant to express that the type might not contain a value, use the `Option` wrapper type
 
+parse_raw_prefix = prefix `'r` is reserved
+    .label = reserved prefix
+    .suggestion = insert whitespace here to avoid this being parsed as a prefix in Rust 2021
+
 parse_recover_import_as_use = expected item, found {$token_name}
     .suggestion = items are imported using the `use` keyword
 
@@ -787,13 +794,23 @@ parse_require_colon_after_labeled_expression = labeled expression must be follow
     .label = the label
     .suggestion = add `:` after the label
 
+parse_reserved_guarded_string = invalid string literal
+    .note = unprefixed guarded string literals are reserved for future use since Rust 2024
+    .suggestion = consider inserting whitespace here
+
+parse_reserved_guarded_string_lint = will be parsed as a guarded string in Rust 2024
+    .suggestion = insert whitespace here to avoid this being parsed as a guarded string in Rust 2024
+
 parse_reserved_multihash = reserved multi-hash token is forbidden
     .note = sequences of two or more # are reserved for future use since Rust 2024
-    .suggestion_whitespace = consider inserting whitespace here
+    .suggestion = consider inserting whitespace here
 
-parse_reserved_string = invalid string literal
-    .note = unprefixed guarded string literals are reserved for future use since Rust 2024
-    .suggestion_whitespace = consider inserting whitespace here
+parse_reserved_multihash_lint = reserved token in Rust 2024
+    .suggestion = insert whitespace here to avoid this being parsed as a forbidden token in Rust 2024
+
+parse_reserved_prefix = prefix `{$prefix}` is unknown
+    .label = unknown prefix
+    .suggestion = insert whitespace here to avoid this being parsed as a prefix in Rust 2021
 
 parse_return_types_use_thin_arrow = return types are denoted using `->`
     .suggestion = use `->` instead
@@ -950,6 +967,14 @@ parse_unexpected_vert_vert_in_pattern = unexpected token `||` in pattern
 parse_unicode_escape_in_byte = unicode escape in byte string
     .label = {parse_unicode_escape_in_byte}
     .help = unicode escape sequences cannot be used as a byte or in a byte string
+
+parse_unicode_text_flow = unicode codepoint changing visible direction of text present in comment
+    .label = {$num_codepoints ->
+            [1] this comment contains an invisible unicode text flow control codepoint
+            *[other] this comment contains invisible unicode text flow control codepoints
+        }
+    .note = these kind of unicode codepoints change the way text flows on applications that support them, but can cause confusion because they change the order of characters on the screen
+    .suggestion = if their presence wasn't intentional, you can remove them
 
 parse_unknown_builtin_construct = unknown `builtin #` construct `{$name}`
 

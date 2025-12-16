@@ -1,6 +1,5 @@
 use std::borrow::Cow;
 
-use rustc_ast::util::unicode::TEXT_FLOW_CONTROL_CHARS;
 use rustc_errors::{
     Applicability, Diag, DiagArgValue, LintDiagnostic, elided_lifetime_in_path_suggestion,
 };
@@ -9,7 +8,6 @@ use rustc_middle::middle::stability;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_session::lint::BuiltinLintDiag;
-use rustc_span::BytePos;
 use tracing::debug;
 
 use crate::lints;
@@ -23,32 +21,6 @@ pub fn decorate_builtin_lint(
     diag: &mut Diag<'_, ()>,
 ) {
     match diagnostic {
-        BuiltinLintDiag::UnicodeTextFlow(comment_span, content) => {
-            let spans: Vec<_> = content
-                .char_indices()
-                .filter_map(|(i, c)| {
-                    TEXT_FLOW_CONTROL_CHARS.contains(&c).then(|| {
-                        let lo = comment_span.lo() + BytePos(2 + i as u32);
-                        (c, comment_span.with_lo(lo).with_hi(lo + BytePos(c.len_utf8() as u32)))
-                    })
-                })
-                .collect();
-            let characters = spans
-                .iter()
-                .map(|&(c, span)| lints::UnicodeCharNoteSub { span, c_debug: format!("{c:?}") })
-                .collect();
-            let suggestions = (!spans.is_empty()).then_some(lints::UnicodeTextFlowSuggestion {
-                spans: spans.iter().map(|(_c, span)| *span).collect(),
-            });
-
-            lints::UnicodeTextFlow {
-                comment_span,
-                characters,
-                suggestions,
-                num_codepoints: spans.len(),
-            }
-            .decorate_lint(diag);
-        }
         BuiltinLintDiag::AbsPathWithModule(mod_span) => {
             let (replacement, applicability) = match sess.source_map().span_to_snippet(mod_span) {
                 Ok(ref s) => {
@@ -132,54 +104,6 @@ pub fn decorate_builtin_lint(
             stability::Deprecated { sub, kind: "macro".to_owned(), path, note, since_kind }
                 .decorate_lint(diag);
         }
-        BuiltinLintDiag::PatternsInFnsWithoutBody { span: remove_span, ident, is_foreign } => {
-            let sub = lints::PatternsInFnsWithoutBodySub { ident, span: remove_span };
-            if is_foreign {
-                lints::PatternsInFnsWithoutBody::Foreign { sub }
-            } else {
-                lints::PatternsInFnsWithoutBody::Bodiless { sub }
-            }
-            .decorate_lint(diag);
-        }
-        BuiltinLintDiag::ReservedPrefix(label_span, prefix) => {
-            lints::ReservedPrefix {
-                label: label_span,
-                suggestion: label_span.shrink_to_hi(),
-                prefix,
-            }
-            .decorate_lint(diag);
-        }
-        BuiltinLintDiag::RawPrefix(label_span) => {
-            lints::RawPrefix { label: label_span, suggestion: label_span.shrink_to_hi() }
-                .decorate_lint(diag);
-        }
-        BuiltinLintDiag::ReservedString { is_string, suggestion } => {
-            if is_string {
-                lints::ReservedString { suggestion }.decorate_lint(diag);
-            } else {
-                lints::ReservedMultihash { suggestion }.decorate_lint(diag);
-            }
-        }
-        BuiltinLintDiag::BreakWithLabelAndLoop(sugg_span) => {
-            lints::BreakWithLabelAndLoop {
-                sub: lints::BreakWithLabelAndLoopSub {
-                    left: sugg_span.shrink_to_lo(),
-                    right: sugg_span.shrink_to_hi(),
-                },
-            }
-            .decorate_lint(diag);
-        }
-        BuiltinLintDiag::DeprecatedWhereclauseLocation(left_sp, sugg) => {
-            let suggestion = match sugg {
-                Some((right_sp, sugg)) => lints::DeprecatedWhereClauseLocationSugg::MoveToEnd {
-                    left: left_sp,
-                    right: right_sp,
-                    sugg,
-                },
-                None => lints::DeprecatedWhereClauseLocationSugg::RemoveWhere { span: left_sp },
-            };
-            lints::DeprecatedWhereClauseLocation { suggestion }.decorate_lint(diag);
-        }
         BuiltinLintDiag::SingleUseLifetime {
             param_span,
             use_span: Some((use_span, elide)),
@@ -210,94 +134,6 @@ pub fn decorate_builtin_lint(
         }
         BuiltinLintDiag::SingleUseLifetime { use_span: None, deletion_span, ident, .. } => {
             lints::UnusedLifetime { deletion_span, ident }.decorate_lint(diag);
-        }
-        BuiltinLintDiag::NamedArgumentUsedPositionally {
-            position_sp_to_replace,
-            position_sp_for_msg,
-            named_arg_sp,
-            named_arg_name,
-            is_formatting_arg,
-        } => {
-            let (suggestion, name) = if let Some(positional_arg_to_replace) = position_sp_to_replace
-            {
-                let mut name = named_arg_name.clone();
-                if is_formatting_arg {
-                    name.push('$')
-                };
-                let span_to_replace = if let Ok(positional_arg_content) =
-                    sess.source_map().span_to_snippet(positional_arg_to_replace)
-                    && positional_arg_content.starts_with(':')
-                {
-                    positional_arg_to_replace.shrink_to_lo()
-                } else {
-                    positional_arg_to_replace
-                };
-                (Some(span_to_replace), name)
-            } else {
-                (None, String::new())
-            };
-
-            lints::NamedArgumentUsedPositionally {
-                named_arg_sp,
-                position_label_sp: position_sp_for_msg,
-                suggestion,
-                name,
-                named_arg_name,
-            }
-            .decorate_lint(diag);
-        }
-        BuiltinLintDiag::AmbiguousGlobReexports {
-            name,
-            namespace,
-            first_reexport_span,
-            duplicate_reexport_span,
-        } => {
-            lints::AmbiguousGlobReexports {
-                first_reexport: first_reexport_span,
-                duplicate_reexport: duplicate_reexport_span,
-                name,
-                namespace,
-            }
-            .decorate_lint(diag);
-        }
-        BuiltinLintDiag::HiddenGlobReexports {
-            name,
-            namespace,
-            glob_reexport_span,
-            private_item_span,
-        } => {
-            lints::HiddenGlobReexports {
-                glob_reexport: glob_reexport_span,
-                private_item: private_item_span,
-
-                name,
-                namespace,
-            }
-            .decorate_lint(diag);
-        }
-        BuiltinLintDiag::UnusedQualifications { removal_span } => {
-            lints::UnusedQualifications { removal_span }.decorate_lint(diag);
-        }
-        BuiltinLintDiag::AssociatedConstElidedLifetime {
-            elided,
-            span: lt_span,
-            lifetimes_in_scope,
-        } => {
-            let lt_span = if elided { lt_span.shrink_to_hi() } else { lt_span };
-            let code = if elided { "'static " } else { "'static" };
-            lints::AssociatedConstElidedLifetime {
-                span: lt_span,
-                code,
-                elided,
-                lifetimes_in_scope,
-            }
-            .decorate_lint(diag);
-        }
-        BuiltinLintDiag::UnusedCrateDependency { extern_crate, local_crate } => {
-            lints::UnusedCrateDependency { extern_crate, local_crate }.decorate_lint(diag)
-        }
-        BuiltinLintDiag::UnusedVisibility(span) => {
-            lints::UnusedVisibility { span }.decorate_lint(diag)
         }
         BuiltinLintDiag::AttributeLint(kind) => decorate_attribute_lint(sess, tcx, &kind, diag),
     }

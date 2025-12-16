@@ -5,16 +5,17 @@ use std::path::PathBuf;
 
 use rustc_ast::token::Token;
 use rustc_ast::util::parser::ExprPrecedence;
+use rustc_ast::util::unicode::TEXT_FLOW_CONTROL_CHARS;
 use rustc_ast::{Path, Visibility};
 use rustc_errors::codes::*;
 use rustc_errors::{
     Applicability, Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, EmissionGuarantee, IntoDiagArg,
-    Level, Subdiagnostic, SuggestionStyle,
+    Level, LintDiagnostic, Subdiagnostic, SuggestionStyle,
 };
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_span::edition::{Edition, LATEST_STABLE_EDITION};
-use rustc_span::{Ident, Span, Symbol};
+use rustc_span::{BytePos, Ident, Span, Symbol};
 
 use crate::fluent_generated as fluent;
 use crate::parser::{ForbiddenLetReason, TokenDescription};
@@ -2323,31 +2324,36 @@ pub(crate) enum UnknownPrefixSugg {
 }
 
 #[derive(Diagnostic)]
-#[diag(parse_reserved_multihash)]
-#[note]
-pub(crate) struct ReservedMultihash {
-    #[primary_span]
-    pub span: Span,
-    #[subdiagnostic]
-    pub sugg: Option<GuardedStringSugg>,
+pub(crate) enum ReservedHashPrefixedToken {
+    #[diag(parse_reserved_guarded_string)]
+    String {
+        #[primary_span]
+        span: Span,
+        #[suggestion(code = " ", applicability = "maybe-incorrect", style = "verbose")]
+        sugg: Option<Span>,
+    },
+    #[diag(parse_reserved_multihash)]
+    Hash {
+        #[primary_span]
+        span: Span,
+        #[suggestion(code = " ", applicability = "maybe-incorrect", style = "verbose")]
+        sugg: Option<Span>,
+    },
 }
-#[derive(Diagnostic)]
-#[diag(parse_reserved_string)]
-#[note]
-pub(crate) struct ReservedString {
-    #[primary_span]
-    pub span: Span,
-    #[subdiagnostic]
-    pub sugg: Option<GuardedStringSugg>,
+
+#[derive(LintDiagnostic)]
+pub(crate) enum ReservedHashPrefixedTokenLint {
+    #[diag(parse_reserved_guarded_string_lint)]
+    String {
+        #[suggestion(code = " ", applicability = "machine-applicable")]
+        sugg: Span,
+    },
+    #[diag(parse_reserved_multihash_lint)]
+    Hash {
+        #[suggestion(code = " ", applicability = "machine-applicable")]
+        sugg: Span,
+    },
 }
-#[derive(Subdiagnostic)]
-#[suggestion(
-    parse_suggestion_whitespace,
-    code = " ",
-    applicability = "maybe-incorrect",
-    style = "verbose"
-)]
-pub(crate) struct GuardedStringSugg(#[primary_span] pub Span);
 
 #[derive(Diagnostic)]
 #[diag(parse_too_many_hashes)]
@@ -3670,4 +3676,77 @@ impl Subdiagnostic for HiddenUnicodeCodepointsDiagSub {
 pub(crate) struct VarargsWithoutPattern {
     #[suggestion(code = "_: ...", applicability = "machine-applicable")]
     pub span: Span,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(parse_raw_prefix)]
+pub(crate) struct RawPrefix {
+    #[label]
+    pub label: Span,
+    #[suggestion(code = " ", applicability = "machine-applicable")]
+    pub suggestion: Span,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(parse_reserved_prefix)]
+pub(crate) struct ReservedPrefix {
+    #[label]
+    pub label: Span,
+    #[suggestion(code = " ", applicability = "machine-applicable")]
+    pub suggestion: Span,
+    pub prefix: String,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(parse_break_with_label_and_loop)]
+pub(crate) struct BreakWithLabelAndLoop {
+    #[subdiagnostic]
+    pub sub: BreakWithLabelAndLoopSub,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(parse_suggestion, applicability = "machine-applicable")]
+pub(crate) struct BreakWithLabelAndLoopSub {
+    #[suggestion_part(code = "(")]
+    pub left: Span,
+    #[suggestion_part(code = ")")]
+    pub right: Span,
+}
+
+pub(crate) struct UnicodeTextFlow {
+    pub comment_span: Span,
+    pub content: String,
+}
+
+impl<'a> LintDiagnostic<'a, ()> for UnicodeTextFlow {
+    fn decorate_lint<'b>(self, diag: &'b mut Diag<'a, ()>) {
+        diag.primary_message(fluent::parse_unicode_text_flow);
+        diag.note(fluent::parse_note);
+        diag.span_label(self.comment_span, fluent::parse_label);
+
+        let spans: Vec<_> = self
+            .content
+            .char_indices()
+            .filter(|(_, c)| TEXT_FLOW_CONTROL_CHARS.contains(c))
+            .map(|(i, c)| {
+                let lo = self.comment_span.lo() + BytePos(2 + i as u32);
+                (c, self.comment_span.with_lo(lo).with_hi(lo + BytePos(c.len_utf8() as u32)))
+            })
+            .collect();
+
+        for &(c, span) in &spans {
+            diag.span_label(span, format!("{c:?}"));
+        }
+
+        if !spans.is_empty() {
+            diag.multipart_suggestion_with_style(
+                fluent::parse_suggestion,
+                spans.iter().map(|&(_, span)| (span, String::new())).collect(),
+                Applicability::MachineApplicable,
+                SuggestionStyle::HideCodeAlways,
+            );
+        }
+
+        diag.arg("num_codepoints", spans.len());
+    }
 }

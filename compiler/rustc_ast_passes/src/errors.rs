@@ -575,18 +575,30 @@ pub(crate) struct WhereClauseBeforeTypeAlias {
     #[primary_span]
     pub span: Span,
     #[subdiagnostic]
-    pub sugg: WhereClauseBeforeTypeAliasSugg,
+    pub sugg: ModifyLeadingTyAliasWhereClause,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(ast_passes_deprecated_where_clause_location)]
+#[note]
+pub(crate) struct DeprecatedWhereClauseLocation {
+    #[subdiagnostic]
+    pub sugg: ModifyLeadingTyAliasWhereClause,
 }
 
 #[derive(Subdiagnostic)]
-pub(crate) enum WhereClauseBeforeTypeAliasSugg {
-    #[suggestion(ast_passes_remove_suggestion, applicability = "machine-applicable", code = "")]
+pub(crate) enum ModifyLeadingTyAliasWhereClause {
+    #[suggestion(
+        ast_passes_remove_leading_ty_alias_where_clause,
+        applicability = "machine-applicable",
+        code = ""
+    )]
     Remove {
         #[primary_span]
         span: Span,
     },
     #[multipart_suggestion(
-        ast_passes_move_suggestion,
+        ast_passes_move_leading_ty_alias_where_clause,
         applicability = "machine-applicable",
         style = "verbose"
     )]
@@ -743,7 +755,6 @@ pub(crate) struct CVariadicNotSupported<'a> {
 
 #[derive(Diagnostic)]
 #[diag(ast_passes_pattern_in_foreign, code = E0130)]
-// FIXME: deduplicate with rustc_lint (`BuiltinLintDiag::PatternsInFnsWithoutBody`)
 pub(crate) struct PatternInForeign {
     #[primary_span]
     #[label]
@@ -752,11 +763,17 @@ pub(crate) struct PatternInForeign {
 
 #[derive(Diagnostic)]
 #[diag(ast_passes_pattern_in_bodiless, code = E0642)]
-// FIXME: deduplicate with rustc_lint (`BuiltinLintDiag::PatternsInFnsWithoutBody`)
 pub(crate) struct PatternInBodiless {
     #[primary_span]
     #[label]
     pub span: Span,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(ast_passes_pattern_in_bodiless)]
+pub(crate) struct PatternInBodilessLint {
+    #[suggestion(ast_passes_remove_mut_sugg, code = "", applicability = "machine-applicable")]
+    pub removal: Span,
 }
 
 #[derive(Diagnostic)]
@@ -989,4 +1006,12 @@ pub(crate) struct AbiX86Interrupt {
     #[primary_span]
     pub spans: Vec<Span>,
     pub param_count: usize,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(ast_passes_unused_visibilities)]
+#[note]
+pub(crate) struct UnusedVisibility {
+    #[suggestion(style = "short", code = "", applicability = "machine-applicable")]
+    pub span: Span,
 }
