@@ -167,7 +167,7 @@ enum ErasedFileAstIdKind {
 const HASH_BITS: u32 = 16;
 const INDEX_BITS: u32 = 11;
 const KIND_BITS: u32 = 5;
-const _: () = assert!(ErasedFileAstIdKind::Fixup as u32 <= ((1 << KIND_BITS) - 1));
+const _: () = assert!(ErasedFileAstIdKind::Root as u32 <= ((1 << KIND_BITS) - 1));
 const _: () = assert!(HASH_BITS + INDEX_BITS + KIND_BITS == u32::BITS);
 
 #[inline]
