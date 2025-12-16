@@ -161,6 +161,7 @@ define_symbols! {
     cfg_select,
     char,
     clone,
+    trivial_clone,
     Clone,
     coerce_unsized,
     column,
