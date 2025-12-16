@@ -485,7 +485,7 @@ pub fn semantic_diagnostics(
 
     // The edition isn't accurate (each diagnostics may have its own edition due to macros),
     // but it's okay as it's only being used for error recovery.
-    handle_lints(&ctx.sema, krate, &mut lints, editioned_file_id.edition(db));
+    handle_lints(&ctx.sema, file_id, krate, &mut lints, editioned_file_id.edition(db));
 
     res.retain(|d| d.severity != Severity::Allow);
 
@@ -593,6 +593,7 @@ fn build_lints_map(
 
 fn handle_lints(
     sema: &Semantics<'_, RootDatabase>,
+    file_id: FileId,
     krate: hir::Crate,
     diagnostics: &mut [(InFile<SyntaxNode>, &mut Diagnostic)],
     edition: Edition,
@@ -609,10 +610,10 @@ fn handle_lints(
         }
 
         let mut diag_severity =
-            lint_severity_at(sema, krate, node, &lint_groups(&diag.code, edition));
+            lint_severity_at(sema, file_id, krate, node, &lint_groups(&diag.code, edition));
 
         if let outline_diag_severity @ Some(_) =
-            find_outline_mod_lint_severity(sema, krate, node, diag, edition)
+            find_outline_mod_lint_severity(sema, file_id, krate, node, diag, edition)
         {
             diag_severity = outline_diag_severity;
         }
@@ -635,6 +636,7 @@ fn default_lint_severity(lint: &Lint, edition: Edition) -> Severity {
 
 fn find_outline_mod_lint_severity(
     sema: &Semantics<'_, RootDatabase>,
+    file_id: FileId,
     krate: hir::Crate,
     node: &InFile<SyntaxNode>,
     diag: &Diagnostic,
@@ -651,6 +653,7 @@ fn find_outline_mod_lint_severity(
     let lint_groups = lint_groups(&diag.code, edition);
     lint_attrs(
         sema,
+        file_id,
         krate,
         ast::AnyHasAttrs::cast(module_source_file.value).expect("SourceFile always has attrs"),
     )
@@ -659,6 +662,7 @@ fn find_outline_mod_lint_severity(
 
 fn lint_severity_at(
     sema: &Semantics<'_, RootDatabase>,
+    file_id: FileId,
     krate: hir::Crate,
     node: &InFile<SyntaxNode>,
     lint_groups: &LintGroups,
@@ -667,21 +671,28 @@ fn lint_severity_at(
         .ancestors()
         .filter_map(ast::AnyHasAttrs::cast)
         .find_map(|ancestor| {
-            lint_attrs(sema, krate, ancestor)
+            lint_attrs(sema, file_id, krate, ancestor)
                 .find_map(|(lint, severity)| lint_groups.contains(&lint).then_some(severity))
         })
         .or_else(|| {
-            lint_severity_at(sema, krate, &sema.find_parent_file(node.file_id)?, lint_groups)
+            lint_severity_at(
+                sema,
+                file_id,
+                krate,
+                &sema.find_parent_file(node.file_id)?,
+                lint_groups,
+            )
         })
 }
 
 // FIXME: Switch this to analysis' `expand_cfg_attr`.
 fn lint_attrs(
     sema: &Semantics<'_, RootDatabase>,
+    file_id: FileId,
     krate: hir::Crate,
     ancestor: ast::AnyHasAttrs,
 ) -> impl Iterator<Item = (SmolStr, Severity)> {
-    sema.lint_attrs(krate, ancestor).rev().map(|(lint_attr, lint)| {
+    sema.lint_attrs(file_id, krate, ancestor).rev().map(|(lint_attr, lint)| {
         let severity = match lint_attr {
             hir::LintAttr::Allow | hir::LintAttr::Expect => Severity::Allow,
             hir::LintAttr::Warn => Severity::Warning,

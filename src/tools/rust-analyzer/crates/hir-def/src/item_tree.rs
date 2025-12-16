@@ -44,6 +44,7 @@ use std::{
 };
 
 use ast::{AstNode, StructKind};
+use cfg::CfgOptions;
 use hir_expand::{
     ExpandTo, HirFileId,
     mod_path::{ModPath, PathKind},
@@ -52,13 +53,17 @@ use hir_expand::{
 use intern::Interned;
 use la_arena::{Idx, RawIdx};
 use rustc_hash::FxHashMap;
-use span::{AstIdNode, Edition, FileAstId, SyntaxContext};
+use span::{
+    AstIdNode, Edition, FileAstId, NO_DOWNMAP_ERASED_FILE_AST_ID_MARKER, Span, SpanAnchor,
+    SyntaxContext,
+};
 use stdx::never;
-use syntax::{SyntaxKind, ast, match_ast};
+use syntax::{SourceFile, SyntaxKind, ast, match_ast};
 use thin_vec::ThinVec;
 use triomphe::Arc;
+use tt::TextRange;
 
-use crate::{BlockId, Lookup, db::DefDatabase};
+use crate::{BlockId, Lookup, attrs::parse_extra_crate_attrs, db::DefDatabase};
 
 pub(crate) use crate::item_tree::{
     attrs::*,
@@ -88,6 +93,33 @@ impl fmt::Debug for RawVisibilityId {
     }
 }
 
+fn lower_extra_crate_attrs<'a>(
+    db: &dyn DefDatabase,
+    crate_attrs_as_src: SourceFile,
+    file_id: span::EditionedFileId,
+    cfg_options: &dyn Fn() -> &'a CfgOptions,
+) -> AttrsOrCfg {
+    #[derive(Copy, Clone)]
+    struct FakeSpanMap {
+        file_id: span::EditionedFileId,
+    }
+    impl syntax_bridge::SpanMapper<Span> for FakeSpanMap {
+        fn span_for(&self, range: TextRange) -> Span {
+            Span {
+                range,
+                anchor: SpanAnchor {
+                    file_id: self.file_id,
+                    ast_id: NO_DOWNMAP_ERASED_FILE_AST_ID_MARKER,
+                },
+                ctx: SyntaxContext::root(self.file_id.edition()),
+            }
+        }
+    }
+
+    let span_map = FakeSpanMap { file_id };
+    AttrsOrCfg::lower(db, &crate_attrs_as_src, cfg_options, span_map)
+}
+
 #[salsa_macros::tracked(returns(deref))]
 pub(crate) fn file_item_tree_query(db: &dyn DefDatabase, file_id: HirFileId) -> Arc<ItemTree> {
     let _p = tracing::info_span!("file_item_tree_query", ?file_id).entered();
@@ -98,7 +130,19 @@ pub(crate) fn file_item_tree_query(db: &dyn DefDatabase, file_id: HirFileId) -> 
     let mut item_tree = match_ast! {
         match syntax {
             ast::SourceFile(file) => {
-                let top_attrs = ctx.lower_attrs(&file);
+                let krate = file_id.krate(db);
+                let root_file_id = krate.root_file_id(db);
+                let extra_top_attrs = (file_id == root_file_id).then(|| {
+                    parse_extra_crate_attrs(db, krate).map(|crate_attrs| {
+                        let file_id = root_file_id.editioned_file_id(db);
+                        lower_extra_crate_attrs(db, crate_attrs, file_id, &|| ctx.cfg_options())
+                    })
+                }).flatten();
+                let top_attrs = match extra_top_attrs {
+                    Some(attrs @ AttrsOrCfg::Enabled { .. }) => attrs.merge(ctx.lower_attrs(&file)),
+                    Some(attrs @ AttrsOrCfg::CfgDisabled(_)) => attrs,
+                    None => ctx.lower_attrs(&file)
+                };
                 let mut item_tree = ctx.lower_module_items(&file);
                 item_tree.top_attrs = top_attrs;
                 item_tree

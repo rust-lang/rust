@@ -14,6 +14,7 @@ use base_db::FxIndexSet;
 use either::Either;
 use hir_def::{
     DefWithBodyId, FunctionId, MacroId, StructId, TraitId, VariantId,
+    attrs::parse_extra_crate_attrs,
     expr_store::{Body, ExprOrPatSource, HygieneId, path::Path},
     hir::{BindingId, Expr, ExprId, ExprOrPatId, Pat},
     nameres::{ModuleOrigin, crate_def_map},
@@ -266,14 +267,27 @@ impl<DB: HirDatabase + ?Sized> Semantics<'_, DB> {
 
     pub fn lint_attrs(
         &self,
+        file_id: FileId,
         krate: Crate,
         item: ast::AnyHasAttrs,
     ) -> impl DoubleEndedIterator<Item = (LintAttr, SmolStr)> {
         let mut cfg_options = None;
         let cfg_options = || *cfg_options.get_or_insert_with(|| krate.id.cfg_options(self.db));
+
+        let is_crate_root = file_id == krate.root_file(self.imp.db);
+        let is_source_file = ast::SourceFile::can_cast(item.syntax().kind());
+        let extra_crate_attrs = (is_crate_root && is_source_file)
+            .then(|| {
+                parse_extra_crate_attrs(self.imp.db, krate.id)
+                    .into_iter()
+                    .flat_map(|src| src.attrs())
+            })
+            .into_iter()
+            .flatten();
+
         let mut result = Vec::new();
         hir_expand::attrs::expand_cfg_attr::<Infallible>(
-            ast::attrs_including_inner(&item),
+            extra_crate_attrs.chain(ast::attrs_including_inner(&item)),
             cfg_options,
             |attr, _, _, _| {
                 let hir_expand::attrs::Meta::TokenTree { path, tt } = attr else {

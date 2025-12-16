@@ -254,6 +254,7 @@ impl Analysis {
             TryFrom::try_from(&*std::env::current_dir().unwrap().as_path().to_string_lossy())
                 .unwrap(),
         );
+        let crate_attrs = Vec::new();
         cfg_options.insert_atom(sym::test);
         crate_graph.add_crate_root(
             file_id,
@@ -264,6 +265,7 @@ impl Analysis {
             None,
             Env::default(),
             CrateOrigin::Local { repo: None, name: None },
+            crate_attrs,
             false,
             proc_macro_cwd,
             Arc::new(CrateWorkspaceData {
