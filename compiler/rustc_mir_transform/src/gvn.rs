@@ -1827,7 +1827,7 @@ impl<'tcx> VnState<'_, '_, 'tcx> {
         // Check that we do not leak a pointer.
         // Those pointers may lose part of their identity in codegen.
         // FIXME: remove this hack once https://github.com/rust-lang/rust/issues/79738 is fixed.
-        assert!(!value.may_have_provenance(self.tcx, op.layout.size));
+        assert!(!value.may_have_provenance(self.tcx, Some(op.layout.size)));
 
         Some(Const::Val(value, op.layout.ty))
     }

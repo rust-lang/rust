@@ -183,21 +183,16 @@ impl ConstValue {
 
     /// Check if a constant may contain provenance information. This is used by MIR opts.
     /// Can return `true` even if there is no provenance.
-    pub fn may_have_provenance(&self, tcx: TyCtxt<'_>, size: Size) -> bool {
+    pub fn may_have_provenance(&self, tcx: TyCtxt<'_>, size: Option<Size>) -> bool {
         match *self {
             ConstValue::ZeroSized | ConstValue::Scalar(Scalar::Int(_)) => return false,
-            ConstValue::Scalar(Scalar::Ptr(..)) => return true,
-            // It's hard to find out the part of the allocation we point to;
-            // just conservatively check everything.
-            ConstValue::Slice { alloc_id, meta: _ } => {
-                !tcx.global_alloc(alloc_id).unwrap_memory().inner().provenance().ptrs().is_empty()
+            ConstValue::Scalar(Scalar::Ptr(..)) | ConstValue::Slice { .. } => return true,
+            ConstValue::Indirect { alloc_id, offset } => {
+                let allocation = tcx.global_alloc(alloc_id).unwrap_memory().inner();
+                let end = if let Some(size) = size { offset + size } else { allocation.size() };
+                let provenance_map = allocation.provenance();
+                !provenance_map.range_empty(AllocRange::from(offset..end), &tcx)
             }
-            ConstValue::Indirect { alloc_id, offset } => !tcx
-                .global_alloc(alloc_id)
-                .unwrap_memory()
-                .inner()
-                .provenance()
-                .range_empty(AllocRange::from(offset..offset + size), &tcx),
         }
     }
 
@@ -475,35 +470,26 @@ impl<'tcx> Const<'tcx> {
         Self::Val(val, ty)
     }
 
-    /// Return true if any evaluation of this constant always returns the same value,
-    /// taking into account even pointer identity tests.
+    /// Return true if any evaluation of this constant in the same MIR body
+    /// always returns the same value, taking into account even pointer identity tests.
+    ///
+    /// In other words, this answers: is "cloning" the mir::ConstOperand ok?
     pub fn is_deterministic(&self) -> bool {
         // Primitive types cannot contain provenance and always have the same value.
         if self.ty().is_primitive() {
             return true;
         }
 
-        // Some constants may generate fresh allocations for pointers they contain,
-        // so using the same constant twice can yield two different results.
-        // Notably, valtrees purposefully generate new allocations.
         match self {
-            Const::Ty(_, c) => match c.kind() {
-                ty::ConstKind::Param(..) => true,
-                // A valtree may be a reference. Valtree references correspond to a
-                // different allocation each time they are evaluated. Valtrees for primitive
-                // types are fine though.
-                ty::ConstKind::Value(..)
-                | ty::ConstKind::Expr(..)
-                | ty::ConstKind::Unevaluated(..)
-                // This can happen if evaluation of a constant failed. The result does not matter
-                // much since compilation is doomed.
-                | ty::ConstKind::Error(..) => false,
-                // Should not appear in runtime MIR.
-                ty::ConstKind::Infer(..)
-                | ty::ConstKind::Bound(..)
-                | ty::ConstKind::Placeholder(..) => bug!(),
-            },
+            // Some constants may generate fresh allocations for pointers they contain,
+            // so using the same constant twice can yield two different results.
+            // Notably, valtrees purposefully generate new allocations.
+            Const::Ty(..) => false,
+            // We do not know the contents, so don't attempt to do anything clever.
             Const::Unevaluated(..) => false,
+            // When an evaluated contant contains provenance, it is encoded as an `AllocId`.
+            // Cloning the constant will reuse the same `AllocId`. If this is in the same MIR
+            // body, this same `AllocId` will result in the same pointer in codegen.
             Const::Val(..) => true,
         }
     }
