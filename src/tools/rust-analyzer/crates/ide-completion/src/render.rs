@@ -604,6 +604,14 @@ fn compute_type_match(
         return None;
     }
 
+    // &mut ty -> &ty
+    if completion_ty.is_mutable_reference()
+        && let Some(expected_type) = expected_type.remove_ref()
+        && let Some(completion_ty) = completion_ty.remove_ref()
+    {
+        return match_types(ctx, &expected_type, &completion_ty);
+    }
+
     match_types(ctx, expected_type, completion_ty)
 }
 
@@ -622,6 +630,7 @@ fn compute_ref_match(
         return None;
     }
     if let Some(expected_without_ref) = &expected_without_ref
+        && completion_without_ref.is_none()
         && completion_ty.autoderef(ctx.db).any(|ty| ty == *expected_without_ref)
     {
         cov_mark::hit!(suggest_ref);
@@ -2045,6 +2054,17 @@ fn go(world: &WorldSnapshot) { go(w$0) }
                 st WorldSnapshot WorldSnapshot []
                 st &WorldSnapshot [type]
                 fn go(…) fn(&WorldSnapshot) []
+            "#]],
+        );
+    }
+
+    #[test]
+    fn prioritize_mutable_ref_as_immutable_ref_match() {
+        check_relevance(
+            r#"fn foo(r: &mut i32) -> &i32 { $0 }"#,
+            expect![[r#"
+                lc r &mut i32 [type+local]
+                fn foo(…) fn(&mut i32) -> &i32 [type]
             "#]],
         );
     }
