@@ -2,7 +2,6 @@
 
 // tidy-alphabetical-start
 #![allow(internal_features)]
-#![deny(clippy::manual_let_else)]
 #![feature(assert_matches)]
 #![feature(box_patterns)]
 #![feature(file_buffered)]
