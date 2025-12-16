@@ -19,7 +19,11 @@ mod cas {
                 let mut target = expected.wrapping_add(10);
                 assert_eq!(
                     unsafe {
-                        compiler_builtins::aarch64_linux::$name::$name(expected, new, &mut target)
+                        compiler_builtins::aarch64_outline_atomics::$name::$name(
+                            expected,
+                            new,
+                            &mut target,
+                        )
                     },
                     expected.wrapping_add(10),
                     "return value should always be the previous value",
@@ -33,7 +37,11 @@ mod cas {
                 target = expected;
                 assert_eq!(
                     unsafe {
-                        compiler_builtins::aarch64_linux::$name::$name(expected, new, &mut target)
+                        compiler_builtins::aarch64_outline_atomics::$name::$name(
+                            expected,
+                            new,
+                            &mut target,
+                        )
                     },
                     expected
                 );
@@ -54,7 +62,9 @@ mod swap {
             builtins_test::fuzz_2(10000, |left: super::int_ty!($bytes), mut right| {
                 let orig_right = right;
                 assert_eq!(
-                    unsafe { compiler_builtins::aarch64_linux::$name::$name(left, &mut right) },
+                    unsafe {
+                        compiler_builtins::aarch64_outline_atomics::$name::$name(left, &mut right)
+                    },
                     orig_right
                 );
                 assert_eq!(left, right);
@@ -74,7 +84,7 @@ macro_rules! test_op {
                             let mut target = old;
                             let op: fn(super::int_ty!($bytes), super::int_ty!($bytes)) -> _ = $($op)*;
                             let expected = op(old, val);
-                            assert_eq!(old, unsafe { compiler_builtins::aarch64_linux::$name::$name(val, &mut target) }, "{} should return original value", stringify!($name));
+                            assert_eq!(old, unsafe { compiler_builtins::aarch64_outline_atomics::$name::$name(val, &mut target) }, "{} should return original value", stringify!($name));
                             assert_eq!(expected, target, "{} should store to target", stringify!($name));
                         });
                     }
