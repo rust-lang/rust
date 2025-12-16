@@ -414,7 +414,7 @@ pub struct FromUtf16Error {
     kind: FromUtf16ErrorKind,
 }
 
-#[cfg_attr(no_global_oom_handling, allow(dead_code))]
+#[cfg_attr(no_global_oom_handling, expect(dead_code))]
 #[derive(Clone, PartialEq, Eq, Debug)]
 enum FromUtf16ErrorKind {
     LoneSurrogate,
