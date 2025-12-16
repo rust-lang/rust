@@ -47,7 +47,7 @@ use rustc_codegen_ssa::{CodegenResults, TargetConfig};
 use rustc_log::tracing::info;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_session::Session;
-use rustc_session::config::{OutputFilenames, PrintKind, PrintRequest};
+use rustc_session::config::OutputFilenames;
 use rustc_span::{Symbol, sym};
 use rustc_target::spec::{Abi, Arch, Env, Os};
 
@@ -157,16 +157,6 @@ impl CodegenBackend for CraneliftCodegenBackend {
 
         if config.jit_mode && !sess.opts.output_types.should_codegen() {
             sess.dcx().fatal("JIT mode doesn't work with `cargo check`");
-        }
-    }
-
-    fn print(&self, req: &PrintRequest, out: &mut String, _sess: &Session) {
-        match req.kind {
-            // FIXME have a default impl that returns false
-            PrintKind::BackendHasZstd => {
-                out.push_str("false\n");
-            }
-            _ => {}
         }
     }
 
