@@ -2313,49 +2313,59 @@ impl<T, A: Allocator> Vec<T, A> {
             original_len: usize,
         }
 
+        impl<T, A: Allocator> BackshiftOnDrop<'_, T, A> {
+            unsafe fn commit(self, new_len: usize) {
+                // SAFETY: Caller guarantees new_len <= capacity.
+                unsafe { self.v.set_len(new_len) };
+                core::mem::forget(self);
+            }
+        }
+
         impl<T, A: Allocator> Drop for BackshiftOnDrop<'_, T, A> {
+            #[cold]
             fn drop(&mut self) {
-                if core::intrinsics::unlikely(self.read_index < self.original_len) {
-                    let remaining = self.original_len - self.read_index;
-                    // SAFETY: Trailing unchecked items must be valid since we never touch them.
-                    unsafe {
-                        ptr::copy(
-                            self.v.as_ptr().add(self.read_index),
-                            self.v.as_mut_ptr().add(self.write_index),
-                            remaining,
-                        );
-                    }
-                    // SAFETY: After filling holes, all items are in contiguous memory.
-                    unsafe {
-                        self.v.set_len(self.write_index + remaining);
-                    }
-                    return;
+                // Panic happened, we need to backshift unchecked elements to cover holes.
+                if self.write_index >= self.read_index {
+                    // SAFETY: No elements were removed.
+                    return unsafe { self.v.set_len(self.original_len) };
                 }
-                // SAFETY: no panic happened, length is just write_index.
+                let remaining = self.original_len - self.read_index;
+                // SAFETY: Trailing unchecked items must be valid since we never touch them.
                 unsafe {
-                    self.v.set_len(self.write_index);
+                    ptr::copy(
+                        self.v.as_ptr().add(self.read_index),
+                        self.v.as_mut_ptr().add(self.write_index),
+                        remaining,
+                    );
+                }
+                // SAFETY: After filling holes, all items are in contiguous memory.
+                unsafe {
+                    self.v.set_len(self.write_index + remaining);
                 }
             }
         }
 
-        let mut i = 0;
+        let mut g =
+            BackshiftOnDrop { v: self, read_index: 0, write_index: usize::MAX, original_len };
         loop {
             // SAFETY: i < original_len
-            if !f(unsafe { &mut *self.as_mut_ptr().add(i) }) {
+            let cur = unsafe { &mut *g.v.as_mut_ptr().add(g.read_index) };
+            if core::intrinsics::unlikely(!f(cur)) {
+                g.write_index = g.read_index;
+                // Advance read_index early to avoid double drop if `drop_in_place` panicked.
+                g.read_index += 1;
+                unsafe { ptr::drop_in_place(cur) };
                 break;
             }
-            i += 1;
-            if i == original_len {
+            g.read_index += 1;
+            if g.read_index == original_len {
                 // SAFETY: All elements are kept, set length back to original and return.
-                unsafe { self.set_len(original_len) };
-                return;
+                return unsafe { g.commit(original_len) };
             }
         }
 
-        // We have found the first deleted element. we need to use guard from this point.
-        let mut g = BackshiftOnDrop { v: self, read_index: i + 1, write_index: i, original_len };
         while g.read_index < g.original_len {
-            // SAFETY: read_index is always less than original_len re.
+            // SAFETY: read_index is always less than original_len.
             let cur = unsafe { &mut *g.v.as_mut_ptr().add(g.read_index) };
             if !f(cur) {
                 // Advance read_index early to avoid double drop if `drop_in_place` panicked.
@@ -2374,8 +2384,9 @@ impl<T, A: Allocator> Vec<T, A> {
             }
         }
 
-        // All items are processed. This can be optimized to `set_len` by LLVM.
-        drop(g);
+        let new_len = g.write_index;
+        // SAFETY: After the loop, all kept elements are moved behind write_index.
+        unsafe { g.commit(new_len) }
     }
 
     /// Removes all but the first of consecutive elements in the vector that resolve to the same
