@@ -13,8 +13,8 @@ use crate::ops::{Deref, DerefMut};
 /// # #![allow(unused)]
 /// #![feature(drop_guard)]
 ///
+/// use std::mem::DropGuard;
 /// use std::mem::defer;
-/// use std::mem::guard;
 ///
 /// {
 ///     // Create a new guard that will do something
@@ -29,7 +29,7 @@ use crate::ops::{Deref, DerefMut};
 ///     // Create a new guard around a string that will
 ///     // print its value when dropped.
 ///     let s = String::from("Chashu likes tuna");
-///     let mut s = guard(s, |s| println!("{s}"));
+///     let mut s = DropGuard::new(s, |s| println!("{s}"));
 ///
 ///     // Modify the string contained in the guard.
 ///     s.push_str("!!!");
@@ -47,28 +47,6 @@ where
 {
     inner: ManuallyDrop<T>,
     f: ManuallyDrop<F>,
-}
-
-/// Create a new instance of `DropGuard` with a value and a cleanup closure.
-///
-/// # Example
-///
-/// ```rust
-/// # #![allow(unused)]
-/// #![feature(drop_guard)]
-///
-/// use std::mem::guard;
-///
-/// let value = String::from("Chashu likes tuna");
-/// let guard = guard(value, |s| println!("{s}"));
-/// ```
-#[unstable(feature = "drop_guard", issue = "144426")]
-#[must_use]
-pub const fn guard<T, F>(value: T, f: F) -> DropGuard<T, F>
-where
-    F: FnOnce(T),
-{
-    DropGuard { inner: ManuallyDrop::new(value), f: ManuallyDrop::new(f) }
 }
 
 /// Create a new instance of `DropGuard` with a cleanup closure.
@@ -93,6 +71,28 @@ impl<T, F> DropGuard<T, F>
 where
     F: FnOnce(T),
 {
+    /// Create a new instance of `DropGuard` with a value and a cleanup closure.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # #![allow(unused)]
+    /// #![feature(drop_guard)]
+    ///
+    /// use std::mem::DropGuard;
+    ///
+    /// let value = String::from("Chashu likes tuna");
+    /// let guard = DropGuard::new(value, |s| println!("{s}"));
+    /// ```
+    #[unstable(feature = "drop_guard", issue = "144426")]
+    #[must_use]
+    pub const fn new<T, F>(value: T, f: F) -> DropGuard<T, F>
+    where
+        F: FnOnce(T),
+    {
+        DropGuard { inner: ManuallyDrop::new(value), f: ManuallyDrop::new(f) }
+    }
+
     /// Consumes the `DropGuard`, returning the wrapped value.
     ///
     /// This will not execute the closure. It is typically preferred to call
@@ -107,10 +107,9 @@ where
     /// #![feature(drop_guard)]
     ///
     /// use std::mem::DropGuard;
-    /// use std::mem::guard;
     ///
     /// let value = String::from("Nori likes chicken");
-    /// let guard = guard(value, |s| println!("{s}"));
+    /// let guard = DropGuard::new(value, |s| println!("{s}"));
     /// assert_eq!(DropGuard::dismiss(guard), "Nori likes chicken");
     /// ```
     #[unstable(feature = "drop_guard", issue = "144426")]

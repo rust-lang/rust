@@ -8,7 +8,7 @@
     target_os = "wasi",
 )))]
 use crate::ffi::CStr;
-use crate::mem::{self, ManuallyDrop, guard};
+use crate::mem::{self, DropGuard, ManuallyDrop};
 use crate::num::NonZero;
 #[cfg(all(target_os = "linux", target_env = "gnu"))]
 use crate::sys::weak::dlsym;
@@ -48,8 +48,9 @@ impl Thread {
         let data = init;
         let mut attr: mem::MaybeUninit<libc::pthread_attr_t> = mem::MaybeUninit::uninit();
         assert_eq!(libc::pthread_attr_init(attr.as_mut_ptr()), 0);
-        let mut attr =
-            guard(&mut attr, |attr| assert_eq!(libc::pthread_attr_destroy(attr.as_mut_ptr()), 0));
+        let mut attr = DropGuard::new(&mut attr, |attr| {
+            assert_eq!(libc::pthread_attr_destroy(attr.as_mut_ptr()), 0)
+        });
 
         #[cfg(any(target_os = "espidf", target_os = "nuttx"))]
         if stack > 0 {
