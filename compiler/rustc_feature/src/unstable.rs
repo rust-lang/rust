@@ -487,8 +487,6 @@ declare_features! (
     (unstable, derive_from, "1.91.0", Some(144889)),
     /// Allows giving non-const impls custom diagnostic messages if attempted to be used as const
     (unstable, diagnostic_on_const, "CURRENT_RUSTC_VERSION", Some(143874)),
-    /// Allows `#[doc(cfg(...))]`.
-    (unstable, doc_cfg, "1.21.0", Some(43781)),
     /// Allows `#[doc(masked)]`.
     (unstable, doc_masked, "1.21.0", Some(44027)),
     /// Allows features to allow target_feature to better interact with traits.

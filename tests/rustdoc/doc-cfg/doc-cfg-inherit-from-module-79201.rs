@@ -1,8 +1,6 @@
 // https://github.com/rust-lang/rust/issues/79201
 #![crate_name="foo"]
 
-#![feature(doc_cfg)]
-
 //@ has 'foo/trait.Foo.html'
 //@ count   - '//*[@class="stab portability"]' 6
 //@ matches - '//*[@class="stab portability"]' 'crate feature foo-root'

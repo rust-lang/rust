@@ -1,7 +1,6 @@
 // Test that `doc(auto_cfg)` works with inlined cross-crate re-exports.
 //@ compile-flags: --cfg feature="extra" --cfg feature="addon"
 
-#![feature(doc_cfg)]
 #![crate_name = "it"]
 
 //@ aux-build: doc-auto-cfg.rs

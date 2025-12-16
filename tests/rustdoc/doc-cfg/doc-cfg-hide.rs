@@ -1,5 +1,4 @@
 #![crate_name = "oud"]
-#![feature(doc_cfg)]
 
 #![doc(auto_cfg(hide(feature = "solecism")))]
 

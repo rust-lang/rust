@@ -278,7 +278,6 @@
 #![feature(core_float_math)]
 #![feature(decl_macro)]
 #![feature(deprecated_suggestion)]
-#![feature(doc_cfg)]
 #![feature(doc_masked)]
 #![feature(doc_notable_trait)]
 #![feature(dropck_eyepatch)]
