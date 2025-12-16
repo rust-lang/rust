@@ -315,7 +315,7 @@ impl<S: Stage> AttributeParser<S> for AlignParser {
         Allow(Target::Method(MethodKind::Inherent)),
         Allow(Target::Method(MethodKind::Trait { body: true })),
         Allow(Target::Method(MethodKind::TraitImpl)),
-        Allow(Target::Method(MethodKind::Trait { body: false })),
+        Allow(Target::Method(MethodKind::Trait { body: false })), // `#[align]` is inherited from trait methods
         Allow(Target::ForeignFn),
     ]);
 
