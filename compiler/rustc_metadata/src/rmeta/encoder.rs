@@ -2167,6 +2167,12 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 let header = tcx.impl_trait_header(def_id);
                 record!(self.tables.impl_trait_header[def_id] <- header);
 
+                let impl_is_fully_generic_for_reflection =
+                    tcx.impl_is_fully_generic_for_reflection(def_id);
+                self.tables
+                    .impl_is_fully_generic_for_reflection
+                    .set(def_id.index, impl_is_fully_generic_for_reflection);
+
                 self.tables.defaultness.set(def_id.index, tcx.defaultness(def_id));
 
                 let trait_ref = header.trait_ref.instantiate_identity();

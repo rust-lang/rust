@@ -407,6 +407,7 @@ define_tables! {
     constness: Table<DefIndex, hir::Constness>,
     safety: Table<DefIndex, hir::Safety>,
     defaultness: Table<DefIndex, hir::Defaultness>,
+    impl_is_fully_generic_for_reflection: Table<DefIndex, bool>,
 
 - optional:
     attributes: Table<DefIndex, LazyArray<hir::Attribute>>,

@@ -690,6 +690,10 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.impl_polarity(impl_def_id)
     }
 
+    fn is_fully_generic_for_reflection(self, impl_def_id: Self::ImplId) -> bool {
+        self.impl_is_fully_generic_for_reflection(impl_def_id)
+    }
+
     fn trait_is_auto(self, trait_def_id: DefId) -> bool {
         self.trait_is_auto(trait_def_id)
     }

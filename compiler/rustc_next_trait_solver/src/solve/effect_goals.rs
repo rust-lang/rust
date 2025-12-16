@@ -142,6 +142,7 @@ where
                 TypingMode::Coherence => Certainty::AMBIGUOUS,
                 TypingMode::Analysis { .. }
                 | TypingMode::Borrowck { .. }
+                | TypingMode::Reflection
                 | TypingMode::PostBorrowckAnalysis { .. }
                 | TypingMode::PostAnalysis => return Err(NoSolution),
             },

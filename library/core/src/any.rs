@@ -942,10 +942,7 @@ pub const fn type_name_of_val<T: ?Sized>(_val: &T) -> &'static str {
 /// ```
 #[must_use]
 #[unstable(feature = "try_as_dyn", issue = "144361")]
-pub const fn try_as_dyn<
-    T: Any + 'static,
-    U: ptr::Pointee<Metadata = ptr::DynMetadata<U>> + ?Sized + 'static,
->(
+pub const fn try_as_dyn<T, U: ptr::Pointee<Metadata = ptr::DynMetadata<U>> + ?Sized>(
     t: &T,
 ) -> Option<&U> {
     let vtable: Option<ptr::DynMetadata<U>> = const { intrinsics::vtable_for::<T, U>() };
@@ -995,10 +992,7 @@ pub const fn try_as_dyn<
 /// ```
 #[must_use]
 #[unstable(feature = "try_as_dyn", issue = "144361")]
-pub const fn try_as_dyn_mut<
-    T: Any + 'static,
-    U: ptr::Pointee<Metadata = ptr::DynMetadata<U>> + ?Sized + 'static,
->(
+pub const fn try_as_dyn_mut<T, U: ptr::Pointee<Metadata = ptr::DynMetadata<U>> + ?Sized>(
     t: &mut T,
 ) -> Option<&mut U> {
     let vtable: Option<ptr::DynMetadata<U>> = const { intrinsics::vtable_for::<T, U>() };
