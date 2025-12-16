@@ -172,7 +172,7 @@ fn test_buffered_reader_stream_position_panic() {
     // cause internal buffer to be filled but read only partially
     let mut buffer = [0, 0];
     assert!(reader.read_exact(&mut buffer).is_ok());
-    // rewinding the internal reader will cause buffer to loose sync
+    // rewinding the internal reader will cause buffer to lose sync
     let inner = reader.get_mut();
     assert!(inner.seek(SeekFrom::Start(0)).is_ok());
     // overflow when subtracting the remaining buffer size from current position

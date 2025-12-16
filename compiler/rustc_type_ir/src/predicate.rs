@@ -293,6 +293,13 @@ pub enum ExistentialPredicate<I: Interner> {
 impl<I: Interner> Eq for ExistentialPredicate<I> {}
 
 impl<I: Interner> ty::Binder<I, ExistentialPredicate<I>> {
+    pub fn def_id(&self) -> I::DefId {
+        match self.skip_binder() {
+            ExistentialPredicate::Trait(tr) => tr.def_id.into(),
+            ExistentialPredicate::Projection(p) => p.def_id.into(),
+            ExistentialPredicate::AutoTrait(did) => did.into(),
+        }
+    }
     /// Given an existential predicate like `?Self: PartialEq<u32>` (e.g., derived from `dyn PartialEq<u32>`),
     /// and a concrete type `self_ty`, returns a full predicate where the existentially quantified variable `?Self`
     /// has been replaced with `self_ty` (e.g., `self_ty: PartialEq<u32>`, in our example).

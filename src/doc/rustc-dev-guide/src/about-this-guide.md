@@ -58,21 +58,24 @@ please see the corresponding [subsection on writing documentation in this guide]
 
 [subsection on writing documentation in this guide]: contributing.md#contributing-to-rustc-dev-guide
 
-> “‘All conditioned things are impermanent’ — 
+> “‘All conditioned things are impermanent’ —
 > when one sees this with wisdom, one turns away from suffering.”
 > _The Dhammapada, verse 277_
 
 ## Other places to find information
 
+This guide, the one you are currently reading,
+contains information about how various parts of the compiler work,
+and how to contribute to the compiler.
+
 You might also find the following sites useful:
 
-- This guide contains information about how various parts of the
-  compiler work and how to contribute to the compiler.
 - [rustc API docs] -- rustdoc documentation for the compiler, devtools, and internal tools
 - [Forge] -- contains documentation about Rust infrastructure, team procedures, and more
 - [compiler-team] -- the home-base for the Rust compiler team, with description
   of the team procedures, active working groups, and the team calendar.
 - [std-dev-guide] -- a similar guide for developing the standard library.
+- [rust-analyzer book] -- documentation for the rust-analyzer.
 - [The t-compiler Zulip][z]
 - The [Rust Internals forum][rif], a place to ask questions and
   discuss Rust's internals
@@ -110,4 +113,5 @@ You might also find the following sites useful:
 [Forge]: https://forge.rust-lang.org/
 [compiler-team]: https://github.com/rust-lang/compiler-team/
 [std-dev-guide]: https://std-dev-guide.rust-lang.org/
+[rust-analyzer book]: https://rust-analyzer.github.io/book/
 [z]: https://rust-lang.zulipchat.com/#narrow/stream/131828-t-compiler

@@ -4,7 +4,6 @@
 
 // tidy-alphabetical-start
 #![cfg_attr(bootstrap, feature(debug_closure_helpers))]
-#![deny(clippy::manual_let_else)]
 #![feature(associated_type_defaults)]
 #![feature(closure_track_caller)]
 #![feature(const_default)]

@@ -7,9 +7,7 @@ use rustc_driver::USING_INTERNAL_FEATURES;
 use rustc_errors::TerminalUrl;
 use rustc_errors::annotate_snippet_emitter_writer::AnnotateSnippetEmitter;
 use rustc_errors::codes::*;
-use rustc_errors::emitter::{
-    DynEmitter, HumanEmitter, HumanReadableErrorType, OutputTheme, stderr_destination,
-};
+use rustc_errors::emitter::{DynEmitter, HumanReadableErrorType, OutputTheme, stderr_destination};
 use rustc_errors::json::JsonEmitter;
 use rustc_feature::UnstableFeatures;
 use rustc_hir::def::Res;
@@ -162,22 +160,13 @@ pub(crate) fn new_dcx(
     let translator = rustc_driver::default_translator();
     let emitter: Box<DynEmitter> = match error_format {
         ErrorOutputType::HumanReadable { kind, color_config } => match kind {
-            HumanReadableErrorType::AnnotateSnippet { short, unicode } => Box::new(
+            HumanReadableErrorType { short, unicode } => Box::new(
                 AnnotateSnippetEmitter::new(stderr_destination(color_config), translator)
                     .sm(source_map.map(|sm| sm as _))
                     .short_message(short)
                     .diagnostic_width(diagnostic_width)
                     .track_diagnostics(unstable_opts.track_diagnostics)
                     .theme(if unicode { OutputTheme::Unicode } else { OutputTheme::Ascii })
-                    .ui_testing(unstable_opts.ui_testing),
-            ),
-            HumanReadableErrorType::Default { short } => Box::new(
-                HumanEmitter::new(stderr_destination(color_config), translator)
-                    .sm(source_map.map(|sm| sm as _))
-                    .short_message(short)
-                    .diagnostic_width(diagnostic_width)
-                    .track_diagnostics(unstable_opts.track_diagnostics)
-                    .theme(OutputTheme::Ascii)
                     .ui_testing(unstable_opts.ui_testing),
             ),
         },

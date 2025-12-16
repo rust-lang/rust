@@ -256,6 +256,10 @@ Some traits' implementation must be compared with their definition, checking for
 
 This subdirectory is *not* intended comparison traits (`PartialEq`, `Eq`, `PartialOrd`, `Ord`).
 
+## `tests/ui/compile-flags/`
+
+Tests for compile flags.
+
 ## `tests/ui/compiletest-self-test/`: compiletest "meta" tests
 
 Meta test suite of the test harness `compiletest` itself.
@@ -548,6 +552,8 @@ A broad directory for tests on expressions.
 
 Tests on the `extern` keyword and `extern` blocks and functions.
 
+**FIXME**: Merge with `tests/ui/abi/extern`.
+
 ## `tests/ui/extern-flag/`: `--extern` command line flag
 
 Tests for the `--extern` CLI flag.
@@ -555,6 +561,12 @@ Tests for the `--extern` CLI flag.
 ## `tests/ui/feature-gates/`
 
 Tests on feature-gating, and the `#![feature(..)]` mechanism itself.
+
+## `tests/ui/ffi/`: Foreign Function Interface
+
+Tests for the `std::ffi` module.
+
+See [`std::ffi`](https://doc.rust-lang.org/std/ffi/index.html)
 
 ## `tests/ui/ffi-attrs/`: `#![feature(ffi_const, ffi_pure)]`
 
@@ -733,15 +745,9 @@ Various tests related to rejecting invalid inputs.
 
 **FIXME**: This is rather uninformative, possibly rehome into more meaningful directories.
 
-## `tests/ui/invalid-compile-flags/`
+## `tests/ui/io-checks/`: Input Output
 
-Tests for checking that invalid usage of compiler flags are rejected.
-
-## `tests/ui/io-checks/`
-
-Contains a single test. The test tries to output a file into an invalid directory with `-o`, then checks that the result is an error, not an internal compiler error.
-
-**FIXME**: Rehome to invalid compiler flags maybe.
+Tests for I/O related behaviour, covering stdout/stderr handling and error propagation.
 
 ## `tests/ui/issues/`: Tests directly related to GitHub issues
 

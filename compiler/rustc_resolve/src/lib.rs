@@ -10,7 +10,6 @@
 #![allow(internal_features)]
 #![allow(rustc::diagnostic_outside_of_impl)]
 #![allow(rustc::untranslatable_diagnostic)]
-#![deny(clippy::manual_let_else)]
 #![feature(arbitrary_self_types)]
 #![feature(assert_matches)]
 #![feature(box_patterns)]

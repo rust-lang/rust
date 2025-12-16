@@ -15,7 +15,7 @@ Rust, as well as publications about Rust.
 * [Safe manual memory management in Cyclone](https://www.cs.umd.edu/projects/PL/cyclone/scp.pdf)
 * [Skolem Normal Form](https://en.wikipedia.org/wiki/Skolem_normal_form)
 * [Traits: composable units of behavior](http://scg.unibe.ch/archive/papers/Scha03aTraits.pdf)
-* [Uniqueness and Reference Immutability for Safe Parallelism](https://research.microsoft.com/pubs/170528/msr-tr-2012-79.pdf)
+* [Uniqueness and Reference Immutability for Safe Parallelism](https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/msr-tr-2012-79.pdf)
 
 ## Concurrency
 
@@ -25,12 +25,12 @@ Rust, as well as publications about Rust.
 * [Contention aware scheduling](https://www.blagodurov.net/files/a8-blagodurov.pdf)
 * [Dynamic circular work stealing deque](https://patents.google.com/patent/US7346753B2/en) - The Chase/Lev deque
 * [Epoch-based reclamation](https://www.cl.cam.ac.uk/techreports/UCAM-CL-TR-579.pdf).
-* [Language support for fast and reliable message passing in singularity OS](https://research.microsoft.com/pubs/67482/singsharp.pdf)
+* [Language support for fast and reliable message-based communication in singularity OS](https://www.microsoft.com/en-us/research/wp-content/uploads/2006/04/singsharp.pdf)
 * [Non-blocking steal-half work queues](https://www.cs.bgu.ac.il/%7Ehendlerd/papers/p280-hendler.pdf)
 * [Reagents: expressing and composing fine-grained concurrency](https://aturon.github.io/academic/reagents.pdf)
 * [Scheduling multithreaded computations by work stealing](https://www.lri.fr/~cecile/ENSEIGNEMENT/IPAR/Exposes/cilk1.pdf)
 * [Scheduling techniques for concurrent systems](https://www.stanford.edu/~ouster/cgi-bin/papers/coscheduling.pdf)
-* [Singularity: rethinking the software stack](https://research.microsoft.com/pubs/69431/osr2007_rethinkingsoftwarestack.pdf)
+* [Singularity: rethinking the software stack](https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/osr2007_rethinkingsoftwarestack.pdf)
 * [The data locality of work stealing](http://www.aladdin.cs.cmu.edu/papers/pdfs/y2000/locality_spaa00.pdf)
 * [Thread scheduling for multiprogramming multiprocessors](https://dl.acm.org/doi/10.1145/277651.277678)
 * [Three layer cake for shared-memory programming](https://dl.acm.org/doi/10.1145/1953611.1953616)
