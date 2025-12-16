@@ -141,6 +141,7 @@ where
                     Ok(a)
                 }
                 TypingMode::Analysis { .. }
+                | TypingMode::Reflection
                 | TypingMode::Borrowck { .. }
                 | TypingMode::PostBorrowckAnalysis { .. }
                 | TypingMode::PostAnalysis => structurally_relate_tys(relation, a, b),

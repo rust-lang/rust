@@ -482,6 +482,7 @@ where
                     TypingMode::Coherence => true,
                     TypingMode::Analysis { .. }
                     | TypingMode::Borrowck { .. }
+                    | TypingMode::Reflection
                     | TypingMode::PostBorrowckAnalysis { .. }
                     | TypingMode::PostAnalysis
                     | TypingMode::ErasedNotCoherence(MayBeErased) => !candidates.iter().any(|c| {
@@ -1055,6 +1056,7 @@ where
             TypingMode::Analysis { .. } => self.opaques_with_sub_unified_hidden_type(self_ty),
             TypingMode::Coherence
             | TypingMode::Borrowck { .. }
+            | TypingMode::Reflection
             | TypingMode::PostBorrowckAnalysis { .. }
             | TypingMode::PostAnalysis => vec![],
             TypingMode::ErasedNotCoherence(MayBeErased) => {

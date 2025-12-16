@@ -70,6 +70,7 @@ where
                 }
                 TypingMode::Analysis { .. }
                 | TypingMode::Borrowck { .. }
+                | TypingMode::Reflection
                 | TypingMode::PostBorrowckAnalysis { .. }
                 | TypingMode::PostAnalysis
                 | TypingMode::ErasedNotCoherence(MayBeErased) => {

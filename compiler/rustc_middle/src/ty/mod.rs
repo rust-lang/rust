@@ -16,6 +16,7 @@ use std::fmt::Debug;
 use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
 use std::num::NonZero;
+use std::ops::ControlFlow;
 use std::ptr::NonNull;
 use std::{assert_matches, fmt, iter, str};
 
@@ -277,6 +278,65 @@ pub struct ImplTraitHeader<'tcx> {
     pub polarity: ImplPolarity,
     pub safety: hir::Safety,
     pub constness: hir::Constness,
+}
+
+impl<'tcx> ImplTraitHeader<'tcx> {
+    /// For trait impls, checks whether
+    /// * the type and trait only use generic lifetime arguments (and no concrete ones like `'static`), and
+    /// * uses each generic param (lifetime or type) only once.
+    /// Pessimistic analysis, so it will reject alias types
+    /// and other types that may be actually ok. We can allow more in the future.
+    ///
+    /// Constants (associated or generic) are irrelevant for this analysis, as their value is neither
+    /// affected by lifetimes, nor do they affect lifetimes.
+    pub fn is_fully_generic_for_reflection(self) -> bool {
+        #[derive(Default)]
+        struct ParamFinder {
+            seen: FxHashSet<u32>,
+        }
+
+        impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ParamFinder {
+            type Result = ControlFlow<()>;
+            fn visit_region(&mut self, r: Region<'tcx>) -> Self::Result {
+                match r.kind() {
+                    RegionKind::ReEarlyParam(param) => {
+                        if self.seen.insert(param.index) {
+                            ControlFlow::Continue(())
+                        } else {
+                            ControlFlow::Break(())
+                        }
+                    }
+                    RegionKind::ReBound(..) | RegionKind::ReLateParam(_) => {
+                        ControlFlow::Continue(())
+                    }
+                    RegionKind::ReStatic
+                    | RegionKind::ReVar(_)
+                    | RegionKind::RePlaceholder(_)
+                    | RegionKind::ReErased
+                    | RegionKind::ReError(_) => ControlFlow::Break(()),
+                }
+            }
+
+            fn visit_ty(&mut self, t: Ty<'tcx>) -> Self::Result {
+                match t.kind() {
+                    TyKind::Param(p) => {
+                        // Reject using a parameter twice (e.g. in `Foo<T, T>`)
+                        if !self.seen.insert(p.index) {
+                            return ControlFlow::Break(());
+                        }
+                    }
+                    TyKind::Alias(..) => return ControlFlow::Break(()),
+                    _ => (),
+                }
+                t.super_visit_with(self)
+            }
+        }
+        self.trait_ref
+            .instantiate_identity()
+            .skip_norm_wip()
+            .visit_with(&mut ParamFinder::default())
+            .is_continue()
+    }
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable, StableHash, Debug)]
@@ -1104,6 +1164,7 @@ impl<'tcx> TypingEnv<'tcx> {
         } else {
             match typing_mode.0.assert_not_erased() {
                 TypingMode::Coherence
+                | TypingMode::Reflection
                 | TypingMode::Analysis { .. }
                 | TypingMode::Borrowck { .. }
                 | TypingMode::PostBorrowckAnalysis { .. } => {}
