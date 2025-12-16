@@ -911,18 +911,24 @@ pub fn all_rust_features() -> impl Iterator<Item = (&'static str, Stability)> {
 // These arrays represent the least-constraining feature that is required for vector types up to a
 // certain size to have their "proper" ABI on each architecture.
 // Note that they must be kept sorted by vector size.
-const X86_FEATURES_FOR_CORRECT_VECTOR_ABI: &'static [(u64, &'static str)] =
+const X86_FEATURES_FOR_CORRECT_FIXED_LENGTH_VECTOR_ABI: &'static [(u64, &'static str)] =
     &[(128, "sse"), (256, "avx"), (512, "avx512f")]; // FIXME: might need changes for AVX10.
-const AARCH64_FEATURES_FOR_CORRECT_VECTOR_ABI: &'static [(u64, &'static str)] = &[(128, "neon")];
+const AARCH64_FEATURES_FOR_CORRECT_FIXED_LENGTH_VECTOR_ABI: &'static [(u64, &'static str)] =
+    &[(128, "neon")];
 
 // We might want to add "helium" too.
-const ARM_FEATURES_FOR_CORRECT_VECTOR_ABI: &'static [(u64, &'static str)] = &[(128, "neon")];
+const ARM_FEATURES_FOR_CORRECT_FIXED_LENGTH_VECTOR_ABI: &'static [(u64, &'static str)] =
+    &[(128, "neon")];
 
-const AMDGPU_FEATURES_FOR_CORRECT_VECTOR_ABI: &'static [(u64, &'static str)] = &[(1024, "")];
-const POWERPC_FEATURES_FOR_CORRECT_VECTOR_ABI: &'static [(u64, &'static str)] = &[(128, "altivec")];
-const WASM_FEATURES_FOR_CORRECT_VECTOR_ABI: &'static [(u64, &'static str)] = &[(128, "simd128")];
-const S390X_FEATURES_FOR_CORRECT_VECTOR_ABI: &'static [(u64, &'static str)] = &[(128, "vector")];
-const RISCV_FEATURES_FOR_CORRECT_VECTOR_ABI: &'static [(u64, &'static str)] = &[
+const AMDGPU_FEATURES_FOR_CORRECT_FIXED_LENGTH_VECTOR_ABI: &'static [(u64, &'static str)] =
+    &[(1024, "")];
+const POWERPC_FEATURES_FOR_CORRECT_FIXED_LENGTH_VECTOR_ABI: &'static [(u64, &'static str)] =
+    &[(128, "altivec")];
+const WASM_FEATURES_FOR_CORRECT_FIXED_LENGTH_VECTOR_ABI: &'static [(u64, &'static str)] =
+    &[(128, "simd128")];
+const S390X_FEATURES_FOR_CORRECT_FIXED_LENGTH_VECTOR_ABI: &'static [(u64, &'static str)] =
+    &[(128, "vector")];
+const RISCV_FEATURES_FOR_CORRECT_FIXED_LENGTH_VECTOR_ABI: &'static [(u64, &'static str)] = &[
     (32, "zvl32b"),
     (64, "zvl64b"),
     (128, "zvl128b"),
@@ -937,13 +943,16 @@ const RISCV_FEATURES_FOR_CORRECT_VECTOR_ABI: &'static [(u64, &'static str)] = &[
     (65536, "zvl65536b"),
 ];
 // Always error on SPARC, as the necessary target features cannot be enabled in Rust at the moment.
-const SPARC_FEATURES_FOR_CORRECT_VECTOR_ABI: &'static [(u64, &'static str)] = &[/*(64, "vis")*/];
+const SPARC_FEATURES_FOR_CORRECT_FIXED_LENGTH_VECTOR_ABI: &'static [(u64, &'static str)] =
+    &[/*(64, "vis")*/];
 
-const HEXAGON_FEATURES_FOR_CORRECT_VECTOR_ABI: &'static [(u64, &'static str)] =
+const HEXAGON_FEATURES_FOR_CORRECT_FIXED_LENGTH_VECTOR_ABI: &'static [(u64, &'static str)] =
     &[/*(512, "hvx-length64b"),*/ (1024, "hvx-length128b")];
-const MIPS_FEATURES_FOR_CORRECT_VECTOR_ABI: &'static [(u64, &'static str)] = &[(128, "msa")];
-const CSKY_FEATURES_FOR_CORRECT_VECTOR_ABI: &'static [(u64, &'static str)] = &[(128, "vdspv1")];
-const LOONGARCH_FEATURES_FOR_CORRECT_VECTOR_ABI: &'static [(u64, &'static str)] =
+const MIPS_FEATURES_FOR_CORRECT_FIXED_LENGTH_VECTOR_ABI: &'static [(u64, &'static str)] =
+    &[(128, "msa")];
+const CSKY_FEATURES_FOR_CORRECT_FIXED_LENGTH_VECTOR_ABI: &'static [(u64, &'static str)] =
+    &[(128, "vdspv1")];
+const LOONGARCH_FEATURES_FOR_CORRECT_FIXED_LENGTH_VECTOR_ABI: &'static [(u64, &'static str)] =
     &[(128, "lsx"), (256, "lasx")];
 
 #[derive(Copy, Clone, Debug)]
@@ -982,24 +991,26 @@ impl Target {
         }
     }
 
-    pub fn features_for_correct_vector_abi(&self) -> &'static [(u64, &'static str)] {
+    pub fn features_for_correct_fixed_length_vector_abi(&self) -> &'static [(u64, &'static str)] {
         match &self.arch {
-            Arch::X86 | Arch::X86_64 => X86_FEATURES_FOR_CORRECT_VECTOR_ABI,
-            Arch::AArch64 | Arch::Arm64EC => AARCH64_FEATURES_FOR_CORRECT_VECTOR_ABI,
-            Arch::Arm => ARM_FEATURES_FOR_CORRECT_VECTOR_ABI,
-            Arch::PowerPC | Arch::PowerPC64 => POWERPC_FEATURES_FOR_CORRECT_VECTOR_ABI,
-            Arch::LoongArch32 | Arch::LoongArch64 => LOONGARCH_FEATURES_FOR_CORRECT_VECTOR_ABI,
-            Arch::RiscV32 | Arch::RiscV64 => RISCV_FEATURES_FOR_CORRECT_VECTOR_ABI,
-            Arch::Wasm32 | Arch::Wasm64 => WASM_FEATURES_FOR_CORRECT_VECTOR_ABI,
-            Arch::S390x => S390X_FEATURES_FOR_CORRECT_VECTOR_ABI,
-            Arch::Sparc | Arch::Sparc64 => SPARC_FEATURES_FOR_CORRECT_VECTOR_ABI,
-            Arch::Hexagon => HEXAGON_FEATURES_FOR_CORRECT_VECTOR_ABI,
-            Arch::Mips | Arch::Mips32r6 | Arch::Mips64 | Arch::Mips64r6 => {
-                MIPS_FEATURES_FOR_CORRECT_VECTOR_ABI
+            Arch::X86 | Arch::X86_64 => X86_FEATURES_FOR_CORRECT_FIXED_LENGTH_VECTOR_ABI,
+            Arch::AArch64 | Arch::Arm64EC => AARCH64_FEATURES_FOR_CORRECT_FIXED_LENGTH_VECTOR_ABI,
+            Arch::Arm => ARM_FEATURES_FOR_CORRECT_FIXED_LENGTH_VECTOR_ABI,
+            Arch::PowerPC | Arch::PowerPC64 => POWERPC_FEATURES_FOR_CORRECT_FIXED_LENGTH_VECTOR_ABI,
+            Arch::LoongArch32 | Arch::LoongArch64 => {
+                LOONGARCH_FEATURES_FOR_CORRECT_FIXED_LENGTH_VECTOR_ABI
             }
-            Arch::AmdGpu => AMDGPU_FEATURES_FOR_CORRECT_VECTOR_ABI,
+            Arch::RiscV32 | Arch::RiscV64 => RISCV_FEATURES_FOR_CORRECT_FIXED_LENGTH_VECTOR_ABI,
+            Arch::Wasm32 | Arch::Wasm64 => WASM_FEATURES_FOR_CORRECT_FIXED_LENGTH_VECTOR_ABI,
+            Arch::S390x => S390X_FEATURES_FOR_CORRECT_FIXED_LENGTH_VECTOR_ABI,
+            Arch::Sparc | Arch::Sparc64 => SPARC_FEATURES_FOR_CORRECT_FIXED_LENGTH_VECTOR_ABI,
+            Arch::Hexagon => HEXAGON_FEATURES_FOR_CORRECT_FIXED_LENGTH_VECTOR_ABI,
+            Arch::Mips | Arch::Mips32r6 | Arch::Mips64 | Arch::Mips64r6 => {
+                MIPS_FEATURES_FOR_CORRECT_FIXED_LENGTH_VECTOR_ABI
+            }
+            Arch::AmdGpu => AMDGPU_FEATURES_FOR_CORRECT_FIXED_LENGTH_VECTOR_ABI,
             Arch::Nvptx64 | Arch::Bpf | Arch::M68k => &[], // no vector ABI
-            Arch::CSky => CSKY_FEATURES_FOR_CORRECT_VECTOR_ABI,
+            Arch::CSky => CSKY_FEATURES_FOR_CORRECT_FIXED_LENGTH_VECTOR_ABI,
             // FIXME: for some tier3 targets, we are overly cautious and always give warnings
             // when passing args in vector registers.
             Arch::Avr
@@ -1008,6 +1019,14 @@ impl Target {
             | Arch::SpirV
             | Arch::Xtensa
             | Arch::Other(_) => &[],
+        }
+    }
+
+    pub fn features_for_correct_scalable_vector_abi(&self) -> Option<&'static str> {
+        match &self.arch {
+            Arch::AArch64 | Arch::Arm64EC => Some("sve"),
+            // Other targets have no scalable vectors or they are unimplemented.
+            _ => None,
         }
     }
 

@@ -200,6 +200,9 @@ attr_parsing_rustc_allowed_unstable_pairing =
 attr_parsing_rustc_promotable_pairing =
     `rustc_promotable` attribute must be paired with either a `rustc_const_unstable` or a `rustc_const_stable` attribute
 
+attr_parsing_rustc_scalable_vector_count_out_of_range = element count in `rustc_scalable_vector` is too large: `{$n}`
+    .note = the value may not exceed `u16::MAX`
+
 attr_parsing_soft_no_args =
     `soft` should not have any arguments
 

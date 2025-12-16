@@ -68,6 +68,10 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
         unsafe { llvm::LLVMVectorType(ty, len as c_uint) }
     }
 
+    pub(crate) fn type_scalable_vector(&self, ty: &'ll Type, count: u64) -> &'ll Type {
+        unsafe { llvm::LLVMScalableVectorType(ty, count as c_uint) }
+    }
+
     pub(crate) fn add_func(&self, name: &str, ty: &'ll Type) -> &'ll Value {
         let name = SmallCStr::new(name);
         unsafe { llvm::LLVMAddFunction(self.llmod(), name.as_ptr(), ty) }

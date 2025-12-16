@@ -501,6 +501,15 @@ pub(crate) struct LinkOrdinalOutOfRange {
     pub ordinal: u128,
 }
 
+#[derive(Diagnostic)]
+#[diag(attr_parsing_rustc_scalable_vector_count_out_of_range)]
+#[note]
+pub(crate) struct RustcScalableVectorCountOutOfRange {
+    #[primary_span]
+    pub span: Span,
+    pub n: u128,
+}
+
 pub(crate) enum AttributeParseErrorReason<'a> {
     ExpectedNoArgs,
     ExpectedStringLiteral {

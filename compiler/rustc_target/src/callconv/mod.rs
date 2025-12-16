@@ -393,6 +393,7 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
             ),
             BackendRepr::SimdVector { .. } => PassMode::Direct(ArgAttributes::new()),
             BackendRepr::Memory { .. } => Self::indirect_pass_mode(&layout),
+            BackendRepr::ScalableVector { .. } => PassMode::Direct(ArgAttributes::new()),
         };
         ArgAbi { layout, mode }
     }
