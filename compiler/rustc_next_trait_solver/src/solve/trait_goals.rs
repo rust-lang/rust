@@ -87,7 +87,15 @@ where
 
             // Impl matches polarity
             (ty::ImplPolarity::Positive, ty::PredicatePolarity::Positive)
-            | (ty::ImplPolarity::Negative, ty::PredicatePolarity::Negative) => Certainty::Yes,
+            | (ty::ImplPolarity::Negative, ty::PredicatePolarity::Negative) => {
+                if ecx.typing_mode().is_reflection()
+                    && !cx.is_fully_generic_for_reflection(impl_def_id)
+                {
+                    return Err(NoSolution.into());
+                } else {
+                    Certainty::Yes
+                }
+            }
 
             // Impl doesn't match polarity
             (ty::ImplPolarity::Positive, ty::PredicatePolarity::Negative)
@@ -1607,6 +1615,7 @@ where
                 }
                 TypingMode::Coherence
                 | TypingMode::PostAnalysis
+                | TypingMode::Reflection
                 | TypingMode::Codegen
                 | TypingMode::PostTypeckUntilBorrowck { defining_opaque_types: _ }
                 | TypingMode::PostBorrowck { defined_opaque_types: _ } => {}

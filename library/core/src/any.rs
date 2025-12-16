@@ -86,7 +86,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use crate::intrinsics::{self, type_id_vtable};
+use crate::intrinsics::{self, type_id, type_id_vtable};
 use crate::mem::transmute;
 use crate::mem::type_info::{TraitImpl, TypeKind};
 use crate::{fmt, hash, ptr};
@@ -786,12 +786,12 @@ impl TypeId {
     #[unstable(feature = "type_info", issue = "146922")]
     #[rustc_const_unstable(feature = "type_info", issue = "146922")]
     #[rustc_comptime]
-    pub fn trait_info_of<T: ptr::Pointee<Metadata = ptr::DynMetadata<T>> + ?Sized + 'static>(
+    pub fn trait_info_of<T: ptr::Pointee<Metadata = ptr::DynMetadata<T>> + ?Sized>(
         self,
     ) -> Option<TraitImpl<T>> {
         // SAFETY: The vtable was obtained for `T`, so it is guaranteed to be `DynMetadata<T>`.
         // The intrinsic can't infer this because it is designed to work with arbitrary TypeIds.
-        unsafe { transmute(self.trait_info_of_trait_type_id(const { TypeId::of::<T>() })) }
+        unsafe { transmute(self.trait_info_of_trait_type_id(const { type_id::<T>() })) }
     }
 
     /// Checks if the [TypeId] implements the trait of `trait_represented_by_type_id`. If it does it returns [TraitImpl] which can be used to build a fat pointer.
@@ -983,17 +983,14 @@ pub const fn type_name_of_val<T: ?Sized>(_val: &T) -> &'static str {
 /// ```
 #[must_use]
 #[unstable(feature = "try_as_dyn", issue = "144361")]
-pub const fn try_as_dyn<
-    T: Any + ?Sized + 'static,
-    U: ptr::Pointee<Metadata = ptr::DynMetadata<U>> + ?Sized + 'static,
->(
+pub const fn try_as_dyn<T: ?Sized, U: ptr::Pointee<Metadata = ptr::DynMetadata<U>> + ?Sized>(
     t: &T,
 ) -> Option<&U> {
     // For unsized `T`, `trait_info_of` always returns `None` (vtable lookup is
     // only supported for sized types). The function therefore unconditionally
     // returns `None` in that case.
     let vtable: Option<ptr::DynMetadata<U>> =
-        const { TypeId::of::<T>().trait_info_of::<U>().as_ref().map(TraitImpl::get_vtable) };
+        const { type_id::<T>().trait_info_of::<U>().as_ref().map(TraitImpl::get_vtable) };
     match vtable {
         Some(dyn_metadata) => {
             let pointer = ptr::from_raw_parts(t as *const T as *const (), dyn_metadata);
@@ -1042,17 +1039,14 @@ pub const fn try_as_dyn<
 /// ```
 #[must_use]
 #[unstable(feature = "try_as_dyn", issue = "144361")]
-pub const fn try_as_dyn_mut<
-    T: Any + ?Sized + 'static,
-    U: ptr::Pointee<Metadata = ptr::DynMetadata<U>> + ?Sized + 'static,
->(
+pub const fn try_as_dyn_mut<T: ?Sized, U: ptr::Pointee<Metadata = ptr::DynMetadata<U>> + ?Sized>(
     t: &mut T,
 ) -> Option<&mut U> {
     // For unsized `T`, `trait_info_of` always returns `None` (vtable lookup is
     // only supported for sized types). The function therefore unconditionally
     // returns `None` in that case.
     let vtable: Option<ptr::DynMetadata<U>> =
-        const { TypeId::of::<T>().trait_info_of::<U>().as_ref().map(TraitImpl::get_vtable) };
+        const { type_id::<T>().trait_info_of::<U>().as_ref().map(TraitImpl::get_vtable) };
     match vtable {
         Some(dyn_metadata) => {
             let pointer = ptr::from_raw_parts_mut(t as *mut T as *mut (), dyn_metadata);

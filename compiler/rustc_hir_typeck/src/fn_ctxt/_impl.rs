@@ -696,6 +696,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 defining_opaque_types_and_generators
             }
             ty::TypingMode::Coherence
+            | ty::TypingMode::Reflection
             | ty::TypingMode::PostTypeckUntilBorrowck { .. }
             | ty::TypingMode::PostBorrowck { .. }
             | ty::TypingMode::PostAnalysis
