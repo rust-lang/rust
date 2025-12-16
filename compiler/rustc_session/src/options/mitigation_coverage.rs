@@ -68,7 +68,7 @@ impl From<StackProtector> for DeniedPartialMitigationLevel {
 pub struct DeniedPartialMitigationKindParseError;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Encodable, BlobDecodable)]
-pub struct MitigationEnablement {
+pub struct MitigationCoverage {
     pub kind: DeniedPartialMitigationKind,
     pub enabled: bool,
 }
@@ -79,7 +79,7 @@ macro_rules! intersperse {
     };
 }
 
-macro_rules! enforced_mitigations {
+macro_rules! denied_partial_mitigations {
     ([$self:ident] enum $kind:ident {$(($name:ident, $text:expr, $since:ident, $code:expr)),*}) => {
         #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Encodable, BlobDecodable)]
         pub enum DeniedPartialMitigationKind {
@@ -123,7 +123,7 @@ macro_rules! enforced_mitigations {
         }
 
         impl Options {
-            pub fn all_enforced_mitigations(&self) -> impl Iterator<Item = DeniedPartialMitigationKind> {
+            pub fn all_denied_partial_mitigations(&self) -> impl Iterator<Item = DeniedPartialMitigationKind> {
                 [$(DeniedPartialMitigationKind::$name),*].into_iter()
             }
         }
@@ -145,7 +145,7 @@ macro_rules! enforced_mitigations {
     }
 }
 
-enforced_mitigations! {
+denied_partial_mitigations! {
     [self]
     enum DeniedPartialMitigationKind {
         (StackProtector, "stack-protector", EditionFuture, self.stack_protector()),
@@ -153,7 +153,7 @@ enforced_mitigations! {
     }
 }
 
-/// Enforced mitigations, see [RFC 3855](https://github.com/rust-lang/rfcs/pull/3855)
+/// Denied-partial mitigations, see [RFC 3855](https://github.com/rust-lang/rfcs/pull/3855)
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Encodable, BlobDecodable)]
 pub struct DeniedPartialMitigation {
     pub kind: DeniedPartialMitigationKind,
@@ -167,7 +167,7 @@ impl Options {
         edition: Edition,
     ) -> impl Iterator<Item = DeniedPartialMitigationKind> {
         let mut result: BTreeSet<_> = self
-            .all_enforced_mitigations()
+            .all_denied_partial_mitigations()
             .filter(|mitigation| mitigation.enforced_since() > edition)
             .collect();
         for mitigation in &self.unstable_opts.allow_partial_mitigations {

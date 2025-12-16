@@ -20,7 +20,7 @@ use rustc_target::spec::{
     TargetTuple, TlsModel,
 };
 
-use crate::config::enforceable_mitigations::MitigationEnablement;
+use crate::config::mitigation_coverage::MitigationCoverage;
 use crate::config::*;
 use crate::search_paths::SearchPath;
 use crate::utils::NativeLib;
@@ -85,7 +85,7 @@ pub struct TargetModifier {
     pub value_name: String,
 }
 
-pub mod enforceable_mitigations;
+pub mod mitigation_coverage;
 
 mod target_modifier_consistency_check {
     use super::*;
@@ -896,16 +896,16 @@ mod desc {
     pub(crate) const parse_align: &str = "a number that is a power of 2 between 1 and 2^29";
     pub(crate) const parse_assert_incr_state: &str = "one of: `loaded`, `not-loaded`";
     pub(crate) const parse_allow_partial_mitigations: &str =
-        super::enforceable_mitigations::DeniedPartialMitigationKind::KINDS;
+        super::mitigation_coverage::DeniedPartialMitigationKind::KINDS;
     pub(crate) const parse_deny_partial_mitigations: &str =
-        super::enforceable_mitigations::DeniedPartialMitigationKind::KINDS;
+        super::mitigation_coverage::DeniedPartialMitigationKind::KINDS;
 }
 
 pub mod parse {
     use std::str::FromStr;
 
     pub(crate) use super::*;
-    use crate::config::enforceable_mitigations::MitigationEnablement;
+    use crate::config::mitigation_coverage::MitigationCoverage;
     pub(crate) const MAX_THREADS_CAP: usize = 256;
 
     /// Ignore the value. Used for removed options where we don't actually want to store
@@ -2086,7 +2086,7 @@ pub mod parse {
     }
 
     fn parse_partial_mitigations(
-        slot: &mut Vec<MitigationEnablement>,
+        slot: &mut Vec<MitigationCoverage>,
         v: Option<&str>,
         enabled: bool,
     ) -> bool {
@@ -2094,7 +2094,7 @@ pub mod parse {
             Some(s) => {
                 for sub in s.split(',') {
                     match sub.parse() {
-                        Ok(kind) => slot.push(MitigationEnablement { kind, enabled }),
+                        Ok(kind) => slot.push(MitigationCoverage { kind, enabled }),
                         Err(_) => return false,
                     }
                 }
@@ -2105,14 +2105,14 @@ pub mod parse {
     }
 
     pub(crate) fn parse_allow_partial_mitigations(
-        slot: &mut Vec<MitigationEnablement>,
+        slot: &mut Vec<MitigationCoverage>,
         v: Option<&str>,
     ) -> bool {
         parse_partial_mitigations(slot, v, true)
     }
 
     pub(crate) fn parse_deny_partial_mitigations(
-        slot: &mut Vec<MitigationEnablement>,
+        slot: &mut Vec<MitigationCoverage>,
         v: Option<&str>,
     ) -> bool {
         parse_partial_mitigations(slot, v, false)
@@ -2281,7 +2281,7 @@ options! {
     // tidy-alphabetical-start
     allow_features: Option<Vec<String>> = (None, parse_opt_comma_list, [TRACKED],
         "only allow the listed language features to be enabled in code (comma separated)"),
-    allow_partial_mitigations: Vec<MitigationEnablement> = (Vec::new(), parse_allow_partial_mitigations, [UNTRACKED],
+    allow_partial_mitigations: Vec<MitigationCoverage> = (Vec::new(), parse_allow_partial_mitigations, [UNTRACKED],
         "Allow mitigations not enabled for all dependency crates (comma separated list)"),
     always_encode_mir: bool = (false, parse_bool, [TRACKED],
         "encode MIR of all functions into the crate metadata (default: no)"),
@@ -2350,7 +2350,7 @@ options! {
         "deduplicate identical diagnostics (default: yes)"),
     default_visibility: Option<SymbolVisibility> = (None, parse_opt_symbol_visibility, [TRACKED],
         "overrides the `default_visibility` setting of the target"),
-    deny_partial_mitigations: Vec<MitigationEnablement> = (Vec::new(), parse_deny_partial_mitigations, [UNTRACKED],
+    deny_partial_mitigations: Vec<MitigationCoverage> = (Vec::new(), parse_deny_partial_mitigations, [UNTRACKED],
         "Deny mitigations not enabled for all dependency crates (comma separated list)"),
     dep_info_omit_d_target: bool = (false, parse_bool, [TRACKED],
         "in dep-info output, omit targets for tracking dependencies of the dep-info files \
