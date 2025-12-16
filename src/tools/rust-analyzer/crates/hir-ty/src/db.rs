@@ -245,7 +245,7 @@ pub struct InternedConstParamId {
     pub loc: ConstParamId,
 }
 
-#[salsa_macros::interned(no_lifetime, debug, revisions = usize::MAX)]
+#[salsa_macros::interned(no_lifetime, debug, revisions = usize::MAX, unsafe(non_update_types))]
 #[derive(PartialOrd, Ord)]
 pub struct InternedOpaqueTyId {
     pub loc: ImplTraitId<'db>,

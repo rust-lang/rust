@@ -202,7 +202,7 @@ macro_rules! _interned_vec_db {
         }
     };
     ($name:ident, $ty:ident, nofold) => {
-        #[salsa::interned(constructor = new_)]
+        #[salsa::interned(constructor = new_, unsafe(non_update_types))]
         pub struct $name<'db> {
             #[returns(ref)]
             inner_: smallvec::SmallVec<[$ty<'db>; 2]>,
@@ -762,7 +762,7 @@ impl std::ops::Deref for UnsizingParams {
 
 pub type PatternKind<'db> = rustc_type_ir::PatternKind<DbInterner<'db>>;
 
-#[salsa::interned(constructor = new_, debug)]
+#[salsa::interned(constructor = new_, debug, unsafe(non_update_types))]
 pub struct Pattern<'db> {
     #[returns(ref)]
     kind_: InternedWrapperNoDebug<PatternKind<'db>>,

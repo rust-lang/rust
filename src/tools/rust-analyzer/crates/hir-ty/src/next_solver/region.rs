@@ -18,7 +18,7 @@ use super::{
 
 pub type RegionKind<'db> = rustc_type_ir::RegionKind<DbInterner<'db>>;
 
-#[salsa::interned(constructor = new_)]
+#[salsa::interned(constructor = new_, unsafe(non_update_types))]
 pub struct Region<'db> {
     #[returns(ref)]
     kind_: RegionKind<'db>,

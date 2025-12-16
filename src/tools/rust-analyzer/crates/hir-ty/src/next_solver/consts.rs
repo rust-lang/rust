@@ -23,7 +23,7 @@ use super::{BoundVarKind, DbInterner, ErrorGuaranteed, GenericArgs, Placeholder,
 pub type ConstKind<'db> = rustc_type_ir::ConstKind<DbInterner<'db>>;
 pub type UnevaluatedConst<'db> = rustc_type_ir::UnevaluatedConst<DbInterner<'db>>;
 
-#[salsa::interned(constructor = new_)]
+#[salsa::interned(constructor = new_, unsafe(non_update_types))]
 pub struct Const<'db> {
     #[returns(ref)]
     kind_: InternedWrapperNoDebug<WithCachedTypeInfo<ConstKind<'db>>>,
@@ -202,7 +202,7 @@ impl Hash for ConstBytes<'_> {
     }
 }
 
-#[salsa::interned(constructor = new_, debug)]
+#[salsa::interned(constructor = new_, debug, unsafe(non_update_types))]
 pub struct Valtree<'db> {
     #[returns(ref)]
     bytes_: ConstBytes<'db>,

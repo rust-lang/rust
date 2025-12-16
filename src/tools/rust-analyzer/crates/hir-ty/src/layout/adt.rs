@@ -97,6 +97,7 @@ pub fn layout_of_adt_query<'db>(
 
 pub(crate) fn layout_of_adt_cycle_result<'db>(
     _: &'db dyn HirDatabase,
+    _: salsa::Id,
     _def: AdtId,
     _args: GenericArgs<'db>,
     _trait_env: ParamEnvAndCrate<'db>,

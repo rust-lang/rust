@@ -1137,7 +1137,7 @@ impl InternedOpaqueTyId {
 
 #[salsa::tracked]
 impl<'db> ImplTraits<'db> {
-    #[salsa::tracked(returns(ref), unsafe(non_update_return_type))]
+    #[salsa::tracked(returns(ref), unsafe(non_update_types))]
     pub(crate) fn return_type_impl_traits(
         db: &'db dyn HirDatabase,
         def: hir_def::FunctionId,
@@ -1166,7 +1166,7 @@ impl<'db> ImplTraits<'db> {
         }
     }
 
-    #[salsa::tracked(returns(ref), unsafe(non_update_return_type))]
+    #[salsa::tracked(returns(ref), unsafe(non_update_types))]
     pub(crate) fn type_alias_impl_traits(
         db: &'db dyn HirDatabase,
         def: hir_def::TypeAliasId,
@@ -1373,6 +1373,7 @@ pub(crate) fn type_for_type_alias_with_diagnostics_query<'db>(
 
 pub(crate) fn type_for_type_alias_with_diagnostics_cycle_result<'db>(
     db: &'db dyn HirDatabase,
+    _: salsa::Id,
     _adt: TypeAliasId,
 ) -> (EarlyBinder<'db, Ty<'db>>, Diagnostics) {
     (EarlyBinder::bind(Ty::new_error(DbInterner::new_no_crate(db), ErrorGuaranteed)), None)
@@ -1406,6 +1407,7 @@ pub(crate) fn impl_self_ty_with_diagnostics_query<'db>(
 
 pub(crate) fn impl_self_ty_with_diagnostics_cycle_result(
     db: &dyn HirDatabase,
+    _: salsa::Id,
     _impl_id: ImplId,
 ) -> (EarlyBinder<'_, Ty<'_>>, Diagnostics) {
     (EarlyBinder::bind(Ty::new_error(DbInterner::new_no_crate(db), ErrorGuaranteed)), None)
@@ -1443,6 +1445,7 @@ pub(crate) fn const_param_ty_with_diagnostics_query<'db>(
 
 pub(crate) fn const_param_ty_with_diagnostics_cycle_result<'db>(
     db: &'db dyn HirDatabase,
+    _: salsa::Id,
     _: crate::db::HirDatabaseData,
     _def: ConstParamId,
 ) -> (Ty<'db>, Diagnostics) {
@@ -1496,7 +1499,7 @@ pub(crate) fn field_types_with_diagnostics_query<'db>(
 /// following bounds are disallowed: `T: Foo<U::Item>, U: Foo<T::Item>`, but
 /// these are fine: `T: Foo<U::Item>, U: Foo<()>`.
 #[tracing::instrument(skip(db), ret)]
-#[salsa::tracked(returns(ref), unsafe(non_update_return_type), cycle_result = generic_predicates_for_param_cycle_result)]
+#[salsa::tracked(returns(ref), unsafe(non_update_types), cycle_result = generic_predicates_for_param_cycle_result)]
 pub(crate) fn generic_predicates_for_param<'db>(
     db: &'db dyn HirDatabase,
     def: GenericDefId,
@@ -1609,6 +1612,7 @@ pub(crate) fn generic_predicates_for_param<'db>(
 
 pub(crate) fn generic_predicates_for_param_cycle_result<'db>(
     _db: &'db dyn HirDatabase,
+    _: salsa::Id,
     _def: GenericDefId,
     _param_id: TypeOrConstParamId,
     _assoc_name: Option<Name>,
@@ -1624,7 +1628,7 @@ pub(crate) fn type_alias_bounds<'db>(
     type_alias_bounds_with_diagnostics(db, type_alias).0.as_ref().map_bound(|it| &**it)
 }
 
-#[salsa::tracked(returns(ref), unsafe(non_update_return_type))]
+#[salsa::tracked(returns(ref), unsafe(non_update_types))]
 pub fn type_alias_bounds_with_diagnostics<'db>(
     db: &'db dyn HirDatabase,
     type_alias: TypeAliasId,
@@ -1682,7 +1686,7 @@ impl<'db> GenericPredicates<'db> {
     /// Resolve the where clause(s) of an item with generics.
     ///
     /// Diagnostics are computed only for this item's predicates, not for parents.
-    #[salsa::tracked(returns(ref), unsafe(non_update_return_type))]
+    #[salsa::tracked(returns(ref), unsafe(non_update_types))]
     pub fn query_with_diagnostics(
         db: &'db dyn HirDatabase,
         def: GenericDefId,
@@ -2090,6 +2094,7 @@ pub(crate) fn generic_defaults_with_diagnostics_query(
 
 pub(crate) fn generic_defaults_with_diagnostics_cycle_result(
     _db: &dyn HirDatabase,
+    _: salsa::Id,
     _def: GenericDefId,
 ) -> (GenericDefaults<'_>, Diagnostics) {
     (GenericDefaults(None), None)

@@ -22,6 +22,7 @@ use crate::{
 // cannot create a cycle, but a cycle handler is required nevertheless.
 fn specializes_query_cycle(
     _db: &dyn HirDatabase,
+    _: salsa::Id,
     _specializing_impl_def_id: ImplId,
     _parent_impl_def_id: ImplId,
 ) -> bool {

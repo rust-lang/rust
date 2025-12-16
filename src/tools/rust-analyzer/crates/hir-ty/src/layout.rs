@@ -359,6 +359,7 @@ pub fn layout_of_ty_query<'db>(
 
 pub(crate) fn layout_of_ty_cycle_result<'db>(
     _: &dyn HirDatabase,
+    _: salsa::Id,
     _: Ty<'db>,
     _: ParamEnvAndCrate<'db>,
 ) -> Result<Arc<Layout>, LayoutError> {

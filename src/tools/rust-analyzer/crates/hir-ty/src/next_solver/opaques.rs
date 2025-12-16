@@ -15,7 +15,7 @@ pub type ExternalConstraintsData<'db> =
 
 interned_vec_nolifetime_salsa!(SolverDefIds, SolverDefId);
 
-#[salsa::interned(constructor = new_, debug)]
+#[salsa::interned(constructor = new_, debug, unsafe(non_update_types))]
 pub struct ExternalConstraints<'db> {
     #[returns(ref)]
     kind_: rustc_type_ir::solve::ExternalConstraintsData<DbInterner<'db>>,
