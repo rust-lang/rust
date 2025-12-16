@@ -70,6 +70,7 @@ rm tests/ui/linking/no-gc-encapsulation-symbols.rs # same
 rm tests/ui/attributes/fn-align-dyn.rs # per-function alignment not supported
 rm -r tests/ui/explicit-tail-calls # tail calls
 rm -r tests/run-make/pointer-auth-link-with-c # pointer auth
+rm -r tests/ui/eii # EII not yet implemented
 
 # requires LTO
 rm -r tests/run-make/cdylib
@@ -143,6 +144,14 @@ rm tests/ui/errors/remap-path-prefix-sysroot.rs # different sysroot source path
 rm -r tests/run-make/export/extern-opt # something about rustc version mismatches
 rm -r tests/run-make/export # same
 rm -r tests/ui/compiletest-self-test/compile-flags-incremental.rs # needs compiletest compiled with panic=unwind
+rm tests/ui/async-await/in-trait/dont-project-to-specializable-projection.rs # something going wrong with stdlib source remapping
+rm tests/ui/consts/miri_unleashed/drop.rs # same
+rm tests/ui/error-emitter/multiline-removal-suggestion.rs # same
+rm tests/ui/lint/lint-const-item-mutation.rs # same
+rm tests/ui/lint/use-redundant/use-redundant-issue-71450.rs # same
+rm tests/ui/lint/use-redundant/use-redundant-prelude-rust-2021.rs # same
+rm tests/ui/specialization/const_trait_impl.rs # same
+rm tests/ui/thir-print/offset_of.rs # same
 
 # genuine bugs
 # ============
