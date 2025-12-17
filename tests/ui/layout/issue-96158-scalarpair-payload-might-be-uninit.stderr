@@ -78,9 +78,6 @@ error: layout_of(MissingPayloadField) = Layout {
                        },
                        largest_niche: None,
                        uninhabited: false,
-                       variants: Single {
-                           index: 0,
-                       },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(1 bytes),
                        randomization_seed: $SEED,
@@ -99,9 +96,6 @@ error: layout_of(MissingPayloadField) = Layout {
                        },
                        largest_niche: None,
                        uninhabited: false,
-                       variants: Single {
-                           index: 1,
-                       },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(1 bytes),
                        randomization_seed: $SEED,
@@ -199,9 +193,6 @@ error: layout_of(CommonPayloadField) = Layout {
                        },
                        largest_niche: None,
                        uninhabited: false,
-                       variants: Single {
-                           index: 0,
-                       },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(1 bytes),
                        randomization_seed: $SEED,
@@ -237,9 +228,6 @@ error: layout_of(CommonPayloadField) = Layout {
                        },
                        largest_niche: None,
                        uninhabited: false,
-                       variants: Single {
-                           index: 1,
-                       },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(1 bytes),
                        randomization_seed: $SEED,
@@ -335,9 +323,6 @@ error: layout_of(CommonPayloadFieldIsMaybeUninit) = Layout {
                        },
                        largest_niche: None,
                        uninhabited: false,
-                       variants: Single {
-                           index: 0,
-                       },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(1 bytes),
                        randomization_seed: $SEED,
@@ -372,9 +357,6 @@ error: layout_of(CommonPayloadFieldIsMaybeUninit) = Layout {
                        },
                        largest_niche: None,
                        uninhabited: false,
-                       variants: Single {
-                           index: 1,
-                       },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(1 bytes),
                        randomization_seed: $SEED,
@@ -486,9 +468,6 @@ error: layout_of(NicheFirst) = Layout {
                            },
                        ),
                        uninhabited: false,
-                       variants: Single {
-                           index: 0,
-                       },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(1 bytes),
                        randomization_seed: $SEED,
@@ -507,9 +486,6 @@ error: layout_of(NicheFirst) = Layout {
                        },
                        largest_niche: None,
                        uninhabited: false,
-                       variants: Single {
-                           index: 1,
-                       },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(1 bytes),
                        randomization_seed: $SEED,
@@ -528,9 +504,6 @@ error: layout_of(NicheFirst) = Layout {
                        },
                        largest_niche: None,
                        uninhabited: false,
-                       variants: Single {
-                           index: 2,
-                       },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(1 bytes),
                        randomization_seed: $SEED,
@@ -642,9 +615,6 @@ error: layout_of(NicheSecond) = Layout {
                            },
                        ),
                        uninhabited: false,
-                       variants: Single {
-                           index: 0,
-                       },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(1 bytes),
                        randomization_seed: $SEED,
@@ -663,9 +633,6 @@ error: layout_of(NicheSecond) = Layout {
                        },
                        largest_niche: None,
                        uninhabited: false,
-                       variants: Single {
-                           index: 1,
-                       },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(1 bytes),
                        randomization_seed: $SEED,
@@ -684,9 +651,6 @@ error: layout_of(NicheSecond) = Layout {
                        },
                        largest_niche: None,
                        uninhabited: false,
-                       variants: Single {
-                           index: 2,
-                       },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(1 bytes),
                        randomization_seed: $SEED,

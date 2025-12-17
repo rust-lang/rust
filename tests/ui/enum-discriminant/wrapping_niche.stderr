@@ -56,9 +56,6 @@ error: layout_of(UnsignedAroundZero) = Layout {
                        },
                        largest_niche: None,
                        uninhabited: false,
-                       variants: Single {
-                           index: 0,
-                       },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(2 bytes),
                        randomization_seed: 9885373149222004003,
@@ -77,9 +74,6 @@ error: layout_of(UnsignedAroundZero) = Layout {
                        },
                        largest_niche: None,
                        uninhabited: false,
-                       variants: Single {
-                           index: 1,
-                       },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(2 bytes),
                        randomization_seed: 9885373149222004003,
@@ -98,9 +92,6 @@ error: layout_of(UnsignedAroundZero) = Layout {
                        },
                        largest_niche: None,
                        uninhabited: false,
-                       variants: Single {
-                           index: 2,
-                       },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(2 bytes),
                        randomization_seed: 9885373149222004003,
@@ -174,9 +165,6 @@ error: layout_of(SignedAroundZero) = Layout {
                        },
                        largest_niche: None,
                        uninhabited: false,
-                       variants: Single {
-                           index: 0,
-                       },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(2 bytes),
                        randomization_seed: 2684536712112553499,
@@ -195,9 +183,6 @@ error: layout_of(SignedAroundZero) = Layout {
                        },
                        largest_niche: None,
                        uninhabited: false,
-                       variants: Single {
-                           index: 1,
-                       },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(2 bytes),
                        randomization_seed: 2684536712112553499,
@@ -216,9 +201,6 @@ error: layout_of(SignedAroundZero) = Layout {
                        },
                        largest_niche: None,
                        uninhabited: false,
-                       variants: Single {
-                           index: 2,
-                       },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(2 bytes),
                        randomization_seed: 2684536712112553499,

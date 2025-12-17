@@ -56,9 +56,6 @@ error: layout_of(A) = Layout {
                        },
                        largest_niche: None,
                        uninhabited: false,
-                       variants: Single {
-                           index: 0,
-                       },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(1 bytes),
                        randomization_seed: $SEED,
@@ -132,9 +129,6 @@ error: layout_of(B) = Layout {
                        },
                        largest_niche: None,
                        uninhabited: false,
-                       variants: Single {
-                           index: 0,
-                       },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(1 bytes),
                        randomization_seed: $SEED,
@@ -208,9 +202,6 @@ error: layout_of(C) = Layout {
                        },
                        largest_niche: None,
                        uninhabited: false,
-                       variants: Single {
-                           index: 0,
-                       },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(2 bytes),
                        randomization_seed: $SEED,
@@ -284,9 +275,6 @@ error: layout_of(P) = Layout {
                        },
                        largest_niche: None,
                        uninhabited: false,
-                       variants: Single {
-                           index: 0,
-                       },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(4 bytes),
                        randomization_seed: $SEED,
@@ -360,9 +348,6 @@ error: layout_of(T) = Layout {
                        },
                        largest_niche: None,
                        uninhabited: false,
-                       variants: Single {
-                           index: 0,
-                       },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(4 bytes),
                        randomization_seed: $SEED,

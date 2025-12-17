@@ -230,7 +230,6 @@ pub(super) fn layout<
                 &ReprOptions::default(),
                 StructKind::Prefixed(prefix_size, prefix_align.abi),
             )?;
-            variant.variants = Variants::Single { index };
 
             let FieldsShape::Arbitrary { offsets, in_memory_order } = variant.fields else {
                 unreachable!();
