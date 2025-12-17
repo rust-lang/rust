@@ -233,7 +233,7 @@ r? @reviewer
 }
 
 #[test]
-fn test_prettify() {
+fn test_lengthen_lines() {
     let original = "\
 do not split
 short sentences
