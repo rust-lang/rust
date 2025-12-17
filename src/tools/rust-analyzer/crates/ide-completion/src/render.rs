@@ -630,7 +630,8 @@ fn compute_ref_match(
         return None;
     }
     if let Some(expected_without_ref) = &expected_without_ref
-        && completion_without_ref.is_none()
+        && (completion_without_ref.is_none()
+            || completion_ty.could_unify_with(ctx.db, expected_without_ref))
         && completion_ty.autoderef(ctx.db).any(|ty| ty == *expected_without_ref)
     {
         cov_mark::hit!(suggest_ref);
@@ -2229,6 +2230,24 @@ fn main() {
                 ex S  [type]
                 ex ssss  [type]
                 fn foo(…) fn(&mut S) []
+                fn main() fn() []
+            "#]],
+        );
+        check_relevance(
+            r#"
+struct S;
+fn foo(s: &&S) {}
+fn main() {
+    let mut ssss = &S;
+    foo($0);
+}
+            "#,
+            expect![[r#"
+                st S S []
+                lc ssss &S [local]
+                lc &ssss [type+local]
+                st S S []
+                fn foo(…) fn(&&S) []
                 fn main() fn() []
             "#]],
         );
