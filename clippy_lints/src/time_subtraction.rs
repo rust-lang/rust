@@ -91,16 +91,16 @@ impl LateLintPass<'_> for UncheckedTimeSubtraction {
             _ => return,
         };
         let typeck = cx.typeck_results();
-        let lhs_ty = typeck.expr_ty(lhs);
-        let rhs_ty = typeck.expr_ty(rhs);
+        let lhs_name = typeck.expr_ty(lhs).opt_diag_name(cx);
+        let rhs_name = typeck.expr_ty(rhs).opt_diag_name(cx);
 
-        if lhs_ty.is_diag_item(cx, sym::Instant) {
+        if lhs_name == Some(sym::Instant) {
             // Instant::now() - instant
-            if is_instant_now_call(cx, lhs) && rhs_ty.is_diag_item(cx, sym::Instant) {
+            if is_instant_now_call(cx, lhs) && rhs_name == Some(sym::Instant) {
                 print_manual_instant_elapsed_sugg(cx, expr, rhs);
             }
             // instant - duration
-            else if rhs_ty.is_diag_item(cx, sym::Duration)
+            else if rhs_name == Some(sym::Duration)
                 && !expr.span.from_expansion()
                 && self.msrv.meets(cx, msrvs::TRY_FROM)
             {
@@ -108,8 +108,8 @@ impl LateLintPass<'_> for UncheckedTimeSubtraction {
             }
         }
         // duration - duration
-        else if lhs_ty.is_diag_item(cx, sym::Duration)
-            && rhs_ty.is_diag_item(cx, sym::Duration)
+        else if lhs_name == Some(sym::Duration)
+            && rhs_name == Some(sym::Duration)
             && !expr.span.from_expansion()
             && self.msrv.meets(cx, msrvs::TRY_FROM)
         {
@@ -144,7 +144,7 @@ fn is_chained_time_subtraction(cx: &LateContext<'_>, lhs: &Expr<'_>) -> bool {
 
 /// Returns true if the type is Duration or Instant
 fn is_time_type(cx: &LateContext<'_>, ty: Ty<'_>) -> bool {
-    ty.is_diag_item(cx, sym::Duration) || ty.is_diag_item(cx, sym::Instant)
+    matches!(ty.opt_diag_name(cx), Some(sym::Duration | sym::Instant))
 }
 
 fn print_manual_instant_elapsed_sugg(cx: &LateContext<'_>, expr: &Expr<'_>, rhs: &Expr<'_>) {
