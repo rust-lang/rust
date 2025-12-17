@@ -56,14 +56,12 @@ error: layout_of(Univariant) = Layout {
                                valid_range: 0..=0,
                            },
                        ),
-                       fields: Arbitrary {
-                           offsets: [
-                               Size(4 bytes),
-                           ],
-                           in_memory_order: [
-                               0,
-                           ],
-                       },
+                       field_offsets: [
+                           Size(4 bytes),
+                       ],
+                       fields_in_memory_order: [
+                           0,
+                       ],
                        largest_niche: None,
                        uninhabited: true,
                        max_repr_align: None,
@@ -151,14 +149,12 @@ error: layout_of(TwoVariants) = Layout {
                                ),
                            },
                        ),
-                       fields: Arbitrary {
-                           offsets: [
-                               Size(4 bytes),
-                           ],
-                           in_memory_order: [
-                               0,
-                           ],
-                       },
+                       field_offsets: [
+                           Size(4 bytes),
+                       ],
+                       fields_in_memory_order: [
+                           0,
+                       ],
                        largest_niche: None,
                        uninhabited: true,
                        max_repr_align: None,
@@ -185,14 +181,12 @@ error: layout_of(TwoVariants) = Layout {
                                ),
                            },
                        ),
-                       fields: Arbitrary {
-                           offsets: [
-                               Size(4 bytes),
-                           ],
-                           in_memory_order: [
-                               0,
-                           ],
-                       },
+                       field_offsets: [
+                           Size(4 bytes),
+                       ],
+                       fields_in_memory_order: [
+                           0,
+                       ],
                        largest_niche: None,
                        uninhabited: false,
                        max_repr_align: None,
@@ -256,16 +250,14 @@ error: layout_of(DeadBranchHasOtherField) = Layout {
                        backend_repr: Memory {
                            sized: true,
                        },
-                       fields: Arbitrary {
-                           offsets: [
-                               Size(8 bytes),
-                               Size(8 bytes),
-                           ],
-                           in_memory_order: [
-                               0,
-                               1,
-                           ],
-                       },
+                       field_offsets: [
+                           Size(8 bytes),
+                           Size(8 bytes),
+                       ],
+                       fields_in_memory_order: [
+                           0,
+                           1,
+                       ],
                        largest_niche: None,
                        uninhabited: true,
                        max_repr_align: Some(
@@ -282,14 +274,12 @@ error: layout_of(DeadBranchHasOtherField) = Layout {
                        backend_repr: Memory {
                            sized: true,
                        },
-                       fields: Arbitrary {
-                           offsets: [
-                               Size(8 bytes),
-                           ],
-                           in_memory_order: [
-                               0,
-                           ],
-                       },
+                       field_offsets: [
+                           Size(8 bytes),
+                       ],
+                       fields_in_memory_order: [
+                           0,
+                       ],
                        largest_niche: None,
                        uninhabited: false,
                        max_repr_align: None,

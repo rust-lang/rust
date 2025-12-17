@@ -155,7 +155,10 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
         };
 
         Self {
-            fields: layout.fields.clone(),
+            fields: FieldsShape::Arbitrary {
+                offsets: layout.field_offsets.clone(),
+                in_memory_order: layout.fields_in_memory_order.clone(),
+            },
             variants: Variants::Single { index },
             backend_repr: layout.backend_repr,
             largest_niche: layout.largest_niche,
