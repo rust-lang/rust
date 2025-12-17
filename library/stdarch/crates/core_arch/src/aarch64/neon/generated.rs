@@ -7217,8 +7217,8 @@ pub fn vcvtq_f64_u64(a: uint64x2_t) -> float64x2_t {
 #[doc = "Floating-point convert to lower precision"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvt_high_f16_f32)"]
 #[inline]
+#[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(fcvtn2))]
-#[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vcvt_high_f16_f32(a: float16x4_t, b: float32x4_t) -> float16x8_t {
@@ -7227,8 +7227,8 @@ pub fn vcvt_high_f16_f32(a: float16x4_t, b: float32x4_t) -> float16x8_t {
 #[doc = "Floating-point convert to higher precision"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvt_high_f32_f16)"]
 #[inline]
+#[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(fcvtl2))]
-#[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vcvt_high_f32_f16(a: float16x8_t) -> float32x4_t {
@@ -9487,7 +9487,7 @@ pub fn vdivq_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
 #[cfg(not(target_arch = "arm64ec"))]
-#[cfg_attr(test, assert_instr(nop))]
+#[cfg_attr(test, assert_instr(fdiv))]
 pub fn vdivh_f16(a: f16, b: f16) -> f16 {
     a / b
 }
@@ -14829,7 +14829,7 @@ pub fn vmuld_lane_f64<const LANE: i32>(a: f64, b: float64x1_t) -> f64 {
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
 #[cfg(not(target_arch = "arm64ec"))]
-#[cfg_attr(test, assert_instr(nop))]
+#[cfg_attr(test, assert_instr(fmul))]
 pub fn vmulh_f16(a: f16, b: f16) -> f16 {
     a * b
 }
@@ -21492,7 +21492,7 @@ pub fn vrecpxh_f16(a: f16) -> f16 {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_f64_f16)"]
 #[inline]
 #[cfg(target_endian = "little")]
-#[target_feature(enable = "neon,fp16")]
+#[target_feature(enable = "neon")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(nop))]
@@ -21503,7 +21503,7 @@ pub fn vreinterpret_f64_f16(a: float16x4_t) -> float64x1_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_f64_f16)"]
 #[inline]
 #[cfg(target_endian = "big")]
-#[target_feature(enable = "neon,fp16")]
+#[target_feature(enable = "neon")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(nop))]
@@ -21515,7 +21515,7 @@ pub fn vreinterpret_f64_f16(a: float16x4_t) -> float64x1_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_f64_f16)"]
 #[inline]
 #[cfg(target_endian = "little")]
-#[target_feature(enable = "neon,fp16")]
+#[target_feature(enable = "neon")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(nop))]
@@ -21526,7 +21526,7 @@ pub fn vreinterpretq_f64_f16(a: float16x8_t) -> float64x2_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_f64_f16)"]
 #[inline]
 #[cfg(target_endian = "big")]
-#[target_feature(enable = "neon,fp16")]
+#[target_feature(enable = "neon")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(nop))]
@@ -21541,7 +21541,7 @@ pub fn vreinterpretq_f64_f16(a: float16x8_t) -> float64x2_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_f16_f64)"]
 #[inline]
 #[cfg(target_endian = "little")]
-#[target_feature(enable = "neon,fp16")]
+#[target_feature(enable = "neon")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(nop))]
@@ -21552,7 +21552,7 @@ pub fn vreinterpret_f16_f64(a: float64x1_t) -> float16x4_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_f16_f64)"]
 #[inline]
 #[cfg(target_endian = "big")]
-#[target_feature(enable = "neon,fp16")]
+#[target_feature(enable = "neon")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(nop))]
@@ -21566,7 +21566,7 @@ pub fn vreinterpret_f16_f64(a: float64x1_t) -> float16x4_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_f16_f64)"]
 #[inline]
 #[cfg(target_endian = "little")]
-#[target_feature(enable = "neon,fp16")]
+#[target_feature(enable = "neon")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(nop))]
@@ -21577,7 +21577,7 @@ pub fn vreinterpretq_f16_f64(a: float64x2_t) -> float16x8_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_f16_f64)"]
 #[inline]
 #[cfg(target_endian = "big")]
-#[target_feature(enable = "neon,fp16")]
+#[target_feature(enable = "neon")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(nop))]
@@ -26719,7 +26719,7 @@ pub fn vsubq_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
 #[inline]
 #[target_feature(enable = "neon")]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
-#[cfg_attr(test, assert_instr(nop))]
+#[cfg_attr(test, assert_instr(sub))]
 pub fn vsubd_s64(a: i64, b: i64) -> i64 {
     a.wrapping_sub(b)
 }
@@ -26728,7 +26728,7 @@ pub fn vsubd_s64(a: i64, b: i64) -> i64 {
 #[inline]
 #[target_feature(enable = "neon")]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
-#[cfg_attr(test, assert_instr(nop))]
+#[cfg_attr(test, assert_instr(sub))]
 pub fn vsubd_u64(a: u64, b: u64) -> u64 {
     a.wrapping_sub(b)
 }
@@ -26738,7 +26738,7 @@ pub fn vsubd_u64(a: u64, b: u64) -> u64 {
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
 #[cfg(not(target_arch = "arm64ec"))]
-#[cfg_attr(test, assert_instr(nop))]
+#[cfg_attr(test, assert_instr(fsub))]
 pub fn vsubh_f16(a: f16, b: f16) -> f16 {
     a - b
 }
