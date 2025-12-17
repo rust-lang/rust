@@ -249,28 +249,7 @@ macro_rules! parse_conf_value_impl {
         let _ = &$field_span;
         deserialize!($map, $ty, $errors, $file)
     }};
-    ($map:expr, $ty:ty, $errors:expr, $file:expr, $field_span:expr, ($profiles:expr), ()) => {
-        deserialize_profiles!($map, $errors, $file, $field_span)
-    };
-    ($map:expr, $ty:ty, $errors:expr, $file:expr, $field_span:expr, (), ($disallowed:expr)) => {{
-        let _ = &$field_span;
-        deserialize!($map, $ty, $errors, $file, $disallowed)
-    }};
-    (
-        $map:expr,
-        $ty:ty,
-        $errors:expr,
-        $file:expr,
-        $field_span:expr,
-        ($profiles:expr),
-        ($disallowed:expr)
-    ) => {
-        compile_error!("field cannot specify both profiles and disallowed-paths attributes")
-    };
-}
-
-macro_rules! deserialize_profiles {
-    ($map:expr, $errors:expr, $file:expr, $field_span:expr) => {{
+    ($map:expr, $ty:ty, $errors:expr, $file:expr, $field_span:expr, ($profiles:expr), ()) => {{
         let raw_value = $map.next_value::<toml::Value>()?;
         let value_span = $field_span.clone();
         let toml::Value::Table(table) = raw_value else {
@@ -287,6 +266,21 @@ macro_rules! deserialize_profiles {
 
         (map, value_span)
     }};
+    ($map:expr, $ty:ty, $errors:expr, $file:expr, $field_span:expr, (), ($disallowed:expr)) => {{
+        let _ = &$field_span;
+        deserialize!($map, $ty, $errors, $file, $disallowed)
+    }};
+    (
+        $map:expr,
+        $ty:ty,
+        $errors:expr,
+        $file:expr,
+        $field_span:expr,
+        ($profiles:expr),
+        ($disallowed:expr)
+    ) => {
+        compile_error!("field cannot specify both profiles and disallowed-paths attributes")
+    };
 }
 
 macro_rules! define_Conf {

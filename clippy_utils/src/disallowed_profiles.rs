@@ -6,7 +6,7 @@ use rustc_hir::{Attribute, HirId};
 use rustc_lint::LateContext;
 use rustc_span::{Span, Symbol};
 
-#[derive(Clone)]
+#[derive(Copy, Clone)]
 pub struct ProfileEntry {
     pub attr_name: Symbol,
     pub name: Symbol,
@@ -39,6 +39,8 @@ pub struct ProfileResolver {
 
 impl ProfileResolver {
     pub fn active_profiles(&mut self, cx: &LateContext<'_>, hir_id: HirId) -> Option<&ProfileSelection> {
+        // NOTE: The `contains_key`+`get` dance is intentional: using only `get` here triggers borrowck
+        // errors because we need to mutate `self.cache` on cache misses.
         if self.cache.contains_key(&hir_id) {
             return self.cache.get(&hir_id).and_then(|selection| selection.as_ref());
         }

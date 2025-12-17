@@ -27,13 +27,16 @@ error: use of a disallowed type `std::sync::Mutex` (profile: export)
 LL |     let _value: Mutex<i32> = todo!();
    |                 ^^^^^^^^^^
 
-warning: `clippy::disallowed_profile` references unknown profile `unknown_type_profile` for `clippy::disallowed_methods`
+error: `clippy::disallowed_profile` references unknown profile `unknown_type_profile` for `clippy::disallowed_methods`
   --> tests/ui-toml/disallowed_profiles_types/main.rs:23:30
    |
 LL | #[clippy::disallowed_profile("unknown_type_profile")]
    |                              ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::disallowed-methods` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::disallowed_methods)]`
 
-warning: `clippy::disallowed_profile` references unknown profile `unknown_type_profile` for `clippy::disallowed_types`
+error: `clippy::disallowed_profile` references unknown profile `unknown_type_profile` for `clippy::disallowed_types`
   --> tests/ui-toml/disallowed_profiles_types/main.rs:23:30
    |
 LL | #[clippy::disallowed_profile("unknown_type_profile")]
@@ -59,5 +62,5 @@ error: use of a disallowed type `std::sync::Mutex` (profile: export)
 LL |     let _other: Mutex<i32> = todo!();
    |                 ^^^^^^^^^^
 
-error: aborting due to 7 previous errors; 2 warnings emitted
+error: aborting due to 9 previous errors
 

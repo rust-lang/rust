@@ -21,8 +21,8 @@ fn export_profile() {
 }
 
 #[clippy::disallowed_profile("unknown_type_profile")]
-//~^ WARN: unknown profile `unknown_type_profile` for
-//~| WARN: unknown profile `unknown_type_profile` for
+//~^ ERROR: unknown profile `unknown_type_profile` for
+//~| ERROR: unknown profile `unknown_type_profile` for
 fn unknown_profile() {
     let _other = 1u32;
     let _fallback: Rc<i32> = todo!(); //~ ERROR: use of a disallowed type `std::rc::Rc`

@@ -12,6 +12,12 @@ fn default_violation() {
     std::mem::drop(value); //~ ERROR: use of a disallowed method `std::mem::drop`
 }
 
+#[expect(clippy::disallowed_methods)]
+fn expected_violation() {
+    let value = String::from("test");
+    std::mem::drop(value);
+}
+
 #[clippy::disallowed_profile("forward_pass")]
 fn forward_profile() {
     let mut values = Vec::new();
@@ -25,8 +31,8 @@ fn export_profile() {
 }
 
 #[clippy::disallowed_profile("unknown_profile")]
-//~^ WARN: unknown profile `unknown_profile` for
-//~| WARN: unknown profile `unknown_profile` for
+//~^ ERROR: unknown profile `unknown_profile` for
+//~| ERROR: unknown profile `unknown_profile` for
 fn unknown_profile() {
     let mut values = Vec::new();
     values.push(1);
@@ -44,6 +50,7 @@ fn merged_profiles() {
 
 fn main() {
     default_violation();
+    expected_violation();
     forward_profile();
     export_profile();
     unknown_profile();

@@ -1,6 +1,6 @@
 use clippy_config::Conf;
 use clippy_config::types::{DisallowedPath, create_disallowed_map};
-use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
 use clippy_utils::disallowed_profiles::{ProfileEntry, ProfileResolver};
 use clippy_utils::paths::PathNS;
 use clippy_utils::sym;
@@ -107,21 +107,18 @@ impl DisallowedTypes {
         let default = TypeLookup::from_config(tcx, &conf.disallowed_types);
 
         let mut profiles = FxHashMap::default();
-        let mut names: Vec<_> = conf.profiles.keys().collect();
-        names.sort();
-        for name in names {
+        let mut known_profiles = FxHashSet::default();
+        let mut profile_entries: Vec<_> = conf.profiles.iter().collect();
+        profile_entries.sort_by(|(a, _), (b, _)| a.cmp(b));
+        for (name, profile) in profile_entries {
             let symbol = Symbol::intern(name.as_str());
-            let profile = conf.profiles.get(name).expect("profile entry must exist");
+            known_profiles.insert(symbol);
+
             let paths = profile.disallowed_types.as_slice();
             if paths.is_empty() {
                 continue;
             }
             profiles.insert(symbol, TypeLookup::from_config(tcx, paths));
-        }
-
-        let mut known_profiles = FxHashSet::default();
-        for name in conf.profiles.keys() {
-            known_profiles.insert(Symbol::intern(name.as_str()));
         }
 
         Self {
@@ -140,17 +137,15 @@ impl DisallowedTypes {
             } else {
                 "clippy::disallowed_profile"
             };
-            cx.tcx
-                .sess
-                .dcx()
-                .struct_span_warn(
-                    entry.span,
-                    format!(
-                        "`{attr_name}` references unknown profile `{}` for `clippy::disallowed_types`",
-                        entry.name
-                    ),
-                )
-                .emit();
+            span_lint(
+                cx,
+                DISALLOWED_TYPES,
+                entry.span,
+                format!(
+                    "`{attr_name}` references unknown profile `{}` for `clippy::disallowed_types`",
+                    entry.name
+                ),
+            );
         }
     }
 
@@ -162,7 +157,7 @@ impl DisallowedTypes {
                 if self.profiles.contains_key(&entry.name) {
                     active_profiles.push(entry.name);
                 } else if !self.known_profiles.contains(&entry.name) {
-                    unknown_profiles.push(entry.clone());
+                    unknown_profiles.push(*entry);
                 }
             }
         }

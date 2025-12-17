@@ -8,7 +8,7 @@ LL |     std::mem::drop(value);
    = help: to override `-D warnings` add `#[allow(clippy::disallowed_methods)]`
 
 error: use of a disallowed method `alloc::vec::Vec::push` (profile: forward_pass)
-  --> tests/ui-toml/disallowed_profiles_methods/main.rs:18:12
+  --> tests/ui-toml/disallowed_profiles_methods/main.rs:24:12
    |
 LL |     values.push(1);
    |            ^^^^
@@ -16,31 +16,34 @@ LL |     values.push(1);
    = note: push is forbidden in forward profile
 
 error: use of a disallowed method `core::option::Option::unwrap` (profile: export)
-  --> tests/ui-toml/disallowed_profiles_methods/main.rs:24:11
+  --> tests/ui-toml/disallowed_profiles_methods/main.rs:30:11
    |
 LL |     value.unwrap();
    |           ^^^^^^
 
-warning: `clippy::disallowed_profile` references unknown profile `unknown_profile` for `clippy::disallowed_methods`
-  --> tests/ui-toml/disallowed_profiles_methods/main.rs:27:30
+error: `clippy::disallowed_profile` references unknown profile `unknown_profile` for `clippy::disallowed_methods`
+  --> tests/ui-toml/disallowed_profiles_methods/main.rs:33:30
    |
 LL | #[clippy::disallowed_profile("unknown_profile")]
    |                              ^^^^^^^^^^^^^^^^^
 
-warning: `clippy::disallowed_profile` references unknown profile `unknown_profile` for `clippy::disallowed_types`
-  --> tests/ui-toml/disallowed_profiles_methods/main.rs:27:30
+error: `clippy::disallowed_profile` references unknown profile `unknown_profile` for `clippy::disallowed_types`
+  --> tests/ui-toml/disallowed_profiles_methods/main.rs:33:30
    |
 LL | #[clippy::disallowed_profile("unknown_profile")]
    |                              ^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::disallowed-types` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::disallowed_types)]`
 
 error: use of a disallowed method `std::mem::drop`
-  --> tests/ui-toml/disallowed_profiles_methods/main.rs:34:5
+  --> tests/ui-toml/disallowed_profiles_methods/main.rs:40:5
    |
 LL |     std::mem::drop(values);
    |     ^^^^^^^^^^^^^^
 
 error: use of a disallowed method `alloc::vec::Vec::push` (profile: forward_pass)
-  --> tests/ui-toml/disallowed_profiles_methods/main.rs:40:12
+  --> tests/ui-toml/disallowed_profiles_methods/main.rs:46:12
    |
 LL |     values.push(1);
    |            ^^^^
@@ -48,10 +51,10 @@ LL |     values.push(1);
    = note: push is forbidden in forward profile
 
 error: use of a disallowed method `core::option::Option::unwrap` (profile: export)
-  --> tests/ui-toml/disallowed_profiles_methods/main.rs:42:11
+  --> tests/ui-toml/disallowed_profiles_methods/main.rs:48:11
    |
 LL |     value.unwrap();
    |           ^^^^^^
 
-error: aborting due to 6 previous errors; 2 warnings emitted
+error: aborting due to 8 previous errors
 
