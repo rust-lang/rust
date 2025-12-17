@@ -116,7 +116,8 @@ pub(crate) fn check_externally_implementable_items<'tcx>(tcx: TyCtxt<'tcx>, (): 
         }
 
         if default_impls.len() > 1 {
-            panic!("multiple not supported right now");
+            let decl_span = tcx.def_ident_span(decl_did).unwrap();
+            tcx.dcx().span_delayed_bug(decl_span, "multiple not supported right now");
         }
 
         let (local_impl, is_default) =
