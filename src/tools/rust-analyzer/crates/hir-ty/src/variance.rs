@@ -105,6 +105,7 @@ fn glb(v1: Variance, v2: Variance) -> Variance {
 
 pub(crate) fn variances_of_cycle_initial(
     db: &dyn HirDatabase,
+    _: salsa::Id,
     def: GenericDefId,
 ) -> VariancesOf<'_> {
     let interner = DbInterner::new_no_crate(db);

@@ -2261,6 +2261,7 @@ pub fn mir_body_query<'db>(
 
 pub(crate) fn mir_body_cycle_result<'db>(
     _db: &'db dyn HirDatabase,
+    _: salsa::Id,
     _def: DefWithBodyId,
 ) -> Result<'db, Arc<MirBody<'db>>> {
     Err(MirLowerError::Loop)

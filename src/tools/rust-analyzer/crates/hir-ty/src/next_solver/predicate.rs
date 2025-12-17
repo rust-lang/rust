@@ -172,7 +172,7 @@ impl<'db> rustc_type_ir::relate::Relate<DbInterner<'db>> for BoundExistentialPre
     }
 }
 
-#[salsa::interned(constructor = new_)]
+#[salsa::interned(constructor = new_, unsafe(non_update_types))]
 pub struct Predicate<'db> {
     #[returns(ref)]
     kind_: InternedWrapperNoDebug<WithCachedTypeInfo<Binder<'db, PredicateKind<'db>>>>,
@@ -278,7 +278,7 @@ impl<'db> std::hash::Hash for InternedClausesWrapper<'db> {
     }
 }
 
-#[salsa::interned(constructor = new_)]
+#[salsa::interned(constructor = new_, unsafe(non_update_types))]
 pub struct Clauses<'db> {
     #[returns(ref)]
     inner_: InternedClausesWrapper<'db>,

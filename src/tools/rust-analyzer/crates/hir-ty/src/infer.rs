@@ -162,7 +162,7 @@ fn infer_query(db: &dyn HirDatabase, def: DefWithBodyId) -> InferenceResult<'_> 
     ctx.resolve_all()
 }
 
-fn infer_cycle_result(db: &dyn HirDatabase, _: DefWithBodyId) -> InferenceResult<'_> {
+fn infer_cycle_result(db: &dyn HirDatabase, _: salsa::Id, _: DefWithBodyId) -> InferenceResult<'_> {
     InferenceResult {
         has_errors: true,
         ..InferenceResult::new(Ty::new_error(DbInterner::new_no_crate(db), ErrorGuaranteed))
@@ -547,7 +547,7 @@ pub struct InferenceResult<'db> {
 
 #[salsa::tracked]
 impl<'db> InferenceResult<'db> {
-    #[salsa::tracked(returns(ref), cycle_result = infer_cycle_result)]
+    #[salsa::tracked(returns(ref), cycle_result = infer_cycle_result, unsafe(non_update_types))]
     pub fn for_body(db: &'db dyn HirDatabase, def: DefWithBodyId) -> InferenceResult<'db> {
         infer_query(db, def)
     }

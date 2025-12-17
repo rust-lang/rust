@@ -44,7 +44,7 @@ pub type SimplifiedType = rustc_type_ir::fast_reject::SimplifiedType<SolverDefId
 pub type TyKind<'db> = rustc_type_ir::TyKind<DbInterner<'db>>;
 pub type FnHeader<'db> = rustc_type_ir::FnHeader<DbInterner<'db>>;
 
-#[salsa::interned(constructor = new_)]
+#[salsa::interned(constructor = new_, unsafe(non_update_types))]
 pub struct Ty<'db> {
     #[returns(ref)]
     kind_: InternedWrapperNoDebug<WithCachedTypeInfo<TyKind<'db>>>,

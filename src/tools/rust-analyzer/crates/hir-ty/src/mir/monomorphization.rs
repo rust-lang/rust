@@ -223,6 +223,7 @@ pub fn monomorphized_mir_body_query<'db>(
 
 pub(crate) fn monomorphized_mir_body_cycle_result<'db>(
     _db: &'db dyn HirDatabase,
+    _: salsa::Id,
     _: DefWithBodyId,
     _: GenericArgs<'db>,
     _: ParamEnvAndCrate<'db>,

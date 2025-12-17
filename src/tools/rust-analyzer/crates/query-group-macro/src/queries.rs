@@ -49,7 +49,7 @@ impl ToTokens for TrackedQuery {
             })
             .into_iter()
             .chain(self.lru.map(|lru| quote!(lru = #lru)))
-            .chain(Some(quote!(unsafe(non_update_return_type))));
+            .chain(Some(quote!(unsafe(non_update_types))));
         let annotation = quote!(#[salsa_macros::tracked( #(#options),* )]);
 
         let pat_and_tys = &self.pat_and_tys;

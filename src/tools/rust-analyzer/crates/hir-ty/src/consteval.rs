@@ -257,6 +257,7 @@ pub(crate) fn eval_to_const<'db>(expr: ExprId, ctx: &mut InferenceContext<'_, 'd
 
 pub(crate) fn const_eval_cycle_result<'db>(
     _: &'db dyn HirDatabase,
+    _: salsa::Id,
     _: ConstId,
     _: GenericArgs<'db>,
     _: Option<ParamEnvAndCrate<'db>>,
@@ -266,6 +267,7 @@ pub(crate) fn const_eval_cycle_result<'db>(
 
 pub(crate) fn const_eval_static_cycle_result<'db>(
     _: &'db dyn HirDatabase,
+    _: salsa::Id,
     _: StaticId,
 ) -> Result<Const<'db>, ConstEvalError<'db>> {
     Err(ConstEvalError::MirLowerError(MirLowerError::Loop))
@@ -273,6 +275,7 @@ pub(crate) fn const_eval_static_cycle_result<'db>(
 
 pub(crate) fn const_eval_discriminant_cycle_result<'db>(
     _: &'db dyn HirDatabase,
+    _: salsa::Id,
     _: EnumVariantId,
 ) -> Result<i128, ConstEvalError<'db>> {
     Err(ConstEvalError::MirLowerError(MirLowerError::Loop))
