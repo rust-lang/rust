@@ -734,6 +734,23 @@ fn expected_type_and_name<'db>(
                     }.map(TypeInfo::original);
                     (ty, None)
                 },
+                ast::MatchArm(it) => {
+                    let on_arrow = previous_non_trivia_token(token.clone()).is_some_and(|it| T![=>] == it.kind());
+                    let in_body = it.expr().is_some_and(|it| it.syntax().text_range().contains_range(token.text_range()));
+                    let match_expr = it.syntax().ancestors().nth(2).and_then(ast::MatchExpr::cast);
+
+                    let ty = if on_arrow || in_body {
+                        // match foo { ..., pat => $0 }
+                        cov_mark::hit!(expected_type_match_arm_body_without_leading_char);
+                        cov_mark::hit!(expected_type_match_arm_body_with_leading_char);
+                        match_expr.and_then(|it| sema.type_of_expr(&it.into()))
+                    } else {
+                        // match foo { $0 }
+                        cov_mark::hit!(expected_type_match_arm_without_leading_char);
+                        match_expr.and_then(|it| it.expr()).and_then(|e| sema.type_of_expr(&e))
+                    }.map(TypeInfo::original);
+                    (ty, None)
+                },
                 ast::IfExpr(it) => {
                     let ty = if let Some(body) = it.then_branch()
                         && token.text_range().end() > body.syntax().text_range().start()
