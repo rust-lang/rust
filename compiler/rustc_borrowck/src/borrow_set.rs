@@ -307,9 +307,7 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'tcx> {
             let &ty::Adt(reborrowed_adt, reborrowed_args) = borrowed_place_ty.kind() else {
                 unreachable!()
             };
-            let &ty::Adt(target_adt, target_args) =
-                assigned_place.ty(self.body, self.tcx).ty.kind()
-            else {
+            let &ty::Adt(target_adt, _) = assigned_place.ty(self.body, self.tcx).ty.kind() else {
                 unreachable!()
             };
             let borrow = if mutability == Mutability::Mut {
@@ -345,7 +343,7 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'tcx> {
                     )
                 }
                 let Some(ty::GenericArgKind::Lifetime(region)) =
-                    target_args.get(0).map(|r| r.kind())
+                    reborrowed_args.get(0).map(|r| r.kind())
                 else {
                     bug!(
                         "hir-typeck passed but {} does not have a lifetime argument",

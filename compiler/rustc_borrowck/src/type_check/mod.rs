@@ -2506,10 +2506,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             // field by field with CoerceShared drilling down and down and down.
             // We cannot just attempt to relate T and <T as CoerceShared>::Target
             // by calling relate_types.
-            let dest_adt = dest_ty.ty_adt_def().unwrap();
-            let ty::Adt(_, dest_args) = dest_ty.kind() else { unreachable!() };
-            let ty::Adt(_, borrowed_args) = borrowed_ty.kind() else { unreachable!() };
-            let borrowed_adt = borrowed_ty.ty_adt_def().unwrap();
+            let ty::Adt(dest_adt, dest_args) = dest_ty.kind() else { unreachable!() };
+            let ty::Adt(borrowed_adt, borrowed_args) = borrowed_ty.kind() else { unreachable!() };
             let borrowed_fields = borrowed_adt.all_fields().collect::<Vec<_>>();
             for dest_field in dest_adt.all_fields() {
                 let Some(borrowed_field) =
