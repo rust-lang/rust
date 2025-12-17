@@ -1,6 +1,6 @@
 use rustc_feature::AttributeTemplate;
 use rustc_hir::attrs::{AttributeKind, CfgEntry};
-use rustc_span::{Symbol, sym, Span};
+use rustc_span::{Span, Symbol, sym};
 
 use crate::attributes::{CombineAttributeParser, ConvertFn};
 use crate::context::{AcceptContext, Stage};
