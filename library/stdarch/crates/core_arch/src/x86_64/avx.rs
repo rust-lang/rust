@@ -9,7 +9,7 @@
 //!
 //! [Wikipedia][wiki] provides a quick overview of the instructions available.
 //!
-//! [intel64_ref]: http://www.intel.de/content/dam/www/public/us/en/documents/manuals/64-ia-32-architectures-software-developer-instruction-set-reference-manual-325383.pdf
+//! [intel64_ref]: https://www.intel.com/content/dam/www/public/us/en/documents/manuals/64-ia-32-architectures-software-developer-instruction-set-reference-manual-325383.pdf
 //! [amd64_ref]: https://docs.amd.com/v/u/en-US/24594_3.37
 //! [wiki]: https://en.wikipedia.org/wiki/Advanced_Vector_Extensions
 
