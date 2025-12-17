@@ -40,7 +40,7 @@ use std::sync::Arc;
 
 use rustc_ast::node_id::NodeMap;
 use rustc_ast::{self as ast, *};
-use rustc_attr_parsing::{AttributeParser, Late, OmitDoc};
+use rustc_attr_parsing::{AttributeParser, Late, OmitDoc, ShouldEmit};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -208,6 +208,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 tcx.features(),
                 registered_tools,
                 Late,
+                ShouldEmit::ErrorsAndLints,
             ),
             delayed_lints: Vec::new(),
         }

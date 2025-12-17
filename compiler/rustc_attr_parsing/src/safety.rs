@@ -4,7 +4,7 @@ use rustc_hir::AttrPath;
 use rustc_hir::lints::{AttributeLint, AttributeLintKind};
 use rustc_session::lint::LintId;
 use rustc_session::lint::builtin::UNSAFE_ATTR_OUTSIDE_UNSAFE;
-use rustc_span::{Span, sym};
+use rustc_span::Span;
 
 use crate::context::Stage;
 use crate::{AttributeParser, ShouldEmit};
@@ -17,18 +17,12 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
         attr_safety: Safety,
         emit_lint: &mut impl FnMut(AttributeLint<S::Id>),
         target_id: S::Id,
-        should_emit: ShouldEmit,
     ) {
-        if matches!(should_emit, ShouldEmit::Nothing) {
+        if matches!(self.should_emit, ShouldEmit::Nothing) {
             return;
         }
 
         let name = (attr_path.segments.len() == 1).then_some(attr_path.segments[0].name);
-        if let Some(name) = name
-            && [sym::cfg_trace, sym::cfg_attr_trace].contains(&name)
-        {
-            return;
-        }
 
         // FIXME: We should retrieve this information from the attribute parsers instead of from `BUILTIN_ATTRIBUTE_MAP`
         let builtin_attr_info = name.and_then(|name| BUILTIN_ATTRIBUTE_MAP.get(&name));
@@ -75,18 +69,15 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
                 }
 
                 if emit_error {
-                    self.stage.emit_err(
-                        self.sess,
-                        crate::session_diagnostics::UnsafeAttrOutsideUnsafe {
-                            span: path_span,
-                            suggestion: not_from_proc_macro.then(|| {
-                                crate::session_diagnostics::UnsafeAttrOutsideUnsafeSuggestion {
-                                    left: diag_span.shrink_to_lo(),
-                                    right: diag_span.shrink_to_hi(),
-                                }
-                            }),
-                        },
-                    );
+                    self.emit_err(crate::session_diagnostics::UnsafeAttrOutsideUnsafe {
+                        span: path_span,
+                        suggestion: not_from_proc_macro.then(|| {
+                            crate::session_diagnostics::UnsafeAttrOutsideUnsafeSuggestion {
+                                left: diag_span.shrink_to_lo(),
+                                right: diag_span.shrink_to_hi(),
+                            }
+                        }),
+                    });
                 } else {
                     emit_lint(AttributeLint {
                         lint_id: LintId::of(UNSAFE_ATTR_OUTSIDE_UNSAFE),
@@ -104,13 +95,10 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
             // - Normal builtin attribute
             // - Writing `#[unsafe(..)]` is not permitted on normal builtin attributes
             (None | Some(AttributeSafety::Normal), Safety::Unsafe(unsafe_span)) => {
-                self.stage.emit_err(
-                    self.sess,
-                    crate::session_diagnostics::InvalidAttrUnsafe {
-                        span: unsafe_span,
-                        name: attr_path.clone(),
-                    },
-                );
+                self.emit_err(crate::session_diagnostics::InvalidAttrUnsafe {
+                    span: unsafe_span,
+                    name: attr_path.clone(),
+                });
             }
 
             // - Normal builtin attribute

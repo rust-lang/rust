@@ -103,7 +103,7 @@ fn parse_cfg_entry_version<S: Stage>(
     list: &MetaItemListParser,
     meta_span: Span,
 ) -> Result<CfgEntry, ErrorGuaranteed> {
-    try_gate_cfg(sym::version, meta_span, cx.sess(), cx.features_option());
+    try_gate_cfg(sym::version, meta_span, cx);
     let Some(version) = list.single() else {
         return Err(
             cx.emit_err(session_diagnostics::ExpectedSingleVersionLiteral { span: list.span })
@@ -135,7 +135,8 @@ fn parse_cfg_entry_target<S: Stage>(
     list: &MetaItemListParser,
     meta_span: Span,
 ) -> Result<CfgEntry, ErrorGuaranteed> {
-    if let Some(features) = cx.features_option()
+    if let ShouldEmit::ErrorsAndLints = cx.should_emit
+        && let Some(features) = cx.features_option()
         && !features.cfg_target_compact()
     {
         feature_err(
@@ -180,7 +181,7 @@ pub(crate) fn parse_name_value<S: Stage>(
     span: Span,
     cx: &mut AcceptContext<'_, '_, S>,
 ) -> Result<CfgEntry, ErrorGuaranteed> {
-    try_gate_cfg(name, span, cx.sess(), cx.features_option());
+    try_gate_cfg(name, span, cx);
 
     let value = match value {
         None => None,
@@ -413,10 +414,13 @@ fn parse_cfg_attr_internal<'a>(
     Ok((cfg_predicate, expanded_attrs))
 }
 
-fn try_gate_cfg(name: Symbol, span: Span, sess: &Session, features: Option<&Features>) {
+fn try_gate_cfg<S: Stage>(name: Symbol, span: Span, cx: &mut AcceptContext<'_, '_, S>) {
+    if let ShouldEmit::Nothing = cx.should_emit {
+        return;
+    }
     let gate = find_gated_cfg(|sym| sym == name);
-    if let (Some(feats), Some(gated_cfg)) = (features, gate) {
-        gate_cfg(gated_cfg, span, sess, feats);
+    if let (Some(feats), Some(gated_cfg)) = (cx.features, gate) {
+        gate_cfg(gated_cfg, span, cx.sess, feats);
     }
 }
 

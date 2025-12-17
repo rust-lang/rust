@@ -5,12 +5,11 @@ use std::sync::LazyLock;
 
 use private::Sealed;
 use rustc_ast::{AttrStyle, CRATE_NODE_ID, MetaItemLit, NodeId};
-use rustc_errors::{Diag, Diagnostic, Level};
+use rustc_errors::{Diag, Level};
 use rustc_feature::{AttrSuggestionStyle, AttributeTemplate};
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::lints::{AttributeLint, AttributeLintKind};
 use rustc_hir::{AttrPath, CRATE_HIR_ID, HirId};
-use rustc_session::Session;
 use rustc_session::lint::{Lint, LintId};
 use rustc_span::{ErrorGuaranteed, Span, Symbol};
 
@@ -282,14 +281,6 @@ pub trait Stage: Sized + 'static + Sealed {
 
     fn parsers() -> &'static GroupType<Self>;
 
-    fn emit_err<'sess>(
-        &self,
-        sess: &'sess Session,
-        diag: impl for<'x> Diagnostic<'x>,
-    ) -> ErrorGuaranteed;
-
-    fn should_emit(&self) -> ShouldEmit;
-
     fn id_is_crate_root(id: Self::Id) -> bool;
 }
 
@@ -300,17 +291,6 @@ impl Stage for Early {
 
     fn parsers() -> &'static GroupType<Self> {
         &early::ATTRIBUTE_PARSERS
-    }
-    fn emit_err<'sess>(
-        &self,
-        sess: &'sess Session,
-        diag: impl for<'x> Diagnostic<'x>,
-    ) -> ErrorGuaranteed {
-        self.should_emit().emit_err(sess.dcx().create_err(diag))
-    }
-
-    fn should_emit(&self) -> ShouldEmit {
-        self.emit_errors
     }
 
     fn id_is_crate_root(id: Self::Id) -> bool {
@@ -326,17 +306,6 @@ impl Stage for Late {
     fn parsers() -> &'static GroupType<Self> {
         &late::ATTRIBUTE_PARSERS
     }
-    fn emit_err<'sess>(
-        &self,
-        tcx: &'sess Session,
-        diag: impl for<'x> Diagnostic<'x>,
-    ) -> ErrorGuaranteed {
-        tcx.dcx().emit_err(diag)
-    }
-
-    fn should_emit(&self) -> ShouldEmit {
-        ShouldEmit::ErrorsAndLints
-    }
 
     fn id_is_crate_root(id: Self::Id) -> bool {
         id == CRATE_HIR_ID
@@ -344,12 +313,8 @@ impl Stage for Late {
 }
 
 /// used when parsing attributes for miscellaneous things *before* ast lowering
-pub struct Early {
-    /// Whether to emit errors or delay them as a bug
-    /// For most attributes, the attribute will be parsed again in the `Late` stage and in this case the errors should be delayed
-    /// But for some, such as `cfg`, the attribute will be removed before the `Late` stage so errors must be emitted
-    pub emit_errors: ShouldEmit,
-}
+pub struct Early;
+
 /// used when parsing attributes during ast lowering
 pub struct Late;
 
@@ -386,16 +351,12 @@ pub struct AcceptContext<'f, 'sess, S: Stage> {
 }
 
 impl<'f, 'sess: 'f, S: Stage> SharedContext<'f, 'sess, S> {
-    pub(crate) fn emit_err(&self, diag: impl for<'x> Diagnostic<'x>) -> ErrorGuaranteed {
-        self.stage.emit_err(&self.sess, diag)
-    }
-
     /// Emit a lint. This method is somewhat special, since lints emitted during attribute parsing
     /// must be delayed until after HIR is built. This method will take care of the details of
     /// that.
     pub(crate) fn emit_lint(&mut self, lint: &'static Lint, kind: AttributeLintKind, span: Span) {
         if !matches!(
-            self.stage.should_emit(),
+            self.should_emit,
             ShouldEmit::ErrorsAndLints | ShouldEmit::EarlyFatal { also_emit_lints: true }
         ) {
             return;

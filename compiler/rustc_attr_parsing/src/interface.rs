@@ -3,14 +3,14 @@ use std::convert::identity;
 use rustc_ast as ast;
 use rustc_ast::token::DocFragmentKind;
 use rustc_ast::{AttrStyle, NodeId, Safety};
-use rustc_errors::DiagCtxtHandle;
+use rustc_errors::{DiagCtxtHandle, Diagnostic};
 use rustc_feature::{AttributeTemplate, Features};
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::lints::AttributeLint;
 use rustc_hir::{AttrArgs, AttrItem, AttrPath, Attribute, HashIgnoredAttrId, Target};
 use rustc_session::Session;
 use rustc_session::lint::BuiltinLintDiag;
-use rustc_span::{DUMMY_SP, Span, Symbol, sym};
+use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, Symbol, sym};
 
 use crate::context::{AcceptContext, FinalizeContext, SharedContext, Stage};
 use crate::parser::{ArgParser, PathParser, RefPathParser};
@@ -23,7 +23,8 @@ pub struct AttributeParser<'sess, S: Stage = Late> {
     pub(crate) tools: Vec<Symbol>,
     pub(crate) features: Option<&'sess Features>,
     pub(crate) sess: &'sess Session,
-    pub(crate) stage: S,
+    pub(crate) _stage: S,
+    pub(crate) should_emit: ShouldEmit,
 
     /// *Only* parse attributes with this symbol.
     ///
@@ -105,10 +106,10 @@ impl<'sess> AttributeParser<'sess, Early> {
         target_span: Span,
         target_node_id: NodeId,
         features: Option<&'sess Features>,
-        emit_errors: ShouldEmit,
+        should_emit: ShouldEmit,
     ) -> Vec<Attribute> {
         let mut p =
-            Self { features, tools: Vec::new(), parse_only, sess, stage: Early { emit_errors } };
+            Self { features, tools: Vec::new(), parse_only, sess, _stage: Early, should_emit };
         p.parse_attribute_list(
             attrs,
             target_span,
@@ -179,7 +180,7 @@ impl<'sess> AttributeParser<'sess, Early> {
         target_span: Span,
         target_node_id: NodeId,
         features: Option<&'sess Features>,
-        emit_errors: ShouldEmit,
+        should_emit: ShouldEmit,
         args: &I,
         parse_fn: fn(cx: &mut AcceptContext<'_, '_, Early>, item: &I) -> T,
         template: &AttributeTemplate,
@@ -189,7 +190,8 @@ impl<'sess> AttributeParser<'sess, Early> {
             tools: Vec::new(),
             parse_only: None,
             sess,
-            stage: Early { emit_errors },
+            _stage: Early,
+            should_emit,
         };
         let mut emit_lint = |lint: AttributeLint<NodeId>| {
             sess.psess.buffer_lint(
@@ -206,7 +208,6 @@ impl<'sess> AttributeParser<'sess, Early> {
                 safety,
                 &mut emit_lint,
                 target_node_id,
-                emit_errors,
             )
         }
         let mut cx: AcceptContext<'_, 'sess, Early> = AcceptContext {
@@ -233,8 +234,9 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
         features: &'sess Features,
         tools: Vec<Symbol>,
         stage: S,
+        should_emit: ShouldEmit,
     ) -> Self {
-        Self { features: Some(features), tools, parse_only: None, sess, stage }
+        Self { features: Some(features), tools, parse_only: None, sess, _stage: stage, should_emit }
     }
 
     pub(crate) fn sess(&self) -> &'sess Session {
@@ -253,6 +255,10 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
         self.sess().dcx()
     }
 
+    pub(crate) fn emit_err(&self, diag: impl for<'x> Diagnostic<'x>) -> ErrorGuaranteed {
+        self.should_emit.emit_err(self.dcx().create_err(diag))
+    }
+
     /// Parse a list of attributes.
     ///
     /// `target_span` is the span of the thing this list of attributes is applied to,
@@ -264,14 +270,16 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
         target_id: S::Id,
         target: Target,
         omit_doc: OmitDoc,
-
         lower_span: impl Copy + Fn(Span) -> Span,
         mut emit_lint: impl FnMut(AttributeLint<S::Id>),
     ) -> Vec<Attribute> {
         let mut attributes = Vec::new();
         let mut attr_paths: Vec<RefPathParser<'_>> = Vec::new();
+        let old_should_emit = self.should_emit;
 
         for attr in attrs {
+            self.should_emit = old_should_emit; //FIXME ugly solution
+
             // If we're only looking for a single attribute, skip all the ones we don't care about.
             if let Some(expected) = self.parse_only {
                 if !attr.has_name(expected) {
@@ -305,11 +313,10 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
                 ast::AttrKind::Normal(n) => {
                     attr_paths.push(PathParser(&n.item.path));
                     let attr_path = AttrPath::from_ast(&n.item.path, lower_span);
-                    let mut should_emit = self.stage.should_emit();
 
                     // Don't emit anything for trace attributes
                     if attr.has_any_name(&[sym::cfg_trace, sym::cfg_attr_trace]) {
-                        should_emit = ShouldEmit::Nothing;
+                        self.should_emit = ShouldEmit::Nothing;
                     }
 
                     self.check_attribute_safety(
@@ -318,7 +325,6 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
                         n.item.unsafety,
                         &mut emit_lint,
                         target_id,
-                        should_emit,
                     );
 
                     let parts =
@@ -329,7 +335,7 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
                             &n.item.args,
                             &parts,
                             &self.sess.psess,
-                            should_emit,
+                            self.should_emit,
                         ) else {
                             continue;
                         };
@@ -382,9 +388,7 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
                             };
 
                             (accept.accept_fn)(&mut cx, &args);
-                            if !matches!(should_emit, ShouldEmit::Nothing) {
-                                Self::check_target(&accept.allowed_targets, target, &mut cx);
-                            }
+                            Self::check_target(&accept.allowed_targets, target, &mut cx);
                         }
                     } else {
                         // If we're here, we must be compiling a tool attribute... Or someone

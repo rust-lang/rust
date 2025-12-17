@@ -7,9 +7,9 @@ use rustc_hir::lints::AttributeLintKind;
 use rustc_hir::{MethodKind, Target};
 use rustc_span::sym;
 
-use crate::AttributeParser;
 use crate::context::{AcceptContext, Stage};
 use crate::session_diagnostics::InvalidTarget;
+use crate::{AttributeParser, ShouldEmit};
 
 #[derive(Debug)]
 pub(crate) enum AllowedTargets {
@@ -95,6 +95,10 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
         target: Target,
         cx: &mut AcceptContext<'_, 'sess, S>,
     ) {
+        if matches!(cx.should_emit, ShouldEmit::Nothing) {
+            return;
+        }
+
         Self::check_type(matches!(allowed_targets, AllowedTargets::CrateLevel), target, cx);
 
         match allowed_targets.is_allowed(target) {

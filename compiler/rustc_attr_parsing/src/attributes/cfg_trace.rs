@@ -2,11 +2,11 @@ use rustc_feature::AttributeTemplate;
 use rustc_hir::attrs::{AttributeKind, CfgEntry};
 use rustc_span::{Symbol, sym};
 
-use crate::{parse_cfg_entry, CFG_TEMPLATE};
 use crate::attributes::{CombineAttributeParser, ConvertFn};
 use crate::context::{AcceptContext, Stage};
 use crate::parser::ArgParser;
 use crate::target_checking::{ALL_TARGETS, AllowedTargets};
+use crate::{CFG_TEMPLATE, parse_cfg_entry};
 
 pub(crate) struct CfgTraceParser;
 
@@ -22,11 +22,9 @@ impl<S: Stage> CombineAttributeParser<S> for CfgTraceParser {
         args: &ArgParser,
     ) -> impl IntoIterator<Item = Self::Item> {
         let Some(list) = args.list() else {
-            cx.expected_list(cx.attr_span, args);
             return None;
         };
         let Some(entry) = list.single() else {
-            cx.expected_single_argument(list.span);
             return None;
         };
 
