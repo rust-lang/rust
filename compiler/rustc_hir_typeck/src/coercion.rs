@@ -1387,6 +1387,7 @@ pub(crate) struct CoerceMany<'tcx, 'exprs, E: AsCoercionSite> {
     final_ty: Option<Ty<'tcx>>,
     expressions: Expressions<'tcx, 'exprs, E>,
     pushed: usize,
+    force_lub: bool,
 }
 
 /// The type of a `CoerceMany` that is storing up the expressions into
@@ -1416,7 +1417,13 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
     }
 
     fn make(expected_ty: Ty<'tcx>, expressions: Expressions<'tcx, 'exprs, E>) -> Self {
-        CoerceMany { expected_ty, final_ty: None, expressions, pushed: 0 }
+        CoerceMany { expected_ty, final_ty: None, expressions, pushed: 0, force_lub: false }
+    }
+
+    pub(crate) fn force_lub(&mut self) {
+        // Don't accidentally let someone switch this after coercing things
+        assert_eq!(self.pushed, 0);
+        self.force_lub = true;
     }
 
     /// Returns the "expected type" with which this coercion was
@@ -1529,10 +1536,9 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
 
         // Handle the actual type unification etc.
         let result = if let Some(expression) = expression {
-            if self.pushed == 0 {
-                // Special-case the first expression we are coercing.
-                // To be honest, I'm not entirely sure why we do this.
-                // We don't allow two-phase borrows, see comment in try_find_coercion_lub for why
+            if !self.force_lub && self.pushed == 0 {
+                // For this *first* expression, we do *not* use LUB
+                // (which `try_find_coercion_lub` does).
                 fcx.coerce(
                     expression,
                     expression_ty,
