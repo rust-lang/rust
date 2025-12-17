@@ -931,11 +931,20 @@ pub enum AttributeKind {
     /// Represents `#[rustc_legacy_const_generics]`
     RustcLegacyConstGenerics { fn_indexes: ThinVec<(usize, Span)>, attr_span: Span },
 
+    /// Represents `#[rustc_lint_opt_ty]`
+    RustcLintOptTy,
+
+    /// Represents `#[rustc_lint_query_instability]`
+    RustcLintQueryInstability,
+
     /// Represents `#[rustc_main]`.
     RustcMain,
 
     /// Represents `#[rustc_never_returns_null_ptr]`
     RustcNeverReturnsNullPointer,
+
+    /// Represents `#[rustc_no_implicit_autorefs]`
+    RustcNoImplicitAutorefs,
 
     /// Represents `#[rustc_object_lifetime_default]`.
     RustcObjectLifetimeDefault,
