@@ -17,7 +17,7 @@ jobs:
       zulip-stream-id: 219381
       zulip-topic: 'compiler-builtins subtree sync automation'
       zulip-bot-email: "compiler-builtins-ci-bot@rust-lang.zulipchat.com"
-      pr-base-branch: master
+      pr-base-branch: main
       branch-name: rustc-pull
     secrets:
       zulip-api-token: ${{ secrets.ZULIP_API_TOKEN }}
