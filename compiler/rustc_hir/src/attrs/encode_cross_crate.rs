@@ -70,6 +70,7 @@ impl AttributeKind {
             Naked(..) => No,
             NoCore(..) => No,
             NoImplicitPrelude(..) => No,
+            NoLink => No,
             NoMangle(..) => Yes, // Needed for rustdoc
             NoStd(..) => No,
             NonExhaustive(..) => Yes, // Needed for rustdoc

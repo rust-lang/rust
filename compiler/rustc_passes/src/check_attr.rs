@@ -254,6 +254,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::LinkSection { .. }
                     | AttributeKind::MacroUse { .. }
                     | AttributeKind::MacroEscape( .. )
+                    | AttributeKind::NoLink
                     | AttributeKind::RustcLayoutScalarValidRangeStart(..)
                     | AttributeKind::RustcLayoutScalarValidRangeEnd(..)
                     | AttributeKind::RustcScalableVector { .. }
@@ -303,7 +304,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             self.check_diagnostic_on_const(attr.span(), hir_id, target, item)
                         }
                         [sym::thread_local, ..] => self.check_thread_local(attr, span, target),
-                        [sym::no_link, ..] => self.check_no_link(hir_id, attr, span, target),
                         [sym::rustc_no_implicit_autorefs, ..] => {
                             self.check_applied_to_fn_or_method(hir_id, attr.span(), span, target)
                         }
@@ -455,15 +455,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         self.check_repr(attrs, span, target, item, hir_id);
         self.check_rustc_force_inline(hir_id, attrs, target);
         self.check_mix_no_mangle_export(hir_id, attrs);
-    }
-
-    fn inline_attr_str_error_with_macro_def(&self, hir_id: HirId, attr_span: Span, sym: &str) {
-        self.tcx.emit_node_span_lint(
-            UNUSED_ATTRIBUTES,
-            hir_id,
-            attr_span,
-            errors::IgnoredAttrWithMacro { sym },
-        );
     }
 
     fn check_eii_impl(&self, impls: &[EiiImpl], target: Target) {
@@ -1197,23 +1188,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             attr_span,
             errors::Link { span: (target != Target::ForeignMod).then_some(span) },
         );
-    }
-
-    /// Checks if `#[no_link]` is applied to an `extern crate`.
-    fn check_no_link(&self, hir_id: HirId, attr: &Attribute, span: Span, target: Target) {
-        match target {
-            Target::ExternCrate => {}
-            // FIXME(#80564): We permit struct fields, match arms and macro defs to have an
-            // `#[no_link]` attribute with just a lint, because we previously
-            // erroneously allowed it and some crates used it accidentally, to be compatible
-            // with crates depending on them, we can't throw an error here.
-            Target::Field | Target::Arm | Target::MacroDef => {
-                self.inline_attr_str_error_with_macro_def(hir_id, attr.span(), "no_link");
-            }
-            _ => {
-                self.dcx().emit_err(errors::NoLink { attr_span: attr.span(), span });
-            }
-        }
     }
 
     /// Checks if `#[rustc_legacy_const_generics]` is applied to a function and has a valid argument.
