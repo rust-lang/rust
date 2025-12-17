@@ -143,7 +143,7 @@ impl Socket {
             )
         })?;
         unsafe {
-            buf.advance(ret as usize);
+            buf.advance_unchecked(ret as usize);
         }
         Ok(())
     }
