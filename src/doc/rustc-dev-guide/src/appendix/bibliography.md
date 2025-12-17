@@ -79,8 +79,7 @@ Rust, as well as publications about Rust.
 * [Session Types for Rust](https://munksgaard.me/papers/laumann-munksgaard-larsen.pdf).
   Philip Munksgaard's master's thesis.
   Research for Servo.
-* [Ownership is Theft: Experiences Building an Embedded OS in Rust - Amit Levy, et.
-  al.](https://amitlevy.com/papers/tock-plos2015.pdf)
+* [Ownership is Theft: Experiences Building an Embedded OS in Rust - Amit Levy, et. al.](https://amitlevy.com/papers/tock-plos2015.pdf)
 * [You can't spell trust without Rust](https://faultlore.com/blah/papers/thesis.pdf).
   Aria Beingessner's master's thesis.
 * [Rust-Bio: a fast and safe bioinformatics library](https://rust-bio.github.io/).
