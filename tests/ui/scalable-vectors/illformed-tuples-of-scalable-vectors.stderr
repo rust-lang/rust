@@ -1,0 +1,38 @@
+error: scalable vectors must be tuple structs
+  --> $DIR/illformed-tuples-of-scalable-vectors.rs:15:1
+   |
+LL | struct Struct { x: ValidI64, y: ValidI64 }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: all fields in a scalable vector struct must be the same type
+  --> $DIR/illformed-tuples-of-scalable-vectors.rs:19:39
+   |
+LL | struct DifferentVectorTypes(ValidI64, ValidI32);
+   |                                       ^^^^^^^^
+
+error: scalable vector structs can only have scalable vector fields
+  --> $DIR/illformed-tuples-of-scalable-vectors.rs:23:23
+   |
+LL | struct NonVectorTypes(u32, u64);
+   |                       ^^^
+
+error: scalable vector structs can only have scalable vector fields
+  --> $DIR/illformed-tuples-of-scalable-vectors.rs:27:32
+   |
+LL | struct DifferentNonVectorTypes(u32, u64);
+   |                                ^^^
+
+error: scalable vector structs can only have scalable vector fields
+  --> $DIR/illformed-tuples-of-scalable-vectors.rs:31:34
+   |
+LL | struct SomeVectorTypes(ValidI64, u64);
+   |                                  ^^^
+
+error: scalable vector structs cannot contain other scalable vector structs
+  --> $DIR/illformed-tuples-of-scalable-vectors.rs:35:20
+   |
+LL | struct NestedTuple(ValidTuple, ValidTuple);
+   |                    ^^^^^^^^^^
+
+error: aborting due to 6 previous errors
+

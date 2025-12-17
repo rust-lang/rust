@@ -6,14 +6,17 @@ mod simd;
 
 use std::assert_matches::assert_matches;
 
-use rustc_abi::{FieldIdx, HasDataLayout, Size, VariantIdx};
+use rustc_abi::{FIRST_VARIANT, FieldIdx, HasDataLayout, Size, VariantIdx};
 use rustc_apfloat::ieee::{Double, Half, Quad, Single};
+use rustc_hir::def_id::CRATE_DEF_ID;
+use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::mir::interpret::{CTFE_ALLOC_SALT, read_target_uint, write_target_uint};
 use rustc_middle::mir::{self, BinOp, ConstValue, NonDivergingIntrinsic};
 use rustc_middle::ty::layout::TyAndLayout;
-use rustc_middle::ty::{FloatTy, Ty, TyCtxt};
+use rustc_middle::ty::{FloatTy, PolyExistentialPredicate, Ty, TyCtxt, TypeFoldable};
 use rustc_middle::{bug, span_bug, ty};
 use rustc_span::{Symbol, sym};
+use rustc_trait_selection::traits::{Obligation, ObligationCause, ObligationCtxt};
 use tracing::trace;
 
 use super::memory::MemoryKind;
@@ -218,6 +221,49 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let offset = layout.fields.offset(field).bytes();
 
                 self.write_scalar(Scalar::from_target_usize(offset, self), dest)?;
+            }
+            sym::vtable_for => {
+                let tp_ty = instance.args.type_at(0);
+                let result_ty = instance.args.type_at(1);
+
+                ensure_monomorphic_enough(tcx, tp_ty)?;
+                ensure_monomorphic_enough(tcx, result_ty)?;
+                let ty::Dynamic(preds, _) = result_ty.kind() else {
+                    span_bug!(
+                        self.find_closest_untracked_caller_location(),
+                        "Invalid type provided to vtable_for::<T, U>. U must be dyn Trait, got {result_ty}."
+                    );
+                };
+
+                let (infcx, param_env) =
+                    self.tcx.infer_ctxt().build_with_typing_env(self.typing_env);
+
+                let ocx = ObligationCtxt::new(&infcx);
+                ocx.register_obligations(preds.iter().map(|pred: PolyExistentialPredicate<'_>| {
+                    let pred = pred.with_self_ty(tcx, tp_ty);
+                    // Lifetimes can only be 'static because of the bound on T
+                    let pred = pred.fold_with(&mut ty::BottomUpFolder {
+                        tcx,
+                        ty_op: |ty| ty,
+                        lt_op: |lt| {
+                            if lt == tcx.lifetimes.re_erased { tcx.lifetimes.re_static } else { lt }
+                        },
+                        ct_op: |ct| ct,
+                    });
+                    Obligation::new(tcx, ObligationCause::dummy(), param_env, pred)
+                }));
+                let type_impls_trait = ocx.evaluate_obligations_error_on_ambiguity().is_empty();
+                // Since `assumed_wf_tys=[]` the choice of LocalDefId is irrelevant, so using the "default"
+                let regions_are_valid = ocx.resolve_regions(CRATE_DEF_ID, param_env, []).is_empty();
+
+                if regions_are_valid && type_impls_trait {
+                    let vtable_ptr = self.get_vtable_ptr(tp_ty, preds)?;
+                    // Writing a non-null pointer into an `Option<NonNull>` will automatically make it `Some`.
+                    self.write_pointer(vtable_ptr, dest)?;
+                } else {
+                    // Write `None`
+                    self.write_discriminant(FIRST_VARIANT, dest)?;
+                }
             }
             sym::variant_count => {
                 let tp_ty = instance.args.type_at(0);

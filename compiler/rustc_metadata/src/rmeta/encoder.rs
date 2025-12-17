@@ -1451,7 +1451,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     _ => false,
                 }
             {
-                continue;
+                // MGCA doesn't have unnecessary DefIds
+                if !tcx.features().min_generic_const_args() {
+                    continue;
+                }
             }
 
             if def_kind == DefKind::Field

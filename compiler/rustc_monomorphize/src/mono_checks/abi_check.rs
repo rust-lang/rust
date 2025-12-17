@@ -10,14 +10,37 @@ use rustc_target::callconv::{FnAbi, PassMode};
 
 use crate::errors;
 
-fn uses_vector_registers(mode: &PassMode, repr: &BackendRepr) -> bool {
+/// Are vector registers used?
+enum UsesVectorRegisters {
+    /// e.g. `neon`
+    FixedVector,
+    /// e.g. `sve`
+    ScalableVector,
+    No,
+}
+
+/// Determines whether the combination of `mode` and `repr` will use fixed vector registers,
+/// scalable vector registers or no vector registers.
+fn passes_vectors_by_value(mode: &PassMode, repr: &BackendRepr) -> UsesVectorRegisters {
     match mode {
-        PassMode::Ignore | PassMode::Indirect { .. } => false,
-        PassMode::Cast { pad_i32: _, cast } => {
-            cast.prefix.iter().any(|r| r.is_some_and(|x| x.kind == RegKind::Vector))
-                || cast.rest.unit.kind == RegKind::Vector
+        PassMode::Ignore | PassMode::Indirect { .. } => UsesVectorRegisters::No,
+        PassMode::Cast { pad_i32: _, cast }
+            if cast.prefix.iter().any(|r| r.is_some_and(|x| x.kind == RegKind::Vector))
+                || cast.rest.unit.kind == RegKind::Vector =>
+        {
+            UsesVectorRegisters::FixedVector
         }
-        PassMode::Direct(..) | PassMode::Pair(..) => matches!(repr, BackendRepr::SimdVector { .. }),
+        PassMode::Direct(..) | PassMode::Pair(..)
+            if matches!(repr, BackendRepr::SimdVector { .. }) =>
+        {
+            UsesVectorRegisters::FixedVector
+        }
+        PassMode::Direct(..) | PassMode::Pair(..)
+            if matches!(repr, BackendRepr::ScalableVector { .. }) =>
+        {
+            UsesVectorRegisters::ScalableVector
+        }
+        _ => UsesVectorRegisters::No,
     }
 }
 
@@ -32,37 +55,60 @@ fn do_check_simd_vector_abi<'tcx>(
     is_call: bool,
     loc: impl Fn() -> (Span, HirId),
 ) {
-    let feature_def = tcx.sess.target.features_for_correct_vector_abi();
     let codegen_attrs = tcx.codegen_fn_attrs(def_id);
     let have_feature = |feat: Symbol| {
-        tcx.sess.unstable_target_features.contains(&feat)
-            || codegen_attrs.target_features.iter().any(|x| x.name == feat)
+        let target_feats = tcx.sess.unstable_target_features.contains(&feat);
+        let fn_feats = codegen_attrs.target_features.iter().any(|x| x.name == feat);
+        target_feats || fn_feats
     };
     for arg_abi in abi.args.iter().chain(std::iter::once(&abi.ret)) {
         let size = arg_abi.layout.size;
-        if uses_vector_registers(&arg_abi.mode, &arg_abi.layout.backend_repr) {
-            // Find the first feature that provides at least this vector size.
-            let feature = match feature_def.iter().find(|(bits, _)| size.bits() <= *bits) {
-                Some((_, feature)) => feature,
-                None => {
+        match passes_vectors_by_value(&arg_abi.mode, &arg_abi.layout.backend_repr) {
+            UsesVectorRegisters::FixedVector => {
+                let feature_def = tcx.sess.target.features_for_correct_fixed_length_vector_abi();
+                // Find the first feature that provides at least this vector size.
+                let feature = match feature_def.iter().find(|(bits, _)| size.bits() <= *bits) {
+                    Some((_, feature)) => feature,
+                    None => {
+                        let (span, _hir_id) = loc();
+                        tcx.dcx().emit_err(errors::AbiErrorUnsupportedVectorType {
+                            span,
+                            ty: arg_abi.layout.ty,
+                            is_call,
+                        });
+                        continue;
+                    }
+                };
+                if !feature.is_empty() && !have_feature(Symbol::intern(feature)) {
                     let (span, _hir_id) = loc();
-                    tcx.dcx().emit_err(errors::AbiErrorUnsupportedVectorType {
+                    tcx.dcx().emit_err(errors::AbiErrorDisabledVectorType {
                         span,
+                        required_feature: feature,
                         ty: arg_abi.layout.ty,
                         is_call,
+                        is_scalable: false,
                     });
-                    continue;
                 }
-            };
-            if !feature.is_empty() && !have_feature(Symbol::intern(feature)) {
-                // Emit error.
-                let (span, _hir_id) = loc();
-                tcx.dcx().emit_err(errors::AbiErrorDisabledVectorType {
-                    span,
-                    required_feature: feature,
-                    ty: arg_abi.layout.ty,
-                    is_call,
-                });
+            }
+            UsesVectorRegisters::ScalableVector => {
+                let Some(required_feature) =
+                    tcx.sess.target.features_for_correct_scalable_vector_abi()
+                else {
+                    continue;
+                };
+                if !required_feature.is_empty() && !have_feature(Symbol::intern(required_feature)) {
+                    let (span, _) = loc();
+                    tcx.dcx().emit_err(errors::AbiErrorDisabledVectorType {
+                        span,
+                        required_feature,
+                        ty: arg_abi.layout.ty,
+                        is_call,
+                        is_scalable: true,
+                    });
+                }
+            }
+            UsesVectorRegisters::No => {
+                continue;
             }
         }
     }

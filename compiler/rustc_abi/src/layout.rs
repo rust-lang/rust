@@ -11,7 +11,7 @@ use tracing::{debug, trace};
 use crate::{
     AbiAlign, Align, BackendRepr, FieldsShape, HasDataLayout, IndexSlice, IndexVec, Integer,
     LayoutData, Niche, NonZeroUsize, Primitive, ReprOptions, Scalar, Size, StructKind, TagEncoding,
-    Variants, WrappingRange,
+    TargetDataLayout, Variants, WrappingRange,
 };
 
 mod coroutine;
@@ -143,58 +143,32 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         })
     }
 
-    pub fn simd_type<
+    pub fn scalable_vector_type<FieldIdx, VariantIdx, F>(
+        &self,
+        element: F,
+        count: u64,
+    ) -> LayoutCalculatorResult<FieldIdx, VariantIdx, F>
+    where
         FieldIdx: Idx,
         VariantIdx: Idx,
         F: AsRef<LayoutData<FieldIdx, VariantIdx>> + fmt::Debug,
-    >(
+    {
+        vector_type_layout(VectorKind::Scalable, self.cx.data_layout(), element, count)
+    }
+
+    pub fn simd_type<FieldIdx, VariantIdx, F>(
         &self,
         element: F,
         count: u64,
         repr_packed: bool,
-    ) -> LayoutCalculatorResult<FieldIdx, VariantIdx, F> {
-        let elt = element.as_ref();
-        if count == 0 {
-            return Err(LayoutCalculatorError::ZeroLengthSimdType);
-        } else if count > crate::MAX_SIMD_LANES {
-            return Err(LayoutCalculatorError::OversizedSimdType {
-                max_lanes: crate::MAX_SIMD_LANES,
-            });
-        }
-
-        let BackendRepr::Scalar(e_repr) = elt.backend_repr else {
-            return Err(LayoutCalculatorError::NonPrimitiveSimdType(element));
-        };
-
-        // Compute the size and alignment of the vector
-        let dl = self.cx.data_layout();
-        let size =
-            elt.size.checked_mul(count, dl).ok_or_else(|| LayoutCalculatorError::SizeOverflow)?;
-        let (repr, align) = if repr_packed && !count.is_power_of_two() {
-            // Non-power-of-two vectors have padding up to the next power-of-two.
-            // If we're a packed repr, remove the padding while keeping the alignment as close
-            // to a vector as possible.
-            (BackendRepr::Memory { sized: true }, Align::max_aligned_factor(size))
-        } else {
-            (BackendRepr::SimdVector { element: e_repr, count }, dl.llvmlike_vector_align(size))
-        };
-        let size = size.align_to(align);
-
-        Ok(LayoutData {
-            variants: Variants::Single { index: VariantIdx::new(0) },
-            fields: FieldsShape::Arbitrary {
-                offsets: [Size::ZERO].into(),
-                memory_index: [0].into(),
-            },
-            backend_repr: repr,
-            largest_niche: elt.largest_niche,
-            uninhabited: false,
-            size,
-            align: AbiAlign::new(align),
-            max_repr_align: None,
-            unadjusted_abi_align: elt.align.abi,
-            randomization_seed: elt.randomization_seed.wrapping_add(Hash64::new(count)),
-        })
+    ) -> LayoutCalculatorResult<FieldIdx, VariantIdx, F>
+    where
+        FieldIdx: Idx,
+        VariantIdx: Idx,
+        F: AsRef<LayoutData<FieldIdx, VariantIdx>> + fmt::Debug,
+    {
+        let kind = if repr_packed { VectorKind::PackedFixed } else { VectorKind::Fixed };
+        vector_type_layout(kind, self.cx.data_layout(), element, count)
     }
 
     /// Compute the layout for a coroutine.
@@ -453,6 +427,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                 BackendRepr::Scalar(..)
                 | BackendRepr::ScalarPair(..)
                 | BackendRepr::SimdVector { .. }
+                | BackendRepr::ScalableVector { .. }
                 | BackendRepr::Memory { .. } => repr,
             },
         };
@@ -524,7 +499,8 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                     hide_niches(a);
                     hide_niches(b);
                 }
-                BackendRepr::SimdVector { element, count: _ } => hide_niches(element),
+                BackendRepr::SimdVector { element, .. }
+                | BackendRepr::ScalableVector { element, .. } => hide_niches(element),
                 BackendRepr::Memory { sized: _ } => {}
             }
             st.largest_niche = None;
@@ -1500,4 +1476,68 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         }
         s
     }
+}
+
+enum VectorKind {
+    /// `#[rustc_scalable_vector]`
+    Scalable,
+    /// `#[repr(simd, packed)]`
+    PackedFixed,
+    /// `#[repr(simd)]`
+    Fixed,
+}
+
+fn vector_type_layout<FieldIdx, VariantIdx, F>(
+    kind: VectorKind,
+    dl: &TargetDataLayout,
+    element: F,
+    count: u64,
+) -> LayoutCalculatorResult<FieldIdx, VariantIdx, F>
+where
+    FieldIdx: Idx,
+    VariantIdx: Idx,
+    F: AsRef<LayoutData<FieldIdx, VariantIdx>> + fmt::Debug,
+{
+    let elt = element.as_ref();
+    if count == 0 {
+        return Err(LayoutCalculatorError::ZeroLengthSimdType);
+    } else if count > crate::MAX_SIMD_LANES {
+        return Err(LayoutCalculatorError::OversizedSimdType { max_lanes: crate::MAX_SIMD_LANES });
+    }
+
+    let BackendRepr::Scalar(element) = elt.backend_repr else {
+        return Err(LayoutCalculatorError::NonPrimitiveSimdType(element));
+    };
+
+    // Compute the size and alignment of the vector
+    let size =
+        elt.size.checked_mul(count, dl).ok_or_else(|| LayoutCalculatorError::SizeOverflow)?;
+    let (repr, align) = match kind {
+        VectorKind::Scalable => {
+            (BackendRepr::ScalableVector { element, count }, dl.llvmlike_vector_align(size))
+        }
+        // Non-power-of-two vectors have padding up to the next power-of-two.
+        // If we're a packed repr, remove the padding while keeping the alignment as close
+        // to a vector as possible.
+        VectorKind::PackedFixed if !count.is_power_of_two() => {
+            (BackendRepr::Memory { sized: true }, Align::max_aligned_factor(size))
+        }
+        VectorKind::PackedFixed | VectorKind::Fixed => {
+            (BackendRepr::SimdVector { element, count }, dl.llvmlike_vector_align(size))
+        }
+    };
+    let size = size.align_to(align);
+
+    Ok(LayoutData {
+        variants: Variants::Single { index: VariantIdx::new(0) },
+        fields: FieldsShape::Arbitrary { offsets: [Size::ZERO].into(), memory_index: [0].into() },
+        backend_repr: repr,
+        largest_niche: elt.largest_niche,
+        uninhabited: false,
+        size,
+        align: AbiAlign::new(align),
+        max_repr_align: None,
+        unadjusted_abi_align: elt.align.abi,
+        randomization_seed: elt.randomization_seed.wrapping_add(Hash64::new(count)),
+    })
 }
