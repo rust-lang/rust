@@ -91,7 +91,7 @@ impl<'tcx> LateLintPass<'tcx> for QueryStability {
                 ty::Instance::try_resolve(cx.tcx, cx.typing_env(), callee_def_id, generic_args)
         {
             let def_id = instance.def_id();
-            if cx.tcx.has_attr(def_id, sym::rustc_lint_query_instability) {
+            if find_attr!(cx.tcx.get_all_attrs(def_id), AttributeKind::RustcLintQueryInstability) {
                 cx.emit_span_lint(
                     POTENTIAL_QUERY_INSTABILITY,
                     span,
@@ -151,7 +151,10 @@ fn has_unstable_into_iter_predicate<'tcx>(
         };
         // Does the input type's `IntoIterator` implementation have the
         // `rustc_lint_query_instability` attribute on its `into_iter` method?
-        if cx.tcx.has_attr(instance.def_id(), sym::rustc_lint_query_instability) {
+        if find_attr!(
+            cx.tcx.get_all_attrs(instance.def_id()),
+            AttributeKind::RustcLintQueryInstability
+        ) {
             return true;
         }
     }

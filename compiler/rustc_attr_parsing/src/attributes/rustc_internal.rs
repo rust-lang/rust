@@ -126,6 +126,21 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcLintOptTyParser {
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcLintOptTy;
 }
 
+pub(crate) struct RustcLintQueryInstabilityParser;
+
+impl<S: Stage> NoArgsAttributeParser<S> for RustcLintQueryInstabilityParser {
+    const PATH: &[Symbol] = &[sym::rustc_lint_query_instability];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+        Allow(Target::Fn),
+        Allow(Target::Method(MethodKind::Inherent)),
+        Allow(Target::Method(MethodKind::Trait { body: false })),
+        Allow(Target::Method(MethodKind::Trait { body: true })),
+        Allow(Target::Method(MethodKind::TraitImpl)),
+    ]);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcLintQueryInstability;
+}
+
 pub(crate) struct RustcObjectLifetimeDefaultParser;
 
 impl<S: Stage> SingleAttributeParser<S> for RustcObjectLifetimeDefaultParser {

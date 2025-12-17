@@ -95,6 +95,7 @@ impl AttributeKind {
             RustcLayoutScalarValidRangeStart(..) => Yes,
             RustcLegacyConstGenerics { .. } => Yes,
             RustcLintOptTy => Yes,
+            RustcLintQueryInstability => Yes,
             RustcMain => No,
             RustcNeverReturnsNullPointer => Yes,
             RustcNoImplicitAutorefs => Yes,

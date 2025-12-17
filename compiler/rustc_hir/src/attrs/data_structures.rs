@@ -878,6 +878,9 @@ pub enum AttributeKind {
     /// Represents `#[rustc_lint_opt_ty]`
     RustcLintOptTy,
 
+    /// Represents `#[rustc_lint_query_instability]`
+    RustcLintQueryInstability,
+
     /// Represents `#[rustc_main]`.
     RustcMain,
 
