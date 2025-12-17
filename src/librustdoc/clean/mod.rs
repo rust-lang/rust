@@ -2673,14 +2673,12 @@ fn add_without_unwanted_attributes<'hir>(
                     import_parent,
                 ));
             }
-            hir::Attribute::Unparsed(normal) if let [ident] = &*normal.path.segments => {
-                if is_inline || ident.name != sym::cfg_trace {
-                    // If it's not a `cfg()` attribute, we keep it.
-                    attrs.push((Cow::Borrowed(attr), import_parent));
-                }
+            hir::Attribute::Unparsed(..) => {
+            attrs.push((Cow::Borrowed(attr), import_parent));
             }
             // FIXME: make sure to exclude `#[cfg_trace]` here when it is ported to the new parsers
-            hir::Attribute::Parsed(..) => {
+            hir::Attribute::Parsed(parsed) => {
+                if 
                 attrs.push((Cow::Borrowed(attr), import_parent));
             }
             _ => {}
