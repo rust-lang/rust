@@ -146,4 +146,25 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
             randomization_seed: Hash64::ZERO,
         }
     }
+
+    /// Returns a layout for an inhabited variant.
+    pub fn for_variant(parent: &Self, index: VariantIdx) -> Self {
+        let layout = match &parent.variants {
+            Variants::Multiple { variants, .. } => &variants[index],
+            _ => panic!("Expected multi-variant layout in `Layout::for_variant`"),
+        };
+
+        Self {
+            fields: layout.fields.clone(),
+            variants: layout.variants.clone(),
+            backend_repr: layout.backend_repr,
+            largest_niche: layout.largest_niche,
+            uninhabited: layout.uninhabited,
+            align: layout.align,
+            size: layout.size,
+            max_repr_align: layout.max_repr_align,
+            unadjusted_abi_align: layout.unadjusted_abi_align,
+            randomization_seed: layout.randomization_seed,
+        }
+    }
 }
