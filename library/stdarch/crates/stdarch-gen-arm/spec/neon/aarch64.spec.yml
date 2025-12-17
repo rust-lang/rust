@@ -13258,7 +13258,7 @@ intrinsics:
     types:
       - [int64x2_t, i64]
     compose:
-      - FnCall: [simd_reduce_add_unordered, [a]]
+      - FnCall: [simd_reduce_add_ordered, [a, 0]]
 
   - name: "vpaddd_u64"
     doc: "Add pairwise"
@@ -13271,7 +13271,7 @@ intrinsics:
     types:
       - [uint64x2_t, u64]
     compose:
-      - FnCall: [simd_reduce_add_unordered, [a]]
+      - FnCall: [simd_reduce_add_ordered, [a, 0]]
 
   - name: "vaddv{neon_type[0].no}"
     doc: "Add across vector"
@@ -13288,7 +13288,7 @@ intrinsics:
       - [int16x8_t, i16]
       - [int32x4_t, i32]
     compose:
-      - FnCall: [simd_reduce_add_unordered, [a]]
+      - FnCall: [simd_reduce_add_ordered, [a, 0]]
 
   - name: "vaddv{neon_type[0].no}"
     doc: "Add across vector"
@@ -13301,7 +13301,7 @@ intrinsics:
     types:
       - [int32x2_t, i32]
     compose:
-      - FnCall: [simd_reduce_add_unordered, [a]]
+      - FnCall: [simd_reduce_add_ordered, [a, 0]]
 
   - name: "vaddv{neon_type[0].no}"
     doc: "Add across vector"
@@ -13314,7 +13314,7 @@ intrinsics:
     types:
       - [int64x2_t, i64]
     compose:
-      - FnCall: [simd_reduce_add_unordered, [a]]
+      - FnCall: [simd_reduce_add_ordered, [a, 0]]
 
   - name: "vaddv{neon_type[0].no}"
     doc: "Add across vector"
@@ -13331,7 +13331,7 @@ intrinsics:
       - [uint16x8_t, u16]
       - [uint32x4_t, u32]
     compose:
-      - FnCall: [simd_reduce_add_unordered, [a]]
+      - FnCall: [simd_reduce_add_ordered, [a, 0]]
 
   - name: "vaddv{neon_type[0].no}"
     doc: "Add across vector"
@@ -13344,7 +13344,7 @@ intrinsics:
     types:
       - [uint32x2_t, u32, i32]
     compose:
-      - FnCall: [simd_reduce_add_unordered, [a]]
+      - FnCall: [simd_reduce_add_ordered, [a, 0]]
 
   - name: "vaddv{neon_type[0].no}"
     doc: "Add across vector"
@@ -13357,7 +13357,7 @@ intrinsics:
     types:
       - [uint64x2_t, u64, i64]
     compose:
-      - FnCall: [simd_reduce_add_unordered, [a]]
+      - FnCall: [simd_reduce_add_ordered, [a, 0]]
 
   - name: "vaddlv{neon_type[0].no}"
     doc: "Signed Add Long across Vector"
