@@ -16,7 +16,7 @@ use rustc_index::Idx;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::mir::interpret::LitToConstInput;
 use rustc_middle::thir::{
-    Ascription, FieldPat, LocalVarId, Pat, PatKind, PatRange, PatRangeBoundary,
+    Ascription, DerefPatBorrowMode, FieldPat, LocalVarId, Pat, PatKind, PatRange, PatRangeBoundary,
 };
 use rustc_middle::ty::adjustment::{PatAdjust, PatAdjustment};
 use rustc_middle::ty::layout::IntegerExt;
@@ -325,7 +325,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             }
             hir::PatKind::Box(subpattern) => PatKind::DerefPattern {
                 subpattern: self.lower_pattern(subpattern),
-                borrow: hir::ByRef::No,
+                borrow: DerefPatBorrowMode::Box,
             },
 
             hir::PatKind::Slice(prefix, slice, suffix) => {
