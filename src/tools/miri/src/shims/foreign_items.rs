@@ -435,6 +435,13 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // Return value: 0 on success, otherwise the size it would have needed.
                 this.write_int(if success { 0 } else { needed_size }, dest)?;
             }
+            // Hint that a loop is spinning indefinitely.
+            "miri_spin_loop" => {
+                let [] = this.check_shim_sig_lenient(abi, CanonAbi::Rust, link_name, args)?;
+
+                // Try to run another thread to maximize the chance of finding actual bugs.
+                this.yield_active_thread();
+            }
             // Obtains the size of a Miri backtrace. See the README for details.
             "miri_backtrace_size" => {
                 this.handle_miri_backtrace_size(abi, link_name, args, dest)?;
