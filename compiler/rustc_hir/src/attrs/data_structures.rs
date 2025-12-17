@@ -881,6 +881,9 @@ pub enum AttributeKind {
     /// Represents `#[rustc_never_returns_null_ptr]`
     RustcNeverReturnsNullPointer,
 
+    /// Represents `#[rustc_no_implicit_autorefs]`
+    RustcNoImplicitAutorefs,
+
     /// Represents `#[rustc_object_lifetime_default]`.
     RustcObjectLifetimeDefault,
 

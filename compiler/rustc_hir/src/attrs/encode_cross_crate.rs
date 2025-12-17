@@ -96,6 +96,7 @@ impl AttributeKind {
             RustcLegacyConstGenerics { .. } => Yes,
             RustcMain => No,
             RustcNeverReturnsNullPointer => Yes,
+            RustcNoImplicitAutorefs => Yes,
             RustcObjectLifetimeDefault => No,
             RustcPassIndirectlyInNonRusticAbis(..) => No,
             RustcScalableVector { .. } => Yes,

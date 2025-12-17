@@ -61,7 +61,7 @@ use crate::attributes::prototype::CustomMirParser;
 use crate::attributes::repr::{AlignParser, AlignStaticParser, ReprParser};
 use crate::attributes::rustc_internal::{
     RustcLayoutScalarValidRangeEndParser, RustcLayoutScalarValidRangeStartParser,
-    RustcLegacyConstGenericsParser, RustcMainParser, RustcNeverReturnsNullPointerParser,
+    RustcLegacyConstGenericsParser, RustcMainParser, RustcNeverReturnsNullPointerParser, RustcNoImplicitAutorefsParser,
     RustcObjectLifetimeDefaultParser, RustcScalableVectorParser,
     RustcSimdMonomorphizeLaneLimitParser,
 };
@@ -257,6 +257,7 @@ attribute_parsers!(
         Single<WithoutArgs<RustcCoherenceIsCoreParser>>,
         Single<WithoutArgs<RustcMainParser>>,
         Single<WithoutArgs<RustcNeverReturnsNullPointerParser>>,
+        Single<WithoutArgs<RustcNoImplicitAutorefsParser>>,
         Single<WithoutArgs<RustcPassIndirectlyInNonRusticAbisParser>>,
         Single<WithoutArgs<RustcShouldNotBeCalledOnConstItems>>,
         Single<WithoutArgs<SpecializationTraitParser>>,
