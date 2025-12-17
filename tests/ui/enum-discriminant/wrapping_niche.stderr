@@ -42,7 +42,7 @@ error: layout_of(UnsignedAroundZero) = Layout {
                tag_encoding: Direct,
                tag_field: 0,
                variants: [
-                   Layout {
+                   VariantLayout {
                        size: Size(2 bytes),
                        align: AbiAlign {
                            abi: Align(2 bytes),
@@ -63,7 +63,7 @@ error: layout_of(UnsignedAroundZero) = Layout {
                        unadjusted_abi_align: Align(2 bytes),
                        randomization_seed: 9885373149222004003,
                    },
-                   Layout {
+                   VariantLayout {
                        size: Size(2 bytes),
                        align: AbiAlign {
                            abi: Align(2 bytes),
@@ -84,7 +84,7 @@ error: layout_of(UnsignedAroundZero) = Layout {
                        unadjusted_abi_align: Align(2 bytes),
                        randomization_seed: 9885373149222004003,
                    },
-                   Layout {
+                   VariantLayout {
                        size: Size(2 bytes),
                        align: AbiAlign {
                            abi: Align(2 bytes),
@@ -160,7 +160,7 @@ error: layout_of(SignedAroundZero) = Layout {
                tag_encoding: Direct,
                tag_field: 0,
                variants: [
-                   Layout {
+                   VariantLayout {
                        size: Size(2 bytes),
                        align: AbiAlign {
                            abi: Align(2 bytes),
@@ -181,7 +181,7 @@ error: layout_of(SignedAroundZero) = Layout {
                        unadjusted_abi_align: Align(2 bytes),
                        randomization_seed: 2684536712112553499,
                    },
-                   Layout {
+                   VariantLayout {
                        size: Size(2 bytes),
                        align: AbiAlign {
                            abi: Align(2 bytes),
@@ -202,7 +202,7 @@ error: layout_of(SignedAroundZero) = Layout {
                        unadjusted_abi_align: Align(2 bytes),
                        randomization_seed: 2684536712112553499,
                    },
-                   Layout {
+                   VariantLayout {
                        size: Size(2 bytes),
                        align: AbiAlign {
                            abi: Align(2 bytes),

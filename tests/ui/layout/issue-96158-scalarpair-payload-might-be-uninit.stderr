@@ -48,7 +48,7 @@ error: layout_of(MissingPayloadField) = Layout {
                tag_encoding: Direct,
                tag_field: 0,
                variants: [
-                   Layout {
+                   VariantLayout {
                        size: Size(2 bytes),
                        align: AbiAlign {
                            abi: Align(1 bytes),
@@ -85,7 +85,7 @@ error: layout_of(MissingPayloadField) = Layout {
                        unadjusted_abi_align: Align(1 bytes),
                        randomization_seed: $SEED,
                    },
-                   Layout {
+                   VariantLayout {
                        size: Size(1 bytes),
                        align: AbiAlign {
                            abi: Align(1 bytes),
@@ -168,7 +168,7 @@ error: layout_of(CommonPayloadField) = Layout {
                tag_encoding: Direct,
                tag_field: 0,
                variants: [
-                   Layout {
+                   VariantLayout {
                        size: Size(2 bytes),
                        align: AbiAlign {
                            abi: Align(1 bytes),
@@ -206,7 +206,7 @@ error: layout_of(CommonPayloadField) = Layout {
                        unadjusted_abi_align: Align(1 bytes),
                        randomization_seed: $SEED,
                    },
-                   Layout {
+                   VariantLayout {
                        size: Size(2 bytes),
                        align: AbiAlign {
                            abi: Align(1 bytes),
@@ -305,7 +305,7 @@ error: layout_of(CommonPayloadFieldIsMaybeUninit) = Layout {
                tag_encoding: Direct,
                tag_field: 0,
                variants: [
-                   Layout {
+                   VariantLayout {
                        size: Size(2 bytes),
                        align: AbiAlign {
                            abi: Align(1 bytes),
@@ -342,7 +342,7 @@ error: layout_of(CommonPayloadFieldIsMaybeUninit) = Layout {
                        unadjusted_abi_align: Align(1 bytes),
                        randomization_seed: $SEED,
                    },
-                   Layout {
+                   VariantLayout {
                        size: Size(2 bytes),
                        align: AbiAlign {
                            abi: Align(1 bytes),
@@ -444,7 +444,7 @@ error: layout_of(NicheFirst) = Layout {
                },
                tag_field: 0,
                variants: [
-                   Layout {
+                   VariantLayout {
                        size: Size(2 bytes),
                        align: AbiAlign {
                            abi: Align(1 bytes),
@@ -493,7 +493,7 @@ error: layout_of(NicheFirst) = Layout {
                        unadjusted_abi_align: Align(1 bytes),
                        randomization_seed: $SEED,
                    },
-                   Layout {
+                   VariantLayout {
                        size: Size(0 bytes),
                        align: AbiAlign {
                            abi: Align(1 bytes),
@@ -514,7 +514,7 @@ error: layout_of(NicheFirst) = Layout {
                        unadjusted_abi_align: Align(1 bytes),
                        randomization_seed: $SEED,
                    },
-                   Layout {
+                   VariantLayout {
                        size: Size(0 bytes),
                        align: AbiAlign {
                            abi: Align(1 bytes),
@@ -600,7 +600,7 @@ error: layout_of(NicheSecond) = Layout {
                },
                tag_field: 0,
                variants: [
-                   Layout {
+                   VariantLayout {
                        size: Size(2 bytes),
                        align: AbiAlign {
                            abi: Align(1 bytes),
@@ -649,7 +649,7 @@ error: layout_of(NicheSecond) = Layout {
                        unadjusted_abi_align: Align(1 bytes),
                        randomization_seed: $SEED,
                    },
-                   Layout {
+                   VariantLayout {
                        size: Size(0 bytes),
                        align: AbiAlign {
                            abi: Align(1 bytes),
@@ -670,7 +670,7 @@ error: layout_of(NicheSecond) = Layout {
                        unadjusted_abi_align: Align(1 bytes),
                        randomization_seed: $SEED,
                    },
-                   Layout {
+                   VariantLayout {
                        size: Size(0 bytes),
                        align: AbiAlign {
                            abi: Align(1 bytes),
