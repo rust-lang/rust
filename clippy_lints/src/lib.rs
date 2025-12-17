@@ -1,11 +1,13 @@
 #![cfg_attr(bootstrap, feature(array_windows))]
 #![feature(box_patterns)]
-#![feature(macro_metavar_expr_concat)]
+#![feature(control_flow_into_value)]
+#![feature(exact_div)]
 #![feature(f128)]
 #![feature(f16)]
 #![feature(if_let_guard)]
 #![feature(iter_intersperse)]
 #![feature(iter_partition_in_place)]
+#![feature(macro_metavar_expr_concat)]
 #![feature(never_type)]
 #![feature(rustc_private)]
 #![feature(stmt_expr_attributes)]
@@ -113,6 +115,7 @@ mod doc;
 mod double_parens;
 mod drop_forget_ref;
 mod duplicate_mod;
+mod duration_suboptimal_units;
 mod else_if_without_else;
 mod empty_drop;
 mod empty_enums;
@@ -857,6 +860,7 @@ pub fn register_lint_passes(store: &mut rustc_lint::LintStore, conf: &'static Co
         Box::new(|_| Box::<replace_box::ReplaceBox>::default()),
         Box::new(move |_| Box::new(manual_ilog2::ManualIlog2::new(conf))),
         Box::new(|_| Box::new(same_length_and_capacity::SameLengthAndCapacity)),
+        Box::new(move |tcx| Box::new(duration_suboptimal_units::DurationSuboptimalUnits::new(tcx, conf))),
         // add late passes here, used by `cargo dev new_lint`
     ];
     store.late_passes.extend(late_lints);
