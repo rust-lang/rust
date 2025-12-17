@@ -104,8 +104,7 @@ fn provider<'tcx>(
 Providers take two arguments: the `tcx` and the query key.
 They return the result of the query.
 
-N.B.
-Most of the `rustc_*` crates only provide **local
+N.B. Most of the `rustc_*` crates only provide **local
 providers**. Almost all **extern providers** wind up going through the
 [`rustc_metadata` crate][rustc_metadata], which loads the information from the crate metadata.
 But in some cases there are crates that
@@ -158,10 +157,10 @@ If more than the `queries` field of `util::Providers`  is being updated then `ut
 pub fn provide(providers: &mut rustc_middle::util::Providers) {
     providers.queries.type_of = type_of;
     // ... add more local providers here
-    
+
     providers.extern_queries.type_of = extern_type_of;
     // ... add more external providers here
-    
+
     providers.hooks.some_hook = some_hook;
     // ... add more hooks here
 }
@@ -205,7 +204,7 @@ In practice you usually:
 
 ### How queries interact with external crate metadata
 
-When a query is made for an external crate (i.e., a dependency), the query system needs to load the information from that crate's metadata. 
+When a query is made for an external crate (i.e., a dependency), the query system needs to load the information from that crate's metadata.
 This is handled by the [`rustc_metadata` crate][rustc_metadata], which is responsible for decoding and providing the information stored in the `.rmeta` files.
 
 The process works like this:

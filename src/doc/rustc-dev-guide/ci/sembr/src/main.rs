@@ -79,6 +79,7 @@ fn display(header: &str, paths: &[PathBuf]) {
 fn ignore(line: &str, in_code_block: bool) -> bool {
     in_code_block
         || line.to_lowercase().contains("e.g.")
+        || line.to_lowercase().contains("n.b.")
         || line.contains("i.e.")
         || line.contains("et. al")
         || line.contains('|')
