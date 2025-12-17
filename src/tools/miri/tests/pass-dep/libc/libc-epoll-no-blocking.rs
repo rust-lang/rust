@@ -60,7 +60,7 @@ fn test_epoll_socketpair() {
     errno_check(unsafe { libc::socketpair(libc::AF_UNIX, libc::SOCK_STREAM, 0, fds.as_mut_ptr()) });
 
     // Write to fd[0]
-    write_all_from_slice(fds[0], "abcde".as_bytes()).unwrap();
+    write_all_from_slice(fds[0], b"abcde").unwrap();
 
     // Register fd[1] with EPOLLIN|EPOLLOUT|EPOLLET|EPOLLRDHUP
     epoll_ctl_add(epfd, fds[1], EPOLLIN | EPOLLOUT | EPOLLET | EPOLLRDHUP).unwrap();
@@ -72,7 +72,7 @@ fn test_epoll_socketpair() {
     check_epoll_wait_noblock::<8>(epfd, &[]);
 
     // Write some more to fd[0].
-    write_all_from_slice(fds[0], "abcde".as_bytes()).unwrap();
+    write_all_from_slice(fds[0], b"abcde").unwrap();
 
     // This did not change the readiness of fd[1], so we should get no event.
     // However, Linux seems to always deliver spurious events to the peer on each write,
@@ -140,7 +140,7 @@ fn test_epoll_ctl_del() {
     errno_check(unsafe { libc::socketpair(libc::AF_UNIX, libc::SOCK_STREAM, 0, fds.as_mut_ptr()) });
 
     // Write to fd[0]
-    let data = "abcde".as_bytes().as_ptr();
+    let data = b"abcde".as_ptr();
     let res = unsafe { libc_utils::write_all(fds[0], data as *const libc::c_void, 5) };
     assert_eq!(res, 5);
 
@@ -168,7 +168,7 @@ fn test_two_epoll_instance() {
     errno_check(unsafe { libc::socketpair(libc::AF_UNIX, libc::SOCK_STREAM, 0, fds.as_mut_ptr()) });
 
     // Write to the socketpair.
-    let data = "abcde".as_bytes().as_ptr();
+    let data = b"abcde".as_ptr();
     let res = unsafe { libc_utils::write_all(fds[0], data as *const libc::c_void, 5) };
     assert_eq!(res, 5);
 
@@ -208,7 +208,7 @@ fn test_two_same_fd_in_same_epoll_instance() {
     assert_eq!(res, 0);
 
     // Write to the socketpair.
-    let data = "abcde".as_bytes().as_ptr();
+    let data = b"abcde".as_ptr();
     let res = unsafe { libc_utils::write_all(fds[0], data as *const libc::c_void, 5) };
     assert_eq!(res, 5);
 
@@ -288,7 +288,7 @@ fn test_epoll_socketpair_both_sides() {
     // Write to fds[1].
     // (We do the write after the register here, unlike in `test_epoll_socketpair`, to ensure
     // we cover both orders in which this could be done.)
-    let data = "abcde".as_bytes().as_ptr();
+    let data = b"abcde".as_ptr();
     let res = unsafe { libc_utils::write_all(fds[1], data as *const libc::c_void, 5) };
     assert_eq!(res, 5);
 
@@ -307,7 +307,7 @@ fn test_epoll_socketpair_both_sides() {
     let res =
         unsafe { libc_utils::read_all(fds[0], buf.as_mut_ptr().cast(), buf.len() as libc::size_t) };
     assert_eq!(res, 5);
-    assert_eq!(buf, "abcde".as_bytes());
+    assert_eq!(buf, *b"abcde");
 
     // The state of fds[1] does not change (was writable, is writable).
     // However, we force a spurious wakeup as the read buffer just got emptied.
@@ -500,7 +500,7 @@ fn test_no_notification_for_unregister_flag() {
     assert_eq!(res, 0);
 
     // Write to fd[1].
-    let data = "abcde".as_bytes().as_ptr();
+    let data = b"abcde".as_ptr();
     let res: i32 = unsafe {
         libc_utils::write_all(fds[1], data as *const libc::c_void, 5).try_into().unwrap()
     };
@@ -534,7 +534,7 @@ fn test_socketpair_epollerr() {
     errno_check(unsafe { libc::socketpair(libc::AF_UNIX, libc::SOCK_STREAM, 0, fds.as_mut_ptr()) });
 
     // Write to fd[0]
-    let data = "abcde".as_bytes().as_ptr();
+    let data = b"abcde".as_ptr();
     let res = unsafe { libc_utils::write_all(fds[0], data as *const libc::c_void, 5) };
     assert_eq!(res, 5);
 
@@ -747,7 +747,7 @@ fn test_issue_4374_reads() {
     assert_eq!(unsafe { libc::fcntl(fds[1], libc::F_SETFL, libc::O_NONBLOCK) }, 0);
 
     // Write to fds[1] so that fds[0] becomes readable.
-    let data = "abcde".as_bytes().as_ptr();
+    let data = b"abcde".as_ptr();
     let res: i32 = unsafe {
         libc_utils::write_all(fds[1], data as *const libc::c_void, 5).try_into().unwrap()
     };
