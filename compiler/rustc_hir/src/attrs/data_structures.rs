@@ -869,6 +869,9 @@ pub enum AttributeKind {
     /// Represents `#[rustc_layout_scalar_valid_range_start]`.
     RustcLayoutScalarValidRangeStart(Box<u128>, Span),
 
+    /// Represents `#[rustc_legacy_const_generics]`
+    RustcLegacyConstGenerics { fn_indexes: ThinVec<(usize, Span)>, attr_span: Span },
+
     /// Represents `#[rustc_main]`.
     RustcMain,
 

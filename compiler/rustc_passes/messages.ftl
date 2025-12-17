@@ -478,9 +478,6 @@ passes_rustc_legacy_const_generics_index_exceed =
         *[other] arguments
     }
 
-passes_rustc_legacy_const_generics_index_negative =
-    arguments should be non-negative integers
-
 passes_rustc_legacy_const_generics_only =
     #[rustc_legacy_const_generics] functions must only have const generics
     .label = non-const generic parameter

@@ -1,7 +1,7 @@
 //! This module defines the primary IR[^1] used in rustdoc together with the procedures that
 //! transform rustc data types into it.
 //!
-//! This IR — commonly referred to as the *cleaned AST* — is modeled after the [AST][ast].
+//! This IR — commonly referred to as the *cleaned AST* — is modeled after the [AST][rustc_ast].
 //!
 //! There are two kinds of transformation — *cleaning* — procedures:
 //!
@@ -38,6 +38,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet, In
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::codes::*;
 use rustc_errors::{FatalError, struct_span_code_err};
+use rustc_hir as hir;
 use rustc_hir::attrs::{AttributeKind, DocAttribute, DocInline};
 use rustc_hir::def::{CtorKind, DefKind, MacroKinds, Res};
 use rustc_hir::def_id::{DefId, DefIdMap, DefIdSet, LOCAL_CRATE, LocalDefId};
@@ -54,7 +55,6 @@ use rustc_span::symbol::{Ident, Symbol, kw, sym};
 use rustc_trait_selection::traits::wf::object_region_bounds;
 use tracing::{debug, instrument};
 use utils::*;
-use {rustc_ast as ast, rustc_hir as hir};
 
 pub(crate) use self::cfg::{CfgInfo, extract_cfg_from_attrs};
 pub(crate) use self::types::*;
@@ -1026,26 +1026,20 @@ fn clean_fn_or_proc_macro<'tcx>(
 /// `rustc_legacy_const_generics`. More information in
 /// <https://github.com/rust-lang/rust/issues/83167>.
 fn clean_fn_decl_legacy_const_generics(func: &mut Function, attrs: &[hir::Attribute]) {
-    for meta_item_list in attrs
-        .iter()
-        .filter(|a| a.has_name(sym::rustc_legacy_const_generics))
-        .filter_map(|a| a.meta_item_list())
-    {
-        for (pos, literal) in meta_item_list.iter().filter_map(|meta| meta.lit()).enumerate() {
-            match literal.kind {
-                ast::LitKind::Int(a, _) => {
-                    let GenericParamDef { name, kind, .. } = func.generics.params.remove(0);
-                    if let GenericParamDefKind::Const { ty, .. } = kind {
-                        func.decl.inputs.insert(
-                            a.get() as _,
-                            Parameter { name: Some(name), type_: *ty, is_const: true },
-                        );
-                    } else {
-                        panic!("unexpected non const in position {pos}");
-                    }
-                }
-                _ => panic!("invalid arg index"),
-            }
+    let Some(indexes) =
+        find_attr!(attrs, AttributeKind::RustcLegacyConstGenerics{fn_indexes,..} => fn_indexes)
+    else {
+        return;
+    };
+
+    for (pos, (index, _)) in indexes.iter().enumerate() {
+        let GenericParamDef { name, kind, .. } = func.generics.params.remove(0);
+        if let GenericParamDefKind::Const { ty, .. } = kind {
+            func.decl
+                .inputs
+                .insert(*index, Parameter { name: Some(name), type_: *ty, is_const: true });
+        } else {
+            panic!("unexpected non const in position {pos}");
         }
     }
 }
