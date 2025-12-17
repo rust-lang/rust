@@ -1282,13 +1282,13 @@ impl<'a, K, V, S, A: Allocator> RawOccupiedEntryMut<'a, K, V, S, A> {
         F: FnOnce(&K, V) -> Option<V>,
     {
         unsafe {
-            let still_occupied = self
+            let tag = self
                 .table
                 .replace_bucket_with(self.elem.clone(), |(key, value)| {
                     f(&key, value).map(|new_value| (key, new_value))
                 });
 
-            if still_occupied {
+            if tag.is_none() {
                 RawEntryMut::Occupied(self)
             } else {
                 RawEntryMut::Vacant(RawVacantEntryMut {
