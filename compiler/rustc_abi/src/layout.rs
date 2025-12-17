@@ -11,7 +11,7 @@ use tracing::{debug, trace};
 use crate::{
     AbiAlign, Align, BackendRepr, FieldsShape, HasDataLayout, IndexSlice, IndexVec, Integer,
     LayoutData, Niche, NonZeroUsize, Primitive, ReprOptions, Scalar, Size, StructKind, TagEncoding,
-    TargetDataLayout, Variants, WrappingRange,
+    TargetDataLayout, VariantLayout, Variants, WrappingRange,
 };
 
 mod coroutine;
@@ -597,7 +597,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                     max_repr_align = max_repr_align.max(st.max_repr_align);
                     unadjusted_abi_align = unadjusted_abi_align.max(st.unadjusted_abi_align);
 
-                    Some(st)
+                    Some(VariantLayout::from_layout(st))
                 })
                 .collect::<Option<IndexVec<VariantIdx, _>>>()?;
 
@@ -837,7 +837,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                 align = align.max(st.align.abi);
                 max_repr_align = max_repr_align.max(st.max_repr_align);
                 unadjusted_abi_align = unadjusted_abi_align.max(st.unadjusted_abi_align);
-                Ok(st)
+                Ok(VariantLayout::from_layout(st))
             })
             .collect::<Result<IndexVec<VariantIdx, _>, _>>()?;
 

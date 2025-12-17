@@ -27,7 +27,7 @@ use tracing::{debug, trace};
 
 use crate::{
     BackendRepr, FieldsShape, HasDataLayout, Integer, LayoutData, Primitive, ReprOptions, Scalar,
-    StructKind, TagEncoding, Variants, WrappingRange,
+    StructKind, TagEncoding, VariantLayout, Variants, WrappingRange,
 };
 
 /// Overlap eligibility and variant assignment for each CoroutineSavedLocal.
@@ -281,7 +281,7 @@ pub(super) fn layout<
 
             size = size.max(variant.size);
             align = align.max(variant.align);
-            Ok(variant)
+            Ok(VariantLayout::from_layout(variant))
         })
         .collect::<Result<IndexVec<VariantIdx, _>, _>>()?;
 

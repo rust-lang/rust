@@ -42,7 +42,7 @@ error: layout_of(E) = Layout {
                tag_encoding: Direct,
                tag_field: 0,
                variants: [
-                   Layout {
+                   VariantLayout {
                        size: Size(4 bytes),
                        align: AbiAlign {
                            abi: Align(1 bytes),
@@ -63,7 +63,7 @@ error: layout_of(E) = Layout {
                        unadjusted_abi_align: Align(1 bytes),
                        randomization_seed: $SEED,
                    },
-                   Layout {
+                   VariantLayout {
                        size: Size(12 bytes),
                        align: AbiAlign {
                            abi: Align(4 bytes),
@@ -226,7 +226,7 @@ error: layout_of(Result<i32, i32>) = Layout {
                tag_encoding: Direct,
                tag_field: 0,
                variants: [
-                   Layout {
+                   VariantLayout {
                        size: Size(8 bytes),
                        align: AbiAlign {
                            abi: Align(4 bytes),
@@ -264,7 +264,7 @@ error: layout_of(Result<i32, i32>) = Layout {
                        unadjusted_abi_align: Align(4 bytes),
                        randomization_seed: $SEED,
                    },
-                   Layout {
+                   VariantLayout {
                        size: Size(8 bytes),
                        align: AbiAlign {
                            abi: Align(4 bytes),

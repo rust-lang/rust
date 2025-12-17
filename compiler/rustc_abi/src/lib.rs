@@ -1875,7 +1875,7 @@ pub enum Variants<FieldIdx: Idx, VariantIdx: Idx> {
         tag: Scalar,
         tag_encoding: TagEncoding<VariantIdx>,
         tag_field: FieldIdx,
-        variants: IndexVec<VariantIdx, LayoutData<FieldIdx, VariantIdx>>,
+        variants: IndexVec<VariantIdx, VariantLayout<FieldIdx, VariantIdx>>,
     },
 }
 
@@ -2229,4 +2229,41 @@ pub enum AbiFromStrErr {
     Unknown,
     /// no "-unwind" variant can be used here
     NoExplicitUnwind,
+}
+
+// NOTE: This struct is generic over the FieldIdx and VariantIdx for rust-analyzer usage.
+#[derive(PartialEq, Eq, Hash, Clone, Debug)]
+#[cfg_attr(feature = "nightly", derive(HashStable_Generic))]
+pub struct VariantLayout<FieldIdx: Idx, VariantIdx: Idx> {
+    pub size: Size,
+    pub align: AbiAlign,
+    pub backend_repr: BackendRepr,
+    pub fields: FieldsShape<FieldIdx>,
+    largest_niche: Option<Niche>,
+    uninhabited: bool,
+    pub variants: Variants<FieldIdx, VariantIdx>,
+    max_repr_align: Option<Align>,
+    unadjusted_abi_align: Align,
+    randomization_seed: Hash64,
+}
+
+impl<FieldIdx: Idx, VariantIdx: Idx> VariantLayout<FieldIdx, VariantIdx> {
+    pub fn from_layout(layout: LayoutData<FieldIdx, VariantIdx>) -> Self {
+        Self {
+            size: layout.size,
+            align: layout.align,
+            backend_repr: layout.backend_repr,
+            fields: layout.fields,
+            largest_niche: layout.largest_niche,
+            uninhabited: layout.uninhabited,
+            variants: layout.variants,
+            max_repr_align: layout.max_repr_align,
+            unadjusted_abi_align: layout.unadjusted_abi_align,
+            randomization_seed: layout.randomization_seed,
+        }
+    }
+
+    pub fn is_uninhabited(&self) -> bool {
+        self.uninhabited
+    }
 }

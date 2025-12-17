@@ -42,7 +42,7 @@ error: layout_of(Univariant) = Layout {
                tag_encoding: Direct,
                tag_field: 0,
                variants: [
-                   Layout {
+                   VariantLayout {
                        size: Size(1 bytes),
                        align: AbiAlign {
                            abi: Align(1 bytes),
@@ -134,7 +134,7 @@ error: layout_of(TwoVariants) = Layout {
                tag_encoding: Direct,
                tag_field: 0,
                variants: [
-                   Layout {
+                   VariantLayout {
                        size: Size(2 bytes),
                        align: AbiAlign {
                            abi: Align(1 bytes),
@@ -171,7 +171,7 @@ error: layout_of(TwoVariants) = Layout {
                        unadjusted_abi_align: Align(1 bytes),
                        randomization_seed: $SEED,
                    },
-                   Layout {
+                   VariantLayout {
                        size: Size(2 bytes),
                        align: AbiAlign {
                            abi: Align(1 bytes),
@@ -257,7 +257,7 @@ error: layout_of(DeadBranchHasOtherField) = Layout {
                tag_encoding: Direct,
                tag_field: 0,
                variants: [
-                   Layout {
+                   VariantLayout {
                        size: Size(16 bytes),
                        align: AbiAlign {
                            abi: Align(8 bytes),
@@ -286,7 +286,7 @@ error: layout_of(DeadBranchHasOtherField) = Layout {
                        unadjusted_abi_align: Align(8 bytes),
                        randomization_seed: $SEED,
                    },
-                   Layout {
+                   VariantLayout {
                        size: Size(16 bytes),
                        align: AbiAlign {
                            abi: Align(8 bytes),
