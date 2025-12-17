@@ -238,8 +238,6 @@ pub(crate) struct InvalidCharacterInCrateName {
     pub(crate) span: Option<Span>,
     pub(crate) character: char,
     pub(crate) crate_name: Symbol,
-    #[help]
-    pub(crate) help: Option<()>,
 }
 
 #[derive(Subdiagnostic)]
