@@ -54,7 +54,7 @@ pub struct CpuidResult {
 ///
 /// [wiki_cpuid]: https://en.wikipedia.org/wiki/CPUID
 /// [intel64_ref]: https://cdrdv2-public.intel.com/671110/325383-sdm-vol-2abcd.pdf
-/// [amd64_ref]: http://support.amd.com/TechDocs/24594.pdf
+/// [amd64_ref]: https://docs.amd.com/v/u/en-US/24594_3.37
 #[inline]
 #[cfg_attr(test, assert_instr(cpuid))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
