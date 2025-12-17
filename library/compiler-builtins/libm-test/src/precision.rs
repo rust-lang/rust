@@ -218,27 +218,6 @@ impl MaybeOverride<(f16,)> for SpecialCase {}
 
 impl MaybeOverride<(f32,)> for SpecialCase {
     fn check_float<F: Float>(input: (f32,), actual: F, expected: F, ctx: &CheckCtx) -> CheckAction {
-        if ctx.base_name == BaseName::Expm1
-            && !input.0.is_infinite()
-            && input.0 > 80.0
-            && actual.is_infinite()
-            && !expected.is_infinite()
-        {
-            // we return infinity but the number is representable
-            if ctx.basis == CheckBasis::Musl {
-                return XFAIL_NOCHECK;
-            }
-            return XFAIL("expm1 representable numbers");
-        }
-
-        if ctx.base_name == BaseName::Sinh && input.0.abs() > 80.0 && actual.is_nan() {
-            // we return some NaN that should be real values or infinite
-            if ctx.basis == CheckBasis::Musl {
-                return XFAIL_NOCHECK;
-            }
-            return XFAIL("sinh unexpected NaN");
-        }
-
         if (ctx.base_name == BaseName::Lgamma || ctx.base_name == BaseName::LgammaR)
             && input.0 > 4e36
             && expected.is_infinite()
