@@ -196,6 +196,9 @@ some code. block
 sentence with *italics* should not be ignored. truly.
 git log main.. compiler
  foo.   bar.  baz
+o? whatever
+r? @reviewer
+ r? @reviewer
 ";
     let expected = "
 # some. heading
@@ -221,6 +224,10 @@ git log main.. compiler
  foo.
    bar.
   baz
+o?
+whatever
+r? @reviewer
+ r? @reviewer
 ";
     assert_eq!(expected, comply(original));
 }
@@ -247,6 +254,12 @@ do not mess with code block chars
 leave the
 text alone
 ```
+
+ handle the
+ indented well
+
+[a target]: https://example.com
+[another target]: https://example.com
 ";
     let expected = "\
 do not split short sentences
@@ -267,43 +280,11 @@ do not mess with code block chars
 leave the
 text alone
 ```
-";
-    assert_eq!(expected, lengthen_lines(original, 50));
-}
 
-#[test]
-fn test_prettify_prefix_spaces() {
-    let original = "\
- do not split
- short sentences
-";
-    let expected = "\
- do not split short sentences
-";
-    assert_eq!(expected, lengthen_lines(original, 50));
-}
+ handle the indented well
 
-#[test]
-fn test_prettify_ignore_link_targets() {
-    let original = "\
 [a target]: https://example.com
 [another target]: https://example.com
 ";
-    assert_eq!(original, lengthen_lines(original, 100));
-}
-
-#[test]
-fn test_sembr_question_mark() {
-    let original = "
-o? whatever
-r? @reviewer
- r? @reviewer
-";
-    let expected = "
-o?
-whatever
-r? @reviewer
- r? @reviewer
-";
-    assert_eq!(expected, comply(original));
+    assert_eq!(expected, lengthen_lines(original, 50));
 }
