@@ -23,7 +23,9 @@ query, the result *may* be returned to you by loading stored data from disk.[^in
 
 Eventually, we want the entire compiler control-flow to be query driven.
 There will effectively be one top-level query (`compile`) that will run compilation on a crate; this
-will in turn demand information about that crate, starting from the *end*.  For example:
+will in turn demand information about that crate, starting from the *end*.
+
+For example:
 
 - The `compile` query might demand to get a list of codegen-units
   (i.e. modules that need to be compiled by LLVM).
