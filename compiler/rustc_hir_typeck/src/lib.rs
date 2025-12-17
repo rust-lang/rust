@@ -62,7 +62,7 @@ use tracing::{debug, instrument};
 use typeck_root_ctxt::TypeckRootCtxt;
 
 use crate::check::check_fn;
-use crate::coercion::DynamicCoerceMany;
+use crate::coercion::CoerceMany;
 use crate::diverges::Diverges;
 use crate::expectation::Expectation;
 use crate::fn_ctxt::LoweredTy;
@@ -350,7 +350,7 @@ pub struct BreakableCtxt<'tcx> {
 
     // this is `null` for loops where break with a value is illegal,
     // such as `while`, `for`, and `while let`
-    coerce: Option<DynamicCoerceMany<'tcx>>,
+    coerce: Option<CoerceMany<'tcx>>,
 }
 
 pub struct EnclosingBreakables<'tcx> {

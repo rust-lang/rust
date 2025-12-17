@@ -10,7 +10,7 @@ use rustc_trait_selection::traits::{
 };
 use tracing::{debug, instrument};
 
-use crate::coercion::{AsCoercionSite, CoerceMany};
+use crate::coercion::CoerceMany;
 use crate::{Diverges, Expectation, FnCtxt, GatherLocalsVisitor, Needs};
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
@@ -73,7 +73,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Expectation::ExpectHasType(ety) if ety != tcx.types.unit => ety,
                 _ => self.next_ty_var(expr.span),
             };
-            CoerceMany::with_coercion_sites(coerce_first, arms)
+            CoerceMany::with_capacity(coerce_first, arms.len())
         };
 
         let mut prior_non_diverging_arms = vec![]; // Used only for diagnostics.
@@ -269,16 +269,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Handle the fallback arm of a desugared if(-let) like a missing else.
     ///
     /// Returns `true` if there was an error forcing the coercion to the `()` type.
-    pub(super) fn if_fallback_coercion<T>(
+    pub(super) fn if_fallback_coercion(
         &self,
         if_span: Span,
         cond_expr: &'tcx hir::Expr<'tcx>,
         then_expr: &'tcx hir::Expr<'tcx>,
-        coercion: &mut CoerceMany<'tcx, '_, T>,
-    ) -> bool
-    where
-        T: AsCoercionSite,
-    {
+        coercion: &mut CoerceMany<'tcx>,
+    ) -> bool {
         // If this `if` expr is the parent's function return expr,
         // the cause of the type coercion is the return type, point at it. (#25228)
         let hir_id = self.tcx.parent_hir_id(self.tcx.parent_hir_id(then_expr.hir_id));
