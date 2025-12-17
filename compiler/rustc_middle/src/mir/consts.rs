@@ -181,21 +181,6 @@ impl ConstValue {
         Some(data.inner().inspect_with_uninit_and_ptr_outside_interpreter(start..end))
     }
 
-    /// Check if a constant may contain provenance information. This is used by MIR opts.
-    /// Can return `true` even if there is no provenance.
-    pub fn may_have_provenance(&self, tcx: TyCtxt<'_>, size: Option<Size>) -> bool {
-        match *self {
-            ConstValue::ZeroSized | ConstValue::Scalar(Scalar::Int(_)) => return false,
-            ConstValue::Scalar(Scalar::Ptr(..)) | ConstValue::Slice { .. } => return true,
-            ConstValue::Indirect { alloc_id, offset } => {
-                let allocation = tcx.global_alloc(alloc_id).unwrap_memory().inner();
-                let end = if let Some(size) = size { offset + size } else { allocation.size() };
-                let provenance_map = allocation.provenance();
-                !provenance_map.range_empty(AllocRange::from(offset..end), &tcx)
-            }
-        }
-    }
-
     /// Check if a constant only contains uninitialized bytes.
     pub fn all_bytes_uninit(&self, tcx: TyCtxt<'_>) -> bool {
         let ConstValue::Indirect { alloc_id, .. } = self else {
@@ -468,30 +453,6 @@ impl<'tcx> Const<'tcx> {
     pub fn from_scalar(_tcx: TyCtxt<'tcx>, s: Scalar, ty: Ty<'tcx>) -> Self {
         let val = ConstValue::Scalar(s);
         Self::Val(val, ty)
-    }
-
-    /// Return true if any evaluation of this constant in the same MIR body
-    /// always returns the same value, taking into account even pointer identity tests.
-    ///
-    /// In other words, this answers: is "cloning" the mir::ConstOperand ok?
-    pub fn is_deterministic(&self) -> bool {
-        // Primitive types cannot contain provenance and always have the same value.
-        if self.ty().is_primitive() {
-            return true;
-        }
-
-        match self {
-            // Some constants may generate fresh allocations for pointers they contain,
-            // so using the same constant twice can yield two different results.
-            // Notably, valtrees purposefully generate new allocations.
-            Const::Ty(..) => false,
-            // We do not know the contents, so don't attempt to do anything clever.
-            Const::Unevaluated(..) => false,
-            // When an evaluated contant contains provenance, it is encoded as an `AllocId`.
-            // Cloning the constant will reuse the same `AllocId`. If this is in the same MIR
-            // body, this same `AllocId` will result in the same pointer in codegen.
-            Const::Val(..) => true,
-        }
     }
 }
 
