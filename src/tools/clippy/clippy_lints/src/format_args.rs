@@ -704,12 +704,12 @@ where
     let mut n_needed = 0;
     loop {
         if let Some(Adjustment {
-            kind: Adjust::Deref(overloaded_deref),
+            kind: Adjust::Deref(deref),
             target,
         }) = iter.next()
         {
             n_total += 1;
-            if overloaded_deref.is_some() {
+            if deref.is_overloaded() {
                 n_needed = n_total;
             }
             ty = *target;

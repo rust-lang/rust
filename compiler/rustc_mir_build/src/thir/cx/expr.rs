@@ -14,7 +14,7 @@ use rustc_middle::middle::region;
 use rustc_middle::mir::{self, AssignOp, BinOp, BorrowKind, UnOp};
 use rustc_middle::thir::*;
 use rustc_middle::ty::adjustment::{
-    Adjust, Adjustment, AutoBorrow, AutoBorrowMutability, PointerCoercion,
+    Adjust, Adjustment, AutoBorrow, AutoBorrowMutability, DerefAdjustKind, PointerCoercion,
 };
 use rustc_middle::ty::{
     self, AdtKind, GenericArgs, InlineConstArgs, InlineConstArgsParts, ScalarInt, Ty, UpvarArgs,
@@ -140,11 +140,24 @@ impl<'tcx> ThirBuildCx<'tcx> {
             }
             Adjust::NeverToAny if adjustment.target.is_never() => return expr,
             Adjust::NeverToAny => ExprKind::NeverToAny { source: self.thir.exprs.push(expr) },
-            Adjust::Deref(None) => {
+            Adjust::Deref(DerefAdjustKind::Builtin) => {
                 adjust_span(&mut expr);
                 ExprKind::Deref { arg: self.thir.exprs.push(expr) }
             }
-            Adjust::Deref(Some(deref)) => {
+            Adjust::Deref(DerefAdjustKind::Pin) => {
+                adjust_span(&mut expr);
+                // pointer = ($expr).pointer
+                let pin_ty = expr.ty.pinned_ty().expect("Deref(Pin) with non-Pin type");
+                let pointer_target = ExprKind::Field {
+                    lhs: self.thir.exprs.push(expr),
+                    variant_index: FIRST_VARIANT,
+                    name: FieldIdx::ZERO,
+                };
+                let expr = Expr { temp_scope_id, ty: pin_ty, span, kind: pointer_target };
+                // expr = *pointer
+                ExprKind::Deref { arg: self.thir.exprs.push(expr) }
+            }
+            Adjust::Deref(DerefAdjustKind::Overloaded(deref)) => {
                 // We don't need to do call adjust_span here since
                 // deref coercions always start with a built-in deref.
                 let call_def_id = deref.method_call(self.tcx);
@@ -177,6 +190,37 @@ impl<'tcx> ThirBuildCx<'tcx> {
             },
             Adjust::Borrow(AutoBorrow::RawPtr(mutability)) => {
                 ExprKind::RawBorrow { mutability, arg: self.thir.exprs.push(expr) }
+            }
+            Adjust::Borrow(AutoBorrow::Pin(mutbl)) => {
+                // expr = &mut target
+                let borrow_kind = match mutbl {
+                    hir::Mutability::Mut => BorrowKind::Mut { kind: mir::MutBorrowKind::Default },
+                    hir::Mutability::Not => BorrowKind::Shared,
+                };
+                let new_pin_target =
+                    Ty::new_ref(self.tcx, self.tcx.lifetimes.re_erased, expr.ty, mutbl);
+                let arg = self.thir.exprs.push(expr);
+                let expr = self.thir.exprs.push(Expr {
+                    temp_scope_id,
+                    ty: new_pin_target,
+                    span,
+                    kind: ExprKind::Borrow { borrow_kind, arg },
+                });
+
+                // kind = Pin { pointer }
+                let pin_did = self.tcx.require_lang_item(rustc_hir::LangItem::Pin, span);
+                let args = self.tcx.mk_args(&[new_pin_target.into()]);
+                let kind = ExprKind::Adt(Box::new(AdtExpr {
+                    adt_def: self.tcx.adt_def(pin_did),
+                    variant_index: FIRST_VARIANT,
+                    args,
+                    fields: Box::new([FieldExpr { name: FieldIdx::ZERO, expr }]),
+                    user_ty: None,
+                    base: AdtExprBase::None,
+                }));
+
+                debug!(?kind);
+                kind
             }
             Adjust::ReborrowPin(mutbl) => {
                 debug!("apply ReborrowPin adjustment");
