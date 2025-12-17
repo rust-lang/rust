@@ -33,7 +33,7 @@ impl FileDesc {
             )
         })?;
         // SAFETY: Exactly `result` bytes have been filled.
-        unsafe { buf.advance(result as usize) };
+        unsafe { buf.advance_unchecked(result as usize) };
         Ok(())
     }
 
