@@ -893,7 +893,7 @@ fn emit_hexagon_va_arg_bare_metal<'ll, 'tcx>(
 
     // Calculate offset: round up type size to 4-byte boundary (minimum stack slot size)
     let type_size = layout.size.bytes();
-    let offset = ((type_size + 3) / 4) * 4; // align to 4 bytes
+    let offset = type_size.next_multiple_of(4); // align to 4 bytes
 
     // Update va_list to point to next argument
     let next_ptr = bx.inbounds_ptradd(aligned_ptr, bx.const_usize(offset));
@@ -901,19 +901,6 @@ fn emit_hexagon_va_arg_bare_metal<'ll, 'tcx>(
 
     // Load and return the argument value
     bx.load(layout.llvm_type(bx), aligned_ptr, layout.align.abi)
-}
-
-fn emit_hexagon_va_arg<'ll, 'tcx>(
-    bx: &mut Builder<'_, 'll, 'tcx>,
-    list: OperandRef<'tcx, &'ll Value>,
-    target_ty: Ty<'tcx>,
-    is_musl: bool,
-) -> &'ll Value {
-    if is_musl {
-        emit_hexagon_va_arg_musl(bx, list, target_ty)
-    } else {
-        emit_hexagon_va_arg_bare_metal(bx, list, target_ty)
-    }
 }
 
 fn emit_xtensa_va_arg<'ll, 'tcx>(
@@ -1100,7 +1087,13 @@ pub(super) fn emit_va_arg<'ll, 'tcx>(
         // This includes `target.is_like_darwin`, which on x86_64 targets is like sysv64.
         Arch::X86_64 => emit_x86_64_sysv64_va_arg(bx, addr, target_ty),
         Arch::Xtensa => emit_xtensa_va_arg(bx, addr, target_ty),
-        Arch::Hexagon => emit_hexagon_va_arg(bx, addr, target_ty, target.env == Env::Musl),
+        Arch::Hexagon => {
+            if target.env == Env::Musl {
+                emit_hexagon_va_arg_musl(bx, addr, target_ty)
+            } else {
+                emit_hexagon_va_arg_bare_metal(bx, addr, target_ty)
+            }
+        }
         // For all other architecture/OS combinations fall back to using
         // the LLVM va_arg instruction.
         // https://llvm.org/docs/LangRef.html#va-arg-instruction
