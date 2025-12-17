@@ -653,7 +653,7 @@ pub enum AttributeKind {
 
     /// Represents `#[cfg]` trace attributes
     /// These are attributes left behind in the HIR after `#[cfg]` attributes are processed
-    CfgTrace(ThinVec<CfgEntry>, Span),
+    CfgTrace(ThinVec<(CfgEntry, Span)>),
 
     /// Represents `#[rustc_coinductive]`.
     Coinductive(Span),

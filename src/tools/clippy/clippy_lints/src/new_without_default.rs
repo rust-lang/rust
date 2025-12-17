@@ -9,6 +9,8 @@ use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::ty::AssocKind;
 use rustc_session::impl_lint_pass;
 use rustc_span::sym;
+use rustc_hir::Attribute;
+use rustc_hir::attrs::AttributeKind;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -121,7 +123,7 @@ impl<'tcx> LateLintPass<'tcx> for NewWithoutDefault {
                 let attrs_sugg = {
                     let mut sugg = String::new();
                     for attr in cx.tcx.hir_attrs(assoc_item_hir_id) {
-                        if !attr.has_name(sym::cfg_trace) {
+                        let Attribute::Parsed(AttributeKind::CfgTrace(attrs)) = attr else {
                             // This might be some other attribute that the `impl Default` ought to inherit.
                             // But it could also be one of the many attributes that:
                             // - can't be put on an impl block -- like `#[inline]`
@@ -131,10 +133,13 @@ impl<'tcx> LateLintPass<'tcx> for NewWithoutDefault {
                             // reduce the applicability
                             app = Applicability::MaybeIncorrect;
                             continue;
+                        };
+
+                        for (_, attr_span) in attrs {
+                            sugg.push_str(&snippet_with_applicability(cx.sess(), *attr_span, "_", &mut app));
+                            sugg.push('\n');
                         }
 
-                        sugg.push_str(&snippet_with_applicability(cx.sess(), attr.span(), "_", &mut app));
-                        sugg.push('\n');
                     }
                     sugg
                 };

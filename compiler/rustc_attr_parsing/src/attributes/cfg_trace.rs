@@ -1,6 +1,6 @@
 use rustc_feature::AttributeTemplate;
 use rustc_hir::attrs::{AttributeKind, CfgEntry};
-use rustc_span::{Symbol, sym};
+use rustc_span::{Symbol, sym, Span};
 
 use crate::attributes::{CombineAttributeParser, ConvertFn};
 use crate::context::{AcceptContext, Stage};
@@ -12,8 +12,8 @@ pub(crate) struct CfgTraceParser;
 
 impl<S: Stage> CombineAttributeParser<S> for CfgTraceParser {
     const PATH: &[Symbol] = &[sym::cfg_trace];
-    type Item = CfgEntry;
-    const CONVERT: ConvertFn<Self::Item> = AttributeKind::CfgTrace;
+    type Item = (CfgEntry, Span);
+    const CONVERT: ConvertFn<Self::Item> = |c, _| AttributeKind::CfgTrace(c);
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(ALL_TARGETS);
     const TEMPLATE: AttributeTemplate = CFG_TEMPLATE;
 
@@ -28,7 +28,7 @@ impl<S: Stage> CombineAttributeParser<S> for CfgTraceParser {
             return None;
         };
 
-        parse_cfg_entry(cx, entry).ok()
+        Some((parse_cfg_entry(cx, entry).ok()?, cx.attr_span))
     }
 }
 

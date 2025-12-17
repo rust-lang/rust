@@ -739,9 +739,9 @@ pub(crate) fn extract_cfg_from_attrs<'a, I: Iterator<Item = &'a hir::Attribute> 
             }
             continue;
         } else if !cfg_info.parent_is_doc_cfg
-            && let hir::Attribute::Parsed(AttributeKind::CfgTrace(cfgs, _)) = attr
+            && let hir::Attribute::Parsed(AttributeKind::CfgTrace(cfgs)) = attr
         {
-            for new_cfg in cfgs {
+            for (new_cfg, _) in cfgs {
                 cfg_info.current_cfg &= Cfg(new_cfg.clone());
             }
         }
