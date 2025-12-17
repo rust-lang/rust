@@ -50,6 +50,7 @@ use crate::attributes::macro_attrs::{
 };
 use crate::attributes::must_use::MustUseParser;
 use crate::attributes::no_implicit_prelude::NoImplicitPreludeParser;
+use crate::attributes::no_link::NoLinkParser;
 use crate::attributes::non_exhaustive::NonExhaustiveParser;
 use crate::attributes::path::PathParser as PathAttributeParser;
 use crate::attributes::pin_v2::PinV2Parser;
@@ -59,9 +60,9 @@ use crate::attributes::proc_macro_attrs::{
 use crate::attributes::prototype::CustomMirParser;
 use crate::attributes::repr::{AlignParser, AlignStaticParser, ReprParser};
 use crate::attributes::rustc_internal::{
-    RustcLayoutScalarValidRangeEndParser, RustcLayoutScalarValidRangeStartParser, RustcMainParser,
-    RustcObjectLifetimeDefaultParser, RustcScalableVectorParser,
-    RustcSimdMonomorphizeLaneLimitParser,
+    RustcLayoutScalarValidRangeEndParser, RustcLayoutScalarValidRangeStartParser,
+    RustcLegacyConstGenericsParser, RustcMainParser, RustcObjectLifetimeDefaultParser,
+    RustcScalableVectorParser, RustcSimdMonomorphizeLaneLimitParser,
 };
 use crate::attributes::semantics::MayDangleParser;
 use crate::attributes::stability::{
@@ -209,6 +210,7 @@ attribute_parsers!(
         Single<RustcForceInlineParser>,
         Single<RustcLayoutScalarValidRangeEndParser>,
         Single<RustcLayoutScalarValidRangeStartParser>,
+        Single<RustcLegacyConstGenericsParser>,
         Single<RustcObjectLifetimeDefaultParser>,
         Single<RustcScalableVectorParser>,
         Single<RustcSimdMonomorphizeLaneLimitParser>,
@@ -240,6 +242,7 @@ attribute_parsers!(
         Single<WithoutArgs<MayDangleParser>>,
         Single<WithoutArgs<NoCoreParser>>,
         Single<WithoutArgs<NoImplicitPreludeParser>>,
+        Single<WithoutArgs<NoLinkParser>>,
         Single<WithoutArgs<NoMangleParser>>,
         Single<WithoutArgs<NoStdParser>>,
         Single<WithoutArgs<NonExhaustiveParser>>,

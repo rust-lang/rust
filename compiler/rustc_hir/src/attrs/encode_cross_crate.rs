@@ -70,6 +70,7 @@ impl AttributeKind {
             Naked(..) => No,
             NoCore(..) => No,
             NoImplicitPrelude(..) => No,
+            NoLink => No,
             NoMangle(..) => Yes, // Needed for rustdoc
             NoStd(..) => No,
             NonExhaustive(..) => Yes, // Needed for rustdoc
@@ -92,6 +93,7 @@ impl AttributeKind {
             RustcCoherenceIsCore(..) => No,
             RustcLayoutScalarValidRangeEnd(..) => Yes,
             RustcLayoutScalarValidRangeStart(..) => Yes,
+            RustcLegacyConstGenerics { .. } => Yes,
             RustcMain => No,
             RustcObjectLifetimeDefault => No,
             RustcPassIndirectlyInNonRusticAbis(..) => No,

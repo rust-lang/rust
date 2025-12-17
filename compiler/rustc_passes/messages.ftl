@@ -240,11 +240,6 @@ passes_has_incoherent_inherent_impl =
     `rustc_has_incoherent_inherent_impls` attribute should be applied to types or traits
     .label = only adts, extern types and traits are supported
 
-passes_ignored_attr_with_macro =
-    `#[{$sym}]` is ignored on struct fields, match arms and macro defs
-    .warn = {-passes_previously_accepted}
-    .note = {-passes_see_issue(issue: "80564")}
-
 passes_ignored_derived_impls =
     `{$name}` has {$trait_list_len ->
       [one] a derived impl
@@ -379,10 +374,6 @@ passes_must_not_suspend =
     `must_not_suspend` attribute should be applied to a struct, enum, union, or trait
     .label = is not a struct, enum, union, or trait
 
-passes_no_link =
-    attribute should be applied to an `extern crate` item
-    .label = not an `extern crate` item
-
 passes_no_main_function =
     `main` function not found in crate `{$crate_name}`
     .here_is_main = here is a function named `main`
@@ -477,9 +468,6 @@ passes_rustc_legacy_const_generics_index_exceed =
         [one] argument
         *[other] arguments
     }
-
-passes_rustc_legacy_const_generics_index_negative =
-    arguments should be non-negative integers
 
 passes_rustc_legacy_const_generics_only =
     #[rustc_legacy_const_generics] functions must only have const generics
