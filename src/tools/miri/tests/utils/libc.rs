@@ -53,6 +53,24 @@ pub fn read_all_into_array<const N: usize>(fd: libc::c_int) -> Result<[u8; N], l
     }
 }
 
+pub fn read_all_into_slice(fd: libc::c_int, buf: &mut [u8]) -> Result<(), libc::ssize_t> {
+    let res = unsafe { read_all(fd, buf.as_mut_ptr().cast(), buf.len()) };
+    if res >= 0 {
+        assert_eq!(res as usize, buf.len());
+        Ok(())
+    } else {
+        Err(res)
+    }
+}
+
+pub fn read_into_slice(
+    fd: libc::c_int,
+    buf: &mut [u8],
+) -> Result<(&mut [u8], &mut [u8]), libc::ssize_t> {
+    let res = unsafe { libc::read(fd, buf.as_mut_ptr().cast(), buf.len()) };
+    if res >= 0 { Ok(buf.split_at_mut(res as usize)) } else { Err(res) }
+}
+
 pub unsafe fn write_all(
     fd: libc::c_int,
     buf: *const libc::c_void,
