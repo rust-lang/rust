@@ -7,7 +7,7 @@ use tracing::debug;
 
 use crate::builder::Builder;
 use crate::builder::matches::test::is_switch_ty;
-use crate::builder::matches::{Candidate, Test, TestBranch, TestCase, TestKind};
+use crate::builder::matches::{Candidate, Test, TestBranch, TestKind, TestableCase};
 
 /// Output of [`Builder::partition_candidates_into_buckets`].
 pub(crate) struct PartitionedCandidates<'tcx, 'b, 'c> {
@@ -140,12 +140,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // branch, so it can be removed. If false, the match pair is _compatible_
         // with its test branch, but still needs a more specific test.
         let fully_matched;
-        let ret = match (&test.kind, &match_pair.test_case) {
+        let ret = match (&test.kind, &match_pair.testable_case) {
             // If we are performing a variant switch, then this
             // informs variant patterns, but nothing else.
             (
                 &TestKind::Switch { adt_def: tested_adt_def },
-                &TestCase::Variant { adt_def, variant_index },
+                &TestableCase::Variant { adt_def, variant_index },
             ) => {
                 assert_eq!(adt_def, tested_adt_def);
                 fully_matched = true;
@@ -159,7 +159,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // things out here, in some cases.
             //
             // FIXME(Zalathar): Is the `is_switch_ty` test unnecessary?
-            (TestKind::SwitchInt, &TestCase::Constant { value })
+            (TestKind::SwitchInt, &TestableCase::Constant { value })
                 if is_switch_ty(match_pair.pattern_ty) =>
             {
                 // An important invariant of candidate bucketing is that a candidate
@@ -167,16 +167,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // a new value might invalidate that property for range patterns that
                 // have already been partitioned into the failure arm, so we must take care
                 // not to add such values here.
-                let is_covering_range = |test_case: &TestCase<'tcx>| {
-                    test_case.as_range().is_some_and(|range| {
+                let is_covering_range = |testable_case: &TestableCase<'tcx>| {
+                    testable_case.as_range().is_some_and(|range| {
                         matches!(range.contains(value, self.tcx), None | Some(true))
                     })
                 };
                 let is_conflicting_candidate = |candidate: &&mut Candidate<'tcx>| {
-                    candidate
-                        .match_pairs
-                        .iter()
-                        .any(|mp| mp.place == Some(test_place) && is_covering_range(&mp.test_case))
+                    candidate.match_pairs.iter().any(|mp| {
+                        mp.place == Some(test_place) && is_covering_range(&mp.testable_case)
+                    })
                 };
                 if prior_candidates
                     .get(&TestBranch::Failure)
@@ -189,7 +188,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     Some(TestBranch::Constant(value))
                 }
             }
-            (TestKind::SwitchInt, TestCase::Range(range)) => {
+            (TestKind::SwitchInt, TestableCase::Range(range)) => {
                 // When performing a `SwitchInt` test, a range pattern can be
                 // sorted into the failure arm if it doesn't contain _any_ of
                 // the values being tested. (This restricts what values can be
@@ -207,7 +206,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 })
             }
 
-            (TestKind::If, TestCase::Constant { value }) => {
+            (TestKind::If, TestableCase::Constant { value }) => {
                 fully_matched = true;
                 let value = value.try_to_bool().unwrap_or_else(|| {
                     span_bug!(test.span, "expected boolean value but got {value:?}")
@@ -217,7 +216,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
             (
                 &TestKind::Len { len: test_len, op: BinOp::Eq },
-                &TestCase::Slice { len, variable_length },
+                &TestableCase::Slice { len, variable_length },
             ) => {
                 match (test_len.cmp(&(len as u64)), variable_length) {
                     (Ordering::Equal, false) => {
@@ -249,7 +248,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
             (
                 &TestKind::Len { len: test_len, op: BinOp::Ge },
-                &TestCase::Slice { len, variable_length },
+                &TestableCase::Slice { len, variable_length },
             ) => {
                 // the test is `$actual_len >= test_len`
                 match (test_len.cmp(&(len as u64)), variable_length) {
@@ -281,7 +280,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 }
             }
 
-            (TestKind::Range(test), TestCase::Range(pat)) => {
+            (TestKind::Range(test), TestableCase::Range(pat)) => {
                 if test == pat {
                     fully_matched = true;
                     Some(TestBranch::Success)
@@ -292,7 +291,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     if !test.overlaps(pat, self.tcx)? { Some(TestBranch::Failure) } else { None }
                 }
             }
-            (TestKind::Range(range), &TestCase::Constant { value }) => {
+            (TestKind::Range(range), &TestableCase::Constant { value }) => {
                 fully_matched = false;
                 if !range.contains(value, self.tcx)? {
                     // `value` is not contained in the testing range,
@@ -303,7 +302,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 }
             }
 
-            (TestKind::Eq { value: test_val, .. }, TestCase::Constant { value: case_val }) => {
+            (TestKind::Eq { value: test_val, .. }, TestableCase::Constant { value: case_val }) => {
                 if test_val == case_val {
                     fully_matched = true;
                     Some(TestBranch::Success)
@@ -313,7 +312,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 }
             }
 
-            (TestKind::Deref { temp: test_temp, .. }, TestCase::Deref { temp, .. })
+            (TestKind::Deref { temp: test_temp, .. }, TestableCase::Deref { temp, .. })
                 if test_temp == temp =>
             {
                 fully_matched = true;

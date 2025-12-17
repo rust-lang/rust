@@ -1078,7 +1078,7 @@ struct Candidate<'tcx> {
     ///   (see [`Builder::test_remaining_match_pairs_after_or`]).
     ///
     /// Invariants:
-    /// - All or-patterns ([`TestCase::Or`]) have been sorted to the end.
+    /// - All or-patterns ([`TestableCase::Or`]) have been sorted to the end.
     match_pairs: Vec<MatchPairTree<'tcx>>,
 
     /// ...and if this is non-empty, one of these subcandidates also has to match...
@@ -1164,12 +1164,15 @@ impl<'tcx> Candidate<'tcx> {
 
     /// Restores the invariant that or-patterns must be sorted to the end.
     fn sort_match_pairs(&mut self) {
-        self.match_pairs.sort_by_key(|pair| matches!(pair.test_case, TestCase::Or { .. }));
+        self.match_pairs.sort_by_key(|pair| matches!(pair.testable_case, TestableCase::Or { .. }));
     }
 
     /// Returns whether the first match pair of this candidate is an or-pattern.
     fn starts_with_or_pattern(&self) -> bool {
-        matches!(&*self.match_pairs, [MatchPairTree { test_case: TestCase::Or { .. }, .. }, ..])
+        matches!(
+            &*self.match_pairs,
+            [MatchPairTree { testable_case: TestableCase::Or { .. }, .. }, ..]
+        )
     }
 
     /// Visit the leaf candidates (those with no subcandidates) contained in
@@ -1261,7 +1264,7 @@ struct Ascription<'tcx> {
 /// Instead they participate in or-pattern expansion, where they are transformed into
 /// subcandidates. See [`Builder::expand_and_match_or_candidates`].
 #[derive(Debug, Clone)]
-enum TestCase<'tcx> {
+enum TestableCase<'tcx> {
     Variant { adt_def: ty::AdtDef<'tcx>, variant_index: VariantIdx },
     Constant { value: ty::Value<'tcx> },
     Range(Arc<PatRange<'tcx>>),
@@ -1271,7 +1274,7 @@ enum TestCase<'tcx> {
     Or { pats: Box<[FlatPat<'tcx>]> },
 }
 
-impl<'tcx> TestCase<'tcx> {
+impl<'tcx> TestableCase<'tcx> {
     fn as_range(&self) -> Option<&PatRange<'tcx>> {
         if let Self::Range(v) = self { Some(v.as_ref()) } else { None }
     }
@@ -1289,12 +1292,12 @@ pub(crate) struct MatchPairTree<'tcx> {
     /// ---
     /// This can be `None` if it referred to a non-captured place in a closure.
     ///
-    /// Invariant: Can only be `None` when `test_case` is `Or`.
+    /// Invariant: Can only be `None` when `testable_case` is `Or`.
     /// Therefore this must be `Some(_)` after or-pattern expansion.
     place: Option<Place<'tcx>>,
 
     /// ... must pass this test...
-    test_case: TestCase<'tcx>,
+    testable_case: TestableCase<'tcx>,
 
     /// ... and these subpairs must match.
     ///
@@ -1317,7 +1320,7 @@ enum TestKind<'tcx> {
     /// Test what enum variant a value is.
     ///
     /// The subset of expected variants is not stored here; instead they are
-    /// extracted from the [`TestCase`]s of the candidates participating in the
+    /// extracted from the [`TestableCase`]s of the candidates participating in the
     /// test.
     Switch {
         /// The enum type being tested.
@@ -1327,7 +1330,7 @@ enum TestKind<'tcx> {
     /// Test what value an integer or `char` has.
     ///
     /// The test's target values are not stored here; instead they are extracted
-    /// from the [`TestCase`]s of the candidates participating in the test.
+    /// from the [`TestableCase`]s of the candidates participating in the test.
     SwitchInt,
 
     /// Test whether a `bool` is `true` or `false`.
@@ -1948,7 +1951,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         candidate: &mut Candidate<'tcx>,
         match_pair: MatchPairTree<'tcx>,
     ) {
-        let TestCase::Or { pats } = match_pair.test_case else { bug!() };
+        let TestableCase::Or { pats } = match_pair.testable_case else { bug!() };
         debug!("expanding or-pattern: candidate={:#?}\npats={:#?}", candidate, pats);
         candidate.or_span = Some(match_pair.pattern_span);
         candidate.subcandidates = pats
@@ -2116,7 +2119,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         debug_assert!(
             remaining_match_pairs
                 .iter()
-                .all(|match_pair| matches!(match_pair.test_case, TestCase::Or { .. }))
+                .all(|match_pair| matches!(match_pair.testable_case, TestableCase::Or { .. }))
         );
 
         // Visit each leaf candidate within this subtree, add a copy of the remaining

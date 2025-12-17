@@ -19,7 +19,7 @@ use rustc_span::{DUMMY_SP, Span, Symbol, sym};
 use tracing::{debug, instrument};
 
 use crate::builder::Builder;
-use crate::builder::matches::{MatchPairTree, Test, TestBranch, TestCase, TestKind};
+use crate::builder::matches::{MatchPairTree, Test, TestBranch, TestKind, TestableCase};
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Identifies what test is needed to decide if `match_pair` is applicable.
@@ -29,30 +29,34 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         &mut self,
         match_pair: &MatchPairTree<'tcx>,
     ) -> Test<'tcx> {
-        let kind = match match_pair.test_case {
-            TestCase::Variant { adt_def, variant_index: _ } => TestKind::Switch { adt_def },
+        let kind = match match_pair.testable_case {
+            TestableCase::Variant { adt_def, variant_index: _ } => TestKind::Switch { adt_def },
 
-            TestCase::Constant { .. } if match_pair.pattern_ty.is_bool() => TestKind::If,
-            TestCase::Constant { .. } if is_switch_ty(match_pair.pattern_ty) => TestKind::SwitchInt,
-            TestCase::Constant { value } => TestKind::Eq { value, cast_ty: match_pair.pattern_ty },
+            TestableCase::Constant { .. } if match_pair.pattern_ty.is_bool() => TestKind::If,
+            TestableCase::Constant { .. } if is_switch_ty(match_pair.pattern_ty) => {
+                TestKind::SwitchInt
+            }
+            TestableCase::Constant { value } => {
+                TestKind::Eq { value, cast_ty: match_pair.pattern_ty }
+            }
 
-            TestCase::Range(ref range) => {
+            TestableCase::Range(ref range) => {
                 assert_eq!(range.ty, match_pair.pattern_ty);
                 TestKind::Range(Arc::clone(range))
             }
 
-            TestCase::Slice { len, variable_length } => {
+            TestableCase::Slice { len, variable_length } => {
                 let op = if variable_length { BinOp::Ge } else { BinOp::Eq };
                 TestKind::Len { len: len as u64, op }
             }
 
-            TestCase::Deref { temp, mutability } => TestKind::Deref { temp, mutability },
+            TestableCase::Deref { temp, mutability } => TestKind::Deref { temp, mutability },
 
-            TestCase::Never => TestKind::Never,
+            TestableCase::Never => TestKind::Never,
 
             // Or-patterns are not tested directly; instead they are expanded into subcandidates,
             // which are then distinguished by testing whatever non-or patterns they contain.
-            TestCase::Or { .. } => bug!("or-patterns should have already been handled"),
+            TestableCase::Or { .. } => bug!("or-patterns should have already been handled"),
         };
 
         Test { span: match_pair.pattern_span, kind }
