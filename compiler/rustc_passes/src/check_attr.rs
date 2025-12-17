@@ -257,6 +257,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::NoLink
                     | AttributeKind::RustcLayoutScalarValidRangeStart(..)
                     | AttributeKind::RustcLayoutScalarValidRangeEnd(..)
+                    | AttributeKind::RustcNeverReturnsNullPointer
                     | AttributeKind::RustcScalableVector { .. }
                     | AttributeKind::RustcSimdMonomorphizeLaneLimit(..)
                     | AttributeKind::RustcShouldNotBeCalledOnConstItems(..)
@@ -305,9 +306,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         }
                         [sym::thread_local, ..] => self.check_thread_local(attr, span, target),
                         [sym::rustc_no_implicit_autorefs, ..] => {
-                            self.check_applied_to_fn_or_method(hir_id, attr.span(), span, target)
-                        }
-                        [sym::rustc_never_returns_null_ptr, ..] => {
                             self.check_applied_to_fn_or_method(hir_id, attr.span(), span, target)
                         }
                         [sym::rustc_lint_query_instability, ..] => {
