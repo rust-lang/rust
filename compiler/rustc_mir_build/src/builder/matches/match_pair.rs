@@ -287,8 +287,9 @@ impl<'tcx> MatchPairTree<'tcx> {
                 None
             }
 
+            // FIXME: Pin-patterns should probably have their own pattern kind,
+            // instead of overloading `PatKind::Deref` via the pattern type.
             PatKind::Deref { ref subpattern }
-            | PatKind::DerefPattern { ref subpattern, borrow: ByRef::Yes(Pinnedness::Pinned, _) }
                 if let Some(ref_ty) = pattern.ty.pinned_ty()
                     && ref_ty.is_ref() =>
             {
