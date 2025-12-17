@@ -94,10 +94,8 @@ error: layout_of(Option<(*const ()) is !null>) = Layout {
                        backend_repr: Memory {
                            sized: true,
                        },
-                       fields: Arbitrary {
-                           offsets: [],
-                           in_memory_order: [],
-                       },
+                       field_offsets: [],
+                       fields_in_memory_order: [],
                        largest_niche: None,
                        uninhabited: false,
                        max_repr_align: None,
@@ -119,14 +117,12 @@ error: layout_of(Option<(*const ()) is !null>) = Layout {
                                valid_range: 1..=18446744073709551615,
                            },
                        ),
-                       fields: Arbitrary {
-                           offsets: [
-                               Size(0 bytes),
-                           ],
-                           in_memory_order: [
-                               0,
-                           ],
-                       },
+                       field_offsets: [
+                           Size(0 bytes),
+                       ],
+                       fields_in_memory_order: [
+                           0,
+                       ],
                        largest_niche: Some(
                            Niche {
                                offset: Size(0 bytes),
