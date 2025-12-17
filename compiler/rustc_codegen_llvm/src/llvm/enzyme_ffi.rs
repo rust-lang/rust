@@ -199,15 +199,13 @@ pub(crate) mod Enzyme_AD {
         /// Safe to call multiple times - subsequent calls are no-ops due to OnceLock.
         pub(crate) fn get_or_init(
             sysroot: &rustc_session::config::Sysroot,
-        ) -> MutexGuard<'static, Self> {
-            ENZYME_INSTANCE
-                .get_or_init(|| {
-                    Self::call_dynamic(sysroot)
-                        .unwrap_or_else(|e| bug!("failed to load Enzyme: {e}"))
-                        .into()
-                })
-                .lock()
-                .unwrap()
+        ) -> Result<MutexGuard<'static, Self>, Box<dyn std::error::Error>> {
+            let mtx: &'static Mutex<EnzymeWrapper> = ENZYME_INSTANCE.get_or_try_init(|| {
+                let w = Self::call_dynamic(sysroot)?;
+                Ok::<_, Box<dyn std::error::Error>>(Mutex::new(w))
+            })?;
+
+            Ok(mtx.lock().unwrap())
         }
 
         /// Get the EnzymeWrapper instance. Panics if not initialized.
@@ -475,7 +473,7 @@ pub(crate) mod Fallback_AD {
     impl EnzymeWrapper {
         pub(crate) fn get_or_init(
             _sysroot: &rustc_session::config::Sysroot,
-        ) -> MutexGuard<'static, Self> {
+        ) -> Result<MutexGuard<'static, Self>, Box<dyn std::error::Error>> {
             unimplemented!("Enzyme not available: build with llvm_enzyme feature")
         }
 
