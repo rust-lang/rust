@@ -61,10 +61,10 @@
 //! The evaluated form is inserted in `evaluated` as an `OpTy` or `None` if evaluation failed.
 //!
 //! The difficulty is non-deterministic evaluation of MIR constants. Some `Const` can have
-//! different runtime values each time they are evaluated. This is the case with
-//! `Const::Slice` which have a new pointer each time they are evaluated, and constants that
-//! contain a fn pointer (`AllocId` pointing to a `GlobalAlloc::Function`) pointing to a different
-//! symbol in each codegen unit.
+//! different runtime values each time they are evaluated. This used to be the case with
+//! `ConstValue::Slice` which have a new pointer each time they are evaluated, and is still the
+//! case with valtrees that generate a new allocation each time they are used. This is checked by
+//! `is_deterministic`.
 //!
 //! Meanwhile, we want to be able to read indirect constants. For instance:
 //! ```
@@ -81,8 +81,11 @@
 //! may be non-deterministic. When that happens, we assign a disambiguator to ensure that we do not
 //! merge the constants. See `duplicate_slice` test in `gvn.rs`.
 //!
-//! Second, when writing constants in MIR, we do not write `Const::Slice` or `Const`
-//! that contain `AllocId`s.
+//! Conversely, some constants cannot cross crate boundaries, which could happen because of
+//! inlining. For instance, constants that contain a fn pointer (`AllocId` pointing to a
+//! `GlobalAlloc::Function`) point to a different symbol in each codegen unit. To avoid this,
+//! when writing constants in MIR, we do not write `Const`s that contain `AllocId`s. This is
+//! checked by `may_have_provenance`.
 
 use std::borrow::Cow;
 use std::hash::{Hash, Hasher};
@@ -103,7 +106,7 @@ use rustc_hir::def::DefKind;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_index::{IndexVec, newtype_index};
 use rustc_middle::bug;
-use rustc_middle::mir::interpret::GlobalAlloc;
+use rustc_middle::mir::interpret::{AllocRange, GlobalAlloc};
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
 use rustc_middle::ty::layout::HasTypingEnv;
@@ -491,7 +494,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
 
     #[instrument(level = "trace", skip(self), ret)]
     fn insert_constant(&mut self, value: Const<'tcx>) -> VnIndex {
-        if value.is_deterministic() {
+        if is_deterministic(value) {
             // The constant is deterministic, no need to disambiguate.
             let constant = Value::Constant { value, disambiguator: None };
             self.insert(value.ty(), constant)
@@ -526,14 +529,14 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
     fn insert_bool(&mut self, flag: bool) -> VnIndex {
         // Booleans are deterministic.
         let value = Const::from_bool(self.tcx, flag);
-        debug_assert!(value.is_deterministic());
+        debug_assert!(is_deterministic(value));
         self.insert(self.tcx.types.bool, Value::Constant { value, disambiguator: None })
     }
 
     fn insert_scalar(&mut self, ty: Ty<'tcx>, scalar: Scalar) -> VnIndex {
         // Scalars are deterministic.
         let value = Const::from_scalar(self.tcx, scalar, ty);
-        debug_assert!(value.is_deterministic());
+        debug_assert!(is_deterministic(value));
         self.insert(ty, Value::Constant { value, disambiguator: None })
     }
 
@@ -1694,6 +1697,45 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
     }
 }
 
+/// Return true if any evaluation of this constant in the same MIR body
+/// always returns the same value, taking into account even pointer identity tests.
+///
+/// In other words, this answers: is "cloning" the `Const` ok?
+fn is_deterministic(c: Const<'_>) -> bool {
+    // Primitive types cannot contain provenance and always have the same value.
+    if c.ty().is_primitive() {
+        return true;
+    }
+
+    match c {
+        // Some constants may generate fresh allocations for pointers they contain,
+        // so using the same constant twice can yield two different results.
+        // Notably, valtrees purposefully generate new allocations.
+        Const::Ty(..) => false,
+        // We do not know the contents, so don't attempt to do anything clever.
+        Const::Unevaluated(..) => false,
+        // When an evaluated constant contains provenance, it is encoded as an `AllocId`.
+        // Cloning the constant will reuse the same `AllocId`. If this is in the same MIR
+        // body, this same `AllocId` will result in the same pointer in codegen.
+        Const::Val(..) => true,
+    }
+}
+
+/// Check if a constant may contain provenance information.
+/// Can return `true` even if there is no provenance.
+fn may_have_provenance(tcx: TyCtxt<'_>, value: ConstValue, size: Size) -> bool {
+    match value {
+        ConstValue::ZeroSized | ConstValue::Scalar(Scalar::Int(_)) => return false,
+        ConstValue::Scalar(Scalar::Ptr(..)) | ConstValue::Slice { .. } => return true,
+        ConstValue::Indirect { alloc_id, offset } => !tcx
+            .global_alloc(alloc_id)
+            .unwrap_memory()
+            .inner()
+            .provenance()
+            .range_empty(AllocRange::from(offset..offset + size), &tcx),
+    }
+}
+
 fn op_to_prop_const<'tcx>(
     ecx: &mut InterpCx<'tcx, DummyMachine>,
     op: &OpTy<'tcx>,
@@ -1769,7 +1811,16 @@ fn op_to_prop_const<'tcx>(
     // Check that we do not leak a pointer.
     // Those pointers may lose part of their identity in codegen.
     // FIXME: remove this hack once https://github.com/rust-lang/rust/issues/79738 is fixed.
-    if ecx.tcx.global_alloc(alloc_id).unwrap_memory().inner().provenance().ptrs().is_empty() {
+    if ecx
+        .tcx
+        .global_alloc(alloc_id)
+        .unwrap_memory()
+        .inner()
+        .provenance()
+        .provenances()
+        .next()
+        .is_none()
+    {
         return Some(value);
     }
 
@@ -1827,7 +1878,7 @@ impl<'tcx> VnState<'_, '_, 'tcx> {
         // Check that we do not leak a pointer.
         // Those pointers may lose part of their identity in codegen.
         // FIXME: remove this hack once https://github.com/rust-lang/rust/issues/79738 is fixed.
-        assert!(!value.may_have_provenance(self.tcx, Some(op.layout.size)));
+        assert!(!may_have_provenance(self.tcx, value, op.layout.size));
 
         Some(Const::Val(value, op.layout.ty))
     }
