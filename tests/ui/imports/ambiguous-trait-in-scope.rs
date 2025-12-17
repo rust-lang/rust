@@ -76,7 +76,8 @@ fn test_external_indirect_reexport() {
 
 fn test_external_ambig_reexport() {
     use external::ambig_reexport::*;
-    0u8.method1(); //~ ERROR: no method named `method1` found for type `u8` in the current scope
+    0u8.method1(); //~ WARNING Use of ambiguously glob imported trait `Trait` [ambiguous_glob_imported_trait]
+                   //~| WARNING this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
     0u8.method2(); //~ ERROR: no method named `method2` found for type `u8` in the current scope
 }
 
