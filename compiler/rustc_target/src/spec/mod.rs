@@ -1801,7 +1801,7 @@ supported_targets! {
 
     ("x86_64-pc-cygwin", x86_64_pc_cygwin),
 
-    ("x86_64-asan-linux-gnu", x86_64_asan_linux_gnu),
+    ("x86_64-unknown-linux-gnuasan", x86_64_unknown_linux_gnuasan),
 }
 
 /// Cow-Vec-Str: Cow<'static, [Cow<'static, str>]>

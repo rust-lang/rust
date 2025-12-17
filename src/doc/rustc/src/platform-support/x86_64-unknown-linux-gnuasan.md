@@ -1,4 +1,4 @@
-# `x86_64-asan-linux-gnu`
+# `x86_64-unknown-linux-gnuasan`
 
 **Tier: 3**
 
@@ -29,7 +29,7 @@ The target can be built by enabling it for a rustc build:
 
 ```toml
 [build]
-target = ["x86_64-asan-linux-gnu"]
+target = ["x86_64-unknown-linux-gnuasan"]
 ```
 
 ## Building Rust programs
@@ -42,7 +42,7 @@ this target, you will either need to build Rust with the target enabled (see
 Compilation can be done with:
 
 ```text
-rustc --target x86_64-asan-linux-gnu your-code.rs
+rustc --target x86_64-unknown-linux-gnuasan your-code.rs
 ```
 
 ## Testing
