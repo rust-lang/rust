@@ -156,7 +156,7 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
 
         Self {
             fields: layout.fields.clone(),
-            variants: layout.variants.clone(),
+            variants: Variants::Single { index },
             backend_repr: layout.backend_repr,
             largest_niche: layout.largest_niche,
             uninhabited: layout.uninhabited,
