@@ -150,8 +150,8 @@ cargo bench --no-default-features \
 ```
 
 There are also benchmarks that check instruction count behind the `icount`
-feature. These require [`iai-callgrind-runner`] (via Cargo) and [Valgrind]
-to be installed, which means these only run on limited platforms.
+feature. These require [`gungraun-runner`] (via Cargo) and [Valgrind] to be
+installed, which means these only run on limited platforms.
 
 Instruction count benchmarks are run as part of CI to flag performance
 regresions.
@@ -163,7 +163,7 @@ cargo bench --no-default-features \
     --bench icount --bench mem_icount
 ```
 
-[`iai-callgrind-runner`]: https://crates.io/crates/iai-callgrind-runner
+[`gungraun-runner`]: https://crates.io/crates/gungraun-runner
 [Valgrind]: https://valgrind.org/
 
 ## Subtree synchronization
