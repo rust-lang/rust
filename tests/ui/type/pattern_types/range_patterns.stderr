@@ -135,10 +135,8 @@ error: layout_of(Option<(u32) is 1..>) = Layout {
                        backend_repr: Memory {
                            sized: true,
                        },
-                       fields: Arbitrary {
-                           offsets: [],
-                           in_memory_order: [],
-                       },
+                       field_offsets: [],
+                       fields_in_memory_order: [],
                        largest_niche: None,
                        uninhabited: false,
                        max_repr_align: None,
@@ -159,14 +157,12 @@ error: layout_of(Option<(u32) is 1..>) = Layout {
                                valid_range: 1..=4294967295,
                            },
                        ),
-                       fields: Arbitrary {
-                           offsets: [
-                               Size(0 bytes),
-                           ],
-                           in_memory_order: [
-                               0,
-                           ],
-                       },
+                       field_offsets: [
+                           Size(0 bytes),
+                       ],
+                       fields_in_memory_order: [
+                           0,
+                       ],
                        largest_niche: Some(
                            Niche {
                                offset: Size(0 bytes),
@@ -240,10 +236,8 @@ error: layout_of(Option<NonZero<u32>>) = Layout {
                        backend_repr: Memory {
                            sized: true,
                        },
-                       fields: Arbitrary {
-                           offsets: [],
-                           in_memory_order: [],
-                       },
+                       field_offsets: [],
+                       fields_in_memory_order: [],
                        largest_niche: None,
                        uninhabited: false,
                        max_repr_align: None,
@@ -264,14 +258,12 @@ error: layout_of(Option<NonZero<u32>>) = Layout {
                                valid_range: 1..=4294967295,
                            },
                        ),
-                       fields: Arbitrary {
-                           offsets: [
-                               Size(0 bytes),
-                           ],
-                           in_memory_order: [
-                               0,
-                           ],
-                       },
+                       field_offsets: [
+                           Size(0 bytes),
+                       ],
+                       fields_in_memory_order: [
+                           0,
+                       ],
                        largest_niche: Some(
                            Niche {
                                offset: Size(0 bytes),

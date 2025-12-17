@@ -44,10 +44,8 @@ error: layout_of(Aligned1) = Layout {
                        backend_repr: Memory {
                            sized: true,
                        },
-                       fields: Arbitrary {
-                           offsets: [],
-                           in_memory_order: [],
-                       },
+                       field_offsets: [],
+                       fields_in_memory_order: [],
                        largest_niche: None,
                        uninhabited: false,
                        max_repr_align: Some(
@@ -64,10 +62,8 @@ error: layout_of(Aligned1) = Layout {
                        backend_repr: Memory {
                            sized: true,
                        },
-                       fields: Arbitrary {
-                           offsets: [],
-                           in_memory_order: [],
-                       },
+                       field_offsets: [],
+                       fields_in_memory_order: [],
                        largest_niche: None,
                        uninhabited: false,
                        max_repr_align: Some(
@@ -141,10 +137,8 @@ error: layout_of(Aligned2) = Layout {
                        backend_repr: Memory {
                            sized: true,
                        },
-                       fields: Arbitrary {
-                           offsets: [],
-                           in_memory_order: [],
-                       },
+                       field_offsets: [],
+                       fields_in_memory_order: [],
                        largest_niche: None,
                        uninhabited: false,
                        max_repr_align: Some(
@@ -161,10 +155,8 @@ error: layout_of(Aligned2) = Layout {
                        backend_repr: Memory {
                            sized: true,
                        },
-                       fields: Arbitrary {
-                           offsets: [],
-                           in_memory_order: [],
-                       },
+                       field_offsets: [],
+                       fields_in_memory_order: [],
                        largest_niche: None,
                        uninhabited: false,
                        max_repr_align: Some(
