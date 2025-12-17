@@ -1,9 +1,10 @@
 //! Some lints that are only useful in the compiler or crates that use compiler internals, such as
 //! Clippy.
 
+use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::DefId;
-use rustc_hir::{Expr, ExprKind, HirId};
+use rustc_hir::{Expr, ExprKind, HirId, find_attr};
 use rustc_middle::ty::{self, GenericArgsRef, PredicatePolarity, Ty};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::hygiene::{ExpnKind, MacroKind};
@@ -90,7 +91,7 @@ impl<'tcx> LateLintPass<'tcx> for QueryStability {
                 ty::Instance::try_resolve(cx.tcx, cx.typing_env(), callee_def_id, generic_args)
         {
             let def_id = instance.def_id();
-            if cx.tcx.has_attr(def_id, sym::rustc_lint_query_instability) {
+            if find_attr!(cx.tcx.get_all_attrs(def_id), AttributeKind::RustcLintQueryInstability) {
                 cx.emit_span_lint(
                     POTENTIAL_QUERY_INSTABILITY,
                     span,
@@ -150,7 +151,10 @@ fn has_unstable_into_iter_predicate<'tcx>(
         };
         // Does the input type's `IntoIterator` implementation have the
         // `rustc_lint_query_instability` attribute on its `into_iter` method?
-        if cx.tcx.has_attr(instance.def_id(), sym::rustc_lint_query_instability) {
+        if find_attr!(
+            cx.tcx.get_all_attrs(instance.def_id()),
+            AttributeKind::RustcLintQueryInstability
+        ) {
             return true;
         }
     }
@@ -658,7 +662,7 @@ impl LateLintPass<'_> for BadOptAccess {
         let Some(adt_def) = cx.typeck_results().expr_ty(base).ty_adt_def() else { return };
         // Skip types without `#[rustc_lint_opt_ty]` - only so that the rest of the lint can be
         // avoided.
-        if !cx.tcx.has_attr(adt_def.did(), sym::rustc_lint_opt_ty) {
+        if !find_attr!(cx.tcx.get_all_attrs(adt_def.did()), AttributeKind::RustcLintOptTy) {
             return;
         }
 

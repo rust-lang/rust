@@ -709,12 +709,6 @@ Tests on type inference.
 
 Tests for diagnostics on infinitely recursive types without indirection.
 
-## `tests/ui/inherent-impls-overlap-check/`
-
-Checks that repeating the same function names across separate `impl` blocks triggers an informative error, but not if the `impl` are for different types, such as `Bar<u8>` and `Bar<u16>`.
-
-NOTE: This should maybe be a subdirectory within another related to duplicate definitions, such as `tests/ui/duplicate/`.
-
 ## `tests/ui/inline-const/`
 
 These tests revolve around the inline `const` block that forces the compiler to const-eval its content.
