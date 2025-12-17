@@ -56,9 +56,6 @@ error: layout_of(E) = Layout {
                        },
                        largest_niche: None,
                        uninhabited: false,
-                       variants: Single {
-                           index: 0,
-                       },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(1 bytes),
                        randomization_seed: $SEED,
@@ -85,9 +82,6 @@ error: layout_of(E) = Layout {
                        },
                        largest_niche: None,
                        uninhabited: true,
-                       variants: Single {
-                           index: 1,
-                       },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(4 bytes),
                        randomization_seed: $SEED,
@@ -257,9 +251,6 @@ error: layout_of(Result<i32, i32>) = Layout {
                        },
                        largest_niche: None,
                        uninhabited: false,
-                       variants: Single {
-                           index: 0,
-                       },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(4 bytes),
                        randomization_seed: $SEED,
@@ -295,9 +286,6 @@ error: layout_of(Result<i32, i32>) = Layout {
                        },
                        largest_niche: None,
                        uninhabited: false,
-                       variants: Single {
-                           index: 1,
-                       },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(4 bytes),
                        randomization_seed: $SEED,

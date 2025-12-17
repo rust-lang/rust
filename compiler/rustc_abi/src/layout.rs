@@ -588,10 +588,9 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
             let mut unadjusted_abi_align = align;
 
             let mut variant_layouts = variants
-                .iter_enumerated()
-                .map(|(j, v)| {
-                    let mut st = self.univariant(v, repr, StructKind::AlwaysSized).ok()?;
-                    st.variants = Variants::Single { index: j };
+                .iter()
+                .map(|v| {
+                    let st = self.univariant(v, repr, StructKind::AlwaysSized).ok()?;
 
                     align = align.max(st.align.abi);
                     max_repr_align = max_repr_align.max(st.max_repr_align);
@@ -816,14 +815,13 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
 
         // Create the set of structs that represent each variant.
         let mut layout_variants = variants
-            .iter_enumerated()
-            .map(|(i, field_layouts)| {
-                let mut st = self.univariant(
+            .iter()
+            .map(|field_layouts| {
+                let st = self.univariant(
                     field_layouts,
                     repr,
                     StructKind::Prefixed(min_ity.size(), prefix_align),
                 )?;
-                st.variants = Variants::Single { index: i };
                 // Find the first field we can't move later
                 // to make room for a larger discriminant.
                 for field_idx in st.fields.index_by_increasing_offset() {

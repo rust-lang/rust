@@ -293,8 +293,6 @@ pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
                 }
             }
             for variant in variants.iter() {
-                // No nested "multiple".
-                assert_matches!(variant.variants, Variants::Single { .. });
                 // Variants should have the same or a smaller size as the full thing,
                 // and same for alignment.
                 if variant.size > layout.size {
