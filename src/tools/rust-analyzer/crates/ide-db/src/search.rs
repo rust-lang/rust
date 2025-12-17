@@ -294,9 +294,9 @@ impl Definition {
 
         // def is crate root
         if let &Definition::Module(module) = self
-            && module.is_crate_root()
+            && module.is_crate_root(db)
         {
-            return SearchScope::reverse_dependencies(db, module.krate());
+            return SearchScope::reverse_dependencies(db, module.krate(db));
         }
 
         let module = match self.module(db) {
@@ -367,22 +367,22 @@ impl Definition {
             return match macro_def.kind(db) {
                 hir::MacroKind::Declarative => {
                     if macro_def.attrs(db).is_macro_export() {
-                        SearchScope::reverse_dependencies(db, module.krate())
+                        SearchScope::reverse_dependencies(db, module.krate(db))
                     } else {
-                        SearchScope::krate(db, module.krate())
+                        SearchScope::krate(db, module.krate(db))
                     }
                 }
                 hir::MacroKind::AttrBuiltIn
                 | hir::MacroKind::DeriveBuiltIn
                 | hir::MacroKind::DeclarativeBuiltIn => SearchScope::crate_graph(db),
                 hir::MacroKind::Derive | hir::MacroKind::Attr | hir::MacroKind::ProcMacro => {
-                    SearchScope::reverse_dependencies(db, module.krate())
+                    SearchScope::reverse_dependencies(db, module.krate(db))
                 }
             };
         }
 
         if let Definition::DeriveHelper(_) = self {
-            return SearchScope::reverse_dependencies(db, module.krate());
+            return SearchScope::reverse_dependencies(db, module.krate(db));
         }
 
         if let Some(vis) = self.visibility(db) {
@@ -391,7 +391,7 @@ impl Definition {
                     SearchScope::module_and_children(db, module.into())
                 }
                 Visibility::PubCrate(krate) => SearchScope::krate(db, krate.into()),
-                Visibility::Public => SearchScope::reverse_dependencies(db, module.krate()),
+                Visibility::Public => SearchScope::reverse_dependencies(db, module.krate(db)),
             };
         }
 
@@ -907,13 +907,13 @@ impl<'a> FindUsages<'a> {
                 }
             }
             // special case crate modules as these do not have a proper name
-            (_, Definition::Module(module)) if module.is_crate_root() => {
+            (_, Definition::Module(module)) if module.is_crate_root(self.sema.db) => {
                 // FIXME: This assumes the crate name is always equal to its display name when it
                 // really isn't
                 // we should instead look at the dependency edge name and recursively search our way
                 // up the ancestors
                 module
-                    .krate()
+                    .krate(self.sema.db)
                     .display_name(self.sema.db)
                     .map(|crate_name| crate_name.crate_name().symbol().as_str().into())
             }
@@ -1002,7 +1002,7 @@ impl<'a> FindUsages<'a> {
             let scope =
                 search_scope.intersection(&SearchScope::module_and_children(self.sema.db, module));
 
-            let is_crate_root = module.is_crate_root().then(|| Finder::new("crate"));
+            let is_crate_root = module.is_crate_root(self.sema.db).then(|| Finder::new("crate"));
             let finder = &Finder::new("super");
 
             for (text, file_id, search_range) in Self::scope_files(sema.db, &scope) {

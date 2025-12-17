@@ -415,11 +415,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     });
                     Some(self.resolve_vars_if_possible(possible_rcvr_ty))
                 });
-                if let Some(rcvr_ty) = possible_rcvr_ty {
-                    rcvr_ty
-                } else {
-                    return false;
-                }
+                let Some(rcvr_ty) = possible_rcvr_ty else { return false };
+                rcvr_ty
             }
         };
 

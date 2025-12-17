@@ -7,7 +7,7 @@
 #[stable(feature = "a", feature = "b", since = "1.0.0")] //~ ERROR malformed `stable` attribute input [E0538]
 fn f1() { }
 
-#[stable(feature = "a", sinse = "1.0.0")] //~ ERROR unknown meta item 'sinse'
+#[stable(feature = "a", sinse = "1.0.0")] //~ ERROR malformed `stable` attribute input [E0539]
 fn f2() { }
 
 #[unstable(feature = "a", issue = "no")]

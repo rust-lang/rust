@@ -7,7 +7,7 @@
 //! goes along from the output of the previous stage.
 
 use std::borrow::Cow;
-use std::collections::HashSet;
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::ffi::OsStr;
 use std::io::BufReader;
 use std::io::prelude::*;
@@ -19,7 +19,7 @@ use serde_derive::Deserialize;
 #[cfg(feature = "tracing")]
 use tracing::span;
 
-use crate::core::build_steps::gcc::{Gcc, GccOutput, add_cg_gcc_cargo_flags};
+use crate::core::build_steps::gcc::{Gcc, GccOutput, GccTargetPair, add_cg_gcc_cargo_flags};
 use crate::core::build_steps::tool::{RustcPrivateCompilers, SourceType, copy_lld_artifacts};
 use crate::core::build_steps::{dist, llvm};
 use crate::core::builder;
@@ -1232,19 +1232,6 @@ pub fn rustc_cargo(
     // <https://rust-lang.zulipchat.com/#narrow/stream/131828-t-compiler/topic/Internal.20lint.20for.20raw.20.60print!.60.20and.20.60println!.60.3F>.
     cargo.rustflag("-Zon-broken-pipe=kill");
 
-    // We want to link against registerEnzyme and in the future we want to use additional
-    // functionality from Enzyme core. For that we need to link against Enzyme.
-    if builder.config.llvm_enzyme {
-        let arch = builder.build.host_target;
-        let enzyme_dir = builder.build.out.join(arch).join("enzyme").join("lib");
-        cargo.rustflag("-L").rustflag(enzyme_dir.to_str().expect("Invalid path"));
-
-        if let Some(llvm_config) = builder.llvm_config(builder.config.host_target) {
-            let llvm_version_major = llvm::get_llvm_version_major(builder, &llvm_config);
-            cargo.rustflag("-l").rustflag(&format!("Enzyme-{llvm_version_major}"));
-        }
-    }
-
     // Building with protected visibility reduces the number of dynamic relocations needed, giving
     // us a faster startup time. However GNU ld < 2.40 will error if we try to link a shared object
     // with direct references to protected symbols, so for now we only use protected symbols if
@@ -1562,7 +1549,7 @@ impl Step for RustcLink {
         run.never()
     }
 
-    /// Same as `std_link`, only for librustc
+    /// Same as `StdLink`, only for librustc
     fn run(self, builder: &Builder<'_>) {
         let build_compiler = self.build_compiler;
         let sysroot_compiler = self.sysroot_compiler;
@@ -1576,17 +1563,98 @@ impl Step for RustcLink {
     }
 }
 
+/// Set of `libgccjit` dylibs that can be used by `cg_gcc` to compile code for a set of targets.
+#[derive(Clone)]
+pub struct GccDylibSet {
+    dylibs: BTreeMap<GccTargetPair, GccOutput>,
+    host_pair: GccTargetPair,
+}
+
+impl GccDylibSet {
+    /// Returns the libgccjit.so dylib that corresponds to a host target on which `cg_gcc` will be
+    /// executed, and which will target the host. So e.g. if `cg_gcc` will be executed on
+    /// x86_64-unknown-linux-gnu, the host dylib will be for compilation pair
+    /// `(x86_64-unknown-linux-gnu, x86_64-unknown-linux-gnu)`.
+    fn host_dylib(&self) -> &GccOutput {
+        self.dylibs.get(&self.host_pair).unwrap_or_else(|| {
+            panic!("libgccjit.so was not built for host target {}", self.host_pair)
+        })
+    }
+
+    /// Install the libgccjit dylibs to the corresponding target directories of the given compiler.
+    /// cg_gcc know how to search for the libgccjit dylibs in these directories, according to the
+    /// (host, target) pair that is being compiled by rustc and cg_gcc.
+    pub fn install_to(&self, builder: &Builder<'_>, compiler: Compiler) {
+        if builder.config.dry_run() {
+            return;
+        }
+
+        // <rustc>/lib/<host-target>/codegen-backends
+        let cg_sysroot = builder.sysroot_codegen_backends(compiler);
+
+        for (target_pair, libgccjit) in &self.dylibs {
+            assert_eq!(
+                target_pair.host(),
+                compiler.host,
+                "Trying to install libgccjit ({target_pair}) to a compiler with a different host ({})",
+                compiler.host
+            );
+            let libgccjit = libgccjit.libgccjit();
+            let target_filename = libgccjit.file_name().unwrap().to_str().unwrap();
+
+            // If we build libgccjit ourselves, then `libgccjit` can actually be a symlink.
+            // In that case, we have to resolve it first, otherwise we'd create a symlink to a
+            // symlink, which wouldn't work.
+            let actual_libgccjit_path = t!(
+                libgccjit.canonicalize(),
+                format!("Cannot find libgccjit at {}", libgccjit.display())
+            );
+
+            // <cg-sysroot>/lib/<target>/libgccjit.so
+            let dest_dir = cg_sysroot.join("lib").join(target_pair.target());
+            t!(fs::create_dir_all(&dest_dir));
+            let dst = dest_dir.join(target_filename);
+            builder.copy_link(&actual_libgccjit_path, &dst, FileType::NativeLibrary);
+        }
+    }
+}
+
 /// Output of the `compile::GccCodegenBackend` step.
-/// It includes the path to the libgccjit library on which this backend depends.
+///
+/// It contains paths to all built libgccjit libraries on which this backend depends here.
 #[derive(Clone)]
 pub struct GccCodegenBackendOutput {
     stamp: BuildStamp,
-    gcc: GccOutput,
+    dylib_set: GccDylibSet,
 }
 
+/// Builds the GCC codegen backend (`cg_gcc`).
+/// The `cg_gcc` backend uses `libgccjit`, which requires a separate build for each
+/// `host -> target` pair. So if you are on linux-x64 and build for linux-aarch64,
+/// you will need at least:
+/// - linux-x64 -> linux-x64 libgccjit (for building host code like proc macros)
+/// - linux-x64 -> linux-aarch64 libgccjit (for the aarch64 target code)
+///
+/// We model this by having a single cg_gcc for a given host target, which contains one
+/// libgccjit per (host, target) pair.
+/// Note that the host target is taken from `self.compilers.target_compiler.host`.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct GccCodegenBackend {
     compilers: RustcPrivateCompilers,
+    targets: Vec<TargetSelection>,
+}
+
+impl GccCodegenBackend {
+    /// Build `cg_gcc` that will run on host `H` (`compilers.target_compiler.host`) and will be
+    /// able to produce code target pairs (`H`, `T`) for all `T` from `targets`.
+    pub fn for_targets(
+        compilers: RustcPrivateCompilers,
+        mut targets: Vec<TargetSelection>,
+    ) -> Self {
+        // Sort targets to improve step cache hits
+        targets.sort();
+        Self { compilers, targets }
+    }
 }
 
 impl Step for GccCodegenBackend {
@@ -1599,23 +1667,34 @@ impl Step for GccCodegenBackend {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(GccCodegenBackend {
-            compilers: RustcPrivateCompilers::new(run.builder, run.builder.top_stage, run.target),
-        });
+        // By default, build cg_gcc that will only be able to compile native code for the given
+        // host target.
+        let compilers = RustcPrivateCompilers::new(run.builder, run.builder.top_stage, run.target);
+        run.builder.ensure(GccCodegenBackend { compilers, targets: vec![run.target] });
     }
 
     fn run(self, builder: &Builder<'_>) -> Self::Output {
-        let target = self.compilers.target();
+        let host = self.compilers.target();
         let build_compiler = self.compilers.build_compiler();
 
         let stamp = build_stamp::codegen_backend_stamp(
             builder,
             build_compiler,
-            target,
+            host,
             &CodegenBackendKind::Gcc,
         );
 
-        let gcc = builder.ensure(Gcc { target });
+        let dylib_set = GccDylibSet {
+            dylibs: self
+                .targets
+                .iter()
+                .map(|&target| {
+                    let target_pair = GccTargetPair::for_target_pair(host, target);
+                    (target_pair, builder.ensure(Gcc { target_pair }))
+                })
+                .collect(),
+            host_pair: GccTargetPair::for_native_build(host),
+        };
 
         if builder.config.keep_stage.contains(&build_compiler.stage) {
             trace!("`keep-stage` requested");
@@ -1625,7 +1704,7 @@ impl Step for GccCodegenBackend {
             );
             // Codegen backends are linked separately from this step today, so we don't do
             // anything here.
-            return GccCodegenBackendOutput { stamp, gcc };
+            return GccCodegenBackendOutput { stamp, dylib_set };
         }
 
         let mut cargo = builder::Cargo::new(
@@ -1633,21 +1712,21 @@ impl Step for GccCodegenBackend {
             build_compiler,
             Mode::Codegen,
             SourceType::InTree,
-            target,
+            host,
             Kind::Build,
         );
         cargo.arg("--manifest-path").arg(builder.src.join("compiler/rustc_codegen_gcc/Cargo.toml"));
-        rustc_cargo_env(builder, &mut cargo, target);
+        rustc_cargo_env(builder, &mut cargo, host);
 
-        add_cg_gcc_cargo_flags(&mut cargo, &gcc);
+        add_cg_gcc_cargo_flags(&mut cargo, dylib_set.host_dylib());
 
         let _guard =
-            builder.msg(Kind::Build, "codegen backend gcc", Mode::Codegen, build_compiler, target);
+            builder.msg(Kind::Build, "codegen backend gcc", Mode::Codegen, build_compiler, host);
         let files = run_cargo(builder, cargo, vec![], &stamp, vec![], false, false);
 
         GccCodegenBackendOutput {
             stamp: write_codegen_backend_stamp(stamp, files, builder.config.dry_run()),
-            gcc,
+            dylib_set,
         }
     }
 
@@ -2324,12 +2403,65 @@ impl Step for Assemble {
                         copy_codegen_backends_to_sysroot(builder, stamp, target_compiler);
                     }
                     CodegenBackendKind::Gcc => {
-                        let output =
-                            builder.ensure(GccCodegenBackend { compilers: prepare_compilers() });
+                        // We need to build cg_gcc for the host target of the compiler which we
+                        // build here, which is `target_compiler`.
+                        // But we also need to build libgccjit for some additional targets, in
+                        // the most general case.
+                        // 1. We need to build (target_compiler.host, stdlib target) libgccjit
+                        // for all stdlibs that we build, so that cg_gcc can be used to build code
+                        // for all those targets.
+                        // 2. We need to build (target_compiler.host, target_compiler.host)
+                        // libgccjit, so that the target compiler can compile host code (e.g. proc
+                        // macros).
+                        // 3. We need to build (target_compiler.host, host target) libgccjit
+                        // for all *host targets* that we build, so that cg_gcc can be used to
+                        // build a (possibly cross-compiled) stage 2+ rustc.
+                        //
+                        // Assume that we are on host T1 and we do a stage2 build of rustc for T2.
+                        // We want the T2 rustc compiler to be able to use cg_gcc and build code
+                        // for T2 (host) and T3 (target). We also want to build the stage2 compiler
+                        // itself using cg_gcc.
+                        // This could correspond to the following bootstrap invocation:
+                        // `x build rustc --build T1 --host T2 --target T3 --set codegen-backends=['gcc', 'llvm']`
+                        //
+                        // For that, we will need the following GCC target pairs:
+                        // 1. T1 -> T2 (to cross-compile a T2 rustc using cg_gcc running on T1)
+                        // 2. T2 -> T2 (to build host code with the stage 2 rustc running on T2)
+                        // 3. T2 -> T3 (to cross-compile code with the stage 2 rustc running on T2)
+                        //
+                        // FIXME: this set of targets is *maximal*, in reality we might need
+                        // less libgccjits at this current build stage. Try to reduce the set of
+                        // GCC dylibs built below by taking a look at the current stage and whether
+                        // cg_gcc is used as the default codegen backend.
+
+                        let compilers = prepare_compilers();
+
+                        // The left side of the target pairs below is implied. It has to match the
+                        // host target on which cg_gcc will run, which is the host target of
+                        // `target_compiler`. We only pass the right side of the target pairs to
+                        // the `GccCodegenBackend` constructor.
+                        let mut targets = HashSet::new();
+                        // Add all host targets, so that we are able to build host code in this
+                        // bootstrap invocation using cg_gcc.
+                        for target in &builder.hosts {
+                            targets.insert(*target);
+                        }
+                        // Add all stdlib targets, so that the built rustc can produce code for them
+                        for target in &builder.targets {
+                            targets.insert(*target);
+                        }
+                        // Add the host target of the built rustc itself, so that it can build
+                        // host code (e.g. proc macros) using cg_gcc.
+                        targets.insert(compilers.target_compiler().host);
+
+                        let output = builder.ensure(GccCodegenBackend::for_targets(
+                            compilers,
+                            targets.into_iter().collect(),
+                        ));
                         copy_codegen_backends_to_sysroot(builder, output.stamp, target_compiler);
-                        // Also copy libgccjit to the library sysroot, so that it is available for
-                        // the codegen backend.
-                        output.gcc.install_to(builder, &rustc_libdir);
+                        // Also copy all requires libgccjit dylibs to the corresponding
+                        // library sysroots, so that they are available for the codegen backend.
+                        output.dylib_set.install_to(builder, target_compiler);
                     }
                     CodegenBackendKind::Llvm | CodegenBackendKind::Custom(_) => continue,
                 }
@@ -2422,13 +2554,52 @@ pub fn add_to_sysroot(
     t!(fs::create_dir_all(sysroot_dst));
     t!(fs::create_dir_all(sysroot_host_dst));
     t!(fs::create_dir_all(self_contained_dst));
+
+    let mut crates = HashMap::new();
     for (path, dependency_type) in builder.read_stamp_file(stamp) {
+        let filename = path.file_name().unwrap().to_str().unwrap();
         let dst = match dependency_type {
-            DependencyType::Host => sysroot_host_dst,
-            DependencyType::Target => sysroot_dst,
+            DependencyType::Host => {
+                if sysroot_dst == sysroot_host_dst {
+                    // Only insert the part before the . to deduplicate different files for the same crate.
+                    // For example foo-1234.dll and foo-1234.dll.lib.
+                    crates.insert(filename.split_once('.').unwrap().0.to_owned(), path.clone());
+                }
+
+                sysroot_host_dst
+            }
+            DependencyType::Target => {
+                // Only insert the part before the . to deduplicate different files for the same crate.
+                // For example foo-1234.dll and foo-1234.dll.lib.
+                crates.insert(filename.split_once('.').unwrap().0.to_owned(), path.clone());
+
+                sysroot_dst
+            }
             DependencyType::TargetSelfContained => self_contained_dst,
         };
-        builder.copy_link(&path, &dst.join(path.file_name().unwrap()), FileType::Regular);
+        builder.copy_link(&path, &dst.join(filename), FileType::Regular);
+    }
+
+    // Check that none of the rustc_* crates have multiple versions. Otherwise using them from
+    // the sysroot would cause ambiguity errors. We do allow rustc_hash however as it is an
+    // external dependency that we build multiple copies of. It is re-exported by
+    // rustc_data_structures, so not being able to use extern crate rustc_hash; is not a big
+    // issue.
+    let mut seen_crates = HashMap::new();
+    for (filestem, path) in crates {
+        if !filestem.contains("rustc_") || filestem.contains("rustc_hash") {
+            continue;
+        }
+        if let Some(other_path) =
+            seen_crates.insert(filestem.split_once('-').unwrap().0.to_owned(), path.clone())
+        {
+            panic!(
+                "duplicate rustc crate {}\n-  first copy at {}\n- second copy at {}",
+                filestem.split_once('-').unwrap().0.to_owned(),
+                other_path.display(),
+                path.display(),
+            );
+        }
     }
 }
 
@@ -2515,7 +2686,13 @@ pub fn run_cargo(
             if filename.starts_with(&host_root_dir) {
                 // Unless it's a proc macro used in the compiler
                 if crate_types.iter().any(|t| t == "proc-macro") {
-                    deps.push((filename.to_path_buf(), DependencyType::Host));
+                    // Cargo will compile proc-macros that are part of the rustc workspace twice.
+                    // Once as libmacro-hash.so as build dependency and once as libmacro.so as
+                    // output artifact. Only keep the former to avoid ambiguity when trying to use
+                    // the proc macro from the sysroot.
+                    if filename.file_name().unwrap().to_str().unwrap().contains("-") {
+                        deps.push((filename.to_path_buf(), DependencyType::Host));
+                    }
                 }
                 continue;
             }

@@ -256,6 +256,10 @@ Some traits' implementation must be compared with their definition, checking for
 
 This subdirectory is *not* intended comparison traits (`PartialEq`, `Eq`, `PartialOrd`, `Ord`).
 
+## `tests/ui/compile-flags/`
+
+Tests for compile flags.
+
 ## `tests/ui/compiletest-self-test/`: compiletest "meta" tests
 
 Meta test suite of the test harness `compiletest` itself.
@@ -548,6 +552,8 @@ A broad directory for tests on expressions.
 
 Tests on the `extern` keyword and `extern` blocks and functions.
 
+**FIXME**: Merge with `tests/ui/abi/extern`.
+
 ## `tests/ui/extern-flag/`: `--extern` command line flag
 
 Tests for the `--extern` CLI flag.
@@ -555,6 +561,12 @@ Tests for the `--extern` CLI flag.
 ## `tests/ui/feature-gates/`
 
 Tests on feature-gating, and the `#![feature(..)]` mechanism itself.
+
+## `tests/ui/ffi/`: Foreign Function Interface
+
+Tests for the `std::ffi` module.
+
+See [`std::ffi`](https://doc.rust-lang.org/std/ffi/index.html)
 
 ## `tests/ui/ffi-attrs/`: `#![feature(ffi_const, ffi_pure)]`
 
@@ -572,12 +584,6 @@ Exercises the `format!` macro.
 ## `tests/ui/fn/`
 
 A broad category of tests on functions.
-
-## `tests/ui/for/`: `for` keyword
-
-Tests on the `for` keyword and some of its associated errors, such as attempting to write the faulty pattern `for _ in 0..1 {} else {}`.
-
-**FIXME**: Should be merged with `ui/for-loop-while`.
 
 ## `tests/ui/force-inlining/`: `#[rustc_force_inline]`
 
@@ -739,15 +745,9 @@ Various tests related to rejecting invalid inputs.
 
 **FIXME**: This is rather uninformative, possibly rehome into more meaningful directories.
 
-## `tests/ui/invalid-compile-flags/`
+## `tests/ui/io-checks/`: Input Output
 
-Tests for checking that invalid usage of compiler flags are rejected.
-
-## `tests/ui/io-checks/`
-
-Contains a single test. The test tries to output a file into an invalid directory with `-o`, then checks that the result is an error, not an internal compiler error.
-
-**FIXME**: Rehome to invalid compiler flags maybe.
+Tests for I/O related behaviour, covering stdout/stderr handling and error propagation.
 
 ## `tests/ui/issues/`: Tests directly related to GitHub issues
 
@@ -940,6 +940,8 @@ Contains a single test. It imports a massive amount of very similar types from a
 **FIXME**: Move under either `tests/ui/modules/` or `tests/ui/resolve/`.
 
 ## `tests/ui/never_type/`
+
+Tests relating to the never type. Most tests are specifically about the never type fallback behavior.
 
 See [Tracking issue for promoting `!` to a type (RFC 1216) #35121](https://github.com/rust-lang/rust/issues/35121).
 
@@ -1518,10 +1520,6 @@ Tests on `enum` variants.
 ## `tests/ui/version/`
 
 **FIXME**: Contains a single test described as "Check that rustc accepts various version info flags.", should be rehomed.
-
-## `tests/ui/warnings/`
-
-**FIXME**: Contains a single test on non-explicit paths (`::one()`). Should be rehomed probably to `tests/ui/resolve/`.
 
 ## `tests/ui/wasm/`
 

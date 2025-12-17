@@ -20,7 +20,7 @@ pub type LocalLifetimeParamId = Idx<LifetimeParamData>;
 /// Data about a generic type parameter (to a function, struct, impl, ...).
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub struct TypeParamData {
-    /// [`None`] only if the type ref is an [`TypeRef::ImplTrait`]. FIXME: Might be better to just
+    /// [`None`] only if the type ref is an [`crate::type_ref::TypeRef::ImplTrait`]. FIXME: Might be better to just
     /// make it always be a value, giving impl trait a special name.
     pub name: Option<Name>,
     pub default: Option<TypeRefId>,

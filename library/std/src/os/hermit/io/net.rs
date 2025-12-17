@@ -1,6 +1,6 @@
+use crate::net;
 use crate::os::hermit::io::{AsRawFd, FromRawFd, IntoRawFd, OwnedFd, RawFd};
-use crate::sys_common::{self, AsInner, FromInner, IntoInner};
-use crate::{net, sys};
+use crate::sys::{self, AsInner, FromInner, IntoInner};
 
 macro_rules! impl_as_raw_fd {
     ($($t:ident)*) => {$(

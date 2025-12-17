@@ -624,6 +624,7 @@ Definite bugs found:
 * [Mockall reading uninitialized memory when mocking `std::io::Read::read`, even if all expectations are satisfied](https://github.com/asomers/mockall/issues/647) (caught by Miri running Tokio's test suite)
 * [`ReentrantLock` not correctly dealing with reuse of addresses for TLS storage of different threads](https://github.com/rust-lang/rust/pull/141248)
 * [Rare Deadlock in the thread (un)parking example code](https://github.com/rust-lang/rust/issues/145816)
+* [`winit` registering a global constructor with the wrong ABI on Windows](https://github.com/rust-windowing/winit/issues/4435)
 
 Violations of [Stacked Borrows] found that are likely bugs (but Stacked Borrows is currently just an experiment):
 
@@ -650,6 +651,11 @@ Violations of [Stacked Borrows] found that are likely bugs (but Stacked Borrows 
 * [Stacked Borrows: An Aliasing Model for Rust](https://plv.mpi-sws.org/rustbelt/stacked-borrows/)
 * [Using Lightweight Formal Methods to Validate a Key-Value Storage Node in Amazon S3](https://www.amazon.science/publications/using-lightweight-formal-methods-to-validate-a-key-value-storage-node-in-amazon-s3)
 * [SyRust: Automatic Testing of Rust Libraries with Semantic-Aware Program Synthesis](https://dl.acm.org/doi/10.1145/3453483.3454084)
+* [Crabtree: Rust API Test Synthesis Guided by Coverage and Type](https://dl.acm.org/doi/10.1145/3689733)
+* [Rustlantis: Randomized Differential Testing of the Rust Compiler](https://dl.acm.org/doi/10.1145/3689780)
+* [A Study of Undefined Behavior Across Foreign Function Boundaries in Rust Libraries](https://arxiv.org/abs/2404.11671)
+* [Tree Borrows](https://plf.inf.ethz.ch/research/pldi25-tree-borrows.html)
+* [Miri: Practical Undefined Behavior Detection for Rust](https://plf.inf.ethz.ch/research/popl26-miri.html) **(this paper describes Miri itself)**
 
 ## License
 

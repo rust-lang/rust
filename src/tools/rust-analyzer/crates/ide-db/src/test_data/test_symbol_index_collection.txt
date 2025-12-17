@@ -1,12 +1,8 @@
 [
     (
         Module {
-            id: ModuleId {
-                krate: Crate(
-                    Id(2c00),
-                ),
-                block: None,
-                local_id: Idx::<ModuleData>(0),
+            id: ModuleIdLt {
+                [salsa id]: Id(3800),
             },
         },
         [
@@ -15,7 +11,7 @@
                 def: Variant(
                     Variant {
                         id: EnumVariantId(
-                            7800,
+                            7c00,
                         ),
                     },
                 ),
@@ -43,13 +39,14 @@
                 is_assoc: true,
                 is_import: false,
                 do_not_complete: Yes,
+                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "Alias",
                 def: TypeAlias(
                     TypeAlias {
                         id: TypeAliasId(
-                            6c00,
+                            7000,
                         ),
                     },
                 ),
@@ -75,13 +72,14 @@
                 is_assoc: false,
                 is_import: false,
                 do_not_complete: Yes,
+                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "B",
                 def: Variant(
                     Variant {
                         id: EnumVariantId(
-                            7801,
+                            7c01,
                         ),
                     },
                 ),
@@ -109,13 +107,14 @@
                 is_assoc: true,
                 is_import: false,
                 do_not_complete: Yes,
+                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "CONST",
                 def: Const(
                     Const {
                         id: ConstId(
-                            6400,
+                            6800,
                         ),
                     },
                 ),
@@ -141,13 +140,14 @@
                 is_assoc: false,
                 is_import: false,
                 do_not_complete: Yes,
+                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "CONST_WITH_INNER",
                 def: Const(
                     Const {
                         id: ConstId(
-                            6402,
+                            6802,
                         ),
                     },
                 ),
@@ -173,6 +173,7 @@
                 is_assoc: false,
                 is_import: false,
                 do_not_complete: Yes,
+                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "Enum",
@@ -180,7 +181,7 @@
                     Enum(
                         Enum {
                             id: EnumId(
-                                5000,
+                                5400,
                             ),
                         },
                     ),
@@ -207,6 +208,7 @@
                 is_assoc: false,
                 is_import: false,
                 do_not_complete: Yes,
+                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "ItemLikeMacro",
@@ -214,7 +216,7 @@
                     Macro {
                         id: Macro2Id(
                             Macro2Id(
-                                4c00,
+                                5000,
                             ),
                         ),
                     },
@@ -241,6 +243,7 @@
                 is_assoc: false,
                 is_import: true,
                 do_not_complete: Yes,
+                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "Macro",
@@ -248,7 +251,7 @@
                     Macro {
                         id: Macro2Id(
                             Macro2Id(
-                                4c00,
+                                5000,
                             ),
                         ),
                     },
@@ -275,13 +278,14 @@
                 is_assoc: false,
                 is_import: false,
                 do_not_complete: Yes,
+                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "STATIC",
                 def: Static(
                     Static {
                         id: StaticId(
-                            6800,
+                            6c00,
                         ),
                     },
                 ),
@@ -307,6 +311,7 @@
                 is_assoc: false,
                 is_import: false,
                 do_not_complete: Yes,
+                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "Struct",
@@ -314,7 +319,7 @@
                     Struct(
                         Struct {
                             id: StructId(
-                                4801,
+                                4c01,
                             ),
                         },
                     ),
@@ -341,6 +346,7 @@
                 is_assoc: false,
                 is_import: false,
                 do_not_complete: Yes,
+                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "StructFromMacro",
@@ -348,7 +354,7 @@
                     Struct(
                         Struct {
                             id: StructId(
-                                4800,
+                                4c00,
                             ),
                         },
                     ),
@@ -356,7 +362,7 @@
                 loc: DeclarationLocation {
                     hir_file_id: MacroFile(
                         MacroCallId(
-                            Id(4000),
+                            Id(4400),
                         ),
                     ),
                     ptr: SyntaxNodePtr {
@@ -375,6 +381,7 @@
                 is_assoc: false,
                 is_import: false,
                 do_not_complete: Yes,
+                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "StructInFn",
@@ -382,7 +389,7 @@
                     Struct(
                         Struct {
                             id: StructId(
-                                4805,
+                                4c05,
                             ),
                         },
                     ),
@@ -411,6 +418,7 @@
                 is_assoc: false,
                 is_import: false,
                 do_not_complete: Yes,
+                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "StructInNamedConst",
@@ -418,7 +426,7 @@
                     Struct(
                         Struct {
                             id: StructId(
-                                4806,
+                                4c06,
                             ),
                         },
                     ),
@@ -447,6 +455,7 @@
                 is_assoc: false,
                 is_import: false,
                 do_not_complete: Yes,
+                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "StructInUnnamedConst",
@@ -454,7 +463,7 @@
                     Struct(
                         Struct {
                             id: StructId(
-                                4807,
+                                4c07,
                             ),
                         },
                     ),
@@ -481,6 +490,7 @@
                 is_assoc: false,
                 is_import: false,
                 do_not_complete: Yes,
+                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "StructT",
@@ -488,7 +498,7 @@
                     Struct(
                         Struct {
                             id: StructId(
-                                4802,
+                                4c02,
                             ),
                         },
                     ),
@@ -515,13 +525,14 @@
                 is_assoc: false,
                 is_import: false,
                 do_not_complete: Yes,
+                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "Trait",
                 def: Trait(
                     Trait {
                         id: TraitId(
-                            5c00,
+                            6000,
                         ),
                     },
                 ),
@@ -547,6 +558,7 @@
                 is_assoc: false,
                 is_import: false,
                 do_not_complete: Yes,
+                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "Trait",
@@ -554,7 +566,7 @@
                     Macro {
                         id: Macro2Id(
                             Macro2Id(
-                                4c00,
+                                5000,
                             ),
                         ),
                     },
@@ -581,6 +593,7 @@
                 is_assoc: false,
                 is_import: true,
                 do_not_complete: Yes,
+                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "Union",
@@ -588,7 +601,7 @@
                     Union(
                         Union {
                             id: UnionId(
-                                5400,
+                                5800,
                             ),
                         },
                     ),
@@ -615,17 +628,14 @@
                 is_assoc: false,
                 is_import: false,
                 do_not_complete: Yes,
+                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "a_mod",
                 def: Module(
                     Module {
-                        id: ModuleId {
-                            krate: Crate(
-                                Id(2c00),
-                            ),
-                            block: None,
-                            local_id: Idx::<ModuleData>(1),
+                        id: ModuleIdLt {
+                            [salsa id]: Id(3801),
                         },
                     },
                 ),
@@ -651,17 +661,14 @@
                 is_assoc: false,
                 is_import: false,
                 do_not_complete: Yes,
+                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "b_mod",
                 def: Module(
                     Module {
-                        id: ModuleId {
-                            krate: Crate(
-                                Id(2c00),
-                            ),
-                            block: None,
-                            local_id: Idx::<ModuleData>(2),
+                        id: ModuleIdLt {
+                            [salsa id]: Id(3802),
                         },
                     },
                 ),
@@ -687,6 +694,7 @@
                 is_assoc: false,
                 is_import: false,
                 do_not_complete: Yes,
+                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "define_struct",
@@ -694,7 +702,7 @@
                     Macro {
                         id: MacroRulesId(
                             MacroRulesId(
-                                3c01,
+                                4001,
                             ),
                         ),
                     },
@@ -721,13 +729,14 @@
                 is_assoc: false,
                 is_import: false,
                 do_not_complete: Yes,
+                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "generic_impl_fn",
                 def: Function(
                     Function {
                         id: FunctionId(
-                            6002,
+                            6402,
                         ),
                     },
                 ),
@@ -755,13 +764,14 @@
                 is_assoc: true,
                 is_import: false,
                 do_not_complete: Yes,
+                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "impl_fn",
                 def: Function(
                     Function {
                         id: FunctionId(
-                            6001,
+                            6401,
                         ),
                     },
                 ),
@@ -789,6 +799,7 @@
                 is_assoc: true,
                 is_import: false,
                 do_not_complete: Yes,
+                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "macro_rules_macro",
@@ -796,7 +807,7 @@
                     Macro {
                         id: MacroRulesId(
                             MacroRulesId(
-                                3c00,
+                                4000,
                             ),
                         ),
                     },
@@ -823,13 +834,14 @@
                 is_assoc: false,
                 is_import: false,
                 do_not_complete: Yes,
+                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "main",
                 def: Function(
                     Function {
                         id: FunctionId(
-                            6000,
+                            6400,
                         ),
                     },
                 ),
@@ -855,6 +867,7 @@
                 is_assoc: false,
                 is_import: false,
                 do_not_complete: Yes,
+                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "really_define_struct",
@@ -862,7 +875,7 @@
                     Macro {
                         id: MacroRulesId(
                             MacroRulesId(
-                                3c01,
+                                4001,
                             ),
                         ),
                     },
@@ -889,13 +902,14 @@
                 is_assoc: false,
                 is_import: true,
                 do_not_complete: Yes,
+                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "trait_fn",
                 def: Function(
                     Function {
                         id: FunctionId(
-                            6003,
+                            6403,
                         ),
                     },
                 ),
@@ -923,17 +937,14 @@
                 is_assoc: true,
                 is_import: false,
                 do_not_complete: Yes,
+                _marker: PhantomData<&()>,
             },
         ],
     ),
     (
         Module {
-            id: ModuleId {
-                krate: Crate(
-                    Id(2c00),
-                ),
-                block: None,
-                local_id: Idx::<ModuleData>(1),
+            id: ModuleIdLt {
+                [salsa id]: Id(3801),
             },
         },
         [
@@ -943,7 +954,7 @@
                     Struct(
                         Struct {
                             id: StructId(
-                                4803,
+                                4c03,
                             ),
                         },
                     ),
@@ -970,17 +981,14 @@
                 is_assoc: false,
                 is_import: false,
                 do_not_complete: Yes,
+                _marker: PhantomData<&()>,
             },
         ],
     ),
     (
         Module {
-            id: ModuleId {
-                krate: Crate(
-                    Id(2c00),
-                ),
-                block: None,
-                local_id: Idx::<ModuleData>(2),
+            id: ModuleIdLt {
+                [salsa id]: Id(3802),
             },
         },
         [
@@ -989,7 +997,7 @@
                 def: Trait(
                     Trait {
                         id: TraitId(
-                            5c00,
+                            6000,
                         ),
                     },
                 ),
@@ -1015,6 +1023,7 @@
                 is_assoc: false,
                 is_import: true,
                 do_not_complete: Yes,
+                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "IsThisJustATrait",
@@ -1022,7 +1031,7 @@
                     Macro {
                         id: Macro2Id(
                             Macro2Id(
-                                4c00,
+                                5000,
                             ),
                         ),
                     },
@@ -1049,6 +1058,7 @@
                 is_assoc: false,
                 is_import: true,
                 do_not_complete: Yes,
+                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "StructInModB",
@@ -1056,7 +1066,7 @@
                     Struct(
                         Struct {
                             id: StructId(
-                                4804,
+                                4c04,
                             ),
                         },
                     ),
@@ -1083,6 +1093,7 @@
                 is_assoc: false,
                 is_import: false,
                 do_not_complete: Yes,
+                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "SuperItemLikeMacro",
@@ -1090,7 +1101,7 @@
                     Macro {
                         id: Macro2Id(
                             Macro2Id(
-                                4c00,
+                                5000,
                             ),
                         ),
                     },
@@ -1117,6 +1128,7 @@
                 is_assoc: false,
                 is_import: true,
                 do_not_complete: Yes,
+                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "ThisStruct",
@@ -1124,7 +1136,7 @@
                     Struct(
                         Struct {
                             id: StructId(
-                                4804,
+                                4c04,
                             ),
                         },
                     ),
@@ -1151,6 +1163,7 @@
                 is_assoc: false,
                 is_import: true,
                 do_not_complete: Yes,
+                _marker: PhantomData<&()>,
             },
         ],
     ),

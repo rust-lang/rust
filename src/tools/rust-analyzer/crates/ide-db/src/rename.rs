@@ -246,7 +246,7 @@ fn rename_mod(
 ) -> Result<SourceChange> {
     let mut source_change = SourceChange::default();
 
-    if module.is_crate_root() {
+    if module.is_crate_root(sema.db) {
         return Ok(source_change);
     }
 

@@ -14,6 +14,7 @@ use rustc_data_structures::stable_hasher::{
 use rustc_data_structures::sync::Lock;
 use rustc_macros::{Decodable, Encodable, HashStable_Generic, symbols};
 
+use crate::edit_distance::find_best_match_for_name;
 use crate::{DUMMY_SP, Edition, Span, with_session_globals};
 
 #[cfg(test)]
@@ -571,6 +572,7 @@ symbols! {
         begin_panic,
         bench,
         bevy_ecs,
+        bikeshed,
         bikeshed_guaranteed_no_drop,
         bin,
         binaryheap_iter,
@@ -927,6 +929,11 @@ symbols! {
         effects,
         eh_catch_typeinfo,
         eh_personality,
+        eii,
+        eii_extern_target,
+        eii_impl,
+        eii_internals,
+        eii_shared_macro,
         emit,
         emit_enum,
         emit_enum_variant,
@@ -986,6 +993,7 @@ symbols! {
         extern_crate_item_prelude,
         extern_crate_self,
         extern_in_paths,
+        extern_item_impls,
         extern_prelude,
         extern_system_varargs,
         extern_types,
@@ -1936,6 +1944,7 @@ symbols! {
         rustc_dump_user_args,
         rustc_dump_vtable,
         rustc_effective_visibility,
+        rustc_eii_extern_item,
         rustc_evaluate_where_clauses,
         rustc_expected_cgu_reuse,
         rustc_force_inline,
@@ -1989,6 +1998,7 @@ symbols! {
         rustc_reallocator,
         rustc_regions,
         rustc_reservation_impl,
+        rustc_scalable_vector,
         rustc_serialize,
         rustc_should_not_be_called_on_const_items,
         rustc_simd_monomorphize_lane_limit,
@@ -2143,6 +2153,7 @@ symbols! {
         sparc,
         sparc64,
         sparc_target_feature,
+        spe_acc,
         specialization,
         speed,
         spirv,
@@ -2282,6 +2293,7 @@ symbols! {
         truncf64,
         truncf128,
         try_blocks,
+        try_blocks_heterogeneous,
         try_capture,
         try_from,
         try_from_fn,
@@ -2382,6 +2394,7 @@ symbols! {
         unsafe_block_in_unsafe_fn,
         unsafe_cell,
         unsafe_cell_raw_get,
+        unsafe_eii,
         unsafe_extern_blocks,
         unsafe_fields,
         unsafe_no_drop_flag,
@@ -2461,6 +2474,7 @@ symbols! {
         vsreg,
         vsx,
         vtable_align,
+        vtable_for,
         vtable_size,
         warn,
         wasip2,
@@ -2841,6 +2855,27 @@ impl Symbol {
     pub fn to_ident_string(self) -> String {
         // Avoid creating an empty identifier, because that asserts in debug builds.
         if self == sym::empty { String::new() } else { Ident::with_dummy_span(self).to_string() }
+    }
+
+    /// Checks if `self` is similar to any symbol in `candidates`.
+    ///
+    /// The returned boolean represents whether the candidate is the same symbol with a different
+    /// casing.
+    ///
+    /// All the candidates are assumed to be lowercase.
+    pub fn find_similar(
+        self,
+        candidates: &[Symbol],
+    ) -> Option<(Symbol, /* is incorrect case */ bool)> {
+        let lowercase = self.as_str().to_lowercase();
+        let lowercase_sym = Symbol::intern(&lowercase);
+        if candidates.contains(&lowercase_sym) {
+            Some((lowercase_sym, true))
+        } else if let Some(similar_sym) = find_best_match_for_name(candidates, self, None) {
+            Some((similar_sym, false))
+        } else {
+            None
+        }
     }
 }
 

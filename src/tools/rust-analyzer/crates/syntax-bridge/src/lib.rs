@@ -1,5 +1,10 @@
 //! Conversions between [`SyntaxNode`] and [`tt::TokenTree`].
 
+#![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
+
+#[cfg(feature = "in-rust-tree")]
+extern crate rustc_driver as _;
+
 use std::{collections::VecDeque, fmt, hash::Hash};
 
 use intern::Symbol;

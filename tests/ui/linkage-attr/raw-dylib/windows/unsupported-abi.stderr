@@ -1,5 +1,5 @@
 warning: "stdcall" is not a supported ABI for the current target
-  --> $DIR/unsupported-abi.rs:13:1
+  --> $DIR/unsupported-abi.rs:14:1
    |
 LL | / extern "stdcall" {
 LL | |
@@ -15,7 +15,7 @@ LL | | }
    = note: `#[warn(unsupported_calling_conventions)]` (part of `#[warn(future_incompatible)]`) on by default
 
 error: ABI not supported by `#[link(kind = "raw-dylib")]` on this architecture
-  --> $DIR/unsupported-abi.rs:16:5
+  --> $DIR/unsupported-abi.rs:17:5
    |
 LL |     fn f(x: i32);
    |     ^^^^^^^^^^^^^

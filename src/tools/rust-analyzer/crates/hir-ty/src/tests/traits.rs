@@ -5079,3 +5079,23 @@ fn foo(base_layer_two: &dyn BaseLayerOne) {
     "#,
     );
 }
+
+#[test]
+fn default_assoc_types() {
+    check_types(
+        r#"
+trait Trait<T> {
+    type Assoc<U> = (T, U);
+    fn method(self) -> Self::Assoc<i32> { loop {} }
+}
+
+struct Struct<T>(T);
+impl<T> Trait<((), T)> for Struct<T> {}
+
+fn foo(v: Struct<f32>) {
+    v.method();
+ // ^^^^^^^^^^ (((), f32), i32)
+}
+    "#,
+    );
+}

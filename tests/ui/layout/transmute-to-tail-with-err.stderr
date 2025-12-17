@@ -1,4 +1,4 @@
-error[E0412]: cannot find type `T` in this scope
+error[E0425]: cannot find type `T` in this scope
   --> $DIR/transmute-to-tail-with-err.rs:3:26
    |
 LL | struct Bar(Box<dyn Trait<T>>);
@@ -20,5 +20,5 @@ LL |     let x: Bar = unsafe { std::mem::transmute(()) };
 
 error: aborting due to 2 previous errors
 
-Some errors have detailed explanations: E0412, E0512.
-For more information about an error, try `rustc --explain E0412`.
+Some errors have detailed explanations: E0425, E0512.
+For more information about an error, try `rustc --explain E0425`.

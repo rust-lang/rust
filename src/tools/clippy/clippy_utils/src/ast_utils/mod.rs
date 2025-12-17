@@ -199,7 +199,7 @@ pub fn eq_expr(l: &Expr, r: &Expr) -> bool {
         ) => eq_label(ll.as_ref(), rl.as_ref()) && eq_pat(lp, rp) && eq_expr(li, ri) && eq_block(lt, rt) && lk == rk,
         (Loop(lt, ll, _), Loop(rt, rl, _)) => eq_label(ll.as_ref(), rl.as_ref()) && eq_block(lt, rt),
         (Block(lb, ll), Block(rb, rl)) => eq_label(ll.as_ref(), rl.as_ref()) && eq_block(lb, rb),
-        (TryBlock(l), TryBlock(r)) => eq_block(l, r),
+        (TryBlock(lb, lt), TryBlock(rb, rt)) => eq_block(lb, rb) && both(lt.as_deref(), rt.as_deref(), eq_ty),
         (Yield(l), Yield(r)) => eq_expr_opt(l.expr().map(Box::as_ref), r.expr().map(Box::as_ref)) && l.same_kind(r),
         (Ret(l), Ret(r)) => eq_expr_opt(l.as_deref(), r.as_deref()),
         (Break(ll, le), Break(rl, re)) => {
@@ -382,6 +382,7 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
                 contract: lc,
                 body: lb,
                 define_opaque: _,
+                eii_impls: _,
             }),
             Fn(box ast::Fn {
                 defaultness: rd,
@@ -391,6 +392,7 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
                 contract: rc,
                 body: rb,
                 define_opaque: _,
+                eii_impls: _,
             }),
         ) => {
             eq_defaultness(*ld, *rd)
@@ -554,6 +556,7 @@ pub fn eq_foreign_item_kind(l: &ForeignItemKind, r: &ForeignItemKind) -> bool {
                 contract: lc,
                 body: lb,
                 define_opaque: _,
+                eii_impls: _,
             }),
             Fn(box ast::Fn {
                 defaultness: rd,
@@ -563,6 +566,7 @@ pub fn eq_foreign_item_kind(l: &ForeignItemKind, r: &ForeignItemKind) -> bool {
                 contract: rc,
                 body: rb,
                 define_opaque: _,
+                eii_impls: _,
             }),
         ) => {
             eq_defaultness(*ld, *rd)
@@ -638,6 +642,7 @@ pub fn eq_assoc_item_kind(l: &AssocItemKind, r: &AssocItemKind) -> bool {
                 contract: lc,
                 body: lb,
                 define_opaque: _,
+                eii_impls: _,
             }),
             Fn(box ast::Fn {
                 defaultness: rd,
@@ -647,6 +652,7 @@ pub fn eq_assoc_item_kind(l: &AssocItemKind, r: &AssocItemKind) -> bool {
                 contract: rc,
                 body: rb,
                 define_opaque: _,
+                eii_impls: _,
             }),
         ) => {
             eq_defaultness(*ld, *rd)

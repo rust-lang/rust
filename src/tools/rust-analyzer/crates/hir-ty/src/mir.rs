@@ -157,6 +157,7 @@ impl<'db, V: PartialEq> ProjectionElem<'db, V> {
     pub fn projected_ty(
         &self,
         infcx: &InferCtxt<'db>,
+        env: ParamEnv<'db>,
         mut base: Ty<'db>,
         closure_field: impl FnOnce(InternedClosureId, GenericArgs<'db>, usize) -> Ty<'db>,
         krate: Crate,
@@ -173,8 +174,6 @@ impl<'db, V: PartialEq> ProjectionElem<'db, V> {
 
         if matches!(base.kind(), TyKind::Alias(..)) {
             let mut ocx = ObligationCtxt::new(infcx);
-            // FIXME: we should get this from caller
-            let env = ParamEnv::empty();
             match ocx.structurally_normalize_ty(&ObligationCause::dummy(), env, base) {
                 Ok(it) => base = it,
                 Err(_) => return Ty::new_error(interner, ErrorGuaranteed),
@@ -977,15 +976,13 @@ pub enum Rvalue<'db> {
     UnaryOp(UnOp, Operand<'db>),
 
     /// Computes the discriminant of the place, returning it as an integer of type
-    /// [`discriminant_ty`]. Returns zero for types without discriminant.
+    /// `discriminant_ty`. Returns zero for types without discriminant.
     ///
     /// The validity requirements for the underlying value are undecided for this rvalue, see
     /// [#91095]. Note too that the value of the discriminant is not the same thing as the
-    /// variant index; use [`discriminant_for_variant`] to convert.
+    /// variant index; use `discriminant_for_variant` to convert.
     ///
-    /// [`discriminant_ty`]: crate::ty::Ty::discriminant_ty
     /// [#91095]: https://github.com/rust-lang/rust/issues/91095
-    /// [`discriminant_for_variant`]: crate::ty::Ty::discriminant_for_variant
     Discriminant(Place<'db>),
 
     /// Creates an aggregate value, like a tuple or struct.

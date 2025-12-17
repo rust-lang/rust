@@ -8,7 +8,7 @@ use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
-use rustc_span::{FileName, FileNameDisplayPreference, RealFileName, sym};
+use rustc_span::{FileName, RealFileName, RemapPathScopeComponents};
 use tracing::info;
 
 use super::render::Context;
@@ -148,7 +148,10 @@ impl DocVisitor<'_> for SourceCollector<'_, '_> {
                         span,
                         format!(
                             "failed to render source code for `{filename}`: {e}",
-                            filename = filename.to_string_lossy(FileNameDisplayPreference::Local),
+                            filename = filename
+                                .path(RemapPathScopeComponents::DIAGNOSTICS)
+                                .to_string_lossy()
+                                .into_owned(),
                         ),
                     );
                     false
@@ -224,10 +227,7 @@ impl SourceCollector<'_, '_> {
         cur.push(&fname);
 
         let title = format!("{} - source", src_fname.to_string_lossy());
-        let desc = format!(
-            "Source of the Rust file `{}`.",
-            file.to_string_lossy(FileNameDisplayPreference::Remapped)
-        );
+        let desc = format!("Source of the Rust file `{}`.", p.to_string_lossy());
         let page = layout::Page {
             title: &title,
             short_title: &src_fname.to_string_lossy(),
@@ -236,7 +236,9 @@ impl SourceCollector<'_, '_> {
             static_root_path: shared.static_root_path.as_deref(),
             description: &desc,
             resource_suffix: &shared.resource_suffix,
-            rust_logo: has_doc_flag(self.cx.tcx(), LOCAL_CRATE.as_def_id(), sym::rust_logo),
+            rust_logo: has_doc_flag(self.cx.tcx(), LOCAL_CRATE.as_def_id(), |d| {
+                d.rust_logo.is_some()
+            }),
         };
         let source_context = SourceContext::Standalone { file_path };
         let v = layout::render(

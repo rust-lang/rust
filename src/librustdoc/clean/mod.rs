@@ -34,13 +34,11 @@ use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::mem;
 
-use rustc_ast::token::{Token, TokenKind};
-use rustc_ast::tokenstream::{TokenStream, TokenTree};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet, IndexEntry};
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::codes::*;
 use rustc_errors::{FatalError, struct_span_code_err};
-use rustc_hir::attrs::AttributeKind;
+use rustc_hir::attrs::{AttributeKind, DocAttribute, DocInline};
 use rustc_hir::def::{CtorKind, DefKind, MacroKinds, Res};
 use rustc_hir::def_id::{DefId, DefIdMap, DefIdSet, LOCAL_CRATE, LocalDefId};
 use rustc_hir::{LangItem, PredicateOrigin, find_attr};
@@ -198,12 +196,12 @@ fn generate_item_with_correct_attrs(
             // For glob re-exports the item may or may not exist to be re-exported (potentially the
             // cfgs on the path up until the glob can be removed, and only cfgs on the globbed item
             // itself matter), for non-inlined re-exports see #85043.
-            let import_is_inline =
-                hir_attr_lists(inline::load_attrs(cx, import_id.to_def_id()), sym::doc)
-                    .get_word_attr(sym::inline)
-                    .is_some()
-                    || (is_glob_import(cx.tcx, import_id)
-                        && (cx.document_hidden() || !cx.tcx.is_doc_hidden(def_id)));
+            let import_is_inline = find_attr!(
+                inline::load_attrs(cx, import_id.to_def_id()),
+                AttributeKind::Doc(d)
+                if d.inline.first().is_some_and(|(inline, _)| *inline == DocInline::Inline)
+            ) || (is_glob_import(cx.tcx, import_id)
+                && (cx.document_hidden() || !cx.tcx.is_doc_hidden(def_id)));
             attrs.extend(get_all_import_attributes(cx, import_id, def_id, is_inline));
             is_inline = is_inline || import_is_inline;
         }
@@ -2635,63 +2633,6 @@ fn get_all_import_attributes<'hir>(
     attrs
 }
 
-fn filter_tokens_from_list(
-    args_tokens: &TokenStream,
-    should_retain: impl Fn(&TokenTree) -> bool,
-) -> Vec<TokenTree> {
-    let mut tokens = Vec::with_capacity(args_tokens.len());
-    let mut skip_next_comma = false;
-    for token in args_tokens.iter() {
-        match token {
-            TokenTree::Token(Token { kind: TokenKind::Comma, .. }, _) if skip_next_comma => {
-                skip_next_comma = false;
-            }
-            token if should_retain(token) => {
-                skip_next_comma = false;
-                tokens.push(token.clone());
-            }
-            _ => {
-                skip_next_comma = true;
-            }
-        }
-    }
-    tokens
-}
-
-fn filter_doc_attr_ident(ident: Symbol, is_inline: bool) -> bool {
-    if is_inline {
-        ident == sym::hidden || ident == sym::inline || ident == sym::no_inline
-    } else {
-        ident == sym::cfg
-    }
-}
-
-/// Remove attributes from `normal` that should not be inherited by `use` re-export.
-/// Before calling this function, make sure `normal` is a `#[doc]` attribute.
-fn filter_doc_attr(args: &mut hir::AttrArgs, is_inline: bool) {
-    match args {
-        hir::AttrArgs::Delimited(args) => {
-            let tokens = filter_tokens_from_list(&args.tokens, |token| {
-                !matches!(
-                    token,
-                    TokenTree::Token(
-                        Token {
-                            kind: TokenKind::Ident(
-                                ident,
-                                _,
-                            ),
-                            ..
-                        },
-                        _,
-                    ) if filter_doc_attr_ident(*ident, is_inline),
-                )
-            });
-            args.tokens = TokenStream::new(tokens);
-        }
-        hir::AttrArgs::Empty | hir::AttrArgs::Eq { .. } => {}
-    }
-}
-
 /// When inlining items, we merge their attributes (and all the reexports attributes too) with the
 /// final reexport. For example:
 ///
@@ -2719,25 +2660,34 @@ fn add_without_unwanted_attributes<'hir>(
     import_parent: Option<DefId>,
 ) {
     for attr in new_attrs {
-        if attr.is_doc_comment().is_some() {
-            attrs.push((Cow::Borrowed(attr), import_parent));
-            continue;
-        }
-        let mut attr = attr.clone();
         match attr {
-            hir::Attribute::Unparsed(ref mut normal) if let [ident] = &*normal.path.segments => {
-                let ident = ident.name;
-                if ident == sym::doc {
-                    filter_doc_attr(&mut normal.args, is_inline);
-                    attrs.push((Cow::Owned(attr), import_parent));
-                } else if is_inline || ident != sym::cfg_trace {
+            hir::Attribute::Parsed(AttributeKind::DocComment { .. }) => {
+                attrs.push((Cow::Borrowed(attr), import_parent));
+            }
+            hir::Attribute::Parsed(AttributeKind::Doc(box d)) => {
+                // Remove attributes from `normal` that should not be inherited by `use` re-export.
+                let DocAttribute { hidden, inline, cfg, .. } = d;
+                let mut attr = DocAttribute::default();
+                if is_inline {
+                    attr.cfg = cfg.clone();
+                } else {
+                    attr.inline = inline.clone();
+                    attr.hidden = hidden.clone();
+                }
+                attrs.push((
+                    Cow::Owned(hir::Attribute::Parsed(AttributeKind::Doc(Box::new(attr)))),
+                    import_parent,
+                ));
+            }
+            hir::Attribute::Unparsed(normal) if let [ident] = &*normal.path.segments => {
+                if is_inline || ident.name != sym::cfg_trace {
                     // If it's not a `cfg()` attribute, we keep it.
-                    attrs.push((Cow::Owned(attr), import_parent));
+                    attrs.push((Cow::Borrowed(attr), import_parent));
                 }
             }
             // FIXME: make sure to exclude `#[cfg_trace]` here when it is ported to the new parsers
             hir::Attribute::Parsed(..) => {
-                attrs.push((Cow::Owned(attr), import_parent));
+                attrs.push((Cow::Borrowed(attr), import_parent));
             }
             _ => {}
         }
@@ -2939,7 +2889,7 @@ fn clean_impl<'tcx>(
             } else {
                 ty::ImplPolarity::Positive
             },
-            kind: if utils::has_doc_flag(tcx, def_id.to_def_id(), sym::fake_variadic) {
+            kind: if utils::has_doc_flag(tcx, def_id.to_def_id(), |d| d.fake_variadic.is_some()) {
                 ImplKind::FakeVariadic
             } else {
                 ImplKind::Normal
@@ -2968,11 +2918,10 @@ fn clean_extern_crate<'tcx>(
     let ty_vis = cx.tcx.visibility(krate.owner_id);
     let please_inline = ty_vis.is_public()
         && attrs.iter().any(|a| {
-            a.has_name(sym::doc)
-                && match a.meta_item_list() {
-                    Some(l) => ast::attr::list_contains_name(&l, sym::inline),
-                    None => false,
-                }
+            matches!(
+            a,
+            hir::Attribute::Parsed(AttributeKind::Doc(d))
+            if d.inline.first().is_some_and(|(i, _)| *i == DocInline::Inline))
         })
         && !cx.is_json_output();
 
@@ -3035,7 +2984,11 @@ fn clean_use_statement_inner<'tcx>(
 
     let visibility = cx.tcx.visibility(import.owner_id);
     let attrs = cx.tcx.hir_attrs(import.hir_id());
-    let inline_attr = hir_attr_lists(attrs, sym::doc).get_word_attr(sym::inline);
+    let inline_attr = find_attr!(
+        attrs,
+        AttributeKind::Doc(d) if d.inline.first().is_some_and(|(i, _)| *i == DocInline::Inline) => d
+    )
+    .and_then(|d| d.inline.first());
     let pub_underscore = visibility.is_public() && name == Some(kw::Underscore);
     let current_mod = cx.tcx.parent_module_from_def_id(import.owner_id.def_id);
     let import_def_id = import.owner_id.def_id;
@@ -3053,10 +3006,10 @@ fn clean_use_statement_inner<'tcx>(
     let is_visible_from_parent_mod =
         visibility.is_accessible_from(parent_mod, cx.tcx) && !current_mod.is_top_level_module();
 
-    if pub_underscore && let Some(ref inline) = inline_attr {
+    if pub_underscore && let Some((_, inline_span)) = inline_attr {
         struct_span_code_err!(
             cx.tcx.dcx(),
-            inline.span(),
+            *inline_span,
             E0780,
             "anonymous imports cannot be inlined"
         )
@@ -3071,16 +3024,11 @@ fn clean_use_statement_inner<'tcx>(
     let mut denied = cx.is_json_output()
         || !(visibility.is_public() || (cx.document_private() && is_visible_from_parent_mod))
         || pub_underscore
-        || attrs.iter().any(|a| {
-            a.has_name(sym::doc)
-                && match a.meta_item_list() {
-                    Some(l) => {
-                        ast::attr::list_contains_name(&l, sym::no_inline)
-                            || ast::attr::list_contains_name(&l, sym::hidden)
-                    }
-                    None => false,
-                }
-        });
+        || attrs.iter().any(|a| matches!(
+            a,
+            hir::Attribute::Parsed(AttributeKind::Doc(d))
+            if d.hidden.is_some() || d.inline.first().is_some_and(|(i, _)| *i == DocInline::NoInline)
+        ));
 
     // Also check whether imports were asked to be inlined, in case we're trying to re-export a
     // crate in Rust 2018+

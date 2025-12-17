@@ -7,12 +7,13 @@
 #![allow(rustc::diagnostic_outside_of_impl)]
 #![allow(rustc::direct_use_of_rustc_type_ir)]
 #![allow(rustc::untranslatable_diagnostic)]
-#![feature(array_windows)]
+#![cfg_attr(bootstrap, feature(array_windows))]
 #![feature(assert_matches)]
 #![feature(associated_type_defaults)]
 #![feature(box_patterns)]
 #![feature(default_field_values)]
 #![feature(error_reporter)]
+#![feature(macro_metavar_expr_concat)]
 #![feature(negative_impls)]
 #![feature(never_type)]
 #![feature(rustc_attrs)]
@@ -64,8 +65,8 @@ pub use rustc_error_messages::{
     fallback_fluent_bundle, fluent_bundle, into_diag_arg_using_display,
 };
 use rustc_hashes::Hash128;
+use rustc_lint_defs::LintExpectationId;
 pub use rustc_lint_defs::{Applicability, listify, pluralize};
-use rustc_lint_defs::{Lint, LintExpectationId};
 use rustc_macros::{Decodable, Encodable};
 pub use rustc_span::ErrorGuaranteed;
 pub use rustc_span::fatal_error::{FatalError, FatalErrorMarker};
@@ -105,20 +106,6 @@ rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 rustc_data_structures::static_assert_size!(PResult<'_, ()>, 24);
 #[cfg(target_pointer_width = "64")]
 rustc_data_structures::static_assert_size!(PResult<'_, bool>, 24);
-
-/// Used to avoid depending on `rustc_middle` in `rustc_attr_parsing`.
-/// Always the `TyCtxt`.
-pub trait LintEmitter: Copy {
-    type Id: Copy;
-    #[track_caller]
-    fn emit_node_span_lint(
-        self,
-        lint: &'static Lint,
-        hir_id: Self::Id,
-        span: impl Into<MultiSpan>,
-        decorator: impl for<'a> LintDiagnostic<'a, ()> + DynSend + 'static,
-    );
-}
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, Encodable, Decodable)]
 pub enum SuggestionStyle {

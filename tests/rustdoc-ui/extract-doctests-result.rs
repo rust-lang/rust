@@ -3,6 +3,7 @@
 
 //@ compile-flags:-Z unstable-options --output-format=doctest
 //@ normalize-stdout: "tests/rustdoc-ui" -> "$$DIR"
+//@ normalize-stdout: "[A-Z]:[\\/](?:[^\\/]+[\\/])*?\$DIR" -> "$$DIR"
 //@ check-pass
 
 //! ```

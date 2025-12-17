@@ -12,8 +12,6 @@ however, it's based on an older 2019-01-20 release (git tag [guide-2019-01]):
 [guide-2019-01]: https://github.com/rust-lang/rust-analyzer/tree/guide-2019-01
 [2024-01-01]: https://github.com/rust-lang/rust-analyzer/tree/2024-01-01
 
-<!-- toc -->
-
 ## The big picture
 
 On the highest possible level, rust-analyzer is a stateful component. A client may

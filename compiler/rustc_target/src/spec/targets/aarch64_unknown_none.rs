@@ -27,6 +27,7 @@ pub(crate) fn target() -> Target {
         max_atomic_width: Some(128),
         stack_probes: StackProbeType::Inline,
         panic_strategy: PanicStrategy::Abort,
+        default_uwtable: true,
         ..Default::default()
     };
     Target {

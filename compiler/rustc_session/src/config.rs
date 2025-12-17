@@ -21,13 +21,10 @@ use rustc_errors::emitter::HumanReadableErrorType;
 use rustc_errors::{ColorConfig, DiagArgValue, DiagCtxtFlags, IntoDiagArg};
 use rustc_feature::UnstableFeatures;
 use rustc_hashes::Hash64;
-use rustc_macros::{Decodable, Encodable, HashStable_Generic};
+use rustc_macros::{BlobDecodable, Decodable, Encodable, HashStable_Generic};
 use rustc_span::edition::{DEFAULT_EDITION, EDITION_NAME_LIST, Edition, LATEST_STABLE_EDITION};
 use rustc_span::source_map::FilePathMapping;
-use rustc_span::{
-    FileName, FileNameDisplayPreference, FileNameEmbeddablePreference, RealFileName,
-    SourceFileHashAlgorithm, Symbol, sym,
-};
+use rustc_span::{FileName, RealFileName, SourceFileHashAlgorithm, Symbol, sym};
 use rustc_target::spec::{
     FramePointer, LinkSelfContainedComponents, LinkerFeatures, PanicStrategy, SplitDebuginfo,
     Target, TargetTuple,
@@ -543,7 +540,7 @@ impl SwitchWithOptPath {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, HashStable_Generic)]
-#[derive(Encodable, Decodable)]
+#[derive(Encodable, BlobDecodable)]
 pub enum SymbolManglingVersion {
     Legacy,
     V0,
@@ -809,7 +806,7 @@ pub enum ErrorOutputType {
     /// Output meant for the consumption of humans.
     #[default]
     HumanReadable {
-        kind: HumanReadableErrorType = HumanReadableErrorType::Default { short: false },
+        kind: HumanReadableErrorType = HumanReadableErrorType { short: false, unicode: false },
         color_config: ColorConfig = ColorConfig::Auto,
     },
     /// Output that's consumed by other tools such as `rustfix` or the `RLS`.
@@ -1022,9 +1019,15 @@ impl Input {
         "rust_out"
     }
 
-    pub fn source_name(&self) -> FileName {
+    pub fn file_name(&self, session: &Session) -> FileName {
         match *self {
-            Input::File(ref ifile) => ifile.clone().into(),
+            Input::File(ref ifile) => FileName::Real(
+                session
+                    .psess
+                    .source_map()
+                    .path_mapping()
+                    .to_real_filename(session.psess.source_map().working_dir(), ifile.as_path()),
+            ),
             Input::Str { ref name, .. } => name.clone(),
         }
     }
@@ -1312,25 +1315,6 @@ impl OutputFilenames {
     }
 }
 
-bitflags::bitflags! {
-    /// Scopes used to determined if it need to apply to --remap-path-prefix
-    #[derive(Clone, Copy, PartialEq, Eq, Hash)]
-    pub struct RemapPathScopeComponents: u8 {
-        /// Apply remappings to the expansion of std::file!() macro
-        const MACRO = 1 << 0;
-        /// Apply remappings to printed compiler diagnostics
-        const DIAGNOSTICS = 1 << 1;
-        /// Apply remappings to debug information
-        const DEBUGINFO = 1 << 3;
-        /// Apply remappings to coverage information
-        const COVERAGE = 1 << 4;
-
-        /// An alias for `macro`, `debuginfo` and `coverage`. This ensures all paths in compiled
-        /// executables, libraries and objects are remapped but not elsewhere.
-        const OBJECT = Self::MACRO.bits() | Self::DEBUGINFO.bits() | Self::COVERAGE.bits();
-    }
-}
-
 #[derive(Clone, Debug)]
 pub struct Sysroot {
     pub explicit: Option<PathBuf>,
@@ -1369,25 +1353,22 @@ fn file_path_mapping(
     remap_path_prefix: Vec<(PathBuf, PathBuf)>,
     unstable_opts: &UnstableOptions,
 ) -> FilePathMapping {
-    FilePathMapping::new(
-        remap_path_prefix.clone(),
-        if unstable_opts.remap_path_scope.contains(RemapPathScopeComponents::DIAGNOSTICS)
-            && !remap_path_prefix.is_empty()
-        {
-            FileNameDisplayPreference::Remapped
-        } else {
-            FileNameDisplayPreference::Local
-        },
-        if unstable_opts.remap_path_scope.is_all() {
-            FileNameEmbeddablePreference::RemappedOnly
-        } else {
-            FileNameEmbeddablePreference::LocalAndRemapped
-        },
-    )
+    FilePathMapping::new(remap_path_prefix.clone(), unstable_opts.remap_path_scope)
 }
 
 impl Default for Options {
     fn default() -> Options {
+        let unstable_opts = UnstableOptions::default();
+
+        // FIXME(Urgau): This is a hack that ideally shouldn't exist, but rustdoc
+        // currently uses this `Default` implementation, so we have no choice but
+        // to create a default working directory.
+        let working_dir = {
+            let working_dir = std::env::current_dir().unwrap();
+            let file_mapping = file_path_mapping(Vec::new(), &unstable_opts);
+            file_mapping.to_real_filename(&RealFileName::empty(), &working_dir)
+        };
+
         Options {
             assert_incr_state: None,
             crate_types: Vec::new(),
@@ -1404,7 +1385,7 @@ impl Default for Options {
             test: false,
             incremental: None,
             untracked_state_hash: Default::default(),
-            unstable_opts: Default::default(),
+            unstable_opts,
             prints: Vec::new(),
             cg: Default::default(),
             error_format: ErrorOutputType::default(),
@@ -1428,7 +1409,7 @@ impl Default for Options {
             json_unused_externs: JsonUnusedExterns::No,
             json_future_incompat: false,
             pretty: None,
-            working_dir: RealFileName::LocalPath(std::env::current_dir().unwrap()),
+            working_dir,
             color: ColorConfig::Auto,
             logical_env: FxIndexMap::default(),
             verbose: false,
@@ -1521,7 +1502,7 @@ pub enum EntryFnType {
     },
 }
 
-#[derive(Copy, PartialEq, PartialOrd, Clone, Ord, Eq, Hash, Debug, Encodable, Decodable)]
+#[derive(Copy, PartialEq, PartialOrd, Clone, Ord, Eq, Hash, Debug, Encodable, BlobDecodable)]
 #[derive(HashStable_Generic)]
 pub enum CrateType {
     Executable,
@@ -1984,16 +1965,8 @@ impl JsonUnusedExterns {
 ///
 /// The first value returned is how to render JSON diagnostics, and the second
 /// is whether or not artifact notifications are enabled.
-pub fn parse_json(
-    early_dcx: &EarlyDiagCtxt,
-    matches: &getopts::Matches,
-    is_nightly_build: bool,
-) -> JsonConfig {
-    let mut json_rendered = if is_nightly_build {
-        HumanReadableErrorType::AnnotateSnippet { short: false, unicode: false }
-    } else {
-        HumanReadableErrorType::Default { short: false }
-    };
+pub fn parse_json(early_dcx: &EarlyDiagCtxt, matches: &getopts::Matches) -> JsonConfig {
+    let mut json_rendered = HumanReadableErrorType { short: false, unicode: false };
     let mut json_color = ColorConfig::Never;
     let mut json_artifact_notifications = false;
     let mut json_unused_externs = JsonUnusedExterns::No;
@@ -2010,15 +1983,10 @@ pub fn parse_json(
         for sub_option in option.split(',') {
             match sub_option {
                 "diagnostic-short" => {
-                    json_rendered = if is_nightly_build {
-                        HumanReadableErrorType::AnnotateSnippet { short: true, unicode: false }
-                    } else {
-                        HumanReadableErrorType::Default { short: true }
-                    };
+                    json_rendered = HumanReadableErrorType { short: true, unicode: false };
                 }
                 "diagnostic-unicode" => {
-                    json_rendered =
-                        HumanReadableErrorType::AnnotateSnippet { short: false, unicode: true };
+                    json_rendered = HumanReadableErrorType { short: false, unicode: true };
                 }
                 "diagnostic-rendered-ansi" => json_color = ColorConfig::Always,
                 "artifacts" => json_artifact_notifications = true,
@@ -2048,13 +2016,8 @@ pub fn parse_error_format(
     color_config: ColorConfig,
     json_color: ColorConfig,
     json_rendered: HumanReadableErrorType,
-    is_nightly_build: bool,
 ) -> ErrorOutputType {
-    let default_kind = if is_nightly_build {
-        HumanReadableErrorType::AnnotateSnippet { short: false, unicode: false }
-    } else {
-        HumanReadableErrorType::Default { short: false }
-    };
+    let default_kind = HumanReadableErrorType { short: false, unicode: false };
     // We need the `opts_present` check because the driver will send us Matches
     // with only stable options if no unstable options are used. Since error-format
     // is unstable, it will not be present. We have to use `opts_present` not
@@ -2064,10 +2027,6 @@ pub fn parse_error_format(
             None | Some("human") => {
                 ErrorOutputType::HumanReadable { color_config, kind: default_kind }
             }
-            Some("human-annotate-rs") => ErrorOutputType::HumanReadable {
-                kind: HumanReadableErrorType::AnnotateSnippet { short: false, unicode: false },
-                color_config,
-            },
             Some("json") => {
                 ErrorOutputType::Json { pretty: false, json_rendered, color_config: json_color }
             }
@@ -2075,15 +2034,11 @@ pub fn parse_error_format(
                 ErrorOutputType::Json { pretty: true, json_rendered, color_config: json_color }
             }
             Some("short") => ErrorOutputType::HumanReadable {
-                kind: if is_nightly_build {
-                    HumanReadableErrorType::AnnotateSnippet { short: true, unicode: false }
-                } else {
-                    HumanReadableErrorType::Default { short: true }
-                },
+                kind: HumanReadableErrorType { short: true, unicode: false },
                 color_config,
             },
             Some("human-unicode") => ErrorOutputType::HumanReadable {
-                kind: HumanReadableErrorType::AnnotateSnippet { short: false, unicode: true },
+                kind: HumanReadableErrorType { short: false, unicode: true },
                 color_config,
             },
             Some(arg) => {
@@ -2092,8 +2047,8 @@ pub fn parse_error_format(
                     kind: default_kind,
                 });
                 early_dcx.early_fatal(format!(
-                    "argument for `--error-format` must be `human`, `human-annotate-rs`, \
-                    `human-unicode`, `json`, `pretty-json` or `short` (instead was `{arg}`)"
+                    "argument for `--error-format` must be `human`, `human-unicode`, \
+                    `json`, `pretty-json` or `short` (instead was `{arg}`)"
                 ))
             }
         }
@@ -2155,8 +2110,7 @@ fn check_error_format_stability(
     let format = match format {
         ErrorOutputType::Json { pretty: true, .. } => "pretty-json",
         ErrorOutputType::HumanReadable { kind, .. } => match kind {
-            HumanReadableErrorType::AnnotateSnippet { unicode: false, .. } => "human-annotate-rs",
-            HumanReadableErrorType::AnnotateSnippet { unicode: true, .. } => "human-unicode",
+            HumanReadableErrorType { unicode: true, .. } => "human-unicode",
             _ => return,
         },
         _ => return,
@@ -2484,16 +2438,9 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
         json_timings,
         json_unused_externs,
         json_future_incompat,
-    } = parse_json(early_dcx, matches, unstable_features.is_nightly_build());
+    } = parse_json(early_dcx, matches);
 
-    let error_format = parse_error_format(
-        early_dcx,
-        matches,
-        color,
-        json_color,
-        json_rendered,
-        unstable_features.is_nightly_build(),
-    );
+    let error_format = parse_error_format(early_dcx, matches, color, json_color, json_rendered);
 
     early_dcx.set_error_format(error_format);
 
@@ -2782,12 +2729,16 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
             .collect()
     };
 
-    let working_dir = std::env::current_dir().unwrap_or_else(|e| {
-        early_dcx.early_fatal(format!("Current directory is invalid: {e}"));
-    });
+    // Ideally we would use `SourceMap::working_dir` instead, but we don't have access to it
+    // so we manually create the potentially-remapped working directory
+    let working_dir = {
+        let working_dir = std::env::current_dir().unwrap_or_else(|e| {
+            early_dcx.early_fatal(format!("Current directory is invalid: {e}"));
+        });
 
-    let file_mapping = file_path_mapping(remap_path_prefix.clone(), &unstable_opts);
-    let working_dir = file_mapping.to_real_filename(&working_dir);
+        let file_mapping = file_path_mapping(remap_path_prefix.clone(), &unstable_opts);
+        file_mapping.to_real_filename(&RealFileName::empty(), &working_dir)
+    };
 
     let verbose = matches.opt_present("verbose") || unstable_opts.verbose_internals;
 
@@ -3115,8 +3066,8 @@ pub(crate) mod dep_tracking {
     use rustc_errors::LanguageIdentifier;
     use rustc_feature::UnstableFeatures;
     use rustc_hashes::Hash64;
-    use rustc_span::RealFileName;
     use rustc_span::edition::Edition;
+    use rustc_span::{RealFileName, RemapPathScopeComponents};
     use rustc_target::spec::{
         CodeModel, FramePointer, MergeFunctions, OnBrokenPipe, PanicStrategy, RelocModel,
         RelroLevel, SanitizerSet, SplitDebuginfo, StackProtector, SymbolVisibility, TargetTuple,
@@ -3127,10 +3078,10 @@ pub(crate) mod dep_tracking {
         AnnotateMoves, AutoDiff, BranchProtection, CFGuard, CFProtection, CollapseMacroDebuginfo,
         CoverageOptions, CrateType, DebugInfo, DebugInfoCompression, ErrorOutputType, FmtDebug,
         FunctionReturn, InliningThreshold, InstrumentCoverage, InstrumentXRay, LinkerPluginLto,
-        LocationDetail, LtoCli, MirStripDebugInfo, NextSolverConfig, Offload, OomStrategy,
-        OptLevel, OutFileName, OutputType, OutputTypes, PatchableFunctionEntry, Polonius,
-        RemapPathScopeComponents, ResolveDocLinks, SourceFileHashAlgorithm, SplitDwarfKind,
-        SwitchWithOptPath, SymbolManglingVersion, WasiExecModel,
+        LocationDetail, LtoCli, MirStripDebugInfo, NextSolverConfig, Offload, OptLevel,
+        OutFileName, OutputType, OutputTypes, PatchableFunctionEntry, Polonius, ResolveDocLinks,
+        SourceFileHashAlgorithm, SplitDwarfKind, SwitchWithOptPath, SymbolManglingVersion,
+        WasiExecModel,
     };
     use crate::lint;
     use crate::utils::NativeLib;
@@ -3227,7 +3178,6 @@ pub(crate) mod dep_tracking {
         LocationDetail,
         FmtDebug,
         BranchProtection,
-        OomStrategy,
         LanguageIdentifier,
         NextSolverConfig,
         PatchableFunctionEntry,
@@ -3336,27 +3286,6 @@ pub(crate) mod dep_tracking {
             Hash::hash(&key.len(), hasher);
             Hash::hash(key, hasher);
             sub_hash.hash(hasher, error_format, for_crate_hash);
-        }
-    }
-}
-
-/// Default behavior to use in out-of-memory situations.
-#[derive(Clone, Copy, PartialEq, Hash, Debug, Encodable, Decodable, HashStable_Generic)]
-pub enum OomStrategy {
-    /// Generate a panic that can be caught by `catch_unwind`.
-    Panic,
-
-    /// Abort the process immediately.
-    Abort,
-}
-
-impl OomStrategy {
-    pub const SYMBOL: &'static str = "__rust_alloc_error_handler_should_panic_v2";
-
-    pub fn should_panic(self) -> u8 {
-        match self {
-            OomStrategy::Panic => 1,
-            OomStrategy::Abort => 0,
         }
     }
 }

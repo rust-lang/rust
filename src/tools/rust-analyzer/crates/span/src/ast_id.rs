@@ -44,6 +44,7 @@ pub const ROOT_ERASED_FILE_AST_ID: ErasedFileAstId =
 
 /// ErasedFileAstId used as the span for syntax node fixups. Any Span containing this file id is to be
 /// considered fake.
+/// Do not modify this, it is used by the proc-macro server.
 pub const FIXUP_ERASED_FILE_AST_ID_MARKER: ErasedFileAstId =
     ErasedFileAstId(pack_hash_index_and_kind(0, 0, ErasedFileAstIdKind::Fixup as u32));
 
@@ -700,7 +701,7 @@ impl AstIdMap {
         }
     }
 
-    /// The [`AstId`] of the root node
+    /// The root node.
     pub fn root(&self) -> SyntaxNodePtr {
         self.arena[Idx::from_raw(RawIdx::from_u32(0))].0
     }

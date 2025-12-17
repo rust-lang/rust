@@ -77,6 +77,26 @@ will be downloaded from CI or built locally.
 The default value is `true`, which will download GCC from CI
 if there are no local changes to the GCC sources and the given host target is available on CI.
 
+## Providing your own GCC
+
+There are cases where you will want to provide yourself the `libgccjit.so` file.
+One such case is when you want to cross-compile `rustc` to another target since GCC is not a multi-target compiler.
+To support this use case, there is the bootstrap option `gcc.libgccjit-libs-dir`.
+This option override `gcc.download-ci-gcc`, meaning `libgccjit.so` won't be downloaded or built locally by bootstrap.
+The directory structure of this directory is `<host>/<target>/libgccjit.so`, for instance:
+
+```
+.
+├── m68k-unknown-linux-gnu
+│   └── m68k-unknown-linux-gnu
+│       └── libgccjit.so
+└── x86_64-unknown-linux-gnu
+    ├── m68k-unknown-linux-gnu
+    │   └── libgccjit.so
+    └── x86_64-unknown-linux-gnu
+        └── libgccjit.so
+```
+
 ## Running tests of the backend itself
 
 In addition to running the compiler's test suites using the GCC codegen backend, you can also run the test suite of the backend itself.

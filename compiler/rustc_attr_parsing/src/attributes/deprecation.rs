@@ -12,7 +12,7 @@ fn get<S: Stage>(
     cx: &AcceptContext<'_, '_, S>,
     name: Symbol,
     param_span: Span,
-    arg: &ArgParser<'_>,
+    arg: &ArgParser,
     item: &Option<Symbol>,
 ) -> Option<Symbol> {
     if item.is_some() {
@@ -68,7 +68,7 @@ impl<S: Stage> SingleAttributeParser<S> for DeprecationParser {
         NameValueStr: "reason"
     );
 
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
         let features = cx.features();
 
         let mut since = None;
@@ -110,13 +110,12 @@ impl<S: Stage> SingleAttributeParser<S> for DeprecationParser {
                                 Some(get(cx, name, param.span(), param.args(), &suggestion)?);
                         }
                         _ => {
-                            cx.unknown_key(
+                            cx.expected_specific_argument(
                                 param.span(),
-                                param.path().to_string(),
                                 if features.deprecated_suggestion() {
-                                    &["since", "note", "suggestion"]
+                                    &[sym::since, sym::note, sym::suggestion]
                                 } else {
-                                    &["since", "note"]
+                                    &[sym::since, sym::note]
                                 },
                             );
                             return None;

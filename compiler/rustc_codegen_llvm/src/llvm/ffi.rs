@@ -998,6 +998,7 @@ unsafe extern "C" {
     // Operations on array, pointer, and vector types (sequence types)
     pub(crate) safe fn LLVMPointerTypeInContext(C: &Context, AddressSpace: c_uint) -> &Type;
     pub(crate) fn LLVMVectorType(ElementType: &Type, ElementCount: c_uint) -> &Type;
+    pub(crate) fn LLVMScalableVectorType(ElementType: &Type, ElementCount: c_uint) -> &Type;
 
     pub(crate) fn LLVMGetElementType(Ty: &Type) -> &Type;
     pub(crate) fn LLVMGetVectorSize(VectorTy: &Type) -> c_uint;
@@ -2379,6 +2380,7 @@ unsafe extern "C" {
     ) -> *mut TargetMachine;
 
     pub(crate) fn LLVMRustAddLibraryInfo<'a>(
+        T: &TargetMachine,
         PM: &PassManager<'a>,
         M: &'a Module,
         DisableSimplifyLibCalls: bool,
@@ -2410,7 +2412,7 @@ unsafe extern "C" {
         LoopVectorize: bool,
         DisableSimplifyLibCalls: bool,
         EmitLifetimeMarkers: bool,
-        RunEnzyme: bool,
+        RunEnzyme: *const c_void,
         PrintBeforeEnzyme: bool,
         PrintAfterEnzyme: bool,
         PrintPasses: bool,
@@ -2582,4 +2584,12 @@ unsafe extern "C" {
 
     pub(crate) fn LLVMRustSetNoSanitizeAddress(Global: &Value);
     pub(crate) fn LLVMRustSetNoSanitizeHWAddress(Global: &Value);
+
+    pub(crate) fn LLVMAddAlias2<'ll>(
+        M: &'ll Module,
+        ValueTy: &Type,
+        AddressSpace: c_uint,
+        Aliasee: &Value,
+        Name: *const c_char,
+    ) -> &'ll Value;
 }

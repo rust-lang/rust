@@ -14,15 +14,15 @@ use ide_db::{
 };
 use itertools::Itertools;
 use syntax::{
-    AstNode, Edition, NodeOrToken, SmolStr, SyntaxKind, ToSmolStr,
+    AstNode, Edition, SmolStr, SyntaxElement, SyntaxKind, ToSmolStr,
     ast::{
         self, AssocItem, GenericArgList, GenericParamList, HasAttrs, HasGenericArgs,
         HasGenericParams, HasName, HasTypeBounds, HasVisibility as astHasVisibility, Path,
         WherePred,
         edit::{self, AstNodeEdit},
-        make,
+        syntax_factory::SyntaxFactory,
     },
-    ted::{self, Position},
+    syntax_editor::SyntaxEditor,
 };
 
 // Assist: generate_delegate_trait
@@ -124,7 +124,7 @@ impl Field {
         let db = ctx.sema.db;
 
         let module = ctx.sema.file_to_module_def(ctx.vfs_file_id())?;
-        let edition = module.krate().edition(ctx.db());
+        let edition = module.krate(ctx.db()).edition(ctx.db());
 
         let (name, range, ty) = match f {
             Either::Left(f) => {
@@ -169,10 +169,15 @@ enum Delegee {
 }
 
 impl Delegee {
+    fn trait_(&self) -> &hir::Trait {
+        match self {
+            Delegee::Bound(it) | Delegee::Impls(it, _) => it,
+        }
+    }
+
     fn signature(&self, db: &dyn HirDatabase, edition: Edition) -> String {
         let mut s = String::new();
-
-        let (Delegee::Bound(it) | Delegee::Impls(it, _)) = self;
+        let it = self.trait_();
 
         for m in it.module(db).path_to_root(db).iter().rev() {
             if let Some(name) = m.name(db) {
@@ -201,15 +206,12 @@ impl Struct {
         let db = ctx.db();
 
         for (index, delegee) in field.impls.iter().enumerate() {
-            let trait_ = match delegee {
-                Delegee::Bound(b) => b,
-                Delegee::Impls(i, _) => i,
-            };
+            let trait_ = delegee.trait_();
 
             // Skip trait that has `Self` type, which cannot be delegated
             //
             // See [`test_self_ty`]
-            if has_self_type(*trait_, ctx).is_some() {
+            if has_self_type(*trait_, ctx) {
                 continue;
             }
 
@@ -254,9 +256,10 @@ fn generate_impl(
     delegee: &Delegee,
     edition: Edition,
 ) -> Option<ast::Impl> {
+    let make = SyntaxFactory::without_mappings();
     let db = ctx.db();
     let ast_strukt = &strukt.strukt;
-    let strukt_ty = make::ty_path(make::ext::ident_path(&strukt.name.to_string()));
+    let strukt_ty = make.ty_path(make.ident_path(&strukt.name.to_string())).into();
     let strukt_params = ast_strukt.generic_param_list();
 
     match delegee {
@@ -264,7 +267,7 @@ fn generate_impl(
             let bound_def = ctx.sema.source(delegee.to_owned())?.value;
             let bound_params = bound_def.generic_param_list();
 
-            let delegate = make::impl_trait(
+            let delegate = make.impl_trait(
                 None,
                 delegee.is_unsafe(db),
                 bound_params.clone(),
@@ -272,33 +275,28 @@ fn generate_impl(
                 strukt_params.clone(),
                 strukt_params.map(|params| params.to_generic_args()),
                 delegee.is_auto(db),
-                make::ty(&delegee.name(db).display_no_db(edition).to_smolstr()),
+                make.ty(&delegee.name(db).display_no_db(edition).to_smolstr()),
                 strukt_ty,
                 bound_def.where_clause(),
                 ast_strukt.where_clause(),
                 None,
-            )
-            .clone_for_update();
+            );
 
             // Goto link : https://doc.rust-lang.org/reference/paths.html#qualified-paths
             let qualified_path_type =
-                make::path_from_text(&format!("<{} as {}>", field_ty, delegate.trait_()?));
+                make.path_from_text(&format!("<{} as {}>", field_ty, delegate.trait_()?));
 
-            let delegate_assoc_items = delegate.get_or_create_assoc_item_list();
-            if let Some(ai) = bound_def.assoc_item_list() {
+            // Collect assoc items
+            let assoc_items: Option<Vec<ast::AssocItem>> = bound_def.assoc_item_list().map(|ai| {
                 ai.assoc_items()
                     .filter(|item| matches!(item, AssocItem::MacroCall(_)).not())
-                    .for_each(|item| {
-                        let assoc = process_assoc_item(
-                            item.clone_for_update(),
-                            qualified_path_type.clone(),
-                            field_name,
-                        );
-                        if let Some(assoc) = assoc {
-                            delegate_assoc_items.add_item(assoc);
-                        }
-                    });
-            };
+                    .filter_map(|item| {
+                        process_assoc_item(item, qualified_path_type.clone(), field_name)
+                    })
+                    .collect()
+            });
+
+            let delegate = finalize_delegate(&make, &delegate, assoc_items, false)?;
 
             let target_scope = ctx.sema.scope(strukt.strukt.syntax())?;
             let source_scope = ctx.sema.scope(bound_def.syntax())?;
@@ -324,7 +322,7 @@ fn generate_impl(
                         .and_then(|wc| rename_strukt_args(ctx, ast_strukt, &wc, &args));
                     (field_ty, where_clause)
                 }
-                None => (field_ty.clone_for_update(), None),
+                None => (field_ty.clone(), None),
             };
 
             // 2) Handle instantiated generics in `field_ty`.
@@ -347,38 +345,38 @@ fn generate_impl(
             );
 
             // 2.2) Generate generic args applied on impl.
-            let transform_args = generate_args_for_impl(
+            let (transform_args, trait_gen_params) = generate_args_for_impl(
                 old_impl_params,
                 &old_impl.self_ty()?,
                 &field_ty,
-                &trait_gen_params,
+                trait_gen_params,
                 &old_impl_trait_args,
             );
 
             // 2.3) Instantiate generics with `transform_impl`, this step also
             // remove unused params.
-            let trait_gen_args = old_impl.trait_()?.generic_arg_list().and_then(|trait_args| {
-                let trait_args = &mut trait_args.clone_for_update();
-                if let Some(new_args) = transform_impl(
-                    ctx,
-                    ast_strukt,
-                    &old_impl,
-                    &transform_args,
-                    trait_args.clone_subtree(),
-                ) {
-                    *trait_args = new_args.clone_subtree();
-                    Some(new_args)
-                } else {
-                    None
-                }
-            });
+            let trait_gen_args =
+                old_impl.trait_()?.generic_arg_list().and_then(|mut trait_args| {
+                    let trait_args = &mut trait_args;
+                    if let Some(new_args) = transform_impl(
+                        ctx,
+                        ast_strukt,
+                        &old_impl,
+                        &transform_args,
+                        trait_args.clone_subtree(),
+                    ) {
+                        *trait_args = new_args.clone_subtree();
+                        Some(new_args)
+                    } else {
+                        None
+                    }
+                });
 
             let type_gen_args = strukt_params.clone().map(|params| params.to_generic_args());
-            let path_type =
-                make::ty(&trait_.name(db).display_no_db(edition).to_smolstr()).clone_for_update();
+            let path_type = make.ty(&trait_.name(db).display_no_db(edition).to_smolstr());
             let path_type = transform_impl(ctx, ast_strukt, &old_impl, &transform_args, path_type)?;
             // 3) Generate delegate trait impl
-            let delegate = make::impl_trait(
+            let delegate = make.impl_trait(
                 None,
                 trait_.is_unsafe(db),
                 trait_gen_params,
@@ -388,34 +386,27 @@ fn generate_impl(
                 trait_.is_auto(db),
                 path_type,
                 strukt_ty,
-                old_impl.where_clause().map(|wc| wc.clone_for_update()),
+                old_impl.where_clause(),
                 ty_where_clause,
                 None,
-            )
-            .clone_for_update();
+            );
             // Goto link : https://doc.rust-lang.org/reference/paths.html#qualified-paths
             let qualified_path_type =
-                make::path_from_text(&format!("<{} as {}>", field_ty, delegate.trait_()?));
+                make.path_from_text(&format!("<{} as {}>", field_ty, delegate.trait_()?));
 
-            // 4) Transform associated items in delegte trait impl
-            let delegate_assoc_items = delegate.get_or_create_assoc_item_list();
-            for item in old_impl
-                .get_or_create_assoc_item_list()
-                .assoc_items()
-                .filter(|item| matches!(item, AssocItem::MacroCall(_)).not())
-            {
-                let item = item.clone_for_update();
-                let item = transform_impl(ctx, ast_strukt, &old_impl, &transform_args, item)?;
+            // 4) Transform associated items in delegate trait impl
+            let assoc_items: Option<Vec<ast::AssocItem>> = old_impl.assoc_item_list().map(|ail| {
+                ail.assoc_items()
+                    .filter(|item| matches!(item, AssocItem::MacroCall(_)).not())
+                    .filter_map(|item| {
+                        let item =
+                            transform_impl(ctx, ast_strukt, &old_impl, &transform_args, item)?;
+                        process_assoc_item(item, qualified_path_type.clone(), field_name)
+                    })
+                    .collect()
+            });
 
-                let assoc = process_assoc_item(item, qualified_path_type.clone(), field_name)?;
-                delegate_assoc_items.add_item(assoc);
-            }
-
-            // 5) Remove useless where clauses
-            if let Some(wc) = delegate.where_clause() {
-                remove_useless_where_clauses(&delegate.trait_()?, &delegate.self_ty()?, wc);
-            }
-            Some(delegate)
+            finalize_delegate(&make, &delegate, assoc_items, true)
         }
     }
 }
@@ -446,6 +437,35 @@ fn transform_impl<N: ast::AstNode>(
     N::cast(transform.apply(syntax.syntax()))
 }
 
+/// Extracts the name from a generic parameter.
+fn generic_param_name(param: &ast::GenericParam) -> Option<String> {
+    match param {
+        ast::GenericParam::TypeParam(t) => t.name().map(|n| n.to_string()),
+        ast::GenericParam::ConstParam(c) => c.name().map(|n| n.to_string()),
+        ast::GenericParam::LifetimeParam(l) => l.lifetime().map(|lt| lt.to_string()),
+    }
+}
+
+/// Filters generic params, keeping only those whose names are not in `names_to_remove`.
+fn filter_generic_params(
+    gpl: ast::GenericParamList,
+    names_to_remove: &FxHashSet<String>,
+) -> Option<ast::GenericParamList> {
+    let remaining_params: Vec<_> = gpl
+        .generic_params()
+        .filter(|param| {
+            generic_param_name(param).is_none_or(|name| !names_to_remove.contains(&name))
+        })
+        .collect();
+
+    if remaining_params.is_empty() {
+        None
+    } else {
+        let make = SyntaxFactory::without_mappings();
+        Some(make.generic_param_list(remaining_params))
+    }
+}
+
 fn remove_instantiated_params(
     self_ty: &ast::Type,
     old_impl_params: Option<GenericParamList>,
@@ -454,10 +474,8 @@ fn remove_instantiated_params(
     match self_ty {
         ast::Type::PathType(path_type) => {
             old_impl_params.and_then(|gpl| {
-                // Remove generic parameters in field_ty (which is instantiated).
-                let new_gpl = gpl.clone_for_update();
-
-                path_type
+                // Collect generic args that should be removed (instantiated params)
+                let args_to_remove: FxHashSet<String> = path_type
                     .path()?
                     .segments()
                     .filter_map(|seg| seg.generic_arg_list())
@@ -466,16 +484,25 @@ fn remove_instantiated_params(
                     // it shouldn't be removed now, which will be instantiated in
                     // later `path_transform`
                     .filter(|arg| !old_trait_args.contains(&arg.to_string()))
-                    .for_each(|arg| new_gpl.remove_generic_arg(&arg));
-                (new_gpl.generic_params().count() > 0).then_some(new_gpl)
+                    .map(|arg| arg.to_string())
+                    .collect();
+
+                filter_generic_params(gpl, &args_to_remove)
             })
         }
         _ => old_impl_params,
     }
 }
 
-fn remove_useless_where_clauses(trait_ty: &ast::Type, self_ty: &ast::Type, wc: ast::WhereClause) {
-    let live_generics = [trait_ty, self_ty]
+fn remove_useless_where_clauses(editor: &mut SyntaxEditor, delegate: &ast::Impl) {
+    let Some(wc) = delegate.where_clause() else {
+        return;
+    };
+    let (Some(trait_ty), Some(self_ty)) = (delegate.trait_(), delegate.self_ty()) else {
+        return;
+    };
+
+    let live_generics = [&trait_ty, &self_ty]
         .into_iter()
         .flat_map(|ty| ty.generic_arg_list())
         .flat_map(|gal| gal.generic_args())
@@ -484,34 +511,76 @@ fn remove_useless_where_clauses(trait_ty: &ast::Type, self_ty: &ast::Type, wc: a
 
     // Keep where-clauses that have generics after substitution, and remove the
     // rest.
-    let has_live_generics = |pred: &WherePred| {
+    let has_no_live_generics = |pred: &WherePred| {
         pred.syntax()
             .descendants_with_tokens()
             .filter_map(|e| e.into_token())
             .any(|e| e.kind() == SyntaxKind::IDENT && live_generics.contains(&e.to_string()))
             .not()
     };
-    wc.predicates().filter(has_live_generics).for_each(|pred| wc.remove_predicate(pred));
 
-    if wc.predicates().count() == 0 {
-        // Remove useless whitespaces
-        [syntax::Direction::Prev, syntax::Direction::Next]
-            .into_iter()
-            .flat_map(|dir| {
-                wc.syntax()
-                    .siblings_with_tokens(dir)
-                    .skip(1)
-                    .take_while(|node_or_tok| node_or_tok.kind() == SyntaxKind::WHITESPACE)
-            })
-            .for_each(ted::remove);
+    let predicates_to_remove: Vec<_> = wc.predicates().filter(has_no_live_generics).collect();
+    let remaining_predicates = wc.predicates().count() - predicates_to_remove.len();
 
-        ted::insert(
-            ted::Position::after(wc.syntax()),
-            NodeOrToken::Token(make::token(SyntaxKind::WHITESPACE)),
-        );
-        // Remove where clause
-        ted::remove(wc.syntax());
+    if remaining_predicates == 0 {
+        // Remove the entire where clause
+        editor.delete(wc.syntax().clone());
+    } else {
+        // Remove only the useless predicates
+        for pred in predicates_to_remove {
+            // Also remove the comma before or after the predicate
+            if let Some(previous) = pred.syntax().prev_sibling() {
+                // Remove from after previous sibling to predicate (inclusive)
+                if let Some(start) = previous.next_sibling_or_token() {
+                    let end: SyntaxElement = pred.syntax().clone().into();
+                    editor.delete_all(start..=end);
+                }
+            } else if let Some(next) = pred.syntax().next_sibling() {
+                // Remove from predicate to before next sibling (exclusive)
+                if let Some(end) = next.prev_sibling_or_token() {
+                    let start: SyntaxElement = pred.syntax().clone().into();
+                    editor.delete_all(start..=end);
+                }
+            } else {
+                editor.delete(pred.syntax().clone());
+            }
+        }
     }
+}
+
+/// Finalize the delegate impl by:
+/// 1. Replacing the assoc_item_list with new items (if any)
+/// 2. Removing useless where clauses
+fn finalize_delegate(
+    make: &SyntaxFactory,
+    delegate: &ast::Impl,
+    assoc_items: Option<Vec<ast::AssocItem>>,
+    remove_where_clauses: bool,
+) -> Option<ast::Impl> {
+    let has_items = assoc_items.as_ref().is_some_and(|items| !items.is_empty());
+
+    if !has_items && !remove_where_clauses {
+        return Some(delegate.clone());
+    }
+
+    let mut editor = SyntaxEditor::new(delegate.syntax().clone_subtree());
+
+    // 1. Replace assoc_item_list if we have new items
+    if let Some(items) = assoc_items
+        && !items.is_empty()
+    {
+        let new_assoc_item_list = make.assoc_item_list(items);
+        if let Some(old_list) = delegate.assoc_item_list() {
+            editor.replace(old_list.syntax(), new_assoc_item_list.syntax());
+        }
+    }
+
+    // 2. Remove useless where clauses
+    if remove_where_clauses {
+        remove_useless_where_clauses(&mut editor, delegate);
+    }
+
+    ast::Impl::cast(editor.finish().new_root().clone())
 }
 
 // Generate generic args that should be apply to current impl.
@@ -524,10 +593,13 @@ fn generate_args_for_impl(
     old_impl_gpl: Option<GenericParamList>,
     self_ty: &ast::Type,
     field_ty: &ast::Type,
-    trait_params: &Option<GenericParamList>,
+    trait_params: Option<GenericParamList>,
     old_trait_args: &FxHashSet<String>,
-) -> Option<ast::GenericArgList> {
-    let old_impl_args = old_impl_gpl.map(|gpl| gpl.to_generic_args().generic_args())?;
+) -> (Option<ast::GenericArgList>, Option<GenericParamList>) {
+    let Some(old_impl_args) = old_impl_gpl.map(|gpl| gpl.to_generic_args().generic_args()) else {
+        return (None, trait_params);
+    };
+
     // Create pairs of the args of `self_ty` and corresponding `field_ty` to
     // form the substitution list
     let mut arg_substs = FxHashMap::default();
@@ -542,6 +614,8 @@ fn generate_args_for_impl(
         }
     }
 
+    let mut params_to_remove = FxHashSet::default();
+
     let args = old_impl_args
         .map(|old_arg| {
             arg_substs.get(&old_arg.to_string()).map_or_else(
@@ -549,14 +623,18 @@ fn generate_args_for_impl(
                 |replace_with| {
                     // The old_arg will be replaced, so it becomes redundant
                     if trait_params.is_some() && old_trait_args.contains(&old_arg.to_string()) {
-                        trait_params.as_ref().unwrap().remove_generic_arg(&old_arg)
+                        params_to_remove.insert(old_arg.to_string());
                     }
                     replace_with.clone()
                 },
             )
         })
         .collect_vec();
-    args.is_empty().not().then(|| make::generic_arg_list(args))
+
+    let make = SyntaxFactory::without_mappings();
+    let result = args.is_empty().not().then(|| make.generic_arg_list(args, false));
+    let trait_params = trait_params.and_then(|gpl| filter_generic_params(gpl, &params_to_remove));
+    (result, trait_params)
 }
 
 fn rename_strukt_args<N>(
@@ -570,41 +648,37 @@ where
 {
     let hir_strukt = ctx.sema.to_struct_def(strukt)?;
     let hir_adt = hir::Adt::from(hir_strukt);
-
-    let item = item.clone_for_update();
     let scope = ctx.sema.scope(item.syntax())?;
 
     let transform = PathTransform::adt_transformation(&scope, &scope, hir_adt, args.clone());
     N::cast(transform.apply(item.syntax()))
 }
 
-fn has_self_type(trait_: hir::Trait, ctx: &AssistContext<'_>) -> Option<()> {
-    let trait_source = ctx.sema.source(trait_)?.value;
-    trait_source
-        .syntax()
-        .descendants_with_tokens()
-        .filter_map(|e| e.into_token())
-        .find(|e| e.kind() == SyntaxKind::SELF_TYPE_KW)
-        .map(|_| ())
+fn has_self_type(trait_: hir::Trait, ctx: &AssistContext<'_>) -> bool {
+    ctx.sema
+        .source(trait_)
+        .and_then(|src| {
+            src.value
+                .syntax()
+                .descendants_with_tokens()
+                .filter_map(|e| e.into_token())
+                .find(|e| e.kind() == SyntaxKind::SELF_TYPE_KW)
+        })
+        .is_some()
 }
 
 fn resolve_name_conflicts(
     strukt_params: Option<ast::GenericParamList>,
     old_impl_params: &Option<ast::GenericParamList>,
 ) -> Option<ast::GenericParamList> {
+    let make = SyntaxFactory::without_mappings();
     match (strukt_params, old_impl_params) {
         (Some(old_strukt_params), Some(old_impl_params)) => {
-            let params = make::generic_param_list(std::iter::empty()).clone_for_update();
+            let mut new_params: Vec<ast::GenericParam> = Vec::new();
 
             for old_strukt_param in old_strukt_params.generic_params() {
                 // Get old name from `strukt`
-                let name = SmolStr::from(match &old_strukt_param {
-                    ast::GenericParam::ConstParam(c) => c.name()?.to_string(),
-                    ast::GenericParam::LifetimeParam(l) => {
-                        l.lifetime()?.lifetime_ident_token()?.to_string()
-                    }
-                    ast::GenericParam::TypeParam(t) => t.name()?.to_string(),
-                });
+                let name = SmolStr::from(generic_param_name(&old_strukt_param)?);
 
                 // The new name cannot be conflicted with generics in trait, and the renamed names.
                 let param_list_to_names = |param_list: &GenericParamList| {
@@ -613,8 +687,9 @@ fn resolve_name_conflicts(
                         p => Some(p.to_string()),
                     })
                 };
+                let new_params_list = make.generic_param_list(new_params.clone());
                 let existing_names = param_list_to_names(old_impl_params)
-                    .chain(param_list_to_names(&params))
+                    .chain(param_list_to_names(&new_params_list))
                     .collect_vec();
                 let mut name_generator = suggest_name::NameGenerator::new_with_names(
                     existing_names.iter().map(|s| s.as_str()),
@@ -623,25 +698,21 @@ fn resolve_name_conflicts(
                 match old_strukt_param {
                     ast::GenericParam::ConstParam(c) => {
                         if let Some(const_ty) = c.ty() {
-                            let const_param = make::const_param(make::name(&name), const_ty);
-                            params.add_generic_param(ast::GenericParam::ConstParam(
-                                const_param.clone_for_update(),
-                            ));
+                            let const_param = make.const_param(make.name(&name), const_ty);
+                            new_params.push(ast::GenericParam::ConstParam(const_param));
                         }
                     }
                     p @ ast::GenericParam::LifetimeParam(_) => {
-                        params.add_generic_param(p.clone_for_update());
+                        new_params.push(p.clone_for_update());
                     }
                     ast::GenericParam::TypeParam(t) => {
                         let type_bounds = t.type_bound_list();
-                        let type_param = make::type_param(make::name(&name), type_bounds);
-                        params.add_generic_param(ast::GenericParam::TypeParam(
-                            type_param.clone_for_update(),
-                        ));
+                        let type_param = make.type_param(make.name(&name), type_bounds);
+                        new_params.push(ast::GenericParam::TypeParam(type_param));
                     }
                 }
             }
-            Some(params)
+            Some(make.generic_param_list(new_params))
         }
         (Some(old_strukt_gpl), None) => Some(old_strukt_gpl),
         _ => None,
@@ -666,7 +737,8 @@ fn process_assoc_item(
 }
 
 fn const_assoc_item(item: syntax::ast::Const, qual_path_ty: ast::Path) -> Option<AssocItem> {
-    let path_expr_segment = make::path_from_text(item.name()?.to_string().as_str());
+    let make = SyntaxFactory::without_mappings();
+    let path_expr_segment = make.path_from_text(item.name()?.to_string().as_str());
 
     // We want rhs of the const assignment to be a qualified path
     // The general case for const assignment can be found [here](`https://doc.rust-lang.org/reference/items/constant-items.html`)
@@ -674,15 +746,14 @@ fn const_assoc_item(item: syntax::ast::Const, qual_path_ty: ast::Path) -> Option
     // <Base as Trait<GenArgs>>::ConstName;
     // FIXME : We can't rely on `make::path_qualified` for now but it would be nice to replace the following with it.
     // make::path_qualified(qual_path_ty, path_expr_segment.as_single_segment().unwrap());
-    let qualified_path = qualified_path(qual_path_ty, path_expr_segment);
-    let inner = make::item_const(
+    let qualified_path = make.path_from_text(&format!("{qual_path_ty}::{path_expr_segment}"));
+    let inner = make.item_const(
         item.attrs(),
         item.visibility(),
         item.name()?,
         item.ty()?,
-        make::expr_path(qualified_path),
-    )
-    .clone_for_update();
+        make.expr_path(qualified_path),
+    );
 
     Some(AssocItem::Const(inner))
 }
@@ -692,59 +763,46 @@ fn func_assoc_item(
     qual_path_ty: Path,
     base_name: &str,
 ) -> Option<AssocItem> {
-    let path_expr_segment = make::path_from_text(item.name()?.to_string().as_str());
-    let qualified_path = qualified_path(qual_path_ty, path_expr_segment);
+    let make = SyntaxFactory::without_mappings();
+    let path_expr_segment = make.path_from_text(item.name()?.to_string().as_str());
+    let qualified_path = make.path_from_text(&format!("{qual_path_ty}::{path_expr_segment}"));
 
     let call = match item.param_list() {
         // Methods and funcs should be handled separately.
         // We ask if the func has a `self` param.
         Some(l) => match l.self_param() {
             Some(slf) => {
-                let mut self_kw = make::expr_path(make::path_from_text("self"));
-                self_kw = make::expr_field(self_kw, base_name);
+                let self_kw = make.expr_path(make.path_from_text("self"));
+                let self_kw = make.expr_field(self_kw, base_name).into();
 
                 let tail_expr_self = match slf.kind() {
                     ast::SelfParamKind::Owned => self_kw,
-                    ast::SelfParamKind::Ref => make::expr_ref(self_kw, false),
-                    ast::SelfParamKind::MutRef => make::expr_ref(self_kw, true),
+                    ast::SelfParamKind::Ref => make.expr_ref(self_kw, false),
+                    ast::SelfParamKind::MutRef => make.expr_ref(self_kw, true),
                 };
 
-                let param_count = l.params().count();
-                let args = convert_param_list_to_arg_list(l).clone_for_update();
-                let pos_after_l_paren = Position::after(args.l_paren_token()?);
-                if param_count > 0 {
-                    // Add SelfParam and a TOKEN::COMMA
-                    ted::insert_all_raw(
-                        pos_after_l_paren,
-                        vec![
-                            NodeOrToken::Node(tail_expr_self.syntax().clone_for_update()),
-                            NodeOrToken::Token(make::token(SyntaxKind::COMMA)),
-                            NodeOrToken::Token(make::token(SyntaxKind::WHITESPACE)),
-                        ],
-                    );
-                } else {
-                    // Add SelfParam only
-                    ted::insert_raw(
-                        pos_after_l_paren,
-                        NodeOrToken::Node(tail_expr_self.syntax().clone_for_update()),
-                    );
-                }
+                // Build argument list with self expression prepended
+                let other_args = convert_param_list_to_arg_list(l);
+                let all_args: Vec<ast::Expr> =
+                    std::iter::once(tail_expr_self).chain(other_args.args()).collect();
+                let args = make.arg_list(all_args);
 
-                make::expr_call(make::expr_path(qualified_path), args)
+                make.expr_call(make.expr_path(qualified_path), args).into()
             }
-            None => {
-                make::expr_call(make::expr_path(qualified_path), convert_param_list_to_arg_list(l))
-            }
+            None => make
+                .expr_call(make.expr_path(qualified_path), convert_param_list_to_arg_list(l))
+                .into(),
         },
-        None => make::expr_call(
-            make::expr_path(qualified_path),
-            convert_param_list_to_arg_list(make::param_list(None, Vec::new())),
-        ),
-    }
-    .clone_for_update();
+        None => make
+            .expr_call(
+                make.expr_path(qualified_path),
+                convert_param_list_to_arg_list(make.param_list(None, Vec::new())),
+            )
+            .into(),
+    };
 
-    let body = make::block_expr(vec![], Some(call.into())).clone_for_update();
-    let func = make::fn_(
+    let body = make.block_expr(vec![], Some(call));
+    let func = make.fn_(
         item.attrs(),
         item.visibility(),
         item.name()?,
@@ -757,33 +815,30 @@ fn func_assoc_item(
         item.const_token().is_some(),
         item.unsafe_token().is_some(),
         item.gen_token().is_some(),
-    )
-    .clone_for_update();
+    );
 
     Some(AssocItem::Fn(func.indent(edit::IndentLevel(1))))
 }
 
 fn ty_assoc_item(item: syntax::ast::TypeAlias, qual_path_ty: Path) -> Option<AssocItem> {
-    let path_expr_segment = make::path_from_text(item.name()?.to_string().as_str());
-    let qualified_path = qualified_path(qual_path_ty, path_expr_segment);
-    let ty = make::ty_path(qualified_path);
+    let make = SyntaxFactory::without_mappings();
+    let path_expr_segment = make.path_from_text(item.name()?.to_string().as_str());
+    let qualified_path = make.path_from_text(&format!("{qual_path_ty}::{path_expr_segment}"));
+    let ty = make.ty_path(qualified_path).into();
     let ident = item.name()?.to_string();
 
-    let alias = make::ty_alias(
-        item.attrs(),
-        ident.as_str(),
-        item.generic_param_list(),
-        None,
-        item.where_clause(),
-        Some((ty, None)),
-    )
-    .indent(edit::IndentLevel(1));
+    let alias = make
+        .ty_alias(
+            item.attrs(),
+            ident.as_str(),
+            item.generic_param_list(),
+            None,
+            item.where_clause(),
+            Some((ty, None)),
+        )
+        .indent(edit::IndentLevel(1));
 
     Some(AssocItem::TypeAlias(alias))
-}
-
-fn qualified_path(qual_path_ty: ast::Path, path_expr_seg: ast::Path) -> ast::Path {
-    make::path_from_text(&format!("{qual_path_ty}::{path_expr_seg}"))
 }
 
 #[cfg(test)]

@@ -126,7 +126,7 @@ fn eval_goal(db: &TestDB, file_id: EditionedFileId) -> Result<Const<'_>, ConstEv
     let interner = DbInterner::new_no_crate(db);
     let module_id = db.module_for_file(file_id.file_id(db));
     let def_map = module_id.def_map(db);
-    let scope = &def_map[module_id.local_id].scope;
+    let scope = &def_map[module_id].scope;
     let const_id = scope
         .declarations()
         .find_map(|x| match x {

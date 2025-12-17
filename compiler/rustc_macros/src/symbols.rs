@@ -259,7 +259,13 @@ fn symbols_with_errors(input: TokenStream) -> (TokenStream, Vec<syn::Error>) {
             break;
         }
 
-        let value = match proc_macro::tracked_env::var(env_var.value()) {
+        #[cfg(bootstrap)]
+        let tracked_env = proc_macro::tracked_env::var(env_var.value());
+
+        #[cfg(not(bootstrap))]
+        let tracked_env = proc_macro::tracked::env_var(env_var.value());
+
+        let value = match tracked_env {
             Ok(value) => value,
             Err(err) => {
                 errors.list.push(syn::Error::new_spanned(expr, err));

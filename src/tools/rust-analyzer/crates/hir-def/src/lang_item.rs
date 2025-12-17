@@ -111,11 +111,12 @@ pub fn lang_items(db: &dyn DefDatabase, start_crate: Crate) -> LangItems {
     // while nameres.
     //
     // See https://github.com/rust-lang/rust-analyzer/pull/20475 for details.
-    for (_, (krate, _)) in crate_local_def_map(db, start_crate).local(db).extern_prelude() {
+    for (_, (module, _)) in crate_local_def_map(db, start_crate).local(db).extern_prelude() {
         // Some crates declares themselves as extern crate like `extern crate self as core`.
         // Ignore these to prevent cycles.
-        if krate.krate != start_crate {
-            result.merge_prefer_self(lang_items(db, krate.krate));
+        let krate = module.krate(db);
+        if krate != start_crate {
+            result.merge_prefer_self(lang_items(db, krate));
         }
     }
 
@@ -238,7 +239,7 @@ language_item_table! { LangItems =>
     Clone,                   sym::clone,               clone_trait,                TraitId,                GenericRequirement::None;
     Sync,                    sym::sync,                sync_trait,                 TraitId,                GenericRequirement::Exact(0);
     DiscriminantKind,        sym::discriminant_kind,   discriminant_kind_trait,    TraitId,                GenericRequirement::None;
-    /// The associated item of the [`DiscriminantKind`] trait.
+    /// The associated item of the `DiscriminantKind` trait.
     Discriminant,            sym::discriminant_type,   discriminant_type,          TypeAliasId,            GenericRequirement::None;
 
     PointeeTrait,            sym::pointee_trait,       pointee_trait,              TraitId,                GenericRequirement::None;

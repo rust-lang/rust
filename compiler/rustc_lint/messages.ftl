@@ -205,15 +205,17 @@ lint_dangling_pointers_from_locals = {$fn_kind} returns a dangling pointer to dr
     .ret_ty = return type is `{$ret_ty}`
     .local_var = local variable `{$local_var_name}` is dropped at the end of the {$fn_kind}
     .created_at = dangling pointer created here
-    .note = a dangling pointer is safe, but dereferencing one is undefined behavior
+    .note_safe = a dangling pointer is safe, but dereferencing one is undefined behavior
+    .note_more_info = for more information, see <https://doc.rust-lang.org/reference/destructors.html>
 
-lint_dangling_pointers_from_temporaries = a dangling pointer will be produced because the temporary `{$ty}` will be dropped
-    .label_ptr = this pointer will immediately be invalid
-    .label_temporary = this `{$ty}` is deallocated at the end of the statement, bind it to a variable to extend its lifetime
-    .note = pointers do not have a lifetime; when calling `{$callee}` the `{$ty}` will be deallocated at the end of the statement because nothing is referencing it as far as the type system is concerned
-    .help_bind = you must make sure that the variable you bind the `{$ty}` to lives at least as long as the pointer returned by the call to `{$callee}`
-    .help_returned = in particular, if this pointer is returned from the current function, binding the `{$ty}` inside the function will not suffice
-    .help_visit = for more information, see <https://doc.rust-lang.org/reference/destructors.html>
+lint_dangling_pointers_from_temporaries = this creates a dangling pointer because temporary `{$ty}` is dropped at end of statement
+    .label_ptr = pointer created here
+    .label_temporary = this `{$ty}` is dropped at end of statement
+    .help_bind = bind the `{$ty}` to a variable such that it outlives the pointer returned by `{$callee}`
+    .note_safe = a dangling pointer is safe, but dereferencing one is undefined behavior
+    .note_return = returning a pointer to a local variable will always result in a dangling pointer
+    .note_more_info = for more information, see <https://doc.rust-lang.org/reference/destructors.html>
+
 
 lint_default_hash_types = prefer `{$preferred}` over `{$used}`, it has better performance
     .note = a `use rustc_data_structures::fx::{$preferred}` may be necessary
@@ -233,6 +235,58 @@ lint_deprecated_where_clause_location = where clause not allowed here
 lint_diag_out_of_impl =
     diagnostics should only be created in `Diagnostic`/`Subdiagnostic`/`LintDiagnostic` impls
 
+lint_doc_alias_duplicated = doc alias is duplicated
+    .label = first defined here
+
+lint_doc_auto_cfg_expects_hide_or_show =
+    only `hide` or `show` are allowed in `#[doc(auto_cfg(...))]`
+
+lint_doc_auto_cfg_hide_show_expects_list =
+    `#![doc(auto_cfg({$attr_name}(...)))]` expects a list of items
+
+lint_doc_auto_cfg_hide_show_unexpected_item =
+    `#![doc(auto_cfg({$attr_name}(...)))]` only accepts identifiers or key/value items
+
+lint_doc_auto_cfg_wrong_literal =
+    expected boolean for `#[doc(auto_cfg = ...)]`
+
+lint_doc_invalid =
+    invalid `doc` attribute
+
+lint_doc_test_literal = `#![doc(test(...)]` does not take a literal
+
+lint_doc_test_takes_list =
+    `#[doc(test(...)]` takes a list of attributes
+
+lint_doc_test_unknown =
+    unknown `doc(test)` attribute `{$name}`
+
+lint_doc_unknown_any =
+    unknown `doc` attribute `{$name}`
+
+lint_doc_unknown_include =
+    unknown `doc` attribute `include`
+    .suggestion = use `doc = include_str!` instead
+
+lint_doc_unknown_passes =
+    unknown `doc` attribute `{$name}`
+    .note = `doc` attribute `{$name}` no longer functions; see issue #44136 <https://github.com/rust-lang/rust/issues/44136>
+    .label = no longer functions
+    .no_op_note = `doc({$name})` is now a no-op
+
+lint_doc_unknown_plugins =
+    unknown `doc` attribute `plugins`
+    .note = `doc` attribute `plugins` no longer functions; see issue #44136 <https://github.com/rust-lang/rust/issues/44136> and CVE-2018-1000622 <https://nvd.nist.gov/vuln/detail/CVE-2018-1000622>
+    .label = no longer functions
+    .no_op_note = `doc(plugins)` is now a no-op
+
+lint_doc_unknown_spotlight =
+    unknown `doc` attribute `spotlight`
+    .note = `doc(spotlight)` was renamed to `doc(notable_trait)`
+    .suggestion = use `notable_trait` instead
+    .no_op_note = `doc(spotlight)` is now a no-op
+
+
 lint_drop_glue =
     types that do not implement `Drop` can still have drop glue, consider instead using `{$needs_drop}` to detect whether a type is trivially dropped
 
@@ -245,6 +299,19 @@ lint_dropping_copy_types = calls to `std::mem::drop` with a value that implement
 lint_dropping_references = calls to `std::mem::drop` with a reference instead of an owned value does nothing
     .label = argument has type `{$arg_ty}`
 
+lint_empty_attribute =
+    unused attribute
+    .suggestion = {$valid_without_list ->
+        [true] remove these parentheses
+        *[other] remove this attribute
+    }
+    .note = {$valid_without_list ->
+        [true] using `{$attr_path}` with an empty list is equivalent to not using a list at all
+        *[other] using `{$attr_path}` with an empty list has no effect
+    }
+
+-lint_previously_accepted =
+    this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 lint_enum_intrinsics_mem_discriminant =
     the return value of `mem::discriminant` is unspecified when called with a non-enum type
     .note = the argument to `discriminant` should be a reference to an enum, but it was passed a reference to a `{$ty_param}`, which is not an enum
@@ -403,6 +470,8 @@ lint_improper_ctypes_union_layout_help = consider adding a `#[repr(C)]` or `#[re
 lint_improper_ctypes_union_layout_reason = this union has unspecified layout
 lint_improper_ctypes_union_non_exhaustive = this union is non-exhaustive
 
+lint_improper_ctypes_unsafe_binder = unsafe binders are incompatible with foreign function interfaces
+
 lint_int_to_ptr_transmutes = transmuting an integer to a pointer creates a pointer without provenance
     .note = this is dangerous because dereferencing the resulting pointer is undefined behavior
     .note_exposed_provenance = exposed provenance semantics can be used to create a pointer based on some previously exposed provenance
@@ -457,6 +526,17 @@ lint_invalid_reference_casting_borrow_as_mut = casting `&T` to `&mut T` is undef
 lint_invalid_reference_casting_note_book = for more information, visit <https://doc.rust-lang.org/book/ch15-05-interior-mutability.html>
 
 lint_invalid_reference_casting_note_ty_has_interior_mutability = even for types with interior mutability, the only legal way to obtain a mutable pointer from a shared reference is through `UnsafeCell::get`
+
+lint_invalid_style = {$is_used_as_inner ->
+        [false] crate-level attribute should be an inner attribute: add an exclamation mark: `#![{$name}]`
+        *[other] the `#![{$name}]` attribute can only be used at the crate root
+    }
+    .note = This attribute does not have an `!`, which means it is applied to this {$target}
+
+lint_invalid_target = `#[{$name}]` attribute cannot be used on {$target}
+    .warn = {-lint_previously_accepted}
+    .help = `#[{$name}]` can {$only}be applied to {$applied}
+    .suggestion = remove the attribute
 
 lint_lintpass_by_hand = implementing `LintPass` by hand
     .help = try using `declare_lint_pass!` or `impl_lint_pass!` instead
@@ -805,6 +885,7 @@ lint_unexpected_cfg_add_build_rs_println = or consider adding `{$build_rs_printl
 lint_unexpected_cfg_add_cargo_feature = consider using a Cargo feature instead
 lint_unexpected_cfg_add_cargo_toml_lint_cfg = or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:{$cargo_toml_lint_cfg}
 lint_unexpected_cfg_add_cmdline_arg = to expect this configuration use `{$cmdline_arg}`
+lint_unexpected_cfg_boolean = you may have meant to use `{$literal}` (notice the capitalization). Doing so makes this predicate evaluate to `{$literal}` unconditionally
 lint_unexpected_cfg_cargo_update = the {$macro_kind} `{$macro_name}` may come from an old version of the `{$crate_name}` crate, try updating your dependency with `cargo update -p {$crate_name}`
 
 lint_unexpected_cfg_define_features = consider defining some features in `Cargo.toml`
@@ -926,6 +1007,12 @@ lint_unused_def = unused {$pre}`{$def}`{$post} that must be used
 lint_unused_delim = unnecessary {$delim} around {$item}
     .suggestion = remove these {$delim}
 
+lint_unused_duplicate =
+    unused attribute
+    .suggestion = remove this attribute
+    .note = attribute also specified here
+    .warn = {-lint_previously_accepted}
+
 lint_unused_import_braces = braces around {$node} is unnecessary
 
 lint_unused_imports = {$num_snippets ->
@@ -947,6 +1034,10 @@ lint_unused_op = unused {$op} that must be used
     .suggestion = use `let _ = ...` to ignore the resulting value
 
 lint_unused_result = unused result of type `{$ty}`
+
+lint_unused_visibilities = visibility qualifiers have no effect on `const _` declarations
+    .note = `const _` does not declare a name, so there is nothing for the qualifier to apply to
+    .suggestion = remove the qualifier
 
 lint_use_let_underscore_ignore_suggestion = use `let _ = ...` to ignore the expression or result
 

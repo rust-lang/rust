@@ -3,8 +3,7 @@
 use cfg::CfgExpr;
 use either::Either;
 use hir_def::{
-    AssocItemId, AttrDefId, FieldId, InternedModuleId, LifetimeParamId, ModuleDefId,
-    TypeOrConstParamId,
+    AssocItemId, AttrDefId, FieldId, LifetimeParamId, ModuleDefId, TypeOrConstParamId,
     attrs::{AttrFlags, Docs, IsInnerDoc},
     expr_store::path::Path,
     item_scope::ItemInNs,
@@ -213,8 +212,8 @@ impl_has_attrs_enum![TypeParam, ConstParam, LifetimeParam for GenericParam];
 
 impl HasAttrs for Module {
     #[inline]
-    fn attr_id(self, db: &dyn HirDatabase) -> AttrsOwner {
-        AttrsOwner::AttrDef(AttrDefId::ModuleId(InternedModuleId::new(db, self.id)))
+    fn attr_id(self, _: &dyn HirDatabase) -> AttrsOwner {
+        AttrsOwner::AttrDef(AttrDefId::ModuleId(self.id))
     }
 }
 
@@ -243,7 +242,7 @@ impl HasAttrs for AssocItem {
 impl HasAttrs for crate::Crate {
     #[inline]
     fn attr_id(self, db: &dyn HirDatabase) -> AttrsOwner {
-        self.root_module().attr_id(db)
+        self.root_module(db).attr_id(db)
     }
 }
 
@@ -274,7 +273,6 @@ fn resolve_doc_path_on_(
 ) -> Option<DocLinkDef> {
     let resolver = match attr_id {
         AttrsOwner::AttrDef(AttrDefId::ModuleId(it)) => {
-            let it = it.loc(db);
             if is_inner_doc.yes() {
                 it.resolver(db)
             } else if let Some(parent) = Module::from(it).parent(db) {
@@ -412,9 +410,7 @@ fn resolve_impl_trait_item<'db>(
     ns: Option<Namespace>,
 ) -> Option<DocLinkDef> {
     let krate = ty.krate(db);
-    let environment = resolver
-        .generic_def()
-        .map_or_else(|| crate::TraitEnvironment::empty(krate.id), |d| db.trait_environment(d));
+    let environment = crate::param_env_from_resolver(db, &resolver);
     let traits_in_scope = resolver.traits_in_scope(db);
 
     // `ty.iterate_path_candidates()` require a scope, which is not available when resolving
@@ -428,7 +424,7 @@ fn resolve_impl_trait_item<'db>(
     let ctx = MethodResolutionContext {
         infcx: &infcx,
         resolver: &resolver,
-        env: &environment,
+        param_env: environment.param_env,
         traits_in_scope: &traits_in_scope,
         edition: krate.edition(db),
         unstable_features: &unstable_features,

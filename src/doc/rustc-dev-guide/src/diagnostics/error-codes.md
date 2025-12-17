@@ -33,40 +33,22 @@ written, as always: ask your reviewer or ask around on the Rust Zulip.
 
 Error codes are stored in `compiler/rustc_error_codes`.
 
-To create a new error, you first need to find the next available
-code. You can find it with `tidy`:
+To create a new error, you first need to find the next available code. 
+You can find it by opening `rustc_error_codes/src/lib.rs` and scrolling down 
+to the end of the `error_codes!` macro declaration.
 
-```
-./x test tidy
-```
-
-This will invoke the tidy script, which generally checks that your code obeys
-our coding conventions. Some of these jobs check error codes and ensure that
-there aren't duplicates, etc (the tidy check is defined in
-`src/tools/tidy/src/error_codes.rs`). Once it is finished with that, tidy will
-print out the highest used error code:
-
-```
-...
-tidy check
-Found 505 error codes
-Highest error code: `E0591`
-...
-```
-
-Here we see the highest error code in use is `E0591`, so we _probably_ want
-`E0592`. To be sure, run `rg E0592` and check, you should see no references.
+Here we might see the highest error code in use is `E0805`, so we _probably_ want
+`E0806`. To be sure, run `rg E0806` and check, you should see no references.
 
 You will have to write an extended description for your error,
-which will go in `rustc_error_codes/src/error_codes/E0592.md`.
-To register the error, open `rustc_error_codes/src/error_codes.rs` and add the
-code (in its proper numerical order) into` register_diagnostics!` macro, like
-this:
+which will go in `rustc_error_codes/src/error_codes/E0806.md`.
+To register the error, add the code (in its proper numerical order) to 
+the `error_codes!` macro, like this:
 
 ```rust
-register_diagnostics! {
-    ...
-    E0592: include_str!("./error_codes/E0592.md"),
+macro_rules! error_codes {
+...
+0806,
 }
 ```
 
@@ -75,7 +57,7 @@ To actually issue the error, you can use the `struct_span_code_err!` macro:
 ```rust
 struct_span_code_err!(self.dcx(), // some path to the `DiagCtxt` here
                  span, // whatever span in the source you want
-                 E0592, // your new error code
+                 E0806, // your new error code
                  fluent::example::an_error_message)
     .emit() // actually issue the error
 ```

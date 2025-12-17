@@ -30,7 +30,7 @@ use rustc_data_structures::sync::{
     self, DynSend, DynSync, FreezeReadGuard, Lock, RwLock, WorkerLocal,
 };
 use rustc_errors::{
-    Applicability, Diag, DiagCtxtHandle, ErrorGuaranteed, LintDiagnostic, LintEmitter, MultiSpan,
+    Applicability, Diag, DiagCtxtHandle, ErrorGuaranteed, LintDiagnostic, MultiSpan,
 };
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind};
@@ -148,7 +148,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type BoundTy = ty::BoundTy;
     type Symbol = Symbol;
 
-    type PlaceholderTy = ty::PlaceholderType;
+    type PlaceholderTy = ty::PlaceholderType<'tcx>;
     type ErrorGuaranteed = ErrorGuaranteed;
     type BoundExistentialPredicates = &'tcx List<PolyExistentialPredicate<'tcx>>;
 
@@ -158,7 +158,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type Safety = hir::Safety;
     type Abi = ExternAbi;
     type Const = ty::Const<'tcx>;
-    type PlaceholderConst = ty::PlaceholderConst;
+    type PlaceholderConst = ty::PlaceholderConst<'tcx>;
 
     type ParamConst = ty::ParamConst;
     type BoundConst = ty::BoundConst;
@@ -170,7 +170,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type EarlyParamRegion = ty::EarlyParamRegion;
     type LateParamRegion = ty::LateParamRegion;
     type BoundRegion = ty::BoundRegion;
-    type PlaceholderRegion = ty::PlaceholderRegion;
+    type PlaceholderRegion = ty::PlaceholderRegion<'tcx>;
 
     type RegionAssumptions = &'tcx ty::List<ty::ArgOutlivesPredicate<'tcx>>;
 
@@ -1534,20 +1534,6 @@ pub struct TyCtxt<'tcx> {
     gcx: &'tcx GlobalCtxt<'tcx>,
 }
 
-impl<'tcx> LintEmitter for TyCtxt<'tcx> {
-    type Id = HirId;
-
-    fn emit_node_span_lint(
-        self,
-        lint: &'static Lint,
-        hir_id: HirId,
-        span: impl Into<MultiSpan>,
-        decorator: impl for<'a> LintDiagnostic<'a, ()>,
-    ) {
-        self.emit_node_span_lint(lint, hir_id, span, decorator);
-    }
-}
-
 // Explicitly implement `DynSync` and `DynSend` for `TyCtxt` to short circuit trait resolution. Its
 // field are asserted to implement these traits below, so this is trivially safe, and it greatly
 // speeds-up compilation of this crate and its dependents.
@@ -2837,12 +2823,20 @@ slice_interners!(
 );
 
 impl<'tcx> TyCtxt<'tcx> {
-    /// Given a `fn` type, returns an equivalent `unsafe fn` type;
+    /// Given a `fn` sig, returns an equivalent `unsafe fn` type;
     /// that is, a `fn` type that is equivalent in every way for being
     /// unsafe.
     pub fn safe_to_unsafe_fn_ty(self, sig: PolyFnSig<'tcx>) -> Ty<'tcx> {
         assert!(sig.safety().is_safe());
         Ty::new_fn_ptr(self, sig.map_bound(|sig| ty::FnSig { safety: hir::Safety::Unsafe, ..sig }))
+    }
+
+    /// Given a `fn` sig, returns an equivalent `unsafe fn` sig;
+    /// that is, a `fn` sig that is equivalent in every way for being
+    /// unsafe.
+    pub fn safe_to_unsafe_sig(self, sig: PolyFnSig<'tcx>) -> PolyFnSig<'tcx> {
+        assert!(sig.safety().is_safe());
+        sig.map_bound(|sig| ty::FnSig { safety: hir::Safety::Unsafe, ..sig })
     }
 
     /// Given the def_id of a Trait `trait_def_id` and the name of an associated item `assoc_name`

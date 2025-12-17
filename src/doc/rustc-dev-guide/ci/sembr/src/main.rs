@@ -27,7 +27,7 @@ static REGEX_IGNORE_END: LazyLock<Regex> =
 static REGEX_IGNORE_LINK_TARGETS: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"^\[.+\]: ").unwrap());
 static REGEX_SPLIT: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"([^\.\d\-\*]\.|[^r]\?|;|!)\s").unwrap());
+    LazyLock::new(|| Regex::new(r"([^\.\d\-\*]\.|[^r]\?|!)\s").unwrap());
 // list elements, numbered (1.) or not  (- and *)
 static REGEX_LIST_ENTRY: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"^\s*(\d\.|\-|\*)\s+").unwrap());
@@ -177,6 +177,9 @@ fn lengthen_lines(content: &str, limit: usize) -> String {
         let Some(next_line) = content.get(n + 1) else {
             continue;
         };
+        if next_line.trim_start().starts_with("```") {
+            continue;
+        }
         if ignore(next_line, in_code_block)
             || REGEX_LIST_ENTRY.is_match(next_line)
             || REGEX_IGNORE_END.is_match(line)
@@ -196,7 +199,7 @@ fn lengthen_lines(content: &str, limit: usize) -> String {
 fn test_sembr() {
     let original = "
 # some. heading
-must! be; split?
+must! be. split?
 1. ignore a dot after number. but no further
 ignore | tables
 ignore e.g. and
@@ -214,7 +217,7 @@ git log main.. compiler
     let expected = "
 # some. heading
 must!
-be;
+be.
 split?
 1. ignore a dot after number.
    but no further
@@ -255,6 +258,12 @@ preserve next line
 
 preserve next line
 * three
+
+do not mess with code block chars
+```
+leave the
+text alone
+```
 ";
     let expected = "\
 do not split short sentences
@@ -269,6 +278,12 @@ preserve next line
 
 preserve next line
 * three
+
+do not mess with code block chars
+```
+leave the
+text alone
+```
 ";
     assert_eq!(expected, lengthen_lines(original, 50));
 }
@@ -292,40 +307,6 @@ fn test_prettify_ignore_link_targets() {
 [another target]: https://example.com
 ";
     assert_eq!(original, lengthen_lines(original, 100));
-}
-
-#[test]
-fn test_sembr_then_prettify() {
-    let original = "
-hi there. do
-not split
-short sentences.
-hi again.
-";
-    let expected = "
-hi there.
-do
-not split
-short sentences.
-hi again.
-";
-    let processed = comply(original);
-    assert_eq!(expected, processed);
-    let expected = "
-hi there.
-do not split
-short sentences.
-hi again.
-";
-    let processed = lengthen_lines(&processed, 50);
-    assert_eq!(expected, processed);
-    let expected = "
-hi there.
-do not split short sentences.
-hi again.
-";
-    let processed = lengthen_lines(&processed, 50);
-    assert_eq!(expected, processed);
 }
 
 #[test]

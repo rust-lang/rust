@@ -15,5 +15,6 @@ define_config! {
     #[derive(Default)]
     struct Gcc {
         download_ci_gcc: Option<bool> = "download-ci-gcc",
+        libgccjit_libs_dir: Option<PathBuf> = "libgccjit-libs-dir",
     }
 }

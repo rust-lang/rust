@@ -11169,3 +11169,60 @@ fn foo() {
         "#]],
     );
 }
+
+#[test]
+fn hover_trait_impl_shows_generic_args() {
+    // Single generic arg
+    check(
+        r#"
+trait Foo<T> {
+    fn foo(&self) {}
+}
+
+impl<T> Foo<()> for T {
+    fn fo$0o(&self) {}
+}
+
+fn bar() {
+    ().foo();
+}
+"#,
+        expect![[r#"
+            *foo*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            impl<T> Foo<()> for T
+            fn foo(&self)
+            ```
+        "#]],
+    );
+
+    // Multiple generic args
+    check(
+        r#"
+trait Foo<A, B> {
+    fn foo(&self) {}
+}
+
+impl<T> Foo<i32, u64> for T {
+    fn fo$0o(&self) {}
+}
+"#,
+        expect![[r#"
+            *foo*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            impl<T> Foo<i32, u64> for T
+            fn foo(&self)
+            ```
+        "#]],
+    );
+}

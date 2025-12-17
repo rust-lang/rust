@@ -470,7 +470,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             FileName::Real(name) => name
                 .into_local_path()
                 .expect("attempting to resolve a file path in an external file"),
-            other => PathBuf::from(other.prefer_local().to_string()),
+            other => PathBuf::from(other.prefer_local_unconditionally().to_string()),
         };
         let dir_path = file_path.parent().unwrap_or(&file_path).to_owned();
         self.cx.root_path = dir_path.clone();
@@ -2158,11 +2158,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
         let mut span: Option<Span> = None;
         while let Some(attr) = attrs.next() {
             rustc_ast_passes::feature_gate::check_attribute(attr, self.cx.sess, features);
-            validate_attr::check_attr(
-                &self.cx.sess.psess,
-                attr,
-                self.cx.current_expansion.lint_node_id,
-            );
+            validate_attr::check_attr(&self.cx.sess.psess, attr);
             AttributeParser::parse_limited_all(
                 self.cx.sess,
                 slice::from_ref(attr),
@@ -2181,7 +2177,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                 continue;
             }
 
-            if attr.is_doc_comment() {
+            if attr.doc_str_and_fragment_kind().is_some() {
                 self.cx.sess.psess.buffer_lint(
                     UNUSED_DOC_COMMENTS,
                     current_span,
@@ -2217,7 +2213,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
         attr: ast::Attribute,
         pos: usize,
     ) -> EvalConfigResult {
-        let res = self.cfg().cfg_true(&attr, node.node_id(), ShouldEmit::ErrorsAndLints);
+        let res = self.cfg().cfg_true(&attr, ShouldEmit::ErrorsAndLints);
         if res.as_bool() {
             // A trace attribute left in AST in place of the original `cfg` attribute.
             // It can later be used by lints or other diagnostics.

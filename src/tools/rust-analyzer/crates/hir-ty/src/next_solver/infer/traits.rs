@@ -36,10 +36,6 @@ pub struct ObligationCause {
 }
 
 impl ObligationCause {
-    #[expect(
-        clippy::new_without_default,
-        reason = "`new` is temporary, eventually we will provide span etc. here"
-    )]
     #[inline]
     pub fn new() -> ObligationCause {
         ObligationCause { _private: () }

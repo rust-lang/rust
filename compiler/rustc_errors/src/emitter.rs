@@ -46,17 +46,14 @@ const DEFAULT_COLUMN_WIDTH: usize = 140;
 
 /// Describes the way the content of the `rendered` field of the json output is generated
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum HumanReadableErrorType {
-    Default { short: bool },
-    AnnotateSnippet { short: bool, unicode: bool },
+pub struct HumanReadableErrorType {
+    pub short: bool,
+    pub unicode: bool,
 }
 
 impl HumanReadableErrorType {
     pub fn short(&self) -> bool {
-        match self {
-            HumanReadableErrorType::Default { short }
-            | HumanReadableErrorType::AnnotateSnippet { short, .. } => *short,
-        }
+        self.short
     }
 }
 
@@ -474,9 +471,12 @@ pub trait Emitter {
             .chain(span.span_labels().iter().map(|sp_label| sp_label.span))
             .filter_map(|sp| {
                 if !sp.is_dummy() && source_map.is_imported(sp) {
-                    let maybe_callsite = sp.source_callsite();
-                    if sp != maybe_callsite {
-                        return Some((sp, maybe_callsite));
+                    let mut span = sp;
+                    while let Some(callsite) = span.parent_callsite() {
+                        span = callsite;
+                        if !source_map.is_imported(span) {
+                            return Some((sp, span));
+                        }
                     }
                 }
                 None
@@ -604,7 +604,7 @@ pub enum OutputTheme {
     Unicode,
 }
 
-/// Handles the writing of `HumanReadableErrorType::Default` and `HumanReadableErrorType::Short`
+/// Handles the writing of `HumanReadableErrorType`
 #[derive(Setters)]
 pub struct HumanEmitter {
     #[setters(skip)]

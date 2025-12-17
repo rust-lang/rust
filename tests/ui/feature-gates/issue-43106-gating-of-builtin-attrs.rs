@@ -33,7 +33,6 @@
 
 //@ check-pass
 
-#![feature(test)]
 #![warn(unused_attributes, unknown_lints)]
 //~^ NOTE the lint level is defined here
 //~| NOTE the lint level is defined here
@@ -248,38 +247,6 @@ mod macro_export {
     //~| WARN previously accepted
     //~| HELP can only be applied to
     //~| HELP remove the attribute
-}
-
-// At time of unit test authorship, if compiling without `--test` then
-// non-crate-level #[test] attributes seem to be ignored.
-
-#[test]
-mod test { mod inner { #![test] }
-
-    fn f() { }
-
-    struct S;
-
-    type T = S;
-
-    impl S { }
-}
-
-// At time of unit test authorship, if compiling without `--test` then
-// non-crate-level #[bench] attributes seem to be ignored.
-
-#[bench]
-mod bench {
-    mod inner { #![bench] }
-
-    #[bench]
-    struct S;
-
-    #[bench]
-    type T = S;
-
-    #[bench]
-    impl S { }
 }
 
 #[path = "3800"]
@@ -713,6 +680,10 @@ mod link_section {
     //~| HELP remove the attribute
     trait Tr {
         #[link_section = "1800"]
+        //~^ WARN attribute cannot be used on
+        //~| WARN previously accepted
+        //~| HELP can be applied to
+        //~| HELP remove the attribute
         fn inside_tr_no_default(&self);
 
         #[link_section = "1800"]

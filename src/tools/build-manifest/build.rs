@@ -60,7 +60,7 @@ fn main() {
     let mut output = String::new();
 
     writeln!(output, "static HOSTS: &[&str] = &[").unwrap();
-    for host in targets.hosts {
+    for host in &targets.hosts {
         writeln!(output, "    {:?},", host).unwrap();
     }
     writeln!(output, "];").unwrap();
@@ -68,6 +68,22 @@ fn main() {
     writeln!(output, "static TARGETS: &[&str] = &[").unwrap();
     for target in targets.targets {
         writeln!(output, "    {:?},", target).unwrap();
+    }
+    writeln!(output, "];").unwrap();
+
+    writeln!(output, "static MSI_INSTALLERS: &[&str] = &[").unwrap();
+    for host in &targets.hosts {
+        if host.contains("-windows-") {
+            writeln!(output, "    {:?},", host).unwrap();
+        }
+    }
+    writeln!(output, "];").unwrap();
+
+    writeln!(output, "static MINGW: &[&str] = &[").unwrap();
+    for host in targets.hosts {
+        if host.contains("-windows-gnu") {
+            writeln!(output, "    {:?},", host).unwrap();
+        }
     }
     writeln!(output, "];").unwrap();
 

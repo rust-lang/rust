@@ -329,7 +329,7 @@ fn augment_references_with_imports(
 ) -> Vec<FileReferenceWithImport> {
     let mut visited_modules = FxHashSet::default();
 
-    let edition = target_module.krate().edition(ctx.db());
+    let edition = target_module.krate(ctx.db()).edition(ctx.db());
     references
         .into_iter()
         .filter_map(|FileReference { range, name, .. }| {
@@ -345,8 +345,9 @@ fn augment_references_with_imports(
 
                 ImportScope::find_insert_use_container(name.syntax(), &ctx.sema).and_then(
                     |import_scope| {
-                        let cfg =
-                            ctx.config.find_path_config(ctx.sema.is_nightly(target_module.krate()));
+                        let cfg = ctx.config.find_path_config(
+                            ctx.sema.is_nightly(target_module.krate(ctx.sema.db)),
+                        );
                         let path = ref_module
                             .find_use_path(
                                 ctx.sema.db,

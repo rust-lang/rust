@@ -71,6 +71,7 @@ mod type_of;
 use std::any::Any;
 use std::ffi::CString;
 use std::fmt::Debug;
+use std::fs;
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -180,14 +181,12 @@ pub struct GccCodegenBackend {
 
 static LTO_SUPPORTED: AtomicBool = AtomicBool::new(false);
 
-fn load_libgccjit_if_needed(sysroot_path: &Path) {
+fn load_libgccjit_if_needed(libgccjit_target_lib_file: &Path) {
     if gccjit::is_loaded() {
         // Do not load a libgccjit second time.
         return;
     }
 
-    let sysroot_lib_dir = sysroot_path.join("lib");
-    let libgccjit_target_lib_file = sysroot_lib_dir.join("libgccjit.so");
     let path = libgccjit_target_lib_file.to_str().expect("libgccjit path");
 
     let string = CString::new(path).expect("string to libgccjit path");
@@ -207,7 +206,37 @@ impl CodegenBackend for GccCodegenBackend {
     }
 
     fn init(&self, sess: &Session) {
-        load_libgccjit_if_needed(sess.opts.sysroot.path());
+        fn file_path(sysroot_path: &Path, sess: &Session) -> PathBuf {
+            let rustlib_path =
+                rustc_target::relative_target_rustlib_path(sysroot_path, &sess.host.llvm_target);
+            sysroot_path
+                .join(rustlib_path)
+                .join("codegen-backends")
+                .join("lib")
+                .join(sess.target.llvm_target.as_ref())
+                .join("libgccjit.so")
+        }
+
+        // We use all_paths() instead of only path() in case the path specified by --sysroot is
+        // invalid.
+        // This is the case for instance in Rust for Linux where they specify --sysroot=/dev/null.
+        for path in sess.opts.sysroot.all_paths() {
+            let libgccjit_target_lib_file = file_path(path, sess);
+            if let Ok(true) = fs::exists(&libgccjit_target_lib_file) {
+                load_libgccjit_if_needed(&libgccjit_target_lib_file);
+                break;
+            }
+        }
+
+        if !gccjit::is_loaded() {
+            let mut paths = vec![];
+            for path in sess.opts.sysroot.all_paths() {
+                let libgccjit_target_lib_file = file_path(path, sess);
+                paths.push(libgccjit_target_lib_file);
+            }
+
+            panic!("Could not load libgccjit.so. Attempted paths: {:#?}", paths);
+        }
 
         #[cfg(feature = "master")]
         {

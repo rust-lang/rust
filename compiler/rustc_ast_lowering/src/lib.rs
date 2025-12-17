@@ -35,6 +35,7 @@
 #![feature(if_let_guard)]
 // tidy-alphabetical-end
 
+use std::mem;
 use std::sync::Arc;
 
 use rustc_ast::node_id::NodeMap;
@@ -117,7 +118,7 @@ struct LoweringContext<'a, 'hir> {
     /// outside of an `async fn`.
     current_item: Option<Span>,
 
-    catch_scope: Option<HirId>,
+    try_block_scope: TryBlockScope,
     loop_scope: Option<HirId>,
     is_in_loop_condition: bool,
     is_in_dyn_type: bool,
@@ -173,7 +174,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             trait_map: Default::default(),
 
             // Lowering state.
-            catch_scope: None,
+            try_block_scope: TryBlockScope::Function,
             loop_scope: None,
             is_in_loop_condition: false,
             is_in_dyn_type: false,
@@ -414,6 +415,18 @@ enum AstOwner<'a> {
     Item(&'a ast::Item),
     AssocItem(&'a ast::AssocItem, visit::AssocCtxt),
     ForeignItem(&'a ast::ForeignItem),
+}
+
+#[derive(Copy, Clone, Debug)]
+enum TryBlockScope {
+    /// There isn't a `try` block, so a `?` will use `return`.
+    Function,
+    /// We're inside a `try { … }` block, so a `?` will block-break
+    /// from that block using a type depending only on the argument.
+    Homogeneous(HirId),
+    /// We're inside a `try as _ { … }` block, so a `?` will block-break
+    /// from that block using the type specified.
+    Heterogeneous(HirId),
 }
 
 fn index_crate<'a>(
@@ -936,10 +949,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         let old_contract = self.contract_ensures.take();
 
-        let catch_scope = self.catch_scope.take();
+        let try_block_scope = mem::replace(&mut self.try_block_scope, TryBlockScope::Function);
         let loop_scope = self.loop_scope.take();
         let ret = f(self);
-        self.catch_scope = catch_scope;
+        self.try_block_scope = try_block_scope;
         self.loop_scope = loop_scope;
 
         self.contract_ensures = old_contract;
@@ -958,11 +971,23 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         target_span: Span,
         target: Target,
     ) -> &'hir [hir::Attribute] {
-        if attrs.is_empty() {
+        self.lower_attrs_with_extra(id, attrs, target_span, target, &[])
+    }
+
+    fn lower_attrs_with_extra(
+        &mut self,
+        id: HirId,
+        attrs: &[Attribute],
+        target_span: Span,
+        target: Target,
+        extra_hir_attributes: &[hir::Attribute],
+    ) -> &'hir [hir::Attribute] {
+        if attrs.is_empty() && extra_hir_attributes.is_empty() {
             &[]
         } else {
-            let lowered_attrs =
+            let mut lowered_attrs =
                 self.lower_attrs_vec(attrs, self.lower_span(target_span), id, target);
+            lowered_attrs.extend(extra_hir_attributes.iter().cloned());
 
             assert_eq!(id.owner, self.current_hir_id_owner);
             let ret = self.arena.alloc_from_iter(lowered_attrs);
@@ -1206,7 +1231,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             .and_then(|partial_res| partial_res.full_res())
                         {
                             if !res.matches_ns(Namespace::TypeNS)
-                                && path.is_potential_trivial_const_arg(false)
+                                && path.is_potential_trivial_const_arg()
                             {
                                 debug!(
                                     "lower_generic_arg: Lowering type argument as const argument: {:?}",
@@ -1670,7 +1695,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let output = match coro {
             Some(coro) => {
                 let fn_def_id = self.local_def_id(fn_node_id);
-                self.lower_coroutine_fn_ret_ty(&decl.output, fn_def_id, coro, kind, fn_span)
+                self.lower_coroutine_fn_ret_ty(&decl.output, fn_def_id, coro, kind)
             }
             None => match &decl.output {
                 FnRetTy::Ty(ty) => {
@@ -1755,9 +1780,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         fn_def_id: LocalDefId,
         coro: CoroutineKind,
         fn_kind: FnDeclKind,
-        fn_span: Span,
     ) -> hir::FnRetTy<'hir> {
-        let span = self.lower_span(fn_span);
+        let span = self.lower_span(output.span());
 
         let (opaque_ty_node_id, allowed_features) = match coro {
             CoroutineKind::Async { return_impl_trait_id, .. } => (return_impl_trait_id, None),
@@ -2275,11 +2299,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     ) -> &'hir hir::ConstArg<'hir> {
         let tcx = self.tcx;
 
-        let ct_kind = if path
-            .is_potential_trivial_const_arg(tcx.features().min_generic_const_args())
-            && (tcx.features().min_generic_const_args()
-                || matches!(res, Res::Def(DefKind::ConstParam, _)))
-        {
+        let is_trivial_path = path.is_potential_trivial_const_arg()
+            && matches!(res, Res::Def(DefKind::ConstParam, _));
+        let ct_kind = if is_trivial_path || tcx.features().min_generic_const_args() {
             let qpath = self.lower_qpath(
                 ty_id,
                 &None,
@@ -2358,6 +2380,53 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         }
     }
 
+    #[instrument(level = "debug", skip(self), ret)]
+    fn lower_expr_to_const_arg_direct(&mut self, expr: &Expr) -> hir::ConstArg<'hir> {
+        let overly_complex_const = |this: &mut Self| {
+            let e = this.dcx().struct_span_err(
+                expr.span,
+                "complex const arguments must be placed inside of a `const` block",
+            );
+
+            ConstArg { hir_id: this.next_id(), kind: hir::ConstArgKind::Error(expr.span, e.emit()) }
+        };
+
+        match &expr.kind {
+            ExprKind::Path(qself, path) => {
+                let qpath = self.lower_qpath(
+                    expr.id,
+                    qself,
+                    path,
+                    ParamMode::Explicit,
+                    AllowReturnTypeNotation::No,
+                    // FIXME(mgca): update for `fn foo() -> Bar<FOO<impl Trait>>` support
+                    ImplTraitContext::Disallowed(ImplTraitPosition::Path),
+                    None,
+                );
+
+                ConstArg { hir_id: self.next_id(), kind: hir::ConstArgKind::Path(qpath) }
+            }
+            ExprKind::Underscore => ConstArg {
+                hir_id: self.lower_node_id(expr.id),
+                kind: hir::ConstArgKind::Infer(expr.span, ()),
+            },
+            ExprKind::Block(block, _) => {
+                if let [stmt] = block.stmts.as_slice()
+                    && let StmtKind::Expr(expr) = &stmt.kind
+                    && matches!(
+                        expr.kind,
+                        ExprKind::Block(..) | ExprKind::Path(..) | ExprKind::Struct(..)
+                    )
+                {
+                    return self.lower_expr_to_const_arg_direct(expr);
+                }
+
+                overly_complex_const(self)
+            }
+            _ => overly_complex_const(self),
+        }
+    }
+
     /// See [`hir::ConstArg`] for when to use this function vs
     /// [`Self::lower_anon_const_to_anon_const`].
     fn lower_anon_const_to_const_arg(&mut self, anon: &AnonConst) -> &'hir hir::ConstArg<'hir> {
@@ -2367,6 +2436,22 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     #[instrument(level = "debug", skip(self))]
     fn lower_anon_const_to_const_arg_direct(&mut self, anon: &AnonConst) -> hir::ConstArg<'hir> {
         let tcx = self.tcx;
+
+        // We cannot change parsing depending on feature gates available,
+        // we can only require feature gates to be active as a delayed check.
+        // Thus we just parse anon consts generally and make the real decision
+        // making in ast lowering.
+        // FIXME(min_generic_const_args): revisit once stable
+        if tcx.features().min_generic_const_args() {
+            return match anon.mgca_disambiguation {
+                MgcaDisambiguation::AnonConst => {
+                    let lowered_anon = self.lower_anon_const_to_anon_const(anon);
+                    ConstArg { hir_id: self.next_id(), kind: hir::ConstArgKind::Anon(lowered_anon) }
+                }
+                MgcaDisambiguation::Direct => self.lower_expr_to_const_arg_direct(&anon.value),
+            };
+        }
+
         // Unwrap a block, so that e.g. `{ P }` is recognised as a parameter. Const arguments
         // currently have to be wrapped in curly brackets, so it's necessary to special-case.
         let expr = if let ExprKind::Block(block, _) = &anon.value.kind
@@ -2378,12 +2463,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         } else {
             &anon.value
         };
+
         let maybe_res =
             self.resolver.get_partial_res(expr.id).and_then(|partial_res| partial_res.full_res());
         if let ExprKind::Path(qself, path) = &expr.kind
-            && path.is_potential_trivial_const_arg(tcx.features().min_generic_const_args())
-            && (tcx.features().min_generic_const_args()
-                || matches!(maybe_res, Some(Res::Def(DefKind::ConstParam, _))))
+            && path.is_potential_trivial_const_arg()
+            && matches!(maybe_res, Some(Res::Def(DefKind::ConstParam, _)))
         {
             let qpath = self.lower_qpath(
                 expr.id,
@@ -2391,7 +2476,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 path,
                 ParamMode::Explicit,
                 AllowReturnTypeNotation::No,
-                // FIXME(mgca): update for `fn foo() -> Bar<FOO<impl Trait>>` support
                 ImplTraitContext::Disallowed(ImplTraitPosition::Path),
                 None,
             );

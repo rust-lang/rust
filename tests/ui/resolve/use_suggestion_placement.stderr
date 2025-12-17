@@ -1,4 +1,4 @@
-error[E0412]: cannot find type `Path` in this scope
+error[E0425]: cannot find type `Path` in this scope
   --> $DIR/use_suggestion_placement.rs:19:16
    |
 LL |     type Bar = Path;
@@ -20,7 +20,7 @@ help: consider importing this constant
 LL + use m::A;
    |
 
-error[E0412]: cannot find type `HashMap` in this scope
+error[E0425]: cannot find type `HashMap` in this scope
   --> $DIR/use_suggestion_placement.rs:29:23
    |
 LL |     type Dict<K, V> = HashMap<K, V>;
@@ -33,5 +33,4 @@ LL + use std::collections::HashMap;
 
 error: aborting due to 3 previous errors
 
-Some errors have detailed explanations: E0412, E0425.
-For more information about an error, try `rustc --explain E0412`.
+For more information about this error, try `rustc --explain E0425`.

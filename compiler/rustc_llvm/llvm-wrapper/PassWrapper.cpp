@@ -6,6 +6,9 @@
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/Analysis/Lint.h"
 #include "llvm/Analysis/TargetLibraryInfo.h"
+#if LLVM_VERSION_GE(22, 0)
+#include "llvm/Analysis/RuntimeLibcallInfo.h"
+#endif
 #include "llvm/Bitcode/BitcodeWriter.h"
 #include "llvm/Bitcode/BitcodeWriterPass.h"
 #include "llvm/CodeGen/CommandFlags.h"
@@ -379,13 +382,20 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
 
 // Unfortunately, the LLVM C API doesn't provide a way to create the
 // TargetLibraryInfo pass, so we use this method to do so.
-extern "C" void LLVMRustAddLibraryInfo(LLVMPassManagerRef PMR, LLVMModuleRef M,
+extern "C" void LLVMRustAddLibraryInfo(LLVMTargetMachineRef T,
+                                       LLVMPassManagerRef PMR, LLVMModuleRef M,
                                        bool DisableSimplifyLibCalls) {
   auto TargetTriple = Triple(unwrap(M)->getTargetTriple());
+  TargetOptions *Options = &unwrap(T)->Options;
   auto TLII = TargetLibraryInfoImpl(TargetTriple);
   if (DisableSimplifyLibCalls)
     TLII.disableAllFunctions();
   unwrap(PMR)->add(new TargetLibraryInfoWrapperPass(TLII));
+#if LLVM_VERSION_GE(22, 0)
+  unwrap(PMR)->add(new RuntimeLibraryInfoWrapper(
+      TargetTriple, Options->ExceptionModel, Options->FloatABIType,
+      Options->EABIVersion, Options->MCOptions.ABIName, Options->VecLib));
+#endif
 }
 
 extern "C" void LLVMRustSetLLVMOptions(int Argc, char **Argv) {
@@ -540,17 +550,8 @@ struct LLVMRustSanitizerOptions {
   bool SanitizeKernelAddressRecover;
 };
 
-// This symbol won't be available or used when Enzyme is not enabled.
-// Always set AugmentPassBuilder to true, since it registers optimizations which
-// will improve the performance for Enzyme.
-#ifdef ENZYME
-extern "C" void registerEnzymeAndPassPipeline(llvm::PassBuilder &PB,
-                                              /* augmentPassBuilder */ bool);
-
-extern "C" {
-extern llvm::cl::opt<std::string> EnzymeFunctionToAnalyze;
-}
-#endif
+extern "C" typedef void (*registerEnzymeAndPassPipelineFn)(
+    llvm::PassBuilder &PB, bool augment);
 
 extern "C" LLVMRustResult LLVMRustOptimize(
     LLVMModuleRef ModuleRef, LLVMTargetMachineRef TMRef,
@@ -559,8 +560,8 @@ extern "C" LLVMRustResult LLVMRustOptimize(
     bool LintIR, LLVMRustThinLTOBuffer **ThinLTOBufferRef, bool EmitThinLTO,
     bool EmitThinLTOSummary, bool MergeFunctions, bool UnrollLoops,
     bool SLPVectorize, bool LoopVectorize, bool DisableSimplifyLibCalls,
-    bool EmitLifetimeMarkers, bool RunEnzyme, bool PrintBeforeEnzyme,
-    bool PrintAfterEnzyme, bool PrintPasses,
+    bool EmitLifetimeMarkers, registerEnzymeAndPassPipelineFn EnzymePtr,
+    bool PrintBeforeEnzyme, bool PrintAfterEnzyme, bool PrintPasses,
     LLVMRustSanitizerOptions *SanitizerOptions, const char *PGOGenPath,
     const char *PGOUsePath, bool InstrumentCoverage,
     const char *InstrProfileOutput, const char *PGOSampleUsePath,
@@ -897,8 +898,8 @@ extern "C" LLVMRustResult LLVMRustOptimize(
   }
 
   // now load "-enzyme" pass:
-#ifdef ENZYME
-  if (RunEnzyme) {
+  // With dlopen, ENZYME macro may not be defined, so check EnzymePtr directly
+  if (EnzymePtr) {
 
     if (PrintBeforeEnzyme) {
       // Handle the Rust flag `-Zautodiff=PrintModBefore`.
@@ -906,20 +907,11 @@ extern "C" LLVMRustResult LLVMRustOptimize(
       MPM.addPass(PrintModulePass(outs(), Banner, true, false));
     }
 
-    registerEnzymeAndPassPipeline(PB, false);
+    EnzymePtr(PB, false);
     if (auto Err = PB.parsePassPipeline(MPM, "enzyme")) {
       std::string ErrMsg = toString(std::move(Err));
       LLVMRustSetLastError(ErrMsg.c_str());
       return LLVMRustResult::Failure;
-    }
-
-    // Check if PrintTAFn was used and add type analysis pass if needed
-    if (!EnzymeFunctionToAnalyze.empty()) {
-      if (auto Err = PB.parsePassPipeline(MPM, "print-type-analysis")) {
-        std::string ErrMsg = toString(std::move(Err));
-        LLVMRustSetLastError(ErrMsg.c_str());
-        return LLVMRustResult::Failure;
-      }
     }
 
     if (PrintAfterEnzyme) {
@@ -928,7 +920,6 @@ extern "C" LLVMRustResult LLVMRustOptimize(
       MPM.addPass(PrintModulePass(outs(), Banner, true, false));
     }
   }
-#endif
   if (PrintPasses) {
     // Print all passes from the PM:
     std::string Pipeline;

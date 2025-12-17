@@ -101,12 +101,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                             // `uaddr2` points to a `struct _umtx_time`.
                             let umtx_time_place = this.ptr_to_mplace(uaddr2, umtx_time_layout);
 
-                            let umtx_time = match this.read_umtx_time(&umtx_time_place)? {
-                                Some(ut) => ut,
-                                None => {
-                                    return this
-                                        .set_last_error_and_return(LibcError("EINVAL"), dest);
-                                }
+                            let Some(umtx_time) = this.read_umtx_time(&umtx_time_place)? else {
+                                return this.set_last_error_and_return(LibcError("EINVAL"), dest);
                             };
 
                             let anchor = if umtx_time.abs_time {
@@ -122,12 +118,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
                             // `uaddr2` points to a `struct timespec`.
                             let timespec = this.ptr_to_mplace(uaddr2, timespec_layout);
-                            let duration = match this.read_timespec(&timespec)? {
-                                Some(duration) => duration,
-                                None => {
-                                    return this
-                                        .set_last_error_and_return(LibcError("EINVAL"), dest);
-                                }
+                            let Some(duration) = this.read_timespec(&timespec)? else {
+                                return this.set_last_error_and_return(LibcError("EINVAL"), dest);
                             };
 
                             // FreeBSD does not seem to document which clock is used when the timeout
@@ -220,10 +212,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         let timespec_place = this.project_field(ut, FieldIdx::from_u32(0))?;
         // Inner `timespec` must still be valid.
-        let duration = match this.read_timespec(&timespec_place)? {
-            Some(dur) => dur,
-            None => return interp_ok(None),
-        };
+        let Some(duration) = this.read_timespec(&timespec_place)? else { return interp_ok(None) };
 
         let flags_place = this.project_field(ut, FieldIdx::from_u32(1))?;
         let flags = this.read_scalar(&flags_place)?.to_u32()?;

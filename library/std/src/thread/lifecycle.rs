@@ -10,8 +10,7 @@ use crate::marker::PhantomData;
 use crate::mem::{ManuallyDrop, MaybeUninit};
 use crate::sync::Arc;
 use crate::sync::atomic::{Atomic, AtomicUsize, Ordering};
-use crate::sys::thread as imp;
-use crate::sys_common::{AsInner, IntoInner};
+use crate::sys::{AsInner, IntoInner, thread as imp};
 use crate::{env, io, panic};
 
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
@@ -111,7 +110,12 @@ where
     // SAFETY: dynamic size and alignment of the Box remain the same. See below for why the
     // lifetime change is justified.
     let rust_start = unsafe {
-        Box::from_raw(Box::into_raw(Box::new(rust_start)) as *mut (dyn FnOnce() + Send + 'static))
+        let ptr = Box::into_raw(Box::new(rust_start));
+        let ptr = crate::mem::transmute::<
+            *mut (dyn FnOnce() + Send + '_),
+            *mut (dyn FnOnce() + Send + 'static),
+        >(ptr);
+        Box::from_raw(ptr)
     };
 
     let init = Box::new(ThreadInit { handle: thread.clone(), rust_start });

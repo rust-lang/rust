@@ -2,9 +2,9 @@ use rustc_ast::token::{self, IdentIsRaw, MetaVarKind, Token, TokenKind};
 use rustc_ast::util::case::Case;
 use rustc_ast::{
     self as ast, BoundAsyncness, BoundConstness, BoundPolarity, DUMMY_NODE_ID, FnPtrTy, FnRetTy,
-    GenericBound, GenericBounds, GenericParam, Generics, Lifetime, MacCall, MutTy, Mutability,
-    Pinnedness, PolyTraitRef, PreciseCapturingArg, TraitBoundModifiers, TraitObjectSyntax, Ty,
-    TyKind, UnsafeBinderTy,
+    GenericBound, GenericBounds, GenericParam, Generics, Lifetime, MacCall, MgcaDisambiguation,
+    MutTy, Mutability, Pinnedness, PolyTraitRef, PreciseCapturingArg, TraitBoundModifiers,
+    TraitObjectSyntax, Ty, TyKind, UnsafeBinderTy,
 };
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::{Applicability, Diag, E0516, PResult};
@@ -658,7 +658,19 @@ impl<'a> Parser<'a> {
         };
 
         let ty = if self.eat(exp!(Semi)) {
-            let mut length = self.parse_expr_anon_const()?;
+            let mut length = if self.token.is_keyword(kw::Const)
+                && self.look_ahead(1, |t| *t == token::OpenBrace)
+            {
+                // While we could just disambiguate `Direct` from `AnonConst` by
+                // treating all const block exprs as `AnonConst`, that would
+                // complicate the DefCollector and likely all other visitors.
+                // So we strip the const blockiness and just store it as a block
+                // in the AST with the extra disambiguator on the AnonConst
+                self.parse_mgca_const_block(false)?
+            } else {
+                self.parse_expr_anon_const(|this, expr| this.mgca_direct_lit_hack(expr))?
+            };
+
             if let Err(e) = self.expect(exp!(CloseBracket)) {
                 // Try to recover from `X<Y, ...>` when `X::<Y, ...>` works
                 self.check_mistyped_turbofish_with_multiple_type_params(e, &mut length.value)?;
@@ -699,8 +711,9 @@ impl<'a> Parser<'a> {
         _ = self.eat(exp!(Comma)) || self.eat(exp!(Colon)) || self.eat(exp!(Star));
         let suggestion_span = self.prev_token.span.with_lo(hi);
 
+        // FIXME(mgca): recovery is broken for `const {` args
         // we first try to parse pattern like `[u8 5]`
-        let length = match self.parse_expr_anon_const() {
+        let length = match self.parse_expr_anon_const(|_, _| MgcaDisambiguation::Direct) {
             Ok(length) => length,
             Err(e) => {
                 e.cancel();
@@ -788,7 +801,7 @@ impl<'a> Parser<'a> {
     /// an error type.
     fn parse_typeof_ty(&mut self, lo: Span) -> PResult<'a, TyKind> {
         self.expect(exp!(OpenParen))?;
-        let _expr = self.parse_expr_anon_const()?;
+        let _expr = self.parse_expr_anon_const(|_, _| MgcaDisambiguation::AnonConst)?;
         self.expect(exp!(CloseParen))?;
         let span = lo.to(self.prev_token.span);
         let guar = self

@@ -464,7 +464,7 @@ pub(super) fn path(
     item_name: Option<String>,
     edition: Edition,
 ) -> String {
-    let crate_name = module.krate().display_name(db).as_ref().map(|it| it.to_string());
+    let crate_name = module.krate(db).display_name(db).as_ref().map(|it| it.to_string());
     let module_path = module
         .path_to_root(db)
         .into_iter()

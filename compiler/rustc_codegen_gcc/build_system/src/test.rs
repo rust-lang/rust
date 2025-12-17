@@ -64,8 +64,6 @@ fn show_usage() {
         r#"
 `test` command help:
 
-    --release              : Build codegen in release mode
-    --sysroot-panic-abort  : Build the sysroot without unwinding support.
     --features [arg]       : Add a new feature [arg]
     --use-system-gcc       : Use system installed libgccjit
     --build-only           : Only build rustc_codegen_gcc then exits
@@ -92,7 +90,6 @@ struct TestArg {
     test_args: Vec<String>,
     nb_parts: Option<usize>,
     current_part: Option<usize>,
-    sysroot_panic_abort: bool,
     config_info: ConfigInfo,
     sysroot_features: Vec<String>,
     keep_lto_tests: bool,
@@ -127,9 +124,6 @@ impl TestArg {
                 "--current-part" => {
                     test_arg.current_part =
                         Some(get_number_after_arg(&mut args, "--current-part")?);
-                }
-                "--sysroot-panic-abort" => {
-                    test_arg.sysroot_panic_abort = true;
                 }
                 "--keep-lto-tests" => {
                     test_arg.keep_lto_tests = true;

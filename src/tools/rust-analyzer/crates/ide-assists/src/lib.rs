@@ -59,6 +59,8 @@
 //! <https://rust-analyzer.github.io/blog/2020/09/28/how-to-make-a-light-bulb.html>
 
 #![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
+// It's useful to refer to code that is private in doc comments.
+#![allow(rustdoc::private_intra_doc_links)]
 
 mod assist_config;
 mod assist_context;
@@ -245,7 +247,6 @@ mod handlers {
             add_label_to_loop::add_label_to_loop,
             add_lifetime_to_type::add_lifetime_to_type,
             add_missing_match_arms::add_missing_match_arms,
-            add_return_type::add_return_type,
             add_turbo_fish::add_turbo_fish,
             apply_demorgan::apply_demorgan_iterator,
             apply_demorgan::apply_demorgan,
@@ -390,6 +391,7 @@ mod handlers {
             // used as a tie-breaker.
             add_missing_impl_members::add_missing_impl_members,
             add_missing_impl_members::add_missing_default_members,
+            add_return_type::add_return_type,
             //
             replace_string_with_char::replace_string_with_char,
             replace_string_with_char::replace_char_with_string,

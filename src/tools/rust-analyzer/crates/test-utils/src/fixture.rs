@@ -96,9 +96,10 @@ pub struct Fixture {
     ///
     /// Syntax: `cfg:test,dbg=false,opt_level=2`
     pub cfgs: Vec<(String, Option<String>)>,
-    /// Specifies the edition of this crate. This must be used with `crate` meta. If
-    /// this is not specified, ([`base_db::input::Edition::CURRENT`]) will be used.
-    /// This must be used with `crate` meta.
+    /// Specifies the edition of this crate. This must be used with
+    /// `crate` meta. If this is not specified,
+    /// `base_db::input::Edition::CURRENT` will be used.  This must be
+    /// used with `crate` meta.
     ///
     /// Syntax: `edition:2021`
     pub edition: Option<String>,
@@ -106,8 +107,8 @@ pub struct Fixture {
     ///
     /// Syntax: `env:PATH=/bin,RUST_LOG=debug`
     pub env: FxHashMap<String, String>,
-    /// Introduces a new [source root](base_db::input::SourceRoot). This file **and
-    /// the following files** will belong the new source root. This must be used
+    /// Introduces a new source root. This file **and the following
+    /// files** will belong the new source root. This must be used
     /// with `crate` meta.
     ///
     /// Use this if you want to test something that uses `SourceRoot::is_library()`
@@ -126,7 +127,7 @@ pub struct Fixture {
     /// This is implied if this file belongs to a library source root.
     ///
     /// Use this if you want to test something that checks if a crate is a workspace
-    /// member via [`CrateOrigin`](base_db::input::CrateOrigin).
+    /// member via `CrateOrigin`.
     ///
     /// Syntax: `library`
     pub library: bool,

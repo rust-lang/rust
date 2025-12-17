@@ -10,7 +10,7 @@ use ide_db::{
     documentation::Documentation,
     famous_defs::FamousDefs,
 };
-use syntax::{AstNode, SyntaxKind::*, SyntaxNode, SyntaxToken, T, TextRange};
+use syntax::{AstNode, SyntaxNode, SyntaxToken, TextRange};
 
 use crate::navigation_target::UpmappingResult;
 use crate::{
@@ -102,7 +102,7 @@ pub struct StaticIndexedFile {
 
 fn all_modules(db: &dyn HirDatabase) -> Vec<Module> {
     let mut worklist: Vec<_> =
-        Crate::all(db).into_iter().map(|krate| krate.root_module()).collect();
+        Crate::all(db).into_iter().map(|krate| krate.root_module(db)).collect();
     let mut modules = Vec::new();
 
     while let Some(module) = worklist.pop() {
@@ -136,12 +136,12 @@ fn documentation_for_definition(
 }
 
 // FIXME: This is a weird function
-fn get_definitions(
-    sema: &Semantics<'_, RootDatabase>,
+fn get_definitions<'db>(
+    sema: &Semantics<'db, RootDatabase>,
     token: SyntaxToken,
-) -> Option<ArrayVec<Definition, 2>> {
+) -> Option<ArrayVec<(Definition, Option<hir::GenericSubstitution<'db>>), 2>> {
     for token in sema.descend_into_macros_exact(token) {
-        let def = IdentClass::classify_token(sema, &token).map(IdentClass::definitions_no_ops);
+        let def = IdentClass::classify_token(sema, &token).map(IdentClass::definitions);
         if let Some(defs) = def
             && !defs.is_empty()
         {
@@ -183,6 +183,7 @@ impl StaticIndex<'_> {
                     adjustment_hints_hide_outside_unsafe: false,
                     implicit_drop_hints: false,
                     implied_dyn_trait_hints: false,
+                    hide_inferred_type_hints: false,
                     hide_named_constructor_hints: false,
                     hide_closure_initialization_hints: false,
                     hide_closure_parameter_hints: false,
@@ -225,12 +226,6 @@ impl StaticIndex<'_> {
             show_drop_glue: true,
             minicore: MiniCore::default(),
         };
-        let tokens = tokens.filter(|token| {
-            matches!(
-                token.kind(),
-                IDENT | INT_NUMBER | LIFETIME_IDENT | T![self] | T![super] | T![crate] | T![Self]
-            )
-        });
         let mut result = StaticIndexedFile { file_id, inlay_hints, folds, tokens: vec![] };
 
         let mut add_token = |def: Definition, range: TextRange, scope_node: &SyntaxNode| {
@@ -290,9 +285,9 @@ impl StaticIndex<'_> {
             let range = token.text_range();
             let node = token.parent().unwrap();
             match hir::attach_db(self.db, || get_definitions(&sema, token.clone())) {
-                Some(it) => {
-                    for i in it {
-                        add_token(i, range, &node);
+                Some(defs) => {
+                    for (def, _) in defs {
+                        add_token(def, range, &node);
                     }
                 }
                 None => continue,

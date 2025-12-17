@@ -19,7 +19,6 @@ pub mod c;
 pub mod futex;
 pub mod handle;
 pub mod os;
-pub mod pipe;
 pub mod time;
 cfg_select! {
     // We don't care about printing nice error messages for panic=immediate-abort

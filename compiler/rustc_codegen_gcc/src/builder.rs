@@ -500,11 +500,11 @@ impl<'gcc, 'tcx> BackendTypes for Builder<'_, 'gcc, 'tcx> {
 }
 
 fn set_rvalue_location<'a, 'gcc, 'tcx>(
-    bx: &mut Builder<'a, 'gcc, 'tcx>,
+    _bx: &mut Builder<'a, 'gcc, 'tcx>,
     rvalue: RValue<'gcc>,
 ) -> RValue<'gcc> {
-    if let Some(location) = bx.location {
-        #[cfg(feature = "master")]
+    #[cfg(feature = "master")]
+    if let Some(location) = _bx.location {
         rvalue.set_location(location);
     }
     rvalue
@@ -941,6 +941,10 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         self.current_func()
             .new_local(self.location, ty, format!("stack_var_{}", self.next_value_counter()))
             .get_address(self.location)
+    }
+
+    fn scalable_alloca(&mut self, _elt: u64, _align: Align, _element_ty: Ty<'_>) -> RValue<'gcc> {
+        todo!()
     }
 
     fn load(&mut self, pointee_ty: Type<'gcc>, ptr: RValue<'gcc>, align: Align) -> RValue<'gcc> {

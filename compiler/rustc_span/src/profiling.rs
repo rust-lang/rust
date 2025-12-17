@@ -2,6 +2,7 @@ use std::borrow::Borrow;
 
 use rustc_data_structures::profiling::EventArgRecorder;
 
+use crate::RemapPathScopeComponents;
 use crate::source_map::SourceMap;
 
 /// Extension trait for self-profiling purposes: allows to record spans within a generic activity's
@@ -24,6 +25,6 @@ impl SpannedEventArgRecorder for EventArgRecorder<'_> {
         A: Borrow<str> + Into<String>,
     {
         self.record_arg(event_arg);
-        self.record_arg(source_map.span_to_embeddable_string(span));
+        self.record_arg(source_map.span_to_string(span, RemapPathScopeComponents::DEBUGINFO));
     }
 }

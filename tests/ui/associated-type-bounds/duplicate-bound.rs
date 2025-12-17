@@ -224,7 +224,9 @@ fn uncallable_const(_: impl Trait<ASSOC = 3, ASSOC = 4>) {}
 
 fn callable_const(_: impl Trait<ASSOC = 3, ASSOC = 3>) {}
 
-fn uncallable_rtn(_: impl Trait<foo(..): Trait<ASSOC = 3>, foo(..): Trait<ASSOC = 4>>) {}
+fn uncallable_rtn(
+    _: impl Trait<foo(..): Trait<ASSOC = 3>, foo(..): Trait<ASSOC = 4>>
+) {}
 
 fn callable_rtn(_: impl Trait<foo(..): Send, foo(..): Send, foo(..): Eq>) {}
 

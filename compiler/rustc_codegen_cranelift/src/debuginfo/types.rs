@@ -109,7 +109,8 @@ impl DebugContext {
 
         let subrange_id = self.dwarf.unit.add(array_type_id, gimli::DW_TAG_subrange_type);
         let subrange_entry = self.dwarf.unit.get_mut(subrange_id);
-        subrange_entry.set(gimli::DW_AT_type, AttributeValue::UnitRef(self.array_size_type));
+        subrange_entry
+            .set(gimli::DW_AT_type, AttributeValue::UnitRef(self.array_size_type.unwrap()));
         subrange_entry.set(gimli::DW_AT_lower_bound, AttributeValue::Udata(0));
         subrange_entry.set(gimli::DW_AT_count, AttributeValue::Udata(len));
 

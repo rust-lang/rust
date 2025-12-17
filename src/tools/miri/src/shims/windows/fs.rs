@@ -321,11 +321,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             this.windows_ty_layout("BY_HANDLE_FILE_INFORMATION"),
         )?;
 
-        let fd_num = if let Handle::File(fd_num) = file {
-            fd_num
-        } else {
-            this.invalid_handle("GetFileInformationByHandle")?
-        };
+        let Handle::File(fd_num) = file else { this.invalid_handle("GetFileInformationByHandle")? };
 
         let Some(desc) = this.machine.fds.get(fd_num) else {
             this.invalid_handle("GetFileInformationByHandle")?
@@ -448,10 +444,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             throw_unsup_format!("`NtWriteFile` `Key` parameter is non-null, which is unsupported");
         }
 
-        let fd = match handle {
-            Handle::File(fd) => fd,
-            _ => this.invalid_handle("NtWriteFile")?,
-        };
+        let Handle::File(fd) = handle else { this.invalid_handle("NtWriteFile")? };
 
         let Some(desc) = this.machine.fds.get(fd) else { this.invalid_handle("NtWriteFile")? };
 
@@ -561,10 +554,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         };
         let io_status_info = this.project_field_named(&io_status_block, "Information")?;
 
-        let fd = match handle {
-            Handle::File(fd) => fd,
-            _ => this.invalid_handle("NtWriteFile")?,
-        };
+        let Handle::File(fd) = handle else { this.invalid_handle("NtWriteFile")? };
 
         let Some(desc) = this.machine.fds.get(fd) else { this.invalid_handle("NtReadFile")? };
 
@@ -620,10 +610,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let new_fp_ptr = this.read_pointer(new_fp)?;
         let move_method = this.read_scalar(move_method)?.to_u32()?;
 
-        let fd = match file {
-            Handle::File(fd) => fd,
-            _ => this.invalid_handle("SetFilePointerEx")?,
-        };
+        let Handle::File(fd) = file else { this.invalid_handle("SetFilePointerEx")? };
 
         let Some(desc) = this.machine.fds.get(fd) else {
             throw_unsup_format!("`SetFilePointerEx` is only supported on file backed handles");

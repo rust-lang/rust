@@ -422,12 +422,10 @@ pub fn sizedness_constraint_for_ty<'db>(
             .next_back()
             .and_then(|ty| sizedness_constraint_for_ty(interner, sizedness, ty)),
 
-        Adt(adt, args) => {
-            let tail_ty =
-                EarlyBinder::bind(adt.all_field_tys(interner).skip_binder().into_iter().last()?)
-                    .instantiate(interner, args);
+        Adt(adt, args) => adt.struct_tail_ty(interner).and_then(|tail_ty| {
+            let tail_ty = tail_ty.instantiate(interner, args);
             sizedness_constraint_for_ty(interner, sizedness, tail_ty)
-        }
+        }),
 
         Placeholder(..) | Bound(..) | Infer(..) => {
             panic!("unexpected type `{ty:?}` in sizedness_constraint_for_ty")

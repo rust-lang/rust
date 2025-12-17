@@ -83,7 +83,7 @@ fn quickfix_for_redundant_assoc_item(
         let root = db.parse_or_expand(d.file_id);
         // don't modify trait def in outer crate
         let current_crate = ctx.sema.scope(&d.impl_.syntax_node_ptr().to_node(&root))?.krate();
-        let trait_def_crate = d.trait_.module(db).krate();
+        let trait_def_crate = d.trait_.module(db).krate(db);
         if trait_def_crate != current_crate {
             return None;
         }

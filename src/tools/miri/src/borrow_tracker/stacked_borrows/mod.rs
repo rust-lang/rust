@@ -826,15 +826,12 @@ trait EvalContextPrivExt<'tcx, 'ecx>: crate::MiriInterpCxExt<'tcx> {
         // FIXME: If we cannot determine the size (because the unsized tail is an `extern type`),
         // bail out -- we cannot reasonably figure out which memory range to reborrow.
         // See https://github.com/rust-lang/unsafe-code-guidelines/issues/276.
-        let size = match size {
-            Some(size) => size,
-            None => {
-                static DEDUP: AtomicBool = AtomicBool::new(false);
-                if !DEDUP.swap(true, std::sync::atomic::Ordering::Relaxed) {
-                    this.emit_diagnostic(NonHaltingDiagnostic::ExternTypeReborrow);
-                }
-                return interp_ok(place.clone());
+        let Some(size) = size else {
+            static DEDUP: AtomicBool = AtomicBool::new(false);
+            if !DEDUP.swap(true, std::sync::atomic::Ordering::Relaxed) {
+                this.emit_diagnostic(NonHaltingDiagnostic::ExternTypeReborrow);
             }
+            return interp_ok(place.clone());
         };
 
         // Compute new borrow.

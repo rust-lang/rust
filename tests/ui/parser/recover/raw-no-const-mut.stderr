@@ -101,7 +101,13 @@ LL | fn a() {
    | ------ similarly named function `a` defined here
 ...
 LL |     f(&raw 2);
-   |     ^ help: a function with a similar name exists: `a`
+   |     ^
+   |
+help: a function with a similar name exists
+   |
+LL -     f(&raw 2);
+LL +     a(&raw 2);
+   |
 
 error: aborting due to 9 previous errors
 

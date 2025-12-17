@@ -16,7 +16,31 @@ use rustc_span::{Ident, Symbol};
 use crate::ast;
 use crate::util::case::Case;
 
-#[derive(Clone, Copy, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
+/// Represents the kind of doc comment it is, ie `///` or `#[doc = ""]`.
+#[derive(Clone, Copy, PartialEq, Eq, Encodable, Decodable, Debug, HashStable_Generic)]
+pub enum DocFragmentKind {
+    /// A sugared doc comment: `///` or `//!` or `/**` or `/*!`.
+    Sugared(CommentKind),
+    /// A "raw" doc comment: `#[doc = ""]`. The `Span` represents the string literal.
+    Raw(Span),
+}
+
+impl DocFragmentKind {
+    pub fn is_sugared(self) -> bool {
+        matches!(self, Self::Sugared(_))
+    }
+
+    /// If it is `Sugared`, it will return its associated `CommentKind`, otherwise it will return
+    /// `CommentKind::Line`.
+    pub fn comment_kind(self) -> CommentKind {
+        match self {
+            Self::Sugared(kind) => kind,
+            Self::Raw(_) => CommentKind::Line,
+        }
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Encodable, Decodable, Debug, HashStable_Generic)]
 pub enum CommentKind {
     Line,
     Block,

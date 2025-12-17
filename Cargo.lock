@@ -74,9 +74,9 @@ dependencies = [
 
 [[package]]
 name = "annotate-snippets"
-version = "0.12.9"
+version = "0.12.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a44baf24dd94e781f74dfe67ffee75a09a57971ddf0f615a178b4f6d404b48ff"
+checksum = "15580ece6ea97cbf832d60ba19c021113469480852c6a2a6beb0db28f097bf1f"
 dependencies = [
  "anstyle",
  "memchr",
@@ -621,7 +621,7 @@ checksum = "a1d728cc89cf3aee9ff92b05e62b19ee65a02b5702cff7d5a377e32c6ae29d8d"
 
 [[package]]
 name = "clippy"
-version = "0.1.93"
+version = "0.1.94"
 dependencies = [
  "anstream",
  "askama",
@@ -648,7 +648,7 @@ dependencies = [
 
 [[package]]
 name = "clippy_config"
-version = "0.1.93"
+version = "0.1.94"
 dependencies = [
  "clippy_utils",
  "itertools",
@@ -671,7 +671,7 @@ dependencies = [
 
 [[package]]
 name = "clippy_lints"
-version = "0.1.93"
+version = "0.1.94"
 dependencies = [
  "arrayvec",
  "cargo_metadata 0.18.1",
@@ -703,7 +703,7 @@ dependencies = [
 
 [[package]]
 name = "clippy_utils"
-version = "0.1.93"
+version = "0.1.94"
 dependencies = [
  "arrayvec",
  "itertools",
@@ -1107,7 +1107,7 @@ dependencies = [
 
 [[package]]
 name = "declare_clippy_lint"
-version = "0.1.93"
+version = "0.1.94"
 
 [[package]]
 name = "derive-where"
@@ -3613,6 +3613,7 @@ dependencies = [
  "gimli 0.31.1",
  "itertools",
  "libc",
+ "libloading 0.9.0",
  "measureme",
  "object 0.37.3",
  "rustc-demangle",
@@ -3838,7 +3839,7 @@ dependencies = [
 name = "rustc_errors"
 version = "0.0.0"
 dependencies = [
- "annotate-snippets 0.12.9",
+ "annotate-snippets 0.12.10",
  "anstream",
  "anstyle",
  "derive_setters",
@@ -3945,6 +3946,7 @@ dependencies = [
  "rustc_hashes",
  "rustc_hir_id",
  "rustc_index",
+ "rustc_lint_defs",
  "rustc_macros",
  "rustc_serialize",
  "rustc_span",
@@ -3962,7 +3964,6 @@ dependencies = [
  "rustc_abi",
  "rustc_arena",
  "rustc_ast",
- "rustc_attr_parsing",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_feature",
@@ -3970,6 +3971,7 @@ dependencies = [
  "rustc_hir",
  "rustc_index",
  "rustc_infer",
+ "rustc_lint",
  "rustc_lint_defs",
  "rustc_macros",
  "rustc_middle",
@@ -4010,7 +4012,6 @@ dependencies = [
  "itertools",
  "rustc_abi",
  "rustc_ast",
- "rustc_attr_parsing",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_fluent_macro",
@@ -4432,7 +4433,6 @@ dependencies = [
  "rustc_abi",
  "rustc_ast",
  "rustc_ast_lowering",
- "rustc_ast_pretty",
  "rustc_attr_parsing",
  "rustc_data_structures",
  "rustc_errors",
@@ -4631,7 +4631,6 @@ dependencies = [
 name = "rustc_session"
 version = "0.0.0"
 dependencies = [
- "bitflags",
  "getopts",
  "libc",
  "rand 0.9.2",
@@ -4658,6 +4657,7 @@ dependencies = [
 name = "rustc_span"
 version = "0.0.0"
 dependencies = [
+ "bitflags",
  "blake3",
  "derive-where",
  "indexmap",
@@ -4869,6 +4869,7 @@ dependencies = [
  "indexmap",
  "itertools",
  "minifier",
+ "proc-macro2",
  "pulldown-cmark-escape",
  "regex",
  "rustdoc-json-types",
@@ -5615,6 +5616,7 @@ dependencies = [
  "semver",
  "serde",
  "similar",
+ "tempfile",
  "termcolor",
  "toml 0.7.8",
  "walkdir",

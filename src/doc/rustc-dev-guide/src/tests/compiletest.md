@@ -90,7 +90,8 @@ The following test suites are available, with links for more information:
 | `rustdoc-ui`                         | Check terminal output of `rustdoc` ([see also](ui.md))                   |
 
 Some rustdoc-specific tests can also be found in `ui/rustdoc/`.
-These check rustdoc-related or -specific lints that (also) run as part of `rustc`, not (only) `rustdoc`.
+These tests ensure that certain lints that are emitted as part of executing rustdoc
+are also run when executing rustc.
 Run-make tests pertaining to rustdoc are typically named `run-make/rustdoc-*/`.
 
 [rustdoc-html-tests]: ../rustdoc-internals/rustdoc-test-suite.md
@@ -187,8 +188,26 @@ still pass.
 cause an Internal Compiler Error (ICE). This is a highly specialized directive
 to check that the incremental cache continues to work after an ICE.
 
-[`tests/incremental`]: https://github.com/rust-lang/rust/tree/HEAD/tests/incremental
+Incremental tests may use the attribute `#[rustc_clean(...)]` attribute. This attribute compares
+the fingerprint from the current compilation session with the previous one. 
+The first revision should never have an active `rustc_clean` attribute, since it will always be dirty.
 
+In the default mode, it asserts that the fingerprints must be the same. 
+The attribute takes the following arguments:
+
+* `cfg="<cond>"` — checks the cfg condition `<cond>`, and only runs the check if the config condition evaluates to true.
+  This can be used to only run the `rustc_clean` attribute in a specific revision.
+* `except="<query1>,<query2>,..."` — asserts that the query results for the listed queries must be different, 
+  rather than the same.
+* `loaded_from_disk="<query1>,<query2>,..."` — asserts that the query results for the listed queries 
+  were actually loaded from disk (not just marked green). 
+  This can be useful to ensure that a test is actually exercising the deserialization
+  logic for a particular query result. This can be combined with `except`.
+
+A simple example of a test using `rustc_clean` is the [hello_world test].
+
+[`tests/incremental`]: https://github.com/rust-lang/rust/tree/7b42543/tests/incremental
+[hello_world test]: https://github.com/rust-lang/rust/blob/646a3f8c15baefb98dc6e0c1c1ba3356db702d2a/tests/incremental/hello_world.rs
 
 ### Debuginfo tests
 

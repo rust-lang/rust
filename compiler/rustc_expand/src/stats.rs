@@ -138,10 +138,7 @@ pub(crate) fn update_macro_stats(
     if false {
         let name = ExpnKind::Macro(macro_kind, name).descr();
         let crate_name = &ecx.ecfg.crate_name;
-        let span = ecx
-            .sess
-            .source_map()
-            .span_to_string(span, rustc_span::FileNameDisplayPreference::Local);
+        let span = ecx.sess.source_map().span_to_diagnostic_string(span);
         eprint!(
             "\
             -------------------------------\n\

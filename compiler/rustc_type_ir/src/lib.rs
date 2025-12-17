@@ -4,11 +4,11 @@
 #![allow(rustc::usage_of_ty_tykind)]
 #![allow(rustc::usage_of_type_ir_inherent)]
 #![allow(rustc::usage_of_type_ir_traits)]
+#![cfg_attr(feature = "nightly", allow(internal_features))]
 #![cfg_attr(
     feature = "nightly",
     feature(associated_type_defaults, never_type, rustc_attrs, negative_impls)
 )]
-#![cfg_attr(feature = "nightly", allow(internal_features))]
 // tidy-alphabetical-end
 
 extern crate self as rustc_type_ir;
@@ -44,6 +44,8 @@ mod const_kind;
 mod flags;
 mod fold;
 mod generic_arg;
+#[cfg(not(feature = "nightly"))]
+mod generic_visit;
 mod infer_ctxt;
 mod interner;
 mod opaque_ty;
@@ -61,12 +63,14 @@ pub use InferTy::*;
 pub use RegionKind::*;
 pub use TyKind::*;
 pub use Variance::*;
-pub use binder::*;
+pub use binder::{Placeholder, *};
 pub use canonical::*;
 pub use const_kind::*;
 pub use flags::*;
 pub use fold::*;
 pub use generic_arg::*;
+#[cfg(not(feature = "nightly"))]
+pub use generic_visit::*;
 pub use infer_ctxt::*;
 pub use interner::*;
 pub use opaque_ty::*;
@@ -75,6 +79,7 @@ pub use predicate::*;
 pub use predicate_kind::*;
 pub use region_kind::*;
 pub use rustc_ast_ir::{FloatTy, IntTy, Movability, Mutability, Pinnedness, UintTy};
+use rustc_type_ir_macros::GenericTypeVisitable;
 pub use ty_info::*;
 pub use ty_kind::*;
 pub use upcast::*;
@@ -213,7 +218,7 @@ pub fn debug_bound_var<T: std::fmt::Write>(
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, GenericTypeVisitable)]
 #[cfg_attr(feature = "nightly", derive(Decodable, Encodable, HashStable_NoContext))]
 #[cfg_attr(feature = "nightly", rustc_pass_by_value)]
 pub enum Variance {

@@ -52,7 +52,7 @@ use rustc_abi::{
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_error_messages::{DiagArgValue, IntoDiagArg, into_diag_arg_using_display};
 use rustc_fs_util::try_canonicalize;
-use rustc_macros::{Decodable, Encodable, HashStable_Generic};
+use rustc_macros::{BlobDecodable, Decodable, Encodable, HashStable_Generic};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_span::{Symbol, kw, sym};
 use serde_json::Value;
@@ -830,7 +830,7 @@ impl LinkerFeatures {
 }
 
 crate::target_spec_enum! {
-    #[derive(Encodable, Decodable, HashStable_Generic)]
+    #[derive(Encodable, BlobDecodable, HashStable_Generic)]
     pub enum PanicStrategy {
         Unwind = "unwind",
         Abort = "abort",
@@ -840,7 +840,7 @@ crate::target_spec_enum! {
     parse_error_type = "panic strategy";
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Hash, Encodable, Decodable, HashStable_Generic)]
+#[derive(Clone, Copy, Debug, PartialEq, Hash, Encodable, BlobDecodable, HashStable_Generic)]
 pub enum OnBrokenPipe {
     Default,
     Kill,
@@ -1686,6 +1686,7 @@ supported_targets! {
     ("riscv32imac-unknown-xous-elf", riscv32imac_unknown_xous_elf),
     ("riscv32gc-unknown-linux-gnu", riscv32gc_unknown_linux_gnu),
     ("riscv32gc-unknown-linux-musl", riscv32gc_unknown_linux_musl),
+    ("riscv64im-unknown-none-elf", riscv64im_unknown_none_elf),
     ("riscv64imac-unknown-none-elf", riscv64imac_unknown_none_elf),
     ("riscv64gc-unknown-none-elf", riscv64gc_unknown_none_elf),
     ("riscv64gc-unknown-linux-gnu", riscv64gc_unknown_linux_gnu),
@@ -1923,6 +1924,24 @@ impl Arch {
             Self::X86_64 => sym::x86_64,
             Self::Xtensa => sym::xtensa,
             Self::Other(name) => rustc_span::Symbol::intern(name),
+        }
+    }
+
+    pub fn supports_c_variadic_definitions(&self) -> bool {
+        use Arch::*;
+
+        match self {
+            // These targets just do not support c-variadic definitions.
+            Bpf | SpirV => false,
+
+            // We don't know if the target supports c-variadic definitions, but we don't want
+            // to needlessly restrict custom target.json configurations.
+            Other(_) => true,
+
+            AArch64 | AmdGpu | Arm | Arm64EC | Avr | CSky | Hexagon | LoongArch32 | LoongArch64
+            | M68k | Mips | Mips32r6 | Mips64 | Mips64r6 | Msp430 | Nvptx64 | PowerPC
+            | PowerPC64 | PowerPC64LE | RiscV32 | RiscV64 | S390x | Sparc | Sparc64 | Wasm32
+            | Wasm64 | X86 | X86_64 | Xtensa => true,
         }
     }
 }

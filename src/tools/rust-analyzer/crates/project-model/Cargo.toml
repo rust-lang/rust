@@ -39,5 +39,9 @@ toolchain.workspace = true
 [dev-dependencies]
 expect-test = "1.5.1"
 
+[features]
+default = []
+in-rust-tree = []
+
 [lints]
 workspace = true

@@ -12,12 +12,12 @@ use stdx::never;
 use triomphe::Arc;
 
 use crate::{
-    InferenceResult, TraitEnvironment,
+    InferenceResult,
     db::{HirDatabase, InternedClosure, InternedClosureId},
     display::DisplayTarget,
     mir::OperandKind,
     next_solver::{
-        DbInterner, GenericArgs, Ty, TypingMode,
+        DbInterner, GenericArgs, ParamEnv, Ty, TypingMode,
         infer::{DbInternerInferExt, InferCtxt},
     },
 };
@@ -97,7 +97,7 @@ pub fn borrowck_query<'db>(
 ) -> Result<Arc<[BorrowckResult<'db>]>, MirLowerError<'db>> {
     let _p = tracing::info_span!("borrowck_query").entered();
     let module = def.module(db);
-    let interner = DbInterner::new_with(db, module.krate());
+    let interner = DbInterner::new_with(db, module.krate(db));
     let env = db.trait_environment_for_body(def);
     let mut res = vec![];
     // This calculates opaques defining scope which is a bit costly therefore is put outside `all_mir_bodies()`.
@@ -106,9 +106,9 @@ pub fn borrowck_query<'db>(
         // FIXME(next-solver): Opaques.
         let infcx = interner.infer_ctxt().build(typing_mode);
         res.push(BorrowckResult {
-            mutability_of_locals: mutability_of_locals(&infcx, &body),
-            moved_out_of_ref: moved_out_of_ref(&infcx, &env, &body),
-            partially_moved: partially_moved(&infcx, &env, &body),
+            mutability_of_locals: mutability_of_locals(&infcx, env, &body),
+            moved_out_of_ref: moved_out_of_ref(&infcx, env, &body),
+            partially_moved: partially_moved(&infcx, env, &body),
             borrow_regions: borrow_regions(db, &body),
             mir_body: body,
         });
@@ -131,7 +131,7 @@ fn make_fetch_closure_field<'db>(
 
 fn moved_out_of_ref<'db>(
     infcx: &InferCtxt<'db>,
-    env: &TraitEnvironment<'db>,
+    env: ParamEnv<'db>,
     body: &MirBody<'db>,
 ) -> Vec<MovedOutOfRef<'db>> {
     let db = infcx.interner.db;
@@ -146,13 +146,14 @@ fn moved_out_of_ref<'db>(
                 }
                 ty = proj.projected_ty(
                     infcx,
+                    env,
                     ty,
                     make_fetch_closure_field(db),
-                    body.owner.module(db).krate(),
+                    body.owner.module(db).krate(db),
                 );
             }
             if is_dereference_of_ref
-                && !infcx.type_is_copy_modulo_regions(env.env, ty)
+                && !infcx.type_is_copy_modulo_regions(env, ty)
                 && !ty.references_non_lt_error()
             {
                 result.push(MovedOutOfRef { span: op.span.unwrap_or(span), ty });
@@ -231,7 +232,7 @@ fn moved_out_of_ref<'db>(
 
 fn partially_moved<'db>(
     infcx: &InferCtxt<'db>,
-    env: &TraitEnvironment<'db>,
+    env: ParamEnv<'db>,
     body: &MirBody<'db>,
 ) -> Vec<PartiallyMoved<'db>> {
     let db = infcx.interner.db;
@@ -242,12 +243,13 @@ fn partially_moved<'db>(
             for proj in p.projection.lookup(&body.projection_store) {
                 ty = proj.projected_ty(
                     infcx,
+                    env,
                     ty,
                     make_fetch_closure_field(db),
-                    body.owner.module(db).krate(),
+                    body.owner.module(db).krate(db),
                 );
             }
-            if !infcx.type_is_copy_modulo_regions(env.env, ty) && !ty.references_non_lt_error() {
+            if !infcx.type_is_copy_modulo_regions(env, ty) && !ty.references_non_lt_error() {
                 result.push(PartiallyMoved { span, ty, local: p.local });
             }
         }
@@ -374,6 +376,7 @@ enum ProjectionCase {
 
 fn place_case<'db>(
     infcx: &InferCtxt<'db>,
+    env: ParamEnv<'db>,
     body: &MirBody<'db>,
     lvalue: &Place<'db>,
 ) -> ProjectionCase {
@@ -395,9 +398,10 @@ fn place_case<'db>(
         }
         ty = proj.projected_ty(
             infcx,
+            env,
             ty,
             make_fetch_closure_field(db),
-            body.owner.module(db).krate(),
+            body.owner.module(db).krate(db),
         );
     }
     if is_part_of { ProjectionCase::DirectPart } else { ProjectionCase::Direct }
@@ -535,6 +539,7 @@ fn record_usage_for_operand<'db>(
 
 fn mutability_of_locals<'db>(
     infcx: &InferCtxt<'db>,
+    env: ParamEnv<'db>,
     body: &MirBody<'db>,
 ) -> ArenaMap<LocalId<'db>, MutabilityReason> {
     let db = infcx.interner.db;
@@ -547,7 +552,7 @@ fn mutability_of_locals<'db>(
         for statement in &block.statements {
             match &statement.kind {
                 StatementKind::Assign(place, value) => {
-                    match place_case(infcx, body, place) {
+                    match place_case(infcx, env, body, place) {
                         ProjectionCase::Direct => {
                             if ever_init_map.get(place.local).copied().unwrap_or_default() {
                                 push_mut_span(place.local, statement.span, &mut result);
@@ -596,7 +601,7 @@ fn mutability_of_locals<'db>(
                         },
                         p,
                     ) = value
-                        && place_case(infcx, body, p) != ProjectionCase::Indirect
+                        && place_case(infcx, env, body, p) != ProjectionCase::Indirect
                     {
                         push_mut_span(p.local, statement.span, &mut result);
                     }
