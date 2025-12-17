@@ -41,6 +41,7 @@ const STAGE0_MISSING_TARGETS: &[&str] = &[
     "sparc64-unknown-helenos",
     // just a dummy comment so the list doesn't get onelined
     "riscv64gc-unknown-redox",
+    "riscv64im-unknown-none-elf",
     "hexagon-unknown-qurt",
 ];
 

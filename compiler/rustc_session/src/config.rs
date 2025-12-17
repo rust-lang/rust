@@ -806,7 +806,7 @@ pub enum ErrorOutputType {
     /// Output meant for the consumption of humans.
     #[default]
     HumanReadable {
-        kind: HumanReadableErrorType = HumanReadableErrorType::Default { short: false },
+        kind: HumanReadableErrorType = HumanReadableErrorType { short: false, unicode: false },
         color_config: ColorConfig = ColorConfig::Auto,
     },
     /// Output that's consumed by other tools such as `rustfix` or the `RLS`.
@@ -1965,16 +1965,8 @@ impl JsonUnusedExterns {
 ///
 /// The first value returned is how to render JSON diagnostics, and the second
 /// is whether or not artifact notifications are enabled.
-pub fn parse_json(
-    early_dcx: &EarlyDiagCtxt,
-    matches: &getopts::Matches,
-    is_nightly_build: bool,
-) -> JsonConfig {
-    let mut json_rendered = if is_nightly_build {
-        HumanReadableErrorType::AnnotateSnippet { short: false, unicode: false }
-    } else {
-        HumanReadableErrorType::Default { short: false }
-    };
+pub fn parse_json(early_dcx: &EarlyDiagCtxt, matches: &getopts::Matches) -> JsonConfig {
+    let mut json_rendered = HumanReadableErrorType { short: false, unicode: false };
     let mut json_color = ColorConfig::Never;
     let mut json_artifact_notifications = false;
     let mut json_unused_externs = JsonUnusedExterns::No;
@@ -1991,15 +1983,10 @@ pub fn parse_json(
         for sub_option in option.split(',') {
             match sub_option {
                 "diagnostic-short" => {
-                    json_rendered = if is_nightly_build {
-                        HumanReadableErrorType::AnnotateSnippet { short: true, unicode: false }
-                    } else {
-                        HumanReadableErrorType::Default { short: true }
-                    };
+                    json_rendered = HumanReadableErrorType { short: true, unicode: false };
                 }
                 "diagnostic-unicode" => {
-                    json_rendered =
-                        HumanReadableErrorType::AnnotateSnippet { short: false, unicode: true };
+                    json_rendered = HumanReadableErrorType { short: false, unicode: true };
                 }
                 "diagnostic-rendered-ansi" => json_color = ColorConfig::Always,
                 "artifacts" => json_artifact_notifications = true,
@@ -2029,13 +2016,8 @@ pub fn parse_error_format(
     color_config: ColorConfig,
     json_color: ColorConfig,
     json_rendered: HumanReadableErrorType,
-    is_nightly_build: bool,
 ) -> ErrorOutputType {
-    let default_kind = if is_nightly_build {
-        HumanReadableErrorType::AnnotateSnippet { short: false, unicode: false }
-    } else {
-        HumanReadableErrorType::Default { short: false }
-    };
+    let default_kind = HumanReadableErrorType { short: false, unicode: false };
     // We need the `opts_present` check because the driver will send us Matches
     // with only stable options if no unstable options are used. Since error-format
     // is unstable, it will not be present. We have to use `opts_present` not
@@ -2045,10 +2027,6 @@ pub fn parse_error_format(
             None | Some("human") => {
                 ErrorOutputType::HumanReadable { color_config, kind: default_kind }
             }
-            Some("human-annotate-rs") => ErrorOutputType::HumanReadable {
-                kind: HumanReadableErrorType::AnnotateSnippet { short: false, unicode: false },
-                color_config,
-            },
             Some("json") => {
                 ErrorOutputType::Json { pretty: false, json_rendered, color_config: json_color }
             }
@@ -2056,15 +2034,11 @@ pub fn parse_error_format(
                 ErrorOutputType::Json { pretty: true, json_rendered, color_config: json_color }
             }
             Some("short") => ErrorOutputType::HumanReadable {
-                kind: if is_nightly_build {
-                    HumanReadableErrorType::AnnotateSnippet { short: true, unicode: false }
-                } else {
-                    HumanReadableErrorType::Default { short: true }
-                },
+                kind: HumanReadableErrorType { short: true, unicode: false },
                 color_config,
             },
             Some("human-unicode") => ErrorOutputType::HumanReadable {
-                kind: HumanReadableErrorType::AnnotateSnippet { short: false, unicode: true },
+                kind: HumanReadableErrorType { short: false, unicode: true },
                 color_config,
             },
             Some(arg) => {
@@ -2073,8 +2047,8 @@ pub fn parse_error_format(
                     kind: default_kind,
                 });
                 early_dcx.early_fatal(format!(
-                    "argument for `--error-format` must be `human`, `human-annotate-rs`, \
-                    `human-unicode`, `json`, `pretty-json` or `short` (instead was `{arg}`)"
+                    "argument for `--error-format` must be `human`, `human-unicode`, \
+                    `json`, `pretty-json` or `short` (instead was `{arg}`)"
                 ))
             }
         }
@@ -2136,8 +2110,7 @@ fn check_error_format_stability(
     let format = match format {
         ErrorOutputType::Json { pretty: true, .. } => "pretty-json",
         ErrorOutputType::HumanReadable { kind, .. } => match kind {
-            HumanReadableErrorType::AnnotateSnippet { unicode: false, .. } => "human-annotate-rs",
-            HumanReadableErrorType::AnnotateSnippet { unicode: true, .. } => "human-unicode",
+            HumanReadableErrorType { unicode: true, .. } => "human-unicode",
             _ => return,
         },
         _ => return,
@@ -2465,16 +2438,9 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
         json_timings,
         json_unused_externs,
         json_future_incompat,
-    } = parse_json(early_dcx, matches, unstable_features.is_nightly_build());
+    } = parse_json(early_dcx, matches);
 
-    let error_format = parse_error_format(
-        early_dcx,
-        matches,
-        color,
-        json_color,
-        json_rendered,
-        unstable_features.is_nightly_build(),
-    );
+    let error_format = parse_error_format(early_dcx, matches, color, json_color, json_rendered);
 
     early_dcx.set_error_format(error_format);
 

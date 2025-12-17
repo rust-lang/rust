@@ -129,6 +129,7 @@ codegen_ssa_invalid_monomorphization_mask_wrong_element_type = invalid monomorph
 
 codegen_ssa_invalid_monomorphization_mismatched_lengths = invalid monomorphization of `{$name}` intrinsic: mismatched lengths: mask length `{$m_len}` != other vector length `{$v_len}`
 
+codegen_ssa_invalid_monomorphization_non_scalable_type = invalid monomorphization of `{$name}` intrinsic: expected non-scalable type, found scalable type `{$ty}`
 codegen_ssa_invalid_monomorphization_return_element = invalid monomorphization of `{$name}` intrinsic: expected return element type `{$in_elem}` (element of input `{$in_ty}`), found `{$ret_ty}` with element type `{$out_ty}`
 
 codegen_ssa_invalid_monomorphization_return_integer_type = invalid monomorphization of `{$name}` intrinsic: expected return type with integer elements, found `{$ret_ty}` with non-integer `{$out_ty}`

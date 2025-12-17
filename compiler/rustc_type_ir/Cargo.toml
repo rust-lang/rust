@@ -35,6 +35,7 @@ nightly = [
     "dep:rustc_span",
     "rustc_ast_ir/nightly",
     "rustc_index/nightly",
+    "rustc_type_ir_macros/nightly",
     "smallvec/may_dangle",
     "smallvec/union",
 ]
