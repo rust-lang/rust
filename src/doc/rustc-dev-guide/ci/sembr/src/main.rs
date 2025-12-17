@@ -80,6 +80,7 @@ fn ignore(line: &str, in_code_block: bool) -> bool {
     in_code_block
         || line.to_lowercase().contains("e.g.")
         || line.contains("i.e.")
+        || line.contains("et. al")
         || line.contains('|')
         || line.trim_start().starts_with('>')
         || line.starts_with('#')
