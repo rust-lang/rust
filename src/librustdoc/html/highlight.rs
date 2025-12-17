@@ -921,12 +921,10 @@ fn classify<'src>(
             && let Some(nb_items) = classifier.get_full_ident_path()
         {
             let start = classifier.byte_pos as usize;
-            let mut len = 0;
-            for _ in 0..nb_items {
-                if let Some((_, text, _)) = classifier.next() {
-                    len += text.len();
-                }
-            }
+            let len: usize = iter::from_fn(|| classifier.next())
+                .take(nb_items)
+                .map(|(_, text, _)| text.len())
+                .sum();
             let text = &classifier.src[start..start + len];
             classifier.advance(TokenKind::Ident, text, sink, start as u32);
         } else if let Some((token, text, before)) = classifier.next() {
