@@ -2188,21 +2188,17 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                 && !AttributeParser::<Early>::is_parsed_attribute(&attr.path())
             {
                 let attr_name = attr.ident().unwrap().name;
-                // `#[cfg]` and `#[cfg_attr]` are special - they are
-                // eagerly evaluated.
-                if attr_name != sym::cfg_trace && attr_name != sym::cfg_attr_trace {
-                    self.cx.sess.psess.buffer_lint(
-                        UNUSED_ATTRIBUTES,
-                        attr.span,
-                        self.cx.current_expansion.lint_node_id,
-                        crate::errors::UnusedBuiltinAttribute {
-                            attr_name,
-                            macro_name: pprust::path_to_string(&call.path),
-                            invoc_span: call.path.span,
-                            attr_span: attr.span,
-                        },
-                    );
-                }
+                self.cx.sess.psess.buffer_lint(
+                    UNUSED_ATTRIBUTES,
+                    attr.span,
+                    self.cx.current_expansion.lint_node_id,
+                    crate::errors::UnusedBuiltinAttribute {
+                        attr_name,
+                        macro_name: pprust::path_to_string(&call.path),
+                        invoc_span: call.path.span,
+                        attr_span: attr.span,
+                    },
+                );
             }
         }
     }
