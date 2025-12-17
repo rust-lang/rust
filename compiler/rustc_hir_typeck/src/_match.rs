@@ -75,6 +75,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             };
             CoerceMany::with_capacity(coerce_first, arms.len())
         };
+        coercion.force_lub();
 
         let mut prior_non_diverging_arms = vec![]; // Used only for diagnostics.
         let mut prior_arm = None;

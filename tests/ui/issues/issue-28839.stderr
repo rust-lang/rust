@@ -1,0 +1,15 @@
+error[E0507]: cannot move out of `*x` which is behind a mutable reference
+  --> $DIR/issue-28839.rs:7:33
+   |
+LL |         &mut Some(ref mut x) => *x,
+   |                                 ^^ move occurs because `*x` has type `&mut Foo`, which does not implement the `Copy` trait
+
+error[E0507]: cannot move out of `*x` which is behind a mutable reference
+  --> $DIR/issue-28839.rs:16:33
+   |
+LL |         &mut Some(ref mut x) => *x,
+   |                                 ^^ move occurs because `*x` has type `&mut Foo`, which does not implement the `Copy` trait
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0507`.

@@ -1382,6 +1382,7 @@ pub(crate) struct CoerceMany<'tcx> {
     expected_ty: Ty<'tcx>,
     final_ty: Option<Ty<'tcx>>,
     expressions: Vec<&'tcx hir::Expr<'tcx>>,
+    force_lub: bool,
 }
 
 impl<'tcx> CoerceMany<'tcx> {
@@ -1394,7 +1395,18 @@ impl<'tcx> CoerceMany<'tcx> {
 
     /// Creates a `CoerceMany` with a given capacity.
     pub(crate) fn with_capacity(expected_ty: Ty<'tcx>, capacity: usize) -> Self {
-        CoerceMany { expected_ty, final_ty: None, expressions: Vec::with_capacity(capacity) }
+        CoerceMany {
+            expected_ty,
+            final_ty: None,
+            expressions: Vec::with_capacity(capacity),
+            force_lub: false,
+        }
+    }
+
+    pub(crate) fn force_lub(&mut self) {
+        // Don't accidentally let someone switch this after coercing things
+        assert!(self.expressions.is_empty());
+        self.force_lub = true;
     }
 
     /// Returns the "expected type" with which this coercion was
@@ -1507,7 +1519,7 @@ impl<'tcx> CoerceMany<'tcx> {
 
         // Handle the actual type unification etc.
         let result = if let Some(expression) = expression {
-            if self.expressions.is_empty() {
+            if !self.force_lub && self.expressions.is_empty() {
                 // Special-case the first expression we are coercing.
                 // To be honest, I'm not entirely sure why we do this.
                 // We don't allow two-phase borrows, see comment in try_find_coercion_lub for why
