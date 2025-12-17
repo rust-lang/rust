@@ -15,7 +15,7 @@
 //! instructions available.
 //!
 //! [intel64_ref]: http://www.intel.de/content/dam/www/public/us/en/documents/manuals/64-ia-32-architectures-software-developer-instruction-set-reference-manual-325383.pdf
-//! [amd64_ref]: http://support.amd.com/TechDocs/24594.pdf
+//! [amd64_ref]: https://docs.amd.com/v/u/en-US/24594_3.37
 //! [wiki_fma]: https://en.wikipedia.org/wiki/Fused_multiply-accumulate
 
 use crate::core_arch::x86::*;

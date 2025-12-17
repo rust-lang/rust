@@ -6,7 +6,7 @@
 //! [Wikipedia][wikipedia_bmi] provides a quick overview of the available
 //! instructions.
 //!
-//! [amd64_ref]: http://support.amd.com/TechDocs/24594.pdf
+//! [amd64_ref]: https://docs.amd.com/v/u/en-US/24594_3.37
 //! [wikipedia_bmi]:
 //! https://en.wikipedia.org/wiki/Bit_Manipulation_Instruction_Sets#ABM_.28Advanced_Bit_Manipulation.29
 
