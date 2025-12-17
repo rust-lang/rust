@@ -2238,7 +2238,8 @@ pub struct VariantLayout<FieldIdx: Idx> {
     pub size: Size,
     pub align: AbiAlign,
     pub backend_repr: BackendRepr,
-    pub fields: FieldsShape<FieldIdx>,
+    pub field_offsets: IndexVec<FieldIdx, Size>,
+    fields_in_memory_order: IndexVec<u32, FieldIdx>,
     largest_niche: Option<Niche>,
     uninhabited: bool,
     max_repr_align: Option<Align>,
@@ -2248,11 +2249,16 @@ pub struct VariantLayout<FieldIdx: Idx> {
 
 impl<FieldIdx: Idx> VariantLayout<FieldIdx> {
     pub fn from_layout(layout: LayoutData<FieldIdx, impl Idx>) -> Self {
+        let FieldsShape::Arbitrary { offsets, in_memory_order } = layout.fields else {
+            panic!("Layout of fields should be Arbitrary for variants");
+        };
+
         Self {
             size: layout.size,
             align: layout.align,
             backend_repr: layout.backend_repr,
-            fields: layout.fields,
+            field_offsets: offsets,
+            fields_in_memory_order: in_memory_order,
             largest_niche: layout.largest_niche,
             uninhabited: layout.uninhabited,
             max_repr_align: layout.max_repr_align,
@@ -2263,5 +2269,9 @@ impl<FieldIdx: Idx> VariantLayout<FieldIdx> {
 
     pub fn is_uninhabited(&self) -> bool {
         self.uninhabited
+    }
+
+    pub fn has_fields(&self) -> bool {
+        self.field_offsets.len() > 0
     }
 }

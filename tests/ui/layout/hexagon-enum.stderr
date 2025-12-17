@@ -50,10 +50,8 @@ error: layout_of(A) = Layout {
                        backend_repr: Memory {
                            sized: true,
                        },
-                       fields: Arbitrary {
-                           offsets: [],
-                           in_memory_order: [],
-                       },
+                       field_offsets: [],
+                       fields_in_memory_order: [],
                        largest_niche: None,
                        uninhabited: false,
                        max_repr_align: None,
@@ -123,10 +121,8 @@ error: layout_of(B) = Layout {
                        backend_repr: Memory {
                            sized: true,
                        },
-                       fields: Arbitrary {
-                           offsets: [],
-                           in_memory_order: [],
-                       },
+                       field_offsets: [],
+                       fields_in_memory_order: [],
                        largest_niche: None,
                        uninhabited: false,
                        max_repr_align: None,
@@ -196,10 +192,8 @@ error: layout_of(C) = Layout {
                        backend_repr: Memory {
                            sized: true,
                        },
-                       fields: Arbitrary {
-                           offsets: [],
-                           in_memory_order: [],
-                       },
+                       field_offsets: [],
+                       fields_in_memory_order: [],
                        largest_niche: None,
                        uninhabited: false,
                        max_repr_align: None,
@@ -269,10 +263,8 @@ error: layout_of(P) = Layout {
                        backend_repr: Memory {
                            sized: true,
                        },
-                       fields: Arbitrary {
-                           offsets: [],
-                           in_memory_order: [],
-                       },
+                       field_offsets: [],
+                       fields_in_memory_order: [],
                        largest_niche: None,
                        uninhabited: false,
                        max_repr_align: None,
@@ -342,10 +334,8 @@ error: layout_of(T) = Layout {
                        backend_repr: Memory {
                            sized: true,
                        },
-                       fields: Arbitrary {
-                           offsets: [],
-                           in_memory_order: [],
-                       },
+                       field_offsets: [],
+                       fields_in_memory_order: [],
                        largest_niche: None,
                        uninhabited: false,
                        max_repr_align: None,

@@ -50,10 +50,8 @@ error: layout_of(E) = Layout {
                        backend_repr: Memory {
                            sized: true,
                        },
-                       fields: Arbitrary {
-                           offsets: [],
-                           in_memory_order: [],
-                       },
+                       field_offsets: [],
+                       fields_in_memory_order: [],
                        largest_niche: None,
                        uninhabited: false,
                        max_repr_align: None,
@@ -68,18 +66,16 @@ error: layout_of(E) = Layout {
                        backend_repr: Memory {
                            sized: true,
                        },
-                       fields: Arbitrary {
-                           offsets: [
-                               Size(4 bytes),
-                               Size(4 bytes),
-                               Size(8 bytes),
-                           ],
-                           in_memory_order: [
-                               0,
-                               1,
-                               2,
-                           ],
-                       },
+                       field_offsets: [
+                           Size(4 bytes),
+                           Size(4 bytes),
+                           Size(8 bytes),
+                       ],
+                       fields_in_memory_order: [
+                           0,
+                           1,
+                           2,
+                       ],
                        largest_niche: None,
                        uninhabited: true,
                        max_repr_align: None,
@@ -241,14 +237,12 @@ error: layout_of(Result<i32, i32>) = Layout {
                                valid_range: 0..=4294967295,
                            },
                        ),
-                       fields: Arbitrary {
-                           offsets: [
-                               Size(4 bytes),
-                           ],
-                           in_memory_order: [
-                               0,
-                           ],
-                       },
+                       field_offsets: [
+                           Size(4 bytes),
+                       ],
+                       fields_in_memory_order: [
+                           0,
+                       ],
                        largest_niche: None,
                        uninhabited: false,
                        max_repr_align: None,
@@ -276,14 +270,12 @@ error: layout_of(Result<i32, i32>) = Layout {
                                valid_range: 0..=4294967295,
                            },
                        ),
-                       fields: Arbitrary {
-                           offsets: [
-                               Size(4 bytes),
-                           ],
-                           in_memory_order: [
-                               0,
-                           ],
-                       },
+                       field_offsets: [
+                           Size(4 bytes),
+                       ],
+                       fields_in_memory_order: [
+                           0,
+                       ],
                        largest_niche: None,
                        uninhabited: false,
                        max_repr_align: None,

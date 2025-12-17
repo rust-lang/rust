@@ -310,10 +310,7 @@ pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
                     )
                 }
                 // Skip empty variants.
-                if variant.size == Size::ZERO
-                    || variant.fields.count() == 0
-                    || variant.is_uninhabited()
-                {
+                if variant.size == Size::ZERO || !variant.has_fields() || variant.is_uninhabited() {
                     // These are never actually accessed anyway, so we can skip the coherence check
                     // for them. They also fail that check, since they may have
                     // a different ABI even when the main type is

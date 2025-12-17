@@ -215,11 +215,8 @@ impl<'tcx> Stable<'tcx> for rustc_abi::Variants<rustc_abi::FieldIdx, rustc_abi::
                     tag_field: tag_field.stable(tables, cx),
                     variants: variants
                         .iter()
-                        .map(|v| match &v.fields {
-                            rustc_abi::FieldsShape::Arbitrary { offsets, .. } => VariantFields {
-                                offsets: offsets.iter().as_slice().stable(tables, cx),
-                            },
-                            _ => panic!("variant layout should be Arbitrary"),
+                        .map(|v| VariantFields {
+                            offsets: v.field_offsets.iter().as_slice().stable(tables, cx),
                         })
                         .collect(),
                 }

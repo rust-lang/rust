@@ -642,15 +642,8 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                 }
 
                 // It'll fit, but we need to make some adjustments.
-                match layout.fields {
-                    FieldsShape::Arbitrary { ref mut offsets, .. } => {
-                        for offset in offsets.iter_mut() {
-                            *offset += this_offset;
-                        }
-                    }
-                    FieldsShape::Primitive | FieldsShape::Array { .. } | FieldsShape::Union(..) => {
-                        panic!("Layout of fields should be Arbitrary for variants")
-                    }
+                for offset in layout.field_offsets.iter_mut() {
+                    *offset += this_offset;
                 }
 
                 // It can't be a Scalar or ScalarPair because the offset isn't 0.
@@ -890,22 +883,15 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
             let old_ity_size = min_ity.size();
             let new_ity_size = ity.size();
             for variant in &mut layout_variants {
-                match variant.fields {
-                    FieldsShape::Arbitrary { ref mut offsets, .. } => {
-                        for i in offsets {
-                            if *i <= old_ity_size {
-                                assert_eq!(*i, old_ity_size);
-                                *i = new_ity_size;
-                            }
-                        }
-                        // We might be making the struct larger.
-                        if variant.size <= old_ity_size {
-                            variant.size = new_ity_size;
-                        }
+                for i in &mut variant.field_offsets {
+                    if *i <= old_ity_size {
+                        assert_eq!(*i, old_ity_size);
+                        *i = new_ity_size;
                     }
-                    FieldsShape::Primitive | FieldsShape::Array { .. } | FieldsShape::Union(..) => {
-                        panic!("encountered a non-arbitrary layout during enum layout")
-                    }
+                }
+                // We might be making the struct larger.
+                if variant.size <= old_ity_size {
+                    variant.size = new_ity_size;
                 }
             }
         }
@@ -931,12 +917,10 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
             let mut common_prim = None;
             let mut common_prim_initialized_in_all_variants = true;
             for (field_layouts, layout_variant) in iter::zip(variants, &layout_variants) {
-                let FieldsShape::Arbitrary { ref offsets, .. } = layout_variant.fields else {
-                    panic!("encountered a non-arbitrary layout during enum layout");
-                };
                 // We skip *all* ZST here and later check if we are good in terms of alignment.
                 // This lets us handle some cases involving aligned ZST.
-                let mut fields = iter::zip(field_layouts, offsets).filter(|p| !p.0.is_zst());
+                let mut fields = iter::zip(field_layouts, &layout_variant.field_offsets)
+                    .filter(|p| !p.0.is_zst());
                 let (field, offset) = match (fields.next(), fields.next()) {
                     (None, None) => {
                         common_prim_initialized_in_all_variants = false;
@@ -1031,8 +1015,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
             for variant in &mut layout_variants {
                 // We only do this for variants with fields; the others are not accessed anyway.
                 // Also do not overwrite any already existing "clever" ABIs.
-                if variant.fields.count() > 0
-                    && matches!(variant.backend_repr, BackendRepr::Memory { .. })
+                if matches!(variant.backend_repr, BackendRepr::Memory { .. } if variant.has_fields())
                 {
                     variant.backend_repr = abi;
                     // Also need to bump up the size and alignment, so that the entire value fits
