@@ -66,9 +66,6 @@ error: layout_of(Univariant) = Layout {
                        },
                        largest_niche: None,
                        uninhabited: true,
-                       variants: Single {
-                           index: 0,
-                       },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(1 bytes),
                        randomization_seed: $SEED,
@@ -164,9 +161,6 @@ error: layout_of(TwoVariants) = Layout {
                        },
                        largest_niche: None,
                        uninhabited: true,
-                       variants: Single {
-                           index: 0,
-                       },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(1 bytes),
                        randomization_seed: $SEED,
@@ -201,9 +195,6 @@ error: layout_of(TwoVariants) = Layout {
                        },
                        largest_niche: None,
                        uninhabited: false,
-                       variants: Single {
-                           index: 1,
-                       },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(1 bytes),
                        randomization_seed: $SEED,
@@ -277,9 +268,6 @@ error: layout_of(DeadBranchHasOtherField) = Layout {
                        },
                        largest_niche: None,
                        uninhabited: true,
-                       variants: Single {
-                           index: 0,
-                       },
                        max_repr_align: Some(
                            Align(8 bytes),
                        ),
@@ -304,9 +292,6 @@ error: layout_of(DeadBranchHasOtherField) = Layout {
                        },
                        largest_niche: None,
                        uninhabited: false,
-                       variants: Single {
-                           index: 1,
-                       },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(8 bytes),
                        randomization_seed: $SEED,
