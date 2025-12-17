@@ -117,6 +117,15 @@ impl<S: Stage> SingleAttributeParser<S> for RustcLegacyConstGenericsParser {
     }
 }
 
+pub(crate) struct RustcLintOptTyParser;
+
+impl<S: Stage> NoArgsAttributeParser<S> for RustcLintOptTyParser {
+    const PATH: &[Symbol] = &[sym::rustc_lint_opt_ty];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Struct)]);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcLintOptTy;
+}
+
 pub(crate) struct RustcObjectLifetimeDefaultParser;
 
 impl<S: Stage> SingleAttributeParser<S> for RustcObjectLifetimeDefaultParser {

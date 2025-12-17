@@ -258,6 +258,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::RustcNoImplicitAutorefs
                     | AttributeKind::RustcLayoutScalarValidRangeStart(..)
                     | AttributeKind::RustcLayoutScalarValidRangeEnd(..)
+                    | AttributeKind::RustcLintOptTy
                     | AttributeKind::RustcNeverReturnsNullPointer
                     | AttributeKind::RustcScalableVector { .. }
                     | AttributeKind::RustcSimdMonomorphizeLaneLimit(..)
@@ -315,7 +316,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         [sym::rustc_lint_diagnostics, ..] => {
                             self.check_applied_to_fn_or_method(hir_id, attr.span(), span, target)
                         }
-                        [sym::rustc_lint_opt_ty, ..] => self.check_rustc_lint_opt_ty(attr, span, target),
                         [sym::rustc_lint_opt_deny_field_access, ..] => {
                             self.check_rustc_lint_opt_deny_field_access(attr, span, target)
                         }
@@ -1250,16 +1250,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 defn_span,
                 on_crate: hir_id == CRATE_HIR_ID,
             });
-        }
-    }
-
-    /// Checks that the `#[rustc_lint_opt_ty]` attribute is only applied to a struct.
-    fn check_rustc_lint_opt_ty(&self, attr: &Attribute, span: Span, target: Target) {
-        match target {
-            Target::Struct => {}
-            _ => {
-                self.dcx().emit_err(errors::RustcLintOptTy { attr_span: attr.span(), span });
-            }
         }
     }
 

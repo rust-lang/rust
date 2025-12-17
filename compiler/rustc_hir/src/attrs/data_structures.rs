@@ -875,6 +875,9 @@ pub enum AttributeKind {
     /// Represents `#[rustc_legacy_const_generics]`
     RustcLegacyConstGenerics { fn_indexes: ThinVec<(usize, Span)>, attr_span: Span },
 
+    /// Represents `#[rustc_lint_opt_ty]`
+    RustcLintOptTy,
+
     /// Represents `#[rustc_main]`.
     RustcMain,
 
