@@ -5,7 +5,6 @@ use std::{fs, process};
 use anyhow::Result;
 use clap::Parser;
 use ignore::Walk;
-use imara_diff::{Algorithm, BasicLineDiffPrinter, Diff, InternedInput, UnifiedDiffConfig};
 use regex::Regex;
 
 #[derive(Parser)]
@@ -18,8 +17,6 @@ struct Cli {
     /// Applies to lines that are to be split
     #[arg(long, default_value_t = 100)]
     line_length_limit: usize,
-    #[arg(long)]
-    show_diff: bool,
 }
 
 static REGEX_IGNORE_END: LazyLock<Regex> =
@@ -54,10 +51,6 @@ fn main() -> Result<()> {
             } else if cli.overwrite {
                 fs::write(&path, new)?;
                 made_compliant.push(path.clone());
-            } else if cli.show_diff {
-                println!("{}:", path.display());
-                show_diff(&old, &new);
-                println!("---");
             } else {
                 not_compliant.push(path.clone());
             }
@@ -74,16 +67,6 @@ fn main() -> Result<()> {
         process::exit(1);
     }
     Ok(())
-}
-
-fn show_diff(old: &str, new: &str) {
-    let input = InternedInput::new(old, new);
-    let mut diff = Diff::compute(Algorithm::Histogram, &input);
-    diff.postprocess_lines(&input);
-    let diff = diff
-        .unified_diff(&BasicLineDiffPrinter(&input.interner), UnifiedDiffConfig::default(), &input)
-        .to_string();
-    print!("{diff}");
 }
 
 fn display(header: &str, paths: &[PathBuf]) {
