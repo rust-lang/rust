@@ -85,11 +85,8 @@ where
     /// ```
     #[unstable(feature = "drop_guard", issue = "144426")]
     #[must_use]
-    pub const fn new(value: T, f: F) -> DropGuard<T, F>
-    where
-        F: FnOnce(T),
-    {
-        DropGuard { inner: ManuallyDrop::new(value), f: ManuallyDrop::new(f) }
+    pub const fn new(inner: T, f: F) -> Self {
+        Self { inner: ManuallyDrop::new(inner), f: ManuallyDrop::new(f) }
     }
 
     /// Consumes the `DropGuard`, returning the wrapped value.
