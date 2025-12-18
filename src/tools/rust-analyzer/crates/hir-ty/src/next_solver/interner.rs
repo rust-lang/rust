@@ -230,8 +230,10 @@ macro_rules! impl_stored_interned_slice {
             }
         }
 
+        // SAFETY: It is safe to store this type in queries (but not `$name`).
         unsafe impl salsa::Update for $stored_name {
             unsafe fn maybe_update(old_pointer: *mut Self, new_value: Self) -> bool {
+                // SAFETY: Comparing by (pointer) equality is safe.
                 unsafe { crate::utils::unsafe_update_eq(old_pointer, new_value) }
             }
         }
@@ -294,6 +296,8 @@ macro_rules! impl_stored_interned {
 }
 pub(crate) use impl_stored_interned;
 
+/// This is a visitor trait that treats any interned thing specifically. Visitables are expected to call
+/// the trait's methods when encountering an interned. This is used to implement marking in GC.
 pub trait WorldExposer {
     fn on_interned<T: intern::Internable>(
         &mut self,
@@ -2613,6 +2617,10 @@ pub unsafe fn collect_ty_garbage() {
     gc.add_slice_storage::<super::region::RegionAssumptionsStorage>();
     gc.add_slice_storage::<super::ty::TysStorage>();
 
+    // SAFETY:
+    //  - By our precondition, there are no unrecorded types.
+    //  - We implement `GcInternedVisit` and `GcInternedSliceVisit` correctly for all types.
+    //  - We added all storages (FIXME: it's too easy to forget to add a new storage here).
     unsafe { gc.collect() };
 }
 

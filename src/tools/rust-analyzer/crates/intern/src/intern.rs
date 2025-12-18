@@ -1,8 +1,31 @@
 //! Interning of single values.
+//!
+//! Interning supports two modes: GC and non-GC.
+//!
+//! In non-GC mode, you create [`Interned`]s, and can create `Copy` handles to them
+//! that can still be upgraded back to [`Interned`] ([`InternedRef`]) via [`Interned::as_ref`].
+//! Generally, letting the [`InternedRef`] to outlive the [`Interned`] is a soundness bug and can
+//! lead to UB. When all [`Interned`]s of some value are dropped, the value is freed (newer interns
+//! may re-create it, not necessarily in the same place).
+//!
+//! In GC mode, you generally operate on [`InternedRef`]s. They are `Copy` and comfortable. To intern
+//! a value you call [`Interned::new_gc`], which returns an [`InternedRef`]. Having all [`Interned`]s
+//! of some value be dropped will *not* immediately free the value. Instead, a mark-and-sweep GC can
+//! be initiated, which will free all values which have no live [`Interned`]s.
+//!
+//! Generally, in GC mode, you operate on [`InternedRef`], but when you need to store some long-term
+//! value (e.g. a Salsa query output), you convert it to an [`Interned`]. This ensures that an eventual
+//! GC will not free it as long as it is alive.
+//!
+//! Making mistakes is hard due to GC [`InternedRef`] wrappers not implementing `salsa::Update`, meaning
+//! Salsa will ensure you do not store them in queries or Salsa-interneds. However it's still *possible*
+//! without unsafe code (for example, by storing them in a `static`), which is why triggering GC is unsafe.
+//!
+//! For more information about GC see [`crate::gc`].
 
 use std::{
     fmt::{self, Debug, Display},
-    hash::{BuildHasher, BuildHasherDefault, Hash, Hasher},
+    hash::{BuildHasher, Hash, Hasher},
     ops::Deref,
     ptr,
     sync::OnceLock,
@@ -10,18 +33,15 @@ use std::{
 
 use dashmap::{DashMap, SharedValue};
 use hashbrown::raw::RawTable;
-use rustc_hash::FxHasher;
+use rustc_hash::FxBuildHasher;
 use triomphe::{Arc, ArcBorrow};
 
-type InternMap<T> = DashMap<Arc<T>, (), BuildHasherDefault<FxHasher>>;
+type InternMap<T> = DashMap<Arc<T>, (), FxBuildHasher>;
 type Guard<T> = dashmap::RwLockWriteGuard<'static, RawTable<(Arc<T>, SharedValue<()>)>>;
 
 pub struct Interned<T: Internable> {
     arc: Arc<T>,
 }
-
-unsafe impl<T: Send + Sync + Internable> Send for Interned<T> {}
-unsafe impl<T: Send + Sync + Internable> Sync for Interned<T> {}
 
 impl<T: Internable> Interned<T> {
     #[inline]
@@ -96,6 +116,7 @@ impl<T: Internable> Interned<T> {
     /// The pointer should originate from an `Interned` or an `InternedRef`.
     #[inline]
     pub unsafe fn from_raw(ptr: *const T) -> Self {
+        // SAFETY: Our precondition.
         Self { arc: unsafe { Arc::from_raw(ptr) } }
     }
 
@@ -209,6 +230,7 @@ impl<'a, T: Internable> InternedRef<'a, T> {
     /// The pointer needs to originate from `Interned` or `InternedRef`.
     #[inline]
     pub unsafe fn from_raw(ptr: *const T) -> Self {
+        // SAFETY: Our precondition.
         Self { arc: unsafe { ArcBorrow::from_ptr(ptr) } }
     }
 
@@ -228,12 +250,24 @@ impl<'a, T: Internable> InternedRef<'a, T> {
     /// map also keeps a reference to the value.
     #[inline]
     pub unsafe fn decrement_refcount(self) {
+        // SAFETY: Our precondition.
         unsafe { drop(Arc::from_raw(self.as_raw())) }
     }
 
     #[inline]
     pub(crate) fn strong_count(self) -> usize {
         ArcBorrow::strong_count(&self.arc)
+    }
+
+    /// **Available only on GC mode**.
+    ///
+    /// Changes the attached lifetime, as in GC mode, the lifetime is more kind of a lint to prevent misuse
+    /// than actual soundness check.
+    #[inline]
+    pub fn change_lifetime<'b>(self) -> InternedRef<'b, T> {
+        const { assert!(T::USE_GC) };
+        // SAFETY: The lifetime on `InternedRef` is essentially advisory only for GCed types.
+        unsafe { std::mem::transmute::<InternedRef<'a, T>, InternedRef<'b, T>>(self) }
     }
 }
 

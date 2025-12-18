@@ -1,4 +1,10 @@
-//! Things related to generic args in the next-trait-solver.
+//! Things related to generic args in the next-trait-solver (`GenericArg`, `GenericArgs`, `Term`).
+//!
+//! Implementations of `GenericArg` and `Term` are pointer-tagged instead of an enum (rustc does
+//! the same). This is done to save memory (which also helps speed) - one `GenericArg` is a machine
+//! word instead of two, while matching on it is basically as cheap. The implementation for both
+//! `GenericArg` and `Term` is shared in [`GenericArgImpl`]. This both simplifies the implementation,
+//! as well as enables a noop conversion from `Term` to `GenericArg`.
 
 use std::{hint::unreachable_unchecked, marker::PhantomData, ptr::NonNull};
 
@@ -29,10 +35,14 @@ pub type TermKind<'db> = rustc_type_ir::TermKind<DbInterner<'db>>;
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 struct GenericArgImpl<'db> {
+    /// # Invariant
+    ///
+    /// Contains an [`InternedRef`] of a [`Ty`], [`Const`] or [`Region`], bit-tagged as per the consts below.
     ptr: NonNull<()>,
     _marker: PhantomData<(Ty<'db>, Const<'db>, Region<'db>)>,
 }
 
+// SAFETY: We essentially own the `Ty`, `Const` or `Region`, and they are `Send + Sync`.
 unsafe impl Send for GenericArgImpl<'_> {}
 unsafe impl Sync for GenericArgImpl<'_> {}
 
@@ -46,6 +56,7 @@ impl<'db> GenericArgImpl<'db> {
     #[inline]
     fn new_ty(ty: Ty<'db>) -> Self {
         Self {
+            // SAFETY: We create it from an `InternedRef`, and it's never null.
             ptr: unsafe {
                 NonNull::new_unchecked(
                     ty.interned
@@ -62,6 +73,7 @@ impl<'db> GenericArgImpl<'db> {
     #[inline]
     fn new_const(ty: Const<'db>) -> Self {
         Self {
+            // SAFETY: We create it from an `InternedRef`, and it's never null.
             ptr: unsafe {
                 NonNull::new_unchecked(
                     ty.interned
@@ -78,6 +90,7 @@ impl<'db> GenericArgImpl<'db> {
     #[inline]
     fn new_region(ty: Region<'db>) -> Self {
         Self {
+            // SAFETY: We create it from an `InternedRef`, and it's never null.
             ptr: unsafe {
                 NonNull::new_unchecked(
                     ty.interned
@@ -94,6 +107,7 @@ impl<'db> GenericArgImpl<'db> {
     #[inline]
     fn kind(self) -> GenericArgKind<'db> {
         let ptr = self.ptr.as_ptr().map_addr(|addr| addr & Self::PTR_MASK);
+        // SAFETY: We can only be created from a `Ty`, a `Const` or a `Region`, and the tag will match.
         unsafe {
             match self.ptr.addr().get() & Self::KIND_MASK {
                 Self::TY_TAG => GenericArgKind::Type(Ty {
@@ -113,6 +127,9 @@ impl<'db> GenericArgImpl<'db> {
     #[inline]
     fn term_kind(self) -> TermKind<'db> {
         let ptr = self.ptr.as_ptr().map_addr(|addr| addr & Self::PTR_MASK);
+        // SAFETY: We can only be created from a `Ty`, a `Const` or a `Region`, and the tag will match.
+        // It is the caller's responsibility (encapsulated within this module) to only call this with
+        // `Term`, which cannot be constructed from a `Region`.
         unsafe {
             match self.ptr.addr().get() & Self::KIND_MASK {
                 Self::TY_TAG => {

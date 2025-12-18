@@ -1,5 +1,9 @@
 //! Things relevant to the next trait solver.
 
+// Note: in interned types defined in this module, we generally treat the lifetime as advisory
+// and transmute it as needed. This is because no real memory unsafety can be caused from an
+// incorrect lifetime here.
+
 pub mod abi;
 mod binder;
 mod consts;

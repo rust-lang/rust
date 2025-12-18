@@ -1,7 +1,12 @@
 //! Garbage collection of interned values.
+//!
+//! The GC is a simple mark-and-sweep GC: you first mark all storages, then the
+//! GC visits them, and each live value they refer, recursively, then removes
+//! those not marked. The sweep phase is done in parallel.
 
-use std::{marker::PhantomData, ops::ControlFlow};
+use std::{hash::Hash, marker::PhantomData, ops::ControlFlow};
 
+use dashmap::DashMap;
 use hashbrown::raw::RawTable;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use rustc_hash::{FxBuildHasher, FxHashSet};
@@ -39,15 +44,7 @@ impl<T: Internable + GcInternedVisit> Storage for InternedStorage<T> {
 
     fn sweep(&self, gc: &GarbageCollector) {
         let storage = T::storage().get();
-        if cfg!(miri) {
-            storage.shards().iter().for_each(|shard| {
-                gc.retain_only_alive(&mut *shard.write(), |item| item.0.as_ptr().addr())
-            });
-        } else {
-            storage.shards().par_iter().for_each(|shard| {
-                gc.retain_only_alive(&mut *shard.write(), |item| item.0.as_ptr().addr())
-            });
-        }
+        gc.sweep_storage(storage, |item| item.as_ptr().addr());
     }
 }
 
@@ -74,15 +71,7 @@ impl<T: SliceInternable + GcInternedSliceVisit> Storage for InternedSliceStorage
 
     fn sweep(&self, gc: &GarbageCollector) {
         let storage = T::storage().get();
-        if cfg!(miri) {
-            storage.shards().iter().for_each(|shard| {
-                gc.retain_only_alive(&mut *shard.write(), |item| item.0.as_ptr().addr())
-            });
-        } else {
-            storage.shards().par_iter().for_each(|shard| {
-                gc.retain_only_alive(&mut *shard.write(), |item| item.0.as_ptr().addr())
-            });
-        }
+        gc.sweep_storage(storage, |item| item.as_ptr().addr());
     }
 }
 
@@ -116,7 +105,10 @@ impl GarbageCollector {
 
     /// # Safety
     ///
-    /// This cannot be called if there are some not-yet-recorded type values.
+    ///  - This cannot be called if there are some not-yet-recorded type values.
+    ///  - All relevant storages must have been added; that is, within the full graph of values,
+    ///    the added storages must form a DAG.
+    ///  - [`GcInternedVisit`] and [`GcInternedSliceVisit`] must mark all values reachable from the node.
     pub unsafe fn collect(mut self) {
         let total_nodes = self.storages.iter().map(|storage| storage.len()).sum();
         self.alive = FxHashSet::with_capacity_and_hasher(total_nodes, FxBuildHasher);
@@ -127,6 +119,7 @@ impl GarbageCollector {
             storage.mark(&mut self);
         }
 
+        // Miri doesn't support rayon.
         if cfg!(miri) {
             storages.iter().for_each(|storage| storage.sweep(&self));
         } else {
@@ -158,8 +151,26 @@ impl GarbageCollector {
         if !self.alive.insert(addr) { ControlFlow::Break(()) } else { ControlFlow::Continue(()) }
     }
 
+    fn sweep_storage<T: Hash + Eq + Send + Sync>(
+        &self,
+        storage: &DashMap<T, (), FxBuildHasher>,
+        get_addr: impl Fn(&T) -> usize + Send + Sync,
+    ) {
+        // Miri doesn't support rayon.
+        if cfg!(miri) {
+            storage.shards().iter().for_each(|shard| {
+                self.retain_only_alive(&mut *shard.write(), |item| get_addr(&item.0))
+            });
+        } else {
+            storage.shards().par_iter().for_each(|shard| {
+                self.retain_only_alive(&mut *shard.write(), |item| get_addr(&item.0))
+            });
+        }
+    }
+
     #[inline]
     fn retain_only_alive<T>(&self, map: &mut RawTable<T>, mut get_addr: impl FnMut(&T) -> usize) {
+        // This code was copied from DashMap's retain() - which we can't use because we want to run in parallel.
         unsafe {
             // Here we only use `iter` as a temporary, preventing use-after-free
             for bucket in map.iter() {
@@ -218,7 +229,7 @@ mod tests {
             fn visit_with(&self, _gc: &mut GarbageCollector) {}
         }
 
-        crate::impl_slice_internable!(gc; StringSlice, String, String);
+        crate::impl_slice_internable!(gc; StringSlice, String, u32);
         type InternedSlice = crate::InternedSlice<StringSlice>;
 
         impl GcInternedSliceVisit for StringSlice {
@@ -245,19 +256,13 @@ mod tests {
             assert_ne!(b.as_ref(), c.as_ref());
             assert_eq!(c.as_ref().0, "def");
 
-            let d = InternedSlice::from_header_and_slice(
-                "abc".to_owned(),
-                &["def".to_owned(), "123".to_owned()],
-            );
-            let e = InternedSlice::from_header_and_slice(
-                "abc".to_owned(),
-                &["def".to_owned(), "123".to_owned()],
-            );
+            let d = InternedSlice::from_header_and_slice("abc".to_owned(), &[123, 456]);
+            let e = InternedSlice::from_header_and_slice("abc".to_owned(), &[123, 456]);
             assert_eq!(d, e);
             assert_eq!(d.to_owned(), e.to_owned());
             assert_eq!(d.header.length, 2);
             assert_eq!(d.header.header, "abc");
-            assert_eq!(d.slice, ["def", "123"]);
+            assert_eq!(d.slice, [123, 456]);
             (a, d.to_owned())
         };
 
@@ -269,7 +274,7 @@ mod tests {
         assert_eq!(a.0, "abc");
         assert_eq!(d.header.length, 2);
         assert_eq!(d.header.header, "abc");
-        assert_eq!(d.slice, ["def", "123"]);
+        assert_eq!(d.slice, [123, 456]);
 
         drop(a);
         drop(d);

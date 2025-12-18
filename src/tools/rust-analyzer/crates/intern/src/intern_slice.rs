@@ -1,10 +1,16 @@
 //! Interning of slices, potentially with a header.
+//!
+//! See [`crate::intern`] for an explanation of interning modes. Note that slice interning is currently
+//! available only in GC mode (there is no other need).
+//!
+//! [`InternedSlice`] and [`InternedSliceRef`] are essentially [`Interned<(Header, Box<[SliceType]>)>`][crate::Interned]
+//! and [`InternedRef`][crate::InternedRef] with the same types, but more optimized. There is only one
+//! allocation and the pointer is thin.
 
 use std::{
-    borrow::Borrow,
     ffi::c_void,
     fmt::{self, Debug},
-    hash::{BuildHasher, BuildHasherDefault, Hash, Hasher},
+    hash::{BuildHasher, Hash, Hasher},
     marker::PhantomData,
     mem::ManuallyDrop,
     ops::Deref,
@@ -14,13 +20,13 @@ use std::{
 
 use dashmap::{DashMap, SharedValue};
 use hashbrown::raw::RawTable;
-use rustc_hash::FxHasher;
+use rustc_hash::FxBuildHasher;
 use triomphe::{HeaderSlice, HeaderWithLength, ThinArc};
 
 type InternMap<T> = DashMap<
     ThinArc<<T as SliceInternable>::Header, <T as SliceInternable>::SliceType>,
     (),
-    BuildHasherDefault<FxHasher>,
+    FxBuildHasher,
 >;
 type Guard<T> = dashmap::RwLockWriteGuard<
     'static,
@@ -40,14 +46,14 @@ pub struct InternedSlice<T: SliceInternable> {
 
 impl<T: SliceInternable> InternedSlice<T> {
     #[inline]
-    fn new<'a>(
+    pub fn from_header_and_slice<'a>(
         header: T::Header,
-        slice: impl Borrow<[T::SliceType]>
-        + IntoIterator<Item = T::SliceType, IntoIter: ExactSizeIterator>,
+        slice: &[T::SliceType],
     ) -> InternedSliceRef<'a, T> {
         const { assert!(T::USE_GC) };
+
         let storage = T::storage().get();
-        let (mut shard, hash) = Self::select(storage, &header, slice.borrow());
+        let (mut shard, hash) = Self::select(storage, &header, slice);
         // Atomically,
         // - check if `obj` is already in the map
         //   - if so, clone its `Arc` and return it
@@ -56,7 +62,7 @@ impl<T: SliceInternable> InternedSlice<T> {
         // insert the same object between us looking it up and inserting it.
         let bucket = match shard.find_or_find_insert_slot(
             hash,
-            |(other, _)| other.header.header == header && other.slice == *slice.borrow(),
+            |(other, _)| other.header.header == header && other.slice == *slice,
             |(x, _)| storage.hasher().hash_one(x),
         ) {
             Ok(bucket) => bucket,
@@ -65,47 +71,17 @@ impl<T: SliceInternable> InternedSlice<T> {
                 shard.insert_in_slot(
                     hash,
                     insert_slot,
-                    (
-                        ThinArc::from_header_and_iter(header, slice.into_iter()),
-                        SharedValue::new(()),
-                    ),
+                    (ThinArc::from_header_and_slice(header, slice), SharedValue::new(())),
                 )
             },
         };
         // SAFETY: We just retrieved/inserted this bucket.
+        // `NonNull::new_unchecked()` is safe because the pointer originates from a `ThinArc`.
         unsafe {
             InternedSliceRef {
+                // INVARIANT: We create it from a `ThinArc`.
                 ptr: NonNull::new_unchecked(ThinArc::as_ptr(&bucket.as_ref().0).cast_mut()),
                 _marker: PhantomData,
-            }
-        }
-    }
-
-    #[inline]
-    pub fn from_header_and_slice<'a>(
-        header: T::Header,
-        slice: &[T::SliceType],
-    ) -> InternedSliceRef<'a, T>
-    where
-        T::SliceType: Clone,
-    {
-        return Self::new(header, Iter(slice));
-
-        struct Iter<'a, T>(&'a [T]);
-
-        impl<'a, T: Clone> IntoIterator for Iter<'a, T> {
-            type IntoIter = std::iter::Cloned<std::slice::Iter<'a, T>>;
-            type Item = T;
-            #[inline]
-            fn into_iter(self) -> Self::IntoIter {
-                self.0.iter().cloned()
-            }
-        }
-
-        impl<T> Borrow<[T]> for Iter<'_, T> {
-            #[inline]
-            fn borrow(&self) -> &[T] {
-                self.0
             }
         }
     }
@@ -132,47 +108,16 @@ impl<T: SliceInternable> InternedSlice<T> {
 
     #[inline(always)]
     fn ptr(&self) -> *const c_void {
-        unsafe { ptr::from_ref(&self.arc).read().into_raw() }
+        self.arc.as_ptr()
     }
 
     #[inline]
     pub fn as_ref(&self) -> InternedSliceRef<'_, T> {
         InternedSliceRef {
+            // SAFETY: `self.ptr` comes from a valid `ThinArc`, so non null.
+            // INVARIANT: We create it from a `ThinArc`.
             ptr: unsafe { NonNull::new_unchecked(self.ptr().cast_mut()) },
             _marker: PhantomData,
-        }
-    }
-}
-
-impl<T: SliceInternable> Drop for InternedSlice<T> {
-    #[inline]
-    fn drop(&mut self) {
-        // When the last `Ref` is dropped, remove the object from the global map.
-        if !T::USE_GC && ThinArc::strong_count(&self.arc) == 2 {
-            // Only `self` and the global map point to the object.
-
-            self.drop_slow();
-        }
-    }
-}
-
-impl<T: SliceInternable> InternedSlice<T> {
-    #[cold]
-    fn drop_slow(&mut self) {
-        let storage = T::storage().get();
-        let (mut shard, hash) = Self::select(storage, &self.arc.header.header, &self.arc.slice);
-
-        if ThinArc::strong_count(&self.arc) != 2 {
-            // Another thread has interned another copy
-            return;
-        }
-
-        shard.remove_entry(hash, |(other, _)| **other == *self.arc);
-
-        // Shrink the backing storage if the shard is less than 50% occupied.
-        if shard.len() * 2 < shard.capacity() {
-            let len = shard.len();
-            shard.shrink_to(len, |(x, _)| storage.hasher().hash_one(x));
         }
     }
 }
@@ -225,16 +170,22 @@ where
 
 #[repr(transparent)]
 pub struct InternedSliceRef<'a, T> {
+    /// # Invariant
+    ///
+    /// There is no `ThinArcBorrow` unfortunately, so this is basically a `ManuallyDrop<ThinArc>`,
+    /// except that can't be `Copy`, so we store a raw pointer instead.
     ptr: NonNull<c_void>,
     _marker: PhantomData<&'a T>,
 }
 
+// SAFETY: This is essentially a `ThinArc`, implemented as a raw pointer because there is no `ThinArcBorrowed`.
 unsafe impl<T: Send + Sync> Send for InternedSliceRef<'_, T> {}
 unsafe impl<T: Send + Sync> Sync for InternedSliceRef<'_, T> {}
 
 impl<'a, T: SliceInternable> InternedSliceRef<'a, T> {
     #[inline(always)]
     fn arc(self) -> ManuallyDrop<ThinArc<T::Header, T::SliceType>> {
+        // SAFETY: `self.ptr`'s invariant.
         unsafe { ManuallyDrop::new(ThinArc::from_raw(self.ptr.as_ptr())) }
     }
 
@@ -245,6 +196,7 @@ impl<'a, T: SliceInternable> InternedSliceRef<'a, T> {
 
     #[inline]
     pub fn get(self) -> &'a Pointee<T> {
+        // SAFETY: This is a lifetime extension, valid because we live for `'a`.
         unsafe { &*ptr::from_ref::<Pointee<T>>(&*self.arc()) }
     }
 
@@ -265,6 +217,17 @@ impl<'a, T: SliceInternable> InternedSliceRef<'a, T> {
     #[inline]
     pub(crate) fn as_raw(self) -> *const c_void {
         self.arc().as_ptr()
+    }
+
+    /// **Available only on GC mode**.
+    ///
+    /// Changes the attached lifetime, as in GC mode, the lifetime is more kind of a lint to prevent misuse
+    /// than actual soundness check.
+    #[inline]
+    pub fn change_lifetime<'b>(self) -> InternedSliceRef<'b, T> {
+        const { assert!(T::USE_GC) };
+        // SAFETY: The lifetime on `InternedSliceRef` is essentially advisory only for GCed types.
+        unsafe { std::mem::transmute::<InternedSliceRef<'a, T>, InternedSliceRef<'b, T>>(self) }
     }
 }
 
@@ -336,7 +299,7 @@ impl<T: SliceInternable> InternSliceStorage<T> {
 pub trait SliceInternable: Sized + 'static {
     const USE_GC: bool;
     type Header: Eq + Hash + Send + Sync;
-    type SliceType: Eq + Hash + Send + Sync + 'static;
+    type SliceType: Eq + Hash + Send + Sync + Copy + 'static;
     fn storage() -> &'static InternSliceStorage<Self>;
 }
 
