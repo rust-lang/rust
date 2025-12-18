@@ -4,15 +4,19 @@
             root_file_id: FileId(
                 1,
             ),
-            edition: Edition2018,
+            edition: Edition2024,
             dependencies: [],
             origin: Local {
                 repo: None,
                 name: Some(
-                    "hello_world",
+                    "foo",
                 ),
             },
-            crate_attrs: [],
+            crate_attrs: [
+                "#![no_std]",
+                "#![feature(f16,f128)]",
+                "#![crate_type = \"lib\"]",
+            ],
             is_proc_macro: false,
             proc_macro_cwd: AbsPathBuf(
                 "$ROOT$",
@@ -23,9 +27,9 @@
             display_name: Some(
                 CrateDisplayName {
                     crate_name: CrateName(
-                        "hello_world",
+                        "foo",
                     ),
-                    canonical_name: "hello_world",
+                    canonical_name: "foo",
                 },
             ),
             potential_cfg_options: None,
