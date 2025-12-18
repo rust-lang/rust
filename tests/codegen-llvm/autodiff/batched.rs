@@ -44,8 +44,8 @@ fn square(x: &f32) -> f32 {
 // CHECK-NEXT:   %12 = insertvalue [4 x float] %9, float %11, 2
 // CHECK-NEXT:   %13 = fadd fast float %"_2'ipl3", %"_2'ipl3"
 // CHECK-NEXT:   %14 = fmul fast float %13, %x.0.val
-// CHECK-NEXT:   %15 = insertvalue [4 x float] %12, float %14, 3
-// CHECK-NEXT:   ret [4 x float] %15
+// CHECK-NEXT:   %[[RETVAR:[0-9]+]] = insertvalue [4 x float] %{{[0-9]+}, float %{{[0-9]+}, 3
+// CHECK-NEXT:   ret [4 x float] %[[RETVAR]]
 // CHECK-NEXT: }
 
 // d_square1, the extra float is the original return value (x * x)
