@@ -97,6 +97,7 @@ impl AttributeKind {
             RustcLintOptDenyFieldAccess { .. } => Yes,
             RustcLintOptTy => Yes,
             RustcLintQueryInstability => Yes,
+            RustcLintUntrackedQueryInformation => Yes,
             RustcMain => No,
             RustcNeverReturnsNullPointer => Yes,
             RustcNoImplicitAutorefs => Yes,

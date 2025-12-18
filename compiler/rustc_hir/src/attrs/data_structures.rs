@@ -940,6 +940,9 @@ pub enum AttributeKind {
     /// Represents `#[rustc_lint_query_instability]`
     RustcLintQueryInstability,
 
+    /// Represents `#[rustc_lint_untracked_query_information]`
+    RustcLintUntrackedQueryInformation,
+
     /// Represents `#[rustc_main]`.
     RustcMain,
 

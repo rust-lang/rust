@@ -62,8 +62,9 @@ use crate::attributes::repr::{AlignParser, AlignStaticParser, ReprParser};
 use crate::attributes::rustc_internal::{
     RustcLayoutScalarValidRangeEndParser, RustcLayoutScalarValidRangeStartParser,
     RustcLegacyConstGenericsParser, RustcLintOptDenyFieldAccessParser, RustcLintOptTyParser,
-    RustcLintQueryInstabilityParser, RustcMainParser, RustcNeverReturnsNullPointerParser,
-    RustcNoImplicitAutorefsParser, RustcObjectLifetimeDefaultParser, RustcScalableVectorParser,
+    RustcLintQueryInstabilityParser, RustcLintUntrackedQueryInformationParser, RustcMainParser,
+    RustcNeverReturnsNullPointerParser, RustcNoImplicitAutorefsParser,
+    RustcObjectLifetimeDefaultParser, RustcScalableVectorParser,
     RustcSimdMonomorphizeLaneLimitParser,
 };
 use crate::attributes::semantics::MayDangleParser;
@@ -259,6 +260,7 @@ attribute_parsers!(
         Single<WithoutArgs<RustcCoherenceIsCoreParser>>,
         Single<WithoutArgs<RustcLintOptTyParser>>,
         Single<WithoutArgs<RustcLintQueryInstabilityParser>>,
+        Single<WithoutArgs<RustcLintUntrackedQueryInformationParser>>,
         Single<WithoutArgs<RustcMainParser>>,
         Single<WithoutArgs<RustcNeverReturnsNullPointerParser>>,
         Single<WithoutArgs<RustcNoImplicitAutorefsParser>>,

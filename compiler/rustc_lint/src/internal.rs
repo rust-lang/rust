@@ -106,7 +106,10 @@ impl<'tcx> LateLintPass<'tcx> for QueryStability {
                 );
             }
 
-            if cx.tcx.has_attr(def_id, sym::rustc_lint_untracked_query_information) {
+            if find_attr!(
+                cx.tcx.get_all_attrs(def_id),
+                AttributeKind::RustcLintUntrackedQueryInformation
+            ) {
                 cx.emit_span_lint(
                     UNTRACKED_QUERY_INFORMATION,
                     span,

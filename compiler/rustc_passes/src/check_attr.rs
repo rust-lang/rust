@@ -261,6 +261,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::RustcLintOptDenyFieldAccess { .. }
                     | AttributeKind::RustcLintOptTy
                     | AttributeKind::RustcLintQueryInstability
+                    | AttributeKind::RustcLintUntrackedQueryInformation
                     | AttributeKind::RustcNeverReturnsNullPointer
                     | AttributeKind::RustcScalableVector { .. }
                     | AttributeKind::RustcSimdMonomorphizeLaneLimit(..)
@@ -309,9 +310,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             self.check_diagnostic_on_const(attr.span(), hir_id, target, item)
                         }
                         [sym::thread_local, ..] => self.check_thread_local(attr, span, target),
-                        [sym::rustc_lint_untracked_query_information, ..] => {
-                            self.check_applied_to_fn_or_method(hir_id, attr.span(), span, target)
-                        }
                         [sym::rustc_lint_diagnostics, ..] => {
                             self.check_applied_to_fn_or_method(hir_id, attr.span(), span, target)
                         }
