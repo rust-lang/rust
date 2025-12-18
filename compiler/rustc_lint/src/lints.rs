@@ -3299,3 +3299,13 @@ pub(crate) struct DocTestUnknown {
 #[derive(LintDiagnostic)]
 #[diag(lint_doc_test_literal)]
 pub(crate) struct DocTestLiteral;
+
+#[derive(LintDiagnostic)]
+#[diag(lint_unreachable_cfg_select_predicate)]
+pub(crate) struct UnreachableCfgSelectPredicate {
+    #[label(lint_label2)]
+    pub span: Span,
+
+    #[label]
+    pub wildcard_span: Span,
+}
