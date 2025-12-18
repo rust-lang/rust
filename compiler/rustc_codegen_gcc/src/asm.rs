@@ -1,8 +1,10 @@
 // cSpell:ignoreRegExp [afkspqvwy]reg
 
 use std::borrow::Cow;
+use std::fmt::Write;
 
 use gccjit::{LValue, RValue, ToRValue, Type};
+use rustc_abi::Size;
 use rustc_ast::ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_codegen_ssa::mir::operand::OperandValue;
 use rustc_codegen_ssa::mir::place::PlaceRef;
@@ -11,7 +13,7 @@ use rustc_codegen_ssa::traits::{
     ConstCodegenMethods, GlobalAsmOperandRef, InlineAsmOperandRef,
 };
 use rustc_middle::bug;
-use rustc_middle::mir::interpret::{GlobalAlloc, Scalar};
+use rustc_middle::mir::interpret::{GlobalAlloc, PointerArithmetic, Scalar};
 use rustc_middle::ty::Instance;
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_span::Span;
@@ -405,8 +407,7 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                 InlineAsmOperandRef::Const { value, ty: _ } => match value {
                     Scalar::Int(_) => (),
                     Scalar::Ptr(ptr, _) => {
-                        let (prov, offset) = ptr.prov_and_relative_offset();
-                        assert_eq!(offset.bytes(), 0);
+                        let (prov, _) = ptr.prov_and_relative_offset();
                         let global_alloc = self.tcx.global_alloc(prov.alloc_id());
                         let (val, sym) = self.cx.alloc_to_backend(global_alloc).unwrap();
                         const_syms.push(sym.unwrap());
@@ -509,12 +510,17 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
 
                                 Scalar::Ptr(ptr, _) => {
                                     let (_, offset) = ptr.prov_and_relative_offset();
-                                    assert_eq!(offset.bytes(), 0);
                                     let instance = const_syms.remove(0);
                                     // FIXME(@Amanieu): Additional mangling is needed on
                                     // some targets to add a leading underscore (Mach-O)
                                     // or byte count suffixes (x86 Windows).
                                     template_str.push_str(self.tcx.symbol_name(instance).name);
+
+                                    if offset != Size::ZERO {
+                                        let offset =
+                                            self.sign_extend_to_target_isize(offset.bytes());
+                                        write!(template_str, "{offset:+}").unwrap();
+                                    }
                                 }
                             }
                         }
@@ -936,7 +942,6 @@ impl<'gcc, 'tcx> AsmCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
 
                                 Scalar::Ptr(ptr, _) => {
                                     let (prov, offset) = ptr.prov_and_relative_offset();
-                                    assert_eq!(offset.bytes(), 0);
                                     let global_alloc = self.tcx.global_alloc(prov.alloc_id());
                                     let symbol_name = match global_alloc {
                                         GlobalAlloc::Function { instance } => {
@@ -957,6 +962,12 @@ impl<'gcc, 'tcx> AsmCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
                                         }
                                     };
                                     template_str.push_str(symbol_name.name);
+
+                                    if offset != Size::ZERO {
+                                        let offset =
+                                            self.sign_extend_to_target_isize(offset.bytes());
+                                        write!(template_str, "{offset:+}").unwrap();
+                                    }
                                 }
                             }
                         }
