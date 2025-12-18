@@ -2,9 +2,8 @@
 
 use rustc_hir::LangItem;
 use rustc_hir::attrs::PeImportNameType;
-use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::ty::layout::TyAndLayout;
-use rustc_middle::ty::{self, Instance, TyCtxt};
+use rustc_middle::ty::{self, Instance, ScalarInt, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_session::cstore::{DllCallingConvention, DllImport};
 use rustc_span::Span;
@@ -150,10 +149,10 @@ pub(crate) fn shift_mask_val<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 pub fn asm_const_to_str<'tcx>(
     tcx: TyCtxt<'tcx>,
     sp: Span,
-    scalar: Scalar,
+    scalar: ScalarInt,
     ty_and_layout: TyAndLayout<'tcx>,
 ) -> String {
-    let value = scalar.assert_scalar_int().to_bits(ty_and_layout.size);
+    let value = scalar.to_bits(ty_and_layout.size);
     match ty_and_layout.ty.kind() {
         ty::Uint(_) => value.to_string(),
         ty::Int(int_ty) => match int_ty.normalize(tcx.sess.target.pointer_width) {
