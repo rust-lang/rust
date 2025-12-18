@@ -1504,7 +1504,6 @@ impl f32 {
     #[unstable(feature = "clamp_to", issue = "147781")]
     pub fn clamp_to<R>(self, range: R) -> Self
     where
-        Self: Sized,
         R: crate::cmp::ClampBounds<Self>,
     {
         range.clamp(self)
