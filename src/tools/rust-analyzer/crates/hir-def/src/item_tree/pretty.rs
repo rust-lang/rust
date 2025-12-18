@@ -86,9 +86,9 @@ impl Printer<'_> {
     }
 
     fn print_attrs(&mut self, attrs: &AttrsOrCfg, inner: bool, separated_by: &str) {
-        let AttrsOrCfg::Enabled { attrs } = attrs else {
-            w!(self, "#[cfg(false)]{separated_by}");
-            return;
+        let (cfg_disabled_expr, attrs) = match attrs {
+            AttrsOrCfg::Enabled { attrs } => (None, attrs),
+            AttrsOrCfg::CfgDisabled(inner_box) => (Some(&inner_box.0), &inner_box.1),
         };
         let inner = if inner { "!" } else { "" };
         for attr in &*attrs.as_ref() {
@@ -100,6 +100,9 @@ impl Printer<'_> {
                 attr.input.as_ref().map(|it| it.to_string()).unwrap_or_default(),
                 separated_by,
             );
+        }
+        if let Some(expr) = cfg_disabled_expr {
+            w!(self, "#{inner}[cfg({expr})]{separated_by}");
         }
     }
 
