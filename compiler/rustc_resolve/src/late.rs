@@ -2928,7 +2928,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     item.id,
                     LifetimeBinderKind::Function,
                     span,
-                    |this| this.resolve_delegation(delegation),
+                    |this| this.resolve_delegation(delegation, item.id, false),
                 );
             }
 
@@ -3257,7 +3257,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                         item.id,
                         LifetimeBinderKind::Function,
                         delegation.path.segments.last().unwrap().ident.span,
-                        |this| this.resolve_delegation(delegation),
+                        |this| this.resolve_delegation(delegation, item.id, false),
                     );
                 }
                 AssocItemKind::Type(box TyAlias { generics, .. }) => self
@@ -3550,7 +3550,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                             |i, s, c| MethodNotMemberOfTrait(i, s, c),
                         );
 
-                        this.resolve_delegation(delegation)
+                        this.resolve_delegation(delegation, item.id, trait_id.is_some());
                     },
                 );
             }
@@ -3699,17 +3699,30 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         })
     }
 
-    fn resolve_delegation(&mut self, delegation: &'ast Delegation) {
+    fn resolve_delegation(
+        &mut self,
+        delegation: &'ast Delegation,
+        item_id: NodeId,
+        is_in_trait_impl: bool,
+    ) {
         self.smart_resolve_path(
             delegation.id,
             &delegation.qself,
             &delegation.path,
             PathSource::Delegation,
         );
+
         if let Some(qself) = &delegation.qself {
             self.visit_ty(&qself.ty);
         }
+
         self.visit_path(&delegation.path);
+
+        self.r.delegation_sig_resolution_nodes.insert(
+            self.r.local_def_id(item_id),
+            if is_in_trait_impl { item_id } else { delegation.id },
+        );
+
         let Some(body) = &delegation.body else { return };
         self.with_rib(ValueNS, RibKind::FnOrCoroutine, |this| {
             let span = delegation.path.segments.last().unwrap().ident.span;
@@ -4294,7 +4307,6 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         );
     }
 
-    #[instrument(level = "debug", skip(self))]
     fn smart_resolve_path_fragment(
         &mut self,
         qself: &Option<Box<QSelf>>,
