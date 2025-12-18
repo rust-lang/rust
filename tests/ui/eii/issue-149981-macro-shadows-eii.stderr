@@ -1,0 +1,10 @@
+error: `#[foo]` is not an EII (Externally Implementable Item) declaration
+  --> $DIR/issue-149981-macro-shadows-eii.rs:29:1
+   |
+LL | #[foo]
+   | ^^^^^^ this attribute does not resolve to an EII declaration
+   |
+   = note: a `macro_rules!` named `foo` may be shadowing the EII-generated macro
+
+error: aborting due to 1 previous error
+

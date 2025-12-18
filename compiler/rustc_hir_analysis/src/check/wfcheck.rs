@@ -1204,7 +1204,7 @@ fn check_eiis(tcx: TyCtxt<'_>, def_id: LocalDefId) {
         // We expect this macro to have the `EiiMacroFor` attribute, that points to a function
         // signature that we'd like to compare the function we're currently checking with.
         // The eii_macro DefId might not have an EiiExternTarget attribute if a macro shadows
-        // the eii function, so we skip processing in that case.
+        // the eii function.
         if let Some(eii_extern_target) = find_attr!(tcx.get_all_attrs(*eii_macro), AttributeKind::EiiExternTarget(EiiDecl {eii_extern_target, ..}) => *eii_extern_target)
         {
             let _ = compare_eii_function_types(
@@ -1214,6 +1214,14 @@ fn check_eiis(tcx: TyCtxt<'_>, def_id: LocalDefId) {
                 tcx.item_name(*eii_macro),
                 *span,
             );
+        } else {
+            // The resolved macro doesn't have an EiiExternTarget attribute, which means
+            // it's not an EII-generated macro. This typically happens when a user-defined
+            // macro_rules! shadows the EII-generated macro.
+            tcx.dcx().emit_err(errors::EiiImplNotFound {
+                span: *span,
+                macro_name: tcx.item_name(*eii_macro),
+            });
         }
     }
 }

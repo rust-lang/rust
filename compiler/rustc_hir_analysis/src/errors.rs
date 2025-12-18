@@ -1722,3 +1722,13 @@ pub(crate) struct EiiWithGenerics {
     pub attr: Span,
     pub eii_name: Symbol,
 }
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_eii_impl_not_found)]
+#[note]
+pub(crate) struct EiiImplNotFound {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    pub macro_name: Symbol,
+}

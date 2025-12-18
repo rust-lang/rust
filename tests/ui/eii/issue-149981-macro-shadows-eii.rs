@@ -1,4 +1,3 @@
-//@ check-pass
 //@ compile-flags: --crate-type rlib
 // Regression test for #149981: ICE when a macro shadows an EII function name.
 // The compiler used to panic with "called Option::unwrap() on a None value"
@@ -8,6 +7,9 @@
 // same name. During EII collection, the compiler would try to look up the
 // EiiExternTarget attribute on the macro DefId (which doesn't have it),
 // causing an unwrap() on None to panic.
+//
+// Now we emit a proper error explaining that the attribute doesn't resolve
+// to an EII declaration.
 
 #![feature(extern_item_impls)]
 
@@ -22,6 +24,7 @@ macro_rules! foo {
 fn foo();
 
 // Attempting to use the EII would look up `foo` and find the macro_rules,
-// which doesn't have the EiiExternTarget attribute - this used to ICE.
-#[foo]
+// which doesn't have the EiiExternTarget attribute - this used to ICE,
+// now it emits an error.
+#[foo] //~ ERROR `#[foo]` is not an EII (Externally Implementable Item) declaration
 fn foo_impl() {}

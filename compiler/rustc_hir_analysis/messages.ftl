@@ -165,6 +165,11 @@ hir_analysis_drop_impl_reservation = reservation `Drop` impls are not supported
 hir_analysis_duplicate_precise_capture = cannot capture parameter `{$name}` twice
     .label = parameter captured again here
 
+hir_analysis_eii_impl_not_found =
+    `#[{$macro_name}]` is not an EII (Externally Implementable Item) declaration
+    .label = this attribute does not resolve to an EII declaration
+    .note = a `macro_rules!` named `{$macro_name}` may be shadowing the EII-generated macro
+
 hir_analysis_eii_with_generics =
     #[{$eii_name}] cannot have generic parameters other than lifetimes
     .label = required by this attribute
