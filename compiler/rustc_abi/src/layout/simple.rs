@@ -167,7 +167,7 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
             size: layout.size,
             max_repr_align: layout.max_repr_align,
             unadjusted_abi_align: layout.unadjusted_abi_align,
-            randomization_seed: layout.randomization_seed,
+            randomization_seed: Hash64::ZERO,
         }
     }
 }

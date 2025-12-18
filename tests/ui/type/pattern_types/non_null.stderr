@@ -100,7 +100,6 @@ error: layout_of(Option<(*const ()) is !null>) = Layout {
                        uninhabited: false,
                        max_repr_align: None,
                        unadjusted_abi_align: Align(1 bytes),
-                       randomization_seed: $SEED,
                    },
                    VariantLayout {
                        size: Size(8 bytes),
@@ -137,7 +136,6 @@ error: layout_of(Option<(*const ()) is !null>) = Layout {
                        uninhabited: false,
                        max_repr_align: None,
                        unadjusted_abi_align: Align(8 bytes),
-                       randomization_seed: $SEED,
                    },
                ],
            },

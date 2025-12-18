@@ -141,7 +141,6 @@ error: layout_of(Option<(u32) is 1..>) = Layout {
                        uninhabited: false,
                        max_repr_align: None,
                        unadjusted_abi_align: Align(1 bytes),
-                       randomization_seed: $SEED,
                    },
                    VariantLayout {
                        size: Size(4 bytes),
@@ -176,7 +175,6 @@ error: layout_of(Option<(u32) is 1..>) = Layout {
                        uninhabited: false,
                        max_repr_align: None,
                        unadjusted_abi_align: Align(4 bytes),
-                       randomization_seed: $SEED,
                    },
                ],
            },
@@ -242,7 +240,6 @@ error: layout_of(Option<NonZero<u32>>) = Layout {
                        uninhabited: false,
                        max_repr_align: None,
                        unadjusted_abi_align: Align(1 bytes),
-                       randomization_seed: $SEED,
                    },
                    VariantLayout {
                        size: Size(4 bytes),
@@ -277,7 +274,6 @@ error: layout_of(Option<NonZero<u32>>) = Layout {
                        uninhabited: false,
                        max_repr_align: None,
                        unadjusted_abi_align: Align(4 bytes),
-                       randomization_seed: $SEED,
                    },
                ],
            },
