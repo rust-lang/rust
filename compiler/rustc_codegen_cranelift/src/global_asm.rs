@@ -1,6 +1,7 @@
 //! The AOT driver uses [`cranelift_object`] to write object files suitable for linking into a
 //! standalone executable.
 
+use std::fmt::Write as _;
 use std::io::Write;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
@@ -8,7 +9,7 @@ use std::sync::Arc;
 
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_codegen_ssa::traits::{AsmCodegenMethods, GlobalAsmOperandRef};
-use rustc_middle::mir::interpret::{GlobalAlloc, Scalar as ConstScalar};
+use rustc_middle::mir::interpret::{GlobalAlloc, PointerArithmetic, Scalar as ConstScalar};
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::ty::layout::{
     FnAbiError, FnAbiOfHelpers, FnAbiRequest, HasTyCtxt, HasTypingEnv, LayoutError, LayoutOfHelpers,
@@ -122,7 +123,6 @@ fn codegen_global_asm_inner<'tcx>(
 
                             ConstScalar::Ptr(ptr, _) => {
                                 let (prov, offset) = ptr.prov_and_relative_offset();
-                                assert_eq!(offset.bytes(), 0);
                                 let global_alloc = tcx.global_alloc(prov.alloc_id());
                                 let symbol_name = match global_alloc {
                                     GlobalAlloc::Function { instance } => {
@@ -145,7 +145,13 @@ fn codegen_global_asm_inner<'tcx>(
                                     | GlobalAlloc::VTable(..)
                                     | GlobalAlloc::TypeId { .. } => unreachable!(),
                                 };
+
                                 global_asm.push_str(symbol_name.name);
+
+                                if offset != Size::ZERO {
+                                    let offset = tcx.sign_extend_to_target_isize(offset.bytes());
+                                    write!(global_asm, "{offset:+}").unwrap();
+                                }
                             }
                         }
                     }

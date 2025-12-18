@@ -1,11 +1,12 @@
 use std::assert_matches::assert_matches;
+use std::fmt::Write;
 
-use rustc_abi::{BackendRepr, Float, Integer, Primitive, Scalar};
+use rustc_abi::{BackendRepr, Float, Integer, Primitive, Scalar, Size};
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_codegen_ssa::mir::operand::OperandValue;
 use rustc_codegen_ssa::traits::*;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_middle::mir::interpret::Scalar as ConstScalar;
+use rustc_middle::mir::interpret::{PointerArithmetic, Scalar as ConstScalar};
 use rustc_middle::ty::Instance;
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::{bug, span_bug};
@@ -161,8 +162,7 @@ impl<'ll, 'tcx> AsmBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 InlineAsmOperandRef::Const { value, ty: _ } => match value {
                     ConstScalar::Int(_) => (),
                     ConstScalar::Ptr(ptr, _) => {
-                        let (prov, offset) = ptr.prov_and_relative_offset();
-                        assert_eq!(offset.bytes(), 0);
+                        let (prov, _) = ptr.prov_and_relative_offset();
                         let global_alloc = self.tcx.global_alloc(prov.alloc_id());
                         let (value, _) = self.cx.alloc_to_backend(global_alloc).unwrap();
                         inputs.push(value);
@@ -226,11 +226,16 @@ impl<'ll, 'tcx> AsmBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                                 }
                                 ConstScalar::Ptr(ptr, _) => {
                                     let (_, offset) = ptr.prov_and_relative_offset();
-                                    assert_eq!(offset.bytes(), 0);
 
                                     // Only emit the raw symbol name
                                     template_str
                                         .push_str(&format!("${{{}:c}}", op_idx[&operand_idx]));
+
+                                    if offset != Size::ZERO {
+                                        let offset =
+                                            self.sign_extend_to_target_isize(offset.bytes());
+                                        write!(template_str, "{offset:+}").unwrap();
+                                    }
                                 }
                             }
                         }
@@ -444,7 +449,6 @@ impl<'tcx> AsmCodegenMethods<'tcx> for CodegenCx<'_, 'tcx> {
 
                                 ConstScalar::Ptr(ptr, _) => {
                                     let (prov, offset) = ptr.prov_and_relative_offset();
-                                    assert_eq!(offset.bytes(), 0);
                                     let global_alloc = self.tcx.global_alloc(prov.alloc_id());
                                     let (llval, sym) = self.alloc_to_backend(global_alloc).unwrap();
                                     assert!(sym.is_some());
@@ -455,6 +459,12 @@ impl<'tcx> AsmCodegenMethods<'tcx> for CodegenCx<'_, 'tcx> {
                                     })
                                     .expect("symbol is not valid UTF-8");
                                     template_str.push_str(&symbol);
+
+                                    if offset != Size::ZERO {
+                                        let offset =
+                                            self.sign_extend_to_target_isize(offset.bytes());
+                                        write!(template_str, "{offset:+}").unwrap();
+                                    }
                                 }
                             }
                         }
