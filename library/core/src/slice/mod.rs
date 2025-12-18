@@ -6,6 +6,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+use crate::bstr::ByteStr;
 use crate::clone::TrivialClone;
 use crate::cmp::Ordering::{self, Equal, Greater, Less};
 use crate::intrinsics::{exact_div, unchecked_sub};
@@ -4907,6 +4908,24 @@ impl<T> [T] {
         let end = start.wrapping_add(subslice.len());
 
         if start <= self.len() && end <= self.len() { Some(start..end) } else { None }
+    }
+}
+
+impl [u8] {
+    /// Casts a byte slice as a byte string.
+    #[unstable(feature = "bstr", issue = "134915")]
+    #[inline]
+    #[rustc_const_unstable(feature = "bstr", issue = "134915")]
+    pub const fn as_byte_str(&self) -> &ByteStr {
+        ByteStr::from_bytes(self)
+    }
+
+    /// Casts a mutable byte slice as a byte string.
+    #[unstable(feature = "bstr", issue = "134915")]
+    #[inline]
+    #[rustc_const_unstable(feature = "bstr", issue = "134915")]
+    pub const fn as_mut_byte_str(&mut self) -> &mut ByteStr {
+        ByteStr::from_bytes_mut(self)
     }
 }
 
