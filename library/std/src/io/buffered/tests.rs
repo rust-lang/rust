@@ -1067,13 +1067,13 @@ fn bufreader_full_initialize() {
     }
     let mut reader = BufReader::new(OneByteReader);
     // Nothing is initialized yet.
-    assert_eq!(reader.initialized(), 0);
+    assert!(!reader.initialized());
 
     let buf = reader.fill_buf().unwrap();
     // We read one byte...
     assert_eq!(buf.len(), 1);
     // But we initialized the whole buffer!
-    assert_eq!(reader.initialized(), reader.capacity());
+    assert!(reader.initialized());
 }
 
 /// This is a regression test for https://github.com/rust-lang/rust/issues/127584.

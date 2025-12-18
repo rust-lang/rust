@@ -188,10 +188,10 @@ fn child_stdout_read_buf() {
     // ChildStdout::read_buf should omit buffer initialization.
     if cfg!(target_os = "windows") {
         assert_eq!(buf.filled(), b"abc\r\n");
-        assert_eq!(buf.init_len(), 5);
+        assert!(!buf.is_init());
     } else {
         assert_eq!(buf.filled(), b"abc\n");
-        assert_eq!(buf.init_len(), 4);
+        assert!(!buf.is_init());
     };
 }
 

@@ -214,8 +214,8 @@ fn read_buf_exact() {
 fn borrowed_cursor_advance_overflow() {
     let mut buf = [0; 512];
     let mut buf = BorrowedBuf::from(&mut buf[..]);
-    buf.unfilled().advance(1);
-    buf.unfilled().advance(usize::MAX);
+    buf.unfilled().advance_checked(1);
+    buf.unfilled().advance_checked(usize::MAX);
 }
 
 #[test]
