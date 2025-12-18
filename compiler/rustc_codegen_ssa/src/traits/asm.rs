@@ -1,6 +1,7 @@
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_hir::def_id::DefId;
-use rustc_middle::ty::Instance;
+use rustc_middle::mir::interpret::Scalar;
+use rustc_middle::ty::{Instance, Ty};
 use rustc_span::Span;
 use rustc_target::asm::InlineAsmRegOrRegClass;
 
@@ -26,7 +27,9 @@ pub enum InlineAsmOperandRef<'tcx, B: BackendTypes + ?Sized> {
         out_place: Option<PlaceRef<'tcx, B::Value>>,
     },
     Const {
-        string: String,
+        value: Scalar,
+        /// Type of the constant. This is needed to extract width and signedness.
+        ty: Ty<'tcx>,
     },
     SymFn {
         instance: Instance<'tcx>,
@@ -41,9 +44,17 @@ pub enum InlineAsmOperandRef<'tcx, B: BackendTypes + ?Sized> {
 
 #[derive(Debug)]
 pub enum GlobalAsmOperandRef<'tcx> {
-    Const { string: String },
-    SymFn { instance: Instance<'tcx> },
-    SymStatic { def_id: DefId },
+    Const {
+        value: Scalar,
+        /// Type of the constant. This is needed to extract width and signedness.
+        ty: Ty<'tcx>,
+    },
+    SymFn {
+        instance: Instance<'tcx>,
+    },
+    SymStatic {
+        def_id: DefId,
+    },
 }
 
 pub trait AsmBuilderMethods<'tcx>: BackendTypes {
