@@ -128,9 +128,10 @@ and `Encodable`.
   not implement `TyEncoder`.
 - [`MetadataEncodable`] generates implementations that
   only allow decoding by [`rustc_metadata::rmeta::encoder::EncodeContext`].
-- [`BlobDecodable`] and [`LazyDecodable`] generates implementations that decode
-  with the metadata blob decoders in [`rustc_metadata::rmeta`]; use `BlobDecodable`
-  when the type has no lazy metadata handles, and `LazyDecodable` when it does.
+- [`BlobDecodable`] and [`LazyDecodable`] serve as the decoding counterparts to
+  `MetadataEncodable`. They generate implementations that decode with the
+  metadata blob decoders in `rustc_metadata::rmeta`; use `BlobDecodable` when
+  the type has no lazy metadata handles, and `LazyDecodable` when it does.
 - `TyEncodable` and `TyDecodable` generate implementation that apply to any
   `TyEncoder` or `TyDecoder`. These should be used for types that are only
   serialized in crate metadata and/or the incremental cache, which is most
