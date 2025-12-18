@@ -1,4 +1,6 @@
 /// A collection of common re-exports to be used by the test version of this crate.
+pub use crate::io::{_eprint, _print, try_set_output_capture};
+pub use crate::rt::panic_count;
 pub use crate::thread::current::CURRENT as CURRENT_THREAD;
 
 cfg_select! {

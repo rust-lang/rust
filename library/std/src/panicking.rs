@@ -14,7 +14,7 @@ use core::panic::{Location, PanicPayload};
 // make sure to use the stderr output configured
 // by libtest in the real copy of std
 #[cfg(test)]
-use realstd::io::try_set_output_capture;
+use realstd::test_internals::try_set_output_capture;
 
 use crate::any::Any;
 #[cfg(not(test))]
@@ -487,7 +487,7 @@ pub mod panic_count {
 }
 
 #[cfg(test)]
-pub use realstd::rt::panic_count;
+pub use realstd::test_internals::panic_count;
 
 /// Invoke a closure, capturing the cause of an unwinding panic if one occurs.
 #[cfg(panic = "immediate-abort")]
