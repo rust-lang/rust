@@ -668,17 +668,12 @@ impl LateLintPass<'_> for BadOptAccess {
 
         for field in adt_def.all_fields() {
             if field.name == target.name
-                && let Some(attr) =
-                    cx.tcx.get_attr(field.did, sym::rustc_lint_opt_deny_field_access)
-                && let Some(items) = attr.meta_item_list()
-                && let Some(item) = items.first()
-                && let Some(lit) = item.lit()
-                && let ast::LitKind::Str(val, _) = lit.kind
+                && let Some(lint_message) = find_attr!(cx.tcx.get_all_attrs(field.did), AttributeKind::RustcLintOptDenyFieldAccess { lint_message, } => lint_message)
             {
                 cx.emit_span_lint(
                     BAD_OPT_ACCESS,
                     expr.span,
-                    BadOptAccessDiag { msg: val.as_str() },
+                    BadOptAccessDiag { msg: lint_message.as_str() },
                 );
             }
         }

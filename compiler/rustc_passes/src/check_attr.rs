@@ -258,6 +258,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::RustcNoImplicitAutorefs
                     | AttributeKind::RustcLayoutScalarValidRangeStart(..)
                     | AttributeKind::RustcLayoutScalarValidRangeEnd(..)
+                    | AttributeKind::RustcLintOptDenyFieldAccess { .. }
                     | AttributeKind::RustcLintOptTy
                     | AttributeKind::RustcLintQueryInstability
                     | AttributeKind::RustcNeverReturnsNullPointer
@@ -313,9 +314,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         }
                         [sym::rustc_lint_diagnostics, ..] => {
                             self.check_applied_to_fn_or_method(hir_id, attr.span(), span, target)
-                        }
-                        [sym::rustc_lint_opt_deny_field_access, ..] => {
-                            self.check_rustc_lint_opt_deny_field_access(attr, span, target)
                         }
                         [sym::rustc_clean, ..]
                         | [sym::rustc_dirty, ..]
@@ -1248,18 +1246,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 defn_span,
                 on_crate: hir_id == CRATE_HIR_ID,
             });
-        }
-    }
-
-    /// Checks that the `#[rustc_lint_opt_deny_field_access]` attribute is only applied to a field.
-    fn check_rustc_lint_opt_deny_field_access(&self, attr: &Attribute, span: Span, target: Target) {
-        match target {
-            Target::Field => {}
-            _ => {
-                self.tcx
-                    .dcx()
-                    .emit_err(errors::RustcLintOptDenyFieldAccess { attr_span: attr.span(), span });
-            }
         }
     }
 

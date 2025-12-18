@@ -117,11 +117,35 @@ impl<S: Stage> SingleAttributeParser<S> for RustcLegacyConstGenericsParser {
     }
 }
 
+pub(crate) struct RustcLintOptDenyFieldAccessParser;
+
+impl<S: Stage> SingleAttributeParser<S> for RustcLintOptDenyFieldAccessParser {
+    const PATH: &[Symbol] = &[sym::rustc_lint_opt_deny_field_access];
+    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepInnermost;
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Field)]);
+    const TEMPLATE: AttributeTemplate = template!(Word);
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
+        let Some(arg) = args.list().and_then(MetaItemListParser::single) else {
+            cx.expected_single_argument(cx.attr_span);
+            return None;
+        };
+
+        let MetaItemOrLitParser::Lit(MetaItemLit { kind: LitKind::Str(lint_message, _), .. }) = arg
+        else {
+            cx.expected_string_literal(arg.span(), arg.lit());
+            return None;
+        };
+
+        Some(AttributeKind::RustcLintOptDenyFieldAccess { lint_message: *lint_message })
+    }
+}
+
 pub(crate) struct RustcLintOptTyParser;
 
 impl<S: Stage> NoArgsAttributeParser<S> for RustcLintOptTyParser {
     const PATH: &[Symbol] = &[sym::rustc_lint_opt_ty];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Struct)]);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcLintOptTy;
 }
@@ -130,7 +154,7 @@ pub(crate) struct RustcLintQueryInstabilityParser;
 
 impl<S: Stage> NoArgsAttributeParser<S> for RustcLintQueryInstabilityParser {
     const PATH: &[Symbol] = &[sym::rustc_lint_query_instability];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
         Allow(Target::Method(MethodKind::Inherent)),

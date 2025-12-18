@@ -413,15 +413,6 @@ pub(crate) struct UnusedMultiple {
 }
 
 #[derive(Diagnostic)]
-#[diag(passes_rustc_lint_opt_deny_field_access)]
-pub(crate) struct RustcLintOptDenyFieldAccess {
-    #[primary_span]
-    pub attr_span: Span,
-    #[label]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(passes_collapse_debuginfo)]
 pub(crate) struct CollapseDebuginfo {
     #[primary_span]
