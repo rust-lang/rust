@@ -255,7 +255,7 @@ impl<'tcx> BorrowCheckRootCtxt<'tcx> {
         }
 
         // We now apply the closure requirements of nested bodies modulo
-        // regions. In case a body does not depend on opaque types, we
+        // opaques. In case a body does not depend on opaque types, we
         // eagerly check its region constraints and use the final closure
         // requirements.
         //

@@ -1,4 +1,4 @@
-//! This query borrow-checks the MIR to (further) ensure it is not broken.
+//! This crate implemens MIR typeck and MIR borrowck.
 
 // tidy-alphabetical-start
 #![allow(internal_features)]
@@ -111,9 +111,9 @@ pub fn provide(providers: &mut Providers) {
     *providers = Providers { mir_borrowck, ..*providers };
 }
 
-/// Provider for `query mir_borrowck`. Similar to `typeck`, this must
-/// only be called for typeck roots which will then borrowck all
-/// nested bodies as well.
+/// Provider for `query mir_borrowck`. Unlike `typeck`, this must
+/// only be called for typeck roots which *similar* to `typeck` will
+/// then borrowck all nested bodies as well.
 fn mir_borrowck(
     tcx: TyCtxt<'_>,
     def: LocalDefId,
