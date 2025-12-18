@@ -473,9 +473,6 @@ passes_rustc_legacy_const_generics_only =
     #[rustc_legacy_const_generics] functions must only have const generics
     .label = non-const generic parameter
 
-passes_rustc_lint_opt_deny_field_access =
-    `#[rustc_lint_opt_deny_field_access]` should be applied to a field
-    .label = not a field
 
 passes_rustc_pub_transparent =
     attribute should be applied to `#[repr(transparent)]` types
