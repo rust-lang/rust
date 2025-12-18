@@ -8,6 +8,7 @@ use std::sync::Arc;
 
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_codegen_ssa::traits::{AsmCodegenMethods, GlobalAsmOperandRef};
+use rustc_middle::mir::interpret::{GlobalAlloc, Scalar as ConstScalar};
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::ty::layout::{
     FnAbiError, FnAbiOfHelpers, FnAbiRequest, HasTyCtxt, HasTypingEnv, LayoutError, LayoutOfHelpers,
@@ -108,26 +109,45 @@ fn codegen_global_asm_inner<'tcx>(
             InlineAsmTemplatePiece::Placeholder { operand_idx, modifier: _, span } => {
                 match operands[operand_idx] {
                     GlobalAsmOperandRef::Const { value, ty } => {
-                        let string = rustc_codegen_ssa::common::asm_const_to_str(
-                            tcx,
-                            span,
-                            value,
-                            FullyMonomorphizedLayoutCx(tcx).layout_of(ty),
-                        );
-                        global_asm.push_str(&string);
-                    }
-                    GlobalAsmOperandRef::SymFn { instance } => {
-                        if cfg!(not(feature = "inline_asm_sym")) {
-                            tcx.dcx().span_err(
-                                span,
-                                "asm! and global_asm! sym operands are not yet supported",
-                            );
-                        }
+                        match value {
+                            ConstScalar::Int(int) => {
+                                let string = rustc_codegen_ssa::common::asm_const_to_str(
+                                    tcx,
+                                    span,
+                                    int,
+                                    FullyMonomorphizedLayoutCx(tcx).layout_of(ty),
+                                );
+                                global_asm.push_str(&string);
+                            }
 
-                        let symbol = tcx.symbol_name(instance);
-                        // FIXME handle the case where the function was made private to the
-                        // current codegen unit
-                        global_asm.push_str(symbol.name);
+                            ConstScalar::Ptr(ptr, _) => {
+                                let (prov, offset) = ptr.prov_and_relative_offset();
+                                assert_eq!(offset.bytes(), 0);
+                                let global_alloc = tcx.global_alloc(prov.alloc_id());
+                                let symbol_name = match global_alloc {
+                                    GlobalAlloc::Function { instance } => {
+                                        if cfg!(not(feature = "inline_asm_sym")) {
+                                            tcx.dcx().span_err(
+                                                span,
+                                                "asm! and global_asm! sym operands are not yet supported",
+                                            );
+                                        }
+
+                                        // FIXME handle the case where the function was made private to the
+                                        // current codegen unit
+                                        tcx.symbol_name(instance)
+                                    }
+                                    GlobalAlloc::Static(def_id) => {
+                                        let instance = Instance::mono(tcx, def_id);
+                                        tcx.symbol_name(instance)
+                                    }
+                                    GlobalAlloc::Memory(_)
+                                    | GlobalAlloc::VTable(..)
+                                    | GlobalAlloc::TypeId { .. } => unreachable!(),
+                                };
+                                global_asm.push_str(symbol_name.name);
+                            }
+                        }
                     }
                     GlobalAsmOperandRef::SymStatic { def_id } => {
                         if cfg!(not(feature = "inline_asm_sym")) {
@@ -136,7 +156,6 @@ fn codegen_global_asm_inner<'tcx>(
                                 "asm! and global_asm! sym operands are not yet supported",
                             );
                         }
-
                         let instance = Instance::mono(tcx, def_id);
                         let symbol = tcx.symbol_name(instance);
                         global_asm.push_str(symbol.name);

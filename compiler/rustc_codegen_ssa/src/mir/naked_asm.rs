@@ -1,5 +1,6 @@
 use rustc_abi::{BackendRepr, Float, Integer, Primitive, RegKind};
 use rustc_hir::attrs::{InstructionSetAttr, Linkage};
+use rustc_middle::mir::interpret::{CTFE_ALLOC_SALT, Scalar};
 use rustc_middle::mir::mono::{MonoItemData, Visibility};
 use rustc_middle::mir::{self, InlineAsmOperand, START_BLOCK};
 use rustc_middle::ty::layout::{FnAbiOf, LayoutOf, TyAndLayout};
@@ -99,7 +100,13 @@ fn inline_to_global_operand<'a, 'tcx, Cx: LayoutOf<'tcx, LayoutOfResult = TyAndL
                 _ => bug!("asm sym is not a function"),
             };
 
-            GlobalAsmOperandRef::SymFn { instance }
+            GlobalAsmOperandRef::Const {
+                value: Scalar::from_pointer(
+                    cx.tcx().reserve_and_set_fn_alloc(instance, CTFE_ALLOC_SALT).into(),
+                    cx,
+                ),
+                ty: Ty::new_fn_ptr(cx.tcx(), mono_type.fn_sig(cx.tcx())),
+            }
         }
         InlineAsmOperand::SymStatic { def_id } => {
             GlobalAsmOperandRef::SymStatic { def_id: *def_id }

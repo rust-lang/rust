@@ -6,6 +6,7 @@ use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_data_structures::packed::Pu128;
 use rustc_hir::lang_items::LangItem;
 use rustc_lint_defs::builtin::TAIL_CALL_TRACK_CALLER;
+use rustc_middle::mir::interpret::{CTFE_ALLOC_SALT, Scalar};
 use rustc_middle::mir::{self, AssertKind, InlineAsmMacro, SwitchTargets, UnwindTerminateReason};
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, ValidityRequirement};
 use rustc_middle::ty::print::{with_no_trimmed_paths, with_no_visible_paths};
@@ -1287,7 +1288,14 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             args,
                         )
                         .unwrap();
-                        InlineAsmOperandRef::SymFn { instance }
+
+                        InlineAsmOperandRef::Const {
+                            value: Scalar::from_pointer(
+                                bx.tcx().reserve_and_set_fn_alloc(instance, CTFE_ALLOC_SALT).into(),
+                                bx,
+                            ),
+                            ty: Ty::new_fn_ptr(bx.tcx(), const_.ty().fn_sig(bx.tcx())),
+                        }
                     } else {
                         span_bug!(span, "invalid type for asm sym (fn)");
                     }
