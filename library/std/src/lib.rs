@@ -255,7 +255,18 @@
 #![allow(unused_features)]
 //
 // Features:
-#![cfg_attr(test, feature(internal_output_capture, print_internals, update_panic_count, rt))]
+#![cfg_attr(
+    test,
+    feature(
+        internal_output_capture,
+        print_internals,
+        update_panic_count,
+        rt,
+        thread_current_internals,
+        thread_local_internals,
+        thread_local_internal_pointer
+    )
+)]
 #![cfg_attr(
     all(target_vendor = "fortanix", target_env = "sgx"),
     feature(slice_index_methods, coerce_unsized, sgx_platform)
@@ -361,6 +372,7 @@
 #![feature(str_internals)]
 #![feature(sync_unsafe_cell)]
 #![feature(temporary_niche_types)]
+#![feature(test_internals)]
 #![feature(ub_checks)]
 #![feature(used_with_arg)]
 // tidy-alphabetical-end
@@ -758,3 +770,8 @@ mod sealed {
 #[cfg(test)]
 #[allow(dead_code)] // Not used in all configurations.
 pub(crate) mod test_helpers;
+
+#[doc(hidden)]
+#[unstable(feature = "test_internals", issue = "none")]
+#[cfg(not(test))]
+pub mod test_internals;
