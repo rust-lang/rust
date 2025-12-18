@@ -80,6 +80,7 @@ struct MirLowerCtx<'a, 'db> {
     db: &'db dyn HirDatabase,
     body: &'a Body,
     infer: &'a InferenceResult,
+    types: &'db crate::next_solver::DefaultAny<'db>,
     resolver: Resolver<'db>,
     drop_scopes: Vec<DropScope>,
     env: ParamEnv<'db>,
@@ -312,6 +313,7 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
             db,
             infer,
             body,
+            types: crate::next_solver::default_types(db),
             owner,
             resolver,
             current_loop_blocks: None,
@@ -369,11 +371,7 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
         match adjustments.split_last() {
             Some((last, rest)) => match &last.kind {
                 Adjust::NeverToAny => {
-                    let temp = self.temp(
-                        Ty::new(self.interner(), TyKind::Never),
-                        current,
-                        MirSpan::Unknown,
-                    )?;
+                    let temp = self.temp(self.types.types.never, current, MirSpan::Unknown)?;
                     self.lower_expr_to_place_with_adjust(expr_id, temp.into(), current, rest)
                 }
                 Adjust::Deref(_) => {

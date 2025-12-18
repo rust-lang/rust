@@ -102,7 +102,7 @@ impl<'db> InferenceContext<'_, 'db> {
             // This is something like `TypeAlias::<Args>::EnumVariant`. Do not call `substs_from_path()`,
             // as it'll try to re-lower the previous segment assuming it refers to the enum, but it refers
             // to the type alias and they may have different generics.
-            self.types.empty_args
+            self.types.empty.generic_args
         } else {
             self.with_body_ty_lowering(|ctx| {
                 let mut path_ctx = ctx.at_path(path, id);

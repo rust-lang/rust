@@ -32,8 +32,7 @@ use crate::{
         AdtDef, AliasTy, Binder, CallableIdWrapper, Clause, ClauseKind, ClosureIdWrapper, Const,
         CoroutineIdWrapper, FnSig, GenericArgKind, PolyFnSig, Region, TraitRef, TypeAliasIdWrapper,
         abi::Safety,
-        impl_foldable_for_interned_slice, impl_stored_interned, impl_stored_interned_slice,
-        interned_slice,
+        impl_foldable_for_interned_slice, impl_stored_interned, interned_slice,
         util::{CoroutineArgsExt, IntegerTypeExt},
     },
 };
@@ -112,16 +111,39 @@ impl<'db> Ty<'db> {
         Ty::new_infer(interner, InferTy::FloatVar(v))
     }
 
+    #[inline]
     pub fn new_int(interner: DbInterner<'db>, i: IntTy) -> Self {
-        Ty::new(interner, TyKind::Int(i))
+        let types = interner.default_types();
+        match i {
+            IntTy::Isize => types.types.isize,
+            IntTy::I8 => types.types.i8,
+            IntTy::I16 => types.types.i16,
+            IntTy::I32 => types.types.i32,
+            IntTy::I64 => types.types.i64,
+            IntTy::I128 => types.types.i128,
+        }
     }
 
     pub fn new_uint(interner: DbInterner<'db>, ui: UintTy) -> Self {
-        Ty::new(interner, TyKind::Uint(ui))
+        let types = interner.default_types();
+        match ui {
+            UintTy::Usize => types.types.usize,
+            UintTy::U8 => types.types.u8,
+            UintTy::U16 => types.types.u16,
+            UintTy::U32 => types.types.u32,
+            UintTy::U64 => types.types.u64,
+            UintTy::U128 => types.types.u128,
+        }
     }
 
     pub fn new_float(interner: DbInterner<'db>, f: FloatTy) -> Self {
-        Ty::new(interner, TyKind::Float(f))
+        let types = interner.default_types();
+        match f {
+            FloatTy::F16 => types.types.f16,
+            FloatTy::F32 => types.types.f32,
+            FloatTy::F64 => types.types.f64,
+            FloatTy::F128 => types.types.f128,
+        }
     }
 
     pub fn new_fresh(interner: DbInterner<'db>, n: u32) -> Self {
@@ -137,7 +159,7 @@ impl<'db> Ty<'db> {
     }
 
     pub fn new_empty_tuple(interner: DbInterner<'db>) -> Self {
-        Ty::new_tup(interner, &[])
+        interner.default_types().types.unit
     }
 
     pub fn new_imm_ptr(interner: DbInterner<'db>, ty: Ty<'db>) -> Self {
@@ -568,34 +590,34 @@ impl<'db> Ty<'db> {
         interner: DbInterner<'db>,
         ty: hir_def::builtin_type::BuiltinType,
     ) -> Ty<'db> {
-        let kind = match ty {
-            hir_def::builtin_type::BuiltinType::Char => TyKind::Char,
-            hir_def::builtin_type::BuiltinType::Bool => TyKind::Bool,
-            hir_def::builtin_type::BuiltinType::Str => TyKind::Str,
-            hir_def::builtin_type::BuiltinType::Int(int) => TyKind::Int(match int {
-                hir_def::builtin_type::BuiltinInt::Isize => rustc_type_ir::IntTy::Isize,
-                hir_def::builtin_type::BuiltinInt::I8 => rustc_type_ir::IntTy::I8,
-                hir_def::builtin_type::BuiltinInt::I16 => rustc_type_ir::IntTy::I16,
-                hir_def::builtin_type::BuiltinInt::I32 => rustc_type_ir::IntTy::I32,
-                hir_def::builtin_type::BuiltinInt::I64 => rustc_type_ir::IntTy::I64,
-                hir_def::builtin_type::BuiltinInt::I128 => rustc_type_ir::IntTy::I128,
-            }),
-            hir_def::builtin_type::BuiltinType::Uint(uint) => TyKind::Uint(match uint {
-                hir_def::builtin_type::BuiltinUint::Usize => rustc_type_ir::UintTy::Usize,
-                hir_def::builtin_type::BuiltinUint::U8 => rustc_type_ir::UintTy::U8,
-                hir_def::builtin_type::BuiltinUint::U16 => rustc_type_ir::UintTy::U16,
-                hir_def::builtin_type::BuiltinUint::U32 => rustc_type_ir::UintTy::U32,
-                hir_def::builtin_type::BuiltinUint::U64 => rustc_type_ir::UintTy::U64,
-                hir_def::builtin_type::BuiltinUint::U128 => rustc_type_ir::UintTy::U128,
-            }),
-            hir_def::builtin_type::BuiltinType::Float(float) => TyKind::Float(match float {
-                hir_def::builtin_type::BuiltinFloat::F16 => rustc_type_ir::FloatTy::F16,
-                hir_def::builtin_type::BuiltinFloat::F32 => rustc_type_ir::FloatTy::F32,
-                hir_def::builtin_type::BuiltinFloat::F64 => rustc_type_ir::FloatTy::F64,
-                hir_def::builtin_type::BuiltinFloat::F128 => rustc_type_ir::FloatTy::F128,
-            }),
-        };
-        Ty::new(interner, kind)
+        let types = interner.default_types();
+        match ty {
+            hir_def::builtin_type::BuiltinType::Char => types.types.char,
+            hir_def::builtin_type::BuiltinType::Bool => types.types.bool,
+            hir_def::builtin_type::BuiltinType::Str => types.types.str,
+            hir_def::builtin_type::BuiltinType::Int(int) => match int {
+                hir_def::builtin_type::BuiltinInt::Isize => types.types.isize,
+                hir_def::builtin_type::BuiltinInt::I8 => types.types.i8,
+                hir_def::builtin_type::BuiltinInt::I16 => types.types.i16,
+                hir_def::builtin_type::BuiltinInt::I32 => types.types.i32,
+                hir_def::builtin_type::BuiltinInt::I64 => types.types.i64,
+                hir_def::builtin_type::BuiltinInt::I128 => types.types.i128,
+            },
+            hir_def::builtin_type::BuiltinType::Uint(uint) => match uint {
+                hir_def::builtin_type::BuiltinUint::Usize => types.types.usize,
+                hir_def::builtin_type::BuiltinUint::U8 => types.types.u8,
+                hir_def::builtin_type::BuiltinUint::U16 => types.types.u16,
+                hir_def::builtin_type::BuiltinUint::U32 => types.types.u32,
+                hir_def::builtin_type::BuiltinUint::U64 => types.types.u64,
+                hir_def::builtin_type::BuiltinUint::U128 => types.types.u128,
+            },
+            hir_def::builtin_type::BuiltinType::Float(float) => match float {
+                hir_def::builtin_type::BuiltinFloat::F16 => types.types.f16,
+                hir_def::builtin_type::BuiltinFloat::F32 => types.types.f32,
+                hir_def::builtin_type::BuiltinFloat::F64 => types.types.f64,
+                hir_def::builtin_type::BuiltinFloat::F128 => types.types.f128,
+            },
+        }
     }
 
     pub fn as_builtin(self) -> Option<hir_def::builtin_type::BuiltinType> {
@@ -955,19 +977,19 @@ impl<'db> Flags for Ty<'db> {
 
 impl<'db> rustc_type_ir::inherent::Ty<DbInterner<'db>> for Ty<'db> {
     fn new_unit(interner: DbInterner<'db>) -> Self {
-        Ty::new(interner, TyKind::Tuple(Default::default()))
+        interner.default_types().types.unit
     }
 
     fn new_bool(interner: DbInterner<'db>) -> Self {
-        Ty::new(interner, TyKind::Bool)
+        interner.default_types().types.bool
     }
 
     fn new_u8(interner: DbInterner<'db>) -> Self {
-        Ty::new(interner, TyKind::Uint(rustc_type_ir::UintTy::U8))
+        interner.default_types().types.u8
     }
 
     fn new_usize(interner: DbInterner<'db>) -> Self {
-        Ty::new(interner, TyKind::Uint(rustc_type_ir::UintTy::Usize))
+        interner.default_types().types.usize
     }
 
     fn new_infer(interner: DbInterner<'db>, var: rustc_type_ir::InferTy) -> Self {
@@ -1118,7 +1140,7 @@ impl<'db> rustc_type_ir::inherent::Ty<DbInterner<'db>> for Ty<'db> {
     }
 
     fn new_tup(interner: DbInterner<'db>, tys: &[<DbInterner<'db> as Interner>::Ty]) -> Self {
-        Ty::new(interner, TyKind::Tuple(Tys::new_from_iter(interner, tys.iter().cloned())))
+        Ty::new(interner, TyKind::Tuple(Tys::new_from_slice(tys)))
     }
 
     fn new_tup_from_iter<It, T>(interner: DbInterner<'db>, iter: It) -> T::Output
@@ -1190,10 +1212,11 @@ impl<'db> rustc_type_ir::inherent::Ty<DbInterner<'db>> for Ty<'db> {
     }
 
     fn from_closure_kind(interner: DbInterner<'db>, kind: rustc_type_ir::ClosureKind) -> Self {
+        let types = interner.default_types();
         match kind {
-            ClosureKind::Fn => Ty::new(interner, TyKind::Int(IntTy::I8)),
-            ClosureKind::FnMut => Ty::new(interner, TyKind::Int(IntTy::I16)),
-            ClosureKind::FnOnce => Ty::new(interner, TyKind::Int(IntTy::I32)),
+            ClosureKind::Fn => types.types.i8,
+            ClosureKind::FnMut => types.types.i16,
+            ClosureKind::FnOnce => types.types.i32,
         }
     }
 
@@ -1201,9 +1224,10 @@ impl<'db> rustc_type_ir::inherent::Ty<DbInterner<'db>> for Ty<'db> {
         interner: DbInterner<'db>,
         kind: rustc_type_ir::ClosureKind,
     ) -> Self {
+        let types = interner.default_types();
         match kind {
-            ClosureKind::Fn | ClosureKind::FnMut => Ty::new(interner, TyKind::Int(IntTy::I16)),
-            ClosureKind::FnOnce => Ty::new(interner, TyKind::Int(IntTy::I32)),
+            ClosureKind::Fn | ClosureKind::FnMut => types.types.i16,
+            ClosureKind::FnOnce => types.types.i32,
         }
     }
 
@@ -1250,7 +1274,7 @@ impl<'db> rustc_type_ir::inherent::Ty<DbInterner<'db>> for Ty<'db> {
             | TyKind::Tuple(_)
             | TyKind::Error(_)
             | TyKind::Infer(InferTy::IntVar(_) | InferTy::FloatVar(_)) => {
-                Ty::new(interner, TyKind::Uint(UintTy::U8))
+                interner.default_types().types.u8
             }
 
             TyKind::Bound(..)
@@ -1267,9 +1291,8 @@ impl<'db> rustc_type_ir::inherent::Ty<DbInterner<'db>> for Ty<'db> {
     }
 }
 
-interned_slice!(TysStorage, Tys, Ty<'db>, Ty<'static>);
+interned_slice!(TysStorage, Tys, StoredTys, tys, Ty<'db>, Ty<'static>);
 impl_foldable_for_interned_slice!(Tys);
-impl_stored_interned_slice!(TysStorage, Tys, StoredTys);
 
 impl<'db> Tys<'db> {
     #[inline]

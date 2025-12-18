@@ -117,7 +117,7 @@ impl<'db> InferenceContext<'_, 'db> {
                 continue;
             }
 
-            self.result.type_of_opaque.insert(def_id, self.types.error.store());
+            self.result.type_of_opaque.insert(def_id, self.types.types.error.store());
         }
     }
 
@@ -139,9 +139,10 @@ impl<'db> InferenceContext<'_, 'db> {
         let at = self.table.infer_ctxt.at(&cause, self.table.param_env);
         let hidden_type = match at.deeply_normalize(hidden_type) {
             Ok(hidden_type) => hidden_type,
-            Err(_errors) => OpaqueHiddenType { ty: self.types.error },
+            Err(_errors) => OpaqueHiddenType { ty: self.types.types.error },
         };
-        let hidden_type = fold_regions(self.interner(), hidden_type, |_, _| self.types.re_erased);
+        let hidden_type =
+            fold_regions(self.interner(), hidden_type, |_, _| self.types.regions.erased);
         UsageKind::HasDefiningUse(hidden_type)
     }
 }

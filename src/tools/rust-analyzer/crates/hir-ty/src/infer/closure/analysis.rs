@@ -289,7 +289,7 @@ impl CapturedItemWithoutTy {
                     BorrowKind::Mut { .. } => Mutability::Mut,
                     _ => Mutability::Not,
                 };
-                Ty::new_ref(ctx.interner(), ctx.types.re_error, ty, m)
+                Ty::new_ref(ctx.interner(), ctx.types.regions.error, ty, m)
             }
         };
         CapturedItem {

@@ -1397,7 +1397,7 @@ impl<'db, 'exprs> CoerceMany<'db, 'exprs> {
             icx,
             cause,
             expr,
-            icx.types.unit,
+            icx.types.types.unit,
             true,
             label_unit_as_expected,
             expr_is_read,
@@ -1512,7 +1512,7 @@ impl<'db, 'exprs> CoerceMany<'db, 'exprs> {
                 // emit or provide suggestions on how to fix the initial error.
                 icx.set_tainted_by_errors();
 
-                self.final_ty = Some(icx.types.error);
+                self.final_ty = Some(icx.types.types.error);
 
                 icx.result.type_mismatches.get_or_insert_default().insert(
                     expression.into(),
@@ -1535,7 +1535,7 @@ impl<'db, 'exprs> CoerceMany<'db, 'exprs> {
             // If we only had inputs that were of type `!` (or no
             // inputs at all), then the final type is `!`.
             assert_eq!(self.pushed, 0);
-            icx.types.never
+            icx.types.types.never
         }
     }
 }

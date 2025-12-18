@@ -234,7 +234,7 @@ impl<'db> InferenceContext<'_, 'db> {
         }
         if let Some(uncovered) = elements.get(element_tys.len()..) {
             for &elem in uncovered {
-                self.infer_pat(elem, self.types.error, default_bm, decl);
+                self.infer_pat(elem, self.types.types.error, default_bm, decl);
             }
         }
         pat_ty
@@ -375,7 +375,7 @@ impl<'db> InferenceContext<'_, 'db> {
                         Some((adt, subst)) if adt == box_adt => {
                             (subst.type_at(0), subst.as_slice().get(1).and_then(|a| a.as_type()))
                         }
-                        _ => (self.types.error, None),
+                        _ => (self.types.types.error, None),
                     };
 
                     let inner_ty = self.infer_pat(*inner, inner_ty, default_bm, decl);
@@ -574,10 +574,14 @@ impl<'db> InferenceContext<'_, 'db> {
         {
             let inner = self.table.try_structurally_resolve_type(inner);
             if matches!(inner.kind(), TyKind::Slice(_)) {
-                let elem_ty = self.types.u8;
+                let elem_ty = self.types.types.u8;
                 let slice_ty = Ty::new_slice(self.interner(), elem_ty);
-                let ty =
-                    Ty::new_ref(self.interner(), self.types.re_static, slice_ty, Mutability::Not);
+                let ty = Ty::new_ref(
+                    self.interner(),
+                    self.types.regions.statik,
+                    slice_ty,
+                    Mutability::Not,
+                );
                 self.write_expr_ty(expr, ty);
                 return ty;
             }

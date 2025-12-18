@@ -22,7 +22,7 @@ use smallvec::SmallVec;
 
 use crate::next_solver::{
     ConstInterned, PolyFnSig, RegionInterned, TyInterned, impl_foldable_for_interned_slice,
-    impl_stored_interned_slice, interned_slice,
+    interned_slice,
 };
 
 use super::{
@@ -446,9 +446,15 @@ impl<'db> Relate<DbInterner<'db>> for GenericArg<'db> {
     }
 }
 
-interned_slice!(GenericArgsStorage, GenericArgs, GenericArg<'db>, GenericArg<'static>,);
+interned_slice!(
+    GenericArgsStorage,
+    GenericArgs,
+    StoredGenericArgs,
+    generic_args,
+    GenericArg<'db>,
+    GenericArg<'static>,
+);
 impl_foldable_for_interned_slice!(GenericArgs);
-impl_stored_interned_slice!(GenericArgsStorage, GenericArgs, StoredGenericArgs);
 
 impl<'db> rustc_type_ir::inherent::GenericArg<DbInterner<'db>> for GenericArg<'db> {}
 

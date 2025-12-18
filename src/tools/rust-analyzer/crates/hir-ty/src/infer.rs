@@ -51,7 +51,7 @@ use rustc_ast_ir::Mutability;
 use rustc_hash::{FxHashMap, FxHashSet};
 use rustc_type_ir::{
     AliasTyKind, TypeFoldable,
-    inherent::{AdtDef, IntoKind, Region as _, Ty as _},
+    inherent::{AdtDef, IntoKind, Ty as _},
 };
 use span::Edition;
 use stdx::never;
@@ -108,23 +108,23 @@ fn infer_query(db: &dyn HirDatabase, def: DefWithBodyId) -> InferenceResult {
         DefWithBodyId::VariantId(v) => {
             ctx.return_ty = match EnumSignature::variant_body_type(db, v.lookup(db).parent) {
                 hir_def::layout::IntegerType::Pointer(signed) => match signed {
-                    true => ctx.types.isize,
-                    false => ctx.types.usize,
+                    true => ctx.types.types.isize,
+                    false => ctx.types.types.usize,
                 },
                 hir_def::layout::IntegerType::Fixed(size, signed) => match signed {
                     true => match size {
-                        Integer::I8 => ctx.types.i8,
-                        Integer::I16 => ctx.types.i16,
-                        Integer::I32 => ctx.types.i32,
-                        Integer::I64 => ctx.types.i64,
-                        Integer::I128 => ctx.types.i128,
+                        Integer::I8 => ctx.types.types.i8,
+                        Integer::I16 => ctx.types.types.i16,
+                        Integer::I32 => ctx.types.types.i32,
+                        Integer::I64 => ctx.types.types.i64,
+                        Integer::I128 => ctx.types.types.i128,
                     },
                     false => match size {
-                        Integer::I8 => ctx.types.u8,
-                        Integer::I16 => ctx.types.u16,
-                        Integer::I32 => ctx.types.u32,
-                        Integer::I64 => ctx.types.u64,
-                        Integer::I128 => ctx.types.u128,
+                        Integer::I8 => ctx.types.types.u8,
+                        Integer::I16 => ctx.types.types.u16,
+                        Integer::I32 => ctx.types.types.u32,
+                        Integer::I64 => ctx.types.types.u64,
+                        Integer::I128 => ctx.types.types.u128,
                     },
                 },
             };
@@ -738,75 +738,6 @@ impl InferenceResult {
     }
 }
 
-#[derive(Debug, Clone)]
-struct InternedStandardTypes<'db> {
-    unit: Ty<'db>,
-    never: Ty<'db>,
-    char: Ty<'db>,
-    bool: Ty<'db>,
-    i8: Ty<'db>,
-    i16: Ty<'db>,
-    i32: Ty<'db>,
-    i64: Ty<'db>,
-    i128: Ty<'db>,
-    isize: Ty<'db>,
-    u8: Ty<'db>,
-    u16: Ty<'db>,
-    u32: Ty<'db>,
-    u64: Ty<'db>,
-    u128: Ty<'db>,
-    usize: Ty<'db>,
-    f16: Ty<'db>,
-    f32: Ty<'db>,
-    f64: Ty<'db>,
-    f128: Ty<'db>,
-    static_str_ref: Ty<'db>,
-    error: Ty<'db>,
-
-    re_static: Region<'db>,
-    re_error: Region<'db>,
-    re_erased: Region<'db>,
-
-    empty_args: GenericArgs<'db>,
-}
-
-impl<'db> InternedStandardTypes<'db> {
-    fn new(interner: DbInterner<'db>) -> Self {
-        let str = Ty::new(interner, rustc_type_ir::TyKind::Str);
-        let re_static = Region::new_static(interner);
-        Self {
-            unit: Ty::new_unit(interner),
-            never: Ty::new(interner, TyKind::Never),
-            char: Ty::new(interner, TyKind::Char),
-            bool: Ty::new(interner, TyKind::Bool),
-            i8: Ty::new_int(interner, rustc_type_ir::IntTy::I8),
-            i16: Ty::new_int(interner, rustc_type_ir::IntTy::I16),
-            i32: Ty::new_int(interner, rustc_type_ir::IntTy::I32),
-            i64: Ty::new_int(interner, rustc_type_ir::IntTy::I64),
-            i128: Ty::new_int(interner, rustc_type_ir::IntTy::I128),
-            isize: Ty::new_int(interner, rustc_type_ir::IntTy::Isize),
-            u8: Ty::new_uint(interner, rustc_type_ir::UintTy::U8),
-            u16: Ty::new_uint(interner, rustc_type_ir::UintTy::U16),
-            u32: Ty::new_uint(interner, rustc_type_ir::UintTy::U32),
-            u64: Ty::new_uint(interner, rustc_type_ir::UintTy::U64),
-            u128: Ty::new_uint(interner, rustc_type_ir::UintTy::U128),
-            usize: Ty::new_uint(interner, rustc_type_ir::UintTy::Usize),
-            f16: Ty::new_float(interner, rustc_type_ir::FloatTy::F16),
-            f32: Ty::new_float(interner, rustc_type_ir::FloatTy::F32),
-            f64: Ty::new_float(interner, rustc_type_ir::FloatTy::F64),
-            f128: Ty::new_float(interner, rustc_type_ir::FloatTy::F128),
-            static_str_ref: Ty::new_ref(interner, re_static, str, Mutability::Not),
-            error: Ty::new_error(interner, ErrorGuaranteed),
-
-            re_static,
-            re_error: Region::error(interner),
-            re_erased: Region::new_erased(interner),
-
-            empty_args: GenericArgs::empty(interner),
-        }
-    }
-}
-
 /// The inference context contains all information needed during type inference.
 #[derive(Clone, Debug)]
 pub(crate) struct InferenceContext<'body, 'db> {
@@ -841,7 +772,7 @@ pub(crate) struct InferenceContext<'body, 'db> {
     resume_yield_tys: Option<(Ty<'db>, Ty<'db>)>,
     diverges: Diverges,
     breakables: Vec<BreakableContext<'db>>,
-    types: InternedStandardTypes<'db>,
+    types: &'db crate::next_solver::DefaultAny<'db>,
 
     /// Whether we are inside the pattern of a destructuring assignment.
     inside_assignment: bool,
@@ -918,10 +849,10 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
     ) -> Self {
         let trait_env = db.trait_environment_for_body(owner);
         let table = unify::InferenceTable::new(db, trait_env, resolver.krate(), Some(owner));
-        let types = InternedStandardTypes::new(table.interner());
+        let types = crate::next_solver::default_types(db);
         InferenceContext {
-            result: InferenceResult::new(types.error),
-            return_ty: types.error, // set in collect_* calls
+            result: InferenceResult::new(types.types.error),
+            return_ty: types.types.error, // set in collect_* calls
             types,
             target_features: OnceCell::new(),
             unstable_features: MethodResolutionUnstableFeatures::from_def_map(
@@ -1153,7 +1084,7 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
             data.type_ref,
             &data.store,
             InferenceTyDiagnosticSource::Signature,
-            LifetimeElisionKind::Elided(self.types.re_static),
+            LifetimeElisionKind::Elided(self.types.regions.statik),
         );
 
         self.return_ty = return_ty;
@@ -1211,7 +1142,7 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
                 );
                 self.process_user_written_ty(return_ty)
             }
-            None => self.types.unit,
+            None => self.types.types.unit,
         };
 
         self.return_coercion = Some(CoerceMany::new(self.return_ty));
@@ -1408,7 +1339,7 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
     }
 
     fn err_ty(&self) -> Ty<'db> {
-        self.types.error
+        self.types.types.error
     }
 
     pub(crate) fn make_body_lifetime(&mut self, lifetime_ref: LifetimeRefId) -> Region<'db> {
@@ -1573,7 +1504,7 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
         if let Err(_err) = result {
             // FIXME: Emit diagnostic.
         }
-        result.unwrap_or(self.types.error)
+        result.unwrap_or(self.types.types.error)
     }
 
     fn expr_ty(&self, expr: ExprId) -> Ty<'db> {
@@ -1805,7 +1736,7 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
                 result
             } else {
                 // FIXME diagnostic
-                (ctx.types.error, None)
+                (ctx.types.types.error, None)
             }
         }
     }

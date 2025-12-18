@@ -11,11 +11,12 @@ use rustc_type_ir::{
 };
 
 use crate::next_solver::{
-    GenericArg, OutlivesPredicate, impl_foldable_for_interned_slice, interned_slice,
+    GenericArg, OutlivesPredicate, impl_foldable_for_interned_slice, impl_stored_interned,
+    interned_slice,
 };
 
 use super::{
-    ErrorGuaranteed, SolverDefId,
+    SolverDefId,
     interner::{BoundVarKind, DbInterner, Placeholder},
 };
 
@@ -31,6 +32,7 @@ pub struct Region<'db> {
 pub(super) struct RegionInterned(RegionKind<'static>);
 
 impl_internable!(gc; RegionInterned);
+impl_stored_interned!(RegionInterned, Region, StoredRegion);
 
 const _: () = {
     const fn is_copy<T: Copy>() {}
@@ -64,7 +66,7 @@ impl<'db> Region<'db> {
     }
 
     pub fn new_erased(interner: DbInterner<'db>) -> Region<'db> {
-        Region::new(interner, RegionKind::ReErased)
+        interner.default_types().regions.erased
     }
 
     pub fn new_bound(
@@ -96,7 +98,7 @@ impl<'db> Region<'db> {
     }
 
     pub fn error(interner: DbInterner<'db>) -> Self {
-        Region::new(interner, RegionKind::ReError(ErrorGuaranteed))
+        interner.default_types().regions.error
     }
 
     pub fn type_flags(&self) -> TypeFlags {
@@ -352,7 +354,7 @@ impl<'db> rustc_type_ir::inherent::Region<DbInterner<'db>> for Region<'db> {
     }
 
     fn new_static(interner: DbInterner<'db>) -> Self {
-        Region::new(interner, RegionKind::ReStatic)
+        interner.default_types().regions.statik
     }
 
     fn new_placeholder(
@@ -400,6 +402,8 @@ type GenericArgOutlivesPredicate<'db> = OutlivesPredicate<'db, GenericArg<'db>>;
 interned_slice!(
     RegionAssumptionsStorage,
     RegionAssumptions,
+    StoredRegionAssumptions,
+    region_assumptions,
     GenericArgOutlivesPredicate<'db>,
     GenericArgOutlivesPredicate<'static>,
 );

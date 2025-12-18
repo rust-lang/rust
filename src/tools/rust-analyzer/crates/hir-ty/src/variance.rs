@@ -48,10 +48,11 @@ fn variances_of_query(db: &dyn HirDatabase, def: GenericDefId) -> StoredVariance
         GenericDefId::AdtId(adt) => {
             if let AdtId::StructId(id) = adt {
                 let flags = &db.struct_signature(id).flags;
+                let types = || crate::next_solver::default_types(db);
                 if flags.contains(StructFlags::IS_UNSAFE_CELL) {
-                    return VariancesOf::new_from_iter(interner, [Variance::Invariant]).store();
+                    return types().one_invariant.store();
                 } else if flags.contains(StructFlags::IS_PHANTOM_DATA) {
-                    return VariancesOf::new_from_iter(interner, [Variance::Covariant]).store();
+                    return types().one_covariant.store();
                 }
             }
         }

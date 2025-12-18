@@ -22,9 +22,8 @@ use crate::{
     db::{InternedClosure, InternedCoroutine},
     infer::{BreakableKind, Diverges, coerce::CoerceMany},
     next_solver::{
-        AliasTy, Binder, BoundRegionKind, BoundVarKind, BoundVarKinds, ClauseKind, DbInterner,
-        ErrorGuaranteed, FnSig, GenericArgs, PolyFnSig, PolyProjectionPredicate, Predicate,
-        PredicateKind, SolverDefId, Ty, TyKind,
+        AliasTy, Binder, ClauseKind, DbInterner, ErrorGuaranteed, FnSig, GenericArgs, PolyFnSig,
+        PolyProjectionPredicate, Predicate, PredicateKind, SolverDefId, Ty, TyKind,
         abi::Safety,
         infer::{
             BoundRegionConversionTime, InferOk, InferResult,
@@ -73,16 +72,17 @@ impl<'db> InferenceContext<'_, 'db> {
 
         let parent_args = GenericArgs::identity_for_item(interner, self.generic_def.into());
         // FIXME: Make this an infer var and infer it later.
-        let tupled_upvars_ty = self.types.unit;
+        let tupled_upvars_ty = self.types.types.unit;
         let (id, ty, resume_yield_tys) = match closure_kind {
             ClosureKind::Coroutine(_) => {
                 let yield_ty = self.table.next_ty_var();
-                let resume_ty = liberated_sig.inputs().first().copied().unwrap_or(self.types.unit);
+                let resume_ty =
+                    liberated_sig.inputs().first().copied().unwrap_or(self.types.types.unit);
 
                 // FIXME: Infer the upvars later.
                 let parts = CoroutineArgsParts {
                     parent_args: parent_args.as_slice(),
-                    kind_ty: self.types.unit,
+                    kind_ty: self.types.types.unit,
                     resume_ty,
                     yield_ty,
                     return_ty: body_ret_ty,
@@ -140,9 +140,9 @@ impl<'db> InferenceContext<'_, 'db> {
                 // async closures always return the type ascribed after the `->` (if present),
                 // and yield `()`.
                 let bound_return_ty = bound_sig.skip_binder().output();
-                let bound_yield_ty = self.types.unit;
+                let bound_yield_ty = self.types.types.unit;
                 // rustc uses a special lang item type for the resume ty. I don't believe this can cause us problems.
-                let resume_ty = self.types.unit;
+                let resume_ty = self.types.types.unit;
 
                 // FIXME: Infer the kind later if needed.
                 let closure_kind_ty = Ty::from_closure_kind(
@@ -155,11 +155,14 @@ impl<'db> InferenceContext<'_, 'db> {
                 let coroutine_captures_by_ref_ty = Ty::new_fn_ptr(
                     interner,
                     Binder::bind_with_vars(
-                        interner.mk_fn_sig([], self.types.unit, false, Safety::Safe, FnAbi::Rust),
-                        BoundVarKinds::new_from_iter(
-                            interner,
-                            [BoundVarKind::Region(BoundRegionKind::ClosureEnv)],
+                        interner.mk_fn_sig(
+                            [],
+                            self.types.types.unit,
+                            false,
+                            Safety::Safe,
+                            FnAbi::Rust,
                         ),
+                        self.types.coroutine_captures_by_ref_bound_var_kinds,
                     ),
                 );
                 let closure_args = CoroutineClosureArgs::new(

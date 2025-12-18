@@ -15,6 +15,8 @@ type PredefinedOpaque<'db> = (OpaqueTypeKey<'db>, Ty<'db>);
 interned_slice!(
     PredefinedOpaquesStorage,
     PredefinedOpaques,
+    StoredPredefinedOpaques,
+    predefined_opaques,
     PredefinedOpaque<'db>,
     PredefinedOpaque<'static>,
 );
@@ -23,7 +25,14 @@ impl_foldable_for_interned_slice!(PredefinedOpaques);
 pub type ExternalConstraintsData<'db> =
     rustc_type_ir::solve::ExternalConstraintsData<DbInterner<'db>>;
 
-interned_slice!(SolverDefIdsStorage, SolverDefIds, SolverDefId, SolverDefId);
+interned_slice!(
+    SolverDefIdsStorage,
+    SolverDefIds,
+    StoredSolverDefIds,
+    def_ids,
+    SolverDefId,
+    SolverDefId,
+);
 impl_foldable_for_interned_slice!(SolverDefIds);
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
