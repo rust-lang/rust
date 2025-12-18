@@ -126,9 +126,9 @@ and `Encodable`.
   all `Encoders` and `Decoders`. These should be used in crates that don't
   depend on [`rustc_middle`], or that have to be serialized by a type that does
   not implement `TyEncoder`.
-- [`MetadataEncodable`] generate implementations that
+- [`MetadataEncodable`] generates implementations that
   only allow decoding by [`rustc_metadata::rmeta::encoder::EncodeContext`].
-- [`BlobDecodable`] and [`LazyDecodable`] generate implementations that decode
+- [`BlobDecodable`] and [`LazyDecodable`] generates implementations that decode
   with the metadata blob decoders in [`rustc_metadata::rmeta`]; use `BlobDecodable`
   when the type has no lazy metadata handles, and `LazyDecodable` when it does.
 - `TyEncodable` and `TyDecodable` generate implementation that apply to any
