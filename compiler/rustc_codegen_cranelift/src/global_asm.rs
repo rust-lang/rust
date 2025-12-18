@@ -114,7 +114,6 @@ fn codegen_global_asm_inner<'tcx>(
                             ConstScalar::Int(int) => {
                                 let string = rustc_codegen_ssa::common::asm_const_to_str(
                                     tcx,
-                                    span,
                                     int,
                                     FullyMonomorphizedLayoutCx(tcx).layout_of(ty),
                                 );
