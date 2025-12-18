@@ -288,7 +288,7 @@ impl<R: ?Sized> BufReader<R> {
 #[cfg(test)]
 impl<R: ?Sized> BufReader<R> {
     #[allow(missing_docs)]
-    pub fn initialized(&self) -> usize {
+    pub fn initialized(&self) -> bool {
         self.buf.initialized()
     }
 }

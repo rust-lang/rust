@@ -717,7 +717,7 @@ fn file_test_read_buf() {
     check!(file.read_buf(buf.unfilled()));
     assert_eq!(buf.filled(), &[1, 2, 3, 4]);
     // File::read_buf should omit buffer initialization.
-    assert_eq!(buf.init_len(), 4);
+    assert!(!buf.is_init());
 
     check!(fs::remove_file(filename));
 }

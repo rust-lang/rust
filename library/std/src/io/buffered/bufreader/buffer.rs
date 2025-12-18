@@ -26,20 +26,20 @@ pub struct Buffer {
     // defensive initialization as possible. Note that while this often the same as `filled`, it
     // doesn't need to be. Calls to `fill_buf` are not required to actually fill the buffer, and
     // omitting this is a huge perf regression for `Read` impls that do not.
-    initialized: usize,
+    initialized: bool,
 }
 
 impl Buffer {
     #[inline]
     pub fn with_capacity(capacity: usize) -> Self {
         let buf = Box::new_uninit_slice(capacity);
-        Self { buf, pos: 0, filled: 0, initialized: 0 }
+        Self { buf, pos: 0, filled: 0, initialized: false }
     }
 
     #[inline]
     pub fn try_with_capacity(capacity: usize) -> io::Result<Self> {
         match Box::try_new_uninit_slice(capacity) {
-            Ok(buf) => Ok(Self { buf, pos: 0, filled: 0, initialized: 0 }),
+            Ok(buf) => Ok(Self { buf, pos: 0, filled: 0, initialized: false }),
             Err(_) => {
                 Err(io::const_error!(ErrorKind::OutOfMemory, "failed to allocate read buffer"))
             }
@@ -70,7 +70,7 @@ impl Buffer {
 
     // This is only used by a test which asserts that the initialization-tracking is correct.
     #[cfg(test)]
-    pub fn initialized(&self) -> usize {
+    pub fn initialized(&self) -> bool {
         self.initialized
     }
 
@@ -110,13 +110,14 @@ impl Buffer {
     /// Read more bytes into the buffer without discarding any of its contents
     pub fn read_more(&mut self, mut reader: impl Read) -> io::Result<usize> {
         let mut buf = BorrowedBuf::from(&mut self.buf[self.filled..]);
-        let old_init = self.initialized - self.filled;
-        unsafe {
-            buf.set_init(old_init);
+
+        if self.initialized {
+            unsafe { buf.set_init() };
         }
+
         reader.read_buf(buf.unfilled())?;
         self.filled += buf.len();
-        self.initialized += buf.init_len() - old_init;
+        self.initialized = buf.is_init();
         Ok(buf.len())
     }
 
@@ -138,15 +139,16 @@ impl Buffer {
 
             let mut buf = BorrowedBuf::from(&mut *self.buf);
             // SAFETY: `self.filled` bytes will always have been initialized.
-            unsafe {
-                buf.set_init(self.initialized);
+
+            if self.initialized {
+                unsafe { buf.set_init() };
             }
 
             let result = reader.read_buf(buf.unfilled());
 
             self.pos = 0;
             self.filled = buf.len();
-            self.initialized = buf.init_len();
+            self.initialized = buf.is_init();
 
             result?;
         }
