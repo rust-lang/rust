@@ -698,10 +698,7 @@ impl<'db> rustc_type_ir::inherent::GenericArgs<DbInterner<'db>> for GenericArgs<
                                 let inputs = Ty::new_tup(interner, s.inputs());
                                 let output = s.output();
                                 FnSigTys {
-                                    inputs_and_output: Tys::new_from_iter(
-                                        interner,
-                                        [inputs, output],
-                                    ),
+                                    inputs_and_output: Tys::new_from_slice(&[inputs, output]),
                                 }
                             }),
                             header,

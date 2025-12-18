@@ -469,7 +469,7 @@ where
     Canonical {
         value,
         max_universe: rustc_type_ir::UniverseIndex::ZERO,
-        variables: CanonicalVars::new_from_iter(interner, error_replacer.vars),
+        variables: CanonicalVars::new_from_slice(&error_replacer.vars),
     }
 }
 

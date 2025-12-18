@@ -1283,7 +1283,7 @@ pub(crate) fn substs_from_args_and_bindings<'db>(
         }
     }
 
-    GenericArgs::new_from_iter(interner, substs)
+    GenericArgs::new_from_slice(&substs)
 }
 
 fn type_looks_like_const(

@@ -82,7 +82,7 @@ fn variances_of_query(db: &dyn HirDatabase, def: GenericDefId) -> StoredVariance
         }
     }
 
-    VariancesOf::new_from_iter(interner, variances).store()
+    VariancesOf::new_from_slice(&variances).store()
 }
 
 // pub(crate) fn variances_of_cycle_fn(

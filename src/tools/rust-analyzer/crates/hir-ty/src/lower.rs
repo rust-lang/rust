@@ -2336,10 +2336,7 @@ pub(crate) fn associated_ty_item_bounds<'db>(
                             Some(ExistentialPredicate::Trait(ExistentialTraitRef::new_from_args(
                                 interner,
                                 t.def_id(),
-                                GenericArgs::new_from_iter(
-                                    interner,
-                                    t.trait_ref.args.iter().skip(1),
-                                ),
+                                GenericArgs::new_from_slice(&t.trait_ref.args[1..]),
                             )))
                         }
                     }
@@ -2347,10 +2344,7 @@ pub(crate) fn associated_ty_item_bounds<'db>(
                         ExistentialPredicate::Projection(ExistentialProjection::new_from_args(
                             interner,
                             p.def_id(),
-                            GenericArgs::new_from_iter(
-                                interner,
-                                p.projection_term.args.iter().skip(1),
-                            ),
+                            GenericArgs::new_from_slice(&p.projection_term.args[1..]),
                             p.term,
                         )),
                     ),
@@ -2380,7 +2374,7 @@ pub(crate) fn associated_ty_item_bounds<'db>(
         bounds.push(sized_clause);
     }
 
-    EarlyBinder::bind(BoundExistentialPredicates::new_from_iter(interner, bounds))
+    EarlyBinder::bind(BoundExistentialPredicates::new_from_slice(&bounds))
 }
 
 pub(crate) fn associated_type_by_name_including_super_traits<'db>(

@@ -780,7 +780,7 @@ impl<'db> InferenceContext<'_, 'db> {
                     Ty::new_adt(
                         self.interner(),
                         adt,
-                        GenericArgs::new_from_iter(self.interner(), [GenericArg::from(ty)]),
+                        GenericArgs::new_from_slice(&[GenericArg::from(ty)]),
                     )
                 };
                 match (range_type, lhs_ty, rhs_ty) {
@@ -2164,10 +2164,8 @@ impl<'db> InferenceContext<'_, 'db> {
                     if let ItemContainerId::TraitId(trait_) = f.lookup(self.db).container {
                         // construct a TraitRef
                         let trait_params_len = generics(self.db, trait_.into()).len();
-                        let substs = GenericArgs::new_from_iter(
-                            self.interner(),
-                            parameters.as_slice()[..trait_params_len].iter().copied(),
-                        );
+                        let substs =
+                            GenericArgs::new_from_slice(&parameters.as_slice()[..trait_params_len]);
                         self.table.register_predicate(Obligation::new(
                             self.interner(),
                             ObligationCause::new(),

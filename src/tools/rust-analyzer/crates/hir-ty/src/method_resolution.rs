@@ -392,10 +392,10 @@ pub fn is_dyn_method<'db>(
     };
     let trait_params = db.generic_params(trait_id.into()).len();
     let fn_params = fn_subst.len() - trait_params;
-    let trait_ref = TraitRef::new(
+    let trait_ref = TraitRef::new_from_args(
         interner,
         trait_id.into(),
-        GenericArgs::new_from_iter(interner, fn_subst.iter().take(trait_params)),
+        GenericArgs::new_from_slice(&fn_subst[..trait_params]),
     );
     let self_ty = trait_ref.self_ty();
     if let TyKind::Dynamic(d, _) = self_ty.kind() {
@@ -427,10 +427,10 @@ pub(crate) fn lookup_impl_method_query<'db>(
         return (func, fn_subst);
     };
     let trait_params = db.generic_params(trait_id.into()).len();
-    let trait_ref = TraitRef::new(
+    let trait_ref = TraitRef::new_from_args(
         interner,
         trait_id.into(),
-        GenericArgs::new_from_iter(interner, fn_subst.iter().take(trait_params)),
+        GenericArgs::new_from_slice(&fn_subst[..trait_params]),
     );
 
     let name = &db.function_signature(func).name;

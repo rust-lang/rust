@@ -240,10 +240,7 @@ impl<'db> InferenceContext<'_, 'db> {
 
         if let ItemContainerId::TraitId(trait_) = container {
             let parent_len = generics(self.db, def).parent_generics().map_or(0, |g| g.len_self());
-            let parent_subst = GenericArgs::new_from_iter(
-                interner,
-                subst.as_slice()[..parent_len].iter().copied(),
-            );
+            let parent_subst = GenericArgs::new_from_slice(&subst.as_slice()[..parent_len]);
             let trait_ref = TraitRef::new(interner, trait_.into(), parent_subst);
             self.table.register_predicate(Obligation::new(
                 interner,

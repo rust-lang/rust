@@ -21,9 +21,9 @@ use rustc_abi::{ReprFlags, ReprOptions};
 use rustc_hash::FxHashSet;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_type_ir::{
-    AliasTermKind, AliasTyKind, BoundVar, CollectAndApply, CoroutineWitnessTypes, DebruijnIndex,
-    EarlyBinder, FlagComputation, Flags, GenericArgKind, GenericTypeVisitable, ImplPolarity,
-    InferTy, Interner, TraitRef, TypeFlags, TypeVisitableExt, UniverseIndex, Upcast, Variance,
+    AliasTermKind, AliasTyKind, BoundVar, CoroutineWitnessTypes, DebruijnIndex, EarlyBinder,
+    FlagComputation, Flags, GenericArgKind, GenericTypeVisitable, ImplPolarity, InferTy, Interner,
+    TraitRef, TypeFlags, TypeVisitableExt, UniverseIndex, Upcast, Variance,
     elaborate::elaborate,
     error::TypeError,
     fast_reject,
@@ -1270,10 +1270,8 @@ impl<'db> Interner for DbInterner<'db> {
     ) -> (rustc_type_ir::TraitRef<Self>, Self::GenericArgsSlice) {
         let trait_def_id = self.parent(def_id);
         let trait_generics = self.generics_of(trait_def_id);
-        let trait_args = GenericArgs::new_from_iter(
-            self,
-            args.as_slice()[0..trait_generics.own_params.len()].iter().cloned(),
-        );
+        let trait_args =
+            GenericArgs::new_from_slice(&args.as_slice()[0..trait_generics.own_params.len()]);
         let alias_args = &args.as_slice()[trait_generics.own_params.len()..];
         (TraitRef::new_from_args(self, trait_def_id.try_into().unwrap(), trait_args), alias_args)
     }
@@ -2105,9 +2103,7 @@ impl<'db> Interner for DbInterner<'db> {
         let mut map = Default::default();
         let delegate = Anonymize { interner: self, map: &mut map };
         let inner = self.replace_escaping_bound_vars_uncached(value.skip_binder(), delegate);
-        let bound_vars = CollectAndApply::collect_and_apply(map.into_values(), |xs| {
-            BoundVarKinds::new_from_iter(self, xs.iter().cloned())
-        });
+        let bound_vars = BoundVarKinds::new_from_iter(self, map.into_values());
         Binder::bind_with_vars(inner, bound_vars)
     }
 
