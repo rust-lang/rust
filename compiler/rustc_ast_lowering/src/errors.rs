@@ -475,3 +475,17 @@ pub(crate) struct UnionWithDefault {
     #[primary_span]
     pub span: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag(ast_lowering_delegation_unresolved_callee)]
+pub(crate) struct UnresolvedDelegationCallee {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(ast_lowering_delegation_cycle_in_signature_resolution)]
+pub(crate) struct CycleInDelegationSignatureResolution {
+    #[primary_span]
+    pub span: Span,
+}

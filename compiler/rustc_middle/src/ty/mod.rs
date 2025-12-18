@@ -221,6 +221,9 @@ pub struct ResolverAstLowering {
 
     /// Information about functions signatures for delegation items expansion
     pub delegation_fn_sigs: LocalDefIdMap<DelegationFnSig>,
+    // NodeIds (either delegation.id or item_id in case of a trait impl) for signature resolution,
+    // for details see https://github.com/rust-lang/rust/issues/118212#issuecomment-2160686914
+    pub delegation_sig_resolution_nodes: LocalDefIdMap<ast::NodeId>,
 }
 
 bitflags::bitflags! {
