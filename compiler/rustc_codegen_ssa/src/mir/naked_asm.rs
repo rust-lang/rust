@@ -1,6 +1,7 @@
 use rustc_abi::{BackendRepr, Float, Integer, Primitive, RegKind};
 use rustc_hir::attrs::{InstructionSetAttr, Linkage};
 use rustc_hir::def_id::LOCAL_CRATE;
+use rustc_middle::mir::interpret::{CTFE_ALLOC_SALT, Scalar};
 use rustc_middle::mir::{self, InlineAsmOperand, START_BLOCK};
 use rustc_middle::mono::{MonoItemData, Visibility};
 use rustc_middle::ty::layout::{FnAbiOf, LayoutOf, TyAndLayout};
@@ -100,10 +101,26 @@ fn inline_to_global_operand<'a, 'tcx, Cx: LayoutOf<'tcx, LayoutOfResult = TyAndL
                 _ => bug!("asm sym is not a function"),
             };
 
-            GlobalAsmOperandRef::SymFn { instance }
+            GlobalAsmOperandRef::Const {
+                value: Scalar::from_pointer(
+                    cx.tcx().reserve_and_set_fn_alloc(instance, CTFE_ALLOC_SALT).into(),
+                    cx,
+                ),
+                ty: Ty::new_fn_ptr(cx.tcx(), mono_type.fn_sig(cx.tcx())),
+            }
         }
         InlineAsmOperand::SymStatic { def_id } => {
-            GlobalAsmOperandRef::SymStatic { def_id: *def_id }
+            if cx.tcx().is_thread_local_static(*def_id) {
+                GlobalAsmOperandRef::SymThreadLocalStatic { def_id: *def_id }
+            } else {
+                GlobalAsmOperandRef::Const {
+                    value: Scalar::from_pointer(
+                        cx.tcx().reserve_and_set_static_alloc(*def_id).into(),
+                        cx,
+                    ),
+                    ty: cx.tcx().static_ptr_ty(*def_id, cx.typing_env()),
+                }
+            }
         }
         InlineAsmOperand::In { .. }
         | InlineAsmOperand::Out { .. }

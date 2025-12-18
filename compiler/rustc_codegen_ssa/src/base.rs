@@ -22,7 +22,7 @@ use rustc_middle::middle::debugger_visualizer::DebuggerVisualizerFile;
 use rustc_middle::middle::dependency_format::Dependencies;
 use rustc_middle::middle::exported_symbols::{self, SymbolExportKind};
 use rustc_middle::middle::lang_items;
-use rustc_middle::mir::interpret::{ErrorHandled, Scalar};
+use rustc_middle::mir::interpret::{CTFE_ALLOC_SALT, ErrorHandled, Scalar};
 use rustc_middle::mir::{BinOp, ConstValue};
 use rustc_middle::mono::{CodegenUnit, CodegenUnitNameBuilder, MonoItem, MonoItemPartitions};
 use rustc_middle::query::Providers;
@@ -454,10 +454,26 @@ where
                         _ => span_bug!(*op_sp, "asm sym is not a function"),
                     };
 
-                    GlobalAsmOperandRef::SymFn { instance }
+                    GlobalAsmOperandRef::Const {
+                        value: Scalar::from_pointer(
+                            cx.tcx().reserve_and_set_fn_alloc(instance, CTFE_ALLOC_SALT).into(),
+                            cx,
+                        ),
+                        ty: Ty::new_fn_ptr(cx.tcx(), ty.fn_sig(cx.tcx())),
+                    }
                 }
                 rustc_hir::InlineAsmOperand::SymStatic { path: _, def_id } => {
-                    GlobalAsmOperandRef::SymStatic { def_id }
+                    if cx.tcx().is_thread_local_static(def_id) {
+                        GlobalAsmOperandRef::SymThreadLocalStatic { def_id }
+                    } else {
+                        GlobalAsmOperandRef::Const {
+                            value: Scalar::from_pointer(
+                                cx.tcx().reserve_and_set_static_alloc(def_id).into(),
+                                cx,
+                            ),
+                            ty: cx.tcx().static_ptr_ty(def_id, cx.typing_env()),
+                        }
+                    }
                 }
                 rustc_hir::InlineAsmOperand::In { .. }
                 | rustc_hir::InlineAsmOperand::Out { .. }
