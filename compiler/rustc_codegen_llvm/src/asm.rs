@@ -197,7 +197,7 @@ impl<'ll, 'tcx> AsmBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                         template_str.push_str(s)
                     }
                 }
-                InlineAsmTemplatePiece::Placeholder { operand_idx, modifier, span } => {
+                InlineAsmTemplatePiece::Placeholder { operand_idx, modifier, span: _ } => {
                     match operands[operand_idx] {
                         InlineAsmOperandRef::In { reg, .. }
                         | InlineAsmOperandRef::Out { reg, .. }
@@ -218,7 +218,6 @@ impl<'ll, 'tcx> AsmBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                                     // Const operands get injected directly into the template
                                     let string = rustc_codegen_ssa::common::asm_const_to_str(
                                         self.tcx,
-                                        span,
                                         int,
                                         self.layout_of(ty),
                                     );
@@ -441,7 +440,6 @@ impl<'tcx> AsmCodegenMethods<'tcx> for CodegenCx<'_, 'tcx> {
                                     // here unlike normal inline assembly.
                                     let string = rustc_codegen_ssa::common::asm_const_to_str(
                                         self.tcx,
-                                        span,
                                         int,
                                         self.layout_of(ty),
                                     );
