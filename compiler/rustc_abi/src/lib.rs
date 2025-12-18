@@ -2244,7 +2244,6 @@ pub struct VariantLayout<FieldIdx: Idx> {
     uninhabited: bool,
     max_repr_align: Option<Align>,
     unadjusted_abi_align: Align,
-    randomization_seed: Hash64,
 }
 
 impl<FieldIdx: Idx> VariantLayout<FieldIdx> {
@@ -2263,7 +2262,6 @@ impl<FieldIdx: Idx> VariantLayout<FieldIdx> {
             uninhabited: layout.uninhabited,
             max_repr_align: layout.max_repr_align,
             unadjusted_abi_align: layout.unadjusted_abi_align,
-            randomization_seed: layout.randomization_seed,
         }
     }
 

@@ -56,7 +56,6 @@ error: layout_of(UnsignedAroundZero) = Layout {
                        uninhabited: false,
                        max_repr_align: None,
                        unadjusted_abi_align: Align(2 bytes),
-                       randomization_seed: 9885373149222004003,
                    },
                    VariantLayout {
                        size: Size(2 bytes),
@@ -72,7 +71,6 @@ error: layout_of(UnsignedAroundZero) = Layout {
                        uninhabited: false,
                        max_repr_align: None,
                        unadjusted_abi_align: Align(2 bytes),
-                       randomization_seed: 9885373149222004003,
                    },
                    VariantLayout {
                        size: Size(2 bytes),
@@ -88,7 +86,6 @@ error: layout_of(UnsignedAroundZero) = Layout {
                        uninhabited: false,
                        max_repr_align: None,
                        unadjusted_abi_align: Align(2 bytes),
-                       randomization_seed: 9885373149222004003,
                    },
                ],
            },
@@ -159,7 +156,6 @@ error: layout_of(SignedAroundZero) = Layout {
                        uninhabited: false,
                        max_repr_align: None,
                        unadjusted_abi_align: Align(2 bytes),
-                       randomization_seed: 2684536712112553499,
                    },
                    VariantLayout {
                        size: Size(2 bytes),
@@ -175,7 +171,6 @@ error: layout_of(SignedAroundZero) = Layout {
                        uninhabited: false,
                        max_repr_align: None,
                        unadjusted_abi_align: Align(2 bytes),
-                       randomization_seed: 2684536712112553499,
                    },
                    VariantLayout {
                        size: Size(2 bytes),
@@ -191,7 +186,6 @@ error: layout_of(SignedAroundZero) = Layout {
                        uninhabited: false,
                        max_repr_align: None,
                        unadjusted_abi_align: Align(2 bytes),
-                       randomization_seed: 2684536712112553499,
                    },
                ],
            },
