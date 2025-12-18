@@ -1,17 +1,14 @@
-error[E0391]: cycle detected when computing generics of `foo`
+error: failed to resolve delegation callee
+  --> $DIR/ice-issue-124347.rs:5:18
+   |
+LL |     reuse Trait::foo { &self.0 }
+   |                  ^^^
+
+error: failed to resolve delegation callee
   --> $DIR/ice-issue-124347.rs:9:7
    |
 LL | reuse foo;
    |       ^^^
-   |
-   = note: ...which immediately requires computing generics of `foo` again
-note: cycle used when checking that `foo` is well-formed
-  --> $DIR/ice-issue-124347.rs:9:7
-   |
-LL | reuse foo;
-   |       ^^^
-   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
-error: aborting due to 1 previous error
+error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0391`.
