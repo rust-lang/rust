@@ -2,9 +2,10 @@
 
 use rustc_hir::LangItem;
 use rustc_hir::attrs::PeImportNameType;
+use rustc_middle::bug;
+use rustc_middle::mir::interpret::{GlobalAlloc, PointerArithmetic, Scalar};
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::{self, Instance, ScalarInt, TyCtxt};
-use rustc_middle::{bug, span_bug};
 use rustc_session::cstore::{DllCallingConvention, DllImport};
 use rustc_span::Span;
 use rustc_target::spec::{Abi, Env, Os, Target};
@@ -148,7 +149,6 @@ pub(crate) fn shift_mask_val<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
 pub fn asm_const_to_str<'tcx>(
     tcx: TyCtxt<'tcx>,
-    sp: Span,
     scalar: ScalarInt,
     ty_and_layout: TyAndLayout<'tcx>,
 ) -> String {
@@ -163,7 +163,34 @@ pub fn asm_const_to_str<'tcx>(
             ty::IntTy::I128 => (value as i128).to_string(),
             ty::IntTy::Isize => unreachable!(),
         },
-        _ => span_bug!(sp, "asm const has bad type {}", ty_and_layout.ty),
+        // For unsigned integers or pointers without provenance, just print the unsigned value
+        _ => value.to_string(),
+    }
+}
+
+/// "Clean" a const pointer by removing values where the resulting ASM will not be
+/// `<symbol> + <offset>`.
+///
+/// These values are converted to `ScalarInt`.
+pub fn asm_const_ptr_clean<'tcx>(tcx: TyCtxt<'tcx>, scalar: Scalar) -> Scalar {
+    let Scalar::Ptr(ptr, _) = scalar else {
+        return scalar;
+    };
+    let (prov, offset) = ptr.prov_and_relative_offset();
+    let global_alloc = tcx.global_alloc(prov.alloc_id());
+    match global_alloc {
+        GlobalAlloc::TypeId { .. } => {
+            // `TypeId` provenances are not a thing in codegen. Just erase and replace with scalar offset.
+            Scalar::from_u64(offset.bytes())
+        }
+        GlobalAlloc::Memory(alloc) if alloc.inner().len() == 0 => {
+            // ZST const allocations don't actually get global defined when lowered.
+            // Turn them into integer without provenances now.
+            let val = alloc.inner().align.bytes().wrapping_add(offset.bytes());
+            Scalar::from_target_usize(tcx.truncate_to_target_usize(val), &tcx)
+        }
+        // Other types of `GlobalAlloc` are fine.
+        _ => scalar,
     }
 }
 

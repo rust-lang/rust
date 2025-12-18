@@ -104,7 +104,6 @@ pub(crate) fn codegen_inline_asm_terminator<'tcx>(
 
                 let value = rustc_codegen_ssa::common::asm_const_to_str(
                     fx.tcx,
-                    span,
                     scalar.assert_scalar_int(),
                     fx.layout_of(ty),
                 );
