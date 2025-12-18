@@ -32,7 +32,7 @@ fn main() {
 
 // CHECK: @.offload_sizes._kernel_1 = private unnamed_addr constant [1 x i64] [i64 1024]
 // CHECK: @.offload_maptypes._kernel_1 = private unnamed_addr constant [1 x i64] [i64 35]
-// CHECK: @._kernel_1.region_id = internal unnamed_addr constant i8 0
+// CHECK: @._kernel_1.region_id = internal constant i8 0
 // CHECK: @.offloading.entry_name._kernel_1 = internal unnamed_addr constant [10 x i8] c"_kernel_1\00", section ".llvm.rodata.offloading", align 1
 // CHECK: @.offloading.entry._kernel_1 = internal constant %struct.__tgt_offload_entry { i64 0, i16 1, i16 1, i32 0, ptr @._kernel_1.region_id, ptr @.offloading.entry_name._kernel_1, i64 0, i64 0, ptr null }, section "llvm_offload_entries", align 8
 

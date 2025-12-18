@@ -338,7 +338,7 @@ pub(crate) fn gen_define_handling<'ll>(
 
     let name = format!(".{symbol}.region_id");
     let initializer = cx.get_const_i8(0);
-    let region_id = add_unnamed_global(&cx, &name, initializer, WeakAnyLinkage);
+    let region_id = add_global(&cx, &name, initializer, WeakAnyLinkage);
 
     let c_entry_name = CString::new(symbol.clone()).unwrap();
     let c_val = c_entry_name.as_bytes_with_nul();
