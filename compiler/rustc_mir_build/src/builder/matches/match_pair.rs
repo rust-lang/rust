@@ -343,6 +343,12 @@ impl<'tcx> MatchPairTree<'tcx> {
 
         if let Some(testable_case) = testable_case {
             // This pattern is refutable, so push a new match-pair node.
+            //
+            // Note: unless test_case is TestCase::Or, place must not be None.
+            // This means that the closure capture analysis in
+            // rustc_hir_typeck::upvar, and in particular the pattern handling
+            // code of ExprUseVisitor, must capture all of the places we'll use.
+            // Make sure to keep these two parts in sync!
             match_pairs.push(MatchPairTree {
                 place,
                 testable_case,
