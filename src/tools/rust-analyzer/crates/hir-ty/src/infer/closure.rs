@@ -13,7 +13,7 @@ use rustc_type_ir::{
     ClosureArgs, ClosureArgsParts, CoroutineArgs, CoroutineArgsParts, CoroutineClosureArgs,
     CoroutineClosureArgsParts, Interner, TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
     TypeVisitor,
-    inherent::{BoundExistentialPredicates, GenericArgs as _, IntoKind, SliceLike, Ty as _},
+    inherent::{BoundExistentialPredicates, GenericArgs as _, IntoKind, Ty as _},
 };
 use tracing::debug;
 
@@ -77,11 +77,11 @@ impl<'db> InferenceContext<'_, 'db> {
         let (id, ty, resume_yield_tys) = match closure_kind {
             ClosureKind::Coroutine(_) => {
                 let yield_ty = self.table.next_ty_var();
-                let resume_ty = liberated_sig.inputs().get(0).unwrap_or(self.types.unit);
+                let resume_ty = liberated_sig.inputs().first().copied().unwrap_or(self.types.unit);
 
                 // FIXME: Infer the upvars later.
                 let parts = CoroutineArgsParts {
-                    parent_args,
+                    parent_args: parent_args.as_slice(),
                     kind_ty: self.types.unit,
                     resume_ty,
                     yield_ty,
@@ -119,7 +119,7 @@ impl<'db> InferenceContext<'_, 'db> {
                 };
                 // FIXME: Infer the kind later if needed.
                 let parts = ClosureArgsParts {
-                    parent_args,
+                    parent_args: parent_args.as_slice(),
                     closure_kind_ty: Ty::from_closure_kind(
                         interner,
                         expected_kind.unwrap_or(rustc_type_ir::ClosureKind::Fn),
@@ -165,16 +165,13 @@ impl<'db> InferenceContext<'_, 'db> {
                 let closure_args = CoroutineClosureArgs::new(
                     interner,
                     CoroutineClosureArgsParts {
-                        parent_args,
+                        parent_args: parent_args.as_slice(),
                         closure_kind_ty,
                         signature_parts_ty: Ty::new_fn_ptr(
                             interner,
                             bound_sig.map_bound(|sig| {
                                 interner.mk_fn_sig(
-                                    [
-                                        resume_ty,
-                                        Ty::new_tup_from_iter(interner, sig.inputs().iter()),
-                                    ],
+                                    [resume_ty, Ty::new_tup(interner, sig.inputs())],
                                     Ty::new_tup(interner, &[bound_yield_ty, bound_return_ty]),
                                     sig.c_variadic,
                                     sig.safety,
@@ -195,7 +192,7 @@ impl<'db> InferenceContext<'_, 'db> {
 
         // Now go through the argument patterns
         for (arg_pat, arg_ty) in args.iter().zip(bound_sig.skip_binder().inputs()) {
-            self.infer_top_pat(*arg_pat, arg_ty, None);
+            self.infer_top_pat(*arg_pat, *arg_ty, None);
         }
 
         // FIXME: lift these out into a struct
@@ -668,7 +665,7 @@ impl<'db> InferenceContext<'_, 'db> {
         assert!(!expected_sig.skip_binder().has_vars_bound_above(rustc_type_ir::INNERMOST));
         let bound_sig = expected_sig.map_bound(|sig| {
             self.interner().mk_fn_sig(
-                sig.inputs(),
+                sig.inputs().iter().copied(),
                 sig.output(),
                 sig.c_variadic,
                 Safety::Safe,
@@ -744,9 +741,10 @@ impl<'db> InferenceContext<'_, 'db> {
 
             // The liberated version of this signature should be a subtype
             // of the liberated form of the expectation.
-            for (supplied_ty, expected_ty) in
-                iter::zip(supplied_sig.inputs(), expected_sigs.liberated_sig.inputs())
-            {
+            for (supplied_ty, expected_ty) in iter::zip(
+                supplied_sig.inputs().iter().copied(),
+                expected_sigs.liberated_sig.inputs().iter().copied(),
+            ) {
                 // Check that E' = S'.
                 let cause = ObligationCause::new();
                 let InferOk { value: (), obligations } =
@@ -765,7 +763,8 @@ impl<'db> InferenceContext<'_, 'db> {
 
             let inputs = supplied_sig
                 .inputs()
-                .into_iter()
+                .iter()
+                .copied()
                 .map(|ty| table.infer_ctxt.resolve_vars_if_possible(ty));
 
             expected_sigs.liberated_sig = table.interner().mk_fn_sig(

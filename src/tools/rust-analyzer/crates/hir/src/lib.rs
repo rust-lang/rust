@@ -2290,7 +2290,7 @@ impl Function {
             .inputs()
             .iter()
             .enumerate()
-            .map(|(idx, ty)| {
+            .map(|(idx, &ty)| {
                 let ty = Type { env: environment, ty };
                 Param { func: Callee::Def(CallableDefId::FunctionId(self.id)), ty, idx }
             })
@@ -2317,7 +2317,7 @@ impl Function {
             .iter()
             .enumerate()
             .skip(skip)
-            .map(|(idx, ty)| {
+            .map(|(idx, &ty)| {
                 let ty = Type { env: environment, ty };
                 Param { func: Callee::Def(CallableDefId::FunctionId(self.id)), ty, idx }
             })
@@ -2341,7 +2341,7 @@ impl Function {
             .iter()
             .enumerate()
             .skip(skip)
-            .map(|(idx, ty)| {
+            .map(|(idx, &ty)| {
                 let ty = Type { env: environment, ty };
                 Param { func: Callee::Def(CallableDefId::FunctionId(self.id)), ty, idx }
             })

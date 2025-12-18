@@ -1219,7 +1219,7 @@ impl<'db> InferenceContext<'_, 'db> {
             CoroutineArgs::new(
                 self.interner(),
                 CoroutineArgsParts {
-                    parent_args,
+                    parent_args: parent_args.as_slice(),
                     kind_ty: self.types.unit,
                     // rustc uses a special lang item type for the resume ty. I don't believe this can cause us problems.
                     resume_ty: self.types.unit,

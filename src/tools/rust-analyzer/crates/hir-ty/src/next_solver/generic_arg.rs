@@ -574,9 +574,8 @@ impl<'db> GenericArgs<'db> {
         // FIXME: should use `ClosureSubst` when possible
         match self.as_slice() {
             [parent_args @ .., closure_kind_ty, sig_ty, tupled_upvars_ty] => {
-                let interner = DbInterner::conjure();
                 rustc_type_ir::ClosureArgsParts {
-                    parent_args: GenericArgs::new_from_iter(interner, parent_args.iter().cloned()),
+                    parent_args,
                     closure_sig_as_fn_ptr_ty: sig_ty.expect_ty(),
                     closure_kind_ty: closure_kind_ty.expect_ty(),
                     tupled_upvars_ty: tupled_upvars_ty.expect_ty(),
@@ -690,7 +689,7 @@ impl<'db> rustc_type_ir::inherent::GenericArgs<DbInterner<'db>> for GenericArgs<
                         interner,
                         TyKind::FnPtr(
                             sig_tys.map_bound(|s| {
-                                let inputs = Ty::new_tup_from_iter(interner, s.inputs().iter());
+                                let inputs = Ty::new_tup(interner, s.inputs());
                                 let output = s.output();
                                 FnSigTys {
                                     inputs_and_output: Tys::new_from_iter(
@@ -705,7 +704,7 @@ impl<'db> rustc_type_ir::inherent::GenericArgs<DbInterner<'db>> for GenericArgs<
                     _ => unreachable!("sig_ty should be last"),
                 };
                 rustc_type_ir::ClosureArgsParts {
-                    parent_args: GenericArgs::new_from_iter(interner, parent_args.iter().cloned()),
+                    parent_args,
                     closure_sig_as_fn_ptr_ty: sig_ty,
                     closure_kind_ty: closure_kind_ty.expect_ty(),
                     tupled_upvars_ty: tupled_upvars_ty.expect_ty(),
@@ -728,10 +727,7 @@ impl<'db> rustc_type_ir::inherent::GenericArgs<DbInterner<'db>> for GenericArgs<
                 tupled_upvars_ty,
                 coroutine_captures_by_ref_ty,
             ] => rustc_type_ir::CoroutineClosureArgsParts {
-                parent_args: GenericArgs::new_from_iter(
-                    DbInterner::conjure(),
-                    parent_args.iter().cloned(),
-                ),
+                parent_args,
                 closure_kind_ty: closure_kind_ty.expect_ty(),
                 signature_parts_ty: signature_parts_ty.expect_ty(),
                 tupled_upvars_ty: tupled_upvars_ty.expect_ty(),
@@ -742,11 +738,10 @@ impl<'db> rustc_type_ir::inherent::GenericArgs<DbInterner<'db>> for GenericArgs<
     }
 
     fn split_coroutine_args(self) -> rustc_type_ir::CoroutineArgsParts<DbInterner<'db>> {
-        let interner = DbInterner::conjure();
         match self.as_slice() {
             [parent_args @ .., kind_ty, resume_ty, yield_ty, return_ty, tupled_upvars_ty] => {
                 rustc_type_ir::CoroutineArgsParts {
-                    parent_args: GenericArgs::new_from_iter(interner, parent_args.iter().cloned()),
+                    parent_args,
                     kind_ty: kind_ty.expect_ty(),
                     resume_ty: resume_ty.expect_ty(),
                     yield_ty: yield_ty.expect_ty(),

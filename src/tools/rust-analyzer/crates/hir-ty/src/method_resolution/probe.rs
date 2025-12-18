@@ -1977,7 +1977,7 @@ impl<'a, 'db, Choice: ProbeChoice<'db>> ProbeContext<'a, 'db, Choice> {
             && self.mode == Mode::MethodCall
         {
             let sig = self.xform_method_sig(item, args);
-            (sig.inputs().as_slice()[0], Some(sig.output()))
+            (sig.inputs()[0], Some(sig.output()))
         } else {
             (impl_ty, None)
         }

@@ -1012,7 +1012,7 @@ impl<'db> Interner for DbInterner<'db> {
     type Span = Span;
 
     type GenericArgs = GenericArgs<'db>;
-    type GenericArgsSlice = GenericArgs<'db>;
+    type GenericArgsSlice = &'db [GenericArg<'db>];
     type GenericArg = GenericArg<'db>;
 
     type Term = Term<'db>;
@@ -1053,7 +1053,7 @@ impl<'db> Interner for DbInterner<'db> {
 
     type Ty = Ty<'db>;
     type Tys = Tys<'db>;
-    type FnInputTys = Tys<'db>;
+    type FnInputTys = &'db [Ty<'db>];
     type ParamTy = ParamTy;
     type BoundTy = BoundTy;
     type PlaceholderTy = PlaceholderTy;
@@ -1261,8 +1261,7 @@ impl<'db> Interner for DbInterner<'db> {
             self,
             args.as_slice()[0..trait_generics.own_params.len()].iter().cloned(),
         );
-        let alias_args =
-            GenericArgs::new_from_iter(self, args.iter().skip(trait_generics.own_params.len()));
+        let alias_args = &args.as_slice()[trait_generics.own_params.len()..];
         (TraitRef::new_from_args(self, trait_def_id.try_into().unwrap(), trait_args), alias_args)
     }
 

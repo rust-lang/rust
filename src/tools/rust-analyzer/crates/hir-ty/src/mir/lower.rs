@@ -2147,7 +2147,7 @@ pub fn mir_body_for_closure_query<'db>(
     };
     let resolver_guard = ctx.resolver.update_to_inner_scope(db, owner, expr);
     let current = ctx.lower_params_and_bindings(
-        args.iter().zip(sig.skip_binder().inputs().iter()).map(|(it, y)| (*it, y)),
+        args.iter().zip(sig.skip_binder().inputs().iter()).map(|(it, y)| (*it, *y)),
         None,
         |_| true,
     )?;
@@ -2289,7 +2289,7 @@ pub fn lower_to_mir<'db>(
             if let DefWithBodyId::FunctionId(fid) = owner {
                 let callable_sig =
                     db.callable_item_signature(fid.into()).instantiate_identity().skip_binder();
-                let mut params = callable_sig.inputs().iter();
+                let mut params = callable_sig.inputs().iter().copied();
                 let self_param = body.self_param.and_then(|id| Some((id, params.next()?)));
                 break 'b ctx.lower_params_and_bindings(
                     body.params.iter().zip(params).map(|(it, y)| (*it, y)),

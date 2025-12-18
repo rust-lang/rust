@@ -1280,10 +1280,7 @@ impl<'db> Tys<'db> {
 
 impl<'db> rustc_type_ir::inherent::Tys<DbInterner<'db>> for Tys<'db> {
     fn inputs(self) -> <DbInterner<'db> as Interner>::FnInputTys {
-        Tys::new_from_iter(
-            DbInterner::conjure(),
-            self.as_slice().split_last().unwrap().1.iter().copied(),
-        )
+        self.as_slice().split_last().unwrap().1
     }
 
     fn output(self) -> <DbInterner<'db> as Interner>::Ty {
