@@ -31,10 +31,7 @@ pub enum InlineAsmOperandRef<'tcx, B: BackendTypes + ?Sized> {
         /// Type of the constant. This is needed to extract width and signedness.
         ty: Ty<'tcx>,
     },
-    SymFn {
-        instance: Instance<'tcx>,
-    },
-    SymStatic {
+    SymThreadLocalStatic {
         def_id: DefId,
     },
     Label {
@@ -49,10 +46,7 @@ pub enum GlobalAsmOperandRef<'tcx> {
         /// Type of the constant. This is needed to extract width and signedness.
         ty: Ty<'tcx>,
     },
-    SymFn {
-        instance: Instance<'tcx>,
-    },
-    SymStatic {
+    SymThreadLocalStatic {
         def_id: DefId,
     },
 }
