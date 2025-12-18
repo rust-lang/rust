@@ -107,8 +107,14 @@ fn codegen_global_asm_inner<'tcx>(
             InlineAsmTemplatePiece::String(ref s) => global_asm.push_str(s),
             InlineAsmTemplatePiece::Placeholder { operand_idx, modifier: _, span } => {
                 match operands[operand_idx] {
-                    GlobalAsmOperandRef::Const { ref string } => {
-                        global_asm.push_str(string);
+                    GlobalAsmOperandRef::Const { value, ty } => {
+                        let string = rustc_codegen_ssa::common::asm_const_to_str(
+                            tcx,
+                            span,
+                            value,
+                            FullyMonomorphizedLayoutCx(tcx).layout_of(ty),
+                        );
+                        global_asm.push_str(&string);
                     }
                     GlobalAsmOperandRef::SymFn { instance } => {
                         if cfg!(not(feature = "inline_asm_sym")) {

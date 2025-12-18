@@ -1268,13 +1268,14 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 }
                 mir::InlineAsmOperand::Const { ref value } => {
                     let const_value = self.eval_mir_constant(value);
-                    let string = common::asm_const_to_str(
-                        bx.tcx(),
-                        span,
-                        const_value,
-                        bx.layout_of(value.ty()),
-                    );
-                    InlineAsmOperandRef::Const { string }
+                    let mir::ConstValue::Scalar(scalar) = const_value else {
+                        span_bug!(
+                            span,
+                            "expected Scalar for promoted asm const, but got {:#?}",
+                            const_value
+                        )
+                    };
+                    InlineAsmOperandRef::Const { value: scalar, ty: value.ty() }
                 }
                 mir::InlineAsmOperand::SymFn { ref value } => {
                     let const_ = self.monomorphize(value.const_);

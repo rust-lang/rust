@@ -21,12 +21,12 @@ use rustc_middle::middle::debugger_visualizer::DebuggerVisualizerFile;
 use rustc_middle::middle::dependency_format::Dependencies;
 use rustc_middle::middle::exported_symbols::{self, SymbolExportKind};
 use rustc_middle::middle::lang_items;
-use rustc_middle::mir::BinOp;
-use rustc_middle::mir::interpret::ErrorHandled;
+use rustc_middle::mir::interpret::{ErrorHandled, Scalar};
 use rustc_middle::mir::mono::{CodegenUnit, CodegenUnitNameBuilder, MonoItem, MonoItemPartitions};
+use rustc_middle::mir::{BinOp, ConstValue};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::layout::{HasTyCtxt, HasTypingEnv, LayoutOf, TyAndLayout};
-use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
+use rustc_middle::ty::{self, Instance, Ty, TyCtxt, UintTy};
 use rustc_middle::{bug, span_bug};
 use rustc_session::Session;
 use rustc_session::config::{self, CrateType, EntryFnType};
@@ -411,20 +411,23 @@ where
                         Ok(const_value) => {
                             let ty =
                                 cx.tcx().typeck_body(anon_const.body).node_type(anon_const.hir_id);
-                            let string = common::asm_const_to_str(
-                                cx.tcx(),
-                                *op_sp,
-                                const_value,
-                                cx.layout_of(ty),
-                            );
-                            GlobalAsmOperandRef::Const { string }
+                            let ConstValue::Scalar(scalar) = const_value else {
+                                span_bug!(
+                                    *op_sp,
+                                    "expected Scalar for promoted asm const, but got {:#?}",
+                                    const_value
+                                )
+                            };
+                            GlobalAsmOperandRef::Const { value: scalar, ty }
                         }
                         Err(ErrorHandled::Reported { .. }) => {
                             // An error has already been reported and
                             // compilation is guaranteed to fail if execution
-                            // hits this path. So an empty string instead of
-                            // a stringified constant value will suffice.
-                            GlobalAsmOperandRef::Const { string: String::new() }
+                            // hits this path. So anything will suffice.
+                            GlobalAsmOperandRef::Const {
+                                value: Scalar::from_u32(0),
+                                ty: Ty::new_uint(cx.tcx(), UintTy::U32),
+                            }
                         }
                         Err(ErrorHandled::TooGeneric(_)) => {
                             span_bug!(*op_sp, "asm const cannot be resolved; too generic")

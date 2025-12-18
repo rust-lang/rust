@@ -1,15 +1,14 @@
 use rustc_abi::{BackendRepr, Float, Integer, Primitive, RegKind};
 use rustc_hir::attrs::{InstructionSetAttr, Linkage};
 use rustc_middle::mir::mono::{MonoItemData, Visibility};
-use rustc_middle::mir::{InlineAsmOperand, START_BLOCK};
+use rustc_middle::mir::{self, InlineAsmOperand, START_BLOCK};
 use rustc_middle::ty::layout::{FnAbiOf, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{Instance, Ty, TyCtxt, TypeVisitableExt};
-use rustc_middle::{bug, ty};
+use rustc_middle::{bug, span_bug, ty};
 use rustc_span::sym;
 use rustc_target::callconv::{ArgAbi, FnAbi, PassMode};
 use rustc_target::spec::{Arch, BinaryFormat};
 
-use crate::common;
 use crate::mir::AsmCodegenMethods;
 use crate::traits::GlobalAsmOperandRef;
 
@@ -76,15 +75,15 @@ fn inline_to_global_operand<'a, 'tcx, Cx: LayoutOf<'tcx, LayoutOfResult = TyAndL
                 cx.typing_env(),
                 ty::EarlyBinder::bind(value.ty()),
             );
+            let mir::ConstValue::Scalar(scalar) = const_value else {
+                span_bug!(
+                    value.span,
+                    "expected Scalar for promoted asm const, but got {:#?}",
+                    const_value
+                )
+            };
 
-            let string = common::asm_const_to_str(
-                cx.tcx(),
-                value.span,
-                const_value,
-                cx.layout_of(mono_type),
-            );
-
-            GlobalAsmOperandRef::Const { string }
+            GlobalAsmOperandRef::Const { value: scalar, ty: mono_type }
         }
         InlineAsmOperand::SymFn { value } => {
             let mono_type = instance.instantiate_mir_and_normalize_erasing_regions(

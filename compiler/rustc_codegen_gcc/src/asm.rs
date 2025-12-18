@@ -12,6 +12,7 @@ use rustc_codegen_ssa::traits::{
 };
 use rustc_middle::bug;
 use rustc_middle::ty::Instance;
+use rustc_middle::ty::layout::LayoutOf;
 use rustc_span::Span;
 use rustc_target::asm::*;
 
@@ -303,8 +304,9 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                     }
                 }
 
-                InlineAsmOperandRef::Const { ref string } => {
-                    constants_len += string.len() + att_dialect as usize;
+                InlineAsmOperandRef::Const { .. } => {
+                    // We don't know the size at this point, just some estimate.
+                    constants_len += 20;
                 }
 
                 InlineAsmOperandRef::SymFn { instance } => {
@@ -453,7 +455,7 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                         template_str.push_str(escaped_char);
                     }
                 }
-                InlineAsmTemplatePiece::Placeholder { operand_idx, modifier, span: _ } => {
+                InlineAsmTemplatePiece::Placeholder { operand_idx, modifier, span } => {
                     let mut push_to_template = |modifier, gcc_idx| {
                         use std::fmt::Write;
 
@@ -511,8 +513,15 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                             template_str.push_str(name);
                         }
 
-                        InlineAsmOperandRef::Const { ref string } => {
-                            template_str.push_str(string);
+                        InlineAsmOperandRef::Const { value, ty } => {
+                            // Const operands get injected directly into the template
+                            let string = rustc_codegen_ssa::common::asm_const_to_str(
+                                self.tcx,
+                                span,
+                                value,
+                                self.layout_of(ty),
+                            );
+                            template_str.push_str(&string);
                         }
 
                         InlineAsmOperandRef::Label { label } => {
@@ -891,13 +900,19 @@ impl<'gcc, 'tcx> AsmCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
                             .unwrap_or(string.len());
                     }
                 }
-                InlineAsmTemplatePiece::Placeholder { operand_idx, modifier: _, span: _ } => {
+                InlineAsmTemplatePiece::Placeholder { operand_idx, modifier: _, span } => {
                     match operands[operand_idx] {
-                        GlobalAsmOperandRef::Const { ref string } => {
+                        GlobalAsmOperandRef::Const { value, ty } => {
                             // Const operands get injected directly into the
                             // template. Note that we don't need to escape %
                             // here unlike normal inline assembly.
-                            template_str.push_str(string);
+                            let string = rustc_codegen_ssa::common::asm_const_to_str(
+                                self.tcx,
+                                span,
+                                value,
+                                self.layout_of(ty),
+                            );
+                            template_str.push_str(&string);
                         }
 
                         GlobalAsmOperandRef::SymFn { instance } => {
