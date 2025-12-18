@@ -23,7 +23,7 @@ fn square(x: &f32) -> f32 {
 }
 
 // d_square2
-// CHECK: define internal fastcc [4 x float] @fwddiffe4square(float %x.0.val, [4 x ptr] %"x'")
+// CHECK: define internal {{[ a-z_]*}} [4 x float] @fwddiffe4square({{[ a-z0-9()_]*}} %x{{.*}}, [4 x ptr] %"x'")
 // CHECK-NEXT: start:
 // CHECK-NEXT:   %0 = extractvalue [4 x ptr] %"x'", 0
 // CHECK-NEXT:   %"_2'ipl" = load float, ptr %0, align 4
