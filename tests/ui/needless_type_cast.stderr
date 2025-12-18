@@ -1,5 +1,5 @@
 error: this binding is defined as `u8` but is always cast to `i32`
-  --> tests/ui/needless_type_cast.rs:13:12
+  --> tests/ui/needless_type_cast.rs:17:12
    |
 LL |     let a: u8 = 10;
    |            ^^ help: consider defining it as: `i32`
@@ -8,64 +8,154 @@ LL |     let a: u8 = 10;
    = help: to override `-D warnings` add `#[allow(clippy::needless_type_cast)]`
 
 error: this binding is defined as `u8` but is always cast to `usize`
-  --> tests/ui/needless_type_cast.rs:33:12
+  --> tests/ui/needless_type_cast.rs:37:12
    |
 LL |     let f: u8 = 1;
    |            ^^ help: consider defining it as: `usize`
 
 error: this binding is defined as `u8` but is always cast to `i32`
-  --> tests/ui/needless_type_cast.rs:39:12
+  --> tests/ui/needless_type_cast.rs:43:12
    |
 LL |     let a: u8 = 10;
    |            ^^ help: consider defining it as: `i32`
 
 error: this binding is defined as `u8` but is always cast to `i32`
-  --> tests/ui/needless_type_cast.rs:52:12
+  --> tests/ui/needless_type_cast.rs:56:12
    |
 LL |     let a: u8 = 10;
    |            ^^ help: consider defining it as: `i32`
 
 error: this binding is defined as `u8` but is always cast to `i32`
-  --> tests/ui/needless_type_cast.rs:59:12
+  --> tests/ui/needless_type_cast.rs:63:12
    |
 LL |     let a: u8 = 10;
    |            ^^ help: consider defining it as: `i32`
 
 error: this binding is defined as `u8` but is always cast to `i32`
-  --> tests/ui/needless_type_cast.rs:66:12
+  --> tests/ui/needless_type_cast.rs:70:12
    |
 LL |     let a: u8 = 10;
    |            ^^ help: consider defining it as: `i32`
 
 error: this binding is defined as `u8` but is always cast to `i32`
-  --> tests/ui/needless_type_cast.rs:77:12
+  --> tests/ui/needless_type_cast.rs:81:12
    |
 LL |     let a: u8 = 10;
    |            ^^ help: consider defining it as: `i32`
 
 error: this binding is defined as `u8` but is always cast to `i32`
-  --> tests/ui/needless_type_cast.rs:99:16
+  --> tests/ui/needless_type_cast.rs:103:16
    |
 LL |         let a: u8 = 10;
    |                ^^ help: consider defining it as: `i32`
 
 error: this binding is defined as `u8` but is always cast to `i32`
-  --> tests/ui/needless_type_cast.rs:107:12
+  --> tests/ui/needless_type_cast.rs:111:12
    |
 LL |     let a: u8 = 10;
    |            ^^ help: consider defining it as: `i32`
 
 error: this binding is defined as `u8` but is always cast to `i32`
-  --> tests/ui/needless_type_cast.rs:116:12
+  --> tests/ui/needless_type_cast.rs:120:12
    |
 LL |     let a: u8 = 10;
    |            ^^ help: consider defining it as: `i32`
 
 error: this binding is defined as `u8` but is always cast to `i32`
-  --> tests/ui/needless_type_cast.rs:122:12
+  --> tests/ui/needless_type_cast.rs:126:12
    |
 LL |     let a: u8 = 10;
    |            ^^ help: consider defining it as: `i32`
 
-error: aborting due to 11 previous errors
+error: this binding is defined as `usize` but is always cast to `u64`
+  --> tests/ui/needless_type_cast.rs:191:15
+   |
+LL |     let size: usize = size_of::<u32>();
+   |               ^^^^^
+   |
+help: consider defining it as `u64` and casting the initializer
+   |
+LL -     let size: usize = size_of::<u32>();
+LL +     let size: u64 = size_of::<u32>() as u64;
+   |
+
+error: this binding is defined as `u8` but is always cast to `i32`
+  --> tests/ui/needless_type_cast.rs:199:12
+   |
+LL |     let a: u8 = 10u8;
+   |            ^^
+   |
+help: consider defining it as `i32` and casting the initializer
+   |
+LL -     let a: u8 = 10u8;
+LL +     let a: i32 = 10u8 as i32;
+   |
+
+error: this binding is defined as `i8` but is always cast to `i32`
+  --> tests/ui/needless_type_cast.rs:207:12
+   |
+LL |     let a: i8 = -10;
+   |            ^^ help: consider defining it as: `i32`
+
+error: this binding is defined as `i8` but is always cast to `i32`
+  --> tests/ui/needless_type_cast.rs:215:12
+   |
+LL |     let a: i8 = -10i8;
+   |            ^^
+   |
+help: consider defining it as `i32` and casting the initializer
+   |
+LL -     let a: i8 = -10i8;
+LL +     let a: i32 = -10i8 as i32;
+   |
+
+error: this binding is defined as `u8` but is always cast to `i32`
+  --> tests/ui/needless_type_cast.rs:223:12
+   |
+LL |     let a: u8 = 10 + 5;
+   |            ^^ help: consider defining it as: `i32`
+
+error: this binding is defined as `u8` but is always cast to `i32`
+  --> tests/ui/needless_type_cast.rs:230:12
+   |
+LL |     let a: u8 = returns_u8();
+   |            ^^
+   |
+help: consider defining it as `i32` and casting the initializer
+   |
+LL -     let a: u8 = returns_u8();
+LL +     let a: i32 = returns_u8() as i32;
+   |
+
+error: this binding is defined as `u8` but is always cast to `i32`
+  --> tests/ui/needless_type_cast.rs:237:12
+   |
+LL |     let a: u8 = 2u8.saturating_add(3);
+   |            ^^
+   |
+help: consider defining it as `i32` and casting the initializer
+   |
+LL -     let a: u8 = 2u8.saturating_add(3);
+LL +     let a: i32 = 2u8.saturating_add(3) as i32;
+   |
+
+error: this binding is defined as `u8` but is always cast to `i32`
+  --> tests/ui/needless_type_cast.rs:245:12
+   |
+LL |     let a: u8 = X;
+   |            ^^
+   |
+help: consider defining it as `i32` and casting the initializer
+   |
+LL -     let a: u8 = X;
+LL +     let a: i32 = X as i32;
+   |
+
+error: this binding is defined as `u8` but is always cast to `i32`
+  --> tests/ui/needless_type_cast.rs:266:12
+   |
+LL |     let a: u8 = 10 + 5;
+   |            ^^ help: consider defining it as: `i32`
+
+error: aborting due to 20 previous errors
 
