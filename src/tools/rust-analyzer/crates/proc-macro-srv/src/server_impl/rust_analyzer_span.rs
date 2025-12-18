@@ -163,12 +163,9 @@ impl server::Span for RaSpanServer {
                 start,
                 end,
             });
-            self.cli_to_server
-                .clone()
-                .unwrap()
-                .recv()
-                .and_then(|SubResponse::SourceTextResult { text }| Ok(text))
-                .expect("REASON")
+            match self.cli_to_server.as_ref()?.recv().ok()? {
+                SubResponse::SourceTextResult { text } => text,
+            }
         } else {
             None
         }

@@ -30,7 +30,7 @@ use crate::{
 pub mod msg;
 
 pub trait ClientCallbacks {
-    fn handle_sub_request(&mut self, id: u64, req: SubRequest) -> Result<SubResponse, ServerError>;
+    fn handle_sub_request(&mut self, req: SubRequest) -> Result<SubResponse, ServerError>;
 }
 
 pub fn run_conversation<C: Codec>(
@@ -65,7 +65,7 @@ pub fn run_conversation<C: Codec>(
 
         match (msg.kind, msg.payload) {
             (Kind::SubRequest, Payload::SubRequest(sr)) => {
-                let resp = callbacks.handle_sub_request(id, sr)?;
+                let resp = callbacks.handle_sub_request(sr)?;
                 let reply =
                     Envelope { id, kind: Kind::SubResponse, payload: Payload::SubResponse(resp) };
                 let encoded = C::encode(&reply).map_err(wrap_encode)?;
@@ -104,19 +104,14 @@ pub(crate) fn version_check(srv: &ProcMacroServerProcess) -> Result<u32, ServerE
 
     struct NoCallbacks;
     impl ClientCallbacks for NoCallbacks {
-        fn handle_sub_request(
-            &mut self,
-            _id: u64,
-            _req: SubRequest,
-        ) -> Result<SubResponse, ServerError> {
+        fn handle_sub_request(&mut self, _req: SubRequest) -> Result<SubResponse, ServerError> {
             Err(ServerError { message: "sub-request not supported here".into(), io: None })
         }
     }
 
     let mut callbacks = NoCallbacks;
 
-    let response_payload =
-        run_bidirectional(srv, (0, Kind::Request, request).into(), &mut callbacks)?;
+    let response_payload = run_request(srv, request, &mut callbacks)?;
 
     match response_payload {
         Payload::Response(Response::ApiVersionCheck(version)) => Ok(version),
@@ -135,19 +130,14 @@ pub(crate) fn enable_rust_analyzer_spans(
 
     struct NoCallbacks;
     impl ClientCallbacks for NoCallbacks {
-        fn handle_sub_request(
-            &mut self,
-            _id: u64,
-            _req: SubRequest,
-        ) -> Result<SubResponse, ServerError> {
+        fn handle_sub_request(&mut self, _req: SubRequest) -> Result<SubResponse, ServerError> {
             Err(ServerError { message: "sub-request not supported here".into(), io: None })
         }
     }
 
     let mut callbacks = NoCallbacks;
 
-    let response_payload =
-        run_bidirectional(srv, (0, Kind::Request, request).into(), &mut callbacks)?;
+    let response_payload = run_request(srv, request, &mut callbacks)?;
 
     match response_payload {
         Payload::Response(Response::SetConfig(ServerConfig { span_mode })) => Ok(span_mode),
@@ -165,19 +155,14 @@ pub(crate) fn find_proc_macros(
 
     struct NoCallbacks;
     impl ClientCallbacks for NoCallbacks {
-        fn handle_sub_request(
-            &mut self,
-            _id: u64,
-            _req: SubRequest,
-        ) -> Result<SubResponse, ServerError> {
+        fn handle_sub_request(&mut self, _req: SubRequest) -> Result<SubResponse, ServerError> {
             Err(ServerError { message: "sub-request not supported here".into(), io: None })
         }
     }
 
     let mut callbacks = NoCallbacks;
 
-    let response_payload =
-        run_bidirectional(srv, (0, Kind::Request, request).into(), &mut callbacks)?;
+    let response_payload = run_request(srv, request, &mut callbacks)?;
 
     match response_payload {
         Payload::Response(Response::ListMacros(it)) => Ok(it),
@@ -229,11 +214,7 @@ pub(crate) fn expand(
         db: &'de dyn SourceDatabase,
     }
     impl<'db> ClientCallbacks for Callbacks<'db> {
-        fn handle_sub_request(
-            &mut self,
-            _id: u64,
-            req: SubRequest,
-        ) -> Result<SubResponse, ServerError> {
+        fn handle_sub_request(&mut self, req: SubRequest) -> Result<SubResponse, ServerError> {
             match req {
                 SubRequest::SourceText { file_id, start, end } => {
                     let file = FileId::from_raw(file_id);
@@ -249,8 +230,7 @@ pub(crate) fn expand(
 
     let mut callbacks = Callbacks { db };
 
-    let response_payload =
-        run_bidirectional(&proc_macro.process, (0, Kind::Request, task).into(), &mut callbacks)?;
+    let response_payload = run_request(&proc_macro.process, task, &mut callbacks)?;
 
     match response_payload {
         Payload::Response(Response::ExpandMacro(it)) => Ok(it
@@ -279,18 +259,20 @@ pub(crate) fn expand(
     }
 }
 
-fn run_bidirectional(
+fn run_request(
     srv: &ProcMacroServerProcess,
-    msg: Envelope,
+    msg: Payload,
     callbacks: &mut dyn ClientCallbacks,
 ) -> Result<Payload, ServerError> {
     if let Some(server_error) = srv.exited() {
         return Err(server_error.clone());
     }
 
+    let id = srv.request_id();
+
     if srv.use_postcard() {
-        srv.run_bidirectional::<PostcardProtocol>(msg.id, msg.payload, callbacks)
+        srv.run_bidirectional::<PostcardProtocol>(id, msg, callbacks)
     } else {
-        srv.run_bidirectional::<JsonProtocol>(msg.id, msg.payload, callbacks)
+        srv.run_bidirectional::<JsonProtocol>(id, msg, callbacks)
     }
 }

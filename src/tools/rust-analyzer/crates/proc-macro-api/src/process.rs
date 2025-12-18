@@ -4,7 +4,10 @@ use std::{
     io::{self, BufRead, BufReader, Read, Write},
     panic::AssertUnwindSafe,
     process::{Child, ChildStdin, ChildStdout, Command, Stdio},
-    sync::{Arc, Mutex, OnceLock},
+    sync::{
+        Arc, Mutex, OnceLock,
+        atomic::{AtomicU64, Ordering},
+    },
 };
 
 use base_db::SourceDatabase;
@@ -33,6 +36,7 @@ pub(crate) struct ProcMacroServerProcess {
     protocol: Protocol,
     /// Populated when the server exits.
     exited: OnceLock<AssertUnwindSafe<ServerError>>,
+    next_request_id: AtomicU64,
 }
 
 #[derive(Debug, Clone)]
@@ -90,6 +94,7 @@ impl ProcMacroServerProcess {
                     version: 0,
                     protocol: protocol.clone(),
                     exited: OnceLock::new(),
+                    next_request_id: AtomicU64::new(1),
                 })
             };
             let mut srv = create_srv()?;
@@ -311,6 +316,10 @@ impl ProcMacroServerProcess {
                 writer, reader, buf, id, initial, callbacks,
             )
         })
+    }
+
+    pub(crate) fn request_id(&self) -> RequestId {
+        self.next_request_id.fetch_add(1, Ordering::Relaxed)
     }
 }
 
