@@ -318,6 +318,7 @@ mod replace_box;
 mod reserve_after_initialization;
 mod return_self_not_must_use;
 mod returns;
+mod same_length_and_capacity;
 mod same_name_method;
 mod self_named_constructors;
 mod semicolon_block;
@@ -855,6 +856,7 @@ pub fn register_lint_passes(store: &mut rustc_lint::LintStore, conf: &'static Co
         Box::new(|_| Box::new(volatile_composites::VolatileComposites)),
         Box::new(|_| Box::<replace_box::ReplaceBox>::default()),
         Box::new(move |_| Box::new(manual_ilog2::ManualIlog2::new(conf))),
+        Box::new(|_| Box::new(same_length_and_capacity::SameLengthAndCapacity)),
         // add late passes here, used by `cargo dev new_lint`
     ];
     store.late_passes.extend(late_lints);
