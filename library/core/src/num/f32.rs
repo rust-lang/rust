@@ -1477,17 +1477,20 @@ impl f32 {
         self.clamp(-limit, limit)
     }
 
-    /// Restrict a value to a certain range.
+    /// Restrict a value to a certain range, unless it is NaN.
     ///
     /// This is largely equal to `max`, `min`, or `clamp`, depending on whether the range is
-    /// `min..`, `..=max`, or `min..=max`, respectively. However, whereas `clamp` panics on NaN
-    /// values, this function treats them as unbounded, like `max` and `min`.
+    /// `min..`, `..=max`, or `min..=max`, respectively. However, unlike `max` and `min`, it will
+    /// panic if any bound is NaN.
+    ///
+    /// Note that this function returns NaN if the initial value was NaN as
+    /// well.
     ///
     /// Exclusive ranges are not permitted.
     ///
     /// # Panics
     ///
-    /// Panics on `min..=max` if `min > max`.
+    /// Panics on `min..=max` if `min > max`, or if any bound is NaN.
     ///
     /// # Examples
     ///
@@ -1497,7 +1500,7 @@ impl f32 {
     /// assert_eq!(0.0f32.clamp_to(-2.0..=1.0), 0.0);
     /// assert_eq!(2.0f32.clamp_to(..=1.0), 1.0);
     /// assert_eq!(5.0f32.clamp_to(7.0..), 7.0);
-    /// assert_eq!(4.0f32.clamp_to(1.0..=f32::NAN), 4.0);
+    /// assert!(f32::NAN.clamp_to(1.0..=2.0).is_nan());
     /// ```
     #[must_use]
     #[inline]
