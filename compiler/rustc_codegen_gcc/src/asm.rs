@@ -453,7 +453,7 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                         template_str.push_str(escaped_char);
                     }
                 }
-                InlineAsmTemplatePiece::Placeholder { operand_idx, modifier, span } => {
+                InlineAsmTemplatePiece::Placeholder { operand_idx, modifier, span: _ } => {
                     let mut push_to_template = |modifier, gcc_idx| {
                         use std::fmt::Write;
 
@@ -501,7 +501,6 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                                     // Const operands get injected directly into the template
                                     let string = rustc_codegen_ssa::common::asm_const_to_str(
                                         self.tcx,
-                                        span,
                                         int,
                                         self.layout_of(ty),
                                     );
@@ -909,7 +908,7 @@ impl<'gcc, 'tcx> AsmCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
                             .unwrap_or(string.len());
                     }
                 }
-                InlineAsmTemplatePiece::Placeholder { operand_idx, modifier: _, span } => {
+                InlineAsmTemplatePiece::Placeholder { operand_idx, modifier: _, span: _ } => {
                     match operands[operand_idx] {
                         GlobalAsmOperandRef::Const { value, ty } => {
                             match value {
@@ -919,7 +918,6 @@ impl<'gcc, 'tcx> AsmCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
                                     // here unlike normal inline assembly.
                                     let string = rustc_codegen_ssa::common::asm_const_to_str(
                                         self.tcx,
-                                        span,
                                         int,
                                         self.layout_of(ty),
                                     );

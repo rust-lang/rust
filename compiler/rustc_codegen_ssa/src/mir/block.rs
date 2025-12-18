@@ -1276,7 +1276,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             const_value
                         )
                     };
-                    InlineAsmOperandRef::Const { value: scalar, ty: value.ty() }
+                    InlineAsmOperandRef::Const {
+                        value: common::asm_const_ptr_clean(bx.tcx(), scalar),
+                        ty: value.ty(),
+                    }
                 }
                 mir::InlineAsmOperand::SymFn { ref value } => {
                     let const_ = self.monomorphize(value.const_);

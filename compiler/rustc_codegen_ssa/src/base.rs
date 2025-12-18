@@ -418,7 +418,10 @@ where
                                     const_value
                                 )
                             };
-                            GlobalAsmOperandRef::Const { value: scalar, ty }
+                            GlobalAsmOperandRef::Const {
+                                value: common::asm_const_ptr_clean(cx.tcx(), scalar),
+                                ty,
+                            }
                         }
                         Err(ErrorHandled::Reported { .. }) => {
                             // An error has already been reported and

@@ -10,6 +10,7 @@ use rustc_span::sym;
 use rustc_target::callconv::{ArgAbi, FnAbi, PassMode};
 use rustc_target::spec::{Arch, BinaryFormat};
 
+use crate::common;
 use crate::mir::AsmCodegenMethods;
 use crate::traits::GlobalAsmOperandRef;
 
@@ -84,7 +85,10 @@ fn inline_to_global_operand<'a, 'tcx, Cx: LayoutOf<'tcx, LayoutOfResult = TyAndL
                 )
             };
 
-            GlobalAsmOperandRef::Const { value: scalar, ty: mono_type }
+            GlobalAsmOperandRef::Const {
+                value: common::asm_const_ptr_clean(cx.tcx(), scalar),
+                ty: mono_type,
+            }
         }
         InlineAsmOperand::SymFn { value } => {
             let mono_type = instance.instantiate_mir_and_normalize_erasing_regions(
