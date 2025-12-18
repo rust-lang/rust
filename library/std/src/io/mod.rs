@@ -570,7 +570,7 @@ where
     F: FnOnce(&mut [u8]) -> Result<usize>,
 {
     let n = read(cursor.ensure_init())?;
-    cursor.advance(n);
+    cursor.advance_checked(n);
     Ok(())
 }
 
@@ -3113,7 +3113,7 @@ impl<T: Read> Read for Take<T> {
 
             unsafe {
                 // SAFETY: filled bytes have been filled
-                buf.advance_unchecked(filled);
+                buf.advance(filled);
             }
 
             self.limit -= filled as u64;

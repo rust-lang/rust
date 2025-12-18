@@ -272,7 +272,7 @@ impl<'a> BorrowedCursor<'a> {
     /// Panics if there are less than `n` bytes initialized.
     #[unstable(feature = "borrowed_buf_init", issue = "78485")]
     #[inline]
-    pub fn advance(&mut self, n: usize) -> &mut Self {
+    pub fn advance_checked(&mut self, n: usize) -> &mut Self {
         // The subtraction cannot underflow by invariant of this type.
         let init_unfilled = if self.buf.init { self.buf.buf.len() - self.buf.filled } else { 0 };
         assert!(n <= init_unfilled);
@@ -292,7 +292,7 @@ impl<'a> BorrowedCursor<'a> {
     /// The caller must ensure that the first `n` bytes of the cursor have been properly
     /// initialised.
     #[inline]
-    pub unsafe fn advance_unchecked(&mut self, n: usize) -> &mut Self {
+    pub unsafe fn advance(&mut self, n: usize) -> &mut Self {
         self.buf.filled += n;
         self
     }
