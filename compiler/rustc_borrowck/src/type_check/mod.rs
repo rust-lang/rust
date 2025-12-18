@@ -645,8 +645,11 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 debug!(?rv_ty);
                 let rv_ty = self.normalize(rv_ty, location);
                 debug!("normalized rv_ty: {:?}", rv_ty);
-                if let Err(terr) =
-                    self.sub_types(rv_ty, place_ty, location.to_locations(), category)
+                // Note: we've checked Reborrow/CoerceShared type matches
+                // separately in fn visit_assign.
+                if !matches!(rv, Rvalue::Reborrow(_, _))
+                    && let Err(terr) =
+                        self.sub_types(rv_ty, place_ty, location.to_locations(), category)
                 {
                     span_mirbug!(
                         self,
