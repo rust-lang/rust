@@ -318,11 +318,14 @@ fn process_builtin_attrs(
                 }
                 AttributeKind::EiiImpls(impls) => {
                     for i in impls {
-                        let extern_item = find_attr!(
+                        // The eii_macro DefId might not have an EiiExternTarget attribute if a macro
+                        // shadows the eii function, so we need to handle the None case gracefully.
+                        let Some(extern_item) = find_attr!(
                             tcx.get_all_attrs(i.eii_macro),
                             AttributeKind::EiiExternTarget(target) => target.eii_extern_target
-                        )
-                        .expect("eii should have declaration macro with extern target attribute");
+                        ) else {
+                            continue;
+                        };
 
                         let symbol_name = tcx.symbol_name(Instance::mono(tcx, extern_item));
 

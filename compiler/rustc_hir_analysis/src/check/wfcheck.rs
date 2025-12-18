@@ -1201,8 +1201,10 @@ fn check_eiis(tcx: TyCtxt<'_>, def_id: LocalDefId) {
             .into_iter()
             .flatten()
     {
-        // we expect this macro to have the `EiiMacroFor` attribute, that points to a function
-        // signature that we'd like to compare the function we're currently checking with
+        // We expect this macro to have the `EiiMacroFor` attribute, that points to a function
+        // signature that we'd like to compare the function we're currently checking with.
+        // The eii_macro DefId might not have an EiiExternTarget attribute if a macro shadows
+        // the eii function, so we skip processing in that case.
         if let Some(eii_extern_target) = find_attr!(tcx.get_all_attrs(*eii_macro), AttributeKind::EiiExternTarget(EiiDecl {eii_extern_target, ..}) => *eii_extern_target)
         {
             let _ = compare_eii_function_types(
@@ -1212,10 +1214,6 @@ fn check_eiis(tcx: TyCtxt<'_>, def_id: LocalDefId) {
                 tcx.item_name(*eii_macro),
                 *span,
             );
-        } else {
-            panic!(
-                "EII impl macro {eii_macro:?} did not have an eii extern target attribute pointing to a foreign function"
-            )
         }
     }
 }

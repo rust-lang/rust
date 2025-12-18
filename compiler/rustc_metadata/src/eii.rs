@@ -28,11 +28,18 @@ pub(crate) fn collect<'tcx>(tcx: TyCtxt<'tcx>, LocalCrate: LocalCrate) -> EiiMap
         for i in
             find_attr!(tcx.get_all_attrs(id), AttributeKind::EiiImpls(e) => e).into_iter().flatten()
         {
+            // Find the decl for this one if it wasn't in yet (maybe it's from the local crate? not very useful but not illegal).
+            // The eii_macro DefId might not have an EiiExternTarget attribute if a macro shadows the eii function,
+            // so we need to handle the None case gracefully instead of panicking.
+            let Some(decl) =
+                find_attr!(tcx.get_all_attrs(i.eii_macro), AttributeKind::EiiExternTarget(d) => *d)
+            else {
+                continue;
+            };
             eiis.entry(i.eii_macro)
-                .or_insert_with(|| {
-                    // find the decl for this one if it wasn't in yet (maybe it's from the local crate? not very useful but not illegal)
-                    (find_attr!(tcx.get_all_attrs(i.eii_macro), AttributeKind::EiiExternTarget(d) => *d).unwrap(), Default::default())
-                }).1.insert(id.into(), *i);
+                .or_insert_with(|| (decl, Default::default()))
+                .1
+                .insert(id.into(), *i);
         }
 
         // if we find a new declaration, add it to the list without a known implementation
