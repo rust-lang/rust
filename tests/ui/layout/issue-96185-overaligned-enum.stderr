@@ -52,7 +52,6 @@ error: layout_of(Aligned1) = Layout {
                            Align(8 bytes),
                        ),
                        unadjusted_abi_align: Align(1 bytes),
-                       randomization_seed: $SEED,
                    },
                    VariantLayout {
                        size: Size(8 bytes),
@@ -70,7 +69,6 @@ error: layout_of(Aligned1) = Layout {
                            Align(8 bytes),
                        ),
                        unadjusted_abi_align: Align(1 bytes),
-                       randomization_seed: $SEED,
                    },
                ],
            },
@@ -145,7 +143,6 @@ error: layout_of(Aligned2) = Layout {
                            Align(1 bytes),
                        ),
                        unadjusted_abi_align: Align(1 bytes),
-                       randomization_seed: $SEED,
                    },
                    VariantLayout {
                        size: Size(1 bytes),
@@ -163,7 +160,6 @@ error: layout_of(Aligned2) = Layout {
                            Align(1 bytes),
                        ),
                        unadjusted_abi_align: Align(1 bytes),
-                       randomization_seed: $SEED,
                    },
                ],
            },
