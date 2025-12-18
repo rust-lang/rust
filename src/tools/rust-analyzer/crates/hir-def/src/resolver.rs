@@ -881,7 +881,7 @@ impl<'db> Resolver<'db> {
             }));
             if let Some(block) = expr_scopes.block(scope_id) {
                 let def_map = block_def_map(db, block);
-                let local_def_map = block.module(db).only_local_def_map(db);
+                let local_def_map = block.lookup(db).module.only_local_def_map(db);
                 resolver.scopes.push(Scope::BlockScope(ModuleItemMap {
                     def_map,
                     local_def_map,
@@ -1087,7 +1087,7 @@ fn resolver_for_scope_<'db>(
     for scope in scope_chain.into_iter().rev() {
         if let Some(block) = scopes.block(scope) {
             let def_map = block_def_map(db, block);
-            let local_def_map = block.module(db).only_local_def_map(db);
+            let local_def_map = block.lookup(db).module.only_local_def_map(db);
             // Using `DefMap::ROOT` is okay here since inside modules other than the root,
             // there can't directly be expressions.
             r = r.push_block_scope(def_map, local_def_map, def_map.root);

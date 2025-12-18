@@ -9,7 +9,6 @@ use crate::path::{Path, PathBuf};
 use crate::sys::time::SystemTime;
 use crate::sys::{helpers, unsupported};
 
-#[expect(dead_code)]
 const FILE_PERMISSIONS_MASK: u64 = r_efi::protocols::file::READ_ONLY;
 
 pub struct File(!);
@@ -109,7 +108,6 @@ impl FilePermissions {
         Self(attr & r_efi::protocols::file::READ_ONLY != 0)
     }
 
-    #[expect(dead_code)]
     const fn to_attr(&self) -> u64 {
         if self.0 { r_efi::protocols::file::READ_ONLY } else { 0 }
     }
@@ -366,16 +364,40 @@ pub fn rename(_old: &Path, _new: &Path) -> io::Result<()> {
     unsupported()
 }
 
-pub fn set_perm(_p: &Path, _perm: FilePermissions) -> io::Result<()> {
-    unsupported()
+pub fn set_perm(p: &Path, perm: FilePermissions) -> io::Result<()> {
+    let f = uefi_fs::File::from_path(p, file::MODE_READ | file::MODE_WRITE, 0)?;
+    let mut file_info = f.file_info()?;
+
+    unsafe {
+        (*file_info.as_mut_ptr()).attribute =
+            ((*file_info.as_ptr()).attribute & !FILE_PERMISSIONS_MASK) | perm.to_attr()
+    };
+
+    f.set_file_info(file_info)
 }
 
-pub fn set_times(_p: &Path, _times: FileTimes) -> io::Result<()> {
-    unsupported()
+pub fn set_times(p: &Path, times: FileTimes) -> io::Result<()> {
+    // UEFI does not support symlinks
+    set_times_nofollow(p, times)
 }
 
-pub fn set_times_nofollow(_p: &Path, _times: FileTimes) -> io::Result<()> {
-    unsupported()
+pub fn set_times_nofollow(p: &Path, times: FileTimes) -> io::Result<()> {
+    let f = uefi_fs::File::from_path(p, file::MODE_READ | file::MODE_WRITE, 0)?;
+    let mut file_info = f.file_info()?;
+
+    if let Some(x) = times.accessed {
+        unsafe {
+            (*file_info.as_mut_ptr()).last_access_time = uefi_fs::systemtime_to_uefi(x);
+        }
+    }
+
+    if let Some(x) = times.modified {
+        unsafe {
+            (*file_info.as_mut_ptr()).modification_time = uefi_fs::systemtime_to_uefi(x);
+        }
+    }
+
+    f.set_file_info(file_info)
 }
 
 pub fn rmdir(p: &Path) -> io::Result<()> {
@@ -560,6 +582,17 @@ mod uefi_fs {
             if r.is_error() { Err(io::Error::from_raw_os_error(r.as_usize())) } else { Ok(info) }
         }
 
+        pub(crate) fn set_file_info(&self, mut info: UefiBox<file::Info>) -> io::Result<()> {
+            let file_ptr = self.0.as_ptr();
+            let mut info_id = file::INFO_ID;
+
+            let r = unsafe {
+                ((*file_ptr).set_info)(file_ptr, &mut info_id, info.len(), info.as_mut_ptr().cast())
+            };
+
+            if r.is_error() { Err(io::Error::from_raw_os_error(r.as_usize())) } else { Ok(()) }
+        }
+
         pub(crate) fn delete(self) -> io::Result<()> {
             let file_ptr = self.0.as_ptr();
             let r = unsafe { ((*file_ptr).delete)(file_ptr) };
@@ -643,8 +676,7 @@ mod uefi_fs {
     }
 
     /// Convert to UEFI Time with the current timezone.
-    #[expect(dead_code)]
-    fn systemtime_to_uefi(time: SystemTime) -> r_efi::efi::Time {
+    pub(crate) fn systemtime_to_uefi(time: SystemTime) -> r_efi::efi::Time {
         let now = time::system_time_internal::now();
         time.to_uefi_loose(now.timezone, now.daylight)
     }

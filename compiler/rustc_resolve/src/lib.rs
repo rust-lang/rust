@@ -10,7 +10,6 @@
 #![allow(internal_features)]
 #![allow(rustc::diagnostic_outside_of_impl)]
 #![allow(rustc::untranslatable_diagnostic)]
-#![deny(clippy::manual_let_else)]
 #![feature(arbitrary_self_types)]
 #![feature(assert_matches)]
 #![feature(box_patterns)]
@@ -44,7 +43,7 @@ use rustc_arena::{DroplessArena, TypedArena};
 use rustc_ast::node_id::NodeMap;
 use rustc_ast::{
     self as ast, AngleBracketedArg, CRATE_NODE_ID, Crate, Expr, ExprKind, GenericArg, GenericArgs,
-    LitKind, NodeId, Path, attr,
+    NodeId, Path, attr,
 };
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
@@ -54,7 +53,7 @@ use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::{Applicability, Diag, ErrCode, ErrorGuaranteed, LintBuffer};
 use rustc_expand::base::{DeriveResolution, SyntaxExtension, SyntaxExtensionKind};
 use rustc_feature::BUILTIN_ATTRIBUTES;
-use rustc_hir::attrs::StrippedCfgItem;
+use rustc_hir::attrs::{AttributeKind, StrippedCfgItem};
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{
     self, CtorOf, DefKind, DocLinkResMap, LifetimeRes, MacroKinds, NonMacroAttrKind, PartialRes,
@@ -62,7 +61,7 @@ use rustc_hir::def::{
 };
 use rustc_hir::def_id::{CRATE_DEF_ID, CrateNum, DefId, LOCAL_CRATE, LocalDefId, LocalDefIdMap};
 use rustc_hir::definitions::DisambiguatorState;
-use rustc_hir::{PrimTy, TraitCandidate};
+use rustc_hir::{PrimTy, TraitCandidate, find_attr};
 use rustc_index::bit_set::DenseBitSet;
 use rustc_metadata::creader::CStore;
 use rustc_middle::metadata::{AmbigModChild, ModChild, Reexport};
@@ -1676,8 +1675,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             node_id_to_def_id,
             disambiguator: DisambiguatorState::new(),
             placeholder_field_indices: Default::default(),
-            invocation_parents,
             legacy_const_generic_args: Default::default(),
+            invocation_parents,
             item_generics_num_lifetimes: Default::default(),
             trait_impls: Default::default(),
             confused_type_with_std_module: Default::default(),
@@ -2396,40 +2395,33 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     /// `#[rustc_legacy_const_generics]` and returns the argument index list
     /// from the attribute.
     fn legacy_const_generic_args(&mut self, expr: &Expr) -> Option<Vec<usize>> {
-        if let ExprKind::Path(None, path) = &expr.kind {
-            // Don't perform legacy const generics rewriting if the path already
-            // has generic arguments.
-            if path.segments.last().unwrap().args.is_some() {
-                return None;
-            }
-
-            let res = self.partial_res_map.get(&expr.id)?.full_res()?;
-            if let Res::Def(def::DefKind::Fn, def_id) = res {
-                // We only support cross-crate argument rewriting. Uses
-                // within the same crate should be updated to use the new
-                // const generics style.
-                if def_id.is_local() {
-                    return None;
-                }
-
-                if let Some(v) = self.legacy_const_generic_args.get(&def_id) {
-                    return v.clone();
-                }
-
-                let attr = self.tcx.get_attr(def_id, sym::rustc_legacy_const_generics)?;
-                let mut ret = Vec::new();
-                for meta in attr.meta_item_list()? {
-                    match meta.lit()?.kind {
-                        LitKind::Int(a, _) => ret.push(a.get() as usize),
-                        _ => panic!("invalid arg index"),
-                    }
-                }
-                // Cache the lookup to avoid parsing attributes for an item multiple times.
-                self.legacy_const_generic_args.insert(def_id, Some(ret.clone()));
-                return Some(ret);
-            }
+        let ExprKind::Path(None, path) = &expr.kind else {
+            return None;
+        };
+        // Don't perform legacy const generics rewriting if the path already
+        // has generic arguments.
+        if path.segments.last().unwrap().args.is_some() {
+            return None;
         }
-        None
+
+        let def_id = self.partial_res_map.get(&expr.id)?.full_res()?.opt_def_id()?;
+
+        // We only support cross-crate argument rewriting. Uses
+        // within the same crate should be updated to use the new
+        // const generics style.
+        if def_id.is_local() {
+            return None;
+        }
+
+        let indexes = find_attr!(
+            // we can use parsed attrs here since for other crates they're already available
+            self.tcx.get_all_attrs(def_id),
+            AttributeKind::RustcLegacyConstGenerics{fn_indexes,..} => fn_indexes
+        )
+        .map(|fn_indexes| fn_indexes.iter().map(|(num, _)| *num).collect());
+
+        self.legacy_const_generic_args.insert(def_id, indexes.clone());
+        indexes
     }
 
     fn resolve_main(&mut self) {

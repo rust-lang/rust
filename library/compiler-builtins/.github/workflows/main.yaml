@@ -1,6 +1,6 @@
 name: CI
 on:
-  push: { branches: [master] }
+  push: { branches: [main] }
   pull_request:
 
 concurrency:
@@ -89,7 +89,7 @@ jobs:
         - target: x86_64-unknown-linux-gnu
           os: ubuntu-24.04
         - target: x86_64-apple-darwin
-          os: macos-13
+          os: macos-15-intel
         - target: i686-pc-windows-msvc
           os: windows-2025
         - target: x86_64-pc-windows-msvc
@@ -239,6 +239,8 @@ jobs:
         include:
         - target: x86_64-unknown-linux-gnu
           os: ubuntu-24.04
+        - target: aarch64-unknown-linux-gnu
+          os: ubuntu-24.04-arm
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@master
@@ -247,13 +249,13 @@ jobs:
     - name: Set up dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y valgrind gdb libc6-dbg # Needed for iai-callgrind
+        sudo apt-get install -y valgrind gdb libc6-dbg # Needed for gungraun
         rustup update "$BENCHMARK_RUSTC" --no-self-update
         rustup default "$BENCHMARK_RUSTC"
-        # Install the version of iai-callgrind-runner that is specified in Cargo.toml
-        iai_version="$(cargo metadata --format-version=1 --features icount |
-           jq -r '.packages[] | select(.name == "iai-callgrind").version')"
-        cargo binstall -y iai-callgrind-runner --version "$iai_version"
+        # Install the version of gungraun-runner that is specified in Cargo.toml
+        gungraun_version="$(cargo metadata --format-version=1 --features icount |
+           jq -r '.packages[] | select(.name == "gungraun").version')"
+        cargo binstall -y gungraun-runner --version "$gungraun_version"
         sudo apt-get install valgrind
     - uses: Swatinem/rust-cache@v2
       with:

@@ -48,6 +48,7 @@ impl Project<'_> {
                         "enable": false,
                     },
                 },
+                "checkOnSave": false,
                 "procMacro": {
                     "enable": false,
                 }

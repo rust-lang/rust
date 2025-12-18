@@ -13,8 +13,7 @@ use crate::sys::common::small_c_string::run_path_with_cstr;
 use crate::sys::fd::FileDesc;
 pub use crate::sys::fs::common::{copy, exists};
 use crate::sys::time::SystemTime;
-use crate::sys::{cvt, unsupported, unsupported_err};
-use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
+use crate::sys::{AsInner, AsInnerMut, FromInner, IntoInner, cvt, unsupported, unsupported_err};
 use crate::{fmt, mem};
 
 #[derive(Debug)]

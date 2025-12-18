@@ -1,5 +1,5 @@
 //@ aux-build:other_file.rs
-//@ compile-flags: --error-format human-annotate-rs -Z unstable-options
+//@ compile-flags: --error-format human
 
 extern crate other_file;
 

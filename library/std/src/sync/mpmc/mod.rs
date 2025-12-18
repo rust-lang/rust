@@ -6,9 +6,10 @@
 //! * [`Sender`]
 //! * [`Receiver`]
 //!
-//! [`Sender`]s are used to send data to a set of [`Receiver`]s. Both
-//! sender and receiver are cloneable (multi-producer) such that many threads can send
-//! simultaneously to receivers (multi-consumer).
+//! [`Sender`]s are used to send data to a set of [`Receiver`]s where each item
+//! sent is delivered to (at most) one receiver. Both sender and receiver are
+//! cloneable (multi-producer) such that many threads can send simultaneously
+//! to receivers (multi-consumer).
 //!
 //! These channels come in two flavors:
 //!

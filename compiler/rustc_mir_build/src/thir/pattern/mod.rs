@@ -11,12 +11,12 @@ use rustc_abi::{FieldIdx, Integer};
 use rustc_errors::codes::*;
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::pat_util::EnumerateAndAdjustIterator;
-use rustc_hir::{self as hir, ByRef, LangItem, Mutability, Pinnedness, RangeEnd};
+use rustc_hir::{self as hir, LangItem, RangeEnd};
 use rustc_index::Idx;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::mir::interpret::LitToConstInput;
 use rustc_middle::thir::{
-    Ascription, FieldPat, LocalVarId, Pat, PatKind, PatRange, PatRangeBoundary,
+    Ascription, DerefPatBorrowMode, FieldPat, LocalVarId, Pat, PatKind, PatRange, PatRangeBoundary,
 };
 use rustc_middle::ty::adjustment::{PatAdjust, PatAdjustment};
 use rustc_middle::ty::layout::IntegerExt;
@@ -114,16 +114,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                     let borrow = self.typeck_results.deref_pat_borrow_mode(adjust.source, pat);
                     PatKind::DerefPattern { subpattern: thir_pat, borrow }
                 }
-                PatAdjust::PinDeref => {
-                    let mutable = self.typeck_results.pat_has_ref_mut_binding(pat);
-                    PatKind::DerefPattern {
-                        subpattern: thir_pat,
-                        borrow: ByRef::Yes(
-                            Pinnedness::Pinned,
-                            if mutable { Mutability::Mut } else { Mutability::Not },
-                        ),
-                    }
-                }
+                PatAdjust::PinDeref => PatKind::Deref { subpattern: thir_pat },
             };
             Box::new(Pat { span, ty: adjust.source, kind })
         });
@@ -334,7 +325,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             }
             hir::PatKind::Box(subpattern) => PatKind::DerefPattern {
                 subpattern: self.lower_pattern(subpattern),
-                borrow: hir::ByRef::No,
+                borrow: DerefPatBorrowMode::Box,
             },
 
             hir::PatKind::Slice(prefix, slice, suffix) => {

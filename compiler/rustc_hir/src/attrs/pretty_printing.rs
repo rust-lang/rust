@@ -1,4 +1,5 @@
 use std::num::NonZero;
+use std::ops::Deref;
 
 use rustc_abi::Align;
 use rustc_ast::token::{CommentKind, DocFragmentKind};
@@ -35,6 +36,15 @@ impl<T: PrintAttribute> PrintAttribute for &T {
 
     fn print_attribute(&self, p: &mut Printer) {
         T::print_attribute(self, p)
+    }
+}
+impl<T: PrintAttribute> PrintAttribute for Box<T> {
+    fn should_render(&self) -> bool {
+        self.deref().should_render()
+    }
+
+    fn print_attribute(&self, p: &mut Printer) {
+        T::print_attribute(self.deref(), p)
     }
 }
 impl<T: PrintAttribute> PrintAttribute for Option<T> {
@@ -159,7 +169,7 @@ macro_rules! print_tup {
 
 print_tup!(A B C D E F G H);
 print_skip!(Span, (), ErrorGuaranteed);
-print_disp!(u16, u128, bool, NonZero<u32>, Limit);
+print_disp!(u16, u128, usize, bool, NonZero<u32>, Limit);
 print_debug!(
     Symbol,
     Ident,

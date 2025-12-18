@@ -59,7 +59,6 @@ This API is completely unstable and subject to change.
 #![allow(rustc::diagnostic_outside_of_impl)]
 #![allow(rustc::untranslatable_diagnostic)]
 #![cfg_attr(bootstrap, feature(debug_closure_helpers))]
-#![deny(clippy::manual_let_else)]
 #![feature(assert_matches)]
 #![feature(gen_blocks)]
 #![feature(if_let_guard)]

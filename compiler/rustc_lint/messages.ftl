@@ -205,15 +205,17 @@ lint_dangling_pointers_from_locals = {$fn_kind} returns a dangling pointer to dr
     .ret_ty = return type is `{$ret_ty}`
     .local_var = local variable `{$local_var_name}` is dropped at the end of the {$fn_kind}
     .created_at = dangling pointer created here
-    .note = a dangling pointer is safe, but dereferencing one is undefined behavior
+    .note_safe = a dangling pointer is safe, but dereferencing one is undefined behavior
+    .note_more_info = for more information, see <https://doc.rust-lang.org/reference/destructors.html>
 
-lint_dangling_pointers_from_temporaries = a dangling pointer will be produced because the temporary `{$ty}` will be dropped
-    .label_ptr = this pointer will immediately be invalid
-    .label_temporary = this `{$ty}` is deallocated at the end of the statement, bind it to a variable to extend its lifetime
-    .note = pointers do not have a lifetime; when calling `{$callee}` the `{$ty}` will be deallocated at the end of the statement because nothing is referencing it as far as the type system is concerned
-    .help_bind = you must make sure that the variable you bind the `{$ty}` to lives at least as long as the pointer returned by the call to `{$callee}`
-    .help_returned = in particular, if this pointer is returned from the current function, binding the `{$ty}` inside the function will not suffice
-    .help_visit = for more information, see <https://doc.rust-lang.org/reference/destructors.html>
+lint_dangling_pointers_from_temporaries = this creates a dangling pointer because temporary `{$ty}` is dropped at end of statement
+    .label_ptr = pointer created here
+    .label_temporary = this `{$ty}` is dropped at end of statement
+    .help_bind = bind the `{$ty}` to a variable such that it outlives the pointer returned by `{$callee}`
+    .note_safe = a dangling pointer is safe, but dereferencing one is undefined behavior
+    .note_return = returning a pointer to a local variable will always result in a dangling pointer
+    .note_more_info = for more information, see <https://doc.rust-lang.org/reference/destructors.html>
+
 
 lint_default_hash_types = prefer `{$preferred}` over `{$used}`, it has better performance
     .note = a `use rustc_data_structures::fx::{$preferred}` may be necessary

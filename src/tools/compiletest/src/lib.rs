@@ -263,7 +263,7 @@ fn parse_config(args: Vec<String>) -> Config {
     let adb_device_status = target.contains("android") && adb_test_dir.is_some();
 
     // FIXME: `cdb_version` is *derived* from cdb, but it's *not* technically a config!
-    let cdb = debuggers::discover_cdb(matches.opt_str("cdb"), &target);
+    let cdb = matches.opt_str("cdb").map(Utf8PathBuf::from);
     let cdb_version = cdb.as_deref().and_then(debuggers::query_cdb_version);
     // FIXME: `gdb_version` is *derived* from gdb, but it's *not* technically a config!
     let gdb = matches.opt_str("gdb").map(Utf8PathBuf::from);

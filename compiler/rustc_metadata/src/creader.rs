@@ -156,8 +156,8 @@ impl<'a> std::fmt::Debug for CrateDump<'a> {
 enum CrateOrigin<'a> {
     /// This crate was a dependency of another crate.
     IndirectDependency {
-        /// Where this dependency was included from.
-        dep_root: &'a CratePaths,
+        /// Where this dependency was included from. Should only be used in error messages.
+        dep_root_for_errors: &'a CratePaths,
         /// True if the parent is private, meaning the dependent should also be private.
         parent_private: bool,
         /// Dependency info about this crate.
@@ -171,9 +171,11 @@ enum CrateOrigin<'a> {
 
 impl<'a> CrateOrigin<'a> {
     /// Return the dependency root, if any.
-    fn dep_root(&self) -> Option<&'a CratePaths> {
+    fn dep_root_for_errors(&self) -> Option<&'a CratePaths> {
         match self {
-            CrateOrigin::IndirectDependency { dep_root, .. } => Some(dep_root),
+            CrateOrigin::IndirectDependency { dep_root_for_errors, .. } => {
+                Some(dep_root_for_errors)
+            }
             _ => None,
         }
     }
@@ -193,6 +195,7 @@ impl<'a> CrateOrigin<'a> {
             CrateOrigin::IndirectDependency { parent_private, dep, .. } => {
                 Some(dep.is_private || *parent_private)
             }
+            CrateOrigin::Injected => Some(true),
             _ => None,
         }
     }
@@ -544,17 +547,7 @@ impl CStore {
     /// Sometimes the directly dependent crate is not specified by `--extern`, in this case,
     /// `private-dep` is none during loading. This is equivalent to the scenario where the
     /// command parameter is set to `public-dependency`
-    fn is_private_dep(
-        &self,
-        externs: &Externs,
-        name: Symbol,
-        private_dep: Option<bool>,
-        origin: CrateOrigin<'_>,
-    ) -> bool {
-        if matches!(origin, CrateOrigin::Injected) {
-            return true;
-        }
-
+    fn is_private_dep(&self, externs: &Externs, name: Symbol, private_dep: Option<bool>) -> bool {
         let extern_private = externs.get(name.as_str()).map(|e| e.is_private_dep);
         match (extern_private, private_dep) {
             // Explicit non-private via `--extern`, explicit non-private from metadata, or
@@ -581,7 +574,7 @@ impl CStore {
         let Library { source, metadata } = lib;
         let crate_root = metadata.get_root();
         let host_hash = host_lib.as_ref().map(|lib| lib.metadata.get_root().hash());
-        let private_dep = self.is_private_dep(&tcx.sess.opts.externs, name, private_dep, origin);
+        let private_dep = self.is_private_dep(&tcx.sess.opts.externs, name, private_dep);
 
         // Claim this crate number and cache it
         let feed = self.intern_stable_crate_id(tcx, &crate_root)?;
@@ -597,8 +590,8 @@ impl CStore {
         // Maintain a reference to the top most crate.
         // Stash paths for top-most crate locally if necessary.
         let crate_paths;
-        let dep_root = if let Some(dep_root) = origin.dep_root() {
-            dep_root
+        let dep_root_for_errors = if let Some(dep_root_for_errors) = origin.dep_root_for_errors() {
+            dep_root_for_errors
         } else {
             crate_paths = CratePaths::new(crate_root.name(), source.clone());
             &crate_paths
@@ -606,7 +599,7 @@ impl CStore {
 
         let cnum_map = self.resolve_crate_deps(
             tcx,
-            dep_root,
+            dep_root_for_errors,
             &crate_root,
             &metadata,
             cnum,
@@ -726,7 +719,7 @@ impl CStore {
         self.used_extern_options.insert(name);
         match self.maybe_resolve_crate(tcx, name, dep_kind, origin) {
             Ok(cnum) => {
-                self.set_used_recursively(tcx, cnum);
+                self.set_used_recursively(cnum);
                 Some(cnum)
             }
             Err(err) => {
@@ -735,7 +728,7 @@ impl CStore {
                     .maybe_resolve_crate(
                         tcx,
                         sym::core,
-                        CrateDepKind::Explicit,
+                        CrateDepKind::Unconditional,
                         CrateOrigin::Extern,
                     )
                     .is_err();
@@ -757,7 +750,7 @@ impl CStore {
             return Err(CrateError::NonAsciiName(name));
         }
 
-        let dep_root = origin.dep_root();
+        let dep_root_for_errors = origin.dep_root_for_errors();
         let dep = origin.dep();
         let hash = dep.map(|d| d.hash);
         let host_hash = dep.map(|d| d.host_hash).flatten();
@@ -795,7 +788,11 @@ impl CStore {
                         host_hash,
                     )? {
                         Some(res) => res,
-                        None => return Err(locator.into_error(crate_rejections, dep_root.cloned())),
+                        None => {
+                            return Err(
+                                locator.into_error(crate_rejections, dep_root_for_errors.cloned())
+                            );
+                        }
                     }
                 }
             }
@@ -808,8 +805,7 @@ impl CStore {
                 // not specified by `--extern` on command line parameters, it may be
                 // `private-dependency` when `register_crate` is called for the first time. Then it must be updated to
                 // `public-dependency` here.
-                let private_dep =
-                    self.is_private_dep(&tcx.sess.opts.externs, name, private_dep, origin);
+                let private_dep = self.is_private_dep(&tcx.sess.opts.externs, name, private_dep);
                 let data = self.get_crate_data_mut(cnum);
                 if data.is_proc_macro_crate() {
                     dep_kind = CrateDepKind::MacrosOnly;
@@ -856,7 +852,7 @@ impl CStore {
     fn resolve_crate_deps(
         &mut self,
         tcx: TyCtxt<'_>,
-        dep_root: &CratePaths,
+        dep_root_for_errors: &CratePaths,
         crate_root: &CrateRoot,
         metadata: &MetadataBlob,
         krate: CrateNum,
@@ -866,7 +862,7 @@ impl CStore {
         debug!(
             "resolving deps of external crate `{}` with dep root `{}`",
             crate_root.name(),
-            dep_root.name
+            dep_root_for_errors.name
         );
         if crate_root.is_proc_macro_crate() {
             return Ok(CrateNumMap::new());
@@ -896,7 +892,7 @@ impl CStore {
                 dep.name,
                 dep_kind,
                 CrateOrigin::IndirectDependency {
-                    dep_root,
+                    dep_root_for_errors,
                     parent_private: parent_is_private,
                     dep: &dep,
                 },
@@ -979,9 +975,15 @@ impl CStore {
         };
         info!("panic runtime not found -- loading {}", name);
 
-        let Some(cnum) =
-            self.resolve_crate(tcx, name, DUMMY_SP, CrateDepKind::Implicit, CrateOrigin::Injected)
-        else {
+        // This has to be conditional as both panic_unwind and panic_abort may be present in the
+        // crate graph at the same time. One of them will later be activated in dependency_formats.
+        let Some(cnum) = self.resolve_crate(
+            tcx,
+            name,
+            DUMMY_SP,
+            CrateDepKind::Conditional,
+            CrateOrigin::Injected,
+        ) else {
             return;
         };
         let data = self.get_crate_data(cnum);
@@ -1009,9 +1011,13 @@ impl CStore {
         info!("loading profiler");
 
         let name = Symbol::intern(&tcx.sess.opts.unstable_opts.profiler_runtime);
-        let Some(cnum) =
-            self.resolve_crate(tcx, name, DUMMY_SP, CrateDepKind::Implicit, CrateOrigin::Injected)
-        else {
+        let Some(cnum) = self.resolve_crate(
+            tcx,
+            name,
+            DUMMY_SP,
+            CrateDepKind::Unconditional,
+            CrateOrigin::Injected,
+        ) else {
             return;
         };
         let data = self.get_crate_data(cnum);
@@ -1131,7 +1137,7 @@ impl CStore {
                         tcx,
                         name_interned,
                         DUMMY_SP,
-                        CrateDepKind::Explicit,
+                        CrateDepKind::Unconditional,
                         CrateOrigin::Extern,
                     );
                 }
@@ -1163,7 +1169,7 @@ impl CStore {
             tcx,
             sym::compiler_builtins,
             krate.spans.inner_span.shrink_to_lo(),
-            CrateDepKind::Explicit,
+            CrateDepKind::Unconditional,
             CrateOrigin::Injected,
         ) else {
             info!("`compiler_builtins` not resolved");
@@ -1280,7 +1286,7 @@ impl CStore {
                 let dep_kind = if attr::contains_name(&item.attrs, sym::no_link) {
                     CrateDepKind::MacrosOnly
                 } else {
-                    CrateDepKind::Explicit
+                    CrateDepKind::Unconditional
                 };
 
                 let cnum =
@@ -1310,7 +1316,7 @@ impl CStore {
         span: Span,
     ) -> Option<CrateNum> {
         let cnum =
-            self.resolve_crate(tcx, name, span, CrateDepKind::Explicit, CrateOrigin::Extern)?;
+            self.resolve_crate(tcx, name, span, CrateDepKind::Unconditional, CrateOrigin::Extern)?;
 
         self.update_extern_crate(
             cnum,
@@ -1328,7 +1334,7 @@ impl CStore {
     }
 
     pub fn maybe_process_path_extern(&mut self, tcx: TyCtxt<'_>, name: Symbol) -> Option<CrateNum> {
-        self.maybe_resolve_crate(tcx, name, CrateDepKind::Explicit, CrateOrigin::Extern).ok()
+        self.maybe_resolve_crate(tcx, name, CrateDepKind::Unconditional, CrateOrigin::Extern).ok()
     }
 }
 

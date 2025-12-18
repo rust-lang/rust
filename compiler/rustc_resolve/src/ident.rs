@@ -743,10 +743,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
         let ambiguity_error_kind = if is_builtin(innermost_res) || is_builtin(res) {
             Some(AmbiguityKind::BuiltinAttr)
-        } else if innermost_res == derive_helper_compat
-            || res == derive_helper_compat && innermost_res != derive_helper
-        {
+        } else if innermost_res == derive_helper_compat {
             Some(AmbiguityKind::DeriveHelper)
+        } else if res == derive_helper_compat && innermost_res != derive_helper {
+            span_bug!(orig_ident.span, "impossible inner resolution kind")
         } else if innermost_flags.contains(Flags::MACRO_RULES)
             && flags.contains(Flags::MODULE)
             && !self.disambiguate_macro_rules_vs_modularized(innermost_binding, binding)
