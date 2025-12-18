@@ -813,22 +813,6 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     this, link_name, abi, args, dest,
                 );
             }
-            // FIXME: Move this to an `arm` submodule.
-            "llvm.arm.hint" if this.tcx.sess.target.arch == Arch::Arm => {
-                let [arg] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
-                let arg = this.read_scalar(arg)?.to_i32()?;
-                // Note that different arguments might have different target feature requirements.
-                match arg {
-                    // YIELD
-                    1 => {
-                        this.expect_target_feature_for_intrinsic(link_name, "v6")?;
-                        this.yield_active_thread();
-                    }
-                    _ => {
-                        throw_unsup_format!("unsupported llvm.arm.hint argument {}", arg);
-                    }
-                }
-            }
 
             // Fallback to shims in submodules.
             _ => {
