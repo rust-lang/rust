@@ -600,6 +600,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
             let mut align = dl.aggregate_align;
             let mut max_repr_align = repr.align;
             let mut unadjusted_abi_align = align;
+            let mut combined_seed = repr.field_shuffle_seed;
 
             let mut variant_layouts = variants
                 .iter()
@@ -609,6 +610,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                     align = align.max(st.align.abi);
                     max_repr_align = max_repr_align.max(st.max_repr_align);
                     unadjusted_abi_align = unadjusted_abi_align.max(st.unadjusted_abi_align);
+                    combined_seed = combined_seed.wrapping_add(st.randomization_seed);
 
                     Some(VariantLayout::from_layout(st))
                 })
@@ -702,11 +704,6 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                 BackendRepr::Memory { sized: true }
             };
 
-            let combined_seed = variant_layouts
-                .iter()
-                .map(|v| v.randomization_seed)
-                .fold(repr.field_shuffle_seed, |acc, seed| acc.wrapping_add(seed));
-
             let layout = LayoutData {
                 variants: Variants::Multiple {
                     tag: niche_scalar,
@@ -799,6 +796,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         let mut align = dl.aggregate_align;
         let mut max_repr_align = repr.align;
         let mut unadjusted_abi_align = align;
+        let mut combined_seed = repr.field_shuffle_seed;
 
         let mut size = Size::ZERO;
 
@@ -842,6 +840,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                 align = align.max(st.align.abi);
                 max_repr_align = max_repr_align.max(st.max_repr_align);
                 unadjusted_abi_align = unadjusted_abi_align.max(st.unadjusted_abi_align);
+                combined_seed = combined_seed.wrapping_add(st.randomization_seed);
                 Ok(VariantLayout::from_layout(st))
             })
             .collect::<Result<IndexVec<VariantIdx, _>, _>>()?;
@@ -1041,11 +1040,6 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         }
 
         let largest_niche = Niche::from_scalar(dl, Size::ZERO, tag);
-
-        let combined_seed = layout_variants
-            .iter()
-            .map(|v| v.randomization_seed)
-            .fold(repr.field_shuffle_seed, |acc, seed| acc.wrapping_add(seed));
 
         let tagged_layout = LayoutData {
             variants: Variants::Multiple {

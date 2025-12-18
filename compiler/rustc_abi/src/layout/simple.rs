@@ -143,6 +143,8 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
             size: Size::ZERO,
             max_repr_align: None,
             unadjusted_abi_align: dl.i8_align,
+            // Variant layouts never flow back into actual layout computations,
+            // so dummy values are fine here.
             randomization_seed: Hash64::ZERO,
         }
     }
@@ -167,7 +169,9 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
             size: layout.size,
             max_repr_align: layout.max_repr_align,
             unadjusted_abi_align: layout.unadjusted_abi_align,
-            randomization_seed: layout.randomization_seed,
+            // Variant layouts never flow back into actual layout computations,
+            // so dummy values are fine here.
+            randomization_seed: Hash64::ZERO,
         }
     }
 }
