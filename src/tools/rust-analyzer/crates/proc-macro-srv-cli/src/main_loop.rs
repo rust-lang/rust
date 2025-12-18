@@ -2,23 +2,22 @@
 use std::io;
 
 use crossbeam_channel::unbounded;
-use proc_macro_api::bidirectional_protocol::msg::Request;
 use proc_macro_api::{
     Codec,
-    bidirectional_protocol::msg::{Envelope, Kind, Payload},
-    legacy_protocol::msg::{
-        self, ExpandMacroData, ExpnGlobals, Message, SpanMode, SpanTransformer,
-        deserialize_span_data_index_map, serialize_span_data_index_map,
-    },
+    bidirectional_protocol::msg as bidirectional,
+    legacy_protocol::msg as legacy,
     transport::codec::{json::JsonProtocol, postcard::PostcardProtocol},
     version::CURRENT_API_VERSION,
 };
+
+use legacy::Message;
+
 use proc_macro_srv::{EnvSnapshot, SpanId};
 
 use crate::ProtocolFormat;
 struct SpanTrans;
 
-impl SpanTransformer for SpanTrans {
+impl legacy::SpanTransformer for SpanTrans {
     type Table = ();
     type Span = SpanId;
     fn token_id_of(
@@ -62,61 +61,61 @@ fn run_new<C: Codec>() -> io::Result<()> {
     let env_snapshot = EnvSnapshot::default();
     let srv = proc_macro_srv::ProcMacroSrv::new(&env_snapshot);
 
-    let mut span_mode = SpanMode::Id;
+    let mut span_mode = legacy::SpanMode::Id;
 
     'outer: loop {
-        let req_opt = Envelope::read::<_, C>(&mut stdin, &mut buf)?;
+        let req_opt = bidirectional::Envelope::read::<_, C>(&mut stdin, &mut buf)?;
         let Some(req) = req_opt else {
             break 'outer;
         };
 
         match (req.kind, req.payload) {
-            (Kind::Request, Payload::Request(request)) => match request {
-                Request::ListMacros { dylib_path } => {
-                    let res = srv.list_macros(&dylib_path).map(|macros| {
-                        macros
-                            .into_iter()
-                            .map(|(name, kind)| (name, macro_kind_to_api(kind)))
-                            .collect()
-                    });
+            (bidirectional::Kind::Request, bidirectional::Payload::Request(request)) => {
+                match request {
+                    bidirectional::Request::ListMacros { dylib_path } => {
+                        let res = srv.list_macros(&dylib_path).map(|macros| {
+                            macros
+                                .into_iter()
+                                .map(|(name, kind)| (name, macro_kind_to_api(kind)))
+                                .collect()
+                        });
 
-                    send_response::<_, C>(
-                        &mut stdout,
-                        req.id,
-                        proc_macro_api::bidirectional_protocol::msg::Response::ListMacros(res),
-                    )?;
-                }
+                        send_response::<_, C>(
+                            &mut stdout,
+                            req.id,
+                            bidirectional::Response::ListMacros(res),
+                        )?;
+                    }
 
-                Request::ApiVersionCheck {} => {
-                    send_response::<_, C>(
-                        &mut stdout,
-                        req.id,
-                        proc_macro_api::bidirectional_protocol::msg::Response::ApiVersionCheck(
-                            CURRENT_API_VERSION,
-                        ),
-                    )?;
-                }
+                    bidirectional::Request::ApiVersionCheck {} => {
+                        send_response::<_, C>(
+                            &mut stdout,
+                            req.id,
+                            bidirectional::Response::ApiVersionCheck(CURRENT_API_VERSION),
+                        )?;
+                    }
 
-                Request::SetConfig(config) => {
-                    span_mode = config.span_mode;
-                    send_response::<_, C>(
-                        &mut stdout,
-                        req.id,
-                        proc_macro_api::bidirectional_protocol::msg::Response::SetConfig(config),
-                    )?;
+                    bidirectional::Request::SetConfig(config) => {
+                        span_mode = config.span_mode;
+                        send_response::<_, C>(
+                            &mut stdout,
+                            req.id,
+                            bidirectional::Response::SetConfig(config),
+                        )?;
+                    }
+                    bidirectional::Request::ExpandMacro(task) => {
+                        handle_expand::<_, _, C>(
+                            &srv,
+                            &mut stdin,
+                            &mut stdout,
+                            &mut buf,
+                            req.id,
+                            span_mode,
+                            *task,
+                        )?;
+                    }
                 }
-                Request::ExpandMacro(task) => {
-                    handle_expand::<_, _, C>(
-                        &srv,
-                        &mut stdin,
-                        &mut stdout,
-                        &mut buf,
-                        req.id,
-                        span_mode,
-                        *task,
-                    )?;
-                }
-            },
+            }
             _ => continue,
         }
     }
@@ -130,12 +129,12 @@ fn handle_expand<W: std::io::Write, R: std::io::BufRead, C: Codec>(
     stdout: &mut W,
     buf: &mut C::Buf,
     req_id: u64,
-    span_mode: SpanMode,
-    task: proc_macro_api::bidirectional_protocol::msg::ExpandMacro,
+    span_mode: legacy::SpanMode,
+    task: bidirectional::ExpandMacro,
 ) -> io::Result<()> {
     match span_mode {
-        SpanMode::Id => handle_expand_id::<_, C>(srv, stdout, req_id, task),
-        SpanMode::RustAnalyzer => {
+        legacy::SpanMode::Id => handle_expand_id::<_, C>(srv, stdout, req_id, task),
+        legacy::SpanMode::RustAnalyzer => {
             handle_expand_ra::<_, _, C>(srv, stdin, stdout, buf, req_id, task)
         }
     }
@@ -145,21 +144,14 @@ fn handle_expand_id<W: std::io::Write, C: Codec>(
     srv: &proc_macro_srv::ProcMacroSrv<'_>,
     stdout: &mut W,
     req_id: u64,
-    task: proc_macro_api::bidirectional_protocol::msg::ExpandMacro,
+    task: bidirectional::ExpandMacro,
 ) -> io::Result<()> {
-    let proc_macro_api::bidirectional_protocol::msg::ExpandMacro { lib, env, current_dir, data } =
-        task;
-    let proc_macro_api::bidirectional_protocol::msg::ExpandMacroData {
+    let bidirectional::ExpandMacro { lib, env, current_dir, data } = task;
+    let bidirectional::ExpandMacroData {
         macro_body,
         macro_name,
         attributes,
-        has_global_spans:
-            proc_macro_api::bidirectional_protocol::msg::ExpnGlobals {
-                def_site,
-                call_site,
-                mixed_site,
-                ..
-            },
+        has_global_spans: bidirectional::ExpnGlobals { def_site, call_site, mixed_site, .. },
         ..
     } = data;
 
@@ -185,15 +177,11 @@ fn handle_expand_id<W: std::io::Write, C: Codec>(
             mixed_site,
         )
         .map(|it| {
-            msg::FlatTree::from_tokenstream_raw::<SpanTrans>(it, call_site, CURRENT_API_VERSION)
+            legacy::FlatTree::from_tokenstream_raw::<SpanTrans>(it, call_site, CURRENT_API_VERSION)
         })
-        .map_err(|e| msg::PanicMessage(e.into_string().unwrap_or_default()));
+        .map_err(|e| legacy::PanicMessage(e.into_string().unwrap_or_default()));
 
-    send_response::<_, C>(
-        stdout,
-        req_id,
-        proc_macro_api::bidirectional_protocol::msg::Response::ExpandMacro(res),
-    )
+    send_response::<_, C>(stdout, req_id, bidirectional::Response::ExpandMacro(res))
 }
 
 fn handle_expand_ra<W: std::io::Write, R: std::io::BufRead, C: Codec>(
@@ -202,29 +190,24 @@ fn handle_expand_ra<W: std::io::Write, R: std::io::BufRead, C: Codec>(
     stdout: &mut W,
     buf: &mut C::Buf,
     req_id: u64,
-    task: proc_macro_api::bidirectional_protocol::msg::ExpandMacro,
+    task: bidirectional::ExpandMacro,
 ) -> io::Result<()> {
-    let proc_macro_api::bidirectional_protocol::msg::ExpandMacro {
+    let bidirectional::ExpandMacro {
         lib,
         env,
         current_dir,
         data:
-            proc_macro_api::bidirectional_protocol::msg::ExpandMacroData {
+            bidirectional::ExpandMacroData {
                 macro_body,
                 macro_name,
                 attributes,
                 has_global_spans:
-                    proc_macro_api::bidirectional_protocol::msg::ExpnGlobals {
-                        serialize: _,
-                        def_site,
-                        call_site,
-                        mixed_site,
-                    },
+                    bidirectional::ExpnGlobals { serialize: _, def_site, call_site, mixed_site },
                 span_data_table,
             },
     } = task;
 
-    let mut span_data_table = deserialize_span_data_index_map(&span_data_table);
+    let mut span_data_table = legacy::deserialize_span_data_index_map(&span_data_table);
 
     let def_site_span = span_data_table[def_site];
     let call_site_span = span_data_table[call_site];
@@ -269,23 +252,21 @@ fn handle_expand_ra<W: std::io::Write, R: std::io::BufRead, C: Codec>(
                     )
                     .map(|it| {
                         (
-                            msg::FlatTree::from_tokenstream(
+                            legacy::FlatTree::from_tokenstream(
                                 it,
                                 CURRENT_API_VERSION,
                                 call_site_span,
                                 &mut span_data_table,
                             ),
-                            serialize_span_data_index_map(&span_data_table),
+                            legacy::serialize_span_data_index_map(&span_data_table),
                         )
                     })
-                    .map(|(tree, span_data_table)| {
-                        proc_macro_api::bidirectional_protocol::msg::ExpandMacroExtended {
-                            tree,
-                            span_data_table,
-                        }
+                    .map(|(tree, span_data_table)| bidirectional::ExpandMacroExtended {
+                        tree,
+                        span_data_table,
                     })
                     .map_err(|e| e.into_string().unwrap_or_default())
-                    .map_err(msg::PanicMessage);
+                    .map_err(legacy::PanicMessage);
                 let _ = result_tx.send(res);
             }
         });
@@ -295,7 +276,7 @@ fn handle_expand_ra<W: std::io::Write, R: std::io::BufRead, C: Codec>(
                 send_response::<_, C>(
                     stdout,
                     req_id,
-                    proc_macro_api::bidirectional_protocol::msg::Response::ExpandMacroExtended(res),
+                    bidirectional::Response::ExpandMacroExtended(res),
                 )
                 .unwrap();
                 break;
@@ -310,7 +291,7 @@ fn handle_expand_ra<W: std::io::Write, R: std::io::BufRead, C: Codec>(
 
             send_subrequest::<_, C>(stdout, req_id, from_srv_req(subreq)).unwrap();
 
-            let resp_opt = Envelope::read::<_, C>(stdin, buf).unwrap();
+            let resp_opt = bidirectional::Envelope::read::<_, C>(stdin, buf).unwrap();
             let resp = match resp_opt {
                 Some(env) => env,
                 None => {
@@ -319,7 +300,10 @@ fn handle_expand_ra<W: std::io::Write, R: std::io::BufRead, C: Codec>(
             };
 
             match (resp.kind, resp.payload) {
-                (Kind::SubResponse, Payload::SubResponse(subresp)) => {
+                (
+                    bidirectional::Kind::SubResponse,
+                    bidirectional::Payload::SubResponse(subresp),
+                ) => {
                     let _ = subresp_tx.send(from_client_res(subresp));
                 }
                 _ => {
@@ -343,38 +327,38 @@ fn run_<C: Codec>() -> io::Result<()> {
     }
 
     let mut buf = C::Buf::default();
-    let mut read_request = || msg::Request::read::<_, C>(&mut io::stdin().lock(), &mut buf);
-    let write_response = |msg: msg::Response| msg.write::<_, C>(&mut io::stdout().lock());
+    let mut read_request = || legacy::Request::read::<_, C>(&mut io::stdin().lock(), &mut buf);
+    let write_response = |msg: legacy::Response| msg.write::<_, C>(&mut io::stdout().lock());
 
     let env = EnvSnapshot::default();
     let srv = proc_macro_srv::ProcMacroSrv::new(&env);
 
-    let mut span_mode = SpanMode::Id;
+    let mut span_mode = legacy::SpanMode::Id;
 
     while let Some(req) = read_request()? {
         let res = match req {
-            msg::Request::ListMacros { dylib_path } => {
-                msg::Response::ListMacros(srv.list_macros(&dylib_path).map(|macros| {
+            legacy::Request::ListMacros { dylib_path } => {
+                legacy::Response::ListMacros(srv.list_macros(&dylib_path).map(|macros| {
                     macros.into_iter().map(|(name, kind)| (name, macro_kind_to_api(kind))).collect()
                 }))
             }
-            msg::Request::ExpandMacro(task) => {
-                let msg::ExpandMacro {
+            legacy::Request::ExpandMacro(task) => {
+                let legacy::ExpandMacro {
                     lib,
                     env,
                     current_dir,
                     data:
-                        ExpandMacroData {
+                        legacy::ExpandMacroData {
                             macro_body,
                             macro_name,
                             attributes,
                             has_global_spans:
-                                ExpnGlobals { serialize: _, def_site, call_site, mixed_site },
+                                legacy::ExpnGlobals { serialize: _, def_site, call_site, mixed_site },
                             span_data_table,
                         },
                 } = *task;
                 match span_mode {
-                    SpanMode::Id => msg::Response::ExpandMacro({
+                    legacy::SpanMode::Id => legacy::Response::ExpandMacro({
                         let def_site = SpanId(def_site as u32);
                         let call_site = SpanId(call_site as u32);
                         let mixed_site = SpanId(mixed_site as u32);
@@ -397,17 +381,18 @@ fn run_<C: Codec>() -> io::Result<()> {
                             mixed_site,
                         )
                         .map(|it| {
-                            msg::FlatTree::from_tokenstream_raw::<SpanTrans>(
+                            legacy::FlatTree::from_tokenstream_raw::<SpanTrans>(
                                 it,
                                 call_site,
                                 CURRENT_API_VERSION,
                             )
                         })
                         .map_err(|e| e.into_string().unwrap_or_default())
-                        .map_err(msg::PanicMessage)
+                        .map_err(legacy::PanicMessage)
                     }),
-                    SpanMode::RustAnalyzer => msg::Response::ExpandMacroExtended({
-                        let mut span_data_table = deserialize_span_data_index_map(&span_data_table);
+                    legacy::SpanMode::RustAnalyzer => legacy::Response::ExpandMacroExtended({
+                        let mut span_data_table =
+                            legacy::deserialize_span_data_index_map(&span_data_table);
 
                         let def_site = span_data_table[def_site];
                         let call_site = span_data_table[call_site];
@@ -438,28 +423,30 @@ fn run_<C: Codec>() -> io::Result<()> {
                         )
                         .map(|it| {
                             (
-                                msg::FlatTree::from_tokenstream(
+                                legacy::FlatTree::from_tokenstream(
                                     it,
                                     CURRENT_API_VERSION,
                                     call_site,
                                     &mut span_data_table,
                                 ),
-                                serialize_span_data_index_map(&span_data_table),
+                                legacy::serialize_span_data_index_map(&span_data_table),
                             )
                         })
-                        .map(|(tree, span_data_table)| msg::ExpandMacroExtended {
+                        .map(|(tree, span_data_table)| legacy::ExpandMacroExtended {
                             tree,
                             span_data_table,
                         })
                         .map_err(|e| e.into_string().unwrap_or_default())
-                        .map_err(msg::PanicMessage)
+                        .map_err(legacy::PanicMessage)
                     }),
                 }
             }
-            msg::Request::ApiVersionCheck {} => msg::Response::ApiVersionCheck(CURRENT_API_VERSION),
-            msg::Request::SetConfig(config) => {
+            legacy::Request::ApiVersionCheck {} => {
+                legacy::Response::ApiVersionCheck(CURRENT_API_VERSION)
+            }
+            legacy::Request::SetConfig(config) => {
                 span_mode = config.span_mode;
-                msg::Response::SetConfig(config)
+                legacy::Response::SetConfig(config)
             }
         };
         write_response(res)?
@@ -468,25 +455,17 @@ fn run_<C: Codec>() -> io::Result<()> {
     Ok(())
 }
 
-fn from_srv_req(
-    value: proc_macro_srv::SubRequest,
-) -> proc_macro_api::bidirectional_protocol::msg::SubRequest {
+fn from_srv_req(value: proc_macro_srv::SubRequest) -> bidirectional::SubRequest {
     match value {
         proc_macro_srv::SubRequest::SourceText { file_id, start, end } => {
-            proc_macro_api::bidirectional_protocol::msg::SubRequest::SourceText {
-                file_id: file_id.file_id().index(),
-                start,
-                end,
-            }
+            bidirectional::SubRequest::SourceText { file_id: file_id.file_id().index(), start, end }
         }
     }
 }
 
-fn from_client_res(
-    value: proc_macro_api::bidirectional_protocol::msg::SubResponse,
-) -> proc_macro_srv::SubResponse {
+fn from_client_res(value: bidirectional::SubResponse) -> proc_macro_srv::SubResponse {
     match value {
-        proc_macro_api::bidirectional_protocol::msg::SubResponse::SourceTextResult { text } => {
+        bidirectional::SubResponse::SourceTextResult { text } => {
             proc_macro_srv::SubResponse::SourceTextResult { text }
         }
     }
@@ -495,17 +474,25 @@ fn from_client_res(
 fn send_response<W: std::io::Write, C: Codec>(
     stdout: &mut W,
     id: u64,
-    resp: proc_macro_api::bidirectional_protocol::msg::Response,
+    resp: bidirectional::Response,
 ) -> io::Result<()> {
-    let resp = Envelope { id, kind: Kind::Response, payload: Payload::Response(resp) };
+    let resp = bidirectional::Envelope {
+        id,
+        kind: bidirectional::Kind::Response,
+        payload: bidirectional::Payload::Response(resp),
+    };
     resp.write::<W, C>(stdout)
 }
 
 fn send_subrequest<W: std::io::Write, C: Codec>(
     stdout: &mut W,
     id: u64,
-    resp: proc_macro_api::bidirectional_protocol::msg::SubRequest,
+    resp: bidirectional::SubRequest,
 ) -> io::Result<()> {
-    let resp = Envelope { id, kind: Kind::SubRequest, payload: Payload::SubRequest(resp) };
+    let resp = bidirectional::Envelope {
+        id,
+        kind: bidirectional::Kind::SubRequest,
+        payload: bidirectional::Payload::SubRequest(resp),
+    };
     resp.write::<W, C>(stdout)
 }
