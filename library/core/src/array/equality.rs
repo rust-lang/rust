@@ -124,6 +124,23 @@ where
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T, U, const N: usize> PartialEq<Vec<U>> for [T; N]
+where
+    T: PartialEq<U>,
+{
+    #[inline]
+    fn eq(&self, other: &Vec<U>) -> bool {
+        self[..] == other[..]
+    }
+
+    #[inline]
+    fn ne(&self, other: &Vec<U>) -> bool {
+        self[..] != other[..]
+    }
+}
+
+
 // NOTE: some less important impls are omitted to reduce code bloat
 // __impl_slice_eq2! { [A; $N], &'b [B; $N] }
 // __impl_slice_eq2! { [A; $N], &'b mut [B; $N] }
