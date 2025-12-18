@@ -10,6 +10,7 @@ use proc_macro_api::{
     version::CURRENT_API_VERSION,
 };
 
+use bidirectional::RequestId;
 use legacy::Message;
 
 use proc_macro_srv::{EnvSnapshot, SpanId};
@@ -128,7 +129,7 @@ fn handle_expand<W: std::io::Write, R: std::io::BufRead, C: Codec>(
     stdin: &mut R,
     stdout: &mut W,
     buf: &mut C::Buf,
-    req_id: u64,
+    req_id: RequestId,
     span_mode: legacy::SpanMode,
     task: bidirectional::ExpandMacro,
 ) -> io::Result<()> {
@@ -143,7 +144,7 @@ fn handle_expand<W: std::io::Write, R: std::io::BufRead, C: Codec>(
 fn handle_expand_id<W: std::io::Write, C: Codec>(
     srv: &proc_macro_srv::ProcMacroSrv<'_>,
     stdout: &mut W,
-    req_id: u64,
+    req_id: RequestId,
     task: bidirectional::ExpandMacro,
 ) -> io::Result<()> {
     let bidirectional::ExpandMacro { lib, env, current_dir, data } = task;
@@ -189,7 +190,7 @@ fn handle_expand_ra<W: std::io::Write, R: std::io::BufRead, C: Codec>(
     stdin: &mut R,
     stdout: &mut W,
     buf: &mut C::Buf,
-    req_id: u64,
+    req_id: RequestId,
     task: bidirectional::ExpandMacro,
 ) -> io::Result<()> {
     let bidirectional::ExpandMacro {
@@ -473,7 +474,7 @@ fn from_client_res(value: bidirectional::SubResponse) -> proc_macro_srv::SubResp
 
 fn send_response<W: std::io::Write, C: Codec>(
     stdout: &mut W,
-    id: u64,
+    id: u32,
     resp: bidirectional::Response,
 ) -> io::Result<()> {
     let resp = bidirectional::Envelope {
@@ -486,7 +487,7 @@ fn send_response<W: std::io::Write, C: Codec>(
 
 fn send_subrequest<W: std::io::Write, C: Codec>(
     stdout: &mut W,
-    id: u64,
+    id: u32,
     resp: bidirectional::SubRequest,
 ) -> io::Result<()> {
     let resp = bidirectional::Envelope {

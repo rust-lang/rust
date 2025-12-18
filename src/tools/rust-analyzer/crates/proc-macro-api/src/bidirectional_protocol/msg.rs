@@ -8,7 +8,7 @@ use crate::{
     legacy_protocol::msg::{FlatTree, Message, PanicMessage, ServerConfig},
 };
 
-pub type RequestId = u64;
+pub type RequestId = u32;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Envelope {

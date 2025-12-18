@@ -6,7 +6,7 @@ use std::{
     process::{Child, ChildStdin, ChildStdout, Command, Stdio},
     sync::{
         Arc, Mutex, OnceLock,
-        atomic::{AtomicU64, Ordering},
+        atomic::{AtomicU32, Ordering},
     },
 };
 
@@ -36,7 +36,7 @@ pub(crate) struct ProcMacroServerProcess {
     protocol: Protocol,
     /// Populated when the server exits.
     exited: OnceLock<AssertUnwindSafe<ServerError>>,
-    next_request_id: AtomicU64,
+    next_request_id: AtomicU32,
 }
 
 #[derive(Debug, Clone)]
@@ -94,7 +94,7 @@ impl ProcMacroServerProcess {
                     version: 0,
                     protocol: protocol.clone(),
                     exited: OnceLock::new(),
-                    next_request_id: AtomicU64::new(1),
+                    next_request_id: AtomicU32::new(1),
                 })
             };
             let mut srv = create_srv()?;
