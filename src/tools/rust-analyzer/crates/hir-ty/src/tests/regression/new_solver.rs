@@ -230,6 +230,62 @@ fn main() {
     debug(&1);
 }"#,
     );
+
+    // toolchains <= 1.88.0, before sized-hierarchy.
+    check_no_mismatches(
+        r#"
+#[lang = "sized"]
+pub trait Sized {}
+
+#[lang = "unsize"]
+pub trait Unsize<T: ?Sized> {}
+
+#[lang = "coerce_unsized"]
+pub trait CoerceUnsized<T: ?Sized> {}
+
+impl<'a, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<&'a mut U> for &'a mut T {}
+
+impl<'a, 'b: 'a, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<&'a U> for &'b mut T {}
+
+impl<'a, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<*mut U> for &'a mut T {}
+
+impl<'a, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<*const U> for &'a mut T {}
+
+impl<'a, 'b: 'a, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<&'a U> for &'b T {}
+
+impl<'a, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<*const U> for &'a T {}
+
+impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<*mut U> for *mut T {}
+
+impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<*const U> for *mut T {}
+
+impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<*const U> for *const T {}
+
+#[lang = "dispatch_from_dyn"]
+pub trait DispatchFromDyn<T> {}
+
+impl<'a, T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<&'a U> for &'a T {}
+
+impl<'a, T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<&'a mut U> for &'a mut T {}
+
+impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<*const U> for *const T {}
+
+impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<*mut U> for *mut T {}
+
+trait Foo {
+    fn bar(&self) -> u32 {
+        0xCAFE
+    }
+}
+
+fn debug(_: &dyn Foo) {}
+
+impl Foo for i32 {}
+
+fn main() {
+    debug(&1);
+}"#,
+    );
 }
 
 #[test]

@@ -14,7 +14,7 @@ use std::ops::Index;
 use std::sync::Arc;
 
 use rustc_abi::{FieldIdx, Integer, Size, VariantIdx};
-use rustc_ast::{AsmMacro, InlineAsmOptions, InlineAsmTemplatePiece};
+use rustc_ast::{AsmMacro, InlineAsmOptions, InlineAsmTemplatePiece, Mutability};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{BindingMode, ByRef, HirId, MatchSource, RangeEnd};
@@ -811,11 +811,11 @@ pub enum PatKind<'tcx> {
     DerefPattern {
         subpattern: Box<Pat<'tcx>>,
         /// Whether the pattern scrutinee needs to be borrowed in order to call `Deref::deref` or
-        /// `DerefMut::deref_mut`, and if so, which. This is `ByRef::No` for deref patterns on
+        /// `DerefMut::deref_mut`, and if so, which. This is `DerefPatBorrowMode::Box` for deref patterns on
         /// boxes; they are lowered using a built-in deref rather than a method call, thus they
         /// don't borrow the scrutinee.
         #[type_visitable(ignore)]
-        borrow: ByRef,
+        borrow: DerefPatBorrowMode,
     },
 
     /// One of the following:
@@ -877,6 +877,12 @@ pub enum PatKind<'tcx> {
     /// An error has been encountered during lowering. We probably shouldn't report more lints
     /// related to this pattern.
     Error(ErrorGuaranteed),
+}
+
+#[derive(Copy, Clone, Debug, HashStable)]
+pub enum DerefPatBorrowMode {
+    Borrow(Mutability),
+    Box,
 }
 
 /// A range pattern.

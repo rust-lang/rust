@@ -225,7 +225,7 @@ impl NavigationTarget {
     }
 }
 
-impl TryToNav for FileSymbol {
+impl<'db> TryToNav for FileSymbol<'db> {
     fn try_to_nav(
         &self,
         sema: &Semantics<'_, RootDatabase>,

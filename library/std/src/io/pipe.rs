@@ -1,6 +1,5 @@
 use crate::io;
-use crate::sys::anonymous_pipe::{AnonPipe, pipe as pipe_inner};
-use crate::sys_common::{FromInner, IntoInner};
+use crate::sys::{FromInner, IntoInner, pipe as imp};
 
 /// Creates an anonymous pipe.
 ///
@@ -84,39 +83,39 @@ use crate::sys_common::{FromInner, IntoInner};
 #[stable(feature = "anonymous_pipe", since = "1.87.0")]
 #[inline]
 pub fn pipe() -> io::Result<(PipeReader, PipeWriter)> {
-    pipe_inner().map(|(reader, writer)| (PipeReader(reader), PipeWriter(writer)))
+    imp::pipe().map(|(reader, writer)| (PipeReader(reader), PipeWriter(writer)))
 }
 
 /// Read end of an anonymous pipe.
 #[stable(feature = "anonymous_pipe", since = "1.87.0")]
 #[derive(Debug)]
-pub struct PipeReader(pub(crate) AnonPipe);
+pub struct PipeReader(pub(crate) imp::Pipe);
 
 /// Write end of an anonymous pipe.
 #[stable(feature = "anonymous_pipe", since = "1.87.0")]
 #[derive(Debug)]
-pub struct PipeWriter(pub(crate) AnonPipe);
+pub struct PipeWriter(pub(crate) imp::Pipe);
 
-impl FromInner<AnonPipe> for PipeReader {
-    fn from_inner(inner: AnonPipe) -> Self {
+impl FromInner<imp::Pipe> for PipeReader {
+    fn from_inner(inner: imp::Pipe) -> Self {
         Self(inner)
     }
 }
 
-impl IntoInner<AnonPipe> for PipeReader {
-    fn into_inner(self) -> AnonPipe {
+impl IntoInner<imp::Pipe> for PipeReader {
+    fn into_inner(self) -> imp::Pipe {
         self.0
     }
 }
 
-impl FromInner<AnonPipe> for PipeWriter {
-    fn from_inner(inner: AnonPipe) -> Self {
+impl FromInner<imp::Pipe> for PipeWriter {
+    fn from_inner(inner: imp::Pipe) -> Self {
         Self(inner)
     }
 }
 
-impl IntoInner<AnonPipe> for PipeWriter {
-    fn into_inner(self) -> AnonPipe {
+impl IntoInner<imp::Pipe> for PipeWriter {
+    fn into_inner(self) -> imp::Pipe {
         self.0
     }
 }

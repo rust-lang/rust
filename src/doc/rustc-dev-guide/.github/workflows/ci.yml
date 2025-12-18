@@ -7,7 +7,7 @@ on:
   pull_request:
   schedule:
     # Run multiple times a day as the successfull cached links are not checked every time.
-    - cron: '0 */8 * * *'
+    - cron: "0 */8 * * *"
 
 jobs:
   ci:
@@ -82,16 +82,6 @@ jobs:
           git add .
           git commit -m "Deploy ${GITHUB_SHA} to gh-pages"
           git push --quiet -f "https://x-token:${{ secrets.GITHUB_TOKEN }}@github.com/${GITHUB_REPOSITORY}" HEAD:gh-pages
-
-      - name: Cache sembr build
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            ci/sembr/target/
-          key: sembr-${{ hashFiles('ci/sembr/Cargo.lock') }}
 
       - name: Check if files comply with semantic line breaks
         continue-on-error: true

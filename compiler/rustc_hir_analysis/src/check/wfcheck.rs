@@ -2,7 +2,7 @@ use std::cell::LazyCell;
 use std::ops::{ControlFlow, Deref};
 
 use hir::intravisit::{self, Visitor};
-use rustc_abi::ExternAbi;
+use rustc_abi::{ExternAbi, ScalableElt};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, ErrorGuaranteed, pluralize, struct_span_code_err};
@@ -1038,7 +1038,21 @@ fn check_type_defn<'tcx>(
                     hir_ty.span,
                     Some(WellFormedLoc::Ty(field_id)),
                     ty.into(),
-                )
+                );
+
+                if matches!(ty.kind(), ty::Adt(def, _) if def.repr().scalable())
+                    && !matches!(adt_def.repr().scalable, Some(ScalableElt::Container))
+                {
+                    // Scalable vectors can only be fields of structs if the type has a
+                    // `rustc_scalable_vector` attribute w/out specifying an element count
+                    tcx.dcx().span_err(
+                        hir_ty.span,
+                        format!(
+                            "scalable vectors cannot be fields of a {}",
+                            adt_def.variant_descr()
+                        ),
+                    );
+                }
             }
 
             // For DST, or when drop needs to copy things around, all

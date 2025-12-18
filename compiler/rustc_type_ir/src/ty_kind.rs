@@ -8,7 +8,9 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 #[cfg(feature = "nightly")]
 use rustc_macros::{Decodable_NoContext, Encodable_NoContext, HashStable_NoContext};
 use rustc_type_ir::data_structures::{NoError, UnifyKey, UnifyValue};
-use rustc_type_ir_macros::{Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic};
+use rustc_type_ir_macros::{
+    GenericTypeVisitable, Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic,
+};
 
 use self::TyKind::*;
 pub use self::closure::*;
@@ -20,6 +22,7 @@ use crate::{self as ty, BoundVarIndexKind, FloatTy, IntTy, Interner, UintTy};
 mod closure;
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+#[derive(GenericTypeVisitable)]
 #[cfg_attr(
     feature = "nightly",
     derive(Encodable_NoContext, Decodable_NoContext, HashStable_NoContext)
@@ -56,6 +59,7 @@ impl AliasTyKind {
 /// converted to this representation using `<dyn HirTyLowerer>::lower_ty`.
 #[cfg_attr(feature = "nightly", rustc_diagnostic_item = "IrTyKind")]
 #[derive_where(Clone, Copy, Hash, PartialEq; I: Interner)]
+#[derive(GenericTypeVisitable)]
 #[cfg_attr(
     feature = "nightly",
     derive(Encodable_NoContext, Decodable_NoContext, HashStable_NoContext)
@@ -391,7 +395,7 @@ impl<I: Interner> fmt::Debug for TyKind<I> {
 /// * For an inherent projection, this would be `Ty::N<...>`.
 /// * For an opaque type, there is no explicit syntax.
 #[derive_where(Clone, Copy, Hash, PartialEq, Debug; I: Interner)]
-#[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
+#[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic, Lift_Generic)]
 #[cfg_attr(
     feature = "nightly",
     derive(Decodable_NoContext, Encodable_NoContext, HashStable_NoContext)
@@ -713,7 +717,7 @@ impl fmt::Debug for InferTy {
     feature = "nightly",
     derive(Encodable_NoContext, Decodable_NoContext, HashStable_NoContext)
 )]
-#[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
+#[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic)]
 pub struct TypeAndMut<I: Interner> {
     pub ty: I::Ty,
     pub mutbl: Mutability,
@@ -726,7 +730,7 @@ impl<I: Interner> Eq for TypeAndMut<I> {}
     feature = "nightly",
     derive(Encodable_NoContext, Decodable_NoContext, HashStable_NoContext)
 )]
-#[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
+#[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic, Lift_Generic)]
 pub struct FnSig<I: Interner> {
     pub inputs_and_output: I::Tys,
     pub c_variadic: bool,
@@ -839,7 +843,7 @@ impl<I: Interner> fmt::Debug for FnSig<I> {
 // impls in this crate for `Binder<I, I::Ty>`.
 #[derive_where(Clone, Copy, PartialEq, Hash; I: Interner)]
 #[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
-#[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
+#[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic, Lift_Generic)]
 pub struct UnsafeBinderInner<I: Interner>(ty::Binder<I, I::Ty>);
 
 impl<I: Interner> Eq for UnsafeBinderInner<I> {}
@@ -905,7 +909,7 @@ where
     feature = "nightly",
     derive(Encodable_NoContext, Decodable_NoContext, HashStable_NoContext)
 )]
-#[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
+#[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic, Lift_Generic)]
 pub struct FnSigTys<I: Interner> {
     pub inputs_and_output: I::Tys,
 }
@@ -959,7 +963,7 @@ impl<I: Interner> ty::Binder<I, FnSigTys<I>> {
     feature = "nightly",
     derive(Encodable_NoContext, Decodable_NoContext, HashStable_NoContext)
 )]
-#[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
+#[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic, Lift_Generic)]
 pub struct FnHeader<I: Interner> {
     pub c_variadic: bool,
     pub safety: I::Safety,
@@ -973,7 +977,7 @@ impl<I: Interner> Eq for FnHeader<I> {}
     feature = "nightly",
     derive(Encodable_NoContext, Decodable_NoContext, HashStable_NoContext)
 )]
-#[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
+#[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic, Lift_Generic)]
 pub struct CoroutineWitnessTypes<I: Interner> {
     pub types: I::Tys,
     pub assumptions: I::RegionAssumptions,

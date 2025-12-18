@@ -357,6 +357,16 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
     }
 
     fn visit_anon_const(&mut self, constant: &'a AnonConst) {
+        // `MgcaDisambiguation::Direct` is set even when MGCA is disabled, so
+        // to avoid affecting stable we have to feature gate the not creating
+        // anon consts
+        if let MgcaDisambiguation::Direct = constant.mgca_disambiguation
+            && self.resolver.tcx.features().min_generic_const_args()
+        {
+            visit::walk_anon_const(self, constant);
+            return;
+        }
+
         let parent = self.create_def(constant.id, None, DefKind::AnonConst, constant.value.span);
         self.with_parent(parent, |this| visit::walk_anon_const(this, constant));
     }

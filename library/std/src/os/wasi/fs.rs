@@ -17,7 +17,7 @@ use crate::os::fd::AsRawFd;
 use crate::path::Path;
 #[cfg(target_env = "p1")]
 use crate::sys::err2io;
-use crate::sys_common::{AsInner, AsInnerMut};
+use crate::sys::{AsInner, AsInnerMut};
 
 /// WASI-specific extensions to [`File`].
 pub trait FileExt {

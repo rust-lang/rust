@@ -9,6 +9,7 @@ compiler-rt
 # Benchmark cache
 baseline-*
 iai-home
+gungraun-home
 
 # Temporary files
 *.bk

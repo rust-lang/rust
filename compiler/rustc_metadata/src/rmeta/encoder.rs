@@ -879,13 +879,9 @@ fn analyze_attr(attr: &hir::Attribute, state: &mut AnalyzeAttrState<'_>) -> bool
             should_encode = true;
         }
     } else if let hir::Attribute::Parsed(AttributeKind::Doc(d)) = attr {
-        // If this is a `doc` attribute that doesn't have anything except maybe `inline` (as in
-        // `#[doc(inline)]`), then we can remove it. It won't be inlinable in downstream crates.
-        if d.inline.is_empty() {
-            should_encode = true;
-            if d.hidden.is_some() {
-                state.is_doc_hidden = true;
-            }
+        should_encode = true;
+        if d.hidden.is_some() {
+            state.is_doc_hidden = true;
         }
     } else if let &[sym::diagnostic, seg] = &*attr.path() {
         should_encode = rustc_feature::is_stable_diagnostic_attribute(seg, state.features);
@@ -1451,7 +1447,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     _ => false,
                 }
             {
-                continue;
+                // MGCA doesn't have unnecessary DefIds
+                if !tcx.features().min_generic_const_args() {
+                    continue;
+                }
             }
 
             if def_kind == DefKind::Field

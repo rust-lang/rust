@@ -27,7 +27,7 @@ use syntax::{
         make,
         syntax_factory::SyntaxFactory,
     },
-    syntax_editor::{Removable, SyntaxEditor},
+    syntax_editor::{Element, Removable, SyntaxEditor},
 };
 
 use crate::{
@@ -382,6 +382,28 @@ fn invert_special_case_legacy(expr: &ast::Expr) -> Option<ast::Expr> {
         },
         _ => None,
     }
+}
+
+pub(crate) fn insert_attributes(
+    before: impl Element,
+    edit: &mut SyntaxEditor,
+    attrs: impl IntoIterator<Item = ast::Attr>,
+) {
+    let mut attrs = attrs.into_iter().peekable();
+    if attrs.peek().is_none() {
+        return;
+    }
+    let elem = before.syntax_element();
+    let indent = IndentLevel::from_element(&elem);
+    let whitespace = format!("\n{indent}");
+    edit.insert_all(
+        syntax::syntax_editor::Position::before(elem),
+        attrs
+            .flat_map(|attr| {
+                [attr.syntax().clone().into(), make::tokens::whitespace(&whitespace).into()]
+            })
+            .collect(),
+    );
 }
 
 pub(crate) fn next_prev() -> impl Iterator<Item = Direction> {

@@ -177,45 +177,52 @@ impl<'db> SolverDelegate for SolverContext<'db> {
         impl_id: ImplIdWrapper,
     ) -> Result<Option<SolverDefId>, ErrorGuaranteed> {
         let impl_items = impl_id.0.impl_items(self.0.interner.db());
-        let id = match trait_assoc_def_id {
-            SolverDefId::TypeAliasId(trait_assoc_id) => {
-                let trait_assoc_data = self.0.interner.db.type_alias_signature(trait_assoc_id);
-                impl_items
-                    .items
-                    .iter()
-                    .find_map(|(impl_assoc_name, impl_assoc_id)| {
-                        if let AssocItemId::TypeAliasId(impl_assoc_id) = *impl_assoc_id
-                            && *impl_assoc_name == trait_assoc_data.name
-                        {
-                            Some(impl_assoc_id)
-                        } else {
-                            None
-                        }
-                    })
-                    .map(SolverDefId::TypeAliasId)
-            }
-            SolverDefId::ConstId(trait_assoc_id) => {
-                let trait_assoc_data = self.0.interner.db.const_signature(trait_assoc_id);
-                let trait_assoc_name = trait_assoc_data
-                    .name
-                    .as_ref()
-                    .expect("unnamed consts should not get passed to the solver");
-                impl_items
-                    .items
-                    .iter()
-                    .find_map(|(impl_assoc_name, impl_assoc_id)| {
-                        if let AssocItemId::ConstId(impl_assoc_id) = *impl_assoc_id
-                            && impl_assoc_name == trait_assoc_name
-                        {
-                            Some(impl_assoc_id)
-                        } else {
-                            None
-                        }
-                    })
-                    .map(SolverDefId::ConstId)
-            }
-            _ => panic!("Unexpected SolverDefId"),
-        };
+        let id =
+            match trait_assoc_def_id {
+                SolverDefId::TypeAliasId(trait_assoc_id) => {
+                    let trait_assoc_data = self.0.interner.db.type_alias_signature(trait_assoc_id);
+                    impl_items
+                        .items
+                        .iter()
+                        .find_map(|(impl_assoc_name, impl_assoc_id)| {
+                            if let AssocItemId::TypeAliasId(impl_assoc_id) = *impl_assoc_id
+                                && *impl_assoc_name == trait_assoc_data.name
+                            {
+                                Some(impl_assoc_id)
+                            } else {
+                                None
+                            }
+                        })
+                        .or_else(|| {
+                            if trait_assoc_data.ty.is_some() { Some(trait_assoc_id) } else { None }
+                        })
+                        .map(SolverDefId::TypeAliasId)
+                }
+                SolverDefId::ConstId(trait_assoc_id) => {
+                    let trait_assoc_data = self.0.interner.db.const_signature(trait_assoc_id);
+                    let trait_assoc_name = trait_assoc_data
+                        .name
+                        .as_ref()
+                        .expect("unnamed consts should not get passed to the solver");
+                    impl_items
+                        .items
+                        .iter()
+                        .find_map(|(impl_assoc_name, impl_assoc_id)| {
+                            if let AssocItemId::ConstId(impl_assoc_id) = *impl_assoc_id
+                                && impl_assoc_name == trait_assoc_name
+                            {
+                                Some(impl_assoc_id)
+                            } else {
+                                None
+                            }
+                        })
+                        .or_else(|| {
+                            if trait_assoc_data.has_body() { Some(trait_assoc_id) } else { None }
+                        })
+                        .map(SolverDefId::ConstId)
+                }
+                _ => panic!("Unexpected SolverDefId"),
+            };
         Ok(id)
     }
 
@@ -225,7 +232,9 @@ impl<'db> SolverDelegate for SolverContext<'db> {
         _src: Ty<'db>,
         _assume: <Self::Interner as rustc_type_ir::Interner>::Const,
     ) -> Result<Certainty, NoSolution> {
-        unimplemented!()
+        // It's better to return some value while not fully implement
+        // then panic in the mean time
+        Ok(Certainty::Yes)
     }
 
     fn evaluate_const(

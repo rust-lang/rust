@@ -110,13 +110,12 @@ impl<S: Stage> SingleAttributeParser<S> for DeprecationParser {
                                 Some(get(cx, name, param.span(), param.args(), &suggestion)?);
                         }
                         _ => {
-                            cx.unknown_key(
+                            cx.expected_specific_argument(
                                 param.span(),
-                                param.path().to_string(),
                                 if features.deprecated_suggestion() {
-                                    &["since", "note", "suggestion"]
+                                    &[sym::since, sym::note, sym::suggestion]
                                 } else {
-                                    &["since", "note"]
+                                    &[sym::since, sym::note]
                                 },
                             );
                             return None;

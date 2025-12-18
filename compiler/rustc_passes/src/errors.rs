@@ -80,12 +80,6 @@ pub(crate) struct OuterCrateLevelAttrSuggestion {
 #[diag(passes_inner_crate_level_attr)]
 pub(crate) struct InnerCrateLevelAttr;
 
-#[derive(LintDiagnostic)]
-#[diag(passes_ignored_attr_with_macro)]
-pub(crate) struct IgnoredAttrWithMacro<'a> {
-    pub sym: &'a str,
-}
-
 #[derive(Diagnostic)]
 #[diag(passes_should_be_applied_to_fn)]
 pub(crate) struct AttrShouldBeAppliedToFn {
@@ -255,15 +249,6 @@ pub(crate) struct Link {
 }
 
 #[derive(Diagnostic)]
-#[diag(passes_no_link)]
-pub(crate) struct NoLink {
-    #[primary_span]
-    pub attr_span: Span,
-    #[label]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(passes_rustc_legacy_const_generics_only)]
 pub(crate) struct RustcLegacyConstGenericsOnly {
     #[primary_span]
@@ -288,13 +273,6 @@ pub(crate) struct RustcLegacyConstGenericsIndexExceed {
     #[label]
     pub span: Span,
     pub arg_count: usize,
-}
-
-#[derive(Diagnostic)]
-#[diag(passes_rustc_legacy_const_generics_index_negative)]
-pub(crate) struct RustcLegacyConstGenericsIndexNegative {
-    #[primary_span]
-    pub invalid_args: Vec<Span>,
 }
 
 #[derive(Diagnostic)]

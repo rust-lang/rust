@@ -20,7 +20,7 @@ use crate::mem::ManuallyDrop;
 )))]
 use crate::sys::cvt;
 #[cfg(not(target_os = "trusty"))]
-use crate::sys_common::{AsInner, FromInner, IntoInner};
+use crate::sys::{AsInner, FromInner, IntoInner};
 use crate::{fmt, io};
 
 type ValidRawFd = core::num::niche_types::NotAllOnes<RawFd>;

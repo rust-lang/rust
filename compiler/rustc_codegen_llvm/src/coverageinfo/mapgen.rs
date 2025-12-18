@@ -7,7 +7,7 @@ use rustc_codegen_ssa::traits::{BaseTypeCodegenMethods, ConstCodegenMethods};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_index::IndexVec;
 use rustc_middle::ty::TyCtxt;
-use rustc_span::{RemapPathScopeComponents, SourceFile, StableSourceFileId};
+use rustc_span::{FileName, RemapPathScopeComponents, SourceFile, StableSourceFileId};
 use tracing::debug;
 
 use crate::common::CodegenCx;
@@ -125,7 +125,19 @@ impl GlobalFileTable {
 
         for file in all_files {
             raw_file_table.entry(file.stable_id).or_insert_with(|| {
-                file.name.display(RemapPathScopeComponents::COVERAGE).to_string_lossy().into_owned()
+                // Prefer using the embeddable filename as this filename is going to
+                // end-up in the coverage artifacts (see rust-lang/rust#150020).
+                if let FileName::Real(real) = &file.name {
+                    let (_work_dir, abs_name) =
+                        real.embeddable_name(RemapPathScopeComponents::COVERAGE);
+
+                    abs_name.to_string_lossy().into_owned()
+                } else {
+                    file.name
+                        .display(RemapPathScopeComponents::COVERAGE)
+                        .to_string_lossy()
+                        .into_owned()
+                }
             });
         }
 

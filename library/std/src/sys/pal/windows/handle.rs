@@ -1,8 +1,5 @@
 #![unstable(issue = "none", feature = "windows_handle")]
 
-#[cfg(test)]
-mod tests;
-
 use core::ffi::c_void;
 use core::{cmp, mem, ptr};
 
@@ -10,8 +7,7 @@ use crate::io::{self, BorrowedCursor, ErrorKind, IoSlice, IoSliceMut, Read};
 use crate::os::windows::io::{
     AsHandle, AsRawHandle, BorrowedHandle, FromRawHandle, IntoRawHandle, OwnedHandle, RawHandle,
 };
-use crate::sys::{c, cvt};
-use crate::sys_common::{AsInner, FromInner, IntoInner};
+use crate::sys::{AsInner, FromInner, IntoInner, c, cvt};
 
 /// An owned container for `HANDLE` object, closing them on Drop.
 ///
@@ -121,7 +117,7 @@ impl Handle {
             Ok(read) => {
                 // Safety: `read` bytes were written to the initialized portion of the buffer
                 unsafe {
-                    cursor.advance(read);
+                    cursor.advance_unchecked(read);
                 }
                 Ok(())
             }
@@ -144,7 +140,7 @@ impl Handle {
 
         // SAFETY: `read` bytes were written to the initialized portion of the buffer
         unsafe {
-            cursor.advance(read);
+            cursor.advance_unchecked(read);
         }
         Ok(())
     }
