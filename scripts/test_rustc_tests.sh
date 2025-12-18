@@ -35,6 +35,7 @@ git checkout -- tests/ui/entry-point/auxiliary/bad_main_functions.rs
 rm tests/ui/asm/x86_64/evex512-implicit-feature.rs # unimplemented AVX512 x86 vendor intrinsic
 rm tests/ui/simd/dont-invalid-bitcast-x86_64.rs # unimplemented llvm.x86.sse41.round.ps
 rm tests/ui/simd/intrinsic/generic-arithmetic-pass.rs # unimplemented simd_funnel_{shl,shr}
+rm -r tests/ui/scalable-vectors # scalable vectors are unsupported
 
 # exotic linkages
 rm tests/incremental/hashes/function_interfaces.rs
@@ -159,6 +160,7 @@ rm tests/ui/lint/use-redundant/use-redundant-issue-71450.rs # same
 rm tests/ui/lint/use-redundant/use-redundant-prelude-rust-2021.rs # same
 rm tests/ui/specialization/const_trait_impl.rs # same
 rm tests/ui/thir-print/offset_of.rs # same
+rm tests/ui/traits/const-traits/const_closure-const_trait_impl-ice-113381.rs # same
 
 # genuine bugs
 # ============
