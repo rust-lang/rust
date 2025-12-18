@@ -25,5 +25,17 @@ error: transmuting a known null pointer into a reference
 LL |         let _: &u64 = std::mem::transmute(u64::MIN as *const u64);
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 4 previous errors
+error: transmuting a known null pointer into a reference
+  --> tests/ui/transmuting_null.rs:42:23
+   |
+LL |         let _: &u64 = std::mem::transmute({ 0 as *const u64 });
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: transmuting a known null pointer into a reference
+  --> tests/ui/transmuting_null.rs:45:23
+   |
+LL |         let _: &u64 = std::mem::transmute(const { u64::MIN as *const u64 });
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 6 previous errors
 
