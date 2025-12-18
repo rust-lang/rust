@@ -1290,29 +1290,29 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut coerce = Coerce::new(self, cause.clone(), AllowTwoPhase::No, true);
         coerce.use_lub = true;
 
-        // First try to coerce the new expression to the type of the previous ones,
-        // but only if the new expression has no coercion already applied to it.
-        let mut first_error = None;
-        if !self.typeck_results.borrow().adjustments().contains_key(new.hir_id) {
-            let result = self.commit_if_ok(|_| coerce.coerce(new_ty, prev_ty));
-            match result {
-                Ok(ok) => {
-                    let (adjustments, target) = self.register_infer_ok_obligations(ok);
-                    self.apply_adjustments(new, adjustments);
-                    debug!(
-                        "coercion::try_find_coercion_lub: was able to coerce from new type {:?} to previous type {:?} ({:?})",
-                        new_ty, prev_ty, target
-                    );
-                    return Ok(target);
-                }
-                Err(e) => first_error = Some(e),
+        // This might be okay, but we previously branched on this without any
+        // test, so I'm just keeping the assert to avoid surprising behavior.
+        assert!(!self.typeck_results.borrow().adjustments().contains_key(new.hir_id));
+
+        // First try to coerce the new expression to the type of the previous ones.
+        let result = self.commit_if_ok(|_| coerce.coerce(new_ty, prev_ty));
+        let first_error = match result {
+            Ok(ok) => {
+                let (adjustments, target) = self.register_infer_ok_obligations(ok);
+                self.apply_adjustments(new, adjustments);
+                debug!(
+                    "coercion::try_find_coercion_lub: was able to coerce from new type {:?} to previous type {:?} ({:?})",
+                    new_ty, prev_ty, target
+                );
+                return Ok(target);
             }
-        }
+            Err(e) => e,
+        };
 
         let ok = self
             .commit_if_ok(|_| coerce.coerce(prev_ty, new_ty))
             // Avoid giving strange errors on failed attempts.
-            .map_err(|e| first_error.unwrap_or(e))?;
+            .map_err(|_| first_error)?;
 
         let (adjustments, target) = self.register_infer_ok_obligations(ok);
         for expr in exprs {
@@ -1387,6 +1387,7 @@ pub(crate) struct CoerceMany<'tcx, 'exprs, E: AsCoercionSite> {
     final_ty: Option<Ty<'tcx>>,
     expressions: Expressions<'tcx, 'exprs, E>,
     pushed: usize,
+    force_lub: bool,
 }
 
 /// The type of a `CoerceMany` that is storing up the expressions into
@@ -1416,7 +1417,13 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
     }
 
     fn make(expected_ty: Ty<'tcx>, expressions: Expressions<'tcx, 'exprs, E>) -> Self {
-        CoerceMany { expected_ty, final_ty: None, expressions, pushed: 0 }
+        CoerceMany { expected_ty, final_ty: None, expressions, pushed: 0, force_lub: false }
+    }
+
+    pub(crate) fn force_lub(&mut self) {
+        // Don't accidentally let someone switch this after coercing things
+        assert_eq!(self.pushed, 0);
+        self.force_lub = true;
     }
 
     /// Returns the "expected type" with which this coercion was
@@ -1529,10 +1536,9 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
 
         // Handle the actual type unification etc.
         let result = if let Some(expression) = expression {
-            if self.pushed == 0 {
-                // Special-case the first expression we are coercing.
-                // To be honest, I'm not entirely sure why we do this.
-                // We don't allow two-phase borrows, see comment in try_find_coercion_lub for why
+            if !self.force_lub && self.pushed == 0 {
+                // For this *first* expression, we do *not* use LUB
+                // (which `try_find_coercion_lub` does).
                 fcx.coerce(
                     expression,
                     expression_ty,
