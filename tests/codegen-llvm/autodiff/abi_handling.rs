@@ -58,7 +58,7 @@ fn f1(x: &[f32; 2]) -> f32 {
 // CHECK-NEXT: Function Attrs
 // debug-NEXT: define internal { float, float }
 // debug-SAME: (ptr %f, float %x, float %dret)
-// release-NEXT: define internal fastcc{{( noundef)?}} float
+// release-NEXT: define internal fastcc noundef float
 // release-SAME: (float noundef %x)
 
 // CHECK-LABEL: ; abi_handling::f2
