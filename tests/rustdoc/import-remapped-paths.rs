@@ -13,7 +13,6 @@
 extern crate remapped_paths;
 
 //@ has foo/struct.MyStruct.html
-// FIXME: Doesn't work!
 //@ has - '//a[@href="../src/remapped_paths/remapped-paths.rs.html#3"]' 'Source'
 //@ has - '//a[@href="../src/remapped_paths/remapped-paths.rs.html#8"]' 'Source'
 
