@@ -78,7 +78,6 @@ error: layout_of(MissingPayloadField) = Layout {
                        uninhabited: false,
                        max_repr_align: None,
                        unadjusted_abi_align: Align(1 bytes),
-                       randomization_seed: $SEED,
                    },
                    VariantLayout {
                        size: Size(1 bytes),
@@ -94,7 +93,6 @@ error: layout_of(MissingPayloadField) = Layout {
                        uninhabited: false,
                        max_repr_align: None,
                        unadjusted_abi_align: Align(1 bytes),
-                       randomization_seed: $SEED,
                    },
                ],
            },
@@ -189,7 +187,6 @@ error: layout_of(CommonPayloadField) = Layout {
                        uninhabited: false,
                        max_repr_align: None,
                        unadjusted_abi_align: Align(1 bytes),
-                       randomization_seed: $SEED,
                    },
                    VariantLayout {
                        size: Size(2 bytes),
@@ -222,7 +219,6 @@ error: layout_of(CommonPayloadField) = Layout {
                        uninhabited: false,
                        max_repr_align: None,
                        unadjusted_abi_align: Align(1 bytes),
-                       randomization_seed: $SEED,
                    },
                ],
            },
@@ -315,7 +311,6 @@ error: layout_of(CommonPayloadFieldIsMaybeUninit) = Layout {
                        uninhabited: false,
                        max_repr_align: None,
                        unadjusted_abi_align: Align(1 bytes),
-                       randomization_seed: $SEED,
                    },
                    VariantLayout {
                        size: Size(2 bytes),
@@ -347,7 +342,6 @@ error: layout_of(CommonPayloadFieldIsMaybeUninit) = Layout {
                        uninhabited: false,
                        max_repr_align: None,
                        unadjusted_abi_align: Align(1 bytes),
-                       randomization_seed: $SEED,
                    },
                ],
            },
@@ -456,7 +450,6 @@ error: layout_of(NicheFirst) = Layout {
                        uninhabited: false,
                        max_repr_align: None,
                        unadjusted_abi_align: Align(1 bytes),
-                       randomization_seed: $SEED,
                    },
                    VariantLayout {
                        size: Size(0 bytes),
@@ -472,7 +465,6 @@ error: layout_of(NicheFirst) = Layout {
                        uninhabited: false,
                        max_repr_align: None,
                        unadjusted_abi_align: Align(1 bytes),
-                       randomization_seed: $SEED,
                    },
                    VariantLayout {
                        size: Size(0 bytes),
@@ -488,7 +480,6 @@ error: layout_of(NicheFirst) = Layout {
                        uninhabited: false,
                        max_repr_align: None,
                        unadjusted_abi_align: Align(1 bytes),
-                       randomization_seed: $SEED,
                    },
                ],
            },
@@ -597,7 +588,6 @@ error: layout_of(NicheSecond) = Layout {
                        uninhabited: false,
                        max_repr_align: None,
                        unadjusted_abi_align: Align(1 bytes),
-                       randomization_seed: $SEED,
                    },
                    VariantLayout {
                        size: Size(0 bytes),
@@ -613,7 +603,6 @@ error: layout_of(NicheSecond) = Layout {
                        uninhabited: false,
                        max_repr_align: None,
                        unadjusted_abi_align: Align(1 bytes),
-                       randomization_seed: $SEED,
                    },
                    VariantLayout {
                        size: Size(0 bytes),
@@ -629,7 +618,6 @@ error: layout_of(NicheSecond) = Layout {
                        uninhabited: false,
                        max_repr_align: None,
                        unadjusted_abi_align: Align(1 bytes),
-                       randomization_seed: $SEED,
                    },
                ],
            },

@@ -72,7 +72,6 @@ error: layout_of(E) = Layout {
                        uninhabited: false,
                        max_repr_align: None,
                        unadjusted_abi_align: Align(1 bytes),
-                       randomization_seed: $SEED,
                    },
                    VariantLayout {
                        size: Size(12 bytes),
@@ -96,7 +95,6 @@ error: layout_of(E) = Layout {
                        uninhabited: true,
                        max_repr_align: None,
                        unadjusted_abi_align: Align(4 bytes),
-                       randomization_seed: $SEED,
                    },
                ],
            },
@@ -263,7 +261,6 @@ error: layout_of(Result<i32, i32>) = Layout {
                        uninhabited: false,
                        max_repr_align: None,
                        unadjusted_abi_align: Align(4 bytes),
-                       randomization_seed: $SEED,
                    },
                    VariantLayout {
                        size: Size(8 bytes),
@@ -296,7 +293,6 @@ error: layout_of(Result<i32, i32>) = Layout {
                        uninhabited: false,
                        max_repr_align: None,
                        unadjusted_abi_align: Align(4 bytes),
-                       randomization_seed: $SEED,
                    },
                ],
            },
@@ -656,7 +652,6 @@ error: layout_of(Option<bool>) = Layout {
                        uninhabited: false,
                        max_repr_align: None,
                        unadjusted_abi_align: Align(1 bytes),
-                       randomization_seed: $SEED,
                    },
                    VariantLayout {
                        size: Size(1 bytes),
@@ -691,7 +686,6 @@ error: layout_of(Option<bool>) = Layout {
                        uninhabited: false,
                        max_repr_align: None,
                        unadjusted_abi_align: Align(1 bytes),
-                       randomization_seed: $SEED,
                    },
                ],
            },
@@ -766,7 +760,6 @@ error: layout_of(Option<char>) = Layout {
                        uninhabited: false,
                        max_repr_align: None,
                        unadjusted_abi_align: Align(1 bytes),
-                       randomization_seed: $SEED,
                    },
                    VariantLayout {
                        size: Size(4 bytes),
@@ -801,7 +794,6 @@ error: layout_of(Option<char>) = Layout {
                        uninhabited: false,
                        max_repr_align: None,
                        unadjusted_abi_align: Align(4 bytes),
-                       randomization_seed: $SEED,
                    },
                ],
            },
