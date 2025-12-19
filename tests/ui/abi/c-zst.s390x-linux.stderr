@@ -13,7 +13,7 @@ error: fn_abi_of(pass_zst) = FnAbi {
                            },
                            fields: Arbitrary {
                                offsets: [],
-                               memory_index: [],
+                               in_memory_order: [],
                            },
                            largest_niche: None,
                            uninhabited: false,
@@ -52,7 +52,7 @@ error: fn_abi_of(pass_zst) = FnAbi {
                        },
                        fields: Arbitrary {
                            offsets: [],
-                           memory_index: [],
+                           in_memory_order: [],
                        },
                        largest_niche: None,
                        uninhabited: false,
