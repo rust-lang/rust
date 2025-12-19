@@ -15,14 +15,15 @@ fn main() {
     let x: &(&u32, &u32) = unsafe {
         let a = 21;
         let b = 37;
-        let ra = &* &raw const a;
-        let rb = &* &raw const b;
+        let ra = &*&raw const a;
+        let rb = &*&raw const b;
         &(ra, rb)
     };
 
-    let _ = || { //~ ERROR: encountered a dangling reference
+    //~v ERROR: encountered a dangling reference
+    let _ = || {
         match x {
-            (&_y, _) => {},
+            (&_y, _) => {}
         }
     };
 }

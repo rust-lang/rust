@@ -4,7 +4,7 @@ error: Undefined Behavior: constructing invalid value: encountered a dangling re
 LL |       let _ = || {
    |  _____________^
 LL | |         match x {
-LL | |             (&_y, _) => {},
+LL | |             (&_y, _) => {}
 LL | |         }
 LL | |     };
    | |_____^ Undefined Behavior occurred here
