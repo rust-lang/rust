@@ -1,6 +1,7 @@
 //! The underlying OsString/OsStr implementation on Unix and many other
 //! systems: just a `Vec<u8>`/`[u8]`.
 
+use core::bstr::ByteStr;
 use core::clone::CloneToUninit;
 
 use crate::borrow::Cow;
@@ -64,25 +65,7 @@ impl fmt::Debug for Slice {
 
 impl fmt::Display for Slice {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // If we're the empty string then our iterator won't actually yield
-        // anything, so perform the formatting manually
-        if self.inner.is_empty() {
-            return "".fmt(f);
-        }
-
-        for chunk in self.inner.utf8_chunks() {
-            let valid = chunk.valid();
-            // If we successfully decoded the whole chunk as a valid string then
-            // we can return a direct formatting of the string which will also
-            // respect various formatting flags if possible.
-            if chunk.invalid().is_empty() {
-                return valid.fmt(f);
-            }
-
-            f.write_str(valid)?;
-            f.write_char(char::REPLACEMENT_CHARACTER)?;
-        }
-        Ok(())
+        fmt::Display::fmt(ByteStr::from_bytes(&self.inner), f)
     }
 }
 
