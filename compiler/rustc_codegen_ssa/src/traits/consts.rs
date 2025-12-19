@@ -1,9 +1,10 @@
 use rustc_abi as abi;
-use rustc_middle::mir::interpret::{ConstAllocation, Scalar};
+use rustc_middle::mir::interpret::{ConstAllocation, GlobalAlloc, Scalar};
+use rustc_middle::ty::Instance;
 
 use super::BackendTypes;
 
-pub trait ConstCodegenMethods: BackendTypes {
+pub trait ConstCodegenMethods<'tcx>: BackendTypes {
     // Constant constructors
     fn const_null(&self, t: Self::Type) -> Self::Value;
     /// Generate an uninitialized value (matching uninitialized memory in MIR).
@@ -39,6 +40,15 @@ pub trait ConstCodegenMethods: BackendTypes {
 
     fn const_data_from_alloc(&self, alloc: ConstAllocation<'_>) -> Self::Value;
 
+    /// Turn a `GlobalAlloc` into a backend global, return the value and instance that is used to
+    /// generate the symbol name, if any.
+    ///
+    /// If the `GlobalAlloc` should not be mapped to a global, but absolute address should be used,
+    /// an integer is returned as `Err` instead.
+    fn alloc_to_backend(
+        &self,
+        global_alloc: GlobalAlloc<'tcx>,
+    ) -> Result<(Self::Value, Option<Instance<'tcx>>), u64>;
     fn scalar_to_backend(&self, cv: Scalar, layout: abi::Scalar, llty: Self::Type) -> Self::Value;
 
     fn const_ptr_byte_offset(&self, val: Self::Value, offset: abi::Size) -> Self::Value;

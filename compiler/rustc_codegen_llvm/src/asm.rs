@@ -5,7 +5,7 @@ use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_codegen_ssa::mir::operand::OperandValue;
 use rustc_codegen_ssa::traits::*;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_middle::mir::interpret::{GlobalAlloc, Scalar as ConstScalar};
+use rustc_middle::mir::interpret::Scalar as ConstScalar;
 use rustc_middle::ty::Instance;
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::{bug, span_bug};
@@ -164,21 +164,10 @@ impl<'ll, 'tcx> AsmBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                         let (prov, offset) = ptr.prov_and_relative_offset();
                         assert_eq!(offset.bytes(), 0);
                         let global_alloc = self.tcx.global_alloc(prov.alloc_id());
-                        match global_alloc {
-                            GlobalAlloc::Function { instance } => {
-                                inputs.push(self.cx.get_fn(instance));
-                                op_idx.insert(idx, constraints.len());
-                                constraints.push("s".to_string());
-                            }
-                            GlobalAlloc::Static(def_id) => {
-                                inputs.push(self.cx.get_static(def_id));
-                                op_idx.insert(idx, constraints.len());
-                                constraints.push("s".to_string());
-                            }
-                            GlobalAlloc::Memory(_)
-                            | GlobalAlloc::VTable(..)
-                            | GlobalAlloc::TypeId { .. } => unreachable!(),
-                        }
+                        let (value, _) = self.cx.alloc_to_backend(global_alloc).unwrap();
+                        inputs.push(value);
+                        op_idx.insert(idx, constraints.len());
+                        constraints.push("s".to_string());
                     }
                 },
                 InlineAsmOperandRef::SymStatic { def_id } => {
@@ -236,21 +225,12 @@ impl<'ll, 'tcx> AsmBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                                     template_str.push_str(&string);
                                 }
                                 ConstScalar::Ptr(ptr, _) => {
-                                    let (prov, offset) = ptr.prov_and_relative_offset();
+                                    let (_, offset) = ptr.prov_and_relative_offset();
                                     assert_eq!(offset.bytes(), 0);
-                                    let global_alloc = self.tcx.global_alloc(prov.alloc_id());
-                                    match global_alloc {
-                                        GlobalAlloc::Function { .. } | GlobalAlloc::Static(_) => {
-                                            // Only emit the raw symbol name
-                                            template_str.push_str(&format!(
-                                                "${{{}:c}}",
-                                                op_idx[&operand_idx]
-                                            ));
-                                        }
-                                        GlobalAlloc::Memory(_)
-                                        | GlobalAlloc::VTable(..)
-                                        | GlobalAlloc::TypeId { .. } => unreachable!(),
-                                    }
+
+                                    // Only emit the raw symbol name
+                                    template_str
+                                        .push_str(&format!("${{{}:c}}", op_idx[&operand_idx]));
                                 }
                             }
                         }
@@ -466,18 +446,8 @@ impl<'tcx> AsmCodegenMethods<'tcx> for CodegenCx<'_, 'tcx> {
                                     let (prov, offset) = ptr.prov_and_relative_offset();
                                     assert_eq!(offset.bytes(), 0);
                                     let global_alloc = self.tcx.global_alloc(prov.alloc_id());
-                                    let llval = match global_alloc {
-                                        GlobalAlloc::Function { instance } => self.get_fn(instance),
-                                        GlobalAlloc::Static(def_id) => self
-                                            .renamed_statics
-                                            .borrow()
-                                            .get(&def_id)
-                                            .copied()
-                                            .unwrap_or_else(|| self.get_static(def_id)),
-                                        GlobalAlloc::Memory(_)
-                                        | GlobalAlloc::VTable(..)
-                                        | GlobalAlloc::TypeId { .. } => unreachable!(),
-                                    };
+                                    let (llval, sym) = self.alloc_to_backend(global_alloc).unwrap();
+                                    assert!(sym.is_some());
 
                                     self.add_compiler_used_global(llval);
                                     let symbol = llvm::build_string(|s| unsafe {

@@ -55,7 +55,7 @@ pub trait CodegenObject = Copy + fmt::Debug;
 pub trait CodegenMethods<'tcx> = LayoutOf<'tcx, LayoutOfResult = TyAndLayout<'tcx>>
     + FnAbiOf<'tcx, FnAbiOfResult = &'tcx FnAbi<'tcx, Ty<'tcx>>>
     + TypeCodegenMethods<'tcx>
-    + ConstCodegenMethods
+    + ConstCodegenMethods<'tcx>
     + StaticCodegenMethods
     + DebugInfoCodegenMethods<'tcx>
     + AsmCodegenMethods<'tcx>
