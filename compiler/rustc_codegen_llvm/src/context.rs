@@ -143,6 +143,9 @@ pub(crate) struct FullCx<'ll, 'tcx> {
     /// A counter that is used for generating local symbol names
     local_gen_sym_counter: Cell<usize>,
 
+    /// A counter that is used for generating global symbol names
+    global_gen_sym_counter: Cell<usize>,
+
     /// `codegen_static` will sometimes create a second global variable with a
     /// different type and clear the symbol name of the original global.
     /// `global_asm!` needs to be able to find this new global so that it can
@@ -681,6 +684,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
                 rust_try_fn: Cell::new(None),
                 intrinsics: Default::default(),
                 local_gen_sym_counter: Cell::new(0),
+                global_gen_sym_counter: Cell::new(0),
                 renamed_statics: Default::default(),
                 objc_class_t: Cell::new(None),
                 objc_classrefs: Default::default(),
@@ -1057,6 +1061,20 @@ impl CodegenCx<'_, '_> {
         self.local_gen_sym_counter.set(idx + 1);
         // Include a '.' character, so there can be no accidental conflicts with
         // user defined names
+        let mut name = String::with_capacity(prefix.len() + 6);
+        name.push_str(prefix);
+        name.push('.');
+        name.push_str(&(idx as u64).to_base(ALPHANUMERIC_ONLY));
+        name
+    }
+
+    /// Generates a new global symbol name with the given prefix.
+    pub(crate) fn generate_global_symbol_name(&self) -> String {
+        let idx = self.global_gen_sym_counter.get();
+        self.global_gen_sym_counter.set(idx + 1);
+
+        let sym = self.codegen_unit.symbol_name();
+        let prefix = sym.as_str();
         let mut name = String::with_capacity(prefix.len() + 6);
         name.push_str(prefix);
         name.push('.');
