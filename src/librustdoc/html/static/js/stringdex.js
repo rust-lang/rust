@@ -2347,7 +2347,8 @@ function loadDatabase(hooks) {
             const has_branches = (encoded[i] & 0x04) !== 0;
             /** @type {boolean} */
             const is_suffixes_only = (encoded[i] & 0x01) !== 0;
-            let leaves_count = ((encoded[i] >> 4) & 0x0f) + 1;
+            let leaves_count = ((encoded[i] >> 4) & 0x07) + 1;
+            let leaves_is_run = (encoded[i] >> 7) !== 0;
             i += 1;
             let branch_count = 0;
             if (has_branches) {
@@ -2357,6 +2358,7 @@ function loadDatabase(hooks) {
             const dlen = encoded[i] & 0x3f;
             if ((encoded[i] & 0x80) !== 0) {
                 leaves_count = 0;
+                leaves_is_run = false;
             }
             i += 1;
             /** @type {Uint8Array} */
@@ -2371,7 +2373,8 @@ function loadDatabase(hooks) {
             const branch_nodes = [];
             for (let j = 0; j < branch_count; j += 1) {
                 const branch_dlen = encoded[i] & 0x0f;
-                const branch_leaves_count = ((encoded[i] >> 4) & 0x0f) + 1;
+                const branch_leaves_count = ((encoded[i] >> 4) & 0x07) + 1;
+                const branch_leaves_is_run = (encoded[i] >> 7) !== 0;
                 i += 1;
                 /** @type {Uint8Array} */
                 let branch_data = EMPTY_UINT8;
@@ -2386,13 +2389,28 @@ function loadDatabase(hooks) {
                     (branch_leaves_count - 1) & 0xff,
                     ((branch_leaves_count - 1) >> 8) & 0xff,
                 );
-                branch_leaves.containers = [
-                    new RoaringBitmapArray(
-                        branch_leaves_count,
-                        encoded.subarray(i, i + (branch_leaves_count * 2)),
-                    ),
-                ];
-                i += branch_leaves_count * 2;
+                if (branch_leaves_is_run) {
+                    branch_leaves.containers = [
+                        new RoaringBitmapRun(
+                            1,
+                            Uint8Array.of(
+                                encoded[i],
+                                encoded[i + 1],
+                                branch_leaves_count - 1,
+                                0,
+                            ),
+                        ),
+                    ];
+                    i += 2;
+                } else {
+                    branch_leaves.containers = [
+                        new RoaringBitmapArray(
+                            branch_leaves_count,
+                            encoded.subarray(i, i + (branch_leaves_count * 2)),
+                        ),
+                    ];
+                    i += branch_leaves_count * 2;
+                }
                 branch_nodes.push(Promise.resolve(
                     is_suffixes_only ?
                         new SuffixSearchTree(
@@ -2427,13 +2445,28 @@ function loadDatabase(hooks) {
                     (leaves_count - 1) & 0xff,
                     ((leaves_count - 1) >> 8) & 0xff,
                 );
-                leaves.containers = [
-                    new RoaringBitmapArray(
-                        leaves_count,
-                        encoded.subarray(i, i + (leaves_count * 2)),
-                    ),
-                ];
-                i += leaves_count * 2;
+                if (leaves_is_run) {
+                    leaves.containers = [
+                        new RoaringBitmapRun(
+                            1,
+                            Uint8Array.of(
+                                encoded[i],
+                                encoded[i + 1],
+                                leaves_count - 1,
+                                0,
+                            ),
+                        ),
+                    ];
+                    i += 2;
+                } else {
+                    leaves.containers = [
+                        new RoaringBitmapArray(
+                            leaves_count,
+                            encoded.subarray(i, i + (leaves_count * 2)),
+                        ),
+                    ];
+                    i += leaves_count * 2;
+                }
             }
             return is_suffixes_only ?
                 new SuffixSearchTree(
@@ -3020,7 +3053,10 @@ function loadDatabase(hooks) {
                 // node with packed leaves and common 16bit prefix
                 const leaves_count = no_leaves_flag !== 0 ?
                     0 :
-                    ((compression_tag >> 4) & 0x0f) + 1;
+                    ((compression_tag >> 4) & 0x07) + 1;
+                const leaves_is_run = no_leaves_flag !== 0 ?
+                    false :
+                    ((compression_tag >> 4) & 0x08) !== 0;
                 const branch_count = is_long_compressed ?
                     ((compression_tag >> 8) & 0xff) + 1 :
                     0;
@@ -3042,16 +3078,25 @@ function loadDatabase(hooks) {
                 for (let j = 0; j < branch_count; j += 1) {
                     const branch_dlen = input[i] & 0x0f;
                     const branch_leaves_count = ((input[i] >> 4) & 0x0f) + 1;
+                    const branch_leaves_is_run = (input[i] >> 7) !== 0;
                     i += 1;
                     if (!is_pure_suffixes_only_node) {
                         i += branch_dlen;
                     }
-                    i += branch_leaves_count * 2;
+                    if (branch_leaves_is_run) {
+                        i += 2;
+                    } else {
+                        i += branch_leaves_count * 2;
+                    }
                 }
                 // branch keys
                 i += branch_count;
                 // leaves
-                i += leaves_count * 2;
+                if (leaves_is_run) {
+                    i += 2;
+                } else {
+                    i += leaves_count * 2;
+                }
                 if (is_data_compressed) {
                     const clen = (
                         1 + // first compression header byte

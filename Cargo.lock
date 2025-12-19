@@ -5358,7 +5358,7 @@ dependencies = [
 [[package]]
 name = "stringdex"
 version = "0.0.3"
-source = "git+https://gitlab.com/notriddle/stringdex?rev=1f8709f128425508223f95eaf14d9813803704ce#1f8709f128425508223f95eaf14d9813803704ce"
+source = "git+https://gitlab.com/notriddle/stringdex?rev=8bfe1234f5d1d8ba4962ce492daa2094bc7a15ca#8bfe1234f5d1d8ba4962ce492daa2094bc7a15ca"
 dependencies = [
  "stacker",
 ]
