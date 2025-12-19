@@ -1,4 +1,4 @@
-use gccjit::{LValue, RValue, ToRValue, Type};
+use gccjit::{GlobalKind, LValue, RValue, ToRValue, Type};
 use rustc_abi::Primitive::Pointer;
 use rustc_abi::{self as abi, HasDataLayout};
 use rustc_codegen_ssa::traits::{
@@ -97,6 +97,19 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
                     .unwrap_memory()
             }
         };
+
+        if need_symbol_name {
+            let name = self.generate_global_symbol_name();
+
+            let init = crate::consts::const_alloc_to_gcc_uncached(self, alloc);
+            let alloc = alloc.inner();
+            let typ = self.val_ty(init).get_aligned(alloc.align.bytes());
+
+            let global = self.declare_global_with_linkage(&name, typ, GlobalKind::Internal);
+
+            global.global_set_initializer_rvalue(init);
+            return Ok((global.get_address(None), Some(SymbolName::new(self.tcx, &name))));
+        }
 
         let value = match alloc.inner().mutability {
             Mutability::Mut => {

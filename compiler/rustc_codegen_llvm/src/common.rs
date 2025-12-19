@@ -226,10 +226,25 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
             }
         };
 
-        assert!(!need_symbol_name);
-
         let init = const_alloc_to_llvm(self, alloc.inner(), IsStatic::No, IsInitOrFini::No);
         let alloc = alloc.inner();
+
+        if need_symbol_name {
+            // If a symbol name is needed, use `static_addr_of_mut` so we can give it unique symbol names.
+            let value = self.static_addr_of_mut(init, alloc.align, None);
+            if alloc.mutability.is_not() {
+                llvm::set_global_constant(value, true);
+            }
+
+            // Even though we're generating with internal linkage, this symbol name still needs to
+            // be globally unique. LTO can rename symbol names if there are duplicates, but the
+            // names inserted into global asm as text cannot be updated.
+            let name = self.generate_global_symbol_name();
+            llvm::set_value_name(value, name.as_bytes());
+            llvm::set_linkage(value, llvm::Linkage::InternalLinkage);
+            return Ok(value);
+        }
+
         let value = match alloc.mutability {
             Mutability::Mut => self.static_addr_of_mut(init, alloc.align, None),
             _ => self.static_addr_of_impl(init, alloc.align, None),
