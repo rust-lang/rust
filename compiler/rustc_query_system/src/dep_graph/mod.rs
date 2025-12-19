@@ -9,7 +9,9 @@ use std::panic;
 
 pub use dep_node::{DepKind, DepKindStruct, DepNode, DepNodeParams, WorkProductId};
 pub(crate) use graph::DepGraphData;
-pub use graph::{DepGraph, DepNodeIndex, TaskDepsRef, WorkProduct, WorkProductMap, hash_result};
+pub use graph::{
+    DepGraph, DepNodeIndex, MarkFrame, TaskDepsRef, WorkProduct, WorkProductMap, hash_result,
+};
 pub use query::DepGraphQuery;
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::sync::DynSync;
@@ -17,7 +19,7 @@ use rustc_session::Session;
 pub use serialized::{SerializedDepGraph, SerializedDepNodeIndex};
 use tracing::instrument;
 
-use self::graph::{MarkFrame, print_markframe_trace};
+use self::graph::print_markframe_trace;
 use crate::ich::StableHashingContext;
 
 pub trait DepContext: Copy {
@@ -67,7 +69,9 @@ pub trait DepContext: Copy {
     ) -> bool {
         let cb = self.dep_kind_info(dep_node.kind);
         if let Some(f) = cb.force_from_dep_node {
-            match panic::catch_unwind(panic::AssertUnwindSafe(|| f(self, dep_node, prev_index))) {
+            match panic::catch_unwind(panic::AssertUnwindSafe(|| {
+                f(self, dep_node, prev_index, frame)
+            })) {
                 Err(value) => {
                     if !value.is::<rustc_errors::FatalErrorMarker>() {
                         print_markframe_trace(self.dep_graph(), frame);

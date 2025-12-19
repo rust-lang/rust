@@ -55,7 +55,7 @@ impl<T> Steal<T> {
 
     #[track_caller]
     pub fn steal(&self) -> T {
-        let value_ref = &mut *self.value.try_write().expect("stealing value which is locked");
+        let mut value_ref = self.value.write();
         let value = value_ref.take();
         value.expect("attempt to steal from stolen value")
     }
