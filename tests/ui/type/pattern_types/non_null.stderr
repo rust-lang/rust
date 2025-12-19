@@ -17,7 +17,7 @@ error: layout_of((*const T) is !null) = Layout {
                offsets: [
                    Size(0 bytes),
                ],
-               memory_index: [
+               in_memory_order: [
                    0,
                ],
            },
@@ -64,7 +64,7 @@ error: layout_of(Option<(*const ()) is !null>) = Layout {
                offsets: [
                    Size(0 bytes),
                ],
-               memory_index: [
+               in_memory_order: [
                    0,
                ],
            },
@@ -96,7 +96,7 @@ error: layout_of(Option<(*const ()) is !null>) = Layout {
                        },
                        fields: Arbitrary {
                            offsets: [],
-                           memory_index: [],
+                           in_memory_order: [],
                        },
                        largest_niche: None,
                        uninhabited: false,
@@ -126,7 +126,7 @@ error: layout_of(Option<(*const ()) is !null>) = Layout {
                            offsets: [
                                Size(0 bytes),
                            ],
-                           memory_index: [
+                           in_memory_order: [
                                0,
                            ],
                        },
@@ -186,7 +186,7 @@ error: layout_of((*const [u8]) is !null) = Layout {
                offsets: [
                    Size(0 bytes),
                ],
-               memory_index: [
+               in_memory_order: [
                    0,
                ],
            },
