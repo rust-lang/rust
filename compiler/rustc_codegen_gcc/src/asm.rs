@@ -145,6 +145,9 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
         // Clobbers collected from `out("explicit register") _` and `inout("explicit_reg") var => _`
         let mut clobbers = vec![];
 
+        // Symbols name that needs to be inserted to asm const ptr template string.
+        let mut const_syms = vec![];
+
         // We're trying to preallocate space for the template
         let mut constants_len = 0;
 
@@ -405,17 +408,8 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                         let (prov, offset) = ptr.prov_and_relative_offset();
                         assert_eq!(offset.bytes(), 0);
                         let global_alloc = self.tcx.global_alloc(prov.alloc_id());
-                        let val = match global_alloc {
-                            GlobalAlloc::Function { instance } => {
-                                get_fn(self.cx, instance).get_address(None)
-                            }
-                            GlobalAlloc::Static(def_id) => {
-                                self.cx.get_static(def_id).get_address(None)
-                            }
-                            GlobalAlloc::Memory(_)
-                            | GlobalAlloc::VTable(..)
-                            | GlobalAlloc::TypeId { .. } => unreachable!(),
-                        };
+                        let (val, sym) = self.cx.alloc_to_backend(global_alloc, true).unwrap();
+                        const_syms.push(sym.unwrap());
                         inputs.push(AsmInOperand { constraint: "X".into(), rust_idx, val });
                     }
                 },
@@ -514,27 +508,13 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                                 }
 
                                 Scalar::Ptr(ptr, _) => {
-                                    let (prov, offset) = ptr.prov_and_relative_offset();
+                                    let (_, offset) = ptr.prov_and_relative_offset();
                                     assert_eq!(offset.bytes(), 0);
-                                    let global_alloc = self.tcx.global_alloc(prov.alloc_id());
-                                    let symbol_name = match global_alloc {
-                                        GlobalAlloc::Function { instance } => {
-                                            // FIXME(@Amanieu): Additional mangling is needed on
-                                            // some targets to add a leading underscore (Mach-O)
-                                            // or byte count suffixes (x86 Windows).
-                                            self.tcx.symbol_name(instance)
-                                        }
-                                        GlobalAlloc::Static(def_id) => {
-                                            // FIXME(@Amanieu): Additional mangling is needed on
-                                            // some targets to add a leading underscore (Mach-O).
-                                            let instance = Instance::mono(self.tcx, def_id);
-                                            self.tcx.symbol_name(instance)
-                                        }
-                                        GlobalAlloc::Memory(_)
-                                        | GlobalAlloc::VTable(..)
-                                        | GlobalAlloc::TypeId { .. } => unreachable!(),
-                                    };
-                                    template_str.push_str(symbol_name.name);
+                                    let sym = const_syms.remove(0);
+                                    // FIXME(@Amanieu): Additional mangling is needed on
+                                    // some targets to add a leading underscore (Mach-O)
+                                    // or byte count suffixes (x86 Windows).
+                                    template_str.push_str(sym.name);
                                 }
                             }
                         }
@@ -995,16 +975,14 @@ impl<'gcc, 'tcx> AsmCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
                                             // or byte count suffixes (x86 Windows).
                                             self.tcx.symbol_name(instance)
                                         }
-                                        GlobalAlloc::Static(def_id) => {
+                                        _ => {
+                                            let (_, syms) =
+                                                self.alloc_to_backend(global_alloc, true).unwrap();
                                             // FIXME(antoyo): set the global variable as used.
                                             // FIXME(@Amanieu): Additional mangling is needed on
                                             // some targets to add a leading underscore (Mach-O).
-                                            let instance = Instance::mono(self.tcx, def_id);
-                                            self.tcx.symbol_name(instance)
+                                            syms.unwrap()
                                         }
-                                        GlobalAlloc::Memory(_)
-                                        | GlobalAlloc::VTable(..)
-                                        | GlobalAlloc::TypeId { .. } => unreachable!(),
                                     };
                                     template_str.push_str(symbol_name.name);
                                 }
