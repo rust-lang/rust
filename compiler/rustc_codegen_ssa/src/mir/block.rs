@@ -7,7 +7,9 @@ use rustc_data_structures::packed::Pu128;
 use rustc_hir::lang_items::LangItem;
 use rustc_lint_defs::builtin::TAIL_CALL_TRACK_CALLER;
 use rustc_middle::mir::interpret::{CTFE_ALLOC_SALT, Scalar};
-use rustc_middle::mir::{self, AssertKind, InlineAsmMacro, SwitchTargets, UnwindTerminateReason};
+use rustc_middle::mir::{
+    self, AssertKind, Const, InlineAsmMacro, SwitchTargets, UnwindTerminateReason,
+};
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, ValidityRequirement};
 use rustc_middle::ty::print::{with_no_trimmed_paths, with_no_visible_paths};
 use rustc_middle::ty::{self, Instance, Ty, TypeVisitableExt};
@@ -1394,6 +1396,14 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     InlineAsmOperandRef::InOut { reg, late, in_value, out_place }
                 }
                 mir::InlineAsmOperand::Const { ref value } => {
+                    // To be able to codegen for asm const pointers (for all codegen backends), we
+                    // to ensure the allocation it points to have a name. Anonymous allocations
+                    // don't, so for these we instead use the symbol name for the constants.
+                    let Const::Unevaluated(c, _) = &value.const_ else {
+                        bug!("need unevaluated const to derive symbol name")
+                    };
+                    let const_instance = Instance::new_raw(c.def, c.args);
+
                     let const_value = self.eval_mir_constant(value);
                     let mir::ConstValue::Scalar(scalar) = const_value else {
                         span_bug!(
@@ -1405,6 +1415,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     InlineAsmOperandRef::Const {
                         value: common::asm_const_ptr_clean(bx.tcx(), scalar),
                         ty: value.ty(),
+                        instance: Some(const_instance),
                     }
                 }
                 mir::InlineAsmOperand::SymFn { ref value } => {
@@ -1424,6 +1435,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                 bx,
                             ),
                             ty: Ty::new_fn_ptr(bx.tcx(), const_.ty().fn_sig(bx.tcx())),
+                            instance: None,
                         }
                     } else {
                         span_bug!(span, "invalid type for asm sym (fn)");
