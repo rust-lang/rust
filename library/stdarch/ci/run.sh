@@ -42,6 +42,9 @@ case ${TARGET} in
     armv7-*eabihf | thumbv7-*eabihf)
         export RUSTFLAGS="${RUSTFLAGS} -Ctarget-feature=+neon"
         ;;
+    amdgcn-*)
+        export RUSTFLAGS="${RUSTFLAGS} -Ctarget-cpu=gfx1200"
+        ;;
     # Some of our test dependencies use the deprecated `gcc` crates which
     # doesn't detect RISC-V compilers automatically, so do it manually here.
     riscv*)
