@@ -484,13 +484,6 @@ passes_sanitize_attribute_not_allowed =
     .no_body = function has no body
     .help = sanitize attribute can be applied to a function (with body), impl block, or module
 
-passes_should_be_applied_to_fn =
-    attribute should be applied to a function definition
-    .label = {$on_crate ->
-        [true] cannot be applied to crates
-        *[false] not a function definition
-    }
-
 passes_should_be_applied_to_static =
     attribute should be applied to a static
     .label = not a static
