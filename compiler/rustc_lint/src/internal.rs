@@ -106,7 +106,10 @@ impl<'tcx> LateLintPass<'tcx> for QueryStability {
                 );
             }
 
-            if cx.tcx.has_attr(def_id, sym::rustc_lint_untracked_query_information) {
+            if find_attr!(
+                cx.tcx.get_all_attrs(def_id),
+                AttributeKind::RustcLintUntrackedQueryInformation
+            ) {
                 cx.emit_span_lint(
                     UNTRACKED_QUERY_INFORMATION,
                     span,
@@ -606,14 +609,14 @@ impl Diagnostics {
         else {
             return;
         };
-        let has_attr = cx.tcx.has_attr(inst.def_id(), sym::rustc_lint_diagnostics);
-        if !has_attr {
+
+        if !find_attr!(cx.tcx.get_all_attrs(inst.def_id()), AttributeKind::RustcLintDiagnostics) {
             return;
         };
 
         for (hir_id, _parent) in cx.tcx.hir_parent_iter(current_id) {
             if let Some(owner_did) = hir_id.as_owner()
-                && cx.tcx.has_attr(owner_did, sym::rustc_lint_diagnostics)
+                && find_attr!(cx.tcx.get_all_attrs(owner_did), AttributeKind::RustcLintDiagnostics)
             {
                 // The parent method is marked with `#[rustc_lint_diagnostics]`
                 return;

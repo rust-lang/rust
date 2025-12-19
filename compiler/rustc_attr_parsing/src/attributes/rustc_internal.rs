@@ -117,6 +117,21 @@ impl<S: Stage> SingleAttributeParser<S> for RustcLegacyConstGenericsParser {
     }
 }
 
+pub(crate) struct RustcLintDiagnosticsParser;
+
+impl<S: Stage> NoArgsAttributeParser<S> for RustcLintDiagnosticsParser {
+    const PATH: &[Symbol] = &[sym::rustc_lint_diagnostics];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+        Allow(Target::Fn),
+        Allow(Target::Method(MethodKind::Inherent)),
+        Allow(Target::Method(MethodKind::Trait { body: false })),
+        Allow(Target::Method(MethodKind::Trait { body: true })),
+        Allow(Target::Method(MethodKind::TraitImpl)),
+    ]);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcLintDiagnostics;
+}
+
 pub(crate) struct RustcLintOptDenyFieldAccessParser;
 
 impl<S: Stage> SingleAttributeParser<S> for RustcLintOptDenyFieldAccessParser {
@@ -163,6 +178,22 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcLintQueryInstabilityParser {
         Allow(Target::Method(MethodKind::TraitImpl)),
     ]);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcLintQueryInstability;
+}
+
+pub(crate) struct RustcLintUntrackedQueryInformationParser;
+
+impl<S: Stage> NoArgsAttributeParser<S> for RustcLintUntrackedQueryInformationParser {
+    const PATH: &[Symbol] = &[sym::rustc_lint_untracked_query_information];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+        Allow(Target::Fn),
+        Allow(Target::Method(MethodKind::Inherent)),
+        Allow(Target::Method(MethodKind::Trait { body: false })),
+        Allow(Target::Method(MethodKind::Trait { body: true })),
+        Allow(Target::Method(MethodKind::TraitImpl)),
+    ]);
+
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcLintUntrackedQueryInformation;
 }
 
 pub(crate) struct RustcObjectLifetimeDefaultParser;
