@@ -1,7 +1,7 @@
 // This is a regression for `--remap-path-prefix` in an auxiliary dependency.
 //
 // We want to make sure that we can still have the "Source" links to the dependency
-// even if it's paths are remapped.
+// even if its paths are remapped.
 //
 // See also rust-lang/rust#150100
 
