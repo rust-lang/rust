@@ -20,7 +20,7 @@ error: fn_abi_of(take_va_list) = FnAbi {
                            ),
                            fields: Arbitrary {
                                offsets: $OFFSETS,
-                               memory_index: $MEMORY_INDEX,
+                               in_memory_order: $MEMORY_INDEX,
                            },
                            largest_niche: None,
                            uninhabited: false,
@@ -55,7 +55,7 @@ error: fn_abi_of(take_va_list) = FnAbi {
                        },
                        fields: Arbitrary {
                            offsets: [],
-                           memory_index: [],
+                           in_memory_order: [],
                        },
                        largest_niche: None,
                        uninhabited: false,
