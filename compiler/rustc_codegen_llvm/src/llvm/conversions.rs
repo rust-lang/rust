@@ -1,6 +1,6 @@
 //! Conversions from backend-independent data types to/from LLVM FFI types.
 
-use rustc_codegen_ssa::common::{AtomicRmwBinOp, IntPredicate, RealPredicate};
+use rustc_codegen_ssa::common::{AtomicRmwBinOp, IntPredicate, RealPredicate, TypeKind};
 use rustc_middle::ty::AtomicOrdering;
 use rustc_session::config::DebugInfo;
 use rustc_target::spec::SymbolVisibility;
@@ -9,8 +9,20 @@ use crate::llvm;
 
 /// Helper trait for converting backend-independent types to LLVM-specific
 /// types, for FFI purposes.
+///
+/// FIXME(#147327): These trait/method names were chosen to avoid churn in
+/// existing code, but are not great and could probably be made clearer.
 pub(crate) trait FromGeneric<T> {
     fn from_generic(other: T) -> Self;
+}
+
+/// Helper trait for converting LLVM-specific types to backend-independent
+/// types, for FFI purposes.
+///
+/// FIXME(#147327): These trait/method names were chosen to avoid churn in
+/// existing code, but are not great and could probably be made clearer.
+pub(crate) trait ToGeneric<T> {
+    fn to_generic(&self) -> T;
 }
 
 impl FromGeneric<SymbolVisibility> for llvm::Visibility {
@@ -110,6 +122,32 @@ impl FromGeneric<DebugInfo> for llvm::debuginfo::DebugEmissionKind {
             DebugInfo::LineDirectivesOnly => Self::DebugDirectivesOnly,
             DebugInfo::LineTablesOnly => Self::LineTablesOnly,
             DebugInfo::Limited | DebugInfo::Full => Self::FullDebug,
+        }
+    }
+}
+
+impl ToGeneric<TypeKind> for llvm::TypeKind {
+    fn to_generic(&self) -> TypeKind {
+        match self {
+            Self::Void => TypeKind::Void,
+            Self::Half => TypeKind::Half,
+            Self::Float => TypeKind::Float,
+            Self::Double => TypeKind::Double,
+            Self::X86_FP80 => TypeKind::X86_FP80,
+            Self::FP128 => TypeKind::FP128,
+            Self::PPC_FP128 => TypeKind::PPC_FP128,
+            Self::Label => TypeKind::Label,
+            Self::Integer => TypeKind::Integer,
+            Self::Function => TypeKind::Function,
+            Self::Struct => TypeKind::Struct,
+            Self::Array => TypeKind::Array,
+            Self::Pointer => TypeKind::Pointer,
+            Self::Vector => TypeKind::Vector,
+            Self::Metadata => TypeKind::Metadata,
+            Self::Token => TypeKind::Token,
+            Self::ScalableVector => TypeKind::ScalableVector,
+            Self::BFloat => TypeKind::BFloat,
+            Self::X86_AMX => TypeKind::X86_AMX,
         }
     }
 }
