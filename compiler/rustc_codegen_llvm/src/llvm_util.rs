@@ -266,6 +266,10 @@ pub(crate) fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> Option<LLVMFea
             "leoncasa" => Some(LLVMFeature::new("hasleoncasa")),
             s => Some(LLVMFeature::new(s)),
         },
+        Arch::Wasm32 | Arch::Wasm64 => match s {
+            "gc" if major < 22 => None,
+            s => Some(LLVMFeature::new(s)),
+        },
         Arch::X86 | Arch::X86_64 => {
             match s {
                 "sse4.2" => Some(LLVMFeature::with_dependencies(

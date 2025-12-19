@@ -121,6 +121,7 @@ LL |     cfg!(target_feature = "_UNEXPECTED_VALUE");
 `frecipe`
 `frintts`
 `fxsr`
+`gc`
 `gfni`
 `guarded-storage`
 `hard-float`
