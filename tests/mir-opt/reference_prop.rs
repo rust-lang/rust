@@ -1,8 +1,7 @@
-//@ compile-flags: -Zlint-mir=no
 //@ test-mir-pass: ReferencePropagation
 //@ needs-unwind
 
-#![feature(core_intrinsics, custom_mir)]
+#![feature(core_intrinsics, custom_mir, lint_reasons)]
 
 #[inline(never)]
 fn opaque(_: impl Sized) {}
@@ -677,6 +676,7 @@ fn read_through_raw(x: &mut usize) -> usize {
 }
 
 #[custom_mir(dialect = "runtime", phase = "post-cleanup")]
+#[expect(rustc::broken_mir)]
 fn multiple_storage() {
     // CHECK-LABEL: multiple_storage
     // CHECK: _3 = copy (*_2);
@@ -703,6 +703,7 @@ fn multiple_storage() {
 }
 
 #[custom_mir(dialect = "runtime", phase = "post-cleanup")]
+#[expect(rustc::broken_mir)]
 fn dominate_storage() {
     // CHECK-LABEL: dominate_storage
     // CHECK: _5 = copy (*_2);
@@ -733,6 +734,7 @@ fn dominate_storage() {
 }
 
 #[custom_mir(dialect = "runtime", phase = "post-cleanup")]
+#[expect(rustc::broken_mir)]
 fn maybe_dead(m: bool) {
     // CHECK-LABEL: fn maybe_dead(
     // CHECK: (*_5) = const 7_i32;
