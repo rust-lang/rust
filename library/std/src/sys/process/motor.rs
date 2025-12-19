@@ -265,10 +265,7 @@ impl Process {
     }
 
     pub fn kill(&mut self) -> io::Result<()> {
-        match moto_rt::process::kill(self.handle) {
-            moto_rt::E_OK => Ok(()),
-            err => Err(map_motor_error(err)),
-        }
+        moto_rt::process::kill(self.handle).map_err(map_motor_error)
     }
 
     pub fn wait(&mut self) -> io::Result<ExitStatus> {
@@ -279,7 +276,7 @@ impl Process {
         match moto_rt::process::try_wait(self.handle) {
             Ok(s) => Ok(Some(ExitStatus(s))),
             Err(err) => match err {
-                moto_rt::E_NOT_READY => Ok(None),
+                moto_rt::Error::NotReady => Ok(None),
                 err => Err(map_motor_error(err)),
             },
         }
