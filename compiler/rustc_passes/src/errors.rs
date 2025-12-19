@@ -81,16 +81,6 @@ pub(crate) struct OuterCrateLevelAttrSuggestion {
 pub(crate) struct InnerCrateLevelAttr;
 
 #[derive(Diagnostic)]
-#[diag(passes_should_be_applied_to_fn)]
-pub(crate) struct AttrShouldBeAppliedToFn {
-    #[primary_span]
-    pub attr_span: Span,
-    #[label]
-    pub defn_span: Span,
-    pub on_crate: bool,
-}
-
-#[derive(Diagnostic)]
 #[diag(passes_non_exhaustive_with_default_field_values)]
 pub(crate) struct NonExhaustiveWithDefaultFieldValues {
     #[primary_span]
@@ -410,24 +400,6 @@ pub(crate) struct UnusedMultiple {
     #[note]
     pub other: Span,
     pub name: Symbol,
-}
-
-#[derive(Diagnostic)]
-#[diag(passes_rustc_lint_opt_ty)]
-pub(crate) struct RustcLintOptTy {
-    #[primary_span]
-    pub attr_span: Span,
-    #[label]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(passes_rustc_lint_opt_deny_field_access)]
-pub(crate) struct RustcLintOptDenyFieldAccess {
-    #[primary_span]
-    pub attr_span: Span,
-    #[label]
-    pub span: Span,
 }
 
 #[derive(Diagnostic)]

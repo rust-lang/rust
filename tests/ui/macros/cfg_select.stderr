@@ -1,5 +1,5 @@
 warning: unreachable predicate
-  --> $DIR/cfg_select.rs:52:5
+  --> $DIR/cfg_select.rs:135:5
    |
 LL |     _ => {}
    |     - always matches
@@ -7,7 +7,7 @@ LL |     true => {}
    |     ^^^^ this predicate is never reached
 
 error: none of the predicates in this `cfg_select` evaluated to true
-  --> $DIR/cfg_select.rs:56:1
+  --> $DIR/cfg_select.rs:139:1
    |
 LL | / cfg_select! {
 LL | |
@@ -16,55 +16,55 @@ LL | | }
    | |_^
 
 error: none of the predicates in this `cfg_select` evaluated to true
-  --> $DIR/cfg_select.rs:61:1
+  --> $DIR/cfg_select.rs:144:1
    |
 LL | cfg_select! {}
    | ^^^^^^^^^^^^^^
 
 error: expected a literal (`1u8`, `1.0f32`, `"string"`, etc.) here, found `=>`
-  --> $DIR/cfg_select.rs:65:5
+  --> $DIR/cfg_select.rs:148:5
    |
 LL |     => {}
    |     ^^
 
 error: expected a literal (`1u8`, `1.0f32`, `"string"`, etc.) here, found expression
-  --> $DIR/cfg_select.rs:70:5
+  --> $DIR/cfg_select.rs:153:5
    |
 LL |     () => {}
    |     ^^ expressions are not allowed here
 
 error[E0539]: malformed `cfg_select` macro input
-  --> $DIR/cfg_select.rs:75:5
+  --> $DIR/cfg_select.rs:158:5
    |
 LL |     "str" => {}
    |     ^^^^^ expected a valid identifier here
 
 error[E0539]: malformed `cfg_select` macro input
-  --> $DIR/cfg_select.rs:80:5
+  --> $DIR/cfg_select.rs:163:5
    |
 LL |     a::b => {}
    |     ^^^^ expected a valid identifier here
 
 error[E0537]: invalid predicate `a`
-  --> $DIR/cfg_select.rs:85:5
+  --> $DIR/cfg_select.rs:168:5
    |
 LL |     a() => {}
    |     ^^^
 
 error: expected one of `(`, `::`, `=>`, or `=`, found `+`
-  --> $DIR/cfg_select.rs:90:7
+  --> $DIR/cfg_select.rs:173:7
    |
 LL |     a + 1 => {}
    |       ^ expected one of `(`, `::`, `=>`, or `=`
 
 error: expected one of `(`, `::`, `=>`, or `=`, found `!`
-  --> $DIR/cfg_select.rs:96:8
+  --> $DIR/cfg_select.rs:179:8
    |
 LL |     cfg!() => {}
    |        ^ expected one of `(`, `::`, `=>`, or `=`
 
 warning: unexpected `cfg` condition name: `a`
-  --> $DIR/cfg_select.rs:90:5
+  --> $DIR/cfg_select.rs:173:5
    |
 LL |     a + 1 => {}
    |     ^ help: found config with similar value: `target_feature = "a"`
@@ -75,7 +75,7 @@ LL |     a + 1 => {}
    = note: `#[warn(unexpected_cfgs)]` on by default
 
 warning: unexpected `cfg` condition name: `cfg`
-  --> $DIR/cfg_select.rs:96:5
+  --> $DIR/cfg_select.rs:179:5
    |
 LL |     cfg!() => {}
    |     ^^^

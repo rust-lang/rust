@@ -3,7 +3,7 @@
 #![feature(rustc_attrs)]
 
 #[rustc_lint_query_instability]
-//~^ ERROR attribute should be applied to a function
+//~^ ERROR `#[rustc_lint_query_instability]` attribute cannot be used on structs
 struct Foo;
 
 impl Foo {

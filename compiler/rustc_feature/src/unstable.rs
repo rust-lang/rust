@@ -221,7 +221,7 @@ declare_features! (
     (internal, compiler_builtins, "1.13.0", None),
     /// Allows writing custom MIR
     (internal, custom_mir, "1.65.0", None),
-    /// Implementation details of externally implementatble items
+    /// Implementation details of externally implementable items
     (internal, eii_internals, "CURRENT_RUSTC_VERSION", None),
     /// Outputs useful `assert!` messages
     (unstable, generic_assert, "1.63.0", None),
@@ -503,7 +503,7 @@ declare_features! (
     (incomplete, explicit_tail_calls, "1.72.0", Some(112788)),
     /// Allows using `#[export_stable]` which indicates that an item is exportable.
     (incomplete, export_stable, "1.88.0", Some(139939)),
-    /// Externally implementatble items
+    /// Externally implementable items
     (unstable, extern_item_impls, "CURRENT_RUSTC_VERSION", Some(125418)),
     /// Allows defining `extern type`s.
     (unstable, extern_types, "1.23.0", Some(43467)),
