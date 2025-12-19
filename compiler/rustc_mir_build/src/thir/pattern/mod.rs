@@ -30,19 +30,20 @@ pub(crate) use self::check_match::check_match;
 use self::migration::PatMigration;
 use crate::errors::*;
 
-struct PatCtxt<'a, 'tcx> {
+/// Context for lowering HIR patterns to THIR patterns.
+struct PatCtxt<'tcx> {
     tcx: TyCtxt<'tcx>,
     typing_env: ty::TypingEnv<'tcx>,
-    typeck_results: &'a ty::TypeckResults<'tcx>,
+    typeck_results: &'tcx ty::TypeckResults<'tcx>,
 
     /// Used by the Rust 2024 migration lint.
-    rust_2024_migration: Option<PatMigration<'a>>,
+    rust_2024_migration: Option<PatMigration<'tcx>>,
 }
 
-pub(super) fn pat_from_hir<'a, 'tcx>(
+pub(super) fn pat_from_hir<'tcx>(
     tcx: TyCtxt<'tcx>,
     typing_env: ty::TypingEnv<'tcx>,
-    typeck_results: &'a ty::TypeckResults<'tcx>,
+    typeck_results: &'tcx ty::TypeckResults<'tcx>,
     pat: &'tcx hir::Pat<'tcx>,
 ) -> Box<Pat<'tcx>> {
     let mut pcx = PatCtxt {
@@ -62,7 +63,7 @@ pub(super) fn pat_from_hir<'a, 'tcx>(
     result
 }
 
-impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
+impl<'tcx> PatCtxt<'tcx> {
     fn lower_pattern(&mut self, pat: &'tcx hir::Pat<'tcx>) -> Box<Pat<'tcx>> {
         let adjustments: &[PatAdjustment<'tcx>] =
             self.typeck_results.pat_adjustments().get(pat.hir_id).map_or(&[], |v| &**v);
