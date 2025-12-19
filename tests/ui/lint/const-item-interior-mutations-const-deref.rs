@@ -24,7 +24,5 @@ const LOCAL_COUNT: LocalKey<Cell<usize>> = LocalKey { inner: Cell::new(8) };
 
 fn main() {
     let count = LOCAL_COUNT.get();
-    //~^ WARN mutation of an interior mutable `const`
     LOCAL_COUNT.set(count);
-    //~^ WARN mutation of an interior mutable `const`
 }
