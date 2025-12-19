@@ -1,4 +1,5 @@
 use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::indexmap::map::Entry;
 use rustc_hir::attrs::{AttributeKind, EiiDecl, EiiImpl};
 use rustc_hir::def_id::DefId;
 use rustc_hir::find_attr;
@@ -28,11 +29,22 @@ pub(crate) fn collect<'tcx>(tcx: TyCtxt<'tcx>, LocalCrate: LocalCrate) -> EiiMap
         for i in
             find_attr!(tcx.get_all_attrs(id), AttributeKind::EiiImpls(e) => e).into_iter().flatten()
         {
-            eiis.entry(i.eii_macro)
-                .or_insert_with(|| {
+            let registered_impls = match eiis.entry(i.eii_macro) {
+                Entry::Occupied(o) => &mut o.into_mut().1,
+                Entry::Vacant(v) => {
                     // find the decl for this one if it wasn't in yet (maybe it's from the local crate? not very useful but not illegal)
-                    (find_attr!(tcx.get_all_attrs(i.eii_macro), AttributeKind::EiiExternTarget(d) => *d).unwrap(), Default::default())
-                }).1.insert(id.into(), *i);
+                    let Some(decl) = find_attr!(tcx.get_all_attrs(i.eii_macro), AttributeKind::EiiExternTarget(d) => *d)
+                    else {
+                        // skip if it doesn't have eii_extern_target (if we resolved to another macro that's not an EII)
+                        tcx.dcx()
+                            .span_delayed_bug(i.span, "resolved to something that's not an EII");
+                        continue;
+                    };
+                    &mut v.insert((decl, Default::default())).1
+                }
+            };
+
+            registered_impls.insert(id.into(), *i);
         }
 
         // if we find a new declaration, add it to the list without a known implementation

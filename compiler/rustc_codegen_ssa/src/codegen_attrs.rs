@@ -285,11 +285,16 @@ fn process_builtin_attrs(
                 }
                 AttributeKind::EiiImpls(impls) => {
                     for i in impls {
-                        let extern_item = find_attr!(
+                        let Some(extern_item) = find_attr!(
                             tcx.get_all_attrs(i.eii_macro),
                             AttributeKind::EiiExternTarget(target) => target.eii_extern_target
-                        )
-                        .expect("eii should have declaration macro with extern target attribute");
+                        ) else {
+                            tcx.dcx().span_delayed_bug(
+                                i.span,
+                                "resolved to something that's not an EII",
+                            );
+                            continue;
+                        };
 
                         // this is to prevent a bug where a single crate defines both the default and explicit implementation
                         // for an EII. In that case, both of them may be part of the same final object file. I'm not 100% sure

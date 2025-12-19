@@ -1213,9 +1213,7 @@ fn check_eiis(tcx: TyCtxt<'_>, def_id: LocalDefId) {
                 *span,
             );
         } else {
-            panic!(
-                "EII impl macro {eii_macro:?} did not have an eii extern target attribute pointing to a foreign function"
-            )
+            tcx.dcx().span_delayed_bug(*span, "resolved to something that's not an EII");
         }
     }
 }
