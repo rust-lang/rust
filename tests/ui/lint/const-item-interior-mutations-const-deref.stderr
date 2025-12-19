@@ -1,0 +1,37 @@
+warning: mutation of an interior mutable `const` item with call to `get`
+  --> $DIR/const-item-interior-mutations-const-deref.rs:26:17
+   |
+LL |     let count = LOCAL_COUNT.get();
+   |                 -----------^^^^^^
+   |                 |
+   |                 `LOCAL_COUNT` is a interior mutable `const` item of type `LocalKey<Cell<usize>>`
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const LOCAL_COUNT` will be modified
+   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+   = note: `#[warn(const_item_interior_mutations)]` on by default
+help: for a shared instance of `LOCAL_COUNT`, consider making it a `static` item instead
+   |
+LL - const LOCAL_COUNT: LocalKey<Cell<usize>> = LocalKey { inner: Cell::new(8) };
+LL + static LOCAL_COUNT: LocalKey<Cell<usize>> = LocalKey { inner: Cell::new(8) };
+   |
+
+warning: mutation of an interior mutable `const` item with call to `set`
+  --> $DIR/const-item-interior-mutations-const-deref.rs:28:5
+   |
+LL |     LOCAL_COUNT.set(count);
+   |     -----------^^^^^^^^^^^
+   |     |
+   |     `LOCAL_COUNT` is a interior mutable `const` item of type `LocalKey<Cell<usize>>`
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const LOCAL_COUNT` will be modified
+   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+help: for a shared instance of `LOCAL_COUNT`, consider making it a `static` item instead
+   |
+LL - const LOCAL_COUNT: LocalKey<Cell<usize>> = LocalKey { inner: Cell::new(8) };
+LL + static LOCAL_COUNT: LocalKey<Cell<usize>> = LocalKey { inner: Cell::new(8) };
+   |
+
+warning: 2 warnings emitted
+
