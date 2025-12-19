@@ -404,12 +404,12 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                     // processed in the previous pass
                 }
 
-                InlineAsmOperandRef::Const { value, ty: _ } => match value {
+                InlineAsmOperandRef::Const { value, ty: _, instance } => match value {
                     Scalar::Int(_) => (),
                     Scalar::Ptr(ptr, _) => {
                         let (prov, _) = ptr.prov_and_relative_offset();
                         let global_alloc = self.tcx.global_alloc(prov.alloc_id());
-                        let (val, sym) = self.cx.alloc_to_backend(global_alloc).unwrap();
+                        let (val, sym) = self.cx.alloc_to_backend(global_alloc, instance).unwrap();
                         const_syms.push(sym.unwrap());
                         inputs.push(AsmInOperand { constraint: "X".into(), rust_idx, val });
                     }
@@ -495,7 +495,7 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                             push_to_template(modifier, gcc_index);
                         }
 
-                        InlineAsmOperandRef::Const { value, ty } => {
+                        InlineAsmOperandRef::Const { value, ty, instance: _ } => {
                             match value {
                                 Scalar::Int(int) => {
                                     // Const operands get injected directly into the template
@@ -910,7 +910,7 @@ impl<'gcc, 'tcx> AsmCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
                 }
                 InlineAsmTemplatePiece::Placeholder { operand_idx, modifier: _, span: _ } => {
                     match operands[operand_idx] {
-                        GlobalAsmOperandRef::Const { value, ty } => {
+                        GlobalAsmOperandRef::Const { value, ty, instance } => {
                             match value {
                                 Scalar::Int(int) => {
                                     // Const operands get injected directly into the
@@ -937,8 +937,9 @@ impl<'gcc, 'tcx> AsmCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
                                             self.tcx.symbol_name(instance)
                                         }
                                         _ => {
-                                            let (_, syms) =
-                                                self.alloc_to_backend(global_alloc).unwrap();
+                                            let (_, syms) = self
+                                                .alloc_to_backend(global_alloc, instance)
+                                                .unwrap();
                                             // TODO(antoyo): set the global variable as used.
                                             // TODO(@Amanieu): Additional mangling is needed on
                                             // some targets to add a leading underscore (Mach-O).

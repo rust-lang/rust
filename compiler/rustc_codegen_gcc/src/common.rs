@@ -1,4 +1,4 @@
-use gccjit::{LValue, RValue, ToRValue, Type};
+use gccjit::{GlobalKind, LValue, RValue, ToRValue, Type};
 use rustc_abi::Primitive::Pointer;
 use rustc_abi::{self as abi, HasDataLayout};
 use rustc_codegen_ssa::traits::{
@@ -224,6 +224,7 @@ impl<'gcc, 'tcx> ConstCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
     fn alloc_to_backend(
         &self,
         global_alloc: GlobalAlloc<'tcx>,
+        name_hint: Option<Instance<'tcx>>,
     ) -> Result<(RValue<'gcc>, Option<Instance<'tcx>>), u64> {
         let alloc = match global_alloc {
             GlobalAlloc::Function { instance, .. } => {
@@ -265,6 +266,18 @@ impl<'gcc, 'tcx> ConstCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
             }
         };
 
+        if let Some(name) = name_hint {
+            let sym = self.tcx.symbol_name(name);
+
+            let init = crate::consts::const_alloc_to_gcc_uncached(self, alloc);
+            let alloc = alloc.inner();
+            let typ = self.val_ty(init).get_aligned(alloc.align.bytes());
+
+            let global = self.declare_global_with_linkage(sym.name, typ, GlobalKind::Exported);
+            global.global_set_initializer_rvalue(init);
+            return Ok((global.get_address(None), Some(name)));
+        }
+
         let init = self.const_data_from_alloc(alloc);
         let alloc = alloc.inner();
         let value = match alloc.mutability {
@@ -299,7 +312,7 @@ impl<'gcc, 'tcx> ConstCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
             Scalar::Ptr(ptr, _size) => {
                 let (prov, offset) = ptr.prov_and_relative_offset();
                 let alloc_id = prov.alloc_id();
-                let base_addr = match self.alloc_to_backend(self.tcx.global_alloc(alloc_id)) {
+                let base_addr = match self.alloc_to_backend(self.tcx.global_alloc(alloc_id), None) {
                     Ok((base_addr, _)) => base_addr,
                     Err(base_addr) => {
                         let val = base_addr.wrapping_add(offset.bytes());

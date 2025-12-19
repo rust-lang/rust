@@ -2,7 +2,7 @@ use rustc_abi::{BackendRepr, Float, Integer, Primitive, RegKind};
 use rustc_hir::attrs::{InstructionSetAttr, Linkage};
 use rustc_middle::mir::interpret::{CTFE_ALLOC_SALT, Scalar};
 use rustc_middle::mir::mono::{MonoItemData, Visibility};
-use rustc_middle::mir::{self, InlineAsmOperand, START_BLOCK};
+use rustc_middle::mir::{self, Const, InlineAsmOperand, START_BLOCK};
 use rustc_middle::ty::layout::{FnAbiOf, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{Instance, Ty, TyCtxt, TypeVisitableExt};
 use rustc_middle::{bug, span_bug, ty};
@@ -63,6 +63,11 @@ fn inline_to_global_operand<'a, 'tcx, Cx: LayoutOf<'tcx, LayoutOfResult = TyAndL
 ) -> GlobalAsmOperandRef<'tcx> {
     match op {
         InlineAsmOperand::Const { value } => {
+            let Const::Unevaluated(c, _) = &value.const_ else {
+                bug!("need unevaluated const to derive symbol name")
+            };
+            let const_instance = Instance::new_raw(c.def, c.args);
+
             let const_value = instance
                 .instantiate_mir_and_normalize_erasing_regions(
                     cx.tcx(),
@@ -88,6 +93,7 @@ fn inline_to_global_operand<'a, 'tcx, Cx: LayoutOf<'tcx, LayoutOfResult = TyAndL
             GlobalAsmOperandRef::Const {
                 value: common::asm_const_ptr_clean(cx.tcx(), scalar),
                 ty: mono_type,
+                instance: Some(const_instance),
             }
         }
         InlineAsmOperand::SymFn { value } => {
@@ -110,6 +116,7 @@ fn inline_to_global_operand<'a, 'tcx, Cx: LayoutOf<'tcx, LayoutOfResult = TyAndL
                     cx,
                 ),
                 ty: Ty::new_fn_ptr(cx.tcx(), mono_type.fn_sig(cx.tcx())),
+                instance: None,
             }
         }
         InlineAsmOperand::SymStatic { def_id } => {

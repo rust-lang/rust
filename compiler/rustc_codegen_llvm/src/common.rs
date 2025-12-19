@@ -263,6 +263,7 @@ impl<'ll, 'tcx> ConstCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     fn alloc_to_backend(
         &self,
         global_alloc: GlobalAlloc<'tcx>,
+        name_hint: Option<Instance<'tcx>>,
     ) -> Result<(Self::Value, Option<Instance<'tcx>>), u64> {
         let alloc = match global_alloc {
             GlobalAlloc::Function { instance, .. } => {
@@ -312,6 +313,22 @@ impl<'ll, 'tcx> ConstCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 
         let init = const_alloc_to_llvm(self, alloc.inner(), /*static*/ false);
         let alloc = alloc.inner();
+
+        if let Some(name) = name_hint {
+            let sym = self.tcx.symbol_name(name);
+
+            // If a hint is provided, always use `static_addr_of_mut`, as `static_addr_of_impl` may
+            // deduplicate and provide one that doesn't have a desired name.
+            let value = self.static_addr_of_mut(init, alloc.align, None);
+            if alloc.mutability.is_not() {
+                llvm::set_global_constant(value, true);
+            }
+
+            llvm::set_value_name(value, sym.name.as_bytes());
+            llvm::set_linkage(value, llvm::Linkage::InternalLinkage);
+            return Ok((value, Some(name)));
+        }
+
         let value = match alloc.mutability {
             Mutability::Mut => self.static_addr_of_mut(init, alloc.align, None),
             _ => self.static_addr_of_impl(init, alloc.align, None),
@@ -344,7 +361,7 @@ impl<'ll, 'tcx> ConstCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                 let (prov, offset) = ptr.prov_and_relative_offset();
                 let global_alloc = self.tcx.global_alloc(prov.alloc_id());
                 let base_addr_space = global_alloc.address_space(self);
-                let base_addr = match self.alloc_to_backend(global_alloc) {
+                let base_addr = match self.alloc_to_backend(global_alloc, None) {
                     Ok((base_addr, _)) => base_addr,
                     Err(base_addr) => {
                         let val = base_addr.wrapping_add(offset.bytes());

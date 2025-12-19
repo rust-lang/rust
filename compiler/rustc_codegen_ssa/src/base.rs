@@ -407,7 +407,8 @@ where
             .iter()
             .map(|(op, op_sp)| match *op {
                 rustc_hir::InlineAsmOperand::Const { ref anon_const } => {
-                    match cx.tcx().const_eval_poly(anon_const.def_id.to_def_id()) {
+                    let def_id = anon_const.def_id.to_def_id();
+                    match cx.tcx().const_eval_poly(def_id) {
                         Ok(const_value) => {
                             let ty =
                                 cx.tcx().typeck_body(anon_const.body).node_type(anon_const.hir_id);
@@ -421,6 +422,10 @@ where
                             GlobalAsmOperandRef::Const {
                                 value: common::asm_const_ptr_clean(cx.tcx(), scalar),
                                 ty,
+                                instance: Some(Instance::new_raw(
+                                    def_id,
+                                    ty::GenericArgs::identity_for_item(cx.tcx(), def_id),
+                                )),
                             }
                         }
                         Err(ErrorHandled::Reported { .. }) => {
@@ -430,6 +435,7 @@ where
                             GlobalAsmOperandRef::Const {
                                 value: Scalar::from_u32(0),
                                 ty: Ty::new_uint(cx.tcx(), UintTy::U32),
+                                instance: None,
                             }
                         }
                         Err(ErrorHandled::TooGeneric(_)) => {
@@ -456,6 +462,7 @@ where
                             cx,
                         ),
                         ty: Ty::new_fn_ptr(cx.tcx(), ty.fn_sig(cx.tcx())),
+                        instance: None,
                     }
                 }
                 rustc_hir::InlineAsmOperand::SymStatic { path: _, def_id } => {

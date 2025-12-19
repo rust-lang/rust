@@ -45,9 +45,13 @@ pub trait ConstCodegenMethods<'tcx>: BackendTypes {
     ///
     /// If the `GlobalAlloc` should not be mapped to a global, but absolute address should be used,
     /// an integer is returned as `Err` instead.
+    ///
+    /// If the caller needs to guarantee a symbol name, it can provide a name hint. The name will be
+    /// used to generate a new symbol if there isn't one already (i.e. the case of fn/static).
     fn alloc_to_backend(
         &self,
         global_alloc: GlobalAlloc<'tcx>,
+        name_hint: Option<Instance<'tcx>>,
     ) -> Result<(Self::Value, Option<Instance<'tcx>>), u64>;
     fn scalar_to_backend(&self, cv: Scalar, layout: abi::Scalar, llty: Self::Type) -> Self::Value;
 

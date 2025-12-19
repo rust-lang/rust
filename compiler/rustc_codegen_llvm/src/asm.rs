@@ -159,12 +159,12 @@ impl<'ll, 'tcx> AsmBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                         constraints.push(format!("{}", op_idx[&idx]));
                     }
                 }
-                InlineAsmOperandRef::Const { value, ty: _ } => match value {
+                InlineAsmOperandRef::Const { value, ty: _, instance: _ } => match value {
                     ConstScalar::Int(_) => (),
                     ConstScalar::Ptr(ptr, _) => {
                         let (prov, _) = ptr.prov_and_relative_offset();
                         let global_alloc = self.tcx.global_alloc(prov.alloc_id());
-                        let (value, _) = self.cx.alloc_to_backend(global_alloc).unwrap();
+                        let (value, _) = self.cx.alloc_to_backend(global_alloc, None).unwrap();
                         inputs.push(value);
                         op_idx.insert(idx, constraints.len());
                         constraints.push("s".to_string());
@@ -212,7 +212,7 @@ impl<'ll, 'tcx> AsmBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                                 template_str.push_str(&format!("${{{}}}", op_idx[&operand_idx]));
                             }
                         }
-                        InlineAsmOperandRef::Const { value, ty } => {
+                        InlineAsmOperandRef::Const { value, ty, instance: _ } => {
                             match value {
                                 ConstScalar::Int(int) => {
                                     // Const operands get injected directly into the template
@@ -431,7 +431,7 @@ impl<'tcx> AsmCodegenMethods<'tcx> for CodegenCx<'_, 'tcx> {
                 InlineAsmTemplatePiece::String(ref s) => template_str.push_str(s),
                 InlineAsmTemplatePiece::Placeholder { operand_idx, modifier: _, span: _ } => {
                     match operands[operand_idx] {
-                        GlobalAsmOperandRef::Const { value, ty } => {
+                        GlobalAsmOperandRef::Const { value, ty, instance } => {
                             match value {
                                 ConstScalar::Int(int) => {
                                     // Const operands get injected directly into the
@@ -448,7 +448,8 @@ impl<'tcx> AsmCodegenMethods<'tcx> for CodegenCx<'_, 'tcx> {
                                 ConstScalar::Ptr(ptr, _) => {
                                     let (prov, offset) = ptr.prov_and_relative_offset();
                                     let global_alloc = self.tcx.global_alloc(prov.alloc_id());
-                                    let (llval, sym) = self.alloc_to_backend(global_alloc).unwrap();
+                                    let (llval, sym) =
+                                        self.alloc_to_backend(global_alloc, instance).unwrap();
                                     assert!(sym.is_some());
 
                                     self.add_compiler_used_global(llval);

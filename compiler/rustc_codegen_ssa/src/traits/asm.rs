@@ -30,6 +30,10 @@ pub enum InlineAsmOperandRef<'tcx, B: BackendTypes + ?Sized> {
         value: Scalar,
         /// Type of the constant. This is needed to extract width and signedness.
         ty: Ty<'tcx>,
+        /// Instance to the const that produces this operand.
+        ///
+        /// This is used to be able to generate unique name for promoted statics.
+        instance: Option<Instance<'tcx>>,
     },
     SymStatic {
         def_id: DefId,
@@ -45,6 +49,10 @@ pub enum GlobalAsmOperandRef<'tcx> {
         value: Scalar,
         /// Type of the constant. This is needed to extract width and signedness.
         ty: Ty<'tcx>,
+        /// Instance to the const that produces this operand.
+        ///
+        /// This is used to be able to generate unique name for promoted statics.
+        instance: Option<Instance<'tcx>>,
     },
     SymStatic {
         def_id: DefId,
