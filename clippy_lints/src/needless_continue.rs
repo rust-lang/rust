@@ -1,9 +1,9 @@
-use clippy_utils::diagnostics::span_lint_and_help;
+use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::higher;
 use clippy_utils::source::{indent_of, snippet_block, snippet_with_context};
 use rustc_ast::Label;
 use rustc_errors::Applicability;
-use rustc_hir::{Block, Expr, ExprKind, LoopSource, StmtKind};
+use rustc_hir::{Block, Expr, ExprKind, HirId, LoopSource, StmtKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::declare_lint_pass;
 use rustc_span::{ExpnKind, Span};
@@ -336,14 +336,9 @@ fn emit_warning(cx: &LateContext<'_>, data: &LintData<'_>, header: &str, typ: Li
             data.if_expr,
         ),
     };
-    span_lint_and_help(
-        cx,
-        NEEDLESS_CONTINUE,
-        expr.span,
-        message,
-        None,
-        format!("{header}\n{snip}"),
-    );
+    span_lint_hir_and_then(cx, NEEDLESS_CONTINUE, expr.hir_id, expr.span, message, |diag| {
+        diag.help(format!("{header}\n{snip}"));
+    });
 }
 
 fn suggestion_snippet_for_continue_inside_if(cx: &LateContext<'_>, data: &LintData<'_>) -> String {
@@ -424,11 +419,11 @@ fn suggestion_snippet_for_continue_inside_else(cx: &LateContext<'_>, data: &Lint
 
 fn check_last_stmt_in_expr<F>(cx: &LateContext<'_>, inner_expr: &Expr<'_>, func: &F)
 where
-    F: Fn(Option<&Label>, Span),
+    F: Fn(HirId, Option<&Label>, Span),
 {
     match inner_expr.kind {
         ExprKind::Continue(continue_label) => {
-            func(continue_label.label.as_ref(), inner_expr.span);
+            func(inner_expr.hir_id, continue_label.label.as_ref(), inner_expr.span);
         },
         ExprKind::If(_, then_block, else_block) if let ExprKind::Block(then_block, _) = then_block.kind => {
             check_last_stmt_in_block(cx, then_block, func);
@@ -454,7 +449,7 @@ where
 
 fn check_last_stmt_in_block<F>(cx: &LateContext<'_>, b: &Block<'_>, func: &F)
 where
-    F: Fn(Option<&Label>, Span),
+    F: Fn(HirId, Option<&Label>, Span),
 {
     if let Some(expr) = b.expr {
         check_last_stmt_in_expr(cx, expr, func);
@@ -470,15 +465,17 @@ where
 
 fn check_and_warn(cx: &LateContext<'_>, expr: &Expr<'_>) {
     with_loop_block(expr, |loop_block, label| {
-        let p = |continue_label: Option<&Label>, span: Span| {
+        let p = |continue_hir_id, continue_label: Option<&Label>, span: Span| {
             if compare_labels(label, continue_label) {
-                span_lint_and_help(
+                span_lint_hir_and_then(
                     cx,
                     NEEDLESS_CONTINUE,
+                    continue_hir_id,
                     span,
                     MSG_REDUNDANT_CONTINUE_EXPRESSION,
-                    None,
-                    DROP_CONTINUE_EXPRESSION_MSG,
+                    |diag| {
+                        diag.help(DROP_CONTINUE_EXPRESSION_MSG);
+                    },
                 );
             }
         };
