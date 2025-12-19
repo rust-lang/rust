@@ -1825,7 +1825,7 @@ where
 {
 }
 
-#[unstable(feature = "pin_coerce_unsized_trait", issue = "123430")]
+#[unstable(feature = "pin_coerce_unsized_trait", issue = "150112")]
 /// Trait that indicates that this is a pointer or a wrapper for one, where
 /// unsizing can be performed on the pointee when it is pinned.
 ///

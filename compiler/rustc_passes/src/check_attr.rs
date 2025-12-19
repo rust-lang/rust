@@ -255,8 +255,14 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::MacroUse { .. }
                     | AttributeKind::MacroEscape( .. )
                     | AttributeKind::NoLink
+                    | AttributeKind::RustcNoImplicitAutorefs
                     | AttributeKind::RustcLayoutScalarValidRangeStart(..)
                     | AttributeKind::RustcLayoutScalarValidRangeEnd(..)
+                    | AttributeKind::RustcLintDiagnostics
+                    | AttributeKind::RustcLintOptDenyFieldAccess { .. }
+                    | AttributeKind::RustcLintOptTy
+                    | AttributeKind::RustcLintQueryInstability
+                    | AttributeKind::RustcLintUntrackedQueryInformation
                     | AttributeKind::RustcNeverReturnsNullPointer
                     | AttributeKind::RustcScalableVector { .. }
                     | AttributeKind::RustcSimdMonomorphizeLaneLimit(..)
@@ -305,22 +311,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             self.check_diagnostic_on_const(attr.span(), hir_id, target, item)
                         }
                         [sym::thread_local, ..] => self.check_thread_local(attr, span, target),
-                        [sym::rustc_no_implicit_autorefs, ..] => {
-                            self.check_applied_to_fn_or_method(hir_id, attr.span(), span, target)
-                        }
-                        [sym::rustc_lint_query_instability, ..] => {
-                            self.check_applied_to_fn_or_method(hir_id, attr.span(), span, target)
-                        }
-                        [sym::rustc_lint_untracked_query_information, ..] => {
-                            self.check_applied_to_fn_or_method(hir_id, attr.span(), span, target)
-                        }
-                        [sym::rustc_lint_diagnostics, ..] => {
-                            self.check_applied_to_fn_or_method(hir_id, attr.span(), span, target)
-                        }
-                        [sym::rustc_lint_opt_ty, ..] => self.check_rustc_lint_opt_ty(attr, span, target),
-                        [sym::rustc_lint_opt_deny_field_access, ..] => {
-                            self.check_rustc_lint_opt_deny_field_access(attr, span, target)
-                        }
                         [sym::rustc_clean, ..]
                         | [sym::rustc_dirty, ..]
                         | [sym::rustc_if_this_changed, ..]
@@ -1232,47 +1222,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     span: *span,
                     arg_count,
                 });
-            }
-        }
-    }
-
-    /// Helper function for checking that the provided attribute is only applied to a function or
-    /// method.
-    fn check_applied_to_fn_or_method(
-        &self,
-        hir_id: HirId,
-        attr_span: Span,
-        defn_span: Span,
-        target: Target,
-    ) {
-        let is_function = matches!(target, Target::Fn | Target::Method(..));
-        if !is_function {
-            self.dcx().emit_err(errors::AttrShouldBeAppliedToFn {
-                attr_span,
-                defn_span,
-                on_crate: hir_id == CRATE_HIR_ID,
-            });
-        }
-    }
-
-    /// Checks that the `#[rustc_lint_opt_ty]` attribute is only applied to a struct.
-    fn check_rustc_lint_opt_ty(&self, attr: &Attribute, span: Span, target: Target) {
-        match target {
-            Target::Struct => {}
-            _ => {
-                self.dcx().emit_err(errors::RustcLintOptTy { attr_span: attr.span(), span });
-            }
-        }
-    }
-
-    /// Checks that the `#[rustc_lint_opt_deny_field_access]` attribute is only applied to a field.
-    fn check_rustc_lint_opt_deny_field_access(&self, attr: &Attribute, span: Span, target: Target) {
-        match target {
-            Target::Field => {}
-            _ => {
-                self.tcx
-                    .dcx()
-                    .emit_err(errors::RustcLintOptDenyFieldAccess { attr_span: attr.span(), span });
             }
         }
     }

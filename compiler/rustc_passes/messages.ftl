@@ -473,13 +473,6 @@ passes_rustc_legacy_const_generics_only =
     #[rustc_legacy_const_generics] functions must only have const generics
     .label = non-const generic parameter
 
-passes_rustc_lint_opt_deny_field_access =
-    `#[rustc_lint_opt_deny_field_access]` should be applied to a field
-    .label = not a field
-
-passes_rustc_lint_opt_ty =
-    `#[rustc_lint_opt_ty]` should be applied to a struct
-    .label = not a struct
 
 passes_rustc_pub_transparent =
     attribute should be applied to `#[repr(transparent)]` types
@@ -490,13 +483,6 @@ passes_sanitize_attribute_not_allowed =
     .not_fn_impl_mod = not a function, impl block, or module
     .no_body = function has no body
     .help = sanitize attribute can be applied to a function (with body), impl block, or module
-
-passes_should_be_applied_to_fn =
-    attribute should be applied to a function definition
-    .label = {$on_crate ->
-        [true] cannot be applied to crates
-        *[false] not a function definition
-    }
 
 passes_should_be_applied_to_static =
     attribute should be applied to a static

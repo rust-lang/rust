@@ -65,11 +65,6 @@ LL | |         match variant {
 LL | |     };
    | |_____^
    |
-note: Capturing variant[] -> Immutable
-  --> $DIR/patterns-capture-analysis.rs:66:15
-   |
-LL |         match variant {
-   |               ^^^^^^^
 note: Capturing variant[(0, 0)] -> Immutable
   --> $DIR/patterns-capture-analysis.rs:66:15
    |
@@ -87,14 +82,14 @@ LL | |         match variant {
 LL | |     };
    | |_____^
    |
-note: Min Capture variant[] -> Immutable
+note: Min Capture variant[(0, 0)] -> Immutable
   --> $DIR/patterns-capture-analysis.rs:66:15
    |
 LL |         match variant {
    |               ^^^^^^^
 
 error: First Pass analysis includes:
-  --> $DIR/patterns-capture-analysis.rs:83:5
+  --> $DIR/patterns-capture-analysis.rs:82:5
    |
 LL | /     || {
 LL | |
@@ -105,7 +100,7 @@ LL | |     };
    | |_____^
 
 error: First Pass analysis includes:
-  --> $DIR/patterns-capture-analysis.rs:95:5
+  --> $DIR/patterns-capture-analysis.rs:94:5
    |
 LL | /     || {
 LL | |
@@ -116,7 +111,7 @@ LL | |     };
    | |_____^
 
 error: First Pass analysis includes:
-  --> $DIR/patterns-capture-analysis.rs:108:5
+  --> $DIR/patterns-capture-analysis.rs:107:5
    |
 LL | /     || {
 LL | |
@@ -127,7 +122,7 @@ LL | |     };
    | |_____^
 
 error: First Pass analysis includes:
-  --> $DIR/patterns-capture-analysis.rs:130:5
+  --> $DIR/patterns-capture-analysis.rs:129:5
    |
 LL | /     || {
 LL | |
@@ -138,13 +133,13 @@ LL | |     };
    | |_____^
    |
 note: Capturing variant[] -> Immutable
-  --> $DIR/patterns-capture-analysis.rs:133:15
+  --> $DIR/patterns-capture-analysis.rs:132:15
    |
 LL |         match variant {
    |               ^^^^^^^
 
 error: Min Capture analysis includes:
-  --> $DIR/patterns-capture-analysis.rs:130:5
+  --> $DIR/patterns-capture-analysis.rs:129:5
    |
 LL | /     || {
 LL | |
@@ -155,13 +150,13 @@ LL | |     };
    | |_____^
    |
 note: Min Capture variant[] -> Immutable
-  --> $DIR/patterns-capture-analysis.rs:133:15
+  --> $DIR/patterns-capture-analysis.rs:132:15
    |
 LL |         match variant {
    |               ^^^^^^^
 
 error: First Pass analysis includes:
-  --> $DIR/patterns-capture-analysis.rs:148:5
+  --> $DIR/patterns-capture-analysis.rs:147:5
    |
 LL | /     || {
 LL | |
@@ -171,14 +166,14 @@ LL | |         match slice {
 LL | |     };
    | |_____^
    |
-note: Capturing slice[] -> Immutable
-  --> $DIR/patterns-capture-analysis.rs:151:15
+note: Capturing slice[Deref] -> Immutable
+  --> $DIR/patterns-capture-analysis.rs:150:15
    |
 LL |         match slice {
    |               ^^^^^
 
 error: Min Capture analysis includes:
-  --> $DIR/patterns-capture-analysis.rs:148:5
+  --> $DIR/patterns-capture-analysis.rs:147:5
    |
 LL | /     || {
 LL | |
@@ -188,14 +183,14 @@ LL | |         match slice {
 LL | |     };
    | |_____^
    |
-note: Min Capture slice[] -> Immutable
-  --> $DIR/patterns-capture-analysis.rs:151:15
+note: Min Capture slice[Deref] -> Immutable
+  --> $DIR/patterns-capture-analysis.rs:150:15
    |
 LL |         match slice {
    |               ^^^^^
 
 error: First Pass analysis includes:
-  --> $DIR/patterns-capture-analysis.rs:160:5
+  --> $DIR/patterns-capture-analysis.rs:159:5
    |
 LL | /     || {
 LL | |
@@ -205,14 +200,14 @@ LL | |         match slice {
 LL | |     };
    | |_____^
    |
-note: Capturing slice[] -> Immutable
-  --> $DIR/patterns-capture-analysis.rs:163:15
+note: Capturing slice[Deref] -> Immutable
+  --> $DIR/patterns-capture-analysis.rs:162:15
    |
 LL |         match slice {
    |               ^^^^^
 
 error: Min Capture analysis includes:
-  --> $DIR/patterns-capture-analysis.rs:160:5
+  --> $DIR/patterns-capture-analysis.rs:159:5
    |
 LL | /     || {
 LL | |
@@ -222,14 +217,14 @@ LL | |         match slice {
 LL | |     };
    | |_____^
    |
-note: Min Capture slice[] -> Immutable
-  --> $DIR/patterns-capture-analysis.rs:163:15
+note: Min Capture slice[Deref] -> Immutable
+  --> $DIR/patterns-capture-analysis.rs:162:15
    |
 LL |         match slice {
    |               ^^^^^
 
 error: First Pass analysis includes:
-  --> $DIR/patterns-capture-analysis.rs:172:5
+  --> $DIR/patterns-capture-analysis.rs:171:5
    |
 LL | /     || {
 LL | |
@@ -239,14 +234,14 @@ LL | |         match slice {
 LL | |     };
    | |_____^
    |
-note: Capturing slice[] -> Immutable
-  --> $DIR/patterns-capture-analysis.rs:175:15
+note: Capturing slice[Deref] -> Immutable
+  --> $DIR/patterns-capture-analysis.rs:174:15
    |
 LL |         match slice {
    |               ^^^^^
 
 error: Min Capture analysis includes:
-  --> $DIR/patterns-capture-analysis.rs:172:5
+  --> $DIR/patterns-capture-analysis.rs:171:5
    |
 LL | /     || {
 LL | |
@@ -256,14 +251,14 @@ LL | |         match slice {
 LL | |     };
    | |_____^
    |
-note: Min Capture slice[] -> Immutable
-  --> $DIR/patterns-capture-analysis.rs:175:15
+note: Min Capture slice[Deref] -> Immutable
+  --> $DIR/patterns-capture-analysis.rs:174:15
    |
 LL |         match slice {
    |               ^^^^^
 
 error: First Pass analysis includes:
-  --> $DIR/patterns-capture-analysis.rs:189:5
+  --> $DIR/patterns-capture-analysis.rs:188:5
    |
 LL | /     || {
 LL | |

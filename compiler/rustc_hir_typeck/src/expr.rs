@@ -40,7 +40,7 @@ use tracing::{debug, instrument, trace};
 use {rustc_ast as ast, rustc_hir as hir};
 
 use crate::Expectation::{self, ExpectCastableToType, ExpectHasType, NoExpectation};
-use crate::coercion::{CoerceMany, DynamicCoerceMany};
+use crate::coercion::CoerceMany;
 use crate::errors::{
     AddressOfTemporaryTaken, BaseExpressionDoubleDot, BaseExpressionDoubleDotAddExpr,
     BaseExpressionDoubleDotRemove, CantDereference, FieldMultiplySpecifiedInInitializer,
@@ -1227,7 +1227,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // (`only_has_type`); otherwise, we just go with a
         // fresh type variable.
         let coerce_to_ty = expected.coercion_target_type(self, sp);
-        let mut coerce: DynamicCoerceMany<'_> = CoerceMany::new(coerce_to_ty);
+        let mut coerce = CoerceMany::with_capacity(coerce_to_ty, 2);
 
         coerce.coerce(self, &self.misc(sp), then_expr, then_ty);
 
@@ -1681,7 +1681,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .to_option(self)
                 .and_then(|uty| self.try_structurally_resolve_type(expr.span, uty).builtin_index())
                 .unwrap_or_else(|| self.next_ty_var(expr.span));
-            let mut coerce = CoerceMany::with_coercion_sites(coerce_to, args);
+            let mut coerce = CoerceMany::with_capacity(coerce_to, args.len());
 
             for e in args {
                 let e_ty = self.check_expr_with_hint(e, coerce_to);

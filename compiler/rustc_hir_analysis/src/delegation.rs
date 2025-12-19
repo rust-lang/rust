@@ -401,12 +401,6 @@ fn check_constraints<'tcx>(
         }));
     };
 
-    if let Some(local_sig_id) = sig_id.as_local()
-        && tcx.hir_opt_delegation_sig_id(local_sig_id).is_some()
-    {
-        emit("recursive delegation is not supported yet");
-    }
-
     if tcx.fn_sig(sig_id).skip_binder().skip_binder().c_variadic {
         // See issue #127443 for explanation.
         emit("delegation to C-variadic functions is not allowed");
