@@ -21,6 +21,7 @@ use rustc_middle::hir::place::ProjectionKind;
 // Export these here so that Clippy can use them.
 pub use rustc_middle::hir::place::{Place, PlaceBase, PlaceWithHirId, Projection};
 use rustc_middle::mir::FakeReadCause;
+use rustc_middle::thir::DerefPatBorrowMode;
 use rustc_middle::ty::{
     self, BorrowKind, Ty, TyCtxt, TypeFoldable, TypeVisitableExt as _, adjustment,
 };
@@ -890,7 +891,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                     // Deref patterns on boxes don't borrow, so we ignore them here.
                     // HACK: this could be a fake pattern corresponding to a deref inserted by match
                     // ergonomics, in which case `pat.hir_id` will be the id of the subpattern.
-                    if let hir::ByRef::Yes(_, mutability) =
+                    if let DerefPatBorrowMode::Borrow(mutability) =
                         self.cx.typeck_results().deref_pat_borrow_mode(place.place.ty(), subpattern)
                     {
                         let bk = ty::BorrowKind::from_mutbl(mutability);
@@ -1837,9 +1838,9 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
     ) -> Result<PlaceWithHirId<'tcx>, Cx::Error> {
         match self.cx.typeck_results().deref_pat_borrow_mode(base_place.place.ty(), inner) {
             // Deref patterns on boxes are lowered using a built-in deref.
-            hir::ByRef::No => self.cat_deref(hir_id, base_place),
+            DerefPatBorrowMode::Box => self.cat_deref(hir_id, base_place),
             // For other types, we create a temporary to match on.
-            hir::ByRef::Yes(_, mutability) => {
+            DerefPatBorrowMode::Borrow(mutability) => {
                 let re_erased = self.cx.tcx().lifetimes.re_erased;
                 let ty = Ty::new_ref(self.cx.tcx(), re_erased, target_ty, mutability);
                 // A deref pattern stores the result of `Deref::deref` or `DerefMut::deref_mut` ...

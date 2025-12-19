@@ -11,10 +11,10 @@ use std::mem;
 use std::sync::Arc;
 
 use itertools::{Itertools, Position};
-use rustc_abi::{FIRST_VARIANT, FieldIdx, VariantIdx};
+use rustc_abi::{FIRST_VARIANT, VariantIdx};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_hir::{BindingMode, ByRef, LangItem, LetStmt, LocalSource, Node, Pinnedness};
+use rustc_hir::{BindingMode, ByRef, LangItem, LetStmt, LocalSource, Node};
 use rustc_middle::middle::region::{self, TempLifetime};
 use rustc_middle::mir::*;
 use rustc_middle::thir::{self, *};
@@ -918,10 +918,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
             PatKind::Deref { ref subpattern } => {
                 visit_subpat(self, subpattern, &user_tys.deref(), f);
-            }
-
-            PatKind::DerefPattern { ref subpattern, borrow: ByRef::Yes(Pinnedness::Pinned, _) } => {
-                visit_subpat(self, subpattern, &user_tys.leaf(FieldIdx::ZERO).deref(), f);
             }
 
             PatKind::DerefPattern { ref subpattern, .. } => {
