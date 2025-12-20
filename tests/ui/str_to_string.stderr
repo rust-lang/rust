@@ -13,5 +13,11 @@ error: `to_string()` called on a `&str`
 LL |     msg.to_string();
    |     ^^^^^^^^^^^^^^^ help: try: `msg.to_owned()`
 
-error: aborting due to 2 previous errors
+error: `to_string()` called on a `&str`
+  --> tests/ui/str_to_string.rs:22:18
+   |
+LL |     let _value = t!(str::from_utf8(key)).to_string();
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `t!(str::from_utf8(key)).to_owned()`
+
+error: aborting due to 3 previous errors
 
