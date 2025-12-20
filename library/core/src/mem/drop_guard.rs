@@ -19,7 +19,9 @@ use crate::ops::{Deref, DerefMut};
 /// {
 ///     // Create a new guard that will do something
 ///     // when dropped.
-///     defer! { println!("Goodbye, world!") };
+///     defer! {
+///         println!("Goodbye, world!");
+///     }
 ///
 ///     // The guard will be dropped here, printing:
 ///     // "Goodbye, world!"
