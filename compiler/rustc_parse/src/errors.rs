@@ -3019,6 +3019,17 @@ pub(crate) struct FnPointerCannotBeAsync {
 }
 
 #[derive(Diagnostic)]
+#[diag(parse_fn_pointer_cannot_be_gen)]
+#[note]
+pub(crate) struct FnPointerCannotBeGen {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    #[suggestion(code = "", applicability = "maybe-incorrect", style = "verbose")]
+    pub suggestion: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(parse_nested_c_variadic_type, code = E0743)]
 pub(crate) struct NestedCVariadicType {
     #[primary_span]

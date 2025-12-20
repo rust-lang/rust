@@ -2747,7 +2747,15 @@ impl<'a> Parser<'a> {
                 suggestion: async_span.until(self.token.span),
             });
         }
-        // FIXME(gen_blocks): emit a similar error for `gen fn()`
+        
+        if parsing_mode == FrontMatterParsingMode::FunctionPtrType
+            && let Some(ast::CoroutineKind::Gen { span: gen_span, .. }) = coroutine_kind
+        {
+            self.dcx().emit_err(FnPointerCannotBeGen {
+                span: gen_span,
+                suggestion: gen_span.until(self.token.span),
+            });
+        }
 
         let unsafe_start_sp = self.token.span;
         let safety = self.parse_safety(case);

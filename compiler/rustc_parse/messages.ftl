@@ -310,6 +310,11 @@ parse_float_literal_requires_integer_part = float literals must have an integer 
 
 parse_float_literal_unsupported_base = {$base} float literal is not supported
 
+parse_fn_pointer_cannot_be_gen = an `fn` pointer type cannot be `gen`
+    .label = `gen` because of this
+    .suggestion = remove the `gen` qualifier
+    .note = allowed qualifiers are: `unsafe` and `extern`
+
 parse_fn_pointer_cannot_be_async = an `fn` pointer type cannot be `async`
     .label = `async` because of this
     .suggestion = remove the `async` qualifier
