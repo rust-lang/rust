@@ -60,7 +60,17 @@ impl InlineAttr {
     }
 }
 
-#[derive(Clone, Encodable, Decodable, Debug, PartialEq, Eq, HashStable_Generic)]
+#[derive(
+    Copy,
+    Clone,
+    Encodable,
+    Decodable,
+    Debug,
+    PartialEq,
+    Eq,
+    HashStable_Generic,
+    PrintAttribute
+)]
 pub enum InstructionSetAttr {
     ArmA32,
     ArmT32,
@@ -806,6 +816,9 @@ pub enum AttributeKind {
 
     /// Represents `#[inline]` and `#[rustc_force_inline]`.
     Inline(InlineAttr, Span),
+
+    /// Represents `#[instruction_set]`
+    InstructionSet(InstructionSetAttr),
 
     /// Represents `#[link]`.
     Link(ThinVec<LinkEntry>, Span),
