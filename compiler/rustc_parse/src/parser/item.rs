@@ -2747,7 +2747,7 @@ impl<'a> Parser<'a> {
                 suggestion: async_span.until(self.token.span),
             });
         }
-        
+
         if parsing_mode == FrontMatterParsingMode::FunctionPtrType
             && let Some(ast::CoroutineKind::Gen { span: gen_span, .. }) = coroutine_kind
         {
