@@ -1801,6 +1801,9 @@ supported_targets! {
     ("x86_64-lynx-lynxos178", x86_64_lynx_lynxos178),
 
     ("x86_64-pc-cygwin", x86_64_pc_cygwin),
+
+    ("x86_64-asan-windows-msvc", x86_64_asan_windows_msvc),
+    ("aarch64-asan-windows-msvc", aarch64_asan_windows_msvc),
 }
 
 /// Cow-Vec-Str: Cow<'static, [Cow<'static, str>]>
