@@ -27,7 +27,7 @@ use super::{
 };
 use crate::errors::{
     self, FnPointerCannotBeAsync, FnPointerCannotBeConst, FnPointerCannotBeGen,
-    MacroExpandsToAdtField
+    MacroExpandsToAdtField,
 };
 use crate::{exp, fluent_generated as fluent};
 
