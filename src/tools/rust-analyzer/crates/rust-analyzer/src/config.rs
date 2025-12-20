@@ -904,8 +904,22 @@ config_data! {
         /// This config takes a map of crate names with the exported proc-macro names to ignore as values.
         procMacro_ignored: FxHashMap<Box<str>, Box<[Box<str>]>>          = FxHashMap::default(),
 
+        /// Subcommand used for bench runnables instead of `bench`.
+        runnables_bench_command: String = "bench".to_owned(),
+        /// Override the command used for bench runnables.
+        /// The first element of the array should be the program to execute (for example, `cargo`).
+        ///
+        /// Use the placeholders `${package}`, `${target_arg}`, `${target}` to dynamically replace the package name,
+        /// target option (such as `--bin` or `--example`), and the target name.
+        runnables_bench_overrideCommand: Option<Vec<String>> = None,
         /// Command to be executed instead of 'cargo' for runnables.
         runnables_command: Option<String> = None,
+        /// Override the command used for bench runnables.
+        /// The first element of the array should be the program to execute (for example, `cargo`).
+        ///
+        /// Use the placeholders `${package}`, `${target_arg}`, `${target}` to dynamically replace the package name,
+        /// target option (such as `--bin` or `--example`), and the target name.
+        runnables_doctest_overrideCommand: Option<Vec<String>> = None,
         /// Additional arguments to be passed to cargo for runnables such as
         /// tests or binaries. For example, it may be `--release`.
         runnables_extraArgs: Vec<String>   = vec![],
@@ -917,6 +931,14 @@ config_data! {
         /// they will end up being interpreted as options to
         /// [`rustc`’s built-in test harness (“libtest”)](https://doc.rust-lang.org/rustc/tests/index.html#cli-arguments).
         runnables_extraTestBinaryArgs: Vec<String> = vec!["--nocapture".to_owned()],
+        /// Subcommand used for test runnables instead of `test`.
+        runnables_test_command: String = "test".to_owned(),
+        /// Override the command used for test runnables.
+        /// The first element of the array should be the program to execute (for example, `cargo`).
+        ///
+        /// Use the placeholders `${package}`, `${target_arg}`, `${target}` to dynamically replace the package name,
+        /// target option (such as `--bin` or `--example`), and the target name.
+        runnables_test_overrideCommand: Option<Vec<String>> = None,
 
         /// Path to the Cargo.toml of the rust compiler workspace, for usage in rustc_private
         /// projects, or "discover" to try to automatically find it if the `rustc-dev` component
@@ -1568,6 +1590,16 @@ pub struct RunnablesConfig {
     pub cargo_extra_args: Vec<String>,
     /// Additional arguments for the binary being run, if it is a test or benchmark.
     pub extra_test_binary_args: Vec<String>,
+    /// Subcommand used for doctest runnables instead of `test`.
+    pub test_command: String,
+    /// Override the command used for test runnables.
+    pub test_override_command: Option<Vec<String>>,
+    /// Subcommand used for doctest runnables instead of `bench`.
+    pub bench_command: String,
+    /// Override the command used for bench runnables.
+    pub bench_override_command: Option<Vec<String>>,
+    /// Override the command used for doctest runnables.
+    pub doc_test_override_command: Option<Vec<String>>,
 }
 
 /// Configuration for workspace symbol search requests.
@@ -2494,6 +2526,11 @@ impl Config {
             override_cargo: self.runnables_command(source_root).clone(),
             cargo_extra_args: self.runnables_extraArgs(source_root).clone(),
             extra_test_binary_args: self.runnables_extraTestBinaryArgs(source_root).clone(),
+            test_command: self.runnables_test_command(source_root).clone(),
+            test_override_command: self.runnables_test_overrideCommand(source_root).clone(),
+            bench_command: self.runnables_bench_command(source_root).clone(),
+            bench_override_command: self.runnables_bench_overrideCommand(source_root).clone(),
+            doc_test_override_command: self.runnables_doctest_overrideCommand(source_root).clone(),
         }
     }
 

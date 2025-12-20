@@ -2829,6 +2829,32 @@
             {
                 "title": "Runnables",
                 "properties": {
+                    "rust-analyzer.runnables.bench.command": {
+                        "markdownDescription": "Subcommand used for bench runnables instead of `bench`.",
+                        "default": "bench",
+                        "type": "string"
+                    }
+                }
+            },
+            {
+                "title": "Runnables",
+                "properties": {
+                    "rust-analyzer.runnables.bench.overrideCommand": {
+                        "markdownDescription": "Override the command used for bench runnables.\nThe first element of the array should be the program to execute (for example, `cargo`).\n\nUse the placeholders `${package}`, `${target_arg}`, `${target}` to dynamically replace the package name,\ntarget option (such as `--bin` or `--example`), and the target name.",
+                        "default": null,
+                        "type": [
+                            "null",
+                            "array"
+                        ],
+                        "items": {
+                            "type": "string"
+                        }
+                    }
+                }
+            },
+            {
+                "title": "Runnables",
+                "properties": {
                     "rust-analyzer.runnables.command": {
                         "markdownDescription": "Command to be executed instead of 'cargo' for runnables.",
                         "default": null,
@@ -2836,6 +2862,22 @@
                             "null",
                             "string"
                         ]
+                    }
+                }
+            },
+            {
+                "title": "Runnables",
+                "properties": {
+                    "rust-analyzer.runnables.doctest.overrideCommand": {
+                        "markdownDescription": "Override the command used for bench runnables.\nThe first element of the array should be the program to execute (for example, `cargo`).\n\nUse the placeholders `${package}`, `${target_arg}`, `${target}` to dynamically replace the package name,\ntarget option (such as `--bin` or `--example`), and the target name.",
+                        "default": null,
+                        "type": [
+                            "null",
+                            "array"
+                        ],
+                        "items": {
+                            "type": "string"
+                        }
                     }
                 }
             },
@@ -2861,6 +2903,32 @@
                             "--nocapture"
                         ],
                         "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    }
+                }
+            },
+            {
+                "title": "Runnables",
+                "properties": {
+                    "rust-analyzer.runnables.test.command": {
+                        "markdownDescription": "Subcommand used for test runnables instead of `test`.",
+                        "default": "test",
+                        "type": "string"
+                    }
+                }
+            },
+            {
+                "title": "Runnables",
+                "properties": {
+                    "rust-analyzer.runnables.test.overrideCommand": {
+                        "markdownDescription": "Override the command used for test runnables.\nThe first element of the array should be the program to execute (for example, `cargo`).\n\nUse the placeholders `${package}`, `${target_arg}`, `${target}` to dynamically replace the package name,\ntarget option (such as `--bin` or `--example`), and the target name.",
+                        "default": null,
+                        "type": [
+                            "null",
+                            "array"
+                        ],
                         "items": {
                             "type": "string"
                         }
