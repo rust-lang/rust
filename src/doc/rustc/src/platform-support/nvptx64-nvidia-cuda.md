@@ -12,7 +12,7 @@ platform.
 
 ## Requirements
 
-This target is `no_std` and will typically be built with crate-type `cdylib` and `-C linker-flavor=llbc`, which generates PTX.
+This target is `no_std`, and uses the `llvm-bitcode-linker` by default. For PTX output, build with crate-type `cdylib`.
 The necessary components for this workflow are:
 
 - `rustup toolchain add nightly`
@@ -38,7 +38,7 @@ While the compiler accepts `#[target_feature(enable = "ptx80", enable = "sm_89")
 A `no_std` crate containing one or more functions with `extern "ptx-kernel"` can be compiled to PTX using a command like the following.
 
 ```console
-$ RUSTFLAGS='-Ctarget-cpu=sm_89' cargo +nightly rustc --target=nvptx64-nvidia-cuda -Zbuild-std=core --crate-type=cdylib -- -Clinker-flavor=llbc -Zunstable-options
+$ RUSTFLAGS='-Ctarget-cpu=sm_89' cargo +nightly rustc --target=nvptx64-nvidia-cuda -Zbuild-std=core --crate-type=cdylib
 ```
 
 Intrinsics in `core::arch::nvptx` may use `#[cfg(target_feature = "...")]`, thus it's necessary to use `-Zbuild-std=core` with appropriate `RUSTFLAGS`. The following components are needed for this workflow:

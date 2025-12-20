@@ -27,7 +27,7 @@ enum Mode {
 }
 
 fn miri_path() -> PathBuf {
-    PathBuf::from(env::var("MIRI").unwrap_or_else(|_| env!("CARGO_BIN_EXE_miri").into()))
+    env!("CARGO_BIN_EXE_miri").into()
 }
 
 // Build the shared object file for testing native function calls.
