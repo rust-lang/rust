@@ -26,7 +26,7 @@ use super::{
     Recovered, Trailing, UsePreAttrPos,
 };
 use crate::errors::{
-    self, FnPointerCannotBeGen, FnPointerCannotBeAsync, FnPointerCannotBeConst, 
+    self, FnPointerCannotBeAsync, FnPointerCannotBeConst, FnPointerCannotBeGen
     MacroExpandsToAdtField
 };
 use crate::{exp, fluent_generated as fluent};
