@@ -187,6 +187,8 @@ declare_features! (
     (accepted, do_not_recommend, "1.85.0", Some(51992)),
     /// Allows `#[doc(alias = "...")]`.
     (accepted, doc_alias, "1.48.0", Some(50146)),
+    /// Allows `#[doc(cfg(...))]`.
+    (accepted, doc_cfg, "1.21.0", Some(43781)),
     /// Allows `..` in tuple (struct) patterns.
     (accepted, dotdot_in_tuple_patterns, "1.14.0", Some(33627)),
     /// Allows `..=` in patterns (RFC 1192).

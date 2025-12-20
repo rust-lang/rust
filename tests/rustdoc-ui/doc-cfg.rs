@@ -1,5 +1,3 @@
-#![feature(doc_cfg)]
-
 #[doc(cfg(), cfg(foo, bar))]
 //~^ ERROR malformed `doc` attribute input
 //~| ERROR malformed `doc` attribute input

@@ -1,4 +1,3 @@
-#![feature(doc_cfg)]
 #![crate_name = "foo"]
 
 // regression test for https://github.com/rust-lang/rust/issues/138112

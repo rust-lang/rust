@@ -17,7 +17,6 @@
     fmt_helpers_for_derive,
     rustc_attrs,
     staged_api,
-    doc_cfg,
     riscv_target_feature,
     arm_target_feature,
     mips_target_feature,

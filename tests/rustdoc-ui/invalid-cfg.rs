@@ -1,4 +1,3 @@
-#![feature(doc_cfg)]
 #[doc(cfg = "x")] //~ ERROR malformed `doc` attribute input
 #[doc(cfg(x, y))] //~ ERROR malformed `doc` attribute input
 pub struct S {}

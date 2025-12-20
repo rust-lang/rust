@@ -1,7 +1,6 @@
 // Checks that `cfg` are correctly applied on inlined reexports.
 
 #![crate_name = "foo"]
-#![feature(doc_cfg)]
 
 // Check with `std` item.
 //@ has 'foo/index.html' '//*[@class="stab portability"]' 'Non-moustache'

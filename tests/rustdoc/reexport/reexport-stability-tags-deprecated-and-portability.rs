@@ -1,5 +1,4 @@
 #![crate_name = "foo"]
-#![feature(doc_cfg)]
 
 pub mod tag {
     #[deprecated(since = "0.1.8", note = "Use bar() instead")]

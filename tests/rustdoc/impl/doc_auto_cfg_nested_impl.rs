@@ -1,6 +1,5 @@
 // Regression test for <https://github.com/rust-lang/rust/issues/101129>.
 
-#![feature(doc_cfg)]
 #![crate_type = "lib"]
 #![crate_name = "foo"]
 

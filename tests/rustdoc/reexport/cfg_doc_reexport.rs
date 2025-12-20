@@ -1,4 +1,3 @@
-#![feature(doc_cfg)]
 #![feature(no_core, lang_items)]
 
 #![crate_name = "foo"]

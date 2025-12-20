@@ -148,7 +148,6 @@
 #![feature(deprecated_suggestion)]
 #![feature(derive_const)]
 #![feature(diagnostic_on_const)]
-#![feature(doc_cfg)]
 #![feature(doc_notable_trait)]
 #![feature(extern_types)]
 #![feature(f16)]

@@ -1,53 +1,53 @@
 error[E0539]: malformed `doc` attribute input
+  --> $DIR/invalid-cfg.rs:1:1
+   |
+LL | #[doc(cfg = "x")]
+   | ^^^^^^^^^^-----^^
+   |           |
+   |           expected this to be a list
+
+error[E0805]: malformed `doc` attribute input
   --> $DIR/invalid-cfg.rs:2:1
    |
-LL | #[doc(cfg = "x")]
-   | ^^^^^^^^^^-----^^
-   |           |
-   |           expected this to be a list
-
-error[E0805]: malformed `doc` attribute input
-  --> $DIR/invalid-cfg.rs:3:1
-   |
 LL | #[doc(cfg(x, y))]
    | ^^^^^^^^^------^^
    |          |
    |          expected a single argument here
 
 error[E0539]: malformed `doc` attribute input
+  --> $DIR/invalid-cfg.rs:6:1
+   |
+LL | #[doc(cfg = "x")]
+   | ^^^^^^^^^^-----^^
+   |           |
+   |           expected this to be a list
+
+error[E0805]: malformed `doc` attribute input
   --> $DIR/invalid-cfg.rs:7:1
    |
-LL | #[doc(cfg = "x")]
-   | ^^^^^^^^^^-----^^
-   |           |
-   |           expected this to be a list
-
-error[E0805]: malformed `doc` attribute input
-  --> $DIR/invalid-cfg.rs:8:1
-   |
 LL | #[doc(cfg(x, y))]
    | ^^^^^^^^^------^^
    |          |
    |          expected a single argument here
 
 error[E0539]: malformed `doc` attribute input
+  --> $DIR/invalid-cfg.rs:11:1
+   |
+LL | #[doc(cfg = "x")]
+   | ^^^^^^^^^^-----^^
+   |           |
+   |           expected this to be a list
+
+error[E0805]: malformed `doc` attribute input
   --> $DIR/invalid-cfg.rs:12:1
    |
-LL | #[doc(cfg = "x")]
-   | ^^^^^^^^^^-----^^
-   |           |
-   |           expected this to be a list
-
-error[E0805]: malformed `doc` attribute input
-  --> $DIR/invalid-cfg.rs:13:1
-   |
 LL | #[doc(cfg(x, y))]
    | ^^^^^^^^^------^^
    |          |
    |          expected a single argument here
 
 error[E0539]: malformed `doc` attribute input
-  --> $DIR/invalid-cfg.rs:18:1
+  --> $DIR/invalid-cfg.rs:17:1
    |
 LL | #[doc(cfg = "x")]
    | ^^^^^^^^^^-----^^
@@ -55,7 +55,7 @@ LL | #[doc(cfg = "x")]
    |           expected this to be a list
 
 error[E0805]: malformed `doc` attribute input
-  --> $DIR/invalid-cfg.rs:19:1
+  --> $DIR/invalid-cfg.rs:18:1
    |
 LL | #[doc(cfg(x, y))]
    | ^^^^^^^^^------^^

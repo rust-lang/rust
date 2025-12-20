@@ -8,7 +8,6 @@
 //@[cfg_empty] compile-flags: --check-cfg cfg()
 //@[cfg_foo] compile-flags: --check-cfg cfg(foo)
 
-#![feature(doc_cfg)]
 #![doc(cfg(foo))]
 //[cfg_empty]~^ WARN unexpected `cfg` condition name: `foo`
 

@@ -2,7 +2,6 @@
 // include `cfg`s from the previous chained items.
 
 #![crate_name = "foo"]
-#![feature(doc_cfg)]
 
 mod foo {
     #[cfg(not(feature = "foo"))]

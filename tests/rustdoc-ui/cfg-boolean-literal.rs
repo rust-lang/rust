@@ -1,7 +1,5 @@
 //@ check-pass
 
-#![feature(doc_cfg)]
-
 #[doc(cfg(false))]
 pub fn foo() {}
 

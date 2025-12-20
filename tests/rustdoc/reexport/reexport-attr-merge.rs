@@ -3,7 +3,6 @@
 // are not copied from an item when inlined.
 
 #![crate_name = "foo"]
-#![feature(doc_cfg)]
 
 //@ has 'foo/index.html'
 

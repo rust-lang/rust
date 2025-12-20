@@ -1,5 +1,5 @@
 error[E0658]: `cfg(sanitize)` is experimental and subject to change
-  --> $DIR/doc-cfg-unstable.rs:5:11
+  --> $DIR/doc-cfg-unstable.rs:4:11
    |
 LL | #[doc(cfg(sanitize = "thread"))]
    |           ^^^^^^^^^^^^^^^^^^^
