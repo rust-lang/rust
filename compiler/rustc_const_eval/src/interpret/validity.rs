@@ -232,6 +232,23 @@ impl RangeSet {
             return;
         }
         let v = &mut self.0;
+        // The by far most common case is that this is added at the end. We can't rely on that
+        // due to enum discriminants which can be "in the middle" of the active variant,
+        // but we can at least have a fast-path here.
+        if let Some(last) = v.last_mut()
+            && offset >= last.0
+        {
+            // The new range either overlaps with the last element, or is after it.
+            let end = last.0 + last.1;
+            if offset > end {
+                // The new range is strictly after the last element.
+                v.push((offset, size));
+            } else {
+                // Merge new range into last element.
+                last.1 = last.1.max(offset + size - last.0);
+            }
+            return;
+        }
         // We scan for a partition point where the left partition is all the elements that end
         // strictly before we start. Those are elements that are too "low" to merge with us.
         let idx =
