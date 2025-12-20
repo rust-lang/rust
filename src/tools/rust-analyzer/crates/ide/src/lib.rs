@@ -96,7 +96,7 @@ pub use crate::{
         AdjustmentHints, AdjustmentHintsMode, ClosureReturnTypeHints, DiscriminantHints,
         GenericParameterHints, InlayFieldsToResolve, InlayHint, InlayHintLabel, InlayHintLabelPart,
         InlayHintPosition, InlayHintsConfig, InlayKind, InlayTooltip, LazyProperty,
-        LifetimeElisionHints,
+        LifetimeElisionHints, TypeHintsPlacement,
     },
     join_lines::JoinLinesConfig,
     markup::Markup,

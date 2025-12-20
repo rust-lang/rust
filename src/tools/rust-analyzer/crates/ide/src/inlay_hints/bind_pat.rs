@@ -8,10 +8,12 @@ use ide_db::{RootDatabase, famous_defs::FamousDefs};
 
 use itertools::Itertools;
 use syntax::{
+    TextRange,
     ast::{self, AstNode, HasGenericArgs, HasName},
     match_ast,
 };
 
+use super::TypeHintsPlacement;
 use crate::{
     InlayHint, InlayHintPosition, InlayHintsConfig, InlayKind,
     inlay_hints::{closure_has_block_body, label_of_ty, ty_to_text_edit},
@@ -29,6 +31,7 @@ pub(super) fn hints(
     }
 
     let parent = pat.syntax().parent()?;
+    let mut enclosing_let_stmt = None;
     let type_ascriptable = match_ast! {
         match parent {
             ast::Param(it) => {
@@ -41,6 +44,7 @@ pub(super) fn hints(
                 Some(it.colon_token())
             },
             ast::LetStmt(it) => {
+                enclosing_let_stmt = Some(it.clone());
                 if config.hide_closure_initialization_hints
                     && let Some(ast::Expr::ClosureExpr(closure)) = it.initializer()
                         && closure_has_block_body(&closure) {
@@ -101,16 +105,26 @@ pub(super) fn hints(
         Some(name) => name.syntax().text_range(),
         None => pat.syntax().text_range(),
     };
+    let mut range = match type_ascriptable {
+        Some(Some(t)) => text_range.cover(t.text_range()),
+        _ => text_range,
+    };
+
+    let mut pad_left = !render_colons;
+    if matches!(config.type_hints_placement, TypeHintsPlacement::EndOfLine)
+        && let Some(let_stmt) = enclosing_let_stmt
+    {
+        let stmt_range = let_stmt.syntax().text_range();
+        range = TextRange::new(range.start(), stmt_range.end());
+        pad_left = true;
+    }
     acc.push(InlayHint {
-        range: match type_ascriptable {
-            Some(Some(t)) => text_range.cover(t.text_range()),
-            _ => text_range,
-        },
+        range,
         kind: InlayKind::Type,
         label,
         text_edit,
         position: InlayHintPosition::After,
-        pad_left: !render_colons,
+        pad_left,
         pad_right: false,
         resolve_parent: Some(pat.syntax().text_range()),
     });
@@ -182,8 +196,10 @@ mod tests {
 
     use crate::{ClosureReturnTypeHints, fixture, inlay_hints::InlayHintsConfig};
 
+    use super::TypeHintsPlacement;
     use crate::inlay_hints::tests::{
-        DISABLED_CONFIG, TEST_CONFIG, check, check_edit, check_no_edit, check_with_config,
+        DISABLED_CONFIG, TEST_CONFIG, check, check_edit, check_expect, check_no_edit,
+        check_with_config,
     };
 
     #[track_caller]
@@ -200,6 +216,76 @@ fn main() {
     let _x = foo(4, 4);
       //^^ i32
 }"#,
+        );
+    }
+
+    #[test]
+    fn type_hints_end_of_line_placement() {
+        let mut config = InlayHintsConfig { type_hints: true, ..DISABLED_CONFIG };
+        config.type_hints_placement = TypeHintsPlacement::EndOfLine;
+        check_expect(
+            config,
+            r#"
+fn main() {
+    let foo = 92_i32;
+}
+            "#,
+            expect![[r#"
+                [
+                    (
+                        20..33,
+                        [
+                            "i32",
+                        ],
+                    ),
+                ]
+            "#]],
+        );
+    }
+
+    #[test]
+    fn type_hints_end_of_line_placement_chain_expr() {
+        let mut config = InlayHintsConfig { type_hints: true, ..DISABLED_CONFIG };
+        config.type_hints_placement = TypeHintsPlacement::EndOfLine;
+        check_expect(
+            config,
+            r#"
+fn main() {
+    struct Builder;
+    impl Builder {
+        fn iter(self) -> Builder { Builder }
+        fn map(self) -> Builder { Builder }
+    }
+    fn make() -> Builder { Builder }
+
+    let foo = make()
+        .iter()
+        .map();
+}
+"#,
+            expect![[r#"
+                [
+                    (
+                        192..236,
+                        [
+                            InlayHintLabelPart {
+                                text: "Builder",
+                                linked_location: Some(
+                                    Computed(
+                                        FileRangeWrapper {
+                                            file_id: FileId(
+                                                0,
+                                            ),
+                                            range: 23..30,
+                                        },
+                                    ),
+                                ),
+                                tooltip: "",
+                            },
+                        ],
+                    ),
+                ]
+            "#]],
         );
     }
 

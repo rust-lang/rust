@@ -1150,6 +1150,13 @@ Default: `false`
 Hide inlay type hints for constructors.
 
 
+## rust-analyzer.inlayHints.typeHints.location {#inlayHints.typeHints.location}
+
+Default: `"inline"`
+
+Where to render type hints relative to their binding pattern.
+
+
 ## rust-analyzer.interpret.tests {#interpret.tests}
 
 Default: `false`

@@ -2513,6 +2513,24 @@
                 }
             },
             {
+                "title": "Inlay Hints",
+                "properties": {
+                    "rust-analyzer.inlayHints.typeHints.location": {
+                        "markdownDescription": "Where to render type hints relative to their binding pattern.",
+                        "default": "inline",
+                        "type": "string",
+                        "enum": [
+                            "inline",
+                            "end_of_line"
+                        ],
+                        "enumDescriptions": [
+                            "Render type hints directly after the binding identifier.",
+                            "Render type hints after the end of the containing `let` statement when possible."
+                        ]
+                    }
+                }
+            },
+            {
                 "title": "Interpret",
                 "properties": {
                     "rust-analyzer.interpret.tests": {

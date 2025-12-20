@@ -16,7 +16,7 @@ use crate::navigation_target::UpmappingResult;
 use crate::{
     Analysis, Fold, HoverConfig, HoverResult, InlayHint, InlayHintsConfig, TryToNav,
     hover::{SubstTyLen, hover_for_definition},
-    inlay_hints::{AdjustmentHintsMode, InlayFieldsToResolve},
+    inlay_hints::{AdjustmentHintsMode, InlayFieldsToResolve, TypeHintsPlacement},
     moniker::{MonikerResult, SymbolInformationKind, def_to_kind, def_to_moniker},
     parent_module::crates_for,
 };
@@ -167,6 +167,7 @@ impl StaticIndex<'_> {
                     render_colons: true,
                     discriminant_hints: crate::DiscriminantHints::Fieldless,
                     type_hints: true,
+                    type_hints_placement: TypeHintsPlacement::Inline,
                     sized_bound: false,
                     parameter_hints: true,
                     parameter_hints_for_missing_arguments: false,

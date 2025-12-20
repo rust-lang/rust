@@ -320,6 +320,9 @@ config_data! {
         /// Hide inlay type hints for constructors.
         inlayHints_typeHints_hideNamedConstructor: bool = false,
 
+        /// Where to render type hints relative to their binding pattern.
+        inlayHints_typeHints_location: TypeHintsLocation = TypeHintsLocation::Inline,
+
         /// Enable the experimental support for interpreting tests.
         interpret_tests: bool = false,
 
@@ -1926,6 +1929,10 @@ impl Config {
         InlayHintsConfig {
             render_colons: self.inlayHints_renderColons().to_owned(),
             type_hints: self.inlayHints_typeHints_enable().to_owned(),
+            type_hints_placement: match self.inlayHints_typeHints_location() {
+                TypeHintsLocation::Inline => ide::TypeHintsPlacement::Inline,
+                TypeHintsLocation::EndOfLine => ide::TypeHintsPlacement::EndOfLine,
+            },
             sized_bound: self.inlayHints_implicitSizedBoundHints_enable().to_owned(),
             parameter_hints: self.inlayHints_parameterHints_enable().to_owned(),
             parameter_hints_for_missing_arguments: self
@@ -2910,6 +2917,13 @@ enum ClosureStyle {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "snake_case")]
+enum TypeHintsLocation {
+    Inline,
+    EndOfLine,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = "snake_case")]
 enum ReborrowHintsDef {
     Mutable,
     #[serde(with = "true_or_always")]
@@ -3809,6 +3823,14 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
                 "`rust_analyzer`: `|i32, u64| -> i8`",
                 "`with_id`: `{closure#14352}`, where that id is the unique number of the closure in r-a internals",
                 "`hide`: Shows `...` for every closure type",
+            ],
+        },
+        "TypeHintsLocation" => set! {
+            "type": "string",
+            "enum": ["inline", "end_of_line"],
+            "enumDescriptions": [
+                "Render type hints directly after the binding identifier.",
+                "Render type hints after the end of the containing `let` statement when possible.",
             ],
         },
         "Option<MemoryLayoutHoverRenderKindDef>" => set! {
