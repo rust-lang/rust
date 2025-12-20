@@ -2272,6 +2272,12 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[inline]
     pub fn local_crate_exports_generics(self) -> bool {
+        // compiler-builtins has some special treatment in codegen, which can result in confusing
+        // behavior if another crate ends up calling into its monomorphizations.
+        // https://github.com/rust-lang/rust/issues/150173
+        if self.is_compiler_builtins(LOCAL_CRATE) {
+            return false;
+        }
         self.crate_types().iter().any(|crate_type| {
             match crate_type {
                 CrateType::Executable
