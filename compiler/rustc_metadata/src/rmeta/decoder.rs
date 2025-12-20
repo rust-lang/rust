@@ -1675,15 +1675,14 @@ impl<'a> CrateMetadataRef<'a> {
                 for virtual_dir in virtual_source_base_dir.iter().flatten() {
                     if let Some(real_dir) = &real_source_base_dir
                         && let rustc_span::FileName::Real(old_name) = name
-                        && let (_working_dir, embeddable_name) =
-                            old_name.embeddable_name(RemapPathScopeComponents::MACRO)
-                        && let Ok(rest) = embeddable_name.strip_prefix(virtual_dir)
+                        && let virtual_path = old_name.path(RemapPathScopeComponents::MACRO)
+                        && let Ok(rest) = virtual_path.strip_prefix(virtual_dir)
                     {
                         let new_path = real_dir.join(rest);
 
                         debug!(
                             "try_to_translate_virtual_to_real: `{}` -> `{}`",
-                            embeddable_name.display(),
+                            virtual_path.display(),
                             new_path.display(),
                         );
 

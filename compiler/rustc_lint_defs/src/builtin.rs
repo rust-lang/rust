@@ -2346,8 +2346,7 @@ declare_lint! {
     /// [sanitize]: https://doc.rust-lang.org/nightly/unstable-book/language-features/no-sanitize.html
     /// ### Example
     ///
-    #[cfg_attr(bootstrap, doc = "```ignore")]
-    #[cfg_attr(not(bootstrap), doc = "```rust,no_run")]
+    /// ```rust,no_run
     /// #![feature(sanitize)]
     ///
     /// #[sanitize(realtime = "nonblocking")]
@@ -2356,8 +2355,7 @@ declare_lint! {
     /// fn main() {
     ///     x();
     /// }
-    #[cfg_attr(bootstrap, doc = "```")]
-    #[cfg_attr(not(bootstrap), doc = "```")]
+    /// ```
     ///
     /// {{produces}}
     ///
@@ -4907,8 +4905,7 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    #[cfg_attr(bootstrap, doc = "```ignore")]
-    #[cfg_attr(not(bootstrap), doc = "```rust,compile_fail")]
+    /// ```rust,compile_fail
     /// #![feature(supertrait_item_shadowing)]
     /// #![deny(resolving_to_items_shadowing_supertrait_items)]
     ///
@@ -4924,8 +4921,7 @@ declare_lint! {
     ///
     /// struct MyType;
     /// MyType.hello();
-    #[cfg_attr(bootstrap, doc = "```")]
-    #[cfg_attr(not(bootstrap), doc = "```")]
+    /// ```
     ///
     /// {{produces}}
     ///
@@ -4951,8 +4947,7 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    #[cfg_attr(bootstrap, doc = "```ignore")]
-    #[cfg_attr(not(bootstrap), doc = "```rust,compile_fail")]
+    /// ```rust,compile_fail
     /// #![feature(supertrait_item_shadowing)]
     /// #![deny(shadowing_supertrait_items)]
     ///
@@ -4965,8 +4960,7 @@ declare_lint! {
     ///     fn hello(&self) {}
     /// }
     /// impl<T> Downstream for T {}
-    #[cfg_attr(bootstrap, doc = "```")]
-    #[cfg_attr(not(bootstrap), doc = "```")]
+    /// ```
     ///
     /// {{produces}}
     ///

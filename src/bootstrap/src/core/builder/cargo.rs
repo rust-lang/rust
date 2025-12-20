@@ -1032,10 +1032,7 @@ impl Builder<'_> {
                     self.build.debuginfo_map_to(GitRepo::Rustc, RemapScheme::Compiler)
                 {
                     // When building compiler sources, we want to apply the compiler remap scheme.
-                    cargo.env(
-                        "RUSTC_DEBUGINFO_MAP",
-                        format!("{}={}", self.build.src.display(), map_to),
-                    );
+                    cargo.env("RUSTC_DEBUGINFO_MAP", format!("compiler/={map_to}/compiler"));
                     cargo.env("CFG_VIRTUAL_RUSTC_DEV_SOURCE_BASE_DIR", map_to);
                 }
             }
@@ -1047,10 +1044,7 @@ impl Builder<'_> {
                 if let Some(ref map_to) =
                     self.build.debuginfo_map_to(GitRepo::Rustc, RemapScheme::NonCompiler)
                 {
-                    cargo.env(
-                        "RUSTC_DEBUGINFO_MAP",
-                        format!("{}={}", self.build.src.display(), map_to),
-                    );
+                    cargo.env("RUSTC_DEBUGINFO_MAP", format!("library/={map_to}/library"));
                 }
             }
         }

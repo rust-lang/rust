@@ -22,7 +22,6 @@
 #![feature(staged_api)]
 #![feature(allow_internal_unstable)]
 #![feature(decl_macro)]
-#![cfg_attr(bootstrap, feature(maybe_uninit_write_slice))]
 #![feature(negative_impls)]
 #![feature(panic_can_unwind)]
 #![feature(restricted_std)]
