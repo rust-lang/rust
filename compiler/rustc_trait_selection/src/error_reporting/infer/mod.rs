@@ -1758,8 +1758,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 // specify a byte literal
                 (ty::Uint(ty::UintTy::U8), ty::Char) => {
                     if let Ok(code) = self.tcx.sess().source_map().span_to_snippet(span)
-                        && let Some(code) =
-                            code.strip_prefix('\'').and_then(|s| s.strip_suffix('\''))
+                        && let Some(code) = code.strip_circumfix('\'', '\'')
                         // forbid all Unicode escapes
                         && !code.starts_with("\\u")
                         // forbids literal Unicode characters beyond ASCII
@@ -1776,7 +1775,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 // specify a character literal (issue #92479)
                 (ty::Char, ty::Ref(_, r, _)) if r.is_str() => {
                     if let Ok(code) = self.tcx.sess().source_map().span_to_snippet(span)
-                        && let Some(code) = code.strip_prefix('"').and_then(|s| s.strip_suffix('"'))
+                        && let Some(code) = code.strip_circumfix('"', '"')
                         && code.chars().count() == 1
                     {
                         suggestions.push(TypeErrorAdditionalDiags::MeantCharLiteral {
