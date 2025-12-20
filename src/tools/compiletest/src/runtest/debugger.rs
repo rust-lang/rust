@@ -4,6 +4,7 @@ use std::io::{BufRead, BufReader};
 
 use camino::{Utf8Path, Utf8PathBuf};
 
+use crate::directives::LineNumber;
 use crate::runtest::ProcRes;
 
 /// Representation of information to invoke a debugger and check its output
@@ -11,9 +12,9 @@ pub(super) struct DebuggerCommands {
     /// Commands for the debuuger
     pub commands: Vec<String>,
     /// Lines to insert breakpoints at
-    pub breakpoint_lines: Vec<usize>,
+    pub breakpoint_lines: Vec<LineNumber>,
     /// Contains the source line number to check and the line itself
-    check_lines: Vec<(usize, String)>,
+    check_lines: Vec<(LineNumber, String)>,
     /// Source file name
     file: Utf8PathBuf,
 }
@@ -26,15 +27,13 @@ impl DebuggerCommands {
         let mut breakpoint_lines = vec![];
         let mut commands = vec![];
         let mut check_lines = vec![];
-        let mut counter = 0;
         let reader = BufReader::new(File::open(file.as_std_path()).unwrap());
-        for (line_no, line) in reader.lines().enumerate() {
-            counter += 1;
+        for (line_number, line) in LineNumber::enumerate().zip(reader.lines()) {
             let line = line.map_err(|e| format!("Error while parsing debugger commands: {}", e))?;
 
             // Breakpoints appear on lines with actual code, typically at the end of the line.
             if line.contains("#break") {
-                breakpoint_lines.push(counter);
+                breakpoint_lines.push(line_number);
                 continue;
             }
 
@@ -46,7 +45,7 @@ impl DebuggerCommands {
                 commands.push(command);
             }
             if let Some(pattern) = parse_name_value(&line, &check_directive) {
-                check_lines.push((line_no, pattern));
+                check_lines.push((line_number, pattern));
             }
         }
 
@@ -88,15 +87,14 @@ impl DebuggerCommands {
             );
 
             for (src_lineno, err_line) in missing {
-                write!(msg, "\n    ({fname}:{num}) `{err_line}`", num = src_lineno + 1).unwrap();
+                write!(msg, "\n    ({fname}:{src_lineno}) `{err_line}`").unwrap();
             }
 
             if !found.is_empty() {
                 let init = "\nthe following subset of check directive(s) was found successfully:";
                 msg.push_str(init);
                 for (src_lineno, found_line) in found {
-                    write!(msg, "\n    ({fname}:{num}) `{found_line}`", num = src_lineno + 1)
-                        .unwrap();
+                    write!(msg, "\n    ({fname}:{src_lineno}) `{found_line}`").unwrap();
                 }
             }
 
