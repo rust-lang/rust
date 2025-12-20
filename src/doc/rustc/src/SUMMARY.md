@@ -147,6 +147,7 @@
     - [windows-gnullvm](platform-support/windows-gnullvm.md)
     - [\*-win7-windows-gnu](platform-support/win7-windows-gnu.md)
     - [\*-win7-windows-msvc](platform-support/win7-windows-msvc.md)
+    - [x86_64-asan-windows-msvc](platform-support/x86_64-asan-windows-msvc.md)
     - [x86_64-fortanix-unknown-sgx](platform-support/x86_64-fortanix-unknown-sgx.md)
     - [x86_64-pc-cygwin](platform-support/x86_64-pc-cygwin.md)
     - [x86_64-unknown-linux-none](platform-support/x86_64-unknown-linux-none.md)
