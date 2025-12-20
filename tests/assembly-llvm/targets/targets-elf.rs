@@ -673,6 +673,9 @@
 //@ revisions: x86_64_unknown_linux_gnux32
 //@ [x86_64_unknown_linux_gnux32] compile-flags: --target x86_64-unknown-linux-gnux32
 //@ [x86_64_unknown_linux_gnux32] needs-llvm-components: x86
+//@ revisions: x86_64_unknown_linux_gnuasan
+//@ [x86_64_unknown_linux_gnuasan] compile-flags: --target x86_64-unknown-linux-gnuasan
+//@ [x86_64_unknown_linux_gnuasan] needs-llvm-components: x86
 //@ revisions: x86_64_unknown_linux_musl
 //@ [x86_64_unknown_linux_musl] compile-flags: --target x86_64-unknown-linux-musl
 //@ [x86_64_unknown_linux_musl] needs-llvm-components: x86
