@@ -25,7 +25,7 @@ use super::{
     AttrWrapper, ExpKeywordPair, ExpTokenPair, FollowedByType, ForceCollect, Parser, PathStyle,
     Recovered, Trailing, UsePreAttrPos,
 };
-use crate::errors::{self, FnPointerCannotBeAsync, FnPointerCannotBeConst, MacroExpandsToAdtField};
+use crate::errors::{self, FnPointerCannotBeGen, FnPointerCannotBeAsync, FnPointerCannotBeConst, MacroExpandsToAdtField};
 use crate::{exp, fluent_generated as fluent};
 
 impl<'a> Parser<'a> {
