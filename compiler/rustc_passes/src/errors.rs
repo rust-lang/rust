@@ -99,15 +99,6 @@ pub(crate) struct AttrShouldBeAppliedToTrait {
 }
 
 #[derive(Diagnostic)]
-#[diag(passes_should_be_applied_to_static)]
-pub(crate) struct AttrShouldBeAppliedToStatic {
-    #[primary_span]
-    pub attr_span: Span,
-    #[label]
-    pub defn_span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(passes_doc_alias_bad_location)]
 pub(crate) struct DocAliasBadLocation<'a> {
     #[primary_span]

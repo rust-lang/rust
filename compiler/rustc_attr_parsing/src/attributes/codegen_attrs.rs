@@ -690,6 +690,16 @@ impl<S: Stage> SingleAttributeParser<S> for SanitizeParser {
     }
 }
 
+pub(crate) struct ThreadLocalParser;
+
+impl<S: Stage> NoArgsAttributeParser<S> for ThreadLocalParser {
+    const PATH: &[Symbol] = &[sym::thread_local];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::WarnButFutureError;
+    const ALLOWED_TARGETS: AllowedTargets =
+        AllowedTargets::AllowList(&[Allow(Target::Static), Allow(Target::ForeignStatic)]);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::ThreadLocal;
+}
+
 pub(crate) struct RustcPassIndirectlyInNonRusticAbisParser;
 
 impl<S: Stage> NoArgsAttributeParser<S> for RustcPassIndirectlyInNonRusticAbisParser {
