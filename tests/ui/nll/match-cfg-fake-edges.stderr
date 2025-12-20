@@ -1,5 +1,5 @@
 warning: irrefutable `if let` pattern
-  --> $DIR/match-cfg-fake-edges.rs:19:8
+  --> $DIR/match-cfg-fake-edges.rs:17:8
    |
 LL |     if let _ = true {
    |        ^^^^^^^^^^^^
@@ -9,7 +9,7 @@ LL |     if let _ = true {
    = note: `#[warn(irrefutable_let_patterns)]` on by default
 
 error[E0382]: use of moved value: `x`
-  --> $DIR/match-cfg-fake-edges.rs:16:10
+  --> $DIR/match-cfg-fake-edges.rs:14:10
    |
 LL |     let x = String::new();
    |         - move occurs because `x` has type `String`, which does not implement the `Copy` trait
@@ -26,7 +26,7 @@ LL |         _ => drop(x.clone()),
    |                    ++++++++
 
 error[E0382]: use of moved value: `x`
-  --> $DIR/match-cfg-fake-edges.rs:24:10
+  --> $DIR/match-cfg-fake-edges.rs:22:10
    |
 LL |     let x = String::new();
    |         - move occurs because `x` has type `String`, which does not implement the `Copy` trait
@@ -43,7 +43,7 @@ LL |         drop(x.clone())
    |               ++++++++
 
 error[E0382]: borrow of moved value: `x.0`
-  --> $DIR/match-cfg-fake-edges.rs:30:5
+  --> $DIR/match-cfg-fake-edges.rs:28:5
    |
 LL |         (y, _) | (_, y) => (),
    |          - value moved here
@@ -58,7 +58,7 @@ LL |         (ref y, _) | (_, y) => (),
    |          +++
 
 error[E0382]: borrow of moved value: `x.1`
-  --> $DIR/match-cfg-fake-edges.rs:32:5
+  --> $DIR/match-cfg-fake-edges.rs:30:5
    |
 LL |         (y, _) | (_, y) => (),
    |                      - value moved here
@@ -73,7 +73,7 @@ LL |         (y, _) | (_, ref y) => (),
    |                      +++
 
 error[E0382]: borrow of moved value: `x.0`
-  --> $DIR/match-cfg-fake-edges.rs:36:5
+  --> $DIR/match-cfg-fake-edges.rs:34:5
    |
 LL |     let ((y, _) | (_, y)) = x;
    |           - value moved here
@@ -87,7 +87,7 @@ LL |     let ((ref y, _) | (_, y)) = x;
    |           +++
 
 error[E0382]: borrow of moved value: `x.1`
-  --> $DIR/match-cfg-fake-edges.rs:38:5
+  --> $DIR/match-cfg-fake-edges.rs:36:5
    |
 LL |     let ((y, _) | (_, y)) = x;
    |                       - value moved here
@@ -102,7 +102,7 @@ LL |     let ((y, _) | (_, ref y)) = x;
    |                       +++
 
 error[E0381]: used binding `x` is possibly-uninitialized
-  --> $DIR/match-cfg-fake-edges.rs:72:19
+  --> $DIR/match-cfg-fake-edges.rs:70:19
    |
 LL |     let x;
    |         - binding declared here but left uninitialized
@@ -113,7 +113,7 @@ LL |         _ => drop(x),
    |         if this pattern is matched, `x` is not initialized
 
 error[E0381]: used binding `x` isn't initialized
-  --> $DIR/match-cfg-fake-edges.rs:79:16
+  --> $DIR/match-cfg-fake-edges.rs:77:16
    |
 LL |     let x;
    |         - binding declared here but left uninitialized
@@ -130,7 +130,7 @@ LL |     let x = 42;
    |           ++++
 
 error[E0381]: used binding `x` isn't initialized
-  --> $DIR/match-cfg-fake-edges.rs:86:31
+  --> $DIR/match-cfg-fake-edges.rs:84:31
    |
 LL |     let x;
    |         - binding declared here but left uninitialized
@@ -146,7 +146,7 @@ LL |     let x = 42;
    |           ++++
 
 error[E0382]: use of moved value: `x`
-  --> $DIR/match-cfg-fake-edges.rs:99:22
+  --> $DIR/match-cfg-fake-edges.rs:97:22
    |
 LL |     let x = String::new();
    |         - move occurs because `x` has type `String`, which does not implement the `Copy` trait
@@ -163,7 +163,7 @@ LL |         false if { drop(x.clone()); true } => {},
    |                          ++++++++
 
 error[E0382]: use of moved value: `x`
-  --> $DIR/match-cfg-fake-edges.rs:114:22
+  --> $DIR/match-cfg-fake-edges.rs:112:22
    |
 LL |     let x = String::new();
    |         - move occurs because `x` has type `String`, which does not implement the `Copy` trait

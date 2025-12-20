@@ -1,4 +1,3 @@
-#![feature(if_let_guard)]
 #![allow(irrefutable_let_patterns)]
 
 fn match_option(x: Option<u32>) {

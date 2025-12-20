@@ -1,3 +1,4 @@
+#![cfg_attr(bootstrap, feature(if_let_guard))]
 #![feature(abort_unwind)]
 #![feature(cfg_select)]
 #![feature(rustc_private)]
@@ -7,7 +8,6 @@
 #![feature(never_type)]
 #![feature(try_blocks)]
 #![feature(io_error_more)]
-#![feature(if_let_guard)]
 #![feature(variant_count)]
 #![feature(yeet_expr)]
 #![feature(nonzero_ops)]

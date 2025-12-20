@@ -1,5 +1,5 @@
+#![cfg_attr(bootstrap, feature(if_let_guard))]
 #![feature(box_patterns)]
-#![feature(if_let_guard)]
 #![feature(macro_metavar_expr)]
 #![feature(never_type)]
 #![feature(rustc_private)]

@@ -1,5 +1,5 @@
 error[E0004]: non-exhaustive patterns: `None` not covered
-  --> $DIR/exhaustive.rs:5:11
+  --> $DIR/exhaustive.rs:4:11
    |
 LL |     match x {
    |           ^ pattern `None` not covered
@@ -17,7 +17,7 @@ LL +         None => todo!()
    |
 
 error[E0004]: non-exhaustive patterns: `()` not covered
-  --> $DIR/exhaustive.rs:14:11
+  --> $DIR/exhaustive.rs:13:11
    |
 LL |     match x {
    |           ^ pattern `()` not covered

@@ -1,5 +1,4 @@
 //@aux-build:proc_macros.rs
-#![feature(if_let_guard)]
 #![allow(clippy::no_effect, unused, clippy::single_match, invalid_nan_comparisons)]
 #![warn(clippy::redundant_guards)]
 

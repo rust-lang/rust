@@ -1,5 +1,5 @@
 error[E0382]: use of moved value: `a`
-  --> $DIR/issue-31287-drop-in-guard.rs:7:9
+  --> $DIR/issue-31287-drop-in-guard.rs:5:9
    |
 LL |     let a = Some("...".to_owned());
    |         - move occurs because `a` has type `Option<String>`, which does not implement the `Copy` trait
@@ -15,7 +15,7 @@ LL |         Some(_) if { drop(a.clone()); false } => None,
    |                            ++++++++
 
 error[E0382]: use of moved value: `a`
-  --> $DIR/issue-31287-drop-in-guard.rs:13:9
+  --> $DIR/issue-31287-drop-in-guard.rs:11:9
    |
 LL |     let a = Some("...".to_owned());
    |         - move occurs because `a` has type `Option<String>`, which does not implement the `Copy` trait

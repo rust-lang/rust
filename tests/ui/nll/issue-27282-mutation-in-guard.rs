@@ -1,5 +1,3 @@
-#![feature(if_let_guard)]
-
 fn main() {
     match Some(&4) {
         None => {},

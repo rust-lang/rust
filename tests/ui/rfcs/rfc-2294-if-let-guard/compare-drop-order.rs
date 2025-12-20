@@ -1,9 +1,7 @@
-// check drop order of temporaries create in match guards.
-// For normal guards all temporaries are dropped before the body of the arm.
-// For let guards temporaries live until the end of the arm.
-
 //@ run-pass
-//@revisions: edition2021 edition2024
+//@revisions: edition2015 edition2018 edition2021 edition2024
+//@[edition2015] edition:2015
+//@[edition2018] edition:2018
 //@[edition2021] edition:2021
 //@[edition2024] edition:2024
 
@@ -26,16 +24,6 @@ impl Drop for D {
     }
 }
 
-fn if_guard(num: i32) {
-    let _d = make_d(1);
-    match num {
-        1 | 2 if make_d(2).0 == 2 => {
-            make_d(3);
-        }
-        _ => {}
-    }
-}
-
 fn if_let_guard(num: i32) {
     let _d = make_d(1);
     match num {
@@ -46,16 +34,27 @@ fn if_let_guard(num: i32) {
     }
 }
 
+fn if_let(num: i32) {
+    let _d = make_d(1);
+    match num {
+        1 | 2 => {
+            if let D(ref _x) = make_d(2)  {
+                make_d(3);
+            }
+        }
+        _ => {}
+    }
+}
+
 fn main() {
-    if_guard(1);
-    if_guard(2);
+    if_let(1);
+    if_let(2);
     if_let_guard(1);
     if_let_guard(2);
-    let expected =  [
-        1, 2, !2, 3, !3, !1,
-        1, 2, !2, 3, !3, !1,
-        1, 2, 3, !3, !2, !1,
-        1, 2, 3, !3, !2, !1,
-    ];
+    let expected =
+        [1, 2, 3, !3, !2, !1, 1, 2, 3, !3, !2, !1,
+        // Here is two parts, first one is for basic if let inside the match arm
+        // And second part is for if let guard
+         1, 2, 3, !3, !2, !1, 1, 2, 3, !3, !2, !1];
     assert_eq!(*A.lock().unwrap(), expected);
 }
