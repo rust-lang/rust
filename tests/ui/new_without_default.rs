@@ -324,3 +324,39 @@ mod issue15778 {
         }
     }
 }
+
+pub mod issue16255 {
+    use std::fmt::Display;
+    use std::marker::PhantomData;
+
+    pub struct Foo<T> {
+        marker: PhantomData<T>,
+    }
+
+    impl<T> Foo<T>
+    where
+        T: Display,
+    {
+        pub fn new() -> Self
+        //~^ new_without_default
+        where
+            T: Clone,
+        {
+            Self { marker: PhantomData }
+        }
+    }
+
+    pub struct Bar<T> {
+        marker: PhantomData<T>,
+    }
+
+    impl<T> Bar<T> {
+        pub fn new() -> Self
+        //~^ new_without_default
+        where
+            T: Clone,
+        {
+            Self { marker: PhantomData }
+        }
+    }
+}

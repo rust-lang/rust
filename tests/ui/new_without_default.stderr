@@ -250,5 +250,58 @@ LL +     }
 LL + }
    |
 
-error: aborting due to 13 previous errors
+error: you should consider adding a `Default` implementation for `Foo<T>`
+  --> tests/ui/new_without_default.rs:340:9
+   |
+LL | /         pub fn new() -> Self
+LL | |
+LL | |         where
+LL | |             T: Clone,
+LL | |         {
+LL | |             Self { marker: PhantomData }
+LL | |         }
+   | |_________^
+   |
+help: try adding this
+   |
+LL ~     impl<T> Default for Foo<T>
+LL +     where
+LL +         T: Display,
+LL +         T: Clone,
+LL +      {
+LL +         fn default() -> Self {
+LL +             Self::new()
+LL +         }
+LL +     }
+LL + 
+LL ~     impl<T> Foo<T>
+   |
+
+error: you should consider adding a `Default` implementation for `Bar<T>`
+  --> tests/ui/new_without_default.rs:354:9
+   |
+LL | /         pub fn new() -> Self
+LL | |
+LL | |         where
+LL | |             T: Clone,
+LL | |         {
+LL | |             Self { marker: PhantomData }
+LL | |         }
+   | |_________^
+   |
+help: try adding this
+   |
+LL ~     impl<T> Default for Bar<T>
+LL +     where
+LL +         T: Clone,
+LL +      {
+LL +         fn default() -> Self {
+LL +             Self::new()
+LL +         }
+LL +     }
+LL + 
+LL ~     impl<T> Bar<T> {
+   |
+
+error: aborting due to 15 previous errors
 
