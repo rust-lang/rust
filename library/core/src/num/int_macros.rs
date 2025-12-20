@@ -1275,8 +1275,8 @@ macro_rules! int_impl {
         /// i.e. when [`checked_neg`] would return `None`.
         ///
         #[doc = concat!("[`checked_neg`]: ", stringify!($SelfT), "::checked_neg")]
-        #[stable(feature = "unchecked_neg", since = "CURRENT_RUSTC_VERSION")]
-        #[rustc_const_stable(feature = "unchecked_neg", since = "CURRENT_RUSTC_VERSION")]
+        #[stable(feature = "unchecked_neg", since = "1.93.0")]
+        #[rustc_const_stable(feature = "unchecked_neg", since = "1.93.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
@@ -1392,8 +1392,8 @@ macro_rules! int_impl {
         /// i.e. when [`checked_shl`] would return `None`.
         ///
         #[doc = concat!("[`checked_shl`]: ", stringify!($SelfT), "::checked_shl")]
-        #[stable(feature = "unchecked_shifts", since = "CURRENT_RUSTC_VERSION")]
-        #[rustc_const_stable(feature = "unchecked_shifts", since = "CURRENT_RUSTC_VERSION")]
+        #[stable(feature = "unchecked_shifts", since = "1.93.0")]
+        #[rustc_const_stable(feature = "unchecked_shifts", since = "1.93.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
@@ -1564,8 +1564,8 @@ macro_rules! int_impl {
         /// i.e. when [`checked_shr`] would return `None`.
         ///
         #[doc = concat!("[`checked_shr`]: ", stringify!($SelfT), "::checked_shr")]
-        #[stable(feature = "unchecked_shifts", since = "CURRENT_RUSTC_VERSION")]
-        #[rustc_const_stable(feature = "unchecked_shifts", since = "CURRENT_RUSTC_VERSION")]
+        #[stable(feature = "unchecked_shifts", since = "1.93.0")]
+        #[rustc_const_stable(feature = "unchecked_shifts", since = "1.93.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
