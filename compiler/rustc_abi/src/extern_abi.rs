@@ -67,7 +67,6 @@ pub enum ExternAbi {
 
     /* gpu */
     /// An entry-point function called by the GPU's host
-    // FIXME: should not be callable from Rust on GPU targets, is for host's use only
     GpuKernel,
     /// An entry-point function called by the GPU's host
     // FIXME: why do we have two of these?

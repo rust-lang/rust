@@ -4,7 +4,7 @@ Interrupt ABIs share similar semantics, in that they are special entry-points un
 So we test that they error in essentially all of the same places.
 */
 //@ add-minicore
-//@ revisions: x64 x64_win i686 riscv32 riscv64 avr msp430
+//@ revisions: x64 x64_win i686 riscv32 riscv64 avr msp430 amdgpu nvptx
 //
 //@ [x64] needs-llvm-components: x86
 //@ [x64] compile-flags: --target=x86_64-unknown-linux-gnu --crate-type=rlib
@@ -20,6 +20,10 @@ So we test that they error in essentially all of the same places.
 //@ [avr] compile-flags: --target=avr-none -C target-cpu=atmega328p --crate-type=rlib
 //@ [msp430] needs-llvm-components: msp430
 //@ [msp430] compile-flags: --target=msp430-none-elf --crate-type=rlib
+//@ [amdgpu] needs-llvm-components: amdgpu
+//@ [amdgpu] compile-flags: --target amdgcn-amd-amdhsa -Ctarget-cpu=gfx900 --crate-type=rlib
+//@ [nvptx] needs-llvm-components: nvptx
+//@ [nvptx] compile-flags: --target nvptx64-nvidia-cuda --crate-type=rlib
 //@ ignore-backends: gcc
 #![no_core]
 #![feature(
@@ -27,7 +31,8 @@ So we test that they error in essentially all of the same places.
     abi_msp430_interrupt,
     abi_avr_interrupt,
     abi_x86_interrupt,
-    abi_riscv_interrupt
+    abi_riscv_interrupt,
+    abi_gpu_kernel
 )]
 
 extern crate minicore;
@@ -36,15 +41,17 @@ use minicore::*;
 /* extern "interrupt" definition */
 
 extern "msp430-interrupt" fn msp430() {}
-//[x64,x64_win,i686,riscv32,riscv64,avr]~^ ERROR is not a supported ABI
+//[x64,x64_win,i686,riscv32,riscv64,avr,amdgpu,nvptx]~^ ERROR is not a supported ABI
 extern "avr-interrupt" fn avr() {}
-//[x64,x64_win,i686,riscv32,riscv64,msp430]~^ ERROR is not a supported ABI
+//[x64,x64_win,i686,riscv32,riscv64,msp430,amdgpu,nvptx]~^ ERROR is not a supported ABI
 extern "riscv-interrupt-m" fn riscv_m() {}
-//[x64,x64_win,i686,avr,msp430]~^ ERROR is not a supported ABI
+//[x64,x64_win,i686,avr,msp430,amdgpu,nvptx]~^ ERROR is not a supported ABI
 extern "riscv-interrupt-s" fn riscv_s() {}
-//[x64,x64_win,i686,avr,msp430]~^ ERROR is not a supported ABI
+//[x64,x64_win,i686,avr,msp430,amdgpu,nvptx]~^ ERROR is not a supported ABI
 extern "x86-interrupt" fn x86(_x: *const u8) {}
-//[riscv32,riscv64,avr,msp430]~^ ERROR is not a supported ABI
+//[riscv32,riscv64,avr,msp430,amdgpu,nvptx]~^ ERROR is not a supported ABI
+extern "gpu-kernel" fn gpu_kernel() {}
+//[x64,x64_win,i686,riscv32,riscv64,avr,msp430]~^ ERROR is not a supported ABI
 
 static BYTE: u8 = 0;
 
@@ -60,36 +67,44 @@ fn call_the_interrupts() {
     //[riscv32,riscv64]~^ ERROR functions with the "riscv-interrupt-s" ABI cannot be called
     x86(&raw const BYTE);
     //[x64,x64_win,i686]~^ ERROR functions with the "x86-interrupt" ABI cannot be called
+    gpu_kernel();
+    //[amdgpu,nvptx]~^ ERROR functions with the "gpu-kernel" ABI cannot be called
 }
 
 /* extern "interrupt" fnptr calls */
 
 fn avr_ptr(f: extern "avr-interrupt" fn()) {
-    //[x64,x64_win,i686,riscv32,riscv64,msp430]~^ ERROR is not a supported ABI
+    //[x64,x64_win,i686,riscv32,riscv64,msp430,amdgpu,nvptx]~^ ERROR is not a supported ABI
     f()
     //[avr]~^ ERROR functions with the "avr-interrupt" ABI cannot be called
 }
 
 fn msp430_ptr(f: extern "msp430-interrupt" fn()) {
-    //[x64,x64_win,i686,riscv32,riscv64,avr]~^ ERROR is not a supported ABI
+    //[x64,x64_win,i686,riscv32,riscv64,avr,amdgpu,nvptx]~^ ERROR is not a supported ABI
     f()
     //[msp430]~^ ERROR functions with the "msp430-interrupt" ABI cannot be called
 }
 
 fn riscv_m_ptr(f: extern "riscv-interrupt-m" fn()) {
-    //[x64,x64_win,i686,avr,msp430]~^ ERROR is not a supported ABI
+    //[x64,x64_win,i686,avr,msp430,amdgpu,nvptx]~^ ERROR is not a supported ABI
     f()
     //[riscv32,riscv64]~^ ERROR functions with the "riscv-interrupt-m" ABI cannot be called
 }
 
 fn riscv_s_ptr(f: extern "riscv-interrupt-s" fn()) {
-    //[x64,x64_win,i686,avr,msp430]~^ ERROR is not a supported ABI
+    //[x64,x64_win,i686,avr,msp430,amdgpu,nvptx]~^ ERROR is not a supported ABI
     f()
     //[riscv32,riscv64]~^ ERROR functions with the "riscv-interrupt-s" ABI cannot be called
 }
 
 fn x86_ptr(f: extern "x86-interrupt" fn()) {
-    //[riscv32,riscv64,avr,msp430]~^ ERROR is not a supported ABI
+    //[riscv32,riscv64,avr,msp430,amdgpu,nvptx]~^ ERROR is not a supported ABI
     f()
     //[x64,x64_win,i686]~^ ERROR functions with the "x86-interrupt" ABI cannot be called
+}
+
+fn gpu_kernel_ptr(f: extern "gpu-kernel" fn()) {
+    //[x64,x64_win,i686,riscv32,riscv64,avr,msp430]~^ ERROR is not a supported ABI
+    f()
+    //[amdgpu,nvptx]~^ ERROR functions with the "gpu-kernel" ABI cannot be called
 }
