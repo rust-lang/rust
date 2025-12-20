@@ -1406,6 +1406,13 @@ impl WrappingRange {
         Self { start: 0, end: size.unsigned_int_max() }
     }
 
+    pub fn full_signed(size: Size) -> Self {
+        Self {
+            start: (size.signed_int_min() as u128) & size.unsigned_int_max(),
+            end: size.signed_int_max() as u128,
+        }
+    }
+
     /// Returns `true` if `v` is contained in the range.
     #[inline(always)]
     pub fn contains(&self, v: u128) -> bool {
@@ -1491,6 +1498,11 @@ impl WrappingRange {
             let end: i128 = size.sign_extend(self.end);
             Ok(start <= end)
         }
+    }
+
+    #[inline]
+    pub fn no_wraparound(&self, size: Size, signed: bool) -> Result<bool, RangeFull> {
+        if signed { self.no_signed_wraparound(size) } else { self.no_unsigned_wraparound(size) }
     }
 }
 
