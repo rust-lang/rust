@@ -362,7 +362,7 @@ pub fn lookup_impl_const<'db>(
         ItemContainerId::TraitId(id) => id,
         _ => return (const_id, subs),
     };
-    let trait_ref = TraitRef::new(interner, trait_id.into(), subs);
+    let trait_ref = TraitRef::new_from_args(interner, trait_id.into(), subs);
 
     let const_signature = db.const_signature(const_id);
     let name = match const_signature.name.as_ref() {

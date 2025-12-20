@@ -2170,7 +2170,7 @@ impl<'db> InferenceContext<'_, 'db> {
                             self.interner(),
                             ObligationCause::new(),
                             self.table.param_env,
-                            TraitRef::new(self.interner(), trait_.into(), substs),
+                            TraitRef::new_from_args(self.interner(), trait_.into(), substs),
                         ));
                     }
                 }

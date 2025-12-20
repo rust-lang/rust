@@ -506,7 +506,7 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
             Some(Ty::new_alias(
                 interner,
                 AliasTyKind::Projection,
-                AliasTy::new(interner, associated_ty.into(), substs),
+                AliasTy::new_from_args(interner, associated_ty.into(), substs),
             ))
         };
         named_associated_type_shorthand_candidates(

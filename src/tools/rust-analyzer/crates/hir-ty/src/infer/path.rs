@@ -241,7 +241,7 @@ impl<'db> InferenceContext<'_, 'db> {
         if let ItemContainerId::TraitId(trait_) = container {
             let parent_len = generics(self.db, def).parent_generics().map_or(0, |g| g.len_self());
             let parent_subst = GenericArgs::new_from_slice(&subst.as_slice()[..parent_len]);
-            let trait_ref = TraitRef::new(interner, trait_.into(), parent_subst);
+            let trait_ref = TraitRef::new_from_args(interner, trait_.into(), parent_subst);
             self.table.register_predicate(Obligation::new(
                 interner,
                 ObligationCause::new(),
@@ -336,7 +336,7 @@ impl<'db> InferenceContext<'_, 'db> {
                     [ty.into()],
                     |_, id, _| self.table.next_var_for_param(id),
                 );
-                let trait_ref = TraitRef::new(self.interner(), trait_.into(), args);
+                let trait_ref = TraitRef::new_from_args(self.interner(), trait_.into(), args);
                 self.table.register_predicate(Obligation::new(
                     self.interner(),
                     ObligationCause::new(),

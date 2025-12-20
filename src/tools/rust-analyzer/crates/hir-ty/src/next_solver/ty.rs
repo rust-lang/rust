@@ -696,9 +696,12 @@ impl<'db> Ty<'db> {
                     // This is only used by type walking.
                     // Parameters will be walked outside, and projection predicate is not used.
                     // So just provide the Future trait.
-                    let impl_bound =
-                        TraitRef::new(interner, future_trait.into(), GenericArgs::empty(interner))
-                            .upcast(interner);
+                    let impl_bound = TraitRef::new_from_args(
+                        interner,
+                        future_trait.into(),
+                        GenericArgs::empty(interner),
+                    )
+                    .upcast(interner);
                     Some(vec![impl_bound])
                 } else {
                     None
