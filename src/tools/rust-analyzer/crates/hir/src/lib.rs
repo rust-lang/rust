@@ -2290,7 +2290,7 @@ impl Function {
             .inputs()
             .iter()
             .enumerate()
-            .map(|(idx, ty)| {
+            .map(|(idx, &ty)| {
                 let ty = Type { env: environment, ty };
                 Param { func: Callee::Def(CallableDefId::FunctionId(self.id)), ty, idx }
             })
@@ -2317,7 +2317,7 @@ impl Function {
             .iter()
             .enumerate()
             .skip(skip)
-            .map(|(idx, ty)| {
+            .map(|(idx, &ty)| {
                 let ty = Type { env: environment, ty };
                 Param { func: Callee::Def(CallableDefId::FunctionId(self.id)), ty, idx }
             })
@@ -2341,7 +2341,7 @@ impl Function {
             .iter()
             .enumerate()
             .skip(skip)
-            .map(|(idx, ty)| {
+            .map(|(idx, &ty)| {
                 let ty = Type { env: environment, ty };
                 Param { func: Callee::Def(CallableDefId::FunctionId(self.id)), ty, idx }
             })
@@ -5148,7 +5148,7 @@ impl<'db> Type<'db> {
         let projection = Ty::new_alias(
             interner,
             AliasTyKind::Projection,
-            AliasTy::new(interner, alias.id.into(), args),
+            AliasTy::new_from_args(interner, alias.id.into(), args),
         );
 
         let infcx = interner.infer_ctxt().build(TypingMode::PostAnalysis);
@@ -5858,7 +5858,8 @@ impl<'db> TypeNs<'db> {
             infcx.interner,
             [self.ty].into_iter().chain(args.iter().map(|t| t.ty)).map(GenericArg::from),
         );
-        let trait_ref = hir_ty::next_solver::TraitRef::new(infcx.interner, trait_.id.into(), args);
+        let trait_ref =
+            hir_ty::next_solver::TraitRef::new_from_args(infcx.interner, trait_.id.into(), args);
 
         let pred_kind = rustc_type_ir::Binder::dummy(rustc_type_ir::PredicateKind::Clause(
             rustc_type_ir::ClauseKind::Trait(rustc_type_ir::TraitPredicate {

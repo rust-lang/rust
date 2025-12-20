@@ -1459,7 +1459,7 @@ impl<'db> HirDisplay<'db> for Ty<'db> {
                 };
                 let coroutine_sig = coroutine_sig.skip_binder();
                 let coroutine_inputs = coroutine_sig.inputs();
-                let TyKind::Tuple(coroutine_inputs) = coroutine_inputs.as_slice()[1].kind() else {
+                let TyKind::Tuple(coroutine_inputs) = coroutine_inputs[1].kind() else {
                     unreachable!("invalid coroutine closure signature");
                 };
                 let TyKind::Tuple(coroutine_output) = coroutine_sig.output().kind() else {
@@ -1942,7 +1942,7 @@ fn write_bounds_like_dyn_trait<'db>(
                 let own_args = projection.projection_term.own_args(f.interner);
                 if !own_args.is_empty() {
                     write!(f, "<")?;
-                    hir_fmt_generic_arguments(f, own_args.as_slice(), None)?;
+                    hir_fmt_generic_arguments(f, own_args, None)?;
                     write!(f, ">")?;
                 }
                 write!(f, " = ")?;

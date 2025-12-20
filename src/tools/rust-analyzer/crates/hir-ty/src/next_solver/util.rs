@@ -77,9 +77,10 @@ pub trait IntegerTypeExt {
 
 impl IntegerTypeExt for IntegerType {
     fn to_ty<'db>(&self, interner: DbInterner<'db>) -> Ty<'db> {
+        let types = interner.default_types();
         match self {
-            IntegerType::Pointer(true) => Ty::new(interner, TyKind::Int(IntTy::Isize)),
-            IntegerType::Pointer(false) => Ty::new(interner, TyKind::Uint(UintTy::Usize)),
+            IntegerType::Pointer(true) => types.types.isize,
+            IntegerType::Pointer(false) => types.types.usize,
             IntegerType::Fixed(i, s) => i.to_ty(interner, *s),
         }
     }
@@ -120,17 +121,18 @@ impl IntegerExt for Integer {
     #[inline]
     fn to_ty<'db>(&self, interner: DbInterner<'db>, signed: bool) -> Ty<'db> {
         use Integer::*;
+        let types = interner.default_types();
         match (*self, signed) {
-            (I8, false) => Ty::new(interner, TyKind::Uint(UintTy::U8)),
-            (I16, false) => Ty::new(interner, TyKind::Uint(UintTy::U16)),
-            (I32, false) => Ty::new(interner, TyKind::Uint(UintTy::U32)),
-            (I64, false) => Ty::new(interner, TyKind::Uint(UintTy::U64)),
-            (I128, false) => Ty::new(interner, TyKind::Uint(UintTy::U128)),
-            (I8, true) => Ty::new(interner, TyKind::Int(IntTy::I8)),
-            (I16, true) => Ty::new(interner, TyKind::Int(IntTy::I16)),
-            (I32, true) => Ty::new(interner, TyKind::Int(IntTy::I32)),
-            (I64, true) => Ty::new(interner, TyKind::Int(IntTy::I64)),
-            (I128, true) => Ty::new(interner, TyKind::Int(IntTy::I128)),
+            (I8, false) => types.types.u8,
+            (I16, false) => types.types.u16,
+            (I32, false) => types.types.u32,
+            (I64, false) => types.types.u64,
+            (I128, false) => types.types.u128,
+            (I8, true) => types.types.i8,
+            (I16, true) => types.types.i16,
+            (I32, true) => types.types.i32,
+            (I64, true) => types.types.i64,
+            (I128, true) => types.types.i128,
         }
     }
 
@@ -214,11 +216,12 @@ impl FloatExt for Float {
     #[inline]
     fn to_ty<'db>(&self, interner: DbInterner<'db>) -> Ty<'db> {
         use Float::*;
+        let types = interner.default_types();
         match *self {
-            F16 => Ty::new(interner, TyKind::Float(FloatTy::F16)),
-            F32 => Ty::new(interner, TyKind::Float(FloatTy::F32)),
-            F64 => Ty::new(interner, TyKind::Float(FloatTy::F64)),
-            F128 => Ty::new(interner, TyKind::Float(FloatTy::F128)),
+            F16 => types.types.f16,
+            F32 => types.types.f32,
+            F64 => types.types.f64,
+            F128 => types.types.f128,
         }
     }
 
@@ -244,13 +247,7 @@ impl PrimitiveExt for Primitive {
         match *self {
             Primitive::Int(i, signed) => i.to_ty(interner, signed),
             Primitive::Float(f) => f.to_ty(interner),
-            Primitive::Pointer(_) => Ty::new(
-                interner,
-                TyKind::RawPtr(
-                    Ty::new(interner, TyKind::Tuple(Default::default())),
-                    rustc_ast_ir::Mutability::Mut,
-                ),
-            ),
+            Primitive::Pointer(_) => interner.default_types().types.mut_unit_ptr,
         }
     }
 
@@ -283,7 +280,7 @@ impl<'db> CoroutineArgsExt<'db> for CoroutineArgs<DbInterner<'db>> {
     /// The type of the state discriminant used in the coroutine type.
     #[inline]
     fn discr_ty(&self, interner: DbInterner<'db>) -> Ty<'db> {
-        Ty::new(interner, TyKind::Uint(UintTy::U32))
+        interner.default_types().types.u32
     }
 }
 

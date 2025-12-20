@@ -506,7 +506,7 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
             Some(Ty::new_alias(
                 interner,
                 AliasTyKind::Projection,
-                AliasTy::new(interner, associated_ty.into(), substs),
+                AliasTy::new_from_args(interner, associated_ty.into(), substs),
             ))
         };
         named_associated_type_shorthand_candidates(
@@ -1283,7 +1283,7 @@ pub(crate) fn substs_from_args_and_bindings<'db>(
         }
     }
 
-    GenericArgs::new_from_iter(interner, substs)
+    GenericArgs::new_from_slice(&substs)
 }
 
 fn type_looks_like_const(

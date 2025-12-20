@@ -80,6 +80,7 @@ struct MirLowerCtx<'a, 'db> {
     db: &'db dyn HirDatabase,
     body: &'a Body,
     infer: &'a InferenceResult,
+    types: &'db crate::next_solver::DefaultAny<'db>,
     resolver: Resolver<'db>,
     drop_scopes: Vec<DropScope>,
     env: ParamEnv<'db>,
@@ -312,6 +313,7 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
             db,
             infer,
             body,
+            types: crate::next_solver::default_types(db),
             owner,
             resolver,
             current_loop_blocks: None,
@@ -369,11 +371,7 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
         match adjustments.split_last() {
             Some((last, rest)) => match &last.kind {
                 Adjust::NeverToAny => {
-                    let temp = self.temp(
-                        Ty::new(self.interner(), TyKind::Never),
-                        current,
-                        MirSpan::Unknown,
-                    )?;
+                    let temp = self.temp(self.types.types.never, current, MirSpan::Unknown)?;
                     self.lower_expr_to_place_with_adjust(expr_id, temp.into(), current, rest)
                 }
                 Adjust::Deref(_) => {
@@ -2147,7 +2145,7 @@ pub fn mir_body_for_closure_query<'db>(
     };
     let resolver_guard = ctx.resolver.update_to_inner_scope(db, owner, expr);
     let current = ctx.lower_params_and_bindings(
-        args.iter().zip(sig.skip_binder().inputs().iter()).map(|(it, y)| (*it, y)),
+        args.iter().zip(sig.skip_binder().inputs().iter()).map(|(it, y)| (*it, *y)),
         None,
         |_| true,
     )?;
@@ -2289,7 +2287,7 @@ pub fn lower_to_mir<'db>(
             if let DefWithBodyId::FunctionId(fid) = owner {
                 let callable_sig =
                     db.callable_item_signature(fid.into()).instantiate_identity().skip_binder();
-                let mut params = callable_sig.inputs().iter();
+                let mut params = callable_sig.inputs().iter().copied();
                 let self_param = body.self_param.and_then(|id| Some((id, params.next()?)));
                 break 'b ctx.lower_params_and_bindings(
                     body.params.iter().zip(params).map(|(it, y)| (*it, y)),

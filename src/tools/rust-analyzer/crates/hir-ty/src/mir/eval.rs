@@ -2771,7 +2771,7 @@ impl<'db> Evaluator<'db> {
             TyKind::Closure(closure, subst) => self.exec_closure(
                 closure.0,
                 func_data,
-                subst.split_closure_args_untupled().parent_args,
+                GenericArgs::new_from_slice(subst.split_closure_args_untupled().parent_args),
                 destination,
                 &args[1..],
                 locals,

@@ -64,7 +64,7 @@ impl<'db> Const<'db> {
     }
 
     pub fn error(interner: DbInterner<'db>) -> Self {
-        Const::new(interner, ConstKind::Error(ErrorGuaranteed))
+        interner.default_types().consts.error
     }
 
     pub fn new_param(interner: DbInterner<'db>, param: ParamConst) -> Self {
@@ -421,8 +421,8 @@ impl<'db> rustc_type_ir::inherent::Const<DbInterner<'db>> for Const<'db> {
         Const::new(interner, ConstKind::Expr(expr))
     }
 
-    fn new_error(interner: DbInterner<'db>, guar: ErrorGuaranteed) -> Self {
-        Const::new(interner, ConstKind::Error(guar))
+    fn new_error(interner: DbInterner<'db>, _guar: ErrorGuaranteed) -> Self {
+        Const::error(interner)
     }
 }
 

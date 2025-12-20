@@ -125,7 +125,7 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
                         ctx.interner(),
                         ObligationCause::new(),
                         ctx.table.param_env,
-                        ClauseKind::ConstArgHasType(ct, ctx.types.usize),
+                        ClauseKind::ConstArgHasType(ct, ctx.types.types.usize),
                     ));
                     self_ty = Ty::new_slice(ctx.interner(), element_ty);
                 } else {

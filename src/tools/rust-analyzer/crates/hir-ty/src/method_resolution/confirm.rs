@@ -145,7 +145,7 @@ impl<'a, 'b, 'db> ConfirmContext<'a, 'b, 'db> {
         // traits, no trait system method can be called before this point because they
         // could alter our Self-type, except for normalizing the receiver from the
         // signature (which is also done during probing).
-        let method_sig_rcvr = method_sig.inputs().as_slice()[0];
+        let method_sig_rcvr = method_sig.inputs()[0];
         debug!(
             "confirm: self_ty={:?} method_sig_rcvr={:?} method_sig={:?}",
             self_ty, method_sig_rcvr, method_sig

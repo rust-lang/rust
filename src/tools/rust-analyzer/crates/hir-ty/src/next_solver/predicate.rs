@@ -76,6 +76,8 @@ fn stable_cmp_existential_predicate<'db>(
 interned_slice!(
     BoundExistentialPredicatesStorage,
     BoundExistentialPredicates,
+    StoredBoundExistentialPredicates,
+    bound_existential_predicates,
     BoundExistentialPredicate<'db>,
     BoundExistentialPredicate<'static>,
 );

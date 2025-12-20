@@ -170,6 +170,7 @@ impl<'db> LifetimeElisionKind<'db> {
 pub struct TyLoweringContext<'db, 'a> {
     pub db: &'db dyn HirDatabase,
     interner: DbInterner<'db>,
+    types: &'db crate::next_solver::DefaultAny<'db>,
     lang_items: &'db LangItems,
     resolver: &'a Resolver<'db>,
     store: &'a ExpressionStore,
@@ -201,6 +202,7 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
             db,
             // Can provide no block since we don't use it for trait solving.
             interner,
+            types: crate::next_solver::default_types(db),
             lang_items: interner.lang_items(),
             resolver,
             def,
@@ -399,7 +401,7 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
         let type_ref = &self.store[type_ref_id];
         tracing::debug!(?type_ref);
         let ty = match type_ref {
-            TypeRef::Never => Ty::new(interner, TyKind::Never),
+            TypeRef::Never => self.types.types.never,
             TypeRef::Tuple(inner) => {
                 let inner_tys = inner.iter().map(|&tr| self.lower_ty(tr));
                 Ty::new_tup_from_iter(interner, inner_tys)
@@ -2334,10 +2336,7 @@ pub(crate) fn associated_ty_item_bounds<'db>(
                             Some(ExistentialPredicate::Trait(ExistentialTraitRef::new_from_args(
                                 interner,
                                 t.def_id(),
-                                GenericArgs::new_from_iter(
-                                    interner,
-                                    t.trait_ref.args.iter().skip(1),
-                                ),
+                                GenericArgs::new_from_slice(&t.trait_ref.args[1..]),
                             )))
                         }
                     }
@@ -2345,10 +2344,7 @@ pub(crate) fn associated_ty_item_bounds<'db>(
                         ExistentialPredicate::Projection(ExistentialProjection::new_from_args(
                             interner,
                             p.def_id(),
-                            GenericArgs::new_from_iter(
-                                interner,
-                                p.projection_term.args.iter().skip(1),
-                            ),
+                            GenericArgs::new_from_slice(&p.projection_term.args[1..]),
                             p.term,
                         )),
                     ),
@@ -2378,7 +2374,7 @@ pub(crate) fn associated_ty_item_bounds<'db>(
         bounds.push(sized_clause);
     }
 
-    EarlyBinder::bind(BoundExistentialPredicates::new_from_iter(interner, bounds))
+    EarlyBinder::bind(BoundExistentialPredicates::new_from_slice(&bounds))
 }
 
 pub(crate) fn associated_type_by_name_including_super_traits<'db>(

@@ -21,9 +21,9 @@ use rustc_abi::{ReprFlags, ReprOptions};
 use rustc_hash::FxHashSet;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_type_ir::{
-    AliasTermKind, AliasTyKind, BoundVar, CollectAndApply, CoroutineWitnessTypes, DebruijnIndex,
-    EarlyBinder, FlagComputation, Flags, GenericArgKind, GenericTypeVisitable, ImplPolarity,
-    InferTy, Interner, TraitRef, TypeFlags, TypeVisitableExt, UniverseIndex, Upcast, Variance,
+    AliasTermKind, AliasTyKind, BoundVar, CoroutineWitnessTypes, DebruijnIndex, EarlyBinder,
+    FlagComputation, Flags, GenericArgKind, GenericTypeVisitable, ImplPolarity, InferTy, Interner,
+    TraitRef, TypeFlags, TypeVisitableExt, UniverseIndex, Upcast, Variance,
     elaborate::elaborate,
     error::TypeError,
     fast_reject,
@@ -60,7 +60,7 @@ use super::{
 };
 
 macro_rules! interned_slice {
-    ($storage:ident, $name:ident, $ty_db:ty, $ty_static:ty $(,)?) => {
+    ($storage:ident, $name:ident, $stored_name:ident, $default_types_field:ident, $ty_db:ty, $ty_static:ty $(,)?) => {
         const _: () = {
             #[allow(unused_lifetimes)]
             fn _ensure_correct_types<'db: 'static>(v: $ty_db) -> $ty_static { v }
@@ -81,9 +81,8 @@ macro_rules! interned_slice {
 
         impl<'db> $name<'db> {
             #[inline]
-            pub fn empty(_interner: DbInterner<'db>) -> Self {
-                // FIXME: Get from a static.
-                Self::new_from_slice(&[])
+            pub fn empty(interner: DbInterner<'db>) -> Self {
+                interner.default_types().empty.$default_types_field
             }
 
             #[inline]
@@ -175,40 +174,11 @@ macro_rules! interned_slice {
                 }
             }
         }
+
+        $crate::next_solver::interner::impl_stored_interned_slice!($storage, $name, $stored_name);
     };
 }
 pub(crate) use interned_slice;
-
-macro_rules! impl_foldable_for_interned_slice {
-    ($name:ident) => {
-        impl<'db> ::rustc_type_ir::TypeVisitable<DbInterner<'db>> for $name<'db> {
-            fn visit_with<V: rustc_type_ir::TypeVisitor<DbInterner<'db>>>(
-                &self,
-                visitor: &mut V,
-            ) -> V::Result {
-                use rustc_ast_ir::visit::VisitorResult;
-                rustc_ast_ir::walk_visitable_list!(visitor, (*self).iter());
-                V::Result::output()
-            }
-        }
-
-        impl<'db> rustc_type_ir::TypeFoldable<DbInterner<'db>> for $name<'db> {
-            fn try_fold_with<F: rustc_type_ir::FallibleTypeFolder<DbInterner<'db>>>(
-                self,
-                folder: &mut F,
-            ) -> Result<Self, F::Error> {
-                Self::new_from_iter(folder.cx(), self.iter().map(|it| it.try_fold_with(folder)))
-            }
-            fn fold_with<F: rustc_type_ir::TypeFolder<DbInterner<'db>>>(
-                self,
-                folder: &mut F,
-            ) -> Self {
-                Self::new_from_iter(folder.cx(), self.iter().map(|it| it.fold_with(folder)))
-            }
-        }
-    };
-}
-pub(crate) use impl_foldable_for_interned_slice;
 
 macro_rules! impl_stored_interned_slice {
     ( $storage:ident, $name:ident, $stored_name:ident $(,)? ) => {
@@ -253,6 +223,37 @@ macro_rules! impl_stored_interned_slice {
     };
 }
 pub(crate) use impl_stored_interned_slice;
+
+macro_rules! impl_foldable_for_interned_slice {
+    ($name:ident) => {
+        impl<'db> ::rustc_type_ir::TypeVisitable<DbInterner<'db>> for $name<'db> {
+            fn visit_with<V: rustc_type_ir::TypeVisitor<DbInterner<'db>>>(
+                &self,
+                visitor: &mut V,
+            ) -> V::Result {
+                use rustc_ast_ir::visit::VisitorResult;
+                rustc_ast_ir::walk_visitable_list!(visitor, (*self).iter());
+                V::Result::output()
+            }
+        }
+
+        impl<'db> rustc_type_ir::TypeFoldable<DbInterner<'db>> for $name<'db> {
+            fn try_fold_with<F: rustc_type_ir::FallibleTypeFolder<DbInterner<'db>>>(
+                self,
+                folder: &mut F,
+            ) -> Result<Self, F::Error> {
+                Self::new_from_iter(folder.cx(), self.iter().map(|it| it.try_fold_with(folder)))
+            }
+            fn fold_with<F: rustc_type_ir::TypeFolder<DbInterner<'db>>>(
+                self,
+                folder: &mut F,
+            ) -> Self {
+                Self::new_from_iter(folder.cx(), self.iter().map(|it| it.fold_with(folder)))
+            }
+        }
+    };
+}
+pub(crate) use impl_foldable_for_interned_slice;
 
 macro_rules! impl_stored_interned {
     ( $storage:ident, $name:ident, $stored_name:ident $(,)? ) => {
@@ -362,6 +363,11 @@ impl<'db> DbInterner<'db> {
             where you should've called `DbInterner::new_with()`",
         )
     }
+
+    #[inline]
+    pub fn default_types<'a>(&self) -> &'a crate::next_solver::DefaultAny<'db> {
+        crate::next_solver::default_types(self.db)
+    }
 }
 
 // This is intentionally left as `()`
@@ -374,8 +380,14 @@ impl<'db> inherent::Span<DbInterner<'db>> for Span {
     }
 }
 
-interned_slice!(BoundVarKindsStorage, BoundVarKinds, BoundVarKind, BoundVarKind);
-impl_stored_interned_slice!(BoundVarKindsStorage, BoundVarKinds, StoredBoundVarKinds);
+interned_slice!(
+    BoundVarKindsStorage,
+    BoundVarKinds,
+    StoredBoundVarKinds,
+    bound_var_kinds,
+    BoundVarKind,
+    BoundVarKind,
+);
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
 pub enum BoundVarKind {
@@ -410,6 +422,8 @@ impl BoundVarKind {
 interned_slice!(
     CanonicalVarsStorage,
     CanonicalVars,
+    StoredCanonicalVars,
+    canonical_vars,
     CanonicalVarKind<'db>,
     CanonicalVarKind<'static>
 );
@@ -438,8 +452,7 @@ impl<T: std::fmt::Debug> std::fmt::Debug for Placeholder<T> {
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 pub struct AllocId;
 
-interned_slice!(VariancesOfStorage, VariancesOf, Variance, Variance);
-impl_stored_interned_slice!(VariancesOfStorage, VariancesOf, StoredVariancesOf);
+interned_slice!(VariancesOfStorage, VariancesOf, StoredVariancesOf, variances, Variance, Variance);
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct VariantIdx(usize);
@@ -949,7 +962,7 @@ impl<'db> rustc_type_ir::relate::Relate<DbInterner<'db>> for Pattern<'db> {
     }
 }
 
-interned_slice!(PatListStorage, PatList, Pattern<'db>, Pattern<'static>);
+interned_slice!(PatListStorage, PatList, StoredPatList, pat_list, Pattern<'db>, Pattern<'static>);
 impl_foldable_for_interned_slice!(PatList);
 
 macro_rules! as_lang_item {
@@ -1012,7 +1025,7 @@ impl<'db> Interner for DbInterner<'db> {
     type Span = Span;
 
     type GenericArgs = GenericArgs<'db>;
-    type GenericArgsSlice = GenericArgs<'db>;
+    type GenericArgsSlice = &'db [GenericArg<'db>];
     type GenericArg = GenericArg<'db>;
 
     type Term = Term<'db>;
@@ -1053,7 +1066,7 @@ impl<'db> Interner for DbInterner<'db> {
 
     type Ty = Ty<'db>;
     type Tys = Tys<'db>;
-    type FnInputTys = Tys<'db>;
+    type FnInputTys = &'db [Ty<'db>];
     type ParamTy = ParamTy;
     type BoundTy = BoundTy;
     type PlaceholderTy = PlaceholderTy;
@@ -1257,12 +1270,9 @@ impl<'db> Interner for DbInterner<'db> {
     ) -> (rustc_type_ir::TraitRef<Self>, Self::GenericArgsSlice) {
         let trait_def_id = self.parent(def_id);
         let trait_generics = self.generics_of(trait_def_id);
-        let trait_args = GenericArgs::new_from_iter(
-            self,
-            args.as_slice()[0..trait_generics.own_params.len()].iter().cloned(),
-        );
-        let alias_args =
-            GenericArgs::new_from_iter(self, args.iter().skip(trait_generics.own_params.len()));
+        let trait_args =
+            GenericArgs::new_from_slice(&args.as_slice()[0..trait_generics.own_params.len()]);
+        let alias_args = &args.as_slice()[trait_generics.own_params.len()..];
         (TraitRef::new_from_args(self, trait_def_id.try_into().unwrap(), trait_args), alias_args)
     }
 
@@ -2093,9 +2103,7 @@ impl<'db> Interner for DbInterner<'db> {
         let mut map = Default::default();
         let delegate = Anonymize { interner: self, map: &mut map };
         let inner = self.replace_escaping_bound_vars_uncached(value.skip_binder(), delegate);
-        let bound_vars = CollectAndApply::collect_and_apply(map.into_values(), |xs| {
-            BoundVarKinds::new_from_iter(self, xs.iter().cloned())
-        });
+        let bound_vars = BoundVarKinds::new_from_iter(self, map.into_values());
         Binder::bind_with_vars(inner, bound_vars)
     }
 

@@ -77,8 +77,8 @@ use crate::{
     infer::unify::InferenceTable,
     next_solver::{
         AliasTy, Binder, BoundConst, BoundRegion, BoundRegionKind, BoundTy, BoundTyKind, Canonical,
-        CanonicalVarKind, CanonicalVars, Const, ConstKind, DbInterner, FnSig, PolyFnSig, Predicate,
-        Region, RegionKind, TraitRef, Ty, TyKind, Tys, abi,
+        CanonicalVarKind, CanonicalVars, Const, ConstKind, DbInterner, FnSig, GenericArgs,
+        PolyFnSig, Predicate, Region, RegionKind, TraitRef, Ty, TyKind, Tys, abi,
     },
 };
 
@@ -469,7 +469,7 @@ where
     Canonical {
         value,
         max_universe: rustc_type_ir::UniverseIndex::ZERO,
-        variables: CanonicalVars::new_from_iter(interner, error_replacer.vars),
+        variables: CanonicalVars::new_from_slice(&error_replacer.vars),
     }
 }
 
@@ -491,12 +491,12 @@ pub fn callable_sig_from_fn_trait<'db>(
     // - Self: FnOnce<?args_ty>
     // - <Self as FnOnce<?args_ty>>::Output == ?ret_ty
     let args_ty = table.next_ty_var();
-    let args = [self_ty, args_ty];
-    let trait_ref = TraitRef::new(table.interner(), fn_once_trait.into(), args);
+    let args = GenericArgs::new_from_slice(&[self_ty.into(), args_ty.into()]);
+    let trait_ref = TraitRef::new_from_args(table.interner(), fn_once_trait.into(), args);
     let projection = Ty::new_alias(
         table.interner(),
         rustc_type_ir::AliasTyKind::Projection,
-        AliasTy::new(table.interner(), output_assoc_type.into(), args),
+        AliasTy::new_from_args(table.interner(), output_assoc_type.into(), args),
     );
 
     let pred = Predicate::upcast_from(trait_ref, table.interner());
@@ -505,7 +505,7 @@ pub fn callable_sig_from_fn_trait<'db>(
         let return_ty = table.normalize_alias_ty(projection);
         for fn_x in [FnTrait::Fn, FnTrait::FnMut, FnTrait::FnOnce] {
             let fn_x_trait = fn_x.get_id(lang_items)?;
-            let trait_ref = TraitRef::new(table.interner(), fn_x_trait.into(), args);
+            let trait_ref = TraitRef::new_from_args(table.interner(), fn_x_trait.into(), args);
             if !table
                 .try_obligation(Predicate::upcast_from(trait_ref, table.interner()))
                 .no_solution()

@@ -562,7 +562,7 @@ impl<'cx, 'db> Canonicalizer<'cx, 'db> {
         debug_assert!(!out_value.has_infer() && !out_value.has_placeholders());
 
         let canonical_variables =
-            CanonicalVars::new_from_iter(tcx, canonicalizer.universe_canonicalized_variables());
+            CanonicalVars::new_from_slice(&canonicalizer.universe_canonicalized_variables());
 
         let max_universe = canonical_variables
             .iter()

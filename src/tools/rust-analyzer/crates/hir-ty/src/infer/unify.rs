@@ -542,16 +542,14 @@ impl<'db> InferenceTable<'db> {
                 })
                 .take(num_args),
             );
-            let args = [ty, arg_ty];
-            let trait_ref = TraitRef::new(self.interner(), fn_trait.into(), args);
+            let args = GenericArgs::new_from_slice(&[ty.into(), arg_ty.into()]);
+            let trait_ref = TraitRef::new_from_args(self.interner(), fn_trait.into(), args);
 
-            let proj_args = self
-                .infer_ctxt
-                .fill_rest_fresh_args(output_assoc_type.into(), args.into_iter().map(Into::into));
+            let proj_args = self.infer_ctxt.fill_rest_fresh_args(output_assoc_type.into(), args);
             let projection = Ty::new_alias(
                 self.interner(),
                 rustc_type_ir::AliasTyKind::Projection,
-                AliasTy::new(self.interner(), output_assoc_type.into(), proj_args),
+                AliasTy::new_from_args(self.interner(), output_assoc_type.into(), proj_args),
             );
 
             let pred = Predicate::upcast_from(trait_ref, self.interner());
@@ -560,7 +558,8 @@ impl<'db> InferenceTable<'db> {
                 let return_ty = self.normalize_alias_ty(projection);
                 for &fn_x in subtraits {
                     let fn_x_trait = fn_x.get_id(lang_items)?;
-                    let trait_ref = TraitRef::new(self.interner(), fn_x_trait.into(), args);
+                    let trait_ref =
+                        TraitRef::new_from_args(self.interner(), fn_x_trait.into(), args);
                     let pred = Predicate::upcast_from(trait_ref, self.interner());
                     if !self.try_obligation(pred).no_solution() {
                         return Some((fn_x, arg_tys, return_ty));
