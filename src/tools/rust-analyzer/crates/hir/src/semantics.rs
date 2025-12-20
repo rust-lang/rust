@@ -1653,8 +1653,11 @@ impl<'db> SemanticsImpl<'db> {
         analyzer.expr_adjustments(expr).map(|it| {
             it.iter()
                 .map(|adjust| {
-                    let target =
-                        Type::new_with_resolver(self.db, &analyzer.resolver, adjust.target);
+                    let target = Type::new_with_resolver(
+                        self.db,
+                        &analyzer.resolver,
+                        adjust.target.as_ref(),
+                    );
                     let kind = match adjust.kind {
                         hir_ty::Adjust::NeverToAny => Adjust::NeverToAny,
                         hir_ty::Adjust::Deref(Some(hir_ty::OverloadedDeref(m))) => {

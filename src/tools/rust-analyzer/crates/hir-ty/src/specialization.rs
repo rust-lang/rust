@@ -2,7 +2,6 @@
 
 use hir_def::{HasModule, ImplId, nameres::crate_def_map};
 use intern::sym;
-use rustc_type_ir::inherent::SliceLike;
 use tracing::debug;
 
 use crate::{

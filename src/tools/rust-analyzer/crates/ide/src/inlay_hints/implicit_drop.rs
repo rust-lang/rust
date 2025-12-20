@@ -46,7 +46,7 @@ pub(super) fn hints(
             if !place.projection.is_empty() {
                 continue; // Ignore complex cases for now
             }
-            if mir.locals[place.local].ty.as_adt().is_none() {
+            if mir.locals[place.local].ty.as_ref().as_adt().is_none() {
                 continue; // Arguably only ADTs have significant drop impls
             }
             let Some(&binding_idx) = local_to_binding.get(place.local) else {

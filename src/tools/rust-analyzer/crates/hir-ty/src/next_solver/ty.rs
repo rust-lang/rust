@@ -7,13 +7,15 @@ use hir_def::{
     hir::generics::{TypeOrConstParamData, TypeParamProvenance},
 };
 use hir_def::{TraitId, type_ref::Rawness};
+use intern::{Interned, InternedRef, impl_internable};
+use macros::GenericTypeVisitable;
 use rustc_abi::{Float, Integer, Size};
 use rustc_ast_ir::{Mutability, try_visit, visit::VisitorResult};
 use rustc_type_ir::{
     AliasTyKind, BoundVar, BoundVarIndexKind, ClosureKind, CoroutineArgs, CoroutineArgsParts,
-    DebruijnIndex, FlagComputation, Flags, FloatTy, FloatVid, InferTy, IntTy, IntVid, Interner,
-    TyVid, TypeFoldable, TypeSuperFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
-    TypeVisitor, UintTy, Upcast, WithCachedTypeInfo,
+    DebruijnIndex, FlagComputation, Flags, FloatTy, FloatVid, GenericTypeVisitable, InferTy, IntTy,
+    IntVid, Interner, TyVid, TypeFoldable, TypeSuperFoldable, TypeSuperVisitable, TypeVisitable,
+    TypeVisitableExt, TypeVisitor, UintTy, Upcast, WithCachedTypeInfo,
     inherent::{
         AdtDef as _, BoundExistentialPredicates, BoundVarLike, Const as _, GenericArgs as _,
         IntoKind, ParamLike, PlaceholderLike, Safety as _, SliceLike, Ty as _,
@@ -28,15 +30,16 @@ use crate::{
     lower::GenericPredicates,
     next_solver::{
         AdtDef, AliasTy, Binder, CallableIdWrapper, Clause, ClauseKind, ClosureIdWrapper, Const,
-        CoroutineIdWrapper, FnSig, GenericArg, PolyFnSig, Region, TraitRef, TypeAliasIdWrapper,
+        CoroutineIdWrapper, FnSig, GenericArgKind, PolyFnSig, Region, TraitRef, TypeAliasIdWrapper,
         abi::Safety,
-        interner::InternedWrapperNoDebug,
+        impl_foldable_for_interned_slice, impl_stored_interned, impl_stored_interned_slice,
+        interned_slice,
         util::{CoroutineArgsExt, IntegerTypeExt},
     },
 };
 
 use super::{
-    BoundVarKind, DbInterner, GenericArgs, Placeholder, SolverDefId, interned_vec_db,
+    BoundVarKind, DbInterner, GenericArgs, Placeholder, SolverDefId,
     util::{FloatExt, IntegerExt},
 };
 
@@ -44,11 +47,17 @@ pub type SimplifiedType = rustc_type_ir::fast_reject::SimplifiedType<SolverDefId
 pub type TyKind<'db> = rustc_type_ir::TyKind<DbInterner<'db>>;
 pub type FnHeader<'db> = rustc_type_ir::FnHeader<DbInterner<'db>>;
 
-#[salsa::interned(constructor = new_, unsafe(non_update_types))]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Ty<'db> {
-    #[returns(ref)]
-    kind_: InternedWrapperNoDebug<WithCachedTypeInfo<TyKind<'db>>>,
+    pub(super) interned: InternedRef<'db, TyInterned>,
 }
+
+#[derive(PartialEq, Eq, Hash, GenericTypeVisitable)]
+#[repr(align(4))] // Required for `GenericArg` bit-tagging.
+pub(super) struct TyInterned(WithCachedTypeInfo<TyKind<'static>>);
+
+impl_internable!(gc; TyInterned);
+impl_stored_interned!(TyInterned, Ty, StoredTy);
 
 const _: () = {
     const fn is_copy<T: Copy>() {}
@@ -56,23 +65,27 @@ const _: () = {
 };
 
 impl<'db> Ty<'db> {
-    pub fn new(interner: DbInterner<'db>, kind: TyKind<'db>) -> Self {
+    #[inline]
+    pub fn new(_interner: DbInterner<'db>, kind: TyKind<'db>) -> Self {
+        let kind = unsafe { std::mem::transmute::<TyKind<'db>, TyKind<'static>>(kind) };
         let flags = FlagComputation::for_kind(&kind);
         let cached = WithCachedTypeInfo {
             internee: kind,
             flags: flags.flags,
             outer_exclusive_binder: flags.outer_exclusive_binder,
         };
-        Ty::new_(interner.db(), InternedWrapperNoDebug(cached))
+        Self { interned: Interned::new_gc(TyInterned(cached)) }
     }
 
+    #[inline]
     pub fn inner(&self) -> &WithCachedTypeInfo<TyKind<'db>> {
-        crate::with_attached_db(|db| {
-            let inner = &self.kind_(db).0;
-            // SAFETY: The caller already has access to a `Ty<'db>`, so borrowchecking will
-            // make sure that our returned value is valid for the lifetime `'db`.
-            unsafe { std::mem::transmute(inner) }
-        })
+        let inner = &self.interned.0;
+        unsafe {
+            std::mem::transmute::<
+                &WithCachedTypeInfo<TyKind<'static>>,
+                &WithCachedTypeInfo<TyKind<'db>>,
+            >(inner)
+        }
     }
 
     pub fn new_adt(interner: DbInterner<'db>, adt_id: AdtId, args: GenericArgs<'db>) -> Self {
@@ -383,7 +396,7 @@ impl<'db> Ty<'db> {
 
     #[inline]
     pub fn is_unit(self) -> bool {
-        matches!(self.kind(), TyKind::Tuple(tys) if tys.inner().is_empty())
+        matches!(self.kind(), TyKind::Tuple(tys) if tys.is_empty())
     }
 
     #[inline]
@@ -661,12 +674,9 @@ impl<'db> Ty<'db> {
                     // This is only used by type walking.
                     // Parameters will be walked outside, and projection predicate is not used.
                     // So just provide the Future trait.
-                    let impl_bound = TraitRef::new(
-                        interner,
-                        future_trait.into(),
-                        GenericArgs::new_from_iter(interner, []),
-                    )
-                    .upcast(interner);
+                    let impl_bound =
+                        TraitRef::new(interner, future_trait.into(), GenericArgs::empty(interner))
+                            .upcast(interner);
                     Some(vec![impl_bound])
                 } else {
                     None
@@ -730,17 +740,20 @@ impl<'db> std::fmt::Debug for Ty<'db> {
     }
 }
 
-impl<'db> std::fmt::Debug for InternedWrapperNoDebug<WithCachedTypeInfo<TyKind<'db>>> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.0.internee.fmt(f)
-    }
-}
-
 impl<'db> IntoKind for Ty<'db> {
     type Kind = TyKind<'db>;
 
+    #[inline]
     fn kind(self) -> Self::Kind {
         self.inner().internee
+    }
+}
+
+impl<'db, V: super::WorldExposer> GenericTypeVisitable<V> for Ty<'db> {
+    fn generic_visit_with(&self, visitor: &mut V) {
+        if visitor.on_interned(self.interned).is_continue() {
+            self.kind().generic_visit_with(visitor);
+        }
     }
 }
 
@@ -1068,9 +1081,9 @@ impl<'db> rustc_type_ir::inherent::Ty<DbInterner<'db>> for Ty<'db> {
         // to unnecessary overflows in async code. See the issue:
         // <https://github.com/rust-lang/rust/issues/145151>.
         let coroutine_args = interner.mk_args_from_iter(coroutine_args.iter().map(|arg| {
-            match arg {
-                GenericArg::Ty(_) | GenericArg::Const(_) => arg,
-                GenericArg::Lifetime(_) => {
+            match arg.kind() {
+                GenericArgKind::Type(_) | GenericArgKind::Const(_) => arg,
+                GenericArgKind::Lifetime(_) => {
                     crate::next_solver::Region::new(interner, rustc_type_ir::RegionKind::ReErased)
                         .into()
                 }
@@ -1254,10 +1267,13 @@ impl<'db> rustc_type_ir::inherent::Ty<DbInterner<'db>> for Ty<'db> {
     }
 }
 
-interned_vec_db!(Tys, Ty);
+interned_slice!(TysStorage, Tys, Ty<'db>, Ty<'static>);
+impl_foldable_for_interned_slice!(Tys);
+impl_stored_interned_slice!(TysStorage, Tys, StoredTys);
 
 impl<'db> Tys<'db> {
-    pub fn inputs(&self) -> &[Ty<'db>] {
+    #[inline]
+    pub fn inputs(self) -> &'db [Ty<'db>] {
         self.as_slice().split_last().unwrap().1
     }
 }
@@ -1322,6 +1338,10 @@ pub enum BoundTyKind {
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 pub struct ErrorGuaranteed;
+
+impl<V> GenericTypeVisitable<V> for ErrorGuaranteed {
+    fn generic_visit_with(&self, _visitor: &mut V) {}
+}
 
 impl<'db> TypeVisitable<DbInterner<'db>> for ErrorGuaranteed {
     fn visit_with<V: rustc_type_ir::TypeVisitor<DbInterner<'db>>>(

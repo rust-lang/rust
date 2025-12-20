@@ -213,7 +213,7 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
                     let mutbl = AutoBorrowMutability::new(mutbl, AllowTwoPhase::Yes);
                     let autoref = Adjustment {
                         kind: Adjust::Borrow(AutoBorrow::Ref(mutbl)),
-                        target: method.sig.inputs_and_output.inputs()[0],
+                        target: method.sig.inputs_and_output.inputs()[0].store(),
                     };
                     self.write_expr_adj(lhs_expr, Box::new([autoref]));
                 }
@@ -227,7 +227,7 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
 
                     let autoref = Adjustment {
                         kind: Adjust::Borrow(AutoBorrow::Ref(mutbl)),
-                        target: method.sig.inputs_and_output.inputs()[1],
+                        target: method.sig.inputs_and_output.inputs()[1].store(),
                     };
                     // HACK(eddyb) Bypass checks due to reborrows being in
                     // some cases applied on the RHS, on top of which we need

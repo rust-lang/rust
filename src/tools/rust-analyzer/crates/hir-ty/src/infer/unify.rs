@@ -9,7 +9,7 @@ use intern::sym;
 use rustc_hash::FxHashSet;
 use rustc_type_ir::{
     TyVid, TypeFoldable, TypeVisitableExt, UpcastFrom,
-    inherent::{Const as _, GenericArg as _, IntoKind, SliceLike, Ty as _},
+    inherent::{Const as _, GenericArg as _, IntoKind, Ty as _},
     solve::Certainty,
 };
 use smallvec::SmallVec;
@@ -640,6 +640,7 @@ impl<'db> InferenceTable<'db> {
                 let struct_data = id.fields(self.db);
                 if let Some((last_field, _)) = struct_data.fields().iter().next_back() {
                     let last_field_ty = self.db.field_types(id.into())[last_field]
+                        .get()
                         .instantiate(self.interner(), subst);
                     if structs.contains(&ty) {
                         // A struct recursively contains itself as a tail field somewhere.

@@ -112,12 +112,12 @@ impl<'db> InferenceContext<'_, 'db> {
                     _ = self.demand_eqtype_fixme_no_diag(expected, hidden_type.ty);
                 }
 
-                self.result.type_of_opaque.insert(def_id, ty.ty);
+                self.result.type_of_opaque.insert(def_id, ty.ty.store());
 
                 continue;
             }
 
-            self.result.type_of_opaque.insert(def_id, self.types.error);
+            self.result.type_of_opaque.insert(def_id, self.types.error.store());
         }
     }
 

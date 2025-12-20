@@ -35,6 +35,7 @@ impl<'db> Evaluator<'db> {
                                 not_supported!("simd type with no field");
                             };
                             let field_ty = self.db.field_types(id.into())[first_field]
+                                .get()
                                 .instantiate(self.interner(), subst);
                             return Ok((fields.len(), field_ty));
                         }
@@ -67,7 +68,7 @@ impl<'db> Evaluator<'db> {
         args: &[IntervalAndTy<'db>],
         _generic_args: GenericArgs<'db>,
         destination: Interval,
-        _locals: &Locals<'db>,
+        _locals: &Locals,
         _span: MirSpan,
     ) -> Result<'db, ()> {
         match name {

@@ -14,7 +14,7 @@ use rustc_type_ir::{
     InferTy, TypeVisitableExt, Upcast, Variance,
     elaborate::{self, supertrait_def_ids},
     fast_reject::{DeepRejectCtxt, TreatParams, simplify_type},
-    inherent::{AdtDef as _, BoundExistentialPredicates as _, IntoKind, SliceLike, Ty as _},
+    inherent::{AdtDef as _, BoundExistentialPredicates as _, IntoKind, Ty as _},
 };
 use smallvec::{SmallVec, smallvec};
 use tracing::{debug, instrument};

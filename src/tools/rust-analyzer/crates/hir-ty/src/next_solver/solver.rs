@@ -5,7 +5,7 @@ use rustc_next_trait_solver::delegate::SolverDelegate;
 use rustc_type_ir::{
     AliasTyKind, GenericArgKind, InferCtxtLike, Interner, PredicatePolarity, TypeFlags,
     TypeVisitableExt,
-    inherent::{IntoKind, SliceLike, Term as _, Ty as _},
+    inherent::{IntoKind, Term as _, Ty as _},
     lang_items::SolverTraitLangItem,
     solve::{Certainty, NoSolution},
 };

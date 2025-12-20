@@ -64,7 +64,7 @@ impl<'db> InferenceContext<'_, 'db> {
             }
             ValueNs::LocalBinding(pat) => {
                 return match self.result.type_of_binding.get(pat) {
-                    Some(ty) => Some(ValuePathResolution::NonGeneric(*ty)),
+                    Some(ty) => Some(ValuePathResolution::NonGeneric(ty.as_ref())),
                     None => {
                         never!("uninferred pattern?");
                         None

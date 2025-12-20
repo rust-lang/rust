@@ -1,6 +1,11 @@
 //! Things relevant to the next trait solver.
 
+// Note: in interned types defined in this module, we generally treat the lifetime as advisory
+// and transmute it as needed. This is because no real memory unsafety can be caused from an
+// incorrect lifetime here.
+
 pub mod abi;
+mod binder;
 mod consts;
 mod def_id;
 pub mod fold;
@@ -21,6 +26,7 @@ mod structural_normalize;
 mod ty;
 pub mod util;
 
+pub use binder::*;
 pub use consts::*;
 pub use def_id::*;
 pub use generic_arg::*;

@@ -1214,7 +1214,9 @@ version = "0.0.0"
 dependencies = [
  "dashmap",
  "hashbrown 0.14.5",
+ "rayon",
  "rustc-hash 2.1.1",
+ "smallvec",
  "triomphe",
 ]
 
