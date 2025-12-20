@@ -439,6 +439,7 @@ fn item_module(cx: &Context<'_>, item: &clean::Item, items: &[clean::Item]) -> i
                                 )?;
                             }
                         }
+                        write!(w, "</code></dt>")?
                     }
                     clean::ImportItem(ref import) => {
                         let stab_tags =
