@@ -297,6 +297,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::RustcPassIndirectlyInNonRusticAbis(..)
                     | AttributeKind::PinV2(..)
                     | AttributeKind::WindowsSubsystem(..)
+                    | AttributeKind::ThreadLocal
                 ) => { /* do nothing  */ }
                 Attribute::Unparsed(attr_item) => {
                     style = Some(attr_item.style);
@@ -310,7 +311,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         [sym::diagnostic, sym::on_const, ..] => {
                             self.check_diagnostic_on_const(attr.span(), hir_id, target, item)
                         }
-                        [sym::thread_local, ..] => self.check_thread_local(attr, span, target),
                         [sym::rustc_clean, ..]
                         | [sym::rustc_dirty, ..]
                         | [sym::rustc_if_this_changed, ..]
@@ -765,19 +765,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 }
             }
             _ => {}
-        }
-    }
-
-    /// Checks if the `#[thread_local]` attribute on `item` is valid.
-    fn check_thread_local(&self, attr: &Attribute, span: Span, target: Target) {
-        match target {
-            Target::ForeignStatic | Target::Static => {}
-            _ => {
-                self.dcx().emit_err(errors::AttrShouldBeAppliedToStatic {
-                    attr_span: attr.span(),
-                    defn_span: span,
-                });
-            }
         }
     }
 
