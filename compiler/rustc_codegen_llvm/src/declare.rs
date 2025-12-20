@@ -71,7 +71,9 @@ pub(crate) fn declare_raw_fn<'ll, 'tcx>(
     let mut attrs = SmallVec::<[_; 4]>::new();
 
     if cx.sess().target.is_like_gpu {
-        // Conservatively apply convergent to all functions
+        // Conservatively apply convergent to all functions in case they may call
+        // a convergent function. Rely on LLVM to optimize away the unnecessary
+        // convergent attributes.
         attrs.push(llvm::AttributeKind::Convergent.create_attr(cx.llcx));
     }
 
