@@ -104,3 +104,4 @@ flake.lock
 /default.nix
 
 # Before adding new lines, see the comment at the top.
+.claude/settings.local.json

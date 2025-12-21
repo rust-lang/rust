@@ -241,14 +241,14 @@ pub(super) fn layout<
             // Because we only use some subset (that can differ between variants)
             // of the promoted fields, we can't just pick those elements of the
             // `promoted_memory_index` (as we'd end up with gaps).
-            // So instead, we build an "inverse memory_index", as if all of the
+            // So instead, we build a "memory_index" (source→memory), as if all of the
             // promoted fields were being used, but leave the elements not in the
             // subset as `invalid_field_idx`, which we can filter out later to
-            // obtain a valid (bijective) mapping.
+            // obtain a valid (bijective) mapping, and then invert it to get in_memory_order.
             let memory_index = in_memory_order.invert_bijective_mapping();
             let invalid_field_idx = promoted_memory_index.len() + memory_index.len();
-            let mut combined_in_memory_order =
-                IndexVec::from_elem_n(FieldIdx::new(invalid_field_idx), invalid_field_idx);
+            let mut combined_memory_index =
+                IndexVec::from_elem_n(invalid_field_idx as u32, invalid_field_idx);
 
             let mut offsets_and_memory_index = iter::zip(offsets, memory_index);
             let combined_offsets = variant_fields
@@ -265,14 +265,15 @@ pub(super) fn layout<
                             (promoted_offsets[field_idx], promoted_memory_index[field_idx])
                         }
                     };
-                    combined_in_memory_order[memory_index] = i;
+                    combined_memory_index[i] = memory_index;
                     offset
                 })
                 .collect();
 
-            // Remove the unused slots to obtain the combined `in_memory_order`
+            // Remove the unused slots and invert to obtain the combined `in_memory_order`
             // (also see previous comment).
-            combined_in_memory_order.raw.retain(|&i| i.index() != invalid_field_idx);
+            combined_memory_index.raw.retain(|&i| i as usize != invalid_field_idx);
+            let combined_in_memory_order = combined_memory_index.invert_bijective_mapping();
 
             variant.fields = FieldsShape::Arbitrary {
                 offsets: combined_offsets,
