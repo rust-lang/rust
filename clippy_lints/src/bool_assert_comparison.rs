@@ -1,5 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::macros::{find_assert_eq_args, root_macro_call_first_node};
+use clippy_utils::source::walk_span_to_context;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::sym;
 use clippy_utils::ty::{implements_trait, is_copy};
@@ -130,22 +131,24 @@ impl<'tcx> LateLintPass<'tcx> for BoolAssertComparison {
 
                 let mut suggestions = vec![(name_span, non_eq_mac.to_string()), (lit_span, String::new())];
 
-                if let Some(sugg) = Sugg::hir_opt(cx, non_lit_expr) {
-                    let sugg = if bool_value ^ eq_macro {
-                        !sugg.maybe_paren()
-                    } else if ty::Bool == *non_lit_ty.kind() {
-                        sugg
-                    } else {
-                        !!sugg.maybe_paren()
-                    };
-                    suggestions.push((non_lit_expr.span, sugg.to_string()));
+                let mut applicability = Applicability::MachineApplicable;
+                let sugg = Sugg::hir_with_context(cx, non_lit_expr, macro_call.span.ctxt(), "..", &mut applicability);
+                let sugg = if bool_value ^ eq_macro {
+                    !sugg.maybe_paren()
+                } else if ty::Bool == *non_lit_ty.kind() {
+                    sugg
+                } else {
+                    !!sugg.maybe_paren()
+                };
+                let non_lit_expr_span =
+                    walk_span_to_context(non_lit_expr.span, macro_call.span.ctxt()).unwrap_or(non_lit_expr.span);
+                suggestions.push((non_lit_expr_span, sugg.to_string()));
 
-                    diag.multipart_suggestion(
-                        format!("replace it with `{non_eq_mac}!(..)`"),
-                        suggestions,
-                        Applicability::MachineApplicable,
-                    );
-                }
+                diag.multipart_suggestion(
+                    format!("replace it with `{non_eq_mac}!(..)`"),
+                    suggestions,
+                    applicability,
+                );
             },
         );
     }

@@ -216,3 +216,16 @@ fn main() {
     assert!(!(b + b));
     //~^ bool_assert_comparison
 }
+
+fn issue16279() {
+    macro_rules! is_empty {
+        ($x:expr) => {
+            $x.is_empty()
+        };
+    }
+
+    assert!(!is_empty!("a"));
+    //~^ bool_assert_comparison
+    assert!(is_empty!(""));
+    //~^ bool_assert_comparison
+}
