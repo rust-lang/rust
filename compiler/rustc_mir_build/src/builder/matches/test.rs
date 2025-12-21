@@ -47,7 +47,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
             TestableCase::Slice { len, variable_length } => {
                 let op = if variable_length { BinOp::Ge } else { BinOp::Eq };
-                TestKind::Len { len: len as u64, op }
+                TestKind::Len { len, op }
             }
 
             TestableCase::Deref { temp, mutability } => TestKind::Deref { temp, mutability },
