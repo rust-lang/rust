@@ -1,5 +1,5 @@
 use rustc_type_ir::{solve::GoalSource, solve::inspect::GoalEvaluation};
-use serde::{Deserialize, Serialize};
+use serde_derive::{Deserialize, Serialize};
 
 use crate::next_solver::infer::InferCtxt;
 use crate::next_solver::inspect::{InspectCandidate, InspectGoal};
