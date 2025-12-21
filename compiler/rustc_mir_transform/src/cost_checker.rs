@@ -60,7 +60,27 @@ impl<'b, 'tcx> CostChecker<'b, 'tcx> {
 }
 
 impl<'tcx> Visitor<'tcx> for CostChecker<'_, 'tcx> {
-    fn visit_statement(&mut self, statement: &Statement<'tcx>, _: Location) {
+    fn visit_operand(&mut self, operand: &Operand<'tcx>, _: Location) {
+        match operand {
+            Operand::RuntimeChecks(RuntimeChecks::UbChecks) => {
+                if !self
+                    .tcx
+                    .sess
+                    .opts
+                    .unstable_opts
+                    .inline_mir_preserve_debug
+                    .unwrap_or(self.tcx.sess.ub_checks())
+                {
+                    // If this is in optimized MIR it's because it's used later, so if we don't need UB
+                    // checks this session, give a bonus here to offset the cost of the call later.
+                    self.bonus += CALL_PENALTY;
+                }
+            }
+            _ => {}
+        }
+    }
+
+    fn visit_statement(&mut self, statement: &Statement<'tcx>, loc: Location) {
         // Most costs are in rvalues and terminators, not in statements.
         match statement.kind {
             StatementKind::Intrinsic(ref ndi) => {
@@ -72,9 +92,10 @@ impl<'tcx> Visitor<'tcx> for CostChecker<'_, 'tcx> {
             StatementKind::Assign(..) => self.penalty += INSTR_COST,
             _ => {}
         }
+        self.super_statement(statement, loc)
     }
 
-    fn visit_terminator(&mut self, terminator: &Terminator<'tcx>, _: Location) {
+    fn visit_terminator(&mut self, terminator: &Terminator<'tcx>, loc: Location) {
         match &terminator.kind {
             TerminatorKind::Drop { place, unwind, .. } => {
                 // If the place doesn't actually need dropping, treat it like a regular goto.
@@ -151,6 +172,7 @@ impl<'tcx> Visitor<'tcx> for CostChecker<'_, 'tcx> {
                 bug!("{kind:?} should not be in runtime MIR");
             }
         }
+        self.super_terminator(terminator, loc)
     }
 }
 
