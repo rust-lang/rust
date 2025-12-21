@@ -30,6 +30,12 @@ fn test_format_flags() {
     assert_eq!(format!("{:p} {:x}", p, 16), format!("{p:p} 10"));
 
     assert_eq!(format!("{: >3}", 'a'), "  a");
+
+    /// Regression test for <https://github.com/rust-lang/rust/issues/50280#issuecomment-626035934>.
+    fn show(a: fn() -> f32, b: fn(&Vec<i8>) -> f32) {
+        println!("the two pointers: {:p} {:p}", a, b);
+    }
+    show(|| 1.0, |_| 2.0);
 }
 
 #[test]
