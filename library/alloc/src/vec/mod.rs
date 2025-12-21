@@ -902,6 +902,9 @@ impl<T> Vec<T> {
     }
 }
 
+#[cfg(not(no_global_oom_handling))]
+#[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+#[rustfmt::skip] // FIXME(fee1-dead): temporary measure before rustfmt is bumped
 const impl<T, A: [const] Allocator + [const] Destruct> Vec<T, A> {
     /// Constructs a new, empty `Vec<T, A>` with at least the specified capacity
     /// with the provided allocator.
@@ -958,15 +961,11 @@ const impl<T, A: [const] Allocator + [const] Destruct> Vec<T, A> {
     /// let vec_units = Vec::<(), System>::with_capacity_in(10, System);
     /// assert_eq!(vec_units.capacity(), usize::MAX);
     /// ```
-    #[cfg(not(no_global_oom_handling))]
     #[inline]
     #[unstable(feature = "allocator_api", issue = "32838")]
-    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
-    pub fn with_capacity_in(capacity: usize, alloc: A) -> Self
-    {
+    pub fn with_capacity_in(capacity: usize, alloc: A) -> Self {
         Vec { buf: RawVec::with_capacity_in(capacity, alloc), len: 0 }
     }
-
 
     /// Appends an element to the back of a collection.
     ///
@@ -988,13 +987,10 @@ const impl<T, A: [const] Allocator + [const] Destruct> Vec<T, A> {
     /// capacity after the push, *O*(*capacity*) time is taken to copy the
     /// vector's elements to a larger allocation. This expensive operation is
     /// offset by the *capacity* *O*(1) insertions it allows.
-    #[cfg(not(no_global_oom_handling))]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_confusables("push_back", "put", "append")]
-    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
-    pub fn push(&mut self, value: T)
-    {
+    pub fn push(&mut self, value: T) {
         let _ = self.push_mut(value);
     }
 
@@ -1026,13 +1022,10 @@ const impl<T, A: [const] Allocator + [const] Destruct> Vec<T, A> {
     /// capacity after the push, *O*(*capacity*) time is taken to copy the
     /// vector's elements to a larger allocation. This expensive operation is
     /// offset by the *capacity* *O*(1) insertions it allows.
-    #[cfg(not(no_global_oom_handling))]
     #[inline]
     #[unstable(feature = "push_mut", issue = "135974")]
     #[must_use = "if you don't need a reference to the value, use `Vec::push` instead"]
-    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
-    pub fn push_mut(&mut self, value: T) -> &mut T
-    {
+    pub fn push_mut(&mut self, value: T) -> &mut T {
         // Inform codegen that the length does not change across grow_one().
         let len = self.len;
         // This will panic or abort if we would allocate > isize::MAX bytes
