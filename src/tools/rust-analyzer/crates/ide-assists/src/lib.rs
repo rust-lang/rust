@@ -105,6 +105,7 @@ mod handlers {
     pub(crate) type Handler = fn(&mut Assists, &AssistContext<'_>) -> Option<()>;
 
     mod add_braces;
+    mod add_explicit_dot_deref;
     mod add_explicit_enum_discriminant;
     mod add_explicit_type;
     mod add_label_to_loop;
@@ -242,6 +243,7 @@ mod handlers {
         &[
             // These are alphabetic for the foolish consistency
             add_braces::add_braces,
+            add_explicit_dot_deref::add_explicit_method_call_deref,
             add_explicit_enum_discriminant::add_explicit_enum_discriminant,
             add_explicit_type::add_explicit_type,
             add_label_to_loop::add_label_to_loop,
