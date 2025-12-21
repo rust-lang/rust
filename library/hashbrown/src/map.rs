@@ -2,6 +2,7 @@ use crate::raw::{
     Allocator, Bucket, Global, RawDrain, RawExtractIf, RawIntoIter, RawIter, RawTable,
 };
 use crate::{DefaultHashBuilder, Equivalent, TryReserveError};
+use ::alloc::borrow::ToOwned;
 use core::borrow::Borrow;
 use core::fmt::{self, Debug};
 use core::hash::{BuildHasher, Hash};
@@ -2910,13 +2911,11 @@ impl<K: Debug, V, S, A: Allocator> Debug for VacantEntry<'_, K, V, S, A> {
 ///
 /// [`Hash`] and [`Eq`] on the borrowed form of the map's key type *must* match those
 /// for the key type. It also require that key may be constructed from the borrowed
-/// form through the [`From`] trait.
+/// form through the [`ToOwned`] trait.
 ///
-/// [`HashMap`]: struct.HashMap.html
-/// [`entry_ref`]: struct.HashMap.html#method.entry_ref
-/// [`Eq`]: https://doc.rust-lang.org/std/cmp/trait.Eq.html
-/// [`Hash`]: https://doc.rust-lang.org/std/hash/trait.Hash.html
-/// [`From`]: https://doc.rust-lang.org/std/convert/trait.From.html
+/// [`HashMap`]: HashMap
+/// [`entry_ref`]: HashMap::entry_ref
+/// [`ToOwned`]: alloc::borrow::ToOwned
 ///
 /// # Examples
 ///
@@ -3963,6 +3962,42 @@ impl<'a, K, V, S, A: Allocator> OccupiedEntry<'a, K, V, S, A> {
         unsafe { &mut self.elem.as_mut().1 }
     }
 
+    /// Converts the `OccupiedEntry` into a reference to the key and a
+    /// mutable reference to the value in the entry with a lifetime bound to the
+    /// map itself.
+    ///
+    /// If you need multiple references to the `OccupiedEntry`, see [`key`] and
+    /// [`get_mut`].
+    ///
+    /// [`key`]: Self::key
+    /// [`get_mut`]: Self::get_mut
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::hash_map::{Entry, HashMap};
+    ///
+    /// let mut map: HashMap<&str, u32> = HashMap::new();
+    /// map.entry("poneyland").or_insert(12);
+    ///
+    /// assert_eq!(map["poneyland"], 12);
+    ///
+    /// let key_val: (&&str, &mut u32);
+    /// match map.entry("poneyland") {
+    ///     Entry::Occupied(entry) => key_val = entry.into_entry(),
+    ///     Entry::Vacant(_) => panic!(),
+    /// }
+    /// *key_val.1 += 10;
+    ///
+    /// assert_eq!(key_val, (&"poneyland", &mut 22));
+    /// assert_eq!(map["poneyland"], 22);
+    /// ```
+    #[cfg_attr(feature = "inline-more", inline)]
+    pub fn into_entry(self) -> (&'a K, &'a mut V) {
+        let (key, val) = unsafe { self.elem.as_mut() };
+        (key, val)
+    }
+
     /// Sets the value of the entry, and returns the entry's old value.
     ///
     /// # Examples
@@ -4212,7 +4247,7 @@ impl<'a, 'b, K, Q: ?Sized, V, S, A: Allocator> EntryRef<'a, 'b, K, Q, V, S, A> {
     pub fn insert(self, value: V) -> OccupiedEntry<'a, K, V, S, A>
     where
         K: Hash,
-        &'b Q: Into<K>,
+        Q: ToOwned<Owned = K>,
         S: BuildHasher,
     {
         match self {
@@ -4246,7 +4281,7 @@ impl<'a, 'b, K, Q: ?Sized, V, S, A: Allocator> EntryRef<'a, 'b, K, Q, V, S, A> {
     pub fn or_insert(self, default: V) -> &'a mut V
     where
         K: Hash,
-        &'b Q: Into<K>,
+        Q: ToOwned<Owned = K>,
         S: BuildHasher,
     {
         match self {
@@ -4277,7 +4312,7 @@ impl<'a, 'b, K, Q: ?Sized, V, S, A: Allocator> EntryRef<'a, 'b, K, Q, V, S, A> {
     pub fn or_insert_with<F: FnOnce() -> V>(self, default: F) -> &'a mut V
     where
         K: Hash,
-        &'b Q: Into<K>,
+        Q: ToOwned<Owned = K>,
         S: BuildHasher,
     {
         match self {
@@ -4309,7 +4344,7 @@ impl<'a, 'b, K, Q: ?Sized, V, S, A: Allocator> EntryRef<'a, 'b, K, Q, V, S, A> {
     pub fn or_insert_with_key<F: FnOnce(&Q) -> V>(self, default: F) -> &'a mut V
     where
         K: Hash + Borrow<Q>,
-        &'b Q: Into<K>,
+        Q: ToOwned<Owned = K>,
         S: BuildHasher,
     {
         match self {
@@ -4405,7 +4440,7 @@ impl<'a, 'b, K, Q: ?Sized, V: Default, S, A: Allocator> EntryRef<'a, 'b, K, Q, V
     pub fn or_default(self) -> &'a mut V
     where
         K: Hash,
-        &'b Q: Into<K>,
+        Q: ToOwned<Owned = K>,
         S: BuildHasher,
     {
         match self {
@@ -4438,7 +4473,8 @@ impl<'a, 'b, K, Q: ?Sized, V: Default, S, A: Allocator> EntryRef<'a, 'b, K, Q, V
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn or_default_entry(self) -> OccupiedEntry<'a, K, V, S, A>
     where
-        K: Hash + From<&'b Q>,
+        K: Hash,
+        Q: ToOwned<Owned = K>,
         S: BuildHasher,
     {
         match self {
@@ -4487,13 +4523,13 @@ impl<'map, 'key, K, Q: ?Sized, V, S, A: Allocator> VacantEntryRef<'map, 'key, K,
     pub fn insert(self, value: V) -> &'map mut V
     where
         K: Hash,
-        &'key Q: Into<K>,
+        Q: ToOwned<Owned = K>,
         S: BuildHasher,
     {
         let table = &mut self.table.table;
         let entry = table.insert_entry(
             self.hash,
-            (self.key.into(), value),
+            (self.key.to_owned(), value),
             make_hasher::<_, V, S>(&self.table.hash_builder),
         );
         &mut entry.1
@@ -4504,7 +4540,7 @@ impl<'map, 'key, K, Q: ?Sized, V, S, A: Allocator> VacantEntryRef<'map, 'key, K,
     ///
     /// Unlike [`VacantEntryRef::insert`], this method allows the key to be
     /// explicitly specified, which is useful for key types that don't implement
-    /// `K: From<&Q>`.
+    /// `ToOwned`.
     ///
     /// # Panics
     ///
@@ -4520,7 +4556,7 @@ impl<'map, 'key, K, Q: ?Sized, V, S, A: Allocator> VacantEntryRef<'map, 'key, K,
     /// let mut map = HashMap::<(String, String), char>::new();
     /// let k = ("c".to_string(), "C".to_string());
     /// let v =  match map.entry_ref(&k) {
-    ///   // Insert cannot be used here because tuples do not implement From.
+    ///   // Insert cannot be used here because tuples do not implement ToOwned.
     ///   // However this works because we can manually clone instead.
     ///   EntryRef::Vacant(r) => r.insert_with_key(k.clone(), 'c'),
     ///   // In this branch we avoid the clone.
@@ -4535,17 +4571,7 @@ impl<'map, 'key, K, Q: ?Sized, V, S, A: Allocator> VacantEntryRef<'map, 'key, K,
         Q: Equivalent<K>,
         S: BuildHasher,
     {
-        let table = &mut self.table.table;
-        assert!(
-            (self.key).equivalent(&key),
-            "key used for Entry creation is not equivalent to the one used for insertion"
-        );
-        let entry = table.insert_entry(
-            self.hash,
-            (key, value),
-            make_hasher::<_, V, S>(&self.table.hash_builder),
-        );
-        &mut entry.1
+        self.insert_entry_with_key(key, value).into_mut()
     }
 
     /// Sets the value of the entry with the [`VacantEntryRef`]'s key,
@@ -4559,7 +4585,7 @@ impl<'map, 'key, K, Q: ?Sized, V, S, A: Allocator> VacantEntryRef<'map, 'key, K,
     ///
     /// let mut map: HashMap<&str, u32> = HashMap::new();
     ///
-    /// if let EntryRef::Vacant(v) = map.entry_ref("poneyland") {
+    /// if let EntryRef::Vacant(v) = map.entry_ref(&"poneyland") {
     ///     let o = v.insert_entry(37);
     ///     assert_eq!(o.get(), &37);
     /// }
@@ -4568,12 +4594,63 @@ impl<'map, 'key, K, Q: ?Sized, V, S, A: Allocator> VacantEntryRef<'map, 'key, K,
     pub fn insert_entry(self, value: V) -> OccupiedEntry<'map, K, V, S, A>
     where
         K: Hash,
-        &'key Q: Into<K>,
+        Q: ToOwned<Owned = K>,
         S: BuildHasher,
     {
         let elem = self.table.table.insert(
             self.hash,
-            (self.key.into(), value),
+            (self.key.to_owned(), value),
+            make_hasher::<_, V, S>(&self.table.hash_builder),
+        );
+        OccupiedEntry {
+            hash: self.hash,
+            elem,
+            table: self.table,
+        }
+    }
+
+    /// Sets the key and value of the entry and returns an [`OccupiedEntry`].
+    ///
+    /// Unlike [`VacantEntryRef::insert_entry`], this method allows the key to
+    /// be explicitly specified, which is useful for key types that don't
+    /// implement `ToOwned`.
+    ///
+    /// # Panics
+    ///
+    /// This method panics if `key` is not equivalent to the key used to create
+    /// the `VacantEntryRef`.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use hashbrown::hash_map::EntryRef;
+    /// use hashbrown::HashMap;
+    ///
+    /// let mut map = HashMap::<(String, String), char>::new();
+    /// let k = ("c".to_string(), "C".to_string());
+    /// let r = match map.entry_ref(&k) {
+    ///   // Insert cannot be used here because tuples do not implement ToOwned.
+    ///   // However this works because we can manually clone instead.
+    ///   EntryRef::Vacant(r) => r.insert_entry_with_key(k.clone(), 'c'),
+    ///   // In this branch we avoid the clone.
+    ///   EntryRef::Occupied(r) => r,
+    /// };
+    /// assert_eq!(r.get(), &'c');
+    /// ```
+    #[cfg_attr(feature = "inline-more", inline)]
+    pub fn insert_entry_with_key(self, key: K, value: V) -> OccupiedEntry<'map, K, V, S, A>
+    where
+        K: Hash,
+        Q: Equivalent<K>,
+        S: BuildHasher,
+    {
+        assert!(
+            (self.key).equivalent(&key),
+            "key used for Entry creation is not equivalent to the one used for insertion"
+        );
+        let elem = self.table.table.insert(
+            self.hash,
+            (key, value),
             make_hasher::<_, V, S>(&self.table.hash_builder),
         );
         OccupiedEntry {
