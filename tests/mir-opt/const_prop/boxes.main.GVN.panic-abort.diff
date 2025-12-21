@@ -22,7 +22,8 @@
 -         StorageLive(_2);
 +         nop;
           StorageLive(_3);
-          _4 = alloc::alloc::exchange_malloc(const <i32 as std::mem::SizedTypeProperties>::SIZE, const <i32 as std::mem::SizedTypeProperties>::ALIGN) -> [return: bb1, unwind unreachable];
+-         _4 = alloc::alloc::exchange_malloc(const <i32 as std::mem::SizedTypeProperties>::SIZE, const <i32 as std::mem::SizedTypeProperties>::ALIGN) -> [return: bb1, unwind unreachable];
++         _4 = alloc::alloc::exchange_malloc(const 4_usize, const 4_usize) -> [return: bb1, unwind unreachable];
       }
   
       bb1: {
