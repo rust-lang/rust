@@ -903,6 +903,7 @@ dependencies = [
  "salsa",
  "salsa-macros",
  "serde",
+ "serde_derive",
  "smallvec",
  "span",
  "stdx",
