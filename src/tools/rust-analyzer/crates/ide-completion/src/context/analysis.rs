@@ -1319,10 +1319,26 @@ fn classify_name_ref<'db>(
                     )
                 }
             };
-            let find_fn_self_param = |it| match it {
-                ast::Item::Fn(fn_) => Some(sema.to_def(&fn_).and_then(|it| it.self_param(sema.db))),
-                ast::Item::MacroCall(_) => None,
-                _ => Some(None),
+            let fn_self_param =
+                |fn_: ast::Fn| sema.to_def(&fn_).and_then(|it| it.self_param(sema.db));
+            let closure_this_param = |closure: ast::ClosureExpr| {
+                if closure.param_list()?.params().next()?.pat()?.syntax().text() != "this" {
+                    return None;
+                }
+                sema.type_of_expr(&closure.into())
+                    .and_then(|it| it.original.as_callable(sema.db))
+                    .and_then(|it| it.params().into_iter().next())
+            };
+            let find_fn_self_param = |it: SyntaxNode| {
+                match_ast! {
+                    match it {
+                        ast::Fn(fn_) => Some(fn_self_param(fn_).map(Either::Left)),
+                        ast::ClosureExpr(f) => closure_this_param(f).map(Either::Right).map(Some),
+                        ast::MacroCall(_) => None,
+                        ast::Item(_) => Some(None),
+                        _ => None,
+                    }
+                }
             };
 
             match find_node_in_file_compensated(sema, original_file, &expr) {
@@ -1335,7 +1351,6 @@ fn classify_name_ref<'db>(
 
                     let self_param = sema
                         .ancestors_with_macros(it.syntax().clone())
-                        .filter_map(ast::Item::cast)
                         .find_map(find_fn_self_param)
                         .flatten();
                     (innermost_ret_ty, self_param)

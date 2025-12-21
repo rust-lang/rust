@@ -3280,6 +3280,48 @@ impl S {
     }
 
     #[test]
+    fn field_access_includes_closure_this_param() {
+        check_edit(
+            "length",
+            r#"
+//- minicore: fn
+struct S {
+    length: i32
+}
+
+impl S {
+    fn pack(&mut self, f: impl FnOnce(&mut Self, i32)) {
+        self.length += 1;
+        f(self, 3);
+        self.length -= 1;
+    }
+
+    fn some_fn(&mut self) {
+        self.pack(|this, n| len$0);
+    }
+}
+"#,
+            r#"
+struct S {
+    length: i32
+}
+
+impl S {
+    fn pack(&mut self, f: impl FnOnce(&mut Self, i32)) {
+        self.length += 1;
+        f(self, 3);
+        self.length -= 1;
+    }
+
+    fn some_fn(&mut self) {
+        self.pack(|this, n| this.length);
+    }
+}
+"#,
+        )
+    }
+
+    #[test]
     fn notable_traits_method_relevance() {
         check_kinds(
             r#"
