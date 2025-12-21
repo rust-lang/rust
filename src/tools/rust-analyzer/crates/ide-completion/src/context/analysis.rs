@@ -88,15 +88,9 @@ pub(super) fn expand_and_analyze<'db>(
     let original_offset = expansion.original_offset + relative_offset;
     let token = expansion.original_file.token_at_offset(original_offset).left_biased()?;
 
-    hir::attach_db(sema.db, || analyze(sema, expansion, original_token, &token)).map(
-        |(analysis, expected, qualifier_ctx)| AnalysisResult {
-            analysis,
-            expected,
-            qualifier_ctx,
-            token,
-            original_offset,
-        },
-    )
+    analyze(sema, expansion, original_token, &token).map(|(analysis, expected, qualifier_ctx)| {
+        AnalysisResult { analysis, expected, qualifier_ctx, token, original_offset }
+    })
 }
 
 fn token_at_offset_ignore_whitespace(file: &SyntaxNode, offset: TextSize) -> Option<SyntaxToken> {
