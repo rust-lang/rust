@@ -420,6 +420,19 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
         self.ecx.typing_env()
     }
 
+    fn insert_unique(
+        &mut self,
+        ty: Ty<'tcx>,
+        value: impl FnOnce(VnOpaque) -> Value<'a, 'tcx>,
+    ) -> VnIndex {
+        let index = self.values.insert_unique(ty, value);
+        let _index = self.evaluated.push(None);
+        debug_assert_eq!(index, _index);
+        let _index = self.rev_locals.push(SmallVec::new());
+        debug_assert_eq!(index, _index);
+        index
+    }
+
     #[instrument(level = "trace", skip(self), ret)]
     fn insert(&mut self, ty: Ty<'tcx>, value: Value<'a, 'tcx>) -> VnIndex {
         let (index, new) = self.values.insert(ty, value);
@@ -437,11 +450,8 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
     /// from all the others.
     #[instrument(level = "trace", skip(self), ret)]
     fn new_opaque(&mut self, ty: Ty<'tcx>) -> VnIndex {
-        let index = self.values.insert_unique(ty, Value::Opaque);
-        let _index = self.evaluated.push(Some(None));
-        debug_assert_eq!(index, _index);
-        let _index = self.rev_locals.push(SmallVec::new());
-        debug_assert_eq!(index, _index);
+        let index = self.insert_unique(ty, Value::Opaque);
+        self.evaluated[index] = Some(None);
         index
     }
 
@@ -470,42 +480,29 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
             projection.map(|proj| proj.try_map(|index| self.locals[index], |ty| ty).ok_or(()));
         let projection = self.arena.try_alloc_from_iter(projection).ok()?;
 
-        let index = self.values.insert_unique(ty, |provenance| Value::Address {
+        let index = self.insert_unique(ty, |provenance| Value::Address {
             base,
             projection,
             kind,
             provenance,
         });
-        let _index = self.evaluated.push(None);
-        debug_assert_eq!(index, _index);
-        let _index = self.rev_locals.push(SmallVec::new());
-        debug_assert_eq!(index, _index);
-
         Some(index)
     }
 
     #[instrument(level = "trace", skip(self), ret)]
     fn insert_constant(&mut self, value: Const<'tcx>) -> VnIndex {
-        let (index, new) = if value.is_deterministic() {
+        if value.is_deterministic() {
             // The constant is deterministic, no need to disambiguate.
             let constant = Value::Constant { value, disambiguator: None };
-            self.values.insert(value.ty(), constant)
+            self.insert(value.ty(), constant)
         } else {
             // Multiple mentions of this constant will yield different values,
             // so assign a different `disambiguator` to ensure they do not get the same `VnIndex`.
-            let index = self.values.insert_unique(value.ty(), |disambiguator| Value::Constant {
+            self.insert_unique(value.ty(), |disambiguator| Value::Constant {
                 value,
                 disambiguator: Some(disambiguator),
-            });
-            (index, true)
-        };
-        if new {
-            let _index = self.evaluated.push(None);
-            debug_assert_eq!(index, _index);
-            let _index = self.rev_locals.push(SmallVec::new());
-            debug_assert_eq!(index, _index);
+            })
         }
-        index
     }
 
     #[inline]
