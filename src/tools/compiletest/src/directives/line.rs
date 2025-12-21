@@ -41,6 +41,19 @@ pub(crate) fn line_directive<'a>(
     Some(DirectiveLine { file_path, line_number, revision, raw_directive, name })
 }
 
+/// Generate a synthetic [`DirectiveLine`] to add the "needs-target-std" directive to a specific
+/// test. See [`crate::FileDirectives::from_file_contents`] for an explanation why this is needed.
+#[inline]
+pub(crate) fn generate_needs_std<'a>(file_path: &'a Utf8Path) -> DirectiveLine<'a> {
+    DirectiveLine {
+        file_path,
+        line_number: LineNumber::ZERO,
+        revision: None,
+        raw_directive: "needs-target-std",
+        name: "needs-target-std",
+    }
+}
+
 /// The (partly) broken-down contents of a line containing a test directive,
 /// which `iter_directives` passes to its callback function.
 ///

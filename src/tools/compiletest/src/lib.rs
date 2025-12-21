@@ -855,7 +855,8 @@ fn make_test(cx: &TestCollectorCx, collector: &mut TestCollector, testpaths: &Te
     // Scan the test file to discover its revisions, if any.
     let file_contents =
         fs::read_to_string(&test_path).expect("reading test file for directives should succeed");
-    let file_directives = FileDirectives::from_file_contents(&test_path, &file_contents);
+    let file_directives =
+        FileDirectives::from_file_contents(cx.config.suite, &test_path, &file_contents);
 
     if let Err(message) = directives::do_early_directives_check(cx.config.mode, &file_directives) {
         // FIXME(Zalathar): Overhaul compiletest error handling so that we
