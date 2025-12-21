@@ -1123,7 +1123,7 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         template!(Word, List: &[r#""...""#]), DuplicatesOk,
         EncodeCrossCrate::Yes,
     ),
-        rustc_attr!(
+    rustc_attr!(
         rustc_offload_kernel, Normal,
         template!(Word), DuplicatesOk,
         EncodeCrossCrate::Yes,

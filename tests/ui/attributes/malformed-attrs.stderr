@@ -141,12 +141,6 @@ LL | #[forbid(lint1, lint2, ...)]
 LL | #[forbid(lint1, lint2, lint3, reason = "...")]
    |         +++++++++++++++++++++++++++++++++++++
 
-error: malformed `thread_local` attribute input
-  --> $DIR/malformed-attrs.rs:210:1
-   |
-LL | #[thread_local()]
-   | ^^^^^^^^^^^^^^^^^ help: must be of the form: `#[thread_local]`
-
 error: the `#[proc_macro]` attribute is only usable with crates of the `proc-macro` crate type
   --> $DIR/malformed-attrs.rs:105:1
    |
@@ -617,6 +611,15 @@ LL | #[non_exhaustive = 1]
    | |                |
    | |                didn't expect any arguments here
    | help: must be of the form: `#[non_exhaustive]`
+
+error[E0565]: malformed `thread_local` attribute input
+  --> $DIR/malformed-attrs.rs:210:1
+   |
+LL | #[thread_local()]
+   | ^^^^^^^^^^^^^^--^
+   | |             |
+   | |             didn't expect any arguments here
+   | help: must be of the form: `#[thread_local]`
 
 error[E0565]: malformed `no_link` attribute input
   --> $DIR/malformed-attrs.rs:214:1
