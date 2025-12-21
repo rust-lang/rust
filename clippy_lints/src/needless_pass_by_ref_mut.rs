@@ -284,7 +284,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByRefMut<'tcx> {
                         NEEDLESS_PASS_BY_REF_MUT,
                         cx.tcx.local_def_id_to_hir_id(*fn_def_id),
                         sp,
-                        "this argument is a mutable reference, but not used mutably",
+                        "this parameter is a mutable reference but is not used mutably",
                         |diag| {
                             diag.span_suggestion(
                                 mut_span,
