@@ -11,6 +11,7 @@
 // when inside of a function called main. This, too, is a temporary workaround for not having a
 // frontend.
 
+#![feature(rustc_attrs)]
 #![feature(core_intrinsics)]
 #![no_main]
 
@@ -21,29 +22,31 @@ fn main() {
     core::hint::black_box(&x);
 }
 
-// CHECK: %struct.__tgt_offload_entry = type { i64, i16, i16, i32, ptr, ptr, i64, i64, ptr }
 // CHECK: %struct.ident_t = type { i32, i32, i32, i32, ptr }
+// CHECK: %struct.__tgt_offload_entry = type { i64, i16, i16, i32, ptr, ptr, i64, i64, ptr }
 // CHECK: %struct.__tgt_bin_desc = type { i32, ptr, ptr, ptr }
 // CHECK: %struct.__tgt_kernel_arguments = type { i32, i32, ptr, ptr, ptr, ptr, ptr, ptr, i64, i64, [3 x i32], [3 x i32], i32 }
-
-// CHECK: @.offload_sizes._kernel_1 = private unnamed_addr constant [1 x i64] [i64 1024]
-// CHECK: @.offload_maptypes._kernel_1 = private unnamed_addr constant [1 x i64] [i64 35]
-// CHECK: @._kernel_1.region_id = internal unnamed_addr constant i8 0
-// CHECK: @.offloading.entry_name._kernel_1 = internal unnamed_addr constant [10 x i8] c"_kernel_1\00", section ".llvm.rodata.offloading", align 1
-// CHECK: @.offloading.entry._kernel_1 = internal constant %struct.__tgt_offload_entry { i64 0, i16 1, i16 1, i32 0, ptr @._kernel_1.region_id, ptr @.offloading.entry_name._kernel_1, i64 0, i64 0, ptr null }, section "llvm_offload_entries", align 8
 
 // CHECK: @anon.{{.*}}.0 = private unnamed_addr constant [23 x i8] c";unknown;unknown;0;0;;\00", align 1
 // CHECK: @anon.{{.*}}.1 = private unnamed_addr constant %struct.ident_t { i32 0, i32 2, i32 0, i32 22, ptr @anon.{{.*}}.0 }, align 8
 
-// CHECK:  Function Attrs:
-// CHECK-NEXT: define{{( dso_local)?}} void @main()
+// CHECK: @.offload_sizes._kernel_1 = private unnamed_addr constant [1 x i64] [i64 1024]
+// CHECK: @.offload_maptypes._kernel_1 = private unnamed_addr constant [1 x i64] [i64 35]
+// CHECK: @._kernel_1.region_id = internal constant i8 0
+// CHECK: @.offloading.entry_name._kernel_1 = internal unnamed_addr constant [10 x i8] c"_kernel_1\00", section ".llvm.rodata.offloading", align 1
+// CHECK: @.offloading.entry._kernel_1 = internal constant %struct.__tgt_offload_entry { i64 0, i16 1, i16 1, i32 0, ptr @._kernel_1.region_id, ptr @.offloading.entry_name._kernel_1, i64 0, i64 0, ptr null }, section "llvm_offload_entries", align 8
+
+// CHECK: Function Attrs: nounwind
+// CHECK: declare i32 @__tgt_target_kernel(ptr, i64, i32, i32, ptr, ptr)
+
+// CHECK: define{{( dso_local)?}} void @main()
 // CHECK-NEXT: start:
 // CHECK-NEXT:   %0 = alloca [8 x i8], align 8
 // CHECK-NEXT:   %x = alloca [1024 x i8], align 16
 // CHECK:        call void @kernel_1(ptr noalias noundef nonnull align 4 dereferenceable(1024) %x)
 // CHECK-NEXT:   call void @llvm.lifetime.start.p0(i64 8, ptr nonnull %0)
 // CHECK-NEXT:   store ptr %x, ptr %0, align 8
-// CHECK-NEXT:   call void asm sideeffect "", "r,~{memory}"(ptr nonnull %0) #4, !srcloc !4
+// CHECK-NEXT:   call void asm sideeffect "", "r,~{memory}"(ptr nonnull %0)
 // CHECK-NEXT:   call void @llvm.lifetime.end.p0(i64 8, ptr nonnull %0)
 // CHECK-NEXT:   call void @llvm.lifetime.end.p0(i64 1024, ptr nonnull %x)
 // CHECK-NEXT:   ret void
@@ -91,9 +94,6 @@ fn main() {
 // CHECK-NEXT:   call void @__tgt_unregister_lib(ptr nonnull %EmptyDesc)
 // CHECK-NEXT:   ret void
 // CHECK-NEXT: }
-
-// CHECK: Function Attrs: nounwind
-// CHECK: declare i32 @__tgt_target_kernel(ptr, i64, i32, i32, ptr, ptr)
 
 #[unsafe(no_mangle)]
 #[inline(never)]

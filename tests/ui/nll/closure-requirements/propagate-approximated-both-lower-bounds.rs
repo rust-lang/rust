@@ -1,6 +1,5 @@
-// Test where we fail to approximate due to demanding a postdom
-// relationship between our upper bounds.
-
+// Test that we can propagate multiple region errors for closure constraints
+// where the longer region has multiple non-local lower bounds without any postdominating one.
 //@ compile-flags:-Zverbose-internals
 
 #![feature(rustc_attrs)]
@@ -13,9 +12,8 @@ use std::cell::Cell;
 // 'x: 'b
 // 'c: 'y
 //
-// we have to prove that `'x: 'y`. We currently can only approximate
-// via a postdominator -- hence we fail to choose between `'a` and
-// `'b` here and report the error in the closure.
+// we have to prove that `'x: 'y`. We find non-local lower bounds of 'x to be 'a and 'b and
+// non-local upper bound of 'y to be 'c. So we propagate `'b: 'c` and `'a: 'c`.
 fn establish_relationships<'a, 'b, 'c, F>(
     _cell_a: Cell<&'a u32>,
     _cell_b: Cell<&'b u32>,
@@ -36,6 +34,8 @@ fn demand_y<'x, 'y>(_cell_x: Cell<&'x u32>, _cell_y: Cell<&'y u32>, _y: &'y u32)
 
 #[rustc_regions]
 fn supply<'a, 'b, 'c>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>, cell_c: Cell<&'c u32>) {
+    //~vv ERROR lifetime may not live long enough
+    //~v ERROR lifetime may not live long enough
     establish_relationships(
         cell_a,
         cell_b,
@@ -43,7 +43,7 @@ fn supply<'a, 'b, 'c>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>, cell_c: Cell
         |_outlives1, _outlives2, _outlives3, x, y| {
             // Only works if 'x: 'y:
             let p = x.get();
-            demand_y(x, y, p) //~ ERROR
+            demand_y(x, y, p)
         },
     );
 }
