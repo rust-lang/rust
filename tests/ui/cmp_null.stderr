@@ -37,5 +37,11 @@ error: comparing with null is better expressed by the `.is_null()` method
 LL |     debug_assert!(f != std::ptr::null_mut());
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `!f.is_null()`
 
-error: aborting due to 6 previous errors
+error: comparing with null is better expressed by the `.is_null()` method
+  --> tests/ui/cmp_null.rs:56:8
+   |
+LL |     if dot_value!(x) == ptr::null() {
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `dot_value!(x).is_null()`
+
+error: aborting due to 7 previous errors
 
