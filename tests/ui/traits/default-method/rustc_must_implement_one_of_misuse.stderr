@@ -1,26 +1,36 @@
-error: malformed `rustc_must_implement_one_of` attribute input
+error[E0539]: malformed `rustc_must_implement_one_of` attribute input
+  --> $DIR/rustc_must_implement_one_of_misuse.rs:14:1
+   |
+LL | #[rustc_must_implement_one_of(a)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---^
+   | |                            |
+   | |                            expected 2 or more items
+   | help: must be of the form: `#[rustc_must_implement_one_of(function1, function2, ...)]`
+
+error[E0539]: malformed `rustc_must_implement_one_of` attribute input
   --> $DIR/rustc_must_implement_one_of_misuse.rs:20:1
    |
 LL | #[rustc_must_implement_one_of]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[rustc_must_implement_one_of(function1, function2, ...)]`
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | |
+   | expected this to be a list
+   | help: must be of the form: `#[rustc_must_implement_one_of(function1, function2, ...)]`
 
-error: attribute should be applied to a trait
+error: `#[rustc_must_implement_one_of]` attribute cannot be used on functions
   --> $DIR/rustc_must_implement_one_of_misuse.rs:38:1
    |
 LL | #[rustc_must_implement_one_of(abc, xyz)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-LL |
-LL | fn function() {}
-   | ---------------- not a trait
+   |
+   = help: `#[rustc_must_implement_one_of]` can only be applied to traits
 
-error: attribute should be applied to a trait
+error: `#[rustc_must_implement_one_of]` attribute cannot be used on structs
   --> $DIR/rustc_must_implement_one_of_misuse.rs:42:1
    |
 LL | #[rustc_must_implement_one_of(abc, xyz)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-LL |
-LL | struct Struct {}
-   | ---------------- not a trait
+   |
+   = help: `#[rustc_must_implement_one_of]` can only be applied to traits
 
 error: function not found in this trait
   --> $DIR/rustc_must_implement_one_of_misuse.rs:3:31
@@ -39,12 +49,6 @@ error: function not found in this trait
    |
 LL | #[rustc_must_implement_one_of(a, b)]
    |                                  ^
-
-error: the `#[rustc_must_implement_one_of]` attribute must be used with at least 2 args
-  --> $DIR/rustc_must_implement_one_of_misuse.rs:14:1
-   |
-LL | #[rustc_must_implement_one_of(a)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: not a function
   --> $DIR/rustc_must_implement_one_of_misuse.rs:26:5
@@ -98,3 +102,4 @@ LL | #[rustc_must_implement_one_of(a, b)]
 
 error: aborting due to 11 previous errors
 
+For more information about this error, try `rustc --explain E0539`.
