@@ -187,6 +187,9 @@ impl<'db> FulfillmentCtxt<'db> {
                 }
 
                 let result = delegate.evaluate_root_goal(goal, Span::dummy(), stalled_on);
+                infcx.inspect_evaluated_obligation(&obligation, &result, || {
+                    Some(delegate.evaluate_root_goal_for_proof_tree(goal, Span::dummy()).1)
+                });
                 let GoalEvaluation { goal: _, certainty, has_changed, stalled_on } = match result {
                     Ok(result) => result,
                     Err(NoSolution) => {

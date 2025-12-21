@@ -18,6 +18,7 @@ itertools.workspace = true
 arrayvec.workspace = true
 smallvec.workspace = true
 ena = "0.14.3"
+serde.workspace = true
 either.workspace = true
 oorandom = "11.1.5"
 tracing = { workspace = true, features = ["attributes"] }

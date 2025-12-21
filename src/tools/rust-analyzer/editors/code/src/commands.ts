@@ -599,6 +599,18 @@ export function viewMir(ctx: CtxInit): Cmd {
     return viewHirOrMir(ctx, "mir");
 }
 
+export function getFailedObligations(ctx: CtxInit): Cmd {
+    const uri = `rust-analyzer-failed-obligations://getFailedObligations/failedObligations.rs`;
+    const scheme = `rust-analyzer-failed-obligations`;
+    return viewFileUsingTextDocumentContentProvider(
+        ctx,
+        ra.getFailedObligations,
+        uri,
+        scheme,
+        true,
+    );
+}
+
 // Opens the virtual file that will show the MIR of the function containing the cursor position
 //
 // The contents of the file come from the `TextDocumentContentProvider`

@@ -339,6 +339,11 @@
                 "command": "rust-analyzer.openWalkthrough",
                 "title": "Open Walkthrough",
                 "category": "rust-analyzer"
+            },
+            {
+                "command": "rust-analyzer.getFailedObligations",
+                "title": "Get Failed Obligations",
+                "category": "rust-analyzer (debug command)"
             }
         ],
         "keybindings": [
@@ -3700,6 +3705,10 @@
                 {
                     "command": "rust-analyzer.syntaxTreeShowWhitespace",
                     "when": "false"
+                },
+                {
+                    "command": "rust-analyzer.getFailedObligations",
+                    "when": "inRustProject"
                 }
             ],
             "editor/context": [

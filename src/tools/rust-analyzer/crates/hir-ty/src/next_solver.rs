@@ -9,6 +9,7 @@ mod binder;
 mod consts;
 mod def_id;
 pub mod fold;
+pub mod format_proof_tree;
 pub mod fulfill;
 mod generic_arg;
 pub mod generics;

@@ -68,6 +68,7 @@ impl<'db> InferCtxt<'db> {
             inner: self.inner.clone(),
             tainted_by_errors: self.tainted_by_errors.clone(),
             universe: self.universe.clone(),
+            obligation_inspector: self.obligation_inspector.clone(),
         }
     }
 
@@ -84,6 +85,7 @@ impl<'db> InferCtxt<'db> {
             inner: self.inner.clone(),
             tainted_by_errors: self.tainted_by_errors.clone(),
             universe: self.universe.clone(),
+            obligation_inspector: self.obligation_inspector.clone(),
         }
     }
 }

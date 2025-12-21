@@ -32,11 +32,16 @@ use hir_expand::{
 use hir_ty::{
     InferenceResult,
     diagnostics::{unsafe_operations, unsafe_operations_for_body},
-    next_solver::DbInterner,
+    infer_query_with_inspect,
+    next_solver::{
+        DbInterner, Span,
+        format_proof_tree::{ProofTreeData, dump_proof_tree_structured},
+    },
 };
 use intern::{Interned, Symbol, sym};
 use itertools::Itertools;
 use rustc_hash::{FxHashMap, FxHashSet};
+use rustc_type_ir::inherent::Span as _;
 use smallvec::{SmallVec, smallvec};
 use span::{FileId, SyntaxContext};
 use stdx::{TupleExt, always};
@@ -2309,6 +2314,38 @@ impl<'db> SemanticsImpl<'db> {
         }
 
         Some(locals)
+    }
+
+    pub fn get_failed_obligations(&self, token: SyntaxToken) -> Option<String> {
+        let node = token.parent()?;
+        let node = self.find_file(&node);
+
+        let container = self.with_ctx(|ctx| ctx.find_container(node))?;
+
+        match container {
+            ChildContainer::DefWithBodyId(def) => {
+                thread_local! {
+                    static RESULT: RefCell<Vec<ProofTreeData>> = const { RefCell::new(Vec::new()) };
+                }
+                infer_query_with_inspect(
+                    self.db,
+                    def,
+                    Some(|infer_ctxt, _obligation, result, proof_tree| {
+                        if result.is_err()
+                            && let Some(tree) = proof_tree
+                        {
+                            let data = dump_proof_tree_structured(tree, Span::dummy(), infer_ctxt);
+                            RESULT.with(|ctx| ctx.borrow_mut().push(data));
+                        }
+                    }),
+                );
+                let data: Vec<ProofTreeData> =
+                    RESULT.with(|data| data.borrow_mut().drain(..).collect());
+                let data = serde_json::to_string_pretty(&data).unwrap_or_else(|_| "[]".to_owned());
+                Some(data)
+            }
+            _ => None,
+        }
     }
 }
 
