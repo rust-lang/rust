@@ -23,8 +23,8 @@ use std::process::Command;
 use std::str::FromStr;
 use std::{fmt, fs, io};
 
-use crate::CiInfo;
 use crate::diagnostics::TidyCtx;
+use crate::{CiInfo, ensure_version};
 
 mod rustdoc_js;
 
@@ -43,6 +43,7 @@ const RUFF_CACHE_PATH: &[&str] = &["cache", "ruff_cache"];
 const PIP_REQ_PATH: &[&str] = &["src", "tools", "tidy", "config", "requirements.txt"];
 
 const SPELLCHECK_DIRS: &[&str] = &["compiler", "library", "src/bootstrap", "src/librustdoc"];
+const SPELLCHECK_VER: &str = "1.38.1";
 
 pub fn check(
     root_path: &Path,
@@ -119,6 +120,9 @@ fn check_impl(
         crate::files_modified_batch_filter(ci_info, &mut lint_args, |ck, path| {
             ck.is_non_auto_or_matches(path)
         });
+    }
+    if lint_args.iter().any(|ck| ck.if_installed) {
+        lint_args.retain(|ck| ck.is_non_if_installed_or_matches(outdir));
     }
 
     macro_rules! extra_check {
@@ -620,8 +624,13 @@ fn spellcheck_runner(
     cargo: &Path,
     args: &[&str],
 ) -> Result<(), Error> {
-    let bin_path =
-        crate::ensure_version_or_cargo_install(outdir, cargo, "typos-cli", "typos", "1.38.1")?;
+    let bin_path = crate::ensure_version_or_cargo_install(
+        outdir,
+        cargo,
+        "typos-cli",
+        "typos",
+        SPELLCHECK_VER,
+    )?;
     match Command::new(bin_path).current_dir(src_root).args(args).status() {
         Ok(status) => {
             if status.success() {
@@ -736,10 +745,14 @@ enum ExtraCheckParseError {
     Empty,
     /// `auto` specified without lang part.
     AutoRequiresLang,
+    /// `if-installed` specified without lang part.
+    IfInsatlledRequiresLang,
 }
 
 struct ExtraCheckArg {
     auto: bool,
+    /// Only run the check if the requisite software is already installed.
+    if_installed: bool,
     lang: ExtraCheckLang,
     /// None = run all extra checks for the given lang
     kind: Option<ExtraCheckKind>,
@@ -748,6 +761,19 @@ struct ExtraCheckArg {
 impl ExtraCheckArg {
     fn matches(&self, lang: ExtraCheckLang, kind: ExtraCheckKind) -> bool {
         self.lang == lang && self.kind.map(|k| k == kind).unwrap_or(true)
+    }
+
+    fn is_non_if_installed_or_matches(&self, build_dir: &Path) -> bool {
+        if !self.if_installed {
+            return true;
+        }
+
+        match self.lang {
+            ExtraCheckLang::Spellcheck => {
+                ensure_version(build_dir, "typos", SPELLCHECK_VER).is_ok()
+            }
+            _ => todo!("implement other checks"),
+        }
     }
 
     /// Returns `false` if this is an auto arg and the passed filename does not trigger the auto rule
@@ -792,22 +818,41 @@ impl FromStr for ExtraCheckArg {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut auto = false;
+        let mut if_installed = false;
         let mut parts = s.split(':');
         let Some(mut first) = parts.next() else {
             return Err(ExtraCheckParseError::Empty);
         };
-        if first == "auto" {
-            let Some(part) = parts.next() else {
-                return Err(ExtraCheckParseError::AutoRequiresLang);
-            };
-            auto = true;
-            first = part;
+        loop {
+            if !auto && first == "auto" {
+                let Some(part) = parts.next() else {
+                    return Err(ExtraCheckParseError::AutoRequiresLang);
+                };
+                auto = true;
+                first = part;
+                continue;
+            }
+
+            if !if_installed && first == "if-installed" {
+                let Some(part) = parts.next() else {
+                    return Err(ExtraCheckParseError::IfInsatlledRequiresLang);
+                };
+                if_installed = true;
+                first = part;
+                continue;
+            }
+            break;
         }
         let second = parts.next();
         if parts.next().is_some() {
             return Err(ExtraCheckParseError::TooManyParts);
         }
-        let arg = Self { auto, lang: first.parse()?, kind: second.map(|s| s.parse()).transpose()? };
+        let arg = Self {
+            auto,
+            if_installed,
+            lang: first.parse()?,
+            kind: second.map(|s| s.parse()).transpose()?,
+        };
         if !arg.has_supported_kind() {
             return Err(ExtraCheckParseError::UnsupportedKindForLang);
         }

@@ -164,7 +164,8 @@ pub fn ensure_version(build_dir: &Path, bin_name: &str, version: &str) -> io::Re
 
     match Command::new(&bin_path).arg("--version").output() {
         Ok(output) => {
-            let Some(v) = str::from_utf8(&output.stdout).unwrap().trim().split_whitespace().last() else {
+            let Some(v) = str::from_utf8(&output.stdout).unwrap().trim().split_whitespace().last()
+            else {
                 return Err(io::Error::other("version check failed"));
             };
 
