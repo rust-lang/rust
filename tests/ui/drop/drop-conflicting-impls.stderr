@@ -1,5 +1,5 @@
 error[E0119]: conflicting implementations of trait `Drop` for type `MyStruct`
-  --> $DIR/issue-28568.rs:7:1
+  --> $DIR/drop-conflicting-impls.rs:8:1
    |
 LL | impl Drop for MyStruct {
    | ---------------------- first implementation here

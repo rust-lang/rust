@@ -1,3 +1,4 @@
+//! regression test for issue <https://github.com/rust-lang/rust/issues/36400>
 fn f(x: &mut u32) {}
 
 fn main() {

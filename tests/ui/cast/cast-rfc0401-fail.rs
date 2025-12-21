@@ -1,29 +1,33 @@
-fn illegal_cast<U:?Sized,V:?Sized>(u: *const U) -> *const V
-{
+fn illegal_cast<U: ?Sized, V: ?Sized>(u: *const U) -> *const V {
     u as *const V //~ ERROR is invalid
 }
 
-fn illegal_cast_2<U:?Sized>(u: *const U) -> *const str
-{
+fn illegal_cast_2<U: ?Sized>(u: *const U) -> *const str {
     u as *const str //~ ERROR is invalid
 }
 
-trait Foo { fn foo(&self) {} }
+trait Foo {
+    fn foo(&self) {}
+}
 impl<T> Foo for T {}
 
-trait Bar { fn foo(&self) {} }
+trait Bar {
+    fn foo(&self) {}
+}
 impl<T> Bar for T {}
 
 enum E {
-    A, B
+    A,
+    B,
 }
 
-fn main()
-{
+struct Inches(i32);
+
+fn main() {
     let f: f32 = 1.2;
     let v = core::ptr::null::<u8>();
-    let fat_v : *const [u8] = unsafe { &*core::ptr::null::<[u8; 1]>()};
-    let fat_sv : *const [i8] = unsafe { &*core::ptr::null::<[i8; 1]>()};
+    let fat_v: *const [u8] = unsafe { &*core::ptr::null::<[u8; 1]>() };
+    let fat_sv: *const [i8] = unsafe { &*core::ptr::null::<[i8; 1]>() };
     let foo: &dyn Foo = &f;
 
     let _ = v as &u8; //~ ERROR non-primitive cast
@@ -39,6 +43,7 @@ fn main()
     let _ = 3_i32 as bool; //~ ERROR cannot cast
     let _ = E::A as bool; //~ ERROR cannot cast
     let _ = 0x61u32 as char; //~ ERROR can be cast as
+    let _ = Inches as f32; //~ ERROR is invalid
 
     let _ = false as f32; //~ ERROR is invalid
     let _ = E::A as f32; //~ ERROR is invalid
@@ -58,7 +63,7 @@ fn main()
     let _ = &f as *const f64; //~ ERROR is invalid
     let _ = fat_sv as usize; //~ ERROR is invalid
 
-    let a : *const str = "hello";
+    let a: *const str = "hello";
     let _ = a as *const dyn Foo; //~ ERROR the size for values of type
 
     // check no error cascade

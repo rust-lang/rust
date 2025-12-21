@@ -1,5 +1,5 @@
 error[E0596]: cannot borrow `*x` as mutable, as `x` is not declared as mutable
-  --> $DIR/issue-36400.rs:5:7
+  --> $DIR/borrow-immutable-deref-box.rs:6:7
    |
 LL |     f(&mut *x);
    |       ^^^^^^^ cannot borrow as mutable

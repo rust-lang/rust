@@ -1,5 +1,5 @@
 error[E0277]: cannot add `()` to `{integer}`
-  --> $DIR/issue-50582.rs:2:18
+  --> $DIR/for-in-const-eval.rs:3:18
    |
 LL |     Vec::<[(); 1 + for x in 0..1 {}]>::new();
    |                  ^ no implementation for `{integer} + ()`

@@ -1,9 +1,17 @@
-enum Token { LeftParen, RightParen, Plus, Minus, /* etc */ }
+//! regression test for issue <https://github.com/rust-lang/rust/issues/23173>
+enum Token {
+    LeftParen,
+    RightParen,
+    Plus,
+    Minus, /* etc */
+}
 struct Struct {
     a: usize,
 }
 
-fn use_token(token: &Token) { unimplemented!() }
+fn use_token(token: &Token) {
+    unimplemented!()
+}
 
 fn main() {
     use_token(&Token::Homura); //~ ERROR no variant or associated item named `Homura`
