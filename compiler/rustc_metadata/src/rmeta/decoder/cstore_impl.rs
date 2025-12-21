@@ -2,6 +2,7 @@ use std::any::Any;
 use std::mem;
 use std::sync::Arc;
 
+use rustc_hir::Constness;
 use rustc_hir::attrs::Deprecation;
 use rustc_hir::def::{CtorKind, DefKind};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LOCAL_CRATE};
@@ -255,7 +256,13 @@ provide! { tcx, def_id, other, cdata,
     def_kind => { cdata.def_kind(tcx, def_id.index) }
     impl_parent => { table }
     defaultness => { table_direct }
-    constness => { table_direct }
+    constness => {
+        if let DefKind::Ctor(_, CtorKind::Fn) = cdata.def_kind(tcx, def_id.index) {
+            Constness::Const
+        } else {
+            cdata.root.tables.constness.get((cdata, tcx), def_id.index)
+        }
+    }
     const_conditions => { table }
     explicit_implied_const_bounds => { table_defaulted_array }
     coerce_unsized_info => {

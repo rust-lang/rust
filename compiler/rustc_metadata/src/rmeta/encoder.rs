@@ -1306,11 +1306,9 @@ fn should_encode_fn_sig(def_kind: DefKind) -> bool {
 
 fn should_encode_constness(def_kind: DefKind) -> bool {
     match def_kind {
-        DefKind::Fn
-        | DefKind::AssocFn
-        | DefKind::Closure
-        | DefKind::Ctor(_, CtorKind::Fn)
-        | DefKind::Impl { of_trait: false } => true,
+        DefKind::Fn | DefKind::AssocFn | DefKind::Closure | DefKind::Impl { of_trait: false } => {
+            true
+        }
 
         DefKind::Struct
         | DefKind::Union
@@ -1337,7 +1335,7 @@ fn should_encode_constness(def_kind: DefKind) -> bool {
         | DefKind::LifetimeParam
         | DefKind::GlobalAsm
         | DefKind::ExternCrate
-        | DefKind::Ctor(_, CtorKind::Const)
+        | DefKind::Ctor(..)
         | DefKind::Variant
         | DefKind::SyntheticCoroutineBody => false,
     }
