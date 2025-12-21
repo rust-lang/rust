@@ -1,5 +1,6 @@
 use std::mem::take;
 use std::ops::{Deref, DerefMut};
+use std::process::Command;
 
 use ast::token::IdentIsRaw;
 use rustc_ast::token::{self, Lit, LitKind, Token, TokenKind};
@@ -3052,6 +3053,107 @@ impl<'a> Parser<'a> {
         None
     }
 
+    /// Try to identify if a `git rebase` is in progress to provide more accurate labels.
+    fn vcs_conflict_marker_labels(&self, is_middlediff3: bool) -> ConflictMarkerLabels {
+        let mut msg_start: String = "that we're merging into".into();
+        let mut msg_middle: String = "incoming code".into();
+        let mut show_help = true;
+
+        // `git rev-parse --git-path rebase-merge`, in order to get the git metadata for the
+        // rebase currently happening. If this directory doesn't exist, then the merge conflicts
+        // were not caused by a rebase.
+        if let Ok(output) =
+            Command::new("git").args(["rev-parse", "--git-path", "rebase-merge"]).output()
+            && let Ok(relative_path) = String::from_utf8(output.stdout)
+            && let relative_path = relative_path.trim()
+            && let Ok(orig_head_sha) = std::fs::read_to_string(format!("{relative_path}/orig-head"))
+            && let Ok(onto_sha) = std::fs::read_to_string(format!("{relative_path}/onto"))
+        {
+            // git is installed, we're currently in a git repo, and that repo is currently in a
+            // rebase.
+            show_help = false;
+            debug!(?relative_path, ?orig_head_sha, ?onto_sha);
+            if let Ok(head_name) = std::fs::read_to_string(format!("{relative_path}/head-name"))
+                && let head_name = head_name.trim()
+                && let Some(branch_name) = head_name.strip_prefix("refs/heads/")
+            {
+                debug!(?head_name);
+                msg_middle =
+                    format!("code you had in branch `{branch_name}` that you are rebasing");
+            } else {
+                msg_middle =
+                    format!("code you had in commit `{orig_head_sha}` that you are rebasing");
+            }
+            if let Ok(output) =
+                Command::new("git").args(["branch", "--points-at", onto_sha.trim()]).output()
+                && let Ok(onto_branch) = String::from_utf8(output.stdout)
+            {
+                debug!(?onto_branch);
+                let onto_branches: Vec<_> = onto_branch
+                    .lines()
+                    .filter(|line| !line.starts_with("*"))
+                    .map(|line| format!("`{}`", line.trim()))
+                    .collect();
+                match &onto_branches[..] {
+                    branches if branches.len() > 4 => {
+                        msg_start = format!("from the branch we're rebasing onto");
+                    }
+                    [] => {
+                        // `git pull` caused a conflict and we're rebasing, instead of it being
+                        // caused by the more common `git rebase branch-name`.
+                        if let Ok(output) = Command::new("git")
+                            .args(["branch", "-r", "--points-at", onto_sha.trim()])
+                            .output()
+                            && let Ok(onto_branch) = String::from_utf8(output.stdout)
+                            && let onto_branches = onto_branch
+                                .lines()
+                                .filter_map(|line| {
+                                    if line.split(" -> ").count() == 1 {
+                                        Some(format!("`{}`", line.trim()))
+                                    } else {
+                                        None
+                                    }
+                                })
+                                .collect::<Vec<String>>()
+                            && !onto_branches.is_empty()
+                        {
+                            if let [branch] = &onto_branches[..] {
+                                msg_start =
+                                    format!("from the remote branch {branch} we're rebasing onto");
+                            } else {
+                                msg_start = format!("from the remote branch we're rebasing onto");
+                            }
+                        }
+                    }
+                    [branch] => {
+                        msg_start = format!("from branch {branch} we're rebasing onto");
+                    }
+                    [branches @ .., last] => {
+                        msg_start = format!(
+                            "from branches {} and {last} we're rebasing onto",
+                            branches.join(", ")
+                        );
+                    }
+                }
+            } else {
+                msg_start = format!("from commit `{}` that we're rebasing onto", onto_sha.trim());
+            }
+        }
+
+        ConflictMarkerLabels {
+            start: if is_middlediff3 {
+                "between this marker and `|||||||` is the code that we're merging into".to_string()
+            } else {
+                format!("between this marker and `=======` is the code {msg_start}")
+            },
+            middle: format!("between this marker and `>>>>>>>` is the {msg_middle}"),
+            middlediff3: "between this marker and `=======` is the base code (what the two refs \
+                          diverged from)",
+            end: "this marker concludes the conflict region",
+            show_help,
+        }
+    }
+
     pub(super) fn recover_vcs_conflict_marker(&mut self) {
         // <<<<<<<
         let Some(start) = self.conflict_marker(&TokenKind::Shl, &TokenKind::Lt) else {
@@ -3083,29 +3185,25 @@ impl<'a> Parser<'a> {
             self.bump();
         }
 
+        let labels = self.vcs_conflict_marker_labels(middlediff3.is_some());
+
         let mut err = self.dcx().struct_span_fatal(spans, "encountered diff marker");
         match middlediff3 {
             // We're using diff3
             Some(middlediff3) => {
-                err.span_label(
-                    start,
-                    "between this marker and `|||||||` is the code that we're merging into",
-                );
-                err.span_label(middlediff3, "between this marker and `=======` is the base code (what the two refs diverged from)");
+                err.span_label(start, labels.start);
+                err.span_label(middlediff3, labels.middlediff3);
             }
             None => {
-                err.span_label(
-                    start,
-                    "between this marker and `=======` is the code that we're merging into",
-                );
+                err.span_label(start, labels.start);
             }
         };
 
         if let Some(middle) = middle {
-            err.span_label(middle, "between this marker and `>>>>>>>` is the incoming code");
+            err.span_label(middle, labels.middle);
         }
         if let Some(end) = end {
-            err.span_label(end, "this marker concludes the conflict region");
+            err.span_label(end, labels.end);
         }
         err.note(
             "conflict markers indicate that a merge was started but could not be completed due \
@@ -3113,13 +3211,17 @@ impl<'a> Parser<'a> {
              to resolve a conflict, keep only the code you want and then delete the lines \
              containing conflict markers",
         );
-        err.help(
+        if labels.show_help {
+            // We couldn't identify that we're in the middle of a `git rebase` (either direct or
+            // caused by `git pull`), so we provide more generic information.
+            err.help(
             "if you're having merge conflicts after pulling new code:\n\
-             the top section is the code you already had and the bottom section is the remote code\n\
+             the top section is the remote code and the bottom section is the code you already had\n\
              if you're in the middle of a rebase:\n\
              the top section is the code being rebased onto and the bottom section is the code \
              coming from the current commit being rebased",
         );
+        }
 
         err.note(
             "for an explanation on these markers from the `git` documentation:\n\
@@ -3140,4 +3242,17 @@ impl<'a> Parser<'a> {
         }
         Ok(())
     }
+}
+
+struct ConflictMarkerLabels {
+    /// The label for the `<<<<<<<` marker.
+    start: String,
+    /// The label for the `|||||||` or `=======` marker.
+    middle: String,
+    /// The label for the `=======` marker.
+    middlediff3: &'static str,
+    /// The label for the `>>>>>>>` marker.
+    end: &'static str,
+    /// Whether we display a generic help on where the code might be coming from in each section.
+    show_help: bool,
 }
