@@ -1522,6 +1522,8 @@ fn test() {
         },
     );
 
-    expect![[r#""{\n  \"goal\": \"Goal { param_env: ParamEnv { clauses: [] }, predicate: Binder { value: TraitPredicate(usize: Trait, polarity:Positive), bound_vars: [] } }\",\n  \"result\": \"Err(NoSolution)\",\n  \"depth\": 0,\n  \"candidates\": []\n}""#]]
-    .assert_eq(&res.to_string());
+    let res: serde_json::Value = serde_json::from_str(res.as_str().unwrap()).unwrap();
+    let arr = res.as_array().unwrap();
+    assert_eq!(arr.len(), 2);
+    expect![[r#"{"goal":"Goal { param_env: ParamEnv { clauses: [] }, predicate: Binder { value: TraitPredicate(usize: Trait, polarity:Positive), bound_vars: [] } }","result":"Err(NoSolution)","depth":0,"candidates":[]}"#]].assert_eq(&arr[0].to_string());
 }

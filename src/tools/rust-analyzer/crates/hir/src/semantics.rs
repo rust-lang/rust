@@ -8,7 +8,6 @@ use std::{
     convert::Infallible,
     fmt, iter, mem,
     ops::{self, ControlFlow, Not},
-    sync::Mutex,
 };
 
 use base_db::FxIndexSet;
@@ -34,7 +33,10 @@ use hir_ty::{
     InferenceResult,
     diagnostics::{unsafe_operations, unsafe_operations_for_body},
     infer_query_with_inspect,
-    next_solver::{DbInterner, Span, format_proof_tree::dump_proof_tree_structured},
+    next_solver::{
+        DbInterner, Span,
+        format_proof_tree::{ProofTreeData, dump_proof_tree_structured},
+    },
 };
 use intern::{Interned, Symbol, sym};
 use itertools::Itertools;
@@ -2322,7 +2324,9 @@ impl<'db> SemanticsImpl<'db> {
 
         match container {
             ChildContainer::DefWithBodyId(def) => {
-                static RESULT: Mutex<String> = Mutex::new(String::new());
+                thread_local! {
+                    static RESULT: RefCell<Vec<ProofTreeData>> = const { RefCell::new(Vec::new()) };
+                }
                 infer_query_with_inspect(
                     self.db,
                     def,
@@ -2331,13 +2335,14 @@ impl<'db> SemanticsImpl<'db> {
                             && let Some(tree) = proof_tree
                         {
                             let data = dump_proof_tree_structured(tree, Span::dummy(), infer_ctxt);
-                            let data = serde_json::to_string_pretty(&data)
-                                .unwrap_or_else(|_| "{}".to_string());
-                            *RESULT.lock().unwrap() = data;
+                            RESULT.with(|ctx| ctx.borrow_mut().push(data));
                         }
                     }),
                 );
-                RESULT.lock().ok().map(|s| (*s).clone())
+                let data: Vec<ProofTreeData> =
+                    RESULT.with(|data| data.borrow_mut().drain(..).collect());
+                let data = serde_json::to_string_pretty(&data).unwrap_or_else(|_| "[]".to_owned());
+                Some(data)
             }
             _ => None,
         }
