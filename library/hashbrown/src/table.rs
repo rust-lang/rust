@@ -1,4 +1,4 @@
-use core::{fmt, iter::FusedIterator, marker::PhantomData};
+use core::{fmt, iter::FusedIterator, marker::PhantomData, ptr::NonNull};
 
 use crate::{
     control::Tag,
@@ -1066,6 +1066,29 @@ where
     /// ```
     pub fn iter_mut(&mut self) -> IterMut<'_, T> {
         IterMut {
+            inner: unsafe { self.raw.iter() },
+            marker: PhantomData,
+        }
+    }
+
+    /// An iterator visiting all elements in arbitrary order,
+    /// with pointers to the elements.
+    /// The iterator element type is `NonNull<T>`.
+    ///
+    /// This iterator is intended for APIs where only part of the elements are
+    /// mutable, with the remainder being immutable. In these cases, wrapping
+    /// the ordinary mutable iterator is incorrect because all components of
+    /// the element type will be [invariant]. A correct implementation will use
+    /// an appropriate [`PhantomData`] marker to make the immutable parts
+    /// [covariant] and the mutable parts invariant.
+    ///
+    /// [invariant]: https://doc.rust-lang.org/stable/reference/subtyping.html#r-subtyping.variance.invariant
+    /// [covariant]: https://doc.rust-lang.org/stable/reference/subtyping.html#r-subtyping.variance.covariant
+    ///
+    /// See the documentation for [`UnsafeIter`] for more information on how
+    /// to correctly use this.
+    pub fn unsafe_iter(&mut self) -> UnsafeIter<'_, T> {
+        UnsafeIter {
             inner: unsafe { self.raw.iter() },
             marker: PhantomData,
         }
@@ -2581,6 +2604,16 @@ pub struct IterMut<'a, T> {
     inner: RawIter<T>,
     marker: PhantomData<&'a mut T>,
 }
+impl<'a, T> IterMut<'a, T> {
+    /// Returns a iterator of references over the remaining items.
+    #[cfg_attr(feature = "inline-more", inline)]
+    pub fn iter(&self) -> Iter<'_, T> {
+        Iter {
+            inner: self.inner.clone(),
+            marker: PhantomData,
+        }
+    }
+}
 
 impl<T> Default for IterMut<'_, T> {
     #[cfg_attr(feature = "inline-more", inline)]
@@ -2629,12 +2662,124 @@ where
     T: fmt::Debug,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_list()
-            .entries(Iter {
-                inner: self.inner.clone(),
-                marker: PhantomData,
-            })
-            .finish()
+        f.debug_list().entries(self.iter()).finish()
+    }
+}
+
+/// An unsafe iterator over the entries of a `HashTable` in arbitrary order.
+/// The iterator element type is `NonNull<T>`.
+///
+/// This `struct` is created by the [`unsafe_iter`] method on [`HashTable`].
+///
+/// This is used for implementations of iterators with "mixed" mutability on
+/// the iterated elements. For example, a mutable iterator for a map may return
+/// an immutable key alongside a mutable value, even though these are both
+/// stored inside the table.
+///
+/// If you have no idea what any of this means, you probably should be using
+/// [`IterMut`] instead, as it does not have any safety requirements.
+///
+/// # Safety
+///
+/// In order to correctly use this iterator, it should be wrapped in a safe
+/// iterator struct with the appropriate [`PhantomData`] marker to indicate the
+/// correct [variance].
+///
+/// For example, below is a simplified [`hash_map::IterMut`] implementation
+/// that correctly returns a [covariant] key, and an [invariant] value:
+///
+/// [variance]: https://doc.rust-lang.org/stable/reference/subtyping.html#r-subtyping.variance
+/// [covariant]: https://doc.rust-lang.org/stable/reference/subtyping.html#r-subtyping.variance.covariant
+/// [invariant]: https://doc.rust-lang.org/stable/reference/subtyping.html#r-subtyping.variance.invariant
+/// [`hash_map::IterMut`]: crate::hash_map::IterMut
+///
+/// ```rust
+/// use core::marker::PhantomData;
+/// use hashbrown::hash_table;
+///
+/// pub struct IterMut<'a, K, V> {
+///     inner: hash_table::UnsafeIter<'a, (K, V)>,
+///     // Covariant over keys, invariant over values
+///     marker: PhantomData<(&'a K, &'a mut V)>,
+/// }
+/// impl<'a, K, V> Iterator for IterMut<'a, K, V> {
+///     // Immutable keys, mutable values
+///     type Item = (&'a K, &'a mut V);
+///
+///     fn next(&mut self) -> Option<Self::Item> {
+///         // SAFETY: The lifetime of the dereferenced pointer is derived from
+///         // the lifetime of its iterator, ensuring that it's always valid.
+///         // Additionally, we match the mutability in `self.marker` to ensure
+///         // the correct variance.
+///         let (ref key, ref mut val) = unsafe { self.inner.next()?.as_mut() };
+///         Some((key, val))
+///     }
+/// }
+/// ```
+pub struct UnsafeIter<'a, T> {
+    inner: RawIter<T>,
+    marker: PhantomData<&'a ()>,
+}
+impl<'a, T> UnsafeIter<'a, T> {
+    /// Returns a iterator of references over the remaining items.
+    #[cfg_attr(feature = "inline-more", inline)]
+    pub fn iter(&self) -> Iter<'_, T> {
+        Iter {
+            inner: self.inner.clone(),
+            marker: PhantomData,
+        }
+    }
+}
+
+impl<T> Default for UnsafeIter<'_, T> {
+    #[cfg_attr(feature = "inline-more", inline)]
+    fn default() -> Self {
+        UnsafeIter {
+            inner: Default::default(),
+            marker: PhantomData,
+        }
+    }
+}
+impl<'a, T> Iterator for UnsafeIter<'a, T> {
+    type Item = NonNull<T>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        // Avoid `Option::map` because it bloats LLVM IR.
+        match self.inner.next() {
+            Some(bucket) => Some(unsafe { NonNull::new_unchecked(bucket.as_ptr()) }),
+            None => None,
+        }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.inner.size_hint()
+    }
+
+    fn fold<B, F>(self, init: B, mut f: F) -> B
+    where
+        Self: Sized,
+        F: FnMut(B, Self::Item) -> B,
+    {
+        self.inner.fold(init, |acc, bucket| unsafe {
+            f(acc, NonNull::new_unchecked(bucket.as_ptr()))
+        })
+    }
+}
+
+impl<T> ExactSizeIterator for UnsafeIter<'_, T> {
+    fn len(&self) -> usize {
+        self.inner.len()
+    }
+}
+
+impl<T> FusedIterator for UnsafeIter<'_, T> {}
+
+impl<T> fmt::Debug for UnsafeIter<'_, T>
+where
+    T: fmt::Debug,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_list().entries(self.iter()).finish()
     }
 }
 
@@ -2888,6 +3033,19 @@ where
 {
     inner: RawIntoIter<T, A>,
 }
+impl<T, A> IntoIter<T, A>
+where
+    A: Allocator,
+{
+    /// Returns a iterator of references over the remaining items.
+    #[cfg_attr(feature = "inline-more", inline)]
+    pub fn iter(&self) -> Iter<'_, T> {
+        Iter {
+            inner: self.inner.iter(),
+            marker: PhantomData,
+        }
+    }
+}
 
 impl<T, A: Allocator> Default for IntoIter<T, A> {
     #[cfg_attr(feature = "inline-more", inline)]
@@ -2938,12 +3096,7 @@ where
     A: Allocator,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_list()
-            .entries(Iter {
-                inner: self.inner.iter(),
-                marker: PhantomData,
-            })
-            .finish()
+        f.debug_list().entries(self.iter()).finish()
     }
 }
 
@@ -2956,6 +3109,16 @@ where
 /// [`drain`]: struct.HashTable.html#method.drain
 pub struct Drain<'a, T, A: Allocator = Global> {
     inner: RawDrain<'a, T, A>,
+}
+impl<'a, T, A: Allocator> Drain<'a, T, A> {
+    /// Returns a iterator of references over the remaining items.
+    #[cfg_attr(feature = "inline-more", inline)]
+    pub fn iter(&self) -> Iter<'_, T> {
+        Iter {
+            inner: self.inner.iter(),
+            marker: PhantomData,
+        }
+    }
 }
 
 impl<T, A: Allocator> Iterator for Drain<'_, T, A> {
@@ -2988,12 +3151,7 @@ impl<T, A: Allocator> FusedIterator for Drain<'_, T, A> {}
 
 impl<T: fmt::Debug, A: Allocator> fmt::Debug for Drain<'_, T, A> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_list()
-            .entries(Iter {
-                inner: self.inner.iter(),
-                marker: PhantomData,
-            })
-            .finish()
+        f.debug_list().entries(self.iter()).finish()
     }
 }
 
