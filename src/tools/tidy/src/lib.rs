@@ -158,6 +158,27 @@ pub fn files_modified(ci_info: &CiInfo, pred: impl Fn(&str) -> bool) -> bool {
     !v.is_empty()
 }
 
+/// Check if the given executable is installed and the version is expected.
+pub fn ensure_version(build_dir: &Path, bin_name: &str, version: &str) -> io::Result<PathBuf> {
+    let bin_path = build_dir.join("misc-tools").join("bin").join(bin_name);
+
+    match Command::new(&bin_path).arg("--version").output() {
+        Ok(output) => {
+            let Some(v) = str::from_utf8(&output.stdout).unwrap().trim().split_whitespace().last() else {
+                return Err(io::Error::other("version check failed"));
+            };
+
+            if v != version {
+                eprintln!(
+                    "warning: the tool `{bin_name}` is detected, but version {v} doesn't match with the expected version {version}"
+                );
+            }
+            Ok(bin_path)
+        }
+        Err(e) => Err(e),
+    }
+}
+
 /// If the given executable is installed with the given version, use that,
 /// otherwise install via cargo.
 pub fn ensure_version_or_cargo_install(
@@ -167,30 +188,16 @@ pub fn ensure_version_or_cargo_install(
     bin_name: &str,
     version: &str,
 ) -> io::Result<PathBuf> {
+    if let Ok(bin_path) = ensure_version(build_dir, bin_name, version) {
+        return Ok(bin_path);
+    }
+
+    eprintln!("building external tool {bin_name} from package {pkg_name}@{version}");
+
     let tool_root_dir = build_dir.join("misc-tools");
     let tool_bin_dir = tool_root_dir.join("bin");
     let bin_path = tool_bin_dir.join(bin_name).with_extension(env::consts::EXE_EXTENSION);
 
-    // ignore the process exit code here and instead just let the version number check fail.
-    // we also importantly don't return if the program wasn't installed,
-    // instead we want to continue to the fallback.
-    'ck: {
-        // FIXME: rewrite as if-let chain once this crate is 2024 edition.
-        let Ok(output) = Command::new(&bin_path).arg("--version").output() else {
-            break 'ck;
-        };
-        let Ok(s) = str::from_utf8(&output.stdout) else {
-            break 'ck;
-        };
-        let Some(v) = s.trim().split_whitespace().last() else {
-            break 'ck;
-        };
-        if v == version {
-            return Ok(bin_path);
-        }
-    }
-
-    eprintln!("building external tool {bin_name} from package {pkg_name}@{version}");
     // use --force to ensure that if the required version is bumped, we update it.
     // use --target-dir to ensure we have a build cache so repeated invocations aren't slow.
     // modify PATH so that cargo doesn't print a warning telling the user to modify the path.
