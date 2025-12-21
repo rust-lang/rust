@@ -521,6 +521,7 @@ pub(crate) enum AttributeParseErrorReason<'a> {
     ExpectedList,
     ExpectedListOrNoArgs,
     ExpectedNameValueOrNoArgs,
+    ExpectedNonEmptyStringLiteral,
     UnexpectedLiteral,
     ExpectedNameValue(Option<Symbol>),
     DuplicateKey(Symbol),
@@ -598,6 +599,9 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for AttributeParseError<'_> {
             }
             AttributeParseErrorReason::ExpectedNameValueOrNoArgs => {
                 diag.span_label(self.span, "didn't expect a list here");
+            }
+            AttributeParseErrorReason::ExpectedNonEmptyStringLiteral => {
+                diag.span_label(self.span, "string is not allowed to be empty");
             }
             AttributeParseErrorReason::DuplicateKey(key) => {
                 diag.span_label(self.span, format!("found `{key}` used as a key more than once"));
