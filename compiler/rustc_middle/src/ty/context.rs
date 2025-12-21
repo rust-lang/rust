@@ -2654,7 +2654,7 @@ struct InternedInSet<'tcx, T: ?Sized + PointeeSized>(&'tcx T);
 
 impl<'tcx, T: 'tcx + ?Sized + PointeeSized> Clone for InternedInSet<'tcx, T> {
     fn clone(&self) -> Self {
-        InternedInSet(self.0)
+        *self
     }
 }
 
