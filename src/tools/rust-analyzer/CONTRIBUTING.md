@@ -1,3 +1,8 @@
+> [!IMPORTANT]
+> We have enacted a feature freeze for IDE assists to cope with the PR backlog as well as allowing us to prepare for the rowan transition!
+> If you submit a PR that **adds** new ide-assists, chances are very high that we will just close it on this basis alone until we have the capacity to deal with them again.
+
+
 # Contributing to rust-analyzer
 
 Thank you for your interest in contributing to rust-analyzer! There are many ways to contribute
