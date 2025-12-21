@@ -57,7 +57,7 @@ class RoaringBitmap {
         } else if (u8array[i] > 0xe0) {
             // Special representation of tiny sets that are runs
             const lspecial = u8array[i] & 0x0f;
-            this.keysAndCardinalities = new Uint8Array(lspecial * 4);
+            this.keysAndCardinalities = new Uint8Array(lspecial << 2);
             i += 1;
             const key = u8array[i + 2] | (u8array[i + 3] << 8);
             const value = u8array[i] | (u8array[i + 1] << 8);
@@ -74,7 +74,7 @@ class RoaringBitmap {
         } else if (u8array[i] > 0xd0) {
             // Special representation of tiny sets that are close together
             const lspecial = u8array[i] & 0x0f;
-            this.keysAndCardinalities = new Uint8Array(lspecial * 4);
+            this.keysAndCardinalities = new Uint8Array(lspecial << 2);
             let pspecial = i + 1;
             let key = u8array[pspecial + 2] | (u8array[pspecial + 3] << 8);
             let value = u8array[pspecial] | (u8array[pspecial + 1] << 8);
@@ -93,8 +93,8 @@ class RoaringBitmap {
                 key = entry >> 16;
                 container = this.addToArrayAt(key);
                 const cardinalityOld = container.cardinality;
-                container.array[cardinalityOld * 2] = value & 0xFF;
-                container.array[(cardinalityOld * 2) + 1] = (value >> 8) & 0xFF;
+                container.array[cardinalityOld << 1] = value & 0xFF;
+                container.array[(cardinalityOld << 1) + 1] = (value >> 8) & 0xFF;
                 container.cardinality = cardinalityOld + 1;
                 pspecial += 1;
             }
@@ -2409,7 +2409,7 @@ function loadDatabase(hooks) {
                             encoded.subarray(i, i + (branch_leaves_count * 2)),
                         ),
                     ];
-                    i += branch_leaves_count * 2;
+                    i += branch_leaves_count << 1;
                 }
                 branch_nodes.push(Promise.resolve(
                     is_suffixes_only ?
@@ -2465,7 +2465,7 @@ function loadDatabase(hooks) {
                             encoded.subarray(i, i + (leaves_count * 2)),
                         ),
                     ];
-                    i += leaves_count * 2;
+                    i += leaves_count << 1;
                 }
             }
             return is_suffixes_only ?
@@ -3054,8 +3054,7 @@ function loadDatabase(hooks) {
                 const leaves_count = no_leaves_flag !== 0 ?
                     0 :
                     ((compression_tag >> 4) & 0x07) + 1;
-                const leaves_is_run = no_leaves_flag !== 0 ?
-                    false :
+                const leaves_is_run = no_leaves_flag === 0 &&
                     ((compression_tag >> 4) & 0x08) !== 0;
                 const branch_count = is_long_compressed ?
                     ((compression_tag >> 8) & 0xff) + 1 :
@@ -3086,7 +3085,7 @@ function loadDatabase(hooks) {
                     if (branch_leaves_is_run) {
                         i += 2;
                     } else {
-                        i += branch_leaves_count * 2;
+                        i += branch_leaves_count << 1;
                     }
                 }
                 // branch keys
@@ -3095,7 +3094,7 @@ function loadDatabase(hooks) {
                 if (leaves_is_run) {
                     i += 2;
                 } else {
-                    i += leaves_count * 2;
+                    i += leaves_count << 1;
                 }
                 if (is_data_compressed) {
                     const clen = (
