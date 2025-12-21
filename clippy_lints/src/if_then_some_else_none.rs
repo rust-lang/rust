@@ -109,13 +109,19 @@ impl<'tcx> LateLintPass<'tcx> for IfThenSomeElseNone {
                         .maybe_paren()
                         .to_string();
                     let arg_snip = snippet_with_context(cx, then_arg.span, ctxt, "[body]", &mut app).0;
-                    let method_body = if let Some(first_stmt) = then_block.stmts.first()
-                        && let Some(first_stmt_span) = walk_span_to_context(first_stmt.span, ctxt)
+                    let method_body = if let Some(_) = then_block.stmts.first()
+                        && let Some(then_span) = walk_span_to_context(then.span, ctxt)
                     {
-                        let block_snippet =
-                            snippet_with_applicability(cx, first_stmt_span.until(then_expr.span), "..", &mut app);
+                        let block_before_snippet =
+                            snippet_with_applicability(cx, then_span.until(then_expr.span), "..", &mut app);
+                        let block_after_snippet = snippet_with_applicability(
+                            cx,
+                            then_expr.span.shrink_to_hi().until(then_span.shrink_to_hi()),
+                            "..",
+                            &mut app,
+                        );
                         let closure = if method_name == sym::then { "|| " } else { "" };
-                        format!("{closure} {{ {} {arg_snip} }}", block_snippet.trim_end())
+                        format!("{closure}{block_before_snippet}{arg_snip}{block_after_snippet}")
                     } else if method_name == sym::then {
                         (std::borrow::Cow::Borrowed("|| ") + arg_snip).into_owned()
                     } else {
