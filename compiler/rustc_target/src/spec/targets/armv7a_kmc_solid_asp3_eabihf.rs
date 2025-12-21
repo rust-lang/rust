@@ -17,7 +17,7 @@ pub(crate) fn target() -> Target {
             abi: Abi::EabiHf,
             llvm_floatabi: Some(FloatAbi::Hard),
             linker: Some("arm-kmc-eabi-gcc".into()),
-            features: "+v7,+vfp3,-d32,+thumb2,-neon".into(),
+            features: "+v7,+vfp3d16,+thumb2,-neon".into(),
             relocation_model: RelocModel::Static,
             disable_redzone: true,
             max_atomic_width: Some(64),
