@@ -419,6 +419,48 @@ pub fn eq_label_lt(lt1: &Option<ast::Lifetime>, lt2: &Option<ast::Lifetime>) -> 
     lt1.as_ref().zip(lt2.as_ref()).is_some_and(|(lt, lbl)| lt.text() == lbl.text())
 }
 
+/// Find the loop or block to break or continue, multiple results may be caused by macros.
+pub fn find_loops(
+    sema: &hir::Semantics<'_, crate::RootDatabase>,
+    token: &syntax::SyntaxToken,
+) -> Option<impl Iterator<Item = ast::Expr>> {
+    let parent = token.parent()?;
+    let lbl = syntax::match_ast! {
+        match parent {
+            ast::BreakExpr(break_) => break_.lifetime(),
+            ast::ContinueExpr(continue_) => continue_.lifetime(),
+            _ => None,
+        }
+    };
+    let label_matches =
+        move |it: Option<ast::Label>| match (lbl.as_ref(), it.and_then(|it| it.lifetime())) {
+            (Some(lbl), Some(it)) => lbl.text() == it.text(),
+            (None, _) => true,
+            (Some(_), None) => false,
+        };
+
+    let find_ancestors = move |token| {
+        for anc in sema.token_ancestors_with_macros(token).filter_map(ast::Expr::cast) {
+            let node = match &anc {
+                ast::Expr::LoopExpr(loop_) if label_matches(loop_.label()) => anc,
+                ast::Expr::WhileExpr(while_) if label_matches(while_.label()) => anc,
+                ast::Expr::ForExpr(for_) if label_matches(for_.label()) => anc,
+                ast::Expr::BlockExpr(blk)
+                    if blk.label().is_some() && label_matches(blk.label()) =>
+                {
+                    anc
+                }
+                _ => continue,
+            };
+
+            return Some(node);
+        }
+        None
+    };
+
+    sema.descend_into_macros(token.clone()).into_iter().filter_map(find_ancestors).into()
+}
+
 struct TreeWithDepthIterator {
     preorder: Preorder<RustLanguage>,
     depth: u32,

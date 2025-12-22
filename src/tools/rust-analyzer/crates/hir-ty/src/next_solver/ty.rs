@@ -7,13 +7,15 @@ use hir_def::{
     hir::generics::{TypeOrConstParamData, TypeParamProvenance},
 };
 use hir_def::{TraitId, type_ref::Rawness};
+use intern::{Interned, InternedRef, impl_internable};
+use macros::GenericTypeVisitable;
 use rustc_abi::{Float, Integer, Size};
 use rustc_ast_ir::{Mutability, try_visit, visit::VisitorResult};
 use rustc_type_ir::{
     AliasTyKind, BoundVar, BoundVarIndexKind, ClosureKind, CoroutineArgs, CoroutineArgsParts,
-    DebruijnIndex, FlagComputation, Flags, FloatTy, FloatVid, InferTy, IntTy, IntVid, Interner,
-    TyVid, TypeFoldable, TypeSuperFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
-    TypeVisitor, UintTy, Upcast, WithCachedTypeInfo,
+    DebruijnIndex, FlagComputation, Flags, FloatTy, FloatVid, GenericTypeVisitable, InferTy, IntTy,
+    IntVid, Interner, TyVid, TypeFoldable, TypeSuperFoldable, TypeSuperVisitable, TypeVisitable,
+    TypeVisitableExt, TypeVisitor, UintTy, Upcast, WithCachedTypeInfo,
     inherent::{
         AdtDef as _, BoundExistentialPredicates, BoundVarLike, Const as _, GenericArgs as _,
         IntoKind, ParamLike, PlaceholderLike, Safety as _, SliceLike, Ty as _,
@@ -28,15 +30,15 @@ use crate::{
     lower::GenericPredicates,
     next_solver::{
         AdtDef, AliasTy, Binder, CallableIdWrapper, Clause, ClauseKind, ClosureIdWrapper, Const,
-        CoroutineIdWrapper, FnSig, GenericArg, PolyFnSig, Region, TraitRef, TypeAliasIdWrapper,
+        CoroutineIdWrapper, FnSig, GenericArgKind, PolyFnSig, Region, TraitRef, TypeAliasIdWrapper,
         abi::Safety,
-        interner::InternedWrapperNoDebug,
+        impl_foldable_for_interned_slice, impl_stored_interned, interned_slice,
         util::{CoroutineArgsExt, IntegerTypeExt},
     },
 };
 
 use super::{
-    BoundVarKind, DbInterner, GenericArgs, Placeholder, SolverDefId, interned_vec_db,
+    BoundVarKind, DbInterner, GenericArgs, Placeholder, SolverDefId,
     util::{FloatExt, IntegerExt},
 };
 
@@ -44,11 +46,17 @@ pub type SimplifiedType = rustc_type_ir::fast_reject::SimplifiedType<SolverDefId
 pub type TyKind<'db> = rustc_type_ir::TyKind<DbInterner<'db>>;
 pub type FnHeader<'db> = rustc_type_ir::FnHeader<DbInterner<'db>>;
 
-#[salsa::interned(constructor = new_)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Ty<'db> {
-    #[returns(ref)]
-    kind_: InternedWrapperNoDebug<WithCachedTypeInfo<TyKind<'db>>>,
+    pub(super) interned: InternedRef<'db, TyInterned>,
 }
+
+#[derive(PartialEq, Eq, Hash, GenericTypeVisitable)]
+#[repr(align(4))] // Required for `GenericArg` bit-tagging.
+pub(super) struct TyInterned(WithCachedTypeInfo<TyKind<'static>>);
+
+impl_internable!(gc; TyInterned);
+impl_stored_interned!(TyInterned, Ty, StoredTy);
 
 const _: () = {
     const fn is_copy<T: Copy>() {}
@@ -56,23 +64,27 @@ const _: () = {
 };
 
 impl<'db> Ty<'db> {
-    pub fn new(interner: DbInterner<'db>, kind: TyKind<'db>) -> Self {
+    #[inline]
+    pub fn new(_interner: DbInterner<'db>, kind: TyKind<'db>) -> Self {
+        let kind = unsafe { std::mem::transmute::<TyKind<'db>, TyKind<'static>>(kind) };
         let flags = FlagComputation::for_kind(&kind);
         let cached = WithCachedTypeInfo {
             internee: kind,
             flags: flags.flags,
             outer_exclusive_binder: flags.outer_exclusive_binder,
         };
-        Ty::new_(interner.db(), InternedWrapperNoDebug(cached))
+        Self { interned: Interned::new_gc(TyInterned(cached)) }
     }
 
+    #[inline]
     pub fn inner(&self) -> &WithCachedTypeInfo<TyKind<'db>> {
-        crate::with_attached_db(|db| {
-            let inner = &self.kind_(db).0;
-            // SAFETY: The caller already has access to a `Ty<'db>`, so borrowchecking will
-            // make sure that our returned value is valid for the lifetime `'db`.
-            unsafe { std::mem::transmute(inner) }
-        })
+        let inner = &self.interned.0;
+        unsafe {
+            std::mem::transmute::<
+                &WithCachedTypeInfo<TyKind<'static>>,
+                &WithCachedTypeInfo<TyKind<'db>>,
+            >(inner)
+        }
     }
 
     pub fn new_adt(interner: DbInterner<'db>, adt_id: AdtId, args: GenericArgs<'db>) -> Self {
@@ -99,16 +111,39 @@ impl<'db> Ty<'db> {
         Ty::new_infer(interner, InferTy::FloatVar(v))
     }
 
+    #[inline]
     pub fn new_int(interner: DbInterner<'db>, i: IntTy) -> Self {
-        Ty::new(interner, TyKind::Int(i))
+        let types = interner.default_types();
+        match i {
+            IntTy::Isize => types.types.isize,
+            IntTy::I8 => types.types.i8,
+            IntTy::I16 => types.types.i16,
+            IntTy::I32 => types.types.i32,
+            IntTy::I64 => types.types.i64,
+            IntTy::I128 => types.types.i128,
+        }
     }
 
     pub fn new_uint(interner: DbInterner<'db>, ui: UintTy) -> Self {
-        Ty::new(interner, TyKind::Uint(ui))
+        let types = interner.default_types();
+        match ui {
+            UintTy::Usize => types.types.usize,
+            UintTy::U8 => types.types.u8,
+            UintTy::U16 => types.types.u16,
+            UintTy::U32 => types.types.u32,
+            UintTy::U64 => types.types.u64,
+            UintTy::U128 => types.types.u128,
+        }
     }
 
     pub fn new_float(interner: DbInterner<'db>, f: FloatTy) -> Self {
-        Ty::new(interner, TyKind::Float(f))
+        let types = interner.default_types();
+        match f {
+            FloatTy::F16 => types.types.f16,
+            FloatTy::F32 => types.types.f32,
+            FloatTy::F64 => types.types.f64,
+            FloatTy::F128 => types.types.f128,
+        }
     }
 
     pub fn new_fresh(interner: DbInterner<'db>, n: u32) -> Self {
@@ -124,7 +159,7 @@ impl<'db> Ty<'db> {
     }
 
     pub fn new_empty_tuple(interner: DbInterner<'db>) -> Self {
-        Ty::new_tup(interner, &[])
+        interner.default_types().types.unit
     }
 
     pub fn new_imm_ptr(interner: DbInterner<'db>, ty: Ty<'db>) -> Self {
@@ -383,7 +418,7 @@ impl<'db> Ty<'db> {
 
     #[inline]
     pub fn is_unit(self) -> bool {
-        matches!(self.kind(), TyKind::Tuple(tys) if tys.inner().is_empty())
+        matches!(self.kind(), TyKind::Tuple(tys) if tys.is_empty())
     }
 
     #[inline]
@@ -555,34 +590,34 @@ impl<'db> Ty<'db> {
         interner: DbInterner<'db>,
         ty: hir_def::builtin_type::BuiltinType,
     ) -> Ty<'db> {
-        let kind = match ty {
-            hir_def::builtin_type::BuiltinType::Char => TyKind::Char,
-            hir_def::builtin_type::BuiltinType::Bool => TyKind::Bool,
-            hir_def::builtin_type::BuiltinType::Str => TyKind::Str,
-            hir_def::builtin_type::BuiltinType::Int(int) => TyKind::Int(match int {
-                hir_def::builtin_type::BuiltinInt::Isize => rustc_type_ir::IntTy::Isize,
-                hir_def::builtin_type::BuiltinInt::I8 => rustc_type_ir::IntTy::I8,
-                hir_def::builtin_type::BuiltinInt::I16 => rustc_type_ir::IntTy::I16,
-                hir_def::builtin_type::BuiltinInt::I32 => rustc_type_ir::IntTy::I32,
-                hir_def::builtin_type::BuiltinInt::I64 => rustc_type_ir::IntTy::I64,
-                hir_def::builtin_type::BuiltinInt::I128 => rustc_type_ir::IntTy::I128,
-            }),
-            hir_def::builtin_type::BuiltinType::Uint(uint) => TyKind::Uint(match uint {
-                hir_def::builtin_type::BuiltinUint::Usize => rustc_type_ir::UintTy::Usize,
-                hir_def::builtin_type::BuiltinUint::U8 => rustc_type_ir::UintTy::U8,
-                hir_def::builtin_type::BuiltinUint::U16 => rustc_type_ir::UintTy::U16,
-                hir_def::builtin_type::BuiltinUint::U32 => rustc_type_ir::UintTy::U32,
-                hir_def::builtin_type::BuiltinUint::U64 => rustc_type_ir::UintTy::U64,
-                hir_def::builtin_type::BuiltinUint::U128 => rustc_type_ir::UintTy::U128,
-            }),
-            hir_def::builtin_type::BuiltinType::Float(float) => TyKind::Float(match float {
-                hir_def::builtin_type::BuiltinFloat::F16 => rustc_type_ir::FloatTy::F16,
-                hir_def::builtin_type::BuiltinFloat::F32 => rustc_type_ir::FloatTy::F32,
-                hir_def::builtin_type::BuiltinFloat::F64 => rustc_type_ir::FloatTy::F64,
-                hir_def::builtin_type::BuiltinFloat::F128 => rustc_type_ir::FloatTy::F128,
-            }),
-        };
-        Ty::new(interner, kind)
+        let types = interner.default_types();
+        match ty {
+            hir_def::builtin_type::BuiltinType::Char => types.types.char,
+            hir_def::builtin_type::BuiltinType::Bool => types.types.bool,
+            hir_def::builtin_type::BuiltinType::Str => types.types.str,
+            hir_def::builtin_type::BuiltinType::Int(int) => match int {
+                hir_def::builtin_type::BuiltinInt::Isize => types.types.isize,
+                hir_def::builtin_type::BuiltinInt::I8 => types.types.i8,
+                hir_def::builtin_type::BuiltinInt::I16 => types.types.i16,
+                hir_def::builtin_type::BuiltinInt::I32 => types.types.i32,
+                hir_def::builtin_type::BuiltinInt::I64 => types.types.i64,
+                hir_def::builtin_type::BuiltinInt::I128 => types.types.i128,
+            },
+            hir_def::builtin_type::BuiltinType::Uint(uint) => match uint {
+                hir_def::builtin_type::BuiltinUint::Usize => types.types.usize,
+                hir_def::builtin_type::BuiltinUint::U8 => types.types.u8,
+                hir_def::builtin_type::BuiltinUint::U16 => types.types.u16,
+                hir_def::builtin_type::BuiltinUint::U32 => types.types.u32,
+                hir_def::builtin_type::BuiltinUint::U64 => types.types.u64,
+                hir_def::builtin_type::BuiltinUint::U128 => types.types.u128,
+            },
+            hir_def::builtin_type::BuiltinType::Float(float) => match float {
+                hir_def::builtin_type::BuiltinFloat::F16 => types.types.f16,
+                hir_def::builtin_type::BuiltinFloat::F32 => types.types.f32,
+                hir_def::builtin_type::BuiltinFloat::F64 => types.types.f64,
+                hir_def::builtin_type::BuiltinFloat::F128 => types.types.f128,
+            },
+        }
     }
 
     pub fn as_builtin(self) -> Option<hir_def::builtin_type::BuiltinType> {
@@ -661,10 +696,10 @@ impl<'db> Ty<'db> {
                     // This is only used by type walking.
                     // Parameters will be walked outside, and projection predicate is not used.
                     // So just provide the Future trait.
-                    let impl_bound = TraitRef::new(
+                    let impl_bound = TraitRef::new_from_args(
                         interner,
                         future_trait.into(),
-                        GenericArgs::new_from_iter(interner, []),
+                        GenericArgs::empty(interner),
                     )
                     .upcast(interner);
                     Some(vec![impl_bound])
@@ -730,17 +765,20 @@ impl<'db> std::fmt::Debug for Ty<'db> {
     }
 }
 
-impl<'db> std::fmt::Debug for InternedWrapperNoDebug<WithCachedTypeInfo<TyKind<'db>>> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.0.internee.fmt(f)
-    }
-}
-
 impl<'db> IntoKind for Ty<'db> {
     type Kind = TyKind<'db>;
 
+    #[inline]
     fn kind(self) -> Self::Kind {
         self.inner().internee
+    }
+}
+
+impl<'db, V: super::WorldExposer> GenericTypeVisitable<V> for Ty<'db> {
+    fn generic_visit_with(&self, visitor: &mut V) {
+        if visitor.on_interned(self.interned).is_continue() {
+            self.kind().generic_visit_with(visitor);
+        }
     }
 }
 
@@ -942,19 +980,19 @@ impl<'db> Flags for Ty<'db> {
 
 impl<'db> rustc_type_ir::inherent::Ty<DbInterner<'db>> for Ty<'db> {
     fn new_unit(interner: DbInterner<'db>) -> Self {
-        Ty::new(interner, TyKind::Tuple(Default::default()))
+        interner.default_types().types.unit
     }
 
     fn new_bool(interner: DbInterner<'db>) -> Self {
-        Ty::new(interner, TyKind::Bool)
+        interner.default_types().types.bool
     }
 
     fn new_u8(interner: DbInterner<'db>) -> Self {
-        Ty::new(interner, TyKind::Uint(rustc_type_ir::UintTy::U8))
+        interner.default_types().types.u8
     }
 
     fn new_usize(interner: DbInterner<'db>) -> Self {
-        Ty::new(interner, TyKind::Uint(rustc_type_ir::UintTy::Usize))
+        interner.default_types().types.usize
     }
 
     fn new_infer(interner: DbInterner<'db>, var: rustc_type_ir::InferTy) -> Self {
@@ -1068,9 +1106,9 @@ impl<'db> rustc_type_ir::inherent::Ty<DbInterner<'db>> for Ty<'db> {
         // to unnecessary overflows in async code. See the issue:
         // <https://github.com/rust-lang/rust/issues/145151>.
         let coroutine_args = interner.mk_args_from_iter(coroutine_args.iter().map(|arg| {
-            match arg {
-                GenericArg::Ty(_) | GenericArg::Const(_) => arg,
-                GenericArg::Lifetime(_) => {
+            match arg.kind() {
+                GenericArgKind::Type(_) | GenericArgKind::Const(_) => arg,
+                GenericArgKind::Lifetime(_) => {
                     crate::next_solver::Region::new(interner, rustc_type_ir::RegionKind::ReErased)
                         .into()
                 }
@@ -1105,7 +1143,7 @@ impl<'db> rustc_type_ir::inherent::Ty<DbInterner<'db>> for Ty<'db> {
     }
 
     fn new_tup(interner: DbInterner<'db>, tys: &[<DbInterner<'db> as Interner>::Ty]) -> Self {
-        Ty::new(interner, TyKind::Tuple(Tys::new_from_iter(interner, tys.iter().cloned())))
+        Ty::new(interner, TyKind::Tuple(Tys::new_from_slice(tys)))
     }
 
     fn new_tup_from_iter<It, T>(interner: DbInterner<'db>, iter: It) -> T::Output
@@ -1177,10 +1215,11 @@ impl<'db> rustc_type_ir::inherent::Ty<DbInterner<'db>> for Ty<'db> {
     }
 
     fn from_closure_kind(interner: DbInterner<'db>, kind: rustc_type_ir::ClosureKind) -> Self {
+        let types = interner.default_types();
         match kind {
-            ClosureKind::Fn => Ty::new(interner, TyKind::Int(IntTy::I8)),
-            ClosureKind::FnMut => Ty::new(interner, TyKind::Int(IntTy::I16)),
-            ClosureKind::FnOnce => Ty::new(interner, TyKind::Int(IntTy::I32)),
+            ClosureKind::Fn => types.types.i8,
+            ClosureKind::FnMut => types.types.i16,
+            ClosureKind::FnOnce => types.types.i32,
         }
     }
 
@@ -1188,9 +1227,10 @@ impl<'db> rustc_type_ir::inherent::Ty<DbInterner<'db>> for Ty<'db> {
         interner: DbInterner<'db>,
         kind: rustc_type_ir::ClosureKind,
     ) -> Self {
+        let types = interner.default_types();
         match kind {
-            ClosureKind::Fn | ClosureKind::FnMut => Ty::new(interner, TyKind::Int(IntTy::I16)),
-            ClosureKind::FnOnce => Ty::new(interner, TyKind::Int(IntTy::I32)),
+            ClosureKind::Fn | ClosureKind::FnMut => types.types.i16,
+            ClosureKind::FnOnce => types.types.i32,
         }
     }
 
@@ -1237,7 +1277,7 @@ impl<'db> rustc_type_ir::inherent::Ty<DbInterner<'db>> for Ty<'db> {
             | TyKind::Tuple(_)
             | TyKind::Error(_)
             | TyKind::Infer(InferTy::IntVar(_) | InferTy::FloatVar(_)) => {
-                Ty::new(interner, TyKind::Uint(UintTy::U8))
+                interner.default_types().types.u8
             }
 
             TyKind::Bound(..)
@@ -1254,20 +1294,19 @@ impl<'db> rustc_type_ir::inherent::Ty<DbInterner<'db>> for Ty<'db> {
     }
 }
 
-interned_vec_db!(Tys, Ty);
+interned_slice!(TysStorage, Tys, StoredTys, tys, Ty<'db>, Ty<'static>);
+impl_foldable_for_interned_slice!(Tys);
 
 impl<'db> Tys<'db> {
-    pub fn inputs(&self) -> &[Ty<'db>] {
+    #[inline]
+    pub fn inputs(self) -> &'db [Ty<'db>] {
         self.as_slice().split_last().unwrap().1
     }
 }
 
 impl<'db> rustc_type_ir::inherent::Tys<DbInterner<'db>> for Tys<'db> {
     fn inputs(self) -> <DbInterner<'db> as Interner>::FnInputTys {
-        Tys::new_from_iter(
-            DbInterner::conjure(),
-            self.as_slice().split_last().unwrap().1.iter().copied(),
-        )
+        self.as_slice().split_last().unwrap().1
     }
 
     fn output(self) -> <DbInterner<'db> as Interner>::Ty {
@@ -1322,6 +1361,10 @@ pub enum BoundTyKind {
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 pub struct ErrorGuaranteed;
+
+impl<V> GenericTypeVisitable<V> for ErrorGuaranteed {
+    fn generic_visit_with(&self, _visitor: &mut V) {}
+}
 
 impl<'db> TypeVisitable<DbInterner<'db>> for ErrorGuaranteed {
     fn visit_with<V: rustc_type_ir::TypeVisitor<DbInterner<'db>>>(

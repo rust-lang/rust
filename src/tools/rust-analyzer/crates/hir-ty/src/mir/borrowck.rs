@@ -17,7 +17,7 @@ use crate::{
     display::DisplayTarget,
     mir::OperandKind,
     next_solver::{
-        DbInterner, GenericArgs, ParamEnv, Ty, TypingMode,
+        DbInterner, GenericArgs, ParamEnv, StoredTy, Ty, TypingMode,
         infer::{DbInternerInferExt, InferCtxt},
     },
 };
@@ -36,44 +36,44 @@ pub enum MutabilityReason {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct MovedOutOfRef<'db> {
-    pub ty: Ty<'db>,
+pub struct MovedOutOfRef {
+    pub ty: StoredTy,
     pub span: MirSpan,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct PartiallyMoved<'db> {
-    pub ty: Ty<'db>,
+pub struct PartiallyMoved {
+    pub ty: StoredTy,
     pub span: MirSpan,
-    pub local: LocalId<'db>,
+    pub local: LocalId,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct BorrowRegion<'db> {
-    pub local: LocalId<'db>,
+pub struct BorrowRegion {
+    pub local: LocalId,
     pub kind: BorrowKind,
     pub places: Vec<MirSpan>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct BorrowckResult<'db> {
-    pub mir_body: Arc<MirBody<'db>>,
-    pub mutability_of_locals: ArenaMap<LocalId<'db>, MutabilityReason>,
-    pub moved_out_of_ref: Vec<MovedOutOfRef<'db>>,
-    pub partially_moved: Vec<PartiallyMoved<'db>>,
-    pub borrow_regions: Vec<BorrowRegion<'db>>,
+pub struct BorrowckResult {
+    pub mir_body: Arc<MirBody>,
+    pub mutability_of_locals: ArenaMap<LocalId, MutabilityReason>,
+    pub moved_out_of_ref: Vec<MovedOutOfRef>,
+    pub partially_moved: Vec<PartiallyMoved>,
+    pub borrow_regions: Vec<BorrowRegion>,
 }
 
-fn all_mir_bodies<'db>(
-    db: &'db dyn HirDatabase,
+fn all_mir_bodies(
+    db: &dyn HirDatabase,
     def: DefWithBodyId,
-    mut cb: impl FnMut(Arc<MirBody<'db>>),
-) -> Result<(), MirLowerError<'db>> {
-    fn for_closure<'db>(
-        db: &'db dyn HirDatabase,
+    mut cb: impl FnMut(Arc<MirBody>),
+) -> Result<(), MirLowerError> {
+    fn for_closure(
+        db: &dyn HirDatabase,
         c: InternedClosureId,
-        cb: &mut impl FnMut(Arc<MirBody<'db>>),
-    ) -> Result<(), MirLowerError<'db>> {
+        cb: &mut impl FnMut(Arc<MirBody>),
+    ) -> Result<(), MirLowerError> {
         match db.mir_body_for_closure(c) {
             Ok(body) => {
                 cb(body.clone());
@@ -91,10 +91,10 @@ fn all_mir_bodies<'db>(
     }
 }
 
-pub fn borrowck_query<'db>(
-    db: &'db dyn HirDatabase,
+pub fn borrowck_query(
+    db: &dyn HirDatabase,
     def: DefWithBodyId,
-) -> Result<Arc<[BorrowckResult<'db>]>, MirLowerError<'db>> {
+) -> Result<Arc<[BorrowckResult]>, MirLowerError> {
     let _p = tracing::info_span!("borrowck_query").entered();
     let module = def.module(db);
     let interner = DbInterner::new_with(db, module.krate(db));
@@ -125,20 +125,20 @@ fn make_fetch_closure_field<'db>(
         let (captures, _) = infer.closure_info(c);
         let parent_subst = subst.split_closure_args_untupled().parent_args;
         let interner = DbInterner::new_no_crate(db);
-        captures.get(f).expect("broken closure field").ty.instantiate(interner, parent_subst)
+        captures.get(f).expect("broken closure field").ty.get().instantiate(interner, parent_subst)
     }
 }
 
 fn moved_out_of_ref<'db>(
     infcx: &InferCtxt<'db>,
     env: ParamEnv<'db>,
-    body: &MirBody<'db>,
-) -> Vec<MovedOutOfRef<'db>> {
+    body: &MirBody,
+) -> Vec<MovedOutOfRef> {
     let db = infcx.interner.db;
     let mut result = vec![];
-    let mut for_operand = |op: &Operand<'db>, span: MirSpan| match op.kind {
+    let mut for_operand = |op: &Operand, span: MirSpan| match op.kind {
         OperandKind::Copy(p) | OperandKind::Move(p) => {
-            let mut ty: Ty<'db> = body.locals[p.local].ty;
+            let mut ty: Ty<'db> = body.locals[p.local].ty.as_ref();
             let mut is_dereference_of_ref = false;
             for proj in p.projection.lookup(&body.projection_store) {
                 if *proj == ProjectionElem::Deref && ty.as_reference().is_some() {
@@ -156,7 +156,7 @@ fn moved_out_of_ref<'db>(
                 && !infcx.type_is_copy_modulo_regions(env, ty)
                 && !ty.references_non_lt_error()
             {
-                result.push(MovedOutOfRef { span: op.span.unwrap_or(span), ty });
+                result.push(MovedOutOfRef { span: op.span.unwrap_or(span), ty: ty.store() });
             }
         }
         OperandKind::Constant { .. } | OperandKind::Static(_) => (),
@@ -233,13 +233,13 @@ fn moved_out_of_ref<'db>(
 fn partially_moved<'db>(
     infcx: &InferCtxt<'db>,
     env: ParamEnv<'db>,
-    body: &MirBody<'db>,
-) -> Vec<PartiallyMoved<'db>> {
+    body: &MirBody,
+) -> Vec<PartiallyMoved> {
     let db = infcx.interner.db;
     let mut result = vec![];
-    let mut for_operand = |op: &Operand<'db>, span: MirSpan| match op.kind {
+    let mut for_operand = |op: &Operand, span: MirSpan| match op.kind {
         OperandKind::Copy(p) | OperandKind::Move(p) => {
-            let mut ty: Ty<'db> = body.locals[p.local].ty;
+            let mut ty: Ty<'db> = body.locals[p.local].ty.as_ref();
             for proj in p.projection.lookup(&body.projection_store) {
                 ty = proj.projected_ty(
                     infcx,
@@ -250,7 +250,7 @@ fn partially_moved<'db>(
                 );
             }
             if !infcx.type_is_copy_modulo_regions(env, ty) && !ty.references_non_lt_error() {
-                result.push(PartiallyMoved { span, ty, local: p.local });
+                result.push(PartiallyMoved { span, ty: ty.store(), local: p.local });
             }
         }
         OperandKind::Constant { .. } | OperandKind::Static(_) => (),
@@ -324,7 +324,7 @@ fn partially_moved<'db>(
     result
 }
 
-fn borrow_regions<'db>(db: &'db dyn HirDatabase, body: &MirBody<'db>) -> Vec<BorrowRegion<'db>> {
+fn borrow_regions(db: &dyn HirDatabase, body: &MirBody) -> Vec<BorrowRegion> {
     let mut borrows = FxHashMap::default();
     for (_, block) in body.basic_blocks.iter() {
         db.unwind_if_revision_cancelled();
@@ -332,7 +332,7 @@ fn borrow_regions<'db>(db: &'db dyn HirDatabase, body: &MirBody<'db>) -> Vec<Bor
             if let StatementKind::Assign(_, Rvalue::Ref(kind, p)) = &statement.kind {
                 borrows
                     .entry(p.local)
-                    .and_modify(|it: &mut BorrowRegion<'db>| {
+                    .and_modify(|it: &mut BorrowRegion| {
                         it.places.push(statement.span);
                     })
                     .or_insert_with(|| BorrowRegion {
@@ -377,12 +377,12 @@ enum ProjectionCase {
 fn place_case<'db>(
     infcx: &InferCtxt<'db>,
     env: ParamEnv<'db>,
-    body: &MirBody<'db>,
-    lvalue: &Place<'db>,
+    body: &MirBody,
+    lvalue: &Place,
 ) -> ProjectionCase {
     let db = infcx.interner.db;
     let mut is_part_of = false;
-    let mut ty = body.locals[lvalue.local].ty;
+    let mut ty = body.locals[lvalue.local].ty.as_ref();
     for proj in lvalue.projection.lookup(&body.projection_store).iter() {
         match proj {
             ProjectionElem::Deref if ty.as_adt().is_none() => return ProjectionCase::Indirect, // It's indirect in case of reference and raw
@@ -410,18 +410,18 @@ fn place_case<'db>(
 /// Returns a map from basic blocks to the set of locals that might be ever initialized before
 /// the start of the block. Only `StorageDead` can remove something from this map, and we ignore
 /// `Uninit` and `drop` and similar after initialization.
-fn ever_initialized_map<'db>(
-    db: &'db dyn HirDatabase,
-    body: &MirBody<'db>,
-) -> ArenaMap<BasicBlockId<'db>, ArenaMap<LocalId<'db>, bool>> {
-    let mut result: ArenaMap<BasicBlockId<'db>, ArenaMap<LocalId<'db>, bool>> =
+fn ever_initialized_map(
+    db: &dyn HirDatabase,
+    body: &MirBody,
+) -> ArenaMap<BasicBlockId, ArenaMap<LocalId, bool>> {
+    let mut result: ArenaMap<BasicBlockId, ArenaMap<LocalId, bool>> =
         body.basic_blocks.iter().map(|it| (it.0, ArenaMap::default())).collect();
-    fn dfs<'db>(
-        db: &'db dyn HirDatabase,
-        body: &MirBody<'db>,
-        l: LocalId<'db>,
-        stack: &mut Vec<BasicBlockId<'db>>,
-        result: &mut ArenaMap<BasicBlockId<'db>, ArenaMap<LocalId<'db>, bool>>,
+    fn dfs(
+        db: &dyn HirDatabase,
+        body: &MirBody,
+        l: LocalId,
+        stack: &mut Vec<BasicBlockId>,
+        result: &mut ArenaMap<BasicBlockId, ArenaMap<LocalId, bool>>,
     ) {
         while let Some(b) = stack.pop() {
             let mut is_ever_initialized = result[b][l]; // It must be filled, as we use it as mark for dfs
@@ -509,11 +509,7 @@ fn ever_initialized_map<'db>(
     result
 }
 
-fn push_mut_span<'db>(
-    local: LocalId<'db>,
-    span: MirSpan,
-    result: &mut ArenaMap<LocalId<'db>, MutabilityReason>,
-) {
+fn push_mut_span(local: LocalId, span: MirSpan, result: &mut ArenaMap<LocalId, MutabilityReason>) {
     match &mut result[local] {
         MutabilityReason::Mut { spans } => spans.push(span),
         it @ (MutabilityReason::Not | MutabilityReason::Unused) => {
@@ -522,16 +518,13 @@ fn push_mut_span<'db>(
     };
 }
 
-fn record_usage<'db>(local: LocalId<'db>, result: &mut ArenaMap<LocalId<'db>, MutabilityReason>) {
+fn record_usage(local: LocalId, result: &mut ArenaMap<LocalId, MutabilityReason>) {
     if let it @ MutabilityReason::Unused = &mut result[local] {
         *it = MutabilityReason::Not;
     };
 }
 
-fn record_usage_for_operand<'db>(
-    arg: &Operand<'db>,
-    result: &mut ArenaMap<LocalId<'db>, MutabilityReason>,
-) {
+fn record_usage_for_operand(arg: &Operand, result: &mut ArenaMap<LocalId, MutabilityReason>) {
     if let OperandKind::Copy(p) | OperandKind::Move(p) = arg.kind {
         record_usage(p.local, result);
     }
@@ -540,10 +533,10 @@ fn record_usage_for_operand<'db>(
 fn mutability_of_locals<'db>(
     infcx: &InferCtxt<'db>,
     env: ParamEnv<'db>,
-    body: &MirBody<'db>,
-) -> ArenaMap<LocalId<'db>, MutabilityReason> {
+    body: &MirBody,
+) -> ArenaMap<LocalId, MutabilityReason> {
     let db = infcx.interner.db;
-    let mut result: ArenaMap<LocalId<'db>, MutabilityReason> =
+    let mut result: ArenaMap<LocalId, MutabilityReason> =
         body.locals.iter().map(|it| (it.0, MutabilityReason::Unused)).collect();
 
     let ever_init_maps = ever_initialized_map(db, body);

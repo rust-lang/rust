@@ -215,6 +215,7 @@ function createCommands(): Record<string, CommandFactory> {
         syntaxTreeShowWhitespace: {
             enabled: commands.syntaxTreeShowWhitespace,
         },
+        getFailedObligations: { enabled: commands.getFailedObligations },
     };
 }
 

@@ -659,6 +659,7 @@ fn generate_syntax_kinds(grammar: KindsSrc) -> String {
             }
         }
 
+        /// `T![]`
         #[macro_export]
         macro_rules! T_ {
             #([#punctuation_values] => { $crate::SyntaxKind::#punctuation };)*

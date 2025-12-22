@@ -197,6 +197,10 @@ impl Name {
     pub fn symbol(&self) -> &Symbol {
         &self.symbol
     }
+
+    pub fn is_generated(&self) -> bool {
+        self.as_str().starts_with("<ra@gennew>")
+    }
 }
 
 struct Display<'a> {

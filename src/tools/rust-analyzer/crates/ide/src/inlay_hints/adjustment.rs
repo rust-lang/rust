@@ -216,15 +216,13 @@ pub(super) fn hints(
             text: if postfix { format!(".{}", text.trim_end()) } else { text.to_owned() },
             linked_location: None,
             tooltip: Some(config.lazy_tooltip(|| {
-                hir::attach_db(sema.db, || {
-                    InlayTooltip::Markdown(format!(
-                        "`{}` → `{}`\n\n**{}**\n\n{}",
-                        source.display(sema.db, display_target),
-                        target.display(sema.db, display_target),
-                        coercion,
-                        detailed_tooltip
-                    ))
-                })
+                InlayTooltip::Markdown(format!(
+                    "`{}` → `{}`\n\n**{}**\n\n{}",
+                    source.display(sema.db, display_target),
+                    target.display(sema.db, display_target),
+                    coercion,
+                    detailed_tooltip
+                ))
             })),
         };
         if postfix { &mut post } else { &mut pre }.label.append_part(label);

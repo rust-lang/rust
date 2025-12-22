@@ -339,6 +339,11 @@
                 "command": "rust-analyzer.openWalkthrough",
                 "title": "Open Walkthrough",
                 "category": "rust-analyzer"
+            },
+            {
+                "command": "rust-analyzer.getFailedObligations",
+                "title": "Get Failed Obligations",
+                "category": "rust-analyzer (debug command)"
             }
         ],
         "keybindings": [
@@ -1628,6 +1633,17 @@
                 }
             },
             {
+                "title": "Gc",
+                "properties": {
+                    "rust-analyzer.gc.frequency": {
+                        "markdownDescription": "This config controls the frequency in which rust-analyzer will perform its internal Garbage\nCollection. It is specified in revisions, roughly equivalent to number of changes. The default\nis 1000.\n\nSetting a smaller value may help limit peak memory usage at the expense of speed.",
+                        "default": 1000,
+                        "type": "integer",
+                        "minimum": 0
+                    }
+                }
+            },
+            {
                 "title": "Goto Implementations",
                 "properties": {
                     "rust-analyzer.gotoImplementations.filterAdjacentDerives": {
@@ -2392,6 +2408,16 @@
                     "rust-analyzer.inlayHints.parameterHints.enable": {
                         "markdownDescription": "Show function parameter name inlay hints at the call site.",
                         "default": true,
+                        "type": "boolean"
+                    }
+                }
+            },
+            {
+                "title": "Inlay Hints",
+                "properties": {
+                    "rust-analyzer.inlayHints.parameterHints.missingArguments.enable": {
+                        "markdownDescription": "Show parameter name inlay hints for missing arguments at the call site.",
+                        "default": false,
                         "type": "boolean"
                     }
                 }
@@ -3679,6 +3705,10 @@
                 {
                     "command": "rust-analyzer.syntaxTreeShowWhitespace",
                     "when": "false"
+                },
+                {
+                    "command": "rust-analyzer.getFailedObligations",
+                    "when": "inRustProject"
                 }
             ],
             "editor/context": [
