@@ -845,6 +845,11 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             // FIXME: do some more logic on `move` to invalidate the old location
             &Copy(place) | &Move(place) => self.eval_place_to_op(place, layout)?,
 
+            &RuntimeChecks(checks) => {
+                let val = M::runtime_checks(self, checks)?;
+                ImmTy::from_bool(val, self.tcx()).into()
+            }
+
             Constant(constant) => {
                 let c = self.instantiate_from_current_frame_and_normalize_erasing_regions(
                     constant.const_,

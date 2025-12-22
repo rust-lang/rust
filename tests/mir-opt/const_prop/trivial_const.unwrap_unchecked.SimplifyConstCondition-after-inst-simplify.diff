@@ -16,7 +16,6 @@
           scope 4 (inlined #[track_caller] unreachable_unchecked) {
               let _5: ();
               scope 5 (inlined core::ub_checks::check_language_ub) {
-                  let mut _6: bool;
                   scope 6 (inlined core::ub_checks::check_language_ub::runtime) {
                   }
               }
@@ -38,9 +37,7 @@
       }
   
       bb2: {
--         StorageLive(_6);
--         _6 = const false;
--         assume(copy _6);
+-         assume(const false);
 -         _5 = unreachable_unchecked::precondition_check() -> [return: bb1, unwind unreachable];
 +         unreachable;
       }

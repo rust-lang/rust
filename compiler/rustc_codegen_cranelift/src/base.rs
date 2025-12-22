@@ -10,7 +10,7 @@ use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_index::IndexVec;
 use rustc_middle::ty::TypeVisitableExt;
 use rustc_middle::ty::adjustment::PointerCoercion;
-use rustc_middle::ty::layout::{FnAbiOf, HasTypingEnv};
+use rustc_middle::ty::layout::FnAbiOf;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_session::config::OutputFilenames;
 use rustc_span::Symbol;
@@ -853,17 +853,6 @@ fn codegen_stmt<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, cur_block: Block, stmt:
                         fx.bcx.ins().nop();
                     }
                 }
-                Rvalue::NullaryOp(ref null_op) => {
-                    assert!(lval.layout().ty.is_sized(fx.tcx, fx.typing_env()));
-                    let val = match null_op {
-                        NullOp::RuntimeChecks(kind) => kind.value(fx.tcx.sess),
-                    };
-                    let val = CValue::by_val(
-                        fx.bcx.ins().iconst(types::I8, i64::from(val)),
-                        fx.layout_of(fx.tcx.types.bool),
-                    );
-                    lval.write_cvalue(fx, val);
-                }
                 Rvalue::Aggregate(ref kind, ref operands)
                     if matches!(**kind, AggregateKind::RawPtr(..)) =>
                 {
@@ -1050,6 +1039,11 @@ pub(crate) fn codegen_operand<'tcx>(
             cplace.to_cvalue(fx)
         }
         Operand::Constant(const_) => crate::constant::codegen_constant_operand(fx, const_),
+        Operand::RuntimeChecks(checks) => {
+            let val = checks.value(fx.tcx.sess);
+            let layout = fx.layout_of(fx.tcx.types.bool);
+            return CValue::const_val(fx, layout, val.into());
+        }
     }
 }
 

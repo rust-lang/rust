@@ -1,7 +1,6 @@
 use either::Either;
 use rustc_abi::Size;
 use rustc_apfloat::{Float, FloatConvert};
-use rustc_middle::mir::NullOp;
 use rustc_middle::mir::interpret::{InterpResult, PointerArithmetic, Scalar};
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::{self, FloatTy, ScalarInt};
@@ -504,12 +503,5 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 bug!("Unexpected unary op argument {val:?}")
             }
         }
-    }
-
-    pub fn nullary_op(&self, null_op: NullOp) -> InterpResult<'tcx, ImmTy<'tcx, M::Provenance>> {
-        use rustc_middle::mir::NullOp::*;
-        interp_ok(match null_op {
-            RuntimeChecks(r) => ImmTy::from_bool(M::runtime_checks(self, r)?, *self.tcx),
-        })
     }
 }
