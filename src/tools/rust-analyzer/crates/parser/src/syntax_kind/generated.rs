@@ -1005,6 +1005,7 @@ impl SyntaxKind {
         Some(tok)
     }
 }
+#[doc = r" `T![]`"]
 #[macro_export]
 macro_rules ! T_ {
     [$] => { $ crate :: SyntaxKind :: DOLLAR };

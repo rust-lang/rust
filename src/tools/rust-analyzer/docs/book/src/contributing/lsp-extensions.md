@@ -1,5 +1,5 @@
 <!---
-lsp/ext.rs hash: 78e87a78de8f288e
+lsp/ext.rs hash: 235f56089da3dbb5
 
 If you need to change the above hash to make the test pass, please check if you
 need to adjust this doc as well and ping this issue:
@@ -729,6 +729,17 @@ For debugging or when working on rust-analyzer itself.
 **Response:** `string`
 
 Returns a textual representation of the MIR of the function containing the cursor.
+For debugging or when working on rust-analyzer itself.
+
+## Get Failed Obligations
+
+**Method:** `rust-analyzer/getFailedObligations`
+
+**Request:** `TextDocumentPositionParams`
+
+**Response:** `string`
+
+Returns information about failed trait obligations at the given position.
 For debugging or when working on rust-analyzer itself.
 
 ## Interpret Function

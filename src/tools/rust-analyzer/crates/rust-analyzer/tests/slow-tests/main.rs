@@ -1488,3 +1488,42 @@ version = "0.0.0"
 
     server.request::<WorkspaceSymbolRequest>(Default::default(), json!([]));
 }
+
+#[test]
+fn test_get_failed_obligations() {
+    use expect_test::expect;
+    if skip_slow_tests() {
+        return;
+    }
+
+    let server = Project::with_fixture(
+        r#"
+//- /Cargo.toml
+[package]
+name = "foo"
+version = "0.0.0"
+
+//- /src/lib.rs
+trait Trait {}
+fn requires_trait<T: Trait>(x: T) {}
+
+fn test() {
+    requires_trait(0usize);
+}
+"#,
+    )
+    .server()
+    .wait_until_workspace_is_loaded();
+
+    let res = server.send_request::<rust_analyzer::lsp::ext::GetFailedObligations>(
+        rust_analyzer::lsp::ext::GetFailedObligationsParams {
+            text_document: server.doc_id("src/lib.rs"),
+            position: Position::new(4, 19),
+        },
+    );
+
+    let res: serde_json::Value = serde_json::from_str(res.as_str().unwrap()).unwrap();
+    let arr = res.as_array().unwrap();
+    assert_eq!(arr.len(), 2);
+    expect![[r#"{"goal":"Goal { param_env: ParamEnv { clauses: [] }, predicate: Binder { value: TraitPredicate(usize: Trait, polarity:Positive), bound_vars: [] } }","result":"Err(NoSolution)","depth":0,"candidates":[]}"#]].assert_eq(&arr[0].to_string());
+}

@@ -8,7 +8,7 @@ mod intra_doc_links;
 use std::ops::Range;
 
 use pulldown_cmark::{BrokenLink, CowStr, Event, InlineStr, LinkType, Options, Parser, Tag};
-use pulldown_cmark_to_cmark::{Options as CMarkOptions, cmark_resume_with_options};
+use pulldown_cmark_to_cmark::{Options as CMarkOptions, cmark_with_options};
 use stdx::format_to;
 use url::Url;
 
@@ -89,10 +89,9 @@ pub(crate) fn rewrite_links(
         }
     });
     let mut out = String::new();
-    cmark_resume_with_options(
+    cmark_with_options(
         doc,
         &mut out,
-        None,
         CMarkOptions { code_block_token_count: 3, ..Default::default() },
     )
     .ok();
@@ -125,10 +124,9 @@ pub(crate) fn remove_links(markdown: &str) -> String {
     });
 
     let mut out = String::new();
-    cmark_resume_with_options(
+    cmark_with_options(
         doc,
         &mut out,
-        None,
         CMarkOptions { code_block_token_count: 3, ..Default::default() },
     )
     .ok();

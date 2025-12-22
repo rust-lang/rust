@@ -10,8 +10,7 @@ use hir_def::{
 use rustc_hash::FxHashSet;
 use rustc_type_ir::{
     AliasTyKind, ClauseKind, PredicatePolarity, TypeSuperVisitable as _, TypeVisitable as _,
-    Upcast, elaborate,
-    inherent::{IntoKind, SliceLike},
+    Upcast, elaborate, inherent::IntoKind,
 };
 use smallvec::SmallVec;
 
@@ -329,13 +328,9 @@ where
     }
 
     let sig = db.callable_item_signature(func.into());
-    if sig
-        .skip_binder()
-        .inputs()
-        .iter()
-        .skip(1)
-        .any(|ty| contains_illegal_self_type_reference(db, trait_, &ty, AllowSelfProjection::Yes))
-    {
+    if sig.skip_binder().inputs().iter().skip(1).any(|ty| {
+        contains_illegal_self_type_reference(db, trait_, ty.skip_binder(), AllowSelfProjection::Yes)
+    }) {
         cb(MethodViolationCode::ReferencesSelfInput)?;
     }
 
@@ -412,11 +407,11 @@ fn receiver_is_dispatchable<'db>(
 
     // `self: Self` can't be dispatched on, but this is already considered dyn-compatible
     // See rustc's comment on https://github.com/rust-lang/rust/blob/3f121b9461cce02a703a0e7e450568849dfaa074/compiler/rustc_trait_selection/src/traits/object_safety.rs#L433-L437
-    if sig.inputs().iter().next().is_some_and(|p| p.skip_binder() == self_param_ty) {
+    if sig.inputs().iter().next().is_some_and(|p| *p.skip_binder() == self_param_ty) {
         return true;
     }
 
-    let Some(&receiver_ty) = sig.inputs().skip_binder().as_slice().first() else {
+    let Some(&receiver_ty) = sig.inputs().skip_binder().first() else {
         return false;
     };
 

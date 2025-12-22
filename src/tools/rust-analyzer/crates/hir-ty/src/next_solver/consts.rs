@@ -3,19 +3,20 @@
 use std::hash::Hash;
 
 use hir_def::ConstParamId;
-use macros::{TypeFoldable, TypeVisitable};
+use intern::{Interned, InternedRef, impl_internable};
+use macros::{GenericTypeVisitable, TypeFoldable, TypeVisitable};
 use rustc_ast_ir::visit::VisitorResult;
 use rustc_type_ir::{
-    BoundVar, BoundVarIndexKind, ConstVid, DebruijnIndex, FlagComputation, Flags, InferConst,
-    TypeFoldable, TypeSuperFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
-    WithCachedTypeInfo,
+    BoundVar, BoundVarIndexKind, ConstVid, DebruijnIndex, FlagComputation, Flags,
+    GenericTypeVisitable, InferConst, TypeFoldable, TypeSuperFoldable, TypeSuperVisitable,
+    TypeVisitable, TypeVisitableExt, WithCachedTypeInfo,
     inherent::{IntoKind, ParamEnv as _, PlaceholderLike, SliceLike},
     relate::Relate,
 };
 
 use crate::{
     MemoryMap,
-    next_solver::{ClauseKind, ParamEnv, interner::InternedWrapperNoDebug},
+    next_solver::{ClauseKind, ParamEnv, impl_stored_interned},
 };
 
 use super::{BoundVarKind, DbInterner, ErrorGuaranteed, GenericArgs, Placeholder, Ty};
@@ -23,34 +24,47 @@ use super::{BoundVarKind, DbInterner, ErrorGuaranteed, GenericArgs, Placeholder,
 pub type ConstKind<'db> = rustc_type_ir::ConstKind<DbInterner<'db>>;
 pub type UnevaluatedConst<'db> = rustc_type_ir::UnevaluatedConst<DbInterner<'db>>;
 
-#[salsa::interned(constructor = new_)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Const<'db> {
-    #[returns(ref)]
-    kind_: InternedWrapperNoDebug<WithCachedTypeInfo<ConstKind<'db>>>,
+    pub(super) interned: InternedRef<'db, ConstInterned>,
 }
 
+#[derive(PartialEq, Eq, Hash, GenericTypeVisitable)]
+#[repr(align(4))] // Required for `GenericArg` bit-tagging.
+pub(super) struct ConstInterned(pub(super) WithCachedTypeInfo<ConstKind<'static>>);
+
+impl_internable!(gc; ConstInterned);
+impl_stored_interned!(ConstInterned, Const, StoredConst);
+
+const _: () = {
+    const fn is_copy<T: Copy>() {}
+    is_copy::<Const<'static>>();
+};
+
 impl<'db> Const<'db> {
-    pub fn new(interner: DbInterner<'db>, kind: ConstKind<'db>) -> Self {
+    pub fn new(_interner: DbInterner<'db>, kind: ConstKind<'db>) -> Self {
+        let kind = unsafe { std::mem::transmute::<ConstKind<'db>, ConstKind<'static>>(kind) };
         let flags = FlagComputation::for_const_kind(&kind);
         let cached = WithCachedTypeInfo {
             internee: kind,
             flags: flags.flags,
             outer_exclusive_binder: flags.outer_exclusive_binder,
         };
-        Const::new_(interner.db(), InternedWrapperNoDebug(cached))
+        Self { interned: Interned::new_gc(ConstInterned(cached)) }
     }
 
     pub fn inner(&self) -> &WithCachedTypeInfo<ConstKind<'db>> {
-        crate::with_attached_db(|db| {
-            let inner = &self.kind_(db).0;
-            // SAFETY: The caller already has access to a `Const<'db>`, so borrowchecking will
-            // make sure that our returned value is valid for the lifetime `'db`.
-            unsafe { std::mem::transmute(inner) }
-        })
+        let inner = &self.interned.0;
+        unsafe {
+            std::mem::transmute::<
+                &WithCachedTypeInfo<ConstKind<'static>>,
+                &WithCachedTypeInfo<ConstKind<'db>>,
+            >(inner)
+        }
     }
 
     pub fn error(interner: DbInterner<'db>) -> Self {
-        Const::new(interner, ConstKind::Error(ErrorGuaranteed))
+        interner.default_types().consts.error
     }
 
     pub fn new_param(interner: DbInterner<'db>, param: ParamConst) -> Self {
@@ -106,12 +120,6 @@ impl<'db> std::fmt::Debug for Const<'db> {
     }
 }
 
-impl<'db> std::fmt::Debug for InternedWrapperNoDebug<WithCachedTypeInfo<ConstKind<'db>>> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.0.internee.fmt(f)
-    }
-}
-
 pub type PlaceholderConst = Placeholder<BoundConst>;
 
 #[derive(Copy, Clone, Hash, Eq, PartialEq)]
@@ -164,7 +172,9 @@ impl ParamConst {
 /// A type-level constant value.
 ///
 /// Represents a typed, fully evaluated constant.
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, TypeFoldable, TypeVisitable)]
+#[derive(
+    Debug, Copy, Clone, Eq, PartialEq, Hash, TypeFoldable, TypeVisitable, GenericTypeVisitable,
+)]
 pub struct ValueConst<'db> {
     pub ty: Ty<'db>,
     // FIXME: Should we ignore this for TypeVisitable, TypeFoldable?
@@ -190,7 +200,7 @@ impl<'db> rustc_type_ir::inherent::ValueConst<DbInterner<'db>> for ValueConst<'d
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, GenericTypeVisitable)]
 pub struct ConstBytes<'db> {
     pub memory: Box<[u8]>,
     pub memory_map: MemoryMap<'db>,
@@ -202,31 +212,52 @@ impl Hash for ConstBytes<'_> {
     }
 }
 
-#[salsa::interned(constructor = new_, debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Valtree<'db> {
-    #[returns(ref)]
-    bytes_: ConstBytes<'db>,
+    interned: InternedRef<'db, ValtreeInterned>,
 }
+
+impl<'db, V: super::WorldExposer> GenericTypeVisitable<V> for Valtree<'db> {
+    fn generic_visit_with(&self, visitor: &mut V) {
+        if visitor.on_interned(self.interned).is_continue() {
+            self.inner().generic_visit_with(visitor);
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Hash, GenericTypeVisitable)]
+pub(super) struct ValtreeInterned(ConstBytes<'static>);
+
+impl_internable!(gc; ValtreeInterned);
+
+const _: () = {
+    const fn is_copy<T: Copy>() {}
+    is_copy::<Valtree<'static>>();
+};
 
 impl<'db> Valtree<'db> {
+    #[inline]
     pub fn new(bytes: ConstBytes<'db>) -> Self {
-        crate::with_attached_db(|db| unsafe {
-            // SAFETY: ¯\_(ツ)_/¯
-            std::mem::transmute(Valtree::new_(db, bytes))
-        })
+        let bytes = unsafe { std::mem::transmute::<ConstBytes<'db>, ConstBytes<'static>>(bytes) };
+        Self { interned: Interned::new_gc(ValtreeInterned(bytes)) }
     }
 
+    #[inline]
     pub fn inner(&self) -> &ConstBytes<'db> {
-        crate::with_attached_db(|db| {
-            let inner = self.bytes_(db);
-            // SAFETY: The caller already has access to a `Valtree<'db>`, so borrowchecking will
-            // make sure that our returned value is valid for the lifetime `'db`.
-            unsafe { std::mem::transmute(inner) }
-        })
+        let inner = &self.interned.0;
+        unsafe { std::mem::transmute::<&ConstBytes<'static>, &ConstBytes<'db>>(inner) }
     }
 }
 
-#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, TypeVisitable, TypeFoldable)]
+impl std::fmt::Debug for Valtree<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.interned.fmt(f)
+    }
+}
+
+#[derive(
+    Copy, Clone, Debug, Hash, PartialEq, Eq, TypeVisitable, TypeFoldable, GenericTypeVisitable,
+)]
 pub struct ExprConst;
 
 impl rustc_type_ir::inherent::ParamLike for ParamConst {
@@ -240,6 +271,14 @@ impl<'db> IntoKind for Const<'db> {
 
     fn kind(self) -> Self::Kind {
         self.inner().internee
+    }
+}
+
+impl<'db, V: super::WorldExposer> GenericTypeVisitable<V> for Const<'db> {
+    fn generic_visit_with(&self, visitor: &mut V) {
+        if visitor.on_interned(self.interned).is_continue() {
+            self.kind().generic_visit_with(visitor);
+        }
     }
 }
 
@@ -382,8 +421,8 @@ impl<'db> rustc_type_ir::inherent::Const<DbInterner<'db>> for Const<'db> {
         Const::new(interner, ConstKind::Expr(expr))
     }
 
-    fn new_error(interner: DbInterner<'db>, guar: ErrorGuaranteed) -> Self {
-        Const::new(interner, ConstKind::Error(guar))
+    fn new_error(interner: DbInterner<'db>, _guar: ErrorGuaranteed) -> Self {
+        Const::error(interner)
     }
 }
 

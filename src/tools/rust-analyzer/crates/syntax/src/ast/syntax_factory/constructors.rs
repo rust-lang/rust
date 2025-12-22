@@ -748,6 +748,22 @@ impl SyntaxFactory {
         ast.into()
     }
 
+    pub fn expr_raw_ref(&self, expr: ast::Expr, exclusive: bool) -> ast::Expr {
+        let ast::Expr::RefExpr(ast) =
+            make::expr_raw_ref(expr.clone(), exclusive).clone_for_update()
+        else {
+            unreachable!()
+        };
+
+        if let Some(mut mapping) = self.mappings() {
+            let mut builder = SyntaxMappingBuilder::new(ast.syntax().clone());
+            builder.map_node(expr.syntax().clone(), ast.expr().unwrap().syntax().clone());
+            builder.finish(&mut mapping);
+        }
+
+        ast.into()
+    }
+
     pub fn expr_closure(
         &self,
         pats: impl IntoIterator<Item = ast::Param>,
