@@ -13,12 +13,13 @@ impl<T, U> const PartialEq<[U]> for [T]
 where
     T: [const] PartialEq<U>,
 {
+    // It's not worth trying to inline the loops underneath here *in MIR*,
+    // and preventing it encourages more useful inlining upstream,
+    // such as in `<str as PartialEq>::eq`.
+    // The codegen backend can still inline it later if needed.
+    #[rustc_no_mir_inline]
     fn eq(&self, other: &[U]) -> bool {
         SlicePartialEq::equal(self, other)
-    }
-
-    fn ne(&self, other: &[U]) -> bool {
-        SlicePartialEq::not_equal(self, other)
     }
 }
 
@@ -99,10 +100,6 @@ impl<T: PartialOrd> PartialOrd for [T] {
 #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
 const trait SlicePartialEq<B> {
     fn equal(&self, other: &[B]) -> bool;
-
-    fn not_equal(&self, other: &[B]) -> bool {
-        !self.equal(other)
-    }
 }
 
 // Generic slice equality
