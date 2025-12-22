@@ -374,9 +374,9 @@ impl Permission {
         self.inner.strongest_idempotent_foreign_access(prot)
     }
 
-    /// Returns the strongest access allowed from a child to this node without
+    /// Returns the strongest access allowed that is local to this node without
     /// causing UB (only considers possible transitions to this permission).
-    pub fn strongest_allowed_child_access(&self, protected: bool) -> WildcardAccessLevel {
+    pub fn strongest_allowed_local_access(&self, protected: bool) -> WildcardAccessLevel {
         match self.inner {
             // Everything except disabled can be accessed by read access.
             Disabled => WildcardAccessLevel::None,
@@ -794,9 +794,9 @@ mod propagation_optimization_checks {
     /// Checks that  `strongest_allowed_child_access` correctly
     /// represents which transitions are possible.
     #[test]
-    fn strongest_allowed_child_access() {
+    fn strongest_allowed_local_access() {
         for (permission, protected) in <(Permission, bool)>::exhaustive() {
-            let strongest_child_access = permission.strongest_allowed_child_access(protected);
+            let strongest_local_access = permission.strongest_allowed_local_access(protected);
 
             let is_read_valid = Permission::perform_access(
                 AccessKind::Read,
@@ -814,8 +814,8 @@ mod propagation_optimization_checks {
             )
             .is_some();
 
-            assert_eq!(is_read_valid, strongest_child_access >= WildcardAccessLevel::Read);
-            assert_eq!(is_write_valid, strongest_child_access >= WildcardAccessLevel::Write);
+            assert_eq!(is_read_valid, strongest_local_access >= WildcardAccessLevel::Read);
+            assert_eq!(is_write_valid, strongest_local_access >= WildcardAccessLevel::Write);
         }
     }
 }
