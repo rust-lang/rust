@@ -703,6 +703,9 @@ pub enum AttributeKind {
         span: Span,
     },
 
+    /// Represents `#[cfi_encoding]`
+    CfiEncoding { encoding: Symbol },
+
     /// Represents `#[rustc_coinductive]`.
     Coinductive(Span),
 

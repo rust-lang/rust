@@ -33,6 +33,7 @@ pub(crate) mod allow_unstable;
 pub(crate) mod body;
 pub(crate) mod cfg;
 pub(crate) mod cfg_select;
+pub(crate) mod cfi_encoding;
 pub(crate) mod codegen_attrs;
 pub(crate) mod confusables;
 pub(crate) mod crate_level;
