@@ -70,6 +70,10 @@ jobs:
 
       - name: Test
         run: cargo test --features sysroot-abi -p proc-macro-srv -p proc-macro-srv-cli -p proc-macro-api -- --quiet
+      
+      # FIXME: This is temporarily disable, more info: https://rust-lang.zulipchat.com/#narrow/channel/185405-t-compiler.2Frust-analyzer/topic/Non-generic.20spans/with/564604549
+      # - name: Check salsa dependency
+      #   run: "! (cargo tree -p proc-macro-srv-cli | grep -q salsa)"
 
   rust:
     if: github.repository == 'rust-lang/rust-analyzer'
