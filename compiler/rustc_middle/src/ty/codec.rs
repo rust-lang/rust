@@ -427,11 +427,11 @@ impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D> for [Spanned<MonoItem<'tcx>
     }
 }
 
-impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D> for ty::List<ty::BoundVariableKind> {
+impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D> for ty::List<ty::BoundVariableKind<'tcx>> {
     fn decode(decoder: &mut D) -> &'tcx Self {
         let len = decoder.read_usize();
         decoder.interner().mk_bound_variable_kinds_from_iter(
-            (0..len).map::<ty::BoundVariableKind, _>(|_| Decodable::decode(decoder)),
+            (0..len).map::<ty::BoundVariableKind<'tcx>, _>(|_| Decodable::decode(decoder)),
         )
     }
 }
@@ -495,7 +495,7 @@ impl_decodable_via_ref! {
     &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
     &'tcx traits::ImplSource<'tcx, ()>,
     &'tcx mir::Body<'tcx>,
-    &'tcx ty::List<ty::BoundVariableKind>,
+    &'tcx ty::List<ty::BoundVariableKind<'tcx>>,
     &'tcx ty::List<ty::Pattern<'tcx>>,
     &'tcx ty::ListWithCachedTypeInfo<ty::Clause<'tcx>>,
 }

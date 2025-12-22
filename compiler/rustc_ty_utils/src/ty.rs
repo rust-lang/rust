@@ -210,7 +210,7 @@ struct ImplTraitInTraitFinder<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     predicates: &'a mut Vec<ty::Clause<'tcx>>,
     fn_def_id: DefId,
-    bound_vars: &'tcx ty::List<ty::BoundVariableKind>,
+    bound_vars: &'tcx ty::List<ty::BoundVariableKind<'tcx>>,
     seen: FxHashSet<DefId>,
     depth: ty::DebruijnIndex,
 }

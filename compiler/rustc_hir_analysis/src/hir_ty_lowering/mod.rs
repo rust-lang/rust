@@ -2310,7 +2310,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             Some(rbv::ResolvedArg::LateBound(debruijn, index, _)) => ty::Const::new_bound(
                 tcx,
                 debruijn,
-                ty::BoundConst { var: ty::BoundVar::from_u32(index) },
+                ty::BoundConst::new(ty::BoundVar::from_u32(index)),
             ),
             Some(rbv::ResolvedArg::Error(guar)) => ty::Const::new_error(tcx, guar),
             arg => bug!("unexpected bound var resolution for {:?}: {arg:?}", path_hir_id),
@@ -3196,8 +3196,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     #[instrument(level = "trace", skip(self, generate_err))]
     fn validate_late_bound_regions<'cx>(
         &'cx self,
-        constrained_regions: FxIndexSet<ty::BoundRegionKind>,
-        referenced_regions: FxIndexSet<ty::BoundRegionKind>,
+        constrained_regions: FxIndexSet<ty::BoundRegionKind<'tcx>>,
+        referenced_regions: FxIndexSet<ty::BoundRegionKind<'tcx>>,
         generate_err: impl Fn(&str) -> Diag<'cx>,
     ) {
         for br in referenced_regions.difference(&constrained_regions) {

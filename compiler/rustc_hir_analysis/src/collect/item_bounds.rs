@@ -241,7 +241,7 @@ struct MapAndCompressBoundVars<'tcx> {
     binder: ty::DebruijnIndex,
     /// List of bound vars that remain unsubstituted because they were not
     /// mentioned in the GAT's args.
-    still_bound_vars: Vec<ty::BoundVariableKind>,
+    still_bound_vars: Vec<ty::BoundVariableKind<'tcx>>,
     /// Subtle invariant: If the `GenericArg` is bound, then it should be
     /// stored with the debruijn index of `INNERMOST` so it can be shifted
     /// correctly during substitution.
@@ -330,7 +330,8 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for MapAndCompressBoundVars<'tcx> {
             } else {
                 let var = ty::BoundVar::from_usize(self.still_bound_vars.len());
                 self.still_bound_vars.push(ty::BoundVariableKind::Const);
-                let mapped = ty::Const::new_bound(self.tcx, ty::INNERMOST, ty::BoundConst { var });
+                let mapped =
+                    ty::Const::new_bound(self.tcx, ty::INNERMOST, ty::BoundConst::new(var));
                 self.mapping.insert(old_bound.var, mapped.into());
                 mapped
             };

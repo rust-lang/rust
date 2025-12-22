@@ -362,7 +362,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         param_ty: Ty<'tcx>,
         hir_bounds: I,
         bounds: &mut Vec<(ty::Clause<'tcx>, Span)>,
-        bound_vars: &'tcx ty::List<ty::BoundVariableKind>,
+        bound_vars: &'tcx ty::List<ty::BoundVariableKind<'tcx>>,
         predicate_filter: PredicateFilter,
         overlapping_assoc_constraints: OverlappingAsssocItemConstraints,
     ) where
@@ -1000,7 +1000,9 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for GenericParamAndBoundVarCollector<'_, 't
                             .delayed_bug(format!("unexpected bound region kind: {:?}", br.kind));
                         return ControlFlow::Break(guar);
                     }
-                    ty::BoundRegionKind::NamedAnon(_) => bug!("only used for pretty printing"),
+                    ty::BoundRegionKind::NamedForPrinting(_) => {
+                        bug!("only used for pretty printing")
+                    }
                 });
             }
             _ => {}
