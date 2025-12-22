@@ -148,15 +148,12 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for TypeFreshener<'a, 'tcx> {
                     }
                 }
             }
-            ty::ConstKind::Infer(ty::InferConst::Fresh(i)) => {
-                if i >= self.const_freshen_count {
-                    bug!("freshened const id {} exceeds counter {}", i, self.const_freshen_count);
-                }
-                ct
+            ty::ConstKind::Infer(ty::InferConst::Fresh(_)) => {
+                bug!("trying to freshen already-freshened const {ct:?}");
             }
 
             ty::ConstKind::Bound(..) | ty::ConstKind::Placeholder(_) => {
-                bug!("unexpected const {:?}", ct)
+                bug!("unexpected const {ct:?}")
             }
 
             ty::ConstKind::Param(_)
@@ -171,8 +168,8 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for TypeFreshener<'a, 'tcx> {
 impl<'a, 'tcx> TypeFreshener<'a, 'tcx> {
     // This is separate from `fold_ty` to keep that method small and inlinable.
     #[inline(never)]
-    fn fold_infer_ty(&mut self, v: ty::InferTy) -> Option<Ty<'tcx>> {
-        match v {
+    fn fold_infer_ty(&mut self, ty: ty::InferTy) -> Option<Ty<'tcx>> {
+        match ty {
             ty::TyVar(v) => {
                 let mut inner = self.infcx.inner.borrow_mut();
                 match inner.type_variables().probe(v).known() {
@@ -212,11 +209,8 @@ impl<'a, 'tcx> TypeFreshener<'a, 'tcx> {
                 }
             }
 
-            ty::FreshTy(ct) | ty::FreshIntTy(ct) | ty::FreshFloatTy(ct) => {
-                if ct >= self.ty_freshen_count {
-                    bug!("freshened type id {} exceeds counter {}", ct, self.ty_freshen_count);
-                }
-                None
+            ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_) => {
+                bug!("trying to freshen already-freshened type {ty:?}");
             }
         }
     }
