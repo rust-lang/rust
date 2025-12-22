@@ -52,7 +52,7 @@ impl<'tcx> UniverseInfo<'tcx> {
     pub(crate) fn report_erroneous_element(
         &self,
         mbcx: &mut MirBorrowckCtxt<'_, '_, 'tcx>,
-        placeholder: ty::PlaceholderRegion<'tcx>,
+        placeholder: ty::PlaceholderRegion<TyCtxt<'tcx>>,
         error_element: RegionElement<'tcx>,
         cause: ObligationCause<'tcx>,
     ) {
@@ -152,7 +152,7 @@ pub(crate) trait TypeOpInfo<'tcx> {
     fn report_erroneous_element(
         &self,
         mbcx: &mut MirBorrowckCtxt<'_, '_, 'tcx>,
-        placeholder: ty::PlaceholderRegion<'tcx>,
+        placeholder: ty::PlaceholderRegion<TyCtxt<'tcx>>,
         error_element: RegionElement<'tcx>,
         cause: ObligationCause<'tcx>,
     ) {

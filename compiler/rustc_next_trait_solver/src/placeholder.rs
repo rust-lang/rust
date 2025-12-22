@@ -16,9 +16,9 @@ where
     // These three maps track the bound variable that were replaced by placeholders. It might be
     // nice to remove these since we already have the `kind` in the placeholder; we really just need
     // the `var` (but we *could* bring that into scope if we were to track them as we pass them).
-    mapped_regions: IndexMap<I::PlaceholderRegion, I::BoundRegion>,
-    mapped_types: IndexMap<I::PlaceholderTy, I::BoundTy>,
-    mapped_consts: IndexMap<I::PlaceholderConst, I::BoundConst>,
+    mapped_regions: IndexMap<I::PlaceholderRegion, ty::BoundRegion>,
+    mapped_types: IndexMap<I::PlaceholderTy, ty::BoundTy>,
+    mapped_consts: IndexMap<ty::PlaceholderConst<I>, ty::BoundConst>,
     // The current depth relative to *this* folding, *not* the entire normalization. In other words,
     // the depth of binders we've passed here.
     current_index: ty::DebruijnIndex,
@@ -40,9 +40,9 @@ where
         value: T,
     ) -> (
         T,
-        IndexMap<I::PlaceholderRegion, I::BoundRegion>,
-        IndexMap<I::PlaceholderTy, I::BoundTy>,
-        IndexMap<I::PlaceholderConst, I::BoundConst>,
+        IndexMap<I::PlaceholderRegion, ty::BoundRegion>,
+        IndexMap<I::PlaceholderTy, ty::BoundTy>,
+        IndexMap<ty::PlaceholderConst<I>, ty::BoundConst>,
     ) {
         let mut replacer = BoundVarReplacer {
             infcx,

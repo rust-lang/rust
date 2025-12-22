@@ -3277,7 +3277,7 @@ define_print! {
         self.term.print(p)?;
     }
 
-    ty::PlaceholderType<'tcx> {
+    ty::PlaceholderType<TyCtxt<'tcx>> {
         match self.bound.kind {
             ty::BoundTyKind::Anon => write!(p, "{self:?}")?,
             ty::BoundTyKind::Param(def_id) => match p.should_print_verbose() {

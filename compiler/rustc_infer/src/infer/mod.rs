@@ -465,7 +465,7 @@ pub enum NllRegionVariableOrigin<'tcx> {
 
     /// "Universal" instantiation of a higher-ranked region (e.g.,
     /// from a `for<'a> T` binder). Meant to represent "any region".
-    Placeholder(ty::PlaceholderRegion<'tcx>),
+    Placeholder(ty::PlaceholderRegion<TyCtxt<'tcx>>),
 
     Existential {
         name: Option<Symbol>,

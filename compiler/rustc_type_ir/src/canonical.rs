@@ -11,7 +11,7 @@ use rustc_type_ir_macros::{
 
 use crate::data_structures::HashMap;
 use crate::inherent::*;
-use crate::{self as ty, Interner, TypingMode, UniverseIndex};
+use crate::{self as ty, Interner, PlaceholderRegion, TypingMode, UniverseIndex};
 
 #[derive_where(Clone, Hash, PartialEq, Debug; I: Interner, V)]
 #[derive_where(Copy; I: Interner, V: Copy)]
@@ -116,13 +116,13 @@ pub enum CanonicalVarKind<I: Interner> {
     /// A "placeholder" that represents "any region". Created when you
     /// are solving a goal like `for<'a> T: Foo<'a>` to represent the
     /// bound region `'a`.
-    PlaceholderRegion(I::PlaceholderRegion),
+    PlaceholderRegion(PlaceholderRegion<I>),
 
     /// Some kind of const inference variable.
     Const(UniverseIndex),
 
     /// A "placeholder" that represents "any const".
-    PlaceholderConst(I::PlaceholderConst),
+    PlaceholderConst(ty::PlaceholderConst<I>),
 }
 
 impl<I: Interner> Eq for CanonicalVarKind<I> {}

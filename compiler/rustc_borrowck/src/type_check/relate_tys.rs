@@ -259,7 +259,7 @@ impl<'a, 'b, 'tcx> NllTypeRelating<'a, 'b, 'tcx> {
     #[instrument(skip(self), level = "debug")]
     fn next_placeholder_region(
         &mut self,
-        placeholder: ty::PlaceholderRegion<'tcx>,
+        placeholder: ty::PlaceholderRegion<TyCtxt<'tcx>>,
     ) -> ty::Region<'tcx> {
         let reg =
             self.type_checker.constraints.placeholder_region(self.type_checker.infcx, placeholder);
