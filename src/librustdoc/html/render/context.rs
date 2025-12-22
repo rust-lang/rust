@@ -14,7 +14,7 @@ use rustc_hir::def_id::{DefIdMap, LOCAL_CRATE};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_span::edition::Edition;
-use rustc_span::{BytePos, FileName, Symbol};
+use rustc_span::{BytePos, FileName, RemapPathScopeComponents, Symbol};
 use tracing::info;
 
 use super::print_item::{full_path, print_item, print_item_path};
@@ -365,7 +365,10 @@ impl<'tcx> Context<'tcx> {
 
         // We can safely ignore synthetic `SourceFile`s.
         let file = match span.filename(self.sess()) {
-            FileName::Real(ref path) => path.local_path()?.to_path_buf(),
+            FileName::Real(ref path) => path
+                .local_path()
+                .unwrap_or(path.path(RemapPathScopeComponents::MACRO))
+                .to_path_buf(),
             _ => return None,
         };
         let file = &file;
@@ -499,10 +502,12 @@ impl<'tcx> Context<'tcx> {
         } = options;
 
         let src_root = match krate.src(tcx) {
-            FileName::Real(ref p) => match p.local_path().map(|p| p.parent()).flatten() {
-                Some(p) => p.to_path_buf(),
-                None => PathBuf::new(),
-            },
+            FileName::Real(ref p) => {
+                match p.local_path().unwrap_or(p.path(RemapPathScopeComponents::MACRO)).parent() {
+                    Some(p) => p.to_path_buf(),
+                    None => PathBuf::new(),
+                }
+            }
             _ => PathBuf::new(),
         };
         // If user passed in `--playground-url` arg, we fill in crate name here

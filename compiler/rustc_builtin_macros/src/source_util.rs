@@ -144,9 +144,7 @@ pub(crate) fn expand_include<'cx>(
             let mut p = unwrap_or_emit_fatal(new_parser_from_file(
                 self.psess,
                 &self.path,
-                // Don't strip frontmatter for backward compatibility, `---` may be the start of a
-                // manifold negation. FIXME: Ideally, we wouldn't strip shebangs here either.
-                StripTokens::Shebang,
+                StripTokens::Nothing,
                 Some(self.span),
             ));
             let expr = parse_expr(&mut p).ok()?;

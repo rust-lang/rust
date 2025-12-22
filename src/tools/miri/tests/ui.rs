@@ -27,7 +27,7 @@ enum Mode {
 }
 
 fn miri_path() -> PathBuf {
-    PathBuf::from(env::var("MIRI").unwrap_or_else(|_| env!("CARGO_BIN_EXE_miri").into()))
+    env!("CARGO_BIN_EXE_miri").into()
 }
 
 // Build the shared object file for testing native function calls.
@@ -133,7 +133,11 @@ fn miri_config(
                     program: miri_path()
                         .with_file_name(format!("cargo-miri{}", env::consts::EXE_SUFFIX)),
                     // There is no `cargo miri build` so we just use `cargo miri run`.
-                    args: ["miri", "run"].into_iter().map(Into::into).collect(),
+                    // Add `-Zbinary-dep-depinfo` since it is needed for bootstrap builds (and doesn't harm otherwise).
+                    args: ["miri", "run", "--quiet", "-Zbinary-dep-depinfo"]
+                        .into_iter()
+                        .map(Into::into)
+                        .collect(),
                     // Reset `RUSTFLAGS` to work around <https://github.com/rust-lang/rust/pull/119574#issuecomment-1876878344>.
                     envs: vec![("RUSTFLAGS".into(), None)],
                     ..CommandBuilder::cargo()

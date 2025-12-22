@@ -248,7 +248,7 @@ enum Value<'a, 'tcx> {
     Discriminant(VnIndex),
 
     // Operations.
-    NullaryOp(NullOp),
+    RuntimeChecks(RuntimeChecks),
     UnaryOp(UnOp, VnIndex),
     BinaryOp(BinOp, VnIndex, VnIndex),
     Cast {
@@ -420,6 +420,19 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
         self.ecx.typing_env()
     }
 
+    fn insert_unique(
+        &mut self,
+        ty: Ty<'tcx>,
+        value: impl FnOnce(VnOpaque) -> Value<'a, 'tcx>,
+    ) -> VnIndex {
+        let index = self.values.insert_unique(ty, value);
+        let _index = self.evaluated.push(None);
+        debug_assert_eq!(index, _index);
+        let _index = self.rev_locals.push(SmallVec::new());
+        debug_assert_eq!(index, _index);
+        index
+    }
+
     #[instrument(level = "trace", skip(self), ret)]
     fn insert(&mut self, ty: Ty<'tcx>, value: Value<'a, 'tcx>) -> VnIndex {
         let (index, new) = self.values.insert(ty, value);
@@ -437,11 +450,8 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
     /// from all the others.
     #[instrument(level = "trace", skip(self), ret)]
     fn new_opaque(&mut self, ty: Ty<'tcx>) -> VnIndex {
-        let index = self.values.insert_unique(ty, Value::Opaque);
-        let _index = self.evaluated.push(Some(None));
-        debug_assert_eq!(index, _index);
-        let _index = self.rev_locals.push(SmallVec::new());
-        debug_assert_eq!(index, _index);
+        let index = self.insert_unique(ty, Value::Opaque);
+        self.evaluated[index] = Some(None);
         index
     }
 
@@ -470,42 +480,29 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
             projection.map(|proj| proj.try_map(|index| self.locals[index], |ty| ty).ok_or(()));
         let projection = self.arena.try_alloc_from_iter(projection).ok()?;
 
-        let index = self.values.insert_unique(ty, |provenance| Value::Address {
+        let index = self.insert_unique(ty, |provenance| Value::Address {
             base,
             projection,
             kind,
             provenance,
         });
-        let _index = self.evaluated.push(None);
-        debug_assert_eq!(index, _index);
-        let _index = self.rev_locals.push(SmallVec::new());
-        debug_assert_eq!(index, _index);
-
         Some(index)
     }
 
     #[instrument(level = "trace", skip(self), ret)]
     fn insert_constant(&mut self, value: Const<'tcx>) -> VnIndex {
-        let (index, new) = if value.is_deterministic() {
+        if value.is_deterministic() {
             // The constant is deterministic, no need to disambiguate.
             let constant = Value::Constant { value, disambiguator: None };
-            self.values.insert(value.ty(), constant)
+            self.insert(value.ty(), constant)
         } else {
             // Multiple mentions of this constant will yield different values,
             // so assign a different `disambiguator` to ensure they do not get the same `VnIndex`.
-            let index = self.values.insert_unique(value.ty(), |disambiguator| Value::Constant {
+            self.insert_unique(value.ty(), |disambiguator| Value::Constant {
                 value,
                 disambiguator: Some(disambiguator),
-            });
-            (index, true)
-        };
-        if new {
-            let _index = self.evaluated.push(None);
-            debug_assert_eq!(index, _index);
-            let _index = self.rev_locals.push(SmallVec::new());
-            debug_assert_eq!(index, _index);
+            })
         }
-        index
     }
 
     #[inline]
@@ -570,6 +567,8 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
             _ if ty.is_zst() => ImmTy::uninit(ty).into(),
 
             Opaque(_) => return None,
+            // Keep runtime check constants as symbolic.
+            RuntimeChecks(..) => return None,
 
             // In general, evaluating repeat expressions just consumes a lot of memory.
             // But in the special case that the element is just Immediate::Uninit, we can evaluate
@@ -681,7 +680,6 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
                     self.ecx.discriminant_for_variant(base.layout.ty, variant).discard_err()?;
                 discr_value.into()
             }
-            NullaryOp(NullOp::RuntimeChecks(_)) => return None,
             UnaryOp(un_op, operand) => {
                 let operand = self.eval_to_const(operand)?;
                 let operand = self.ecx.read_immediate(operand).discard_err()?;
@@ -1007,11 +1005,16 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
         location: Location,
     ) -> Option<VnIndex> {
         match *operand {
+            Operand::RuntimeChecks(c) => {
+                Some(self.insert(self.tcx.types.bool, Value::RuntimeChecks(c)))
+            }
             Operand::Constant(ref constant) => Some(self.insert_constant(constant.const_)),
             Operand::Copy(ref mut place) | Operand::Move(ref mut place) => {
                 let value = self.simplify_place_value(place, location)?;
                 if let Some(const_) = self.try_as_constant(value) {
                     *operand = Operand::Constant(Box::new(const_));
+                } else if let Value::RuntimeChecks(c) = self.get(value) {
+                    *operand = Operand::RuntimeChecks(c);
                 }
                 Some(value)
             }
@@ -1034,7 +1037,6 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
                 let op = self.simplify_operand(op, location)?;
                 Value::Repeat(op, amount)
             }
-            Rvalue::NullaryOp(op) => Value::NullaryOp(op),
             Rvalue::Aggregate(..) => return self.simplify_aggregate(lhs, rvalue, location),
             Rvalue::Ref(_, borrow_kind, ref mut place) => {
                 self.simplify_place_projection(place, location);
@@ -1782,6 +1784,8 @@ impl<'tcx> VnState<'_, '_, 'tcx> {
     fn try_as_operand(&mut self, index: VnIndex, location: Location) -> Option<Operand<'tcx>> {
         if let Some(const_) = self.try_as_constant(index) {
             Some(Operand::Constant(Box::new(const_)))
+        } else if let Value::RuntimeChecks(c) = self.get(index) {
+            Some(Operand::RuntimeChecks(c))
         } else if let Some(place) = self.try_as_place(index, location, false) {
             self.reused_locals.insert(place.local);
             Some(Operand::Copy(place))

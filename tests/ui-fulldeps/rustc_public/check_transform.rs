@@ -69,6 +69,7 @@ fn check_msg(body: &Body, expected: &str) {
                             })
                             .unwrap()
                     }
+                    Operand::RuntimeChecks(_) => panic!("unexpected runtime checks"),
                 };
                 let ConstantKind::Allocated(alloc) = msg_const.const_.kind() else {
                     unreachable!()

@@ -232,7 +232,6 @@ impl<'tcx> Stable<'tcx> for mir::Rvalue<'tcx> {
                     )
                 }
             }
-            NullaryOp(null_op) => crate::mir::Rvalue::NullaryOp(null_op.stable(tables, cx)),
             UnaryOp(un_op, op) => {
                 crate::mir::Rvalue::UnaryOp(un_op.stable(tables, cx), op.stable(tables, cx))
             }
@@ -312,21 +311,18 @@ impl<'tcx> Stable<'tcx> for mir::FakeBorrowKind {
     }
 }
 
-impl<'tcx> Stable<'tcx> for mir::NullOp {
-    type T = crate::mir::NullOp;
+impl<'tcx> Stable<'tcx> for mir::RuntimeChecks {
+    type T = crate::mir::RuntimeChecks;
     fn stable<'cx>(
         &self,
         _: &mut Tables<'cx, BridgeTys>,
         _: &CompilerCtxt<'cx, BridgeTys>,
     ) -> Self::T {
-        use rustc_middle::mir::NullOp::*;
         use rustc_middle::mir::RuntimeChecks::*;
         match self {
-            RuntimeChecks(op) => crate::mir::NullOp::RuntimeChecks(match op {
-                UbChecks => crate::mir::RuntimeChecks::UbChecks,
-                ContractChecks => crate::mir::RuntimeChecks::ContractChecks,
-                OverflowChecks => crate::mir::RuntimeChecks::OverflowChecks,
-            }),
+            UbChecks => crate::mir::RuntimeChecks::UbChecks,
+            ContractChecks => crate::mir::RuntimeChecks::ContractChecks,
+            OverflowChecks => crate::mir::RuntimeChecks::OverflowChecks,
         }
     }
 }
@@ -383,6 +379,7 @@ impl<'tcx> Stable<'tcx> for mir::Operand<'tcx> {
             Copy(place) => crate::mir::Operand::Copy(place.stable(tables, cx)),
             Move(place) => crate::mir::Operand::Move(place.stable(tables, cx)),
             Constant(c) => crate::mir::Operand::Constant(c.stable(tables, cx)),
+            RuntimeChecks(c) => crate::mir::Operand::RuntimeChecks(c.stable(tables, cx)),
         }
     }
 }

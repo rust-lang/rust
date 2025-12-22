@@ -243,7 +243,6 @@ TrivialTypeTraversalImpls! {
     crate::mir::FakeReadCause,
     crate::mir::Local,
     crate::mir::MirPhase,
-    crate::mir::NullOp,
     crate::mir::Promoted,
     crate::mir::RawPtrKind,
     crate::mir::RetagKind,
@@ -284,6 +283,7 @@ TrivialTypeTraversalImpls! {
 // interners).
 TrivialTypeTraversalAndLiftImpls! {
     // tidy-alphabetical-start
+    crate::mir::RuntimeChecks,
     crate::ty::BoundTy,
     crate::ty::ParamTy,
     crate::ty::instance::ReifyReason,
