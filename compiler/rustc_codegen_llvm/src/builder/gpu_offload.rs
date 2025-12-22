@@ -2,13 +2,14 @@ use std::ffi::CString;
 
 use llvm::Linkage::*;
 use rustc_abi::Align;
+use rustc_codegen_ssa::common::TypeKind;
 use rustc_codegen_ssa::traits::{BaseTypeCodegenMethods, BuilderMethods};
 use rustc_middle::ty::offload_meta::OffloadMetadata;
 
 use crate::builder::Builder;
 use crate::common::CodegenCx;
 use crate::llvm::AttributePlace::Function;
-use crate::llvm::{self, Linkage, Type, Value};
+use crate::llvm::{self, Linkage, Type, Value, get_value_name};
 use crate::{SimpleCx, attributes};
 
 // LLVM kernel-independent globals required for offloading
@@ -477,8 +478,27 @@ pub(crate) fn gen_call_handling<'ll, 'tcx>(
     let mut geps = vec![];
     let i32_0 = cx.get_const_i32(0);
     for &v in args {
-        let gep = builder.inbounds_gep(cx.type_f32(), v, &[i32_0]);
-        vals.push(v);
+        let name = String::from_utf8(get_value_name(v)).unwrap();
+        let (base_val, gep_base) = match cx.type_kind(cx.val_ty(v)) {
+            TypeKind::Pointer => (v, v),
+            _ => {
+                let addr =
+                    builder.direct_alloca(cx.val_ty(v), Align::EIGHT, &format!("{}.addr", name));
+                let casted =
+                    builder.direct_alloca(cx.type_i64(), Align::EIGHT, &format!("{}.casted", name));
+                builder.store(v, addr, Align::EIGHT);
+
+                let loaded = builder.load(cx.val_ty(v), addr, Align::EIGHT);
+                builder.store(loaded, casted, Align::EIGHT);
+
+                let casted_val = builder.load(cx.type_i64(), casted, Align::EIGHT);
+                (casted_val, casted)
+            }
+        };
+
+        let gep = builder.inbounds_gep(cx.type_f32(), gep_base, &[i32_0]);
+
+        vals.push(base_val);
         geps.push(gep);
     }
 
