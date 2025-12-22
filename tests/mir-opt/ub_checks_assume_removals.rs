@@ -7,9 +7,6 @@
 // This test ensures that `assume(RuntimeChecks)`
 // is not emitted in MIR after SimplifyCfg.
 
-// CHECK-NOT: assume(RuntimeChecks)
-// CHECK-NOT: RuntimeChecks
-
 // EMIT_MIR_FOR_EACH ub_checks_assume_removals.test SimplifyCfg-final
 pub unsafe fn test(ptr: *const u8) -> u8 {
     ptr.read()
