@@ -117,6 +117,7 @@ struct ConfigBuilder {
     profiler_runtime: bool,
     rustc_debug_assertions: bool,
     std_debug_assertions: bool,
+    std_remap_debuginfo: bool,
 }
 
 impl ConfigBuilder {
@@ -185,6 +186,11 @@ impl ConfigBuilder {
         self
     }
 
+    fn std_remap_debuginfo(&mut self, is_enabled: bool) -> &mut Self {
+        self.std_remap_debuginfo = is_enabled;
+        self
+    }
+
     fn build(&mut self) -> Config {
         let args = &[
             "compiletest",
@@ -245,6 +251,9 @@ impl ConfigBuilder {
         }
         if self.std_debug_assertions {
             args.push("--with-std-debug-assertions".to_owned());
+        }
+        if self.std_remap_debuginfo {
+            args.push("--with-std-remap-debuginfo".to_owned());
         }
 
         args.push("--rustc-path".to_string());
@@ -398,6 +407,19 @@ fn std_debug_assertions() {
 
     assert!(!check_ignore(&config, "//@ needs-std-debug-assertions"));
     assert!(check_ignore(&config, "//@ ignore-std-debug-assertions"));
+}
+
+#[test]
+fn std_remap_debuginfo() {
+    let config: Config = cfg().std_remap_debuginfo(false).build();
+
+    assert!(check_ignore(&config, "//@ needs-std-remap-debuginfo"));
+    assert!(!check_ignore(&config, "//@ ignore-std-remap-debuginfo"));
+
+    let config: Config = cfg().std_remap_debuginfo(true).build();
+
+    assert!(!check_ignore(&config, "//@ needs-std-remap-debuginfo"));
+    assert!(check_ignore(&config, "//@ ignore-std-remap-debuginfo"));
 }
 
 #[test]
