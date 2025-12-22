@@ -165,6 +165,23 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let errno_place = this.last_error_place()?;
                 this.write_scalar(errno_place.to_ref(this).to_scalar(), dest)?;
             }
+            "__xuname" => {
+                // FreeBSD uses __xuname under the hood to implement uname, see:
+                // https://github.com/freebsd/freebsd-src/blob/3542d60fb8042474f66fbf2d779ed8c5a80d0f78/sys/sys/utsname.h#L64
+                // https://github.com/freebsd/freebsd-src/blob/3542d60fb8042474f66fbf2d779ed8c5a80d0f78/lib/libc/gen/uname.c#L44
+                let [size, uname] = this.check_shim_sig(
+                    shim_sig!(extern "C" fn(i32, *mut _) -> i32),
+                    link_name,
+                    abi,
+                    args,
+                )?;
+                // The size determines the length of each field in the utsname
+                // structure. We don't really care about this, all we do check
+                // that the argument is an i32.
+                let _size = this.read_scalar(size)?.to_i32()?;
+                let result = this.uname(uname)?;
+                this.write_scalar(result, dest)?;
+            }
 
             // Incomplete shims that we "stub out" just to get pre-main initialization code to work.
             // These shims are enabled only when the caller is in the standard library.
