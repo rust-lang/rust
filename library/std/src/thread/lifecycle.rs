@@ -10,8 +10,7 @@ use crate::marker::PhantomData;
 use crate::mem::{ManuallyDrop, MaybeUninit};
 use crate::sync::Arc;
 use crate::sync::atomic::{Atomic, AtomicUsize, Ordering};
-use crate::sys::thread as imp;
-use crate::sys_common::{AsInner, IntoInner};
+use crate::sys::{AsInner, IntoInner, thread as imp};
 use crate::{env, io, panic};
 
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces

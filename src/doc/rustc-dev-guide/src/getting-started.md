@@ -96,7 +96,7 @@ For example:
 Not all important or beginner work has issue labels.
 See below for how to find work that isn't labelled.
 
-[help-wanted-search]: https://github.com/issues?q=is%3Aopen+is%3Aissue+org%3Arust-lang+no%3Aassignee+label%3AE-easy%2C%22good+first+issue%22%2Cgood-first-issue%2CE-medium%2CEasy%2CE-help-wanted%2CE-mentor+-label%3AS-blocked+-linked%3Apr+
+[help-wanted-search]: https://github.com/issues?q=is%3Aopen%20is%3Aissue%20org%3Arust-lang%20no%3Aassignee%20label%3AE-easy%2CE-medium%2CE-help-wanted%2CE-mentor%20-label%3AS-blocked%20-linked%3Apr
 [Triage]: ./contributing.md#issue-triage
 
 ### Recurring work
@@ -151,6 +151,9 @@ Issues that have been resolved but do not have a regression test are marked with
 Writing unit tests is a low-risk,
 lower-priority task that offers new contributors a great opportunity to familiarize themselves
 with the testing infrastructure and contribution workflow.
+You can see a list of needs test issues [here][needs-test-issues].
+
+[needs-test-issues]: https://github.com/rust-lang/rust/issues?q=is%3Aissue%20is%3Aopen%20label%3AE-needs-test%20no%3Aassignee
 
 ### Contributing to std (standard library)
 

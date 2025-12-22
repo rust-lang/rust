@@ -46,8 +46,7 @@ use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut, Read, Seek, SeekFrom,
 use crate::path::{Path, PathBuf};
 use crate::sealed::Sealed;
 use crate::sync::Arc;
-use crate::sys::fs as fs_imp;
-use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
+use crate::sys::{AsInner, AsInnerMut, FromInner, IntoInner, fs as fs_imp};
 use crate::time::SystemTime;
 use crate::{error, fmt};
 

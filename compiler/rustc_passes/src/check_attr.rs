@@ -10,9 +10,10 @@ use std::collections::hash_map::Entry;
 use std::slice;
 
 use rustc_abi::{Align, ExternAbi, Size};
-use rustc_ast::{AttrStyle, LitKind, MetaItemKind, ast};
+use rustc_ast::{AttrStyle, MetaItemKind, ast};
 use rustc_attr_parsing::{AttributeParser, Late};
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::{DiagCtxtHandle, IntoDiagArg, MultiSpan, StashKey};
 use rustc_feature::{
     ACCEPTED_LANG_FEATURES, AttributeDuplicates, AttributeType, BUILTIN_ATTRIBUTE_MAP,
@@ -211,6 +212,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 Attribute::Parsed(AttributeKind::MacroExport { span, .. }) => {
                     self.check_macro_export(hir_id, *span, target)
                 },
+                Attribute::Parsed(AttributeKind::RustcLegacyConstGenerics{attr_span, fn_indexes}) => {
+                    self.check_rustc_legacy_const_generics(item, *attr_span, fn_indexes)
+                },
                 Attribute::Parsed(AttributeKind::Doc(attr)) => self.check_doc_attrs(attr, hir_id, target),
                 Attribute::Parsed(AttributeKind::EiiImpls(impls)) => {
                      self.check_eii_impl(impls, target)
@@ -250,8 +254,17 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::LinkSection { .. }
                     | AttributeKind::MacroUse { .. }
                     | AttributeKind::MacroEscape( .. )
+                    | AttributeKind::NoLink
+                    | AttributeKind::RustcNoImplicitAutorefs
                     | AttributeKind::RustcLayoutScalarValidRangeStart(..)
                     | AttributeKind::RustcLayoutScalarValidRangeEnd(..)
+                    | AttributeKind::RustcLintDiagnostics
+                    | AttributeKind::RustcLintOptDenyFieldAccess { .. }
+                    | AttributeKind::RustcLintOptTy
+                    | AttributeKind::RustcLintQueryInstability
+                    | AttributeKind::RustcLintUntrackedQueryInformation
+                    | AttributeKind::RustcNeverReturnsNullPointer
+                    | AttributeKind::RustcScalableVector { .. }
                     | AttributeKind::RustcSimdMonomorphizeLaneLimit(..)
                     | AttributeKind::RustcShouldNotBeCalledOnConstItems(..)
                     | AttributeKind::ExportStable
@@ -284,6 +297,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::RustcPassIndirectlyInNonRusticAbis(..)
                     | AttributeKind::PinV2(..)
                     | AttributeKind::WindowsSubsystem(..)
+                    | AttributeKind::ThreadLocal
                 ) => { /* do nothing  */ }
                 Attribute::Unparsed(attr_item) => {
                     style = Some(attr_item.style);
@@ -296,30 +310,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         }
                         [sym::diagnostic, sym::on_const, ..] => {
                             self.check_diagnostic_on_const(attr.span(), hir_id, target, item)
-                        }
-                        [sym::thread_local, ..] => self.check_thread_local(attr, span, target),
-                        [sym::no_link, ..] => self.check_no_link(hir_id, attr, span, target),
-                        [sym::rustc_no_implicit_autorefs, ..] => {
-                            self.check_applied_to_fn_or_method(hir_id, attr.span(), span, target)
-                        }
-                        [sym::rustc_never_returns_null_ptr, ..] => {
-                            self.check_applied_to_fn_or_method(hir_id, attr.span(), span, target)
-                        }
-                        [sym::rustc_legacy_const_generics, ..] => {
-                            self.check_rustc_legacy_const_generics(hir_id, attr, span, target, item)
-                        }
-                        [sym::rustc_lint_query_instability, ..] => {
-                            self.check_applied_to_fn_or_method(hir_id, attr.span(), span, target)
-                        }
-                        [sym::rustc_lint_untracked_query_information, ..] => {
-                            self.check_applied_to_fn_or_method(hir_id, attr.span(), span, target)
-                        }
-                        [sym::rustc_lint_diagnostics, ..] => {
-                            self.check_applied_to_fn_or_method(hir_id, attr.span(), span, target)
-                        }
-                        [sym::rustc_lint_opt_ty, ..] => self.check_rustc_lint_opt_ty(attr, span, target),
-                        [sym::rustc_lint_opt_deny_field_access, ..] => {
-                            self.check_rustc_lint_opt_deny_field_access(attr, span, target)
                         }
                         [sym::rustc_clean, ..]
                         | [sym::rustc_dirty, ..]
@@ -453,15 +443,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         self.check_repr(attrs, span, target, item, hir_id);
         self.check_rustc_force_inline(hir_id, attrs, target);
         self.check_mix_no_mangle_export(hir_id, attrs);
-    }
-
-    fn inline_attr_str_error_with_macro_def(&self, hir_id: HirId, attr_span: Span, sym: &str) {
-        self.tcx.emit_node_span_lint(
-            UNUSED_ATTRIBUTES,
-            hir_id,
-            attr_span,
-            errors::IgnoredAttrWithMacro { sym },
-        );
     }
 
     fn check_eii_impl(&self, impls: &[EiiImpl], target: Target) {
@@ -784,19 +765,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 }
             }
             _ => {}
-        }
-    }
-
-    /// Checks if the `#[thread_local]` attribute on `item` is valid.
-    fn check_thread_local(&self, attr: &Attribute, span: Span, target: Target) {
-        match target {
-            Target::ForeignStatic | Target::Static => {}
-            _ => {
-                self.dcx().emit_err(errors::AttrShouldBeAppliedToStatic {
-                    attr_span: attr.span(),
-                    defn_span: span,
-                });
-            }
         }
     }
 
@@ -1197,53 +1165,20 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         );
     }
 
-    /// Checks if `#[no_link]` is applied to an `extern crate`.
-    fn check_no_link(&self, hir_id: HirId, attr: &Attribute, span: Span, target: Target) {
-        match target {
-            Target::ExternCrate => {}
-            // FIXME(#80564): We permit struct fields, match arms and macro defs to have an
-            // `#[no_link]` attribute with just a lint, because we previously
-            // erroneously allowed it and some crates used it accidentally, to be compatible
-            // with crates depending on them, we can't throw an error here.
-            Target::Field | Target::Arm | Target::MacroDef => {
-                self.inline_attr_str_error_with_macro_def(hir_id, attr.span(), "no_link");
-            }
-            _ => {
-                self.dcx().emit_err(errors::NoLink { attr_span: attr.span(), span });
-            }
-        }
-    }
-
     /// Checks if `#[rustc_legacy_const_generics]` is applied to a function and has a valid argument.
     fn check_rustc_legacy_const_generics(
         &self,
-        hir_id: HirId,
-        attr: &Attribute,
-        span: Span,
-        target: Target,
         item: Option<ItemLike<'_>>,
+        attr_span: Span,
+        index_list: &ThinVec<(usize, Span)>,
     ) {
-        let is_function = matches!(target, Target::Fn);
-        if !is_function {
-            self.dcx().emit_err(errors::AttrShouldBeAppliedToFn {
-                attr_span: attr.span(),
-                defn_span: span,
-                on_crate: hir_id == CRATE_HIR_ID,
-            });
-            return;
-        }
-
-        let Some(list) = attr.meta_item_list() else {
-            // The attribute form is validated on AST.
-            return;
-        };
-
         let Some(ItemLike::Item(Item {
             kind: ItemKind::Fn { sig: FnSig { decl, .. }, generics, .. },
             ..
         })) = item
         else {
-            bug!("should be a function item");
+            // No error here, since it's already given by the parser
+            return;
         };
 
         for param in generics.params {
@@ -1251,7 +1186,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 hir::GenericParamKind::Const { .. } => {}
                 _ => {
                     self.dcx().emit_err(errors::RustcLegacyConstGenericsOnly {
-                        attr_span: attr.span(),
+                        attr_span,
                         param_span: param.span,
                     });
                     return;
@@ -1259,73 +1194,21 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             }
         }
 
-        if list.len() != generics.params.len() {
+        if index_list.len() != generics.params.len() {
             self.dcx().emit_err(errors::RustcLegacyConstGenericsIndex {
-                attr_span: attr.span(),
+                attr_span,
                 generics_span: generics.span,
             });
             return;
         }
 
-        let arg_count = decl.inputs.len() as u128 + generics.params.len() as u128;
-        let mut invalid_args = vec![];
-        for meta in list {
-            if let Some(LitKind::Int(val, _)) = meta.lit().map(|lit| &lit.kind) {
-                if *val >= arg_count {
-                    let span = meta.span();
-                    self.dcx().emit_err(errors::RustcLegacyConstGenericsIndexExceed {
-                        span,
-                        arg_count: arg_count as usize,
-                    });
-                    return;
-                }
-            } else {
-                invalid_args.push(meta.span());
-            }
-        }
-
-        if !invalid_args.is_empty() {
-            self.dcx().emit_err(errors::RustcLegacyConstGenericsIndexNegative { invalid_args });
-        }
-    }
-
-    /// Helper function for checking that the provided attribute is only applied to a function or
-    /// method.
-    fn check_applied_to_fn_or_method(
-        &self,
-        hir_id: HirId,
-        attr_span: Span,
-        defn_span: Span,
-        target: Target,
-    ) {
-        let is_function = matches!(target, Target::Fn | Target::Method(..));
-        if !is_function {
-            self.dcx().emit_err(errors::AttrShouldBeAppliedToFn {
-                attr_span,
-                defn_span,
-                on_crate: hir_id == CRATE_HIR_ID,
-            });
-        }
-    }
-
-    /// Checks that the `#[rustc_lint_opt_ty]` attribute is only applied to a struct.
-    fn check_rustc_lint_opt_ty(&self, attr: &Attribute, span: Span, target: Target) {
-        match target {
-            Target::Struct => {}
-            _ => {
-                self.dcx().emit_err(errors::RustcLintOptTy { attr_span: attr.span(), span });
-            }
-        }
-    }
-
-    /// Checks that the `#[rustc_lint_opt_deny_field_access]` attribute is only applied to a field.
-    fn check_rustc_lint_opt_deny_field_access(&self, attr: &Attribute, span: Span, target: Target) {
-        match target {
-            Target::Field => {}
-            _ => {
-                self.tcx
-                    .dcx()
-                    .emit_err(errors::RustcLintOptDenyFieldAccess { attr_span: attr.span(), span });
+        let arg_count = decl.inputs.len() + generics.params.len();
+        for (index, span) in index_list {
+            if *index >= arg_count {
+                self.dcx().emit_err(errors::RustcLegacyConstGenericsIndexExceed {
+                    span: *span,
+                    arg_count,
+                });
             }
         }
     }

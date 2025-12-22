@@ -834,7 +834,7 @@ impl<T> Vec<T> {
     /// assert_eq!(rebuilt, [4294967295, 0, 1]);
     /// ```
     #[must_use = "losing the pointer will leak memory"]
-    #[stable(feature = "vec_into_raw_parts", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "vec_into_raw_parts", since = "1.93.0")]
     pub fn into_raw_parts(self) -> (*mut T, usize, usize) {
         let mut me = ManuallyDrop::new(self);
         (me.as_mut_ptr(), me.len(), me.capacity())

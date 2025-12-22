@@ -1165,17 +1165,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ///
     /// This is really an internal helper. From outside the coercion
     /// module, you should instantiate a `CoerceMany` instance.
-    fn try_find_coercion_lub<E>(
+    fn try_find_coercion_lub(
         &self,
         cause: &ObligationCause<'tcx>,
-        exprs: &[E],
+        exprs: &[&'tcx hir::Expr<'tcx>],
         prev_ty: Ty<'tcx>,
         new: &hir::Expr<'_>,
         new_ty: Ty<'tcx>,
-    ) -> RelateResult<'tcx, Ty<'tcx>>
-    where
-        E: AsCoercionSite,
-    {
+    ) -> RelateResult<'tcx, Ty<'tcx>> {
         let prev_ty = self.try_structurally_resolve_type(cause.span, prev_ty);
         let new_ty = self.try_structurally_resolve_type(new.span, new_ty);
         debug!(
@@ -1269,7 +1266,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ty::FnDef(..) => Adjust::Pointer(PointerCoercion::ReifyFnPointer(sig.safety())),
                 _ => span_bug!(new.span, "should not try to coerce a {new_ty} to a fn pointer"),
             };
-            for expr in exprs.iter().map(|e| e.as_coercion_site()) {
+            for expr in exprs.iter() {
                 self.apply_adjustments(
                     expr,
                     vec![Adjustment { kind: prev_adjustment.clone(), target: fn_ptr }],
@@ -1316,7 +1313,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let (adjustments, target) = self.register_infer_ok_obligations(ok);
         for expr in exprs {
-            let expr = expr.as_coercion_site();
             self.apply_adjustments(expr, adjustments.clone());
         }
         debug!(
@@ -1382,41 +1378,23 @@ pub fn can_coerce<'tcx>(
 /// }
 /// let final_ty = coerce.complete(fcx);
 /// ```
-pub(crate) struct CoerceMany<'tcx, 'exprs, E: AsCoercionSite> {
+pub(crate) struct CoerceMany<'tcx> {
     expected_ty: Ty<'tcx>,
     final_ty: Option<Ty<'tcx>>,
-    expressions: Expressions<'tcx, 'exprs, E>,
-    pushed: usize,
+    expressions: Vec<&'tcx hir::Expr<'tcx>>,
 }
 
-/// The type of a `CoerceMany` that is storing up the expressions into
-/// a buffer. We use this in `check/mod.rs` for things like `break`.
-pub(crate) type DynamicCoerceMany<'tcx> = CoerceMany<'tcx, 'tcx, &'tcx hir::Expr<'tcx>>;
-
-enum Expressions<'tcx, 'exprs, E: AsCoercionSite> {
-    Dynamic(Vec<&'tcx hir::Expr<'tcx>>),
-    UpFront(&'exprs [E]),
-}
-
-impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
-    /// The usual case; collect the set of expressions dynamically.
-    /// If the full set of coercion sites is known before hand,
-    /// consider `with_coercion_sites()` instead to avoid allocation.
+impl<'tcx> CoerceMany<'tcx> {
+    /// Creates a `CoerceMany` with a default capacity of 1. If the full set of
+    /// coercion sites is known before hand, consider `with_capacity()` instead
+    /// to avoid allocation.
     pub(crate) fn new(expected_ty: Ty<'tcx>) -> Self {
-        Self::make(expected_ty, Expressions::Dynamic(vec![]))
+        Self::with_capacity(expected_ty, 1)
     }
 
-    /// As an optimization, you can create a `CoerceMany` with a
-    /// preexisting slice of expressions. In this case, you are
-    /// expected to pass each element in the slice to `coerce(...)` in
-    /// order. This is used with arrays in particular to avoid
-    /// needlessly cloning the slice.
-    pub(crate) fn with_coercion_sites(expected_ty: Ty<'tcx>, coercion_sites: &'exprs [E]) -> Self {
-        Self::make(expected_ty, Expressions::UpFront(coercion_sites))
-    }
-
-    fn make(expected_ty: Ty<'tcx>, expressions: Expressions<'tcx, 'exprs, E>) -> Self {
-        CoerceMany { expected_ty, final_ty: None, expressions, pushed: 0 }
+    /// Creates a `CoerceMany` with a given capacity.
+    pub(crate) fn with_capacity(expected_ty: Ty<'tcx>, capacity: usize) -> Self {
+        CoerceMany { expected_ty, final_ty: None, expressions: Vec::with_capacity(capacity) }
     }
 
     /// Returns the "expected type" with which this coercion was
@@ -1529,7 +1507,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
 
         // Handle the actual type unification etc.
         let result = if let Some(expression) = expression {
-            if self.pushed == 0 {
+            if self.expressions.is_empty() {
                 // Special-case the first expression we are coercing.
                 // To be honest, I'm not entirely sure why we do this.
                 // We don't allow two-phase borrows, see comment in try_find_coercion_lub for why
@@ -1541,22 +1519,13 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                     Some(cause.clone()),
                 )
             } else {
-                match self.expressions {
-                    Expressions::Dynamic(ref exprs) => fcx.try_find_coercion_lub(
-                        cause,
-                        exprs,
-                        self.merged_ty(),
-                        expression,
-                        expression_ty,
-                    ),
-                    Expressions::UpFront(coercion_sites) => fcx.try_find_coercion_lub(
-                        cause,
-                        &coercion_sites[0..self.pushed],
-                        self.merged_ty(),
-                        expression,
-                        expression_ty,
-                    ),
-                }
+                fcx.try_find_coercion_lub(
+                    cause,
+                    &self.expressions,
+                    self.merged_ty(),
+                    expression,
+                    expression_ty,
+                )
             }
         } else {
             // this is a hack for cases where we default to `()` because
@@ -1591,18 +1560,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
             Ok(v) => {
                 self.final_ty = Some(v);
                 if let Some(e) = expression {
-                    match self.expressions {
-                        Expressions::Dynamic(ref mut buffer) => buffer.push(e),
-                        Expressions::UpFront(coercion_sites) => {
-                            // if the user gave us an array to validate, check that we got
-                            // the next expression in the list, as expected
-                            assert_eq!(
-                                coercion_sites[self.pushed].as_coercion_site().hir_id,
-                                e.hir_id
-                            );
-                        }
-                    }
-                    self.pushed += 1;
+                    self.expressions.push(e);
                 }
             }
             Err(coercion_error) => {
@@ -1955,42 +1913,9 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
         } else {
             // If we only had inputs that were of type `!` (or no
             // inputs at all), then the final type is `!`.
-            assert_eq!(self.pushed, 0);
+            assert!(self.expressions.is_empty());
             fcx.tcx.types.never
         }
-    }
-}
-
-/// Something that can be converted into an expression to which we can
-/// apply a coercion.
-pub(crate) trait AsCoercionSite {
-    fn as_coercion_site(&self) -> &hir::Expr<'_>;
-}
-
-impl AsCoercionSite for hir::Expr<'_> {
-    fn as_coercion_site(&self) -> &hir::Expr<'_> {
-        self
-    }
-}
-
-impl<'a, T> AsCoercionSite for &'a T
-where
-    T: AsCoercionSite,
-{
-    fn as_coercion_site(&self) -> &hir::Expr<'_> {
-        (**self).as_coercion_site()
-    }
-}
-
-impl AsCoercionSite for ! {
-    fn as_coercion_site(&self) -> &hir::Expr<'_> {
-        *self
-    }
-}
-
-impl AsCoercionSite for hir::Arm<'_> {
-    fn as_coercion_site(&self) -> &hir::Expr<'_> {
-        self.body
     }
 }
 

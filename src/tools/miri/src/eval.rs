@@ -543,9 +543,7 @@ where
 {
     // Parse argv[0]. Slashes aren't escaped. Literal double quotes are not allowed.
     let mut cmd = {
-        let arg0 = if let Some(arg0) = args.next() {
-            arg0
-        } else {
+        let Some(arg0) = args.next() else {
             return vec![0];
         };
         let arg0 = arg0.as_ref();

@@ -1,16 +1,8 @@
 error: the evaluated program deadlocked
-  --> tests/fail-dep/concurrency/windows_join_main.rs:LL:CC
-   |
-LL |             assert_eq!(WaitForSingleObject(MAIN_THREAD, INFINITE), WAIT_OBJECT_0);
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this thread got stuck here
-   |
-   = note: this error originates in the macro `assert_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error: the evaluated program deadlocked
   --> RUSTLIB/std/src/sys/thread/PLATFORM.rs:LL:CC
    |
 LL |         let rc = unsafe { c::WaitForSingleObject(self.handle.as_raw_handle(), c::INFINITE) };
-   |                                                                                          ^ this thread got stuck here
+   |                                                                                          ^ thread `main` got stuck here
    |
    = note: BACKTRACE:
    = note: inside `std::sys::thread::PLATFORM::Thread::join` at RUSTLIB/std/src/sys/thread/PLATFORM.rs:LL:CC
@@ -25,6 +17,14 @@ LL | |             assert_eq!(WaitForSingleObject(MAIN_THREAD, INFINITE), WAIT_O
 ...  |
 LL | |     .join()
    | |___________^
+
+error: the evaluated program deadlocked
+  --> tests/fail-dep/concurrency/windows_join_main.rs:LL:CC
+   |
+LL |             assert_eq!(WaitForSingleObject(MAIN_THREAD, INFINITE), WAIT_OBJECT_0);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ thread `unnamed-ID` got stuck here
+   |
+   = note: this error originates in the macro `assert_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

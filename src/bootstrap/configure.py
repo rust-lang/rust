@@ -593,7 +593,7 @@ def parse_example_config(known_args, config):
     top_level_keys = []
     comment_lines = []
 
-    with open(rust_dir + "/bootstrap.example.toml") as example_config:
+    with open(rust_dir + "/bootstrap.example.toml", encoding="utf-8") as example_config:
         example_lines = example_config.read().split("\n")
     for line in example_lines:
         if line.count("=") >= 1 and not line.startswith("# "):

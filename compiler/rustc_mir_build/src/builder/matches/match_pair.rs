@@ -1,14 +1,13 @@
 use std::sync::Arc;
 
 use rustc_abi::FieldIdx;
-use rustc_hir::ByRef;
 use rustc_middle::mir::*;
 use rustc_middle::thir::*;
-use rustc_middle::ty::{self, Pinnedness, Ty, TypeVisitableExt};
+use rustc_middle::ty::{self, Ty, TypeVisitableExt};
 
 use crate::builder::Builder;
 use crate::builder::expr::as_place::{PlaceBase, PlaceBuilder};
-use crate::builder::matches::{FlatPat, MatchPairTree, PatternExtraData, TestCase};
+use crate::builder::matches::{FlatPat, MatchPairTree, PatternExtraData, TestableCase};
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Builds and pushes [`MatchPairTree`] subtrees, one for each pattern in
@@ -132,7 +131,7 @@ impl<'tcx> MatchPairTree<'tcx> {
 
         let place = place_builder.try_to_place(cx);
         let mut subpairs = Vec::new();
-        let test_case = match pattern.kind {
+        let testable_case = match pattern.kind {
             PatKind::Missing | PatKind::Wild | PatKind::Error(_) => None,
 
             PatKind::Or { ref pats } => {
@@ -146,18 +145,18 @@ impl<'tcx> MatchPairTree<'tcx> {
                     // FIXME(@dianne): this needs updating/removing if we always merge or-patterns
                     extra_data.bindings.push(super::SubpatternBindings::FromOrPattern);
                 }
-                Some(TestCase::Or { pats })
+                Some(TestableCase::Or { pats })
             }
 
             PatKind::Range(ref range) => {
                 if range.is_full_range(cx.tcx) == Some(true) {
                     None
                 } else {
-                    Some(TestCase::Range(Arc::clone(range)))
+                    Some(TestableCase::Range(Arc::clone(range)))
                 }
             }
 
-            PatKind::Constant { value } => Some(TestCase::Constant { value }),
+            PatKind::Constant { value } => Some(TestableCase::Constant { value }),
 
             PatKind::AscribeUserType {
                 ascription: Ascription { ref annotation, variance },
@@ -256,7 +255,7 @@ impl<'tcx> MatchPairTree<'tcx> {
                 if prefix.is_empty() && slice.is_some() && suffix.is_empty() {
                     None
                 } else {
-                    Some(TestCase::Slice {
+                    Some(TestableCase::Slice {
                         len: prefix.len() + suffix.len(),
                         variable_length: slice.is_some(),
                     })
@@ -275,7 +274,11 @@ impl<'tcx> MatchPairTree<'tcx> {
                             cx.def_id.into(),
                         )
                 }) && !adt_def.variant_list_has_applicable_non_exhaustive();
-                if irrefutable { None } else { Some(TestCase::Variant { adt_def, variant_index }) }
+                if irrefutable {
+                    None
+                } else {
+                    Some(TestableCase::Variant { adt_def, variant_index })
+                }
             }
 
             PatKind::Leaf { ref subpatterns } => {
@@ -283,8 +286,9 @@ impl<'tcx> MatchPairTree<'tcx> {
                 None
             }
 
+            // FIXME: Pin-patterns should probably have their own pattern kind,
+            // instead of overloading `PatKind::Deref` via the pattern type.
             PatKind::Deref { ref subpattern }
-            | PatKind::DerefPattern { ref subpattern, borrow: ByRef::Yes(Pinnedness::Pinned, _) }
                 if let Some(ref_ty) = pattern.ty.pinned_ty()
                     && ref_ty.is_ref() =>
             {
@@ -298,12 +302,8 @@ impl<'tcx> MatchPairTree<'tcx> {
                 None
             }
 
-            PatKind::DerefPattern { borrow: ByRef::Yes(Pinnedness::Pinned, _), .. } => {
-                rustc_middle::bug!("RefPin pattern on non-`Pin` type {:?}", pattern.ty)
-            }
-
             PatKind::Deref { ref subpattern }
-            | PatKind::DerefPattern { ref subpattern, borrow: ByRef::No } => {
+            | PatKind::DerefPattern { ref subpattern, borrow: DerefPatBorrowMode::Box } => {
                 MatchPairTree::for_pattern(
                     place_builder.deref(),
                     subpattern,
@@ -316,7 +316,7 @@ impl<'tcx> MatchPairTree<'tcx> {
 
             PatKind::DerefPattern {
                 ref subpattern,
-                borrow: ByRef::Yes(Pinnedness::Not, mutability),
+                borrow: DerefPatBorrowMode::Borrow(mutability),
             } => {
                 // Create a new temporary for each deref pattern.
                 // FIXME(deref_patterns): dedup temporaries to avoid multiple `deref()` calls?
@@ -331,17 +331,23 @@ impl<'tcx> MatchPairTree<'tcx> {
                     &mut subpairs,
                     extra_data,
                 );
-                Some(TestCase::Deref { temp, mutability })
+                Some(TestableCase::Deref { temp, mutability })
             }
 
-            PatKind::Never => Some(TestCase::Never),
+            PatKind::Never => Some(TestableCase::Never),
         };
 
-        if let Some(test_case) = test_case {
+        if let Some(testable_case) = testable_case {
             // This pattern is refutable, so push a new match-pair node.
+            //
+            // Note: unless test_case is TestCase::Or, place must not be None.
+            // This means that the closure capture analysis in
+            // rustc_hir_typeck::upvar, and in particular the pattern handling
+            // code of ExprUseVisitor, must capture all of the places we'll use.
+            // Make sure to keep these two parts in sync!
             match_pairs.push(MatchPairTree {
                 place,
-                test_case,
+                testable_case,
                 subpairs,
                 pattern_ty: pattern.ty,
                 pattern_span: pattern.span,

@@ -21,8 +21,8 @@ build-musl = ["dep:musl-math-sys"]
 # Enable report generation without bringing in more dependencies by default
 benchmarking-reports = ["criterion/plotters", "criterion/html_reports"]
 
-# Enable icount benchmarks (requires iai-callgrind and valgrind)
-icount = ["dep:iai-callgrind"]
+# Enable icount benchmarks (requires gungraun-runner and valgrind locally)
+icount = ["dep:gungraun"]
 
 # Run with a reduced set of benchmarks, such as for CI
 short-benchmarks = []
@@ -31,7 +31,7 @@ short-benchmarks = []
 anyhow = "1.0.98"
 # This is not directly used but is required so we can enable `gmp-mpfr-sys/force-cross`.
 gmp-mpfr-sys = { version = "1.6.5", optional = true, default-features = false }
-iai-callgrind = { version = "0.15.2", optional = true }
+gungraun = { version = "0.17.0", optional = true }
 indicatif = { version = "0.18.0", default-features = false }
 libm = { path = "../libm", features = ["unstable-public-internals"] }
 libm-macros = { path = "../crates/libm-macros" }

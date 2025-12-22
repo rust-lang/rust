@@ -1,6 +1,6 @@
 # Instantiating `Binder`s
 
-Much like [`EarlyBinder`], when accessing the inside of a [`Binder`] we must first discharge it by replacing the bound vars with some other value. This is for much the same reason as with `EarlyBinder`, types referencing parameters introduced by the `Binder` do not make any sense outside of that binder, for example:
+Much like [`EarlyBinder`], when accessing the inside of a [`Binder`] we must first discharge it by replacing the bound vars with some other value. This is for much the same reason as with `EarlyBinder`, types referencing parameters introduced by the `Binder` do not make any sense outside of that binder. See the following erroring example:
 ```rust,ignore
 fn foo<'a>(a: &'a u32) -> &'a u32 {
     a
@@ -11,10 +11,11 @@ fn bar<T>(a: fn(&u32) -> T) -> T {
 
 fn main() {
     let higher_ranked_fn_ptr = foo as for<'a> fn(&'a u32) -> &'a u32;
+    // Attempt to infer `T=for<'a> &'a u32` which is not satsifiable
     let references_bound_vars = bar(higher_ranked_fn_ptr);
 }
 ```
-In this example we are providing an argument of type `for<'a> fn(&'^0 u32) -> &'^0 u32` to `bar`, we do not want to allow `T` to be inferred to the type `&'^0 u32` as it would be rather nonsensical (and likely unsound if we did not happen to ICE, `main` has no idea what `'a` is so how would the borrow checker handle a borrow with lifetime `'a`).
+In this example we are providing an argument of type `for<'a> fn(&'^0 u32) -> &'^0 u32` to `bar`, we do not want to allow `T` to be inferred to the type `&'^0 u32` as it would be rather nonsensical (and likely unsound if we did not happen to ICE). `main` doesn't know about `'a` so the borrow checker would not be able to handle a borrow with lifetime `'a`.
 
 Unlike `EarlyBinder` we typically do not instantiate `Binder` with some concrete set of arguments from the user, i.e. `['b, 'static]` as arguments to a `for<'a1, 'a2> fn(&'a1 u32, &'a2 u32)`. Instead we usually instantiate the binder with inference variables or placeholders.
 

@@ -44,7 +44,6 @@ mod recursive {
     }
 
     reuse to_reuse1::foo;
-    //~^ ERROR recursive delegation is not supported yet
 }
 
 mod effects {

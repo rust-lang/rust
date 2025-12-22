@@ -97,8 +97,7 @@ use crate::sys::time::SystemTime;
 use crate::sys::weak::syscall;
 #[cfg(target_os = "android")]
 use crate::sys::weak::weak;
-use crate::sys::{cvt, cvt_r};
-use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
+use crate::sys::{AsInner, AsInnerMut, FromInner, IntoInner, cvt, cvt_r};
 use crate::{mem, ptr};
 
 pub struct File(FileDesc);
@@ -2077,12 +2076,25 @@ pub fn symlink(original: &CStr, link: &CStr) -> io::Result<()> {
 
 pub fn link(original: &CStr, link: &CStr) -> io::Result<()> {
     cfg_select! {
-        any(target_os = "vxworks", target_os = "redox", target_os = "android", target_os = "espidf", target_os = "horizon", target_os = "vita", target_env = "nto70") => {
-            // VxWorks, Redox and ESP-IDF lack `linkat`, so use `link` instead. POSIX leaves
-            // it implementation-defined whether `link` follows symlinks, so rely on the
-            // `symlink_hard_link` test in library/std/src/fs/tests.rs to check the behavior.
-            // Android has `linkat` on newer versions, but we happen to know `link`
-            // always has the correct behavior, so it's here as well.
+        any(
+            // VxWorks, Redox and ESP-IDF lack `linkat`, so use `link` instead.
+            // POSIX leaves it implementation-defined whether `link` follows
+            // symlinks, so rely on the `symlink_hard_link` test in
+            // library/std/src/fs/tests.rs to check the behavior.
+            target_os = "vxworks",
+            target_os = "redox",
+            target_os = "espidf",
+            // Android has `linkat` on newer versions, but we happen to know
+            // `link` always has the correct behavior, so it's here as well.
+            target_os = "android",
+            // wasi-sdk-29-and-prior have a buggy `linkat` so use `link` instead
+            // until wasi-sdk is updated (see WebAssembly/wasi-libc#690)
+            target_os = "wasi",
+            // Other misc platforms
+            target_os = "horizon",
+            target_os = "vita",
+            target_env = "nto70",
+        ) => {
             cvt(unsafe { libc::link(original.as_ptr(), link.as_ptr()) })?;
         }
         _ => {

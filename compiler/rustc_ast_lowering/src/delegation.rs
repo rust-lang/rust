@@ -44,6 +44,7 @@ use hir::{BodyId, HirId};
 use rustc_abi::ExternAbi;
 use rustc_ast::*;
 use rustc_attr_parsing::{AttributeParser, ShouldEmit};
+use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::Target;
 use rustc_hir::attrs::{AttributeKind, InlineAttr};
@@ -55,6 +56,7 @@ use rustc_span::{DUMMY_SP, Ident, Span, Symbol};
 use {rustc_ast as ast, rustc_hir as hir};
 
 use super::{GenericArgsMode, ImplTraitContext, LoweringContext, ParamMode};
+use crate::errors::{CycleInDelegationSignatureResolution, UnresolvedDelegationCallee};
 use crate::{AllowReturnTypeNotation, ImplTraitPosition, ResolverAstLoweringExt};
 
 pub(crate) struct DelegationResults<'hir> {
@@ -119,10 +121,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
         &mut self,
         delegation: &Delegation,
         item_id: NodeId,
-        is_in_trait_impl: bool,
     ) -> DelegationResults<'hir> {
         let span = self.lower_span(delegation.path.segments.last().unwrap().ident.span);
-        let sig_id = self.get_delegation_sig_id(item_id, delegation.id, span, is_in_trait_impl);
+
+        let sig_id = self.get_delegation_sig_id(
+            self.resolver.delegation_sig_resolution_nodes[&self.local_def_id(item_id)],
+            span,
+        );
+
         match sig_id {
             Ok(sig_id) => {
                 self.add_attributes_if_needed(span, sig_id);
@@ -238,24 +244,48 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     fn get_delegation_sig_id(
         &self,
-        item_id: NodeId,
-        path_id: NodeId,
+        mut node_id: NodeId,
         span: Span,
-        is_in_trait_impl: bool,
     ) -> Result<DefId, ErrorGuaranteed> {
-        let sig_id = if is_in_trait_impl { item_id } else { path_id };
-        self.get_resolution_id(sig_id, span)
+        let mut visited: FxHashSet<NodeId> = Default::default();
+
+        loop {
+            visited.insert(node_id);
+
+            let Some(def_id) = self.get_resolution_id(node_id) else {
+                return Err(self.tcx.dcx().span_delayed_bug(
+                    span,
+                    format!(
+                        "LoweringContext: couldn't resolve node {:?} in delegation item",
+                        node_id
+                    ),
+                ));
+            };
+
+            // If def_id is in local crate and it corresponds to another delegation
+            // it means that we refer to another delegation as a callee, so in order to obtain
+            // a signature DefId we obtain NodeId of the callee delegation and try to get signature from it.
+            if let Some(local_id) = def_id.as_local()
+                && let Some(next_node_id) =
+                    self.resolver.delegation_sig_resolution_nodes.get(&local_id)
+            {
+                node_id = *next_node_id;
+                if visited.contains(&node_id) {
+                    // We encountered a cycle in the resolution, or delegation callee refers to non-existent
+                    // entity, in this case emit an error.
+                    return Err(match visited.len() {
+                        1 => self.dcx().emit_err(UnresolvedDelegationCallee { span }),
+                        _ => self.dcx().emit_err(CycleInDelegationSignatureResolution { span }),
+                    });
+                }
+            } else {
+                return Ok(def_id);
+            }
+        }
     }
 
-    fn get_resolution_id(&self, node_id: NodeId, span: Span) -> Result<DefId, ErrorGuaranteed> {
-        let def_id =
-            self.resolver.get_partial_res(node_id).and_then(|r| r.expect_full_res().opt_def_id());
-        def_id.ok_or_else(|| {
-            self.tcx.dcx().span_delayed_bug(
-                span,
-                format!("LoweringContext: couldn't resolve node {:?} in delegation item", node_id),
-            )
-        })
+    fn get_resolution_id(&self, node_id: NodeId) -> Option<DefId> {
+        self.resolver.get_partial_res(node_id).and_then(|r| r.expect_full_res().opt_def_id())
     }
 
     fn lower_delegation_generics(&mut self, span: Span) -> &'hir hir::Generics<'hir> {
@@ -271,8 +301,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
     // Function parameter count, including C variadic `...` if present.
     fn param_count(&self, sig_id: DefId) -> (usize, bool /*c_variadic*/) {
         if let Some(local_sig_id) = sig_id.as_local() {
-            // Map may be filled incorrectly due to recursive delegation.
-            // Error will be emitted later during HIR ty lowering.
             match self.resolver.delegation_fn_sigs.get(&local_sig_id) {
                 Some(sig) => (sig.param_count, sig.c_variadic),
                 None => (0, false),
@@ -489,8 +517,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
             delegation.path.segments.iter().rev().skip(1).any(|segment| segment.args.is_some());
 
         let call = if self
-            .get_resolution_id(delegation.id, span)
-            .and_then(|def_id| Ok(self.is_method(def_id, span)))
+            .get_resolution_id(delegation.id)
+            .map(|def_id| self.is_method(def_id, span))
             .unwrap_or_default()
             && delegation.qself.is_none()
             && !has_generic_args

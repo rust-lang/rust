@@ -241,12 +241,14 @@ bitflags::bitflags! {
 }
 
 impl<E: Encoder> Encodable<E> for RemapPathScopeComponents {
+    #[inline]
     fn encode(&self, s: &mut E) {
         s.emit_u8(self.bits());
     }
 }
 
 impl<D: Decoder> Decodable<D> for RemapPathScopeComponents {
+    #[inline]
     fn decode(s: &mut D) -> RemapPathScopeComponents {
         RemapPathScopeComponents::from_bits(s.read_u8())
             .expect("invalid bits for RemapPathScopeComponents")
@@ -308,12 +310,13 @@ struct InnerRealFileName {
 }
 
 impl Hash for RealFileName {
+    #[inline]
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         // To prevent #70924 from happening again we should only hash the
         // remapped path if that exists. This is because remapped paths to
         // sysroot crates (/rust/$hash or /rust/$version) remain stable even
         // if the corresponding local path changes.
-        if !self.scopes.is_all() {
+        if !self.was_fully_remapped() {
             self.local.hash(state);
         }
         self.maybe_remapped.hash(state);
@@ -327,6 +330,7 @@ impl RealFileName {
     /// ## Panic
     ///
     /// Only one scope components can be given to this function.
+    #[inline]
     pub fn path(&self, scope: RemapPathScopeComponents) -> &Path {
         assert!(
             scope.bits().count_ones() == 1,
@@ -351,6 +355,7 @@ impl RealFileName {
     /// ## Panic
     ///
     /// Only one scope components can be given to this function.
+    #[inline]
     pub fn embeddable_name(&self, scope: RemapPathScopeComponents) -> (&Path, &Path) {
         assert!(
             scope.bits().count_ones() == 1,
@@ -369,26 +374,58 @@ impl RealFileName {
     /// if this information exists.
     ///
     /// May not exists if the filename was imported from another crate.
+    ///
+    /// Avoid embedding this in build artifacts; prefer `path()` or `embeddable_name()`.
+    #[inline]
     pub fn local_path(&self) -> Option<&Path> {
-        self.local.as_ref().map(|lp| lp.name.as_ref())
+        if self.was_not_remapped() {
+            Some(&self.maybe_remapped.name)
+        } else if let Some(local) = &self.local {
+            Some(&local.name)
+        } else {
+            None
+        }
     }
 
     /// Returns the path suitable for reading from the file system on the local host,
     /// if this information exists.
     ///
     /// May not exists if the filename was imported from another crate.
+    ///
+    /// Avoid embedding this in build artifacts; prefer `path()` or `embeddable_name()`.
+    #[inline]
     pub fn into_local_path(self) -> Option<PathBuf> {
-        self.local.map(|lp| lp.name)
+        if self.was_not_remapped() {
+            Some(self.maybe_remapped.name)
+        } else if let Some(local) = self.local {
+            Some(local.name)
+        } else {
+            None
+        }
     }
 
     /// Returns whenever the filename was remapped.
+    #[inline]
     pub(crate) fn was_remapped(&self) -> bool {
         !self.scopes.is_empty()
+    }
+
+    /// Returns whenever the filename was fully remapped.
+    #[inline]
+    fn was_fully_remapped(&self) -> bool {
+        self.scopes.is_all()
+    }
+
+    /// Returns whenever the filename was not remapped.
+    #[inline]
+    fn was_not_remapped(&self) -> bool {
+        self.scopes.is_empty()
     }
 
     /// Returns an empty `RealFileName`
     ///
     /// Useful as the working directory input to `SourceMap::to_real_filename`.
+    #[inline]
     pub fn empty() -> RealFileName {
         RealFileName {
             local: Some(InnerRealFileName {
@@ -420,9 +457,14 @@ impl RealFileName {
     /// Update the filename for encoding in the crate metadata.
     ///
     /// Currently it's about removing the local part when the filename
-    /// is fully remapped.
+    /// is either fully remapped or not remapped at all.
+    #[inline]
     pub fn update_for_crate_metadata(&mut self) {
-        if self.scopes.is_all() {
+        if self.was_fully_remapped() || self.was_not_remapped() {
+            // NOTE: This works because when the filename is fully
+            // remapped, we don't care about the `local` part,
+            // and when the filename is not remapped at all,
+            // `maybe_remapped` and `local` are equal.
             self.local = None;
         }
     }
@@ -529,6 +571,7 @@ impl FileName {
     /// if this information exists.
     ///
     /// Avoid embedding this in build artifacts. Prefer using the `display` method.
+    #[inline]
     pub fn prefer_remapped_unconditionally(&self) -> FileNameDisplay<'_> {
         FileNameDisplay { inner: self, display_pref: FileNameDisplayPreference::Remapped }
     }
@@ -537,16 +580,19 @@ impl FileName {
     /// if this information exists.
     ///
     /// Avoid embedding this in build artifacts. Prefer using the `display` method.
+    #[inline]
     pub fn prefer_local_unconditionally(&self) -> FileNameDisplay<'_> {
         FileNameDisplay { inner: self, display_pref: FileNameDisplayPreference::Local }
     }
 
     /// Returns a short (either the filename or an empty string).
+    #[inline]
     pub fn short(&self) -> FileNameDisplay<'_> {
         FileNameDisplay { inner: self, display_pref: FileNameDisplayPreference::Short }
     }
 
     /// Returns a `Display`-able path for the given scope.
+    #[inline]
     pub fn display(&self, scope: RemapPathScopeComponents) -> FileNameDisplay<'_> {
         FileNameDisplay { inner: self, display_pref: FileNameDisplayPreference::Scope(scope) }
     }

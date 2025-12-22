@@ -184,6 +184,7 @@ pub(crate) const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "needs-sanitizer-support",
     "needs-sanitizer-thread",
     "needs-std-debug-assertions",
+    "needs-std-remap-debuginfo",
     "needs-subprocess",
     "needs-symlink",
     "needs-target-has-atomic",

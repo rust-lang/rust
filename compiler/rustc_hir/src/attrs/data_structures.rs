@@ -530,7 +530,7 @@ pub struct CfgHideShow {
     pub values: ThinVec<CfgInfo>,
 }
 
-#[derive(Clone, Debug, Default, HashStable_Generic, Encodable, Decodable, PrintAttribute)]
+#[derive(Clone, Debug, Default, HashStable_Generic, Decodable, PrintAttribute)]
 pub struct DocAttribute {
     pub aliases: FxIndexMap<Symbol, Span>,
     pub hidden: Option<Span>,
@@ -564,6 +564,62 @@ pub struct DocAttribute {
     // #[doc(test(...))]
     pub test_attrs: ThinVec<Span>,
     pub no_crate_inject: Option<Span>,
+}
+
+impl<E: rustc_span::SpanEncoder> rustc_serialize::Encodable<E> for DocAttribute {
+    fn encode(&self, encoder: &mut E) {
+        let DocAttribute {
+            aliases,
+            hidden,
+            inline,
+            cfg,
+            auto_cfg,
+            auto_cfg_change,
+            fake_variadic,
+            keyword,
+            attribute,
+            masked,
+            notable_trait,
+            search_unbox,
+            html_favicon_url,
+            html_logo_url,
+            html_playground_url,
+            html_root_url,
+            html_no_source,
+            issue_tracker_base_url,
+            rust_logo,
+            test_attrs,
+            no_crate_inject,
+        } = self;
+        rustc_serialize::Encodable::<E>::encode(aliases, encoder);
+        rustc_serialize::Encodable::<E>::encode(hidden, encoder);
+
+        // FIXME: The `doc(inline)` attribute is never encoded, but is it actually the right thing
+        // to do? I suspect the condition was broken, should maybe instead not encode anything if we
+        // have `doc(no_inline)`.
+        let inline: ThinVec<_> =
+            inline.iter().filter(|(i, _)| *i != DocInline::Inline).cloned().collect();
+        rustc_serialize::Encodable::<E>::encode(&inline, encoder);
+
+        rustc_serialize::Encodable::<E>::encode(cfg, encoder);
+        rustc_serialize::Encodable::<E>::encode(auto_cfg, encoder);
+        rustc_serialize::Encodable::<E>::encode(auto_cfg_change, encoder);
+        rustc_serialize::Encodable::<E>::encode(fake_variadic, encoder);
+        rustc_serialize::Encodable::<E>::encode(keyword, encoder);
+        rustc_serialize::Encodable::<E>::encode(attribute, encoder);
+        rustc_serialize::Encodable::<E>::encode(masked, encoder);
+        rustc_serialize::Encodable::<E>::encode(notable_trait, encoder);
+        rustc_serialize::Encodable::<E>::encode(search_unbox, encoder);
+        rustc_serialize::Encodable::<E>::encode(html_favicon_url, encoder);
+        rustc_serialize::Encodable::<E>::encode(html_logo_url, encoder);
+        rustc_serialize::Encodable::<E>::encode(html_playground_url, encoder);
+        rustc_serialize::Encodable::<E>::encode(html_root_url, encoder);
+        rustc_serialize::Encodable::<E>::encode(html_no_source, encoder);
+        rustc_serialize::Encodable::<E>::encode(issue_tracker_base_url, encoder);
+        rustc_serialize::Encodable::<E>::encode(rust_logo, encoder);
+        rustc_serialize::Encodable::<E>::encode(test_attrs, encoder);
+        rustc_serialize::Encodable::<E>::encode(no_crate_inject, encoder);
+    }
 }
 
 /// Represents parsed *built-in* inert attributes.
@@ -803,6 +859,9 @@ pub enum AttributeKind {
     /// Represents `#[no_implicit_prelude]`
     NoImplicitPrelude(Span),
 
+    /// Represents `#[no_link]`
+    NoLink,
+
     /// Represents `#[no_mangle]`
     NoMangle(Span),
 
@@ -869,14 +928,46 @@ pub enum AttributeKind {
     /// Represents `#[rustc_layout_scalar_valid_range_start]`.
     RustcLayoutScalarValidRangeStart(Box<u128>, Span),
 
+    /// Represents `#[rustc_legacy_const_generics]`
+    RustcLegacyConstGenerics { fn_indexes: ThinVec<(usize, Span)>, attr_span: Span },
+
+    /// Represents `#[rustc_lint_diagnostics]`
+    RustcLintDiagnostics,
+
+    /// Represents `#[rustc_lint_opt_deny_field_access]`
+    RustcLintOptDenyFieldAccess { lint_message: Symbol },
+
+    /// Represents `#[rustc_lint_opt_ty]`
+    RustcLintOptTy,
+
+    /// Represents `#[rustc_lint_query_instability]`
+    RustcLintQueryInstability,
+
+    /// Represents `#[rustc_lint_untracked_query_information]`
+    RustcLintUntrackedQueryInformation,
+
     /// Represents `#[rustc_main]`.
     RustcMain,
+
+    /// Represents `#[rustc_never_returns_null_ptr]`
+    RustcNeverReturnsNullPointer,
+
+    /// Represents `#[rustc_no_implicit_autorefs]`
+    RustcNoImplicitAutorefs,
 
     /// Represents `#[rustc_object_lifetime_default]`.
     RustcObjectLifetimeDefault,
 
     /// Represents `#[rustc_pass_indirectly_in_non_rustic_abis]`
     RustcPassIndirectlyInNonRusticAbis(Span),
+
+    /// Represents `#[rustc_scalable_vector(N)]`
+    RustcScalableVector {
+        /// The base multiple of lanes that are in a scalable vector, if provided. `element_count`
+        /// is not provided for representing tuple types.
+        element_count: Option<u16>,
+        span: Span,
+    },
 
     /// Represents `#[rustc_should_not_be_called_on_const_items]`
     RustcShouldNotBeCalledOnConstItems(Span),
@@ -918,6 +1009,9 @@ pub enum AttributeKind {
     /// Represents `#[target_feature(enable = "...")]` and
     /// `#[unsafe(force_target_feature(enable = "...")]`.
     TargetFeature { features: ThinVec<(Symbol, Span)>, attr_span: Span, was_forced: bool },
+
+    /// Represents `#[thread_local]`
+    ThreadLocal,
 
     /// Represents `#[track_caller]`
     TrackCaller(Span),

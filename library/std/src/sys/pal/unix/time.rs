@@ -1,6 +1,6 @@
 use core::num::niche_types::Nanoseconds;
 
-use crate::sys_common::AsInner;
+use crate::sys::AsInner;
 use crate::time::Duration;
 use crate::{fmt, io};
 
@@ -275,7 +275,7 @@ impl Instant {
     #[cfg(not(target_vendor = "apple"))]
     pub(crate) const CLOCK_ID: libc::clockid_t = libc::CLOCK_MONOTONIC;
     pub fn now() -> Instant {
-        // https://www.manpagez.com/man/3/clock_gettime/
+        // https://pubs.opengroup.org/onlinepubs/9799919799/functions/clock_getres.html
         //
         // CLOCK_UPTIME_RAW   clock that increments monotonically, in the same man-
         //                    ner as CLOCK_MONOTONIC_RAW, but that does not incre-

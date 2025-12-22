@@ -667,7 +667,7 @@ pub mod arch {
     pub use std_detect::is_loongarch_feature_detected;
     #[unstable(feature = "is_riscv_feature_detected", issue = "111192")]
     pub use std_detect::is_riscv_feature_detected;
-    #[stable(feature = "stdarch_s390x_feature_detection", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "stdarch_s390x_feature_detection", since = "1.93.0")]
     pub use std_detect::is_s390x_feature_detected;
     #[stable(feature = "simd_x86", since = "1.27.0")]
     pub use std_detect::is_x86_feature_detected;

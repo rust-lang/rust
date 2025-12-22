@@ -83,6 +83,7 @@ fn incomplete_config_for_rustdoc_gui_test() -> Config {
         run_ignored: Default::default(),
         with_rustc_debug_assertions: Default::default(),
         with_std_debug_assertions: Default::default(),
+        with_std_remap_debuginfo: Default::default(),
         filters: Default::default(),
         skip: Default::default(),
         filter_exact: Default::default(),
