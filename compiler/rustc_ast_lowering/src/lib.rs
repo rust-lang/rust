@@ -47,13 +47,14 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::spawn;
 use rustc_data_structures::tagged_ptr::TaggedRef;
 use rustc_errors::{DiagArgFromDisplay, DiagCtxtHandle};
+use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::{DefKind, LifetimeRes, Namespace, PartialRes, PerNS, Res};
 use rustc_hir::def_id::{CRATE_DEF_ID, LOCAL_CRATE, LocalDefId};
 use rustc_hir::definitions::{DefPathData, DisambiguatorState};
 use rustc_hir::lints::DelayedLint;
 use rustc_hir::{
     self as hir, AngleBrackets, ConstArg, GenericArg, HirId, ItemLocalMap, LifetimeSource,
-    LifetimeSyntax, ParamName, Target, TraitCandidate,
+    LifetimeSyntax, ParamName, Target, TraitCandidate, find_attr,
 };
 use rustc_index::{Idx, IndexSlice, IndexVec};
 use rustc_macros::extension;
@@ -236,7 +237,7 @@ impl SpanLowerer {
 
 #[extension(trait ResolverAstLoweringExt)]
 impl ResolverAstLowering {
-    fn legacy_const_generic_args(&self, expr: &Expr) -> Option<Vec<usize>> {
+    fn legacy_const_generic_args(&self, expr: &Expr, tcx: TyCtxt<'_>) -> Option<Vec<usize>> {
         let ExprKind::Path(None, path) = &expr.kind else {
             return None;
         };
@@ -256,11 +257,12 @@ impl ResolverAstLowering {
             return None;
         }
 
-        if let Some(v) = self.legacy_const_generic_args.get(&def_id) {
-            return v.clone();
-        }
-
-        None
+        find_attr!(
+            // we can use parsed attrs here since for other crates they're already available
+            tcx.get_all_attrs(def_id),
+            AttributeKind::RustcLegacyConstGenerics{fn_indexes,..} => fn_indexes
+        )
+        .map(|fn_indexes| fn_indexes.iter().map(|(num, _)| *num).collect())
     }
 
     fn get_partial_res(&self, id: NodeId) -> Option<PartialRes> {
