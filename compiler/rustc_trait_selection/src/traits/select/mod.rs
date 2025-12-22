@@ -324,7 +324,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // separately rather than using `stack.fresh_trait_ref` --
         // this is because we want the unbound variables to be
         // replaced with fresh types starting from index 0.
-        let cache_fresh_trait_pred = self.infcx.freshen(stack.obligation.predicate);
+        let cache_fresh_trait_pred =
+            stack.obligation.predicate.fold_with(&mut TypeFreshener::new(self.infcx));
         debug!(?cache_fresh_trait_pred);
         debug_assert!(!stack.obligation.predicate.has_escaping_bound_vars());
 
