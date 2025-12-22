@@ -78,13 +78,10 @@ impl SimplifyCfg {
 
 pub(super) fn simplify_cfg<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     if CfgSimplifier::new(tcx, body).simplify() {
-        // `simplify` returns that it changed something. We must invalidate the CFG caches as they
-        // are not consistent with the modified CFG any more.
         body.basic_blocks.invalidate_cfg_cache();
     }
     remove_dead_blocks(body);
-
-    // FIXME: Should probably be moved into some kind of pass manager
+    remove_runtime_checks_assumes(body);
     body.basic_blocks.as_mut_preserves_cfg().shrink_to_fit();
 }
 
@@ -330,6 +327,20 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
     fn strip_nops(&mut self) {
         for blk in self.basic_blocks.iter_mut() {
             blk.strip_nops();
+        }
+    }
+}
+
+fn remove_runtime_checks_assumes<'tcx>(body: &mut Body<'tcx>) {
+    for block in body.basic_blocks.as_mut_preserves_cfg() {
+        for statement in &mut block.statements {
+            if let StatementKind::Intrinsic(box NonDivergingIntrinsic::Assume(operand)) =
+                &statement.kind
+            {
+                if matches!(operand, Operand::RuntimeChecks(_)) {
+                    statement.make_nop(true);
+                }
+            }
         }
     }
 }
