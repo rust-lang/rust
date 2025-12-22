@@ -31,7 +31,7 @@ fn main() -> std::io::Result<()> {
             clap::Arg::new("format")
                 .long("format")
                 .action(clap::ArgAction::Set)
-                .default_value("json-new")
+                .default_value("postcard-new")
                 .value_parser(clap::builder::EnumValueParser::<ProtocolFormat>::new()),
             clap::Arg::new("version")
                 .long("version")
@@ -52,7 +52,6 @@ fn main() -> std::io::Result<()> {
 enum ProtocolFormat {
     JsonLegacy,
     PostcardLegacy,
-    JsonNew,
     PostcardNew,
 }
 
@@ -61,7 +60,6 @@ impl ValueEnum for ProtocolFormat {
         &[
             ProtocolFormat::JsonLegacy,
             ProtocolFormat::PostcardLegacy,
-            ProtocolFormat::JsonNew,
             ProtocolFormat::PostcardNew,
         ]
     }
@@ -72,7 +70,6 @@ impl ValueEnum for ProtocolFormat {
             ProtocolFormat::PostcardLegacy => {
                 Some(clap::builder::PossibleValue::new("postcard-legacy"))
             }
-            ProtocolFormat::JsonNew => Some(clap::builder::PossibleValue::new("json-new")),
             ProtocolFormat::PostcardNew => Some(clap::builder::PossibleValue::new("postcard-new")),
         }
     }
@@ -81,7 +78,6 @@ impl ValueEnum for ProtocolFormat {
             "json-legacy" => Ok(ProtocolFormat::JsonLegacy),
             "postcard-legacy" => Ok(ProtocolFormat::PostcardLegacy),
             "postcard-new" => Ok(ProtocolFormat::PostcardNew),
-            "json-new" => Ok(ProtocolFormat::JsonNew),
             _ => Err(format!("unknown protocol format: {input}")),
         }
     }

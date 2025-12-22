@@ -6,7 +6,6 @@ use std::{
     process::{Child, ChildStdin, ChildStdout, Command, Stdio},
     sync::{
         Arc, Mutex, OnceLock,
-        atomic::{AtomicU32, Ordering},
     },
 };
 
@@ -20,7 +19,7 @@ use crate::{
     Codec, ProcMacro, ProcMacroKind, ServerError,
     bidirectional_protocol::{
         self, ClientCallbacks,
-        msg::{Payload, RequestId},
+        msg::Payload,
     },
     legacy_protocol::{self, SpanMode},
     version,
@@ -36,15 +35,13 @@ pub(crate) struct ProcMacroServerProcess {
     protocol: Protocol,
     /// Populated when the server exits.
     exited: OnceLock<AssertUnwindSafe<ServerError>>,
-    next_request_id: AtomicU32,
 }
 
 #[derive(Debug, Clone)]
 pub(crate) enum Protocol {
     LegacyJson { mode: SpanMode },
     LegacyPostcard { mode: SpanMode },
-    NewPostcard { mode: SpanMode },
-    NewJson { mode: SpanMode },
+    BidirectionalPostcardPrototype { mode: SpanMode },
 }
 
 /// Maintains the state of the proc-macro server process.
@@ -74,8 +71,7 @@ impl ProcMacroServerProcess {
             && has_working_format_flag
         {
             &[
-                (Some("postcard-new"), Protocol::NewPostcard { mode: SpanMode::Id }),
-                (Some("json-new"), Protocol::NewJson { mode: SpanMode::Id }),
+                (Some("postcard-new"), Protocol::BidirectionalPostcardPrototype { mode: SpanMode::Id }),
                 (Some("postcard-legacy"), Protocol::LegacyPostcard { mode: SpanMode::Id }),
                 (Some("json-legacy"), Protocol::LegacyJson { mode: SpanMode::Id }),
             ]
@@ -94,7 +90,6 @@ impl ProcMacroServerProcess {
                     version: 0,
                     protocol: protocol.clone(),
                     exited: OnceLock::new(),
-                    next_request_id: AtomicU32::new(1),
                 })
             };
             let mut srv = create_srv()?;
@@ -122,8 +117,7 @@ impl ProcMacroServerProcess {
                         match &mut srv.protocol {
                             Protocol::LegacyJson { mode }
                             | Protocol::LegacyPostcard { mode }
-                            | Protocol::NewJson { mode }
-                            | Protocol::NewPostcard { mode } => *mode = new_mode,
+                            | Protocol::BidirectionalPostcardPrototype { mode } => *mode = new_mode,
                         }
                     }
                     tracing::info!("Proc-macro server protocol: {:?}", srv.protocol);
@@ -159,8 +153,7 @@ impl ProcMacroServerProcess {
         match self.protocol {
             Protocol::LegacyJson { mode } => mode == SpanMode::RustAnalyzer,
             Protocol::LegacyPostcard { mode } => mode == SpanMode::RustAnalyzer,
-            Protocol::NewJson { mode } => mode == SpanMode::RustAnalyzer,
-            Protocol::NewPostcard { mode } => mode == SpanMode::RustAnalyzer,
+            Protocol::BidirectionalPostcardPrototype { mode } => mode == SpanMode::RustAnalyzer,
         }
     }
 
@@ -170,7 +163,7 @@ impl ProcMacroServerProcess {
             Protocol::LegacyJson { .. } | Protocol::LegacyPostcard { .. } => {
                 legacy_protocol::version_check(self)
             }
-            Protocol::NewJson { .. } | Protocol::NewPostcard { .. } => {
+            Protocol::BidirectionalPostcardPrototype { .. } => {
                 bidirectional_protocol::version_check(self)
             }
         }
@@ -182,7 +175,7 @@ impl ProcMacroServerProcess {
             Protocol::LegacyJson { .. } | Protocol::LegacyPostcard { .. } => {
                 legacy_protocol::enable_rust_analyzer_spans(self)
             }
-            Protocol::NewJson { .. } | Protocol::NewPostcard { .. } => {
+            Protocol::BidirectionalPostcardPrototype { .. } => {
                 bidirectional_protocol::enable_rust_analyzer_spans(self)
             }
         }
@@ -197,7 +190,7 @@ impl ProcMacroServerProcess {
             Protocol::LegacyJson { .. } | Protocol::LegacyPostcard { .. } => {
                 legacy_protocol::find_proc_macros(self, dylib_path)
             }
-            Protocol::NewJson { .. } | Protocol::NewPostcard { .. } => {
+            Protocol::BidirectionalPostcardPrototype { .. } => {
                 bidirectional_protocol::find_proc_macros(self, dylib_path)
             }
         }
@@ -229,7 +222,7 @@ impl ProcMacroServerProcess {
                     current_dir,
                 )
             }
-            Protocol::NewJson { .. } | Protocol::NewPostcard { .. } => {
+            Protocol::BidirectionalPostcardPrototype { .. } => {
                 bidirectional_protocol::expand(
                     proc_macro,
                     db,
@@ -307,19 +300,14 @@ impl ProcMacroServerProcess {
 
     pub(crate) fn run_bidirectional<C: Codec>(
         &self,
-        id: RequestId,
         initial: Payload,
         callbacks: &mut dyn ClientCallbacks,
     ) -> Result<Payload, ServerError> {
         self.with_locked_io::<C, _>(|writer, reader, buf| {
             bidirectional_protocol::run_conversation::<C>(
-                writer, reader, buf, id, initial, callbacks,
+                writer, reader, buf, initial, callbacks,
             )
         })
-    }
-
-    pub(crate) fn request_id(&self) -> RequestId {
-        self.next_request_id.fetch_add(1, Ordering::Relaxed)
     }
 }
 

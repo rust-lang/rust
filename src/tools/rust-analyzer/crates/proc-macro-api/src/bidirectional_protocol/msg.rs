@@ -8,19 +8,10 @@ use crate::{
     legacy_protocol::msg::{FlatTree, Message, PanicMessage, ServerConfig},
 };
 
-pub type RequestId = u32;
-
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Envelope {
-    pub id: RequestId,
     pub kind: Kind,
     pub payload: Payload,
-}
-
-impl From<(RequestId, Kind, Payload)> for Envelope {
-    fn from(value: (RequestId, Kind, Payload)) -> Self {
-        Envelope { id: value.0, kind: value.1, payload: value.2 }
-    }
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]

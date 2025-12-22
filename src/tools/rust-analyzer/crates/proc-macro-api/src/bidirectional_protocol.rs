@@ -12,7 +12,7 @@ use span::{FileId, Span};
 use crate::{
     Codec, ProcMacro, ProcMacroKind, ServerError,
     bidirectional_protocol::msg::{
-        Envelope, ExpandMacro, ExpandMacroData, ExpnGlobals, Kind, Payload, Request, RequestId,
+        Envelope, ExpandMacro, ExpandMacroData, ExpnGlobals, Kind, Payload, Request,
         Response, SubRequest, SubResponse,
     },
     legacy_protocol::{
@@ -37,11 +37,10 @@ pub fn run_conversation<C: Codec>(
     writer: &mut dyn Write,
     reader: &mut dyn BufRead,
     buf: &mut C::Buf,
-    id: RequestId,
     initial: Payload,
     callbacks: &mut dyn ClientCallbacks,
 ) -> Result<Payload, ServerError> {
-    let msg = Envelope { id, kind: Kind::Request, payload: initial };
+    let msg = Envelope { kind: Kind::Request, payload: initial };
     let encoded = C::encode(&msg).map_err(wrap_encode)?;
     C::write(writer, &encoded).map_err(wrap_io("failed to write initial request"))?;
 
@@ -56,18 +55,11 @@ pub fn run_conversation<C: Codec>(
 
         let msg: Envelope = C::decode(b).map_err(wrap_decode)?;
 
-        if msg.id != id {
-            return Err(ServerError {
-                message: format!("unexpected message id {}, expected {}", msg.id, id),
-                io: None,
-            });
-        }
-
         match (msg.kind, msg.payload) {
             (Kind::SubRequest, Payload::SubRequest(sr)) => {
                 let resp = callbacks.handle_sub_request(sr)?;
                 let reply =
-                    Envelope { id, kind: Kind::SubResponse, payload: Payload::SubResponse(resp) };
+                    Envelope { kind: Kind::SubResponse, payload: Payload::SubResponse(resp) };
                 let encoded = C::encode(&reply).map_err(wrap_encode)?;
                 C::write(writer, &encoded).map_err(wrap_io("failed to write sub-response"))?;
             }
@@ -268,11 +260,9 @@ fn run_request(
         return Err(server_error.clone());
     }
 
-    let id = srv.request_id();
-
     if srv.use_postcard() {
-        srv.run_bidirectional::<PostcardProtocol>(id, msg, callbacks)
+        srv.run_bidirectional::<PostcardProtocol>(msg, callbacks)
     } else {
-        srv.run_bidirectional::<JsonProtocol>(id, msg, callbacks)
+        srv.run_bidirectional::<JsonProtocol>(msg, callbacks)
     }
 }

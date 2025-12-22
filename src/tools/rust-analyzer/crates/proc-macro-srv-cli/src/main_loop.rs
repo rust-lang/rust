@@ -10,7 +10,6 @@ use proc_macro_api::{
     version::CURRENT_API_VERSION,
 };
 
-use bidirectional::RequestId;
 use legacy::Message;
 
 use proc_macro_srv::{EnvSnapshot, SpanId};
@@ -39,7 +38,6 @@ pub(crate) fn run(format: ProtocolFormat) -> io::Result<()> {
     match format {
         ProtocolFormat::JsonLegacy => run_::<JsonProtocol>(),
         ProtocolFormat::PostcardLegacy => run_::<PostcardProtocol>(),
-        ProtocolFormat::JsonNew => run_new::<JsonProtocol>(),
         ProtocolFormat::PostcardNew => run_new::<PostcardProtocol>(),
     }
 }
@@ -83,7 +81,6 @@ fn run_new<C: Codec>() -> io::Result<()> {
 
                         send_response::<_, C>(
                             &mut stdout,
-                            req.id,
                             bidirectional::Response::ListMacros(res),
                         )?;
                     }
@@ -91,7 +88,6 @@ fn run_new<C: Codec>() -> io::Result<()> {
                     bidirectional::Request::ApiVersionCheck {} => {
                         send_response::<_, C>(
                             &mut stdout,
-                            req.id,
                             bidirectional::Response::ApiVersionCheck(CURRENT_API_VERSION),
                         )?;
                     }
@@ -100,7 +96,6 @@ fn run_new<C: Codec>() -> io::Result<()> {
                         span_mode = config.span_mode;
                         send_response::<_, C>(
                             &mut stdout,
-                            req.id,
                             bidirectional::Response::SetConfig(config),
                         )?;
                     }
@@ -110,7 +105,6 @@ fn run_new<C: Codec>() -> io::Result<()> {
                             &mut stdin,
                             &mut stdout,
                             &mut buf,
-                            req.id,
                             span_mode,
                             *task,
                         )?;
@@ -129,14 +123,13 @@ fn handle_expand<W: std::io::Write, R: std::io::BufRead, C: Codec>(
     stdin: &mut R,
     stdout: &mut W,
     buf: &mut C::Buf,
-    req_id: RequestId,
     span_mode: legacy::SpanMode,
     task: bidirectional::ExpandMacro,
 ) -> io::Result<()> {
     match span_mode {
-        legacy::SpanMode::Id => handle_expand_id::<_, C>(srv, stdout, req_id, task),
+        legacy::SpanMode::Id => handle_expand_id::<_, C>(srv, stdout, task),
         legacy::SpanMode::RustAnalyzer => {
-            handle_expand_ra::<_, _, C>(srv, stdin, stdout, buf, req_id, task)
+            handle_expand_ra::<_, _, C>(srv, stdin, stdout, buf, task)
         }
     }
 }
@@ -144,7 +137,6 @@ fn handle_expand<W: std::io::Write, R: std::io::BufRead, C: Codec>(
 fn handle_expand_id<W: std::io::Write, C: Codec>(
     srv: &proc_macro_srv::ProcMacroSrv<'_>,
     stdout: &mut W,
-    req_id: RequestId,
     task: bidirectional::ExpandMacro,
 ) -> io::Result<()> {
     let bidirectional::ExpandMacro { lib, env, current_dir, data } = task;
@@ -182,7 +174,7 @@ fn handle_expand_id<W: std::io::Write, C: Codec>(
         })
         .map_err(|e| legacy::PanicMessage(e.into_string().unwrap_or_default()));
 
-    send_response::<_, C>(stdout, req_id, bidirectional::Response::ExpandMacro(res))
+    send_response::<_, C>(stdout, bidirectional::Response::ExpandMacro(res))
 }
 
 fn handle_expand_ra<W: std::io::Write, R: std::io::BufRead, C: Codec>(
@@ -190,7 +182,6 @@ fn handle_expand_ra<W: std::io::Write, R: std::io::BufRead, C: Codec>(
     stdin: &mut R,
     stdout: &mut W,
     buf: &mut C::Buf,
-    req_id: RequestId,
     task: bidirectional::ExpandMacro,
 ) -> io::Result<()> {
     let bidirectional::ExpandMacro {
@@ -276,7 +267,6 @@ fn handle_expand_ra<W: std::io::Write, R: std::io::BufRead, C: Codec>(
             if let Ok(res) = result_rx.try_recv() {
                 send_response::<_, C>(
                     stdout,
-                    req_id,
                     bidirectional::Response::ExpandMacroExtended(res),
                 )
                 .unwrap();
@@ -290,7 +280,7 @@ fn handle_expand_ra<W: std::io::Write, R: std::io::BufRead, C: Codec>(
                 }
             };
 
-            send_subrequest::<_, C>(stdout, req_id, from_srv_req(subreq)).unwrap();
+            send_subrequest::<_, C>(stdout, from_srv_req(subreq)).unwrap();
 
             let resp_opt = bidirectional::Envelope::read::<_, C>(stdin, buf).unwrap();
             let resp = match resp_opt {
@@ -474,11 +464,9 @@ fn from_client_res(value: bidirectional::SubResponse) -> proc_macro_srv::SubResp
 
 fn send_response<W: std::io::Write, C: Codec>(
     stdout: &mut W,
-    id: u32,
     resp: bidirectional::Response,
 ) -> io::Result<()> {
     let resp = bidirectional::Envelope {
-        id,
         kind: bidirectional::Kind::Response,
         payload: bidirectional::Payload::Response(resp),
     };
@@ -487,11 +475,9 @@ fn send_response<W: std::io::Write, C: Codec>(
 
 fn send_subrequest<W: std::io::Write, C: Codec>(
     stdout: &mut W,
-    id: u32,
     resp: bidirectional::SubRequest,
 ) -> io::Result<()> {
     let resp = bidirectional::Envelope {
-        id,
         kind: bidirectional::Kind::SubRequest,
         payload: bidirectional::Payload::SubRequest(resp),
     };
