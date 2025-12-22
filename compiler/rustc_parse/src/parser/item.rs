@@ -2869,6 +2869,45 @@ impl<'a> Parser<'a> {
                                 }
                             }
                         }
+                    } else if self.check_keyword(exp!(Gen)) {
+                        match coroutine_kind {
+                            Some(CoroutineKind::Gen { span, .. }) => {
+                                Some(WrongKw::Duplicated(span))
+                            }
+                            Some(CoroutineKind::AsyncGen { span, .. }) => {
+                                Some(WrongKw::Duplicated(span))
+                            }
+                            Some(CoroutineKind::Async { .. }) => {
+                                recover_coroutine_kind = Some(CoroutineKind::AsyncGen {
+                                    span: self.token.span,
+                                    closure_id: DUMMY_NODE_ID,
+                                    return_impl_trait_id: DUMMY_NODE_ID,
+                                });
+                                Some(WrongKw::Misplaced(unsafe_start_sp))
+                            }
+                            None => {
+                                recover_coroutine_kind = Some(CoroutineKind::Gen {
+                                    span: self.token.span,
+                                    closure_id: DUMMY_NODE_ID,
+                                    return_impl_trait_id: DUMMY_NODE_ID,
+                                });
+                                match parsing_mode {
+                                    FrontMatterParsingMode::Function => {
+                                        Some(WrongKw::Misplaced(async_start_sp))
+                                    }
+                                    FrontMatterParsingMode::FunctionPtrType => {
+                                        self.dcx().emit_err(FnPointerCannotBeGen {
+                                            span: self.token.span,
+                                            suggestion: self
+                                                .token
+                                                .span
+                                                .with_lo(self.prev_token.span.hi()),
+                                        });
+                                        Some(WrongKw::MisplacedDisallowedQualifier)
+                                    }
+                                }
+                            }
+                        }
                     } else if self.check_keyword(exp!(Unsafe)) {
                         match safety {
                             Safety::Unsafe(sp) => Some(WrongKw::Duplicated(sp)),

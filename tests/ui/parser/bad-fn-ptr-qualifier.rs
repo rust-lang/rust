@@ -1,6 +1,7 @@
 //@ run-rustfix
 //@ edition:2024
 // Most of items are taken from ./recover-const-async-fn-ptr.rs but this is able to apply rustfix.
+#![feature(gen_blocks)]
 
 pub type T0 = const fn(); //~ ERROR an `fn` pointer type cannot be `const`
 pub type T1 = const extern "C" fn(); //~ ERROR an `fn` pointer type cannot be `const`

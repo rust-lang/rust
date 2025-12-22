@@ -1,6 +1,7 @@
 //@ run-rustfix
-//@ edition:2018
+//@ edition:2024
 // Most of items are taken from ./recover-const-async-fn-ptr.rs but this is able to apply rustfix.
+#![feature(gen_blocks)]
 
 pub type T0 = fn(); //~ ERROR an `fn` pointer type cannot be `const`
 pub type T1 = extern "C" fn(); //~ ERROR an `fn` pointer type cannot be `const`
@@ -8,7 +9,10 @@ pub type T2 = unsafe extern "C" fn(); //~ ERROR an `fn` pointer type cannot be `
 pub type T3 = fn(); //~ ERROR an `fn` pointer type cannot be `async`
 pub type T4 = extern "C" fn(); //~ ERROR an `fn` pointer type cannot be `async`
 pub type T5 = unsafe extern "C" fn(); //~ ERROR an `fn` pointer type cannot be `async`
-pub type T6 = unsafe extern "C" fn();
+pub type T6 = fn(); //~ ERROR an `fn` pointer type cannot be `gen`
+pub type T7 = extern "C" fn(); //~ ERROR an `fn` pointer type cannot be `gen`
+pub type T8 = unsafe extern "C" fn(); //~ ERROR an `fn` pointer type cannot be `gen`
+pub type T9 = unsafe extern "C" fn();
 //~^ ERROR an `fn` pointer type cannot be `const`
 //~| ERROR an `fn` pointer type cannot be `async`
 
@@ -19,7 +23,11 @@ pub type FTT3 = for<'a> fn(); //~ ERROR an `fn` pointer type cannot be `async`
 pub type FTT4 = for<'a> extern "C" fn(); //~ ERROR an `fn` pointer type cannot be `async`
 pub type FTT5 = for<'a> unsafe extern "C" fn();
 //~^ ERROR an `fn` pointer type cannot be `async`
-pub type FTT6 = for<'a> unsafe extern "C" fn();
+pub type FTT6 = for<'a> fn(); //~ ERROR an `fn` pointer type cannot be `gen`
+pub type FTT7 = for<'a> extern "C" fn(); //~ ERROR an `fn` pointer type cannot be `gen`
+pub type FTT8 = for<'a> unsafe extern "C" fn();
+//~^ ERROR an `fn` pointer type cannot be `gen`
+pub type FTT9 = for<'a> unsafe extern "C" fn();
 //~^ ERROR an `fn` pointer type cannot be `const`
 //~| ERROR an `fn` pointer type cannot be `async`
 
@@ -28,7 +36,9 @@ pub type W1 = unsafe fn();
 //~^ ERROR an `fn` pointer type cannot be `const`
 pub type W2 = unsafe fn();
 //~^ ERROR an `fn` pointer type cannot be `async`
-pub type W3 = for<'a> unsafe fn();
+pub type W3 = unsafe fn();
+//~^ ERROR an `fn` pointer type cannot be `gen`
+pub type W4 = for<'a> unsafe fn();
 //~^ ERROR an `fn` pointer type cannot be `const`
 
 fn main() {}
