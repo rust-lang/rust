@@ -120,7 +120,7 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for TypeFreshener<'a, 'tcx> {
             t
         } else {
             match *t.kind() {
-                ty::Infer(v) => self.fold_infer_ty(v).unwrap_or(t),
+                ty::Infer(v) => self.fold_infer_ty(v),
 
                 // This code is hot enough that a non-debug assertion here makes a noticeable
                 // difference on benchmarks like `wg-grammar`.
@@ -168,18 +168,18 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for TypeFreshener<'a, 'tcx> {
 impl<'a, 'tcx> TypeFreshener<'a, 'tcx> {
     // This is separate from `fold_ty` to keep that method small and inlinable.
     #[inline(never)]
-    fn fold_infer_ty(&mut self, ty: ty::InferTy) -> Option<Ty<'tcx>> {
+    fn fold_infer_ty(&mut self, ty: ty::InferTy) -> Ty<'tcx> {
         match ty {
             ty::TyVar(v) => {
                 let mut inner = self.infcx.inner.borrow_mut();
                 match inner.type_variables().probe(v).known() {
                     Some(ty) => {
                         drop(inner);
-                        Some(ty.fold_with(self))
+                        ty.fold_with(self)
                     }
                     None => {
                         let input = ty::TyVar(inner.type_variables().root_var(v));
-                        Some(self.freshen_ty(input, |n| Ty::new_fresh(self.infcx.tcx, n)))
+                        self.freshen_ty(input, |n| Ty::new_fresh(self.infcx.tcx, n))
                     }
                 }
             }
@@ -188,11 +188,11 @@ impl<'a, 'tcx> TypeFreshener<'a, 'tcx> {
                 let mut inner = self.infcx.inner.borrow_mut();
                 let value = inner.int_unification_table().probe_value(v);
                 match value {
-                    ty::IntVarValue::IntType(ty) => Some(Ty::new_int(self.infcx.tcx, ty)),
-                    ty::IntVarValue::UintType(ty) => Some(Ty::new_uint(self.infcx.tcx, ty)),
+                    ty::IntVarValue::IntType(ty) => Ty::new_int(self.infcx.tcx, ty),
+                    ty::IntVarValue::UintType(ty) => Ty::new_uint(self.infcx.tcx, ty),
                     ty::IntVarValue::Unknown => {
                         let input = ty::IntVar(inner.int_unification_table().find(v));
-                        Some(self.freshen_ty(input, |n| Ty::new_fresh_int(self.infcx.tcx, n)))
+                        self.freshen_ty(input, |n| Ty::new_fresh_int(self.infcx.tcx, n))
                     }
                 }
             }
@@ -201,10 +201,10 @@ impl<'a, 'tcx> TypeFreshener<'a, 'tcx> {
                 let mut inner = self.infcx.inner.borrow_mut();
                 let value = inner.float_unification_table().probe_value(v);
                 match value {
-                    ty::FloatVarValue::Known(ty) => Some(Ty::new_float(self.infcx.tcx, ty)),
+                    ty::FloatVarValue::Known(ty) => Ty::new_float(self.infcx.tcx, ty),
                     ty::FloatVarValue::Unknown => {
                         let input = ty::FloatVar(inner.float_unification_table().find(v));
-                        Some(self.freshen_ty(input, |n| Ty::new_fresh_float(self.infcx.tcx, n)))
+                        self.freshen_ty(input, |n| Ty::new_fresh_float(self.infcx.tcx, n))
                     }
                 }
             }
