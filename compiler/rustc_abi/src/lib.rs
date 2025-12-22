@@ -96,9 +96,11 @@ bitflags! {
         /// If true, the type is always passed indirectly by non-Rustic ABIs.
         /// See [`TyAndLayout::pass_indirectly_in_non_rustic_abis`] for details.
         const PASS_INDIRECTLY_IN_NON_RUSTIC_ABIS = 1 << 5;
-        /// Any of these flags being set prevent field reordering optimisation.
-        const FIELD_ORDER_UNOPTIMIZABLE   = ReprFlags::IS_C.bits()
+        const IS_SCALABLE        = 1 << 6;
+         // Any of these flags being set prevent field reordering optimisation.
+        const FIELD_ORDER_UNOPTIMIZABLE = ReprFlags::IS_C.bits()
                                  | ReprFlags::IS_SIMD.bits()
+                                 | ReprFlags::IS_SCALABLE.bits()
                                  | ReprFlags::IS_LINEAR.bits();
         const ABI_UNOPTIMIZABLE = ReprFlags::IS_C.bits() | ReprFlags::IS_SIMD.bits();
     }
@@ -135,6 +137,19 @@ impl IntegerType {
     }
 }
 
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(
+    feature = "nightly",
+    derive(Encodable_NoContext, Decodable_NoContext, HashStable_Generic)
+)]
+pub enum ScalableElt {
+    /// `N` in `rustc_scalable_vector(N)` - the element count of the scalable vector
+    ElementCount(u16),
+    /// `rustc_scalable_vector` w/out `N`, used for tuple types of scalable vectors that only
+    /// contain other scalable vectors
+    Container,
+}
+
 /// Represents the repr options provided by the user.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Default)]
 #[cfg_attr(
@@ -146,6 +161,8 @@ pub struct ReprOptions {
     pub align: Option<Align>,
     pub pack: Option<Align>,
     pub flags: ReprFlags,
+    /// `#[rustc_scalable_vector]`
+    pub scalable: Option<ScalableElt>,
     /// The seed to be used for randomizing a type's layout
     ///
     /// Note: This could technically be a `u128` which would
@@ -160,6 +177,11 @@ impl ReprOptions {
     #[inline]
     pub fn simd(&self) -> bool {
         self.flags.contains(ReprFlags::IS_SIMD)
+    }
+
+    #[inline]
+    pub fn scalable(&self) -> bool {
+        self.flags.contains(ReprFlags::IS_SCALABLE)
     }
 
     #[inline]
@@ -1614,19 +1636,14 @@ pub enum FieldsShape<FieldIdx: Idx> {
         // FIXME(eddyb) use small vector optimization for the common case.
         offsets: IndexVec<FieldIdx, Size>,
 
-        /// Maps source order field indices to memory order indices,
+        /// Maps memory order field indices to source order indices,
         /// depending on how the fields were reordered (if at all).
         /// This is a permutation, with both the source order and the
         /// memory order using the same (0..n) index ranges.
         ///
-        /// Note that during computation of `memory_index`, sometimes
-        /// it is easier to operate on the inverse mapping (that is,
-        /// from memory order to source order), and that is usually
-        /// named `inverse_memory_index`.
-        ///
         // FIXME(eddyb) build a better abstraction for permutations, if possible.
         // FIXME(camlorn) also consider small vector optimization here.
-        memory_index: IndexVec<FieldIdx, u32>,
+        in_memory_order: IndexVec<u32, FieldIdx>,
     },
 }
 
@@ -1660,51 +1677,17 @@ impl<FieldIdx: Idx> FieldsShape<FieldIdx> {
         }
     }
 
-    #[inline]
-    pub fn memory_index(&self, i: usize) -> usize {
-        match *self {
-            FieldsShape::Primitive => {
-                unreachable!("FieldsShape::memory_index: `Primitive`s have no fields")
-            }
-            FieldsShape::Union(_) | FieldsShape::Array { .. } => i,
-            FieldsShape::Arbitrary { ref memory_index, .. } => {
-                memory_index[FieldIdx::new(i)].try_into().unwrap()
-            }
-        }
-    }
-
     /// Gets source indices of the fields by increasing offsets.
     #[inline]
     pub fn index_by_increasing_offset(&self) -> impl ExactSizeIterator<Item = usize> {
-        let mut inverse_small = [0u8; 64];
-        let mut inverse_big = IndexVec::new();
-        let use_small = self.count() <= inverse_small.len();
-
-        // We have to write this logic twice in order to keep the array small.
-        if let FieldsShape::Arbitrary { ref memory_index, .. } = *self {
-            if use_small {
-                for (field_idx, &mem_idx) in memory_index.iter_enumerated() {
-                    inverse_small[mem_idx as usize] = field_idx.index() as u8;
-                }
-            } else {
-                inverse_big = memory_index.invert_bijective_mapping();
-            }
-        }
-
         // Primitives don't really have fields in the way that structs do,
         // but having this return an empty iterator for them is unhelpful
         // since that makes them look kinda like ZSTs, which they're not.
         let pseudofield_count = if let FieldsShape::Primitive = self { 1 } else { self.count() };
 
-        (0..pseudofield_count).map(move |i| match *self {
+        (0..pseudofield_count).map(move |i| match self {
             FieldsShape::Primitive | FieldsShape::Union(_) | FieldsShape::Array { .. } => i,
-            FieldsShape::Arbitrary { .. } => {
-                if use_small {
-                    inverse_small[i] as usize
-                } else {
-                    inverse_big[i as u32].index()
-                }
-            }
+            FieldsShape::Arbitrary { in_memory_order, .. } => in_memory_order[i as u32].index(),
         })
     }
 }
@@ -1736,6 +1719,10 @@ impl AddressSpace {
 pub enum BackendRepr {
     Scalar(Scalar),
     ScalarPair(Scalar, Scalar),
+    ScalableVector {
+        element: Scalar,
+        count: u64,
+    },
     SimdVector {
         element: Scalar,
         count: u64,
@@ -1754,6 +1741,12 @@ impl BackendRepr {
         match *self {
             BackendRepr::Scalar(_)
             | BackendRepr::ScalarPair(..)
+            // FIXME(rustc_scalable_vector): Scalable vectors are `Sized` while the
+            // `sized_hierarchy` feature is not yet fully implemented. After `sized_hierarchy` is
+            // fully implemented, scalable vectors will remain `Sized`, they just won't be
+            // `const Sized` - whether `is_unsized` continues to return `false` at that point will
+            // need to be revisited and will depend on what `is_unsized` is used for.
+            | BackendRepr::ScalableVector { .. }
             | BackendRepr::SimdVector { .. } => false,
             BackendRepr::Memory { sized } => !sized,
         }
@@ -1794,7 +1787,9 @@ impl BackendRepr {
             BackendRepr::Scalar(s) => Some(s.align(cx).abi),
             BackendRepr::ScalarPair(s1, s2) => Some(s1.align(cx).max(s2.align(cx)).abi),
             // The align of a Vector can vary in surprising ways
-            BackendRepr::SimdVector { .. } | BackendRepr::Memory { .. } => None,
+            BackendRepr::SimdVector { .. }
+            | BackendRepr::Memory { .. }
+            | BackendRepr::ScalableVector { .. } => None,
         }
     }
 
@@ -1816,7 +1811,9 @@ impl BackendRepr {
                 Some(size)
             }
             // The size of a Vector can vary in surprising ways
-            BackendRepr::SimdVector { .. } | BackendRepr::Memory { .. } => None,
+            BackendRepr::SimdVector { .. }
+            | BackendRepr::Memory { .. }
+            | BackendRepr::ScalableVector { .. } => None,
         }
     }
 
@@ -1831,6 +1828,9 @@ impl BackendRepr {
                 BackendRepr::SimdVector { element: element.to_union(), count }
             }
             BackendRepr::Memory { .. } => BackendRepr::Memory { sized: true },
+            BackendRepr::ScalableVector { element, count } => {
+                BackendRepr::ScalableVector { element: element.to_union(), count }
+            }
         }
     }
 
@@ -2071,7 +2071,9 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
     /// Returns `true` if this is an aggregate type (including a ScalarPair!)
     pub fn is_aggregate(&self) -> bool {
         match self.backend_repr {
-            BackendRepr::Scalar(_) | BackendRepr::SimdVector { .. } => false,
+            BackendRepr::Scalar(_)
+            | BackendRepr::SimdVector { .. }
+            | BackendRepr::ScalableVector { .. } => false,
             BackendRepr::ScalarPair(..) | BackendRepr::Memory { .. } => true,
         }
     }
@@ -2165,6 +2167,19 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
         self.is_sized() && self.size.bytes() == 0 && self.align.bytes() == 1
     }
 
+    /// Returns `true` if the size of the type is only known at runtime.
+    pub fn is_runtime_sized(&self) -> bool {
+        matches!(self.backend_repr, BackendRepr::ScalableVector { .. })
+    }
+
+    /// Returns the elements count of a scalable vector.
+    pub fn scalable_vector_element_count(&self) -> Option<u64> {
+        match self.backend_repr {
+            BackendRepr::ScalableVector { count, .. } => Some(count),
+            _ => None,
+        }
+    }
+
     /// Returns `true` if the type is a ZST and not unsized.
     ///
     /// Note that this does *not* imply that the type is irrelevant for layout! It can still have
@@ -2173,6 +2188,7 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
         match self.backend_repr {
             BackendRepr::Scalar(_)
             | BackendRepr::ScalarPair(..)
+            | BackendRepr::ScalableVector { .. }
             | BackendRepr::SimdVector { .. } => false,
             BackendRepr::Memory { sized } => sized && self.size.bytes() == 0,
         }

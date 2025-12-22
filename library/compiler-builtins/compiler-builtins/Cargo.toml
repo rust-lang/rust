@@ -7,7 +7,12 @@
 [package]
 name = "compiler_builtins"
 version = "0.1.160"
-authors = ["Jorge Aparicio <japaricious@gmail.com>"]
+authors = [
+    "Alex Crichton <alex@alexcrichton.com>",
+    "Amanieu d'Antras <amanieu@gmail.com>",
+    "Jorge Aparicio <japaricious@gmail.com>",
+    "Trevor Gross <tg@trevorgross.com>",
+]
 description = "Compiler intrinsics used by the Rust compiler."
 repository = "https://github.com/rust-lang/compiler-builtins"
 license = "MIT AND Apache-2.0 WITH LLVM-exception AND (MIT OR Apache-2.0)"

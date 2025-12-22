@@ -46,17 +46,14 @@ const DEFAULT_COLUMN_WIDTH: usize = 140;
 
 /// Describes the way the content of the `rendered` field of the json output is generated
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum HumanReadableErrorType {
-    Default { short: bool },
-    AnnotateSnippet { short: bool, unicode: bool },
+pub struct HumanReadableErrorType {
+    pub short: bool,
+    pub unicode: bool,
 }
 
 impl HumanReadableErrorType {
     pub fn short(&self) -> bool {
-        match self {
-            HumanReadableErrorType::Default { short }
-            | HumanReadableErrorType::AnnotateSnippet { short, .. } => *short,
-        }
+        self.short
     }
 }
 
@@ -607,7 +604,7 @@ pub enum OutputTheme {
     Unicode,
 }
 
-/// Handles the writing of `HumanReadableErrorType::Default` and `HumanReadableErrorType::Short`
+/// Handles the writing of `HumanReadableErrorType`
 #[derive(Setters)]
 pub struct HumanEmitter {
     #[setters(skip)]

@@ -30,7 +30,6 @@
 #![allow(rustc::direct_use_of_rustc_type_ir)]
 #![allow(rustc::untranslatable_diagnostic)]
 #![cfg_attr(bootstrap, feature(array_windows))]
-#![deny(clippy::manual_let_else)]
 #![feature(allocator_api)]
 #![feature(assert_matches)]
 #![feature(associated_type_defaults)]

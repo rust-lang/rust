@@ -21,6 +21,16 @@ Instead, formatting should be done using `./x fmt`. It's a good habit to run
 Formatting is checked by the `tidy` script. It runs automatically when you do
 `./x test` and can be run in isolation with `./x fmt --check`.
 
+> **Note: Formatting and test suites**
+>
+> Most Rust source files under `tests/` directory are not formatted for reasons
+> such as whitespace sensitivity, nature of snapshot tests, location-sensitive
+> comments and more.
+>
+> Consult the `ignore` entries in
+> <https://github.com/rust-lang/rust/blob/main/rustfmt.toml> for which test
+> files are not formatted.
+
 If you want to use format-on-save in your editor, the pinned version of
 `rustfmt` is built under `build/<target>/stage0/bin/rustfmt`.
 

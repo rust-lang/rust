@@ -56,6 +56,8 @@ ast_lowering_coroutine_too_many_parameters =
 ast_lowering_default_field_in_tuple = default fields are not supported in tuple structs
     .label = default fields are only supported on structs
 
+ast_lowering_delegation_cycle_in_signature_resolution = encountered a cycle during delegation signature resolution
+ast_lowering_delegation_unresolved_callee = failed to resolve delegation callee
 ast_lowering_does_not_support_modifiers =
     the `{$class_name}` register class does not support template modifiers
 

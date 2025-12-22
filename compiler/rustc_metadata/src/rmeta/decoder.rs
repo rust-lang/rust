@@ -116,8 +116,6 @@ pub(crate) struct CrateMetadata {
     /// Maps crate IDs as they are were seen from this crate's compilation sessions into
     /// IDs as they are seen from the current compilation session.
     cnum_map: CrateNumMap,
-    /// Same ID set as `cnum_map` plus maybe some injected crates like panic runtime.
-    dependencies: Vec<CrateNum>,
     /// How to link (or not link) this crate to the currently compiled crate.
     dep_kind: CrateDepKind,
     /// Filesystem location of this crate.
@@ -1677,15 +1675,14 @@ impl<'a> CrateMetadataRef<'a> {
                 for virtual_dir in virtual_source_base_dir.iter().flatten() {
                     if let Some(real_dir) = &real_source_base_dir
                         && let rustc_span::FileName::Real(old_name) = name
-                        && let (_working_dir, embeddable_name) =
-                            old_name.embeddable_name(RemapPathScopeComponents::MACRO)
-                        && let Ok(rest) = embeddable_name.strip_prefix(virtual_dir)
+                        && let virtual_path = old_name.path(RemapPathScopeComponents::MACRO)
+                        && let Ok(rest) = virtual_path.strip_prefix(virtual_dir)
                     {
                         let new_path = real_dir.join(rest);
 
                         debug!(
                             "try_to_translate_virtual_to_real: `{}` -> `{}`",
-                            embeddable_name.display(),
+                            virtual_path.display(),
                             new_path.display(),
                         );
 
@@ -1897,7 +1894,6 @@ impl CrateMetadata {
             .collect();
         let alloc_decoding_state =
             AllocDecodingState::new(root.interpret_alloc_index.decode(&blob).collect());
-        let dependencies = cnum_map.iter().copied().collect();
 
         // Pre-decode the DefPathHash->DefIndex table. This is a cheap operation
         // that does not copy any data. It just does some data verification.
@@ -1915,7 +1911,6 @@ impl CrateMetadata {
             alloc_decoding_state,
             cnum,
             cnum_map,
-            dependencies,
             dep_kind,
             source: Arc::new(source),
             private_dep,
@@ -1941,7 +1936,7 @@ impl CrateMetadata {
     }
 
     pub(crate) fn dependencies(&self) -> impl Iterator<Item = CrateNum> {
-        self.dependencies.iter().copied()
+        self.cnum_map.iter().copied()
     }
 
     pub(crate) fn target_modifiers(&self) -> TargetModifiers {

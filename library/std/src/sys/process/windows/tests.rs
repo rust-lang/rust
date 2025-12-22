@@ -1,8 +1,10 @@
+use super::child_pipe::{Pipes, child_pipe};
 use super::{Arg, make_command_line};
-use crate::env;
 use crate::ffi::{OsStr, OsString};
 use crate::os::windows::io::AsHandle;
 use crate::process::{Command, Stdio};
+use crate::time::Duration;
+use crate::{env, thread};
 
 #[test]
 fn test_raw_args() {
@@ -232,4 +234,27 @@ fn windows_exe_resolver() {
             resolve_exe(OsStr::new("exists.exe"), empty_paths, Some(temp.path().as_ref())).is_ok()
         );
     }
+}
+
+/// Test the synchronous fallback for overlapped I/O.
+///
+/// While technically testing `Handle` functionality, this is situated in this
+/// module to allow easier access to `ChildPipe`.
+#[test]
+fn overlapped_handle_fallback() {
+    // Create some pipes. `ours` will be asynchronous.
+    let Pipes { ours, theirs } = child_pipe(true, false).unwrap();
+
+    let async_readable = ours.into_handle();
+    let sync_writeable = theirs.into_handle();
+
+    thread::scope(|_| {
+        thread::sleep(Duration::from_millis(100));
+        sync_writeable.write(b"hello world!").unwrap();
+    });
+
+    // The pipe buffer starts empty so reading won't complete synchronously unless
+    // our fallback path works.
+    let mut buffer = [0u8; 1024];
+    async_readable.read(&mut buffer).unwrap();
 }

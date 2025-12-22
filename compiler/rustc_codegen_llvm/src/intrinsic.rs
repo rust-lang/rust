@@ -26,7 +26,7 @@ use tracing::debug;
 use crate::abi::FnAbiLlvmExt;
 use crate::builder::Builder;
 use crate::builder::autodiff::{adjust_activity_to_abi, generate_enzyme_call};
-use crate::builder::gpu_offload::TgtOffloadEntry;
+use crate::builder::gpu_offload::{gen_call_handling, gen_define_handling};
 use crate::context::CodegenCx;
 use crate::errors::{
     AutoDiffWithoutEnable, AutoDiffWithoutLto, OffloadWithoutEnable, OffloadWithoutFatLTO,
@@ -480,6 +480,14 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 let use_integer_compare = match layout.backend_repr() {
                     Scalar(_) | ScalarPair(_, _) => true,
                     SimdVector { .. } => false,
+                    ScalableVector { .. } => {
+                        tcx.dcx().emit_err(InvalidMonomorphization::NonScalableType {
+                            span,
+                            name: sym::raw_eq,
+                            ty: tp_ty,
+                        });
+                        return Ok(());
+                    }
                     Memory { .. } => {
                         // For rusty ABIs, small aggregates are actually passed
                         // as `RegKind::Integer` (see `FnAbi::adjust_for_abi`),
@@ -1287,8 +1295,6 @@ fn codegen_offload<'ll, 'tcx>(
     let args = get_args_from_tuple(bx, args[1], fn_target);
     let target_symbol = symbol_name_for_instance_in_crate(tcx, fn_target, LOCAL_CRATE);
 
-    let offload_entry_ty = TgtOffloadEntry::new_decl(&cx);
-
     let sig = tcx.fn_sig(fn_target.def_id()).skip_binder().skip_binder();
     let inputs = sig.inputs();
 
@@ -1296,17 +1302,16 @@ fn codegen_offload<'ll, 'tcx>(
 
     let types = inputs.iter().map(|ty| cx.layout_of(*ty).llvm_type(cx)).collect::<Vec<_>>();
 
-    let offload_data = crate::builder::gpu_offload::gen_define_handling(
-        cx,
-        offload_entry_ty,
-        &metadata,
-        &types,
-        &target_symbol,
-    );
-
-    // FIXME(Sa4dUs): pass the original builder once we separate kernel launch logic from globals
-    let bb = unsafe { llvm::LLVMGetInsertBlock(bx.llbuilder) };
-    crate::builder::gpu_offload::gen_call_handling(cx, bb, &offload_data, &args, &types, &metadata);
+    let offload_globals_ref = cx.offload_globals.borrow();
+    let offload_globals = match offload_globals_ref.as_ref() {
+        Some(globals) => globals,
+        None => {
+            // Offload is not initialized, cannot continue
+            return;
+        }
+    };
+    let offload_data = gen_define_handling(&cx, &metadata, &types, target_symbol, offload_globals);
+    gen_call_handling(bx, &offload_data, &args, &types, &metadata, offload_globals);
 }
 
 fn get_args_from_tuple<'ll, 'tcx>(
@@ -1679,11 +1684,27 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             m_len == v_len,
             InvalidMonomorphization::MismatchedLengths { span, name, m_len, v_len }
         );
-        let in_elem_bitwidth = require_int_or_uint_ty!(
-            m_elem_ty.kind(),
-            InvalidMonomorphization::MaskWrongElementType { span, name, ty: m_elem_ty }
-        );
-        let m_i1s = vector_mask_to_bitmask(bx, args[0].immediate(), in_elem_bitwidth, m_len);
+
+        let m_i1s = if args[1].layout.ty.is_scalable_vector() {
+            match m_elem_ty.kind() {
+                ty::Bool => {}
+                _ => return_error!(InvalidMonomorphization::MaskWrongElementType {
+                    span,
+                    name,
+                    ty: m_elem_ty
+                }),
+            };
+            let i1 = bx.type_i1();
+            let i1xn = bx.type_scalable_vector(i1, m_len as u64);
+            bx.trunc(args[0].immediate(), i1xn)
+        } else {
+            let in_elem_bitwidth = require_int_or_uint_ty!(
+                m_elem_ty.kind(),
+                InvalidMonomorphization::MaskWrongElementType { span, name, ty: m_elem_ty }
+            );
+            vector_mask_to_bitmask(bx, args[0].immediate(), in_elem_bitwidth, m_len)
+        };
+
         return Ok(bx.select(m_i1s, args[1].immediate(), args[2].immediate()));
     }
 

@@ -16,7 +16,7 @@ use build_helper::exit;
 
 use crate::core::build_steps::compile::{Std, run_cargo};
 use crate::core::build_steps::doc::{DocumentationFormat, prepare_doc_compiler};
-use crate::core::build_steps::gcc::{Gcc, add_cg_gcc_cargo_flags};
+use crate::core::build_steps::gcc::{Gcc, GccTargetPair, add_cg_gcc_cargo_flags};
 use crate::core::build_steps::llvm::get_llvm_version;
 use crate::core::build_steps::run::{get_completion_paths, get_help_path};
 use crate::core::build_steps::synthetic_targets::MirOptPanicAbortSyntheticTarget;
@@ -722,7 +722,6 @@ impl Step for Miri {
         // miri tests need to know about the stage sysroot
         cargo.env("MIRI_SYSROOT", &miri_sysroot);
         cargo.env("MIRI_HOST_SYSROOT", &host_sysroot);
-        cargo.env("MIRI", &miri.tool_path);
 
         // Set the target.
         cargo.env("MIRI_TEST_TARGET", target.rustc_target_arg());
@@ -2181,6 +2180,10 @@ Please disable assertions with `rust.debug-assertions = false`.
         }
 
         if mode == CompiletestMode::Debuginfo {
+            if let Some(debuggers::Cdb { cdb }) = debuggers::discover_cdb(target) {
+                cmd.arg("--cdb").arg(cdb);
+            }
+
             if let Some(debuggers::Gdb { gdb }) = debuggers::discover_gdb(builder, android.as_ref())
             {
                 cmd.arg("--gdb").arg(gdb.as_ref());
@@ -2252,6 +2255,10 @@ Please disable assertions with `rust.debug-assertions = false`.
 
         if builder.config.std_debug_assertions {
             cmd.arg("--with-std-debug-assertions");
+        }
+
+        if builder.config.rust_remap_debuginfo {
+            cmd.arg("--with-std-remap-debuginfo");
         }
 
         let mut llvm_components_passed = false;
@@ -3956,7 +3963,7 @@ impl Step for CodegenGCC {
         let compilers = self.compilers;
         let target = self.target;
 
-        let gcc = builder.ensure(Gcc { target });
+        let gcc = builder.ensure(Gcc { target_pair: GccTargetPair::for_native_build(target) });
 
         builder.ensure(
             compile::Std::new(compilers.build_compiler(), target)
@@ -3997,12 +4004,13 @@ impl Step for CodegenGCC {
             .arg("--use-backend")
             .arg("gcc")
             .arg("--gcc-path")
-            .arg(gcc.libgccjit.parent().unwrap())
+            .arg(gcc.libgccjit().parent().unwrap())
             .arg("--out-dir")
             .arg(builder.stage_out(compilers.build_compiler(), Mode::Codegen).join("cg_gcc"))
             .arg("--release")
             .arg("--mini-tests")
             .arg("--std-tests");
+
         cargo.args(builder.config.test_args());
 
         cargo.into_cmd().run(builder);

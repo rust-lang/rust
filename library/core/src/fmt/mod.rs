@@ -41,7 +41,7 @@ pub use num_buffer::{NumBuffer, NumBufferTrait};
 
 #[stable(feature = "debug_builders", since = "1.2.0")]
 pub use self::builders::{DebugList, DebugMap, DebugSet, DebugStruct, DebugTuple};
-#[stable(feature = "fmt_from_fn", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "fmt_from_fn", since = "1.93.0")]
 pub use self::builders::{FromFn, from_fn};
 
 /// The type returned by formatter methods.

@@ -25,7 +25,7 @@ impl<S: Stage> SingleAttributeParser<S> for OptimizeParser {
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
         let Some(list) = args.list() else {
-            cx.expected_list(cx.attr_span);
+            cx.expected_list(cx.attr_span, args);
             return None;
         };
 
@@ -57,7 +57,6 @@ impl<S: Stage> NoArgsAttributeParser<S> for ColdParser {
         Allow(Target::Fn),
         Allow(Target::Method(MethodKind::Trait { body: true })),
         Allow(Target::Method(MethodKind::TraitImpl)),
-        Allow(Target::Method(MethodKind::Trait { body: false })),
         Allow(Target::Method(MethodKind::Inherent)),
         Allow(Target::ForeignFn),
         Allow(Target::Closure),
@@ -343,7 +342,7 @@ impl<S: Stage> NoArgsAttributeParser<S> for TrackCallerParser {
         Allow(Target::Method(MethodKind::Inherent)),
         Allow(Target::Method(MethodKind::Trait { body: true })),
         Allow(Target::Method(MethodKind::TraitImpl)),
-        Allow(Target::Method(MethodKind::Trait { body: false })),
+        Allow(Target::Method(MethodKind::Trait { body: false })), // `#[track_caller]` is inherited from trait methods
         Allow(Target::ForeignFn),
         Allow(Target::Closure),
         Warn(Target::MacroDef),
@@ -478,7 +477,7 @@ fn parse_tf_attribute<S: Stage>(
 ) -> impl IntoIterator<Item = (Symbol, Span)> {
     let mut features = Vec::new();
     let ArgParser::List(list) = args else {
-        cx.expected_list(cx.attr_span);
+        cx.expected_list(cx.attr_span, args);
         return features;
     };
     if list.is_empty() {
@@ -601,7 +600,7 @@ impl<S: Stage> SingleAttributeParser<S> for SanitizeParser {
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
         let Some(list) = args.list() else {
-            cx.expected_list(cx.attr_span);
+            cx.expected_list(cx.attr_span, args);
             return None;
         };
 
@@ -689,6 +688,16 @@ impl<S: Stage> SingleAttributeParser<S> for SanitizeParser {
 
         Some(AttributeKind::Sanitize { on_set, off_set, rtsan, span: cx.attr_span })
     }
+}
+
+pub(crate) struct ThreadLocalParser;
+
+impl<S: Stage> NoArgsAttributeParser<S> for ThreadLocalParser {
+    const PATH: &[Symbol] = &[sym::thread_local];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::WarnButFutureError;
+    const ALLOWED_TARGETS: AllowedTargets =
+        AllowedTargets::AllowList(&[Allow(Target::Static), Allow(Target::ForeignStatic)]);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::ThreadLocal;
 }
 
 pub(crate) struct RustcPassIndirectlyInNonRusticAbisParser;

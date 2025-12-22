@@ -172,7 +172,7 @@ fn test_buffered_reader_stream_position_panic() {
     // cause internal buffer to be filled but read only partially
     let mut buffer = [0, 0];
     assert!(reader.read_exact(&mut buffer).is_ok());
-    // rewinding the internal reader will cause buffer to loose sync
+    // rewinding the internal reader will cause buffer to lose sync
     let inner = reader.get_mut();
     assert!(inner.seek(SeekFrom::Start(0)).is_ok());
     // overflow when subtracting the remaining buffer size from current position
@@ -1050,6 +1050,30 @@ fn single_formatted_write() {
     // have this limitation.
     writeln!(&mut writer, "{}, {}!", "hello", "world").unwrap();
     assert_eq!(writer.get_ref().events, [RecordedEvent::Write("hello, world!\n".to_string())]);
+}
+
+#[test]
+fn bufreader_full_initialize() {
+    struct OneByteReader;
+    impl Read for OneByteReader {
+        fn read(&mut self, buf: &mut [u8]) -> crate::io::Result<usize> {
+            if buf.len() > 0 {
+                buf[0] = 0;
+                Ok(1)
+            } else {
+                Ok(0)
+            }
+        }
+    }
+    let mut reader = BufReader::new(OneByteReader);
+    // Nothing is initialized yet.
+    assert_eq!(reader.initialized(), 0);
+
+    let buf = reader.fill_buf().unwrap();
+    // We read one byte...
+    assert_eq!(buf.len(), 1);
+    // But we initialized the whole buffer!
+    assert_eq!(reader.initialized(), reader.capacity());
 }
 
 /// This is a regression test for https://github.com/rust-lang/rust/issues/127584.

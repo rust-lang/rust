@@ -315,13 +315,18 @@ fn arg_attrs_for_rust_scalar<'tcx>(
             attrs.pointee_align =
                 Some(pointee.align.min(cx.tcx().sess.target.max_reliable_alignment()));
 
-            // `Box` are not necessarily dereferenceable for the entire duration of the function as
-            // they can be deallocated at any time. Same for non-frozen shared references (see
-            // <https://github.com/rust-lang/rust/pull/98017>), and for mutable references to
-            // potentially self-referential types (see
-            // <https://github.com/rust-lang/unsafe-code-guidelines/issues/381>). If LLVM had a way
-            // to say "dereferenceable on entry" we could use it here.
             attrs.pointee_size = match kind {
+                // LLVM dereferenceable attribute has unclear semantics on the return type,
+                // they seem to be "dereferenceable until the end of the program", which is
+                // generally, not valid for references. See
+                // <https://rust-lang.zulipchat.com/#narrow/channel/136281-t-opsem/topic/LLVM.20dereferenceable.20on.20return.20type/with/563001493>
+                _ if is_return => Size::ZERO,
+                // `Box` are not necessarily dereferenceable for the entire duration of the function as
+                // they can be deallocated at any time. Same for non-frozen shared references (see
+                // <https://github.com/rust-lang/rust/pull/98017>), and for mutable references to
+                // potentially self-referential types (see
+                // <https://github.com/rust-lang/unsafe-code-guidelines/issues/381>). If LLVM had a way
+                // to say "dereferenceable on entry" we could use it here.
                 PointerKind::Box { .. }
                 | PointerKind::SharedRef { frozen: false }
                 | PointerKind::MutableRef { unpin: false } => Size::ZERO,
@@ -407,7 +412,9 @@ fn fn_abi_sanity_check<'tcx>(
                 // `layout.backend_repr` and ignore everything else. We should just reject
                 //`Aggregate` entirely here, but some targets need to be fixed first.
                 match arg.layout.backend_repr {
-                    BackendRepr::Scalar(_) | BackendRepr::SimdVector { .. } => {}
+                    BackendRepr::Scalar(_)
+                    | BackendRepr::SimdVector { .. }
+                    | BackendRepr::ScalableVector { .. } => {}
                     BackendRepr::ScalarPair(..) => {
                         panic!("`PassMode::Direct` used for ScalarPair type {}", arg.layout.ty)
                     }

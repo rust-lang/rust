@@ -171,11 +171,8 @@ impl AtomicRwOrd {
             (AtomicReadOrd::Acquire, AtomicWriteOrd::Relaxed) => AtomicRwOrd::Acquire,
             (AtomicReadOrd::Relaxed, AtomicWriteOrd::Release) => AtomicRwOrd::Release,
             (AtomicReadOrd::Acquire, AtomicWriteOrd::Release) => AtomicRwOrd::AcqRel,
-            (AtomicReadOrd::SeqCst, AtomicWriteOrd::SeqCst) => AtomicRwOrd::SeqCst,
-            _ =>
-                panic!(
-                    "Unsupported memory ordering combination ({read_ordering:?}, {write_ordering:?})"
-                ),
+            (AtomicReadOrd::SeqCst, _) => AtomicRwOrd::SeqCst,
+            (_, AtomicWriteOrd::SeqCst) => AtomicRwOrd::SeqCst,
         }
     }
 

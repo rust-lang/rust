@@ -1,6 +1,5 @@
 // tidy-alphabetical-start
 #![allow(rustc::diagnostic_outside_of_impl)]
-#![deny(clippy::manual_let_else)]
 #![feature(array_try_map)]
 #![feature(assert_matches)]
 #![feature(box_patterns)]
