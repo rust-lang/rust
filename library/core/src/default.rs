@@ -3,6 +3,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::ascii::Char as AsciiChar;
+use crate::marker::Forget;
 
 /// A trait for giving a type a useful default value.
 ///
@@ -104,7 +105,7 @@ use crate::ascii::Char as AsciiChar;
 #[rustc_diagnostic_item = "Default"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_default", issue = "143894")]
-pub const trait Default: Sized {
+pub const trait Default: Sized + ?Forget {
     /// Returns the "default value" for a type.
     ///
     /// Default values are often some kind of initial value, identity value, or anything else that

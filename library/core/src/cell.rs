@@ -252,9 +252,9 @@
 
 use crate::cmp::Ordering;
 use crate::fmt::{self, Debug, Display};
+use crate::marker::{Forget, PhantomData, Unsize};
 use crate::mem::{self, ManuallyDrop};
 use crate::ops::{self, CoerceUnsized, Deref, DerefMut, DerefPure, DispatchFromDyn};
-use crate::marker::{Forget, PhantomData, Unsize};
 use crate::panic::const_panic;
 use crate::pin::PinCoerceUnsized;
 use crate::ptr::{self, NonNull};

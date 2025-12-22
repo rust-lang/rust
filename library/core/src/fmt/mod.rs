@@ -4,7 +4,7 @@
 
 use crate::cell::{Cell, Ref, RefCell, RefMut, SyncUnsafeCell, UnsafeCell};
 use crate::char::{EscapeDebugExtArgs, MAX_LEN_UTF8};
-use crate::marker::{PhantomData, PointeeSized};
+use crate::marker::{Forget, PhantomData, PointeeSized};
 use crate::num::fmt as numfmt;
 use crate::ops::Deref;
 use crate::{iter, result, str};
@@ -870,7 +870,7 @@ impl Display for Arguments<'_> {
 #[doc(alias = "{:?}")]
 #[rustc_diagnostic_item = "Debug"]
 #[rustc_trivial_field_reads]
-pub trait Debug: PointeeSized {
+pub trait Debug: PointeeSized + ?Forget {
     #[doc = include_str!("fmt_trait_method_doc.md")]
     ///
     /// # Examples

@@ -1,4 +1,4 @@
-use crate::marker::PointeeSized;
+use crate::marker::{Forget, PointeeSized};
 
 /// Used for immutable dereferencing operations, like `*v`.
 ///
@@ -366,16 +366,16 @@ unsafe impl<T: ?Sized> DerefPure for &mut T {}
 /// ```
 #[lang = "receiver"]
 #[unstable(feature = "arbitrary_self_types", issue = "44874")]
-pub trait Receiver: PointeeSized {
+pub trait Receiver: PointeeSized + ?Forget {
     /// The target type on which the method may be called.
     #[rustc_diagnostic_item = "receiver_target"]
     #[lang = "receiver_target"]
     #[unstable(feature = "arbitrary_self_types", issue = "44874")]
-    type Target: ?Sized;
+    type Target: ?Sized + ?Forget;
 }
 
 #[unstable(feature = "arbitrary_self_types", issue = "44874")]
-impl<P: ?Sized, T: ?Sized> Receiver for P
+impl<P: ?Sized + ?Forget, T: ?Sized + ?Forget> Receiver for P
 where
     P: Deref<Target = T>,
 {
@@ -393,12 +393,12 @@ where
 #[lang = "legacy_receiver"]
 #[unstable(feature = "legacy_receiver_trait", issue = "none")]
 #[doc(hidden)]
-pub trait LegacyReceiver: PointeeSized {
+pub trait LegacyReceiver: PointeeSized + ?Forget {
     // Empty.
 }
 
 #[unstable(feature = "legacy_receiver_trait", issue = "none")]
-impl<T: PointeeSized> LegacyReceiver for &T {}
+impl<T: PointeeSized + ?Forget> LegacyReceiver for &T {}
 
 #[unstable(feature = "legacy_receiver_trait", issue = "none")]
-impl<T: PointeeSized> LegacyReceiver for &mut T {}
+impl<T: PointeeSized + ?Forget> LegacyReceiver for &mut T {}

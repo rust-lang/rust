@@ -175,7 +175,7 @@ pub trait Sized: MetaSized {
 // `MetaSized` being coinductive, despite having supertraits, is okay for the same reasons as
 // `Sized` above.
 #[rustc_coinductive]
-pub trait MetaSized: PointeeSized {
+pub trait MetaSized: PointeeSized + ?Forget {
     // Empty
 }
 
@@ -191,7 +191,7 @@ pub trait MetaSized: PointeeSized {
 #[rustc_deny_explicit_impl]
 #[rustc_do_not_implement_via_object]
 #[rustc_coinductive]
-pub trait PointeeSized {
+pub trait PointeeSized: ?Forget {
     // Empty
 }
 
@@ -462,7 +462,7 @@ marker_impls! {
 // library, and there's no way to safely have this behavior right now.
 #[rustc_unsafe_specialization_marker]
 #[rustc_diagnostic_item = "Copy"]
-pub trait Copy: Clone {
+pub trait Copy: Clone + ?Forget {
     // Empty.
 }
 
@@ -1343,7 +1343,7 @@ pub trait CoercePointeeValidated {
 }
 
 /// Types that do not require a stable memory address, and so can be freely
-/// `move`d.
+/// forgotten using [`core::mem::forget`].
 #[lang = "default_trait1"]
 #[rustc_unsafe_specialization_marker]
 #[unstable(feature = "forget_trait", issue = "none")]
@@ -1358,3 +1358,36 @@ marker_impls! {
         {T: ?Sized + ?Forget} &T,
         {T: ?Sized + ?Forget} &mut T,
 }
+
+/// A marker type which does not implement `Forget`.
+///
+/// If a type contains a `PhantomUnforget`, it will not implement `Forget` by default.
+#[unstable(feature = "forget_trait", issue = "none")]
+pub struct PhantomUnforget;
+
+#[unstable(feature = "forget_trait", issue = "none")]
+impl Debug for PhantomUnforget {
+    fn fmt(&self, f: &mut crate::fmt::Formatter<'_>) -> crate::fmt::Result {
+        f.debug_struct("PhantomUnforget").finish()
+    }
+}
+
+#[unstable(feature = "forget_trait", issue = "none")]
+impl !Forget for PhantomUnforget {}
+
+#[unstable(feature = "forget_trait", issue = "none")]
+impl Default for PhantomUnforget {
+    fn default() -> Self {
+        PhantomUnforget
+    }
+}
+
+#[unstable(feature = "forget_trait", issue = "none")]
+impl Clone for PhantomUnforget {
+    fn clone(&self) -> Self {
+        PhantomUnforget
+    }
+}
+
+#[unstable(feature = "forget_trait", issue = "none")]
+impl Copy for PhantomUnforget {}

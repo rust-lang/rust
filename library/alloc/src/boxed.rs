@@ -2058,10 +2058,7 @@ unsafe impl<T: ?Sized, A: Allocator> PinCoerceUnsized for Box<T, A> {}
 // Handling arbitrary custom allocators (which can affect the `Box` layout heavily!)
 // would need a lot of codegen and interpreter adjustments.
 #[unstable(feature = "dispatch_from_dyn", issue = "none")]
-impl<T: ?Sized + Unsize<U> + ?core::marker::Forget, U: ?Sized + ?core::marker::Forget>
-    DispatchFromDyn<Box<U>> for Box<T, Global>
-{
-}
+impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<Box<U>> for Box<T, Global> {}
 
 #[stable(feature = "box_borrow", since = "1.1.0")]
 impl<T: ?Sized, A: Allocator> Borrow<T> for Box<T, A> {

@@ -36,7 +36,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use crate::marker::{Destruct, PointeeSized};
+use crate::marker::{Destruct, Forget, PointeeSized};
 
 mod uninit;
 
@@ -191,7 +191,7 @@ mod uninit;
 #[rustc_diagnostic_item = "Clone"]
 #[rustc_trivial_field_reads]
 #[rustc_const_unstable(feature = "const_clone", issue = "142757")]
-pub const trait Clone: Sized {
+pub const trait Clone: Sized + ?Forget {
     /// Returns a duplicate of the value.
     ///
     /// Note that what "duplicate" means varies by type:
