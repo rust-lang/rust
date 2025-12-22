@@ -4,9 +4,7 @@ use std::{
     io::{self, BufRead, BufReader, Read, Write},
     panic::AssertUnwindSafe,
     process::{Child, ChildStdin, ChildStdout, Command, Stdio},
-    sync::{
-        Arc, Mutex, OnceLock,
-    },
+    sync::{Arc, Mutex, OnceLock},
 };
 
 use base_db::SourceDatabase;
@@ -17,10 +15,7 @@ use stdx::JodChild;
 
 use crate::{
     Codec, ProcMacro, ProcMacroKind, ServerError,
-    bidirectional_protocol::{
-        self, ClientCallbacks,
-        msg::Payload,
-    },
+    bidirectional_protocol::{self, ClientCallbacks, msg::BidirectionalMessage},
     legacy_protocol::{self, SpanMode},
     version,
 };
@@ -71,7 +66,10 @@ impl ProcMacroServerProcess {
             && has_working_format_flag
         {
             &[
-                (Some("postcard-new"), Protocol::BidirectionalPostcardPrototype { mode: SpanMode::Id }),
+                (
+                    Some("postcard-new"),
+                    Protocol::BidirectionalPostcardPrototype { mode: SpanMode::Id },
+                ),
                 (Some("postcard-legacy"), Protocol::LegacyPostcard { mode: SpanMode::Id }),
                 (Some("json-legacy"), Protocol::LegacyJson { mode: SpanMode::Id }),
             ]
@@ -222,19 +220,17 @@ impl ProcMacroServerProcess {
                     current_dir,
                 )
             }
-            Protocol::BidirectionalPostcardPrototype { .. } => {
-                bidirectional_protocol::expand(
-                    proc_macro,
-                    db,
-                    subtree,
-                    attr,
-                    env,
-                    def_site,
-                    call_site,
-                    mixed_site,
-                    current_dir,
-                )
-            }
+            Protocol::BidirectionalPostcardPrototype { .. } => bidirectional_protocol::expand(
+                proc_macro,
+                db,
+                subtree,
+                attr,
+                env,
+                def_site,
+                call_site,
+                mixed_site,
+                current_dir,
+            ),
         }
     }
 
@@ -300,13 +296,11 @@ impl ProcMacroServerProcess {
 
     pub(crate) fn run_bidirectional<C: Codec>(
         &self,
-        initial: Payload,
+        initial: BidirectionalMessage,
         callbacks: &mut dyn ClientCallbacks,
-    ) -> Result<Payload, ServerError> {
+    ) -> Result<BidirectionalMessage, ServerError> {
         self.with_locked_io::<C, _>(|writer, reader, buf| {
-            bidirectional_protocol::run_conversation::<C>(
-                writer, reader, buf, initial, callbacks,
-            )
+            bidirectional_protocol::run_conversation::<C>(writer, reader, buf, initial, callbacks)
         })
     }
 }

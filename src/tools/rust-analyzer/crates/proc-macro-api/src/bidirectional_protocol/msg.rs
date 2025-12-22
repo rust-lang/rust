@@ -9,20 +9,6 @@ use crate::{
 };
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct Envelope {
-    pub kind: Kind,
-    pub payload: Payload,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
-pub enum Kind {
-    Request,
-    Response,
-    SubRequest,
-    SubResponse,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
 pub enum SubRequest {
     SourceText { file_id: u32, start: u32, end: u32 },
 }
@@ -33,7 +19,7 @@ pub enum SubResponse {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub enum Payload {
+pub enum BidirectionalMessage {
     Request(Request),
     Response(Response),
     SubRequest(SubRequest),
@@ -102,4 +88,4 @@ impl ExpnGlobals {
     }
 }
 
-impl Message for Envelope {}
+impl Message for BidirectionalMessage {}

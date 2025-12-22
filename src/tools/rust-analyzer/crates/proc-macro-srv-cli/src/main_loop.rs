@@ -63,54 +63,46 @@ fn run_new<C: Codec>() -> io::Result<()> {
     let mut span_mode = legacy::SpanMode::Id;
 
     'outer: loop {
-        let req_opt = bidirectional::Envelope::read::<_, C>(&mut stdin, &mut buf)?;
+        let req_opt = bidirectional::BidirectionalMessage::read::<_, C>(&mut stdin, &mut buf)?;
         let Some(req) = req_opt else {
             break 'outer;
         };
 
-        match (req.kind, req.payload) {
-            (bidirectional::Kind::Request, bidirectional::Payload::Request(request)) => {
-                match request {
-                    bidirectional::Request::ListMacros { dylib_path } => {
-                        let res = srv.list_macros(&dylib_path).map(|macros| {
-                            macros
-                                .into_iter()
-                                .map(|(name, kind)| (name, macro_kind_to_api(kind)))
-                                .collect()
-                        });
+        match req {
+            bidirectional::BidirectionalMessage::Request(request) => match request {
+                bidirectional::Request::ListMacros { dylib_path } => {
+                    let res = srv.list_macros(&dylib_path).map(|macros| {
+                        macros
+                            .into_iter()
+                            .map(|(name, kind)| (name, macro_kind_to_api(kind)))
+                            .collect()
+                    });
 
-                        send_response::<_, C>(
-                            &mut stdout,
-                            bidirectional::Response::ListMacros(res),
-                        )?;
-                    }
-
-                    bidirectional::Request::ApiVersionCheck {} => {
-                        send_response::<_, C>(
-                            &mut stdout,
-                            bidirectional::Response::ApiVersionCheck(CURRENT_API_VERSION),
-                        )?;
-                    }
-
-                    bidirectional::Request::SetConfig(config) => {
-                        span_mode = config.span_mode;
-                        send_response::<_, C>(
-                            &mut stdout,
-                            bidirectional::Response::SetConfig(config),
-                        )?;
-                    }
-                    bidirectional::Request::ExpandMacro(task) => {
-                        handle_expand::<_, _, C>(
-                            &srv,
-                            &mut stdin,
-                            &mut stdout,
-                            &mut buf,
-                            span_mode,
-                            *task,
-                        )?;
-                    }
+                    send_response::<_, C>(&mut stdout, bidirectional::Response::ListMacros(res))?;
                 }
-            }
+
+                bidirectional::Request::ApiVersionCheck {} => {
+                    send_response::<_, C>(
+                        &mut stdout,
+                        bidirectional::Response::ApiVersionCheck(CURRENT_API_VERSION),
+                    )?;
+                }
+
+                bidirectional::Request::SetConfig(config) => {
+                    span_mode = config.span_mode;
+                    send_response::<_, C>(&mut stdout, bidirectional::Response::SetConfig(config))?;
+                }
+                bidirectional::Request::ExpandMacro(task) => {
+                    handle_expand::<_, _, C>(
+                        &srv,
+                        &mut stdin,
+                        &mut stdout,
+                        &mut buf,
+                        span_mode,
+                        *task,
+                    )?;
+                }
+            },
             _ => continue,
         }
     }
@@ -265,11 +257,8 @@ fn handle_expand_ra<W: std::io::Write, R: std::io::BufRead, C: Codec>(
 
         loop {
             if let Ok(res) = result_rx.try_recv() {
-                send_response::<_, C>(
-                    stdout,
-                    bidirectional::Response::ExpandMacroExtended(res),
-                )
-                .unwrap();
+                send_response::<_, C>(stdout, bidirectional::Response::ExpandMacroExtended(res))
+                    .unwrap();
                 break;
             }
 
@@ -282,7 +271,7 @@ fn handle_expand_ra<W: std::io::Write, R: std::io::BufRead, C: Codec>(
 
             send_subrequest::<_, C>(stdout, from_srv_req(subreq)).unwrap();
 
-            let resp_opt = bidirectional::Envelope::read::<_, C>(stdin, buf).unwrap();
+            let resp_opt = bidirectional::BidirectionalMessage::read::<_, C>(stdin, buf).unwrap();
             let resp = match resp_opt {
                 Some(env) => env,
                 None => {
@@ -290,11 +279,8 @@ fn handle_expand_ra<W: std::io::Write, R: std::io::BufRead, C: Codec>(
                 }
             };
 
-            match (resp.kind, resp.payload) {
-                (
-                    bidirectional::Kind::SubResponse,
-                    bidirectional::Payload::SubResponse(subresp),
-                ) => {
+            match resp {
+                bidirectional::BidirectionalMessage::SubResponse(subresp) => {
                     let _ = subresp_tx.send(from_client_res(subresp));
                 }
                 _ => {
@@ -466,10 +452,7 @@ fn send_response<W: std::io::Write, C: Codec>(
     stdout: &mut W,
     resp: bidirectional::Response,
 ) -> io::Result<()> {
-    let resp = bidirectional::Envelope {
-        kind: bidirectional::Kind::Response,
-        payload: bidirectional::Payload::Response(resp),
-    };
+    let resp = bidirectional::BidirectionalMessage::Response(resp);
     resp.write::<W, C>(stdout)
 }
 
@@ -477,9 +460,6 @@ fn send_subrequest<W: std::io::Write, C: Codec>(
     stdout: &mut W,
     resp: bidirectional::SubRequest,
 ) -> io::Result<()> {
-    let resp = bidirectional::Envelope {
-        kind: bidirectional::Kind::SubRequest,
-        payload: bidirectional::Payload::SubRequest(resp),
-    };
+    let resp = bidirectional::BidirectionalMessage::SubRequest(resp);
     resp.write::<W, C>(stdout)
 }

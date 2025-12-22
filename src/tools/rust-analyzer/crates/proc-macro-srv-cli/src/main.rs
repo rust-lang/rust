@@ -57,11 +57,7 @@ enum ProtocolFormat {
 
 impl ValueEnum for ProtocolFormat {
     fn value_variants<'a>() -> &'a [Self] {
-        &[
-            ProtocolFormat::JsonLegacy,
-            ProtocolFormat::PostcardLegacy,
-            ProtocolFormat::PostcardNew,
-        ]
+        &[ProtocolFormat::JsonLegacy, ProtocolFormat::PostcardLegacy, ProtocolFormat::PostcardNew]
     }
 
     fn to_possible_value(&self) -> Option<clap::builder::PossibleValue> {

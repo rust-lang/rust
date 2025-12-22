@@ -12,8 +12,8 @@ use span::{FileId, Span};
 use crate::{
     Codec, ProcMacro, ProcMacroKind, ServerError,
     bidirectional_protocol::msg::{
-        Envelope, ExpandMacro, ExpandMacroData, ExpnGlobals, Kind, Payload, Request,
-        Response, SubRequest, SubResponse,
+        BidirectionalMessage, ExpandMacro, ExpandMacroData, ExpnGlobals, Request, Response,
+        SubRequest, SubResponse,
     },
     legacy_protocol::{
         SpanMode,
@@ -37,10 +37,9 @@ pub fn run_conversation<C: Codec>(
     writer: &mut dyn Write,
     reader: &mut dyn BufRead,
     buf: &mut C::Buf,
-    initial: Payload,
+    msg: BidirectionalMessage,
     callbacks: &mut dyn ClientCallbacks,
-) -> Result<Payload, ServerError> {
-    let msg = Envelope { kind: Kind::Request, payload: initial };
+) -> Result<BidirectionalMessage, ServerError> {
     let encoded = C::encode(&msg).map_err(wrap_encode)?;
     C::write(writer, &encoded).map_err(wrap_io("failed to write initial request"))?;
 
@@ -53,25 +52,21 @@ pub fn run_conversation<C: Codec>(
             });
         };
 
-        let msg: Envelope = C::decode(b).map_err(wrap_decode)?;
+        let msg: BidirectionalMessage = C::decode(b).map_err(wrap_decode)?;
 
-        match (msg.kind, msg.payload) {
-            (Kind::SubRequest, Payload::SubRequest(sr)) => {
+        match msg {
+            BidirectionalMessage::Response(response) => {
+                return Ok(BidirectionalMessage::Response(response));
+            }
+            BidirectionalMessage::SubRequest(sr) => {
                 let resp = callbacks.handle_sub_request(sr)?;
-                let reply =
-                    Envelope { kind: Kind::SubResponse, payload: Payload::SubResponse(resp) };
+                let reply = BidirectionalMessage::SubResponse(resp);
                 let encoded = C::encode(&reply).map_err(wrap_encode)?;
                 C::write(writer, &encoded).map_err(wrap_io("failed to write sub-response"))?;
             }
-            (Kind::Response, payload) => {
-                return Ok(payload);
-            }
-            (kind, payload) => {
+            _ => {
                 return Err(ServerError {
-                    message: format!(
-                        "unexpected message kind {:?} with payload {:?}",
-                        kind, payload
-                    ),
+                    message: format!("unexpected message {:?}", msg),
                     io: None,
                 });
             }
@@ -92,7 +87,7 @@ fn wrap_decode(err: io::Error) -> ServerError {
 }
 
 pub(crate) fn version_check(srv: &ProcMacroServerProcess) -> Result<u32, ServerError> {
-    let request = Payload::Request(Request::ApiVersionCheck {});
+    let request = BidirectionalMessage::Request(Request::ApiVersionCheck {});
 
     struct NoCallbacks;
     impl ClientCallbacks for NoCallbacks {
@@ -106,7 +101,7 @@ pub(crate) fn version_check(srv: &ProcMacroServerProcess) -> Result<u32, ServerE
     let response_payload = run_request(srv, request, &mut callbacks)?;
 
     match response_payload {
-        Payload::Response(Response::ApiVersionCheck(version)) => Ok(version),
+        BidirectionalMessage::Response(Response::ApiVersionCheck(version)) => Ok(version),
         other => {
             Err(ServerError { message: format!("unexpected response: {:?}", other), io: None })
         }
@@ -117,8 +112,9 @@ pub(crate) fn version_check(srv: &ProcMacroServerProcess) -> Result<u32, ServerE
 pub(crate) fn enable_rust_analyzer_spans(
     srv: &ProcMacroServerProcess,
 ) -> Result<SpanMode, ServerError> {
-    let request =
-        Payload::Request(Request::SetConfig(ServerConfig { span_mode: SpanMode::RustAnalyzer }));
+    let request = BidirectionalMessage::Request(Request::SetConfig(ServerConfig {
+        span_mode: SpanMode::RustAnalyzer,
+    }));
 
     struct NoCallbacks;
     impl ClientCallbacks for NoCallbacks {
@@ -132,7 +128,9 @@ pub(crate) fn enable_rust_analyzer_spans(
     let response_payload = run_request(srv, request, &mut callbacks)?;
 
     match response_payload {
-        Payload::Response(Response::SetConfig(ServerConfig { span_mode })) => Ok(span_mode),
+        BidirectionalMessage::Response(Response::SetConfig(ServerConfig { span_mode })) => {
+            Ok(span_mode)
+        }
         _ => Err(ServerError { message: "unexpected response".to_owned(), io: None }),
     }
 }
@@ -142,8 +140,9 @@ pub(crate) fn find_proc_macros(
     srv: &ProcMacroServerProcess,
     dylib_path: &AbsPath,
 ) -> Result<Result<Vec<(String, ProcMacroKind)>, String>, ServerError> {
-    let request =
-        Payload::Request(Request::ListMacros { dylib_path: dylib_path.to_path_buf().into() });
+    let request = BidirectionalMessage::Request(Request::ListMacros {
+        dylib_path: dylib_path.to_path_buf().into(),
+    });
 
     struct NoCallbacks;
     impl ClientCallbacks for NoCallbacks {
@@ -157,7 +156,7 @@ pub(crate) fn find_proc_macros(
     let response_payload = run_request(srv, request, &mut callbacks)?;
 
     match response_payload {
-        Payload::Response(Response::ListMacros(it)) => Ok(it),
+        BidirectionalMessage::Response(Response::ListMacros(it)) => Ok(it),
         _ => Err(ServerError { message: "unexpected response".to_owned(), io: None }),
     }
 }
@@ -179,7 +178,7 @@ pub(crate) fn expand(
     let def_site = span_data_table.insert_full(def_site).0;
     let call_site = span_data_table.insert_full(call_site).0;
     let mixed_site = span_data_table.insert_full(mixed_site).0;
-    let task = Payload::Request(Request::ExpandMacro(Box::new(ExpandMacro {
+    let task = BidirectionalMessage::Request(Request::ExpandMacro(Box::new(ExpandMacro {
         data: ExpandMacroData {
             macro_body: FlatTree::from_subtree(subtree, version, &mut span_data_table),
             macro_name: proc_macro.name.to_string(),
@@ -225,7 +224,7 @@ pub(crate) fn expand(
     let response_payload = run_request(&proc_macro.process, task, &mut callbacks)?;
 
     match response_payload {
-        Payload::Response(Response::ExpandMacro(it)) => Ok(it
+        BidirectionalMessage::Response(Response::ExpandMacro(it)) => Ok(it
             .map(|tree| {
                 let mut expanded = FlatTree::to_subtree_resolved(tree, version, &span_data_table);
                 if proc_macro.needs_fixup_change() {
@@ -234,7 +233,7 @@ pub(crate) fn expand(
                 expanded
             })
             .map_err(|msg| msg.0)),
-        Payload::Response(Response::ExpandMacroExtended(it)) => Ok(it
+        BidirectionalMessage::Response(Response::ExpandMacroExtended(it)) => Ok(it
             .map(|resp| {
                 let mut expanded = FlatTree::to_subtree_resolved(
                     resp.tree,
@@ -253,9 +252,9 @@ pub(crate) fn expand(
 
 fn run_request(
     srv: &ProcMacroServerProcess,
-    msg: Payload,
+    msg: BidirectionalMessage,
     callbacks: &mut dyn ClientCallbacks,
-) -> Result<Payload, ServerError> {
+) -> Result<BidirectionalMessage, ServerError> {
     if let Some(server_error) = srv.exited() {
         return Err(server_error.clone());
     }
