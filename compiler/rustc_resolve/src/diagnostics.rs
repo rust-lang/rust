@@ -2223,7 +2223,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             match binding.kind {
                 NameBindingKind::Import { import, .. } => {
                     for segment in import.module_path.iter().skip(1) {
-                        path.push(segment.ident);
+                        // Don't include `{{root}}` in suggestions - it's an internal symbol
+                        // that should never be shown to users.
+                        if segment.ident.name != kw::PathRoot {
+                            path.push(segment.ident);
+                        }
                     }
                     sugg_paths.push((
                         path.iter().cloned().chain(std::iter::once(ident)).collect::<Vec<_>>(),
