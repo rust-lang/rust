@@ -274,10 +274,6 @@ pub enum ExprKind<'tcx> {
         lint_level: LintLevel,
         value: ExprId,
     },
-    /// A `box <value>` expression.
-    Box {
-        value: ExprId,
-    },
     /// An `if` expression.
     If {
         if_then_scope: region::Scope,

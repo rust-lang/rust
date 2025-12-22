@@ -20,7 +20,8 @@
 //
 // Do *not* remove entries from this list. Instead, just add a note to the corresponding markdown
 // file saying that this error is not emitted by the compiler any more (see E0001.md for an
-// example), and remove all code examples that do not build any more.
+// example), and remove all code examples that do not build any more by marking them
+// with `ignore (no longer emitted)`.
 #[macro_export]
 #[rustfmt::skip]
 macro_rules! error_codes {
