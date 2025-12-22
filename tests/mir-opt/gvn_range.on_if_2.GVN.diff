@@ -1,0 +1,20 @@
+- // MIR for `on_if_2` before GVN
++ // MIR for `on_if_2` after GVN
+  
+  fn on_if_2(_1: bool) -> bool {
+      let mut _0: bool;
+  
+      bb0: {
+          switchInt(copy _1) -> [1: bb2, otherwise: bb1];
+      }
+  
+      bb1: {
+          goto -> bb2;
+      }
+  
+      bb2: {
+          _0 = copy _1;
+          return;
+      }
+  }
+  

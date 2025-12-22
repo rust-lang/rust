@@ -39,7 +39,7 @@
   
       bb3: {
           _2 = discriminant(((((_1 as Ready).0: std::result::Result<std::option::Option<std::vec::Vec<u8>>, u8>) as Ok).0: std::option::Option<std::vec::Vec<u8>>));
-          switchInt(copy _2) -> [0: bb5, 1: bb7, otherwise: bb1];
+          switchInt(move _2) -> [0: bb5, 1: bb7, otherwise: bb1];
       }
   
       bb4: {
@@ -112,7 +112,7 @@
       }
   
       bb18 (cleanup): {
-          switchInt(copy _3) -> [0: bb19, otherwise: bb9];
+          switchInt(const 0_isize) -> [0: bb19, otherwise: bb9];
       }
   
       bb19 (cleanup): {
@@ -120,7 +120,7 @@
       }
   
       bb20 (cleanup): {
-          switchInt(copy _4) -> [0: bb18, otherwise: bb9];
+          switchInt(const 0_isize) -> [0: bb18, otherwise: bb9];
       }
   }
   

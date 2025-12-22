@@ -1,0 +1,73 @@
+- // MIR for `on_if` before GVN
++ // MIR for `on_if` after GVN
+  
+  fn on_if(_1: usize, _2: &[u8]) -> u8 {
+      debug i => _1;
+      debug v => _2;
+      let mut _0: u8;
+      let mut _3: bool;
+      let mut _4: usize;
+      let mut _5: usize;
+      let mut _6: &[u8];
+      let _7: usize;
+      let mut _8: usize;
+      let mut _9: bool;
+      scope 1 (inlined core::slice::<impl [u8]>::len) {
+          scope 2 (inlined std::ptr::metadata::<[u8]>) {
+          }
+      }
+  
+      bb0: {
+-         StorageLive(_3);
++         nop;
+          StorageLive(_4);
+          _4 = copy _1;
+-         StorageLive(_5);
++         nop;
+          StorageLive(_6);
+          _6 = &(*_2);
+-         _5 = PtrMetadata(copy _6);
++         _5 = PtrMetadata(copy _2);
+          StorageDead(_6);
+-         _3 = Lt(move _4, move _5);
+-         switchInt(move _3) -> [0: bb3, otherwise: bb1];
++         _3 = Lt(copy _1, copy _5);
++         switchInt(copy _3) -> [0: bb3, otherwise: bb1];
+      }
+  
+      bb1: {
+-         StorageDead(_5);
++         nop;
+          StorageDead(_4);
+          StorageLive(_7);
+          _7 = copy _1;
+-         _8 = PtrMetadata(copy _2);
+-         _9 = Lt(copy _7, copy _8);
+-         assert(move _9, "index out of bounds: the length is {} but the index is {}", move _8, copy _7) -> [success: bb2, unwind unreachable];
++         _8 = copy _5;
++         _9 = const true;
++         assert(const true, "index out of bounds: the length is {} but the index is {}", copy _5, copy _1) -> [success: bb2, unwind unreachable];
+      }
+  
+      bb2: {
+-         _0 = copy (*_2)[_7];
++         _0 = copy (*_2)[_1];
+          StorageDead(_7);
+          goto -> bb4;
+      }
+  
+      bb3: {
+-         StorageDead(_5);
++         nop;
+          StorageDead(_4);
+          _0 = const 0_u8;
+          goto -> bb4;
+      }
+  
+      bb4: {
+-         StorageDead(_3);
++         nop;
+          return;
+      }
+  }
+  
