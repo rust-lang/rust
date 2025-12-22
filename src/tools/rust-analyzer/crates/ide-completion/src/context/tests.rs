@@ -636,6 +636,125 @@ fn foo() {
 }
 
 #[test]
+fn expected_type_break_expr_in_loop() {
+    check_expected_type_and_name(
+        r#"
+enum State { Stop }
+fn foo() {
+    let _x: State = loop {
+        {
+            break State::Stop;
+            break $0;
+        }
+    };
+}
+"#,
+        expect![[r#"ty: State, name: ?"#]],
+    );
+
+    check_expected_type_and_name(
+        r#"
+enum State { Stop }
+fn foo() {
+    let _x: State = 'a: loop {
+        {
+            break State::Stop;
+            break $0;
+        }
+    };
+}
+"#,
+        expect![[r#"ty: State, name: ?"#]],
+    );
+
+    check_expected_type_and_name(
+        r#"
+enum State { Stop }
+fn foo() {
+    let _x: State = 'a: loop {
+        while true {
+            break $0;
+        }
+    };
+}
+"#,
+        expect![[r#"ty: (), name: ?"#]],
+    );
+}
+
+#[test]
+fn expected_type_break_expr_in_labeled_loop() {
+    check_expected_type_and_name(
+        r#"
+enum State { Stop }
+fn foo() {
+    let _x: State = 'a: loop {
+        let _y: i32 = loop {
+            {
+                break 'a State::Stop;
+                break 'a $0;
+            }
+        };
+    };
+}
+"#,
+        expect![[r#"ty: State, name: ?"#]],
+    );
+
+    check_expected_type_and_name(
+        r#"
+enum State { Stop }
+fn foo() {
+    let _x: State = 'a: loop {
+        let _y: i32 = loop {
+            while true {
+                break 'a State::Stop;
+                break 'a $0;
+            }
+        };
+    };
+}
+"#,
+        expect![[r#"ty: State, name: ?"#]],
+    );
+
+    check_expected_type_and_name(
+        r#"
+enum State { Stop }
+fn foo() {
+    'a: while true {
+        let _x: State = loop {
+            break State::Stop;
+            break 'a $0;
+        };
+    }
+}
+"#,
+        expect![[r#"ty: (), name: ?"#]],
+    );
+}
+
+#[test]
+fn expected_type_break_expr_in_labeled_block() {
+    check_expected_type_and_name(
+        r#"
+enum State { Stop }
+fn foo() {
+    let _x: State = 'a: {
+        let _y: i32 = 'b: {
+            {
+                break 'a State::Stop;
+                break 'a $0;
+            };
+        };
+    };
+}
+"#,
+        expect![[r#"ty: State, name: ?"#]],
+    );
+}
+
+#[test]
 fn expected_type_logic_op() {
     check_expected_type_and_name(
         r#"
