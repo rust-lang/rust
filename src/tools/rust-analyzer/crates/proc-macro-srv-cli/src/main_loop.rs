@@ -38,7 +38,7 @@ pub(crate) fn run(format: ProtocolFormat) -> io::Result<()> {
     match format {
         ProtocolFormat::JsonLegacy => run_::<JsonProtocol>(),
         ProtocolFormat::PostcardLegacy => run_::<PostcardProtocol>(),
-        ProtocolFormat::PostcardNew => run_new::<PostcardProtocol>(),
+        ProtocolFormat::BidirectionalPostcardPrototype => run_new::<PostcardProtocol>(),
     }
 }
 

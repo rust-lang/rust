@@ -31,7 +31,7 @@ fn main() -> std::io::Result<()> {
             clap::Arg::new("format")
                 .long("format")
                 .action(clap::ArgAction::Set)
-                .default_value("postcard-new")
+                .default_value("bidirectional-postcard-prototype")
                 .value_parser(clap::builder::EnumValueParser::<ProtocolFormat>::new()),
             clap::Arg::new("version")
                 .long("version")
@@ -52,12 +52,12 @@ fn main() -> std::io::Result<()> {
 enum ProtocolFormat {
     JsonLegacy,
     PostcardLegacy,
-    PostcardNew,
+    BidirectionalPostcardPrototype,
 }
 
 impl ValueEnum for ProtocolFormat {
     fn value_variants<'a>() -> &'a [Self] {
-        &[ProtocolFormat::JsonLegacy, ProtocolFormat::PostcardLegacy, ProtocolFormat::PostcardNew]
+        &[ProtocolFormat::JsonLegacy, ProtocolFormat::PostcardLegacy, ProtocolFormat::BidirectionalPostcardPrototype]
     }
 
     fn to_possible_value(&self) -> Option<clap::builder::PossibleValue> {
@@ -66,14 +66,14 @@ impl ValueEnum for ProtocolFormat {
             ProtocolFormat::PostcardLegacy => {
                 Some(clap::builder::PossibleValue::new("postcard-legacy"))
             }
-            ProtocolFormat::PostcardNew => Some(clap::builder::PossibleValue::new("postcard-new")),
+            ProtocolFormat::BidirectionalPostcardPrototype => Some(clap::builder::PossibleValue::new("postcard-new")),
         }
     }
     fn from_str(input: &str, _ignore_case: bool) -> Result<Self, String> {
         match input {
             "json-legacy" => Ok(ProtocolFormat::JsonLegacy),
             "postcard-legacy" => Ok(ProtocolFormat::PostcardLegacy),
-            "postcard-new" => Ok(ProtocolFormat::PostcardNew),
+            "bidirectional-postcard-prototype" => Ok(ProtocolFormat::BidirectionalPostcardPrototype),
             _ => Err(format!("unknown protocol format: {input}")),
         }
     }
