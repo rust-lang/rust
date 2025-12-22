@@ -2624,7 +2624,7 @@ impl SelfParam {
         let callable_sig =
             db.callable_item_signature(self.func.into()).instantiate_identity().skip_binder();
         let environment = param_env_from_has_crate(db, self.func);
-        let ty = callable_sig.inputs().as_slice()[0];
+        let ty = rustc_type_ir::inherent::SliceLike::as_slice(&callable_sig.inputs())[0];
         Type { env: environment, ty }
     }
 
@@ -2639,7 +2639,7 @@ impl SelfParam {
         let callable_sig =
             db.callable_item_signature(self.func.into()).instantiate(interner, args).skip_binder();
         let environment = param_env_from_has_crate(db, self.func);
-        let ty = callable_sig.inputs().as_slice()[0];
+        let ty = rustc_type_ir::inherent::SliceLike::as_slice(&callable_sig.inputs())[0];
         Type { env: environment, ty }
     }
 }
