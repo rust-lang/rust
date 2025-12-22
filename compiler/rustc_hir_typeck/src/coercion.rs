@@ -1838,7 +1838,20 @@ impl<'tcx> CoerceMany<'tcx> {
                     hir::ExprKind::Match(.., hir::MatchSource::TryDesugar(_))
                 )
             {
-                err.span_label(cond_expr.span, "expected this to be `()`");
+                if let ObligationCauseCode::BlockTailExpression(hir_id, hir::MatchSource::Normal) =
+                    cause.code()
+                    && let hir::Node::Block(block) = fcx.tcx.hir_node(*hir_id)
+                    && let hir::Node::Expr(expr) = fcx.tcx.parent_hir_node(block.hir_id)
+                    && let hir::Node::Expr(if_expr) = fcx.tcx.parent_hir_node(expr.hir_id)
+                    && let hir::ExprKind::If(_cond, _then, None) = if_expr.kind
+                {
+                    err.span_label(
+                        cond_expr.span,
+                        "`if` expressions without `else` arms expect their inner expression to be `()`",
+                    );
+                } else {
+                    err.span_label(cond_expr.span, "expected this to be `()`");
+                }
                 if expr.can_have_side_effects() {
                     fcx.suggest_semicolon_at_end(cond_expr.span, &mut err);
                 }
