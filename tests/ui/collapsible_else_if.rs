@@ -85,6 +85,19 @@ fn main() {
     //~^^^^^^^^ collapsible_else_if
 
     if x == "hello" {
+        if y == "world" {
+            print!("Hello ");
+        } else {
+            println!("world");
+        }
+    } else {
+        if let Some(42) = Some(42) {
+            println!("42");
+        }
+    }
+    //~^^^^^ collapsible_else_if
+
+    if x == "hello" {
         print!("Hello ");
     } else {
         #[cfg(not(roflol))]
@@ -92,6 +105,21 @@ fn main() {
             println!("world!")
         }
     }
+
+    if x == "hello" {
+        if y == "world" {
+            print!("Hello ");
+        } else {
+            println!("world");
+        }
+    } else {
+        if let Some(42) = Some(42) {
+            println!("42");
+        } else {
+            println!("!");
+        }
+    }
+
 }
 
 #[rustfmt::skip]
