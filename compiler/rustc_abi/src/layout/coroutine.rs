@@ -247,7 +247,7 @@ pub(super) fn layout<
             // obtain a valid (bijective) mapping.
             let memory_index = in_memory_order.invert_bijective_mapping();
             let invalid_field_idx = promoted_memory_index.len() + memory_index.len();
-            let mut combined_in_memory_order =
+            let mut combined_inverse_memory_index =
                 IndexVec::from_elem_n(FieldIdx::new(invalid_field_idx), invalid_field_idx);
 
             let mut offsets_and_memory_index = iter::zip(offsets, memory_index);
@@ -265,14 +265,15 @@ pub(super) fn layout<
                             (promoted_offsets[field_idx], promoted_memory_index[field_idx])
                         }
                     };
-                    combined_in_memory_order[memory_index] = i;
+                    combined_inverse_memory_index[memory_index] = i;
                     offset
                 })
                 .collect();
 
-            // Remove the unused slots to obtain the combined `in_memory_order`
+            // Remove the unused slots and invert to obtain the combined `in_memory_order`
             // (also see previous comment).
-            combined_in_memory_order.raw.retain(|&i| i.index() != invalid_field_idx);
+            combined_inverse_memory_index.raw.retain(|&i| i.index() != invalid_field_idx);
+            let combined_in_memory_order = combined_inverse_memory_index;
 
             variant.fields = FieldsShape::Arbitrary {
                 offsets: combined_offsets,
