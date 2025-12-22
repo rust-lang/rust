@@ -61,8 +61,12 @@ pub trait Interner:
     type GenericArg: GenericArg<Self>;
     type Term: Term<Self>;
 
-    type BoundVarKinds: Copy + Debug + Hash + Eq + SliceLike<Item = Self::BoundVarKind> + Default;
-    type BoundVarKind: Copy + Debug + Hash + Eq;
+    type BoundVarKinds: Copy
+        + Debug
+        + Hash
+        + Eq
+        + SliceLike<Item = ty::BoundVariableKind<Self>>
+        + Default;
 
     type PredefinedOpaques: Copy
         + Debug
@@ -120,9 +124,7 @@ pub trait Interner:
     type Tys: Tys<Self>;
     type FnInputTys: Copy + Debug + Hash + Eq + SliceLike<Item = Self::Ty> + TypeVisitable<Self>;
     type ParamTy: ParamLike;
-    type BoundTy: BoundVarLike<Self>;
-    type PlaceholderTy: PlaceholderLike<Self, Bound = Self::BoundTy>;
-    type Symbol: Copy + Hash + PartialEq + Eq + Debug;
+    type Symbol: Symbol<Self>;
 
     // Things stored inside of tys
     type ErrorGuaranteed: Copy + Debug + Hash + Eq;
@@ -149,8 +151,6 @@ pub trait Interner:
     // Kinds of consts
     type Const: Const<Self>;
     type ParamConst: Copy + Debug + Hash + Eq + ParamLike;
-    type BoundConst: BoundVarLike<Self>;
-    type PlaceholderConst: PlaceholderConst<Self>;
     type ValueConst: ValueConst<Self>;
     type ExprConst: ExprConst<Self>;
     type ValTree: ValTree<Self>;
@@ -160,8 +160,6 @@ pub trait Interner:
     type Region: Region<Self>;
     type EarlyParamRegion: ParamLike;
     type LateParamRegion: Copy + Debug + Hash + Eq;
-    type BoundRegion: BoundVarLike<Self>;
-    type PlaceholderRegion: PlaceholderLike<Self, Bound = Self::BoundRegion>;
 
     type RegionAssumptions: Copy
         + Debug
@@ -411,6 +409,8 @@ pub trait Interner:
         self,
         canonical_goal: CanonicalInput<Self>,
     ) -> (QueryResult<Self>, Self::Probe);
+
+    fn item_name(self, item_index: Self::DefId) -> Self::Symbol;
 }
 
 /// Imagine you have a function `F: FnOnce(&[T]) -> R`, plus an iterator `iter`

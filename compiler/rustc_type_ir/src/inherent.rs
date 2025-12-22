@@ -12,7 +12,7 @@ use crate::elaborate::Elaboratable;
 use crate::fold::{TypeFoldable, TypeSuperFoldable};
 use crate::relate::Relate;
 use crate::solve::{AdtDestructorKind, SizedTraitKind};
-use crate::visit::{Flags, TypeSuperVisitable, TypeVisitable, TypeVisitableExt};
+use crate::visit::{Flags, TypeSuperVisitable, TypeVisitable};
 use crate::{self as ty, CollectAndApply, Interner, UpcastFrom};
 
 pub trait Ty<I: Interner<Ty = Self>>:
@@ -42,9 +42,9 @@ pub trait Ty<I: Interner<Ty = Self>>:
 
     fn new_param(interner: I, param: I::ParamTy) -> Self;
 
-    fn new_placeholder(interner: I, param: I::PlaceholderTy) -> Self;
+    fn new_placeholder(interner: I, param: ty::PlaceholderType<I>) -> Self;
 
-    fn new_bound(interner: I, debruijn: ty::DebruijnIndex, var: I::BoundTy) -> Self;
+    fn new_bound(interner: I, debruijn: ty::DebruijnIndex, var: ty::BoundTy<I>) -> Self;
 
     fn new_anon_bound(interner: I, debruijn: ty::DebruijnIndex, var: ty::BoundVar) -> Self;
 
@@ -228,7 +228,7 @@ pub trait Region<I: Interner<Region = Self>>:
     + Flags
     + Relate<I>
 {
-    fn new_bound(interner: I, debruijn: ty::DebruijnIndex, var: I::BoundRegion) -> Self;
+    fn new_bound(interner: I, debruijn: ty::DebruijnIndex, var: ty::BoundRegion<I>) -> Self;
 
     fn new_anon_bound(interner: I, debruijn: ty::DebruijnIndex, var: ty::BoundVar) -> Self;
 
@@ -236,7 +236,7 @@ pub trait Region<I: Interner<Region = Self>>:
 
     fn new_static(interner: I) -> Self;
 
-    fn new_placeholder(interner: I, var: I::PlaceholderRegion) -> Self;
+    fn new_placeholder(interner: I, var: ty::PlaceholderRegion<I>) -> Self;
 
     fn is_bound(self) -> bool {
         matches!(self.kind(), ty::ReBound(..))
@@ -260,13 +260,13 @@ pub trait Const<I: Interner<Const = Self>>:
 
     fn new_var(interner: I, var: ty::ConstVid) -> Self;
 
-    fn new_bound(interner: I, debruijn: ty::DebruijnIndex, bound_const: I::BoundConst) -> Self;
+    fn new_bound(interner: I, debruijn: ty::DebruijnIndex, bound_const: ty::BoundConst<I>) -> Self;
 
     fn new_anon_bound(interner: I, debruijn: ty::DebruijnIndex, var: ty::BoundVar) -> Self;
 
     fn new_canonical_bound(interner: I, var: ty::BoundVar) -> Self;
 
-    fn new_placeholder(interner: I, param: I::PlaceholderConst) -> Self;
+    fn new_placeholder(interner: I, param: ty::PlaceholderConst<I>) -> Self;
 
     fn new_unevaluated(interner: I, uv: ty::UnevaluatedConst<I>) -> Self;
 
@@ -543,66 +543,10 @@ pub trait Clauses<I: Interner<Clauses = Self>>:
 {
 }
 
-/// Common capabilities of placeholder kinds
-pub trait PlaceholderLike<I: Interner>: Copy + Debug + Hash + Eq {
-    fn universe(self) -> ty::UniverseIndex;
-    fn var(self) -> ty::BoundVar;
-
-    type Bound: BoundVarLike<I>;
-    fn new(ui: ty::UniverseIndex, bound: Self::Bound) -> Self;
-    fn new_anon(ui: ty::UniverseIndex, var: ty::BoundVar) -> Self;
-    fn with_updated_universe(self, ui: ty::UniverseIndex) -> Self;
-}
-
-pub trait PlaceholderConst<I: Interner>: PlaceholderLike<I, Bound = I::BoundConst> {
-    fn find_const_ty_from_env(self, env: I::ParamEnv) -> I::Ty;
-}
-impl<I: Interner> PlaceholderConst<I> for I::PlaceholderConst {
-    fn find_const_ty_from_env(self, env: I::ParamEnv) -> I::Ty {
-        let mut candidates = env.caller_bounds().iter().filter_map(|clause| {
-            // `ConstArgHasType` are never desugared to be higher ranked.
-            match clause.kind().skip_binder() {
-                ty::ClauseKind::ConstArgHasType(placeholder_ct, ty) => {
-                    assert!(!(placeholder_ct, ty).has_escaping_bound_vars());
-
-                    match placeholder_ct.kind() {
-                        ty::ConstKind::Placeholder(placeholder_ct) if placeholder_ct == self => {
-                            Some(ty)
-                        }
-                        _ => None,
-                    }
-                }
-                _ => None,
-            }
-        });
-
-        // N.B. it may be tempting to fix ICEs by making this function return
-        // `Option<Ty<'tcx>>` instead of `Ty<'tcx>`; however, this is generally
-        // considered to be a bandaid solution, since it hides more important
-        // underlying issues with how we construct generics and predicates of
-        // items. It's advised to fix the underlying issue rather than trying
-        // to modify this function.
-        let ty = candidates.next().unwrap_or_else(|| {
-            panic!("cannot find `{self:?}` in param-env: {env:#?}");
-        });
-        assert!(
-            candidates.next().is_none(),
-            "did not expect duplicate `ConstParamHasTy` for `{self:?}` in param-env: {env:#?}"
-        );
-        ty
-    }
-}
-
 pub trait IntoKind {
     type Kind;
 
     fn kind(self) -> Self::Kind;
-}
-
-pub trait BoundVarLike<I: Interner>: Copy + Debug + Hash + Eq {
-    fn var(self) -> ty::BoundVar;
-
-    fn assert_eq(self, var: I::BoundVarKind);
 }
 
 pub trait ParamLike: Copy + Debug + Hash + Eq {
@@ -767,4 +711,8 @@ impl<'a, S: SliceLike> SliceLike for &'a S {
     fn as_slice(&self) -> &[Self::Item] {
         (*self).as_slice()
     }
+}
+
+pub trait Symbol<I>: Copy + Hash + PartialEq + Eq + Debug {
+    fn is_kw_underscore_lifetime(self) -> bool;
 }

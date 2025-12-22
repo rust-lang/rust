@@ -33,7 +33,7 @@ pub enum TypeError<I: Interner> {
     ArgCount,
 
     RegionsDoesNotOutlive(I::Region, I::Region),
-    RegionsInsufficientlyPolymorphic(I::BoundRegion, I::Region),
+    RegionsInsufficientlyPolymorphic(ty::BoundRegion<I>, I::Region),
     RegionsPlaceholderMismatch,
 
     Sorts(ExpectedFound<I::Ty>),

@@ -50,7 +50,7 @@ impl<'tcx> Region<'tcx> {
     pub fn new_bound(
         tcx: TyCtxt<'tcx>,
         debruijn: ty::DebruijnIndex,
-        bound_region: ty::BoundRegion,
+        bound_region: ty::BoundRegion<'tcx>,
     ) -> Region<'tcx> {
         // Use a pre-interned one when possible.
         if let ty::BoundRegion { var, kind: ty::BoundRegionKind::Anon } = bound_region
@@ -160,7 +160,7 @@ impl<'tcx> rustc_type_ir::inherent::Region<TyCtxt<'tcx>> for Region<'tcx> {
     fn new_bound(
         interner: TyCtxt<'tcx>,
         debruijn: ty::DebruijnIndex,
-        var: ty::BoundRegion,
+        var: ty::BoundRegion<'tcx>,
     ) -> Self {
         Region::new_bound(interner, debruijn, var)
     }
@@ -388,7 +388,7 @@ pub struct LateParamRegion {
     pub kind: LateParamRegionKind,
 }
 
-/// When liberating bound regions, we map their [`BoundRegionKind`]
+/// When liberating bound regions, we map their [`ty::BoundRegionKind`]
 /// to this as we need to track the index of anonymous regions. We
 /// otherwise end up liberating multiple bound regions to the same
 /// late-bound region.
@@ -397,7 +397,7 @@ pub struct LateParamRegion {
 pub enum LateParamRegionKind {
     /// An anonymous region parameter for a given fn (&T)
     ///
-    /// Unlike [`BoundRegionKind::Anon`], this tracks the index of the
+    /// Unlike [`ty::BoundRegionKind::Anon`], this tracks the index of the
     /// liberated bound region.
     ///
     /// We should ideally never liberate anonymous regions, but do so for the
@@ -418,12 +418,14 @@ pub enum LateParamRegionKind {
 }
 
 impl LateParamRegionKind {
-    pub fn from_bound(var: BoundVar, br: BoundRegionKind) -> LateParamRegionKind {
+    pub fn from_bound(var: BoundVar, br: ty::BoundRegionKind<'_>) -> LateParamRegionKind {
         match br {
-            BoundRegionKind::Anon => LateParamRegionKind::Anon(var.as_u32()),
-            BoundRegionKind::Named(def_id) => LateParamRegionKind::Named(def_id),
-            BoundRegionKind::ClosureEnv => LateParamRegionKind::ClosureEnv,
-            BoundRegionKind::NamedAnon(name) => LateParamRegionKind::NamedAnon(var.as_u32(), name),
+            ty::BoundRegionKind::Anon => LateParamRegionKind::Anon(var.as_u32()),
+            ty::BoundRegionKind::Named(def_id) => LateParamRegionKind::Named(def_id),
+            ty::BoundRegionKind::ClosureEnv => LateParamRegionKind::ClosureEnv,
+            ty::BoundRegionKind::NamedForPrinting(name) => {
+                LateParamRegionKind::NamedAnon(var.as_u32(), name)
+            }
         }
     }
 
@@ -445,81 +447,6 @@ impl LateParamRegionKind {
     pub fn get_id(&self) -> Option<DefId> {
         match *self {
             LateParamRegionKind::Named(id) => Some(id),
-            _ => None,
-        }
-    }
-}
-
-#[derive(Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable, Copy)]
-#[derive(HashStable)]
-pub enum BoundRegionKind {
-    /// An anonymous region parameter for a given fn (&T)
-    Anon,
-
-    /// An anonymous region parameter with a `Symbol` name.
-    ///
-    /// Used to give late-bound regions names for things like pretty printing.
-    NamedAnon(Symbol),
-
-    /// Late-bound regions that appear in the AST.
-    Named(DefId),
-
-    /// Anonymous region for the implicit env pointer parameter
-    /// to a closure
-    ClosureEnv,
-}
-
-#[derive(Copy, Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
-#[derive(HashStable)]
-pub struct BoundRegion {
-    pub var: BoundVar,
-    pub kind: BoundRegionKind,
-}
-
-impl<'tcx> rustc_type_ir::inherent::BoundVarLike<TyCtxt<'tcx>> for BoundRegion {
-    fn var(self) -> BoundVar {
-        self.var
-    }
-
-    fn assert_eq(self, var: ty::BoundVariableKind) {
-        assert_eq!(self.kind, var.expect_region())
-    }
-}
-
-impl core::fmt::Debug for BoundRegion {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self.kind {
-            BoundRegionKind::Anon => write!(f, "{:?}", self.var),
-            BoundRegionKind::ClosureEnv => write!(f, "{:?}.Env", self.var),
-            BoundRegionKind::Named(def) => {
-                write!(f, "{:?}.Named({:?})", self.var, def)
-            }
-            BoundRegionKind::NamedAnon(symbol) => {
-                write!(f, "{:?}.NamedAnon({:?})", self.var, symbol)
-            }
-        }
-    }
-}
-
-impl BoundRegionKind {
-    pub fn is_named(&self, tcx: TyCtxt<'_>) -> bool {
-        self.get_name(tcx).is_some()
-    }
-
-    pub fn get_name(&self, tcx: TyCtxt<'_>) -> Option<Symbol> {
-        match *self {
-            BoundRegionKind::Named(def_id) => {
-                let name = tcx.item_name(def_id);
-                if name != kw::UnderscoreLifetime { Some(name) } else { None }
-            }
-            BoundRegionKind::NamedAnon(name) => Some(name),
-            _ => None,
-        }
-    }
-
-    pub fn get_id(&self) -> Option<DefId> {
-        match *self {
-            BoundRegionKind::Named(id) => Some(id),
             _ => None,
         }
     }

@@ -177,9 +177,9 @@ where
                 }
             }
             ty::GenericArgKind::Const(c) => {
-                if let ty::ConstKind::Bound(index_kind, bv) = c.kind() {
+                if let ty::ConstKind::Bound(index_kind, bc) = c.kind() {
                     assert!(matches!(index_kind, ty::BoundVarIndexKind::Canonical));
-                    opt_values[bv.var()] = Some(*original_value);
+                    opt_values[bc.var()] = Some(*original_value);
                 }
             }
         }
