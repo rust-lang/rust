@@ -14,6 +14,7 @@ impl MyStruct {
 }
 
 impl<'a> MyStruct {
+    //~^ multiple_inherent_impl
     fn lifetimed() {}
 }
 
@@ -90,10 +91,12 @@ struct Lifetime<'s> {
 }
 
 impl Lifetime<'_> {}
-impl Lifetime<'_> {} // false negative
+impl Lifetime<'_> {}
+//~^ multiple_inherent_impl
 
 impl<'a> Lifetime<'a> {}
-impl<'a> Lifetime<'a> {} // false negative
+impl<'a> Lifetime<'a> {}
+//~^ multiple_inherent_impl
 
 impl<'b> Lifetime<'b> {} // false negative?
 
@@ -104,6 +107,39 @@ struct Generic<G> {
 }
 
 impl<G> Generic<G> {}
-impl<G> Generic<G> {} // false negative
+impl<G> Generic<G> {}
+//~^ multiple_inherent_impl
+
+use std::fmt::Debug;
+
+#[derive(Debug)]
+struct GenericWithBounds<T: Debug>(T);
+
+impl<T: Debug> GenericWithBounds<T> {
+    fn make_one(_one: T) -> Self {
+        todo!()
+    }
+}
+
+impl<T: Debug> GenericWithBounds<T> {
+    //~^ multiple_inherent_impl
+    fn make_two(_two: T) -> Self {
+        todo!()
+    }
+}
+
+struct MultipleTraitBounds<T>(T);
+
+impl<T: Debug> MultipleTraitBounds<T> {
+    fn debug_fn() {}
+}
+
+impl<T: Clone> MultipleTraitBounds<T> {
+    fn clone_fn() {}
+}
+
+impl<T: Debug + Clone> MultipleTraitBounds<T> {
+    fn debug_clone_fn() {}
+}
 
 fn main() {}
