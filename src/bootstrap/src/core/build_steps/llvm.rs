@@ -14,6 +14,7 @@ use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 use std::{env, fs};
 
+use build_helper::exit;
 use build_helper::git::PathFreshness;
 
 use crate::core::builder::{Builder, RunConfig, ShouldRun, Step, StepMetadata};
@@ -473,16 +474,6 @@ impl Step for Llvm {
             enabled_llvm_runtimes.push("compiler-rt");
         }
 
-        // This is an experimental flag, which likely builds more than necessary.
-        // We will optimize it when we get closer to releasing it on nightly.
-        if builder.config.llvm_offload {
-            enabled_llvm_runtimes.push("offload");
-            //FIXME(ZuseZ4): LLVM intends to drop the offload dependency on openmp.
-            //Remove this line once they achieved it.
-            enabled_llvm_runtimes.push("openmp");
-            enabled_llvm_projects.push("compiler-rt");
-        }
-
         if !enabled_llvm_projects.is_empty() {
             enabled_llvm_projects.sort();
             enabled_llvm_projects.dedup();
@@ -917,6 +908,175 @@ fn get_var(var_base: &str, host: &str, target: &str) -> Option<OsString> {
         .or_else(|| env::var_os(var_base))
 }
 
+#[derive(Clone)]
+pub struct BuiltOmpOffload {
+    /// Path to the omp and offload dylibs.
+    offload: Vec<PathBuf>,
+}
+
+impl BuiltOmpOffload {
+    pub fn offload_paths(&self) -> Vec<PathBuf> {
+        self.offload.clone()
+    }
+}
+
+// FIXME(offload): In an ideal world, we would just enable the offload runtime in our previous LLVM
+// build step. For now, we still depend on the openmp runtime since we use some of it's API, so we
+// build both. However, when building those runtimes as part of the LLVM step, then LLVM's cmake
+// implicitly assumes that Clang has also been build and will try to use it. In the Rust CI, we
+// don't always build clang (due to compile times), but instead use a slightly older external clang.
+// LLVM tries to remove this build dependency of offload/openmp on Clang for LLVM-22, so in the
+// future we might be able to integrate this step into the LLVM step. For now, we instead introduce
+// a Clang_DIR bootstrap option, which allows us tell CMake to use an external clang for these two
+// runtimes. This external clang will try to use it's own (older) include dirs when building our
+// in-tree LLVM submodule, which will cause build failures. To prevent those, we now also
+// explicitly set our include dirs.
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct OmpOffload {
+    pub target: TargetSelection,
+}
+
+impl Step for OmpOffload {
+    type Output = BuiltOmpOffload;
+    const IS_HOST: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("src/llvm-project/offload")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(OmpOffload { target: run.target });
+    }
+
+    /// Compile OpenMP offload runtimes for `target`.
+    #[allow(unused)]
+    fn run(self, builder: &Builder<'_>) -> Self::Output {
+        if builder.config.dry_run() {
+            return BuiltOmpOffload {
+                offload: vec![builder.config.tempdir().join("llvm-offload-dry-run")],
+            };
+        }
+        let target = self.target;
+
+        let LlvmResult { host_llvm_config, llvm_cmake_dir } =
+            builder.ensure(Llvm { target: self.target });
+
+        // Running cmake twice in the same folder is known to cause issues, like deleting existing
+        // binaries. We therefore write our offload artifacts into it's own folder, instead of
+        // using the llvm build dir.
+        let out_dir = builder.offload_out(target);
+
+        let mut files = vec![];
+        let lib_ext = std::env::consts::DLL_EXTENSION;
+        files.push(out_dir.join("lib").join("libLLVMOffload").with_extension(lib_ext));
+        files.push(out_dir.join("lib").join("libomp").with_extension(lib_ext));
+        files.push(out_dir.join("lib").join("libomptarget").with_extension(lib_ext));
+
+        // Offload/OpenMP are just subfolders of LLVM, so we can use the LLVM sha.
+        static STAMP_HASH_MEMO: OnceLock<String> = OnceLock::new();
+        let smart_stamp_hash = STAMP_HASH_MEMO.get_or_init(|| {
+            generate_smart_stamp_hash(
+                builder,
+                &builder.config.src.join("src/llvm-project/offload"),
+                builder.in_tree_llvm_info.sha().unwrap_or_default(),
+            )
+        });
+        let stamp = BuildStamp::new(&out_dir).with_prefix("offload").add_stamp(smart_stamp_hash);
+
+        trace!("checking build stamp to see if we need to rebuild offload/openmp artifacts");
+        if stamp.is_up_to_date() {
+            trace!(?out_dir, "offload/openmp build artifacts are up to date");
+            if stamp.stamp().is_empty() {
+                builder.info(
+                    "Could not determine the Offload submodule commit hash. \
+                     Assuming that an Offload rebuild is not necessary.",
+                );
+                builder.info(&format!(
+                    "To force Offload/OpenMP to rebuild, remove the file `{}`",
+                    stamp.path().display()
+                ));
+            }
+            return BuiltOmpOffload { offload: files };
+        }
+
+        trace!(?target, "(re)building offload/openmp artifacts");
+        builder.info(&format!("Building OpenMP/Offload for {target}"));
+        t!(stamp.remove());
+        let _time = helpers::timeit(builder);
+        t!(fs::create_dir_all(&out_dir));
+
+        builder.config.update_submodule("src/llvm-project");
+        let mut cfg = cmake::Config::new(builder.src.join("src/llvm-project/runtimes/"));
+
+        // If we use an external clang as opposed to building our own llvm_clang, than that clang will
+        // come with it's own set of default include directories, which are based on a potentially older
+        // LLVM. This can cause issues, so we overwrite it to include headers based on our
+        // `src/llvm-project` submodule instead.
+        // FIXME(offload): With LLVM-22 we hopefully won't need an external clang anymore.
+        let mut cflags = CcFlags::default();
+        if !builder.config.llvm_clang {
+            let base = builder.llvm_out(target).join("include");
+            let inc_dir = base.display();
+            cflags.push_all(format!(" -I {inc_dir}"));
+        }
+
+        configure_cmake(builder, target, &mut cfg, true, LdFlags::default(), cflags, &[]);
+
+        // Re-use the same flags as llvm to control the level of debug information
+        // generated for offload.
+        let profile = match (builder.config.llvm_optimize, builder.config.llvm_release_debuginfo) {
+            (false, _) => "Debug",
+            (true, false) => "Release",
+            (true, true) => "RelWithDebInfo",
+        };
+        trace!(?profile);
+
+        // OpenMP/Offload builds currently (LLVM-21) still depend on Clang, although there are
+        // intentions to loosen this requirement for LLVM-22. If we were to
+        let clang_dir = if !builder.config.llvm_clang {
+            // We must have an external clang to use.
+            assert!(&builder.build.config.llvm_clang_dir.is_some());
+            builder.build.config.llvm_clang_dir.clone()
+        } else {
+            // No need to specify it, since we use the in-tree clang
+            None
+        };
+
+        // FIXME(offload): Once we move from OMP to Offload (Ol) APIs, we should drop the openmp
+        // runtime to simplify our build. We should also re-evaluate the LLVM_Root and try to get
+        // rid of the Clang_DIR, once we upgrade to LLVM-22.
+        cfg.out_dir(&out_dir)
+            .profile(profile)
+            .env("LLVM_CONFIG_REAL", &host_llvm_config)
+            .define("LLVM_ENABLE_ASSERTIONS", "ON")
+            .define("LLVM_ENABLE_RUNTIMES", "openmp;offload")
+            .define("LLVM_INCLUDE_TESTS", "OFF")
+            .define("OFFLOAD_INCLUDE_TESTS", "OFF")
+            .define("OPENMP_STANDALONE_BUILD", "ON")
+            .define("LLVM_ROOT", builder.llvm_out(target).join("build"))
+            .define("LLVM_DIR", llvm_cmake_dir);
+        if let Some(p) = clang_dir {
+            cfg.define("Clang_DIR", p);
+        }
+        cfg.build();
+
+        t!(stamp.write());
+
+        for p in &files {
+            // At this point, `out_dir` should contain the built <offload-filename>.<dylib-ext>
+            // files.
+            if !p.exists() {
+                eprintln!(
+                    "`{p:?}` not found in `{}`. Either the build has failed or Offload was built with a wrong version of LLVM",
+                    out_dir.display()
+                );
+                exit!(1);
+            }
+        }
+        BuiltOmpOffload { offload: files }
+    }
+}
+
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct Enzyme {
     pub target: TargetSelection,
@@ -991,11 +1151,10 @@ impl Step for Enzyme {
 
         builder.config.update_submodule("src/tools/enzyme");
         let mut cfg = cmake::Config::new(builder.src.join("src/tools/enzyme/enzyme/"));
-
-        let mut cflags = CcFlags::default();
-        // Enzyme devs maintain upstream compability, but only fix deprecations when they are about
+        // Enzyme devs maintain upstream compatibility, but only fix deprecations when they are about
         // to turn into a hard error. As such, Enzyme generates various warnings which could make it
         // hard to spot more relevant issues.
+        let mut cflags = CcFlags::default();
         cflags.push_all("-Wno-deprecated");
         configure_cmake(builder, target, &mut cfg, true, LdFlags::default(), cflags, &[]);
 
