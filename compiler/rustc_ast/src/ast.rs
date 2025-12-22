@@ -1810,7 +1810,7 @@ pub enum ExprKind {
     /// or a `gen` block (`gen move { ... }`).
     ///
     /// The span is the "decl", which is the header before the body `{ }`
-    /// including the `asyng`/`gen` keywords and possibly `move`.
+    /// including the `async`/`gen` keywords and possibly `move`.
     Gen(CaptureBy, Box<Block>, GenBlockKind, Span),
     /// An await expression (`my_future.await`). Span is of await keyword.
     Await(Box<Expr>, Span),
