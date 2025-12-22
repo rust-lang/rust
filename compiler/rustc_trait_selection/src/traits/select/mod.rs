@@ -195,7 +195,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     pub fn new(infcx: &'cx InferCtxt<'tcx>) -> SelectionContext<'cx, 'tcx> {
         SelectionContext {
             infcx,
-            freshener: infcx.freshener(),
+            freshener: TypeFreshener::new(infcx),
             intercrate_ambiguity_causes: None,
             query_mode: TraitQueryMode::Standard,
         }
