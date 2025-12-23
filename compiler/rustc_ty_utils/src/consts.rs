@@ -25,15 +25,14 @@ fn destructure_const<'tcx>(
     let ty::ConstKind::Value(cv) = const_.kind() else {
         bug!("cannot destructure constant {:?}", const_)
     };
-
-    let branches = cv.valtree.unwrap_branch();
+    let branches = cv.to_branch();
 
     let (fields, variant) = match cv.ty.kind() {
         ty::Array(inner_ty, _) | ty::Slice(inner_ty) => {
             // construct the consts for the elements of the array/slice
             let field_consts = branches
                 .iter()
-                .map(|b| ty::Const::new_value(tcx, *b, *inner_ty))
+                .map(|b| ty::Const::new_value(tcx, b.to_value().valtree, *inner_ty))
                 .collect::<Vec<_>>();
             debug!(?field_consts);
 
@@ -43,7 +42,7 @@ fn destructure_const<'tcx>(
         ty::Adt(def, args) => {
             let (variant_idx, branches) = if def.is_enum() {
                 let (head, rest) = branches.split_first().unwrap();
-                (VariantIdx::from_u32(head.unwrap_leaf().to_u32()), rest)
+                (VariantIdx::from_u32(head.to_leaf().to_u32()), rest)
             } else {
                 (FIRST_VARIANT, branches)
             };
@@ -52,7 +51,8 @@ fn destructure_const<'tcx>(
 
             for (field, field_valtree) in iter::zip(fields, branches) {
                 let field_ty = field.ty(tcx, args);
-                let field_const = ty::Const::new_value(tcx, *field_valtree, field_ty);
+                let field_const =
+                    ty::Const::new_value(tcx, field_valtree.to_value().valtree, field_ty);
                 field_consts.push(field_const);
             }
             debug!(?field_consts);
@@ -61,7 +61,9 @@ fn destructure_const<'tcx>(
         }
         ty::Tuple(elem_tys) => {
             let fields = iter::zip(*elem_tys, branches)
-                .map(|(elem_ty, elem_valtree)| ty::Const::new_value(tcx, *elem_valtree, elem_ty))
+                .map(|(elem_ty, elem_valtree)| {
+                    ty::Const::new_value(tcx, elem_valtree.to_value().valtree, elem_ty)
+                })
                 .collect::<Vec<_>>();
 
             (fields, None)

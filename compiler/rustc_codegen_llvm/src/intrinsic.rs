@@ -345,7 +345,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     _ => bug!(),
                 };
                 let ptr = args[0].immediate();
-                let locality = fn_args.const_at(1).to_value().valtree.unwrap_leaf().to_i32();
+                let locality = fn_args.const_at(1).to_leaf().to_i32();
                 self.call_intrinsic(
                     "llvm.prefetch",
                     &[self.val_ty(ptr)],
@@ -1527,7 +1527,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
     }
 
     if name == sym::simd_shuffle_const_generic {
-        let idx = fn_args[2].expect_const().to_value().valtree.unwrap_branch();
+        let idx = fn_args[2].expect_const().to_branch();
         let n = idx.len() as u64;
 
         let (out_len, out_ty) = require_simd!(ret_ty, SimdReturn);
@@ -1546,7 +1546,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             .iter()
             .enumerate()
             .map(|(arg_idx, val)| {
-                let idx = val.unwrap_leaf().to_i32();
+                let idx = val.to_leaf().to_i32();
                 if idx >= i32::try_from(total_len).unwrap() {
                     bx.sess().dcx().emit_err(InvalidMonomorphization::SimdIndexOutOfBounds {
                         span,
@@ -1958,9 +1958,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         // those lanes whose `mask` bit is enabled.
         // The memory addresses corresponding to the “off” lanes are not accessed.
 
-        let alignment = fn_args[3].expect_const().to_value().valtree.unwrap_branch()[0]
-            .unwrap_leaf()
-            .to_simd_alignment();
+        let alignment = fn_args[3].expect_const().to_branch()[0].to_leaf().to_simd_alignment();
 
         // The element type of the "mask" argument must be a signed integer type of any width
         let mask_ty = in_ty;
@@ -2053,9 +2051,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         // those lanes whose `mask` bit is enabled.
         // The memory addresses corresponding to the “off” lanes are not accessed.
 
-        let alignment = fn_args[3].expect_const().to_value().valtree.unwrap_branch()[0]
-            .unwrap_leaf()
-            .to_simd_alignment();
+        let alignment = fn_args[3].expect_const().to_branch()[0].to_leaf().to_simd_alignment();
 
         // The element type of the "mask" argument must be a signed integer type of any width
         let mask_ty = in_ty;

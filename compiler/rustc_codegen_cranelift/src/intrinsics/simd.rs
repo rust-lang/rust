@@ -130,7 +130,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
                 return;
             }
 
-            let idx = generic_args[2].expect_const().to_value().valtree.unwrap_branch();
+            let idx = generic_args[2].expect_const().to_branch();
 
             assert_eq!(x.layout(), y.layout());
             let layout = x.layout();
@@ -143,7 +143,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
 
             let total_len = lane_count * 2;
 
-            let indexes = idx.iter().map(|idx| idx.unwrap_leaf().to_u32()).collect::<Vec<u32>>();
+            let indexes = idx.iter().map(|idx| idx.to_leaf().to_u32()).collect::<Vec<u32>>();
 
             for &idx in &indexes {
                 assert!(u64::from(idx) < total_len, "idx {} out of range 0..{}", idx, total_len);
@@ -961,9 +961,8 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             let lane_clif_ty = fx.clif_type(val_lane_ty).unwrap();
             let ptr_val = ptr.load_scalar(fx);
 
-            let alignment = generic_args[3].expect_const().to_value().valtree.unwrap_branch()[0]
-                .unwrap_leaf()
-                .to_simd_alignment();
+            let alignment =
+                generic_args[3].expect_const().to_branch()[0].to_leaf().to_simd_alignment();
 
             let memflags = match alignment {
                 SimdAlign::Unaligned => MemFlags::new().with_notrap(),
@@ -1006,9 +1005,8 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             let lane_clif_ty = fx.clif_type(val_lane_ty).unwrap();
             let ret_lane_layout = fx.layout_of(ret_lane_ty);
 
-            let alignment = generic_args[3].expect_const().to_value().valtree.unwrap_branch()[0]
-                .unwrap_leaf()
-                .to_simd_alignment();
+            let alignment =
+                generic_args[3].expect_const().to_branch()[0].to_leaf().to_simd_alignment();
 
             let memflags = match alignment {
                 SimdAlign::Unaligned => MemFlags::new().with_notrap(),
@@ -1059,9 +1057,8 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             let ret_lane_layout = fx.layout_of(ret_lane_ty);
             let ptr_val = ptr.load_scalar(fx);
 
-            let alignment = generic_args[3].expect_const().to_value().valtree.unwrap_branch()[0]
-                .unwrap_leaf()
-                .to_simd_alignment();
+            let alignment =
+                generic_args[3].expect_const().to_branch()[0].to_leaf().to_simd_alignment();
 
             let memflags = match alignment {
                 SimdAlign::Unaligned => MemFlags::new().with_notrap(),
