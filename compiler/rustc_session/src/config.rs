@@ -1798,7 +1798,7 @@ pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
             "<OPT>",
         ),
         opt(Stable, Flag, "", "test", "Build a test harness", ""),
-        opt(Stable, Opt, "", "target", "Target triple for which the code is compiled", "<TARGET>"),
+        opt(Stable, Opt, "", "target", "Target tuple for which the code is compiled", "<TARGET>"),
         opt(Stable, Multi, "A", "allow", "Set lint allowed", "<LINT>"),
         opt(Stable, Multi, "W", "warn", "Set lint warnings", "<LINT>"),
         opt(Stable, Multi, "", "force-warn", "Set lint force-warn", "<LINT>"),
