@@ -1594,8 +1594,10 @@ where
     where
         Q: Hash + Equivalent<K> + ?Sized,
     {
-        self.get_disjoint_unchecked_mut_inner(ks)
-            .map(|res| res.map(|(_, v)| v))
+        unsafe {
+            self.get_disjoint_unchecked_mut_inner(ks)
+                .map(|res| res.map(|(_, v)| v))
+        }
     }
 
     /// Attempts to get mutable references to `N` values in the map at once, without validating that
@@ -1608,7 +1610,7 @@ where
     where
         Q: Hash + Equivalent<K> + ?Sized,
     {
-        self.get_disjoint_unchecked_mut(ks)
+        unsafe { self.get_disjoint_unchecked_mut(ks) }
     }
 
     /// Attempts to get mutable references to `N` values in the map at once, with immutable
@@ -1746,8 +1748,10 @@ where
     where
         Q: Hash + Equivalent<K> + ?Sized,
     {
-        self.get_disjoint_unchecked_mut_inner(ks)
-            .map(|res| res.map(|(k, v)| (&*k, v)))
+        unsafe {
+            self.get_disjoint_unchecked_mut_inner(ks)
+                .map(|res| res.map(|(k, v)| (&*k, v)))
+        }
     }
 
     /// Attempts to get mutable references to `N` values in the map at once, with immutable
@@ -1760,7 +1764,7 @@ where
     where
         Q: Hash + Equivalent<K> + ?Sized,
     {
-        self.get_disjoint_key_value_unchecked_mut(ks)
+        unsafe { self.get_disjoint_key_value_unchecked_mut(ks) }
     }
 
     fn get_disjoint_mut_inner<Q, const N: usize>(
@@ -1782,9 +1786,11 @@ where
     where
         Q: Hash + Equivalent<K> + ?Sized,
     {
-        let hashes = self.build_hashes_inner(ks);
-        self.table
-            .get_disjoint_unchecked_mut(hashes, |i, (k, _)| ks[i].equivalent(k))
+        unsafe {
+            let hashes = self.build_hashes_inner(ks);
+            self.table
+                .get_disjoint_unchecked_mut(hashes, |i, (k, _)| ks[i].equivalent(k))
+        }
     }
 
     fn build_hashes_inner<Q, const N: usize>(&self, ks: [&Q; N]) -> [u64; N]
@@ -6375,8 +6381,10 @@ mod test_map {
         }
 
         unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
-            let g = Global;
-            g.deallocate(ptr, layout)
+            unsafe {
+                let g = Global;
+                g.deallocate(ptr, layout)
+            }
         }
     }
 
@@ -6830,10 +6838,12 @@ mod test_map_with_mmap_allocations {
         }
 
         unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
-            // If they allocated it with this layout, it must round correctly.
-            let size = self.fit_to_page_size(layout.size()).unwrap();
-            let _result = libc::munmap(ptr.as_ptr().cast(), size);
-            debug_assert_eq!(0, _result)
+            unsafe {
+                // If they allocated it with this layout, it must round correctly.
+                let size = self.fit_to_page_size(layout.size()).unwrap();
+                let _result = libc::munmap(ptr.as_ptr().cast(), size);
+                debug_assert_eq!(0, _result)
+            }
         }
     }
 

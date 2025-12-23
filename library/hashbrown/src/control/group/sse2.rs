@@ -49,7 +49,7 @@ impl Group {
     #[inline]
     #[allow(clippy::cast_ptr_alignment)] // unaligned load
     pub(crate) unsafe fn load(ptr: *const Tag) -> Self {
-        Group(x86::_mm_loadu_si128(ptr.cast()))
+        unsafe { Group(x86::_mm_loadu_si128(ptr.cast())) }
     }
 
     /// Loads a group of tags starting at the given address, which must be
@@ -57,8 +57,10 @@ impl Group {
     #[inline]
     #[allow(clippy::cast_ptr_alignment)]
     pub(crate) unsafe fn load_aligned(ptr: *const Tag) -> Self {
-        debug_assert_eq!(ptr.align_offset(mem::align_of::<Self>()), 0);
-        Group(x86::_mm_load_si128(ptr.cast()))
+        unsafe {
+            debug_assert_eq!(ptr.align_offset(mem::align_of::<Self>()), 0);
+            Group(x86::_mm_load_si128(ptr.cast()))
+        }
     }
 
     /// Stores the group of tags to the given address, which must be
@@ -66,8 +68,10 @@ impl Group {
     #[inline]
     #[allow(clippy::cast_ptr_alignment)]
     pub(crate) unsafe fn store_aligned(self, ptr: *mut Tag) {
-        debug_assert_eq!(ptr.align_offset(mem::align_of::<Self>()), 0);
-        x86::_mm_store_si128(ptr.cast(), self.0);
+        unsafe {
+            debug_assert_eq!(ptr.align_offset(mem::align_of::<Self>()), 0);
+            x86::_mm_store_si128(ptr.cast(), self.0);
+        }
     }
 
     /// Returns a `BitMask` indicating all tags in the group which have

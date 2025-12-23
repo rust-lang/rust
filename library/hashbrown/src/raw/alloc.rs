@@ -86,7 +86,9 @@ mod inner {
         }
         #[inline]
         unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
-            dealloc(ptr.as_ptr(), layout);
+            unsafe {
+                dealloc(ptr.as_ptr(), layout);
+            }
         }
     }
 

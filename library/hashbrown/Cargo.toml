@@ -14,6 +14,7 @@ rust-version = "1.84.0"
 
 [lints.rust]
 missing_docs = "warn"
+unsafe_op_in_unsafe_fn = "warn"
 
 # rust_2018_idioms
 bare_trait_objects = "warn"

@@ -511,9 +511,11 @@ where
     /// ```
     #[inline]
     pub unsafe fn get_bucket_entry_unchecked(&mut self, index: usize) -> OccupiedEntry<'_, T, A> {
-        OccupiedEntry {
-            bucket: self.raw.bucket(index),
-            table: self,
+        unsafe {
+            OccupiedEntry {
+                bucket: self.raw.bucket(index),
+                table: self,
+            }
         }
     }
 
@@ -588,7 +590,7 @@ where
     /// ```
     #[inline]
     pub unsafe fn get_bucket_unchecked(&self, index: usize) -> &T {
-        self.raw.bucket(index).as_ref()
+        unsafe { self.raw.bucket(index).as_ref() }
     }
 
     /// Gets a mutable reference to an entry in the table at the given bucket index,
@@ -666,7 +668,7 @@ where
     /// ```
     #[inline]
     pub unsafe fn get_bucket_unchecked_mut(&mut self, index: usize) -> &mut T {
-        self.raw.bucket(index).as_mut()
+        unsafe { self.raw.bucket(index).as_mut() }
     }
 
     /// Inserts an element into the `HashTable` with the given hash value, but
@@ -1547,7 +1549,7 @@ where
         hashes: [u64; N],
         eq: impl FnMut(usize, &T) -> bool,
     ) -> [Option<&'_ mut T>; N] {
-        self.raw.get_disjoint_unchecked_mut(hashes, eq)
+        unsafe { self.raw.get_disjoint_unchecked_mut(hashes, eq) }
     }
 
     /// Attempts to get mutable references to `N` values in the map at once, without validating that
@@ -1558,7 +1560,7 @@ where
         hashes: [u64; N],
         eq: impl FnMut(usize, &T) -> bool,
     ) -> [Option<&'_ mut T>; N] {
-        self.raw.get_disjoint_unchecked_mut(hashes, eq)
+        unsafe { self.raw.get_disjoint_unchecked_mut(hashes, eq) }
     }
 
     /// Returns the total amount of memory allocated internally by the hash

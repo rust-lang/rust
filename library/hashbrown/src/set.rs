@@ -1114,7 +1114,7 @@ where
     /// correctly, and would cause unsoundness as a result.
     #[cfg_attr(feature = "inline-more", inline)]
     pub unsafe fn insert_unique_unchecked(&mut self, value: T) -> &T {
-        self.map.insert_unique_unchecked(value, ()).0
+        unsafe { self.map.insert_unique_unchecked(value, ()).0 }
     }
 
     /// Adds a value to the set, replacing the existing value, if any, that is equal to the given

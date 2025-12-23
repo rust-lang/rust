@@ -82,7 +82,7 @@ pub(crate) struct RawIntoParIter<T, A: Allocator = Global> {
 impl<T, A: Allocator> RawIntoParIter<T, A> {
     #[cfg_attr(feature = "inline-more", inline)]
     pub(super) unsafe fn par_iter(&self) -> RawParIter<T> {
-        self.table.par_iter()
+        unsafe { self.table.par_iter() }
     }
 }
 
@@ -120,7 +120,7 @@ unsafe impl<T: Send, A: Allocator> Send for RawParDrain<'_, T, A> {}
 impl<T, A: Allocator> RawParDrain<'_, T, A> {
     #[cfg_attr(feature = "inline-more", inline)]
     pub(super) unsafe fn par_iter(&self) -> RawParIter<T> {
-        self.table.as_ref().par_iter()
+        unsafe { self.table.as_ref().par_iter() }
     }
 }
 
@@ -207,8 +207,10 @@ impl<T, A: Allocator> RawTable<T, A> {
     /// Returns a parallel iterator over the elements in a `RawTable`.
     #[cfg_attr(feature = "inline-more", inline)]
     pub(crate) unsafe fn par_iter(&self) -> RawParIter<T> {
-        RawParIter {
-            iter: self.iter().iter,
+        unsafe {
+            RawParIter {
+                iter: self.iter().iter,
+            }
         }
     }
 
