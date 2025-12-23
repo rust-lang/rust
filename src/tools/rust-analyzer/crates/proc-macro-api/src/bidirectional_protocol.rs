@@ -22,7 +22,7 @@ use crate::{
         },
     },
     process::ProcMacroServerProcess,
-    transport::codec::{json::JsonProtocol, postcard::PostcardProtocol},
+    transport::codec::postcard::PostcardProtocol,
     version,
 };
 
@@ -210,14 +210,16 @@ fn run_request(
     msg: BidirectionalMessage,
     callback: SubCallback<'_>,
 ) -> Result<BidirectionalMessage, ServerError> {
-    if let Some(server_error) = srv.exited() {
-        return Err(server_error.clone());
+    if let Some(err) = srv.exited() {
+        return Err(err.clone());
     }
 
-    if srv.use_postcard() {
-        srv.run_bidirectional::<PostcardProtocol>(msg, callback)
-    } else {
-        srv.run_bidirectional::<JsonProtocol>(msg, callback)
+    match srv.use_postcard() {
+        true => srv.run_bidirectional::<PostcardProtocol>(msg, callback),
+        false => Err(ServerError {
+            message: "bidirectional messaging does not support JSON".to_owned(),
+            io: None,
+        }),
     }
 }
 
