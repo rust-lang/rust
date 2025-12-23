@@ -6,8 +6,8 @@ use semver::Version;
 use crate::common::{Config, Debugger, TestMode};
 use crate::directives::{
     self, AuxProps, DIRECTIVE_HANDLERS_MAP, DirectivesCache, EarlyProps, Edition, EditionRange,
-    FileDirectives, KNOWN_DIRECTIVE_NAMES_SET, extract_llvm_version, extract_version_range,
-    line_directive, parse_edition, parse_normalize_rule,
+    FileDirectives, KNOWN_DIRECTIVE_NAMES_SET, LineNumber, extract_llvm_version,
+    extract_version_range, line_directive, parse_edition, parse_normalize_rule,
 };
 use crate::executor::{CollectedTestDesc, ShouldFail};
 
@@ -1000,7 +1000,8 @@ fn parse_edition_range(line: &str) -> Option<EditionRange> {
     let config = cfg().build();
 
     let line_with_comment = format!("//@ {line}");
-    let line = line_directive(Utf8Path::new("tmp.rs"), 0, &line_with_comment).unwrap();
+    let line =
+        line_directive(Utf8Path::new("tmp.rs"), LineNumber::ZERO, &line_with_comment).unwrap();
 
     super::parse_edition_range(&config, &line)
 }
