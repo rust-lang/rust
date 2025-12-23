@@ -73,7 +73,9 @@ where
 ///
 /// use std::mem::defer;
 ///
-/// defer! { println!("Goodbye, world!") };
+/// defer! {
+///     println!("Goodbye, world!");
+/// }
 /// ```
 #[unstable(feature = "drop_guard", issue = "144426")]
 pub macro defer($($t:tt)*) {
