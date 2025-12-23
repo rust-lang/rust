@@ -71,7 +71,7 @@ use tt::{
 
 use crate::{
     ExpandError, ExpandErrorKind, MetaTemplate, ValueResult,
-    expander::{Binding, Bindings, ExpandResult, Fragment},
+    expander::{Binding, Bindings, ExpandResult, Fragment, TokensOrigin},
     expect_fragment,
     parser::{ExprKind, MetaVarKind, Op, RepeatKind, Separator},
 };
@@ -842,18 +842,23 @@ fn match_meta_var<'t>(
             }
             .err();
             let tt_result = input.from_savepoint(savepoint);
-            return ValueResult { value: Fragment::Tokens(tt_result), err };
+            return ValueResult {
+                value: Fragment::Tokens { tree: tt_result, origin: TokensOrigin::Raw },
+                err,
+            };
         }
-        MetaVarKind::Ty => parser::PrefixEntryPoint::Ty,
-        MetaVarKind::Pat => parser::PrefixEntryPoint::PatTop,
-        MetaVarKind::PatParam => parser::PrefixEntryPoint::Pat,
-        MetaVarKind::Stmt => parser::PrefixEntryPoint::Stmt,
-        MetaVarKind::Block => parser::PrefixEntryPoint::Block,
-        MetaVarKind::Meta => parser::PrefixEntryPoint::MetaItem,
-        MetaVarKind::Item => parser::PrefixEntryPoint::Item,
-        MetaVarKind::Vis => parser::PrefixEntryPoint::Vis,
+        MetaVarKind::Ty => (parser::PrefixEntryPoint::Ty, TokensOrigin::Ast),
+        MetaVarKind::Pat => (parser::PrefixEntryPoint::PatTop, TokensOrigin::Ast),
+        MetaVarKind::PatParam => (parser::PrefixEntryPoint::Pat, TokensOrigin::Ast),
+        MetaVarKind::Stmt => (parser::PrefixEntryPoint::Stmt, TokensOrigin::Ast),
+        MetaVarKind::Block => (parser::PrefixEntryPoint::Block, TokensOrigin::Ast),
+        MetaVarKind::Meta => (parser::PrefixEntryPoint::MetaItem, TokensOrigin::Ast),
+        MetaVarKind::Item => (parser::PrefixEntryPoint::Item, TokensOrigin::Ast),
+        MetaVarKind::Vis => (parser::PrefixEntryPoint::Vis, TokensOrigin::Ast),
     };
-    expect_fragment(db, input, fragment, delim_span).map(Fragment::Tokens)
+    let (entry_point, origin) = fragment;
+    expect_fragment(db, input, entry_point, delim_span)
+        .map(|tree| Fragment::Tokens { tree, origin })
 }
 
 fn collect_vars(collector_fun: &mut impl FnMut(Symbol), pattern: &MetaTemplate) {

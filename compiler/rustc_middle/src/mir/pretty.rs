@@ -1097,15 +1097,6 @@ impl<'tcx> Debug for Rvalue<'tcx> {
             BinaryOp(ref op, box (ref a, ref b)) => write!(fmt, "{op:?}({a:?}, {b:?})"),
             UnaryOp(ref op, ref a) => write!(fmt, "{op:?}({a:?})"),
             Discriminant(ref place) => write!(fmt, "discriminant({place:?})"),
-            NullaryOp(ref op) => match op {
-                NullOp::RuntimeChecks(RuntimeChecks::UbChecks) => write!(fmt, "UbChecks()"),
-                NullOp::RuntimeChecks(RuntimeChecks::ContractChecks) => {
-                    write!(fmt, "ContractChecks()")
-                }
-                NullOp::RuntimeChecks(RuntimeChecks::OverflowChecks) => {
-                    write!(fmt, "OverflowChecks()")
-                }
-            },
             ThreadLocalRef(did) => ty::tls::with(|tcx| {
                 let muta = tcx.static_mutability(did).unwrap().prefix_str();
                 write!(fmt, "&/*tls*/ {}{}", muta, tcx.def_path_str(did))
@@ -1264,6 +1255,7 @@ impl<'tcx> Debug for Operand<'tcx> {
             Constant(ref a) => write!(fmt, "{a:?}"),
             Copy(ref place) => write!(fmt, "copy {place:?}"),
             Move(ref place) => write!(fmt, "move {place:?}"),
+            RuntimeChecks(checks) => write!(fmt, "{checks:?}"),
         }
     }
 }

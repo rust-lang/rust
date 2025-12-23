@@ -1056,6 +1056,17 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 OperandRef { move_annotation, ..self.codegen_consume(bx, place.as_ref()) }
             }
 
+            mir::Operand::RuntimeChecks(checks) => {
+                let layout = bx.layout_of(bx.tcx().types.bool);
+                let BackendRepr::Scalar(scalar) = layout.backend_repr else {
+                    bug!("from_const: invalid ByVal layout: {:#?}", layout);
+                };
+                let x = Scalar::from_bool(checks.value(bx.tcx().sess));
+                let llval = bx.scalar_to_backend(x, scalar, bx.immediate_backend_type(layout));
+                let val = OperandValue::Immediate(llval);
+                OperandRef { val, layout, move_annotation: None }
+            }
+
             mir::Operand::Constant(ref constant) => {
                 let constant_ty = self.monomorphize(constant.ty());
                 // Most SIMD vector constants should be passed as immediates.

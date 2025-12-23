@@ -98,6 +98,13 @@ config_data! {
         /// Code's `files.watcherExclude`.
         files_exclude | files_excludeDirs: Vec<Utf8PathBuf> = vec![],
 
+        /// This config controls the frequency in which rust-analyzer will perform its internal Garbage
+        /// Collection. It is specified in revisions, roughly equivalent to number of changes. The default
+        /// is 1000.
+        ///
+        /// Setting a smaller value may help limit peak memory usage at the expense of speed.
+        gc_frequency: usize = 1000,
+
         /// If this is `true`, when "Goto Implementations" and in "Implementations" lens, are triggered on a `struct` or `enum` or `union`, we filter out trait implementations that originate from `derive`s above the type.
         gotoImplementations_filterAdjacentDerives: bool = false,
 
@@ -279,6 +286,9 @@ config_data! {
 
         /// Show function parameter name inlay hints at the call site.
         inlayHints_parameterHints_enable: bool = true,
+
+        /// Show parameter name inlay hints for missing arguments at the call site.
+        inlayHints_parameterHints_missingArguments_enable: bool = false,
 
         /// Show exclusive range inlay hints.
         inlayHints_rangeExclusiveHints_enable: bool = false,
@@ -1698,9 +1708,11 @@ impl Config {
     pub fn caps(&self) -> &ClientCapabilities {
         &self.caps
     }
-}
 
-impl Config {
+    pub fn gc_freq(&self) -> usize {
+        *self.gc_frequency()
+    }
+
     pub fn assist(&self, source_root: Option<SourceRootId>) -> AssistConfig {
         AssistConfig {
             snippet_cap: self.snippet_cap(),
@@ -1916,6 +1928,9 @@ impl Config {
             type_hints: self.inlayHints_typeHints_enable().to_owned(),
             sized_bound: self.inlayHints_implicitSizedBoundHints_enable().to_owned(),
             parameter_hints: self.inlayHints_parameterHints_enable().to_owned(),
+            parameter_hints_for_missing_arguments: self
+                .inlayHints_parameterHints_missingArguments_enable()
+                .to_owned(),
             generic_parameter_hints: GenericParameterHints {
                 type_hints: self.inlayHints_genericParameterHints_type_enable().to_owned(),
                 lifetime_hints: self.inlayHints_genericParameterHints_lifetime_enable().to_owned(),

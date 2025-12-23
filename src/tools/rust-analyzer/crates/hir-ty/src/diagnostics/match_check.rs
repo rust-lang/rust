@@ -16,7 +16,7 @@ use hir_def::{
     item_tree::FieldsShape,
 };
 use hir_expand::name::Name;
-use rustc_type_ir::inherent::{IntoKind, SliceLike};
+use rustc_type_ir::inherent::IntoKind;
 use span::Edition;
 use stdx::{always, never, variance::PhantomCovariantLifetime};
 
@@ -96,7 +96,7 @@ pub(crate) enum PatKind<'db> {
 
 pub(crate) struct PatCtxt<'a, 'db> {
     db: &'db dyn HirDatabase,
-    infer: &'a InferenceResult<'db>,
+    infer: &'db InferenceResult,
     body: &'a Body,
     pub(crate) errors: Vec<PatternError>,
 }
@@ -104,7 +104,7 @@ pub(crate) struct PatCtxt<'a, 'db> {
 impl<'a, 'db> PatCtxt<'a, 'db> {
     pub(crate) fn new(
         db: &'db dyn HirDatabase,
-        infer: &'a InferenceResult<'db>,
+        infer: &'db InferenceResult,
         body: &'a Body,
     ) -> Self {
         Self { db, infer, body, errors: Vec::new() }
@@ -119,12 +119,15 @@ impl<'a, 'db> PatCtxt<'a, 'db> {
         let unadjusted_pat = self.lower_pattern_unadjusted(pat);
         self.infer.pat_adjustments.get(&pat).map(|it| &**it).unwrap_or_default().iter().rev().fold(
             unadjusted_pat,
-            |subpattern, ref_ty| Pat { ty: *ref_ty, kind: Box::new(PatKind::Deref { subpattern }) },
+            |subpattern, ref_ty| Pat {
+                ty: ref_ty.as_ref(),
+                kind: Box::new(PatKind::Deref { subpattern }),
+            },
         )
     }
 
     fn lower_pattern_unadjusted(&mut self, pat: PatId) -> Pat<'db> {
-        let mut ty = self.infer[pat];
+        let mut ty = self.infer.pat_ty(pat);
         let variant = self.infer.variant_resolution_for_pat(pat);
 
         let kind = match self.body[pat] {
@@ -151,7 +154,7 @@ impl<'a, 'db> PatCtxt<'a, 'db> {
 
             hir_def::hir::Pat::Bind { id, subpat, .. } => {
                 let bm = self.infer.binding_modes[pat];
-                ty = self.infer[id];
+                ty = self.infer.binding_ty(id);
                 let name = &self.body[id].name;
                 match (bm, ty.kind()) {
                     (BindingMode::Ref(_), TyKind::Ref(_, rty, _)) => ty = rty,
@@ -273,7 +276,7 @@ impl<'a, 'db> PatCtxt<'a, 'db> {
     }
 
     fn lower_path(&mut self, pat: PatId, _path: &Path) -> Pat<'db> {
-        let ty = self.infer[pat];
+        let ty = self.infer.pat_ty(pat);
 
         let pat_from_kind = |kind| Pat { ty, kind: Box::new(kind) };
 

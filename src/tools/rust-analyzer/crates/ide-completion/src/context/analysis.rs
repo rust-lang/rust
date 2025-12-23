@@ -2,7 +2,9 @@
 use std::iter;
 
 use hir::{ExpandResult, InFile, Semantics, Type, TypeInfo, Variant};
-use ide_db::{RootDatabase, active_parameter::ActiveParameter};
+use ide_db::{
+    RootDatabase, active_parameter::ActiveParameter, syntax_helpers::node_ext::find_loops,
+};
 use itertools::Either;
 use stdx::always;
 use syntax::{
@@ -88,15 +90,9 @@ pub(super) fn expand_and_analyze<'db>(
     let original_offset = expansion.original_offset + relative_offset;
     let token = expansion.original_file.token_at_offset(original_offset).left_biased()?;
 
-    hir::attach_db(sema.db, || analyze(sema, expansion, original_token, &token)).map(
-        |(analysis, expected, qualifier_ctx)| AnalysisResult {
-            analysis,
-            expected,
-            qualifier_ctx,
-            token,
-            original_offset,
-        },
-    )
+    analyze(sema, expansion, original_token, &token).map(|(analysis, expected, qualifier_ctx)| {
+        AnalysisResult { analysis, expected, qualifier_ctx, token, original_offset }
+    })
 }
 
 fn token_at_offset_ignore_whitespace(file: &SyntaxNode, offset: TextSize) -> Option<SyntaxToken> {
@@ -600,9 +596,25 @@ fn expected_type_and_name<'db>(
                 Some(it) => it,
                 None => return ty,
             };
-            for _ in top_syn.ancestors().skip(1).map_while(ast::RefExpr::cast) {
+            let refs_level = top_syn
+                .ancestors()
+                .skip(1)
+                .map_while(Either::<ast::RefExpr, ast::PrefixExpr>::cast)
+                .take_while(|it| match it {
+                    Either::Left(_) => true,
+                    Either::Right(prefix) => prefix.op_kind() == Some(ast::UnaryOp::Deref),
+                })
+                .fold(0i32, |level, expr| match expr {
+                    Either::Left(_) => level + 1,
+                    Either::Right(_) => level - 1,
+                });
+            for _ in 0..refs_level {
                 cov_mark::hit!(expected_type_fn_param_ref);
                 ty = ty.strip_reference();
+            }
+            for _ in refs_level..0 {
+                cov_mark::hit!(expected_type_fn_param_deref);
+                ty = ty.add_reference(hir::Mutability::Shared);
             }
             ty
         }
@@ -718,6 +730,23 @@ fn expected_type_and_name<'db>(
                     }.map(TypeInfo::original);
                     (ty, None)
                 },
+                ast::MatchArm(it) => {
+                    let on_arrow = previous_non_trivia_token(token.clone()).is_some_and(|it| T![=>] == it.kind());
+                    let in_body = it.expr().is_some_and(|it| it.syntax().text_range().contains_range(token.text_range()));
+                    let match_expr = it.parent_match();
+
+                    let ty = if on_arrow || in_body {
+                        // match foo { ..., pat => $0 }
+                        cov_mark::hit!(expected_type_match_arm_body_without_leading_char);
+                        cov_mark::hit!(expected_type_match_arm_body_with_leading_char);
+                        sema.type_of_expr(&match_expr.into())
+                    } else {
+                        // match foo { $0 }
+                        cov_mark::hit!(expected_type_match_arm_without_leading_char);
+                        match_expr.expr().and_then(|e| sema.type_of_expr(&e))
+                    }.map(TypeInfo::original);
+                    (ty, None)
+                },
                 ast::IfExpr(it) => {
                     let ty = if let Some(body) = it.then_branch()
                         && token.text_range().end() > body.syntax().text_range().start()
@@ -751,6 +780,12 @@ fn expected_type_and_name<'db>(
                         },
                     });
                     (ty, None)
+                },
+                ast::BreakExpr(it) => {
+                    let ty = it.break_token()
+                        .and_then(|it| find_loops(sema, &it)?.next())
+                        .and_then(|expr| sema.type_of_expr(&expr));
+                    (ty.map(TypeInfo::original), None)
                 },
                 ast::ClosureExpr(it) => {
                     let ty = sema.type_of_expr(&it.into());
@@ -1286,10 +1321,26 @@ fn classify_name_ref<'db>(
                     )
                 }
             };
-            let find_fn_self_param = |it| match it {
-                ast::Item::Fn(fn_) => Some(sema.to_def(&fn_).and_then(|it| it.self_param(sema.db))),
-                ast::Item::MacroCall(_) => None,
-                _ => Some(None),
+            let fn_self_param =
+                |fn_: ast::Fn| sema.to_def(&fn_).and_then(|it| it.self_param(sema.db));
+            let closure_this_param = |closure: ast::ClosureExpr| {
+                if closure.param_list()?.params().next()?.pat()?.syntax().text() != "this" {
+                    return None;
+                }
+                sema.type_of_expr(&closure.into())
+                    .and_then(|it| it.original.as_callable(sema.db))
+                    .and_then(|it| it.params().into_iter().next())
+            };
+            let find_fn_self_param = |it: SyntaxNode| {
+                match_ast! {
+                    match it {
+                        ast::Fn(fn_) => Some(fn_self_param(fn_).map(Either::Left)),
+                        ast::ClosureExpr(f) => closure_this_param(f).map(Either::Right).map(Some),
+                        ast::MacroCall(_) => None,
+                        ast::Item(_) => Some(None),
+                        _ => None,
+                    }
+                }
             };
 
             match find_node_in_file_compensated(sema, original_file, &expr) {
@@ -1302,7 +1353,6 @@ fn classify_name_ref<'db>(
 
                     let self_param = sema
                         .ancestors_with_macros(it.syntax().clone())
-                        .filter_map(ast::Item::cast)
                         .find_map(find_fn_self_param)
                         .flatten();
                     (innermost_ret_ty, self_param)
@@ -2017,7 +2067,8 @@ fn prev_special_biased_token_at_trivia(mut token: SyntaxToken) -> SyntaxToken {
         | T![|]
         | T![return]
         | T![break]
-        | T![continue] = prev.kind()
+        | T![continue]
+        | T![lifetime_ident] = prev.kind()
     {
         token = prev
     }

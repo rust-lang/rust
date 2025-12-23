@@ -56,6 +56,36 @@ pub enum CfgExpr {
     Not(Box<CfgExpr>),
 }
 
+impl fmt::Display for CfgExpr {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            CfgExpr::Atom(atom) => atom.fmt(f),
+            CfgExpr::All(exprs) => {
+                write!(f, "all(")?;
+                for (i, expr) in exprs.iter().enumerate() {
+                    if i > 0 {
+                        write!(f, ", ")?;
+                    }
+                    expr.fmt(f)?;
+                }
+                write!(f, ")")
+            }
+            CfgExpr::Any(exprs) => {
+                write!(f, "any(")?;
+                for (i, expr) in exprs.iter().enumerate() {
+                    if i > 0 {
+                        write!(f, ", ")?;
+                    }
+                    expr.fmt(f)?;
+                }
+                write!(f, ")")
+            }
+            CfgExpr::Not(expr) => write!(f, "not({})", expr),
+            CfgExpr::Invalid => write!(f, "invalid"),
+        }
+    }
+}
+
 impl From<CfgAtom> for CfgExpr {
     fn from(atom: CfgAtom) -> Self {
         CfgExpr::Atom(atom)

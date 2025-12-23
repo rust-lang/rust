@@ -193,6 +193,8 @@ pub(crate) struct GlobalState {
     /// which will usually end up causing a bunch of incorrect diagnostics on startup.
     pub(crate) incomplete_crate_graph: bool,
 
+    pub(crate) revisions_until_next_gc: usize,
+
     pub(crate) minicore: MiniCoreRustAnalyzerInternalOnly,
 }
 
@@ -319,6 +321,8 @@ impl GlobalState {
             incomplete_crate_graph: false,
 
             minicore: MiniCoreRustAnalyzerInternalOnly::default(),
+
+            revisions_until_next_gc: config.gc_freq(),
         };
         // Apply any required database inputs from the config.
         this.update_configuration(config);
@@ -435,6 +439,15 @@ impl GlobalState {
             });
 
         self.analysis_host.apply_change(change);
+
+        if self.revisions_until_next_gc == 0 {
+            // SAFETY: Just changed some database inputs, all queries were canceled.
+            unsafe { hir::collect_ty_garbage() };
+            self.revisions_until_next_gc = self.config.gc_freq();
+        } else {
+            self.revisions_until_next_gc -= 1;
+        }
+
         if !modified_ratoml_files.is_empty()
             || !self.config.same_source_root_parent_map(&self.local_roots_parent_map)
         {

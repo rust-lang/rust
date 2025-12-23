@@ -16,9 +16,9 @@ use hir_expand::{
     attrs::{Attr, AttrId, AttrInput, Meta, collect_item_tree_attrs},
     mod_path::ModPath,
     name::Name,
-    span_map::SpanMapRef,
 };
 use intern::{Interned, Symbol, sym};
+use span::Span;
 use syntax::{AstNode, T, ast};
 use syntax_bridge::DocCommentDesugarMode;
 use tt::token_to_literal;
@@ -42,12 +42,15 @@ impl Default for AttrsOrCfg {
 }
 
 impl AttrsOrCfg {
-    pub(crate) fn lower<'a>(
+    pub(crate) fn lower<'a, S>(
         db: &dyn DefDatabase,
         owner: &dyn ast::HasAttrs,
         cfg_options: &dyn Fn() -> &'a CfgOptions,
-        span_map: SpanMapRef<'_>,
-    ) -> AttrsOrCfg {
+        span_map: S,
+    ) -> AttrsOrCfg
+    where
+        S: syntax_bridge::SpanMapper<Span> + Copy,
+    {
         let mut attrs = Vec::new();
         let result =
             collect_item_tree_attrs::<Infallible>(owner, cfg_options, |meta, container, _, _| {
@@ -55,17 +58,17 @@ impl AttrsOrCfg {
                 // tracking.
                 let (span, path_range, input) = match meta {
                     Meta::NamedKeyValue { path_range, name: _, value } => {
-                        let span = span_map.span_for_range(path_range);
+                        let span = span_map.span_for(path_range);
                         let input = value.map(|value| {
                             Box::new(AttrInput::Literal(token_to_literal(
                                 value.text(),
-                                span_map.span_for_range(value.text_range()),
+                                span_map.span_for(value.text_range()),
                             )))
                         });
                         (span, path_range, input)
                     }
                     Meta::TokenTree { path, tt } => {
-                        let span = span_map.span_for_range(path.range);
+                        let span = span_map.span_for(path.range);
                         let tt = syntax_bridge::syntax_node_to_token_tree(
                             tt.syntax(),
                             span_map,
@@ -76,7 +79,7 @@ impl AttrsOrCfg {
                         (span, path.range, input)
                     }
                     Meta::Path { path } => {
-                        let span = span_map.span_for_range(path.range);
+                        let span = span_map.span_for(path.range);
                         (span, path.range, None)
                     }
                 };
@@ -90,7 +93,7 @@ impl AttrsOrCfg {
                                 .filter(|it| it.kind().is_any_identifier());
                         ModPath::from_tokens(
                             db,
-                            &mut |range| span_map.span_for_range(range).ctx,
+                            &mut |range| span_map.span_for(range).ctx,
                             is_abs,
                             segments,
                         )
@@ -105,6 +108,44 @@ impl AttrsOrCfg {
         match result {
             Some(Either::Right(cfg)) => AttrsOrCfg::CfgDisabled(Box::new((cfg, attrs))),
             None => AttrsOrCfg::Enabled { attrs },
+        }
+    }
+
+    // Merges two `AttrsOrCfg`s, assuming `self` is placed before `other` in the source code.
+    // The operation follows these rules:
+    //
+    //   - If `self` and `other` are both `AttrsOrCfg::Enabled`, the result is a new
+    //     `AttrsOrCfg::Enabled`. It contains the concatenation of `self`'s attributes followed by
+    //     `other`'s.
+    //   - If `self` is `AttrsOrCfg::Enabled` but `other` is `AttrsOrCfg::CfgDisabled`, the result
+    //     is a new `AttrsOrCfg::CfgDisabled`. It contains the concatenation of `self`'s attributes
+    //     followed by `other`'s.
+    //   - If `self` is `AttrsOrCfg::CfgDisabled`, return `self` as-is.
+    //
+    // The rationale is that attribute collection is sequential and order-sensitive. This operation
+    // preserves those semantics when combining attributes from two different sources.
+    // `AttrsOrCfg::CfgDisabled` marks a point where collection stops due to a false `#![cfg(...)]`
+    // condition. It acts as a "breakpoint": attributes beyond it are not collected. Therefore,
+    // when merging, an `AttrsOrCfg::CfgDisabled` on the left-hand side short-circuits the
+    // operation, while an `AttrsOrCfg::CfgDisabled` on the right-hand side preserves all
+    // attributes collected up to that point.
+    //
+    // Note that this operation is neither commutative nor associative.
+    pub(crate) fn merge(self, other: AttrsOrCfg) -> AttrsOrCfg {
+        match (self, other) {
+            (AttrsOrCfg::Enabled { attrs }, AttrsOrCfg::Enabled { attrs: other_attrs }) => {
+                let mut v = attrs.0.into_vec();
+                v.extend(other_attrs.0);
+                AttrsOrCfg::Enabled { attrs: AttrsOwned(v.into_boxed_slice()) }
+            }
+            (AttrsOrCfg::Enabled { attrs }, AttrsOrCfg::CfgDisabled(mut other)) => {
+                let other_attrs = &mut other.1;
+                let mut v = attrs.0.into_vec();
+                v.extend(std::mem::take(&mut other_attrs.0));
+                other_attrs.0 = v.into_boxed_slice();
+                AttrsOrCfg::CfgDisabled(other)
+            }
+            (this @ AttrsOrCfg::CfgDisabled(_), _) => this,
         }
     }
 }

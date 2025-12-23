@@ -33,6 +33,9 @@ pub fn where_bound_predicate_to_string(where_bound_predicate: &ast::WhereBoundPr
     State::new().where_bound_predicate_to_string(where_bound_predicate)
 }
 
+/// # Panics
+///
+/// Panics if `pat.kind` is `PatKind::Missing`.
 pub fn pat_to_string(pat: &ast::Pat) -> String {
     State::new().pat_to_string(pat)
 }

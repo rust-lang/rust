@@ -27,7 +27,7 @@ use super::{
 
 mod intrinsics;
 
-fn simplify(e: ConstEvalError<'_>) -> ConstEvalError<'_> {
+fn simplify(e: ConstEvalError) -> ConstEvalError {
     match e {
         ConstEvalError::MirEvalError(MirEvalError::InFunction(e, _)) => {
             simplify(ConstEvalError::MirEvalError(*e))
@@ -39,7 +39,7 @@ fn simplify(e: ConstEvalError<'_>) -> ConstEvalError<'_> {
 #[track_caller]
 fn check_fail(
     #[rust_analyzer::rust_fixture] ra_fixture: &str,
-    error: impl FnOnce(ConstEvalError<'_>) -> bool,
+    error: impl FnOnce(ConstEvalError) -> bool,
 ) {
     let (db, file_id) = TestDB::with_single_file(ra_fixture);
     crate::attach_db(&db, || match eval_goal(&db, file_id) {
@@ -104,7 +104,7 @@ fn check_answer(
     });
 }
 
-fn pretty_print_err(e: ConstEvalError<'_>, db: &TestDB) -> String {
+fn pretty_print_err(e: ConstEvalError, db: &TestDB) -> String {
     let mut err = String::new();
     let span_formatter = |file, range| format!("{file:?} {range:?}");
     let display_target =
@@ -121,7 +121,7 @@ fn pretty_print_err(e: ConstEvalError<'_>, db: &TestDB) -> String {
     err
 }
 
-fn eval_goal(db: &TestDB, file_id: EditionedFileId) -> Result<Const<'_>, ConstEvalError<'_>> {
+fn eval_goal(db: &TestDB, file_id: EditionedFileId) -> Result<Const<'_>, ConstEvalError> {
     let _tracing = setup_tracing();
     let interner = DbInterner::new_no_crate(db);
     let module_id = db.module_for_file(file_id.file_id(db));
@@ -142,7 +142,7 @@ fn eval_goal(db: &TestDB, file_id: EditionedFileId) -> Result<Const<'_>, ConstEv
             _ => None,
         })
         .expect("No const named GOAL found in the test");
-    db.const_eval(const_id, GenericArgs::new_from_iter(interner, []), None)
+    db.const_eval(const_id, GenericArgs::empty(interner), None)
 }
 
 #[test]

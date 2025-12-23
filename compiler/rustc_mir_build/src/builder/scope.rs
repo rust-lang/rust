@@ -1099,7 +1099,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                     Some(DropData { source_info, local, kind: DropKind::Value })
                 }
-                Operand::Constant(_) => None,
+                Operand::Constant(_) | Operand::RuntimeChecks(_) => None,
             })
             .collect();
 
@@ -1563,7 +1563,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         // look for moves of a local variable, like `MOVE(_X)`
         let locals_moved = operands.iter().flat_map(|operand| match operand.node {
-            Operand::Copy(_) | Operand::Constant(_) => None,
+            Operand::Copy(_) | Operand::Constant(_) | Operand::RuntimeChecks(_) => None,
             Operand::Move(place) => place.as_local(),
         });
 

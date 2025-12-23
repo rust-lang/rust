@@ -14,7 +14,7 @@ use rustc_type_ir::{
     InferTy, TypeVisitableExt, Upcast, Variance,
     elaborate::{self, supertrait_def_ids},
     fast_reject::{DeepRejectCtxt, TreatParams, simplify_type},
-    inherent::{AdtDef as _, BoundExistentialPredicates as _, IntoKind, SliceLike, Ty as _},
+    inherent::{AdtDef as _, BoundExistentialPredicates as _, IntoKind, Ty as _},
 };
 use smallvec::{SmallVec, smallvec};
 use tracing::{debug, instrument};
@@ -27,7 +27,7 @@ use crate::{
     lower::GenericPredicates,
     method_resolution::{
         CandidateId, CandidateSource, InherentImpls, MethodError, MethodResolutionContext,
-        incoherent_inherent_impls, simplified_type_module,
+        simplified_type_module, with_incoherent_inherent_impls,
     },
     next_solver::{
         Binder, Canonical, ClauseKind, DbInterner, FnSig, GenericArg, GenericArgs, Goal, ParamEnv,
@@ -965,9 +965,11 @@ impl<'a, 'db, Choice: ProbeChoice<'db>> ProbeContext<'a, 'db, Choice> {
         else {
             panic!("unexpected incoherent type: {:?}", self_ty)
         };
-        for &impl_def_id in incoherent_inherent_impls(self.db(), simp) {
-            self.assemble_inherent_impl_probe(impl_def_id, receiver_steps);
-        }
+        with_incoherent_inherent_impls(self.db(), self.ctx.resolver.krate(), &simp, |impls| {
+            for &impl_def_id in impls {
+                self.assemble_inherent_impl_probe(impl_def_id, receiver_steps);
+            }
+        });
     }
 
     fn assemble_inherent_impl_candidates_for_type(
@@ -1975,7 +1977,7 @@ impl<'a, 'db, Choice: ProbeChoice<'db>> ProbeContext<'a, 'db, Choice> {
             && self.mode == Mode::MethodCall
         {
             let sig = self.xform_method_sig(item, args);
-            (sig.inputs().as_slice()[0], Some(sig.output()))
+            (sig.inputs()[0], Some(sig.output()))
         } else {
             (impl_ty, None)
         }

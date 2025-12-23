@@ -37,7 +37,9 @@ use std::{hash::Hash, ops};
 
 use base_db::Crate;
 use either::Either;
-use span::{Edition, ErasedFileAstId, FileAstId, Span, SyntaxContext};
+use span::{
+    Edition, ErasedFileAstId, FileAstId, NO_DOWNMAP_ERASED_FILE_AST_ID_MARKER, Span, SyntaxContext,
+};
 use syntax::{
     SyntaxNode, SyntaxToken, TextRange, TextSize,
     ast::{self, AstNode},
@@ -854,6 +856,10 @@ impl ExpansionInfo {
         &self,
         span: Span,
     ) -> Option<InMacroFile<impl Iterator<Item = (SyntaxToken, SyntaxContext)> + '_>> {
+        if span.anchor.ast_id == NO_DOWNMAP_ERASED_FILE_AST_ID_MARKER {
+            return None;
+        }
+
         let tokens = self.exp_map.ranges_with_span_exact(span).flat_map(move |(range, ctx)| {
             self.expanded.value.covering_element(range).into_token().zip(Some(ctx))
         });
@@ -869,6 +875,10 @@ impl ExpansionInfo {
         &self,
         span: Span,
     ) -> Option<InMacroFile<impl Iterator<Item = (SyntaxToken, SyntaxContext)> + '_>> {
+        if span.anchor.ast_id == NO_DOWNMAP_ERASED_FILE_AST_ID_MARKER {
+            return None;
+        }
+
         let tokens = self.exp_map.ranges_with_span(span).flat_map(move |(range, ctx)| {
             self.expanded.value.covering_element(range).into_token().zip(Some(ctx))
         });

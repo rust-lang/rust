@@ -16,11 +16,11 @@ fn check_with_config(
     expect: Expect,
 ) {
     let (db, position) = crate::tests::position(ra_fixture);
-    let (ctx, analysis) =
-        crate::context::CompletionContext::new(&db, position, &config, None).unwrap();
+    hir::attach_db(&db, || {
+        let (ctx, analysis) =
+            crate::context::CompletionContext::new(&db, position, &config, None).unwrap();
 
-    let mut acc = crate::completions::Completions::default();
-    hir::attach_db(ctx.db, || {
+        let mut acc = crate::completions::Completions::default();
         if let CompletionAnalysis::Name(NameContext { kind: NameKind::IdentPat(pat_ctx), .. }) =
             &analysis
         {
@@ -42,9 +42,9 @@ fn check_with_config(
                 _ => (),
             }
         }
-    });
 
-    expect.assert_eq(&super::render_completion_list(Vec::from(acc)));
+        expect.assert_eq(&super::render_completion_list(Vec::from(acc)));
+    });
 }
 
 #[test]

@@ -1856,7 +1856,7 @@ impl Config {
             .get(&target)
             .and_then(|t| t.llvm_libunwind)
             .or(self.llvm_libunwind_default)
-            .unwrap_or(if target.contains("fuchsia") {
+            .unwrap_or(if target.contains("fuchsia") || target.contains("hexagon") {
                 LlvmLibunwind::InTree
             } else {
                 LlvmLibunwind::No

@@ -9,7 +9,7 @@ use rustc_next_trait_solver::solve::{GoalEvaluation, SolverDelegateEvalExt};
 use rustc_type_ir::{
     AliasRelationDirection, AliasTermKind, HostEffectPredicate, Interner, PredicatePolarity,
     error::ExpectedFound,
-    inherent::{IntoKind, SliceLike, Span as _},
+    inherent::{IntoKind, Span as _},
     lang_items::SolverTraitLangItem,
     solve::{Certainty, GoalSource, MaybeCause, NoSolution},
 };

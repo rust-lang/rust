@@ -218,7 +218,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 &TestKind::Len { len: test_len, op: BinOp::Eq },
                 &TestableCase::Slice { len, variable_length },
             ) => {
-                match (test_len.cmp(&(len as u64)), variable_length) {
+                match (test_len.cmp(&len), variable_length) {
                     (Ordering::Equal, false) => {
                         // on true, min_len = len = $actual_length,
                         // on false, len != $actual_length
@@ -251,7 +251,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 &TestableCase::Slice { len, variable_length },
             ) => {
                 // the test is `$actual_len >= test_len`
-                match (test_len.cmp(&(len as u64)), variable_length) {
+                match (test_len.cmp(&len), variable_length) {
                     (Ordering::Equal, true) => {
                         // $actual_len >= test_len = pat_len,
                         // so we can match.
