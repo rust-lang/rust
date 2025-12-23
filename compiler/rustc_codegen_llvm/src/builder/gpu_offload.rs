@@ -304,7 +304,6 @@ pub(crate) fn add_global<'ll>(
 pub(crate) fn gen_define_handling<'ll>(
     cx: &CodegenCx<'ll, '_>,
     metadata: &[OffloadMetadata],
-    types: &[&'ll Type],
     symbol: String,
     offload_globals: &OffloadGlobals<'ll>,
 ) -> OffloadKernelGlobals<'ll> {
@@ -314,25 +313,18 @@ pub(crate) fn gen_define_handling<'ll>(
 
     let offload_entry_ty = offload_globals.offload_entry_ty;
 
-    // It seems like non-pointer values are automatically mapped. So here, we focus on pointer (or
-    // reference) types.
-    let ptr_meta = types.iter().zip(metadata).filter_map(|(&x, meta)| match cx.type_kind(x) {
-        rustc_codegen_ssa::common::TypeKind::Pointer => Some(meta),
-        _ => None,
-    });
-
     // FIXME(Sa4dUs): add `OMP_MAP_TARGET_PARAM = 0x20` only if necessary
-    let (ptr_sizes, ptr_transfer): (Vec<_>, Vec<_>) =
-        ptr_meta.map(|m| (m.payload_size, m.mode.bits() | 0x20)).unzip();
+    let (sizes, transfer): (Vec<_>, Vec<_>) =
+        metadata.iter().map(|m| (m.payload_size, m.mode.bits() | 0x20)).unzip();
 
-    let offload_sizes = add_priv_unnamed_arr(&cx, &format!(".offload_sizes.{symbol}"), &ptr_sizes);
+    let offload_sizes = add_priv_unnamed_arr(&cx, &format!(".offload_sizes.{symbol}"), &sizes);
     // Here we figure out whether something needs to be copied to the gpu (=1), from the gpu (=2),
     // or both to and from the gpu (=3). Other values shouldn't affect us for now.
     // A non-mutable reference or pointer will be 1, an array that's not read, but fully overwritten
     // will be 2. For now, everything is 3, until we have our frontend set up.
     // 1+2+32: 1 (MapTo), 2 (MapFrom), 32 (Add one extra input ptr per function, to be used later).
     let memtransfer_types =
-        add_priv_unnamed_arr(&cx, &format!(".offload_maptypes.{symbol}"), &ptr_transfer);
+        add_priv_unnamed_arr(&cx, &format!(".offload_maptypes.{symbol}"), &transfer);
 
     // Next: For each function, generate these three entries. A weak constant,
     // the llvm.rodata entry name, and  the llvm_offload_entries value
