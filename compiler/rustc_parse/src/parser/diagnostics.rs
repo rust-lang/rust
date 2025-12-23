@@ -3114,26 +3114,23 @@ impl<'a> Parser<'a> {
                 msg_middle = format!("code you had in local commit `{from_sha}` before `git pull`");
                 show_help = false;
             }
-            (Some(branch_name), _, None, Some(onto_sha)) => {
+            (Some(branch_name), _, None, Some(_)) => {
                 // `git rebase`, but we don't have the branch name for the target.
                 // We could do `git branch --points-at onto_sha` to get a list of branch names, but
                 // that would necessitate to call into `git` *and* would be a linear scan of every
                 // branch, which can be expensive in repos with lots of branches.
-                msg_start = format!("you had in commit `{onto_sha}` that you're rebasing onto");
+                msg_start = "that you're rebasing onto".to_string();
                 msg_middle = format!("code from branch `{branch_name}` that you are rebasing");
                 show_help = false;
             }
-            (_, Some(from_sha), None, Some(onto_sha)) => {
+            (None, Some(from_sha), None, Some(onto_sha)) => {
                 // `git rebase`, but we don't have the branch name for the source nor the target.
-                msg_start = format!("you had in commit `{onto_sha}` that you're rebasing onto");
+                msg_start = format!("you had in commit `{onto_sha}` that you are rebasing onto");
                 msg_middle = format!("code from commit `{from_sha}` that you are rebasing");
                 show_help = false;
             }
-            (_, None, _, _) => {
-                // We're not in a `git rebase` or `git pull`.
-            }
             _ => {
-                // Invalid git repo states, we're not in a rebase.
+                // We're not in a `git rebase` or `git pull`.
             }
         }
 
