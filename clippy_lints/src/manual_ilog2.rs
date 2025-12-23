@@ -1,7 +1,7 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::source::snippet_with_applicability;
+use clippy_utils::source::snippet_with_context;
 use clippy_utils::{is_from_proc_macro, sym};
 use rustc_ast::LitKind;
 use rustc_data_structures::packed::Pu128;
@@ -102,7 +102,7 @@ impl LateLintPass<'_> for ManualIlog2 {
 
 fn emit(cx: &LateContext<'_>, recv: &Expr<'_>, full_expr: &Expr<'_>) {
     let mut app = Applicability::MachineApplicable;
-    let recv = snippet_with_applicability(cx, recv.span, "_", &mut app);
+    let (recv, _) = snippet_with_context(cx, recv.span, full_expr.span.ctxt(), "_", &mut app);
     span_lint_and_sugg(
         cx,
         MANUAL_ILOG2,
