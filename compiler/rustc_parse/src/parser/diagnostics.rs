@@ -1,6 +1,5 @@
 use std::mem::take;
 use std::ops::{Deref, DerefMut};
-use std::process::Command;
 
 use ast::token::IdentIsRaw;
 use rustc_ast::token::{self, Lit, LitKind, Token, TokenKind};
@@ -3059,84 +3058,82 @@ impl<'a> Parser<'a> {
         let mut msg_middle: String = "incoming code".into();
         let mut show_help = true;
 
-        // `git rev-parse --git-path rebase-merge`, in order to get the git metadata for the
-        // rebase currently happening. If this directory doesn't exist, then the merge conflicts
-        // were not caused by a rebase.
-        if let Ok(output) =
-            Command::new("git").args(["rev-parse", "--git-path", "rebase-merge"]).output()
-            && let Ok(relative_path) = String::from_utf8(output.stdout)
-            && let relative_path = relative_path.trim()
-            && let Ok(orig_head_sha) = std::fs::read_to_string(format!("{relative_path}/orig-head"))
-            && let Ok(onto_sha) = std::fs::read_to_string(format!("{relative_path}/onto"))
-        {
-            // git is installed, we're currently in a git repo, and that repo is currently in a
-            // rebase.
-            show_help = false;
-            debug!(?relative_path, ?orig_head_sha, ?onto_sha);
-            if let Ok(head_name) = std::fs::read_to_string(format!("{relative_path}/head-name"))
-                && let head_name = head_name.trim()
-                && let Some(branch_name) = head_name.strip_prefix("refs/heads/")
-            {
-                debug!(?head_name);
-                msg_middle =
-                    format!("code you had in branch `{branch_name}` that you are rebasing");
-            } else {
-                msg_middle =
-                    format!("code you had in commit `{orig_head_sha}` that you are rebasing");
-            }
-            if let Ok(output) =
-                Command::new("git").args(["branch", "--points-at", onto_sha.trim()]).output()
-                && let Ok(onto_branch) = String::from_utf8(output.stdout)
-            {
-                debug!(?onto_branch);
-                let onto_branches: Vec<_> = onto_branch
+        // Ideally, we'd execute `git rev-parse --git-path rebase-merge`, in order to get the git
+        // metadata for the rebase currently happening, but instead we only customize the output if
+        // invoking cargo from the project root. If this directory doesn't exist, then the merge
+        // conflict might not have been caused by a git rebase, and we'll fall-back on the default
+        // diagnostic.
+        let git = |path: &str| {
+            std::fs::read_to_string(format!(".git/{path}"))
+                .map(|content| content.trim().to_string())
+        };
+        let mut local_branch = None;
+        let mut local_sha = None;
+        let mut onto_descr = None;
+        let mut onto_sha = None;
+        let mut is_git_pull = false;
+        if let Ok(onto) = git("rebase-merge/onto") {
+            let onto = onto.trim();
+            onto_sha = Some(onto.to_string());
+            if let Ok(fetch) = git("FETCH_HEAD")
+                && let Some(parts) = fetch
                     .lines()
-                    .filter(|line| !line.starts_with("*"))
-                    .map(|line| format!("`{}`", line.trim()))
-                    .collect();
-                match &onto_branches[..] {
-                    branches if branches.len() > 4 => {
-                        msg_start = format!("from the branch we're rebasing onto");
-                    }
-                    [] => {
-                        // `git pull` caused a conflict and we're rebasing, instead of it being
-                        // caused by the more common `git rebase branch-name`.
-                        if let Ok(output) = Command::new("git")
-                            .args(["branch", "-r", "--points-at", onto_sha.trim()])
-                            .output()
-                            && let Ok(onto_branch) = String::from_utf8(output.stdout)
-                            && let onto_branches = onto_branch
-                                .lines()
-                                .filter_map(|line| {
-                                    if line.split(" -> ").count() == 1 {
-                                        Some(format!("`{}`", line.trim()))
-                                    } else {
-                                        None
-                                    }
-                                })
-                                .collect::<Vec<String>>()
-                            && !onto_branches.is_empty()
-                        {
-                            if let [branch] = &onto_branches[..] {
-                                msg_start =
-                                    format!("from the remote branch {branch} we're rebasing onto");
-                            } else {
-                                msg_start = format!("from the remote branch we're rebasing onto");
-                            }
-                        }
-                    }
-                    [branch] => {
-                        msg_start = format!("from branch {branch} we're rebasing onto");
-                    }
-                    [branches @ .., last] => {
-                        msg_start = format!(
-                            "from branches {} and {last} we're rebasing onto",
-                            branches.join(", ")
-                        );
-                    }
-                }
-            } else {
-                msg_start = format!("from commit `{}` that we're rebasing onto", onto_sha.trim());
+                    .map(|line| line.split('\t').collect::<Vec<_>>())
+                    .filter(|parts| parts[1] == "")
+                    .next()
+                && let [fetch_head, "", branch_descr] = &parts[..]
+                && &onto == fetch_head
+            {
+                is_git_pull = true;
+                onto_descr = Some(branch_descr.trim().to_string());
+            }
+        }
+        if let Ok(head_name) = git("rebase-merge/head-name")
+            && let head_name = head_name.trim()
+            && let Some(branch_name) = head_name.strip_prefix("refs/heads/")
+        {
+            local_branch = Some(branch_name.to_string());
+        }
+        if let Ok(local) = git("rebase-merge/stopped-sha") {
+            local_sha = Some(local.trim().to_string());
+        }
+        match (local_branch, local_sha, onto_descr, onto_sha) {
+            (Some(branch_name), _, Some(onto_descr), _) => {
+                // `git pull`, branch_descr (from `.git/FETCH_HEAD`) has "branch 'name' of <remote>"
+                msg_start = format!("from {}", onto_descr.trim());
+                msg_middle = if is_git_pull {
+                    format!("code from local branch `{branch_name}` before `git pull`")
+                } else {
+                    format!("code from branch `{branch_name}`")
+                };
+                show_help = false;
+            }
+            (None, Some(from_sha), Some(onto_descr), _) => {
+                // `git pull`, branch_descr (from `.git/FETCH_HEAD`) has "branch 'name' of <remote>"
+                msg_start = format!("from {}", onto_descr.trim());
+                msg_middle = format!("code you had in local commit `{from_sha}` before `git pull`");
+                show_help = false;
+            }
+            (Some(branch_name), _, None, Some(onto_sha)) => {
+                // `git rebase`, but we don't have the branch name for the target.
+                // We could do `git branch --points-at onto_sha` to get a list of branch names, but
+                // that would necessitate to call into `git` *and* would be a linear scan of every
+                // branch, which can be expensive in repos with lots of branches.
+                msg_start = format!("you had in commit `{onto_sha}` that you're rebasing onto");
+                msg_middle = format!("code from branch `{branch_name}` that you are rebasing");
+                show_help = false;
+            }
+            (_, Some(from_sha), None, Some(onto_sha)) => {
+                // `git rebase`, but we don't have the branch name for the source nor the target.
+                msg_start = format!("you had in commit `{onto_sha}` that you're rebasing onto");
+                msg_middle = format!("code from commit `{from_sha}` that you are rebasing");
+                show_help = false;
+            }
+            (_, None, _, _) => {
+                // We're not in a `git rebase` or `git pull`.
+            }
+            _ => {
+                // Invalid git repo states, we're not in a rebase.
             }
         }
 
