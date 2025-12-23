@@ -3099,9 +3099,23 @@ impl<'a> Parser<'a> {
         }
         if let Ok(head) = git("HEAD")
             && let Some(merging_to) = head.trim().strip_prefix("ref: refs/heads/")
-            && let Ok(_) = git("MERGE_HEAD")
+            && let Ok(msg) = git("MERGE_MSG")
         {
             merge_to = Some(merging_to.to_string());
+            if let Some(line) = msg.lines().next()
+                && let Some(msg) = line.strip_prefix("Merge branch ")
+            {
+                let split: Vec<_> = msg.split(" into ").collect();
+                onto_descr = Some(if let [msg, _branch] = &split[..] {
+                    // `git merge`
+                    // Merge branch 'main' into branch-name
+                    format!("branch {msg}")
+                } else {
+                    // `git pull --no-rebase`
+                    // Merge branch `main` of github.com:user/repo
+                    format!("remote branch {msg}")
+                });
+            }
         }
         match (local_branch, local_sha, onto_descr, onto_sha, merge_to) {
             (Some(branch_name), _, Some(onto_descr), _, None) => {
@@ -3135,6 +3149,11 @@ impl<'a> Parser<'a> {
                 // `git merge from-branch`
                 msg_start = format!("from branch '{merge_to}'");
                 msg_middle = format!("code that you're merging");
+            }
+            (None, None, Some(onto_descr), None, Some(merge_to)) => {
+                // `git merge from-branch`
+                msg_start = format!("from branch '{merge_to}'");
+                msg_middle = format!("code from {onto_descr}");
             }
             _ => {
                 // We're not in a `git merge`, `git rebase` or `git pull`.
