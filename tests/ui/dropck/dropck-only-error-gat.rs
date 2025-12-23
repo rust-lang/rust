@@ -1,3 +1,5 @@
+//@ check-pass
+//
 // Test that we don't ICE for a typeck error that only shows up in dropck
 // Version that uses a generic associated type
 // Regression test for #91985
@@ -35,7 +37,6 @@ where
     T2: Trait2<Associated = T1::Associated>,
 {
     pub fn new() -> Self {
-        //~^ ERROR the trait bound `<T1 as Trait1>::Associated: Clone` is not satisfied
         todo!()
     }
 }

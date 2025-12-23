@@ -1,6 +1,6 @@
 trait Foo: std::fmt::Debug {}
 
-fn print_foos(foos: impl Iterator<Item = dyn Foo>) {
+fn print_foos(foos: impl Iterator<Item = dyn Foo>) { //~ ERROR [E0277]
     foos.for_each(|foo| { //~ ERROR [E0277]
         println!("{:?}", foo); //~ ERROR [E0277]
     });

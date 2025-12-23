@@ -1,0 +1,12 @@
+error[E0277]: `impl T0` cannot be sent between threads safely
+  --> $DIR/opaque-hidden-inferred-rpitit.rs:13:25
+   |
+LL |     fn foo() -> impl T1<A = ((), impl T0)>;
+   |                         ^^^^^^^^^^^^^^^^^ `impl T0` cannot be sent between threads safely
+   |
+   = help: within `((), impl T0)`, the trait `Send` is not implemented for `impl T0`
+   = note: required because it appears within the type `((), impl T0)`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

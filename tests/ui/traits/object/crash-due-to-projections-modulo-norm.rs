@@ -25,7 +25,7 @@ type AlsoTraitObject = dyn SomeTrait<Item = Thing>;
 // Step 3: Force the compiler to check whether the two names are the same type
 
 trait Supertrait {
-    type Foo;
+    type Foo: ?Sized;
 }
 trait Subtrait: Supertrait<Foo = TraitObject> {}
 

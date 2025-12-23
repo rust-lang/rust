@@ -23,6 +23,7 @@ impl<T> Bar for T where T: Foo<Assoc = i32> {}
 fn needs_bar<T: Bar>() {}
 
 fn foo<T: Foo<Assoc = i32> + Foo<Assoc = u32>>() {
+    //~^ ERROR: type annotations needed [E0282]
     needs_bar::<T>();
     //~^ ERROR type annotations needed: cannot normalize
 }

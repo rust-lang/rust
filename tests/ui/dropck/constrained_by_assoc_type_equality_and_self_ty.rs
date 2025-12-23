@@ -1,5 +1,6 @@
 trait Trait {
     type Assoc;
+    //~^ ERROR: `Drop` impl requires `U: Sized` but the struct it is implemented for does not [E0367]
 }
 
 struct Foo<T: Trait, U: ?Sized>(T, U);

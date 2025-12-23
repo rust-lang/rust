@@ -22,7 +22,7 @@ trait Trait {
 impl Trait for fn() {}
 
 #[allow(dead_code)]
-fn test2(f: impl Fn() -> dyn std::fmt::Debug) {
+fn test2(f: impl Fn() -> i32) {
     f.method(); //~ ERROR no method named `method` found
 }
 

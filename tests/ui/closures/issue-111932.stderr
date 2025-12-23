@@ -1,4 +1,12 @@
 error[E0277]: the size for values of type `(dyn Foo + 'static)` cannot be known at compilation time
+  --> $DIR/issue-111932.rs:3:35
+   |
+LL | fn print_foos(foos: impl Iterator<Item = dyn Foo>) {
+   |                                   ^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `(dyn Foo + 'static)`
+
+error[E0277]: the size for values of type `(dyn Foo + 'static)` cannot be known at compilation time
   --> $DIR/issue-111932.rs:4:20
    |
 LL |     foos.for_each(|foo| {
@@ -19,6 +27,6 @@ LL |         println!("{:?}", foo);
    = help: the trait `Sized` is not implemented for `dyn Foo`
    = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 2 previous errors
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0277`.

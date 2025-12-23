@@ -11,7 +11,7 @@ pub trait Tr2<'a, 'b> {}
 
 pub struct A<T>(T);
 pub trait Tr {
-    type B;
+    type B: ?Sized;
 }
 
 impl<'a, 'b, T: Tr<B = dyn Tr2<'a, 'b>>> Trait for A<T> {

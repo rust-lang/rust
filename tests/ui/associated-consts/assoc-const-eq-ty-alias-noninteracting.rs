@@ -23,6 +23,6 @@ trait SuperTrait {
 
 fn take0(_: impl Trait<N = 0, N = ()>) {}
 
-fn take1(_: impl Trait<Q = "...", Q = [()]>) {}
+fn take1(_: impl Trait<Q = "...", Q = ()>) {}
 
 fn main() {}

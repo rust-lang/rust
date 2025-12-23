@@ -12,7 +12,7 @@ use std::{
 mod object {
     use super::*;
 
-    pub trait Object<'a> {
+    pub trait Object<'a>: Sized {
         type Error;
         type Future: Future<Output = Self>;
         fn create() -> Self::Future;

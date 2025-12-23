@@ -1,0 +1,11 @@
+error[E0277]: the size for values of type `str` cannot be known at compilation time
+  --> $DIR/unexpected-unsized-field-issue-135020.rs:3:45
+   |
+LL | fn problem_thingy(items: &mut impl Iterator<Item = str>) {
+   |                                             ^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `str`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

@@ -2,6 +2,8 @@
 // Checks that we do not ICE while reporting
 // lifetime mistmatch error
 
+//~^^^^ ERROR: mismatched types
+
 trait Fun {
     type Assoc;
 }

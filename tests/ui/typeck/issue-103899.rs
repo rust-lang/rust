@@ -23,6 +23,7 @@ struct DoubleProject<L: WrapperWithAssoc> {
 
 fn trigger<L: WrapperWithAssoc<BaseAssoc = ()>>() -> DoubleProject<L> {
     //~^ ERROR the trait bound `(): BaseWithAssoc` is not satisfied [E0277]
+    //~| ERROR the trait bound `(): BaseWithAssoc` is not satisfied [E0277]
     loop {}
 }
 
