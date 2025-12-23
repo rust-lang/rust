@@ -25,3 +25,42 @@ labels_blocking_approval = [
     "S-waiting-on-t-rustdoc-frontend",
     "S-waiting-on-t-clippy"
 ]
+
+# If CI runs quicker than this duration, consider it to be a failure
+min_ci_time = 600
+
+[labels]
+approved = [
+    "+S-waiting-on-bors",
+    "-S-blocked",
+    "-S-waiting-on-author",
+    "-S-waiting-on-crater",
+    "-S-waiting-on-review",
+    "-S-waiting-on-team"
+]
+unapproved = [
+    "+S-waiting-on-author",
+    "-S-blocked",
+    "-S-waiting-on-bors",
+    "-S-waiting-on-crater",
+    "-S-waiting-on-review",
+    "-S-waiting-on-team"
+]
+try_failed = [
+    "+S-waiting-on-author",
+    "-S-waiting-on-review",
+    "-S-waiting-on-crater"
+]
+auto_build_succeeded = ["+merged-by-bors"]
+auto_build_failed = [
+    "+S-waiting-on-review",
+    "-S-blocked",
+    "-S-waiting-on-bors",
+    "-S-waiting-on-author",
+    "-S-waiting-on-crater",
+    "-S-waiting-on-team"
+]
+
+# Flip this two once new bors is used for actual merges on this repository
+merge_queue_enabled = false
+report_merge_conflicts = true
