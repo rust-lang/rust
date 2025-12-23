@@ -29,7 +29,7 @@ mod bytewise;
 pub(crate) use bytewise::BytewiseEq;
 
 use self::Ordering::*;
-use crate::marker::{Destruct, PointeeSized};
+use crate::marker::{Destruct, Forget, PointeeSized};
 use crate::ops::ControlFlow;
 
 /// Trait for comparisons using the equality operator.
@@ -248,7 +248,9 @@ use crate::ops::ControlFlow;
 )]
 #[rustc_diagnostic_item = "PartialEq"]
 #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
-pub const trait PartialEq<Rhs: PointeeSized = Self>: PointeeSized {
+pub const trait PartialEq<Rhs: PointeeSized + ?Forget = Self>:
+    PointeeSized + ?Forget
+{
     /// Tests for `self` and `other` values to be equal, and is used by `==`.
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]

@@ -55,7 +55,7 @@
 #![allow(missing_docs)]
 
 use crate::ffi::va_list::{VaArgSafe, VaListImpl};
-use crate::marker::{ConstParamTy, DiscriminantKind, PointeeSized, Tuple};
+use crate::marker::{ConstParamTy, DiscriminantKind, Forget, PointeeSized, Tuple};
 use crate::ptr;
 
 mod bounds;
@@ -493,7 +493,7 @@ pub fn select_unpredictable<T>(b: bool, true_val: T, false_val: T) -> T {
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_nounwind]
 #[rustc_intrinsic]
-pub const fn assert_inhabited<T>();
+pub const fn assert_inhabited<T: ?Forget>();
 
 /// A guard for unsafe functions that cannot ever be executed if `T` does not permit
 /// zero-initialization: This will statically either panic, or do nothing. It does not *guarantee*
@@ -541,7 +541,7 @@ pub const fn caller_location() -> &'static crate::panic::Location<'static>;
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_nounwind]
 #[rustc_intrinsic]
-pub const fn forget<T: ?Sized>(_: T);
+pub const unsafe fn forget<T: ?Sized + ?Forget>(_: T);
 
 /// Reinterprets the bits of a value of one type as another type.
 ///
@@ -2807,7 +2807,7 @@ pub const unsafe fn align_of_val<T: ?Sized>(ptr: *const T) -> usize;
 #[rustc_nounwind]
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic]
-pub const fn type_name<T: ?Sized>() -> &'static str;
+pub const fn type_name<T: ?Sized + ?Forget>() -> &'static str;
 
 /// Gets an identifier which is globally unique to the specified type. This
 /// function will return the same value for a type regardless of whichever
@@ -2857,7 +2857,9 @@ where
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
-pub const fn ptr_metadata<P: ptr::Pointee<Metadata = M> + PointeeSized, M>(ptr: *const P) -> M;
+pub const fn ptr_metadata<P: ptr::Pointee<Metadata = M> + PointeeSized + ?Forget, M>(
+    ptr: *const P,
+) -> M;
 
 /// This is an accidentally-stable alias to [`ptr::copy_nonoverlapping`]; use that instead.
 // Note (intentionally not in the doc comment): `ptr::copy_nonoverlapping` adds some extra

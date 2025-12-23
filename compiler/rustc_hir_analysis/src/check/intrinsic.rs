@@ -129,7 +129,6 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::fmuladdf32
         | sym::fmuladdf64
         | sym::fmuladdf128
-        | sym::forget
         | sym::frem_algebraic
         | sym::fsub_algebraic
         | sym::is_val_statically_known

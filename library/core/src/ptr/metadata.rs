@@ -3,7 +3,7 @@
 use crate::fmt;
 use crate::hash::{Hash, Hasher};
 use crate::intrinsics::{aggregate_raw_ptr, ptr_metadata};
-use crate::marker::{Freeze, PointeeSized};
+use crate::marker::{Forget, Freeze, PointeeSized};
 use crate::ptr::NonNull;
 
 /// Provides the pointer metadata type of any pointed-to type.
@@ -55,7 +55,7 @@ use crate::ptr::NonNull;
 #[lang = "pointee_trait"]
 #[rustc_deny_explicit_impl]
 #[rustc_do_not_implement_via_object]
-pub trait Pointee: PointeeSized {
+pub trait Pointee: PointeeSized + ?Forget {
     /// The type for metadata in pointers and references to `Self`.
     #[lang = "metadata_type"]
     // NOTE: Keep trait bounds in `static_assert_expected_bounds_for_metadata`
@@ -96,7 +96,7 @@ pub trait Thin = Pointee<Metadata = ()> + PointeeSized;
 /// assert_eq!(std::ptr::metadata("foo"), 3_usize);
 /// ```
 #[inline]
-pub const fn metadata<T: PointeeSized>(ptr: *const T) -> <T as Pointee>::Metadata {
+pub const fn metadata<T: PointeeSized + ?Forget>(ptr: *const T) -> <T as Pointee>::Metadata {
     ptr_metadata(ptr)
 }
 

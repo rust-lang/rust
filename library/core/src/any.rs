@@ -86,6 +86,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+use crate::marker::Forget;
 use crate::{fmt, hash, intrinsics};
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -854,7 +855,7 @@ impl fmt::Debug for TypeId {
 #[must_use]
 #[stable(feature = "type_name", since = "1.38.0")]
 #[rustc_const_unstable(feature = "const_type_name", issue = "63084")]
-pub const fn type_name<T: ?Sized>() -> &'static str {
+pub const fn type_name<T: ?Sized + ?Forget>() -> &'static str {
     const { intrinsics::type_name::<T>() }
 }
 

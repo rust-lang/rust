@@ -1,4 +1,4 @@
-use crate::marker::Destruct;
+use crate::marker::{Destruct, Forget};
 use crate::ops::{Deref, DerefMut, DerefPure};
 use crate::ptr;
 
@@ -155,7 +155,7 @@ use crate::ptr;
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(transparent)]
 #[rustc_pub_transparent]
-pub struct ManuallyDrop<T: ?Sized> {
+pub struct ManuallyDrop<T: ?Sized + ?Forget> {
     value: T,
 }
 
@@ -178,7 +178,10 @@ impl<T> ManuallyDrop<T> {
     #[stable(feature = "manually_drop", since = "1.20.0")]
     #[rustc_const_stable(feature = "const_manually_drop", since = "1.32.0")]
     #[inline(always)]
-    pub const fn new(value: T) -> ManuallyDrop<T> {
+    pub const fn new(value: T) -> ManuallyDrop<T>
+    where
+        T: Forget,
+    {
         ManuallyDrop { value }
     }
 
@@ -222,6 +225,19 @@ impl<T> ManuallyDrop<T> {
         // SAFETY: we are reading from a reference, which is guaranteed
         // to be valid for reads.
         unsafe { ptr::read(&slot.value) }
+    }
+}
+
+impl<T: ?Forget> ManuallyDrop<T> {
+    /// Unchecked version of [`ManuallyDrop::new`] where `T` might not implement [`Forget`].
+    ///
+    /// # Safety
+    ///
+    /// Caller must ensure `value` is dropped according to type's safety invariants.
+    #[unstable(feature = "forget_trait", issue = "none")]
+    #[inline(always)]
+    pub const unsafe fn new_unchecked(value: T) -> ManuallyDrop<T> {
+        ManuallyDrop { value }
     }
 }
 

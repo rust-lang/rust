@@ -258,7 +258,7 @@ pub trait Unsize<T: PointeeSized + ?crate::marker::Forget>: PointeeSized {
 #[unstable(feature = "structural_match", issue = "31434")]
 #[diagnostic::on_unimplemented(message = "the type `{Self}` does not `#[derive(PartialEq)]`")]
 #[lang = "structural_peq"]
-pub trait StructuralPartialEq {
+pub trait StructuralPartialEq: ?Forget {
     // Empty.
 }
 
@@ -486,8 +486,8 @@ marker_impls! {
         isize, i8, i16, i32, i64, i128,
         f16, f32, f64, f128,
         bool, char,
-        {T: PointeeSized} *const T,
-        {T: PointeeSized} *mut T,
+        {T: PointeeSized + ?Forget} *const T,
+        {T: PointeeSized + ?Forget} *mut T,
 
 }
 
@@ -496,7 +496,7 @@ impl Copy for ! {}
 
 /// Shared references can be copied, but mutable references *cannot*!
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: PointeeSized> Copy for &T {}
+impl<T: PointeeSized + ?Forget> Copy for &T {}
 
 /// Marker trait for the types that are allowed in union fields and unsafe
 /// binder types.
@@ -852,10 +852,10 @@ impl<T: PointeeSized> cmp::Ord for PhantomData<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: PointeeSized> Copy for PhantomData<T> {}
+impl<T: PointeeSized + ?Forget> Copy for PhantomData<T> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: PointeeSized> Clone for PhantomData<T> {
+impl<T: PointeeSized + ?Forget> Clone for PhantomData<T> {
     fn clone(&self) -> Self {
         Self
     }
@@ -863,7 +863,7 @@ impl<T: PointeeSized> Clone for PhantomData<T> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_default", issue = "143894")]
-impl<T: PointeeSized> const Default for PhantomData<T> {
+impl<T: PointeeSized + ?Forget> const Default for PhantomData<T> {
     fn default() -> Self {
         Self
     }

@@ -6,7 +6,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::alloc::Layout;
-use crate::marker::DiscriminantKind;
+use crate::marker::{DiscriminantKind, Forget};
 use crate::panic::const_assert;
 use crate::{clone, cmp, fmt, hash, intrinsics, ptr};
 
@@ -148,8 +148,19 @@ pub use crate::intrinsics::transmute;
 #[rustc_const_stable(feature = "const_forget", since = "1.46.0")]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_diagnostic_item = "mem_forget"]
-pub const fn forget<T>(t: T) {
+pub const fn forget<T: Forget>(t: T) {
     let _ = ManuallyDrop::new(t);
+}
+
+/// Unchecked version of [`forget`] where `T` might not implement [`Forget`].
+///
+/// # Safety
+///
+/// Caller must ensure `t` is dropped according to type's safety invariants.
+#[inline]
+#[unstable(feature = "forget_trait", issue = "none")]
+pub const unsafe fn forget_unchecked<T: ?Forget>(t: T) {
+    let _ = unsafe { ManuallyDrop::new_unchecked(t) };
 }
 
 /// Like [`forget`], but also accepts unsized values.
@@ -182,8 +193,19 @@ pub const fn forget<T>(t: T) {
 /// [#71170]: https://github.com/rust-lang/rust/pull/71170
 #[inline]
 #[unstable(feature = "forget_unsized", issue = "none")]
-pub fn forget_unsized<T: ?Sized>(t: T) {
-    intrinsics::forget(t)
+pub fn forget_unsized<T: ?Sized + Forget>(t: T) {
+    unsafe { forget_unsized_unchecked(t) }
+}
+
+/// Unchecked version of [`forget_unsized`] where `T` might not implement [`Forget`].
+///
+/// # Safety
+///
+/// Caller must ensure `t` is dropped according to type's safety invariants.
+#[inline]
+#[unstable(feature = "forget_trait", issue = "none")]
+pub unsafe fn forget_unsized_unchecked<T: ?Sized + ?Forget>(t: T) {
+    unsafe { intrinsics::forget(t) }
 }
 
 /// Returns the size of a type in bytes.

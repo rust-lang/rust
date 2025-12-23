@@ -240,6 +240,7 @@ symbols! {
         Fn,
         FnMut,
         FnOnce,
+        Forget,
         Formatter,
         Forward,
         From,

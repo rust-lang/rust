@@ -1,6 +1,7 @@
 use super::*;
 use crate::cmp::Ordering::{Equal, Greater, Less};
 use crate::intrinsics::const_eval_select;
+use crate::marker::Forget;
 use crate::mem::{self, SizedTypeProperties};
 use crate::slice::{self, SliceIndex};
 
@@ -38,15 +39,6 @@ impl<T: PointeeSized> *const T {
                 ptr.addr() == 0
             }
         )
-    }
-
-    /// Casts to a pointer of another type.
-    #[stable(feature = "ptr_cast", since = "1.38.0")]
-    #[rustc_const_stable(feature = "const_ptr_cast", since = "1.38.0")]
-    #[rustc_diagnostic_item = "const_ptr_cast"]
-    #[inline(always)]
-    pub const fn cast<U>(self) -> *const U {
-        self as _
     }
 
     /// Try to cast to a pointer of another type by checking alignment.
@@ -158,6 +150,17 @@ impl<T: PointeeSized> *const T {
         // provenance).
         unsafe { mem::transmute(self.cast::<()>()) }
     }
+}
+
+impl<T: PointeeSized + ?Forget> *const T {
+    /// Casts to a pointer of another type.
+    #[stable(feature = "ptr_cast", since = "1.38.0")]
+    #[rustc_const_stable(feature = "const_ptr_cast", since = "1.38.0")]
+    #[rustc_diagnostic_item = "const_ptr_cast"]
+    #[inline(always)]
+    pub const fn cast<U>(self) -> *const U {
+        self as _
+    }
 
     /// Exposes the ["provenance"][crate::ptr#provenance] part of the pointer for future use in
     /// [`with_exposed_provenance`] and returns the "address" portion.
@@ -186,7 +189,9 @@ impl<T: PointeeSized> *const T {
     pub fn expose_provenance(self) -> usize {
         self.cast::<()>() as usize
     }
+}
 
+impl<T: PointeeSized> *const T {
     /// Creates a new pointer with the given address and the [provenance][crate::ptr#provenance] of
     /// `self`.
     ///
