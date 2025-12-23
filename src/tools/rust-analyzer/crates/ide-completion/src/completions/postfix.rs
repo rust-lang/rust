@@ -355,12 +355,20 @@ fn get_receiver_text(
         range.range = TextRange::at(range.range.start(), range.range.len() - TextSize::of('.'))
     }
     let file_text = sema.db.file_text(range.file_id.file_id(sema.db));
-    let mut text = file_text.text(sema.db)[range.range].to_owned();
+    let text = file_text.text(sema.db);
+    let indent_spaces = indent_of_tail_line(&text[TextRange::up_to(range.range.start())]);
+    let mut text = stdx::dedent_by(indent_spaces, &text[range.range]);
 
     // The receiver texts should be interpreted as-is, as they are expected to be
     // normal Rust expressions.
     escape_snippet_bits(&mut text);
-    text
+    return text;
+
+    fn indent_of_tail_line(text: &str) -> usize {
+        let tail_line = text.rsplit_once('\n').map_or(text, |(_, s)| s);
+        let trimmed = tail_line.trim_start_matches(' ');
+        tail_line.len() - trimmed.len()
+    }
 }
 
 /// Escapes `\` and `$` so that they don't get interpreted as snippet-specific constructs.
@@ -977,9 +985,9 @@ use core::ops::ControlFlow;
 
 fn main() {
     ControlFlow::Break(match true {
-        true => "\${1:placeholder}",
-        false => "\\\$",
-    })
+    true => "\${1:placeholder}",
+    false => "\\\$",
+})
 }
 "#,
         );
@@ -1217,6 +1225,33 @@ fn foo() {
     assert!(Box::new(if a == false { true } else { false }));
 }
         "#,
+        );
+    }
+
+    #[test]
+    fn snippet_dedent() {
+        check_edit(
+            "let",
+            r#"
+//- minicore: option
+fn foo(x: Option<i32>, y: Option<i32>) {
+    let _f = || {
+        x
+            .and(y)
+            .map(|it| it+2)
+            .$0
+    };
+}
+"#,
+            r#"
+fn foo(x: Option<i32>, y: Option<i32>) {
+    let _f = || {
+        let $0 = x
+    .and(y)
+    .map(|it| it+2);
+    };
+}
+"#,
         );
     }
 }
