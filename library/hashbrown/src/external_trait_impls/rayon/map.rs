@@ -346,7 +346,7 @@ where
         self.len() == other.len()
             && self
                 .into_par_iter()
-                .all(|(key, value)| other.get(key).map_or(false, |v| *value == *v))
+                .all(|(key, value)| other.get(key).is_some_and(|v| *value == *v))
     }
 }
 
@@ -455,7 +455,7 @@ where
     // Reserve the entire length if the map is empty.
     // Otherwise reserve half the length (rounded up), so the map
     // will only resize twice in the worst case.
-    let reserve = if map.is_empty() { len } else { (len + 1) / 2 };
+    let reserve = if map.is_empty() { len } else { len.div_ceil(2) };
     map.reserve(reserve);
     for vec in list {
         map.extend(vec);

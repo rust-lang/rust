@@ -1,7 +1,7 @@
-// This benchmark suite contains some benchmarks along a set of dimensions:
-//   Hasher: std default (SipHash) and crate default (foldhash).
-//   Int key distribution: low bit heavy, top bit heavy, and random.
-//   Task: basic functionality: insert, insert_erase, lookup, lookup_fail, iter
+//! This benchmark suite contains some benchmarks along a set of dimensions:
+//! * Hasher: std default (SipHash) and crate default (foldhash).
+//! * Int key distribution: low bit heavy, top bit heavy, and random.
+//! * Task: basic functionality: insert, insert_erase, lookup, lookup_fail, iter
 #![feature(test)]
 
 extern crate test;
