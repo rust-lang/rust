@@ -31,7 +31,7 @@ fn main() -> std::io::Result<()> {
             clap::Arg::new("format")
                 .long("format")
                 .action(clap::ArgAction::Set)
-                .default_value("bidirectional-postcard-prototype")
+                .default_value("json-legacy")
                 .value_parser(clap::builder::EnumValueParser::<ProtocolFormat>::new()),
             clap::Arg::new("version")
                 .long("version")
@@ -71,7 +71,7 @@ impl ValueEnum for ProtocolFormat {
                 Some(clap::builder::PossibleValue::new("postcard-legacy"))
             }
             ProtocolFormat::BidirectionalPostcardPrototype => {
-                Some(clap::builder::PossibleValue::new("postcard-new"))
+                Some(clap::builder::PossibleValue::new("bidirectional-postcard-prototype"))
             }
         }
     }

@@ -1856,7 +1856,6 @@ dependencies = [
 name = "proc-macro-srv"
 version = "0.0.0"
 dependencies = [
- "crossbeam-channel",
  "expect-test",
  "intern",
  "libc",

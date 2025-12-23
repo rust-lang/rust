@@ -141,7 +141,6 @@ impl server::Span for SpanIdServer {
     /// See PR:
     /// https://github.com/rust-lang/rust/pull/55780
     fn source_text(&mut self, _span: Self::Span) -> Option<String> {
-        // FIXME requires db, needs special handling wrt fixup spans
         None
     }
 
