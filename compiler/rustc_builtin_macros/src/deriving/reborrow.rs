@@ -1,4 +1,4 @@
-use rustc_ast::{self as ast, Generics, ItemKind, MetaItem, VariantData};
+use rustc_ast::{self as ast, Generics, ItemKind, MetaItem, Safety, VariantData};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_span::{Ident, Span, kw, sym};
@@ -77,6 +77,8 @@ pub(crate) fn expand_deriving_reborrow(
         associated_types: Vec::new(),
         is_const,
         is_staged_api_crate: cx.ecfg.features.staged_api(),
+        document: true,
+        safety: Safety::Default,
     };
 
     trait_def.expand_ext(cx, mitem, item, push, is_simple)
