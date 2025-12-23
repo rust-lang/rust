@@ -57,7 +57,11 @@ enum ProtocolFormat {
 
 impl ValueEnum for ProtocolFormat {
     fn value_variants<'a>() -> &'a [Self] {
-        &[ProtocolFormat::JsonLegacy, ProtocolFormat::PostcardLegacy, ProtocolFormat::BidirectionalPostcardPrototype]
+        &[
+            ProtocolFormat::JsonLegacy,
+            ProtocolFormat::PostcardLegacy,
+            ProtocolFormat::BidirectionalPostcardPrototype,
+        ]
     }
 
     fn to_possible_value(&self) -> Option<clap::builder::PossibleValue> {
@@ -66,14 +70,18 @@ impl ValueEnum for ProtocolFormat {
             ProtocolFormat::PostcardLegacy => {
                 Some(clap::builder::PossibleValue::new("postcard-legacy"))
             }
-            ProtocolFormat::BidirectionalPostcardPrototype => Some(clap::builder::PossibleValue::new("postcard-new")),
+            ProtocolFormat::BidirectionalPostcardPrototype => {
+                Some(clap::builder::PossibleValue::new("postcard-new"))
+            }
         }
     }
     fn from_str(input: &str, _ignore_case: bool) -> Result<Self, String> {
         match input {
             "json-legacy" => Ok(ProtocolFormat::JsonLegacy),
             "postcard-legacy" => Ok(ProtocolFormat::PostcardLegacy),
-            "bidirectional-postcard-prototype" => Ok(ProtocolFormat::BidirectionalPostcardPrototype),
+            "bidirectional-postcard-prototype" => {
+                Ok(ProtocolFormat::BidirectionalPostcardPrototype)
+            }
             _ => Err(format!("unknown protocol format: {input}")),
         }
     }

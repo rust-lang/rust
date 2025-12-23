@@ -1836,7 +1836,6 @@ dependencies = [
 name = "proc-macro-api"
 version = "0.0.0"
 dependencies = [
- "base-db",
  "indexmap",
  "intern",
  "paths",

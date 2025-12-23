@@ -7,7 +7,6 @@ use std::{
     sync::{Arc, Mutex, OnceLock},
 };
 
-use base_db::SourceDatabase;
 use paths::AbsPath;
 use semver::Version;
 use span::Span;
@@ -15,7 +14,7 @@ use stdx::JodChild;
 
 use crate::{
     Codec, ProcMacro, ProcMacroKind, ServerError,
-    bidirectional_protocol::{self, ClientCallbacks, msg::BidirectionalMessage},
+    bidirectional_protocol::{self, SubCallback, msg::BidirectionalMessage, reject_subrequests},
     legacy_protocol::{self, SpanMode},
     version,
 };
@@ -67,7 +66,7 @@ impl ProcMacroServerProcess {
         {
             &[
                 (
-                    Some("postcard-new"),
+                    Some("bidirectional-postcard-prototype"),
                     Protocol::BidirectionalPostcardPrototype { mode: SpanMode::Id },
                 ),
                 (Some("postcard-legacy"), Protocol::LegacyPostcard { mode: SpanMode::Id }),
@@ -92,7 +91,7 @@ impl ProcMacroServerProcess {
             };
             let mut srv = create_srv()?;
             tracing::info!("sending proc-macro server version check");
-            match srv.version_check() {
+            match srv.version_check(Some(&mut reject_subrequests)) {
                 Ok(v) if v > version::CURRENT_API_VERSION => {
                     #[allow(clippy::disallowed_methods)]
                     let process_version = Command::new(process_path)
@@ -110,7 +109,8 @@ impl ProcMacroServerProcess {
                     tracing::info!("Proc-macro server version: {v}");
                     srv.version = v;
                     if srv.version >= version::RUST_ANALYZER_SPAN_SUPPORT
-                        && let Ok(new_mode) = srv.enable_rust_analyzer_spans()
+                        && let Ok(new_mode) =
+                            srv.enable_rust_analyzer_spans(Some(&mut reject_subrequests))
                     {
                         match &mut srv.protocol {
                             Protocol::LegacyJson { mode }
@@ -156,25 +156,30 @@ impl ProcMacroServerProcess {
     }
 
     /// Checks the API version of the running proc-macro server.
-    fn version_check(&self) -> Result<u32, ServerError> {
+    fn version_check(&self, callback: Option<SubCallback<'_>>) -> Result<u32, ServerError> {
         match self.protocol {
             Protocol::LegacyJson { .. } | Protocol::LegacyPostcard { .. } => {
                 legacy_protocol::version_check(self)
             }
             Protocol::BidirectionalPostcardPrototype { .. } => {
-                bidirectional_protocol::version_check(self)
+                let cb = callback.expect("callback required for bidirectional protocol");
+                bidirectional_protocol::version_check(self, cb)
             }
         }
     }
 
     /// Enable support for rust-analyzer span mode if the server supports it.
-    fn enable_rust_analyzer_spans(&self) -> Result<SpanMode, ServerError> {
+    fn enable_rust_analyzer_spans(
+        &self,
+        callback: Option<SubCallback<'_>>,
+    ) -> Result<SpanMode, ServerError> {
         match self.protocol {
             Protocol::LegacyJson { .. } | Protocol::LegacyPostcard { .. } => {
                 legacy_protocol::enable_rust_analyzer_spans(self)
             }
             Protocol::BidirectionalPostcardPrototype { .. } => {
-                bidirectional_protocol::enable_rust_analyzer_spans(self)
+                let cb = callback.expect("callback required for bidirectional protocol");
+                bidirectional_protocol::enable_rust_analyzer_spans(self, cb)
             }
         }
     }
@@ -183,20 +188,21 @@ impl ProcMacroServerProcess {
     pub(crate) fn find_proc_macros(
         &self,
         dylib_path: &AbsPath,
+        callback: Option<SubCallback<'_>>,
     ) -> Result<Result<Vec<(String, ProcMacroKind)>, String>, ServerError> {
         match self.protocol {
             Protocol::LegacyJson { .. } | Protocol::LegacyPostcard { .. } => {
                 legacy_protocol::find_proc_macros(self, dylib_path)
             }
             Protocol::BidirectionalPostcardPrototype { .. } => {
-                bidirectional_protocol::find_proc_macros(self, dylib_path)
+                let cb = callback.expect("callback required for bidirectional protocol");
+                bidirectional_protocol::find_proc_macros(self, dylib_path, cb)
             }
         }
     }
 
     pub(crate) fn expand(
         &self,
-        db: &dyn SourceDatabase,
         proc_macro: &ProcMacro,
         subtree: tt::SubtreeView<'_, Span>,
         attr: Option<tt::SubtreeView<'_, Span>>,
@@ -205,12 +211,12 @@ impl ProcMacroServerProcess {
         call_site: Span,
         mixed_site: Span,
         current_dir: String,
+        callback: Option<SubCallback<'_>>,
     ) -> Result<Result<tt::TopSubtree<Span>, String>, ServerError> {
         match self.protocol {
             Protocol::LegacyJson { .. } | Protocol::LegacyPostcard { .. } => {
                 legacy_protocol::expand(
                     proc_macro,
-                    db,
                     subtree,
                     attr,
                     env,
@@ -222,7 +228,6 @@ impl ProcMacroServerProcess {
             }
             Protocol::BidirectionalPostcardPrototype { .. } => bidirectional_protocol::expand(
                 proc_macro,
-                db,
                 subtree,
                 attr,
                 env,
@@ -230,6 +235,7 @@ impl ProcMacroServerProcess {
                 call_site,
                 mixed_site,
                 current_dir,
+                callback.expect("callback required for bidirectional protocol"),
             ),
         }
     }
@@ -297,10 +303,10 @@ impl ProcMacroServerProcess {
     pub(crate) fn run_bidirectional<C: Codec>(
         &self,
         initial: BidirectionalMessage,
-        callbacks: &mut dyn ClientCallbacks,
+        callback: SubCallback<'_>,
     ) -> Result<BidirectionalMessage, ServerError> {
         self.with_locked_io::<C, _>(|writer, reader, buf| {
-            bidirectional_protocol::run_conversation::<C>(writer, reader, buf, initial, callbacks)
+            bidirectional_protocol::run_conversation::<C>(writer, reader, buf, initial, callback)
         })
     }
 }

@@ -7,7 +7,6 @@ use std::{
     sync::Arc,
 };
 
-use base_db::SourceDatabase;
 use paths::AbsPath;
 use span::Span;
 
@@ -78,7 +77,6 @@ pub(crate) fn find_proc_macros(
 
 pub(crate) fn expand(
     proc_macro: &ProcMacro,
-    _db: &dyn SourceDatabase,
     subtree: tt::SubtreeView<'_, Span>,
     attr: Option<tt::SubtreeView<'_, Span>>,
     env: Vec<(String, String)>,
