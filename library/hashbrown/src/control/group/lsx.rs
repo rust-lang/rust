@@ -54,10 +54,8 @@ impl Group {
     #[inline]
     #[allow(clippy::cast_ptr_alignment)]
     pub(crate) unsafe fn load_aligned(ptr: *const Tag) -> Self {
-        unsafe {
-            debug_assert_eq!(ptr.align_offset(mem::align_of::<Self>()), 0);
-            Group(lsx_vld::<0>(ptr.cast()))
-        }
+        debug_assert_eq!(ptr.align_offset(mem::align_of::<Self>()), 0);
+        unsafe { Group(lsx_vld::<0>(ptr.cast())) }
     }
 
     /// Stores the group of tags to the given address, which must be
@@ -65,8 +63,8 @@ impl Group {
     #[inline]
     #[allow(clippy::cast_ptr_alignment)]
     pub(crate) unsafe fn store_aligned(self, ptr: *mut Tag) {
+        debug_assert_eq!(ptr.align_offset(mem::align_of::<Self>()), 0);
         unsafe {
-            debug_assert_eq!(ptr.align_offset(mem::align_of::<Self>()), 0);
             lsx_vst::<0>(self.0, ptr.cast());
         }
     }

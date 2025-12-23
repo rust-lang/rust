@@ -511,11 +511,9 @@ where
     /// ```
     #[inline]
     pub unsafe fn get_bucket_entry_unchecked(&mut self, index: usize) -> OccupiedEntry<'_, T, A> {
-        unsafe {
-            OccupiedEntry {
-                bucket: self.raw.bucket(index),
-                table: self,
-            }
+        OccupiedEntry {
+            bucket: unsafe { self.raw.bucket(index) },
+            table: self,
         }
     }
 
