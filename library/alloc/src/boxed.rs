@@ -191,7 +191,7 @@ use core::error::{self, Error};
 use core::fmt;
 use core::future::Future;
 use core::hash::{Hash, Hasher};
-use core::marker::{Tuple, Unsize};
+use core::marker::{Forget, Tuple, Unsize};
 use core::mem::{self, SizedTypeProperties};
 use core::ops::{
     AsyncFn, AsyncFnMut, AsyncFnOnce, CoerceUnsized, Coroutine, CoroutineState, Deref, DerefMut,
@@ -229,7 +229,7 @@ pub use thin::ThinBox;
 // The declaration of the `Box` struct must be kept in sync with the
 // compiler or ICEs will happen.
 pub struct Box<
-    T: ?Sized,
+    T: ?Sized + ?Forget,
     #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
 >(Unique<T>, A);
 
@@ -1672,7 +1672,7 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-unsafe impl<#[may_dangle] T: ?Sized, A: Allocator> Drop for Box<T, A> {
+unsafe impl<#[may_dangle] T: ?Sized + ?Forget, A: Allocator> Drop for Box<T, A> {
     #[inline]
     fn drop(&mut self) {
         // the T in the Box is dropped by the compiler before the destructor is run

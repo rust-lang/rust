@@ -1,5 +1,6 @@
 #![allow(clippy::enum_clike_unportable_variant)]
 
+use crate::marker::Forget;
 use crate::num::NonZero;
 use crate::ub_checks::assert_unsafe_precondition;
 use crate::{cmp, fmt, hash, mem, num};
@@ -45,7 +46,7 @@ impl Alignment {
     #[unstable(feature = "ptr_alignment_type", issue = "102070")]
     #[inline]
     #[must_use]
-    pub const fn of<T>() -> Self {
+    pub const fn of<T: ?Forget>() -> Self {
         // This can't actually panic since type alignment is always a power of two.
         const { Alignment::new(align_of::<T>()).unwrap() }
     }

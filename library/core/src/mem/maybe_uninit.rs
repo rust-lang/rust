@@ -312,81 +312,6 @@ impl<T> MaybeUninit<T> {
         MaybeUninit { value: ManuallyDrop::new(val) }
     }
 
-    /// Creates a new `MaybeUninit<T>` in an uninitialized state.
-    ///
-    /// Note that dropping a `MaybeUninit<T>` will never call `T`'s drop code.
-    /// It is your responsibility to make sure `T` gets dropped if it got initialized.
-    ///
-    /// See the [type-level documentation][MaybeUninit] for some examples.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use std::mem::MaybeUninit;
-    ///
-    /// let v: MaybeUninit<String> = MaybeUninit::uninit();
-    /// ```
-    #[stable(feature = "maybe_uninit", since = "1.36.0")]
-    #[rustc_const_stable(feature = "const_maybe_uninit", since = "1.36.0")]
-    #[must_use]
-    #[inline(always)]
-    #[rustc_diagnostic_item = "maybe_uninit_uninit"]
-    pub const fn uninit() -> MaybeUninit<T> {
-        MaybeUninit { uninit: () }
-    }
-
-    /// Creates a new `MaybeUninit<T>` in an uninitialized state, with the memory being
-    /// filled with `0` bytes. It depends on `T` whether that already makes for
-    /// proper initialization. For example, `MaybeUninit<usize>::zeroed()` is initialized,
-    /// but `MaybeUninit<&'static i32>::zeroed()` is not because references must not
-    /// be null.
-    ///
-    /// Note that if `T` has padding bytes, those bytes are *not* preserved when the
-    /// `MaybeUninit<T>` value is returned from this function, so those bytes will *not* be zeroed.
-    ///
-    /// Note that dropping a `MaybeUninit<T>` will never call `T`'s drop code.
-    /// It is your responsibility to make sure `T` gets dropped if it got initialized.
-    ///
-    /// # Example
-    ///
-    /// Correct usage of this function: initializing a struct with zero, where all
-    /// fields of the struct can hold the bit-pattern 0 as a valid value.
-    ///
-    /// ```rust
-    /// use std::mem::MaybeUninit;
-    ///
-    /// let x = MaybeUninit::<(u8, bool)>::zeroed();
-    /// let x = unsafe { x.assume_init() };
-    /// assert_eq!(x, (0, false));
-    /// ```
-    ///
-    /// This can be used in const contexts, such as to indicate the end of static arrays for
-    /// plugin registration.
-    ///
-    /// *Incorrect* usage of this function: calling `x.zeroed().assume_init()`
-    /// when `0` is not a valid bit-pattern for the type:
-    ///
-    /// ```rust,no_run
-    /// use std::mem::MaybeUninit;
-    ///
-    /// enum NotZero { One = 1, Two = 2 }
-    ///
-    /// let x = MaybeUninit::<(u8, NotZero)>::zeroed();
-    /// let x = unsafe { x.assume_init() };
-    /// // Inside a pair, we create a `NotZero` that does not have a valid discriminant.
-    /// // This is undefined behavior. ⚠️
-    /// ```
-    #[inline]
-    #[must_use]
-    #[rustc_diagnostic_item = "maybe_uninit_zeroed"]
-    #[stable(feature = "maybe_uninit", since = "1.36.0")]
-    #[rustc_const_stable(feature = "const_maybe_uninit_zeroed", since = "1.75.0")]
-    pub const fn zeroed() -> MaybeUninit<T> {
-        let mut u = MaybeUninit::<T>::uninit();
-        // SAFETY: `u.as_mut_ptr()` points to allocated memory.
-        unsafe { u.as_mut_ptr().write_bytes(0u8, 1) };
-        u
-    }
 
     /// Sets the value of the `MaybeUninit<T>`.
     ///
@@ -482,66 +407,6 @@ impl<T> MaybeUninit<T> {
         unsafe { self.write_unchecked(val) }
     }
 
-    /// Extracts the value from the `MaybeUninit<T>` container. This is a great way
-    /// to ensure that the data will get dropped, because the resulting `T` is
-    /// subject to the usual drop handling.
-    ///
-    /// # Safety
-    ///
-    /// It is up to the caller to guarantee that the `MaybeUninit<T>` really is in an initialized
-    /// state. Calling this when the content is not yet fully initialized causes immediate undefined
-    /// behavior. The [type-level documentation][inv] contains more information about
-    /// this initialization invariant.
-    ///
-    /// [inv]: #initialization-invariant
-    ///
-    /// On top of that, remember that most types have additional invariants beyond merely
-    /// being considered initialized at the type level. For example, a `1`-initialized [`Vec<T>`]
-    /// is considered initialized (under the current implementation; this does not constitute
-    /// a stable guarantee) because the only requirement the compiler knows about it
-    /// is that the data pointer must be non-null. Creating such a `Vec<T>` does not cause
-    /// *immediate* undefined behavior, but will cause undefined behavior with most
-    /// safe operations (including dropping it).
-    ///
-    /// [`Vec<T>`]: ../../std/vec/struct.Vec.html
-    ///
-    /// # Examples
-    ///
-    /// Correct usage of this method:
-    ///
-    /// ```rust
-    /// use std::mem::MaybeUninit;
-    ///
-    /// let mut x = MaybeUninit::<bool>::uninit();
-    /// x.write(true);
-    /// let x_init = unsafe { x.assume_init() };
-    /// assert_eq!(x_init, true);
-    /// ```
-    ///
-    /// *Incorrect* usage of this method:
-    ///
-    /// ```rust,no_run
-    /// use std::mem::MaybeUninit;
-    ///
-    /// let x = MaybeUninit::<Vec<u32>>::uninit();
-    /// let x_init = unsafe { x.assume_init() };
-    /// // `x` had not been initialized yet, so this last line caused undefined behavior. ⚠️
-    /// ```
-    #[stable(feature = "maybe_uninit", since = "1.36.0")]
-    #[rustc_const_stable(feature = "const_maybe_uninit_assume_init_by_value", since = "1.59.0")]
-    #[inline(always)]
-    #[rustc_diagnostic_item = "assume_init"]
-    #[track_caller]
-    pub const unsafe fn assume_init(self) -> T {
-        // SAFETY: the caller must guarantee that `self` is initialized.
-        // This also means that `self` must be a `value` variant.
-        unsafe {
-            intrinsics::assert_inhabited::<T>();
-            // We do this via a raw ptr read instead of `ManuallyDrop::into_inner` so that there's
-            // no trace of `ManuallyDrop` in Miri's error messages here.
-            (&raw const self.value).cast::<T>().read()
-        }
-    }
 
     /// Reads the value from the `MaybeUninit<T>` container. The resulting `T` is subject
     /// to the usual drop handling.
@@ -713,45 +578,6 @@ impl<T> MaybeUninit<T> {
         }
     }
 
-    /// Extracts the values from an array of `MaybeUninit` containers.
-    ///
-    /// # Safety
-    ///
-    /// It is up to the caller to guarantee that all elements of the array are
-    /// in an initialized state.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(maybe_uninit_array_assume_init)]
-    /// use std::mem::MaybeUninit;
-    ///
-    /// let mut array: [MaybeUninit<i32>; 3] = [MaybeUninit::uninit(); 3];
-    /// array[0].write(0);
-    /// array[1].write(1);
-    /// array[2].write(2);
-    ///
-    /// // SAFETY: Now safe as we initialised all elements
-    /// let array = unsafe {
-    ///     MaybeUninit::array_assume_init(array)
-    /// };
-    ///
-    /// assert_eq!(array, [0, 1, 2]);
-    /// ```
-    #[unstable(feature = "maybe_uninit_array_assume_init", issue = "96097")]
-    #[inline(always)]
-    #[track_caller]
-    pub const unsafe fn array_assume_init<const N: usize>(array: [Self; N]) -> [T; N] {
-        // SAFETY:
-        // * The caller guarantees that all elements of the array are initialized
-        // * `MaybeUninit<T>` and T are guaranteed to have the same layout
-        // * `MaybeUninit` does not drop, so there are no double-frees
-        // And thus the conversion is safe
-        unsafe {
-            intrinsics::assert_inhabited::<[T; N]>();
-            intrinsics::transmute_unchecked(array)
-        }
-    }
 
     /// Returns the contents of this `MaybeUninit` as a slice of potentially uninitialized bytes.
     ///
@@ -837,6 +663,143 @@ impl<T: ?Forget> MaybeUninit<T> {
     #[inline(always)]
     pub const unsafe fn new_unchecked(val: T) -> MaybeUninit<T> {
         MaybeUninit { value: unsafe { ManuallyDrop::new_unchecked(val) } }
+    }
+
+    /// Creates a new `MaybeUninit<T>` in an uninitialized state.
+    ///
+    /// Note that dropping a `MaybeUninit<T>` will never call `T`'s drop code.
+    /// It is your responsibility to make sure `T` gets dropped if it got initialized.
+    ///
+    /// See the [type-level documentation][MaybeUninit] for some examples.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::mem::MaybeUninit;
+    ///
+    /// let v: MaybeUninit<String> = MaybeUninit::uninit();
+    /// ```
+    #[stable(feature = "maybe_uninit", since = "1.36.0")]
+    #[rustc_const_stable(feature = "const_maybe_uninit", since = "1.36.0")]
+    #[must_use]
+    #[inline(always)]
+    #[rustc_diagnostic_item = "maybe_uninit_uninit"]
+    pub const fn uninit() -> MaybeUninit<T> {
+        MaybeUninit { uninit: () }
+    }
+
+    /// Creates a new `MaybeUninit<T>` in an uninitialized state, with the memory being
+    /// filled with `0` bytes. It depends on `T` whether that already makes for
+    /// proper initialization. For example, `MaybeUninit<usize>::zeroed()` is initialized,
+    /// but `MaybeUninit<&'static i32>::zeroed()` is not because references must not
+    /// be null.
+    ///
+    /// Note that if `T` has padding bytes, those bytes are *not* preserved when the
+    /// `MaybeUninit<T>` value is returned from this function, so those bytes will *not* be zeroed.
+    ///
+    /// Note that dropping a `MaybeUninit<T>` will never call `T`'s drop code.
+    /// It is your responsibility to make sure `T` gets dropped if it got initialized.
+    ///
+    /// # Example
+    ///
+    /// Correct usage of this function: initializing a struct with zero, where all
+    /// fields of the struct can hold the bit-pattern 0 as a valid value.
+    ///
+    /// ```rust
+    /// use std::mem::MaybeUninit;
+    ///
+    /// let x = MaybeUninit::<(u8, bool)>::zeroed();
+    /// let x = unsafe { x.assume_init() };
+    /// assert_eq!(x, (0, false));
+    /// ```
+    ///
+    /// This can be used in const contexts, such as to indicate the end of static arrays for
+    /// plugin registration.
+    ///
+    /// *Incorrect* usage of this function: calling `x.zeroed().assume_init()`
+    /// when `0` is not a valid bit-pattern for the type:
+    ///
+    /// ```rust,no_run
+    /// use std::mem::MaybeUninit;
+    ///
+    /// enum NotZero { One = 1, Two = 2 }
+    ///
+    /// let x = MaybeUninit::<(u8, NotZero)>::zeroed();
+    /// let x = unsafe { x.assume_init() };
+    /// // Inside a pair, we create a `NotZero` that does not have a valid discriminant.
+    /// // This is undefined behavior. ⚠️
+    /// ```
+    #[inline]
+    #[must_use]
+    #[rustc_diagnostic_item = "maybe_uninit_zeroed"]
+    #[stable(feature = "maybe_uninit", since = "1.36.0")]
+    #[rustc_const_stable(feature = "const_maybe_uninit_zeroed", since = "1.75.0")]
+    pub const fn zeroed() -> MaybeUninit<T> {
+        let mut u = MaybeUninit::<T>::uninit();
+        // SAFETY: `u.as_mut_ptr()` points to allocated memory.
+        unsafe { u.as_mut_ptr().write_bytes(0u8, 1) };
+        u
+    }
+
+    /// Extracts the value from the `MaybeUninit<T>` container. This is a great way
+    /// to ensure that the data will get dropped, because the resulting `T` is
+    /// subject to the usual drop handling.
+    ///
+    /// # Safety
+    ///
+    /// It is up to the caller to guarantee that the `MaybeUninit<T>` really is in an initialized
+    /// state. Calling this when the content is not yet fully initialized causes immediate undefined
+    /// behavior. The [type-level documentation][inv] contains more information about
+    /// this initialization invariant.
+    ///
+    /// [inv]: #initialization-invariant
+    ///
+    /// On top of that, remember that most types have additional invariants beyond merely
+    /// being considered initialized at the type level. For example, a `1`-initialized [`Vec<T>`]
+    /// is considered initialized (under the current implementation; this does not constitute
+    /// a stable guarantee) because the only requirement the compiler knows about it
+    /// is that the data pointer must be non-null. Creating such a `Vec<T>` does not cause
+    /// *immediate* undefined behavior, but will cause undefined behavior with most
+    /// safe operations (including dropping it).
+    ///
+    /// [`Vec<T>`]: ../../std/vec/struct.Vec.html
+    ///
+    /// # Examples
+    ///
+    /// Correct usage of this method:
+    ///
+    /// ```rust
+    /// use std::mem::MaybeUninit;
+    ///
+    /// let mut x = MaybeUninit::<bool>::uninit();
+    /// x.write(true);
+    /// let x_init = unsafe { x.assume_init() };
+    /// assert_eq!(x_init, true);
+    /// ```
+    ///
+    /// *Incorrect* usage of this method:
+    ///
+    /// ```rust,no_run
+    /// use std::mem::MaybeUninit;
+    ///
+    /// let x = MaybeUninit::<Vec<u32>>::uninit();
+    /// let x_init = unsafe { x.assume_init() };
+    /// // `x` had not been initialized yet, so this last line caused undefined behavior. ⚠️
+    /// ```
+    #[stable(feature = "maybe_uninit", since = "1.36.0")]
+    #[rustc_const_stable(feature = "const_maybe_uninit_assume_init_by_value", since = "1.59.0")]
+    #[inline(always)]
+    #[rustc_diagnostic_item = "assume_init"]
+    #[track_caller]
+    pub const unsafe fn assume_init(self) -> T {
+        // SAFETY: the caller must guarantee that `self` is initialized.
+        // This also means that `self` must be a `value` variant.
+        unsafe {
+            intrinsics::assert_inhabited::<T>();
+            // We do this via a raw ptr read instead of `ManuallyDrop::into_inner` so that there's
+            // no trace of `ManuallyDrop` in Miri's error messages here.
+            (&raw const self.value).cast::<T>().read()
+        }
     }
 
     /// Gets a mutable (unique) reference to the contained value.
@@ -1053,6 +1016,46 @@ impl<T: ?Forget> MaybeUninit<T> {
     pub const fn as_mut_ptr(&mut self) -> *mut T {
         // `MaybeUninit` and `ManuallyDrop` are both `repr(transparent)` so we can cast the pointer.
         self as *mut _ as *mut T
+    }
+
+    /// Extracts the values from an array of `MaybeUninit` containers.
+    ///
+    /// # Safety
+    ///
+    /// It is up to the caller to guarantee that all elements of the array are
+    /// in an initialized state.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(maybe_uninit_array_assume_init)]
+    /// use std::mem::MaybeUninit;
+    ///
+    /// let mut array: [MaybeUninit<i32>; 3] = [MaybeUninit::uninit(); 3];
+    /// array[0].write(0);
+    /// array[1].write(1);
+    /// array[2].write(2);
+    ///
+    /// // SAFETY: Now safe as we initialised all elements
+    /// let array = unsafe {
+    ///     MaybeUninit::array_assume_init(array)
+    /// };
+    ///
+    /// assert_eq!(array, [0, 1, 2]);
+    /// ```
+    #[unstable(feature = "maybe_uninit_array_assume_init", issue = "96097")]
+    #[inline(always)]
+    #[track_caller]
+    pub const unsafe fn array_assume_init<const N: usize>(array: [Self; N]) -> [T; N] {
+        // SAFETY:
+        // * The caller guarantees that all elements of the array are initialized
+        // * `MaybeUninit<T>` and T are guaranteed to have the same layout
+        // * `MaybeUninit` does not drop, so there are no double-frees
+        // And thus the conversion is safe
+        unsafe {
+            intrinsics::assert_inhabited::<[T; N]>();
+            intrinsics::transmute_unchecked(array)
+        }
     }
 }
 

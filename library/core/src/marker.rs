@@ -158,7 +158,7 @@ unsafe impl<T: Sync + PointeeSized> Send for &T {}
 // and we know that the supertraits are always implemented if the subtrait is just by looking at
 // the builtin impls.
 #[rustc_coinductive]
-pub trait Sized: MetaSized {
+pub trait Sized: MetaSized + ?Forget {
     // Empty.
 }
 
@@ -237,7 +237,7 @@ pub trait PointeeSized: ?Forget {
 #[lang = "unsize"]
 #[rustc_deny_explicit_impl]
 #[rustc_do_not_implement_via_object]
-pub trait Unsize<T: PointeeSized + ?crate::marker::Forget>: PointeeSized {
+pub trait Unsize<T: PointeeSized + ?Forget>: PointeeSized + ?Forget {
     // Empty.
 }
 
@@ -518,7 +518,7 @@ impl<T: PointeeSized + ?Forget> Copy for &T {}
 #[rustc_deny_explicit_impl]
 #[rustc_do_not_implement_via_object]
 #[doc(hidden)]
-pub trait BikeshedGuaranteedNoDrop {}
+pub trait BikeshedGuaranteedNoDrop: ?Forget {}
 
 /// Types for which it is safe to share references between threads.
 ///
@@ -820,7 +820,7 @@ impl<T: PointeeSized> !Sync for *mut T {}
 /// [drop check]: Drop#drop-check
 #[lang = "phantom_data"]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct PhantomData<T: PointeeSized + ?crate::marker::Forget>;
+pub struct PhantomData<T: PointeeSized + ?Forget>;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: PointeeSized> Hash for PhantomData<T> {
@@ -914,7 +914,7 @@ pub trait DiscriminantKind: ?Forget {
 pub unsafe auto trait Freeze {}
 
 #[unstable(feature = "freeze", issue = "121675")]
-impl<T: PointeeSized + ?crate::marker::Forget> !Freeze for UnsafeCell<T> {}
+impl<T: PointeeSized + ?Forget> !Freeze for UnsafeCell<T> {}
 marker_impls! {
     #[unstable(feature = "freeze", issue = "121675")]
     unsafe Freeze for
@@ -934,7 +934,7 @@ marker_impls! {
 #[lang = "unsafe_unpin"]
 pub(crate) unsafe auto trait UnsafeUnpin {}
 
-impl<T: ?Sized + ?crate::marker::Forget> !UnsafeUnpin for UnsafePinned<T> {}
+impl<T: ?Sized + ?Forget> !UnsafeUnpin for UnsafePinned<T> {}
 unsafe impl<T: ?Sized> UnsafeUnpin for PhantomData<T> {}
 unsafe impl<T: ?Sized> UnsafeUnpin for *const T {}
 unsafe impl<T: ?Sized> UnsafeUnpin for *mut T {}
@@ -1058,7 +1058,7 @@ marker_impls! {
 #[rustc_on_unimplemented(message = "can't drop `{Self}`", append_const_msg)]
 #[rustc_deny_explicit_impl]
 #[rustc_do_not_implement_via_object]
-pub const trait Destruct {}
+pub const trait Destruct: ?Forget {}
 
 /// A marker for tuple types.
 ///
@@ -1354,8 +1354,6 @@ pub unsafe auto trait Forget {
 marker_impls! {
     #[unstable(feature = "forget_trait", issue = "none")]
     unsafe Forget for
-        {T: ?Sized + ?Forget} *const T,
-        {T: ?Sized + ?Forget} *mut T,
         {T: ?Sized + ?Forget} &T,
         {T: ?Sized + ?Forget} &mut T,
 }

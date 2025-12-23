@@ -534,7 +534,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::iter::{self, FusedIterator, TrustedLen};
-use crate::marker::Destruct;
+use crate::marker::{Destruct, Forget};
 use crate::ops::{self, ControlFlow, Deref, DerefMut};
 use crate::{convert, fmt, hint};
 
@@ -547,7 +547,7 @@ use crate::{convert, fmt, hint};
 #[must_use = "this `Result` may be an `Err` variant, which should be handled"]
 #[rustc_diagnostic_item = "Result"]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub enum Result<T, E> {
+pub enum Result<T: ?Forget, E> {
     /// Contains the success value
     #[lang = "Ok"]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -1874,7 +1874,7 @@ const fn unwrap_failed<T>(_msg: &str, _error: &T) -> ! {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T, E> Clone for Result<T, E>
 where
-    T: Clone,
+    T: Clone + ?Forget,
     E: Clone,
 {
     #[inline]

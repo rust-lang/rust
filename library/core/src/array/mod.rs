@@ -12,6 +12,7 @@ use crate::fmt;
 use crate::hash::{self, Hash};
 use crate::intrinsics::transmute_unchecked;
 use crate::iter::{UncheckedIterator, repeat_n};
+use crate::marker::Forget;
 use crate::mem::{self, MaybeUninit};
 use crate::ops::{
     ChangeOutputType, ControlFlow, FromResidual, Index, IndexMut, NeverShortCircuit, Residual, Try,
@@ -146,6 +147,7 @@ pub fn try_from_fn<R, const N: usize, F>(cb: F) -> ChangeOutputType<R, [R::Outpu
 where
     F: FnMut(usize) -> R,
     R: Try,
+    R::Output: Forget,
     R::Residual: Residual<[R::Output; N]>,
 {
     let mut array = [const { MaybeUninit::uninit() }; N];
@@ -582,7 +584,7 @@ impl<T, const N: usize> [T; N] {
     #[unstable(feature = "array_try_map", issue = "79711")]
     pub fn try_map<R>(self, f: impl FnMut(T) -> R) -> ChangeOutputType<R, [R::Output; N]>
     where
-        R: Try<Residual: Residual<[R::Output; N]>>,
+        R: Try<Output: Forget, Residual: Residual<[R::Output; N]>>,
     {
         drain_array_with(self, |iter| try_from_trusted_iterator(iter.map(f)))
     }

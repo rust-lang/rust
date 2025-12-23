@@ -354,7 +354,7 @@ pub unsafe fn forget_unsized_unchecked<T: ?Sized + ?Forget>(t: T) {
 #[rustc_promotable]
 #[rustc_const_stable(feature = "const_mem_size_of", since = "1.24.0")]
 #[rustc_diagnostic_item = "mem_size_of"]
-pub const fn size_of<T>() -> usize {
+pub const fn size_of<T: ?Forget>() -> usize {
     intrinsics::size_of::<T>()
 }
 
@@ -437,7 +437,7 @@ pub const fn size_of_val<T: ?Sized>(val: &T) -> usize {
 #[inline]
 #[must_use]
 #[unstable(feature = "layout_for_ptr", issue = "69835")]
-pub const unsafe fn size_of_val_raw<T: ?Sized>(val: *const T) -> usize {
+pub const unsafe fn size_of_val_raw<T: ?Sized + ?Forget>(val: *const T) -> usize {
     // SAFETY: the caller must provide a valid raw pointer
     unsafe { intrinsics::size_of_val(val) }
 }
@@ -509,7 +509,7 @@ pub fn min_align_of_val<T: ?Sized>(val: &T) -> usize {
 #[rustc_promotable]
 #[rustc_const_stable(feature = "const_align_of", since = "1.24.0")]
 #[rustc_diagnostic_item = "mem_align_of"]
-pub const fn align_of<T>() -> usize {
+pub const fn align_of<T: ?Forget>() -> usize {
     intrinsics::align_of::<T>()
 }
 
@@ -576,7 +576,7 @@ pub const fn align_of_val<T: ?Sized>(val: &T) -> usize {
 #[inline]
 #[must_use]
 #[unstable(feature = "layout_for_ptr", issue = "69835")]
-pub const unsafe fn align_of_val_raw<T: ?Sized>(val: *const T) -> usize {
+pub const unsafe fn align_of_val_raw<T: ?Sized + ?Forget>(val: *const T) -> usize {
     // SAFETY: the caller must provide a valid raw pointer
     unsafe { intrinsics::align_of_val(val) }
 }
@@ -896,7 +896,7 @@ pub fn take<T: Default>(dest: &mut T) -> T {
 #[must_use = "if you don't need the old value, you can just assign the new value directly"]
 #[rustc_const_stable(feature = "const_replace", since = "1.83.0")]
 #[rustc_diagnostic_item = "mem_replace"]
-pub const fn replace<T>(dest: &mut T, src: T) -> T {
+pub const fn replace<T: ?Forget>(dest: &mut T, src: T) -> T {
     // It may be tempting to use `swap` to avoid `unsafe` here. Don't!
     // The compiler optimizes the implementation below to two `memcpy`s
     // while `swap` would require at least three. See PR#83022 for details.
@@ -1252,7 +1252,7 @@ pub const fn variant_count<T>() -> usize {
 /// It's not on a stabilization track right now.
 #[doc(hidden)]
 #[unstable(feature = "sized_type_properties", issue = "none")]
-pub trait SizedTypeProperties: Sized {
+pub trait SizedTypeProperties: Sized + ?Forget {
     /// `true` if this type requires no storage.
     /// `false` if its [size](size_of) is greater than zero.
     ///
@@ -1299,7 +1299,7 @@ pub trait SizedTypeProperties: Sized {
 }
 #[doc(hidden)]
 #[unstable(feature = "sized_type_properties", issue = "none")]
-impl<T> SizedTypeProperties for T {}
+impl<T: ?Forget> SizedTypeProperties for T {}
 
 /// Expands to the offset in bytes of a field from the beginning of the given type.
 ///

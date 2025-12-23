@@ -1,7 +1,5 @@
-use core::marker::Forget;
-
 use crate::cmp::Ordering;
-use crate::marker::{Destruct, PointeeSized, Unsize};
+use crate::marker::{Destruct, Forget, PointeeSized, Unsize};
 use crate::mem::{MaybeUninit, SizedTypeProperties};
 use crate::num::NonZero;
 use crate::ops::{CoerceUnsized, DispatchFromDyn};
@@ -74,7 +72,7 @@ use crate::{fmt, hash, intrinsics, mem, ptr};
 #[rustc_layout_scalar_valid_range_start(1)]
 #[rustc_nonnull_optimization_guaranteed]
 #[rustc_diagnostic_item = "NonNull"]
-pub struct NonNull<T: PointeeSized + ?crate::marker::Forget> {
+pub struct NonNull<T: PointeeSized + ?Forget> {
     // Remember to use `.as_ptr()` instead of `.pointer`, as field projecting to
     // this is banned by <https://github.com/rust-lang/compiler-team/issues/807>.
     pointer: *const T,
@@ -83,14 +81,14 @@ pub struct NonNull<T: PointeeSized + ?crate::marker::Forget> {
 /// `NonNull` pointers are not `Send` because the data they reference may be aliased.
 // N.B., this impl is unnecessary, but should provide better error messages.
 #[stable(feature = "nonnull", since = "1.25.0")]
-impl<T: PointeeSized + ?crate::marker::Forget> !Send for NonNull<T> {}
+impl<T: PointeeSized + ?Forget> !Send for NonNull<T> {}
 
 /// `NonNull` pointers are not `Sync` because the data they reference may be aliased.
 // N.B., this impl is unnecessary, but should provide better error messages.
 #[stable(feature = "nonnull", since = "1.25.0")]
-impl<T: PointeeSized + ?crate::marker::Forget> !Sync for NonNull<T> {}
+impl<T: PointeeSized + ?Forget> !Sync for NonNull<T> {}
 
-impl<T: Sized> NonNull<T> {
+impl<T: Sized + ?Forget> NonNull<T> {
     /// Creates a pointer with the given address and no [provenance][crate::ptr#provenance].
     ///
     /// For more details, see the equivalent method on a raw pointer, [`ptr::without_provenance_mut`].
@@ -204,7 +202,7 @@ impl<T: Sized> NonNull<T> {
     }
 }
 
-impl<T: PointeeSized> NonNull<T> {
+impl<T: PointeeSized + ?Forget> NonNull<T> {
     /// Creates a new `NonNull`.
     ///
     /// # Safety
@@ -501,7 +499,7 @@ impl<T: PointeeSized> NonNull<T> {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[inline]
-    pub const fn cast<U>(self) -> NonNull<U> {
+    pub const fn cast<U: ?Forget>(self) -> NonNull<U> {
         // SAFETY: `self` is a `NonNull` pointer which is necessarily non-null
         unsafe { NonNull { pointer: self.as_ptr() as *mut U } }
     }
@@ -529,7 +527,7 @@ impl<T: PointeeSized> NonNull<T> {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[inline]
-    pub fn try_cast_aligned<U>(self) -> Option<NonNull<U>> {
+    pub fn try_cast_aligned<U: ?Forget>(self) -> Option<NonNull<U>> {
         if self.is_aligned_to(align_of::<U>()) { Some(self.cast()) } else { None }
     }
 
@@ -1645,7 +1643,7 @@ impl<T> NonNull<[T]> {
 }
 
 #[stable(feature = "nonnull", since = "1.25.0")]
-impl<T: PointeeSized> Clone for NonNull<T> {
+impl<T: PointeeSized + ?Forget> Clone for NonNull<T> {
     #[inline(always)]
     fn clone(&self) -> Self {
         *self
@@ -1653,19 +1651,19 @@ impl<T: PointeeSized> Clone for NonNull<T> {
 }
 
 #[stable(feature = "nonnull", since = "1.25.0")]
-impl<T: PointeeSized> Copy for NonNull<T> {}
+impl<T: PointeeSized + ?Forget> Copy for NonNull<T> {}
 
 #[unstable(feature = "coerce_unsized", issue = "18598")]
 impl<T: PointeeSized, U: PointeeSized> CoerceUnsized<NonNull<U>> for NonNull<T> where T: Unsize<U> {}
 
 #[unstable(feature = "dispatch_from_dyn", issue = "none")]
-impl<T: PointeeSized, U: PointeeSized + ?Forget> DispatchFromDyn<NonNull<U>> for NonNull<T> where
+impl<T: PointeeSized, U: PointeeSized> DispatchFromDyn<NonNull<U>> for NonNull<T> where
     T: Unsize<U>
 {
 }
 
 #[stable(feature = "pin", since = "1.33.0")]
-unsafe impl<T: PointeeSized> PinCoerceUnsized for NonNull<T> {}
+unsafe impl<T: PointeeSized + ?Forget> PinCoerceUnsized for NonNull<T> {}
 
 #[stable(feature = "nonnull", since = "1.25.0")]
 impl<T: PointeeSized> fmt::Debug for NonNull<T> {
@@ -1682,10 +1680,10 @@ impl<T: PointeeSized> fmt::Pointer for NonNull<T> {
 }
 
 #[stable(feature = "nonnull", since = "1.25.0")]
-impl<T: PointeeSized> Eq for NonNull<T> {}
+impl<T: PointeeSized + ?Forget> Eq for NonNull<T> {}
 
 #[stable(feature = "nonnull", since = "1.25.0")]
-impl<T: PointeeSized> PartialEq for NonNull<T> {
+impl<T: PointeeSized + ?Forget> PartialEq for NonNull<T> {
     #[inline]
     #[allow(ambiguous_wide_pointer_comparisons)]
     fn eq(&self, other: &Self) -> bool {
@@ -1694,7 +1692,7 @@ impl<T: PointeeSized> PartialEq for NonNull<T> {
 }
 
 #[stable(feature = "nonnull", since = "1.25.0")]
-impl<T: PointeeSized> Ord for NonNull<T> {
+impl<T: PointeeSized + ?Forget> Ord for NonNull<T> {
     #[inline]
     #[allow(ambiguous_wide_pointer_comparisons)]
     fn cmp(&self, other: &Self) -> Ordering {
@@ -1703,7 +1701,7 @@ impl<T: PointeeSized> Ord for NonNull<T> {
 }
 
 #[stable(feature = "nonnull", since = "1.25.0")]
-impl<T: PointeeSized> PartialOrd for NonNull<T> {
+impl<T: PointeeSized + ?Forget> PartialOrd for NonNull<T> {
     #[inline]
     #[allow(ambiguous_wide_pointer_comparisons)]
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
@@ -1721,7 +1719,7 @@ impl<T: PointeeSized> hash::Hash for NonNull<T> {
 
 #[unstable(feature = "ptr_internals", issue = "none")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-impl<T: PointeeSized> const From<Unique<T>> for NonNull<T> {
+impl<T: PointeeSized + ?Forget> const From<Unique<T>> for NonNull<T> {
     #[inline]
     fn from(unique: Unique<T>) -> Self {
         unique.as_non_null_ptr()
@@ -1730,7 +1728,7 @@ impl<T: PointeeSized> const From<Unique<T>> for NonNull<T> {
 
 #[stable(feature = "nonnull", since = "1.25.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-impl<T: PointeeSized> const From<&mut T> for NonNull<T> {
+impl<T: PointeeSized + ?Forget> const From<&mut T> for NonNull<T> {
     /// Converts a `&mut T` to a `NonNull<T>`.
     ///
     /// This conversion is safe and infallible since references cannot be null.
@@ -1742,7 +1740,7 @@ impl<T: PointeeSized> const From<&mut T> for NonNull<T> {
 
 #[stable(feature = "nonnull", since = "1.25.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-impl<T: PointeeSized> const From<&T> for NonNull<T> {
+impl<T: PointeeSized + ?Forget> const From<&T> for NonNull<T> {
     /// Converts a `&T` to a `NonNull<T>`.
     ///
     /// This conversion is safe and infallible since references cannot be null.

@@ -185,6 +185,20 @@ impl<T> ManuallyDrop<T> {
         ManuallyDrop { value }
     }
 
+}
+
+impl<T: ?Forget> ManuallyDrop<T> {
+    /// Unchecked version of [`ManuallyDrop::new`] where `T` might not implement [`Forget`].
+    ///
+    /// # Safety
+    ///
+    /// Caller must ensure `value` is dropped according to type's safety invariants.
+    #[unstable(feature = "forget_trait", issue = "none")]
+    #[inline(always)]
+    pub const unsafe fn new_unchecked(value: T) -> ManuallyDrop<T> {
+        ManuallyDrop { value }
+    }
+
     /// Extracts the value from the `ManuallyDrop` container.
     ///
     /// This allows the value to be dropped again.
@@ -225,19 +239,6 @@ impl<T> ManuallyDrop<T> {
         // SAFETY: we are reading from a reference, which is guaranteed
         // to be valid for reads.
         unsafe { ptr::read(&slot.value) }
-    }
-}
-
-impl<T: ?Forget> ManuallyDrop<T> {
-    /// Unchecked version of [`ManuallyDrop::new`] where `T` might not implement [`Forget`].
-    ///
-    /// # Safety
-    ///
-    /// Caller must ensure `value` is dropped according to type's safety invariants.
-    #[unstable(feature = "forget_trait", issue = "none")]
-    #[inline(always)]
-    pub const unsafe fn new_unchecked(value: T) -> ManuallyDrop<T> {
-        ManuallyDrop { value }
     }
 }
 

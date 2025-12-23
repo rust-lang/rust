@@ -1308,7 +1308,7 @@ pub trait UpperHex: PointeeSized {
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_diagnostic_item = "Pointer"]
-pub trait Pointer: PointeeSized {
+pub trait Pointer: PointeeSized + ?Forget {
     #[doc = include_str!("fmt_trait_method_doc.md")]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn fmt(&self, f: &mut Formatter<'_>) -> Result;

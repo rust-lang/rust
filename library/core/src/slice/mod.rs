@@ -8,6 +8,7 @@
 
 use crate::cmp::Ordering::{self, Equal, Greater, Less};
 use crate::intrinsics::{exact_div, unchecked_sub};
+use crate::marker::Forget;
 use crate::mem::{self, MaybeUninit, SizedTypeProperties};
 use crate::num::NonZero;
 use crate::ops::{OneSidedRange, OneSidedRangeBound, Range, RangeBounds, RangeInclusive};
@@ -96,7 +97,7 @@ enum Direction {
     Back,
 }
 
-impl<T> [T] {
+impl<T: ?Forget> [T] {
     /// Returns the number of elements in the slice.
     ///
     /// # Examples
@@ -134,7 +135,9 @@ impl<T> [T] {
     pub const fn is_empty(&self) -> bool {
         self.len() == 0
     }
+}
 
+impl<T> [T] {
     /// Returns the first element of the slice, or `None` if it is empty.
     ///
     /// # Examples

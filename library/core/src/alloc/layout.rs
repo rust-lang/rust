@@ -6,6 +6,7 @@
 
 use crate::error::Error;
 use crate::intrinsics::{unchecked_add, unchecked_mul, unchecked_sub};
+use crate::marker::Forget;
 use crate::mem::SizedTypeProperties;
 use crate::ptr::{Alignment, NonNull};
 use crate::{assert_unsafe_precondition, fmt, mem};
@@ -16,7 +17,7 @@ use crate::{assert_unsafe_precondition, fmt, mem};
 //
 // * https://github.com/rust-lang/rust/pull/72189
 // * https://github.com/rust-lang/rust/pull/79827
-const fn size_align<T>() -> (usize, usize) {
+const fn size_align<T: ?Forget>() -> (usize, usize) {
     (size_of::<T>(), align_of::<T>())
 }
 
@@ -167,7 +168,7 @@ impl Layout {
     #[rustc_const_stable(feature = "alloc_layout_const_new", since = "1.42.0")]
     #[must_use]
     #[inline]
-    pub const fn new<T>() -> Self {
+    pub const fn new<T: ?Forget>() -> Self {
         let (size, align) = size_align::<T>();
         // SAFETY: if the type is instantiated, rustc already ensures that its
         // layout is valid. Use the unchecked constructor to avoid inserting a
@@ -217,7 +218,7 @@ impl Layout {
     /// [extern type]: ../../unstable-book/language-features/extern-types.html
     #[unstable(feature = "layout_for_ptr", issue = "69835")]
     #[must_use]
-    pub const unsafe fn for_value_raw<T: ?Sized>(t: *const T) -> Self {
+    pub const unsafe fn for_value_raw<T: ?Sized + ?Forget>(t: *const T) -> Self {
         // SAFETY: we pass along the prerequisites of these functions to the caller
         let (size, align) = unsafe { (mem::size_of_val_raw(t), mem::align_of_val_raw(t)) };
         // SAFETY: see rationale in `new` for why this is using the unsafe variant

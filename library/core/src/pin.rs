@@ -1215,7 +1215,7 @@ impl<Ptr: Deref<Target: Unpin>> Pin<Ptr> {
     }
 }
 
-impl<Ptr: Deref> Pin<Ptr> {
+impl<Ptr: Deref + ?Forget> Pin<Ptr> {
     /// Constructs a new `Pin<Ptr>` around a reference to some data of a type that
     /// may or may not implement [`Unpin`].
     ///
@@ -1847,22 +1847,22 @@ where
 /// to. The concrete type of a slice is an array of the same element type and
 /// the length specified in the metadata. The concrete type of a sized type
 /// is the type itself.
-pub unsafe trait PinCoerceUnsized {}
+pub unsafe trait PinCoerceUnsized: ?Forget {}
 
 #[stable(feature = "pin", since = "1.33.0")]
-unsafe impl<'a, T: ?Sized> PinCoerceUnsized for &'a T {}
+unsafe impl<'a, T: ?Sized + ?Forget> PinCoerceUnsized for &'a T {}
 
 #[stable(feature = "pin", since = "1.33.0")]
-unsafe impl<'a, T: ?Sized> PinCoerceUnsized for &'a mut T {}
+unsafe impl<'a, T: ?Sized + ?Forget> PinCoerceUnsized for &'a mut T {}
 
 #[stable(feature = "pin", since = "1.33.0")]
 unsafe impl<T: PinCoerceUnsized> PinCoerceUnsized for Pin<T> {}
 
 #[stable(feature = "pin", since = "1.33.0")]
-unsafe impl<T: ?Sized> PinCoerceUnsized for *const T {}
+unsafe impl<T: ?Sized + ?Forget> PinCoerceUnsized for *const T {}
 
 #[stable(feature = "pin", since = "1.33.0")]
-unsafe impl<T: ?Sized> PinCoerceUnsized for *mut T {}
+unsafe impl<T: ?Sized + ?Forget> PinCoerceUnsized for *mut T {}
 
 /// Constructs a <code>[Pin]<[&mut] T></code>, by pinning a `value: T` locally.
 ///

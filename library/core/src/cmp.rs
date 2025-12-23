@@ -337,7 +337,7 @@ pub macro PartialEq($item:item) {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_diagnostic_item = "Eq"]
 #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
-pub const trait Eq: [const] PartialEq<Self> + PointeeSized {
+pub const trait Eq: [const] PartialEq<Self> + PointeeSized + ?Forget {
     // this method is used solely by `impl Eq or #[derive(Eq)]` to assert that every component of a
     // type implements `Eq` itself. The current deriving infrastructure means doing this assertion
     // without using a method on this trait is nearly impossible.
@@ -366,7 +366,7 @@ pub macro Eq($item:item) {
 #[doc(hidden)]
 #[allow(missing_debug_implementations)]
 #[unstable(feature = "derive_eq", reason = "deriving hack, should not be public", issue = "none")]
-pub struct AssertParamIsEq<T: Eq + PointeeSized> {
+pub struct AssertParamIsEq<T: Eq + PointeeSized + ?Forget> {
     _field: crate::marker::PhantomData<T>,
 }
 
@@ -968,7 +968,7 @@ impl<T: Clone> Clone for Reverse<T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_diagnostic_item = "Ord"]
 #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
-pub const trait Ord: [const] Eq + [const] PartialOrd<Self> + PointeeSized {
+pub const trait Ord: [const] Eq + [const] PartialOrd<Self> + PointeeSized + ?Forget {
     /// This method returns an [`Ordering`] between `self` and `other`.
     ///
     /// By convention, `self.cmp(&other)` returns the ordering matching the expression

@@ -448,7 +448,7 @@ pub const trait AsMut<T: PointeeSized + ?Forget>: PointeeSized + ?Forget {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(search_unbox)]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-pub const trait Into<T>: Sized {
+pub const trait Into<T: ?Forget>: Sized + ?Forget {
     /// Converts this type into the (usually inferred) input type.
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -764,7 +764,7 @@ where
 // From implies Into
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-impl<T, U> const Into<U> for T
+impl<T: ?Forget, U: ?Forget> const Into<U> for T
 where
     U: [const] From<T>,
 {
@@ -782,7 +782,7 @@ where
 // From (and thus Into) is reflexive
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-impl<T> const From<T> for T {
+impl<T: ?Forget> const From<T> for T {
     /// Returns the argument unchanged.
     #[inline(always)]
     fn from(t: T) -> T {

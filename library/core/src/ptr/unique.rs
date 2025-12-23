@@ -76,7 +76,7 @@ impl<T: Sized> Unique<T> {
 }
 
 #[unstable(feature = "ptr_internals", issue = "none")]
-impl<T: PointeeSized> Unique<T> {
+impl<T: PointeeSized + ?Forget> Unique<T> {
     /// Creates a new `Unique`.
     ///
     /// # Safety
@@ -147,7 +147,7 @@ impl<T: PointeeSized> Unique<T> {
     /// Casts to a pointer of another type.
     #[must_use = "`self` will be dropped if the result is not used"]
     #[inline]
-    pub const fn cast<U>(self) -> Unique<U> {
+    pub const fn cast<U: ?Forget>(self) -> Unique<U> {
         // FIXME(const-hack): replace with `From`
         // SAFETY: is `NonNull`
         Unique { pointer: self.pointer.cast(), _marker: PhantomData }
@@ -155,7 +155,7 @@ impl<T: PointeeSized> Unique<T> {
 }
 
 #[unstable(feature = "ptr_internals", issue = "none")]
-impl<T: PointeeSized> Clone for Unique<T> {
+impl<T: PointeeSized + ?Forget> Clone for Unique<T> {
     #[inline]
     fn clone(&self) -> Self {
         *self
@@ -163,13 +163,13 @@ impl<T: PointeeSized> Clone for Unique<T> {
 }
 
 #[unstable(feature = "ptr_internals", issue = "none")]
-impl<T: PointeeSized> Copy for Unique<T> {}
+impl<T: PointeeSized + ?Forget> Copy for Unique<T> {}
 
 #[unstable(feature = "ptr_internals", issue = "none")]
 impl<T: PointeeSized, U: PointeeSized> CoerceUnsized<Unique<U>> for Unique<T> where T: Unsize<U> {}
 
 #[unstable(feature = "ptr_internals", issue = "none")]
-impl<T: PointeeSized, U: PointeeSized + ?Forget> DispatchFromDyn<Unique<U>> for Unique<T> where
+impl<T: PointeeSized, U: PointeeSized> DispatchFromDyn<Unique<U>> for Unique<T> where
     T: Unsize<U>
 {
 }
@@ -193,7 +193,7 @@ impl<T: PointeeSized> fmt::Pointer for Unique<T> {
 
 #[unstable(feature = "ptr_internals", issue = "none")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-impl<T: PointeeSized> const From<&mut T> for Unique<T> {
+impl<T: PointeeSized + ?Forget> const From<&mut T> for Unique<T> {
     /// Converts a `&mut T` to a `Unique<T>`.
     ///
     /// This conversion is infallible since references cannot be null.
@@ -205,7 +205,7 @@ impl<T: PointeeSized> const From<&mut T> for Unique<T> {
 
 #[unstable(feature = "ptr_internals", issue = "none")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-impl<T: PointeeSized> const From<NonNull<T>> for Unique<T> {
+impl<T: PointeeSized + ?Forget> const From<NonNull<T>> for Unique<T> {
     /// Converts a `NonNull<T>` to a `Unique<T>`.
     ///
     /// This conversion is infallible since `NonNull` cannot be null.

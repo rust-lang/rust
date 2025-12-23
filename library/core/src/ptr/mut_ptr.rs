@@ -1,11 +1,11 @@
 use super::*;
 use crate::cmp::Ordering::{Equal, Greater, Less};
 use crate::intrinsics::const_eval_select;
-use crate::marker::{Destruct, PointeeSized};
+use crate::marker::{Destruct, Forget, PointeeSized};
 use crate::mem::{self, SizedTypeProperties};
 use crate::slice::{self, SliceIndex};
 
-impl<T: PointeeSized> *mut T {
+impl<T: PointeeSized + ?Forget> *mut T {
     #[doc = include_str!("docs/is_null.md")]
     ///
     /// # Examples
@@ -21,15 +21,6 @@ impl<T: PointeeSized> *mut T {
     #[inline]
     pub const fn is_null(self) -> bool {
         self.cast_const().is_null()
-    }
-
-    /// Casts to a pointer of another type.
-    #[stable(feature = "ptr_cast", since = "1.38.0")]
-    #[rustc_const_stable(feature = "const_ptr_cast", since = "1.38.0")]
-    #[rustc_diagnostic_item = "ptr_cast"]
-    #[inline(always)]
-    pub const fn cast<U>(self) -> *mut U {
-        self as _
     }
 
     /// Try to cast to a pointer of another type by checking alignment.
@@ -112,7 +103,7 @@ impl<T: PointeeSized> *mut T {
     #[inline]
     pub const fn with_metadata_of<U>(self, meta: *const U) -> *mut U
     where
-        U: PointeeSized,
+        U: PointeeSized + ?Forget,
     {
         from_raw_parts_mut::<U>(self as *mut (), metadata(meta))
     }
@@ -135,20 +126,6 @@ impl<T: PointeeSized> *mut T {
         self as _
     }
 
-    #[doc = include_str!("./docs/addr.md")]
-    ///
-    /// [without_provenance]: without_provenance_mut
-    #[must_use]
-    #[inline(always)]
-    #[stable(feature = "strict_provenance", since = "1.84.0")]
-    pub fn addr(self) -> usize {
-        // A pointer-to-integer transmute currently has exactly the right semantics: it returns the
-        // address without exposing the provenance. Note that this is *not* a stable guarantee about
-        // transmute semantics, it relies on sysroot crates having special status.
-        // SAFETY: Pointer-to-integer transmutes are valid (if you are okay with losing the
-        // provenance).
-        unsafe { mem::transmute(self.cast::<()>()) }
-    }
 
     /// Exposes the ["provenance"][crate::ptr#provenance] part of the pointer for future use in
     /// [`with_exposed_provenance_mut`] and returns the "address" portion.
@@ -214,6 +191,32 @@ impl<T: PointeeSized> *mut T {
     pub fn map_addr(self, f: impl FnOnce(usize) -> usize) -> Self {
         self.with_addr(f(self.addr()))
     }
+}
+
+impl<T: PointeeSized + ?Forget> *mut T {
+    /// Casts to a pointer of another type.
+    #[stable(feature = "ptr_cast", since = "1.38.0")]
+    #[rustc_const_stable(feature = "const_ptr_cast", since = "1.38.0")]
+    #[rustc_diagnostic_item = "ptr_cast"]
+    #[inline(always)]
+    pub const fn cast<U>(self) -> *mut U {
+        self as _
+    }
+
+    #[doc = include_str!("./docs/addr.md")]
+    ///
+    /// [without_provenance]: without_provenance_mut
+    #[must_use]
+    #[inline(always)]
+    #[stable(feature = "strict_provenance", since = "1.84.0")]
+    pub fn addr(self) -> usize {
+        // A pointer-to-integer transmute currently has exactly the right semantics: it returns the
+        // address without exposing the provenance. Note that this is *not* a stable guarantee about
+        // transmute semantics, it relies on sysroot crates having special status.
+        // SAFETY: Pointer-to-integer transmutes are valid (if you are okay with losing the
+        // provenance).
+        unsafe { mem::transmute(self.cast::<()>()) }
+    }
 
     /// Decompose a (possibly wide) pointer into its data pointer and metadata components.
     ///
@@ -224,6 +227,182 @@ impl<T: PointeeSized> *mut T {
         (self.cast(), super::metadata(self))
     }
 
+    /// Calculates the distance between two pointers within the same allocation. The returned value is in
+    /// units of **bytes**.
+    ///
+    /// This is purely a convenience for casting to a `u8` pointer and
+    /// using [`offset_from`][pointer::offset_from] on it. See that method for
+    /// documentation and safety requirements.
+    ///
+    /// For non-`Sized` pointees this operation considers only the data pointers,
+    /// ignoring the metadata.
+    #[inline(always)]
+    #[stable(feature = "pointer_byte_offsets", since = "1.75.0")]
+    #[rustc_const_stable(feature = "const_pointer_byte_offsets", since = "1.75.0")]
+    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
+    pub const unsafe fn byte_offset_from<U: ?Sized>(self, origin: *const U) -> isize {
+        // SAFETY: the caller must uphold the safety contract for `offset_from`.
+        unsafe { self.cast::<u8>().offset_from(origin.cast::<u8>()) }
+    }
+
+    /// Calculates the distance between two pointers within the same allocation, *where it's known that
+    /// `self` is equal to or greater than `origin`*. The returned value is in
+    /// units of **bytes**.
+    ///
+    /// This is purely a convenience for casting to a `u8` pointer and
+    /// using [`offset_from_unsigned`][pointer::offset_from_unsigned] on it.
+    /// See that method for documentation and safety requirements.
+    ///
+    /// For non-`Sized` pointees this operation considers only the data pointers,
+    /// ignoring the metadata.
+    #[stable(feature = "ptr_sub_ptr", since = "1.87.0")]
+    #[rustc_const_stable(feature = "const_ptr_sub_ptr", since = "1.87.0")]
+    #[inline]
+    #[track_caller]
+    pub const unsafe fn byte_offset_from_unsigned<U: ?Sized>(self, origin: *mut U) -> usize {
+        // SAFETY: the caller must uphold the safety contract for `byte_offset_from_unsigned`.
+        unsafe { (self as *const T).byte_offset_from_unsigned(origin) }
+    }
+
+    /// Calculates the distance between two pointers within the same allocation, *where it's known that
+    /// `self` is equal to or greater than `origin`*. The returned value is in
+    /// units of T: the distance in bytes is divided by `size_of::<T>()`.
+    ///
+    /// This computes the same value that [`offset_from`](#method.offset_from)
+    /// would compute, but with the added precondition that the offset is
+    /// guaranteed to be non-negative.  This method is equivalent to
+    /// `usize::try_from(self.offset_from(origin)).unwrap_unchecked()`,
+    /// but it provides slightly more information to the optimizer, which can
+    /// sometimes allow it to optimize slightly better with some backends.
+    ///
+    /// This method can be thought of as recovering the `count` that was passed
+    /// to [`add`](#method.add) (or, with the parameters in the other order,
+    /// to [`sub`](#method.sub)).  The following are all equivalent, assuming
+    /// that their safety preconditions are met:
+    /// ```rust
+    /// # unsafe fn blah(ptr: *mut i32, origin: *mut i32, count: usize) -> bool { unsafe {
+    /// ptr.offset_from_unsigned(origin) == count
+    /// # &&
+    /// origin.add(count) == ptr
+    /// # &&
+    /// ptr.sub(count) == origin
+    /// # } }
+    /// ```
+    ///
+    /// # Safety
+    ///
+    /// - The distance between the pointers must be non-negative (`self >= origin`)
+    ///
+    /// - *All* the safety conditions of [`offset_from`](#method.offset_from)
+    ///   apply to this method as well; see it for the full details.
+    ///
+    /// Importantly, despite the return type of this method being able to represent
+    /// a larger offset, it's still *not permitted* to pass pointers which differ
+    /// by more than `isize::MAX` *bytes*.  As such, the result of this method will
+    /// always be less than or equal to `isize::MAX as usize`.
+    ///
+    /// # Panics
+    ///
+    /// This function panics if `T` is a Zero-Sized Type ("ZST").
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let mut a = [0; 5];
+    /// let p: *mut i32 = a.as_mut_ptr();
+    /// unsafe {
+    ///     let ptr1: *mut i32 = p.add(1);
+    ///     let ptr2: *mut i32 = p.add(3);
+    ///
+    ///     assert_eq!(ptr2.offset_from_unsigned(ptr1), 2);
+    ///     assert_eq!(ptr1.add(2), ptr2);
+    ///     assert_eq!(ptr2.sub(2), ptr1);
+    ///     assert_eq!(ptr2.offset_from_unsigned(ptr2), 0);
+    /// }
+    ///
+    /// // This would be incorrect, as the pointers are not correctly ordered:
+    /// // ptr1.offset_from(ptr2)
+    /// ```
+    #[stable(feature = "ptr_sub_ptr", since = "1.87.0")]
+    #[rustc_const_stable(feature = "const_ptr_sub_ptr", since = "1.87.0")]
+    #[inline]
+    #[track_caller]
+    pub const unsafe fn offset_from_unsigned(self, origin: *const T) -> usize
+    where
+        T: Sized,
+    {
+        // SAFETY: the caller must uphold the safety contract for `offset_from_unsigned`.
+        unsafe { (self as *const T).offset_from_unsigned(origin) }
+    }
+
+    /// Returns whether the pointer is properly aligned for `T`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// // On some platforms, the alignment of i32 is less than 4.
+    /// #[repr(align(4))]
+    /// struct AlignedI32(i32);
+    ///
+    /// let mut data = AlignedI32(42);
+    /// let ptr = &mut data as *mut AlignedI32;
+    ///
+    /// assert!(ptr.is_aligned());
+    /// assert!(!ptr.wrapping_byte_add(1).is_aligned());
+    /// ```
+    #[must_use]
+    #[inline]
+    #[stable(feature = "pointer_is_aligned", since = "1.79.0")]
+    pub fn is_aligned(self) -> bool
+    where
+        T: Sized,
+    {
+        self.is_aligned_to(align_of::<T>())
+    }
+
+    /// Returns whether the pointer is aligned to `align`.
+    ///
+    /// For non-`Sized` pointees this operation considers only the data pointer,
+    /// ignoring the metadata.
+    ///
+    /// # Panics
+    ///
+    /// The function panics if `align` is not a power-of-two (this includes 0).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(pointer_is_aligned_to)]
+    ///
+    /// // On some platforms, the alignment of i32 is less than 4.
+    /// #[repr(align(4))]
+    /// struct AlignedI32(i32);
+    ///
+    /// let mut data = AlignedI32(42);
+    /// let ptr = &mut data as *mut AlignedI32;
+    ///
+    /// assert!(ptr.is_aligned_to(1));
+    /// assert!(ptr.is_aligned_to(2));
+    /// assert!(ptr.is_aligned_to(4));
+    ///
+    /// assert!(ptr.wrapping_byte_add(2).is_aligned_to(2));
+    /// assert!(!ptr.wrapping_byte_add(2).is_aligned_to(4));
+    ///
+    /// assert_ne!(ptr.is_aligned_to(8), ptr.wrapping_add(1).is_aligned_to(8));
+    /// ```
+    #[must_use]
+    #[inline]
+    #[unstable(feature = "pointer_is_aligned_to", issue = "96284")]
+    pub fn is_aligned_to(self, align: usize) -> bool {
+        if !align.is_power_of_two() {
+            panic!("is_aligned_to: align is not a power-of-two");
+        }
+
+        self.addr() & (align - 1) == 0
+    }
+}
+
+impl<T: PointeeSized + ?Forget> *mut T {
     #[doc = include_str!("./docs/as_ref.md")]
     ///
     /// ```
@@ -798,113 +977,8 @@ impl<T: PointeeSized> *mut T {
         unsafe { (self as *const T).offset_from(origin) }
     }
 
-    /// Calculates the distance between two pointers within the same allocation. The returned value is in
-    /// units of **bytes**.
-    ///
-    /// This is purely a convenience for casting to a `u8` pointer and
-    /// using [`offset_from`][pointer::offset_from] on it. See that method for
-    /// documentation and safety requirements.
-    ///
-    /// For non-`Sized` pointees this operation considers only the data pointers,
-    /// ignoring the metadata.
-    #[inline(always)]
-    #[stable(feature = "pointer_byte_offsets", since = "1.75.0")]
-    #[rustc_const_stable(feature = "const_pointer_byte_offsets", since = "1.75.0")]
-    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
-    pub const unsafe fn byte_offset_from<U: ?Sized>(self, origin: *const U) -> isize {
-        // SAFETY: the caller must uphold the safety contract for `offset_from`.
-        unsafe { self.cast::<u8>().offset_from(origin.cast::<u8>()) }
-    }
 
-    /// Calculates the distance between two pointers within the same allocation, *where it's known that
-    /// `self` is equal to or greater than `origin`*. The returned value is in
-    /// units of T: the distance in bytes is divided by `size_of::<T>()`.
-    ///
-    /// This computes the same value that [`offset_from`](#method.offset_from)
-    /// would compute, but with the added precondition that the offset is
-    /// guaranteed to be non-negative.  This method is equivalent to
-    /// `usize::try_from(self.offset_from(origin)).unwrap_unchecked()`,
-    /// but it provides slightly more information to the optimizer, which can
-    /// sometimes allow it to optimize slightly better with some backends.
-    ///
-    /// This method can be thought of as recovering the `count` that was passed
-    /// to [`add`](#method.add) (or, with the parameters in the other order,
-    /// to [`sub`](#method.sub)).  The following are all equivalent, assuming
-    /// that their safety preconditions are met:
-    /// ```rust
-    /// # unsafe fn blah(ptr: *mut i32, origin: *mut i32, count: usize) -> bool { unsafe {
-    /// ptr.offset_from_unsigned(origin) == count
-    /// # &&
-    /// origin.add(count) == ptr
-    /// # &&
-    /// ptr.sub(count) == origin
-    /// # } }
-    /// ```
-    ///
-    /// # Safety
-    ///
-    /// - The distance between the pointers must be non-negative (`self >= origin`)
-    ///
-    /// - *All* the safety conditions of [`offset_from`](#method.offset_from)
-    ///   apply to this method as well; see it for the full details.
-    ///
-    /// Importantly, despite the return type of this method being able to represent
-    /// a larger offset, it's still *not permitted* to pass pointers which differ
-    /// by more than `isize::MAX` *bytes*.  As such, the result of this method will
-    /// always be less than or equal to `isize::MAX as usize`.
-    ///
-    /// # Panics
-    ///
-    /// This function panics if `T` is a Zero-Sized Type ("ZST").
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// let mut a = [0; 5];
-    /// let p: *mut i32 = a.as_mut_ptr();
-    /// unsafe {
-    ///     let ptr1: *mut i32 = p.add(1);
-    ///     let ptr2: *mut i32 = p.add(3);
-    ///
-    ///     assert_eq!(ptr2.offset_from_unsigned(ptr1), 2);
-    ///     assert_eq!(ptr1.add(2), ptr2);
-    ///     assert_eq!(ptr2.sub(2), ptr1);
-    ///     assert_eq!(ptr2.offset_from_unsigned(ptr2), 0);
-    /// }
-    ///
-    /// // This would be incorrect, as the pointers are not correctly ordered:
-    /// // ptr1.offset_from(ptr2)
-    /// ```
-    #[stable(feature = "ptr_sub_ptr", since = "1.87.0")]
-    #[rustc_const_stable(feature = "const_ptr_sub_ptr", since = "1.87.0")]
-    #[inline]
-    #[track_caller]
-    pub const unsafe fn offset_from_unsigned(self, origin: *const T) -> usize
-    where
-        T: Sized,
-    {
-        // SAFETY: the caller must uphold the safety contract for `offset_from_unsigned`.
-        unsafe { (self as *const T).offset_from_unsigned(origin) }
-    }
 
-    /// Calculates the distance between two pointers within the same allocation, *where it's known that
-    /// `self` is equal to or greater than `origin`*. The returned value is in
-    /// units of **bytes**.
-    ///
-    /// This is purely a convenience for casting to a `u8` pointer and
-    /// using [`offset_from_unsigned`][pointer::offset_from_unsigned] on it.
-    /// See that method for documentation and safety requirements.
-    ///
-    /// For non-`Sized` pointees this operation considers only the data pointers,
-    /// ignoring the metadata.
-    #[stable(feature = "ptr_sub_ptr", since = "1.87.0")]
-    #[rustc_const_stable(feature = "const_ptr_sub_ptr", since = "1.87.0")]
-    #[inline]
-    #[track_caller]
-    pub const unsafe fn byte_offset_from_unsigned<U: ?Sized>(self, origin: *mut U) -> usize {
-        // SAFETY: the caller must uphold the safety contract for `byte_offset_from_unsigned`.
-        unsafe { (self as *const T).byte_offset_from_unsigned(origin) }
-    }
 
     #[doc = include_str!("./docs/add.md")]
     ///
@@ -1577,71 +1651,7 @@ impl<T: PointeeSized> *mut T {
         ret
     }
 
-    /// Returns whether the pointer is properly aligned for `T`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// // On some platforms, the alignment of i32 is less than 4.
-    /// #[repr(align(4))]
-    /// struct AlignedI32(i32);
-    ///
-    /// let mut data = AlignedI32(42);
-    /// let ptr = &mut data as *mut AlignedI32;
-    ///
-    /// assert!(ptr.is_aligned());
-    /// assert!(!ptr.wrapping_byte_add(1).is_aligned());
-    /// ```
-    #[must_use]
-    #[inline]
-    #[stable(feature = "pointer_is_aligned", since = "1.79.0")]
-    pub fn is_aligned(self) -> bool
-    where
-        T: Sized,
-    {
-        self.is_aligned_to(align_of::<T>())
-    }
 
-    /// Returns whether the pointer is aligned to `align`.
-    ///
-    /// For non-`Sized` pointees this operation considers only the data pointer,
-    /// ignoring the metadata.
-    ///
-    /// # Panics
-    ///
-    /// The function panics if `align` is not a power-of-two (this includes 0).
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(pointer_is_aligned_to)]
-    ///
-    /// // On some platforms, the alignment of i32 is less than 4.
-    /// #[repr(align(4))]
-    /// struct AlignedI32(i32);
-    ///
-    /// let mut data = AlignedI32(42);
-    /// let ptr = &mut data as *mut AlignedI32;
-    ///
-    /// assert!(ptr.is_aligned_to(1));
-    /// assert!(ptr.is_aligned_to(2));
-    /// assert!(ptr.is_aligned_to(4));
-    ///
-    /// assert!(ptr.wrapping_byte_add(2).is_aligned_to(2));
-    /// assert!(!ptr.wrapping_byte_add(2).is_aligned_to(4));
-    ///
-    /// assert_ne!(ptr.is_aligned_to(8), ptr.wrapping_add(1).is_aligned_to(8));
-    /// ```
-    #[must_use]
-    #[inline]
-    #[unstable(feature = "pointer_is_aligned_to", issue = "96284")]
-    pub fn is_aligned_to(self, align: usize) -> bool {
-        if !align.is_power_of_two() {
-            panic!("is_aligned_to: align is not a power-of-two");
-        }
-
-        self.addr() & (align - 1) == 0
-    }
 }
 
 impl<T> *mut T {
@@ -1999,7 +2009,7 @@ impl<T, const N: usize> *mut [T; N] {
 
 /// Pointer equality is by address, as produced by the [`<*mut T>::addr`](pointer::addr) method.
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: PointeeSized> PartialEq for *mut T {
+impl<T: PointeeSized + ?Forget> PartialEq for *mut T {
     #[inline(always)]
     #[allow(ambiguous_wide_pointer_comparisons)]
     fn eq(&self, other: &*mut T) -> bool {
@@ -2009,11 +2019,11 @@ impl<T: PointeeSized> PartialEq for *mut T {
 
 /// Pointer equality is an equivalence relation.
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: PointeeSized> Eq for *mut T {}
+impl<T: PointeeSized + ?Forget> Eq for *mut T {}
 
 /// Pointer comparison is by address, as produced by the [`<*mut T>::addr`](pointer::addr) method.
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: PointeeSized> Ord for *mut T {
+impl<T: PointeeSized + ?Forget> Ord for *mut T {
     #[inline]
     #[allow(ambiguous_wide_pointer_comparisons)]
     fn cmp(&self, other: &*mut T) -> Ordering {
@@ -2029,7 +2039,7 @@ impl<T: PointeeSized> Ord for *mut T {
 
 /// Pointer comparison is by address, as produced by the [`<*mut T>::addr`](pointer::addr) method.
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: PointeeSized> PartialOrd for *mut T {
+impl<T: PointeeSized + ?Forget> PartialOrd for *mut T {
     #[inline(always)]
     #[allow(ambiguous_wide_pointer_comparisons)]
     fn partial_cmp(&self, other: &*mut T) -> Option<Ordering> {

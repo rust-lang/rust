@@ -403,7 +403,7 @@
 
 use crate::cmp::Ordering;
 use crate::intrinsics::const_eval_select;
-use crate::marker::{Destruct, FnPtr, PointeeSized};
+use crate::marker::{Destruct, FnPtr, Forget, PointeeSized};
 use crate::mem::{self, MaybeUninit, SizedTypeProperties};
 use crate::num::NonZero;
 use crate::{fmt, hash, intrinsics, ub_checks};
@@ -523,7 +523,7 @@ mod mut_ptr;
 #[inline(always)]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 #[rustc_diagnostic_item = "ptr_copy_nonoverlapping"]
-pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize) {
+pub const unsafe fn copy_nonoverlapping<T: ?Forget>(src: *const T, dst: *mut T, count: usize) {
     ub_checks::assert_unsafe_precondition!(
         check_language_ub,
         "ptr::copy_nonoverlapping requires that both pointer arguments are aligned and non-null \
@@ -620,7 +620,7 @@ pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: us
 #[inline(always)]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 #[rustc_diagnostic_item = "ptr_copy"]
-pub const unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize) {
+pub const unsafe fn copy<T: ?Forget>(src: *const T, dst: *mut T, count: usize) {
     // SAFETY: the safety contract for `copy` must be upheld by the caller.
     unsafe {
         ub_checks::assert_unsafe_precondition!(
@@ -694,7 +694,7 @@ pub const unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize) {
 #[inline(always)]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 #[rustc_diagnostic_item = "ptr_write_bytes"]
-pub const unsafe fn write_bytes<T>(dst: *mut T, val: u8, count: usize) {
+pub const unsafe fn write_bytes<T: ?Forget>(dst: *mut T, val: u8, count: usize) {
     // SAFETY: the safety contract for `write_bytes` must be upheld by the caller.
     unsafe {
         ub_checks::assert_unsafe_precondition!(
@@ -802,7 +802,7 @@ pub const unsafe fn write_bytes<T>(dst: *mut T, val: u8, count: usize) {
 #[allow(unconditional_recursion)]
 #[rustc_diagnostic_item = "ptr_drop_in_place"]
 #[rustc_const_unstable(feature = "const_drop_in_place", issue = "109342")]
-pub const unsafe fn drop_in_place<T: PointeeSized>(to_drop: *mut T)
+pub const unsafe fn drop_in_place<T: PointeeSized + ?Forget>(to_drop: *mut T)
 where
     T: [const] Destruct,
 {
@@ -834,7 +834,7 @@ where
 #[rustc_promotable]
 #[rustc_const_stable(feature = "const_ptr_null", since = "1.24.0")]
 #[rustc_diagnostic_item = "ptr_null"]
-pub const fn null<T: PointeeSized + Thin>() -> *const T {
+pub const fn null<T: PointeeSized + Thin + ?Forget>() -> *const T {
     from_raw_parts(without_provenance::<()>(0), ())
 }
 
@@ -859,7 +859,7 @@ pub const fn null<T: PointeeSized + Thin>() -> *const T {
 #[rustc_promotable]
 #[rustc_const_stable(feature = "const_ptr_null", since = "1.24.0")]
 #[rustc_diagnostic_item = "ptr_null_mut"]
-pub const fn null_mut<T: PointeeSized + Thin>() -> *mut T {
+pub const fn null_mut<T: PointeeSized + Thin + ?Forget>() -> *mut T {
     from_raw_parts_mut(without_provenance_mut::<()>(0), ())
 }
 
@@ -880,7 +880,7 @@ pub const fn null_mut<T: PointeeSized + Thin>() -> *mut T {
 #[must_use]
 #[stable(feature = "strict_provenance", since = "1.84.0")]
 #[rustc_const_stable(feature = "strict_provenance", since = "1.84.0")]
-pub const fn without_provenance<T>(addr: usize) -> *const T {
+pub const fn without_provenance<T: ?Forget>(addr: usize) -> *const T {
     without_provenance_mut(addr)
 }
 
@@ -919,7 +919,7 @@ pub const fn dangling<T>() -> *const T {
 #[stable(feature = "strict_provenance", since = "1.84.0")]
 #[rustc_const_stable(feature = "strict_provenance", since = "1.84.0")]
 #[allow(integer_to_ptr_transmutes)] // Expected semantics here.
-pub const fn without_provenance_mut<T>(addr: usize) -> *mut T {
+pub const fn without_provenance_mut<T: ?Forget>(addr: usize) -> *mut T {
     // An int-to-pointer transmute currently has exactly the intended semantics: it creates a
     // pointer without provenance. Note that this is *not* a stable guarantee about transmute
     // semantics, it relies on sysroot crates having special status.
@@ -941,7 +941,7 @@ pub const fn without_provenance_mut<T>(addr: usize) -> *mut T {
 #[must_use]
 #[stable(feature = "strict_provenance", since = "1.84.0")]
 #[rustc_const_stable(feature = "strict_provenance", since = "1.84.0")]
-pub const fn dangling_mut<T>() -> *mut T {
+pub const fn dangling_mut<T: ?Forget>() -> *mut T {
     NonNull::dangling().as_ptr()
 }
 
@@ -1023,7 +1023,7 @@ pub const fn with_exposed_provenance<T>(addr: usize) -> *const T {
 #[rustc_const_stable(feature = "const_exposed_provenance", since = "1.91.0")]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 #[allow(fuzzy_provenance_casts)] // this *is* the explicit provenance API one should use instead
-pub const fn with_exposed_provenance_mut<T>(addr: usize) -> *mut T {
+pub const fn with_exposed_provenance_mut<T: ?Forget>(addr: usize) -> *mut T {
     addr as *mut T
 }
 
@@ -1294,7 +1294,7 @@ pub const fn slice_from_raw_parts_mut<T>(data: *mut T, len: usize) -> *mut [T] {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_stable(feature = "const_swap", since = "1.85.0")]
 #[rustc_diagnostic_item = "ptr_swap"]
-pub const unsafe fn swap<T>(x: *mut T, y: *mut T) {
+pub const unsafe fn swap<T: ?Forget>(x: *mut T, y: *mut T) {
     // Give ourselves some scratch space to work with.
     // We do not have to worry about drops: `MaybeUninit` does nothing when dropped.
     let mut tmp = MaybeUninit::<T>::uninit();
@@ -1573,7 +1573,7 @@ unsafe fn swap_nonoverlapping_bytes(x: *mut u8, y: *mut u8, bytes: NonZero<usize
 #[rustc_const_stable(feature = "const_replace", since = "1.83.0")]
 #[rustc_diagnostic_item = "ptr_replace"]
 #[track_caller]
-pub const unsafe fn replace<T>(dst: *mut T, src: T) -> T {
+pub const unsafe fn replace<T: ?Forget>(dst: *mut T, src: T) -> T {
     // SAFETY: the caller must guarantee that `dst` is valid to be
     // cast to a mutable reference (valid for writes, aligned, initialized),
     // and cannot overlap `src` since `dst` must point to a distinct
@@ -1702,7 +1702,7 @@ pub const unsafe fn replace<T>(dst: *mut T, src: T) -> T {
 #[rustc_const_stable(feature = "const_ptr_read", since = "1.71.0")]
 #[track_caller]
 #[rustc_diagnostic_item = "ptr_read"]
-pub const unsafe fn read<T>(src: *const T) -> T {
+pub const unsafe fn read<T: ?Forget>(src: *const T) -> T {
     // It would be semantically correct to implement this via `copy_nonoverlapping`
     // and `MaybeUninit`, as was done before PR #109035. Calling `assume_init`
     // provides enough information to know that this is a typed operation.
@@ -1820,7 +1820,7 @@ pub const unsafe fn read<T>(src: *const T) -> T {
 #[rustc_const_stable(feature = "const_ptr_read", since = "1.71.0")]
 #[track_caller]
 #[rustc_diagnostic_item = "ptr_read_unaligned"]
-pub const unsafe fn read_unaligned<T>(src: *const T) -> T {
+pub const unsafe fn read_unaligned<T: ?Forget>(src: *const T) -> T {
     let mut tmp = MaybeUninit::<T>::uninit();
     // SAFETY: the caller must guarantee that `src` is valid for reads.
     // `src` cannot overlap `tmp` because `tmp` was just allocated on
@@ -1918,7 +1918,7 @@ pub const unsafe fn read_unaligned<T>(src: *const T) -> T {
 #[rustc_const_stable(feature = "const_ptr_write", since = "1.83.0")]
 #[rustc_diagnostic_item = "ptr_write"]
 #[track_caller]
-pub const unsafe fn write<T>(dst: *mut T, src: T) {
+pub const unsafe fn write<T: ?Forget>(dst: *mut T, src: T) {
     // Semantically, it would be fine for this to be implemented as a
     // `copy_nonoverlapping` and appropriate drop suppression of `src`.
 
@@ -2022,7 +2022,7 @@ pub const unsafe fn write<T>(dst: *mut T, src: T) {
 #[rustc_const_stable(feature = "const_ptr_write", since = "1.83.0")]
 #[rustc_diagnostic_item = "ptr_write_unaligned"]
 #[track_caller]
-pub const unsafe fn write_unaligned<T>(dst: *mut T, src: T) {
+pub const unsafe fn write_unaligned<T: ?Forget>(dst: *mut T, src: T) {
     // SAFETY: the caller must guarantee that `dst` is valid for writes.
     // `dst` cannot overlap `src` because the caller has mutable access
     // to `dst` while `src` is owned by this function.
@@ -2104,7 +2104,7 @@ pub const unsafe fn write_unaligned<T>(dst: *mut T, src: T) {
 #[stable(feature = "volatile", since = "1.9.0")]
 #[track_caller]
 #[rustc_diagnostic_item = "ptr_read_volatile"]
-pub unsafe fn read_volatile<T>(src: *const T) -> T {
+pub unsafe fn read_volatile<T: ?Forget>(src: *const T) -> T {
     // SAFETY: the caller must uphold the safety contract for `volatile_load`.
     unsafe {
         ub_checks::assert_unsafe_precondition!(
@@ -2191,7 +2191,7 @@ pub unsafe fn read_volatile<T>(src: *const T) -> T {
 #[stable(feature = "volatile", since = "1.9.0")]
 #[rustc_diagnostic_item = "ptr_write_volatile"]
 #[track_caller]
-pub unsafe fn write_volatile<T>(dst: *mut T, src: T) {
+pub unsafe fn write_volatile<T: ?Forget>(dst: *mut T, src: T) {
     // SAFETY: the caller must uphold the safety contract for `volatile_store`.
     unsafe {
         ub_checks::assert_unsafe_precondition!(
@@ -2224,7 +2224,7 @@ pub unsafe fn write_volatile<T>(dst: *mut T, src: T) {
 ///
 /// Any questions go to @nagisa.
 #[allow(ptr_to_integer_transmute_in_consts)]
-pub(crate) unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usize {
+pub(crate) unsafe fn align_offset<T: Sized + ?Forget>(p: *const T, a: usize) -> usize {
     // FIXME(#75598): Direct use of these intrinsics improves codegen significantly at opt-level <=
     // 1, where the method versions of these operations are not inlined.
     use intrinsics::{

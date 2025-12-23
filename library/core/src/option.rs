@@ -2343,10 +2343,10 @@ impl<'a, T> const From<&'a mut Option<T>> for Option<&'a mut T> {
 // Once https://github.com/llvm/llvm-project/issues/52622 is fixed, we can
 // go back to deriving `PartialEq`.
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T> crate::marker::StructuralPartialEq for Option<T> {}
+impl<T: ?Forget> crate::marker::StructuralPartialEq for Option<T> {}
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
-impl<T: [const] PartialEq> const PartialEq for Option<T> {
+impl<T: [const] PartialEq + ?Forget> const PartialEq for Option<T> {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
         // Spelling out the cases explicitly optimizes better than

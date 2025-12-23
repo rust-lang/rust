@@ -835,7 +835,7 @@ pub const unsafe fn forget<T: ?Sized + ?Forget>(_: T);
 #[rustc_diagnostic_item = "transmute"]
 #[rustc_nounwind]
 #[rustc_intrinsic]
-pub const unsafe fn transmute<Src, Dst>(src: Src) -> Dst;
+pub const unsafe fn transmute<Src: ?Forget, Dst: ?Forget>(src: Src) -> Dst;
 
 /// Like [`transmute`], but even less checked at compile-time: rather than
 /// giving an error for `size_of::<Src>() != size_of::<Dst>()`, it's
@@ -849,7 +849,7 @@ pub const unsafe fn transmute<Src, Dst>(src: Src) -> Dst;
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_nounwind]
 #[rustc_intrinsic]
-pub const unsafe fn transmute_unchecked<Src, Dst>(src: Src) -> Dst;
+pub const unsafe fn transmute_unchecked<Src: ?Forget, Dst: ?Forget>(src: Src) -> Dst;
 
 /// Returns `true` if the actual type given as `T` requires drop
 /// glue; returns `false` if the actual type provided for `T`
@@ -889,7 +889,7 @@ pub const fn needs_drop<T: ?Sized>() -> bool;
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_nounwind]
 #[rustc_intrinsic]
-pub const unsafe fn offset<Ptr: bounds::BuiltinDeref, Delta>(dst: Ptr, offset: Delta) -> Ptr;
+pub const unsafe fn offset<Ptr: bounds::BuiltinDeref + ?Forget, Delta>(dst: Ptr, offset: Delta) -> Ptr;
 
 /// Calculates the offset from a pointer, potentially wrapping.
 ///
@@ -908,7 +908,7 @@ pub const unsafe fn offset<Ptr: bounds::BuiltinDeref, Delta>(dst: Ptr, offset: D
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_nounwind]
 #[rustc_intrinsic]
-pub const unsafe fn arith_offset<T>(dst: *const T, offset: isize) -> *const T;
+pub const unsafe fn arith_offset<T: ?Forget>(dst: *const T, offset: isize) -> *const T;
 
 /// Projects to the `index`-th element of `slice_ptr`, as the same kind of pointer
 /// as the slice was provided -- so `&mut [T] → &mut T`, `&[T] → &T`,
@@ -946,7 +946,7 @@ pub const unsafe fn slice_get_unchecked<
 /// Consider using [`pointer::mask`] instead.
 #[rustc_nounwind]
 #[rustc_intrinsic]
-pub fn ptr_mask<T>(ptr: *const T, mask: usize) -> *const T;
+pub fn ptr_mask<T: ?Forget>(ptr: *const T, mask: usize) -> *const T;
 
 /// Equivalent to the appropriate `llvm.memcpy.p0i8.0i8.*` intrinsic, with
 /// a size of `count` * `size_of::<T>()` and an alignment of `align_of::<T>()`.
@@ -961,7 +961,7 @@ pub fn ptr_mask<T>(ptr: *const T, mask: usize) -> *const T;
 /// [`copy_nonoverlapping`]: ptr::copy_nonoverlapping
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn volatile_copy_nonoverlapping_memory<T>(dst: *mut T, src: *const T, count: usize);
+pub unsafe fn volatile_copy_nonoverlapping_memory<T: ?Forget>(dst: *mut T, src: *const T, count: usize);
 /// Equivalent to the appropriate `llvm.memmove.p0i8.0i8.*` intrinsic, with
 /// a size of `count * size_of::<T>()` and an alignment of `align_of::<T>()`.
 ///
@@ -971,7 +971,7 @@ pub unsafe fn volatile_copy_nonoverlapping_memory<T>(dst: *mut T, src: *const T,
 /// This intrinsic does not have a stable counterpart.
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn volatile_copy_memory<T>(dst: *mut T, src: *const T, count: usize);
+pub unsafe fn volatile_copy_memory<T: ?Forget>(dst: *mut T, src: *const T, count: usize);
 /// Equivalent to the appropriate `llvm.memset.p0i8.*` intrinsic, with a
 /// size of `count * size_of::<T>()` and an alignment of `align_of::<T>()`.
 ///
@@ -984,20 +984,20 @@ pub unsafe fn volatile_copy_memory<T>(dst: *mut T, src: *const T, count: usize);
 /// [`write_bytes`]: ptr::write_bytes
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn volatile_set_memory<T>(dst: *mut T, val: u8, count: usize);
+pub unsafe fn volatile_set_memory<T: ?Forget>(dst: *mut T, val: u8, count: usize);
 
 /// Performs a volatile load from the `src` pointer.
 ///
 /// The stabilized version of this intrinsic is [`core::ptr::read_volatile`].
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn volatile_load<T>(src: *const T) -> T;
+pub unsafe fn volatile_load<T: ?Forget>(src: *const T) -> T;
 /// Performs a volatile store to the `dst` pointer.
 ///
 /// The stabilized version of this intrinsic is [`core::ptr::write_volatile`].
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn volatile_store<T>(dst: *mut T, val: T);
+pub unsafe fn volatile_store<T: ?Forget>(dst: *mut T, val: T);
 
 /// Performs a volatile load from the `src` pointer
 /// The pointer is not required to be aligned.
@@ -1006,7 +1006,7 @@ pub unsafe fn volatile_store<T>(dst: *mut T, val: T);
 #[rustc_intrinsic]
 #[rustc_nounwind]
 #[rustc_diagnostic_item = "intrinsics_unaligned_volatile_load"]
-pub unsafe fn unaligned_volatile_load<T>(src: *const T) -> T;
+pub unsafe fn unaligned_volatile_load<T: ?Forget>(src: *const T) -> T;
 /// Performs a volatile store to the `dst` pointer.
 /// The pointer is not required to be aligned.
 ///
@@ -1014,7 +1014,7 @@ pub unsafe fn unaligned_volatile_load<T>(src: *const T) -> T;
 #[rustc_intrinsic]
 #[rustc_nounwind]
 #[rustc_diagnostic_item = "intrinsics_unaligned_volatile_store"]
-pub unsafe fn unaligned_volatile_store<T>(dst: *mut T, val: T);
+pub unsafe fn unaligned_volatile_store<T: ?Forget>(dst: *mut T, val: T);
 
 /// Returns the square root of an `f16`
 ///
@@ -2166,7 +2166,7 @@ pub const unsafe fn unchecked_funnel_shr<T: [const] fallback::FunnelShift>(
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_nounwind]
 #[rustc_intrinsic]
-pub const unsafe fn read_via_copy<T>(ptr: *const T) -> T;
+pub const unsafe fn read_via_copy<T: ?Forget>(ptr: *const T) -> T;
 
 /// This is an implementation detail of [`crate::ptr::write`] and should
 /// not be used anywhere else.  See its comments for why this exists.
@@ -2177,7 +2177,7 @@ pub const unsafe fn read_via_copy<T>(ptr: *const T) -> T;
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_nounwind]
 #[rustc_intrinsic]
-pub const unsafe fn write_via_move<T>(ptr: *mut T, value: T);
+pub const unsafe fn write_via_move<T: ?Forget>(ptr: *mut T, value: T);
 
 /// Returns the value of the discriminant for the variant in 'v';
 /// if `T` has no discriminant, returns `0`.
@@ -2226,19 +2226,19 @@ pub unsafe fn catch_unwind(
 /// in ways that are not allowed for regular writes).
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn nontemporal_store<T>(ptr: *mut T, val: T);
+pub unsafe fn nontemporal_store<T: ?Forget>(ptr: *mut T, val: T);
 
 /// See documentation of `<*const T>::offset_from` for details.
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_nounwind]
 #[rustc_intrinsic]
-pub const unsafe fn ptr_offset_from<T>(ptr: *const T, base: *const T) -> isize;
+pub const unsafe fn ptr_offset_from<T: ?Forget>(ptr: *const T, base: *const T) -> isize;
 
 /// See documentation of `<*const T>::offset_from_unsigned` for details.
 #[rustc_nounwind]
 #[rustc_intrinsic]
 #[rustc_intrinsic_const_stable_indirect]
-pub const unsafe fn ptr_offset_from_unsigned<T>(ptr: *const T, base: *const T) -> usize;
+pub const unsafe fn ptr_offset_from_unsigned<T: ?Forget>(ptr: *const T, base: *const T) -> usize;
 
 /// See documentation of `<*const T>::guaranteed_eq` for details.
 /// Returns `2` if the result is unknown.
@@ -2249,7 +2249,7 @@ pub const unsafe fn ptr_offset_from_unsigned<T>(ptr: *const T, base: *const T) -
 #[rustc_do_not_const_check]
 #[inline]
 #[miri::intrinsic_fallback_is_spec]
-pub const fn ptr_guaranteed_cmp<T>(ptr: *const T, other: *const T) -> u8 {
+pub const fn ptr_guaranteed_cmp<T: ?Forget>(ptr: *const T, other: *const T) -> u8 {
     (ptr == other) as u8
 }
 
@@ -2740,7 +2740,7 @@ pub unsafe fn vtable_align(ptr: *const ()) -> usize;
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
-pub const fn size_of<T>() -> usize;
+pub const fn size_of<T: ?Forget>() -> usize;
 
 /// The minimum alignment of a type.
 ///
@@ -2754,7 +2754,7 @@ pub const fn size_of<T>() -> usize;
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
-pub const fn align_of<T>() -> usize;
+pub const fn align_of<T: ?Forget>() -> usize;
 
 /// Returns the number of variants of the type `T` cast to a `usize`;
 /// if `T` has no variants, returns `0`. Uninhabited variants will be counted.
@@ -2768,7 +2768,7 @@ pub const fn align_of<T>() -> usize;
 #[rustc_nounwind]
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic]
-pub const fn variant_count<T>() -> usize;
+pub const fn variant_count<T: ?Forget>() -> usize;
 
 /// The size of the referenced value in bytes.
 ///
@@ -2781,7 +2781,7 @@ pub const fn variant_count<T>() -> usize;
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic]
 #[rustc_intrinsic_const_stable_indirect]
-pub const unsafe fn size_of_val<T: ?Sized>(ptr: *const T) -> usize;
+pub const unsafe fn size_of_val<T: ?Sized + ?Forget>(ptr: *const T) -> usize;
 
 /// The required alignment of the referenced value.
 ///
@@ -2794,7 +2794,7 @@ pub const unsafe fn size_of_val<T: ?Sized>(ptr: *const T) -> usize;
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic]
 #[rustc_intrinsic_const_stable_indirect]
-pub const unsafe fn align_of_val<T: ?Sized>(ptr: *const T) -> usize;
+pub const unsafe fn align_of_val<T: ?Sized + ?Forget>(ptr: *const T) -> usize;
 
 /// Gets a static string slice containing the name of a type.
 ///
@@ -2846,7 +2846,7 @@ pub const fn type_id_eq(a: crate::any::TypeId, b: crate::any::TypeId) -> bool {
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
-pub const fn aggregate_raw_ptr<P: bounds::BuiltinDeref, D, M>(data: D, meta: M) -> P
+pub const fn aggregate_raw_ptr<P: bounds::BuiltinDeref + ?Forget, D, M>(data: D, meta: M) -> P
 where
     <P as bounds::BuiltinDeref>::Pointee: ptr::Pointee<Metadata = M>;
 
@@ -2870,7 +2870,7 @@ pub const fn ptr_metadata<P: ptr::Pointee<Metadata = M> + PointeeSized + ?Forget
 #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.83.0")]
 #[rustc_nounwind]
 #[rustc_intrinsic]
-pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize);
+pub const unsafe fn copy_nonoverlapping<T: ?Forget>(src: *const T, dst: *mut T, count: usize);
 
 /// This is an accidentally-stable alias to [`ptr::copy`]; use that instead.
 // Note (intentionally not in the doc comment): `ptr::copy` adds some extra
@@ -2881,7 +2881,7 @@ pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: us
 #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.83.0")]
 #[rustc_nounwind]
 #[rustc_intrinsic]
-pub const unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize);
+pub const unsafe fn copy<T: ?Forget>(src: *const T, dst: *mut T, count: usize);
 
 /// This is an accidentally-stable alias to [`ptr::write_bytes`]; use that instead.
 // Note (intentionally not in the doc comment): `ptr::write_bytes` adds some extra
@@ -2892,7 +2892,7 @@ pub const unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize);
 #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.83.0")]
 #[rustc_nounwind]
 #[rustc_intrinsic]
-pub const unsafe fn write_bytes<T>(dst: *mut T, val: u8, count: usize);
+pub const unsafe fn write_bytes<T: ?Forget>(dst: *mut T, val: u8, count: usize);
 
 /// Returns the minimum (IEEE 754-2008 minNum) of two `f16` values.
 ///

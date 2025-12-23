@@ -5,7 +5,7 @@ use crate::marker::Forget;
 use crate::mem::{self, SizedTypeProperties};
 use crate::slice::{self, SliceIndex};
 
-impl<T: PointeeSized> *const T {
+impl<T: PointeeSized + ?Forget> *const T {
     #[doc = include_str!("docs/is_null.md")]
     ///
     /// # Examples
@@ -121,7 +121,7 @@ impl<T: PointeeSized> *const T {
     #[inline]
     pub const fn with_metadata_of<U>(self, meta: *const U) -> *const U
     where
-        U: PointeeSized,
+        U: PointeeSized + ?Forget,
     {
         from_raw_parts::<U>(self as *const (), metadata(meta))
     }
@@ -138,6 +138,18 @@ impl<T: PointeeSized> *const T {
         self as _
     }
 
+}
+
+impl<T: PointeeSized + ?Forget> *const T {
+    /// Casts to a pointer of another type.
+    #[stable(feature = "ptr_cast", since = "1.38.0")]
+    #[rustc_const_stable(feature = "const_ptr_cast", since = "1.38.0")]
+    #[rustc_diagnostic_item = "const_ptr_cast"]
+    #[inline(always)]
+    pub const fn cast<U: ?Forget>(self) -> *const U {
+        self as _
+    }
+
     #[doc = include_str!("./docs/addr.md")]
     #[must_use]
     #[inline(always)]
@@ -149,17 +161,6 @@ impl<T: PointeeSized> *const T {
         // SAFETY: Pointer-to-integer transmutes are valid (if you are okay with losing the
         // provenance).
         unsafe { mem::transmute(self.cast::<()>()) }
-    }
-}
-
-impl<T: PointeeSized + ?Forget> *const T {
-    /// Casts to a pointer of another type.
-    #[stable(feature = "ptr_cast", since = "1.38.0")]
-    #[rustc_const_stable(feature = "const_ptr_cast", since = "1.38.0")]
-    #[rustc_diagnostic_item = "const_ptr_cast"]
-    #[inline(always)]
-    pub const fn cast<U>(self) -> *const U {
-        self as _
     }
 
     /// Exposes the ["provenance"][crate::ptr#provenance] part of the pointer for future use in
@@ -189,6 +190,118 @@ impl<T: PointeeSized + ?Forget> *const T {
     pub fn expose_provenance(self) -> usize {
         self.cast::<()>() as usize
     }
+
+    /// Calculates the distance between two pointers within the same allocation, *where it's known that
+    /// `self` is equal to or greater than `origin`*. The returned value is in
+    /// units of **bytes**.
+    ///
+    /// This is purely a convenience for casting to a `u8` pointer and
+    /// using [`offset_from_unsigned`][pointer::offset_from_unsigned] on it.
+    /// See that method for documentation and safety requirements.
+    ///
+    /// For non-`Sized` pointees this operation considers only the data pointers,
+    /// ignoring the metadata.
+    #[stable(feature = "ptr_sub_ptr", since = "1.87.0")]
+    #[rustc_const_stable(feature = "const_ptr_sub_ptr", since = "1.87.0")]
+    #[inline]
+    #[track_caller]
+    pub const unsafe fn byte_offset_from_unsigned<U: ?Sized>(self, origin: *const U) -> usize {
+        // SAFETY: the caller must uphold the safety contract for `offset_from_unsigned`.
+        unsafe { self.cast::<u8>().offset_from_unsigned(origin.cast::<u8>()) }
+    }
+
+    /// Calculates the distance between two pointers within the same allocation, *where it's known that
+    /// `self` is equal to or greater than `origin`*. The returned value is in
+    /// units of T: the distance in bytes is divided by `size_of::<T>()`.
+    ///
+    /// This computes the same value that [`offset_from`](#method.offset_from)
+    /// would compute, but with the added precondition that the offset is
+    /// guaranteed to be non-negative.  This method is equivalent to
+    /// `usize::try_from(self.offset_from(origin)).unwrap_unchecked()`,
+    /// but it provides slightly more information to the optimizer, which can
+    /// sometimes allow it to optimize slightly better with some backends.
+    ///
+    /// This method can be thought of as recovering the `count` that was passed
+    /// to [`add`](#method.add) (or, with the parameters in the other order,
+    /// to [`sub`](#method.sub)).  The following are all equivalent, assuming
+    /// that their safety preconditions are met:
+    /// ```rust
+    /// # unsafe fn blah(ptr: *const i32, origin: *const i32, count: usize) -> bool { unsafe {
+    /// ptr.offset_from_unsigned(origin) == count
+    /// # &&
+    /// origin.add(count) == ptr
+    /// # &&
+    /// ptr.sub(count) == origin
+    /// # } }
+    /// ```
+    ///
+    /// # Safety
+    ///
+    /// - The distance between the pointers must be non-negative (`self >= origin`)
+    ///
+    /// - *All* the safety conditions of [`offset_from`](#method.offset_from)
+    ///   apply to this method as well; see it for the full details.
+    ///
+    /// Importantly, despite the return type of this method being able to represent
+    /// a larger offset, it's still *not permitted* to pass pointers which differ
+    /// by more than `isize::MAX` *bytes*.  As such, the result of this method will
+    /// always be less than or equal to `isize::MAX as usize`.
+    ///
+    /// # Panics
+    ///
+    /// This function panics if `T` is a Zero-Sized Type ("ZST").
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let a = [0; 5];
+    /// let ptr1: *const i32 = &a[1];
+    /// let ptr2: *const i32 = &a[3];
+    /// unsafe {
+    ///     assert_eq!(ptr2.offset_from_unsigned(ptr1), 2);
+    ///     assert_eq!(ptr1.add(2), ptr2);
+    ///     assert_eq!(ptr2.sub(2), ptr1);
+    ///     assert_eq!(ptr2.offset_from_unsigned(ptr2), 0);
+    /// }
+    ///
+    /// // This would be incorrect, as the pointers are not correctly ordered:
+    /// // ptr1.offset_from_unsigned(ptr2)
+    /// ```
+    #[stable(feature = "ptr_sub_ptr", since = "1.87.0")]
+    #[rustc_const_stable(feature = "const_ptr_sub_ptr", since = "1.87.0")]
+    #[inline]
+    #[track_caller]
+    pub const unsafe fn offset_from_unsigned(self, origin: *const T) -> usize
+    where
+        T: Sized,
+    {
+        #[rustc_allow_const_fn_unstable(const_eval_select)]
+        const fn runtime_ptr_ge(this: *const (), origin: *const ()) -> bool {
+            const_eval_select!(
+                @capture { this: *const (), origin: *const () } -> bool:
+                if const {
+                    true
+                } else {
+                    this >= origin
+                }
+            )
+        }
+
+        ub_checks::assert_unsafe_precondition!(
+            check_language_ub,
+            "ptr::offset_from_unsigned requires `self >= origin`",
+            (
+                this: *const () = self as *const (),
+                origin: *const () = origin as *const (),
+            ) => runtime_ptr_ge(this, origin)
+        );
+
+        let pointee_size = size_of::<T>();
+        assert!(0 < pointee_size && pointee_size <= isize::MAX as usize);
+        // SAFETY: the caller must uphold the safety contract for `ptr_offset_from_unsigned`.
+        unsafe { intrinsics::ptr_offset_from_unsigned(self, origin) }
+    }
+
 }
 
 impl<T: PointeeSized> *const T {
@@ -228,7 +341,9 @@ impl<T: PointeeSized> *const T {
     pub fn map_addr(self, f: impl FnOnce(usize) -> usize) -> Self {
         self.with_addr(f(self.addr()))
     }
+}
 
+impl<T: PointeeSized + ?Forget> *const T {
     /// Decompose a (possibly wide) pointer into its data pointer and metadata components.
     ///
     /// The pointer can be later reconstructed with [`from_raw_parts`].
@@ -238,6 +353,27 @@ impl<T: PointeeSized> *const T {
         (self.cast(), metadata(self))
     }
 
+    /// Reads the value from `self` without moving it. This leaves the
+    /// memory in `self` unchanged.
+    ///
+    /// See [`ptr::read`] for safety concerns and examples.
+    ///
+    /// [`ptr::read`]: crate::ptr::read()
+    #[stable(feature = "pointer_methods", since = "1.26.0")]
+    #[rustc_const_stable(feature = "const_ptr_read", since = "1.71.0")]
+    #[inline]
+    #[track_caller]
+    pub const unsafe fn read(self) -> T
+    where
+        T: Sized,
+    {
+        // SAFETY: the caller must uphold the safety contract for `read`.
+        unsafe { read(self) }
+    }
+
+}
+
+impl<T: PointeeSized + ?Forget> *const T {
     #[doc = include_str!("./docs/as_ref.md")]
     ///
     /// ```
@@ -642,116 +778,6 @@ impl<T: PointeeSized> *const T {
         unsafe { self.cast::<u8>().offset_from(origin.cast::<u8>()) }
     }
 
-    /// Calculates the distance between two pointers within the same allocation, *where it's known that
-    /// `self` is equal to or greater than `origin`*. The returned value is in
-    /// units of T: the distance in bytes is divided by `size_of::<T>()`.
-    ///
-    /// This computes the same value that [`offset_from`](#method.offset_from)
-    /// would compute, but with the added precondition that the offset is
-    /// guaranteed to be non-negative.  This method is equivalent to
-    /// `usize::try_from(self.offset_from(origin)).unwrap_unchecked()`,
-    /// but it provides slightly more information to the optimizer, which can
-    /// sometimes allow it to optimize slightly better with some backends.
-    ///
-    /// This method can be thought of as recovering the `count` that was passed
-    /// to [`add`](#method.add) (or, with the parameters in the other order,
-    /// to [`sub`](#method.sub)).  The following are all equivalent, assuming
-    /// that their safety preconditions are met:
-    /// ```rust
-    /// # unsafe fn blah(ptr: *const i32, origin: *const i32, count: usize) -> bool { unsafe {
-    /// ptr.offset_from_unsigned(origin) == count
-    /// # &&
-    /// origin.add(count) == ptr
-    /// # &&
-    /// ptr.sub(count) == origin
-    /// # } }
-    /// ```
-    ///
-    /// # Safety
-    ///
-    /// - The distance between the pointers must be non-negative (`self >= origin`)
-    ///
-    /// - *All* the safety conditions of [`offset_from`](#method.offset_from)
-    ///   apply to this method as well; see it for the full details.
-    ///
-    /// Importantly, despite the return type of this method being able to represent
-    /// a larger offset, it's still *not permitted* to pass pointers which differ
-    /// by more than `isize::MAX` *bytes*.  As such, the result of this method will
-    /// always be less than or equal to `isize::MAX as usize`.
-    ///
-    /// # Panics
-    ///
-    /// This function panics if `T` is a Zero-Sized Type ("ZST").
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// let a = [0; 5];
-    /// let ptr1: *const i32 = &a[1];
-    /// let ptr2: *const i32 = &a[3];
-    /// unsafe {
-    ///     assert_eq!(ptr2.offset_from_unsigned(ptr1), 2);
-    ///     assert_eq!(ptr1.add(2), ptr2);
-    ///     assert_eq!(ptr2.sub(2), ptr1);
-    ///     assert_eq!(ptr2.offset_from_unsigned(ptr2), 0);
-    /// }
-    ///
-    /// // This would be incorrect, as the pointers are not correctly ordered:
-    /// // ptr1.offset_from_unsigned(ptr2)
-    /// ```
-    #[stable(feature = "ptr_sub_ptr", since = "1.87.0")]
-    #[rustc_const_stable(feature = "const_ptr_sub_ptr", since = "1.87.0")]
-    #[inline]
-    #[track_caller]
-    pub const unsafe fn offset_from_unsigned(self, origin: *const T) -> usize
-    where
-        T: Sized,
-    {
-        #[rustc_allow_const_fn_unstable(const_eval_select)]
-        const fn runtime_ptr_ge(this: *const (), origin: *const ()) -> bool {
-            const_eval_select!(
-                @capture { this: *const (), origin: *const () } -> bool:
-                if const {
-                    true
-                } else {
-                    this >= origin
-                }
-            )
-        }
-
-        ub_checks::assert_unsafe_precondition!(
-            check_language_ub,
-            "ptr::offset_from_unsigned requires `self >= origin`",
-            (
-                this: *const () = self as *const (),
-                origin: *const () = origin as *const (),
-            ) => runtime_ptr_ge(this, origin)
-        );
-
-        let pointee_size = size_of::<T>();
-        assert!(0 < pointee_size && pointee_size <= isize::MAX as usize);
-        // SAFETY: the caller must uphold the safety contract for `ptr_offset_from_unsigned`.
-        unsafe { intrinsics::ptr_offset_from_unsigned(self, origin) }
-    }
-
-    /// Calculates the distance between two pointers within the same allocation, *where it's known that
-    /// `self` is equal to or greater than `origin`*. The returned value is in
-    /// units of **bytes**.
-    ///
-    /// This is purely a convenience for casting to a `u8` pointer and
-    /// using [`offset_from_unsigned`][pointer::offset_from_unsigned] on it.
-    /// See that method for documentation and safety requirements.
-    ///
-    /// For non-`Sized` pointees this operation considers only the data pointers,
-    /// ignoring the metadata.
-    #[stable(feature = "ptr_sub_ptr", since = "1.87.0")]
-    #[rustc_const_stable(feature = "const_ptr_sub_ptr", since = "1.87.0")]
-    #[inline]
-    #[track_caller]
-    pub const unsafe fn byte_offset_from_unsigned<U: ?Sized>(self, origin: *const U) -> usize {
-        // SAFETY: the caller must uphold the safety contract for `offset_from_unsigned`.
-        unsafe { self.cast::<u8>().offset_from_unsigned(origin.cast::<u8>()) }
-    }
 
     /// Returns whether two pointers are guaranteed to be equal.
     ///
@@ -1158,24 +1184,6 @@ impl<T: PointeeSized> *const T {
         self.cast::<u8>().wrapping_sub(count).with_metadata_of(self)
     }
 
-    /// Reads the value from `self` without moving it. This leaves the
-    /// memory in `self` unchanged.
-    ///
-    /// See [`ptr::read`] for safety concerns and examples.
-    ///
-    /// [`ptr::read`]: crate::ptr::read()
-    #[stable(feature = "pointer_methods", since = "1.26.0")]
-    #[rustc_const_stable(feature = "const_ptr_read", since = "1.71.0")]
-    #[inline]
-    #[track_caller]
-    pub const unsafe fn read(self) -> T
-    where
-        T: Sized,
-    {
-        // SAFETY: the caller must uphold the safety contract for `read`.
-        unsafe { read(self) }
-    }
-
     /// Performs a volatile read of the value from `self` without moving it. This
     /// leaves the memory in `self` unchanged.
     ///
@@ -1571,7 +1579,7 @@ impl<T, const N: usize> *const [T; N] {
 
 /// Pointer equality is by address, as produced by the [`<*const T>::addr`](pointer::addr) method.
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: PointeeSized> PartialEq for *const T {
+impl<T: PointeeSized + ?Forget> PartialEq for *const T {
     #[inline]
     #[allow(ambiguous_wide_pointer_comparisons)]
     fn eq(&self, other: &*const T) -> bool {
@@ -1581,11 +1589,11 @@ impl<T: PointeeSized> PartialEq for *const T {
 
 /// Pointer equality is an equivalence relation.
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: PointeeSized> Eq for *const T {}
+impl<T: PointeeSized + ?Forget> Eq for *const T {}
 
 /// Pointer comparison is by address, as produced by the `[`<*const T>::addr`](pointer::addr)` method.
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: PointeeSized> Ord for *const T {
+impl<T: PointeeSized + ?Forget> Ord for *const T {
     #[inline]
     #[allow(ambiguous_wide_pointer_comparisons)]
     fn cmp(&self, other: &*const T) -> Ordering {
@@ -1601,7 +1609,7 @@ impl<T: PointeeSized> Ord for *const T {
 
 /// Pointer comparison is by address, as produced by the `[`<*const T>::addr`](pointer::addr)` method.
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: PointeeSized> PartialOrd for *const T {
+impl<T: PointeeSized + ?Forget> PartialOrd for *const T {
     #[inline]
     #[allow(ambiguous_wide_pointer_comparisons)]
     fn partial_cmp(&self, other: &*const T) -> Option<Ordering> {
@@ -1634,7 +1642,7 @@ impl<T: PointeeSized> PartialOrd for *const T {
 }
 
 #[stable(feature = "raw_ptr_default", since = "1.88.0")]
-impl<T: ?Sized + Thin> Default for *const T {
+impl<T: ?Sized + ?Forget + Thin> Default for *const T {
     /// Returns the default value of [`null()`][crate::ptr::null].
     fn default() -> Self {
         crate::ptr::null()

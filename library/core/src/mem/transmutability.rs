@@ -1,4 +1,4 @@
-use crate::marker::ConstParamTy_;
+use crate::marker::{ConstParamTy_, Forget};
 
 /// Marks that `Src` is transmutable into `Self`.
 ///
@@ -88,9 +88,9 @@ use crate::marker::ConstParamTy_;
 #[rustc_deny_explicit_impl]
 #[rustc_do_not_implement_via_object]
 #[rustc_coinductive]
-pub unsafe trait TransmuteFrom<Src, const ASSUME: Assume = { Assume::NOTHING }>
+pub unsafe trait TransmuteFrom<Src, const ASSUME: Assume = { Assume::NOTHING }>: ?Forget
 where
-    Src: ?Sized,
+    Src: ?Sized + ?Forget,
 {
     /// Transmutes a `Src` value into a `Self`.
     ///
@@ -121,12 +121,12 @@ where
         use super::ManuallyDrop;
 
         #[repr(C)]
-        union Transmute<Src, Dst> {
+        union Transmute<Src: ?Forget, Dst: ?Forget> {
             src: ManuallyDrop<Src>,
             dst: ManuallyDrop<Dst>,
         }
 
-        let transmute = Transmute { src: ManuallyDrop::new(src) };
+        let transmute = Transmute { src: unsafe { ManuallyDrop::new_unchecked(src) } };
 
         // SAFETY: It is safe to reinterpret the bits of `src` as a value of
         // type `Self`, because, by combination of invariant on this trait and

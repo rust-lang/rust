@@ -33,7 +33,7 @@ use crate::marker::{Forget, PointeeSized, Unsize};
 /// [nomicon-coerce]: ../../nomicon/coercions.html
 #[unstable(feature = "coerce_unsized", issue = "18598")]
 #[lang = "coerce_unsized"]
-pub trait CoerceUnsized<T: PointeeSized> {
+pub trait CoerceUnsized<T: PointeeSized + ?Forget>: ?Forget {
     // Empty.
 }
 
@@ -131,7 +131,7 @@ impl<T: PointeeSized + ?Forget + Unsize<U>, U: PointeeSized> CoerceUnsized<*cons
 /// [^1]: Formerly known as *object safety*.
 #[unstable(feature = "dispatch_from_dyn", issue = "none")]
 #[lang = "dispatch_from_dyn"]
-pub trait DispatchFromDyn<T: ?Forget> {
+pub trait DispatchFromDyn<T: ?Forget>: ?Forget {
     // Empty.
 }
 
