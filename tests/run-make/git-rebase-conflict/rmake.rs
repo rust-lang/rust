@@ -8,6 +8,7 @@
 use run_make_support::{diff, rustc};
 
 fn main() {
-    let file_out = rustc().input("main.rs").run_fail().stderr_utf8();
+    // We use `.rust` purely to avoid `fmt` check on a file with conflict markers
+    let file_out = rustc().input("main.rust").run_fail().stderr_utf8();
     diff().expected_file("file.stderr").actual_text("actual-file-stderr", file_out).run();
 }

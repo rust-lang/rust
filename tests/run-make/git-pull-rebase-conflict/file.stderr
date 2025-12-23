@@ -1,5 +1,5 @@
 error: encountered diff marker
- --> main.rs:2:1
+ --> main.rust:2:1
   |
 2 | <<<<<<< HEAD //~ ERROR encountered diff marker
   | ^^^^^^^ between this marker and `=======` is the code from branch 'main' of github.com:user/repo
