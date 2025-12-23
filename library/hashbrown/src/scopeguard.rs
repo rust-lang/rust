@@ -5,7 +5,7 @@ use core::{
     ptr,
 };
 
-pub struct ScopeGuard<T, F>
+pub(crate) struct ScopeGuard<T, F>
 where
     F: FnMut(&mut T),
 {
@@ -14,7 +14,7 @@ where
 }
 
 #[inline]
-pub fn guard<T, F>(value: T, dropfn: F) -> ScopeGuard<T, F>
+pub(crate) fn guard<T, F>(value: T, dropfn: F) -> ScopeGuard<T, F>
 where
     F: FnMut(&mut T),
 {
@@ -26,7 +26,7 @@ where
     F: FnMut(&mut T),
 {
     #[inline]
-    pub fn into_inner(guard: Self) -> T {
+    pub(crate) fn into_inner(guard: Self) -> T {
         // Cannot move out of Drop-implementing types, so
         // ptr::read the value out of a ManuallyDrop<Self>
         // Don't use mem::forget as that might invalidate value

@@ -11,7 +11,7 @@ mod inner {
     #[cfg(test)]
     pub use crate::alloc::alloc::AllocError;
     use crate::alloc::alloc::Layout;
-    pub use crate::alloc::alloc::{Allocator, Global};
+    pub(crate) use crate::alloc::alloc::{Allocator, Global};
     use core::ptr::NonNull;
 
     #[allow(clippy::map_err_ignore)]
@@ -34,7 +34,7 @@ mod inner {
     use crate::alloc::alloc::Layout;
     #[cfg(test)]
     pub use allocator_api2::alloc::AllocError;
-    pub use allocator_api2::alloc::{Allocator, Global};
+    pub(crate) use allocator_api2::alloc::{Allocator, Global};
     use core::ptr::NonNull;
 
     #[allow(clippy::map_err_ignore)]

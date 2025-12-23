@@ -10,7 +10,7 @@ use rayon::iter::{
 };
 
 /// Parallel iterator which returns a raw pointer to every full bucket in the table.
-pub struct RawParIter<T> {
+pub(crate) struct RawParIter<T> {
     iter: RawIterRange<T>,
 }
 
@@ -75,7 +75,7 @@ impl<T> UnindexedProducer for ParIterProducer<T> {
 }
 
 /// Parallel iterator which consumes a table and returns elements.
-pub struct RawIntoParIter<T, A: Allocator = Global> {
+pub(crate) struct RawIntoParIter<T, A: Allocator = Global> {
     table: RawTable<T, A>,
 }
 
@@ -108,7 +108,7 @@ impl<T: Send, A: Allocator + Send> ParallelIterator for RawIntoParIter<T, A> {
 }
 
 /// Parallel iterator which consumes elements without freeing the table storage.
-pub struct RawParDrain<'a, T, A: Allocator = Global> {
+pub(crate) struct RawParDrain<'a, T, A: Allocator = Global> {
     // We don't use a &'a mut RawTable<T> because we want RawParDrain to be
     // covariant over T.
     table: NonNull<RawTable<T, A>>,
@@ -206,7 +206,7 @@ impl<T> Drop for ParDrainProducer<T> {
 impl<T, A: Allocator> RawTable<T, A> {
     /// Returns a parallel iterator over the elements in a `RawTable`.
     #[cfg_attr(feature = "inline-more", inline)]
-    pub unsafe fn par_iter(&self) -> RawParIter<T> {
+    pub(crate) unsafe fn par_iter(&self) -> RawParIter<T> {
         RawParIter {
             iter: self.iter().iter,
         }
@@ -214,14 +214,14 @@ impl<T, A: Allocator> RawTable<T, A> {
 
     /// Returns a parallel iterator over the elements in a `RawTable`.
     #[cfg_attr(feature = "inline-more", inline)]
-    pub fn into_par_iter(self) -> RawIntoParIter<T, A> {
+    pub(crate) fn into_par_iter(self) -> RawIntoParIter<T, A> {
         RawIntoParIter { table: self }
     }
 
     /// Returns a parallel iterator which consumes all elements of a `RawTable`
     /// without freeing its memory allocation.
     #[cfg_attr(feature = "inline-more", inline)]
-    pub fn par_drain(&mut self) -> RawParDrain<'_, T, A> {
+    pub(crate) fn par_drain(&mut self) -> RawParDrain<'_, T, A> {
         RawParDrain {
             table: NonNull::from(self),
             marker: PhantomData,
