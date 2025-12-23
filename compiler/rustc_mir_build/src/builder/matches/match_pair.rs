@@ -256,7 +256,7 @@ impl<'tcx> MatchPairTree<'tcx> {
                     None
                 } else {
                     Some(TestableCase::Slice {
-                        len: prefix.len() + suffix.len(),
+                        len: u64::try_from(prefix.len() + suffix.len()).unwrap(),
                         variable_length: slice.is_some(),
                     })
                 }

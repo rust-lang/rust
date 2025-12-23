@@ -73,7 +73,7 @@ use ide_db::{
 };
 use ide_db::{MiniCore, ra_fixture::RaFixtureAnalysis};
 use macros::UpmapFromRaFixture;
-use syntax::{SourceFile, ast};
+use syntax::{AstNode, SourceFile, ast};
 use triomphe::Arc;
 use view_memory_layout::{RecursiveMemoryLayout, view_memory_layout};
 
@@ -254,6 +254,7 @@ impl Analysis {
             TryFrom::try_from(&*std::env::current_dir().unwrap().as_path().to_string_lossy())
                 .unwrap(),
         );
+        let crate_attrs = Vec::new();
         cfg_options.insert_atom(sym::test);
         crate_graph.add_crate_root(
             file_id,
@@ -264,6 +265,7 @@ impl Analysis {
             None,
             Env::default(),
             CrateOrigin::Local { repo: None, name: None },
+            crate_attrs,
             false,
             proc_macro_cwd,
             Arc::new(CrateWorkspaceData {
@@ -901,6 +903,18 @@ impl Analysis {
         position: FilePosition,
     ) -> Cancellable<Option<RecursiveMemoryLayout>> {
         self.with_db(|db| view_memory_layout(db, position))
+    }
+
+    pub fn get_failed_obligations(&self, offset: TextSize, file_id: FileId) -> Cancellable<String> {
+        self.with_db(|db| {
+            let sema = Semantics::new(db);
+            let source_file = sema.parse_guess_edition(file_id);
+
+            let Some(token) = source_file.syntax().token_at_offset(offset).next() else {
+                return String::new();
+            };
+            sema.get_failed_obligations(token).unwrap_or_default()
+        })
     }
 
     pub fn editioned_file_id_to_vfs(&self, file_id: hir::EditionedFileId) -> FileId {

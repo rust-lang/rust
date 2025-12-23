@@ -355,6 +355,7 @@ impl flags::AnalysisStats {
         }
 
         hir::clear_tls_solver_cache();
+        unsafe { hir::collect_ty_garbage() };
 
         let db = host.raw_database_mut();
         db.trigger_lru_eviction();
@@ -390,11 +391,12 @@ impl flags::AnalysisStats {
             all += 1;
             let Err(e) = db.layout_of_adt(
                 hir_def::AdtId::from(a),
-                GenericArgs::new_from_iter(interner, []),
+                GenericArgs::empty(interner).store(),
                 hir_ty::ParamEnvAndCrate {
                     param_env: db.trait_environment(a.into()),
                     krate: a.krate(db).into(),
-                },
+                }
+                .store(),
             ) else {
                 continue;
             };
@@ -830,7 +832,7 @@ impl flags::AnalysisStats {
             let (previous_exprs, previous_unknown, previous_partially_unknown) =
                 (num_exprs, num_exprs_unknown, num_exprs_partially_unknown);
             for (expr_id, _) in body.exprs() {
-                let ty = &inference_result[expr_id];
+                let ty = inference_result.expr_ty(expr_id);
                 num_exprs += 1;
                 let unknown_or_partial = if ty.is_ty_error() {
                     num_exprs_unknown += 1;
@@ -897,15 +899,15 @@ impl flags::AnalysisStats {
                                 start.col,
                                 end.line + 1,
                                 end.col,
-                                mismatch.expected.display(db, display_target),
-                                mismatch.actual.display(db, display_target)
+                                mismatch.expected.as_ref().display(db, display_target),
+                                mismatch.actual.as_ref().display(db, display_target)
                             ));
                         } else {
                             bar.println(format!(
                                 "{}: Expected {}, got {}",
                                 name.display(db, Edition::LATEST),
-                                mismatch.expected.display(db, display_target),
-                                mismatch.actual.display(db, display_target)
+                                mismatch.expected.as_ref().display(db, display_target),
+                                mismatch.actual.as_ref().display(db, display_target)
                             ));
                         }
                     }
@@ -913,8 +915,8 @@ impl flags::AnalysisStats {
                         println!(
                             r#"{},mismatch,"{}","{}""#,
                             location_csv_expr(db, vfs, &sm(), expr_id),
-                            mismatch.expected.display(db, display_target),
-                            mismatch.actual.display(db, display_target)
+                            mismatch.expected.as_ref().display(db, display_target),
+                            mismatch.actual.as_ref().display(db, display_target)
                         );
                     }
                 }
@@ -934,7 +936,7 @@ impl flags::AnalysisStats {
             let (previous_pats, previous_unknown, previous_partially_unknown) =
                 (num_pats, num_pats_unknown, num_pats_partially_unknown);
             for (pat_id, _) in body.pats() {
-                let ty = &inference_result[pat_id];
+                let ty = inference_result.pat_ty(pat_id);
                 num_pats += 1;
                 let unknown_or_partial = if ty.is_ty_error() {
                     num_pats_unknown += 1;
@@ -999,15 +1001,15 @@ impl flags::AnalysisStats {
                                 start.col,
                                 end.line + 1,
                                 end.col,
-                                mismatch.expected.display(db, display_target),
-                                mismatch.actual.display(db, display_target)
+                                mismatch.expected.as_ref().display(db, display_target),
+                                mismatch.actual.as_ref().display(db, display_target)
                             ));
                         } else {
                             bar.println(format!(
                                 "{}: Expected {}, got {}",
                                 name.display(db, Edition::LATEST),
-                                mismatch.expected.display(db, display_target),
-                                mismatch.actual.display(db, display_target)
+                                mismatch.expected.as_ref().display(db, display_target),
+                                mismatch.actual.as_ref().display(db, display_target)
                             ));
                         }
                     }
@@ -1015,8 +1017,8 @@ impl flags::AnalysisStats {
                         println!(
                             r#"{},mismatch,"{}","{}""#,
                             location_csv_pat(db, vfs, &sm(), pat_id),
-                            mismatch.expected.display(db, display_target),
-                            mismatch.actual.display(db, display_target)
+                            mismatch.expected.as_ref().display(db, display_target),
+                            mismatch.actual.as_ref().display(db, display_target)
                         );
                     }
                 }
@@ -1205,6 +1207,7 @@ impl flags::AnalysisStats {
                     sized_bound: false,
                     discriminant_hints: ide::DiscriminantHints::Always,
                     parameter_hints: true,
+                    parameter_hints_for_missing_arguments: false,
                     generic_parameter_hints: ide::GenericParameterHints {
                         type_hints: true,
                         lifetime_hints: true,

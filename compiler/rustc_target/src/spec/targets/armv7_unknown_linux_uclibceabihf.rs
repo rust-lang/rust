@@ -19,7 +19,7 @@ pub(crate) fn target() -> Target {
 
         options: TargetOptions {
             // Info about features at https://wiki.debian.org/ArmHardFloatPort
-            features: "+v7,+vfp3,-d32,+thumb2,-neon".into(),
+            features: "+v7,+vfp3d16,+thumb2,-neon".into(),
             cpu: "generic".into(),
             max_atomic_width: Some(64),
             mcount: "_mcount".into(),

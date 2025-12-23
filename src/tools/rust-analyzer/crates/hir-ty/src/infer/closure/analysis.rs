@@ -15,7 +15,7 @@ use hir_def::{
 };
 use rustc_ast_ir::Mutability;
 use rustc_hash::{FxHashMap, FxHashSet};
-use rustc_type_ir::inherent::{IntoKind, SliceLike, Ty as _};
+use rustc_type_ir::inherent::{IntoKind, Ty as _};
 use smallvec::{SmallVec, smallvec};
 use stdx::{format_to, never};
 use syntax::utils::is_raw_identifier;
@@ -25,21 +25,21 @@ use crate::{
     db::{HirDatabase, InternedClosure, InternedClosureId},
     infer::InferenceContext,
     mir::{BorrowKind, MirSpan, MutBorrowKind, ProjectionElem},
-    next_solver::{DbInterner, EarlyBinder, GenericArgs, Ty, TyKind},
+    next_solver::{DbInterner, GenericArgs, StoredEarlyBinder, StoredTy, Ty, TyKind},
     traits::FnTrait,
 };
 
 // The below functions handle capture and closure kind (Fn, FnMut, ..)
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, salsa::Update)]
-pub(crate) struct HirPlace<'db> {
+pub(crate) struct HirPlace {
     pub(crate) local: BindingId,
-    pub(crate) projections: Vec<ProjectionElem<'db, Infallible>>,
+    pub(crate) projections: Vec<ProjectionElem<Infallible>>,
 }
 
-impl<'db> HirPlace<'db> {
-    fn ty(&self, ctx: &mut InferenceContext<'_, 'db>) -> Ty<'db> {
-        let mut ty = ctx.table.resolve_completely(ctx.result[self.local]);
+impl HirPlace {
+    fn ty<'db>(&self, ctx: &mut InferenceContext<'_, 'db>) -> Ty<'db> {
+        let mut ty = ctx.table.resolve_completely(ctx.result.binding_ty(self.local));
         for p in &self.projections {
             ty = p.projected_ty(
                 &ctx.table.infer_ctxt,
@@ -78,8 +78,8 @@ pub enum CaptureKind {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, salsa::Update)]
-pub struct CapturedItem<'db> {
-    pub(crate) place: HirPlace<'db>,
+pub struct CapturedItem {
+    pub(crate) place: HirPlace,
     pub(crate) kind: CaptureKind,
     /// The inner vec is the stacks; the outer vec is for each capture reference.
     ///
@@ -88,11 +88,10 @@ pub struct CapturedItem<'db> {
     /// copy all captures of the inner closure to the outer closure, and then we may
     /// truncate them, and we want the correct span to be reported.
     span_stacks: SmallVec<[SmallVec<[MirSpan; 3]>; 3]>,
-    #[update(unsafe(with(crate::utils::unsafe_update_eq)))]
-    pub(crate) ty: EarlyBinder<'db, Ty<'db>>,
+    pub(crate) ty: StoredEarlyBinder<StoredTy>,
 }
 
-impl<'db> CapturedItem<'db> {
+impl CapturedItem {
     pub fn local(&self) -> BindingId {
         self.place.local
     }
@@ -102,9 +101,9 @@ impl<'db> CapturedItem<'db> {
         self.place.projections.iter().any(|it| !matches!(it, ProjectionElem::Deref))
     }
 
-    pub fn ty(&self, db: &'db dyn HirDatabase, subst: GenericArgs<'db>) -> Ty<'db> {
+    pub fn ty<'db>(&self, db: &'db dyn HirDatabase, subst: GenericArgs<'db>) -> Ty<'db> {
         let interner = DbInterner::new_no_crate(db);
-        self.ty.instantiate(interner, subst.split_closure_args_untupled().parent_args)
+        self.ty.get().instantiate(interner, subst.split_closure_args_untupled().parent_args)
     }
 
     pub fn kind(&self) -> CaptureKind {
@@ -273,15 +272,15 @@ impl<'db> CapturedItem<'db> {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct CapturedItemWithoutTy<'db> {
-    pub(crate) place: HirPlace<'db>,
+pub(crate) struct CapturedItemWithoutTy {
+    pub(crate) place: HirPlace,
     pub(crate) kind: CaptureKind,
     /// The inner vec is the stacks; the outer vec is for each capture reference.
     pub(crate) span_stacks: SmallVec<[SmallVec<[MirSpan; 3]>; 3]>,
 }
 
-impl<'db> CapturedItemWithoutTy<'db> {
-    fn with_ty(self, ctx: &mut InferenceContext<'_, 'db>) -> CapturedItem<'db> {
+impl CapturedItemWithoutTy {
+    fn with_ty(self, ctx: &mut InferenceContext<'_, '_>) -> CapturedItem {
         let ty = self.place.ty(ctx);
         let ty = match &self.kind {
             CaptureKind::ByValue => ty,
@@ -290,20 +289,20 @@ impl<'db> CapturedItemWithoutTy<'db> {
                     BorrowKind::Mut { .. } => Mutability::Mut,
                     _ => Mutability::Not,
                 };
-                Ty::new_ref(ctx.interner(), ctx.types.re_error, ty, m)
+                Ty::new_ref(ctx.interner(), ctx.types.regions.error, ty, m)
             }
         };
         CapturedItem {
             place: self.place,
             kind: self.kind,
             span_stacks: self.span_stacks,
-            ty: EarlyBinder::bind(ty),
+            ty: StoredEarlyBinder::bind(ty.store()),
         }
     }
 }
 
 impl<'db> InferenceContext<'_, 'db> {
-    fn place_of_expr(&mut self, tgt_expr: ExprId) -> Option<HirPlace<'db>> {
+    fn place_of_expr(&mut self, tgt_expr: ExprId) -> Option<HirPlace> {
         let r = self.place_of_expr_without_adjust(tgt_expr)?;
         let adjustments =
             self.result.expr_adjustments.get(&tgt_expr).map(|it| &**it).unwrap_or_default();
@@ -311,7 +310,7 @@ impl<'db> InferenceContext<'_, 'db> {
     }
 
     /// Pushes the span into `current_capture_span_stack`, *without clearing it first*.
-    fn path_place(&mut self, path: &Path, id: ExprOrPatId) -> Option<HirPlace<'db>> {
+    fn path_place(&mut self, path: &Path, id: ExprOrPatId) -> Option<HirPlace> {
         if path.type_anchor().is_some() {
             return None;
         }
@@ -332,7 +331,7 @@ impl<'db> InferenceContext<'_, 'db> {
     }
 
     /// Changes `current_capture_span_stack` to contain the stack of spans for this expr.
-    fn place_of_expr_without_adjust(&mut self, tgt_expr: ExprId) -> Option<HirPlace<'db>> {
+    fn place_of_expr_without_adjust(&mut self, tgt_expr: ExprId) -> Option<HirPlace> {
         self.current_capture_span_stack.clear();
         match &self.body[tgt_expr] {
             Expr::Path(p) => {
@@ -367,7 +366,7 @@ impl<'db> InferenceContext<'_, 'db> {
         None
     }
 
-    fn push_capture(&mut self, place: HirPlace<'db>, kind: CaptureKind) {
+    fn push_capture(&mut self, place: HirPlace, kind: CaptureKind) {
         self.current_captures.push(CapturedItemWithoutTy {
             place,
             kind,
@@ -375,11 +374,7 @@ impl<'db> InferenceContext<'_, 'db> {
         });
     }
 
-    fn truncate_capture_spans(
-        &self,
-        capture: &mut CapturedItemWithoutTy<'db>,
-        mut truncate_to: usize,
-    ) {
+    fn truncate_capture_spans(&self, capture: &mut CapturedItemWithoutTy, mut truncate_to: usize) {
         // The first span is the identifier, and it must always remain.
         truncate_to += 1;
         for span_stack in &mut capture.span_stacks {
@@ -404,14 +399,14 @@ impl<'db> InferenceContext<'_, 'db> {
         }
     }
 
-    fn ref_expr(&mut self, expr: ExprId, place: Option<HirPlace<'db>>) {
+    fn ref_expr(&mut self, expr: ExprId, place: Option<HirPlace>) {
         if let Some(place) = place {
             self.add_capture(place, CaptureKind::ByRef(BorrowKind::Shared));
         }
         self.walk_expr(expr);
     }
 
-    fn add_capture(&mut self, place: HirPlace<'db>, kind: CaptureKind) {
+    fn add_capture(&mut self, place: HirPlace, kind: CaptureKind) {
         if self.is_upvar(&place) {
             self.push_capture(place, kind);
         }
@@ -427,7 +422,7 @@ impl<'db> InferenceContext<'_, 'db> {
         }
     }
 
-    fn mutate_expr(&mut self, expr: ExprId, place: Option<HirPlace<'db>>) {
+    fn mutate_expr(&mut self, expr: ExprId, place: Option<HirPlace>) {
         if let Some(place) = place {
             self.add_capture(
                 place,
@@ -444,7 +439,7 @@ impl<'db> InferenceContext<'_, 'db> {
         self.walk_expr(expr);
     }
 
-    fn consume_place(&mut self, place: HirPlace<'db>) {
+    fn consume_place(&mut self, place: HirPlace) {
         if self.is_upvar(&place) {
             let ty = place.ty(self);
             let kind = if self.is_ty_copy(ty) {
@@ -456,7 +451,7 @@ impl<'db> InferenceContext<'_, 'db> {
         }
     }
 
-    fn walk_expr_with_adjust(&mut self, tgt_expr: ExprId, adjustment: &[Adjustment<'db>]) {
+    fn walk_expr_with_adjust(&mut self, tgt_expr: ExprId, adjustment: &[Adjustment]) {
         if let Some((last, rest)) = adjustment.split_last() {
             match &last.kind {
                 Adjust::NeverToAny | Adjust::Deref(None) | Adjust::Pointer(_) => {
@@ -477,12 +472,7 @@ impl<'db> InferenceContext<'_, 'db> {
         }
     }
 
-    fn ref_capture_with_adjusts(
-        &mut self,
-        m: Mutability,
-        tgt_expr: ExprId,
-        rest: &[Adjustment<'db>],
-    ) {
+    fn ref_capture_with_adjusts(&mut self, m: Mutability, tgt_expr: ExprId, rest: &[Adjustment]) {
         let capture_kind = match m {
             Mutability::Mut => CaptureKind::ByRef(BorrowKind::Mut { kind: MutBorrowKind::Default }),
             Mutability::Not => CaptureKind::ByRef(BorrowKind::Shared),
@@ -780,7 +770,7 @@ impl<'db> InferenceContext<'_, 'db> {
             }
             Pat::Bind { id, .. } => match self.result.binding_modes[p] {
                 crate::BindingMode::Move => {
-                    if self.is_ty_copy(self.result.type_of_binding[*id]) {
+                    if self.is_ty_copy(self.result.binding_ty(*id)) {
                         update_result(CaptureKind::ByRef(BorrowKind::Shared));
                     } else {
                         update_result(CaptureKind::ByValue);
@@ -798,7 +788,7 @@ impl<'db> InferenceContext<'_, 'db> {
         self.body.walk_pats_shallow(p, |p| self.walk_pat_inner(p, update_result, for_mut));
     }
 
-    fn is_upvar(&self, place: &HirPlace<'db>) -> bool {
+    fn is_upvar(&self, place: &HirPlace) -> bool {
         if let Some(c) = self.current_closure {
             let InternedClosure(_, root) = self.db.lookup_intern_closure(c);
             return self.body.is_binding_upvar(place.local, root);
@@ -830,7 +820,7 @@ impl<'db> InferenceContext<'_, 'db> {
         // FIXME: Borrow checker problems without this.
         let mut current_captures = std::mem::take(&mut self.current_captures);
         for capture in &mut current_captures {
-            let mut ty = self.table.resolve_completely(self.result[capture.place.local]);
+            let mut ty = self.table.resolve_completely(self.result.binding_ty(capture.place.local));
             if ty.is_raw_ptr() || ty.is_union() {
                 capture.kind = CaptureKind::ByRef(BorrowKind::Shared);
                 self.truncate_capture_spans(capture, 0);
@@ -875,7 +865,7 @@ impl<'db> InferenceContext<'_, 'db> {
 
     fn minimize_captures(&mut self) {
         self.current_captures.sort_unstable_by_key(|it| it.place.projections.len());
-        let mut hash_map = FxHashMap::<HirPlace<'db>, usize>::default();
+        let mut hash_map = FxHashMap::<HirPlace, usize>::default();
         let result = mem::take(&mut self.current_captures);
         for mut item in result {
             let mut lookup_place = HirPlace { local: item.place.local, projections: vec![] };
@@ -910,7 +900,7 @@ impl<'db> InferenceContext<'_, 'db> {
         }
     }
 
-    fn consume_with_pat(&mut self, mut place: HirPlace<'db>, tgt_pat: PatId) {
+    fn consume_with_pat(&mut self, mut place: HirPlace, tgt_pat: PatId) {
         let adjustments_count =
             self.result.pat_adjustments.get(&tgt_pat).map(|it| it.len()).unwrap_or_default();
         place.projections.extend((0..adjustments_count).map(|_| ProjectionElem::Deref));
@@ -921,7 +911,7 @@ impl<'db> InferenceContext<'_, 'db> {
                 Pat::Missing | Pat::Wild => (),
                 Pat::Tuple { args, ellipsis } => {
                     let (al, ar) = args.split_at(ellipsis.map_or(args.len(), |it| it as usize));
-                    let field_count = match self.result[tgt_pat].kind() {
+                    let field_count = match self.result.pat_ty(tgt_pat).kind() {
                         TyKind::Tuple(s) => s.len(),
                         _ => break 'reset_span_stack,
                     };
@@ -1221,11 +1211,11 @@ impl<'db> InferenceContext<'_, 'db> {
 }
 
 /// Call this only when the last span in the stack isn't a split.
-fn apply_adjusts_to_place<'db>(
+fn apply_adjusts_to_place(
     current_capture_span_stack: &mut Vec<MirSpan>,
-    mut r: HirPlace<'db>,
-    adjustments: &[Adjustment<'db>],
-) -> Option<HirPlace<'db>> {
+    mut r: HirPlace,
+    adjustments: &[Adjustment],
+) -> Option<HirPlace> {
     let span = *current_capture_span_stack.last().expect("empty capture span stack");
     for adj in adjustments {
         match &adj.kind {

@@ -41,7 +41,7 @@ impl<'tcx> crate::MirPass<'tcx> for SimplifyConstCondition {
                 {
                     Some(const_operand)
                 }
-                Operand::Copy(_) | Operand::Move(_) => None,
+                Operand::Copy(_) | Operand::Move(_) | Operand::RuntimeChecks(_) => None,
             }
         }
 

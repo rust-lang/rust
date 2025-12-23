@@ -13,7 +13,7 @@ use crate::{
     db::{HirDatabase, InternedOpaqueTyId},
     lower::{ImplTraitIdx, ImplTraits},
     next_solver::{
-        DbInterner, EarlyBinder, ErrorGuaranteed, SolverDefId, Ty, TypingMode,
+        DbInterner, ErrorGuaranteed, SolverDefId, StoredEarlyBinder, StoredTy, Ty, TypingMode,
         infer::{DbInternerInferExt, traits::ObligationCause},
         obligation_ctxt::ObligationCtxt,
     },
@@ -72,10 +72,10 @@ pub(crate) fn opaque_types_defined_by(
 
     // FIXME: Collect opaques from `#[define_opaque]`.
 
-    fn extend_with_opaques<'db>(
-        db: &'db dyn HirDatabase,
-        opaques: &Option<Box<EarlyBinder<'db, ImplTraits<'db>>>>,
-        mut make_impl_trait: impl FnMut(ImplTraitIdx<'db>) -> ImplTraitId<'db>,
+    fn extend_with_opaques(
+        db: &dyn HirDatabase,
+        opaques: &Option<Box<StoredEarlyBinder<ImplTraits>>>,
+        mut make_impl_trait: impl FnMut(ImplTraitIdx) -> ImplTraitId,
         result: &mut Vec<SolverDefId>,
     ) {
         if let Some(opaques) = opaques {
@@ -89,25 +89,25 @@ pub(crate) fn opaque_types_defined_by(
 
 // These are firewall queries to prevent drawing dependencies between infers:
 
-#[salsa::tracked(returns(ref), unsafe(non_update_return_type))]
+#[salsa::tracked(returns(ref))]
 pub(crate) fn rpit_hidden_types<'db>(
     db: &'db dyn HirDatabase,
     function: FunctionId,
-) -> ArenaMap<ImplTraitIdx<'db>, EarlyBinder<'db, Ty<'db>>> {
+) -> ArenaMap<ImplTraitIdx, StoredEarlyBinder<StoredTy>> {
     let infer = InferenceResult::for_body(db, function.into());
     let mut result = ArenaMap::new();
     for (opaque, hidden_type) in infer.return_position_impl_trait_types(db) {
-        result.insert(opaque, EarlyBinder::bind(hidden_type));
+        result.insert(opaque, StoredEarlyBinder::bind(hidden_type.store()));
     }
     result.shrink_to_fit();
     result
 }
 
-#[salsa::tracked(returns(ref), unsafe(non_update_return_type))]
+#[salsa::tracked(returns(ref))]
 pub(crate) fn tait_hidden_types<'db>(
     db: &'db dyn HirDatabase,
     type_alias: TypeAliasId,
-) -> ArenaMap<ImplTraitIdx<'db>, EarlyBinder<'db, Ty<'db>>> {
+) -> ArenaMap<ImplTraitIdx, StoredEarlyBinder<StoredTy>> {
     // Call this first, to not perform redundant work if there are no TAITs.
     let Some(taits_count) = ImplTraits::type_alias_impl_traits(db, type_alias)
         .as_deref()
@@ -129,7 +129,7 @@ pub(crate) fn tait_hidden_types<'db>(
     let mut result = ArenaMap::with_capacity(taits_count);
     for defining_body in defining_bodies {
         let infer = InferenceResult::for_body(db, defining_body);
-        for (&opaque, &hidden_type) in &infer.type_of_opaque {
+        for (&opaque, hidden_type) in &infer.type_of_opaque {
             let ImplTraitId::TypeAliasImplTrait(opaque_owner, opaque_idx) = opaque.loc(db) else {
                 continue;
             };
@@ -138,13 +138,18 @@ pub(crate) fn tait_hidden_types<'db>(
             }
             // In the presence of errors, we attempt to create a unified type from all
             // types. rustc doesn't do that, but this should improve the experience.
-            let hidden_type = infcx.insert_type_vars(hidden_type);
+            let hidden_type = infcx.insert_type_vars(hidden_type.as_ref());
             match result.entry(opaque_idx) {
                 la_arena::Entry::Vacant(entry) => {
-                    entry.insert(EarlyBinder::bind(hidden_type));
+                    entry.insert(StoredEarlyBinder::bind(hidden_type.store()));
                 }
                 la_arena::Entry::Occupied(entry) => {
-                    _ = ocx.eq(&cause, param_env, entry.get().instantiate_identity(), hidden_type);
+                    _ = ocx.eq(
+                        &cause,
+                        param_env,
+                        entry.get().get().instantiate_identity(),
+                        hidden_type,
+                    );
                 }
             }
         }
@@ -157,12 +162,15 @@ pub(crate) fn tait_hidden_types<'db>(
         let idx = la_arena::Idx::from_raw(la_arena::RawIdx::from_u32(idx as u32));
         match result.entry(idx) {
             la_arena::Entry::Vacant(entry) => {
-                entry.insert(EarlyBinder::bind(Ty::new_error(interner, ErrorGuaranteed)));
+                entry.insert(StoredEarlyBinder::bind(
+                    Ty::new_error(interner, ErrorGuaranteed).store(),
+                ));
             }
             la_arena::Entry::Occupied(mut entry) => {
-                *entry.get_mut() = entry.get().map_bound(|hidden_type| {
-                    infcx.resolve_vars_if_possible(hidden_type).replace_infer_with_error(interner)
-                });
+                let hidden_type = entry.get().get().skip_binder();
+                let hidden_type =
+                    infcx.resolve_vars_if_possible(hidden_type).replace_infer_with_error(interner);
+                *entry.get_mut() = StoredEarlyBinder::bind(hidden_type.store());
             }
         }
     }

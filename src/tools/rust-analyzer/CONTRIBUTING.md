@@ -1,3 +1,8 @@
+> [!IMPORTANT]
+> We have enacted a feature freeze for IDE assists to cope with the PR backlog as well as allowing us to prepare for the rowan transition!
+> If you submit a PR that **adds** new ide-assists, chances are very high that we will just close it on this basis alone until we have the capacity to deal with them again.
+
+
 # Contributing to rust-analyzer
 
 Thank you for your interest in contributing to rust-analyzer! There are many ways to contribute
@@ -28,3 +33,11 @@ possibility of someone putting a lot of work into a feature that is then going t
 it out of scope (be it due to generally not fitting in with rust-analyzer, or just not having the
 maintenance capacity). If there already is a feature issue open but it is not clear whether it is
 considered accepted feel free to just drop a comment and ask!
+
+## Use of AI tools
+
+AI tool use is not discouraged on the rust-analyzer codebase, as long as it meets our quality standards.
+We kindly ask you to disclose usage of AI tools in your contributions.
+If you used them without disclosing it, we may reject your contribution on that basis alone due to the assumption that you likely not reviewed your own submission (so why should we?).
+
+We may still reject AI-assisted contributions if we deem the quality of the contribution to be unsatisfactory as to reduce impact on the team's review budget.

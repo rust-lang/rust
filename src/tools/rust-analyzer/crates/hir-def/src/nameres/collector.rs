@@ -1675,7 +1675,7 @@ impl<'db> DefCollector<'db> {
                             derive_index: *derive_pos as u32,
                             derive_macro_id: *derive_macro_id,
                         },
-                        ast_id.path.as_ref().clone(),
+                        (*ast_id.path).clone(),
                     ));
                 }
                 // These are diagnosed by `reseed_with_unresolved_attribute`, as that function consumes them
@@ -2607,5 +2607,18 @@ macro_rules! foo {
 foo!(KABOOM);
 "#,
         );
+    }
+
+    #[test]
+    fn crate_attrs() {
+        let fixture = r#"
+//- /lib.rs crate:foo crate-attr:recursion_limit="4" crate-attr:no_core crate-attr:no_std crate-attr:feature(register_tool)
+        "#;
+        let (db, file_id) = TestDB::with_single_file(fixture);
+        let def_map = crate_def_map(&db, file_id.krate(&db));
+        assert_eq!(def_map.recursion_limit(), 4);
+        assert!(def_map.is_no_core());
+        assert!(def_map.is_no_std());
+        assert!(def_map.is_unstable_feature_enabled(&sym::register_tool));
     }
 }

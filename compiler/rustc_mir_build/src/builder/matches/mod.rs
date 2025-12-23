@@ -1264,7 +1264,7 @@ enum TestableCase<'tcx> {
     Variant { adt_def: ty::AdtDef<'tcx>, variant_index: VariantIdx },
     Constant { value: ty::Value<'tcx> },
     Range(Arc<PatRange<'tcx>>),
-    Slice { len: usize, variable_length: bool },
+    Slice { len: u64, variable_length: bool },
     Deref { temp: Place<'tcx>, mutability: Mutability },
     Never,
     Or { pats: Box<[FlatPat<'tcx>]> },

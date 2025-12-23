@@ -197,10 +197,19 @@ impl NameGenerator {
         expr: &ast::Expr,
         sema: &Semantics<'_, RootDatabase>,
     ) -> SmolStr {
+        self.try_for_variable(expr, sema).unwrap_or(SmolStr::new_static("var_name"))
+    }
+
+    /// Similar to `for_variable`, but fallback returns `None`
+    pub fn try_for_variable(
+        &mut self,
+        expr: &ast::Expr,
+        sema: &Semantics<'_, RootDatabase>,
+    ) -> Option<SmolStr> {
         // `from_param` does not benefit from stripping it need the largest
         // context possible so we check firstmost
         if let Some(name) = from_param(expr, sema) {
-            return self.suggest_name(&name);
+            return Some(self.suggest_name(&name));
         }
 
         let mut next_expr = Some(expr.clone());
@@ -209,7 +218,7 @@ impl NameGenerator {
                 .or_else(|| from_type(&expr, sema))
                 .or_else(|| from_field_name(&expr));
             if let Some(name) = name {
-                return self.suggest_name(&name);
+                return Some(self.suggest_name(&name));
             }
 
             match expr {
@@ -229,7 +238,7 @@ impl NameGenerator {
             }
         }
 
-        self.suggest_name("var_name")
+        None
     }
 
     /// Insert a name into the pool

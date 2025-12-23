@@ -26,7 +26,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use rustc_type_ir::{
     TypeVisitableExt,
     fast_reject::{TreatParams, simplify_type},
-    inherent::{BoundExistentialPredicates, IntoKind, SliceLike},
+    inherent::{BoundExistentialPredicates, IntoKind},
 };
 use stdx::impl_from;
 use triomphe::Arc;
@@ -362,7 +362,7 @@ pub fn lookup_impl_const<'db>(
         ItemContainerId::TraitId(id) => id,
         _ => return (const_id, subs),
     };
-    let trait_ref = TraitRef::new(interner, trait_id.into(), subs);
+    let trait_ref = TraitRef::new_from_args(interner, trait_id.into(), subs);
 
     let const_signature = db.const_signature(const_id);
     let name = match const_signature.name.as_ref() {
@@ -392,10 +392,10 @@ pub fn is_dyn_method<'db>(
     };
     let trait_params = db.generic_params(trait_id.into()).len();
     let fn_params = fn_subst.len() - trait_params;
-    let trait_ref = TraitRef::new(
+    let trait_ref = TraitRef::new_from_args(
         interner,
         trait_id.into(),
-        GenericArgs::new_from_iter(interner, fn_subst.iter().take(trait_params)),
+        GenericArgs::new_from_slice(&fn_subst[..trait_params]),
     );
     let self_ty = trait_ref.self_ty();
     if let TyKind::Dynamic(d, _) = self_ty.kind() {
@@ -427,10 +427,10 @@ pub(crate) fn lookup_impl_method_query<'db>(
         return (func, fn_subst);
     };
     let trait_params = db.generic_params(trait_id.into()).len();
-    let trait_ref = TraitRef::new(
+    let trait_ref = TraitRef::new_from_args(
         interner,
         trait_id.into(),
-        GenericArgs::new_from_iter(interner, fn_subst.iter().take(trait_params)),
+        GenericArgs::new_from_slice(&fn_subst[..trait_params]),
     );
 
     let name = &db.function_signature(func).name;
@@ -505,13 +505,19 @@ pub(crate) fn find_matching_impl<'db>(
 }
 
 #[salsa::tracked(returns(ref))]
-fn crates_containing_incoherent_inherent_impls(db: &dyn HirDatabase) -> Box<[Crate]> {
+fn crates_containing_incoherent_inherent_impls(db: &dyn HirDatabase, krate: Crate) -> Box<[Crate]> {
+    let _p = tracing::info_span!("crates_containing_incoherent_inherent_impls").entered();
     // We assume that only sysroot crates contain `#[rustc_has_incoherent_inherent_impls]`
     // impls, since this is an internal feature and only std uses it.
-    db.all_crates().iter().copied().filter(|krate| krate.data(db).origin.is_lang()).collect()
+    krate.transitive_deps(db).into_iter().filter(|krate| krate.data(db).origin.is_lang()).collect()
 }
 
-pub fn incoherent_inherent_impls(db: &dyn HirDatabase, self_ty: SimplifiedType) -> &[ImplId] {
+pub fn with_incoherent_inherent_impls(
+    db: &dyn HirDatabase,
+    krate: Crate,
+    self_ty: &SimplifiedType,
+    mut callback: impl FnMut(&[ImplId]),
+) {
     let has_incoherent_impls = match self_ty.def() {
         Some(def_id) => match def_id.try_into() {
             Ok(def_id) => AttrFlags::query(db, def_id)
@@ -520,26 +526,14 @@ pub fn incoherent_inherent_impls(db: &dyn HirDatabase, self_ty: SimplifiedType) 
         },
         _ => true,
     };
-    return if !has_incoherent_impls {
-        &[]
-    } else {
-        incoherent_inherent_impls_query(db, (), self_ty)
-    };
-
-    #[salsa::tracked(returns(ref))]
-    fn incoherent_inherent_impls_query(
-        db: &dyn HirDatabase,
-        _force_query_input_to_be_interned: (),
-        self_ty: SimplifiedType,
-    ) -> Box<[ImplId]> {
-        let _p = tracing::info_span!("incoherent_inherent_impl_crates").entered();
-
-        let mut result = Vec::new();
-        for &krate in crates_containing_incoherent_inherent_impls(db) {
-            let impls = InherentImpls::for_crate(db, krate);
-            result.extend_from_slice(impls.for_self_ty(&self_ty));
-        }
-        result.into_boxed_slice()
+    if !has_incoherent_impls {
+        return;
+    }
+    let _p = tracing::info_span!("incoherent_inherent_impls").entered();
+    let crates = crates_containing_incoherent_inherent_impls(db, krate);
+    for &krate in crates {
+        let impls = InherentImpls::for_crate(db, krate);
+        callback(impls.for_self_ty(self_ty));
     }
 }
 

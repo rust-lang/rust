@@ -4,7 +4,7 @@ mod analysis;
 #[cfg(test)]
 mod tests;
 
-use std::{iter, ops::ControlFlow};
+use std::iter;
 
 use base_db::RootQueryDb as _;
 use hir::{
@@ -21,7 +21,6 @@ use syntax::{
     SyntaxKind::{self, *},
     SyntaxToken, T, TextRange, TextSize,
     ast::{self, AttrKind, NameOrNameRef},
-    match_ast,
 };
 
 use crate::{
@@ -157,7 +156,7 @@ pub(crate) struct PathExprCtx<'db> {
     pub(crate) after_amp: bool,
     /// The surrounding RecordExpression we are completing a functional update
     pub(crate) is_func_update: Option<ast::RecordExpr>,
-    pub(crate) self_param: Option<hir::SelfParam>,
+    pub(crate) self_param: Option<Either<hir::SelfParam, hir::Param<'db>>>,
     pub(crate) innermost_ret_ty: Option<hir::Type<'db>>,
     pub(crate) innermost_breakable_ty: Option<hir::Type<'db>>,
     pub(crate) impl_: Option<ast::Impl>,
@@ -817,48 +816,20 @@ impl<'db> CompletionContext<'db> {
             .extend(exclude_traits.iter().map(|&t| (t.into(), AutoImportExclusionType::Always)));
 
         // FIXME: This should be part of `CompletionAnalysis` / `expand_and_analyze`
-        let complete_semicolon = if config.add_semicolon_to_unit {
-            let inside_closure_ret = token.parent_ancestors().try_for_each(|ancestor| {
-                match_ast! {
-                    match ancestor {
-                        ast::BlockExpr(_) => ControlFlow::Break(false),
-                        ast::ClosureExpr(_) => ControlFlow::Break(true),
-                        _ => ControlFlow::Continue(())
-                    }
-                }
-            });
-
-            if inside_closure_ret == ControlFlow::Break(true) {
-                CompleteSemicolon::DoNotComplete
-            } else {
-                let next_non_trivia_token =
-                    std::iter::successors(token.next_token(), |it| it.next_token())
-                        .find(|it| !it.kind().is_trivia());
-                let in_match_arm = token.parent_ancestors().try_for_each(|ancestor| {
-                    if ast::MatchArm::can_cast(ancestor.kind()) {
-                        ControlFlow::Break(true)
-                    } else if matches!(
-                        ancestor.kind(),
-                        SyntaxKind::EXPR_STMT | SyntaxKind::BLOCK_EXPR
-                    ) {
-                        ControlFlow::Break(false)
-                    } else {
-                        ControlFlow::Continue(())
-                    }
-                });
-                // FIXME: This will assume expr macros are not inside match, we need to somehow go to the "parent" of the root node.
-                let in_match_arm = match in_match_arm {
-                    ControlFlow::Continue(()) => false,
-                    ControlFlow::Break(it) => it,
-                };
-                let complete_token = if in_match_arm { T![,] } else { T![;] };
-                if next_non_trivia_token.map(|it| it.kind()) == Some(complete_token) {
-                    CompleteSemicolon::DoNotComplete
-                } else if in_match_arm {
-                    CompleteSemicolon::CompleteComma
-                } else {
-                    CompleteSemicolon::CompleteSemi
-                }
+        let complete_semicolon = if !config.add_semicolon_to_unit {
+            CompleteSemicolon::DoNotComplete
+        } else if let Some(term_node) =
+            sema.token_ancestors_with_macros(token.clone()).find(|node| {
+                matches!(node.kind(), BLOCK_EXPR | MATCH_ARM | CLOSURE_EXPR | ARG_LIST | PAREN_EXPR)
+            })
+        {
+            let next_token = iter::successors(token.next_token(), |it| it.next_token())
+                .map(|it| it.kind())
+                .find(|kind| !kind.is_trivia());
+            match term_node.kind() {
+                MATCH_ARM if next_token != Some(T![,]) => CompleteSemicolon::CompleteComma,
+                BLOCK_EXPR if next_token != Some(T![;]) => CompleteSemicolon::CompleteSemi,
+                _ => CompleteSemicolon::DoNotComplete,
             }
         } else {
             CompleteSemicolon::DoNotComplete

@@ -154,16 +154,10 @@ pub(crate) fn crate_notable_traits(db: &dyn DefDatabase, krate: Crate) -> Option
     if traits.is_empty() { None } else { Some(traits.into_iter().collect()) }
 }
 
-pub enum GenericRequirement {
-    None,
-    Minimum(usize),
-    Exact(usize),
-}
-
 macro_rules! language_item_table {
     (
         $LangItems:ident =>
-        $( $(#[$attr:meta])* $lang_item:ident, $module:ident :: $name:ident, $method:ident, $target:ident, $generics:expr; )*
+        $( $(#[$attr:meta])* $lang_item:ident, $module:ident :: $name:ident, $target:ident; )*
     ) => {
         #[allow(non_snake_case)] // FIXME: Should we remove this?
         #[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
@@ -226,100 +220,101 @@ macro_rules! language_item_table {
 }
 
 language_item_table! { LangItems =>
-//  Variant name,            Name,                     Getter method name,         Target                  Generic requirements;
-    Sized,                   sym::sized,               sized_trait,                TraitId,                GenericRequirement::Exact(0);
-    MetaSized,               sym::meta_sized,          sized_trait,                TraitId,                GenericRequirement::Exact(0);
-    PointeeSized,            sym::pointee_sized,       sized_trait,                TraitId,                GenericRequirement::Exact(0);
-    Unsize,                  sym::unsize,              unsize_trait,               TraitId,                GenericRequirement::Minimum(1);
+//  Variant name,            Name,                     Target;
+    Sized,                   sym::sized,               TraitId;
+    MetaSized,               sym::meta_sized,          TraitId;
+    PointeeSized,            sym::pointee_sized,       TraitId;
+    Unsize,                  sym::unsize,              TraitId;
     /// Trait injected by `#[derive(PartialEq)]`, (i.e. "Partial EQ").
-    StructuralPeq,           sym::structural_peq,      structural_peq_trait,       TraitId,                GenericRequirement::None;
+    StructuralPeq,           sym::structural_peq,      TraitId;
     /// Trait injected by `#[derive(Eq)]`, (i.e. "Total EQ"; no, I will not apologize).
-    StructuralTeq,           sym::structural_teq,      structural_teq_trait,       TraitId,                GenericRequirement::None;
-    Copy,                    sym::copy,                copy_trait,                 TraitId,                GenericRequirement::Exact(0);
-    Clone,                   sym::clone,               clone_trait,                TraitId,                GenericRequirement::None;
-    Sync,                    sym::sync,                sync_trait,                 TraitId,                GenericRequirement::Exact(0);
-    DiscriminantKind,        sym::discriminant_kind,   discriminant_kind_trait,    TraitId,                GenericRequirement::None;
+    StructuralTeq,           sym::structural_teq,      TraitId;
+    Copy,                    sym::copy,                TraitId;
+    Clone,                   sym::clone,               TraitId;
+    TrivialClone,            sym::trivial_clone,       TraitId;
+    Sync,                    sym::sync,                TraitId;
+    DiscriminantKind,        sym::discriminant_kind,   TraitId;
     /// The associated item of the `DiscriminantKind` trait.
-    Discriminant,            sym::discriminant_type,   discriminant_type,          TypeAliasId,            GenericRequirement::None;
+    Discriminant,            sym::discriminant_type,   TypeAliasId;
 
-    PointeeTrait,            sym::pointee_trait,       pointee_trait,              TraitId,                GenericRequirement::None;
-    Metadata,                sym::metadata_type,       metadata_type,              TypeAliasId,            GenericRequirement::None;
-    DynMetadata,             sym::dyn_metadata,        dyn_metadata,               StructId,               GenericRequirement::None;
+    PointeeTrait,            sym::pointee_trait,       TraitId;
+    Metadata,                sym::metadata_type,       TypeAliasId;
+    DynMetadata,             sym::dyn_metadata,        StructId;
 
-    Freeze,                  sym::freeze,              freeze_trait,               TraitId,                GenericRequirement::Exact(0);
+    Freeze,                  sym::freeze,              TraitId;
 
-    FnPtrTrait,              sym::fn_ptr_trait,        fn_ptr_trait,               TraitId,                GenericRequirement::Exact(0);
-    FnPtrAddr,               sym::fn_ptr_addr,         fn_ptr_addr,                FunctionId,             GenericRequirement::None;
+    FnPtrTrait,              sym::fn_ptr_trait,        TraitId;
+    FnPtrAddr,               sym::fn_ptr_addr,         FunctionId;
 
-    Drop,                    sym::drop,                drop_trait,                 TraitId,                GenericRequirement::None;
-    Destruct,                sym::destruct,            destruct_trait,             TraitId,                GenericRequirement::None;
+    Drop,                    sym::drop,                TraitId;
+    Destruct,                sym::destruct,            TraitId;
 
-    CoerceUnsized,           sym::coerce_unsized,      coerce_unsized_trait,       TraitId,                GenericRequirement::Minimum(1);
-    DispatchFromDyn,         sym::dispatch_from_dyn,   dispatch_from_dyn_trait,    TraitId,                GenericRequirement::Minimum(1);
+    CoerceUnsized,           sym::coerce_unsized,      TraitId;
+    DispatchFromDyn,         sym::dispatch_from_dyn,   TraitId;
 
     // language items relating to transmutability
-    TransmuteOpts,           sym::transmute_opts,      transmute_opts,             StructId,               GenericRequirement::Exact(0);
-    TransmuteTrait,          sym::transmute_trait,     transmute_trait,            TraitId,                GenericRequirement::Exact(3);
+    TransmuteOpts,           sym::transmute_opts,      StructId;
+    TransmuteTrait,          sym::transmute_trait,     TraitId;
 
-    Add,                     sym::add,                 add_trait,                  TraitId,                GenericRequirement::Exact(1);
-    Sub,                     sym::sub,                 sub_trait,                  TraitId,                GenericRequirement::Exact(1);
-    Mul,                     sym::mul,                 mul_trait,                  TraitId,                GenericRequirement::Exact(1);
-    Div,                     sym::div,                 div_trait,                  TraitId,                GenericRequirement::Exact(1);
-    Rem,                     sym::rem,                 rem_trait,                  TraitId,                GenericRequirement::Exact(1);
-    Neg,                     sym::neg,                 neg_trait,                  TraitId,                GenericRequirement::Exact(0);
-    Not,                     sym::not,                 not_trait,                  TraitId,                GenericRequirement::Exact(0);
-    BitXor,                  sym::bitxor,              bitxor_trait,               TraitId,                GenericRequirement::Exact(1);
-    BitAnd,                  sym::bitand,              bitand_trait,               TraitId,                GenericRequirement::Exact(1);
-    BitOr,                   sym::bitor,               bitor_trait,                TraitId,                GenericRequirement::Exact(1);
-    Shl,                     sym::shl,                 shl_trait,                  TraitId,                GenericRequirement::Exact(1);
-    Shr,                     sym::shr,                 shr_trait,                  TraitId,                GenericRequirement::Exact(1);
-    AddAssign,               sym::add_assign,          add_assign_trait,           TraitId,                GenericRequirement::Exact(1);
-    SubAssign,               sym::sub_assign,          sub_assign_trait,           TraitId,                GenericRequirement::Exact(1);
-    MulAssign,               sym::mul_assign,          mul_assign_trait,           TraitId,                GenericRequirement::Exact(1);
-    DivAssign,               sym::div_assign,          div_assign_trait,           TraitId,                GenericRequirement::Exact(1);
-    RemAssign,               sym::rem_assign,          rem_assign_trait,           TraitId,                GenericRequirement::Exact(1);
-    BitXorAssign,            sym::bitxor_assign,       bitxor_assign_trait,        TraitId,                GenericRequirement::Exact(1);
-    BitAndAssign,            sym::bitand_assign,       bitand_assign_trait,        TraitId,                GenericRequirement::Exact(1);
-    BitOrAssign,             sym::bitor_assign,        bitor_assign_trait,         TraitId,                GenericRequirement::Exact(1);
-    ShlAssign,               sym::shl_assign,          shl_assign_trait,           TraitId,                GenericRequirement::Exact(1);
-    ShrAssign,               sym::shr_assign,          shr_assign_trait,           TraitId,                GenericRequirement::Exact(1);
-    Index,                   sym::index,               index_trait,                TraitId,                GenericRequirement::Exact(1);
-    IndexMut,                sym::index_mut,           index_mut_trait,            TraitId,                GenericRequirement::Exact(1);
+    Add,                     sym::add,                 TraitId;
+    Sub,                     sym::sub,                 TraitId;
+    Mul,                     sym::mul,                 TraitId;
+    Div,                     sym::div,                 TraitId;
+    Rem,                     sym::rem,                 TraitId;
+    Neg,                     sym::neg,                 TraitId;
+    Not,                     sym::not,                 TraitId;
+    BitXor,                  sym::bitxor,              TraitId;
+    BitAnd,                  sym::bitand,              TraitId;
+    BitOr,                   sym::bitor,               TraitId;
+    Shl,                     sym::shl,                 TraitId;
+    Shr,                     sym::shr,                 TraitId;
+    AddAssign,               sym::add_assign,          TraitId;
+    SubAssign,               sym::sub_assign,          TraitId;
+    MulAssign,               sym::mul_assign,          TraitId;
+    DivAssign,               sym::div_assign,          TraitId;
+    RemAssign,               sym::rem_assign,          TraitId;
+    BitXorAssign,            sym::bitxor_assign,       TraitId;
+    BitAndAssign,            sym::bitand_assign,       TraitId;
+    BitOrAssign,             sym::bitor_assign,        TraitId;
+    ShlAssign,               sym::shl_assign,          TraitId;
+    ShrAssign,               sym::shr_assign,          TraitId;
+    Index,                   sym::index,               TraitId;
+    IndexMut,                sym::index_mut,           TraitId;
 
-    UnsafeCell,              sym::unsafe_cell,         unsafe_cell_type,           StructId,               GenericRequirement::None;
-    UnsafePinned,            sym::unsafe_pinned,       unsafe_pinned_type,         StructId,               GenericRequirement::None;
-    VaList,                  sym::va_list,             va_list,                    StructId,               GenericRequirement::None;
+    UnsafeCell,              sym::unsafe_cell,         StructId;
+    UnsafePinned,            sym::unsafe_pinned,       StructId;
+    VaList,                  sym::va_list,             StructId;
 
-    Deref,                   sym::deref,               deref_trait,                TraitId,                GenericRequirement::Exact(0);
-    DerefMut,                sym::deref_mut,           deref_mut_trait,            TraitId,                GenericRequirement::Exact(0);
-    DerefTarget,             sym::deref_target,        deref_target,               TypeAliasId,            GenericRequirement::None;
-    Receiver,                sym::receiver,            receiver_trait,             TraitId,                GenericRequirement::None;
-    ReceiverTarget,           sym::receiver_target,     receiver_target,           TypeAliasId,            GenericRequirement::None;
+    Deref,                   sym::deref,               TraitId;
+    DerefMut,                sym::deref_mut,           TraitId;
+    DerefTarget,             sym::deref_target,        TypeAliasId;
+    Receiver,                sym::receiver,            TraitId;
+    ReceiverTarget,           sym::receiver_target,    TypeAliasId;
 
-    Fn,                      sym::fn_,                 fn_trait,                   TraitId,                GenericRequirement::Exact(1);
-    FnMut,                   sym::fn_mut,              fn_mut_trait,               TraitId,                GenericRequirement::Exact(1);
-    FnOnce,                  sym::fn_once,             fn_once_trait,              TraitId,                GenericRequirement::Exact(1);
-    AsyncFn,                 sym::async_fn,            async_fn_trait,             TraitId,                GenericRequirement::Exact(1);
-    AsyncFnMut,              sym::async_fn_mut,        async_fn_mut_trait,         TraitId,                GenericRequirement::Exact(1);
-    AsyncFnOnce,             sym::async_fn_once,       async_fn_once_trait,        TraitId,                GenericRequirement::Exact(1);
+    Fn,                      sym::fn_,                 TraitId;
+    FnMut,                   sym::fn_mut,              TraitId;
+    FnOnce,                  sym::fn_once,             TraitId;
+    AsyncFn,                 sym::async_fn,            TraitId;
+    AsyncFnMut,              sym::async_fn_mut,        TraitId;
+    AsyncFnOnce,             sym::async_fn_once,       TraitId;
 
-    CallRefFuture,           sym::call_ref_future,     call_ref_future_ty,         TypeAliasId,            GenericRequirement::None;
-    CallOnceFuture,          sym::call_once_future,    call_once_future_ty,        TypeAliasId,            GenericRequirement::None;
-    AsyncFnOnceOutput,       sym::async_fn_once_output, async_fn_once_output_ty,   TypeAliasId,            GenericRequirement::None;
+    CallRefFuture,           sym::call_ref_future,     TypeAliasId;
+    CallOnceFuture,          sym::call_once_future,    TypeAliasId;
+    AsyncFnOnceOutput,       sym::async_fn_once_output, TypeAliasId;
 
-    FnOnceOutput,            sym::fn_once_output,      fn_once_output,             TypeAliasId,            GenericRequirement::None;
+    FnOnceOutput,            sym::fn_once_output,      TypeAliasId;
 
-    Future,                  sym::future_trait,        future_trait,               TraitId,                GenericRequirement::Exact(0);
-    CoroutineState,          sym::coroutine_state,     coroutine_state,            EnumId,                 GenericRequirement::None;
-    Coroutine,               sym::coroutine,           coroutine_trait,            TraitId,                GenericRequirement::Minimum(1);
-    CoroutineReturn,         sym::coroutine_return,    coroutine_return_ty,        TypeAliasId,            GenericRequirement::None;
-    CoroutineYield,          sym::coroutine_yield,     coroutine_yield_ty,         TypeAliasId,            GenericRequirement::None;
-    Unpin,                   sym::unpin,               unpin_trait,                TraitId,                GenericRequirement::None;
-    Pin,                     sym::pin,                 pin_type,                   StructId,               GenericRequirement::None;
+    Future,                  sym::future_trait,        TraitId;
+    CoroutineState,          sym::coroutine_state,     EnumId;
+    Coroutine,               sym::coroutine,           TraitId;
+    CoroutineReturn,         sym::coroutine_return,    TypeAliasId;
+    CoroutineYield,          sym::coroutine_yield,     TypeAliasId;
+    Unpin,                   sym::unpin,               TraitId;
+    Pin,                     sym::pin,                 StructId;
 
-    PartialEq,               sym::eq,                  eq_trait,                   TraitId,                GenericRequirement::Exact(1);
-    PartialOrd,              sym::partial_ord,         partial_ord_trait,          TraitId,                GenericRequirement::Exact(1);
-    CVoid,                   sym::c_void,              c_void,                     EnumId,                 GenericRequirement::None;
+    PartialEq,               sym::eq,                  TraitId;
+    PartialOrd,              sym::partial_ord,         TraitId;
+    CVoid,                   sym::c_void,              EnumId;
 
     // A number of panic-related lang items. The `panic` item corresponds to divide-by-zero and
     // various panic cases with `match`. The `panic_bounds_check` item is for indexing arrays.
@@ -328,107 +323,107 @@ language_item_table! { LangItems =>
     // in the sense that a crate is not required to have it defined to use it, but a final product
     // is required to define it somewhere. Additionally, there are restrictions on crates that use
     // a weak lang item, but do not have it defined.
-    Panic,                   sym::panic,               panic_fn,                   FunctionId,             GenericRequirement::Exact(0);
-    PanicNounwind,           sym::panic_nounwind,      panic_nounwind,             FunctionId,             GenericRequirement::Exact(0);
-    PanicFmt,                sym::panic_fmt,           panic_fmt,                  FunctionId,             GenericRequirement::None;
-    PanicDisplay,            sym::panic_display,       panic_display,              FunctionId,             GenericRequirement::None;
-    ConstPanicFmt,           sym::const_panic_fmt,     const_panic_fmt,            FunctionId,             GenericRequirement::None;
-    PanicBoundsCheck,        sym::panic_bounds_check,  panic_bounds_check_fn,      FunctionId,             GenericRequirement::Exact(0);
-    PanicMisalignedPointerDereference,        sym::panic_misaligned_pointer_dereference,  panic_misaligned_pointer_dereference_fn,      FunctionId,             GenericRequirement::Exact(0);
-    PanicInfo,               sym::panic_info,          panic_info,                 StructId,               GenericRequirement::None;
-    PanicLocation,           sym::panic_location,      panic_location,             StructId,               GenericRequirement::None;
-    PanicImpl,               sym::panic_impl,          panic_impl,                 FunctionId,             GenericRequirement::None;
-    PanicCannotUnwind,       sym::panic_cannot_unwind, panic_cannot_unwind,        FunctionId,             GenericRequirement::Exact(0);
-    PanicNullPointerDereference, sym::panic_null_pointer_dereference, panic_null_pointer_dereference, FunctionId, GenericRequirement::None;
+    Panic,                   sym::panic,               FunctionId;
+    PanicNounwind,           sym::panic_nounwind,      FunctionId;
+    PanicFmt,                sym::panic_fmt,           FunctionId;
+    PanicDisplay,            sym::panic_display,       FunctionId;
+    ConstPanicFmt,           sym::const_panic_fmt,     FunctionId;
+    PanicBoundsCheck,        sym::panic_bounds_check,  FunctionId;
+    PanicMisalignedPointerDereference, sym::panic_misaligned_pointer_dereference, FunctionId;
+    PanicInfo,               sym::panic_info,          StructId;
+    PanicLocation,           sym::panic_location,      StructId;
+    PanicImpl,               sym::panic_impl,          FunctionId;
+    PanicCannotUnwind,       sym::panic_cannot_unwind, FunctionId;
+    PanicNullPointerDereference, sym::panic_null_pointer_dereference, FunctionId;
     /// libstd panic entry point. Necessary for const eval to be able to catch it
-    BeginPanic,              sym::begin_panic,         begin_panic_fn,             FunctionId,             GenericRequirement::None;
+    BeginPanic,              sym::begin_panic,         FunctionId;
 
     // Lang items needed for `format_args!()`.
-    FormatAlignment,         sym::format_alignment,    format_alignment,           EnumId,                 GenericRequirement::None;
-    FormatArgument,          sym::format_argument,     format_argument,            StructId,               GenericRequirement::None;
-    FormatArguments,         sym::format_arguments,    format_arguments,           StructId,               GenericRequirement::None;
-    FormatCount,             sym::format_count,        format_count,               EnumId,                 GenericRequirement::None;
-    FormatPlaceholder,       sym::format_placeholder,  format_placeholder,         StructId,               GenericRequirement::None;
-    FormatUnsafeArg,         sym::format_unsafe_arg,   format_unsafe_arg,          StructId,               GenericRequirement::None;
+    FormatAlignment,         sym::format_alignment,    EnumId;
+    FormatArgument,          sym::format_argument,     StructId;
+    FormatArguments,         sym::format_arguments,    StructId;
+    FormatCount,             sym::format_count,        EnumId;
+    FormatPlaceholder,       sym::format_placeholder,  StructId;
+    FormatUnsafeArg,         sym::format_unsafe_arg,   StructId;
 
-    ExchangeMalloc,          sym::exchange_malloc,     exchange_malloc_fn,         FunctionId,             GenericRequirement::None;
-    BoxFree,                 sym::box_free,            box_free_fn,                FunctionId,             GenericRequirement::Minimum(1);
-    DropInPlace,             sym::drop_in_place,       drop_in_place_fn,           FunctionId,             GenericRequirement::Minimum(1);
-    AllocLayout,             sym::alloc_layout,        alloc_layout,               StructId,               GenericRequirement::None;
+    ExchangeMalloc,          sym::exchange_malloc,     FunctionId;
+    BoxFree,                 sym::box_free,            FunctionId;
+    DropInPlace,             sym::drop_in_place,       FunctionId;
+    AllocLayout,             sym::alloc_layout,        StructId;
 
-    Start,                   sym::start,               start_fn,                   FunctionId,             GenericRequirement::Exact(1);
+    Start,                   sym::start,               FunctionId;
 
-    EhPersonality,           sym::eh_personality,      eh_personality,             FunctionId,             GenericRequirement::None;
-    EhCatchTypeinfo,         sym::eh_catch_typeinfo,   eh_catch_typeinfo,          StaticId,               GenericRequirement::None;
+    EhPersonality,           sym::eh_personality,      FunctionId;
+    EhCatchTypeinfo,         sym::eh_catch_typeinfo,   StaticId;
 
-    OwnedBox,                sym::owned_box,           owned_box,                  StructId,               GenericRequirement::Minimum(1);
+    OwnedBox,                sym::owned_box,           StructId;
 
-    PhantomData,             sym::phantom_data,        phantom_data,               StructId,               GenericRequirement::Exact(1);
+    PhantomData,             sym::phantom_data,        StructId;
 
-    ManuallyDrop,            sym::manually_drop,       manually_drop,              StructId,               GenericRequirement::None;
+    ManuallyDrop,            sym::manually_drop,       StructId;
 
-    MaybeUninit,             sym::maybe_uninit,        maybe_uninit,               UnionId,                GenericRequirement::None;
+    MaybeUninit,             sym::maybe_uninit,        UnionId;
 
     /// Align offset for stride != 1; must not panic.
-    AlignOffset,             sym::align_offset,        align_offset_fn,            FunctionId,             GenericRequirement::None;
+    AlignOffset,             sym::align_offset,        FunctionId;
 
-    Termination,             sym::termination,         termination,                TraitId,                GenericRequirement::None;
+    Termination,             sym::termination,         TraitId;
 
-    Try,                     sym::Try,                 try_trait,                  TraitId,                GenericRequirement::None;
+    Try,                     sym::Try,                 TraitId;
 
-    Tuple,                   sym::tuple_trait,         tuple_trait,                TraitId,                GenericRequirement::Exact(0);
+    Tuple,                   sym::tuple_trait,         TraitId;
 
-    SliceLen,                sym::slice_len_fn,        slice_len_fn,               FunctionId,             GenericRequirement::None;
+    SliceLen,                sym::slice_len_fn,        FunctionId;
 
     // Language items from AST lowering
-    TryTraitFromResidual,    sym::from_residual,       from_residual_fn,           FunctionId,             GenericRequirement::None;
-    TryTraitFromOutput,      sym::from_output,         from_output_fn,             FunctionId,             GenericRequirement::None;
-    TryTraitBranch,          sym::branch,              branch_fn,                  FunctionId,             GenericRequirement::None;
-    TryTraitFromYeet,        sym::from_yeet,           from_yeet_fn,               FunctionId,             GenericRequirement::None;
+    TryTraitFromResidual,    sym::from_residual,       FunctionId;
+    TryTraitFromOutput,      sym::from_output,         FunctionId;
+    TryTraitBranch,          sym::branch,              FunctionId;
+    TryTraitFromYeet,        sym::from_yeet,           FunctionId;
 
-    PointerLike,             sym::pointer_like,        pointer_like,               TraitId,                GenericRequirement::Exact(0);
+    PointerLike,             sym::pointer_like,        TraitId;
 
-    ConstParamTy,            sym::const_param_ty,      const_param_ty_trait,       TraitId,                GenericRequirement::Exact(0);
+    ConstParamTy,            sym::const_param_ty,      TraitId;
 
-    Poll,                    sym::Poll,                poll,                       EnumId,                 GenericRequirement::None;
-    PollReady,               sym::Ready,               poll_ready_variant,         EnumVariantId,          GenericRequirement::None;
-    PollPending,             sym::Pending,             poll_pending_variant,       EnumVariantId,          GenericRequirement::None;
+    Poll,                    sym::Poll,                EnumId;
+    PollReady,               sym::Ready,               EnumVariantId;
+    PollPending,             sym::Pending,             EnumVariantId;
 
     // FIXME(swatinem): the following lang items are used for async lowering and
     // should become obsolete eventually.
-    ResumeTy,                sym::ResumeTy,            resume_ty,                  StructId,               GenericRequirement::None;
-    GetContext,              sym::get_context,         get_context_fn,             FunctionId,             GenericRequirement::None;
+    ResumeTy,                sym::ResumeTy,            StructId;
+    GetContext,              sym::get_context,         FunctionId;
 
-    Context,                 sym::Context,             context,                    StructId,               GenericRequirement::None;
-    FuturePoll,              sym::poll,                future_poll_fn,             FunctionId,             GenericRequirement::None;
-    FutureOutput,            sym::future_output,       future_output,              TypeAliasId,            GenericRequirement::None;
+    Context,                 sym::Context,             StructId;
+    FuturePoll,              sym::poll,                FunctionId;
+    FutureOutput,            sym::future_output,       TypeAliasId;
 
-    Option,                  sym::Option,              option_type,                EnumId,                 GenericRequirement::None;
-    OptionSome,              sym::Some,                option_some_variant,        EnumVariantId,          GenericRequirement::None;
-    OptionNone,              sym::None,                option_none_variant,        EnumVariantId,          GenericRequirement::None;
+    Option,                  sym::Option,              EnumId;
+    OptionSome,              sym::Some,                EnumVariantId;
+    OptionNone,              sym::None,                EnumVariantId;
 
-    ResultOk,                sym::Ok,                  result_ok_variant,          EnumVariantId,          GenericRequirement::None;
-    ResultErr,               sym::Err,                 result_err_variant,         EnumVariantId,          GenericRequirement::None;
+    ResultOk,                sym::Ok,                  EnumVariantId;
+    ResultErr,               sym::Err,                 EnumVariantId;
 
-    ControlFlowContinue,     sym::Continue,            cf_continue_variant,        EnumVariantId,          GenericRequirement::None;
-    ControlFlowBreak,        sym::Break,               cf_break_variant,           EnumVariantId,          GenericRequirement::None;
+    ControlFlowContinue,     sym::Continue,            EnumVariantId;
+    ControlFlowBreak,        sym::Break,               EnumVariantId;
 
-    IntoFutureIntoFuture,    sym::into_future,         into_future_fn,             FunctionId,             GenericRequirement::None;
-    IntoIterIntoIter,        sym::into_iter,           into_iter_fn,               FunctionId,             GenericRequirement::None;
-    IteratorNext,            sym::next,                next_fn,                    FunctionId,             GenericRequirement::None;
-    Iterator,                sym::iterator,            iterator,                   TraitId,                GenericRequirement::None;
+    IntoFutureIntoFuture,    sym::into_future,         FunctionId;
+    IntoIterIntoIter,        sym::into_iter,           FunctionId;
+    IteratorNext,            sym::next,                FunctionId;
+    Iterator,                sym::iterator,            TraitId;
 
-    PinNewUnchecked,         sym::new_unchecked,       new_unchecked_fn,           FunctionId,             GenericRequirement::None;
+    PinNewUnchecked,         sym::new_unchecked,       FunctionId;
 
-    RangeFrom,               sym::RangeFrom,           range_from_struct,          StructId,               GenericRequirement::None;
-    RangeFull,               sym::RangeFull,           range_full_struct,          StructId,               GenericRequirement::None;
-    RangeInclusiveStruct,    sym::RangeInclusive,      range_inclusive_struct,     StructId,               GenericRequirement::None;
-    RangeInclusiveNew,       sym::range_inclusive_new, range_inclusive_new_method, FunctionId,             GenericRequirement::None;
-    Range,                   sym::Range,               range_struct,               StructId,               GenericRequirement::None;
-    RangeToInclusive,        sym::RangeToInclusive,    range_to_inclusive_struct,  StructId,               GenericRequirement::None;
-    RangeTo,                 sym::RangeTo,             range_to_struct,            StructId,               GenericRequirement::None;
+    RangeFrom,               sym::RangeFrom,           StructId;
+    RangeFull,               sym::RangeFull,           StructId;
+    RangeInclusiveStruct,    sym::RangeInclusive,      StructId;
+    RangeInclusiveNew,       sym::range_inclusive_new, FunctionId;
+    Range,                   sym::Range,               StructId;
+    RangeToInclusive,        sym::RangeToInclusive,    StructId;
+    RangeTo,                 sym::RangeTo,             StructId;
 
-    String,                  sym::String,              string,                     StructId,               GenericRequirement::None;
-    CStr,                    sym::CStr,                c_str,                      StructId,               GenericRequirement::None;
-    Ordering,                sym::Ordering,            ordering,                   EnumId,                 GenericRequirement::None;
+    String,                  sym::String,              StructId;
+    CStr,                    sym::CStr,                StructId;
+    Ordering,                sym::Ordering,            EnumId;
 }
