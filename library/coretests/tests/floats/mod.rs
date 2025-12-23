@@ -30,6 +30,22 @@ trait TestableFloat: Sized {
     const ZERO: Self;
     const ONE: Self;
     const PI: Self;
+    const FRAC_PI_2: Self;
+    const FRAC_PI_3: Self;
+    const FRAC_PI_4: Self;
+    const FRAC_PI_6: Self;
+    const FRAC_PI_8: Self;
+    const FRAC_1_PI: Self;
+    const FRAC_2_PI: Self;
+    const FRAC_2_SQRT_PI: Self;
+    const SQRT_2: Self;
+    const FRAC_1_SQRT_2: Self;
+    const E: Self;
+    const LOG2_E: Self;
+    const LOG10_E: Self;
+    const LN_2: Self;
+    const LN_10: Self;
+
     const MIN_POSITIVE_NORMAL: Self;
     const MAX_SUBNORMAL: Self;
     /// Smallest number
@@ -78,6 +94,21 @@ impl TestableFloat for f16 {
     const ZERO: Self = 0.0;
     const ONE: Self = 1.0;
     const PI: Self = std::f16::consts::PI;
+    const FRAC_PI_2: Self = std::f16::consts::FRAC_PI_2;
+    const FRAC_PI_3: Self = std::f16::consts::FRAC_PI_3;
+    const FRAC_PI_4: Self = std::f16::consts::FRAC_PI_4;
+    const FRAC_PI_6: Self = std::f16::consts::FRAC_PI_6;
+    const FRAC_PI_8: Self = std::f16::consts::FRAC_PI_8;
+    const FRAC_1_PI: Self = std::f16::consts::FRAC_1_PI;
+    const FRAC_2_PI: Self = std::f16::consts::FRAC_2_PI;
+    const FRAC_2_SQRT_PI: Self = std::f16::consts::FRAC_2_SQRT_PI;
+    const SQRT_2: Self = std::f16::consts::SQRT_2;
+    const FRAC_1_SQRT_2: Self = std::f16::consts::FRAC_1_SQRT_2;
+    const E: Self = std::f16::consts::E;
+    const LOG2_E: Self = std::f16::consts::LOG2_E;
+    const LOG10_E: Self = std::f16::consts::LOG10_E;
+    const LN_2: Self = std::f16::consts::LN_2;
+    const LN_10: Self = std::f16::consts::LN_10;
     const MIN_POSITIVE_NORMAL: Self = Self::MIN_POSITIVE;
     const MAX_SUBNORMAL: Self = Self::MIN_POSITIVE.next_down();
     const TINY: Self = Self::from_bits(0x1);
@@ -120,6 +151,21 @@ impl TestableFloat for f32 {
     const ZERO: Self = 0.0;
     const ONE: Self = 1.0;
     const PI: Self = std::f32::consts::PI;
+    const FRAC_PI_2: Self = std::f32::consts::FRAC_PI_2;
+    const FRAC_PI_3: Self = std::f32::consts::FRAC_PI_3;
+    const FRAC_PI_4: Self = std::f32::consts::FRAC_PI_4;
+    const FRAC_PI_6: Self = std::f32::consts::FRAC_PI_6;
+    const FRAC_PI_8: Self = std::f32::consts::FRAC_PI_8;
+    const FRAC_1_PI: Self = std::f32::consts::FRAC_1_PI;
+    const FRAC_2_PI: Self = std::f32::consts::FRAC_2_PI;
+    const FRAC_2_SQRT_PI: Self = std::f32::consts::FRAC_2_SQRT_PI;
+    const SQRT_2: Self = std::f32::consts::SQRT_2;
+    const FRAC_1_SQRT_2: Self = std::f32::consts::FRAC_1_SQRT_2;
+    const E: Self = std::f32::consts::E;
+    const LOG2_E: Self = std::f32::consts::LOG2_E;
+    const LOG10_E: Self = std::f32::consts::LOG10_E;
+    const LN_2: Self = std::f32::consts::LN_2;
+    const LN_10: Self = std::f32::consts::LN_10;
     const MIN_POSITIVE_NORMAL: Self = Self::MIN_POSITIVE;
     const MAX_SUBNORMAL: Self = Self::MIN_POSITIVE.next_down();
     const TINY: Self = Self::from_bits(0x1);
@@ -157,6 +203,21 @@ impl TestableFloat for f64 {
     const ZERO: Self = 0.0;
     const ONE: Self = 1.0;
     const PI: Self = std::f64::consts::PI;
+    const FRAC_PI_2: Self = std::f64::consts::FRAC_PI_2;
+    const FRAC_PI_3: Self = std::f64::consts::FRAC_PI_3;
+    const FRAC_PI_4: Self = std::f64::consts::FRAC_PI_4;
+    const FRAC_PI_6: Self = std::f64::consts::FRAC_PI_6;
+    const FRAC_PI_8: Self = std::f64::consts::FRAC_PI_8;
+    const FRAC_1_PI: Self = std::f64::consts::FRAC_1_PI;
+    const FRAC_2_PI: Self = std::f64::consts::FRAC_2_PI;
+    const FRAC_2_SQRT_PI: Self = std::f64::consts::FRAC_2_SQRT_PI;
+    const SQRT_2: Self = std::f64::consts::SQRT_2;
+    const FRAC_1_SQRT_2: Self = std::f64::consts::FRAC_1_SQRT_2;
+    const E: Self = std::f64::consts::E;
+    const LOG2_E: Self = std::f64::consts::LOG2_E;
+    const LOG10_E: Self = std::f64::consts::LOG10_E;
+    const LN_2: Self = std::f64::consts::LN_2;
+    const LN_10: Self = std::f64::consts::LN_10;
     const MIN_POSITIVE_NORMAL: Self = Self::MIN_POSITIVE;
     const MAX_SUBNORMAL: Self = Self::MIN_POSITIVE.next_down();
     const TINY: Self = Self::from_bits(0x1);
@@ -194,6 +255,21 @@ impl TestableFloat for f128 {
     const ZERO: Self = 0.0;
     const ONE: Self = 1.0;
     const PI: Self = std::f128::consts::PI;
+    const FRAC_PI_2: Self = std::f128::consts::FRAC_PI_2;
+    const FRAC_PI_3: Self = std::f128::consts::FRAC_PI_3;
+    const FRAC_PI_4: Self = std::f128::consts::FRAC_PI_4;
+    const FRAC_PI_6: Self = std::f128::consts::FRAC_PI_6;
+    const FRAC_PI_8: Self = std::f128::consts::FRAC_PI_8;
+    const FRAC_1_PI: Self = std::f128::consts::FRAC_1_PI;
+    const FRAC_2_PI: Self = std::f128::consts::FRAC_2_PI;
+    const FRAC_2_SQRT_PI: Self = std::f128::consts::FRAC_2_SQRT_PI;
+    const SQRT_2: Self = std::f128::consts::SQRT_2;
+    const FRAC_1_SQRT_2: Self = std::f128::consts::FRAC_1_SQRT_2;
+    const E: Self = std::f128::consts::E;
+    const LOG2_E: Self = std::f128::consts::LOG2_E;
+    const LOG10_E: Self = std::f128::consts::LOG10_E;
+    const LN_2: Self = std::f128::consts::LN_2;
+    const LN_10: Self = std::f128::consts::LN_10;
     const MIN_POSITIVE_NORMAL: Self = Self::MIN_POSITIVE;
     const MAX_SUBNORMAL: Self = Self::MIN_POSITIVE.next_down();
     const TINY: Self = Self::from_bits(0x1);
@@ -1521,8 +1597,8 @@ float_test! {
         let inf: Float = Float::INFINITY;
         let neg_inf: Float = Float::NEG_INFINITY;
         assert_approx_eq!(Float::ONE.powi(1), Float::ONE);
-        assert_approx_eq!((-3.1 as Float).powi(2), 9.6100000000000005506706202140776519387, Float::POWI_APPROX);
-        assert_approx_eq!((5.9 as Float).powi(-2), 0.028727377190462507313100483690639638451);
+        assert_approx_eq!((-3.1 as Float).powi(2), 9.6100000000000005506706202140776519387 as Float, Float::POWI_APPROX);
+        assert_approx_eq!((5.9 as Float).powi(-2), 0.028727377190462507313100483690639638451 as Float);
         assert_biteq!((8.3 as Float).powi(0), Float::ONE);
         assert!(nan.powi(2).is_nan());
         assert_biteq!(inf.powi(3), inf);
@@ -1534,7 +1610,7 @@ float_test! {
     name: powf,
     attrs: {
         const: #[cfg(false)],
-        f16: #[cfg(all(not(miri), target_has_reliable_f16_math))],
+        f16: #[cfg(all(not(miri), target_has_reliable_f16_math, not(bootstrap_cg_clif)))],
         f128: #[cfg(all(not(miri), target_has_reliable_f128_math))],
     },
     test<Float> {
@@ -1542,10 +1618,10 @@ float_test! {
         let inf: Float = Float::INFINITY;
         let neg_inf: Float = Float::NEG_INFINITY;
         assert_biteq!((1.0 as Float).powf(1.0), 1.0);
-        assert_approx_eq!((3.4 as Float).powf(4.5), 246.40818323761893, Float::POWF_APPROX);
-        assert_approx_eq!((2.7 as Float).powf(-3.2), 0.04165200910852618, Float::POWF_APPROX);
-        assert_approx_eq!(((-3.1) as Float).powf(2.0), 9.61, Float::POWF_APPROX);
-        assert_approx_eq!((5.9 as Float).powf(-2.0), 0.028727377190462507, Float::POWF_APPROX);
+        assert_approx_eq!((3.4 as Float).powf(4.5), 246.40818323761892815995637964326426756 as Float, Float::POWF_APPROX);
+        assert_approx_eq!((2.7 as Float).powf(-3.2), 0.041652009108526178281070304373500889273 as Float, Float::POWF_APPROX);
+        assert_approx_eq!(((-3.1) as Float).powf(2.0), 9.6100000000000005506706202140776519387 as Float, Float::POWF_APPROX);
+        assert_approx_eq!((5.9 as Float).powf(-2.0), 0.028727377190462507313100483690639638451 as Float, Float::POWF_APPROX);
         assert_biteq!((8.3 as Float).powf(0.0), 1.0);
         assert!(nan.powf(2.0).is_nan());
         assert_biteq!(inf.powf(2.0), inf);
@@ -1557,13 +1633,13 @@ float_test! {
     name: exp,
     attrs: {
         const: #[cfg(false)],
-        f16: #[cfg(all(not(miri), target_has_reliable_f16_math))],
+        f16: #[cfg(all(not(miri), target_has_reliable_f16_math, not(bootstrap_cg_clif)))],
         f128: #[cfg(all(not(miri), target_has_reliable_f128_math))],
     },
     test<Float> {
         assert_biteq!(1.0, (0.0 as Float).exp());
         assert_approx_eq!(2.718281828459045, (1.0 as Float).exp(), Float::EXP_APPROX);
-        assert_approx_eq!(148.41315910257660342111558004055227962348775, (5.0 as Float).exp(), Float::EXP_APPROX);
+        assert_approx_eq!(148.41315910257660342111558004055227962348775 as Float, (5.0 as Float).exp(), Float::EXP_APPROX);
 
         let inf: Float = Float::INFINITY;
         let neg_inf: Float = Float::NEG_INFINITY;
@@ -1578,7 +1654,7 @@ float_test! {
     name: exp2,
     attrs: {
         const: #[cfg(false)],
-        f16: #[cfg(all(not(miri), target_has_reliable_f16_math))],
+        f16: #[cfg(all(not(miri), target_has_reliable_f16_math, not(bootstrap_cg_clif)))],
         f128: #[cfg(all(not(miri), target_has_reliable_f128_math))],
     },
     test<Float> {
@@ -1598,7 +1674,7 @@ float_test! {
     name: ln,
     attrs: {
         const: #[cfg(false)],
-        f16: #[cfg(all(not(miri), target_has_reliable_f16_math))],
+        f16: #[cfg(all(not(miri), target_has_reliable_f16_math, not(bootstrap_cg_clif)))],
         f128: #[cfg(all(not(miri), target_has_reliable_f128_math))],
     },
     test<Float> {
@@ -1612,7 +1688,7 @@ float_test! {
         assert!((-2.3 as Float).ln().is_nan());
         assert_biteq!((-0.0 as Float).ln(), neg_inf);
         assert_biteq!((0.0 as Float).ln(), neg_inf);
-        assert_approx_eq!((4.0 as Float).ln(), 1.3862943611198906188344642429163531366, Float::LN_APPROX);
+        assert_approx_eq!((4.0 as Float).ln(), 1.3862943611198906188344642429163531366 as Float, Float::LN_APPROX);
     }
 }
 
@@ -1620,7 +1696,7 @@ float_test! {
     name: log_generic,
     attrs: {
         const: #[cfg(false)],
-        f16: #[cfg(all(not(miri), target_has_reliable_f16_math))],
+        f16: #[cfg(all(not(miri), target_has_reliable_f16_math, not(bootstrap_cg_clif)))],
         f128: #[cfg(all(not(miri), target_has_reliable_f128_math))],
     },
     test<Float> {
@@ -1628,7 +1704,7 @@ float_test! {
         let inf: Float = Float::INFINITY;
         let neg_inf: Float = Float::NEG_INFINITY;
         assert_biteq!((10.0 as Float).log(10.0), 1.0);
-        assert_approx_eq!((2.3 as Float).log(3.5),  0.66485771361478710036766645911922010272, Float::LOG_APPROX);
+        assert_approx_eq!((2.3 as Float).log(3.5),  0.66485771361478710036766645911922010272 as Float, Float::LOG_APPROX);
         assert_approx_eq!((1.0 as Float).exp().log((1.0 as Float).exp()), 1.0, Float::LOG_APPROX);
         assert!((1.0 as Float).log(1.0).is_nan());
         assert!((1.0 as Float).log(-13.9).is_nan());
@@ -1645,16 +1721,16 @@ float_test! {
     name: log2,
     attrs: {
         const: #[cfg(false)],
-        f16: #[cfg(all(not(miri), target_has_reliable_f16_math))],
+        f16: #[cfg(all(not(miri), target_has_reliable_f16_math, not(bootstrap_cg_clif)))],
         f128: #[cfg(all(not(miri), target_has_reliable_f128_math))],
     },
     test<Float> {
         let nan: Float = Float::NAN;
         let inf: Float = Float::INFINITY;
         let neg_inf: Float = Float::NEG_INFINITY;
-        assert_approx_eq!((10.0 as Float).log2(), 3.32192809488736234787031942948939017, Float::LOG2_APPROX);
-        assert_approx_eq!((2.3 as Float).log2(), 1.2016338611696504130002982471978765921, Float::LOG2_APPROX);
-        assert_approx_eq!((1.0 as Float).exp().log2(), 1.4426950408889634073599246810018921381, Float::LOG2_APPROX);
+        assert_approx_eq!((10.0 as Float).log2(), 3.32192809488736234787031942948939017 as Float, Float::LOG2_APPROX);
+        assert_approx_eq!((2.3 as Float).log2(), 1.2016338611696504130002982471978765921 as Float, Float::LOG2_APPROX);
+        assert_approx_eq!((1.0 as Float).exp().log2(), 1.4426950408889634073599246810018921381 as Float, Float::LOG2_APPROX);
         assert!(nan.log2().is_nan());
         assert_biteq!(inf.log2(), inf);
         assert!(neg_inf.log2().is_nan());
@@ -1668,7 +1744,7 @@ float_test! {
     name: log10,
     attrs: {
         const: #[cfg(false)],
-        f16: #[cfg(all(not(miri), target_has_reliable_f16_math))],
+        f16: #[cfg(all(not(miri), target_has_reliable_f16_math, not(bootstrap_cg_clif)))],
         f128: #[cfg(all(not(miri), target_has_reliable_f128_math))],
     },
     test<Float> {
@@ -1676,8 +1752,8 @@ float_test! {
         let inf: Float = Float::INFINITY;
         let neg_inf: Float = Float::NEG_INFINITY;
         assert_biteq!((10.0 as Float).log10(), 1.0);
-        assert_approx_eq!((2.3 as Float).log10(), 0.36172783601759284532595218865859309898, Float::LOG10_APPROX);
-        assert_approx_eq!((1.0 as Float).exp().log10(), 0.43429448190325182765112891891660508222, Float::LOG10_APPROX);
+        assert_approx_eq!((2.3 as Float).log10(), 0.36172783601759284532595218865859309898 as Float, Float::LOG10_APPROX);
+        assert_approx_eq!((1.0 as Float).exp().log10(), 0.43429448190325182765112891891660508222 as Float, Float::LOG10_APPROX);
         assert_biteq!((1.0 as Float).log10(), 0.0);
         assert!(nan.log10().is_nan());
         assert_biteq!(inf.log10(), inf);
@@ -1692,7 +1768,7 @@ float_test! {
     name: asinh,
     attrs: {
         const: #[cfg(false)],
-        f16: #[cfg(all(not(miri), target_has_reliable_f16_math))],
+        f16: #[cfg(all(not(miri), target_has_reliable_f16_math, not(bootstrap_cg_clif)))],
         f128: #[cfg(all(not(miri), target_has_reliable_f128_math))],
     },
     test<Float> {
@@ -1708,6 +1784,12 @@ float_test! {
         assert!((-0.0 as Float).asinh().is_sign_negative());
         assert_approx_eq!((2.0 as Float).asinh(), 1.443635475178810342493276740273105f128 as Float, Float::ASINH_APPROX);
         assert_approx_eq!((-2.0 as Float).asinh(), -1.443635475178810342493276740273105f128 as Float, Float::ASINH_APPROX);
+
+        if Float::MAX > 66000.0 as Float {
+             assert_approx_eq!((-67452098.07139316f128 as Float).asinh(), -18.720075426274544393985484294000831757220 as Float, Float::ASINH_APPROX);
+        } else {
+             assert_approx_eq!((-200.0 as Float).asinh(), -5.991470797049389 as Float, Float::ASINH_APPROX);
+        }
     }
 }
 
@@ -1715,7 +1797,7 @@ float_test! {
     name: acosh,
     attrs: {
         const: #[cfg(false)],
-        f16: #[cfg(all(not(miri), target_has_reliable_f16_math))],
+        f16: #[cfg(all(not(miri), target_has_reliable_f16_math, not(bootstrap_cg_clif)))],
         f128: #[cfg(all(not(miri), target_has_reliable_f128_math))],
     },
     test<Float> {
@@ -1737,7 +1819,7 @@ float_test! {
     name: atanh,
     attrs: {
         const: #[cfg(false)],
-        f16: #[cfg(all(not(miri), target_has_reliable_f16_math))],
+        f16: #[cfg(all(not(miri), target_has_reliable_f16_math, not(bootstrap_cg_clif)))],
         f128: #[cfg(all(not(miri), target_has_reliable_f128_math))],
     },
     test<Float> {
@@ -1763,7 +1845,7 @@ float_test! {
     name: gamma,
     attrs: {
         const: #[cfg(false)],
-        f16: #[cfg(all(not(miri), target_has_reliable_f16_math))],
+        f16: #[cfg(all(not(miri), target_has_reliable_f16_math, not(bootstrap_cg_clif)))],
         f128: #[cfg(all(not(miri), target_has_reliable_f128_math))],
     },
     test<Float> {
@@ -1788,7 +1870,7 @@ float_test! {
     name: ln_gamma,
     attrs: {
         const: #[cfg(false)],
-        f16: #[cfg(all(not(miri), target_has_reliable_f16_math))],
+        f16: #[cfg(all(not(miri), target_has_reliable_f16_math, not(bootstrap_cg_clif)))],
         f128: #[cfg(all(not(miri), target_has_reliable_f128_math))],
     },
     test<Float> {
@@ -1815,12 +1897,12 @@ float_test! {
         let inf: Float = Float::INFINITY;
         let neg_inf: Float = Float::NEG_INFINITY;
         assert_biteq!((0.0 as Float).to_degrees(), 0.0);
-        assert_approx_eq!((-5.8 as Float).to_degrees(), -332.31552117587745090765431723855668471);
+        assert_approx_eq!((-5.8 as Float).to_degrees(), -332.31552117587745090765431723855668471 as Float);
         assert_approx_eq!(pi.to_degrees(), 180.0, Float::PI_TO_DEGREES_APPROX);
         assert!(nan.to_degrees().is_nan());
         assert_biteq!(inf.to_degrees(), inf);
         assert_biteq!(neg_inf.to_degrees(), neg_inf);
-        assert_biteq!((1.0 as Float).to_degrees(), 57.2957795130823208767981548141051703);
+        assert_biteq!((1.0 as Float).to_degrees(), 57.2957795130823208767981548141051703 as Float);
     }
 }
 
@@ -1836,8 +1918,8 @@ float_test! {
         let inf: Float = Float::INFINITY;
         let neg_inf: Float = Float::NEG_INFINITY;
         assert_biteq!((0.0 as Float).to_radians(), 0.0);
-        assert_approx_eq!((154.6 as Float).to_radians(), 2.6982790235832334267135442069489767804);
-        assert_approx_eq!((-332.31 as Float).to_radians(), -5.7999036373023566567593094812182763013);
+        assert_approx_eq!((154.6 as Float).to_radians(), 2.6982790235832334267135442069489767804 as Float);
+        assert_approx_eq!((-332.31 as Float).to_radians(), -5.7999036373023566567593094812182763013 as Float);
         assert_approx_eq!((180.0 as Float).to_radians(), pi, Float::_180_TO_RADIANS_APPROX);
         assert!(nan.to_radians().is_nan());
         assert_biteq!(inf.to_radians(), inf);
@@ -1918,5 +2000,32 @@ float_test! {
         assert_biteq!(neg_inf.mul_add(7.8, 9.0), neg_inf);
         assert_biteq!(flt(8.9).mul_add(inf, 3.2), inf);
         assert_biteq!((flt(-3.2)).mul_add(2.4, neg_inf), neg_inf);
+    }
+}
+
+float_test! {
+    name: real_consts,
+    attrs: {
+        // FIXME(f16_f128): add math tests when available
+        const: #[cfg(false)],
+        f16: #[cfg(all(not(miri), target_has_reliable_f16_math, not(bootstrap_cg_clif)))],
+        f128: #[cfg(all(not(miri), target_has_reliable_f128_math))],
+    },
+    test<Float> {
+        let pi: Float = Float::PI;
+        assert_approx_eq!(Float::FRAC_PI_2, pi / 2.0 as Float);
+        assert_approx_eq!(Float::FRAC_PI_3, pi / 3.0 as Float, Float::APPROX);
+        assert_approx_eq!(Float::FRAC_PI_4, pi / 4.0 as Float);
+        assert_approx_eq!(Float::FRAC_PI_6, pi / 6.0 as Float);
+        assert_approx_eq!(Float::FRAC_PI_8, pi / 8.0 as Float);
+        assert_approx_eq!(Float::FRAC_1_PI, 1.0 as Float / pi);
+        assert_approx_eq!(Float::FRAC_2_PI, 2.0 as Float / pi);
+        assert_approx_eq!(Float::FRAC_2_SQRT_PI, 2.0 as Float / pi.sqrt());
+        assert_approx_eq!(Float::SQRT_2, (2.0 as Float).sqrt());
+        assert_approx_eq!(Float::FRAC_1_SQRT_2, 1.0 as Float / (2.0 as Float).sqrt());
+        assert_approx_eq!(Float::LOG2_E, Float::E.log2());
+        assert_approx_eq!(Float::LOG10_E, Float::E.log10());
+        assert_approx_eq!(Float::LN_2, (2.0 as Float).ln());
+        assert_approx_eq!(Float::LN_10, (10.0 as Float).ln(), Float::APPROX);
     }
 }
