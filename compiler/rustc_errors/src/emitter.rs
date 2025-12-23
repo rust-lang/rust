@@ -2531,7 +2531,7 @@ impl HumanEmitter {
                         {
                             // We'll continue the vertical bar to point into the next note.
                             self.draw_col_separator_no_space(&mut buffer, 0, max_line_num_len + 1);
-                        } else if matches!(code_window_status, CodeWindowStatus::Open) {
+                        } else if let CodeWindowStatus::Open = code_window_status {
                             // We'll close the vertical bar to visually end the code window.
                             self.draw_col_separator_end(&mut buffer, 0, max_line_num_len + 1);
                         }
@@ -3479,7 +3479,7 @@ pub fn stderr_destination(color: ColorConfig) -> Destination {
 
 pub fn get_stderr_color_choice(color: ColorConfig, stderr: &std::io::Stderr) -> ColorChoice {
     let choice = color.to_color_choice();
-    if matches!(choice, ColorChoice::Auto) { AutoStream::choice(stderr) } else { choice }
+    if let ColorChoice::Auto = choice { AutoStream::choice(stderr) } else { choice }
 }
 
 /// On Windows, BRIGHT_BLUE is hard to read on black. Use cyan instead.

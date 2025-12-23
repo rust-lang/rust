@@ -392,7 +392,7 @@ fn emit_orphan_check_error<'tcx>(
             });
 
             for &(mut ty, is_target_ty) in &tys {
-                let span = if matches!(is_target_ty, IsFirstInputType::Yes) {
+                let span = if let IsFirstInputType::Yes = is_target_ty {
                     // Point at `D<A>` in `impl<A, B> for C<B> in D<A>`
                     impl_.self_ty.span
                 } else {

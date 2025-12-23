@@ -1437,7 +1437,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             }
             inner_expr = inner;
             if let Some(inner_type) = typeck_result.node_type_opt(inner.hir_id) {
-                if matches!(inner_type.kind(), ty::RawPtr(..)) {
+                if let ty::RawPtr(..) = inner_type.kind() {
                     is_raw_ptr = true;
                     break;
                 }
@@ -2060,10 +2060,9 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             debug!("not later used in call");
             return;
         }
-        if matches!(
-            self.body.local_decls[issued_borrow.borrowed_place.local].local_info(),
-            LocalInfo::IfThenRescopeTemp { .. }
-        ) {
+        if let LocalInfo::IfThenRescopeTemp { .. } =
+            self.body.local_decls[issued_borrow.borrowed_place.local].local_info()
+        {
             // A better suggestion will be issued by the `if_let_rescope` lint
             return;
         }
@@ -3322,7 +3321,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                                 );
                             }
 
-                            let mutability = if matches!(borrow.kind(), BorrowKind::Mut { .. }) {
+                            let mutability = if let BorrowKind::Mut { .. } = borrow.kind() {
                                 "mut "
                             } else {
                                 ""
@@ -3556,10 +3555,9 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             }
             ConstraintCategory::CallArgument(_) => {
                 fr_name.highlight_region_name(&mut err);
-                if matches!(
-                    use_span.coroutine_kind(),
-                    Some(CoroutineKind::Desugared(CoroutineDesugaring::Async, _))
-                ) {
+                if let Some(CoroutineKind::Desugared(CoroutineDesugaring::Async, _)) =
+                    use_span.coroutine_kind()
+                {
                     err.note(
                         "async blocks are not executed immediately and must either take a \
                          reference or ownership of outside variables they use",
@@ -4619,10 +4617,11 @@ impl<'v, 'tcx> Visitor<'v> for ConditionVisitor<'tcx> {
                                     ),
                                 ));
                             } else if let Some(guard) = &arm.guard {
-                                if matches!(
-                                    self.tcx.hir_node(arm.body.hir_id),
-                                    hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Ret(_), .. })
-                                ) {
+                                if let hir::Node::Expr(hir::Expr {
+                                    kind: hir::ExprKind::Ret(_),
+                                    ..
+                                }) = self.tcx.hir_node(arm.body.hir_id)
+                                {
                                     continue;
                                 }
                                 self.errors.push((
@@ -4634,10 +4633,11 @@ impl<'v, 'tcx> Visitor<'v> for ConditionVisitor<'tcx> {
                                     ),
                                 ));
                             } else {
-                                if matches!(
-                                    self.tcx.hir_node(arm.body.hir_id),
-                                    hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Ret(_), .. })
-                                ) {
+                                if let hir::Node::Expr(hir::Expr {
+                                    kind: hir::ExprKind::Ret(_),
+                                    ..
+                                }) = self.tcx.hir_node(arm.body.hir_id)
+                                {
                                     continue;
                                 }
                                 self.errors.push((

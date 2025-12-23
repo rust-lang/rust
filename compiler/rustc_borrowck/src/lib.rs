@@ -1404,7 +1404,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
             self.borrow_set,
             |borrow_index| borrows_in_scope.contains(borrow_index),
             |this, _borrow_index, borrow| {
-                if matches!(borrow.kind, BorrowKind::Fake(_)) {
+                if let BorrowKind::Fake(_) = borrow.kind {
                     return ControlFlow::Continue(());
                 }
                 let borrowed = this.retrieve_borrow_spans(borrow).var_or_use_path_span();

@@ -260,7 +260,7 @@ pub(super) fn incoherent_impls_provider(tcx: TyCtxt<'_>, simp: SimplifiedType) -
 pub(super) fn traits_provider(tcx: TyCtxt<'_>, _: LocalCrate) -> &[DefId] {
     let mut traits = Vec::new();
     for id in tcx.hir_free_items() {
-        if matches!(tcx.def_kind(id.owner_id), DefKind::Trait | DefKind::TraitAlias) {
+        if let DefKind::Trait | DefKind::TraitAlias = tcx.def_kind(id.owner_id) {
             traits.push(id.owner_id.to_def_id())
         }
     }

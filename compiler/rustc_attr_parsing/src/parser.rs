@@ -358,7 +358,7 @@ fn expr_to_lit(
             }
         }
     } else {
-        if matches!(should_emit, ShouldEmit::Nothing) {
+        if let ShouldEmit::Nothing = should_emit {
             return None;
         }
 

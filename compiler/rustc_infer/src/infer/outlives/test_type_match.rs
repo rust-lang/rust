@@ -190,7 +190,7 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for MatchAgainstHigherRankedOutlives<'tcx>
     #[instrument(skip(self), level = "trace")]
     fn tys(&mut self, pattern: Ty<'tcx>, value: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
         // FIXME(non_lifetime_binders): What to do here?
-        if matches!(pattern.kind(), ty::Error(_) | ty::Bound(..)) {
+        if let ty::Error(_) | ty::Bound(..) = pattern.kind() {
             // Unlike normal `TypeRelation` rules, `ty::Error` does not equal any type.
             self.no_match()
         } else if pattern == value {

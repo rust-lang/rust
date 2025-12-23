@@ -80,7 +80,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for RegionRenumberer<'a, 'tcx> {
 
     #[instrument(skip(self), level = "debug")]
     fn visit_ty(&mut self, ty: &mut Ty<'tcx>, ty_context: TyContext) {
-        if matches!(ty_context, TyContext::ReturnTy(_)) {
+        if let TyContext::ReturnTy(_) = ty_context {
             // We will renumber the return ty when called again with `TyContext::LocalDecl`
             return;
         }

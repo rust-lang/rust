@@ -1237,7 +1237,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
 
         // using `let self` is wrong even if we're not in an associated method or if we're in a macro expansion.
         // So, we should return early if we're in a pattern, see issue #143134.
-        if matches!(source, PathSource::Pat) {
+        if let PathSource::Pat = source {
             return true;
         }
 
@@ -1292,7 +1292,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 }
             }
         } else if let Some(item) = self.diag_metadata.current_item {
-            if matches!(item.kind, ItemKind::Delegation(..)) {
+            if let ItemKind::Delegation(..) = item.kind {
                 err.span_label(item.span, format!("delegation supports {self_from_macro}"));
             } else {
                 let span = if let Some(ident) = item.kind.ident() { ident.span } else { item.span };
@@ -1834,7 +1834,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                     Applicability::MaybeIncorrect,
                 );
                 true
-            } else if matches!(kind, DefKind::Struct | DefKind::TyAlias)
+            } else if let DefKind::Struct | DefKind::TyAlias = kind
                 && let Some(lhs_source_span) = lhs_span.find_ancestor_inside(expr.span)
                 && let Ok(snippet) = this.r.tcx.sess.source_map().span_to_snippet(lhs_source_span)
             {
@@ -2924,7 +2924,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
 
             let non_suggestable_variant_count = variant_ctors.len() - suggestable_variants.len();
 
-            let source_msg = if matches!(source, PathSource::TupleStruct(..)) {
+            let source_msg = if let PathSource::TupleStruct(..) = source {
                 "to match against"
             } else {
                 "to construct"

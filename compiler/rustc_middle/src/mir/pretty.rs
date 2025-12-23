@@ -1871,13 +1871,16 @@ fn pretty_print_const_value_tcx<'tcx>(
     let u8_type = tcx.types.u8;
     match (ct, ty.kind()) {
         // Byte/string slices, printed as (byte) string literals.
-        (_, ty::Ref(_, inner_ty, _)) if matches!(inner_ty.kind(), ty::Str) => {
+        (_, ty::Ref(_, inner_ty, _)) if let ty::Str = inner_ty.kind() => {
             if let Some(data) = ct.try_get_slice_bytes_for_diagnostics(tcx) {
                 fmt.write_str(&format!("{:?}", String::from_utf8_lossy(data)))?;
                 return Ok(());
             }
         }
-        (_, ty::Ref(_, inner_ty, _)) if matches!(inner_ty.kind(), ty::Slice(t) if *t == u8_type) => {
+        (_, ty::Ref(_, inner_ty, _))
+            if let ty::Slice(t) = inner_ty.kind()
+                && *t == u8_type =>
+        {
             if let Some(data) = ct.try_get_slice_bytes_for_diagnostics(tcx) {
                 pretty_print_byte_str(fmt, data)?;
                 return Ok(());

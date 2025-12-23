@@ -787,7 +787,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         let outlived_fr_name = self.give_region_a_name(*outlived_fr).unwrap();
         outlived_fr_name.highlight_region_name(&mut diag);
 
-        let err_category = if matches!(category, ConstraintCategory::Return(_))
+        let err_category = if let ConstraintCategory::Return(_) = category
             && self.regioncx.universal_regions().is_local_free_region(*outlived_fr)
         {
             LifetimeReturnCategoryErr::WrongReturn {

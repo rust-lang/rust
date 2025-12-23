@@ -388,7 +388,7 @@ pub fn sizedness_fast_path<'tcx>(
             return true;
         }
 
-        if matches!(trait_pred.self_ty().kind(), ty::Param(_) | ty::Placeholder(_)) {
+        if let ty::Param(_) | ty::Placeholder(_) = trait_pred.self_ty().kind() {
             for clause in param_env.caller_bounds() {
                 if let ty::ClauseKind::Trait(clause_pred) = clause.kind().skip_binder()
                     && clause_pred.polarity == ty::PredicatePolarity::Positive

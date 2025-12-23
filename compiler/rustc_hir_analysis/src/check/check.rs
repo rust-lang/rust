@@ -186,8 +186,8 @@ fn check_static_inhabited(tcx: TyCtxt<'_>, def_id: LocalDefId) {
         Ok(l) => l,
         // Foreign statics that overflow their allowed size should emit an error
         Err(LayoutError::SizeOverflow(_))
-            if matches!(tcx.def_kind(def_id), DefKind::Static{ .. }
-                if tcx.def_kind(tcx.local_parent(def_id)) == DefKind::ForeignMod) =>
+            if let DefKind::Static { .. } = tcx.def_kind(def_id)
+                && tcx.def_kind(tcx.local_parent(def_id)) == DefKind::ForeignMod =>
         {
             tcx.dcx().emit_err(errors::TooLargeStatic { span });
             return;
@@ -675,7 +675,7 @@ fn check_opaque_precise_captures<'tcx>(tcx: TyCtxt<'tcx>, opaque_def_id: LocalDe
                     }
                 }
                 ty::GenericParamDefKind::Type { .. } => {
-                    if matches!(tcx.def_kind(param.def_id), DefKind::Trait | DefKind::TraitAlias) {
+                    if let DefKind::Trait | DefKind::TraitAlias = tcx.def_kind(param.def_id) {
                         // FIXME(precise_capturing): Structured suggestion for this would be useful
                         tcx.dcx().emit_err(errors::SelfTyNotCaptured {
                             trait_span: tcx.def_span(param.def_id),

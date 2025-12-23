@@ -747,7 +747,7 @@ impl Pat {
     pub fn contains_never_pattern(&self) -> bool {
         let mut contains_never_pattern = false;
         self.walk(&mut |pat| {
-            if matches!(pat.kind, PatKind::Never) {
+            if let PatKind::Never = pat.kind {
                 contains_never_pattern = true;
             }
             true

@@ -1056,7 +1056,7 @@ impl<'tcx> PatRangeBoundary<'tcx> {
             // we can do scalar comparisons. E.g. `unicode-normalization` has
             // many ranges such as '\u{037A}'..='\u{037F}', and chars can be compared
             // in this way.
-            (Finite(a), Finite(b)) if matches!(ty.kind(), ty::Int(_) | ty::Uint(_) | ty::Char) => {
+            (Finite(a), Finite(b)) if let ty::Int(_) | ty::Uint(_) | ty::Char = ty.kind() => {
                 if let (Some(a), Some(b)) = (a.try_to_scalar_int(), b.try_to_scalar_int()) {
                     let sz = ty.primitive_size(tcx);
                     let cmp = match ty.kind() {

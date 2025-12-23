@@ -344,7 +344,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         let l =
             self.eval_operand(left).and_then(|l| self.use_ecx(|this| this.ecx.read_immediate(&l)));
         // Check for exceeding shifts *even if* we cannot evaluate the LHS.
-        if matches!(op, BinOp::Shr | BinOp::Shl) {
+        if let BinOp::Shr | BinOp::Shl = op {
             let r = r.clone()?;
             // We need the type of the LHS. We cannot use `place_layout` as that is the type
             // of the result, which for checked binops is not the same!
@@ -561,7 +561,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                 let right = self.use_ecx(|this| this.ecx.read_immediate(&right))?;
 
                 let val = self.use_ecx(|this| this.ecx.binary_op(bin_op, &left, &right))?;
-                if matches!(val.layout.backend_repr, BackendRepr::ScalarPair(..)) {
+                if let BackendRepr::ScalarPair(..) = val.layout.backend_repr {
                     // FIXME `Value` should properly support pairs in `Immediate`... but currently
                     // it does not.
                     let (val, overflow) = val.to_pair(&self.ecx);

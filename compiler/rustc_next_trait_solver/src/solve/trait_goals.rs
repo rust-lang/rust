@@ -1342,7 +1342,7 @@ where
             .is_some_and(|c| has_only_region_constraints(c.result))
         {
             candidates.retain(|c| {
-                if matches!(c.source, CandidateSource::Impl(_)) {
+                if let CandidateSource::Impl(_) = c.source {
                     debug!(?c, "unsoundly dropping impl in favor of builtin dyn-candidate");
                     false
                 } else {
@@ -1383,7 +1383,7 @@ where
 
         // Extract non-nested alias bound candidates, will be preferred over where bounds if
         // we're proving an auto-trait, sizedness trait or default trait.
-        if matches!(candidate_preference_mode, CandidatePreferenceMode::Marker)
+        if let CandidatePreferenceMode::Marker = candidate_preference_mode
             && candidates.iter().any(|c| {
                 matches!(c.source, CandidateSource::AliasBound(AliasBoundKind::SelfBounds))
             })

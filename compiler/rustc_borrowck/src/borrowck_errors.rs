@@ -395,7 +395,7 @@ impl<'infcx, 'tcx> crate::MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             format!("within this {coroutine_kind:#}"),
         );
         diag.span_label(yield_span, "possible yield occurs here");
-        if matches!(coroutine_kind, hir::CoroutineKind::Coroutine(_)) {
+        if let hir::CoroutineKind::Coroutine(_) = coroutine_kind {
             let hir::Closure { capture_clause, fn_decl_span, .. } = self
                 .infcx
                 .tcx

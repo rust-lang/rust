@@ -50,7 +50,7 @@ pub(super) fn each_borrow_involving_path<'tcx, F, I, S>(
                 i, borrowed, place, access
             );
             let ctrl = op(s, i, borrowed);
-            if matches!(ctrl, ControlFlow::Break(_)) {
+            if let ControlFlow::Break(_) = ctrl {
                 return;
             }
         }

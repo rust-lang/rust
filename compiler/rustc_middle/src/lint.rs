@@ -264,7 +264,7 @@ fn explain_lint_level_source(
                 err.note_once(format!(
                     "`{flag} {hyphen_case_lint_name}` implied by `{flag} {hyphen_case_flag_val}`"
                 ));
-                if matches!(orig_level, Level::Warn | Level::Deny) {
+                if let Level::Warn | Level::Deny = orig_level {
                     err.help_once(format!(
                         "to override `{flag} {hyphen_case_flag_val}` add `#[allow({name})]`"
                     ));

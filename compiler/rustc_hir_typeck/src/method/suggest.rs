@@ -816,7 +816,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Report to emit the diagnostic
             return Err(());
         } else if !unsatisfied_predicates.is_empty() {
-            if matches!(rcvr_ty.kind(), ty::Param(_)) {
+            if let ty::Param(_) = rcvr_ty.kind() {
                 // We special case the situation where we are looking for `_` in
                 // `<TypeParam as _>::method` because otherwise the machinery will look for blanket
                 // implementations that have unsatisfied trait bounds to suggest, leading us to claim
@@ -3578,7 +3578,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             err.span_label(within_macro_span, "due to this macro variable");
         }
 
-        if matches!(source, SelfSource::QPath(_)) && args.is_some() {
+        if let SelfSource::QPath(_) = source
+            && args.is_some()
+        {
             self.find_builder_fn(err, rcvr_ty, expr_id);
         }
 

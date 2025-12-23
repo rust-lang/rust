@@ -173,7 +173,7 @@ pub fn valid_ty_for_activity(ty: &Box<Ty>, activity: DiffActivity) -> bool {
     }
     // FIXME(ZuseZ4) We should make this more robust to also
     // handle type aliases. Once that is done, we can be more restrictive here.
-    if matches!(activity, Active | ActiveOnly) {
+    if let Active | ActiveOnly = activity {
         return true;
     }
     matches!(ty.kind, TyKind::Ptr(_) | TyKind::Ref(..))

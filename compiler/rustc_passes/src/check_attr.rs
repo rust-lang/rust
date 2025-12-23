@@ -505,7 +505,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
 
     /// Checks if `#[diagnostic::on_unimplemented]` is applied to a trait definition
     fn check_diagnostic_on_unimplemented(&self, attr_span: Span, hir_id: HirId, target: Target) {
-        if !matches!(target, Target::Trait) {
+        if target != Target::Trait {
             self.tcx.emit_node_span_lint(
                 MISPLACED_DIAGNOSTIC_ATTRIBUTES,
                 hir_id,
@@ -523,7 +523,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         target: Target,
         item: Option<ItemLike<'_>>,
     ) {
-        if matches!(target, Target::Impl { of_trait: true }) {
+        if let Target::Impl { of_trait: true } = target {
             match item.unwrap() {
                 ItemLike::Item(it) => match it.expect_impl().constness {
                     Constness::Const => {}
@@ -1129,11 +1129,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     /// Checks if `#[may_dangle]` is applied to a lifetime or type generic parameter in `Drop` impl.
     fn check_may_dangle(&self, hir_id: HirId, attr_span: Span) {
         if let hir::Node::GenericParam(param) = self.tcx.hir_node(hir_id)
-            && matches!(
-                param.kind,
-                hir::GenericParamKind::Lifetime { .. } | hir::GenericParamKind::Type { .. }
-            )
-            && matches!(param.source, hir::GenericParamSource::Generics)
+            && let hir::GenericParamKind::Lifetime { .. } | hir::GenericParamKind::Type { .. } =
+                param.kind
+            && let hir::GenericParamSource::Generics = param.source
             && let parent_hir_id = self.tcx.parent_hir_id(hir_id)
             && let hir::Node::Item(item) = self.tcx.hir_node(parent_hir_id)
             && let hir::ItemKind::Impl(impl_) = item.kind

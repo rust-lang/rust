@@ -2171,7 +2171,7 @@ impl<'a> Parser<'a> {
     /// for better diagnostics and suggestions.
     fn parse_field_ident(&mut self, adt_ty: &str, lo: Span) -> PResult<'a, Ident> {
         let (ident, is_raw) = self.ident_or_err(true)?;
-        if matches!(is_raw, IdentIsRaw::No) && ident.is_reserved() {
+        if is_raw == IdentIsRaw::No && ident.is_reserved() {
             let snapshot = self.create_snapshot_for_diagnostic();
             let err = if self.check_fn_front_matter(false, Case::Sensitive) {
                 let inherited_vis =
@@ -3008,7 +3008,7 @@ impl<'a> Parser<'a> {
                             let vs = vs.trim_end();
 
                             // There was no explicit visibility
-                            if matches!(orig_vis.kind, VisibilityKind::Inherited) {
+                            if let VisibilityKind::Inherited = orig_vis.kind {
                                 err.span_suggestion(
                                     sp_start.to(self.prev_token.span),
                                     format!("visibility `{vs}` must come before `{snippet}`"),
@@ -3040,7 +3040,7 @@ impl<'a> Parser<'a> {
                         self.bump();
                         // When we recover from a `MisplacedDisallowedQualifier`, we already emitted an error for the disallowed qualifier
                         // So we don't emit another error that the qualifier is unexpected.
-                        if matches!(wrong_kw, WrongKw::MisplacedDisallowedQualifier) {
+                        if let WrongKw::MisplacedDisallowedQualifier = wrong_kw {
                             err.cancel();
                         } else {
                             err.emit();

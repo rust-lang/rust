@@ -163,7 +163,7 @@ fn variance_of_opaque(
             generics = tcx.generics_of(def_id);
 
             // Don't mark trait params generic if we're in an RPITIT.
-            if matches!(force_capture_trait_args, ForceCaptureTraitArgs::Yes)
+            if let ForceCaptureTraitArgs::Yes = force_capture_trait_args
                 && generics.parent.is_none()
             {
                 debug_assert_eq!(tcx.def_kind(def_id), DefKind::Trait);

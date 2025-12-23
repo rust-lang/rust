@@ -486,7 +486,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         pat_info: PatInfo<'tcx>,
     ) -> Ty<'tcx> {
         #[cfg(debug_assertions)]
-        if matches!(pat_info.binding_mode, ByRef::Yes(_, Mutability::Mut))
+        if let ByRef::Yes(_, Mutability::Mut) = pat_info.binding_mode
             && pat_info.max_ref_mutbl != MutblCap::Mut
             && self.downgrade_mut_inside_shared()
         {
@@ -1235,7 +1235,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             )
         }
 
-        if matches!(bm.0, ByRef::Yes(_, Mutability::Mut))
+        if let ByRef::Yes(_, Mutability::Mut) = bm.0
             && let MutblCap::WeaklyNot(and_pat_span) = pat_info.max_ref_mutbl
         {
             let mut err = struct_span_code_err!(
