@@ -9,7 +9,7 @@ pub(crate) use self::inner::{do_alloc, Allocator, Global};
 #[cfg(feature = "nightly")]
 mod inner {
     #[cfg(test)]
-    pub use crate::alloc::alloc::AllocError;
+    pub(crate) use crate::alloc::alloc::AllocError;
     use crate::alloc::alloc::Layout;
     pub(crate) use crate::alloc::alloc::{Allocator, Global};
     use core::ptr::NonNull;
@@ -33,7 +33,7 @@ mod inner {
 mod inner {
     use crate::alloc::alloc::Layout;
     #[cfg(test)]
-    pub use allocator_api2::alloc::AllocError;
+    pub(crate) use allocator_api2::alloc::AllocError;
     pub(crate) use allocator_api2::alloc::{Allocator, Global};
     use core::ptr::NonNull;
 
