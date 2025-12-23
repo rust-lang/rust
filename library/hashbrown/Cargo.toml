@@ -26,7 +26,7 @@ alloc = { version = "1.0.0", optional = true, package = "rustc-std-workspace-all
 
 # Support for allocators that use allocator-api2
 allocator-api2 = { version = "0.2.9", optional = true, default-features = false, features = [
-    "alloc",
+  "alloc",
 ] }
 
 # Equivalent trait which can be shared with other hash table implementations.
@@ -50,7 +50,13 @@ bumpalo = { version = "3.13.0", features = ["allocator-api2"] }
 libc = "0.2.155"
 
 [features]
-default = ["default-hasher", "inline-more", "allocator-api2", "equivalent", "raw-entry"]
+default = [
+  "default-hasher",
+  "inline-more",
+  "allocator-api2",
+  "equivalent",
+  "raw-entry",
+]
 
 # Enables use of nightly features. This is only guaranteed to work on the latest
 # version of nightly Rust.
@@ -60,12 +66,7 @@ nightly = ["foldhash?/nightly", "bumpalo/allocator_api"]
 rustc-internal-api = []
 
 # Internal feature used when building as part of the standard library.
-rustc-dep-of-std = [
-    "nightly",
-    "core",
-    "alloc",
-    "rustc-internal-api",
-]
+rustc-dep-of-std = ["nightly", "core", "alloc", "rustc-internal-api"]
 
 # Enables serde support.
 serde = ["dep:serde_core", "dep:serde"]
