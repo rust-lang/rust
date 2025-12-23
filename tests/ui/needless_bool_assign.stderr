@@ -62,5 +62,15 @@ LL | |         z = false;
 LL | |     }
    | |_____^ help: you can reduce it to: `{ z = x || y; }`
 
-error: aborting due to 5 previous errors
+error: this if-then-else expression assigns a bool literal
+  --> tests/ui/needless_bool_assign.rs:77:5
+   |
+LL | /     if invoke!(must_keep, x, y) {
+LL | |         dot_0!(skip) = false;
+LL | |     } else {
+LL | |         dot_0!(skip) = true;
+LL | |     }
+   | |_____^ help: you can reduce it to: `dot_0!(skip) = !invoke!(must_keep, x, y);`
+
+error: aborting due to 6 previous errors
 
