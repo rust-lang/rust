@@ -2180,7 +2180,7 @@ pub(crate) fn rewrite_assign_rhs_with_comments<S: Into<String>, R: Rewrite + Spa
     } else {
         shape
     };
-    let rhs = rewrite_assign_rhs_expr(context, &lhs, ex, shape, rhs_kind, rhs_tactics)?;
+    let rhs: String = rewrite_assign_rhs_expr(context, &lhs, ex, shape, rhs_kind, rhs_tactics)?;
     if contains_comment {
         let rhs = rhs.trim_start();
         combine_strs_with_missing_comments(context, &lhs, rhs, between_span, shape, allow_extend)

@@ -2014,121 +2014,107 @@ pub(crate) struct StaticParts<'a> {
 
 impl<'a> StaticParts<'a> {
     pub(crate) fn from_item(item: &'a ast::Item) -> Self {
-        let (defaultness, prefix, safety, ident, ty, mutability, expr_opt, generics) =
-            match &item.kind {
-                ast::ItemKind::Static(s) => (
-                    None,
-                    "static",
-                    s.safety,
-                    s.ident,
-                    &s.ty,
-                    s.mutability,
-                    s.expr.as_deref(),
-                    None,
-                ),
-                ast::ItemKind::Const(c) => (
-                    Some(c.defaultness),
-                    "const",
-                    ast::Safety::Default,
-                    c.ident,
-                    &c.ty,
-                    ast::Mutability::Not,
-                    c.rhs.as_ref().map(|rhs| rhs.expr()),
-                    Some(&c.generics),
-                ),
-                _ => unreachable!(),
-            };
-        StaticParts {
-            prefix,
-            safety,
-            vis: &item.vis,
-            ident,
-            generics,
-            ty,
-            mutability,
-            expr_opt,
-            defaultness,
-            span: item.span,
+        match &item.kind {
+            ast::ItemKind::Static(s) => StaticParts {
+                prefix: "static",
+                safety: s.safety,
+                vis: &item.vis,
+                ident: s.ident,
+                generics: None,
+                ty: &s.ty,
+                mutability: s.mutability,
+                expr_opt: s.expr.as_deref(),
+                defaultness: None,
+                span: item.span,
+            },
+            ast::ItemKind::Const(c) => StaticParts {
+                prefix: "const",
+                safety: ast::Safety::Default,
+                vis: &item.vis,
+                ident: c.ident,
+                generics: Some(&c.generics),
+                ty: &c.ty,
+                mutability: ast::Mutability::Not,
+                expr_opt: c.rhs.as_ref().map(|rhs| rhs.expr()),
+                defaultness: Some(c.defaultness),
+                span: item.span,
+            },
+            _ => unreachable!(),
         }
     }
 
     pub(crate) fn from_trait_item(ti: &'a ast::AssocItem, ident: Ident) -> Self {
-        let (defaultness, ty, expr_opt, generics) = match &ti.kind {
-            ast::AssocItemKind::Const(c) => (
-                c.defaultness,
-                &c.ty,
-                c.rhs.as_ref().map(|rhs| rhs.expr()),
-                Some(&c.generics),
-            ),
+        match &ti.kind {
+            ast::AssocItemKind::Const(c) => StaticParts {
+                prefix: "const",
+                safety: ast::Safety::Default,
+                vis: &ti.vis,
+                ident,
+                generics: Some(&c.generics),
+                ty: &c.ty,
+                mutability: ast::Mutability::Not,
+                expr_opt: c.rhs.as_ref().map(|rhs| rhs.expr()),
+                defaultness: Some(c.defaultness),
+                span: ti.span,
+            },
             _ => unreachable!(),
-        };
-        StaticParts {
-            prefix: "const",
-            safety: ast::Safety::Default,
-            vis: &ti.vis,
-            ident,
-            generics,
-            ty,
-            mutability: ast::Mutability::Not,
-            expr_opt,
-            defaultness: Some(defaultness),
-            span: ti.span,
         }
     }
 
     pub(crate) fn from_impl_item(ii: &'a ast::AssocItem, ident: Ident) -> Self {
-        let (defaultness, ty, expr_opt, generics) = match &ii.kind {
-            ast::AssocItemKind::Const(c) => (
-                c.defaultness,
-                &c.ty,
-                c.rhs.as_ref().map(|rhs| rhs.expr()),
-                Some(&c.generics),
-            ),
+        match &ii.kind {
+            ast::AssocItemKind::Const(c) => StaticParts {
+                prefix: "const",
+                safety: ast::Safety::Default,
+                vis: &ii.vis,
+                ident,
+                generics: Some(&c.generics),
+                ty: &c.ty,
+                mutability: ast::Mutability::Not,
+                expr_opt: c.rhs.as_ref().map(|rhs| rhs.expr()),
+                defaultness: Some(c.defaultness),
+                span: ii.span,
+            },
             _ => unreachable!(),
-        };
-        StaticParts {
-            prefix: "const",
-            safety: ast::Safety::Default,
-            vis: &ii.vis,
-            ident,
-            generics,
-            ty,
-            mutability: ast::Mutability::Not,
-            expr_opt,
-            defaultness: Some(defaultness),
-            span: ii.span,
         }
     }
 }
 
 fn rewrite_static(
     context: &RewriteContext<'_>,
-    static_parts: &StaticParts<'_>,
+    &StaticParts {
+        prefix,
+        safety,
+        vis,
+        ident,
+        generics,
+        ty,
+        mutability,
+        defaultness,
+        expr_opt,
+        span,
+    }: &StaticParts<'_>,
     offset: Indent,
 ) -> Option<String> {
     // For now, if this static (or const) has generics, then bail.
-    if static_parts
-        .generics
-        .is_some_and(|g| !g.params.is_empty() || !g.where_clause.is_empty())
-    {
+    if generics.is_some_and(|g| !g.params.is_empty() || !g.where_clause.is_empty()) {
         return None;
     }
 
     let colon = colon_spaces(context.config);
     let mut prefix = format!(
         "{}{}{}{} {}{}{}",
-        format_visibility(context, static_parts.vis),
-        static_parts.defaultness.map_or("", format_defaultness),
-        format_safety(static_parts.safety),
-        static_parts.prefix,
-        format_mutability(static_parts.mutability),
-        rewrite_ident(context, static_parts.ident),
+        format_visibility(context, vis),
+        defaultness.map_or("", format_defaultness),
+        format_safety(safety),
+        prefix,
+        format_mutability(mutability),
+        rewrite_ident(context, ident),
         colon,
     );
-    // 2 = " =".len()
-    let ty_shape =
-        Shape::indented(offset.block_only(), context.config).offset_left(prefix.len() + 2)?;
-    let ty_str = match static_parts.ty.rewrite(context, ty_shape) {
+    let ty_shape = Shape::indented(offset.block_only(), context.config)
+        .offset_left(prefix.len() + const { " =".len() })?;
+    let ty_str = match ty.rewrite(context, ty_shape) {
         Some(ty_str) => ty_str,
         None => {
             if prefix.ends_with(' ') {
@@ -2136,7 +2122,7 @@ fn rewrite_static(
             }
             let nested_indent = offset.block_indent(context.config);
             let nested_shape = Shape::indented(nested_indent, context.config);
-            let ty_str = static_parts.ty.rewrite(context, nested_shape)?;
+            let ty_str = ty.rewrite(context, nested_shape)?;
             format!(
                 "{}{}",
                 nested_indent.to_string_with_newline(context.config),
@@ -2145,8 +2131,8 @@ fn rewrite_static(
         }
     };
 
-    if let Some(expr) = static_parts.expr_opt {
-        let comments_lo = context.snippet_provider.span_after(static_parts.span, "=");
+    if let Some(expr) = expr_opt {
+        let comments_lo = context.snippet_provider.span_after(span, "=");
         let expr_lo = expr.span.lo();
         let comments_span = mk_sp(comments_lo, expr_lo);
 
@@ -2165,7 +2151,7 @@ fn rewrite_static(
             true,
         )
         .ok()
-        .map(|res| recover_comment_removed(res, static_parts.span, context))
+        .map(|res| recover_comment_removed(res, span, context))
         .map(|s| if s.ends_with(';') { s } else { s + ";" })
     } else {
         Some(format!("{prefix}{ty_str};"))

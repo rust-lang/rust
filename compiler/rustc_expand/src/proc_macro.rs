@@ -1,6 +1,6 @@
 use rustc_ast::tokenstream::TokenStream;
 use rustc_errors::ErrorGuaranteed;
-use rustc_parse::parser::{ForceCollect, Parser};
+use rustc_parse::parser::{AllowConstBlockItems, ForceCollect, Parser};
 use rustc_session::config::ProcMacroExecutionStrategy;
 use rustc_span::Span;
 use rustc_span::profiling::SpannedEventArgRecorder;
@@ -156,7 +156,10 @@ impl MultiItemModifier for DeriveProcMacro {
         let mut items = vec![];
 
         loop {
-            match parser.parse_item(ForceCollect::No) {
+            match parser.parse_item(
+                ForceCollect::No,
+                if is_stmt { AllowConstBlockItems::No } else { AllowConstBlockItems::Yes },
+            ) {
                 Ok(None) => break,
                 Ok(Some(item)) => {
                     if is_stmt {

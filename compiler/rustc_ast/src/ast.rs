@@ -3581,6 +3581,7 @@ impl Item {
     pub fn opt_generics(&self) -> Option<&Generics> {
         match &self.kind {
             ItemKind::ExternCrate(..)
+            | ItemKind::ConstBlock(_)
             | ItemKind::Use(_)
             | ItemKind::Mod(..)
             | ItemKind::ForeignMod(_)
@@ -3837,6 +3838,17 @@ impl ConstItemRhs {
     }
 }
 
+#[derive(Clone, Encodable, Decodable, Debug, Walkable)]
+pub struct ConstBlockItem {
+    pub id: NodeId,
+    pub span: Span,
+    pub block: Box<Block>,
+}
+
+impl ConstBlockItem {
+    pub const IDENT: Ident = Ident { name: kw::Underscore, span: DUMMY_SP };
+}
+
 // Adding a new variant? Please update `test_item` in `tests/ui/macros/stringify.rs`.
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub enum ItemKind {
@@ -3856,6 +3868,11 @@ pub enum ItemKind {
     ///
     /// E.g., `const FOO: i32 = 42;`.
     Const(Box<ConstItem>),
+    /// A module-level const block.
+    /// Equivalent to `const _: () = const { ... };`.
+    ///
+    /// E.g., `const { assert!(true) }`.
+    ConstBlock(ConstBlockItem),
     /// A function declaration (`fn`).
     ///
     /// E.g., `fn foo(bar: usize) -> usize { .. }`.
@@ -3932,6 +3949,8 @@ impl ItemKind {
             | ItemKind::MacroDef(ident, _)
             | ItemKind::Delegation(box Delegation { ident, .. }) => Some(ident),
 
+            ItemKind::ConstBlock(_) => Some(ConstBlockItem::IDENT),
+
             ItemKind::Use(_)
             | ItemKind::ForeignMod(_)
             | ItemKind::GlobalAsm(_)
@@ -3945,9 +3964,9 @@ impl ItemKind {
     pub fn article(&self) -> &'static str {
         use ItemKind::*;
         match self {
-            Use(..) | Static(..) | Const(..) | Fn(..) | Mod(..) | GlobalAsm(..) | TyAlias(..)
-            | Struct(..) | Union(..) | Trait(..) | TraitAlias(..) | MacroDef(..)
-            | Delegation(..) | DelegationMac(..) => "a",
+            Use(..) | Static(..) | Const(..) | ConstBlock(..) | Fn(..) | Mod(..)
+            | GlobalAsm(..) | TyAlias(..) | Struct(..) | Union(..) | Trait(..) | TraitAlias(..)
+            | MacroDef(..) | Delegation(..) | DelegationMac(..) => "a",
             ExternCrate(..) | ForeignMod(..) | MacCall(..) | Enum(..) | Impl { .. } => "an",
         }
     }
@@ -3958,6 +3977,7 @@ impl ItemKind {
             ItemKind::Use(..) => "`use` import",
             ItemKind::Static(..) => "static item",
             ItemKind::Const(..) => "constant item",
+            ItemKind::ConstBlock(..) => "const block",
             ItemKind::Fn(..) => "function",
             ItemKind::Mod(..) => "module",
             ItemKind::ForeignMod(..) => "extern block",
@@ -3987,7 +4007,18 @@ impl ItemKind {
             | Self::Trait(box Trait { generics, .. })
             | Self::TraitAlias(box TraitAlias { generics, .. })
             | Self::Impl(Impl { generics, .. }) => Some(generics),
-            _ => None,
+
+            Self::ExternCrate(..)
+            | Self::Use(..)
+            | Self::Static(..)
+            | Self::ConstBlock(..)
+            | Self::Mod(..)
+            | Self::ForeignMod(..)
+            | Self::GlobalAsm(..)
+            | Self::MacCall(..)
+            | Self::MacroDef(..)
+            | Self::Delegation(..)
+            | Self::DelegationMac(..) => None,
         }
     }
 }

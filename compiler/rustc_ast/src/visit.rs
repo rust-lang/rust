@@ -424,6 +424,7 @@ macro_rules! common_visitor_and_walkers {
             ByRef,
             Closure,
             Const,
+            ConstBlockItem,
             ConstItem,
             ConstItemRhs,
             Defaultness,
@@ -822,6 +823,8 @@ macro_rules! common_visitor_and_walkers {
                     ItemKind::Use(use_tree) =>
                         visit_visitable!($($mut)? vis, use_tree),
                     ItemKind::Static(item) =>
+                        visit_visitable!($($mut)? vis, item),
+                    ItemKind::ConstBlock(item) =>
                         visit_visitable!($($mut)? vis, item),
                     ItemKind::Const(item) =>
                         visit_visitable!($($mut)? vis, item),
