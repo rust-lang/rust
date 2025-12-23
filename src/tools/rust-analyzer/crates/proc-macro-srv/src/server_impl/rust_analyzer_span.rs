@@ -14,7 +14,7 @@ use proc_macro::bridge::server;
 use span::{FIXUP_ERASED_FILE_AST_ID_MARKER, Span, TextRange, TextSize};
 
 use crate::{
-    SubRequest, SubResponse,
+    SubCallback, SubRequest, SubResponse,
     bridge::{Diagnostic, ExpnGlobals, Literal, TokenTree},
     server_impl::literal_from_str,
 };
@@ -29,8 +29,7 @@ pub struct RaSpanServer {
     pub call_site: Span,
     pub def_site: Span,
     pub mixed_site: Span,
-    pub cli_to_server: Option<crossbeam_channel::Receiver<SubResponse>>,
-    pub server_to_cli: Option<crossbeam_channel::Sender<SubRequest>>,
+    pub callback: Option<SubCallback>,
 }
 
 impl server::Types for RaSpanServer {
@@ -153,21 +152,17 @@ impl server::Span for RaSpanServer {
     /// See PR:
     /// https://github.com/rust-lang/rust/pull/55780
     fn source_text(&mut self, span: Self::Span) -> Option<String> {
-        // FIXME requires db, needs special handling wrt fixup spans
-        if self.server_to_cli.is_some() && self.cli_to_server.is_some() {
-            let file_id = span.anchor.file_id;
-            let start: u32 = span.range.start().into();
-            let end: u32 = span.range.end().into();
-            let _ = self.server_to_cli.clone().unwrap().send(SubRequest::SourceText {
-                file_id,
-                start,
-                end,
-            });
-            match self.cli_to_server.as_ref()?.recv().ok()? {
-                SubResponse::SourceTextResult { text } => text,
-            }
-        } else {
-            None
+        let file_id = span.anchor.file_id;
+        let start: u32 = span.range.start().into();
+        let end: u32 = span.range.end().into();
+
+        let req = SubRequest::SourceText { file_id, start, end };
+
+        let cb = self.callback.as_mut()?;
+        let response = cb(req);
+
+        match response {
+            SubResponse::SourceTextResult { text } => text,
         }
     }
 

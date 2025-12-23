@@ -12,7 +12,7 @@ use object::Object;
 use paths::{Utf8Path, Utf8PathBuf};
 
 use crate::{
-    PanicMessage, ProcMacroKind, ProcMacroSrvSpan, dylib::proc_macros::ProcMacros,
+    PanicMessage, ProcMacroKind, ProcMacroSrvSpan, SubCallback, dylib::proc_macros::ProcMacros,
     token_stream::TokenStream,
 };
 
@@ -45,39 +45,14 @@ impl Expander {
         def_site: S,
         call_site: S,
         mixed_site: S,
+        callback: Option<SubCallback>,
     ) -> Result<TokenStream<S>, PanicMessage>
     where
         <S::Server as bridge::server::Types>::TokenStream: Default,
     {
         self.inner
             .proc_macros
-            .expand(macro_name, macro_body, attribute, def_site, call_site, mixed_site)
-    }
-
-    pub(crate) fn expand_with_channels<S: ProcMacroSrvSpan>(
-        &self,
-        macro_name: &str,
-        macro_body: crate::token_stream::TokenStream<S>,
-        attribute: Option<crate::token_stream::TokenStream<S>>,
-        def_site: S,
-        call_site: S,
-        mixed_site: S,
-        cli_to_server: crossbeam_channel::Receiver<crate::SubResponse>,
-        server_to_cli: crossbeam_channel::Sender<crate::SubRequest>,
-    ) -> Result<crate::token_stream::TokenStream<S>, crate::PanicMessage>
-    where
-        <S::Server as proc_macro::bridge::server::Types>::TokenStream: Default,
-    {
-        self.inner.proc_macros.expand_with_channels(
-            macro_name,
-            macro_body,
-            attribute,
-            def_site,
-            call_site,
-            mixed_site,
-            cli_to_server,
-            server_to_cli,
-        )
+            .expand(macro_name, macro_body, attribute, def_site, call_site, mixed_site, callback)
     }
 
     pub(crate) fn list_macros(&self) -> impl Iterator<Item = (&str, ProcMacroKind)> {

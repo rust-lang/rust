@@ -1,7 +1,6 @@
 //! The main loop of the proc-macro server.
 use std::io;
 
-use crossbeam_channel::unbounded;
 use proc_macro_api::{
     Codec,
     bidirectional_protocol::msg as bidirectional,
@@ -82,6 +81,7 @@ fn run_new<C: Codec>() -> io::Result<()> {
                 }
 
                 bidirectional::Request::ApiVersionCheck {} => {
+                    // bidirectional::Response::ApiVersionCheck(CURRENT_API_VERSION).write::<_, C>(stdout)
                     send_response::<_, C>(
                         &mut stdout,
                         bidirectional::Response::ApiVersionCheck(CURRENT_API_VERSION),
@@ -160,6 +160,7 @@ fn handle_expand_id<W: std::io::Write, C: Codec>(
             def_site,
             call_site,
             mixed_site,
+            None,
         )
         .map(|it| {
             legacy::FlatTree::from_tokenstream_raw::<SpanTrans>(it, call_site, CURRENT_API_VERSION)
@@ -169,7 +170,7 @@ fn handle_expand_id<W: std::io::Write, C: Codec>(
     send_response::<_, C>(stdout, bidirectional::Response::ExpandMacro(res))
 }
 
-fn handle_expand_ra<W: std::io::Write, R: std::io::BufRead, C: Codec>(
+fn handle_expand_ra<W: io::Write, R: io::BufRead, C: Codec>(
     srv: &proc_macro_srv::ProcMacroSrv<'_>,
     stdin: &mut R,
     stdout: &mut W,
@@ -185,74 +186,69 @@ fn handle_expand_ra<W: std::io::Write, R: std::io::BufRead, C: Codec>(
                 macro_body,
                 macro_name,
                 attributes,
-                has_global_spans:
-                    bidirectional::ExpnGlobals { serialize: _, def_site, call_site, mixed_site },
+                has_global_spans: bidirectional::ExpnGlobals { def_site, call_site, mixed_site, .. },
                 span_data_table,
             },
     } = task;
 
     let mut span_data_table = legacy::deserialize_span_data_index_map(&span_data_table);
 
-    let def_site_span = span_data_table[def_site];
-    let call_site_span = span_data_table[call_site];
-    let mixed_site_span = span_data_table[mixed_site];
+    let def_site = span_data_table[def_site];
+    let call_site = span_data_table[call_site];
+    let mixed_site = span_data_table[mixed_site];
 
-    let macro_body_ts =
+    let macro_body =
         macro_body.to_tokenstream_resolved(CURRENT_API_VERSION, &span_data_table, |a, b| {
             srv.join_spans(a, b).unwrap_or(b)
         });
-    let attributes_ts = attributes.map(|it| {
+    let attributes = attributes.map(|it| {
         it.to_tokenstream_resolved(CURRENT_API_VERSION, &span_data_table, |a, b| {
             srv.join_spans(a, b).unwrap_or(b)
         })
     });
 
-    let (subreq_tx, subreq_rx) = unbounded::<proc_macro_srv::SubRequest>();
-    let (subresp_tx, subresp_rx) = unbounded::<proc_macro_srv::SubResponse>();
+    let (subreq_tx, subreq_rx) = crossbeam_channel::unbounded();
+    let (subresp_tx, subresp_rx) = crossbeam_channel::unbounded();
     let (result_tx, result_rx) = crossbeam_channel::bounded(1);
 
     std::thread::scope(|scope| {
-        let srv_ref = &srv;
+        scope.spawn(|| {
+            let callback = Box::new(move |req: proc_macro_srv::SubRequest| {
+                subreq_tx.send(req).unwrap();
+                subresp_rx.recv().unwrap()
+            });
 
-        scope.spawn({
-            let lib = lib.clone();
-            let env = env.clone();
-            let current_dir = current_dir.clone();
-            let macro_name = macro_name.clone();
-            move || {
-                let res = srv_ref
-                    .expand_with_channels(
-                        lib,
-                        &env,
-                        current_dir,
-                        &macro_name,
-                        macro_body_ts,
-                        attributes_ts,
-                        def_site_span,
-                        call_site_span,
-                        mixed_site_span,
-                        subresp_rx,
-                        subreq_tx,
+            let res = srv
+                .expand(
+                    lib,
+                    &env,
+                    current_dir,
+                    &macro_name,
+                    macro_body,
+                    attributes,
+                    def_site,
+                    call_site,
+                    mixed_site,
+                    Some(callback),
+                )
+                .map(|it| {
+                    (
+                        legacy::FlatTree::from_tokenstream(
+                            it,
+                            CURRENT_API_VERSION,
+                            call_site,
+                            &mut span_data_table,
+                        ),
+                        legacy::serialize_span_data_index_map(&span_data_table),
                     )
-                    .map(|it| {
-                        (
-                            legacy::FlatTree::from_tokenstream(
-                                it,
-                                CURRENT_API_VERSION,
-                                call_site_span,
-                                &mut span_data_table,
-                            ),
-                            legacy::serialize_span_data_index_map(&span_data_table),
-                        )
-                    })
-                    .map(|(tree, span_data_table)| bidirectional::ExpandMacroExtended {
-                        tree,
-                        span_data_table,
-                    })
-                    .map_err(|e| e.into_string().unwrap_or_default())
-                    .map_err(legacy::PanicMessage);
-                let _ = result_tx.send(res);
-            }
+                })
+                .map(|(tree, span_data_table)| bidirectional::ExpandMacroExtended {
+                    tree,
+                    span_data_table,
+                })
+                .map_err(|e| legacy::PanicMessage(e.into_string().unwrap_or_default()));
+
+            let _ = result_tx.send(res);
         });
 
         loop {
@@ -264,31 +260,26 @@ fn handle_expand_ra<W: std::io::Write, R: std::io::BufRead, C: Codec>(
 
             let subreq = match subreq_rx.recv() {
                 Ok(r) => r,
-                Err(_) => {
-                    break;
-                }
+                Err(_) => break,
             };
 
-            send_subrequest::<_, C>(stdout, from_srv_req(subreq)).unwrap();
+            let api_req = from_srv_req(subreq);
+            bidirectional::BidirectionalMessage::SubRequest(api_req).write::<_, C>(stdout).unwrap();
 
-            let resp_opt = bidirectional::BidirectionalMessage::read::<_, C>(stdin, buf).unwrap();
-            let resp = match resp_opt {
-                Some(env) => env,
-                None => {
-                    break;
-                }
-            };
+            let resp = bidirectional::BidirectionalMessage::read::<_, C>(stdin, buf)
+                .unwrap()
+                .expect("client closed connection");
 
             match resp {
-                bidirectional::BidirectionalMessage::SubResponse(subresp) => {
-                    let _ = subresp_tx.send(from_client_res(subresp));
+                bidirectional::BidirectionalMessage::SubResponse(api_resp) => {
+                    let srv_resp = from_client_res(api_resp);
+                    subresp_tx.send(srv_resp).unwrap();
                 }
-                _ => {
-                    break;
-                }
+                other => panic!("expected SubResponse, got {other:?}"),
             }
         }
     });
+
     Ok(())
 }
 
@@ -356,6 +347,7 @@ fn run_<C: Codec>() -> io::Result<()> {
                             def_site,
                             call_site,
                             mixed_site,
+                            None,
                         )
                         .map(|it| {
                             legacy::FlatTree::from_tokenstream_raw::<SpanTrans>(
@@ -397,6 +389,7 @@ fn run_<C: Codec>() -> io::Result<()> {
                             def_site,
                             call_site,
                             mixed_site,
+                            None,
                         )
                         .map(|it| {
                             (
@@ -453,13 +446,5 @@ fn send_response<W: std::io::Write, C: Codec>(
     resp: bidirectional::Response,
 ) -> io::Result<()> {
     let resp = bidirectional::BidirectionalMessage::Response(resp);
-    resp.write::<W, C>(stdout)
-}
-
-fn send_subrequest<W: std::io::Write, C: Codec>(
-    stdout: &mut W,
-    resp: bidirectional::SubRequest,
-) -> io::Result<()> {
-    let resp = bidirectional::BidirectionalMessage::SubRequest(resp);
     resp.write::<W, C>(stdout)
 }

@@ -91,6 +91,8 @@ impl<'env> ProcMacroSrv<'env> {
     }
 }
 
+pub type SubCallback = Box<dyn Fn(SubRequest) -> SubResponse + Send + Sync + 'static>;
+
 pub enum SubRequest {
     SourceText { file_id: EditionedFileId, start: u32, end: u32 },
 }
@@ -113,6 +115,7 @@ impl ProcMacroSrv<'_> {
         def_site: S,
         call_site: S,
         mixed_site: S,
+        callback: Option<SubCallback>,
     ) -> Result<token_stream::TokenStream<S>, PanicMessage> {
         let snapped_env = self.env;
         let expander = self.expander(lib.as_ref()).map_err(|err| PanicMessage {
@@ -128,54 +131,9 @@ impl ProcMacroSrv<'_> {
                 .stack_size(EXPANDER_STACK_SIZE)
                 .name(macro_name.to_owned())
                 .spawn_scoped(s, move || {
-                    expander
-                        .expand(macro_name, macro_body, attribute, def_site, call_site, mixed_site)
-                });
-            match thread.unwrap().join() {
-                Ok(res) => res,
-                Err(e) => std::panic::resume_unwind(e),
-            }
-        });
-        prev_env.rollback();
-
-        result
-    }
-
-    pub fn expand_with_channels<S: ProcMacroSrvSpan>(
-        &self,
-        lib: impl AsRef<Utf8Path>,
-        env: &[(String, String)],
-        current_dir: Option<impl AsRef<Path>>,
-        macro_name: &str,
-        macro_body: token_stream::TokenStream<S>,
-        attribute: Option<token_stream::TokenStream<S>>,
-        def_site: S,
-        call_site: S,
-        mixed_site: S,
-        cli_to_server: crossbeam_channel::Receiver<SubResponse>,
-        server_to_cli: crossbeam_channel::Sender<SubRequest>,
-    ) -> Result<token_stream::TokenStream<S>, PanicMessage> {
-        let snapped_env = self.env;
-        let expander = self.expander(lib.as_ref()).map_err(|err| PanicMessage {
-            message: Some(format!("failed to load macro: {err}")),
-        })?;
-
-        let prev_env = EnvChange::apply(snapped_env, env, current_dir.as_ref().map(<_>::as_ref));
-
-        let result = thread::scope(|s| {
-            let thread = thread::Builder::new()
-                .stack_size(EXPANDER_STACK_SIZE)
-                .name(macro_name.to_owned())
-                .spawn_scoped(s, move || {
-                    expander.expand_with_channels(
-                        macro_name,
-                        macro_body,
-                        attribute,
-                        def_site,
-                        call_site,
-                        mixed_site,
-                        cli_to_server,
-                        server_to_cli,
+                    expander.expand(
+                        macro_name, macro_body, attribute, def_site, call_site, mixed_site,
+                        callback,
                     )
                 });
             match thread.unwrap().join() {
@@ -229,8 +187,7 @@ pub trait ProcMacroSrvSpan: Copy + Send + Sync {
         call_site: Self,
         def_site: Self,
         mixed_site: Self,
-        cli_to_server: Option<crossbeam_channel::Receiver<SubResponse>>,
-        server_to_cli: Option<crossbeam_channel::Sender<SubRequest>>,
+        callback: Option<SubCallback>,
     ) -> Self::Server;
 }
 
@@ -241,15 +198,13 @@ impl ProcMacroSrvSpan for SpanId {
         call_site: Self,
         def_site: Self,
         mixed_site: Self,
-        cli_to_server: Option<crossbeam_channel::Receiver<SubResponse>>,
-        server_to_cli: Option<crossbeam_channel::Sender<SubRequest>>,
+        callback: Option<SubCallback>,
     ) -> Self::Server {
         Self::Server {
             call_site,
             def_site,
             mixed_site,
-            cli_to_server,
-            server_to_cli,
+            callback,
             tracked_env_vars: Default::default(),
             tracked_paths: Default::default(),
         }
@@ -262,17 +217,15 @@ impl ProcMacroSrvSpan for Span {
         call_site: Self,
         def_site: Self,
         mixed_site: Self,
-        cli_to_server: Option<crossbeam_channel::Receiver<SubResponse>>,
-        server_to_cli: Option<crossbeam_channel::Sender<SubRequest>>,
+        callback: Option<SubCallback>,
     ) -> Self::Server {
         Self::Server {
             call_site,
             def_site,
             mixed_site,
+            callback,
             tracked_env_vars: Default::default(),
             tracked_paths: Default::default(),
-            cli_to_server,
-            server_to_cli,
         }
     }
 }
