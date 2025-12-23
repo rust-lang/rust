@@ -103,17 +103,18 @@ pub fn link_binary(
         });
 
         if outputs.outputs.should_link() {
-            let tmpdir = TempDirBuilder::new()
-                .prefix("rustc")
-                .tempdir()
-                .unwrap_or_else(|error| sess.dcx().emit_fatal(errors::CreateTempDir { error }));
-            let path = MaybeTempDir::new(tmpdir, sess.opts.cg.save_temps);
             let output = out_filename(
                 sess,
                 crate_type,
                 outputs,
                 codegen_results.crate_info.local_crate_name,
             );
+            let tmpdir = TempDirBuilder::new()
+                .prefix("rustc")
+                .tempdir_in(output.parent().unwrap_or_else(|| Path::new(".")))
+                .unwrap_or_else(|error| sess.dcx().emit_fatal(errors::CreateTempDir { error }));
+            let path = MaybeTempDir::new(tmpdir, sess.opts.cg.save_temps);
+
             let crate_name = format!("{}", codegen_results.crate_info.local_crate_name);
             let out_filename = output.file_for_writing(
                 outputs,
