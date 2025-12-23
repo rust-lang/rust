@@ -3671,3 +3671,10 @@ pub(crate) struct VarargsWithoutPattern {
     #[suggestion(code = "_: ...", applicability = "machine-applicable")]
     pub span: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag(parse_delegation_non_trait_impl_reuse)]
+pub(crate) struct ImplReuseInherentImpl {
+    #[primary_span]
+    pub span: Span,
+}

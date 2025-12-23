@@ -62,8 +62,8 @@ impl Stability {
     /// the feature gate to actually be enabled when using a nightly compiler.)
     ///
     /// Before calling this, ensure the feature is even permitted for this use:
-    /// - for `#[target_feature]`/`-Ctarget-feature`, check `allow_toggle()`
-    /// - for `cfg(target_feature)`, check `in_cfg`
+    /// - for `#[target_feature]`/`-Ctarget-feature`, check `toggle_allowed()`
+    /// - for `cfg(target_feature)`, check `in_cfg()`
     pub fn requires_nightly(&self) -> Option<Symbol> {
         match *self {
             Stability::Unstable(nightly_feature) => Some(nightly_feature),
