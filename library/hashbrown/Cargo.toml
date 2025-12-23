@@ -12,6 +12,26 @@ exclude = [".github", "/ci/*"]
 edition = "2021"
 rust-version = "1.84.0"
 
+[lints.rust]
+missing_docs = "warn"
+
+# rust_2018_idioms
+bare_trait_objects = "warn"
+elided_lifetimes_in_paths = "warn"
+ellipsis_inclusive_range_patterns = "warn"
+explicit_outlives_requirements = "warn"
+unused_extern_crates = "warn"
+
+[lints.clippy]
+doc_markdown = "allow"
+manual_map = "allow"
+missing_errors_doc = "allow"
+missing_safety_doc = "allow"
+module_name_repetitions = "allow"
+must_use_candidate = "allow"
+option_if_let_else = "allow"
+redundant_else = "allow"
+
 [dependencies]
 # For the default hasher
 foldhash = { version = "0.2.0", default-features = false, optional = true }
