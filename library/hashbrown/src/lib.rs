@@ -27,7 +27,7 @@
 )]
 #![cfg_attr(feature = "nightly", warn(fuzzy_provenance_casts))]
 #![cfg_attr(feature = "rustc-dep-of-std", feature(rustc_attrs))]
-#![cfg_attr(feature = "nightly", allow(internal_features))]
+#![cfg_attr(feature = "nightly", expect(internal_features))]
 #![cfg_attr(
     all(feature = "nightly", target_arch = "loongarch64"),
     feature(stdarch_loongarch)

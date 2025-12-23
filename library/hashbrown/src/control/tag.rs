@@ -32,7 +32,7 @@ impl Tag {
 
     /// Creates a control tag representing a full bucket with the given hash.
     #[inline]
-    #[allow(clippy::cast_possible_truncation)]
+    #[expect(clippy::cast_possible_truncation)]
     pub(crate) const fn full(hash: u64) -> Tag {
         // Constant for function that grabs the top 7 bits of the hash.
         const MIN_HASH_LEN: usize = if mem::size_of::<usize>() < mem::size_of::<u64>() {

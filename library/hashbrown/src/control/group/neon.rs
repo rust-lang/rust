@@ -16,7 +16,7 @@ pub(crate) const BITMASK_ITER_MASK: BitMaskWord = 0x8080_8080_8080_8080;
 #[derive(Copy, Clone)]
 pub(crate) struct Group(neon::uint8x8_t);
 
-#[allow(clippy::use_self)]
+#[expect(clippy::use_self)]
 impl Group {
     /// Number of bytes in the group.
     pub(crate) const WIDTH: usize = mem::size_of::<Self>();
@@ -41,7 +41,7 @@ impl Group {
 
     /// Loads a group of tags starting at the given address.
     #[inline]
-    #[allow(clippy::cast_ptr_alignment)] // unaligned load
+    #[expect(clippy::cast_ptr_alignment)] // unaligned load
     pub(crate) unsafe fn load(ptr: *const Tag) -> Self {
         unsafe { Group(neon::vld1_u8(ptr.cast())) }
     }
@@ -49,7 +49,7 @@ impl Group {
     /// Loads a group of tags starting at the given address, which must be
     /// aligned to `mem::align_of::<Group>()`.
     #[inline]
-    #[allow(clippy::cast_ptr_alignment)]
+    #[expect(clippy::cast_ptr_alignment)]
     pub(crate) unsafe fn load_aligned(ptr: *const Tag) -> Self {
         debug_assert_eq!(ptr.align_offset(mem::align_of::<Self>()), 0);
         unsafe { Group(neon::vld1_u8(ptr.cast())) }
@@ -58,7 +58,7 @@ impl Group {
     /// Stores the group of tags to the given address, which must be
     /// aligned to `mem::align_of::<Group>()`.
     #[inline]
-    #[allow(clippy::cast_ptr_alignment)]
+    #[expect(clippy::cast_ptr_alignment)]
     pub(crate) unsafe fn store_aligned(self, ptr: *mut Tag) {
         debug_assert_eq!(ptr.align_offset(mem::align_of::<Self>()), 0);
         unsafe {

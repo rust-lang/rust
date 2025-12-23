@@ -2530,7 +2530,7 @@ impl<'a, T, S, A: Allocator> VacantEntry<'a, T, S, A> {
     }
 }
 
-#[allow(dead_code)]
+#[expect(dead_code)]
 fn assert_covariance() {
     fn set<'new>(v: HashSet<&'static str>) -> HashSet<&'new str> {
         v
@@ -2918,7 +2918,7 @@ mod test_set {
         use core::hash;
 
         #[derive(Debug)]
-        #[allow(dead_code)]
+        #[expect(dead_code)]
         struct Foo(&'static str, i32);
 
         impl PartialEq for Foo {
@@ -2947,7 +2947,6 @@ mod test_set {
     }
 
     #[test]
-    #[allow(clippy::needless_borrow)]
     fn test_extend_ref() {
         let mut a = HashSet::new();
         a.insert(1);

@@ -1,4 +1,4 @@
-#![allow(missing_docs)] // https://github.com/rust-lang/rust/issues/137561
+#![expect(missing_docs)] // https://github.com/rust-lang/rust/issues/137561
 #![cfg(feature = "serde")]
 
 use core::hash::BuildHasherDefault;

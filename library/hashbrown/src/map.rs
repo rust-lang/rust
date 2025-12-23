@@ -228,7 +228,7 @@ where
 /// Ensures that a single closure type across uses of this which, in turn prevents multiple
 /// instances of any functions like `RawTable::reserve` from being generated
 #[cfg_attr(feature = "inline-more", inline)]
-#[allow(dead_code)]
+#[expect(dead_code)]
 pub(crate) fn equivalent<Q, K>(k: &Q) -> impl Fn(&K) -> bool + '_
 where
     Q: Equivalent<K> + ?Sized,
@@ -4879,7 +4879,7 @@ where
     }
 }
 
-#[allow(dead_code)]
+#[expect(dead_code)]
 fn assert_covariance() {
     fn map_key<'new>(v: HashMap<&'static str, u8>) -> HashMap<&'new str, u8> {
         v
@@ -5001,7 +5001,6 @@ mod test_map {
         assert_eq!(m.len(), 1);
         assert!(m.insert(2, 4).is_none());
         assert_eq!(m.len(), 2);
-        #[allow(clippy::redundant_clone)]
         let m2 = m.clone();
         assert_eq!(*m2.get(&1).unwrap(), 2);
         assert_eq!(*m2.get(&2).unwrap(), 4);
@@ -5800,8 +5799,8 @@ mod test_map {
 
     #[test]
     fn test_entry_take_doesnt_corrupt() {
-        #![allow(deprecated)] //rand
-                              // Test for #19292
+        #![expect(deprecated)] //rand
+                               // Test for #19292
         fn check(m: &HashMap<i32, ()>) {
             for k in m.keys() {
                 assert!(m.contains_key(k), "{k} is in keys() but not in the map?");
@@ -5836,8 +5835,8 @@ mod test_map {
 
     #[test]
     fn test_entry_ref_take_doesnt_corrupt() {
-        #![allow(deprecated)] //rand
-                              // Test for #19292
+        #![expect(deprecated)] //rand
+                               // Test for #19292
         fn check(m: &HashMap<std::string::String, ()>) {
             for k in m.keys() {
                 assert!(m.contains_key(k), "{k} is in keys() but not in the map?");
@@ -5889,7 +5888,6 @@ mod test_map {
     }
 
     #[test]
-    #[allow(clippy::needless_borrow)]
     fn test_extend_ref_kv_tuple() {
         use std::ops::AddAssign;
         let mut a = HashMap::new();
@@ -6111,8 +6109,8 @@ mod test_map {
 
     #[test]
     fn test_replace_entry_with_doesnt_corrupt() {
-        #![allow(deprecated)] //rand
-                              // Test for #19292
+        #![expect(deprecated)] //rand
+                               // Test for #19292
         fn check(m: &HashMap<i32, ()>) {
             for k in m.keys() {
                 assert!(m.contains_key(k), "{k} is in keys() but not in the map?");

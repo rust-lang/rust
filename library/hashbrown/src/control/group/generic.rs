@@ -24,7 +24,7 @@ pub(crate) type BitMaskWord = GroupWord;
 pub(crate) type NonZeroBitMaskWord = NonZeroGroupWord;
 pub(crate) const BITMASK_STRIDE: usize = 8;
 // We only care about the highest bit of each tag for the mask.
-#[allow(clippy::cast_possible_truncation, clippy::unnecessary_cast)]
+#[expect(clippy::cast_possible_truncation, clippy::unnecessary_cast)]
 pub(crate) const BITMASK_MASK: BitMaskWord = u64::from_ne_bytes([Tag::DELETED.0; 8]) as GroupWord;
 pub(crate) const BITMASK_ITER_MASK: BitMaskWord = !0;
 
@@ -45,7 +45,7 @@ pub(crate) struct Group(GroupWord);
 // little-endian just before creating a BitMask. The can potentially
 // enable the compiler to eliminate unnecessary byte swaps if we are
 // only checking whether a BitMask is empty.
-#[allow(clippy::use_self)]
+#[expect(clippy::use_self)]
 impl Group {
     /// Number of bytes in the group.
     pub(crate) const WIDTH: usize = mem::size_of::<Self>();
@@ -70,7 +70,7 @@ impl Group {
 
     /// Loads a group of tags starting at the given address.
     #[inline]
-    #[allow(clippy::cast_ptr_alignment)] // unaligned load
+    #[expect(clippy::cast_ptr_alignment)] // unaligned load
     pub(crate) unsafe fn load(ptr: *const Tag) -> Self {
         unsafe { Group(ptr::read_unaligned(ptr.cast())) }
     }
@@ -78,7 +78,7 @@ impl Group {
     /// Loads a group of tags starting at the given address, which must be
     /// aligned to `mem::align_of::<Group>()`.
     #[inline]
-    #[allow(clippy::cast_ptr_alignment)]
+    #[expect(clippy::cast_ptr_alignment)]
     pub(crate) unsafe fn load_aligned(ptr: *const Tag) -> Self {
         debug_assert_eq!(ptr.align_offset(mem::align_of::<Self>()), 0);
         unsafe { Group(ptr::read(ptr.cast())) }
@@ -87,7 +87,7 @@ impl Group {
     /// Stores the group of tags to the given address, which must be
     /// aligned to `mem::align_of::<Group>()`.
     #[inline]
-    #[allow(clippy::cast_ptr_alignment)]
+    #[expect(clippy::cast_ptr_alignment)]
     pub(crate) unsafe fn store_aligned(self, ptr: *mut Tag) {
         debug_assert_eq!(ptr.align_offset(mem::align_of::<Self>()), 0);
         unsafe {

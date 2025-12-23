@@ -57,7 +57,7 @@ impl<T> SizedTypeProperties for T {}
 
 /// Primary hash function, used to select the initial bucket to probe from.
 #[inline]
-#[allow(clippy::cast_possible_truncation)]
+#[expect(clippy::cast_possible_truncation)]
 fn h1(hash: u64) -> usize {
     // On 32-bit platforms we simply ignore the higher hash bits.
     hash as usize
@@ -824,7 +824,7 @@ impl<T, A: Allocator> RawTable<T, A> {
 
     /// Erases an element from the table, dropping it in place.
     #[cfg_attr(feature = "inline-more", inline)]
-    #[allow(clippy::needless_pass_by_value)]
+    #[expect(clippy::needless_pass_by_value)]
     pub(crate) unsafe fn erase(&mut self, item: Bucket<T>) {
         unsafe {
             // Erase the element from the table first since drop might panic.
@@ -837,7 +837,7 @@ impl<T, A: Allocator> RawTable<T, A> {
     ///
     /// This also returns an index to the newly free bucket.
     #[cfg_attr(feature = "inline-more", inline)]
-    #[allow(clippy::needless_pass_by_value)]
+    #[expect(clippy::needless_pass_by_value)]
     pub(crate) unsafe fn remove(&mut self, item: Bucket<T>) -> (T, usize) {
         unsafe {
             self.erase_no_drop(&item);
@@ -850,7 +850,7 @@ impl<T, A: Allocator> RawTable<T, A> {
     /// This also returns an index to the newly free bucket
     /// and the former `Tag` for that bucket.
     #[cfg_attr(feature = "inline-more", inline)]
-    #[allow(clippy::needless_pass_by_value)]
+    #[expect(clippy::needless_pass_by_value)]
     pub(crate) unsafe fn remove_tagged(&mut self, item: Bucket<T>) -> (T, usize, Tag) {
         unsafe {
             let index = self.bucket_index(&item);
@@ -2149,7 +2149,7 @@ impl RawTableInner {
     ///
     /// [`Bucket::as_ptr`]: Bucket::as_ptr
     /// [`undefined behavior`]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
-    #[allow(clippy::mut_mut)]
+    #[expect(clippy::mut_mut)]
     #[inline]
     unsafe fn prepare_rehash_in_place(&mut self) {
         // Bulk convert all full control bytes to DELETED, and all DELETED control bytes to EMPTY.
@@ -2769,7 +2769,7 @@ impl RawTableInner {
     /// by this function results in [`undefined behavior`].
     ///
     /// [`undefined behavior`]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
-    #[allow(clippy::mut_mut)]
+    #[expect(clippy::mut_mut)]
     #[inline]
     fn prepare_resize<'a, A>(
         &self,
@@ -2826,7 +2826,7 @@ impl RawTableInner {
     /// * The [`RawTableInner`] must have properly initialized control bytes.
     ///
     /// [`undefined behavior`]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
-    #[allow(clippy::inline_always)]
+    #[expect(clippy::inline_always)]
     #[inline(always)]
     unsafe fn reserve_rehash_inner<A>(
         &mut self,
@@ -2974,7 +2974,7 @@ impl RawTableInner {
     ///
     /// [`RawTableInner::find_insert_index`]: RawTableInner::find_insert_index
     /// [`undefined behavior`]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
-    #[allow(clippy::inline_always)]
+    #[expect(clippy::inline_always)]
     #[inline(always)]
     unsafe fn resize_inner<A>(
         &mut self,
@@ -3072,7 +3072,7 @@ impl RawTableInner {
     /// * The [`RawTableInner`] must have properly initialized control bytes.
     ///
     /// [`undefined behavior`]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
-    #[allow(clippy::inline_always)]
+    #[expect(clippy::inline_always)]
     #[cfg_attr(feature = "inline-more", inline(always))]
     #[cfg_attr(not(feature = "inline-more"), inline)]
     unsafe fn rehash_in_place(
@@ -3790,7 +3790,7 @@ impl<T> RawIterRange<T> {
     ///   in the table.
     ///
     /// [`Undefined Behavior`]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
-    #[allow(clippy::while_let_on_iterator)]
+    #[expect(clippy::while_let_on_iterator)]
     #[cfg_attr(feature = "inline-more", inline)]
     unsafe fn fold_impl<F, B>(mut self, mut n: usize, mut acc: B, mut f: F) -> B
     where

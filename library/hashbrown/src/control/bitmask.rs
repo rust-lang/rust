@@ -21,12 +21,12 @@ use super::group::{
 #[derive(Copy, Clone)]
 pub(crate) struct BitMask(pub(crate) BitMaskWord);
 
-#[allow(clippy::use_self)]
+#[expect(clippy::use_self)]
 impl BitMask {
     /// Returns a new `BitMask` with all bits inverted.
     #[inline]
     #[must_use]
-    #[allow(dead_code)]
+    #[expect(dead_code)]
     pub(crate) fn invert(self) -> Self {
         BitMask(self.0 ^ BITMASK_MASK)
     }
