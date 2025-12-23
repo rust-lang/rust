@@ -3,12 +3,13 @@
 //! well formed is performed elsewhere (e.g. during type checking or item well formedness
 //! checking).
 
+use core::ops::ControlFlow;
 use std::iter;
 
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::lang_items::LangItem;
-use rustc_infer::traits::{ObligationCauseCode, PredicateObligations};
+use rustc_infer::traits::{ObligationCauseCode, PredicateObligation, PredicateObligations};
 use rustc_middle::bug;
 use rustc_middle::ty::{
     self, GenericArgsRef, Term, TermKind, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
@@ -562,7 +563,6 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
         debug!(?self.out);
     }
 
-    #[instrument(level = "debug", skip(self))]
     fn nominal_obligations(
         &mut self,
         def_id: DefId,
@@ -604,69 +604,29 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
             .collect()
     }
 
-    fn add_wf_preds_for_dyn_ty(
+    fn nominal_obligations_not_referencing_self(
         &mut self,
-        ty: Ty<'tcx>,
-        data: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
-        region: ty::Region<'tcx>,
-    ) {
-        // Imagine a type like this:
-        //
-        //     trait Foo { }
-        //     trait Bar<'c> : 'c { }
-        //
-        //     &'b (Foo+'c+Bar<'d>)
-        //         ^
-        //
-        // In this case, the following relationships must hold:
-        //
-        //     'b <= 'c
-        //     'd <= 'c
-        //
-        // The first conditions is due to the normal region pointer
-        // rules, which say that a reference cannot outlive its
-        // referent.
-        //
-        // The final condition may be a bit surprising. In particular,
-        // you may expect that it would have been `'c <= 'd`, since
-        // usually lifetimes of outer things are conservative
-        // approximations for inner things. However, it works somewhat
-        // differently with trait objects: here the idea is that if the
-        // user specifies a region bound (`'c`, in this case) it is the
-        // "master bound" that *implies* that bounds from other traits are
-        // all met. (Remember that *all bounds* in a type like
-        // `Foo+Bar+Zed` must be met, not just one, hence if we write
-        // `Foo<'x>+Bar<'y>`, we know that the type outlives *both* 'x and
-        // 'y.)
-        //
-        // Note: in fact we only permit builtin traits, not `Bar<'d>`, I
-        // am looking forward to the future here.
-        if !data.has_escaping_bound_vars() && !region.has_escaping_bound_vars() {
-            let implicit_bounds = object_region_bounds(self.tcx(), data);
+        trait_id_and_args: ty::Binder<'tcx, ty::ExistentialTraitRef<'tcx>>,
+    ) -> impl Iterator<Item = PredicateObligation<'tcx>> + use<'tcx> {
+        let tcx = self.tcx();
+        let def_id = trait_id_and_args.skip_binder().def_id;
+        let bogus_self_ty: Ty<'tcx> =
+            Ty::new_param(tcx, u32::MAX, rustc_span::sym::RustaceansAreAwesome);
+        let args = trait_id_and_args.skip_binder().with_self_ty(tcx, bogus_self_ty).args;
 
-            let explicit_bound = region;
+        struct HasBogusSelfTy<'tcx>(Ty<'tcx>);
+        impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for HasBogusSelfTy<'tcx> {
+            type Result = ControlFlow<()>;
 
-            self.out.reserve(implicit_bounds.len());
-            for implicit_bound in implicit_bounds {
-                let cause = self.cause(ObligationCauseCode::ObjectTypeBound(ty, explicit_bound));
-                let outlives =
-                    ty::Binder::dummy(ty::OutlivesPredicate(explicit_bound, implicit_bound));
-                self.out.push(traits::Obligation::with_depth(
-                    self.tcx(),
-                    cause,
-                    self.recursion_depth,
-                    self.param_env,
-                    outlives,
-                ));
+            fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<()> {
+                // FIXME: should this check be post normalization rather than quite so syntactic
+                if ty == self.0 { ControlFlow::Break(()) } else { ty.super_visit_with(self) }
             }
-
-            // We don't add any wf predicates corresponding to the trait ref's generic arguments
-            // which allows code like this to compile:
-            // ```rust
-            // trait Trait<T: Sized> {}
-            // fn foo(_: &dyn Trait<[u32]>) {}
-            // ```
         }
+
+        self.nominal_obligations(def_id, args).into_iter().filter(move |o| {
+            o.predicate.visit_with(&mut HasBogusSelfTy(bogus_self_ty)).is_continue()
+        })
     }
 
     fn add_wf_preds_for_pat_ty(&mut self, base_ty: Ty<'tcx>, pat: ty::Pattern<'tcx>) {
@@ -932,24 +892,103 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
                 // We recurse into the binder below.
             }
 
-            ty::Dynamic(data, r) => {
-                // WfObject
+            ty::Dynamic(data, region) => {
+                // Imagine a type like this:
                 //
-                // Here, we defer WF checking due to higher-ranked
-                // regions. This is perhaps not ideal.
-                self.add_wf_preds_for_dyn_ty(t, data, r);
+                //     trait Foo { }
+                //     trait Bar<'c> : 'c { }
+                //
+                //     &'b (Foo+'c+Bar<'d>)
+                //         ^
+                //
+                // In this case, the following relationships must hold:
+                //
+                //     'b <= 'c
+                //     'd <= 'c
+                //
+                // The first conditions is due to the normal region pointer
+                // rules, which say that a reference cannot outlive its
+                // referent.
+                //
+                // The final condition may be a bit surprising. In particular,
+                // you may expect that it would have been `'c <= 'd`, since
+                // usually lifetimes of outer things are conservative
+                // approximations for inner things. However, it works somewhat
+                // differently with trait objects: here the idea is that if the
+                // user specifies a region bound (`'c`, in this case) it is the
+                // "master bound" that *implies* that bounds from other traits are
+                // all met. (Remember that *all bounds* in a type like
+                // `Foo+Bar+Zed` must be met, not just one, hence if we write
+                // `Foo<'x>+Bar<'y>`, we know that the type outlives *both* 'x and
+                // 'y.)
+                //
+                // Note: in fact we only permit builtin traits, not `Bar<'d>`, I
+                // am looking forward to the future here.
+                if !data.has_escaping_bound_vars() && !region.has_escaping_bound_vars() {
+                    let implicit_bounds = object_region_bounds(self.tcx(), data);
+
+                    let explicit_bound = region;
+
+                    self.out.reserve(implicit_bounds.len());
+                    for implicit_bound in implicit_bounds {
+                        let cause =
+                            self.cause(ObligationCauseCode::ObjectTypeBound(t, explicit_bound));
+                        let outlives = ty::Binder::dummy(ty::OutlivesPredicate(
+                            explicit_bound,
+                            implicit_bound,
+                        ));
+                        self.out.push(traits::Obligation::with_depth(
+                            self.tcx(),
+                            cause,
+                            self.recursion_depth,
+                            self.param_env,
+                            outlives,
+                        ));
+                    }
+                }
 
                 // FIXME(#27579) RFC also considers adding trait
                 // obligations that don't refer to Self and
                 // checking those
-                if let Some(principal) = data.principal_def_id() {
+                if let Some(principal) = data.principal() {
+                    let principal_def_id = principal.skip_binder().def_id;
                     self.out.push(traits::Obligation::with_depth(
                         tcx,
                         self.cause(ObligationCauseCode::WellFormed(None)),
                         self.recursion_depth,
                         self.param_env,
-                        ty::Binder::dummy(ty::PredicateKind::DynCompatible(principal)),
+                        ty::Binder::dummy(ty::PredicateKind::DynCompatible(principal_def_id)),
                     ));
+
+                    // For the most part we don't add wf predicates corresponding to
+                    // the trait ref's generic arguments which allows code like this
+                    // to compile:
+                    // ```rust
+                    // trait Trait<T: Sized> {}
+                    // fn foo(_: &dyn Trait<[u32]>) {}
+                    // ```
+                    //
+                    // However, we sometimes incidentally check that const arguments
+                    // have the correct type as a side effect of the anon const
+                    // desugaring. To make this "consistent" for users we explicitly
+                    // check `ConstArgHasType` clauses so that const args that don't
+                    // go through an anon const still have their types checked.
+                    let wf_obligations = self.nominal_obligations_not_referencing_self(principal);
+                    let const_arg_has_type_clauses =
+                        wf_obligations.filter(|o| match o.predicate.kind().skip_binder() {
+                            ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(ct, _))
+                                if matches!(ct.kind(), ty::ConstKind::Param(..)) =>
+                            {
+                                debug!("skipped o: {:?}", o);
+                                true
+                            }
+                            _ => false,
+                        });
+
+                    let collected = const_arg_has_type_clauses.collect::<Vec<_>>();
+                    debug!("{:?}", collected);
+
+                    self.out.extend(collected);
                 }
             }
 

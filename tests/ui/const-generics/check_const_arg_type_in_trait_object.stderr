@@ -1,0 +1,35 @@
+error: the constant `B` is not of type `usize`
+  --> $DIR/check_const_arg_type_in_trait_object.rs:18:12
+   |
+LL |     param: &dyn Object<B>,
+   |            ^^^^^^^^^^^^^^ expected `usize`, found `bool`
+   |
+note: required by a const generic parameter in `Object`
+  --> $DIR/check_const_arg_type_in_trait_object.rs:9:14
+   |
+LL | trait Object<const N: usize> {}
+   |              ^^^^^^^^^^^^^^ required by this const generic parameter in `Object`
+
+error: the constant `B` is not of type `usize`
+  --> $DIR/check_const_arg_type_in_trait_object.rs:28:12
+   |
+LL |     param: &dyn Object2<Wrap<[(); B]>>,
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `usize`, found `bool`
+   |
+   = note: the length of array `[(); B]` must be type `usize`
+
+error[E0308]: mismatched types
+  --> $DIR/check_const_arg_type_in_trait_object.rs:20:23
+   |
+LL |     anon: &dyn Object<true>,
+   |                       ^^^^ expected `usize`, found `bool`
+
+error[E0308]: mismatched types
+  --> $DIR/check_const_arg_type_in_trait_object.rs:30:34
+   |
+LL |     anon: &dyn Object2<Wrap<[(); true]>>,
+   |                                  ^^^^ expected `usize`, found `bool`
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0308`.
