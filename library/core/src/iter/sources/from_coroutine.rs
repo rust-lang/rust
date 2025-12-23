@@ -1,4 +1,5 @@
 use crate::fmt;
+use crate::marker::Forget;
 use crate::ops::{Coroutine, CoroutineState};
 use crate::pin::Pin;
 
@@ -39,7 +40,10 @@ pub fn from_coroutine<G: Coroutine<Return = ()> + Unpin>(coroutine: G) -> FromCo
 pub struct FromCoroutine<G>(G);
 
 #[unstable(feature = "iter_from_coroutine", issue = "43122", reason = "coroutines are unstable")]
-impl<G: Coroutine<Return = ()> + Unpin> Iterator for FromCoroutine<G> {
+impl<G: Coroutine<Return = ()> + Unpin> Iterator for FromCoroutine<G>
+where
+    G::Yield: Forget,
+{
     type Item = G::Yield;
 
     fn next(&mut self) -> Option<Self::Item> {

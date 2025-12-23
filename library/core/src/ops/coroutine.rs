@@ -1,3 +1,4 @@
+use crate::marker::Forget;
 use crate::pin::Pin;
 
 /// The result of a coroutine resumption.
@@ -8,7 +9,7 @@ use crate::pin::Pin;
 #[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
 #[lang = "coroutine_state"]
 #[unstable(feature = "coroutine_trait", issue = "43122")]
-pub enum CoroutineState<Y, R> {
+pub enum CoroutineState<Y: ?Forget, R: ?Forget> {
     /// The coroutine suspended with a value.
     ///
     /// This state indicates that a coroutine has been suspended, and typically
@@ -70,7 +71,7 @@ pub enum CoroutineState<Y, R> {
 #[unstable(feature = "coroutine_trait", issue = "43122")]
 #[fundamental]
 #[must_use = "coroutines are lazy and do nothing unless resumed"]
-pub trait Coroutine<R = ()> {
+pub trait Coroutine<R: ?Forget = ()>: ?Forget {
     /// The type of value this coroutine yields.
     ///
     /// This associated type corresponds to the `yield` expression and the
@@ -78,7 +79,7 @@ pub trait Coroutine<R = ()> {
     /// For example an iterator-as-a-coroutine would likely have this type as
     /// `T`, the type being iterated over.
     #[lang = "coroutine_yield"]
-    type Yield;
+    type Yield: ?Forget;
 
     /// The type of value this coroutine returns.
     ///
@@ -87,7 +88,7 @@ pub trait Coroutine<R = ()> {
     /// literal. For example futures would use this as `Result<T, E>` as it
     /// represents a completed future.
     #[lang = "coroutine_return"]
-    type Return;
+    type Return: ?Forget;
 
     /// Resumes the execution of this coroutine.
     ///

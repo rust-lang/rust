@@ -921,6 +921,7 @@
 #![stable(feature = "pin", since = "1.33.0")]
 
 use crate::hash::{Hash, Hasher};
+use crate::marker::Forget;
 use crate::ops::{CoerceUnsized, Deref, DerefMut, DerefPure, DispatchFromDyn, LegacyReceiver};
 #[allow(unused_imports)]
 use crate::{
@@ -1516,7 +1517,7 @@ impl<Ptr: Deref> Pin<Ptr> {
     }
 }
 
-impl<'a, T: ?Sized> Pin<&'a T> {
+impl<'a, T: ?Sized + ?Forget> Pin<&'a T> {
     /// Constructs a new pin by mapping the interior value.
     ///
     /// For example, if you wanted to get a `Pin` of a field of something,
@@ -1690,6 +1691,8 @@ impl<Ptr: [const] Deref> const Deref for Pin<Ptr> {
 }
 
 mod helper {
+    use crate::marker::Forget;
+
     /// Helper that prevents downstream crates from implementing `DerefMut` for `Pin`.
     ///
     /// The `Pin` type implements the unsafe trait `PinCoerceUnsized`, which essentially requires
@@ -1719,7 +1722,7 @@ mod helper {
     #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
     #[rustc_diagnostic_item = "PinDerefMutHelper"]
     pub const trait PinDerefMutHelper {
-        type Target: ?Sized;
+        type Target: ?Sized + ?Forget;
         fn deref_mut(&mut self) -> &mut Self::Target;
     }
 

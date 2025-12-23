@@ -577,7 +577,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::iter::{self, FusedIterator, TrustedLen};
-use crate::marker::Destruct;
+use crate::marker::{Destruct, Forget};
 use crate::ops::{self, ControlFlow, Deref, DerefMut};
 use crate::panicking::{panic, panic_display};
 use crate::pin::Pin;
@@ -591,7 +591,7 @@ use crate::{cmp, convert, hint, mem, slice};
 #[lang = "Option"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow(clippy::derived_hash_with_manual_eq)] // PartialEq is manually implemented equivalently
-pub enum Option<T> {
+pub enum Option<T: ?Forget> {
     /// No value.
     #[lang = "None"]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -2184,7 +2184,7 @@ const fn expect_failed(msg: &str) -> ! {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_clone", issue = "142757")]
-impl<T> const Clone for Option<T>
+impl<T: ?Forget> const Clone for Option<T>
 where
     // FIXME(const_hack): the T: [const] Destruct should be inferred from the Self: [const] Destruct in clone_from.
     // See https://github.com/rust-lang/rust/issues/144207

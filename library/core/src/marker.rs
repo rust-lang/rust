@@ -14,10 +14,11 @@ pub use self::variance::{
     PhantomInvariant, PhantomInvariantLifetime, Variance, variance,
 };
 use crate::cell::UnsafeCell;
-use crate::cmp;
 use crate::fmt::Debug;
 use crate::hash::{Hash, Hasher};
-use crate::pin::UnsafePinned;
+use crate::ops::{Coroutine, CoroutineState};
+use crate::pin::{Pin, UnsafePinned};
+use crate::{cmp, task};
 
 // NOTE: for consistent error messages between `core` and `minicore`, all `diagnostic` attributes
 // should be replicated exactly in `minicore` (if `minicore` defines the item).
@@ -870,7 +871,7 @@ impl<T: PointeeSized + ?Forget> const Default for PhantomData<T> {
 }
 
 #[unstable(feature = "structural_match", issue = "31434")]
-impl<T: PointeeSized> StructuralPartialEq for PhantomData<T> {}
+impl<T: PointeeSized + ?Forget> StructuralPartialEq for PhantomData<T> {}
 
 /// Compiler-internal trait used to indicate the type of enum discriminants.
 ///
@@ -887,7 +888,7 @@ impl<T: PointeeSized> StructuralPartialEq for PhantomData<T> {}
 #[lang = "discriminant_kind"]
 #[rustc_deny_explicit_impl]
 #[rustc_do_not_implement_via_object]
-pub trait DiscriminantKind {
+pub trait DiscriminantKind: ?Forget {
     /// The type of the discriminant, which must satisfy the trait
     /// bounds required by `mem::Discriminant`.
     #[lang = "discriminant_type"]
@@ -1068,7 +1069,7 @@ pub const trait Destruct {}
 #[diagnostic::on_unimplemented(message = "`{Self}` is not a tuple")]
 #[rustc_deny_explicit_impl]
 #[rustc_do_not_implement_via_object]
-pub trait Tuple {}
+pub trait Tuple: ?Forget {}
 
 /// A marker for types which can be used as types of `const` generic parameters.
 ///
@@ -1391,3 +1392,140 @@ impl Clone for PhantomUnforget {
 
 #[unstable(feature = "forget_trait", issue = "none")]
 impl Copy for PhantomUnforget {}
+
+/// A wrapper struct over `T: ?Forget + 'static` types which itself implements `Forget`.
+#[unstable(feature = "forget_trait", issue = "none")]
+#[derive(Default, Debug, Clone, Copy, Hash, Ord, Eq)]
+pub struct ForgetStatic<T: ?Sized + ?Forget + 'static>(T);
+
+#[unstable(feature = "forget_trait", issue = "none")]
+unsafe impl<T: ?Sized + ?Forget + 'static> Forget for ForgetStatic<T> {}
+
+#[unstable(feature = "forget_trait", issue = "none")]
+impl<T: ?Sized + ?Forget + 'static> ForgetStatic<T> {
+    /// Gets pinned exclusive access to the underlying value.
+    ///
+    /// `ForgetStatic` is considered to _structurally pin_ the underlying
+    /// value, which means _unpinned_ `ForgetStatic`s can produce _unpinned_
+    /// access to the underlying value, but _pinned_ `ForgetStatic`s only
+    /// produce _pinned_ access to the underlying value.
+    #[unstable(feature = "forget_trait", issue = "none")]
+    #[must_use]
+    #[inline]
+    pub const fn get_pin_mut(self: Pin<&mut Self>) -> Pin<&mut T> {
+        // SAFETY: `ForgetStatic` can only produce `&mut T` if itself is unpinned
+        // `Pin::map_unchecked_mut` is not const, so we do this conversion manually
+        unsafe { Pin::new_unchecked(&mut self.get_unchecked_mut().0) }
+    }
+}
+
+#[unstable(feature = "forget_trait", issue = "none")]
+impl<T: ?Forget + 'static> From<T> for ForgetStatic<T> {
+    #[inline]
+    fn from(t: T) -> Self {
+        ForgetStatic(t)
+    }
+}
+
+#[unstable(feature = "forget_trait", issue = "none")]
+impl<F, Args> FnOnce<Args> for ForgetStatic<F>
+where
+    F: FnOnce<Args> + ?Forget + 'static,
+    Args: Tuple + ?Forget,
+{
+    type Output = F::Output;
+
+    extern "rust-call" fn call_once(self, args: Args) -> Self::Output {
+        self.0.call_once(args)
+    }
+}
+
+#[unstable(feature = "forget_trait", issue = "none")]
+impl<F, Args> FnMut<Args> for ForgetStatic<F>
+where
+    F: FnMut<Args> + ?Forget + 'static,
+    Args: Tuple + ?Forget,
+{
+    extern "rust-call" fn call_mut(&mut self, args: Args) -> Self::Output {
+        self.0.call_mut(args)
+    }
+}
+
+#[unstable(feature = "forget_trait", issue = "none")]
+impl<F, Args> Fn<Args> for ForgetStatic<F>
+where
+    F: Fn<Args> + ?Forget + 'static,
+    Args: Tuple + ?Forget,
+{
+    extern "rust-call" fn call(&self, args: Args) -> Self::Output {
+        self.0.call(args)
+    }
+}
+
+#[unstable(feature = "forget_trait", issue = "none")]
+impl<T> Future for ForgetStatic<T>
+where
+    T: Future + ?Sized + ?Forget + 'static,
+{
+    type Output = T::Output;
+
+    #[inline]
+    fn poll(self: Pin<&mut Self>, cx: &mut task::Context<'_>) -> task::Poll<Self::Output> {
+        self.get_pin_mut().poll(cx)
+    }
+}
+
+#[unstable(feature = "forget_trait", issue = "none")]
+impl<R, G> Coroutine<R> for ForgetStatic<G>
+where
+    G: Coroutine<R> + ?Sized + ?Forget + 'static,
+{
+    type Yield = G::Yield;
+    type Return = G::Return;
+
+    #[inline]
+    fn resume(self: Pin<&mut Self>, arg: R) -> CoroutineState<Self::Yield, Self::Return> {
+        G::resume(self.get_pin_mut(), arg)
+    }
+}
+
+#[unstable(feature = "forget_trait", issue = "none")]
+impl<T> AsRef<T> for ForgetStatic<T>
+where
+    T: ?Sized + ?Forget + 'static,
+{
+    #[inline]
+    fn as_ref(&self) -> &T {
+        &self.0
+    }
+}
+
+#[unstable(feature = "forget_trait", issue = "none")]
+impl<T, U> PartialEq<ForgetStatic<U>> for ForgetStatic<T>
+where
+    T: PartialEq<U> + ?Sized + ?Forget + 'static,
+    U: ?Sized + ?Forget + 'static,
+{
+    #[inline]
+    fn eq(&self, other: &ForgetStatic<U>) -> bool {
+        self.0 == other.0
+    }
+}
+
+#[unstable(feature = "forget_trait", issue = "none")]
+impl<T> StructuralPartialEq for ForgetStatic<T> where
+    T: StructuralPartialEq + ?Sized + ?Forget + 'static
+{
+}
+
+#[unstable(feature = "forget_trait", issue = "none")]
+impl<T, U> PartialOrd<ForgetStatic<U>> for ForgetStatic<T>
+where
+    T: PartialOrd<U> + ?Sized + ?Forget + 'static,
+    U: ?Sized + ?Forget + 'static,
+{
+    #[inline]
+    fn partial_cmp(&self, other: &ForgetStatic<U>) -> Option<cmp::Ordering> {
+        self.0.partial_cmp(&other.0)
+    }
+}

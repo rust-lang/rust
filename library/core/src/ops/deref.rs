@@ -136,12 +136,12 @@ use crate::marker::{Forget, PointeeSized};
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_diagnostic_item = "Deref"]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-pub const trait Deref: PointeeSized {
+pub const trait Deref: PointeeSized + ?Forget {
     /// The resulting type after dereferencing.
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_diagnostic_item = "deref_target"]
     #[lang = "deref_target"]
-    type Target: ?Sized;
+    type Target: ?Sized + ?Forget;
 
     /// Dereferences the value.
     #[must_use]
@@ -152,7 +152,7 @@ pub const trait Deref: PointeeSized {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-impl<T: ?Sized> const Deref for &T {
+impl<T: ?Sized + ?Forget> const Deref for &T {
     type Target = T;
 
     #[rustc_diagnostic_item = "noop_method_deref"]
@@ -162,11 +162,11 @@ impl<T: ?Sized> const Deref for &T {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: ?Sized> !DerefMut for &T {}
+impl<T: ?Sized + ?Forget> !DerefMut for &T {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-impl<T: ?Sized> const Deref for &mut T {
+impl<T: ?Sized + ?Forget> const Deref for &mut T {
     type Target = T;
 
     fn deref(&self) -> &T {
@@ -267,7 +267,7 @@ impl<T: ?Sized> const Deref for &mut T {
 #[doc(alias = "*")]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-pub const trait DerefMut: [const] Deref + PointeeSized {
+pub const trait DerefMut: [const] Deref + PointeeSized + ?Forget {
     /// Mutably dereferences the value.
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_diagnostic_item = "deref_mut_method"]
@@ -276,7 +276,7 @@ pub const trait DerefMut: [const] Deref + PointeeSized {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-impl<T: ?Sized> const DerefMut for &mut T {
+impl<T: ?Sized + ?Forget> const DerefMut for &mut T {
     fn deref_mut(&mut self) -> &mut T {
         self
     }
@@ -293,13 +293,13 @@ impl<T: ?Sized> const DerefMut for &mut T {
 /// unchanged.
 #[unstable(feature = "deref_pure_trait", issue = "87121")]
 #[lang = "deref_pure"]
-pub unsafe trait DerefPure: PointeeSized {}
+pub unsafe trait DerefPure: PointeeSized + ?Forget {}
 
 #[unstable(feature = "deref_pure_trait", issue = "87121")]
-unsafe impl<T: ?Sized> DerefPure for &T {}
+unsafe impl<T: ?Sized + ?Forget> DerefPure for &T {}
 
 #[unstable(feature = "deref_pure_trait", issue = "87121")]
-unsafe impl<T: ?Sized> DerefPure for &mut T {}
+unsafe impl<T: ?Sized + ?Forget> DerefPure for &mut T {}
 
 /// Indicates that a struct can be used as a method receiver.
 /// That is, a type can use this type as a type of `self`, like this:

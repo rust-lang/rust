@@ -38,7 +38,7 @@
 use crate::error::Error;
 use crate::fmt;
 use crate::hash::{Hash, Hasher};
-use crate::marker::PointeeSized;
+use crate::marker::{Forget, PointeeSized};
 
 mod num;
 
@@ -217,7 +217,7 @@ pub const fn identity<T>(x: T) -> T {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_diagnostic_item = "AsRef"]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-pub const trait AsRef<T: PointeeSized>: PointeeSized {
+pub const trait AsRef<T: PointeeSized + ?Forget>: PointeeSized + ?Forget {
     /// Converts this type into a shared reference of the (usually inferred) input type.
     #[stable(feature = "rust1", since = "1.0.0")]
     fn as_ref(&self) -> &T;
@@ -369,7 +369,7 @@ pub const trait AsRef<T: PointeeSized>: PointeeSized {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_diagnostic_item = "AsMut"]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-pub const trait AsMut<T: PointeeSized>: PointeeSized {
+pub const trait AsMut<T: PointeeSized + ?Forget>: PointeeSized + ?Forget {
     /// Converts this type into a mutable reference of the (usually inferred) input type.
     #[stable(feature = "rust1", since = "1.0.0")]
     fn as_mut(&mut self) -> &mut T;
@@ -584,7 +584,7 @@ pub const trait Into<T>: Sized {
 ))]
 #[doc(search_unbox)]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-pub const trait From<T>: Sized {
+pub const trait From<T: ?Forget>: Sized + ?Forget {
     /// Converts to this type from the input type.
     #[rustc_diagnostic_item = "from_fn"]
     #[must_use]

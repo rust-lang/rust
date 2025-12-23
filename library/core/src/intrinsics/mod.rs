@@ -2191,7 +2191,7 @@ pub const unsafe fn write_via_move<T>(ptr: *mut T, value: T);
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_nounwind]
 #[rustc_intrinsic]
-pub const fn discriminant_value<T>(v: &T) -> <T as DiscriminantKind>::Discriminant;
+pub const fn discriminant_value<T: ?Forget>(v: &T) -> <T as DiscriminantKind>::Discriminant;
 
 /// Rust's "try catch" construct for unwinding. Invokes the function pointer `try_fn` with the
 /// data pointer `data`, and calls `catch_fn` if unwinding occurs while `try_fn` runs.
