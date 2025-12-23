@@ -5,7 +5,6 @@ edition = "2024"
 [dependencies]
 anyhow = "1"
 ignore = "0.4"
-imara-diff = "0.2"
 
 [dependencies.regex]
 version = "1"
