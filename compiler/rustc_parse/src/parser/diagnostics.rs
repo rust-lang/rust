@@ -3070,6 +3070,7 @@ impl<'a> Parser<'a> {
         let mut local_branch = None;
         let mut local_sha = None;
         let mut onto_descr = None;
+        let mut merge_to = None;
         let mut onto_sha = None;
         let mut is_git_pull = false;
         if let Ok(onto) = git("rebase-merge/onto") {
@@ -3097,8 +3098,14 @@ impl<'a> Parser<'a> {
         if let Ok(local) = git("rebase-merge/stopped-sha") {
             local_sha = Some(local.trim().to_string());
         }
-        match (local_branch, local_sha, onto_descr, onto_sha) {
-            (Some(branch_name), _, Some(onto_descr), _) => {
+        if let Ok(head) = git("HEAD")
+            && let Some(merging_to) = head.trim().strip_prefix("ref: refs/heads/")
+            && let Ok(_) = git("MERGE_HEAD")
+        {
+            merge_to = Some(merging_to.to_string());
+        }
+        match (local_branch, local_sha, onto_descr, onto_sha, merge_to) {
+            (Some(branch_name), _, Some(onto_descr), _, None) => {
                 // `git pull`, branch_descr (from `.git/FETCH_HEAD`) has "branch 'name' of <remote>"
                 msg_start = format!("from {}", onto_descr.trim());
                 msg_middle = if is_git_pull {
@@ -3108,13 +3115,13 @@ impl<'a> Parser<'a> {
                 };
                 show_help = false;
             }
-            (None, Some(from_sha), Some(onto_descr), _) => {
+            (None, Some(from_sha), Some(onto_descr), _, None) => {
                 // `git pull`, branch_descr (from `.git/FETCH_HEAD`) has "branch 'name' of <remote>"
                 msg_start = format!("from {}", onto_descr.trim());
                 msg_middle = format!("code you had in local commit `{from_sha}` before `git pull`");
                 show_help = false;
             }
-            (Some(branch_name), _, None, Some(_)) => {
+            (Some(branch_name), _, None, Some(_), None) => {
                 // `git rebase`, but we don't have the branch name for the target.
                 // We could do `git branch --points-at onto_sha` to get a list of branch names, but
                 // that would necessitate to call into `git` *and* would be a linear scan of every
@@ -3123,14 +3130,20 @@ impl<'a> Parser<'a> {
                 msg_middle = format!("code from branch `{branch_name}` that you are rebasing");
                 show_help = false;
             }
-            (None, Some(from_sha), None, Some(onto_sha)) => {
+            (None, Some(from_sha), None, Some(onto_sha), None) => {
                 // `git rebase`, but we don't have the branch name for the source nor the target.
                 msg_start = format!("you had in commit `{onto_sha}` that you are rebasing onto");
                 msg_middle = format!("code from commit `{from_sha}` that you are rebasing");
                 show_help = false;
             }
+            (None, None, None, None, Some(merge_to)) => {
+                // `git merge from-branch`
+                msg_start = format!("from branch `{merge_to}`");
+                msg_middle = format!("code that you're merging");
+                show_help = false;
+            }
             _ => {
-                // We're not in a `git rebase` or `git pull`.
+                // We're not in a `git merge`, `git rebase` or `git pull`.
             }
         }
 
