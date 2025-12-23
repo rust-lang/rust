@@ -1,9 +1,4 @@
-//@ needs-target-std
-//
-// An attempt to set the output `-o` into a directory or a file we cannot write into should indeed
-// be an error; but not an ICE (Internal Compiler Error). This test attempts both and checks
-// that the standard error matches what is expected.
-// See https://github.com/rust-lang/rust/issues/66530
+// Checks the output in cases where a manual `git rebase` was stopped due to conflicts.
 
 use run_make_support::{diff, rfs, rustc};
 
