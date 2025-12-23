@@ -77,6 +77,25 @@ fn test_fmt_debug_of_mut_reference() {
 }
 
 #[test]
+fn test_fmt_pointer() {
+    use std::rc::Rc;
+    use std::sync::Arc;
+    let p: *const u8 = std::ptr::null();
+    let rc = Rc::new(1usize);
+    let arc = Arc::new(1usize);
+    let b = Box::new("hi");
+
+    let _ = format!("{rc:p}{arc:p}{b:p}");
+
+    if cfg!(target_pointer_width = "32") {
+        assert_eq!(format!("{:#p}", p), "0x00000000");
+    } else {
+        assert_eq!(format!("{:#p}", p), "0x0000000000000000");
+    }
+    assert_eq!(format!("{:p}", p), "0x0");
+}
+
+#[test]
 fn test_default_write_impls() {
     use core::fmt::Write;
 
