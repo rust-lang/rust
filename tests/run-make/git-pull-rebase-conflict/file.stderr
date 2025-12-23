@@ -5,7 +5,7 @@ error: encountered diff marker
   | ^^^^^^^ between this marker and `=======` is the code from branch 'main' of github.com:user/repo
 3 |     Foo(u8),
 4 | =======
-  | ------- between this marker and `>>>>>>>` is the code from local branch `branch-name` before `git pull`
+  | ------- between this marker and `>>>>>>>` is the code from local branch 'branch-name' before `git pull`
 5 |     Bar(i8),
 6 | >>>>>>> branch
   | ^^^^^^^ this marker concludes the conflict region

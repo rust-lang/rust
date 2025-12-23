@@ -3054,9 +3054,8 @@ impl<'a> Parser<'a> {
 
     /// Try to identify if a `git rebase` is in progress to provide more accurate labels.
     fn vcs_conflict_marker_labels(&self, is_middlediff3: bool) -> ConflictMarkerLabels {
-        let mut msg_start: String = "that we're merging into".into();
+        let mut msg_start: String = "being merged into".into();
         let mut msg_middle: String = "incoming code".into();
-        let mut show_help = true;
 
         // Ideally, we'd execute `git rev-parse --git-path rebase-merge`, in order to get the git
         // metadata for the rebase currently happening, but instead we only customize the output if
@@ -3109,17 +3108,15 @@ impl<'a> Parser<'a> {
                 // `git pull`, branch_descr (from `.git/FETCH_HEAD`) has "branch 'name' of <remote>"
                 msg_start = format!("from {}", onto_descr.trim());
                 msg_middle = if is_git_pull {
-                    format!("code from local branch `{branch_name}` before `git pull`")
+                    format!("code from local branch '{branch_name}' before `git pull`")
                 } else {
-                    format!("code from branch `{branch_name}`")
+                    format!("code from branch '{branch_name}'")
                 };
-                show_help = false;
             }
             (None, Some(from_sha), Some(onto_descr), _, None) => {
                 // `git pull`, branch_descr (from `.git/FETCH_HEAD`) has "branch 'name' of <remote>"
                 msg_start = format!("from {}", onto_descr.trim());
                 msg_middle = format!("code you had in local commit `{from_sha}` before `git pull`");
-                show_help = false;
             }
             (Some(branch_name), _, None, Some(_), None) => {
                 // `git rebase`, but we don't have the branch name for the target.
@@ -3127,20 +3124,17 @@ impl<'a> Parser<'a> {
                 // that would necessitate to call into `git` *and* would be a linear scan of every
                 // branch, which can be expensive in repos with lots of branches.
                 msg_start = "that you're rebasing onto".to_string();
-                msg_middle = format!("code from branch `{branch_name}` that you are rebasing");
-                show_help = false;
+                msg_middle = format!("code from branch '{branch_name}' that you are rebasing");
             }
             (None, Some(from_sha), None, Some(onto_sha), None) => {
                 // `git rebase`, but we don't have the branch name for the source nor the target.
                 msg_start = format!("you had in commit `{onto_sha}` that you are rebasing onto");
                 msg_middle = format!("code from commit `{from_sha}` that you are rebasing");
-                show_help = false;
             }
             (None, None, None, None, Some(merge_to)) => {
                 // `git merge from-branch`
-                msg_start = format!("from branch `{merge_to}`");
+                msg_start = format!("from branch '{merge_to}'");
                 msg_middle = format!("code that you're merging");
-                show_help = false;
             }
             _ => {
                 // We're not in a `git merge`, `git rebase` or `git pull`.
@@ -3148,16 +3142,14 @@ impl<'a> Parser<'a> {
         }
 
         ConflictMarkerLabels {
-            start: if is_middlediff3 {
-                "between this marker and `|||||||` is the code that we're merging into".to_string()
-            } else {
-                format!("between this marker and `=======` is the code {msg_start}")
-            },
+            start: format!(
+                "between this marker and `{}` is the code {msg_start}",
+                if is_middlediff3 { "|||||||" } else { "=======" }
+            ),
             middle: format!("between this marker and `>>>>>>>` is the {msg_middle}"),
             middlediff3: "between this marker and `=======` is the base code (what the two refs \
                           diverged from)",
             end: "this marker concludes the conflict region",
-            show_help,
         }
     }
 
@@ -3218,18 +3210,6 @@ impl<'a> Parser<'a> {
              to resolve a conflict, keep only the code you want and then delete the lines \
              containing conflict markers",
         );
-        if labels.show_help {
-            // We couldn't identify that we're in the middle of a `git rebase` (either direct or
-            // caused by `git pull`), so we provide more generic information.
-            err.help(
-            "if you're having merge conflicts after pulling new code:\n\
-             the top section is the remote code and the bottom section is the code you already had\n\
-             if you're in the middle of a rebase:\n\
-             the top section is the code being rebased onto and the bottom section is the code \
-             coming from the current commit being rebased",
-        );
-        }
-
         err.note(
             "for an explanation on these markers from the `git` documentation:\n\
              visit <https://git-scm.com/book/en/v2/Git-Tools-Advanced-Merging#_checking_out_conflicts>",
@@ -3260,6 +3240,4 @@ struct ConflictMarkerLabels {
     middlediff3: &'static str,
     /// The label for the `>>>>>>>` marker.
     end: &'static str,
-    /// Whether we display a generic help on where the code might be coming from in each section.
-    show_help: bool,
 }
