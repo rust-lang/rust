@@ -32,7 +32,6 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for ParseTargetMachineConfig<'_> {
     }
 }
 
-#[cfg(feature = "llvm_enzyme")]
 #[derive(Diagnostic)]
 #[diag(codegen_llvm_autodiff_component_unavailable)]
 pub(crate) struct AutoDiffComponentUnavailable;
