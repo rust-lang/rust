@@ -374,6 +374,12 @@ impl<'tcx> Place<'tcx> {
         self.projection.iter().any(|elem| elem.is_indirect())
     }
 
+    /// Returns `true` if the `Place` always refers to the same memory region
+    /// whatever the state of the program.
+    pub fn is_stable_offset(&self) -> bool {
+        self.projection.iter().all(|elem| elem.is_stable_offset())
+    }
+
     /// Returns `true` if this `Place`'s first projection is `Deref`.
     ///
     /// This is useful because for MIR phases `AnalysisPhase::PostCleanup` and later,
