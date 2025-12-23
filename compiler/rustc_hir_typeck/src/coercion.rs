@@ -879,12 +879,17 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         };
         if a_def.did() == b_def.did() {
             // Reborrow is applicable here
-            self.unify_and(a, b, [], Adjust::GenericReborrow(ty::Mutability::Mut), ForceLeakCheck::No)
+            self.unify_and(
+                a,
+                b,
+                [],
+                Adjust::GenericReborrow(ty::Mutability::Mut),
+                ForceLeakCheck::No,
+            )
         } else {
             // FIXME: CoerceShared check goes here, error for now
             Err(TypeError::Mismatch)
         }
-    }
     }
 
     fn coerce_from_fn_pointer(

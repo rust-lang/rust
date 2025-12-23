@@ -558,7 +558,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
-    fn visit_assign(&mut self, place: &Place<'tcx>, rvalue: &Rvalue<'tcx>, location:Location) {
+    fn visit_assign(&mut self, place: &Place<'tcx>, rvalue: &Rvalue<'tcx>, location: Location) {
         // check rvalue is Reborrow
         if let Rvalue::Reborrow(rvalue) = rvalue {
             self.add_generic_reborrow_constraint(location, place, rvalue);
@@ -1610,7 +1610,6 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 self.add_reborrow_constraint(location, *region, borrowed_place);
             }
 
-
             Rvalue::BinaryOp(
                 BinOp::Eq | BinOp::Ne | BinOp::Lt | BinOp::Le | BinOp::Gt | BinOp::Ge,
                 box (left, right),
@@ -2458,7 +2457,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         &mut self,
         location: Location,
         dest: &Place<'tcx>,
-        borrowed_place: &Place<'tcx>
+        borrowed_place: &Place<'tcx>,
     ) {
         // In Polonius mode, we also push a `loan_issued_at` fact
         // linking the loan to the region (in some cases, though,
@@ -2482,10 +2481,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         // *p`, where the `p` has type `&'b mut Foo`, for example, we
         // need to ensure that `'b: 'a`.
 
-        debug!(
-            "add_generic_reborrow_constraint({:?}, {:?}, {:?})",
-            location, dest, borrowed_place
-        );
+        debug!("add_generic_reborrow_constraint({:?}, {:?}, {:?})", location, dest, borrowed_place);
 
         let tcx = self.infcx.tcx;
         let def = self.body.source.def_id().expect_local();
@@ -2501,7 +2497,14 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         let dest_ty = dest.ty(self.body, tcx).ty;
         let borrowed_ty = borrowed_place.ty(self.body, tcx).ty;
 
-        self.relate_types(borrowed_ty, ty::Variance::Covariant, dest_ty, location.to_locations(), category).unwrap();
+        self.relate_types(
+            borrowed_ty,
+            ty::Variance::Covariant,
+            dest_ty,
+            location.to_locations(),
+            category,
+        )
+        .unwrap();
     }
 
     fn prove_aggregate_predicates(

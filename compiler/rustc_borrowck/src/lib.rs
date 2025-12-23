@@ -1594,7 +1594,12 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
 
             Rvalue::CopyForDeref(_) => bug!("`CopyForDeref` in borrowck"),
             &Rvalue::Reborrow(place) => {
-                let access_kind =(Deep, Reservation(WriteKind::MutableBorrow(BorrowKind::Mut { kind: MutBorrowKind::TwoPhaseBorrow })));
+                let access_kind = (
+                    Deep,
+                    Reservation(WriteKind::MutableBorrow(BorrowKind::Mut {
+                        kind: MutBorrowKind::TwoPhaseBorrow,
+                    })),
+                );
 
                 self.access_place(
                     location,
