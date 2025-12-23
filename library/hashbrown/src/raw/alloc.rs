@@ -36,7 +36,6 @@ mod inner {
     pub(crate) use allocator_api2::alloc::{Allocator, Global};
     use core::ptr::NonNull;
 
-    #[expect(clippy::map_err_ignore)]
     pub(crate) fn do_alloc<A: Allocator>(alloc: &A, layout: Layout) -> Result<NonNull<[u8]>, ()> {
         match alloc.allocate(layout) {
             Ok(ptr) => Ok(ptr),

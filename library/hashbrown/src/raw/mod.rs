@@ -2149,7 +2149,6 @@ impl RawTableInner {
     ///
     /// [`Bucket::as_ptr`]: Bucket::as_ptr
     /// [`undefined behavior`]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
-    #[expect(clippy::mut_mut)]
     #[inline]
     unsafe fn prepare_rehash_in_place(&mut self) {
         // Bulk convert all full control bytes to DELETED, and all DELETED control bytes to EMPTY.
@@ -2769,7 +2768,6 @@ impl RawTableInner {
     /// by this function results in [`undefined behavior`].
     ///
     /// [`undefined behavior`]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
-    #[expect(clippy::mut_mut)]
     #[inline]
     fn prepare_resize<'a, A>(
         &self,
@@ -3072,7 +3070,7 @@ impl RawTableInner {
     /// * The [`RawTableInner`] must have properly initialized control bytes.
     ///
     /// [`undefined behavior`]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
-    #[expect(clippy::inline_always)]
+    #[cfg_attr(feature = "inline-more", expect(clippy::inline_always))]
     #[cfg_attr(feature = "inline-more", inline(always))]
     #[cfg_attr(not(feature = "inline-more"), inline)]
     unsafe fn rehash_in_place(

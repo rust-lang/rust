@@ -26,7 +26,6 @@ impl BitMask {
     /// Returns a new `BitMask` with all bits inverted.
     #[inline]
     #[must_use]
-    #[expect(dead_code)]
     pub(crate) fn invert(self) -> Self {
         BitMask(self.0 ^ BITMASK_MASK)
     }

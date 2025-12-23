@@ -228,7 +228,7 @@ where
 /// Ensures that a single closure type across uses of this which, in turn prevents multiple
 /// instances of any functions like `RawTable::reserve` from being generated
 #[cfg_attr(feature = "inline-more", inline)]
-#[expect(dead_code)]
+#[cfg(feature = "raw-entry")]
 pub(crate) fn equivalent<Q, K>(k: &Q) -> impl Fn(&K) -> bool + '_
 where
     Q: Equivalent<K> + ?Sized,

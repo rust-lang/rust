@@ -177,7 +177,6 @@ mod set {
             deserializer.deserialize_seq(visitor)
         }
 
-        #[expect(clippy::missing_errors_doc)]
         fn deserialize_in_place<D>(deserializer: D, place: &mut Self) -> Result<(), D::Error>
         where
             D: Deserializer<'de>,
