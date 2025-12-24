@@ -218,7 +218,7 @@ fn let_stmt_to_guarded_return(
                 let let_else_stmt = make::let_else_stmt(
                     happy_pattern,
                     let_stmt.ty(),
-                    expr,
+                    expr.reset_indent(),
                     ast::make::tail_only_block_expr(early_expression),
                 );
                 let let_else_stmt = let_else_stmt.indent(let_indent_level);
@@ -275,11 +275,11 @@ fn flat_let_chain(mut expr: ast::Expr) -> Vec<ast::Expr> {
         && bin_expr.op_kind() == Some(ast::BinaryOp::LogicOp(ast::LogicOp::And))
         && let (Some(lhs), Some(rhs)) = (bin_expr.lhs(), bin_expr.rhs())
     {
-        reduce_cond(rhs);
+        reduce_cond(rhs.reset_indent());
         expr = lhs;
     }
 
-    reduce_cond(expr);
+    reduce_cond(expr.reset_indent());
     chains.reverse();
     chains
 }
@@ -1014,6 +1014,63 @@ fn main() {
 fn main() {
     let (Some(x), None) = (Some(92), None) else { return };
     foo(x);
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn indentations() {
+        check_assist(
+            convert_to_guarded_return,
+            r#"
+mod indent {
+    fn main() {
+        $0if let None = Some(
+            92
+        ) {
+            foo(
+                93
+            );
+        }
+    }
+}
+"#,
+            r#"
+mod indent {
+    fn main() {
+        let None = Some(
+            92
+        ) else { return };
+        foo(
+            93
+        );
+    }
+}
+"#,
+        );
+
+        check_assist(
+            convert_to_guarded_return,
+            r#"
+//- minicore: option
+mod indent {
+    fn foo(_: i32) -> Option<i32> { None }
+    fn main() {
+        $0let x = foo(
+            2
+        );
+    }
+}
+"#,
+            r#"
+mod indent {
+    fn foo(_: i32) -> Option<i32> { None }
+    fn main() {
+        let Some(x) = foo(
+            2
+        ) else { return };
+    }
 }
 "#,
         );
