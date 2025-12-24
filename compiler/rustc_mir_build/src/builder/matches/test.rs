@@ -19,7 +19,9 @@ use rustc_span::{DUMMY_SP, Span, Symbol, sym};
 use tracing::{debug, instrument};
 
 use crate::builder::Builder;
-use crate::builder::matches::{MatchPairTree, Test, TestBranch, TestKind, TestableCase};
+use crate::builder::matches::{
+    MatchPairTree, PatConstKind, Test, TestBranch, TestKind, TestableCase,
+};
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Identifies what test is needed to decide if `match_pair` is applicable.
@@ -32,11 +34,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let kind = match match_pair.testable_case {
             TestableCase::Variant { adt_def, variant_index: _ } => TestKind::Switch { adt_def },
 
-            TestableCase::Constant { .. } if match_pair.pattern_ty.is_bool() => TestKind::If,
-            TestableCase::Constant { .. } if is_switch_ty(match_pair.pattern_ty) => {
+            TestableCase::Constant { value: _, kind: PatConstKind::Bool } => TestKind::If,
+            TestableCase::Constant { value: _, kind: PatConstKind::IntOrChar } => {
                 TestKind::SwitchInt
             }
-            TestableCase::Constant { value } => {
+            TestableCase::Constant { value, kind: PatConstKind::Float } => {
+                TestKind::Eq { value, cast_ty: match_pair.pattern_ty }
+            }
+            TestableCase::Constant { value, kind: PatConstKind::Other } => {
                 TestKind::Eq { value, cast_ty: match_pair.pattern_ty }
             }
 
@@ -489,11 +494,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             TerminatorKind::if_(Operand::Move(eq_result), success_block, fail_block),
         );
     }
-}
-
-/// Returns true if this type be used with [`TestKind::SwitchInt`].
-pub(crate) fn is_switch_ty(ty: Ty<'_>) -> bool {
-    ty.is_integral() || ty.is_char()
 }
 
 fn trait_method<'tcx>(
