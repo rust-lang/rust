@@ -1,0 +1,8 @@
+error: generic parameters may not be used in const operations
+  --> $DIR/explicit_anon_consts-2.rs:9:42
+   |
+LL | type Alias<const N: usize> = Foo<const { N }>;
+   |                                          ^
+
+error: aborting due to 1 previous error
+

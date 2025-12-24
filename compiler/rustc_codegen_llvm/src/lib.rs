@@ -241,7 +241,9 @@ impl CodegenBackend for LlvmCodegenBackend {
     fn init(&self, sess: &Session) {
         llvm_util::init(sess); // Make sure llvm is inited
 
-        #[cfg(feature = "llvm_enzyme")]
+        // autodiff is based on Enzyme, a library which we might not have available, when it was
+        // neither build, nor downloaded via rustup. If autodiff is used, but not available we emit
+        // an early error here and abort compilation.
         {
             use rustc_session::config::AutoDiff;
 

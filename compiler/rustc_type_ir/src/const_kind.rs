@@ -127,3 +127,76 @@ impl<CTX> HashStable<CTX> for InferConst {
         }
     }
 }
+
+/// This datastructure is used to represent the value of constants used in the type system.
+///
+/// We explicitly choose a different datastructure from the way values are processed within
+/// CTFE, as in the type system equal values (according to their `PartialEq`) must also have
+/// equal representation (`==` on the rustc data structure, e.g. `ValTree`) and vice versa.
+/// Since CTFE uses `AllocId` to represent pointers, it often happens that two different
+/// `AllocId`s point to equal values. So we may end up with different representations for
+/// two constants whose value is `&42`. Furthermore any kind of struct that has padding will
+/// have arbitrary values within that padding, even if the values of the struct are the same.
+///
+/// `ValTree` does not have this problem with representation, as it only contains integers or
+/// lists of (nested) `ty::Const`s (which may indirectly contain more `ValTree`s).
+#[derive_where(Clone, Debug, Hash, Eq, PartialEq; I: Interner)]
+#[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
+#[cfg_attr(
+    feature = "nightly",
+    derive(Decodable_NoContext, Encodable_NoContext, HashStable_NoContext)
+)]
+pub enum ValTreeKind<I: Interner> {
+    /// integers, `bool`, `char` are represented as scalars.
+    /// See the `ScalarInt` documentation for how `ScalarInt` guarantees that equal values
+    /// of these types have the same representation.
+    Leaf(I::ScalarInt),
+
+    /// The fields of any kind of aggregate. Structs, tuples and arrays are represented by
+    /// listing their fields' values in order.
+    ///
+    /// Enums are represented by storing their variant index as a u32 field, followed by all
+    /// the fields of the variant.
+    ///
+    /// ZST types are represented as an empty slice.
+    // FIXME(mgca): Use a `List` here instead of a boxed slice
+    Branch(Box<[I::Const]>),
+}
+
+impl<I: Interner> ValTreeKind<I> {
+    /// Converts to a `ValTreeKind::Leaf` value, `panic`'ing
+    /// if this valtree is some other kind.
+    #[inline]
+    pub fn to_leaf(&self) -> I::ScalarInt {
+        match self {
+            ValTreeKind::Leaf(s) => *s,
+            ValTreeKind::Branch(..) => panic!("expected leaf, got {:?}", self),
+        }
+    }
+
+    /// Converts to a `ValTreeKind::Branch` value, `panic`'ing
+    /// if this valtree is some other kind.
+    #[inline]
+    pub fn to_branch(&self) -> &[I::Const] {
+        match self {
+            ValTreeKind::Branch(branch) => &**branch,
+            ValTreeKind::Leaf(..) => panic!("expected branch, got {:?}", self),
+        }
+    }
+
+    /// Attempts to convert to a `ValTreeKind::Leaf` value.
+    pub fn try_to_leaf(&self) -> Option<I::ScalarInt> {
+        match self {
+            ValTreeKind::Leaf(s) => Some(*s),
+            ValTreeKind::Branch(_) => None,
+        }
+    }
+
+    /// Attempts to convert to a `ValTreeKind::Branch` value.
+    pub fn try_to_branch(&self) -> Option<&[I::Const]> {
+        match self {
+            ValTreeKind::Branch(branch) => Some(&**branch),
+            ValTreeKind::Leaf(_) => None,
+        }
+    }
+}

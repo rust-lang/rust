@@ -1,0 +1,8 @@
+error: generic parameters may not be used in const operations
+  --> $DIR/explicit_anon_consts-5.rs:14:30
+   |
+LL |     T: Trait<ASSOC = const { N }>,
+   |                              ^
+
+error: aborting due to 1 previous error
+

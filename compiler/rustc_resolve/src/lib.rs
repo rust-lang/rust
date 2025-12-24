@@ -187,6 +187,7 @@ struct InvocationParent {
     parent_def: LocalDefId,
     impl_trait_context: ImplTraitContext,
     in_attr: bool,
+    const_arg_context: ConstArgContext,
 }
 
 impl InvocationParent {
@@ -194,6 +195,7 @@ impl InvocationParent {
         parent_def: CRATE_DEF_ID,
         impl_trait_context: ImplTraitContext::Existential,
         in_attr: false,
+        const_arg_context: ConstArgContext::NonDirect,
     };
 }
 
@@ -202,6 +204,13 @@ enum ImplTraitContext {
     Existential,
     Universal,
     InBinding,
+}
+
+#[derive(Copy, Clone, Debug)]
+enum ConstArgContext {
+    Direct,
+    /// Either inside of an `AnonConst` or not inside a const argument at all.
+    NonDirect,
 }
 
 /// Used for tracking import use types which will be used for redundant import checking.

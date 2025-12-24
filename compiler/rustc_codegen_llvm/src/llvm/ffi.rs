@@ -1666,7 +1666,15 @@ mod Offload {
     use super::*;
     unsafe extern "C" {
         /// Processes the module and writes it in an offload compatible way into a "host.out" file.
-        pub(crate) fn LLVMRustBundleImages<'a>(M: &'a Module, TM: &'a TargetMachine) -> bool;
+        pub(crate) fn LLVMRustBundleImages<'a>(
+            M: &'a Module,
+            TM: &'a TargetMachine,
+            host_out: *const c_char,
+        ) -> bool;
+        pub(crate) unsafe fn LLVMRustOffloadEmbedBufferInModule<'a>(
+            _M: &'a Module,
+            _host_out: *const c_char,
+        ) -> bool;
         pub(crate) fn LLVMRustOffloadMapper<'a>(OldFn: &'a Value, NewFn: &'a Value);
     }
 }
@@ -1680,7 +1688,17 @@ mod Offload_fallback {
     /// Processes the module and writes it in an offload compatible way into a "host.out" file.
     /// Marked as unsafe to match the real offload wrapper which is unsafe due to FFI.
     #[allow(unused_unsafe)]
-    pub(crate) unsafe fn LLVMRustBundleImages<'a>(_M: &'a Module, _TM: &'a TargetMachine) -> bool {
+    pub(crate) unsafe fn LLVMRustBundleImages<'a>(
+        _M: &'a Module,
+        _TM: &'a TargetMachine,
+        _host_out: *const c_char,
+    ) -> bool {
+        unimplemented!("This rustc version was not built with LLVM Offload support!");
+    }
+    pub(crate) unsafe fn LLVMRustOffloadEmbedBufferInModule<'a>(
+        _M: &'a Module,
+        _host_out: *const c_char,
+    ) -> bool {
         unimplemented!("This rustc version was not built with LLVM Offload support!");
     }
     #[allow(unused_unsafe)]

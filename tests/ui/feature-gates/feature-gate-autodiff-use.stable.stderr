@@ -1,5 +1,5 @@
 error[E0658]: use of unstable library feature `autodiff`
-  --> $DIR/feature-gate-autodiff-use.rs:13:3
+  --> $DIR/feature-gate-autodiff-use.rs:16:3
    |
 LL | #[autodiff_reverse(dfoo)]
    |   ^^^^^^^^^^^^^^^^
