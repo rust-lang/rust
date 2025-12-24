@@ -270,6 +270,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         formal_input_tys
                     };
 
+                    // Check the well-formedness of expected input tys, as using ill-formed
+                    // expectation may cause type inference errors.
+                    for &ty in formal_input_tys {
+                        ocx.register_obligation(traits::Obligation::new(
+                            self.tcx,
+                            self.misc(call_span),
+                            self.param_env,
+                            ty::ClauseKind::WellFormed(ty.into()),
+                        ));
+                    }
+
                     if !ocx.try_evaluate_obligations().is_empty() {
                         return Err(TypeError::Mismatch);
                     }
