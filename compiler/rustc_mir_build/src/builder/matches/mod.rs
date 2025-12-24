@@ -1262,7 +1262,7 @@ struct Ascription<'tcx> {
 #[derive(Debug, Clone)]
 enum TestableCase<'tcx> {
     Variant { adt_def: ty::AdtDef<'tcx>, variant_index: VariantIdx },
-    Constant { value: ty::Value<'tcx> },
+    Constant { value: ty::Value<'tcx>, kind: PatConstKind },
     Range(Arc<PatRange<'tcx>>),
     Slice { len: u64, variable_length: bool },
     Deref { temp: Place<'tcx>, mutability: Mutability },
@@ -1274,6 +1274,28 @@ impl<'tcx> TestableCase<'tcx> {
     fn as_range(&self) -> Option<&PatRange<'tcx>> {
         if let Self::Range(v) = self { Some(v.as_ref()) } else { None }
     }
+}
+
+/// Sub-classification of [`TestableCase::Constant`], which helps to avoid
+/// some redundant ad-hoc checks when preparing and lowering tests.
+#[derive(Debug, Clone)]
+enum PatConstKind {
+    /// The primitive `bool` type, which is like an integer but simpler,
+    /// having only two values.
+    Bool,
+    /// Primitive unsigned/signed integer types, plus `char`.
+    /// These types interact nicely with `SwitchInt`.
+    IntOrChar,
+    /// Floating-point primitives, e.g. `f32`, `f64`.
+    /// These types don't support `SwitchInt` and require an equality test,
+    /// but can also interact with range pattern tests.
+    Float,
+    /// Any other constant-pattern is usually tested via some kind of equality
+    /// check. Types that might be encountered here include:
+    /// - `&str`
+    /// - raw pointers derived from integer values
+    /// - pattern types, e.g. `pattern_type!(u32 is 1..)`
+    Other,
 }
 
 /// Node in a tree of "match pairs", where each pair consists of a place to be

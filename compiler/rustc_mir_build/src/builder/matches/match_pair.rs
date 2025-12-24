@@ -7,7 +7,9 @@ use rustc_middle::ty::{self, Ty, TypeVisitableExt};
 
 use crate::builder::Builder;
 use crate::builder::expr::as_place::{PlaceBase, PlaceBuilder};
-use crate::builder::matches::{FlatPat, MatchPairTree, PatternExtraData, TestableCase};
+use crate::builder::matches::{
+    FlatPat, MatchPairTree, PatConstKind, PatternExtraData, TestableCase,
+};
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Builds and pushes [`MatchPairTree`] subtrees, one for each pattern in
@@ -156,7 +158,29 @@ impl<'tcx> MatchPairTree<'tcx> {
                 }
             }
 
-            PatKind::Constant { value } => Some(TestableCase::Constant { value }),
+            PatKind::Constant { value } => {
+                // CAUTION: The type of the pattern node (`pattern.ty`) is
+                // _often_ the same as the type of the const value (`value.ty`),
+                // but there are some cases where those types differ
+                // (e.g. when `deref!(..)` patterns interact with `String`).
+
+                // Classify the constant-pattern into further kinds, to
+                // reduce the number of ad-hoc type tests needed later on.
+                let pat_ty = pattern.ty;
+                let const_kind = if pat_ty.is_bool() {
+                    PatConstKind::Bool
+                } else if pat_ty.is_integral() || pat_ty.is_char() {
+                    PatConstKind::IntOrChar
+                } else if pat_ty.is_floating_point() {
+                    PatConstKind::Float
+                } else {
+                    // FIXME(Zalathar): This still covers several different
+                    // categories (e.g. raw pointer, string, pattern-type)
+                    // which could be split out into their own kinds.
+                    PatConstKind::Other
+                };
+                Some(TestableCase::Constant { value, kind: const_kind })
+            }
 
             PatKind::AscribeUserType {
                 ascription: Ascription { ref annotation, variance },
