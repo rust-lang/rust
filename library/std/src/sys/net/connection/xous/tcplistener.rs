@@ -203,6 +203,14 @@ impl TcpListener {
         .map(|res| res[0] as _)?)
     }
 
+    pub fn set_hop_limit_v6(&self, hlim: u8) -> io::Result<()> {
+        unimpl!();
+    }
+
+    pub fn hop_limit_v6(&self) -> io::Result<u8> {
+        unimpl!();
+    }
+
     pub fn set_only_v6(&self, _: bool) -> io::Result<()> {
         unimpl!();
     }

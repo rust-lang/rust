@@ -9,6 +9,7 @@ use crate::sys::{AsInner, FromInner, IntoInner, TryIntoInner, sgx_ineffective, u
 use crate::time::Duration;
 
 const DEFAULT_FAKE_TTL: u32 = 64;
+const DEFAULT_FAKE_HLIM: u8 = 64;
 
 #[derive(Debug, Clone)]
 pub struct Socket {
@@ -235,6 +236,14 @@ impl TcpStream {
         sgx_ineffective(DEFAULT_FAKE_TTL)
     }
 
+    pub fn set_hop_limit_v6(&self, _: u8) -> io::Result<()> {
+        sgx_ineffective(())
+    }
+
+    pub fn hop_limit_v6(&self) -> io::Result<u8> {
+        sgx_ineffective(DEFAULT_FAKE_HLIM)
+    }
+
     pub fn take_error(&self) -> io::Result<Option<io::Error>> {
         Ok(None)
     }
@@ -312,6 +321,14 @@ impl TcpListener {
 
     pub fn ttl(&self) -> io::Result<u32> {
         sgx_ineffective(DEFAULT_FAKE_TTL)
+    }
+
+    pub fn set_hop_limit_v6(&self, _: u8) -> io::Result<()> {
+        sgx_ineffective(())
+    }
+
+    pub fn hop_limit_v6(&self) -> io::Result<u8> {
+        sgx_ineffective(DEFAULT_FAKE_HLIM)
     }
 
     pub fn set_only_v6(&self, _: bool) -> io::Result<()> {
@@ -450,6 +467,22 @@ impl UdpSocket {
     }
 
     pub fn ttl(&self) -> io::Result<u32> {
+        self.0
+    }
+
+    pub fn set_hop_limit_v6(&self, _: u8) -> io::Result<()> {
+        self.0
+    }
+
+    pub fn hop_limit_v6(&self) -> io::Result<u8> {
+        self.0
+    }
+
+    pub fn set_multicast_hop_limit_v6(&self, _: u8) -> io::Result<()> {
+        self.0
+    }
+
+    pub fn multicast_hop_limit_v6(&self) -> io::Result<u8> {
         self.0
     }
 
