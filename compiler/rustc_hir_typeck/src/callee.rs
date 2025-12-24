@@ -7,6 +7,7 @@ use rustc_hir::def::{self, CtorKind, Namespace, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, HirId, LangItem};
 use rustc_hir_analysis::autoderef::Autoderef;
+use rustc_hir_analysis::hir_ty_lowering::IsMethodCall;
 use rustc_infer::infer::BoundRegionConversionTime;
 use rustc_infer::traits::{Obligation, ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::adjustment::{
@@ -573,6 +574,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.check_argument_types(
             call_expr.span,
             call_expr,
+            IsMethodCall::No,
             fn_sig.inputs(),
             fn_sig.output(),
             expected,
@@ -883,6 +885,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.check_argument_types(
             call_expr.span,
             call_expr,
+            IsMethodCall::No,
             fn_sig.inputs(),
             fn_sig.output(),
             expected,
@@ -962,6 +965,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.check_argument_types(
             call_expr.span,
             call_expr,
+            IsMethodCall::Yes,
             &method.sig.inputs()[1..],
             method.sig.output(),
             expected,

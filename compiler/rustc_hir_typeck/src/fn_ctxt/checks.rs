@@ -10,7 +10,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{Expr, ExprKind, HirId, LangItem, Node, QPath, is_range_literal};
 use rustc_hir_analysis::check::potentially_plural_count;
-use rustc_hir_analysis::hir_ty_lowering::{HirTyLowerer, PermitVariants};
+use rustc_hir_analysis::hir_ty_lowering::{HirTyLowerer, IsMethodCall, PermitVariants};
 use rustc_index::IndexVec;
 use rustc_infer::infer::{BoundRegionConversionTime, DefineOpaqueTypes, InferOk, TypeTrace};
 use rustc_middle::ty::adjustment::AllowTwoPhase;
@@ -195,6 +195,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         call_span: Span,
         // Expression of the call site
         call_expr: &'tcx hir::Expr<'tcx>,
+        is_method: IsMethodCall,
         // Types (as defined in the *signature* of the target function)
         formal_input_tys: &[Ty<'tcx>],
         formal_output: Ty<'tcx>,
@@ -206,7 +207,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         c_variadic: bool,
         // Whether the arguments have been bundled in a tuple (ex: closures)
         tuple_arguments: TupleArgumentsFlag,
-        // The DefId for the function being called, for better error messages
+        // The DefId for the function being called, for callee bound checks and
+        // better error messages
         fn_def_id: Option<DefId>,
     ) {
         let tcx = self.tcx;
@@ -326,8 +328,83 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let mut err_code = E0061;
 
+        let mut expected_meets_callee_bounds = Vec::with_capacity(formal_input_tys.len());
+        expected_meets_callee_bounds.resize(formal_input_tys.len(), true);
+
+        // Check whether the expected inputs satisfy the callee's where bounds.
+        // This is skipped for the old solver: attempting trait solving there can
+        // trigger an overflow, which is a fatal error in the old solver but is
+        // treated as mere ambiguity by the next solver.
+        if self.next_trait_solver()
+            && let Some(expected_input_tys) = &expected_input_tys
+            && let Some(fn_def_id) = fn_def_id
+            // We don't need to check bounds for closures as they are already in the current
+            // body's param env.
+            && self.tcx.def_kind(fn_def_id) != DefKind::Closure
+        {
+            self.probe(|_| {
+                let new_args = self.fresh_args_for_item(call_span, fn_def_id);
+                let fn_sig = self.tcx.fn_sig(fn_def_id).instantiate(self.tcx, new_args);
+                let fn_sig = self.instantiate_binder_with_fresh_vars(
+                    call_span,
+                    BoundRegionConversionTime::FnCall,
+                    fn_sig,
+                );
+                let ocx = ObligationCtxt::new(self);
+                let origin = self.misc(call_span);
+                let fn_sig = ocx.normalize(&origin, self.param_env, fn_sig);
+
+                let bound_input_tys = fn_sig.inputs();
+                let bound_input_tys = if is_method == IsMethodCall::Yes {
+                    &bound_input_tys[1..]
+                } else {
+                    &bound_input_tys[..]
+                };
+
+                let fn_bounds = self.tcx.predicates_of(fn_def_id).instantiate(self.tcx, new_args);
+                let fn_bounds = traits::predicates_for_generics(
+                    |_, sp| self.misc(sp),
+                    self.param_env,
+                    fn_bounds,
+                );
+                ocx.register_obligations(fn_bounds);
+
+                // perf: We reuse this by cloning rather than repeating the above lines
+                let preds = ocx.into_pending_obligations();
+
+                assert_eq!(bound_input_tys.len(), formal_input_tys.len(),);
+                for idx in 0..formal_input_tys.len() {
+                    let meets_bounds = self
+                        .probe(|_| {
+                            let ocx = ObligationCtxt::new(self);
+                            ocx.register_obligations(preds.clone());
+                            ocx.eq(
+                                &origin,
+                                self.param_env,
+                                bound_input_tys[idx],
+                                expected_input_tys[idx],
+                            )?;
+                            if ocx.try_evaluate_obligations().is_empty() {
+                                Ok(())
+                            } else {
+                                Err(TypeError::Mismatch)
+                            }
+                        })
+                        .is_ok();
+                    expected_meets_callee_bounds[idx] = meets_bounds;
+                }
+            });
+        }
+
         // If the arguments should be wrapped in a tuple (ex: closures), unwrap them here
         let (formal_input_tys, expected_input_tys) = if tuple_arguments == TupleArguments {
+            // Since the expected inputs are unpacked from a single tuple,
+            // each input meets the callee bounds if and only if the tuple does.
+            expected_meets_callee_bounds.resize(
+                provided_args.len(),
+                expected_meets_callee_bounds.first().copied().unwrap_or(true),
+            );
+
             let tuple_type = self.structurally_resolve_type(call_span, formal_input_tys[0]);
             match tuple_type.kind() {
                 // We expected a tuple and got a tuple
@@ -390,7 +467,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // We're on the happy path here, so we'll do a more involved check and write back types
             // To check compatibility, we'll do 3 things:
             // 1. Unify the provided argument with the expected type
-            let expectation = Expectation::rvalue_hint(self, expected_input_ty);
+            let expectation = if expected_meets_callee_bounds[idx] {
+                Expectation::rvalue_hint(self, expected_input_ty)
+            } else {
+                // If the expected input does not satisfy the callee's bounds, we must
+                // weaken the expectation; otherwise, coercing to a type that violates
+                // those bounds would result in a type mismatch.
+                // See https://github.com/rust-lang/rust/issues/149379.
+                Expectation::ExpectRvalueLikeUnsized(expected_input_ty)
+            };
 
             let checked_ty = self.check_expr_with_expectation(provided_arg, expectation);
 

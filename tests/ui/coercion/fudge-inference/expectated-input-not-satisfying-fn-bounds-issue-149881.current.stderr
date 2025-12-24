@@ -1,5 +1,5 @@
 error[E0277]: the size for values of type `[{integer}]` cannot be known at compilation time
-  --> $DIR/expectated-input-not-satisfying-fn-bounds-issue-149881.rs:15:24
+  --> $DIR/expectated-input-not-satisfying-fn-bounds-issue-149881.rs:16:24
    |
 LL |     <[_]>::into_vec(id(Box::new([0, 1, 2])));
    |                     -- ^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
@@ -8,7 +8,7 @@ LL |     <[_]>::into_vec(id(Box::new([0, 1, 2])));
    |
    = help: the trait `Sized` is not implemented for `[{integer}]`
 note: required by an implicit `Sized` bound in `id`
-  --> $DIR/expectated-input-not-satisfying-fn-bounds-issue-149881.rs:10:7
+  --> $DIR/expectated-input-not-satisfying-fn-bounds-issue-149881.rs:11:7
    |
 LL | fn id<T>(x: Box<T>) -> Box<T> {
    |       ^ required by the implicit `Sized` requirement on this type parameter in `id`

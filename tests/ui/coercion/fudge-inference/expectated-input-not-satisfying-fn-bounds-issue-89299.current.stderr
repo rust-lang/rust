@@ -1,5 +1,5 @@
 error[E0277]: `dyn Trait + Send` cannot be unpinned
-  --> $DIR/expectated-input-not-satisfying-fn-bounds-issue-89299.rs:20:27
+  --> $DIR/expectated-input-not-satisfying-fn-bounds-issue-89299.rs:21:27
    |
 LL |     let _x = Foo(Pin::new(&mut a));
    |                  -------- ^^^^^^ the trait `Unpin` is not implemented for `dyn Trait + Send`

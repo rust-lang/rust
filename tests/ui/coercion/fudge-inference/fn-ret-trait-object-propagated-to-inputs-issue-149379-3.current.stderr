@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/fn-ret-trait-object-propagated-to-inputs-issue-149379-3.rs:34:38
+  --> $DIR/fn-ret-trait-object-propagated-to-inputs-issue-149379-3.rs:35:38
    |
 LL |     let _: &dyn Send = field_to_box3(&(1,));
    |                        ------------- ^^^^^ expected `&(dyn Send,)`, found `&({integer},)`
@@ -9,7 +9,7 @@ LL |     let _: &dyn Send = field_to_box3(&(1,));
    = note: expected reference `&(dyn Send,)`
               found reference `&({integer},)`
 note: function defined here
-  --> $DIR/fn-ret-trait-object-propagated-to-inputs-issue-149379-3.rs:27:4
+  --> $DIR/fn-ret-trait-object-propagated-to-inputs-issue-149379-3.rs:28:4
    |
 LL | fn field_to_box3<T>(x: &(T,)) -> &T {
    |    ^^^^^^^^^^^^^    --------
