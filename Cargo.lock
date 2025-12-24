@@ -1567,7 +1567,7 @@ name = "generate-copyright"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "askama 0.14.0",
+ "askama 0.15.1",
  "cargo_metadata 0.21.0",
  "serde",
  "serde_json",
