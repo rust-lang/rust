@@ -52,12 +52,12 @@ mod uninit;
 /// original.
 ///
 /// Differs from [`Copy`] in that [`Copy`] is implicit and an inexpensive bit-wise copy, while
-/// `Clone` is always explicit and may or may not be expensive. In order to enforce
-/// these characteristics, Rust does not allow you to reimplement [`Copy`], but you
-/// may reimplement `Clone` and run arbitrary code.
+/// `Clone` is always explicit and may or may not be expensive. [`Copy`] has no methods, so you
+/// cannot change its behavior, but when implementing `Clone`, the `clone` method you provide
+/// may run arbitrary code.
 ///
-/// Since `Clone` is more general than [`Copy`], you can automatically make anything
-/// [`Copy`] be `Clone` as well.
+/// Since `Clone` is a supertrait of [`Copy`], any type that implements `Copy` must also implement
+/// `Clone`.
 ///
 /// ## Derivable
 ///
