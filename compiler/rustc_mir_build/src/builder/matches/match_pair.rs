@@ -171,6 +171,8 @@ impl<'tcx> MatchPairTree<'tcx> {
                     PatConstKind::Bool
                 } else if pat_ty.is_integral() || pat_ty.is_char() {
                     PatConstKind::IntOrChar
+                } else if pat_ty.is_floating_point() {
+                    PatConstKind::Float
                 } else {
                     // FIXME(Zalathar): This still covers several different
                     // categories (e.g. raw pointer, string, pattern-type)

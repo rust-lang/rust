@@ -38,6 +38,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             TestableCase::Constant { value: _, kind: PatConstKind::IntOrChar } => {
                 TestKind::SwitchInt
             }
+            TestableCase::Constant { value, kind: PatConstKind::Float } => {
+                TestKind::Eq { value, cast_ty: match_pair.pattern_ty }
+            }
             TestableCase::Constant { value, kind: PatConstKind::Other } => {
                 TestKind::Eq { value, cast_ty: match_pair.pattern_ty }
             }

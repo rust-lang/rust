@@ -1286,10 +1286,13 @@ enum PatConstKind {
     /// Primitive unsigned/signed integer types, plus `char`.
     /// These types interact nicely with `SwitchInt`.
     IntOrChar,
+    /// Floating-point primitives, e.g. `f32`, `f64`.
+    /// These types don't support `SwitchInt` and require an equality test,
+    /// but can also interact with range pattern tests.
+    Float,
     /// Any other constant-pattern is usually tested via some kind of equality
     /// check. Types that might be encountered here include:
     /// - `&str`
-    /// - floating-point primitives, e.g. `f32`, `f64`
     /// - raw pointers derived from integer values
     /// - pattern types, e.g. `pattern_type!(u32 is 1..)`
     Other,

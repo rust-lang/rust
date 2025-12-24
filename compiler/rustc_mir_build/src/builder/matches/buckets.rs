@@ -289,7 +289,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     if !test.overlaps(pat, self.tcx)? { Some(TestBranch::Failure) } else { None }
                 }
             }
-            (TestKind::Range(range), &TestableCase::Constant { value, kind: _ }) => {
+            (
+                TestKind::Range(range),
+                &TestableCase::Constant {
+                    value,
+                    kind: PatConstKind::Bool | PatConstKind::IntOrChar | PatConstKind::Float,
+                },
+            ) => {
                 fully_matched = false;
                 if !range.contains(value, self.tcx)? {
                     // `value` is not contained in the testing range,
@@ -302,7 +308,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
             (
                 TestKind::Eq { value: test_val, .. },
-                TestableCase::Constant { value: case_val, kind: _ },
+                TestableCase::Constant {
+                    value: case_val,
+                    kind: PatConstKind::Float | PatConstKind::Other,
+                },
             ) => {
                 if test_val == case_val {
                     fully_matched = true;
