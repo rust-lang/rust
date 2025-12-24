@@ -7,7 +7,7 @@ fn main() {
     core::intrinsics::contract_check_ensures(Some(|_: &&u32| true), &1);
     //~^ ERROR use of unstable library feature `contracts_internals`
 
-    core::contracts::build_check_ensures(|_: &()| true);
+    core::contracts::build_check_ensures(|| |_: &()| true);
     //~^ ERROR use of unstable library feature `contracts_internals`
 
     // ast extensions are guarded by contracts_internals feature gate

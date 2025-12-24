@@ -1,13 +1,12 @@
+//@ run-pass
 //@ compile-flags: -Zcontract-checks=yes
 #![expect(incomplete_features)]
 #![feature(contracts)]
 
 extern crate core;
-use core::contracts::ensures;
+use core::contracts::requires;
 
-#[ensures()]
-//~^ ERROR expected a `Fn(&_)` closure, found `()` [E0277]
-//~| ERROR expected a `Fn(&_)` closure, found `()` [E0277]
+#[requires(return true)]
 fn foo(x: u32) -> u32 {
     x * 2
 }
