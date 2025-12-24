@@ -1319,7 +1319,9 @@ impl<T: ?Sized> Box<T> {
     pub unsafe fn from_non_null(ptr: NonNull<T>) -> Self {
         unsafe { Self::from_raw(ptr.as_ptr()) }
     }
+}
 
+impl<T: ?Sized, A: Allocator> Box<T, A> {
     /// Consumes the `Box`, returning a wrapped raw pointer.
     ///
     /// The pointer will be properly aligned and non-null.
