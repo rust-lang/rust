@@ -7,7 +7,7 @@ use super::thread::Thread;
 use super::{Result, spawnhook};
 use crate::cell::UnsafeCell;
 use crate::marker::PhantomData;
-use crate::mem::{ManuallyDrop, MaybeUninit};
+use crate::mem::MaybeDangling;
 use crate::sync::Arc;
 use crate::sync::atomic::{Atomic, AtomicUsize, Ordering};
 use crate::sys::{AsInner, IntoInner, thread as imp};
@@ -57,29 +57,8 @@ where
         Arc::new(Packet { scope: scope_data, result: UnsafeCell::new(None), _marker: PhantomData });
     let their_packet = my_packet.clone();
 
-    // Pass `f` in `MaybeUninit` because actually that closure might *run longer than the lifetime of `F`*.
+    // Pass `f` in `MaybeDangling` because actually that closure might *run longer than the lifetime of `F`*.
     // See <https://github.com/rust-lang/rust/issues/101983> for more details.
-    // To prevent leaks we use a wrapper that drops its contents.
-    #[repr(transparent)]
-    struct MaybeDangling<T>(MaybeUninit<T>);
-    impl<T> MaybeDangling<T> {
-        fn new(x: T) -> Self {
-            MaybeDangling(MaybeUninit::new(x))
-        }
-        fn into_inner(self) -> T {
-            // Make sure we don't drop.
-            let this = ManuallyDrop::new(self);
-            // SAFETY: we are always initialized.
-            unsafe { this.0.assume_init_read() }
-        }
-    }
-    impl<T> Drop for MaybeDangling<T> {
-        fn drop(&mut self) {
-            // SAFETY: we are always initialized.
-            unsafe { self.0.assume_init_drop() };
-        }
-    }
-
     let f = MaybeDangling::new(f);
 
     // The entrypoint of the Rust thread, after platform-specific thread

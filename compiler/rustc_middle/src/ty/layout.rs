@@ -1053,6 +1053,12 @@ where
                 })
             }
 
+            ty::Adt(adt_def, ..) if adt_def.is_maybe_dangling() => {
+                // FIXME: what is the exact effect of maybe dangling?
+                Self::ty_and_layout_pointee_info_at(this.field(cx, 0), cx, offset)
+                    .map(|info| PointeeInfo { safe: None, ..info })
+            }
+
             _ => {
                 let mut data_variant = match &this.variants {
                     // Within the discriminant field, only the niche itself is
@@ -1091,7 +1097,7 @@ where
                         }
                     }
                     Variants::Multiple { .. } => None,
-                    _ => Some(this),
+                    Variants::Empty | Variants::Single { .. } => Some(this),
                 };
 
                 if let Some(variant) = data_variant
