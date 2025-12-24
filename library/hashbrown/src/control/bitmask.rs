@@ -1,6 +1,4 @@
-use super::group::{
-    BitMaskWord, NonZeroBitMaskWord, BITMASK_ITER_MASK, BITMASK_MASK, BITMASK_STRIDE,
-};
+use super::group::{BitMaskWord, NonZeroBitMaskWord, BITMASK_ITER_MASK, BITMASK_STRIDE};
 
 /// A bit mask which contains the result of a `Match` operation on a `Group` and
 /// allows iterating through them.
@@ -23,13 +21,6 @@ pub(crate) struct BitMask(pub(crate) BitMaskWord);
 
 #[expect(clippy::use_self)]
 impl BitMask {
-    /// Returns a new `BitMask` with all bits inverted.
-    #[inline]
-    #[must_use]
-    pub(crate) fn invert(self) -> Self {
-        BitMask(self.0 ^ BITMASK_MASK)
-    }
-
     /// Returns a new `BitMask` with the lowest bit removed.
     #[inline]
     #[must_use]

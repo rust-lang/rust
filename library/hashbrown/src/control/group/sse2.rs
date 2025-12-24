@@ -10,7 +10,6 @@ use core::arch::x86_64 as x86;
 pub(crate) type BitMaskWord = u16;
 pub(crate) type NonZeroBitMaskWord = NonZeroU16;
 pub(crate) const BITMASK_STRIDE: usize = 1;
-pub(crate) const BITMASK_MASK: BitMaskWord = 0xffff;
 pub(crate) const BITMASK_ITER_MASK: BitMaskWord = !0;
 
 /// Abstraction over a group of control tags which can be scanned in
@@ -113,7 +112,7 @@ impl Group {
     /// Returns a `BitMask` indicating all tags in the group which are full.
     #[inline]
     pub(crate) fn match_full(&self) -> BitMask {
-        self.match_empty_or_deleted().invert()
+        BitMask(!self.match_empty_or_deleted().0)
     }
 
     /// Performs the following transformation on all tags in the group:

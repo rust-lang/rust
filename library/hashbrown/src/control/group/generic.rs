@@ -25,7 +25,7 @@ pub(crate) type NonZeroBitMaskWord = NonZeroGroupWord;
 pub(crate) const BITMASK_STRIDE: usize = 8;
 // We only care about the highest bit of each tag for the mask.
 #[expect(clippy::cast_possible_truncation, clippy::unnecessary_cast)]
-pub(crate) const BITMASK_MASK: BitMaskWord = u64::from_ne_bytes([Tag::DELETED.0; 8]) as GroupWord;
+const BITMASK_MASK: BitMaskWord = u64::from_ne_bytes([Tag::DELETED.0; 8]) as GroupWord;
 pub(crate) const BITMASK_ITER_MASK: BitMaskWord = !0;
 
 /// Helper function to replicate a tag across a `GroupWord`.
@@ -134,7 +134,7 @@ impl Group {
     /// Returns a `BitMask` indicating all tags in the group which are full.
     #[inline]
     pub(crate) fn match_full(self) -> BitMask {
-        self.match_empty_or_deleted().invert()
+        BitMask(self.match_empty_or_deleted().0 ^ BITMASK_MASK)
     }
 
     /// Performs the following transformation on all tags in the group:

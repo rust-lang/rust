@@ -6,7 +6,6 @@ use core::num::NonZeroU64;
 pub(crate) type BitMaskWord = u64;
 pub(crate) type NonZeroBitMaskWord = NonZeroU64;
 pub(crate) const BITMASK_STRIDE: usize = 8;
-pub(crate) const BITMASK_MASK: BitMaskWord = !0;
 pub(crate) const BITMASK_ITER_MASK: BitMaskWord = 0x8080_8080_8080_8080;
 
 /// Abstraction over a group of control tags which can be scanned in
