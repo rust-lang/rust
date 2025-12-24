@@ -305,7 +305,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 })
                 .ok()
             })
-            .unwrap_or_default();
+            .unwrap_or_default()
+            .filter(|expected_input_tys: &Vec<Ty<'_>>| {
+                // Check the well-formedness of expected input tys, as using ill-formed
+                // expectation may cause type inference errors.
+                self.probe(|_| {
+                    let ocx = ObligationCtxt::new(self);
+                    for &ty in expected_input_tys {
+                        ocx.register_obligation(traits::Obligation::new(
+                            self.tcx,
+                            self.misc(call_span),
+                            self.param_env,
+                            ty::ClauseKind::WellFormed(ty.into()),
+                        ));
+                    }
+                    ocx.try_evaluate_obligations().is_empty()
+                })
+            });
 
         let mut err_code = E0061;
 
