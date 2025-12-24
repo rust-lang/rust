@@ -149,3 +149,11 @@ fn issue15256() {
     for v in vec.iter() { println!("{v}"); }
     //~^ needless_for_each
 }
+
+fn issue16294() {
+    let vec: Vec<i32> = Vec::new();
+    for elem in vec.iter() {
+        //~^ needless_for_each
+        println!("{elem}");
+    }
+}
