@@ -6,8 +6,7 @@ use rustc_middle::span_bug;
 use tracing::debug;
 
 use crate::builder::Builder;
-use crate::builder::matches::test::is_switch_ty;
-use crate::builder::matches::{Candidate, Test, TestBranch, TestKind, TestableCase};
+use crate::builder::matches::{Candidate, PatConstKind, Test, TestBranch, TestKind, TestableCase};
 
 /// Output of [`Builder::partition_candidates_into_buckets`].
 pub(crate) struct PartitionedCandidates<'tcx, 'b, 'c> {
@@ -157,11 +156,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             //
             // FIXME(#29623) we could use PatKind::Range to rule
             // things out here, in some cases.
-            //
-            // FIXME(Zalathar): Is the `is_switch_ty` test unnecessary?
-            (TestKind::SwitchInt, &TestableCase::Constant { value })
-                if is_switch_ty(match_pair.pattern_ty) =>
-            {
+            (
+                TestKind::SwitchInt,
+                &TestableCase::Constant { value, kind: PatConstKind::IntOrChar },
+            ) => {
                 // An important invariant of candidate bucketing is that a candidate
                 // must not match in multiple branches. For `SwitchInt` tests, adding
                 // a new value might invalidate that property for range patterns that
@@ -206,7 +204,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 })
             }
 
-            (TestKind::If, TestableCase::Constant { value }) => {
+            (TestKind::If, TestableCase::Constant { value, kind: PatConstKind::Bool }) => {
                 fully_matched = true;
                 let value = value.try_to_bool().unwrap_or_else(|| {
                     span_bug!(test.span, "expected boolean value but got {value:?}")
@@ -291,7 +289,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     if !test.overlaps(pat, self.tcx)? { Some(TestBranch::Failure) } else { None }
                 }
             }
-            (TestKind::Range(range), &TestableCase::Constant { value }) => {
+            (
+                TestKind::Range(range),
+                &TestableCase::Constant {
+                    value,
+                    kind: PatConstKind::Bool | PatConstKind::IntOrChar | PatConstKind::Float,
+                },
+            ) => {
                 fully_matched = false;
                 if !range.contains(value, self.tcx)? {
                     // `value` is not contained in the testing range,
@@ -302,7 +306,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 }
             }
 
-            (TestKind::Eq { value: test_val, .. }, TestableCase::Constant { value: case_val }) => {
+            (
+                TestKind::Eq { value: test_val, .. },
+                TestableCase::Constant {
+                    value: case_val,
+                    kind: PatConstKind::Float | PatConstKind::Other,
+                },
+            ) => {
                 if test_val == case_val {
                     fully_matched = true;
                     Some(TestBranch::Success)
