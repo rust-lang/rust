@@ -35,7 +35,7 @@ pub(super) fn check<'tcx>(
     {
         let mut app = Applicability::MachineApplicable;
         let divisor = deref_sugg(
-            Sugg::hir_with_applicability(cx, operand_right, "_", &mut app),
+            Sugg::hir_with_context(cx, operand_right, expr.span.ctxt(), "_", &mut app),
             cx.typeck_results().expr_ty_adjusted(operand_right),
         );
         span_lint_and_sugg(
@@ -47,7 +47,7 @@ pub(super) fn check<'tcx>(
             format!(
                 "{}{}.is_multiple_of({divisor})",
                 if op == BinOpKind::Eq { "" } else { "!" },
-                Sugg::hir_with_applicability(cx, operand_left, "_", &mut app).maybe_paren()
+                Sugg::hir_with_context(cx, operand_left, expr.span.ctxt(), "_", &mut app).maybe_paren()
             ),
             app,
         );
