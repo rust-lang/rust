@@ -79,7 +79,6 @@
 #![feature(iterator_try_collect)]
 #![feature(iterator_try_reduce)]
 #![feature(layout_for_ptr)]
-#![feature(lazy_get)]
 #![feature(maybe_uninit_fill)]
 #![feature(maybe_uninit_uninit_array_transpose)]
 #![feature(min_specialization)]
