@@ -383,6 +383,7 @@ fn update_target_reliable_float_cfg(sess: &Session, cfg: &mut TargetConfig) {
         // Infinite recursion <https://github.com/llvm/llvm-project/issues/97981>
         (Arch::CSky, _) => false,
         (Arch::Hexagon, _) if major < 21 => false, // (fixed in llvm21)
+        (Arch::LoongArch32 | Arch::LoongArch64, _) if major < 21 => false, // (fixed in llvm21)
         (Arch::PowerPC | Arch::PowerPC64, _) => false,
         (Arch::Sparc | Arch::Sparc64, _) => false,
         (Arch::Wasm32 | Arch::Wasm64, _) => false,
