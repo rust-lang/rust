@@ -2263,10 +2263,118 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 )
                 .unwrap_or_else(|guar| Const::new_error(tcx, guar))
             }
-            hir::ConstArgKind::Anon(anon) => self.lower_anon_const(anon),
+            hir::ConstArgKind::Struct(qpath, inits) => {
+                self.lower_const_arg_struct(hir_id, qpath, inits, const_arg.span())
+            }
+            hir::ConstArgKind::Anon(anon) => self.lower_const_arg_anon(anon),
             hir::ConstArgKind::Infer(span, ()) => self.ct_infer(None, span),
             hir::ConstArgKind::Error(_, e) => ty::Const::new_error(tcx, e),
         }
+    }
+
+    fn lower_const_arg_struct(
+        &self,
+        hir_id: HirId,
+        qpath: hir::QPath<'tcx>,
+        inits: &'tcx [&'tcx hir::ConstArgExprField<'tcx>],
+        span: Span,
+    ) -> Const<'tcx> {
+        // FIXME(mgca): try to deduplicate this function with
+        // the equivalent HIR typeck logic.
+        let tcx = self.tcx();
+
+        let non_adt_or_variant_res = || {
+            let e = tcx.dcx().span_err(span, "struct expression with invalid base path");
+            ty::Const::new_error(tcx, e)
+        };
+
+        let (ty, variant_did) = match qpath {
+            hir::QPath::Resolved(maybe_qself, path) => {
+                debug!(?maybe_qself, ?path);
+                let opt_self_ty = maybe_qself.as_ref().map(|qself| self.lower_ty(qself));
+                let ty =
+                    self.lower_resolved_ty_path(opt_self_ty, path, hir_id, PermitVariants::Yes);
+                let variant_did = match path.res {
+                    Res::Def(DefKind::Variant | DefKind::Struct, did) => did,
+                    _ => return non_adt_or_variant_res(),
+                };
+
+                (ty, variant_did)
+            }
+            hir::QPath::TypeRelative(hir_self_ty, segment) => {
+                debug!(?hir_self_ty, ?segment);
+                let self_ty = self.lower_ty(hir_self_ty);
+                let opt_res = self.lower_type_relative_ty_path(
+                    self_ty,
+                    hir_self_ty,
+                    segment,
+                    hir_id,
+                    span,
+                    PermitVariants::Yes,
+                );
+
+                let (ty, _, res_def_id) = match opt_res {
+                    Ok(r @ (_, DefKind::Variant | DefKind::Struct, _)) => r,
+                    Ok(_) => return non_adt_or_variant_res(),
+                    Err(e) => return ty::Const::new_error(tcx, e),
+                };
+
+                (ty, res_def_id)
+            }
+        };
+
+        let ty::Adt(adt_def, adt_args) = ty.kind() else { unreachable!() };
+
+        let variant_def = adt_def.variant_with_id(variant_did);
+        let variant_idx = adt_def.variant_index_with_id(variant_did).as_u32();
+
+        let fields = variant_def
+            .fields
+            .iter()
+            .map(|field_def| {
+                // FIXME(mgca): we aren't really handling privacy, stability,
+                // or macro hygeniene but we should.
+                let mut init_expr =
+                    inits.iter().filter(|init_expr| init_expr.field.name == field_def.name);
+
+                match init_expr.next() {
+                    Some(expr) => {
+                        if let Some(expr) = init_expr.next() {
+                            let e = tcx.dcx().span_err(
+                                expr.span,
+                                format!(
+                                    "struct expression with multiple initialisers for `{}`",
+                                    field_def.name,
+                                ),
+                            );
+                            return ty::Const::new_error(tcx, e);
+                        }
+
+                        self.lower_const_arg(expr.expr, FeedConstTy::Param(field_def.did, adt_args))
+                    }
+                    None => {
+                        let e = tcx.dcx().span_err(
+                            span,
+                            format!(
+                                "struct expression with missing field initialiser for `{}`",
+                                field_def.name
+                            ),
+                        );
+                        ty::Const::new_error(tcx, e)
+                    }
+                }
+            })
+            .collect::<Vec<_>>();
+
+        let opt_discr_const = if adt_def.is_enum() {
+            let valtree = ty::ValTree::from_scalar_int(tcx, variant_idx.into());
+            Some(ty::Const::new_value(tcx, valtree, tcx.types.u32))
+        } else {
+            None
+        };
+
+        let valtree = ty::ValTree::from_branches(tcx, opt_discr_const.into_iter().chain(fields));
+        ty::Const::new_value(tcx, valtree, ty)
     }
 
     /// Lower a [resolved][hir::QPath::Resolved] path to a (type-level) constant.
@@ -2372,7 +2480,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
     /// Literals are eagerly converted to a constant, everything else becomes `Unevaluated`.
     #[instrument(skip(self), level = "debug")]
-    fn lower_anon_const(&self, anon: &AnonConst) -> Const<'tcx> {
+    fn lower_const_arg_anon(&self, anon: &AnonConst) -> Const<'tcx> {
         let tcx = self.tcx();
 
         let expr = &tcx.hir_body(anon.body).value;
@@ -2403,8 +2511,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     ) -> Option<Const<'tcx>> {
         let tcx = self.tcx();
 
-        // Unwrap a block, so that e.g. `{ P }` is recognised as a parameter. Const arguments
-        // currently have to be wrapped in curly brackets, so it's necessary to special-case.
+        // Unwrap a block, so that e.g. `{ 1 }` is recognised as a literal. This makes the
+        // performance optimisation of directly lowering anon consts occur more often.
         let expr = match &expr.kind {
             hir::ExprKind::Block(block, _) if block.stmts.is_empty() && block.expr.is_some() => {
                 block.expr.as_ref().unwrap()
@@ -2412,15 +2520,18 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             _ => expr,
         };
 
+        // FIXME(mgca): remove this delayed bug once we start checking this
+        // when lowering `Ty/ConstKind::Param`s more generally.
         if let hir::ExprKind::Path(hir::QPath::Resolved(
             _,
             &hir::Path { res: Res::Def(DefKind::ConstParam, _), .. },
         )) = expr.kind
         {
-            span_bug!(
+            let e = tcx.dcx().span_delayed_bug(
                 expr.span,
-                "try_lower_anon_const_lit: received const param which shouldn't be possible"
+                "try_lower_anon_const_lit: received const param which shouldn't be possible",
             );
+            return Some(ty::Const::new_error(tcx, e));
         };
 
         let lit_input = match expr.kind {

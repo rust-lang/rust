@@ -494,6 +494,7 @@ impl<'hir, Unambig> ConstArg<'hir, Unambig> {
 
     pub fn span(&self) -> Span {
         match self.kind {
+            ConstArgKind::Struct(path, _) => path.span(),
             ConstArgKind::Path(path) => path.span(),
             ConstArgKind::Anon(anon) => anon.span,
             ConstArgKind::Error(span, _) => span,
@@ -513,11 +514,21 @@ pub enum ConstArgKind<'hir, Unambig = ()> {
     /// However, in the future, we'll be using it for all of those.
     Path(QPath<'hir>),
     Anon(&'hir AnonConst),
+    /// Represents construction of struct/struct variants
+    Struct(QPath<'hir>, &'hir [&'hir ConstArgExprField<'hir>]),
     /// Error const
     Error(Span, ErrorGuaranteed),
     /// This variant is not always used to represent inference consts, sometimes
     /// [`GenericArg::Infer`] is used instead.
     Infer(Span, Unambig),
+}
+
+#[derive(Clone, Copy, Debug, HashStable_Generic)]
+pub struct ConstArgExprField<'hir> {
+    pub hir_id: HirId,
+    pub span: Span,
+    pub field: Ident,
+    pub expr: &'hir ConstArg<'hir>,
 }
 
 #[derive(Clone, Copy, Debug, HashStable_Generic)]
@@ -4714,6 +4725,7 @@ pub enum Node<'hir> {
     ConstArg(&'hir ConstArg<'hir>),
     Expr(&'hir Expr<'hir>),
     ExprField(&'hir ExprField<'hir>),
+    ConstArgExprField(&'hir ConstArgExprField<'hir>),
     Stmt(&'hir Stmt<'hir>),
     PathSegment(&'hir PathSegment<'hir>),
     Ty(&'hir Ty<'hir>),
@@ -4773,6 +4785,7 @@ impl<'hir> Node<'hir> {
             Node::AssocItemConstraint(c) => Some(c.ident),
             Node::PatField(f) => Some(f.ident),
             Node::ExprField(f) => Some(f.ident),
+            Node::ConstArgExprField(f) => Some(f.field),
             Node::PreciseCapturingNonLifetimeArg(a) => Some(a.ident),
             Node::Param(..)
             | Node::AnonConst(..)

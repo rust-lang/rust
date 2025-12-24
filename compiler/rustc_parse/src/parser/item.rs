@@ -117,6 +117,11 @@ impl<'a> Parser<'a> {
     }
 }
 
+enum ReuseKind {
+    Path,
+    Impl,
+}
+
 impl<'a> Parser<'a> {
     pub fn parse_item(&mut self, force_collect: ForceCollect) -> PResult<'a, Option<Box<Item>>> {
         let fn_parse_mode =
@@ -249,9 +254,9 @@ impl<'a> Parser<'a> {
         } else if self.check_keyword_case(exp!(Trait), case) || self.check_trait_front_matter() {
             // TRAIT ITEM
             self.parse_item_trait(attrs, lo)?
-        } else if self.check_impl_frontmatter() {
+        } else if self.check_impl_frontmatter(0) {
             // IMPL ITEM
-            self.parse_item_impl(attrs, def_())?
+            self.parse_item_impl(attrs, def_(), false)?
         } else if let Const::Yes(const_span) = self.parse_constness(case) {
             // CONST ITEM
             self.recover_const_mut(const_span);
@@ -265,8 +270,8 @@ impl<'a> Parser<'a> {
                 rhs,
                 define_opaque: None,
             }))
-        } else if self.is_reuse_path_item() {
-            self.parse_item_delegation()?
+        } else if let Some(kind) = self.is_reuse_item() {
+            self.parse_item_delegation(attrs, def_(), kind)?
         } else if self.check_keyword_case(exp!(Mod), case)
             || self.check_keyword_case(exp!(Unsafe), case) && self.is_keyword_ahead(1, &[kw::Mod])
         {
@@ -367,16 +372,25 @@ impl<'a> Parser<'a> {
     /// When parsing a statement, would the start of a path be an item?
     pub(super) fn is_path_start_item(&mut self) -> bool {
         self.is_kw_followed_by_ident(kw::Union) // no: `union::b`, yes: `union U { .. }`
-        || self.is_reuse_path_item()
+        || self.is_reuse_item().is_some() // yes: `reuse impl Trait for Struct { self.0 }`, yes: `reuse some_path::foo;`
         || self.check_trait_front_matter() // no: `auto::b`, yes: `auto trait X { .. }`
         || self.is_async_fn() // no(2015): `async::b`, yes: `async fn`
         || matches!(self.is_macro_rules_item(), IsMacroRulesItem::Yes{..}) // no: `macro_rules::b`, yes: `macro_rules! mac`
     }
 
-    fn is_reuse_path_item(&mut self) -> bool {
+    fn is_reuse_item(&mut self) -> Option<ReuseKind> {
+        if !self.token.is_keyword(kw::Reuse) {
+            return None;
+        }
+
         // no: `reuse ::path` for compatibility reasons with macro invocations
-        self.token.is_keyword(kw::Reuse)
-            && self.look_ahead(1, |t| t.is_path_start() && *t != token::PathSep)
+        if self.look_ahead(1, |t| t.is_path_start() && *t != token::PathSep) {
+            Some(ReuseKind::Path)
+        } else if self.check_impl_frontmatter(1) {
+            Some(ReuseKind::Impl)
+        } else {
+            None
+        }
     }
 
     /// Are we sure this could not possibly be a macro invocation?
@@ -560,6 +574,7 @@ impl<'a> Parser<'a> {
         &mut self,
         attrs: &mut AttrVec,
         defaultness: Defaultness,
+        is_reuse: bool,
     ) -> PResult<'a, ItemKind> {
         let mut constness = self.parse_constness(Case::Sensitive);
         let safety = self.parse_safety(Case::Sensitive);
@@ -628,7 +643,11 @@ impl<'a> Parser<'a> {
 
         generics.where_clause = self.parse_where_clause()?;
 
-        let impl_items = self.parse_item_list(attrs, |p| p.parse_impl_item(ForceCollect::No))?;
+        let impl_items = if is_reuse {
+            Default::default()
+        } else {
+            self.parse_item_list(attrs, |p| p.parse_impl_item(ForceCollect::No))?
+        };
 
         let (of_trait, self_ty) = match ty_second {
             Some(ty_second) => {
@@ -699,10 +718,76 @@ impl<'a> Parser<'a> {
         Ok(ItemKind::Impl(Impl { generics, of_trait, self_ty, items: impl_items, constness }))
     }
 
-    fn parse_item_delegation(&mut self) -> PResult<'a, ItemKind> {
+    fn parse_item_delegation(
+        &mut self,
+        attrs: &mut AttrVec,
+        defaultness: Defaultness,
+        kind: ReuseKind,
+    ) -> PResult<'a, ItemKind> {
         let span = self.token.span;
         self.expect_keyword(exp!(Reuse))?;
 
+        let item_kind = match kind {
+            ReuseKind::Path => self.parse_path_like_delegation(),
+            ReuseKind::Impl => self.parse_impl_delegation(span, attrs, defaultness),
+        }?;
+
+        self.psess.gated_spans.gate(sym::fn_delegation, span.to(self.prev_token.span));
+
+        Ok(item_kind)
+    }
+
+    fn parse_delegation_body(&mut self) -> PResult<'a, Option<Box<Block>>> {
+        Ok(if self.check(exp!(OpenBrace)) {
+            Some(self.parse_block()?)
+        } else {
+            self.expect(exp!(Semi))?;
+            None
+        })
+    }
+
+    fn parse_impl_delegation(
+        &mut self,
+        span: Span,
+        attrs: &mut AttrVec,
+        defaultness: Defaultness,
+    ) -> PResult<'a, ItemKind> {
+        let mut impl_item = self.parse_item_impl(attrs, defaultness, true)?;
+        let ItemKind::Impl(Impl { items, of_trait, .. }) = &mut impl_item else { unreachable!() };
+
+        let until_expr_span = span.to(self.prev_token.span);
+
+        let Some(of_trait) = of_trait else {
+            return Err(self
+                .dcx()
+                .create_err(errors::ImplReuseInherentImpl { span: until_expr_span }));
+        };
+
+        let body = self.parse_delegation_body()?;
+        let whole_reuse_span = span.to(self.prev_token.span);
+
+        items.push(Box::new(AssocItem {
+            id: DUMMY_NODE_ID,
+            attrs: Default::default(),
+            span: whole_reuse_span,
+            tokens: None,
+            vis: Visibility {
+                kind: VisibilityKind::Inherited,
+                span: whole_reuse_span,
+                tokens: None,
+            },
+            kind: AssocItemKind::DelegationMac(Box::new(DelegationMac {
+                qself: None,
+                prefix: of_trait.trait_ref.path.clone(),
+                suffixes: None,
+                body,
+            })),
+        }));
+
+        Ok(impl_item)
+    }
+
+    fn parse_path_like_delegation(&mut self) -> PResult<'a, ItemKind> {
         let (qself, path) = if self.eat_lt() {
             let (qself, path) = self.parse_qpath(PathStyle::Expr)?;
             (Some(qself), path)
@@ -713,43 +798,35 @@ impl<'a> Parser<'a> {
         let rename = |this: &mut Self| {
             Ok(if this.eat_keyword(exp!(As)) { Some(this.parse_ident()?) } else { None })
         };
-        let body = |this: &mut Self| {
-            Ok(if this.check(exp!(OpenBrace)) {
-                Some(this.parse_block()?)
-            } else {
-                this.expect(exp!(Semi))?;
-                None
-            })
-        };
 
-        let item_kind = if self.eat_path_sep() {
+        Ok(if self.eat_path_sep() {
             let suffixes = if self.eat(exp!(Star)) {
                 None
             } else {
                 let parse_suffix = |p: &mut Self| Ok((p.parse_path_segment_ident()?, rename(p)?));
                 Some(self.parse_delim_comma_seq(exp!(OpenBrace), exp!(CloseBrace), parse_suffix)?.0)
             };
-            let deleg = DelegationMac { qself, prefix: path, suffixes, body: body(self)? };
-            ItemKind::DelegationMac(Box::new(deleg))
+
+            ItemKind::DelegationMac(Box::new(DelegationMac {
+                qself,
+                prefix: path,
+                suffixes,
+                body: self.parse_delegation_body()?,
+            }))
         } else {
             let rename = rename(self)?;
             let ident = rename.unwrap_or_else(|| path.segments.last().unwrap().ident);
-            let deleg = Delegation {
+
+            ItemKind::Delegation(Box::new(Delegation {
                 id: DUMMY_NODE_ID,
                 qself,
                 path,
                 ident,
                 rename,
-                body: body(self)?,
+                body: self.parse_delegation_body()?,
                 from_glob: false,
-            };
-            ItemKind::Delegation(Box::new(deleg))
-        };
-
-        let span = span.to(self.prev_token.span);
-        self.psess.gated_spans.gate(sym::fn_delegation, span);
-
-        Ok(item_kind)
+            }))
+        })
     }
 
     fn parse_item_list<T>(
@@ -2594,7 +2671,7 @@ impl<'a> Parser<'a> {
         Ok(body)
     }
 
-    fn check_impl_frontmatter(&mut self) -> bool {
+    fn check_impl_frontmatter(&mut self, look_ahead: usize) -> bool {
         const ALL_QUALS: &[Symbol] = &[kw::Const, kw::Unsafe];
         // In contrast to the loop below, this call inserts `impl` into the
         // list of expected tokens shown in diagnostics.
@@ -2603,7 +2680,7 @@ impl<'a> Parser<'a> {
         }
         let mut i = 0;
         while i < ALL_QUALS.len() {
-            let action = self.look_ahead(i, |token| {
+            let action = self.look_ahead(i + look_ahead, |token| {
                 if token.is_keyword(kw::Impl) {
                     return Some(true);
                 }
@@ -2618,6 +2695,7 @@ impl<'a> Parser<'a> {
             }
             i += 1;
         }
+
         self.is_keyword_ahead(i, &[kw::Impl])
     }
 

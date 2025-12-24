@@ -2935,7 +2935,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     bug!("malformed valtree for an enum")
                 };
 
-                let ValTreeKind::Leaf(actual_variant_idx) = ***actual_variant_idx else {
+                let ValTreeKind::Leaf(actual_variant_idx) = *actual_variant_idx.to_value().valtree
+                else {
                     bug!("malformed valtree for an enum")
                 };
 
@@ -2943,7 +2944,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
             Constructor::IntRange(int_range) => {
                 let size = pat.ty().primitive_size(self.tcx);
-                let actual_int = valtree.unwrap_leaf().to_bits(size);
+                let actual_int = valtree.to_leaf().to_bits(size);
                 let actual_int = if pat.ty().is_signed() {
                     MaybeInfiniteInt::new_finite_int(actual_int, size.bits())
                 } else {
@@ -2951,33 +2952,33 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 };
                 IntRange::from_singleton(actual_int).is_subrange(int_range)
             }
-            Constructor::Bool(pattern_value) => match valtree.unwrap_leaf().try_to_bool() {
+            Constructor::Bool(pattern_value) => match valtree.to_leaf().try_to_bool() {
                 Ok(actual_value) => *pattern_value == actual_value,
                 Err(()) => bug!("bool value with invalid bits"),
             },
             Constructor::F16Range(l, h, end) => {
-                let actual = valtree.unwrap_leaf().to_f16();
+                let actual = valtree.to_leaf().to_f16();
                 match end {
                     RangeEnd::Included => (*l..=*h).contains(&actual),
                     RangeEnd::Excluded => (*l..*h).contains(&actual),
                 }
             }
             Constructor::F32Range(l, h, end) => {
-                let actual = valtree.unwrap_leaf().to_f32();
+                let actual = valtree.to_leaf().to_f32();
                 match end {
                     RangeEnd::Included => (*l..=*h).contains(&actual),
                     RangeEnd::Excluded => (*l..*h).contains(&actual),
                 }
             }
             Constructor::F64Range(l, h, end) => {
-                let actual = valtree.unwrap_leaf().to_f64();
+                let actual = valtree.to_leaf().to_f64();
                 match end {
                     RangeEnd::Included => (*l..=*h).contains(&actual),
                     RangeEnd::Excluded => (*l..*h).contains(&actual),
                 }
             }
             Constructor::F128Range(l, h, end) => {
-                let actual = valtree.unwrap_leaf().to_f128();
+                let actual = valtree.to_leaf().to_f128();
                 match end {
                     RangeEnd::Included => (*l..=*h).contains(&actual),
                     RangeEnd::Excluded => (*l..*h).contains(&actual),

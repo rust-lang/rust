@@ -2410,6 +2410,47 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
                 ConstArg { hir_id: self.next_id(), kind: hir::ConstArgKind::Path(qpath) }
             }
+            ExprKind::Struct(se) => {
+                let path = self.lower_qpath(
+                    expr.id,
+                    &se.qself,
+                    &se.path,
+                    // FIXME(mgca): we may want this to be `Optional` instead, but
+                    // we would also need to make sure that HIR ty lowering errors
+                    // when these paths wind up in signatures.
+                    ParamMode::Explicit,
+                    AllowReturnTypeNotation::No,
+                    ImplTraitContext::Disallowed(ImplTraitPosition::Path),
+                    None,
+                );
+
+                let fields = self.arena.alloc_from_iter(se.fields.iter().map(|f| {
+                    let hir_id = self.lower_node_id(f.id);
+                    // FIXME(mgca): This might result in lowering attributes that
+                    // then go unused as the `Target::ExprField` is not actually
+                    // corresponding to `Node::ExprField`.
+                    self.lower_attrs(hir_id, &f.attrs, f.span, Target::ExprField);
+
+                    let expr = if let ExprKind::ConstBlock(anon_const) = &f.expr.kind {
+                        let def_id = self.local_def_id(anon_const.id);
+                        let def_kind = self.tcx.def_kind(def_id);
+                        assert_eq!(DefKind::AnonConst, def_kind);
+
+                        self.lower_anon_const_to_const_arg_direct(anon_const)
+                    } else {
+                        self.lower_expr_to_const_arg_direct(&f.expr)
+                    };
+
+                    &*self.arena.alloc(hir::ConstArgExprField {
+                        hir_id,
+                        field: self.lower_ident(f.ident),
+                        expr: self.arena.alloc(expr),
+                        span: self.lower_span(f.span),
+                    })
+                }));
+
+                ConstArg { hir_id: self.next_id(), kind: hir::ConstArgKind::Struct(path, fields) }
+            }
             ExprKind::Underscore => ConstArg {
                 hir_id: self.lower_node_id(expr.id),
                 kind: hir::ConstArgKind::Infer(expr.span, ()),
