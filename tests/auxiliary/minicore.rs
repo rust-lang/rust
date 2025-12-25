@@ -210,6 +210,14 @@ impl Neg for isize {
     }
 }
 
+impl Neg for i8 {
+    type Output = i8;
+
+    fn neg(self) -> i8 {
+        loop {} // Dummy impl, not actually used
+    }
+}
+
 #[lang = "sync"]
 trait Sync {}
 impl_marker_trait!(
@@ -285,7 +293,6 @@ pub enum c_void {
 pub trait ConstParamTy_ {}
 
 #[lang = "Ordering"]
-#[derive(Copy, Clone, PartialEq, Eq)]
 #[repr(i8)]
 pub enum Ordering {
     Less = -1,
