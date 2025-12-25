@@ -166,10 +166,9 @@ pub macro const_panic {
         const fn do_panic($($arg: $ty),*) -> ! {
             $crate::intrinsics::const_eval_select!(
                 @capture { $($arg: $ty = $arg),* } -> !:
-                #[noinline]
-                if const #[track_caller] #[inline] { // Inline this, to prevent codegen
+                if const #[track_caller] {
                     $crate::panic!($const_msg)
-                } else #[track_caller] { // Do not inline this, it makes perf worse
+                } else #[track_caller] {
                     $crate::panic!($runtime_msg)
                 }
             )
@@ -195,7 +194,7 @@ pub macro const_panic {
 #[doc(hidden)]
 pub macro const_assert {
     ($condition: expr, $const_msg:literal, $runtime_msg:literal, $($arg:tt)*) => {{
-        if !$crate::intrinsics::likely($condition) {
+        if !($condition) {
             $crate::panic::const_panic!($const_msg, $runtime_msg, $($arg)*)
         }
     }}

@@ -2402,8 +2402,7 @@ where
 /// The `@capture` block declares which surrounding variables / expressions can be
 /// used inside the `if const`.
 /// Note that the two arms of this `if` really each become their own function, which is why the
-/// macro supports setting attributes for those functions. The runtime function is always
-/// marked as `#[inline]`.
+/// macro supports setting attributes for those functions. Both functions are marked as `#[inline]`.
 ///
 /// See [`const_eval_select()`] for the rules and requirements around that intrinsic.
 pub(crate) macro const_eval_select {
@@ -2413,35 +2412,14 @@ pub(crate) macro const_eval_select {
             $(#[$compiletime_attr:meta])* $compiletime:block
         else
             $(#[$runtime_attr:meta])* $runtime:block
-    ) => {
-        // Use the `noinline` arm, after adding explicit `inline` attributes
-        $crate::intrinsics::const_eval_select!(
-            @capture$([$($binders)*])? { $($arg : $ty = $val),* } $(-> $ret)? :
-            #[noinline]
-            if const
-                #[inline] // prevent codegen on this function
-                $(#[$compiletime_attr])*
-                $compiletime
-            else
-                #[inline] // avoid the overhead of an extra fn call
-                $(#[$runtime_attr])*
-                $runtime
-        )
-    },
-    // With a leading #[noinline], we don't add inline attributes
-    (
-        @capture$([$($binders:tt)*])? { $($arg:ident : $ty:ty = $val:expr),* $(,)? } $( -> $ret:ty )? :
-        #[noinline]
-        if const
-            $(#[$compiletime_attr:meta])* $compiletime:block
-        else
-            $(#[$runtime_attr:meta])* $runtime:block
     ) => {{
+        #[inline]
         $(#[$runtime_attr])*
         fn runtime$(<$($binders)*>)?($($arg: $ty),*) $( -> $ret )? {
             $runtime
         }
 
+        #[inline]
         $(#[$compiletime_attr])*
         const fn compiletime$(<$($binders)*>)?($($arg: $ty),*) $( -> $ret )? {
             // Don't warn if one of the arguments is unused.
