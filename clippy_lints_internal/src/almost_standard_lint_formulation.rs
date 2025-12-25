@@ -1,9 +1,11 @@
 use crate::lint_without_lint_pass::is_lint_ref_type;
 use clippy_utils::diagnostics::span_lint_and_help;
 use regex::Regex;
+use rustc_ast::token::DocFragmentKind;
 use rustc_hir::{Attribute, Item, ItemKind, Mutability};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
+use rustc_span::{Span, Symbol};
 
 declare_tool_lint! {
     /// ### What it does
@@ -46,28 +48,22 @@ impl<'tcx> LateLintPass<'tcx> for AlmostStandardFormulation {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
         let mut check_next = false;
         if let ItemKind::Static(Mutability::Not, _, ty, _) = item.kind {
-            let lines = cx
-                .tcx
-                .hir_attrs(item.hir_id())
-                .iter()
-                .filter_map(|attr| Attribute::doc_str(attr).map(|sym| (sym, attr)));
+            let lines = cx.tcx.hir_attrs(item.hir_id()).iter().filter_map(doc_attr);
             if is_lint_ref_type(cx, ty) {
-                for (line, attr) in lines {
+                for (line, span) in lines {
                     let cur_line = line.as_str().trim();
                     if check_next && !cur_line.is_empty() {
                         for formulation in &self.standard_formulations {
                             let starts_with_correct_formulation = cur_line.starts_with(formulation.correction);
                             if !starts_with_correct_formulation && formulation.wrong_pattern.is_match(cur_line) {
-                                if let Some(ident) = attr.ident() {
-                                    span_lint_and_help(
-                                        cx,
-                                        ALMOST_STANDARD_LINT_FORMULATION,
-                                        ident.span,
-                                        "non-standard lint formulation",
-                                        None,
-                                        format!("consider using `{}`", formulation.correction),
-                                    );
-                                }
+                                span_lint_and_help(
+                                    cx,
+                                    ALMOST_STANDARD_LINT_FORMULATION,
+                                    span,
+                                    "non-standard lint formulation",
+                                    None,
+                                    format!("consider using `{}`", formulation.correction),
+                                );
                                 return;
                             }
                         }
@@ -82,5 +78,12 @@ impl<'tcx> LateLintPass<'tcx> for AlmostStandardFormulation {
                 }
             }
         }
+    }
+}
+
+fn doc_attr(attr: &Attribute) -> Option<(Symbol, Span)> {
+    match Attribute::doc_str_and_fragment_kind(attr) {
+        Some((symbol, DocFragmentKind::Raw(span))) => Some((symbol, span)),
+        _ => None,
     }
 }

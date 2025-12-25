@@ -110,7 +110,7 @@ impl<'tcx> mir::visit::Visitor<'tcx> for PossibleBorrowerVisitor<'_, '_, 'tcx> {
                             immutable_borrowers.push(p.local);
                         }
                     },
-                    mir::Operand::Constant(..) => (),
+                    mir::Operand::Constant(..) | mir::Operand::RuntimeChecks(..) => (),
                 }
             }
 
@@ -151,7 +151,7 @@ fn rvalue_locals(rvalue: &mir::Rvalue<'_>, mut visit: impl FnMut(mir::Local)) {
 
     let mut visit_op = |op: &mir::Operand<'_>| match op {
         mir::Operand::Copy(p) | mir::Operand::Move(p) => visit(p.local),
-        mir::Operand::Constant(..) => (),
+        mir::Operand::Constant(..) | mir::Operand::RuntimeChecks(..) => (),
     };
 
     match rvalue {
