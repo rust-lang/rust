@@ -82,8 +82,6 @@ pub trait PartialEq {
 
 #[lang = "eq"]
 pub trait Eq: PartialEq {}
-
-
 #[lang = "bikeshed_guaranteed_no_drop"]
 pub trait BikeshedGuaranteedNoDrop {}
 
