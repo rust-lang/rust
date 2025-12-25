@@ -1,4 +1,4 @@
-error: casting `i32` to `f32` causes a loss of precision (`i32` is 32 bits wide, but `f32`'s mantissa is only 23 bits wide)
+error: casting `i32` to `f32` may cause a loss of precision (`i32` is 32 bits wide, but `f32`'s mantissa is only 23 bits wide)
   --> tests/ui/cast.rs:23:5
    |
 LL |     x0 as f32;
@@ -7,31 +7,31 @@ LL |     x0 as f32;
    = note: `-D clippy::cast-precision-loss` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::cast_precision_loss)]`
 
-error: casting `i64` to `f32` causes a loss of precision (`i64` is 64 bits wide, but `f32`'s mantissa is only 23 bits wide)
+error: casting `i64` to `f32` may cause a loss of precision (`i64` is 64 bits wide, but `f32`'s mantissa is only 23 bits wide)
   --> tests/ui/cast.rs:27:5
    |
 LL |     x1 as f32;
    |     ^^^^^^^^^
 
-error: casting `i64` to `f64` causes a loss of precision (`i64` is 64 bits wide, but `f64`'s mantissa is only 52 bits wide)
+error: casting `i64` to `f64` may cause a loss of precision (`i64` is 64 bits wide, but `f64`'s mantissa is only 52 bits wide)
   --> tests/ui/cast.rs:30:5
    |
 LL |     x1 as f64;
    |     ^^^^^^^^^
 
-error: casting `u32` to `f32` causes a loss of precision (`u32` is 32 bits wide, but `f32`'s mantissa is only 23 bits wide)
+error: casting `u32` to `f32` may cause a loss of precision (`u32` is 32 bits wide, but `f32`'s mantissa is only 23 bits wide)
   --> tests/ui/cast.rs:34:5
    |
 LL |     x2 as f32;
    |     ^^^^^^^^^
 
-error: casting `u64` to `f32` causes a loss of precision (`u64` is 64 bits wide, but `f32`'s mantissa is only 23 bits wide)
+error: casting `u64` to `f32` may cause a loss of precision (`u64` is 64 bits wide, but `f32`'s mantissa is only 23 bits wide)
   --> tests/ui/cast.rs:38:5
    |
 LL |     x3 as f32;
    |     ^^^^^^^^^
 
-error: casting `u64` to `f64` causes a loss of precision (`u64` is 64 bits wide, but `f64`'s mantissa is only 52 bits wide)
+error: casting `u64` to `f64` may cause a loss of precision (`u64` is 64 bits wide, but `f64`'s mantissa is only 52 bits wide)
   --> tests/ui/cast.rs:41:5
    |
 LL |     x3 as f64;

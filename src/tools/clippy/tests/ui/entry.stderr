@@ -246,5 +246,26 @@ LL +         e.insert(42);
 LL +     }
    |
 
-error: aborting due to 11 previous errors
+error: usage of `contains_key` followed by `insert` on a `HashMap`
+  --> tests/ui/entry.rs:285:5
+   |
+LL | /     if !m.contains_key(&k) {
+LL | |
+LL | |         #[cfg(test)]
+LL | |         very_important_fn();
+LL | |         m.insert(k, v);
+LL | |     }
+   | |_____^
+   |
+help: try
+   |
+LL ~     m.entry(k).or_insert_with(|| {
+LL +
+LL +         #[cfg(test)]
+LL +         very_important_fn();
+LL +         v
+LL +     });
+   |
+
+error: aborting due to 12 previous errors
 
