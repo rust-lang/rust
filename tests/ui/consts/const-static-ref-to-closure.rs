@@ -1,7 +1,7 @@
+//! regression test for <https://github.com/rust-lang/rust/issues/25180>
 //@ check-pass
 #![allow(dead_code)]
-#![allow(non_upper_case_globals)]
 
-const x: &'static dyn Fn() = &|| println!("ICE here");
+const X: &'static dyn Fn() = &|| println!("ICE here");
 
 fn main() {}
