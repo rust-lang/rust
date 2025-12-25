@@ -322,7 +322,7 @@ fn check_impl(
         }
         let res = spellcheck_runner(root_path, &outdir, &cargo, &args);
         if res.is_err() {
-            rerun_with_bless("spellcheck", "fix typos");
+            rerun_with_bless("spellcheck", "fix typechecktypos");
         }
         res?;
     }
@@ -778,14 +778,27 @@ impl ExtraCheckArg {
             ExtraCheckLang::Spellcheck => {
                 ensure_version(build_dir, "typos", SPELLCHECK_VER).is_ok()
             }
-            ExtraCheckLang::Shell => {
-                has_shellcheck().is_ok()
-            }
+            ExtraCheckLang::Shell => has_shellcheck().is_ok(),
             ExtraCheckLang::Js => {
-                // implement detailed check
-                rustdoc_js::has_tool(build_dir, "eslint")
-                && rustdoc_js::has_tool(build_dir, "jslint")
-                && rustdoc_js::has_tool(build_dir, "tsc")
+                match self.kind {
+                    Some(ExtraCheckKind::Lint) => {
+                        // If Lint is enabled, check both eslint and es-check.
+                        rustdoc_js::has_tool(build_dir, "eslint")
+                            && rustdoc_js::has_tool(build_dir, "es-check")
+                    }
+                    Some(ExtraCheckKind::Typecheck) => {
+                        // If Typecheck is enabled, check tsc.
+                        rustdoc_js::has_tool(build_dir, "tsc")
+                    }
+                    None => {
+                        // No kind means it will check both Lint and Typecheck.
+                        rustdoc_js::has_tool(build_dir, "eslint")
+                            && rustdoc_js::has_tool(build_dir, "es-check")
+                            && rustdoc_js::has_tool(build_dir, "tsc")
+                    }
+                    // Unreachable.
+                    Some(_) => false,
+                }
             }
             _ => todo!("implement other checks"),
         }
