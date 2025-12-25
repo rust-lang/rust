@@ -287,7 +287,7 @@ pub trait ConstParamTy_ {}
 #[lang = "Ordering"]
 #[repr(i8)]
 pub enum Ordering {
-    Less = -1,
+    Less = 0xFFu8 as i8,
     Equal = 0,
     Greater = 1,
 }
