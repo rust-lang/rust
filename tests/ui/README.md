@@ -328,7 +328,7 @@ Tests for crate resolution and loading behavior, including `extern crate` declar
 
 ## `tests/ui/cross/`: Various tests related to the concept of "cross"
 
-**FIXME**: The unifying topic of these tests appears to be that their filenames begin with the word "cross". The similarities end there - one test is about "cross-borrowing" a `Box<T>` into `&T`, while another is about a global trait used "across" files. Some of these terminology are really outdated and does not match the current terminology. Additionally, "cross" is also way too generic, it's easy to confuse with cross-compile.
+**FIXME**: The unifying topic of these tests appears to be that their filenames begin with the word "cross". The similarities end there - one test is about "cross-borrowing" a `Box<T>` into `&T`, while another is about a global trait used "across" files. Some of this terminology is really outdated and does not match the current terminology. Additionally, "cross" is also way too generic, it's easy to confuse with cross-compile.
 
 ## `tests/ui/cross-crate/`: Cross-Crate Interaction
 
@@ -911,7 +911,7 @@ Something is missing which could be added to fix (e.g. suggestions).
 
 Tests for checking missing trait bounds, and their diagnostics.
 
-**FIMXE**: Maybe a subdirectory of `ui/trait-bounds` would be more appropriate.
+**FIXME**: Maybe a subdirectory of `ui/trait-bounds` would be more appropriate.
 
 ## `tests/ui/modules/`
 
@@ -957,7 +957,7 @@ Despite the size of the directory, this is a single test, spawning a sprawling `
 
 A very similar principle as `non_modrs_mods`, but with an added inline `mod` statement inside another `mod`'s code block.
 
-**FXIME**: Consider merge with `tests/ui/modules/`, keeping the directory structure.
+**FIXME**: Consider merge with `tests/ui/modules/`, keeping the directory structure.
 
 ## `tests/ui/no_std/`
 
