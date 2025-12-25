@@ -821,7 +821,6 @@ dependencies = [
  "intern",
  "itertools 0.14.0",
  "la-arena 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "mbe",
  "query-group-macro",
  "ra-ap-rustc_abi",
  "ra-ap-rustc_parse_format",
@@ -1219,7 +1218,6 @@ dependencies = [
  "hashbrown 0.14.5",
  "rayon",
  "rustc-hash 2.1.1",
- "smallvec",
  "triomphe",
 ]
 
@@ -1882,7 +1880,6 @@ dependencies = [
  "postcard",
  "proc-macro-api",
  "proc-macro-srv",
- "tt",
 ]
 
 [[package]]
@@ -2782,7 +2779,6 @@ dependencies = [
  "hir-expand",
  "intern",
  "paths",
- "rustc-hash 2.1.1",
  "span",
  "stdx",
  "test-utils",
