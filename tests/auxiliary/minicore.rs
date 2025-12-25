@@ -70,6 +70,20 @@ impl<T: PointeeSized> LegacyReceiver for &mut T {}
 #[lang = "copy"]
 pub trait Copy: Sized {}
 
+#[lang = "clone"]
+pub trait Clone {
+    fn clone(&self) -> Self;
+}
+
+#[lang = "partial_eq"]
+pub trait PartialEq {
+    fn eq(&self, other: &Self) -> bool;
+}
+
+#[lang = "eq"]
+pub trait Eq: PartialEq {}
+
+
 #[lang = "bikeshed_guaranteed_no_drop"]
 pub trait BikeshedGuaranteedNoDrop {}
 
