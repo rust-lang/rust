@@ -40,6 +40,12 @@ fn main() {
         if !args.iter().any(|arg| arg == "--sysroot") {
             cmd.arg("--sysroot").arg(&sysroot);
         }
+    } else {
+        // Find any host flags that were passed by bootstrap.
+        // The flags are stored in a RUSTC_HOST_FLAGS variable, separated by spaces.
+        if let Ok(flags) = std::env::var("RUSTC_HOST_FLAGS") {
+            cmd.args(flags.split(' '));
+        }
     }
 
     cmd.args(&args);
