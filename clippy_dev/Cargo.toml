@@ -10,6 +10,7 @@ clap = { version = "4.4", features = ["derive"] }
 indoc = "1.0"
 itertools = "0.12"
 opener = "0.7"
+rustc-literal-escaper = "0.0.5"
 walkdir = "2.3"
 
 [package.metadata.rust-analyzer]

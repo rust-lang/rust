@@ -214,3 +214,8 @@ mod issue8055_regression {
         .len();
     }
 }
+
+fn issue16270() {
+    // Do not lint, `..` implements `Index` but is not `usize`
+    _ = &(1..3).collect::<Vec<i32>>()[..];
+}

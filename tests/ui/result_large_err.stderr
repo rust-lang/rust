@@ -104,5 +104,21 @@ LL | pub fn array_error<T, U>() -> Result<(), ArrayError<(i32, T), U>> {
    |
    = help: try reducing the size of `ArrayError<(i32, T), U>`, for example by boxing large elements or replacing it with `Box<ArrayError<(i32, T), U>>`
 
-error: aborting due to 12 previous errors
+error: the `Err`-variant returned from this closure is very large
+  --> tests/ui/result_large_err.rs:148:25
+   |
+LL |     let closure = || -> Result<(), Large> { Ok(()) };
+   |                         ^^^^^^^^^^^^^^^^^ the `Err`-variant is at least 1024 bytes
+   |
+   = help: try reducing the size of `[u8; 1024]`, for example by boxing large elements or replacing it with `Box<[u8; 1024]>`
+
+error: the `Err`-variant returned from this closure is very large
+  --> tests/ui/result_large_err.rs:150:19
+   |
+LL |     let closure = || Ok::<(), Large>(());
+   |                   ^^^^^^^^^^^^^^^^^^^^^^ the `Err`-variant is at least 1024 bytes
+   |
+   = help: try reducing the size of `[u8; 1024]`, for example by boxing large elements or replacing it with `Box<[u8; 1024]>`
+
+error: aborting due to 14 previous errors
 
