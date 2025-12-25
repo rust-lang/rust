@@ -446,7 +446,8 @@ fn levenstein_not_1(a_name: &str, b_name: &str) -> bool {
     debug_assert!(a_name.chars().count() < b_name.chars().count());
     let mut a_chars = a_name.chars();
     let mut b_chars = b_name.chars();
-    while let (Some(a), Some(b)) = (a_chars.next(), b_chars.next()) {
+    while let Some(a) = a_chars.next() {
+        let b = b_chars.next().unwrap();
         if a == b {
             continue;
         }
@@ -458,6 +459,7 @@ fn levenstein_not_1(a_name: &str, b_name: &str) -> bool {
         // ntuple
         return true;
     }
-    // for item in items
-    true
+    // If we matched all characters of `a` but `b` is longer,
+    // it's a single insertion only if `b` has exactly one remaining char.
+    b_chars.count() != 1
 }
