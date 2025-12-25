@@ -52,5 +52,50 @@ reuse to_reuse_functions::const_fn_extern;
 #[must_use = "some reason"]
 reuse to_reuse_functions::async_fn_extern;
 
+mod recursive {
+    // Check that `baz` inherit attribute from `foo`
+    mod first {
+        fn bar() {}
+        #[must_use = "some reason"]
+        reuse bar as foo;
+        reuse foo as baz;
+    }
+
+    // Check that `baz` inherit attribute from `bar`
+    mod second {
+        #[must_use = "some reason"]
+        fn bar() {}
+
+        reuse bar as foo;
+        reuse foo as baz;
+    }
+
+    // Check that `foo5` don't inherit attribute from `bar`
+    // and inherit attribute from foo4, check that foo1, foo2 and foo3
+    // inherit attribute from bar
+    mod third {
+        #[must_use = "some reason"]
+        fn bar() {}
+        reuse bar as foo1;
+        reuse foo1 as foo2;
+        reuse foo2 as foo3;
+        #[must_use = "foo4"]
+        reuse foo3 as foo4;
+        reuse foo4 as foo5;
+    }
+
+    mod fourth {
+        trait T {
+            fn foo(&self, x: usize) -> usize { x + 1 }
+        }
+
+        struct X;
+        impl T for X {}
+
+        #[must_use = "some reason"]
+        reuse <X as T>::foo { self + 1 }
+        reuse foo as bar { self + 1 }
+    }
+}
 
 fn main() {}
