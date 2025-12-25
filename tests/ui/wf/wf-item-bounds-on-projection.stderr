@@ -1,0 +1,36 @@
+error[E0284]: type annotations needed
+  --> $DIR/wf-item-bounds-on-projection.rs:21:23
+   |
+LL |     T1: AssocHasBound<Assoc = i32>,
+   |                       ^^^^^^^^^^^ cannot infer type
+   |
+   = note: cannot satisfy `<T1 as AssocHasBound>::Assoc == _`
+
+error[E0277]: the trait bound `i32: Required` is not satisfied
+  --> $DIR/wf-item-bounds-on-projection.rs:26:53
+   |
+LL | fn opaque_with_concrete_assoc(_: impl AssocHasBound<Assoc = i32>) {}
+   |                                                     ^^^^^^^^^^^ the trait `Required` is not implemented for `i32`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/wf-item-bounds-on-projection.rs:5:1
+   |
+LL | trait Required {}
+   | ^^^^^^^^^^^^^^
+
+error[E0277]: the trait bound `i32: Required` is not satisfied
+  --> $DIR/wf-item-bounds-on-projection.rs:12:32
+   |
+LL |     type Assoc1: AssocHasBound<Assoc = i32>;
+   |                                ^^^^^^^^^^^ the trait `Required` is not implemented for `i32`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/wf-item-bounds-on-projection.rs:5:1
+   |
+LL | trait Required {}
+   | ^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0277, E0284.
+For more information about an error, try `rustc --explain E0277`.
