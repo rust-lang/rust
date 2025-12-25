@@ -595,10 +595,9 @@ fn install_requirements(
     Ok(())
 }
 
-/// Check that shellcheck is installed then run it at the given path
-fn shellcheck_runner(args: &[&OsStr]) -> Result<(), Error> {
+fn has_shellcheck() -> Result<(), Error> {
     match Command::new("shellcheck").arg("--version").status() {
-        Ok(_) => (),
+        Ok(_) => Ok(()),
         Err(e) if e.kind() == io::ErrorKind::NotFound => {
             return Err(Error::MissingReq(
                 "shellcheck",
@@ -611,6 +610,13 @@ fn shellcheck_runner(args: &[&OsStr]) -> Result<(), Error> {
             ));
         }
         Err(e) => return Err(e.into()),
+    }
+}
+
+/// Check that shellcheck is installed then run it at the given path
+fn shellcheck_runner(args: &[&OsStr]) -> Result<(), Error> {
+    if let Err(err) = has_shellcheck() {
+        return Err(err);
     }
 
     let status = Command::new("shellcheck").args(args).status()?;
@@ -771,6 +777,15 @@ impl ExtraCheckArg {
         match self.lang {
             ExtraCheckLang::Spellcheck => {
                 ensure_version(build_dir, "typos", SPELLCHECK_VER).is_ok()
+            }
+            ExtraCheckLang::Shell => {
+                has_shellcheck().is_ok()
+            }
+            ExtraCheckLang::Js => {
+                // implement detailed check
+                rustdoc_js::has_tool(build_dir, "eslint")
+                && rustdoc_js::has_tool(build_dir, "jslint")
+                && rustdoc_js::has_tool(build_dir, "tsc")
             }
             _ => todo!("implement other checks"),
         }
