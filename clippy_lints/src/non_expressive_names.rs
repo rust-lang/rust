@@ -461,5 +461,8 @@ fn levenstein_not_1(a_name: &str, b_name: &str) -> bool {
     }
     // If we matched all characters of `a` but `b` is longer,
     // it's a single insertion only if `b` has exactly one remaining char.
-    b_chars.count() != 1
+    // Not triggering when it is a plural name like "items" vs "item".
+    let ref_b_chars = &mut b_chars;
+    let leftover_count = ref_b_chars.clone().count();
+    leftover_count != 1 || ref_b_chars.next() == Some('s')
 }

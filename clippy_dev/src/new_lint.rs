@@ -553,10 +553,10 @@ fn test_camel_case() {
     assert_eq!(s2, "ALint");
 
     let name = "a_really_long_new_lint";
-    let name2 = to_camel_case(name);
-    assert_eq!(name2, "AReallyLongNewLint");
+    let name_camel = to_camel_case(name);
+    assert_eq!(name_camel, "AReallyLongNewLint");
 
-    let name3 = "lint__name";
-    let name4 = to_camel_case(name3);
-    assert_eq!(name4, "LintName");
+    let name_other = "lint__name";
+    let name_other_camel = to_camel_case(name_other);
+    assert_eq!(name_other_camel, "LintName");
 }

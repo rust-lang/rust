@@ -154,9 +154,9 @@ fn expr_ty_matches_p_ty(cx: &LateContext<'_>, expr: &Expr<'_>, p_expr: &Expr<'_>
 fn pat_same_as_expr(pat: &Pat<'_>, expr: &Expr<'_>) -> bool {
     match (&pat.kind, &expr.kind) {
         // Example: `Some(val) => Some(val)`
-        (PatKind::TupleStruct(QPath::Resolved(_, path), tuple_params, _), ExprKind::Call(call_expr, call_params)) => {
+        (PatKind::TupleStruct(QPath::Resolved(_, q_path), tuple_params, _), ExprKind::Call(call_expr, call_params)) => {
             if let ExprKind::Path(QPath::Resolved(_, call_path)) = call_expr.kind {
-                return over(path.segments, call_path.segments, |pat_seg, call_seg| {
+                return over(q_path.segments, call_path.segments, |pat_seg, call_seg| {
                     pat_seg.ident.name == call_seg.ident.name
                 }) && same_non_ref_symbols(tuple_params, call_params);
             }

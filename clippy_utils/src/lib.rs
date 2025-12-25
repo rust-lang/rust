@@ -1955,8 +1955,8 @@ pub fn is_expr_identity_of_pat(cx: &LateContext<'_>, pat: &Pat<'_>, expr: &Expr<
         (PatKind::Binding(_, id, _, _), _) if by_hir => {
             expr.res_local_id() == Some(id) && cx.typeck_results().expr_adjustments(expr).is_empty()
         },
-        (PatKind::Binding(_, _, ident, _), ExprKind::Path(QPath::Resolved(_, path))) => {
-            matches!(path.segments, [ segment] if segment.ident.name == ident.name)
+        (PatKind::Binding(_, _, ident, _), ExprKind::Path(QPath::Resolved(_, q_path))) => {
+            matches!(q_path.segments, [ segment] if segment.ident.name == ident.name)
         },
         (PatKind::Tuple(pats, dotdot), ExprKind::Tup(tup))
             if dotdot.as_opt_usize().is_none() && pats.len() == tup.len() =>
