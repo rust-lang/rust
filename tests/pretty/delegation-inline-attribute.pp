@@ -1,6 +1,6 @@
 //@ pretty-compare-only
 //@ pretty-mode:hir
-//@ pp-exact:delegation_inline_attribute.pp
+//@ pp-exact:delegation-inline-attribute.pp
 
 #![allow(incomplete_features)]
 #![feature(fn_delegation)]
