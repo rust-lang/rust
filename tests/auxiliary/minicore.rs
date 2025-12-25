@@ -284,6 +284,19 @@ pub enum c_void {
 #[diagnostic::on_unimplemented(message = "`{Self}` can't be used as a const parameter type")]
 pub trait ConstParamTy_ {}
 
+#[lang = "Ordering"]
+#[repr(i8)]
+pub enum Ordering {
+    Less = 0xFFu8  as i8,
+    Equal = 0,
+    Greater = 1,
+}
+impl Copy for Ordering{}
+
+#[rustc_nounwind]
+#[rustc_intrinsic]
+pub const fn three_way_compare<T: Copy>(lhs: T, rhs: T) -> Ordering;
+
 pub enum SimdAlign {
     // These values must match the compiler's `SimdAlign` defined in
     // `rustc_middle/src/ty/consts/int.rs`!
