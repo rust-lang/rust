@@ -3,7 +3,7 @@
 //! This library, provided by the standard distribution, provides the types
 //! consumed in the interfaces of procedurally defined macro definitions such as
 //! function-like macros `#[proc_macro]`, macro attributes `#[proc_macro_attribute]` and
-//! custom derive attributes`#[proc_macro_derive]`.
+//! custom derive attributes `#[proc_macro_derive]`.
 //!
 //! See [the book] for more.
 //!
@@ -210,7 +210,6 @@ impl FromStr for TokenStream {
 /// `TokenTree::Punct`, or `TokenTree::Literal`.
 #[stable(feature = "proc_macro_lib", since = "1.15.0")]
 impl fmt::Display for TokenStream {
-    #[allow(clippy::recursive_format_impl)] // clippy doesn't see the specialization
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match &self.0 {
             Some(ts) => write!(f, "{}", ts.to_string()),
@@ -219,7 +218,7 @@ impl fmt::Display for TokenStream {
     }
 }
 
-/// Prints token in a form convenient for debugging.
+/// Prints tokens in a form convenient for debugging.
 #[stable(feature = "proc_macro_lib", since = "1.15.0")]
 impl fmt::Debug for TokenStream {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -571,7 +570,7 @@ impl Span {
     /// This path should not be embedded in the output of the macro; prefer `file()` instead.
     #[stable(feature = "proc_macro_span_file", since = "1.88.0")]
     pub fn local_file(&self) -> Option<PathBuf> {
-        self.0.local_file().map(|s| PathBuf::from(s))
+        self.0.local_file().map(PathBuf::from)
     }
 
     /// Creates a new span encompassing `self` and `other`.
@@ -750,7 +749,6 @@ impl From<Literal> for TokenTree {
 /// `TokenTree::Punct`, or `TokenTree::Literal`.
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
 impl fmt::Display for TokenTree {
-    #[allow(clippy::recursive_format_impl)] // clippy doesn't see the specialization
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             TokenTree::Group(t) => write!(f, "{t}"),
@@ -888,7 +886,6 @@ impl Group {
 /// with `Delimiter::None` delimiters.
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
 impl fmt::Display for Group {
-    #[allow(clippy::recursive_format_impl)] // clippy doesn't see the specialization
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", TokenStream::from(TokenTree::from(self.clone())))
     }
