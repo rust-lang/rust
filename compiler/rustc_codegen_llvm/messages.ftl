@@ -19,7 +19,12 @@ codegen_llvm_lto_bitcode_from_rlib = failed to get bitcode from object file for 
 codegen_llvm_mismatch_data_layout =
     data-layout for target `{$rustc_target}`, `{$rustc_layout}`, differs from LLVM target's `{$llvm_target}` default layout, `{$llvm_layout}`
 
-codegen_llvm_offload_without_enable = using the offload feature requires -Z offload=Enable
+codegen_llvm_offload_bundleimages_failed = call to BundleImages failed, `host.out` was not created
+codegen_llvm_offload_embed_failed = call to EmbedBufferInModule failed, `host.o` was not created
+codegen_llvm_offload_no_abs_path = using the `-Z offload=Host=/absolute/path/to/host.out` flag requires an absolute path
+codegen_llvm_offload_no_host_out = using the `-Z offload=Host=/absolute/path/to/host.out` flag must point to a `host.out` file
+codegen_llvm_offload_nonexisting = the given path/file to `host.out` does not exist. Did you forget to run the device compilation first?
+codegen_llvm_offload_without_enable = using the offload feature requires -Z offload=<Device or Host=/absolute/path/to/host.out>
 codegen_llvm_offload_without_fat_lto = using the offload feature requires -C lto=fat
 
 codegen_llvm_parse_bitcode = failed to parse bitcode for LTO module

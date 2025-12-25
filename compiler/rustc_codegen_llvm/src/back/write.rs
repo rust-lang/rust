@@ -568,8 +568,7 @@ pub(crate) unsafe fn llvm_optimize(
     // FIXME(ZuseZ4): In a future update we could figure out how to only optimize individual functions getting
     // differentiated.
 
-    let consider_ad =
-        cfg!(feature = "llvm_enzyme") && config.autodiff.contains(&config::AutoDiff::Enable);
+    let consider_ad = config.autodiff.contains(&config::AutoDiff::Enable);
     let run_enzyme = autodiff_stage == AutodiffStage::DuringAD;
     let print_before_enzyme = config.autodiff.contains(&config::AutoDiff::PrintModBefore);
     let print_after_enzyme = config.autodiff.contains(&config::AutoDiff::PrintModAfter);
@@ -704,10 +703,9 @@ pub(crate) unsafe fn llvm_optimize(
         llvm::set_value_name(new_fn, &name);
     }
 
-    if cgcx.target_is_like_gpu && config.offload.contains(&config::Offload::Enable) {
+    if cgcx.target_is_like_gpu && config.offload.contains(&config::Offload::Device) {
         let cx =
             SimpleCx::new(module.module_llvm.llmod(), module.module_llvm.llcx, cgcx.pointer_size);
-
         for func in cx.get_functions() {
             let offload_kernel = "offload-kernel";
             if attributes::has_string_attr(func, offload_kernel) {
@@ -776,12 +774,77 @@ pub(crate) unsafe fn llvm_optimize(
         )
     };
 
-    if cgcx.target_is_like_gpu && config.offload.contains(&config::Offload::Enable) {
+    if cgcx.target_is_like_gpu && config.offload.contains(&config::Offload::Device) {
+        let device_path = cgcx.output_filenames.path(OutputType::Object);
+        let device_dir = device_path.parent().unwrap();
+        let device_out = device_dir.join("host.out");
+        let device_out_c = path_to_c_string(device_out.as_path());
         unsafe {
-            llvm::LLVMRustBundleImages(module.module_llvm.llmod(), module.module_llvm.tm.raw());
+            // 1) Bundle device module into offload image host.out (device TM)
+            let ok = llvm::LLVMRustBundleImages(
+                module.module_llvm.llmod(),
+                module.module_llvm.tm.raw(),
+                device_out_c.as_ptr(),
+            );
+            if !ok || !device_out.exists() {
+                dcx.emit_err(crate::errors::OffloadBundleImagesFailed);
+            }
         }
     }
 
+    // This assumes that we previously compiled our kernels for a gpu target, which created a
+    // `host.out` artifact. The user is supposed to provide us with a path to this artifact, we
+    // don't need any other artifacts from the previous run. We will embed this artifact into our
+    // LLVM-IR host module, to create a `host.o` ObjectFile, which we will write to disk.
+    // The last, not yet automated steps uses the `clang-linker-wrapper` to process `host.o`.
+    if !cgcx.target_is_like_gpu {
+        if let Some(device_path) = config
+            .offload
+            .iter()
+            .find_map(|o| if let config::Offload::Host(path) = o { Some(path) } else { None })
+        {
+            let device_pathbuf = PathBuf::from(device_path);
+            if device_pathbuf.is_relative() {
+                dcx.emit_err(crate::errors::OffloadWithoutAbsPath);
+            } else if device_pathbuf
+                .file_name()
+                .and_then(|n| n.to_str())
+                .is_some_and(|n| n != "host.out")
+            {
+                dcx.emit_err(crate::errors::OffloadWrongFileName);
+            } else if !device_pathbuf.exists() {
+                dcx.emit_err(crate::errors::OffloadNonexistingPath);
+            }
+            let host_path = cgcx.output_filenames.path(OutputType::Object);
+            let host_dir = host_path.parent().unwrap();
+            let out_obj = host_dir.join("host.o");
+            let host_out_c = path_to_c_string(device_pathbuf.as_path());
+
+            // 2) Finalize host: lib.bc + host.out -> host.o (host TM)
+            // We create a full clone of our LLVM host module, since we will embed the device IR
+            // into it, and this might break caching or incremental compilation otherwise.
+            let llmod2 = llvm::LLVMCloneModule(module.module_llvm.llmod());
+            let ok =
+                unsafe { llvm::LLVMRustOffloadEmbedBufferInModule(llmod2, host_out_c.as_ptr()) };
+            if !ok {
+                dcx.emit_err(crate::errors::OffloadEmbedFailed);
+            }
+            write_output_file(
+                dcx,
+                module.module_llvm.tm.raw(),
+                config.no_builtins,
+                llmod2,
+                &out_obj,
+                None,
+                llvm::FileType::ObjectFile,
+                &cgcx.prof,
+                true,
+            );
+            // We ignore cgcx.save_temps here and unconditionally always keep our `host.out` artifact.
+            // Otherwise, recompiling the host code would fail since we deleted that device artifact
+            // in the previous host compilation, which would be confusing at best.
+        }
+    }
     result.into_result().unwrap_or_else(|()| llvm_err(dcx, LlvmError::RunLlvmPasses))
 }
 
@@ -818,8 +881,7 @@ pub(crate) fn optimize(
 
         // If we know that we will later run AD, then we disable vectorization and loop unrolling.
         // Otherwise we pretend AD is already done and run the normal opt pipeline (=PostAD).
-        let consider_ad =
-            cfg!(feature = "llvm_enzyme") && config.autodiff.contains(&config::AutoDiff::Enable);
+        let consider_ad = config.autodiff.contains(&config::AutoDiff::Enable);
         let autodiff_stage = if consider_ad { AutodiffStage::PreAD } else { AutodiffStage::PostAD };
         // The embedded bitcode is used to run LTO/ThinLTO.
         // The bitcode obtained during the `codegen` phase is no longer suitable for performing LTO.

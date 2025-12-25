@@ -243,7 +243,6 @@ TrivialTypeTraversalImpls! {
     crate::mir::FakeReadCause,
     crate::mir::Local,
     crate::mir::MirPhase,
-    crate::mir::NullOp,
     crate::mir::Promoted,
     crate::mir::RawPtrKind,
     crate::mir::RetagKind,
@@ -257,8 +256,8 @@ TrivialTypeTraversalImpls! {
     crate::ty::AssocItem,
     crate::ty::AssocKind,
     crate::ty::BoundRegion,
+    crate::ty::ScalarInt,
     crate::ty::UserTypeAnnotationIndex,
-    crate::ty::ValTree<'tcx>,
     crate::ty::abstract_const::NotConstEvaluatable,
     crate::ty::adjustment::AutoBorrowMutability,
     crate::ty::adjustment::PointerCoercion,
@@ -284,6 +283,7 @@ TrivialTypeTraversalImpls! {
 // interners).
 TrivialTypeTraversalAndLiftImpls! {
     // tidy-alphabetical-start
+    crate::mir::RuntimeChecks,
     crate::ty::BoundTy,
     crate::ty::ParamTy,
     crate::ty::instance::ReifyReason,
@@ -694,6 +694,37 @@ impl<'tcx> TypeSuperVisitable<TyCtxt<'tcx>> for ty::Const<'tcx> {
             | ConstKind::Bound(..)
             | ConstKind::Placeholder(_) => V::Result::output(),
         }
+    }
+}
+
+impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for ty::ValTree<'tcx> {
+    fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> V::Result {
+        let inner: &ty::ValTreeKind<TyCtxt<'tcx>> = &*self;
+        inner.visit_with(visitor)
+    }
+}
+
+impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for ty::ValTree<'tcx> {
+    fn try_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
+        self,
+        folder: &mut F,
+    ) -> Result<Self, F::Error> {
+        let inner: &ty::ValTreeKind<TyCtxt<'tcx>> = &*self;
+        let new_inner = inner.clone().try_fold_with(folder)?;
+
+        if inner == &new_inner {
+            Ok(self)
+        } else {
+            let valtree = folder.cx().intern_valtree(new_inner);
+            Ok(valtree)
+        }
+    }
+
+    fn fold_with<F: TypeFolder<TyCtxt<'tcx>>>(self, folder: &mut F) -> Self {
+        let inner: &ty::ValTreeKind<TyCtxt<'tcx>> = &*self;
+        let new_inner = inner.clone().fold_with(folder);
+
+        if inner == &new_inner { self } else { folder.cx().intern_valtree(new_inner) }
     }
 }
 

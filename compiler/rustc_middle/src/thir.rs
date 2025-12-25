@@ -928,7 +928,7 @@ impl<'tcx> PatRange<'tcx> {
         let lo_is_min = match self.lo {
             PatRangeBoundary::NegInfinity => true,
             PatRangeBoundary::Finite(value) => {
-                let lo = value.try_to_scalar_int().unwrap().to_bits(size) ^ bias;
+                let lo = value.to_leaf().to_bits(size) ^ bias;
                 lo <= min
             }
             PatRangeBoundary::PosInfinity => false,
@@ -937,7 +937,7 @@ impl<'tcx> PatRange<'tcx> {
             let hi_is_max = match self.hi {
                 PatRangeBoundary::NegInfinity => false,
                 PatRangeBoundary::Finite(value) => {
-                    let hi = value.try_to_scalar_int().unwrap().to_bits(size) ^ bias;
+                    let hi = value.to_leaf().to_bits(size) ^ bias;
                     hi > max || hi == max && self.end == RangeEnd::Included
                 }
                 PatRangeBoundary::PosInfinity => true,
@@ -1029,7 +1029,7 @@ impl<'tcx> PatRangeBoundary<'tcx> {
     }
     pub fn to_bits(self, ty: Ty<'tcx>, tcx: TyCtxt<'tcx>) -> u128 {
         match self {
-            Self::Finite(value) => value.try_to_scalar_int().unwrap().to_bits_unchecked(),
+            Self::Finite(value) => value.to_leaf().to_bits_unchecked(),
             Self::NegInfinity => {
                 // Unwrap is ok because the type is known to be numeric.
                 ty.numeric_min_and_max_as_bits(tcx).unwrap().0
@@ -1057,7 +1057,7 @@ impl<'tcx> PatRangeBoundary<'tcx> {
             // many ranges such as '\u{037A}'..='\u{037F}', and chars can be compared
             // in this way.
             (Finite(a), Finite(b)) if matches!(ty.kind(), ty::Int(_) | ty::Uint(_) | ty::Char) => {
-                if let (Some(a), Some(b)) = (a.try_to_scalar_int(), b.try_to_scalar_int()) {
+                if let (Some(a), Some(b)) = (a.try_to_leaf(), b.try_to_leaf()) {
                     let sz = ty.primitive_size(tcx);
                     let cmp = match ty.kind() {
                         ty::Uint(_) | ty::Char => a.to_uint(sz).cmp(&b.to_uint(sz)),

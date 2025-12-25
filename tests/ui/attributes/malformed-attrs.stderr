@@ -55,12 +55,6 @@ LL - #[must_not_suspend()]
 LL + #[must_not_suspend]
    |
 
-error: malformed `cfi_encoding` attribute input
-  --> $DIR/malformed-attrs.rs:140:1
-   |
-LL | #[cfi_encoding]
-   | ^^^^^^^^^^^^^^^ help: must be of the form: `#[cfi_encoding = "encoding"]`
-
 error: malformed `allow` attribute input
   --> $DIR/malformed-attrs.rs:184:1
    |
@@ -529,6 +523,15 @@ LL | #[rustc_layout_scalar_valid_range_end]
    | |
    | expected this to be a list
    | help: must be of the form: `#[rustc_layout_scalar_valid_range_end(end)]`
+
+error[E0539]: malformed `cfi_encoding` attribute input
+  --> $DIR/malformed-attrs.rs:140:1
+   |
+LL | #[cfi_encoding = ""]
+   | ^^^^^^^^^^^^^^^^^--^
+   | |                |
+   | |                string is not allowed to be empty
+   | help: must be of the form: `#[cfi_encoding = "encoding"]`
 
 error[E0565]: malformed `marker` attribute input
   --> $DIR/malformed-attrs.rs:161:1

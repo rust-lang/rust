@@ -32,7 +32,6 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for ParseTargetMachineConfig<'_> {
     }
 }
 
-#[cfg(feature = "llvm_enzyme")]
 #[derive(Diagnostic)]
 #[diag(codegen_llvm_autodiff_component_unavailable)]
 pub(crate) struct AutoDiffComponentUnavailable;
@@ -52,6 +51,26 @@ pub(crate) struct OffloadWithoutEnable;
 #[derive(Diagnostic)]
 #[diag(codegen_llvm_offload_without_fat_lto)]
 pub(crate) struct OffloadWithoutFatLTO;
+
+#[derive(Diagnostic)]
+#[diag(codegen_llvm_offload_no_abs_path)]
+pub(crate) struct OffloadWithoutAbsPath;
+
+#[derive(Diagnostic)]
+#[diag(codegen_llvm_offload_no_host_out)]
+pub(crate) struct OffloadWrongFileName;
+
+#[derive(Diagnostic)]
+#[diag(codegen_llvm_offload_nonexisting)]
+pub(crate) struct OffloadNonexistingPath;
+
+#[derive(Diagnostic)]
+#[diag(codegen_llvm_offload_bundleimages_failed)]
+pub(crate) struct OffloadBundleImagesFailed;
+
+#[derive(Diagnostic)]
+#[diag(codegen_llvm_offload_embed_failed)]
+pub(crate) struct OffloadEmbedFailed;
 
 #[derive(Diagnostic)]
 #[diag(codegen_llvm_lto_bitcode_from_rlib)]

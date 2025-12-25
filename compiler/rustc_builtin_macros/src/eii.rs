@@ -60,12 +60,18 @@ fn eii_(
 ) -> Vec<Annotatable> {
     let eii_attr_span = ecx.with_def_site_ctxt(eii_attr_span);
 
-    let (item, stmt) = if let Annotatable::Item(item) = item {
-        (item, false)
+    let (item, wrap_item): (_, &dyn Fn(_) -> _) = if let Annotatable::Item(item) = item {
+        (item, &Annotatable::Item)
     } else if let Annotatable::Stmt(ref stmt) = item
         && let StmtKind::Item(ref item) = stmt.kind
     {
-        (item.clone(), true)
+        (item.clone(), &|item| {
+            Annotatable::Stmt(Box::new(Stmt {
+                id: DUMMY_NODE_ID,
+                kind: StmtKind::Item(item),
+                span: eii_attr_span,
+            }))
+        })
     } else {
         ecx.dcx().emit_err(EiiSharedMacroExpectedFunction {
             span: eii_attr_span,
@@ -74,23 +80,25 @@ fn eii_(
         return vec![item];
     };
 
-    let orig_item = item.clone();
-
-    let item = *item;
-
-    let ast::Item { attrs, id: _, span: _, vis, kind: ItemKind::Fn(func), tokens: _ } = item else {
+    let ast::Item { attrs, id: _, span: _, vis, kind: ItemKind::Fn(func), tokens: _ } =
+        item.as_ref()
+    else {
         ecx.dcx().emit_err(EiiSharedMacroExpectedFunction {
             span: eii_attr_span,
             name: path_to_string(&meta_item.path),
         });
-        return vec![Annotatable::Item(Box::new(item))];
+        return vec![wrap_item(item)];
     };
+    // only clone what we need
+    let attrs = attrs.clone();
+    let func = (**func).clone();
+    let vis = vis.clone();
 
     let attrs_from_decl =
         filter_attrs_for_multiple_eii_attr(ecx, attrs, eii_attr_span, &meta_item.path);
 
     let Ok(macro_name) = name_for_impl_macro(ecx, &func, &meta_item) else {
-        return vec![Annotatable::Item(orig_item)];
+        return vec![wrap_item(item)];
     };
 
     // span of the declaring item without attributes
@@ -115,7 +123,7 @@ fn eii_(
         ecx,
         eii_attr_span,
         item_span,
-        *func,
+        func,
         vis,
         &attrs_from_decl,
     )));
@@ -128,20 +136,7 @@ fn eii_(
         decl_span,
     )));
 
-    if stmt {
-        return_items
-            .into_iter()
-            .map(|i| {
-                Annotatable::Stmt(Box::new(Stmt {
-                    id: DUMMY_NODE_ID,
-                    kind: StmtKind::Item(i),
-                    span: eii_attr_span,
-                }))
-            })
-            .collect()
-    } else {
-        return_items.into_iter().map(|i| Annotatable::Item(i)).collect()
-    }
+    return_items.into_iter().map(wrap_item).collect()
 }
 
 /// Decide on the name of the macro that can be used to implement the EII.

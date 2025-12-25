@@ -897,7 +897,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             self.tcx,
                             ValTree::from_branches(
                                 self.tcx,
-                                [ValTree::from_scalar_int(self.tcx, variant_index.as_u32().into())],
+                                [ty::Const::new_value(
+                                    self.tcx,
+                                    ValTree::from_scalar_int(
+                                        self.tcx,
+                                        variant_index.as_u32().into(),
+                                    ),
+                                    self.tcx.types.u32,
+                                )],
                             ),
                             self.thir[value].ty,
                         ),
@@ -1099,7 +1106,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                     Some(DropData { source_info, local, kind: DropKind::Value })
                 }
-                Operand::Constant(_) => None,
+                Operand::Constant(_) | Operand::RuntimeChecks(_) => None,
             })
             .collect();
 
@@ -1563,7 +1570,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         // look for moves of a local variable, like `MOVE(_X)`
         let locals_moved = operands.iter().flat_map(|operand| match operand.node {
-            Operand::Copy(_) | Operand::Constant(_) => None,
+            Operand::Copy(_) | Operand::Constant(_) | Operand::RuntimeChecks(_) => None,
             Operand::Move(place) => place.as_local(),
         });
 

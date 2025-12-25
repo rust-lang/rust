@@ -1394,8 +1394,10 @@ impl<'tcx> Ty<'tcx> {
 
                 // This doesn't depend on regions, so try to minimize distinct
                 // query keys used.
-                let erased = tcx.normalize_erasing_regions(typing_env, query_ty);
-                tcx.has_significant_drop_raw(typing_env.as_query_input(erased))
+                // FIX: Use try_normalize to avoid crashing. If it fails, return true.
+                tcx.try_normalize_erasing_regions(typing_env, query_ty)
+                    .map(|erased| tcx.has_significant_drop_raw(typing_env.as_query_input(erased)))
+                    .unwrap_or(true)
             }
         }
     }

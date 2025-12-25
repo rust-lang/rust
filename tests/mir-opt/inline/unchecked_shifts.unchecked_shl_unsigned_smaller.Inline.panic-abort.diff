@@ -10,7 +10,6 @@
 +     scope 1 (inlined #[track_caller] core::num::<impl u16>::unchecked_shl) {
 +         let _5: ();
 +         scope 2 (inlined core::ub_checks::check_language_ub) {
-+             let mut _6: bool;
 +             scope 3 (inlined core::ub_checks::check_language_ub::runtime) {
 +             }
 +         }
@@ -23,9 +22,7 @@
           _4 = copy _2;
 -         _0 = core::num::<impl u16>::unchecked_shl(move _3, move _4) -> [return: bb1, unwind unreachable];
 +         StorageLive(_5);
-+         StorageLive(_6);
-+         _6 = UbChecks();
-+         switchInt(copy _6) -> [0: bb2, otherwise: bb1];
++         switchInt(UbChecks) -> [0: bb2, otherwise: bb1];
       }
   
       bb1: {
@@ -34,7 +31,6 @@
 + 
 +     bb2: {
 +         _0 = ShlUnchecked(copy _3, copy _4);
-+         StorageDead(_6);
 +         StorageDead(_5);
           StorageDead(_4);
           StorageDead(_3);

@@ -2,6 +2,8 @@
 //! eliminated, and all its methods are now on `TyCtxt`. But the module name
 //! stays as `map` because there isn't an obviously better name for it.
 
+use std::ops::ControlFlow;
+
 use rustc_abi::ExternAbi;
 use rustc_ast::visit::{VisitorResult, walk_list};
 use rustc_data_structures::fingerprint::Fingerprint;
@@ -737,6 +739,7 @@ impl<'tcx> TyCtxt<'tcx> {
             Node::ConstArg(_) => node_str("const"),
             Node::Expr(_) => node_str("expr"),
             Node::ExprField(_) => node_str("expr field"),
+            Node::ConstArgExprField(_) => node_str("const arg expr field"),
             Node::Stmt(_) => node_str("stmt"),
             Node::PathSegment(_) => node_str("path segment"),
             Node::Ty(_) => node_str("type"),
@@ -1005,6 +1008,7 @@ impl<'tcx> TyCtxt<'tcx> {
             Node::ConstArg(const_arg) => const_arg.span(),
             Node::Expr(expr) => expr.span,
             Node::ExprField(field) => field.span,
+            Node::ConstArgExprField(field) => field.span,
             Node::Stmt(stmt) => stmt.span,
             Node::PathSegment(seg) => {
                 let ident_span = seg.ident.span;
@@ -1085,6 +1089,52 @@ impl<'tcx> TyCtxt<'tcx> {
         }
 
         None
+    }
+
+    // FIXME(mgca): this is pretty iffy. In the long term we should make
+    // HIR ty lowering able to return `Error` versions of types/consts when
+    // lowering them in contexts that aren't supposed to use generic parameters.
+    //
+    // This current impl strategy is incomplete and doesn't handle `Self` ty aliases.
+    pub fn check_anon_const_invalid_param_uses(
+        self,
+        anon: LocalDefId,
+    ) -> Result<(), ErrorGuaranteed> {
+        struct GenericParamVisitor<'tcx>(TyCtxt<'tcx>);
+        impl<'tcx> Visitor<'tcx> for GenericParamVisitor<'tcx> {
+            type NestedFilter = nested_filter::OnlyBodies;
+            type Result = ControlFlow<ErrorGuaranteed>;
+
+            fn maybe_tcx(&mut self) -> TyCtxt<'tcx> {
+                self.0
+            }
+
+            fn visit_path(
+                &mut self,
+                path: &crate::hir::Path<'tcx>,
+                _id: HirId,
+            ) -> ControlFlow<ErrorGuaranteed> {
+                if let Res::Def(
+                    DefKind::TyParam | DefKind::ConstParam | DefKind::LifetimeParam,
+                    _,
+                ) = path.res
+                {
+                    let e = self.0.dcx().struct_span_err(
+                        path.span,
+                        "generic parameters may not be used in const operations",
+                    );
+                    return ControlFlow::Break(e.emit());
+                }
+
+                intravisit::walk_path(self, path)
+            }
+        }
+
+        let body = self.hir_maybe_body_owned_by(anon).unwrap();
+        match GenericParamVisitor(self).visit_expr(&body.value) {
+            ControlFlow::Break(e) => Err(e),
+            ControlFlow::Continue(()) => Ok(()),
+        }
     }
 }
 

@@ -2,11 +2,13 @@
 
 As described in [Overview of the compiler], the Rust compiler
 is still (as of <!-- date-check --> July 2021) transitioning from a
-traditional "pass-based" setup to a "demand-driven" system. The compiler query
-system is the key to rustc's demand-driven organization.
-The idea is pretty simple. Instead of entirely independent passes
+traditional "pass-based" setup to a "demand-driven" system.
+The compiler query system is the key to rustc's demand-driven organization.
+The idea is pretty simple.
+Instead of entirely independent passes
 (parsing, type-checking, etc.), a set of function-like *queries*
-compute information about the input source. For example,
+compute information about the input source.
+For example,
 there is a query called `type_of` that, given the [`DefId`] of
 some item, will compute the type of that item and return it to you.
 
@@ -14,25 +16,23 @@ some item, will compute the type of that item and return it to you.
 [Overview of the compiler]: overview.md#queries
 
 Query execution is *memoized*. The first time you invoke a
-query, it will go do the computation, but the next time, the result is
-returned from a hashtable. Moreover, query execution fits nicely into
+query, it will go do the computation, but the next time, the result is returned from a hashtable.
+Moreover, query execution fits nicely into
 *incremental computation*; the idea is roughly that, when you invoke a
-query, the result *may* be returned to you by loading stored data
-from disk.[^incr-comp-detail]
+query, the result *may* be returned to you by loading stored data from disk.[^incr-comp-detail]
 
-Eventually, we want the entire compiler
-control-flow to be query driven. There will effectively be one
-top-level query (`compile`) that will run compilation on a crate; this
-will in turn demand information about that crate, starting from the
-*end*.  For example:
+Eventually, we want the entire compiler control-flow to be query driven.
+There will effectively be one top-level query (`compile`) that will run compilation on a crate; this
+will in turn demand information about that crate, starting from the *end*.
+
+For example:
 
 - The `compile` query might demand to get a list of codegen-units
   (i.e. modules that need to be compiled by LLVM).
 - But computing the list of codegen-units would invoke some subquery
   that returns the list of all modules defined in the Rust source.
 - That query in turn would invoke something asking for the HIR.
-- This keeps going further and further back until we wind up doing the
-  actual parsing.
+- This keeps going further and further back until we wind up doing the actual parsing.
 
 Although this vision is not fully realized, large sections of the
 compiler (for example, generating [MIR]) currently work exactly like this.
@@ -46,9 +46,9 @@ If you intend to write a query of your own, this is a good read.
 
 ## Invoking queries
 
-Invoking a query is simple. The [`TyCtxt`] ("type context") struct offers a method
-for each defined query. For example, to invoke the `type_of`
-query, you would just do this:
+Invoking a query is simple.
+The [`TyCtxt`] ("type context") struct offers a method for each defined query.
+For example, to invoke the `type_of` query, you would just do this:
 
 ```rust,ignore
 let ty = tcx.type_of(some_def_id);
@@ -58,8 +58,8 @@ let ty = tcx.type_of(some_def_id);
 
 ## How the compiler executes a query
 
-So you may be wondering what happens when you invoke a query
-method. The answer is that, for each query, the compiler maintains a
+So you may be wondering what happens when you invoke a query method.
+The answer is that, for each query, the compiler maintains a
 cache – if your query has already been executed, then, the answer is
 simple: we clone the return value out of the cache and return it
 (therefore, you should try to ensure that the return types of queries
@@ -68,11 +68,12 @@ are cheaply cloneable; insert an `Rc` if necessary).
 ### Providers
 
 If, however, the query is *not* in the cache, then the compiler will
-call the corresponding **provider** function. A provider is a function
-implemented in a specific module and **manually registered** into either
+call the corresponding **provider** function.
+A provider is a function implemented in a specific module and **manually registered** into either
 the [`Providers`][providers_struct] struct (for local crate queries) or
 the [`ExternProviders`][extern_providers_struct] struct (for external crate queries)
-during compiler initialization. The macro system generates both structs,
+during compiler initialization.
+The macro system generates both structs,
 which act as function tables for all query implementations, where each
 field is a function pointer to the actual provider.
 
@@ -80,8 +81,8 @@ field is a function pointer to the actual provider.
 They are **not** Rust traits, but plain structs with function pointer fields.
 
 **Providers are defined per-crate.** The compiler maintains,
-internally, a table of providers for every crate, at least
-conceptually. There are two sets of providers:
+internally, a table of providers for every crate, at least conceptually.
+There are two sets of providers:
 - The `Providers` struct for queries about the **local crate** (that is, the one being compiled)
 - The `ExternProviders` struct for queries about **external crates** (that is,
 dependencies of the local crate)
@@ -89,8 +90,7 @@ dependencies of the local crate)
 Note that what determines the crate that a query is targeting is not the *kind* of query, but the *key*.
 For example, when you invoke `tcx.type_of(def_id)`, that could be a
 local query or an external query, depending on what crate the `def_id`
-is referring to (see the [`self::keys::Key`][Key] trait for more
-information on how that works).
+is referring to (see the [`self::keys::Key`][Key] trait for more information on how that works).
 
 Providers always have the same signature:
 
@@ -108,8 +108,8 @@ They return the result of the query.
 
 N.B. Most of the `rustc_*` crates only provide **local
 providers**. Almost all **extern providers** wind up going through the
-[`rustc_metadata` crate][rustc_metadata], which loads the information
-from the crate metadata. But in some cases there are crates that
+[`rustc_metadata` crate][rustc_metadata], which loads the information from the crate metadata.
+But in some cases there are crates that
 provide queries for *both* local and external crates, in which case
 they define both a `provide` and a `provide_extern` function, through
 [`wasm_import_module_map`][wasm_import_module_map], that `rustc_driver` can invoke.
@@ -120,7 +120,8 @@ they define both a `provide` and a `provide_extern` function, through
 ### How providers are set up
 
 When the tcx is created, it is given both the local and external providers by its creator using
-the `Providers` struct from `rustc_middle::util`. This struct contains both the local and external providers:
+the `Providers` struct from `rustc_middle::util`.
+This struct contains both the local and external providers:
 
 ```rust,ignore
 pub struct Providers {
@@ -134,7 +135,7 @@ Each of these provider structs is generated by the macros and contains function 
 
 #### How are providers registered?
 
-The `util::Providers` struct is filled in during compiler initialization, by the `rustc_interface` crate from the `DEFAULT_QUERY_PROVIDERS` static. 
+The `util::Providers` struct is filled in during compiler initialization, by the `rustc_interface` crate from the `DEFAULT_QUERY_PROVIDERS` static.
 The actual provider functions are defined across various `rustc_*` crates (like `rustc_middle`, `rustc_hir_analysis`, etc).
 
 To register providers, each crate exposes a [`provide`][provide_fn] function that looks like this:
@@ -151,15 +152,17 @@ pub fn provide(providers: &mut query::Providers) {
 }
 ```
 
-Note that this function accepts `query::Providers` not `util::Providers`. It is exceedingly rare to need a `provide` function that doesn't just accept `query::Providers`. If more than the `queries` field of `util::Providers`  is being updated then `util::Providers` can be accepted instead:
+Note that this function accepts `query::Providers` not `util::Providers`.
+It is exceedingly rare to need a `provide` function that doesn't just accept `query::Providers`.
+If more than the `queries` field of `util::Providers`  is being updated then `util::Providers` can be accepted instead:
 ```rust,ignore
 pub fn provide(providers: &mut rustc_middle::util::Providers) {
     providers.queries.type_of = type_of;
     // ... add more local providers here
-    
+
     providers.extern_queries.type_of = extern_type_of;
     // ... add more external providers here
-    
+
     providers.hooks.some_hook = some_hook;
     // ... add more hooks here
 }
@@ -173,7 +176,8 @@ Note that `util::Providers` implements `DerefMut` to `query::Providers` so calle
 
 #### Adding a new provider
 
-Suppose you want to add a new query called `fubar`. This section focuses on wiring up the providers; for how to declare the query itself in the big `rustc_queries!` macro, see [Adding a new query](#adding-a-new-query) below.
+Suppose you want to add a new query called `fubar`.
+This section focuses on wiring up the providers; for how to declare the query itself in the big `rustc_queries!` macro, see [Adding a new query](#adding-a-new-query) below.
 
 In practice you usually:
 
@@ -184,7 +188,8 @@ In practice you usually:
         // existing assignments
     }
     ```
-   If it exists, you will extend it to set the field for your new query. If the crate does not yet have a `provide` function, add one and make sure it is included in `DEFAULT_QUERY_PROVIDERS` in the `rustc_interface` crate so that it actually gets called during initialization (see the discussion above).
+   If it exists, you will extend it to set the field for your new query.
+   If the crate does not yet have a `provide` function, add one and make sure it is included in `DEFAULT_QUERY_PROVIDERS` in the `rustc_interface` crate so that it actually gets called during initialization (see the discussion above).
 3. Implement the provider function itself:
     ```rust,ignore
     fn fubar<'tcx>(tcx: TyCtxt<'tcx>, key: LocalDefId) -> Fubar<'tcx> { ... }
@@ -201,7 +206,7 @@ In practice you usually:
 
 ### How queries interact with external crate metadata
 
-When a query is made for an external crate (i.e., a dependency), the query system needs to load the information from that crate's metadata. 
+When a query is made for an external crate (i.e., a dependency), the query system needs to load the information from that crate's metadata.
 This is handled by the [`rustc_metadata` crate][rustc_metadata], which is responsible for decoding and providing the information stored in the `.rmeta` files.
 
 The process works like this:
@@ -210,7 +215,8 @@ The process works like this:
    This determines whether to use the local provider from [`Providers`][providers_struct] or the external provider from [`ExternProviders`][extern_providers_struct].
 
 2. For external crates, the query system will look for a provider in the [`ExternProviders`][extern_providers_struct] struct.
-   The `rustc_metadata` crate registers these external providers through the `provide_extern` function in `rustc_metadata/src/rmeta/decoder/cstore_impl.rs`. Just like:
+   The `rustc_metadata` crate registers these external providers through the `provide_extern` function in `rustc_metadata/src/rmeta/decoder/cstore_impl.rs`.
+   Just like:
     ```rust
     pub fn provide_extern(providers: &mut ExternProviders) {
         providers.foo = |tcx, def_id| {
@@ -222,7 +228,8 @@ The process works like this:
     }
     ```
 
-3. The metadata is stored in a binary format in `.rmeta` files that contains pre-computed information about the external crate, such as types, function signatures, trait implementations, and other information needed by the compiler. When an external query is made, the `rustc_metadata` crate:
+3. The metadata is stored in a binary format in `.rmeta` files that contains pre-computed information about the external crate, such as types, function signatures, trait implementations, and other information needed by the compiler.
+   When an external query is made, the `rustc_metadata` crate:
    - Loads the `.rmeta` file for the external crate
    - Decodes the metadata using the `Decodable` trait
    - Returns the decoded information to the query system
@@ -234,10 +241,11 @@ Here is a simplified example, when you call `tcx.type_of(def_id)` for a type def
 3. The provider will load and decode the type information from the external crate's metadata
 4. Return the decoded type to the caller
 
-This is why most `rustc_*` crates only need to provide local providers - the external providers are handled by the metadata system. 
+This is why most `rustc_*` crates only need to provide local providers - the external providers are handled by the metadata system.
 The only exception is when a crate needs to provide special handling for external queries, in which case it would implement both local and external providers.
 
-When we define a new query that should work across crates, it does not automatically become cross-crate just because it is listed in `rustc_queries!`. You will typically need to:
+When we define a new query that should work across crates, it does not automatically become cross-crate just because it is listed in `rustc_queries!`.
+You will typically need to:
 
 - Add the query to `rustc_queries!` with appropriate modifiers (for example whether it is cached on disk).
 - Implement a local provider in the owning crate and register it via that crate's `provide` function.
@@ -296,17 +304,16 @@ query keyword
 Let's go over these elements one by one:
 
 - **Query keyword:** indicates a start of a query definition.
-- **Name of query:** the name of the query method
-  (`tcx.type_of(..)`). Also used as the name of a struct
-  (`ty::queries::type_of`) that will be generated to represent
+- **Name of query:** the name of the query method (`tcx.type_of(..)`).
+  Also used as the name of a struct (`ty::queries::type_of`) that will be generated to represent
   this query.
 - **Query key type:** the type of the argument to this query.
   This type must implement the [`ty::query::keys::Key`][Key] trait, which
   defines (for example) how to map it to a crate, and so forth.
-- **Result type of query:** the type produced by this query. This type
-  should (a) not use `RefCell` or other interior mutability and (b) be
-  cheaply cloneable. Interning or using `Rc` or `Arc` is recommended for
-  non-trivial data types.[^steal]
+- **Result type of query:** the type produced by this query.
+  This type should (a) not use `RefCell` or other interior mutability and (b) be
+  cheaply cloneable.
+  Interning or using `Rc` or `Arc` is recommended for non-trivial data types.[^steal]
 - **Query modifiers:** various flags and options that customize how the
   query is processed (mostly with respect to [incremental compilation][incrcomp]).
 
@@ -320,9 +327,9 @@ So, to add a query:
   or add a new one if needed and ensure that `rustc_driver` is invoking it.
 
 [^steal]: The one exception to those rules is the `ty::steal::Steal` type,
-which is used to cheaply modify MIR in place. See the definition
-of `Steal` for more details. New uses of `Steal` should **not** be
-added without alerting `@rust-lang/compiler`.
+which is used to cheaply modify MIR in place.
+See the definition of `Steal` for more details.
+New uses of `Steal` should **not** be added without alerting `@rust-lang/compiler`.
 
 ## External links
 
