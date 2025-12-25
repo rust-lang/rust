@@ -3,6 +3,8 @@
 // Several crates are depended upon but unused so that they are present in the sysroot
 #![expect(unused_crate_dependencies)]
 
+use std::process::ExitCode;
+
 // A note about jemalloc: rustc uses jemalloc when built for CI and
 // distribution. The obvious way to do this is with the `#[global_allocator]`
 // mechanism. However, for complicated reasons (see
@@ -38,6 +40,6 @@
 #[cfg(feature = "jemalloc")]
 use tikv_jemalloc_sys as _;
 
-fn main() {
+fn main() -> ExitCode {
     rustc_driver::main()
 }
