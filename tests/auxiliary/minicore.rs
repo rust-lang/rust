@@ -274,7 +274,7 @@ pub mod mem {
 }
 
 #[lang = "c_void"]
-#[repr(u8)]
+#[allow(non_camel_case_types)]
 pub enum c_void {
     __variant1,
     __variant2,
@@ -285,9 +285,10 @@ pub enum c_void {
 pub trait ConstParamTy_ {}
 
 #[lang = "Ordering"]
+#[derive(Copy, Clone, PartialEq, Eq)]
 #[repr(i8)]
 pub enum Ordering {
-    Less = 0xFFu8  as i8,
+    Less = -1,
     Equal = 0,
     Greater = 1,
 }
