@@ -1,0 +1,26 @@
+error: the constant `Option::<u32>::Some(N)` is not of type `Foo`
+  --> $DIR/printing_valtrees_supports_non_values.rs:18:13
+   |
+LL |     foo::<{ Option::Some::<u32> { 0: N } }>;
+   |             ^^^^^^^^^^^^^^^^^^^ expected `Foo`, found `Option<u32>`
+   |
+note: required by a const generic parameter in `foo`
+  --> $DIR/printing_valtrees_supports_non_values.rs:15:8
+   |
+LL | fn foo<const N: Foo>() {}
+   |        ^^^^^^^^^^^^ required by this const generic parameter in `foo`
+
+error: the constant `Option::<u32>::Some(<T as Trait>::ASSOC)` is not of type `Foo`
+  --> $DIR/printing_valtrees_supports_non_values.rs:23:13
+   |
+LL |     foo::<{ Option::Some::<u32> { 0: <T as Trait>::ASSOC } }>();
+   |             ^^^^^^^^^^^^^^^^^^^ expected `Foo`, found `Option<u32>`
+   |
+note: required by a const generic parameter in `foo`
+  --> $DIR/printing_valtrees_supports_non_values.rs:15:8
+   |
+LL | fn foo<const N: Foo>() {}
+   |        ^^^^^^^^^^^^ required by this const generic parameter in `foo`
+
+error: aborting due to 2 previous errors
+
