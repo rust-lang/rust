@@ -26,6 +26,7 @@ use rustc_type_ir::{
 };
 
 use crate::{
+    FnAbi,
     db::{HirDatabase, InternedCoroutine},
     lower::GenericPredicates,
     next_solver::{
@@ -495,10 +496,9 @@ impl<'db> Ty<'db> {
                 Some(interner.fn_sig(callable).instantiate(interner, args))
             }
             TyKind::FnPtr(sig, hdr) => Some(sig.with(hdr)),
-            TyKind::Closure(_, closure_args) => closure_args
-                .split_closure_args_untupled()
-                .closure_sig_as_fn_ptr_ty
-                .callable_sig(interner),
+            TyKind::Closure(_, closure_args) => {
+                Some(interner.signature_unclosure(closure_args.as_closure().sig(), Safety::Safe))
+            }
             TyKind::CoroutineClosure(coroutine_id, args) => {
                 Some(args.as_coroutine_closure().coroutine_closure_sig().map_bound(|sig| {
                     let unit_ty = Ty::new_unit(interner);
@@ -1424,5 +1424,24 @@ impl<'db> PlaceholderLike<DbInterner<'db>> for PlaceholderTy {
 
     fn new_anon(ui: rustc_type_ir::UniverseIndex, var: rustc_type_ir::BoundVar) -> Self {
         Placeholder { universe: ui, bound: BoundTy { var, kind: BoundTyKind::Anon } }
+    }
+}
+
+impl<'db> DbInterner<'db> {
+    /// Given a closure signature, returns an equivalent fn signature. Detuples
+    /// and so forth -- so e.g., if we have a sig with `Fn<(u32, i32)>` then
+    /// you would get a `fn(u32, i32)`.
+    /// `unsafety` determines the unsafety of the fn signature. If you pass
+    /// `Safety::Unsafe` in the previous example, then you would get
+    /// an `unsafe fn (u32, i32)`.
+    /// It cannot convert a closure that requires unsafe.
+    pub fn signature_unclosure(self, sig: PolyFnSig<'db>, safety: Safety) -> PolyFnSig<'db> {
+        sig.map_bound(|s| {
+            let params = match s.inputs()[0].kind() {
+                TyKind::Tuple(params) => params,
+                _ => panic!(),
+            };
+            self.mk_fn_sig(params, s.output(), s.c_variadic, safety, FnAbi::Rust)
+        })
     }
 }

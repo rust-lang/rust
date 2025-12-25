@@ -15,7 +15,7 @@ use hir_def::{
 };
 use rustc_ast_ir::Mutability;
 use rustc_hash::{FxHashMap, FxHashSet};
-use rustc_type_ir::inherent::{IntoKind, Ty as _};
+use rustc_type_ir::inherent::{GenericArgs as _, IntoKind, Ty as _};
 use smallvec::{SmallVec, smallvec};
 use stdx::{format_to, never};
 use syntax::utils::is_raw_identifier;
@@ -103,7 +103,7 @@ impl CapturedItem {
 
     pub fn ty<'db>(&self, db: &'db dyn HirDatabase, subst: GenericArgs<'db>) -> Ty<'db> {
         let interner = DbInterner::new_no_crate(db);
-        self.ty.get().instantiate(interner, subst.split_closure_args_untupled().parent_args)
+        self.ty.get().instantiate(interner, subst.as_closure().parent_args())
     }
 
     pub fn kind(&self) -> CaptureKind {

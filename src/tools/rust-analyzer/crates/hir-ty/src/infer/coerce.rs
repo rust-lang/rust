@@ -46,7 +46,9 @@ use rustc_type_ir::{
     BoundVar, DebruijnIndex, TyVid, TypeAndMut, TypeFoldable, TypeFolder, TypeSuperFoldable,
     TypeVisitableExt,
     error::TypeError,
-    inherent::{Const as _, GenericArg as _, IntoKind, Safety, SliceLike, Ty as _},
+    inherent::{
+        Const as _, GenericArg as _, GenericArgs as _, IntoKind, Safety as _, SliceLike, Ty as _,
+    },
 };
 use smallvec::{SmallVec, smallvec};
 use tracing::{debug, instrument};
@@ -63,6 +65,7 @@ use crate::{
         Canonical, ClauseKind, CoercePredicate, Const, ConstKind, DbInterner, ErrorGuaranteed,
         GenericArgs, ParamEnv, PolyFnSig, PredicateKind, Region, RegionKind, TraitRef, Ty, TyKind,
         TypingMode,
+        abi::Safety,
         infer::{
             DbInternerInferExt, InferCtxt, InferOk, InferResult,
             relate::RelateResult,
@@ -921,10 +924,8 @@ where
                 // or
                 //     `unsafe fn(arg0,arg1,...) -> _`
                 let safety = hdr.safety;
-                let closure_sig = args_a.closure_sig_untupled().map_bound(|mut sig| {
-                    sig.safety = hdr.safety;
-                    sig
-                });
+                let closure_sig =
+                    self.interner().signature_unclosure(args_a.as_closure().sig(), safety);
                 let pointer_ty = Ty::new_fn_ptr(self.interner(), closure_sig);
                 debug!("coerce_closure_to_fn(a={:?}, b={:?}, pty={:?})", a, b, pointer_ty);
                 self.unify_and(
@@ -1125,23 +1126,28 @@ impl<'db> InferenceContext<'_, 'db> {
                     }
                     (TyKind::Closure(_, args), TyKind::FnDef(..)) => {
                         let b_sig = new_ty.fn_sig(self.table.interner());
-                        let a_sig = args.closure_sig_untupled().map_bound(|mut sig| {
-                            sig.safety = b_sig.safety();
-                            sig
-                        });
+                        let a_sig = self
+                            .interner()
+                            .signature_unclosure(args.as_closure().sig(), b_sig.safety());
                         (Some(a_sig), Some(b_sig))
                     }
                     (TyKind::FnDef(..), TyKind::Closure(_, args)) => {
                         let a_sig = prev_ty.fn_sig(self.table.interner());
-                        let b_sig = args.closure_sig_untupled().map_bound(|mut sig| {
-                            sig.safety = a_sig.safety();
-                            sig
-                        });
+                        let b_sig = self
+                            .interner()
+                            .signature_unclosure(args.as_closure().sig(), a_sig.safety());
                         (Some(a_sig), Some(b_sig))
                     }
-                    (TyKind::Closure(_, args_a), TyKind::Closure(_, args_b)) => {
-                        (Some(args_a.closure_sig_untupled()), Some(args_b.closure_sig_untupled()))
-                    }
+                    (TyKind::Closure(_, args_a), TyKind::Closure(_, args_b)) => (
+                        Some(
+                            self.interner()
+                                .signature_unclosure(args_a.as_closure().sig(), Safety::Safe),
+                        ),
+                        Some(
+                            self.interner()
+                                .signature_unclosure(args_b.as_closure().sig(), Safety::Safe),
+                        ),
+                    ),
                     _ => (None, None),
                 }
             }

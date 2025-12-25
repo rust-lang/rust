@@ -8,6 +8,7 @@ use std::iter;
 use hir_def::{DefWithBodyId, HasModule};
 use la_arena::ArenaMap;
 use rustc_hash::FxHashMap;
+use rustc_type_ir::inherent::GenericArgs as _;
 use stdx::never;
 use triomphe::Arc;
 
@@ -123,7 +124,7 @@ fn make_fetch_closure_field<'db>(
         let InternedClosure(def, _) = db.lookup_intern_closure(c);
         let infer = InferenceResult::for_body(db, def);
         let (captures, _) = infer.closure_info(c);
-        let parent_subst = subst.split_closure_args_untupled().parent_args;
+        let parent_subst = subst.as_closure().parent_args();
         let interner = DbInterner::new_no_crate(db);
         captures.get(f).expect("broken closure field").ty.get().instantiate(interner, parent_subst)
     }
