@@ -210,14 +210,6 @@ impl Neg for isize {
     }
 }
 
-impl Neg for i8 {
-    type Output = i8;
-
-    fn neg(self) -> i8 {
-        loop {} // Dummy impl, not actually used
-    }
-}
-
 #[lang = "sync"]
 trait Sync {}
 impl_marker_trait!(
@@ -300,6 +292,22 @@ pub enum Ordering {
     Greater = 1,
 }
 impl Copy for Ordering {}
+
+impl Clone for Ordering {
+    #[inline]
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+impl PartialEq for Ordering {
+    #[inline]
+    fn eq(&self, other: &Self) -> bool {
+        *self as i8 == *other as i8
+    }
+}
+
+impl Eq for Ordering {}
 
 #[rustc_nounwind]
 #[rustc_intrinsic]
