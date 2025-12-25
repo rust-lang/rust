@@ -1669,7 +1669,7 @@ function preLoadCss(cssUrl) {
              restrict the search to a given item kind.",
             "Accepted kinds are: <code>fn</code>, <code>mod</code>, <code>struct</code>, \
              <code>enum</code>, <code>trait</code>, <code>type</code>, <code>macro</code>, \
-             and <code>const</code>.",
+             and <code>constant</code>.",
             "Search functions by type signature (e.g., <code>vec -&gt; usize</code> or \
              <code>-&gt; vec</code> or <code>String, enum:Cow -&gt; bool</code>)",
             "You can look for items with an exact name by putting double quotes around \
