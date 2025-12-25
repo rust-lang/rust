@@ -238,9 +238,6 @@ impl_marker_trait!(
 
 #[lang = "drop_in_place"]
 pub unsafe fn drop_in_place<T: ?Sized>(_: *mut T) {}
-#[rustc_nounwind]
-#[rustc_intrinsic]
-pub unsafe fn drop_in_place<T: ?Sized>(_: *mut T) {}
 
 #[lang = "fn_once"]
 pub trait FnOnce<Args: Tuple> {
