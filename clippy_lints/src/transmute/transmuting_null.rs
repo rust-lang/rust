@@ -1,6 +1,6 @@
 use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::span_lint;
-use clippy_utils::is_integer_literal;
+use clippy_utils::is_integer_const;
 use clippy_utils::res::{MaybeDef, MaybeResPath};
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::LateContext;
@@ -27,7 +27,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, arg: &'t
     // Catching:
     // `std::mem::transmute(0 as *const i32)`
     if let ExprKind::Cast(inner_expr, _cast_ty) = arg.kind
-        && is_integer_literal(inner_expr, 0)
+        && is_integer_const(cx, inner_expr, 0)
     {
         span_lint(cx, TRANSMUTING_NULL, expr.span, LINT_MSG);
         return true;
@@ -42,10 +42,5 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, arg: &'t
         return true;
     }
 
-    // FIXME:
-    // Also catch transmutations of variables which are known nulls.
-    // To do this, MIR const propagation seems to be the better tool.
-    // Whenever MIR const prop routines are more developed, this will
-    // become available. As of this writing (25/03/19) it is not yet.
     false
 }

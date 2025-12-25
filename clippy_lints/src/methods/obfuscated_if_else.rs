@@ -1,7 +1,7 @@
 use super::OBFUSCATED_IF_ELSE;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::eager_or_lazy::switch_to_eager_eval;
-use clippy_utils::source::snippet_with_applicability;
+use clippy_utils::source::snippet_with_context;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::{get_parent_expr, sym};
 use rustc_errors::Applicability;
@@ -33,20 +33,22 @@ pub(super) fn check<'tcx>(
         let if_then = match then_method_name {
             sym::then if let ExprKind::Closure(closure) = then_arg.kind => {
                 let body = cx.tcx.hir_body(closure.body);
-                snippet_with_applicability(cx, body.value.span, "..", &mut applicability)
+                snippet_with_context(cx, body.value.span, expr.span.ctxt(), "..", &mut applicability).0
             },
-            sym::then_some => snippet_with_applicability(cx, then_arg.span, "..", &mut applicability),
+            sym::then_some => snippet_with_context(cx, then_arg.span, expr.span.ctxt(), "..", &mut applicability).0,
             _ => return,
         };
 
         let els = match unwrap {
-            Unwrap::Or(arg) => snippet_with_applicability(cx, arg.span, "..", &mut applicability),
+            Unwrap::Or(arg) => snippet_with_context(cx, arg.span, expr.span.ctxt(), "..", &mut applicability).0,
             Unwrap::OrElse(arg) => match arg.kind {
                 ExprKind::Closure(closure) => {
                     let body = cx.tcx.hir_body(closure.body);
-                    snippet_with_applicability(cx, body.value.span, "..", &mut applicability)
+                    snippet_with_context(cx, body.value.span, expr.span.ctxt(), "..", &mut applicability).0
                 },
-                ExprKind::Path(_) => snippet_with_applicability(cx, arg.span, "_", &mut applicability) + "()",
+                ExprKind::Path(_) => {
+                    snippet_with_context(cx, arg.span, expr.span.ctxt(), "_", &mut applicability).0 + "()"
+                },
                 _ => return,
             },
             Unwrap::OrDefault => "Default::default()".into(),
@@ -54,7 +56,7 @@ pub(super) fn check<'tcx>(
 
         let sugg = format!(
             "if {} {{ {} }} else {{ {} }}",
-            Sugg::hir_with_applicability(cx, then_recv, "..", &mut applicability),
+            Sugg::hir_with_context(cx, then_recv, expr.span.ctxt(), "..", &mut applicability),
             if_then,
             els
         );

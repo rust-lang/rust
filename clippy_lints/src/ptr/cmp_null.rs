@@ -14,13 +14,14 @@ pub(super) fn check<'tcx>(
     l: &Expr<'_>,
     r: &Expr<'_>,
 ) -> bool {
+    let mut applicability = Applicability::MachineApplicable;
     let non_null_path_snippet = match (
         is_lint_allowed(cx, CMP_NULL, expr.hir_id),
         is_null_path(cx, l),
         is_null_path(cx, r),
     ) {
-        (false, true, false) if let Some(sugg) = Sugg::hir_opt(cx, r) => sugg.maybe_paren(),
-        (false, false, true) if let Some(sugg) = Sugg::hir_opt(cx, l) => sugg.maybe_paren(),
+        (false, true, false) => Sugg::hir_with_context(cx, r, expr.span.ctxt(), "..", &mut applicability).maybe_paren(),
+        (false, false, true) => Sugg::hir_with_context(cx, l, expr.span.ctxt(), "..", &mut applicability).maybe_paren(),
         _ => return false,
     };
     let invert = if op == BinOpKind::Eq { "" } else { "!" };
@@ -32,7 +33,7 @@ pub(super) fn check<'tcx>(
         "comparing with null is better expressed by the `.is_null()` method",
         "try",
         format!("{invert}{non_null_path_snippet}.is_null()",),
-        Applicability::MachineApplicable,
+        applicability,
     );
     true
 }

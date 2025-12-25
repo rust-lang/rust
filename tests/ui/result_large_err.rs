@@ -141,3 +141,12 @@ fn _empty_error() -> Result<(), Empty> {
 }
 
 fn main() {}
+
+fn issue16249() {
+    type Large = [u8; 1024];
+
+    let closure = || -> Result<(), Large> { Ok(()) };
+    //~^ result_large_err
+    let closure = || Ok::<(), Large>(());
+    //~^ result_large_err
+}
