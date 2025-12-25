@@ -1,6 +1,4 @@
 pub mod os;
-#[path = "../unsupported/pipe.rs"]
-pub mod pipe;
 pub mod time;
 
 #[expect(dead_code)]

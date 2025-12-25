@@ -190,10 +190,12 @@ pub enum CoverageLevel {
 }
 
 // The different settings that the `-Z offload` flag can have.
-#[derive(Clone, Copy, PartialEq, Hash, Debug)]
+#[derive(Clone, PartialEq, Hash, Debug)]
 pub enum Offload {
-    /// Enable the llvm offload pipeline
-    Enable,
+    /// Entry point for `std::offload`, enables kernel compilation for a gpu device
+    Device,
+    /// Second step in the offload pipeline, generates the host code to call kernels.
+    Host(String),
 }
 
 /// The different settings that the `-Z autodiff` flag can have.
@@ -1796,7 +1798,7 @@ pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
             "<OPT>",
         ),
         opt(Stable, Flag, "", "test", "Build a test harness", ""),
-        opt(Stable, Opt, "", "target", "Target triple for which the code is compiled", "<TARGET>"),
+        opt(Stable, Opt, "", "target", "Target tuple for which the code is compiled", "<TARGET>"),
         opt(Stable, Multi, "A", "allow", "Set lint allowed", "<LINT>"),
         opt(Stable, Multi, "W", "warn", "Set lint warnings", "<LINT>"),
         opt(Stable, Multi, "", "force-warn", "Set lint force-warn", "<LINT>"),
@@ -2578,9 +2580,7 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
         )
     }
 
-    if !nightly_options::is_unstable_enabled(matches)
-        && unstable_opts.offload.contains(&Offload::Enable)
-    {
+    if !nightly_options::is_unstable_enabled(matches) && !unstable_opts.offload.is_empty() {
         early_dcx.early_fatal(
             "`-Zoffload=Enable` also requires `-Zunstable-options` \
                 and a nightly compiler",

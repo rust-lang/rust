@@ -114,7 +114,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 }
                 ExprKind::Tup(elts) => hir::ExprKind::Tup(self.lower_exprs(elts)),
                 ExprKind::Call(f, args) => {
-                    if let Some(legacy_args) = self.resolver.legacy_const_generic_args(f) {
+                    if let Some(legacy_args) = self.resolver.legacy_const_generic_args(f, self.tcx)
+                    {
                         self.lower_legacy_const_generics((**f).clone(), args.clone(), &legacy_args)
                     } else {
                         let f = self.lower_expr(f);

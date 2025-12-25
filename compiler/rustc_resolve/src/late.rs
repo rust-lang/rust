@@ -4879,12 +4879,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             constant, anon_const_kind
         );
 
-        let is_trivial_const_arg = if self.r.tcx.features().min_generic_const_args() {
-            matches!(constant.mgca_disambiguation, MgcaDisambiguation::Direct)
-        } else {
-            constant.value.is_potential_trivial_const_arg()
-        };
-
+        let is_trivial_const_arg = constant.value.is_potential_trivial_const_arg();
         self.resolve_anon_const_manual(is_trivial_const_arg, anon_const_kind, |this| {
             this.resolve_expr(&constant.value, None)
         })
@@ -4914,7 +4909,10 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             AnonConstKind::FieldDefaultValue => ConstantHasGenerics::Yes,
             AnonConstKind::InlineConst => ConstantHasGenerics::Yes,
             AnonConstKind::ConstArg(_) => {
-                if self.r.tcx.features().generic_const_exprs() || is_trivial_const_arg {
+                if self.r.tcx.features().generic_const_exprs()
+                    || self.r.tcx.features().min_generic_const_args()
+                    || is_trivial_const_arg
+                {
                     ConstantHasGenerics::Yes
                 } else {
                     ConstantHasGenerics::No(NoConstantGenericsReason::NonTrivialConstArg)

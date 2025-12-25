@@ -582,13 +582,27 @@ pub fn structurally_relate_consts<I: Interner, R: TypeRelation<I>>(
         }
         (ty::ConstKind::Placeholder(p1), ty::ConstKind::Placeholder(p2)) => p1 == p2,
         (ty::ConstKind::Value(a_val), ty::ConstKind::Value(b_val)) => {
-            a_val.valtree() == b_val.valtree()
+            match (a_val.valtree().kind(), b_val.valtree().kind()) {
+                (ty::ValTreeKind::Leaf(scalar_a), ty::ValTreeKind::Leaf(scalar_b)) => {
+                    scalar_a == scalar_b
+                }
+                (ty::ValTreeKind::Branch(branches_a), ty::ValTreeKind::Branch(branches_b))
+                    if branches_a.len() == branches_b.len() =>
+                {
+                    branches_a
+                        .into_iter()
+                        .zip(branches_b)
+                        .all(|(a, b)| relation.relate(*a, *b).is_ok())
+                }
+                _ => false,
+            }
         }
 
         // While this is slightly incorrect, it shouldn't matter for `min_const_generics`
         // and is the better alternative to waiting until `generic_const_exprs` can
         // be stabilized.
         (ty::ConstKind::Unevaluated(au), ty::ConstKind::Unevaluated(bu)) if au.def == bu.def => {
+            // FIXME(mgca): remove this
             if cfg!(debug_assertions) {
                 let a_ty = cx.type_of(au.def.into()).instantiate(cx, au.args);
                 let b_ty = cx.type_of(bu.def.into()).instantiate(cx, bu.args);

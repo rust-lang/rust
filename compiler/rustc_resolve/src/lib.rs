@@ -187,6 +187,7 @@ struct InvocationParent {
     parent_def: LocalDefId,
     impl_trait_context: ImplTraitContext,
     in_attr: bool,
+    const_arg_context: ConstArgContext,
 }
 
 impl InvocationParent {
@@ -194,6 +195,7 @@ impl InvocationParent {
         parent_def: CRATE_DEF_ID,
         impl_trait_context: ImplTraitContext::Existential,
         in_attr: false,
+        const_arg_context: ConstArgContext::NonDirect,
     };
 }
 
@@ -202,6 +204,13 @@ enum ImplTraitContext {
     Existential,
     Universal,
     InBinding,
+}
+
+#[derive(Copy, Clone, Debug)]
+enum ConstArgContext {
+    Direct,
+    /// Either inside of an `AnonConst` or not inside a const argument at all.
+    NonDirect,
 }
 
 /// Used for tracking import use types which will be used for redundant import checking.
@@ -1271,7 +1280,6 @@ pub struct Resolver<'ra, 'tcx> {
     /// and how the `impl Trait` fragments were introduced.
     invocation_parents: FxHashMap<LocalExpnId, InvocationParent>,
 
-    legacy_const_generic_args: FxHashMap<DefId, Option<Vec<usize>>>,
     /// Amount of lifetime parameters for each item in the crate.
     item_generics_num_lifetimes: FxHashMap<LocalDefId, usize>,
     delegation_fn_sigs: LocalDefIdMap<DelegationFnSig>,
@@ -1676,7 +1684,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             node_id_to_def_id,
             disambiguator: DisambiguatorState::new(),
             placeholder_field_indices: Default::default(),
-            legacy_const_generic_args: Default::default(),
             invocation_parents,
             item_generics_num_lifetimes: Default::default(),
             trait_impls: Default::default(),
@@ -1807,7 +1814,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             stripped_cfg_items,
         };
         let ast_lowering = ty::ResolverAstLowering {
-            legacy_const_generic_args: self.legacy_const_generic_args,
             partial_res_map: self.partial_res_map,
             import_res_map: self.import_res_map,
             label_res_map: self.label_res_map,
@@ -2416,15 +2422,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             return None;
         }
 
-        let indexes = find_attr!(
+        find_attr!(
             // we can use parsed attrs here since for other crates they're already available
             self.tcx.get_all_attrs(def_id),
             AttributeKind::RustcLegacyConstGenerics{fn_indexes,..} => fn_indexes
         )
-        .map(|fn_indexes| fn_indexes.iter().map(|(num, _)| *num).collect());
-
-        self.legacy_const_generic_args.insert(def_id, indexes.clone());
-        indexes
+        .map(|fn_indexes| fn_indexes.iter().map(|(num, _)| *num).collect())
     }
 
     fn resolve_main(&mut self) {

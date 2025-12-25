@@ -9,12 +9,13 @@ fn main() {
     // the inner reference is dangling
     let x: &&u32 = unsafe {
         let x: u32 = 42;
-        &&* &raw const x
+        &&*&raw const x
     };
 
-    let _ = || { //~ ERROR: encountered a dangling reference
+    //~v ERROR: encountered a dangling reference
+    let _ = || {
         match x {
-            &&_y => {},
+            &&_y => {}
         }
     };
 }

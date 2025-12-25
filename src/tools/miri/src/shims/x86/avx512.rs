@@ -3,7 +3,7 @@ use rustc_middle::ty::Ty;
 use rustc_span::Symbol;
 use rustc_target::callconv::FnAbi;
 
-use super::{permute, pmaddbw, psadbw};
+use super::{permute, pmaddbw, psadbw, pshufb};
 use crate::*;
 
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
@@ -101,6 +101,13 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
 
                 permute(this, left, right, dest)?;
+            }
+            // Used to implement the _mm512_shuffle_epi8 intrinsic.
+            "pshuf.b.512" => {
+                let [left, right] =
+                    this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+
+                pshufb(this, left, right, dest)?;
             }
             _ => return interp_ok(EmulateItemResult::NotSupported),
         }

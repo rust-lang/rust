@@ -293,9 +293,9 @@ pub fn reverse_postorder<'a, 'tcx>(
 /// reachable.
 ///
 /// Such a traversal is mostly useful because it lets us skip lowering the `false` side
-/// of `if <T as Trait>::CONST`, as well as [`NullOp::RuntimeChecks`].
+/// of `if <T as Trait>::CONST`, as well as [`Operand::RuntimeChecks`].
 ///
-/// [`NullOp::RuntimeChecks`]: rustc_middle::mir::NullOp::RuntimeChecks
+/// [`Operand::RuntimeChecks`]: rustc_middle::mir::Operand::RuntimeChecks
 pub fn mono_reachable<'a, 'tcx>(
     body: &'a Body<'tcx>,
     tcx: TyCtxt<'tcx>,

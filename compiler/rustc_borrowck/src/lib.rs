@@ -1,4 +1,4 @@
-//! This query borrow-checks the MIR to (further) ensure it is not broken.
+//! This crate implemens MIR typeck and MIR borrowck.
 
 // tidy-alphabetical-start
 #![allow(internal_features)]
@@ -111,9 +111,9 @@ pub fn provide(providers: &mut Providers) {
     *providers = Providers { mir_borrowck, ..*providers };
 }
 
-/// Provider for `query mir_borrowck`. Similar to `typeck`, this must
-/// only be called for typeck roots which will then borrowck all
-/// nested bodies as well.
+/// Provider for `query mir_borrowck`. Unlike `typeck`, this must
+/// only be called for typeck roots which *similar* to `typeck` will
+/// then borrowck all nested bodies as well.
 fn mir_borrowck(
     tcx: TyCtxt<'_>,
     def: LocalDefId,
@@ -1559,10 +1559,6 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                 self.consume_operand(location, (operand2, span), state);
             }
 
-            Rvalue::NullaryOp(_op) => {
-                // nullary ops take no dynamic input; no borrowck effect.
-            }
-
             Rvalue::Aggregate(aggregate_kind, operands) => {
                 // We need to report back the list of mutable upvars that were
                 // moved into the closure and subsequently used by the closure,
@@ -1699,7 +1695,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                     _ => propagate_closure_used_mut_place(self, place),
                 }
             }
-            Operand::Constant(..) => {}
+            Operand::Constant(..) | Operand::RuntimeChecks(_) => {}
         }
     }
 
@@ -1750,7 +1746,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                     state,
                 );
             }
-            Operand::Constant(_) => {}
+            Operand::Constant(_) | Operand::RuntimeChecks(_) => {}
         }
     }
 
