@@ -292,7 +292,7 @@ pub enum Ordering {
     Equal = 0,
     Greater = 1,
 }
-impl Copy for Ordering{}
+impl Copy for Ordering {}
 
 #[rustc_nounwind]
 #[rustc_intrinsic]
