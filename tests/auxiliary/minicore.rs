@@ -76,12 +76,15 @@ pub trait Clone {
 }
 
 #[lang = "partial_eq"]
-pub trait PartialEq {
-    fn eq(&self, other: &Self) -> bool;
+pub trait PartialEq<Rhs: ?Sized = Self> {
+    fn eq(&self, other: &Rhs) -> bool;
+    fn ne(&self, other: &Rhs) -> bool {
+        !self.eq(other)
+    }
 }
 
 #[lang = "eq"]
-pub trait Eq: PartialEq {}
+pub trait Eq: PartialEq<Self> {}
 #[lang = "bikeshed_guaranteed_no_drop"]
 pub trait BikeshedGuaranteedNoDrop {}
 
@@ -109,8 +112,8 @@ impl<T: PointeeSized> Copy for *mut T {}
 impl<T: Copy, const N: usize> Copy for [T; N] {}
 
 #[lang = "phantom_data"]
-pub struct PhantomData<T: PointeeSized>;
-impl<T: PointeeSized> Copy for PhantomData<T> {}
+pub struct PhantomData<T: ?Sized>;
+impl<T: ?Sized> Copy for PhantomData<T> {}
 
 pub enum Option<T> {
     None,
@@ -151,10 +154,10 @@ pub struct Unique<T: ?Sized> {
 
 #[lang = "unsafe_cell"]
 #[repr(transparent)]
-pub struct UnsafeCell<T: PointeeSized> {
+pub struct UnsafeCell<T: ?Sized> {
     value: T,
 }
-impl<T: PointeeSized> !Freeze for UnsafeCell<T> {}
+impl<T: ?Sized> !Freeze for UnsafeCell<T> {}
 
 #[lang = "tuple_trait"]
 #[diagnostic::on_unimplemented(message = "`{Self}` is not a tuple")]
@@ -223,7 +226,7 @@ impl Neg for isize {
 }
 
 #[lang = "sync"]
-trait Sync {}
+pub trait Sync {}
 impl_marker_trait!(
     Sync => [
         char, bool,
@@ -234,7 +237,10 @@ impl_marker_trait!(
 );
 
 #[lang = "drop_in_place"]
-fn drop_in_place<T>(_: *mut T) {}
+pub unsafe fn drop_in_place<T: ?Sized>(_: *mut T) {}
+#[rustc_nounwind]
+#[rustc_intrinsic]
+pub unsafe fn drop_in_place<T: ?Sized>(_: *mut T) {}
 
 #[lang = "fn_once"]
 pub trait FnOnce<Args: Tuple> {
@@ -255,20 +261,20 @@ pub trait Fn<Args: Tuple>: FnMut<Args> {
 }
 
 #[lang = "dispatch_from_dyn"]
-trait DispatchFromDyn<T> {}
+pub trait DispatchFromDyn<T> {}
 
 impl<'a, T: PointeeSized + Unsize<U>, U: PointeeSized> DispatchFromDyn<&'a U> for &'a T {}
 
 #[lang = "unsize"]
-trait Unsize<T: PointeeSized>: PointeeSized {}
+pub trait Unsize<T: ?Sized>: PointeeSized {}
 
 #[lang = "coerce_unsized"]
-pub trait CoerceUnsized<T: PointeeSized> {}
+pub trait CoerceUnsized<T: ?Sized> {}
 
 impl<'a, 'b: 'a, T: PointeeSized + Unsize<U>, U: PointeeSized> CoerceUnsized<&'a U> for &'b T {}
 
 #[lang = "drop"]
-trait Drop {
+pub trait Drop {
     fn drop(&mut self);
 }
 
@@ -286,6 +292,7 @@ pub mod mem {
 }
 
 #[lang = "c_void"]
+#[repr(C)]
 #[allow(non_camel_case_types)]
 pub enum c_void {
     __variant1,
