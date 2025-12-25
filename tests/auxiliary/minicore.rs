@@ -74,17 +74,6 @@ pub trait Copy: Sized {}
 pub trait Clone {
     fn clone(&self) -> Self;
 }
-
-#[lang = "partial_eq"]
-pub trait PartialEq<Rhs: ?Sized = Self> {
-    fn eq(&self, other: &Rhs) -> bool;
-    fn ne(&self, other: &Rhs) -> bool {
-        !self.eq(other)
-    }
-}
-
-#[lang = "eq"]
-pub trait Eq: PartialEq<Self> {}
 #[lang = "bikeshed_guaranteed_no_drop"]
 pub trait BikeshedGuaranteedNoDrop {}
 
@@ -268,7 +257,7 @@ pub trait Unsize<T: ?Sized>: PointeeSized {}
 #[lang = "coerce_unsized"]
 pub trait CoerceUnsized<T: ?Sized> {}
 
-impl<'a, 'b: 'a, T: PointeeSized + Unsize<U>, U: PointeeSized> CoerceUnsized<&'a U> for &'b T {}
+impl<'a, 'b: 'a, T: PointeeSized + Unsize<U>, U: ?Sized + PointeeSized> CoerceUnsized<&'a U> for &'b T {}
 
 #[lang = "drop"]
 pub trait Drop {
@@ -315,15 +304,6 @@ impl Clone for Ordering {
         *self
     }
 }
-
-impl PartialEq for Ordering {
-    #[inline]
-    fn eq(&self, other: &Self) -> bool {
-        *self as i8 == *other as i8
-    }
-}
-
-impl Eq for Ordering {}
 
 #[rustc_nounwind]
 #[rustc_intrinsic]
