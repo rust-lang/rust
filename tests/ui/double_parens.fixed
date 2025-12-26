@@ -161,4 +161,20 @@ fn issue15940() {
     pub struct Person;
 }
 
+fn issue16224() {
+    fn test() -> i32 { 42 }
+
+    macro_rules! call {
+        ($matcher:pat $(=> $result:expr)?) => {
+            match test() {
+                $matcher => Result::Ok(($($result),*)),
+                _ => Result::Err("No match".to_string()),
+            }
+        };
+    }
+
+    let _: Result<(), String> = call!(_);
+    let _: Result<i32, String> = call!(_ => 42);
+}
+
 fn main() {}
