@@ -1,5 +1,8 @@
 //! Functions dealing with attributes and meta items.
 
+pub mod data_structures;
+pub mod version;
+
 use std::fmt::Debug;
 use std::sync::atomic::{AtomicU32, Ordering};
 
@@ -8,6 +11,7 @@ use rustc_span::{Ident, Span, Symbol, sym};
 use smallvec::{SmallVec, smallvec};
 use thin_vec::{ThinVec, thin_vec};
 
+use crate::AttrItemKind;
 use crate::ast::{
     AttrArgs, AttrId, AttrItem, AttrKind, AttrStyle, AttrVec, Attribute, DUMMY_NODE_ID, DelimArgs,
     Expr, ExprKind, LitKind, MetaItem, MetaItemInner, MetaItemKind, MetaItemLit, NormalAttr, Path,
@@ -62,6 +66,15 @@ impl Attribute {
         }
     }
 
+    /// Replaces the arguments of this attribute with new arguments `AttrItemKind`.
+    /// This is useful for making this attribute into a trace attribute, and should otherwise be avoided.
+    pub fn replace_args(&mut self, new_args: AttrItemKind) {
+        match &mut self.kind {
+            AttrKind::Normal(normal) => normal.item.args = new_args,
+            AttrKind::DocComment(..) => panic!("unexpected doc comment"),
+        }
+    }
+
     pub fn unwrap_normal_item(self) -> AttrItem {
         match self.kind {
             AttrKind::Normal(normal) => normal.item,
@@ -77,7 +90,7 @@ impl AttributeExt for Attribute {
 
     fn value_span(&self) -> Option<Span> {
         match &self.kind {
-            AttrKind::Normal(normal) => match &normal.item.args {
+            AttrKind::Normal(normal) => match &normal.item.args.unparsed_ref()? {
                 AttrArgs::Eq { expr, .. } => Some(expr.span),
                 _ => None,
             },
@@ -147,7 +160,7 @@ impl AttributeExt for Attribute {
 
     fn is_word(&self) -> bool {
         if let AttrKind::Normal(normal) = &self.kind {
-            matches!(normal.item.args, AttrArgs::Empty)
+            matches!(normal.item.args, AttrItemKind::Unparsed(AttrArgs::Empty))
         } else {
             false
         }
@@ -303,7 +316,7 @@ impl AttrItem {
     }
 
     pub fn meta_item_list(&self) -> Option<ThinVec<MetaItemInner>> {
-        match &self.args {
+        match &self.args.unparsed_ref()? {
             AttrArgs::Delimited(args) if args.delim == Delimiter::Parenthesis => {
                 MetaItemKind::list_from_tokens(args.tokens.clone())
             }
@@ -324,7 +337,7 @@ impl AttrItem {
     /// #[attr("value")]
     /// ```
     fn value_str(&self) -> Option<Symbol> {
-        match &self.args {
+        match &self.args.unparsed_ref()? {
             AttrArgs::Eq { expr, .. } => match expr.kind {
                 ExprKind::Lit(token_lit) => {
                     LitKind::from_token_lit(token_lit).ok().and_then(|lit| lit.str())
@@ -348,7 +361,7 @@ impl AttrItem {
     /// #[attr("value")]
     /// ```
     fn value_span(&self) -> Option<Span> {
-        match &self.args {
+        match &self.args.unparsed_ref()? {
             AttrArgs::Eq { expr, .. } => Some(expr.span),
             AttrArgs::Delimited(_) | AttrArgs::Empty => None,
         }
@@ -364,7 +377,7 @@ impl AttrItem {
     }
 
     pub fn meta_kind(&self) -> Option<MetaItemKind> {
-        MetaItemKind::from_attr_args(&self.args)
+        MetaItemKind::from_attr_args(self.args.unparsed_ref()?)
     }
 }
 
@@ -699,7 +712,13 @@ fn mk_attr(
     args: AttrArgs,
     span: Span,
 ) -> Attribute {
-    mk_attr_from_item(g, AttrItem { unsafety, path, args, tokens: None }, None, style, span)
+    mk_attr_from_item(
+        g,
+        AttrItem { unsafety, path, args: AttrItemKind::Unparsed(args), tokens: None },
+        None,
+        style,
+        span,
+    )
 }
 
 pub fn mk_attr_from_item(
