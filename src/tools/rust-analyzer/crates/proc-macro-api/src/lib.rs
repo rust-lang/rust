@@ -16,18 +16,18 @@
 #[cfg(feature = "in-rust-tree")]
 extern crate rustc_driver as _;
 
-mod codec;
-mod framing;
+pub mod bidirectional_protocol;
 pub mod legacy_protocol;
 mod process;
+pub mod transport;
 
 use paths::{AbsPath, AbsPathBuf};
 use semver::Version;
 use span::{ErasedFileAstId, FIXUP_ERASED_FILE_AST_ID_MARKER, Span};
 use std::{fmt, io, sync::Arc, time::SystemTime};
 
-pub use crate::codec::Codec;
-use crate::process::ProcMacroServerProcess;
+pub use crate::transport::codec::Codec;
+use crate::{bidirectional_protocol::SubCallback, process::ProcMacroServerProcess};
 
 /// The versions of the server protocol
 pub mod version {
@@ -142,9 +142,13 @@ impl ProcMacroClient {
     }
 
     /// Loads a proc-macro dylib into the server process returning a list of `ProcMacro`s loaded.
-    pub fn load_dylib(&self, dylib: MacroDylib) -> Result<Vec<ProcMacro>, ServerError> {
+    pub fn load_dylib(
+        &self,
+        dylib: MacroDylib,
+        callback: Option<SubCallback<'_>>,
+    ) -> Result<Vec<ProcMacro>, ServerError> {
         let _p = tracing::info_span!("ProcMacroServer::load_dylib").entered();
-        let macros = self.process.find_proc_macros(&dylib.path)?;
+        let macros = self.process.find_proc_macros(&dylib.path, callback)?;
 
         let dylib_path = Arc::new(dylib.path);
         let dylib_last_modified = std::fs::metadata(dylib_path.as_path())
@@ -225,6 +229,7 @@ impl ProcMacro {
         call_site: Span,
         mixed_site: Span,
         current_dir: String,
+        callback: Option<SubCallback<'_>>,
     ) -> Result<Result<tt::TopSubtree<Span>, String>, ServerError> {
         let (mut subtree, mut attr) = (subtree, attr);
         let (mut subtree_changed, mut attr_changed);
@@ -240,7 +245,7 @@ impl ProcMacro {
             }
         }
 
-        legacy_protocol::expand(
+        self.process.expand(
             self,
             subtree,
             attr,
@@ -249,6 +254,7 @@ impl ProcMacro {
             call_site,
             mixed_site,
             current_dir,
+            callback,
         )
     }
 }

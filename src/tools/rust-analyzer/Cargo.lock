@@ -1877,6 +1877,7 @@ name = "proc-macro-srv-cli"
 version = "0.0.0"
 dependencies = [
  "clap",
+ "crossbeam-channel",
  "postcard",
  "proc-macro-api",
  "proc-macro-srv",

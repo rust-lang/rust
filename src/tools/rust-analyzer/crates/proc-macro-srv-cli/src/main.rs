@@ -52,11 +52,16 @@ fn main() -> std::io::Result<()> {
 enum ProtocolFormat {
     JsonLegacy,
     PostcardLegacy,
+    BidirectionalPostcardPrototype,
 }
 
 impl ValueEnum for ProtocolFormat {
     fn value_variants<'a>() -> &'a [Self] {
-        &[ProtocolFormat::JsonLegacy, ProtocolFormat::PostcardLegacy]
+        &[
+            ProtocolFormat::JsonLegacy,
+            ProtocolFormat::PostcardLegacy,
+            ProtocolFormat::BidirectionalPostcardPrototype,
+        ]
     }
 
     fn to_possible_value(&self) -> Option<clap::builder::PossibleValue> {
@@ -65,12 +70,18 @@ impl ValueEnum for ProtocolFormat {
             ProtocolFormat::PostcardLegacy => {
                 Some(clap::builder::PossibleValue::new("postcard-legacy"))
             }
+            ProtocolFormat::BidirectionalPostcardPrototype => {
+                Some(clap::builder::PossibleValue::new("bidirectional-postcard-prototype"))
+            }
         }
     }
     fn from_str(input: &str, _ignore_case: bool) -> Result<Self, String> {
         match input {
             "json-legacy" => Ok(ProtocolFormat::JsonLegacy),
             "postcard-legacy" => Ok(ProtocolFormat::PostcardLegacy),
+            "bidirectional-postcard-prototype" => {
+                Ok(ProtocolFormat::BidirectionalPostcardPrototype)
+            }
             _ => Err(format!("unknown protocol format: {input}")),
         }
     }

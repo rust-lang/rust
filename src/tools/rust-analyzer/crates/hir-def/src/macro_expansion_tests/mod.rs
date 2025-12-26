@@ -16,7 +16,7 @@ mod proc_macros;
 
 use std::{any::TypeId, iter, ops::Range, sync};
 
-use base_db::RootQueryDb;
+use base_db::{RootQueryDb, SourceDatabase};
 use expect_test::Expect;
 use hir_expand::{
     AstId, ExpansionInfo, InFile, MacroCallId, MacroCallKind, MacroKind,
@@ -378,6 +378,7 @@ struct IdentityWhenValidProcMacroExpander;
 impl ProcMacroExpander for IdentityWhenValidProcMacroExpander {
     fn expand(
         &self,
+        _: &dyn SourceDatabase,
         subtree: &TopSubtree,
         _: Option<&TopSubtree>,
         _: &base_db::Env,

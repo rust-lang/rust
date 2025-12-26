@@ -4,14 +4,14 @@ use std::io::{self, BufRead, Write};
 
 use serde::{Serialize, de::DeserializeOwned};
 
-use crate::{codec::Codec, framing::Framing};
+use crate::{Codec, transport::framing::Framing};
 
 pub struct PostcardProtocol;
 
 impl Framing for PostcardProtocol {
     type Buf = Vec<u8>;
 
-    fn read<'a, R: BufRead>(
+    fn read<'a, R: BufRead + ?Sized>(
         inp: &mut R,
         buf: &'a mut Vec<u8>,
     ) -> io::Result<Option<&'a mut Vec<u8>>> {
@@ -23,7 +23,7 @@ impl Framing for PostcardProtocol {
         Ok(Some(buf))
     }
 
-    fn write<W: Write>(out: &mut W, buf: &Vec<u8>) -> io::Result<()> {
+    fn write<W: Write + ?Sized>(out: &mut W, buf: &Vec<u8>) -> io::Result<()> {
         out.write_all(buf)?;
         out.flush()
     }

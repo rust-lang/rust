@@ -12,7 +12,7 @@ use object::Object;
 use paths::{Utf8Path, Utf8PathBuf};
 
 use crate::{
-    PanicMessage, ProcMacroKind, ProcMacroSrvSpan, dylib::proc_macros::ProcMacros,
+    PanicMessage, ProcMacroKind, ProcMacroSrvSpan, SubCallback, dylib::proc_macros::ProcMacros,
     token_stream::TokenStream,
 };
 
@@ -45,13 +45,14 @@ impl Expander {
         def_site: S,
         call_site: S,
         mixed_site: S,
+        callback: Option<SubCallback>,
     ) -> Result<TokenStream<S>, PanicMessage>
     where
         <S::Server as bridge::server::Types>::TokenStream: Default,
     {
         self.inner
             .proc_macros
-            .expand(macro_name, macro_body, attribute, def_site, call_site, mixed_site)
+            .expand(macro_name, macro_body, attribute, def_site, call_site, mixed_site, callback)
     }
 
     pub(crate) fn list_macros(&self) -> impl Iterator<Item = (&str, ProcMacroKind)> {

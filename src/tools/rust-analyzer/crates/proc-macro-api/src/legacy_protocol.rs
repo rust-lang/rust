@@ -1,8 +1,6 @@
 //! The initial proc-macro-srv protocol, soon to be deprecated.
 
-pub mod json;
 pub mod msg;
-pub mod postcard;
 
 use std::{
     io::{BufRead, Write},
@@ -14,17 +12,14 @@ use span::Span;
 
 use crate::{
     ProcMacro, ProcMacroKind, ServerError,
-    codec::Codec,
-    legacy_protocol::{
-        json::JsonProtocol,
-        msg::{
-            ExpandMacro, ExpandMacroData, ExpnGlobals, FlatTree, Message, Request, Response,
-            ServerConfig, SpanDataIndexMap, deserialize_span_data_index_map,
-            flat::serialize_span_data_index_map,
-        },
-        postcard::PostcardProtocol,
+    legacy_protocol::msg::{
+        ExpandMacro, ExpandMacroData, ExpnGlobals, FlatTree, Message, Request, Response,
+        ServerConfig, SpanDataIndexMap, deserialize_span_data_index_map,
+        flat::serialize_span_data_index_map,
     },
     process::ProcMacroServerProcess,
+    transport::codec::Codec,
+    transport::codec::{json::JsonProtocol, postcard::PostcardProtocol},
     version,
 };
 
@@ -155,9 +150,9 @@ fn send_task(srv: &ProcMacroServerProcess, req: Request) -> Result<Response, Ser
     }
 
     if srv.use_postcard() {
-        srv.send_task(send_request::<PostcardProtocol>, req)
+        srv.send_task::<_, _, PostcardProtocol>(send_request::<PostcardProtocol>, req)
     } else {
-        srv.send_task(send_request::<JsonProtocol>, req)
+        srv.send_task::<_, _, JsonProtocol>(send_request::<JsonProtocol>, req)
     }
 }
 

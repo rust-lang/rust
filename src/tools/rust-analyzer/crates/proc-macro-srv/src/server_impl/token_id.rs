@@ -9,6 +9,7 @@ use intern::Symbol;
 use proc_macro::bridge::server;
 
 use crate::{
+    SubCallback,
     bridge::{Diagnostic, ExpnGlobals, Literal, TokenTree},
     server_impl::literal_from_str,
 };
@@ -34,6 +35,7 @@ pub struct SpanIdServer {
     pub call_site: Span,
     pub def_site: Span,
     pub mixed_site: Span,
+    pub callback: Option<SubCallback>,
 }
 
 impl server::Types for SpanIdServer {
