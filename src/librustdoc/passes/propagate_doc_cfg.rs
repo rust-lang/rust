@@ -2,7 +2,6 @@
 
 use rustc_hir::Attribute;
 use rustc_hir::attrs::{AttributeKind, DocAttribute};
-use rustc_span::symbol::sym;
 
 use crate::clean::inline::{load_attrs, merge_attrs};
 use crate::clean::{CfgInfo, Crate, Item, ItemKind};
@@ -39,10 +38,7 @@ fn add_only_cfg_attributes(attrs: &mut Vec<Attribute>, new_attrs: &[Attribute]) 
             let mut new_attr = DocAttribute::default();
             new_attr.cfg = d.cfg.clone();
             attrs.push(Attribute::Parsed(AttributeKind::Doc(Box::new(new_attr))));
-        } else if let Attribute::Unparsed(normal) = attr
-            && let [name] = &*normal.path.segments
-            && *name == sym::cfg_trace
-        {
+        } else if let Attribute::Parsed(AttributeKind::CfgTrace(..)) = attr {
             // If it's a `cfg()` attribute, we keep it.
             attrs.push(attr.clone());
         }

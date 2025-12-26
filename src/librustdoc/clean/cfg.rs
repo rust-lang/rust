@@ -7,7 +7,6 @@ use std::sync::Arc;
 use std::{fmt, mem, ops};
 
 use itertools::Either;
-use rustc_ast::{LitKind, MetaItem, MetaItemInner, MetaItemKind, MetaItemLit};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::thin_vec::{ThinVec, thin_vec};
 use rustc_hir as hir;
@@ -28,12 +27,6 @@ mod tests;
 // use `is_equivalent_to`.
 #[cfg_attr(test, derive(PartialEq))]
 pub(crate) struct Cfg(CfgEntry);
-
-#[derive(PartialEq, Debug)]
-pub(crate) struct InvalidCfgError {
-    pub(crate) msg: &'static str,
-    pub(crate) span: Span,
-}
 
 /// Whether the configuration consists of just `Cfg` or `Not`.
 fn is_simple_cfg(cfg: &CfgEntry) -> bool {
@@ -105,106 +98,6 @@ fn should_capitalize_first_letter(cfg: &CfgEntry) -> bool {
 }
 
 impl Cfg {
-    /// Parses a `MetaItemInner` into a `Cfg`.
-    fn parse_nested(
-        nested_cfg: &MetaItemInner,
-        exclude: &FxHashSet<NameValueCfg>,
-    ) -> Result<Option<Cfg>, InvalidCfgError> {
-        match nested_cfg {
-            MetaItemInner::MetaItem(cfg) => Cfg::parse_without(cfg, exclude),
-            MetaItemInner::Lit(MetaItemLit { kind: LitKind::Bool(b), .. }) => {
-                Ok(Some(Cfg(CfgEntry::Bool(*b, DUMMY_SP))))
-            }
-            MetaItemInner::Lit(lit) => {
-                Err(InvalidCfgError { msg: "unexpected literal", span: lit.span })
-            }
-        }
-    }
-
-    fn parse_without(
-        cfg: &MetaItem,
-        exclude: &FxHashSet<NameValueCfg>,
-    ) -> Result<Option<Cfg>, InvalidCfgError> {
-        let name = match cfg.ident() {
-            Some(ident) => ident.name,
-            None => {
-                return Err(InvalidCfgError {
-                    msg: "expected a single identifier",
-                    span: cfg.span,
-                });
-            }
-        };
-        match cfg.kind {
-            MetaItemKind::Word => {
-                if exclude.contains(&NameValueCfg::new(name)) {
-                    Ok(None)
-                } else {
-                    Ok(Some(Cfg(CfgEntry::NameValue { name, value: None, span: DUMMY_SP })))
-                }
-            }
-            MetaItemKind::NameValue(ref lit) => match lit.kind {
-                LitKind::Str(value, _) => {
-                    if exclude.contains(&NameValueCfg::new_value(name, value)) {
-                        Ok(None)
-                    } else {
-                        Ok(Some(Cfg(CfgEntry::NameValue {
-                            name,
-                            value: Some(value),
-                            span: DUMMY_SP,
-                        })))
-                    }
-                }
-                _ => Err(InvalidCfgError {
-                    // FIXME: if the main #[cfg] syntax decided to support non-string literals,
-                    // this should be changed as well.
-                    msg: "value of cfg option should be a string literal",
-                    span: lit.span,
-                }),
-            },
-            MetaItemKind::List(ref items) => {
-                let orig_len = items.len();
-                let mut sub_cfgs =
-                    items.iter().filter_map(|i| Cfg::parse_nested(i, exclude).transpose());
-                let ret = match name {
-                    sym::all => {
-                        sub_cfgs.try_fold(Cfg(CfgEntry::Bool(true, DUMMY_SP)), |x, y| Ok(x & y?))
-                    }
-                    sym::any => {
-                        sub_cfgs.try_fold(Cfg(CfgEntry::Bool(false, DUMMY_SP)), |x, y| Ok(x | y?))
-                    }
-                    sym::not => {
-                        if orig_len == 1 {
-                            let mut sub_cfgs = sub_cfgs.collect::<Vec<_>>();
-                            if sub_cfgs.len() == 1 {
-                                Ok(!sub_cfgs.pop().unwrap()?)
-                            } else {
-                                return Ok(None);
-                            }
-                        } else {
-                            Err(InvalidCfgError { msg: "expected 1 cfg-pattern", span: cfg.span })
-                        }
-                    }
-                    _ => Err(InvalidCfgError { msg: "invalid predicate", span: cfg.span }),
-                };
-                match ret {
-                    Ok(c) => Ok(Some(c)),
-                    Err(e) => Err(e),
-                }
-            }
-        }
-    }
-
-    /// Parses a `MetaItem` into a `Cfg`.
-    ///
-    /// The `MetaItem` should be the content of the `#[cfg(...)]`, e.g., `unix` or
-    /// `target_os = "redox"`.
-    ///
-    /// If the content is not properly formatted, it will return an error indicating what and where
-    /// the error is.
-    pub(crate) fn parse(cfg: &MetaItemInner) -> Result<Cfg, InvalidCfgError> {
-        Self::parse_nested(cfg, &FxHashSet::default()).map(|ret| ret.unwrap())
-    }
-
     /// Renders the configuration for human display, as a short HTML description.
     pub(crate) fn render_short_html(&self) -> String {
         let mut msg = Display(&self.0, Format::ShortHtml).to_string();
@@ -644,10 +537,6 @@ impl NameValueCfg {
     fn new(name: Symbol) -> Self {
         Self { name, value: None }
     }
-
-    fn new_value(name: Symbol, value: Symbol) -> Self {
-        Self { name, value: Some(value) }
-    }
 }
 
 impl<'a> From<&'a CfgEntry> for NameValueCfg {
@@ -751,15 +640,6 @@ pub(crate) fn extract_cfg_from_attrs<'a, I: Iterator<Item = &'a hir::Attribute> 
     tcx: TyCtxt<'_>,
     cfg_info: &mut CfgInfo,
 ) -> Option<Arc<Cfg>> {
-    fn single<T: IntoIterator>(it: T) -> Option<T::Item> {
-        let mut iter = it.into_iter();
-        let item = iter.next()?;
-        if iter.next().is_some() {
-            return None;
-        }
-        Some(item)
-    }
-
     fn check_changed_auto_active_status(
         changed_auto_active_status: &mut Option<rustc_span::Span>,
         attr_span: Span,
@@ -859,12 +739,11 @@ pub(crate) fn extract_cfg_from_attrs<'a, I: Iterator<Item = &'a hir::Attribute> 
             }
             continue;
         } else if !cfg_info.parent_is_doc_cfg
-            && let Some(name) = attr.name()
-            && matches!(name, sym::cfg | sym::cfg_trace)
-            && let Some(attr) = single(attr.meta_item_list()?)
-            && let Ok(new_cfg) = Cfg::parse(&attr)
+            && let hir::Attribute::Parsed(AttributeKind::CfgTrace(cfgs)) = attr
         {
-            cfg_info.current_cfg &= new_cfg;
+            for (new_cfg, _) in cfgs {
+                cfg_info.current_cfg &= Cfg(new_cfg.clone());
+            }
         }
     }
 
