@@ -94,13 +94,14 @@ use std::{cmp, iter};
 use ring::RingBuffer;
 
 /// How to break.
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Debug)]
 pub enum Breaks {
     Consistent,
     Inconsistent,
 }
 
-#[derive(Clone, Copy, PartialEq)]
+/// Indentation style.
+#[derive(Clone, Copy, Debug, PartialEq)]
 enum IndentStyle {
     /// Vertically aligned under whatever column this block begins at.
     Visual,
@@ -108,20 +109,23 @@ enum IndentStyle {
     Block { offset: isize },
 }
 
-#[derive(Clone, Copy, Default, PartialEq)]
+/// Break token information.
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) struct BreakToken {
     offset: isize,
     blank_space: isize,
     pre_break: Option<char>,
 }
 
-#[derive(Clone, Copy, PartialEq)]
+/// Begin token information.
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) struct BeginToken {
     indent: IndentStyle,
     breaks: Breaks,
 }
 
-#[derive(PartialEq)]
+/// Tokens for the printer.
+#[derive(PartialEq, Debug)]
 pub(crate) enum Token {
     String(Cow<'static, str>),
     Break(BreakToken),
@@ -129,56 +133,48 @@ pub(crate) enum Token {
     End,
 }
 
-#[derive(Copy, Clone)]
+/// Frame used for printing.
+#[derive(Copy, Clone, Debug)]
 enum PrintFrame {
     Fits,
     Broken { indent: usize, breaks: Breaks },
 }
 
-/// Target line width.
+/// Line width constants.
 const MARGIN: isize = 78;
-/// Every line is allowed at least this much space, even if highly indented.
 const MIN_SPACE: isize = 60;
-
-/// Size used when a token is known to be too large to fit on a line.
 const SIZE_INFINITY: isize = isize::MAX / 2;
 
-pub struct Printer {
-    out: String,
-    /// Number of spaces left on line
-    space: isize,
-    /// Ring-buffer of tokens and calculated sizes
-    buf: RingBuffer<BufEntry>,
-    /// Running size of stream "...left"
-    left_total: isize,
-    /// Running size of stream "...right"
-    right_total: isize,
-    /// Pseudo-stack, really a ring too.
-    scan_stack: VecDeque<usize>,
-    /// Stack of blocks-in-progress being flushed by print
-    print_stack: Vec<PrintFrame>,
-    /// Level of indentation of current line
-    indent: usize,
-    /// Buffered indentation to avoid writing trailing whitespace
-    pending_indentation: isize,
-    /// The token most recently popped for printing
-    last_printed: Option<Token>,
-}
-
+/// Ring-buffer entry.
 struct BufEntry {
     token: Token,
     size: isize,
 }
 
-#[must_use]
-pub struct BoxMarker;
+/// Pretty-printer.
+pub struct Printer {
+    out: String,
+    space: isize,
+    buf: RingBuffer<BufEntry>,
+    left_total: isize,
+    right_total: isize,
+    scan_stack: VecDeque<usize>,
+    print_stack: Vec<PrintFrame>,
+    indent: usize,
+    pending_indentation: isize,
+    last_printed: Option<Token>,
+}
 
-impl !Clone for BoxMarker {}
-impl !Copy for BoxMarker {}
+/// Marker used to ensure `Begin`/`End` balance.
+pub struct BoxMarker {
+    valid: bool,
+}
 
 impl Drop for BoxMarker {
     fn drop(&mut self) {
-        panic!("BoxMarker not ended with `Printer::end()`");
+        if self.valid {
+            panic!("BoxMarker not ended with `Printer::scan_end()`");
+        }
     }
 }
 
@@ -198,14 +194,16 @@ impl Printer {
         }
     }
 
-    fn scan_eof(&mut self) {
-        self.check_stack(0);
+    /// Flush remaining tokens at EOF.
+    pub fn scan_eof(&mut self) {
+        self.check_stack();
         while !self.buf.is_empty() {
             self.advance_left();
         }
     }
 
-    fn scan_begin(&mut self, token: BeginToken) -> BoxMarker {
+    /// Begin a block.
+    pub fn scan_begin(&mut self, token: BeginToken) -> BoxMarker {
         if self.scan_stack.is_empty() {
             self.left_total = 1;
             self.right_total = 1;
@@ -216,19 +214,22 @@ impl Printer {
             token: Token::Begin(token),
             size: -self.right_total,
         });
+
         self.scan_stack.push_back(right);
-        BoxMarker
+        BoxMarker { valid: true }
     }
 
-    fn scan_end(&mut self, b: BoxMarker) {
+    /// End a block.
+    pub fn scan_end(&mut self, mut marker: BoxMarker) {
         let right = self.buf.push(BufEntry {
             token: Token::End,
             size: -1,
         });
         self.scan_stack.push_back(right);
-        std::mem::forget(b);
+        marker.valid = false; // mark as used
     }
 
+    /// Advance left-side token processing.
     fn advance_left(&mut self) {
         while let Some(entry) = self.buf.first() {
             if entry.size < 0 {
@@ -243,9 +244,9 @@ impl Printer {
                 }
                 Token::Break(b) => {
                     self.left_total += b.blank_space;
-                    self.print_break(*b, left.size);
+                    self.print_break(*b);
                 }
-                Token::Begin(b) => self.print_begin(*b, left.size),
+                Token::Begin(b) => self.print_begin(*b),
                 Token::End => self.print_end(),
             }
             self.last_printed = Some(left.token);
@@ -258,11 +259,11 @@ impl Printer {
                 self.indent = indent;
             }
         } else {
-            debug_assert!(false, "print_end called with empty print_stack");
+            panic!("print_end called with empty print_stack");
         }
     }
 
-    fn print_string(&mut self, string: &str) {
+    fn print_string(&mut self, string: &Cow<'static, str>) {
         self.out.reserve(self.pending_indentation as usize);
         self.out
             .extend(iter::repeat(' ').take(self.pending_indentation as usize));
@@ -273,5 +274,34 @@ impl Printer {
         if self.space < 0 {
             self.space = 0;
         }
+    }
+
+    fn print_break(&mut self, b: BreakToken) {
+        if self.space < 0 {
+            self.out.push('\n');
+            self.indent = (self.indent as isize + b.offset).max(0) as usize;
+            self.pending_indentation = self.indent as isize;
+            self.space = MARGIN - self.pending_indentation;
+        } else {
+            self.out.extend(iter::repeat(' ').take(b.blank_space as usize));
+            self.space -= b.blank_space;
+        }
+    }
+
+    fn print_begin(&mut self, b: BeginToken) {
+        self.print_stack.push(PrintFrame::Fits);
+        if let IndentStyle::Block { offset } = b.indent {
+            self.indent = (self.indent as isize + offset).max(0) as usize;
+        }
+    }
+
+    fn check_stack(&self) {
+        if !self.scan_stack.is_empty() {
+            panic!("Unbalanced begin/end tokens detected");
+        }
+    }
+
+    pub fn output(&self) -> &str {
+        &self.out
     }
 }
