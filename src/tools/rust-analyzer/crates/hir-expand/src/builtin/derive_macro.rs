@@ -28,7 +28,7 @@ use syntax::{
 };
 
 macro_rules! register_builtin {
-    ( $($trait:ident => $expand:ident),* ) => {
+    ( $($trait:ident => $expand:ident),* $(,)? ) => {
         #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
         pub enum BuiltinDeriveExpander {
             $($trait),*
@@ -48,7 +48,6 @@ macro_rules! register_builtin {
                 }
             }
         }
-
     };
 }
 
@@ -75,7 +74,7 @@ register_builtin! {
     PartialOrd => partial_ord_expand,
     Eq => eq_expand,
     PartialEq => partial_eq_expand,
-    CoercePointee => coerce_pointee_expand
+    CoercePointee => coerce_pointee_expand,
 }
 
 pub fn find_builtin_derive(ident: &name::Name) -> Option<BuiltinDeriveExpander> {

@@ -2,10 +2,12 @@
 //! type inference-related queries.
 
 use base_db::{Crate, target::TargetLoadError};
+use either::Either;
 use hir_def::{
-    AdtId, CallableDefId, ConstId, ConstParamId, DefWithBodyId, EnumVariantId, FunctionId,
-    GenericDefId, ImplId, LifetimeParamId, LocalFieldId, StaticId, TraitId, TypeAliasId, VariantId,
-    db::DefDatabase, hir::ExprId, layout::TargetDataLayout,
+    AdtId, BuiltinDeriveImplId, CallableDefId, ConstId, ConstParamId, DefWithBodyId, EnumVariantId,
+    FunctionId, GenericDefId, ImplId, LifetimeParamId, LocalFieldId, StaticId, TraitId,
+    TypeAliasId, VariantId, builtin_derive::BuiltinDeriveImplMethod, db::DefDatabase, hir::ExprId,
+    layout::TargetDataLayout,
 };
 use la_arena::ArenaMap;
 use salsa::plumbing::AsId;
@@ -83,7 +85,7 @@ pub trait HirDatabase: DefDatabase + std::fmt::Debug {
         env: ParamEnvAndCrate<'db>,
         func: FunctionId,
         fn_subst: GenericArgs<'db>,
-    ) -> (FunctionId, GenericArgs<'db>);
+    ) -> (Either<FunctionId, (BuiltinDeriveImplId, BuiltinDeriveImplMethod)>, GenericArgs<'db>);
 
     // endregion:mir
 

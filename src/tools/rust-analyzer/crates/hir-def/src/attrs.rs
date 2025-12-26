@@ -188,6 +188,7 @@ fn match_attr_flags(attr_flags: &mut AttrFlags, attr: Meta) -> ControlFlow<Infal
                     "deprecated" => attr_flags.insert(AttrFlags::IS_DEPRECATED),
                     "macro_export" => attr_flags.insert(AttrFlags::IS_MACRO_EXPORT),
                     "no_mangle" => attr_flags.insert(AttrFlags::NO_MANGLE),
+                    "pointee" => attr_flags.insert(AttrFlags::IS_POINTEE),
                     "non_exhaustive" => attr_flags.insert(AttrFlags::NON_EXHAUSTIVE),
                     "ignore" => attr_flags.insert(AttrFlags::IS_IGNORE),
                     "bench" => attr_flags.insert(AttrFlags::IS_BENCH),
@@ -289,6 +290,7 @@ bitflags::bitflags! {
         const RUSTC_PAREN_SUGAR = 1 << 42;
         const RUSTC_COINDUCTIVE = 1 << 43;
         const RUSTC_FORCE_INLINE = 1 << 44;
+        const IS_POINTEE = 1 << 45;
     }
 }
 

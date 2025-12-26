@@ -25,6 +25,7 @@ extern crate ra_ap_rustc_next_trait_solver as rustc_next_trait_solver;
 
 extern crate self as hir_ty;
 
+pub mod builtin_derive;
 mod infer;
 mod inhabitedness;
 mod lower;

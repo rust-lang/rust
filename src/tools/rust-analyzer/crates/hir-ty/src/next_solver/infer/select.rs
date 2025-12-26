@@ -2,7 +2,7 @@
 
 use std::ops::ControlFlow;
 
-use hir_def::{ImplId, TraitId};
+use hir_def::TraitId;
 use macros::{TypeFoldable, TypeVisitable};
 use rustc_type_ir::{
     Interner,
@@ -12,7 +12,7 @@ use rustc_type_ir::{
 use crate::{
     db::InternedOpaqueTyId,
     next_solver::{
-        Const, ErrorGuaranteed, GenericArgs, Goal, TraitRef, Ty, TypeError,
+        AnyImplId, Const, ErrorGuaranteed, GenericArgs, Goal, TraitRef, Ty, TypeError,
         infer::{
             InferCtxt,
             select::EvaluationResult::*,
@@ -249,7 +249,7 @@ impl<'db, N> ImplSource<'db, N> {
 pub(crate) struct ImplSourceUserDefinedData<'db, N> {
     #[type_visitable(ignore)]
     #[type_foldable(identity)]
-    pub(crate) impl_def_id: ImplId,
+    pub(crate) impl_def_id: AnyImplId,
     pub(crate) args: GenericArgs<'db>,
     pub(crate) nested: Vec<N>,
 }
@@ -395,7 +395,7 @@ fn to_selection<'db>(cand: InspectCandidate<'_, 'db>) -> Option<Selection<'db>> 
                 // FIXME: Remove this in favor of storing this in the tree
                 // For impl candidates, we do the rematch manually to compute the args.
                 ImplSource::UserDefined(ImplSourceUserDefinedData {
-                    impl_def_id: impl_def_id.0,
+                    impl_def_id,
                     args: cand.instantiate_impl_args(),
                     nested,
                 })

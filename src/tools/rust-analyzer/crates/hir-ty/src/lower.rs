@@ -1791,6 +1791,13 @@ impl<'db> GenericPredicates {
 
 impl GenericPredicates {
     #[inline]
+    pub(crate) fn from_explicit_own_predicates(
+        predicates: StoredEarlyBinder<StoredClauses>,
+    ) -> Self {
+        Self { predicates, own_predicates_start: 0, is_trait: false, parent_is_trait: false }
+    }
+
+    #[inline]
     pub fn query(db: &dyn HirDatabase, def: GenericDefId) -> &GenericPredicates {
         &Self::query_with_diagnostics(db, def).0
     }
@@ -1848,6 +1855,20 @@ pub(crate) fn trait_environment_for_body_query(
     db.trait_environment(def)
 }
 
+pub(crate) fn param_env_from_predicates<'db>(
+    interner: DbInterner<'db>,
+    predicates: &'db GenericPredicates,
+) -> ParamEnv<'db> {
+    let clauses = rustc_type_ir::elaborate::elaborate(
+        interner,
+        predicates.all_predicates().iter_identity_copied(),
+    );
+    let clauses = Clauses::new_from_iter(interner, clauses);
+
+    // FIXME: We should normalize projections here, like rustc does.
+    ParamEnv { clauses }
+}
+
 pub(crate) fn trait_environment<'db>(db: &'db dyn HirDatabase, def: GenericDefId) -> ParamEnv<'db> {
     return ParamEnv { clauses: trait_environment_query(db, def).as_ref() };
 
@@ -1858,13 +1879,8 @@ pub(crate) fn trait_environment<'db>(db: &'db dyn HirDatabase, def: GenericDefId
     ) -> StoredClauses {
         let module = def.module(db);
         let interner = DbInterner::new_with(db, module.krate(db));
-        let predicates = GenericPredicates::query_all(db, def);
-        let clauses =
-            rustc_type_ir::elaborate::elaborate(interner, predicates.iter_identity_copied());
-        let clauses = Clauses::new_from_iter(interner, clauses);
-
-        // FIXME: We should normalize projections here, like rustc does.
-        clauses.store()
+        let predicates = GenericPredicates::query(db, def);
+        param_env_from_predicates(interner, predicates).clauses.store()
     }
 }
 

@@ -30,6 +30,7 @@ pub mod dyn_map;
 
 pub mod item_tree;
 
+pub mod builtin_derive;
 pub mod lang_item;
 
 pub mod hir;
@@ -63,6 +64,7 @@ use base_db::{Crate, impl_intern_key};
 use hir_expand::{
     AstId, ExpandResult, ExpandTo, HirFileId, InFile, MacroCallId, MacroCallKind, MacroCallStyles,
     MacroDefId, MacroDefKind,
+    attrs::AttrId,
     builtin::{BuiltinAttrExpander, BuiltinDeriveExpander, BuiltinFnLikeExpander, EagerExpander},
     db::ExpandDatabase,
     eager::expand_eager_macro_input,
@@ -80,6 +82,7 @@ pub use hir_expand::{Intern, Lookup, tt};
 
 use crate::{
     attrs::AttrFlags,
+    builtin_derive::BuiltinDeriveImplTrait,
     builtin_type::BuiltinType,
     db::DefDatabase,
     expr_store::ExpressionStoreSourceMap,
@@ -329,6 +332,21 @@ impl ImplId {
     pub fn impl_items_with_diagnostics(self, db: &dyn DefDatabase) -> &(ImplItems, DefDiagnostics) {
         ImplItems::of(db, self)
     }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct BuiltinDeriveImplLoc {
+    pub adt: AdtId,
+    pub trait_: BuiltinDeriveImplTrait,
+    pub derive_attr_id: AttrId,
+    pub derive_index: u32,
+}
+
+#[salsa::interned(debug, no_lifetime)]
+#[derive(PartialOrd, Ord)]
+pub struct BuiltinDeriveImplId {
+    #[returns(ref)]
+    pub loc: BuiltinDeriveImplLoc,
 }
 
 type UseLoc = ItemLoc<ast::Use>;
@@ -659,6 +677,18 @@ impl_from!(
     BuiltinType
     for ModuleDefId
 );
+
+impl From<DefWithBodyId> for ModuleDefId {
+    #[inline]
+    fn from(value: DefWithBodyId) -> Self {
+        match value {
+            DefWithBodyId::FunctionId(id) => id.into(),
+            DefWithBodyId::StaticId(id) => id.into(),
+            DefWithBodyId::ConstId(id) => id.into(),
+            DefWithBodyId::VariantId(id) => id.into(),
+        }
+    }
+}
 
 /// A constant, which might appears as a const item, an anonymous const block in expressions
 /// or patterns, or as a constant in types with const generics.
@@ -1007,6 +1037,20 @@ fn module_for_assoc_item_loc<'db>(
     id: impl Lookup<Database = dyn DefDatabase, Data = AssocItemLoc<impl AstIdNode>>,
 ) -> ModuleId {
     id.lookup(db).container.module(db)
+}
+
+impl HasModule for BuiltinDeriveImplLoc {
+    #[inline]
+    fn module(&self, db: &dyn DefDatabase) -> ModuleId {
+        self.adt.module(db)
+    }
+}
+
+impl HasModule for BuiltinDeriveImplId {
+    #[inline]
+    fn module(&self, db: &dyn DefDatabase) -> ModuleId {
+        self.loc(db).module(db)
+    }
 }
 
 impl HasModule for FunctionId {

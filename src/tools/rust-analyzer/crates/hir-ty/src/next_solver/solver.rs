@@ -12,7 +12,7 @@ use rustc_type_ir::{
 use tracing::debug;
 
 use crate::next_solver::{
-    AliasTy, CanonicalVarKind, Clause, ClauseKind, CoercePredicate, GenericArgs, ImplIdWrapper,
+    AliasTy, AnyImplId, CanonicalVarKind, Clause, ClauseKind, CoercePredicate, GenericArgs,
     ParamEnv, Predicate, PredicateKind, SubtypePredicate, Ty, TyKind, fold::fold_tys,
     util::sizedness_fast_path,
 };
@@ -174,9 +174,13 @@ impl<'db> SolverDelegate for SolverContext<'db> {
         &self,
         _goal_trait_ref: rustc_type_ir::TraitRef<Self::Interner>,
         trait_assoc_def_id: SolverDefId,
-        impl_id: ImplIdWrapper,
+        impl_id: AnyImplId,
     ) -> Result<Option<SolverDefId>, ErrorGuaranteed> {
-        let impl_items = impl_id.0.impl_items(self.0.interner.db());
+        let AnyImplId::ImplId(impl_id) = impl_id else {
+            // Builtin derive traits don't have type/consts assoc items.
+            return Ok(None);
+        };
+        let impl_items = impl_id.impl_items(self.0.interner.db());
         let id =
             match trait_assoc_def_id {
                 SolverDefId::TypeAliasId(trait_assoc_id) => {

@@ -7,18 +7,18 @@ use hir_def::{
     src::{HasChildSource, HasSource as _},
 };
 use hir_expand::{EditionedFileId, HirFileId, InFile};
-use hir_ty::db::InternedClosure;
-use syntax::ast;
+use hir_ty::{db::InternedClosure, next_solver::AnyImplId};
+use syntax::{AstNode, ast};
 use tt::TextRange;
 
 use crate::{
-    Adt, Callee, Const, Enum, ExternCrateDecl, Field, FieldSource, Function, Impl,
+    Adt, AnyFunctionId, Callee, Const, Enum, ExternCrateDecl, Field, FieldSource, Function, Impl,
     InlineAsmOperand, Label, LifetimeParam, LocalSource, Macro, Module, Param, SelfParam, Static,
     Struct, Trait, TypeAlias, TypeOrConstParam, Union, Variant, VariantDef, db::HirDatabase,
 };
 
-pub trait HasSource {
-    type Ast;
+pub trait HasSource: Sized {
+    type Ast: AstNode;
     /// Fetches the definition's source node.
     /// Using [`crate::SemanticsImpl::source`] is preferred when working with [`crate::Semantics`],
     /// as that caches the parsed file in the semantics' cache.
@@ -27,6 +27,20 @@ pub trait HasSource {
     /// But we made this method `Option` to support rlib in the future
     /// by <https://github.com/rust-lang/rust-analyzer/issues/6913>
     fn source(self, db: &dyn HirDatabase) -> Option<InFile<Self::Ast>>;
+
+    /// Fetches the source node, along with its full range.
+    ///
+    /// The reason for the separate existence of this method is that some things, notably builtin derive impls,
+    /// do not really have a source node, at least not of the correct type. But we still can trace them
+    /// to source code (the derive producing them). So this method will return the range if it is supported,
+    /// and if the node is supported too it will return it as well.
+    fn source_with_range(
+        self,
+        db: &dyn HirDatabase,
+    ) -> Option<InFile<(TextRange, Option<Self::Ast>)>> {
+        let source = self.source(db)?;
+        Some(source.map(|node| (node.syntax().text_range(), Some(node))))
+    }
 }
 
 /// NB: Module is !HasSource, because it has two source nodes at the same time:
@@ -146,7 +160,30 @@ impl HasSource for Variant {
 impl HasSource for Function {
     type Ast = ast::Fn;
     fn source(self, db: &dyn HirDatabase) -> Option<InFile<Self::Ast>> {
-        Some(self.id.lookup(db).source(db))
+        match self.id {
+            AnyFunctionId::FunctionId(id) => Some(id.loc(db).source(db)),
+            // When calling `source()`, we use the trait method source, but when calling `source_with_range()`,
+            // we return `None` as the syntax node source. This is relying on the assumption that if you are calling
+            // `source_with_range()` (e.g. in navigation) you're prepared to deal with no source node, while if
+            // you call `source()` maybe you don't - therefore we fall back to the trait method, to not lose features.
+            AnyFunctionId::BuiltinDeriveImplMethod { method, impl_ } => method
+                .trait_method(db, impl_)
+                .and_then(|trait_method| Function::from(trait_method).source(db)),
+        }
+    }
+
+    fn source_with_range(
+        self,
+        db: &dyn HirDatabase,
+    ) -> Option<InFile<(TextRange, Option<Self::Ast>)>> {
+        match self.id {
+            AnyFunctionId::FunctionId(id) => Some(
+                id.loc(db).source(db).map(|source| (source.syntax().text_range(), Some(source))),
+            ),
+            AnyFunctionId::BuiltinDeriveImplMethod { impl_, .. } => {
+                Some(impl_.loc(db).source(db).map(|range| (range, None)))
+            }
+        }
     }
 }
 impl HasSource for Const {
@@ -190,7 +227,24 @@ impl HasSource for Macro {
 impl HasSource for Impl {
     type Ast = ast::Impl;
     fn source(self, db: &dyn HirDatabase) -> Option<InFile<Self::Ast>> {
-        Some(self.id.lookup(db).source(db))
+        match self.id {
+            AnyImplId::ImplId(id) => Some(id.loc(db).source(db)),
+            AnyImplId::BuiltinDeriveImplId(_) => None,
+        }
+    }
+
+    fn source_with_range(
+        self,
+        db: &dyn HirDatabase,
+    ) -> Option<InFile<(TextRange, Option<Self::Ast>)>> {
+        match self.id {
+            AnyImplId::ImplId(id) => Some(
+                id.loc(db).source(db).map(|source| (source.syntax().text_range(), Some(source))),
+            ),
+            AnyImplId::BuiltinDeriveImplId(impl_) => {
+                Some(impl_.loc(db).source(db).map(|range| (range, None)))
+            }
+        }
     }
 }
 
@@ -224,7 +278,7 @@ impl HasSource for Param<'_> {
     fn source(self, db: &dyn HirDatabase) -> Option<InFile<Self::Ast>> {
         match self.func {
             Callee::Def(CallableDefId::FunctionId(func)) => {
-                let InFile { file_id, value } = Function { id: func }.source(db)?;
+                let InFile { file_id, value } = Function::from(func).source(db)?;
                 let params = value.param_list()?;
                 if let Some(self_param) = params.self_param() {
                     if let Some(idx) = self.idx.checked_sub(1) {
@@ -261,7 +315,7 @@ impl HasSource for SelfParam {
     type Ast = ast::SelfParam;
 
     fn source(self, db: &dyn HirDatabase) -> Option<InFile<Self::Ast>> {
-        let InFile { file_id, value } = Function::from(self.func).source(db)?;
+        let InFile { file_id, value } = self.func.source(db)?;
         value
             .param_list()
             .and_then(|params| params.self_param())

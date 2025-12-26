@@ -7,7 +7,7 @@ use std::{
     mem,
 };
 
-use base_db::Crate;
+use base_db::{Crate, FxIndexMap};
 use either::Either;
 use hir_def::{
     FindPathConfig, GenericDefId, HasModule, LocalFieldId, Lookup, ModuleDefId, ModuleId, TraitId,
@@ -143,11 +143,11 @@ impl<'db> BoundsFormattingCtx<'db> {
 }
 
 impl<'db> HirFormatter<'_, 'db> {
-    fn start_location_link(&mut self, location: ModuleDefId) {
+    pub fn start_location_link(&mut self, location: ModuleDefId) {
         self.fmt.start_location_link(location);
     }
 
-    fn end_location_link(&mut self) {
+    pub fn end_location_link(&mut self) {
         self.fmt.end_location_link();
     }
 
@@ -1967,6 +1967,49 @@ fn write_bounds_like_dyn_trait<'db>(
         if sized_trait.is_some() {
             f.end_location_link();
         }
+    }
+    Ok(())
+}
+
+pub fn write_params_bounds<'db>(
+    f: &mut HirFormatter<'_, 'db>,
+    predicates: &[Clause<'db>],
+) -> Result {
+    // Use an FxIndexMap to keep user's order, as far as possible.
+    let mut per_type = FxIndexMap::<_, Vec<_>>::default();
+    for &predicate in predicates {
+        let base_ty = match predicate.kind().skip_binder() {
+            ClauseKind::Trait(clause) => Either::Left(clause.self_ty()),
+            ClauseKind::RegionOutlives(clause) => Either::Right(clause.0),
+            ClauseKind::TypeOutlives(clause) => Either::Left(clause.0),
+            ClauseKind::Projection(clause) => Either::Left(clause.self_ty()),
+            ClauseKind::ConstArgHasType(..)
+            | ClauseKind::WellFormed(_)
+            | ClauseKind::ConstEvaluatable(_)
+            | ClauseKind::HostEffect(..)
+            | ClauseKind::UnstableFeature(_) => continue,
+        };
+        per_type.entry(base_ty).or_default().push(predicate);
+    }
+
+    for (base_ty, clauses) in per_type {
+        f.write_str("    ")?;
+        match base_ty {
+            Either::Left(it) => it.hir_fmt(f)?,
+            Either::Right(it) => it.hir_fmt(f)?,
+        }
+        f.write_str(": ")?;
+        // Rudimentary approximation: type params are `Sized` by default, everything else not.
+        // FIXME: This is not correct, really. But I'm not sure how we can from the ty representation
+        // to extract the default sizedness, and if it's possible at all.
+        let default_sized = match base_ty {
+            Either::Left(ty) if matches!(ty.kind(), TyKind::Param(_)) => {
+                SizedByDefault::Sized { anchor: f.krate() }
+            }
+            _ => SizedByDefault::NotSized,
+        };
+        write_bounds_like_dyn_trait(f, base_ty, &clauses, default_sized)?;
+        f.write_str(",\n")?;
     }
     Ok(())
 }

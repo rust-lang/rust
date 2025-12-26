@@ -57,9 +57,9 @@ use syntax::{
 use triomphe::Arc;
 
 use crate::{
-    Adt, AssocItem, BindingMode, BuiltinAttr, BuiltinType, Callable, Const, DeriveHelper, Field,
-    Function, GenericSubstitution, Local, Macro, ModuleDef, Static, Struct, ToolModule, Trait,
-    TupleField, Type, TypeAlias, Variant,
+    Adt, AnyFunctionId, AssocItem, BindingMode, BuiltinAttr, BuiltinType, Callable, Const,
+    DeriveHelper, Field, Function, GenericSubstitution, Local, Macro, ModuleDef, Static, Struct,
+    ToolModule, Trait, TupleField, Type, TypeAlias, Variant,
     db::HirDatabase,
     semantics::{PathResolution, PathResolutionPerNs},
 };
@@ -431,7 +431,7 @@ impl<'db> SourceAnalyzer<'db> {
         let expr_id = self.expr_id(call.clone().into())?.as_expr()?;
         let (f_in_trait, substs) = self.infer()?.method_resolution(expr_id)?;
 
-        Some(self.resolve_impl_method_or_trait_def(db, f_in_trait, substs).into())
+        Some(self.resolve_impl_method_or_trait_def(db, f_in_trait, substs))
     }
 
     pub(crate) fn resolve_method_call_fallback(
@@ -446,8 +446,8 @@ impl<'db> SourceAnalyzer<'db> {
                 let (fn_, subst) =
                     self.resolve_impl_method_or_trait_def_with_subst(db, f_in_trait, substs);
                 Some((
-                    Either::Left(fn_.into()),
-                    Some(GenericSubstitution::new(fn_.into(), subst, self.trait_environment(db))),
+                    Either::Left(fn_),
+                    GenericSubstitution::new_from_fn(fn_, subst, self.trait_environment(db)),
                 ))
             }
             None => {
@@ -519,8 +519,8 @@ impl<'db> SourceAnalyzer<'db> {
             None => inference_result.method_resolution(expr_id).map(|(f, substs)| {
                 let (f, subst) = self.resolve_impl_method_or_trait_def_with_subst(db, f, substs);
                 (
-                    Either::Right(f.into()),
-                    Some(GenericSubstitution::new(f.into(), subst, self.trait_environment(db))),
+                    Either::Right(f),
+                    GenericSubstitution::new_from_fn(f, subst, self.trait_environment(db)),
                 )
             }),
         }
@@ -569,7 +569,7 @@ impl<'db> SourceAnalyzer<'db> {
         &self,
         db: &'db dyn HirDatabase,
         await_expr: &ast::AwaitExpr,
-    ) -> Option<FunctionId> {
+    ) -> Option<Function> {
         let mut ty = self.ty_of_expr(await_expr.expr()?)?;
 
         let into_future_trait = self
@@ -605,7 +605,7 @@ impl<'db> SourceAnalyzer<'db> {
         &self,
         db: &'db dyn HirDatabase,
         prefix_expr: &ast::PrefixExpr,
-    ) -> Option<FunctionId> {
+    ) -> Option<Function> {
         let (_op_trait, op_fn) = match prefix_expr.op_kind()? {
             ast::UnaryOp::Deref => {
                 // This can be either `Deref::deref` or `DerefMut::deref_mut`.
@@ -650,7 +650,7 @@ impl<'db> SourceAnalyzer<'db> {
         &self,
         db: &'db dyn HirDatabase,
         index_expr: &ast::IndexExpr,
-    ) -> Option<FunctionId> {
+    ) -> Option<Function> {
         let base_ty = self.ty_of_expr(index_expr.base()?)?;
         let index_ty = self.ty_of_expr(index_expr.index()?)?;
 
@@ -679,7 +679,7 @@ impl<'db> SourceAnalyzer<'db> {
         &self,
         db: &'db dyn HirDatabase,
         binop_expr: &ast::BinExpr,
-    ) -> Option<FunctionId> {
+    ) -> Option<Function> {
         let op = binop_expr.op_kind()?;
         let lhs = self.ty_of_expr(binop_expr.lhs()?)?;
         let rhs = self.ty_of_expr(binop_expr.rhs()?)?;
@@ -699,7 +699,7 @@ impl<'db> SourceAnalyzer<'db> {
         &self,
         db: &'db dyn HirDatabase,
         try_expr: &ast::TryExpr,
-    ) -> Option<FunctionId> {
+    ) -> Option<Function> {
         let ty = self.ty_of_expr(try_expr.expr()?)?;
 
         let op_fn = self.lang_items(db).TryTraitBranch?;
@@ -905,7 +905,7 @@ impl<'db> SourceAnalyzer<'db> {
                                         subs,
                                         self.trait_environment(db),
                                     );
-                                    (AssocItemId::from(f_in_trait), subst)
+                                    (AssocItem::Function(f_in_trait.into()), Some(subst))
                                 }
                                 Some(func_ty) => {
                                     if let TyKind::FnDef(_fn_def, subs) = func_ty.kind() {
@@ -913,19 +913,19 @@ impl<'db> SourceAnalyzer<'db> {
                                             .resolve_impl_method_or_trait_def_with_subst(
                                                 db, f_in_trait, subs,
                                             );
-                                        let subst = GenericSubstitution::new(
-                                            fn_.into(),
+                                        let subst = GenericSubstitution::new_from_fn(
+                                            fn_,
                                             subst,
                                             self.trait_environment(db),
                                         );
-                                        (fn_.into(), subst)
+                                        (AssocItem::Function(fn_), subst)
                                     } else {
                                         let subst = GenericSubstitution::new(
                                             f_in_trait.into(),
                                             subs,
                                             self.trait_environment(db),
                                         );
-                                        (f_in_trait.into(), subst)
+                                        (AssocItem::Function(f_in_trait.into()), Some(subst))
                                     }
                                 }
                             }
@@ -938,11 +938,11 @@ impl<'db> SourceAnalyzer<'db> {
                                 subst,
                                 self.trait_environment(db),
                             );
-                            (konst.into(), subst)
+                            (AssocItem::Const(konst.into()), Some(subst))
                         }
                     };
 
-                    return Some((PathResolution::Def(AssocItem::from(assoc).into()), Some(subst)));
+                    return Some((PathResolution::Def(assoc.into()), subst));
                 }
                 if let Some(VariantId::EnumVariantId(variant)) =
                     infer.variant_resolution_for_expr_or_pat(expr_id)
@@ -1401,7 +1401,7 @@ impl<'db> SourceAnalyzer<'db> {
         db: &'db dyn HirDatabase,
         func: FunctionId,
         substs: GenericArgs<'db>,
-    ) -> FunctionId {
+    ) -> Function {
         self.resolve_impl_method_or_trait_def_with_subst(db, func, substs).0
     }
 
@@ -1410,13 +1410,19 @@ impl<'db> SourceAnalyzer<'db> {
         db: &'db dyn HirDatabase,
         func: FunctionId,
         substs: GenericArgs<'db>,
-    ) -> (FunctionId, GenericArgs<'db>) {
+    ) -> (Function, GenericArgs<'db>) {
         let owner = match self.resolver.body_owner() {
             Some(it) => it,
-            None => return (func, substs),
+            None => return (func.into(), substs),
         };
         let env = self.param_and(db.trait_environment_for_body(owner));
-        db.lookup_impl_method(env, func, substs)
+        let (func, args) = db.lookup_impl_method(env, func, substs);
+        match func {
+            Either::Left(func) => (func.into(), args),
+            Either::Right((impl_, method)) => {
+                (Function { id: AnyFunctionId::BuiltinDeriveImplMethod { method, impl_ } }, args)
+            }
+        }
     }
 
     fn resolve_impl_const_or_trait_def_with_subst(
