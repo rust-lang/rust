@@ -122,7 +122,7 @@ fn check_impl(
         });
     }
     if lint_args.iter().any(|ck| ck.if_installed) {
-        lint_args.retain(|ck| ck.is_non_if_installed_or_matches(outdir));
+        lint_args.retain(|ck| ck.is_non_if_installed_or_matches(root_path, outdir));
     }
 
     macro_rules! extra_check {
@@ -322,7 +322,7 @@ fn check_impl(
         }
         let res = spellcheck_runner(root_path, &outdir, &cargo, &args);
         if res.is_err() {
-            rerun_with_bless("spellcheck", "fix typechecktypos");
+            rerun_with_bless("spellcheck", "fix typos");
         }
         res?;
     }
@@ -425,21 +425,11 @@ fn py_runner(
 /// Create a virtuaenv at a given path if it doesn't already exist, or validate
 /// the install if it does. Returns the path to that venv's python executable.
 fn get_or_create_venv(venv_path: &Path, src_reqs_path: &Path) -> Result<PathBuf, Error> {
-    let mut should_create = true;
-    let dst_reqs_path = venv_path.join("requirements.txt");
     let mut py_path = venv_path.to_owned();
     py_path.extend(REL_PY_PATH);
 
-    if let Ok(req) = fs::read_to_string(&dst_reqs_path) {
-        if req == fs::read_to_string(src_reqs_path)? {
-            // found existing environment
-            should_create = false;
-        } else {
-            eprintln!("requirements.txt file mismatch, recreating environment");
-        }
-    }
-
-    if should_create {
+    if !has_py_tools(venv_path, src_reqs_path)? {
+        let dst_reqs_path = venv_path.join("requirements.txt");
         eprintln!("removing old virtual environment");
         if venv_path.is_dir() {
             fs::remove_dir_all(venv_path).unwrap_or_else(|_| {
@@ -452,6 +442,18 @@ fn get_or_create_venv(venv_path: &Path, src_reqs_path: &Path) -> Result<PathBuf,
 
     verify_py_version(&py_path)?;
     Ok(py_path)
+}
+
+fn has_py_tools(venv_path: &Path, src_reqs_path: &Path) -> Result<bool, Error> {
+    let dst_reqs_path = venv_path.join("requirements.txt");
+    if let Ok(req) = fs::read_to_string(&dst_reqs_path) {
+        if req == fs::read_to_string(src_reqs_path)? {
+            return Ok(true);
+        }
+        eprintln!("requirements.txt file mismatch");
+    }
+
+    Ok(false)
 }
 
 /// Attempt to create a virtualenv at this path. Cycles through all expected
@@ -769,7 +771,7 @@ impl ExtraCheckArg {
         self.lang == lang && self.kind.map(|k| k == kind).unwrap_or(true)
     }
 
-    fn is_non_if_installed_or_matches(&self, build_dir: &Path) -> bool {
+    fn is_non_if_installed_or_matches(&self, root_path: &Path, build_dir: &Path) -> bool {
         if !self.if_installed {
             return true;
         }
@@ -800,7 +802,16 @@ impl ExtraCheckArg {
                     Some(_) => false,
                 }
             }
-            _ => todo!("implement other checks"),
+            ExtraCheckLang::Py | ExtraCheckLang::Cpp => {
+                let venv_path = build_dir.join("venv");
+                let mut reqs_path = root_path.to_owned();
+                reqs_path.extend(PIP_REQ_PATH);
+                let Ok(v) = has_py_tools(&venv_path, &reqs_path) else {
+                    return false;
+                };
+
+                v
+            }
         }
     }
 
