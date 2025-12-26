@@ -2,7 +2,7 @@ error: encountered diff marker
  --> main.rust:2:1
   |
 2 | <<<<<<< HEAD //~ ERROR encountered diff marker
-  | ^^^^^^^ between this marker and `=======` is the code that you're rebasing onto
+  | ^^^^^^^ between this marker and `=======` is the code that you are rebasing onto
 3 |     Foo(u8),
 4 | =======
   | ------- between this marker and `>>>>>>>` is the code from branch 'branch-name' that you are rebasing
