@@ -152,7 +152,9 @@ fn check_int_to_ptr_transmute<'tcx>(
         return;
     };
     // bail-out if the argument is literal 0 as we have other lints for those cases
-    if matches!(arg.kind, hir::ExprKind::Lit(hir::Lit { node: LitKind::Int(v, _), .. }) if v == 0) {
+    if let hir::ExprKind::Lit(hir::Lit { node: LitKind::Int(v, _), .. }) = arg.kind
+        && v == 0
+    {
         return;
     }
     // bail-out if the inner type is a ZST
