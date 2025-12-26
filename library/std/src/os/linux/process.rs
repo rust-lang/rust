@@ -67,8 +67,10 @@ impl PidFd {
     /// Waits for the child to exit completely, returning the status that it exited with.
     ///
     /// Unlike [`Child::wait`] it does not ensure that the stdin handle is closed.
-    /// Additionally it will not return an `ExitStatus` if the child
-    /// has already been reaped. Instead an error will be returned.
+    ///
+    /// Additionally on kernels prior to 6.15 only the first attempt to
+    /// reap a child will return an ExitStatus, further attempts
+    /// will return an Error.
     ///
     /// [`Child::wait`]: process::Child::wait
     pub fn wait(&self) -> Result<ExitStatus> {
@@ -77,8 +79,8 @@ impl PidFd {
 
     /// Attempts to collect the exit status of the child if it has already exited.
     ///
-    /// Unlike [`Child::try_wait`] this method will return an Error
-    /// if the child has already been reaped.
+    /// On kernels prior to 6.15, and unlike [`Child::try_wait`], only the first attempt
+    /// to reap a child will return an ExitStatus, further attempts will return an Error.
     ///
     /// [`Child::try_wait`]: process::Child::try_wait
     pub fn try_wait(&self) -> Result<Option<ExitStatus>> {

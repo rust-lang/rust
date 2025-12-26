@@ -1,8 +1,11 @@
+use super::PidFd as InternalPidFd;
 use crate::assert_matches::assert_matches;
-use crate::os::fd::{AsRawFd, RawFd};
+use crate::io::ErrorKind;
+use crate::os::fd::AsRawFd;
 use crate::os::linux::process::{ChildExt, CommandExt as _};
 use crate::os::unix::process::{CommandExt as _, ExitStatusExt};
 use crate::process::Command;
+use crate::sys::AsInner;
 
 #[test]
 fn test_command_pidfd() {
@@ -48,11 +51,22 @@ fn test_command_pidfd() {
     let mut cmd = Command::new("false");
     let mut child = unsafe { cmd.pre_exec(|| Ok(())) }.create_pidfd(true).spawn().unwrap();
 
-    assert!(child.id() > 0 && child.id() < -1i32 as u32);
+    let id = child.id();
+
+    assert!(id > 0 && id < -1i32 as u32, "spawning with pidfd still returns a sane pid");
 
     if pidfd_open_available {
         assert!(child.pidfd().is_ok())
     }
+
+    if let Ok(pidfd) = child.pidfd() {
+        match pidfd.as_inner().pid() {
+            Ok(pid) => assert_eq!(pid, id),
+            Err(e) if e.kind() == ErrorKind::InvalidInput => { /* older kernel */ }
+            Err(e) => panic!("unexpected error getting pid from pidfd: {}", e),
+        }
+    }
+
     child.wait().expect("error waiting on child");
 }
 
@@ -77,9 +91,15 @@ fn test_pidfd() {
     assert_eq!(status.signal(), Some(libc::SIGKILL));
 
     // Trying to wait again for a reaped child is safe since there's no pid-recycling race.
-    // But doing so will return an error.
+    // But doing so may return an error.
     let res = fd.wait();
-    assert_matches!(res, Err(e) if e.raw_os_error() == Some(libc::ECHILD));
+    match res {
+        // older kernels
+        Err(e) if e.raw_os_error() == Some(libc::ECHILD) => {}
+        // 6.15+
+        Ok(exit) if exit.signal() == Some(libc::SIGKILL) => {}
+        other => panic!("expected ECHILD error, got {:?}", other),
+    }
 
     // Ditto for additional attempts to kill an already-dead child.
     let res = fd.kill();
@@ -87,13 +107,5 @@ fn test_pidfd() {
 }
 
 fn probe_pidfd_support() -> bool {
-    // pidfds require the pidfd_open syscall
-    let our_pid = crate::process::id();
-    let pidfd = unsafe { libc::syscall(libc::SYS_pidfd_open, our_pid, 0) };
-    if pidfd >= 0 {
-        unsafe { libc::close(pidfd as RawFd) };
-        true
-    } else {
-        false
-    }
+    InternalPidFd::current_process().is_ok()
 }
