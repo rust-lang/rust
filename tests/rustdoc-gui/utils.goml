@@ -34,6 +34,24 @@ define-function: (
     },
 )
 
+// FIXME: To be removed once `browser-ui-test` has conditions.
+define-function: (
+    "switch-theme-mobile",
+    [theme],
+    block {
+        // Open the settings menu.
+        click: "rustdoc-topbar .settings-menu"
+        // Wait for the popover to appear...
+        wait-for-css: ("#settings", {"display": "block"})
+        // Change the setting.
+        click: "#theme-"+ |theme|
+        click: "rustdoc-topbar .settings-menu"
+        wait-for-css-false: ("#settings", {"display": "block"})
+        // Ensure that the local storage was correctly updated.
+        assert-local-storage: {"rustdoc-theme": |theme|}
+    },
+)
+
 define-function: (
     "perform-search",
     [query],
@@ -53,5 +71,17 @@ define-function: (
         wait-for: "#search-tabs"
         // then wait for it to finish
         wait-for-false: "#search-tabs .count.loading"
+    }
+)
+
+define-function: (
+    "switch-line-numbers-setting",
+    [expected_status],
+    block {
+        call-function: ("open-settings-menu", {})
+        // We change the line numbers setting.
+        click: "#line-numbers"
+        call-function: ("close-settings-menu", {})
+        assert-local-storage: {"rustdoc-line-numbers": |expected_status|}
     }
 )
