@@ -62,6 +62,21 @@ pub fn enable() {
                 Err(other_key) => other_key,
             }
         };
+
+        // Setting the key's value to non-zero will cause the dtor callback to be called when the thread or fiber exits.
+        // We only set the key once per thread, so the destructors are guaranteed to run at most once.
+        // We still need to verify that we won't run the destructors _before_ the thread exits,
+        // so we need to check what happens when a fiber terminates (fibers cannot be moved between threads).
+        //
+        // According to [Fibers entry in MSDN](https://learn.microsoft.com/en-us/windows/win32/procthread/fibers):
+        // > If your fiber function returns, the thread running the fiber exits.
+        // > ..
+        // > If the currently running fiber calls DeleteFiber, its thread calls ExitThread and terminates.
+        // > However, if the selected fiber of a thread is deleted by a fiber running in another thread,
+        // > the thread with the deleted fiber is likely to terminate abnormally because the fiber stack has been freed.
+        //
+        // Meaning a fiber's termination results in thread termination or unrecoverable failure,
+        // so destructors cannot run while the thread is still executing user code.
         unsafe { set(key, ptr::without_provenance(1)) };
     }
 }
