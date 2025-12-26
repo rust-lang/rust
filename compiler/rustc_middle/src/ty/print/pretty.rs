@@ -1919,14 +1919,9 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 self.pretty_print_byte_str(bytes)?;
                 return Ok(());
             }
-            // Aggregates, printed as array/tuple/struct/variant construction syntax.
-            (ty::ValTreeKind::Branch(_), ty::Array(..) | ty::Tuple(..) | ty::Adt(..)) => {
-                let contents = self.tcx().destructure_const(ty::Const::new_value(
-                    self.tcx(),
-                    cv.valtree,
-                    cv.ty,
-                ));
-                let fields = contents.fields.iter().copied();
+            (ty::ValTreeKind::Branch(_), ty::Array(..) | ty::Tuple(..)) => {
+                let fields = cv.valtree.to_branch().iter().copied();
+
                 match *cv.ty.kind() {
                     ty::Array(..) => {
                         write!(self, "[")?;
@@ -1936,51 +1931,57 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                     ty::Tuple(..) => {
                         write!(self, "(")?;
                         self.comma_sep(fields)?;
-                        if contents.fields.len() == 1 {
+                        if cv.valtree.to_branch().len() == 1 {
                             write!(self, ",")?;
                         }
                         write!(self, ")")?;
                     }
-                    ty::Adt(def, _) if def.variants().is_empty() => {
-                        self.typed_value(
-                            |this| {
-                                write!(this, "unreachable()")?;
-                                Ok(())
-                            },
-                            |this| this.print_type(cv.ty),
-                            ": ",
-                        )?;
-                    }
-                    ty::Adt(def, args) => {
-                        let variant_idx =
-                            contents.variant.expect("destructed const of adt without variant idx");
-                        let variant_def = &def.variant(variant_idx);
-                        self.pretty_print_value_path(variant_def.def_id, args)?;
-                        match variant_def.ctor_kind() {
-                            Some(CtorKind::Const) => {}
-                            Some(CtorKind::Fn) => {
-                                write!(self, "(")?;
-                                self.comma_sep(fields)?;
-                                write!(self, ")")?;
-                            }
-                            None => {
-                                write!(self, " {{ ")?;
-                                let mut first = true;
-                                for (field_def, field) in iter::zip(&variant_def.fields, fields) {
-                                    if !first {
-                                        write!(self, ", ")?;
-                                    }
-                                    write!(self, "{}: ", field_def.name)?;
-                                    field.print(self)?;
-                                    first = false;
-                                }
-                                write!(self, " }}")?;
-                            }
-                        }
-                    }
                     _ => unreachable!(),
                 }
                 return Ok(());
+            }
+            (ty::ValTreeKind::Branch(_), ty::Adt(..)) => {
+                let contents = cv.destructure_adt_const();
+                let fields = contents.fields.iter().copied();
+
+                if let ty::Adt(def, _) = *cv.ty.kind()
+                    && def.variants().is_empty()
+                {
+                    self.typed_value(
+                        |this| {
+                            write!(this, "unreachable()")?;
+                            Ok(())
+                        },
+                        |this| this.print_type(cv.ty),
+                        ": ",
+                    )?;
+                } else if let ty::Adt(def, args) = *cv.ty.kind() {
+                    let variant_idx = contents.variant;
+                    let variant_def = &def.variant(variant_idx);
+                    self.pretty_print_value_path(variant_def.def_id, args)?;
+                    match variant_def.ctor_kind() {
+                        Some(CtorKind::Const) => {}
+                        Some(CtorKind::Fn) => {
+                            write!(self, "(")?;
+                            self.comma_sep(fields)?;
+                            write!(self, ")")?;
+                        }
+                        None => {
+                            write!(self, " {{ ")?;
+                            let mut first = true;
+                            for (field_def, field) in iter::zip(&variant_def.fields, fields) {
+                                if !first {
+                                    write!(self, ", ")?;
+                                }
+                                write!(self, "{}: ", field_def.name)?;
+                                field.print(self)?;
+                                first = false;
+                            }
+                            write!(self, " }}")?;
+                        }
+                    }
+                }
+                return Ok(())
             }
             (ty::ValTreeKind::Leaf(leaf), ty::Ref(_, inner_ty, _)) => {
                 write!(self, "&")?;
