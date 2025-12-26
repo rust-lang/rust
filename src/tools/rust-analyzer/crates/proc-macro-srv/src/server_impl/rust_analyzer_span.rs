@@ -14,7 +14,7 @@ use proc_macro::bridge::server;
 use span::{FIXUP_ERASED_FILE_AST_ID_MARKER, Span, TextRange, TextSize};
 
 use crate::{
-    SubCallback, SubRequest, SubResponse,
+    SubCallback,
     bridge::{Diagnostic, ExpnGlobals, Literal, TokenTree},
     server_impl::literal_from_str,
 };
@@ -156,14 +156,7 @@ impl server::Span for RaSpanServer {
         let start: u32 = span.range.start().into();
         let end: u32 = span.range.end().into();
 
-        let req = SubRequest::SourceText { file_id, start, end };
-
-        let cb = self.callback.as_mut()?;
-        let response = cb(req);
-
-        match response {
-            SubResponse::SourceTextResult { text } => text,
-        }
+        self.callback.as_mut()?.source_text(file_id.file_id().index(), start, end)
     }
 
     fn parent(&mut self, _span: Self::Span) -> Option<Self::Span> {
