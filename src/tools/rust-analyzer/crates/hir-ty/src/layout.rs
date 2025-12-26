@@ -14,7 +14,10 @@ use rustc_abi::{
     TargetDataLayout, WrappingRange,
 };
 use rustc_index::IndexVec;
-use rustc_type_ir::{FloatTy, IntTy, UintTy, inherent::IntoKind};
+use rustc_type_ir::{
+    FloatTy, IntTy, UintTy,
+    inherent::{GenericArgs as _, IntoKind},
+};
 use triomphe::Arc;
 
 use crate::{
@@ -335,10 +338,7 @@ pub fn layout_of_ty_query(
             let fields = captures
                 .iter()
                 .map(|it| {
-                    let ty = it
-                        .ty
-                        .get()
-                        .instantiate(interner, args.split_closure_args_untupled().parent_args);
+                    let ty = it.ty.get().instantiate(interner, args.as_closure().parent_args());
                     db.layout_of_ty(ty.store(), trait_env.clone())
                 })
                 .collect::<Result<Vec<_>, _>>()?;

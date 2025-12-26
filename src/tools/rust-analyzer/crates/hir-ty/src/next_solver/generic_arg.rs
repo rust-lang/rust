@@ -11,9 +11,9 @@ use std::{hint::unreachable_unchecked, marker::PhantomData, ptr::NonNull};
 use hir_def::{GenericDefId, GenericParamId};
 use intern::InternedRef;
 use rustc_type_ir::{
-    ClosureArgs, ConstVid, CoroutineArgs, CoroutineClosureArgs, FallibleTypeFolder, FnSigTys,
-    GenericTypeVisitable, Interner, TyKind, TyVid, TypeFoldable, TypeFolder, TypeVisitable,
-    TypeVisitor, Variance,
+    ClosureArgs, ConstVid, CoroutineArgs, CoroutineClosureArgs, FallibleTypeFolder,
+    GenericTypeVisitable, Interner, TyVid, TypeFoldable, TypeFolder, TypeVisitable, TypeVisitor,
+    Variance,
     inherent::{GenericArg as _, GenericsOf, IntoKind, SliceLike, Term as _, Ty as _},
     relate::{Relate, VarianceDiagInfo},
     walk::TypeWalker,
@@ -21,12 +21,11 @@ use rustc_type_ir::{
 use smallvec::SmallVec;
 
 use crate::next_solver::{
-    ConstInterned, PolyFnSig, RegionInterned, TyInterned, impl_foldable_for_interned_slice,
-    interned_slice,
+    ConstInterned, RegionInterned, TyInterned, impl_foldable_for_interned_slice, interned_slice,
 };
 
 use super::{
-    Const, DbInterner, EarlyParamRegion, ErrorGuaranteed, ParamConst, Region, SolverDefId, Ty, Tys,
+    Const, DbInterner, EarlyParamRegion, ErrorGuaranteed, ParamConst, Region, SolverDefId, Ty,
     generics::Generics,
 };
 
@@ -566,33 +565,6 @@ impl<'db> GenericArgs<'db> {
         }
     }
 
-    pub fn closure_sig_untupled(self) -> PolyFnSig<'db> {
-        let TyKind::FnPtr(inputs_and_output, hdr) =
-            self.split_closure_args_untupled().closure_sig_as_fn_ptr_ty.kind()
-        else {
-            unreachable!("not a function pointer")
-        };
-        inputs_and_output.with(hdr)
-    }
-
-    /// A "sensible" `.split_closure_args()`, where the arguments are not in a tuple.
-    pub fn split_closure_args_untupled(self) -> rustc_type_ir::ClosureArgsParts<DbInterner<'db>> {
-        // FIXME: should use `ClosureSubst` when possible
-        match self.as_slice() {
-            [parent_args @ .., closure_kind_ty, sig_ty, tupled_upvars_ty] => {
-                rustc_type_ir::ClosureArgsParts {
-                    parent_args,
-                    closure_sig_as_fn_ptr_ty: sig_ty.expect_ty(),
-                    closure_kind_ty: closure_kind_ty.expect_ty(),
-                    tupled_upvars_ty: tupled_upvars_ty.expect_ty(),
-                }
-            }
-            _ => {
-                unreachable!("unexpected closure sig");
-            }
-        }
-    }
-
     pub fn types(self) -> impl Iterator<Item = Ty<'db>> {
         self.iter().filter_map(|it| it.as_type())
     }
@@ -688,27 +660,9 @@ impl<'db> rustc_type_ir::inherent::GenericArgs<DbInterner<'db>> for GenericArgs<
         // FIXME: should use `ClosureSubst` when possible
         match self.as_slice() {
             [parent_args @ .., closure_kind_ty, sig_ty, tupled_upvars_ty] => {
-                let interner = DbInterner::conjure();
-                // This is stupid, but the next solver expects the first input to actually be a tuple
-                let sig_ty = match sig_ty.expect_ty().kind() {
-                    TyKind::FnPtr(sig_tys, header) => Ty::new(
-                        interner,
-                        TyKind::FnPtr(
-                            sig_tys.map_bound(|s| {
-                                let inputs = Ty::new_tup(interner, s.inputs());
-                                let output = s.output();
-                                FnSigTys {
-                                    inputs_and_output: Tys::new_from_slice(&[inputs, output]),
-                                }
-                            }),
-                            header,
-                        ),
-                    ),
-                    _ => unreachable!("sig_ty should be last"),
-                };
                 rustc_type_ir::ClosureArgsParts {
                     parent_args,
-                    closure_sig_as_fn_ptr_ty: sig_ty,
+                    closure_sig_as_fn_ptr_ty: sig_ty.expect_ty(),
                     closure_kind_ty: closure_kind_ty.expect_ty(),
                     tupled_upvars_ty: tupled_upvars_ty.expect_ty(),
                 }

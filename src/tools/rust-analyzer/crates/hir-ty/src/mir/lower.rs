@@ -19,7 +19,7 @@ use hir_expand::name::Name;
 use la_arena::ArenaMap;
 use rustc_apfloat::Float;
 use rustc_hash::FxHashMap;
-use rustc_type_ir::inherent::{Const as _, IntoKind, Ty as _};
+use rustc_type_ir::inherent::{Const as _, GenericArgs as _, IntoKind, Ty as _};
 use span::{Edition, FileId};
 use syntax::TextRange;
 use triomphe::Arc;
@@ -44,6 +44,7 @@ use crate::{
     next_solver::{
         Const, DbInterner, ParamConst, ParamEnv, Region, StoredGenericArgs, StoredTy, TyKind,
         TypingMode, UnevaluatedConst,
+        abi::Safety,
         infer::{DbInternerInferExt, InferCtxt},
     },
     traits::FnTrait,
@@ -2138,11 +2139,7 @@ pub fn mir_body_for_closure_query<'db>(
         .store(),
     });
     ctx.result.param_locals.push(closure_local);
-    let Some(sig) =
-        substs.split_closure_args_untupled().closure_sig_as_fn_ptr_ty.callable_sig(ctx.interner())
-    else {
-        implementation_error!("closure has not callable sig");
-    };
+    let sig = ctx.interner().signature_unclosure(substs.as_closure().sig(), Safety::Safe);
     let resolver_guard = ctx.resolver.update_to_inner_scope(db, owner, expr);
     let current = ctx.lower_params_and_bindings(
         args.iter().zip(sig.skip_binder().inputs().iter()).map(|(it, y)| (*it, *y)),

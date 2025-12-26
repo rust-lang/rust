@@ -1383,37 +1383,30 @@ impl<'db> HirDisplay<'db> for Ty<'db> {
                     }
                     _ => (),
                 }
-                let sig = substs
-                    .split_closure_args_untupled()
-                    .closure_sig_as_fn_ptr_ty
-                    .callable_sig(interner);
-                if let Some(sig) = sig {
-                    let sig = sig.skip_binder();
-                    let InternedClosure(def, _) = db.lookup_intern_closure(id);
-                    let infer = InferenceResult::for_body(db, def);
-                    let (_, kind) = infer.closure_info(id);
-                    match f.closure_style {
-                        ClosureStyle::ImplFn => write!(f, "impl {kind:?}(")?,
-                        ClosureStyle::RANotation => write!(f, "|")?,
-                        _ => unreachable!(),
-                    }
-                    if sig.inputs().is_empty() {
-                    } else if f.should_truncate() {
-                        write!(f, "{TYPE_HINT_TRUNCATION}")?;
-                    } else {
-                        f.write_joined(sig.inputs(), ", ")?;
-                    };
-                    match f.closure_style {
-                        ClosureStyle::ImplFn => write!(f, ")")?,
-                        ClosureStyle::RANotation => write!(f, "|")?,
-                        _ => unreachable!(),
-                    }
-                    if f.closure_style == ClosureStyle::RANotation || !sig.output().is_unit() {
-                        write!(f, " -> ")?;
-                        sig.output().hir_fmt(f)?;
-                    }
+                let sig = interner.signature_unclosure(substs.as_closure().sig(), Safety::Safe);
+                let sig = sig.skip_binder();
+                let InternedClosure(def, _) = db.lookup_intern_closure(id);
+                let infer = InferenceResult::for_body(db, def);
+                let (_, kind) = infer.closure_info(id);
+                match f.closure_style {
+                    ClosureStyle::ImplFn => write!(f, "impl {kind:?}(")?,
+                    ClosureStyle::RANotation => write!(f, "|")?,
+                    _ => unreachable!(),
+                }
+                if sig.inputs().is_empty() {
+                } else if f.should_truncate() {
+                    write!(f, "{TYPE_HINT_TRUNCATION}")?;
                 } else {
-                    write!(f, "{{closure}}")?;
+                    f.write_joined(sig.inputs(), ", ")?;
+                };
+                match f.closure_style {
+                    ClosureStyle::ImplFn => write!(f, ")")?,
+                    ClosureStyle::RANotation => write!(f, "|")?,
+                    _ => unreachable!(),
+                }
+                if f.closure_style == ClosureStyle::RANotation || !sig.output().is_unit() {
+                    write!(f, " -> ")?;
+                    sig.output().hir_fmt(f)?;
                 }
             }
             TyKind::CoroutineClosure(id, args) => {
