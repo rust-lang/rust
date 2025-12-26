@@ -193,6 +193,14 @@ impl<'a> Parser<'a> {
                     let _ = this.eat(exp!(Comma));
                 }
 
+                // Just emit and consume the star
+                if this.check_noexpect(&token::Star) {
+                    this.dcx().emit_err(errors::InvalidGenericPointerParam {
+                        span: this.prev_token.span,
+                    });
+                    this.bump();
+                }
+
                 let param = if this.check_lifetime() {
                     let lifetime = this.expect_lifetime();
                     // Parse lifetime parameter.

@@ -358,6 +358,10 @@ parse_function_body_equals_expr = function body cannot be `= expression;`
 
 parse_generic_args_in_pat_require_turbofish_syntax = generic args in patterns require the turbofish syntax
 
+parse_generic_param_pointer_syntax = pointer types are not allowed in generic parameter lists
+    .label = unexpected pointer syntax `*`
+    .note = generic parameters must be types, constants, or lifetimes
+    .help = use a type parameter and specify the pointer in the argument, e.g. `fn size<T>(_v: *const T)`
 parse_generic_parameters_without_angle_brackets = generic parameters without surrounding angle brackets
     .suggestion = surround the type parameters with angle brackets
 

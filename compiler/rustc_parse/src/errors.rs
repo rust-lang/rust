@@ -3678,3 +3678,13 @@ pub(crate) struct ImplReuseInherentImpl {
     #[primary_span]
     pub span: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag(parse_generic_param_pointer_syntax)]
+#[help]
+#[note]
+pub(crate) struct InvalidGenericPointerParam {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+}

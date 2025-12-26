@@ -1,0 +1,11 @@
+error: pointer types are not allowed in generic parameter lists
+  --> $DIR/pointer_generic.rs:1:8
+   |
+LL | fn size<*T>(_v: *const T) {
+   |        ^ unexpected pointer syntax `*`
+   |
+   = help: use a type parameter and specify the pointer in the argument, e.g. `fn size<T>(_v: *const T)`
+   = note: generic parameters must be types, constants, or lifetimes
+
+error: aborting due to 1 previous error
+
