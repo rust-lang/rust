@@ -249,7 +249,7 @@ pub trait Fn<Args: Tuple>: FnMut<Args> {
 #[lang = "dispatch_from_dyn"]
 pub trait DispatchFromDyn<T> {}
 
-impl<'a, T: PointeeSized + Unsize<U>, U: PointeeSized> DispatchFromDyn<&'a U> for &'a T {}
+impl<'a, T: PointeeSized + Unsize<U>, U: PointeeSized + MetaSized> DispatchFromDyn<&'a U> for &'a T {}
 
 #[lang = "unsize"]
 pub trait Unsize<T: ?Sized>: PointeeSized {}
@@ -257,7 +257,7 @@ pub trait Unsize<T: ?Sized>: PointeeSized {}
 #[lang = "coerce_unsized"]
 pub trait CoerceUnsized<T: ?Sized> {}
 
-impl<'a, 'b: 'a, T: PointeeSized + Unsize<U>, U: ?Sized + PointeeSized> CoerceUnsized<&'a U> for &'b T {}
+impl<'a, 'b: 'a, T: PointeeSized + Unsize<U>, U: ?Sized + PointeeSized + MetaSized> CoerceUnsized<&'a U> for &'b T {}
 
 #[lang = "drop"]
 pub trait Drop {
@@ -279,7 +279,6 @@ pub mod mem {
 
 #[lang = "c_void"]
 #[repr(C)]
-#[allow(non_camel_case_types)]
 pub enum c_void {
     __variant1,
     __variant2,
