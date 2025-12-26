@@ -65,7 +65,7 @@ define-function: (
     "check-colors",
     [theme, color, background],
     block {
-        call-function: ("switch-theme-mobile", {"theme": |theme|})
+        call-function: ("switch-theme", {"theme": |theme|})
         reload:
 
         // Open the sidebar menu.

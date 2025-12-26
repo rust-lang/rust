@@ -1,35 +1,34 @@
 // This file contains code to be re-used by other tests.
+
+define-function: (
+    "open-settings-menu",
+    [],
+    block {
+        // Open the settings menu.
+        click: "rustdoc-toolbar .settings-menu"
+        // Wait for the popover to appear...
+        wait-for-css: ("#settings", {"display": "block"})
+    }
+)
+
+define-function: (
+    "close-settings-menu",
+    [],
+    block {
+        click: "rustdoc-toolbar .settings-menu"
+        wait-for-css-false: ("#settings", {"display": "block"})
+    }
+)
+
 define-function: (
     "switch-theme",
     [theme],
     block {
         // Set the theme.
-        // Open the settings menu.
-        click: "rustdoc-toolbar .settings-menu"
-        // Wait for the popover to appear...
-        wait-for: "#settings"
+        call-function: ("open-settings-menu", {})
         // Change the setting.
         click: "#theme-"+ |theme|
-        // Close the popover.
-        click: "rustdoc-toolbar .settings-menu"
-        // Ensure that the local storage was correctly updated.
-        assert-local-storage: {"rustdoc-theme": |theme|}
-    },
-)
-
-define-function: (
-    "switch-theme-mobile",
-    [theme],
-    block {
-        // Set the theme.
-        // Open the settings menu.
-        click: "rustdoc-topbar .settings-menu"
-        // Wait for the popover to appear...
-        wait-for: "#settings"
-        // Change the setting.
-        click: "#theme-"+ |theme|
-        // Close the popover.
-        click: "rustdoc-topbar .settings-menu"
+        call-function: ("close-settings-menu", {})
         // Ensure that the local storage was correctly updated.
         assert-local-storage: {"rustdoc-theme": |theme|}
     },
