@@ -16,7 +16,7 @@
 #![no_core]
 // FIXME: Migrate these code after PR #130693 is landed.
 extern crate minicore;
-use minicore::*
+use minicore::*;
 
 // Reimplementation of function `{integer}::max`.
 macro_rules! max {
