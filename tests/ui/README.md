@@ -585,6 +585,10 @@ Exercises the `format!` macro.
 
 A broad category of tests on functions.
 
+## `tests/ui/fn_traits/`
+
+Tests for `#![feature(fn_traits)]`. See [`fn_traits` | The Unstable book](https://doc.rust-lang.org/nightly/unstable-book/library-features/fn-traits.html).
+
 ## `tests/ui/force-inlining/`: `#[rustc_force_inline]`
 
 Tests for `#[rustc_force_inline]`, which will force a function to always be labelled as inline by the compiler (it will be inserted at the point of its call instead of being used as a normal function call.) If the compiler is unable to inline the function, an error will be reported. See <https://github.com/rust-lang/rust/pull/134082>.
