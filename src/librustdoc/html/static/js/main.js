@@ -2163,7 +2163,15 @@ function preLoadCss(cssUrl) {
             // Should never happen, but the world is a dark and dangerous place.
             return;
         }
-        copyContentToClipboard(codeElem.textContent);
+        let content = "";
+        for (const node of codeElem.childNodes) {
+            // We exclude line numbers.
+            if (node instanceof HTMLElement && node.hasAttribute("data-nosnippet")) {
+                continue;
+            }
+            content += node.textContent;
+        }
+        copyContentToClipboard(content);
     }
 
     /**
