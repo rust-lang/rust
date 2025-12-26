@@ -66,12 +66,12 @@ fn detect_features() -> cache::Initializer {
         ecx: proc_info_ecx,
         edx: proc_info_edx,
         ..
-    } = unsafe { __cpuid(0x0000_0001_u32) };
+    } = __cpuid(0x0000_0001_u32);
 
     // EAX = 7, ECX = 0: Queries "Extended Features";
     // Contains information about bmi,bmi2, and avx2 support.
     let (extended_features_ebx, extended_features_ecx) = if max_basic_leaf >= 7 {
-        let CpuidResult { ebx, ecx, .. } = unsafe { __cpuid(0x0000_0007_u32) };
+        let CpuidResult { ebx, ecx, .. } = __cpuid(0x0000_0007_u32);
         (ebx, ecx)
     } else {
         (0, 0) // CPUID does not support "Extended Features"
@@ -83,12 +83,12 @@ fn detect_features() -> cache::Initializer {
     let CpuidResult {
         eax: extended_max_basic_leaf,
         ..
-    } = unsafe { __cpuid(0x8000_0000_u32) };
+    } = __cpuid(0x8000_0000_u32);
 
     // EAX = 0x8000_0001, ECX=0: Queries "Extended Processor Info and Feature
     // Bits"
     let extended_proc_info_ecx = if extended_max_basic_leaf >= 1 {
-        let CpuidResult { ecx, .. } = unsafe { __cpuid(0x8000_0001_u32) };
+        let CpuidResult { ecx, .. } = __cpuid(0x8000_0001_u32);
         ecx
     } else {
         0
@@ -181,7 +181,7 @@ fn detect_features() -> cache::Initializer {
                         let CpuidResult {
                             eax: proc_extended_state1_eax,
                             ..
-                        } = unsafe { __cpuid_count(0xd_u32, 1) };
+                        } = __cpuid_count(0xd_u32, 1);
                         enable(proc_extended_state1_eax, 0, Feature::xsaveopt);
                         enable(proc_extended_state1_eax, 1, Feature::xsavec);
                         enable(proc_extended_state1_eax, 3, Feature::xsaves);
