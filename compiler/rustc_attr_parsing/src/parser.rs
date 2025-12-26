@@ -8,7 +8,9 @@ use std::fmt::{Debug, Display};
 
 use rustc_ast::token::{self, Delimiter, MetaVarKind};
 use rustc_ast::tokenstream::TokenStream;
-use rustc_ast::{AttrArgs, Expr, ExprKind, LitKind, MetaItemLit, Path, StmtKind, UnOp};
+use rustc_ast::{
+    AttrArgs, Expr, ExprKind, LitKind, MetaItemLit, Path, PathSegment, StmtKind, UnOp,
+};
 use rustc_ast_pretty::pprust;
 use rustc_errors::{Diag, PResult};
 use rustc_hir::{self as hir, AttrPath};
@@ -256,6 +258,11 @@ impl Debug for MetaItemParser {
 }
 
 impl MetaItemParser {
+    /// For a single-segment meta item, returns its name; otherwise, returns `None`.
+    pub fn ident(&self) -> Option<Ident> {
+        if let [PathSegment { ident, .. }] = self.path.0.segments[..] { Some(ident) } else { None }
+    }
+
     pub fn span(&self) -> Span {
         if let Some(other) = self.args.span() {
             self.path.borrow().span().with_hi(other.hi())

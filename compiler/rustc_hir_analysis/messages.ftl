@@ -208,14 +208,6 @@ hir_analysis_field_already_declared_previous_nested =
     .previous_decl_label = `{$field_name}` first declared here in this unnamed field
     .previous_nested_field_decl_note = field `{$field_name}` first declared here
 
-hir_analysis_function_not_found_in_trait = function not found in this trait
-
-hir_analysis_function_not_have_default_implementation = function doesn't have a default implementation
-    .note = required by this annotation
-
-hir_analysis_functions_names_duplicated = functions names are duplicated
-    .note = all `#[rustc_must_implement_one_of]` arguments must be unique
-
 hir_analysis_generic_args_on_overridden_impl = could not resolve generic parameters on overridden impl
 
 hir_analysis_impl_not_marked_default = `{$ident}` specializes an item from a parent `impl`, but that item is not marked `default`
@@ -380,16 +372,6 @@ hir_analysis_missing_type_params =
         [one] parameter
         *[other] parameters
     } must be specified on the object type
-
-hir_analysis_must_be_name_of_associated_function = must be a name of an associated function
-
-hir_analysis_must_implement_not_function = not a function
-
-hir_analysis_must_implement_not_function_note = all `#[rustc_must_implement_one_of]` arguments must be associated function names
-
-hir_analysis_must_implement_not_function_span_note = required by this annotation
-
-hir_analysis_must_implement_one_of_attribute = the `#[rustc_must_implement_one_of]` attribute must be used with at least 2 args
 
 hir_analysis_no_variant_named = no variant named `{$ident}` found for enum `{$ty}`
 

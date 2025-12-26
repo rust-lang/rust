@@ -520,6 +520,9 @@ pub(crate) enum AttributeParseErrorReason<'a> {
     ExpectedSingleArgument,
     ExpectedList,
     ExpectedListOrNoArgs,
+    ExpectedListWithNumArgsOrMore {
+        args: usize,
+    },
     ExpectedNameValueOrNoArgs,
     ExpectedNonEmptyStringLiteral,
     UnexpectedLiteral,
@@ -596,6 +599,9 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for AttributeParseError<'_> {
             }
             AttributeParseErrorReason::ExpectedListOrNoArgs => {
                 diag.span_label(self.span, "expected a list or no arguments here");
+            }
+            AttributeParseErrorReason::ExpectedListWithNumArgsOrMore { args } => {
+                diag.span_label(self.span, format!("expected {args} or more items"));
             }
             AttributeParseErrorReason::ExpectedNameValueOrNoArgs => {
                 diag.span_label(self.span, "didn't expect a list here");

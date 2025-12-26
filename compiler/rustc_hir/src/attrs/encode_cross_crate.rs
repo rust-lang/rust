@@ -101,6 +101,7 @@ impl AttributeKind {
             RustcLintQueryInstability => Yes,
             RustcLintUntrackedQueryInformation => Yes,
             RustcMain => No,
+            RustcMustImplementOneOf { .. } => No,
             RustcNeverReturnsNullPointer => Yes,
             RustcNoImplicitAutorefs => Yes,
             RustcObjectLifetimeDefault => No,
