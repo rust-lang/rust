@@ -251,7 +251,7 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
                 let mut transient = DenseBitSet::new_filled(ccx.body.local_decls.len());
                 // Make sure to only visit reachable blocks, the dataflow engine can ICE otherwise.
                 for (bb, data) in traversal::reachable(&ccx.body) {
-                    if matches!(data.terminator().kind, TerminatorKind::Return) {
+                    if data.terminator().kind == TerminatorKind::Return {
                         let location = ccx.body.terminator_loc(bb);
                         maybe_storage_live.seek_after_primary_effect(location);
                         // If a local may be live here, it is definitely not transient.

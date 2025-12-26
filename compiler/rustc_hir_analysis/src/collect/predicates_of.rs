@@ -543,7 +543,7 @@ pub(super) fn explicit_predicates_of<'tcx>(
             }
         }
     } else {
-        if matches!(def_kind, DefKind::AnonConst)
+        if def_kind == DefKind::AnonConst
             && tcx.features().generic_const_exprs()
             && let Some(defaulted_param_def_id) =
                 tcx.hir_opt_const_param_default_param_def_id(tcx.local_def_id_to_hir_id(def_id))
