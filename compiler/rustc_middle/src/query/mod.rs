@@ -1408,9 +1408,8 @@ rustc_queries! {
         desc { "converting type-level constant value to MIR constant value"}
     }
 
-    /// Destructures array, ADT or tuple constants into the constants
-    /// of their fields.
-    query destructure_const(key: ty::Const<'tcx>) -> ty::DestructuredConst<'tcx> {
+    /// Destructures ADT constants into the constants of their fields
+    query destructure_adt_const(key: ty::Const<'tcx>) -> ty::DestructuredAdtConst<'tcx> {
         desc { "destructuring type level constant"}
     }
 

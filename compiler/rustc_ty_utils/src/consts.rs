@@ -18,10 +18,10 @@ use crate::errors::{GenericConstantTooComplex, GenericConstantTooComplexSub};
 
 /// Destructures array, ADT or tuple constants into the constants
 /// of their fields.
-fn destructure_const<'tcx>(
+fn destructure_adt_const<'tcx>(
     tcx: TyCtxt<'tcx>,
     const_: ty::Const<'tcx>,
-) -> ty::DestructuredConst<'tcx> {
+) -> ty::DestructuredAdtConst<'tcx> {
     let ty::ConstKind::Value(cv) = const_.kind() else {
         bug!("cannot destructure constant {:?}", const_)
     };
@@ -432,5 +432,5 @@ fn thir_abstract_const<'tcx>(
 }
 
 pub(crate) fn provide(providers: &mut Providers) {
-    *providers = Providers { destructure_const, thir_abstract_const, ..*providers };
+    *providers = Providers { destructure_adt_const, thir_abstract_const, ..*providers };
 }
