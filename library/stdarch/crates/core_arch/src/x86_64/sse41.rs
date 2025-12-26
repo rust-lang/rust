@@ -41,7 +41,7 @@ mod tests {
     use stdarch_test::simd_test;
 
     #[simd_test(enable = "sse4.1")]
-    const unsafe fn test_mm_extract_epi64() {
+    const fn test_mm_extract_epi64() {
         let a = _mm_setr_epi64x(0, 1);
         let r = _mm_extract_epi64::<1>(a);
         assert_eq!(r, 1);
@@ -50,7 +50,7 @@ mod tests {
     }
 
     #[simd_test(enable = "sse4.1")]
-    const unsafe fn test_mm_insert_epi64() {
+    const fn test_mm_insert_epi64() {
         let a = _mm_set1_epi64x(0);
         let e = _mm_setr_epi64x(0, 32);
         let r = _mm_insert_epi64::<1>(a, 32);

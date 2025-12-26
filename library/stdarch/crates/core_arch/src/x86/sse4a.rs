@@ -151,7 +151,7 @@ mod tests {
     use stdarch_test::simd_test;
 
     #[simd_test(enable = "sse4a")]
-    unsafe fn test_mm_extract_si64() {
+    fn test_mm_extract_si64() {
         let b = 0b0110_0000_0000_i64;
         //        ^^^^ bit range extracted
         let x = _mm_setr_epi64x(b, 0);
@@ -164,7 +164,7 @@ mod tests {
     }
 
     #[simd_test(enable = "sse4a")]
-    unsafe fn test_mm_extracti_si64() {
+    fn test_mm_extracti_si64() {
         let a = _mm_setr_epi64x(0x0123456789abcdef, 0);
         let r = _mm_extracti_si64::<8, 8>(a);
         let e = _mm_setr_epi64x(0xcd, 0);
@@ -172,7 +172,7 @@ mod tests {
     }
 
     #[simd_test(enable = "sse4a")]
-    unsafe fn test_mm_insert_si64() {
+    fn test_mm_insert_si64() {
         let i = 0b0110_i64;
         //        ^^^^ bit range inserted
         let z = 0b1010_1010_1010i64;
@@ -189,7 +189,7 @@ mod tests {
     }
 
     #[simd_test(enable = "sse4a")]
-    unsafe fn test_mm_inserti_si64() {
+    fn test_mm_inserti_si64() {
         let a = _mm_setr_epi64x(0x0123456789abcdef, 0);
         let b = _mm_setr_epi64x(0x0011223344556677, 0);
         let r = _mm_inserti_si64::<8, 8>(a, b);

@@ -232,7 +232,7 @@ mod tests {
     use stdarch_test::simd_test;
 
     #[simd_test(enable = "avx512fp16,avx512vl")]
-    unsafe fn test_mm_cvti64_sh() {
+    fn test_mm_cvti64_sh() {
         let a = _mm_setr_ph(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0);
         let r = _mm_cvti64_sh(a, 10);
         let e = _mm_setr_ph(10.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0);
@@ -240,7 +240,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512fp16,avx512vl")]
-    unsafe fn test_mm_cvt_roundi64_sh() {
+    fn test_mm_cvt_roundi64_sh() {
         let a = _mm_setr_ph(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0);
         let r = _mm_cvt_roundi64_sh::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(a, 10);
         let e = _mm_setr_ph(10.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0);
@@ -248,7 +248,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512fp16,avx512vl")]
-    unsafe fn test_mm_cvtu64_sh() {
+    fn test_mm_cvtu64_sh() {
         let a = _mm_setr_ph(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0);
         let r = _mm_cvtu64_sh(a, 10);
         let e = _mm_setr_ph(10.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0);
@@ -256,7 +256,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512fp16,avx512vl")]
-    unsafe fn test_mm_cvt_roundu64_sh() {
+    fn test_mm_cvt_roundu64_sh() {
         let a = _mm_setr_ph(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0);
         let r = _mm_cvt_roundu64_sh::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(a, 10);
         let e = _mm_setr_ph(10.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0);
@@ -264,56 +264,56 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512fp16")]
-    unsafe fn test_mm_cvtsh_i64() {
+    fn test_mm_cvtsh_i64() {
         let a = _mm_setr_ph(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0);
         let r = _mm_cvtsh_i64(a);
         assert_eq!(r, 1);
     }
 
     #[simd_test(enable = "avx512fp16")]
-    unsafe fn test_mm_cvt_roundsh_i64() {
+    fn test_mm_cvt_roundsh_i64() {
         let a = _mm_setr_ph(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0);
         let r = _mm_cvt_roundsh_i64::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(a);
         assert_eq!(r, 1);
     }
 
     #[simd_test(enable = "avx512fp16")]
-    unsafe fn test_mm_cvtsh_u64() {
+    fn test_mm_cvtsh_u64() {
         let a = _mm_setr_ph(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0);
         let r = _mm_cvtsh_u64(a);
         assert_eq!(r, 1);
     }
 
     #[simd_test(enable = "avx512fp16")]
-    unsafe fn test_mm_cvt_roundsh_u64() {
+    fn test_mm_cvt_roundsh_u64() {
         let a = _mm_setr_ph(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0);
         let r = _mm_cvt_roundsh_u64::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(a);
         assert_eq!(r, 1);
     }
 
     #[simd_test(enable = "avx512fp16")]
-    unsafe fn test_mm_cvttsh_i64() {
+    fn test_mm_cvttsh_i64() {
         let a = _mm_setr_ph(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0);
         let r = _mm_cvttsh_i64(a);
         assert_eq!(r, 1);
     }
 
     #[simd_test(enable = "avx512fp16")]
-    unsafe fn test_mm_cvtt_roundsh_i64() {
+    fn test_mm_cvtt_roundsh_i64() {
         let a = _mm_setr_ph(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0);
         let r = _mm_cvtt_roundsh_i64::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(a);
         assert_eq!(r, 1);
     }
 
     #[simd_test(enable = "avx512fp16")]
-    unsafe fn test_mm_cvttsh_u64() {
+    fn test_mm_cvttsh_u64() {
         let a = _mm_setr_ph(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0);
         let r = _mm_cvttsh_u64(a);
         assert_eq!(r, 1);
     }
 
     #[simd_test(enable = "avx512fp16")]
-    unsafe fn test_mm_cvtt_roundsh_u64() {
+    fn test_mm_cvtt_roundsh_u64() {
         let a = _mm_setr_ph(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0);
         let r = _mm_cvtt_roundsh_u64::<_MM_FROUND_NO_EXC>(a);
         assert_eq!(r, 1);

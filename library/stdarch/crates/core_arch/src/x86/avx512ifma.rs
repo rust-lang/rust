@@ -372,7 +372,7 @@ mod tests {
     const K: __mmask8 = 0b01101101;
 
     #[simd_test(enable = "avx512ifma")]
-    unsafe fn test_mm512_madd52hi_epu64() {
+    fn test_mm512_madd52hi_epu64() {
         let a = _mm512_set1_epi64(10 << 40);
         let b = _mm512_set1_epi64((11 << 40) + 4);
         let c = _mm512_set1_epi64((12 << 40) + 3);
@@ -386,7 +386,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512ifma")]
-    unsafe fn test_mm512_mask_madd52hi_epu64() {
+    fn test_mm512_mask_madd52hi_epu64() {
         let a = _mm512_set1_epi64(10 << 40);
         let b = _mm512_set1_epi64((11 << 40) + 4);
         let c = _mm512_set1_epi64((12 << 40) + 3);
@@ -401,7 +401,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512ifma")]
-    unsafe fn test_mm512_maskz_madd52hi_epu64() {
+    fn test_mm512_maskz_madd52hi_epu64() {
         let a = _mm512_set1_epi64(10 << 40);
         let b = _mm512_set1_epi64((11 << 40) + 4);
         let c = _mm512_set1_epi64((12 << 40) + 3);
@@ -416,7 +416,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512ifma")]
-    unsafe fn test_mm512_madd52lo_epu64() {
+    fn test_mm512_madd52lo_epu64() {
         let a = _mm512_set1_epi64(10 << 40);
         let b = _mm512_set1_epi64((11 << 40) + 4);
         let c = _mm512_set1_epi64((12 << 40) + 3);
@@ -430,7 +430,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512ifma")]
-    unsafe fn test_mm512_mask_madd52lo_epu64() {
+    fn test_mm512_mask_madd52lo_epu64() {
         let a = _mm512_set1_epi64(10 << 40);
         let b = _mm512_set1_epi64((11 << 40) + 4);
         let c = _mm512_set1_epi64((12 << 40) + 3);
@@ -445,7 +445,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512ifma")]
-    unsafe fn test_mm512_maskz_madd52lo_epu64() {
+    fn test_mm512_maskz_madd52lo_epu64() {
         let a = _mm512_set1_epi64(10 << 40);
         let b = _mm512_set1_epi64((11 << 40) + 4);
         let c = _mm512_set1_epi64((12 << 40) + 3);
@@ -460,7 +460,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avxifma")]
-    unsafe fn test_mm256_madd52hi_avx_epu64() {
+    fn test_mm256_madd52hi_avx_epu64() {
         let a = _mm256_set1_epi64x(10 << 40);
         let b = _mm256_set1_epi64x((11 << 40) + 4);
         let c = _mm256_set1_epi64x((12 << 40) + 3);
@@ -474,7 +474,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512ifma,avx512vl")]
-    unsafe fn test_mm256_madd52hi_epu64() {
+    fn test_mm256_madd52hi_epu64() {
         let a = _mm256_set1_epi64x(10 << 40);
         let b = _mm256_set1_epi64x((11 << 40) + 4);
         let c = _mm256_set1_epi64x((12 << 40) + 3);
@@ -488,7 +488,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512ifma,avx512vl")]
-    unsafe fn test_mm256_mask_madd52hi_epu64() {
+    fn test_mm256_mask_madd52hi_epu64() {
         let a = _mm256_set1_epi64x(10 << 40);
         let b = _mm256_set1_epi64x((11 << 40) + 4);
         let c = _mm256_set1_epi64x((12 << 40) + 3);
@@ -503,7 +503,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512ifma,avx512vl")]
-    unsafe fn test_mm256_maskz_madd52hi_epu64() {
+    fn test_mm256_maskz_madd52hi_epu64() {
         let a = _mm256_set1_epi64x(10 << 40);
         let b = _mm256_set1_epi64x((11 << 40) + 4);
         let c = _mm256_set1_epi64x((12 << 40) + 3);
@@ -518,7 +518,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avxifma")]
-    unsafe fn test_mm256_madd52lo_avx_epu64() {
+    fn test_mm256_madd52lo_avx_epu64() {
         let a = _mm256_set1_epi64x(10 << 40);
         let b = _mm256_set1_epi64x((11 << 40) + 4);
         let c = _mm256_set1_epi64x((12 << 40) + 3);
@@ -532,7 +532,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512ifma,avx512vl")]
-    unsafe fn test_mm256_madd52lo_epu64() {
+    fn test_mm256_madd52lo_epu64() {
         let a = _mm256_set1_epi64x(10 << 40);
         let b = _mm256_set1_epi64x((11 << 40) + 4);
         let c = _mm256_set1_epi64x((12 << 40) + 3);
@@ -546,7 +546,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512ifma,avx512vl")]
-    unsafe fn test_mm256_mask_madd52lo_epu64() {
+    fn test_mm256_mask_madd52lo_epu64() {
         let a = _mm256_set1_epi64x(10 << 40);
         let b = _mm256_set1_epi64x((11 << 40) + 4);
         let c = _mm256_set1_epi64x((12 << 40) + 3);
@@ -561,7 +561,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512ifma,avx512vl")]
-    unsafe fn test_mm256_maskz_madd52lo_epu64() {
+    fn test_mm256_maskz_madd52lo_epu64() {
         let a = _mm256_set1_epi64x(10 << 40);
         let b = _mm256_set1_epi64x((11 << 40) + 4);
         let c = _mm256_set1_epi64x((12 << 40) + 3);
@@ -576,7 +576,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avxifma")]
-    unsafe fn test_mm_madd52hi_avx_epu64() {
+    fn test_mm_madd52hi_avx_epu64() {
         let a = _mm_set1_epi64x(10 << 40);
         let b = _mm_set1_epi64x((11 << 40) + 4);
         let c = _mm_set1_epi64x((12 << 40) + 3);
@@ -590,7 +590,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512ifma,avx512vl")]
-    unsafe fn test_mm_madd52hi_epu64() {
+    fn test_mm_madd52hi_epu64() {
         let a = _mm_set1_epi64x(10 << 40);
         let b = _mm_set1_epi64x((11 << 40) + 4);
         let c = _mm_set1_epi64x((12 << 40) + 3);
@@ -604,7 +604,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512ifma,avx512vl")]
-    unsafe fn test_mm_mask_madd52hi_epu64() {
+    fn test_mm_mask_madd52hi_epu64() {
         let a = _mm_set1_epi64x(10 << 40);
         let b = _mm_set1_epi64x((11 << 40) + 4);
         let c = _mm_set1_epi64x((12 << 40) + 3);
@@ -619,7 +619,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512ifma,avx512vl")]
-    unsafe fn test_mm_maskz_madd52hi_epu64() {
+    fn test_mm_maskz_madd52hi_epu64() {
         let a = _mm_set1_epi64x(10 << 40);
         let b = _mm_set1_epi64x((11 << 40) + 4);
         let c = _mm_set1_epi64x((12 << 40) + 3);
@@ -634,7 +634,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avxifma")]
-    unsafe fn test_mm_madd52lo_avx_epu64() {
+    fn test_mm_madd52lo_avx_epu64() {
         let a = _mm_set1_epi64x(10 << 40);
         let b = _mm_set1_epi64x((11 << 40) + 4);
         let c = _mm_set1_epi64x((12 << 40) + 3);
@@ -648,7 +648,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512ifma,avx512vl")]
-    unsafe fn test_mm_madd52lo_epu64() {
+    fn test_mm_madd52lo_epu64() {
         let a = _mm_set1_epi64x(10 << 40);
         let b = _mm_set1_epi64x((11 << 40) + 4);
         let c = _mm_set1_epi64x((12 << 40) + 3);
@@ -662,7 +662,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512ifma,avx512vl")]
-    unsafe fn test_mm_mask_madd52lo_epu64() {
+    fn test_mm_mask_madd52lo_epu64() {
         let a = _mm_set1_epi64x(10 << 40);
         let b = _mm_set1_epi64x((11 << 40) + 4);
         let c = _mm_set1_epi64x((12 << 40) + 3);
@@ -677,7 +677,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512ifma,avx512vl")]
-    unsafe fn test_mm_maskz_madd52lo_epu64() {
+    fn test_mm_maskz_madd52lo_epu64() {
         let a = _mm_set1_epi64x(10 << 40);
         let b = _mm_set1_epi64x((11 << 40) + 4);
         let c = _mm_set1_epi64x((12 << 40) + 3);

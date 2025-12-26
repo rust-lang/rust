@@ -1833,7 +1833,7 @@ mod tests {
     const BF16_EIGHT: u16 = 0b0_10000010_0000000;
 
     #[simd_test(enable = "avx512bf16")]
-    unsafe fn test_mm512_cvtpbh_ps() {
+    fn test_mm512_cvtpbh_ps() {
         let a = __m256bh([
             BF16_ONE, BF16_TWO, BF16_THREE, BF16_FOUR, BF16_FIVE, BF16_SIX, BF16_SEVEN, BF16_EIGHT,
             BF16_ONE, BF16_TWO, BF16_THREE, BF16_FOUR, BF16_FIVE, BF16_SIX, BF16_SEVEN, BF16_EIGHT,
@@ -1846,7 +1846,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512bf16")]
-    unsafe fn test_mm512_mask_cvtpbh_ps() {
+    fn test_mm512_mask_cvtpbh_ps() {
         let a = __m256bh([
             BF16_ONE, BF16_TWO, BF16_THREE, BF16_FOUR, BF16_FIVE, BF16_SIX, BF16_SEVEN, BF16_EIGHT,
             BF16_ONE, BF16_TWO, BF16_THREE, BF16_FOUR, BF16_FIVE, BF16_SIX, BF16_SEVEN, BF16_EIGHT,
@@ -1863,7 +1863,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512bf16")]
-    unsafe fn test_mm512_maskz_cvtpbh_ps() {
+    fn test_mm512_maskz_cvtpbh_ps() {
         let a = __m256bh([
             BF16_ONE, BF16_TWO, BF16_THREE, BF16_FOUR, BF16_FIVE, BF16_SIX, BF16_SEVEN, BF16_EIGHT,
             BF16_ONE, BF16_TWO, BF16_THREE, BF16_FOUR, BF16_FIVE, BF16_SIX, BF16_SEVEN, BF16_EIGHT,
@@ -1877,7 +1877,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512bf16,avx512vl")]
-    unsafe fn test_mm256_cvtpbh_ps() {
+    fn test_mm256_cvtpbh_ps() {
         let a = __m128bh([
             BF16_ONE, BF16_TWO, BF16_THREE, BF16_FOUR, BF16_FIVE, BF16_SIX, BF16_SEVEN, BF16_EIGHT,
         ]);
@@ -1887,7 +1887,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512bf16,avx512vl")]
-    unsafe fn test_mm256_mask_cvtpbh_ps() {
+    fn test_mm256_mask_cvtpbh_ps() {
         let a = __m128bh([
             BF16_ONE, BF16_TWO, BF16_THREE, BF16_FOUR, BF16_FIVE, BF16_SIX, BF16_SEVEN, BF16_EIGHT,
         ]);
@@ -1899,7 +1899,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512bf16,avx512vl")]
-    unsafe fn test_mm256_maskz_cvtpbh_ps() {
+    fn test_mm256_maskz_cvtpbh_ps() {
         let a = __m128bh([
             BF16_ONE, BF16_TWO, BF16_THREE, BF16_FOUR, BF16_FIVE, BF16_SIX, BF16_SEVEN, BF16_EIGHT,
         ]);
@@ -1910,7 +1910,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512bf16,avx512vl")]
-    unsafe fn test_mm_cvtpbh_ps() {
+    fn test_mm_cvtpbh_ps() {
         let a = __m128bh([BF16_ONE, BF16_TWO, BF16_THREE, BF16_FOUR, 0, 0, 0, 0]);
         let r = _mm_cvtpbh_ps(a);
         let e = _mm_setr_ps(1.0, 2.0, 3.0, 4.0);
@@ -1918,7 +1918,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512bf16,avx512vl")]
-    unsafe fn test_mm_mask_cvtpbh_ps() {
+    fn test_mm_mask_cvtpbh_ps() {
         let a = __m128bh([BF16_ONE, BF16_TWO, BF16_THREE, BF16_FOUR, 0, 0, 0, 0]);
         let src = _mm_setr_ps(9., 10., 11., 12.);
         let k = 0b1010;
@@ -1928,7 +1928,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512bf16,avx512vl")]
-    unsafe fn test_mm_maskz_cvtpbh_ps() {
+    fn test_mm_maskz_cvtpbh_ps() {
         let a = __m128bh([BF16_ONE, BF16_TWO, BF16_THREE, BF16_FOUR, 0, 0, 0, 0]);
         let k = 0b1010;
         let r = _mm_maskz_cvtpbh_ps(k, a);
@@ -1937,7 +1937,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512bf16")]
-    unsafe fn test_mm_cvtsbh_ss() {
+    fn test_mm_cvtsbh_ss() {
         let r = _mm_cvtsbh_ss(bf16::from_bits(BF16_ONE));
         assert_eq!(r, 1.);
     }
@@ -1970,7 +1970,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512bf16,avx512vl")]
-    unsafe fn test_mm_cvtness_sbh() {
+    fn test_mm_cvtness_sbh() {
         let r = _mm_cvtness_sbh(1.);
         assert_eq!(r.to_bits(), BF16_ONE);
     }

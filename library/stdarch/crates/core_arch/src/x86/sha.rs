@@ -286,7 +286,7 @@ mod tests {
 
     #[simd_test(enable = "sha")]
     #[allow(overflowing_literals)]
-    unsafe fn test_mm_sha1msg1_epu32() {
+    fn test_mm_sha1msg1_epu32() {
         let a = _mm_set_epi64x(0xe9b5dba5b5c0fbcf, 0x71374491428a2f98);
         let b = _mm_set_epi64x(0xab1c5ed5923f82a4, 0x59f111f13956c25b);
         let expected = _mm_set_epi64x(0x98829f34f74ad457, 0xda2b1a44d0b5ad3c);
@@ -296,7 +296,7 @@ mod tests {
 
     #[simd_test(enable = "sha")]
     #[allow(overflowing_literals)]
-    unsafe fn test_mm_sha1msg2_epu32() {
+    fn test_mm_sha1msg2_epu32() {
         let a = _mm_set_epi64x(0xe9b5dba5b5c0fbcf, 0x71374491428a2f98);
         let b = _mm_set_epi64x(0xab1c5ed5923f82a4, 0x59f111f13956c25b);
         let expected = _mm_set_epi64x(0xf714b202d863d47d, 0x90c30d946b3d3b35);
@@ -306,7 +306,7 @@ mod tests {
 
     #[simd_test(enable = "sha")]
     #[allow(overflowing_literals)]
-    unsafe fn test_mm_sha1nexte_epu32() {
+    fn test_mm_sha1nexte_epu32() {
         let a = _mm_set_epi64x(0xe9b5dba5b5c0fbcf, 0x71374491428a2f98);
         let b = _mm_set_epi64x(0xab1c5ed5923f82a4, 0x59f111f13956c25b);
         let expected = _mm_set_epi64x(0x2589d5be923f82a4, 0x59f111f13956c25b);
@@ -316,7 +316,7 @@ mod tests {
 
     #[simd_test(enable = "sha")]
     #[allow(overflowing_literals)]
-    unsafe fn test_mm_sha1rnds4_epu32() {
+    fn test_mm_sha1rnds4_epu32() {
         let a = _mm_set_epi64x(0xe9b5dba5b5c0fbcf, 0x71374491428a2f98);
         let b = _mm_set_epi64x(0xab1c5ed5923f82a4, 0x59f111f13956c25b);
         let expected = _mm_set_epi64x(0x32b13cd8322f5268, 0xc54420862bd9246f);
@@ -338,7 +338,7 @@ mod tests {
 
     #[simd_test(enable = "sha")]
     #[allow(overflowing_literals)]
-    unsafe fn test_mm_sha256msg1_epu32() {
+    fn test_mm_sha256msg1_epu32() {
         let a = _mm_set_epi64x(0xe9b5dba5b5c0fbcf, 0x71374491428a2f98);
         let b = _mm_set_epi64x(0xab1c5ed5923f82a4, 0x59f111f13956c25b);
         let expected = _mm_set_epi64x(0xeb84973fd5cda67d, 0x2857b88f406b09ee);
@@ -348,7 +348,7 @@ mod tests {
 
     #[simd_test(enable = "sha")]
     #[allow(overflowing_literals)]
-    unsafe fn test_mm_sha256msg2_epu32() {
+    fn test_mm_sha256msg2_epu32() {
         let a = _mm_set_epi64x(0xe9b5dba5b5c0fbcf, 0x71374491428a2f98);
         let b = _mm_set_epi64x(0xab1c5ed5923f82a4, 0x59f111f13956c25b);
         let expected = _mm_set_epi64x(0xb58777ce887fd851, 0x15d1ec8b73ac8450);
@@ -358,7 +358,7 @@ mod tests {
 
     #[simd_test(enable = "sha")]
     #[allow(overflowing_literals)]
-    unsafe fn test_mm_sha256rnds2_epu32() {
+    fn test_mm_sha256rnds2_epu32() {
         let a = _mm_set_epi64x(0xe9b5dba5b5c0fbcf, 0x71374491428a2f98);
         let b = _mm_set_epi64x(0xab1c5ed5923f82a4, 0x59f111f13956c25b);
         let k = _mm_set_epi64x(0, 0x12835b01d807aa98);
@@ -381,7 +381,7 @@ mod tests {
     ];
 
     #[simd_test(enable = "sha512,avx")]
-    unsafe fn test_mm256_sha512msg1_epi64() {
+    fn test_mm256_sha512msg1_epi64() {
         fn s0(word: u64) -> u64 {
             word.rotate_right(1) ^ word.rotate_right(8) ^ (word >> 7)
         }
@@ -389,8 +389,8 @@ mod tests {
         let A = &DATA_64[0..4];
         let B = &DATA_64[4..6];
 
-        let a = _mm256_loadu_si256(A.as_ptr().cast());
-        let b = _mm_loadu_si128(B.as_ptr().cast());
+        let a = unsafe { _mm256_loadu_si256(A.as_ptr().cast()) };
+        let b = unsafe { _mm_loadu_si128(B.as_ptr().cast()) };
 
         let r = _mm256_sha512msg1_epi64(a, b);
 
@@ -405,7 +405,7 @@ mod tests {
     }
 
     #[simd_test(enable = "sha512,avx")]
-    unsafe fn test_mm256_sha512msg2_epi64() {
+    fn test_mm256_sha512msg2_epi64() {
         fn s1(word: u64) -> u64 {
             word.rotate_right(19) ^ word.rotate_right(61) ^ (word >> 6)
         }
@@ -413,8 +413,8 @@ mod tests {
         let A = &DATA_64[0..4];
         let B = &DATA_64[4..8];
 
-        let a = _mm256_loadu_si256(A.as_ptr().cast());
-        let b = _mm256_loadu_si256(B.as_ptr().cast());
+        let a = unsafe { _mm256_loadu_si256(A.as_ptr().cast()) };
+        let b = unsafe { _mm256_loadu_si256(B.as_ptr().cast()) };
 
         let r = _mm256_sha512msg2_epi64(a, b);
 
@@ -431,7 +431,7 @@ mod tests {
     }
 
     #[simd_test(enable = "sha512,avx")]
-    unsafe fn test_mm256_sha512rnds2_epi64() {
+    fn test_mm256_sha512rnds2_epi64() {
         fn cap_sigma0(word: u64) -> u64 {
             word.rotate_right(28) ^ word.rotate_right(34) ^ word.rotate_right(39)
         }
@@ -452,9 +452,9 @@ mod tests {
         let B = &DATA_64[4..8];
         let K = &DATA_64[8..10];
 
-        let a = _mm256_loadu_si256(A.as_ptr().cast());
-        let b = _mm256_loadu_si256(B.as_ptr().cast());
-        let k = _mm_loadu_si128(K.as_ptr().cast());
+        let a = unsafe { _mm256_loadu_si256(A.as_ptr().cast()) };
+        let b = unsafe { _mm256_loadu_si256(B.as_ptr().cast()) };
+        let k = unsafe { _mm_loadu_si128(K.as_ptr().cast()) };
 
         let r = _mm256_sha512rnds2_epi64(a, b, k);
 
@@ -482,7 +482,7 @@ mod tests {
     ];
 
     #[simd_test(enable = "sm3,avx")]
-    unsafe fn test_mm_sm3msg1_epi32() {
+    fn test_mm_sm3msg1_epi32() {
         fn p1(x: u32) -> u32 {
             x ^ x.rotate_left(15) ^ x.rotate_left(23)
         }
@@ -490,9 +490,9 @@ mod tests {
         let B = &DATA_32[4..8];
         let C = &DATA_32[8..12];
 
-        let a = _mm_loadu_si128(A.as_ptr().cast());
-        let b = _mm_loadu_si128(B.as_ptr().cast());
-        let c = _mm_loadu_si128(C.as_ptr().cast());
+        let a = unsafe { _mm_loadu_si128(A.as_ptr().cast()) };
+        let b = unsafe { _mm_loadu_si128(B.as_ptr().cast()) };
+        let c = unsafe { _mm_loadu_si128(C.as_ptr().cast()) };
 
         let r = _mm_sm3msg1_epi32(a, b, c);
 
@@ -507,14 +507,14 @@ mod tests {
     }
 
     #[simd_test(enable = "sm3,avx")]
-    unsafe fn test_mm_sm3msg2_epi32() {
+    fn test_mm_sm3msg2_epi32() {
         let A = &DATA_32[0..4];
         let B = &DATA_32[4..8];
         let C = &DATA_32[8..12];
 
-        let a = _mm_loadu_si128(A.as_ptr().cast());
-        let b = _mm_loadu_si128(B.as_ptr().cast());
-        let c = _mm_loadu_si128(C.as_ptr().cast());
+        let a = unsafe { _mm_loadu_si128(A.as_ptr().cast()) };
+        let b = unsafe { _mm_loadu_si128(B.as_ptr().cast()) };
+        let c = unsafe { _mm_loadu_si128(C.as_ptr().cast()) };
 
         let r = _mm_sm3msg2_epi32(a, b, c);
 
@@ -535,7 +535,7 @@ mod tests {
     }
 
     #[simd_test(enable = "sm3,avx")]
-    unsafe fn test_mm_sm3rnds2_epi32() {
+    fn test_mm_sm3rnds2_epi32() {
         fn p0(x: u32) -> u32 {
             x ^ x.rotate_left(9) ^ x.rotate_left(17)
         }
@@ -560,9 +560,9 @@ mod tests {
         let B = &DATA_32[4..8];
         let C = &DATA_32[8..12];
 
-        let a = _mm_loadu_si128(A.as_ptr().cast());
-        let b = _mm_loadu_si128(B.as_ptr().cast());
-        let c = _mm_loadu_si128(C.as_ptr().cast());
+        let a = unsafe { _mm_loadu_si128(A.as_ptr().cast()) };
+        let b = unsafe { _mm_loadu_si128(B.as_ptr().cast()) };
+        let c = unsafe { _mm_loadu_si128(C.as_ptr().cast()) };
 
         let r = _mm_sm3rnds2_epi32::<{ ROUND as i32 }>(a, b, c);
 
@@ -641,7 +641,7 @@ mod tests {
     }
 
     #[simd_test(enable = "sm4,avx")]
-    unsafe fn test_mm_sm4key4_epi32() {
+    fn test_mm_sm4key4_epi32() {
         fn l_key(x: u32) -> u32 {
             x ^ x.rotate_left(13) ^ x.rotate_left(23)
         }
@@ -652,8 +652,8 @@ mod tests {
         let A = &DATA_32[0..4];
         let B = &DATA_32[4..8];
 
-        let a = _mm_loadu_si128(A.as_ptr().cast());
-        let b = _mm_loadu_si128(B.as_ptr().cast());
+        let a = unsafe { _mm_loadu_si128(A.as_ptr().cast()) };
+        let b = unsafe { _mm_loadu_si128(B.as_ptr().cast()) };
 
         let r = _mm_sm4key4_epi32(a, b);
 
@@ -667,11 +667,11 @@ mod tests {
     }
 
     #[simd_test(enable = "sm4,avx")]
-    unsafe fn test_mm256_sm4key4_epi32() {
-        let a_low = _mm_loadu_si128(DATA_32.as_ptr().cast());
-        let a_high = _mm_loadu_si128(DATA_32[4..].as_ptr().cast());
-        let b_low = _mm_loadu_si128(DATA_32[8..].as_ptr().cast());
-        let b_high = _mm_loadu_si128(DATA_32[12..].as_ptr().cast());
+    fn test_mm256_sm4key4_epi32() {
+        let a_low = unsafe { _mm_loadu_si128(DATA_32.as_ptr().cast()) };
+        let a_high = unsafe { _mm_loadu_si128(DATA_32[4..].as_ptr().cast()) };
+        let b_low = unsafe { _mm_loadu_si128(DATA_32[8..].as_ptr().cast()) };
+        let b_high = unsafe { _mm_loadu_si128(DATA_32[12..].as_ptr().cast()) };
 
         let a = _mm256_set_m128i(a_high, a_low);
         let b = _mm256_set_m128i(b_high, b_low);
@@ -686,7 +686,7 @@ mod tests {
     }
 
     #[simd_test(enable = "sm4,avx")]
-    unsafe fn test_mm_sm4rnds4_epi32() {
+    fn test_mm_sm4rnds4_epi32() {
         fn l_rnd(x: u32) -> u32 {
             x ^ x.rotate_left(2) ^ x.rotate_left(10) ^ x.rotate_left(18) ^ x.rotate_left(24)
         }
@@ -697,8 +697,8 @@ mod tests {
         let A = &DATA_32[0..4];
         let B = &DATA_32[4..8];
 
-        let a = _mm_loadu_si128(A.as_ptr().cast());
-        let b = _mm_loadu_si128(B.as_ptr().cast());
+        let a = unsafe { _mm_loadu_si128(A.as_ptr().cast()) };
+        let b = unsafe { _mm_loadu_si128(B.as_ptr().cast()) };
 
         let r = _mm_sm4rnds4_epi32(a, b);
 
@@ -712,11 +712,11 @@ mod tests {
     }
 
     #[simd_test(enable = "sm4,avx")]
-    unsafe fn test_mm256_sm4rnds4_epi32() {
-        let a_low = _mm_loadu_si128(DATA_32.as_ptr().cast());
-        let a_high = _mm_loadu_si128(DATA_32[4..].as_ptr().cast());
-        let b_low = _mm_loadu_si128(DATA_32[8..].as_ptr().cast());
-        let b_high = _mm_loadu_si128(DATA_32[12..].as_ptr().cast());
+    fn test_mm256_sm4rnds4_epi32() {
+        let a_low = unsafe { _mm_loadu_si128(DATA_32.as_ptr().cast()) };
+        let a_high = unsafe { _mm_loadu_si128(DATA_32[4..].as_ptr().cast()) };
+        let b_low = unsafe { _mm_loadu_si128(DATA_32[8..].as_ptr().cast()) };
+        let b_high = unsafe { _mm_loadu_si128(DATA_32[12..].as_ptr().cast()) };
 
         let a = _mm256_set_m128i(a_high, a_low);
         let b = _mm256_set_m128i(b_high, b_low);

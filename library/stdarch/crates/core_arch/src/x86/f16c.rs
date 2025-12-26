@@ -119,7 +119,7 @@ mod tests {
     const F16_EIGHT: i16 = 0x4800;
 
     #[simd_test(enable = "f16c")]
-    const unsafe fn test_mm_cvtph_ps() {
+    const fn test_mm_cvtph_ps() {
         let a = _mm_set_epi16(0, 0, 0, 0, F16_ONE, F16_TWO, F16_THREE, F16_FOUR);
         let r = _mm_cvtph_ps(a);
         let e = _mm_set_ps(1.0, 2.0, 3.0, 4.0);
@@ -127,7 +127,7 @@ mod tests {
     }
 
     #[simd_test(enable = "f16c")]
-    const unsafe fn test_mm256_cvtph_ps() {
+    const fn test_mm256_cvtph_ps() {
         let a = _mm_set_epi16(
             F16_ONE, F16_TWO, F16_THREE, F16_FOUR, F16_FIVE, F16_SIX, F16_SEVEN, F16_EIGHT,
         );
@@ -137,7 +137,7 @@ mod tests {
     }
 
     #[simd_test(enable = "f16c")]
-    unsafe fn test_mm_cvtps_ph() {
+    fn test_mm_cvtps_ph() {
         let a = _mm_set_ps(1.0, 2.0, 3.0, 4.0);
         let r = _mm_cvtps_ph::<_MM_FROUND_CUR_DIRECTION>(a);
         let e = _mm_set_epi16(0, 0, 0, 0, F16_ONE, F16_TWO, F16_THREE, F16_FOUR);
@@ -145,7 +145,7 @@ mod tests {
     }
 
     #[simd_test(enable = "f16c")]
-    unsafe fn test_mm256_cvtps_ph() {
+    fn test_mm256_cvtps_ph() {
         let a = _mm256_set_ps(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0);
         let r = _mm256_cvtps_ph::<_MM_FROUND_CUR_DIRECTION>(a);
         let e = _mm_set_epi16(

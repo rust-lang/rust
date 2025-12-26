@@ -135,13 +135,13 @@ mod tests {
     use crate::core_arch::{x86::*, x86_64::*};
 
     #[simd_test(enable = "bmi1")]
-    unsafe fn test_bextr_u64() {
+    fn test_bextr_u64() {
         let r = _bextr_u64(0b0101_0000u64, 4, 4);
         assert_eq!(r, 0b0000_0101u64);
     }
 
     #[simd_test(enable = "bmi1")]
-    const unsafe fn test_andn_u64() {
+    const fn test_andn_u64() {
         assert_eq!(_andn_u64(0, 0), 0);
         assert_eq!(_andn_u64(0, 1), 1);
         assert_eq!(_andn_u64(1, 0), 0);
@@ -164,25 +164,25 @@ mod tests {
     }
 
     #[simd_test(enable = "bmi1")]
-    const unsafe fn test_blsi_u64() {
+    const fn test_blsi_u64() {
         assert_eq!(_blsi_u64(0b1101_0000u64), 0b0001_0000u64);
     }
 
     #[simd_test(enable = "bmi1")]
-    const unsafe fn test_blsmsk_u64() {
+    const fn test_blsmsk_u64() {
         let r = _blsmsk_u64(0b0011_0000u64);
         assert_eq!(r, 0b0001_1111u64);
     }
 
     #[simd_test(enable = "bmi1")]
-    const unsafe fn test_blsr_u64() {
+    const fn test_blsr_u64() {
         // TODO: test the behavior when the input is `0`.
         let r = _blsr_u64(0b0011_0000u64);
         assert_eq!(r, 0b0010_0000u64);
     }
 
     #[simd_test(enable = "bmi1")]
-    const unsafe fn test_tzcnt_u64() {
+    const fn test_tzcnt_u64() {
         assert_eq!(_tzcnt_u64(0b0000_0001u64), 0u64);
         assert_eq!(_tzcnt_u64(0b0000_0000u64), 64u64);
         assert_eq!(_tzcnt_u64(0b1001_0000u64), 4u64);
