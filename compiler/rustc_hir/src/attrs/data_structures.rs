@@ -952,6 +952,9 @@ pub enum AttributeKind {
     /// Represents `#[rustc_main]`.
     RustcMain,
 
+    /// Represents `#[rustc_must_implement_one_of]`
+    RustcMustImplementOneOf { attr_span: Span, fn_names: ThinVec<Ident> },
+
     /// Represents `#[rustc_never_returns_null_ptr]`
     RustcNeverReturnsNullPointer,
 
