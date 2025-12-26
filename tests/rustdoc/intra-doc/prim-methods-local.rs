@@ -28,8 +28,5 @@ pub trait MetaSized: PointeeSized {}
 #[lang = "sized"]
 pub trait Sized: MetaSized {}
 
-#[lang = "clone"]
-pub trait Clone: Sized {}
-
 #[lang = "copy"]
 pub trait Copy: Clone {}
