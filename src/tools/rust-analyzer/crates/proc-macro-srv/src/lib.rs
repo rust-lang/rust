@@ -47,7 +47,7 @@ use std::{
 };
 
 use paths::{Utf8Path, Utf8PathBuf};
-use span::{EditionedFileId, Span};
+use span::Span;
 use temp_dir::TempDir;
 
 pub use crate::server_impl::token_id::SpanId;
@@ -91,7 +91,7 @@ impl<'env> ProcMacroSrv<'env> {
     }
 }
 
-pub type SubCallback = Box<dyn Fn(SubRequest) -> SubResponse + Send + Sync + 'static>;
+pub type SubCallback = Box<dyn BidirectionalHandler + Send>;
 
 pub trait BidirectionalHandler {
     fn source_text(&mut self, file_id: u32, start: u32, end: u32) -> Option<String>;
