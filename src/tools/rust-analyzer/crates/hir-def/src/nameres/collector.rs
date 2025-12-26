@@ -1526,8 +1526,9 @@ impl<'db> DefCollector<'db> {
                                             }
                                         }
 
-                                        if let MacroDefKind::BuiltInDerive(_, builtin_derive) =
-                                            def_id.kind
+                                        if super::enable_builtin_derive_fast_path()
+                                            && let MacroDefKind::BuiltInDerive(_, builtin_derive) =
+                                                def_id.kind
                                         {
                                             self.deferred_builtin_derives
                                                 .entry(ast_id.ast_id.upcast())
