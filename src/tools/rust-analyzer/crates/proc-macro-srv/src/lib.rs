@@ -93,12 +93,8 @@ impl<'env> ProcMacroSrv<'env> {
 
 pub type SubCallback = Box<dyn Fn(SubRequest) -> SubResponse + Send + Sync + 'static>;
 
-pub enum SubRequest {
-    SourceText { file_id: EditionedFileId, start: u32, end: u32 },
-}
-
-pub enum SubResponse {
-    SourceTextResult { text: Option<String> },
+pub trait BidirectionalHandler {
+    fn source_text(&mut self, file_id: u32, start: u32, end: u32) -> Option<String>;
 }
 
 const EXPANDER_STACK_SIZE: usize = 8 * 1024 * 1024;
