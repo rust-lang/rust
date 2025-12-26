@@ -150,10 +150,13 @@ impl From<Ident> for LifetimeSyntax {
 /// `LifetimeSource::OutlivesBound` or `LifetimeSource::PreciseCapturing`
 /// — there's no way to "elide" these lifetimes.
 #[derive(Debug, Copy, Clone, HashStable_Generic)]
-// Raise the aligement to at least 4 bytes - this is relied on in other parts of the compiler(for pointer tagging):
-// https://github.com/rust-lang/rust/blob/ce5fdd7d42aba9a2925692e11af2bd39cf37798a/compiler/rustc_data_structures/src/tagged_ptr.rs#L163
-// Removing this `repr(4)` will cause the compiler to not build on platforms like `m68k` Linux, where the aligement of u32 and usize is only 2.
-// Since `repr(align)` may only raise aligement, this has no effect on platforms where the aligement is already sufficient.
+// Raise the alignment to at least 4 bytes.
+// This is relied on in other parts of the compiler (for pointer tagging):
+// <https://github.com/rust-lang/rust/blob/ce5fdd7d42aba9a2925692e11af2bd39cf37798a/compiler/rustc_data_structures/src/tagged_ptr.rs#L163>
+// Removing this `repr(4)` will cause the compiler to not build on platforms
+// like `m68k` Linux, where the alignment of u32 and usize is only 2.
+// Since `repr(align)` may only raise alignment, this has no effect on
+// platforms where the alignment is already sufficient.
 #[repr(align(4))]
 pub struct Lifetime {
     #[stable_hasher(ignore)]
