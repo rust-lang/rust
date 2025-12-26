@@ -3441,6 +3441,8 @@ impl AttrItemKind {
 
 #[derive(Clone, Encodable, Decodable, Debug, HashStable_Generic)]
 pub enum EarlyParsedAttribute {
+    CfgTrace(CfgEntry),
+    CfgAttrTrace,
 }
 
 impl AttrItem {

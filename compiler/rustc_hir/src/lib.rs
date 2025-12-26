@@ -33,7 +33,6 @@ pub mod pat_util;
 mod stability;
 mod stable_hash_impls;
 mod target;
-mod version;
 pub mod weak_lang_items;
 
 #[cfg(test)]
@@ -42,9 +41,9 @@ mod tests;
 #[doc(no_inline)]
 pub use hir::*;
 pub use lang_items::{LangItem, LanguageItems};
+pub use rustc_ast::attr::version::*;
 pub use stability::*;
 pub use stable_hash_impls::HashStableContext;
 pub use target::{MethodKind, Target};
-pub use version::*;
 
 arena_types!(rustc_arena::declare_arena);

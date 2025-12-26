@@ -26,6 +26,8 @@ impl AttributeKind {
             AsPtr(..) => Yes,
             AutomaticallyDerived(..) => Yes,
             BodyStability { .. } => No,
+            CfgAttrTrace => Yes,
+            CfgTrace(..) => Yes,
             CfiEncoding { .. } => Yes,
             Coinductive(..) => No,
             Cold(..) => No,
