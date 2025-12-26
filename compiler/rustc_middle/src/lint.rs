@@ -265,9 +265,16 @@ fn explain_lint_level_source(
                     "`{flag} {hyphen_case_lint_name}` implied by `{flag} {hyphen_case_flag_val}`"
                 ));
                 if matches!(orig_level, Level::Warn | Level::Deny) {
-                    err.help_once(format!(
-                        "to override `{flag} {hyphen_case_flag_val}` add `#[allow({name})]`"
-                    ));
+                    let help = if name == "dead_code" {
+                        format!(
+                            "to override `{flag} {hyphen_case_flag_val}` add `#[expect({name})]` or `#[allow({name})]`"
+                        )
+                    } else {
+                        format!(
+                            "to override `{flag} {hyphen_case_flag_val}` add `#[allow({name})]`"
+                        )
+                    };
+                    err.help_once(help);
                 }
             }
         }
