@@ -52,6 +52,7 @@ pub(crate) fn type_mismatch(ctx: &DiagnosticsContext<'_>, d: &hir::TypeMismatch<
         ),
         display_range,
     )
+    .stable()
     .with_fixes(fixes(ctx, d))
 }
 
