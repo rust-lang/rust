@@ -9,6 +9,8 @@ use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::impl_lint_pass;
 use rustc_span::def_id::{CrateNum, DefId};
 use rustc_span::{ExpnKind, Span};
+use rustc_hir::attrs::AttributeKind;
+use rustc_hir::find_attr;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -268,11 +270,6 @@ impl<'tcx> LateLintPass<'tcx> for IncompatibleMsrv {
 /// attribute.
 fn is_under_cfg_attribute(cx: &LateContext<'_>, hir_id: HirId) -> bool {
     cx.tcx.hir_parent_id_iter(hir_id).any(|id| {
-        cx.tcx.hir_attrs(id).iter().any(|attr| {
-            matches!(
-                attr.name(),
-                Some(sym::cfg_trace | sym::cfg_attr_trace)
-            )
-        })
+        find_attr!(cx.tcx.hir_attrs(id), AttributeKind::CfgTrace(..) | AttributeKind::CfgAttrTrace)
     })
 }

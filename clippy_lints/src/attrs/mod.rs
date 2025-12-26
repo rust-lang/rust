@@ -16,7 +16,7 @@ mod utils;
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::msrvs::{self, Msrv, MsrvStack};
-use rustc_ast::{self as ast, AttrArgs, AttrKind, Attribute, MetaItemInner, MetaItemKind};
+use rustc_ast::{self as ast, AttrArgs, AttrKind, Attribute, MetaItemInner, MetaItemKind, AttrItemKind};
 use rustc_hir::{ImplItem, Item, ItemKind, TraitItem};
 use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass};
 use rustc_session::impl_lint_pass;
@@ -604,7 +604,7 @@ impl EarlyLintPass for PostExpansionEarlyAttributes {
 
         if attr.has_name(sym::ignore)
             && match &attr.kind {
-                AttrKind::Normal(normal_attr) => !matches!(normal_attr.item.args, AttrArgs::Eq { .. }),
+                AttrKind::Normal(normal_attr) => !matches!(normal_attr.item.args, AttrItemKind::Unparsed(AttrArgs::Eq { .. })),
                 AttrKind::DocComment(..) => true,
             }
         {
