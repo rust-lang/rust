@@ -1,9 +1,9 @@
 use std::borrow::Cow;
-use std::fmt;
 use std::path::PathBuf;
 
 pub use ReprAttr::*;
 use rustc_abi::Align;
+pub use rustc_ast::attr::data_structures::*;
 use rustc_ast::token::DocFragmentKind;
 use rustc_ast::{AttrStyle, ast};
 use rustc_data_structures::fx::FxIndexMap;
@@ -209,83 +209,6 @@ pub struct StrippedCfgItem<ModId = DefId> {
 impl<ModId> StrippedCfgItem<ModId> {
     pub fn map_mod_id<New>(self, f: impl FnOnce(ModId) -> New) -> StrippedCfgItem<New> {
         StrippedCfgItem { parent_module: f(self.parent_module), ident: self.ident, cfg: self.cfg }
-    }
-}
-
-#[derive(Encodable, Decodable, Clone, Debug, PartialEq, Eq, Hash)]
-#[derive(HashStable_Generic, PrintAttribute)]
-pub enum CfgEntry {
-    All(ThinVec<CfgEntry>, Span),
-    Any(ThinVec<CfgEntry>, Span),
-    Not(Box<CfgEntry>, Span),
-    Bool(bool, Span),
-    NameValue { name: Symbol, value: Option<Symbol>, span: Span },
-    Version(Option<RustcVersion>, Span),
-}
-
-impl CfgEntry {
-    pub fn span(&self) -> Span {
-        let (Self::All(_, span)
-        | Self::Any(_, span)
-        | Self::Not(_, span)
-        | Self::Bool(_, span)
-        | Self::NameValue { span, .. }
-        | Self::Version(_, span)) = self;
-        *span
-    }
-
-    /// Same as `PartialEq` but doesn't check spans and ignore order of cfgs.
-    pub fn is_equivalent_to(&self, other: &Self) -> bool {
-        match (self, other) {
-            (Self::All(a, _), Self::All(b, _)) | (Self::Any(a, _), Self::Any(b, _)) => {
-                a.len() == b.len() && a.iter().all(|a| b.iter().any(|b| a.is_equivalent_to(b)))
-            }
-            (Self::Not(a, _), Self::Not(b, _)) => a.is_equivalent_to(b),
-            (Self::Bool(a, _), Self::Bool(b, _)) => a == b,
-            (
-                Self::NameValue { name: name1, value: value1, .. },
-                Self::NameValue { name: name2, value: value2, .. },
-            ) => name1 == name2 && value1 == value2,
-            (Self::Version(a, _), Self::Version(b, _)) => a == b,
-            _ => false,
-        }
-    }
-}
-
-impl fmt::Display for CfgEntry {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fn write_entries(
-            name: &str,
-            entries: &[CfgEntry],
-            f: &mut fmt::Formatter<'_>,
-        ) -> fmt::Result {
-            write!(f, "{name}(")?;
-            for (nb, entry) in entries.iter().enumerate() {
-                if nb != 0 {
-                    f.write_str(", ")?;
-                }
-                entry.fmt(f)?;
-            }
-            f.write_str(")")
-        }
-        match self {
-            Self::All(entries, _) => write_entries("all", entries, f),
-            Self::Any(entries, _) => write_entries("any", entries, f),
-            Self::Not(entry, _) => write!(f, "not({entry})"),
-            Self::Bool(value, _) => write!(f, "{value}"),
-            Self::NameValue { name, value, .. } => {
-                match value {
-                    // We use `as_str` and debug display to have characters escaped and `"`
-                    // characters surrounding the string.
-                    Some(value) => write!(f, "{name} = {:?}", value.as_str()),
-                    None => write!(f, "{name}"),
-                }
-            }
-            Self::Version(version, _) => match version {
-                Some(version) => write!(f, "{version}"),
-                None => Ok(()),
-            },
-        }
     }
 }
 
@@ -712,6 +635,12 @@ pub enum AttributeKind {
         /// Span of the `#[rustc_default_body_unstable(...)]` attribute
         span: Span,
     },
+
+    /// Represents the trace attribute of `#[cfg_attr]`
+    CfgAttrTrace,
+
+    /// Represents the trace attribute of `#[cfg]`
+    CfgTrace(ThinVec<(CfgEntry, Span)>),
 
     /// Represents `#[cfi_encoding]`
     CfiEncoding { encoding: Symbol },

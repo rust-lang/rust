@@ -3446,6 +3446,8 @@ impl AttrItemKind {
 /// When adding new early parsed attributes, consider whether they should be pretty printed.
 #[derive(Clone, Encodable, Decodable, Debug, HashStable_Generic)]
 pub enum EarlyParsedAttribute {
+    CfgTrace(CfgEntry),
+    CfgAttrTrace,
 }
 
 impl AttrItem {

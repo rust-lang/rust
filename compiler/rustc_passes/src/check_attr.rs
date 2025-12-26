@@ -229,6 +229,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::BodyStability { .. }
                     | AttributeKind::ConstStabilityIndirect
                     | AttributeKind::MacroTransparency(_)
+                    | AttributeKind::CfgTrace(..)
                     | AttributeKind::Pointee(..)
                     | AttributeKind::Dummy
                     | AttributeKind::RustcBuiltinMacro { .. }
@@ -302,6 +303,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::RustcPassIndirectlyInNonRusticAbis(..)
                     | AttributeKind::PinV2(..)
                     | AttributeKind::WindowsSubsystem(..)
+                    | AttributeKind::CfgAttrTrace
                     | AttributeKind::ThreadLocal
                     | AttributeKind::CfiEncoding { .. }
                 ) => { /* do nothing  */ }
@@ -338,8 +340,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             | sym::forbid
                             | sym::cfg
                             | sym::cfg_attr
-                            | sym::cfg_trace
-                            | sym::cfg_attr_trace
                             // need to be fixed
                             | sym::patchable_function_entry // FIXME(patchable_function_entry)
                             | sym::deprecated_safe // FIXME(deprecated_safe)
@@ -1950,12 +1950,10 @@ impl<'tcx> Visitor<'tcx> for CheckAttrVisitor<'tcx> {
         // only `#[cfg]` and `#[cfg_attr]` are allowed, but it should be removed
         // if we allow more attributes (e.g., tool attributes and `allow/deny/warn`)
         // in where clauses. After that, only `self.check_attributes` should be enough.
-        const ATTRS_ALLOWED: &[Symbol] = &[sym::cfg_trace, sym::cfg_attr_trace];
         let spans = self
             .tcx
             .hir_attrs(where_predicate.hir_id)
             .iter()
-            .filter(|attr| !ATTRS_ALLOWED.iter().any(|&sym| attr.has_name(sym)))
             // FIXME: We shouldn't need to special-case `doc`!
             .filter(|attr| {
                 matches!(

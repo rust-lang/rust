@@ -4,7 +4,7 @@ use rustc_hir::AttrPath;
 use rustc_hir::lints::{AttributeLint, AttributeLintKind};
 use rustc_session::lint::LintId;
 use rustc_session::lint::builtin::UNSAFE_ATTR_OUTSIDE_UNSAFE;
-use rustc_span::{Span, sym};
+use rustc_span::Span;
 
 use crate::context::Stage;
 use crate::{AttributeParser, ShouldEmit};
@@ -23,11 +23,6 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
         }
 
         let name = (attr_path.segments.len() == 1).then_some(attr_path.segments[0]);
-        if let Some(name) = name
-            && [sym::cfg_trace, sym::cfg_attr_trace].contains(&name)
-        {
-            return;
-        }
 
         // FIXME: We should retrieve this information from the attribute parsers instead of from `BUILTIN_ATTRIBUTE_MAP`
         let builtin_attr_info = name.and_then(|name| BUILTIN_ATTRIBUTE_MAP.get(&name));
