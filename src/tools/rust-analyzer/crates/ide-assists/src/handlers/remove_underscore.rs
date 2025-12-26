@@ -62,7 +62,9 @@ pub(crate) fn remove_underscore(acc: &mut Assists, ctx: &AssistContext<'_>) -> O
         "Remove underscore from a used variable",
         text_range,
         |builder| {
-            let changes = def.rename(&ctx.sema, new_name, RenameDefinition::Yes).unwrap();
+            let changes = def
+                .rename(&ctx.sema, new_name, RenameDefinition::Yes, &ctx.config.rename_config())
+                .unwrap();
             builder.source_change = changes;
         },
     )

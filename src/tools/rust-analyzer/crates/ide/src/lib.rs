@@ -853,8 +853,9 @@ impl Analysis {
         &self,
         file_id: FileId,
         new_name_stem: &str,
+        config: &RenameConfig,
     ) -> Cancellable<Option<SourceChange>> {
-        self.with_db(|db| rename::will_rename_file(db, file_id, new_name_stem))
+        self.with_db(|db| rename::will_rename_file(db, file_id, new_name_stem, config))
     }
 
     pub fn structural_search_replace(

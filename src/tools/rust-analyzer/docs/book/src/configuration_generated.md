@@ -1352,6 +1352,13 @@ Default: `false`
 Exclude tests from find-all-references and call-hierarchy.
 
 
+## rust-analyzer.rename.showConflicts {#rename.showConflicts}
+
+Default: `true`
+
+Whether to warn when a rename will cause conflicts (change the meaning of the code).
+
+
 ## rust-analyzer.runnables.command {#runnables.command}
 
 Default: `null`

@@ -732,6 +732,9 @@ config_data! {
         ///
         /// E.g. `use ::std::io::Read;`.
         imports_prefixExternPrelude: bool = false,
+
+        /// Whether to warn when a rename will cause conflicts (change the meaning of the code).
+        rename_showConflicts: bool = true,
     }
 }
 
@@ -1731,6 +1734,7 @@ impl Config {
                 ExprFillDefaultDef::Underscore => ExprFillDefaultMode::Underscore,
             },
             prefer_self_ty: *self.assist_preferSelf(source_root),
+            show_rename_conflicts: *self.rename_showConflicts(source_root),
         }
     }
 
@@ -1739,6 +1743,7 @@ impl Config {
             prefer_no_std: self.imports_preferNoStd(source_root).to_owned(),
             prefer_prelude: self.imports_preferPrelude(source_root).to_owned(),
             prefer_absolute: self.imports_prefixExternPrelude(source_root).to_owned(),
+            show_conflicts: *self.rename_showConflicts(source_root),
         }
     }
 
@@ -1838,6 +1843,7 @@ impl Config {
             style_lints: self.diagnostics_styleLints_enable(source_root).to_owned(),
             term_search_fuel: self.assist_termSearch_fuel(source_root).to_owned() as u64,
             term_search_borrowck: self.assist_termSearch_borrowcheck(source_root).to_owned(),
+            show_rename_conflicts: *self.rename_showConflicts(source_root),
         }
     }
 
