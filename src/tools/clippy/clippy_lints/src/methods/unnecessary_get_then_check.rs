@@ -11,11 +11,11 @@ use rustc_span::{Span, sym};
 use super::UNNECESSARY_GET_THEN_CHECK;
 
 fn is_a_std_set_type(cx: &LateContext<'_>, ty: Ty<'_>) -> bool {
-    ty.is_diag_item(cx, sym::HashSet) || ty.is_diag_item(cx, sym::BTreeSet)
+    matches!(ty.opt_diag_name(cx), Some(sym::HashSet | sym::BTreeSet))
 }
 
 fn is_a_std_map_type(cx: &LateContext<'_>, ty: Ty<'_>) -> bool {
-    ty.is_diag_item(cx, sym::HashMap) || ty.is_diag_item(cx, sym::BTreeMap)
+    matches!(ty.opt_diag_name(cx), Some(sym::HashMap | sym::BTreeMap))
 }
 
 pub(super) fn check(

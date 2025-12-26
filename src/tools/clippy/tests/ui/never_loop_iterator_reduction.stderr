@@ -1,0 +1,27 @@
+error: this iterator reduction never loops (closure always diverges)
+  --> tests/ui/never_loop_iterator_reduction.rs:6:5
+   |
+LL | /     [0, 1].into_iter().for_each(|x| {
+LL | |
+LL | |
+LL | |         let _ = x;
+LL | |         panic!("boom");
+LL | |     });
+   | |______^
+   |
+   = note: if you only need one element, `if let Some(x) = iter.next()` is clearer
+   = note: `-D clippy::never-loop` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::never_loop)]`
+help: consider this pattern
+   |
+LL -     [0, 1].into_iter().for_each(|x| {
+LL -
+LL - 
+LL -         let _ = x;
+LL -         panic!("boom");
+LL -     });
+LL +     if let Some(x) = [0, 1].into_iter().next() { ... };
+   |
+
+error: aborting due to 1 previous error
+

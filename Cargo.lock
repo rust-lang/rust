@@ -666,6 +666,7 @@ dependencies = [
  "indoc",
  "itertools",
  "opener",
+ "rustc-literal-escaper",
  "walkdir",
 ]
 

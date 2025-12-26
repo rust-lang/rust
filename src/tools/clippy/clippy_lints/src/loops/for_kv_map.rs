@@ -34,7 +34,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, pat: &'tcx Pat<'_>, arg: &'tcx
             _ => arg,
         };
 
-        if ty.is_diag_item(cx, sym::HashMap) || ty.is_diag_item(cx, sym::BTreeMap) {
+        if matches!(ty.opt_diag_name(cx), Some(sym::HashMap | sym::BTreeMap)) {
             span_lint_and_then(
                 cx,
                 FOR_KV_MAP,

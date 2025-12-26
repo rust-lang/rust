@@ -9,10 +9,19 @@ LL | |         println!("true!");
 ...  |
 LL | |         None
 LL | |     };
-   | |_____^ help: try: `foo().then(||  { println!("true!"); "foo" })`
+   | |_____^
    |
    = note: `-D clippy::if-then-some-else-none` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::if_then_some_else_none)]`
+help: try
+   |
+LL ~     let _ = foo().then(|| {
+LL +
+LL + 
+LL +         println!("true!");
+LL +         "foo"
+LL ~     });
+   |
 
 error: this could be simplified with `bool::then`
   --> tests/ui/if_then_some_else_none.rs:16:13
@@ -25,7 +34,17 @@ LL | |         println!("true!");
 ...  |
 LL | |         None
 LL | |     };
-   | |_____^ help: try: `matches!(true, true).then(||  { println!("true!"); matches!(true, false) })`
+   | |_____^
+   |
+help: try
+   |
+LL ~     let _ = matches!(true, true).then(|| {
+LL +
+LL + 
+LL +         println!("true!");
+LL +         matches!(true, false)
+LL ~     });
+   |
 
 error: this could be simplified with `bool::then_some`
   --> tests/ui/if_then_some_else_none.rs:27:28
@@ -50,7 +69,17 @@ LL | |         println!("true!");
 ...  |
 LL | |         None
 LL | |     };
-   | |_____^ help: try: `foo().then(||  { println!("true!"); 150 })`
+   | |_____^
+   |
+help: try
+   |
+LL ~     let _ = foo().then(|| {
+LL +
+LL + 
+LL +         println!("true!");
+LL +         150
+LL ~     });
+   |
 
 error: this could be simplified with `bool::then`
   --> tests/ui/if_then_some_else_none.rs:138:5
@@ -125,7 +154,15 @@ LL | |                 Some(self.count)
 LL | |             } else {
 LL | |                 None
 LL | |             }
-   | |_____________^ help: try: `(self.count < 5).then(||  { self.count += 1; self.count })`
+   | |_____________^
+   |
+help: try
+   |
+LL ~             (self.count < 5).then(|| {
+LL +                 self.count += 1;
+LL +                 self.count
+LL +             })
+   |
 
 error: this could be simplified with `bool::then`
   --> tests/ui/if_then_some_else_none.rs:249:13
@@ -137,7 +174,36 @@ LL | |         Some(42)
 LL | |     } else {
 LL | |         None
 LL | |     };
-   | |_____^ help: try: `true.then(||  { mac!(); 42 })`
+   | |_____^
+   |
+help: try
+   |
+LL ~     let _ = true.then(|| {
+LL +         mac!();
+LL +         42
+LL ~     });
+   |
 
-error: aborting due to 13 previous errors
+error: this could be simplified with `bool::then`
+  --> tests/ui/if_then_some_else_none.rs:292:5
+   |
+LL | /     if 1 <= 3 {
+LL | |         let a = UnsafeCell::new(1);
+LL | |         // SAFETY: `bytes` bytes starting at `new_end` were just reserved.
+LL | |         Some(unsafe { *a.get() })
+LL | |     } else {
+LL | |         None
+LL | |     }
+   | |_____^
+   |
+help: try
+   |
+LL ~     (1 <= 3).then(|| {
+LL +         let a = UnsafeCell::new(1);
+LL +         // SAFETY: `bytes` bytes starting at `new_end` were just reserved.
+LL +         unsafe { *a.get() }
+LL +     })
+   |
+
+error: aborting due to 14 previous errors
 

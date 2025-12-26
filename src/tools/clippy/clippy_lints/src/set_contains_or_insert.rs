@@ -112,6 +112,16 @@ fn try_parse_op_call<'tcx>(
     None
 }
 
+fn is_set_mutated<'tcx>(cx: &LateContext<'tcx>, contains_expr: &OpExpr<'tcx>, expr: &'tcx Expr<'_>) -> bool {
+    // Guard on type to avoid useless potentially expansive `SpanlessEq` checks
+    cx.typeck_results().expr_ty_adjusted(expr).is_mutable_ptr()
+        && matches!(
+            cx.typeck_results().expr_ty(expr).peel_refs().opt_diag_name(cx),
+            Some(sym::HashSet | sym::BTreeSet)
+        )
+        && SpanlessEq::new(cx).eq_expr(contains_expr.receiver, expr.peel_borrows())
+}
+
 fn find_insert_calls<'tcx>(
     cx: &LateContext<'tcx>,
     contains_expr: &OpExpr<'tcx>,
@@ -122,9 +132,14 @@ fn find_insert_calls<'tcx>(
             && SpanlessEq::new(cx).eq_expr(contains_expr.receiver, insert_expr.receiver)
             && SpanlessEq::new(cx).eq_expr(contains_expr.value, insert_expr.value)
         {
-            ControlFlow::Break(insert_expr)
-        } else {
-            ControlFlow::Continue(())
+            return ControlFlow::Break(Some(insert_expr));
         }
+
+        if is_set_mutated(cx, contains_expr, e) {
+            return ControlFlow::Break(None);
+        }
+
+        ControlFlow::Continue(())
     })
+    .flatten()
 }
