@@ -4069,15 +4069,25 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 ))
                 && expr.span.hi() != rcvr.span.hi()
             {
-                err.span_suggestion_verbose(
-                    expr.span.with_lo(rcvr.span.hi()),
-                    format!(
-                        "consider removing this method call, as the receiver has type `{ty}` and \
-                         `{pred}` trivially holds",
-                    ),
-                    "",
-                    Applicability::MaybeIncorrect,
-                );
+                match tcx.hir_node(call_hir_id) {
+                    // Do not suggest removing a method call if the argument is the receiver of the parent call:
+                    // `x.a().b()`, suggesting removing `.a()` would change the type and could make `.b()` unavailable.
+                    Node::Expr(hir::Expr {
+                        kind: hir::ExprKind::MethodCall(_, call_receiver, _, _),
+                        ..
+                    }) if call_receiver.hir_id == arg_hir_id => {}
+                    _ => {
+                        err.span_suggestion_verbose(
+                            expr.span.with_lo(rcvr.span.hi()),
+                            format!(
+                                "consider removing this method call, as the receiver has type `{ty}` and \
+                                `{pred}` trivially holds",
+                            ),
+                            "",
+                            Applicability::MaybeIncorrect,
+                        );
+                    }
+                }
             }
             if let hir::Expr { kind: hir::ExprKind::Block(block, _), .. } = expr {
                 let inner_expr = expr.peel_blocks();
