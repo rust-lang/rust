@@ -711,8 +711,8 @@
 use std::fmt;
 
 #[cfg(feature = "rustc")]
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_hash::{FxHashMap, FxHashSet};
 use rustc_index::bit_set::DenseBitSet;
 use smallvec::{SmallVec, smallvec};
 use tracing::{debug, instrument};
