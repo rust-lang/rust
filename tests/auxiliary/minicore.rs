@@ -206,7 +206,7 @@ impl Neg for isize {
     type Output = isize;
 
     fn neg(self) -> isize {
-        loop {} // Dummy impl, not actually used 
+        loop {} // Dummy impl, not actually used
     }
 }
 
