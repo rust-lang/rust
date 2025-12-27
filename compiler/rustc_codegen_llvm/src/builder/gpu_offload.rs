@@ -430,7 +430,9 @@ pub(crate) fn gen_call_handling<'ll, 'tcx>(
     let fn_ty = offload_globals.mapper_fn_ty;
 
     let num_args = types.len() as u64;
+    unsafe {llvm::LLVMDumpModule(builder.llmod())};
     let ip = unsafe { llvm::LLVMRustGetInsertPoint(&builder.llbuilder) };
+    let ip = ip.unwrap();
 
     // FIXME(Sa4dUs): dummy loads are a temp workaround, we should find a proper way to prevent these
     // variables from being optimized away
