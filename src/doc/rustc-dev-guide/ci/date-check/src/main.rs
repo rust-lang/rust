@@ -153,9 +153,13 @@ fn main() {
         println!();
 
         for (path, dates) in dates_by_file {
-            println!("- {}", path.strip_prefix(&root_dir_path).unwrap_or(&path).display(),);
+            let path = path.strip_prefix(&root_dir_path).unwrap_or(&path).display();
+            println!("- {path}");
             for (line, date) in dates {
-                println!("  - [ ] line {}: {}", line, date);
+                let url = format!(
+                    "https://github.com/rust-lang/rustc-dev-guide/blob/main/{path}?plain=1#L{line}"
+                );
+                println!("  - [ ] {date} [line {line}]({url})");
             }
         }
         println!();
