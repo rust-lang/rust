@@ -1,0 +1,30 @@
+error[E0597]: `x` does not live long enough
+  --> $DIR/super-let-projection-extension.rs:19:39
+   |
+LL |     let c = &*{ super let x = temp(); &x };
+   |                           -           ^^  - `x` dropped here while still borrowed
+   |                           |           |
+   |                           |           borrowed value does not live long enough
+   |                           binding `x` declared here
+LL |
+LL |     c;
+   |     - borrow later used here
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/super-let-projection-extension.rs:22:19
+   |
+LL |     let d = &mut *pin!(temp());
+   |                   ^^^^^^^^^^^^- temporary value is freed at the end of this statement
+   |                   |
+   |                   creates a temporary value which is freed while still in use
+LL |
+LL |     d;
+   |     - borrow later used here
+   |
+   = note: consider using a `let` binding to create a longer lived value
+   = note: this error originates in the macro `pin` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0597, E0716.
+For more information about an error, try `rustc --explain E0597`.
