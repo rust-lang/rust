@@ -694,7 +694,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
             }
             ast::Safety::Default | ast::Safety::Safe(_) => {}
         }
-        match &item.args {
+        match &item.args.unparsed_ref().expect("Parsed attributes are never printed") {
             AttrArgs::Delimited(DelimArgs { dspan: _, delim, tokens }) => self.print_mac_common(
                 Some(MacHeader::Path(&item.path)),
                 false,

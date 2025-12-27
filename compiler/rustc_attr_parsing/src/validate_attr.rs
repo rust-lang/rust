@@ -48,7 +48,7 @@ pub fn check_attr(psess: &ParseSess, attr: &Attribute) {
         }
         _ => {
             let attr_item = attr.get_normal_item();
-            if let AttrArgs::Eq { .. } = attr_item.args {
+            if let AttrArgs::Eq { .. } = attr_item.args.unparsed_ref().unwrap() {
                 // All key-value attributes are restricted to meta-item syntax.
                 match parse_meta(psess, attr) {
                     Ok(_) => {}
@@ -67,7 +67,7 @@ pub fn parse_meta<'a>(psess: &'a ParseSess, attr: &Attribute) -> PResult<'a, Met
         unsafety: item.unsafety,
         span: attr.span,
         path: item.path.clone(),
-        kind: match &item.args {
+        kind: match &item.args.unparsed_ref().unwrap() {
             AttrArgs::Empty => MetaItemKind::Word,
             AttrArgs::Delimited(DelimArgs { dspan, delim, tokens }) => {
                 check_meta_bad_delim(psess, *dspan, *delim);

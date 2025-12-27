@@ -358,7 +358,7 @@ mod llvm_enzyme {
         let inline_item = ast::AttrItem {
             unsafety: ast::Safety::Default,
             path: ast::Path::from_ident(Ident::with_dummy_span(sym::inline)),
-            args: ast::AttrArgs::Delimited(never_arg),
+            args: rustc_ast::ast::AttrItemKind::Unparsed(ast::AttrArgs::Delimited(never_arg)),
             tokens: None,
         };
         let inline_never_attr = Box::new(ast::NormalAttr { item: inline_item, tokens: None });
@@ -421,11 +421,13 @@ mod llvm_enzyme {
             }
         };
         // Now update for d_fn
-        rustc_ad_attr.item.args = rustc_ast::AttrArgs::Delimited(rustc_ast::DelimArgs {
-            dspan: DelimSpan::dummy(),
-            delim: rustc_ast::token::Delimiter::Parenthesis,
-            tokens: ts,
-        });
+        rustc_ad_attr.item.args = rustc_ast::ast::AttrItemKind::Unparsed(
+            rustc_ast::AttrArgs::Delimited(rustc_ast::DelimArgs {
+                dspan: DelimSpan::dummy(),
+                delim: rustc_ast::token::Delimiter::Parenthesis,
+                tokens: ts,
+            }),
+        );
 
         let new_id = ecx.sess.psess.attr_id_generator.mk_attr_id();
         let d_attr = outer_normal_attr(&rustc_ad_attr, new_id, span);

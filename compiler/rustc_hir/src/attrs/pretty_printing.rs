@@ -2,6 +2,8 @@ use std::num::NonZero;
 use std::ops::Deref;
 
 use rustc_abi::Align;
+use rustc_ast::attr::data_structures::CfgEntry;
+use rustc_ast::attr::version::RustcVersion;
 use rustc_ast::token::{CommentKind, DocFragmentKind};
 use rustc_ast::{AttrStyle, IntTy, UintTy};
 use rustc_ast_pretty::pp::Printer;
@@ -182,4 +184,6 @@ print_debug!(
     Transparency,
     SanitizerSet,
     DefId,
+    RustcVersion,
+    CfgEntry,
 );
