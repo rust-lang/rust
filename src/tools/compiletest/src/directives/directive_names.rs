@@ -165,6 +165,7 @@ pub(crate) const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "needs-git-hash",
     "needs-llvm-components",
     "needs-llvm-zstd",
+    "needs-offload",
     "needs-profiler-runtime",
     "needs-relocation-model-pic",
     "needs-run-enabled",
