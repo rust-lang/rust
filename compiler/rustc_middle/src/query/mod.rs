@@ -1408,11 +1408,6 @@ rustc_queries! {
         desc { "converting type-level constant value to MIR constant value"}
     }
 
-    /// Destructures ADT constants into the constants of their fields
-    query destructure_adt_const(key: ty::Const<'tcx>) -> ty::DestructuredAdtConst<'tcx> {
-        desc { "destructuring type level constant"}
-    }
-
     // FIXME get rid of this with valtrees
     query lit_to_const(
         key: LitToConstInput<'tcx>
