@@ -1304,7 +1304,7 @@ fn codegen_offload<'ll, 'tcx>(
             return;
         }
     };
-    let offload_data = gen_define_handling(&cx, &metadata, &types, target_symbol, offload_globals);
+    let offload_data = gen_define_handling(&cx, &metadata, target_symbol, offload_globals);
     gen_call_handling(bx, &offload_data, &args, &types, &metadata, offload_globals);
 }
 
