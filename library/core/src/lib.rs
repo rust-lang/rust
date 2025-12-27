@@ -95,6 +95,7 @@
 //
 // Library features:
 // tidy-alphabetical-start
+#![feature(arbitrary_self_types_pointers)]
 #![feature(array_ptr_get)]
 #![feature(asm_experimental_arch)]
 #![feature(bigint_helper_methods)]

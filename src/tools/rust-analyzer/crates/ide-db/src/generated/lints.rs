@@ -5878,6 +5878,32 @@ The tracking issue for this feature is: [#99301]
         deny_since: None,
     },
     Lint {
+        label: "error_generic_member_multi_access",
+        description: r##"# `error_generic_member_multi_access`
+
+The tracking issue for this feature is: [#99301]
+
+[#99301]: https://github.com/rust-lang/rust/issues/99301
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
+        label: "error_generic_member_access_internals",
+        description: r##"# `error_generic_member_access_internals`
+
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
         label: "error_iter",
         description: r##"# `error_iter`
 
