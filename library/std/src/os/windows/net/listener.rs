@@ -1,7 +1,6 @@
 use crate::os::windows::io::{AsRawSocket, FromRawSocket, IntoRawSocket, RawSocket};
 use crate::os::windows::net::{SocketAddr, UnixStream, not_cvt};
 use crate::path::Path;
-use crate::sys::cvt;
 use crate::sys::net::Socket;
 use crate::{io, mem};
 #[cfg(windows)]
