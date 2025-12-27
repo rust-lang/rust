@@ -455,7 +455,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
                 if self.body.coroutine.is_none() {
                     self.fail(location, "`Yield` cannot appear outside coroutine bodies");
                 }
-                if self.body.phase >= MirPhase::Runtime(RuntimePhase::Initial) {
+                if self.body.phase >= MirPhase::Runtime(RuntimePhase::Optimized) {
                     self.fail(location, "`Yield` should have been replaced by coroutine lowering");
                 }
                 self.check_edge(location, *resume, EdgeKind::Normal);
@@ -493,7 +493,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
                 if self.body.coroutine.is_none() {
                     self.fail(location, "`CoroutineDrop` cannot appear outside coroutine bodies");
                 }
-                if self.body.phase >= MirPhase::Runtime(RuntimePhase::Initial) {
+                if self.body.phase >= MirPhase::Runtime(RuntimePhase::Optimized) {
                     self.fail(
                         location,
                         "`CoroutineDrop` should have been replaced by coroutine lowering",

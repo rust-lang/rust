@@ -5,7 +5,7 @@
 //@ edition:2021
 //@ build-pass
 //@ ignore-pass
-//@ only-x86_64
+//@ only-64bit
 
 async fn wait() {}
 

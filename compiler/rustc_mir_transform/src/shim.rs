@@ -150,7 +150,6 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceKind<'tcx>) -> Body<
                     tcx,
                     &mut body,
                     &[
-                        &mentioned_items::MentionedItems,
                         &abort_unwinding_calls::AbortUnwindingCalls,
                         &add_call_guards::CriticalCallEdges,
                     ],
