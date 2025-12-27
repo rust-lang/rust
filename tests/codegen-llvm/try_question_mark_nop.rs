@@ -212,6 +212,8 @@ pub fn control_flow_nop_traits_128(x: ControlFlow<i128, u128>) -> ControlFlow<i1
 #[no_mangle]
 pub fn result_nop_match_ptr(x: Result<usize, Box<()>>) -> Result<usize, Box<()>> {
     // CHECK: start:
+    // CHECK-NEXT: ptrtoint
+    // CHECK-NEXT: inttoptr
     // CHECK-NEXT: insertvalue { i{{[0-9]+}}, ptr }
     // CHECK-NEXT: insertvalue { i{{[0-9]+}}, ptr }
     // CHECK-NEXT: ret
@@ -225,6 +227,8 @@ pub fn result_nop_match_ptr(x: Result<usize, Box<()>>) -> Result<usize, Box<()>>
 #[no_mangle]
 pub fn result_nop_traits_ptr(x: Result<u64, NonNull<()>>) -> Result<u64, NonNull<()>> {
     // CHECK: start:
+    // CHECK-NEXT: ptrtoint
+    // CHECK-NEXT: inttoptr
     // CHECK-NEXT: insertvalue { i{{[0-9]+}}, ptr }
     // CHECK-NEXT: insertvalue { i{{[0-9]+}}, ptr }
     // CHECK-NEXT: ret
