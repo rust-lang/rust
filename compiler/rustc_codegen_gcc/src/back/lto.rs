@@ -26,11 +26,11 @@ use std::sync::atomic::Ordering;
 use gccjit::{Context, OutputKind};
 use object::read::archive::ArchiveFile;
 use rustc_codegen_ssa::back::lto::{SerializedModule, ThinModule, ThinShared};
-use rustc_codegen_ssa::back::write::{CodegenContext, FatLtoInput};
+use rustc_codegen_ssa::back::write::{CodegenContext, FatLtoInput, SharedEmitter};
 use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::{ModuleCodegen, ModuleKind, looks_like_rust_object_file};
 use rustc_data_structures::memmap::Mmap;
-use rustc_errors::DiagCtxtHandle;
+use rustc_errors::{DiagCtxt, DiagCtxtHandle};
 use rustc_log::tracing::info;
 use rustc_middle::bug;
 use rustc_middle::dep_graph::WorkProduct;
@@ -112,10 +112,11 @@ fn save_as_file(obj: &[u8], path: &Path) -> Result<(), LtoBitcodeFromRlib> {
 /// for further optimization.
 pub(crate) fn run_fat(
     cgcx: &CodegenContext<GccCodegenBackend>,
+    shared_emitter: &SharedEmitter,
     each_linked_rlib_for_lto: &[PathBuf],
     modules: Vec<FatLtoInput<GccCodegenBackend>>,
 ) -> ModuleCodegen<GccContext> {
-    let dcx = cgcx.create_dcx();
+    let dcx = DiagCtxt::new(Box::new(shared_emitter.clone()));
     let dcx = dcx.handle();
     let lto_data = prepare_lto(cgcx, each_linked_rlib_for_lto, dcx);
     /*let symbols_below_threshold =
@@ -283,14 +284,13 @@ impl ModuleBufferMethods for ModuleBuffer {
 /// can simply be copied over from the incr. comp. cache.
 pub(crate) fn run_thin(
     cgcx: &CodegenContext<GccCodegenBackend>,
+    dcx: DiagCtxtHandle<'_>,
     each_linked_rlib_for_lto: &[PathBuf],
     modules: Vec<(String, ThinBuffer)>,
     cached_modules: Vec<(SerializedModule<ModuleBuffer>, WorkProduct)>,
 ) -> (Vec<ThinModule<GccCodegenBackend>>, Vec<WorkProduct>) {
-    let dcx = cgcx.create_dcx();
-    let dcx = dcx.handle();
     let lto_data = prepare_lto(cgcx, each_linked_rlib_for_lto, dcx);
-    if cgcx.opts.cg.linker_plugin_lto.enabled() {
+    if cgcx.use_linker_plugin_lto {
         unreachable!(
             "We should never reach this case if the LTO step \
                       is deferred to the linker"
@@ -522,8 +522,6 @@ pub fn optimize_thin_module(
     thin_module: ThinModule<GccCodegenBackend>,
     _cgcx: &CodegenContext<GccCodegenBackend>,
 ) -> ModuleCodegen<GccContext> {
-    //let dcx = cgcx.create_dcx();
-
     //let module_name = &thin_module.shared.module_names[thin_module.idx];
     /*let tm_factory_config = TargetMachineFactoryConfig::new(cgcx, module_name.to_str().unwrap());
     let tm = (cgcx.tm_factory)(tm_factory_config).map_err(|e| write::llvm_err(&dcx, e))?;*/

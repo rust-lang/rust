@@ -2,8 +2,11 @@ use std::{env, fs};
 
 use gccjit::{Context, OutputKind};
 use rustc_codegen_ssa::back::link::ensure_removed;
-use rustc_codegen_ssa::back::write::{BitcodeSection, CodegenContext, EmitObj, ModuleConfig};
+use rustc_codegen_ssa::back::write::{
+    BitcodeSection, CodegenContext, EmitObj, ModuleConfig, SharedEmitter,
+};
 use rustc_codegen_ssa::{CompiledModule, ModuleCodegen};
+use rustc_errors::DiagCtxt;
 use rustc_fs_util::link_or_copy;
 use rustc_log::tracing::debug;
 use rustc_session::config::OutputType;
@@ -15,10 +18,11 @@ use crate::{GccCodegenBackend, GccContext, LtoMode};
 
 pub(crate) fn codegen(
     cgcx: &CodegenContext<GccCodegenBackend>,
+    shared_emitter: &SharedEmitter,
     module: ModuleCodegen<GccContext>,
     config: &ModuleConfig,
 ) -> CompiledModule {
-    let dcx = cgcx.create_dcx();
+    let dcx = DiagCtxt::new(Box::new(shared_emitter.clone()));
     let dcx = dcx.handle();
 
     let _timer = cgcx.prof.generic_activity_with_arg("GCC_module_codegen", &*module.name);
