@@ -784,22 +784,6 @@ pub(crate) struct UpperRangeBoundCannotBeMin {
 }
 
 #[derive(LintDiagnostic)]
-#[diag(mir_build_leading_irrefutable_let_patterns)]
-#[note]
-#[help]
-pub(crate) struct LeadingIrrefutableLetPatterns {
-    pub(crate) count: usize,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(mir_build_trailing_irrefutable_let_patterns)]
-#[note]
-#[help]
-pub(crate) struct TrailingIrrefutableLetPatterns {
-    pub(crate) count: usize,
-}
-
-#[derive(LintDiagnostic)]
 #[diag(mir_build_bindings_with_variant_name, code = E0170)]
 pub(crate) struct BindingsWithVariantName {
     #[suggestion(code = "{ty_path}::{name}", applicability = "machine-applicable")]
