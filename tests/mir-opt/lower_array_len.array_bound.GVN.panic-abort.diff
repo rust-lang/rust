@@ -44,8 +44,8 @@
           _8 = copy _1;
 -         _9 = Lt(copy _8, const N);
 -         assert(move _9, "index out of bounds: the length is {} but the index is {}", const N, copy _8) -> [success: bb3, unwind unreachable];
-+         _9 = copy _3;
-+         assert(copy _3, "index out of bounds: the length is {} but the index is {}", const N, copy _1) -> [success: bb3, unwind unreachable];
++         _9 = const true;
++         assert(const true, "index out of bounds: the length is {} but the index is {}", const N, copy _1) -> [success: bb3, unwind unreachable];
       }
   
       bb3: {

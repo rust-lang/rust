@@ -222,8 +222,8 @@
           _32 = copy _1;
 -         _33 = Eq(copy _32, const 0_u64);
 -         assert(!move _33, "attempt to divide `{}` by zero", const 1_u64) -> [success: bb12, unwind unreachable];
-+         _33 = copy _29;
-+         assert(!copy _29, "attempt to divide `{}` by zero", const 1_u64) -> [success: bb12, unwind unreachable];
++         _33 = const false;
++         assert(!const false, "attempt to divide `{}` by zero", const 1_u64) -> [success: bb12, unwind unreachable];
       }
   
       bb12: {
@@ -283,8 +283,8 @@
           _44 = copy _1;
 -         _45 = Eq(copy _44, const 0_u64);
 -         assert(!move _45, "attempt to calculate the remainder of `{}` with a divisor of zero", const 0_u64) -> [success: bb18, unwind unreachable];
-+         _45 = copy _29;
-+         assert(!copy _29, "attempt to calculate the remainder of `{}` with a divisor of zero", const 0_u64) -> [success: bb18, unwind unreachable];
++         _45 = const false;
++         assert(!const false, "attempt to calculate the remainder of `{}` with a divisor of zero", const 0_u64) -> [success: bb18, unwind unreachable];
       }
   
       bb18: {
@@ -304,8 +304,8 @@
           _48 = copy _1;
 -         _49 = Eq(copy _48, const 0_u64);
 -         assert(!move _49, "attempt to calculate the remainder of `{}` with a divisor of zero", const 1_u64) -> [success: bb20, unwind unreachable];
-+         _49 = copy _29;
-+         assert(!copy _29, "attempt to calculate the remainder of `{}` with a divisor of zero", const 1_u64) -> [success: bb20, unwind unreachable];
++         _49 = const false;
++         assert(!const false, "attempt to calculate the remainder of `{}` with a divisor of zero", const 1_u64) -> [success: bb20, unwind unreachable];
       }
   
       bb20: {

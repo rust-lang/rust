@@ -283,8 +283,8 @@
           _24 = copy _2;
 -         _25 = Eq(copy _24, const 0_u64);
 -         assert(!move _25, "attempt to calculate the remainder of `{}` with a divisor of zero", copy _23) -> [success: bb6, unwind continue];
-+         _25 = copy _20;
-+         assert(!copy _20, "attempt to calculate the remainder of `{}` with a divisor of zero", copy _1) -> [success: bb6, unwind continue];
++         _25 = const false;
++         assert(!const false, "attempt to calculate the remainder of `{}` with a divisor of zero", copy _1) -> [success: bb6, unwind continue];
       }
   
       bb6: {
@@ -520,8 +520,8 @@
           _74 = copy _2;
 -         _75 = Eq(copy _74, const 0_u64);
 -         assert(!move _75, "attempt to divide `{}` by zero", copy _73) -> [success: bb20, unwind continue];
-+         _75 = copy _20;
-+         assert(!copy _20, "attempt to divide `{}` by zero", copy _1) -> [success: bb20, unwind continue];
++         _75 = const false;
++         assert(!const false, "attempt to divide `{}` by zero", copy _1) -> [success: bb20, unwind continue];
       }
   
       bb20: {
@@ -544,8 +544,8 @@
           _79 = copy _2;
 -         _80 = Eq(copy _79, const 0_u64);
 -         assert(!move _80, "attempt to calculate the remainder of `{}` with a divisor of zero", copy _78) -> [success: bb22, unwind continue];
-+         _80 = copy _20;
-+         assert(!copy _20, "attempt to calculate the remainder of `{}` with a divisor of zero", copy _1) -> [success: bb22, unwind continue];
++         _80 = const false;
++         assert(!const false, "attempt to calculate the remainder of `{}` with a divisor of zero", copy _1) -> [success: bb22, unwind continue];
       }
   
       bb22: {

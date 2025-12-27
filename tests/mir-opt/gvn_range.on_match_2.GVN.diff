@@ -1,0 +1,26 @@
+- // MIR for `on_match_2` before GVN
++ // MIR for `on_match_2` after GVN
+  
+  fn on_match_2(_1: u8) -> u8 {
+      debug i => _1;
+      let mut _0: u8;
+  
+      bb0: {
+          switchInt(copy _1) -> [1: bb2, 2: bb2, otherwise: bb1];
+      }
+  
+      bb1: {
+          _0 = const 0_u8;
+          goto -> bb3;
+      }
+  
+      bb2: {
+          _0 = copy _1;
+          goto -> bb3;
+      }
+  
+      bb3: {
+          return;
+      }
+  }
+  

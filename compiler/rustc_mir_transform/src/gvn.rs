@@ -90,14 +90,16 @@ use std::hash::{Hash, Hasher};
 use either::Either;
 use hashbrown::hash_table::{Entry, HashTable};
 use itertools::Itertools as _;
-use rustc_abi::{self as abi, BackendRepr, FIRST_VARIANT, FieldIdx, Primitive, Size, VariantIdx};
+use rustc_abi::{
+    self as abi, BackendRepr, FIRST_VARIANT, FieldIdx, Primitive, Size, VariantIdx, WrappingRange,
+};
 use rustc_arena::DroplessArena;
 use rustc_const_eval::const_eval::DummyMachine;
 use rustc_const_eval::interpret::{
     ImmTy, Immediate, InterpCx, MemPlaceMeta, MemoryKind, OpTy, Projectable, Scalar,
     intern_const_alloc_for_constprop,
 };
-use rustc_data_structures::fx::FxHasher;
+use rustc_data_structures::fx::{FxHashMap, FxHasher};
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_hir::def::DefKind;
 use rustc_index::bit_set::DenseBitSet;
@@ -130,10 +132,25 @@ impl<'tcx> crate::MirPass<'tcx> for GVN {
         // Clone dominators because we need them while mutating the body.
         let dominators = body.basic_blocks.dominators().clone();
         let maybe_loop_headers = loops::maybe_loop_headers(body);
+        let predecessors = body.basic_blocks.predecessors();
+        let mut unique_predecessors = DenseBitSet::new_empty(body.basic_blocks.len());
+        for (bb, _) in body.basic_blocks.iter_enumerated() {
+            if predecessors[bb].len() == 1 {
+                unique_predecessors.insert(bb);
+            }
+        }
 
         let arena = DroplessArena::default();
-        let mut state =
-            VnState::new(tcx, body, typing_env, &ssa, dominators, &body.local_decls, &arena);
+        let mut state = VnState::new(
+            tcx,
+            body,
+            typing_env,
+            &ssa,
+            dominators,
+            &body.local_decls,
+            &arena,
+            unique_predecessors,
+        );
 
         for local in body.args_iter().filter(|&local| ssa.is_ssa(local)) {
             let opaque = state.new_opaque(body.local_decls[local].ty);
@@ -380,6 +397,10 @@ struct VnState<'body, 'a, 'tcx> {
     dominators: Dominators<BasicBlock>,
     reused_locals: DenseBitSet<Local>,
     arena: &'a DroplessArena,
+    /// Known ranges at each locations.
+    ranges: IndexVec<VnIndex, Vec<(Location, WrappingRange)>>,
+    /// Determines if the basic block has a single unique predecessor.
+    unique_predecessors: DenseBitSet<BasicBlock>,
 }
 
 impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
@@ -391,6 +412,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
         dominators: Dominators<BasicBlock>,
         local_decls: &'body LocalDecls<'tcx>,
         arena: &'a DroplessArena,
+        unique_predecessors: DenseBitSet<BasicBlock>,
     ) -> Self {
         // Compute a rough estimate of the number of values in the body from the number of
         // statements. This is meant to reduce the number of allocations, but it's all right if
@@ -413,6 +435,8 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
             dominators,
             reused_locals: DenseBitSet::new_empty(local_decls.len()),
             arena,
+            ranges: IndexVec::with_capacity(num_values),
+            unique_predecessors,
         }
     }
 
@@ -430,6 +454,8 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
         debug_assert_eq!(index, _index);
         let _index = self.rev_locals.push(SmallVec::new());
         debug_assert_eq!(index, _index);
+        let _index = self.ranges.push(Vec::new());
+        debug_assert_eq!(index, _index);
         index
     }
 
@@ -441,6 +467,8 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
             let _index = self.evaluated.push(None);
             debug_assert_eq!(index, _index);
             let _index = self.rev_locals.push(SmallVec::new());
+            debug_assert_eq!(index, _index);
+            let _index = self.ranges.push(Vec::new());
             debug_assert_eq!(index, _index);
         }
         index
@@ -521,6 +549,20 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
         debug_assert!(self.ssa.is_ssa(local));
         self.locals[local] = Some(value);
         self.rev_locals[value].push(local);
+    }
+
+    /// Create a new known range at the location.
+    fn insert_range(&mut self, value: VnIndex, location: Location, range: WrappingRange) {
+        self.ranges[value].push((location, range));
+    }
+
+    /// Get the known range at the location.
+    fn get_range(&self, value: VnIndex, location: Location) -> Option<WrappingRange> {
+        // FIXME: This should use the intersection of all valid ranges.
+        let (_, range) = self.ranges[value]
+            .iter()
+            .find(|(range_loc, _)| range_loc.dominates(location, &self.dominators))?;
+        Some(*range)
     }
 
     fn insert_bool(&mut self, flag: bool) -> VnIndex {
@@ -1011,7 +1053,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
             Operand::Constant(ref constant) => Some(self.insert_constant(constant.const_)),
             Operand::Copy(ref mut place) | Operand::Move(ref mut place) => {
                 let value = self.simplify_place_value(place, location)?;
-                if let Some(const_) = self.try_as_constant(value) {
+                if let Some(const_) = self.try_as_constant(value, location) {
                     *operand = Operand::Constant(Box::new(const_));
                 } else if let Value::RuntimeChecks(c) = self.get(value) {
                     *operand = Operand::RuntimeChecks(c);
@@ -1782,7 +1824,7 @@ impl<'tcx> VnState<'_, '_, 'tcx> {
     /// If either [`Self::try_as_constant`] as [`Self::try_as_place`] succeeds,
     /// returns that result as an [`Operand`].
     fn try_as_operand(&mut self, index: VnIndex, location: Location) -> Option<Operand<'tcx>> {
-        if let Some(const_) = self.try_as_constant(index) {
+        if let Some(const_) = self.try_as_constant(index, location) {
             Some(Operand::Constant(Box::new(const_)))
         } else if let Value::RuntimeChecks(c) = self.get(index) {
             Some(Operand::RuntimeChecks(c))
@@ -1795,7 +1837,11 @@ impl<'tcx> VnState<'_, '_, 'tcx> {
     }
 
     /// If `index` is a `Value::Constant`, return the `Constant` to be put in the MIR.
-    fn try_as_constant(&mut self, index: VnIndex) -> Option<ConstOperand<'tcx>> {
+    fn try_as_constant(
+        &mut self,
+        index: VnIndex,
+        location: Location,
+    ) -> Option<ConstOperand<'tcx>> {
         // This was already constant in MIR, do not change it. If the constant is not
         // deterministic, adding an additional mention of it in MIR will not give the same value as
         // the former mention.
@@ -1804,21 +1850,34 @@ impl<'tcx> VnState<'_, '_, 'tcx> {
             return Some(ConstOperand { span: DUMMY_SP, user_ty: None, const_: value });
         }
 
-        let op = self.eval_to_const(index)?;
-        if op.layout.is_unsized() {
-            // Do not attempt to propagate unsized locals.
-            return None;
+        if let Some(op) = self.eval_to_const(index) {
+            if op.layout.is_unsized() {
+                // Do not attempt to propagate unsized locals.
+                return None;
+            }
+
+            let value = op_to_prop_const(&mut self.ecx, op)?;
+
+            // Check that we do not leak a pointer.
+            // Those pointers may lose part of their identity in codegen.
+            // FIXME: remove this hack once https://github.com/rust-lang/rust/issues/79738 is fixed.
+            assert!(!value.may_have_provenance(self.tcx, op.layout.size));
+
+            let const_ = Const::Val(value, op.layout.ty);
+            return Some(ConstOperand { span: DUMMY_SP, user_ty: None, const_ });
         }
 
-        let value = op_to_prop_const(&mut self.ecx, op)?;
+        if let Some(range) = self.get_range(index, location)
+            && range.start == range.end
+        {
+            let ty = self.ty(index);
+            let layout = self.ecx.layout_of(ty).ok()?;
+            let value = ConstValue::Scalar(Scalar::from_uint(range.start, layout.size));
+            let const_ = Const::Val(value, self.ty(index));
+            return Some(ConstOperand { span: DUMMY_SP, user_ty: None, const_ });
+        }
 
-        // Check that we do not leak a pointer.
-        // Those pointers may lose part of their identity in codegen.
-        // FIXME: remove this hack once https://github.com/rust-lang/rust/issues/79738 is fixed.
-        assert!(!value.may_have_provenance(self.tcx, op.layout.size));
-
-        let const_ = Const::Val(value, op.layout.ty);
-        Some(ConstOperand { span: DUMMY_SP, user_ty: None, const_ })
+        None
     }
 
     /// Construct a place which holds the same value as `index` and for which all locals strictly
@@ -1895,7 +1954,7 @@ impl<'tcx> MutVisitor<'tcx> for VnState<'_, '_, 'tcx> {
 
         let value = self.simplify_rvalue(lhs, rvalue, location);
         if let Some(value) = value {
-            if let Some(const_) = self.try_as_constant(value) {
+            if let Some(const_) = self.try_as_constant(value, location) {
                 *rvalue = Rvalue::Use(Operand::Constant(Box::new(const_)));
             } else if let Some(place) = self.try_as_place(value, location, false)
                 && *rvalue != Rvalue::Use(Operand::Move(place))
@@ -1924,14 +1983,73 @@ impl<'tcx> MutVisitor<'tcx> for VnState<'_, '_, 'tcx> {
     }
 
     fn visit_terminator(&mut self, terminator: &mut Terminator<'tcx>, location: Location) {
-        if let Terminator { kind: TerminatorKind::Call { destination, .. }, .. } = terminator {
-            if let Some(local) = destination.as_local()
-                && self.ssa.is_ssa(local)
-            {
-                let ty = self.local_decls[local].ty;
-                let opaque = self.new_opaque(ty);
-                self.assign(local, opaque);
+        match &mut terminator.kind {
+            TerminatorKind::Call { destination, .. } => {
+                if let Some(local) = destination.as_local()
+                    && self.ssa.is_ssa(local)
+                {
+                    let ty = self.local_decls[local].ty;
+                    let opaque = self.new_opaque(ty);
+                    self.assign(local, opaque);
+                }
             }
+            TerminatorKind::Assert { cond, expected, target, .. } => {
+                if let Some(value) = self.simplify_operand(cond, location)
+                    && !matches!(self.get(value), Value::Constant { .. })
+                {
+                    let successor = Location { block: *target, statement_index: 0 };
+                    if location.block != successor.block
+                        && self.unique_predecessors.contains(successor.block)
+                    {
+                        let val = *expected as u128;
+                        let range = WrappingRange { start: val, end: val };
+                        self.insert_range(value, successor, range);
+                    }
+                }
+            }
+            TerminatorKind::SwitchInt { discr, targets } => {
+                if let Some(value) = self.simplify_operand(discr, location)
+                    && targets.all_targets().len() < 16
+                    && !matches!(self.get(value), Value::Constant { .. })
+                {
+                    let mut distinct_targets: FxHashMap<BasicBlock, u8> = FxHashMap::default();
+                    for (_, target) in targets.iter() {
+                        let targets = distinct_targets.entry(target).or_default();
+                        if *targets == 0 {
+                            *targets = 1;
+                        } else {
+                            *targets = 2;
+                        }
+                    }
+                    for (val, target) in targets.iter() {
+                        if distinct_targets[&target] != 1 {
+                            continue;
+                        }
+                        let successor = Location { block: target, statement_index: 0 };
+                        if location.block != successor.block
+                            && self.unique_predecessors.contains(successor.block)
+                        {
+                            let range = WrappingRange { start: val, end: val };
+                            self.insert_range(value, successor, range);
+                        }
+                    }
+
+                    let otherwise = Location { block: targets.otherwise(), statement_index: 0 };
+                    if self.ty(value).is_bool()
+                        && let [val] = targets.all_values()
+                        && location.block != otherwise.block
+                        && self.unique_predecessors.contains(otherwise.block)
+                    {
+                        let range = if val.get() == 0 {
+                            WrappingRange { start: 1, end: 1 }
+                        } else {
+                            WrappingRange { start: 0, end: 0 }
+                        };
+                        self.insert_range(value, otherwise, range);
+                    }
+                }
+            }
+            _ => {}
         }
         // Terminators that can write to memory may invalidate (nested) derefs.
         if terminator.kind.can_write_to_memory() {
