@@ -8,11 +8,14 @@ use crate::sys::c::{AF_UNIX, SOCKADDR, SOCKADDR_UN};
 pub fn socketaddr_un(path: &Path) -> io::Result<(SOCKADDR_UN, usize)> {
     // path to bytes
     let bytes = path.as_os_str().as_encoded_bytes();
+    if bytes.len() > 107 {
+        return Err(io::Error::new(io::ErrorKind::InvalidInput, "path too long"));
+    }
     let mut addr = SOCKADDR_UN { sun_family: AF_UNIX, sun_path: [0; 108] };
-    for (i, &byte) in bytes.iter().take(108).enumerate() {
+    for (i, &byte) in bytes.iter().enumerate() {
         addr.sun_path[i] = byte as i8;
     }
-    let len = sun_path_offset() + bytes.len();
+    let len = sun_path_offset() + bytes.len() + 1;
     Ok((addr, len))
 }
 
