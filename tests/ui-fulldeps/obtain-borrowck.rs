@@ -28,6 +28,7 @@ extern crate rustc_session;
 
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::process::ExitCode;
 use std::thread_local;
 
 use rustc_borrowck::consumers::{self, BodyWithBorrowckFacts, ConsumerOptions};
@@ -42,16 +43,15 @@ use rustc_middle::ty::TyCtxt;
 use rustc_middle::util::Providers;
 use rustc_session::Session;
 
-fn main() {
-    let exit_code = rustc_driver::catch_with_exit_code(move || {
+fn main() -> ExitCode {
+    rustc_driver::catch_with_exit_code(move || {
         let mut rustc_args: Vec<_> = std::env::args().collect();
         // We must pass -Zpolonius so that the borrowck information is computed.
         rustc_args.push("-Zpolonius".to_owned());
         let mut callbacks = CompilerCalls::default();
         // Call the Rust compiler with our callbacks.
         rustc_driver::run_compiler(&rustc_args, &mut callbacks);
-    });
-    std::process::exit(exit_code);
+    })
 }
 
 #[derive(Default)]
