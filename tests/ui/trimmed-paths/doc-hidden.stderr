@@ -1,0 +1,39 @@
+error[E0308]: mismatched types
+  --> $DIR/doc-hidden.rs:45:9
+   |
+LL |       let _: (
+   |  ____________-
+LL | |
+LL | |         ActuallyPub,
+LL | |         DocHidden,
+...  |
+LL | |         DocHiddenInHiddenMod,
+LL | |     ) = 3u32;
+   | |     -   ^^^^ expected `(ActuallyPub, ..., ..., ..., ..., ...)`, found `u32`
+   | |_____|
+   |       expected due to this
+   |
+   = note: expected tuple `(local::ActuallyPub, DocHidden, local::pub_mod::ActuallyPubInPubMod, DocHiddenInPubMod, ActuallyPubInHiddenMod, DocHiddenInHiddenMod)`
+               found type `u32`
+
+error[E0308]: mismatched types
+  --> $DIR/doc-hidden.rs:64:9
+   |
+LL |       let _: (
+   |  ____________-
+LL | |
+LL | |         ActuallyPub,
+LL | |         DocHidden,
+...  |
+LL | |         DocHiddenInHiddenMod,
+LL | |     ) = 3u32;
+   | |     -   ^^^^ expected `(ActuallyPub, ..., ..., ..., ..., ...)`, found `u32`
+   | |_____|
+   |       expected due to this
+   |
+   = note: expected tuple `(doc_hidden_helper::ActuallyPub, doc_hidden_helper::DocHidden, doc_hidden_helper::pub_mod::ActuallyPubInPubMod, doc_hidden_helper::pub_mod::DocHiddenInPubMod, doc_hidden_helper::hidden_mod::ActuallyPubInHiddenMod, doc_hidden_helper::hidden_mod::DocHiddenInHiddenMod)`
+               found type `u32`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

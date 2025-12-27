@@ -6,7 +6,7 @@ LL |     _parse: <ParseQuery as Query<RootDatabase>>::Data,
    |
 note: required because it appears within the type `PhantomData<SalsaStorage>`
   --> $SRC_DIR/core/src/marker.rs:LL:COL
-note: required because it appears within the type `Unique<SalsaStorage>`
+note: required because it appears within the type `std::ptr::Unique<SalsaStorage>`
   --> $SRC_DIR/core/src/ptr/unique.rs:LL:COL
 note: required because it appears within the type `Box<SalsaStorage>`
   --> $SRC_DIR/alloc/src/boxed.rs:LL:COL
@@ -45,7 +45,7 @@ LL |     type Storage = SalsaStorage;
    |
 note: required because it appears within the type `PhantomData<SalsaStorage>`
   --> $SRC_DIR/core/src/marker.rs:LL:COL
-note: required because it appears within the type `Unique<SalsaStorage>`
+note: required because it appears within the type `std::ptr::Unique<SalsaStorage>`
   --> $SRC_DIR/core/src/ptr/unique.rs:LL:COL
 note: required because it appears within the type `Box<SalsaStorage>`
   --> $SRC_DIR/alloc/src/boxed.rs:LL:COL

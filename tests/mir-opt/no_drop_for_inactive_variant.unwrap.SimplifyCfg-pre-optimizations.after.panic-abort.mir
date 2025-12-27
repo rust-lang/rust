@@ -24,7 +24,7 @@ fn unwrap(_1: Option<T>) -> T {
 
     bb2: {
         StorageLive(_4);
-        _4 = begin_panic::<&str>(const "explicit panic") -> unwind unreachable;
+        _4 = std::rt::begin_panic::<&str>(const "explicit panic") -> unwind unreachable;
     }
 
     bb3: {

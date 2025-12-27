@@ -5,7 +5,7 @@ LL |     quote!($($nonrep $nonrep)*);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |     |
    |     expected `HasIterator`, found `ThereIsNoIteratorInRepetition`
-   |     here the type of `has_iter` is inferred to be `ThereIsNoIteratorInRepetition`
+   |     here the type of `has_iter` is inferred to be `proc_macro::ThereIsNoIteratorInRepetition`
 
 error: aborting due to 1 previous error
 

@@ -131,14 +131,14 @@ fn vec_move(_1: Vec<impl Sized>) -> () {
                     debug self => _30;
                     scope 19 (inlined alloc::raw_vec::RawVecInner::non_null::<impl Sized>) {
                         let mut _4: std::ptr::NonNull<u8>;
-                        scope 20 (inlined Unique::<u8>::cast::<impl Sized>) {
+                        scope 20 (inlined std::ptr::Unique::<u8>::cast::<impl Sized>) {
                             scope 21 (inlined NonNull::<u8>::cast::<impl Sized>) {
                                 let mut _5: *const impl Sized;
                                 scope 22 (inlined NonNull::<u8>::as_ptr) {
                                 }
                             }
                         }
-                        scope 23 (inlined Unique::<impl Sized>::as_non_null_ptr) {
+                        scope 23 (inlined std::ptr::Unique::<impl Sized>::as_non_null_ptr) {
                         }
                     }
                 }

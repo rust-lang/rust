@@ -4,7 +4,7 @@ error[E0277]: the trait bound `U1: Copy` is not satisfied
 LL | #[derive(Clone)]
    |          ^^^^^ the trait `Copy` is not implemented for `U1`
    |
-note: required by a bound in `AssertParamIsCopy`
+note: required by a bound in `std::clone::AssertParamIsCopy`
   --> $SRC_DIR/core/src/clone.rs:LL:COL
 help: consider annotating `U1` with `#[derive(Copy)]`
    |
