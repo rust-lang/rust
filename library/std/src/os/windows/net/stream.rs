@@ -1,17 +1,20 @@
-use crate::{io, mem};
 use crate::net::Shutdown;
-use crate::os::windows::io::{AsRawSocket, AsSocket, BorrowedSocket, FromRawSocket, IntoRawSocket, RawSocket};
+use crate::os::windows::io::{
+    AsRawSocket, AsSocket, BorrowedSocket, FromRawSocket, IntoRawSocket, RawSocket,
+};
 use crate::os::windows::net::SocketAddr;
-use crate::path::Path;
-use crate::sys::net::Socket;
-use crate::time::Duration;
-
 #[cfg(windows)]
 use crate::os::windows::net::socketaddr_un;
+use crate::path::Path;
 #[cfg(windows)]
-use crate::sys::c::{AF_UNIX, SO_RCVTIMEO, SO_SNDTIMEO, SOCK_STREAM, connect, getpeername, getsockname};
+use crate::sys::c::{
+    AF_UNIX, SO_RCVTIMEO, SO_SNDTIMEO, SOCK_STREAM, connect, getpeername, getsockname,
+};
+use crate::sys::net::Socket;
 #[cfg(windows)]
 use crate::sys::winsock::startup;
+use crate::time::Duration;
+use crate::{io, mem};
 
 pub struct UnixStream(pub Socket);
 
