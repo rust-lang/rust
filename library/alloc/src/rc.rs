@@ -252,7 +252,7 @@ use core::intrinsics::abort;
 #[cfg(not(no_global_oom_handling))]
 use core::iter;
 use core::marker::{PhantomData, Unsize};
-use core::mem::{self, ManuallyDrop, align_of_val_raw};
+use core::mem::{self, ManuallyDrop};
 use core::num::NonZeroUsize;
 use core::ops::{CoerceUnsized, Deref, DerefMut, DerefPure, DispatchFromDyn, LegacyReceiver};
 #[cfg(not(no_global_oom_handling))]
@@ -261,7 +261,7 @@ use core::panic::{RefUnwindSafe, UnwindSafe};
 #[cfg(not(no_global_oom_handling))]
 use core::pin::Pin;
 use core::pin::PinCoerceUnsized;
-use core::ptr::{self, NonNull, drop_in_place};
+use core::ptr::{self, Alignment, NonNull, drop_in_place};
 #[cfg(not(no_global_oom_handling))]
 use core::slice::from_raw_parts_mut;
 use core::{borrow, fmt, hint};
@@ -3845,15 +3845,15 @@ unsafe fn data_offset<T: ?Sized>(ptr: *const T) -> usize {
     // Because RcInner is repr(C), it will always be the last field in memory.
     // SAFETY: since the only unsized types possible are slices, trait objects,
     // and extern types, the input safety requirement is currently enough to
-    // satisfy the requirements of align_of_val_raw; this is an implementation
+    // satisfy the requirements of Alignment::of_val_raw; this is an implementation
     // detail of the language that must not be relied upon outside of std.
-    unsafe { data_offset_align(align_of_val_raw(ptr)) }
+    unsafe { data_offset_alignment(Alignment::of_val_raw(ptr)) }
 }
 
 #[inline]
-fn data_offset_align(align: usize) -> usize {
+fn data_offset_alignment(alignment: Alignment) -> usize {
     let layout = Layout::new::<RcInner<()>>();
-    layout.size() + layout.padding_needed_for(align)
+    layout.size() + layout.padding_needed_for(alignment)
 }
 
 /// A uniquely owned [`Rc`].
@@ -4478,7 +4478,7 @@ impl<T: ?Sized, A: Allocator> UniqueRcUninit<T, A> {
 
     /// Returns the pointer to be written into to initialize the [`Rc`].
     fn data_ptr(&mut self) -> *mut T {
-        let offset = data_offset_align(self.layout_for_value.align());
+        let offset = data_offset_alignment(self.layout_for_value.alignment());
         unsafe { self.ptr.as_ptr().byte_add(offset) as *mut T }
     }
 
