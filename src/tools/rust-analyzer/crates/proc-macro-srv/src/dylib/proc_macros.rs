@@ -20,7 +20,7 @@ impl ProcMacros {
         def_site: S,
         call_site: S,
         mixed_site: S,
-        callback: Option<ProcMacroClientHandle>,
+        callback: Option<ProcMacroClientHandle<'_>>,
     ) -> Result<TokenStream<S>, crate::PanicMessage> {
         let parsed_attributes = attribute.unwrap_or_default();
 
