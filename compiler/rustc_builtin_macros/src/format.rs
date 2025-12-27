@@ -264,10 +264,9 @@ fn make_format_args(
 
     let is_source_literal = parser.is_source_literal;
 
-    if !parser.errors.is_empty() {
-        let err = parser.errors.remove(0);
-        let sp = if is_source_literal {
-            fmt_span.from_inner(InnerSpan::new(err.span.start, err.span.end))
+    let snippetify = |span: &Range<usize>| {
+        if is_source_literal {
+            fmt_span.from_inner(InnerSpan::new(span.start, span.end))
         } else {
             // The format string could be another macro invocation, e.g.:
             //     format!(concat!("abc", "{}"), 4);
@@ -278,9 +277,25 @@ fn make_format_args(
             // Therefore, we conservatively report the error for the entire
             // argument span here.
             fmt_span
+        }
+    };
+
+    for w in &parser.warnings {
+        let warn = errors::InvalidFormatString {
+            span: snippetify(&w.span),
+            note_: w.note.clone().map(|note| errors::InvalidFormatStringNote { note }),
+            label_: None,
+            sugg_: None,
+            desc: w.description.clone(),
+            label1: w.label.clone(),
         };
+        ecx.dcx().emit_warn(warn);
+    }
+
+    if !parser.errors.is_empty() {
+        let err = parser.errors.remove(0);
         let mut e = errors::InvalidFormatString {
-            span: sp,
+            span: snippetify(&err.span),
             note_: None,
             label_: None,
             sugg_: None,

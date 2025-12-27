@@ -1,0 +1,26 @@
+warning: invalid format string: expected numerical precision after precision specifier
+  --> $DIR/warn-on-empty-precision.rs:6:41
+   |
+LL |     println!("Missing precision: {float:.} {float:3.} {float:_^12.}");
+   |                                         ^ precision specifier without numerical precision in format string
+   |
+   = note: This may become an error in a future release
+
+warning: invalid format string: expected numerical precision after precision specifier
+  --> $DIR/warn-on-empty-precision.rs:6:52
+   |
+LL |     println!("Missing precision: {float:.} {float:3.} {float:_^12.}");
+   |                                                    ^ precision specifier without numerical precision in format string
+   |
+   = note: This may become an error in a future release
+
+warning: invalid format string: expected numerical precision after precision specifier
+  --> $DIR/warn-on-empty-precision.rs:6:66
+   |
+LL |     println!("Missing precision: {float:.} {float:3.} {float:_^12.}");
+   |                                                                  ^ precision specifier without numerical precision in format string
+   |
+   = note: This may become an error in a future release
+
+warning: 3 warnings emitted
+
