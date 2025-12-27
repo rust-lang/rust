@@ -278,6 +278,7 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
                 TypingMode::Coherence
                 | TypingMode::Analysis { .. }
                 | TypingMode::Borrowck { .. }
+                | TypingMode::Reflection
                 | TypingMode::PostBorrowckAnalysis { .. } => false,
                 TypingMode::PostAnalysis => {
                     let poly_trait_ref = self.resolve_vars_if_possible(goal_trait_ref);

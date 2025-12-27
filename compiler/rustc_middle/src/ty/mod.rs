@@ -276,6 +276,10 @@ pub struct ImplTraitHeader<'tcx> {
     pub polarity: ImplPolarity,
     pub safety: hir::Safety,
     pub constness: hir::Constness,
+    /// Whether all generic parameters of the type are unique unconstrained generic parameters
+    /// of the impl. `Bar<'static>` or `Foo<'a, 'a>` or outlives bounds on the lifetimes cause
+    /// this boolean to be false and `try_as_dyn` to return `None`.
+    pub is_fully_generic_for_reflection: bool,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable, HashStable, Debug)]

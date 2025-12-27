@@ -236,7 +236,10 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 };
 
                 let (infcx, param_env) =
-                    self.tcx.infer_ctxt().build_with_typing_env(self.typing_env);
+                    self.tcx.infer_ctxt().build_with_typing_env(ty::TypingEnv {
+                        typing_mode: ty::TypingMode::Reflection,
+                        ..self.typing_env
+                    });
 
                 let ocx = ObligationCtxt::new(&infcx);
                 ocx.register_obligations(preds.iter().map(|pred: PolyExistentialPredicate<'_>| {

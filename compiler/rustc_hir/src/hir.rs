@@ -1,6 +1,7 @@
 // ignore-tidy-filelength
 use std::borrow::Cow;
 use std::fmt;
+use std::ops::ControlFlow;
 
 use rustc_abi::ExternAbi;
 use rustc_ast::attr::AttributeExt;
@@ -16,6 +17,7 @@ pub use rustc_ast::{
     MetaItemInner, MetaItemLit, Movability, Mutability, Pinnedness, UnOp,
 };
 use rustc_data_structures::fingerprint::Fingerprint;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::tagged_ptr::TaggedRef;
 use rustc_error_messages::{DiagArgValue, IntoDiagArg};
@@ -35,7 +37,7 @@ use crate::attrs::AttributeKind;
 use crate::def::{CtorKind, DefKind, MacroKinds, PerNS, Res};
 use crate::def_id::{DefId, LocalDefIdMap};
 pub(crate) use crate::hir_id::{HirId, ItemLocalId, ItemLocalMap, OwnerId};
-use crate::intravisit::{FnKind, VisitorExt};
+use crate::intravisit::{FnKind, Visitor, VisitorExt};
 use crate::lints::DelayedLints;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, HashStable_Generic)]
@@ -4454,6 +4456,70 @@ pub struct Impl<'hir> {
     pub self_ty: &'hir Ty<'hir>,
     pub items: &'hir [ImplItemId],
     pub constness: Constness,
+}
+
+impl Impl<'_> {
+    pub fn is_fully_generic_for_reflection(&self) -> bool {
+        #[derive(Default)]
+        struct LifetimeFinder {
+            seen: FxHashSet<LocalDefId>,
+        }
+        impl<'v> Visitor<'v> for LifetimeFinder {
+            type Result = ControlFlow<()>;
+            fn visit_lifetime(&mut self, lifetime: &'v Lifetime) -> Self::Result {
+                match lifetime.kind {
+                    LifetimeKind::Param(def_id) => {
+                        if self.seen.insert(def_id) {
+                            ControlFlow::Continue(())
+                        } else {
+                            ControlFlow::Break(())
+                        }
+                    }
+                    LifetimeKind::ImplicitObjectLifetimeDefault
+                    | LifetimeKind::Error
+                    | LifetimeKind::Infer
+                    | LifetimeKind::Static => ControlFlow::Break(()),
+                }
+            }
+        }
+        let mut ty_lifetimes = LifetimeFinder::default();
+        if ty_lifetimes.visit_ty_unambig(self.self_ty).is_break() {
+            return false;
+        }
+        let ty_lifetimes = ty_lifetimes.seen;
+
+        #[derive(Default)]
+        struct LifetimeChecker {
+            ty_lifetimes: FxHashSet<LocalDefId>,
+        }
+        impl<'v> Visitor<'v> for LifetimeChecker {
+            type Result = ControlFlow<()>;
+            fn visit_lifetime(&mut self, lifetime: &'v Lifetime) -> Self::Result {
+                match lifetime.kind {
+                    LifetimeKind::Param(def_id) => {
+                        if self.ty_lifetimes.contains(&def_id) {
+                            ControlFlow::Break(())
+                        } else {
+                            ControlFlow::Continue(())
+                        }
+                    }
+                    LifetimeKind::ImplicitObjectLifetimeDefault
+                    | LifetimeKind::Error
+                    | LifetimeKind::Infer
+                    | LifetimeKind::Static => ControlFlow::Continue(()),
+                }
+            }
+        }
+
+        let mut checker = LifetimeChecker { ty_lifetimes };
+
+        // Pessimistic: if any of the lifetimes used in the type show up in where bounds
+        // don't allow this impl to be used.
+        self.generics
+            .predicates
+            .iter()
+            .all(|pred| checker.visit_where_predicate(pred).is_continue())
+    }
 }
 
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
