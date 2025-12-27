@@ -98,6 +98,9 @@ unsafe impl<T: ?Sized + Send> Sync for Mutex<T> {}
 #[cfg_attr(not(test), rustc_diagnostic_item = "NonPoisonMutexGuard")]
 pub struct MutexGuard<'a, T: ?Sized + 'a> {
     lock: &'a Mutex<T>,
+    /// The unlocked state is used to prevent double unlocking of guards upon panicking in
+    /// unlocked scopes.
+    unlocked: bool,
 }
 
 /// A [`MutexGuard`] is not `Send` to maximize platform portability.
@@ -447,7 +450,7 @@ impl<T: ?Sized + fmt::Debug> fmt::Debug for Mutex<T> {
 
 impl<'mutex, T: ?Sized> MutexGuard<'mutex, T> {
     unsafe fn new(lock: &'mutex Mutex<T>) -> MutexGuard<'mutex, T> {
-        return MutexGuard { lock };
+        MutexGuard { lock, unlocked: false }
     }
 }
 
@@ -471,8 +474,10 @@ impl<T: ?Sized> DerefMut for MutexGuard<'_, T> {
 impl<T: ?Sized> Drop for MutexGuard<'_, T> {
     #[inline]
     fn drop(&mut self) {
-        unsafe {
-            self.lock.inner.unlock();
+        if !self.unlocked {
+            unsafe {
+                self.lock.inner.unlock();
+            }
         }
     }
 }
@@ -494,6 +499,48 @@ impl<T: ?Sized + fmt::Display> fmt::Display for MutexGuard<'_, T> {
 /// For use in [`nonpoison::condvar`](super::condvar).
 pub(super) fn guard_lock<'a, T: ?Sized>(guard: &MutexGuard<'a, T>) -> &'a sys::Mutex {
     &guard.lock.inner
+}
+
+impl<'mutex, T: ?Sized> MutexGuard<'mutex, T> {
+    /// Unlocks the [`MutexGuard`] for the scope of `func` and acquires it again after.
+    /// Panics won't lock the guard again.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #[feature(unlockable_guards)]
+    ///
+    /// use std::sync::nonpoison::Mutex;
+    /// use std::sync::nonpoison::MutexGuard;
+    /// use std::sync::nonpoison::TryLockResult;
+    ///
+    /// let mutex = Mutex::new(1usize);
+    /// let mut guard = mutex.lock();
+    ///
+    /// // guard is locked and can be used here
+    /// *guard = 5;
+    ///
+    /// MutexGuard::unlocked(&mut guard, || {
+    ///     // guard is locked and can be acquired potentially from another thread
+    ///     assert!(matches!(mutex.try_lock(), TryLockResult::Ok(_)));
+    /// });
+    ///
+    /// // guard is locked again
+    /// assert_eq!(*guard, 5);
+    /// ```
+    #[unstable(feature = "unlockable_guards", issue = "148568")]
+    pub fn unlocked<F>(self: &mut Self, func: F) -> ()
+    where
+        F: FnOnce() -> (),
+    {
+        self.unlocked = true;
+        unsafe { self.lock.inner.unlock() };
+
+        func();
+
+        self.lock.inner.lock();
+        self.unlocked = false;
+    }
 }
 
 impl<'a, T: ?Sized> MutexGuard<'a, T> {
