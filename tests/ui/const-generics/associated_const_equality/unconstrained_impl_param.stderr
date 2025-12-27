@@ -13,6 +13,12 @@ error[E0207]: the type parameter `U` is not constrained by the impl trait, self 
    |
 LL | impl<U> Trait for () where (U,): AssocConst<A = 0> {}
    |      ^ unconstrained type parameter
+   |
+help: either remove the unused type parameter `U`, or make use of it
+   |
+LL - impl<U> Trait for () where (U,): AssocConst<A = { 0 }> {}
+LL + impl Trait for () where (U,): AssocConst<A = { 0 }> {}
+   |
 
 error[E0282]: type annotations needed
   --> $DIR/unconstrained_impl_param.rs:21:5

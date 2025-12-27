@@ -9,18 +9,23 @@
 //! fixed, but for the moment it's easier to do these checks early.
 
 use std::assert_matches::debug_assert_matches;
+use std::ops::ControlFlow;
 
 use min_specialization::check_min_specialization;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::Applicability;
 use rustc_errors::codes::*;
+use rustc_errors::{Applicability, Diag};
 use rustc_hir::def::DefKind;
-use rustc_hir::def_id::LocalDefId;
-use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
+use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::intravisit::{self, Visitor, walk_lifetime};
+use rustc_hir::{HirId, LifetimeKind, Path, QPath, Ty, TyKind};
+use rustc_middle::hir::nested_filter::All;
+use rustc_middle::ty::{self, GenericParamDef, TyCtxt, TypeVisitableExt};
 use rustc_span::{ErrorGuaranteed, kw};
 
 use crate::constrained_generic_params as cgp;
 use crate::errors::UnconstrainedGenericParameter;
+use crate::hir::def::Res;
 
 mod min_specialization;
 
@@ -172,6 +177,13 @@ pub(crate) fn enforce_impl_lifetime_params_are_constrained(
                             );
                         }
                     }
+                    suggest_to_remove_or_use_generic(
+                        tcx,
+                        &mut diag,
+                        impl_def_id,
+                        param,
+                        "lifetime",
+                    );
                     res = Err(diag.emit());
                 }
             }
@@ -235,8 +247,140 @@ pub(crate) fn enforce_impl_non_lifetime_params_are_constrained(
                 const_param_note2: const_param_note,
             });
             diag.code(E0207);
+            suggest_to_remove_or_use_generic(tcx, &mut diag, impl_def_id, &param, "type");
             res = Err(diag.emit());
         }
     }
     res
+}
+
+/// Use a Visitor to find usages of the type or lifetime parameter
+struct ParamUsageVisitor<'tcx> {
+    tcx: TyCtxt<'tcx>,
+    /// The `DefId` of the generic parameter we are looking for.
+    param_def_id: DefId,
+    found: bool,
+}
+
+// todo: maybe this can be done more efficiently by only searching for generics OR lifetimes and searching more effectively
+impl<'tcx> Visitor<'tcx> for ParamUsageVisitor<'tcx> {
+    type NestedFilter = All;
+
+    fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+        self.tcx
+    }
+
+    type Result = ControlFlow<()>;
+
+    fn visit_path(&mut self, path: &Path<'tcx>, _id: HirId) -> Self::Result {
+        if let Some(res_def_id) = path.res.opt_def_id() {
+            if res_def_id == self.param_def_id {
+                self.found = true;
+                return ControlFlow::Break(()); // Found it, stop visiting.
+            }
+        }
+        // If not found, continue walking down the HIR tree.
+        intravisit::walk_path(self, path)
+    }
+
+    fn visit_lifetime(&mut self, lifetime: &'tcx rustc_hir::Lifetime) -> Self::Result {
+        if let LifetimeKind::Param(id) = lifetime.kind {
+            if let Some(local_def_id) = self.param_def_id.as_local() {
+                if id == local_def_id {
+                    self.found = true;
+                    return ControlFlow::Break(()); // Found it, stop visiting.
+                }
+            }
+        }
+        walk_lifetime(self, lifetime)
+    }
+}
+
+fn suggest_to_remove_or_use_generic(
+    tcx: TyCtxt<'_>,
+    diag: &mut Diag<'_>,
+    impl_def_id: LocalDefId,
+    param: &GenericParamDef,
+    parameter_type: &str,
+) {
+    let node = tcx.hir_node_by_def_id(impl_def_id);
+    let hir_impl = node.expect_item().expect_impl();
+
+    let Some((index, _)) = hir_impl
+        .generics
+        .params
+        .iter()
+        .enumerate()
+        .find(|(_, par)| par.def_id.to_def_id() == param.def_id)
+    else {
+        return;
+    };
+
+    // get the struct_def_id from the self type
+    let Some(struct_def_id) = (|| {
+        let ty = hir_impl.self_ty;
+        if let TyKind::Path(QPath::Resolved(_, path)) = ty.kind
+            && let Res::Def(_, def_id) = path.res
+        {
+            Some(def_id)
+        } else {
+            None
+        }
+    })() else {
+        return;
+    };
+    let generics = tcx.generics_of(struct_def_id);
+    // println!("number of struct generics: {}", generics.own_params.len());
+    // println!("number of impl generics: {}", hir_impl.generics.params.len());
+
+    // search if the parameter is used in the impl body
+    let mut visitor = ParamUsageVisitor { tcx, param_def_id: param.def_id, found: false };
+
+    for item_ref in hir_impl.items {
+        let _ = visitor.visit_impl_item_ref(item_ref);
+        if visitor.found {
+            break;
+        }
+    }
+
+    let is_param_used = visitor.found;
+
+    // Suggestion for removing the type parameter.
+    let mut suggestions = vec![];
+    if !is_param_used {
+        // Only suggest removing it if it's not used anywhere.
+        suggestions.push(vec![(hir_impl.generics.span_for_param_removal(index), String::new())]);
+    }
+
+    // Suggestion for making use of the type parameter.
+    if let Some(path) = extract_ty_as_path(hir_impl.self_ty) {
+        let seg = path.segments.last().unwrap();
+        if let Some(args) = seg.args {
+            suggestions
+                .push(vec![(args.span().unwrap().shrink_to_hi(), format!(", {}", param.name))]);
+        } else {
+            suggestions.push(vec![(seg.ident.span.shrink_to_hi(), format!("<{}>", param.name))]);
+        }
+    }
+
+    let msg = if is_param_used {
+        // If it's used, the only valid fix is to constrain it.
+        format!("make use of the {} parameter `{}` in the `self` type", parameter_type, param.name)
+    } else {
+        format!(
+            "either remove the unused {} parameter `{}`, or make use of it",
+            parameter_type, param.name
+        )
+    };
+
+    diag.multipart_suggestions(msg, suggestions, Applicability::MaybeIncorrect);
+}
+
+fn extract_ty_as_path<'hir>(ty: &Ty<'hir>) -> Option<&'hir Path<'hir>> {
+    match ty.kind {
+        TyKind::Path(QPath::Resolved(_, path)) => Some(path),
+        TyKind::Slice(ty) | TyKind::Array(ty, _) => extract_ty_as_path(ty),
+        TyKind::Ptr(ty) | TyKind::Ref(_, ty) => extract_ty_as_path(ty.ty),
+        _ => None,
+    }
 }

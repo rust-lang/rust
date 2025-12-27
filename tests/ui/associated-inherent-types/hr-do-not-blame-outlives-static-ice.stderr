@@ -12,6 +12,11 @@ error[E0207]: the lifetime parameter `'a` is not constrained by the impl trait, 
    |
 LL | impl<'a> Foo<fn(&())> {
    |      ^^ unconstrained lifetime parameter
+   |
+help: make use of the lifetime parameter `'a` in the `self` type
+   |
+LL | impl<'a> Foo<fn(&()), 'a> {
+   |                     ++++
 
 error[E0308]: mismatched types
   --> $DIR/hr-do-not-blame-outlives-static-ice.rs:14:11

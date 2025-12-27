@@ -71,6 +71,10 @@ LL | impl<'a, T, const N: usize> Iterator for ConstChunksExact<'a, T, {}> {
    |
    = note: expressions using a const parameter must map each value to a distinct output value
    = note: proving the result of expressions other than the parameter are unique is not supported
+help: make use of the type parameter `N` in the `self` type
+   |
+LL | impl<'a, T, const N: usize> Iterator for ConstChunksExact<'a, T, {}, N> {
+   |                                                                    +++
 
 error: aborting due to 8 previous errors
 

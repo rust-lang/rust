@@ -3,6 +3,12 @@ error[E0207]: the lifetime parameter `'a` is not constrained by the impl trait, 
    |
 LL | impl<'a, I: Iterator<Item = i32>> Trait for (i32, I) {
    |      ^^ unconstrained lifetime parameter
+   |
+help: either remove the unused lifetime parameter `'a`, or make use of it
+   |
+LL - impl<'a, I: Iterator<Item = i32>> Trait for (i32, I) {
+LL + impl<I: Iterator<Item = i32>> Trait for (i32, I) {
+   |
 
 error[E0792]: expected generic lifetime parameter, found `'_`
   --> $DIR/type-alias-impl-trait-unconstrained-lifetime.rs:14:9

@@ -3,6 +3,14 @@ error[E0207]: the type parameter `Q` is not constrained by the impl trait, self 
    |
 LL | unsafe impl<Q: Trait> Send for Inner {}
    |             ^ unconstrained type parameter
+   |
+help: either remove the unused type parameter `Q`, or make use of it
+   |
+LL - unsafe impl<Q: Trait> Send for Inner {}
+LL + unsafe impl Send for Inner {}
+   |
+LL | unsafe impl<Q: Trait> Send for Inner<Q> {}
+   |                                     +++
 
 error: aborting due to 1 previous error
 

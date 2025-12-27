@@ -1,5 +1,5 @@
 error: missing lifetime in associated type
-  --> $DIR/missing-lifetime-in-assoc-type-6.rs:16:17
+  --> $DIR/missing-lifetime-in-assoc-type-6.rs:17:17
    |
 LL | impl<'a> Trait for &'_ S {
    |     ---- there is a named lifetime specified on the impl block you could use
@@ -24,6 +24,10 @@ help: consider using the named lifetime here instead of an implicit lifetime
 LL - impl<'a> Trait for &'_ S {
 LL + impl<'a> Trait for &'a S {
    |
+help: make use of the lifetime parameter `'a` in the `self` type
+   |
+LL | impl<'a> Trait for &'_ S<'a> {
+   |                         ++++
 
 error: aborting due to 2 previous errors
 

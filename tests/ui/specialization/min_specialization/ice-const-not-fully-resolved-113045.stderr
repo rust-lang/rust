@@ -3,6 +3,12 @@ error[E0207]: the type parameter `Unconstrained` is not constrained by the impl 
    |
 LL | impl<'a, Unconstrained> X for [(); 0] {}
    |          ^^^^^^^^^^^^^ unconstrained type parameter
+   |
+help: either remove the unused type parameter `Unconstrained`, or make use of it
+   |
+LL - impl<'a, Unconstrained> X for [(); 0] {}
+LL + impl<'a> X for [(); 0] {}
+   |
 
 error: specialization impl does not specialize any associated items
   --> $DIR/ice-const-not-fully-resolved-113045.rs:11:1

@@ -12,6 +12,14 @@ error[E0207]: the type parameter `T` is not constrained by the impl trait, self 
    |
 LL | impl<'a, T: Deserializable> Deserializable for &'a str {
    |          ^ unconstrained type parameter
+   |
+help: either remove the unused type parameter `T`, or make use of it
+   |
+LL - impl<'a, T: Deserializable> Deserializable for &'a str {
+LL + impl<'a> Deserializable for &'a str {
+   |
+LL | impl<'a, T: Deserializable> Deserializable for &'a str<T> {
+   |                                                       +++
 
 error[E0308]: mismatched types
   --> $DIR/issue-13853-5.rs:9:70
