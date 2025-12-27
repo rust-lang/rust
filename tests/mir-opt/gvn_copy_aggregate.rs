@@ -24,13 +24,12 @@ fn all_copy(v: &AllCopy) -> AllCopy {
     AllCopy { a, b, c }
 }
 
+// FIXME: For nested references, we need knowing each borrows can be merged.
 // EMIT_MIR gvn_copy_aggregate.all_copy_2.GVN.diff
 fn all_copy_2(v: &&AllCopy) -> AllCopy {
     // CHECK-LABEL: fn all_copy_2(
     // CHECK: bb0: {
-    // CHECK-NOT: = AllCopy { {{.*}} };
-    // CHECK: [[V1:_.*]] = copy (*_1);
-    // CHECK: _0 = copy (*[[V1]]);
+    // CHECK: _0 = AllCopy { {{.*}} };
     let a = v.a;
     let b = v.b;
     let c = v.c;
