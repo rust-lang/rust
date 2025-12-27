@@ -7,7 +7,6 @@ platform.
 
 ## Target maintainers
 
-[@RDambrosio016](https://github.com/RDambrosio016)
 [@kjetilkjeka](https://github.com/kjetilkjeka)
 
 ## Requirements
