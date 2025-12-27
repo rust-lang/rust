@@ -112,7 +112,6 @@ struct ConfigBuilder {
     stage: Option<u32>,
     stage_id: Option<String>,
     llvm_version: Option<String>,
-    git_hash: bool,
     system_llvm: bool,
     profiler_runtime: bool,
     rustc_debug_assertions: bool,
@@ -158,11 +157,6 @@ impl ConfigBuilder {
 
     fn llvm_version(&mut self, s: &str) -> &mut Self {
         self.llvm_version = Some(s.to_owned());
-        self
-    }
-
-    fn git_hash(&mut self, b: bool) -> &mut Self {
-        self.git_hash = b;
         self
     }
 
@@ -237,9 +231,6 @@ impl ConfigBuilder {
             args.push(llvm_version.clone());
         }
 
-        if self.git_hash {
-            args.push("--git-hash".to_owned());
-        }
         if self.system_llvm {
             args.push("--system-llvm".to_owned());
         }
@@ -457,11 +448,13 @@ fn debugger() {
 
 #[test]
 fn git_hash() {
-    let config: Config = cfg().git_hash(false).build();
-    assert!(check_ignore(&config, "//@ needs-git-hash"));
-
-    let config: Config = cfg().git_hash(true).build();
+    unsafe { std::env::set_var("RUSTC_TEST_GIT_HASH", "1") };
+    let config = cfg().build();
     assert!(!check_ignore(&config, "//@ needs-git-hash"));
+
+    unsafe { std::env::remove_var("RUSTC_TEST_GIT_HASH") };
+    let config = cfg().build();
+    assert!(check_ignore(&config, "//@ needs-git-hash"));
 }
 
 #[test]
