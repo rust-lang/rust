@@ -548,7 +548,7 @@ pub fn report_leaks<'tcx>(
 /// We want to present a multi-line span message for some errors. Diagnostics do not support this
 /// directly, so we pass the lines as a `Vec<String>` and display each line after the first with an
 /// additional `span_label` or `note` call.
-pub fn report_msg<'tcx>(
+fn report_msg<'tcx>(
     diag_level: DiagLevel,
     title: String,
     span_msg: Vec<String>,
