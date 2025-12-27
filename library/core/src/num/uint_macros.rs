@@ -1880,8 +1880,24 @@ macro_rules! uint_impl {
         /// # Examples
         ///
         /// ```
-        #[doc = concat!("assert_eq!(0x1", stringify!($SelfT), ".unbounded_shl(4), 0x10);")]
-        #[doc = concat!("assert_eq!(0x1", stringify!($SelfT), ".unbounded_shl(129), 0);")]
+        #[doc = concat!("assert_eq!(0x1_", stringify!($SelfT), ".unbounded_shl(4), 0x10);")]
+        #[doc = concat!("assert_eq!(0x1_", stringify!($SelfT), ".unbounded_shl(129), 0);")]
+        #[doc = concat!("assert_eq!(0b101_", stringify!($SelfT), ".unbounded_shl(0), 0b101);")]
+        #[doc = concat!("assert_eq!(0b101_", stringify!($SelfT), ".unbounded_shl(1), 0b1010);")]
+        #[doc = concat!("assert_eq!(0b101_", stringify!($SelfT), ".unbounded_shl(2), 0b10100);")]
+        #[doc = concat!("assert_eq!(42_", stringify!($SelfT), ".unbounded_shl(", stringify!($BITS), "), 0);")]
+        #[doc = concat!("assert_eq!(42_", stringify!($SelfT), ".unbounded_shl(1).unbounded_shl(", stringify!($BITS_MINUS_ONE), "), 0);")]
+        ///
+        #[doc = concat!("let start : ", stringify!($SelfT), " = 13;")]
+        /// let mut running = start;
+        /// for i in 0..160 {
+        ///     // The unbounded shift left by i is the same as `<< 1` i times
+        ///     assert_eq!(running, start.unbounded_shl(i));
+        ///     // Which is not always the case for a wrapping shift
+        #[doc = concat!("    assert_eq!(running == start.wrapping_shl(i), i < ", stringify!($BITS), ");")]
+        ///
+        ///     running <<= 1;
+        /// }
         /// ```
         #[stable(feature = "unbounded_shifts", since = "1.87.0")]
         #[rustc_const_stable(feature = "unbounded_shifts", since = "1.87.0")]
@@ -2049,8 +2065,24 @@ macro_rules! uint_impl {
         /// # Examples
         ///
         /// ```
-        #[doc = concat!("assert_eq!(0x10", stringify!($SelfT), ".unbounded_shr(4), 0x1);")]
-        #[doc = concat!("assert_eq!(0x10", stringify!($SelfT), ".unbounded_shr(129), 0);")]
+        #[doc = concat!("assert_eq!(0x10_", stringify!($SelfT), ".unbounded_shr(4), 0x1);")]
+        #[doc = concat!("assert_eq!(0x10_", stringify!($SelfT), ".unbounded_shr(129), 0);")]
+        #[doc = concat!("assert_eq!(0b1010_", stringify!($SelfT), ".unbounded_shr(0), 0b1010);")]
+        #[doc = concat!("assert_eq!(0b1010_", stringify!($SelfT), ".unbounded_shr(1), 0b101);")]
+        #[doc = concat!("assert_eq!(0b1010_", stringify!($SelfT), ".unbounded_shr(2), 0b10);")]
+        #[doc = concat!("assert_eq!(42_", stringify!($SelfT), ".unbounded_shr(", stringify!($BITS), "), 0);")]
+        #[doc = concat!("assert_eq!(42_", stringify!($SelfT), ".unbounded_shr(1).unbounded_shr(", stringify!($BITS_MINUS_ONE), "), 0);")]
+        ///
+        #[doc = concat!("let start = ", stringify!($SelfT), "::rotate_right(13, 4);")]
+        /// let mut running = start;
+        /// for i in 0..160 {
+        ///     // The unbounded shift right by i is the same as `>> 1` i times
+        ///     assert_eq!(running, start.unbounded_shr(i));
+        ///     // Which is not always the case for a wrapping shift
+        #[doc = concat!("    assert_eq!(running == start.wrapping_shr(i), i < ", stringify!($BITS), ");")]
+        ///
+        ///     running >>= 1;
+        /// }
         /// ```
         #[stable(feature = "unbounded_shifts", since = "1.87.0")]
         #[rustc_const_stable(feature = "unbounded_shifts", since = "1.87.0")]
