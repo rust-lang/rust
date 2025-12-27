@@ -293,11 +293,11 @@ pub mod consts {
 
     /// The golden ratio (φ)
     #[unstable(feature = "more_float_constants", issue = "146939")]
-    pub const PHI: f64 = 1.618033988749894848204586834365638118_f64;
+    pub const GOLDEN_RATIO: f64 = 1.618033988749894848204586834365638118_f64;
 
     /// The Euler-Mascheroni constant (γ)
     #[unstable(feature = "more_float_constants", issue = "146939")]
-    pub const EGAMMA: f64 = 0.577215664901532860606512090082402431_f64;
+    pub const EULER_GAMMA: f64 = 0.577215664901532860606512090082402431_f64;
 
     /// π/2
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -355,6 +355,14 @@ pub mod consts {
     /// 1/sqrt(3)
     #[unstable(feature = "more_float_constants", issue = "146939")]
     pub const FRAC_1_SQRT_3: f64 = 0.577350269189625764509148780501957456_f64;
+
+    /// sqrt(5)
+    #[unstable(feature = "more_float_constants", issue = "146939")]
+    pub const SQRT_5: f64 = 2.236067977499789696409173668731276235_f64;
+
+    /// 1/sqrt(5)
+    #[unstable(feature = "more_float_constants", issue = "146939")]
+    pub const FRAC_1_SQRT_5: f64 = 0.447213595499957939281834733746255247_f64;
 
     /// Euler's number (e)
     #[stable(feature = "rust1", since = "1.0.0")]
