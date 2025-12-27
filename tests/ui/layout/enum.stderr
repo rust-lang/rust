@@ -16,5 +16,11 @@ error: abi: ScalarPair(Initialized { value: Int(I8, false), valid_range: 0..=1 }
 LL | enum ScalarPairDifferingSign {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 3 previous errors
+error: size: Size(4 bytes)
+  --> $DIR/enum.rs:31:1
+   |
+LL | enum DefinedLayoutAllUninhabited {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
 
