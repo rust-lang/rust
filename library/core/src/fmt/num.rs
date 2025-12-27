@@ -2,7 +2,6 @@
 
 use crate::fmt::NumBuffer;
 use crate::mem::MaybeUninit;
-use crate::num::fmt as numfmt;
 use crate::{fmt, str};
 
 /// Formatting of integers with a non-decimal radix.
@@ -531,11 +530,6 @@ macro_rules! impl_Exp {
                 let as_str = unsafe { str::from_utf8_unchecked(text) };
                 f.pad_integral(is_nonnegative, "", as_str)
             } else {
-                let parts = &[
-                    numfmt::Part::Copy(&text[..coef_len]),
-                    numfmt::Part::Zero(more_prec),
-                    numfmt::Part::Copy(&text[coef_len..]),
-                ];
                 let sign = if !is_nonnegative {
                     "-"
                 } else if f.sign_plus() {
@@ -543,9 +537,16 @@ macro_rules! impl_Exp {
                 } else {
                     ""
                 };
-                // SAFETY: Text is set with ASCII exclusively: either a decimal,
-                // or a LETTER_E, or a dot. ASCII implies valid UTF-8.
-                unsafe { f.pad_formatted_parts(&numfmt::Formatted { sign, parts }) }
+                f.pad_number(sign, text.len() + more_prec, |w| {
+                    // SAFETY: Text is set with ASCII exclusively.
+                    let (coef_str, scale_str) = unsafe{(
+                        str::from_utf8_unchecked(&text[..coef_len]),
+                        str::from_utf8_unchecked(&text[coef_len..]),
+                    )};
+                    w.write_str(coef_str)?;
+                    w.write_zeroes(more_prec)?;
+                    w.write_str(scale_str)
+                })
             }
         }
 
