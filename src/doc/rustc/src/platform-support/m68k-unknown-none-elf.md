@@ -29,40 +29,6 @@ binaries:
 # apt install qemu-user-static
 ```
 
-To run more complex programs, it will be necessary to set up a Debian/m68k chroot with
-the help of the command `debootstrap`:
-
-```text
-# apt install debootstrap debian-ports-archive-keyring
-# debootstrap --keyring=/usr/share/keyrings/debian-ports-archive-keyring.gpg --arch=m68k unstable debian-68k http://ftp.ports.debian.org/debian-ports
-```
-
-This chroot can then seamlessly entered using the normal `chroot` command thanks to
-QEMU user emulation:
-
-```text
-# chroot /path/to/debian-68k
-```
-
-To get started with native builds, which are currently untested, a native Debian/m68k
-system can be installed either on real hardware such as 68k-based Commodore Amiga or
-Atari systems or emulated environments such as QEMU version 4.2 or newer or ARAnyM.
-
-ISO images for installation are provided by the Debian Ports team and can be obtained
-from the Debian CD image server available at:
-
-[https://cdimage.debian.org/cdimage/ports/current](https://cdimage.debian.org/cdimage/ports/current/)
-
-Documentation for Debian/m68k is available on the Debian Wiki at:
-
-[https://wiki.debian.org/M68k](https://wiki.debian.org/M68k)
-
-Support is available either through the `debian-68k` mailing list:
-
-[https://lists.debian.org/debian-68k/](https://lists.debian.org/debian-68k/)
-
-or the `#debian-68k` IRC channel on OFTC network.
-
 ## Building
 
 At least llvm version `19.1.5` is required to build `core` and `alloc` for this target, and currently the gnu linker is required, as `lld` has no support for the `m68k` architecture
@@ -105,4 +71,4 @@ Very simple programs can be run using the `qemu-m68k-static` program:
 qemu-m68k-static your-code
 ```
 
-For more complex applications, a chroot or native m68k system is required for testing.
+For more complex applications, a native (or emulated) m68k system is required for testing.
