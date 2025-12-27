@@ -11,11 +11,12 @@
 
 use std::cell::RefCell;
 use std::num::NonZero;
+use std::{cmp, str};
 
 use super::*;
 
 /// Handle for a symbol string stored within the Interner.
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone)]
 pub struct Symbol(NonZero<u32>);
 
 impl !Send for Symbol {}
@@ -90,6 +91,38 @@ impl fmt::Debug for Symbol {
 impl fmt::Display for Symbol {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.with(|s| fmt::Display::fmt(s, f))
+    }
+}
+
+impl PartialEq<Self> for Symbol {
+    fn eq(&self, other: &Self) -> bool {
+        self.0 == other.0
+    }
+}
+
+impl PartialEq<str> for Symbol {
+    fn eq(&self, other: &str) -> bool {
+        self.with(|s| s == other)
+    }
+}
+
+impl Eq for Symbol {}
+
+impl Hash for Symbol {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.0.hash(state);
+    }
+}
+
+impl PartialOrd for Symbol {
+    fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for Symbol {
+    fn cmp(&self, other: &Self) -> cmp::Ordering {
+        self.with(|s| other.with(|o| s.cmp(o)))
     }
 }
 
