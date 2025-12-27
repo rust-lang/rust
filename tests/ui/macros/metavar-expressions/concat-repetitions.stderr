@@ -1,20 +1,20 @@
-error: invalid syntax
-  --> $DIR/concat-repetitions.rs:14:20
+error: `${concat(...)}` variable is still repeating at this depth
+  --> $DIR/concat-repetitions.rs:14:29
    |
 LL |             const ${concat($a, Z)}: i32 = 3;
-   |                    ^^^^^^^^^^^^^^^
+   |                             ^
 
-error: invalid syntax
-  --> $DIR/concat-repetitions.rs:22:17
+error: `${concat(...)}` variable is still repeating at this depth
+  --> $DIR/concat-repetitions.rs:21:30
    |
 LL |         read::<${concat($t, $en)}>()
-   |                 ^^^^^^^^^^^^^^^^^
+   |                              ^^
 
-error: invalid syntax
-  --> $DIR/concat-repetitions.rs:22:17
+error: `${concat(...)}` variable is still repeating at this depth
+  --> $DIR/concat-repetitions.rs:21:30
    |
 LL |         read::<${concat($t, $en)}>()
-   |                 ^^^^^^^^^^^^^^^^^
+   |                              ^^
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 

@@ -11,7 +11,7 @@ macro_rules! InRepetition {
      ) => {
         $(
             $(
-                ${concat(_, $arg)} //~ ERROR nested repetitions with `${concat(...)}` metavariable expressions are not yet supported
+                ${concat(_, $arg)} //~ ERROR macro expansion ends with an incomplete expression: expected one of `!` or `::`
             )*
         )*
     };
