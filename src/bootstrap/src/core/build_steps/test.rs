@@ -2064,6 +2064,10 @@ Please disable assertions with `rust.debug-assertions = false`.
             cmd.arg("--has-enzyme");
         }
 
+        if builder.build.config.llvm_offload {
+            cmd.arg("--has-offload");
+        }
+
         if builder.config.cmd.bless() {
             cmd.arg("--bless");
         }

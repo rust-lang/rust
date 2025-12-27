@@ -113,6 +113,7 @@ fn incomplete_config_for_rustdoc_gui_test() -> Config {
         compare_mode: Default::default(),
         rustfix_coverage: Default::default(),
         has_enzyme: Default::default(),
+        has_offload: Default::default(),
         channel: Default::default(),
         git_hash: Default::default(),
         cc: Default::default(),
