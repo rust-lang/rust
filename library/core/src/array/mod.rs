@@ -11,7 +11,7 @@ use crate::convert::Infallible;
 use crate::error::Error;
 use crate::hash::{self, Hash};
 use crate::intrinsics::transmute_unchecked;
-use crate::iter::{UncheckedIterator, repeat_n};
+use crate::iter::{TrustedLen, UncheckedIterator, repeat_n};
 use crate::marker::Destruct;
 use crate::mem::{self, ManuallyDrop, MaybeUninit};
 use crate::ops::{
@@ -980,6 +980,13 @@ impl<T: [const] Destruct> const Drop for Guard<'_, T> {
 pub(crate) fn iter_next_chunk<T, const N: usize>(
     iter: &mut impl Iterator<Item = T>,
 ) -> Result<[T; N], IntoIter<T, N>> {
+    iter.spec_next_chunk()
+}
+
+#[inline]
+fn generic_iter_next_chunk<T, const N: usize>(
+    iter: &mut impl Iterator<Item = T>,
+) -> Result<[T; N], IntoIter<T, N>> {
     let mut array = [const { MaybeUninit::uninit() }; N];
     let r = iter_next_chunk_erased(&mut array, iter);
     match r {
@@ -990,6 +997,33 @@ pub(crate) fn iter_next_chunk<T, const N: usize>(
         Err(initialized) => {
             // SAFETY: Only the first `initialized` elements were populated
             Err(unsafe { IntoIter::new_unchecked(array, 0..initialized) })
+        }
+    }
+}
+
+pub(crate) trait SpecNextChunk<T, const N: usize>: Iterator<Item = T> {
+    fn spec_next_chunk(&mut self) -> Result<[T; N], IntoIter<T, N>>;
+}
+impl<I: Iterator<Item = T>, T, const N: usize> SpecNextChunk<T, N> for I {
+    #[inline]
+    default fn spec_next_chunk(&mut self) -> Result<[T; N], IntoIter<T, N>> {
+        generic_iter_next_chunk(self)
+    }
+}
+
+impl<I: Iterator<Item = T> + TrustedLen, T, const N: usize> SpecNextChunk<T, N> for I {
+    fn spec_next_chunk(&mut self) -> Result<[T; N], IntoIter<T, N>> {
+        if self.size_hint().0 < N {
+            let mut array = [const { MaybeUninit::uninit() }; N];
+            let initialized =
+                // SAFETY: Has to error out; trusted len means
+                // that there may only be less than N elements
+                unsafe { iter_next_chunk_erased(&mut array, self).unwrap_err_unchecked() };
+            // SAFETY: Only the first `initialized` elements were populated
+            Err(unsafe { IntoIter::new_unchecked(array, 0..initialized) })
+        } else {
+            // SAFETY: must be at least N elements; safe to unwrap N elements.
+            Ok(from_fn(|_| unsafe { self.next().unwrap_unchecked() }))
         }
     }
 }
