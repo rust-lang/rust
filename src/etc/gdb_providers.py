@@ -191,14 +191,29 @@ class StdVecDequeProvider(printer_base):
         return "array"
 
 
+_REF_COUNTS_PTR_TYPE = None
+
+
+def _get_ref_counts_ptr_type():
+    global _REF_COUNTS_PTR_TYPE
+
+    if _REF_COUNTS_PTR_TYPE is None:
+        _REF_COUNTS_PTR_TYPE = gdb.lookup_type("alloc::raw_rc::RefCounts").pointer()
+
+    return _REF_COUNTS_PTR_TYPE
+
+
 class StdRcProvider(printer_base):
     def __init__(self, valobj, is_atomic=False):
         self._valobj = valobj
         self._is_atomic = is_atomic
-        self._ptr = unwrap_unique_or_non_null(valobj["ptr"])
-        self._value = self._ptr["data" if is_atomic else "value"]
-        self._strong = self._ptr["strong"]["v" if is_atomic else "value"]["value"]
-        self._weak = self._ptr["weak"]["v" if is_atomic else "value"]["value"] - 1
+        self._ptr = unwrap_unique_or_non_null(valobj["raw_rc"]["weak"]["ptr"])
+        self._value = self._ptr.dereference()
+
+        ref_counts_ptr = self._ptr.reinterpret_cast(_get_ref_counts_ptr_type()) - 1
+
+        self._strong = ref_counts_ptr["strong"]["value"]
+        self._weak = ref_counts_ptr["weak"]["value"] - 1
 
     def to_string(self):
         if self._is_atomic:

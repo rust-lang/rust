@@ -20,7 +20,7 @@
 //@ gdb-check:$4 = ("Hello", "World")
 
 //@ gdb-command:print str_in_rc
-//@ gdb-check:$5 = alloc::rc::Rc<&str, alloc::alloc::Global> {ptr: core::ptr::non_null::NonNull<alloc::rc::RcInner<&str>> {pointer: 0x[...]}, phantom: core::marker::PhantomData<alloc::rc::RcInner<&str>>, alloc: alloc::alloc::Global}
+//@ gdb-check:$5 = alloc::rc::Rc<&str, alloc::alloc::Global> {raw_rc: alloc::raw_rc::raw_rc::RawRc<&str, alloc::alloc::Global> {weak: alloc::raw_rc::raw_weak::RawWeak<&str, alloc::alloc::Global> {ptr: core::ptr::non_null::NonNull<&str> {pointer: 0x[...]}, alloc: alloc::alloc::Global}, _phantom_data: core::marker::PhantomData<&str>}}
 
 // === LLDB TESTS ==================================================================================
 //@ lldb-command:run
