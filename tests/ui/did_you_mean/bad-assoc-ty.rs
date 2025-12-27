@@ -35,10 +35,10 @@ type G = dyn 'static + (Send)::AssocTy;
 // This is actually a legal path with fn-like generic arguments in the middle!
 // Recovery should not apply in this context.
 type H = Fn(u8) -> (u8)::Output;
-//[edition2015]~^ ERROR ambiguous associated type
+//[edition2021]~^ ERROR expected a type, found a trait
+//[edition2015]~^^ ERROR the lifetime bound for this object type cannot be deduced from context; please supply an explicit bound
 //[edition2015]~| WARN trait objects without an explicit `dyn` are deprecated
 //[edition2015]~| WARN this is accepted in the current edition
-//[edition2021]~^^^^ ERROR expected a type, found a trait
 
 macro_rules! ty {
     ($ty: ty) => ($ty::AssocTy);
