@@ -161,13 +161,13 @@ fn handle_expand_id<C: Codec>(
     send_response::<C>(&stdout, bidirectional::Response::ExpandMacro(res))
 }
 
-struct BidirectionalStruct<'a, C: Codec> {
+struct ProcMacroClientHandle<'a, C: Codec> {
     stdin: &'a io::Stdin,
     stdout: &'a io::Stdout,
     buf: &'a mut C::Buf,
 }
 
-impl<C: Codec> proc_macro_srv::ProcMacroClientInterface for BidirectionalStruct<'_, C> {
+impl<C: Codec> proc_macro_srv::ProcMacroClientInterface for ProcMacroClientHandle<'_, C> {
     fn source_text(&mut self, file_id: u32, start: u32, end: u32) -> Option<String> {
         let subrequest = bidirectional::SubRequest::SourceText { file_id, start, end };
         bidirectional::BidirectionalMessage::SubRequest(subrequest)
@@ -237,7 +237,7 @@ fn handle_expand_ra<C: Codec>(
             def_site,
             call_site,
             mixed_site,
-            Some(Box::new(BidirectionalStruct::<C> { stdin, stdout, buf })),
+            Some(Box::new(ProcMacroClientHandle::<C> { stdin, stdout, buf })),
         )
         .map(|it| {
             (
