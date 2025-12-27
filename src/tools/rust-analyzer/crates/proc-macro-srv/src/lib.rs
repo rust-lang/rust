@@ -94,7 +94,7 @@ impl<'env> ProcMacroSrv<'env> {
 pub type ProcMacroClientHandle = Box<dyn ProcMacroClientInterface + Send>;
 
 pub trait ProcMacroClientInterface {
-    fn source_text(&mut self, file_id: u32, start: u32, end: u32) -> Option<String>;
+    fn source_text(&self, file_id: u32, start: u32, end: u32) -> Option<String>;
 }
 
 const EXPANDER_STACK_SIZE: usize = 8 * 1024 * 1024;

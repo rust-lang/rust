@@ -175,7 +175,7 @@ struct ProcMacroClientHandle {
 }
 
 impl proc_macro_srv::ProcMacroClientInterface for ProcMacroClientHandle {
-    fn source_text(&mut self, file_id: u32, start: u32, end: u32) -> Option<String> {
+    fn source_text(&self, file_id: u32, start: u32, end: u32) -> Option<String> {
         self.subreq_tx.send(bidirectional::SubRequest::SourceText { file_id, start, end }).ok()?;
 
         match self.subresp_rx.recv().ok()? {
