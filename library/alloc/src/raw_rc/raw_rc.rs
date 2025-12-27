@@ -1,6 +1,8 @@
 use core::alloc::{AllocError, Allocator};
 use core::cell::UnsafeCell;
 use core::clone::CloneToUninit;
+#[cfg(not(no_global_oom_handling))]
+use core::iter::TrustedLen;
 use core::marker::PhantomData;
 #[cfg(not(no_global_oom_handling))]
 use core::mem::SizedTypeProperties;
@@ -15,7 +17,7 @@ use crate::raw_rc::MakeMutStrategy;
 use crate::raw_rc::raw_weak;
 use crate::raw_rc::raw_weak::RawWeak;
 #[cfg(not(no_global_oom_handling))]
-use crate::raw_rc::rc_layout::RcLayoutExt;
+use crate::raw_rc::rc_layout::{RcLayout, RcLayoutExt};
 use crate::raw_rc::rc_value_pointer::RcValuePointer;
 use crate::raw_rc::{RefCounter, rc_alloc};
 
@@ -610,6 +612,135 @@ impl<T, A> RawRc<MaybeUninit<T>, A> {
 
     pub(crate) unsafe fn assume_init(self) -> RawRc<T, A> {
         unsafe { self.cast() }
+    }
+}
+
+impl<T, A> RawRc<[T], A> {
+    #[cfg(not(no_global_oom_handling))]
+    fn from_trusted_len_iter<I>(iter: I) -> Self
+    where
+        A: Allocator + Default,
+        I: TrustedLen<Item = T>,
+    {
+        /// Returns a drop guard that calls the destructors of a slice of elements on drop.
+        ///
+        /// # Safety
+        ///
+        /// - `head..tail` must describe a valid consecutive slice of `T` values when the destructor
+        ///   of the returned guard is called.
+        /// - After calling the returned function, the corresponding values should not be accessed
+        ///   anymore.
+        unsafe fn drop_range_on_drop<T>(
+            head: NonNull<T>,
+            tail: NonNull<T>,
+        ) -> DropGuard<(NonNull<T>, NonNull<T>), impl FnOnce((NonNull<T>, NonNull<T>))> {
+            // SAFETY:
+            DropGuard::new((head, tail), |(head, tail)| unsafe {
+                let length = tail.offset_from_unsigned(head);
+
+                NonNull::<[T]>::slice_from_raw_parts(head, length).drop_in_place();
+            })
+        }
+
+        let (length, Some(high)) = iter.size_hint() else {
+            // TrustedLen contract guarantees that `upper_bound == None` implies an iterator
+            // length exceeding `usize::MAX`.
+            // The default implementation would collect into a vec which would panic.
+            // Thus we panic here immediately without invoking `Vec` code.
+            panic!("capacity overflow");
+        };
+
+        debug_assert_eq!(
+            length,
+            high,
+            "TrustedLen iterator's size hint is not exact: {:?}",
+            (length, high)
+        );
+
+        let rc_layout = RcLayout::new_array::<T>(length);
+
+        let (ptr, alloc) = rc_alloc::allocate_with::<A, _, 1>(rc_layout, |ptr| {
+            let ptr = ptr.as_ptr().cast::<T>();
+            let mut guard = unsafe { drop_range_on_drop::<T>(ptr, ptr) };
+
+            // SAFETY: `iter` is `TrustedLen`, we can assume we will write correct number of
+            // elements to the buffer.
+            iter.for_each(|value| unsafe {
+                guard.1.write(value);
+                guard.1 = guard.1.add(1);
+            });
+
+            DropGuard::dismiss(guard);
+        });
+
+        // SAFETY: We have written `length` of `T` values to the buffer, the buffer is now
+        // initialized.
+        unsafe {
+            Self::from_raw_parts(
+                NonNull::slice_from_raw_parts(ptr.as_ptr().cast::<T>(), length),
+                alloc,
+            )
+        }
+    }
+
+    fn try_into_array<const N: usize>(self) -> Result<RawRc<[T; N], A>, Self> {
+        if self.as_ref().len() == N { Ok(unsafe { self.cast() }) } else { Err(self) }
+    }
+
+    pub(crate) unsafe fn into_array<const N: usize, R>(self) -> Option<RawRc<[T; N], A>>
+    where
+        A: Allocator,
+        R: RefCounter,
+    {
+        match self.try_into_array::<N>() {
+            Ok(result) => Some(result),
+            Err(mut raw_rc) => {
+                unsafe { raw_rc.drop::<R>() };
+
+                None
+            }
+        }
+    }
+}
+
+impl<T, A> RawRc<[MaybeUninit<T>], A> {
+    #[cfg(not(no_global_oom_handling))]
+    pub(crate) fn new_uninit_slice_in(length: usize, alloc: A) -> Self
+    where
+        A: Allocator,
+    {
+        unsafe { Self::from_weak(RawWeak::new_uninit_slice_in::<1>(length, alloc)) }
+    }
+
+    #[cfg(not(no_global_oom_handling))]
+    pub(crate) fn new_uninit_slice(length: usize) -> Self
+    where
+        A: Allocator + Default,
+    {
+        unsafe { Self::from_weak(RawWeak::new_uninit_slice::<1>(length)) }
+    }
+
+    #[cfg(not(no_global_oom_handling))]
+    pub(crate) fn new_zeroed_slice_in(length: usize, alloc: A) -> Self
+    where
+        A: Allocator,
+    {
+        unsafe { Self::from_weak(RawWeak::new_zeroed_slice_in::<1>(length, alloc)) }
+    }
+
+    #[cfg(not(no_global_oom_handling))]
+    pub(crate) fn new_zeroed_slice(length: usize) -> Self
+    where
+        A: Allocator + Default,
+    {
+        unsafe { Self::from_weak(RawWeak::new_zeroed_slice::<1>(length)) }
+    }
+
+    /// # Safety
+    ///
+    /// All `MaybeUninit<T>`s values contained by `self` must be initialized.
+    pub(crate) unsafe fn assume_init(self) -> RawRc<[T], A> {
+        unsafe { self.cast_with(|ptr| NonNull::new_unchecked(ptr.as_ptr() as _)) }
     }
 }
 
