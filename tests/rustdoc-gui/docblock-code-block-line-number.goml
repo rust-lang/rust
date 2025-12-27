@@ -1,9 +1,14 @@
 // Checks that the setting "line numbers" is working as expected.
 include: "utils.goml"
+
 go-to: "file://" + |DOC_PATH| + "/test_docs/fn.foo.html"
 
+// Otherwise, we can't check text color
+show-text: true
+
+store-value: (line_numbers_selector, ".example-wrap pre.rust code [data-nosnippet]")
 // We check that without this setting, there is no line number displayed.
-assert-false: "pre.example-line-numbers"
+assert-count: (|line_numbers_selector|, 0)
 
 // All corners should be rounded.
 assert-css: (
@@ -17,14 +22,16 @@ assert-css: (
     ALL,
 )
 
-// We set the setting to show the line numbers on code examples.
-set-local-storage: {"rustdoc-line-numbers": "true"}
-reload:
-// We wait for the line numbers to be added into the DOM by the JS...
-wait-for: ".digits-1 pre"
+// Before we add line numbers, we get the X position of a span in a code example that we will
+// use later on to ensure that when we disable the line numbers, it goes back to its original
+// position.
+store-position: (".example-wrap code .macro", {"x": span_x_pos})
 
-// Otherwise, we can't check text color
-show-text: true
+// We enable the setting to show the line numbers on code examples.
+call-function: ("switch-line-numbers-setting", {"expected_status": "true"})
+// We ensure that there are actually line numbers generated in the DOM.
+assert-text: (".example-wrap pre.rust code span[data-nosnippet]", "1")
+assert-position-false: (".example-wrap code .macro", {"x": |span_x_pos|})
 
 // Let's now check some CSS properties...
 define-function: (
@@ -68,20 +75,18 @@ call-function: ("check-colors", {
 // Now, try changing the setting dynamically. We'll turn it off, using the settings menu,
 // and make sure it goes away.
 
-// First, open the settings menu.
-click: "rustdoc-toolbar .settings-menu"
-wait-for: "#settings"
-assert-css: ("#settings", {"display": "block"})
+call-function: ("switch-line-numbers-setting", {"expected_status": "false"})
+assert: ".digits-1.hide-lines"
 
-// Then, click the toggle button.
-click: "input#line-numbers"
-wait-for: ".digits-1.hide-lines"
-assert-local-storage: {"rustdoc-line-numbers": "false" }
+// The line numbers not being displayed, their "space" should have disappear as well.
+assert-position: (".example-wrap code .macro", {"x": |span_x_pos|})
 
 // Finally, turn it on again.
-click: "input#line-numbers"
+call-function: ("switch-line-numbers-setting", {"expected_status": "true"})
 wait-for: ".digits-1:not(.hide-lines)"
-assert-local-storage: {"rustdoc-line-numbers": "true" }
+
+// The line numbers are being displayed, their "space" should be back.
+assert-position-false: (".example-wrap code .macro", {"x": |span_x_pos|})
 
 // Same check with scraped examples line numbers.
 go-to: "file://" + |DOC_PATH| + "/scrape_examples/fn.test_many.html"
@@ -119,26 +124,14 @@ call-function: ("check-padding", {
 })
 
 define-function: ("check-line-numbers-existence", [], block {
-    assert-local-storage: {"rustdoc-line-numbers": "true" }
-    assert-false: ".example-line-numbers"
-    click: "rustdoc-toolbar .settings-menu"
-    wait-for: "#settings"
-
-    // Then, click the toggle button.
-    click: "input#line-numbers"
-    wait-for-local-storage-false: {"rustdoc-line-numbers": "true" }
-    assert-false: ".example-line-numbers"
+    assert-local-storage: {"rustdoc-line-numbers": "true"}
+    assert-count-false: (|line_numbers_selector|, 0)
+    call-function: ("switch-line-numbers-setting", {"expected_status": "false"})
     // Line numbers should still be there.
-    assert-css: ("[data-nosnippet]", { "display": "block"})
-    // Now disabling the setting.
-    click: "input#line-numbers"
-    wait-for-local-storage: {"rustdoc-line-numbers": "true" }
-    assert-false: ".example-line-numbers"
-    // Line numbers should still be there.
-    assert-css: ("[data-nosnippet]", { "display": "block"})
-    // Closing settings menu.
-    click: "rustdoc-toolbar .settings-menu"
-    wait-for-css: ("#settings", {"display": "none"})
+    assert-count-false: (|line_numbers_selector|, 0)
+    assert-css: (|line_numbers_selector|, {"display": "block"})
+    // Now re-enabling the setting.
+    call-function: ("switch-line-numbers-setting", {"expected_status": "true"})
 })
 
 // Checking that turning off the line numbers setting won't remove line numbers from scraped
@@ -168,16 +161,11 @@ assert: ".example-wrap > pre.rust"
 assert-count: (".example-wrap", 2)
 assert-count: (".example-wrap.digits-1", 2)
 
-click: "rustdoc-toolbar .settings-menu"
-wait-for: "#settings"
-
-// Then, click the toggle button.
-click: "input#line-numbers"
+// Disabling the line numbers setting.
+call-function: ("switch-line-numbers-setting", {"expected_status": "false"})
 wait-for-count: (".example-wrap.digits-1.hide-lines", 2)
-assert-local-storage-false: {"rustdoc-line-numbers": "true" }
 
-// Now turning off the setting.
-click: "input#line-numbers"
+// Now re-enabling the setting.
+call-function: ("switch-line-numbers-setting", {"expected_status": "true"})
 wait-for-count: (".example-wrap.digits-1", 2)
 wait-for-count: (".example-wrap.digits-1.hide-lines", 0)
-assert-local-storage: {"rustdoc-line-numbers": "true" }
