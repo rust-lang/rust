@@ -1,12 +1,15 @@
 //! Various helper functions to work with SyntaxNodes.
 use std::ops::ControlFlow;
 
+use either::Either;
 use itertools::Itertools;
 use parser::T;
 use span::Edition;
 use syntax::{
-    AstNode, AstToken, Preorder, RustLanguage, WalkEvent,
+    AstNode, AstToken, Direction, Preorder, RustLanguage, SyntaxToken, WalkEvent,
+    algo::non_trivia_sibling,
     ast::{self, HasLoopBody, MacroCall, PathSegmentKind, VisibilityKind},
+    syntax_editor::Element,
 };
 
 pub fn expr_as_name_ref(expr: &ast::Expr) -> Option<ast::NameRef> {
@@ -541,4 +544,38 @@ pub fn parse_tt_as_comma_sep_paths(
 pub fn macro_call_for_string_token(string: &ast::String) -> Option<MacroCall> {
     let macro_call = string.syntax().parent_ancestors().find_map(ast::MacroCall::cast)?;
     Some(macro_call)
+}
+
+pub fn is_in_macro_matcher(token: &SyntaxToken) -> bool {
+    let Some(macro_def) = token
+        .parent_ancestors()
+        .map_while(Either::<ast::TokenTree, ast::Macro>::cast)
+        .find_map(Either::right)
+    else {
+        return false;
+    };
+    let range = token.text_range();
+    let Some(body) = (match macro_def {
+        ast::Macro::MacroDef(macro_def) => {
+            if let Some(args) = macro_def.args() {
+                return args.syntax().text_range().contains_range(range);
+            }
+            macro_def.body()
+        }
+        ast::Macro::MacroRules(macro_rules) => macro_rules.token_tree(),
+    }) else {
+        return false;
+    };
+    if !body.syntax().text_range().contains_range(range) {
+        return false;
+    }
+    body.token_trees_and_tokens().filter_map(|tt| tt.into_node()).any(|tt| {
+        let Some(next) = non_trivia_sibling(tt.syntax().syntax_element(), Direction::Next) else {
+            return false;
+        };
+        let Some(next_next) = next.next_sibling_or_token() else { return false };
+        next.kind() == T![=]
+            && next_next.kind() == T![>]
+            && tt.syntax().text_range().contains_range(range)
+    })
 }

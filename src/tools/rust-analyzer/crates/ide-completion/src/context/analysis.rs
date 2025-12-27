@@ -5,7 +5,7 @@ use hir::{ExpandResult, InFile, Semantics, Type, TypeInfo, Variant};
 use ide_db::{
     RootDatabase, active_parameter::ActiveParameter, syntax_helpers::node_ext::find_loops,
 };
-use itertools::Either;
+use itertools::{Either, Itertools};
 use stdx::always;
 use syntax::{
     AstNode, AstToken, Direction, NodeOrToken, SyntaxElement, SyntaxKind, SyntaxNode, SyntaxToken,
@@ -509,6 +509,21 @@ fn analyze<'db>(
                         .find_map(ast::Attr::cast),
                     colon_prefix,
                     extern_crate: p.ancestors().find_map(ast::ExternCrate::cast),
+                }
+            } else if p.kind() == SyntaxKind::TOKEN_TREE
+                && p.ancestors().any(|it| ast::Macro::can_cast(it.kind()))
+            {
+                if let Some([_ident, colon, _name, dollar]) = fake_ident_token
+                    .siblings_with_tokens(Direction::Prev)
+                    .filter(|it| !it.kind().is_trivia())
+                    .take(4)
+                    .collect_array()
+                    && dollar.kind() == T![$]
+                    && colon.kind() == T![:]
+                {
+                    CompletionAnalysis::MacroSegment
+                } else {
+                    return None;
                 }
             } else {
                 return None;
