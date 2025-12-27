@@ -1,0 +1,15 @@
+error: item does not constrain `Bar::{opaque#0}`
+  --> $DIR/branch-closure-parameter.rs:14:4
+   |
+LL | fn foo() -> A {
+   |    ^^^
+   |
+   = note: consider removing `#[define_opaque]` or adding an empty `#[define_opaque()]`
+note: this opaque type is supposed to be constrained
+  --> $DIR/branch-closure-parameter.rs:5:12
+   |
+LL | type Bar = impl std::fmt::Display;
+   |            ^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
