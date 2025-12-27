@@ -590,14 +590,6 @@ impl<'a> TryFrom<&'a ByteString> for &'a str {
 // Additional impls for `ByteStr` that require types from `alloc`:
 
 #[unstable(feature = "bstr", issue = "134915")]
-impl Clone for Box<ByteStr> {
-    #[inline]
-    fn clone(&self) -> Self {
-        Self::from(Box::<[u8]>::from(&self.0))
-    }
-}
-
-#[unstable(feature = "bstr", issue = "134915")]
 impl<'a> From<&'a ByteStr> for Cow<'a, ByteStr> {
     #[inline]
     fn from(s: &'a ByteStr) -> Self {
