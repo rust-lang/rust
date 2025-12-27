@@ -23,16 +23,12 @@ use rustc_codegen_ssa::traits::{
     IntrinsicCallBuilderMethods, LayoutTypeCodegenMethods,
 };
 use rustc_middle::bug;
-#[cfg(feature = "master")]
-use rustc_middle::ty::layout::FnAbiOf;
-use rustc_middle::ty::layout::LayoutOf;
+use rustc_middle::ty::layout::{FnAbiOf, LayoutOf};
 use rustc_middle::ty::{self, Instance, Ty};
 use rustc_span::{Span, Symbol, sym};
 use rustc_target::callconv::{ArgAbi, PassMode};
 
-#[cfg(feature = "master")]
-use crate::abi::FnAbiGccExt;
-use crate::abi::GccType;
+use crate::abi::{FnAbiGccExt, GccType};
 use crate::builder::Builder;
 use crate::common::{SignType, TypeReflection};
 use crate::context::CodegenCx;
