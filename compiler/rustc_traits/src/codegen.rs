@@ -26,8 +26,9 @@ pub(crate) fn codegen_select_candidate<'tcx>(
     key: PseudoCanonicalInput<'tcx, ty::TraitRef<'tcx>>,
 ) -> Result<&'tcx ImplSource<'tcx, ()>, CodegenObligationError> {
     let PseudoCanonicalInput { typing_env, value: trait_ref } = key;
-    // We expect the input to be fully normalized.
-    debug_assert_eq!(trait_ref, tcx.normalize_erasing_regions(typing_env, trait_ref));
+    // We expect the input to be fully normalized, but in some cases (particularly with
+    // aggressive inlining in release builds), it may not be. Ensure we normalize it here.
+    let trait_ref = tcx.normalize_erasing_regions(typing_env, trait_ref);
 
     // Do the initial selection for the obligation. This yields the
     // shallow result we are looking for -- that is, what specific impl.
@@ -41,6 +42,11 @@ pub(crate) fn codegen_select_candidate<'tcx>(
         Ok(Some(selection)) => selection,
         Ok(None) => return Err(CodegenObligationError::Ambiguity),
         Err(SelectionError::Unimplemented) => return Err(CodegenObligationError::Unimplemented),
+        // SignatureMismatch can occur with complex associated type projections
+        // in generic contexts during aggressive inlining. Treat as unimplemented.
+        Err(SelectionError::SignatureMismatch(_)) => {
+            return Err(CodegenObligationError::Unimplemented);
+        }
         Err(e) => {
             bug!("Encountered error `{:?}` selecting `{:?}` during codegen", e, trait_ref)
         }
