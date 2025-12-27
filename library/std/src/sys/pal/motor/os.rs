@@ -4,7 +4,7 @@ use crate::ffi::{OsStr, OsString};
 use crate::marker::PhantomData;
 use crate::os::motor::ffi::OsStrExt;
 use crate::path::{self, PathBuf};
-use crate::sys::RawOsError;
+use crate::sys::io::RawOsError;
 use crate::{fmt, io};
 
 pub fn errno() -> RawOsError {
@@ -22,16 +22,17 @@ pub fn errno() -> RawOsError {
     // separate runtime background/I/O thread, so it is really hard
     // to define what "last system error in the current thread"
     // actually means.
-    moto_rt::E_UNKNOWN.into()
+    let error_code: moto_rt::ErrorCode = moto_rt::Error::Unknown.into();
+    error_code.into()
 }
 
 pub fn error_string(errno: RawOsError) -> String {
-    let error_code: moto_rt::ErrorCode = match errno {
-        x if x < 0 => moto_rt::E_UNKNOWN,
-        x if x > u16::MAX.into() => moto_rt::E_UNKNOWN,
-        x => x as moto_rt::ErrorCode, /* u16 */
+    let error: moto_rt::Error = match errno {
+        x if x < 0 => moto_rt::Error::Unknown,
+        x if x > u16::MAX.into() => moto_rt::Error::Unknown,
+        x => (x as moto_rt::ErrorCode).into(), /* u16 */
     };
-    format!("{}", moto_rt::Error::from(error_code))
+    format!("{}", error)
 }
 
 pub fn getcwd() -> io::Result<PathBuf> {
