@@ -25,6 +25,13 @@ pub trait IntrinsicCallBuilderMethods<'tcx>: BackendTypes {
         span: Span,
     ) -> Result<(), ty::Instance<'tcx>>;
 
+    fn codegen_llvm_intrinsic_call(
+        &mut self,
+        instance: ty::Instance<'tcx>,
+        args: &[OperandRef<'tcx, Self::Value>],
+        is_cleanup: bool,
+    ) -> Self::Value;
+
     fn abort(&mut self);
     fn assume(&mut self, val: Self::Value);
     fn expect(&mut self, cond: Self::Value, expected: bool) -> Self::Value;

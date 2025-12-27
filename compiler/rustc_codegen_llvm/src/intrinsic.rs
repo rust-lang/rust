@@ -1,7 +1,11 @@
 use std::assert_matches::assert_matches;
 use std::cmp::Ordering;
+use std::ffi::c_uint;
+use std::ptr;
 
-use rustc_abi::{Align, BackendRepr, ExternAbi, Float, HasDataLayout, Primitive, Size};
+use rustc_abi::{
+    Align, BackendRepr, ExternAbi, Float, HasDataLayout, Primitive, Size, WrappingRange,
+};
 use rustc_codegen_ssa::base::{compare_simd_types, wants_msvc_seh, wants_wasm_eh};
 use rustc_codegen_ssa::codegen_attrs::autodiff_attrs;
 use rustc_codegen_ssa::common::{IntPredicate, TypeKind};
@@ -28,6 +32,7 @@ use crate::builder::Builder;
 use crate::builder::autodiff::{adjust_activity_to_abi, generate_enzyme_call};
 use crate::builder::gpu_offload::{gen_call_handling, gen_define_handling};
 use crate::context::CodegenCx;
+use crate::declare::declare_raw_fn;
 use crate::errors::{
     AutoDiffWithoutEnable, AutoDiffWithoutLto, OffloadWithoutEnable, OffloadWithoutFatLTO,
 };
@@ -631,6 +636,99 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
             self.store_to_place(llval, result.val);
         }
         Ok(())
+    }
+
+    fn codegen_llvm_intrinsic_call(
+        &mut self,
+        instance: ty::Instance<'tcx>,
+        args: &[OperandRef<'tcx, Self::Value>],
+        is_cleanup: bool,
+    ) -> Self::Value {
+        let tcx = self.tcx();
+
+        // FIXME remove usage of fn_abi
+        let fn_abi = self.fn_abi_of_instance(instance, ty::List::empty());
+        assert!(!fn_abi.ret.is_indirect());
+        let fn_ty = fn_abi.llvm_type(self);
+
+        let fn_ptr = if let Some(&llfn) = self.intrinsic_instances.borrow().get(&instance) {
+            llfn
+        } else {
+            let sym = tcx.symbol_name(instance).name;
+
+            // FIXME use get_intrinsic
+            let llfn = if let Some(llfn) = self.get_declared_value(sym) {
+                llfn
+            } else {
+                // Function addresses in Rust are never significant, allowing functions to
+                // be merged.
+                let llfn = declare_raw_fn(
+                    self,
+                    sym,
+                    fn_abi.llvm_cconv(self),
+                    llvm::UnnamedAddr::Global,
+                    llvm::Visibility::Default,
+                    fn_ty,
+                );
+                fn_abi.apply_attrs_llfn(self, llfn, Some(instance));
+
+                llfn
+            };
+
+            self.intrinsic_instances.borrow_mut().insert(instance, llfn);
+
+            llfn
+        };
+
+        let mut llargs = vec![];
+
+        for arg in args {
+            match arg.val {
+                OperandValue::ZeroSized => {}
+                OperandValue::Immediate(_) => llargs.push(arg.immediate()),
+                OperandValue::Pair(a, b) => {
+                    llargs.push(a);
+                    llargs.push(b);
+                }
+                OperandValue::Ref(op_place_val) => {
+                    let mut llval = op_place_val.llval;
+                    // We can't use `PlaceRef::load` here because the argument
+                    // may have a type we don't treat as immediate, but the ABI
+                    // used for this call is passing it by-value. In that case,
+                    // the load would just produce `OperandValue::Ref` instead
+                    // of the `OperandValue::Immediate` we need for the call.
+                    llval = self.load(self.backend_type(arg.layout), llval, op_place_val.align);
+                    if let BackendRepr::Scalar(scalar) = arg.layout.backend_repr {
+                        if scalar.is_bool() {
+                            self.range_metadata(llval, WrappingRange { start: 0, end: 1 });
+                        }
+                        // We store bools as `i8` so we need to truncate to `i1`.
+                        llval = self.to_immediate_scalar(llval, scalar);
+                    }
+                    llargs.push(llval);
+                }
+            }
+        }
+
+        debug!("call intrinsic {:?} with args ({:?})", instance, llargs);
+        let args = self.check_call("call", fn_ty, fn_ptr, &llargs);
+        let llret = unsafe {
+            llvm::LLVMBuildCallWithOperandBundles(
+                self.llbuilder,
+                fn_ty,
+                fn_ptr,
+                args.as_ptr() as *const &llvm::Value,
+                args.len() as c_uint,
+                ptr::dangling(),
+                0,
+                c"".as_ptr(),
+            )
+        };
+        if is_cleanup {
+            self.apply_attrs_to_cleanup_callsite(llret);
+        }
+
+        llret
     }
 
     fn abort(&mut self) {
