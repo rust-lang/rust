@@ -591,7 +591,7 @@ impl fmt::Display for JoinPathsError {
 
 #[stable(feature = "env", since = "1.0.0")]
 impl Error for JoinPathsError {
-    #[allow(deprecated, deprecated_in_future)]
+    #[allow(deprecated)]
     fn description(&self) -> &str {
         self.inner.description()
     }
