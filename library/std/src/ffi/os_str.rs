@@ -810,9 +810,19 @@ impl Hash for OsString {
 
 #[stable(feature = "os_string_fmt_write", since = "1.64.0")]
 impl fmt::Write for OsString {
+    #[inline]
     fn write_str(&mut self, s: &str) -> fmt::Result {
         self.push(s);
         Ok(())
+    }
+
+    fn write_fmt(&mut self, args: fmt::Arguments<'_>) -> fmt::Result {
+        if let Some(s) = args.as_statically_known_str() {
+            self.write_str(s)
+        } else {
+            self.reserve(args.estimated_capacity());
+            fmt::write(self, args)
+        }
     }
 }
 
