@@ -8,11 +8,16 @@
 // where-bounds don't actually hold. And this results in weird bugs when
 // later treating these expectations as if they were actually correct..
 
-fn sized_box<T>(x: Box<T>) -> Box<T> {
-    x
-}
+use std::pin::Pin;
+
+trait Trait {}
+
+impl Trait for i32 {}
+
+struct Foo<'a>(Pin<&'a mut (dyn Trait + Send)>);
 
 fn main() {
-    let _: Box<dyn Send> = sized_box(Box::new(1));
-    //[current]~^ ERROR the size for values of type `dyn Send` cannot be known at compilation time
+    let mut a = 1;
+    let _x = Foo(Pin::new(&mut a));
+    //[current]~^ ERROR: `dyn Trait + Send` cannot be unpinned
 }

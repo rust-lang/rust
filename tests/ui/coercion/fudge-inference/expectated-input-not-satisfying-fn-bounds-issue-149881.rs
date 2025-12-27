@@ -8,11 +8,11 @@
 // where-bounds don't actually hold. And this results in weird bugs when
 // later treating these expectations as if they were actually correct..
 
-fn sized_box<T>(x: Box<T>) -> Box<T> {
+fn id<T>(x: Box<T>) -> Box<T> {
     x
 }
 
 fn main() {
-    let _: Box<dyn Send> = sized_box(Box::new(1));
-    //[current]~^ ERROR the size for values of type `dyn Send` cannot be known at compilation time
+    <[_]>::into_vec(id(Box::new([0, 1, 2])));
+    //[current]~^ ERROR: the size for values of type `[{integer}]` cannot be known at compilation time
 }
