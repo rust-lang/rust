@@ -482,10 +482,6 @@ impl Command {
                     ) -> libc::c_int;
                 );
 
-                weak!(
-                    fn pidfd_getpid(pidfd: libc::c_int) -> libc::c_int;
-                );
-
                 static PIDFD_SUPPORTED: Atomic<u8> = AtomicU8::new(0);
                 const UNKNOWN: u8 = 0;
                 const SPAWN: u8 = 1;
@@ -502,24 +498,26 @@ impl Command {
                     }
                     if support == UNKNOWN {
                         support = NO;
-                        let our_pid = crate::process::id();
-                        let pidfd = cvt(unsafe { libc::syscall(libc::SYS_pidfd_open, our_pid, 0) } as c_int);
-                        match pidfd {
+
+                        match PidFd::current_process() {
                             Ok(pidfd) => {
+                                // if pidfd_open works then we at least know the fork path is available.
                                 support = FORK_EXEC;
-                                if let Some(Ok(pid)) = pidfd_getpid.get().map(|f| cvt(unsafe { f(pidfd) } as i32)) {
-                                    if pidfd_spawnp.get().is_some() && pid as u32 == our_pid {
-                                        support = SPAWN
-                                    }
+                                // but for the fast path we need both spawnp and the
+                                // pidfd -> pid conversion to work.
+                                if pidfd_spawnp.get().is_some() && let Ok(pid) = pidfd.pid() {
+                                    assert_eq!(pid, crate::process::id(), "sanity check");
+                                    support = SPAWN;
                                 }
-                                unsafe { libc::close(pidfd) };
                             }
                             Err(e) if e.raw_os_error() == Some(libc::EMFILE) => {
-                                // We're temporarily(?) out of file descriptors.  In this case obtaining a pidfd would also fail
+                                // We're temporarily(?) out of file descriptors. In this case pidfd_spawnp would also fail
                                 // Don't update the support flag so we can probe again later.
                                 return Err(e)
                             }
-                            _ => {}
+                            _ => {
+                                // pidfd_open not available? likely an old kernel without pidfd support.
+                            }
                         }
                         PIDFD_SUPPORTED.store(support, Ordering::Relaxed);
                         if support == FORK_EXEC {
@@ -791,13 +789,17 @@ impl Command {
                 }
                 spawn_res?;
 
-                let pid = match cvt(pidfd_getpid.get().unwrap()(pidfd)) {
+                use crate::os::fd::{FromRawFd, IntoRawFd};
+
+                let pidfd = PidFd::from_raw_fd(pidfd);
+                let pid = match pidfd.pid() {
                     Ok(pid) => pid,
                     Err(e) => {
                         // The child has been spawned and we are holding its pidfd.
-                        // But we cannot obtain its pid even though pidfd_getpid support was verified earlier.
-                        // This might happen if libc can't open procfs because the file descriptor limit has been reached.
-                        libc::close(pidfd);
+                        // But we cannot obtain its pid even though pidfd_spawnp and getpid support
+                        // was verified earlier.
+                        // This is quite unlikely, but might happen if the ioctl is not supported,
+                        // glibc tries to use procfs and we're out of file descriptors.
                         return Err(Error::new(
                             e.kind(),
                             "pidfd_spawnp succeeded but the child's PID could not be obtained",
@@ -805,7 +807,7 @@ impl Command {
                     }
                 };
 
-                return Ok(Some(Process::new(pid, pidfd)));
+                return Ok(Some(Process::new(pid as i32, pidfd.into_raw_fd())));
             }
 
             // Safety: -1 indicates we don't have a pidfd.
