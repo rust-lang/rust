@@ -25,7 +25,7 @@ use crate::{mem, ptr};
 /// If you need a `String` instead of a `&str`, consider
 /// [`String::from_utf8`][string].
 ///
-/// [string]: ../../std/string/struct.String.html#method.from_utf8
+/// [string]: ../../std/string/type.String.html#method.from_utf8
 ///
 /// Because you can stack-allocate a `[u8; N]`, and you can take a
 /// [`&[u8]`][byteslice] of it, this function is one way to have a

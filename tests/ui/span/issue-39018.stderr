@@ -80,6 +80,8 @@ error[E0308]: mismatched types
 LL |     let _ = a + b;
    |                 ^ expected `&str`, found `String`
    |
+   = note: expected reference `&str`
+                 found struct `String`
 help: consider borrowing here
    |
 LL |     let _ = a + &b;

@@ -3,13 +3,13 @@
 fn main::{closure#0}(_1: *mut {coroutine@$DIR/coroutine_drop_cleanup.rs:12:5: 12:7}) -> () {
     let mut _0: ();
     let mut _2: ();
-    let _3: std::string::String;
+    let _3: std::string::generic::String;
     let _4: ();
     let mut _5: ();
     let mut _6: ();
     let mut _7: u32;
     scope 1 {
-        debug _s => (((*_1) as variant#3).0: std::string::String);
+        debug _s => (((*_1) as variant#3).0: std::string::generic::String);
     }
 
     bb0: {
@@ -20,7 +20,7 @@ fn main::{closure#0}(_1: *mut {coroutine@$DIR/coroutine_drop_cleanup.rs:12:5: 12
     bb1: {
         StorageDead(_5);
         StorageDead(_4);
-        drop((((*_1) as variant#3).0: std::string::String)) -> [return: bb2, unwind unreachable];
+        drop((((*_1) as variant#3).0: std::string::generic::String)) -> [return: bb2, unwind unreachable];
     }
 
     bb2: {

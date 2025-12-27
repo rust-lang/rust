@@ -8,8 +8,8 @@
 //@ cdb-command: g
 //@ cdb-command: dx closure
 //@ cdb-check:closure          [Type: coroutine_closure::main::closure_env$0]
-//@ cdb-check:     [+0x[...]] y                : "" [Type: alloc::string::String]
-//@ cdb-check:     [+0x[...]] x                : "" [Type: alloc::string::String]
+//@ cdb-check:     [+0x[...]] y                : "" [Type: alloc::string::generic::String<alloc::alloc::Global>]
+//@ cdb-check:     [+0x[...]] x                : "" [Type: alloc::string::generic::String<alloc::alloc::Global>]
 #![allow(unused)]
 fn main() {
     let x = String::new();

@@ -9,7 +9,7 @@ use crate::fmt;
 /// As such, the `from_utf8` family of functions and methods for both [`String`]s
 /// and [`&str`]s make use of this error, for example.
 ///
-/// [`String`]: ../../std/string/struct.String.html#method.from_utf8
+/// [`String`]: ../../std/string/type.String.html#method.from_utf8
 /// [`&str`]: super::from_utf8
 ///
 /// # Examples

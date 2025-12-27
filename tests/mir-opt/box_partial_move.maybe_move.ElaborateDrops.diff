@@ -4,15 +4,15 @@
   fn maybe_move(_1: bool, _2: Box<String>) -> Option<String> {
       debug cond => _1;
       debug thing => _2;
-      let mut _0: std::option::Option<std::string::String>;
+      let mut _0: std::option::Option<std::string::generic::String>;
       let mut _3: bool;
-      let mut _4: std::string::String;
+      let mut _4: std::string::generic::String;
 +     let mut _5: bool;
-+     let mut _6: &mut std::boxed::Box<std::string::String>;
++     let mut _6: &mut std::boxed::Box<std::string::generic::String>;
 +     let mut _7: ();
-+     let mut _8: &mut std::boxed::Box<std::string::String>;
++     let mut _8: &mut std::boxed::Box<std::string::generic::String>;
 +     let mut _9: ();
-+     let mut _10: *const std::string::String;
++     let mut _10: *const std::string::generic::String;
   
       bb0: {
 +         _5 = const false;
@@ -87,7 +87,7 @@
 +     }
 + 
 +     bb14: {
-+         _10 = copy ((_2.0: std::ptr::Unique<std::string::String>).0: std::ptr::NonNull<std::string::String>) as *const std::string::String (Transmute);
++         _10 = copy ((_2.0: std::ptr::Unique<std::string::generic::String>).0: std::ptr::NonNull<std::string::generic::String>) as *const std::string::generic::String (Transmute);
 +         goto -> bb11;
       }
   }

@@ -43,6 +43,8 @@ error[E0308]: mismatched types
 LL |     let s = Demo { a };
    |                    ^ expected `String`, found integer
    |
+   = note: expected struct `String`
+                found type `{integer}`
 help: try using a conversion method
    |
 LL |     let s = Demo { a: a.to_string() };

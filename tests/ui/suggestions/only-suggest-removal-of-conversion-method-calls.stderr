@@ -7,6 +7,8 @@ LL | fn get_name() -> String {
 LL |     your_name.trim()
    |     ^^^^^^^^^^^^^^^^ expected `String`, found `&str`
    |
+   = note: expected struct `String`
+           found reference `&str`
 help: try using a conversion method
    |
 LL |     your_name.trim().to_string()

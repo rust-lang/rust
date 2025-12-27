@@ -8,11 +8,11 @@ mod foo {
 
 fn main() {
     let _ = String.new();
-    //~^ ERROR expected value, found struct `String`
+    //~^ ERROR expected value, found type alias `String`
     //~| HELP use the path separator
 
     let _ = String.default;
-    //~^ ERROR expected value, found struct `String`
+    //~^ ERROR expected value, found type alias `String`
     //~| HELP use the path separator
 
     let _ = Vec::<()>.with_capacity(1);

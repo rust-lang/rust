@@ -102,7 +102,7 @@ use crate::marker::PointeeSized;
 /// [method resolution]: ../../reference/expressions/method-call-expr.html
 /// [type coercions]: ../../reference/type-coercions.html
 /// [box]: ../../alloc/boxed/struct.Box.html
-/// [string]: ../../alloc/string/struct.String.html
+/// [string]: ../../alloc/string/type.String.html
 /// [vec]: ../../alloc/vec/struct.Vec.html
 /// [rc]: ../../alloc/rc/struct.Rc.html
 /// [cow]: ../../alloc/borrow/enum.Cow.html
@@ -229,7 +229,7 @@ impl<T: ?Sized> const Deref for &mut T {
 /// [method resolution]: ../../reference/expressions/method-call-expr.html
 /// [type coercions]: ../../reference/type-coercions.html
 /// [box]: ../../alloc/boxed/struct.Box.html
-/// [string]: ../../alloc/string/struct.String.html
+/// [string]: ../../alloc/string/type.String.html
 /// [rc]: ../../alloc/rc/struct.Rc.html
 /// [cow]: ../../alloc/borrow/enum.Cow.html
 ///

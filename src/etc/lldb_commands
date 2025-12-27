@@ -1,8 +1,8 @@
 # Forces test-compliant formatting to all other types
 type synthetic add -l lldb_lookup.synthetic_lookup -x ".*" --category Rust
 # Std String
-type synthetic add -l lldb_lookup.StdStringSyntheticProvider -x "^(alloc::([a-z_]+::)+)String$" --category Rust
-type summary add -F lldb_lookup.StdStringSummaryProvider  -e -x -h "^(alloc::([a-z_]+::)+)String$" --category Rust
+type synthetic add -l lldb_lookup.StdStringSyntheticProvider -x "^(alloc::([a-z_]+::)+)String<.+>$" --category Rust
+type summary add -F lldb_lookup.StdStringSummaryProvider  -e -x -h "^(alloc::([a-z_]+::)+)String<.+>$" --category Rust
 # Std str
 type synthetic add -l lldb_lookup.synthetic_lookup -x "^&(mut )?str$" --category Rust
 type summary add -F lldb_lookup.summary_lookup  -e -x -h "^&(mut )?str$" --category Rust

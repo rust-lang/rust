@@ -3,7 +3,7 @@ use clippy_utils::res::{MaybeDef, MaybeQPath, MaybeResPath, MaybeTypeckRes};
 use clippy_utils::source::{snippet, snippet_with_context};
 use clippy_utils::sugg::{DiagExt as _, Sugg};
 use clippy_utils::ty::{is_copy, same_type_modulo_regions};
-use clippy_utils::{get_parent_expr, is_ty_alias, sym};
+use clippy_utils::{get_parent_expr, is_string_in_global_ty_alias, is_ty_alias, sym};
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{BindingMode, Expr, ExprKind, HirId, MatchSource, Mutability, Node, PatKind};
@@ -391,7 +391,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
 
             ExprKind::Call(path, [arg]) => {
                 if let ExprKind::Path(ref qpath) = path.kind
-                    && !is_ty_alias(qpath)
+                    && (!is_ty_alias(qpath) || is_string_in_global_ty_alias(cx, qpath))
                     && let Some(def_id) = cx.qpath_res(qpath, path.hir_id).opt_def_id()
                     && let Some(name) = cx.tcx.get_diagnostic_name(def_id)
                 {

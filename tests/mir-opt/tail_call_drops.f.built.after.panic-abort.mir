@@ -3,18 +3,18 @@
 fn f() -> () {
     let mut _0: ();
     let mut _1: !;
-    let _2: std::string::String;
+    let _2: std::string::generic::String;
     let _6: ();
-    let mut _7: std::string::String;
+    let mut _7: std::string::generic::String;
     scope 1 {
         debug _a => _2;
         let _3: i32;
         scope 2 {
             debug _b => _3;
-            let _4: std::string::String;
+            let _4: std::string::generic::String;
             scope 3 {
                 debug _c => _4;
-                let _5: std::string::String;
+                let _5: std::string::generic::String;
                 scope 4 {
                     debug _d => _5;
                 }
@@ -24,7 +24,7 @@ fn f() -> () {
 
     bb0: {
         StorageLive(_2);
-        _2 = String::new() -> [return: bb1, unwind: bb17];
+        _2 = string::<impl String>::new() -> [return: bb1, unwind: bb17];
     }
 
     bb1: {
@@ -33,13 +33,13 @@ fn f() -> () {
         _3 = const 12_i32;
         FakeRead(ForLet(None), _3);
         StorageLive(_4);
-        _4 = String::new() -> [return: bb2, unwind: bb16];
+        _4 = string::<impl String>::new() -> [return: bb2, unwind: bb16];
     }
 
     bb2: {
         FakeRead(ForLet(None), _4);
         StorageLive(_5);
-        _5 = String::new() -> [return: bb3, unwind: bb15];
+        _5 = string::<impl String>::new() -> [return: bb3, unwind: bb15];
     }
 
     bb3: {

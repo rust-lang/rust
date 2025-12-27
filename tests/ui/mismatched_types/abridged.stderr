@@ -82,6 +82,8 @@ LL | fn f() -> String {
 LL |     1+2
    |     ^^^ expected `String`, found integer
    |
+   = note: expected struct `String`
+                found type `{integer}`
 help: try using a conversion method
    |
 LL |     (1+2).to_string()
@@ -95,6 +97,8 @@ LL | fn g() -> String {
 LL |     -2
    |     ^^ expected `String`, found integer
    |
+   = note: expected struct `String`
+                found type `{integer}`
 help: try using a conversion method
    |
 LL |     (-2).to_string()
