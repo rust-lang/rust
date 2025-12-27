@@ -233,6 +233,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         e.id,
                         expr_hir_id,
                         *coroutine_kind,
+                        *movability,
                         fn_decl,
                         body,
                         *fn_decl_span,
@@ -1128,7 +1129,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }
             None => {
                 if movability == Movability::Static {
-                    self.dcx().emit_err(ClosureCannotBeStatic { fn_decl_span });
+                    self.dcx().emit_err(ClosureCannotBeStatic { modifier: "", fn_decl_span });
                 }
                 hir::ClosureKind::Closure
             }
@@ -1157,6 +1158,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         closure_id: NodeId,
         closure_hir_id: HirId,
         coroutine_kind: CoroutineKind,
+        movability: Movability,
         decl: &FnDecl,
         body: &Expr,
         fn_decl_span: Span,
@@ -1172,6 +1174,17 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 span_bug!(span, "only async closures and `iter!` closures are supported currently")
             }
         };
+
+        // Movability doesn't make sense on an async/gen closure, so reject outright.
+        match movability {
+            Movability::Static => {
+                self.dcx().emit_err(ClosureCannotBeStatic {
+                    modifier: &format!("{coroutine_desugaring:#}"),
+                    fn_decl_span,
+                });
+            }
+            Movability::Movable => {}
+        }
 
         let body = self.with_new_scopes(fn_decl_span, |this| {
             let inner_decl =
