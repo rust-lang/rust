@@ -269,14 +269,11 @@ fn clean_poly_trait_ref_with_constraints<'tcx>(
     cx: &mut DocContext<'tcx>,
     poly_trait_ref: ty::PolyTraitRef<'tcx>,
     constraints: ThinVec<AssocItemConstraint>,
-) -> GenericBound {
-    GenericBound::TraitBound(
-        PolyTrait {
-            trait_: clean_trait_ref_with_constraints(cx, poly_trait_ref, constraints),
-            generic_params: clean_bound_vars(poly_trait_ref.bound_vars(), cx),
-        },
-        hir::TraitBoundModifiers::NONE,
-    )
+) -> PolyTrait {
+    PolyTrait {
+        trait_: clean_trait_ref_with_constraints(cx, poly_trait_ref, constraints),
+        generic_params: clean_bound_vars(poly_trait_ref.bound_vars(), cx),
+    }
 }
 
 fn clean_lifetime(lifetime: &hir::Lifetime, cx: &DocContext<'_>) -> Lifetime {
@@ -405,16 +402,28 @@ fn clean_poly_trait_predicate<'tcx>(
 ) -> Option<WherePredicate> {
     // `T: [const] Destruct` is hidden because `T: Destruct` is a no-op.
     // FIXME(const_trait_impl) check constness
-    if Some(pred.skip_binder().def_id()) == cx.tcx.lang_items().destruct_trait() {
+    if Some(pred.def_id()) == cx.tcx.lang_items().destruct_trait() {
         return None;
     }
 
-    let poly_trait_ref = pred.map_bound(|pred| pred.trait_ref);
-    Some(WherePredicate::BoundPredicate {
-        ty: clean_middle_ty(poly_trait_ref.self_ty(), cx, None, None),
-        bounds: vec![clean_poly_trait_ref_with_constraints(cx, poly_trait_ref, ThinVec::new())],
-        bound_params: Vec::new(),
-    })
+    let trait_ref = pred.map_bound(|pred| pred.trait_ref);
+
+    let ty = clean_middle_ty(trait_ref.self_ty(), cx, None, None);
+
+    let bound = GenericBound::TraitBound(
+        clean_poly_trait_ref_with_constraints(cx, trait_ref, ThinVec::new()),
+        hir::TraitBoundModifiers {
+            polarity: match pred.polarity() {
+                ty::PredicatePolarity::Positive => hir::BoundPolarity::Positive,
+                ty::PredicatePolarity::Negative => {
+                    rustc_ast::BoundPolarity::Negative(rustc_span::DUMMY_SP)
+                }
+            },
+            constness: hir::BoundConstness::Never,
+        },
+    );
+
+    Some(WherePredicate::BoundPredicate { ty, bounds: vec![bound], bound_params: Vec::new() })
 }
 
 fn clean_region_outlives_predicate<'tcx>(
@@ -2306,7 +2315,8 @@ fn clean_middle_opaque_bounds<'tcx>(
                 })
                 .collect();
 
-            Some(clean_poly_trait_ref_with_constraints(cx, trait_ref, bindings))
+            let trait_ref = clean_poly_trait_ref_with_constraints(cx, trait_ref, bindings);
+            Some(GenericBound::TraitBound(trait_ref, hir::TraitBoundModifiers::NONE))
         })
         .collect::<Vec<_>>();
 
