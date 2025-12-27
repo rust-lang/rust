@@ -95,6 +95,15 @@ pub(super) trait MirPass<'tcx> {
         true
     }
 
+    /// Returns `true` if this pass can handle convergent operations and can therefore
+    /// run on GPU targets.
+    ///
+    /// This means for example that (potentially convergent) calls are not moved or duplicated in control-flow.
+    /// LLVM has detailed explanation of what this entails: https://llvm.org/docs/ConvergentOperations.html
+    fn is_convergence_safe(&self) -> bool {
+        true
+    }
+
     /// Returns `true` if this pass can be overridden by `-Zenable-mir-passes`. This should be
     /// true for basically every pass other than those that are necessary for correctness.
     fn can_be_overridden(&self) -> bool {
@@ -170,6 +179,10 @@ where
         sess.mir_opt_level() >= self.0 as usize
     }
 
+    fn is_convergence_safe(&self) -> bool {
+        self.1.is_convergence_safe()
+    }
+
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         self.1.run_pass(tcx, body)
     }
@@ -220,8 +233,12 @@ where
 {
     let name = pass.name();
 
+    // Check if pass is enabled and safe for the target
+    let is_enabled =
+        pass.is_enabled(tcx.sess) && (pass.is_convergence_safe() || !tcx.sess.target.is_like_gpu);
+
     if !pass.can_be_overridden() {
-        return pass.is_enabled(tcx.sess);
+        return is_enabled;
     }
 
     let overridden_passes = &tcx.sess.opts.unstable_opts.mir_enable_passes;
@@ -235,7 +252,7 @@ where
             *polarity
         });
     let suppressed = !pass.is_required() && matches!(optimizations, Optimizations::Suppressed);
-    overridden.unwrap_or_else(|| !suppressed && pass.is_enabled(tcx.sess))
+    overridden.unwrap_or_else(|| !suppressed && is_enabled)
 }
 
 fn run_passes_inner<'tcx>(
