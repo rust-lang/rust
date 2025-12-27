@@ -1,3 +1,4 @@
+//@ aux-build:minicore.rs
 //@ assembly-output: emit-asm
 //@ revisions: riscv64 riscv64-zbb loongarch64
 //@ compile-flags: -C opt-level=3
