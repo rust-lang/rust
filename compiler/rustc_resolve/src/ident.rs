@@ -1720,7 +1720,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         diag_metadata: Option<&DiagMetadata<'_>>,
     ) -> PathResult<'ra> {
         let mut module = None;
-        let mut module_had_parse_errors = false;
+        let mut module_had_parse_errors = !self.mods_with_parse_errors.is_empty()
+            && self.mods_with_parse_errors.contains(&parent_scope.module.nearest_parent_mod());
         let mut allow_super = true;
         let mut second_binding = None;
 
@@ -1836,6 +1837,14 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             }
 
             let binding = if let Some(module) = module {
+                if !self.mods_with_parse_errors.is_empty()
+                    && let ModuleOrUniformRoot::Module(m) = module
+                    && m.res()
+                        .and_then(|r| r.module_like_def_id())
+                        .is_some_and(|def_id| self.mods_with_parse_errors.contains(&def_id))
+                {
+                    module_had_parse_errors = true;
+                }
                 self.reborrow().resolve_ident_in_module(
                     module,
                     ident,
@@ -1868,7 +1877,19 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             path.len() - 1,
                         ));
                     }
-                    _ => Err(Determinacy::determined(finalize.is_some())),
+                    _ => {
+                        for rib in &ribs[ns] {
+                            if let RibKind::Module(module) = rib.kind
+                                && module.res().and_then(|r| r.module_like_def_id()).is_some_and(
+                                    |def_id| self.mods_with_parse_errors.contains(&def_id),
+                                )
+                            {
+                                module_had_parse_errors = true;
+                                break;
+                            }
+                        }
+                        Err(Determinacy::determined(finalize.is_some()))
+                    }
                 }
             } else {
                 self.reborrow().resolve_ident_in_scope_set(
@@ -1905,9 +1926,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
                     let maybe_assoc = opt_ns != Some(MacroNS) && PathSource::Type.is_expected(res);
                     if let Some(def_id) = binding.res().module_like_def_id() {
-                        if self.mods_with_parse_errors.contains(&def_id) {
-                            module_had_parse_errors = true;
-                        }
                         module = Some(ModuleOrUniformRoot::Module(self.expect_module(def_id)));
                         record_segment_res(self.reborrow(), finalize, res, id);
                     } else if res == Res::ToolMod && !is_last && opt_ns.is_some() {
