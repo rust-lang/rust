@@ -10,10 +10,10 @@ use crate::os::solid::ffi::OsStrExt;
 use crate::path::{Path, PathBuf};
 use crate::sync::Arc;
 pub use crate::sys::fs::common::exists;
+use crate::sys::helpers::ignore_notfound;
 use crate::sys::pal::{abi, error};
 use crate::sys::time::SystemTime;
 use crate::sys::{unsupported, unsupported_err};
-use crate::sys_common::ignore_notfound;
 
 type CIntNotMinusOne = core::num::niche_types::NotAllOnes<c_int>;
 

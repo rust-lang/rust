@@ -24,7 +24,7 @@ use crate::path::Path;
 use crate::ptr::NonNull;
 use crate::slice;
 use crate::sync::atomic::{Atomic, AtomicPtr, Ordering};
-use crate::sys_common::wstr::WStrUnits;
+use crate::sys::helpers::WStrUnits;
 
 type BootInstallMultipleProtocolInterfaces =
     unsafe extern "efiapi" fn(_: *mut r_efi::efi::Handle, _: ...) -> r_efi::efi::Status;

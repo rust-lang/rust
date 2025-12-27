@@ -1,9 +1,10 @@
 use core::iter::repeat;
 
+use super::mul_div_u64;
+use super::small_c_string::run_path_with_cstr;
 use crate::ffi::CString;
 use crate::hint::black_box;
 use crate::path::Path;
-use crate::sys::common::small_c_string::run_path_with_cstr;
 
 #[test]
 fn stack_allocation_works() {
@@ -64,4 +65,9 @@ fn bench_heap_path_alloc(b: &mut test::Bencher) {
         })
         .unwrap();
     });
+}
+
+#[test]
+fn test_muldiv() {
+    assert_eq!(mul_div_u64(1_000_000_000_001, 1_000_000_000, 1_000_000), 1_000_000_000_001_000);
 }

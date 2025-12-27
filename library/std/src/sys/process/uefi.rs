@@ -377,8 +377,8 @@ mod uefi_command_internal {
     use crate::os::uefi::ffi::{OsStrExt, OsStringExt};
     use crate::ptr::NonNull;
     use crate::slice;
+    use crate::sys::helpers::WStrUnits;
     use crate::sys::pal::helpers::{self, OwnedTable};
-    use crate::sys_common::wstr::WStrUnits;
 
     pub struct Image {
         handle: NonNull<crate::ffi::c_void>,

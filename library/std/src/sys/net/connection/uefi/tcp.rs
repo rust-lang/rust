@@ -2,7 +2,7 @@ use super::tcp4;
 use crate::io::{self, IoSlice, IoSliceMut};
 use crate::net::SocketAddr;
 use crate::ptr::NonNull;
-use crate::sys::{helpers, unsupported};
+use crate::sys::pal::{helpers, unsupported};
 use crate::time::Duration;
 
 pub(crate) enum Tcp {

@@ -24,7 +24,7 @@ mod uefi_env {
     use crate::io;
     use crate::os::uefi::ffi::OsStringExt;
     use crate::ptr::NonNull;
-    use crate::sys::{helpers, unsupported_err};
+    use crate::sys::pal::{helpers, unsupported_err};
 
     pub(crate) fn get(key: &OsStr) -> Option<OsString> {
         let shell = helpers::open_shell()?;
