@@ -22,9 +22,7 @@ jobs:
           rustup update stable
 
       - name: Run `date-check`
-        working-directory: ci/date-check
-        run: |
-          cargo run -- ../../src/ > ../../date-check-output.txt
+        run: cargo run --manifest-path ci/date-check/Cargo.toml . > date-check-output.txt
 
       - name: Open issue
         uses: actions/github-script@v7
