@@ -23,7 +23,6 @@ use rustc_middle::ty::{
     AdtDef, BottomUpFolder, FnSig, GenericArgKind, RegionKind, TypeFoldable, TypeSuperVisitable,
     TypeVisitable, TypeVisitableExt, fold_regions,
 };
-use rustc_session::lint::builtin::UNINHABITED_STATIC;
 use rustc_target::spec::{AbiMap, AbiMapping};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::error_reporting::traits::on_unimplemented::OnUnimplementedDirective;
@@ -199,16 +198,13 @@ fn check_static_inhabited(tcx: TyCtxt<'_>, def_id: LocalDefId) {
         }
     };
     if layout.is_uninhabited() {
-        tcx.node_span_lint(
-            UNINHABITED_STATIC,
-            tcx.local_def_id_to_hir_id(def_id),
-            span,
-            |lint| {
-                lint.primary_message("static of uninhabited type");
-                lint
-                .note("uninhabited statics cannot be initialized, and any access would be an immediate error");
-            },
-        );
+        tcx.dcx()
+            .struct_span_err(span, "static of uninhabited type")
+            .with_note(
+                "uninhabited statics cannot be initialized, \
+                and any access would be an immediate error",
+            )
+            .emit();
     }
 }
 
