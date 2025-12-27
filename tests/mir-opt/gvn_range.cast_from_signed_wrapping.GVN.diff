@@ -1,0 +1,52 @@
+- // MIR for `cast_from_signed_wrapping` before GVN
++ // MIR for `cast_from_signed_wrapping` after GVN
+  
+  fn cast_from_signed_wrapping(_1: SignedWrappingA) -> (bool, bool) {
+      debug s => _1;
+      let mut _0: (bool, bool);
+      let _2: u8;
+      let _3: SignedWrappingA;
+      let mut _4: i8;
+      let mut _5: bool;
+      let mut _6: u8;
+      let mut _7: bool;
+      let mut _8: u8;
+      scope 1 {
+          debug s => _2;
+      }
+  
+      bb0: {
+-         StorageLive(_2);
++         nop;
+          StorageLive(_3);
+          _3 = copy _1;
+-         _4 = discriminant(_3);
++         _4 = discriminant(_1);
+          _2 = move _4 as u8 (IntToInt);
+          StorageDead(_3);
+          StorageLive(_5);
+          StorageLive(_6);
+          _6 = copy _2;
+-         _5 = Le(move _6, const 128_u8);
++         _5 = const true;
+          StorageDead(_6);
+          StorageLive(_7);
+          StorageLive(_8);
+          _8 = copy _2;
+-         _7 = Gt(move _8, const 128_u8);
++         _7 = const false;
+          StorageDead(_8);
+-         _0 = (move _5, move _7);
++         _0 = const (true, false);
+          StorageDead(_7);
+          StorageDead(_5);
+-         StorageDead(_2);
++         nop;
+          return;
+      }
++ }
++ 
++ ALLOC0 (size: 2, align: 1) {
++     01 00                                           │ ..
+  }
+  

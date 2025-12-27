@@ -1,0 +1,24 @@
+- // MIR for `cast_to_unsigned_wrapping` before GVN
++ // MIR for `cast_to_unsigned_wrapping` after GVN
+  
+  fn cast_to_unsigned_wrapping(_1: SignedA) -> bool {
+      debug s => _1;
+      let mut _0: bool;
+      let mut _2: u8;
+      let _3: SignedA;
+      let mut _4: i8;
+  
+      bb0: {
+          StorageLive(_2);
+          StorageLive(_3);
+          _3 = copy _1;
+-         _4 = discriminant(_3);
++         _4 = discriminant(_1);
+          _2 = move _4 as u8 (IntToInt);
+          StorageDead(_3);
+          _0 = Gt(move _2, const 254_u8);
+          StorageDead(_2);
+          return;
+      }
+  }
+  

@@ -1,0 +1,72 @@
+- // MIR for `unsigned_wrapping_extension` before GVN
++ // MIR for `unsigned_wrapping_extension` after GVN
+  
+  fn unsigned_wrapping_extension(_1: UnsignedWrappingA) -> (bool, bool) {
+      debug u => _1;
+      let mut _0: (bool, bool);
+      let _2: u16;
+      let _3: UnsignedWrappingA;
+      let mut _4: u8;
+      let _6: UnsignedWrappingA;
+      let mut _7: u8;
+      let mut _8: bool;
+      let mut _9: u16;
+      let mut _10: bool;
+      let mut _11: i16;
+      scope 1 {
+          debug u2u => _2;
+          let _5: i16;
+          scope 2 {
+              debug u2s => _5;
+          }
+      }
+  
+      bb0: {
+-         StorageLive(_2);
++         nop;
+          StorageLive(_3);
+          _3 = copy _1;
+-         _4 = discriminant(_3);
+-         _2 = move _4 as u16 (IntToInt);
++         _4 = discriminant(_1);
++         _2 = copy _4 as u16 (IntToInt);
+          StorageDead(_3);
+-         StorageLive(_5);
++         nop;
+          StorageLive(_6);
+          _6 = copy _1;
+-         _7 = discriminant(_6);
+-         _5 = move _7 as i16 (IntToInt);
++         _7 = copy _4;
++         _5 = copy _4 as i16 (IntToInt);
+          StorageDead(_6);
+-         StorageLive(_8);
++         nop;
+          StorageLive(_9);
+          _9 = copy _2;
+-         _8 = Le(move _9, const 256_u16);
++         _8 = const true;
+          StorageDead(_9);
+          StorageLive(_10);
+          StorageLive(_11);
+          _11 = copy _5;
+-         _10 = Le(move _11, const 256_i16);
++         _10 = const true;
+          StorageDead(_11);
+-         _0 = (move _8, move _10);
++         _0 = const (true, true);
+          StorageDead(_10);
+-         StorageDead(_8);
+-         StorageDead(_5);
+-         StorageDead(_2);
++         nop;
++         nop;
++         nop;
+          return;
+      }
++ }
++ 
++ ALLOC0 (size: 2, align: 1) {
++     01 01                                           │ ..
+  }
+  

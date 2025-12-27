@@ -1487,6 +1487,11 @@ impl<'tcx> Ty<'tcx> {
     }
 
     #[inline]
+    pub fn is_unsigned(self) -> bool {
+        matches!(self.kind(), Uint(_))
+    }
+
+    #[inline]
     pub fn is_ptr_sized_integral(self) -> bool {
         matches!(self.kind(), Int(ty::IntTy::Isize) | Uint(ty::UintTy::Usize))
     }
