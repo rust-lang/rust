@@ -1611,6 +1611,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             }
         }
 
+        suggestions.retain(|suggestion| suggestion.is_stable || self.tcx.sess.is_nightly_build());
         suggestions
     }
 
