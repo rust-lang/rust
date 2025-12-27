@@ -1,0 +1,30 @@
+error: defaults for generic parameters are not allowed here
+  --> $DIR/ice-142913-const-defaults-with-lifetimes.rs:5:12
+   |
+LL | fn foo<'a, const N: &'a Variant = {}>() {}
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: anonymous constants with lifetimes in their type are not yet supported
+  --> $DIR/ice-142913-const-defaults-with-lifetimes.rs:5:35
+   |
+LL | fn foo<'a, const N: &'a Variant = {}>() {}
+   |                                   ^^
+
+error: `&'a Variant` is forbidden as the type of a const generic parameter
+  --> $DIR/ice-142913-const-defaults-with-lifetimes.rs:5:21
+   |
+LL | fn foo<'a, const N: &'a Variant = {}>() {}
+   |                     ^^^^^^^^^^^
+   |
+   = note: the only supported types are integers, `bool`, and `char`
+help: add `#![feature(adt_const_params)]` to the crate attributes to enable more complex and user defined types
+   |
+LL + #![feature(adt_const_params)]
+   |
+help: add `#![feature(unsized_const_params)]` to the crate attributes to enable references to implement the `ConstParamTy` trait
+   |
+LL + #![feature(unsized_const_params)]
+   |
+
+error: aborting due to 3 previous errors
+
