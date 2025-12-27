@@ -301,6 +301,13 @@ impl<'ll, 'tcx> LayoutTypeCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     fn fn_ptr_backend_type(&self, fn_abi: &FnAbi<'tcx, Ty<'tcx>>) -> &'ll Type {
         fn_abi.ptr_to_llvm_type(self)
     }
+    fn vtable_component_type(&self, fn_abi: &FnAbi<'tcx, Ty<'tcx>>) -> &'ll Type {
+        if self.sess().opts.unstable_opts.experimental_relative_rust_abi_vtables {
+            self.type_i32()
+        } else {
+            fn_abi.ptr_to_llvm_type(self)
+        }
+    }
     fn reg_backend_type(&self, ty: &Reg) -> &'ll Type {
         ty.llvm_type(self)
     }
