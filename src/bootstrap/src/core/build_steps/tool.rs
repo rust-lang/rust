@@ -501,6 +501,7 @@ bootstrap_tool!(
     UnicodeTableGenerator, "src/tools/unicode-table-generator", "unicode-table-generator";
     FeaturesStatusDump, "src/tools/features-status-dump", "features-status-dump";
     OptimizedDist, "src/tools/opt-dist", "opt-dist", submodules = &["src/tools/rustc-perf"];
+    ReproCheck, "src/tools/repro-check", "repro-check";
     RunMakeSupport, "src/tools/run-make-support", "run_make_support", artifact_kind = ToolArtifactKind::Library;
 );
 
