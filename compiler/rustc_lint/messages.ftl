@@ -320,6 +320,9 @@ lint_enum_intrinsics_mem_variant =
     the return value of `mem::variant_count` is unspecified when called with a non-enum type
     .note = the type parameter of `variant_count` should be an enum, but it was instantiated with the type `{$ty_param}`, which is not an enum
 
+lint_eq_internal_method = `Eq::assert_receiver_is_total_eq` should never be implemented by hand
+    .note = this method is only used to add checks to the `Eq` derive macro
+
 lint_expectation = this lint expectation is unfulfilled
     .note = the `unfulfilled_lint_expectations` lint can't be expected and will always produce this message
     .rationale = {$rationale}
