@@ -244,10 +244,10 @@ pub fn current_exe() -> io::Result<PathBuf> {
 
     #[cfg(not(test))]
     use crate::env;
-    use crate::io::ErrorKind;
+    use crate::io;
 
     let exe_path = env::args().next().ok_or(io::const_error!(
-        ErrorKind::NotFound,
+        io::ErrorKind::NotFound,
         "an executable path was not found because no arguments were provided through argv",
     ))?;
     let path = PathBuf::from(exe_path);
@@ -272,7 +272,7 @@ pub fn current_exe() -> io::Result<PathBuf> {
             }
         }
     }
-    Err(io::const_error!(ErrorKind::NotFound, "an executable path was not found"))
+    Err(io::const_error!(io::ErrorKind::NotFound, "an executable path was not found"))
 }
 
 #[cfg(any(target_os = "freebsd", target_os = "dragonfly"))]
@@ -463,8 +463,7 @@ pub fn current_exe() -> io::Result<PathBuf> {
             name.len(),
         );
         if result != libc::B_OK {
-            use crate::io::ErrorKind;
-            Err(io::const_error!(ErrorKind::Uncategorized, "error getting executable path"))
+            Err(io::const_error!(io::ErrorKind::Uncategorized, "error getting executable path"))
         } else {
             // find_path adds the null terminator.
             let name = CStr::from_ptr(name.as_ptr()).to_bytes();
@@ -485,8 +484,7 @@ pub fn current_exe() -> io::Result<PathBuf> {
 
 #[cfg(target_os = "l4re")]
 pub fn current_exe() -> io::Result<PathBuf> {
-    use crate::io::ErrorKind;
-    Err(io::const_error!(ErrorKind::Unsupported, "not yet implemented!"))
+    Err(io::const_error!(io::ErrorKind::Unsupported, "not yet implemented!"))
 }
 
 #[cfg(target_os = "vxworks")]
@@ -514,10 +512,9 @@ pub fn current_exe() -> io::Result<PathBuf> {
 
     #[cfg(not(test))]
     use crate::env;
-    use crate::io::ErrorKind;
 
     let exe_path = env::args().next().ok_or(io::const_error!(
-        ErrorKind::Uncategorized,
+        io::ErrorKind::Uncategorized,
         "an executable path was not found because no arguments were provided through argv",
     ))?;
     let path = PathBuf::from(exe_path);

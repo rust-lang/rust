@@ -157,7 +157,7 @@ pub fn cvt<T: IsMinusOne>(t: T) -> io::Result<T> {
     if t.is_minus_one() { Err(io::Error::last_os_error()) } else { Ok(t) }
 }
 
-pub fn cvt_r<T, F>(mut f: F) -> crate::io::Result<T>
+pub fn cvt_r<T, F>(mut f: F) -> io::Result<T>
 where
     T: IsMinusOne,
     F: FnMut() -> T,

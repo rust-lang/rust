@@ -13,8 +13,6 @@
 //! [`OsString`]: crate::ffi::OsString
 #![forbid(unsafe_op_in_unsafe_fn)]
 
-use crate::io::RawOsError;
-
 pub mod helpers;
 pub mod os;
 pub mod time;
@@ -22,7 +20,7 @@ pub mod time;
 #[cfg(test)]
 mod tests;
 
-use crate::io as std_io;
+use crate::io;
 use crate::os::uefi;
 use crate::ptr::NonNull;
 use crate::sync::atomic::{Atomic, AtomicPtr, Ordering};
@@ -76,19 +74,17 @@ pub unsafe fn cleanup() {
 }
 
 #[inline]
-pub const fn unsupported<T>() -> std_io::Result<T> {
+pub const fn unsupported<T>() -> io::Result<T> {
     Err(unsupported_err())
 }
 
 #[inline]
-pub const fn unsupported_err() -> std_io::Error {
-    std_io::const_error!(std_io::ErrorKind::Unsupported, "operation not supported on UEFI")
+pub const fn unsupported_err() -> io::Error {
+    io::const_error!(io::ErrorKind::Unsupported, "operation not supported on UEFI")
 }
 
-pub fn decode_error_kind(code: RawOsError) -> crate::io::ErrorKind {
+pub fn decode_error_kind(code: io::RawOsError) -> io::ErrorKind {
     use r_efi::efi::Status;
-
-    use crate::io::ErrorKind;
 
     match r_efi::efi::Status::from_usize(code) {
         Status::ALREADY_STARTED
@@ -108,28 +104,28 @@ pub fn decode_error_kind(code: RawOsError) -> crate::io::ErrorKind {
         | Status::PROTOCOL_ERROR
         | Status::PROTOCOL_UNREACHABLE
         | Status::TFTP_ERROR
-        | Status::VOLUME_CORRUPTED => ErrorKind::Other,
-        Status::BAD_BUFFER_SIZE | Status::INVALID_LANGUAGE => ErrorKind::InvalidData,
-        Status::ABORTED => ErrorKind::ConnectionAborted,
-        Status::ACCESS_DENIED => ErrorKind::PermissionDenied,
-        Status::BUFFER_TOO_SMALL => ErrorKind::FileTooLarge,
-        Status::CONNECTION_REFUSED => ErrorKind::ConnectionRefused,
-        Status::CONNECTION_RESET => ErrorKind::ConnectionReset,
-        Status::END_OF_FILE => ErrorKind::UnexpectedEof,
-        Status::HOST_UNREACHABLE => ErrorKind::HostUnreachable,
-        Status::INVALID_PARAMETER => ErrorKind::InvalidInput,
-        Status::IP_ADDRESS_CONFLICT => ErrorKind::AddrInUse,
-        Status::NETWORK_UNREACHABLE => ErrorKind::NetworkUnreachable,
-        Status::NO_RESPONSE => ErrorKind::HostUnreachable,
-        Status::NOT_FOUND => ErrorKind::NotFound,
-        Status::NOT_READY => ErrorKind::ResourceBusy,
-        Status::OUT_OF_RESOURCES => ErrorKind::OutOfMemory,
-        Status::SECURITY_VIOLATION => ErrorKind::PermissionDenied,
-        Status::TIMEOUT => ErrorKind::TimedOut,
-        Status::UNSUPPORTED => ErrorKind::Unsupported,
-        Status::VOLUME_FULL => ErrorKind::StorageFull,
-        Status::WRITE_PROTECTED => ErrorKind::ReadOnlyFilesystem,
-        _ => ErrorKind::Uncategorized,
+        | Status::VOLUME_CORRUPTED => io::ErrorKind::Other,
+        Status::BAD_BUFFER_SIZE | Status::INVALID_LANGUAGE => io::ErrorKind::InvalidData,
+        Status::ABORTED => io::ErrorKind::ConnectionAborted,
+        Status::ACCESS_DENIED => io::ErrorKind::PermissionDenied,
+        Status::BUFFER_TOO_SMALL => io::ErrorKind::FileTooLarge,
+        Status::CONNECTION_REFUSED => io::ErrorKind::ConnectionRefused,
+        Status::CONNECTION_RESET => io::ErrorKind::ConnectionReset,
+        Status::END_OF_FILE => io::ErrorKind::UnexpectedEof,
+        Status::HOST_UNREACHABLE => io::ErrorKind::HostUnreachable,
+        Status::INVALID_PARAMETER => io::ErrorKind::InvalidInput,
+        Status::IP_ADDRESS_CONFLICT => io::ErrorKind::AddrInUse,
+        Status::NETWORK_UNREACHABLE => io::ErrorKind::NetworkUnreachable,
+        Status::NO_RESPONSE => io::ErrorKind::HostUnreachable,
+        Status::NOT_FOUND => io::ErrorKind::NotFound,
+        Status::NOT_READY => io::ErrorKind::ResourceBusy,
+        Status::OUT_OF_RESOURCES => io::ErrorKind::OutOfMemory,
+        Status::SECURITY_VIOLATION => io::ErrorKind::PermissionDenied,
+        Status::TIMEOUT => io::ErrorKind::TimedOut,
+        Status::UNSUPPORTED => io::ErrorKind::Unsupported,
+        Status::VOLUME_FULL => io::ErrorKind::StorageFull,
+        Status::WRITE_PROTECTED => io::ErrorKind::ReadOnlyFilesystem,
+        _ => io::ErrorKind::Uncategorized,
     }
 }
 
@@ -163,6 +159,6 @@ extern "efiapi" fn exit_boot_service_handler(_e: r_efi::efi::Event, _ctx: *mut c
     uefi::env::disable_boot_services();
 }
 
-pub fn is_interrupted(_code: RawOsError) -> bool {
+pub fn is_interrupted(_code: io::RawOsError) -> bool {
     false
 }

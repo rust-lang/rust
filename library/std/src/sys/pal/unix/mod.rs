@@ -1,6 +1,6 @@
 #![allow(missing_docs, nonstandard_style)]
 
-use crate::io::ErrorKind;
+use crate::io;
 
 #[cfg(target_os = "fuchsia")]
 pub mod fuchsia;
@@ -229,8 +229,8 @@ pub(crate) fn is_interrupted(errno: i32) -> bool {
     errno == libc::EINTR
 }
 
-pub fn decode_error_kind(errno: i32) -> ErrorKind {
-    use ErrorKind::*;
+pub fn decode_error_kind(errno: i32) -> io::ErrorKind {
+    use io::ErrorKind::*;
     match errno as libc::c_int {
         libc::E2BIG => ArgumentListTooLong,
         libc::EADDRINUSE => AddrInUse,
@@ -298,12 +298,12 @@ impl_is_minus_one! { i8 i16 i32 i64 isize }
 
 /// Converts native return values to Result using the *-1 means error is in `errno`*  convention.
 /// Non-error values are `Ok`-wrapped.
-pub fn cvt<T: IsMinusOne>(t: T) -> crate::io::Result<T> {
-    if t.is_minus_one() { Err(crate::io::Error::last_os_error()) } else { Ok(t) }
+pub fn cvt<T: IsMinusOne>(t: T) -> io::Result<T> {
+    if t.is_minus_one() { Err(io::Error::last_os_error()) } else { Ok(t) }
 }
 
 /// `-1` → look at `errno` → retry on `EINTR`. Otherwise `Ok()`-wrap the closure return value.
-pub fn cvt_r<T, F>(mut f: F) -> crate::io::Result<T>
+pub fn cvt_r<T, F>(mut f: F) -> io::Result<T>
 where
     T: IsMinusOne,
     F: FnMut() -> T,
@@ -318,8 +318,8 @@ where
 
 #[allow(dead_code)] // Not used on all platforms.
 /// Zero means `Ok()`, all other values are treated as raw OS errors. Does not look at `errno`.
-pub fn cvt_nz(error: libc::c_int) -> crate::io::Result<()> {
-    if error == 0 { Ok(()) } else { Err(crate::io::Error::from_raw_os_error(error)) }
+pub fn cvt_nz(error: libc::c_int) -> io::Result<()> {
+    if error == 0 { Ok(()) } else { Err(io::Error::from_raw_os_error(error)) }
 }
 
 // libc::abort() will run the SIGABRT handler.  That's fine because anyone who

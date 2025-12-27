@@ -1,6 +1,5 @@
 use super::abi;
-use crate::fmt;
-use crate::io::ErrorKind;
+use crate::{fmt, io};
 
 /// Wraps a μITRON error code.
 #[derive(Debug, Copy, Clone)]
@@ -84,39 +83,39 @@ pub fn is_interrupted(er: abi::ER) -> bool {
     er == abi::E_RLWAI
 }
 
-pub fn decode_error_kind(er: abi::ER) -> ErrorKind {
+pub fn decode_error_kind(er: abi::ER) -> io::ErrorKind {
     match er {
         // Success
-        er if er >= 0 => ErrorKind::Uncategorized,
+        er if er >= 0 => io::ErrorKind::Uncategorized,
 
         // μITRON 4.0
         // abi::E_SYS
-        abi::E_NOSPT => ErrorKind::Unsupported, // Some("unsupported function"),
-        abi::E_RSFN => ErrorKind::InvalidInput, // Some("reserved function code"),
-        abi::E_RSATR => ErrorKind::InvalidInput, // Some("reserved attribute"),
-        abi::E_PAR => ErrorKind::InvalidInput,  // Some("parameter error"),
-        abi::E_ID => ErrorKind::NotFound,       // Some("invalid ID number"),
+        abi::E_NOSPT => io::ErrorKind::Unsupported, // Some("unsupported function"),
+        abi::E_RSFN => io::ErrorKind::InvalidInput, // Some("reserved function code"),
+        abi::E_RSATR => io::ErrorKind::InvalidInput, // Some("reserved attribute"),
+        abi::E_PAR => io::ErrorKind::InvalidInput,  // Some("parameter error"),
+        abi::E_ID => io::ErrorKind::NotFound,       // Some("invalid ID number"),
         // abi::E_CTX
-        abi::E_MACV => ErrorKind::PermissionDenied, // Some("memory access violation"),
-        abi::E_OACV => ErrorKind::PermissionDenied, // Some("object access violation"),
+        abi::E_MACV => io::ErrorKind::PermissionDenied, // Some("memory access violation"),
+        abi::E_OACV => io::ErrorKind::PermissionDenied, // Some("object access violation"),
         // abi::E_ILUSE
-        abi::E_NOMEM => ErrorKind::OutOfMemory, // Some("insufficient memory"),
-        abi::E_NOID => ErrorKind::OutOfMemory,  // Some("no ID number available"),
+        abi::E_NOMEM => io::ErrorKind::OutOfMemory, // Some("insufficient memory"),
+        abi::E_NOID => io::ErrorKind::OutOfMemory,  // Some("no ID number available"),
         // abi::E_OBJ
-        abi::E_NOEXS => ErrorKind::NotFound, // Some("non-existent object"),
+        abi::E_NOEXS => io::ErrorKind::NotFound, // Some("non-existent object"),
         // abi::E_QOVR
-        abi::E_RLWAI => ErrorKind::Interrupted, // Some("forced release from waiting"),
-        abi::E_TMOUT => ErrorKind::TimedOut,    // Some("polling failure or timeout"),
+        abi::E_RLWAI => io::ErrorKind::Interrupted, // Some("forced release from waiting"),
+        abi::E_TMOUT => io::ErrorKind::TimedOut,    // Some("polling failure or timeout"),
         // abi::E_DLT
         // abi::E_CLS
         // abi::E_WBLK
         // abi::E_BOVR
 
         // The TOPPERS third generation kernels
-        abi::E_NORES => ErrorKind::OutOfMemory, // Some("insufficient system resources"),
+        abi::E_NORES => io::ErrorKind::OutOfMemory, // Some("insufficient system resources"),
         // abi::E_RASTER
         // abi::E_COMM
-        _ => ErrorKind::Uncategorized,
+        _ => io::ErrorKind::Uncategorized,
     }
 }
 

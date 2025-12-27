@@ -5,7 +5,7 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 #![allow(fuzzy_provenance_casts)] // FIXME: this entire module systematically confuses pointers and integers
 
-use crate::io::ErrorKind;
+use crate::io;
 use crate::sync::atomic::{Atomic, AtomicBool, Ordering};
 
 pub mod abi;
@@ -29,12 +29,12 @@ pub unsafe fn cleanup() {}
 
 /// This function is used to implement functionality that simply doesn't exist.
 /// Programs relying on this functionality will need to deal with the error.
-pub fn unsupported<T>() -> crate::io::Result<T> {
+pub fn unsupported<T>() -> io::Result<T> {
     Err(unsupported_err())
 }
 
-pub fn unsupported_err() -> crate::io::Error {
-    crate::io::const_error!(ErrorKind::Unsupported, "operation not supported on SGX yet")
+pub fn unsupported_err() -> io::Error {
+    io::const_error!(io::ErrorKind::Unsupported, "operation not supported on SGX yet")
 }
 
 /// This function is used to implement various functions that doesn't exist,
@@ -42,11 +42,11 @@ pub fn unsupported_err() -> crate::io::Error {
 /// returned, the program might very well be able to function normally. This is
 /// what happens when `SGX_INEFFECTIVE_ERROR` is set to `true`. If it is
 /// `false`, the behavior is the same as `unsupported`.
-pub fn sgx_ineffective<T>(v: T) -> crate::io::Result<T> {
+pub fn sgx_ineffective<T>(v: T) -> io::Result<T> {
     static SGX_INEFFECTIVE_ERROR: Atomic<bool> = AtomicBool::new(false);
     if SGX_INEFFECTIVE_ERROR.load(Ordering::Relaxed) {
-        Err(crate::io::const_error!(
-            ErrorKind::Uncategorized,
+        Err(io::const_error!(
+            io::ErrorKind::Uncategorized,
             "operation can't be trusted to have any effect on SGX",
         ))
     } else {
@@ -59,48 +59,48 @@ pub fn is_interrupted(code: i32) -> bool {
     code == fortanix_sgx_abi::Error::Interrupted as _
 }
 
-pub fn decode_error_kind(code: i32) -> ErrorKind {
+pub fn decode_error_kind(code: i32) -> io::ErrorKind {
     use fortanix_sgx_abi::Error;
 
     // FIXME: not sure how to make sure all variants of Error are covered
     if code == Error::NotFound as _ {
-        ErrorKind::NotFound
+        io::ErrorKind::NotFound
     } else if code == Error::PermissionDenied as _ {
-        ErrorKind::PermissionDenied
+        io::ErrorKind::PermissionDenied
     } else if code == Error::ConnectionRefused as _ {
-        ErrorKind::ConnectionRefused
+        io::ErrorKind::ConnectionRefused
     } else if code == Error::ConnectionReset as _ {
-        ErrorKind::ConnectionReset
+        io::ErrorKind::ConnectionReset
     } else if code == Error::ConnectionAborted as _ {
-        ErrorKind::ConnectionAborted
+        io::ErrorKind::ConnectionAborted
     } else if code == Error::NotConnected as _ {
-        ErrorKind::NotConnected
+        io::ErrorKind::NotConnected
     } else if code == Error::AddrInUse as _ {
-        ErrorKind::AddrInUse
+        io::ErrorKind::AddrInUse
     } else if code == Error::AddrNotAvailable as _ {
-        ErrorKind::AddrNotAvailable
+        io::ErrorKind::AddrNotAvailable
     } else if code == Error::BrokenPipe as _ {
-        ErrorKind::BrokenPipe
+        io::ErrorKind::BrokenPipe
     } else if code == Error::AlreadyExists as _ {
-        ErrorKind::AlreadyExists
+        io::ErrorKind::AlreadyExists
     } else if code == Error::WouldBlock as _ {
-        ErrorKind::WouldBlock
+        io::ErrorKind::WouldBlock
     } else if code == Error::InvalidInput as _ {
-        ErrorKind::InvalidInput
+        io::ErrorKind::InvalidInput
     } else if code == Error::InvalidData as _ {
-        ErrorKind::InvalidData
+        io::ErrorKind::InvalidData
     } else if code == Error::TimedOut as _ {
-        ErrorKind::TimedOut
+        io::ErrorKind::TimedOut
     } else if code == Error::WriteZero as _ {
-        ErrorKind::WriteZero
+        io::ErrorKind::WriteZero
     } else if code == Error::Interrupted as _ {
-        ErrorKind::Interrupted
+        io::ErrorKind::Interrupted
     } else if code == Error::Other as _ {
-        ErrorKind::Uncategorized
+        io::ErrorKind::Uncategorized
     } else if code == Error::UnexpectedEof as _ {
-        ErrorKind::UnexpectedEof
+        io::ErrorKind::UnexpectedEof
     } else {
-        ErrorKind::Uncategorized
+        io::ErrorKind::Uncategorized
     }
 }
 
