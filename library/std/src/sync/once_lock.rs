@@ -1,3 +1,4 @@
+use super::once::OnceExclusiveState;
 use crate::cell::UnsafeCell;
 use crate::fmt;
 use crate::marker::PhantomData;
@@ -152,8 +153,8 @@ impl<T> OnceLock<T> {
     #[stable(feature = "once_cell", since = "1.70.0")]
     #[rustc_should_not_be_called_on_const_items]
     pub fn get(&self) -> Option<&T> {
-        if self.is_initialized() {
-            // Safe b/c checked is_initialized
+        if self.initialized() {
+            // Safe b/c checked initialized
             Some(unsafe { self.get_unchecked() })
         } else {
             None
@@ -170,8 +171,8 @@ impl<T> OnceLock<T> {
     #[inline]
     #[stable(feature = "once_cell", since = "1.70.0")]
     pub fn get_mut(&mut self) -> Option<&mut T> {
-        if self.is_initialized() {
-            // Safe b/c checked is_initialized and we have a unique access
+        if self.initialized_mut() {
+            // Safe b/c checked initialized and we have a unique access
             Some(unsafe { self.get_unchecked_mut() })
         } else {
             None
@@ -402,13 +403,11 @@ impl<T> OnceLock<T> {
         // NOTE: We need to perform an acquire on the state in this method
         // in order to correctly synchronize `LazyLock::force`. This is
         // currently done by calling `self.get()`, which in turn calls
-        // `self.is_initialized()`, which in turn performs the acquire.
+        // `self.initialized()`, which in turn performs the acquire.
         if let Some(value) = self.get() {
             return Ok(value);
         }
         self.initialize(f)?;
-
-        debug_assert!(self.is_initialized());
 
         // SAFETY: The inner value has been initialized
         Ok(unsafe { self.get_unchecked() })
@@ -451,10 +450,10 @@ impl<T> OnceLock<T> {
     where
         F: FnOnce() -> Result<T, E>,
     {
-        if self.get().is_none() {
+        if self.get_mut().is_none() {
             self.initialize(f)?;
         }
-        debug_assert!(self.is_initialized());
+
         // SAFETY: The inner value has been initialized
         Ok(unsafe { self.get_unchecked_mut() })
     }
@@ -503,20 +502,30 @@ impl<T> OnceLock<T> {
     #[inline]
     #[stable(feature = "once_cell", since = "1.70.0")]
     pub fn take(&mut self) -> Option<T> {
-        if self.is_initialized() {
+        if self.initialized_mut() {
             self.once = Once::new();
             // SAFETY: `self.value` is initialized and contains a valid `T`.
-            // `self.once` is reset, so `is_initialized()` will be false again
+            // `self.once` is reset, so `initialized()` will be false again
             // which prevents the value from being read twice.
-            unsafe { Some((&mut *self.value.get()).assume_init_read()) }
+            unsafe { Some(self.value.get_mut().assume_init_read()) }
         } else {
             None
         }
     }
 
     #[inline]
-    fn is_initialized(&self) -> bool {
+    fn initialized(&self) -> bool {
         self.once.is_completed()
+    }
+
+    #[inline]
+    fn initialized_mut(&mut self) -> bool {
+        // `state()` does not perform an atomic load, so prefer it over `is_complete()`.
+        let state = self.once.state();
+        match state {
+            OnceExclusiveState::Complete => true,
+            _ => false,
+        }
     }
 
     #[cold]
@@ -552,7 +561,7 @@ impl<T> OnceLock<T> {
     /// The cell must be initialized
     #[inline]
     unsafe fn get_unchecked(&self) -> &T {
-        debug_assert!(self.is_initialized());
+        debug_assert!(self.initialized());
         unsafe { (&*self.value.get()).assume_init_ref() }
     }
 
@@ -561,8 +570,8 @@ impl<T> OnceLock<T> {
     /// The cell must be initialized
     #[inline]
     unsafe fn get_unchecked_mut(&mut self) -> &mut T {
-        debug_assert!(self.is_initialized());
-        unsafe { (&mut *self.value.get()).assume_init_mut() }
+        debug_assert!(self.initialized_mut());
+        unsafe { self.value.get_mut().assume_init_mut() }
     }
 }
 
@@ -690,11 +699,11 @@ impl<T: Eq> Eq for OnceLock<T> {}
 unsafe impl<#[may_dangle] T> Drop for OnceLock<T> {
     #[inline]
     fn drop(&mut self) {
-        if self.is_initialized() {
+        if self.initialized_mut() {
             // SAFETY: The cell is initialized and being dropped, so it can't
             // be accessed again. We also don't touch the `T` other than
             // dropping it, which validates our usage of #[may_dangle].
-            unsafe { (&mut *self.value.get()).assume_init_drop() };
+            unsafe { self.value.get_mut().assume_init_drop() };
         }
     }
 }
