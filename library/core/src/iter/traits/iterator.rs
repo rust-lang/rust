@@ -4034,6 +4034,62 @@ pub trait Iterator {
     {
         unreachable!("Always specialized");
     }
+
+    /// Checks if the iterator contains *exactly* one element.
+    /// If so, returns this one element.
+    ///
+    /// See also [`collect_array`](Iterator::collect_array) for lengths other than `1`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(exact_length_collection)]
+    ///
+    /// assert_eq!([1].into_iter().exactly_one(), Some(1));
+    /// assert_eq!([].into_iter().exactly_one(), None::<()>);
+    ///
+    /// // There is exactly one even integer in the array:
+    /// assert_eq!([1, 2, 3].into_iter().filter(|x| x % 2 == 0).exactly_one(), Some(2));
+    /// // But there are two odds, which is too many:
+    /// assert_eq!([1, 2, 3].into_iter().filter(|x| x % 2 == 1).exactly_one(), None);
+    /// ```
+    #[inline]
+    #[unstable(feature = "exact_length_collection", issue = "149266")]
+    fn exactly_one(self) -> Option<Self::Item>
+    where
+        Self: Sized,
+    {
+        self.collect_array::<1>().map(|[i]| i)
+    }
+
+    /// Checks if an iterator has *exactly* `N` elements.
+    /// If so, returns those `N` elements in an array.
+    ///
+    /// See also [`exactly_one`](Iterator::exactly_one) when expecting a single element.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(exact_length_collection)]
+    ///
+    /// assert_eq!([1, 2, 3, 4].into_iter().collect_array(), Some([1, 2, 3, 4]));
+    /// assert_eq!([1, 2].into_iter().chain([3, 4]).collect_array(), Some([1, 2, 3, 4]));
+    ///
+    /// // Iterator contains too few elements:
+    /// assert_eq!([1, 2].into_iter().collect_array::<4>(), None);
+    /// // Iterator contains too many elements:
+    /// assert_eq!([1, 2, 3, 4, 5].into_iter().collect_array::<4>(), None);
+    /// // Taking 4 makes it work again:
+    /// assert_eq!([1, 2, 3, 4, 5].into_iter().take(4).collect_array(), Some([1, 2, 3, 4]));
+    /// ```
+    #[inline]
+    #[unstable(feature = "exact_length_collection", issue = "149266")]
+    fn collect_array<const N: usize>(mut self) -> Option<[Self::Item; N]>
+    where
+        Self: Sized,
+    {
+        self.next_chunk().ok().filter(|_| self.next().is_none())
+    }
 }
 
 trait SpecIterEq<B: Iterator>: Iterator {
