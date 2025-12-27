@@ -63,7 +63,7 @@ use crate::time::Duration;
 /// On platforms that support it, we pass the close-on-exec flag to atomically create the socket and
 /// set it as CLOEXEC. On Linux, this was added in 2.6.27. See [`socket(2)`] for more information.
 ///
-/// [`socket(2)`](https://www.man7.org/linux/man-pages/man2/socket.2.html#:~:text=SOCK_CLOEXEC)
+/// [`socket(2)`]: https://www.man7.org/linux/man-pages/man2/socket.2.html#:~:text=SOCK_CLOEXEC
 ///
 /// # `SIGPIPE`
 ///
