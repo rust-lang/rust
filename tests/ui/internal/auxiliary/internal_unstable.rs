@@ -99,3 +99,10 @@ macro_rules! access_field_noallow {
 macro_rules! pass_through_noallow {
     ($e: expr) => { $e }
 }
+
+#[stable(feature = "stable", since = "1.0.0")]
+#[allow_internal_unstable(asm_experimental_arch)]
+#[macro_export]
+macro_rules! asm_redirect {
+    ($($t:tt)*) => { core::arch::global_asm!($($t)*); }
+}
