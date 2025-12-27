@@ -2259,8 +2259,8 @@ fn parse_opt_level(
 }
 
 fn select_debuginfo(matches: &getopts::Matches, cg: &CodegenOptions) -> DebugInfo {
-    let max_g = matches.opt_positions("g").into_iter().max();
-    let max_c = matches
+    let _max_g = matches.opt_positions("g").into_iter().max();
+    let _max_c = matches
         .opt_strs_pos("C")
         .into_iter()
         .flat_map(|(i, s)| {
@@ -2268,7 +2268,13 @@ fn select_debuginfo(matches: &getopts::Matches, cg: &CodegenOptions) -> DebugInf
             if let Some("debuginfo") = s.split('=').next() { Some(i) } else { None }
         })
         .max();
-    if max_g > max_c { DebugInfo::Full } else { cg.debuginfo }
+    match cg.debuginfo {
+        DebugInfo::None => DebugInfo::None,
+        DebugInfo::LineDirectivesOnly => DebugInfo::LineDirectivesOnly,
+        DebugInfo::LineTablesOnly => DebugInfo::LineTablesOnly,
+        DebugInfo::Limited => DebugInfo::LineTablesOnly,
+        DebugInfo::Full => DebugInfo::LineTablesOnly,
+    }
 }
 
 fn parse_assert_incr_state(
