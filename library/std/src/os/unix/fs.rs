@@ -233,9 +233,10 @@ pub trait FileExt {
     ///
     /// # Bug
     /// On some systems, `write_at` utilises [`pwrite64`] to write to files.
-    /// However, this syscall has a [bug] where files opened with the `O_APPEND`
+    /// However, on linux this syscall has a [bug] where files opened with the `O_APPEND`
     /// flag fail to respect the offset parameter, always appending to the end
-    /// of the file instead.
+    /// of the file instead. When available `pwritev2(..., RWF_NOAPPEND)` will
+    /// be used instead to avoid this bug.
     ///
     /// It is possible to inadvertently set this flag, like in the example below.
     /// Therefore, it is important to be vigilant while changing options to mitigate
