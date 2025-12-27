@@ -1,0 +1,19 @@
+error: encountered diff marker
+ --> main.rust:2:1
+  |
+2 | <<<<<<< HEAD //~ ERROR encountered diff marker
+  | ^^^^^^^ between this marker and `=======` is the code that you are rebasing onto
+3 |     Foo(u8),
+4 | =======
+  | ------- between this marker and `>>>>>>>` is the code from branch 'branch-name' that you are rebasing
+5 |     Bar(i8),
+6 | >>>>>>> branch
+  | ^^^^^^^ this marker concludes the conflict region
+  |
+  = note: conflict markers indicate that a merge was started but could not be completed due to merge conflicts
+          to resolve a conflict, keep only the code you want and then delete the lines containing conflict markers
+  = note: for an explanation on these markers from the `git` documentation:
+          visit <https://git-scm.com/book/en/v2/Git-Tools-Advanced-Merging#_checking_out_conflicts>
+
+error: aborting due to 1 previous error
+
