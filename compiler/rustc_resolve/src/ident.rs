@@ -419,9 +419,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         // }
         // So we have to save the innermost solution and continue searching in outer scopes
         // to detect potential ambiguities.
-        let mut innermost_result: Option<(NameBinding<'_>, Scope<'_>)> = None;
+        let mut innermost_results: Vec<(NameBinding<'_>, Scope<'_>)> = Vec::new();
         let mut determinacy = Determinacy::Determined;
-        let mut extern_prelude_item_binding = None;
 
         // Go through all the scopes and try to resolve the name.
         let break_result = self.visit_scopes(
@@ -442,11 +441,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     scope_set,
                     parent_scope,
                     // Shadowed bindings don't need to be marked as used or non-speculatively loaded.
-                    if innermost_result.is_none() { finalize } else { None },
+                    if innermost_results.is_empty() { finalize } else { None },
                     force,
                     ignore_binding,
                     ignore_import,
-                    &mut extern_prelude_item_binding,
                 )? {
                     Ok(binding) if sub_namespace_match(binding.macro_kinds(), macro_kind) => {
                         // Below we report various ambiguity errors.
@@ -457,24 +455,21 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             return ControlFlow::Break(Ok(binding));
                         }
 
-                        if let Some((innermost_binding, innermost_scope)) = innermost_result {
+                        if let Some(&(innermost_binding, _)) = innermost_results.first() {
                             // Found another solution, if the first one was "weak", report an error.
                             if this.get_mut().maybe_push_ambiguity(
                                 orig_ident,
                                 parent_scope,
                                 binding,
-                                innermost_binding,
                                 scope,
-                                innermost_scope,
-                                extern_prelude_item_binding,
+                                &innermost_results,
                             ) {
                                 // No need to search for more potential ambiguities, one is enough.
                                 return ControlFlow::Break(Ok(innermost_binding));
                             }
-                        } else {
-                            // Found the first solution.
-                            innermost_result = Some((binding, scope));
                         }
+
+                        innermost_results.push((binding, scope));
                     }
                     Ok(_) | Err(Determinacy::Determined) => {}
                     Err(Determinacy::Undetermined) => determinacy = Determinacy::Undetermined,
@@ -490,8 +485,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         }
 
         // Scope visiting walked all the scopes and maybe found something in one of them.
-        match innermost_result {
-            Some((binding, ..)) => Ok(binding),
+        match innermost_results.first() {
+            Some(&(binding, ..)) => Ok(binding),
             None => Err(Determinacy::determined(determinacy == Determinacy::Determined || force)),
         }
     }
@@ -509,7 +504,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         force: bool,
         ignore_binding: Option<NameBinding<'ra>>,
         ignore_import: Option<Import<'ra>>,
-        extern_prelude_item_binding: &mut Option<NameBinding<'ra>>,
     ) -> ControlFlow<Result<NameBinding<'ra>, Determinacy>, Result<NameBinding<'ra>, Determinacy>>
     {
         let ident = Ident::new(orig_ident.name, orig_ident.span.with_ctxt(ctxt));
@@ -615,10 +609,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             },
             Scope::ExternPreludeItems => {
                 match self.reborrow().extern_prelude_get_item(ident, finalize.is_some()) {
-                    Some(binding) => {
-                        *extern_prelude_item_binding = Some(binding);
-                        Ok(binding)
-                    }
+                    Some(binding) => Ok(binding),
                     None => Err(Determinacy::determined(
                         self.graph_root.unexpanded_invocations.borrow().is_empty(),
                     )),
@@ -697,11 +688,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         orig_ident: Ident,
         parent_scope: &ParentScope<'ra>,
         binding: NameBinding<'ra>,
-        innermost_binding: NameBinding<'ra>,
         scope: Scope<'ra>,
-        innermost_scope: Scope<'ra>,
-        extern_prelude_item_binding: Option<NameBinding<'ra>>,
+        innermost_results: &[(NameBinding<'ra>, Scope<'ra>)],
     ) -> bool {
+        let (innermost_binding, innermost_scope) = *innermost_results.first().unwrap();
         let (res, innermost_res) = (binding.res(), innermost_binding.res());
         if res == innermost_res {
             return false;
@@ -749,8 +739,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             // by extern item bindings.
             // FIXME: Remove with lang team approval.
             let issue_145575_hack = matches!(scope, Scope::ExternPreludeFlags)
-                && extern_prelude_item_binding.is_some()
-                && extern_prelude_item_binding != Some(innermost_binding);
+                && innermost_results[1..].iter().any(|(b, s)| {
+                    matches!(s, Scope::ExternPreludeItems) && *b != innermost_binding
+                });
 
             if issue_145575_hack {
                 self.issue_145575_hack_applied = true;
