@@ -37,7 +37,7 @@ impl Expander {
         Ok(Expander { inner: library, modified_time })
     }
 
-    pub(crate) fn expand<'a, S: ProcMacroSrvSpan>(
+    pub(crate) fn expand<'a, S: ProcMacroSrvSpan + 'a>(
         &self,
         macro_name: &str,
         macro_body: TokenStream<S>,
