@@ -106,6 +106,7 @@ fn parse_config(args: Vec<String>) -> Config {
         .optflag("", "has-enzyme", "run tests that require enzyme")
         .optflag("", "with-rustc-debug-assertions", "whether rustc was built with debug assertions")
         .optflag("", "with-std-debug-assertions", "whether std was built with debug assertions")
+        .optflag("", "with-std-remap-debuginfo", "whether std was built with remapping")
         .optmulti(
             "",
             "skip",
@@ -295,6 +296,7 @@ fn parse_config(args: Vec<String>) -> Config {
     let run_ignored = matches.opt_present("ignored");
     let with_rustc_debug_assertions = matches.opt_present("with-rustc-debug-assertions");
     let with_std_debug_assertions = matches.opt_present("with-std-debug-assertions");
+    let with_std_remap_debuginfo = matches.opt_present("with-std-remap-debuginfo");
     let mode = matches.opt_str("mode").unwrap().parse().expect("invalid mode");
     let has_enzyme = matches.opt_present("has-enzyme");
     let filters = if mode == TestMode::RunMake {
@@ -402,6 +404,7 @@ fn parse_config(args: Vec<String>) -> Config {
         run_ignored,
         with_rustc_debug_assertions,
         with_std_debug_assertions,
+        with_std_remap_debuginfo,
         filters,
         skip: matches.opt_strs("skip"),
         filter_exact: matches.opt_present("exact"),

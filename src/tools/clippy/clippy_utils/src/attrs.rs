@@ -86,7 +86,7 @@ pub fn is_proc_macro(attrs: &[impl AttributeExt]) -> bool {
 
 /// Checks whether `attrs` contain `#[doc(hidden)]`
 pub fn is_doc_hidden(attrs: &[impl AttributeExt]) -> bool {
-    attrs.iter().any(|attr| attr.is_doc_hidden())
+    attrs.iter().any(AttributeExt::is_doc_hidden)
 }
 
 /// Checks whether the given ADT, or any of its fields/variants, are marked as `#[non_exhaustive]`

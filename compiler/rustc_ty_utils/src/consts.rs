@@ -39,25 +39,16 @@ fn destructure_const<'tcx>(
             (field_consts, None)
         }
         ty::Adt(def, _) if def.variants().is_empty() => bug!("unreachable"),
-        ty::Adt(def, args) => {
-            let (variant_idx, branches) = if def.is_enum() {
+        ty::Adt(def, _) => {
+            let (variant_idx, field_consts) = if def.is_enum() {
                 let (head, rest) = branches.split_first().unwrap();
                 (VariantIdx::from_u32(head.to_leaf().to_u32()), rest)
             } else {
                 (FIRST_VARIANT, branches)
             };
-            let fields = &def.variant(variant_idx).fields;
-            let mut field_consts = Vec::with_capacity(fields.len());
-
-            for (field, field_valtree) in iter::zip(fields, branches) {
-                let field_ty = field.ty(tcx, args);
-                let field_const =
-                    ty::Const::new_value(tcx, field_valtree.to_value().valtree, field_ty);
-                field_consts.push(field_const);
-            }
             debug!(?field_consts);
 
-            (field_consts, Some(variant_idx))
+            (field_consts.to_vec(), Some(variant_idx))
         }
         ty::Tuple(elem_tys) => {
             let fields = iter::zip(*elem_tys, branches)

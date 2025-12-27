@@ -1,0 +1,47 @@
+error: empty string literal in `writeln!`
+  --> tests/ui/writeln_empty_string_unfixable.rs:11:5
+   |
+LL |     writeln!(v, /* comment */ "");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: remove the empty string
+  --> tests/ui/writeln_empty_string_unfixable.rs:11:31
+   |
+LL |     writeln!(v, /* comment */ "");
+   |                               ^^
+   = note: `-D clippy::writeln-empty-string` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::writeln_empty_string)]`
+
+error: empty string literal in `writeln!`
+  --> tests/ui/writeln_empty_string_unfixable.rs:14:5
+   |
+LL |     writeln!(v, "" /* comment */);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: remove the empty string
+  --> tests/ui/writeln_empty_string_unfixable.rs:14:17
+   |
+LL |     writeln!(v, "" /* comment */);
+   |                 ^^
+
+error: empty string literal in `writeln!`
+  --> tests/ui/writeln_empty_string_unfixable.rs:18:5
+   |
+LL | /     writeln!(v,
+LL | |         "\
+LL | |             \
+LL | |             "
+...  |
+LL | |     );
+   | |_____^
+   |
+note: remove the empty string
+  --> tests/ui/writeln_empty_string_unfixable.rs:19:9
+   |
+LL | /         "\
+LL | |             \
+LL | |             "
+   | |_____________^
+
+error: aborting due to 3 previous errors
+

@@ -1,6 +1,4 @@
 //@compile-flags: -Clink-arg=-nostartfiles
-//@ignore-target: apple
-
 #![warn(clippy::empty_loop)]
 #![crate_type = "lib"]
 #![no_std]

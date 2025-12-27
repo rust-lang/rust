@@ -14,6 +14,7 @@ use rustc_ast::{AttrStyle, MetaItemKind, ast};
 use rustc_attr_parsing::{AttributeParser, Late};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::thin_vec::ThinVec;
+use rustc_data_structures::unord::UnordMap;
 use rustc_errors::{DiagCtxtHandle, IntoDiagArg, MultiSpan, StashKey};
 use rustc_feature::{
     ACCEPTED_LANG_FEATURES, AttributeDuplicates, AttributeType, BUILTIN_ATTRIBUTE_MAP,
@@ -47,7 +48,7 @@ use rustc_session::lint::builtin::{
 };
 use rustc_session::parse::feature_err;
 use rustc_span::edition::Edition;
-use rustc_span::{BytePos, DUMMY_SP, Span, Symbol, sym};
+use rustc_span::{BytePos, DUMMY_SP, Ident, Span, Symbol, sym};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::infer::{TyCtxtInferExt, ValuePairs};
 use rustc_trait_selection::traits::ObligationCtxt;
@@ -219,6 +220,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 Attribute::Parsed(AttributeKind::EiiImpls(impls)) => {
                      self.check_eii_impl(impls, target)
                 },
+                Attribute::Parsed(AttributeKind::RustcMustImplementOneOf { attr_span, fn_names }) => {
+                    self.check_rustc_must_implement_one_of(*attr_span, fn_names, hir_id,target)
+                },
                 Attribute::Parsed(
                     AttributeKind::EiiExternTarget { .. }
                     | AttributeKind::EiiExternItem
@@ -316,7 +320,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         | [sym::rustc_dirty, ..]
                         | [sym::rustc_if_this_changed, ..]
                         | [sym::rustc_then_this_would_need, ..] => self.check_rustc_dirty_clean(attr),
-                        [sym::rustc_must_implement_one_of, ..] => self.check_must_be_applied_to_trait(attr.span(), span, target),
                         [sym::collapse_debuginfo, ..] => self.check_collapse_debuginfo(attr, span, target),
                         [sym::must_not_suspend, ..] => self.check_must_not_suspend(attr, span, target),
                         [sym::rustc_has_incoherent_inherent_impls, ..] => {
@@ -443,6 +446,63 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         self.check_repr(attrs, span, target, item, hir_id);
         self.check_rustc_force_inline(hir_id, attrs, target);
         self.check_mix_no_mangle_export(hir_id, attrs);
+    }
+
+    fn check_rustc_must_implement_one_of(
+        &self,
+        attr_span: Span,
+        list: &ThinVec<Ident>,
+        hir_id: HirId,
+        target: Target,
+    ) {
+        // Ignoring invalid targets because TyCtxt::associated_items emits bug if the target isn't valid
+        // the parser has already produced an error for the target being invalid
+        if !matches!(target, Target::Trait) {
+            return;
+        }
+
+        let def_id = hir_id.owner.def_id;
+
+        let items = self.tcx.associated_items(def_id);
+        // Check that all arguments of `#[rustc_must_implement_one_of]` reference
+        // functions in the trait with default implementations
+        for ident in list {
+            let item = items
+                .filter_by_name_unhygienic(ident.name)
+                .find(|item| item.ident(self.tcx) == *ident);
+
+            match item {
+                Some(item) if matches!(item.kind, ty::AssocKind::Fn { .. }) => {
+                    if !item.defaultness(self.tcx).has_value() {
+                        self.tcx.dcx().emit_err(errors::FunctionNotHaveDefaultImplementation {
+                            span: self.tcx.def_span(item.def_id),
+                            note_span: attr_span,
+                        });
+                    }
+                }
+                Some(item) => {
+                    self.dcx().emit_err(errors::MustImplementNotFunction {
+                        span: self.tcx.def_span(item.def_id),
+                        span_note: errors::MustImplementNotFunctionSpanNote { span: attr_span },
+                        note: errors::MustImplementNotFunctionNote {},
+                    });
+                }
+                None => {
+                    self.dcx().emit_err(errors::FunctionNotFoundInTrait { span: ident.span });
+                }
+            }
+        }
+        // Check for duplicates
+
+        let mut set: UnordMap<Symbol, Span> = Default::default();
+
+        for ident in &*list {
+            if let Some(dup) = set.insert(ident.name, ident.span) {
+                self.tcx
+                    .dcx()
+                    .emit_err(errors::FunctionNamesDuplicated { spans: vec![dup, ident.span] });
+            }
+        }
     }
 
     fn check_eii_impl(&self, impls: &[EiiImpl], target: Target) {
@@ -1218,16 +1278,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     fn check_rustc_dirty_clean(&self, attr: &Attribute) {
         if !self.tcx.sess.opts.unstable_opts.query_dep_graph {
             self.dcx().emit_err(errors::RustcDirtyClean { span: attr.span() });
-        }
-    }
-
-    /// Checks if the attribute is applied to a trait.
-    fn check_must_be_applied_to_trait(&self, attr_span: Span, defn_span: Span, target: Target) {
-        match target {
-            Target::Trait => {}
-            _ => {
-                self.dcx().emit_err(errors::AttrShouldBeAppliedToTrait { attr_span, defn_span });
-            }
         }
     }
 

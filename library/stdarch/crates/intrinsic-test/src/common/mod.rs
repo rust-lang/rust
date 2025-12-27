@@ -146,6 +146,7 @@ pub trait SupportedArchitectureTest {
         .unwrap();
 
         let target = &self.cli_options().target;
+        let profile = &self.cli_options().profile;
         let toolchain = self.cli_options().toolchain.as_deref();
         let linker = self.cli_options().linker.as_deref();
 
@@ -178,7 +179,7 @@ pub trait SupportedArchitectureTest {
             .collect::<Result<(), std::io::Error>>()
             .unwrap();
 
-        compile_rust_programs(toolchain, target, linker)
+        compile_rust_programs(toolchain, target, profile, linker)
     }
 
     fn compare_outputs(&self) -> bool {
@@ -193,6 +194,7 @@ pub trait SupportedArchitectureTest {
                 &intrinsics_name_list,
                 &self.cli_options().runner,
                 &self.cli_options().target,
+                &self.cli_options().profile,
             )
         } else {
             true

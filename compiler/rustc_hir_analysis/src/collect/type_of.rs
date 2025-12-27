@@ -10,6 +10,7 @@ use rustc_middle::ty::util::IntTypeExt;
 use rustc_middle::ty::{self, DefiningScopeKind, IsSuggestable, Ty, TyCtxt, TypeVisitableExt};
 use rustc_middle::{bug, span_bug};
 use rustc_span::{DUMMY_SP, Ident, Span};
+use tracing::instrument;
 
 use super::{HirPlaceholderCollector, ItemCtxt, bad_placeholder};
 use crate::check::wfcheck::check_static_item;
@@ -17,85 +18,7 @@ use crate::hir_ty_lowering::HirTyLowerer;
 
 mod opaque;
 
-fn anon_const_type_of<'tcx>(icx: &ItemCtxt<'tcx>, def_id: LocalDefId) -> Ty<'tcx> {
-    use hir::*;
-    use rustc_middle::ty::Ty;
-    let tcx = icx.tcx;
-    let hir_id = tcx.local_def_id_to_hir_id(def_id);
-
-    let node = tcx.hir_node(hir_id);
-    let Node::AnonConst(&AnonConst { span, .. }) = node else {
-        span_bug!(
-            tcx.def_span(def_id),
-            "expected anon const in `anon_const_type_of`, got {node:?}"
-        );
-    };
-
-    let parent_node_id = tcx.parent_hir_id(hir_id);
-    let parent_node = tcx.hir_node(parent_node_id);
-
-    match parent_node {
-        // Anon consts "inside" the type system.
-        Node::ConstArg(&ConstArg {
-            hir_id: arg_hir_id,
-            kind: ConstArgKind::Anon(&AnonConst { hir_id: anon_hir_id, .. }),
-            ..
-        }) if anon_hir_id == hir_id => const_arg_anon_type_of(icx, arg_hir_id, span),
-
-        Node::Variant(Variant { disr_expr: Some(e), .. }) if e.hir_id == hir_id => {
-            tcx.adt_def(tcx.hir_get_parent_item(hir_id)).repr().discr_type().to_ty(tcx)
-        }
-
-        Node::Field(&hir::FieldDef { default: Some(c), def_id: field_def_id, .. })
-            if c.hir_id == hir_id =>
-        {
-            tcx.type_of(field_def_id).instantiate_identity()
-        }
-
-        _ => Ty::new_error_with_message(
-            tcx,
-            span,
-            format!("unexpected anon const parent in type_of(): {parent_node:?}"),
-        ),
-    }
-}
-
-fn const_arg_anon_type_of<'tcx>(icx: &ItemCtxt<'tcx>, arg_hir_id: HirId, span: Span) -> Ty<'tcx> {
-    use hir::*;
-    use rustc_middle::ty::Ty;
-
-    let tcx = icx.tcx;
-
-    match tcx.parent_hir_node(arg_hir_id) {
-        // Array length const arguments do not have `type_of` fed as there is never a corresponding
-        // generic parameter definition.
-        Node::Ty(&hir::Ty { kind: TyKind::Array(_, ref constant), .. })
-        | Node::Expr(&Expr { kind: ExprKind::Repeat(_, ref constant), .. })
-            if constant.hir_id == arg_hir_id =>
-        {
-            tcx.types.usize
-        }
-
-        Node::TyPat(pat) => {
-            let node = match tcx.parent_hir_node(pat.hir_id) {
-                // Or patterns can be nested one level deep
-                Node::TyPat(p) => tcx.parent_hir_node(p.hir_id),
-                other => other,
-            };
-            let hir::TyKind::Pat(ty, _) = node.expect_ty().kind else { bug!() };
-            icx.lower_ty(ty)
-        }
-
-        // This is not a `bug!` as const arguments in path segments that did not resolve to anything
-        // will result in `type_of` never being fed.
-        _ => Ty::new_error_with_message(
-            tcx,
-            span,
-            "`type_of` called on const argument's anon const before the const argument was lowered",
-        ),
-    }
-}
-
+#[instrument(level = "debug", skip(tcx), ret)]
 pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_, Ty<'_>> {
     use rustc_hir::*;
     use rustc_middle::ty::Ty;
@@ -405,6 +328,85 @@ pub(super) fn type_of_opaque_hir_typeck(
                 DefiningScopeKind::HirTypeck,
             )
         }
+    }
+}
+
+fn anon_const_type_of<'tcx>(icx: &ItemCtxt<'tcx>, def_id: LocalDefId) -> Ty<'tcx> {
+    use hir::*;
+    use rustc_middle::ty::Ty;
+    let tcx = icx.tcx;
+    let hir_id = tcx.local_def_id_to_hir_id(def_id);
+
+    let node = tcx.hir_node(hir_id);
+    let Node::AnonConst(&AnonConst { span, .. }) = node else {
+        span_bug!(
+            tcx.def_span(def_id),
+            "expected anon const in `anon_const_type_of`, got {node:?}"
+        );
+    };
+
+    let parent_node_id = tcx.parent_hir_id(hir_id);
+    let parent_node = tcx.hir_node(parent_node_id);
+
+    match parent_node {
+        // Anon consts "inside" the type system.
+        Node::ConstArg(&ConstArg {
+            hir_id: arg_hir_id,
+            kind: ConstArgKind::Anon(&AnonConst { hir_id: anon_hir_id, .. }),
+            ..
+        }) if anon_hir_id == hir_id => const_arg_anon_type_of(icx, arg_hir_id, span),
+
+        Node::Variant(Variant { disr_expr: Some(e), .. }) if e.hir_id == hir_id => {
+            tcx.adt_def(tcx.hir_get_parent_item(hir_id)).repr().discr_type().to_ty(tcx)
+        }
+
+        Node::Field(&hir::FieldDef { default: Some(c), def_id: field_def_id, .. })
+            if c.hir_id == hir_id =>
+        {
+            tcx.type_of(field_def_id).instantiate_identity()
+        }
+
+        _ => Ty::new_error_with_message(
+            tcx,
+            span,
+            format!("unexpected anon const parent in type_of(): {parent_node:?}"),
+        ),
+    }
+}
+
+fn const_arg_anon_type_of<'tcx>(icx: &ItemCtxt<'tcx>, arg_hir_id: HirId, span: Span) -> Ty<'tcx> {
+    use hir::*;
+    use rustc_middle::ty::Ty;
+
+    let tcx = icx.tcx;
+
+    match tcx.parent_hir_node(arg_hir_id) {
+        // Array length const arguments do not have `type_of` fed as there is never a corresponding
+        // generic parameter definition.
+        Node::Ty(&hir::Ty { kind: TyKind::Array(_, ref constant), .. })
+        | Node::Expr(&Expr { kind: ExprKind::Repeat(_, ref constant), .. })
+            if constant.hir_id == arg_hir_id =>
+        {
+            tcx.types.usize
+        }
+
+        Node::TyPat(pat) => {
+            let node = match tcx.parent_hir_node(pat.hir_id) {
+                // Or patterns can be nested one level deep
+                Node::TyPat(p) => tcx.parent_hir_node(p.hir_id),
+                other => other,
+            };
+            let hir::TyKind::Pat(ty, _) = node.expect_ty().kind else { bug!() };
+            icx.lower_ty(ty)
+        }
+
+        // This is not a `bug!` as const arguments in path segments that did not resolve to anything
+        // will result in `type_of` never being fed.
+        _ => Ty::new_error_with_message(
+            tcx,
+            span,
+            "`type_of` called on const argument's anon const before the const argument was lowered",
+        ),
     }
 }
 

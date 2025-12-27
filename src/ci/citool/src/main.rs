@@ -46,7 +46,9 @@ impl GitHubContext {
                 let patterns = if !patterns.is_empty() { Some(patterns) } else { None };
                 Some(RunType::TryJob { job_patterns: patterns })
             }
-            ("push", "refs/heads/auto") => Some(RunType::AutoJob),
+            ("push", "refs/heads/auto" | "refs/heads/automation/bors/auto") => {
+                Some(RunType::AutoJob)
+            }
             ("push", "refs/heads/main") => Some(RunType::MainJob),
             _ => None,
         }

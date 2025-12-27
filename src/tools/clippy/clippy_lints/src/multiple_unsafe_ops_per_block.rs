@@ -3,13 +3,14 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use hir::def::{DefKind, Res};
 use hir::{BlockCheckMode, ExprKind, QPath, UnOp};
 use rustc_ast::{BorrowKind, Mutability};
+use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
 use rustc_hir::intravisit::{Visitor, walk_body, walk_expr};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{self, TyCtxt, TypeckResults};
 use rustc_session::declare_lint_pass;
-use rustc_span::{DesugaringKind, Span};
+use rustc_span::Span;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -56,12 +57,16 @@ declare_clippy_lint! {
     /// }
     /// ```
     ///
-    /// ### Note
+    /// ### Notes
     ///
-    /// Taking a raw pointer to a union field is always safe and will
-    /// not be considered unsafe by this lint, even when linting code written
-    /// with a specified Rust version of 1.91 or earlier (which required
-    /// using an `unsafe` block).
+    /// - Unsafe operations only count towards the total for the innermost
+    ///   enclosing `unsafe` block.
+    /// - Each call to a macro expanding to unsafe operations count for one
+    ///   unsafe operation.
+    /// - Taking a raw pointer to a union field is always safe and will
+    ///   not be considered unsafe by this lint, even when linting code written
+    ///   with a specified Rust version of 1.91 or earlier (which required
+    ///   using an `unsafe` block).
     #[clippy::version = "1.69.0"]
     pub MULTIPLE_UNSAFE_OPS_PER_BLOCK,
     restriction,
@@ -71,10 +76,7 @@ declare_lint_pass!(MultipleUnsafeOpsPerBlock => [MULTIPLE_UNSAFE_OPS_PER_BLOCK])
 
 impl<'tcx> LateLintPass<'tcx> for MultipleUnsafeOpsPerBlock {
     fn check_block(&mut self, cx: &LateContext<'tcx>, block: &'tcx hir::Block<'_>) {
-        if !matches!(block.rules, BlockCheckMode::UnsafeBlock(_))
-            || block.span.in_external_macro(cx.tcx.sess.source_map())
-            || block.span.is_desugaring(DesugaringKind::Await)
-        {
+        if !matches!(block.rules, BlockCheckMode::UnsafeBlock(_)) || block.span.from_expansion() {
             return;
         }
         let unsafe_ops = UnsafeExprCollector::collect_unsafe_exprs(cx, block);
@@ -100,7 +102,7 @@ impl<'tcx> LateLintPass<'tcx> for MultipleUnsafeOpsPerBlock {
 struct UnsafeExprCollector<'tcx> {
     tcx: TyCtxt<'tcx>,
     typeck_results: &'tcx TypeckResults<'tcx>,
-    unsafe_ops: Vec<(&'static str, Span)>,
+    unsafe_ops: FxHashMap<Span, &'static str>,
 }
 
 impl<'tcx> UnsafeExprCollector<'tcx> {
@@ -108,10 +110,33 @@ impl<'tcx> UnsafeExprCollector<'tcx> {
         let mut collector = Self {
             tcx: cx.tcx,
             typeck_results: cx.typeck_results(),
-            unsafe_ops: vec![],
+            unsafe_ops: FxHashMap::default(),
         };
         collector.visit_block(block);
-        collector.unsafe_ops
+        #[allow(
+            rustc::potential_query_instability,
+            reason = "span ordering only needed inside the one expression being walked"
+        )]
+        let mut unsafe_ops = collector
+            .unsafe_ops
+            .into_iter()
+            .map(|(span, msg)| (msg, span))
+            .collect::<Vec<_>>();
+        unsafe_ops.sort_unstable();
+        unsafe_ops
+    }
+}
+
+impl UnsafeExprCollector<'_> {
+    fn insert_span(&mut self, span: Span, message: &'static str) {
+        if span.from_expansion() {
+            self.unsafe_ops.insert(
+                span.source_callsite(),
+                "this macro call expands into one or more unsafe operations",
+            );
+        } else {
+            self.unsafe_ops.insert(span, message);
+        }
     }
 }
 
@@ -126,7 +151,10 @@ impl<'tcx> Visitor<'tcx> for UnsafeExprCollector<'tcx> {
                 return self.visit_expr(e);
             },
 
-            ExprKind::InlineAsm(_) => self.unsafe_ops.push(("inline assembly used here", expr.span)),
+            // Do not recurse inside an inner `unsafe` block, it will be checked on its own
+            ExprKind::Block(block, _) if matches!(block.rules, BlockCheckMode::UnsafeBlock(_)) => return,
+
+            ExprKind::InlineAsm(_) => self.insert_span(expr.span, "inline assembly used here"),
 
             ExprKind::AddrOf(BorrowKind::Raw, _, mut inner) => {
                 while let ExprKind::Field(prefix, _) = inner.kind
@@ -139,7 +167,7 @@ impl<'tcx> Visitor<'tcx> for UnsafeExprCollector<'tcx> {
 
             ExprKind::Field(e, _) => {
                 if self.typeck_results.expr_ty(e).is_union() {
-                    self.unsafe_ops.push(("union field access occurs here", expr.span));
+                    self.insert_span(expr.span, "union field access occurs here");
                 }
             },
 
@@ -157,12 +185,11 @@ impl<'tcx> Visitor<'tcx> for UnsafeExprCollector<'tcx> {
                     ..
                 },
             )) => {
-                self.unsafe_ops
-                    .push(("access of a mutable static occurs here", expr.span));
+                self.insert_span(expr.span, "access of a mutable static occurs here");
             },
 
             ExprKind::Unary(UnOp::Deref, e) if self.typeck_results.expr_ty(e).is_raw_ptr() => {
-                self.unsafe_ops.push(("raw pointer dereference occurs here", expr.span));
+                self.insert_span(expr.span, "raw pointer dereference occurs here");
             },
 
             ExprKind::Call(path_expr, _) => {
@@ -172,7 +199,7 @@ impl<'tcx> Visitor<'tcx> for UnsafeExprCollector<'tcx> {
                     _ => None,
                 };
                 if opt_sig.is_some_and(|sig| sig.safety().is_unsafe()) {
-                    self.unsafe_ops.push(("unsafe function call occurs here", expr.span));
+                    self.insert_span(expr.span, "unsafe function call occurs here");
                 }
             },
 
@@ -182,7 +209,7 @@ impl<'tcx> Visitor<'tcx> for UnsafeExprCollector<'tcx> {
                     .type_dependent_def_id(expr.hir_id)
                     .map(|def_id| self.tcx.fn_sig(def_id));
                 if opt_sig.is_some_and(|sig| sig.skip_binder().safety().is_unsafe()) {
-                    self.unsafe_ops.push(("unsafe method call occurs here", expr.span));
+                    self.insert_span(expr.span, "unsafe method call occurs here");
                 }
             },
 
@@ -203,8 +230,7 @@ impl<'tcx> Visitor<'tcx> for UnsafeExprCollector<'tcx> {
                         }
                     ))
                 ) {
-                    self.unsafe_ops
-                        .push(("modification of a mutable static occurs here", expr.span));
+                    self.insert_span(expr.span, "modification of a mutable static occurs here");
                     return self.visit_expr(rhs);
                 }
             },

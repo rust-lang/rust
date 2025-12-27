@@ -17,4 +17,6 @@ disallowed-methods = [
     # re-exports
     "conf_disallowed_methods::identity",
     "conf_disallowed_methods::renamed",
+    # also used in desugaring
+    "std::future::Future::poll",
 ]
