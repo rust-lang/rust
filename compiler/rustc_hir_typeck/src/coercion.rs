@@ -124,6 +124,14 @@ enum ForceLeakCheck {
     No,
 }
 
+#[allow(unused)]
+#[derive(Debug, Copy, Clone)]
+enum CoerceDirection {
+    ToPrev,
+    ToNew,
+    Both,
+}
+
 impl<'f, 'tcx> Coerce<'f, 'tcx> {
     fn new(
         fcx: &'f FnCtxt<'f, 'tcx>,
@@ -307,6 +315,175 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 self.unify(a, b, ForceLeakCheck::No)
             }
         }
+    }
+
+    /// This is *almost* like `coerce(new_ty, prev_ty)` followed by `coerce(prev_ty, new_ty)`, but is
+    /// not quite in case of `!` and inference variables.
+    #[allow(dead_code)]
+    #[instrument(skip(self), ret)]
+    fn coerce_mutual(
+        &self,
+        prev_ty: Ty<'tcx>,
+        new_ty: Ty<'tcx>,
+    ) -> InferResult<'tcx, (Vec<Adjustment<'tcx>>, Ty<'tcx>, CoerceDirection)> {
+        // First, remove any resolved type variables (at the top level, at least):
+        let prev_ty = self.shallow_resolve(prev_ty);
+        let new_ty = self.shallow_resolve(new_ty);
+        debug!("coerce_mutual({:?} => {:?})", prev_ty, new_ty);
+
+        // There is no coercion *from* any type *to* `!`, other than just unification
+
+        // Coercing from `!` to any type is allowed:
+        if new_ty.is_never() {
+            let ret = if self.coerce_never {
+                success(
+                    vec![Adjustment { kind: Adjust::NeverToAny, target: prev_ty }],
+                    prev_ty,
+                    PredicateObligations::new(),
+                )
+            } else {
+                // Otherwise the only coercion we can do is unification.
+                self.unify(new_ty, prev_ty, ForceLeakCheck::No)
+            };
+            return ret.map(|r| InferOk {
+                obligations: r.obligations,
+                value: (r.value.0, r.value.1, CoerceDirection::ToPrev),
+            });
+        }
+
+        // Coercing *from* an unresolved inference variable means that
+        // we have no information about the source type. This will always
+        // ultimately fall back to some form of subtyping.
+        if new_ty.is_ty_var() {
+            let ret = self.coerce_from_inference_variable(new_ty, prev_ty);
+            return ret.map(|r| InferOk {
+                obligations: r.obligations,
+                value: (r.value.0, r.value.1, CoerceDirection::ToPrev),
+            });
+        }
+
+        if prev_ty.is_never() {
+            let ret = if self.coerce_never {
+                success(
+                    vec![Adjustment { kind: Adjust::NeverToAny, target: new_ty }],
+                    new_ty,
+                    PredicateObligations::new(),
+                )
+            } else {
+                // Otherwise the only coercion we can do is unification.
+                self.unify(prev_ty, new_ty, ForceLeakCheck::No)
+            };
+            return ret.map(|r| InferOk {
+                obligations: r.obligations,
+                value: (r.value.0, r.value.1, CoerceDirection::ToNew),
+            });
+        }
+
+        if prev_ty.is_ty_var() {
+            let ret = self.coerce_from_inference_variable(prev_ty, new_ty);
+            return ret.map(|r| InferOk {
+                obligations: r.obligations,
+                value: (r.value.0, r.value.1, CoerceDirection::ToNew),
+            });
+        }
+
+        let coerce_inner = |a: Ty<'tcx>, b: Ty<'tcx>| -> CoerceResult<'tcx> {
+            // Consider coercing the subtype to a DST
+            //
+            // NOTE: this is wrapped in a `commit_if_ok` because it creates
+            // a "spurious" type variable, and we don't want to have that
+            // type variable in memory if the coercion fails.
+            let unsize = self.commit_if_ok(|_| self.coerce_unsized(a, b));
+            match unsize {
+                Ok(_) => {
+                    debug!("coerce: unsize successful");
+                    return unsize;
+                }
+                Err(error) => {
+                    debug!(?error, "coerce: unsize failed");
+                }
+            }
+
+            // Examine the target type and consider type-specific coercions, such
+            // as auto-borrowing, coercing pointer mutability, or pin-ergonomics.
+            match *b.kind() {
+                ty::RawPtr(_, b_mutbl) => {
+                    return self.coerce_to_raw_ptr(a, b, b_mutbl);
+                }
+                ty::Ref(r_b, _, mutbl_b) => {
+                    return self.coerce_to_ref(a, b, r_b, mutbl_b);
+                }
+                ty::Adt(pin, _)
+                    if self.tcx.features().pin_ergonomics()
+                        && self.tcx.is_lang_item(pin.did(), hir::LangItem::Pin) =>
+                {
+                    let pin_coerce = self.commit_if_ok(|_| self.coerce_to_pin_ref(a, b));
+                    if pin_coerce.is_ok() {
+                        return pin_coerce;
+                    }
+                }
+                _ => {}
+            }
+
+            match *a.kind() {
+                ty::FnDef(..) => {
+                    // Function items are coercible to any closure
+                    // type; function pointers are not (that would
+                    // require double indirection).
+                    // Additionally, we permit coercion of function
+                    // items to drop the unsafe qualifier.
+                    self.coerce_from_fn_item(a, b)
+                }
+                ty::FnPtr(a_sig_tys, a_hdr) => {
+                    // We permit coercion of fn pointers to drop the
+                    // unsafe qualifier.
+                    self.coerce_from_fn_pointer(a, a_sig_tys.with(a_hdr), b)
+                }
+                ty::Closure(..) => {
+                    // Non-capturing closures are coercible to
+                    // function pointers or unsafe function pointers.
+                    // It cannot convert closures that require unsafe.
+                    self.coerce_closure_to_fn(a, b)
+                }
+                _ => {
+                    // Otherwise, just use unification rules.
+                    self.unify(a, b, ForceLeakCheck::No)
+                }
+            }
+        };
+
+        let result = self.commit_if_ok(|_| coerce_inner(new_ty, prev_ty));
+        let first_error = match result {
+            Ok(forwd_result) => {
+                let prev_ty = self.resolve_vars_if_possible(prev_ty);
+                let new_ty = self.resolve_vars_if_possible(new_ty);
+                let rev_result = self.commit_if_ok(|_| coerce_inner(prev_ty, new_ty));
+                if let Ok(rev_result) = rev_result {
+                    let forwd_ty = self.resolve_vars_if_possible(forwd_result.value.1);
+                    let rev_ty = self.resolve_vars_if_possible(rev_result.value.1);
+                    let res = self.unify(forwd_ty, rev_ty, ForceLeakCheck::No);
+                    if let Err(e) = res {
+                        return Err(e);
+                    }
+                }
+
+                return Ok(InferOk {
+                    obligations: forwd_result.obligations,
+                    value: (forwd_result.value.0, forwd_result.value.1, CoerceDirection::ToPrev),
+                });
+            }
+            Err(e) => e,
+        };
+
+        let result = self.commit_if_ok(|_| coerce_inner(prev_ty, new_ty));
+        if let Ok(_) = result {
+            return result.map(|r| InferOk {
+                obligations: r.obligations,
+                value: (r.value.0, r.value.1, CoerceDirection::ToNew),
+            });
+        }
+
+        Err(first_error)
     }
 
     /// Coercing *from* an inference variable. In this case, we have no information
@@ -1168,7 +1345,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn try_find_coercion_lub(
         &self,
         cause: &ObligationCause<'tcx>,
-        exprs: &[&'tcx hir::Expr<'tcx>],
+        exprs: &[(&'tcx hir::Expr<'tcx>, Ty<'tcx>)],
         prev_ty: Ty<'tcx>,
         new: &hir::Expr<'_>,
         new_ty: Ty<'tcx>,
@@ -1266,7 +1443,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ty::FnDef(..) => Adjust::Pointer(PointerCoercion::ReifyFnPointer(sig.safety())),
                 _ => span_bug!(new.span, "should not try to coerce a {new_ty} to a fn pointer"),
             };
-            for expr in exprs.iter() {
+            for (expr, _expr_ty) in exprs.iter() {
                 self.apply_adjustments(
                     expr,
                     vec![Adjustment { kind: prev_adjustment.clone(), target: fn_ptr }],
@@ -1275,6 +1452,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.apply_adjustments(new, vec![Adjustment { kind: next_adjustment, target: fn_ptr }]);
             return Ok(fn_ptr);
         }
+
+        // This might be okay, but we previously branched on this without any
+        // test, so I'm just keeping the assert to avoid surprising behavior.
+        assert!(!self.typeck_results.borrow().adjustments().contains_key(new.hir_id));
 
         // Configure a Coerce instance to compute the LUB.
         // We don't allow two-phase borrows on any autorefs this creates since we
@@ -1287,38 +1468,93 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut coerce = Coerce::new(self, cause.clone(), AllowTwoPhase::No, true);
         coerce.use_lub = true;
 
-        // First try to coerce the new expression to the type of the previous ones,
-        // but only if the new expression has no coercion already applied to it.
-        let mut first_error = None;
-        if !self.typeck_results.borrow().adjustments().contains_key(new.hir_id) {
-            let result = self.commit_if_ok(|_| coerce.coerce(new_ty, prev_ty));
-            match result {
-                Ok(ok) => {
-                    let (adjustments, target) = self.register_infer_ok_obligations(ok);
-                    self.apply_adjustments(new, adjustments);
-                    debug!(
-                        "coercion::try_find_coercion_lub: was able to coerce from new type {:?} to previous type {:?} ({:?})",
-                        new_ty, prev_ty, target
-                    );
-                    return Ok(target);
+        let res = coerce.coerce_mutual(prev_ty, new_ty)?;
+        let (adjustments, target, coerce_direction) = self.register_infer_ok_obligations(res);
+        match coerce_direction {
+            CoerceDirection::ToPrev => {
+                self.apply_adjustments(new, adjustments);
+                debug!(
+                    "coercion::try_find_coercion_lub: was able to coerce from new type {:?} to previous type {:?} ({:?})",
+                    new_ty, prev_ty, target
+                );
+            }
+            CoerceDirection::ToNew => {
+                for (expr, expr_ty) in exprs {
+                    let ok = self.commit_if_ok(|_| coerce.coerce(*expr_ty, new_ty))?;
+                    let (adj, _) = self.register_infer_ok_obligations(ok);
+                    debug!(?expr_ty, ?new_ty);
+                    self.set_adjustments(*expr, adj);
                 }
-                Err(e) => first_error = Some(e),
+                debug!(
+                    "coercion::try_find_coercion_lub: was able to coerce previous type {:?} to new type {:?} ({:?})",
+                    prev_ty, new_ty, target
+                );
+            }
+            CoerceDirection::Both => {
+                todo!();
             }
         }
 
+        /*
+        // First try to coerce the new expression to the type of the previous ones.
+        let result = self.commit_if_ok(|_| coerce.coerce(new_ty, prev_ty));
+        let first_error = match result {
+            Ok(ok) => {
+                let (adjustments, target) = self.register_infer_ok_obligations(ok);
+                let rev_coerce = self.commit_if_ok(|_| coerce.coerce(prev_ty, new_ty));
+                if let Ok(rev_coerce) = rev_coerce {
+                    //panic!("{:?} {:?} {:?} {:?}", rev_coerce, target, prev_ty, new_ty);
+                    self.demand_eqtype(cause.span, target, rev_coerce.value.1);
+                }
+                self.apply_adjustments(new, adjustments);
+                debug!(
+                    "coercion::try_find_coercion_lub: was able to coerce from new type {:?} to previous type {:?} ({:?})",
+                    new_ty, prev_ty, target
+                );
+                return Ok(target);
+            }
+            Err(e) => e,
+        };
+
+        // This is maybe not the *most correct* thing to do. Taking match arm checking as an example:
+        // This means that at each match arm, either the new arm ty must coerce into the current LUB (above),
+        // or the current LUB can be coerced into the new arm ty. What we *probably* actually want is that each arm
+        // can be coerced to the final LUB. Importantly, I can imagine a case where some arm can only be coered to some
+        // final LUB, but not some intermediate LUB - and that would fail here.
         let ok = self
             .commit_if_ok(|_| coerce.coerce(prev_ty, new_ty))
             // Avoid giving strange errors on failed attempts.
-            .map_err(|e| first_error.unwrap_or(e))?;
+            .map_err(|_| first_error)?;
+        let (_, target) = self.register_infer_ok_obligations(ok);
 
-        let (adjustments, target) = self.register_infer_ok_obligations(ok);
-        for expr in exprs {
-            self.apply_adjustments(expr, adjustments.clone());
+        for (expr, expr_ty) in exprs {
+            let ok = self
+                .commit_if_ok(|_| coerce.coerce(*expr_ty, new_ty))
+                // Avoid giving strange errors on failed attempts.
+                .map_err(|_| first_error)?;
+            let (adj, _) = self.register_infer_ok_obligations(ok);
+            debug!(?expr_ty, ?new_ty);
+            self.set_adjustments(*expr, adj);
         }
         debug!(
             "coercion::try_find_coercion_lub: was able to coerce previous type {:?} to new type {:?} ({:?})",
             prev_ty, new_ty, target
         );
+        for (expr, expr_ty) in exprs {
+            let ok = self
+                .commit_if_ok(|_| coerce.coerce(*expr_ty, new_ty))
+                // Avoid giving strange errors on failed attempts.
+                .map_err(|_| first_error)?;
+            let (adj, _) = self.register_infer_ok_obligations(ok);
+            debug!(?expr_ty, ?new_ty);
+            self.set_adjustments(*expr, adj);
+        }
+        debug!(
+            "coercion::try_find_coercion_lub: was able to coerce previous type {:?} to new type {:?} ({:?})",
+            prev_ty, new_ty, target
+        );
+        */
+
         Ok(target)
     }
 }
@@ -1381,7 +1617,8 @@ pub fn can_coerce<'tcx>(
 pub(crate) struct CoerceMany<'tcx> {
     expected_ty: Ty<'tcx>,
     final_ty: Option<Ty<'tcx>>,
-    expressions: Vec<&'tcx hir::Expr<'tcx>>,
+    expressions: Vec<(&'tcx hir::Expr<'tcx>, Ty<'tcx>)>,
+    force_lub: bool,
 }
 
 impl<'tcx> CoerceMany<'tcx> {
@@ -1394,7 +1631,18 @@ impl<'tcx> CoerceMany<'tcx> {
 
     /// Creates a `CoerceMany` with a given capacity.
     pub(crate) fn with_capacity(expected_ty: Ty<'tcx>, capacity: usize) -> Self {
-        CoerceMany { expected_ty, final_ty: None, expressions: Vec::with_capacity(capacity) }
+        CoerceMany {
+            expected_ty,
+            final_ty: None,
+            expressions: Vec::with_capacity(capacity),
+            force_lub: false,
+        }
+    }
+
+    pub(crate) fn force_lub(&mut self) {
+        // Don't accidentally let someone switch this after coercing things
+        assert!(self.expressions.is_empty());
+        self.force_lub = true;
     }
 
     /// Returns the "expected type" with which this coercion was
@@ -1507,7 +1755,7 @@ impl<'tcx> CoerceMany<'tcx> {
 
         // Handle the actual type unification etc.
         let result = if let Some(expression) = expression {
-            if self.expressions.is_empty() {
+            if !self.force_lub && self.expressions.is_empty() {
                 // Special-case the first expression we are coercing.
                 // To be honest, I'm not entirely sure why we do this.
                 // We don't allow two-phase borrows, see comment in try_find_coercion_lub for why
@@ -1560,7 +1808,7 @@ impl<'tcx> CoerceMany<'tcx> {
             Ok(v) => {
                 self.final_ty = Some(v);
                 if let Some(e) = expression {
-                    self.expressions.push(e);
+                    self.expressions.push((e, expression_ty));
                 }
             }
             Err(coercion_error) => {

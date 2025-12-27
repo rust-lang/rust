@@ -1,0 +1,22 @@
+error[E0308]: `match` arms have incompatible types
+  --> $DIR/multistep2.rs:94:14
+   |
+LL |       let b = match 0 {
+   |  _____________-
+LL | |         0 => &E          as &E,
+   | |              ----------------- this is found to be of type `&Wrap2<[i32; 0]>`
+LL | |         1 => &Wrap2([])  as &F,
+   | |              ----------------- this is found to be of type `&Wrap2<[i32; 0]>`
+LL | |         3 => &Wrap2([])  as &H,
+   | |              ^^^^^^^^^^^^^^^^^ expected `&Wrap2<[i32; 0]>`, found `&Wrap2<[i32]>`
+LL | |         2 => &G          as &G,
+LL | |         _ => loop {},
+LL | |     };
+   | |_____- `match` arms have incompatible types
+   |
+   = note: expected reference `&Wrap2<[i32; 0]>`
+              found reference `&Wrap2<[i32]>`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0308`.

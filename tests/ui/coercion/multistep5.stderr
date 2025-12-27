@@ -1,0 +1,30 @@
+error[E0055]: reached the recursion limit while auto-dereferencing `P`
+  --> $DIR/multistep5.rs:83:14
+   |
+LL |         1 => &P      as &P,
+   |              ^^^^^^^^^^^^^ deref recursion limit reached
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`multistep5`)
+
+error[E0308]: `match` arms have incompatible types
+  --> $DIR/multistep5.rs:84:14
+   |
+LL |       let _a = match 0 {
+   |  ______________-
+LL | |         0 => &O      as &O,
+   | |              ------------- this is found to be of type `&P`
+LL | |         1 => &P      as &P,
+   | |              ------------- this is found to be of type `&P`
+LL | |         2 => &Q      as &Q,
+   | |              ^^^^^^^^^^^^^ expected `&P`, found `&Q`
+LL | |         _ => loop {},
+LL | |     };
+   | |_____- `match` arms have incompatible types
+   |
+   = note: expected reference `&P`
+              found reference `&Q`
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0055, E0308.
+For more information about an error, try `rustc --explain E0055`.

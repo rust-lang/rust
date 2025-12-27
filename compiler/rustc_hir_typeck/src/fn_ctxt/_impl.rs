@@ -364,6 +364,70 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
+    #[instrument(skip(self, expr), level = "debug")]
+    pub(crate) fn set_adjustments(&self, expr: &hir::Expr<'_>, adj: Vec<Adjustment<'tcx>>) {
+        debug!("expr = {:#?}", expr);
+
+        if adj.is_empty() {
+            return;
+        }
+
+        let mut expr_ty = self.typeck_results.borrow().expr_ty_adjusted(expr);
+
+        for a in &adj {
+            match a.kind {
+                Adjust::NeverToAny => {
+                    if a.target.is_ty_var() {
+                        self.diverging_type_vars.borrow_mut().insert(a.target);
+                        debug!("apply_adjustments: adding `{:?}` as diverging type var", a.target);
+                    }
+                }
+                Adjust::Deref(Some(overloaded_deref)) => {
+                    self.enforce_context_effects(
+                        None,
+                        expr.span,
+                        overloaded_deref.method_call(self.tcx),
+                        self.tcx.mk_args(&[expr_ty.into()]),
+                    );
+                }
+                Adjust::Deref(None) => {
+                    // FIXME(const_trait_impl): We *could* enforce `&T: [const] Deref` here.
+                }
+                Adjust::Pointer(_pointer_coercion) => {
+                    // FIXME(const_trait_impl): We should probably enforce these.
+                }
+                Adjust::ReborrowPin(_mutability) => {
+                    // FIXME(const_trait_impl): We could enforce these; they correspond to
+                    // `&mut T: DerefMut` tho, so it's kinda moot.
+                }
+                Adjust::Borrow(_) => {
+                    // No effects to enforce here.
+                }
+            }
+
+            expr_ty = a.target;
+        }
+
+        let autoborrow_mut = adj.iter().any(|adj| {
+            matches!(
+                adj,
+                &Adjustment {
+                    kind: Adjust::Borrow(AutoBorrow::Ref(AutoBorrowMutability::Mut { .. })),
+                    ..
+                }
+            )
+        });
+
+        self.typeck_results.borrow_mut().adjustments_mut().insert(expr.hir_id, adj);
+
+        // If there is an mutable auto-borrow, it is equivalent to `&mut <expr>`.
+        // In this case implicit use of `Deref` and `Index` within `<expr>` should
+        // instead be `DerefMut` and `IndexMut`, so fix those up.
+        if autoborrow_mut {
+            self.convert_place_derefs_to_mutable(expr);
+        }
+    }
+
     /// Instantiates and normalizes the bounds for a given item
     pub(crate) fn instantiate_bounds(
         &self,
