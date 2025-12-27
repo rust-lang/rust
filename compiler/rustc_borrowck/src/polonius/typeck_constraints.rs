@@ -45,7 +45,6 @@ pub(super) fn convert_typeck_constraints<'tcx>(
                 {
                     localize_statement_constraint(
                         tcx,
-                        body,
                         stmt,
                         &outlives_constraint,
                         point,
@@ -74,7 +73,6 @@ pub(super) fn convert_typeck_constraints<'tcx>(
 /// needed CFG `from`-`to` intra-block nodes.
 fn localize_statement_constraint<'tcx>(
     tcx: TyCtxt<'tcx>,
-    body: &Body<'tcx>,
     stmt: &Statement<'tcx>,
     outlives_constraint: &OutlivesConstraint<'tcx>,
     current_point: PointIndex,
@@ -114,27 +112,21 @@ fn localize_statement_constraint<'tcx>(
                 },
                 "there should be no common regions between the LHS and RHS of an assignment"
             );
-
-            let lhs_ty = body.local_decls[lhs.local].ty;
-            let successor_point = current_point;
-            compute_constraint_direction(
-                tcx,
-                outlives_constraint,
-                &lhs_ty,
-                current_point,
-                successor_point,
-                universal_regions,
-            )
         }
         _ => {
-            // For the other cases, we localize an outlives constraint to where it arises.
-            LocalizedOutlivesConstraint {
-                source: outlives_constraint.sup,
-                from: current_point,
-                target: outlives_constraint.sub,
-                to: current_point,
-            }
+            // Assignments should be the only statement that can both generate constraints that
+            // apply on entry (specific to the RHS place) *and* others that only apply on exit (the
+            // subset of RHS regions that actually flow into the LHS): i.e., where midpoints would
+            // be used to ensure the former happen before the latter, within the same MIR Location.
         }
+    }
+
+    // We generally localize an outlives constraint to where it arises.
+    LocalizedOutlivesConstraint {
+        source: outlives_constraint.sup,
+        from: current_point,
+        target: outlives_constraint.sub,
+        to: current_point,
     }
 }
 
@@ -150,14 +142,12 @@ fn localize_terminator_constraint<'tcx>(
     universal_regions: &UniversalRegions<'tcx>,
 ) -> LocalizedOutlivesConstraint {
     // FIXME: check if other terminators need the same handling as `Call`s, in particular
-    // Assert/Yield/Drop. A handful of tests are failing with Drop related issues, as well as some
-    // coroutine tests, and that may be why.
+    // Assert/Yield/Drop.
     match &terminator.kind {
         // FIXME: also handle diverging calls.
         TerminatorKind::Call { destination, target: Some(target), .. } => {
-            // Calls are similar to assignments, and thus follow the same pattern. If there is a
-            // target for the call we also relate what flows into the destination here to entry to
-            // that successor.
+            // If there is a target for the call we also relate what flows into the destination here
+            // to entry to that successor.
             let destination_ty = destination.ty(&body.local_decls, tcx);
             let successor_location = Location { block: *target, statement_index: 0 };
             let successor_point = liveness.point_from_location(successor_location);
