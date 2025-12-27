@@ -223,7 +223,7 @@ enum TlsDtorsStatePriv<'tcx> {
     PthreadDtors(RunningDtorState),
     /// For Windows Dtors, we store the list of functions that we still have to call.
     /// These are functions from the magic `.CRT$XLB` linker section.
-    WindowsDtors(Vec<(ImmTy<'tcx>, Span)>),
+    WindowsDtors(RunningDtorState, Vec<(ImmTy<'tcx>, Span)>),
     Done,
 }
 
@@ -251,7 +251,7 @@ impl<'tcx> TlsDtorsState<'tcx> {
                             // Determine which destructors to run.
                             let dtors = this.lookup_windows_tls_dtors()?;
                             // And move to the next state, that runs them.
-                            break 'new_state WindowsDtors(dtors);
+                            break 'new_state WindowsDtors(Default::default(), dtors);
                         }
                         _ => {
                             // No TLS dtor support.
@@ -273,7 +273,13 @@ impl<'tcx> TlsDtorsState<'tcx> {
                         Poll::Ready(()) => break 'new_state Done,
                     }
                 }
-                WindowsDtors(dtors) => {
+                WindowsDtors(state, dtors) => {
+                    // Fls destructors are scheduled before the tls callback, similar to pthread dtors.
+                    match this.schedule_next_windows_fls_dtor(state)? {
+                        Poll::Pending => return interp_ok(Poll::Pending), // just keep going
+                        Poll::Ready(()) => {}
+                    }
+
                     if let Some((dtor, span)) = dtors.pop() {
                         this.schedule_windows_tls_dtor(dtor, span)?;
                         return interp_ok(Poll::Pending); // we stay in this state (but `dtors` got shorter)
@@ -362,6 +368,16 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         &mut self,
         state: &mut RunningDtorState,
     ) -> InterpResult<'tcx, Poll<()>> {
+        self.schedule_next_tls_dtor_callback(state, ExternAbi::C { unwind: false })
+    }
+
+    /// Schedule a TLS destructor. Returns `true` if found
+    /// a destructor to schedule, and `false` otherwise.
+    fn schedule_next_tls_dtor_callback(
+        &mut self,
+        state: &mut RunningDtorState,
+        caller_abi: ExternAbi,
+    ) -> InterpResult<'tcx, Poll<()>> {
         let this = self.eval_context_mut();
         let active_thread = this.active_thread();
 
@@ -381,7 +397,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
             this.call_thread_root_function(
                 instance,
-                ExternAbi::C { unwind: false },
+                caller_abi,
                 &[ImmTy::from_scalar(ptr, this.machine.layouts.mut_raw_ptr)],
                 None,
                 span,
@@ -391,5 +407,14 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
 
         interp_ok(Poll::Ready(()))
+    }
+
+    /// Schedule a Windows FLS destructor. Returns `true` if found
+    /// a destructor to schedule, and `false` otherwise.
+    fn schedule_next_windows_fls_dtor(
+        &mut self,
+        state: &mut RunningDtorState,
+    ) -> InterpResult<'tcx, Poll<()>> {
+        self.schedule_next_tls_dtor_callback(state, ExternAbi::System { unwind: false })
     }
 }
