@@ -1264,7 +1264,7 @@ enum TestableCase<'tcx> {
     Variant { adt_def: ty::AdtDef<'tcx>, variant_index: VariantIdx },
     Constant { value: ty::Value<'tcx>, kind: PatConstKind },
     Range(Arc<PatRange<'tcx>>),
-    Slice { len: u64, variable_length: bool },
+    Slice { len: u64, op: SliceLenOp },
     Deref { temp: Place<'tcx>, mutability: Mutability },
     Never,
     Or { pats: Box<[FlatPat<'tcx>]> },
@@ -1332,7 +1332,21 @@ pub(crate) struct MatchPairTree<'tcx> {
     pattern_span: Span,
 }
 
-/// See [`Test`] for more.
+/// A runtime test to perform to determine which candidates match a scrutinee place.
+///
+/// The kind of test to perform is indicated by [`TestKind`].
+#[derive(Debug)]
+pub(crate) struct Test<'tcx> {
+    span: Span,
+    kind: TestKind<'tcx>,
+}
+
+/// The kind of runtime test to perform to determine which candidates match a
+/// scrutinee place. This is the main component of [`Test`].
+///
+/// Some of these variants don't contain the constant value(s) being tested
+/// against, because those values are stored in the corresponding bucketed
+/// candidates instead.
 #[derive(Clone, Debug, PartialEq)]
 enum TestKind<'tcx> {
     /// Test what enum variant a value is.
@@ -1368,7 +1382,7 @@ enum TestKind<'tcx> {
     Range(Arc<PatRange<'tcx>>),
 
     /// Test that the length of the slice is `== len` or `>= len`.
-    Len { len: u64, op: BinOp },
+    SliceLen { len: u64, op: SliceLenOp },
 
     /// Call `Deref::deref[_mut]` on the value.
     Deref {
@@ -1381,14 +1395,15 @@ enum TestKind<'tcx> {
     Never,
 }
 
-/// A test to perform to determine which [`Candidate`] matches a value.
-///
-/// [`Test`] is just the test to perform; it does not include the value
-/// to be tested.
-#[derive(Debug)]
-pub(crate) struct Test<'tcx> {
-    span: Span,
-    kind: TestKind<'tcx>,
+/// Indicates the kind of slice-length constraint imposed by a slice pattern,
+/// or its corresponding test.
+#[derive(Debug, Clone, Copy, PartialEq)]
+enum SliceLenOp {
+    /// The slice pattern can only match a slice with exactly `len` elements.
+    Equal,
+    /// The slice pattern can match a slice with `len` or more elements
+    /// (i.e. it contains a `..` subpattern in the middle).
+    GreaterOrEqual,
 }
 
 /// The branch to be taken after a test.

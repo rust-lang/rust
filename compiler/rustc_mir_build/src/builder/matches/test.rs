@@ -20,7 +20,7 @@ use tracing::{debug, instrument};
 
 use crate::builder::Builder;
 use crate::builder::matches::{
-    MatchPairTree, PatConstKind, Test, TestBranch, TestKind, TestableCase,
+    MatchPairTree, PatConstKind, SliceLenOp, Test, TestBranch, TestKind, TestableCase,
 };
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
@@ -50,10 +50,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 TestKind::Range(Arc::clone(range))
             }
 
-            TestableCase::Slice { len, variable_length } => {
-                let op = if variable_length { BinOp::Ge } else { BinOp::Eq };
-                TestKind::Len { len, op }
-            }
+            TestableCase::Slice { len, op } => TestKind::SliceLen { len, op },
 
             TestableCase::Deref { temp, mutability } => TestKind::Deref { temp, mutability },
 
@@ -312,7 +309,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 }
             }
 
-            TestKind::Len { len, op } => {
+            TestKind::SliceLen { len, op } => {
                 let usize_ty = self.tcx.types.usize;
                 let actual = self.temp(usize_ty, test.span);
 
@@ -332,7 +329,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     success_block,
                     fail_block,
                     source_info,
-                    op,
+                    match op {
+                        SliceLenOp::Equal => BinOp::Eq,
+                        SliceLenOp::GreaterOrEqual => BinOp::Ge,
+                    },
                     Operand::Move(actual),
                     Operand::Move(expected),
                 );
