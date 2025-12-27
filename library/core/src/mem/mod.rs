@@ -1229,7 +1229,10 @@ pub const fn discriminant<T>(v: &T) -> Discriminant<T> {
 #[rustc_const_unstable(feature = "variant_count", issue = "73662")]
 #[rustc_diagnostic_item = "mem_variant_count"]
 pub const fn variant_count<T>() -> usize {
-    const { intrinsics::variant_count::<T>() }
+    #[rustc_const_unstable(feature = "variant_count", issue = "73662")]
+    const {
+        intrinsics::variant_count::<T>()
+    }
 }
 
 /// Provides associated constants for various useful properties of types,

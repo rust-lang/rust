@@ -864,7 +864,10 @@ impl fmt::Debug for TypeId {
 #[stable(feature = "type_name", since = "1.38.0")]
 #[rustc_const_unstable(feature = "const_type_name", issue = "63084")]
 pub const fn type_name<T: ?Sized>() -> &'static str {
-    const { intrinsics::type_name::<T>() }
+    #[rustc_const_unstable(feature = "const_type_name", issue = "63084")]
+    const {
+        intrinsics::type_name::<T>()
+    }
 }
 
 /// Returns the type name of the pointed-to value as a string slice.

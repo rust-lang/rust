@@ -321,7 +321,12 @@ impl<H> WithHeader<H> {
         // of the header, past the padding, so the assigned type makes sense.
         // It also ensures that the address at the end of the header is sufficiently
         // aligned for T.
-        let alloc: &<Dyn as Pointee>::Metadata = const {
+        // We generate the vtable in a const block instead of having the compiler
+        // generate it for us. The basics to allocate new memory during ctfe are
+        // unstable, but we can always change the intrinsic logic to support the
+        // needs of new_unsize_zst in the future.
+        let alloc: &<Dyn as Pointee>::Metadata = #[rustc_allow_const_fn_unstable(const_heap)]
+        const {
             // FIXME: just call `WithHeader::alloc_layout` with size reset to 0.
             // Currently that's blocked on `Layout::extend` not being `const fn`.
 

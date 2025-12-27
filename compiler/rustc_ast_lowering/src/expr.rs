@@ -106,7 +106,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
             let kind = match &e.kind {
                 ExprKind::Array(exprs) => hir::ExprKind::Array(self.lower_exprs(exprs)),
-                ExprKind::ConstBlock(c) => hir::ExprKind::ConstBlock(self.lower_const_block(c)),
+                ExprKind::ConstBlock(c) => {
+                    hir::ExprKind::ConstBlock(self.lower_const_block(c, attrs))
+                }
                 ExprKind::Repeat(expr, count) => {
                     let expr = self.lower_expr(expr);
                     let count = self.lower_array_length_to_const_arg(count);
@@ -392,12 +394,20 @@ impl<'hir> LoweringContext<'_, 'hir> {
         })
     }
 
-    pub(crate) fn lower_const_block(&mut self, c: &AnonConst) -> hir::ConstBlock {
+    pub(crate) fn lower_const_block(
+        &mut self,
+        c: &AnonConst,
+        attrs: &'hir [hir::Attribute],
+    ) -> hir::ConstBlock {
         self.with_new_scopes(c.value.span, |this| {
             let def_id = this.local_def_id(c.id);
+            let hir_id = this.lower_node_id(c.id);
+            if !attrs.is_empty() {
+                this.attrs.insert(hir_id.local_id, attrs);
+            }
             hir::ConstBlock {
                 def_id,
-                hir_id: this.lower_node_id(c.id),
+                hir_id,
                 body: this.lower_const_body(c.value.span, Some(&c.value)),
             }
         })

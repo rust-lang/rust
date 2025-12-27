@@ -334,9 +334,12 @@ impl<'tcx> MissingStabilityAnnotations<'tcx> {
 
         macro_rules! find_attr_span {
             ($name:ident) => {{
-                let attrs = self.tcx.hir_attrs(self.tcx.local_def_id_to_hir_id(def_id));
+                find_attr_span!($name, def_id)
+            }};
+            ($name:ident, $id: expr) => {{
+                let attrs = self.tcx.hir_attrs(self.tcx.local_def_id_to_hir_id($id));
                 find_attr!(attrs, AttributeKind::$name { span, .. } => *span)
-            }}
+            }};
         }
 
         if stab.is_none()
@@ -396,6 +399,16 @@ impl<'tcx> MissingStabilityAnnotations<'tcx> {
             && find_attr_span!(ConstStability).is_some()
         {
             self.tcx.dcx().emit_err(errors::MissingConstErr { fn_sig_span: fn_sig.span });
+        }
+
+        if let DefKind::InlineConst = self.tcx.def_kind(def_id)
+            && const_stab.is_some()
+            && let parent = self.tcx.local_parent(def_id)
+            && self.tcx.lookup_const_stability(parent) != const_stab
+            && let Some(span) = find_attr_span!(ConstStability)
+        {
+            let parent_span = find_attr_span!(ConstStability, parent);
+            self.tcx.dcx().emit_err(errors::UnstableInlineConstInConst { span, parent_span });
         }
 
         // If this is marked const *stable*, it must also be regular-stable.
@@ -476,6 +489,11 @@ impl<'tcx> Visitor<'tcx> for MissingStabilityAnnotations<'tcx> {
         self.check_missing_const_stability(i.owner_id.def_id);
 
         intravisit::walk_item(self, i)
+    }
+
+    fn visit_inline_const(&mut self, c: &'tcx rustc_hir::ConstBlock) -> Self::Result {
+        self.check_compatible_stability(c.def_id);
+        intravisit::walk_inline_const(self, c)
     }
 
     fn visit_trait_item(&mut self, ti: &'tcx hir::TraitItem<'tcx>) {
@@ -601,7 +619,6 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
                     let attrs = self.tcx.hir_attrs(item.hir_id());
                     let stab = find_attr!(attrs, AttributeKind::Stability{stability, span} => (*stability, *span));
 
-                    // FIXME(jdonszelmann): make it impossible to miss the or_else in the typesystem
                     let const_stab = find_attr!(attrs, AttributeKind::ConstStability{stability, ..} => *stability);
 
                     let unstable_feature_stab =

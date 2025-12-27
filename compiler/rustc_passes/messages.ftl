@@ -556,6 +556,11 @@ passes_unstable_attr_for_already_stable_feature =
     .item = the stability attribute annotates this item
     .help = consider removing the attribute
 
+passes_unstable_inline_const_in_const =
+    const stability of inline consts must match const stability of containing item
+    .help = did you mean to use `rustc_allow_const_fn_unstable`?
+    .note = stability marker of containing item defined here
+
 passes_unsupported_attributes_in_where =
     most attributes are not supported in `where` clauses
     .help = only `#[cfg]` and `#[cfg_attr]` are supported

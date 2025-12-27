@@ -998,6 +998,16 @@ pub(crate) struct MissingConstErr {
 }
 
 #[derive(Diagnostic)]
+#[diag(passes_unstable_inline_const_in_const)]
+pub(crate) struct UnstableInlineConstInConst {
+    #[primary_span]
+    #[help]
+    pub span: Span,
+    #[note]
+    pub parent_span: Option<Span>,
+}
+
+#[derive(Diagnostic)]
 #[diag(passes_const_stable_not_stable)]
 pub(crate) struct ConstStableNotStable {
     #[primary_span]
