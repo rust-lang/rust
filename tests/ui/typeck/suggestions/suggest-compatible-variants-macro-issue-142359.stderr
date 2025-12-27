@@ -1,0 +1,23 @@
+error[E0308]: `match` arms have incompatible types
+  --> $DIR/suggest-compatible-variants-macro-issue-142359.rs:9:20
+   |
+LL |       let v= match x {
+   |  ____________-
+LL | |         Err(r) => ControlFlow::Break(r),
+   | |                   --------------------- this is found to be of type `ControlFlow<i32, _>`
+LL | |         Ok(r) => { println!("A")}
+   | |                    ^^^^^^^^^^^^^ expected `ControlFlow<i32, _>`, found `()`
+LL | |     };
+   | |_____- `match` arms have incompatible types
+   |
+   = note:   expected enum `ControlFlow<i32, _>`
+           found unit type `()`
+   = note: this error originates in the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: try wrapping the expression in `std::ops::ControlFlow::Continue`
+   |
+LL |         Ok(r) => std::ops::ControlFlow::Continue({ println!("A")})
+   |                  ++++++++++++++++++++++++++++++++                +
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0308`.
