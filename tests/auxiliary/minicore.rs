@@ -206,7 +206,15 @@ impl Neg for isize {
     type Output = isize;
 
     fn neg(self) -> isize {
-        loop {} // Dummy impl, not actually used
+        loop {} // Dummy impl, not actually used 
+    }
+}
+
+impl Neg for i8 {
+    type Output = i8;
+
+    fn neg(self) -> i8 {
+        loop {}
     }
 }
 
@@ -283,6 +291,16 @@ pub enum c_void {
 #[lang = "const_param_ty"]
 #[diagnostic::on_unimplemented(message = "`{Self}` can't be used as a const parameter type")]
 pub trait ConstParamTy_ {}
+
+#[lang = "Ordering"]
+#[repr(i8)]
+pub enum Ordering {
+    Less = -1,
+    Equal = 0,
+    Greater = 1,
+}
+
+impl Copy for Ordering {}
 
 pub enum SimdAlign {
     // These values must match the compiler's `SimdAlign` defined in
