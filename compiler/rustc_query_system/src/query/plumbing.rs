@@ -20,7 +20,7 @@ use tracing::instrument;
 
 use super::{QueryConfig, QueryStackFrameExtra};
 use crate::HandleCycleError;
-use crate::dep_graph::{DepContext, DepGraphData, DepNode, DepNodeIndex, DepNodeParams};
+use crate::dep_graph::{DepContext, DepGraphData, DepNode, DepNodeIndex, DepNodeParams, MarkFrame};
 use crate::ich::StableHashingContext;
 use crate::query::caches::QueryCache;
 use crate::query::job::{QueryInfo, QueryJob, QueryJobId, QueryJobInfo, QueryLatch, report_cycle};
@@ -347,6 +347,7 @@ fn try_execute_query<Q, Qcx, const INCR: bool>(
     span: Span,
     key: Q::Key,
     dep_node: Option<DepNode>,
+    frame: Option<&MarkFrame<'_>>,
 ) -> (Q::Value, Option<DepNodeIndex>)
 where
     Q: QueryConfig<Qcx>,
@@ -382,7 +383,7 @@ where
             // Drop the lock before we start executing the query
             drop(state_lock);
 
-            execute_job::<_, _, INCR>(query, qcx, state, key, key_hash, id, dep_node)
+            execute_job::<_, _, INCR>(query, qcx, state, key, key_hash, id, dep_node, frame)
         }
         Entry::Occupied(mut entry) => {
             match &mut entry.get_mut().1 {
@@ -419,6 +420,7 @@ fn execute_job<Q, Qcx, const INCR: bool>(
     key_hash: u64,
     id: QueryJobId,
     dep_node: Option<DepNode>,
+    frame: Option<&MarkFrame<'_>>,
 ) -> (Q::Value, Option<DepNodeIndex>)
 where
     Q: QueryConfig<Qcx>,
@@ -437,6 +439,7 @@ where
             key,
             dep_node,
             id,
+            frame,
         )
     } else {
         execute_job_non_incr(query, qcx, key, id)
@@ -528,6 +531,7 @@ fn execute_job_incr<Q, Qcx>(
     key: Q::Key,
     mut dep_node_opt: Option<DepNode>,
     job_id: QueryJobId,
+    frame: Option<&MarkFrame<'_>>,
 ) -> (Q::Value, DepNodeIndex)
 where
     Q: QueryConfig<Qcx>,
@@ -568,6 +572,7 @@ where
             key,
             |(qcx, query), key| query.compute(qcx, key),
             query.hash_result(),
+            frame,
         )
     });
 
@@ -824,7 +829,9 @@ where
 {
     debug_assert!(!qcx.dep_context().dep_graph().is_fully_enabled());
 
-    ensure_sufficient_stack(|| try_execute_query::<Q, Qcx, false>(query, qcx, span, key, None).0)
+    ensure_sufficient_stack(|| {
+        try_execute_query::<Q, Qcx, false>(query, qcx, span, key, None, None).0
+    })
 }
 
 #[inline(always)]
@@ -852,7 +859,7 @@ where
     };
 
     let (result, dep_node_index) = ensure_sufficient_stack(|| {
-        try_execute_query::<_, _, true>(query, qcx, span, key, dep_node)
+        try_execute_query::<_, _, true>(query, qcx, span, key, dep_node, None)
     });
     if let Some(dep_node_index) = dep_node_index {
         qcx.dep_context().dep_graph().read_index(dep_node_index)
@@ -860,8 +867,13 @@ where
     Some(result)
 }
 
-pub fn force_query<Q, Qcx>(query: Q, qcx: Qcx, key: Q::Key, dep_node: DepNode)
-where
+pub fn force_query<Q, Qcx>(
+    query: Q,
+    qcx: Qcx,
+    key: Q::Key,
+    dep_node: DepNode,
+    frame: &MarkFrame<'_>,
+) where
     Q: QueryConfig<Qcx>,
     Qcx: QueryContext,
 {
@@ -875,6 +887,6 @@ where
     debug_assert!(!query.anon());
 
     ensure_sufficient_stack(|| {
-        try_execute_query::<_, _, true>(query, qcx, DUMMY_SP, key, Some(dep_node))
+        try_execute_query::<_, _, true>(query, qcx, DUMMY_SP, key, Some(dep_node), Some(frame))
     });
 }

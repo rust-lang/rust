@@ -109,27 +109,53 @@ pub struct SerializedDepGraph {
     session_count: u64,
 }
 
+#[derive(Clone)]
+pub struct EdgeTargetsIter<'a> {
+    edges_left: u32,
+    raw: &'a [u8],
+    bytes_per_index: usize,
+    mask: u32,
+}
+
+impl<'a> ExactSizeIterator for EdgeTargetsIter<'a> {
+    fn len(&self) -> usize {
+        self.edges_left.try_into().unwrap()
+    }
+}
+
+impl<'a> Iterator for EdgeTargetsIter<'a> {
+    type Item = SerializedDepNodeIndex;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.edges_left == 0 {
+            return None;
+        }
+        self.edges_left -= 1;
+        // Doing this slicing in this order ensures that the first bounds check suffices for
+        // all the others.
+        let index = &self.raw[..DEP_NODE_SIZE];
+        self.raw = &self.raw[self.bytes_per_index..];
+        let index = u32::from_le_bytes(index.try_into().unwrap()) & self.mask;
+        Some(SerializedDepNodeIndex::from_u32(index))
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let len = self.len();
+        (len, Some(len))
+    }
+}
+
 impl SerializedDepGraph {
     #[inline]
-    pub fn edge_targets_from(
-        &self,
-        source: SerializedDepNodeIndex,
-    ) -> impl Iterator<Item = SerializedDepNodeIndex> + Clone {
+    pub fn edge_targets_from<'a>(&'a self, source: SerializedDepNodeIndex) -> EdgeTargetsIter<'a> {
         let header = self.edge_list_indices[source];
-        let mut raw = &self.edge_list_data[header.start()..];
+        let raw = &self.edge_list_data[header.start()..];
 
         let bytes_per_index = header.bytes_per_index();
 
         // LLVM doesn't hoist EdgeHeader::mask so we do it ourselves.
         let mask = header.mask();
-        (0..header.num_edges).map(move |_| {
-            // Doing this slicing in this order ensures that the first bounds check suffices for
-            // all the others.
-            let index = &raw[..DEP_NODE_SIZE];
-            raw = &raw[bytes_per_index..];
-            let index = u32::from_le_bytes(index.try_into().unwrap()) & mask;
-            SerializedDepNodeIndex::from_u32(index)
-        })
+        EdgeTargetsIter { edges_left: header.num_edges, raw, bytes_per_index, mask }
     }
 
     #[inline]
@@ -485,16 +511,17 @@ impl NodeInfo {
         node: DepNode,
         index: DepNodeIndex,
         fingerprint: Fingerprint,
-        prev_index: SerializedDepNodeIndex,
+        edges: EdgeTargetsIter<'_>,
         colors: &DepNodeColorMap,
-        previous: &SerializedDepGraph,
     ) -> usize {
-        let edges = previous.edge_targets_from(prev_index);
-        let edge_count = edges.size_hint().0;
+        let edge_count = edges.len();
 
         // Find the highest edge in the new dep node indices
-        let edge_max =
-            edges.clone().map(|i| colors.current(i).unwrap().as_u32()).max().unwrap_or(0);
+        let edge_max = edges
+            .clone()
+            .map(|i| colors.current(i).as_green().unwrap().as_u32())
+            .max()
+            .unwrap_or(0);
 
         let header = SerializedNodeHeader::<D>::new(node, index, fingerprint, edge_max, edge_count);
         e.write_array(header.bytes);
@@ -506,7 +533,7 @@ impl NodeInfo {
 
         let bytes_per_index = header.bytes_per_index();
         for node_index in edges {
-            let node_index = colors.current(node_index).unwrap();
+            let node_index = colors.current(node_index).as_green().unwrap();
             e.write_with(|dest| {
                 *dest = node_index.as_u32().to_le_bytes();
                 bytes_per_index
@@ -681,6 +708,7 @@ impl<D: Deps> EncoderState<D> {
         &self,
         index: DepNodeIndex,
         prev_index: SerializedDepNodeIndex,
+        prev_deps: EdgeTargetsIter<'_>,
         record_graph: &Option<Lock<DepGraphQuery>>,
         colors: &DepNodeColorMap,
         local: &mut LocalEncoderState,
@@ -692,21 +720,15 @@ impl<D: Deps> EncoderState<D> {
             node,
             index,
             fingerprint,
-            prev_index,
+            prev_deps.clone(),
             colors,
-            &self.previous,
         );
         self.flush_mem_encoder(&mut *local);
         self.record(
             node,
             index,
             edge_count,
-            |this| {
-                this.previous
-                    .edge_targets_from(prev_index)
-                    .map(|i| colors.current(i).unwrap())
-                    .collect()
-            },
+            |_| prev_deps.map(|i| colors.current(i).as_green().unwrap()).collect(),
             record_graph,
             &mut *local,
         );
@@ -890,6 +912,7 @@ impl<D: Deps> GraphEncoder<D> {
         fingerprint: Fingerprint,
         edges: EdgesVec,
         is_green: bool,
+        feed: bool,
     ) -> DepNodeIndex {
         let _prof_timer = self.profiler.generic_activity("incr_comp_encode_dep_graph");
         let node = NodeInfo { node, fingerprint, edges };
@@ -898,20 +921,21 @@ impl<D: Deps> GraphEncoder<D> {
 
         let index = self.status.next_index(&mut *local);
 
-        if is_green {
-            // Use `try_mark_green` to avoid racing when `send_promoted` is called concurrently
-            // on the same index.
-            match colors.try_mark_green(prev_index, index) {
-                Ok(()) => (),
-                Err(dep_node_index) => return dep_node_index,
-            }
+        let res = if is_green {
+            colors.try_mark_green(prev_index, index)
         } else {
-            colors.insert_red(prev_index);
+            colors
+                .try_mark_red(prev_index, index)
+                .inspect_err(|_| assert!(!feed, "tried to feed a green query {node:?}"))
+        };
+        match res {
+            Ok(()) => {
+                self.status.bump_index(&mut *local);
+                self.status.encode_node(index, &node, &self.record_graph, &mut *local);
+                index
+            }
+            Err(dep_node_index) => dep_node_index,
         }
-
-        self.status.bump_index(&mut *local);
-        self.status.encode_node(index, &node, &self.record_graph, &mut *local);
-        index
     }
 
     /// Encodes a node that was promoted from the previous graph. It reads the information directly
@@ -923,6 +947,7 @@ impl<D: Deps> GraphEncoder<D> {
     pub(crate) fn send_promoted(
         &self,
         prev_index: SerializedDepNodeIndex,
+        prev_deps: EdgeTargetsIter<'_>,
         colors: &DepNodeColorMap,
     ) -> DepNodeIndex {
         let _prof_timer = self.profiler.generic_activity("incr_comp_encode_dep_graph");
@@ -938,6 +963,7 @@ impl<D: Deps> GraphEncoder<D> {
                 self.status.encode_promoted_node(
                     index,
                     prev_index,
+                    prev_deps,
                     &self.record_graph,
                     colors,
                     &mut *local,
