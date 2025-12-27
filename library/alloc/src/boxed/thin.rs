@@ -245,7 +245,7 @@ impl<H> WithHeader<H> {
                 // Some paranoia checking, mostly so that the ThinBox tests are
                 // more able to catch issues.
                 debug_assert!(value_offset == 0 && T::IS_ZST && H::IS_ZST);
-                layout.dangling()
+                layout.dangling_ptr()
             } else {
                 let ptr = alloc::alloc(layout);
                 if ptr.is_null() {
@@ -282,7 +282,7 @@ impl<H> WithHeader<H> {
                 // Some paranoia checking, mostly so that the ThinBox tests are
                 // more able to catch issues.
                 debug_assert!(value_offset == 0 && size_of::<T>() == 0 && size_of::<H>() == 0);
-                layout.dangling()
+                layout.dangling_ptr()
             } else {
                 let ptr = alloc::alloc(layout);
                 if ptr.is_null() {
