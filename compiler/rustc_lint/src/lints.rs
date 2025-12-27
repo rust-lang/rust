@@ -127,8 +127,6 @@ pub(crate) enum BuiltinUnsafe {
     UnsafeBlock,
     #[diag(lint_builtin_unsafe_extern_block)]
     UnsafeExternBlock,
-    #[diag(lint_builtin_unsafe_trait)]
-    UnsafeTrait,
     #[diag(lint_builtin_unsafe_impl)]
     UnsafeImpl,
     #[diag(lint_builtin_no_mangle_fn)]
@@ -157,8 +155,6 @@ pub(crate) enum BuiltinUnsafe {
     ExportNameMethod,
     #[diag(lint_builtin_decl_unsafe_fn)]
     DeclUnsafeFn,
-    #[diag(lint_builtin_decl_unsafe_method)]
-    DeclUnsafeMethod,
     #[diag(lint_builtin_impl_unsafe_method)]
     ImplUnsafeMethod,
     #[diag(lint_builtin_global_asm)]
