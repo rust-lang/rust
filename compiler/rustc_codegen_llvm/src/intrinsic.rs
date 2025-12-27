@@ -269,14 +269,6 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 return Ok(());
             }
             sym::breakpoint => self.call_intrinsic("llvm.debugtrap", &[], &[]),
-            sym::va_copy => {
-                let dest = args[0].immediate();
-                self.call_intrinsic(
-                    "llvm.va_copy",
-                    &[self.val_ty(dest)],
-                    &[dest, args[1].immediate()],
-                )
-            }
             sym::va_arg => {
                 match result.layout.backend_repr {
                     BackendRepr::Scalar(scalar) => {

@@ -3451,19 +3451,6 @@ pub(crate) const fn miri_promise_symbolic_alignment(ptr: *const (), align: usize
     )
 }
 
-/// Copies the current location of arglist `src` to the arglist `dst`.
-///
-/// # Safety
-///
-/// You must check the following invariants before you call this function:
-///
-/// - `dest` must be non-null and point to valid, writable memory.
-/// - `dest` must not alias `src`.
-///
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub unsafe fn va_copy<'f>(dest: *mut VaList<'f>, src: &VaList<'f>);
-
 /// Loads an argument of type `T` from the `va_list` `ap` and increment the
 /// argument `ap` points to.
 ///
@@ -3481,6 +3468,20 @@ pub unsafe fn va_copy<'f>(dest: *mut VaList<'f>, src: &VaList<'f>);
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub unsafe fn va_arg<T: VaArgSafe>(ap: &mut VaList<'_>) -> T;
+
+/// Duplicates a variable argument list. The returned list is initially at the same position as
+/// the one in `src`, but can be advanced independently.
+///
+/// Codegen backends should not have custom behavior for this intrinsic, they should always use
+/// this fallback implementation. This intrinsic *does not* map to the LLVM `va_copy` intrinsic.
+///
+/// This intrinsic exists only as a hook for Miri and constant evaluation, and is used to detect UB
+/// when a variable argument list is used incorrectly.
+#[rustc_intrinsic]
+#[rustc_nounwind]
+pub fn va_copy<'f>(src: &VaList<'f>) -> VaList<'f> {
+    src.duplicate()
+}
 
 /// Destroy the arglist `ap` after initialization with `va_start` or `va_copy`.
 ///

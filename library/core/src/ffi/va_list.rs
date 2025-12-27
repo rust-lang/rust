@@ -34,6 +34,10 @@ use crate::marker::PhantomCovariantLifetime;
 //
 // The Clang `BuiltinVaListKind` enumerates the `va_list` variations that Clang supports,
 // and we mirror these here.
+//
+// For all current LLVM targets, `va_copy` lowers to `memcpy`. Hence the inner structs below all
+// derive `Copy`. However, in the future we might want to support a target where `va_copy`
+// allocates, or otherwise violates the requirements of `Copy`. Therefore `VaList` is only `Clone`.
 crate::cfg_select! {
     all(
         target_arch = "aarch64",
@@ -45,10 +49,12 @@ crate::cfg_select! {
         ///
         /// See the [AArch64 Procedure Call Standard] for more details.
         ///
+        /// `va_copy` is `memcpy`: <https://github.com/llvm/llvm-project/blob/5aee01a3df011e660f26660bc30a8c94a1651d8e/llvm/lib/Target/AArch64/AArch64ISelLowering.cpp#L12682-L12700>
+        ///
         /// [AArch64 Procedure Call Standard]:
         /// http://infocenter.arm.com/help/topic/com.arm.doc.ihi0055b/IHI0055B_aapcs64.pdf
         #[repr(C)]
-        #[derive(Debug)]
+        #[derive(Debug, Clone, Copy)]
         struct VaListInner {
             stack: *const c_void,
             gr_top: *const c_void,
@@ -62,11 +68,13 @@ crate::cfg_select! {
         ///
         /// See the [LLVM source] and [GCC header] for more details.
         ///
+        /// `va_copy` is `memcpy`: <https://github.com/llvm/llvm-project/blob/5aee01a3df011e660f26660bc30a8c94a1651d8e/llvm/lib/Target/PowerPC/PPCISelLowering.cpp#L3755-L3764>
+        ///
         /// [LLVM source]:
         /// https://github.com/llvm/llvm-project/blob/af9a4263a1a209953a1d339ef781a954e31268ff/llvm/lib/Target/PowerPC/PPCISelLowering.cpp#L4089-L4111
         /// [GCC header]: https://web.mit.edu/darwin/src/modules/gcc/gcc/ginclude/va-ppc.h
         #[repr(C)]
-        #[derive(Debug)]
+        #[derive(Debug, Clone, Copy)]
         #[rustc_pass_indirectly_in_non_rustic_abis]
         struct VaListInner {
             gpr: u8,
@@ -81,10 +89,12 @@ crate::cfg_select! {
         ///
         /// See the [S/390x ELF Application Binary Interface Supplement] for more details.
         ///
+        /// `va_copy` is `memcpy`: <https://github.com/llvm/llvm-project/blob/5aee01a3df011e660f26660bc30a8c94a1651d8e/llvm/lib/Target/SystemZ/SystemZISelLowering.cpp#L4457-L4472>
+        ///
         /// [S/390x ELF Application Binary Interface Supplement]:
         /// https://docs.google.com/gview?embedded=true&url=https://github.com/IBM/s390x-abi/releases/download/v1.7/lzsabi_s390x.pdf
         #[repr(C)]
-        #[derive(Debug)]
+        #[derive(Debug, Clone, Copy)]
         #[rustc_pass_indirectly_in_non_rustic_abis]
         struct VaListInner {
             gpr: i64,
@@ -98,10 +108,13 @@ crate::cfg_select! {
         ///
         /// See the [System V AMD64 ABI] for more details.
         ///
+        /// `va_copy` is `memcpy`: <https://github.com/llvm/llvm-project/blob/5aee01a3df011e660f26660bc30a8c94a1651d8e/llvm/lib/Target/X86/X86ISelLowering.cpp#26319>
+        /// (github won't render that file, look for `SDValue LowerVACOPY`)
+        ///
         /// [System V AMD64 ABI]:
         /// https://refspecs.linuxbase.org/elf/x86_64-abi-0.99.pdf
         #[repr(C)]
-        #[derive(Debug)]
+        #[derive(Debug, Clone, Copy)]
         #[rustc_pass_indirectly_in_non_rustic_abis]
         struct VaListInner {
             gp_offset: i32,
@@ -115,10 +128,12 @@ crate::cfg_select! {
         ///
         /// See the [LLVM source] for more details.
         ///
+        /// `va_copy` is `memcpy`: <https://github.com/llvm/llvm-project/blob/5aee01a3df011e660f26660bc30a8c94a1651d8e/llvm/lib/Target/Xtensa/XtensaISelLowering.cpp#L1260>
+        ///
         /// [LLVM source]:
         /// https://github.com/llvm/llvm-project/blob/af9a4263a1a209953a1d339ef781a954e31268ff/llvm/lib/Target/Xtensa/XtensaISelLowering.cpp#L1211-L1215
         #[repr(C)]
-        #[derive(Debug)]
+        #[derive(Debug, Clone, Copy)]
         #[rustc_pass_indirectly_in_non_rustic_abis]
         struct VaListInner {
             stk: *const i32,
@@ -132,10 +147,12 @@ crate::cfg_select! {
         ///
         /// See the [LLVM source] for more details. On bare metal Hexagon uses an opaque pointer.
         ///
+        /// `va_copy` is `memcpy`: <https://github.com/llvm/llvm-project/blob/5aee01a3df011e660f26660bc30a8c94a1651d8e/llvm/lib/Target/Hexagon/HexagonISelLowering.cpp#L1087-L1102>
+        ///
         /// [LLVM source]:
         /// https://github.com/llvm/llvm-project/blob/0cdc1b6dd4a870fc41d4b15ad97e0001882aba58/clang/lib/CodeGen/Targets/Hexagon.cpp#L407-L417
         #[repr(C)]
-        #[derive(Debug)]
+        #[derive(Debug, Clone, Copy)]
         #[rustc_pass_indirectly_in_non_rustic_abis]
         struct VaListInner {
             __current_saved_reg_area_pointer: *const c_void,
@@ -156,8 +173,10 @@ crate::cfg_select! {
     // That pointer is probably just the next variadic argument on the caller's stack.
     _ => {
         /// Basic implementation of a `va_list`.
+        ///
+        /// `va_copy` is `memcpy`: <https://github.com/llvm/llvm-project/blob/87e8e7d8f0db53060ef2f6ef4ab612fc0f2b4490/llvm/lib/Transforms/IPO/ExpandVariadics.cpp#L127-L129>
         #[repr(transparent)]
-        #[derive(Debug)]
+        #[derive(Debug, Clone, Copy)]
         struct VaListInner {
             ptr: *const c_void,
         }
@@ -176,6 +195,36 @@ impl fmt::Debug for VaList<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // No need to include `_marker` in debug output.
         f.debug_tuple("VaList").field(&self.inner).finish()
+    }
+}
+
+impl VaList<'_> {
+    // Helper used in the implementation of the `va_copy` intrinsic.
+    pub(crate) fn duplicate(&self) -> Self {
+        Self { inner: self.inner.clone(), _marker: self._marker }
+    }
+}
+
+impl Clone for VaList<'_> {
+    #[inline]
+    fn clone(&self) -> Self {
+        // We only implement Clone and not Copy because some future target might not be able to
+        // implement Copy (e.g. because it allocates). For the same reason we use an intrinsic
+        // to do the copying: the fact that on all current targets, this is just `memcpy`, is an implementation
+        // detail. The intrinsic lets Miri catch UB from code incorrectly relying on that implementation detail.
+        va_copy(self)
+    }
+}
+
+impl Drop for VaList<'_> {
+    fn drop(&mut self) {
+        // For all current LLVM targets `va_end` is a no-op.
+        //
+        // We implement `Drop` here because some future target might need to actually run
+        // destructors (e.g. to deallocate).
+        //
+        // Rust requires that not calling `va_end` on a `va_list` does not cause undefined
+        // behaviour: it is safe to leak values.
     }
 }
 
@@ -250,26 +299,6 @@ impl<'f> VaList<'f> {
     pub unsafe fn arg<T: VaArgSafe>(&mut self) -> T {
         // SAFETY: the caller must uphold the safety contract for `va_arg`.
         unsafe { va_arg(self) }
-    }
-}
-
-impl<'f> Clone for VaList<'f> {
-    #[inline]
-    fn clone(&self) -> Self {
-        let mut dest = crate::mem::MaybeUninit::uninit();
-        // SAFETY: we write to the `MaybeUninit`, thus it is initialized and `assume_init` is legal.
-        unsafe {
-            va_copy(dest.as_mut_ptr(), self);
-            dest.assume_init()
-        }
-    }
-}
-
-impl<'f> Drop for VaList<'f> {
-    fn drop(&mut self) {
-        // Rust requires that not calling `va_end` on a `va_list` does not cause undefined behaviour
-        // (as it is safe to leak values). As `va_end` is a no-op on all current LLVM targets, this
-        // destructor is empty.
     }
 }
 
