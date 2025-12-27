@@ -21,6 +21,11 @@ fn spawn_cmd(cmd: &mut Command) -> Result<Child, io::Error> {
     })
 }
 
+pub(super) fn has_tool(outdir: &Path, name: &str) -> bool {
+    let bin_path = node_module_bin(outdir, name);
+    Command::new(bin_path).arg("--version").status().is_ok()
+}
+
 /// install all js dependencies from package.json.
 pub(super) fn npm_install(root_path: &Path, outdir: &Path, npm: &Path) -> Result<(), super::Error> {
     npm::install(root_path, outdir, npm)?;

@@ -23,8 +23,8 @@ use std::process::Command;
 use std::str::FromStr;
 use std::{fmt, fs, io};
 
-use crate::CiInfo;
 use crate::diagnostics::TidyCtx;
+use crate::{CiInfo, ensure_version};
 
 mod rustdoc_js;
 
@@ -43,6 +43,7 @@ const RUFF_CACHE_PATH: &[&str] = &["cache", "ruff_cache"];
 const PIP_REQ_PATH: &[&str] = &["src", "tools", "tidy", "config", "requirements.txt"];
 
 const SPELLCHECK_DIRS: &[&str] = &["compiler", "library", "src/bootstrap", "src/librustdoc"];
+const SPELLCHECK_VER: &str = "1.38.1";
 
 pub fn check(
     root_path: &Path,
@@ -119,6 +120,9 @@ fn check_impl(
         crate::files_modified_batch_filter(ci_info, &mut lint_args, |ck, path| {
             ck.is_non_auto_or_matches(path)
         });
+    }
+    if lint_args.iter().any(|ck| ck.if_installed) {
+        lint_args.retain(|ck| ck.is_non_if_installed_or_matches(root_path, outdir));
     }
 
     macro_rules! extra_check {
@@ -421,21 +425,11 @@ fn py_runner(
 /// Create a virtuaenv at a given path if it doesn't already exist, or validate
 /// the install if it does. Returns the path to that venv's python executable.
 fn get_or_create_venv(venv_path: &Path, src_reqs_path: &Path) -> Result<PathBuf, Error> {
-    let mut should_create = true;
-    let dst_reqs_path = venv_path.join("requirements.txt");
     let mut py_path = venv_path.to_owned();
     py_path.extend(REL_PY_PATH);
 
-    if let Ok(req) = fs::read_to_string(&dst_reqs_path) {
-        if req == fs::read_to_string(src_reqs_path)? {
-            // found existing environment
-            should_create = false;
-        } else {
-            eprintln!("requirements.txt file mismatch, recreating environment");
-        }
-    }
-
-    if should_create {
+    if !has_py_tools(venv_path, src_reqs_path)? {
+        let dst_reqs_path = venv_path.join("requirements.txt");
         eprintln!("removing old virtual environment");
         if venv_path.is_dir() {
             fs::remove_dir_all(venv_path).unwrap_or_else(|_| {
@@ -448,6 +442,18 @@ fn get_or_create_venv(venv_path: &Path, src_reqs_path: &Path) -> Result<PathBuf,
 
     verify_py_version(&py_path)?;
     Ok(py_path)
+}
+
+fn has_py_tools(venv_path: &Path, src_reqs_path: &Path) -> Result<bool, Error> {
+    let dst_reqs_path = venv_path.join("requirements.txt");
+    if let Ok(req) = fs::read_to_string(&dst_reqs_path) {
+        if req == fs::read_to_string(src_reqs_path)? {
+            return Ok(true);
+        }
+        eprintln!("requirements.txt file mismatch");
+    }
+
+    Ok(false)
 }
 
 /// Attempt to create a virtualenv at this path. Cycles through all expected
@@ -591,10 +597,9 @@ fn install_requirements(
     Ok(())
 }
 
-/// Check that shellcheck is installed then run it at the given path
-fn shellcheck_runner(args: &[&OsStr]) -> Result<(), Error> {
+fn has_shellcheck() -> Result<(), Error> {
     match Command::new("shellcheck").arg("--version").status() {
-        Ok(_) => (),
+        Ok(_) => Ok(()),
         Err(e) if e.kind() == io::ErrorKind::NotFound => {
             return Err(Error::MissingReq(
                 "shellcheck",
@@ -608,6 +613,13 @@ fn shellcheck_runner(args: &[&OsStr]) -> Result<(), Error> {
         }
         Err(e) => return Err(e.into()),
     }
+}
+
+/// Check that shellcheck is installed then run it at the given path
+fn shellcheck_runner(args: &[&OsStr]) -> Result<(), Error> {
+    if let Err(err) = has_shellcheck() {
+        return Err(err);
+    }
 
     let status = Command::new("shellcheck").args(args).status()?;
     if status.success() { Ok(()) } else { Err(Error::FailedCheck("shellcheck")) }
@@ -620,8 +632,13 @@ fn spellcheck_runner(
     cargo: &Path,
     args: &[&str],
 ) -> Result<(), Error> {
-    let bin_path =
-        crate::ensure_version_or_cargo_install(outdir, cargo, "typos-cli", "typos", "1.38.1")?;
+    let bin_path = crate::ensure_version_or_cargo_install(
+        outdir,
+        cargo,
+        "typos-cli",
+        "typos",
+        SPELLCHECK_VER,
+    )?;
     match Command::new(bin_path).current_dir(src_root).args(args).status() {
         Ok(status) => {
             if status.success() {
@@ -736,10 +753,14 @@ enum ExtraCheckParseError {
     Empty,
     /// `auto` specified without lang part.
     AutoRequiresLang,
+    /// `if-installed` specified without lang part.
+    IfInsatlledRequiresLang,
 }
 
 struct ExtraCheckArg {
     auto: bool,
+    /// Only run the check if the requisite software is already installed.
+    if_installed: bool,
     lang: ExtraCheckLang,
     /// None = run all extra checks for the given lang
     kind: Option<ExtraCheckKind>,
@@ -748,6 +769,50 @@ struct ExtraCheckArg {
 impl ExtraCheckArg {
     fn matches(&self, lang: ExtraCheckLang, kind: ExtraCheckKind) -> bool {
         self.lang == lang && self.kind.map(|k| k == kind).unwrap_or(true)
+    }
+
+    fn is_non_if_installed_or_matches(&self, root_path: &Path, build_dir: &Path) -> bool {
+        if !self.if_installed {
+            return true;
+        }
+
+        match self.lang {
+            ExtraCheckLang::Spellcheck => {
+                ensure_version(build_dir, "typos", SPELLCHECK_VER).is_ok()
+            }
+            ExtraCheckLang::Shell => has_shellcheck().is_ok(),
+            ExtraCheckLang::Js => {
+                match self.kind {
+                    Some(ExtraCheckKind::Lint) => {
+                        // If Lint is enabled, check both eslint and es-check.
+                        rustdoc_js::has_tool(build_dir, "eslint")
+                            && rustdoc_js::has_tool(build_dir, "es-check")
+                    }
+                    Some(ExtraCheckKind::Typecheck) => {
+                        // If Typecheck is enabled, check tsc.
+                        rustdoc_js::has_tool(build_dir, "tsc")
+                    }
+                    None => {
+                        // No kind means it will check both Lint and Typecheck.
+                        rustdoc_js::has_tool(build_dir, "eslint")
+                            && rustdoc_js::has_tool(build_dir, "es-check")
+                            && rustdoc_js::has_tool(build_dir, "tsc")
+                    }
+                    // Unreachable.
+                    Some(_) => false,
+                }
+            }
+            ExtraCheckLang::Py | ExtraCheckLang::Cpp => {
+                let venv_path = build_dir.join("venv");
+                let mut reqs_path = root_path.to_owned();
+                reqs_path.extend(PIP_REQ_PATH);
+                let Ok(v) = has_py_tools(&venv_path, &reqs_path) else {
+                    return false;
+                };
+
+                v
+            }
+        }
     }
 
     /// Returns `false` if this is an auto arg and the passed filename does not trigger the auto rule
@@ -792,22 +857,41 @@ impl FromStr for ExtraCheckArg {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut auto = false;
+        let mut if_installed = false;
         let mut parts = s.split(':');
         let Some(mut first) = parts.next() else {
             return Err(ExtraCheckParseError::Empty);
         };
-        if first == "auto" {
-            let Some(part) = parts.next() else {
-                return Err(ExtraCheckParseError::AutoRequiresLang);
-            };
-            auto = true;
-            first = part;
+        loop {
+            if !auto && first == "auto" {
+                let Some(part) = parts.next() else {
+                    return Err(ExtraCheckParseError::AutoRequiresLang);
+                };
+                auto = true;
+                first = part;
+                continue;
+            }
+
+            if !if_installed && first == "if-installed" {
+                let Some(part) = parts.next() else {
+                    return Err(ExtraCheckParseError::IfInsatlledRequiresLang);
+                };
+                if_installed = true;
+                first = part;
+                continue;
+            }
+            break;
         }
         let second = parts.next();
         if parts.next().is_some() {
             return Err(ExtraCheckParseError::TooManyParts);
         }
-        let arg = Self { auto, lang: first.parse()?, kind: second.map(|s| s.parse()).transpose()? };
+        let arg = Self {
+            auto,
+            if_installed,
+            lang: first.parse()?,
+            kind: second.map(|s| s.parse()).transpose()?,
+        };
         if !arg.has_supported_kind() {
             return Err(ExtraCheckParseError::UnsupportedKindForLang);
         }
