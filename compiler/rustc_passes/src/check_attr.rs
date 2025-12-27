@@ -223,6 +223,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 Attribute::Parsed(AttributeKind::RustcMustImplementOneOf { attr_span, fn_names }) => {
                     self.check_rustc_must_implement_one_of(*attr_span, fn_names, hir_id,target)
                 },
+                Attribute::Parsed(AttributeKind::ShouldPanic { span,.. }) => {
+                    self.check_should_panic(attrs, *span);
+                },
                 Attribute::Parsed(
                     AttributeKind::EiiExternTarget { .. }
                     | AttributeKind::EiiExternItem
@@ -282,7 +285,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::PassByValue (..)
                     | AttributeKind::StdInternalSymbol (..)
                     | AttributeKind::Coverage (..)
-                    | AttributeKind::ShouldPanic { .. }
                     | AttributeKind::Coroutine(..)
                     | AttributeKind::Linkage(..)
                     | AttributeKind::MustUse { .. }
@@ -446,6 +448,12 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         self.check_repr(attrs, span, target, item, hir_id);
         self.check_rustc_force_inline(hir_id, attrs, target);
         self.check_mix_no_mangle_export(hir_id, attrs);
+    }
+
+    fn check_should_panic(&self, attrs: &[Attribute], attr_span: Span) {
+        if !attrs.iter().any(|attr| attr.has_name(sym::test)) {
+            self.dcx().emit_warn(errors::MustBeAppliedToTest { attr_span, warning: true });
+        }
     }
 
     fn check_rustc_must_implement_one_of(
