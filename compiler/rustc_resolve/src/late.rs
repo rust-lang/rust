@@ -2522,6 +2522,9 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                         trace!("FindReferenceVisitor inserting res={:?}", lt_res);
                         self.lifetime.insert(lt_res);
                     }
+                } else if let TyKind::ImplTrait(..) = ty.kind {
+                    // Do not attempt to look inside impl-trait.
+                    return;
                 }
                 visit::walk_ty(self, ty)
             }
@@ -2562,6 +2565,10 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 if self.is_self_ty(ty) {
                     trace!("SelfVisitor found Self");
                     self.self_found = true;
+                }
+                if let TyKind::ImplTrait(..) = ty.kind {
+                    // Do not attempt to look inside impl-trait.
+                    return;
                 }
                 visit::walk_ty(self, ty)
             }
