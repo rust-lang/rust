@@ -1,4 +1,3 @@
-
 //! Utilities for comparing and ordering values.
 //!
 //! This module contains various tools for comparing and ordering values. In
@@ -23,7 +22,6 @@
 //!
 //! [`max`]: Ord::max
 //! [`min`]: Ord::min
-//! 
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
