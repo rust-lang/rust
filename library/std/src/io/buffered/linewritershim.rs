@@ -52,7 +52,7 @@ impl<'a, W: ?Sized + Write> LineWriterShim<'a, W> {
 }
 
 impl<'a, W: ?Sized + Write> Write for LineWriterShim<'a, W> {
-    /// Writes some data into this BufReader with line buffering.
+    /// Writes some data into this BufWriter with line buffering.
     ///
     /// This means that, if any newlines are present in the data, the data up to
     /// the last newline is sent directly to the underlying writer, and data
@@ -146,7 +146,7 @@ impl<'a, W: ?Sized + Write> Write for LineWriterShim<'a, W> {
         self.buffer.flush()
     }
 
-    /// Writes some vectored data into this BufReader with line buffering.
+    /// Writes some vectored data into this BufWriter with line buffering.
     ///
     /// This means that, if any newlines are present in the data, the data up to
     /// and including the buffer containing the last newline is sent directly to
@@ -256,7 +256,7 @@ impl<'a, W: ?Sized + Write> Write for LineWriterShim<'a, W> {
         self.inner().is_write_vectored()
     }
 
-    /// Writes some data into this BufReader with line buffering.
+    /// Writes some data into this BufWriter with line buffering.
     ///
     /// This means that, if any newlines are present in the data, the data up to
     /// the last newline is sent directly to the underlying writer, and data
