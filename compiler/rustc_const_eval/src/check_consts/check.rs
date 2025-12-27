@@ -833,12 +833,13 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
 
                 // const-eval of `panic_display` assumes the argument is `&&str`
                 if tcx.is_lang_item(callee, LangItem::PanicDisplay) {
-                    match args[0].node.ty(&self.ccx.body.local_decls, tcx).kind() {
-                        ty::Ref(_, ty, _) if matches!(ty.kind(), ty::Ref(_, ty, _) if ty.is_str()) =>
-                            {}
-                        _ => {
-                            self.check_op(ops::PanicNonStr);
-                        }
+                    if let ty::Ref(_, ty, _) =
+                        args[0].node.ty(&self.ccx.body.local_decls, tcx).kind()
+                        && let ty::Ref(_, ty, _) = ty.kind()
+                        && ty.is_str()
+                    {
+                    } else {
+                        self.check_op(ops::PanicNonStr);
                     }
                     // Allow this call, skip all the checks below.
                     return;
