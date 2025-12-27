@@ -249,12 +249,7 @@ impl Rewrite for ast::MetaItemInner {
     }
 
     fn rewrite_result(&self, context: &RewriteContext<'_>, shape: Shape) -> RewriteResult {
-        match self {
-            ast::MetaItemInner::MetaItem(ref meta_item) => meta_item.rewrite_result(context, shape),
-            ast::MetaItemInner::Lit(ref l) => {
-                rewrite_literal(context, l.as_token_lit(), l.span, shape)
-            }
-        }
+        rewrite_meta_item_inner_result(self, context, shape, false)
     }
 }
 
@@ -283,45 +278,97 @@ impl Rewrite for ast::MetaItem {
     }
 
     fn rewrite_result(&self, context: &RewriteContext<'_>, shape: Shape) -> RewriteResult {
-        Ok(match self.kind {
-            ast::MetaItemKind::Word => {
-                rewrite_path(context, PathContext::Type, &None, &self.path, shape)?
-            }
-            ast::MetaItemKind::List(ref list) => {
-                let path = rewrite_path(context, PathContext::Type, &None, &self.path, shape)?;
-                let has_trailing_comma = crate::expr::span_ends_with_comma(context, self.span);
-                overflow::rewrite_with_parens(
-                    context,
-                    &path,
-                    list.iter(),
-                    // 1 = "]"
-                    shape.sub_width(1).max_width_error(shape.width, self.span)?,
-                    self.span,
-                    context.config.attr_fn_like_width(),
-                    Some(if has_trailing_comma {
-                        SeparatorTactic::Always
+        rewrite_meta_item_result(self, context, shape, false)
+    }
+}
+
+pub(crate) fn rewrite_meta_item_inner_result(
+    this: &ast::MetaItemInner,
+    context: &RewriteContext<'_>,
+    shape: Shape,
+    line_break_list: bool,
+) -> RewriteResult {
+    match this {
+        ast::MetaItemInner::MetaItem(ref meta_item) => {
+            rewrite_meta_item_result(meta_item, context, shape, line_break_list)
+        }
+        ast::MetaItemInner::Lit(ref l) => rewrite_literal(context, l.as_token_lit(), l.span, shape),
+    }
+}
+
+pub(crate) fn rewrite_meta_item_result(
+    this: &ast::MetaItem,
+    context: &RewriteContext<'_>,
+    shape: Shape,
+    line_break_list: bool,
+) -> RewriteResult {
+    let path = rewrite_path(context, PathContext::Type, &None, &this.path, shape)?;
+
+    match this.kind {
+        ast::MetaItemKind::Word => {
+            // E.g., `#[test]`, which lacks any arguments after `test`.
+            Ok(path)
+        }
+        ast::MetaItemKind::List(ref list) => {
+            // E.g., `#[derive(..)]`, where the `list` represents the `..`.
+
+            let separator_tactic = if crate::expr::span_ends_with_comma(context, this.span) {
+                SeparatorTactic::Always
+            } else {
+                SeparatorTactic::Never
+            };
+
+            overflow::rewrite_with_parens(
+                context,
+                &path,
+                list.iter(),
+                shape
+                    .sub_width("]".len())
+                    .max_width_error(shape.width, this.span)?,
+                this.span,
+                context.config.attr_fn_like_width(),
+                Some(separator_tactic),
+            )
+        }
+        ast::MetaItemKind::NameValue(ref lit) => {
+            // E.g., `#[feature = "foo"]`, where the `lit` represents the `"foo"`.
+
+            let lit_shape = shape
+                .shrink_left(path.len() + " = ".len())
+                .max_width_error(shape.width, this.span)?;
+
+            // `rewrite_literal` returns `None` when `lit` exceeds max
+            // width. Since a literal is basically unformattable unless it
+            // is a string literal (and only if `format_strings` is set),
+            // we might be better off ignoring the fact that the attribute
+            // is longer than the max width and continue on formatting.
+            // See #2479 for example.
+
+            match rewrite_literal(context, lit.as_token_lit(), lit.span, lit_shape) {
+                Ok(value) => {
+                    // The whole meta item fits on one line.
+                    Ok(format!("{path} = {value}"))
+                }
+                Err(_) => {
+                    // `lit` exceeded the maximum width of its Shape.
+                    if line_break_list {
+                        // Insert a line break before the `=`.
+                        let mut result = String::new();
+                        result.push_str(&path);
+                        let indented = shape.indent.block_indent(context.config);
+                        result.push_str(&indented.to_string_with_newline(context.config));
+                        result.push_str("= ");
+                        result.push_str(context.snippet(lit.span));
+
+                        Ok(result)
                     } else {
-                        SeparatorTactic::Never
-                    }),
-                )?
+                        // Just format on a single line anyway.
+                        let value = context.snippet(lit.span);
+                        Ok(format!("{path} = {value}"))
+                    }
+                }
             }
-            ast::MetaItemKind::NameValue(ref lit) => {
-                let path = rewrite_path(context, PathContext::Type, &None, &self.path, shape)?;
-                // 3 = ` = `
-                let lit_shape = shape
-                    .shrink_left(path.len() + 3)
-                    .max_width_error(shape.width, self.span)?;
-                // `rewrite_literal` returns `None` when `lit` exceeds max
-                // width. Since a literal is basically unformattable unless it
-                // is a string literal (and only if `format_strings` is set),
-                // we might be better off ignoring the fact that the attribute
-                // is longer than the max width and continue on formatting.
-                // See #2479 for example.
-                let value = rewrite_literal(context, lit.as_token_lit(), lit.span, lit_shape)
-                    .unwrap_or_else(|_| context.snippet(lit.span).to_owned());
-                format!("{path} = {value}")
-            }
-        })
+        }
     }
 }
 
