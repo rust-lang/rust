@@ -749,6 +749,60 @@ fn test_cursor_pop_front_back() {
 }
 
 #[test]
+fn test_cursor_pop_front_index() {
+    // Regression test for issue #147616: `pop_front` was not correctly
+    // updating the cursor index when the cursor was pointing to the front.
+
+    // Test case 1: pop_front when cursor is not at front, then at front
+    let mut ll: LinkedList<u32> = LinkedList::new();
+    ll.extend(&[0, 1, 2]);
+    let mut c = ll.cursor_front_mut();
+
+    c.move_next();
+    assert_eq!(c.index(), Some(1));
+    assert_eq!(c.current(), Some(&mut 1));
+
+    // Pop front when cursor is not at front - index should decrement
+    c.pop_front();
+    assert_eq!(c.index(), Some(0));
+    assert_eq!(c.current(), Some(&mut 1));
+
+    // Now cursor is at front, pop_front again - index should remain 0
+    c.pop_front();
+    assert_eq!(c.index(), Some(0));
+    assert_eq!(c.current(), Some(&mut 2));
+    check_links(&ll);
+
+    // Test case 2: minimal reproduction - cursor at front, pop_front
+    let mut ll: LinkedList<u32> = LinkedList::new();
+    ll.extend(&[0, 1]);
+    let mut c = ll.cursor_front_mut();
+
+    assert_eq!(c.index(), Some(0));
+    assert_eq!(c.current(), Some(&mut 0));
+
+    // Pop front when cursor is at front - should move to next and index stays 0
+    c.pop_front();
+    assert_eq!(c.index(), Some(0));
+    assert_eq!(c.current(), Some(&mut 1));
+    check_links(&ll);
+
+    // Test case 3: single element list
+    let mut ll: LinkedList<u32> = LinkedList::new();
+    ll.push_back(42);
+    let mut c = ll.cursor_front_mut();
+
+    assert_eq!(c.index(), Some(0));
+    assert_eq!(c.current(), Some(&mut 42));
+
+    // Pop the only element - cursor should be at ghost node with index 0
+    c.pop_front();
+    assert_eq!(c.index(), None);
+    assert_eq!(c.current(), None);
+    check_links(&ll);
+}
+
+#[test]
 fn test_extend_ref() {
     let mut a = LinkedList::new();
     a.push_back(1);
