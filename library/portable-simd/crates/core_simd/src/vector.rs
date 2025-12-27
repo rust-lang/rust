@@ -1192,6 +1192,13 @@ unsafe impl SimdElement for isize {
     type Mask = isize;
 }
 
+impl Sealed for f16 {}
+
+// Safety: f16 is a valid SIMD element type, and is supported by this API
+unsafe impl SimdElement for f16 {
+    type Mask = i16;
+}
+
 impl Sealed for f32 {}
 
 // Safety: f32 is a valid SIMD element type, and is supported by this API

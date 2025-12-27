@@ -46,6 +46,7 @@ pub trait ToBytes: Sealed {
 }
 
 macro_rules! swap_bytes {
+    { f16, $x:expr } => { Simd::from_bits($x.to_bits().swap_bytes()) };
     { f32, $x:expr } => { Simd::from_bits($x.to_bits().swap_bytes()) };
     { f64, $x:expr } => { Simd::from_bits($x.to_bits().swap_bytes()) };
     { $ty:ty, $x:expr } => { $x.swap_bytes() }
@@ -141,5 +142,6 @@ impl_to_bytes! { isize, 4 }
 #[cfg(target_pointer_width = "64")]
 impl_to_bytes! { isize, 8 }
 
+impl_to_bytes! { f16, 2 }
 impl_to_bytes! { f32, 4 }
 impl_to_bytes! { f64, 8 }

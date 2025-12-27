@@ -4,6 +4,7 @@
     convert_float_to_int,
     core_intrinsics,
     decl_macro,
+    f16_and_f128,
     intra_doc_pointers,
     repr_simd,
     simd_ffi,
