@@ -256,21 +256,10 @@ struct DropNodeKey {
 
 impl Scope {
     /// Whether there's anything to do for the cleanup path, that is,
-    /// when unwinding through this scope. This includes destructors,
-    /// but not StorageDead statements, which don't get emitted at all
-    /// for unwinding, for several reasons:
-    ///  * clang doesn't emit llvm.lifetime.end for C++ unwinding
-    ///  * LLVM's memory dependency analysis can't handle it atm
-    ///  * polluting the cleanup MIR with StorageDead creates
-    ///    landing pads even though there's no actual destructors
-    ///  * freeing up stack space has no effect during unwinding
-    /// Note that for coroutines we do emit StorageDeads, for the
-    /// use of optimizations in the MIR coroutine transform.
+    /// when unwinding through this scope. This includes destructors
+    /// and StorageDead statements to maintain proper drop ordering.
     fn needs_cleanup(&self) -> bool {
-        self.drops.iter().any(|drop| match drop.kind {
-            DropKind::Value | DropKind::ForLint => true,
-            DropKind::Storage => false,
-        })
+        !self.drops.is_empty()
     }
 
     fn invalidate_cache(&mut self) {
@@ -1993,15 +1982,11 @@ impl<'a, 'tcx: 'a> Builder<'a, 'tcx> {
             for (drop_idx, drop_node) in drops.drop_nodes.iter_enumerated().skip(1) {
                 match drop_node.data.kind {
                     DropKind::Storage | DropKind::ForLint => {
-                        if is_coroutine {
-                            let unwind_drop = self
-                                .scopes
-                                .unwind_drops
-                                .add_drop(drop_node.data, unwind_indices[drop_node.next]);
-                            unwind_indices.push(unwind_drop);
-                        } else {
-                            unwind_indices.push(unwind_indices[drop_node.next]);
-                        }
+                        let unwind_drop = self
+                            .scopes
+                            .unwind_drops
+                            .add_drop(drop_node.data, unwind_indices[drop_node.next]);
+                        unwind_indices.push(unwind_drop);
                     }
                     DropKind::Value => {
                         let unwind_drop = self
