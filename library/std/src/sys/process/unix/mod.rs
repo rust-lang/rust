@@ -16,6 +16,7 @@ cfg_select! {
         pub use unsupported::output;
     }
     _ => {
+        #[allow(module_inception)]
         mod unix;
         use unix as imp;
     }

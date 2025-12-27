@@ -1,4 +1,5 @@
 //@ check-pass
+#![allow(module_inception)]
 
 // Minimized case from #62767.
 mod m {

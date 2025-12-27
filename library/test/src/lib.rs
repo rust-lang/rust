@@ -40,6 +40,7 @@ pub use self::types::TestName::*;
 pub use self::types::*;
 
 // Module to be used by rustc to compile tests in libtest
+#[allow(module_inception)]
 pub mod test {
     pub use crate::bench::Bencher;
     pub use crate::cli::{TestOpts, parse_opts};

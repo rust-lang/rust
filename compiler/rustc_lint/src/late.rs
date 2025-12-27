@@ -405,14 +405,6 @@ fn late_lint_mod_inner<'tcx, T: LateLintPass<'tcx>>(
 }
 
 fn late_lint_crate<'tcx>(tcx: TyCtxt<'tcx>) {
-    // Note: `passes` is often empty.
-    let passes: Vec<_> =
-        unerased_lint_store(tcx.sess).late_passes.iter().map(|mk_pass| (mk_pass)(tcx)).collect();
-
-    if passes.is_empty() {
-        return;
-    }
-
     let context = LateContext {
         tcx,
         enclosing_body: None,
@@ -426,19 +418,23 @@ fn late_lint_crate<'tcx>(tcx: TyCtxt<'tcx>) {
 
     let lints_that_dont_need_to_run = tcx.lints_that_dont_need_to_run(());
 
-    let mut filtered_passes: Vec<Box<dyn LateLintPass<'tcx>>> = passes
-        .into_iter()
-        .filter(|pass| {
-            let lints = (**pass).get_lints();
-            // Lintless passes are always in
-            lints.is_empty() ||
-            // If the pass doesn't have a single needed lint, omit it
-            !lints.iter().all(|lint| lints_that_dont_need_to_run.contains(&LintId::of(lint)))
-        })
-        .collect();
+    let mut passes: Vec<Box<dyn LateLintPass<'tcx>>> =
+        vec![Box::new(crate::BuiltinCombinedLateLintPass::new()), Box::new(HardwiredLints)];
 
-    filtered_passes.push(Box::new(HardwiredLints));
-    let pass = RuntimeCombinedLateLintPass { passes: &mut filtered_passes[..] };
+    // Filter out passes whose lints are all in the "don't need to run" set
+    passes.retain(|pass| {
+        let lints = (**pass).get_lints();
+        // Lintless passes are always in
+        lints.is_empty() ||
+        // If the pass doesn't have a single needed lint, omit it
+        !lints.iter().all(|lint| lints_that_dont_need_to_run.contains(&LintId::of(lint)))
+    });
+
+    if passes.is_empty() {
+        return;
+    }
+
+    let pass = RuntimeCombinedLateLintPass { passes: &mut passes };
     late_lint_crate_inner(tcx, context, pass);
 }
 

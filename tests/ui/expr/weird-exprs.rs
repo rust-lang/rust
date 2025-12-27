@@ -10,6 +10,7 @@
 #![allow(uncommon_codepoints, confusable_idents)]
 #![allow(unused_imports)]
 #![allow(unreachable_patterns)]
+#![allow(module_inception)]
 
 #![recursion_limit = "256"]
 
