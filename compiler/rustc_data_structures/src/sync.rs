@@ -36,17 +36,17 @@ pub use parking_lot::{
 };
 
 pub use self::atomic::AtomicU64;
+pub use self::branch_key::BranchKey;
 pub use self::freeze::{FreezeLock, FreezeReadGuard, FreezeWriteGuard};
 #[doc(no_inline)]
 pub use self::lock::{Lock, LockGuard, Mode};
 pub use self::mode::{is_dyn_thread_safe, set_dyn_thread_safe_mode};
-pub use self::parallel::{
-    broadcast, join, par_for_each_in, par_map, parallel_guard, scope, spawn, try_par_for_each_in,
-};
+pub use self::parallel::{ParallelGuard, broadcast, parallel_guard, spawn};
 pub use self::vec::{AppendOnlyIndexVec, AppendOnlyVec};
 pub use self::worker_local::{Registry, WorkerLocal};
 pub use crate::marker::*;
 
+mod branch_key;
 mod freeze;
 mod lock;
 mod parallel;
