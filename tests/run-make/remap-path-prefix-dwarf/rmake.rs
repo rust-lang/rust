@@ -105,7 +105,7 @@ fn check_dwarf_deps(scope: &str, dwarf_test: DwarfDump) {
     let mut rustc_sm = rustc();
     rustc_sm.input(cwd().join("src/some_value.rs"));
     rustc_sm.arg("-Cdebuginfo=2");
-    rustc_sm.arg(format!("-Zremap-path-scope={}", scope));
+    rustc_sm.arg(format!("--remap-path-scope={}", scope));
     rustc_sm.arg("--remap-path-prefix");
     rustc_sm.arg(format!("{}=/REMAPPED", cwd().display()));
     rustc_sm.arg("-Csplit-debuginfo=off");
@@ -117,7 +117,7 @@ fn check_dwarf_deps(scope: &str, dwarf_test: DwarfDump) {
     rustc_pv.input(cwd().join("src/print_value.rs"));
     rustc_pv.output(&print_value_rlib);
     rustc_pv.arg("-Cdebuginfo=2");
-    rustc_pv.arg(format!("-Zremap-path-scope={}", scope));
+    rustc_pv.arg(format!("--remap-path-scope={}", scope));
     rustc_pv.arg("--remap-path-prefix");
     rustc_pv.arg(format!("{}=/REMAPPED", cwd().display()));
     rustc_pv.arg("-Csplit-debuginfo=off");
@@ -158,8 +158,8 @@ fn check_dwarf(test: DwarfTest) {
     rustc.arg("-Cdebuginfo=2");
     if let Some(scope) = test.scope {
         match scope {
-            ScopeType::Object => rustc.arg("-Zremap-path-scope=object"),
-            ScopeType::Diagnostics => rustc.arg("-Zremap-path-scope=diagnostics"),
+            ScopeType::Object => rustc.arg("--remap-path-scope=object"),
+            ScopeType::Diagnostics => rustc.arg("--remap-path-scope=diagnostics"),
         };
         if is_darwin() {
             rustc.arg("-Csplit-debuginfo=off");

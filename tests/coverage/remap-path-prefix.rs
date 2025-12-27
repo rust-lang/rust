@@ -10,8 +10,8 @@
 //@ revisions: with_remap with_coverage_scope with_object_scope with_macro_scope
 //@ compile-flags: --remap-path-prefix={{src-base}}=remapped
 //
-//@[with_coverage_scope] compile-flags: -Zremap-path-scope=coverage
-//@[with_object_scope] compile-flags: -Zremap-path-scope=object
-//@[with_macro_scope] compile-flags: -Zremap-path-scope=macro
+//@[with_coverage_scope] compile-flags: --remap-path-scope=coverage
+//@[with_object_scope] compile-flags: --remap-path-scope=object
+//@[with_macro_scope] compile-flags: --remap-path-scope=macro
 
 fn main() {}

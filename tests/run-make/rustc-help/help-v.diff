@@ -1,4 +1,4 @@
-@@ -65,10 +65,28 @@
+@@ -65,10 +65,31 @@
                          Set a codegen option
      -V, --version       Print version info and exit
      -v, --verbose       Use verbose output
@@ -20,6 +20,9 @@
 +        --remap-path-prefix <FROM>=<TO>
 +                        Remap source names in all output (compiler messages
 +                        and output files)
++        --remap-path-scope <macro,diagnostics,debuginfo,coverage,object,all>
++                        Defines which scopes of paths should be remapped by
++                        `--remap-path-prefix`
 +    @path               Read newline separated options from `path`
  
  Additional help:
