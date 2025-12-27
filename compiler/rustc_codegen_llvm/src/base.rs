@@ -93,8 +93,13 @@ pub(crate) fn compile_codegen_unit(
             // They are necessary for correct offload execution. We do this here to simplify the
             // `offload` intrinsic, avoiding the need for tracking whether it's the first
             // intrinsic call or not.
-            let has_host_offload =
-                cx.sess().opts.unstable_opts.offload.iter().any(|o| matches!(o, Offload::Host(_)));
+            let has_host_offload = cx
+                .sess()
+                .opts
+                .unstable_opts
+                .offload
+                .iter()
+                .any(|o| matches!(o, Offload::Host(_) | Offload::Test));
             if has_host_offload && !cx.sess().target.is_like_gpu {
                 cx.offload_globals.replace(Some(OffloadGlobals::declare(&cx)));
             }
