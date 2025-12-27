@@ -126,6 +126,16 @@ mod impls {
             F::async_call_mut(self, args)
         }
     }
+
+    #[stable(feature = "async_closure", since = "1.85.0")]
+    impl<'a, A: Tuple, F: ?Sized> AsyncFn<A> for &'a mut F
+    where
+        F: AsyncFn<A>,
+    {
+        extern "rust-call" fn async_call(&self, args: A) -> Self::CallRefFuture<'_> {
+            F::async_call(*self, args)
+        }
+    }
 }
 
 mod internal_implementation_detail {

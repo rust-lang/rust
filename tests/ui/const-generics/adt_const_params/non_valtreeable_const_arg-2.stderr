@@ -29,6 +29,8 @@ LL |     Wrapper::<function>::call;
    = note: the following trait bounds were not satisfied:
            `Wrapper<function>: Fn<_>`
            which is required by `&Wrapper<function>: Fn<_>`
+           `Wrapper<function>: Fn<_>`
+           which is required by `&mut Wrapper<function>: Fn<_>`
 note: the trait `Fn` must be implemented
   --> $SRC_DIR/core/src/ops/function.rs:LL:COL
    = help: items from traits can only be used if the trait is implemented and in scope
