@@ -1628,53 +1628,88 @@ impl String {
     where
         F: FnMut(char) -> bool,
     {
-        struct SetLenOnDrop<'a> {
-            s: &'a mut String,
-            idx: usize,
-            del_bytes: usize,
+        let len = self.len();
+        if len == 0 {
+            // Explicit check results in better optimization
+            return;
         }
 
-        impl<'a> Drop for SetLenOnDrop<'a> {
-            fn drop(&mut self) {
-                let new_len = self.idx - self.del_bytes;
+        struct PanicGuard<'a> {
+            s: &'a mut String,
+            r: usize,
+            w: usize,
+        }
+
+        impl<'a> PanicGuard<'a> {
+            unsafe fn commit(self, new_len: usize) {
                 debug_assert!(new_len <= self.s.len());
                 unsafe { self.s.vec.set_len(new_len) };
+                core::mem::forget(self);
             }
         }
 
-        let len = self.len();
-        let mut guard = SetLenOnDrop { s: self, idx: 0, del_bytes: 0 };
+        impl<'a> Drop for PanicGuard<'a> {
+            #[cold]
+            fn drop(&mut self) {
+                debug_assert!(self.w.min(self.r) <= self.s.len());
+                // SAFETY: On panic, we can only guarantee that `r` bytes were read from
+                // the original string, and `w` bytes were written to the string.
+                // so we set the length to the minimum of both.
+                unsafe { self.s.vec.set_len(self.w.min(self.r)) }
+            }
+        }
 
-        while guard.idx < len {
-            let ch =
-                // SAFETY: `guard.idx` is positive-or-zero and less that len so the `get_unchecked`
+        let mut guard = PanicGuard { s: self, r: 0, w: usize::MAX };
+
+        // Faster read-path
+        loop {
+            let ch = unsafe {
+                // SAFETY: `guard.r` is positive-or-zero and less that len so the `get_unchecked`
                 // is in bound. `self` is valid UTF-8 like string and the returned slice starts at
                 // a unicode code point so the `Chars` always return one character.
-                unsafe { guard.s.get_unchecked(guard.idx..len).chars().next().unwrap_unchecked() };
+                guard.s.get_unchecked(guard.r..len).chars().next().unwrap_unchecked()
+            };
             let ch_len = ch.len_utf8();
 
-            if !f(ch) {
-                guard.del_bytes += ch_len;
-            } else if guard.del_bytes > 0 {
-                // SAFETY: `guard.idx` is in bound and `guard.del_bytes` represent the number of
-                // bytes that are erased from the string so the resulting `guard.idx -
-                // guard.del_bytes` always represent a valid unicode code point.
-                //
-                // `guard.del_bytes` >= `ch.len_utf8()`, so taking a slice with `ch.len_utf8()` len
-                // is safe.
-                ch.encode_utf8(unsafe {
-                    crate::slice::from_raw_parts_mut(
-                        guard.s.as_mut_ptr().add(guard.idx - guard.del_bytes),
-                        ch.len_utf8(),
-                    )
-                });
+            if core::intrinsics::unlikely(!f(ch)) {
+                guard.w = guard.r; // first hole starts here
+                guard.r += ch_len;
+                break;
             }
 
-            // Point idx to the next char
-            guard.idx += ch_len;
+            guard.r += ch_len;
+            if guard.r == len {
+                // SAFETY: all characters were kept, so the length remains unchanged.
+                return unsafe { guard.commit(len) };
+            }
         }
 
-        drop(guard);
+        // Slower write-path
+        while guard.r < len {
+            // SAFETY: same as above
+            let ch =
+                unsafe { guard.s.get_unchecked(guard.r..len).chars().next().unwrap_unchecked() };
+            let ch_len = ch.len_utf8();
+
+            if f(ch) {
+                // SAFETY: `guard.r` is in bound and `guard.del_bytes` represent the number of
+                // bytes that are erased from the string so the resulting `guard.w` always
+                // represent a valid unicode code point.
+                //
+                // `guard.w` <= `guard.r` - `ch.len_utf8()`, so taking a slice with `ch.len_utf8()` len
+                // is safe.
+                ch.encode_utf8(unsafe {
+                    crate::slice::from_raw_parts_mut(guard.s.as_mut_ptr().add(guard.w), ch_len)
+                });
+                guard.w += ch_len;
+            }
+
+            guard.r += ch_len;
+        }
+
+        // SAFETY: guard.w points to the end of the new string.
+        let new_len = guard.w;
+        unsafe { guard.commit(new_len) }
     }
 
     /// Inserts a character into this `String` at byte position `idx`.
