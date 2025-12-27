@@ -1131,6 +1131,46 @@ impl Duration {
         let rhs_nanos = (rhs.secs as f32) * (NANOS_PER_SEC as f32) + (rhs.nanos.as_inner() as f32);
         self_nanos / rhs_nanos
     }
+
+    /// Divides `Duration` by `Duration` and returns `u128`, rounding the result towards zero.
+    ///
+    /// # Examples
+    /// ```
+    /// #![feature(duration_integer_division)]
+    /// use std::time::Duration;
+    ///
+    /// let dur = Duration::new(2, 0);
+    /// assert_eq!(dur.div_duration_floor(Duration::new(1, 000_000_001)), 1);
+    /// assert_eq!(dur.div_duration_floor(Duration::new(1, 000_000_000)), 2);
+    /// assert_eq!(dur.div_duration_floor(Duration::new(0, 999_999_999)), 2);
+    /// ```
+    #[unstable(feature = "duration_integer_division", issue = "149573")]
+    #[must_use = "this returns the result of the operation, \
+                  without modifying the original"]
+    #[inline]
+    pub const fn div_duration_floor(self, rhs: Duration) -> u128 {
+        self.as_nanos().div_floor(rhs.as_nanos())
+    }
+
+    /// Divides `Duration` by `Duration` and returns `u128`, rounding the result towards positive infinity.
+    ///
+    /// # Examples
+    /// ```
+    /// #![feature(duration_integer_division)]
+    /// use std::time::Duration;
+    ///
+    /// let dur = Duration::new(2, 0);
+    /// assert_eq!(dur.div_duration_ceil(Duration::new(1, 000_000_001)), 2);
+    /// assert_eq!(dur.div_duration_ceil(Duration::new(1, 000_000_000)), 2);
+    /// assert_eq!(dur.div_duration_ceil(Duration::new(0, 999_999_999)), 3);
+    /// ```
+    #[unstable(feature = "duration_integer_division", issue = "149573")]
+    #[must_use = "this returns the result of the operation, \
+                  without modifying the original"]
+    #[inline]
+    pub const fn div_duration_ceil(self, rhs: Duration) -> u128 {
+        self.as_nanos().div_ceil(rhs.as_nanos())
+    }
 }
 
 #[stable(feature = "duration", since = "1.3.0")]
