@@ -243,38 +243,40 @@ impl<'tcx> LateLintPass<'tcx> for ExprMetavarsInUnsafe {
         // $y: [unsafe#1]
         // ```
         // We want to lint unsafe blocks #0 and #1
-        let bad_unsafe_blocks = self
-            .metavar_expns
-            .iter()
-            .filter_map(|(_, state)| match state {
-                MetavarState::ReferencedInUnsafe { unsafe_blocks } => Some(unsafe_blocks.as_slice()),
-                MetavarState::ReferencedInSafe => None,
-            })
-            .flatten()
-            .copied()
-            .inspect(|&unsafe_block| {
-                if let LevelAndSource {
-                    level: Level::Expect,
-                    lint_id: Some(id),
-                    ..
-                } = cx.tcx.lint_level_at_node(MACRO_METAVARS_IN_UNSAFE, unsafe_block)
-                {
-                    // Since we're going to deduplicate expanded unsafe blocks by its enclosing macro definition soon,
-                    // which would lead to unfulfilled `#[expect()]`s in all other unsafe blocks that are filtered out
-                    // except for the one we emit the warning at, we must manually fulfill the lint
-                    // for all unsafe blocks here.
-                    cx.fulfill_expectation(id);
-                }
-            })
-            .map(|id| {
-                // Remove the syntax context to hide "in this macro invocation" in the diagnostic.
-                // The invocation doesn't matter. Also we want to dedupe by the unsafe block and not by anything
-                // related to the callsite.
-                let span = cx.tcx.hir_span(id);
+        let bad_unsafe_blocks = Itertools::dedup_by(
+            self.metavar_expns
+                .iter()
+                .filter_map(|(_, state)| match state {
+                    MetavarState::ReferencedInUnsafe { unsafe_blocks } => Some(unsafe_blocks.as_slice()),
+                    MetavarState::ReferencedInSafe => None,
+                })
+                .flatten()
+                .copied()
+                .inspect(|&unsafe_block| {
+                    if let LevelAndSource {
+                        level: Level::Expect,
+                        lint_id: Some(id),
+                        ..
+                    } = cx.tcx.lint_level_at_node(MACRO_METAVARS_IN_UNSAFE, unsafe_block)
+                    {
+                        // Since we're going to deduplicate expanded unsafe blocks by its enclosing macro definition
+                        // soon, which would lead to unfulfilled `#[expect()]`s in all other
+                        // unsafe blocks that are filtered out except for the one we emit the
+                        // warning at, we must manually fulfill the lint for all unsafe blocks
+                        // here.
+                        cx.fulfill_expectation(id);
+                    }
+                })
+                .map(|id| {
+                    // Remove the syntax context to hide "in this macro invocation" in the diagnostic.
+                    // The invocation doesn't matter. Also we want to dedupe by the unsafe block and not by anything
+                    // related to the callsite.
+                    let span = cx.tcx.hir_span(id);
 
-                (id, Span::new(span.lo(), span.hi(), SyntaxContext::root(), None))
-            })
-            .dedup_by(|&(_, a), &(_, b)| a == b);
+                    (id, Span::new(span.lo(), span.hi(), SyntaxContext::root(), None))
+                }),
+            |&(_, a), &(_, b)| a == b,
+        );
 
         for (id, span) in bad_unsafe_blocks {
             span_lint_hir_and_then(
