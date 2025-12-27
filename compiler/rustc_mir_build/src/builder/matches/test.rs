@@ -52,7 +52,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
             TestableCase::Slice { len, variable_length } => {
                 let op = if variable_length { BinOp::Ge } else { BinOp::Eq };
-                TestKind::Len { len, op }
+                TestKind::SliceLen { len, op }
             }
 
             TestableCase::Deref { temp, mutability } => TestKind::Deref { temp, mutability },
@@ -312,7 +312,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 }
             }
 
-            TestKind::Len { len, op } => {
+            TestKind::SliceLen { len, op } => {
                 let usize_ty = self.tcx.types.usize;
                 let actual = self.temp(usize_ty, test.span);
 

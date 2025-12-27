@@ -213,7 +213,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
 
             (
-                &TestKind::Len { len: test_len, op: BinOp::Eq },
+                &TestKind::SliceLen { len: test_len, op: BinOp::Eq },
                 &TestableCase::Slice { len, variable_length },
             ) => {
                 match (test_len.cmp(&len), variable_length) {
@@ -245,7 +245,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 }
             }
             (
-                &TestKind::Len { len: test_len, op: BinOp::Ge },
+                &TestKind::SliceLen { len: test_len, op: BinOp::Ge },
                 &TestableCase::Slice { len, variable_length },
             ) => {
                 // the test is `$actual_len >= test_len`
@@ -338,7 +338,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 TestKind::Switch { .. }
                 | TestKind::SwitchInt { .. }
                 | TestKind::If
-                | TestKind::Len { .. }
+                | TestKind::SliceLen { .. }
                 | TestKind::Range { .. }
                 | TestKind::Eq { .. }
                 | TestKind::Deref { .. },

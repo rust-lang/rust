@@ -1382,7 +1382,7 @@ enum TestKind<'tcx> {
     Range(Arc<PatRange<'tcx>>),
 
     /// Test that the length of the slice is `== len` or `>= len`.
-    Len { len: u64, op: BinOp },
+    SliceLen { len: u64, op: BinOp },
 
     /// Call `Deref::deref[_mut]` on the value.
     Deref {
