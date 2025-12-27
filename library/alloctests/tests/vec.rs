@@ -2749,3 +2749,19 @@ fn zst_collections_iter_nth_back_regression() {
     list.push_back(Thing);
     let _ = list.into_iter().nth_back(1);
 }
+
+#[test]
+fn const_heap() {
+    const X: &'static [u32] = {
+        let mut v = Vec::with_capacity(6);
+        let mut x = 1;
+        while x < 42 {
+            v.push(x);
+            x *= 2;
+        }
+        assert!(v.len() == 6);
+        v.const_make_global()
+    };
+
+    assert_eq!([1, 2, 4, 8, 16, 32], X);
+}
