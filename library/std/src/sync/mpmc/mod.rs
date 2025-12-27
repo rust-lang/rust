@@ -654,7 +654,7 @@ impl<T> Clone for Sender<T> {
 #[unstable(feature = "mpmc_channel", issue = "126840")]
 impl<T> fmt::Debug for Sender<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.pad("Sender { .. }")
+        f.debug_struct("Sender").finish_non_exhaustive()
     }
 }
 
@@ -1380,7 +1380,7 @@ impl<T> Clone for Receiver<T> {
 #[unstable(feature = "mpmc_channel", issue = "126840")]
 impl<T> fmt::Debug for Receiver<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.pad("Receiver { .. }")
+        f.debug_struct("Receiver").finish_non_exhaustive()
     }
 }
 

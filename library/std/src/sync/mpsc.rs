@@ -1114,8 +1114,10 @@ impl<T> error::Error for SendError<T> {}
 impl<T> fmt::Debug for TrySendError<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
-            TrySendError::Full(..) => "Full(..)".fmt(f),
-            TrySendError::Disconnected(..) => "Disconnected(..)".fmt(f),
+            TrySendError::Full(..) => f.debug_tuple("TrySendError::Full").finish_non_exhaustive(),
+            TrySendError::Disconnected(..) => {
+                f.debug_tuple("TrySendError::Disconnected").finish_non_exhaustive()
+            }
         }
     }
 }
