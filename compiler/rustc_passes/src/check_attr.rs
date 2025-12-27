@@ -583,7 +583,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         target: Target,
         item: Option<ItemLike<'_>>,
     ) {
-        if matches!(target, Target::Impl { of_trait: true }) {
+        if target == (Target::Impl { of_trait: true }) {
             match item.unwrap() {
                 ItemLike::Item(it) => match it.expect_impl().constness {
                     Constness::Const => {}
@@ -1553,10 +1553,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     fn check_deprecated(&self, hir_id: HirId, attr_span: Span, target: Target) {
         match target {
             Target::AssocConst | Target::Method(..) | Target::AssocTy
-                if matches!(
-                    self.tcx.def_kind(self.tcx.local_parent(hir_id.owner.def_id)),
-                    DefKind::Impl { of_trait: true }
-                ) =>
+                if self.tcx.def_kind(self.tcx.local_parent(hir_id.owner.def_id))
+                    == DefKind::Impl { of_trait: true } =>
             {
                 self.tcx.emit_node_span_lint(
                     UNUSED_ATTRIBUTES,

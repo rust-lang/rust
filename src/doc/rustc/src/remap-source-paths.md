@@ -17,6 +17,20 @@ The replacement is purely textual, with no consideration of the current system's
 
 When multiple remappings are given and several of them match, the **last** matching one is applied.
 
+### Relative paths
+
+Some build systems, such as Cargo, may compile crates using relative paths (for example,
+`src/main.rs` instead of `/home/user/project/src/main.rs)`.
+
+`rustc` preserves these relative paths where possible. However, certain inputs
+(like `#[path = "..."]`) and outputs (such as debug information) may still contain absolute paths.
+
+To ensure consistency, it’s recommended to remap both relative and absolute paths.
+
+```bash
+rustc --remap-path-prefix "src/=/redacted/src" --remap-path-prefix "/home/user/project=/redacted"
+```
+
 ### Example
 
 ```bash
