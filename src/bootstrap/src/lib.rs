@@ -898,8 +898,12 @@ impl Build {
 
     /// Component directory that Cargo will produce output into (e.g.
     /// release/debug)
-    fn cargo_dir(&self) -> &'static str {
-        if self.config.rust_optimize.is_release() { "release" } else { "debug" }
+    fn cargo_dir(&self, mode: Mode) -> &'static str {
+        match (mode, self.config.rust_optimize.is_release()) {
+            (Mode::Std, true) => "dist",
+            (_, true) => "release",
+            (_, false) => "debug",
+        }
     }
 
     fn tools_dir(&self, build_compiler: Compiler) -> PathBuf {
@@ -956,7 +960,7 @@ impl Build {
     /// running a particular compiler, whether or not we're building the
     /// standard library, and targeting the specified architecture.
     fn cargo_out(&self, build_compiler: Compiler, mode: Mode, target: TargetSelection) -> PathBuf {
-        self.stage_out(build_compiler, mode).join(target).join(self.cargo_dir())
+        self.stage_out(build_compiler, mode).join(target).join(self.cargo_dir(mode))
     }
 
     /// Root output directory of LLVM for `target`
