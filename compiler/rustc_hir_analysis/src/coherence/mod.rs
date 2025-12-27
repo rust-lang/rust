@@ -211,9 +211,7 @@ fn check_object_overlap<'tcx>(
                 // This is a WF error tested by `coherence-impl-trait-for-trait-dyn-compatible.rs`.
             } else {
                 let mut supertrait_def_ids = elaborate::supertrait_def_ids(tcx, component_def_id);
-                if supertrait_def_ids
-                    .any(|d| d == trait_def_id && tcx.trait_def(d).implement_via_object)
-                {
+                if supertrait_def_ids.any(|d| d == trait_def_id) {
                     let span = tcx.def_span(impl_def_id);
                     return Err(struct_span_code_err!(
                         tcx.dcx(),

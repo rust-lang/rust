@@ -1,19 +1,39 @@
-error[E0271]: type mismatch resolving `<dyn Pointee<Metadata = ()> as Pointee>::Metadata == ()`
-  --> $DIR/ice-with-dyn-pointee-errors.rs:9:33
+error[E0038]: the trait `Pointee` is not dyn compatible
+  --> $DIR/ice-with-dyn-pointee-errors.rs:8:23
+   |
+LL | fn raw_pointer_in(x: &dyn Pointee<Metadata = ()>) {
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^ `Pointee` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $SRC_DIR/core/src/ptr/metadata.rs:LL:COL
+   |
+   = note: the trait is not dyn compatible because it opted out of dyn-compatibility
+
+error[E0038]: the trait `Pointee` is not dyn compatible
+  --> $DIR/ice-with-dyn-pointee-errors.rs:10:5
    |
 LL |     unknown_sized_object_ptr_in(x)
-   |     --------------------------- ^ expected `()`, found `DynMetadata<dyn Pointee<Metadata = ()>>`
-   |     |
-   |     required by a bound introduced by this call
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ `Pointee` is not dyn compatible
    |
-   = note: expected unit type `()`
-                 found struct `DynMetadata<dyn Pointee<Metadata = ()>>`
-note: required by a bound in `unknown_sized_object_ptr_in`
-  --> $DIR/ice-with-dyn-pointee-errors.rs:6:50
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $SRC_DIR/core/src/ptr/metadata.rs:LL:COL
    |
-LL | fn unknown_sized_object_ptr_in(_: &(impl Pointee<Metadata = ()> + ?Sized)) {}
-   |                                                  ^^^^^^^^^^^^^ required by this bound in `unknown_sized_object_ptr_in`
+   = note: the trait is not dyn compatible because it opted out of dyn-compatibility
 
-error: aborting due to 1 previous error
+error[E0038]: the trait `Pointee` is not dyn compatible
+  --> $DIR/ice-with-dyn-pointee-errors.rs:15:20
+   |
+LL |     raw_pointer_in(&42)
+   |                    ^^^ `Pointee` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $SRC_DIR/core/src/ptr/metadata.rs:LL:COL
+   |
+   = note: the trait is not dyn compatible because it opted out of dyn-compatibility
 
-For more information about this error, try `rustc --explain E0271`.
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0038`.

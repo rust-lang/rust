@@ -89,10 +89,17 @@ fn dyn_compatibility_violations_for_trait(
         .collect();
 
     // Check the trait itself.
-    if trait_has_sized_self(tcx, trait_def_id) {
+    let has_sized_self = trait_has_sized_self(tcx, trait_def_id);
+    if has_sized_self {
         // We don't want to include the requirement from `Sized` itself to be `Sized` in the list.
         let spans = get_sized_bounds(tcx, trait_def_id);
         violations.push(DynCompatibilityViolation::SizedSelf(spans));
+    }
+    // only report dyn-incompatible supertraits if there is no `Self: Sized`,
+    // to avoid duplicate notes about `Sized`.
+    let trait_def = tcx.trait_def(trait_def_id);
+    if !has_sized_self && let Some(span) = trait_def.force_dyn_incompatible {
+        violations.push(DynCompatibilityViolation::ExplicitlyDynIncompatible([span].into()));
     }
     let spans = predicates_reference_self(tcx, trait_def_id, false);
     if !spans.is_empty() {
