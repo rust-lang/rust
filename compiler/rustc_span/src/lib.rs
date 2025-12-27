@@ -2832,6 +2832,9 @@ pub trait HashStableContext {
         span: &SpanData,
     ) -> Option<(StableSourceFileId, usize, BytePos, usize, BytePos)>;
     fn hashing_controls(&self) -> HashingControls;
+
+    #[cfg(debug_assertions)]
+    fn validate_span_parent(&self, span: Span);
 }
 
 impl<CTX> HashStable<CTX> for Span
@@ -2860,6 +2863,12 @@ where
         let span = self.data_untracked();
         span.ctxt.hash_stable(ctx, hasher);
         span.parent.hash_stable(ctx, hasher);
+
+        // check whether the span is lowered correctly when hashing
+        #[cfg(debug_assertions)]
+        {
+            ctx.validate_span_parent(*self);
+        }
 
         if span.is_dummy() {
             Hash::hash(&TAG_INVALID_SPAN, hasher);
