@@ -1,13 +1,13 @@
-error: functions with the "msp430-interrupt" ABI cannot be `async`
-  --> $DIR/cannot-be-coroutine.rs:46:1
+error: functions with the "gpu-kernel" ABI cannot be `async`
+  --> $DIR/cannot-be-coroutine.rs:62:1
    |
-LL | async extern "msp430-interrupt" fn msp430() {
+LL | async extern "gpu-kernel" fn async_kernel() {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 help: remove the `async` keyword from this definition
    |
-LL - async extern "msp430-interrupt" fn msp430() {
-LL + extern "msp430-interrupt" fn msp430() {
+LL - async extern "gpu-kernel" fn async_kernel() {
+LL + extern "gpu-kernel" fn async_kernel() {
    |
 
 error: requires `ResumeTy` lang_item

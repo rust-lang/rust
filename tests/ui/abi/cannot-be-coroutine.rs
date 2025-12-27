@@ -1,6 +1,6 @@
 //@ add-minicore
 //@ edition: 2021
-//@ revisions: x64 x64_win i686 riscv32 riscv64 avr msp430
+//@ revisions: x64 x64_win i686 riscv32 riscv64 avr msp430 amdgpu nvptx
 //
 //@ [x64] needs-llvm-components: x86
 //@ [x64] compile-flags: --target=x86_64-unknown-linux-gnu --crate-type=rlib
@@ -16,6 +16,10 @@
 //@ [avr] compile-flags: --target=avr-none -C target-cpu=atmega328p --crate-type=rlib
 //@ [msp430] needs-llvm-components: msp430
 //@ [msp430] compile-flags: --target=msp430-none-elf --crate-type=rlib
+//@ [amdgpu] needs-llvm-components: amdgpu
+//@ [amdgpu] compile-flags: --target amdgcn-amd-amdhsa -Ctarget-cpu=gfx900 --crate-type=rlib
+//@ [nvptx] needs-llvm-components: nvptx
+//@ [nvptx] compile-flags: --target nvptx64-nvidia-cuda --crate-type=rlib
 //@ ignore-backends: gcc
 #![no_core]
 #![feature(
@@ -23,7 +27,8 @@
     abi_msp430_interrupt,
     abi_avr_interrupt,
     abi_x86_interrupt,
-    abi_riscv_interrupt
+    abi_riscv_interrupt,
+    abi_gpu_kernel
 )]
 
 extern crate minicore;
@@ -52,4 +57,8 @@ async extern "riscv-interrupt-s" fn riscv_s() {
 
 async extern "x86-interrupt" fn x86(_p: *mut ()) {
     //[x64,x64_win,i686]~^ ERROR functions with the "x86-interrupt" ABI cannot be `async`
+}
+
+async extern "gpu-kernel" fn async_kernel() {
+    //[amdgpu,nvptx]~^ ERROR functions with the "gpu-kernel" ABI cannot be `async`
 }
