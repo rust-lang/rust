@@ -277,6 +277,8 @@ fn arg_attrs_for_rust_scalar<'tcx>(
     offset: Size,
     is_return: bool,
     drop_target_pointee: Option<Ty<'tcx>>,
+    mut involves_raw_ptr: bool,
+    _instance: Option<ty::Instance<'tcx>>,
 ) -> ArgAttributes {
     let mut attrs = ArgAttributes::new();
 
@@ -307,6 +309,7 @@ fn arg_attrs_for_rust_scalar<'tcx>(
             Some(kind)
         } else if let Some(pointee) = drop_target_pointee {
             // The argument to `drop_in_place` is semantically equivalent to a mutable reference.
+            involves_raw_ptr = false;
             Some(PointerKind::MutableRef { unpin: pointee.is_unpin(tcx, cx.typing_env) })
         } else {
             None
@@ -355,11 +358,16 @@ fn arg_attrs_for_rust_scalar<'tcx>(
                 PointerKind::MutableRef { unpin } => unpin && noalias_mut_ref,
                 PointerKind::Box { unpin, global } => unpin && global && noalias_for_box,
             };
+
             // We can never add `noalias` in return position; that LLVM attribute has some very surprising semantics
             // (see <https://github.com/rust-lang/unsafe-code-guidelines/issues/385#issuecomment-1368055745>).
-            if no_alias && !is_return {
+            if no_alias && !involves_raw_ptr && !is_return {
                 attrs.set(ArgAttribute::NoAlias);
             }
+
+            //if no_alias && involves_raw_ptr && !is_return {
+            //    println!("xxxxxxx {instance:?}\nyyyyyyy {:?}", layout.ty);
+            //}
 
             if matches!(kind, PointerKind::SharedRef { frozen: true }) && !is_return {
                 attrs.set(ArgAttribute::ReadOnly);
@@ -524,6 +532,14 @@ fn fn_abi_new_uncached<'tcx>(
         extra_args
     };
 
+    let involves_raw_ptr = inputs
+        .iter()
+        .copied()
+        .chain(extra_args.iter().copied())
+        .chain(caller_location)
+        .chain(Some(sig.output()))
+        .any(|ty| matches!(ty.kind(), ty::RawPtr(_, _)));
+
     let is_drop_in_place = determined_fn_def_id.is_some_and(|def_id| {
         tcx.is_lang_item(def_id, LangItem::DropInPlace)
             || tcx.is_lang_item(def_id, LangItem::AsyncDropInPlace)
@@ -533,6 +549,7 @@ fn fn_abi_new_uncached<'tcx>(
         let span = tracing::debug_span!("arg_of");
         let _entered = span.enter();
         let is_return = arg_idx.is_none();
+        let is_caller_location = arg_idx.is_some_and(|i| i >= inputs.len() + extra_args.len());
         let is_drop_target = is_drop_in_place && arg_idx == Some(0);
         let drop_target_pointee = is_drop_target.then(|| match ty.kind() {
             ty::RawPtr(ty, _) => *ty,
@@ -550,7 +567,16 @@ fn fn_abi_new_uncached<'tcx>(
         };
 
         let mut arg = ArgAbi::new(cx, layout, |layout, scalar, offset| {
-            arg_attrs_for_rust_scalar(*cx, scalar, *layout, offset, is_return, drop_target_pointee)
+            arg_attrs_for_rust_scalar(
+                *cx,
+                scalar,
+                *layout,
+                offset,
+                is_return,
+                drop_target_pointee,
+                involves_raw_ptr && !is_caller_location,
+                instance,
+            )
         });
 
         if arg.layout.is_zst() {
