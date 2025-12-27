@@ -232,7 +232,10 @@ auto:
   - name: dist-powerpc-linux
     <<: *job-linux-4c
 
-  - name: dist-powerpc64-linux
+  - name: dist-powerpc64-linux-gnu
+    <<: *job-linux-4c
+
+  - name: dist-powerpc64-linux-musl
     <<: *job-linux-4c
 
   - name: dist-powerpc64le-linux-gnu
