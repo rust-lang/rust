@@ -997,6 +997,7 @@ pub fn create_and_enter_global_ctxt<T, F: for<'tcx> FnOnce(TyCtxt<'tcx>) -> T>(
             rustc_query_impl::query_system(
                 providers.queries,
                 providers.extern_queries,
+                providers.fallback_queries,
                 query_result_on_disk_cache,
                 incremental,
             ),

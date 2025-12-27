@@ -1,21 +1,24 @@
 use std::ops::Deref;
 
 use rustc_data_structures::sync::{AtomicU64, WorkerLocal};
+pub(crate) use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::hir_id::OwnerId;
 use rustc_macros::HashStable;
 use rustc_query_system::HandleCycleError;
-use rustc_query_system::dep_graph::{DepNodeIndex, SerializedDepNodeIndex};
+use rustc_query_system::dep_graph::{DepContext, DepNodeIndex, SerializedDepNodeIndex};
 pub(crate) use rustc_query_system::query::QueryJobId;
 use rustc_query_system::query::*;
-use rustc_span::{ErrorGuaranteed, Span};
+pub use rustc_query_system::query::{CycleError, report_cycle};
+use rustc_span::Span;
 pub use sealed::IntoQueryParam;
 
 use crate::dep_graph;
 use crate::dep_graph::DepKind;
 use crate::query::on_disk_cache::{CacheEncoder, EncodedDepNodeIndex, OnDiskCache};
 use crate::query::{
-    DynamicQueries, ExternProviders, Providers, QueryArenas, QueryCaches, QueryEngine, QueryStates,
+    DynamicQueries, ExternProviders, FallbackProviders, Providers, QueryArenas, QueryCaches,
+    QueryEngine, QueryStates,
 };
 use crate::ty::TyCtxt;
 
@@ -41,8 +44,12 @@ pub struct DynamicQuery<'tcx, C: QueryCache> {
     pub loadable_from_disk:
         fn(tcx: TyCtxt<'tcx>, key: &C::Key, index: SerializedDepNodeIndex) -> bool,
     pub hash_result: HashResult<C::Value>,
-    pub value_from_cycle_error:
-        fn(tcx: TyCtxt<'tcx>, cycle_error: &CycleError, guar: ErrorGuaranteed) -> C::Value,
+    pub execute_fallback: fn(
+        tcx: TyCtxt<'tcx>,
+        key: C::Key,
+        cycle_error: &CycleError,
+        guar: ErrorGuaranteed,
+    ) -> C::Value,
     pub format_value: fn(&C::Value) -> String,
 }
 
@@ -50,6 +57,7 @@ pub struct QuerySystemFns {
     pub engine: QueryEngine,
     pub local_providers: Providers,
     pub extern_providers: ExternProviders,
+    pub fallback_providers: FallbackProviders,
     pub encode_query_results: for<'tcx> fn(
         tcx: TyCtxt<'tcx>,
         encoder: &mut CacheEncoder<'_, 'tcx>,
@@ -165,6 +173,11 @@ impl<'tcx> TyCtxt<'tcx> {
         (self.query_system.fns.try_mark_green)(self, dep_node)
     }
 }
+
+/// For cases when fallback query is unused (aka marked with `fatal_cycle`) makes it impossible to
+/// assign `providers.fallback_queries.<name>` a function to avoid possible confusion.
+#[derive(Clone, Copy)]
+pub struct DisabledWithFatalCycle;
 
 /// Calls either `query_ensure` or `query_ensure_error_guaranteed`, depending
 /// on whether the list of modifiers contains `return_result_from_ensure_ok`.
@@ -446,6 +459,17 @@ macro_rules! define_callbacks {
             $(pub $name: separate_provide_extern_decl!([$($modifiers)*][$name]),)*
         }
 
+        pub struct FallbackProviders {
+            $(pub $name: disable_on_fatal_cycle!([$($modifiers)*]{
+                for<'tcx> fn(
+                    TyCtxt<'tcx>,
+                    queries::$name::LocalKey<'tcx>,
+                    cycle: &$crate::query::plumbing::CycleError,
+                    guar: $crate::query::plumbing::ErrorGuaranteed,
+                ) -> queries::$name::ProvidedValue<'tcx>
+            }),)*
+        }
+
         impl Default for Providers {
             fn default() -> Self {
                 Providers {
@@ -462,6 +486,19 @@ macro_rules! define_callbacks {
             }
         }
 
+        impl Default for FallbackProviders {
+            fn default() -> Self {
+                FallbackProviders {
+                    $($name: disable_on_fatal_cycle!([$($modifiers)*]{
+                        |tcx, key, cycle, guar| {
+                            $crate::query::plumbing::default_fallback_query(tcx, stringify!($name), &key, cycle, guar)
+                        }
+                    })),*
+                }
+            }
+        }
+
+
         impl Copy for Providers {}
         impl Clone for Providers {
             fn clone(&self) -> Self { *self }
@@ -469,6 +506,11 @@ macro_rules! define_callbacks {
 
         impl Copy for ExternProviders {}
         impl Clone for ExternProviders {
+            fn clone(&self) -> Self { *self }
+        }
+
+        impl Copy for FallbackProviders {}
+        impl Clone for FallbackProviders {
             fn clone(&self) -> Self { *self }
         }
 
@@ -492,6 +534,18 @@ macro_rules! hash_result {
     }};
     ([$other:tt $($modifiers:tt)*]) => {
         hash_result!([$($modifiers)*])
+    };
+}
+
+macro_rules! disable_on_fatal_cycle {
+    ([]{$($code:tt)*}) => {
+        $($code)*
+    };
+    ([(fatal_cycle) $($rest:tt)*]{$($code:tt)*}) => {
+        $crate::query::plumbing::DisabledWithFatalCycle
+    };
+    ([$other:tt $($modifiers:tt)*]{$($code:tt)*}) => {
+        disable_on_fatal_cycle!([$($modifiers)*]{$($code)*})
     };
 }
 
@@ -616,6 +670,21 @@ pub(crate) fn default_query(name: &str, key: &dyn std::fmt::Debug) -> ! {
         This error means you tried to use it for one that's not supported.\n\
         If that's not the case, {name} was likely never assigned to a provider function.\n",
     )
+}
+
+#[cold]
+pub fn default_fallback_query<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    name: &str,
+    key: &dyn std::fmt::Debug,
+    cycle_error: &CycleError,
+    _guar: ErrorGuaranteed,
+) -> ! {
+    tcx.sess().dcx().abort_if_errors();
+    bug!(
+        "default_fallback_query(tcx, \"{name}\", {key:?}) called without errors: {:#?}",
+        cycle_error.cycle,
+    );
 }
 
 #[cold]
