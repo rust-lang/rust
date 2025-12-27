@@ -90,6 +90,8 @@ ENV RUST_CONFIGURE_ARGS \
       --set target.x86_64-unknown-linux-gnu.ranlib=/rustroot/bin/llvm-ranlib \
       --set llvm.thin-lto=true \
       --set llvm.ninja=false \
+      --set llvm.offload=true \
+      --set llvm.offload-clang-dir="/rustroot/lib/cmake/clang" \
       --set llvm.libzstd=true \
       --set rust.jemalloc \
       --set rust.bootstrap-override-lld=true \

@@ -1430,10 +1430,12 @@ fn rustc_llvm_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetSelect
     if builder.config.llvm_enzyme {
         cargo.env("LLVM_ENZYME", "1");
     }
+    let llvm::LlvmResult { host_llvm_config, .. } = builder.ensure(llvm::Llvm { target });
     if builder.config.llvm_offload {
+        builder.ensure(llvm::OmpOffload { target });
         cargo.env("LLVM_OFFLOAD", "1");
     }
-    let llvm::LlvmResult { host_llvm_config, .. } = builder.ensure(llvm::Llvm { target });
+
     cargo.env("LLVM_CONFIG", &host_llvm_config);
 
     // Some LLVM linker flags (-L and -l) may be needed to link `rustc_llvm`. Its build script
@@ -2293,6 +2295,60 @@ impl Step for Assemble {
                 let target_dst_lib = target_libdir.join(&libenzyme).with_extension(lib_ext);
                 builder.copy_link(&src_lib, &dst_lib, FileType::NativeLibrary);
                 builder.copy_link(&src_lib, &target_dst_lib, FileType::NativeLibrary);
+            }
+        }
+
+        if builder.config.llvm_offload && !builder.config.dry_run() {
+            debug!("`llvm_offload` requested");
+            let offload_install = builder.ensure(llvm::OmpOffload { target: build_compiler.host });
+            if let Some(_llvm_config) = builder.llvm_config(builder.config.host_target) {
+                let src_dir = offload_install.join("lib");
+                let libdir = builder.sysroot_target_libdir(build_compiler, build_compiler.host);
+                let target_libdir =
+                    builder.sysroot_target_libdir(target_compiler, target_compiler.host);
+                let lib_ext = std::env::consts::DLL_EXTENSION;
+
+                let libenzyme = format!("libLLVMOffload");
+                let src_lib = src_dir.join(&libenzyme).with_extension(lib_ext);
+                let dst_lib = libdir.join(&libenzyme).with_extension(lib_ext);
+                let target_dst_lib = target_libdir.join(&libenzyme).with_extension(lib_ext);
+                if src_lib.exists() {
+                    builder.resolve_symlink_and_copy(&src_lib, &dst_lib);
+                    builder.resolve_symlink_and_copy(&src_lib, &target_dst_lib);
+
+                    // FIXME(offload): With LLVM-22, we should be able to drop everything below here.
+                    let omp = format!("libomp");
+                    let src_omp = src_dir.join(&omp).with_extension(lib_ext);
+                    let dst_omp_lib = libdir.join(&omp).with_extension(lib_ext);
+                    let target_omp_dst_lib = target_libdir.join(&omp).with_extension(lib_ext);
+                    builder.resolve_symlink_and_copy(&src_omp, &dst_omp_lib);
+                    builder.resolve_symlink_and_copy(&src_omp, &target_omp_dst_lib);
+
+                    let tgt = format!("libomptarget");
+                    let src_tgt = src_dir.join(&tgt).with_extension(lib_ext);
+                    let dst_tgt_lib = libdir.join(&tgt).with_extension(lib_ext);
+                    let target_tgt_dst_lib = target_libdir.join(&tgt).with_extension(lib_ext);
+                    builder.resolve_symlink_and_copy(&src_tgt, &dst_tgt_lib);
+                    builder.resolve_symlink_and_copy(&src_tgt, &target_tgt_dst_lib);
+
+                    // The last one is slightly more tricky, since we have the same file twice, in two
+                    // subfolders for amdgcn and nvptx64. We'll likely find two more in the future, once
+                    // Intel and Spir-V support lands in offload.
+                    let gpu_tgts = ["amdgcn-amd-amdhsa", "nvptx64-nvidia-cuda"];
+                    let device = format!("libompdevice.a");
+                    for tgt in gpu_tgts {
+                        let dst_tgt_dir = libdir.join(&tgt);
+                        let target_tgt_dst_dir = target_libdir.join(&tgt);
+                        t!(fs::create_dir_all(&dst_tgt_dir));
+                        t!(fs::create_dir_all(&target_tgt_dst_dir));
+                        let dst_tgt_lib = dst_tgt_dir.join(&device);
+                        let target_tgt_dst_lib = target_tgt_dst_dir.join(&device);
+                        builder.resolve_symlink_and_copy(&src_tgt, &dst_tgt_lib);
+                        builder.resolve_symlink_and_copy(&src_tgt, &target_tgt_dst_lib);
+                        // FIXME(offload): copy the files within the directories as well, but figure out
+                        // the naming scheme before.
+                    }
+                }
             }
         }
 
