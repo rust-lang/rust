@@ -512,6 +512,8 @@ pub const fn align_of<T>() -> usize {
 #[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_stable(feature = "const_align_of_val", since = "1.85.0")]
+#[rustc_allow_const_fn_unstable(contracts)]
+#[core::contracts::ensures(|result: &usize| result.is_power_of_two())]
 pub const fn align_of_val<T: ?Sized>(val: &T) -> usize {
     // SAFETY: val is a reference, so it's a valid raw pointer
     unsafe { intrinsics::align_of_val(val) }

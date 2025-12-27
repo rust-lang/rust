@@ -9,30 +9,46 @@
           scope 2 (inlined NonNull::<u8>::dangling) {
               let mut _3: std::num::NonZero<usize>;
               scope 3 {
-                  scope 5 (inlined std::ptr::Alignment::as_nonzero) {
+                  scope 9 (inlined std::ptr::Alignment::as_nonzero) {
+                      scope 10 {
+                          scope 11 {
+                              scope 12 {
+                              }
+                          }
+                      }
+                      scope 13 (inlined core::contracts::build_check_ensures::<NonZero<usize>, {closure@std::ptr::Alignment::as_nonzero::{closure#0}}>) {
+                      }
                   }
-                  scope 6 (inlined NonNull::<u8>::without_provenance) {
-                      scope 7 {
+                  scope 14 (inlined NonNull::<u8>::without_provenance) {
+                      scope 15 {
                       }
-                      scope 8 (inlined NonZero::<usize>::get) {
+                      scope 16 (inlined NonZero::<usize>::get) {
                       }
-                      scope 9 (inlined std::ptr::without_provenance::<u8>) {
-                          scope 10 (inlined without_provenance_mut::<u8>) {
+                      scope 17 (inlined std::ptr::without_provenance::<u8>) {
+                          scope 18 (inlined without_provenance_mut::<u8>) {
                           }
                       }
                   }
               }
               scope 4 (inlined std::ptr::Alignment::of::<u8>) {
+                  scope 5 {
+                      scope 6 {
+                          scope 7 {
+                          }
+                      }
+                  }
+                  scope 8 (inlined core::contracts::build_check_ensures::<std::ptr::Alignment, {closure@std::ptr::Alignment::of<u8>::{closure#0}}>) {
+                  }
               }
           }
-          scope 11 (inlined NonNull::<u8>::as_ptr) {
+          scope 19 (inlined NonNull::<u8>::as_ptr) {
           }
       }
-      scope 12 (inlined Foo::<u8>::cmp_ptr) {
+      scope 20 (inlined Foo::<u8>::cmp_ptr) {
           let mut _4: *const u8;
           let mut _5: *mut u8;
           let mut _6: *const u8;
-          scope 13 (inlined std::ptr::eq::<u8>) {
+          scope 21 (inlined std::ptr::eq::<u8>) {
           }
       }
   
