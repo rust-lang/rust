@@ -5,7 +5,7 @@
 #[cfg(not(target_arch = "xtensa"))]
 use crate::ffi::c_void;
 use crate::fmt;
-use crate::intrinsics::{va_arg, va_copy};
+use crate::intrinsics::va_arg;
 use crate::marker::PhantomCovariantLifetime;
 
 // There are currently three flavors of how a C `va_list` is implemented for
@@ -48,7 +48,7 @@ crate::cfg_select! {
         /// [AArch64 Procedure Call Standard]:
         /// http://infocenter.arm.com/help/topic/com.arm.doc.ihi0055b/IHI0055B_aapcs64.pdf
         #[repr(C)]
-        #[derive(Debug)]
+        #[derive(Debug, Clone, Copy)]
         struct VaListInner {
             stack: *const c_void,
             gr_top: *const c_void,
@@ -66,7 +66,7 @@ crate::cfg_select! {
         /// https://github.com/llvm/llvm-project/blob/af9a4263a1a209953a1d339ef781a954e31268ff/llvm/lib/Target/PowerPC/PPCISelLowering.cpp#L4089-L4111
         /// [GCC header]: https://web.mit.edu/darwin/src/modules/gcc/gcc/ginclude/va-ppc.h
         #[repr(C)]
-        #[derive(Debug)]
+        #[derive(Debug, Clone, Copy)]
         #[rustc_pass_indirectly_in_non_rustic_abis]
         struct VaListInner {
             gpr: u8,
@@ -84,7 +84,7 @@ crate::cfg_select! {
         /// [S/390x ELF Application Binary Interface Supplement]:
         /// https://docs.google.com/gview?embedded=true&url=https://github.com/IBM/s390x-abi/releases/download/v1.7/lzsabi_s390x.pdf
         #[repr(C)]
-        #[derive(Debug)]
+        #[derive(Debug, Clone, Copy)]
         #[rustc_pass_indirectly_in_non_rustic_abis]
         struct VaListInner {
             gpr: i64,
@@ -101,7 +101,7 @@ crate::cfg_select! {
         /// [System V AMD64 ABI]:
         /// https://refspecs.linuxbase.org/elf/x86_64-abi-0.99.pdf
         #[repr(C)]
-        #[derive(Debug)]
+        #[derive(Debug, Clone, Copy)]
         #[rustc_pass_indirectly_in_non_rustic_abis]
         struct VaListInner {
             gp_offset: i32,
@@ -118,7 +118,7 @@ crate::cfg_select! {
         /// [LLVM source]:
         /// https://github.com/llvm/llvm-project/blob/af9a4263a1a209953a1d339ef781a954e31268ff/llvm/lib/Target/Xtensa/XtensaISelLowering.cpp#L1211-L1215
         #[repr(C)]
-        #[derive(Debug)]
+        #[derive(Debug, Clone, Copy)]
         #[rustc_pass_indirectly_in_non_rustic_abis]
         struct VaListInner {
             stk: *const i32,
@@ -135,7 +135,7 @@ crate::cfg_select! {
         /// [LLVM source]:
         /// https://github.com/llvm/llvm-project/blob/0cdc1b6dd4a870fc41d4b15ad97e0001882aba58/clang/lib/CodeGen/Targets/Hexagon.cpp#L407-L417
         #[repr(C)]
-        #[derive(Debug)]
+        #[derive(Debug, Clone, Copy)]
         #[rustc_pass_indirectly_in_non_rustic_abis]
         struct VaListInner {
             __current_saved_reg_area_pointer: *const c_void,
@@ -157,7 +157,7 @@ crate::cfg_select! {
     _ => {
         /// Basic implementation of a `va_list`.
         #[repr(transparent)]
-        #[derive(Debug)]
+        #[derive(Debug, Clone, Copy)]
         struct VaListInner {
             ptr: *const c_void,
         }
@@ -176,6 +176,29 @@ impl fmt::Debug for VaList<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // No need to include `_marker` in debug output.
         f.debug_tuple("VaList").field(&self.inner).finish()
+    }
+}
+
+impl Clone for VaList<'_> {
+    #[inline]
+    fn clone(&self) -> Self {
+        // For all current LLVM targets `va_copy` is just a `memcpy`.
+        //
+        // We only implement Clone and not Copy because some future target might not be able to
+        // implement Copy (e.g. because it allocates).
+        Self { inner: self.inner, _marker: self._marker }
+    }
+}
+
+impl Drop for VaList<'_> {
+    fn drop(&mut self) {
+        // For all current LLVM targets `va_end` is a no-op.
+        //
+        // We implement `Drop` here because some future target might need to actually run
+        // destructors (e.g. to deallocate).
+        //
+        // Rust requires that not calling `va_end` on a `va_list` does not cause undefined
+        // behaviour: it is safe to leak values.
     }
 }
 
@@ -250,26 +273,6 @@ impl<'f> VaList<'f> {
     pub unsafe fn arg<T: VaArgSafe>(&mut self) -> T {
         // SAFETY: the caller must uphold the safety contract for `va_arg`.
         unsafe { va_arg(self) }
-    }
-}
-
-impl<'f> Clone for VaList<'f> {
-    #[inline]
-    fn clone(&self) -> Self {
-        let mut dest = crate::mem::MaybeUninit::uninit();
-        // SAFETY: we write to the `MaybeUninit`, thus it is initialized and `assume_init` is legal.
-        unsafe {
-            va_copy(dest.as_mut_ptr(), self);
-            dest.assume_init()
-        }
-    }
-}
-
-impl<'f> Drop for VaList<'f> {
-    fn drop(&mut self) {
-        // Rust requires that not calling `va_end` on a `va_list` does not cause undefined behaviour
-        // (as it is safe to leak values). As `va_end` is a no-op on all current LLVM targets, this
-        // destructor is empty.
     }
 }
 

@@ -3456,19 +3456,6 @@ pub(crate) const fn miri_promise_symbolic_alignment(ptr: *const (), align: usize
     )
 }
 
-/// Copies the current location of arglist `src` to the arglist `dst`.
-///
-/// # Safety
-///
-/// You must check the following invariants before you call this function:
-///
-/// - `dest` must be non-null and point to valid, writable memory.
-/// - `dest` must not alias `src`.
-///
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub unsafe fn va_copy<'f>(dest: *mut VaList<'f>, src: &VaList<'f>);
-
 /// Loads an argument of type `T` from the `va_list` `ap` and increment the
 /// argument `ap` points to.
 ///
