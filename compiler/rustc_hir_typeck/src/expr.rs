@@ -3698,7 +3698,40 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 }
                 hir::InlineAsmOperand::Const { ref anon_const } => {
-                    self.check_expr_const_block(anon_const, Expectation::NoExpectation);
+                    // This is mostly similar to type-checking of inline const expressions `const { ... }`, however
+                    // asm const has special coercion rules (per RFC 3848) where function items and closures are coerced to
+                    // function pointers (while pointers and integer remain as-is).
+                    let body = self.tcx.hir_body(anon_const.body);
+
+                    let fcx = FnCtxt::new(self, self.param_env, anon_const.def_id);
+                    let ty = fcx.check_expr(body.value);
+                    let target_ty = match self.structurally_resolve_type(body.value.span, ty).kind()
+                    {
+                        ty::FnDef(..) => {
+                            let fn_sig = ty.fn_sig(self.tcx());
+                            Ty::new_fn_ptr(self.tcx(), fn_sig)
+                        }
+                        ty::Closure(_, args) => {
+                            let closure_sig = args.as_closure().sig();
+                            let fn_sig =
+                                self.tcx().signature_unclosure(closure_sig, hir::Safety::Safe);
+                            Ty::new_fn_ptr(self.tcx(), fn_sig)
+                        }
+                        _ => ty,
+                    };
+
+                    if let Err(diag) =
+                        self.demand_coerce_diag(&body.value, ty, target_ty, None, AllowTwoPhase::No)
+                    {
+                        diag.emit();
+                    }
+
+                    fcx.require_type_is_sized(
+                        target_ty,
+                        body.value.span,
+                        ObligationCauseCode::SizedConstOrStatic,
+                    );
+                    fcx.write_ty(anon_const.hir_id, target_ty);
                 }
                 hir::InlineAsmOperand::SymFn { expr } => {
                     self.check_expr(expr);

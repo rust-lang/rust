@@ -13,7 +13,7 @@ use rustc_hashes::Hash128;
 use rustc_hir::def_id::DefId;
 use rustc_middle::bug;
 use rustc_middle::mir::interpret::{ConstAllocation, GlobalAlloc, PointerArithmetic, Scalar};
-use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::{Instance, TyCtxt};
 use rustc_session::cstore::DllImport;
 use tracing::debug;
 
@@ -126,7 +126,7 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
     }
 }
 
-impl<'ll, 'tcx> ConstCodegenMethods for CodegenCx<'ll, 'tcx> {
+impl<'ll, 'tcx> ConstCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     fn const_null(&self, t: &'ll Type) -> &'ll Value {
         unsafe { llvm::LLVMConstNull(t) }
     }
@@ -260,6 +260,91 @@ impl<'ll, 'tcx> ConstCodegenMethods for CodegenCx<'ll, 'tcx> {
         })
     }
 
+    fn alloc_to_backend(
+        &self,
+        global_alloc: GlobalAlloc<'tcx>,
+        name_hint: Option<Instance<'tcx>>,
+    ) -> Result<(Self::Value, Option<Instance<'tcx>>), u64> {
+        let alloc = match global_alloc {
+            GlobalAlloc::Function { instance, .. } => {
+                return Ok((self.get_fn_addr(instance), Some(instance)));
+            }
+            GlobalAlloc::Static(def_id) => {
+                assert!(self.tcx.is_static(def_id));
+                assert!(!self.tcx.is_thread_local_static(def_id));
+                return Ok((
+                    // `alloc_to_backend` might be called by `global_asm!` codegen. In which case
+                    // `global_asm!` would need to find the renamed statics to use for symbol name.
+                    self.renamed_statics
+                        .borrow()
+                        .get(&def_id)
+                        .copied()
+                        .unwrap_or_else(|| self.get_static(def_id)),
+                    Some(Instance::mono(self.tcx, def_id)),
+                ));
+            }
+            GlobalAlloc::TypeId { .. } => {
+                // Drop the provenance, the offset contains the bytes of the hash, so
+                // just return 0 as base address.
+                return Err(0);
+            }
+
+            GlobalAlloc::Memory(alloc) => {
+                if alloc.inner().len() == 0 {
+                    // For ZSTs directly codegen an aligned pointer.
+                    // This avoids generating a zero-sized constant value and actually needing a
+                    // real address at runtime.
+                    return Err(alloc.inner().align.bytes());
+                }
+
+                alloc
+            }
+            GlobalAlloc::VTable(ty, dyn_ty) => {
+                self.tcx
+                    .global_alloc(self.tcx.vtable_allocation((
+                        ty,
+                        dyn_ty.principal().map(|principal| {
+                            self.tcx.instantiate_bound_regions_with_erased(principal)
+                        }),
+                    )))
+                    .unwrap_memory()
+            }
+        };
+
+        let init = const_alloc_to_llvm(self, alloc.inner(), /*static*/ false);
+        let alloc = alloc.inner();
+
+        if let Some(name) = name_hint {
+            let sym = self.tcx.symbol_name(name);
+
+            // If a hint is provided, always use `static_addr_of_mut`, as `static_addr_of_impl` may
+            // deduplicate and provide one that doesn't have a desired name.
+            let value = self.static_addr_of_mut(init, alloc.align, None);
+            if alloc.mutability.is_not() {
+                llvm::set_global_constant(value, true);
+            }
+
+            llvm::set_value_name(value, sym.name.as_bytes());
+            llvm::set_linkage(value, llvm::Linkage::InternalLinkage);
+            return Ok((value, Some(name)));
+        }
+
+        let value = match alloc.mutability {
+            Mutability::Mut => self.static_addr_of_mut(init, alloc.align, None),
+            _ => self.static_addr_of_impl(init, alloc.align, None),
+        };
+        if !self.sess().fewer_names() && llvm::get_value_name(value).is_empty() {
+            let hash = self.tcx.with_stable_hashing_context(|mut hcx| {
+                let mut hasher = StableHasher::new();
+                alloc.hash_stable(&mut hcx, &mut hasher);
+                hasher.finish::<Hash128>()
+            });
+            llvm::set_value_name(value, format!("alloc_{hash:032x}").as_bytes());
+        }
+
+        Ok((value, None))
+    }
+
     fn scalar_to_backend(&self, cv: Scalar, layout: abi::Scalar, llty: &'ll Type) -> &'ll Value {
         let bitsize = if layout.is_bool() { 1 } else { layout.size(self).bits() };
         match cv {
@@ -275,68 +360,19 @@ impl<'ll, 'tcx> ConstCodegenMethods for CodegenCx<'ll, 'tcx> {
             Scalar::Ptr(ptr, _size) => {
                 let (prov, offset) = ptr.prov_and_relative_offset();
                 let global_alloc = self.tcx.global_alloc(prov.alloc_id());
-                let base_addr = match global_alloc {
-                    GlobalAlloc::Memory(alloc) => {
-                        // For ZSTs directly codegen an aligned pointer.
-                        // This avoids generating a zero-sized constant value and actually needing a
-                        // real address at runtime.
-                        if alloc.inner().len() == 0 {
-                            let val = alloc.inner().align.bytes().wrapping_add(offset.bytes());
-                            let llval = self.const_usize(self.tcx.truncate_to_target_usize(val));
-                            return if matches!(layout.primitive(), Pointer(_)) {
-                                unsafe { llvm::LLVMConstIntToPtr(llval, llty) }
-                            } else {
-                                self.const_bitcast(llval, llty)
-                            };
+                let base_addr_space = global_alloc.address_space(self);
+                let base_addr = match self.alloc_to_backend(global_alloc, None) {
+                    Ok((base_addr, _)) => base_addr,
+                    Err(base_addr) => {
+                        let val = base_addr.wrapping_add(offset.bytes());
+                        let llval = self.const_usize(self.tcx.truncate_to_target_usize(val));
+                        return if matches!(layout.primitive(), Pointer(_)) {
+                            unsafe { llvm::LLVMConstIntToPtr(llval, llty) }
                         } else {
-                            let init =
-                                const_alloc_to_llvm(self, alloc.inner(), /*static*/ false);
-                            let alloc = alloc.inner();
-                            let value = match alloc.mutability {
-                                Mutability::Mut => self.static_addr_of_mut(init, alloc.align, None),
-                                _ => self.static_addr_of_impl(init, alloc.align, None),
-                            };
-                            if !self.sess().fewer_names() && llvm::get_value_name(value).is_empty()
-                            {
-                                let hash = self.tcx.with_stable_hashing_context(|mut hcx| {
-                                    let mut hasher = StableHasher::new();
-                                    alloc.hash_stable(&mut hcx, &mut hasher);
-                                    hasher.finish::<Hash128>()
-                                });
-                                llvm::set_value_name(
-                                    value,
-                                    format!("alloc_{hash:032x}").as_bytes(),
-                                );
-                            }
-                            value
-                        }
-                    }
-                    GlobalAlloc::Function { instance, .. } => self.get_fn_addr(instance),
-                    GlobalAlloc::VTable(ty, dyn_ty) => {
-                        let alloc = self
-                            .tcx
-                            .global_alloc(self.tcx.vtable_allocation((
-                                ty,
-                                dyn_ty.principal().map(|principal| {
-                                    self.tcx.instantiate_bound_regions_with_erased(principal)
-                                }),
-                            )))
-                            .unwrap_memory();
-                        let init = const_alloc_to_llvm(self, alloc.inner(), /*static*/ false);
-                        self.static_addr_of_impl(init, alloc.inner().align, None)
-                    }
-                    GlobalAlloc::Static(def_id) => {
-                        assert!(self.tcx.is_static(def_id));
-                        assert!(!self.tcx.is_thread_local_static(def_id));
-                        self.get_static(def_id)
-                    }
-                    GlobalAlloc::TypeId { .. } => {
-                        // Drop the provenance, the offset contains the bytes of the hash
-                        let llval = self.const_usize(offset.bytes());
-                        return unsafe { llvm::LLVMConstIntToPtr(llval, llty) };
+                            self.const_bitcast(llval, llty)
+                        };
                     }
                 };
-                let base_addr_space = global_alloc.address_space(self);
                 let llval = unsafe {
                     llvm::LLVMConstInBoundsGEP2(
                         self.type_i8(),

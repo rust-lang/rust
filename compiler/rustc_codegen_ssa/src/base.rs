@@ -21,12 +21,12 @@ use rustc_middle::middle::debugger_visualizer::DebuggerVisualizerFile;
 use rustc_middle::middle::dependency_format::Dependencies;
 use rustc_middle::middle::exported_symbols::{self, SymbolExportKind};
 use rustc_middle::middle::lang_items;
-use rustc_middle::mir::BinOp;
-use rustc_middle::mir::interpret::ErrorHandled;
+use rustc_middle::mir::interpret::{CTFE_ALLOC_SALT, ErrorHandled, Scalar};
 use rustc_middle::mir::mono::{CodegenUnit, CodegenUnitNameBuilder, MonoItem, MonoItemPartitions};
+use rustc_middle::mir::{BinOp, ConstValue};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::layout::{HasTyCtxt, HasTypingEnv, LayoutOf, TyAndLayout};
-use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
+use rustc_middle::ty::{self, Instance, Ty, TyCtxt, UintTy};
 use rustc_middle::{bug, span_bug};
 use rustc_session::Session;
 use rustc_session::config::{self, CrateType, EntryFnType};
@@ -407,24 +407,36 @@ where
             .iter()
             .map(|(op, op_sp)| match *op {
                 rustc_hir::InlineAsmOperand::Const { ref anon_const } => {
-                    match cx.tcx().const_eval_poly(anon_const.def_id.to_def_id()) {
+                    let def_id = anon_const.def_id.to_def_id();
+                    match cx.tcx().const_eval_poly(def_id) {
                         Ok(const_value) => {
                             let ty =
                                 cx.tcx().typeck_body(anon_const.body).node_type(anon_const.hir_id);
-                            let string = common::asm_const_to_str(
-                                cx.tcx(),
-                                *op_sp,
-                                const_value,
-                                cx.layout_of(ty),
-                            );
-                            GlobalAsmOperandRef::Const { string }
+                            let ConstValue::Scalar(scalar) = const_value else {
+                                span_bug!(
+                                    *op_sp,
+                                    "expected Scalar for promoted asm const, but got {:#?}",
+                                    const_value
+                                )
+                            };
+                            GlobalAsmOperandRef::Const {
+                                value: common::asm_const_ptr_clean(cx.tcx(), scalar),
+                                ty,
+                                instance: Some(Instance::new_raw(
+                                    def_id,
+                                    ty::GenericArgs::identity_for_item(cx.tcx(), def_id),
+                                )),
+                            }
                         }
                         Err(ErrorHandled::Reported { .. }) => {
                             // An error has already been reported and
                             // compilation is guaranteed to fail if execution
-                            // hits this path. So an empty string instead of
-                            // a stringified constant value will suffice.
-                            GlobalAsmOperandRef::Const { string: String::new() }
+                            // hits this path. So anything will suffice.
+                            GlobalAsmOperandRef::Const {
+                                value: Scalar::from_u32(0),
+                                ty: Ty::new_uint(cx.tcx(), UintTy::U32),
+                                instance: None,
+                            }
                         }
                         Err(ErrorHandled::TooGeneric(_)) => {
                             span_bug!(*op_sp, "asm const cannot be resolved; too generic")
@@ -444,7 +456,14 @@ where
                         _ => span_bug!(*op_sp, "asm sym is not a function"),
                     };
 
-                    GlobalAsmOperandRef::SymFn { instance }
+                    GlobalAsmOperandRef::Const {
+                        value: Scalar::from_pointer(
+                            cx.tcx().reserve_and_set_fn_alloc(instance, CTFE_ALLOC_SALT).into(),
+                            cx,
+                        ),
+                        ty: Ty::new_fn_ptr(cx.tcx(), ty.fn_sig(cx.tcx())),
+                        instance: None,
+                    }
                 }
                 rustc_hir::InlineAsmOperand::SymStatic { path: _, def_id } => {
                     GlobalAsmOperandRef::SymStatic { def_id }

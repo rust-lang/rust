@@ -1,6 +1,7 @@
 //! The AOT driver uses [`cranelift_object`] to write object files suitable for linking into a
 //! standalone executable.
 
+use std::fmt::Write as _;
 use std::io::Write;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
@@ -8,6 +9,7 @@ use std::sync::Arc;
 
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_codegen_ssa::traits::{AsmCodegenMethods, GlobalAsmOperandRef};
+use rustc_middle::mir::interpret::{GlobalAlloc, PointerArithmetic, Scalar as ConstScalar};
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::ty::layout::{
     FnAbiError, FnAbiOfHelpers, FnAbiRequest, HasTyCtxt, HasTypingEnv, LayoutError, LayoutOfHelpers,
@@ -107,21 +109,50 @@ fn codegen_global_asm_inner<'tcx>(
             InlineAsmTemplatePiece::String(ref s) => global_asm.push_str(s),
             InlineAsmTemplatePiece::Placeholder { operand_idx, modifier: _, span } => {
                 match operands[operand_idx] {
-                    GlobalAsmOperandRef::Const { ref string } => {
-                        global_asm.push_str(string);
-                    }
-                    GlobalAsmOperandRef::SymFn { instance } => {
-                        if cfg!(not(feature = "inline_asm_sym")) {
-                            tcx.dcx().span_err(
-                                span,
-                                "asm! and global_asm! sym operands are not yet supported",
-                            );
-                        }
+                    GlobalAsmOperandRef::Const { value, ty, instance: _ } => {
+                        match value {
+                            ConstScalar::Int(int) => {
+                                let string = rustc_codegen_ssa::common::asm_const_to_str(
+                                    tcx,
+                                    int,
+                                    FullyMonomorphizedLayoutCx(tcx).layout_of(ty),
+                                );
+                                global_asm.push_str(&string);
+                            }
 
-                        let symbol = tcx.symbol_name(instance);
-                        // FIXME handle the case where the function was made private to the
-                        // current codegen unit
-                        global_asm.push_str(symbol.name);
+                            ConstScalar::Ptr(ptr, _) => {
+                                let (prov, offset) = ptr.prov_and_relative_offset();
+                                let global_alloc = tcx.global_alloc(prov.alloc_id());
+                                let symbol_name = match global_alloc {
+                                    GlobalAlloc::Function { instance } => {
+                                        if cfg!(not(feature = "inline_asm_sym")) {
+                                            tcx.dcx().span_err(
+                                                span,
+                                                "asm! and global_asm! sym operands are not yet supported",
+                                            );
+                                        }
+
+                                        // FIXME handle the case where the function was made private to the
+                                        // current codegen unit
+                                        tcx.symbol_name(instance)
+                                    }
+                                    GlobalAlloc::Static(def_id) => {
+                                        let instance = Instance::mono(tcx, def_id);
+                                        tcx.symbol_name(instance)
+                                    }
+                                    GlobalAlloc::Memory(_)
+                                    | GlobalAlloc::VTable(..)
+                                    | GlobalAlloc::TypeId { .. } => unreachable!(),
+                                };
+
+                                global_asm.push_str(symbol_name.name);
+
+                                if offset != Size::ZERO {
+                                    let offset = tcx.sign_extend_to_target_isize(offset.bytes());
+                                    write!(global_asm, "{offset:+}").unwrap();
+                                }
+                            }
+                        }
                     }
                     GlobalAsmOperandRef::SymStatic { def_id } => {
                         if cfg!(not(feature = "inline_asm_sym")) {
@@ -130,7 +161,6 @@ fn codegen_global_asm_inner<'tcx>(
                                 "asm! and global_asm! sym operands are not yet supported",
                             );
                         }
-
                         let instance = Instance::mono(tcx, def_id);
                         let symbol = tcx.symbol_name(instance);
                         global_asm.push_str(symbol.name);

@@ -1,10 +1,12 @@
 use std::assert_matches::assert_matches;
+use std::fmt::Write;
 
-use rustc_abi::{BackendRepr, Float, Integer, Primitive, Scalar};
+use rustc_abi::{BackendRepr, Float, Integer, Primitive, Scalar, Size};
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_codegen_ssa::mir::operand::OperandValue;
 use rustc_codegen_ssa::traits::*;
 use rustc_data_structures::fx::FxHashMap;
+use rustc_middle::mir::interpret::{PointerArithmetic, Scalar as ConstScalar};
 use rustc_middle::ty::Instance;
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::{bug, span_bug};
@@ -157,11 +159,17 @@ impl<'ll, 'tcx> AsmBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                         constraints.push(format!("{}", op_idx[&idx]));
                     }
                 }
-                InlineAsmOperandRef::SymFn { instance } => {
-                    inputs.push(self.cx.get_fn(instance));
-                    op_idx.insert(idx, constraints.len());
-                    constraints.push("s".to_string());
-                }
+                InlineAsmOperandRef::Const { value, ty: _, instance: _ } => match value {
+                    ConstScalar::Int(_) => (),
+                    ConstScalar::Ptr(ptr, _) => {
+                        let (prov, _) = ptr.prov_and_relative_offset();
+                        let global_alloc = self.tcx.global_alloc(prov.alloc_id());
+                        let (value, _) = self.cx.alloc_to_backend(global_alloc, None).unwrap();
+                        inputs.push(value);
+                        op_idx.insert(idx, constraints.len());
+                        constraints.push("s".to_string());
+                    }
+                },
                 InlineAsmOperandRef::SymStatic { def_id } => {
                     inputs.push(self.cx.get_static(def_id));
                     op_idx.insert(idx, constraints.len());
@@ -204,12 +212,33 @@ impl<'ll, 'tcx> AsmBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                                 template_str.push_str(&format!("${{{}}}", op_idx[&operand_idx]));
                             }
                         }
-                        InlineAsmOperandRef::Const { ref string } => {
-                            // Const operands get injected directly into the template
-                            template_str.push_str(string);
+                        InlineAsmOperandRef::Const { value, ty, instance: _ } => {
+                            match value {
+                                ConstScalar::Int(int) => {
+                                    // Const operands get injected directly into the template
+                                    let string = rustc_codegen_ssa::common::asm_const_to_str(
+                                        self.tcx,
+                                        int,
+                                        self.layout_of(ty),
+                                    );
+                                    template_str.push_str(&string);
+                                }
+                                ConstScalar::Ptr(ptr, _) => {
+                                    let (_, offset) = ptr.prov_and_relative_offset();
+
+                                    // Only emit the raw symbol name
+                                    template_str
+                                        .push_str(&format!("${{{}:c}}", op_idx[&operand_idx]));
+
+                                    if offset != Size::ZERO {
+                                        let offset =
+                                            self.sign_extend_to_target_isize(offset.bytes());
+                                        write!(template_str, "{offset:+}").unwrap();
+                                    }
+                                }
+                            }
                         }
-                        InlineAsmOperandRef::SymFn { .. }
-                        | InlineAsmOperandRef::SymStatic { .. } => {
+                        InlineAsmOperandRef::SymStatic { .. } => {
                             // Only emit the raw symbol name
                             template_str.push_str(&format!("${{{}:c}}", op_idx[&operand_idx]));
                         }
@@ -402,20 +431,41 @@ impl<'tcx> AsmCodegenMethods<'tcx> for CodegenCx<'_, 'tcx> {
                 InlineAsmTemplatePiece::String(ref s) => template_str.push_str(s),
                 InlineAsmTemplatePiece::Placeholder { operand_idx, modifier: _, span: _ } => {
                     match operands[operand_idx] {
-                        GlobalAsmOperandRef::Const { ref string } => {
-                            // Const operands get injected directly into the
-                            // template. Note that we don't need to escape $
-                            // here unlike normal inline assembly.
-                            template_str.push_str(string);
-                        }
-                        GlobalAsmOperandRef::SymFn { instance } => {
-                            let llval = self.get_fn(instance);
-                            self.add_compiler_used_global(llval);
-                            let symbol = llvm::build_string(|s| unsafe {
-                                llvm::LLVMRustGetMangledName(llval, s);
-                            })
-                            .expect("symbol is not valid UTF-8");
-                            template_str.push_str(&symbol);
+                        GlobalAsmOperandRef::Const { value, ty, instance } => {
+                            match value {
+                                ConstScalar::Int(int) => {
+                                    // Const operands get injected directly into the
+                                    // template. Note that we don't need to escape $
+                                    // here unlike normal inline assembly.
+                                    let string = rustc_codegen_ssa::common::asm_const_to_str(
+                                        self.tcx,
+                                        int,
+                                        self.layout_of(ty),
+                                    );
+                                    template_str.push_str(&string);
+                                }
+
+                                ConstScalar::Ptr(ptr, _) => {
+                                    let (prov, offset) = ptr.prov_and_relative_offset();
+                                    let global_alloc = self.tcx.global_alloc(prov.alloc_id());
+                                    let (llval, sym) =
+                                        self.alloc_to_backend(global_alloc, instance).unwrap();
+                                    assert!(sym.is_some());
+
+                                    self.add_compiler_used_global(llval);
+                                    let symbol = llvm::build_string(|s| unsafe {
+                                        llvm::LLVMRustGetMangledName(llval, s);
+                                    })
+                                    .expect("symbol is not valid UTF-8");
+                                    template_str.push_str(&symbol);
+
+                                    if offset != Size::ZERO {
+                                        let offset =
+                                            self.sign_extend_to_target_isize(offset.bytes());
+                                        write!(template_str, "{offset:+}").unwrap();
+                                    }
+                                }
+                            }
                         }
                         GlobalAsmOperandRef::SymStatic { def_id } => {
                             let llval = self

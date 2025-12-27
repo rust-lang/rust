@@ -94,10 +94,17 @@ pub(crate) fn codegen_inline_asm_terminator<'tcx>(
             }
             InlineAsmOperand::Const { ref value } => {
                 let (const_value, ty) = crate::constant::eval_mir_constant(fx, value);
+                let mir::ConstValue::Scalar(scalar) = const_value else {
+                    span_bug!(
+                        span,
+                        "expected Scalar for promoted asm const, but got {:#?}",
+                        const_value
+                    )
+                };
+
                 let value = rustc_codegen_ssa::common::asm_const_to_str(
                     fx.tcx,
-                    span,
-                    const_value,
+                    scalar.assert_scalar_int(),
                     fx.layout_of(ty),
                 );
                 CInlineAsmOperand::Const { value }

@@ -1,4 +1,4 @@
-use gccjit::{LValue, RValue, ToRValue, Type};
+use gccjit::{GlobalKind, LValue, RValue, ToRValue, Type};
 use rustc_abi::Primitive::Pointer;
 use rustc_abi::{self as abi, HasDataLayout};
 use rustc_codegen_ssa::traits::{
@@ -6,6 +6,7 @@ use rustc_codegen_ssa::traits::{
 };
 use rustc_middle::mir::Mutability;
 use rustc_middle::mir::interpret::{ConstAllocation, GlobalAlloc, PointerArithmetic, Scalar};
+use rustc_middle::ty::Instance;
 use rustc_middle::ty::layout::LayoutOf;
 
 use crate::context::CodegenCx;
@@ -109,7 +110,7 @@ pub fn type_is_pointer(typ: Type<'_>) -> bool {
     typ.get_pointee().is_some()
 }
 
-impl<'gcc, 'tcx> ConstCodegenMethods for CodegenCx<'gcc, 'tcx> {
+impl<'gcc, 'tcx> ConstCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
     fn const_null(&self, typ: Type<'gcc>) -> RValue<'gcc> {
         if type_is_pointer(typ) { self.context.new_null(typ) } else { self.const_int(typ, 0) }
     }
@@ -220,6 +221,76 @@ impl<'gcc, 'tcx> ConstCodegenMethods for CodegenCx<'gcc, 'tcx> {
         None
     }
 
+    fn alloc_to_backend(
+        &self,
+        global_alloc: GlobalAlloc<'tcx>,
+        name_hint: Option<Instance<'tcx>>,
+    ) -> Result<(RValue<'gcc>, Option<Instance<'tcx>>), u64> {
+        let alloc = match global_alloc {
+            GlobalAlloc::Function { instance, .. } => {
+                return Ok((self.get_fn_addr(instance), Some(instance)));
+            }
+            GlobalAlloc::Static(def_id) => {
+                assert!(self.tcx.is_static(def_id));
+                return Ok((
+                    self.get_static(def_id).get_address(None),
+                    Some(Instance::mono(self.tcx, def_id)),
+                ));
+            }
+            GlobalAlloc::TypeId { .. } => {
+                // Drop the provenance, the offset contains the bytes of the hash, so
+                // just return 0 as base address.
+                return Err(0);
+            }
+
+            GlobalAlloc::Memory(alloc) => {
+                if alloc.inner().len() == 0 {
+                    // For ZSTs directly codegen an aligned pointer.
+                    // This avoids generating a zero-sized constant value and actually needing a
+                    // real address at runtime.
+                    return Err(alloc.inner().align.bytes());
+                }
+
+                alloc
+            }
+
+            GlobalAlloc::VTable(ty, dyn_ty) => {
+                self.tcx
+                    .global_alloc(self.tcx.vtable_allocation((
+                        ty,
+                        dyn_ty.principal().map(|principal| {
+                            self.tcx.instantiate_bound_regions_with_erased(principal)
+                        }),
+                    )))
+                    .unwrap_memory()
+            }
+        };
+
+        if let Some(name) = name_hint {
+            let sym = self.tcx.symbol_name(name);
+
+            let init = crate::consts::const_alloc_to_gcc_uncached(self, alloc);
+            let alloc = alloc.inner();
+            let typ = self.val_ty(init).get_aligned(alloc.align.bytes());
+
+            let global = self.declare_global_with_linkage(sym.name, typ, GlobalKind::Exported);
+            global.global_set_initializer_rvalue(init);
+            return Ok((global.get_address(None), Some(name)));
+        }
+
+        let init = self.const_data_from_alloc(alloc);
+        let alloc = alloc.inner();
+        let value = match alloc.mutability {
+            Mutability::Mut => self.static_addr_of_mut(init, alloc.align, None),
+            _ => self.static_addr_of(init, alloc.align, None),
+        };
+        if !self.sess().fewer_names() {
+            // TODO(antoyo): set value name.
+        }
+
+        Ok((value, None))
+    }
+
     fn scalar_to_backend(&self, cv: Scalar, layout: abi::Scalar, ty: Type<'gcc>) -> RValue<'gcc> {
         let bitsize = if layout.is_bool() { 1 } else { layout.size(self).bits() };
         match cv {
@@ -241,56 +312,16 @@ impl<'gcc, 'tcx> ConstCodegenMethods for CodegenCx<'gcc, 'tcx> {
             Scalar::Ptr(ptr, _size) => {
                 let (prov, offset) = ptr.prov_and_relative_offset();
                 let alloc_id = prov.alloc_id();
-                let base_addr = match self.tcx.global_alloc(alloc_id) {
-                    GlobalAlloc::Memory(alloc) => {
-                        // For ZSTs directly codegen an aligned pointer.
-                        // This avoids generating a zero-sized constant value and actually needing a
-                        // real address at runtime.
-                        if alloc.inner().len() == 0 {
-                            let val = alloc.inner().align.bytes().wrapping_add(offset.bytes());
-                            let val = self.const_usize(self.tcx.truncate_to_target_usize(val));
-                            return if matches!(layout.primitive(), Pointer(_)) {
-                                self.context.new_cast(None, val, ty)
-                            } else {
-                                self.const_bitcast(val, ty)
-                            };
-                        }
-
-                        let init = self.const_data_from_alloc(alloc);
-                        let alloc = alloc.inner();
-                        let value = match alloc.mutability {
-                            Mutability::Mut => self.static_addr_of_mut(init, alloc.align, None),
-                            _ => self.static_addr_of(init, alloc.align, None),
+                let base_addr = match self.alloc_to_backend(self.tcx.global_alloc(alloc_id), None) {
+                    Ok((base_addr, _)) => base_addr,
+                    Err(base_addr) => {
+                        let val = base_addr.wrapping_add(offset.bytes());
+                        let val = self.const_usize(self.tcx.truncate_to_target_usize(val));
+                        return if matches!(layout.primitive(), Pointer(_)) {
+                            self.context.new_cast(None, val, ty)
+                        } else {
+                            self.const_bitcast(val, ty)
                         };
-                        if !self.sess().fewer_names() {
-                            // TODO(antoyo): set value name.
-                        }
-                        value
-                    }
-                    GlobalAlloc::Function { instance, .. } => self.get_fn_addr(instance),
-                    GlobalAlloc::VTable(ty, dyn_ty) => {
-                        let alloc = self
-                            .tcx
-                            .global_alloc(self.tcx.vtable_allocation((
-                                ty,
-                                dyn_ty.principal().map(|principal| {
-                                    self.tcx.instantiate_bound_regions_with_erased(principal)
-                                }),
-                            )))
-                            .unwrap_memory();
-                        let init = self.const_data_from_alloc(alloc);
-                        self.static_addr_of(init, alloc.inner().align, None)
-                    }
-                    GlobalAlloc::TypeId { .. } => {
-                        let val = self.const_usize(offset.bytes());
-                        // This is still a variable of pointer type, even though we only use the provenance
-                        // of that pointer in CTFE and Miri. But to make LLVM's type system happy,
-                        // we need an int-to-ptr cast here (it doesn't matter at all which provenance that picks).
-                        return self.context.new_cast(None, val, ty);
-                    }
-                    GlobalAlloc::Static(def_id) => {
-                        assert!(self.tcx.is_static(def_id));
-                        self.get_static(def_id).get_address(None)
                     }
                 };
                 let ptr_type = base_addr.get_type();
