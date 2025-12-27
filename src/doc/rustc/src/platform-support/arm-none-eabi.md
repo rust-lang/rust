@@ -37,6 +37,7 @@ their own document.
 - *Legacy* Arm Architectures
   - [`armv4t-none-eabi` and `thumbv4t-none-eabi`](armv4t-none-eabi.md)
   - [`armv5te-none-eabi` and `thumbv5te-none-eabi`](armv5te-none-eabi.md)
+  - [`armv6-none-eabi`, `armv6-none-eabihf`, `thumbv6-none-eabi`](armv6-none-eabi.md)
 
 ## Instruction Sets
 

@@ -1,12 +1,12 @@
-//! Targets the ARMv5TE architecture, with `t32` code by default.
+//! Targets the ARMv6K architecture, with `t32` code by default.
 
 use crate::spec::{Abi, Arch, FloatAbi, Target, TargetMetadata, TargetOptions, base, cvs};
 
 pub(crate) fn target() -> Target {
     Target {
-        llvm_target: "thumbv5te-none-eabi".into(),
+        llvm_target: "thumbv6-none-eabi".into(),
         metadata: TargetMetadata {
-            description: Some("Thumb-mode Bare ARMv5TE".into()),
+            description: Some("Thumb-mode Bare ARMv6 soft-float".into()),
             tier: Some(3),
             host_tools: Some(false),
             std: Some(false),
@@ -17,8 +17,9 @@ pub(crate) fn target() -> Target {
         options: TargetOptions {
             abi: Abi::Eabi,
             llvm_floatabi: Some(FloatAbi::Soft),
-            asm_args: cvs!["-mthumb-interwork", "-march=armv5te", "-mlittle-endian",],
-            features: "+soft-float,+strict-align".into(),
+            asm_args: cvs!["-mthumb-interwork", "-march=armv6", "-mlittle-endian",],
+            features: "+soft-float,+strict-align,+v6k".into(),
+            // atomics not available until ARMv6T2
             atomic_cas: false,
             max_atomic_width: Some(0),
             has_thumb_interworking: true,

@@ -1,4 +1,4 @@
-//! Targets the ARMv4T, with code as `t32` code by default.
+//! Targets the ARMv4T architecture, with `t32` code by default.
 //!
 //! Primarily of use for the GBA, but usable with other devices too.
 //!
