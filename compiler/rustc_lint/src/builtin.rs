@@ -50,16 +50,17 @@ use rustc_trait_selection::traits::{self};
 
 use crate::errors::BuiltinEllipsisInclusiveRangePatterns;
 use crate::lints::{
-    BuiltinAnonymousParams, BuiltinConstNoMangle, BuiltinDerefNullptr, BuiltinDoubleNegations,
-    BuiltinDoubleNegationsAddParens, BuiltinEllipsisInclusiveRangePatternsLint,
-    BuiltinExplicitOutlives, BuiltinExplicitOutlivesSuggestion, BuiltinFeatureIssueNote,
-    BuiltinIncompleteFeatures, BuiltinIncompleteFeaturesHelp, BuiltinInternalFeatures,
-    BuiltinKeywordIdents, BuiltinMissingCopyImpl, BuiltinMissingDebugImpl, BuiltinMissingDoc,
-    BuiltinMutablesTransmutes, BuiltinNoMangleGeneric, BuiltinNonShorthandFieldPatterns,
-    BuiltinSpecialModuleNameUsed, BuiltinTrivialBounds, BuiltinTypeAliasBounds,
-    BuiltinUngatedAsyncFnTrackCaller, BuiltinUnpermittedTypeInit, BuiltinUnpermittedTypeInitSub,
-    BuiltinUnreachablePub, BuiltinUnsafe, BuiltinUnstableFeatures, BuiltinUnusedDocComment,
-    BuiltinUnusedDocCommentSub, BuiltinWhileTrue, InvalidAsmLabel,
+    BuiltinAnonymousParams, BuiltinBlackBoxZstCall, BuiltinConstNoMangle, BuiltinDerefNullptr,
+    BuiltinDoubleNegations, BuiltinDoubleNegationsAddParens,
+    BuiltinEllipsisInclusiveRangePatternsLint, BuiltinExplicitOutlives,
+    BuiltinExplicitOutlivesSuggestion, BuiltinFeatureIssueNote, BuiltinIncompleteFeatures,
+    BuiltinIncompleteFeaturesHelp, BuiltinInternalFeatures, BuiltinKeywordIdents,
+    BuiltinMissingCopyImpl, BuiltinMissingDebugImpl, BuiltinMissingDoc, BuiltinMutablesTransmutes,
+    BuiltinNoMangleGeneric, BuiltinNonShorthandFieldPatterns, BuiltinSpecialModuleNameUsed,
+    BuiltinTrivialBounds, BuiltinTypeAliasBounds, BuiltinUngatedAsyncFnTrackCaller,
+    BuiltinUnpermittedTypeInit, BuiltinUnpermittedTypeInitSub, BuiltinUnreachablePub,
+    BuiltinUnsafe, BuiltinUnstableFeatures, BuiltinUnusedDocComment, BuiltinUnusedDocCommentSub,
+    BuiltinWhileTrue, InvalidAsmLabel,
 };
 use crate::{
     EarlyContext, EarlyLintPass, LateContext, LateLintPass, Level, LintContext,
@@ -3108,6 +3109,78 @@ impl<'tcx> LateLintPass<'tcx> for AsmLabels {
             }
         }
     }
+}
+
+declare_lint! {
+    /// The `black_box_zst_call` lint detects calls to `core::hint::black_box`
+    /// where the argument is a zero-sized callable (e.g. a function item or
+    /// a capture-less closure). These values have no runtime representation,
+    /// so the black boxing does not make subsequent calls opaque to the
+    /// optimizer.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// use std::hint::black_box;
+    ///
+    /// fn add(a: u32, b: u32) -> u32 {
+    ///     a + b
+    /// }
+    ///
+    /// fn main() {
+    ///     let add_bb = black_box(add);
+    ///     let _ = add_bb(1, 2);
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Function items and capture-less closures are zero-sized. Passing them
+    /// to `black_box` does not force the optimizer to treat the subsequent
+    /// call as opaque. Coerce the callable to a function pointer and black_box
+    /// that pointer instead.
+    pub BLACK_BOX_ZST_CALLS,
+    Warn,
+    "calling `black_box` on zero-sized callables has no effect on opacity"
+}
+
+declare_lint_pass!(BlackBoxZstCalls => [BLACK_BOX_ZST_CALLS]);
+
+impl<'tcx> LateLintPass<'tcx> for BlackBoxZstCalls {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &hir::Expr<'tcx>) {
+        let hir::ExprKind::Call(callee, args) = expr.kind else { return };
+        if args.len() != 1 {
+            return;
+        }
+
+        let hir::ExprKind::Path(ref qpath) = callee.kind else { return };
+        let Some(def_id) = cx.qpath_res(qpath, callee.hir_id).opt_def_id() else { return };
+
+        if !cx.tcx.is_diagnostic_item(sym::black_box, def_id) {
+            return;
+        }
+
+        let arg = &args[0];
+        let arg_ty = cx.typeck_results().expr_ty_adjusted(arg);
+
+        if !is_callable_zst(cx, arg_ty) {
+            return;
+        }
+
+        let ty_name = with_no_trimmed_paths!(arg_ty.to_string());
+        cx.emit_span_lint(
+            BLACK_BOX_ZST_CALLS,
+            expr.span,
+            BuiltinBlackBoxZstCall { arg_span: arg.span, ty: ty_name },
+        );
+    }
+}
+
+fn is_callable_zst<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
+    matches!(ty.kind(), ty::FnDef(..) | ty::Closure(..))
+        && cx.tcx.layout_of(cx.typing_env().as_query_input(ty)).is_ok_and(|layout| layout.is_zst())
 }
 
 declare_lint! {
