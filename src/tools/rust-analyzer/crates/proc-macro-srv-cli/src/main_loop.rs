@@ -169,21 +169,27 @@ struct ProcMacroClientHandle<'a, C: Codec> {
 
 impl<C: Codec> proc_macro_srv::ProcMacroClientInterface for ProcMacroClientHandle<'_, C> {
     fn source_text(&mut self, file_id: u32, start: u32, end: u32) -> Option<String> {
-        let subrequest = bidirectional::SubRequest::SourceText { file_id, start, end };
-        bidirectional::BidirectionalMessage::SubRequest(subrequest)
-            .write::<_, C>(&mut self.stdout.lock())
-            .unwrap();
-        let resp =
-            bidirectional::BidirectionalMessage::read::<_, C>(&mut self.stdin.lock(), self.buf)
-                .unwrap()
-                .expect("client closed connection");
-        match resp {
-            bidirectional::BidirectionalMessage::SubResponse(api_resp) => match api_resp {
-                bidirectional::SubResponse::SourceTextResult { text } => {
-                    return text;
-                }
-            },
-            other => panic!("expected SubResponse, got {other:?}"),
+        let req = bidirectional::BidirectionalMessage::SubRequest(
+            bidirectional::SubRequest::SourceText { file_id, start, end },
+        );
+
+        if req.write::<_, C>(&mut self.stdout.lock()).is_err() {
+            return None;
+        }
+
+        let msg = match bidirectional::BidirectionalMessage::read::<_, C>(
+            &mut self.stdin.lock(),
+            self.buf,
+        ) {
+            Ok(Some(msg)) => msg,
+            _ => return None,
+        };
+
+        match msg {
+            bidirectional::BidirectionalMessage::SubResponse(
+                bidirectional::SubResponse::SourceTextResult { text },
+            ) => text,
+            _ => None,
         }
     }
 }
