@@ -101,6 +101,8 @@ impl<T> JoinHandle<T> {
     /// Waits for the associated thread to finish.
     ///
     /// This function will return immediately if the associated thread has already finished.
+    /// Otherwise, it fully waits for the thread to finish, including all destructors
+    /// for thread-local variables that might be running after the main function of the thread.
     ///
     /// In terms of [atomic memory orderings],  the completion of the associated
     /// thread synchronizes with this function returning. In other words, all
