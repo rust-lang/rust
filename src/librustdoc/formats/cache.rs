@@ -15,9 +15,7 @@ use crate::core::DocContext;
 use crate::fold::DocFolder;
 use crate::formats::Impl;
 use crate::formats::item_type::ItemType;
-use crate::html::markdown::short_markdown_summary;
-use crate::html::render::IndexItem;
-use crate::html::render::search_index::get_function_type_for_search;
+use crate::html::render::{IndexItem, IndexItemInfo};
 use crate::visit_lib::RustdocEffectiveVisibilities;
 
 /// This cache is used to store information about the [`clean::Crate`] being
@@ -574,7 +572,6 @@ fn add_item_to_search_index(tcx: TyCtxt<'_>, cache: &mut Cache, item: &clean::It
 
     debug_assert!(!item.is_stripped());
 
-    let desc = short_markdown_summary(&item.doc_value(), &item.link_names(cache));
     // For searching purposes, a re-export is a duplicate if:
     //
     // - It's either an inline, or a true re-export
@@ -585,30 +582,25 @@ fn add_item_to_search_index(tcx: TyCtxt<'_>, cache: &mut Cache, item: &clean::It
         _ => item_def_id,
     };
     let (impl_id, trait_parent) = cache.parent_stack_last_impl_and_trait_id();
-    let search_type = get_function_type_for_search(
-        item,
+    let info = IndexItemInfo::new(
         tcx,
-        clean_impl_generics(cache.parent_stack.last()).as_ref(),
-        parent_did,
         cache,
+        item,
+        parent_did,
+        clean_impl_generics(cache.parent_stack.last()).as_ref(),
     );
-    let aliases = item.attrs.get_doc_aliases();
-    let deprecation = item.deprecation(tcx);
     let index_item = IndexItem {
         ty: item.type_(),
         defid: Some(defid),
         name,
         module_path: parent_path.to_vec(),
-        desc,
         parent: parent_did,
         parent_idx: None,
         trait_parent,
         trait_parent_idx: None,
         exact_module_path: None,
         impl_id,
-        search_type,
-        aliases,
-        deprecation,
+        info,
     };
 
     cache.search_index.push(index_item);
