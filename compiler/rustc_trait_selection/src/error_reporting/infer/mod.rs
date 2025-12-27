@@ -149,11 +149,15 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         actual: Ty<'tcx>,
         err: TypeError<'tcx>,
     ) -> Diag<'a> {
-        self.report_and_explain_type_error(
+        let mut diag = self.report_and_explain_type_error(
             TypeTrace::types(cause, expected, actual),
             param_env,
             err,
-        )
+        );
+
+        self.suggest_param_env_shadowing(&mut diag, expected, actual);
+
+        diag
     }
 
     pub fn report_mismatched_consts(
@@ -238,6 +242,63 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             _ => (), // FIXME(#22750) handle traits and stuff
         }
         false
+    }
+
+    fn suggest_param_env_shadowing(
+        &self,
+        diag: &mut Diag<'_>,
+        expected: Ty<'tcx>,
+        found: Ty<'tcx>,
+    ) {
+        let (alias, concrete) = match (expected.kind(), found.kind()) {
+            (ty::Alias(ty::Projection, proj), _) => (proj, found),
+            (_, ty::Alias(ty::Projection, proj)) => (proj, expected),
+            _ => return,
+        };
+
+        let tcx = self.tcx;
+        let trait_def_id = alias.trait_def_id(tcx);
+        let impls = tcx.trait_impls_of(trait_def_id);
+
+        let all_impls =
+            impls.blanket_impls().iter().chain(impls.non_blanket_impls().values().flatten());
+
+        for &impl_def_id in all_impls {
+            let is_shadowed = self.infcx.probe(|_| {
+                let impl_substs = self.infcx.fresh_args_for_item(DUMMY_SP, impl_def_id);
+
+                let impl_trait_ref = tcx.impl_trait_ref(impl_def_id).instantiate(tcx, impl_substs);
+
+                let expected_trait_ref = alias.trait_ref(tcx);
+
+                if self.infcx.can_eq(ty::ParamEnv::empty(), expected_trait_ref, impl_trait_ref) {
+                    let name = tcx.item_name(alias.def_id);
+                    let assoc_item = tcx
+                        .associated_items(impl_def_id)
+                        .filter_by_name_unhygienic(name)
+                        .find(|item| matches!(item.kind, ty::AssocKind::Type { .. }));
+
+                    if let Some(item) = assoc_item {
+                        let impl_assoc_ty = tcx.type_of(item.def_id).instantiate(tcx, impl_substs);
+                        if self.infcx.can_eq(ty::ParamEnv::empty(), impl_assoc_ty, concrete) {
+                            return true;
+                        }
+                    }
+                }
+                false
+            });
+
+            if is_shadowed {
+                diag.note(format!(
+                    "the associated type `{}` is defined as `{}` in the implementation, \
+                    but the generic bound `{}` hides this definition",
+                    self.ty_to_string(tcx.mk_ty_from_kind(ty::Alias(ty::Projection, *alias))),
+                    self.ty_to_string(concrete),
+                    self.ty_to_string(alias.self_ty())
+                ));
+                return;
+            }
+        }
     }
 
     fn note_error_origin(
