@@ -1,6 +1,7 @@
 //! Lowers intrinsic calls
 
 use rustc_middle::mir::*;
+use rustc_middle::ty::layout::LayoutCx;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_span::sym;
@@ -12,6 +13,7 @@ pub(super) struct LowerIntrinsics;
 impl<'tcx> crate::MirPass<'tcx> for LowerIntrinsics {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         let local_decls = &body.local_decls;
+        let typing_env = body.typing_env(tcx);
         for block in body.basic_blocks.as_mut() {
             let terminator = block.terminator.as_mut().unwrap();
             if let TerminatorKind::Call { func, args, destination, target, .. } =
@@ -20,6 +22,44 @@ impl<'tcx> crate::MirPass<'tcx> for LowerIntrinsics {
                 && let Some(intrinsic) = tcx.intrinsic(def_id)
             {
                 match intrinsic.name {
+                    sym::can_compare_bitwise => {
+                        let mut can_compare = false;
+
+                        // The type that we want to check is the generic arg of can_compare_bitwise
+                        let arg = generic_args[0].as_type().unwrap();
+
+                        // can_compare_bitwise is only used when T is a struct, and our task is to
+                        // check if all the fields of the struct are POD and if there is no padding
+                        // between them.
+                        let ty::Adt(adt_def, args) = arg.kind() else { unreachable!() };
+                        assert!(adt_def.is_struct());
+
+                        // Check if all the struct fields are POD
+                        let is_bitwise_comparable = adt_def
+                            .all_fields()
+                            .all(|field| field.ty(tcx, args).is_bitwise_comparable(tcx));
+
+                        // Only query the layout if all the struct fields are bitwise-comparable.
+                        // Then use the layout to check if there is any padding between them.
+                        if is_bitwise_comparable
+                            && let Ok(layout) = tcx.layout_of(typing_env.as_query_input(arg))
+                        {
+                            can_compare = layout.is_gapless(&LayoutCx::new(tcx, typing_env))
+                        }
+
+                        block.statements.push(Statement::new(
+                            terminator.source_info,
+                            StatementKind::Assign(Box::new((
+                                *destination,
+                                Rvalue::Use(Operand::Constant(Box::new(ConstOperand {
+                                    span: terminator.source_info.span,
+                                    user_ty: None,
+                                    const_: Const::from_bool(tcx, can_compare),
+                                }))),
+                            ))),
+                        ));
+                        terminator.kind = TerminatorKind::Goto { target: target.unwrap() };
+                    }
                     sym::unreachable => {
                         terminator.kind = TerminatorKind::Unreachable;
                     }

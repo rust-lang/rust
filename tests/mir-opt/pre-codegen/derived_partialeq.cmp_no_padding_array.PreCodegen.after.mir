@@ -1,0 +1,23 @@
+// MIR for `cmp_no_padding_array` after PreCodegen
+
+fn cmp_no_padding_array(_1: &NoPaddingArray, _2: &NoPaddingArray) -> bool {
+    debug a => _1;
+    debug b => _2;
+    let mut _0: bool;
+    scope 1 (inlined std::cmp::impls::<impl PartialEq for &NoPaddingArray>::eq) {
+        scope 2 (inlined <NoPaddingArray as PartialEq>::eq) {
+            scope 3 (inlined array::equality::<impl PartialEq for [u16; 2]>::eq) {
+                scope 4 (inlined <u16 as array::equality::SpecArrayEq<u16, 2>>::spec_eq) {
+                }
+            }
+        }
+    }
+
+    bb0: {
+        _0 = compare_bitwise::<NoPaddingArray>(move _1, move _2) -> [return: bb1, unwind unreachable];
+    }
+
+    bb1: {
+        return;
+    }
+}
