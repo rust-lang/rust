@@ -40,8 +40,8 @@ fn add_only_cfg_attributes(attrs: &mut Vec<Attribute>, new_attrs: &[Attribute]) 
             new_attr.cfg = d.cfg.clone();
             attrs.push(Attribute::Parsed(AttributeKind::Doc(Box::new(new_attr))));
         } else if let Attribute::Unparsed(normal) = attr
-            && let [ident] = &*normal.path.segments
-            && ident.name == sym::cfg_trace
+            && let [name] = &*normal.path.segments
+            && *name == sym::cfg_trace
         {
             // If it's a `cfg()` attribute, we keep it.
             attrs.push(attr.clone());

@@ -391,7 +391,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             attr.path
                                 .segments
                                 .first()
-                                .and_then(|ident| BUILTIN_ATTRIBUTE_MAP.get(&ident.name))
+                                .and_then(|name| BUILTIN_ATTRIBUTE_MAP.get(&name))
                         {
                             match attr.style {
                                 ast::AttrStyle::Outer => {
@@ -428,7 +428,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
 
             if let Attribute::Unparsed(unparsed_attr) = attr
                 && let Some(BuiltinAttribute { duplicates, .. }) =
-                    attr.ident().and_then(|ident| BUILTIN_ATTRIBUTE_MAP.get(&ident.name))
+                    attr.name().and_then(|name| BUILTIN_ATTRIBUTE_MAP.get(&name))
             {
                 check_duplicates(
                     self.tcx,

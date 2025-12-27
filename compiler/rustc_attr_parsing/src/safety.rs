@@ -22,7 +22,7 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
             return;
         }
 
-        let name = (attr_path.segments.len() == 1).then_some(attr_path.segments[0].name);
+        let name = (attr_path.segments.len() == 1).then_some(attr_path.segments[0]);
         if let Some(name) = name
             && [sym::cfg_trace, sym::cfg_attr_trace].contains(&name)
         {

@@ -15,7 +15,7 @@ pub(super) fn check(cx: &EarlyContext<'_>, item: &Item, attrs: &[Attribute]) {
             return;
         }
         if let Some(lint_list) = &attr.meta_item_list()
-            && attr.ident().is_some_and(|ident| is_lint_level(ident.name, attr.id))
+            && attr.name().is_some_and(|name| is_lint_level(name, attr.id))
         {
             for lint in lint_list {
                 match item.kind {

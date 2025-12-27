@@ -13,7 +13,7 @@ use rustc_expand::base::{DummyResult, ExpandResult, ExtCtxt, MacEager, MacroExpa
 use rustc_hir::AttrPath;
 use rustc_hir::attrs::CfgEntry;
 use rustc_parse::exp;
-use rustc_span::{ErrorGuaranteed, Ident, Span};
+use rustc_span::{ErrorGuaranteed, Span, sym};
 
 use crate::errors;
 
@@ -47,7 +47,7 @@ fn parse_cfg(cx: &ExtCtxt<'_>, span: Span, tts: TokenStream) -> Result<CfgEntry,
         span,
         span,
         AttrStyle::Inner,
-        AttrPath { segments: vec![Ident::from_str("cfg")].into_boxed_slice(), span },
+        AttrPath { segments: vec![sym::cfg].into_boxed_slice(), span },
         None,
         ParsedDescription::Macro,
         span,

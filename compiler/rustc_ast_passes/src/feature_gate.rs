@@ -160,7 +160,7 @@ impl<'a> PostExpansionVisitor<'a> {
 
 impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
     fn visit_attribute(&mut self, attr: &ast::Attribute) {
-        let attr_info = attr.ident().and_then(|ident| BUILTIN_ATTRIBUTE_MAP.get(&ident.name));
+        let attr_info = attr.name().and_then(|name| BUILTIN_ATTRIBUTE_MAP.get(&name));
         // Check feature gates for built-in attributes.
         if let Some(BuiltinAttribute {
             gate: AttributeGate::Gated { feature, message, check, notes, .. },

@@ -7,7 +7,7 @@ use rustc_hir::attrs::CfgEntry;
 use rustc_parse::exp;
 use rustc_parse::parser::Parser;
 use rustc_session::Session;
-use rustc_span::{ErrorGuaranteed, Ident, Span};
+use rustc_span::{ErrorGuaranteed, Span, sym};
 
 use crate::parser::MetaItemOrLitParser;
 use crate::{AttributeParser, ParsedDescription, ShouldEmit, parse_cfg_entry};
@@ -86,10 +86,7 @@ pub fn parse_cfg_select(
                 cfg_span,
                 cfg_span,
                 AttrStyle::Inner,
-                AttrPath {
-                    segments: vec![Ident::from_str("cfg_select")].into_boxed_slice(),
-                    span: cfg_span,
-                },
+                AttrPath { segments: vec![sym::cfg_select].into_boxed_slice(), span: cfg_span },
                 None,
                 ParsedDescription::Macro,
                 cfg_span,

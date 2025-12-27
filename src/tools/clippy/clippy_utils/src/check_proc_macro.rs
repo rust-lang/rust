@@ -348,9 +348,9 @@ fn fn_kind_pat(tcx: TyCtxt<'_>, kind: &FnKind<'_>, body: &Body<'_>, hir_id: HirI
 fn attr_search_pat(attr: &Attribute) -> (Pat, Pat) {
     match attr.kind {
         AttrKind::Normal(..) => {
-            if let Some(ident) = attr.ident() {
+            if let Some(name) = attr.name() {
                 // NOTE: This will likely have false positives, like `allow = 1`
-                let ident_string = ident.to_string();
+                let ident_string = name.to_string();
                 if attr.style == AttrStyle::Outer {
                     (
                         Pat::OwnedMultiStr(vec!["#[".to_owned() + &ident_string, ident_string]),

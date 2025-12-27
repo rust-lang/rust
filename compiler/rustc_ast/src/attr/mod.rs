@@ -96,11 +96,11 @@ impl AttributeExt for Attribute {
     }
 
     /// For a single-segment attribute, returns its name; otherwise, returns `None`.
-    fn ident(&self) -> Option<Ident> {
+    fn name(&self) -> Option<Symbol> {
         match &self.kind {
             AttrKind::Normal(normal) => {
                 if let [ident] = &*normal.item.path.segments {
-                    Some(ident.ident)
+                    Some(ident.ident.name)
                 } else {
                     None
                 }
@@ -109,9 +109,18 @@ impl AttributeExt for Attribute {
         }
     }
 
-    fn ident_path(&self) -> Option<SmallVec<[Ident; 1]>> {
+    fn symbol_path(&self) -> Option<SmallVec<[Symbol; 1]>> {
         match &self.kind {
-            AttrKind::Normal(p) => Some(p.item.path.segments.iter().map(|i| i.ident).collect()),
+            AttrKind::Normal(p) => {
+                Some(p.item.path.segments.iter().map(|i| i.ident.name).collect())
+            }
+            AttrKind::DocComment(_, _) => None,
+        }
+    }
+
+    fn path_span(&self) -> Option<Span> {
+        match &self.kind {
+            AttrKind::Normal(attr) => Some(attr.item.path.span),
             AttrKind::DocComment(_, _) => None,
         }
     }
@@ -794,9 +803,7 @@ pub trait AttributeExt: Debug {
 
     /// For a single-segment attribute (i.e., `#[attr]` and not `#[path::atrr]`),
     /// return the name of the attribute; otherwise, returns `None`.
-    fn name(&self) -> Option<Symbol> {
-        self.ident().map(|ident| ident.name)
-    }
+    fn name(&self) -> Option<Symbol>;
 
     /// Get the meta item list, `#[attr(meta item list)]`
     fn meta_item_list(&self) -> Option<ThinVec<MetaItemInner>>;
@@ -806,9 +813,6 @@ pub trait AttributeExt: Debug {
 
     /// Gets the span of the value literal, as string, when using `#[attr = value]`
     fn value_span(&self) -> Option<Span>;
-
-    /// For a single-segment attribute, returns its ident; otherwise, returns `None`.
-    fn ident(&self) -> Option<Ident>;
 
     /// Checks whether the path of this attribute matches the name.
     ///
@@ -822,7 +826,7 @@ pub trait AttributeExt: Debug {
 
     #[inline]
     fn has_name(&self, name: Symbol) -> bool {
-        self.ident().map(|x| x.name == name).unwrap_or(false)
+        self.name().map(|x| x == name).unwrap_or(false)
     }
 
     #[inline]
@@ -836,13 +840,13 @@ pub trait AttributeExt: Debug {
     fn is_word(&self) -> bool;
 
     fn path(&self) -> SmallVec<[Symbol; 1]> {
-        self.ident_path()
-            .map(|i| i.into_iter().map(|i| i.name).collect())
-            .unwrap_or(smallvec![sym::doc])
+        self.symbol_path().unwrap_or(smallvec![sym::doc])
     }
 
+    fn path_span(&self) -> Option<Span>;
+
     /// Returns None for doc comments
-    fn ident_path(&self) -> Option<SmallVec<[Ident; 1]>>;
+    fn symbol_path(&self) -> Option<SmallVec<[Symbol; 1]>>;
 
     /// Returns the documentation if this is a doc comment or a sugared doc comment.
     /// * `///doc` returns `Some("doc")`.
@@ -903,10 +907,6 @@ impl Attribute {
         AttributeExt::value_span(self)
     }
 
-    pub fn ident(&self) -> Option<Ident> {
-        AttributeExt::ident(self)
-    }
-
     pub fn path_matches(&self, name: &[Symbol]) -> bool {
         AttributeExt::path_matches(self, name)
     }
@@ -936,10 +936,6 @@ impl Attribute {
 
     pub fn path(&self) -> SmallVec<[Symbol; 1]> {
         AttributeExt::path(self)
-    }
-
-    pub fn ident_path(&self) -> Option<SmallVec<[Ident; 1]>> {
-        AttributeExt::ident_path(self)
     }
 
     pub fn doc_str(&self) -> Option<Symbol> {

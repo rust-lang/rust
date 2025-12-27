@@ -36,7 +36,7 @@ pub type RefPathParser<'p> = PathParser<&'p Path>;
 impl<P: Borrow<Path>> PathParser<P> {
     pub fn get_attribute_path(&self) -> hir::AttrPath {
         AttrPath {
-            segments: self.segments().copied().collect::<Vec<_>>().into_boxed_slice(),
+            segments: self.segments().map(|s| s.name).collect::<Vec<_>>().into_boxed_slice(),
             span: self.span(),
         }
     }

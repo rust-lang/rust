@@ -20,10 +20,11 @@ pub fn get_builtin_attr<'a, A: AttributeExt + 'a>(
     name: Symbol,
 ) -> impl Iterator<Item = &'a A> {
     attrs.iter().filter(move |attr| {
-        if let Some([clippy, segment2]) = attr.ident_path().as_deref()
-            && clippy.name == sym::clippy
+        if let [clippy, segment2] = &*attr.path()
+            && *clippy == sym::clippy
         {
-            let new_name = match segment2.name {
+            let path_span = attr.path_span().expect("Clippy attributes are unparsed and have a span");
+            let new_name = match *segment2 {
                 sym::cyclomatic_complexity => Some("cognitive_complexity"),
                 sym::author
                 | sym::version
@@ -35,7 +36,7 @@ pub fn get_builtin_attr<'a, A: AttributeExt + 'a>(
                 | sym::has_significant_drop
                 | sym::format_args => None,
                 _ => {
-                    sess.dcx().span_err(segment2.span, "usage of unknown attribute");
+                    sess.dcx().span_err(path_span, "usage of unknown attribute");
                     return false;
                 },
             };
@@ -43,17 +44,17 @@ pub fn get_builtin_attr<'a, A: AttributeExt + 'a>(
             match new_name {
                 Some(new_name) => {
                     sess.dcx()
-                        .struct_span_err(segment2.span, "usage of deprecated attribute")
+                        .struct_span_err(path_span, "usage of deprecated attribute")
                         .with_span_suggestion(
-                            segment2.span,
+                            path_span,
                             "consider using",
-                            new_name,
+                            format!("clippy::{}", new_name),
                             Applicability::MachineApplicable,
                         )
                         .emit();
                     false
                 },
-                None => segment2.name == name,
+                None => *segment2 == name,
             }
         } else {
             false
