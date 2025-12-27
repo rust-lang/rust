@@ -13,8 +13,6 @@ use core::ops::{Deref, DerefPure};
 use Cow::*;
 
 use crate::fmt;
-#[cfg(not(no_global_oom_handling))]
-use crate::string::String;
 
 // FIXME(inference): const bounds removed due to inference regressions found by crater;
 //   see https://github.com/rust-lang/rust/issues/147964
@@ -496,12 +494,14 @@ impl<'a> AddAssign<&'a str> for Cow<'a, str> {
         if self.is_empty() {
             *self = Cow::Borrowed(rhs)
         } else if !rhs.is_empty() {
-            if let Cow::Borrowed(lhs) = *self {
-                let mut s = String::with_capacity(lhs.len() + rhs.len());
-                s.push_str(lhs);
-                *self = Cow::Owned(s);
+            match self {
+                Self::Borrowed(lhs) => {
+                    *self = Cow::Owned([lhs, rhs].into_iter().collect());
+                }
+                Self::Owned(lhs) => {
+                    lhs.push_str(&rhs);
+                }
             }
-            self.to_mut().push_str(rhs);
         }
     }
 }
@@ -513,12 +513,14 @@ impl<'a> AddAssign<Cow<'a, str>> for Cow<'a, str> {
         if self.is_empty() {
             *self = rhs
         } else if !rhs.is_empty() {
-            if let Cow::Borrowed(lhs) = *self {
-                let mut s = String::with_capacity(lhs.len() + rhs.len());
-                s.push_str(lhs);
-                *self = Cow::Owned(s);
+            match self {
+                Self::Borrowed(lhs) => {
+                    *self = Cow::Owned([&*lhs, &*rhs].into_iter().collect());
+                }
+                Self::Owned(lhs) => {
+                    lhs.push_str(&rhs);
+                }
             }
-            self.to_mut().push_str(&rhs);
         }
     }
 }

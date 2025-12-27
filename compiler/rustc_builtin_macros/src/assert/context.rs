@@ -334,9 +334,7 @@ impl<'cx, 'a> Context<'cx, 'a> {
         if self.paths.contains(&path_ident) {
             return;
         } else {
-            self.fmt_string.push_str("  ");
-            self.fmt_string.push_str(path_ident.as_str());
-            self.fmt_string.push_str(" = {:?}\n");
+            self.fmt_string.extend(["  ", path_ident.as_str(), " = {:?}\n"]);
             let _ = self.paths.insert(path_ident);
         }
         let curr_capture_idx = self.capture_decls.len();
