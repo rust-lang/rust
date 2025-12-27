@@ -22,11 +22,11 @@ mod m {
     // applies only to the aliased types, not bounds.
     pub trait PubTr {
         type Alias1: PrivTr;
-        //~^ WARN trait `PrivTr` is more private than the item `PubTr::Alias1`
+        //~^ ERROR private trait `PrivTr` in public interface
         type Alias2: PubTrAux1<Priv> = u8;
-        //~^ WARN type `Priv` is more private than the item `PubTr::Alias2`
+        //~^ ERROR private type `Priv` in public interface
         type Alias3: PubTrAux2<A = Priv> = u8;
-        //~^ WARN type `Priv` is more private than the item `PubTr::Alias3`
+        //~^ ERROR private type `Priv` in public interface
 
         type Alias4 = Priv;
         //~^ ERROR private type `Priv` in public interface
