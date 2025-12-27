@@ -15,7 +15,7 @@ LL |     default type Ty = ();
    |                       ^^ the trait `Valid` is not implemented for `()`
    |
 help: this trait has no implementations, consider adding one
-  --> $DIR/issue-38091.rs:20:1
+  --> $DIR/issue-38091.rs:25:1
    |
 LL | trait Valid {}
    | ^^^^^^^^^^^
@@ -25,6 +25,37 @@ note: required by a bound in `Iterate::Ty`
 LL |     type Ty: Valid;
    |              ^^^^^ required by this bound in `Iterate::Ty`
 
-error: aborting due to 1 previous error; 1 warning emitted
+error[E0275]: overflow evaluating the requirement `T: Check`
+  --> $DIR/issue-38091.rs:18:1
+   |
+LL | / impl<'a, T> Check for T
+LL | |
+LL | | where
+LL | |     T: Iterate<'a>,
+LL | |     <T as Iterate<'a>>::Ty: Valid,
+   | |__________________________________^
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`issue_38091`)
+note: required for `T` to implement `Iterate<'_>`
+  --> $DIR/issue-38091.rs:8:13
+   |
+LL | impl<'a, T> Iterate<'a> for T
+   |             ^^^^^^^^^^^     ^
+LL | where
+LL |     T: Check,
+   |        ----- unsatisfied trait bound introduced here
+note: required for `T` to implement `Check`
+  --> $DIR/issue-38091.rs:18:13
+   |
+LL | impl<'a, T> Check for T
+   |             ^^^^^     ^
+...
+LL |     <T as Iterate<'a>>::Ty: Valid,
+   |                             ----- unsatisfied trait bound introduced here
+   = note: 125 redundant requirements hidden
+   = note: required for `T` to implement `Iterate<'a>`
 
-For more information about this error, try `rustc --explain E0277`.
+error: aborting due to 2 previous errors; 1 warning emitted
+
+Some errors have detailed explanations: E0275, E0277.
+For more information about an error, try `rustc --explain E0275`.
