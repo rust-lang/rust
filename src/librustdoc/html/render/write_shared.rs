@@ -40,7 +40,7 @@ use serde::{Deserialize, Serialize, Serializer};
 
 use super::{Context, RenderMode, collect_paths_for_type, ensure_trailing_slash};
 use crate::clean::{Crate, Item, ItemId, ItemKind};
-use crate::config::{EmitType, PathToParts, RenderOptions, ShouldMerge};
+use crate::config::{self, EmitType, PathToParts, RenderOptions, ShouldMerge};
 use crate::docfs::PathError;
 use crate::error::Error;
 use crate::formats::Impl;
@@ -117,7 +117,7 @@ pub(crate) fn write_shared(
         match &opt.index_page {
             Some(index_page) if opt.enable_index_page => {
                 let mut md_opts = opt.clone();
-                md_opts.output = cx.dst.clone();
+                md_opts.output = config::Output::OutDir(cx.dst.clone());
                 md_opts.external_html = cx.shared.layout.external_html.clone();
                 try_err!(
                     crate::markdown::render_and_write(index_page, md_opts, cx.shared.edition()),

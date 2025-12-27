@@ -48,12 +48,12 @@ pub(crate) fn render_and_write<P: AsRef<Path>>(
     options: RenderOptions,
     edition: Edition,
 ) -> Result<(), String> {
-    if let Err(e) = create_dir_all(&options.output) {
-        return Err(format!("{output}: {e}", output = options.output.display()));
+    let mut output = options.output_dir_html().to_path_buf();
+    if let Err(e) = create_dir_all(&output) {
+        return Err(format!("{output}: {e}", output = output.display()));
     }
 
     let input = input.as_ref();
-    let mut output = options.output;
     output.push(input.file_name().unwrap());
     output.set_extension("html");
 
