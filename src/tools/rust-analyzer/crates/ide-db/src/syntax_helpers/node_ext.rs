@@ -1,6 +1,7 @@
 //! Various helper functions to work with SyntaxNodes.
 use std::ops::ControlFlow;
 
+use either::Either;
 use itertools::Itertools;
 use parser::T;
 use span::Edition;
@@ -546,7 +547,11 @@ pub fn macro_call_for_string_token(string: &ast::String) -> Option<MacroCall> {
 }
 
 pub fn is_in_macro_matcher(token: &SyntaxToken) -> bool {
-    let Some(macro_def) = token.parent_ancestors().find_map(ast::Macro::cast) else {
+    let Some(macro_def) = token
+        .parent_ancestors()
+        .map_while(Either::<ast::TokenTree, ast::Macro>::cast)
+        .find_map(Either::right)
+    else {
         return false;
     };
     let range = token.text_range();
