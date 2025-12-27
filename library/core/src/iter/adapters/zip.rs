@@ -1,4 +1,5 @@
 use crate::cmp;
+use crate::cmp::Ordering::*;
 use crate::fmt::{self, Debug};
 use crate::iter::{
     FusedIterator, InPlaceIterable, SourceIter, TrustedFused, TrustedLen, UncheckedIterator,
@@ -178,25 +179,18 @@ macro_rules! zip_impl_general_defaults {
             A: DoubleEndedIterator + ExactSizeIterator,
             B: DoubleEndedIterator + ExactSizeIterator,
         {
-            // The function body below only uses `self.a/b.len()` and `self.a/b.next_back()`
+            // The function body below only uses `self.a/b.len()` and `self.a/b.next/nth_back()`
             // and doesn’t call `next_back` too often, so this implementation is safe in
             // the `TrustedRandomAccessNoCoerce` specialization
 
             let a_sz = self.a.len();
             let b_sz = self.b.len();
-            if a_sz != b_sz {
-                // Adjust a, b to equal length
-                if a_sz > b_sz {
-                    for _ in 0..a_sz - b_sz {
-                        self.a.next_back();
-                    }
-                } else {
-                    for _ in 0..b_sz - a_sz {
-                        self.b.next_back();
-                    }
-                }
-            }
-            match (self.a.next_back(), self.b.next_back()) {
+            let next_opts = match a_sz.cmp(&b_sz) {
+                Equal => (self.a.next_back(), self.b.next_back()),
+                Greater => (self.a.nth_back(a_sz - b_sz), self.b.next_back()),
+                Less => (self.a.next_back(), self.b.nth_back(b_sz - a_sz)),
+            };
+            match next_opts {
                 (Some(x), Some(y)) => Some((x, y)),
                 (None, None) => None,
                 _ => unreachable!(),
@@ -540,11 +534,15 @@ impl<A: Debug + TrustedRandomAccessNoCoerce, B: Debug + TrustedRandomAccessNoCoe
 ///    only be called at most `self.size() - idx - 1` times. If `Self: Clone` and `self` is cloned,
 ///    then this number is calculated for `self` and its clone individually,
 ///    but `self.next_back()` calls that happened before the cloning count for both `self` and the clone.
+///    Calls to `self.nth_back(n)` are counted as `n + 1` calls to `self.next_back()`, and
+///    calls to `self.advance_back_by(n)` as `n` calls.
 /// 4. After `self.__iterator_get_unchecked(idx)` has been called, then only the following methods
 ///    will be called on `self` or on any new clones of `self`:
 ///     * `std::clone::Clone::clone`
 ///     * `std::iter::Iterator::size_hint`
+///     * `std::iter::DoubleEndedIterator::advance_back_by`
 ///     * `std::iter::DoubleEndedIterator::next_back`
+///     * `std::iter::DoubleEndedIterator::nth_back`
 ///     * `std::iter::ExactSizeIterator::len`
 ///     * `std::iter::Iterator::__iterator_get_unchecked`
 ///     * `std::iter::TrustedRandomAccessNoCoerce::size`
