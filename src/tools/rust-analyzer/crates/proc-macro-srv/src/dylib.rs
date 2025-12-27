@@ -37,7 +37,7 @@ impl Expander {
         Ok(Expander { inner: library, modified_time })
     }
 
-    pub(crate) fn expand<S: ProcMacroSrvSpan>(
+    pub(crate) fn expand<'a, S: ProcMacroSrvSpan>(
         &self,
         macro_name: &str,
         macro_body: TokenStream<S>,
@@ -45,10 +45,10 @@ impl Expander {
         def_site: S,
         call_site: S,
         mixed_site: S,
-        callback: Option<ProcMacroClientHandle>,
+        callback: Option<ProcMacroClientHandle<'_>>,
     ) -> Result<TokenStream<S>, PanicMessage>
     where
-        <S::Server as bridge::server::Types>::TokenStream: Default,
+        <S::Server<'a> as bridge::server::Types>::TokenStream: Default,
     {
         self.inner
             .proc_macros

@@ -91,10 +91,10 @@ impl<'env> ProcMacroSrv<'env> {
     }
 }
 
-pub type ProcMacroClientHandle = Box<dyn ProcMacroClientInterface + Send>;
+pub type ProcMacroClientHandle<'a> = Box<dyn ProcMacroClientInterface + Send + 'a>;
 
 pub trait ProcMacroClientInterface {
-    fn source_text(&self, file_id: u32, start: u32, end: u32) -> Option<String>;
+    fn source_text(&mut self, file_id: u32, start: u32, end: u32) -> Option<String>;
 }
 
 const EXPANDER_STACK_SIZE: usize = 8 * 1024 * 1024;
@@ -111,7 +111,7 @@ impl ProcMacroSrv<'_> {
         def_site: S,
         call_site: S,
         mixed_site: S,
-        callback: Option<ProcMacroClientHandle>,
+        callback: Option<ProcMacroClientHandle<'_>>,
     ) -> Result<token_stream::TokenStream<S>, PanicMessage> {
         let snapped_env = self.env;
         let expander = self.expander(lib.as_ref()).map_err(|err| PanicMessage {
@@ -178,24 +178,26 @@ impl ProcMacroSrv<'_> {
 }
 
 pub trait ProcMacroSrvSpan: Copy + Send + Sync {
-    type Server: proc_macro::bridge::server::Server<TokenStream = crate::token_stream::TokenStream<Self>>;
-    fn make_server(
+    type Server<'a>: proc_macro::bridge::server::Server<TokenStream = crate::token_stream::TokenStream<Self>>
+    where
+        Self: 'a;
+    fn make_server<'a>(
         call_site: Self,
         def_site: Self,
         mixed_site: Self,
-        callback: Option<ProcMacroClientHandle>,
-    ) -> Self::Server;
+        callback: Option<ProcMacroClientHandle<'a>>,
+    ) -> Self::Server<'a>;
 }
 
 impl ProcMacroSrvSpan for SpanId {
-    type Server = server_impl::token_id::SpanIdServer;
+    type Server<'a> = server_impl::token_id::SpanIdServer<'a>;
 
-    fn make_server(
+    fn make_server<'a>(
         call_site: Self,
         def_site: Self,
         mixed_site: Self,
-        callback: Option<ProcMacroClientHandle>,
-    ) -> Self::Server {
+        callback: Option<ProcMacroClientHandle<'a>>,
+    ) -> Self::Server<'a> {
         Self::Server {
             call_site,
             def_site,
@@ -208,13 +210,13 @@ impl ProcMacroSrvSpan for SpanId {
 }
 
 impl ProcMacroSrvSpan for Span {
-    type Server = server_impl::rust_analyzer_span::RaSpanServer;
-    fn make_server(
+    type Server<'a> = server_impl::rust_analyzer_span::RaSpanServer<'a>;
+    fn make_server<'a>(
         call_site: Self,
         def_site: Self,
         mixed_site: Self,
-        callback: Option<ProcMacroClientHandle>,
-    ) -> Self::Server {
+        callback: Option<ProcMacroClientHandle<'a>>,
+    ) -> Self::Server<'a> {
         Self::Server {
             call_site,
             def_site,
