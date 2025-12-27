@@ -8,6 +8,4 @@ clap = "4"
 
 // Shebangs on a file can precede a frontmatter.
 
-#![feature(frontmatter)]
-
 fn main () {}
