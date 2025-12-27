@@ -54,6 +54,7 @@ impl AttributeKind {
             Fundamental { .. } => Yes,
             Ignore { .. } => No,
             Inline(..) => No,
+            InstructionSet(..) => No,
             Link(..) => No,
             LinkName { .. } => Yes, // Needed for rustdoc
             LinkOrdinal { .. } => No,

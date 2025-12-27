@@ -8,8 +8,6 @@ codegen_ssa_aix_strip_not_used = using host's `strip` binary to cross-compile to
 
 codegen_ssa_archive_build_failure = failed to build archive at `{$path}`: {$error}
 
-codegen_ssa_bare_instruction_set = `#[instruction_set]` requires an argument
-
 codegen_ssa_binary_output_to_tty = option `-o` or `--emit` is used to write binary output type `{$shorthand}` to stdout, but stdout is a tty
 
 codegen_ssa_cgu_not_recorded =
@@ -89,8 +87,6 @@ codegen_ssa_incorrect_cgu_reuse_type =
     }`{$expected_reuse}`
 
 codegen_ssa_insufficient_vs_code_product = VS Code is a different product, and is not sufficient.
-
-codegen_ssa_invalid_instruction_set = invalid instruction set specified
 
 codegen_ssa_invalid_literal_value = invalid literal value
     .label = value must be an integer between `0` and `255`
@@ -214,8 +210,6 @@ codegen_ssa_missing_query_depgraph =
 codegen_ssa_msvc_missing_linker = the msvc targets depend on the msvc linker but `link.exe` was not found
 
 codegen_ssa_multiple_external_func_decl = multiple declarations of external function `{$function}` from library `{$library_name}` have different calling conventions
-
-codegen_ssa_multiple_instruction_set = cannot specify more than one instruction set
 
 codegen_ssa_multiple_main_functions = entry symbol `main` declared multiple times
     .help = did you use `#[no_mangle]` on `fn main`? Use `#![no_main]` to suppress the usual Rust-generated entry point
@@ -382,8 +376,6 @@ codegen_ssa_unknown_reuse_kind = unknown cgu-reuse-kind `{$kind}` specified
 codegen_ssa_unstable_ctarget_feature =
     unstable feature specified for `-Ctarget-feature`: `{$feature}`
     .note = this feature is not stably supported; its behavior can change in the future
-
-codegen_ssa_unsupported_instruction_set = target does not support `#[instruction_set]`
 
 codegen_ssa_unsupported_link_self_contained = option `-C link-self-contained` is not supported on this target
 

@@ -37,6 +37,7 @@ use crate::attributes::deprecation::DeprecationParser;
 use crate::attributes::doc::DocParser;
 use crate::attributes::dummy::DummyParser;
 use crate::attributes::inline::{InlineParser, RustcForceInlineParser};
+use crate::attributes::instruction_set::InstructionSetParser;
 use crate::attributes::link_attrs::{
     ExportStableParser, FfiConstParser, FfiPureParser, LinkNameParser, LinkOrdinalParser,
     LinkParser, LinkSectionParser, LinkageParser, StdInternalSymbolParser,
@@ -198,6 +199,7 @@ attribute_parsers!(
         Single<ExportNameParser>,
         Single<IgnoreParser>,
         Single<InlineParser>,
+        Single<InstructionSetParser>,
         Single<LinkNameParser>,
         Single<LinkOrdinalParser>,
         Single<LinkSectionParser>,

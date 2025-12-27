@@ -3,9 +3,7 @@ use std::str::FromStr;
 use rustc_abi::{Align, ExternAbi};
 use rustc_ast::expand::autodiff_attrs::{AutoDiffAttrs, DiffActivity, DiffMode};
 use rustc_ast::{LitKind, MetaItem, MetaItemInner, attr};
-use rustc_hir::attrs::{
-    AttributeKind, InlineAttr, InstructionSetAttr, Linkage, RtsanSetting, UsedBy,
-};
+use rustc_hir::attrs::{AttributeKind, InlineAttr, Linkage, RtsanSetting, UsedBy};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::{self as hir, Attribute, LangItem, find_attr, lang_items};
@@ -44,37 +42,6 @@ fn try_fn_sig<'tcx>(
     } else {
         tcx.dcx().span_delayed_bug(attr_span, "this attribute can only be applied to functions");
         None
-    }
-}
-
-// FIXME(jdonszelmann): remove when instruction_set becomes a parsed attr
-fn parse_instruction_set_attr(tcx: TyCtxt<'_>, attr: &Attribute) -> Option<InstructionSetAttr> {
-    let list = attr.meta_item_list()?;
-
-    match &list[..] {
-        [MetaItemInner::MetaItem(set)] => {
-            let segments = set.path.segments.iter().map(|x| x.ident.name).collect::<Vec<_>>();
-            match segments.as_slice() {
-                [sym::arm, sym::a32 | sym::t32] if !tcx.sess.target.has_thumb_interworking => {
-                    tcx.dcx().emit_err(errors::UnsupportedInstructionSet { span: attr.span() });
-                    None
-                }
-                [sym::arm, sym::a32] => Some(InstructionSetAttr::ArmA32),
-                [sym::arm, sym::t32] => Some(InstructionSetAttr::ArmT32),
-                _ => {
-                    tcx.dcx().emit_err(errors::InvalidInstructionSet { span: attr.span() });
-                    None
-                }
-            }
-        }
-        [] => {
-            tcx.dcx().emit_err(errors::BareInstructionSet { span: attr.span() });
-            None
-        }
-        _ => {
-            tcx.dcx().emit_err(errors::MultipleInstructionSet { span: attr.span() });
-            None
-        }
     }
 }
 
@@ -353,6 +320,9 @@ fn process_builtin_attrs(
                 AttributeKind::ThreadLocal => {
                     codegen_fn_attrs.flags |= CodegenFnAttrFlags::THREAD_LOCAL
                 }
+                AttributeKind::InstructionSet(instruction_set) => {
+                    codegen_fn_attrs.instruction_set = Some(*instruction_set)
+                }
                 _ => {}
             }
         }
@@ -368,9 +338,6 @@ fn process_builtin_attrs(
             sym::rustc_deallocator => codegen_fn_attrs.flags |= CodegenFnAttrFlags::DEALLOCATOR,
             sym::rustc_allocator_zeroed => {
                 codegen_fn_attrs.flags |= CodegenFnAttrFlags::ALLOCATOR_ZEROED
-            }
-            sym::instruction_set => {
-                codegen_fn_attrs.instruction_set = parse_instruction_set_attr(tcx, attr)
             }
             sym::patchable_function_entry => {
                 codegen_fn_attrs.patchable_function_entry =
