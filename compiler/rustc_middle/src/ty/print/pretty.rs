@@ -1981,7 +1981,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                         }
                     }
                 }
-                return Ok(())
+                return Ok(());
             }
             (ty::ValTreeKind::Leaf(leaf), ty::Ref(_, inner_ty, _)) => {
                 write!(self, "&")?;
