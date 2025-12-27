@@ -389,20 +389,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     (old_glob @ true, false) | (old_glob @ false, true) => {
                         let (glob_binding, non_glob_binding) =
                             if old_glob { (old_binding, binding) } else { (binding, old_binding) };
-                        if ns == MacroNS
-                            && non_glob_binding.expansion != LocalExpnId::ROOT
-                            && glob_binding.res() != non_glob_binding.res()
-                        {
-                            resolution.non_glob_binding = Some(this.new_ambiguity_binding(
-                                AmbiguityKind::GlobVsExpanded,
-                                non_glob_binding,
-                                glob_binding,
-                                false,
-                            ));
-                        } else {
-                            resolution.non_glob_binding = Some(non_glob_binding);
-                        }
-
+                        resolution.non_glob_binding = Some(non_glob_binding);
                         if let Some(old_glob_binding) = resolution.glob_binding {
                             assert!(old_glob_binding.is_glob_import());
                             if glob_binding.res() != old_glob_binding.res() {

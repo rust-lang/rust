@@ -44,8 +44,8 @@ use tracing::{debug, instrument, trace};
 
 use crate::{
     BindingError, BindingKey, Finalize, LexicalScopeBinding, Module, ModuleOrUniformRoot,
-    NameBinding, ParentScope, PathResult, ResolutionError, Resolver, Segment, TyCtxt, UseError,
-    Used, errors, path_names_to_string, rustdoc,
+    NameBinding, ParentScope, PathResult, ResolutionError, Resolver, Segment, Stage, TyCtxt,
+    UseError, Used, errors, path_names_to_string, rustdoc,
 };
 
 mod diagnostics;
@@ -1514,7 +1514,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             opt_ns,
             &self.parent_scope,
             Some(source),
-            finalize,
+            finalize.map(|finalize| Finalize { stage: Stage::Late, ..finalize }),
             Some(&self.ribs),
             None,
             None,

@@ -123,10 +123,14 @@ enum Scope<'ra> {
     DeriveHelpersCompat,
     /// Textual `let`-like scopes introduced by `macro_rules!` items.
     MacroRules(MacroRulesScopeRef<'ra>),
-    /// Names declared in the given module.
+    /// Non-glob names declared in the given module.
     /// The node ID is for reporting the `PROC_MACRO_DERIVE_RESOLUTION_FALLBACK`
     /// lint if it should be reported.
-    Module(Module<'ra>, Option<NodeId>),
+    ModuleNonGlobs(Module<'ra>, Option<NodeId>),
+    /// Glob names declared in the given module.
+    /// The node ID is for reporting the `PROC_MACRO_DERIVE_RESOLUTION_FALLBACK`
+    /// lint if it should be reported.
+    ModuleGlobs(Module<'ra>, Option<NodeId>),
     /// Names introduced by `#[macro_use]` attributes on `extern crate` items.
     MacroUsePrelude,
     /// Built-in attributes.
@@ -149,6 +153,8 @@ enum Scope<'ra> {
 enum ScopeSet<'ra> {
     /// All scopes with the given namespace.
     All(Namespace),
+    /// Two scopes inside a module, for non-glob and glob bindings.
+    Module(Namespace, Module<'ra>),
     /// A module, then extern prelude (used for mixed 2015-2018 mode in macros).
     ModuleAndExternPrelude(Namespace, Module<'ra>),
     /// Just two extern prelude scopes.
@@ -1934,8 +1940,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let scope_set = ScopeSet::All(TypeNS);
         self.cm().visit_scopes(scope_set, parent_scope, ctxt, None, |this, scope, _, _| {
             match scope {
-                Scope::Module(module, _) => {
+                Scope::ModuleNonGlobs(module, _) => {
                     this.get_mut().traits_in_module(module, assoc_item, &mut found_traits);
+                }
+                Scope::ModuleGlobs(..) => {
+                    // Already handled in `ModuleNonGlobs` (but see #144993).
                 }
                 Scope::StdLibPrelude => {
                     if let Some(module) = this.prelude {
