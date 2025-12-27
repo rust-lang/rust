@@ -12,8 +12,8 @@ use object::Object;
 use paths::{Utf8Path, Utf8PathBuf};
 
 use crate::{
-    PanicMessage, ProcMacroKind, ProcMacroSrvSpan, SubCallback, dylib::proc_macros::ProcMacros,
-    token_stream::TokenStream,
+    PanicMessage, ProcMacroClientHandle, ProcMacroKind, ProcMacroSrvSpan,
+    dylib::proc_macros::ProcMacros, token_stream::TokenStream,
 };
 
 pub(crate) struct Expander {
@@ -45,7 +45,7 @@ impl Expander {
         def_site: S,
         call_site: S,
         mixed_site: S,
-        callback: Option<SubCallback>,
+        callback: Option<ProcMacroClientHandle>,
     ) -> Result<TokenStream<S>, PanicMessage>
     where
         <S::Server as bridge::server::Types>::TokenStream: Default,
