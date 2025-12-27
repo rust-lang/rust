@@ -1,6 +1,3 @@
-use std::iter;
-
-use rustc_abi::{FIRST_VARIANT, VariantIdx};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
@@ -10,62 +7,11 @@ use rustc_middle::thir::visit;
 use rustc_middle::thir::visit::Visitor;
 use rustc_middle::ty::abstract_const::CastKind;
 use rustc_middle::ty::{self, Expr, TyCtxt, TypeVisitableExt};
-use rustc_middle::{bug, mir, thir};
+use rustc_middle::{mir, thir};
 use rustc_span::Span;
-use tracing::{debug, instrument};
+use tracing::instrument;
 
 use crate::errors::{GenericConstantTooComplex, GenericConstantTooComplexSub};
-
-/// Destructures array, ADT or tuple constants into the constants
-/// of their fields.
-fn destructure_const<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    const_: ty::Const<'tcx>,
-) -> ty::DestructuredConst<'tcx> {
-    let ty::ConstKind::Value(cv) = const_.kind() else {
-        bug!("cannot destructure constant {:?}", const_)
-    };
-    let branches = cv.to_branch();
-
-    let (fields, variant) = match cv.ty.kind() {
-        ty::Array(inner_ty, _) | ty::Slice(inner_ty) => {
-            // construct the consts for the elements of the array/slice
-            let field_consts = branches
-                .iter()
-                .map(|b| ty::Const::new_value(tcx, b.to_value().valtree, *inner_ty))
-                .collect::<Vec<_>>();
-            debug!(?field_consts);
-
-            (field_consts, None)
-        }
-        ty::Adt(def, _) if def.variants().is_empty() => bug!("unreachable"),
-        ty::Adt(def, _) => {
-            let (variant_idx, field_consts) = if def.is_enum() {
-                let (head, rest) = branches.split_first().unwrap();
-                (VariantIdx::from_u32(head.to_leaf().to_u32()), rest)
-            } else {
-                (FIRST_VARIANT, branches)
-            };
-            debug!(?field_consts);
-
-            (field_consts.to_vec(), Some(variant_idx))
-        }
-        ty::Tuple(elem_tys) => {
-            let fields = iter::zip(*elem_tys, branches)
-                .map(|(elem_ty, elem_valtree)| {
-                    ty::Const::new_value(tcx, elem_valtree.to_value().valtree, elem_ty)
-                })
-                .collect::<Vec<_>>();
-
-            (fields, None)
-        }
-        _ => bug!("cannot destructure constant {:?}", const_),
-    };
-
-    let fields = tcx.arena.alloc_from_iter(fields);
-
-    ty::DestructuredConst { variant, fields }
-}
 
 /// We do not allow all binary operations in abstract consts, so filter disallowed ones.
 fn check_binop(op: mir::BinOp) -> bool {
@@ -432,5 +378,5 @@ fn thir_abstract_const<'tcx>(
 }
 
 pub(crate) fn provide(providers: &mut Providers) {
-    *providers = Providers { destructure_const, thir_abstract_const, ..*providers };
+    *providers = Providers { thir_abstract_const, ..*providers };
 }

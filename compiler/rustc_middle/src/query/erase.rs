@@ -402,7 +402,7 @@ tcx_lifetime! {
     rustc_middle::ty::ClauseKind,
     rustc_middle::ty::ClosureTypeInfo,
     rustc_middle::ty::Const,
-    rustc_middle::ty::DestructuredConst,
+    rustc_middle::ty::DestructuredAdtConst,
     rustc_middle::ty::ExistentialTraitRef,
     rustc_middle::ty::FnSig,
     rustc_middle::ty::GenericArg,
