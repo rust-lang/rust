@@ -91,9 +91,9 @@ impl<'env> ProcMacroSrv<'env> {
     }
 }
 
-pub type SubCallback = Box<dyn BidirectionalHandler + Send>;
+pub type ProcMacroClientHandle = Box<dyn ProcMacroClientInterface + Send>;
 
-pub trait BidirectionalHandler {
+pub trait ProcMacroClientInterface {
     fn source_text(&mut self, file_id: u32, start: u32, end: u32) -> Option<String>;
 }
 
@@ -111,7 +111,7 @@ impl ProcMacroSrv<'_> {
         def_site: S,
         call_site: S,
         mixed_site: S,
-        callback: Option<SubCallback>,
+        callback: Option<ProcMacroClientHandle>,
     ) -> Result<token_stream::TokenStream<S>, PanicMessage> {
         let snapped_env = self.env;
         let expander = self.expander(lib.as_ref()).map_err(|err| PanicMessage {
@@ -183,7 +183,7 @@ pub trait ProcMacroSrvSpan: Copy + Send + Sync {
         call_site: Self,
         def_site: Self,
         mixed_site: Self,
-        callback: Option<SubCallback>,
+        callback: Option<ProcMacroClientHandle>,
     ) -> Self::Server;
 }
 
@@ -194,7 +194,7 @@ impl ProcMacroSrvSpan for SpanId {
         call_site: Self,
         def_site: Self,
         mixed_site: Self,
-        callback: Option<SubCallback>,
+        callback: Option<ProcMacroClientHandle>,
     ) -> Self::Server {
         Self::Server {
             call_site,
@@ -213,7 +213,7 @@ impl ProcMacroSrvSpan for Span {
         call_site: Self,
         def_site: Self,
         mixed_site: Self,
-        callback: Option<SubCallback>,
+        callback: Option<ProcMacroClientHandle>,
     ) -> Self::Server {
         Self::Server {
             call_site,

@@ -1,5 +1,5 @@
 //! Proc macro ABI
-use crate::{ProcMacroKind, ProcMacroSrvSpan, SubCallback, token_stream::TokenStream};
+use crate::{ProcMacroClientHandle, ProcMacroKind, ProcMacroSrvSpan, token_stream::TokenStream};
 use proc_macro::bridge;
 
 #[repr(transparent)]
@@ -20,7 +20,7 @@ impl ProcMacros {
         def_site: S,
         call_site: S,
         mixed_site: S,
-        callback: Option<SubCallback>,
+        callback: Option<ProcMacroClientHandle>,
     ) -> Result<TokenStream<S>, crate::PanicMessage> {
         let parsed_attributes = attribute.unwrap_or_default();
 

@@ -169,12 +169,12 @@ fn handle_expand_id<W: std::io::Write, C: Codec>(
     send_response::<_, C>(stdout, bidirectional::Response::ExpandMacro(res))
 }
 
-struct BidirectionalProxy {
+struct ProcMacroClientHandle {
     subreq_tx: mpsc::Sender<bidirectional::SubRequest>,
     subresp_rx: mpsc::Receiver<bidirectional::SubResponse>,
 }
 
-impl proc_macro_srv::BidirectionalHandler for BidirectionalProxy {
+impl proc_macro_srv::ProcMacroClientInterface for ProcMacroClientHandle {
     fn source_text(&mut self, file_id: u32, start: u32, end: u32) -> Option<String> {
         self.subreq_tx.send(bidirectional::SubRequest::SourceText { file_id, start, end }).ok()?;
 
@@ -228,7 +228,7 @@ fn handle_expand_ra<W: io::Write, R: io::BufRead, C: Codec>(
 
     std::thread::scope(|s| {
         s.spawn(|| {
-            let callback = BidirectionalProxy { subreq_tx, subresp_rx };
+            let callback = ProcMacroClientHandle { subreq_tx, subresp_rx };
 
             let res = srv
                 .expand(
