@@ -70,6 +70,10 @@ impl<T: PointeeSized> LegacyReceiver for &mut T {}
 #[lang = "copy"]
 pub trait Copy: Sized {}
 
+#[lang = "clone"]
+pub trait Clone {
+    fn clone(&self) -> Self;
+}
 #[lang = "bikeshed_guaranteed_no_drop"]
 pub trait BikeshedGuaranteedNoDrop {}
 
@@ -97,8 +101,8 @@ impl<T: PointeeSized> Copy for *mut T {}
 impl<T: Copy, const N: usize> Copy for [T; N] {}
 
 #[lang = "phantom_data"]
-pub struct PhantomData<T: PointeeSized>;
-impl<T: PointeeSized> Copy for PhantomData<T> {}
+pub struct PhantomData<T: ?Sized>;
+impl<T: ?Sized> Copy for PhantomData<T> {}
 
 pub enum Option<T> {
     None,
@@ -139,10 +143,10 @@ pub struct Unique<T: ?Sized> {
 
 #[lang = "unsafe_cell"]
 #[repr(transparent)]
-pub struct UnsafeCell<T: PointeeSized> {
+pub struct UnsafeCell<T: ?Sized> {
     value: T,
 }
-impl<T: PointeeSized> !Freeze for UnsafeCell<T> {}
+impl<T: ?Sized> !Freeze for UnsafeCell<T> {}
 
 #[lang = "tuple_trait"]
 #[diagnostic::on_unimplemented(message = "`{Self}` is not a tuple")]
@@ -211,7 +215,7 @@ impl Neg for isize {
 }
 
 #[lang = "sync"]
-trait Sync {}
+pub trait Sync {}
 impl_marker_trait!(
     Sync => [
         char, bool,
@@ -222,7 +226,7 @@ impl_marker_trait!(
 );
 
 #[lang = "drop_in_place"]
-fn drop_in_place<T>(_: *mut T) {}
+pub unsafe fn drop_in_place<T: ?Sized>(_: *mut T) {}
 
 #[lang = "fn_once"]
 pub trait FnOnce<Args: Tuple> {
@@ -243,20 +247,26 @@ pub trait Fn<Args: Tuple>: FnMut<Args> {
 }
 
 #[lang = "dispatch_from_dyn"]
-trait DispatchFromDyn<T> {}
+pub trait DispatchFromDyn<T> {}
 
-impl<'a, T: PointeeSized + Unsize<U>, U: PointeeSized> DispatchFromDyn<&'a U> for &'a T {}
+impl<'a, T: PointeeSized + Unsize<U>, U: PointeeSized + MetaSized> DispatchFromDyn<&'a U>
+    for &'a T
+{
+}
 
 #[lang = "unsize"]
-trait Unsize<T: PointeeSized>: PointeeSized {}
+pub trait Unsize<T: ?Sized>: PointeeSized {}
 
 #[lang = "coerce_unsized"]
-pub trait CoerceUnsized<T: PointeeSized> {}
+pub trait CoerceUnsized<T: ?Sized> {}
 
-impl<'a, 'b: 'a, T: PointeeSized + Unsize<U>, U: PointeeSized> CoerceUnsized<&'a U> for &'b T {}
+impl<'a, 'b: 'a, T: PointeeSized + Unsize<U>, U: ?Sized + PointeeSized + MetaSized>
+    CoerceUnsized<&'a U> for &'b T
+{
+}
 
 #[lang = "drop"]
-trait Drop {
+pub trait Drop {
     fn drop(&mut self);
 }
 
@@ -274,7 +284,7 @@ pub mod mem {
 }
 
 #[lang = "c_void"]
-#[repr(u8)]
+#[repr(C)]
 pub enum c_void {
     __variant1,
     __variant2,
@@ -283,6 +293,26 @@ pub enum c_void {
 #[lang = "const_param_ty"]
 #[diagnostic::on_unimplemented(message = "`{Self}` can't be used as a const parameter type")]
 pub trait ConstParamTy_ {}
+
+#[lang = "Ordering"]
+#[repr(i8)]
+pub enum Ordering {
+    Less = 0xFFu8 as i8,
+    Equal = 0,
+    Greater = 1,
+}
+impl Copy for Ordering {}
+
+impl Clone for Ordering {
+    #[inline]
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+#[rustc_nounwind]
+#[rustc_intrinsic]
+pub const fn three_way_compare<T: Copy>(lhs: T, rhs: T) -> Ordering;
 
 pub enum SimdAlign {
     // These values must match the compiler's `SimdAlign` defined in

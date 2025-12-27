@@ -94,11 +94,6 @@ mod prelude {
     // Trait stub, no `type_id` method.
     pub trait Any: 'static {}
 
-    #[lang = "clone"]
-    pub trait Clone: Sized {
-        fn clone(&self) -> Self;
-    }
-
     // This just stands in for a non-trivial type.
     pub struct Vec<T> {
         ptr: NonNull<T>,
