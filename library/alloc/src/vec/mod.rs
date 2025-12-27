@@ -2297,8 +2297,7 @@ impl<T, A: Allocator> Vec<T, A> {
         unsafe { self.set_len(0) };
 
         // Vec: [Kept, Kept, Hole, Hole, Hole, Hole, Unchecked, Unchecked]
-        //      |<-              processed len   ->| ^- next to check
-        //                  |<-  deleted cnt     ->|
+        //      |            ^- write_index          ^- read_index
         //      |<-              original_len                          ->|
         // Kept: Elements which predicate returns true on.
         // Hole: Moved or dropped element slot.
@@ -2309,75 +2308,85 @@ impl<T, A: Allocator> Vec<T, A> {
         // In cases when predicate and `drop` never panick, it will be optimized out.
         struct BackshiftOnDrop<'a, T, A: Allocator> {
             v: &'a mut Vec<T, A>,
-            processed_len: usize,
-            deleted_cnt: usize,
+            read_index: usize,
+            write_index: usize,
             original_len: usize,
+        }
+
+        impl<T, A: Allocator> BackshiftOnDrop<'_, T, A> {
+            unsafe fn commit(self, new_len: usize) {
+                // SAFETY: Caller guarantees new_len <= capacity.
+                unsafe { self.v.set_len(new_len) };
+                core::mem::forget(self);
+            }
         }
 
         impl<T, A: Allocator> Drop for BackshiftOnDrop<'_, T, A> {
+            #[cold]
             fn drop(&mut self) {
-                if self.deleted_cnt > 0 {
-                    // SAFETY: Trailing unchecked items must be valid since we never touch them.
-                    unsafe {
-                        ptr::copy(
-                            self.v.as_ptr().add(self.processed_len),
-                            self.v.as_mut_ptr().add(self.processed_len - self.deleted_cnt),
-                            self.original_len - self.processed_len,
-                        );
-                    }
+                // Panic happened, we need to backshift unchecked elements to cover holes.
+                if self.write_index >= self.read_index {
+                    // SAFETY: No elements were removed.
+                    return unsafe { self.v.set_len(self.original_len) };
+                }
+                let remaining = self.original_len - self.read_index;
+                // SAFETY: Trailing unchecked items must be valid since we never touch them.
+                unsafe {
+                    ptr::copy(
+                        self.v.as_ptr().add(self.read_index),
+                        self.v.as_mut_ptr().add(self.write_index),
+                        remaining,
+                    );
                 }
                 // SAFETY: After filling holes, all items are in contiguous memory.
                 unsafe {
-                    self.v.set_len(self.original_len - self.deleted_cnt);
+                    self.v.set_len(self.write_index + remaining);
                 }
             }
         }
 
-        let mut g = BackshiftOnDrop { v: self, processed_len: 0, deleted_cnt: 0, original_len };
-
-        fn process_loop<F, T, A: Allocator, const DELETED: bool>(
-            original_len: usize,
-            f: &mut F,
-            g: &mut BackshiftOnDrop<'_, T, A>,
-        ) where
-            F: FnMut(&mut T) -> bool,
-        {
-            while g.processed_len != original_len {
-                // SAFETY: Unchecked element must be valid.
-                let cur = unsafe { &mut *g.v.as_mut_ptr().add(g.processed_len) };
-                if !f(cur) {
-                    // Advance early to avoid double drop if `drop_in_place` panicked.
-                    g.processed_len += 1;
-                    g.deleted_cnt += 1;
-                    // SAFETY: We never touch this element again after dropped.
-                    unsafe { ptr::drop_in_place(cur) };
-                    // We already advanced the counter.
-                    if DELETED {
-                        continue;
-                    } else {
-                        break;
-                    }
-                }
-                if DELETED {
-                    // SAFETY: `deleted_cnt` > 0, so the hole slot must not overlap with current element.
-                    // We use copy for move, and never touch this element again.
-                    unsafe {
-                        let hole_slot = g.v.as_mut_ptr().add(g.processed_len - g.deleted_cnt);
-                        ptr::copy_nonoverlapping(cur, hole_slot, 1);
-                    }
-                }
-                g.processed_len += 1;
+        let mut g =
+            BackshiftOnDrop { v: self, read_index: 0, write_index: usize::MAX, original_len };
+        loop {
+            // SAFETY: i < original_len
+            let cur = unsafe { &mut *g.v.as_mut_ptr().add(g.read_index) };
+            if core::intrinsics::unlikely(!f(cur)) {
+                g.write_index = g.read_index;
+                // Advance read_index early to avoid double drop if `drop_in_place` panicked.
+                g.read_index += 1;
+                unsafe { ptr::drop_in_place(cur) };
+                break;
+            }
+            g.read_index += 1;
+            if g.read_index == original_len {
+                // SAFETY: All elements are kept, set length back to original and return.
+                return unsafe { g.commit(original_len) };
             }
         }
 
-        // Stage 1: Nothing was deleted.
-        process_loop::<F, T, A, false>(original_len, &mut f, &mut g);
+        while g.read_index < g.original_len {
+            // SAFETY: read_index is always less than original_len.
+            let cur = unsafe { &mut *g.v.as_mut_ptr().add(g.read_index) };
+            if !f(cur) {
+                // Advance read_index early to avoid double drop if `drop_in_place` panicked.
+                g.read_index += 1;
+                // SAFETY: We never touch this element again after dropped.
+                unsafe { ptr::drop_in_place(cur) };
+            } else {
+                // SAFETY: `read_index` > `write_index`, so the slots don't overlap.
+                // We use copy for move, and never touch the source element again.
+                unsafe {
+                    let hole = g.v.as_mut_ptr().add(g.write_index);
+                    ptr::copy_nonoverlapping(cur, hole, 1);
+                }
+                g.write_index += 1;
+                g.read_index += 1;
+            }
+        }
 
-        // Stage 2: Some elements were deleted.
-        process_loop::<F, T, A, true>(original_len, &mut f, &mut g);
-
-        // All item are processed. This can be optimized to `set_len` by LLVM.
-        drop(g);
+        let new_len = g.write_index;
+        // SAFETY: After the loop, all kept elements are moved behind write_index.
+        unsafe { g.commit(new_len) }
     }
 
     /// Removes all but the first of consecutive elements in the vector that resolve to the same
