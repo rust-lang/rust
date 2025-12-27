@@ -32,7 +32,7 @@ pub(crate) enum RegionElement<'tcx> {
 
     /// A placeholder (e.g., instantiated from a `for<'a> fn(&'a u32)`
     /// type).
-    PlaceholderRegion(ty::PlaceholderRegion<'tcx>),
+    PlaceholderRegion(ty::PlaceholderRegion<TyCtxt<'tcx>>),
 }
 
 /// Records the CFG locations where each region is live. When we initially compute liveness, we use
@@ -197,19 +197,22 @@ impl LivenessValues {
 #[derive(Debug, Default)]
 #[derive(Clone)] // FIXME(#146079)
 pub(crate) struct PlaceholderIndices<'tcx> {
-    indices: FxIndexSet<ty::PlaceholderRegion<'tcx>>,
+    indices: FxIndexSet<ty::PlaceholderRegion<TyCtxt<'tcx>>>,
 }
 
 impl<'tcx> PlaceholderIndices<'tcx> {
     /// Returns the `PlaceholderIndex` for the inserted `PlaceholderRegion`
-    pub(crate) fn insert(&mut self, placeholder: ty::PlaceholderRegion<'tcx>) -> PlaceholderIndex {
+    pub(crate) fn insert(
+        &mut self,
+        placeholder: ty::PlaceholderRegion<TyCtxt<'tcx>>,
+    ) -> PlaceholderIndex {
         let (index, _) = self.indices.insert_full(placeholder);
         index.into()
     }
 
     pub(crate) fn lookup_index(
         &self,
-        placeholder: ty::PlaceholderRegion<'tcx>,
+        placeholder: ty::PlaceholderRegion<TyCtxt<'tcx>>,
     ) -> PlaceholderIndex {
         self.indices.get_index_of(&placeholder).unwrap().into()
     }
@@ -217,7 +220,7 @@ impl<'tcx> PlaceholderIndices<'tcx> {
     pub(crate) fn lookup_placeholder(
         &self,
         placeholder: PlaceholderIndex,
-    ) -> ty::PlaceholderRegion<'tcx> {
+    ) -> ty::PlaceholderRegion<TyCtxt<'tcx>> {
         self.indices[placeholder.index()]
     }
 
@@ -362,7 +365,7 @@ impl<'tcx, N: Idx> RegionValues<'tcx, N> {
     pub(crate) fn placeholders_contained_in(
         &self,
         r: N,
-    ) -> impl Iterator<Item = ty::PlaceholderRegion<'tcx>> {
+    ) -> impl Iterator<Item = ty::PlaceholderRegion<TyCtxt<'tcx>>> {
         self.placeholders
             .row(r)
             .into_iter()
@@ -417,7 +420,7 @@ impl ToElementIndex<'_> for RegionVid {
     }
 }
 
-impl<'tcx> ToElementIndex<'tcx> for ty::PlaceholderRegion<'tcx> {
+impl<'tcx> ToElementIndex<'tcx> for ty::PlaceholderRegion<TyCtxt<'tcx>> {
     fn add_to_row<N: Idx>(self, values: &mut RegionValues<'tcx, N>, row: N) -> bool
     where
         Self: Into<ty::Placeholder<TyCtxt<'tcx>, ty::BoundRegion>>,

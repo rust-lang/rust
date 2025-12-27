@@ -99,7 +99,7 @@ impl<'tcx> Region<'tcx> {
     #[inline]
     pub fn new_placeholder(
         tcx: TyCtxt<'tcx>,
-        placeholder: ty::PlaceholderRegion<'tcx>,
+        placeholder: ty::PlaceholderRegion<TyCtxt<'tcx>>,
     ) -> Region<'tcx> {
         tcx.intern_region(ty::RePlaceholder(placeholder))
     }
@@ -173,7 +173,10 @@ impl<'tcx> rustc_type_ir::inherent::Region<TyCtxt<'tcx>> for Region<'tcx> {
         Region::new_canonical_bound(tcx, var)
     }
 
-    fn new_placeholder(tcx: TyCtxt<'tcx>, placeholder: ty::PlaceholderRegion<'tcx>) -> Self {
+    fn new_placeholder(
+        tcx: TyCtxt<'tcx>,
+        placeholder: ty::PlaceholderRegion<TyCtxt<'tcx>>,
+    ) -> Self {
         Region::new_placeholder(tcx, placeholder)
     }
 
@@ -469,37 +472,41 @@ pub enum BoundRegionKind {
     ClosureEnv,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
-#[derive(HashStable)]
-pub struct BoundRegion {
-    pub var: BoundVar,
-    pub kind: BoundRegionKind,
-}
+//#[derive(Copy, Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
+//#[derive(HashStable)]
+//pub struct BoundRegion {
+//    pub var: BoundVar,
+//    pub kind: BoundRegionKind,
+//}
+//
+//impl<'tcx> rustc_type_ir::inherent::BoundVarLike<TyCtxt<'tcx>> for BoundRegion {
+//    fn var(self) -> BoundVar {
+//        self.var
+//    }
+//
+//    fn assert_eq(self, var: ty::BoundVariableKind) {
+//        assert_eq!(self.kind, var.expect_region())
+//    }
+//
+//    fn new(var: BoundVar, kind: BoundRegionKind) -> Self {
+//        Self { var, kind }
+//    }
+//}
 
-impl<'tcx> rustc_type_ir::inherent::BoundVarLike<TyCtxt<'tcx>> for BoundRegion {
-    fn var(self) -> BoundVar {
-        self.var
-    }
-
-    fn assert_eq(self, var: ty::BoundVariableKind) {
-        assert_eq!(self.kind, var.expect_region())
-    }
-}
-
-impl core::fmt::Debug for BoundRegion {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self.kind {
-            BoundRegionKind::Anon => write!(f, "{:?}", self.var),
-            BoundRegionKind::ClosureEnv => write!(f, "{:?}.Env", self.var),
-            BoundRegionKind::Named(def) => {
-                write!(f, "{:?}.Named({:?})", self.var, def)
-            }
-            BoundRegionKind::NamedAnon(symbol) => {
-                write!(f, "{:?}.NamedAnon({:?})", self.var, symbol)
-            }
-        }
-    }
-}
+//impl core::fmt::Debug for BoundRegion {
+//    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+//        match self.kind {
+//            BoundRegionKind::Anon => write!(f, "{:?}", self.var),
+//            BoundRegionKind::ClosureEnv => write!(f, "{:?}.Env", self.var),
+//            BoundRegionKind::Named(def) => {
+//                write!(f, "{:?}.Named({:?})", self.var, def)
+//            }
+//            BoundRegionKind::NamedAnon(symbol) => {
+//                write!(f, "{:?}.NamedAnon({:?})", self.var, symbol)
+//            }
+//        }
+//    }
+//}
 
 impl BoundRegionKind {
     pub fn is_named(&self, tcx: TyCtxt<'_>) -> bool {

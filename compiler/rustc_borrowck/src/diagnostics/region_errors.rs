@@ -111,7 +111,7 @@ pub(crate) enum RegionErrorKind<'tcx> {
         /// The region element that erroneously must be outlived by `longer_fr`.
         error_element: RegionElement<'tcx>,
         /// The placeholder region.
-        placeholder: ty::PlaceholderRegion<'tcx>,
+        placeholder: ty::PlaceholderRegion<TyCtxt<'tcx>>,
     },
 
     /// Any other lifetime error.

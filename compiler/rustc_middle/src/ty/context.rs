@@ -145,10 +145,10 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
 
     type FnInputTys = &'tcx [Ty<'tcx>];
     type ParamTy = ParamTy;
-    type BoundTy = ty::BoundTy;
+    //type BoundTy = ty::BoundTy;
     type Symbol = Symbol;
 
-    type PlaceholderTy = ty::PlaceholderType<'tcx>;
+    type PlaceholderTy = ty::PlaceholderType<TyCtxt<'tcx>>;
     type ErrorGuaranteed = ErrorGuaranteed;
     type BoundExistentialPredicates = &'tcx List<PolyExistentialPredicate<'tcx>>;
 
@@ -158,10 +158,10 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type Safety = hir::Safety;
     type Abi = ExternAbi;
     type Const = ty::Const<'tcx>;
-    type PlaceholderConst = ty::PlaceholderConst<'tcx>;
+    //type PlaceholderConst = ty::PlaceholderConst<'tcx>;
 
     type ParamConst = ty::ParamConst;
-    type BoundConst = ty::BoundConst;
+    //type BoundConst = ty::BoundConst;
     type ValueConst = ty::Value<'tcx>;
     type ExprConst = ty::Expr<'tcx>;
     type ValTree = ty::ValTree<'tcx>;
@@ -171,7 +171,10 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type EarlyParamRegion = ty::EarlyParamRegion;
     type LateParamRegion = ty::LateParamRegion;
     type BoundRegion = ty::BoundRegion;
-    type PlaceholderRegion = ty::PlaceholderRegion<'tcx>;
+    type BoundRegionKind = ty::BoundRegionKind;
+    type BoundVariableKind = ty::BoundVariableKind;
+    type BoundTyKind = ty::BoundTyKind;
+    //type PlaceholderRegion = ty::PlaceholderRegion<TyCtxt<'tcx>>;
 
     type RegionAssumptions = &'tcx ty::List<ty::ArgOutlivesPredicate<'tcx>>;
 

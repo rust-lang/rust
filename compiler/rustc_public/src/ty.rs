@@ -241,11 +241,11 @@ pub struct EarlyParamRegion {
 
 pub(crate) type BoundVar = u32;
 
-#[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize)]
-pub struct BoundRegion {
-    pub var: BoundVar,
-    pub kind: BoundRegionKind,
-}
+//#[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize)]
+//pub struct BoundRegion {
+//    pub var: BoundVar,
+//    pub kind: BoundRegionKind,
+//}
 
 pub(crate) type UniverseIndex = u32;
 

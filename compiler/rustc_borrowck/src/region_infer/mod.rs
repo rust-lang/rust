@@ -481,7 +481,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     pub(crate) fn placeholders_contained_in(
         &self,
         r: RegionVid,
-    ) -> impl Iterator<Item = ty::PlaceholderRegion<'tcx>> {
+    ) -> impl Iterator<Item = ty::PlaceholderRegion<TyCtxt<'tcx>>> {
         let scc = self.constraint_sccs.scc(r);
         self.scc_values.placeholders_contained_in(scc)
     }
@@ -1363,7 +1363,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     fn check_bound_universal_region(
         &self,
         longer_fr: RegionVid,
-        placeholder: ty::PlaceholderRegion<'tcx>,
+        placeholder: ty::PlaceholderRegion<TyCtxt<'tcx>>,
         errors_buffer: &mut RegionErrors<'tcx>,
     ) {
         debug!("check_bound_universal_region(fr={:?}, placeholder={:?})", longer_fr, placeholder,);

@@ -381,23 +381,27 @@ impl ParamConst {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
-#[derive(HashStable)]
-pub struct BoundTy {
-    pub var: BoundVar,
-    pub kind: BoundTyKind,
-}
-
-impl<'tcx> rustc_type_ir::inherent::BoundVarLike<TyCtxt<'tcx>> for BoundTy {
-    fn var(self) -> BoundVar {
-        self.var
-    }
-
-    fn assert_eq(self, var: ty::BoundVariableKind) {
-        assert_eq!(self.kind, var.expect_ty())
-    }
-}
-
+//#[derive(Clone, Copy, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
+//#[derive(HashStable)]
+//pub struct BoundTy {
+//    pub var: BoundVar,
+//    pub kind: BoundTyKind,
+//}
+//
+//impl<'tcx> rustc_type_ir::inherent::BoundVarLike<TyCtxt<'tcx>> for BoundTy {
+//    fn var(self) -> BoundVar {
+//        self.var
+//    }
+//
+//    fn assert_eq(self, var: ty::BoundVariableKind) {
+//        assert_eq!(self.kind, var.expect_ty())
+//    }
+//
+//    fn new(var: BoundVar, kind: BoundRegionKind) -> Self {
+//        Self { var, kind }
+//    }
+//}
+//
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, TyEncodable, TyDecodable)]
 #[derive(HashStable)]
 pub enum BoundTyKind {
@@ -509,7 +513,10 @@ impl<'tcx> Ty<'tcx> {
     }
 
     #[inline]
-    pub fn new_placeholder(tcx: TyCtxt<'tcx>, placeholder: ty::PlaceholderType<'tcx>) -> Ty<'tcx> {
+    pub fn new_placeholder(
+        tcx: TyCtxt<'tcx>,
+        placeholder: ty::PlaceholderType<TyCtxt<'tcx>>,
+    ) -> Ty<'tcx> {
         Ty::new(tcx, Placeholder(placeholder))
     }
 
@@ -958,7 +965,7 @@ impl<'tcx> rustc_type_ir::inherent::Ty<TyCtxt<'tcx>> for Ty<'tcx> {
         Ty::new_param(tcx, param.index, param.name)
     }
 
-    fn new_placeholder(tcx: TyCtxt<'tcx>, placeholder: ty::PlaceholderType<'tcx>) -> Self {
+    fn new_placeholder(tcx: TyCtxt<'tcx>, placeholder: ty::PlaceholderType<TyCtxt<'tcx>>) -> Self {
         Ty::new_placeholder(tcx, placeholder)
     }
 

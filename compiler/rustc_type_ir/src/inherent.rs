@@ -13,7 +13,7 @@ use crate::fold::{TypeFoldable, TypeSuperFoldable};
 use crate::relate::Relate;
 use crate::solve::{AdtDestructorKind, SizedTraitKind};
 use crate::visit::{Flags, TypeSuperVisitable, TypeVisitable, TypeVisitableExt};
-use crate::{self as ty, CollectAndApply, Interner, UpcastFrom};
+use crate::{self as ty, CollectAndApply, Interner, PlaceholderRegion, UpcastFrom};
 
 pub trait Ty<I: Interner<Ty = Self>>:
     Copy
@@ -44,7 +44,7 @@ pub trait Ty<I: Interner<Ty = Self>>:
 
     fn new_placeholder(interner: I, param: I::PlaceholderTy) -> Self;
 
-    fn new_bound(interner: I, debruijn: ty::DebruijnIndex, var: I::BoundTy) -> Self;
+    fn new_bound(interner: I, debruijn: ty::DebruijnIndex, var: ty::BoundTy<I>) -> Self;
 
     fn new_anon_bound(interner: I, debruijn: ty::DebruijnIndex, var: ty::BoundVar) -> Self;
 
@@ -236,7 +236,7 @@ pub trait Region<I: Interner<Region = Self>>:
 
     fn new_static(interner: I) -> Self;
 
-    fn new_placeholder(interner: I, var: I::PlaceholderRegion) -> Self;
+    fn new_placeholder(interner: I, var: PlaceholderRegion<I>) -> Self;
 
     fn is_bound(self) -> bool {
         matches!(self.kind(), ty::ReBound(..))
@@ -260,13 +260,13 @@ pub trait Const<I: Interner<Const = Self>>:
 
     fn new_var(interner: I, var: ty::ConstVid) -> Self;
 
-    fn new_bound(interner: I, debruijn: ty::DebruijnIndex, bound_const: I::BoundConst) -> Self;
+    fn new_bound(interner: I, debruijn: ty::DebruijnIndex, bound_const: ty::BoundConst) -> Self;
 
     fn new_anon_bound(interner: I, debruijn: ty::DebruijnIndex, var: ty::BoundVar) -> Self;
 
     fn new_canonical_bound(interner: I, var: ty::BoundVar) -> Self;
 
-    fn new_placeholder(interner: I, param: I::PlaceholderConst) -> Self;
+    fn new_placeholder(interner: I, param: ty::PlaceholderConst<I>) -> Self;
 
     fn new_unevaluated(interner: I, uv: ty::UnevaluatedConst<I>) -> Self;
 
@@ -550,14 +550,14 @@ pub trait PlaceholderLike<I: Interner>: Copy + Debug + Hash + Eq {
 
     type Bound: BoundVarLike<I>;
     fn new(ui: ty::UniverseIndex, bound: Self::Bound) -> Self;
-    fn new_anon(ui: ty::UniverseIndex, var: ty::BoundVar) -> Self;
-    fn with_updated_universe(self, ui: ty::UniverseIndex) -> Self;
+    fn new_anon<T>(ui: ty::UniverseIndex, var: ty::BoundVar, anon_kind: T) -> Self;
+    fn with_updated_universe(self, universe: ty::UniverseIndex) -> Self;
 }
 
-pub trait PlaceholderConst<I: Interner>: PlaceholderLike<I, Bound = I::BoundConst> {
+pub trait PlaceholderConst<I: Interner>: PlaceholderLike<I, Bound = ty::BoundConst> {
     fn find_const_ty_from_env(self, env: I::ParamEnv) -> I::Ty;
 }
-impl<I: Interner> PlaceholderConst<I> for I::PlaceholderConst {
+impl<I: Interner> PlaceholderConst<I> for ty::PlaceholderConst<I> {
     fn find_const_ty_from_env(self, env: I::ParamEnv) -> I::Ty {
         let mut candidates = env.caller_bounds().iter().filter_map(|clause| {
             // `ConstArgHasType` are never desugared to be higher ranked.
@@ -602,7 +602,17 @@ pub trait IntoKind {
 pub trait BoundVarLike<I: Interner>: Copy + Debug + Hash + Eq {
     fn var(self) -> ty::BoundVar;
 
-    fn assert_eq(self, var: I::BoundVarKind);
+    fn assert_eq<T: BoundVariableKindLike<I>>(self, var: T);
+
+    fn new(var: ty::BoundVar, kind: I::BoundRegionKind) -> Self;
+}
+
+pub trait BoundVariableKindLike<I: Interner>: Copy + Debug + Hash + Eq {
+    fn expect_region(self) -> I::BoundRegionKind;
+
+    fn expect_ty(self) -> I::BoundTyKind;
+
+    fn expect_const(self);
 }
 
 pub trait ParamLike: Copy + Debug + Hash + Eq {

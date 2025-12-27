@@ -105,7 +105,7 @@ struct LeakCheck<'a, 'tcx> {
     // is repurposed to store some placeholder `P` such that the weaker
     // condition `S: P` must hold. (This is true if `S: S1` transitively and `S1
     // = P`.)
-    scc_placeholders: IndexVec<LeakCheckScc, Option<ty::PlaceholderRegion<'tcx>>>,
+    scc_placeholders: IndexVec<LeakCheckScc, Option<ty::PlaceholderRegion<TyCtxt<'tcx>>>>,
 
     // For each SCC S, track the minimum universe that flows into it. Note that
     // this is both the minimum of the universes for every region that is a
@@ -258,15 +258,15 @@ impl<'a, 'tcx> LeakCheck<'a, 'tcx> {
 
     fn placeholder_error(
         &self,
-        placeholder1: ty::PlaceholderRegion<'tcx>,
-        placeholder2: ty::PlaceholderRegion<'tcx>,
+        placeholder1: ty::PlaceholderRegion<TyCtxt<'tcx>>,
+        placeholder2: ty::PlaceholderRegion<TyCtxt<'tcx>>,
     ) -> TypeError<'tcx> {
         self.error(placeholder1, ty::Region::new_placeholder(self.tcx, placeholder2))
     }
 
     fn error(
         &self,
-        placeholder: ty::PlaceholderRegion<'tcx>,
+        placeholder: ty::PlaceholderRegion<TyCtx<'tcx>>,
         other_region: ty::Region<'tcx>,
     ) -> TypeError<'tcx> {
         debug!("error: placeholder={:?}, other_region={:?}", placeholder, other_region);

@@ -110,7 +110,7 @@ impl<'tcx> Const<'tcx> {
     #[inline]
     pub fn new_placeholder(
         tcx: TyCtxt<'tcx>,
-        placeholder: ty::PlaceholderConst<'tcx>,
+        placeholder: ty::PlaceholderConst<TyCtxt<'tcx>>,
     ) -> Const<'tcx> {
         Const::new(tcx, ty::ConstKind::Placeholder(placeholder))
     }
@@ -196,7 +196,7 @@ impl<'tcx> rustc_type_ir::inherent::Const<TyCtxt<'tcx>> for Const<'tcx> {
         Const::new_canonical_bound(tcx, var)
     }
 
-    fn new_placeholder(tcx: TyCtxt<'tcx>, placeholder: ty::PlaceholderConst<'tcx>) -> Self {
+    fn new_placeholder(tcx: TyCtxt<'tcx>, placeholder: ty::PlaceholderConst<TyCtxt<'tcx>>) -> Self {
         Const::new_placeholder(tcx, placeholder)
     }
 

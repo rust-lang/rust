@@ -1003,3 +1003,157 @@ where
         })
     }
 }
+
+#[derive_where(Clone, PartialEq, Ord, Eq, Hash; I: Interner)]
+#[derive_where(PartialOrd; I: Interner)]
+#[derive_where(Copy; I: Interner)]
+#[cfg_attr(
+    feature = "nightly",
+    derive(Encodable_NoContext, Decodable_NoContext, HashStable_NoContext)
+)]
+pub struct BoundRegion<I: Interner> {
+    pub var: ty::BoundVar,
+    pub kind: I::BoundRegionKind,
+}
+
+impl<I: Interner> BoundVarLike<I> for BoundRegion<I> {
+    fn var(self) -> ty::BoundVar {
+        self.var
+    }
+
+    fn assert_eq<T: BoundVariableKindLike<I>>(self, var: T) {
+        assert_eq!(self.kind, var.expect_region())
+    }
+
+    fn new(var: ty::BoundVar, kind: I::BoundRegionKind) -> Self {
+        Self { var, kind }
+    }
+}
+
+pub type PlaceholderRegion<I: Interner> = ty::Placeholder<I, BoundRegion<I>>;
+
+impl<I: Interner> PlaceholderLike<I> for PlaceholderRegion<I> {
+    type Bound = BoundRegion<I>;
+
+    fn universe(self) -> UniverseIndex {
+        self.universe
+    }
+
+    fn var(self) -> ty::BoundVar {
+        self.bound.var()
+    }
+
+    fn with_updated_universe(self, ui: UniverseIndex) -> Self {
+        ty::Placeholder::new(ui, self.bound)
+    }
+
+    fn new(ui: UniverseIndex, bound: BoundRegion<I>) -> Self {
+        ty::Placeholder::new(ui, bound)
+    }
+
+    // This is a Problem. I think that `I::BoundRegionKind`
+    fn new_anon<T>(ui: UniverseIndex, var: ty::BoundVar, kind: I::BoundRegionKind) -> Self {
+        ty::Placeholder::new(ui, BoundRegion { var, kind })
+    }
+}
+
+#[derive_where(Clone, PartialEq, Ord, Hash; I: Interner)]
+#[derive_where(PartialOrd; I: Interner)]
+#[derive_where(Copy; I: Interner)]
+#[cfg_attr(
+    feature = "nightly",
+    derive(Encodable_NoContext, Decodable_NoContext, HashStable_NoContext)
+)]
+pub struct BoundTy<I: Interner> {
+    pub var: ty::BoundVar,
+    pub kind: I::BoundTyKind,
+}
+
+impl<I: Interner> BoundVarLike<I> for BoundTy<I> {
+    fn var(self) -> ty::BoundVar {
+        self.var
+    }
+
+    fn assert_eq<T: BoundVariableKindLike<I>>(self, var: T) {
+        assert_eq!(self.kind, var.expect_ty())
+    }
+
+    fn new(var: ty::BoundVar, kind: I::BoundRegionKind) -> Self {
+        Self { var, kind }
+    }
+}
+
+pub type PlaceholderType<I: Interner> = ty::Placeholder<I, BoundTy<I>>;
+
+impl<I: Interner> PlaceholderLike<I> for PlaceholderType<I> {
+    type Bound = BoundTy<I>;
+
+    fn universe(self) -> UniverseIndex {
+        self.universe
+    }
+
+    fn var(self) -> ty::BoundVar {
+        self.bound.var
+    }
+
+    fn with_updated_universe(self, ui: UniverseIndex) -> Self {
+        ty::Placeholder::new(ui, self.bound)
+    }
+
+    fn new(ui: UniverseIndex, bound: BoundTy<I>) -> Self {
+        ty::Placeholder::new(ui, bound)
+    }
+
+    fn new_anon(ui: UniverseIndex, var: ty::BoundVar, kind: I::BoundRegionKind) -> Self {
+        ty::Placeholder::new(ui, BoundTy { var, kind })
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[cfg_attr(
+    feature = "nightly",
+    derive(Encodable_NoContext, Decodable_NoContext, HashStable_NoContext)
+)]
+pub struct BoundConst {
+    pub var: ty::BoundVar,
+}
+
+impl<I: Interner> BoundVarLike<I> for BoundConst {
+    fn var(self) -> ty::BoundVar {
+        self.var
+    }
+
+    fn assert_eq<T: BoundVariableKindLike<I>>(self, var: T) {
+        var.expect_const()
+    }
+
+    fn new(var: ty::BoundVar, _kind: I::BoundRegionKind) -> Self {
+        Self { var }
+    }
+}
+
+pub type PlaceholderConst<I: Interner> = ty::Placeholder<I, BoundConst>;
+
+impl<I: Interner> PlaceholderLike<I> for PlaceholderConst<I> {
+    type Bound = BoundConst;
+
+    fn universe(self) -> UniverseIndex {
+        self.universe
+    }
+
+    fn var(self) -> ty::BoundVar {
+        self.bound.var
+    }
+
+    fn with_updated_universe(self, ui: UniverseIndex) -> Self {
+        ty::Placeholder::new(ui, self.bound)
+    }
+
+    fn new(ui: UniverseIndex, bound: BoundConst) -> Self {
+        ty::Placeholder::new(ui, bound)
+    }
+
+    fn new_anon(ui: UniverseIndex, var: ty::BoundVar, _kind: I::BoundRegionKind) -> Self {
+        ty::Placeholder::new(ui, BoundConst { var })
+    }
+}
