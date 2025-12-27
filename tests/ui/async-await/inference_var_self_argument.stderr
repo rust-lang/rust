@@ -5,7 +5,8 @@ LL |     async fn foo(self: &dyn Foo) {
    |                        ^^^^^^^^
    |
    = note: type of `self` must be `Self` or a type that dereferences to it
-   = help: consider changing to `self`, `&self`, `&mut self`, `self: Box<Self>`, `self: Rc<Self>`, `self: Arc<Self>`, or `self: Pin<P>` (where P is one of the previous types except `Self`)
+   = help: consider changing to `self`, `&self`, `&mut self`, `self: Box<Self>`, `self: Rc<Self>`, `self: Arc<Self>`, or `self: Pin<P>` (where P is one of the previous types except `Self`);
+           alternatively, consider implement `Receiver` trait on the type of `self`, where applicable
 
 error[E0038]: the trait `Foo` is not dyn compatible
   --> $DIR/inference_var_self_argument.rs:5:33

@@ -88,6 +88,8 @@
 #![cfg_attr(not(no_global_oom_handling), feature(string_replace_in_place))]
 #![feature(alloc_layout_extra)]
 #![feature(allocator_api)]
+#![feature(arbitrary_self_types)]
+#![feature(arbitrary_self_types_pointers)]
 #![feature(array_into_iter_constructors)]
 #![feature(ascii_char)]
 #![feature(assert_matches)]

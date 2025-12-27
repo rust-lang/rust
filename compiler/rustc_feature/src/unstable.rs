@@ -382,6 +382,8 @@ declare_features! (
     (unstable, alloc_error_handler, "1.29.0", Some(51540)),
     /// Allows inherent and trait methods with arbitrary self types.
     (unstable, arbitrary_self_types, "1.23.0", Some(44874)),
+    /// Enforce agreement between `Receiver::Target` and `Deref::Target`
+    (unstable, arbitrary_self_types_merge_chains, "1.23.0", Some(44874)),
     /// Allows inherent and trait methods with arbitrary self types that are raw pointers.
     (unstable, arbitrary_self_types_pointers, "1.83.0", Some(44874)),
     /// Enables experimental inline assembly support for additional architectures.
