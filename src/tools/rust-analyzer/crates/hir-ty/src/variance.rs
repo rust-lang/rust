@@ -36,9 +36,8 @@ pub(crate) fn variances_of(db: &dyn HirDatabase, def: GenericDefId) -> Variances
 
 #[salsa::tracked(
     returns(ref),
-    // cycle_fn = crate::variance::variances_of_cycle_fn,
-    // cycle_initial = crate::variance::variances_of_cycle_initial,
-    cycle_result = crate::variance::variances_of_cycle_initial,
+    cycle_fn = crate::variance::variances_of_cycle_fn,
+    cycle_initial = crate::variance::variances_of_cycle_initial,
 )]
 fn variances_of_query(db: &dyn HirDatabase, def: GenericDefId) -> StoredVariancesOf {
     tracing::debug!("variances_of(def={:?})", def);
@@ -64,35 +63,20 @@ fn variances_of_query(db: &dyn HirDatabase, def: GenericDefId) -> StoredVariance
     if count == 0 {
         return VariancesOf::empty(interner).store();
     }
-    let mut variances =
-        Context { generics, variances: vec![Variance::Bivariant; count], db }.solve();
-
-    // FIXME(next-solver): This is *not* the correct behavior. I don't know if it has an actual effect,
-    // since bivariance is prohibited in Rust, but rustc definitely does not fallback bivariance.
-    // So why do we do this? Because, with the new solver, the effects of bivariance are catastrophic:
-    // it leads to not relating types properly, and to very, very hard to debug bugs (speaking from experience).
-    // Furthermore, our variance infra is known to not handle cycles properly. Therefore, at least until we fix
-    // cycles, and perhaps forever at least for out tests, not allowing bivariance makes sense.
-    // Why specifically invariance? I don't have a strong reason, mainly that invariance is a stronger relationship
-    // (therefore, less room for mistakes) and that IMO incorrect covariance can be more problematic that incorrect
-    // bivariance, at least while we don't handle lifetimes anyway.
-    for variance in &mut variances {
-        if *variance == Variance::Bivariant {
-            *variance = Variance::Invariant;
-        }
-    }
+    let variances = Context { generics, variances: vec![Variance::Bivariant; count], db }.solve();
 
     VariancesOf::new_from_slice(&variances).store()
 }
 
-// pub(crate) fn variances_of_cycle_fn(
-//     _db: &dyn HirDatabase,
-//     _result: &Option<Arc<[Variance]>>,
-//     _count: u32,
-//     _def: GenericDefId,
-// ) -> salsa::CycleRecoveryAction<Option<Arc<[Variance]>>> {
-//     salsa::CycleRecoveryAction::Iterate
-// }
+pub(crate) fn variances_of_cycle_fn(
+    _db: &dyn HirDatabase,
+    _: &salsa::Cycle<'_>,
+    _last_provisional_value: &StoredVariancesOf,
+    value: StoredVariancesOf,
+    _def: GenericDefId,
+) -> StoredVariancesOf {
+    value
+}
 
 fn glb(v1: Variance, v2: Variance) -> Variance {
     // Greatest lower bound of the variance lattice as defined in The Paper:
@@ -123,8 +107,7 @@ pub(crate) fn variances_of_cycle_initial(
     let generics = generics(db, def);
     let count = generics.len();
 
-    // FIXME(next-solver): Returns `Invariance` and not `Bivariance` here, see the comment in the main query.
-    VariancesOf::new_from_iter(interner, std::iter::repeat_n(Variance::Invariant, count)).store()
+    VariancesOf::new_from_iter(interner, std::iter::repeat_n(Variance::Bivariant, count)).store()
 }
 
 struct Context<'db> {
@@ -484,8 +467,8 @@ struct Other<'a> {
 }
 "#,
             expect![[r#"
-                Hello['a: invariant]
-                Other['a: invariant]
+                Hello['a: bivariant]
+                Other['a: bivariant]
             "#]],
         );
     }
@@ -504,7 +487,7 @@ struct Foo<T: Trait> { //~ ERROR [T: o]
 }
 "#,
             expect![[r#"
-                Foo[T: invariant]
+                Foo[T: bivariant]
             "#]],
         );
     }
@@ -586,9 +569,9 @@ struct TestBox<U,T:Getter<U>+Setter<U>> { //~ ERROR [U: *, T: +]
                 get[Self: contravariant, T: covariant]
                 get[Self: contravariant, T: contravariant]
                 TestStruct[U: covariant, T: covariant]
-                TestEnum[U: invariant, T: covariant]
-                TestContraStruct[U: invariant, T: covariant]
-                TestBox[U: invariant, T: covariant]
+                TestEnum[U: bivariant, T: covariant]
+                TestContraStruct[U: bivariant, T: covariant]
+                TestBox[U: bivariant, T: covariant]
             "#]],
         );
     }
@@ -708,8 +691,8 @@ enum SomeEnum<'a> { Nothing } //~ ERROR parameter `'a` is never used
 trait SomeTrait<'a> { fn foo(&self); } // OK on traits.
 "#,
             expect![[r#"
-                SomeStruct['a: invariant]
-                SomeEnum['a: invariant]
+                SomeStruct['a: bivariant]
+                SomeEnum['a: bivariant]
                 foo[Self: contravariant, 'a: invariant]
             "#]],
         );
@@ -737,14 +720,14 @@ struct DoubleNothing<T> {
 
 "#,
             expect![[r#"
-                SomeStruct[A: invariant]
-                SomeEnum[A: invariant]
-                ListCell[T: invariant]
-                SelfTyAlias[T: invariant]
-                WithBounds[T: invariant]
-                WithWhereBounds[T: invariant]
-                WithOutlivesBounds[T: invariant]
-                DoubleNothing[T: invariant]
+                SomeStruct[A: bivariant]
+                SomeEnum[A: bivariant]
+                ListCell[T: bivariant]
+                SelfTyAlias[T: bivariant]
+                WithBounds[T: bivariant]
+                WithWhereBounds[T: bivariant]
+                WithOutlivesBounds[T: bivariant]
+                DoubleNothing[T: bivariant]
             "#]],
         );
     }
@@ -855,7 +838,7 @@ struct S3<T>(S<T, T>);
 "#,
             expect![[r#"
                 S[T: covariant]
-                S2[T: invariant]
+                S2[T: bivariant]
                 S3[T: covariant]
             "#]],
         );
@@ -868,7 +851,7 @@ struct S3<T>(S<T, T>);
 struct FixedPoint<T, U, V>(&'static FixedPoint<(), T, U>, V);
 "#,
             expect![[r#"
-                FixedPoint[T: invariant, U: invariant, V: invariant]
+                FixedPoint[T: covariant, U: covariant, V: covariant]
             "#]],
         );
     }
