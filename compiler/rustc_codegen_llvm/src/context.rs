@@ -101,6 +101,8 @@ pub(crate) struct FullCx<'ll, 'tcx> {
 
     /// Cache instances of monomorphic and polymorphic items
     pub instances: RefCell<FxHashMap<Instance<'tcx>, &'ll Value>>,
+    /// Cache instances of intrinsics
+    pub intrinsic_instances: RefCell<FxHashMap<Instance<'tcx>, &'ll Value>>,
     /// Cache generated vtables
     pub vtables: RefCell<FxHashMap<(Ty<'tcx>, Option<ty::ExistentialTraitRef<'tcx>>), &'ll Value>>,
     /// Cache of constant strings,
@@ -627,6 +629,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
                 tls_model,
                 codegen_unit,
                 instances: Default::default(),
+                intrinsic_instances: Default::default(),
                 vtables: Default::default(),
                 const_str_cache: Default::default(),
                 const_globals: Default::default(),

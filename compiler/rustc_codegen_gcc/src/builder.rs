@@ -314,14 +314,12 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         self.block.get_function()
     }
 
-    fn function_call(
+    pub fn function_call(
         &mut self,
-        func: RValue<'gcc>,
+        func: Function<'gcc>,
         args: &[RValue<'gcc>],
         _funclet: Option<&Funclet>,
     ) -> RValue<'gcc> {
-        // TODO(antoyo): remove when the API supports a different type for functions.
-        let func: Function<'gcc> = self.cx.rvalue_as_function(func);
         let args = self.check_call("call", func, args);
 
         // gccjit requires to use the result of functions, even when it's not used.
@@ -514,6 +512,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     type CodegenCx = CodegenCx<'gcc, 'tcx>;
 
     fn build(cx: &'a CodegenCx<'gcc, 'tcx>, block: Block<'gcc>) -> Builder<'a, 'gcc, 'tcx> {
+        *cx.current_func.borrow_mut() = Some(block.get_function());
         Builder::with_cx(cx, block)
     }
 
@@ -1765,6 +1764,8 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         // FIXME(antoyo): remove when having a proper API.
         let gcc_func = unsafe { std::mem::transmute::<RValue<'gcc>, Function<'gcc>>(func) };
         let call = if self.functions.borrow().values().any(|value| *value == gcc_func) {
+            // TODO(antoyo): remove when the API supports a different type for functions.
+            let func: Function<'gcc> = self.cx.rvalue_as_function(func);
             self.function_call(func, args, funclet)
         } else {
             // If it's a not function that was defined, it's a function pointer.
