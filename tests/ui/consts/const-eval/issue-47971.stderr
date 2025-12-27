@@ -1,0 +1,9 @@
+error[E0080]: encountered static that tried to access itself during initialization
+  --> $DIR/issue-47971.rs:5:19
+   |
+LL | static T: S = S(g(&T), 0);
+   |                   ^^ evaluation of `T` failed here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0080`.

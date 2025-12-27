@@ -3,11 +3,13 @@
 //! The main entry point is the `step` method.
 
 use std::iter;
+use std::ops::Deref;
 
 use either::Either;
 use rustc_abi::{FIRST_VARIANT, FieldIdx};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_index::IndexSlice;
+use rustc_middle::mir::interpret::{GlobalAlloc, Provenance, Scalar};
 use rustc_middle::ty::{self, Instance, Ty};
 use rustc_middle::{bug, mir, span_bug};
 use rustc_span::source_map::Spanned;
@@ -212,9 +214,30 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             }
 
             Ref(_, borrow_kind, place) => {
+                let is_reborrow_of_ref = if let Some(local) = place.local_or_deref_local()
+                    && place.is_indirect()
+                {
+                    self.layout_of_local(self.frame(), local, None)?.ty.is_ref()
+                } else {
+                    false
+                };
+
                 let src = self.eval_place(place)?;
                 let place = self.force_allocation(&src)?;
                 let val = ImmTy::from_immediate(place.to_ref(self), dest.layout);
+
+                // Check whether this forms a cycle involving a static reference.
+                // Ensure the place is not a reborrow from a raw pointer, since we do not want to
+                // forbid static reference cycles that go through raw pointers.
+                if is_reborrow_of_ref
+                    && let Immediate::Scalar(Scalar::Ptr(ptr, _)) = val.deref()
+                    && let Some(alloc_id) = ptr.provenance.get_alloc_id()
+                    && let Some(GlobalAlloc::Static(def_id)) =
+                        self.tcx.try_get_global_alloc(alloc_id)
+                {
+                    M::before_static_ref_eval(self.tcx, &self.machine, *ptr, def_id)?;
+                }
+
                 // A fresh reference was created, make sure it gets retagged.
                 let val = M::retag_ptr_value(
                     self,
