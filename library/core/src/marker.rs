@@ -1144,7 +1144,6 @@ pub trait FnPtr: Copy + Clone {
 ///
 /// By using the macro, the following example will compile:
 /// ```
-/// #![feature(derive_coerce_pointee)]
 /// use std::marker::CoercePointee;
 /// use std::ops::Deref;
 ///
@@ -1191,7 +1190,7 @@ pub trait FnPtr: Copy + Clone {
 /// type as a receiver are dyn-compatible. For example, this compiles:
 ///
 /// ```
-/// #![feature(arbitrary_self_types, derive_coerce_pointee)]
+/// #![feature(arbitrary_self_types)]
 /// use std::marker::CoercePointee;
 /// use std::ops::Deref;
 ///
@@ -1253,7 +1252,6 @@ pub trait FnPtr: Copy + Clone {
 /// If the type has multiple type parameters, then you must explicitly specify which one should be
 /// used for dynamic dispatch. For example:
 /// ```
-/// # #![feature(derive_coerce_pointee)]
 /// # use std::marker::{CoercePointee, PhantomData};
 /// #[derive(CoercePointee)]
 /// #[repr(transparent)]
@@ -1268,7 +1266,6 @@ pub trait FnPtr: Copy + Clone {
 ///
 /// A custom implementation of the `Rc` type:
 /// ```
-/// #![feature(derive_coerce_pointee)]
 /// use std::marker::CoercePointee;
 /// use std::ops::Deref;
 /// use std::ptr::NonNull;
@@ -1325,7 +1322,7 @@ pub trait FnPtr: Copy + Clone {
 #[rustc_builtin_macro(CoercePointee, attributes(pointee))]
 #[allow_internal_unstable(dispatch_from_dyn, coerce_unsized, unsize, coerce_pointee_validated)]
 #[rustc_diagnostic_item = "CoercePointee"]
-#[unstable(feature = "derive_coerce_pointee", issue = "123430")]
+#[stable(feature = "derive_coerce_pointee", since = "CURRENT_RUSTC_VERSION")]
 pub macro CoercePointee($item:item) {
     /* compiler built-in */
 }
