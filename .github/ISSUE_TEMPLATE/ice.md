@@ -2,6 +2,7 @@
 name: Internal Compiler Error
 about: Create a report for an internal compiler error in rustc.
 labels: C-bug, I-ICE, T-compiler
+title: "[ICE]: "
 ---
 <!--
 Thank you for finding an Internal Compiler Error! 🧊  If possible, try to provide
