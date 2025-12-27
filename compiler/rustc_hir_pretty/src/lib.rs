@@ -1880,7 +1880,6 @@ impl<'a> State<'a> {
                 }
                 self.print_literal(lit);
             }
-            hir::PatExprKind::ConstBlock(c) => self.print_inline_const(c),
             hir::PatExprKind::Path(qpath) => self.print_qpath(qpath, true),
         }
     }

@@ -792,7 +792,6 @@ pub fn walk_pat_expr<'v, V: Visitor<'v>>(visitor: &mut V, expr: &'v PatExpr<'v>)
     try_visit!(visitor.visit_id(*hir_id));
     match kind {
         PatExprKind::Lit { lit, negated } => visitor.visit_lit(*hir_id, *lit, *negated),
-        PatExprKind::ConstBlock(c) => visitor.visit_inline_const(c),
         PatExprKind::Path(qpath) => visitor.visit_qpath(qpath, *hir_id, *span),
     }
 }

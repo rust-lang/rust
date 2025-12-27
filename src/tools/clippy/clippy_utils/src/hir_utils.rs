@@ -705,9 +705,8 @@ impl HirEqInterExpr<'_, '_, '_> {
                     negated: right_neg,
                 },
             ) => left_neg == right_neg && left.node == right.node,
-            (PatExprKind::ConstBlock(left), PatExprKind::ConstBlock(right)) => self.eq_body(left.body, right.body),
             (PatExprKind::Path(left), PatExprKind::Path(right)) => self.eq_qpath(left, right),
-            (PatExprKind::Lit { .. } | PatExprKind::ConstBlock(..) | PatExprKind::Path(..), _) => false,
+            (PatExprKind::Lit { .. } | PatExprKind::Path(..), _) => false,
         }
     }
 
@@ -1312,7 +1311,6 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 lit.node.hash(&mut self.s);
                 negated.hash(&mut self.s);
             },
-            PatExprKind::ConstBlock(c) => self.hash_body(c.body),
             PatExprKind::Path(qpath) => self.hash_qpath(qpath),
         }
     }
