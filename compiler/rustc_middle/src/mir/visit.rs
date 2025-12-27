@@ -685,7 +685,11 @@ macro_rules! make_mir_visitor {
                         self.visit_operand(l, location);
                         self.visit_operand(r, location);
                     }
-                    OverflowNeg(op) | DivisionByZero(op) | RemainderByZero(op) | InvalidEnumConstruction(op) => {
+                    OverflowNeg(op) | DivisionByZero(op) | RemainderByZero(op) => {
+                        self.visit_operand(op, location);
+                    }
+                    InvalidEnumConstruction(ty, op) => {
+                        self.visit_operand(ty, location);
                         self.visit_operand(op, location);
                     }
                     ResumedAfterReturn(_) | ResumedAfterPanic(_) | NullPointerDereference | ResumedAfterDrop(_) => {
