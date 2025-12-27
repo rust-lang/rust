@@ -47,6 +47,7 @@ impl server::FreeFunctions for SpanIdServer {
     fn injected_env_var(&mut self, _: &str) -> Option<std::string::String> {
         None
     }
+
     fn track_env_var(&mut self, var: &str, value: Option<&str>) {
         self.tracked_env_vars.insert(var.into(), value.map(Into::into));
     }
@@ -54,8 +55,15 @@ impl server::FreeFunctions for SpanIdServer {
         self.tracked_paths.insert(path.into());
     }
 
+    #[cfg(bootstrap)]
     fn literal_from_str(&mut self, s: &str) -> Result<Literal<Self::Span>, ()> {
         literal_from_str(s, self.call_site)
+    }
+
+    #[cfg(not(bootstrap))]
+    fn literal_from_str(&mut self, s: &str) -> Result<Literal<Self::Span>, String> {
+        literal_from_str(s, self.call_site)
+            .map_err(|()| "cannot parse string into literal".to_string())
     }
 
     fn emit_diagnostic(&mut self, _: Diagnostic<Self::Span>) {}
@@ -65,6 +73,12 @@ impl server::TokenStream for SpanIdServer {
     fn is_empty(&mut self, stream: &Self::TokenStream) -> bool {
         stream.is_empty()
     }
+    #[cfg(not(bootstrap))]
+    fn from_str(&mut self, src: &str) -> Result<Self::TokenStream, String> {
+        Self::TokenStream::from_str(src, self.call_site)
+            .map_err(|e| format!("failed to parse str to token stream: {e}"))
+    }
+    #[cfg(bootstrap)]
     fn from_str(&mut self, src: &str) -> Self::TokenStream {
         Self::TokenStream::from_str(src, self.call_site).unwrap_or_else(|e| {
             Self::TokenStream::from_str(
