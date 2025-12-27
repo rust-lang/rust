@@ -903,22 +903,14 @@ impl AmbiguityKind {
     }
 }
 
-/// Miscellaneous bits of metadata for better ambiguity error reporting.
-#[derive(Clone, Copy, PartialEq)]
-enum AmbiguityErrorMisc {
-    SuggestCrate,
-    SuggestSelf,
-    FromPrelude,
-    None,
-}
-
 struct AmbiguityError<'ra> {
     kind: AmbiguityKind,
     ident: Ident,
     b1: NameBinding<'ra>,
     b2: NameBinding<'ra>,
-    misc1: AmbiguityErrorMisc,
-    misc2: AmbiguityErrorMisc,
+    // `empty_module` in module scope serves as an unknown module here.
+    scope1: Scope<'ra>,
+    scope2: Scope<'ra>,
     warning: bool,
 }
 
@@ -2045,8 +2037,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 && ambiguity_error.ident.span == ambi.ident.span
                 && ambiguity_error.b1.span == ambi.b1.span
                 && ambiguity_error.b2.span == ambi.b2.span
-                && ambiguity_error.misc1 == ambi.misc1
-                && ambiguity_error.misc2 == ambi.misc2
             {
                 return true;
             }
@@ -2071,8 +2061,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 ident,
                 b1: used_binding,
                 b2,
-                misc1: AmbiguityErrorMisc::None,
-                misc2: AmbiguityErrorMisc::None,
+                scope1: Scope::Module(self.empty_module, None),
+                scope2: Scope::Module(self.empty_module, None),
                 warning: warn_ambiguity,
             };
             if !self.matches_previous_ambiguity_error(&ambiguity_error) {

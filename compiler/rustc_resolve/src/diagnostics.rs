@@ -44,7 +44,7 @@ use crate::errors::{
 use crate::imports::{Import, ImportKind};
 use crate::late::{DiagMetadata, PatternSource, Rib};
 use crate::{
-    AmbiguityError, AmbiguityErrorMisc, AmbiguityKind, BindingError, BindingKey, Finalize,
+    AmbiguityError, AmbiguityKind, BindingError, BindingKey, Finalize,
     ForwardGenericParamBanReason, HasGenericParams, LexicalScopeBinding, MacroRulesScope, Module,
     ModuleKind, ModuleOrUniformRoot, NameBinding, NameBindingKind, ParentScope, PathResult,
     PrivacyError, ResolutionError, Resolver, Scope, ScopeSet, Segment, UseError, Used,
@@ -1968,23 +1968,24 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         true
     }
 
-    fn binding_description(&self, b: NameBinding<'_>, ident: Ident, from_prelude: bool) -> String {
+    fn binding_description(&self, b: NameBinding<'_>, ident: Ident, scope: Scope<'_>) -> String {
         let res = b.res();
         if b.span.is_dummy() || !self.tcx.sess.source_map().is_span_accessible(b.span) {
-            // These already contain the "built-in" prefix or look bad with it.
-            let add_built_in =
-                !matches!(b.res(), Res::NonMacroAttr(..) | Res::PrimTy(..) | Res::ToolMod);
-            let (built_in, from) = if from_prelude {
-                ("", " from prelude")
-            } else if b.is_extern_crate()
-                && !b.is_import()
-                && self.tcx.sess.opts.externs.get(ident.as_str()).is_some()
-            {
-                ("", " passed with `--extern`")
-            } else if add_built_in {
-                (" built-in", "")
-            } else {
-                ("", "")
+            let (built_in, from) = match scope {
+                Scope::StdLibPrelude | Scope::MacroUsePrelude => ("", " from prelude"),
+                Scope::ExternPreludeFlags
+                    if self.tcx.sess.opts.externs.get(ident.as_str()).is_some() =>
+                {
+                    ("", " passed with `--extern`")
+                }
+                _ => {
+                    if matches!(res, Res::NonMacroAttr(..) | Res::PrimTy(..) | Res::ToolMod) {
+                        // These already contain the "built-in" prefix or look bad with it.
+                        ("", "")
+                    } else {
+                        (" built-in", "")
+                    }
+                }
             };
 
             let a = if built_in.is_empty() { res.article() } else { "a" };
@@ -1996,22 +1997,24 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     }
 
     fn ambiguity_diagnostic(&self, ambiguity_error: &AmbiguityError<'ra>) -> errors::Ambiguity {
-        let AmbiguityError { kind, ident, b1, b2, misc1, misc2, .. } = *ambiguity_error;
+        let AmbiguityError { kind, ident, b1, b2, scope1, scope2, .. } = *ambiguity_error;
         let extern_prelude_ambiguity = || {
-            self.extern_prelude.get(&Macros20NormalizedIdent::new(ident)).is_some_and(|entry| {
-                entry.item_binding.map(|(b, _)| b) == Some(b1)
-                    && entry.flag_binding.as_ref().and_then(|pb| pb.get().0.binding()) == Some(b2)
-            })
+            // Note: b1 may come from a module scope, as an extern crate item in module.
+            matches!(scope2, Scope::ExternPreludeFlags)
+                && self
+                    .extern_prelude
+                    .get(&Macros20NormalizedIdent::new(ident))
+                    .is_some_and(|entry| entry.item_binding.map(|(b, _)| b) == Some(b1))
         };
-        let (b1, b2, misc1, misc2, swapped) = if b2.span.is_dummy() && !b1.span.is_dummy() {
+        let (b1, b2, scope1, scope2, swapped) = if b2.span.is_dummy() && !b1.span.is_dummy() {
             // We have to print the span-less alternative first, otherwise formatting looks bad.
-            (b2, b1, misc2, misc1, true)
+            (b2, b1, scope2, scope1, true)
         } else {
-            (b1, b2, misc1, misc2, false)
+            (b1, b2, scope1, scope2, false)
         };
 
-        let could_refer_to = |b: NameBinding<'_>, misc: AmbiguityErrorMisc, also: &str| {
-            let what = self.binding_description(b, ident, misc == AmbiguityErrorMisc::FromPrelude);
+        let could_refer_to = |b: NameBinding<'_>, scope: Scope<'ra>, also: &str| {
+            let what = self.binding_description(b, ident, scope);
             let note_msg = format!("`{ident}` could{also} refer to {what}");
 
             let thing = b.res().descr();
@@ -2029,12 +2032,17 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             {
                 help_msgs.push(format!("use `::{ident}` to refer to this {thing} unambiguously"))
             }
-            match misc {
-                AmbiguityErrorMisc::SuggestCrate => help_msgs
-                    .push(format!("use `crate::{ident}` to refer to this {thing} unambiguously")),
-                AmbiguityErrorMisc::SuggestSelf => help_msgs
-                    .push(format!("use `self::{ident}` to refer to this {thing} unambiguously")),
-                AmbiguityErrorMisc::FromPrelude | AmbiguityErrorMisc::None => {}
+
+            if let Scope::Module(module, _) = scope {
+                if module == self.graph_root {
+                    help_msgs.push(format!(
+                        "use `crate::{ident}` to refer to this {thing} unambiguously"
+                    ));
+                } else if module != self.empty_module && module.is_normal() {
+                    help_msgs.push(format!(
+                        "use `self::{ident}` to refer to this {thing} unambiguously"
+                    ));
+                }
             }
 
             (
@@ -2049,8 +2057,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     .collect::<Vec<_>>(),
             )
         };
-        let (b1_note, b1_help_msgs) = could_refer_to(b1, misc1, "");
-        let (b2_note, b2_help_msgs) = could_refer_to(b2, misc2, " also");
+        let (b1_note, b1_help_msgs) = could_refer_to(b1, scope1, "");
+        let (b2_note, b2_help_msgs) = could_refer_to(b2, scope2, " also");
 
         errors::Ambiguity {
             ident,
