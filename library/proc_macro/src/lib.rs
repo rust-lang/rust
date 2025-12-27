@@ -27,6 +27,8 @@
 #![feature(restricted_std)]
 #![feature(rustc_attrs)]
 #![feature(extend_one)]
+#![feature(trim_prefix_suffix)]
+#![feature(strip_circumfix)]
 #![recursion_limit = "256"]
 #![allow(internal_features)]
 #![deny(ffi_unwind_calls)]
@@ -86,6 +88,18 @@ pub enum ConversionErrorKind {
 #[stable(feature = "proc_macro_is_available", since = "1.57.0")]
 pub fn is_available() -> bool {
     bridge::client::is_available()
+}
+
+/// Enables the new experimental standalone backend, which allows calling the
+/// functions in this crate outside of procedural macros.
+///
+/// Calling this function from inside a procedural macro will panic.
+///
+/// When stabilizing this feature, this function will be removed and all programs
+/// will have the fallback activated automatically.
+#[unstable(feature = "proc_macro_standalone", issue = "130856")]
+pub fn enable_standalone() {
+    bridge::client::enable_standalone();
 }
 
 /// The main type provided by this crate, representing an abstract stream of
@@ -943,6 +957,11 @@ pub enum Spacing {
     Alone,
 }
 
+pub(crate) const LEGAL_PUNCT_CHARS: &[char] = &[
+    '=', '<', '>', '!', '~', '+', '-', '*', '/', '%', '^', '&', '|', '@', '.', ',', ';', ':', '#',
+    '$', '?', '\'',
+];
+
 impl Punct {
     /// Creates a new `Punct` from the given character and spacing.
     /// The `ch` argument must be a valid punctuation character permitted by the language,
@@ -952,11 +971,7 @@ impl Punct {
     /// which can be further configured with the `set_span` method below.
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn new(ch: char, spacing: Spacing) -> Punct {
-        const LEGAL_CHARS: &[char] = &[
-            '=', '<', '>', '!', '~', '+', '-', '*', '/', '%', '^', '&', '|', '@', '.', ',', ';',
-            ':', '#', '$', '?', '\'',
-        ];
-        if !LEGAL_CHARS.contains(&ch) {
+        if !LEGAL_PUNCT_CHARS.contains(&ch) {
             panic!("unsupported character `{:?}`", ch);
         }
         Punct(bridge::Punct {
@@ -1156,7 +1171,7 @@ macro_rules! unsuffixed_int_literals {
         /// specified on this token, meaning that invocations like
         /// `Literal::i8_unsuffixed(1)` are equivalent to
         /// `Literal::u32_unsuffixed(1)`.
-        /// Literals created from negative numbers might not survive rountrips through
+        /// Literals created from negative numbers might not survive roundtrips through
         /// `TokenStream` or strings and may be broken into two tokens (`-` and positive literal).
         ///
         /// Literals created through this method have the `Span::call_site()`
@@ -1219,7 +1234,7 @@ impl Literal {
     /// This constructor is similar to those like `Literal::i8_unsuffixed` where
     /// the float's value is emitted directly into the token but no suffix is
     /// used, so it may be inferred to be a `f64` later in the compiler.
-    /// Literals created from negative numbers might not survive rountrips through
+    /// Literals created from negative numbers might not survive roundtrips through
     /// `TokenStream` or strings and may be broken into two tokens (`-` and positive literal).
     ///
     /// # Panics
@@ -1244,7 +1259,7 @@ impl Literal {
     /// specified is the preceding part of the token and `f32` is the suffix of
     /// the token. This token will always be inferred to be an `f32` in the
     /// compiler.
-    /// Literals created from negative numbers might not survive rountrips through
+    /// Literals created from negative numbers might not survive roundtrips through
     /// `TokenStream` or strings and may be broken into two tokens (`-` and positive literal).
     ///
     /// # Panics
@@ -1264,7 +1279,7 @@ impl Literal {
     /// This constructor is similar to those like `Literal::i8_unsuffixed` where
     /// the float's value is emitted directly into the token but no suffix is
     /// used, so it may be inferred to be a `f64` later in the compiler.
-    /// Literals created from negative numbers might not survive rountrips through
+    /// Literals created from negative numbers might not survive roundtrips through
     /// `TokenStream` or strings and may be broken into two tokens (`-` and positive literal).
     ///
     /// # Panics
@@ -1289,7 +1304,7 @@ impl Literal {
     /// specified is the preceding part of the token and `f64` is the suffix of
     /// the token. This token will always be inferred to be an `f64` in the
     /// compiler.
-    /// Literals created from negative numbers might not survive rountrips through
+    /// Literals created from negative numbers might not survive roundtrips through
     /// `TokenStream` or strings and may be broken into two tokens (`-` and positive literal).
     ///
     /// # Panics
@@ -1404,20 +1419,6 @@ impl Literal {
     /// `Display` implementations to borrow references to symbol values, and
     /// both be optimized to reduce overhead.
     fn with_stringify_parts<R>(&self, f: impl FnOnce(&[&str]) -> R) -> R {
-        /// Returns a string containing exactly `num` '#' characters.
-        /// Uses a 256-character source string literal which is always safe to
-        /// index with a `u8` index.
-        fn get_hashes_str(num: u8) -> &'static str {
-            const HASHES: &str = "\
-            ################################################################\
-            ################################################################\
-            ################################################################\
-            ################################################################\
-            ";
-            const _: () = assert!(HASHES.len() == 256);
-            &HASHES[..num as usize]
-        }
-
         self.with_symbol_and_suffix(|symbol, suffix| match self.0.kind {
             bridge::LitKind::Byte => f(&["b'", symbol, "'", suffix]),
             bridge::LitKind::Char => f(&["'", symbol, "'", suffix]),
@@ -1542,6 +1543,20 @@ impl Literal {
             _ => Err(ConversionErrorKind::InvalidLiteralKind),
         })
     }
+}
+
+/// Returns a string containing exactly `num` '#' characters.
+/// Uses a 256-character source string literal which is always safe to
+/// index with a `u8` index.
+fn get_hashes_str(num: u8) -> &'static str {
+    const HASHES: &str = "\
+    ################################################################\
+    ################################################################\
+    ################################################################\
+    ################################################################\
+    ";
+    const _: () = assert!(HASHES.len() == 256);
+    &HASHES[..num as usize]
 }
 
 /// Parse a single literal from its stringified representation.

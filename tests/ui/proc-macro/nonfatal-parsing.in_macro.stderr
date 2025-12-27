@@ -1,0 +1,16 @@
+error: unexpected closing delimiter: `)`
+  --> $DIR/nonfatal-parsing.rs:21:5
+   |
+LL |     nonfatal_parsing::run!();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^ unexpected closing delimiter
+   |
+   = note: this error originates in the macro `nonfatal_parsing::run` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: proc macro panicked
+  --> $DIR/nonfatal-parsing.rs:21:5
+   |
+LL |     nonfatal_parsing::run!();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
