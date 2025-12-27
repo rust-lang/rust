@@ -2,9 +2,9 @@ use crate::net::Shutdown;
 use crate::os::windows::io::{
     AsRawSocket, AsSocket, BorrowedSocket, FromRawSocket, IntoRawSocket, RawSocket,
 };
-use crate::os::windows::net::SocketAddr;
 #[cfg(windows)]
 use crate::os::windows::net::socketaddr_un;
+use crate::os::windows::net::{SocketAddr, not_cvt};
 use crate::path::Path;
 #[cfg(windows)]
 use crate::sys::c::{
@@ -24,9 +24,8 @@ impl UnixStream {
         let inner = Socket::new(AF_UNIX as _, SOCK_STREAM)?;
         let (addr, len) = socketaddr_un(path.as_ref())?;
         unsafe {
-            if connect(inner.as_raw(), &addr as *const _ as *const _, len as _) != 0 {
-                return Err(io::Error::last_os_error());
-            }
+            not_cvt(connect(inner.as_raw(), &addr as *const _ as *const _, len as _))?;
+
             Ok(UnixStream(inner))
         }
     }

@@ -1,6 +1,7 @@
 use crate::os::windows::io::{AsRawSocket, FromRawSocket, IntoRawSocket, RawSocket};
-use crate::os::windows::net::{SocketAddr, UnixStream};
+use crate::os::windows::net::{SocketAddr, UnixStream, not_cvt};
 use crate::path::Path;
+use crate::sys::cvt;
 use crate::sys::net::Socket;
 use crate::{io, mem};
 #[cfg(windows)]
@@ -18,12 +19,8 @@ impl UnixListener {
         startup();
         let inner = Socket::new(AF_UNIX as _, SOCK_STREAM)?;
         unsafe {
-            if bind(inner.as_raw(), &raw const addr as *const _, len as _) != 0 {
-                return Err(io::Error::last_os_error());
-            }
-            if listen(inner.as_raw(), 128) != 0 {
-                return Err(io::Error::last_os_error());
-            }
+            not_cvt(bind(inner.as_raw(), &raw const addr as *const _, len as _))?;
+            not_cvt(listen(inner.as_raw(), 128))?;
             Ok(UnixListener(inner))
         }
     }
@@ -38,14 +35,12 @@ impl UnixListener {
         startup();
         let inner = Socket::new(AF_UNIX as _, SOCK_STREAM)?;
         unsafe {
-            if bind(inner.as_raw(), &raw const socket_addr.addr as *const _, socket_addr.len as _)
-                != 0
-            {
-                return Err(io::Error::last_os_error());
-            }
-            if listen(inner.as_raw(), 128) != 0 {
-                return Err(io::Error::last_os_error());
-            }
+            not_cvt(bind(
+                inner.as_raw(),
+                &raw const socket_addr.addr as *const _,
+                socket_addr.len as _,
+            ))?;
+            not_cvt(listen(inner.as_raw(), 128))?;
             Ok(UnixListener(inner))
         }
     }

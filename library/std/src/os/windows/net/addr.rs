@@ -1,9 +1,9 @@
 use crate::io;
 use crate::mem::{self, offset_of};
+use crate::os::windows::net::not_cvt;
 use crate::path::Path;
 #[cfg(windows)]
 use crate::sys::c::{AF_UNIX, SOCKADDR, SOCKADDR_UN};
-use crate::sys::cvt;
 #[cfg(windows)]
 pub fn socketaddr_un(path: &Path) -> io::Result<(SOCKADDR_UN, usize)> {
     // path to bytes
@@ -33,7 +33,7 @@ impl SocketAddr {
         unsafe {
             let mut addr: SOCKADDR_UN = mem::zeroed();
             let mut len = mem::size_of::<SOCKADDR_UN>() as u32;
-            cvt(f(&mut addr as *mut _ as *mut _, &mut len))?;
+            not_cvt(f(&mut addr as *mut _ as *mut _, &mut len))?;
             SocketAddr::from_parts(addr, len)
         }
     }
