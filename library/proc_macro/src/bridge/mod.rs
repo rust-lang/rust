@@ -138,6 +138,7 @@ mod rpc;
 mod selfless_reify;
 #[forbid(unsafe_code)]
 pub mod server;
+pub(crate) mod standalone;
 #[allow(unsafe_code)]
 mod symbol;
 
