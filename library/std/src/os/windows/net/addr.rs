@@ -28,7 +28,7 @@ pub struct SocketAddr {
 impl SocketAddr {
     pub(super) fn new<F>(f: F) -> io::Result<SocketAddr>
     where
-        F: FnOnce(*mut SOCKADDR, *mut u32) -> u32,
+        F: FnOnce(*mut SOCKADDR, *mut u32) -> i32,
     {
         unsafe {
             let mut addr: SOCKADDR_UN = mem::zeroed();

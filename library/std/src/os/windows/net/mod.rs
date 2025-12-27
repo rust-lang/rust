@@ -7,9 +7,8 @@ pub use listener::*;
 pub use stream::*;
 
 use crate::io;
-use crate::sys::IsZero;
-fn not_cvt(value: impl IsZero) -> io::Result<()> {
-    if value.is_zero() {
+fn not_cvt(value: i32) -> io::Result<()> {
+    if value == 0 {
         Ok(())
     } else {
         return Err(io::Error::last_os_error());
