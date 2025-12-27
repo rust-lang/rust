@@ -1093,7 +1093,7 @@ fn compare_components(mut left: Components<'_>, mut right: Components<'_>) -> cm
 /// ```
 ///
 /// [`ancestors`]: Path::ancestors
-#[derive(Copy, Clone, Debug)]
+#[derive(Clone, Debug)]
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 #[stable(feature = "path_ancestors", since = "1.28.0")]
 pub struct Ancestors<'a> {
