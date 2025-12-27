@@ -321,6 +321,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "diagnostics"
+version = "0.0.0"
+
+[[package]]
 name = "digest"
 version = "0.10.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -462,6 +466,16 @@ dependencies = [
  "libc",
  "r-efi",
  "wasip2",
+]
+
+[[package]]
+name = "grammar"
+version = "0.0.0"
+dependencies = [
+ "diagnostics",
+ "pathdiff",
+ "regex",
+ "walkdir",
 ]
 
 [[package]]
@@ -774,9 +788,11 @@ dependencies = [
 
 [[package]]
 name = "mdbook-spec"
-version = "0.1.2"
+version = "0.0.0"
 dependencies = [
  "anyhow",
+ "diagnostics",
+ "grammar",
  "mdbook-markdown",
  "mdbook-preprocessor",
  "once_cell",

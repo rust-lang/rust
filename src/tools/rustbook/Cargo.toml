@@ -11,6 +11,6 @@ edition = "2021"
 clap = { version = "4.0.32", features = ["cargo"] }
 mdbook-driver = { version = "0.5.2", features = ["search"] }
 mdbook-i18n-helpers = "0.4.0"
-mdbook-spec = { path = "../../doc/reference/mdbook-spec" }
+mdbook-spec = { path = "../../doc/reference/tools/mdbook-spec" }
 mdbook-trpl = { path = "../../doc/book/packages/mdbook-trpl" }
 tracing-subscriber = { version = "0.3.20", features = ["env-filter"] }
