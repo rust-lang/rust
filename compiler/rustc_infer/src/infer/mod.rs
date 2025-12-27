@@ -637,10 +637,6 @@ impl<'tcx> InferCtxt<'tcx> {
         self.typing_mode
     }
 
-    pub fn freshen<T: TypeFoldable<TyCtxt<'tcx>>>(&self, t: T) -> T {
-        t.fold_with(&mut self.freshener())
-    }
-
     /// Returns the origin of the type variable identified by `vid`.
     ///
     /// No attempt is made to resolve `vid` to its root variable.
@@ -656,10 +652,6 @@ impl<'tcx> InferCtxt<'tcx> {
             ConstVariableValue::Known { .. } => None,
             ConstVariableValue::Unknown { origin, .. } => Some(origin),
         }
-    }
-
-    pub fn freshener<'b>(&'b self) -> TypeFreshener<'b, 'tcx> {
-        freshen::TypeFreshener::new(self)
     }
 
     pub fn unresolved_variables(&self) -> Vec<Ty<'tcx>> {
