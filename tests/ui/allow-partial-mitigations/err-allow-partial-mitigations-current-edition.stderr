@@ -1,0 +1,47 @@
+error: your program uses the crate `std`, that is not compiled with `control-flow-guard` enabled
+  --> $DIR/err-allow-partial-mitigations-current-edition.rs:12:1
+   |
+LL | fn main() {}
+   | ^
+   |
+   = help: it is possible to disable `-Z allow-partial-mitigations=control-flow-guard` via `-Z deny-partial-mitigations=control-flow-guard`
+   = note: recompile `std` with `control-flow-guard` enabled, or use `-Z allow-partial-mitigations=control-flow-guard` to allow creating an artifact that has the mitigation only partially enabled
+
+error: your program uses the crate `core`, that is not compiled with `control-flow-guard` enabled
+  --> $DIR/err-allow-partial-mitigations-current-edition.rs:12:1
+   |
+LL | fn main() {}
+   | ^
+   |
+   = help: it is possible to disable `-Z allow-partial-mitigations=control-flow-guard` via `-Z deny-partial-mitigations=control-flow-guard`
+   = note: recompile `core` with `control-flow-guard` enabled, or use `-Z allow-partial-mitigations=control-flow-guard` to allow creating an artifact that has the mitigation only partially enabled
+
+error: your program uses the crate `alloc`, that is not compiled with `control-flow-guard` enabled
+  --> $DIR/err-allow-partial-mitigations-current-edition.rs:12:1
+   |
+LL | fn main() {}
+   | ^
+   |
+   = help: it is possible to disable `-Z allow-partial-mitigations=control-flow-guard` via `-Z deny-partial-mitigations=control-flow-guard`
+   = note: recompile `alloc` with `control-flow-guard` enabled, or use `-Z allow-partial-mitigations=control-flow-guard` to allow creating an artifact that has the mitigation only partially enabled
+
+error: your program uses the crate `compiler_builtins`, that is not compiled with `control-flow-guard` enabled
+  --> $DIR/err-allow-partial-mitigations-current-edition.rs:12:1
+   |
+LL | fn main() {}
+   | ^
+   |
+   = help: it is possible to disable `-Z allow-partial-mitigations=control-flow-guard` via `-Z deny-partial-mitigations=control-flow-guard`
+   = note: recompile `compiler_builtins` with `control-flow-guard` enabled, or use `-Z allow-partial-mitigations=control-flow-guard` to allow creating an artifact that has the mitigation only partially enabled
+
+error: your program uses the crate `libc`, that is not compiled with `control-flow-guard` enabled
+  --> $DIR/err-allow-partial-mitigations-current-edition.rs:12:1
+   |
+LL | fn main() {}
+   | ^
+   |
+   = help: it is possible to disable `-Z allow-partial-mitigations=control-flow-guard` via `-Z deny-partial-mitigations=control-flow-guard`
+   = note: recompile `libc` with `control-flow-guard` enabled, or use `-Z allow-partial-mitigations=control-flow-guard` to allow creating an artifact that has the mitigation only partially enabled
+
+error: aborting due to 5 previous errors
+
