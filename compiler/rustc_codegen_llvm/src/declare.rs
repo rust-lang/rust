@@ -18,16 +18,18 @@ use rustc_codegen_ssa::traits::TypeMembershipCodegenMethods;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_middle::ty::{Instance, Ty};
 use rustc_sanitizers::{cfi, kcfi};
+use rustc_session::lint::builtin::{DEPRECATED_LLVM_INTRINSIC, UNKNOWN_LLVM_INTRINSIC};
 use rustc_target::callconv::FnAbi;
+use rustc_target::spec::Arch;
 use smallvec::SmallVec;
 use tracing::debug;
 
-use crate::abi::FnAbiLlvmExt;
-use crate::attributes;
+use crate::abi::{FnAbiLlvmExt, FunctionSignature};
 use crate::common::AsCCharPtr;
 use crate::context::{CodegenCx, GenericCx, SCx, SimpleCx};
 use crate::llvm::AttributePlace::Function;
 use crate::llvm::{self, FromGeneric, Type, Value, Visibility};
+use crate::{attributes, errors};
 
 /// Declare a function with a SimpleCx.
 ///
@@ -99,6 +101,26 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
     }
 }
 
+fn llvm_arch_for(rust_arch: &Arch) -> Option<&'static str> {
+    Some(match rust_arch {
+        Arch::AArch64 | Arch::Arm64EC => "aarch64",
+        Arch::AmdGpu => "amdgcn",
+        Arch::Arm => "arm",
+        Arch::Bpf => "bpf",
+        Arch::Hexagon => "hexagon",
+        Arch::LoongArch32 | Arch::LoongArch64 => "loongarch",
+        Arch::Mips | Arch::Mips32r6 | Arch::Mips64 | Arch::Mips64r6 => "mips",
+        Arch::Nvptx64 => "nvvm",
+        Arch::PowerPC | Arch::PowerPC64 | Arch::PowerPC64LE => "ppc",
+        Arch::RiscV32 | Arch::RiscV64 => "riscv",
+        Arch::S390x => "s390",
+        Arch::SpirV => "spv",
+        Arch::Wasm32 | Arch::Wasm64 => "wasm",
+        Arch::X86 | Arch::X86_64 => "x86",
+        _ => return None, // fallback for unknown archs
+    })
+}
+
 impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
     /// Declare a C ABI function.
     ///
@@ -148,6 +170,22 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
     ) -> &'ll Value {
         debug!("declare_rust_fn(name={:?}, fn_abi={:?})", name, fn_abi);
 
+        let signature = fn_abi.llvm_type(self, name.as_bytes());
+
+        let span = || instance.map(|instance| self.tcx.def_span(instance.def_id()));
+
+        if let FunctionSignature::LLVMSignature(_, llvm_fn_ty) = signature {
+            // check if the intrinsic signatures match
+            if !fn_abi.verify_intrinsic_signature(self, llvm_fn_ty) {
+                self.tcx.dcx().emit_fatal(errors::IntrinsicSignatureMismatch {
+                    name,
+                    llvm_fn_ty: &format!("{llvm_fn_ty:?}"),
+                    rust_fn_ty: &format!("{:?}", fn_abi.rust_signature(self)),
+                    span: span(),
+                });
+            }
+        }
+
         // Function addresses in Rust are never significant, allowing functions to
         // be merged.
         let llfn = declare_raw_fn(
@@ -156,9 +194,62 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
             fn_abi.llvm_cconv(self),
             llvm::UnnamedAddr::Global,
             llvm::Visibility::Default,
-            fn_abi.llvm_type(self),
+            signature.fn_ty(),
         );
-        fn_abi.apply_attrs_llfn(self, llfn, instance);
+
+        if let Some(intrinsic) = signature.intrinsic()
+            && intrinsic.is_target_specific()
+        {
+            let (llvm_arch, _) = name[5..].split_once('.').unwrap();
+            let rust_arch = &self.tcx.sess.target.arch;
+
+            if let Some(correct_llvm_arch) = llvm_arch_for(rust_arch)
+                && llvm_arch != correct_llvm_arch
+            {
+                self.tcx.dcx().emit_fatal(errors::IntrinsicWrongArch {
+                    name,
+                    target_arch: rust_arch.desc(),
+                    span: span(),
+                });
+            }
+        } else {
+            // Don't apply any attributes to intrinsics, they will be applied by AutoUpgrade
+            fn_abi.apply_attrs_llfn(self, llfn, instance);
+        }
+
+        if let FunctionSignature::MaybeInvalid(..) = signature {
+            let mut new_llfn = None;
+            let can_upgrade =
+                unsafe { llvm::LLVMRustUpgradeIntrinsicFunction(llfn, &mut new_llfn, false) };
+
+            // we can emit diagnostics for local crates only
+            if let Some(instance) = instance
+                && let Some(local_def_id) = instance.def_id().as_local()
+            {
+                let hir_id = self.tcx.local_def_id_to_hir_id(local_def_id);
+                let span = self.tcx.def_span(local_def_id);
+
+                if can_upgrade {
+                    // not all intrinsics are upgraded to some other intrinsics, most are upgraded to instruction sequences
+                    let msg = if let Some(new_llfn) = new_llfn {
+                        format!(
+                            "using deprecated intrinsic `{name}`, `{}` can be used instead",
+                            str::from_utf8(&llvm::get_value_name(new_llfn)).unwrap()
+                        )
+                    } else {
+                        format!("using deprecated intrinsic `{name}`")
+                    };
+                    self.tcx.node_lint(DEPRECATED_LLVM_INTRINSIC, hir_id, |d| {
+                        d.primary_message(msg).span(span);
+                    });
+                } else {
+                    // This is either plain wrong, or this can be caused by incompatible LLVM versions, we let the user decide
+                    self.tcx.node_lint(UNKNOWN_LLVM_INTRINSIC, hir_id, |d| {
+                        d.primary_message(format!("invalid LLVM Intrinsic `{name}`")).span(span);
+                    });
+                }
+            }
+        }
 
         if self.tcx.sess.is_sanitizer_cfi_enabled() {
             if let Some(instance) = instance {

@@ -77,11 +77,29 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
         unsafe { llvm::LLVMAddFunction(self.llmod(), name.as_ptr(), ty) }
     }
 
+    pub(crate) fn get_return_type(&self, ty: &'ll Type) -> &'ll Type {
+        unsafe { llvm::LLVMGetReturnType(ty) }
+    }
+
     pub(crate) fn func_params_types(&self, ty: &'ll Type) -> Vec<&'ll Type> {
         unsafe {
             let n_args = llvm::LLVMCountParamTypes(ty) as usize;
             let mut args = Vec::with_capacity(n_args);
             llvm::LLVMGetParamTypes(ty, args.as_mut_ptr());
+            args.set_len(n_args);
+            args
+        }
+    }
+
+    pub(crate) fn func_is_variadic(&self, ty: &'ll Type) -> bool {
+        unsafe { llvm::LLVMIsFunctionVarArg(ty).is_true() }
+    }
+
+    pub(crate) fn struct_element_types(&self, ty: &'ll Type) -> Vec<&'ll Type> {
+        unsafe {
+            let n_args = llvm::LLVMCountStructElementTypes(ty) as usize;
+            let mut args = Vec::with_capacity(n_args);
+            llvm::LLVMGetStructElementTypes(ty, args.as_mut_ptr());
             args.set_len(n_args);
             args
         }
@@ -165,6 +183,10 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
             )
         }
     }
+
+    pub(crate) fn type_bf16(&self) -> &'ll Type {
+        unsafe { llvm::LLVMBFloatTypeInContext(self.llcx()) }
+    }
 }
 
 impl<'ll, CX: Borrow<SCx<'ll>>> BaseTypeCodegenMethods for GenericCx<'ll, CX> {
@@ -238,7 +260,7 @@ impl<'ll, CX: Borrow<SCx<'ll>>> BaseTypeCodegenMethods for GenericCx<'ll, CX> {
 
     fn float_width(&self, ty: &'ll Type) -> usize {
         match self.type_kind(ty) {
-            TypeKind::Half => 16,
+            TypeKind::Half | TypeKind::BFloat => 16,
             TypeKind::Float => 32,
             TypeKind::Double => 64,
             TypeKind::X86_FP80 => 80,
@@ -295,8 +317,12 @@ impl<'ll, 'tcx> LayoutTypeCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     fn cast_backend_type(&self, ty: &CastTarget) -> &'ll Type {
         ty.llvm_type(self)
     }
-    fn fn_decl_backend_type(&self, fn_abi: &FnAbi<'tcx, Ty<'tcx>>) -> &'ll Type {
-        fn_abi.llvm_type(self)
+    fn fn_decl_backend_type(
+        &self,
+        fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
+        fn_ptr: &'ll Value,
+    ) -> &'ll Type {
+        fn_abi.llvm_type(self, &llvm::get_value_name(fn_ptr)).fn_ty()
     }
     fn fn_ptr_backend_type(&self, fn_abi: &FnAbi<'tcx, Ty<'tcx>>) -> &'ll Type {
         fn_abi.ptr_to_llvm_type(self)
