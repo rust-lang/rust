@@ -53,7 +53,7 @@ jobs:
       run_type: ${{ steps.jobs.outputs.run_type }}
     steps:
       - name: Checkout the source code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
       - name: Test citool
         # Only test citool on the auto branch, to reduce latency of the calculate matrix job
         # on PR/try builds.
@@ -114,7 +114,7 @@ jobs:
         run: git config --global core.autocrlf false
 
       - name: checkout the source code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           fetch-depth: 2
 
@@ -317,7 +317,7 @@ jobs:
     environment: ${{ ((github.repository == 'rust-lang/rust' && (github.ref == 'refs/heads/try' || github.ref == 'refs/heads/try-perf' || github.ref == 'refs/heads/automation/bors/try' || github.ref == 'refs/heads/auto' || github.ref == 'refs/heads/automation/bors/auto')) && 'bors') || '' }}
     steps:
       - name: checkout the source code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           fetch-depth: 2
       # Calculate the exit status of the whole CI workflow.
