@@ -10,7 +10,7 @@
 //@[instrument] only-linux
 
 // Make sure we don't try to CFI encode it.
-//@[cfi] compile-flags: -Zsanitizer=cfi -Ccodegen-units=1 -Clto -Ctarget-feature=-crt-static -Clink-dead-code=true
+//@[cfi] compile-flags: -Ccodegen-units=1 -Clto -Ctarget-feature=-crt-static -Zunstable-options -Csanitize=cfi -Clink-dead-code=true
 //@[cfi] needs-sanitizer-cfi
 //@[cfi] no-prefer-dynamic
 // FIXME(#122848) Remove only-linux once OSX CFI binaries work

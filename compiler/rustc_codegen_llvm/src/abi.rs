@@ -16,7 +16,7 @@ use rustc_session::{Session, config};
 use rustc_target::callconv::{
     ArgAbi, ArgAttribute, ArgAttributes, ArgExtension, CastTarget, FnAbi, PassMode,
 };
-use rustc_target::spec::{Arch, SanitizerSet};
+use rustc_target::spec::Arch;
 use smallvec::SmallVec;
 
 use crate::attributes::{self, llfn_attrs_from_instance};
@@ -96,7 +96,7 @@ fn get_attrs<'ll>(this: &ArgAttributes, cx: &CodegenCx<'ll, '_>) -> SmallVec<[&'
                 }
             }
         }
-    } else if cx.tcx.sess.sanitizers().contains(SanitizerSet::MEMORY) {
+    } else if cx.tcx.sess.is_sanitizer_memory_enabled() {
         // If we're not optimising, *but* memory sanitizer is on, emit noundef, since it affects
         // memory sanitizer's behavior.
 

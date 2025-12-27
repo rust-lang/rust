@@ -1,12 +1,14 @@
 //@ needs-sanitizer-support
 //@ needs-sanitizer-memory
 //
-//@ compile-flags: -C unsafe-allow-abi-mismatch=sanitizer
+//@ compile-flags: -Cunsafe-allow-abi-mismatch=sanitize
 //
 //@ revisions: unoptimized optimized
 //
-//@ [optimized]compile-flags: -Z sanitizer=memory -Zsanitizer-memory-track-origins -O
-//@ [unoptimized]compile-flags: -Z sanitizer=memory -Zsanitizer-memory-track-origins
+//@ [optimized]compile-flags: -Zunstable-options -Csanitize=memory
+//@ [optimized]compile-flags: -Zsanitizer-memory-track-origins -O
+//@ [unoptimized]compile-flags: -Zunstable-options -Csanitize=memory
+//@ [unoptimized]compile-flags: -Zsanitizer-memory-track-origins
 //
 //@ run-fail
 //@ error-pattern: MemorySanitizer: use-of-uninitialized-value

@@ -4,7 +4,7 @@
 //@ needs-sanitizer-kcfi
 //@ only-linux
 //@ ignore-backends: gcc
-//@ compile-flags: -Ctarget-feature=-crt-static -Zpanic_abort_tests -Cpanic=abort -Cprefer-dynamic=off -Copt-level=0 -Zsanitizer=kcfi -Cunsafe-allow-abi-mismatch=sanitizer --test
+//@ compile-flags: -Cpanic=abort -Cprefer-dynamic=off -Cunsafe-allow-abi-mismatch=sanitize -Zunstable-options -Csanitize=kcfi  -Zpanic_abort_tests --test
 //@ run-pass
 
 #![feature(fn_traits)]

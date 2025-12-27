@@ -1,7 +1,7 @@
 // Verifies that "EnableSplitLTOUnit" module flag is added.
 //
 //@ needs-sanitizer-cfi
-//@ compile-flags: -Clto -Ctarget-feature=-crt-static -Zsanitizer=cfi -C unsafe-allow-abi-mismatch=sanitizer
+//@ compile-flags: -Clto -Ctarget-feature=-crt-static -Cunsafe-allow-abi-mismatch=sanitize -Zunstable-options -Csanitize=cfi
 
 #![crate_type = "lib"]
 

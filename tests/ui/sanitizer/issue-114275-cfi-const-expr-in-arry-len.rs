@@ -2,7 +2,7 @@
 // was expecting array type lengths to be evaluated, this was causing an ICE.
 //
 //@ build-pass
-//@ compile-flags: -Ccodegen-units=1 -Clto -Zsanitizer=cfi -Ctarget-feature=-crt-static -C unsafe-allow-abi-mismatch=sanitizer
+//@ compile-flags: -Ccodegen-units=1 -Clto -Ctarget-feature=-crt-static -Cunsafe-allow-abi-mismatch=sanitize -Zunstable-options -Csanitize=cfi
 //@ needs-sanitizer-cfi
 
 #![crate_type = "lib"]

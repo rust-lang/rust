@@ -4,8 +4,7 @@
 //@ only-linux
 //@ ignore-backends: gcc
 //@ needs-sanitizer-cfi
-//@ compile-flags: -Clto -Copt-level=0 -Cprefer-dynamic=off -Ctarget-feature=-crt-static -Zsanitizer=cfi
-//@ compile-flags: -C unsafe-allow-abi-mismatch=sanitizer
+//@ compile-flags: -Ccodegen-units=1 -Clto -Cprefer-dynamic=off -Ctarget-feature=-crt-static -Cunsafe-allow-abi-mismatch=sanitize -Zunstable-options -Csanitize=cfi
 //@ run-pass
 
 struct EmptyDrop;

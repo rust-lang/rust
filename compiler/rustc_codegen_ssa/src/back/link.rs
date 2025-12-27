@@ -2488,7 +2488,7 @@ fn add_order_independent_options(
         && crate_type == CrateType::Executable
         && !matches!(flavor, LinkerFlavor::Gnu(Cc::Yes, _))
     {
-        let prefix = if sess.sanitizers().contains(SanitizerSet::ADDRESS) { "asan/" } else { "" };
+        let prefix = if sess.is_sanitizer_address_enabled() { "asan/" } else { "" };
         cmd.link_arg(format!("--dynamic-linker={prefix}ld.so.1"));
     }
 

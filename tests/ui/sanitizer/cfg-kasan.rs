@@ -1,9 +1,8 @@
-// Verifies that when compiling with -Zsanitizer=kernel-address,
+// Verifies that when compiling with -Csanitize=kernel-address,
 // the `#[cfg(sanitize = "address")]` attribute is configured.
 
 //@ add-minicore
 //@ check-pass
-//@ compile-flags: -Zsanitizer=kernel-address
 //@ revisions: aarch64 riscv64imac riscv64gc x86_64
 //@[aarch64] compile-flags: --target aarch64-unknown-none
 //@[aarch64] needs-llvm-components: aarch64
@@ -13,6 +12,7 @@
 //@[riscv64gc] needs-llvm-components: riscv
 //@[x86_64] compile-flags: --target x86_64-unknown-none
 //@[x86_64] needs-llvm-components: x86
+//@ compile-flags: -Cunsafe-allow-abi-mismatch=sanitize -Zunstable-options -Csanitize=kernel-address
 //@ ignore-backends: gcc
 
 #![crate_type = "rlib"]
