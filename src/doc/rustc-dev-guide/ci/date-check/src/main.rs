@@ -159,7 +159,7 @@ fn main() {
                 let url = format!(
                     "https://github.com/rust-lang/rustc-dev-guide/blob/main/{path}?plain=1#L{line}"
                 );
-                println!("  - [ ] [{date}]({url})");
+                println!("  - [ ] {date} [line {line}]({url})");
             }
         }
         println!();
