@@ -10,27 +10,27 @@ features! {
     /// When the feature is known to be enabled at compile time (e.g. via `-Ctarget-feature`)
     /// the macro expands to `true`.
     #[stable(feature = "stdarch_s390x_feature_detection", since = "1.93.0")]
-    @FEATURE: #[unstable(feature = "s390x_target_feature", issue = "44839")] concurrent_functions: "concurrent-functions";
+    @FEATURE: #[unstable(feature = "s390x_target_feature", issue = "150259")] concurrent_functions: "concurrent-functions";
     /// s390x concurrent-functions facility
-    @FEATURE: #[unstable(feature = "s390x_target_feature", issue = "44839")] deflate_conversion: "deflate-conversion";
+    @FEATURE: #[unstable(feature = "s390x_target_feature", issue = "150259")] deflate_conversion: "deflate-conversion";
     /// s390x deflate-conversion facility
-    @FEATURE: #[unstable(feature = "s390x_target_feature", issue = "44839")] enhanced_sort: "enhanced-sort";
+    @FEATURE: #[unstable(feature = "s390x_target_feature", issue = "150259")] enhanced_sort: "enhanced-sort";
     /// s390x enhanced-sort facility
-    @FEATURE: #[unstable(feature = "s390x_target_feature", issue = "44839")] guarded_storage: "guarded-storage";
+    @FEATURE: #[unstable(feature = "s390x_target_feature", issue = "150259")] guarded_storage: "guarded-storage";
     /// s390x guarded-storage facility
-    @FEATURE: #[unstable(feature = "s390x_target_feature", issue = "44839")] high_word: "high-word";
+    @FEATURE: #[unstable(feature = "s390x_target_feature", issue = "150259")] high_word: "high-word";
     /// s390x high-word facility
-    @FEATURE: #[unstable(feature = "s390x_target_feature", issue = "44839")] message_security_assist_extension3: "message-security-assist-extension3";
+    @FEATURE: #[unstable(feature = "s390x_target_feature", issue = "150259")] message_security_assist_extension3: "message-security-assist-extension3";
     /// s390x message-security-assist-extension3 facility
-    @FEATURE: #[unstable(feature = "s390x_target_feature", issue = "44839")] message_security_assist_extension4: "message-security-assist-extension4";
+    @FEATURE: #[unstable(feature = "s390x_target_feature", issue = "150259")] message_security_assist_extension4: "message-security-assist-extension4";
     /// s390x message-security-assist-extension4 facility
-    @FEATURE: #[unstable(feature = "s390x_target_feature", issue = "44839")] message_security_assist_extension5: "message-security-assist-extension5";
+    @FEATURE: #[unstable(feature = "s390x_target_feature", issue = "150259")] message_security_assist_extension5: "message-security-assist-extension5";
     /// s390x message-security-assist-extension5 facility
-    @FEATURE: #[unstable(feature = "s390x_target_feature", issue = "44839")] message_security_assist_extension8: "message-security-assist-extension8";
+    @FEATURE: #[unstable(feature = "s390x_target_feature", issue = "150259")] message_security_assist_extension8: "message-security-assist-extension8";
     /// s390x message-security-assist-extension8 facility
-    @FEATURE: #[unstable(feature = "s390x_target_feature", issue = "44839")] message_security_assist_extension9: "message-security-assist-extension9";
+    @FEATURE: #[unstable(feature = "s390x_target_feature", issue = "150259")] message_security_assist_extension9: "message-security-assist-extension9";
     /// s390x message-security-assist-extension9 facility
-    @FEATURE: #[unstable(feature = "s390x_target_feature", issue = "44839")] message_security_assist_extension12: "message-security-assist-extension12";
+    @FEATURE: #[unstable(feature = "s390x_target_feature", issue = "150259")] message_security_assist_extension12: "message-security-assist-extension12";
     /// s390x message-security-assist-extension12 facility
     @FEATURE: #[stable(feature = "s390x_target_feature_vector", since = "1.93.0")] miscellaneous_extensions_2: "miscellaneous-extensions-2";
     /// s390x miscellaneous-extensions-2 facility
@@ -40,7 +40,7 @@ features! {
     /// s390x miscellaneous-extensions-4 facility
     @FEATURE: #[stable(feature = "s390x_target_feature_vector", since = "1.93.0")] nnp_assist: "nnp-assist";
     /// s390x nnp-assist facility
-    @FEATURE: #[unstable(feature = "s390x_target_feature", issue = "44839")] transactional_execution: "transactional-execution";
+    @FEATURE: #[unstable(feature = "s390x_target_feature", issue = "150259")] transactional_execution: "transactional-execution";
     /// s390x transactional-execution facility
     @FEATURE: #[stable(feature = "s390x_target_feature_vector", since = "1.93.0")] vector: "vector";
     /// s390x vector facility
