@@ -54,7 +54,15 @@ LL | |     T: Unsize<U>
    |
    = note: extra field `1` of type `OverAlignedZst` is not allowed
 
-error: aborting due to 5 previous errors
+error: the trait `DispatchFromDyn` does not allow dispatch through references
+  --> $DIR/dispatch-from-dyn-invalid-impls.rs:73:1
+   |
+LL | impl<'a, T: ?Sized, U: ?Sized> DispatchFromDyn<&'a Ptr<U>> for &'a Ptr<T> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the trait `DispatchFromDyn` may only be implemented when dispatch goes through at most one reference to a generic
+
+error: aborting due to 6 previous errors
 
 Some errors have detailed explanations: E0374, E0375, E0378.
 For more information about an error, try `rustc --explain E0374`.

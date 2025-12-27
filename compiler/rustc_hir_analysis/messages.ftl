@@ -149,6 +149,9 @@ hir_analysis_cross_crate_traits = cross-crate traits with a default impl, like `
 hir_analysis_cross_crate_traits_defined = cross-crate traits with a default impl, like `{$traits}`, can only be implemented for a struct/enum type defined in the current crate
     .label = can't implement cross-crate trait for type in another crate
 
+hir_analysis_dispatch_from_dyn_multiple_refs = the trait `DispatchFromDyn` does not allow dispatch through references
+    .note = the trait `DispatchFromDyn` may only be implemented when dispatch goes through at most one reference to a generic
+
 hir_analysis_dispatch_from_dyn_repr = structs implementing `DispatchFromDyn` may not have `#[repr(packed)]` or `#[repr(C)]`
 
 hir_analysis_dispatch_from_dyn_zst = the trait `DispatchFromDyn` may only be implemented for structs containing the field being coerced, ZST fields with 1 byte alignment that don't mention type/const generics, and nothing else
