@@ -22,7 +22,16 @@ pub fn install(src_root_path: &Path, out_dir: &Path, yarn: &Path) -> Result<Path
     cmd.arg("--frozen");
 
     cmd.current_dir(out_dir);
-    let exit_status = cmd.spawn()?.wait()?;
+    let exit_status = cmd
+        .spawn()
+        .map_err(|err| {
+            eprintln!("can not run yarn install");
+            io::Error::other(Box::<dyn Error + Send + Sync>::from(format!(
+                "unable to run yarn: {}",
+                err.kind()
+            )))
+        })?
+        .wait()?;
     if !exit_status.success() {
         eprintln!("yarn install did not exit successfully");
         return Err(io::Error::other(Box::<dyn Error + Send + Sync>::from(format!(
