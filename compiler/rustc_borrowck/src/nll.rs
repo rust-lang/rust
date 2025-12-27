@@ -154,7 +154,15 @@ pub(crate) fn compute_regions<'tcx>(
     // If requested for `-Zpolonius=next`, convert NLL constraints to localized outlives constraints
     // and use them to compute loan liveness.
     let polonius_diagnostics = polonius_context.map(|polonius_context| {
-        polonius_context.compute_loan_liveness(infcx.tcx, &mut regioncx, body, borrow_set)
+        // let _timer = std::time::Instant::now();
+        let ret =
+            polonius_context.compute_loan_liveness(infcx.tcx, &mut regioncx, body, borrow_set);
+        // eprintln!(
+        //     "compute_loan_liveness took:                        {} ns, {:?}, borrows: {}, localized constraints: {}",
+        //     _timer.elapsed().as_nanos(),
+        //     body.span, borrow_set.len(), ret.localized_outlives_constraints.outlives.len(),
+        // );
+        ret
     });
 
     // If requested: dump NLL facts, and run legacy polonius analysis.

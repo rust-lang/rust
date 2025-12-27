@@ -1,6 +1,8 @@
 use rustc_middle::ty::RegionVid;
 use rustc_mir_dataflow::points::PointIndex;
 
+use crate::region_infer::values::LivenessValues;
+
 /// A localized outlives constraint reifies the CFG location where the outlives constraint holds,
 /// within the origins themselves as if they were different from point to point: from `a: b`
 /// outlives constraints to `a@p: b@p`, where `p` is the point in the CFG.
@@ -23,6 +25,25 @@ pub(crate) struct LocalizedOutlivesConstraint {
     pub from: PointIndex,
     pub target: RegionVid,
     pub to: PointIndex,
+    pub tag: &'static str,
+}
+
+impl rustc_mir_dataflow::fmt::DebugWithContext<LivenessValues> for LocalizedOutlivesConstraint {
+    fn fmt_with(
+        &self,
+        liveness: &LivenessValues,
+        fmt: &mut std::fmt::Formatter<'_>,
+    ) -> std::fmt::Result {
+        write!(
+            fmt,
+            "{}@{:?} -> {}@{:?} ({})",
+            self.source.as_u32(),
+            liveness.location_from_point(self.from),
+            self.target.as_u32(),
+            liveness.location_from_point(self.to),
+            self.tag,
+        )
+    }
 }
 
 /// A container of [LocalizedOutlivesConstraint]s that can be turned into a traversable
@@ -33,11 +54,11 @@ pub(crate) struct LocalizedOutlivesConstraintSet {
 }
 
 impl LocalizedOutlivesConstraintSet {
-    pub(crate) fn push(&mut self, constraint: LocalizedOutlivesConstraint) {
-        if constraint.source == constraint.target && constraint.from == constraint.to {
-            // 'a@p: 'a@p is pretty uninteresting
-            return;
-        }
-        self.outlives.push(constraint);
-    }
+    // pub(crate) fn push(&mut self, constraint: LocalizedOutlivesConstraint) {
+    //     if constraint.source == constraint.target && constraint.from == constraint.to {
+    //         // 'a@p: 'a@p is pretty uninteresting
+    //         return;
+    //     }
+    //     self.outlives.push(constraint);
+    // }
 }

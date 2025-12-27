@@ -48,7 +48,7 @@ mod dump;
 pub(crate) mod legacy;
 mod liveness_constraints;
 mod loan_liveness;
-mod typeck_constraints;
+// mod typeck_constraints;
 
 use std::collections::BTreeMap;
 
@@ -61,9 +61,9 @@ use rustc_mir_dataflow::points::PointIndex;
 
 pub(crate) use self::constraints::*;
 pub(crate) use self::dump::dump_polonius_mir;
-use self::liveness_constraints::create_liveness_constraints;
+// use self::liveness_constraints::create_liveness_constraints;
 use self::loan_liveness::compute_loan_liveness;
-use self::typeck_constraints::convert_typeck_constraints;
+// use self::typeck_constraints::convert_typeck_constraints;
 use crate::dataflow::BorrowIndex;
 use crate::{BorrowSet, RegionInferenceContext};
 
@@ -99,7 +99,7 @@ pub(crate) struct PoloniusContext {
 /// computed from the [PoloniusContext] when computing NLL regions.
 pub(crate) struct PoloniusDiagnosticsContext {
     /// The localized outlives constraints that were computed in the main analysis.
-    localized_outlives_constraints: LocalizedOutlivesConstraintSet,
+    pub localized_outlives_constraints: LocalizedOutlivesConstraintSet,
 
     /// The liveness data computed during MIR typeck: [PoloniusLivenessContext::boring_nll_locals].
     pub(crate) boring_nll_locals: FxHashSet<Local>,
@@ -160,34 +160,186 @@ impl PoloniusContext {
         let PoloniusLivenessContext { live_region_variances, boring_nll_locals } =
             self.liveness_context;
 
-        let mut localized_outlives_constraints = LocalizedOutlivesConstraintSet::default();
-        convert_typeck_constraints(
-            tcx,
-            body,
-            regioncx.liveness_constraints(),
-            regioncx.outlives_constraints(),
-            regioncx.universal_regions(),
-            &mut localized_outlives_constraints,
-        );
+        // use rustc_middle::mir;
+        // use crate::consumers::OutlivesConstraint;
+        // use crate::type_check::Locations;
+        // use rustc_data_structures::fx::FxHashMap;
+        // let liveness = regioncx.liveness_constraints();
 
-        create_liveness_constraints(
-            body,
-            regioncx.liveness_constraints(),
-            &self.live_regions,
-            &live_region_variances,
-            regioncx.universal_regions(),
-            &mut localized_outlives_constraints,
-        );
+        // let mut outlives_per_point: FxHashMap<mir::Location, Vec<OutlivesConstraint<'tcx>>> =
+        //     FxHashMap::default();
+        // for outlives_constraint in regioncx.outlives_constraints() {
+        //     match outlives_constraint.locations {
+        //         Locations::All(_) => {
+        //             // We don't turn constraints holding at all points into physical edges at every
+        //             // point in the graph. They are encoded into *traversal* instead: a given node's
+        //             // successors will combine these logical edges with the regular, physical, localized
+        //             // edges.
+        //             continue;
+        //         }
 
-        // Now that we have a complete graph, we can compute reachability to trace the liveness of
-        // loans for the next step in the chain, the NLL loan scope and active loans computations.
-        let live_loans = compute_loan_liveness(
-            regioncx.liveness_constraints(),
-            regioncx.outlives_constraints(),
-            borrow_set,
-            &localized_outlives_constraints,
-        );
-        regioncx.record_live_loans(live_loans);
+        //         Locations::Single(location) => {
+        //             outlives_per_point.entry(location).or_default().push(outlives_constraint)
+        //         }
+        //     }
+        // }
+
+        // let mut loans: SparseBitMatrix<RegionVid, BorrowIndex> =
+        //     SparseBitMatrix::new(borrow_set.len());
+
+        // // todo: faut pas boucler sur les blocks mais suivre le cfg bien sur
+        // for (block, bb) in body.basic_blocks.iter_enumerated() {
+        //     let statement_count = bb.statements.len();
+        //     for statement_index in 0..=statement_count {
+        //         let current_location = mir::Location { block, statement_index };
+        //         // let current_point = liveness.point_from_location(current_location);
+
+        //         if statement_index < statement_count {
+        //             // stmt
+        //             let stmt = &bb.statements[statement_index];
+        //             match &stmt.kind {
+        //                 mir::StatementKind::Assign(box (_lhs, rhs)) => {
+        //                     if let mir::Rvalue::Ref(_, _, place) = rhs {
+        //                         use crate::place_ext::PlaceExt;
+        //                         if place.ignore_borrow(tcx, body, &borrow_set.locals_state_at_exit)
+        //                         {
+        //                         } else {
+        //                             let loan = borrow_set
+        //                                 .get_index_of(&current_location)
+        //                                 .unwrap_or_else(|| {
+        //                                     panic!(
+        //                                         "could not find BorrowIndex for location {current_location:?}"
+        //                                     );
+        //                                 });
+
+        //                             // 1. The loan is introduced here
+        //                             let data = &borrow_set[loan];
+        //                             eprintln!(
+        //                                 "introducing loan {:?} in region {:?} at {:?}",
+        //                                 loan, data.region, current_location
+        //                             );
+        //                             loans.insert(data.region, loan);
+        //                         }
+        //                     }
+
+        //                     // // Make sure there are no remaining borrows for variables
+        //                     // // that are assigned over.
+        //                     // self.kill_borrows_on_place(state, *lhs);
+        //                 }
+
+        //                 _ => {}
+        //             }
+        //         }
+
+        //         // 2. loans are propagated along the outlives edges present at this point
+        //         // - needs fixpoint in case a later outlives flows into a region earlier in the list
+        //         // - in particular recording target regions as dirty
+        //         if let Some(outlives) = outlives_per_point.get(&current_location) {
+        //             let mut changed = false;
+        //             for outlives_constraint in outlives {
+        //                 // Whatever is in the source region flows into the target region.
+        //                 changed |=
+        //                     loans.union_rows(outlives_constraint.sup, outlives_constraint.sub);
+        //                 eprintln!(
+        //                     "loans in region {:?} flow into region {:?} (changed: {}) at {:?}",
+        //                     outlives_constraint.sup,
+        //                     outlives_constraint.sub,
+        //                     changed,
+        //                     current_location
+        //                 );
+        //             }
+        //         }
+
+        //         // 3. on enregistre les loans qui atteignent des régions live ici dans la liste des
+        //         //    live loans
+
+        //         // 4. todo: continue traversal to the point successors
+        //         // - note that it can be the point predecessors
+        //         // 4b. on doit enlever de la map les régions qui sont dead au successeur (pb, faut genre la cloner?)
+        //         if statement_index < statement_count {
+        //             // stmt
+        //         } else {
+        //             // terminator
+        //             // Inter-block edges, from the block's terminator to each successor block's entry
+        //             // point.
+
+        //             for successor_block in bb.terminator().successors() {
+        //                 let next_location =
+        //                     mir::Location { block: successor_block, statement_index: 0 };
+        //                 // let next_point = liveness.point_from_location(next_location);
+        //             }
+        //         }
+        //     }
+        // }
+
+        let localized_outlives_constraints = LocalizedOutlivesConstraintSet::default();
+
+        if borrow_set.len() > 0 {
+            // let _timer = std::time::Instant::now();
+            // convert_typeck_constraints(
+            //     tcx,
+            //     body,
+            //     regioncx.liveness_constraints(),
+            //     regioncx.outlives_constraints(),
+            //     regioncx.universal_regions(),
+            //     &mut localized_outlives_constraints,
+            // );
+
+            // eprintln!(
+            //     "compute_loan_liveness - typeck constraints took:   {} ns, {:?}, outlives constraints: {}, localized constraints: {}",
+            //     _timer.elapsed().as_nanos(),
+            //     body.span,
+            //     regioncx.outlives_constraints().count(),
+            //     localized_outlives_constraints.outlives.len(),
+            // );
+            // let _typeck_edges = localized_outlives_constraints.outlives.len();
+
+            // let _timer = std::time::Instant::now();
+            // create_liveness_constraints(
+            //     body,
+            //     regioncx.liveness_constraints(),
+            //     &self.live_regions,
+            //     &live_region_variances,
+            //     regioncx.universal_regions(),
+            //     &mut localized_outlives_constraints,
+            // );
+            // eprintln!(
+            //     "compute_loan_liveness - liveness constraints took: {} ns, {:?}, cfg statements: {}, localized constraints: {}",
+            //     _timer.elapsed().as_nanos(),
+            //     body.span,
+            //     body.basic_blocks
+            //         .iter()
+            //         .map(|bb| {
+            //             let statement_count = bb.statements.len();
+            //             statement_count
+            //         })
+            //         .sum::<usize>(),
+            //     localized_outlives_constraints.outlives.len() - _typeck_edges,
+            // );
+
+            // let _timer = std::time::Instant::now();
+
+            // Now that we have a complete graph, we can compute reachability to trace the liveness of
+            // loans for the next step in the chain, the NLL loan scope and active loans computations.
+            let live_loans = compute_loan_liveness(
+                tcx,
+                regioncx.liveness_constraints(),
+                &regioncx,
+                borrow_set,
+                &localized_outlives_constraints,
+                body,
+                regioncx.universal_regions(),
+                &self.live_regions,
+                &live_region_variances,
+            );
+
+            regioncx.record_live_loans(live_loans);
+            // eprintln!(
+            //     "compute_loan_liveness - computing liveness took:   {} ns, {:?}",
+            //     _timer.elapsed().as_nanos(),
+            //     body.span,
+            // );
+        }
 
         PoloniusDiagnosticsContext { localized_outlives_constraints, boring_nll_locals }
     }
