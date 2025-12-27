@@ -201,6 +201,10 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
         }
     }
 
+    fn override_builtin_macro(&mut self, name: Symbol, ext: SyntaxExtensionKind) {
+        self.builtin_macros.insert(name, ext);
+    }
+
     // Create a new Expansion with a definition site of the provided module, or
     // a fake empty `#[no_implicit_prelude]` module if no module is provided.
     fn expansion_for_ast_pass(

@@ -36,6 +36,7 @@ pub fn provide(providers: &mut Providers) {
     providers.eval_to_allocation_raw = const_eval::eval_to_allocation_raw_provider;
     providers.eval_static_initializer = const_eval::eval_static_initializer_provider;
     providers.hooks.const_caller_location = util::caller_location::const_caller_location_provider;
+    providers.hooks.after_register_builtin_macros = |_, _| {};
     providers.eval_to_valtree = |tcx, ty::PseudoCanonicalInput { typing_env, value }| {
         const_eval::eval_to_valtree(tcx, typing_env, value)
     };
