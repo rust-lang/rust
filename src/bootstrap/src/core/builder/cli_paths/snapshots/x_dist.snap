@@ -29,6 +29,9 @@ expression: dist
 [Dist] dist::PlainSourceTarball
     targets: [x86_64-unknown-linux-gnu]
     - Set({dist::rustc-src})
+[Dist] dist::PlainSourceTarballGpl
+    targets: [x86_64-unknown-linux-gnu]
+    - Set({dist::rustc-src-gpl})
 [Dist] dist::ReproducibleArtifacts
     targets: [x86_64-unknown-linux-gnu]
     - Set({dist::reproducible-artifacts})
