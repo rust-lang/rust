@@ -1270,50 +1270,32 @@ class StdRcSyntheticProvider:
     def __init__(self, valobj: SBValue, _dict: LLDBOpaque, is_atomic: bool = False):
         self.valobj = valobj
 
-        if is_atomic:
-            self.ptr = unwrap_unique_or_non_null(
-                self.valobj.GetChildMemberWithName("ptr")
-            )
+        ptr = (
+            self.valobj.GetChildMemberWithName("raw_rc")
+            .GetChildMemberWithName("weak")
+            .GetChildMemberWithName("ptr")
+            .GetChildMemberWithName("pointer")
+        )
 
-            self.value = self.ptr.GetChildMemberWithName("data")
+        self.value = ptr.deref.Clone("value")
 
-            self.strong = (
-                self.ptr.GetChildMemberWithName("strong")
-                .GetChildAtIndex(0)
-                .GetChildMemberWithName("value")
-            )
-            self.weak = (
-                self.ptr.GetChildMemberWithName("weak")
-                .GetChildAtIndex(0)
-                .GetChildMemberWithName("value")
-            )
-        else:
-            ptr = (
-                self.valobj.GetChildMemberWithName("raw_rc")
-                .GetChildMemberWithName("weak")
-                .GetChildMemberWithName("ptr")
-                .GetChildMemberWithName("pointer")
-            )
+        target = valobj.GetTarget()
+        ref_counts_type = _get_or_init_ref_counts_type(target)
+        ref_counts_address = ptr.GetValueAsUnsigned() - ref_counts_type.size
 
-            self.value = ptr.deref.Clone("value")
+        ref_counts_value = target.CreateValueFromAddress(
+            "ref_counts",
+            SBAddress(ref_counts_address, target),
+            ref_counts_type,
+        )
 
-            target = valobj.GetTarget()
-            ref_counts_type = _get_or_init_ref_counts_type(target)
-            ref_counts_address = ptr.GetValueAsUnsigned() - ref_counts_type.size
+        self.strong = ref_counts_value.GetChildMemberWithName(
+            "strong"
+        ).GetChildMemberWithName("value")
 
-            ref_counts_value = target.CreateValueFromAddress(
-                "ref_counts",
-                SBAddress(ref_counts_address, target),
-                ref_counts_type,
-            )
-
-            self.strong = ref_counts_value.GetChildMemberWithName(
-                "strong"
-            ).GetChildMemberWithName("value")
-
-            self.weak = ref_counts_value.GetChildMemberWithName(
-                "weak"
-            ).GetChildMemberWithName("value")
+        self.weak = ref_counts_value.GetChildMemberWithName(
+            "weak"
+        ).GetChildMemberWithName("value")
 
         self.value_builder = ValueBuilder(valobj)
 
