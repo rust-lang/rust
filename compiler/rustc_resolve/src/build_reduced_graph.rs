@@ -53,7 +53,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         ns: Namespace,
         binding: NameBinding<'ra>,
     ) {
-        if let Err(old_binding) = self.try_define_local(parent, ident, ns, binding, false) {
+        if let Err(old_binding) = self.try_define_local(parent, ident, ns, binding) {
             self.report_conflict(parent, ident, ns, old_binding, binding);
         }
     }
@@ -82,13 +82,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         vis: Visibility<DefId>,
         span: Span,
         expansion: LocalExpnId,
-        ambiguity: Option<(NameBinding<'ra>, AmbiguityKind)>,
+        ambiguity: Option<(NameBinding<'ra>, AmbiguityKind, bool)>,
     ) {
         let binding = self.arenas.alloc_name_binding(NameBindingData {
             kind: NameBindingKind::Res(res),
             ambiguity,
-            // External ambiguities always report the `AMBIGUOUS_GLOB_IMPORTS` lint at the moment.
-            warn_ambiguity: true,
             vis,
             span,
             expansion,
@@ -288,7 +286,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 AmbigModChildKind::GlobVsGlob => AmbiguityKind::GlobVsGlob,
                 AmbigModChildKind::GlobVsExpanded => AmbiguityKind::GlobVsExpanded,
             };
-            (self.arenas.new_res_binding(res, vis, span, expansion), ambig_kind)
+            // External ambiguities always report the `AMBIGUOUS_GLOB_IMPORTS` lint at the moment.
+            (self.arenas.new_res_binding(res, vis, span, expansion), ambig_kind, true)
         });
 
         // Record primary definitions.

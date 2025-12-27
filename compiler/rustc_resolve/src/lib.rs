@@ -801,10 +801,7 @@ impl<'ra> fmt::Debug for Module<'ra> {
 #[derive(Clone, Copy, Debug)]
 struct NameBindingData<'ra> {
     kind: NameBindingKind<'ra>,
-    ambiguity: Option<(NameBinding<'ra>, AmbiguityKind)>,
-    /// Produce a warning instead of an error when reporting ambiguities inside this binding.
-    /// May apply to indirect ambiguities under imports, so `ambiguity.is_some()` is not required.
-    warn_ambiguity: bool,
+    ambiguity: Option<(NameBinding<'ra>, AmbiguityKind, bool /*warning*/)>,
     expansion: LocalExpnId,
     span: Span,
     vis: Visibility<DefId>,
@@ -941,7 +938,7 @@ impl<'ra> NameBindingData<'ra> {
         self: NameBinding<'ra>,
     ) -> Option<(NameBinding<'ra>, NameBinding<'ra>, AmbiguityKind)> {
         match self.ambiguity {
-            Some((ambig_binding, ambig_kind)) => Some((self, ambig_binding, ambig_kind)),
+            Some((ambig_binding, ambig_kind, _)) => Some((self, ambig_binding, ambig_kind)),
             None => match self.kind {
                 NameBindingKind::Import { binding, .. } => binding.descent_to_ambiguity(),
                 _ => None,
@@ -953,14 +950,6 @@ impl<'ra> NameBindingData<'ra> {
         self.ambiguity.is_some()
             || match self.kind {
                 NameBindingKind::Import { binding, .. } => binding.is_ambiguity_recursive(),
-                _ => false,
-            }
-    }
-
-    fn warn_ambiguity_recursive(&self) -> bool {
-        self.warn_ambiguity
-            || match self.kind {
-                NameBindingKind::Import { binding, .. } => binding.warn_ambiguity_recursive(),
                 _ => false,
             }
     }
@@ -1350,7 +1339,6 @@ impl<'ra> ResolverArenas<'ra> {
         self.alloc_name_binding(NameBindingData {
             kind: NameBindingKind::Res(res),
             ambiguity: None,
-            warn_ambiguity: false,
             vis,
             span,
             expansion,
@@ -2055,17 +2043,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     }
 
     fn record_use(&mut self, ident: Ident, used_binding: NameBinding<'ra>, used: Used) {
-        self.record_use_inner(ident, used_binding, used, used_binding.warn_ambiguity);
-    }
-
-    fn record_use_inner(
-        &mut self,
-        ident: Ident,
-        used_binding: NameBinding<'ra>,
-        used: Used,
-        warn_ambiguity: bool,
-    ) {
-        if let Some((b2, kind)) = used_binding.ambiguity {
+        if let Some((b2, kind, warning)) = used_binding.ambiguity {
             let ambiguity_error = AmbiguityError {
                 kind,
                 ident,
@@ -2073,7 +2051,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 b2,
                 misc1: AmbiguityErrorMisc::None,
                 misc2: AmbiguityErrorMisc::None,
-                warning: warn_ambiguity,
+                warning,
             };
             if !self.matches_previous_ambiguity_error(&ambiguity_error) {
                 // avoid duplicated span information to be emit out
@@ -2122,12 +2100,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 self.used_imports.insert(id);
             }
             self.add_to_glob_map(import, ident);
-            self.record_use_inner(
-                ident,
-                binding,
-                Used::Other,
-                warn_ambiguity || binding.warn_ambiguity,
-            );
+            self.record_use(ident, binding, Used::Other);
         }
     }
 
