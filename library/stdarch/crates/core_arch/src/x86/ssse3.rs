@@ -16,7 +16,8 @@ use stdarch_test::assert_instr;
 #[target_feature(enable = "ssse3")]
 #[cfg_attr(test, assert_instr(pabsb))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm_abs_epi8(a: __m128i) -> __m128i {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm_abs_epi8(a: __m128i) -> __m128i {
     unsafe {
         let a = a.as_i8x16();
         let zero = i8x16::ZERO;
@@ -34,7 +35,8 @@ pub fn _mm_abs_epi8(a: __m128i) -> __m128i {
 #[target_feature(enable = "ssse3")]
 #[cfg_attr(test, assert_instr(pabsw))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm_abs_epi16(a: __m128i) -> __m128i {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm_abs_epi16(a: __m128i) -> __m128i {
     unsafe {
         let a = a.as_i16x8();
         let zero = i16x8::ZERO;
@@ -52,7 +54,8 @@ pub fn _mm_abs_epi16(a: __m128i) -> __m128i {
 #[target_feature(enable = "ssse3")]
 #[cfg_attr(test, assert_instr(pabsd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm_abs_epi32(a: __m128i) -> __m128i {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm_abs_epi32(a: __m128i) -> __m128i {
     unsafe {
         let a = a.as_i32x4();
         let zero = i32x4::ZERO;
@@ -104,7 +107,8 @@ pub fn _mm_shuffle_epi8(a: __m128i, b: __m128i) -> __m128i {
 #[cfg_attr(test, assert_instr(palignr, IMM8 = 15))]
 #[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm_alignr_epi8<const IMM8: i32>(a: __m128i, b: __m128i) -> __m128i {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm_alignr_epi8<const IMM8: i32>(a: __m128i, b: __m128i) -> __m128i {
     static_assert_uimm_bits!(IMM8, 8);
     // If palignr is shifting the pair of vectors more than the size of two
     // lanes, emit zero.
@@ -163,7 +167,8 @@ pub fn _mm_alignr_epi8<const IMM8: i32>(a: __m128i, b: __m128i) -> __m128i {
 #[target_feature(enable = "ssse3")]
 #[cfg_attr(test, assert_instr(phaddw))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm_hadd_epi16(a: __m128i, b: __m128i) -> __m128i {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm_hadd_epi16(a: __m128i, b: __m128i) -> __m128i {
     let a = a.as_i16x8();
     let b = b.as_i16x8();
     unsafe {
@@ -194,7 +199,8 @@ pub fn _mm_hadds_epi16(a: __m128i, b: __m128i) -> __m128i {
 #[target_feature(enable = "ssse3")]
 #[cfg_attr(test, assert_instr(phaddd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm_hadd_epi32(a: __m128i, b: __m128i) -> __m128i {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm_hadd_epi32(a: __m128i, b: __m128i) -> __m128i {
     let a = a.as_i32x4();
     let b = b.as_i32x4();
     unsafe {
@@ -212,7 +218,8 @@ pub fn _mm_hadd_epi32(a: __m128i, b: __m128i) -> __m128i {
 #[target_feature(enable = "ssse3")]
 #[cfg_attr(test, assert_instr(phsubw))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm_hsub_epi16(a: __m128i, b: __m128i) -> __m128i {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm_hsub_epi16(a: __m128i, b: __m128i) -> __m128i {
     let a = a.as_i16x8();
     let b = b.as_i16x8();
     unsafe {
@@ -244,7 +251,8 @@ pub fn _mm_hsubs_epi16(a: __m128i, b: __m128i) -> __m128i {
 #[target_feature(enable = "ssse3")]
 #[cfg_attr(test, assert_instr(phsubd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm_hsub_epi32(a: __m128i, b: __m128i) -> __m128i {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm_hsub_epi32(a: __m128i, b: __m128i) -> __m128i {
     let a = a.as_i32x4();
     let b = b.as_i32x4();
     unsafe {
@@ -353,24 +361,25 @@ unsafe extern "C" {
 
 #[cfg(test)]
 mod tests {
+    use crate::core_arch::assert_eq_const as assert_eq;
     use stdarch_test::simd_test;
 
     use crate::core_arch::x86::*;
 
     #[simd_test(enable = "ssse3")]
-    unsafe fn test_mm_abs_epi8() {
+    const unsafe fn test_mm_abs_epi8() {
         let r = _mm_abs_epi8(_mm_set1_epi8(-5));
         assert_eq_m128i(r, _mm_set1_epi8(5));
     }
 
     #[simd_test(enable = "ssse3")]
-    unsafe fn test_mm_abs_epi16() {
+    const unsafe fn test_mm_abs_epi16() {
         let r = _mm_abs_epi16(_mm_set1_epi16(-5));
         assert_eq_m128i(r, _mm_set1_epi16(5));
     }
 
     #[simd_test(enable = "ssse3")]
-    unsafe fn test_mm_abs_epi32() {
+    const unsafe fn test_mm_abs_epi32() {
         let r = _mm_abs_epi32(_mm_set1_epi32(-5));
         assert_eq_m128i(r, _mm_set1_epi32(5));
     }
@@ -400,7 +409,7 @@ mod tests {
     }
 
     #[simd_test(enable = "ssse3")]
-    unsafe fn test_mm_alignr_epi8() {
+    const unsafe fn test_mm_alignr_epi8() {
         #[rustfmt::skip]
         let a = _mm_setr_epi8(
             1, 2, 3, 4, 5, 6, 7, 8,
@@ -440,7 +449,7 @@ mod tests {
     }
 
     #[simd_test(enable = "ssse3")]
-    unsafe fn test_mm_hadd_epi16() {
+    const unsafe fn test_mm_hadd_epi16() {
         let a = _mm_setr_epi16(1, 2, 3, 4, 5, 6, 7, 8);
         let b = _mm_setr_epi16(4, 128, 4, 3, 24, 12, 6, 19);
         let expected = _mm_setr_epi16(3, 7, 11, 15, 132, 7, 36, 25);
@@ -490,7 +499,7 @@ mod tests {
     }
 
     #[simd_test(enable = "ssse3")]
-    unsafe fn test_mm_hadd_epi32() {
+    const unsafe fn test_mm_hadd_epi32() {
         let a = _mm_setr_epi32(1, 2, 3, 4);
         let b = _mm_setr_epi32(4, 128, 4, 3);
         let expected = _mm_setr_epi32(3, 7, 132, 7);
@@ -506,7 +515,7 @@ mod tests {
     }
 
     #[simd_test(enable = "ssse3")]
-    unsafe fn test_mm_hsub_epi16() {
+    const unsafe fn test_mm_hsub_epi16() {
         let a = _mm_setr_epi16(1, 2, 3, 4, 5, 6, 7, 8);
         let b = _mm_setr_epi16(4, 128, 4, 3, 24, 12, 6, 19);
         let expected = _mm_setr_epi16(-1, -1, -1, -1, -124, 1, 12, -13);
@@ -556,7 +565,7 @@ mod tests {
     }
 
     #[simd_test(enable = "ssse3")]
-    unsafe fn test_mm_hsub_epi32() {
+    const unsafe fn test_mm_hsub_epi32() {
         let a = _mm_setr_epi32(1, 2, 3, 4);
         let b = _mm_setr_epi32(4, 128, 4, 3);
         let expected = _mm_setr_epi32(-1, -1, -124, 1);

@@ -20,24 +20,28 @@ pub(super) fn check<'tcx>(
     let title;
     let or_arg_content: Span;
 
-    if ty.is_diag_item(cx, sym::Option) {
-        title = "found `.or(Some(…)).unwrap()`";
-        if let Some(content) = get_content_if_ctor_matches(cx, or_arg, LangItem::OptionSome) {
-            or_arg_content = content;
-        } else {
+    match ty.opt_diag_name(cx) {
+        Some(sym::Option) => {
+            title = "found `.or(Some(…)).unwrap()`";
+            if let Some(content) = get_content_if_ctor_matches(cx, or_arg, LangItem::OptionSome) {
+                or_arg_content = content;
+            } else {
+                return;
+            }
+        },
+        Some(sym::Result) => {
+            title = "found `.or(Ok(…)).unwrap()`";
+            if let Some(content) = get_content_if_ctor_matches(cx, or_arg, LangItem::ResultOk) {
+                or_arg_content = content;
+            } else {
+                return;
+            }
+        },
+        _ => {
+            // Someone has implemented a struct with .or(...).unwrap() chaining,
+            // but it's not an Option or a Result, so bail
             return;
-        }
-    } else if ty.is_diag_item(cx, sym::Result) {
-        title = "found `.or(Ok(…)).unwrap()`";
-        if let Some(content) = get_content_if_ctor_matches(cx, or_arg, LangItem::ResultOk) {
-            or_arg_content = content;
-        } else {
-            return;
-        }
-    } else {
-        // Someone has implemented a struct with .or(...).unwrap() chaining,
-        // but it's not an Option or a Result, so bail
-        return;
+        },
     }
 
     let mut applicability = Applicability::MachineApplicable;

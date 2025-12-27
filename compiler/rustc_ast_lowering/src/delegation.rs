@@ -48,11 +48,12 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::Target;
 use rustc_hir::attrs::{AttributeKind, InlineAttr};
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::span_bug;
-use rustc_middle::ty::{Asyncness, DelegationFnSigAttrs, ResolverAstLowering};
+use rustc_middle::ty::{Asyncness, DelegationAttrs, DelegationFnSigAttrs, ResolverAstLowering};
 use rustc_span::symbol::kw;
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol};
+use smallvec::SmallVec;
 use {rustc_ast as ast, rustc_hir as hir};
 
 use super::{GenericArgsMode, ImplTraitContext, LoweringContext, ParamMode};
@@ -66,24 +67,24 @@ pub(crate) struct DelegationResults<'hir> {
     pub generics: &'hir hir::Generics<'hir>,
 }
 
-struct AttributeAdditionInfo {
+struct AttrAdditionInfo {
     pub equals: fn(&hir::Attribute) -> bool,
-    pub kind: AttributeAdditionKind,
+    pub kind: AttrAdditionKind,
 }
 
-enum AttributeAdditionKind {
+enum AttrAdditionKind {
     Default { factory: fn(Span) -> hir::Attribute },
     Inherit { flag: DelegationFnSigAttrs, factory: fn(Span, &hir::Attribute) -> hir::Attribute },
 }
 
 const PARENT_ID: hir::ItemLocalId = hir::ItemLocalId::ZERO;
 
-static ATTRIBUTES_ADDITIONS: &[AttributeAdditionInfo] = &[
-    AttributeAdditionInfo {
+static ATTRS_ADDITIONS: &[AttrAdditionInfo] = &[
+    AttrAdditionInfo {
         equals: |a| matches!(a, hir::Attribute::Parsed(AttributeKind::MustUse { .. })),
-        kind: AttributeAdditionKind::Inherit {
-            factory: |span, original_attribute| {
-                let reason = match original_attribute {
+        kind: AttrAdditionKind::Inherit {
+            factory: |span, original_attr| {
+                let reason = match original_attr {
                     hir::Attribute::Parsed(AttributeKind::MustUse { reason, .. }) => *reason,
                     _ => None,
                 };
@@ -93,13 +94,40 @@ static ATTRIBUTES_ADDITIONS: &[AttributeAdditionInfo] = &[
             flag: DelegationFnSigAttrs::MUST_USE,
         },
     },
-    AttributeAdditionInfo {
+    AttrAdditionInfo {
         equals: |a| matches!(a, hir::Attribute::Parsed(AttributeKind::Inline(..))),
-        kind: AttributeAdditionKind::Default {
+        kind: AttrAdditionKind::Default {
             factory: |span| hir::Attribute::Parsed(AttributeKind::Inline(InlineAttr::Hint, span)),
         },
     },
 ];
+
+type DelegationIdsVec = SmallVec<[DefId; 1]>;
+
+// As delegations can now refer to another delegation, we have a delegation path
+// of the following type: reuse (current delegation) <- reuse (delegee_id) <- ... <- reuse <- function (root_function_id).
+// In its most basic and widely used form: reuse (current delegation) <- function (delegee_id, root_function_id)
+struct DelegationIds {
+    path: DelegationIdsVec,
+}
+
+impl DelegationIds {
+    fn new(path: DelegationIdsVec) -> Self {
+        assert!(!path.is_empty());
+        Self { path }
+    }
+
+    // Id of the first function in (non)local crate that is being reused
+    fn root_function_id(&self) -> DefId {
+        *self.path.last().expect("Ids vector can't be empty")
+    }
+
+    // Id of the first definition which is being reused,
+    // can be either function, in this case `root_id == delegee_id`, or other delegation
+    fn delegee_id(&self) -> DefId {
+        *self.path.first().expect("Ids vector can't be empty")
+    }
+}
 
 impl<'hir> LoweringContext<'_, 'hir> {
     fn is_method(&self, def_id: DefId, span: Span) -> bool {
@@ -124,19 +152,36 @@ impl<'hir> LoweringContext<'_, 'hir> {
     ) -> DelegationResults<'hir> {
         let span = self.lower_span(delegation.path.segments.last().unwrap().ident.span);
 
-        let sig_id = self.get_delegation_sig_id(
-            self.resolver.delegation_sig_resolution_nodes[&self.local_def_id(item_id)],
+        let ids = self.get_delegation_ids(
+            self.resolver.delegation_infos[&self.local_def_id(item_id)].resolution_node,
             span,
         );
 
-        match sig_id {
-            Ok(sig_id) => {
-                self.add_attributes_if_needed(span, sig_id);
+        match ids {
+            Ok(ids) => {
+                self.add_attrs_if_needed(span, &ids);
 
-                let is_method = self.is_method(sig_id, span);
-                let (param_count, c_variadic) = self.param_count(sig_id);
-                let decl = self.lower_delegation_decl(sig_id, param_count, c_variadic, span);
-                let sig = self.lower_delegation_sig(sig_id, decl, span);
+                let delegee_id = ids.delegee_id();
+                let root_function_id = ids.root_function_id();
+
+                // `is_method` is used to choose the name of the first parameter (`self` or `arg0`),
+                // if the original function is not a method (without `self`), then it can not be added
+                // during chain of reuses, so we use `root_function_id` here
+                let is_method = self.is_method(root_function_id, span);
+
+                // Here we use `root_function_id` as we can not get params information out of potential delegation reuse,
+                // we need a function to extract this information
+                let (param_count, c_variadic) = self.param_count(root_function_id);
+
+                // Here we use `delegee_id`, as this id will then be used to calculate parent for generics
+                // inheritance, and we want this id to point on a delegee, not on the original
+                // function (see https://github.com/rust-lang/rust/issues/150152#issuecomment-3674834654)
+                let decl = self.lower_delegation_decl(delegee_id, param_count, c_variadic, span);
+
+                // Here we pass `root_function_id` as we want to inherit signature (including consts, async)
+                // from the root function that started delegation
+                let sig = self.lower_delegation_sig(root_function_id, decl, span);
+
                 let body_id = self.lower_delegation_body(delegation, is_method, param_count, span);
                 let ident = self.lower_ident(delegation.ident);
                 let generics = self.lower_delegation_generics(span);
@@ -146,36 +191,36 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }
     }
 
-    fn add_attributes_if_needed(&mut self, span: Span, sig_id: DefId) {
-        let new_attributes = self.create_new_attributes(
-            ATTRIBUTES_ADDITIONS,
-            span,
-            sig_id,
-            self.attrs.get(&PARENT_ID),
-        );
+    fn add_attrs_if_needed(&mut self, span: Span, ids: &DelegationIds) {
+        let new_attrs =
+            self.create_new_attrs(ATTRS_ADDITIONS, span, ids, self.attrs.get(&PARENT_ID));
 
-        if new_attributes.is_empty() {
+        if new_attrs.is_empty() {
             return;
         }
 
-        let new_arena_allocated_attributes = match self.attrs.get(&PARENT_ID) {
+        let new_arena_allocated_attrs = match self.attrs.get(&PARENT_ID) {
             Some(existing_attrs) => self.arena.alloc_from_iter(
-                existing_attrs.iter().map(|a| a.clone()).chain(new_attributes.into_iter()),
+                existing_attrs.iter().map(|a| a.clone()).chain(new_attrs.into_iter()),
             ),
-            None => self.arena.alloc_from_iter(new_attributes.into_iter()),
+            None => self.arena.alloc_from_iter(new_attrs.into_iter()),
         };
 
-        self.attrs.insert(PARENT_ID, new_arena_allocated_attributes);
+        self.attrs.insert(PARENT_ID, new_arena_allocated_attrs);
     }
 
-    fn create_new_attributes(
+    fn create_new_attrs(
         &self,
-        candidate_additions: &[AttributeAdditionInfo],
+        candidate_additions: &[AttrAdditionInfo],
         span: Span,
-        sig_id: DefId,
+        ids: &DelegationIds,
         existing_attrs: Option<&&[hir::Attribute]>,
     ) -> Vec<hir::Attribute> {
-        let local_original_attributes = self.parse_local_original_attributes(sig_id);
+        let defs_orig_attrs = ids
+            .path
+            .iter()
+            .map(|def_id| (*def_id, self.parse_local_original_attrs(*def_id)))
+            .collect::<Vec<_>>();
 
         candidate_additions
             .iter()
@@ -189,65 +234,81 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 }
 
                 match addition_info.kind {
-                    AttributeAdditionKind::Default { factory } => Some(factory(span)),
-                    AttributeAdditionKind::Inherit { flag, factory } => {
-                        let original_attribute = match sig_id.as_local() {
-                            Some(local_id) => self
-                                .resolver
-                                .delegation_fn_sigs
-                                .get(&local_id)
-                                .is_some_and(|sig| sig.attrs_flags.contains(flag))
-                                .then(|| {
-                                    local_original_attributes
-                                        .as_ref()
-                                        .map(|attrs| {
-                                            attrs
-                                                .iter()
-                                                .find(|base_attr| (addition_info.equals)(base_attr))
-                                        })
-                                        .flatten()
-                                })
-                                .flatten(),
-                            None => self
-                                .tcx
-                                .get_all_attrs(sig_id)
-                                .iter()
-                                .find(|base_attr| (addition_info.equals)(base_attr)),
-                        };
+                    AttrAdditionKind::Default { factory } => Some(factory(span)),
+                    AttrAdditionKind::Inherit { flag, factory } => {
+                        for (def_id, orig_attrs) in &defs_orig_attrs {
+                            let original_attr = match def_id.as_local() {
+                                Some(local_id) => self
+                                    .get_attrs(local_id)
+                                    .flags
+                                    .contains(flag)
+                                    .then(|| {
+                                        orig_attrs
+                                            .as_ref()
+                                            .map(|attrs| {
+                                                attrs.iter().find(|base_attr| {
+                                                    (addition_info.equals)(base_attr)
+                                                })
+                                            })
+                                            .flatten()
+                                    })
+                                    .flatten(),
+                                None => self
+                                    .tcx
+                                    .get_all_attrs(*def_id)
+                                    .iter()
+                                    .find(|base_attr| (addition_info.equals)(base_attr)),
+                            };
 
-                        original_attribute.map(|a| factory(span, a))
+                            if let Some(original_attr) = original_attr {
+                                return Some(factory(span, original_attr));
+                            }
+                        }
+
+                        None
                     }
                 }
             })
             .collect::<Vec<_>>()
     }
 
-    fn parse_local_original_attributes(&self, sig_id: DefId) -> Option<Vec<hir::Attribute>> {
-        if let Some(local_id) = sig_id.as_local()
-            && let Some(info) = self.resolver.delegation_fn_sigs.get(&local_id)
-            && !info.to_inherit_attrs.is_empty()
-        {
-            Some(AttributeParser::parse_limited_all(
-                self.tcx.sess,
-                info.to_inherit_attrs.as_slice(),
-                None,
-                Target::Fn,
-                DUMMY_SP,
-                DUMMY_NODE_ID,
-                Some(self.tcx.features()),
-                ShouldEmit::Nothing,
-            ))
+    fn parse_local_original_attrs(&self, def_id: DefId) -> Option<Vec<hir::Attribute>> {
+        if let Some(local_id) = def_id.as_local() {
+            let attrs = &self.get_attrs(local_id).to_inherit;
+
+            if !attrs.is_empty() {
+                return Some(AttributeParser::parse_limited_all(
+                    self.tcx.sess,
+                    attrs,
+                    None,
+                    Target::Fn,
+                    DUMMY_SP,
+                    DUMMY_NODE_ID,
+                    Some(self.tcx.features()),
+                    ShouldEmit::Nothing,
+                ));
+            }
+        }
+
+        None
+    }
+
+    fn get_attrs(&self, local_id: LocalDefId) -> &DelegationAttrs {
+        // local_id can correspond either to a function or other delegation
+        if let Some(fn_sig) = self.resolver.delegation_fn_sigs.get(&local_id) {
+            &fn_sig.attrs
         } else {
-            None
+            &self.resolver.delegation_infos[&local_id].attrs
         }
     }
 
-    fn get_delegation_sig_id(
+    fn get_delegation_ids(
         &self,
         mut node_id: NodeId,
         span: Span,
-    ) -> Result<DefId, ErrorGuaranteed> {
+    ) -> Result<DelegationIds, ErrorGuaranteed> {
         let mut visited: FxHashSet<NodeId> = Default::default();
+        let mut path: DelegationIdsVec = Default::default();
 
         loop {
             visited.insert(node_id);
@@ -262,14 +323,15 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ));
             };
 
+            path.push(def_id);
+
             // If def_id is in local crate and it corresponds to another delegation
             // it means that we refer to another delegation as a callee, so in order to obtain
             // a signature DefId we obtain NodeId of the callee delegation and try to get signature from it.
             if let Some(local_id) = def_id.as_local()
-                && let Some(next_node_id) =
-                    self.resolver.delegation_sig_resolution_nodes.get(&local_id)
+                && let Some(delegation_info) = self.resolver.delegation_infos.get(&local_id)
             {
-                node_id = *next_node_id;
+                node_id = delegation_info.resolution_node;
                 if visited.contains(&node_id) {
                     // We encountered a cycle in the resolution, or delegation callee refers to non-existent
                     // entity, in this case emit an error.
@@ -279,7 +341,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     });
                 }
             } else {
-                return Ok(def_id);
+                return Ok(DelegationIds::new(path));
             }
         }
     }
@@ -299,14 +361,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     // Function parameter count, including C variadic `...` if present.
-    fn param_count(&self, sig_id: DefId) -> (usize, bool /*c_variadic*/) {
-        if let Some(local_sig_id) = sig_id.as_local() {
+    fn param_count(&self, def_id: DefId) -> (usize, bool /*c_variadic*/) {
+        if let Some(local_sig_id) = def_id.as_local() {
             match self.resolver.delegation_fn_sigs.get(&local_sig_id) {
                 Some(sig) => (sig.param_count, sig.c_variadic),
                 None => (0, false),
             }
         } else {
-            let sig = self.tcx.fn_sig(sig_id).skip_binder().skip_binder();
+            let sig = self.tcx.fn_sig(def_id).skip_binder().skip_binder();
             (sig.inputs().len() + usize::from(sig.c_variadic), sig.c_variadic)
         }
     }
@@ -356,7 +418,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     // We are not forwarding the attributes, as the delegation fn sigs are collected on the ast,
                     // and here we need the hir attributes.
                     let default_safety =
-                        if sig.attrs_flags.contains(DelegationFnSigAttrs::TARGET_FEATURE)
+                        if sig.attrs.flags.contains(DelegationFnSigAttrs::TARGET_FEATURE)
                             || self.tcx.def_kind(parent) == DefKind::ForeignMod
                         {
                             hir::Safety::Unsafe

@@ -81,7 +81,9 @@ pub(super) fn check<'tcx>(
                     },
                     _ => return,
                 };
-            } else if let ExprKind::Index(_, index, _) = parent.kind {
+            } else if let ExprKind::Index(_, index, _) = parent.kind
+                && cx.typeck_results().expr_ty(index).is_usize()
+            {
                 app = Applicability::MaybeIncorrect;
                 let snip = snippet_with_applicability(cx, index.span, "_", &mut app);
                 sugg = format!("nth({snip}).unwrap()");

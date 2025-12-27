@@ -6,7 +6,7 @@
 //! [Wikipedia][wikipedia_bmi] provides a quick overview of the instructions
 //! available.
 //!
-//! [intel64_ref]: http://www.intel.de/content/dam/www/public/us/en/documents/manuals/64-ia-32-architectures-software-developer-instruction-set-reference-manual-325383.pdf
+//! [intel64_ref]: https://www.intel.com/content/dam/www/public/us/en/documents/manuals/64-ia-32-architectures-software-developer-instruction-set-reference-manual-325383.pdf
 //! [wikipedia_bmi]:
 //! https://en.wikipedia.org/wiki/Bit_Manipulation_Instruction_Sets#ABM_.28Advanced_Bit_Manipulation.29
 
@@ -25,7 +25,8 @@ use stdarch_test::assert_instr;
 #[cfg_attr(all(test, target_arch = "x86"), assert_instr(mul))]
 #[target_feature(enable = "bmi2")]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mulx_u32(a: u32, b: u32, hi: &mut u32) -> u32 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mulx_u32(a: u32, b: u32, hi: &mut u32) -> u32 {
     let result: u64 = (a as u64) * (b as u64);
     *hi = (result >> 32) as u32;
     result as u32
@@ -77,6 +78,7 @@ unsafe extern "C" {
 
 #[cfg(test)]
 mod tests {
+    use crate::core_arch::assert_eq_const as assert_eq;
     use stdarch_test::simd_test;
 
     use crate::core_arch::x86::*;
@@ -117,7 +119,7 @@ mod tests {
     }
 
     #[simd_test(enable = "bmi2")]
-    unsafe fn test_mulx_u32() {
+    const unsafe fn test_mulx_u32() {
         let a: u32 = 4_294_967_200;
         let b: u32 = 2;
         let mut hi = 0;

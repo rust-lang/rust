@@ -243,6 +243,12 @@ impl TestCx<'_> {
             cmd.env("__STD_DEBUG_ASSERTIONS_ENABLED", "1");
         }
 
+        cmd.env_remove("__STD_REMAP_DEBUGINFO_ENABLED");
+        if self.config.with_std_remap_debuginfo {
+            // Used for `run_make_support::env::std_remap_debuginfo_enabled`.
+            cmd.env("__STD_REMAP_DEBUGINFO_ENABLED", "1");
+        }
+
         // We don't want RUSTFLAGS set from the outside to interfere with
         // compiler flags set in the test cases:
         cmd.env_remove("RUSTFLAGS");

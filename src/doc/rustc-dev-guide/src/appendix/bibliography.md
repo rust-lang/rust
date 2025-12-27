@@ -1,7 +1,7 @@
 # Rust Bibliography
 
-This is a reading list of material relevant to Rust. It includes prior
-research that has - at one time or another - influenced the design of
+This is a reading list of material relevant to Rust.
+It includes prior research that has - at one time or another - influenced the design of
 Rust, as well as publications about Rust.
 
 ## Type system
@@ -44,8 +44,7 @@ Rust, as well as publications about Rust.
 
 ## Papers *about* Rust
 
-* [GPU Programming in Rust: Implementing High Level Abstractions in a Systems
-  Level
+* [GPU Programming in Rust: Implementing High Level Abstractions in a Systems Level
   Language](https://ieeexplore.ieee.org/document/6650903).
   Early GPU work by Eric Holk.
 * [Parallel closures: a new twist on an old
@@ -55,38 +54,46 @@ Rust, as well as publications about Rust.
   Language](https://dada.cs.washington.edu/research/tr/2015/03/UW-CSE-15-03-02.pdf).
   Early formalization of a subset of the type system, by Eric Reed.
 * [Experience Report: Developing the Servo Web Browser Engine using
-  Rust](https://arxiv.org/abs/1505.07383). By Lars Bergstrom.
+  Rust](https://arxiv.org/abs/1505.07383).
+  By Lars Bergstrom.
 * [Implementing a Generic Radix Trie in
-  Rust](https://michaelsproul.github.io/rust_radix_paper/rust-radix-sproul.pdf). Undergrad
-  paper by Michael Sproul.
+  Rust](https://michaelsproul.github.io/rust_radix_paper/rust-radix-sproul.pdf).
+  Undergrad paper by Michael Sproul.
 * [Reenix: Implementing a Unix-Like Operating System in
-  Rust](https://scialex.github.io/reenix.pdf). Undergrad paper by Alex
-  Light.
+  Rust](https://scialex.github.io/reenix.pdf).
+  Undergrad paper by Alex Light.
 * [Evaluation of performance and productivity metrics of potential programming languages in the HPC environment](https://github.com/1wilkens/thesis-ba).
-  Bachelor's thesis by Florian Wilkens. Compares C, Go and Rust.
+  Bachelor's thesis by Florian Wilkens.
+  Compares C, Go and Rust.
 * [Nom, a byte oriented, streaming, zero copy, parser combinators library
-  in Rust](http://spw15.langsec.org/papers/couprie-nom.pdf). By
-  Geoffroy Couprie, research for VLC.
+  in Rust](http://spw15.langsec.org/papers/couprie-nom.pdf).
+  By Geoffroy Couprie, research for VLC.
 * [Graph-Based Higher-Order Intermediate
-  Representation](https://compilers.cs.uni-saarland.de/papers/lkh15_cgo.pdf). An
-  experimental IR implemented in Impala, a Rust-like language.
-* [Code Refinement of Stencil
-  Codes](https://compilers.cs.uni-saarland.de/papers/ppl14_web.pdf). Another
-  paper using Impala.
+  Representation](https://compilers.cs.uni-saarland.de/papers/lkh15_cgo.pdf).
+  An experimental IR implemented in Impala, a Rust-like language.
+* [Code Refinement of Stencil Codes](https://compilers.cs.uni-saarland.de/papers/ppl14_web.pdf).
+  Another paper using Impala.
 * [Parallelization in Rust with fork-join and
-  friends](http://publications.lib.chalmers.se/records/fulltext/219016/219016.pdf). Linus
-  Farnstrand's master's thesis.
-* [Session Types for
-  Rust](https://munksgaard.me/papers/laumann-munksgaard-larsen.pdf). Philip
-  Munksgaard's master's thesis. Research for Servo.
+  friends](http://publications.lib.chalmers.se/records/fulltext/219016/219016.pdf).
+  Linus Farnstrand's master's thesis.
+* [Session Types for Rust](https://munksgaard.me/papers/laumann-munksgaard-larsen.pdf).
+  Philip Munksgaard's master's thesis.
+  Research for Servo.
 * [Ownership is Theft: Experiences Building an Embedded OS in Rust - Amit Levy, et. al.](https://amitlevy.com/papers/tock-plos2015.pdf)
-* [You can't spell trust without Rust](https://faultlore.com/blah/papers/thesis.pdf). Aria Beingessner's master's thesis.
-* [Rust-Bio: a fast and safe bioinformatics library](https://rust-bio.github.io/). Johannes Köster
-* [Safe, Correct, and Fast Low-Level Networking](https://csperkins.org/research/thesis-msci-clipsham.pdf). Robert Clipsham's master's thesis.
-* [Formalizing Rust traits](https://open.library.ubc.ca/cIRcle/collections/ubctheses/24/items/1.0220521). Jonatan Milewski's master's thesis.
+* [You can't spell trust without Rust](https://faultlore.com/blah/papers/thesis.pdf).
+  Aria Beingessner's master's thesis.
+* [Rust-Bio: a fast and safe bioinformatics library](https://rust-bio.github.io/).
+  Johannes Köster
+* [Safe, Correct, and Fast Low-Level Networking](https://csperkins.org/research/thesis-msci-clipsham.pdf).
+  Robert Clipsham's master's thesis.
+* [Formalizing Rust traits](https://open.library.ubc.ca/cIRcle/collections/ubctheses/24/items/1.0220521).
+  Jonatan Milewski's master's thesis.
 * [Rust as a Language for High Performance GC Implementation](https://dl.acm.org/doi/pdf/10.1145/3241624.2926707)
-* [Simple Verification of Rust Programs via Functional Purification](https://github.com/Kha/electrolysis). Sebastian Ullrich's master's thesis.
+* [Simple Verification of Rust Programs via Functional Purification](https://github.com/Kha/electrolysis).
+  Sebastian Ullrich's master's thesis.
 * [Writing parsers like it is 2017](http://spw17.langsec.org/papers/chifflier-parsing-in-2017.pdf) Pierre Chifflier and Geoffroy Couprie for the Langsec Workshop
 * [The Case for Writing a Kernel in Rust](https://www.tockos.org/assets/papers/rust-kernel-apsys2017.pdf)
 * [RustBelt: Securing the Foundations of the Rust Programming Language](https://plv.mpi-sws.org/rustbelt/popl18/)
-* [Oxide: The Essence of Rust](https://arxiv.org/abs/1903.00982). By Aaron Weiss, Olek Gierczak, Daniel Patterson, Nicholas D. Matsakis, and Amal Ahmed.
+* [Oxide: The Essence of Rust](https://arxiv.org/abs/1903.00982).
+  By Aaron Weiss, Olek Gierczak, Daniel Patterson, Nicholas D.
+  Matsakis, and Amal Ahmed.

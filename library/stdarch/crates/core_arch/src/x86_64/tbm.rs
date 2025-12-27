@@ -6,7 +6,7 @@
 //! [Wikipedia][wikipedia_bmi] provides a quick overview of the available
 //! instructions.
 //!
-//! [amd64_ref]: http://support.amd.com/TechDocs/24594.pdf
+//! [amd64_ref]: https://docs.amd.com/v/u/en-US/24594_3.37
 //! [wikipedia_bmi]:
 //! https://en.wikipedia.org/wiki/Bit_Manipulation_Instruction_Sets#ABM_.28Advanced_Bit_Manipulation.29
 
@@ -42,7 +42,8 @@ pub fn _bextri_u64<const CONTROL: u64>(a: u64) -> u64 {
 #[target_feature(enable = "tbm")]
 #[cfg_attr(test, assert_instr(blcfill))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _blcfill_u64(x: u64) -> u64 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _blcfill_u64(x: u64) -> u64 {
     x & x.wrapping_add(1)
 }
 
@@ -53,7 +54,8 @@ pub fn _blcfill_u64(x: u64) -> u64 {
 #[target_feature(enable = "tbm")]
 #[cfg_attr(test, assert_instr(blci))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _blci_u64(x: u64) -> u64 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _blci_u64(x: u64) -> u64 {
     x | !x.wrapping_add(1)
 }
 
@@ -64,7 +66,8 @@ pub fn _blci_u64(x: u64) -> u64 {
 #[target_feature(enable = "tbm")]
 #[cfg_attr(test, assert_instr(blcic))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _blcic_u64(x: u64) -> u64 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _blcic_u64(x: u64) -> u64 {
     !x & x.wrapping_add(1)
 }
 
@@ -76,7 +79,8 @@ pub fn _blcic_u64(x: u64) -> u64 {
 #[target_feature(enable = "tbm")]
 #[cfg_attr(test, assert_instr(blcmsk))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _blcmsk_u64(x: u64) -> u64 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _blcmsk_u64(x: u64) -> u64 {
     x ^ x.wrapping_add(1)
 }
 
@@ -87,7 +91,8 @@ pub fn _blcmsk_u64(x: u64) -> u64 {
 #[target_feature(enable = "tbm")]
 #[cfg_attr(test, assert_instr(blcs))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _blcs_u64(x: u64) -> u64 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _blcs_u64(x: u64) -> u64 {
     x | x.wrapping_add(1)
 }
 
@@ -98,7 +103,8 @@ pub fn _blcs_u64(x: u64) -> u64 {
 #[target_feature(enable = "tbm")]
 #[cfg_attr(test, assert_instr(blsfill))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _blsfill_u64(x: u64) -> u64 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _blsfill_u64(x: u64) -> u64 {
     x | x.wrapping_sub(1)
 }
 
@@ -109,7 +115,8 @@ pub fn _blsfill_u64(x: u64) -> u64 {
 #[target_feature(enable = "tbm")]
 #[cfg_attr(test, assert_instr(blsic))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _blsic_u64(x: u64) -> u64 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _blsic_u64(x: u64) -> u64 {
     !x | x.wrapping_sub(1)
 }
 
@@ -121,7 +128,8 @@ pub fn _blsic_u64(x: u64) -> u64 {
 #[target_feature(enable = "tbm")]
 #[cfg_attr(test, assert_instr(t1mskc))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _t1mskc_u64(x: u64) -> u64 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _t1mskc_u64(x: u64) -> u64 {
     !x | x.wrapping_add(1)
 }
 
@@ -133,12 +141,14 @@ pub fn _t1mskc_u64(x: u64) -> u64 {
 #[target_feature(enable = "tbm")]
 #[cfg_attr(test, assert_instr(tzmsk))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _tzmsk_u64(x: u64) -> u64 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _tzmsk_u64(x: u64) -> u64 {
     !x & x.wrapping_sub(1)
 }
 
 #[cfg(test)]
 mod tests {
+    use crate::core_arch::assert_eq_const as assert_eq;
     use stdarch_test::simd_test;
 
     use crate::core_arch::x86_64::*;
@@ -149,13 +159,13 @@ mod tests {
     }
 
     #[simd_test(enable = "tbm")]
-    unsafe fn test_blcfill_u64() {
+    const unsafe fn test_blcfill_u64() {
         assert_eq!(_blcfill_u64(0b0101_0111u64), 0b0101_0000u64);
         assert_eq!(_blcfill_u64(0b1111_1111u64), 0u64);
     }
 
     #[simd_test(enable = "tbm")]
-    unsafe fn test_blci_u64() {
+    const unsafe fn test_blci_u64() {
         assert_eq!(
             _blci_u64(0b0101_0000u64),
             0b1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1110u64
@@ -167,25 +177,25 @@ mod tests {
     }
 
     #[simd_test(enable = "tbm")]
-    unsafe fn test_blcic_u64() {
+    const unsafe fn test_blcic_u64() {
         assert_eq!(_blcic_u64(0b0101_0001u64), 0b0000_0010u64);
         assert_eq!(_blcic_u64(0b1111_1111u64), 0b1_0000_0000u64);
     }
 
     #[simd_test(enable = "tbm")]
-    unsafe fn test_blcmsk_u64() {
+    const unsafe fn test_blcmsk_u64() {
         assert_eq!(_blcmsk_u64(0b0101_0001u64), 0b0000_0011u64);
         assert_eq!(_blcmsk_u64(0b1111_1111u64), 0b1_1111_1111u64);
     }
 
     #[simd_test(enable = "tbm")]
-    unsafe fn test_blcs_u64() {
+    const unsafe fn test_blcs_u64() {
         assert_eq!(_blcs_u64(0b0101_0001u64), 0b0101_0011u64);
         assert_eq!(_blcs_u64(0b1111_1111u64), 0b1_1111_1111u64);
     }
 
     #[simd_test(enable = "tbm")]
-    unsafe fn test_blsfill_u64() {
+    const unsafe fn test_blsfill_u64() {
         assert_eq!(_blsfill_u64(0b0101_0100u64), 0b0101_0111u64);
         assert_eq!(
             _blsfill_u64(0u64),
@@ -194,7 +204,7 @@ mod tests {
     }
 
     #[simd_test(enable = "tbm")]
-    unsafe fn test_blsic_u64() {
+    const unsafe fn test_blsic_u64() {
         assert_eq!(
             _blsic_u64(0b0101_0100u64),
             0b1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1011u64
@@ -206,7 +216,7 @@ mod tests {
     }
 
     #[simd_test(enable = "tbm")]
-    unsafe fn test_t1mskc_u64() {
+    const unsafe fn test_t1mskc_u64() {
         assert_eq!(
             _t1mskc_u64(0b0101_0111u64),
             0b1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1000u64
@@ -218,7 +228,7 @@ mod tests {
     }
 
     #[simd_test(enable = "tbm")]
-    unsafe fn test_tzmsk_u64() {
+    const unsafe fn test_tzmsk_u64() {
         assert_eq!(_tzmsk_u64(0b0101_1000u64), 0b0000_0111u64);
         assert_eq!(_tzmsk_u64(0b0101_1001u64), 0b0000_0000u64);
     }

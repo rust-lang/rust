@@ -6,7 +6,7 @@ set -ex
 
 export RUSTFLAGS="${RUSTFLAGS} -D warnings -Z merge-functions=disabled -Z verify-llvm-ir"
 export HOST_RUSTFLAGS="${RUSTFLAGS}"
-export PROFILE="${PROFILE:="--profile=release"}"
+export PROFILE="${PROFILE:="release"}"
 
 case ${TARGET} in
     # On 32-bit use a static relocation model which avoids some extra
@@ -56,7 +56,7 @@ case ${TARGET} in
 
     aarch64_be-unknown-linux-gnu*)
         TEST_CPPFLAGS="-fuse-ld=lld"
-        TEST_SKIP_INTRINSICS=crates/intrinsic-test/missing_aarch64.txt
+        TEST_SKIP_INTRINSICS=crates/intrinsic-test/missing_aarch64_be.txt
         TEST_CXX_COMPILER="clang++"
         TEST_RUNNER="${CARGO_TARGET_AARCH64_BE_UNKNOWN_LINUX_GNU_RUNNER}"
         : "${TEST_SAMPLE_INTRINSICS_PERCENTAGE:=100}"
@@ -75,7 +75,7 @@ case ${TARGET} in
         TEST_CXX_COMPILER="clang++"
         TEST_RUNNER="${CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUNNER}"
         TEST_SKIP_INTRINSICS=crates/intrinsic-test/missing_x86.txt
-        : "${TEST_SAMPLE_INTRINSICS_PERCENTAGE:=5}"
+        : "${TEST_SAMPLE_INTRINSICS_PERCENTAGE:=20}"
         ;;
     *)
         ;;
@@ -85,27 +85,29 @@ esac
 # Arm specific
 case "${TARGET}" in
     aarch64-unknown-linux-gnu*|armv7-unknown-linux-gnueabihf*)
-        CPPFLAGS="${TEST_CPPFLAGS}" RUSTFLAGS="${HOST_RUSTFLAGS}" RUST_LOG=info \
-            cargo run "${INTRINSIC_TEST}" "${PROFILE}" \
+        CPPFLAGS="${TEST_CPPFLAGS}" RUSTFLAGS="${HOST_RUSTFLAGS}" RUST_LOG=warn \
+            cargo run "${INTRINSIC_TEST}" --release  \
             --bin intrinsic-test -- intrinsics_data/arm_intrinsics.json \
             --runner "${TEST_RUNNER}" \
             --cppcompiler "${TEST_CXX_COMPILER}" \
             --skip "${TEST_SKIP_INTRINSICS}" \
             --target "${TARGET}" \
+            --profile "${PROFILE}" \
             --sample-percentage "${TEST_SAMPLE_INTRINSICS_PERCENTAGE}"
         ;;
 
     aarch64_be-unknown-linux-gnu*)
-        CPPFLAGS="${TEST_CPPFLAGS}" RUSTFLAGS="${HOST_RUSTFLAGS}" RUST_LOG=info \
-            cargo run "${INTRINSIC_TEST}" "${PROFILE}"  \
+        CPPFLAGS="${TEST_CPPFLAGS}" RUSTFLAGS="${HOST_RUSTFLAGS}" RUST_LOG=warn \
+            cargo run "${INTRINSIC_TEST}" --release  \
             --bin intrinsic-test -- intrinsics_data/arm_intrinsics.json \
             --runner "${TEST_RUNNER}" \
             --cppcompiler "${TEST_CXX_COMPILER}" \
             --skip "${TEST_SKIP_INTRINSICS}" \
             --target "${TARGET}" \
-            --sample-percentage "${TEST_SAMPLE_INTRINSICS_PERCENTAGE}" \
+            --profile "${PROFILE}" \
             --linker "${CARGO_TARGET_AARCH64_BE_UNKNOWN_LINUX_GNU_LINKER}" \
-            --cxx-toolchain-dir "${AARCH64_BE_TOOLCHAIN}"
+            --cxx-toolchain-dir "${AARCH64_BE_TOOLCHAIN}" \
+            --sample-percentage "${TEST_SAMPLE_INTRINSICS_PERCENTAGE}"
         ;;
 
     x86_64-unknown-linux-gnu*)
@@ -114,13 +116,14 @@ case "${TARGET}" in
         # Hence the use of `env -u`.
         env -u CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUNNER \
             CPPFLAGS="${TEST_CPPFLAGS}" RUSTFLAGS="${HOST_RUSTFLAGS}" \
-            RUST_LOG=info RUST_BACKTRACE=1 \
-            cargo run "${INTRINSIC_TEST}" "${PROFILE}"  \
+            RUST_LOG=warn RUST_BACKTRACE=1 \
+            cargo run "${INTRINSIC_TEST}" --release \
             --bin intrinsic-test -- intrinsics_data/x86-intel.xml \
             --runner "${TEST_RUNNER}" \
             --skip "${TEST_SKIP_INTRINSICS}" \
             --cppcompiler "${TEST_CXX_COMPILER}" \
             --target "${TARGET}" \
+            --profile "${PROFILE}" \
             --sample-percentage "${TEST_SAMPLE_INTRINSICS_PERCENTAGE}"
         ;;
      *)

@@ -5,7 +5,7 @@ pub const NOTICE: &str = "\
 
 // Format f16 values (and vectors containing them) in a way that is consistent with C.
 pub const PLATFORM_RUST_DEFINITIONS: &str = r#"
-use std::arch::x86_64::*;
+use core_arch::arch::x86_64::*;
 
 #[inline]
 unsafe fn _mm_loadu_ph_to___m128i(mem_addr: *const f16) -> __m128i {
@@ -142,71 +142,6 @@ fn debug_simd_finish<T: core::fmt::Debug, const N: usize>(
     )
 }
 
-#[repr(transparent)]
-struct Hex<T>(T);
-
-impl<T: DebugHexF16> core::fmt::Debug for Hex<T> {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        <T as DebugHexF16>::fmt(&self.0, f)
-    }
-}
-
-fn debug_f16<T: DebugHexF16>(x: T) -> impl core::fmt::Debug {
-    Hex(x)
-}
-
-trait DebugHexF16 {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result;
-}
-
-impl DebugHexF16 for f16 {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "{:#06x?}", self.to_bits())
-    }
-}
-
-impl DebugHexF16 for __m128h {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        let array = unsafe { core::mem::transmute::<_, [Hex<f16>; 8]>(*self) };
-        debug_simd_finish(f, "__m128h", &array)
-    }
-}
-
-impl DebugHexF16 for __m128i {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        let array = unsafe { core::mem::transmute::<_, [Hex<f16>; 8]>(*self) };
-        debug_simd_finish(f, "__m128i", &array)
-    }
-}
-
-impl DebugHexF16 for __m256h {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        let array = unsafe { core::mem::transmute::<_, [Hex<f16>; 16]>(*self) };
-        debug_simd_finish(f, "__m256h", &array)
-    }
-}
-
-impl DebugHexF16 for __m256i {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        let array = unsafe { core::mem::transmute::<_, [Hex<f16>; 16]>(*self) };
-        debug_simd_finish(f, "__m256i", &array)
-    }
-}
-
-impl DebugHexF16 for __m512h {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        let array = unsafe { core::mem::transmute::<_, [Hex<f16>; 32]>(*self) };
-        debug_simd_finish(f, "__m512h", &array)
-    }
-}
-
-impl DebugHexF16 for __m512i {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        let array = unsafe { core::mem::transmute::<_, [Hex<f16>; 32]>(*self) };
-        debug_simd_finish(f, "__m512i", &array)
-    }
-}
-
 trait DebugAs<T> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result;
 }
@@ -232,7 +167,7 @@ macro_rules! impl_debug_as {
     };
 }
 
-impl_debug_as!(__m128i, "__m128i", 128, [u8, i8, u16, i16, u32, i32, u64, i64]);
+impl_debug_as!(__m128i, "__m128i", 128, [u8, i8, u16, i16, u32, i32, u64, i64, f16]);
 impl_debug_as!(__m256i, "__m256i", 256, [u8, i8, u16, i16, u32, i32, u64, i64]);
 impl_debug_as!(__m512i, "__m512i", 512, [u8, i8, u16, i16, u32, i32, u64, i64]);
 impl_debug_as!(__m128h, "__m128h", 128, [f32]);
@@ -280,12 +215,6 @@ pub const PLATFORM_C_FORWARD_DECLARATIONS: &str = r#"
     
     #define _mm512_extract_intrinsic_test_epi64(m, lane) \
         _mm_extract_epi64(_mm512_extracti64x2_epi64((m), (lane) / 2), (lane) % 2)
-    
-    #define _mm64_extract_intrinsic_test_epi8(m, lane) \
-        ((_mm_extract_pi16((m), (lane) / 2) >> (((lane) % 2) * 8)) & 0xFF)
-    
-    #define _mm64_extract_intrinsic_test_epi32(m, lane) \
-        _mm_cvtsi64_si32(_mm_srli_si64(m, (lane) * 32))
         
     // Load f16 (__m128h) and cast to integer (__m128i)
     #define _mm_loadu_ph_to___m128i(mem_addr) _mm_castph_si128(_mm_loadu_ph(mem_addr))
@@ -342,11 +271,7 @@ pub const PLATFORM_C_FORWARD_DECLARATIONS: &str = r#"
 pub const PLATFORM_C_DEFINITIONS: &str = r#"
 
 std::ostream& operator<<(std::ostream& os, _Float16 value) {
-    uint16_t temp = 0;
-    memcpy(&temp, &value, sizeof(_Float16));
-    std::stringstream ss;
-    ss << "0x" << std::setfill('0') << std::setw(4) << std::hex << temp;
-    os << ss.str();
+    os << static_cast<float>(value);
     return os;
 }
 

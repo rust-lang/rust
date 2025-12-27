@@ -13,7 +13,7 @@ LL -     1isize as i8;
 LL +     i8::try_from(1isize);
    |
 
-error: casting `isize` to `f32` causes a loss of precision (`isize` is 32 or 64 bits wide, but `f32`'s mantissa is only 23 bits wide)
+error: casting `isize` to `f32` may cause a loss of precision (`isize` can be up to 64 bits wide depending on the target architecture, but `f32`'s mantissa is only 23 bits wide)
   --> tests/ui/cast_size.rs:24:5
    |
 LL |     x0 as f32;
@@ -22,19 +22,19 @@ LL |     x0 as f32;
    = note: `-D clippy::cast-precision-loss` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::cast_precision_loss)]`
 
-error: casting `usize` to `f32` causes a loss of precision (`usize` is 32 or 64 bits wide, but `f32`'s mantissa is only 23 bits wide)
+error: casting `usize` to `f32` may cause a loss of precision (`usize` can be up to 64 bits wide depending on the target architecture, but `f32`'s mantissa is only 23 bits wide)
   --> tests/ui/cast_size.rs:26:5
    |
 LL |     x1 as f32;
    |     ^^^^^^^^^
 
-error: casting `isize` to `f64` causes a loss of precision on targets with 64-bit wide pointers (`isize` is 64 bits wide, but `f64`'s mantissa is only 52 bits wide)
+error: casting `isize` to `f64` may cause a loss of precision (`isize` can be up to 64 bits wide depending on the target architecture, but `f64`'s mantissa is only 52 bits wide)
   --> tests/ui/cast_size.rs:28:5
    |
 LL |     x0 as f64;
    |     ^^^^^^^^^
 
-error: casting `usize` to `f64` causes a loss of precision on targets with 64-bit wide pointers (`usize` is 64 bits wide, but `f64`'s mantissa is only 52 bits wide)
+error: casting `usize` to `f64` may cause a loss of precision (`usize` can be up to 64 bits wide depending on the target architecture, but `f64`'s mantissa is only 52 bits wide)
   --> tests/ui/cast_size.rs:30:5
    |
 LL |     x1 as f64;
@@ -165,13 +165,13 @@ error: casting `u32` to `isize` may wrap around the value on targets with 32-bit
 LL |     1u32 as isize;
    |     ^^^^^^^^^^^^^
 
-error: casting `i32` to `f32` causes a loss of precision (`i32` is 32 bits wide, but `f32`'s mantissa is only 23 bits wide)
+error: casting `i32` to `f32` may cause a loss of precision (`i32` is 32 bits wide, but `f32`'s mantissa is only 23 bits wide)
   --> tests/ui/cast_size.rs:61:5
    |
 LL |     999_999_999 as f32;
    |     ^^^^^^^^^^^^^^^^^^
 
-error: casting `usize` to `f64` causes a loss of precision on targets with 64-bit wide pointers (`usize` is 64 bits wide, but `f64`'s mantissa is only 52 bits wide)
+error: casting `usize` to `f64` may cause a loss of precision (`usize` can be up to 64 bits wide depending on the target architecture, but `f64`'s mantissa is only 52 bits wide)
   --> tests/ui/cast_size.rs:63:5
    |
 LL |     9_999_999_999_999_999usize as f64;

@@ -1025,15 +1025,26 @@ impl Builder<'_> {
                 if let Some(ref map_to) =
                     self.build.debuginfo_map_to(GitRepo::Rustc, RemapScheme::NonCompiler)
                 {
+                    // Tell the compiler which prefix was used for remapping the standard library
                     cargo.env("CFG_VIRTUAL_RUST_SOURCE_BASE_DIR", map_to);
                 }
 
                 if let Some(ref map_to) =
                     self.build.debuginfo_map_to(GitRepo::Rustc, RemapScheme::Compiler)
                 {
-                    // When building compiler sources, we want to apply the compiler remap scheme.
-                    cargo.env("RUSTC_DEBUGINFO_MAP", format!("compiler/={map_to}/compiler"));
+                    // Tell the compiler which prefix was used for remapping the compiler it-self
                     cargo.env("CFG_VIRTUAL_RUSTC_DEV_SOURCE_BASE_DIR", map_to);
+
+                    // When building compiler sources, we want to apply the compiler remap scheme.
+                    let map = [
+                        // Cargo use relative paths for workspace members, so let's remap those.
+                        format!("compiler/={map_to}/compiler"),
+                        // rustc creates absolute paths (in part bc of the `rust-src` unremap
+                        // and for working directory) so let's remap the build directory as well.
+                        format!("{}={map_to}", self.build.src.display()),
+                    ]
+                    .join("\t");
+                    cargo.env("RUSTC_DEBUGINFO_MAP", map);
                 }
             }
             Mode::Std
@@ -1044,7 +1055,16 @@ impl Builder<'_> {
                 if let Some(ref map_to) =
                     self.build.debuginfo_map_to(GitRepo::Rustc, RemapScheme::NonCompiler)
                 {
-                    cargo.env("RUSTC_DEBUGINFO_MAP", format!("library/={map_to}/library"));
+                    // When building the standard library sources, we want to apply the std remap scheme.
+                    let map = [
+                        // Cargo use relative paths for workspace members, so let's remap those.
+                        format!("library/={map_to}/library"),
+                        // rustc creates absolute paths (in part bc of the `rust-src` unremap
+                        // and for working directory) so let's remap the build directory as well.
+                        format!("{}={map_to}", self.build.src.display()),
+                    ]
+                    .join("\t");
+                    cargo.env("RUSTC_DEBUGINFO_MAP", map);
                 }
             }
         }

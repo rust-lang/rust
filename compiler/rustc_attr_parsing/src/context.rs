@@ -64,8 +64,9 @@ use crate::attributes::rustc_internal::{
     RustcLayoutScalarValidRangeEndParser, RustcLayoutScalarValidRangeStartParser,
     RustcLegacyConstGenericsParser, RustcLintDiagnosticsParser, RustcLintOptDenyFieldAccessParser,
     RustcLintOptTyParser, RustcLintQueryInstabilityParser,
-    RustcLintUntrackedQueryInformationParser, RustcMainParser, RustcNeverReturnsNullPointerParser,
-    RustcNoImplicitAutorefsParser, RustcObjectLifetimeDefaultParser, RustcScalableVectorParser,
+    RustcLintUntrackedQueryInformationParser, RustcMainParser, RustcMustImplementOneOfParser,
+    RustcNeverReturnsNullPointerParser, RustcNoImplicitAutorefsParser,
+    RustcObjectLifetimeDefaultParser, RustcScalableVectorParser,
     RustcSimdMonomorphizeLaneLimitParser,
 };
 use crate::attributes::semantics::MayDangleParser;
@@ -217,6 +218,7 @@ attribute_parsers!(
         Single<RustcLayoutScalarValidRangeStartParser>,
         Single<RustcLegacyConstGenericsParser>,
         Single<RustcLintOptDenyFieldAccessParser>,
+        Single<RustcMustImplementOneOfParser>,
         Single<RustcObjectLifetimeDefaultParser>,
         Single<RustcScalableVectorParser>,
         Single<RustcSimdMonomorphizeLaneLimitParser>,
@@ -490,6 +492,17 @@ impl<'f, 'sess: 'f, S: Stage> AcceptContext<'f, 'sess, S> {
             ArgParser::NameValue(nv) => nv.args_span(),
         };
         self.emit_parse_error(span, AttributeParseErrorReason::ExpectedList)
+    }
+
+    pub(crate) fn expected_list_with_num_args_or_more(
+        &self,
+        args: usize,
+        span: Span,
+    ) -> ErrorGuaranteed {
+        self.emit_parse_error(
+            span,
+            AttributeParseErrorReason::ExpectedListWithNumArgsOrMore { args },
+        )
     }
 
     pub(crate) fn expected_list_or_no_args(&self, span: Span) -> ErrorGuaranteed {
