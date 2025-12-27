@@ -1,3 +1,4 @@
+//@ aux-build:minicore.rs
 //@ assembly-output: emit-asm
 //@ revisions: riscv64 riscv64-zbb loongarch64
 //@ compile-flags: -C opt-level=3
@@ -14,6 +15,8 @@
 #![no_std]
 #![no_core]
 // FIXME: Migrate these code after PR #130693 is landed.
+extern crate minicore;
+use minicore::Ordering;
 
 #[lang = "pointee_sized"]
 pub trait PointeeSized {}
@@ -44,14 +47,6 @@ impl Neg for i8 {
     fn neg(self) -> Self::Output {
         -self
     }
-}
-
-#[lang = "Ordering"]
-#[repr(i8)]
-enum Ordering {
-    Less = -1,
-    Equal = 0,
-    Greater = 1,
 }
 
 #[rustc_intrinsic]
