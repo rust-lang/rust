@@ -1,3 +1,6 @@
+//@ compile-flags: -Zunstable-options
+//@ edition: future
+
 //@ has deprecated/index.html '//dt/span[@class="stab deprecated"]' 'Deprecated'
 //@ has - '//dd' 'Deprecated docs'
 
@@ -30,3 +33,8 @@ pub struct W;
 //      'Deprecated: shorthand reason: code$'
 #[deprecated = "shorthand reason: `code`"]
 pub struct X;
+
+//@ matches deprecated/struct.Y.html '//*[@class="stab deprecated"]//p[1]' 'multiple'
+//@ matches deprecated/struct.Y.html '//*[@class="stab deprecated"]//p[2]' 'paragraphs'
+#[deprecated = "multiple\n\nparagraphs"]
+pub struct Y;
