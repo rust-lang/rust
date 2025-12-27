@@ -75,7 +75,7 @@ pub use rustc_hash::{FxHashMap, FxHashSet, FxHasher};
 pub use ::line_index;
 
 /// `base_db` is normally also needed in places where `ide_db` is used, so this re-export is for convenience.
-pub use base_db::{self, FxIndexMap, FxIndexSet};
+pub use base_db::{self, FxIndexMap, FxIndexSet, LibraryRoots, LocalRoots};
 pub use span::{self, FileId};
 
 pub type FilePosition = FilePositionWrapper<FileId>;
@@ -200,10 +200,10 @@ impl RootDatabase {
         db.set_all_crates(Arc::new(Box::new([])));
         CrateGraphBuilder::default().set_in_db(&mut db);
         db.set_proc_macros_with_durability(Default::default(), Durability::MEDIUM);
-        _ = crate::symbol_index::LibraryRoots::builder(Default::default())
+        _ = base_db::LibraryRoots::builder(Default::default())
             .durability(Durability::MEDIUM)
             .new(&db);
-        _ = crate::symbol_index::LocalRoots::builder(Default::default())
+        _ = base_db::LocalRoots::builder(Default::default())
             .durability(Durability::MEDIUM)
             .new(&db);
         db.set_expand_proc_attr_macros_with_durability(false, Durability::HIGH);

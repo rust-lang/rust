@@ -836,7 +836,7 @@ impl<'db> SemanticsImpl<'db> {
     // FIXME: Type the return type
     /// Returns the range (pre-expansion) in the string literal corresponding to the resolution,
     /// absolute file range (post-expansion)
-    /// of the part in the format string, the corresponding string token and the resolution if it
+    /// of the part in the format string (post-expansion), the corresponding string token and the resolution if it
     /// exists.
     // FIXME: Remove this in favor of `check_for_format_args_template_with_file`
     pub fn check_for_format_args_template(

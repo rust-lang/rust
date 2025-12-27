@@ -33,7 +33,7 @@ pub use crate::{
 };
 use dashmap::{DashMap, mapref::entry::Entry};
 pub use query_group::{self};
-use rustc_hash::FxHasher;
+use rustc_hash::{FxHashSet, FxHasher};
 use salsa::{Durability, Setter};
 pub use semver::{BuildMetadata, Prerelease, Version, VersionReq};
 use syntax::{Parse, SyntaxError, ast};
@@ -201,6 +201,22 @@ impl Files {
             }
         };
     }
+}
+
+/// The set of roots for crates.io libraries.
+/// Files in libraries are assumed to never change.
+#[salsa::input(singleton, debug)]
+pub struct LibraryRoots {
+    #[returns(ref)]
+    pub roots: FxHashSet<SourceRootId>,
+}
+
+/// The set of "local" (that is, from the current workspace) roots.
+/// Files in local roots are assumed to change frequently.
+#[salsa::input(singleton, debug)]
+pub struct LocalRoots {
+    #[returns(ref)]
+    pub roots: FxHashSet<SourceRootId>,
 }
 
 #[salsa_macros::input(debug)]

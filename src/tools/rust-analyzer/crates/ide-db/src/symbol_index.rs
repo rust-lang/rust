@@ -27,7 +27,7 @@ use std::{
     ops::ControlFlow,
 };
 
-use base_db::{RootQueryDb, SourceRootId};
+use base_db::{LibraryRoots, LocalRoots, RootQueryDb, SourceRootId};
 use fst::{Automaton, Streamer, raw::IndexedValue};
 use hir::{
     Crate, Module,
@@ -36,7 +36,6 @@ use hir::{
     symbols::{FileSymbol, SymbolCollector},
 };
 use rayon::prelude::*;
-use rustc_hash::FxHashSet;
 use salsa::Update;
 
 use crate::RootDatabase;
@@ -100,22 +99,6 @@ impl Query {
     pub fn exclude_imports(&mut self) {
         self.exclude_imports = true;
     }
-}
-
-/// The set of roots for crates.io libraries.
-/// Files in libraries are assumed to never change.
-#[salsa::input(singleton, debug)]
-pub struct LibraryRoots {
-    #[returns(ref)]
-    pub roots: FxHashSet<SourceRootId>,
-}
-
-/// The set of "local" (that is, from the current workspace) roots.
-/// Files in local roots are assumed to change frequently.
-#[salsa::input(singleton, debug)]
-pub struct LocalRoots {
-    #[returns(ref)]
-    pub roots: FxHashSet<SourceRootId>,
 }
 
 /// The symbol indices of modules that make up a given crate.
@@ -443,6 +426,7 @@ impl Query {
 mod tests {
 
     use expect_test::expect_file;
+    use rustc_hash::FxHashSet;
     use salsa::Setter;
     use test_fixture::{WORKSPACE, WithFixture};
 
