@@ -971,7 +971,7 @@ fn format_impl_ref_and_type(
         result.push_str(format_defaultness(of_trait.defaultness));
         result.push_str(format_safety(of_trait.safety));
     } else {
-        result.push_str(format_constness_right(*constness));
+        result.push_str(format_constness(*constness));
     }
 
     let shape = if context.config.style_edition() >= StyleEdition::Edition2024 {
