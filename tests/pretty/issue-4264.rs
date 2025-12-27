@@ -4,6 +4,8 @@
 
 // #4264 fixed-length vector types
 
+#![allow(unconstructable_pub_struct)]
+
 pub fn foo(_: [i32; 3]) {}
 
 pub fn bar() {

@@ -7,6 +7,8 @@
 //@ revisions: cpass1 cfail2
 //@ compile-flags: -Znext-solver
 
+#![allow(unconstructable_pub_struct)]
+
 pub trait Trait {}
 
 pub struct S0<T>(T);

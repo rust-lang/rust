@@ -1,3 +1,5 @@
+#![allow(unconstructable_pub_struct)]
+
 #![crate_type = "lib"]
 
 // used by the rpass test

@@ -2,6 +2,7 @@
 
 #![deny(dead_code)]
 #![crate_type = "lib"]
+#![allow(unconstructable_pub_struct)]
 
 struct Struct<T> {
     x: T,

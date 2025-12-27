@@ -1,6 +1,8 @@
 //@ run-pass
 // test for #8664
 
+#![allow(unconstructable_pub_struct)]
+
 use std::marker;
 
 pub trait Trait2<A> {

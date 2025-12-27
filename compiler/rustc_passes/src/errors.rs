@@ -1039,6 +1039,14 @@ pub(crate) enum MultipleDeadCodes<'tcx> {
     },
 }
 
+#[derive(LintDiagnostic)]
+#[diag(passes_unconstructable_pub_struct)]
+pub(crate) struct UnconstructablePubStruct {
+    pub name: Symbol,
+    #[help]
+    pub vis_span: Span,
+}
+
 #[derive(Subdiagnostic)]
 #[note(passes_enum_variant_same_name)]
 pub(crate) struct EnumVariantSameName<'tcx> {

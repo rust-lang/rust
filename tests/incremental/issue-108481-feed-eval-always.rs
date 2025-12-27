@@ -1,6 +1,8 @@
 //@ revisions: cpass1 cpass2
 //@ ignore-backends: gcc
 
+#![allow(unconstructable_pub_struct)]
+
 #![crate_type = "rlib"]
 
 use std::fmt::Debug;

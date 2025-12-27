@@ -1,5 +1,5 @@
 error[E0210]: type parameter `T` must be covered by another type when it appears before the first local type (`Local`)
-  --> $DIR/impl[t]-foreign[fundamental[t]_local]-for-foreign.rs:10:6
+  --> $DIR/impl[t]-foreign[fundamental[t]_local]-for-foreign.rs:12:6
    |
 LL | impl<T> Remote2<Box<T>, Local> for u32 {
    |      ^ type parameter `T` must be covered by another type when it appears before the first local type (`Local`)
@@ -8,7 +8,7 @@ LL | impl<T> Remote2<Box<T>, Local> for u32 {
    = note: in this case, 'before' refers to the following order: `impl<..> ForeignTrait<T1, ..., Tn> for T0`, where `T0` is the first and `Tn` is the last
 
 error[E0210]: type parameter `T` must be covered by another type when it appears before the first local type (`Local`)
-  --> $DIR/impl[t]-foreign[fundamental[t]_local]-for-foreign.rs:14:10
+  --> $DIR/impl[t]-foreign[fundamental[t]_local]-for-foreign.rs:16:10
    |
 LL | impl<'a, T> Remote2<&'a T, Local> for u32 {
    |          ^ type parameter `T` must be covered by another type when it appears before the first local type (`Local`)

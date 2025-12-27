@@ -2,6 +2,8 @@
 //@ aux-build:nested_item.rs
 
 
+#![allow(unconstructable_pub_struct)]
+
 extern crate nested_item;
 
 pub fn main() {

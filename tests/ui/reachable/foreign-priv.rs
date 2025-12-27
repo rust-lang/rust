@@ -1,6 +1,8 @@
 //@ aux-build:foreign-priv-aux.rs
 //@ build-pass
 
+#![allow(unconstructable_pub_struct)]
+
 #![crate_type = "lib"]
 
 extern crate foreign_priv_aux;

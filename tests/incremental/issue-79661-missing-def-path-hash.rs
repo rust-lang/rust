@@ -8,6 +8,8 @@
 // when we ended up forcing a query. As a result, a subsequent
 // unchanged incremental run would crash due to the missing mapping
 
+#![allow(unconstructable_pub_struct)]
+
 extern crate issue_79661;
 use issue_79661::Wrapper;
 

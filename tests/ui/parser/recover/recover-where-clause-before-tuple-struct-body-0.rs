@@ -1,6 +1,8 @@
 // Regression test for issues #100790 and #106439.
 //@ run-rustfix
 
+#![allow(unconstructable_pub_struct)]
+
 #![allow(dead_code)]
 
 pub struct Example

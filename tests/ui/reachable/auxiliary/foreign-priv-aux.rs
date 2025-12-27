@@ -1,3 +1,5 @@
+#![allow(unconstructable_pub_struct)]
+
 trait PrivTrait {
     fn priv_fn(&self);
 }

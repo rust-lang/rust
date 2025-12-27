@@ -1,3 +1,5 @@
+#![allow(unconstructable_pub_struct)]
+
 pub struct A {
     a: isize,
     pub b: isize,

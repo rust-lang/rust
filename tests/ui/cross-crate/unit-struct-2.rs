@@ -1,5 +1,7 @@
 //@ run-pass
 //@ aux-build:xcrate_unit_struct.rs
+#![allow(unconstructable_pub_struct)]
+
 #![allow(non_upper_case_globals)]
 
 extern crate xcrate_unit_struct;

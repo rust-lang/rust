@@ -1,7 +1,6 @@
 //! Infer context the next-trait-solver.
 
 use std::cell::{Cell, RefCell};
-use std::fmt;
 use std::ops::Range;
 use std::sync::Arc;
 
@@ -301,32 +300,6 @@ pub enum BoundRegionConversionTime {
 
     /// when projecting an associated type
     AssocTypeProjection(SolverDefId),
-}
-
-#[derive(Copy, Clone, Debug)]
-pub struct FixupError {
-    unresolved: TyOrConstInferVar,
-}
-
-impl fmt::Display for FixupError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        use TyOrConstInferVar::*;
-
-        match self.unresolved {
-            TyInt(_) => write!(
-                f,
-                "cannot determine the type of this integer; \
-                 add a suffix to specify the type explicitly"
-            ),
-            TyFloat(_) => write!(
-                f,
-                "cannot determine the type of this number; \
-                 add a suffix to specify the type explicitly"
-            ),
-            Ty(_) => write!(f, "unconstrained type"),
-            Const(_) => write!(f, "unconstrained const value"),
-        }
-    }
 }
 
 /// See the `region_obligations` field for more information.

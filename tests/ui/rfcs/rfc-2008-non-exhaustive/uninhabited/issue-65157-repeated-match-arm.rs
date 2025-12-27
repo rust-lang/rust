@@ -1,4 +1,6 @@
 //@ aux-build:uninhabited.rs
+#![allow(unconstructable_pub_struct)]
+
 #![deny(unreachable_patterns)]
 #![feature(never_type)]
 

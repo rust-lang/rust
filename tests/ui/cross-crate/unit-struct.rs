@@ -3,6 +3,8 @@
 // Make sure that when we have cross-crate unit structs we don't accidentally
 // make values out of cross-crate structs that aren't unit.
 
+#![allow(unconstructable_pub_struct)]
+
 extern crate xcrate_unit_struct;
 
 fn main() {

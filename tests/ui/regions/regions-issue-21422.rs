@@ -4,6 +4,8 @@
 // should outlive the binary operation itself.
 
 
+#![allow(unconstructable_pub_struct)]
+
 pub struct P<'a> {
     _ptr: *const &'a u8,
 }
