@@ -38,4 +38,4 @@ cfg_if! {
     }
 }
 pub(crate) use self::imp::Group;
-pub(super) use self::imp::{BitMaskWord, NonZeroBitMaskWord, BITMASK_ITER_MASK, BITMASK_STRIDE};
+pub(super) use self::imp::{BITMASK_ITER_MASK, BITMASK_STRIDE, BitMaskWord, NonZeroBitMaskWord};

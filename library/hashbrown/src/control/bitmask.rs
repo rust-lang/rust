@@ -1,4 +1,4 @@
-use super::group::{BitMaskWord, NonZeroBitMaskWord, BITMASK_ITER_MASK, BITMASK_STRIDE};
+use super::group::{BITMASK_ITER_MASK, BITMASK_STRIDE, BitMaskWord, NonZeroBitMaskWord};
 
 /// A bit mask which contains the result of a `Match` operation on a `Group` and
 /// allows iterating through them.

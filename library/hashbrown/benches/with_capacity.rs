@@ -4,7 +4,7 @@
 extern crate test;
 
 use hashbrown::HashMap;
-use test::{black_box, Bencher};
+use test::{Bencher, black_box};
 
 type Map<K, V> = HashMap<K, V>;
 

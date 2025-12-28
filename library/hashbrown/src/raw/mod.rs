@@ -1,8 +1,8 @@
-use crate::alloc::alloc::{handle_alloc_error, Layout};
-use crate::control::{BitMaskIter, Group, Tag, TagSliceExt};
-use crate::scopeguard::{guard, ScopeGuard};
-use crate::util::{invalid_mut, likely, unlikely};
 use crate::TryReserveError;
+use crate::alloc::alloc::{Layout, handle_alloc_error};
+use crate::control::{BitMaskIter, Group, Tag, TagSliceExt};
+use crate::scopeguard::{ScopeGuard, guard};
+use crate::util::{invalid_mut, likely, unlikely};
 use core::array;
 use core::iter::FusedIterator;
 use core::marker::PhantomData;
@@ -14,7 +14,7 @@ use core::{hint, ptr};
 mod alloc;
 #[cfg(test)]
 pub(crate) use self::alloc::AllocError;
-pub(crate) use self::alloc::{do_alloc, Allocator, Global};
+pub(crate) use self::alloc::{Allocator, Global, do_alloc};
 
 #[inline]
 unsafe fn offset_from<T>(to: *const T, from: *const T) -> usize {

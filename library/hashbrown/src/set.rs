@@ -6,8 +6,8 @@ use core::{fmt, mem};
 use map::make_hash;
 
 use super::map::{self, HashMap, Keys};
-use crate::raw::{Allocator, Global, RawExtractIf};
 use crate::DefaultHashBuilder;
+use crate::raw::{Allocator, Global, RawExtractIf};
 
 // Future Optimization (FIXME!)
 // =============================
@@ -2568,7 +2568,7 @@ fn assert_covariance() {
 
 #[cfg(test)]
 mod test_set {
-    use super::{make_hash, Equivalent, HashSet};
+    use super::{Equivalent, HashSet, make_hash};
     use crate::DefaultHashBuilder;
     use std::vec::Vec;
 

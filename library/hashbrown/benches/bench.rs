@@ -6,7 +6,7 @@
 
 extern crate test;
 
-use test::{black_box, Bencher};
+use test::{Bencher, black_box};
 
 use hashbrown::DefaultHashBuilder;
 use hashbrown::{HashMap, HashSet};

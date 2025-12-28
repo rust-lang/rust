@@ -5,8 +5,8 @@ use core::marker::PhantomData;
 use core::mem;
 use core::ptr::NonNull;
 use rayon::iter::{
-    plumbing::{self, Folder, UnindexedConsumer, UnindexedProducer},
     ParallelIterator,
+    plumbing::{self, Folder, UnindexedConsumer, UnindexedProducer},
 };
 
 /// Parallel iterator which returns a raw pointer to every full bucket in the table.

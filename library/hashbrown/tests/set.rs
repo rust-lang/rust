@@ -2,7 +2,7 @@
 #![cfg(not(miri))] // FIXME: takes too long
 
 use hashbrown::HashSet;
-use rand::{distr::Alphanumeric, rngs::SmallRng, Rng, SeedableRng};
+use rand::{Rng, SeedableRng, distr::Alphanumeric, rngs::SmallRng};
 use std::iter;
 
 #[test]

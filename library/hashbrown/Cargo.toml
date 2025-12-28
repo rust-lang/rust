@@ -9,8 +9,8 @@ readme = "README.md"
 keywords = ["hash", "no_std", "hashmap", "swisstable"]
 categories = ["data-structures", "no-std"]
 exclude = [".github", "/ci/*"]
-edition = "2021"
-rust-version = "1.84.0"
+edition = "2024"
+rust-version = "1.85.1"
 
 [lints.rust]
 missing_docs = "warn"
