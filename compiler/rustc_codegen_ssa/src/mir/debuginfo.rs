@@ -2,7 +2,7 @@ use std::collections::hash_map::Entry;
 use std::marker::PhantomData;
 use std::ops::Range;
 
-use rustc_abi::{BackendRepr, FieldIdx, FieldsShape, ScalableElt, Size, VariantIdx};
+use rustc_abi::{BackendRepr, FieldIdx, FieldsShape, Size, VariantIdx};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_index::IndexVec;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
@@ -437,16 +437,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 // debugging experience anyway.
                 if operand.layout.ty.is_scalable_vector()
                     && bx.sess().target.arch == rustc_target::spec::Arch::AArch64
-                    && let ty::Adt(adt, args) = &operand.layout.ty.kind()
-                    && let Some(marker_type_field) =
-                        adt.non_enum_variant().fields.get(FieldIdx::from_u32(0))
                 {
-                    let marker_type = marker_type_field.ty(bx.tcx(), args);
+                    let (count, element_ty) =
+                        operand.layout.ty.scalable_vector_element_count_and_type(bx.tcx());
                     // i.e. `<vscale x N x i1>` when `N != 16`
-                    if let ty::Slice(element_ty) = marker_type.kind()
-                        && element_ty.is_bool()
-                        && adt.repr().scalable != Some(ScalableElt::ElementCount(16))
-                    {
+                    if element_ty.is_bool() && count != 16 {
                         return;
                     }
                 }
