@@ -911,6 +911,12 @@ impl AmbiguityKind {
     }
 }
 
+#[derive(Clone, Copy, PartialEq)]
+enum AmbiguityWarning {
+    GlobImport,
+    PanicImport,
+}
+
 struct AmbiguityError<'ra> {
     kind: AmbiguityKind,
     ident: Ident,
@@ -919,7 +925,7 @@ struct AmbiguityError<'ra> {
     // `empty_module` in module scope serves as an unknown module here.
     scope1: Scope<'ra>,
     scope2: Scope<'ra>,
-    warning: bool,
+    warning: Option<AmbiguityWarning>,
 }
 
 impl<'ra> DeclData<'ra> {
@@ -1871,6 +1877,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         self.get_macro(res).is_some_and(|macro_data| macro_data.ext.builtin_name.is_some())
     }
 
+    fn is_specific_builtin_macro(&self, res: Res, symbol: Symbol) -> bool {
+        self.get_macro(res).is_some_and(|macro_data| macro_data.ext.builtin_name == Some(symbol))
+    }
+
     fn macro_def(&self, mut ctxt: SyntaxContext) -> DefId {
         loop {
             match ctxt.outer_expn_data().macro_def_id {
@@ -2063,7 +2073,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 b2,
                 scope1: Scope::ModuleGlobs(self.empty_module, None),
                 scope2: Scope::ModuleGlobs(self.empty_module, None),
-                warning: warn_ambiguity,
+                warning: if warn_ambiguity { Some(AmbiguityWarning::GlobImport) } else { None },
             };
             if !self.matches_previous_ambiguity_error(&ambiguity_error) {
                 // avoid duplicated span information to be emit out
