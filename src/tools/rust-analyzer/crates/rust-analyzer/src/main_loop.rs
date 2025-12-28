@@ -536,9 +536,14 @@ impl GlobalState {
                 self.update_tests();
             }
 
+            let current_revision = self.analysis_host.raw_database().nonce_and_revision().1;
             // no work is currently being done, now we can block a bit and clean up our garbage
-            if self.task_pool.handle.is_empty() && self.fmt_pool.handle.is_empty() {
+            if self.task_pool.handle.is_empty()
+                && self.fmt_pool.handle.is_empty()
+                && current_revision != self.last_gc_revision
+            {
                 self.analysis_host.trigger_garbage_collection();
+                self.last_gc_revision = current_revision;
             }
         }
 
@@ -912,7 +917,8 @@ impl GlobalState {
                         // Not a lot of bad can happen from mistakenly identifying `minicore`, so proceed with that.
                         self.minicore.minicore_text = contents
                             .as_ref()
-                            .and_then(|contents| String::from_utf8(contents.clone()).ok());
+                            .and_then(|contents| str::from_utf8(contents).ok())
+                            .map(triomphe::Arc::from);
                     }
 
                     let path = VfsPath::from(path);

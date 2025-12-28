@@ -15,7 +15,7 @@ use hir::ChangeWithProcMacros;
 use ide::{Analysis, AnalysisHost, Cancellable, FileId, SourceRootId};
 use ide_db::{
     MiniCore,
-    base_db::{Crate, ProcMacroPaths, SourceDatabase},
+    base_db::{Crate, ProcMacroPaths, SourceDatabase, salsa::Revision},
 };
 use itertools::Itertools;
 use load_cargo::SourceRootConfig;
@@ -194,12 +194,13 @@ pub(crate) struct GlobalState {
     pub(crate) incomplete_crate_graph: bool,
 
     pub(crate) minicore: MiniCoreRustAnalyzerInternalOnly,
+    pub(crate) last_gc_revision: Revision,
 }
 
 // FIXME: This should move to the VFS once the rewrite is done.
 #[derive(Debug, Clone, Default)]
 pub(crate) struct MiniCoreRustAnalyzerInternalOnly {
-    pub(crate) minicore_text: Option<String>,
+    pub(crate) minicore_text: Option<Arc<str>>,
 }
 
 /// An immutable snapshot of the world's state at a point in time.
@@ -255,6 +256,8 @@ impl GlobalState {
         let (test_run_sender, test_run_receiver) = unbounded();
 
         let (discover_sender, discover_receiver) = unbounded();
+
+        let last_gc_revision = analysis_host.raw_database().nonce_and_revision().1;
 
         let mut this = GlobalState {
             sender,
@@ -319,6 +322,7 @@ impl GlobalState {
             incomplete_crate_graph: false,
 
             minicore: MiniCoreRustAnalyzerInternalOnly::default(),
+            last_gc_revision,
         };
         // Apply any required database inputs from the config.
         this.update_configuration(config);
