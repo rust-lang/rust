@@ -44,7 +44,7 @@ const SEQUENCE_TYPES: &[&str] = &["Vec", "VecDeque", "LinkedList"];
 /// `vec.as_slice()` -> `slice`
 /// `args.into_config()` -> `config`
 /// `bytes.to_vec()` -> `vec`
-const USELESS_METHOD_PREFIXES: &[&str] = &["into_", "as_", "to_"];
+const USELESS_METHOD_PREFIXES: &[&str] = &["try_into_", "into_", "as_", "to_"];
 
 /// Useless methods that are stripped from expression
 ///
