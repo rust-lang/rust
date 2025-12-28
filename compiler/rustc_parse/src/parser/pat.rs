@@ -784,8 +784,8 @@ impl<'a> Parser<'a> {
             )?
         } else if self.eat_keyword(exp!(Box)) {
             self.parse_pat_box()?
-        } else if self.check_inline_const(0) {
-            // Parse `const pat`
+        } else if self.check_keyword(exp!(Const)) {
+            // Parse `const { pat }`
             let const_expr = self.parse_const_block(lo.to(self.token.span), true)?;
 
             if let Some(re) = self.parse_range_end() {
