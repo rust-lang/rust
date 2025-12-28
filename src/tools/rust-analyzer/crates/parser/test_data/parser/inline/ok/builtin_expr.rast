@@ -44,10 +44,10 @@ SOURCE_FILE
             COMMA ","
             WHITESPACE " "
             FORMAT_ARGS_ARG
-              NAME
+              FORMAT_ARGS_ARG_NAME
                 IDENT "a"
-              WHITESPACE " "
-              EQ "="
+                WHITESPACE " "
+                EQ "="
               WHITESPACE " "
               BIN_EXPR
                 LITERAL
