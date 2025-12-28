@@ -2454,7 +2454,7 @@ unsafe extern "C" {
     pub(crate) fn LLVMRustModuleBufferLen(p: &ModuleBuffer) -> usize;
     pub(crate) fn LLVMRustModuleBufferFree(p: &'static mut ModuleBuffer);
     pub(crate) fn LLVMRustModuleCost(M: &Module) -> u64;
-    pub(crate) fn LLVMRustModuleInstructionStats(M: &Module, Str: &RustString);
+    pub(crate) fn LLVMRustModuleInstructionStats(M: &Module) -> u64;
 
     pub(crate) fn LLVMRustThinLTOBufferCreate(
         M: &Module,
