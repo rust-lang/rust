@@ -228,37 +228,14 @@ pub(super) fn underscore(
         return None;
     }
     let parent = token.parent()?;
-    let _it = match_ast! {
+    match_ast! {
         match parent {
-            ast::InferType(it) => it,
-            ast::UnderscoreExpr(it) => return type_info_of(sema, config, &Either::Left(ast::Expr::UnderscoreExpr(it)),edition, display_target),
-            ast::WildcardPat(it) => return type_info_of(sema, config, &Either::Right(ast::Pat::WildcardPat(it)),edition, display_target),
-            _ => return None,
+            ast::InferType(it) => type_info(sema, config, TypeInfo { original: sema.resolve_type(&ast::Type::InferType(it))?, adjusted: None}, edition, display_target),
+            ast::UnderscoreExpr(it) => type_info(sema, config, sema.type_of_expr(&ast::Expr::UnderscoreExpr(it))?, edition, display_target),
+            ast::WildcardPat(it) => type_info(sema, config, sema.type_of_pat(&ast::Pat::WildcardPat(it))?, edition, display_target),
+            _ => None,
         }
-    };
-    // let it = infer_type.syntax().parent()?;
-    // match_ast! {
-    //     match it {
-    //         ast::LetStmt(_it) => (),
-    //         ast::Param(_it) => (),
-    //         ast::RetType(_it) => (),
-    //         ast::TypeArg(_it) => (),
-
-    //         ast::CastExpr(_it) => (),
-    //         ast::ParenType(_it) => (),
-    //         ast::TupleType(_it) => (),
-    //         ast::PtrType(_it) => (),
-    //         ast::RefType(_it) => (),
-    //         ast::ArrayType(_it) => (),
-    //         ast::SliceType(_it) => (),
-    //         ast::ForType(_it) => (),
-    //         _ => return None,
-    //     }
-    // }
-
-    // FIXME: https://github.com/rust-lang/rust-analyzer/issues/11762, this currently always returns Unknown
-    // type_info(sema, config, sema.resolve_type(&ast::Type::InferType(it))?, None)
-    None
+    }
 }
 
 pub(super) fn keyword(
