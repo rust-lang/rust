@@ -1235,7 +1235,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
             // to run extra MIR), and Ok(Some(body)) if we found MIR to run for the
             // foreign function
             // Any needed call to `goto_block` will be performed by `emulate_foreign_item`.
-            let args = ecx.copy_fn_args(args); // FIXME: Should `InPlace` arguments be reset to uninit?
+            let args = MiriInterpCx::copy_fn_args(args); // FIXME: Should `InPlace` arguments be reset to uninit?
             let link_name = Symbol::intern(ecx.tcx.symbol_name(instance).name);
             return ecx.emulate_foreign_item(link_name, abi, &args, dest, ret, unwind);
         }
@@ -1262,7 +1262,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         ret: Option<mir::BasicBlock>,
         unwind: mir::UnwindAction,
     ) -> InterpResult<'tcx> {
-        let args = ecx.copy_fn_args(args); // FIXME: Should `InPlace` arguments be reset to uninit?
+        let args = MiriInterpCx::copy_fn_args(args); // FIXME: Should `InPlace` arguments be reset to uninit?
         ecx.emulate_dyn_sym(fn_val, abi, &args, dest, ret, unwind)
     }
 

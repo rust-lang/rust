@@ -235,7 +235,7 @@ impl<'tcx> CompileTimeInterpCx<'tcx> {
         if self.tcx.is_lang_item(def_id, LangItem::PanicDisplay)
             || self.tcx.is_lang_item(def_id, LangItem::BeginPanic)
         {
-            let args = self.copy_fn_args(args);
+            let args = Self::copy_fn_args(args);
             // &str or &&str
             assert!(args.len() == 1);
 
