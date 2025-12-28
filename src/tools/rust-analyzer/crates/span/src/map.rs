@@ -153,26 +153,22 @@ impl SpanMap {
 #[cfg(not(no_salsa_async_drops))]
 impl Drop for SpanMap {
     fn drop(&mut self) {
-        struct SendPtr(*mut [()]);
-        unsafe impl Send for SendPtr {}
+        let spans = std::mem::take(&mut self.spans);
         static SPAN_MAP_DROP_THREAD: std::sync::OnceLock<
-            std::sync::mpsc::Sender<(SendPtr, fn(SendPtr))>,
+            std::sync::mpsc::Sender<Vec<(TextSize, Span)>>,
         > = std::sync::OnceLock::new();
+
         SPAN_MAP_DROP_THREAD
             .get_or_init(|| {
-                let (sender, receiver) = std::sync::mpsc::channel::<(SendPtr, fn(SendPtr))>();
+                let (sender, receiver) = std::sync::mpsc::channel::<Vec<(TextSize, Span)>>();
                 std::thread::Builder::new()
                     .name("SpanMapDropper".to_owned())
                     .spawn(move || {
                         loop {
                             // block on a receive
-                            if let Ok((b, drop)) = receiver.recv() {
-                                drop(b);
-                            }
+                            _ = receiver.recv();
                             // then drain the entire channel
-                            while let Ok((b, drop)) = receiver.try_recv() {
-                                drop(b);
-                            }
+                            while let Ok(_) = receiver.try_recv() {}
                             // and sleep for a bit
                             std::thread::sleep(std::time::Duration::from_millis(100));
                         }
@@ -182,22 +178,7 @@ impl Drop for SpanMap {
                     .unwrap();
                 sender
             })
-            .send((
-                unsafe {
-                    SendPtr(std::mem::transmute::<*mut [(TextSize, Span)], *mut [()]>(Box::<
-                        [(TextSize, Span)],
-                    >::into_raw(
-                        std::mem::take(&mut self.spans).into_boxed_slice(),
-                    )))
-                },
-                |b: SendPtr| {
-                    _ = unsafe {
-                        Box::from_raw(std::mem::transmute::<*mut [()], *mut [(TextSize, Span)]>(
-                            b.0,
-                        ))
-                    }
-                },
-            ))
+            .send(spans)
             .unwrap();
     }
 }

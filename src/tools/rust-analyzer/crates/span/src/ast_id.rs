@@ -777,6 +777,48 @@ impl AstIdMap {
     }
 }
 
+#[cfg(not(no_salsa_async_drops))]
+impl Drop for AstIdMap {
+    fn drop(&mut self) {
+        let arena = std::mem::take(&mut self.arena);
+        let ptr_map = std::mem::take(&mut self.ptr_map);
+        let id_map = std::mem::take(&mut self.id_map);
+        static AST_ID_MAP_DROP_THREAD: std::sync::OnceLock<
+            std::sync::mpsc::Sender<(
+                Arena<(SyntaxNodePtr, ErasedFileAstId)>,
+                hashbrown::HashTable<ArenaId>,
+                hashbrown::HashTable<ArenaId>,
+            )>,
+        > = std::sync::OnceLock::new();
+        AST_ID_MAP_DROP_THREAD
+            .get_or_init(|| {
+                let (sender, receiver) = std::sync::mpsc::channel::<(
+                    Arena<(SyntaxNodePtr, ErasedFileAstId)>,
+                    hashbrown::HashTable<ArenaId>,
+                    hashbrown::HashTable<ArenaId>,
+                )>();
+                std::thread::Builder::new()
+                    .name("AstIdMapDropper".to_owned())
+                    .spawn(move || {
+                        loop {
+                            // block on a receive
+                            _ = receiver.recv();
+                            // then drain the entire channel
+                            while let Ok(_) = receiver.try_recv() {}
+                            // and sleep for a bit
+                            std::thread::sleep(std::time::Duration::from_millis(100));
+                        }
+                        // why do this over just a `receiver.iter().for_each(drop)`? To reduce contention on the channel lock.
+                        // otherwise this thread will constantly wake up and sleep again.
+                    })
+                    .unwrap();
+                sender
+            })
+            .send((arena, ptr_map, id_map))
+            .unwrap();
+    }
+}
+
 #[inline]
 fn hash_ptr(ptr: &SyntaxNodePtr) -> u64 {
     FxBuildHasher.hash_one(ptr)
