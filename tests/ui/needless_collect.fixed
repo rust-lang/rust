@@ -241,7 +241,7 @@ mod collect_push_then_iter {
         //~^ needless_collect
         
         
-        iter.chain([1]).chain([2]).map(|x| x + 1).collect()
+        iter.chain([1, 2]).map(|x| x + 1).collect()
     }
 
     fn linked_list_push(iter: impl Iterator<Item = i32>) -> LinkedList<i32> {
@@ -262,5 +262,12 @@ mod collect_push_then_iter {
         let ok = v.contains(&1);
         v.push(1);
         ok
+    }
+
+    fn linked_list_extend(iter: impl Iterator<Item = i32>, s: Vec<i32>) -> LinkedList<i32> {
+        
+        //~^ needless_collect
+        
+        iter.chain(s).map(|x| x + 1).collect()
     }
 }

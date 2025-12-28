@@ -153,7 +153,7 @@ LL ~
 LL |
 LL ~         
 LL ~         
-LL ~         iter.chain([1]).chain([2]).map(|x| x + 1).collect()
+LL ~         iter.chain([1, 2]).map(|x| x + 1).collect()
    |
 
 error: avoid using `collect()` when not needed
@@ -173,5 +173,22 @@ LL ~
 LL ~         iter.chain([1]).map(|x| x + 1).collect()
    |
 
-error: aborting due to 23 previous errors
+error: avoid using `collect()` when not needed
+  --> tests/ui/needless_collect.rs:268:27
+   |
+LL |         let mut ll = iter.collect::<LinkedList<_>>();
+   |                           ^^^^^^^
+...
+LL |         ll.into_iter().map(|x| x + 1).collect()
+   |         -------------- the iterator could be used here instead
+   |
+help: use the original Iterator instead of collecting it and then producing a new one
+   |
+LL ~         
+LL |
+LL ~         
+LL ~         iter.chain(s).map(|x| x + 1).collect()
+   |
+
+error: aborting due to 24 previous errors
 

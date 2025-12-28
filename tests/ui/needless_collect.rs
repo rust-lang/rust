@@ -263,4 +263,11 @@ mod collect_push_then_iter {
         v.push(1);
         ok
     }
+
+    fn linked_list_extend(iter: impl Iterator<Item = i32>, s: Vec<i32>) -> LinkedList<i32> {
+        let mut ll = iter.collect::<LinkedList<_>>();
+        //~^ needless_collect
+        ll.extend(s);
+        ll.into_iter().map(|x| x + 1).collect()
+    }
 }

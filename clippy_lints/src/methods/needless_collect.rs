@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::ops::ControlFlow;
 
 use super::NEEDLESS_COLLECT;
@@ -144,7 +145,11 @@ pub(super) fn check<'tcx>(
                         iter_replacement.push_str(&iter_call.get_iter_method(cx));
 
                         let mut remove_suggestions = vec![(l.span, String::new())];
-                        remove_suggestions.extend(extra_calls.iter().map(|extra| (extra.span, String::new())));
+                        remove_suggestions.extend(
+                            extra_calls
+                                .iter()
+                                .flat_map(|extra| extra.span().map(|s| (s, String::new()))),
+                        );
                         remove_suggestions.push((iter_call.span, iter_replacement));
 
                         diag.multipart_suggestion(
@@ -325,29 +330,48 @@ enum IterFunctionKind {
     Contains(Span),
 }
 
-struct ExtraFunction {
-    kind: ExtraFunctionKind,
-    span: Span,
+struct ExtraFunctionSpan {
+    /// Span of the function call
+    func_span: Span,
+    /// Span of the argument
+    arg_span: Span,
+}
+
+enum ExtraFunction {
+    Push(Vec<ExtraFunctionSpan>),
+    Extend(ExtraFunctionSpan),
 }
 
 impl ExtraFunction {
     fn get_iter_method(&self, cx: &LateContext<'_>) -> String {
-        match &self.kind {
-            ExtraFunctionKind::Push(span) => {
-                let s = snippet(cx, *span, "..");
+        match &self {
+            ExtraFunction::Push(spans) => {
+                let s = spans
+                    .iter()
+                    .map(|span| snippet(cx, span.arg_span, ".."))
+                    .intersperse(Cow::Borrowed(", "))
+                    .collect::<String>();
                 format!(".chain([{s}])")
+            },
+            ExtraFunction::Extend(span) => {
+                let s = snippet(cx, span.arg_span, "..");
+                format!(".chain({s})")
             },
         }
     }
-}
 
-enum ExtraFunctionKind {
-    Push(Span),
+    fn span(&self) -> Box<dyn Iterator<Item = Span> + '_> {
+        match &self {
+            ExtraFunction::Push(spans) => Box::new(spans.iter().map(|s| s.func_span)),
+            ExtraFunction::Extend(span) => Box::new(std::iter::once(span.func_span)),
+        }
+    }
 }
 
 #[derive(Clone, Copy)]
 struct ExtraFunctionSpec {
     push_symbol: Option<Symbol>,
+    extend_symbol: Option<Symbol>,
 }
 
 impl ExtraFunctionSpec {
@@ -355,13 +379,22 @@ impl ExtraFunctionSpec {
         match target {
             sym::Vec => Some(ExtraFunctionSpec {
                 push_symbol: Some(sym::push),
+                extend_symbol: Some(sym::extend),
             }),
             sym::VecDeque | sym::LinkedList => Some(ExtraFunctionSpec {
                 push_symbol: Some(sym::push_back),
+                extend_symbol: Some(sym::extend),
             }),
-            sym::BinaryHeap => Some(ExtraFunctionSpec { push_symbol: None }),
+            sym::BinaryHeap => Some(ExtraFunctionSpec {
+                push_symbol: None,
+                extend_symbol: None,
+            }),
             _ => None,
         }
+    }
+
+    fn is_extra_function(self, name: Symbol) -> bool {
+        self.push_symbol == Some(name) || self.extend_symbol == Some(name)
     }
 }
 
@@ -397,6 +430,7 @@ impl<'tcx> Visitor<'tcx> for IterFunctionVisitor<'_, 'tcx> {
         }
     }
 
+    #[expect(clippy::too_many_lines)]
     fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) {
         // Check function calls on our collection
         if let ExprKind::MethodCall(method_name, recv, args, _) = &expr.kind {
@@ -446,10 +480,30 @@ impl<'tcx> Visitor<'tcx> for IterFunctionVisitor<'_, 'tcx> {
                             if let Node::Stmt(stmt) = self.cx.tcx.parent_hir_node(expr.hir_id) {
                                 span = stmt.span;
                             }
-                            self.extras.push(ExtraFunction {
-                                kind: ExtraFunctionKind::Push(args[0].span),
-                                span,
-                            });
+                            if let Some(ExtraFunction::Push(spans)) = self.extras.last_mut() {
+                                spans.push(ExtraFunctionSpan {
+                                    func_span: span,
+                                    arg_span: args[0].span,
+                                });
+                            } else {
+                                self.extras.push(ExtraFunction::Push(vec![ExtraFunctionSpan {
+                                    func_span: span,
+                                    arg_span: args[0].span,
+                                }]));
+                            }
+                        },
+                        name if self.extra_spec.extend_symbol.is_some_and(|sym| name == sym)
+                            && self.uses.is_empty() =>
+                        {
+                            let mut span = expr.span;
+                            // Remove the statement span if possible
+                            if let Node::Stmt(stmt) = self.cx.tcx.parent_hir_node(expr.hir_id) {
+                                span = stmt.span;
+                            }
+                            self.extras.push(ExtraFunction::Extend(ExtraFunctionSpan {
+                                func_span: span,
+                                arg_span: args[0].span,
+                            }));
                         },
                         _ => {
                             self.seen_other = true;
@@ -551,10 +605,7 @@ impl<'tcx> Visitor<'tcx> for UsedCountVisitor<'_, 'tcx> {
         let parent = self.cx.tcx.parent_hir_node(expr.hir_id);
         if let Node::Expr(expr) = parent
             && let ExprKind::MethodCall(method_name, _, _, _) = &expr.kind
-            && self
-                .extra_spec
-                .push_symbol
-                .is_some_and(|sym| method_name.ident.name == sym)
+            && self.extra_spec.is_extra_function(method_name.ident.name)
         {
             return;
         }
