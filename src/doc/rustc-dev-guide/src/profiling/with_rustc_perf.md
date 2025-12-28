@@ -34,15 +34,16 @@ To start, in the `rustc-perf` repo, build the collector, which runs the Rust com
 ```
 cargo build --release -p collector
 ```
-After this the collector can be located in `.\target\release\collector`, can be run locally with `bench_local` and expects the following arguments:
+The collector can then be run using cargo, specifying the collector binary. It expects the following arguments:
 - `<PROFILE>`: Profiler selection for how performance should be measured. For this example we will use Cachegrind.
 - `<RUSTC>`: The Rust compiler revision to benchmark, specified as a commit SHA from `rust-lang/rust`.
-Optional arguments allow running profiles and scenarios as described above. `--include` in `x perf` is instead `--exact-match`. More information regarding the mandatory and
+Optional arguments allow running profiles and scenarios as described above. More information regarding the mandatory and 
 optional arguments can be found in the [rustc-perf-readme-profilers].
 
-Then, for the case of generating a profile diff for the crate `serve_derive-1.0.136`, for two commits `<SHA1>` and `<SHA2>` in the `rust-lang/rust` repository, run the following
+Then, for the case of generating a profile diff for the crate `serve_derive-1.0.136`, for two commits `<SHA1>` and `<SHA2>` from the `rust-lang/rust` repository, 
+run the following in the `rustc-perf` repo:
 ```
-./target/release/collector profile_local cachegrind +<SHA1> --rustc2 +<SHA2> --exact-match serde_derive-1.0.136 --profiles Check --scenarios IncrUnchanged
+cargo run --release --bin collector profile_local cachegrind +<SHA1> --rustc2 +<SHA2> --exact-match serde_derive-1.0.136 --profiles Check --scenarios IncrUnchanged
 ```
 
 
