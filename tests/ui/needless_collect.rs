@@ -219,3 +219,48 @@ fn issue16270() {
     // Do not lint, `..` implements `Index` but is not `usize`
     _ = &(1..3).collect::<Vec<i32>>()[..];
 }
+
+#[warn(clippy::needless_collect)]
+mod collect_push_then_iter {
+    use std::collections::{BinaryHeap, LinkedList};
+
+    fn vec_push(iter: impl Iterator<Item = i32>) -> Vec<i32> {
+        let mut v = iter.collect::<Vec<_>>();
+        //~^ needless_collect
+        v.push(1);
+        v.into_iter().map(|x| x + 1).collect()
+    }
+
+    fn vec_push_no_iter(iter: impl Iterator<Item = i32>) {
+        let mut v = iter.collect::<Vec<_>>();
+        v.push(1);
+    }
+
+    fn vec_push_multiple(iter: impl Iterator<Item = i32>) -> Vec<i32> {
+        let mut v = iter.collect::<Vec<_>>();
+        //~^ needless_collect
+        v.push(1);
+        v.push(2);
+        v.into_iter().map(|x| x + 1).collect()
+    }
+
+    fn linked_list_push(iter: impl Iterator<Item = i32>) -> LinkedList<i32> {
+        let mut v = iter.collect::<LinkedList<_>>();
+        //~^ needless_collect
+        v.push_back(1);
+        v.into_iter().map(|x| x + 1).collect()
+    }
+
+    fn binary_heap_push(iter: impl Iterator<Item = i32>) -> BinaryHeap<i32> {
+        let mut v = iter.collect::<BinaryHeap<_>>();
+        v.push(1);
+        v.into_iter().map(|x| x + 1).collect()
+    }
+
+    fn vec_push_mixed(iter: impl Iterator<Item = i32>) -> bool {
+        let mut v = iter.collect::<Vec<_>>();
+        let ok = v.contains(&1);
+        v.push(1);
+        ok
+    }
+}

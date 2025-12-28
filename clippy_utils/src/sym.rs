@@ -271,6 +271,7 @@ generate! {
     powi,
     product,
     push,
+    push_back,
     push_str,
     read,
     read_exact,
