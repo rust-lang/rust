@@ -3,7 +3,8 @@ use std::ffi::c_uint;
 use std::ptr;
 
 use rustc_abi::{
-    Align, BackendRepr, ExternAbi, Float, HasDataLayout, Primitive, Size, WrappingRange,
+    AddressSpace, Align, BackendRepr, ExternAbi, Float, HasDataLayout, Primitive, Size,
+    WrappingRange,
 };
 use rustc_codegen_ssa::base::{compare_simd_types, wants_msvc_seh, wants_wasm_eh};
 use rustc_codegen_ssa::codegen_attrs::autodiff_attrs;
@@ -24,7 +25,7 @@ use rustc_session::config::CrateType;
 use rustc_span::{Span, Symbol, sym};
 use rustc_symbol_mangling::{mangle_internal_symbol, symbol_name_for_instance_in_crate};
 use rustc_target::callconv::PassMode;
-use rustc_target::spec::Os;
+use rustc_target::spec::{Arch, Os};
 use tracing::debug;
 
 use crate::abi::FnAbiLlvmExt;
@@ -550,6 +551,44 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
 
                 // We have copied the value to `result` already.
                 return Ok(());
+            }
+
+            sym::gpu_launch_sized_workgroup_mem => {
+                // The name of the global variable is not relevant, the important properties are.
+                // 1. The global is in the address space for workgroup memory
+                // 2. It is an extern global
+                // All instances of extern addrspace(gpu_workgroup) globals are merged in the LLVM backend.
+                // Generate an unnamed global per intrinsic call, so that different kernels can have
+                // different minimum alignments.
+                // See https://docs.nvidia.com/cuda/cuda-c-programming-guide/#shared
+                // FIXME Workaround an nvptx backend issue that extern globals must have a name
+                let name = if tcx.sess.target.arch == Arch::Nvptx64 {
+                    "gpu_launch_sized_workgroup_mem"
+                } else {
+                    ""
+                };
+                let global = self.declare_global_in_addrspace(
+                    name,
+                    self.type_array(self.type_i8(), 0),
+                    AddressSpace::GPU_WORKGROUP,
+                );
+                let ty::RawPtr(inner_ty, _) = result.layout.ty.kind() else { unreachable!() };
+                // The alignment of the global is used to specify the *minimum* alignment that
+                // must be obeyed by the GPU runtime.
+                // When multiple of these global variables are used by a kernel, the maximum alignment is taken.
+                // See https://github.com/llvm/llvm-project/blob/a271d07488a85ce677674bbe8101b10efff58c95/llvm/lib/Target/AMDGPU/AMDGPULowerModuleLDSPass.cpp#L821
+                let alignment = self.align_of(*inner_ty).bytes() as u32;
+                unsafe {
+                    // FIXME Workaround the above issue by taking maximum alignment if the global existed
+                    if tcx.sess.target.arch == Arch::Nvptx64 {
+                        if alignment > llvm::LLVMGetAlignment(global) {
+                            llvm::LLVMSetAlignment(global, alignment);
+                        }
+                    } else {
+                        llvm::LLVMSetAlignment(global, alignment);
+                    }
+                }
+                self.cx().const_pointercast(global, self.type_ptr())
             }
 
             sym::amdgpu_dispatch_ptr => {

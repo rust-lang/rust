@@ -1702,6 +1702,9 @@ pub struct AddressSpace(pub u32);
 impl AddressSpace {
     /// LLVM's `0` address space.
     pub const ZERO: Self = AddressSpace(0);
+    /// The address space for workgroup memory on nvptx and amdgpu.
+    /// See e.g. the `gpu_launch_sized_workgroup_mem` intrinsic for details.
+    pub const GPU_WORKGROUP: Self = AddressSpace(3);
 }
 
 /// The way we represent values to the backend
