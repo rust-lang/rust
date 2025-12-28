@@ -243,7 +243,7 @@ fn handle_expand_ra<C: Codec>(
             def_site,
             call_site,
             mixed_site,
-            Some(Box::new(ProcMacroClientHandle::<C> { stdin, stdout, buf })),
+            Some(&mut ProcMacroClientHandle::<C> { stdin, stdout, buf }),
         )
         .map(|it| {
             (
