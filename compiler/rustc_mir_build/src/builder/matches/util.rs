@@ -6,7 +6,7 @@ use tracing::debug;
 
 use crate::builder::Builder;
 use crate::builder::expr::as_place::PlaceBase;
-use crate::builder::matches::{Binding, Candidate, FlatPat, MatchPairTree, TestCase};
+use crate::builder::matches::{Binding, Candidate, FlatPat, MatchPairTree, TestableCase};
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Creates a false edge to `imaginary_target` and a real edge to
@@ -159,11 +159,11 @@ impl<'a, 'b, 'tcx> FakeBorrowCollector<'a, 'b, 'tcx> {
     }
 
     fn visit_match_pair(&mut self, match_pair: &MatchPairTree<'tcx>) {
-        if let TestCase::Or { pats, .. } = &match_pair.test_case {
+        if let TestableCase::Or { pats, .. } = &match_pair.testable_case {
             for flat_pat in pats.iter() {
                 self.visit_flat_pat(flat_pat)
             }
-        } else if matches!(match_pair.test_case, TestCase::Deref { .. }) {
+        } else if matches!(match_pair.testable_case, TestableCase::Deref { .. }) {
             // The subpairs of a deref pattern are all places relative to the deref temporary, so we
             // don't fake borrow them. Problem is, if we only shallowly fake-borrowed
             // `match_pair.place`, this would allow:

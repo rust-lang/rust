@@ -20,7 +20,7 @@ use hir_def::{
 use hir_expand::name::Name;
 use rustc_type_ir::{
     AliasTerm, AliasTy, AliasTyKind,
-    inherent::{GenericArgs as _, Region as _, SliceLike, Ty as _},
+    inherent::{GenericArgs as _, Region as _, Ty as _},
 };
 use smallvec::SmallVec;
 use stdx::never;
@@ -45,17 +45,15 @@ use super::{
     const_param_ty_query, ty_query,
 };
 
-type CallbackData<'a, 'db> = Either<
-    PathDiagnosticCallbackData,
-    crate::infer::diagnostics::PathDiagnosticCallbackData<'a, 'db>,
->;
+type CallbackData<'a> =
+    Either<PathDiagnosticCallbackData, crate::infer::diagnostics::PathDiagnosticCallbackData<'a>>;
 
 // We cannot use `&mut dyn FnMut()` because of lifetime issues, and we don't want to use `Box<dyn FnMut()>`
 // because of the allocation, so we create a lifetime-less callback, tailored for our needs.
 pub(crate) struct PathDiagnosticCallback<'a, 'db> {
-    pub(crate) data: CallbackData<'a, 'db>,
+    pub(crate) data: CallbackData<'a>,
     pub(crate) callback:
-        fn(&CallbackData<'_, 'db>, &mut TyLoweringContext<'db, '_>, PathLoweringDiagnostic),
+        fn(&CallbackData<'_>, &mut TyLoweringContext<'db, '_>, PathLoweringDiagnostic),
 }
 
 pub(crate) struct PathLoweringContext<'a, 'b, 'db> {
@@ -508,7 +506,7 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
             Some(Ty::new_alias(
                 interner,
                 AliasTyKind::Projection,
-                AliasTy::new(interner, associated_ty.into(), substs),
+                AliasTy::new_from_args(interner, associated_ty.into(), substs),
             ))
         };
         named_associated_type_shorthand_candidates(
@@ -555,7 +553,7 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
             ValueTyDefId::UnionId(it) => it.into(),
             ValueTyDefId::ConstId(it) => it.into(),
             ValueTyDefId::StaticId(_) => {
-                return GenericArgs::new_from_iter(interner, []);
+                return GenericArgs::empty(interner);
             }
             ValueTyDefId::EnumVariantId(var) => {
                 // the generic args for an enum variant may be either specified
@@ -1285,7 +1283,7 @@ pub(crate) fn substs_from_args_and_bindings<'db>(
         }
     }
 
-    GenericArgs::new_from_iter(interner, substs)
+    GenericArgs::new_from_slice(&substs)
 }
 
 fn type_looks_like_const(

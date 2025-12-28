@@ -87,3 +87,9 @@ fn issue11141() {
     let _ = *true.then_some(&42).unwrap_or(&17) as u8;
     //~^ obfuscated_if_else
 }
+
+#[allow(clippy::useless_format)]
+fn issue16288() {
+    true.then(|| format!("this is a test")).unwrap_or_default();
+    //~^ obfuscated_if_else
+}

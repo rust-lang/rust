@@ -9,6 +9,10 @@ fn generic<T>(x: T) -> T {
     x
 }
 
+fn returns_u8() -> u8 {
+    10
+}
+
 fn main() {
     let a: i32 = 10;
     //~^ needless_type_cast
@@ -179,4 +183,87 @@ fn test_loop_with_generic() {
         break generic(1);
     };
     let _ = x as i32;
+}
+
+fn test_size_of_cast() {
+    use std::mem::size_of;
+    // Should lint: suggest casting the initializer
+    let size: u64 = size_of::<u32>() as u64;
+    //~^ needless_type_cast
+    let _ = size as u64;
+    let _ = size as u64;
+}
+
+fn test_suffixed_literal_cast() {
+    // Should lint: suggest casting the initializer
+    let a: i32 = 10u8 as i32;
+    //~^ needless_type_cast
+    let _ = a as i32;
+    let _ = a as i32;
+}
+
+fn test_negative_literal() {
+    // Negative literal - should just change type, not add cast
+    let a: i32 = -10;
+    //~^ needless_type_cast
+    let _ = a as i32;
+    let _ = a as i32;
+}
+
+fn test_suffixed_negative_literal() {
+    // Suffixed negative - needs cast
+    let a: i32 = -10i8 as i32;
+    //~^ needless_type_cast
+    let _ = a as i32;
+    let _ = a as i32;
+}
+
+fn test_binary_op() {
+    // Binary op needs parens in cast
+    let a: i32 = 10 + 5;
+    //~^ needless_type_cast
+    let _ = a as i32;
+    let _ = a as i32;
+}
+
+fn test_fn_return_as_init() {
+    let a: i32 = returns_u8() as i32;
+    //~^ needless_type_cast
+    let _ = a as i32;
+    let _ = a as i32;
+}
+
+fn test_method_as_init() {
+    let a: i32 = 2u8.saturating_add(3) as i32;
+    //~^ needless_type_cast
+    let _ = a as i32;
+    let _ = a as i32;
+}
+
+fn test_const_as_init() {
+    const X: u8 = 10;
+    let a: i32 = X as i32;
+    //~^ needless_type_cast
+    let _ = a as i32;
+    let _ = a as i32;
+}
+
+fn test_single_use_fn_call() {
+    // Should not lint: only one use, and fixing would just move the cast
+    // to the initializer rather than eliminating it
+    let a: u8 = returns_u8();
+    let _ = a as i32;
+}
+
+fn test_single_use_suffixed_literal() {
+    // Should not lint: only one use with a suffixed literal
+    let a: u8 = 10u8;
+    let _ = a as i32;
+}
+
+fn test_single_use_binary_op() {
+    // Should lint: binary op of unsuffixed literals can be coerced
+    let a: i32 = 10 + 5;
+    //~^ needless_type_cast
+    let _ = a as i32;
 }

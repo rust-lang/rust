@@ -137,7 +137,7 @@ pub fn test3() {}
 //~^ ERROR malformed
 #[must_not_suspend()]
 //~^ ERROR malformed
-#[cfi_encoding]
+#[cfi_encoding = ""]
 //~^ ERROR malformed
 struct Test;
 

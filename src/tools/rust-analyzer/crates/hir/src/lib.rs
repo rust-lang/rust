@@ -102,7 +102,7 @@ use rustc_type_ir::{
 };
 use smallvec::SmallVec;
 use span::{AstIdNode, Edition, FileId};
-use stdx::{format_to, impl_from, never};
+use stdx::{format_to, impl_from, never, variance::PhantomCovariantLifetime};
 use syntax::{
     AstNode, AstPtr, SmolStr, SyntaxNode, SyntaxNodePtr, TextRange, ToSmolStr,
     ast::{self, HasName, HasVisibility as _},
@@ -175,7 +175,7 @@ pub use {
         layout::LayoutError,
         mir::{MirEvalError, MirLowerError},
         next_solver::abi::Safety,
-        next_solver::clear_tls_solver_cache,
+        next_solver::{clear_tls_solver_cache, collect_ty_garbage},
     },
     // FIXME: These are needed for import assets, properly encapsulate them.
     hir_ty::{method_resolution::TraitImpls, next_solver::SimplifiedType},
@@ -697,7 +697,7 @@ impl Module {
                             push_ty_diagnostics(
                                 db,
                                 acc,
-                                db.field_types_with_diagnostics(s.id.into()).1,
+                                db.field_types_with_diagnostics(s.id.into()).1.clone(),
                                 source_map,
                             );
                         }
@@ -709,7 +709,7 @@ impl Module {
                             push_ty_diagnostics(
                                 db,
                                 acc,
-                                db.field_types_with_diagnostics(u.id.into()).1,
+                                db.field_types_with_diagnostics(u.id.into()).1.clone(),
                                 source_map,
                             );
                         }
@@ -739,7 +739,7 @@ impl Module {
                                 push_ty_diagnostics(
                                     db,
                                     acc,
-                                    db.field_types_with_diagnostics(v.into()).1,
+                                    db.field_types_with_diagnostics(v.into()).1.clone(),
                                     source_map,
                                 );
                                 expr_store_diagnostics(db, acc, source_map);
@@ -1219,7 +1219,7 @@ impl<'db> InstantiatedField<'db> {
         let interner = DbInterner::new_no_crate(db);
 
         let var_id = self.inner.parent.into();
-        let field = db.field_types(var_id)[self.inner.id];
+        let field = db.field_types(var_id)[self.inner.id].get();
         let ty = field.instantiate(interner, self.args);
         TypeNs::new(db, var_id, ty)
     }
@@ -1297,7 +1297,7 @@ impl Field {
     /// context of the field definition.
     pub fn ty<'db>(&self, db: &'db dyn HirDatabase) -> TypeNs<'db> {
         let var_id = self.parent.into();
-        let ty = db.field_types(var_id)[self.id].skip_binder();
+        let ty = db.field_types(var_id)[self.id].get().skip_binder();
         TypeNs::new(db, var_id, ty)
     }
 
@@ -1315,13 +1315,13 @@ impl Field {
         };
         let interner = DbInterner::new_no_crate(db);
         let args = generic_args_from_tys(interner, def_id.into(), generics.map(|ty| ty.ty));
-        let ty = db.field_types(var_id)[self.id].instantiate(interner, args);
+        let ty = db.field_types(var_id)[self.id].get().instantiate(interner, args);
         Type::new(db, var_id, ty)
     }
 
     pub fn layout(&self, db: &dyn HirDatabase) -> Result<Layout, LayoutError> {
         db.layout_of_ty(
-            self.ty(db).ty,
+            self.ty(db).ty.store(),
             param_env_from_has_crate(
                 db,
                 match hir_def::VariantId::from(self.parent) {
@@ -1331,7 +1331,8 @@ impl Field {
                     hir_def::VariantId::StructId(id) => GenericDefId::AdtId(id.into()),
                     hir_def::VariantId::UnionId(id) => GenericDefId::AdtId(id.into()),
                 },
-            ),
+            )
+            .store(),
         )
         .map(|layout| Layout(layout, db.target_data_layout(self.krate(db).into()).unwrap()))
     }
@@ -1662,7 +1663,7 @@ impl Variant {
         self.source(db)?.value.expr()
     }
 
-    pub fn eval(self, db: &dyn HirDatabase) -> Result<i128, ConstEvalError<'_>> {
+    pub fn eval(self, db: &dyn HirDatabase) -> Result<i128, ConstEvalError> {
         db.const_eval_discriminant(self.into())
     }
 
@@ -1753,7 +1754,7 @@ impl Adt {
         let args = GenericArgs::for_item_with_defaults(interner, adt_id.into(), |_, id, _| {
             GenericArg::error_from_id(interner, id)
         });
-        db.layout_of_adt(adt_id, args, param_env_from_has_crate(db, adt_id))
+        db.layout_of_adt(adt_id, args.store(), param_env_from_has_crate(db, adt_id).store())
             .map(|layout| Layout(layout, db.target_data_layout(self.krate(db).id).unwrap()))
     }
 
@@ -1988,8 +1989,8 @@ impl DefWithBody {
             acc.push(
                 TypeMismatch {
                     expr_or_pat,
-                    expected: Type::new(db, DefWithBodyId::from(self), mismatch.expected),
-                    actual: Type::new(db, DefWithBodyId::from(self), mismatch.actual),
+                    expected: Type::new(db, DefWithBodyId::from(self), mismatch.expected.as_ref()),
+                    actual: Type::new(db, DefWithBodyId::from(self), mismatch.actual.as_ref()),
                 }
                 .into(),
             );
@@ -2059,7 +2060,10 @@ impl DefWithBody {
                         }
                         mir::MirSpan::Unknown => continue,
                     };
-                    acc.push(MovedOutOfRef { ty: Type::new_for_crate(krate, moof.ty), span }.into())
+                    acc.push(
+                        MovedOutOfRef { ty: Type::new_for_crate(krate, moof.ty.as_ref()), span }
+                            .into(),
+                    )
                 }
                 let mol = &borrowck_result.mutability_of_locals;
                 for (binding_id, binding_data) in body.bindings() {
@@ -2286,7 +2290,7 @@ impl Function {
             .inputs()
             .iter()
             .enumerate()
-            .map(|(idx, ty)| {
+            .map(|(idx, &ty)| {
                 let ty = Type { env: environment, ty };
                 Param { func: Callee::Def(CallableDefId::FunctionId(self.id)), ty, idx }
             })
@@ -2313,7 +2317,7 @@ impl Function {
             .iter()
             .enumerate()
             .skip(skip)
-            .map(|(idx, ty)| {
+            .map(|(idx, &ty)| {
                 let ty = Type { env: environment, ty };
                 Param { func: Callee::Def(CallableDefId::FunctionId(self.id)), ty, idx }
             })
@@ -2337,7 +2341,7 @@ impl Function {
             .iter()
             .enumerate()
             .skip(skip)
-            .map(|(idx, ty)| {
+            .map(|(idx, &ty)| {
                 let ty = Type { env: environment, ty };
                 Param { func: Callee::Def(CallableDefId::FunctionId(self.id)), ty, idx }
             })
@@ -2468,15 +2472,16 @@ impl Function {
         self,
         db: &dyn HirDatabase,
         span_formatter: impl Fn(FileId, TextRange) -> String,
-    ) -> Result<String, ConstEvalError<'_>> {
+    ) -> Result<String, ConstEvalError> {
         let interner = DbInterner::new_no_crate(db);
         let body = db.monomorphized_mir_body(
             self.id.into(),
-            GenericArgs::new_from_iter(interner, []),
+            GenericArgs::empty(interner).store(),
             ParamEnvAndCrate {
                 param_env: db.trait_environment(self.id.into()),
                 krate: self.id.module(db).krate(db),
-            },
+            }
+            .store(),
         )?;
         let (result, output) = interpret_mir(db, body, false, None)?;
         let mut text = match result {
@@ -2619,7 +2624,7 @@ impl SelfParam {
         let callable_sig =
             db.callable_item_signature(self.func.into()).instantiate_identity().skip_binder();
         let environment = param_env_from_has_crate(db, self.func);
-        let ty = callable_sig.inputs().as_slice()[0];
+        let ty = rustc_type_ir::inherent::SliceLike::as_slice(&callable_sig.inputs())[0];
         Type { env: environment, ty }
     }
 
@@ -2634,7 +2639,7 @@ impl SelfParam {
         let callable_sig =
             db.callable_item_signature(self.func.into()).instantiate(interner, args).skip_binder();
         let environment = param_env_from_has_crate(db, self.func);
-        let ty = callable_sig.inputs().as_slice()[0];
+        let ty = rustc_type_ir::inherent::SliceLike::as_slice(&callable_sig.inputs())[0];
         Type { env: environment, ty }
     }
 }
@@ -2728,11 +2733,14 @@ impl Const {
     }
 
     /// Evaluate the constant.
-    pub fn eval(self, db: &dyn HirDatabase) -> Result<EvaluatedConst<'_>, ConstEvalError<'_>> {
+    pub fn eval(self, db: &dyn HirDatabase) -> Result<EvaluatedConst<'_>, ConstEvalError> {
         let interner = DbInterner::new_no_crate(db);
         let ty = db.value_ty(self.id.into()).unwrap().instantiate_identity();
-        db.const_eval(self.id, GenericArgs::new_from_iter(interner, []), None)
-            .map(|it| EvaluatedConst { const_: it, def: self.id.into(), ty })
+        db.const_eval(self.id, GenericArgs::empty(interner), None).map(|it| EvaluatedConst {
+            const_: it,
+            def: self.id.into(),
+            ty,
+        })
     }
 }
 
@@ -2753,7 +2761,7 @@ impl<'db> EvaluatedConst<'db> {
         format!("{}", self.const_.display(db, display_target))
     }
 
-    pub fn render_debug(&self, db: &'db dyn HirDatabase) -> Result<String, MirEvalError<'db>> {
+    pub fn render_debug(&self, db: &'db dyn HirDatabase) -> Result<String, MirEvalError> {
         let kind = self.const_.kind();
         if let ConstKind::Value(c) = kind
             && let ty = c.ty.kind()
@@ -2809,7 +2817,7 @@ impl Static {
     }
 
     /// Evaluate the static initializer.
-    pub fn eval(self, db: &dyn HirDatabase) -> Result<EvaluatedConst<'_>, ConstEvalError<'_>> {
+    pub fn eval(self, db: &dyn HirDatabase) -> Result<EvaluatedConst<'_>, ConstEvalError> {
         let ty = db.value_ty(self.id.into()).unwrap().instantiate_identity();
         db.const_eval_static(self.id).map(|it| EvaluatedConst {
             const_: it,
@@ -3847,7 +3855,7 @@ impl Local {
     pub fn ty(self, db: &dyn HirDatabase) -> Type<'_> {
         let def = self.parent;
         let infer = InferenceResult::for_body(db, def);
-        let ty = infer[self.binding_id];
+        let ty = infer.binding_ty(self.binding_id);
         Type::new(db, def, ty)
     }
 
@@ -4152,8 +4160,8 @@ impl TypeParam {
     pub fn default(self, db: &dyn HirDatabase) -> Option<Type<'_>> {
         let ty = generic_arg_from_param(db, self.id.into())?;
         let resolver = self.id.parent().resolver(db);
-        match ty {
-            GenericArg::Ty(it) if !it.is_ty_error() => {
+        match ty.kind() {
+            rustc_type_ir::GenericArgKind::Type(it) if !it.is_ty_error() => {
                 Some(Type::new_with_resolver_inner(db, &resolver, it))
             }
             _ => None,
@@ -4331,10 +4339,7 @@ impl Impl {
     /// blanket impls, and only does a shallow type constructor check. In fact, this should've probably been on `Adt`
     /// etc., and not on `Type`. If you would want to create a precise list of all impls applying to a type,
     /// you would need to include blanket impls, and try to prove to predicates for each candidate.
-    pub fn all_for_type<'db>(
-        db: &'db dyn HirDatabase,
-        Type { ty, env: _ }: Type<'db>,
-    ) -> Vec<Impl> {
+    pub fn all_for_type<'db>(db: &'db dyn HirDatabase, Type { ty, env }: Type<'db>) -> Vec<Impl> {
         let mut result = Vec::new();
         let interner = DbInterner::new_no_crate(db);
         let Some(simplified_ty) =
@@ -4344,7 +4349,12 @@ impl Impl {
         };
         let mut extend_with_impls =
             |impls: &[ImplId]| result.extend(impls.iter().copied().map(Impl::from));
-        extend_with_impls(method_resolution::incoherent_inherent_impls(db, simplified_ty));
+        method_resolution::with_incoherent_inherent_impls(
+            db,
+            env.krate,
+            &simplified_ty,
+            &mut extend_with_impls,
+        );
         if let Some(module) = method_resolution::simplified_type_module(db, &simplified_ty) {
             InherentImpls::for_each_crate_and_block(
                 db,
@@ -4543,7 +4553,12 @@ impl<'db> Closure<'db> {
         info.0
             .iter()
             .cloned()
-            .map(|capture| ClosureCapture { owner, closure: id, capture })
+            .map(|capture| ClosureCapture {
+                owner,
+                closure: id,
+                capture,
+                _marker: PhantomCovariantLifetime::new(),
+            })
             .collect()
     }
 
@@ -4648,7 +4663,8 @@ impl FnTrait {
 pub struct ClosureCapture<'db> {
     owner: DefWithBodyId,
     closure: InternedClosureId,
-    capture: hir_ty::CapturedItem<'db>,
+    capture: hir_ty::CapturedItem,
+    _marker: PhantomCovariantLifetime<'db>,
 }
 
 impl<'db> ClosureCapture<'db> {
@@ -4915,7 +4931,7 @@ impl<'db> Type<'db> {
                                     .fields()
                                     .iter()
                                     .map(|(idx, _)| {
-                                        field_types[idx].instantiate(self.interner, args)
+                                        field_types[idx].get().instantiate(self.interner, args)
                                     })
                                     .filter(|it| !it.references_non_lt_error())
                                     .collect()
@@ -5132,7 +5148,7 @@ impl<'db> Type<'db> {
         let projection = Ty::new_alias(
             interner,
             AliasTyKind::Projection,
-            AliasTy::new(interner, alias.id.into(), args),
+            AliasTy::new_from_args(interner, alias.id.into(), args),
         );
 
         let infcx = interner.infer_ctxt().build(TypingMode::PostAnalysis);
@@ -5239,7 +5255,7 @@ impl<'db> Type<'db> {
             .iter()
             .map(|(local_id, ty)| {
                 let def = Field { parent: variant_id.into(), id: local_id };
-                let ty = ty.instantiate(interner, substs);
+                let ty = ty.get().instantiate(interner, substs);
                 (def, self.derived(ty))
             })
             .collect()
@@ -5322,7 +5338,12 @@ impl<'db> Type<'db> {
             return;
         };
 
-        handle_impls(method_resolution::incoherent_inherent_impls(db, simplified_type));
+        method_resolution::with_incoherent_inherent_impls(
+            db,
+            self.env.krate,
+            &simplified_type,
+            &mut handle_impls,
+        );
 
         if let Some(module) = method_resolution::simplified_type_module(db, &simplified_type) {
             InherentImpls::for_each_crate_and_block(
@@ -5392,12 +5413,14 @@ impl<'db> Type<'db> {
             .as_adt()
             .into_iter()
             .flat_map(|(_, substs)| substs.iter())
-            .filter_map(move |arg| match arg {
-                GenericArg::Ty(ty) => Some(format_smolstr!("{}", ty.display(db, display_target))),
-                GenericArg::Const(const_) => {
+            .filter_map(move |arg| match arg.kind() {
+                rustc_type_ir::GenericArgKind::Type(ty) => {
+                    Some(format_smolstr!("{}", ty.display(db, display_target)))
+                }
+                rustc_type_ir::GenericArgKind::Const(const_) => {
                     Some(format_smolstr!("{}", const_.display(db, display_target)))
                 }
-                GenericArg::Lifetime(_) => None,
+                rustc_type_ir::GenericArgKind::Lifetime(_) => None,
             })
     }
 
@@ -5801,7 +5824,7 @@ impl<'db> Type<'db> {
     }
 
     pub fn layout(&self, db: &'db dyn HirDatabase) -> Result<Layout, LayoutError> {
-        db.layout_of_ty(self.ty, self.env)
+        db.layout_of_ty(self.ty.store(), self.env.store())
             .map(|layout| Layout(layout, db.target_data_layout(self.env.krate).unwrap()))
     }
 
@@ -5833,9 +5856,10 @@ impl<'db> TypeNs<'db> {
     pub fn impls_trait(&self, infcx: InferCtxt<'db>, trait_: Trait, args: &[TypeNs<'db>]) -> bool {
         let args = GenericArgs::new_from_iter(
             infcx.interner,
-            [self.ty].into_iter().chain(args.iter().map(|t| t.ty)).map(|t| t.into()),
+            [self.ty].into_iter().chain(args.iter().map(|t| t.ty)).map(GenericArg::from),
         );
-        let trait_ref = hir_ty::next_solver::TraitRef::new(infcx.interner, trait_.id.into(), args);
+        let trait_ref =
+            hir_ty::next_solver::TraitRef::new_from_args(infcx.interner, trait_.id.into(), args);
 
         let pred_kind = rustc_type_ir::Binder::dummy(rustc_type_ir::PredicateKind::Clause(
             rustc_type_ir::ClauseKind::Trait(rustc_type_ir::TraitPredicate {

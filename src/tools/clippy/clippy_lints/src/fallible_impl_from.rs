@@ -82,7 +82,7 @@ fn lint_impl_body(cx: &LateContext<'_>, item_def_id: hir::OwnerId, impl_span: Sp
             // check for `unwrap`
             if let Some(arglists) = method_chain_args(expr, &[sym::unwrap]) {
                 let receiver_ty = self.typeck_results.expr_ty(arglists[0].0).peel_refs();
-                if receiver_ty.is_diag_item(self.lcx, sym::Option) || receiver_ty.is_diag_item(self.lcx, sym::Result) {
+                if matches!(receiver_ty.opt_diag_name(self.lcx), Some(sym::Option | sym::Result)) {
                     self.result.push(expr.span);
                 }
             }

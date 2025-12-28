@@ -1327,6 +1327,10 @@ pub enum Operand<'tcx> {
 
     /// Constants are already semantically values, and remain unchanged.
     Constant(Box<ConstOperand<'tcx>>),
+
+    /// Query the compilation session of the current crate for a particular flag. This is not quite
+    /// a const since its value can differ across crates within a single crate graph.
+    RuntimeChecks(RuntimeChecks),
 }
 
 #[derive(Clone, Copy, PartialEq, TyEncodable, TyDecodable, Hash, HashStable)]
@@ -1417,9 +1421,6 @@ pub enum Rvalue<'tcx> {
     /// * The remaining operations accept signed integers, unsigned integers, or floats with
     ///   matching types and return a value of that type.
     BinaryOp(BinOp, Box<(Operand<'tcx>, Operand<'tcx>)>),
-
-    /// Computes a value as described by the operation.
-    NullaryOp(NullOp),
 
     /// Exactly like `BinaryOp`, but less operands.
     ///
@@ -1559,12 +1560,6 @@ pub enum AggregateKind<'tcx> {
     /// creating a thin pointer. If you're just converting between thin pointers,
     /// you may want an [`Rvalue::Cast`] with [`CastKind::PtrToPtr`] instead.
     RawPtr(Ty<'tcx>, Mutability),
-}
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq, TyEncodable, TyDecodable, Hash, HashStable)]
-pub enum NullOp {
-    /// Returns whether we should perform some checking at runtime.
-    RuntimeChecks(RuntimeChecks),
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, TyEncodable, TyDecodable, Hash, HashStable)]

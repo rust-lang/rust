@@ -38,7 +38,7 @@ pub(super) fn check<'tcx>(
             _ => return,
         }
         && let ty = cx.typeck_results().expr_ty_adjusted(recv).peel_refs()
-        && (ty.is_diag_item(cx, sym::HashMap) || ty.is_diag_item(cx, sym::BTreeMap))
+        && matches!(ty.opt_diag_name(cx), Some(sym::HashMap | sym::BTreeMap))
     {
         let mut applicability = rustc_errors::Applicability::MachineApplicable;
         let recv_snippet = snippet_with_applicability(cx, recv.span, "map", &mut applicability);

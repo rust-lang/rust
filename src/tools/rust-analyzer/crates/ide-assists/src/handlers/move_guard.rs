@@ -108,6 +108,10 @@ pub(crate) fn move_arm_cond_to_match_guard(
     let mut replace_node = None;
     let if_expr: IfExpr = IfExpr::cast(arm_body.syntax().clone()).or_else(|| {
         let block_expr = BlockExpr::cast(arm_body.syntax().clone())?;
+        if block_expr.statements().next().is_some() {
+            cov_mark::hit!(move_guard_non_naked_if);
+            return None;
+        }
         if let Expr::IfExpr(e) = block_expr.tail_expr()? {
             replace_node = Some(block_expr.syntax().clone());
             Some(e)
@@ -238,6 +242,46 @@ fn main() {
 "#,
         );
     }
+
+    #[test]
+    fn move_non_naked_arm_cond_to_guard() {
+        cov_mark::check!(move_guard_non_naked_if);
+        check_assist_not_applicable(
+            move_arm_cond_to_match_guard,
+            r#"
+fn main() {
+    match 92 {
+        _ => {
+            let cond = true;
+            $0if cond {
+                foo()
+            }
+        },
+        _ => true
+    }
+}
+"#,
+        );
+        check_assist_not_applicable(
+            move_arm_cond_to_match_guard,
+            r#"
+fn main() {
+    match 92 {
+        _ => {
+            let cond = true;
+            $0if cond {
+                foo()
+            } else {
+                bar()
+            }
+        },
+        _ => true
+    }
+}
+"#,
+        );
+    }
+
     #[test]
     fn move_guard_to_arm_body_target() {
         check_assist_target(

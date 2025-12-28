@@ -1624,24 +1624,18 @@ impl Build {
         self.release(&self.version)
     }
 
-    /// Returns the "package version" for a component given the `num` release
-    /// number.
+    /// Returns the "package version" for a component.
     ///
     /// The package version is typically what shows up in the names of tarballs.
-    /// For channels like beta/nightly it's just the channel name, otherwise
-    /// it's the `num` provided.
-    fn package_vers(&self, num: &str) -> String {
+    /// For channels like beta/nightly it's just the channel name, otherwise it's the release
+    /// version.
+    fn rust_package_vers(&self) -> String {
         match &self.config.channel[..] {
-            "stable" => num.to_string(),
+            "stable" => self.version.to_string(),
             "beta" => "beta".to_string(),
             "nightly" => "nightly".to_string(),
-            _ => format!("{num}-dev"),
+            _ => format!("{}-dev", self.version),
         }
-    }
-
-    /// Returns the value of `package_vers` above for Rust itself.
-    fn rust_package_vers(&self) -> String {
-        self.package_vers(&self.version)
     }
 
     /// Returns the `version` string associated with this compiler for Rust

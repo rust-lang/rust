@@ -1,6 +1,7 @@
 #![warn(clippy::match_like_matches_macro)]
 #![allow(
     unreachable_patterns,
+    irrefutable_let_patterns,
     clippy::equatable_if_let,
     clippy::needless_borrowed_reference,
     clippy::redundant_guards
@@ -276,4 +277,28 @@ fn issue15841(opt: Option<Option<Option<i32>>>, value: i32) {
         _ => false,
     };
     //~^^^^ match_like_matches_macro
+}
+
+fn issue16015<T: 'static, U: 'static>() -> bool {
+    use std::any::{TypeId, type_name};
+    pub struct GetTypeId<T>(T);
+
+    impl<T: 'static> GetTypeId<T> {
+        pub const VALUE: TypeId = TypeId::of::<T>();
+    }
+
+    macro_rules! typeid {
+        ($t:ty) => {
+            GetTypeId::<$t>::VALUE
+        };
+    }
+
+    match typeid!(T) {
+        _ => true,
+        _ => false,
+    };
+    //~^^^^ match_like_matches_macro
+
+    if let _ = typeid!(U) { true } else { false }
+    //~^ match_like_matches_macro
 }

@@ -36,7 +36,7 @@ For each test case, the following is done:
   representation with infinite precision.
 - The rational value then gets checked that it is within the float's
   representable values (absolute value greater than the smallest number to round
-  to zero, but less less than the first value to round to infinity). If these
+  to zero, but less than the first value to round to infinity). If these
   limits are exceeded, check that the parsed float reflects that.
 - For real nonzero numbers, the parsed float is converted into a rational using
   `significand * 2^exponent`. It is then checked against the actual rational

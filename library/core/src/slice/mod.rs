@@ -842,8 +842,8 @@ impl<T> [T] {
     /// Gets a reference to the underlying array.
     ///
     /// If `N` is not exactly equal to the length of `self`, then this method returns `None`.
-    #[stable(feature = "core_slice_as_array", since = "CURRENT_RUSTC_VERSION")]
-    #[rustc_const_stable(feature = "core_slice_as_array", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "core_slice_as_array", since = "1.93.0")]
+    #[rustc_const_stable(feature = "core_slice_as_array", since = "1.93.0")]
     #[inline]
     #[must_use]
     pub const fn as_array<const N: usize>(&self) -> Option<&[T; N]> {
@@ -861,8 +861,8 @@ impl<T> [T] {
     /// Gets a mutable reference to the slice's underlying array.
     ///
     /// If `N` is not exactly equal to the length of `self`, then this method returns `None`.
-    #[stable(feature = "core_slice_as_array", since = "CURRENT_RUSTC_VERSION")]
-    #[rustc_const_stable(feature = "core_slice_as_array", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "core_slice_as_array", since = "1.93.0")]
+    #[rustc_const_stable(feature = "core_slice_as_array", since = "1.93.0")]
     #[inline]
     #[must_use]
     pub const fn as_mut_array<const N: usize>(&mut self) -> Option<&mut [T; N]> {
@@ -4907,6 +4907,28 @@ impl<T> [T] {
         let end = start.wrapping_add(subslice.len());
 
         if start <= self.len() && end <= self.len() { Some(start..end) } else { None }
+    }
+
+    /// Returns the same slice `&[T]`.
+    ///
+    /// This method is redundant when used directly on `&[T]`, but
+    /// it helps dereferencing other "container" types to slices,
+    /// for example `Box<[T]>` or `Arc<[T]>`.
+    #[inline]
+    #[unstable(feature = "str_as_str", issue = "130366")]
+    pub const fn as_slice(&self) -> &[T] {
+        self
+    }
+
+    /// Returns the same slice `&mut [T]`.
+    ///
+    /// This method is redundant when used directly on `&mut [T]`, but
+    /// it helps dereferencing other "container" types to slices,
+    /// for example `Box<[T]>` or `MutexGuard<[T]>`.
+    #[inline]
+    #[unstable(feature = "str_as_str", issue = "130366")]
+    pub const fn as_mut_slice(&mut self) -> &mut [T] {
+        self
     }
 }
 

@@ -18,17 +18,19 @@
 //! [lattices]: https://en.wikipedia.org/wiki/Lattice_(order)
 
 use rustc_type_ir::{
-    AliasRelationDirection, TypeVisitableExt, Upcast, Variance,
+    AliasRelationDirection, Interner, TypeVisitableExt, Upcast, Variance,
     inherent::{IntoKind, Span as _},
     relate::{
         Relate, StructurallyRelateAliases, TypeRelation, VarianceDiagInfo,
-        combine::{PredicateEmittingRelation, super_combine_consts, super_combine_tys},
+        combine::{
+            PredicateEmittingRelation, combine_ty_args, super_combine_consts, super_combine_tys,
+        },
     },
 };
 
 use crate::next_solver::{
-    AliasTy, Binder, Const, DbInterner, Goal, ParamEnv, Predicate, PredicateKind, Region, Span, Ty,
-    TyKind,
+    AliasTy, Binder, Const, DbInterner, GenericArgs, Goal, ParamEnv, Predicate, PredicateKind,
+    Region, SolverDefId, Span, Ty, TyKind,
     infer::{
         InferCtxt, TypeTrace,
         relate::RelateResult,
@@ -80,6 +82,19 @@ impl<'infcx, 'db> LatticeOp<'infcx, 'db> {
 impl<'db> TypeRelation<DbInterner<'db>> for LatticeOp<'_, 'db> {
     fn cx(&self) -> DbInterner<'db> {
         self.infcx.interner
+    }
+
+    fn relate_ty_args(
+        &mut self,
+        a_ty: Ty<'db>,
+        b_ty: Ty<'db>,
+        def_id: SolverDefId,
+        a_args: GenericArgs<'db>,
+        b_args: GenericArgs<'db>,
+        mk: impl FnOnce(GenericArgs<'db>) -> Ty<'db>,
+    ) -> RelateResult<'db, Ty<'db>> {
+        let variances = self.cx().variances_of(def_id);
+        combine_ty_args(self.infcx, self, a_ty, b_ty, variances, a_args, b_args, mk)
     }
 
     fn relate_with_variance<T: Relate<DbInterner<'db>>>(

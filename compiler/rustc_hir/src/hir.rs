@@ -150,10 +150,13 @@ impl From<Ident> for LifetimeSyntax {
 /// `LifetimeSource::OutlivesBound` or `LifetimeSource::PreciseCapturing`
 /// — there's no way to "elide" these lifetimes.
 #[derive(Debug, Copy, Clone, HashStable_Generic)]
-// Raise the aligement to at least 4 bytes - this is relied on in other parts of the compiler(for pointer tagging):
-// https://github.com/rust-lang/rust/blob/ce5fdd7d42aba9a2925692e11af2bd39cf37798a/compiler/rustc_data_structures/src/tagged_ptr.rs#L163
-// Removing this `repr(4)` will cause the compiler to not build on platforms like `m68k` Linux, where the aligement of u32 and usize is only 2.
-// Since `repr(align)` may only raise aligement, this has no effect on platforms where the aligement is already sufficient.
+// Raise the alignment to at least 4 bytes.
+// This is relied on in other parts of the compiler (for pointer tagging):
+// <https://github.com/rust-lang/rust/blob/ce5fdd7d42aba9a2925692e11af2bd39cf37798a/compiler/rustc_data_structures/src/tagged_ptr.rs#L163>
+// Removing this `repr(4)` will cause the compiler to not build on platforms
+// like `m68k` Linux, where the alignment of u32 and usize is only 2.
+// Since `repr(align)` may only raise alignment, this has no effect on
+// platforms where the alignment is already sufficient.
 #[repr(align(4))]
 pub struct Lifetime {
     #[stable_hasher(ignore)]
@@ -494,6 +497,7 @@ impl<'hir, Unambig> ConstArg<'hir, Unambig> {
 
     pub fn span(&self) -> Span {
         match self.kind {
+            ConstArgKind::Struct(path, _) => path.span(),
             ConstArgKind::Path(path) => path.span(),
             ConstArgKind::Anon(anon) => anon.span,
             ConstArgKind::Error(span, _) => span,
@@ -513,11 +517,21 @@ pub enum ConstArgKind<'hir, Unambig = ()> {
     /// However, in the future, we'll be using it for all of those.
     Path(QPath<'hir>),
     Anon(&'hir AnonConst),
+    /// Represents construction of struct/struct variants
+    Struct(QPath<'hir>, &'hir [&'hir ConstArgExprField<'hir>]),
     /// Error const
     Error(Span, ErrorGuaranteed),
     /// This variant is not always used to represent inference consts, sometimes
     /// [`GenericArg::Infer`] is used instead.
     Infer(Span, Unambig),
+}
+
+#[derive(Clone, Copy, Debug, HashStable_Generic)]
+pub struct ConstArgExprField<'hir> {
+    pub hir_id: HirId,
+    pub span: Span,
+    pub field: Ident,
+    pub expr: &'hir ConstArg<'hir>,
 }
 
 #[derive(Clone, Copy, Debug, HashStable_Generic)]
@@ -4714,6 +4728,7 @@ pub enum Node<'hir> {
     ConstArg(&'hir ConstArg<'hir>),
     Expr(&'hir Expr<'hir>),
     ExprField(&'hir ExprField<'hir>),
+    ConstArgExprField(&'hir ConstArgExprField<'hir>),
     Stmt(&'hir Stmt<'hir>),
     PathSegment(&'hir PathSegment<'hir>),
     Ty(&'hir Ty<'hir>),
@@ -4773,6 +4788,7 @@ impl<'hir> Node<'hir> {
             Node::AssocItemConstraint(c) => Some(c.ident),
             Node::PatField(f) => Some(f.ident),
             Node::ExprField(f) => Some(f.ident),
+            Node::ConstArgExprField(f) => Some(f.field),
             Node::PreciseCapturingNonLifetimeArg(a) => Some(a.ident),
             Node::Param(..)
             | Node::AnonConst(..)

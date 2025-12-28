@@ -435,6 +435,13 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // Return value: 0 on success, otherwise the size it would have needed.
                 this.write_int(if success { 0 } else { needed_size }, dest)?;
             }
+            // Hint that a loop is spinning indefinitely.
+            "miri_spin_loop" => {
+                let [] = this.check_shim_sig_lenient(abi, CanonAbi::Rust, link_name, args)?;
+
+                // Try to run another thread to maximize the chance of finding actual bugs.
+                this.yield_active_thread();
+            }
             // Obtains the size of a Miri backtrace. See the README for details.
             "miri_backtrace_size" => {
                 this.handle_miri_backtrace_size(abi, link_name, args, dest)?;
@@ -531,7 +538,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         code,
                         crate::concurrency::ExitType::ExitCalled,
                     )?;
-                    todo!(); // FIXME(genmc): Add a way to return here that is allowed to not do progress (can't use existing EmulateItemResult variants).
+                    return interp_ok(EmulateItemResult::AlreadyJumped);
                 }
                 throw_machine_stop!(TerminationInfo::Exit { code, leak_check: false });
             }
@@ -805,22 +812,6 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 return shims::aarch64::EvalContextExt::emulate_aarch64_intrinsic(
                     this, link_name, abi, args, dest,
                 );
-            }
-            // FIXME: Move this to an `arm` submodule.
-            "llvm.arm.hint" if this.tcx.sess.target.arch == Arch::Arm => {
-                let [arg] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
-                let arg = this.read_scalar(arg)?.to_i32()?;
-                // Note that different arguments might have different target feature requirements.
-                match arg {
-                    // YIELD
-                    1 => {
-                        this.expect_target_feature_for_intrinsic(link_name, "v6")?;
-                        this.yield_active_thread();
-                    }
-                    _ => {
-                        throw_unsup_format!("unsupported llvm.arm.hint argument {}", arg);
-                    }
-                }
             }
 
             // Fallback to shims in submodules.

@@ -4,7 +4,7 @@ use rustc_middle::ty::Ty;
 use rustc_span::Symbol;
 use rustc_target::callconv::FnAbi;
 
-use super::{horizontal_bin_op, pmaddbw, pmulhrsw, psign};
+use super::{horizontal_bin_op, pmaddbw, pmulhrsw, pshufb, psign};
 use crate::*;
 
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
@@ -29,27 +29,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let [left, right] =
                     this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
 
-                let (left, left_len) = this.project_to_simd(left)?;
-                let (right, right_len) = this.project_to_simd(right)?;
-                let (dest, dest_len) = this.project_to_simd(dest)?;
-
-                assert_eq!(dest_len, left_len);
-                assert_eq!(dest_len, right_len);
-
-                for i in 0..dest_len {
-                    let right = this.read_scalar(&this.project_index(&right, i)?)?.to_u8()?;
-                    let dest = this.project_index(&dest, i)?;
-
-                    let res = if right & 0x80 == 0 {
-                        let j = right % 16; // index wraps around
-                        this.read_scalar(&this.project_index(&left, j.into())?)?
-                    } else {
-                        // If the highest bit in `right` is 1, write zero.
-                        Scalar::from_u8(0)
-                    };
-
-                    this.write_scalar(res, &dest)?;
-                }
+                pshufb(this, left, right, dest)?;
             }
             // Used to implement the _mm_h{adds,subs}_epi16 functions.
             // Horizontally add / subtract with saturation adjacent 16-bit

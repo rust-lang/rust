@@ -302,15 +302,7 @@ impl<'tcx> Const<'tcx> {
     #[inline]
     pub fn try_to_scalar(self) -> Option<Scalar> {
         match self {
-            Const::Ty(_, c) => match c.kind() {
-                ty::ConstKind::Value(cv) if cv.ty.is_primitive() => {
-                    // A valtree of a type where leaves directly represent the scalar const value.
-                    // Just checking whether it is a leaf is insufficient as e.g. references are leafs
-                    // but the leaf value is the value they point to, not the reference itself!
-                    Some(cv.valtree.unwrap_leaf().into())
-                }
-                _ => None,
-            },
+            Const::Ty(_, c) => c.try_to_scalar(),
             Const::Val(val, _) => val.try_to_scalar(),
             Const::Unevaluated(..) => None,
         }
@@ -321,10 +313,7 @@ impl<'tcx> Const<'tcx> {
         // This is equivalent to `self.try_to_scalar()?.try_to_int().ok()`, but measurably faster.
         match self {
             Const::Val(ConstValue::Scalar(Scalar::Int(x)), _) => Some(x),
-            Const::Ty(_, c) => match c.kind() {
-                ty::ConstKind::Value(cv) if cv.ty.is_primitive() => Some(cv.valtree.unwrap_leaf()),
-                _ => None,
-            },
+            Const::Ty(_, c) => c.try_to_leaf(),
             _ => None,
         }
     }
@@ -377,14 +366,10 @@ impl<'tcx> Const<'tcx> {
         tcx: TyCtxt<'tcx>,
         typing_env: ty::TypingEnv<'tcx>,
     ) -> Option<Scalar> {
-        if let Const::Ty(_, c) = self
-            && let ty::ConstKind::Value(cv) = c.kind()
-            && cv.ty.is_primitive()
-        {
-            // Avoid the `valtree_to_const_val` query. Can only be done on primitive types that
-            // are valtree leaves, and *not* on references. (References should return the
-            // pointer here, which valtrees don't represent.)
-            Some(cv.valtree.unwrap_leaf().into())
+        if let Const::Ty(_, c) = self {
+            // We don't evaluate anything for type system constants as normalizing
+            // the MIR will handle this for us
+            c.try_to_scalar()
         } else {
             self.eval(tcx, typing_env, DUMMY_SP).ok()?.try_to_scalar()
         }

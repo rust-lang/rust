@@ -10,8 +10,9 @@ use ena::unify as ut;
 use hir_def::GenericParamId;
 use opaque_types::{OpaqueHiddenType, OpaqueTypeStorage};
 use region_constraints::{RegionConstraintCollector, RegionConstraintStorage};
-use rustc_next_trait_solver::solve::SolverDelegateEvalExt;
+use rustc_next_trait_solver::solve::{GoalEvaluation, SolverDelegateEvalExt};
 use rustc_pattern_analysis::Captures;
+use rustc_type_ir::solve::{NoSolution, inspect};
 use rustc_type_ir::{
     ClosureKind, ConstVid, FloatVarValue, FloatVid, GenericArgKind, InferConst, InferTy,
     IntVarValue, IntVid, OutlivesPredicate, RegionVid, TermKind, TyVid, TypeFoldable, TypeFolder,
@@ -27,6 +28,7 @@ use traits::{ObligationCause, PredicateObligations};
 use type_variable::TypeVariableOrigin;
 use unify_key::{ConstVariableOrigin, ConstVariableValue, ConstVidKey};
 
+pub use crate::next_solver::infer::traits::ObligationInspector;
 use crate::next_solver::{
     ArgOutlivesPredicate, BoundConst, BoundRegion, BoundTy, BoundVarKind, Goal, Predicate,
     SolverContext,
@@ -250,6 +252,8 @@ pub struct InferCtxt<'db> {
     /// when we enter into a higher-ranked (`for<..>`) type or trait
     /// bound.
     universe: Cell<UniverseIndex>,
+
+    obligation_inspector: Cell<Option<ObligationInspector<'db>>>,
 }
 
 /// See the `error_reporting` module for more details.
@@ -375,6 +379,7 @@ impl<'db> InferCtxtBuilder<'db> {
             inner: RefCell::new(InferCtxtInner::new()),
             tainted_by_errors: Cell::new(None),
             universe: Cell::new(UniverseIndex::ROOT),
+            obligation_inspector: Cell::new(None),
         }
     }
 }
@@ -1222,6 +1227,30 @@ impl<'db> InferCtxt<'db> {
 
     fn sub_unify_ty_vids_raw(&self, a: rustc_type_ir::TyVid, b: rustc_type_ir::TyVid) {
         self.inner.borrow_mut().type_variables().sub_unify(a, b);
+    }
+
+    /// Attach a callback to be invoked on each root obligation evaluated in the new trait solver.
+    pub fn attach_obligation_inspector(&self, inspector: ObligationInspector<'db>) {
+        debug_assert!(
+            self.obligation_inspector.get().is_none(),
+            "shouldn't override a set obligation inspector"
+        );
+        self.obligation_inspector.set(Some(inspector));
+    }
+
+    pub fn inspect_evaluated_obligation(
+        &self,
+        obligation: &PredicateObligation<'db>,
+        result: &Result<GoalEvaluation<DbInterner<'db>>, NoSolution>,
+        get_proof_tree: impl FnOnce() -> Option<inspect::GoalEvaluation<DbInterner<'db>>>,
+    ) {
+        if let Some(inspector) = self.obligation_inspector.get() {
+            let result = match result {
+                Ok(GoalEvaluation { certainty, .. }) => Ok(*certainty),
+                Err(_) => Err(NoSolution),
+            };
+            (inspector)(self, obligation, result, get_proof_tree());
+        }
     }
 }
 

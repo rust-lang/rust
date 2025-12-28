@@ -1,4 +1,4 @@
-//@ needs-enzyme
+//@ only-nightly
 
 #![feature(autodiff)]
 //@ pretty-mode:expanded

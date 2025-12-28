@@ -563,7 +563,8 @@ pub fn _mm_crc32_u32(crc: u32, v: u32) -> u32 {
 #[target_feature(enable = "sse4.2")]
 #[cfg_attr(test, assert_instr(pcmpgtq))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm_cmpgt_epi64(a: __m128i, b: __m128i) -> __m128i {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm_cmpgt_epi64(a: __m128i, b: __m128i) -> __m128i {
     unsafe { transmute(simd_gt::<_, i64x2>(a.as_i64x2(), b.as_i64x2())) }
 }
 
@@ -609,6 +610,7 @@ unsafe extern "C" {
 
 #[cfg(test)]
 mod tests {
+    use crate::core_arch::assert_eq_const as assert_eq;
     use stdarch_test::simd_test;
 
     use crate::core_arch::x86::*;
@@ -789,7 +791,7 @@ mod tests {
     }
 
     #[simd_test(enable = "sse4.2")]
-    unsafe fn test_mm_cmpgt_epi64() {
+    const unsafe fn test_mm_cmpgt_epi64() {
         let a = _mm_setr_epi64x(0, 0x2a);
         let b = _mm_set1_epi64x(0x00);
         let i = _mm_cmpgt_epi64(a, b);

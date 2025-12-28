@@ -541,7 +541,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 hir::ItemKind::Macro(ident, macro_def, macro_kinds)
             }
             ItemKind::Delegation(box delegation) => {
-                let delegation_results = self.lower_delegation(delegation, id, false);
+                let delegation_results = self.lower_delegation(delegation, id);
                 hir::ItemKind::Fn {
                     sig: delegation_results.sig,
                     ident: delegation_results.ident,
@@ -1026,7 +1026,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 (*ident, generics, kind, ty.is_some())
             }
             AssocItemKind::Delegation(box delegation) => {
-                let delegation_results = self.lower_delegation(delegation, i.id, false);
+                let delegation_results = self.lower_delegation(delegation, i.id);
                 let item_kind = hir::TraitItemKind::Fn(
                     delegation_results.sig,
                     hir::TraitFn::Provided(delegation_results.body_id),
@@ -1196,7 +1196,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 )
             }
             AssocItemKind::Delegation(box delegation) => {
-                let delegation_results = self.lower_delegation(delegation, i.id, is_in_trait_impl);
+                let delegation_results = self.lower_delegation(delegation, i.id);
                 (
                     delegation.ident,
                     (

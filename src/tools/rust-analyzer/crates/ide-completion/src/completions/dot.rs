@@ -4,6 +4,7 @@ use std::ops::ControlFlow;
 
 use hir::{Complete, Function, HasContainer, ItemContainer, MethodCandidateCallback};
 use ide_db::FxHashSet;
+use itertools::Either;
 use syntax::SmolStr;
 
 use crate::{
@@ -146,11 +147,14 @@ pub(crate) fn complete_undotted_self(
         _ => return,
     };
 
-    let ty = self_param.ty(ctx.db);
+    let (param_name, ty) = match self_param {
+        Either::Left(self_param) => ("self", &self_param.ty(ctx.db)),
+        Either::Right(this_param) => ("this", this_param.ty()),
+    };
     complete_fields(
         acc,
         ctx,
-        &ty,
+        ty,
         |acc, field, ty| {
             acc.add_field(
                 ctx,
@@ -163,15 +167,17 @@ pub(crate) fn complete_undotted_self(
                         in_breakable: expr_ctx.in_breakable,
                     },
                 },
-                Some(SmolStr::new_static("self")),
+                Some(SmolStr::new_static(param_name)),
                 field,
                 &ty,
             )
         },
-        |acc, field, ty| acc.add_tuple_field(ctx, Some(SmolStr::new_static("self")), field, &ty),
+        |acc, field, ty| {
+            acc.add_tuple_field(ctx, Some(SmolStr::new_static(param_name)), field, &ty)
+        },
         false,
     );
-    complete_methods(ctx, &ty, &ctx.traits_in_scope(), |func| {
+    complete_methods(ctx, ty, &ctx.traits_in_scope(), |func| {
         acc.add_method(
             ctx,
             &DotAccess {
@@ -184,7 +190,7 @@ pub(crate) fn complete_undotted_self(
                 },
             },
             func,
-            Some(SmolStr::new_static("self")),
+            Some(SmolStr::new_static(param_name)),
             None,
         )
     });
@@ -1069,6 +1075,96 @@ impl Foo { fn foo(&mut self) { $0 } }"#,
                 sp Self                 Foo
                 st Foo                  Foo
                 bt u32                  u32
+            "#]],
+        );
+    }
+
+    #[test]
+    fn completes_bare_fields_and_methods_in_this_closure() {
+        check_no_kw(
+            r#"
+//- minicore: fn
+struct Foo { field: i32 }
+
+impl Foo { fn foo(&mut self) { let _: fn(&mut Self) = |this| { $0 } } }"#,
+            expect![[r#"
+                fd this.field           i32
+                me this.foo() fn(&mut self)
+                lc self            &mut Foo
+                lc this            &mut Foo
+                md core
+                sp Self                 Foo
+                st Foo                  Foo
+                tt Fn
+                tt FnMut
+                tt FnOnce
+                bt u32                  u32
+            "#]],
+        );
+    }
+
+    #[test]
+    fn completes_bare_fields_and_methods_in_other_closure() {
+        check_no_kw(
+            r#"
+//- minicore: fn
+struct Foo { field: i32 }
+
+impl Foo { fn foo(&self) { let _: fn(&Self) = |foo| { $0 } } }"#,
+            expect![[r#"
+                fd self.field       i32
+                me self.foo() fn(&self)
+                lc foo             &Foo
+                lc self            &Foo
+                md core
+                sp Self             Foo
+                st Foo              Foo
+                tt Fn
+                tt FnMut
+                tt FnOnce
+                bt u32              u32
+            "#]],
+        );
+
+        check_no_kw(
+            r#"
+//- minicore: fn
+struct Foo { field: i32 }
+
+impl Foo { fn foo(&self) { let _: fn(&Self) = || { $0 } } }"#,
+            expect![[r#"
+                fd self.field       i32
+                me self.foo() fn(&self)
+                lc self            &Foo
+                md core
+                sp Self             Foo
+                st Foo              Foo
+                tt Fn
+                tt FnMut
+                tt FnOnce
+                bt u32              u32
+            "#]],
+        );
+
+        check_no_kw(
+            r#"
+//- minicore: fn
+struct Foo { field: i32 }
+
+impl Foo { fn foo(&self) { let _: fn(&Self, &Self) = |foo, other| { $0 } } }"#,
+            expect![[r#"
+                fd self.field       i32
+                me self.foo() fn(&self)
+                lc foo             &Foo
+                lc other           &Foo
+                lc self            &Foo
+                md core
+                sp Self             Foo
+                st Foo              Foo
+                tt Fn
+                tt FnMut
+                tt FnOnce
+                bt u32              u32
             "#]],
         );
     }

@@ -5,6 +5,7 @@ use intern::{Symbol, sym};
 use span::{Edition, Span};
 use tt::{Delimiter, TopSubtreeBuilder, iter::TtElement};
 
+use super::TokensOrigin;
 use crate::{
     ExpandError, ExpandErrorKind, ExpandResult, MetaTemplate,
     expander::{Binding, Bindings, Fragment},
@@ -313,7 +314,7 @@ fn expand_subtree(
                                 }
                             };
                             let values = match &var_value {
-                                Fragment::Tokens(tokens) => {
+                                Fragment::Tokens { tree: tokens, .. } => {
                                     let mut iter = tokens.iter();
                                     (iter.next(), iter.next())
                                 }
@@ -393,7 +394,13 @@ fn expand_var(
                 // rustc spacing is not like ours. Ours is like proc macros', it dictates how puncts will actually be joined.
                 // rustc uses them mostly for pretty printing. So we have to deviate a bit from what rustc does here.
                 // Basically, a metavariable can never be joined with whatever after it.
-                Fragment::Tokens(tt) => builder.extend_with_tt_alone(tt.strip_invisible()),
+                Fragment::Tokens { tree, origin } => {
+                    let view = match origin {
+                        TokensOrigin::Raw => tree.strip_invisible(),
+                        TokensOrigin::Ast => tree,
+                    };
+                    builder.extend_with_tt_alone(view);
+                }
                 Fragment::TokensOwned(tt) => {
                     builder.extend_with_tt_alone(tt.view().strip_invisible())
                 }

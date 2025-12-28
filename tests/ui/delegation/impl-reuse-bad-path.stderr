@@ -1,0 +1,52 @@
+error: empty glob delegation is not supported
+  --> $DIR/impl-reuse-bad-path.rs:11:5
+   |
+LL |     reuse impl T for unresolved { self.0 }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: expected trait, found struct `Trait`
+  --> $DIR/impl-reuse-bad-path.rs:21:16
+   |
+LL |     reuse impl Trait for S { self.0 }
+   |                ^^^^^ not a trait
+
+error: expected trait, found module `TraitModule`
+  --> $DIR/impl-reuse-bad-path.rs:26:16
+   |
+LL |     reuse impl TraitModule for S { self.0 }
+   |                ^^^^^^^^^^^ not a trait
+
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `unresolved`
+  --> $DIR/impl-reuse-bad-path.rs:6:16
+   |
+LL |     reuse impl unresolved for S { self.0 }
+   |                ^^^^^^^^^^ use of unresolved module or unlinked crate `unresolved`
+
+error[E0405]: cannot find trait `unresolved` in this scope
+  --> $DIR/impl-reuse-bad-path.rs:6:16
+   |
+LL |     reuse impl unresolved for S { self.0 }
+   |                ^^^^^^^^^^ not found in this scope
+
+error[E0425]: cannot find type `unresolved` in this scope
+  --> $DIR/impl-reuse-bad-path.rs:11:22
+   |
+LL |     reuse impl T for unresolved { self.0 }
+   |                      ^^^^^^^^^^ not found in this scope
+
+error[E0404]: expected trait, found struct `Trait`
+  --> $DIR/impl-reuse-bad-path.rs:21:16
+   |
+LL |     reuse impl Trait for S { self.0 }
+   |                ^^^^^ not a trait
+
+error[E0404]: expected trait, found module `TraitModule`
+  --> $DIR/impl-reuse-bad-path.rs:26:16
+   |
+LL |     reuse impl TraitModule for S { self.0 }
+   |                ^^^^^^^^^^^ not a trait
+
+error: aborting due to 8 previous errors
+
+Some errors have detailed explanations: E0404, E0405, E0425, E0433.
+For more information about an error, try `rustc --explain E0404`.

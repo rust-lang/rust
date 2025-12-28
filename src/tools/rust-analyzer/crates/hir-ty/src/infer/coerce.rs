@@ -104,7 +104,7 @@ struct Coerce<D> {
     cause: ObligationCause,
 }
 
-type CoerceResult<'db> = InferResult<'db, (Vec<Adjustment<'db>>, Ty<'db>)>;
+type CoerceResult<'db> = InferResult<'db, (Vec<Adjustment>, Ty<'db>)>;
 
 /// Coercing a mutable reference to an immutable works, while
 /// coercing `&T` to `&mut T` should be forbidden.
@@ -114,7 +114,7 @@ fn coerce_mutbls<'db>(from_mutbl: Mutability, to_mutbl: Mutability) -> RelateRes
 
 /// This always returns `Ok(...)`.
 fn success<'db>(
-    adj: Vec<Adjustment<'db>>,
+    adj: Vec<Adjustment>,
     target: Ty<'db>,
     obligations: PredicateObligations<'db>,
 ) -> CoerceResult<'db> {
@@ -206,14 +206,17 @@ where
         &mut self,
         a: Ty<'db>,
         b: Ty<'db>,
-        adjustments: impl IntoIterator<Item = Adjustment<'db>>,
+        adjustments: impl IntoIterator<Item = Adjustment>,
         final_adjustment: Adjust,
     ) -> CoerceResult<'db> {
         self.unify_raw(a, b).and_then(|InferOk { value: ty, obligations }| {
             success(
                 adjustments
                     .into_iter()
-                    .chain(std::iter::once(Adjustment { target: ty, kind: final_adjustment }))
+                    .chain(std::iter::once(Adjustment {
+                        target: ty.store(),
+                        kind: final_adjustment,
+                    }))
                     .collect(),
                 ty,
                 obligations,
@@ -237,7 +240,7 @@ where
 
             if self.coerce_never {
                 return success(
-                    vec![Adjustment { kind: Adjust::NeverToAny, target: b }],
+                    vec![Adjustment { kind: Adjust::NeverToAny, target: b.store() }],
                     b,
                     PredicateObligations::new(),
                 );
@@ -532,7 +535,8 @@ where
 
         // Now apply the autoref.
         let mutbl = AutoBorrowMutability::new(mutbl_b, self.allow_two_phase);
-        adjustments.push(Adjustment { kind: Adjust::Borrow(AutoBorrow::Ref(mutbl)), target: ty });
+        adjustments
+            .push(Adjustment { kind: Adjust::Borrow(AutoBorrow::Ref(mutbl)), target: ty.store() });
 
         debug!("coerce_borrowed_pointer: succeeded ty={:?} adjustments={:?}", ty, adjustments);
 
@@ -635,10 +639,10 @@ where
                 let mutbl = AutoBorrowMutability::new(mutbl_b, AllowTwoPhase::No);
 
                 Some((
-                    Adjustment { kind: Adjust::Deref(None), target: ty_a },
+                    Adjustment { kind: Adjust::Deref(None), target: ty_a.store() },
                     Adjustment {
                         kind: Adjust::Borrow(AutoBorrow::Ref(mutbl)),
-                        target: Ty::new_ref(self.interner(), r_borrow, ty_a, mutbl_b),
+                        target: Ty::new_ref(self.interner(), r_borrow, ty_a, mutbl_b).store(),
                     },
                 ))
             }
@@ -646,16 +650,16 @@ where
                 coerce_mutbls(mt_a, mt_b)?;
 
                 Some((
-                    Adjustment { kind: Adjust::Deref(None), target: ty_a },
+                    Adjustment { kind: Adjust::Deref(None), target: ty_a.store() },
                     Adjustment {
                         kind: Adjust::Borrow(AutoBorrow::RawPtr(mt_b)),
-                        target: Ty::new_ptr(self.interner(), ty_a, mt_b),
+                        target: Ty::new_ptr(self.interner(), ty_a, mt_b).store(),
                     },
                 ))
             }
             _ => None,
         };
-        let coerce_source = reborrow.as_ref().map_or(source, |(_, r)| r.target);
+        let coerce_source = reborrow.as_ref().map_or(source, |(_, r)| r.target.as_ref());
 
         // Setup either a subtyping or a LUB relationship between
         // the `CoerceUnsized` target type and the expected type.
@@ -726,7 +730,7 @@ where
                 Ok(None) => {
                     if trait_pred.def_id().0 == unsize_did {
                         let self_ty = trait_pred.self_ty();
-                        let unsize_ty = trait_pred.trait_ref.args.inner()[1].expect_ty();
+                        let unsize_ty = trait_pred.trait_ref.args[1].expect_ty();
                         debug!("coerce_unsized: ambiguous unsize case for {:?}", trait_pred);
                         match (self_ty.kind(), unsize_ty.kind()) {
                             (TyKind::Infer(rustc_type_ir::TyVar(v)), TyKind::Dynamic(..))
@@ -815,7 +819,7 @@ where
                     b,
                     adjustment.map(|kind| Adjustment {
                         kind,
-                        target: Ty::new_fn_ptr(this.interner(), fn_ty_a),
+                        target: Ty::new_fn_ptr(this.interner(), fn_ty_a).store(),
                     }),
                     Adjust::Pointer(PointerCast::UnsafeFnPointer),
                 )
@@ -955,7 +959,7 @@ where
             self.unify_and(
                 a_raw,
                 b,
-                [Adjustment { kind: Adjust::Deref(None), target: mt_a.ty }],
+                [Adjustment { kind: Adjust::Deref(None), target: mt_a.ty.store() }],
                 Adjust::Borrow(AutoBorrow::RawPtr(mutbl_b)),
             )
         } else if mt_a.mutbl != mutbl_b {
@@ -1170,12 +1174,15 @@ impl<'db> InferenceContext<'_, 'db> {
             for &expr in exprs {
                 self.write_expr_adj(
                     expr,
-                    Box::new([Adjustment { kind: prev_adjustment.clone(), target: fn_ptr }]),
+                    Box::new([Adjustment {
+                        kind: prev_adjustment.clone(),
+                        target: fn_ptr.store(),
+                    }]),
                 );
             }
             self.write_expr_adj(
                 new,
-                Box::new([Adjustment { kind: next_adjustment, target: fn_ptr }]),
+                Box::new([Adjustment { kind: next_adjustment, target: fn_ptr.store() }]),
             );
             return Ok(fn_ptr);
         }
@@ -1390,7 +1397,7 @@ impl<'db, 'exprs> CoerceMany<'db, 'exprs> {
             icx,
             cause,
             expr,
-            icx.types.unit,
+            icx.types.types.unit,
             true,
             label_unit_as_expected,
             expr_is_read,
@@ -1505,14 +1512,14 @@ impl<'db, 'exprs> CoerceMany<'db, 'exprs> {
                 // emit or provide suggestions on how to fix the initial error.
                 icx.set_tainted_by_errors();
 
-                self.final_ty = Some(icx.types.error);
+                self.final_ty = Some(icx.types.types.error);
 
                 icx.result.type_mismatches.get_or_insert_default().insert(
                     expression.into(),
                     if label_expression_as_expected {
-                        TypeMismatch { expected: found, actual: expected }
+                        TypeMismatch { expected: found.store(), actual: expected.store() }
                     } else {
-                        TypeMismatch { expected, actual: found }
+                        TypeMismatch { expected: expected.store(), actual: found.store() }
                     },
                 );
             }
@@ -1528,7 +1535,7 @@ impl<'db, 'exprs> CoerceMany<'db, 'exprs> {
             // If we only had inputs that were of type `!` (or no
             // inputs at all), then the final type is `!`.
             assert_eq!(self.pushed, 0);
-            icx.types.never
+            icx.types.types.never
         }
     }
 }
@@ -1570,7 +1577,7 @@ fn coerce<'db>(
     db: &'db dyn HirDatabase,
     env: ParamEnvAndCrate<'db>,
     tys: &Canonical<'db, (Ty<'db>, Ty<'db>)>,
-) -> Result<(Vec<Adjustment<'db>>, Ty<'db>), TypeError<DbInterner<'db>>> {
+) -> Result<(Vec<Adjustment>, Ty<'db>), TypeError<DbInterner<'db>>> {
     let interner = DbInterner::new_with(db, env.krate);
     let infcx = interner.infer_ctxt().build(TypingMode::PostAnalysis);
     let ((ty1_with_vars, ty2_with_vars), vars) = infcx.instantiate_canonical(tys);
@@ -1593,7 +1600,6 @@ fn coerce<'db>(
     let mut ocx = ObligationCtxt::new(&infcx);
     let (adjustments, ty) = ocx.register_infer_ok_obligations(infer_ok);
     _ = ocx.try_evaluate_obligations();
-    let (adjustments, ty) = infcx.resolve_vars_if_possible((adjustments, ty));
 
     // default any type vars that weren't unified back to their original bound vars
     // (kind of hacky)
@@ -1701,10 +1707,18 @@ fn coerce<'db>(
     }
 
     // FIXME: We don't fallback correctly since this is done on `InferenceContext` and we only have `InferCtxt`.
-    let (adjustments, ty) = (adjustments, ty).fold_with(&mut Resolver {
-        interner,
-        debruijn: DebruijnIndex::ZERO,
-        var_values: vars.var_values,
-    });
+    let mut resolver =
+        Resolver { interner, debruijn: DebruijnIndex::ZERO, var_values: vars.var_values };
+    let ty = infcx.resolve_vars_if_possible(ty).fold_with(&mut resolver);
+    let adjustments = adjustments
+        .into_iter()
+        .map(|adjustment| Adjustment {
+            kind: adjustment.kind,
+            target: infcx
+                .resolve_vars_if_possible(adjustment.target.as_ref())
+                .fold_with(&mut resolver)
+                .store(),
+        })
+        .collect();
     Ok((adjustments, ty))
 }

@@ -57,5 +57,69 @@ const fn const_fn_extern() -> _ { to_reuse_functions::const_fn_extern() }
 #[attr = Inline(Hint)]
 async fn async_fn_extern() -> _ { to_reuse_functions::async_fn_extern() }
 
+mod recursive {
+    // Check that `baz` inherit attribute from `foo`
+    mod first {
+        fn bar() { }
+        #[attr = MustUse {reason: "some reason"}]
+        #[attr = Inline(Hint)]
+        fn foo() -> _ { bar() }
+        #[attr = MustUse {reason: "some reason"}]
+        #[attr = Inline(Hint)]
+        fn baz() -> _ { foo() }
+    }
+
+    // Check that `baz` inherit attribute from `bar`
+    mod second {
+        #[attr = MustUse {reason: "some reason"}]
+        fn bar() { }
+
+        #[attr = MustUse {reason: "some reason"}]
+        #[attr = Inline(Hint)]
+        fn foo() -> _ { bar() }
+        #[attr = MustUse {reason: "some reason"}]
+        #[attr = Inline(Hint)]
+        fn baz() -> _ { foo() }
+    }
+
+    // Check that `foo5` don't inherit attribute from `bar`
+    // and inherit attribute from foo4, check that foo1, foo2 and foo3
+    // inherit attribute from bar
+    mod third {
+        #[attr = MustUse {reason: "some reason"}]
+        fn bar() { }
+        #[attr = MustUse {reason: "some reason"}]
+        #[attr = Inline(Hint)]
+        fn foo1() -> _ { bar() }
+        #[attr = MustUse {reason: "some reason"}]
+        #[attr = Inline(Hint)]
+        fn foo2() -> _ { foo1() }
+        #[attr = MustUse {reason: "some reason"}]
+        #[attr = Inline(Hint)]
+        fn foo3() -> _ { foo2() }
+        #[attr = MustUse {reason: "foo4"}]
+        #[attr = Inline(Hint)]
+        fn foo4() -> _ { foo3() }
+        #[attr = MustUse {reason: "foo4"}]
+        #[attr = Inline(Hint)]
+        fn foo5() -> _ { foo4() }
+    }
+
+    mod fourth {
+        trait T {
+            fn foo(&self, x: usize) -> usize { x + 1 }
+        }
+
+        struct X;
+        impl T for X { }
+
+        #[attr = MustUse {reason: "some reason"}]
+        #[attr = Inline(Hint)]
+        fn foo(self: _, arg1: _) -> _ { <X as T>::foo(self + 1, arg1) }
+        #[attr = MustUse {reason: "some reason"}]
+        #[attr = Inline(Hint)]
+        fn bar(self: _, arg1: _) -> _ { foo(self + 1, arg1) }
+    }
+}
 
 fn main() { }

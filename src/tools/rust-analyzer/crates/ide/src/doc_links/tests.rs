@@ -659,6 +659,21 @@ pub struct B$0ar
 }
 
 #[test]
+fn rewrite_html_root_url_using_crate_attr() {
+    check_rewrite(
+        r#"
+//- /main.rs crate:foo crate-attr:doc(arbitrary_attribute="test",html_root_url="https:/example.com",arbitrary_attribute2)
+pub mod foo {
+    pub struct Foo;
+}
+/// [Foo](foo::Foo)
+pub struct B$0ar
+"#,
+        expect![[r#"[Foo](https://example.com/foo/foo/struct.Foo.html)"#]],
+    );
+}
+
+#[test]
 fn rewrite_on_field() {
     check_rewrite(
         r#"
@@ -724,7 +739,10 @@ pub struct $0Foo;
 /// [`foo`]: Foo
 pub struct $0Foo;
 "#,
-        expect![["[`foo`]"]],
+        expect![[r#"
+            [`foo`]
+
+            [`foo`]: https://docs.rs/foo/*/foo/struct.Foo.html"#]],
     );
 }
 

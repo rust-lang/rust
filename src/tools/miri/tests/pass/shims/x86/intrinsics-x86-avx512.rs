@@ -143,6 +143,30 @@ unsafe fn test_avx512() {
         assert_eq_m512i(r, e);
     }
     test_mm512_permutexvar_epi32();
+
+    #[target_feature(enable = "avx512bw")]
+    unsafe fn test_mm512_shuffle_epi8() {
+        #[rustfmt::skip]
+        let a = _mm512_set_epi8(0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15,
+                                16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31,
+                                32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47,
+                                48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63);
+        #[rustfmt::skip]
+        let b = _mm512_set_epi8(-1, 127, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                                -1, 127, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                                -1, 127, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                                -1, 127, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1);
+        let r = _mm512_shuffle_epi8(a, b);
+        // `_mm512_set_epi8` sets the bytes in inverse order (?!?), so the indices in `b` seem to
+        // index from the *back* of the corresponding 16-byte block in `a`.
+        #[rustfmt::skip]
+        let e = _mm512_set_epi8(0, 0, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14,
+                                0, 16, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30,
+                                0, 32, 46, 46, 46, 46, 46, 46, 46, 46, 46, 46, 46, 46, 46, 46,
+                                0, 48, 62, 62, 62, 62, 62, 62, 62, 62, 62, 62, 62, 62, 62, 62);
+        assert_eq_m512i(r, e);
+    }
+    test_mm512_shuffle_epi8();
 }
 
 // Some of the constants in the tests below are just bit patterns. They should not

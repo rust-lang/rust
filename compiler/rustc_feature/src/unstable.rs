@@ -221,7 +221,7 @@ declare_features! (
     (internal, compiler_builtins, "1.13.0", None),
     /// Allows writing custom MIR
     (internal, custom_mir, "1.65.0", None),
-    /// Implementation details of externally implementatble items
+    /// Implementation details of externally implementable items
     (internal, eii_internals, "CURRENT_RUSTC_VERSION", None),
     /// Outputs useful `assert!` messages
     (unstable, generic_assert, "1.63.0", None),
@@ -412,7 +412,7 @@ declare_features! (
     (unstable, c_variadic, "1.34.0", Some(44930)),
     /// Allows defining c-variadic naked functions with any extern ABI that is allowed
     /// on c-variadic foreign functions.
-    (unstable, c_variadic_naked_functions, "CURRENT_RUSTC_VERSION", Some(148767)),
+    (unstable, c_variadic_naked_functions, "1.93.0", Some(148767)),
     /// Allows the use of `#[cfg(contract_checks)` to check if contract checks are enabled.
     (unstable, cfg_contract_checks, "1.86.0", Some(128044)),
     /// Allows the use of `#[cfg(overflow_checks)` to check if integer overflow behaviour.
@@ -486,7 +486,7 @@ declare_features! (
     /// Allows deriving the From trait on single-field structs.
     (unstable, derive_from, "1.91.0", Some(144889)),
     /// Allows giving non-const impls custom diagnostic messages if attempted to be used as const
-    (unstable, diagnostic_on_const, "CURRENT_RUSTC_VERSION", Some(143874)),
+    (unstable, diagnostic_on_const, "1.93.0", Some(143874)),
     /// Allows `#[doc(cfg(...))]`.
     (unstable, doc_cfg, "1.21.0", Some(43781)),
     /// Allows `#[doc(masked)]`.
@@ -503,7 +503,7 @@ declare_features! (
     (incomplete, explicit_tail_calls, "1.72.0", Some(112788)),
     /// Allows using `#[export_stable]` which indicates that an item is exportable.
     (incomplete, export_stable, "1.88.0", Some(139939)),
-    /// Externally implementatble items
+    /// Externally implementable items
     (unstable, extern_item_impls, "CURRENT_RUSTC_VERSION", Some(125418)),
     /// Allows defining `extern type`s.
     (unstable, extern_types, "1.23.0", Some(43467)),

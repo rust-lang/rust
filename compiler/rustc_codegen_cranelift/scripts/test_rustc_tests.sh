@@ -35,6 +35,7 @@ git checkout -- tests/ui/entry-point/auxiliary/bad_main_functions.rs
 rm tests/ui/asm/x86_64/evex512-implicit-feature.rs # unimplemented AVX512 x86 vendor intrinsic
 rm tests/ui/simd/dont-invalid-bitcast-x86_64.rs # unimplemented llvm.x86.sse41.round.ps
 rm tests/ui/simd/intrinsic/generic-arithmetic-pass.rs # unimplemented simd_funnel_{shl,shr}
+rm -r tests/ui/scalable-vectors # scalable vectors are unsupported
 
 # exotic linkages
 rm tests/incremental/hashes/function_interfaces.rs
@@ -53,23 +54,29 @@ rm tests/ui/sanitizer/kcfi-c-variadic.rs # same
 rm tests/ui/c-variadic/same-program-multiple-abis-x86_64.rs # variadics for calling conventions other than C unsupported
 rm tests/ui/delegation/fn-header.rs
 
+# inline assembly features
+rm tests/ui/asm/x86_64/issue-96797.rs # const and sym inline asm operands don't work entirely correctly
+rm tests/ui/asm/global-asm-mono-sym-fn.rs # same
+rm tests/ui/asm/naked-asm-mono-sym-fn.rs # same
+rm tests/ui/asm/x86_64/goto.rs # inline asm labels not supported
+rm tests/ui/asm/label-operand.rs # same
+rm tests/ui/asm/may_unwind.rs # asm unwinding not supported
+rm tests/ui/asm/aarch64/may_unwind.rs # same
+
 # misc unimplemented things
 rm tests/ui/target-feature/missing-plusminus.rs # error not implemented
 rm -r tests/run-make/repr128-dwarf # debuginfo test
 rm -r tests/run-make/split-debuginfo # same
 rm -r tests/run-make/target-specs # i686 not supported by Cranelift
 rm -r tests/run-make/mismatching-target-triples # same
-rm tests/ui/asm/x86_64/issue-96797.rs # const and sym inline asm operands don't work entirely correctly
-rm tests/ui/asm/global-asm-mono-sym-fn.rs # same
-rm tests/ui/asm/naked-asm-mono-sym-fn.rs # same
-rm tests/ui/asm/x86_64/goto.rs # inline asm labels not supported
-rm tests/ui/asm/label-operand.rs # same
 rm tests/ui/simd/simd-bitmask-notpow2.rs # non-pow-of-2 simd vector sizes
 rm -r tests/run-make/used-proc-macro # used(linker) isn't supported yet
 rm tests/ui/linking/no-gc-encapsulation-symbols.rs # same
 rm tests/ui/attributes/fn-align-dyn.rs # per-function alignment not supported
 rm -r tests/ui/explicit-tail-calls # tail calls
 rm -r tests/run-make/pointer-auth-link-with-c # pointer auth
+rm -r tests/ui/eii # EII not yet implemented
+rm -r tests/run-make/forced-unwind-terminate-pof # forced unwinding doesn't take precedence
 
 # requires LTO
 rm -r tests/run-make/cdylib
@@ -78,6 +85,7 @@ rm -r tests/run-make/lto-*
 rm -r tests/run-make/reproducible-build-2
 rm -r tests/run-make/no-builtins-lto
 rm -r tests/run-make/reachable-extern-fn-available-lto
+rm -r tests/run-make/no-builtins-linker-plugin-lto
 
 # coverage instrumentation
 rm tests/ui/consts/precise-drop-with-coverage.rs
@@ -87,6 +95,7 @@ rm -r tests/ui/instrument-coverage/
 # ==================
 rm tests/ui/codegen/issue-28950.rs # depends on stack size optimizations
 rm tests/ui/codegen/init-large-type.rs # same
+rm tests/ui/codegen/StackColoring-not-blowup-stack-issue-40883.rs # same
 rm tests/ui/statics/const_generics.rs # tests an optimization
 rm tests/ui/linking/executable-no-mangle-strip.rs # requires --gc-sections to work for statics
 
@@ -143,6 +152,15 @@ rm tests/ui/errors/remap-path-prefix-sysroot.rs # different sysroot source path
 rm -r tests/run-make/export/extern-opt # something about rustc version mismatches
 rm -r tests/run-make/export # same
 rm -r tests/ui/compiletest-self-test/compile-flags-incremental.rs # needs compiletest compiled with panic=unwind
+rm tests/ui/async-await/in-trait/dont-project-to-specializable-projection.rs # something going wrong with stdlib source remapping
+rm tests/ui/consts/miri_unleashed/drop.rs # same
+rm tests/ui/error-emitter/multiline-removal-suggestion.rs # same
+rm tests/ui/lint/lint-const-item-mutation.rs # same
+rm tests/ui/lint/use-redundant/use-redundant-issue-71450.rs # same
+rm tests/ui/lint/use-redundant/use-redundant-prelude-rust-2021.rs # same
+rm tests/ui/specialization/const_trait_impl.rs # same
+rm tests/ui/thir-print/offset_of.rs # same
+rm tests/ui/traits/const-traits/const_closure-const_trait_impl-ice-113381.rs # same
 
 # genuine bugs
 # ============
@@ -157,6 +175,7 @@ rm tests/ui/lint/non-snake-case/lint-non-snake-case-crate.rs # same
 rm tests/ui/async-await/async-drop/async-drop-initial.rs # same (rust-lang/rust#140493)
 rm -r tests/ui/codegen/equal-pointers-unequal # make incorrect assumptions about the location of stack variables
 rm -r tests/run-make-cargo/rustdoc-scrape-examples-paths # FIXME(rust-lang/rust#145580) incr comp bug
+rm -r tests/incremental/extern_static/issue-49153.rs # assumes reference to undefined static gets optimized away
 
 rm tests/ui/intrinsics/panic-uninitialized-zeroed.rs # really slow with unoptimized libstd
 rm tests/ui/process/process-panic-after-fork.rs # same

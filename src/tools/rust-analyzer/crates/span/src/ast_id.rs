@@ -48,6 +48,11 @@ pub const ROOT_ERASED_FILE_AST_ID: ErasedFileAstId =
 pub const FIXUP_ERASED_FILE_AST_ID_MARKER: ErasedFileAstId =
     ErasedFileAstId(pack_hash_index_and_kind(0, 0, ErasedFileAstIdKind::Fixup as u32));
 
+/// [`ErasedFileAstId`] used as the span for syntax nodes that should not be mapped down to
+/// macro expansion. Any `Span` containing this file id is to be considered fake.
+pub const NO_DOWNMAP_ERASED_FILE_AST_ID_MARKER: ErasedFileAstId =
+    ErasedFileAstId(pack_hash_index_and_kind(0, 0, ErasedFileAstIdKind::NoDownmap as u32));
+
 /// This is a type erased FileAstId.
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ErasedFileAstId(u32);
@@ -95,6 +100,7 @@ impl fmt::Debug for ErasedFileAstId {
             BlockExpr,
             AsmExpr,
             Fixup,
+            NoDownmap,
         );
         if f.alternate() {
             write!(f, "{kind}[{:04X}, {}]", self.hash_value(), self.index())
@@ -150,6 +156,9 @@ enum ErasedFileAstIdKind {
     // because incrementality is not a problem, they will always be the only item in the macro file,
     // and memory usage also not because they're rare.
     AsmExpr,
+    /// Represents a fake [`ErasedFileAstId`] that should not be mapped down to macro expansion
+    /// result.
+    NoDownmap,
     /// Keep this last.
     Root,
 }
@@ -158,7 +167,7 @@ enum ErasedFileAstIdKind {
 const HASH_BITS: u32 = 16;
 const INDEX_BITS: u32 = 11;
 const KIND_BITS: u32 = 5;
-const _: () = assert!(ErasedFileAstIdKind::Fixup as u32 <= ((1 << KIND_BITS) - 1));
+const _: () = assert!(ErasedFileAstIdKind::Root as u32 <= ((1 << KIND_BITS) - 1));
 const _: () = assert!(HASH_BITS + INDEX_BITS + KIND_BITS == u32::BITS);
 
 #[inline]

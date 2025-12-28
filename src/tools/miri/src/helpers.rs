@@ -10,7 +10,6 @@ use rustc_data_structures::fx::{FxBuildHasher, FxHashSet};
 use rustc_hir::Safety;
 use rustc_hir::def::{DefKind, Namespace};
 use rustc_hir::def_id::{CRATE_DEF_INDEX, CrateNum, DefId, LOCAL_CRATE};
-use rustc_index::IndexVec;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::middle::exported_symbols::ExportedSymbol;
@@ -581,13 +580,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             #[inline(always)]
             fn ecx(&self) -> &MiriInterpCx<'tcx> {
                 self.ecx
-            }
-
-            fn aggregate_field_iter(
-                memory_index: &IndexVec<FieldIdx, u32>,
-            ) -> impl Iterator<Item = FieldIdx> + 'static {
-                let inverse_memory_index = memory_index.invert_bijective_mapping();
-                inverse_memory_index.into_iter()
             }
 
             // Hook to detect `UnsafeCell`.

@@ -396,6 +396,9 @@ pub trait Visitor<'v>: Sized {
     fn visit_expr_field(&mut self, field: &'v ExprField<'v>) -> Self::Result {
         walk_expr_field(self, field)
     }
+    fn visit_const_arg_expr_field(&mut self, field: &'v ConstArgExprField<'v>) -> Self::Result {
+        walk_const_arg_expr_field(self, field)
+    }
     fn visit_pattern_type_pattern(&mut self, p: &'v TyPat<'v>) -> Self::Result {
         walk_ty_pat(self, p)
     }
@@ -954,6 +957,17 @@ pub fn walk_expr_field<'v, V: Visitor<'v>>(visitor: &mut V, field: &'v ExprField
     try_visit!(visitor.visit_ident(*ident));
     visitor.visit_expr(*expr)
 }
+
+pub fn walk_const_arg_expr_field<'v, V: Visitor<'v>>(
+    visitor: &mut V,
+    field: &'v ConstArgExprField<'v>,
+) -> V::Result {
+    let ConstArgExprField { hir_id, field, expr, span: _ } = field;
+    try_visit!(visitor.visit_id(*hir_id));
+    try_visit!(visitor.visit_ident(*field));
+    visitor.visit_const_arg_unambig(*expr)
+}
+
 /// We track whether an infer var is from a [`Ty`], [`ConstArg`], or [`GenericArg`] so that
 /// HIR visitors overriding [`Visitor::visit_infer`] can determine what kind of infer is being visited
 pub enum InferKind<'hir> {
@@ -1068,6 +1082,15 @@ pub fn walk_const_arg<'v, V: Visitor<'v>>(
     let ConstArg { hir_id, kind } = const_arg;
     try_visit!(visitor.visit_id(*hir_id));
     match kind {
+        ConstArgKind::Struct(qpath, field_exprs) => {
+            try_visit!(visitor.visit_qpath(qpath, *hir_id, qpath.span()));
+
+            for field_expr in *field_exprs {
+                try_visit!(visitor.visit_const_arg_expr_field(field_expr));
+            }
+
+            V::Result::output()
+        }
         ConstArgKind::Path(qpath) => visitor.visit_qpath(qpath, *hir_id, qpath.span()),
         ConstArgKind::Anon(anon) => visitor.visit_anon_const(*anon),
         ConstArgKind::Error(_, _) => V::Result::output(), // errors and spans are not important

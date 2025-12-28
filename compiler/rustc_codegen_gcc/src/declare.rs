@@ -8,7 +8,6 @@ use rustc_target::callconv::FnAbi;
 
 use crate::abi::{FnAbiGcc, FnAbiGccExt};
 use crate::context::CodegenCx;
-use crate::intrinsic::llvm;
 
 impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
     pub fn get_or_insert_global(
@@ -100,18 +99,14 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         let return_type = self.type_i32();
         let variadic = false;
         self.linkage.set(FunctionType::Exported);
-        let func = declare_raw_fn(
+        declare_raw_fn(
             self,
             name,
             callconv,
             return_type,
             &[self.type_i32(), const_string],
             variadic,
-        );
-        // NOTE: it is needed to set the current_func here as well, because get_fn() is not called
-        // for the main function.
-        *self.current_func.borrow_mut() = Some(func);
-        func
+        )
     }
 
     pub fn declare_fn(&self, name: &str, fn_abi: &FnAbi<'tcx, Ty<'tcx>>) -> Function<'gcc> {
@@ -166,19 +161,6 @@ fn declare_raw_fn<'gcc>(
     param_types: &[Type<'gcc>],
     variadic: bool,
 ) -> Function<'gcc> {
-    if name.starts_with("llvm.") {
-        let intrinsic = match name {
-            "llvm.fma.f16" => {
-                // fma is not a target builtin, but a normal builtin, so we handle it differently
-                // here.
-                cx.context.get_builtin_function("fma")
-            }
-            _ => llvm::intrinsic(name, cx),
-        };
-
-        cx.intrinsics.borrow_mut().insert(name.to_string(), intrinsic);
-        return intrinsic;
-    }
     let func = if cx.functions.borrow().contains_key(name) {
         cx.functions.borrow()[name]
     } else {

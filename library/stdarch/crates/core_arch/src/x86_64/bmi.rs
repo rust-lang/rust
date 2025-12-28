@@ -6,7 +6,7 @@
 //! [Wikipedia][wikipedia_bmi] provides a quick overview of the instructions
 //! available.
 //!
-//! [intel64_ref]: http://www.intel.de/content/dam/www/public/us/en/documents/manuals/64-ia-32-architectures-software-developer-instruction-set-reference-manual-325383.pdf
+//! [intel64_ref]: https://www.intel.com/content/dam/www/public/us/en/documents/manuals/64-ia-32-architectures-software-developer-instruction-set-reference-manual-325383.pdf
 //! [wikipedia_bmi]: https://en.wikipedia.org/wiki/Bit_Manipulation_Instruction_Sets#ABM_.28Advanced_Bit_Manipulation.29
 
 #[cfg(test)]
@@ -48,7 +48,8 @@ pub fn _bextr2_u64(a: u64, control: u64) -> u64 {
 #[target_feature(enable = "bmi1")]
 #[cfg_attr(test, assert_instr(andn))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _andn_u64(a: u64, b: u64) -> u64 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _andn_u64(a: u64, b: u64) -> u64 {
     !a & b
 }
 
@@ -60,7 +61,8 @@ pub fn _andn_u64(a: u64, b: u64) -> u64 {
 #[cfg_attr(test, assert_instr(blsi))]
 #[cfg(not(target_arch = "x86"))] // generates lots of instructions
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _blsi_u64(x: u64) -> u64 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _blsi_u64(x: u64) -> u64 {
     x & x.wrapping_neg()
 }
 
@@ -72,7 +74,8 @@ pub fn _blsi_u64(x: u64) -> u64 {
 #[cfg_attr(test, assert_instr(blsmsk))]
 #[cfg(not(target_arch = "x86"))] // generates lots of instructions
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _blsmsk_u64(x: u64) -> u64 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _blsmsk_u64(x: u64) -> u64 {
     x ^ (x.wrapping_sub(1_u64))
 }
 
@@ -86,7 +89,8 @@ pub fn _blsmsk_u64(x: u64) -> u64 {
 #[cfg_attr(test, assert_instr(blsr))]
 #[cfg(not(target_arch = "x86"))] // generates lots of instructions
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _blsr_u64(x: u64) -> u64 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _blsr_u64(x: u64) -> u64 {
     x & (x.wrapping_sub(1))
 }
 
@@ -99,7 +103,8 @@ pub fn _blsr_u64(x: u64) -> u64 {
 #[target_feature(enable = "bmi1")]
 #[cfg_attr(test, assert_instr(tzcnt))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _tzcnt_u64(x: u64) -> u64 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _tzcnt_u64(x: u64) -> u64 {
     x.trailing_zeros() as u64
 }
 
@@ -112,7 +117,8 @@ pub fn _tzcnt_u64(x: u64) -> u64 {
 #[target_feature(enable = "bmi1")]
 #[cfg_attr(test, assert_instr(tzcnt))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm_tzcnt_64(x: u64) -> i64 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm_tzcnt_64(x: u64) -> i64 {
     x.trailing_zeros() as i64
 }
 
@@ -123,6 +129,7 @@ unsafe extern "C" {
 
 #[cfg(test)]
 mod tests {
+    use crate::core_arch::assert_eq_const as assert_eq;
     use stdarch_test::simd_test;
 
     use crate::core_arch::{x86::*, x86_64::*};
@@ -134,7 +141,7 @@ mod tests {
     }
 
     #[simd_test(enable = "bmi1")]
-    unsafe fn test_andn_u64() {
+    const unsafe fn test_andn_u64() {
         assert_eq!(_andn_u64(0, 0), 0);
         assert_eq!(_andn_u64(0, 1), 1);
         assert_eq!(_andn_u64(1, 0), 0);
@@ -157,25 +164,25 @@ mod tests {
     }
 
     #[simd_test(enable = "bmi1")]
-    unsafe fn test_blsi_u64() {
+    const unsafe fn test_blsi_u64() {
         assert_eq!(_blsi_u64(0b1101_0000u64), 0b0001_0000u64);
     }
 
     #[simd_test(enable = "bmi1")]
-    unsafe fn test_blsmsk_u64() {
+    const unsafe fn test_blsmsk_u64() {
         let r = _blsmsk_u64(0b0011_0000u64);
         assert_eq!(r, 0b0001_1111u64);
     }
 
     #[simd_test(enable = "bmi1")]
-    unsafe fn test_blsr_u64() {
+    const unsafe fn test_blsr_u64() {
         // TODO: test the behavior when the input is `0`.
         let r = _blsr_u64(0b0011_0000u64);
         assert_eq!(r, 0b0010_0000u64);
     }
 
     #[simd_test(enable = "bmi1")]
-    unsafe fn test_tzcnt_u64() {
+    const unsafe fn test_tzcnt_u64() {
         assert_eq!(_tzcnt_u64(0b0000_0001u64), 0u64);
         assert_eq!(_tzcnt_u64(0b0000_0000u64), 64u64);
         assert_eq!(_tzcnt_u64(0b1001_0000u64), 4u64);

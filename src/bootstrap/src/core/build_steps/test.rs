@@ -722,7 +722,6 @@ impl Step for Miri {
         // miri tests need to know about the stage sysroot
         cargo.env("MIRI_SYSROOT", &miri_sysroot);
         cargo.env("MIRI_HOST_SYSROOT", &host_sysroot);
-        cargo.env("MIRI", &miri.tool_path);
 
         // Set the target.
         cargo.env("MIRI_TEST_TARGET", target.rustc_target_arg());
@@ -2256,6 +2255,10 @@ Please disable assertions with `rust.debug-assertions = false`.
 
         if builder.config.std_debug_assertions {
             cmd.arg("--with-std-debug-assertions");
+        }
+
+        if builder.config.rust_remap_debuginfo {
+            cmd.arg("--with-std-remap-debuginfo");
         }
 
         let mut llvm_components_passed = false;
