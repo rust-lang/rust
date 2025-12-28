@@ -13,6 +13,7 @@
 #![cfg_attr(bootstrap, feature(array_windows))]
 #![deny(unsafe_op_in_unsafe_fn)]
 #![feature(allocator_api)]
+#![feature(arbitrary_self_types)]
 #![feature(ascii_char)]
 #![feature(ascii_char_variants)]
 #![feature(assert_matches)]
