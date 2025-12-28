@@ -9,7 +9,7 @@ use std::{
 };
 
 use crossbeam_channel::{Receiver, never, select};
-use ide_db::base_db::{SourceDatabase, VfsPath, salsa::Database as _};
+use ide_db::base_db::{SourceDatabase, VfsPath};
 use lsp_server::{Connection, Notification, Request};
 use lsp_types::{TextDocumentIdentifier, notification::Notification as _};
 use stdx::thread::ThreadIntent;
@@ -383,7 +383,7 @@ impl GlobalState {
                             ));
                         }
                         PrimeCachesProgress::End { cancelled } => {
-                            self.analysis_host.raw_database_mut().trigger_lru_eviction();
+                            self.analysis_host.trigger_garbage_collection();
                             self.prime_caches_queue.op_completed(());
                             if cancelled {
                                 self.prime_caches_queue
@@ -534,6 +534,11 @@ impl GlobalState {
             }
             if project_or_mem_docs_changed && self.config.test_explorer() {
                 self.update_tests();
+            }
+
+            // no work is currently being done, now we can block a bit and clean up our garbage
+            if self.task_pool.handle.is_empty() && self.fmt_pool.handle.is_empty() {
+                self.analysis_host.trigger_garbage_collection();
             }
         }
 
