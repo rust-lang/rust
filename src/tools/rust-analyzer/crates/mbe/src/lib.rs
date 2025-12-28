@@ -152,7 +152,7 @@ impl DeclarativeMacro {
 
     /// The old, `macro_rules! m {}` flavor.
     pub fn parse_macro_rules(
-        tt: &tt::TopSubtree<Span>,
+        tt: &tt::TopSubtree,
         ctx_edition: impl Copy + Fn(SyntaxContext) -> Edition,
     ) -> DeclarativeMacro {
         // Note: this parsing can be implemented using mbe machinery itself, by
@@ -191,8 +191,8 @@ impl DeclarativeMacro {
 
     /// The new, unstable `macro m {}` flavor.
     pub fn parse_macro2(
-        args: Option<&tt::TopSubtree<Span>>,
-        body: &tt::TopSubtree<Span>,
+        args: Option<&tt::TopSubtree>,
+        body: &tt::TopSubtree,
         ctx_edition: impl Copy + Fn(SyntaxContext) -> Edition,
     ) -> DeclarativeMacro {
         let mut rules = Vec::new();
@@ -276,11 +276,11 @@ impl DeclarativeMacro {
     pub fn expand(
         &self,
         db: &dyn salsa::Database,
-        tt: &tt::TopSubtree<Span>,
+        tt: &tt::TopSubtree,
         marker: impl Fn(&mut Span) + Copy,
         call_style: MacroCallStyle,
         call_site: Span,
-    ) -> ExpandResult<(tt::TopSubtree<Span>, MatchedArmIndex)> {
+    ) -> ExpandResult<(tt::TopSubtree, MatchedArmIndex)> {
         expander::expand_rules(db, &self.rules, tt, marker, call_style, call_site)
     }
 }
@@ -288,7 +288,7 @@ impl DeclarativeMacro {
 impl Rule {
     fn parse(
         edition: impl Copy + Fn(SyntaxContext) -> Edition,
-        src: &mut TtIter<'_, Span>,
+        src: &mut TtIter<'_>,
     ) -> Result<Self, ParseError> {
         // Parse an optional `attr()` or `derive()` prefix before the LHS pattern.
         let style = parser::parse_rule_style(src)?;
@@ -391,10 +391,10 @@ impl<T: Default, E> From<Result<T, E>> for ValueResult<T, E> {
 
 pub fn expect_fragment<'t>(
     db: &dyn salsa::Database,
-    tt_iter: &mut TtIter<'t, Span>,
+    tt_iter: &mut TtIter<'t>,
     entry_point: ::parser::PrefixEntryPoint,
-    delim_span: DelimSpan<Span>,
-) -> ExpandResult<tt::TokenTreesView<'t, Span>> {
+    delim_span: DelimSpan,
+) -> ExpandResult<tt::TokenTreesView<'t>> {
     use ::parser;
     let buffer = tt_iter.remaining();
     let parser_input = to_parser_input(buffer, &mut |ctx| ctx.edition(db));

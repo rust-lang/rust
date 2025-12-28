@@ -204,15 +204,15 @@ impl ProcMacroServerProcess {
     pub(crate) fn expand(
         &self,
         proc_macro: &ProcMacro,
-        subtree: tt::SubtreeView<'_, Span>,
-        attr: Option<tt::SubtreeView<'_, Span>>,
+        subtree: tt::SubtreeView<'_>,
+        attr: Option<tt::SubtreeView<'_>>,
         env: Vec<(String, String)>,
         def_site: Span,
         call_site: Span,
         mixed_site: Span,
         current_dir: String,
         callback: Option<SubCallback<'_>>,
-    ) -> Result<Result<tt::TopSubtree<Span>, String>, ServerError> {
+    ) -> Result<Result<tt::TopSubtree, String>, ServerError> {
         match self.protocol {
             Protocol::LegacyJson { .. } | Protocol::LegacyPostcard { .. } => {
                 legacy_protocol::expand(

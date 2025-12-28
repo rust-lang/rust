@@ -5,31 +5,32 @@ use std::fmt;
 
 use arrayvec::ArrayVec;
 use intern::sym;
+use span::Span;
 
 use crate::{Ident, Leaf, MAX_GLUED_PUNCT_LEN, Punct, Spacing, Subtree, TokenTree, TokenTreesView};
 
 #[derive(Clone)]
-pub struct TtIter<'a, S> {
-    inner: std::slice::Iter<'a, TokenTree<S>>,
+pub struct TtIter<'a> {
+    inner: std::slice::Iter<'a, TokenTree>,
 }
 
-impl<S: Copy + fmt::Debug> fmt::Debug for TtIter<'_, S> {
+impl fmt::Debug for TtIter<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("TtIter").field("remaining", &self.remaining()).finish()
     }
 }
 
 #[derive(Clone, Copy)]
-pub struct TtIterSavepoint<'a, S>(&'a [TokenTree<S>]);
+pub struct TtIterSavepoint<'a>(&'a [TokenTree]);
 
-impl<'a, S: Copy> TtIterSavepoint<'a, S> {
-    pub fn remaining(self) -> TokenTreesView<'a, S> {
+impl<'a> TtIterSavepoint<'a> {
+    pub fn remaining(self) -> TokenTreesView<'a> {
         TokenTreesView::new(self.0)
     }
 }
 
-impl<'a, S: Copy> TtIter<'a, S> {
-    pub(crate) fn new(tt: &'a [TokenTree<S>]) -> TtIter<'a, S> {
+impl<'a> TtIter<'a> {
+    pub(crate) fn new(tt: &'a [TokenTree]) -> TtIter<'a> {
         TtIter { inner: tt.iter() }
     }
 
@@ -49,14 +50,14 @@ impl<'a, S: Copy> TtIter<'a, S> {
         }
     }
 
-    pub fn expect_subtree(&mut self) -> Result<(&'a Subtree<S>, TtIter<'a, S>), ()> {
+    pub fn expect_subtree(&mut self) -> Result<(&'a Subtree, TtIter<'a>), ()> {
         match self.next() {
             Some(TtElement::Subtree(subtree, iter)) => Ok((subtree, iter)),
             _ => Err(()),
         }
     }
 
-    pub fn expect_leaf(&mut self) -> Result<&'a Leaf<S>, ()> {
+    pub fn expect_leaf(&mut self) -> Result<&'a Leaf, ()> {
         match self.next() {
             Some(TtElement::Leaf(it)) => Ok(it),
             _ => Err(()),
@@ -77,21 +78,21 @@ impl<'a, S: Copy> TtIter<'a, S> {
         }
     }
 
-    pub fn expect_ident(&mut self) -> Result<&'a Ident<S>, ()> {
+    pub fn expect_ident(&mut self) -> Result<&'a Ident, ()> {
         match self.expect_leaf()? {
             Leaf::Ident(it) if it.sym != sym::underscore => Ok(it),
             _ => Err(()),
         }
     }
 
-    pub fn expect_ident_or_underscore(&mut self) -> Result<&'a Ident<S>, ()> {
+    pub fn expect_ident_or_underscore(&mut self) -> Result<&'a Ident, ()> {
         match self.expect_leaf()? {
             Leaf::Ident(it) => Ok(it),
             _ => Err(()),
         }
     }
 
-    pub fn expect_literal(&mut self) -> Result<&'a Leaf<S>, ()> {
+    pub fn expect_literal(&mut self) -> Result<&'a Leaf, ()> {
         let it = self.expect_leaf()?;
         match it {
             Leaf::Literal(_) => Ok(it),
@@ -100,7 +101,7 @@ impl<'a, S: Copy> TtIter<'a, S> {
         }
     }
 
-    pub fn expect_single_punct(&mut self) -> Result<&'a Punct<S>, ()> {
+    pub fn expect_single_punct(&mut self) -> Result<&'a Punct, ()> {
         match self.expect_leaf()? {
             Leaf::Punct(it) => Ok(it),
             _ => Err(()),
@@ -111,7 +112,7 @@ impl<'a, S: Copy> TtIter<'a, S> {
     ///
     /// This method currently may return a single quotation, which is part of lifetime ident and
     /// conceptually not a punct in the context of mbe. Callers should handle this.
-    pub fn expect_glued_punct(&mut self) -> Result<ArrayVec<Punct<S>, MAX_GLUED_PUNCT_LEN>, ()> {
+    pub fn expect_glued_punct(&mut self) -> Result<ArrayVec<Punct, MAX_GLUED_PUNCT_LEN>, ()> {
         let TtElement::Leaf(&Leaf::Punct(first)) = self.next().ok_or(())? else {
             return Err(());
         };
@@ -161,11 +162,11 @@ impl<'a, S: Copy> TtIter<'a, S> {
     }
 
     /// This method won't check for subtrees, so the nth token tree may not be the nth sibling of the current tree.
-    fn peek_n(&self, n: usize) -> Option<&'a TokenTree<S>> {
+    fn peek_n(&self, n: usize) -> Option<&'a TokenTree> {
         self.inner.as_slice().get(n)
     }
 
-    pub fn peek(&self) -> Option<TtElement<'a, S>> {
+    pub fn peek(&self) -> Option<TtElement<'a>> {
         match self.inner.as_slice().first()? {
             TokenTree::Leaf(leaf) => Some(TtElement::Leaf(leaf)),
             TokenTree::Subtree(subtree) => {
@@ -181,11 +182,11 @@ impl<'a, S: Copy> TtIter<'a, S> {
         self.inner.len() == 0
     }
 
-    pub fn next_span(&self) -> Option<S> {
+    pub fn next_span(&self) -> Option<Span> {
         Some(self.inner.as_slice().first()?.first_span())
     }
 
-    pub fn remaining(&self) -> TokenTreesView<'a, S> {
+    pub fn remaining(&self) -> TokenTreesView<'a> {
         TokenTreesView::new(self.inner.as_slice())
     }
 
@@ -194,17 +195,17 @@ impl<'a, S: Copy> TtIter<'a, S> {
         self.inner = self.inner.as_slice()[skip..].iter();
     }
 
-    pub fn savepoint(&self) -> TtIterSavepoint<'a, S> {
+    pub fn savepoint(&self) -> TtIterSavepoint<'a> {
         TtIterSavepoint(self.inner.as_slice())
     }
 
-    pub fn from_savepoint(&self, savepoint: TtIterSavepoint<'a, S>) -> TokenTreesView<'a, S> {
+    pub fn from_savepoint(&self, savepoint: TtIterSavepoint<'a>) -> TokenTreesView<'a> {
         let len = (self.inner.as_slice().as_ptr() as usize - savepoint.0.as_ptr() as usize)
-            / size_of::<TokenTree<S>>();
+            / size_of::<TokenTree>();
         TokenTreesView::new(&savepoint.0[..len])
     }
 
-    pub fn next_as_view(&mut self) -> Option<TokenTreesView<'a, S>> {
+    pub fn next_as_view(&mut self) -> Option<TokenTreesView<'a>> {
         let savepoint = self.savepoint();
         self.next()?;
         Some(self.from_savepoint(savepoint))
@@ -212,12 +213,12 @@ impl<'a, S: Copy> TtIter<'a, S> {
 }
 
 #[derive(Clone)]
-pub enum TtElement<'a, S> {
-    Leaf(&'a Leaf<S>),
-    Subtree(&'a Subtree<S>, TtIter<'a, S>),
+pub enum TtElement<'a> {
+    Leaf(&'a Leaf),
+    Subtree(&'a Subtree, TtIter<'a>),
 }
 
-impl<S: Copy + fmt::Debug> fmt::Debug for TtElement<'_, S> {
+impl fmt::Debug for TtElement<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Leaf(leaf) => f.debug_tuple("Leaf").field(leaf).finish(),
@@ -228,9 +229,9 @@ impl<S: Copy + fmt::Debug> fmt::Debug for TtElement<'_, S> {
     }
 }
 
-impl<S: Copy> TtElement<'_, S> {
+impl TtElement<'_> {
     #[inline]
-    pub fn first_span(&self) -> S {
+    pub fn first_span(&self) -> Span {
         match self {
             TtElement::Leaf(it) => *it.span(),
             TtElement::Subtree(it, _) => it.delimiter.open,
@@ -238,8 +239,8 @@ impl<S: Copy> TtElement<'_, S> {
     }
 }
 
-impl<'a, S> Iterator for TtIter<'a, S> {
-    type Item = TtElement<'a, S>;
+impl<'a> Iterator for TtIter<'a> {
+    type Item = TtElement<'a>;
     fn next(&mut self) -> Option<Self::Item> {
         match self.inner.next()? {
             TokenTree::Leaf(leaf) => Some(TtElement::Leaf(leaf)),

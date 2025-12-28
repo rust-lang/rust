@@ -96,12 +96,12 @@ impl CfgExpr {
     // FIXME: Parsing from `tt` is only used in a handful of places, reconsider
     // if we should switch them to AST.
     #[cfg(feature = "tt")]
-    pub fn parse<S: Copy>(tt: &tt::TopSubtree<S>) -> CfgExpr {
+    pub fn parse(tt: &tt::TopSubtree) -> CfgExpr {
         next_cfg_expr(&mut tt.iter()).unwrap_or(CfgExpr::Invalid)
     }
 
     #[cfg(feature = "tt")]
-    pub fn parse_from_iter<S: Copy>(tt: &mut tt::iter::TtIter<'_, S>) -> CfgExpr {
+    pub fn parse_from_iter(tt: &mut tt::iter::TtIter<'_>) -> CfgExpr {
         next_cfg_expr(tt).unwrap_or(CfgExpr::Invalid)
     }
 
@@ -149,7 +149,15 @@ fn next_cfg_expr_from_ast(
             if let Some(NodeOrToken::Token(literal)) = it.peek()
                 && matches!(literal.kind(), SyntaxKind::STRING)
             {
-                let literal = tt::token_to_literal(literal.text(), ()).symbol;
+                let dummy_span = span::Span {
+                    range: span::TextRange::empty(span::TextSize::new(0)),
+                    anchor: span::SpanAnchor {
+                        file_id: span::EditionedFileId::from_raw(0),
+                        ast_id: span::FIXUP_ERASED_FILE_AST_ID_MARKER,
+                    },
+                    ctx: span::SyntaxContext::root(span::Edition::Edition2015),
+                };
+                let literal = tt::token_to_literal(literal.text(), dummy_span).symbol;
                 it.next();
                 CfgAtom::KeyValue { key: name, value: literal.clone() }.into()
             } else {
@@ -179,7 +187,7 @@ fn next_cfg_expr_from_ast(
 }
 
 #[cfg(feature = "tt")]
-fn next_cfg_expr<S: Copy>(it: &mut tt::iter::TtIter<'_, S>) -> Option<CfgExpr> {
+fn next_cfg_expr(it: &mut tt::iter::TtIter<'_>) -> Option<CfgExpr> {
     use intern::sym;
     use tt::iter::TtElement;
 

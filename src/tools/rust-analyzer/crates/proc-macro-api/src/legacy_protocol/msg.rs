@@ -185,7 +185,7 @@ mod tests {
 
     use super::*;
 
-    fn fixture_token_tree_top_many_none() -> TopSubtree<Span> {
+    fn fixture_token_tree_top_many_none() -> TopSubtree {
         let anchor = SpanAnchor {
             file_id: span::EditionedFileId::new(
                 span::FileId::from_raw(0xe4e4e),
@@ -292,7 +292,7 @@ mod tests {
         builder.build()
     }
 
-    fn fixture_token_tree_top_empty_none() -> TopSubtree<Span> {
+    fn fixture_token_tree_top_empty_none() -> TopSubtree {
         let anchor = SpanAnchor {
             file_id: span::EditionedFileId::new(
                 span::FileId::from_raw(0xe4e4e),
@@ -318,7 +318,7 @@ mod tests {
         builder.build()
     }
 
-    fn fixture_token_tree_top_empty_brace() -> TopSubtree<Span> {
+    fn fixture_token_tree_top_empty_brace() -> TopSubtree {
         let anchor = SpanAnchor {
             file_id: span::EditionedFileId::new(
                 span::FileId::from_raw(0xe4e4e),

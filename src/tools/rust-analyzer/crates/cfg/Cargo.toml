@@ -19,6 +19,7 @@ tracing.workspace = true
 # locals deps
 tt = { workspace = true, optional = true }
 syntax = { workspace = true, optional = true }
+span = { path = "../span", version = "0.0", optional = true }
 intern.workspace = true
 
 [dev-dependencies]
@@ -35,6 +36,8 @@ cfg = { path = ".", default-features = false, features = ["tt"] }
 
 [features]
 default = []
+syntax = ["dep:syntax", "dep:span"]
+tt = ["dep:tt"]
 in-rust-tree = []
 
 [lints]

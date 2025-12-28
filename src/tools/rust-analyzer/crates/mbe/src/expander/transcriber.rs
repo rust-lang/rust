@@ -125,7 +125,7 @@ pub(super) fn transcribe(
     bindings: &Bindings<'_>,
     marker: impl Fn(&mut Span) + Copy,
     call_site: Span,
-) -> ExpandResult<tt::TopSubtree<Span>> {
+) -> ExpandResult<tt::TopSubtree> {
     let mut ctx = ExpandCtx { bindings, nesting: Vec::new(), call_site };
     let mut builder = tt::TopSubtreeBuilder::new(tt::Delimiter::invisible_spanned(ctx.call_site));
     expand_subtree(&mut ctx, template, &mut builder, marker).map(|()| builder.build())
@@ -152,8 +152,8 @@ struct ExpandCtx<'a> {
 fn expand_subtree_with_delimiter(
     ctx: &mut ExpandCtx<'_>,
     template: &MetaTemplate,
-    builder: &mut tt::TopSubtreeBuilder<Span>,
-    delimiter: Option<Delimiter<Span>>,
+    builder: &mut tt::TopSubtreeBuilder,
+    delimiter: Option<Delimiter>,
     marker: impl Fn(&mut Span) + Copy,
 ) -> ExpandResult<()> {
     let delimiter = delimiter.unwrap_or_else(|| tt::Delimiter::invisible_spanned(ctx.call_site));
@@ -166,7 +166,7 @@ fn expand_subtree_with_delimiter(
 fn expand_subtree(
     ctx: &mut ExpandCtx<'_>,
     template: &MetaTemplate,
-    builder: &mut tt::TopSubtreeBuilder<Span>,
+    builder: &mut tt::TopSubtreeBuilder,
     marker: impl Fn(&mut Span) + Copy,
 ) -> ExpandResult<()> {
     let mut err = None;
@@ -382,7 +382,7 @@ fn expand_var(
     ctx: &mut ExpandCtx<'_>,
     v: &Symbol,
     id: Span,
-    builder: &mut tt::TopSubtreeBuilder<Span>,
+    builder: &mut tt::TopSubtreeBuilder,
     marker: impl Fn(&mut Span) + Copy,
 ) -> ExpandResult<()> {
     // We already handle $crate case in mbe parser
@@ -466,7 +466,7 @@ fn expand_repeat(
     template: &MetaTemplate,
     kind: RepeatKind,
     separator: Option<&Separator>,
-    builder: &mut tt::TopSubtreeBuilder<Span>,
+    builder: &mut tt::TopSubtreeBuilder,
     marker: impl Fn(&mut Span) + Copy,
 ) -> ExpandResult<()> {
     ctx.nesting.push(NestingState { idx: 0, at_end: false, hit: false });
@@ -546,8 +546,8 @@ fn expand_repeat(
 /// we need this fixup.
 fn fix_up_and_push_path_tt(
     ctx: &ExpandCtx<'_>,
-    builder: &mut tt::TopSubtreeBuilder<Span>,
-    subtree: tt::TokenTreesView<'_, Span>,
+    builder: &mut tt::TopSubtreeBuilder,
+    subtree: tt::TokenTreesView<'_>,
 ) {
     let mut prev_was_ident = false;
     // Note that we only need to fix up the top-level `TokenTree`s because the

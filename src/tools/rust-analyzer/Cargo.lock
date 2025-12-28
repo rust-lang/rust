@@ -234,6 +234,7 @@ dependencies = [
  "intern",
  "oorandom",
  "rustc-hash 2.1.1",
+ "span",
  "syntax",
  "syntax-bridge",
  "tracing",
@@ -3086,6 +3087,7 @@ dependencies = [
  "arrayvec",
  "intern",
  "ra-ap-rustc_lexer",
+ "span",
  "stdx",
  "text-size 1.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]

@@ -3,14 +3,14 @@
 //! We use this as the source of tokens for parser.
 use crate::{Leaf, Subtree, TokenTree, TokenTreesView};
 
-pub struct Cursor<'a, Span> {
-    buffer: &'a [TokenTree<Span>],
+pub struct Cursor<'a> {
+    buffer: &'a [TokenTree],
     index: usize,
     subtrees_stack: Vec<usize>,
 }
 
-impl<'a, Span: Copy> Cursor<'a, Span> {
-    pub fn new(buffer: &'a [TokenTree<Span>]) -> Self {
+impl<'a> Cursor<'a> {
+    pub fn new(buffer: &'a [TokenTree]) -> Self {
         Self { buffer, index: 0, subtrees_stack: Vec::new() }
     }
 
@@ -23,7 +23,7 @@ impl<'a, Span: Copy> Cursor<'a, Span> {
         self.subtrees_stack.is_empty()
     }
 
-    fn last_subtree(&self) -> Option<(usize, &'a Subtree<Span>)> {
+    fn last_subtree(&self) -> Option<(usize, &'a Subtree)> {
         self.subtrees_stack.last().map(|&subtree_idx| {
             let TokenTree::Subtree(subtree) = &self.buffer[subtree_idx] else {
                 panic!("subtree pointing to non-subtree");
@@ -32,7 +32,7 @@ impl<'a, Span: Copy> Cursor<'a, Span> {
         })
     }
 
-    pub fn end(&mut self) -> &'a Subtree<Span> {
+    pub fn end(&mut self) -> &'a Subtree {
         let (last_subtree_idx, last_subtree) =
             self.last_subtree().expect("called `Cursor::end()` without an open subtree");
         // +1 because `Subtree.len` excludes the subtree itself.
@@ -46,7 +46,7 @@ impl<'a, Span: Copy> Cursor<'a, Span> {
     }
 
     /// Returns the `TokenTree` at the cursor if it is not at the end of a subtree.
-    pub fn token_tree(&self) -> Option<&'a TokenTree<Span>> {
+    pub fn token_tree(&self) -> Option<&'a TokenTree> {
         if let Some((last_subtree_idx, last_subtree)) = self.last_subtree() {
             // +1 because `Subtree.len` excludes the subtree itself.
             if last_subtree_idx + last_subtree.usize_len() + 1 == self.index {
@@ -87,7 +87,7 @@ impl<'a, Span: Copy> Cursor<'a, Span> {
         self.index += 1;
     }
 
-    pub fn peek_two_leaves(&self) -> Option<[&'a Leaf<Span>; 2]> {
+    pub fn peek_two_leaves(&self) -> Option<[&'a Leaf; 2]> {
         if let Some((last_subtree_idx, last_subtree)) = self.last_subtree() {
             // +1 because `Subtree.len` excludes the subtree itself.
             let last_end = last_subtree_idx + last_subtree.usize_len() + 1;
@@ -101,7 +101,7 @@ impl<'a, Span: Copy> Cursor<'a, Span> {
         })
     }
 
-    pub fn crossed(&self) -> TokenTreesView<'a, Span> {
+    pub fn crossed(&self) -> TokenTreesView<'a> {
         assert!(self.is_root());
         TokenTreesView::new(&self.buffer[..self.index])
     }

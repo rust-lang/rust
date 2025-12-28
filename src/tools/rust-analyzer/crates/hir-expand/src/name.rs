@@ -258,7 +258,7 @@ impl AsName for ast::NameOrNameRef {
     }
 }
 
-impl<Span> AsName for tt::Ident<Span> {
+impl AsName for tt::Ident {
     fn as_name(&self) -> Name {
         Name::new_root(self.sym.as_str())
     }

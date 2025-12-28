@@ -1,16 +1,13 @@
 //! Convert macro-by-example tokens which are specific to macro expansion into a
 //! format that works for our parser.
 
-use std::fmt;
-use std::hash::Hash;
-
 use rustc_hash::FxHashMap;
-use span::{Edition, SpanData};
+use span::{Edition, SyntaxContext};
 use syntax::{SyntaxKind, SyntaxKind::*, T};
 
-pub fn to_parser_input<Ctx: Copy + fmt::Debug + PartialEq + Eq + Hash>(
-    buffer: tt::TokenTreesView<'_, SpanData<Ctx>>,
-    span_to_edition: &mut dyn FnMut(Ctx) -> Edition,
+pub fn to_parser_input(
+    buffer: tt::TokenTreesView<'_>,
+    span_to_edition: &mut dyn FnMut(SyntaxContext) -> Edition,
 ) -> parser::Input {
     let mut res = parser::Input::with_capacity(buffer.len());
 
