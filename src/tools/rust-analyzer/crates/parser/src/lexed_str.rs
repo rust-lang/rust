@@ -150,7 +150,12 @@ struct Converter<'a> {
 impl<'a> Converter<'a> {
     fn new(edition: Edition, text: &'a str) -> Self {
         Self {
-            res: LexedStr { text, kind: Vec::new(), start: Vec::new(), error: Vec::new() },
+            res: LexedStr {
+                text,
+                kind: Vec::with_capacity(text.len() / 3),
+                start: Vec::with_capacity(text.len() / 3),
+                error: Vec::new(),
+            },
             offset: 0,
             edition,
         }

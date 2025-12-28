@@ -97,7 +97,7 @@ impl Input {
         let b_idx = n % (bits::BITS as usize);
         (idx, b_idx)
     }
-    fn len(&self) -> usize {
+    pub fn len(&self) -> usize {
         self.kind.len()
     }
 }
