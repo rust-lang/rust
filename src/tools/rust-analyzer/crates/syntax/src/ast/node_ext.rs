@@ -1118,6 +1118,15 @@ impl From<ast::AssocItem> for ast::AnyHasAttrs {
     }
 }
 
+impl ast::FormatArgsArgName {
+    /// This is not a [`ast::Name`], because the name may be a keyword.
+    pub fn name(&self) -> SyntaxToken {
+        let name = self.syntax.first_token().unwrap();
+        assert!(name.kind().is_any_identifier());
+        name
+    }
+}
+
 impl ast::OrPat {
     pub fn leading_pipe(&self) -> Option<SyntaxToken> {
         self.syntax

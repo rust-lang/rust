@@ -639,10 +639,16 @@ impl ForType {
 pub struct FormatArgsArg {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::HasName for FormatArgsArg {}
 impl FormatArgsArg {
     #[inline]
+    pub fn arg_name(&self) -> Option<FormatArgsArgName> { support::child(&self.syntax) }
+    #[inline]
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
+}
+pub struct FormatArgsArgName {
+    pub(crate) syntax: SyntaxNode,
+}
+impl FormatArgsArgName {
     #[inline]
     pub fn eq_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=]) }
 }
@@ -3720,6 +3726,38 @@ impl Clone for FormatArgsArg {
 impl fmt::Debug for FormatArgsArg {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("FormatArgsArg").field("syntax", &self.syntax).finish()
+    }
+}
+impl AstNode for FormatArgsArgName {
+    #[inline]
+    fn kind() -> SyntaxKind
+    where
+        Self: Sized,
+    {
+        FORMAT_ARGS_ARG_NAME
+    }
+    #[inline]
+    fn can_cast(kind: SyntaxKind) -> bool { kind == FORMAT_ARGS_ARG_NAME }
+    #[inline]
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
+    }
+    #[inline]
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl hash::Hash for FormatArgsArgName {
+    fn hash<H: hash::Hasher>(&self, state: &mut H) { self.syntax.hash(state); }
+}
+impl Eq for FormatArgsArgName {}
+impl PartialEq for FormatArgsArgName {
+    fn eq(&self, other: &Self) -> bool { self.syntax == other.syntax }
+}
+impl Clone for FormatArgsArgName {
+    fn clone(&self) -> Self { Self { syntax: self.syntax.clone() } }
+}
+impl fmt::Debug for FormatArgsArgName {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("FormatArgsArgName").field("syntax", &self.syntax).finish()
     }
 }
 impl AstNode for FormatArgsExpr {
@@ -8947,7 +8985,6 @@ impl AstNode for AnyHasName {
                 | CONST_PARAM
                 | ENUM
                 | FN
-                | FORMAT_ARGS_ARG
                 | IDENT_PAT
                 | MACRO_DEF
                 | MACRO_RULES
@@ -9005,10 +9042,6 @@ impl From<Enum> for AnyHasName {
 impl From<Fn> for AnyHasName {
     #[inline]
     fn from(node: Fn) -> AnyHasName { AnyHasName { syntax: node.syntax } }
-}
-impl From<FormatArgsArg> for AnyHasName {
-    #[inline]
-    fn from(node: FormatArgsArg) -> AnyHasName { AnyHasName { syntax: node.syntax } }
 }
 impl From<IdentPat> for AnyHasName {
     #[inline]
@@ -9537,6 +9570,11 @@ impl std::fmt::Display for ForType {
     }
 }
 impl std::fmt::Display for FormatArgsArg {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for FormatArgsArgName {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
