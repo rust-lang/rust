@@ -1136,7 +1136,7 @@ pub(crate) fn codegen(
             EmitObj::None => {}
         }
 
-        record_llvm_cgu_instructions_stats(&cgcx.prof, llmod);
+        record_llvm_cgu_instructions_stats(&cgcx.prof, &module.name, llmod);
     }
 
     // `.dwo` files are only emitted if:
@@ -1343,22 +1343,11 @@ fn record_artifact_size(
     }
 }
 
-fn record_llvm_cgu_instructions_stats(prof: &SelfProfilerRef, llmod: &llvm::Module) {
+fn record_llvm_cgu_instructions_stats(prof: &SelfProfilerRef, name: &str, llmod: &llvm::Module) {
     if !prof.enabled() {
         return;
     }
 
-    let raw_stats =
-        llvm::build_string(|s| unsafe { llvm::LLVMRustModuleInstructionStats(llmod, s) })
-            .expect("cannot get module instruction stats");
-
-    #[derive(serde::Deserialize)]
-    struct InstructionsStats {
-        module: String,
-        total: u64,
-    }
-
-    let InstructionsStats { module, total } =
-        serde_json::from_str(&raw_stats).expect("cannot parse llvm cgu instructions stats");
-    prof.artifact_size("cgu_instructions", module, total);
+    let total = unsafe { llvm::LLVMRustModuleInstructionStats(llmod) };
+    prof.artifact_size("cgu_instructions", name, total);
 }
