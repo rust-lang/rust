@@ -1,7 +1,7 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::source::snippet_with_applicability;
+use clippy_utils::source::snippet_with_context;
 use clippy_utils::{SpanlessEq, is_in_const_context, is_integer_literal, sym};
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind, QPath, TyKind};
@@ -80,7 +80,8 @@ impl LateLintPass<'_> for CheckedConversions {
             && self.msrv.meets(cx, msrvs::TRY_FROM)
         {
             let mut applicability = Applicability::MachineApplicable;
-            let snippet = snippet_with_applicability(cx, cv.expr_to_cast.span, "_", &mut applicability);
+            let (snippet, _) =
+                snippet_with_context(cx, cv.expr_to_cast.span, item.span.ctxt(), "_", &mut applicability);
             span_lint_and_sugg(
                 cx,
                 CHECKED_CONVERSIONS,

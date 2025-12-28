@@ -588,5 +588,29 @@ LL -     b.to_ascii_lowercase() == a.to_ascii_lowercase();
 LL +     b.eq_ignore_ascii_case(a);
    |
 
-error: aborting due to 49 previous errors
+error: manual case-insensitive ASCII comparison
+  --> tests/ui/manual_ignore_case_cmp.rs:178:5
+   |
+LL |     dot_inner!(a).to_ascii_lowercase() == dot_inner!(b).to_ascii_lowercase()
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider using `.eq_ignore_ascii_case()` instead
+   |
+LL -     dot_inner!(a).to_ascii_lowercase() == dot_inner!(b).to_ascii_lowercase()
+LL +     dot_inner!(a).eq_ignore_ascii_case(dot_inner!(b))
+   |
+
+error: manual case-insensitive ASCII comparison
+  --> tests/ui/manual_ignore_case_cmp.rs:180:12
+   |
+LL |         || dot_inner!(a).to_ascii_lowercase() == "abc"
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider using `.eq_ignore_ascii_case()` instead
+   |
+LL -         || dot_inner!(a).to_ascii_lowercase() == "abc"
+LL +         || dot_inner!(a).eq_ignore_ascii_case("abc")
+   |
+
+error: aborting due to 51 previous errors
 
