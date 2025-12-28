@@ -77,7 +77,7 @@ fn eat_operand_keyword<'a>(
     exp: ExpKeywordPair,
     asm_macro: AsmMacro,
 ) -> PResult<'a, bool> {
-    if matches!(asm_macro, AsmMacro::Asm) {
+    if asm_macro == AsmMacro::Asm {
         Ok(p.eat_keyword(exp))
     } else {
         let span = p.token.span;

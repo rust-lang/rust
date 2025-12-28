@@ -472,7 +472,7 @@ impl<'a> Parser<'a> {
     fn parse_ident_common(&mut self, recover: bool) -> PResult<'a, Ident> {
         let (ident, is_raw) = self.ident_or_err(recover)?;
 
-        if matches!(is_raw, IdentIsRaw::No) && ident.is_reserved() {
+        if is_raw == IdentIsRaw::No && ident.is_reserved() {
             let err = self.expected_ident_found_err();
             if recover {
                 err.emit();

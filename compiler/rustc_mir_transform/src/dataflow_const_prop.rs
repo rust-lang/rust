@@ -21,7 +21,7 @@ use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_mir_dataflow::fmt::DebugWithContext;
 use rustc_mir_dataflow::lattice::{FlatSet, HasBottom};
 use rustc_mir_dataflow::value_analysis::{
-    Map, PlaceIndex, State, TrackElem, ValueOrPlace, debug_with_context,
+    Map, PlaceCollectionMode, PlaceIndex, State, TrackElem, ValueOrPlace, debug_with_context,
 };
 use rustc_mir_dataflow::{Analysis, ResultsVisitor, visit_reachable_results};
 use rustc_span::DUMMY_SP;
@@ -55,10 +55,10 @@ impl<'tcx> crate::MirPass<'tcx> for DataflowConstProp {
         // `O(num_nodes * tracked_places * n)` in terms of time complexity. Since the number of
         // map nodes is strongly correlated to the number of tracked places, this becomes more or
         // less `O(n)` if we place a constant limit on the number of tracked places.
-        let place_limit = if tcx.sess.mir_opt_level() < 4 { Some(PLACE_LIMIT) } else { None };
+        let value_limit = if tcx.sess.mir_opt_level() < 4 { Some(PLACE_LIMIT) } else { None };
 
         // Decide which places to track during the analysis.
-        let map = Map::new(tcx, body, place_limit);
+        let map = Map::new(tcx, body, PlaceCollectionMode::Full { value_limit });
 
         // Perform the actual dataflow analysis.
         let const_ = debug_span!("analyze")

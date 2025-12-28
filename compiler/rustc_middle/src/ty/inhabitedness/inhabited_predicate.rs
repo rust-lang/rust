@@ -160,7 +160,7 @@ impl<'tcx> InhabitedPredicate<'tcx> {
     pub fn all(tcx: TyCtxt<'tcx>, iter: impl IntoIterator<Item = Self>) -> Self {
         let mut result = Self::True;
         for pred in iter {
-            if matches!(pred, Self::False) {
+            if pred == Self::False {
                 return Self::False;
             }
             result = result.and(tcx, pred);
@@ -171,7 +171,7 @@ impl<'tcx> InhabitedPredicate<'tcx> {
     pub fn any(tcx: TyCtxt<'tcx>, iter: impl IntoIterator<Item = Self>) -> Self {
         let mut result = Self::False;
         for pred in iter {
-            if matches!(pred, Self::True) {
+            if pred == Self::True {
                 return Self::True;
             }
             result = result.or(tcx, pred);
