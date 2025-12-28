@@ -431,10 +431,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 // Internally, with an intrinsic operating on a `svint32_t`/`<vscale x 4 x i32>`
                 // (for example), the intrinsic takes the `svbool_t`/`<vscale x 16 x i1>` predicate
                 // and casts it to a `svbool4_t`/`<vscale x 4 x i1>`. Therefore, it's important that
-                // the `<vscale x 4 x i32>` never spills because that'll cause errors during
+                // the `<vscale x 4 x i1>` never spills because that'll cause errors during
                 // instruction selection. Spilling to the stack to create debuginfo for these
-                // intermediate values must be avoided and won't degrade the debugging experience
-                // anyway.
+                // intermediate values must be avoided and doing so won't affect the
+                // debugging experience anyway.
                 if operand.layout.ty.is_scalable_vector()
                     && bx.sess().target.arch == rustc_target::spec::Arch::AArch64
                     && let ty::Adt(adt, args) = &operand.layout.ty.kind()
