@@ -70,8 +70,11 @@ pub(crate) fn complete_record_expr_fields(
         }
         _ => {
             let missing_fields = ctx.sema.record_literal_missing_fields(record_expr);
+            let update_exists = record_expr
+                .record_expr_field_list()
+                .is_some_and(|list| list.dotdot_token().is_some());
 
-            if !missing_fields.is_empty() {
+            if !missing_fields.is_empty() && !update_exists {
                 cov_mark::hit!(functional_update_field);
                 add_default_update(acc, ctx, ty);
             }
