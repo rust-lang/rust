@@ -426,20 +426,6 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
         PassMode::Indirect { attrs, meta_attrs, on_stack: false }
     }
 
-    /// Pass this argument directly instead. Should NOT be used!
-    /// Only exists because of past ABI mistakes that will take time to fix
-    /// (see <https://github.com/rust-lang/rust/issues/115666>).
-    #[track_caller]
-    pub fn make_direct_deprecated(&mut self) {
-        match self.mode {
-            PassMode::Indirect { .. } => {
-                self.mode = PassMode::Direct(ArgAttributes::new());
-            }
-            PassMode::Ignore | PassMode::Direct(_) | PassMode::Pair(_, _) => {} // already direct
-            _ => panic!("Tried to make {:?} direct", self.mode),
-        }
-    }
-
     /// Pass this argument indirectly, by passing a (thin or wide) pointer to the argument instead.
     /// This is valid for both sized and unsized arguments.
     #[track_caller]
