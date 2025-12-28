@@ -132,7 +132,7 @@ declare_clippy_lint! {
     /// Because this can be caused purely by the dependencies
     /// themselves, it's not always possible to fix this issue.
     /// In those cases, you can allow that specific crate using
-    /// the `allowed_duplicate_crates` configuration option.
+    /// the `allowed-duplicate-crates` configuration option.
     ///
     /// ### Example
     /// ```toml
