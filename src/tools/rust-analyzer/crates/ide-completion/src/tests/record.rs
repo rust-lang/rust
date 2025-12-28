@@ -264,6 +264,29 @@ fn main() {
 }
 
 #[test]
+fn functional_update_exist_update() {
+    check(
+        r#"
+//- minicore:default
+struct Foo { foo1: u32, foo2: u32 }
+impl Default for Foo {
+    fn default() -> Self { loop {} }
+}
+
+fn main() {
+    let thing = 1;
+    let foo = Foo { foo1: 0, foo2: 0 };
+    let foo2 = Foo { thing, $0 ..Default::default() }
+}
+"#,
+        expect![[r#"
+            fd foo1 u32
+            fd foo2 u32
+        "#]],
+    );
+}
+
+#[test]
 fn empty_union_literal() {
     check(
         r#"
