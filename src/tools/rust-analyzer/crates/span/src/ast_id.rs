@@ -603,8 +603,9 @@ impl AstIdMap {
         // After all, the block will then contain the *outer* item, so we allocate
         // an ID for it anyway.
         let mut blocks = Vec::new();
-        let mut curr_layer = vec![(node.clone(), None)];
-        let mut next_layer = vec![];
+        let mut curr_layer = Vec::with_capacity(32);
+        curr_layer.push((node.clone(), None));
+        let mut next_layer = Vec::with_capacity(32);
         while !curr_layer.is_empty() {
             curr_layer.drain(..).for_each(|(node, parent_idx)| {
                 let mut preorder = node.preorder();
