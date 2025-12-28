@@ -7,6 +7,8 @@ print-type-size     variant `Returned`: 0 bytes
 print-type-size     variant `Panicked`: 0 bytes
 print-type-size type: `std::mem::ManuallyDrop<{async fn body of a<[u8; 1024]>()}>`: 3075 bytes, alignment: 1 bytes
 print-type-size     field `.value`: 3075 bytes
+print-type-size type: `std::mem::MaybeDangling<{async fn body of a<[u8; 1024]>()}>`: 3075 bytes, alignment: 1 bytes
+print-type-size     field `.0`: 3075 bytes
 print-type-size type: `std::mem::MaybeUninit<{async fn body of a<[u8; 1024]>()}>`: 3075 bytes, alignment: 1 bytes
 print-type-size     variant `MaybeUninit`: 3075 bytes
 print-type-size         field `.uninit`: 0 bytes
@@ -24,6 +26,8 @@ print-type-size     variant `Panicked`: 1024 bytes
 print-type-size         upvar `.t`: 1024 bytes
 print-type-size type: `std::mem::ManuallyDrop<{async fn body of b<[u8; 1024]>()}>`: 2050 bytes, alignment: 1 bytes
 print-type-size     field `.value`: 2050 bytes
+print-type-size type: `std::mem::MaybeDangling<{async fn body of b<[u8; 1024]>()}>`: 2050 bytes, alignment: 1 bytes
+print-type-size     field `.0`: 2050 bytes
 print-type-size type: `std::mem::MaybeUninit<{async fn body of b<[u8; 1024]>()}>`: 2050 bytes, alignment: 1 bytes
 print-type-size     variant `MaybeUninit`: 2050 bytes
 print-type-size         field `.uninit`: 0 bytes
@@ -41,6 +45,8 @@ print-type-size     variant `Panicked`: 1024 bytes
 print-type-size         upvar `.t`: 1024 bytes
 print-type-size type: `std::mem::ManuallyDrop<{async fn body of c<[u8; 1024]>()}>`: 1025 bytes, alignment: 1 bytes
 print-type-size     field `.value`: 1025 bytes
+print-type-size type: `std::mem::MaybeDangling<{async fn body of c<[u8; 1024]>()}>`: 1025 bytes, alignment: 1 bytes
+print-type-size     field `.0`: 1025 bytes
 print-type-size type: `std::mem::MaybeUninit<{async fn body of c<[u8; 1024]>()}>`: 1025 bytes, alignment: 1 bytes
 print-type-size     variant `MaybeUninit`: 1025 bytes
 print-type-size         field `.uninit`: 0 bytes

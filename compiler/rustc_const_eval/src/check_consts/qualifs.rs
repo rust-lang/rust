@@ -312,7 +312,7 @@ where
         // i.e., we treat all qualifs as non-structural for deref projections. Generally,
         // we can say very little about `*ptr` even if we know that `ptr` satisfies all
         // sorts of properties.
-        if matches!(elem, ProjectionElem::Deref) {
+        if elem == ProjectionElem::Deref {
             // We have to assume that this qualifies.
             return true;
         }

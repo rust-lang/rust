@@ -1582,7 +1582,7 @@ impl<'v> RootCollector<'_, 'v> {
     }
 
     fn process_impl_item(&mut self, id: hir::ImplItemId) {
-        if matches!(self.tcx.def_kind(id.owner_id), DefKind::AssocFn) {
+        if self.tcx.def_kind(id.owner_id) == DefKind::AssocFn {
             self.push_if_root(id.owner_id.def_id);
         }
     }
@@ -1720,7 +1720,7 @@ fn create_mono_items_for_default_impls<'tcx>(
 ) {
     let impl_ = tcx.impl_trait_header(item.owner_id);
 
-    if matches!(impl_.polarity, ty::ImplPolarity::Negative) {
+    if impl_.polarity == ty::ImplPolarity::Negative {
         return;
     }
 
