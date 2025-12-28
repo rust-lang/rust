@@ -123,7 +123,7 @@ struct IdentRepr {
 
 impl FlatTree {
     pub fn from_subtree(
-        subtree: tt::SubtreeView<'_, Span>,
+        subtree: tt::SubtreeView<'_>,
         version: u32,
         span_data_table: &mut SpanDataIndexMap,
     ) -> FlatTree {
@@ -168,7 +168,7 @@ impl FlatTree {
         self,
         version: u32,
         span_data_table: &SpanDataIndexMap,
-    ) -> tt::TopSubtree<Span> {
+    ) -> tt::TopSubtree {
         Reader::<Span> {
             subtree: if version >= ENCODE_CLOSE_SPAN_VERSION {
                 read_vec(self.subtree, SubtreeRepr::read_with_close_span)
@@ -486,8 +486,8 @@ struct Writer<'a, 'span, S: SpanTransformer, W> {
     text: Vec<String>,
 }
 
-impl<'a, T: SpanTransformer> Writer<'a, '_, T, tt::iter::TtIter<'a, T::Span>> {
-    fn write_subtree(&mut self, root: tt::SubtreeView<'a, T::Span>) {
+impl<'a, T: SpanTransformer<Span = span::Span>> Writer<'a, '_, T, tt::iter::TtIter<'a>> {
+    fn write_subtree(&mut self, root: tt::SubtreeView<'a>) {
         let subtree = root.top_subtree();
         self.enqueue(subtree, root.iter());
         while let Some((idx, len, subtree)) = self.work.pop_front() {
@@ -495,7 +495,7 @@ impl<'a, T: SpanTransformer> Writer<'a, '_, T, tt::iter::TtIter<'a, T::Span>> {
         }
     }
 
-    fn subtree(&mut self, idx: usize, n_tt: usize, subtree: tt::iter::TtIter<'a, T::Span>) {
+    fn subtree(&mut self, idx: usize, n_tt: usize, subtree: tt::iter::TtIter<'a>) {
         let mut first_tt = self.token_tree.len();
         self.token_tree.resize(first_tt + n_tt, !0);
 
@@ -565,11 +565,7 @@ impl<'a, T: SpanTransformer> Writer<'a, '_, T, tt::iter::TtIter<'a, T::Span>> {
         }
     }
 
-    fn enqueue(
-        &mut self,
-        subtree: &'a tt::Subtree<T::Span>,
-        contents: tt::iter::TtIter<'a, T::Span>,
-    ) -> u32 {
+    fn enqueue(&mut self, subtree: &'a tt::Subtree, contents: tt::iter::TtIter<'a>) -> u32 {
         let idx = self.subtree.len();
         let open = self.token_id_of(subtree.delimiter.open);
         let close = self.token_id_of(subtree.delimiter.close);
@@ -739,9 +735,9 @@ struct Reader<'span, S: SpanTransformer> {
     span_data_table: &'span S::Table,
 }
 
-impl<T: SpanTransformer> Reader<'_, T> {
-    pub(crate) fn read_subtree(self) -> tt::TopSubtree<T::Span> {
-        let mut res: Vec<Option<(tt::Delimiter<T::Span>, Vec<tt::TokenTree<T::Span>>)>> =
+impl<T: SpanTransformer<Span = span::Span>> Reader<'_, T> {
+    pub(crate) fn read_subtree(self) -> tt::TopSubtree {
+        let mut res: Vec<Option<(tt::Delimiter, Vec<tt::TokenTree>)>> =
             vec![None; self.subtree.len()];
         let read_span = |id| T::span_for_token_id(self.span_data_table, id);
         for i in (0..self.subtree.len()).rev() {

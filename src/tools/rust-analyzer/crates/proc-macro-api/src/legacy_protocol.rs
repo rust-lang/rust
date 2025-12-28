@@ -77,15 +77,14 @@ pub(crate) fn find_proc_macros(
 
 pub(crate) fn expand(
     proc_macro: &ProcMacro,
-    subtree: tt::SubtreeView<'_, Span>,
-    attr: Option<tt::SubtreeView<'_, Span>>,
+    subtree: tt::SubtreeView<'_>,
+    attr: Option<tt::SubtreeView<'_>>,
     env: Vec<(String, String)>,
     def_site: Span,
     call_site: Span,
     mixed_site: Span,
     current_dir: String,
-) -> Result<Result<tt::TopSubtree<span::SpanData<span::SyntaxContext>>, String>, crate::ServerError>
-{
+) -> Result<Result<tt::TopSubtree, String>, crate::ServerError> {
     let version = proc_macro.process.version();
     let mut span_data_table = SpanDataIndexMap::default();
     let def_site = span_data_table.insert_full(def_site).0;

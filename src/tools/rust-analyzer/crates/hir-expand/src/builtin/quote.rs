@@ -8,7 +8,7 @@ use tt::IdentIsRaw;
 
 use crate::{name::Name, tt::TopSubtreeBuilder};
 
-pub(crate) fn dollar_crate(span: Span) -> tt::Ident<Span> {
+pub(crate) fn dollar_crate(span: Span) -> tt::Ident {
     tt::Ident { sym: sym::dollar_crate, span, is_raw: tt::IdentIsRaw::No }
 }
 

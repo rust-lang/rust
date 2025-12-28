@@ -531,14 +531,14 @@ impl ProcMacroExpander for Expander {
     fn expand(
         &self,
         db: &dyn SourceDatabase,
-        subtree: &tt::TopSubtree<Span>,
-        attrs: Option<&tt::TopSubtree<Span>>,
+        subtree: &tt::TopSubtree,
+        attrs: Option<&tt::TopSubtree>,
         env: &Env,
         def_site: Span,
         call_site: Span,
         mixed_site: Span,
         current_dir: String,
-    ) -> Result<tt::TopSubtree<Span>, ProcMacroExpansionError> {
+    ) -> Result<tt::TopSubtree, ProcMacroExpansionError> {
         let mut cb = |req| match req {
             SubRequest::SourceText { file_id, start, end } => {
                 let file = FileId::from_raw(file_id);
