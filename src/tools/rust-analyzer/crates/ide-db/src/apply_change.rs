@@ -1,19 +1,14 @@
 //! Applies changes to the IDE state transactionally.
 
 use profile::Bytes;
-use salsa::{Database as _, Durability};
+use salsa::Database as _;
 
 use crate::{ChangeWithProcMacros, RootDatabase};
 
 impl RootDatabase {
-    pub fn request_cancellation(&mut self) {
-        let _p = tracing::info_span!("RootDatabase::request_cancellation").entered();
-        self.synthetic_write(Durability::LOW);
-    }
-
     pub fn apply_change(&mut self, change: ChangeWithProcMacros) {
         let _p = tracing::info_span!("RootDatabase::apply_change").entered();
-        self.request_cancellation();
+        self.trigger_cancellation();
         tracing::trace!("apply_change {:?}", change);
         change.apply(self);
     }

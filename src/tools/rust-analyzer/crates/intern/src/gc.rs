@@ -87,20 +87,20 @@ pub trait GcInternedSliceVisit: SliceInternable {
 #[derive(Default)]
 pub struct GarbageCollector {
     alive: FxHashSet<usize>,
-    storages: Vec<Box<dyn Storage + Send + Sync>>,
+    storages: Vec<&'static (dyn Storage + Send + Sync)>,
 }
 
 impl GarbageCollector {
     pub fn add_storage<T: Internable + GcInternedVisit>(&mut self) {
         const { assert!(T::USE_GC) };
 
-        self.storages.push(Box::new(InternedStorage::<T>(PhantomData)));
+        self.storages.push(&InternedStorage::<T>(PhantomData));
     }
 
     pub fn add_slice_storage<T: SliceInternable + GcInternedSliceVisit>(&mut self) {
         const { assert!(T::USE_GC) };
 
-        self.storages.push(Box::new(InternedSliceStorage::<T>(PhantomData)));
+        self.storages.push(&InternedSliceStorage::<T>(PhantomData));
     }
 
     /// # Safety
@@ -111,11 +111,12 @@ impl GarbageCollector {
     ///  - [`GcInternedVisit`] and [`GcInternedSliceVisit`] must mark all values reachable from the node.
     pub unsafe fn collect(mut self) {
         let total_nodes = self.storages.iter().map(|storage| storage.len()).sum();
-        self.alive = FxHashSet::with_capacity_and_hasher(total_nodes, FxBuildHasher);
+        self.alive.clear();
+        self.alive.reserve(total_nodes);
 
         let storages = std::mem::take(&mut self.storages);
 
-        for storage in &storages {
+        for &storage in &storages {
             storage.mark(&mut self);
         }
 

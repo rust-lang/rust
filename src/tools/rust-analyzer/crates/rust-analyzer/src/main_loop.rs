@@ -9,7 +9,7 @@ use std::{
 };
 
 use crossbeam_channel::{Receiver, never, select};
-use ide_db::base_db::{SourceDatabase, VfsPath, salsa::Database as _};
+use ide_db::base_db::{SourceDatabase, VfsPath};
 use lsp_server::{Connection, Notification, Request};
 use lsp_types::{TextDocumentIdentifier, notification::Notification as _};
 use stdx::thread::ThreadIntent;
@@ -383,7 +383,7 @@ impl GlobalState {
                             ));
                         }
                         PrimeCachesProgress::End { cancelled } => {
-                            self.analysis_host.raw_database_mut().trigger_lru_eviction();
+                            self.analysis_host.trigger_garbage_collection();
                             self.prime_caches_queue.op_completed(());
                             if cancelled {
                                 self.prime_caches_queue
@@ -534,6 +534,16 @@ impl GlobalState {
             }
             if project_or_mem_docs_changed && self.config.test_explorer() {
                 self.update_tests();
+            }
+
+            let current_revision = self.analysis_host.raw_database().nonce_and_revision().1;
+            // no work is currently being done, now we can block a bit and clean up our garbage
+            if self.task_pool.handle.is_empty()
+                && self.fmt_pool.handle.is_empty()
+                && current_revision != self.last_gc_revision
+            {
+                self.analysis_host.trigger_garbage_collection();
+                self.last_gc_revision = current_revision;
             }
         }
 
@@ -907,7 +917,8 @@ impl GlobalState {
                         // Not a lot of bad can happen from mistakenly identifying `minicore`, so proceed with that.
                         self.minicore.minicore_text = contents
                             .as_ref()
-                            .and_then(|contents| String::from_utf8(contents.clone()).ok());
+                            .and_then(|contents| str::from_utf8(contents).ok())
+                            .map(triomphe::Arc::from);
                     }
 
                     let path = VfsPath::from(path);

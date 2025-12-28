@@ -354,11 +354,10 @@ impl flags::AnalysisStats {
             self.run_term_search(&workspace, db, &vfs, &file_ids, verbosity);
         }
 
-        hir::clear_tls_solver_cache();
-        unsafe { hir::collect_ty_garbage() };
-
         let db = host.raw_database_mut();
         db.trigger_lru_eviction();
+        hir::clear_tls_solver_cache();
+        unsafe { hir::collect_ty_garbage() };
 
         let total_span = analysis_sw.elapsed();
         eprintln!("{:<20} {total_span}", "Total:");

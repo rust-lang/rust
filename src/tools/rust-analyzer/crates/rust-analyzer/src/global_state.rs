@@ -15,7 +15,7 @@ use hir::ChangeWithProcMacros;
 use ide::{Analysis, AnalysisHost, Cancellable, FileId, SourceRootId};
 use ide_db::{
     MiniCore,
-    base_db::{Crate, ProcMacroPaths, SourceDatabase},
+    base_db::{Crate, ProcMacroPaths, SourceDatabase, salsa::Revision},
 };
 use itertools::Itertools;
 use load_cargo::SourceRootConfig;
@@ -193,15 +193,14 @@ pub(crate) struct GlobalState {
     /// which will usually end up causing a bunch of incorrect diagnostics on startup.
     pub(crate) incomplete_crate_graph: bool,
 
-    pub(crate) revisions_until_next_gc: usize,
-
     pub(crate) minicore: MiniCoreRustAnalyzerInternalOnly,
+    pub(crate) last_gc_revision: Revision,
 }
 
 // FIXME: This should move to the VFS once the rewrite is done.
 #[derive(Debug, Clone, Default)]
 pub(crate) struct MiniCoreRustAnalyzerInternalOnly {
-    pub(crate) minicore_text: Option<String>,
+    pub(crate) minicore_text: Option<Arc<str>>,
 }
 
 /// An immutable snapshot of the world's state at a point in time.
@@ -257,6 +256,8 @@ impl GlobalState {
         let (test_run_sender, test_run_receiver) = unbounded();
 
         let (discover_sender, discover_receiver) = unbounded();
+
+        let last_gc_revision = analysis_host.raw_database().nonce_and_revision().1;
 
         let mut this = GlobalState {
             sender,
@@ -321,8 +322,7 @@ impl GlobalState {
             incomplete_crate_graph: false,
 
             minicore: MiniCoreRustAnalyzerInternalOnly::default(),
-
-            revisions_until_next_gc: config.gc_freq(),
+            last_gc_revision,
         };
         // Apply any required database inputs from the config.
         this.update_configuration(config);
@@ -347,11 +347,11 @@ impl GlobalState {
 
         let (change, modified_rust_files, workspace_structure_change) =
             self.cancellation_pool.scoped(|s| {
-                // start cancellation in parallel, this will kick off lru eviction
+                // start cancellation in parallel,
                 // allowing us to do meaningful work while waiting
                 let analysis_host = AssertUnwindSafe(&mut self.analysis_host);
                 s.spawn(thread::ThreadIntent::LatencySensitive, || {
-                    { analysis_host }.0.request_cancellation()
+                    { analysis_host }.0.trigger_cancellation()
                 });
 
                 // downgrade to read lock to allow more readers while we are normalizing text
@@ -439,14 +439,6 @@ impl GlobalState {
             });
 
         self.analysis_host.apply_change(change);
-
-        if self.revisions_until_next_gc == 0 {
-            // SAFETY: Just changed some database inputs, all queries were canceled.
-            unsafe { hir::collect_ty_garbage() };
-            self.revisions_until_next_gc = self.config.gc_freq();
-        } else {
-            self.revisions_until_next_gc -= 1;
-        }
 
         if !modified_ratoml_files.is_empty()
             || !self.config.same_source_root_parent_map(&self.local_roots_parent_map)
@@ -741,7 +733,7 @@ impl GlobalState {
 
 impl Drop for GlobalState {
     fn drop(&mut self) {
-        self.analysis_host.request_cancellation();
+        self.analysis_host.trigger_cancellation();
     }
 }
 
