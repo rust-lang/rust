@@ -643,6 +643,21 @@ fn layout_of_uncached<'tcx>(
 
         // ADTs.
         ty::Adt(def, args) => {
+            if def.is_addrspace_ptr() {
+                // Implement the AddrspacePtr lang item struct as a pointer into the
+                // address space from the const generic argument.
+                let pointee = args.type_at(0);
+                let addrspace = extract_const_value(cx, ty, args.const_at(1))?
+                    .try_to_bits(tcx, ty::TypingEnv::fully_monomorphized())
+                    .ok_or_else(|| error(cx, LayoutError::Unknown(ty)))?
+                    as u32;
+                let data_ptr = scalar_unit(Pointer(AddressSpace(addrspace)));
+                if !pointee.is_sized(tcx, cx.typing_env) {
+                    panic!("AddrspacePtr pointee must be sized");
+                }
+                return Ok(tcx.mk_layout(LayoutData::scalar(cx, data_ptr)));
+            }
+
             // Cache the field layouts.
             let variants = def
                 .variants()

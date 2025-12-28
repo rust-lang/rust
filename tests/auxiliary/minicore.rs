@@ -293,3 +293,4 @@ pub enum SimdAlign {
 }
 
 impl ConstParamTy_ for SimdAlign {}
+impl ConstParamTy_ for u32 {}
