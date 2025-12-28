@@ -13,14 +13,13 @@ use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::pat_util::EnumerateAndAdjustIterator;
 use rustc_hir::{self as hir, LangItem, RangeEnd};
 use rustc_index::Idx;
-use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::mir::interpret::LitToConstInput;
 use rustc_middle::thir::{
     Ascription, DerefPatBorrowMode, FieldPat, LocalVarId, Pat, PatKind, PatRange, PatRangeBoundary,
 };
 use rustc_middle::ty::adjustment::{PatAdjust, PatAdjustment};
 use rustc_middle::ty::layout::IntegerExt;
-use rustc_middle::ty::{self, CanonicalUserTypeAnnotation, Ty, TyCtxt, TypingMode};
+use rustc_middle::ty::{self, CanonicalUserTypeAnnotation, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::DefId;
 use rustc_span::{ErrorGuaranteed, Span};
@@ -613,54 +612,8 @@ impl<'tcx> PatCtxt<'tcx> {
         pattern
     }
 
-    /// Lowers an inline const block (e.g. `const { 1 + 1 }`) to a pattern.
-    fn lower_inline_const(
-        &mut self,
-        block: &'tcx hir::ConstBlock,
-        id: hir::HirId,
-        span: Span,
-    ) -> PatKind<'tcx> {
-        let tcx = self.tcx;
-        let def_id = block.def_id;
-        let ty = tcx.typeck(def_id).node_type(block.hir_id);
-
-        let typeck_root_def_id = tcx.typeck_root_def_id(def_id.to_def_id());
-        let parent_args = ty::GenericArgs::identity_for_item(tcx, typeck_root_def_id);
-        let args = ty::InlineConstArgs::new(tcx, ty::InlineConstArgsParts { parent_args, ty }).args;
-
-        let ct = ty::UnevaluatedConst { def: def_id.to_def_id(), args };
-        let c = ty::Const::new_unevaluated(self.tcx, ct);
-        let pattern = self.const_to_pat(c, ty, id, span);
-
-        // Apply a type ascription for the inline constant.
-        let annotation = {
-            let infcx = tcx.infer_ctxt().build(TypingMode::non_body_analysis());
-            let args = ty::InlineConstArgs::new(
-                tcx,
-                ty::InlineConstArgsParts { parent_args, ty: infcx.next_ty_var(span) },
-            )
-            .args;
-            infcx.canonicalize_user_type_annotation(ty::UserType::new(ty::UserTypeKind::TypeOf(
-                def_id.to_def_id(),
-                ty::UserArgs { args, user_self_ty: None },
-            )))
-        };
-        let annotation =
-            CanonicalUserTypeAnnotation { user_ty: Box::new(annotation), span, inferred_ty: ty };
-        PatKind::AscribeUserType {
-            subpattern: pattern,
-            ascription: Ascription {
-                annotation,
-                // Note that we use `Contravariant` here. See the `variance` field documentation
-                // for details.
-                variance: ty::Contravariant,
-            },
-        }
-    }
-
     /// Lowers the kinds of "expression" that can appear in a HIR pattern:
     /// - Paths (e.g. `FOO`, `foo::BAR`, `Option::None`)
-    /// - Inline const blocks (e.g. `const { 1 + 1 }`)
     /// - Literals, possibly negated (e.g. `-128u8`, `"hello"`)
     fn lower_pat_expr(
         &mut self,
@@ -669,9 +622,6 @@ impl<'tcx> PatCtxt<'tcx> {
     ) -> PatKind<'tcx> {
         match &expr.kind {
             hir::PatExprKind::Path(qpath) => self.lower_path(qpath, expr.hir_id, expr.span).kind,
-            hir::PatExprKind::ConstBlock(anon_const) => {
-                self.lower_inline_const(anon_const, expr.hir_id, expr.span)
-            }
             hir::PatExprKind::Lit { lit, negated } => {
                 // We handle byte string literal patterns by using the pattern's type instead of the
                 // literal's type in `const_to_pat`: if the literal `b"..."` matches on a slice reference,
