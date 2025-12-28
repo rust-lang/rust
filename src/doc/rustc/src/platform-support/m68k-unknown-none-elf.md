@@ -12,6 +12,7 @@ Bare metal Motorola 680x0
 
 This target requires an m68k build environment for cross-compilation which
 is available on Debian, Debian-based systems, openSUSE, and other distributions.
+The gnu linker is currently required, as `lld` has no support for the `m68k` architecture
 
 On Debian-based systems, it should be sufficient to install a g++ cross-compiler for the m68k
 architecture which will automatically pull in additional dependencies such as
@@ -31,7 +32,7 @@ binaries:
 
 ## Building
 
-At least llvm version `19.1.5` is required to build `core` and `alloc` for this target, and currently the gnu linker is required, as `lld` has no support for the `m68k` architecture
+At least llvm version `19.1.5` is required to build `core` and `alloc` for this target.
 
 ## Cross-compilation
 
