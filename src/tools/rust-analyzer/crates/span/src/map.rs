@@ -163,7 +163,22 @@ impl Drop for SpanMap {
                 let (sender, receiver) = std::sync::mpsc::channel::<(SendPtr, fn(SendPtr))>();
                 std::thread::Builder::new()
                     .name("SpanMapDropper".to_owned())
-                    .spawn(move || receiver.iter().for_each(|(b, drop)| drop(b)))
+                    .spawn(move || {
+                        loop {
+                            // block on a receive
+                            if let Ok((b, drop)) = receiver.recv() {
+                                drop(b);
+                            }
+                            // then drain the entire channel
+                            while let Ok((b, drop)) = receiver.try_recv() {
+                                drop(b);
+                            }
+                            // and sleep for a bit
+                            std::thread::sleep(std::time::Duration::from_millis(100));
+                        }
+                        // why do this over just a `receiver.iter().for_each(drop)`? To reduce contention on the channel lock.
+                        // otherwise this thread will constantly wake up and sleep again.
+                    })
                     .unwrap();
                 sender
             })
