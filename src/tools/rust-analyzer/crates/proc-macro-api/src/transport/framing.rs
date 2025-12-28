@@ -3,7 +3,7 @@
 use std::io::{self, BufRead, Write};
 
 pub trait Framing {
-    type Buf: Default + Send;
+    type Buf: Default + Send + Sync;
 
     fn read<'a, R: BufRead + ?Sized>(
         inp: &mut R,

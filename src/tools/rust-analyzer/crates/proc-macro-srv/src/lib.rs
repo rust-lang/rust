@@ -91,7 +91,7 @@ impl<'env> ProcMacroSrv<'env> {
     }
 }
 
-pub type ProcMacroClientHandle<'a> = Box<dyn ProcMacroClientInterface + Send + 'a>;
+pub type ProcMacroClientHandle<'a> = &'a mut (dyn ProcMacroClientInterface + Sync + Send);
 
 pub trait ProcMacroClientInterface {
     fn source_text(&mut self, file_id: u32, start: u32, end: u32) -> Option<String>;
@@ -178,9 +178,7 @@ impl ProcMacroSrv<'_> {
 }
 
 pub trait ProcMacroSrvSpan: Copy + Send + Sync {
-    type Server<'a>: proc_macro::bridge::server::Server<TokenStream = crate::token_stream::TokenStream<Self>>
-    where
-        Self: 'a;
+    type Server<'a>: proc_macro::bridge::server::Server<TokenStream = crate::token_stream::TokenStream<Self>>;
     fn make_server<'a>(
         call_site: Self,
         def_site: Self,
