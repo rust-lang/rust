@@ -1315,39 +1315,54 @@ impl fmt::Debug for Duration {
             // need to perform rounding to match the semantics of printing
             // normal floating point numbers. However, we only need to do work
             // when rounding up. This happens if the first digit of the
-            // remaining ones is >= 5.
+            // remaining ones is >= 5. When the first digit is exactly 5, rounding
+            // follows IEEE-754 round-ties-to-even semantics: we only round up
+            // if the last written digit is odd.
             let integer_part = if fractional_part > 0 && fractional_part >= divisor * 5 {
-                // Round up the number contained in the buffer. We go through
-                // the buffer backwards and keep track of the carry.
-                let mut rev_pos = pos;
-                let mut carry = true;
-                while carry && rev_pos > 0 {
-                    rev_pos -= 1;
-
-                    // If the digit in the buffer is not '9', we just need to
-                    // increment it and can stop then (since we don't have a
-                    // carry anymore). Otherwise, we set it to '0' (overflow)
-                    // and continue.
-                    if buf[rev_pos] < b'9' {
-                        buf[rev_pos] += 1;
-                        carry = false;
-                    } else {
-                        buf[rev_pos] = b'0';
-                    }
-                }
-
-                // If we still have the carry bit set, that means that we set
-                // the whole buffer to '0's and need to increment the integer
-                // part.
-                if carry {
-                    // If `integer_part == u64::MAX` and precision < 9, any
-                    // carry of the overflow during rounding of the
-                    // `fractional_part` into the `integer_part` will cause the
-                    // `integer_part` itself to overflow. Avoid this by using an
-                    // `Option<u64>`, with `None` representing `u64::MAX + 1`.
-                    integer_part.checked_add(1)
+                // For ties (fractional_part == divisor * 5), only round up if last digit is odd
+                let is_tie = fractional_part == divisor * 5;
+                let last_digit_is_odd = if pos > 0 {
+                    (buf[pos - 1] - b'0') % 2 == 1
                 } else {
+                    // No fractional digits - check the integer part
+                    (integer_part % 2) == 1
+                };
+
+                if is_tie && !last_digit_is_odd {
                     Some(integer_part)
+                } else {
+                    // Round up the number contained in the buffer. We go through
+                    // the buffer backwards and keep track of the carry.
+                    let mut rev_pos = pos;
+                    let mut carry = true;
+                    while carry && rev_pos > 0 {
+                        rev_pos -= 1;
+
+                        // If the digit in the buffer is not '9', we just need to
+                        // increment it and can stop then (since we don't have a
+                        // carry anymore). Otherwise, we set it to '0' (overflow)
+                        // and continue.
+                        if buf[rev_pos] < b'9' {
+                            buf[rev_pos] += 1;
+                            carry = false;
+                        } else {
+                            buf[rev_pos] = b'0';
+                        }
+                    }
+
+                    // If we still have the carry bit set, that means that we set
+                    // the whole buffer to '0's and need to increment the integer
+                    // part.
+                    if carry {
+                        // If `integer_part == u64::MAX` and precision < 9, any
+                        // carry of the overflow during rounding of the
+                        // `fractional_part` into the `integer_part` will cause the
+                        // `integer_part` itself to overflow. Avoid this by using an
+                        // `Option<u64>`, with `None` representing `u64::MAX + 1`.
+                        integer_part.checked_add(1)
+                    } else {
+                        Some(integer_part)
+                    }
                 }
             } else {
                 Some(integer_part)
