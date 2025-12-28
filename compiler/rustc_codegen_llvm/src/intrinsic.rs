@@ -649,7 +649,32 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         // FIXME remove usage of fn_abi
         let fn_abi = self.fn_abi_of_instance(instance, ty::List::empty());
         assert!(!fn_abi.ret.is_indirect());
-        let fn_ty = fn_abi.llvm_type(self);
+        assert!(!fn_abi.c_variadic);
+
+        let llreturn_ty = match &fn_abi.ret.mode {
+            PassMode::Ignore => self.type_void(),
+            PassMode::Direct(_) | PassMode::Pair(..) => fn_abi.ret.layout.immediate_llvm_type(self),
+            PassMode::Cast { .. } | PassMode::Indirect { .. } => {
+                unreachable!()
+            }
+        };
+
+        let mut llargument_tys = Vec::with_capacity(fn_abi.args.len());
+        for arg in &fn_abi.args {
+            match &arg.mode {
+                PassMode::Ignore => {}
+                PassMode::Direct(_) => llargument_tys.push(arg.layout.immediate_llvm_type(self)),
+                PassMode::Pair(..) => {
+                    llargument_tys.push(arg.layout.scalar_pair_element_llvm_type(self, 0, true));
+                    llargument_tys.push(arg.layout.scalar_pair_element_llvm_type(self, 1, true));
+                }
+                PassMode::Indirect { .. } | PassMode::Cast { .. } => {
+                    unreachable!()
+                }
+            };
+        }
+
+        let fn_ty = self.type_func(&llargument_tys, llreturn_ty);
 
         let fn_ptr = if let Some(&llfn) = self.intrinsic_instances.borrow().get(&instance) {
             llfn
@@ -665,12 +690,11 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 let llfn = declare_raw_fn(
                     self,
                     sym,
-                    fn_abi.llvm_cconv(self),
+                    llvm::CCallConv,
                     llvm::UnnamedAddr::Global,
                     llvm::Visibility::Default,
                     fn_ty,
                 );
-                fn_abi.apply_attrs_llfn(self, llfn, Some(instance));
 
                 llfn
             };

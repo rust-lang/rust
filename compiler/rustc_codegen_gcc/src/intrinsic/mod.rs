@@ -4,9 +4,9 @@ mod simd;
 #[cfg(feature = "master")]
 use std::iter;
 
-#[cfg(feature = "master")]
-use gccjit::Type;
 use gccjit::{ComparisonOp, Function, FunctionType, RValue, ToRValue, UnaryOp};
+#[cfg(feature = "master")]
+use gccjit::{FnAttribute, Type};
 #[cfg(feature = "master")]
 use rustc_abi::ExternAbi;
 use rustc_abi::{BackendRepr, HasDataLayout, WrappingRange};
@@ -22,13 +22,18 @@ use rustc_codegen_ssa::traits::{
     ArgAbiBuilderMethods, BaseTypeCodegenMethods, BuilderMethods, ConstCodegenMethods,
     IntrinsicCallBuilderMethods, LayoutTypeCodegenMethods,
 };
+use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::bug;
 use rustc_middle::ty::layout::{FnAbiOf, LayoutOf};
 use rustc_middle::ty::{self, Instance, Ty};
+#[cfg(feature = "master")]
+use rustc_session::config;
 use rustc_span::{Span, Symbol, sym};
+#[cfg(feature = "master")]
+use rustc_target::callconv::ArgAttributes;
 use rustc_target::callconv::{ArgAbi, PassMode};
 
-use crate::abi::{FnAbiGccExt, GccType};
+use crate::abi::{FnAbiGcc, FnAbiGccExt, GccType};
 use crate::builder::Builder;
 use crate::common::{SignType, TypeReflection};
 use crate::context::CodegenCx;
@@ -621,7 +626,82 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
             } else {
                 self.linkage.set(FunctionType::Extern);
                 let fn_abi = self.fn_abi_of_instance(instance, ty::List::empty());
-                let fn_ty = fn_abi.gcc_type(self);
+                assert!(!fn_abi.ret.is_indirect());
+                assert!(!fn_abi.c_variadic);
+
+                let return_type = match fn_abi.ret.mode {
+                    PassMode::Ignore => self.type_void(),
+                    PassMode::Direct(_) | PassMode::Pair(..) => {
+                        fn_abi.ret.layout.immediate_gcc_type(self)
+                    }
+                    PassMode::Cast { .. } | PassMode::Indirect { .. } => {
+                        unreachable!()
+                    }
+                };
+
+                #[cfg(feature = "master")]
+                let mut non_null_args = Vec::new();
+
+                #[cfg(feature = "master")]
+                let mut apply_attrs =
+                    |mut ty: Type<'gcc>, attrs: &ArgAttributes, arg_index: usize| {
+                        if self.sess().opts.optimize == config::OptLevel::No {
+                            return ty;
+                        }
+                        if attrs.regular.contains(rustc_target::callconv::ArgAttribute::NoAlias) {
+                            ty = ty.make_restrict()
+                        }
+                        if attrs.regular.contains(rustc_target::callconv::ArgAttribute::NonNull) {
+                            non_null_args.push(arg_index as i32 + 1);
+                        }
+                        ty
+                    };
+                #[cfg(not(feature = "master"))]
+                let apply_attrs = |ty: Type<'gcc>, _attrs: &ArgAttributes, _arg_index: usize| ty;
+
+                let mut argument_tys = Vec::with_capacity(fn_abi.args.len());
+                for arg in fn_abi.args.iter() {
+                    match arg.mode {
+                        PassMode::Ignore => {}
+                        PassMode::Pair(a, b) => {
+                            let arg_pos = argument_tys.len();
+                            argument_tys.push(apply_attrs(
+                                arg.layout.scalar_pair_element_gcc_type(self, 0),
+                                &a,
+                                arg_pos,
+                            ));
+                            argument_tys.push(apply_attrs(
+                                arg.layout.scalar_pair_element_gcc_type(self, 1),
+                                &b,
+                                arg_pos + 1,
+                            ));
+                        }
+                        PassMode::Direct(attrs) => argument_tys.push(apply_attrs(
+                            arg.layout.immediate_gcc_type(self),
+                            &attrs,
+                            argument_tys.len(),
+                        )),
+                        PassMode::Indirect { .. } | PassMode::Cast { .. } => {
+                            unreachable!()
+                        }
+                    }
+                }
+
+                #[cfg(feature = "master")]
+                let fn_attrs = if non_null_args.is_empty() {
+                    Vec::new()
+                } else {
+                    vec![FnAttribute::NonNull(non_null_args)]
+                };
+
+                let fn_ty = FnAbiGcc {
+                    return_type,
+                    arguments_type: argument_tys,
+                    is_c_variadic: false,
+                    on_stack_param_indices: FxHashSet::default(),
+                    #[cfg(feature = "master")]
+                    fn_attributes: fn_attrs,
+                };
 
                 let func = match sym {
                     "llvm.fma.f16" => {
