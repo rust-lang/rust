@@ -48,7 +48,6 @@ mod dump;
 pub(crate) mod legacy;
 mod liveness_constraints;
 mod loan_liveness;
-mod typeck_constraints;
 
 use std::collections::BTreeMap;
 
@@ -56,14 +55,12 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_index::bit_set::SparseBitMatrix;
 use rustc_index::interval::SparseIntervalMatrix;
 use rustc_middle::mir::{Body, Local};
-use rustc_middle::ty::{RegionVid, TyCtxt};
+use rustc_middle::ty::RegionVid;
 use rustc_mir_dataflow::points::PointIndex;
 
 pub(crate) use self::constraints::*;
 pub(crate) use self::dump::dump_polonius_mir;
-use self::liveness_constraints::create_liveness_constraints;
 use self::loan_liveness::compute_loan_liveness;
-use self::typeck_constraints::convert_typeck_constraints;
 use crate::dataflow::BorrowIndex;
 use crate::{BorrowSet, RegionInferenceContext};
 
@@ -152,7 +149,6 @@ impl PoloniusContext {
     /// The constraint data will be used to compute errors and diagnostics.
     pub(crate) fn compute_loan_liveness<'tcx>(
         self,
-        tcx: TyCtxt<'tcx>,
         regioncx: &mut RegionInferenceContext<'tcx>,
         body: &Body<'tcx>,
         borrow_set: &BorrowSet<'tcx>,
@@ -160,24 +156,7 @@ impl PoloniusContext {
         let PoloniusLivenessContext { live_region_variances, boring_nll_locals } =
             self.liveness_context;
 
-        let mut localized_outlives_constraints = LocalizedOutlivesConstraintSet::default();
-        convert_typeck_constraints(
-            tcx,
-            body,
-            regioncx.liveness_constraints(),
-            regioncx.outlives_constraints(),
-            regioncx.universal_regions(),
-            &mut localized_outlives_constraints,
-        );
-
-        create_liveness_constraints(
-            body,
-            regioncx.liveness_constraints(),
-            &self.live_regions,
-            &live_region_variances,
-            regioncx.universal_regions(),
-            &mut localized_outlives_constraints,
-        );
+        let localized_outlives_constraints = LocalizedOutlivesConstraintSet::default();
 
         // From the outlives constraints, liveness, and variances, we can compute reachability on
         // the lazy localized constraint graph to trace the liveness of loans, for the next step in

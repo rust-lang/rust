@@ -31,13 +31,3 @@ pub(crate) struct LocalizedOutlivesConstraint {
 pub(crate) struct LocalizedOutlivesConstraintSet {
     pub outlives: Vec<LocalizedOutlivesConstraint>,
 }
-
-impl LocalizedOutlivesConstraintSet {
-    pub(crate) fn push(&mut self, constraint: LocalizedOutlivesConstraint) {
-        if constraint.source == constraint.target && constraint.from == constraint.to {
-            // 'a@p: 'a@p is pretty uninteresting
-            return;
-        }
-        self.outlives.push(constraint);
-    }
-}
