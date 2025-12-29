@@ -16,8 +16,9 @@ pub use small_c_string::{run_path_with_cstr, run_with_cstr};
 #[cfg_attr(not(target_os = "windows"), allow(unused))] // Not used on all platforms.
 pub use wstr::WStrUnits;
 
-// Computes (value*numerator)/denom without overflow, as long as both (numerator*denom) and the
-// overall result fit into i64 (which is the case for our time conversions).
+/// Computes `(value*numerator)/denom` without overflow, as long as both
+/// `numerator*denom` and the overall result fit into `u64` (which is the case
+/// for our time conversions).
 #[cfg_attr(not(target_os = "windows"), allow(unused))] // Not used on all platforms.
 pub fn mul_div_u64(value: u64, numerator: u64, denom: u64) -> u64 {
     let q = value / denom;
