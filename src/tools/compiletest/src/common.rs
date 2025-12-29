@@ -625,6 +625,9 @@ pub struct Config {
     /// Whether to run `enzyme` autodiff tests.
     pub has_enzyme: bool,
 
+    /// Whether to run `offload` autodiff tests.
+    pub has_offload: bool,
+
     /// The current Rust channel info.
     ///
     /// FIXME: treat this more carefully; "stable", "beta" and "nightly" are definitely valid, but
