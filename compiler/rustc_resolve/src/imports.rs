@@ -384,10 +384,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             // We are glob-importing the same item but with greater visibility.
             old_glob_decl.vis.set_unchecked(glob_decl.vis());
             old_glob_decl
-        } else if glob_decl.is_ambiguity_recursive() {
-            // Overwriting with an ambiguous glob import.
-            glob_decl.warn_ambiguity.set_unchecked(true);
-            glob_decl
+        } else if glob_decl.is_ambiguity_recursive() && !old_glob_decl.is_ambiguity_recursive() {
+            // Overwriting a non-ambiguous glob import with an ambiguous glob import.
+            self.new_decl_with_ambiguity(old_glob_decl, glob_decl, true)
         } else {
             old_glob_decl
         }
