@@ -7,19 +7,19 @@ use std::intrinsics::mir::*;
 // EMIT_MIR gvn_overlapping.overlapping.GVN.diff
 /// Check that we do not create overlapping assignments.
 #[custom_mir(dialect = "runtime")]
-fn overlapping(_17: Adt) {
+fn overlapping(_1: Adt) {
     // CHECK-LABEL: fn overlapping(
-    // CHECK: let mut [[PTR:.*]]: *mut Adt;
+    // CHECK: let mut [[PTR:.*]]: &mut Adt;
     // CHECK: (*[[PTR]]) = Adt::Some(copy {{.*}});
     mir! {
-        let _33: *mut Adt;
-        let _48: u32;
-        let _73: &Adt;
+        let _2: &mut Adt;
+        let _3: u32;
+        let _4: &Adt;
         {
-            _33 = core::ptr::addr_of_mut!(_17);
-            _73 = &(*_33);
-            _48 = Field(Variant((*_73), 1), 0);
-            (*_33) = Adt::Some(_48);
+            _2 = &mut _1;
+            _4 = &(*_2);
+            _3 = Field(Variant((*_4), 1), 0);
+            (*_2) = Adt::Some(_3);
             Return()
         }
     }
@@ -30,18 +30,19 @@ fn overlapping(_17: Adt) {
 #[custom_mir(dialect = "runtime")]
 fn stable_projection(_1: (Adt,)) {
     // CHECK-LABEL: fn stable_projection(
-    // CHECK: let mut _2: *mut Adt;
+    // CHECK: let mut _2: &Adt;
     // CHECK: let mut _4: &Adt;
-    // CHECK: (_1.0: Adt) = copy (*_4);
+    // CHECK: (_5.0: Adt) = copy (_1.0: Adt);
     mir! {
-        let _2: *mut Adt;
+        let _2: &Adt;
         let _3: u32;
         let _4: &Adt;
+        let _5: (Adt,);
         {
-            _2 = core::ptr::addr_of_mut!(_1.0);
+            _2 = &_1.0;
             _4 = &(*_2);
             _3 = Field(Variant((*_4), 1), 0);
-            _1.0 = Adt::Some(_3);
+            _5.0 = Adt::Some(_3);
             Return()
         }
     }
