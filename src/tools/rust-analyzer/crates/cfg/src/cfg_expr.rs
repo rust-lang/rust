@@ -157,7 +157,8 @@ fn next_cfg_expr_from_ast(
                     },
                     ctx: span::SyntaxContext::root(span::Edition::Edition2015),
                 };
-                let literal = tt::token_to_literal(literal.text(), dummy_span).symbol;
+                let literal =
+                    Symbol::intern(tt::token_to_literal(literal.text(), dummy_span).text());
                 it.next();
                 CfgAtom::KeyValue { key: name, value: literal.clone() }.into()
             } else {
@@ -211,7 +212,7 @@ fn next_cfg_expr(it: &mut tt::iter::TtIter<'_>) -> Option<CfgExpr> {
                 Some(tt::TtElement::Leaf(tt::Leaf::Literal(literal))) => {
                     it.next();
                     it.next();
-                    CfgAtom::KeyValue { key: name, value: literal.symbol.clone() }.into()
+                    CfgAtom::KeyValue { key: name, value: Symbol::intern(literal.text()) }.into()
                 }
                 _ => return Some(CfgExpr::Invalid),
             }

@@ -18,6 +18,7 @@ pub mod iter;
 
 use std::fmt;
 
+use arrayvec::ArrayString;
 use buffer::Cursor;
 use intern::Symbol;
 use stdx::{impl_from, itertools::Itertools as _};
@@ -617,17 +618,56 @@ pub enum DelimiterKind {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Literal {
-    // escaped
-    pub symbol: Symbol,
+    /// Escaped, text then suffix concatenated.
+    pub text_and_suffix: Symbol,
     pub span: Span,
     pub kind: LitKind,
-    pub suffix: Option<Symbol>,
+    pub suffix_len: u8,
 }
 
-pub fn token_to_literal(text: &str, span: Span) -> Literal
-where
-    Span: Copy,
-{
+impl Literal {
+    #[inline]
+    pub fn text_and_suffix(&self) -> (&str, &str) {
+        let text_and_suffix = self.text_and_suffix.as_str();
+        text_and_suffix.split_at(text_and_suffix.len() - usize::from(self.suffix_len))
+    }
+
+    #[inline]
+    pub fn text(&self) -> &str {
+        self.text_and_suffix().0
+    }
+
+    #[inline]
+    pub fn suffix(&self) -> &str {
+        self.text_and_suffix().1
+    }
+
+    pub fn new(text: &str, span: Span, kind: LitKind, suffix: &str) -> Self {
+        const MAX_INLINE_CAPACITY: usize = 30;
+        let text_and_suffix = if suffix.is_empty() {
+            Symbol::intern(text)
+        } else if (text.len() + suffix.len()) < MAX_INLINE_CAPACITY {
+            let mut text_and_suffix = ArrayString::<MAX_INLINE_CAPACITY>::new();
+            text_and_suffix.push_str(text);
+            text_and_suffix.push_str(suffix);
+            Symbol::intern(&text_and_suffix)
+        } else {
+            let mut text_and_suffix = String::with_capacity(text.len() + suffix.len());
+            text_and_suffix.push_str(text);
+            text_and_suffix.push_str(suffix);
+            Symbol::intern(&text_and_suffix)
+        };
+
+        Self { text_and_suffix, span, kind, suffix_len: suffix.len().try_into().unwrap() }
+    }
+
+    #[inline]
+    pub fn new_no_suffix(text: &str, span: Span, kind: LitKind) -> Self {
+        Self { text_and_suffix: Symbol::intern(text), span, kind, suffix_len: 0 }
+    }
+}
+
+pub fn token_to_literal(text: &str, span: Span) -> Literal {
     use rustc_lexer::LiteralKind;
 
     let token = rustc_lexer::tokenize(text, rustc_lexer::FrontmatterAllowed::No).next_tuple();
@@ -636,12 +676,7 @@ where
         ..
     },)) = token
     else {
-        return Literal {
-            span,
-            symbol: Symbol::intern(text),
-            kind: LitKind::Err(()),
-            suffix: None,
-        };
+        return Literal::new_no_suffix(text, span, LitKind::Err(()));
     };
 
     let (kind, start_offset, end_offset) = match kind {
@@ -672,20 +707,15 @@ where
     let (lit, suffix) = text.split_at(suffix_start as usize);
     let lit = &lit[start_offset..lit.len() - end_offset];
     let suffix = match suffix {
-        "" | "_" => None,
+        "" | "_" => "",
         // ill-suffixed literals
         _ if !matches!(kind, LitKind::Integer | LitKind::Float | LitKind::Err(_)) => {
-            return Literal {
-                span,
-                symbol: Symbol::intern(text),
-                kind: LitKind::Err(()),
-                suffix: None,
-            };
+            return Literal::new_no_suffix(text, span, LitKind::Err(()));
         }
-        suffix => Some(Symbol::intern(suffix)),
+        suffix => suffix,
     };
 
-    Literal { span, symbol: Symbol::intern(lit), kind, suffix }
+    Literal::new(lit, span, kind, suffix)
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -805,15 +835,8 @@ fn print_debug_token(f: &mut fmt::Formatter<'_>, level: usize, tt: TtElement<'_>
     match tt {
         TtElement::Leaf(leaf) => match leaf {
             Leaf::Literal(lit) => {
-                write!(
-                    f,
-                    "{}LITERAL {:?} {}{} {:#?}",
-                    align,
-                    lit.kind,
-                    lit.symbol,
-                    lit.suffix.as_ref().map(|it| it.as_str()).unwrap_or(""),
-                    lit.span
-                )?;
+                let (text, suffix) = lit.text_and_suffix();
+                write!(f, "{}LITERAL {:?} {}{} {:#?}", align, lit.kind, text, suffix, lit.span)?;
             }
             Leaf::Punct(punct) => {
                 write!(
@@ -875,44 +898,28 @@ impl fmt::Display for Ident {
 
 impl fmt::Display for Literal {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let (text, suffix) = self.text_and_suffix();
         match self.kind {
-            LitKind::Byte => write!(f, "b'{}'", self.symbol),
-            LitKind::Char => write!(f, "'{}'", self.symbol),
-            LitKind::Integer | LitKind::Float | LitKind::Err(_) => write!(f, "{}", self.symbol),
-            LitKind::Str => write!(f, "\"{}\"", self.symbol),
-            LitKind::ByteStr => write!(f, "b\"{}\"", self.symbol),
-            LitKind::CStr => write!(f, "c\"{}\"", self.symbol),
+            LitKind::Byte => write!(f, "b'{}'", text),
+            LitKind::Char => write!(f, "'{}'", text),
+            LitKind::Integer | LitKind::Float | LitKind::Err(_) => write!(f, "{}", text),
+            LitKind::Str => write!(f, "\"{}\"", text),
+            LitKind::ByteStr => write!(f, "b\"{}\"", text),
+            LitKind::CStr => write!(f, "c\"{}\"", text),
             LitKind::StrRaw(num_of_hashes) => {
                 let num_of_hashes = num_of_hashes as usize;
-                write!(
-                    f,
-                    r#"r{0:#<num_of_hashes$}"{text}"{0:#<num_of_hashes$}"#,
-                    "",
-                    text = self.symbol
-                )
+                write!(f, r#"r{0:#<num_of_hashes$}"{text}"{0:#<num_of_hashes$}"#, "", text = text)
             }
             LitKind::ByteStrRaw(num_of_hashes) => {
                 let num_of_hashes = num_of_hashes as usize;
-                write!(
-                    f,
-                    r#"br{0:#<num_of_hashes$}"{text}"{0:#<num_of_hashes$}"#,
-                    "",
-                    text = self.symbol
-                )
+                write!(f, r#"br{0:#<num_of_hashes$}"{text}"{0:#<num_of_hashes$}"#, "", text = text)
             }
             LitKind::CStrRaw(num_of_hashes) => {
                 let num_of_hashes = num_of_hashes as usize;
-                write!(
-                    f,
-                    r#"cr{0:#<num_of_hashes$}"{text}"{0:#<num_of_hashes$}"#,
-                    "",
-                    text = self.symbol
-                )
+                write!(f, r#"cr{0:#<num_of_hashes$}"{text}"{0:#<num_of_hashes$}"#, "", text = text)
             }
         }?;
-        if let Some(suffix) = &self.suffix {
-            write!(f, "{suffix}")?;
-        }
+        write!(f, "{suffix}")?;
         Ok(())
     }
 }
@@ -967,7 +974,7 @@ impl TopSubtree {
             match tt {
                 TokenTree::Leaf(it) => {
                     let s = match it {
-                        Leaf::Literal(it) => it.symbol.to_string(),
+                        Leaf::Literal(it) => it.text().to_owned(),
                         Leaf::Punct(it) => it.char.to_string(),
                         Leaf::Ident(it) => format!("{}{}", it.is_raw.as_str(), it.sym),
                     };

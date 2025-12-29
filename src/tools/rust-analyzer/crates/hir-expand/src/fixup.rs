@@ -415,7 +415,7 @@ mod tests {
     // `TokenTree`s, see the last assertion in `check()`.
     fn check_leaf_eq(a: &tt::Leaf, b: &tt::Leaf) -> bool {
         match (a, b) {
-            (tt::Leaf::Literal(a), tt::Leaf::Literal(b)) => a.symbol == b.symbol,
+            (tt::Leaf::Literal(a), tt::Leaf::Literal(b)) => a.text_and_suffix == b.text_and_suffix,
             (tt::Leaf::Punct(a), tt::Leaf::Punct(b)) => a.char == b.char,
             (tt::Leaf::Ident(a), tt::Leaf::Ident(b)) => a.sym == b.sym,
             _ => false,

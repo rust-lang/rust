@@ -226,7 +226,7 @@ impl<'attr> AttrQuery<'attr> {
     }
 
     #[inline]
-    pub(crate) fn string_value_with_span(self) -> Option<(&'attr Symbol, span::Span)> {
+    pub(crate) fn string_value_with_span(self) -> Option<(&'attr str, span::Span)> {
         self.attrs().find_map(|attr| attr.string_value_with_span())
     }
 

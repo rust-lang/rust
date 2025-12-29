@@ -17,7 +17,7 @@ use hir_expand::{
     name::{AsName, Name},
     proc_macro::CustomProcMacroExpander,
 };
-use intern::{Interned, sym};
+use intern::{Interned, Symbol, sym};
 use itertools::izip;
 use la_arena::Idx;
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -292,13 +292,13 @@ impl<'db> DefCollector<'db> {
             match () {
                 () if *attr_name == sym::recursion_limit => {
                     if let Some(limit) = attr.string_value()
-                        && let Ok(limit) = limit.as_str().parse()
+                        && let Ok(limit) = limit.parse()
                     {
                         crate_data.recursion_limit = Some(limit);
                     }
                 }
                 () if *attr_name == sym::crate_type => {
-                    if attr.string_value() == Some(&sym::proc_dash_macro) {
+                    if attr.string_value() == Some("proc-macro") {
                         self.is_proc_macro = true;
                     }
                 }
@@ -2460,7 +2460,7 @@ impl ModCollector<'_, '_> {
             let name;
             let name = match attrs.by_key(sym::rustc_builtin_macro).string_value_with_span() {
                 Some((it, span)) => {
-                    name = Name::new_symbol(it.clone(), span.ctx);
+                    name = Name::new_symbol(Symbol::intern(it), span.ctx);
                     &name
                 }
                 None => {

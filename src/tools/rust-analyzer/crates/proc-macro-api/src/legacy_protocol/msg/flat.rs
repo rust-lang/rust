@@ -512,12 +512,14 @@ impl<'a, T: SpanTransformer<Span = span::Span>> Writer<'a, '_, T, tt::iter::TtIt
                         let idx = self.literal.len() as u32;
                         let id = self.token_id_of(lit.span);
                         let (text, suffix) = if self.version >= EXTENDED_LEAF_DATA {
+                            let (text, suffix) = lit.text_and_suffix();
                             (
-                                self.intern_owned(lit.symbol.as_str().to_owned()),
-                                lit.suffix
-                                    .as_ref()
-                                    .map(|s| self.intern_owned(s.as_str().to_owned()))
-                                    .unwrap_or(!0),
+                                self.intern_owned(text.to_owned()),
+                                if suffix.is_empty() {
+                                    !0
+                                } else {
+                                    self.intern_owned(suffix.to_owned())
+                                },
                             )
                         } else {
                             (self.intern_owned(format!("{lit}")), !0)
@@ -774,10 +776,10 @@ impl<T: SpanTransformer<Span = span::Span>> Reader<'_, T> {
                         let span = read_span(repr.id);
                         s.push(
                             tt::Leaf::Literal(if self.version >= EXTENDED_LEAF_DATA {
-                                tt::Literal {
-                                    symbol: Symbol::intern(text),
+                                tt::Literal::new(
+                                    text,
                                     span,
-                                    kind: match u16::to_le_bytes(repr.kind) {
+                                    match u16::to_le_bytes(repr.kind) {
                                         [0, _] => Err(()),
                                         [1, _] => Byte,
                                         [2, _] => Char,
@@ -791,14 +793,12 @@ impl<T: SpanTransformer<Span = span::Span>> Reader<'_, T> {
                                         [10, r] => CStrRaw(r),
                                         _ => unreachable!(),
                                     },
-                                    suffix: if repr.suffix != !0 {
-                                        Some(Symbol::intern(
-                                            self.text[repr.suffix as usize].as_str(),
-                                        ))
+                                    if repr.suffix != !0 {
+                                        self.text[repr.suffix as usize].as_str()
                                     } else {
-                                        None
+                                        ""
                                     },
-                                }
+                                )
                             } else {
                                 tt::token_to_literal(text, span)
                             })

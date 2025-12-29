@@ -199,16 +199,16 @@ impl<T: ToTokenTree + Clone> ToTokenTree for &T {
 }
 
 impl_to_to_tokentrees! {
-    span: u32 => self { crate::tt::Literal{symbol: Symbol::integer(self as _), span, kind: tt::LitKind::Integer, suffix: None } };
-    span: usize => self { crate::tt::Literal{symbol: Symbol::integer(self as _), span, kind: tt::LitKind::Integer, suffix: None } };
-    span: i32 => self { crate::tt::Literal{symbol: Symbol::integer(self as _), span, kind: tt::LitKind::Integer, suffix: None } };
+    span: u32 => self { crate::tt::Literal{text_and_suffix: Symbol::integer(self as _), span, kind: tt::LitKind::Integer, suffix_len: 0 } };
+    span: usize => self { crate::tt::Literal{text_and_suffix: Symbol::integer(self as _), span, kind: tt::LitKind::Integer, suffix_len: 0 } };
+    span: i32 => self { crate::tt::Literal{text_and_suffix: Symbol::integer(self as _), span, kind: tt::LitKind::Integer, suffix_len: 0 } };
     span: bool => self { crate::tt::Ident{sym: if self { sym::true_ } else { sym::false_ }, span, is_raw: tt::IdentIsRaw::No } };
     _span: crate::tt::Leaf => self { self };
     _span: crate::tt::Literal => self { self };
     _span: crate::tt::Ident => self { self };
     _span: crate::tt::Punct => self { self };
-    span: &str => self { crate::tt::Literal{symbol: Symbol::intern(&self.escape_default().to_smolstr()), span, kind: tt::LitKind::Str, suffix: None }};
-    span: String => self { crate::tt::Literal{symbol: Symbol::intern(&self.escape_default().to_smolstr()), span, kind: tt::LitKind::Str, suffix: None }};
+    span: &str => self { crate::tt::Literal{text_and_suffix: Symbol::intern(&self.escape_default().to_smolstr()), span, kind: tt::LitKind::Str, suffix_len: 0 }};
+    span: String => self { crate::tt::Literal{text_and_suffix: Symbol::intern(&self.escape_default().to_smolstr()), span, kind: tt::LitKind::Str, suffix_len: 0 }};
     span: Name => self {
         let (is_raw, s) = IdentIsRaw::split_from_symbol(self.as_str());
         crate::tt::Ident{sym: Symbol::intern(s), span, is_raw }

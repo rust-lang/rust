@@ -920,7 +920,8 @@ impl ProcMacroExpander for ShortenProcMacroExpander {
                 Leaf::Literal(it) => {
                     // XXX Currently replaces any literals with an empty string, but supporting
                     // "shortening" other literals would be nice.
-                    it.symbol = Symbol::empty();
+                    it.text_and_suffix = Symbol::empty();
+                    it.suffix_len = 0;
                 }
                 Leaf::Punct(_) => {}
                 Leaf::Ident(it) => {
@@ -954,7 +955,7 @@ impl ProcMacroExpander for Issue17479ProcMacroExpander {
         let Some(TtElement::Leaf(tt::Leaf::Literal(lit))) = iter.next() else {
             return Err(ProcMacroExpansionError::Panic("incorrect Input".into()));
         };
-        let symbol = &lit.symbol;
+        let symbol = Symbol::intern(lit.text());
         let span = lit.span;
         Ok(quote! { span =>
             #symbol()

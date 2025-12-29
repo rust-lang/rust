@@ -52,7 +52,7 @@ pub fn to_parser_input(
                         };
                         res.push(kind, ctx_edition(lit.span.ctx));
 
-                        if kind == FLOAT_NUMBER && !lit.symbol.as_str().ends_with('.') {
+                        if kind == FLOAT_NUMBER && !lit.text().ends_with('.') {
                             // Tag the token as joint if it is float with a fractional part
                             // we use this jointness to inform the parser about what token split
                             // event to emit when we encounter a float literal in a field access

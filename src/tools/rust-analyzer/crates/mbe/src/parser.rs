@@ -192,7 +192,7 @@ impl PartialEq for Separator {
 
         match (self, other) {
             (Ident(a), Ident(b)) => a.sym == b.sym,
-            (Literal(a), Literal(b)) => a.symbol == b.symbol,
+            (Literal(a), Literal(b)) => a.text_and_suffix == b.text_and_suffix,
             (Puncts(a), Puncts(b)) if a.len() == b.len() => {
                 let a_iter = a.iter().map(|a| a.char);
                 let b_iter = b.iter().map(|b| b.char);
@@ -270,7 +270,7 @@ fn next_op(
                     }
                     tt::Leaf::Literal(lit) if is_boolean_literal(&lit) => {
                         let kind = eat_fragment_kind(edition, src, mode)?;
-                        let name = lit.symbol.clone();
+                        let name = lit.text_and_suffix.clone();
                         let id = lit.span;
                         Op::Var { name, kind, id }
                     }
@@ -364,7 +364,7 @@ fn eat_fragment_kind(
 }
 
 fn is_boolean_literal(lit: &tt::Literal) -> bool {
-    matches!(lit.symbol.as_str(), "true" | "false")
+    lit.text_and_suffix == sym::true_ || lit.text_and_suffix == sym::false_
 }
 
 fn parse_repeat(src: &mut TtIter<'_>) -> Result<(Option<Separator>, RepeatKind), ParseError> {
@@ -478,11 +478,12 @@ fn parse_metavar_expr(src: &mut TtIter<'_>) -> Result<Op, ()> {
 fn parse_depth(src: &mut TtIter<'_>) -> Result<usize, ()> {
     if src.is_empty() {
         Ok(0)
-    } else if let tt::Leaf::Literal(tt::Literal { symbol: text, suffix: None, .. }) =
-        src.expect_literal()?
+    } else if let tt::Leaf::Literal(lit) = src.expect_literal()?
+        && let (text, suffix) = lit.text_and_suffix()
+        && suffix.is_empty()
     {
         // Suffixes are not allowed.
-        text.as_str().parse().map_err(|_| ())
+        text.parse().map_err(|_| ())
     } else {
         Err(())
     }

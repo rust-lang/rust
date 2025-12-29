@@ -172,7 +172,7 @@ impl Message for Response {}
 
 #[cfg(test)]
 mod tests {
-    use intern::{Symbol, sym};
+    use intern::Symbol;
     use span::{
         Edition, ROOT_ERASED_FILE_AST_ID, Span, SpanAnchor, SyntaxContext, TextRange, TextSize,
     };
@@ -232,16 +232,15 @@ mod tests {
             }
             .into(),
         );
-        builder.push(Leaf::Literal(Literal {
-            symbol: Symbol::intern("Foo"),
-            span: Span {
+        builder.push(Leaf::Literal(Literal::new_no_suffix(
+            "Foo",
+            Span {
                 range: TextRange::at(TextSize::new(10), TextSize::of("\"Foo\"")),
                 anchor,
                 ctx: SyntaxContext::root(Edition::CURRENT),
             },
-            kind: tt::LitKind::Str,
-            suffix: None,
-        }));
+            tt::LitKind::Str,
+        )));
         builder.push(Leaf::Punct(Punct {
             char: '@',
             span: Span {
@@ -267,16 +266,16 @@ mod tests {
                 ctx: SyntaxContext::root(Edition::CURRENT),
             },
         );
-        builder.push(Leaf::Literal(Literal {
-            symbol: sym::INTEGER_0,
-            span: Span {
+        builder.push(Leaf::Literal(Literal::new(
+            "0",
+            Span {
                 range: TextRange::at(TextSize::new(16), TextSize::of("0u32")),
                 anchor,
                 ctx: SyntaxContext::root(Edition::CURRENT),
             },
-            kind: tt::LitKind::Integer,
-            suffix: Some(sym::u32),
-        }));
+            tt::LitKind::Integer,
+            "u32",
+        )));
         builder.close(Span {
             range: TextRange::at(TextSize::new(20), TextSize::of(']')),
             anchor,

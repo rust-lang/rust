@@ -517,7 +517,8 @@ fn match_loop_inner<'t>(
             }
             OpDelimited::Op(Op::Literal(lhs)) => {
                 if let Ok(rhs) = src.clone().expect_leaf() {
-                    if matches!(&rhs, tt::Leaf::Literal(it) if it.symbol == lhs.symbol) {
+                    if matches!(&rhs, tt::Leaf::Literal(it) if it.text_and_suffix == lhs.text_and_suffix)
+                    {
                         item.dot.next();
                     } else {
                         res.add_err(ExpandError::new(
@@ -953,8 +954,8 @@ fn expect_separator(iter: &mut TtIter<'_>, separator: &Separator) -> bool {
         },
         Separator::Literal(lhs) => match fork.expect_literal() {
             Ok(rhs) => match rhs {
-                tt::Leaf::Literal(rhs) => rhs.symbol == lhs.symbol,
-                tt::Leaf::Ident(rhs) => rhs.sym == lhs.symbol,
+                tt::Leaf::Literal(rhs) => rhs.text_and_suffix == lhs.text_and_suffix,
+                tt::Leaf::Ident(rhs) => rhs.sym == lhs.text_and_suffix,
                 tt::Leaf::Punct(_) => false,
             },
             Err(_) => false,

@@ -222,10 +222,10 @@ fn expand_subtree(
                 let index =
                     ctx.nesting.get(ctx.nesting.len() - 1 - depth).map_or(0, |nest| nest.idx);
                 builder.push(tt::Leaf::Literal(tt::Literal {
-                    symbol: Symbol::integer(index),
+                    text_and_suffix: Symbol::integer(index),
                     span: ctx.call_site,
                     kind: tt::LitKind::Integer,
-                    suffix: None,
+                    suffix_len: 0,
                 }));
             }
             Op::Len { depth } => {
@@ -234,10 +234,10 @@ fn expand_subtree(
                     0
                 });
                 builder.push(tt::Leaf::Literal(tt::Literal {
-                    symbol: Symbol::integer(length),
+                    text_and_suffix: Symbol::integer(length),
                     span: ctx.call_site,
                     kind: tt::LitKind::Integer,
-                    suffix: None,
+                    suffix_len: 0,
                 }));
             }
             Op::Count { name, depth } => {
@@ -278,9 +278,9 @@ fn expand_subtree(
                 let res = count(binding, 0, depth.unwrap_or(0));
 
                 builder.push(tt::Leaf::Literal(tt::Literal {
-                    symbol: Symbol::integer(res),
+                    text_and_suffix: Symbol::integer(res),
                     span: ctx.call_site,
-                    suffix: None,
+                    suffix_len: 0,
                     kind: tt::LitKind::Integer,
                 }));
             }
@@ -294,7 +294,7 @@ fn expand_subtree(
                         ConcatMetaVarExprElem::Literal(lit) => {
                             // FIXME: This isn't really correct wrt. escaping, but that's what rustc does and anyway
                             // escaping is used most of the times for characters that are invalid in identifiers.
-                            concatenated.push_str(lit.symbol.as_str())
+                            concatenated.push_str(lit.text())
                         }
                         ConcatMetaVarExprElem::Var(var) => {
                             // Handling of repetitions in `${concat}` isn't fleshed out in rustc, so we currently
@@ -329,9 +329,7 @@ fn expand_subtree(
                                 (Some(TtElement::Leaf(tt::Leaf::Ident(ident))), None) => {
                                     ident.sym.as_str()
                                 }
-                                (Some(TtElement::Leaf(tt::Leaf::Literal(lit))), None) => {
-                                    lit.symbol.as_str()
-                                }
+                                (Some(TtElement::Leaf(tt::Leaf::Literal(lit))), None) => lit.text(),
                                 _ => {
                                     if err.is_none() {
                                         err = Some(ExpandError::binding_error(

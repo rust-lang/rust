@@ -442,7 +442,7 @@ fn convert_doc_comment(
             text = &text[0..text.len() - 2];
         }
         let (text, kind) = desugar_doc_comment_text(text, mode);
-        let lit = tt::Literal { symbol: text, span, kind, suffix: None };
+        let lit = tt::Literal { text_and_suffix: text, span, kind, suffix_len: 0 };
 
         tt::Leaf::from(lit)
     };
@@ -867,12 +867,9 @@ impl TtTreeSink<'_> {
     /// This occurs when a float literal is used as a field access.
     fn float_split(&mut self, has_pseudo_dot: bool) {
         let (text, span) = match self.cursor.token_tree() {
-            Some(tt::TokenTree::Leaf(tt::Leaf::Literal(tt::Literal {
-                symbol: text,
-                span,
-                kind: tt::LitKind::Float,
-                suffix: _,
-            }))) => (text.as_str(), *span),
+            Some(tt::TokenTree::Leaf(tt::Leaf::Literal(
+                lit @ tt::Literal { span, kind: tt::LitKind::Float, .. },
+            ))) => (lit.text(), *span),
             tt => unreachable!("{tt:?}"),
         };
         // FIXME: Span splitting

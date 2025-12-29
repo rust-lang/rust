@@ -35,7 +35,7 @@ use arrayvec::ArrayVec;
 use base_db::Crate;
 use cfg::{CfgExpr, CfgOptions};
 use either::Either;
-use intern::{Interned, Symbol};
+use intern::Interned;
 use itertools::Itertools;
 use mbe::{DelimiterKind, Punct};
 use parser::T;
@@ -417,37 +417,32 @@ impl fmt::Display for AttrInput {
 
 impl Attr {
     /// #[path = "string"]
-    pub fn string_value(&self) -> Option<&Symbol> {
+    pub fn string_value(&self) -> Option<&str> {
         match self.input.as_deref()? {
-            AttrInput::Literal(tt::Literal {
-                symbol: text,
-                kind: tt::LitKind::Str | tt::LitKind::StrRaw(_),
-                ..
-            }) => Some(text),
+            AttrInput::Literal(
+                lit @ tt::Literal { kind: tt::LitKind::Str | tt::LitKind::StrRaw(_), .. },
+            ) => Some(lit.text()),
             _ => None,
         }
     }
 
     /// #[path = "string"]
-    pub fn string_value_with_span(&self) -> Option<(&Symbol, span::Span)> {
+    pub fn string_value_with_span(&self) -> Option<(&str, span::Span)> {
         match self.input.as_deref()? {
-            AttrInput::Literal(tt::Literal {
-                symbol: text,
-                kind: tt::LitKind::Str | tt::LitKind::StrRaw(_),
-                span,
-                suffix: _,
-            }) => Some((text, *span)),
+            AttrInput::Literal(
+                lit @ tt::Literal { kind: tt::LitKind::Str | tt::LitKind::StrRaw(_), span, .. },
+            ) => Some((lit.text(), *span)),
             _ => None,
         }
     }
 
     pub fn string_value_unescape(&self) -> Option<Cow<'_, str>> {
         match self.input.as_deref()? {
-            AttrInput::Literal(tt::Literal {
-                symbol: text, kind: tt::LitKind::StrRaw(_), ..
-            }) => Some(Cow::Borrowed(text.as_str())),
-            AttrInput::Literal(tt::Literal { symbol: text, kind: tt::LitKind::Str, .. }) => {
-                unescape(text.as_str())
+            AttrInput::Literal(lit @ tt::Literal { kind: tt::LitKind::StrRaw(_), .. }) => {
+                Some(Cow::Borrowed(lit.text()))
+            }
+            AttrInput::Literal(lit @ tt::Literal { kind: tt::LitKind::Str, .. }) => {
+                unescape(lit.text())
             }
             _ => None,
         }

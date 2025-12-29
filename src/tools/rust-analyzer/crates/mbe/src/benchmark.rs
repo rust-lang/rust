@@ -236,12 +236,7 @@ fn invocation_fixtures(
             tt::Leaf::Punct(tt::Punct { span: DUMMY, char, spacing: tt::Spacing::Alone })
         }
         fn make_literal(lit: &str) -> tt::Leaf {
-            tt::Leaf::Literal(tt::Literal {
-                span: DUMMY,
-                symbol: Symbol::intern(lit),
-                kind: tt::LitKind::Str,
-                suffix: None,
-            })
+            tt::Leaf::Literal(tt::Literal::new_no_suffix(lit, DUMMY, tt::LitKind::Str))
         }
         fn make_subtree(kind: tt::DelimiterKind, builder: &mut tt::TopSubtreeBuilder) {
             builder.open(kind, DUMMY);
