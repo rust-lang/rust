@@ -1,21 +1,25 @@
-//@ only-loongarch64-unknown-linux-gnu
+//@ ignore-powerpc64 (handles dso_local differently)
+//@ ignore-apple (handles dso_local differently)
 
-//@ revisions: DEFAULT DIRECT INDIRECT
+//@ revisions: DEFAULT PIE DIRECT INDIRECT
 //@ [DEFAULT] compile-flags: -C relocation-model=static
-//@ [DIRECT] compile-flags: -C relocation-model=static -Z direct-access-external-data=yes
+//@ [PIE] compile-flags: -C relocation-model=pie
+//@ [DIRECT] compile-flags: -C relocation-model=pie -Z direct-access-external-data=yes
 //@ [INDIRECT] compile-flags: -C relocation-model=static -Z direct-access-external-data=no
 
 #![crate_type = "rlib"]
 
-// DEFAULT: @VAR = external {{.*}} global i32
-// DIRECT: @VAR = external dso_local {{.*}} global i32
-// INDIRECT: @VAR = external {{.*}} global i32
-
-extern "C" {
-    static VAR: i32;
+unsafe extern "C" {
+    // CHECK: @VAR = external
+    // DEFAULT-SAME: dso_local
+    // PIE-NOT: dso_local
+    // DIRECT-SAME: dso_local
+    // INDIRECT-NOT: dso_local
+    // CHECK-SAME: global i32
+    safe static VAR: i32;
 }
 
 #[no_mangle]
-pub fn get() -> i32 {
-    unsafe { VAR }
+pub fn refer() {
+    core::hint::black_box(VAR);
 }
