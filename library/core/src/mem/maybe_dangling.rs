@@ -36,7 +36,8 @@ use crate::{mem, ptr};
 ///
 /// To fix this we could use `MaybeDangling`:
 ///
-/// ```rust
+// FIXME: remove `no_run` once the semantics are actually implemented
+/// ```rust,no_run
 /// #![feature(maybe_dangling, box_as_ptr)]
 /// # use std::alloc::{dealloc, Layout};
 /// # use std::mem::{self, MaybeDangling};
