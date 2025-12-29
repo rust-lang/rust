@@ -802,13 +802,13 @@ impl<'ra> fmt::Debug for Module<'ra> {
 }
 
 /// Data associated with any name declaration.
-#[derive(Clone, Copy, Debug)]
+#[derive(Debug)]
 struct DeclData<'ra> {
     kind: DeclKind<'ra>,
     ambiguity: Option<Decl<'ra>>,
     /// Produce a warning instead of an error when reporting ambiguities inside this binding.
     /// May apply to indirect ambiguities under imports, so `ambiguity.is_some()` is not required.
-    warn_ambiguity: bool,
+    warn_ambiguity: CmCell<bool>,
     expansion: LocalExpnId,
     span: Span,
     vis: Visibility<DefId>,
@@ -956,7 +956,7 @@ impl<'ra> DeclData<'ra> {
     }
 
     fn warn_ambiguity_recursive(&self) -> bool {
-        self.warn_ambiguity
+        self.warn_ambiguity.get()
             || match self.kind {
                 DeclKind::Import { source_decl, .. } => source_decl.warn_ambiguity_recursive(),
                 _ => false,
@@ -1343,7 +1343,7 @@ impl<'ra> ResolverArenas<'ra> {
         self.alloc_decl(DeclData {
             kind: DeclKind::Def(res),
             ambiguity: None,
-            warn_ambiguity: false,
+            warn_ambiguity: CmCell::new(false),
             vis,
             span,
             expansion,
@@ -2041,7 +2041,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     }
 
     fn record_use(&mut self, ident: Ident, used_decl: Decl<'ra>, used: Used) {
-        self.record_use_inner(ident, used_decl, used, used_decl.warn_ambiguity);
+        self.record_use_inner(ident, used_decl, used, used_decl.warn_ambiguity.get());
     }
 
     fn record_use_inner(
@@ -2112,7 +2112,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 ident,
                 source_decl,
                 Used::Other,
-                warn_ambiguity || source_decl.warn_ambiguity,
+                warn_ambiguity || source_decl.warn_ambiguity.get(),
             );
         }
     }

@@ -91,7 +91,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             kind: DeclKind::Def(res),
             ambiguity,
             // External ambiguities always report the `AMBIGUOUS_GLOB_IMPORTS` lint at the moment.
-            warn_ambiguity: true,
+            warn_ambiguity: CmCell::new(true),
             vis,
             span,
             expansion,

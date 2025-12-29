@@ -303,7 +303,7 @@ fn remove_same_import<'ra>(d1: Decl<'ra>, d2: Decl<'ra>) -> (Decl<'ra>, Decl<'ra
         && d1.ambiguity == d2.ambiguity
     {
         assert!(d1.ambiguity.is_none());
-        assert_eq!(d1.warn_ambiguity, d2.warn_ambiguity);
+        assert_eq!(d1.warn_ambiguity.get(), d2.warn_ambiguity.get());
         assert_eq!(d1.expansion, d2.expansion);
         assert_eq!(d1.span, d2.span);
         assert_eq!(d1.vis, d2.vis);
@@ -336,7 +336,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         self.arenas.alloc_decl(DeclData {
             kind: DeclKind::Import { source_decl: decl, import },
             ambiguity: None,
-            warn_ambiguity: false,
+            warn_ambiguity: CmCell::new(false),
             span: import.span,
             vis,
             expansion: import.parent_scope.expansion,
@@ -362,9 +362,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         // - A glob decl is overwritten by an ambiguous glob decl.
         //   FIXME: avoid this by putting `DeclData::ambiguity` under a
         //   cell and updating it in place.
-        // - A glob decl is overwritten by the same decl with `warn_ambiguity == true`.
-        //   FIXME: avoid this by putting `DeclData::warn_ambiguity` under a
-        //   cell and updating it in place.
         // - A glob decl is overwritten by a glob decl with larger visibility.
         //   FIXME: avoid this by putting `DeclData::vis` under a cell
         //   and updating it in place.
@@ -381,10 +378,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             assert_ne!(old_deep_decl, deep_decl);
             assert!(old_deep_decl.is_glob_import());
             if glob_decl.is_ambiguity_recursive() {
-                self.new_decl_with_warn_ambiguity(glob_decl)
-            } else {
-                glob_decl
+                glob_decl.warn_ambiguity.set_unchecked(true);
             }
+            glob_decl
         } else if glob_decl.res() != old_glob_decl.res() {
             self.new_decl_with_ambiguity(old_glob_decl, glob_decl, warn_ambiguity)
         } else if !old_glob_decl.vis.is_at_least(glob_decl.vis, self.tcx) {
@@ -392,7 +388,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             glob_decl
         } else if glob_decl.is_ambiguity_recursive() {
             // Overwriting with an ambiguous glob import.
-            self.new_decl_with_warn_ambiguity(glob_decl)
+            glob_decl.warn_ambiguity.set_unchecked(true);
+            glob_decl
         } else {
             old_glob_decl
         }
@@ -466,13 +463,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         warn_ambiguity: bool,
     ) -> Decl<'ra> {
         let ambiguity = Some(secondary_decl);
+        let warn_ambiguity = CmCell::new(warn_ambiguity);
         let data = DeclData { ambiguity, warn_ambiguity, ..*primary_decl };
         self.arenas.alloc_decl(data)
-    }
-
-    fn new_decl_with_warn_ambiguity(&self, decl: Decl<'ra>) -> Decl<'ra> {
-        assert!(decl.is_ambiguity_recursive());
-        self.arenas.alloc_decl(DeclData { warn_ambiguity: true, ..*decl })
     }
 
     // Use `f` to mutate the resolution of the name in the module.

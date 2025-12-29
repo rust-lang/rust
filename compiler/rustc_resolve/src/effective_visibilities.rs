@@ -127,7 +127,7 @@ impl<'a, 'ra, 'tcx> EffectiveVisibilitiesVisitor<'a, 'ra, 'tcx> {
             // lint. For all bindings added to the table this way `is_ambiguity` returns true.
             let is_ambiguity = |decl: Decl<'ra>, warn: bool| decl.ambiguity.is_some() && !warn;
             let mut parent_id = ParentId::Def(module_id);
-            let mut warn_ambiguity = decl.warn_ambiguity;
+            let mut warn_ambiguity = decl.warn_ambiguity.get();
             while let DeclKind::Import { source_decl, .. } = decl.kind {
                 self.update_import(decl, parent_id);
 
@@ -140,7 +140,7 @@ impl<'a, 'ra, 'tcx> EffectiveVisibilitiesVisitor<'a, 'ra, 'tcx> {
 
                 parent_id = ParentId::Import(decl);
                 decl = source_decl;
-                warn_ambiguity |= source_decl.warn_ambiguity;
+                warn_ambiguity |= source_decl.warn_ambiguity.get();
             }
             if !is_ambiguity(decl, warn_ambiguity)
                 && let Some(def_id) = decl.res().opt_def_id().and_then(|id| id.as_local())
