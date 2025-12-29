@@ -100,7 +100,9 @@ impl<'a, 'ra, 'tcx> EffectiveVisibilitiesVisitor<'a, 'ra, 'tcx> {
                 if let Some(node_id) = import.id() {
                     r.effective_visibilities.update_eff_vis(r.local_def_id(node_id), eff_vis, r.tcx)
                 }
-            } else if decl.ambiguity.is_some() && eff_vis.is_public_at_level(Level::Reexported) {
+            } else if decl.ambiguity.get().is_some()
+                && eff_vis.is_public_at_level(Level::Reexported)
+            {
                 exported_ambiguities.insert(*decl);
             }
         }
@@ -125,7 +127,8 @@ impl<'a, 'ra, 'tcx> EffectiveVisibilitiesVisitor<'a, 'ra, 'tcx> {
             // If the binding is ambiguous, put the root ambiguity binding and all reexports
             // leading to it into the table. They are used by the `ambiguous_glob_reexports`
             // lint. For all bindings added to the table this way `is_ambiguity` returns true.
-            let is_ambiguity = |decl: Decl<'ra>, warn: bool| decl.ambiguity.is_some() && !warn;
+            let is_ambiguity =
+                |decl: Decl<'ra>, warn: bool| decl.ambiguity.get().is_some() && !warn;
             let mut parent_id = ParentId::Def(module_id);
             let mut warn_ambiguity = decl.warn_ambiguity.get();
             while let DeclKind::Import { source_decl, .. } = decl.kind {

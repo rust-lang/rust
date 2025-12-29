@@ -300,10 +300,10 @@ fn remove_same_import<'ra>(d1: Decl<'ra>, d2: Decl<'ra>) -> (Decl<'ra>, Decl<'ra
     if let DeclKind::Import { import: import1, source_decl: d1_next } = d1.kind
         && let DeclKind::Import { import: import2, source_decl: d2_next } = d2.kind
         && import1 == import2
-        && d1.ambiguity == d2.ambiguity
+        && d1.warn_ambiguity.get() == d2.warn_ambiguity.get()
     {
-        assert!(d1.ambiguity.is_none());
-        assert_eq!(d1.warn_ambiguity.get(), d2.warn_ambiguity.get());
+        assert_eq!(d1.ambiguity.get(), d2.ambiguity.get());
+        assert!(!d1.warn_ambiguity.get());
         assert_eq!(d1.expansion, d2.expansion);
         assert_eq!(d1.span, d2.span);
         assert_eq!(d1.vis(), d2.vis());
@@ -335,7 +335,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
         self.arenas.alloc_decl(DeclData {
             kind: DeclKind::Import { source_decl: decl, import },
-            ambiguity: None,
+            ambiguity: CmCell::new(None),
             warn_ambiguity: CmCell::new(false),
             span: import.span,
             vis: CmCell::new(vis),
@@ -359,9 +359,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         // all these overwrites will be re-fetched by glob imports importing
         // from that module without generating new ambiguities.
         // - A glob decl is overwritten by a non-glob decl arriving later.
-        // - A glob decl is overwritten by an ambiguous glob decl.
-        //   FIXME: avoid this by putting `DeclData::ambiguity` under a
-        //   cell and updating it in place.
+        // - A glob decl is overwritten by its clone after setting ambiguity in it.
+        //   FIXME: avoid this by removing `warn_ambiguity`, or by triggering glob re-fetch
+        //   with the same decl in some way.
         // - A glob decl is overwritten by a glob decl re-fetching an
         //   overwritten decl from other module (the recursive case).
         // Here we are detecting all such re-fetches and overwrite old decls
@@ -372,21 +372,34 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         if deep_decl != glob_decl {
             // Some import layers have been removed, need to overwrite.
             assert_ne!(old_deep_decl, old_glob_decl);
-            assert_ne!(old_deep_decl, deep_decl);
-            assert!(old_deep_decl.is_glob_import());
+            // FIXME: reenable the asserts when `warn_ambiguity` is removed (#149195).
+            // assert_ne!(old_deep_decl, deep_decl);
+            // assert!(old_deep_decl.is_glob_import());
+            assert!(!deep_decl.is_glob_import());
             if glob_decl.is_ambiguity_recursive() {
                 glob_decl.warn_ambiguity.set_unchecked(true);
             }
             glob_decl
         } else if glob_decl.res() != old_glob_decl.res() {
-            self.new_decl_with_ambiguity(old_glob_decl, glob_decl, warn_ambiguity)
+            old_glob_decl.ambiguity.set_unchecked(Some(glob_decl));
+            old_glob_decl.warn_ambiguity.set_unchecked(warn_ambiguity);
+            if warn_ambiguity {
+                old_glob_decl
+            } else {
+                // Need a fresh decl so other glob imports importing it could re-fetch it
+                // and set their own `warn_ambiguity` to true.
+                // FIXME: remove this when `warn_ambiguity` is removed (#149195).
+                self.arenas.alloc_decl((*old_glob_decl).clone())
+            }
         } else if !old_glob_decl.vis().is_at_least(glob_decl.vis(), self.tcx) {
             // We are glob-importing the same item but with greater visibility.
             old_glob_decl.vis.set_unchecked(glob_decl.vis());
             old_glob_decl
         } else if glob_decl.is_ambiguity_recursive() && !old_glob_decl.is_ambiguity_recursive() {
             // Overwriting a non-ambiguous glob import with an ambiguous glob import.
-            self.new_decl_with_ambiguity(old_glob_decl, glob_decl, true)
+            old_glob_decl.ambiguity.set_unchecked(Some(glob_decl));
+            old_glob_decl.warn_ambiguity.set_unchecked(true);
+            old_glob_decl
         } else {
             old_glob_decl
         }
@@ -415,6 +428,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         self.update_local_resolution(module, key, warn_ambiguity, |this, resolution| {
             if let Some(old_decl) = resolution.best_decl() {
                 assert_ne!(decl, old_decl);
+                assert!(!decl.warn_ambiguity.get());
                 if res == Res::Err && old_decl.res() != Res::Err {
                     // Do not override real declarations with `Res::Err`s from error recovery.
                     return Ok(());
@@ -451,19 +465,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
             Ok(())
         })
-    }
-
-    fn new_decl_with_ambiguity(
-        &self,
-        primary_decl: Decl<'ra>,
-        secondary_decl: Decl<'ra>,
-        warn_ambiguity: bool,
-    ) -> Decl<'ra> {
-        let ambiguity = Some(secondary_decl);
-        let warn_ambiguity = CmCell::new(warn_ambiguity);
-        let vis = primary_decl.vis.clone();
-        let data = DeclData { ambiguity, warn_ambiguity, vis, ..*primary_decl };
-        self.arenas.alloc_decl(data)
     }
 
     // Use `f` to mutate the resolution of the name in the module.
@@ -671,7 +672,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 let Some(binding) = resolution.best_decl() else { continue };
 
                 if let DeclKind::Import { import, .. } = binding.kind
-                    && let Some(amb_binding) = binding.ambiguity
+                    && let Some(amb_binding) = binding.ambiguity.get()
                     && binding.res() != Res::Err
                     && exported_ambiguities.contains(&binding)
                 {
