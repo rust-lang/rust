@@ -15,12 +15,12 @@ LL |         let fd = cvt_r(|| unsafe { open64(path.as_ptr(), flags, opts.mode a
                at RUSTLIB/std/src/sys/fs/PLATFORM.rs:LL:CC
            3: std::sys::fs::PLATFORM::File::open::{closure#0}
                at RUSTLIB/std/src/sys/fs/PLATFORM.rs:LL:CC
-           4: std::sys::pal::PLATFORM::small_c_string::run_with_cstr_stack
-               at RUSTLIB/std/src/sys/pal/PLATFORM/small_c_string.rs:LL:CC
-           5: std::sys::pal::PLATFORM::small_c_string::run_with_cstr
-               at RUSTLIB/std/src/sys/pal/PLATFORM/small_c_string.rs:LL:CC
-           6: std::sys::pal::PLATFORM::small_c_string::run_path_with_cstr
-               at RUSTLIB/std/src/sys/pal/PLATFORM/small_c_string.rs:LL:CC
+           4: std::sys::helpers::small_c_string::run_with_cstr_stack
+               at RUSTLIB/std/src/sys/helpers/small_c_string.rs:LL:CC
+           5: std::sys::helpers::small_c_string::run_with_cstr
+               at RUSTLIB/std/src/sys/helpers/small_c_string.rs:LL:CC
+           6: std::sys::helpers::small_c_string::run_path_with_cstr
+               at RUSTLIB/std/src/sys/helpers/small_c_string.rs:LL:CC
            7: std::sys::fs::PLATFORM::File::open
                at RUSTLIB/std/src/sys/fs/PLATFORM.rs:LL:CC
            8: std::fs::OpenOptions::_open
