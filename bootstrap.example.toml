@@ -106,6 +106,9 @@
 # Whether to build LLVM with support for it's gpu offload runtime.
 #llvm.offload = false
 
+# Absolute path to the directory containing ClangConfig.cmake
+#llvm.offload-clang-dir = ""
+
 # When true, link libstdc++ statically into the rustc_llvm.
 # This is useful if you don't want to use the dynamic version of that
 # library provided by LLVM.

@@ -92,6 +92,11 @@ pub(super) fn handle_needs(
             ignore_reason: "ignored when LLVM Enzyme is disabled or LLVM is not the default codegen backend",
         },
         Need {
+            name: "needs-offload",
+            condition: config.has_offload && config.default_codegen_backend.is_llvm(),
+            ignore_reason: "ignored when LLVM Offload is disabled or LLVM is not the default codegen backend",
+        },
+        Need {
             name: "needs-run-enabled",
             condition: config.run_enabled(),
             ignore_reason: "ignored when running the resulting test binaries is disabled",
