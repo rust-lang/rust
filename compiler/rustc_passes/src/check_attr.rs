@@ -224,6 +224,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     self.check_rustc_must_implement_one_of(*attr_span, fn_names, hir_id,target)
                 },
                 Attribute::Parsed(AttributeKind::DoNotRecommend{attr_span}) => {self.check_do_not_recommend(*attr_span, hir_id, target, item)},
+                Attribute::Parsed(AttributeKind::ShouldPanic { span, .. }) => {
+                    self.check_should_panic(attrs, *span, target);
+                },
                 Attribute::Parsed(
                     AttributeKind::EiiDeclaration { .. }
                     | AttributeKind::EiiForeignItem
@@ -286,7 +289,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::PassByValue (..)
                     | AttributeKind::StdInternalSymbol (..)
                     | AttributeKind::Coverage (..)
-                    | AttributeKind::ShouldPanic { .. }
                     | AttributeKind::Coroutine(..)
                     | AttributeKind::Linkage(..)
                     | AttributeKind::MustUse { .. }
@@ -316,6 +318,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::RustcDumpDefParents
                     | AttributeKind::RustcDumpVtable(..)
                     | AttributeKind::NeedsAllocator
+                    | AttributeKind::TestTrace
                 ) => { /* do nothing  */ }
                 Attribute::Unparsed(attr_item) => {
                     style = Some(attr_item.style);
@@ -482,6 +485,15 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         self.check_repr(attrs, span, target, item, hir_id);
         self.check_rustc_force_inline(hir_id, attrs, target);
         self.check_mix_no_mangle_export(hir_id, attrs);
+    }
+
+    fn check_should_panic(&self, attrs: &[Attribute], attr_span: Span, target: Target) {
+        // The error message only makes sense if it's actually being applied on a function
+        if matches!(target, Target::Fn) {
+            if !find_attr!(attrs, AttributeKind::TestTrace) {
+                self.dcx().emit_warn(errors::MustBeAppliedToTest { attr_span, warning: true });
+            }
+        }
     }
 
     fn check_rustc_must_implement_one_of(

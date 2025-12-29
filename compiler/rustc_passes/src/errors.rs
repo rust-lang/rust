@@ -1316,3 +1316,12 @@ pub(crate) struct FunctionNamesDuplicated {
     #[primary_span]
     pub spans: Vec<Span>,
 }
+
+#[derive(Diagnostic)]
+#[diag(passes_should_panic_must_be_applied_to_test_or_bench)]
+pub(crate) struct MustBeAppliedToTest {
+    #[primary_span]
+    pub attr_span: Span,
+    #[warning]
+    pub warning: bool,
+}
