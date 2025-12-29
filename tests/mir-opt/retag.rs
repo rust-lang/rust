@@ -71,6 +71,8 @@ pub fn main() {
 
 /// Casting directly to an array should also go through `&raw` and thus add appropriate retags.
 // EMIT_MIR retag.array_casts.SimplifyCfg-pre-optimizations.after.mir
+// CHECK-LABEL: fn array_casts(
+// CHECK: Retag(
 fn array_casts() {
     let mut x: [usize; 2] = [0, 0];
     let p = &mut x as *mut usize;
