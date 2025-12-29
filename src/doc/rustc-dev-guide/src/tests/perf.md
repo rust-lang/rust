@@ -41,7 +41,9 @@ To evaluate the performance impact of a PR, write this comment on the PR:
 > repository](https://github.com/rust-lang/team) with the `perf = true` value in
 > the `[permissions]` section (and bors permissions are also required). If you
 > are not on one of those teams, feel free to ask for someone to post it for you
-> (either on Zulip or ask the assigned reviewer).
+> (either on [Zulip][perf run] or ask the assigned reviewer).
+
+[perf run]: https://rust-lang.zulipchat.com/#narrow/channel/182449-t-compiler.2Fhelp/topic/perf.20run
 
 This will first tell bors to do a "try" build which do a full release build for
 `x86_64-unknown-linux-gnu`. After the build finishes, it will place it in the
