@@ -56,7 +56,7 @@ use tracing::{debug, instrument};
 use crate::{
     Adjust, Adjustment, AutoBorrow, ParamEnvAndCrate, PointerCast, TargetFeatures,
     autoderef::Autoderef,
-    db::{HirDatabase, InternedClosureId},
+    db::{HirDatabase, InternedClosure, InternedClosureId},
     infer::{
         AllowTwoPhase, AutoBorrowMutability, InferenceContext, TypeMismatch, expr::ExprIsRead,
     },
@@ -74,6 +74,7 @@ use crate::{
         },
         obligation_ctxt::ObligationCtxt,
     },
+    upvars::upvars_mentioned,
     utils::TargetFeatureIsSafeInTarget,
 };
 
@@ -896,7 +897,7 @@ where
     fn coerce_closure_to_fn(
         &mut self,
         a: Ty<'db>,
-        _closure_def_id_a: InternedClosureId,
+        closure_def_id_a: InternedClosureId,
         args_a: GenericArgs<'db>,
         b: Ty<'db>,
     ) -> CoerceResult<'db> {
@@ -904,19 +905,7 @@ where
         debug_assert!(self.infcx().shallow_resolve(b) == b);
 
         match b.kind() {
-            // FIXME: We need to have an `upvars_mentioned()` query:
-            // At this point we haven't done capture analysis, which means
-            // that the ClosureArgs just contains an inference variable instead
-            // of tuple of captured types.
-            //
-            // All we care here is if any variable is being captured and not the exact paths,
-            // so we check `upvars_mentioned` for root variables being captured.
-            TyKind::FnPtr(_, hdr) =>
-            // if self
-            //     .db
-            //     .upvars_mentioned(closure_def_id_a.expect_local())
-            //     .is_none_or(|u| u.is_empty()) =>
-            {
+            TyKind::FnPtr(_, hdr) if !is_capturing_closure(self.db(), closure_def_id_a) => {
                 // We coerce the closure, which has fn type
                 //     `extern "rust-call" fn((arg0,arg1,...)) -> _`
                 // to
@@ -1089,14 +1078,12 @@ impl<'db> InferenceContext<'_, 'db> {
         // Special-case that coercion alone cannot handle:
         // Function items or non-capturing closures of differing IDs or GenericArgs.
         let (a_sig, b_sig) = {
-            let is_capturing_closure = |_ty: Ty<'db>| {
-                // FIXME:
-                // if let TyKind::Closure(closure_def_id, _args) = ty.kind() {
-                //     self.db.upvars_mentioned(closure_def_id.expect_local()).is_some()
-                // } else {
-                //     false
-                // }
-                false
+            let is_capturing_closure = |ty: Ty<'db>| {
+                if let TyKind::Closure(closure_def_id, _args) = ty.kind() {
+                    is_capturing_closure(self.db, closure_def_id.0)
+                } else {
+                    false
+                }
             };
             if is_capturing_closure(prev_ty) || is_capturing_closure(new_ty) {
                 (None, None)
@@ -1727,4 +1714,10 @@ fn coerce<'db>(
         })
         .collect();
     Ok((adjustments, ty))
+}
+
+fn is_capturing_closure(db: &dyn HirDatabase, closure: InternedClosureId) -> bool {
+    let InternedClosure(owner, expr) = closure.loc(db);
+    upvars_mentioned(db, owner)
+        .is_some_and(|upvars| upvars.get(&expr).is_some_and(|upvars| !upvars.is_empty()))
 }

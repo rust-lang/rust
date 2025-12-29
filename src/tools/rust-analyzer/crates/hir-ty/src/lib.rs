@@ -50,6 +50,7 @@ pub mod method_resolution;
 pub mod mir;
 pub mod primitive;
 pub mod traits;
+pub mod upvars;
 
 #[cfg(test)]
 mod test_db;
