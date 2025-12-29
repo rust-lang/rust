@@ -754,7 +754,7 @@ enum ExtraCheckParseError {
     /// `auto` specified without lang part.
     AutoRequiresLang,
     /// `if-installed` specified without lang part.
-    IfInsatlledRequiresLang,
+    IfInstalledRequiresLang,
 }
 
 struct ExtraCheckArg {
@@ -874,7 +874,7 @@ impl FromStr for ExtraCheckArg {
 
             if !if_installed && first == "if-installed" {
                 let Some(part) = parts.next() else {
-                    return Err(ExtraCheckParseError::IfInsatlledRequiresLang);
+                    return Err(ExtraCheckParseError::IfInstalledRequiresLang);
                 };
                 if_installed = true;
                 first = part;
