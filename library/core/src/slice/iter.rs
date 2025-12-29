@@ -2495,19 +2495,13 @@ impl<'a, T> Iterator for RChunksMut<'a, T> {
             && end < self.v.len()
         {
             let end = self.v.len() - end;
-            let start = match end.checked_sub(self.chunk_size) {
-                Some(sum) => sum,
-                None => 0,
-            };
-            // SAFETY: This type ensures that self.v is a valid pointer with a correct len.
-            // Therefore the bounds check in split_at_mut guarantees the split point is inbounds.
-            let (head, tail) = unsafe { self.v.split_at_mut(start) };
-            // SAFETY: This type ensures that self.v is a valid pointer with a correct len.
-            // Therefore the bounds check in split_at_mut guarantees the split point is inbounds.
-            let (nth, _) = unsafe { tail.split_at_mut(end - start) };
-            self.v = head;
+            // SAFETY: The self.v contract ensures that any split_at_mut is valid.
+            let (rest, _) = unsafe { self.v.split_at_mut(end) };
+            // SAFETY: The self.v contract ensures that any split_at_mut is valid.
+            let (rest, chunk) = unsafe { rest.split_at_mut(end.saturating_sub(self.chunk_size)) };
+            self.v = rest;
             // SAFETY: Nothing else points to or will point to the contents of this slice.
-            Some(unsafe { &mut *nth })
+            Some(unsafe { &mut *chunk })
         } else {
             self.v = &mut [];
             None
