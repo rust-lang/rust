@@ -357,6 +357,8 @@ pub(crate) struct ArbitraryExpressionInPattern {
     pub span: Span,
     #[note(ast_lowering_pattern_from_macro_note)]
     pub pattern_from_macro_note: bool,
+    #[help(ast_lowering_const_block_in_pattern_help)]
+    pub const_block_in_pattern_help: bool,
 }
 
 #[derive(Diagnostic)]

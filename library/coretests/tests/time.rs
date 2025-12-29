@@ -439,7 +439,6 @@ fn debug_formatting_precision_two() {
     assert_eq!(format!("{:.2?}", Duration::new(4, 001_000_000)), "4.00s");
     assert_eq!(format!("{:.2?}", Duration::new(2, 100_000_000)), "2.10s");
     assert_eq!(format!("{:.2?}", Duration::new(2, 104_990_000)), "2.10s");
-    assert_eq!(format!("{:.2?}", Duration::new(2, 105_000_000)), "2.11s");
     assert_eq!(format!("{:.2?}", Duration::new(8, 999_999_999)), "9.00s");
 }
 
@@ -478,6 +477,15 @@ fn debug_formatting_precision_high() {
     assert_eq!(format!("{:.9?}", Duration::new(1, 000_000_000)), "1.000000000s");
     assert_eq!(format!("{:.10?}", Duration::new(4, 001_000_000)), "4.0010000000s");
     assert_eq!(format!("{:.20?}", Duration::new(4, 001_000_000)), "4.00100000000000000000s");
+}
+
+#[test]
+fn debug_formatting_round_to_even() {
+    assert_eq!(format!("{:.0?}", Duration::new(1, 500_000_000)), "2s");
+    assert_eq!(format!("{:.0?}", Duration::new(2, 500_000_000)), "2s");
+    assert_eq!(format!("{:.0?}", Duration::new(0, 1_500_000)), "2ms");
+    assert_eq!(format!("{:.0?}", Duration::new(0, 2_500_000)), "2ms");
+    assert_eq!(format!("{:.2?}", Duration::new(2, 105_000_000)), "2.10s");
 }
 
 #[test]

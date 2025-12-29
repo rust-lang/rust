@@ -200,7 +200,9 @@ impl<T> ManuallyDrop<T> {
     #[rustc_const_stable(feature = "const_manually_drop", since = "1.32.0")]
     #[inline(always)]
     pub const fn into_inner(slot: ManuallyDrop<T>) -> T {
-        slot.value.into_inner()
+        // Cannot use `MaybeDangling::into_inner` as that does not yet have the desired semantics.
+        // SAFETY: We know this is a valid `T`. `slot` will not be dropped.
+        unsafe { (&raw const slot).cast::<T>().read() }
     }
 
     /// Takes the value from the `ManuallyDrop<T>` container out.

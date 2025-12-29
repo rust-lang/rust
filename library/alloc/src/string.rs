@@ -50,8 +50,6 @@ use core::iter::from_fn;
 use core::ops::Add;
 #[cfg(not(no_global_oom_handling))]
 use core::ops::AddAssign;
-#[cfg(not(no_global_oom_handling))]
-use core::ops::Bound::{Excluded, Included, Unbounded};
 use core::ops::{self, Range, RangeBounds};
 use core::str::pattern::{Pattern, Utf8Pattern};
 use core::{fmt, hash, ptr, slice};
@@ -2059,30 +2057,19 @@ impl String {
     where
         R: RangeBounds<usize>,
     {
-        // Memory safety
-        //
-        // Replace_range does not have the memory safety issues of a vector Splice.
-        // of the vector version. The data is just plain bytes.
+        // We avoid #81138 (nondeterministic RangeBounds impls) because we only use `range` once, here.
+        let checked_range = slice::range(range, ..self.len());
 
-        // WARNING: Inlining this variable would be unsound (#81138)
-        let start = range.start_bound();
-        match start {
-            Included(&n) => assert!(self.is_char_boundary(n)),
-            Excluded(&n) => assert!(self.is_char_boundary(n + 1)),
-            Unbounded => {}
-        };
-        // WARNING: Inlining this variable would be unsound (#81138)
-        let end = range.end_bound();
-        match end {
-            Included(&n) => assert!(self.is_char_boundary(n + 1)),
-            Excluded(&n) => assert!(self.is_char_boundary(n)),
-            Unbounded => {}
-        };
+        assert!(
+            self.is_char_boundary(checked_range.start),
+            "start of range should be a character boundary"
+        );
+        assert!(
+            self.is_char_boundary(checked_range.end),
+            "end of range should be a character boundary"
+        );
 
-        // Using `range` again would be unsound (#81138)
-        // We assume the bounds reported by `range` remain the same, but
-        // an adversarial implementation could change between calls
-        unsafe { self.as_mut_vec() }.splice((start, end), replace_with.bytes());
+        unsafe { self.as_mut_vec() }.splice(checked_range, replace_with.bytes());
     }
 
     /// Replaces the leftmost occurrence of a pattern with another string, in-place.
