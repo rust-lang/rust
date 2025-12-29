@@ -1116,6 +1116,7 @@ impl VClockAlloc {
             {
                 (AccessType::AtomicStore, idx, &atomic.write_vector)
             } else if !access.is_atomic() &&
+                !access.is_read() &&
                 let Some(atomic) = mem_clocks.atomic() &&
                 let Some(idx) = Self::find_gt_index(&atomic.read_vector, &active_clocks.clock)
             {
@@ -1124,7 +1125,7 @@ impl VClockAlloc {
             } else if mem_clocks.write.1 > active_clocks.clock[mem_clocks.write.0] {
                 write_clock = mem_clocks.write();
                 (AccessType::NaWrite(mem_clocks.write_type), mem_clocks.write.0, &write_clock)
-            } else if let Some(idx) = Self::find_gt_index(&mem_clocks.read, &active_clocks.clock) {
+            } else if !access.is_read() && let Some(idx) = Self::find_gt_index(&mem_clocks.read, &active_clocks.clock) {
                 (AccessType::NaRead(mem_clocks.read[idx].read_type()), idx, &mem_clocks.read)
             // Finally, mixed-size races.
             } else if access.is_atomic() && let Some(atomic) = mem_clocks.atomic() && atomic.size != Some(access_size) {
@@ -1157,7 +1158,9 @@ impl VClockAlloc {
             assert!(!involves_non_atomic);
             Some("overlapping unsynchronized atomic accesses must use the same access size")
         } else if access.is_read() && other_access.is_read() {
-            panic!("there should be no same-size read-read races")
+            panic!(
+                "there should be no same-size read-read races\naccess: {access:?}\nother_access: {other_access:?}"
+            )
         } else {
             None
         };
