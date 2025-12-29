@@ -484,7 +484,8 @@ unsafe fn slice_unchecked(s: &Wtf8, begin: usize, end: usize) -> &Wtf8 {
     }
 }
 
-#[inline(never)]
+/// Copied from core::str::raw::slice_error_fail
+#[rustc_panic_entrypoint]
 fn slice_error_fail(s: &Wtf8, begin: usize, end: usize) -> ! {
     let len = s.len();
     if begin > len {

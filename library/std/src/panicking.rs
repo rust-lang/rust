@@ -711,17 +711,11 @@ pub fn panic_handler(info: &core::panic::PanicInfo<'_>) -> ! {
 #[unstable(feature = "libstd_sys_internals", reason = "used by the panic! macro", issue = "none")]
 #[cfg_attr(not(any(test, doctest)), lang = "begin_panic")]
 // lang item for CTFE panic support
-// never inline unless panic=immediate-abort to avoid code
-// bloat at the call sites as much as possible
-#[cfg_attr(not(panic = "immediate-abort"), inline(never), cold, optimize(size))]
-#[cfg_attr(panic = "immediate-abort", inline)]
+// never inline to avoid code bloat at the call sites as much as possible
 #[track_caller]
 #[rustc_do_not_const_check] // hooked by const-eval
+#[rustc_panic_entrypoint]
 pub const fn begin_panic<M: Any + Send>(msg: M) -> ! {
-    if cfg!(panic = "immediate-abort") {
-        intrinsics::abort()
-    }
-
     struct Payload<A> {
         inner: Option<A>,
     }
@@ -879,16 +873,9 @@ pub fn resume_unwind(payload: Box<dyn Any + Send>) -> ! {
 
 /// A function with a fixed suffix (through `rustc_std_internal_symbol`)
 /// on which to slap yer breakpoints.
-#[inline(never)]
 #[cfg_attr(not(test), rustc_std_internal_symbol)]
-#[cfg(not(panic = "immediate-abort"))]
+#[rustc_panic_entrypoint]
 fn rust_panic(msg: &mut dyn PanicPayload) -> ! {
     let code = unsafe { __rust_start_panic(msg) };
     rtabort!("failed to initiate panic, error {code}")
-}
-
-#[cfg_attr(not(test), rustc_std_internal_symbol)]
-#[cfg(panic = "immediate-abort")]
-fn rust_panic(_: &mut dyn PanicPayload) -> ! {
-    crate::intrinsics::abort();
 }

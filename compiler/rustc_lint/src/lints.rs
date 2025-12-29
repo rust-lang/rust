@@ -3655,3 +3655,7 @@ pub(crate) struct OnMoveMalformedFormatLiterals {
     "only literals are allowed as values for the `message`, `note` and `label` options. These options must be separated by a comma"
 )]
 pub(crate) struct OnMoveMalformedAttrExpectedLiteralOrDelimiter;
+
+#[derive(Diagnostic)]
+#[diag("this function could have the attribute #[rustc_panic_entrypoint]")]
+pub(crate) struct MissingPanicEntrypoint;

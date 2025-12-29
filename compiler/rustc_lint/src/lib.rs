@@ -670,6 +670,8 @@ fn register_internals(store: &mut LintStore) {
     store.register_early_pass(|| Box::new(BadUseOfFindAttr));
     store.register_lints(&RustcMustMatchExhaustively::lint_vec());
     store.register_late_pass(|_| Box::new(RustcMustMatchExhaustively));
+    store.register_lints(&MissingPanicEntrypoint::lint_vec());
+    store.register_late_mod_pass(|_| Box::new(MissingPanicEntrypoint));
     store.register_group(
         false,
         "rustc::internal",
