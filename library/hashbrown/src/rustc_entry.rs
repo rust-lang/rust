@@ -57,8 +57,7 @@ where
 ///
 /// This `enum` is constructed from the [`rustc_entry`] method on [`HashMap`].
 ///
-/// [`HashMap`]: struct.HashMap.html
-/// [`rustc_entry`]: struct.HashMap.html#method.rustc_entry
+/// [`rustc_entry`]: HashMap::rustc_entry
 pub enum RustcEntry<'a, K, V, A = Global>
 where
     A: Allocator,
@@ -81,8 +80,6 @@ impl<K: Debug, V: Debug, A: Allocator> Debug for RustcEntry<'_, K, V, A> {
 
 /// A view into an occupied entry in a `HashMap`.
 /// It is part of the [`RustcEntry`] enum.
-///
-/// [`RustcEntry`]: enum.RustcEntry.html
 pub struct RustcOccupiedEntry<'a, K, V, A = Global>
 where
     A: Allocator,
@@ -117,8 +114,6 @@ impl<K: Debug, V: Debug, A: Allocator> Debug for RustcOccupiedEntry<'_, K, V, A>
 
 /// A view into a vacant entry in a `HashMap`.
 /// It is part of the [`RustcEntry`] enum.
-///
-/// [`RustcEntry`]: enum.RustcEntry.html
 pub struct RustcVacantEntry<'a, K, V, A = Global>
 where
     A: Allocator,

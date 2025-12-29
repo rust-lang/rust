@@ -300,14 +300,6 @@ impl<T> Bucket<T> {
     /// `index <= RawTableInner.bucket_mask` or, in other words, `(index + 1)`
     /// must be no greater than the number returned by the function
     /// [`RawTable::num_buckets`] or [`RawTableInner::num_buckets`].
-    ///
-    /// [`Bucket`]: crate::raw::Bucket
-    /// [`<*mut T>::sub`]: https://doc.rust-lang.org/core/primitive.pointer.html#method.sub-1
-    /// [`NonNull::new_unchecked`]: https://doc.rust-lang.org/stable/std/ptr/struct.NonNull.html#method.new_unchecked
-    /// [`RawTable::data_end`]: crate::raw::RawTable::data_end
-    /// [`RawTableInner::data_end<T>`]: RawTableInner::data_end<T>
-    /// [`RawTable::num_buckets`]: crate::raw::RawTable::num_buckets
-    /// [`RawTableInner::num_buckets`]: RawTableInner::num_buckets
     #[inline]
     unsafe fn from_base_index(base: NonNull<T>, index: usize) -> Self {
         // If mem::size_of::<T>() != 0 then return a pointer to an `element` in
@@ -373,14 +365,6 @@ impl<T> Bucket<T> {
     ///   (or [`RawTableInner`]).
     ///
     /// If `mem::size_of::<T>() == 0`, this function is always safe.
-    ///
-    /// [`Bucket`]: crate::raw::Bucket
-    /// [`from_base_index`]: crate::raw::Bucket::from_base_index
-    /// [`RawTable::data_end`]: crate::raw::RawTable::data_end
-    /// [`RawTableInner::data_end<T>`]: RawTableInner::data_end<T>
-    /// [`RawTable`]: crate::raw::RawTable
-    /// [`RawTableInner`]: RawTableInner
-    /// [`<*const T>::offset_from`]: https://doc.rust-lang.org/nightly/core/primitive.pointer.html#method.offset_from
     #[inline]
     unsafe fn to_base_index(&self, base: NonNull<T>) -> usize {
         // If mem::size_of::<T>() != 0 then return an index under which we used to store the
@@ -426,11 +410,6 @@ impl<T> Bucket<T> {
     /// `T` value and its borrowed form *must* match those for the old `T` value, as the map
     /// will not re-evaluate where the new value should go, meaning the value may become
     /// "lost" if their location does not reflect their state.
-    ///
-    /// [`RawTable`]: crate::raw::RawTable
-    /// [`<*mut T>::drop_in_place`]: https://doc.rust-lang.org/core/primitive.pointer.html#method.drop_in_place
-    /// [`Hash`]: https://doc.rust-lang.org/core/hash/trait.Hash.html
-    /// [`Eq`]: https://doc.rust-lang.org/core/cmp/trait.Eq.html
     #[inline]
     pub(crate) fn as_ptr(&self) -> *mut T {
         if T::IS_ZERO_SIZED {
@@ -480,12 +459,6 @@ impl<T> Bucket<T> {
     /// i.e. `(self.to_base_index() + offset) <= RawTableInner.bucket_mask` or, in other words,
     /// `self.to_base_index() + offset + 1` must be no greater than the number returned by the
     /// function [`RawTable::num_buckets`] or [`RawTableInner::num_buckets`].
-    ///
-    /// [`Bucket`]: crate::raw::Bucket
-    /// [`<*mut T>::sub`]: https://doc.rust-lang.org/core/primitive.pointer.html#method.sub-1
-    /// [`NonNull::new_unchecked`]: https://doc.rust-lang.org/stable/std/ptr/struct.NonNull.html#method.new_unchecked
-    /// [`RawTable::num_buckets`]: crate::raw::RawTable::num_buckets
-    /// [`RawTableInner::num_buckets`]: RawTableInner::num_buckets
     #[inline]
     unsafe fn next_n(&self, offset: usize) -> Self {
         let ptr = if T::IS_ZERO_SIZED {
@@ -510,10 +483,6 @@ impl<T> Bucket<T> {
     /// properly dropping the data we need also clear `data` control bytes.
     /// If we drop data, but do not erase `data control byte` it leads to
     /// double drop when [`RawTable`] goes out of scope.
-    ///
-    /// [`ptr::drop_in_place`]: https://doc.rust-lang.org/core/ptr/fn.drop_in_place.html
-    /// [`RawTable`]: crate::raw::RawTable
-    /// [`RawTable::erase`]: crate::raw::RawTable::erase
     #[cfg_attr(feature = "inline-more", inline)]
     pub(crate) unsafe fn drop(&self) {
         unsafe {
@@ -533,10 +502,6 @@ impl<T> Bucket<T> {
     /// calls its destructor when the read `value` goes out of scope. It
     /// can cause double dropping when [`RawTable`] goes out of scope,
     /// because of not erased `data control byte`.
-    ///
-    /// [`ptr::read`]: https://doc.rust-lang.org/core/ptr/fn.read.html
-    /// [`RawTable`]: crate::raw::RawTable
-    /// [`RawTable::remove`]: crate::raw::RawTable::remove
     #[inline]
     pub(crate) unsafe fn read(&self) -> T {
         unsafe { self.as_ptr().read() }
@@ -555,10 +520,6 @@ impl<T> Bucket<T> {
     /// those for the old `T` value, as the map will not re-evaluate where the new
     /// value should go, meaning the value may become "lost" if their location
     /// does not reflect their state.
-    ///
-    /// [`ptr::write`]: https://doc.rust-lang.org/core/ptr/fn.write.html
-    /// [`Hash`]: https://doc.rust-lang.org/core/hash/trait.Hash.html
-    /// [`Eq`]: https://doc.rust-lang.org/core/cmp/trait.Eq.html
     #[inline]
     pub(crate) unsafe fn write(&self, val: T) {
         unsafe {
@@ -571,8 +532,6 @@ impl<T> Bucket<T> {
     /// # Safety
     ///
     /// See [`NonNull::as_ref`] for safety concerns.
-    ///
-    /// [`NonNull::as_ref`]: https://doc.rust-lang.org/core/ptr/struct.NonNull.html#method.as_ref
     #[inline]
     pub(crate) unsafe fn as_ref<'a>(&self) -> &'a T {
         unsafe { &*self.as_ptr() }
@@ -590,10 +549,6 @@ impl<T> Bucket<T> {
     /// those for the old `T` value, as the map will not re-evaluate where the new
     /// value should go, meaning the value may become "lost" if their location
     /// does not reflect their state.
-    ///
-    /// [`NonNull::as_mut`]: https://doc.rust-lang.org/core/ptr/struct.NonNull.html#method.as_mut
-    /// [`Hash`]: https://doc.rust-lang.org/core/hash/trait.Hash.html
-    /// [`Eq`]: https://doc.rust-lang.org/core/cmp/trait.Eq.html
     #[inline]
     pub(crate) unsafe fn as_mut<'a>(&self) -> &'a mut T {
         unsafe { &mut *self.as_ptr() }
@@ -780,7 +735,6 @@ impl<T, A: Allocator> RawTable<T, A> {
     /// not be greater than the number returned by the [`RawTable::num_buckets`] function, i.e.
     /// `(index + 1) <= self.num_buckets()`.
     ///
-    /// [`RawTable::num_buckets`]: RawTable::num_buckets
     /// [`undefined behavior`]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
     #[inline]
     pub(crate) unsafe fn bucket(&self, index: usize) -> Bucket<T> {
@@ -1053,7 +1007,6 @@ impl<T, A: Allocator> RawTable<T, A> {
     ///
     /// See [`RawTableInner::find_insert_index`] for more information.
     ///
-    /// [`RawTableInner::find_insert_index`]: RawTableInner::find_insert_index
     /// [`undefined behavior`]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
     unsafe fn resize(
         &mut self,
@@ -1618,7 +1571,7 @@ impl RawTableInner {
     ///
     /// See also [`Allocator`] API for other safety concerns.
     ///
-    /// [`Allocator`]: https://doc.rust-lang.org/alloc/alloc/trait.Allocator.html
+    /// [`Allocator`]: alloc::alloc::Allocator
     #[cfg_attr(feature = "inline-more", inline)]
     unsafe fn new_uninitialized<A>(
         alloc: &A,
@@ -1717,7 +1670,7 @@ impl RawTableInner {
     /// All the control bytes are initialized with the [`Tag::EMPTY`] bytes.
     ///
     /// [`fallible_with_capacity`]: RawTableInner::fallible_with_capacity
-    /// [`abort`]: https://doc.rust-lang.org/alloc/alloc/fn.handle_alloc_error.html
+    /// [`abort`]: alloc::abort::handle_alloc_error
     fn with_capacity<A>(alloc: &A, table_layout: TableLayout, capacity: usize) -> Self
     where
         A: Allocator,
@@ -1770,8 +1723,6 @@ impl RawTableInner {
     /// may result in [`undefined behavior`] even if the index satisfies the safety rules of the
     /// [`RawTableInner::ctrl`] function (`index < self.bucket_mask + 1 + Group::WIDTH`).
     ///
-    /// [`RawTableInner::ctrl`]: RawTableInner::ctrl
-    /// [`RawTableInner::find_insert_index_in_group`]: RawTableInner::find_insert_index_in_group
     /// [`undefined behavior`]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
     #[inline]
     unsafe fn fix_insert_index(&self, mut index: usize) -> usize {
@@ -1970,11 +1921,7 @@ impl RawTableInner {
     /// See also [`Bucket::as_ptr`] method, for more information about of properly removing
     /// or saving `element` from / into the [`RawTable`] / [`RawTableInner`].
     ///
-    /// [`Bucket::as_ptr`]: Bucket::as_ptr
     /// [`undefined behavior`]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
-    /// [`RawTableInner::ctrl`]: RawTableInner::ctrl
-    /// [`RawTableInner::set_ctrl_hash`]: RawTableInner::set_ctrl_hash
-    /// [`RawTableInner::find_insert_index`]: RawTableInner::find_insert_index
     #[inline]
     unsafe fn prepare_insert_index(&mut self, hash: u64) -> (usize, Tag) {
         unsafe {
@@ -2147,7 +2094,6 @@ impl RawTableInner {
     /// See also [`Bucket::as_ptr`] method, for more information about of properly removing
     /// or saving `data element` from / into the [`RawTable`] / [`RawTableInner`].
     ///
-    /// [`Bucket::as_ptr`]: Bucket::as_ptr
     /// [`undefined behavior`]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
     #[inline]
     unsafe fn prepare_rehash_in_place(&mut self) {
@@ -2278,9 +2224,6 @@ impl RawTableInner {
     /// about of properly removing or saving `element` from / into the [`RawTable`] /
     /// [`RawTableInner`].
     ///
-    /// [`Bucket::drop`]: Bucket::drop
-    /// [`Bucket::as_ptr`]: Bucket::as_ptr
-    /// [`clear_no_drop`]: RawTableInner::clear_no_drop
     /// [`undefined behavior`]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
     unsafe fn drop_elements<T>(&mut self) {
         // Check that `self.items != 0`. Protects against the possibility
@@ -2342,8 +2285,6 @@ impl RawTableInner {
     /// See also [`RawTableInner::drop_elements`] or [`RawTableInner::free_buckets`]
     /// for more  information.
     ///
-    /// [`RawTableInner::drop_elements`]: RawTableInner::drop_elements
-    /// [`RawTableInner::free_buckets`]: RawTableInner::free_buckets
     /// [`undefined behavior`]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
     unsafe fn drop_inner_table<T, A: Allocator>(&mut self, alloc: &A, table_layout: TableLayout) {
         if !self.is_empty_singleton() {
@@ -2414,8 +2355,6 @@ impl RawTableInner {
     /// of buckets is a power of two, and `self.bucket_mask = self.num_buckets() - 1`.
     /// ```
     ///
-    /// [`Bucket::from_base_index`]: Bucket::from_base_index
-    /// [`RawTableInner::num_buckets`]: RawTableInner::num_buckets
     /// [`undefined behavior`]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
     #[inline]
     unsafe fn bucket<T>(&self, index: usize) -> Bucket<T> {
@@ -2468,7 +2407,6 @@ impl RawTableInner {
     /// of buckets is a power of two, and `self.bucket_mask = self.num_buckets() - 1`.
     /// ```
     ///
-    /// [`RawTableInner::num_buckets`]: RawTableInner::num_buckets
     /// [`undefined behavior`]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
     #[inline]
     unsafe fn bucket_ptr(&self, index: usize, size_of: usize) -> *mut u8 {
@@ -2575,9 +2513,6 @@ impl RawTableInner {
     /// See also [`Bucket::as_ptr`] method, for more information about of properly removing
     /// or saving `data element` from / into the [`RawTable`] / [`RawTableInner`].
     ///
-    /// [`RawTableInner::set_ctrl`]: RawTableInner::set_ctrl
-    /// [`RawTableInner::num_buckets`]: RawTableInner::num_buckets
-    /// [`Bucket::as_ptr`]: Bucket::as_ptr
     /// [`undefined behavior`]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
     #[inline]
     unsafe fn set_ctrl_hash(&mut self, index: usize, hash: u64) {
@@ -2611,9 +2546,6 @@ impl RawTableInner {
     /// See also [`Bucket::as_ptr`] method, for more information about of properly removing
     /// or saving `data element` from / into the [`RawTable`] / [`RawTableInner`].
     ///
-    /// [`RawTableInner::set_ctrl_hash`]: RawTableInner::set_ctrl_hash
-    /// [`RawTableInner::num_buckets`]: RawTableInner::num_buckets
-    /// [`Bucket::as_ptr`]: Bucket::as_ptr
     /// [`undefined behavior`]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
     #[inline]
     unsafe fn replace_ctrl_hash(&mut self, index: usize, hash: u64) -> Tag {
@@ -2646,8 +2578,6 @@ impl RawTableInner {
     /// See also [`Bucket::as_ptr`] method, for more information about of properly removing
     /// or saving `data element` from / into the [`RawTable`] / [`RawTableInner`].
     ///
-    /// [`RawTableInner::num_buckets`]: RawTableInner::num_buckets
-    /// [`Bucket::as_ptr`]: Bucket::as_ptr
     /// [`undefined behavior`]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
     #[inline]
     unsafe fn set_ctrl(&mut self, index: usize, ctrl: Tag) {
@@ -2705,7 +2635,6 @@ impl RawTableInner {
     /// See also [`Bucket::as_ptr()`] method, for more information about of properly removing
     /// or saving `data element` from / into the [`RawTable`] / [`RawTableInner`].
     ///
-    /// [`Bucket::as_ptr()`]: Bucket::as_ptr()
     /// [`Undefined Behavior`]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
     #[inline]
     unsafe fn ctrl(&self, index: usize) -> *mut Tag {
@@ -2970,7 +2899,6 @@ impl RawTableInner {
     /// this function can never return. See [`RawTableInner::find_insert_index`] for
     /// more information.
     ///
-    /// [`RawTableInner::find_insert_index`]: RawTableInner::find_insert_index
     /// [`undefined behavior`]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
     #[expect(clippy::inline_always)]
     #[inline(always)]
@@ -3190,8 +3118,8 @@ impl RawTableInner {
     /// See also [`GlobalAlloc::dealloc`] or [`Allocator::deallocate`] for more  information.
     ///
     /// [`Undefined Behavior`]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
-    /// [`GlobalAlloc::dealloc`]: https://doc.rust-lang.org/alloc/alloc/trait.GlobalAlloc.html#tymethod.dealloc
-    /// [`Allocator::deallocate`]: https://doc.rust-lang.org/alloc/alloc/trait.Allocator.html#tymethod.deallocate
+    /// [`GlobalAlloc::dealloc`]: alloc::alloc::GlobalAlloc::dealloc
+    /// [`Allocator::deallocate`]: alloc::alloc::Allocator::deallocate
     #[inline]
     unsafe fn free_buckets<A>(&mut self, alloc: &A, table_layout: TableLayout)
     where
@@ -3222,8 +3150,8 @@ impl RawTableInner {
     /// See also [`GlobalAlloc::dealloc`] or [`Allocator::deallocate`] for more  information.
     ///
     /// [`undefined behavior`]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
-    /// [`GlobalAlloc::dealloc`]: https://doc.rust-lang.org/alloc/alloc/trait.GlobalAlloc.html#tymethod.dealloc
-    /// [`Allocator::deallocate`]: https://doc.rust-lang.org/alloc/alloc/trait.Allocator.html#tymethod.deallocate
+    /// [`GlobalAlloc::dealloc`]: alloc::GlobalAlloc::dealloc
+    /// [`Allocator::deallocate`]: alloc::Allocator::deallocate
     #[inline]
     unsafe fn allocation_info(&self, table_layout: TableLayout) -> (NonNull<u8>, Layout) {
         debug_assert!(
@@ -3310,8 +3238,6 @@ impl RawTableInner {
     /// See also [`Bucket::as_ptr`] method, for more information about of properly removing
     /// or saving `data element` from / into the [`RawTable`] / [`RawTableInner`].
     ///
-    /// [`RawTableInner::num_buckets`]: RawTableInner::num_buckets
-    /// [`Bucket::as_ptr`]: Bucket::as_ptr
     /// [`undefined behavior`]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
     #[inline]
     unsafe fn erase(&mut self, index: usize) {
@@ -3647,7 +3573,7 @@ impl<T> RawIterRange<T> {
     /// If any of the following conditions are violated, the result is
     /// [`undefined behavior`]:
     ///
-    /// * `ctrl` must be [valid] for reads, i.e. table outlives the `RawIterRange`;
+    /// * `ctrl` must be valid for reads, i.e. table outlives the `RawIterRange`;
     ///
     /// * `ctrl` must be properly aligned to the group size (`Group::WIDTH`);
     ///
@@ -3664,7 +3590,6 @@ impl<T> RawIterRange<T> {
     ///
     /// * The `len` must be a power of two.
     ///
-    /// [valid]: https://doc.rust-lang.org/std/ptr/index.html#safety
     /// [`undefined behavior`]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
     #[cfg_attr(feature = "inline-more", inline)]
     unsafe fn new(ctrl: *const u8, data: Bucket<T>, len: usize) -> Self {

@@ -9,7 +9,7 @@
 //! [here]: https://github.com/abseil/abseil-cpp/blob/master/absl/container/internal/raw_hash_set.h
 //! [CppCon talk]: https://www.youtube.com/watch?v=ncHmEUmJZf4
 
-#![no_std]
+#![cfg_attr(not(doc), no_std)]
 #![cfg_attr(
     feature = "nightly",
     feature(
@@ -83,7 +83,7 @@ pub mod hash_map {
     /// You will rarely need to interact with it directly unless you have need
     /// to name one of the iterator types.
     ///
-    /// [rayon]: https://docs.rs/rayon/1.0/rayon
+    /// [rayon]: ::rayon
     pub mod rayon {
         pub use crate::external_trait_impls::rayon::map::*;
     }
@@ -97,7 +97,7 @@ pub mod hash_set {
     /// You will rarely need to interact with it directly unless you have need
     /// to name one of the iterator types.
     ///
-    /// [rayon]: https://docs.rs/rayon/1.0/rayon
+    /// [rayon]: ::rayon
     pub mod rayon {
         pub use crate::external_trait_impls::rayon::set::*;
     }
@@ -111,7 +111,7 @@ pub mod hash_table {
     /// You will rarely need to interact with it directly unless you have need
     /// to name one of the iterator types.
     ///
-    /// [rayon]: https://docs.rs/rayon/1.0/rayon
+    /// [rayon]: ::rayon
     pub mod rayon {
         pub use crate::external_trait_impls::rayon::table::*;
     }

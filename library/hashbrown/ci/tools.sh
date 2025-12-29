@@ -24,6 +24,13 @@ retry() {
     return $result
 }
 
+
+if rustc --version | grep --quiet nightly ; then
+    export RUSTDOCFLAGS="-Zunstable-options --check"
+fi
+
+cargo doc --no-deps --features serde,rayon
+
 if retry rustup component add rustfmt ; then
     cargo fmt --all -- --check
 fi
