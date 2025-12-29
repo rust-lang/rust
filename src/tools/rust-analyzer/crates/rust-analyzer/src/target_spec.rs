@@ -214,19 +214,25 @@ impl CargoTargetSpec {
         kind: &RunnableKind,
     ) -> Option<Vec<String>> {
         let config = snap.config.runnables(None);
-        let args = match kind {
-            RunnableKind::Test { .. } | RunnableKind::TestMod { .. } => {
-                config.test_override_command
+        let (args, test_name) = match kind {
+            RunnableKind::Test { test_id, .. } => {
+                (config.test_override_command, Some(test_id.to_string()))
             }
-            RunnableKind::Bench { .. } => config.bench_override_command,
-            RunnableKind::DocTest { .. } => config.doc_test_override_command,
+            RunnableKind::TestMod { path } => (config.test_override_command, Some(path.clone())),
+            RunnableKind::Bench { test_id } => {
+                (config.bench_override_command, Some(test_id.to_string()))
+            }
+            RunnableKind::DocTest { test_id } => {
+                (config.doc_test_override_command, Some(test_id.to_string()))
+            }
             RunnableKind::Bin => match spec {
                 Some(CargoTargetSpec { target_kind: TargetKind::Test, .. }) => {
-                    config.test_override_command
+                    (config.test_override_command, None)
                 }
-                _ => None,
+                _ => (None, None),
             },
         };
+        let test_name = test_name.unwrap_or_default();
 
         let target_arg = |kind| match kind {
             TargetKind::Bin => "--bin",
@@ -237,10 +243,12 @@ impl CargoTargetSpec {
             TargetKind::BuildScript | TargetKind::Other => "",
         };
 
-        let replace_placeholders = |arg| match &spec {
-            Some(spec) if arg == "${package}" => spec.package.clone(),
-            Some(spec) if arg == "${target_arg}" => target_arg(spec.target_kind).to_owned(),
-            Some(spec) if arg == "${target}" => spec.target.clone(),
+        let replace_placeholders = |arg: String| match &spec {
+            Some(spec) => arg
+                .replace("${package}", &spec.package)
+                .replace("${target_arg}", target_arg(spec.target_kind))
+                .replace("${target}", &spec.target)
+                .replace("${test_name}", &test_name),
             _ => arg,
         };
 

@@ -1362,8 +1362,9 @@ Default: `null`
 Override the command used for bench runnables.
 The first element of the array should be the program to execute (for example, `cargo`).
 
-Use the placeholders `${package}`, `${target_arg}`, `${target}` to dynamically replace the package name,
-target option (such as `--bin` or `--example`), and the target name.
+Use the placeholders `${package}`, `${target_arg}`, `${target}`, `${test_name}` to dynamically
+replace the package name, target option (such as `--bin` or `--example`), the target name and
+the test name (name of test function or test mod path).
 
 
 ## rust-analyzer.runnables.command {#runnables.command}
@@ -1380,8 +1381,9 @@ Default: `null`
 Override the command used for bench runnables.
 The first element of the array should be the program to execute (for example, `cargo`).
 
-Use the placeholders `${package}`, `${target_arg}`, `${target}` to dynamically replace the package name,
-target option (such as `--bin` or `--example`), and the target name.
+Use the placeholders `${package}`, `${target_arg}`, `${target}`, `${test_name}` to dynamically
+replace the package name, target option (such as `--bin` or `--example`), the target name and
+the test name (name of test function or test mod path).
 
 
 ## rust-analyzer.runnables.extraArgs {#runnables.extraArgs}
@@ -1424,8 +1426,9 @@ Default: `null`
 Override the command used for test runnables.
 The first element of the array should be the program to execute (for example, `cargo`).
 
-Use the placeholders `${package}`, `${target_arg}`, `${target}` to dynamically replace the package name,
-target option (such as `--bin` or `--example`), and the target name.
+Use the placeholders `${package}`, `${target_arg}`, `${target}`, `${test_name}` to dynamically
+replace the package name, target option (such as `--bin` or `--example`), the target name and
+the test name (name of test function or test mod path).
 
 
 ## rust-analyzer.rustc.source {#rustc.source}

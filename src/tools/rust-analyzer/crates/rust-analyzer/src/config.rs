@@ -909,16 +909,18 @@ config_data! {
         /// Override the command used for bench runnables.
         /// The first element of the array should be the program to execute (for example, `cargo`).
         ///
-        /// Use the placeholders `${package}`, `${target_arg}`, `${target}` to dynamically replace the package name,
-        /// target option (such as `--bin` or `--example`), and the target name.
+        /// Use the placeholders `${package}`, `${target_arg}`, `${target}`, `${test_name}` to dynamically
+        /// replace the package name, target option (such as `--bin` or `--example`), the target name and
+        /// the test name (name of test function or test mod path).
         runnables_bench_overrideCommand: Option<Vec<String>> = None,
         /// Command to be executed instead of 'cargo' for runnables.
         runnables_command: Option<String> = None,
         /// Override the command used for bench runnables.
         /// The first element of the array should be the program to execute (for example, `cargo`).
         ///
-        /// Use the placeholders `${package}`, `${target_arg}`, `${target}` to dynamically replace the package name,
-        /// target option (such as `--bin` or `--example`), and the target name.
+        /// Use the placeholders `${package}`, `${target_arg}`, `${target}`, `${test_name}` to dynamically
+        /// replace the package name, target option (such as `--bin` or `--example`), the target name and
+        /// the test name (name of test function or test mod path).
         runnables_doctest_overrideCommand: Option<Vec<String>> = None,
         /// Additional arguments to be passed to cargo for runnables such as
         /// tests or binaries. For example, it may be `--release`.
@@ -936,8 +938,9 @@ config_data! {
         /// Override the command used for test runnables.
         /// The first element of the array should be the program to execute (for example, `cargo`).
         ///
-        /// Use the placeholders `${package}`, `${target_arg}`, `${target}` to dynamically replace the package name,
-        /// target option (such as `--bin` or `--example`), and the target name.
+        /// Use the placeholders `${package}`, `${target_arg}`, `${target}`, `${test_name}` to dynamically
+        /// replace the package name, target option (such as `--bin` or `--example`), the target name and
+        /// the test name (name of test function or test mod path).
         runnables_test_overrideCommand: Option<Vec<String>> = None,
 
         /// Path to the Cargo.toml of the rust compiler workspace, for usage in rustc_private

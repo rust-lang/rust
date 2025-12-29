@@ -2840,7 +2840,7 @@
                 "title": "Runnables",
                 "properties": {
                     "rust-analyzer.runnables.bench.overrideCommand": {
-                        "markdownDescription": "Override the command used for bench runnables.\nThe first element of the array should be the program to execute (for example, `cargo`).\n\nUse the placeholders `${package}`, `${target_arg}`, `${target}` to dynamically replace the package name,\ntarget option (such as `--bin` or `--example`), and the target name.",
+                        "markdownDescription": "Override the command used for bench runnables.\nThe first element of the array should be the program to execute (for example, `cargo`).\n\nUse the placeholders `${package}`, `${target_arg}`, `${target}`, `${test_name}` to dynamically\nreplace the package name, target option (such as `--bin` or `--example`), the target name and\nthe test name (name of test function or test mod path).",
                         "default": null,
                         "type": [
                             "null",
@@ -2869,7 +2869,7 @@
                 "title": "Runnables",
                 "properties": {
                     "rust-analyzer.runnables.doctest.overrideCommand": {
-                        "markdownDescription": "Override the command used for bench runnables.\nThe first element of the array should be the program to execute (for example, `cargo`).\n\nUse the placeholders `${package}`, `${target_arg}`, `${target}` to dynamically replace the package name,\ntarget option (such as `--bin` or `--example`), and the target name.",
+                        "markdownDescription": "Override the command used for bench runnables.\nThe first element of the array should be the program to execute (for example, `cargo`).\n\nUse the placeholders `${package}`, `${target_arg}`, `${target}`, `${test_name}` to dynamically\nreplace the package name, target option (such as `--bin` or `--example`), the target name and\nthe test name (name of test function or test mod path).",
                         "default": null,
                         "type": [
                             "null",
@@ -2923,7 +2923,7 @@
                 "title": "Runnables",
                 "properties": {
                     "rust-analyzer.runnables.test.overrideCommand": {
-                        "markdownDescription": "Override the command used for test runnables.\nThe first element of the array should be the program to execute (for example, `cargo`).\n\nUse the placeholders `${package}`, `${target_arg}`, `${target}` to dynamically replace the package name,\ntarget option (such as `--bin` or `--example`), and the target name.",
+                        "markdownDescription": "Override the command used for test runnables.\nThe first element of the array should be the program to execute (for example, `cargo`).\n\nUse the placeholders `${package}`, `${target_arg}`, `${target}`, `${test_name}` to dynamically\nreplace the package name, target option (such as `--bin` or `--example`), the target name and\nthe test name (name of test function or test mod path).",
                         "default": null,
                         "type": [
                             "null",
