@@ -57344,7 +57344,7 @@ mod tests {
             0, 0, 0, 0,
             0, 0, 0, 1 << 3 | 1 << 4,
         );
-        let r = _mm512_and_epi32(a, b);
+        let r = _mm512_and_si512(a, b);
         let e = _mm512_set_epi32(1 << 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1 << 3);
         assert_eq_m512i(r, e);
     }
@@ -57512,7 +57512,7 @@ mod tests {
             0, 0, 0, 0,
             0, 0, 0, 1 << 3 | 1 << 4,
         );
-        let r = _mm512_or_epi32(a, b);
+        let r = _mm512_or_si512(a, b);
         #[rustfmt::skip]
         let e = _mm512_set_epi32(
             1 << 1 | 1 << 2, 0, 0, 0,
@@ -57680,7 +57680,7 @@ mod tests {
             0, 0, 0, 0,
             0, 0, 0, 1 << 3 | 1 << 4,
         );
-        let r = _mm512_xor_epi32(a, b);
+        let r = _mm512_xor_si512(a, b);
         #[rustfmt::skip]
         let e = _mm512_set_epi32(
             1 << 2, 0, 0, 0,
