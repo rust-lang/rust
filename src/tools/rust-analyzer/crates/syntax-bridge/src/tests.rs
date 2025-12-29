@@ -36,9 +36,9 @@ fn check_punct_spacing(fixture: &str) {
             if let tt::TokenTree::Leaf(Leaf::Punct(Punct {
                 spacing, span: Span { range, .. }, ..
             })) = token_tree
-                && let Some(expected) = annotations.remove(range)
+                && let Some(expected) = annotations.remove(&range)
             {
-                assert_eq!(expected, *spacing);
+                assert_eq!(expected, spacing);
             }
             cursor.bump();
         }

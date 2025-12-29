@@ -866,7 +866,8 @@ impl TtTreeSink<'_> {
     /// Parses a float literal as if it was a one to two name ref nodes with a dot inbetween.
     /// This occurs when a float literal is used as a field access.
     fn float_split(&mut self, has_pseudo_dot: bool) {
-        let (text, span) = match self.cursor.token_tree() {
+        let token_tree = self.cursor.token_tree();
+        let (text, span) = match &token_tree {
             Some(tt::TokenTree::Leaf(tt::Leaf::Literal(
                 lit @ tt::Literal { span, kind: tt::LitKind::Float, .. },
             ))) => (lit.text(), *span),
@@ -928,9 +929,15 @@ impl TtTreeSink<'_> {
                                 self.buf.push_str("r#");
                                 self.text_pos += TextSize::of("r#");
                             }
-                            let r = (ident.sym.as_str(), ident.span);
+                            let text = ident.sym.as_str();
+                            self.buf += text;
+                            self.text_pos += TextSize::of(text);
+                            combined_span = match combined_span {
+                                None => Some(ident.span),
+                                Some(prev_span) => Some(Self::merge_spans(prev_span, ident.span)),
+                            };
                             self.cursor.bump();
-                            r
+                            continue 'tokens;
                         }
                         tt::Leaf::Punct(punct) => {
                             assert!(punct.char.is_ascii());

@@ -3085,8 +3085,10 @@ name = "tt"
 version = "0.0.0"
 dependencies = [
  "arrayvec",
+ "indexmap",
  "intern",
  "ra-ap-rustc_lexer",
+ "rustc-hash 2.1.1",
  "span",
  "stdx",
  "text-size 1.1.1 (registry+https://github.com/rust-lang/crates.io-index)",

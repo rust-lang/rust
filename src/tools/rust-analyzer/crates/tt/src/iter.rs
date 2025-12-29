@@ -7,11 +7,14 @@ use arrayvec::ArrayVec;
 use intern::sym;
 use span::Span;
 
-use crate::{Ident, Leaf, MAX_GLUED_PUNCT_LEN, Punct, Spacing, Subtree, TokenTree, TokenTreesView};
+use crate::{
+    Ident, Leaf, MAX_GLUED_PUNCT_LEN, Punct, Spacing, Subtree, TokenTree, TokenTreesReprRef,
+    TokenTreesView, dispatch_ref,
+};
 
 #[derive(Clone)]
 pub struct TtIter<'a> {
-    inner: std::slice::Iter<'a, TokenTree>,
+    inner: TokenTreesView<'a>,
 }
 
 impl fmt::Debug for TtIter<'_> {
@@ -21,17 +24,17 @@ impl fmt::Debug for TtIter<'_> {
 }
 
 #[derive(Clone, Copy)]
-pub struct TtIterSavepoint<'a>(&'a [TokenTree]);
+pub struct TtIterSavepoint<'a>(TokenTreesView<'a>);
 
 impl<'a> TtIterSavepoint<'a> {
     pub fn remaining(self) -> TokenTreesView<'a> {
-        TokenTreesView::new(self.0)
+        self.0
     }
 }
 
 impl<'a> TtIter<'a> {
-    pub(crate) fn new(tt: &'a [TokenTree]) -> TtIter<'a> {
-        TtIter { inner: tt.iter() }
+    pub(crate) fn new(tt: TokenTreesView<'a>) -> TtIter<'a> {
+        TtIter { inner: tt }
     }
 
     pub fn expect_char(&mut self, char: char) -> Result<(), ()> {
@@ -141,8 +144,8 @@ impl<'a> TtIter<'a> {
                 let _ = self.next().unwrap();
                 let _ = self.next().unwrap();
                 res.push(first);
-                res.push(*second);
-                res.push(*third.unwrap());
+                res.push(second);
+                res.push(third.unwrap());
             }
             ('-' | '!' | '*' | '/' | '&' | '%' | '^' | '+' | '<' | '=' | '>' | '|', '=', _)
             | ('-' | '=' | '>', '>', _)
@@ -154,7 +157,7 @@ impl<'a> TtIter<'a> {
             | ('|', '|', _) => {
                 let _ = self.next().unwrap();
                 res.push(first);
-                res.push(*second);
+                res.push(second);
             }
             _ => res.push(first),
         }
@@ -162,17 +165,21 @@ impl<'a> TtIter<'a> {
     }
 
     /// This method won't check for subtrees, so the nth token tree may not be the nth sibling of the current tree.
-    fn peek_n(&self, n: usize) -> Option<&'a TokenTree> {
-        self.inner.as_slice().get(n)
+    fn peek_n(&self, n: usize) -> Option<TokenTree> {
+        dispatch_ref! {
+            match self.inner.repr => tt => Some(tt.get(n)?.to_api(self.inner.span_parts))
+        }
     }
 
     pub fn peek(&self) -> Option<TtElement<'a>> {
-        match self.inner.as_slice().first()? {
-            TokenTree::Leaf(leaf) => Some(TtElement::Leaf(leaf.clone())),
+        match self.peek_n(0)? {
+            TokenTree::Leaf(leaf) => Some(TtElement::Leaf(leaf)),
             TokenTree::Subtree(subtree) => {
-                let nested_iter =
-                    TtIter { inner: self.inner.as_slice()[1..][..subtree.usize_len()].iter() };
-                Some(TtElement::Subtree(*subtree, nested_iter))
+                let nested_repr = self.inner.repr.get(1..subtree.usize_len() + 1).unwrap();
+                let nested_iter = TtIter {
+                    inner: TokenTreesView { repr: nested_repr, span_parts: self.inner.span_parts },
+                };
+                Some(TtElement::Subtree(subtree, nested_iter))
             }
         }
     }
@@ -183,26 +190,51 @@ impl<'a> TtIter<'a> {
     }
 
     pub fn next_span(&self) -> Option<Span> {
-        Some(self.inner.as_slice().first()?.first_span())
+        Some(self.peek()?.first_span())
     }
 
     pub fn remaining(&self) -> TokenTreesView<'a> {
-        TokenTreesView::new(self.inner.as_slice())
+        self.inner
     }
 
     /// **Warning**: This advances `skip` **flat** token trees, subtrees account for children+1!
     pub fn flat_advance(&mut self, skip: usize) {
-        self.inner = self.inner.as_slice()[skip..].iter();
+        self.inner.repr = self.inner.repr.get(skip..).unwrap();
     }
 
     pub fn savepoint(&self) -> TtIterSavepoint<'a> {
-        TtIterSavepoint(self.inner.as_slice())
+        TtIterSavepoint(self.inner)
     }
 
     pub fn from_savepoint(&self, savepoint: TtIterSavepoint<'a>) -> TokenTreesView<'a> {
-        let len = (self.inner.as_slice().as_ptr() as usize - savepoint.0.as_ptr() as usize)
-            / size_of::<TokenTree>();
-        TokenTreesView::new(&savepoint.0[..len])
+        let len = match (self.inner.repr, savepoint.0.repr) {
+            (
+                TokenTreesReprRef::SpanStorage32(this),
+                TokenTreesReprRef::SpanStorage32(savepoint),
+            ) => {
+                (this.as_ptr() as usize - savepoint.as_ptr() as usize)
+                    / size_of::<crate::storage::TokenTree<crate::storage::SpanStorage32>>()
+            }
+            (
+                TokenTreesReprRef::SpanStorage64(this),
+                TokenTreesReprRef::SpanStorage64(savepoint),
+            ) => {
+                (this.as_ptr() as usize - savepoint.as_ptr() as usize)
+                    / size_of::<crate::storage::TokenTree<crate::storage::SpanStorage64>>()
+            }
+            (
+                TokenTreesReprRef::SpanStorage96(this),
+                TokenTreesReprRef::SpanStorage96(savepoint),
+            ) => {
+                (this.as_ptr() as usize - savepoint.as_ptr() as usize)
+                    / size_of::<crate::storage::TokenTree<crate::storage::SpanStorage96>>()
+            }
+            _ => panic!("savepoint did not originate from this TtIter"),
+        };
+        TokenTreesView {
+            repr: savepoint.0.repr.get(..len).unwrap(),
+            span_parts: savepoint.0.span_parts,
+        }
     }
 
     pub fn next_as_view(&mut self) -> Option<TokenTreesView<'a>> {
@@ -242,14 +274,12 @@ impl TtElement<'_> {
 impl<'a> Iterator for TtIter<'a> {
     type Item = TtElement<'a>;
     fn next(&mut self) -> Option<Self::Item> {
-        match self.inner.next()? {
-            TokenTree::Leaf(leaf) => Some(TtElement::Leaf(leaf.clone())),
-            TokenTree::Subtree(subtree) => {
-                let nested_iter =
-                    TtIter { inner: self.inner.as_slice()[..subtree.usize_len()].iter() };
-                self.inner = self.inner.as_slice()[subtree.usize_len()..].iter();
-                Some(TtElement::Subtree(*subtree, nested_iter))
-            }
-        }
+        let result = self.peek()?;
+        let skip = match &result {
+            TtElement::Leaf(_) => 1,
+            TtElement::Subtree(subtree, _) => subtree.usize_len() + 1,
+        };
+        self.inner.repr = self.inner.repr.get(skip..).unwrap();
+        Some(result)
     }
 }
