@@ -48,12 +48,22 @@ const SMALL_VECTOR: usize = 4;
 /// The time-stamps recorded in the data-race detector consist of both
 /// a 32-bit unsigned integer which is the actual timestamp, and a `Span`
 /// so that diagnostics can report what code was responsible for an operation.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy)]
 pub(super) struct VTimestamp {
     /// The lowest bit indicates read type, the rest is the time.
     /// `1` indicates a retag read, `0` a regular read.
     time_and_read_type: u32,
     pub span: Span,
+}
+
+impl Debug for VTimestamp {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("VTimestamp")
+            .field("time", &self.time())
+            .field("read_type", &self.read_type())
+            .field("span", &self.span)
+            .finish()
+    }
 }
 
 impl VTimestamp {
