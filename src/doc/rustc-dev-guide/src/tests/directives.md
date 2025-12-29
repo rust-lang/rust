@@ -214,6 +214,7 @@ settings:
   flag. 
 - `needs-backends` — only runs the test if current codegen backend is listed.
 - `needs-offload` — ignores if our LLVM backend was not built with offload support.
+- `needs-enzyme` — ignores if our Enzyme submodule was not built.
 
 The following directives will check LLVM support:
 
