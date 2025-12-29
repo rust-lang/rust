@@ -10,7 +10,7 @@ path = "lib.rs"
 [dependencies]
 # tidy-alphabetical-start
 arrayvec = { version = "0.7", default-features = false }
-askama = { version = "0.14", default-features = false, features = ["alloc", "config", "derive"] }
+askama = { version = "0.15.1", default-features = false, features = ["alloc", "config", "derive"] }
 base64 = "0.21.7"
 indexmap = { version = "2", features = ["serde"] }
 itertools = "0.12"
