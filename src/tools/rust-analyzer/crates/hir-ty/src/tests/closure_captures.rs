@@ -74,6 +74,7 @@ fn check_closure_captures(#[rust_analyzer::rust_fixture] ra_fixture: &str, expec
                         let place = capture.display_place(closure.0, db);
                         let capture_ty = capture
                             .ty
+                            .get()
                             .skip_binder()
                             .display_test(db, DisplayTarget::from_crate(db, module.krate(db)))
                             .to_string();

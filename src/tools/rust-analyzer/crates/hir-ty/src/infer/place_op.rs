@@ -65,7 +65,7 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
                 oprnd_expr,
                 Box::new([Adjustment {
                     kind: Adjust::Borrow(AutoBorrow::Ref(AutoBorrowMutability::Not)),
-                    target: method.sig.inputs_and_output.inputs()[0],
+                    target: method.sig.inputs_and_output.inputs()[0].store(),
                 }]),
             );
         } else {
@@ -125,7 +125,7 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
                         ctx.interner(),
                         ObligationCause::new(),
                         ctx.table.param_env,
-                        ClauseKind::ConstArgHasType(ct, ctx.types.usize),
+                        ClauseKind::ConstArgHasType(ct, ctx.types.types.usize),
                     ));
                     self_ty = Ty::new_slice(ctx.interner(), element_ty);
                 } else {
@@ -151,7 +151,8 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
                 {
                     adjustments.push(Adjustment {
                         kind: Adjust::Borrow(AutoBorrow::Ref(AutoBorrowMutability::Not)),
-                        target: Ty::new_imm_ref(autoderef.ctx().interner(), region, adjusted_ty),
+                        target: Ty::new_imm_ref(autoderef.ctx().interner(), region, adjusted_ty)
+                            .store(),
                     });
                 } else {
                     panic!("input to index is not a ref?");
@@ -159,7 +160,7 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
                 if unsize {
                     adjustments.push(Adjustment {
                         kind: Adjust::Pointer(PointerCast::Unsize),
-                        target: method.sig.inputs_and_output.inputs()[0],
+                        target: method.sig.inputs_and_output.inputs()[0].store(),
                     });
                 }
                 autoderef.ctx().write_expr_adj(base_expr, adjustments.into_boxed_slice());
@@ -283,7 +284,7 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
             None => return,
         };
         debug!("convert_place_op_to_mutable: method={:?}", method);
-        self.result.method_resolutions.insert(expr, (method.def_id, method.args));
+        self.result.method_resolutions.insert(expr, (method.def_id, method.args.store()));
 
         let TyKind::Ref(region, _, Mutability::Mut) =
             method.sig.inputs_and_output.inputs()[0].kind()
@@ -308,9 +309,9 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
                         allow_two_phase_borrow: AllowTwoPhase::No,
                     };
                     adjustment.kind = Adjust::Borrow(AutoBorrow::Ref(mutbl));
-                    adjustment.target = Ty::new_ref(interner, region, source, mutbl.into());
+                    adjustment.target = Ty::new_ref(interner, region, source, mutbl.into()).store();
                 }
-                source = adjustment.target;
+                source = adjustment.target.as_ref();
             }
 
             // If we have an autoref followed by unsizing at the end, fix the unsize target.
@@ -320,7 +321,7 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
                 Adjustment { kind: Adjust::Pointer(PointerCast::Unsize), ref mut target },
             ] = adjustments[..]
             {
-                *target = method.sig.inputs_and_output.inputs()[0];
+                *target = method.sig.inputs_and_output.inputs()[0].store();
             }
         }
     }

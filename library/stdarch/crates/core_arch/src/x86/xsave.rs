@@ -184,7 +184,7 @@ mod tests {
             // `CPUID.(EAX=0DH,ECX=0):ECX` contains the size required to hold all supported xsave
             // components. `EBX` contains the size required to hold all xsave components currently
             // enabled in `XCR0`. We are using `ECX` to ensure enough space in all scenarios
-            let CpuidResult { ecx, .. } = unsafe { __cpuid(0x0d) };
+            let CpuidResult { ecx, .. } = __cpuid(0x0d);
 
             XsaveArea {
                 data: vec![AlignedArray([0; 64]); ecx.div_ceil(64) as usize].into_boxed_slice(),

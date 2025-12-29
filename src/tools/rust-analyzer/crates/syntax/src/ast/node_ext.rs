@@ -1096,6 +1096,16 @@ impl ast::MatchGuard {
     }
 }
 
+impl ast::MatchArm {
+    pub fn parent_match(&self) -> ast::MatchExpr {
+        self.syntax()
+            .parent()
+            .and_then(|it| it.parent())
+            .and_then(ast::MatchExpr::cast)
+            .expect("MatchArms are always nested in MatchExprs")
+    }
+}
+
 impl From<ast::Item> for ast::AnyHasAttrs {
     fn from(node: ast::Item) -> Self {
         Self::new(node)

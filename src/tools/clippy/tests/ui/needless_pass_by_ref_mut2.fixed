@@ -24,3 +24,9 @@ async fn inner_async4(u: &mut i32, v: &u32) {
 }
 
 fn main() {}
+
+//~v needless_pass_by_ref_mut
+fn issue16267<'a>(msg: &str, slice: &'a [i32]) -> &'a [i32] {
+    println!("{msg}");
+    &slice[0..5]
+}

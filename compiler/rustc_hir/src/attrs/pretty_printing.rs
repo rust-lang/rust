@@ -169,7 +169,7 @@ macro_rules! print_tup {
 
 print_tup!(A B C D E F G H);
 print_skip!(Span, (), ErrorGuaranteed);
-print_disp!(u16, u128, bool, NonZero<u32>, Limit);
+print_disp!(u16, u128, usize, bool, NonZero<u32>, Limit);
 print_debug!(
     Symbol,
     Ident,

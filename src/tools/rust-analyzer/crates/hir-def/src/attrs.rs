@@ -39,7 +39,7 @@ use rustc_abi::ReprOptions;
 use rustc_hash::FxHashSet;
 use smallvec::SmallVec;
 use syntax::{
-    AstNode, AstToken, NodeOrToken, SmolStr, SyntaxNode, SyntaxToken, T,
+    AstNode, AstToken, NodeOrToken, SmolStr, SourceFile, SyntaxNode, SyntaxToken, T,
     ast::{self, AttrDocCommentIter, HasAttrs, IsString, TokenTreeChildren},
 };
 use tt::{TextRange, TextSize};
@@ -292,35 +292,69 @@ bitflags::bitflags! {
     }
 }
 
+pub fn parse_extra_crate_attrs(db: &dyn DefDatabase, krate: Crate) -> Option<SourceFile> {
+    let crate_data = krate.data(db);
+    let crate_attrs = &crate_data.crate_attrs;
+    if crate_attrs.is_empty() {
+        return None;
+    }
+    // All attributes are already enclosed in `#![]`.
+    let combined = crate_attrs.concat();
+    let p = SourceFile::parse(&combined, crate_data.edition);
+
+    let errs = p.errors();
+    if !errs.is_empty() {
+        let base_msg = "Failed to parse extra crate-level attribute";
+        let crate_name =
+            krate.extra_data(db).display_name.as_ref().map_or("{unknown}", |name| name.as_str());
+        let mut errs = errs.iter().peekable();
+        let mut offset = TextSize::from(0);
+        for raw_attr in crate_attrs {
+            let attr_end = offset + TextSize::of(&**raw_attr);
+            if errs.peeking_take_while(|e| e.range().start() < attr_end).count() > 0 {
+                tracing::error!("{base_msg} {raw_attr} for crate {crate_name}");
+            }
+            offset = attr_end
+        }
+        return None;
+    }
+
+    Some(p.tree())
+}
+
 fn attrs_source(
     db: &dyn DefDatabase,
     owner: AttrDefId,
-) -> (InFile<ast::AnyHasAttrs>, Option<InFile<ast::Module>>, Crate) {
+) -> (InFile<ast::AnyHasAttrs>, Option<InFile<ast::Module>>, Option<SourceFile>, Crate) {
     let (owner, krate) = match owner {
         AttrDefId::ModuleId(id) => {
             let def_map = id.def_map(db);
-            let (definition, declaration) = match def_map[id].origin {
+            let krate = def_map.krate();
+            let (definition, declaration, extra_crate_attrs) = match def_map[id].origin {
                 ModuleOrigin::CrateRoot { definition } => {
-                    let file = db.parse(definition).tree();
-                    (InFile::new(definition.into(), ast::AnyHasAttrs::from(file)), None)
+                    let definition_source = db.parse(definition).tree();
+                    let definition = InFile::new(definition.into(), definition_source.into());
+                    let extra_crate_attrs = parse_extra_crate_attrs(db, krate);
+                    (definition, None, extra_crate_attrs)
                 }
                 ModuleOrigin::File { declaration, declaration_tree_id, definition, .. } => {
+                    let definition_source = db.parse(definition).tree();
+                    let definition = InFile::new(definition.into(), definition_source.into());
                     let declaration = InFile::new(declaration_tree_id.file_id(), declaration);
                     let declaration = declaration.with_value(declaration.to_node(db));
-                    let definition_source = db.parse(definition).tree();
-                    (InFile::new(definition.into(), definition_source.into()), Some(declaration))
+                    (definition, Some(declaration), None)
                 }
                 ModuleOrigin::Inline { definition_tree_id, definition } => {
                     let definition = InFile::new(definition_tree_id.file_id(), definition);
                     let definition = definition.with_value(definition.to_node(db).into());
-                    (definition, None)
+                    (definition, None, None)
                 }
                 ModuleOrigin::BlockExpr { block, .. } => {
                     let definition = block.to_node(db);
-                    (block.with_value(definition.into()), None)
+                    (block.with_value(definition.into()), None, None)
                 }
             };
-            return (definition, declaration, def_map.krate());
+            return (definition, declaration, extra_crate_attrs, krate);
         }
         AttrDefId::AdtId(AdtId::StructId(it)) => attrs_from_ast_id_loc(db, it),
         AttrDefId::AdtId(AdtId::UnionId(it)) => attrs_from_ast_id_loc(db, it),
@@ -339,7 +373,7 @@ fn attrs_source(
         AttrDefId::ExternCrateId(it) => attrs_from_ast_id_loc(db, it),
         AttrDefId::UseId(it) => attrs_from_ast_id_loc(db, it),
     };
-    (owner, None, krate)
+    (owner, None, None, krate)
 }
 
 fn collect_attrs<BreakValue>(
@@ -347,14 +381,15 @@ fn collect_attrs<BreakValue>(
     owner: AttrDefId,
     mut callback: impl FnMut(Meta) -> ControlFlow<BreakValue>,
 ) -> Option<BreakValue> {
-    let (source, outer_mod_decl, krate) = attrs_source(db, owner);
+    let (source, outer_mod_decl, extra_crate_attrs, krate) = attrs_source(db, owner);
+    let extra_attrs = extra_crate_attrs
+        .into_iter()
+        .flat_map(|src| src.attrs())
+        .chain(outer_mod_decl.into_iter().flat_map(|it| it.value.attrs()));
 
     let mut cfg_options = None;
     expand_cfg_attr(
-        outer_mod_decl
-            .into_iter()
-            .flat_map(|it| it.value.attrs())
-            .chain(ast::attrs_including_inner(&source.value)),
+        extra_attrs.chain(ast::attrs_including_inner(&source.value)),
         || cfg_options.get_or_insert_with(|| krate.cfg_options(db)),
         move |meta, _, _, _| callback(meta),
     )
@@ -1013,10 +1048,12 @@ impl AttrFlags {
     pub fn doc_html_root_url(db: &dyn DefDatabase, krate: Crate) -> Option<SmolStr> {
         let root_file_id = krate.root_file_id(db);
         let syntax = db.parse(root_file_id).tree();
+        let extra_crate_attrs =
+            parse_extra_crate_attrs(db, krate).into_iter().flat_map(|src| src.attrs());
 
         let mut cfg_options = None;
         expand_cfg_attr(
-            syntax.attrs(),
+            extra_crate_attrs.chain(syntax.attrs()),
             || cfg_options.get_or_insert(krate.cfg_options(db)),
             |attr, _, _, _| {
                 if let Meta::TokenTree { path, tt } = attr
@@ -1231,8 +1268,11 @@ impl AttrFlags {
     // We LRU this query because it is only used by IDE.
     #[salsa::tracked(returns(ref), lru = 250)]
     pub fn docs(db: &dyn DefDatabase, owner: AttrDefId) -> Option<Box<Docs>> {
-        let (source, outer_mod_decl, krate) = attrs_source(db, owner);
+        let (source, outer_mod_decl, _extra_crate_attrs, krate) = attrs_source(db, owner);
         let inner_attrs_node = source.value.inner_attributes_node();
+        // Note: we don't have to pass down `_extra_crate_attrs` here, since `extract_docs`
+        // does not handle crate-level attributes related to docs.
+        // See: https://doc.rust-lang.org/rustdoc/write-documentation/the-doc-attribute.html#at-the-crate-level
         extract_docs(&|| krate.cfg_options(db), source, outer_mod_decl, inner_attrs_node)
     }
 
@@ -1480,8 +1520,9 @@ mod tests {
     use test_fixture::WithFixture;
     use tt::{TextRange, TextSize};
 
-    use crate::attrs::IsInnerDoc;
-    use crate::{attrs::Docs, test_db::TestDB};
+    use crate::AttrDefId;
+    use crate::attrs::{AttrFlags, Docs, IsInnerDoc};
+    use crate::test_db::TestDB;
 
     #[test]
     fn docs() {
@@ -1616,5 +1657,16 @@ mod tests {
             docs.find_ast_range(range(23, 25)),
             Some((in_file(range(263, 265)), IsInnerDoc::Yes))
         );
+    }
+
+    #[test]
+    fn crate_attrs() {
+        let fixture = r#"
+//- /lib.rs crate:foo crate-attr:no_std crate-attr:cfg(target_arch="x86")
+        "#;
+        let (db, file_id) = TestDB::with_single_file(fixture);
+        let module = db.module_for_file(file_id.file_id(&db));
+        let attrs = AttrFlags::query(&db, AttrDefId::ModuleId(module));
+        assert!(attrs.contains(AttrFlags::IS_NO_STD | AttrFlags::HAS_CFG));
     }
 }

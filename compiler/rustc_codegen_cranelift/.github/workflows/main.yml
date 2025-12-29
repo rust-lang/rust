@@ -28,7 +28,7 @@ jobs:
 
     - name: Avoid installing rustc-dev
       run: |
-        sed -i 's/components.*/components = ["rustfmt"]/' rust-toolchain
+        sed -i 's/components.*/components = ["rustfmt"]/' rust-toolchain.toml
         rustfmt -v
 
     - name: Rustfmt
@@ -88,7 +88,7 @@ jobs:
       uses: actions/cache@v4
       with:
         path: build/cg_clif
-        key: ${{ runner.os }}-${{ matrix.env.TARGET_TRIPLE }}-cargo-build-target-${{ hashFiles('rust-toolchain', '**/Cargo.lock') }}
+        key: ${{ runner.os }}-${{ matrix.env.TARGET_TRIPLE }}-cargo-build-target-${{ hashFiles('rust-toolchain.toml', '**/Cargo.lock') }}
 
     - name: Set MinGW as the default toolchain
       if: matrix.os == 'windows-latest' && matrix.env.TARGET_TRIPLE == 'x86_64-pc-windows-gnu'
@@ -158,7 +158,7 @@ jobs:
       uses: actions/cache@v4
       with:
         path: build/cg_clif
-        key: ${{ runner.os }}-x86_64-unknown-linux-gnu-cargo-build-target-${{ hashFiles('rust-toolchain', '**/Cargo.lock') }}
+        key: ${{ runner.os }}-x86_64-unknown-linux-gnu-cargo-build-target-${{ hashFiles('rust-toolchain.toml', '**/Cargo.lock') }}
 
     - name: Install hyperfine
       run: |
@@ -207,7 +207,7 @@ jobs:
       uses: actions/cache@v4
       with:
         path: build/cg_clif
-        key: ${{ runner.os }}-${{ matrix.env.TARGET_TRIPLE }}-dist-cargo-build-target-${{ hashFiles('rust-toolchain', '**/Cargo.lock') }}
+        key: ${{ runner.os }}-${{ matrix.env.TARGET_TRIPLE }}-dist-cargo-build-target-${{ hashFiles('rust-toolchain.toml', '**/Cargo.lock') }}
 
     - name: Set MinGW as the default toolchain
       if: matrix.os == 'windows-latest' && matrix.env.TARGET_TRIPLE == 'x86_64-pc-windows-gnu'

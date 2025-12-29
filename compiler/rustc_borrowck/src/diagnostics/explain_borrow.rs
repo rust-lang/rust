@@ -764,6 +764,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                 {
                     // Just point to the function, to reduce the chance of overlapping spans.
                     let function_span = match func {
+                        Operand::RuntimeChecks(_) => span,
                         Operand::Constant(c) => c.span,
                         Operand::Copy(place) | Operand::Move(place) => {
                             if let Some(l) = place.as_local() {
@@ -809,6 +810,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                     {
                         // Just point to the function, to reduce the chance of overlapping spans.
                         let function_span = match func {
+                            Operand::RuntimeChecks(_) => span,
                             Operand::Constant(c) => c.span,
                             Operand::Copy(place) | Operand::Move(place) => {
                                 if let Some(l) = place.as_local() {

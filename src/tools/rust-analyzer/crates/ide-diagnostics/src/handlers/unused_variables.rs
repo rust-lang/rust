@@ -390,4 +390,44 @@ fn f(S { field }: error) {
 "#,
         );
     }
+
+    #[test]
+    fn crate_attrs_lint_smoke_test() {
+        check_diagnostics(
+            r#"
+//- /lib.rs crate:foo crate-attr:deny(unused_variables)
+fn main() {
+    let x = 2;
+      //^ 💡 error: unused variable
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn crate_attrs_should_not_override_lints_in_source() {
+        check_diagnostics(
+            r#"
+//- /lib.rs crate:foo crate-attr:allow(unused_variables)
+#![deny(unused_variables)]
+fn main() {
+    let x = 2;
+      //^ 💡 error: unused variable
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn crate_attrs_should_preserve_lint_order() {
+        check_diagnostics(
+            r#"
+//- /lib.rs crate:foo crate-attr:allow(unused_variables) crate-attr:warn(unused_variables)
+fn main() {
+    let x = 2;
+      //^ 💡 warn: unused variable
+}
+"#,
+        );
+    }
 }

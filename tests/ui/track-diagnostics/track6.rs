@@ -4,13 +4,13 @@
 // Normalize the emitted location so this doesn't need
 // updating everytime someone adds or removes a line.
 //@ normalize-stderr: ".rs:\d+:\d+" -> ".rs:LL:CC"
-
+//@ normalize-stderr: "/rustc(?:-dev)?/[a-z0-9.]+/" -> ""
 
 pub trait Foo {
     fn bar();
 }
 
-impl <T> Foo for T {
+impl<T> Foo for T {
     default fn bar() {}
     //~^ ERROR specialization is unstable
     //~| NOTE created at

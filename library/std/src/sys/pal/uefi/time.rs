@@ -356,7 +356,7 @@ pub(crate) mod instant_internal {
         // Inspired by [`edk2/UefiCpuPkg/Library/CpuTimerLib/CpuTimerLib.c`](https://github.com/tianocore/edk2/blob/master/UefiCpuPkg/Library/CpuTimerLib/CpuTimerLib.c)
         let freq = FREQUENCY
             .get_or_try_init(|| {
-                let cpuid = unsafe { crate::arch::x86_64::__cpuid(0x15) };
+                let cpuid = crate::arch::x86_64::__cpuid(0x15);
                 if cpuid.eax == 0 || cpuid.ebx == 0 || cpuid.ecx == 0 {
                     return Err(());
                 }
@@ -375,7 +375,7 @@ pub(crate) mod instant_internal {
 
         let freq = FREQUENCY
             .get_or_try_init(|| {
-                let cpuid = unsafe { crate::arch::x86::__cpuid(0x15) };
+                let cpuid = crate::arch::x86::__cpuid(0x15);
                 if cpuid.eax == 0 || cpuid.ebx == 0 || cpuid.ecx == 0 {
                     return Err(());
                 }

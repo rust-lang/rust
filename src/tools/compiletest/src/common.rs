@@ -438,6 +438,11 @@ pub struct Config {
     /// FIXME: make it clearer that this refers to the staged `std`, not stage 0 `std`.
     pub with_std_debug_assertions: bool,
 
+    /// Whether *staged* `std` was built with remapping of debuginfo.
+    ///
+    /// FIXME: make it clearer that this refers to the staged `std`, not stage 0 `std`.
+    pub with_std_remap_debuginfo: bool,
+
     /// Only run tests that match these filters (using `libtest` "test name contains" filter logic).
     ///
     /// FIXME(#139660): the current hand-rolled test executor intentionally mimics the `libtest`

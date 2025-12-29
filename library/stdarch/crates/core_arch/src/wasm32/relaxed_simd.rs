@@ -248,8 +248,10 @@ pub fn i64x2_relaxed_laneselect(a: v128, b: v128, m: v128) -> v128 {
 #[stable(feature = "stdarch_wasm_relaxed_simd", since = "1.82.0")]
 pub use i64x2_relaxed_laneselect as u64x2_relaxed_laneselect;
 
-/// A relaxed version of `f32x4_min` which is either `f32x4_min` or
-/// `f32x4_pmin`.
+/// A relaxed version of `f32x4_min` which has implementation-specific behavior
+/// when its operands are NaN or signed zeroes. For more information, see [the
+/// WebAssembly
+/// specification](https://webassembly.github.io/spec/core/exec/numerics.html#op-frelaxed-min).
 #[inline]
 #[cfg_attr(test, assert_instr(f32x4.relaxed_min))]
 #[target_feature(enable = "relaxed-simd")]
@@ -259,8 +261,10 @@ pub fn f32x4_relaxed_min(a: v128, b: v128) -> v128 {
     unsafe { llvm_f32x4_relaxed_min(a.as_f32x4(), b.as_f32x4()).v128() }
 }
 
-/// A relaxed version of `f32x4_max` which is either `f32x4_max` or
-/// `f32x4_pmax`.
+/// A relaxed version of `f32x4_max` which has implementation-specific behavior
+/// when its operands are NaN or signed zeroes. For more information, see [the
+/// WebAssembly
+/// specification](https://webassembly.github.io/spec/core/exec/numerics.html#op-frelaxed-max).
 #[inline]
 #[cfg_attr(test, assert_instr(f32x4.relaxed_max))]
 #[target_feature(enable = "relaxed-simd")]
@@ -270,8 +274,10 @@ pub fn f32x4_relaxed_max(a: v128, b: v128) -> v128 {
     unsafe { llvm_f32x4_relaxed_max(a.as_f32x4(), b.as_f32x4()).v128() }
 }
 
-/// A relaxed version of `f64x2_min` which is either `f64x2_min` or
-/// `f64x2_pmin`.
+/// A relaxed version of `f64x2_min` which has implementation-specific behavior
+/// when its operands are NaN or signed zeroes. For more information, see [the
+/// WebAssembly
+/// specification](https://webassembly.github.io/spec/core/exec/numerics.html#op-frelaxed-min).
 #[inline]
 #[cfg_attr(test, assert_instr(f64x2.relaxed_min))]
 #[target_feature(enable = "relaxed-simd")]
@@ -281,8 +287,10 @@ pub fn f64x2_relaxed_min(a: v128, b: v128) -> v128 {
     unsafe { llvm_f64x2_relaxed_min(a.as_f64x2(), b.as_f64x2()).v128() }
 }
 
-/// A relaxed version of `f64x2_max` which is either `f64x2_max` or
-/// `f64x2_pmax`.
+/// A relaxed version of `f64x2_max` which has implementation-specific behavior
+/// when its operands are NaN or signed zeroes. For more information, see [the
+/// WebAssembly
+/// specification](https://webassembly.github.io/spec/core/exec/numerics.html#op-frelaxed-max).
 #[inline]
 #[cfg_attr(test, assert_instr(f64x2.relaxed_max))]
 #[target_feature(enable = "relaxed-simd")]

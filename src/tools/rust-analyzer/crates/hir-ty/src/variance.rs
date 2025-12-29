@@ -17,7 +17,7 @@ use hir_def::{AdtId, GenericDefId, GenericParamId, VariantId, signatures::Struct
 use rustc_ast_ir::Mutability;
 use rustc_type_ir::{
     Variance,
-    inherent::{AdtDef, IntoKind, SliceLike},
+    inherent::{AdtDef, IntoKind},
 };
 use stdx::never;
 
@@ -25,12 +25,22 @@ use crate::{
     db::HirDatabase,
     generics::{Generics, generics},
     next_solver::{
-        Const, ConstKind, DbInterner, ExistentialPredicate, GenericArg, GenericArgs, Region,
-        RegionKind, Term, Ty, TyKind, VariancesOf,
+        Const, ConstKind, DbInterner, ExistentialPredicate, GenericArgKind, GenericArgs, Region,
+        RegionKind, StoredVariancesOf, TermKind, Ty, TyKind, VariancesOf,
     },
 };
 
 pub(crate) fn variances_of(db: &dyn HirDatabase, def: GenericDefId) -> VariancesOf<'_> {
+    variances_of_query(db, def).as_ref()
+}
+
+#[salsa::tracked(
+    returns(ref),
+    // cycle_fn = crate::variance::variances_of_cycle_fn,
+    // cycle_initial = crate::variance::variances_of_cycle_initial,
+    cycle_result = crate::variance::variances_of_cycle_initial,
+)]
+fn variances_of_query(db: &dyn HirDatabase, def: GenericDefId) -> StoredVariancesOf {
     tracing::debug!("variances_of(def={:?})", def);
     let interner = DbInterner::new_no_crate(db);
     match def {
@@ -38,20 +48,21 @@ pub(crate) fn variances_of(db: &dyn HirDatabase, def: GenericDefId) -> Variances
         GenericDefId::AdtId(adt) => {
             if let AdtId::StructId(id) = adt {
                 let flags = &db.struct_signature(id).flags;
+                let types = || crate::next_solver::default_types(db);
                 if flags.contains(StructFlags::IS_UNSAFE_CELL) {
-                    return VariancesOf::new_from_iter(interner, [Variance::Invariant]);
+                    return types().one_invariant.store();
                 } else if flags.contains(StructFlags::IS_PHANTOM_DATA) {
-                    return VariancesOf::new_from_iter(interner, [Variance::Covariant]);
+                    return types().one_covariant.store();
                 }
             }
         }
-        _ => return VariancesOf::new_from_iter(interner, []),
+        _ => return VariancesOf::empty(interner).store(),
     }
 
     let generics = generics(db, def);
     let count = generics.len();
     if count == 0 {
-        return VariancesOf::new_from_iter(interner, []);
+        return VariancesOf::empty(interner).store();
     }
     let mut variances =
         Context { generics, variances: vec![Variance::Bivariant; count], db }.solve();
@@ -71,7 +82,7 @@ pub(crate) fn variances_of(db: &dyn HirDatabase, def: GenericDefId) -> Variances
         }
     }
 
-    VariancesOf::new_from_iter(interner, variances)
+    VariancesOf::new_from_slice(&variances).store()
 }
 
 // pub(crate) fn variances_of_cycle_fn(
@@ -105,14 +116,15 @@ fn glb(v1: Variance, v2: Variance) -> Variance {
 
 pub(crate) fn variances_of_cycle_initial(
     db: &dyn HirDatabase,
+    _: salsa::Id,
     def: GenericDefId,
-) -> VariancesOf<'_> {
+) -> StoredVariancesOf {
     let interner = DbInterner::new_no_crate(db);
     let generics = generics(db, def);
     let count = generics.len();
 
     // FIXME(next-solver): Returns `Invariance` and not `Bivariance` here, see the comment in the main query.
-    VariancesOf::new_from_iter(interner, std::iter::repeat_n(Variance::Invariant, count))
+    VariancesOf::new_from_iter(interner, std::iter::repeat_n(Variance::Invariant, count)).store()
 }
 
 struct Context<'db> {
@@ -130,7 +142,7 @@ impl<'db> Context<'db> {
                 let mut add_constraints_from_variant = |variant| {
                     for (_, field) in db.field_types(variant).iter() {
                         self.add_constraints_from_ty(
-                            field.instantiate_identity(),
+                            field.get().instantiate_identity(),
                             Variance::Covariant,
                         );
                     }
@@ -232,11 +244,11 @@ impl<'db> Context<'db> {
                         }
                         ExistentialPredicate::Projection(projection) => {
                             self.add_constraints_from_invariant_args(projection.args);
-                            match projection.term {
-                                Term::Ty(ty) => {
+                            match projection.term.kind() {
+                                TermKind::Ty(ty) => {
                                     self.add_constraints_from_ty(ty, Variance::Invariant)
                                 }
-                                Term::Const(konst) => self.add_constraints_from_const(konst),
+                                TermKind::Const(konst) => self.add_constraints_from_const(konst),
                             }
                         }
                         ExistentialPredicate::AutoTrait(_) => {}
@@ -266,12 +278,12 @@ impl<'db> Context<'db> {
 
     fn add_constraints_from_invariant_args(&mut self, args: GenericArgs<'db>) {
         for k in args.iter() {
-            match k {
-                GenericArg::Lifetime(lt) => {
+            match k.kind() {
+                GenericArgKind::Lifetime(lt) => {
                     self.add_constraints_from_region(lt, Variance::Invariant)
                 }
-                GenericArg::Ty(ty) => self.add_constraints_from_ty(ty, Variance::Invariant),
-                GenericArg::Const(val) => self.add_constraints_from_const(val),
+                GenericArgKind::Type(ty) => self.add_constraints_from_ty(ty, Variance::Invariant),
+                GenericArgKind::Const(val) => self.add_constraints_from_const(val),
             }
         }
     }
@@ -290,10 +302,12 @@ impl<'db> Context<'db> {
         let variances = self.db.variances_of(def_id);
 
         for (k, v) in args.iter().zip(variances) {
-            match k {
-                GenericArg::Lifetime(lt) => self.add_constraints_from_region(lt, variance.xform(v)),
-                GenericArg::Ty(ty) => self.add_constraints_from_ty(ty, variance.xform(v)),
-                GenericArg::Const(val) => self.add_constraints_from_const(val),
+            match k.kind() {
+                GenericArgKind::Lifetime(lt) => {
+                    self.add_constraints_from_region(lt, variance.xform(v))
+                }
+                GenericArgKind::Type(ty) => self.add_constraints_from_ty(ty, variance.xform(v)),
+                GenericArgKind::Const(val) => self.add_constraints_from_const(val),
             }
         }
     }
@@ -387,7 +401,7 @@ mod tests {
         AdtId, GenericDefId, ModuleDefId, hir::generics::GenericParamDataRef, src::HasSource,
     };
     use itertools::Itertools;
-    use rustc_type_ir::{Variance, inherent::SliceLike};
+    use rustc_type_ir::Variance;
     use stdx::format_to;
     use syntax::{AstNode, ast::HasName};
     use test_fixture::WithFixture;

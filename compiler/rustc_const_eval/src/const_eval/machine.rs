@@ -637,6 +637,16 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
         Err(ConstEvalErrKind::AssertFailure(err)).into()
     }
 
+    #[inline(always)]
+    fn runtime_checks(
+        _ecx: &InterpCx<'tcx, Self>,
+        _r: mir::RuntimeChecks,
+    ) -> InterpResult<'tcx, bool> {
+        // We can't look at `tcx.sess` here as that can differ across crates, which can lead to
+        // unsound differences in evaluating the same constant at different instantiation sites.
+        interp_ok(true)
+    }
+
     fn binary_ptr_op(
         _ecx: &InterpCx<'tcx, Self>,
         _bin_op: mir::BinOp,

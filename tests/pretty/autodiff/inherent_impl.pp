@@ -1,6 +1,6 @@
 #![feature(prelude_import)]
 #![no_std]
-//@ needs-enzyme
+//@ only-nightly
 
 #![feature(autodiff)]
 #[macro_use]

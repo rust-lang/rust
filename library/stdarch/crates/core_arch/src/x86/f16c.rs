@@ -25,7 +25,8 @@ unsafe extern "unadjusted" {
 #[target_feature(enable = "f16c")]
 #[cfg_attr(test, assert_instr("vcvtph2ps"))]
 #[stable(feature = "x86_f16c_intrinsics", since = "1.68.0")]
-pub fn _mm_cvtph_ps(a: __m128i) -> __m128 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm_cvtph_ps(a: __m128i) -> __m128 {
     unsafe {
         let a: f16x8 = transmute(a);
         let a: f16x4 = simd_shuffle!(a, a, [0, 1, 2, 3]);
@@ -41,7 +42,8 @@ pub fn _mm_cvtph_ps(a: __m128i) -> __m128 {
 #[target_feature(enable = "f16c")]
 #[cfg_attr(test, assert_instr("vcvtph2ps"))]
 #[stable(feature = "x86_f16c_intrinsics", since = "1.68.0")]
-pub fn _mm256_cvtph_ps(a: __m128i) -> __m256 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_cvtph_ps(a: __m128i) -> __m256 {
     unsafe {
         let a: f16x8 = transmute(a);
         simd_cast(a)
@@ -103,6 +105,7 @@ pub fn _mm256_cvtps_ph<const IMM_ROUNDING: i32>(a: __m256) -> __m128i {
 
 #[cfg(test)]
 mod tests {
+    use crate::core_arch::assert_eq_const as assert_eq;
     use crate::{core_arch::x86::*, mem::transmute};
     use stdarch_test::simd_test;
 
@@ -116,7 +119,7 @@ mod tests {
     const F16_EIGHT: i16 = 0x4800;
 
     #[simd_test(enable = "f16c")]
-    unsafe fn test_mm_cvtph_ps() {
+    const unsafe fn test_mm_cvtph_ps() {
         let a = _mm_set_epi16(0, 0, 0, 0, F16_ONE, F16_TWO, F16_THREE, F16_FOUR);
         let r = _mm_cvtph_ps(a);
         let e = _mm_set_ps(1.0, 2.0, 3.0, 4.0);
@@ -124,7 +127,7 @@ mod tests {
     }
 
     #[simd_test(enable = "f16c")]
-    unsafe fn test_mm256_cvtph_ps() {
+    const unsafe fn test_mm256_cvtph_ps() {
         let a = _mm_set_epi16(
             F16_ONE, F16_TWO, F16_THREE, F16_FOUR, F16_FIVE, F16_SIX, F16_SEVEN, F16_EIGHT,
         );

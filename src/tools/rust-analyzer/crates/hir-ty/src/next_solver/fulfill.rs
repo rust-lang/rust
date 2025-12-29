@@ -187,6 +187,9 @@ impl<'db> FulfillmentCtxt<'db> {
                 }
 
                 let result = delegate.evaluate_root_goal(goal, Span::dummy(), stalled_on);
+                infcx.inspect_evaluated_obligation(&obligation, &result, || {
+                    Some(delegate.evaluate_root_goal_for_proof_tree(goal, Span::dummy()).1)
+                });
                 let GoalEvaluation { goal: _, certainty, has_changed, stalled_on } = match result {
                     Ok(result) => result,
                     Err(NoSolution) => {
@@ -249,7 +252,7 @@ impl<'db> FulfillmentCtxt<'db> {
             | TypingMode::PostBorrowckAnalysis { defined_opaque_types: _ }
             | TypingMode::PostAnalysis => return Default::default(),
         };
-        let stalled_coroutines = stalled_coroutines.inner();
+        let stalled_coroutines = stalled_coroutines.as_slice();
 
         if stalled_coroutines.is_empty() {
             return Default::default();

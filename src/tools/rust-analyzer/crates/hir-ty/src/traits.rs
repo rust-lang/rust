@@ -21,9 +21,12 @@ use rustc_type_ir::{
 use crate::{
     db::HirDatabase,
     next_solver::{
-        Canonical, DbInterner, GenericArgs, Goal, ParamEnv, Predicate, SolverContext, Span, Ty,
-        TyKind,
-        infer::{DbInternerInferExt, InferCtxt, traits::ObligationCause},
+        Canonical, DbInterner, GenericArgs, Goal, ParamEnv, Predicate, SolverContext, Span,
+        StoredClauses, Ty, TyKind,
+        infer::{
+            DbInternerInferExt, InferCtxt,
+            traits::{Obligation, ObligationCause},
+        },
         obligation_ctxt::ObligationCtxt,
     },
 };
@@ -33,6 +36,31 @@ use crate::{
 pub struct ParamEnvAndCrate<'db> {
     pub param_env: ParamEnv<'db>,
     pub krate: Crate,
+}
+
+impl<'db> ParamEnvAndCrate<'db> {
+    #[inline]
+    pub fn store(self) -> StoredParamEnvAndCrate {
+        StoredParamEnvAndCrate { param_env: self.param_env.clauses.store(), krate: self.krate }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct StoredParamEnvAndCrate {
+    param_env: StoredClauses,
+    pub krate: Crate,
+}
+
+impl StoredParamEnvAndCrate {
+    #[inline]
+    pub fn param_env(&self) -> ParamEnv<'_> {
+        ParamEnv { clauses: self.param_env.as_ref() }
+    }
+
+    #[inline]
+    pub fn as_ref(&self) -> ParamEnvAndCrate<'_> {
+        ParamEnvAndCrate { param_env: self.param_env(), krate: self.krate }
+    }
 }
 
 /// This should be used in `hir` only.
@@ -82,6 +110,16 @@ pub fn next_trait_solve_canonical_in_ctxt<'db>(
 
         let res = context.evaluate_root_goal(goal, Span::dummy(), None);
 
+        let obligation = Obligation {
+            cause: ObligationCause::dummy(),
+            param_env: goal.param_env,
+            recursion_depth: 0,
+            predicate: goal.predicate,
+        };
+        infer_ctxt.inspect_evaluated_obligation(&obligation, &res, || {
+            Some(context.evaluate_root_goal_for_proof_tree(goal, Span::dummy()).1)
+        });
+
         let res = res.map(|r| (r.has_changed, r.certainty));
 
         tracing::debug!("solve_nextsolver({:?}) => {:?}", goal, res);
@@ -104,6 +142,16 @@ pub fn next_trait_solve_in_ctxt<'db, 'a>(
     let context = <&SolverContext<'db>>::from(infer_ctxt);
 
     let res = context.evaluate_root_goal(goal, Span::dummy(), None);
+
+    let obligation = Obligation {
+        cause: ObligationCause::dummy(),
+        param_env: goal.param_env,
+        recursion_depth: 0,
+        predicate: goal.predicate,
+    };
+    infer_ctxt.inspect_evaluated_obligation(&obligation, &res, || {
+        Some(context.evaluate_root_goal_for_proof_tree(goal, Span::dummy()).1)
+    });
 
     let res = res.map(|r| (r.has_changed, r.certainty));
 

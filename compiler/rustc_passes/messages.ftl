@@ -236,14 +236,17 @@ passes_feature_previously_declared =
 passes_feature_stable_twice =
     feature `{$feature}` is declared stable since {$since}, but was previously declared stable since {$prev_since}
 
+passes_function_not_found_in_trait = function not found in this trait
+
+passes_function_not_have_default_implementation = function doesn't have a default implementation
+    .note = required by this annotation
+
+passes_functions_names_duplicated = functions names are duplicated
+    .note = all `#[rustc_must_implement_one_of]` arguments must be unique
+
 passes_has_incoherent_inherent_impl =
     `rustc_has_incoherent_inherent_impls` attribute should be applied to types or traits
     .label = only adts, extern types and traits are supported
-
-passes_ignored_attr_with_macro =
-    `#[{$sym}]` is ignored on struct fields, match arms and macro defs
-    .warn = {-passes_previously_accepted}
-    .note = {-passes_see_issue(issue: "80564")}
 
 passes_ignored_derived_impls =
     `{$name}` has {$trait_list_len ->
@@ -375,13 +378,15 @@ passes_multiple_rustc_main =
     .first = first `#[rustc_main]` function
     .additional = additional `#[rustc_main]` function
 
+passes_must_implement_not_function = not a function
+
+passes_must_implement_not_function_note = all `#[rustc_must_implement_one_of]` arguments must be associated function names
+
+passes_must_implement_not_function_span_note = required by this annotation
+
 passes_must_not_suspend =
     `must_not_suspend` attribute should be applied to a struct, enum, union, or trait
     .label = is not a struct, enum, union, or trait
-
-passes_no_link =
-    attribute should be applied to an `extern crate` item
-    .label = not an `extern crate` item
 
 passes_no_main_function =
     `main` function not found in crate `{$crate_name}`
@@ -478,20 +483,10 @@ passes_rustc_legacy_const_generics_index_exceed =
         *[other] arguments
     }
 
-passes_rustc_legacy_const_generics_index_negative =
-    arguments should be non-negative integers
-
 passes_rustc_legacy_const_generics_only =
     #[rustc_legacy_const_generics] functions must only have const generics
     .label = non-const generic parameter
 
-passes_rustc_lint_opt_deny_field_access =
-    `#[rustc_lint_opt_deny_field_access]` should be applied to a field
-    .label = not a field
-
-passes_rustc_lint_opt_ty =
-    `#[rustc_lint_opt_ty]` should be applied to a struct
-    .label = not a struct
 
 passes_rustc_pub_transparent =
     attribute should be applied to `#[repr(transparent)]` types
@@ -502,21 +497,6 @@ passes_sanitize_attribute_not_allowed =
     .not_fn_impl_mod = not a function, impl block, or module
     .no_body = function has no body
     .help = sanitize attribute can be applied to a function (with body), impl block, or module
-
-passes_should_be_applied_to_fn =
-    attribute should be applied to a function definition
-    .label = {$on_crate ->
-        [true] cannot be applied to crates
-        *[false] not a function definition
-    }
-
-passes_should_be_applied_to_static =
-    attribute should be applied to a static
-    .label = not a static
-
-passes_should_be_applied_to_trait =
-    attribute should be applied to a trait
-    .label = not a trait
 
 passes_trait_impl_const_stability_mismatch = const stability on the impl does not match the const stability on the trait
 passes_trait_impl_const_stability_mismatch_impl_stable = this impl is (implicitly) stable...

@@ -896,7 +896,7 @@ mod sealed {
     #[cfg_attr(test, assert_instr(vrepb, IMM2 = 1))]
     unsafe fn vrepb<const IMM2: u32>(a: vector_signed_char) -> vector_signed_char {
         static_assert_uimm_bits!(IMM2, 4);
-        simd_shuffle(a, a, const { u32x16::from_array([IMM2; 16]) })
+        simd_shuffle!(a, a, [IMM2; 16])
     }
 
     #[inline]
@@ -904,7 +904,7 @@ mod sealed {
     #[cfg_attr(test, assert_instr(vreph, IMM2 = 1))]
     unsafe fn vreph<const IMM2: u32>(a: vector_signed_short) -> vector_signed_short {
         static_assert_uimm_bits!(IMM2, 3);
-        simd_shuffle(a, a, const { u32x8::from_array([IMM2; 8]) })
+        simd_shuffle!(a, a, [IMM2; 8])
     }
 
     #[inline]
@@ -912,7 +912,7 @@ mod sealed {
     #[cfg_attr(test, assert_instr(vrepf, IMM2 = 1))]
     unsafe fn vrepf<const IMM2: u32>(a: vector_signed_int) -> vector_signed_int {
         static_assert_uimm_bits!(IMM2, 2);
-        simd_shuffle(a, a, const { u32x4::from_array([IMM2; 4]) })
+        simd_shuffle!(a, a, [IMM2; 4])
     }
 
     #[inline]
@@ -920,7 +920,7 @@ mod sealed {
     #[cfg_attr(test, assert_instr(vrepg, IMM2 = 1))]
     unsafe fn vrepg<const IMM2: u32>(a: vector_signed_long_long) -> vector_signed_long_long {
         static_assert_uimm_bits!(IMM2, 1);
-        simd_shuffle(a, a, const { u32x2::from_array([IMM2; 2]) })
+        simd_shuffle!(a, a, [IMM2; 2])
     }
 
     macro_rules! impl_vec_splat {
@@ -5307,11 +5307,13 @@ pub unsafe fn vec_search_string_until_zero_cc<T: sealed::VectorSearchString>(
 #[inline]
 #[target_feature(enable = "vector-enhancements-1")]
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
-// FIXME: this emits `vflls` where `vldeb` is expected
-// #[cfg_attr(all(test, target_feature = "vector-enhancements-1"), assert_instr(vldeb))]
+// NOTE: `vflls` and `vldeb` are equivalent; our disassmbler prefers vflls.
+#[cfg_attr(
+    all(test, target_feature = "vector-enhancements-1"),
+    assert_instr(vflls)
+)]
 pub unsafe fn vec_doublee(a: vector_float) -> vector_double {
-    let even = simd_shuffle::<_, _, f32x2>(a, a, const { u32x2::from_array([0, 2]) });
-    simd_as(even)
+    simd_as::<f32x2, vector_double>(simd_shuffle!(a, a, [0, 2]))
 }
 
 /// Vector Convert from double to float (even elements)
@@ -5322,11 +5324,7 @@ pub unsafe fn vec_doublee(a: vector_float) -> vector_double {
 // #[cfg_attr(all(test, target_feature = "vector-enhancements-1"), assert_instr(vledb))]
 pub unsafe fn vec_floate(a: vector_double) -> vector_float {
     let truncated: f32x2 = simd_as(a);
-    simd_shuffle(
-        truncated,
-        truncated,
-        const { u32x4::from_array([0, 0, 1, 1]) },
-    )
+    simd_shuffle!(truncated, truncated, [0, 0, 1, 1])
 }
 
 /// Vector Convert from int to float

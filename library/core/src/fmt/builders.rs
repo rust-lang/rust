@@ -1226,7 +1226,7 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
 /// assert_eq!(format!("{}", wrapped), "'a'");
 /// assert_eq!(format!("{:?}", wrapped), "'a'");
 /// ```
-#[stable(feature = "fmt_from_fn", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "fmt_from_fn", since = "1.93.0")]
 #[must_use = "returns a type implementing Debug and Display, which do not have any effects unless they are used"]
 pub fn from_fn<F: Fn(&mut fmt::Formatter<'_>) -> fmt::Result>(f: F) -> FromFn<F> {
     FromFn(f)
@@ -1235,10 +1235,10 @@ pub fn from_fn<F: Fn(&mut fmt::Formatter<'_>) -> fmt::Result>(f: F) -> FromFn<F>
 /// Implements [`fmt::Debug`] and [`fmt::Display`] via the provided closure.
 ///
 /// Created with [`from_fn`].
-#[stable(feature = "fmt_from_fn", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "fmt_from_fn", since = "1.93.0")]
 pub struct FromFn<F>(F);
 
-#[stable(feature = "fmt_from_fn", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "fmt_from_fn", since = "1.93.0")]
 impl<F> fmt::Debug for FromFn<F>
 where
     F: Fn(&mut fmt::Formatter<'_>) -> fmt::Result,
@@ -1248,7 +1248,7 @@ where
     }
 }
 
-#[stable(feature = "fmt_from_fn", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "fmt_from_fn", since = "1.93.0")]
 impl<F> fmt::Display for FromFn<F>
 where
     F: Fn(&mut fmt::Formatter<'_>) -> fmt::Result,

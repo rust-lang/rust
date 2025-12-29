@@ -24,7 +24,7 @@ error: fn_abi_of(extern_c) = FnAbi {
                                offsets: [
                                    Size(0 bytes),
                                ],
-                               memory_index: [
+                               in_memory_order: [
                                    0,
                                ],
                            },
@@ -65,7 +65,7 @@ error: fn_abi_of(extern_c) = FnAbi {
                        },
                        fields: Arbitrary {
                            offsets: [],
-                           memory_index: [],
+                           in_memory_order: [],
                        },
                        largest_niche: None,
                        uninhabited: false,
@@ -106,7 +106,7 @@ error: fn_abi_of(extern_rust) = FnAbi {
                                offsets: [
                                    Size(0 bytes),
                                ],
-                               memory_index: [
+                               in_memory_order: [
                                    0,
                                ],
                            },
@@ -165,7 +165,7 @@ error: fn_abi_of(extern_rust) = FnAbi {
                        },
                        fields: Arbitrary {
                            offsets: [],
-                           memory_index: [],
+                           in_memory_order: [],
                        },
                        largest_niche: None,
                        uninhabited: false,

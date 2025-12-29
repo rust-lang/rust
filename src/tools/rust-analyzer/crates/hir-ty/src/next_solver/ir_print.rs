@@ -2,7 +2,6 @@
 
 use std::any::type_name_of_val;
 
-use rustc_type_ir::inherent::SliceLike;
 use rustc_type_ir::{self as ty, ir_print::IrPrint};
 
 use super::SolverDefId;

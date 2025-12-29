@@ -14,10 +14,7 @@ use rustc_abi::{
     TargetDataLayout, WrappingRange,
 };
 use rustc_index::IndexVec;
-use rustc_type_ir::{
-    FloatTy, IntTy, UintTy,
-    inherent::{IntoKind, SliceLike},
-};
+use rustc_type_ir::{FloatTy, IntTy, UintTy, inherent::IntoKind};
 use triomphe::Arc;
 
 use crate::{
@@ -25,9 +22,10 @@ use crate::{
     consteval::try_const_usize,
     db::HirDatabase,
     next_solver::{
-        DbInterner, GenericArgs, Ty, TyKind, TypingMode,
+        DbInterner, GenericArgs, StoredTy, Ty, TyKind, TypingMode,
         infer::{DbInternerInferExt, traits::ObligationCause},
     },
+    traits::StoredParamEnvAndCrate,
 };
 
 pub(crate) use self::adt::layout_of_adt_cycle_result;
@@ -144,22 +142,22 @@ fn layout_of_simd_ty<'db>(
     let Some(TyKind::Array(e_ty, e_len)) = fields
         .next()
         .filter(|_| fields.next().is_none())
-        .map(|f| (*f.1).instantiate(DbInterner::new_no_crate(db), args).kind())
+        .map(|f| (*f.1).get().instantiate(DbInterner::new_no_crate(db), args).kind())
     else {
         return Err(LayoutError::InvalidSimdType);
     };
 
     let e_len = try_const_usize(db, e_len).ok_or(LayoutError::HasErrorConst)? as u64;
-    let e_ly = db.layout_of_ty(e_ty, env)?;
+    let e_ly = db.layout_of_ty(e_ty.store(), env.store())?;
 
     let cx = LayoutCx::new(dl);
     Ok(Arc::new(cx.calc.simd_type(e_ly, e_len, repr_packed)?))
 }
 
-pub fn layout_of_ty_query<'db>(
-    db: &'db dyn HirDatabase,
-    ty: Ty<'db>,
-    trait_env: ParamEnvAndCrate<'db>,
+pub fn layout_of_ty_query(
+    db: &dyn HirDatabase,
+    ty: StoredTy,
+    trait_env: StoredParamEnvAndCrate,
 ) -> Result<Arc<Layout>, LayoutError> {
     let krate = trait_env.krate;
     let interner = DbInterner::new_with(db, krate);
@@ -170,19 +168,29 @@ pub fn layout_of_ty_query<'db>(
     let cx = LayoutCx::new(dl);
     let infer_ctxt = interner.infer_ctxt().build(TypingMode::PostAnalysis);
     let cause = ObligationCause::dummy();
-    let ty = infer_ctxt.at(&cause, trait_env.param_env).deeply_normalize(ty).unwrap_or(ty);
+    let ty = infer_ctxt
+        .at(&cause, trait_env.param_env())
+        .deeply_normalize(ty.as_ref())
+        .unwrap_or(ty.as_ref());
     let result = match ty.kind() {
         TyKind::Adt(def, args) => {
             match def.inner().id {
                 hir_def::AdtId::StructId(s) => {
                     let repr = AttrFlags::repr(db, s.into()).unwrap_or_default();
                     if repr.simd() {
-                        return layout_of_simd_ty(db, s, repr.packed(), &args, trait_env, &target);
+                        return layout_of_simd_ty(
+                            db,
+                            s,
+                            repr.packed(),
+                            &args,
+                            trait_env.as_ref(),
+                            &target,
+                        );
                     }
                 }
                 _ => {}
             }
-            return db.layout_of_adt(def.inner().id, args, trait_env);
+            return db.layout_of_adt(def.inner().id, args.store(), trait_env);
         }
         TyKind::Bool => Layout::scalar(
             dl,
@@ -246,21 +254,23 @@ pub fn layout_of_ty_query<'db>(
         ),
         TyKind::Tuple(tys) => {
             let kind =
-                if tys.len() == 0 { StructKind::AlwaysSized } else { StructKind::MaybeUnsized };
+                if tys.is_empty() { StructKind::AlwaysSized } else { StructKind::MaybeUnsized };
 
-            let fields =
-                tys.iter().map(|k| db.layout_of_ty(k, trait_env)).collect::<Result<Vec<_>, _>>()?;
+            let fields = tys
+                .iter()
+                .map(|k| db.layout_of_ty(k.store(), trait_env.clone()))
+                .collect::<Result<Vec<_>, _>>()?;
             let fields = fields.iter().map(|it| &**it).collect::<Vec<_>>();
             let fields = fields.iter().collect::<IndexVec<_, _>>();
             cx.calc.univariant(&fields, &ReprOptions::default(), kind)?
         }
         TyKind::Array(element, count) => {
             let count = try_const_usize(db, count).ok_or(LayoutError::HasErrorConst)? as u64;
-            let element = db.layout_of_ty(element, trait_env)?;
+            let element = db.layout_of_ty(element.store(), trait_env)?;
             cx.calc.array_like::<_, _, ()>(&element, Some(count))?
         }
         TyKind::Slice(element) => {
-            let element = db.layout_of_ty(element, trait_env)?;
+            let element = db.layout_of_ty(element.store(), trait_env)?;
             cx.calc.array_like::<_, _, ()>(&element, None)?
         }
         TyKind::Str => {
@@ -325,9 +335,11 @@ pub fn layout_of_ty_query<'db>(
             let fields = captures
                 .iter()
                 .map(|it| {
-                    let ty =
-                        it.ty.instantiate(interner, args.split_closure_args_untupled().parent_args);
-                    db.layout_of_ty(ty, trait_env)
+                    let ty = it
+                        .ty
+                        .get()
+                        .instantiate(interner, args.split_closure_args_untupled().parent_args);
+                    db.layout_of_ty(ty.store(), trait_env.clone())
                 })
                 .collect::<Result<Vec<_>, _>>()?;
             let fields = fields.iter().map(|it| &**it).collect::<Vec<_>>();
@@ -357,10 +369,11 @@ pub fn layout_of_ty_query<'db>(
     Ok(Arc::new(result))
 }
 
-pub(crate) fn layout_of_ty_cycle_result<'db>(
+pub(crate) fn layout_of_ty_cycle_result(
     _: &dyn HirDatabase,
-    _: Ty<'db>,
-    _: ParamEnvAndCrate<'db>,
+    _: salsa::Id,
+    _: StoredTy,
+    _: StoredParamEnvAndCrate,
 ) -> Result<Arc<Layout>, LayoutError> {
     Err(LayoutError::RecursiveTypeWithoutIndirection)
 }
@@ -376,7 +389,7 @@ fn struct_tail_erasing_lifetimes<'a>(db: &'a dyn HirDatabase, pointee: Ty<'a>) -
             let mut it = data.fields().iter().rev();
             match it.next() {
                 Some((f, _)) => {
-                    let last_field_ty = field_ty(db, struct_id.into(), f, &args);
+                    let last_field_ty = field_ty(db, struct_id.into(), f, args);
                     struct_tail_erasing_lifetimes(db, last_field_ty)
                 }
                 None => pointee,
@@ -397,9 +410,9 @@ fn field_ty<'a>(
     db: &'a dyn HirDatabase,
     def: hir_def::VariantId,
     fd: LocalFieldId,
-    args: &GenericArgs<'a>,
+    args: GenericArgs<'a>,
 ) -> Ty<'a> {
-    db.field_types(def)[fd].instantiate(DbInterner::new_no_crate(db), args)
+    db.field_types(def)[fd].get().instantiate(DbInterner::new_no_crate(db), args)
 }
 
 fn scalar_unit(dl: &TargetDataLayout, value: Primitive) -> Scalar {

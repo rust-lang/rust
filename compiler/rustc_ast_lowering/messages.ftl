@@ -6,6 +6,7 @@ ast_lowering_abi_specified_multiple_times =
 ast_lowering_arbitrary_expression_in_pattern =
     arbitrary expressions aren't allowed in patterns
     .pattern_from_macro_note = the `expr` fragment specifier forces the metavariable's content to be an expression
+    .const_block_in_pattern_help = use a named `const`-item or an `if`-guard (`x if x == const {"{ ... }"}`) instead
 
 ast_lowering_argument = argument
 
@@ -56,6 +57,8 @@ ast_lowering_coroutine_too_many_parameters =
 ast_lowering_default_field_in_tuple = default fields are not supported in tuple structs
     .label = default fields are only supported on structs
 
+ast_lowering_delegation_cycle_in_signature_resolution = encountered a cycle during delegation signature resolution
+ast_lowering_delegation_unresolved_callee = failed to resolve delegation callee
 ast_lowering_does_not_support_modifiers =
     the `{$class_name}` register class does not support template modifiers
 
