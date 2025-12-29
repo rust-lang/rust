@@ -91,7 +91,6 @@ where
             | Rvalue::ThreadLocalRef(..)
             | Rvalue::Repeat(..)
             | Rvalue::BinaryOp(..)
-            | Rvalue::NullaryOp(..)
             | Rvalue::UnaryOp(..)
             | Rvalue::Discriminant(..)
             | Rvalue::Aggregate(..)

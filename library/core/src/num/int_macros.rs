@@ -1275,8 +1275,8 @@ macro_rules! int_impl {
         /// i.e. when [`checked_neg`] would return `None`.
         ///
         #[doc = concat!("[`checked_neg`]: ", stringify!($SelfT), "::checked_neg")]
-        #[stable(feature = "unchecked_neg", since = "CURRENT_RUSTC_VERSION")]
-        #[rustc_const_stable(feature = "unchecked_neg", since = "CURRENT_RUSTC_VERSION")]
+        #[stable(feature = "unchecked_neg", since = "1.93.0")]
+        #[rustc_const_stable(feature = "unchecked_neg", since = "1.93.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
@@ -1392,8 +1392,8 @@ macro_rules! int_impl {
         /// i.e. when [`checked_shl`] would return `None`.
         ///
         #[doc = concat!("[`checked_shl`]: ", stringify!($SelfT), "::checked_shl")]
-        #[stable(feature = "unchecked_shifts", since = "CURRENT_RUSTC_VERSION")]
-        #[rustc_const_stable(feature = "unchecked_shifts", since = "CURRENT_RUSTC_VERSION")]
+        #[stable(feature = "unchecked_shifts", since = "1.93.0")]
+        #[rustc_const_stable(feature = "unchecked_shifts", since = "1.93.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
@@ -1421,8 +1421,15 @@ macro_rules! int_impl {
         /// # Examples
         ///
         /// ```
-        #[doc = concat!("assert_eq!(0x1", stringify!($SelfT), ".unbounded_shl(4), 0x10);")]
-        #[doc = concat!("assert_eq!(0x1", stringify!($SelfT), ".unbounded_shl(129), 0);")]
+        #[doc = concat!("assert_eq!(0x1_", stringify!($SelfT), ".unbounded_shl(4), 0x10);")]
+        #[doc = concat!("assert_eq!(0x1_", stringify!($SelfT), ".unbounded_shl(129), 0);")]
+        #[doc = concat!("assert_eq!(0b101_", stringify!($SelfT), ".unbounded_shl(0), 0b101);")]
+        #[doc = concat!("assert_eq!(0b101_", stringify!($SelfT), ".unbounded_shl(1), 0b1010);")]
+        #[doc = concat!("assert_eq!(0b101_", stringify!($SelfT), ".unbounded_shl(2), 0b10100);")]
+        #[doc = concat!("assert_eq!(42_", stringify!($SelfT), ".unbounded_shl(", stringify!($BITS), "), 0);")]
+        #[doc = concat!("assert_eq!(42_", stringify!($SelfT), ".unbounded_shl(1).unbounded_shl(", stringify!($BITS_MINUS_ONE), "), 0);")]
+        #[doc = concat!("assert_eq!((-13_", stringify!($SelfT), ").unbounded_shl(", stringify!($BITS), "), 0);")]
+        #[doc = concat!("assert_eq!((-13_", stringify!($SelfT), ").unbounded_shl(1).unbounded_shl(", stringify!($BITS_MINUS_ONE), "), 0);")]
         /// ```
         #[stable(feature = "unbounded_shifts", since = "1.87.0")]
         #[rustc_const_stable(feature = "unbounded_shifts", since = "1.87.0")]
@@ -1564,8 +1571,8 @@ macro_rules! int_impl {
         /// i.e. when [`checked_shr`] would return `None`.
         ///
         #[doc = concat!("[`checked_shr`]: ", stringify!($SelfT), "::checked_shr")]
-        #[stable(feature = "unchecked_shifts", since = "CURRENT_RUSTC_VERSION")]
-        #[rustc_const_stable(feature = "unchecked_shifts", since = "CURRENT_RUSTC_VERSION")]
+        #[stable(feature = "unchecked_shifts", since = "1.93.0")]
+        #[rustc_const_stable(feature = "unchecked_shifts", since = "1.93.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
@@ -1594,9 +1601,16 @@ macro_rules! int_impl {
         /// # Examples
         ///
         /// ```
-        #[doc = concat!("assert_eq!(0x10", stringify!($SelfT), ".unbounded_shr(4), 0x1);")]
-        #[doc = concat!("assert_eq!(0x10", stringify!($SelfT), ".unbounded_shr(129), 0);")]
+        #[doc = concat!("assert_eq!(0x10_", stringify!($SelfT), ".unbounded_shr(4), 0x1);")]
+        #[doc = concat!("assert_eq!(0x10_", stringify!($SelfT), ".unbounded_shr(129), 0);")]
         #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MIN.unbounded_shr(129), -1);")]
+        #[doc = concat!("assert_eq!(0b1010_", stringify!($SelfT), ".unbounded_shr(0), 0b1010);")]
+        #[doc = concat!("assert_eq!(0b1010_", stringify!($SelfT), ".unbounded_shr(1), 0b101);")]
+        #[doc = concat!("assert_eq!(0b1010_", stringify!($SelfT), ".unbounded_shr(2), 0b10);")]
+        #[doc = concat!("assert_eq!(42_", stringify!($SelfT), ".unbounded_shr(", stringify!($BITS), "), 0);")]
+        #[doc = concat!("assert_eq!(42_", stringify!($SelfT), ".unbounded_shr(1).unbounded_shr(", stringify!($BITS_MINUS_ONE), "), 0);")]
+        #[doc = concat!("assert_eq!((-13_", stringify!($SelfT), ").unbounded_shr(", stringify!($BITS), "), -1);")]
+        #[doc = concat!("assert_eq!((-13_", stringify!($SelfT), ").unbounded_shr(1).unbounded_shr(", stringify!($BITS_MINUS_ONE), "), -1);")]
         /// ```
         #[stable(feature = "unbounded_shifts", since = "1.87.0")]
         #[rustc_const_stable(feature = "unbounded_shifts", since = "1.87.0")]

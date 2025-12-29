@@ -95,7 +95,8 @@ pub unsafe fn _mm_stream_si64(mem_addr: *mut i64, a: i64) {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(movq))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm_cvtsi64_si128(a: i64) -> __m128i {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm_cvtsi64_si128(a: i64) -> __m128i {
     _mm_set_epi64x(0, a)
 }
 
@@ -107,7 +108,8 @@ pub fn _mm_cvtsi64_si128(a: i64) -> __m128i {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(movq))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm_cvtsi64x_si128(a: i64) -> __m128i {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm_cvtsi64x_si128(a: i64) -> __m128i {
     _mm_cvtsi64_si128(a)
 }
 
@@ -118,7 +120,8 @@ pub fn _mm_cvtsi64x_si128(a: i64) -> __m128i {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(movq))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm_cvtsi128_si64(a: __m128i) -> i64 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm_cvtsi128_si64(a: __m128i) -> i64 {
     unsafe { simd_extract!(a.as_i64x2(), 0) }
 }
 
@@ -129,7 +132,8 @@ pub fn _mm_cvtsi128_si64(a: __m128i) -> i64 {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(movq))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm_cvtsi128_si64x(a: __m128i) -> i64 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm_cvtsi128_si64x(a: __m128i) -> i64 {
     _mm_cvtsi128_si64(a)
 }
 
@@ -141,7 +145,8 @@ pub fn _mm_cvtsi128_si64x(a: __m128i) -> i64 {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(cvtsi2sd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm_cvtsi64_sd(a: __m128d, b: i64) -> __m128d {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm_cvtsi64_sd(a: __m128d, b: i64) -> __m128d {
     unsafe { simd_insert!(a, 0, b as f64) }
 }
 
@@ -153,13 +158,15 @@ pub fn _mm_cvtsi64_sd(a: __m128d, b: i64) -> __m128d {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(cvtsi2sd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm_cvtsi64x_sd(a: __m128d, b: i64) -> __m128d {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm_cvtsi64x_sd(a: __m128d, b: i64) -> __m128d {
     _mm_cvtsi64_sd(a, b)
 }
 
 #[cfg(test)]
 mod tests {
     use crate::core_arch::arch::x86_64::*;
+    use crate::core_arch::assert_eq_const as assert_eq;
     use std::boxed;
     use std::ptr;
     use stdarch_test::simd_test;
@@ -206,19 +213,19 @@ mod tests {
     }
 
     #[simd_test(enable = "sse2")]
-    unsafe fn test_mm_cvtsi64_si128() {
+    const unsafe fn test_mm_cvtsi64_si128() {
         let r = _mm_cvtsi64_si128(5);
         assert_eq_m128i(r, _mm_setr_epi64x(5, 0));
     }
 
     #[simd_test(enable = "sse2")]
-    unsafe fn test_mm_cvtsi128_si64() {
+    const unsafe fn test_mm_cvtsi128_si64() {
         let r = _mm_cvtsi128_si64(_mm_setr_epi64x(5, 0));
         assert_eq!(r, 5);
     }
 
     #[simd_test(enable = "sse2")]
-    unsafe fn test_mm_cvtsi64_sd() {
+    const unsafe fn test_mm_cvtsi64_sd() {
         let a = _mm_set1_pd(3.5);
         let r = _mm_cvtsi64_sd(a, 5);
         assert_eq_m128d(r, _mm_setr_pd(5.0, 3.5));

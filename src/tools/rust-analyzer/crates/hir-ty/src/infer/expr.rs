@@ -17,7 +17,7 @@ use hir_expand::name::Name;
 use rustc_ast_ir::Mutability;
 use rustc_type_ir::{
     CoroutineArgs, CoroutineArgsParts, InferTy, Interner,
-    inherent::{AdtDef, GenericArgs as _, IntoKind, SliceLike, Ty as _},
+    inherent::{AdtDef, GenericArgs as _, IntoKind, Ty as _},
 };
 use syntax::ast::RangeOp;
 use tracing::debug;
@@ -35,7 +35,7 @@ use crate::{
     lower::{GenericPredicates, lower_mutability},
     method_resolution::{self, CandidateId, MethodCallee, MethodError},
     next_solver::{
-        ErrorGuaranteed, FnSig, GenericArgs, TraitRef, Ty, TyKind, TypeError,
+        ErrorGuaranteed, FnSig, GenericArg, GenericArgs, TraitRef, Ty, TyKind, TypeError,
         infer::{
             BoundRegionConversionTime, InferOk,
             traits::{Obligation, ObligationCause},
@@ -68,10 +68,10 @@ impl<'db> InferenceContext<'_, 'db> {
         if let Some(expected_ty) = expected.only_has_type(&mut self.table) {
             let could_unify = self.unify(ty, expected_ty);
             if !could_unify {
-                self.result
-                    .type_mismatches
-                    .get_or_insert_default()
-                    .insert(tgt_expr.into(), TypeMismatch { expected: expected_ty, actual: ty });
+                self.result.type_mismatches.get_or_insert_default().insert(
+                    tgt_expr.into(),
+                    TypeMismatch { expected: expected_ty.store(), actual: ty.store() },
+                );
             }
         }
         ty
@@ -98,10 +98,10 @@ impl<'db> InferenceContext<'_, 'db> {
             match self.coerce(expr.into(), ty, target, AllowTwoPhase::No, is_read) {
                 Ok(res) => res,
                 Err(_) => {
-                    self.result
-                        .type_mismatches
-                        .get_or_insert_default()
-                        .insert(expr.into(), TypeMismatch { expected: target, actual: ty });
+                    self.result.type_mismatches.get_or_insert_default().insert(
+                        expr.into(),
+                        TypeMismatch { expected: target.store(), actual: ty.store() },
+                    );
                     target
                 }
             }
@@ -276,7 +276,7 @@ impl<'db> InferenceContext<'_, 'db> {
         if ty.is_never() {
             if let Some(adjustments) = self.result.expr_adjustments.get(&expr) {
                 return if let [Adjustment { kind: Adjust::NeverToAny, target }] = &**adjustments {
-                    *target
+                    target.as_ref()
                 } else {
                     self.err_ty()
                 };
@@ -292,10 +292,10 @@ impl<'db> InferenceContext<'_, 'db> {
             if let Some(expected_ty) = expected.only_has_type(&mut self.table) {
                 let could_unify = self.unify(ty, expected_ty);
                 if !could_unify {
-                    self.result
-                        .type_mismatches
-                        .get_or_insert_default()
-                        .insert(expr.into(), TypeMismatch { expected: expected_ty, actual: ty });
+                    self.result.type_mismatches.get_or_insert_default().insert(
+                        expr.into(),
+                        TypeMismatch { expected: expected_ty.store(), actual: ty.store() },
+                    );
                 }
             }
             ty
@@ -319,7 +319,7 @@ impl<'db> InferenceContext<'_, 'db> {
                 let expected = &expected.adjust_for_branches(&mut self.table);
                 self.infer_expr_coerce_never(
                     condition,
-                    &Expectation::HasType(self.types.bool),
+                    &Expectation::HasType(self.types.types.bool),
                     ExprIsRead::Yes,
                 );
 
@@ -375,7 +375,7 @@ impl<'db> InferenceContext<'_, 'db> {
                     input_ty,
                     Some(DeclContext { origin: DeclOrigin::LetExpr }),
                 );
-                self.types.bool
+                self.types.types.bool
             }
             Expr::Block { statements, tail, label, id: _ } => {
                 self.infer_block(tgt_expr, statements, *tail, *label, expected)
@@ -400,7 +400,7 @@ impl<'db> InferenceContext<'_, 'db> {
                     self.with_breakable_ctx(BreakableKind::Loop, Some(ty), label, |this| {
                         this.infer_expr(
                             body,
-                            &Expectation::HasType(this.types.unit),
+                            &Expectation::HasType(this.types.types.unit),
                             ExprIsRead::Yes,
                         );
                     });
@@ -410,7 +410,7 @@ impl<'db> InferenceContext<'_, 'db> {
                         self.diverges = Diverges::Maybe;
                         breaks
                     }
-                    None => self.types.never,
+                    None => self.types.types.never,
                 }
             }
             Expr::Closure { body, args, ret_type, arg_types, closure_kind, capture_by: _ } => self
@@ -451,7 +451,7 @@ impl<'db> InferenceContext<'_, 'db> {
 
                 if arms.is_empty() {
                     self.diverges = Diverges::Always;
-                    self.types.never
+                    self.types.types.never
                 } else {
                     let matchee_diverges = mem::replace(&mut self.diverges, Diverges::Maybe);
                     let mut all_arms_diverge = Diverges::Always;
@@ -463,7 +463,7 @@ impl<'db> InferenceContext<'_, 'db> {
                     let result_ty = match &expected {
                         // We don't coerce to `()` so that if the match expression is a
                         // statement it's branches can have any consistent type.
-                        Expectation::HasType(ty) if *ty != self.types.unit => *ty,
+                        Expectation::HasType(ty) if *ty != self.types.types.unit => *ty,
                         _ => self.table.next_ty_var(),
                     };
                     let mut coerce = CoerceMany::new(result_ty);
@@ -473,7 +473,7 @@ impl<'db> InferenceContext<'_, 'db> {
                             self.diverges = Diverges::Maybe;
                             self.infer_expr_coerce_never(
                                 guard_expr,
-                                &Expectation::HasType(self.types.bool),
+                                &Expectation::HasType(self.types.types.bool),
                                 ExprIsRead::Yes,
                             );
                         }
@@ -504,7 +504,7 @@ impl<'db> InferenceContext<'_, 'db> {
                         bad_value_break: false,
                     });
                 };
-                self.types.never
+                self.types.types.never
             }
             &Expr::Break { expr, label } => {
                 let val_ty = if let Some(expr) = expr {
@@ -528,7 +528,7 @@ impl<'db> InferenceContext<'_, 'db> {
                         ExprIsRead::Yes,
                     )
                 } else {
-                    self.types.unit
+                    self.types.types.unit
                 };
 
                 match find_breakable(&mut self.breakables, label) {
@@ -558,7 +558,7 @@ impl<'db> InferenceContext<'_, 'db> {
                         });
                     }
                 }
-                self.types.never
+                self.types.types.never
             }
             &Expr::Return { expr } => self.infer_expr_return(tgt_expr, expr),
             &Expr::Become { expr } => self.infer_expr_become(expr),
@@ -571,7 +571,7 @@ impl<'db> InferenceContext<'_, 'db> {
                             ExprIsRead::Yes,
                         );
                     } else {
-                        let unit = self.types.unit;
+                        let unit = self.types.types.unit;
                         let _ = self.coerce(
                             tgt_expr.into(),
                             unit,
@@ -583,14 +583,14 @@ impl<'db> InferenceContext<'_, 'db> {
                     resume_ty
                 } else {
                     // FIXME: report error (yield expr in non-coroutine)
-                    self.types.error
+                    self.types.types.error
                 }
             }
             Expr::Yeet { expr } => {
                 if let &Some(expr) = expr {
                     self.infer_expr_no_expect(expr, ExprIsRead::Yes);
                 }
-                self.types.never
+                self.types.types.never
             }
             Expr::RecordLit { path, fields, spread, .. } => {
                 let (ty, def_id) = self.resolve_variant(tgt_expr.into(), path.as_deref(), false);
@@ -599,7 +599,7 @@ impl<'db> InferenceContext<'_, 'db> {
                     self.unify(ty, t);
                 }
 
-                let substs = ty.as_adt().map(|(_, s)| s).unwrap_or(self.types.empty_args);
+                let substs = ty.as_adt().map(|(_, s)| s).unwrap_or(self.types.empty.generic_args);
                 if let Some(variant) = def_id {
                     self.write_variant_resolution(tgt_expr.into(), variant);
                 }
@@ -637,7 +637,7 @@ impl<'db> InferenceContext<'_, 'db> {
                                 }
                             };
                             let field_ty = field_def.map_or(self.err_ty(), |it| {
-                                field_types[it].instantiate(self.interner(), &substs)
+                                field_types[it].get().instantiate(self.interner(), &substs)
                             });
 
                             // Field type might have some unknown types
@@ -768,7 +768,7 @@ impl<'db> InferenceContext<'_, 'db> {
                     // assignments into blocks.
                     self.table.new_maybe_never_var()
                 } else {
-                    self.types.unit
+                    self.types.types.unit
                 }
             }
             Expr::Range { lhs, rhs, range_type } => {
@@ -780,12 +780,14 @@ impl<'db> InferenceContext<'_, 'db> {
                     Ty::new_adt(
                         self.interner(),
                         adt,
-                        GenericArgs::new_from_iter(self.interner(), [ty.into()]),
+                        GenericArgs::new_from_slice(&[GenericArg::from(ty)]),
                     )
                 };
                 match (range_type, lhs_ty, rhs_ty) {
                     (RangeOp::Exclusive, None, None) => match self.resolve_range_full() {
-                        Some(adt) => Ty::new_adt(self.interner(), adt, self.types.empty_args),
+                        Some(adt) => {
+                            Ty::new_adt(self.interner(), adt, self.types.empty.generic_args)
+                        }
                         None => self.err_ty(),
                     },
                     (RangeOp::Exclusive, None, Some(ty)) => match self.resolve_range_to() {
@@ -834,7 +836,7 @@ impl<'db> InferenceContext<'_, 'db> {
                         trait_element_ty
                     }
                     // FIXME: Report an error.
-                    None => self.types.error,
+                    None => self.types.types.error,
                 }
             }
             Expr::Tuple { exprs, .. } => {
@@ -859,10 +861,10 @@ impl<'db> InferenceContext<'_, 'db> {
             }
             Expr::Array(array) => self.infer_expr_array(array, expected),
             Expr::Literal(lit) => match lit {
-                Literal::Bool(..) => self.types.bool,
-                Literal::String(..) => self.types.static_str_ref,
+                Literal::Bool(..) => self.types.types.bool,
+                Literal::String(..) => self.types.types.static_str_ref,
                 Literal::ByteString(bs) => {
-                    let byte_type = self.types.u8;
+                    let byte_type = self.types.types.u8;
 
                     let len = consteval::usize_const(
                         self.db,
@@ -871,35 +873,46 @@ impl<'db> InferenceContext<'_, 'db> {
                     );
 
                     let array_type = Ty::new_array_with_const_len(self.interner(), byte_type, len);
-                    Ty::new_ref(self.interner(), self.types.re_static, array_type, Mutability::Not)
+                    Ty::new_ref(
+                        self.interner(),
+                        self.types.regions.statik,
+                        array_type,
+                        Mutability::Not,
+                    )
                 }
                 Literal::CString(..) => Ty::new_ref(
                     self.interner(),
-                    self.types.re_static,
+                    self.types.regions.statik,
                     self.lang_items.CStr.map_or_else(
                         || self.err_ty(),
-                        |strukt| Ty::new_adt(self.interner(), strukt.into(), self.types.empty_args),
+                        |strukt| {
+                            Ty::new_adt(
+                                self.interner(),
+                                strukt.into(),
+                                self.types.empty.generic_args,
+                            )
+                        },
                     ),
                     Mutability::Not,
                 ),
-                Literal::Char(..) => self.types.char,
+                Literal::Char(..) => self.types.types.char,
                 Literal::Int(_v, ty) => match ty {
                     Some(int_ty) => match int_ty {
-                        hir_def::builtin_type::BuiltinInt::Isize => self.types.isize,
-                        hir_def::builtin_type::BuiltinInt::I8 => self.types.i8,
-                        hir_def::builtin_type::BuiltinInt::I16 => self.types.i16,
-                        hir_def::builtin_type::BuiltinInt::I32 => self.types.i32,
-                        hir_def::builtin_type::BuiltinInt::I64 => self.types.i64,
-                        hir_def::builtin_type::BuiltinInt::I128 => self.types.i128,
+                        hir_def::builtin_type::BuiltinInt::Isize => self.types.types.isize,
+                        hir_def::builtin_type::BuiltinInt::I8 => self.types.types.i8,
+                        hir_def::builtin_type::BuiltinInt::I16 => self.types.types.i16,
+                        hir_def::builtin_type::BuiltinInt::I32 => self.types.types.i32,
+                        hir_def::builtin_type::BuiltinInt::I64 => self.types.types.i64,
+                        hir_def::builtin_type::BuiltinInt::I128 => self.types.types.i128,
                     },
                     None => {
                         let expected_ty = expected.to_option(&mut self.table);
                         tracing::debug!(?expected_ty);
                         let opt_ty = match expected_ty.as_ref().map(|it| it.kind()) {
                             Some(TyKind::Int(_) | TyKind::Uint(_)) => expected_ty,
-                            Some(TyKind::Char) => Some(self.types.u8),
+                            Some(TyKind::Char) => Some(self.types.types.u8),
                             Some(TyKind::RawPtr(..) | TyKind::FnDef(..) | TyKind::FnPtr(..)) => {
-                                Some(self.types.usize)
+                                Some(self.types.types.usize)
                             }
                             _ => None,
                         };
@@ -908,20 +921,20 @@ impl<'db> InferenceContext<'_, 'db> {
                 },
                 Literal::Uint(_v, ty) => match ty {
                     Some(int_ty) => match int_ty {
-                        hir_def::builtin_type::BuiltinUint::Usize => self.types.usize,
-                        hir_def::builtin_type::BuiltinUint::U8 => self.types.u8,
-                        hir_def::builtin_type::BuiltinUint::U16 => self.types.u16,
-                        hir_def::builtin_type::BuiltinUint::U32 => self.types.u32,
-                        hir_def::builtin_type::BuiltinUint::U64 => self.types.u64,
-                        hir_def::builtin_type::BuiltinUint::U128 => self.types.u128,
+                        hir_def::builtin_type::BuiltinUint::Usize => self.types.types.usize,
+                        hir_def::builtin_type::BuiltinUint::U8 => self.types.types.u8,
+                        hir_def::builtin_type::BuiltinUint::U16 => self.types.types.u16,
+                        hir_def::builtin_type::BuiltinUint::U32 => self.types.types.u32,
+                        hir_def::builtin_type::BuiltinUint::U64 => self.types.types.u64,
+                        hir_def::builtin_type::BuiltinUint::U128 => self.types.types.u128,
                     },
                     None => {
                         let expected_ty = expected.to_option(&mut self.table);
                         let opt_ty = match expected_ty.as_ref().map(|it| it.kind()) {
                             Some(TyKind::Int(_) | TyKind::Uint(_)) => expected_ty,
-                            Some(TyKind::Char) => Some(self.types.u8),
+                            Some(TyKind::Char) => Some(self.types.types.u8),
                             Some(TyKind::RawPtr(..) | TyKind::FnDef(..) | TyKind::FnPtr(..)) => {
-                                Some(self.types.usize)
+                                Some(self.types.types.usize)
                             }
                             _ => None,
                         };
@@ -930,10 +943,10 @@ impl<'db> InferenceContext<'_, 'db> {
                 },
                 Literal::Float(_v, ty) => match ty {
                     Some(float_ty) => match float_ty {
-                        hir_def::builtin_type::BuiltinFloat::F16 => self.types.f16,
-                        hir_def::builtin_type::BuiltinFloat::F32 => self.types.f32,
-                        hir_def::builtin_type::BuiltinFloat::F64 => self.types.f64,
-                        hir_def::builtin_type::BuiltinFloat::F128 => self.types.f128,
+                        hir_def::builtin_type::BuiltinFloat::F16 => self.types.types.f16,
+                        hir_def::builtin_type::BuiltinFloat::F32 => self.types.types.f32,
+                        hir_def::builtin_type::BuiltinFloat::F64 => self.types.types.f64,
+                        hir_def::builtin_type::BuiltinFloat::F128 => self.types.types.f128,
                     },
                     None => {
                         let opt_ty = expected
@@ -947,10 +960,13 @@ impl<'db> InferenceContext<'_, 'db> {
                 // Underscore expression is an error, we render a specialized diagnostic
                 // to let the user know what type is expected though.
                 let expected = expected.to_option(&mut self.table).unwrap_or_else(|| self.err_ty());
-                self.push_diagnostic(InferenceDiagnostic::TypedHole { expr: tgt_expr, expected });
+                self.push_diagnostic(InferenceDiagnostic::TypedHole {
+                    expr: tgt_expr,
+                    expected: expected.store(),
+                });
                 expected
             }
-            Expr::OffsetOf(_) => self.types.usize,
+            Expr::OffsetOf(_) => self.types.types.usize,
             Expr::InlineAsm(asm) => {
                 let check_expr_asm_operand = |this: &mut Self, expr, is_input: bool| {
                     let ty = this.infer_expr_no_expect(expr, ExprIsRead::Yes);
@@ -1011,7 +1027,7 @@ impl<'db> InferenceContext<'_, 'db> {
                     AsmOperand::Label(expr) => {
                         self.infer_expr(
                             expr,
-                            &Expectation::HasType(self.types.unit),
+                            &Expectation::HasType(self.types.types.unit),
                             ExprIsRead::No,
                         );
                     }
@@ -1021,7 +1037,7 @@ impl<'db> InferenceContext<'_, 'db> {
                     // FIXME: `sym` should report for things that are not functions or statics.
                     AsmOperand::Sym(_) => (),
                 });
-                if diverge { self.types.never } else { self.types.unit }
+                if diverge { self.types.types.never } else { self.types.types.unit }
             }
         };
         // use a new type variable if we got unknown here
@@ -1143,7 +1159,7 @@ impl<'db> InferenceContext<'_, 'db> {
                     oprnd_t = ty;
                 } else {
                     // FIXME: Report an error.
-                    oprnd_t = self.types.error;
+                    oprnd_t = self.types.types.error;
                 }
             }
             UnaryOp::Not => {
@@ -1183,10 +1199,10 @@ impl<'db> InferenceContext<'_, 'db> {
                 match this.coerce(tgt_expr.into(), ty, target, AllowTwoPhase::No, ExprIsRead::Yes) {
                     Ok(res) => res,
                     Err(_) => {
-                        this.result
-                            .type_mismatches
-                            .get_or_insert_default()
-                            .insert(tgt_expr.into(), TypeMismatch { expected: target, actual: ty });
+                        this.result.type_mismatches.get_or_insert_default().insert(
+                            tgt_expr.into(),
+                            TypeMismatch { expected: target.store(), actual: ty.store() },
+                        );
                         target
                     }
                 }
@@ -1216,14 +1232,14 @@ impl<'db> InferenceContext<'_, 'db> {
             CoroutineArgs::new(
                 self.interner(),
                 CoroutineArgsParts {
-                    parent_args,
-                    kind_ty: self.types.unit,
+                    parent_args: parent_args.as_slice(),
+                    kind_ty: self.types.types.unit,
                     // rustc uses a special lang item type for the resume ty. I don't believe this can cause us problems.
-                    resume_ty: self.types.unit,
-                    yield_ty: self.types.unit,
+                    resume_ty: self.types.types.unit,
+                    yield_ty: self.types.types.unit,
                     return_ty: inner_ty,
                     // FIXME: Infer upvars.
-                    tupled_upvars_ty: self.types.unit,
+                    tupled_upvars_ty: self.types.types.unit,
                 },
             )
             .args,
@@ -1234,7 +1250,7 @@ impl<'db> InferenceContext<'_, 'db> {
         &mut self,
         fn_x: FnTrait,
         derefed_callee: Ty<'db>,
-        adjustments: &mut Vec<Adjustment<'db>>,
+        adjustments: &mut Vec<Adjustment>,
         callee_ty: Ty<'db>,
         params: &[Ty<'db>],
         tgt_expr: ExprId,
@@ -1249,7 +1265,8 @@ impl<'db> InferenceContext<'_, 'db> {
                         .unwrap_or(true)
                     {
                         // prefer reborrow to move
-                        adjustments.push(Adjustment { kind: Adjust::Deref(None), target: inner });
+                        adjustments
+                            .push(Adjustment { kind: Adjust::Deref(None), target: inner.store() });
                         adjustments.push(Adjustment::borrow(
                             self.interner(),
                             Mutability::Mut,
@@ -1282,13 +1299,10 @@ impl<'db> InferenceContext<'_, 'db> {
         };
         let trait_data = trait_.trait_items(self.db);
         if let Some(func) = trait_data.method_by_name(&fn_x.method_name()) {
-            let subst = GenericArgs::new_from_iter(
-                self.interner(),
-                [
-                    callee_ty.into(),
-                    Ty::new_tup_from_iter(self.interner(), params.iter().copied()).into(),
-                ],
-            );
+            let subst = GenericArgs::new_from_slice(&[
+                callee_ty.into(),
+                Ty::new_tup(self.interner(), params).into(),
+            ]);
             self.write_method_resolution(tgt_expr, func, subst);
         }
     }
@@ -1332,7 +1346,7 @@ impl<'db> InferenceContext<'_, 'db> {
                     &Expectation::has_type(elem_ty),
                     ExprIsRead::Yes,
                 );
-                let usize = self.types.usize;
+                let usize = self.types.types.usize;
                 let len = match self.body[repeat] {
                     Expr::Underscore => {
                         self.write_expr_ty(repeat, usize);
@@ -1389,7 +1403,7 @@ impl<'db> InferenceContext<'_, 'db> {
                 }
             }
         }
-        self.types.never
+        self.types.types.never
     }
 
     fn infer_expr_become(&mut self, expr: ExprId) -> Ty<'db> {
@@ -1410,7 +1424,7 @@ impl<'db> InferenceContext<'_, 'db> {
             }
         }
 
-        self.types.never
+        self.types.types.never
     }
 
     fn infer_expr_box(&mut self, inner_expr: ExprId, expected: &Expectation<'db>) -> Ty<'db> {
@@ -1501,7 +1515,7 @@ impl<'db> InferenceContext<'_, 'db> {
                                     mem::replace(&mut this.diverges, Diverges::Maybe);
                                 this.infer_expr_coerce(
                                     *expr,
-                                    &Expectation::HasType(this.types.never),
+                                    &Expectation::HasType(this.types.types.never),
                                     ExprIsRead::Yes,
                                 );
                                 this.diverges = previous_diverges;
@@ -1513,7 +1527,7 @@ impl<'db> InferenceContext<'_, 'db> {
                             } else {
                                 this.infer_expr_coerce(
                                     expr,
-                                    &Expectation::HasType(this.types.unit),
+                                    &Expectation::HasType(this.types.types.unit),
                                     ExprIsRead::Yes,
                                 );
                             }
@@ -1540,7 +1554,7 @@ impl<'db> InferenceContext<'_, 'db> {
                         if this
                             .coerce(
                                 expr.into(),
-                                this.types.unit,
+                                this.types.types.unit,
                                 t,
                                 AllowTwoPhase::No,
                                 ExprIsRead::Yes,
@@ -1549,12 +1563,15 @@ impl<'db> InferenceContext<'_, 'db> {
                         {
                             this.result.type_mismatches.get_or_insert_default().insert(
                                 expr.into(),
-                                TypeMismatch { expected: t, actual: this.types.unit },
+                                TypeMismatch {
+                                    expected: t.store(),
+                                    actual: this.types.types.unit.store(),
+                                },
                             );
                         }
                         t
                     } else {
-                        this.types.unit
+                        this.types.types.unit
                     }
                 }
             });
@@ -1567,7 +1584,7 @@ impl<'db> InferenceContext<'_, 'db> {
         &mut self,
         receiver_ty: Ty<'db>,
         name: &Name,
-    ) -> Option<(Ty<'db>, Either<FieldId, TupleFieldId>, Vec<Adjustment<'db>>, bool)> {
+    ) -> Option<(Ty<'db>, Either<FieldId, TupleFieldId>, Vec<Adjustment>, bool)> {
         let interner = self.interner();
         let mut autoderef = self.table.autoderef_with_tracking(receiver_ty);
         let mut private_field = None;
@@ -1612,6 +1629,7 @@ impl<'db> InferenceContext<'_, 'db> {
                 return None;
             }
             let ty = self.db.field_types(field_id.parent)[field_id.local_id]
+                .get()
                 .instantiate(interner, parameters);
             Some((Either::Left(field_id), ty))
         });
@@ -1629,6 +1647,7 @@ impl<'db> InferenceContext<'_, 'db> {
                 let adjustments =
                     self.table.register_infer_ok(autoderef.adjust_steps_as_infer_ok());
                 let ty = self.db.field_types(field_id.parent)[field_id.local_id]
+                    .get()
                     .instantiate(self.interner(), subst);
                 let ty = self.process_remote_user_written_ty(ty);
 
@@ -1679,7 +1698,7 @@ impl<'db> InferenceContext<'_, 'db> {
                 );
                 self.push_diagnostic(InferenceDiagnostic::UnresolvedField {
                     expr: tgt_expr,
-                    receiver: receiver_ty,
+                    receiver: receiver_ty.store(),
                     name: name.clone(),
                     method_with_same_name_exists: resolved.is_ok(),
                 });
@@ -1755,7 +1774,7 @@ impl<'db> InferenceContext<'_, 'db> {
             None => {
                 self.push_diagnostic(InferenceDiagnostic::ExpectedFunction {
                     call_expr: tgt_expr,
-                    found: callee_ty,
+                    found: callee_ty.store(),
                 });
                 (Vec::new(), Ty::new_error(interner, ErrorGuaranteed))
             }
@@ -1867,9 +1886,9 @@ impl<'db> InferenceContext<'_, 'db> {
 
                 self.push_diagnostic(InferenceDiagnostic::UnresolvedMethodCall {
                     expr: tgt_expr,
-                    receiver: receiver_ty,
+                    receiver: receiver_ty.store(),
                     name: method_name.clone(),
-                    field_with_same_name: field_with_same_name_exists,
+                    field_with_same_name: field_with_same_name_exists.map(|it| it.store()),
                     assoc_func_with_same_name: assoc_func_with_same_name.map(|it| it.def_id),
                 });
 
@@ -1921,7 +1940,7 @@ impl<'db> InferenceContext<'_, 'db> {
         let (formal_receiver_ty, param_tys) = if !sig.inputs_and_output.inputs().is_empty() {
             (sig.inputs_and_output.as_slice()[0], &sig.inputs_and_output.inputs()[1..])
         } else {
-            (self.types.error, &[] as _)
+            (self.types.types.error, &[] as _)
         };
         let ret_ty = sig.output();
         self.table.unify(formal_receiver_ty, receiver_ty);
@@ -2115,10 +2134,10 @@ impl<'db> InferenceContext<'_, 'db> {
                     && args_count_matches
                 {
                     // Don't report type mismatches if there is a mismatch in args count.
-                    self.result
-                        .type_mismatches
-                        .get_or_insert_default()
-                        .insert((*arg).into(), TypeMismatch { expected, actual: found });
+                    self.result.type_mismatches.get_or_insert_default().insert(
+                        (*arg).into(),
+                        TypeMismatch { expected: expected.store(), actual: found.store() },
+                    );
                 }
             }
         }
@@ -2145,15 +2164,13 @@ impl<'db> InferenceContext<'_, 'db> {
                     if let ItemContainerId::TraitId(trait_) = f.lookup(self.db).container {
                         // construct a TraitRef
                         let trait_params_len = generics(self.db, trait_.into()).len();
-                        let substs = GenericArgs::new_from_iter(
-                            self.interner(),
-                            parameters.as_slice()[..trait_params_len].iter().copied(),
-                        );
+                        let substs =
+                            GenericArgs::new_from_slice(&parameters.as_slice()[..trait_params_len]);
                         self.table.register_predicate(Obligation::new(
                             self.interner(),
                             ObligationCause::new(),
                             self.table.param_env,
-                            TraitRef::new(self.interner(), trait_.into(), substs),
+                            TraitRef::new_from_args(self.interner(), trait_.into(), substs),
                         ));
                     }
                 }

@@ -300,3 +300,65 @@ fn issue15004() {
         //~^ branches_sharing_code
     };
 }
+
+pub fn issue15347<T>() -> isize {
+    if false {
+        static A: isize = 4;
+        return A;
+    } else {
+        static A: isize = 5;
+        return A;
+    }
+
+    if false {
+        //~^ branches_sharing_code
+        type ISize = isize;
+        return ISize::MAX;
+    } else {
+        type ISize = isize;
+        return ISize::MAX;
+    }
+
+    if false {
+        //~^ branches_sharing_code
+        fn foo() -> isize {
+            4
+        }
+        return foo();
+    } else {
+        fn foo() -> isize {
+            4
+        }
+        return foo();
+    }
+
+    if false {
+        //~^ branches_sharing_code
+        use std::num::NonZeroIsize;
+        return NonZeroIsize::new(4).unwrap().get();
+    } else {
+        use std::num::NonZeroIsize;
+        return NonZeroIsize::new(4).unwrap().get();
+    }
+
+    if false {
+        //~^ branches_sharing_code
+        const B: isize = 5;
+        return B;
+    } else {
+        const B: isize = 5;
+        return B;
+    }
+
+    // Should not lint!
+    const A: isize = 1;
+    if false {
+        const B: isize = A;
+        return B;
+    } else {
+        const C: isize = A;
+        return C;
+    }
+
+    todo!()
+}

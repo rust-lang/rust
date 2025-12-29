@@ -31,7 +31,7 @@ use rustc_ast::AttrVec;
 use rustc_ast::expand::typetree::{FncTree, Kind, Type, TypeTree};
 use rustc_ast::node_id::NodeMap;
 pub use rustc_ast_ir::{Movability, Mutability, try_visit};
-use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
+use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::steal::Steal;
@@ -77,7 +77,7 @@ pub use self::closure::{
 };
 pub use self::consts::{
     AnonConstKind, AtomicOrdering, Const, ConstInt, ConstKind, ConstToValTreeResult, Expr,
-    ExprKind, ScalarInt, SimdAlign, UnevaluatedConst, ValTree, ValTreeKind, Value,
+    ExprKind, ScalarInt, SimdAlign, UnevaluatedConst, ValTree, ValTreeKindExt, Value,
 };
 pub use self::context::{
     CtxtInterners, CurrentGcx, Feed, FreeRegionInfo, GlobalCtxt, Lift, TyCtxt, TyCtxtFeed, tls,
@@ -196,8 +196,6 @@ pub struct ResolverGlobalCtxt {
 /// This struct is meant to be consumed by lowering.
 #[derive(Debug)]
 pub struct ResolverAstLowering {
-    pub legacy_const_generic_args: FxHashMap<DefId, Option<Vec<usize>>>,
-
     /// Resolutions for nodes that have a single resolution.
     pub partial_res_map: NodeMap<hir::def::PartialRes>,
     /// Resolutions for import nodes, which have multiple resolutions in different namespaces.
@@ -222,6 +220,8 @@ pub struct ResolverAstLowering {
 
     /// Information about functions signatures for delegation items expansion
     pub delegation_fn_sigs: LocalDefIdMap<DelegationFnSig>,
+    // Information about delegations which is used when handling recursive delegations
+    pub delegation_infos: LocalDefIdMap<DelegationInfo>,
 }
 
 bitflags::bitflags! {
@@ -235,13 +235,26 @@ bitflags::bitflags! {
 pub const DELEGATION_INHERIT_ATTRS_START: DelegationFnSigAttrs = DelegationFnSigAttrs::MUST_USE;
 
 #[derive(Debug)]
+pub struct DelegationInfo {
+    // NodeId (either delegation.id or item_id in case of a trait impl) for signature resolution,
+    // for details see https://github.com/rust-lang/rust/issues/118212#issuecomment-2160686914
+    pub resolution_node: ast::NodeId,
+    pub attrs: DelegationAttrs,
+}
+
+#[derive(Debug)]
+pub struct DelegationAttrs {
+    pub flags: DelegationFnSigAttrs,
+    pub to_inherit: AttrVec,
+}
+
+#[derive(Debug)]
 pub struct DelegationFnSig {
     pub header: ast::FnHeader,
     pub param_count: usize,
     pub has_self: bool,
     pub c_variadic: bool,
-    pub attrs_flags: DelegationFnSigAttrs,
-    pub to_inherit_attrs: AttrVec,
+    pub attrs: DelegationAttrs,
 }
 
 #[derive(Clone, Copy, Debug, HashStable)]
@@ -2318,8 +2331,8 @@ impl<'tcx> fmt::Debug for SymbolName<'tcx> {
 
 /// The constituent parts of a type level constant of kind ADT or array.
 #[derive(Copy, Clone, Debug, HashStable)]
-pub struct DestructuredConst<'tcx> {
-    pub variant: Option<VariantIdx>,
+pub struct DestructuredAdtConst<'tcx> {
+    pub variant: VariantIdx,
     pub fields: &'tcx [ty::Const<'tcx>],
 }
 

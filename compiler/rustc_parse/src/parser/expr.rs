@@ -1521,7 +1521,7 @@ impl<'a> Parser<'a> {
                     },
                 )
             } else if this.check_inline_const(0) {
-                this.parse_const_block(lo, false)
+                this.parse_const_block(lo)
             } else if this.may_recover() && this.is_do_catch_block() {
                 this.recover_do_catch()
             } else if this.is_try_block() {
@@ -3100,7 +3100,7 @@ impl<'a> Parser<'a> {
     pub(crate) fn eat_label(&mut self) -> Option<Label> {
         if let Some((ident, is_raw)) = self.token.lifetime() {
             // Disallow `'fn`, but with a better error message than `expect_lifetime`.
-            if matches!(is_raw, IdentIsRaw::No) && ident.without_first_quote().is_reserved() {
+            if is_raw == IdentIsRaw::No && ident.without_first_quote().is_reserved() {
                 self.dcx().emit_err(errors::KeywordLabel { span: ident.span });
             }
 

@@ -216,17 +216,6 @@ mod autodiff {
     }
 }
 
-pub(crate) use ad_fallback::*;
-mod ad_fallback {
-    use super::*;
-    #[derive(Diagnostic)]
-    #[diag(builtin_macros_autodiff_not_build)]
-    pub(crate) struct AutoDiffSupportNotBuild {
-        #[primary_span]
-        pub(crate) span: Span,
-    }
-}
-
 #[derive(Diagnostic)]
 #[diag(builtin_macros_concat_bytes_invalid)]
 pub(crate) struct ConcatBytesInvalid {

@@ -49,7 +49,7 @@ To combine installers.
 
 # Future work
 
-* Make install.sh not have to be customized, pull it's data from a
+* Make install.sh not have to be customized, pull its data from a
   config file.
 * Be more resilient to installation failures, particularly if the disk
   is full.

@@ -247,7 +247,7 @@ impl<'a, 'tcx> LoanInvalidationsGenerator<'a, 'tcx> {
                     LocalMutationIsAllowed::Yes,
                 );
             }
-            Operand::Constant(_) => {}
+            Operand::Constant(_) | Operand::RuntimeChecks(_) => {}
         }
     }
 
@@ -313,8 +313,6 @@ impl<'a, 'tcx> LoanInvalidationsGenerator<'a, 'tcx> {
                 self.consume_operand(location, operand1);
                 self.consume_operand(location, operand2);
             }
-
-            Rvalue::NullaryOp(_op) => {}
 
             Rvalue::Aggregate(_, operands) => {
                 for operand in operands {

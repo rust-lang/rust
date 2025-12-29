@@ -62,8 +62,8 @@ impl Stability {
     /// the feature gate to actually be enabled when using a nightly compiler.)
     ///
     /// Before calling this, ensure the feature is even permitted for this use:
-    /// - for `#[target_feature]`/`-Ctarget-feature`, check `allow_toggle()`
-    /// - for `cfg(target_feature)`, check `in_cfg`
+    /// - for `#[target_feature]`/`-Ctarget-feature`, check `toggle_allowed()`
+    /// - for `cfg(target_feature)`, check `in_cfg()`
     pub fn requires_nightly(&self) -> Option<Symbol> {
         match *self {
             Stability::Unstable(nightly_feature) => Some(nightly_feature),
@@ -745,6 +745,7 @@ static WASM_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("bulk-memory", Stable, &[]),
     ("exception-handling", Unstable(sym::wasm_target_feature), &[]),
     ("extended-const", Stable, &[]),
+    ("gc", Unstable(sym::wasm_target_feature), &["reference-types"]),
     ("multivalue", Stable, &[]),
     ("mutable-globals", Stable, &[]),
     ("nontrapping-fptoint", Stable, &[]),
@@ -1139,7 +1140,7 @@ impl Target {
             Arch::AArch64 | Arch::Arm64EC => {
                 // Aarch64 has no sane ABI specifier, and LLVM doesn't even have a way to force
                 // the use of soft-float, so all we can do here is some crude hacks.
-                if matches!(self.abi, Abi::SoftFloat) {
+                if self.abi == Abi::SoftFloat {
                     // LLVM will use float registers when `fp-armv8` is available, e.g. for
                     // calls to built-ins. The only way to ensure a consistent softfloat ABI
                     // on aarch64 is to never enable `fp-armv8`, so we enforce that.

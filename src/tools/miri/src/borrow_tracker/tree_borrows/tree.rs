@@ -111,7 +111,7 @@ impl LocationState {
             // We need to update the wildcard state, if the permission
             // of an exposed pointer changes.
             if node.is_exposed {
-                let access_type = self.permission.strongest_allowed_child_access(protected);
+                let access_type = self.permission.strongest_allowed_local_access(protected);
                 WildcardState::update_exposure(idx, access_type, nodes, wildcard_accesses);
             }
         }
@@ -1034,6 +1034,9 @@ impl<'tcx> LocationTree {
             wildcard_state.access_relatedness(access_kind, only_foreign)
         };
 
+        // Whether there is an exposed node in this tree that allows this access.
+        let mut has_valid_exposed = false;
+
         // This does a traversal across the tree updating children before their parents. The
         // difference to `perform_normal_access` is that we take the access relatedness from
         // the wildcard tracking state of the node instead of from the visitor itself.
@@ -1082,6 +1085,17 @@ impl<'tcx> LocationTree {
                     return Err(no_valid_exposed_references_error(diagnostics));
                 };
 
+                let mut entry = args.data.perms.entry(args.idx);
+                let perm = entry.or_insert(node.default_location_state());
+
+                // We only count exposed nodes through which an access could happen.
+                if node.is_exposed
+                    && perm.permission.strongest_allowed_local_access(protected).allows(access_kind)
+                    && max_local_tag.is_none_or(|max_local_tag| max_local_tag >= node.tag)
+                {
+                    has_valid_exposed = true;
+                }
+
                 let Some(relatedness) = wildcard_relatedness.to_relatedness() else {
                     // If the access type is Either, then we do not apply any transition
                     // to this node, but we still update each of its children.
@@ -1090,8 +1104,6 @@ impl<'tcx> LocationTree {
                     return Ok(());
                 };
 
-                let mut entry = args.data.perms.entry(args.idx);
-                let perm = entry.or_insert(node.default_location_state());
                 // We know the exact relatedness, so we can actually do precise checks.
                 perm.perform_transition(
                     args.idx,
@@ -1115,6 +1127,21 @@ impl<'tcx> LocationTree {
                 })
             },
         )?;
+        // If there is no exposed node in this tree that allows this access, then the
+        // access *must* be foreign. So we check if the root of this tree would allow this
+        // as a foreign access, and if not, then we can error.
+        // In practice, all wildcard trees accept foreign accesses, but the main tree does
+        // not, so this catches UB when none of the nodes in the main tree allows this access.
+        if !has_valid_exposed
+            && self
+                .wildcard_accesses
+                .get(root)
+                .unwrap()
+                .access_relatedness(access_kind, /* only_foreign */ true)
+                .is_none()
+        {
+            return Err(no_valid_exposed_references_error(diagnostics)).into();
+        }
         interp_ok(())
     }
 }

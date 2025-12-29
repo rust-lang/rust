@@ -9,8 +9,8 @@
 //!
 //! [Wikipedia][wiki] provides a quick overview of the instructions available.
 //!
-//! [intel64_ref]: http://www.intel.de/content/dam/www/public/us/en/documents/manuals/64-ia-32-architectures-software-developer-instruction-set-reference-manual-325383.pdf
-//! [amd64_ref]: http://support.amd.com/TechDocs/24594.pdf
+//! [intel64_ref]: https://www.intel.com/content/dam/www/public/us/en/documents/manuals/64-ia-32-architectures-software-developer-instruction-set-reference-manual-325383.pdf
+//! [amd64_ref]: https://docs.amd.com/v/u/en-US/24594_3.37
 //! [wiki]: https://en.wikipedia.org/wiki/Advanced_Vector_Extensions
 
 use crate::{
@@ -30,7 +30,8 @@ use stdarch_test::assert_instr;
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vaddpd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_add_pd(a: __m256d, b: __m256d) -> __m256d {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_add_pd(a: __m256d, b: __m256d) -> __m256d {
     unsafe { simd_add(a, b) }
 }
 
@@ -42,7 +43,8 @@ pub fn _mm256_add_pd(a: __m256d, b: __m256d) -> __m256d {
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vaddps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_add_ps(a: __m256, b: __m256) -> __m256 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_add_ps(a: __m256, b: __m256) -> __m256 {
     unsafe { simd_add(a, b) }
 }
 
@@ -55,7 +57,8 @@ pub fn _mm256_add_ps(a: __m256, b: __m256) -> __m256 {
 // See https://github.com/rust-lang/stdarch/issues/71
 #[cfg_attr(test, assert_instr(vandp))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_and_pd(a: __m256d, b: __m256d) -> __m256d {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_and_pd(a: __m256d, b: __m256d) -> __m256d {
     unsafe {
         let a: u64x4 = transmute(a);
         let b: u64x4 = transmute(b);
@@ -71,7 +74,8 @@ pub fn _mm256_and_pd(a: __m256d, b: __m256d) -> __m256d {
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vandps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_and_ps(a: __m256, b: __m256) -> __m256 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_and_ps(a: __m256, b: __m256) -> __m256 {
     unsafe {
         let a: u32x8 = transmute(a);
         let b: u32x8 = transmute(b);
@@ -88,7 +92,8 @@ pub fn _mm256_and_ps(a: __m256, b: __m256) -> __m256 {
 // See <https://github.com/rust-lang/stdarch/issues/71>.
 #[cfg_attr(test, assert_instr(vorp))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_or_pd(a: __m256d, b: __m256d) -> __m256d {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_or_pd(a: __m256d, b: __m256d) -> __m256d {
     unsafe {
         let a: u64x4 = transmute(a);
         let b: u64x4 = transmute(b);
@@ -104,7 +109,8 @@ pub fn _mm256_or_pd(a: __m256d, b: __m256d) -> __m256d {
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vorps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_or_ps(a: __m256, b: __m256) -> __m256 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_or_ps(a: __m256, b: __m256) -> __m256 {
     unsafe {
         let a: u32x8 = transmute(a);
         let b: u32x8 = transmute(b);
@@ -121,7 +127,8 @@ pub fn _mm256_or_ps(a: __m256, b: __m256) -> __m256 {
 #[cfg_attr(test, assert_instr(vshufpd, MASK = 3))]
 #[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_shuffle_pd<const MASK: i32>(a: __m256d, b: __m256d) -> __m256d {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_shuffle_pd<const MASK: i32>(a: __m256d, b: __m256d) -> __m256d {
     static_assert_uimm_bits!(MASK, 8);
     unsafe {
         simd_shuffle!(
@@ -146,7 +153,8 @@ pub fn _mm256_shuffle_pd<const MASK: i32>(a: __m256d, b: __m256d) -> __m256d {
 #[cfg_attr(test, assert_instr(vshufps, MASK = 3))]
 #[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_shuffle_ps<const MASK: i32>(a: __m256, b: __m256) -> __m256 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_shuffle_ps<const MASK: i32>(a: __m256, b: __m256) -> __m256 {
     static_assert_uimm_bits!(MASK, 8);
     unsafe {
         simd_shuffle!(
@@ -174,7 +182,8 @@ pub fn _mm256_shuffle_ps<const MASK: i32>(a: __m256, b: __m256) -> __m256 {
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vandnp))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_andnot_pd(a: __m256d, b: __m256d) -> __m256d {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_andnot_pd(a: __m256d, b: __m256d) -> __m256d {
     unsafe {
         let a: u64x4 = transmute(a);
         let b: u64x4 = transmute(b);
@@ -191,7 +200,8 @@ pub fn _mm256_andnot_pd(a: __m256d, b: __m256d) -> __m256d {
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vandnps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_andnot_ps(a: __m256, b: __m256) -> __m256 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_andnot_ps(a: __m256, b: __m256) -> __m256 {
     unsafe {
         let a: u32x8 = transmute(a);
         let b: u32x8 = transmute(b);
@@ -255,7 +265,8 @@ pub fn _mm256_min_ps(a: __m256, b: __m256) -> __m256 {
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vmulpd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_mul_pd(a: __m256d, b: __m256d) -> __m256d {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_mul_pd(a: __m256d, b: __m256d) -> __m256d {
     unsafe { simd_mul(a, b) }
 }
 
@@ -267,7 +278,8 @@ pub fn _mm256_mul_pd(a: __m256d, b: __m256d) -> __m256d {
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vmulps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_mul_ps(a: __m256, b: __m256) -> __m256 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_mul_ps(a: __m256, b: __m256) -> __m256 {
     unsafe { simd_mul(a, b) }
 }
 
@@ -279,7 +291,8 @@ pub fn _mm256_mul_ps(a: __m256, b: __m256) -> __m256 {
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vaddsubpd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_addsub_pd(a: __m256d, b: __m256d) -> __m256d {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_addsub_pd(a: __m256d, b: __m256d) -> __m256d {
     unsafe {
         let a = a.as_f64x4();
         let b = b.as_f64x4();
@@ -297,7 +310,8 @@ pub fn _mm256_addsub_pd(a: __m256d, b: __m256d) -> __m256d {
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vaddsubps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_addsub_ps(a: __m256, b: __m256) -> __m256 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_addsub_ps(a: __m256, b: __m256) -> __m256 {
     unsafe {
         let a = a.as_f32x8();
         let b = b.as_f32x8();
@@ -315,7 +329,8 @@ pub fn _mm256_addsub_ps(a: __m256, b: __m256) -> __m256 {
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vsubpd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_sub_pd(a: __m256d, b: __m256d) -> __m256d {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_sub_pd(a: __m256d, b: __m256d) -> __m256d {
     unsafe { simd_sub(a, b) }
 }
 
@@ -327,7 +342,8 @@ pub fn _mm256_sub_pd(a: __m256d, b: __m256d) -> __m256d {
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vsubps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_sub_ps(a: __m256, b: __m256) -> __m256 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_sub_ps(a: __m256, b: __m256) -> __m256 {
     unsafe { simd_sub(a, b) }
 }
 
@@ -339,7 +355,8 @@ pub fn _mm256_sub_ps(a: __m256, b: __m256) -> __m256 {
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vdivps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_div_ps(a: __m256, b: __m256) -> __m256 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_div_ps(a: __m256, b: __m256) -> __m256 {
     unsafe { simd_div(a, b) }
 }
 
@@ -351,7 +368,8 @@ pub fn _mm256_div_ps(a: __m256, b: __m256) -> __m256 {
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vdivpd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_div_pd(a: __m256d, b: __m256d) -> __m256d {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_div_pd(a: __m256d, b: __m256d) -> __m256d {
     unsafe { simd_div(a, b) }
 }
 
@@ -386,7 +404,8 @@ pub fn _mm256_round_pd<const ROUNDING: i32>(a: __m256d) -> __m256d {
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vroundpd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_ceil_pd(a: __m256d) -> __m256d {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_ceil_pd(a: __m256d) -> __m256d {
     unsafe { simd_ceil(a) }
 }
 
@@ -398,7 +417,8 @@ pub fn _mm256_ceil_pd(a: __m256d) -> __m256d {
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vroundpd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_floor_pd(a: __m256d) -> __m256d {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_floor_pd(a: __m256d) -> __m256d {
     unsafe { simd_floor(a) }
 }
 
@@ -433,7 +453,8 @@ pub fn _mm256_round_ps<const ROUNDING: i32>(a: __m256) -> __m256 {
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vroundps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_ceil_ps(a: __m256) -> __m256 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_ceil_ps(a: __m256) -> __m256 {
     unsafe { simd_ceil(a) }
 }
 
@@ -445,7 +466,8 @@ pub fn _mm256_ceil_ps(a: __m256) -> __m256 {
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vroundps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_floor_ps(a: __m256) -> __m256 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_floor_ps(a: __m256) -> __m256 {
     unsafe { simd_floor(a) }
 }
 
@@ -485,7 +507,8 @@ pub fn _mm256_sqrt_pd(a: __m256d) -> __m256d {
 #[cfg_attr(test, assert_instr(vblendps, IMM4 = 9))]
 #[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_blend_pd<const IMM4: i32>(a: __m256d, b: __m256d) -> __m256d {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_blend_pd<const IMM4: i32>(a: __m256d, b: __m256d) -> __m256d {
     static_assert_uimm_bits!(IMM4, 4);
     unsafe {
         simd_shuffle!(
@@ -510,7 +533,8 @@ pub fn _mm256_blend_pd<const IMM4: i32>(a: __m256d, b: __m256d) -> __m256d {
 #[cfg_attr(test, assert_instr(vblendps, IMM8 = 9))]
 #[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_blend_ps<const IMM8: i32>(a: __m256, b: __m256) -> __m256 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_blend_ps<const IMM8: i32>(a: __m256, b: __m256) -> __m256 {
     static_assert_uimm_bits!(IMM8, 8);
     unsafe {
         simd_shuffle!(
@@ -538,7 +562,8 @@ pub fn _mm256_blend_ps<const IMM8: i32>(a: __m256, b: __m256) -> __m256 {
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vblendvpd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_blendv_pd(a: __m256d, b: __m256d, c: __m256d) -> __m256d {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_blendv_pd(a: __m256d, b: __m256d, c: __m256d) -> __m256d {
     unsafe {
         let mask: i64x4 = simd_lt(transmute::<_, i64x4>(c), i64x4::ZERO);
         transmute(simd_select(mask, b.as_f64x4(), a.as_f64x4()))
@@ -553,7 +578,8 @@ pub fn _mm256_blendv_pd(a: __m256d, b: __m256d, c: __m256d) -> __m256d {
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vblendvps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_blendv_ps(a: __m256, b: __m256, c: __m256) -> __m256 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_blendv_ps(a: __m256, b: __m256, c: __m256) -> __m256 {
     unsafe {
         let mask: i32x8 = simd_lt(transmute::<_, i32x8>(c), i32x8::ZERO);
         transmute(simd_select(mask, b.as_f32x8(), a.as_f32x8()))
@@ -586,7 +612,8 @@ pub fn _mm256_dp_ps<const IMM8: i32>(a: __m256, b: __m256) -> __m256 {
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vhaddpd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_hadd_pd(a: __m256d, b: __m256d) -> __m256d {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_hadd_pd(a: __m256d, b: __m256d) -> __m256d {
     unsafe {
         let even = simd_shuffle!(a, b, [0, 4, 2, 6]);
         let odd = simd_shuffle!(a, b, [1, 5, 3, 7]);
@@ -605,7 +632,8 @@ pub fn _mm256_hadd_pd(a: __m256d, b: __m256d) -> __m256d {
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vhaddps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_hadd_ps(a: __m256, b: __m256) -> __m256 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_hadd_ps(a: __m256, b: __m256) -> __m256 {
     unsafe {
         let even = simd_shuffle!(a, b, [0, 2, 8, 10, 4, 6, 12, 14]);
         let odd = simd_shuffle!(a, b, [1, 3, 9, 11, 5, 7, 13, 15]);
@@ -623,7 +651,8 @@ pub fn _mm256_hadd_ps(a: __m256, b: __m256) -> __m256 {
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vhsubpd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_hsub_pd(a: __m256d, b: __m256d) -> __m256d {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_hsub_pd(a: __m256d, b: __m256d) -> __m256d {
     unsafe {
         let even = simd_shuffle!(a, b, [0, 4, 2, 6]);
         let odd = simd_shuffle!(a, b, [1, 5, 3, 7]);
@@ -642,7 +671,8 @@ pub fn _mm256_hsub_pd(a: __m256d, b: __m256d) -> __m256d {
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vhsubps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_hsub_ps(a: __m256, b: __m256) -> __m256 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_hsub_ps(a: __m256, b: __m256) -> __m256 {
     unsafe {
         let even = simd_shuffle!(a, b, [0, 2, 8, 10, 4, 6, 12, 14]);
         let odd = simd_shuffle!(a, b, [1, 3, 9, 11, 5, 7, 13, 15]);
@@ -658,7 +688,8 @@ pub fn _mm256_hsub_ps(a: __m256, b: __m256) -> __m256 {
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vxorp))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_xor_pd(a: __m256d, b: __m256d) -> __m256d {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_xor_pd(a: __m256d, b: __m256d) -> __m256d {
     unsafe {
         let a: u64x4 = transmute(a);
         let b: u64x4 = transmute(b);
@@ -674,7 +705,8 @@ pub fn _mm256_xor_pd(a: __m256d, b: __m256d) -> __m256d {
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vxorps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_xor_ps(a: __m256, b: __m256) -> __m256 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_xor_ps(a: __m256, b: __m256) -> __m256 {
     unsafe {
         let a: u32x8 = transmute(a);
         let b: u32x8 = transmute(b);
@@ -881,7 +913,8 @@ pub fn _mm_cmp_ss<const IMM5: i32>(a: __m128, b: __m128) -> __m128 {
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vcvtdq2pd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_cvtepi32_pd(a: __m128i) -> __m256d {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_cvtepi32_pd(a: __m128i) -> __m256d {
     unsafe { simd_cast(a.as_i32x4()) }
 }
 
@@ -893,7 +926,8 @@ pub fn _mm256_cvtepi32_pd(a: __m128i) -> __m256d {
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vcvtdq2ps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_cvtepi32_ps(a: __m256i) -> __m256 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_cvtepi32_ps(a: __m256i) -> __m256 {
     unsafe { simd_cast(a.as_i32x8()) }
 }
 
@@ -905,7 +939,8 @@ pub fn _mm256_cvtepi32_ps(a: __m256i) -> __m256 {
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vcvtpd2ps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_cvtpd_ps(a: __m256d) -> __m128 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_cvtpd_ps(a: __m256d) -> __m128 {
     unsafe { simd_cast(a) }
 }
 
@@ -929,7 +964,8 @@ pub fn _mm256_cvtps_epi32(a: __m256) -> __m256i {
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vcvtps2pd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_cvtps_pd(a: __m128) -> __m256d {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_cvtps_pd(a: __m128) -> __m256d {
     unsafe { simd_cast(a) }
 }
 
@@ -940,7 +976,8 @@ pub fn _mm256_cvtps_pd(a: __m128) -> __m256d {
 #[target_feature(enable = "avx")]
 //#[cfg_attr(test, assert_instr(movsd))] FIXME
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_cvtsd_f64(a: __m256d) -> f64 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_cvtsd_f64(a: __m256d) -> f64 {
     unsafe { simd_extract!(a, 0) }
 }
 
@@ -989,7 +1026,8 @@ pub fn _mm256_cvttps_epi32(a: __m256) -> __m256i {
 #[cfg_attr(test, assert_instr(vextractf128, IMM1 = 1))]
 #[rustc_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_extractf128_ps<const IMM1: i32>(a: __m256) -> __m128 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_extractf128_ps<const IMM1: i32>(a: __m256) -> __m128 {
     static_assert_uimm_bits!(IMM1, 1);
     unsafe {
         simd_shuffle!(
@@ -1009,7 +1047,8 @@ pub fn _mm256_extractf128_ps<const IMM1: i32>(a: __m256) -> __m128 {
 #[cfg_attr(test, assert_instr(vextractf128, IMM1 = 1))]
 #[rustc_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_extractf128_pd<const IMM1: i32>(a: __m256d) -> __m128d {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_extractf128_pd<const IMM1: i32>(a: __m256d) -> __m128d {
     static_assert_uimm_bits!(IMM1, 1);
     unsafe { simd_shuffle!(a, _mm256_undefined_pd(), [[0, 1], [2, 3]][IMM1 as usize]) }
 }
@@ -1022,7 +1061,8 @@ pub fn _mm256_extractf128_pd<const IMM1: i32>(a: __m256d) -> __m128d {
 #[cfg_attr(test, assert_instr(vextractf128, IMM1 = 1))]
 #[rustc_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_extractf128_si256<const IMM1: i32>(a: __m256i) -> __m128i {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_extractf128_si256<const IMM1: i32>(a: __m256i) -> __m128i {
     static_assert_uimm_bits!(IMM1, 1);
     unsafe {
         let dst: i64x2 = simd_shuffle!(a.as_i64x4(), i64x4::ZERO, [[0, 1], [2, 3]][IMM1 as usize],);
@@ -1038,7 +1078,8 @@ pub fn _mm256_extractf128_si256<const IMM1: i32>(a: __m256i) -> __m128i {
 // This intrinsic has no corresponding instruction.
 #[rustc_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_extract_epi32<const INDEX: i32>(a: __m256i) -> i32 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_extract_epi32<const INDEX: i32>(a: __m256i) -> i32 {
     static_assert_uimm_bits!(INDEX, 3);
     unsafe { simd_extract!(a.as_i32x8(), INDEX as u32) }
 }
@@ -1049,7 +1090,8 @@ pub fn _mm256_extract_epi32<const INDEX: i32>(a: __m256i) -> i32 {
 #[inline]
 #[target_feature(enable = "avx")]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_cvtsi256_si32(a: __m256i) -> i32 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_cvtsi256_si32(a: __m256i) -> i32 {
     unsafe { simd_extract!(a.as_i32x8(), 0) }
 }
 
@@ -1109,7 +1151,8 @@ pub fn _mm_permutevar_ps(a: __m128, b: __m128i) -> __m128 {
 #[cfg_attr(test, assert_instr(vshufps, IMM8 = 9))]
 #[rustc_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_permute_ps<const IMM8: i32>(a: __m256) -> __m256 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_permute_ps<const IMM8: i32>(a: __m256) -> __m256 {
     static_assert_uimm_bits!(IMM8, 8);
     unsafe {
         simd_shuffle!(
@@ -1138,7 +1181,8 @@ pub fn _mm256_permute_ps<const IMM8: i32>(a: __m256) -> __m256 {
 #[cfg_attr(test, assert_instr(vshufps, IMM8 = 9))]
 #[rustc_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm_permute_ps<const IMM8: i32>(a: __m128) -> __m128 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm_permute_ps<const IMM8: i32>(a: __m128) -> __m128 {
     static_assert_uimm_bits!(IMM8, 8);
     unsafe {
         simd_shuffle!(
@@ -1187,7 +1231,8 @@ pub fn _mm_permutevar_pd(a: __m128d, b: __m128i) -> __m128d {
 #[cfg_attr(test, assert_instr(vshufpd, IMM4 = 0x1))]
 #[rustc_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_permute_pd<const IMM4: i32>(a: __m256d) -> __m256d {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_permute_pd<const IMM4: i32>(a: __m256d) -> __m256d {
     static_assert_uimm_bits!(IMM4, 4);
     unsafe {
         simd_shuffle!(
@@ -1212,7 +1257,8 @@ pub fn _mm256_permute_pd<const IMM4: i32>(a: __m256d) -> __m256d {
 #[cfg_attr(test, assert_instr(vshufpd, IMM2 = 0x1))]
 #[rustc_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm_permute_pd<const IMM2: i32>(a: __m128d) -> __m128d {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm_permute_pd<const IMM2: i32>(a: __m128d) -> __m128d {
     static_assert_uimm_bits!(IMM2, 2);
     unsafe {
         simd_shuffle!(
@@ -1232,7 +1278,8 @@ pub fn _mm_permute_pd<const IMM2: i32>(a: __m128d) -> __m128d {
 #[cfg_attr(test, assert_instr(vperm2f128, IMM8 = 0x5))]
 #[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_permute2f128_ps<const IMM8: i32>(a: __m256, b: __m256) -> __m256 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_permute2f128_ps<const IMM8: i32>(a: __m256, b: __m256) -> __m256 {
     static_assert_uimm_bits!(IMM8, 8);
     _mm256_castsi256_ps(_mm256_permute2f128_si256::<IMM8>(
         _mm256_castps_si256(a),
@@ -1249,7 +1296,8 @@ pub fn _mm256_permute2f128_ps<const IMM8: i32>(a: __m256, b: __m256) -> __m256 {
 #[cfg_attr(test, assert_instr(vperm2f128, IMM8 = 0x31))]
 #[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_permute2f128_pd<const IMM8: i32>(a: __m256d, b: __m256d) -> __m256d {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_permute2f128_pd<const IMM8: i32>(a: __m256d, b: __m256d) -> __m256d {
     static_assert_uimm_bits!(IMM8, 8);
     _mm256_castsi256_pd(_mm256_permute2f128_si256::<IMM8>(
         _mm256_castpd_si256(a),
@@ -1266,7 +1314,8 @@ pub fn _mm256_permute2f128_pd<const IMM8: i32>(a: __m256d, b: __m256d) -> __m256
 #[cfg_attr(test, assert_instr(vperm2f128, IMM8 = 0x31))]
 #[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_permute2f128_si256<const IMM8: i32>(a: __m256i, b: __m256i) -> __m256i {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_permute2f128_si256<const IMM8: i32>(a: __m256i, b: __m256i) -> __m256i {
     static_assert_uimm_bits!(IMM8, 8);
     const fn idx(imm8: i32, pos: u32) -> u32 {
         let part = if pos < 2 {
@@ -1308,7 +1357,8 @@ pub fn _mm256_permute2f128_si256<const IMM8: i32>(a: __m256i, b: __m256i) -> __m
 #[cfg_attr(test, assert_instr(vbroadcastss))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 #[allow(clippy::trivially_copy_pass_by_ref)]
-pub fn _mm256_broadcast_ss(f: &f32) -> __m256 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_broadcast_ss(f: &f32) -> __m256 {
     _mm256_set1_ps(*f)
 }
 
@@ -1321,7 +1371,8 @@ pub fn _mm256_broadcast_ss(f: &f32) -> __m256 {
 #[cfg_attr(test, assert_instr(vbroadcastss))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 #[allow(clippy::trivially_copy_pass_by_ref)]
-pub fn _mm_broadcast_ss(f: &f32) -> __m128 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm_broadcast_ss(f: &f32) -> __m128 {
     _mm_set1_ps(*f)
 }
 
@@ -1334,7 +1385,8 @@ pub fn _mm_broadcast_ss(f: &f32) -> __m128 {
 #[cfg_attr(test, assert_instr(vbroadcastsd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 #[allow(clippy::trivially_copy_pass_by_ref)]
-pub fn _mm256_broadcast_sd(f: &f64) -> __m256d {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_broadcast_sd(f: &f64) -> __m256d {
     _mm256_set1_pd(*f)
 }
 
@@ -1346,7 +1398,8 @@ pub fn _mm256_broadcast_sd(f: &f64) -> __m256d {
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vbroadcastf128))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_broadcast_ps(a: &__m128) -> __m256 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_broadcast_ps(a: &__m128) -> __m256 {
     unsafe { simd_shuffle!(*a, _mm_setzero_ps(), [0, 1, 2, 3, 0, 1, 2, 3]) }
 }
 
@@ -1358,7 +1411,8 @@ pub fn _mm256_broadcast_ps(a: &__m128) -> __m256 {
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vbroadcastf128))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_broadcast_pd(a: &__m128d) -> __m256d {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_broadcast_pd(a: &__m128d) -> __m256d {
     unsafe { simd_shuffle!(*a, _mm_setzero_pd(), [0, 1, 0, 1]) }
 }
 
@@ -1372,7 +1426,8 @@ pub fn _mm256_broadcast_pd(a: &__m128d) -> __m256d {
 #[cfg_attr(test, assert_instr(vinsertf128, IMM1 = 1))]
 #[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_insertf128_ps<const IMM1: i32>(a: __m256, b: __m128) -> __m256 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_insertf128_ps<const IMM1: i32>(a: __m256, b: __m128) -> __m256 {
     static_assert_uimm_bits!(IMM1, 1);
     unsafe {
         simd_shuffle!(
@@ -1393,7 +1448,8 @@ pub fn _mm256_insertf128_ps<const IMM1: i32>(a: __m256, b: __m128) -> __m256 {
 #[cfg_attr(test, assert_instr(vinsertf128, IMM1 = 1))]
 #[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_insertf128_pd<const IMM1: i32>(a: __m256d, b: __m128d) -> __m256d {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_insertf128_pd<const IMM1: i32>(a: __m256d, b: __m128d) -> __m256d {
     static_assert_uimm_bits!(IMM1, 1);
     unsafe {
         simd_shuffle!(
@@ -1413,7 +1469,8 @@ pub fn _mm256_insertf128_pd<const IMM1: i32>(a: __m256d, b: __m128d) -> __m256d 
 #[cfg_attr(test, assert_instr(vinsertf128, IMM1 = 1))]
 #[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_insertf128_si256<const IMM1: i32>(a: __m256i, b: __m128i) -> __m256i {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_insertf128_si256<const IMM1: i32>(a: __m256i, b: __m128i) -> __m256i {
     static_assert_uimm_bits!(IMM1, 1);
     unsafe {
         let dst: i64x4 = simd_shuffle!(
@@ -1434,7 +1491,8 @@ pub fn _mm256_insertf128_si256<const IMM1: i32>(a: __m256i, b: __m128i) -> __m25
 // This intrinsic has no corresponding instruction.
 #[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_insert_epi8<const INDEX: i32>(a: __m256i, i: i8) -> __m256i {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_insert_epi8<const INDEX: i32>(a: __m256i, i: i8) -> __m256i {
     static_assert_uimm_bits!(INDEX, 5);
     unsafe { transmute(simd_insert!(a.as_i8x32(), INDEX as u32, i)) }
 }
@@ -1448,7 +1506,8 @@ pub fn _mm256_insert_epi8<const INDEX: i32>(a: __m256i, i: i8) -> __m256i {
 // This intrinsic has no corresponding instruction.
 #[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_insert_epi16<const INDEX: i32>(a: __m256i, i: i16) -> __m256i {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_insert_epi16<const INDEX: i32>(a: __m256i, i: i16) -> __m256i {
     static_assert_uimm_bits!(INDEX, 4);
     unsafe { transmute(simd_insert!(a.as_i16x16(), INDEX as u32, i)) }
 }
@@ -1462,7 +1521,8 @@ pub fn _mm256_insert_epi16<const INDEX: i32>(a: __m256i, i: i16) -> __m256i {
 // This intrinsic has no corresponding instruction.
 #[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_insert_epi32<const INDEX: i32>(a: __m256i, i: i32) -> __m256i {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_insert_epi32<const INDEX: i32>(a: __m256i, i: i32) -> __m256i {
     static_assert_uimm_bits!(INDEX, 3);
     unsafe { transmute(simd_insert!(a.as_i32x8(), INDEX as u32, i)) }
 }
@@ -1481,7 +1541,8 @@ pub fn _mm256_insert_epi32<const INDEX: i32>(a: __m256i, i: i32) -> __m256i {
 )]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 #[allow(clippy::cast_ptr_alignment)]
-pub unsafe fn _mm256_load_pd(mem_addr: *const f64) -> __m256d {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const unsafe fn _mm256_load_pd(mem_addr: *const f64) -> __m256d {
     *(mem_addr as *const __m256d)
 }
 
@@ -1499,7 +1560,8 @@ pub unsafe fn _mm256_load_pd(mem_addr: *const f64) -> __m256d {
 )]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 #[allow(clippy::cast_ptr_alignment)]
-pub unsafe fn _mm256_store_pd(mem_addr: *mut f64, a: __m256d) {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const unsafe fn _mm256_store_pd(mem_addr: *mut f64, a: __m256d) {
     *(mem_addr as *mut __m256d) = a;
 }
 
@@ -1517,7 +1579,8 @@ pub unsafe fn _mm256_store_pd(mem_addr: *mut f64, a: __m256d) {
 )]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 #[allow(clippy::cast_ptr_alignment)]
-pub unsafe fn _mm256_load_ps(mem_addr: *const f32) -> __m256 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const unsafe fn _mm256_load_ps(mem_addr: *const f32) -> __m256 {
     *(mem_addr as *const __m256)
 }
 
@@ -1535,7 +1598,8 @@ pub unsafe fn _mm256_load_ps(mem_addr: *const f32) -> __m256 {
 )]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 #[allow(clippy::cast_ptr_alignment)]
-pub unsafe fn _mm256_store_ps(mem_addr: *mut f32, a: __m256) {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const unsafe fn _mm256_store_ps(mem_addr: *mut f32, a: __m256) {
     *(mem_addr as *mut __m256) = a;
 }
 
@@ -1548,7 +1612,8 @@ pub unsafe fn _mm256_store_ps(mem_addr: *mut f32, a: __m256) {
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vmovup))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm256_loadu_pd(mem_addr: *const f64) -> __m256d {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const unsafe fn _mm256_loadu_pd(mem_addr: *const f64) -> __m256d {
     let mut dst = _mm256_undefined_pd();
     ptr::copy_nonoverlapping(
         mem_addr as *const u8,
@@ -1567,7 +1632,8 @@ pub unsafe fn _mm256_loadu_pd(mem_addr: *const f64) -> __m256d {
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vmovup))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm256_storeu_pd(mem_addr: *mut f64, a: __m256d) {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const unsafe fn _mm256_storeu_pd(mem_addr: *mut f64, a: __m256d) {
     mem_addr.cast::<__m256d>().write_unaligned(a);
 }
 
@@ -1580,7 +1646,8 @@ pub unsafe fn _mm256_storeu_pd(mem_addr: *mut f64, a: __m256d) {
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vmovups))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm256_loadu_ps(mem_addr: *const f32) -> __m256 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const unsafe fn _mm256_loadu_ps(mem_addr: *const f32) -> __m256 {
     let mut dst = _mm256_undefined_ps();
     ptr::copy_nonoverlapping(
         mem_addr as *const u8,
@@ -1599,7 +1666,8 @@ pub unsafe fn _mm256_loadu_ps(mem_addr: *const f32) -> __m256 {
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vmovups))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm256_storeu_ps(mem_addr: *mut f32, a: __m256) {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const unsafe fn _mm256_storeu_ps(mem_addr: *mut f32, a: __m256) {
     mem_addr.cast::<__m256>().write_unaligned(a);
 }
 
@@ -1615,7 +1683,8 @@ pub unsafe fn _mm256_storeu_ps(mem_addr: *mut f32, a: __m256) {
     assert_instr(vmovaps)
 )] // FIXME vmovdqa expected
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm256_load_si256(mem_addr: *const __m256i) -> __m256i {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const unsafe fn _mm256_load_si256(mem_addr: *const __m256i) -> __m256i {
     *mem_addr
 }
 
@@ -1631,7 +1700,8 @@ pub unsafe fn _mm256_load_si256(mem_addr: *const __m256i) -> __m256i {
     assert_instr(vmovaps)
 )] // FIXME vmovdqa expected
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm256_store_si256(mem_addr: *mut __m256i, a: __m256i) {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const unsafe fn _mm256_store_si256(mem_addr: *mut __m256i, a: __m256i) {
     *mem_addr = a;
 }
 
@@ -1643,7 +1713,8 @@ pub unsafe fn _mm256_store_si256(mem_addr: *mut __m256i, a: __m256i) {
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vmovups))] // FIXME vmovdqu expected
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm256_loadu_si256(mem_addr: *const __m256i) -> __m256i {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const unsafe fn _mm256_loadu_si256(mem_addr: *const __m256i) -> __m256i {
     let mut dst = _mm256_undefined_si256();
     ptr::copy_nonoverlapping(
         mem_addr as *const u8,
@@ -1661,7 +1732,8 @@ pub unsafe fn _mm256_loadu_si256(mem_addr: *const __m256i) -> __m256i {
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vmovups))] // FIXME vmovdqu expected
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm256_storeu_si256(mem_addr: *mut __m256i, a: __m256i) {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const unsafe fn _mm256_storeu_si256(mem_addr: *mut __m256i, a: __m256i) {
     mem_addr.write_unaligned(a);
 }
 
@@ -1674,7 +1746,8 @@ pub unsafe fn _mm256_storeu_si256(mem_addr: *mut __m256i, a: __m256i) {
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vmaskmovpd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm256_maskload_pd(mem_addr: *const f64, mask: __m256i) -> __m256d {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const unsafe fn _mm256_maskload_pd(mem_addr: *const f64, mask: __m256i) -> __m256d {
     let mask = simd_shr(mask.as_i64x4(), i64x4::splat(63));
     simd_masked_load!(SimdAlign::Unaligned, mask, mem_addr, _mm256_setzero_pd())
 }
@@ -1687,7 +1760,8 @@ pub unsafe fn _mm256_maskload_pd(mem_addr: *const f64, mask: __m256i) -> __m256d
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vmaskmovpd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm256_maskstore_pd(mem_addr: *mut f64, mask: __m256i, a: __m256d) {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const unsafe fn _mm256_maskstore_pd(mem_addr: *mut f64, mask: __m256i, a: __m256d) {
     let mask = simd_shr(mask.as_i64x4(), i64x4::splat(63));
     simd_masked_store!(SimdAlign::Unaligned, mask, mem_addr, a)
 }
@@ -1701,7 +1775,8 @@ pub unsafe fn _mm256_maskstore_pd(mem_addr: *mut f64, mask: __m256i, a: __m256d)
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vmaskmovpd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_maskload_pd(mem_addr: *const f64, mask: __m128i) -> __m128d {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const unsafe fn _mm_maskload_pd(mem_addr: *const f64, mask: __m128i) -> __m128d {
     let mask = simd_shr(mask.as_i64x2(), i64x2::splat(63));
     simd_masked_load!(SimdAlign::Unaligned, mask, mem_addr, _mm_setzero_pd())
 }
@@ -1714,7 +1789,8 @@ pub unsafe fn _mm_maskload_pd(mem_addr: *const f64, mask: __m128i) -> __m128d {
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vmaskmovpd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_maskstore_pd(mem_addr: *mut f64, mask: __m128i, a: __m128d) {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const unsafe fn _mm_maskstore_pd(mem_addr: *mut f64, mask: __m128i, a: __m128d) {
     let mask = simd_shr(mask.as_i64x2(), i64x2::splat(63));
     simd_masked_store!(SimdAlign::Unaligned, mask, mem_addr, a)
 }
@@ -1728,7 +1804,8 @@ pub unsafe fn _mm_maskstore_pd(mem_addr: *mut f64, mask: __m128i, a: __m128d) {
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vmaskmovps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm256_maskload_ps(mem_addr: *const f32, mask: __m256i) -> __m256 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const unsafe fn _mm256_maskload_ps(mem_addr: *const f32, mask: __m256i) -> __m256 {
     let mask = simd_shr(mask.as_i32x8(), i32x8::splat(31));
     simd_masked_load!(SimdAlign::Unaligned, mask, mem_addr, _mm256_setzero_ps())
 }
@@ -1741,7 +1818,8 @@ pub unsafe fn _mm256_maskload_ps(mem_addr: *const f32, mask: __m256i) -> __m256 
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vmaskmovps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm256_maskstore_ps(mem_addr: *mut f32, mask: __m256i, a: __m256) {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const unsafe fn _mm256_maskstore_ps(mem_addr: *mut f32, mask: __m256i, a: __m256) {
     let mask = simd_shr(mask.as_i32x8(), i32x8::splat(31));
     simd_masked_store!(SimdAlign::Unaligned, mask, mem_addr, a)
 }
@@ -1755,7 +1833,8 @@ pub unsafe fn _mm256_maskstore_ps(mem_addr: *mut f32, mask: __m256i, a: __m256) 
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vmaskmovps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_maskload_ps(mem_addr: *const f32, mask: __m128i) -> __m128 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const unsafe fn _mm_maskload_ps(mem_addr: *const f32, mask: __m128i) -> __m128 {
     let mask = simd_shr(mask.as_i32x4(), i32x4::splat(31));
     simd_masked_load!(SimdAlign::Unaligned, mask, mem_addr, _mm_setzero_ps())
 }
@@ -1768,7 +1847,8 @@ pub unsafe fn _mm_maskload_ps(mem_addr: *const f32, mask: __m128i) -> __m128 {
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vmaskmovps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_maskstore_ps(mem_addr: *mut f32, mask: __m128i, a: __m128) {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const unsafe fn _mm_maskstore_ps(mem_addr: *mut f32, mask: __m128i, a: __m128) {
     let mask = simd_shr(mask.as_i32x4(), i32x4::splat(31));
     simd_masked_store!(SimdAlign::Unaligned, mask, mem_addr, a)
 }
@@ -1781,7 +1861,8 @@ pub unsafe fn _mm_maskstore_ps(mem_addr: *mut f32, mask: __m128i, a: __m128) {
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vmovshdup))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_movehdup_ps(a: __m256) -> __m256 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_movehdup_ps(a: __m256) -> __m256 {
     unsafe { simd_shuffle!(a, a, [1, 1, 3, 3, 5, 5, 7, 7]) }
 }
 
@@ -1793,7 +1874,8 @@ pub fn _mm256_movehdup_ps(a: __m256) -> __m256 {
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vmovsldup))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_moveldup_ps(a: __m256) -> __m256 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_moveldup_ps(a: __m256) -> __m256 {
     unsafe { simd_shuffle!(a, a, [0, 0, 2, 2, 4, 4, 6, 6]) }
 }
 
@@ -1805,7 +1887,8 @@ pub fn _mm256_moveldup_ps(a: __m256) -> __m256 {
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vmovddup))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_movedup_pd(a: __m256d) -> __m256d {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_movedup_pd(a: __m256d) -> __m256d {
     unsafe { simd_shuffle!(a, a, [0, 0, 2, 2]) }
 }
 
@@ -1943,7 +2026,8 @@ pub fn _mm256_rsqrt_ps(a: __m256) -> __m256 {
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vunpckhpd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_unpackhi_pd(a: __m256d, b: __m256d) -> __m256d {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_unpackhi_pd(a: __m256d, b: __m256d) -> __m256d {
     unsafe { simd_shuffle!(a, b, [1, 5, 3, 7]) }
 }
 
@@ -1955,7 +2039,8 @@ pub fn _mm256_unpackhi_pd(a: __m256d, b: __m256d) -> __m256d {
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vunpckhps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_unpackhi_ps(a: __m256, b: __m256) -> __m256 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_unpackhi_ps(a: __m256, b: __m256) -> __m256 {
     unsafe { simd_shuffle!(a, b, [2, 10, 3, 11, 6, 14, 7, 15]) }
 }
 
@@ -1967,7 +2052,8 @@ pub fn _mm256_unpackhi_ps(a: __m256, b: __m256) -> __m256 {
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vunpcklpd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_unpacklo_pd(a: __m256d, b: __m256d) -> __m256d {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_unpacklo_pd(a: __m256d, b: __m256d) -> __m256d {
     unsafe { simd_shuffle!(a, b, [0, 4, 2, 6]) }
 }
 
@@ -1979,7 +2065,8 @@ pub fn _mm256_unpacklo_pd(a: __m256d, b: __m256d) -> __m256d {
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vunpcklps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_unpacklo_ps(a: __m256, b: __m256) -> __m256 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_unpacklo_ps(a: __m256, b: __m256) -> __m256 {
     unsafe { simd_shuffle!(a, b, [0, 8, 1, 9, 4, 12, 5, 13]) }
 }
 
@@ -1993,7 +2080,8 @@ pub fn _mm256_unpacklo_ps(a: __m256, b: __m256) -> __m256 {
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vptest))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_testz_si256(a: __m256i, b: __m256i) -> i32 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_testz_si256(a: __m256i, b: __m256i) -> i32 {
     unsafe {
         let r = simd_and(a.as_i64x4(), b.as_i64x4());
         (0i64 == simd_reduce_or(r)) as i32
@@ -2010,7 +2098,8 @@ pub fn _mm256_testz_si256(a: __m256i, b: __m256i) -> i32 {
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vptest))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_testc_si256(a: __m256i, b: __m256i) -> i32 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_testc_si256(a: __m256i, b: __m256i) -> i32 {
     unsafe {
         let r = simd_and(simd_xor(a.as_i64x4(), i64x4::splat(!0)), b.as_i64x4());
         (0i64 == simd_reduce_or(r)) as i32
@@ -2097,7 +2186,8 @@ pub fn _mm256_testnzc_pd(a: __m256d, b: __m256d) -> i32 {
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vtestpd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm_testz_pd(a: __m128d, b: __m128d) -> i32 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm_testz_pd(a: __m128d, b: __m128d) -> i32 {
     unsafe {
         let r: i64x2 = simd_lt(transmute(_mm_and_pd(a, b)), i64x2::ZERO);
         (0i64 == simd_reduce_or(r)) as i32
@@ -2117,7 +2207,8 @@ pub fn _mm_testz_pd(a: __m128d, b: __m128d) -> i32 {
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vtestpd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm_testc_pd(a: __m128d, b: __m128d) -> i32 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm_testc_pd(a: __m128d, b: __m128d) -> i32 {
     unsafe {
         let r: i64x2 = simd_lt(transmute(_mm_andnot_pd(a, b)), i64x2::ZERO);
         (0i64 == simd_reduce_or(r)) as i32
@@ -2207,7 +2298,8 @@ pub fn _mm256_testnzc_ps(a: __m256, b: __m256) -> i32 {
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vtestps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm_testz_ps(a: __m128, b: __m128) -> i32 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm_testz_ps(a: __m128, b: __m128) -> i32 {
     unsafe {
         let r: i32x4 = simd_lt(transmute(_mm_and_ps(a, b)), i32x4::ZERO);
         (0i32 == simd_reduce_or(r)) as i32
@@ -2227,7 +2319,8 @@ pub fn _mm_testz_ps(a: __m128, b: __m128) -> i32 {
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vtestps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm_testc_ps(a: __m128, b: __m128) -> i32 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm_testc_ps(a: __m128, b: __m128) -> i32 {
     unsafe {
         let r: i32x4 = simd_lt(transmute(_mm_andnot_ps(a, b)), i32x4::ZERO);
         (0i32 == simd_reduce_or(r)) as i32
@@ -2261,12 +2354,13 @@ pub fn _mm_testnzc_ps(a: __m128, b: __m128) -> i32 {
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vmovmskpd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_movemask_pd(a: __m256d) -> i32 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_movemask_pd(a: __m256d) -> i32 {
     // Propagate the highest bit to the rest, because simd_bitmask
     // requires all-1 or all-0.
     unsafe {
         let mask: i64x4 = simd_lt(transmute(a), i64x4::ZERO);
-        simd_bitmask::<i64x4, u8>(mask).into()
+        simd_bitmask::<i64x4, u8>(mask) as i32
     }
 }
 
@@ -2279,12 +2373,13 @@ pub fn _mm256_movemask_pd(a: __m256d) -> i32 {
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vmovmskps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_movemask_ps(a: __m256) -> i32 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_movemask_ps(a: __m256) -> i32 {
     // Propagate the highest bit to the rest, because simd_bitmask
     // requires all-1 or all-0.
     unsafe {
         let mask: i32x8 = simd_lt(transmute(a), i32x8::ZERO);
-        simd_bitmask::<i32x8, u8>(mask).into()
+        simd_bitmask::<i32x8, u8>(mask) as i32
     }
 }
 
@@ -2295,7 +2390,8 @@ pub fn _mm256_movemask_ps(a: __m256) -> i32 {
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vxorp))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_setzero_pd() -> __m256d {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_setzero_pd() -> __m256d {
     const { unsafe { mem::zeroed() } }
 }
 
@@ -2306,7 +2402,8 @@ pub fn _mm256_setzero_pd() -> __m256d {
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vxorps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_setzero_ps() -> __m256 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_setzero_ps() -> __m256 {
     const { unsafe { mem::zeroed() } }
 }
 
@@ -2317,7 +2414,8 @@ pub fn _mm256_setzero_ps() -> __m256 {
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vxor))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_setzero_si256() -> __m256i {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_setzero_si256() -> __m256i {
     const { unsafe { mem::zeroed() } }
 }
 
@@ -2330,7 +2428,8 @@ pub fn _mm256_setzero_si256() -> __m256i {
 // This intrinsic has no corresponding instruction.
 #[cfg_attr(test, assert_instr(vinsertf128))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_set_pd(a: f64, b: f64, c: f64, d: f64) -> __m256d {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_set_pd(a: f64, b: f64, c: f64, d: f64) -> __m256d {
     _mm256_setr_pd(d, c, b, a)
 }
 
@@ -2342,7 +2441,17 @@ pub fn _mm256_set_pd(a: f64, b: f64, c: f64, d: f64) -> __m256d {
 #[target_feature(enable = "avx")]
 // This intrinsic has no corresponding instruction.
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_set_ps(a: f32, b: f32, c: f32, d: f32, e: f32, f: f32, g: f32, h: f32) -> __m256 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_set_ps(
+    a: f32,
+    b: f32,
+    c: f32,
+    d: f32,
+    e: f32,
+    f: f32,
+    g: f32,
+    h: f32,
+) -> __m256 {
     _mm256_setr_ps(h, g, f, e, d, c, b, a)
 }
 
@@ -2353,7 +2462,8 @@ pub fn _mm256_set_ps(a: f32, b: f32, c: f32, d: f32, e: f32, f: f32, g: f32, h: 
 #[target_feature(enable = "avx")]
 // This intrinsic has no corresponding instruction.
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_set_epi8(
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_set_epi8(
     e00: i8,
     e01: i8,
     e02: i8,
@@ -2403,7 +2513,8 @@ pub fn _mm256_set_epi8(
 #[target_feature(enable = "avx")]
 // This intrinsic has no corresponding instruction.
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_set_epi16(
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_set_epi16(
     e00: i16,
     e01: i16,
     e02: i16,
@@ -2437,7 +2548,8 @@ pub fn _mm256_set_epi16(
 #[target_feature(enable = "avx")]
 // This intrinsic has no corresponding instruction.
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_set_epi32(
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_set_epi32(
     e0: i32,
     e1: i32,
     e2: i32,
@@ -2457,7 +2569,8 @@ pub fn _mm256_set_epi32(
 #[target_feature(enable = "avx")]
 // This intrinsic has no corresponding instruction.
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_set_epi64x(a: i64, b: i64, c: i64, d: i64) -> __m256i {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_set_epi64x(a: i64, b: i64, c: i64, d: i64) -> __m256i {
     _mm256_setr_epi64x(d, c, b, a)
 }
 
@@ -2469,7 +2582,8 @@ pub fn _mm256_set_epi64x(a: i64, b: i64, c: i64, d: i64) -> __m256i {
 #[target_feature(enable = "avx")]
 // This intrinsic has no corresponding instruction.
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_setr_pd(a: f64, b: f64, c: f64, d: f64) -> __m256d {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_setr_pd(a: f64, b: f64, c: f64, d: f64) -> __m256d {
     __m256d([a, b, c, d])
 }
 
@@ -2481,7 +2595,17 @@ pub fn _mm256_setr_pd(a: f64, b: f64, c: f64, d: f64) -> __m256d {
 #[target_feature(enable = "avx")]
 // This intrinsic has no corresponding instruction.
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_setr_ps(a: f32, b: f32, c: f32, d: f32, e: f32, f: f32, g: f32, h: f32) -> __m256 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_setr_ps(
+    a: f32,
+    b: f32,
+    c: f32,
+    d: f32,
+    e: f32,
+    f: f32,
+    g: f32,
+    h: f32,
+) -> __m256 {
     __m256([a, b, c, d, e, f, g, h])
 }
 
@@ -2493,7 +2617,8 @@ pub fn _mm256_setr_ps(a: f32, b: f32, c: f32, d: f32, e: f32, f: f32, g: f32, h:
 #[target_feature(enable = "avx")]
 // This intrinsic has no corresponding instruction.
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_setr_epi8(
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_setr_epi8(
     e00: i8,
     e01: i8,
     e02: i8,
@@ -2546,7 +2671,8 @@ pub fn _mm256_setr_epi8(
 #[target_feature(enable = "avx")]
 // This intrinsic has no corresponding instruction.
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_setr_epi16(
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_setr_epi16(
     e00: i16,
     e01: i16,
     e02: i16,
@@ -2583,7 +2709,8 @@ pub fn _mm256_setr_epi16(
 #[target_feature(enable = "avx")]
 // This intrinsic has no corresponding instruction.
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_setr_epi32(
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_setr_epi32(
     e0: i32,
     e1: i32,
     e2: i32,
@@ -2604,7 +2731,8 @@ pub fn _mm256_setr_epi32(
 #[target_feature(enable = "avx")]
 // This intrinsic has no corresponding instruction.
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_setr_epi64x(a: i64, b: i64, c: i64, d: i64) -> __m256i {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_setr_epi64x(a: i64, b: i64, c: i64, d: i64) -> __m256i {
     unsafe { transmute(i64x4::new(a, b, c, d)) }
 }
 
@@ -2616,7 +2744,8 @@ pub fn _mm256_setr_epi64x(a: i64, b: i64, c: i64, d: i64) -> __m256i {
 #[target_feature(enable = "avx")]
 // This intrinsic has no corresponding instruction.
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_set1_pd(a: f64) -> __m256d {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_set1_pd(a: f64) -> __m256d {
     _mm256_setr_pd(a, a, a, a)
 }
 
@@ -2628,7 +2757,8 @@ pub fn _mm256_set1_pd(a: f64) -> __m256d {
 #[target_feature(enable = "avx")]
 // This intrinsic has no corresponding instruction.
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_set1_ps(a: f32) -> __m256 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_set1_ps(a: f32) -> __m256 {
     _mm256_setr_ps(a, a, a, a, a, a, a, a)
 }
 
@@ -2640,7 +2770,8 @@ pub fn _mm256_set1_ps(a: f32) -> __m256 {
 #[target_feature(enable = "avx")]
 // This intrinsic has no corresponding instruction.
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_set1_epi8(a: i8) -> __m256i {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_set1_epi8(a: i8) -> __m256i {
     #[rustfmt::skip]
     _mm256_setr_epi8(
         a, a, a, a, a, a, a, a,
@@ -2660,7 +2791,8 @@ pub fn _mm256_set1_epi8(a: i8) -> __m256i {
 #[cfg_attr(test, assert_instr(vinsertf128))]
 // This intrinsic has no corresponding instruction.
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_set1_epi16(a: i16) -> __m256i {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_set1_epi16(a: i16) -> __m256i {
     _mm256_setr_epi16(a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a)
 }
 
@@ -2672,7 +2804,8 @@ pub fn _mm256_set1_epi16(a: i16) -> __m256i {
 #[target_feature(enable = "avx")]
 // This intrinsic has no corresponding instruction.
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_set1_epi32(a: i32) -> __m256i {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_set1_epi32(a: i32) -> __m256i {
     _mm256_setr_epi32(a, a, a, a, a, a, a, a)
 }
 
@@ -2686,7 +2819,8 @@ pub fn _mm256_set1_epi32(a: i32) -> __m256i {
 #[cfg_attr(all(test, target_arch = "x86"), assert_instr(vbroadcastsd))]
 // This intrinsic has no corresponding instruction.
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_set1_epi64x(a: i64) -> __m256i {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_set1_epi64x(a: i64) -> __m256i {
     _mm256_setr_epi64x(a, a, a, a)
 }
 
@@ -2698,7 +2832,8 @@ pub fn _mm256_set1_epi64x(a: i64) -> __m256i {
 // This intrinsic is only used for compilation and does not generate any
 // instructions, thus it has zero latency.
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_castpd_ps(a: __m256d) -> __m256 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_castpd_ps(a: __m256d) -> __m256 {
     unsafe { transmute(a) }
 }
 
@@ -2710,7 +2845,8 @@ pub fn _mm256_castpd_ps(a: __m256d) -> __m256 {
 // This intrinsic is only used for compilation and does not generate any
 // instructions, thus it has zero latency.
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_castps_pd(a: __m256) -> __m256d {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_castps_pd(a: __m256) -> __m256d {
     unsafe { transmute(a) }
 }
 
@@ -2722,7 +2858,8 @@ pub fn _mm256_castps_pd(a: __m256) -> __m256d {
 // This intrinsic is only used for compilation and does not generate any
 // instructions, thus it has zero latency.
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_castps_si256(a: __m256) -> __m256i {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_castps_si256(a: __m256) -> __m256i {
     unsafe { transmute(a) }
 }
 
@@ -2734,7 +2871,8 @@ pub fn _mm256_castps_si256(a: __m256) -> __m256i {
 // This intrinsic is only used for compilation and does not generate any
 // instructions, thus it has zero latency.
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_castsi256_ps(a: __m256i) -> __m256 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_castsi256_ps(a: __m256i) -> __m256 {
     unsafe { transmute(a) }
 }
 
@@ -2746,7 +2884,8 @@ pub fn _mm256_castsi256_ps(a: __m256i) -> __m256 {
 // This intrinsic is only used for compilation and does not generate any
 // instructions, thus it has zero latency.
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_castpd_si256(a: __m256d) -> __m256i {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_castpd_si256(a: __m256d) -> __m256i {
     unsafe { transmute(a) }
 }
 
@@ -2758,7 +2897,8 @@ pub fn _mm256_castpd_si256(a: __m256d) -> __m256i {
 // This intrinsic is only used for compilation and does not generate any
 // instructions, thus it has zero latency.
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_castsi256_pd(a: __m256i) -> __m256d {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_castsi256_pd(a: __m256i) -> __m256d {
     unsafe { transmute(a) }
 }
 
@@ -2770,7 +2910,8 @@ pub fn _mm256_castsi256_pd(a: __m256i) -> __m256d {
 // This intrinsic is only used for compilation and does not generate any
 // instructions, thus it has zero latency.
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_castps256_ps128(a: __m256) -> __m128 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_castps256_ps128(a: __m256) -> __m128 {
     unsafe { simd_shuffle!(a, a, [0, 1, 2, 3]) }
 }
 
@@ -2782,7 +2923,8 @@ pub fn _mm256_castps256_ps128(a: __m256) -> __m128 {
 // This intrinsic is only used for compilation and does not generate any
 // instructions, thus it has zero latency.
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_castpd256_pd128(a: __m256d) -> __m128d {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_castpd256_pd128(a: __m256d) -> __m128d {
     unsafe { simd_shuffle!(a, a, [0, 1]) }
 }
 
@@ -2794,7 +2936,8 @@ pub fn _mm256_castpd256_pd128(a: __m256d) -> __m128d {
 // This intrinsic is only used for compilation and does not generate any
 // instructions, thus it has zero latency.
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_castsi256_si128(a: __m256i) -> __m128i {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_castsi256_si128(a: __m256i) -> __m128i {
     unsafe {
         let a = a.as_i64x4();
         let dst: i64x2 = simd_shuffle!(a, a, [0, 1]);
@@ -2811,7 +2954,8 @@ pub fn _mm256_castsi256_si128(a: __m256i) -> __m128i {
 // This intrinsic is only used for compilation and does not generate any
 // instructions, thus it has zero latency.
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_castps128_ps256(a: __m128) -> __m256 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_castps128_ps256(a: __m128) -> __m256 {
     unsafe { simd_shuffle!(a, _mm_undefined_ps(), [0, 1, 2, 3, 4, 4, 4, 4]) }
 }
 
@@ -2824,7 +2968,8 @@ pub fn _mm256_castps128_ps256(a: __m128) -> __m256 {
 // This intrinsic is only used for compilation and does not generate any
 // instructions, thus it has zero latency.
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_castpd128_pd256(a: __m128d) -> __m256d {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_castpd128_pd256(a: __m128d) -> __m256d {
     unsafe { simd_shuffle!(a, _mm_undefined_pd(), [0, 1, 2, 2]) }
 }
 
@@ -2837,7 +2982,8 @@ pub fn _mm256_castpd128_pd256(a: __m128d) -> __m256d {
 // This intrinsic is only used for compilation and does not generate any
 // instructions, thus it has zero latency.
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_castsi128_si256(a: __m128i) -> __m256i {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_castsi128_si256(a: __m128i) -> __m256i {
     unsafe {
         let a = a.as_i64x2();
         let undefined = i64x2::ZERO;
@@ -2856,7 +3002,8 @@ pub fn _mm256_castsi128_si256(a: __m128i) -> __m256i {
 // This intrinsic is only used for compilation and does not generate any
 // instructions, thus it has zero latency.
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_zextps128_ps256(a: __m128) -> __m256 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_zextps128_ps256(a: __m128) -> __m256 {
     unsafe { simd_shuffle!(a, _mm_setzero_ps(), [0, 1, 2, 3, 4, 5, 6, 7]) }
 }
 
@@ -2870,7 +3017,8 @@ pub fn _mm256_zextps128_ps256(a: __m128) -> __m256 {
 // This intrinsic is only used for compilation and does not generate any
 // instructions, thus it has zero latency.
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_zextsi128_si256(a: __m128i) -> __m256i {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_zextsi128_si256(a: __m128i) -> __m256i {
     unsafe {
         let b = i64x2::ZERO;
         let dst: i64x4 = simd_shuffle!(a.as_i64x2(), b, [0, 1, 2, 3]);
@@ -2889,7 +3037,8 @@ pub fn _mm256_zextsi128_si256(a: __m128i) -> __m256i {
 // This intrinsic is only used for compilation and does not generate any
 // instructions, thus it has zero latency.
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_zextpd128_pd256(a: __m128d) -> __m256d {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_zextpd128_pd256(a: __m128d) -> __m256d {
     unsafe { simd_shuffle!(a, _mm_setzero_pd(), [0, 1, 2, 3]) }
 }
 
@@ -2903,7 +3052,8 @@ pub fn _mm256_zextpd128_pd256(a: __m128d) -> __m256d {
 #[target_feature(enable = "avx")]
 // This intrinsic has no corresponding instruction.
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_undefined_ps() -> __m256 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_undefined_ps() -> __m256 {
     const { unsafe { mem::zeroed() } }
 }
 
@@ -2917,7 +3067,8 @@ pub fn _mm256_undefined_ps() -> __m256 {
 #[target_feature(enable = "avx")]
 // This intrinsic has no corresponding instruction.
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_undefined_pd() -> __m256d {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_undefined_pd() -> __m256d {
     const { unsafe { mem::zeroed() } }
 }
 
@@ -2931,7 +3082,8 @@ pub fn _mm256_undefined_pd() -> __m256d {
 #[target_feature(enable = "avx")]
 // This intrinsic has no corresponding instruction.
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_undefined_si256() -> __m256i {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_undefined_si256() -> __m256i {
     const { unsafe { mem::zeroed() } }
 }
 
@@ -2942,7 +3094,8 @@ pub fn _mm256_undefined_si256() -> __m256i {
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vinsertf128))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_set_m128(hi: __m128, lo: __m128) -> __m256 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_set_m128(hi: __m128, lo: __m128) -> __m256 {
     unsafe { simd_shuffle!(lo, hi, [0, 1, 2, 3, 4, 5, 6, 7]) }
 }
 
@@ -2953,7 +3106,8 @@ pub fn _mm256_set_m128(hi: __m128, lo: __m128) -> __m256 {
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vinsertf128))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_set_m128d(hi: __m128d, lo: __m128d) -> __m256d {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_set_m128d(hi: __m128d, lo: __m128d) -> __m256d {
     unsafe {
         let hi: __m128 = transmute(hi);
         let lo: __m128 = transmute(lo);
@@ -2968,7 +3122,8 @@ pub fn _mm256_set_m128d(hi: __m128d, lo: __m128d) -> __m256d {
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vinsertf128))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_set_m128i(hi: __m128i, lo: __m128i) -> __m256i {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_set_m128i(hi: __m128i, lo: __m128i) -> __m256i {
     unsafe {
         let hi: __m128 = transmute(hi);
         let lo: __m128 = transmute(lo);
@@ -2983,7 +3138,8 @@ pub fn _mm256_set_m128i(hi: __m128i, lo: __m128i) -> __m256i {
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vinsertf128))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_setr_m128(lo: __m128, hi: __m128) -> __m256 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_setr_m128(lo: __m128, hi: __m128) -> __m256 {
     _mm256_set_m128(hi, lo)
 }
 
@@ -2994,7 +3150,8 @@ pub fn _mm256_setr_m128(lo: __m128, hi: __m128) -> __m256 {
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vinsertf128))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_setr_m128d(lo: __m128d, hi: __m128d) -> __m256d {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_setr_m128d(lo: __m128d, hi: __m128d) -> __m256d {
     _mm256_set_m128d(hi, lo)
 }
 
@@ -3005,7 +3162,8 @@ pub fn _mm256_setr_m128d(lo: __m128d, hi: __m128d) -> __m256d {
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vinsertf128))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_setr_m128i(lo: __m128i, hi: __m128i) -> __m256i {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_setr_m128i(lo: __m128i, hi: __m128i) -> __m256i {
     _mm256_set_m128i(hi, lo)
 }
 
@@ -3019,7 +3177,8 @@ pub fn _mm256_setr_m128i(lo: __m128i, hi: __m128i) -> __m256i {
 #[target_feature(enable = "avx")]
 // This intrinsic has no corresponding instruction.
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm256_loadu2_m128(hiaddr: *const f32, loaddr: *const f32) -> __m256 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const unsafe fn _mm256_loadu2_m128(hiaddr: *const f32, loaddr: *const f32) -> __m256 {
     let a = _mm256_castps128_ps256(_mm_loadu_ps(loaddr));
     _mm256_insertf128_ps::<1>(a, _mm_loadu_ps(hiaddr))
 }
@@ -3034,7 +3193,8 @@ pub unsafe fn _mm256_loadu2_m128(hiaddr: *const f32, loaddr: *const f32) -> __m2
 #[target_feature(enable = "avx")]
 // This intrinsic has no corresponding instruction.
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm256_loadu2_m128d(hiaddr: *const f64, loaddr: *const f64) -> __m256d {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const unsafe fn _mm256_loadu2_m128d(hiaddr: *const f64, loaddr: *const f64) -> __m256d {
     let a = _mm256_castpd128_pd256(_mm_loadu_pd(loaddr));
     _mm256_insertf128_pd::<1>(a, _mm_loadu_pd(hiaddr))
 }
@@ -3048,7 +3208,8 @@ pub unsafe fn _mm256_loadu2_m128d(hiaddr: *const f64, loaddr: *const f64) -> __m
 #[target_feature(enable = "avx")]
 // This intrinsic has no corresponding instruction.
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm256_loadu2_m128i(hiaddr: *const __m128i, loaddr: *const __m128i) -> __m256i {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const unsafe fn _mm256_loadu2_m128i(hiaddr: *const __m128i, loaddr: *const __m128i) -> __m256i {
     let a = _mm256_castsi128_si256(_mm_loadu_si128(loaddr));
     _mm256_insertf128_si256::<1>(a, _mm_loadu_si128(hiaddr))
 }
@@ -3063,7 +3224,8 @@ pub unsafe fn _mm256_loadu2_m128i(hiaddr: *const __m128i, loaddr: *const __m128i
 #[target_feature(enable = "avx")]
 // This intrinsic has no corresponding instruction.
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm256_storeu2_m128(hiaddr: *mut f32, loaddr: *mut f32, a: __m256) {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const unsafe fn _mm256_storeu2_m128(hiaddr: *mut f32, loaddr: *mut f32, a: __m256) {
     let lo = _mm256_castps256_ps128(a);
     _mm_storeu_ps(loaddr, lo);
     let hi = _mm256_extractf128_ps::<1>(a);
@@ -3080,7 +3242,8 @@ pub unsafe fn _mm256_storeu2_m128(hiaddr: *mut f32, loaddr: *mut f32, a: __m256)
 #[target_feature(enable = "avx")]
 // This intrinsic has no corresponding instruction.
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm256_storeu2_m128d(hiaddr: *mut f64, loaddr: *mut f64, a: __m256d) {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const unsafe fn _mm256_storeu2_m128d(hiaddr: *mut f64, loaddr: *mut f64, a: __m256d) {
     let lo = _mm256_castpd256_pd128(a);
     _mm_storeu_pd(loaddr, lo);
     let hi = _mm256_extractf128_pd::<1>(a);
@@ -3096,7 +3259,8 @@ pub unsafe fn _mm256_storeu2_m128d(hiaddr: *mut f64, loaddr: *mut f64, a: __m256
 #[target_feature(enable = "avx")]
 // This intrinsic has no corresponding instruction.
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm256_storeu2_m128i(hiaddr: *mut __m128i, loaddr: *mut __m128i, a: __m256i) {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const unsafe fn _mm256_storeu2_m128i(hiaddr: *mut __m128i, loaddr: *mut __m128i, a: __m256i) {
     let lo = _mm256_castsi256_si128(a);
     _mm_storeu_si128(loaddr, lo);
     let hi = _mm256_extractf128_si256::<1>(a);
@@ -3110,7 +3274,8 @@ pub unsafe fn _mm256_storeu2_m128i(hiaddr: *mut __m128i, loaddr: *mut __m128i, a
 #[target_feature(enable = "avx")]
 //#[cfg_attr(test, assert_instr(movss))] FIXME
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_cvtss_f32(a: __m256) -> f32 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_cvtss_f32(a: __m256) -> f32 {
     unsafe { simd_extract!(a, 0) }
 }
 
@@ -3191,6 +3356,7 @@ unsafe extern "C" {
 
 #[cfg(test)]
 mod tests {
+    use crate::core_arch::assert_eq_const as assert_eq;
     use crate::hint::black_box;
     use crate::ptr;
     use stdarch_test::simd_test;
@@ -3198,7 +3364,7 @@ mod tests {
     use crate::core_arch::x86::*;
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_add_pd() {
+    const unsafe fn test_mm256_add_pd() {
         let a = _mm256_setr_pd(1., 2., 3., 4.);
         let b = _mm256_setr_pd(5., 6., 7., 8.);
         let r = _mm256_add_pd(a, b);
@@ -3207,7 +3373,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_add_ps() {
+    const unsafe fn test_mm256_add_ps() {
         let a = _mm256_setr_ps(1., 2., 3., 4., 5., 6., 7., 8.);
         let b = _mm256_setr_ps(9., 10., 11., 12., 13., 14., 15., 16.);
         let r = _mm256_add_ps(a, b);
@@ -3216,7 +3382,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_and_pd() {
+    const unsafe fn test_mm256_and_pd() {
         let a = _mm256_set1_pd(1.);
         let b = _mm256_set1_pd(0.6);
         let r = _mm256_and_pd(a, b);
@@ -3225,7 +3391,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_and_ps() {
+    const unsafe fn test_mm256_and_ps() {
         let a = _mm256_set1_ps(1.);
         let b = _mm256_set1_ps(0.6);
         let r = _mm256_and_ps(a, b);
@@ -3234,7 +3400,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_or_pd() {
+    const unsafe fn test_mm256_or_pd() {
         let a = _mm256_set1_pd(1.);
         let b = _mm256_set1_pd(0.6);
         let r = _mm256_or_pd(a, b);
@@ -3243,7 +3409,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_or_ps() {
+    const unsafe fn test_mm256_or_ps() {
         let a = _mm256_set1_ps(1.);
         let b = _mm256_set1_ps(0.6);
         let r = _mm256_or_ps(a, b);
@@ -3252,7 +3418,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_shuffle_pd() {
+    const unsafe fn test_mm256_shuffle_pd() {
         let a = _mm256_setr_pd(1., 4., 5., 8.);
         let b = _mm256_setr_pd(2., 3., 6., 7.);
         let r = _mm256_shuffle_pd::<0b11_11_11_11>(a, b);
@@ -3261,7 +3427,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_shuffle_ps() {
+    const unsafe fn test_mm256_shuffle_ps() {
         let a = _mm256_setr_ps(1., 4., 5., 8., 9., 12., 13., 16.);
         let b = _mm256_setr_ps(2., 3., 6., 7., 10., 11., 14., 15.);
         let r = _mm256_shuffle_ps::<0b00_00_11_11>(a, b);
@@ -3270,7 +3436,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_andnot_pd() {
+    const unsafe fn test_mm256_andnot_pd() {
         let a = _mm256_set1_pd(0.);
         let b = _mm256_set1_pd(0.6);
         let r = _mm256_andnot_pd(a, b);
@@ -3278,7 +3444,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_andnot_ps() {
+    const unsafe fn test_mm256_andnot_ps() {
         let a = _mm256_set1_ps(0.);
         let b = _mm256_set1_ps(0.6);
         let r = _mm256_andnot_ps(a, b);
@@ -3390,7 +3556,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_mul_pd() {
+    const unsafe fn test_mm256_mul_pd() {
         let a = _mm256_setr_pd(1., 2., 3., 4.);
         let b = _mm256_setr_pd(5., 6., 7., 8.);
         let r = _mm256_mul_pd(a, b);
@@ -3399,7 +3565,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_mul_ps() {
+    const unsafe fn test_mm256_mul_ps() {
         let a = _mm256_setr_ps(1., 2., 3., 4., 5., 6., 7., 8.);
         let b = _mm256_setr_ps(9., 10., 11., 12., 13., 14., 15., 16.);
         let r = _mm256_mul_ps(a, b);
@@ -3408,7 +3574,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_addsub_pd() {
+    const unsafe fn test_mm256_addsub_pd() {
         let a = _mm256_setr_pd(1., 2., 3., 4.);
         let b = _mm256_setr_pd(5., 6., 7., 8.);
         let r = _mm256_addsub_pd(a, b);
@@ -3417,7 +3583,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_addsub_ps() {
+    const unsafe fn test_mm256_addsub_ps() {
         let a = _mm256_setr_ps(1., 2., 3., 4., 1., 2., 3., 4.);
         let b = _mm256_setr_ps(5., 6., 7., 8., 5., 6., 7., 8.);
         let r = _mm256_addsub_ps(a, b);
@@ -3426,7 +3592,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_sub_pd() {
+    const unsafe fn test_mm256_sub_pd() {
         let a = _mm256_setr_pd(1., 2., 3., 4.);
         let b = _mm256_setr_pd(5., 6., 7., 8.);
         let r = _mm256_sub_pd(a, b);
@@ -3435,7 +3601,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_sub_ps() {
+    const unsafe fn test_mm256_sub_ps() {
         let a = _mm256_setr_ps(1., 2., 3., 4., -1., -2., -3., -4.);
         let b = _mm256_setr_ps(5., 6., 7., 8., 3., 2., 1., 0.);
         let r = _mm256_sub_ps(a, b);
@@ -3458,7 +3624,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_floor_pd() {
+    const unsafe fn test_mm256_floor_pd() {
         let a = _mm256_setr_pd(1.55, 2.2, 3.99, -1.2);
         let result_down = _mm256_floor_pd(a);
         let expected_down = _mm256_setr_pd(1., 2., 3., -2.);
@@ -3466,7 +3632,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_ceil_pd() {
+    const unsafe fn test_mm256_ceil_pd() {
         let a = _mm256_setr_pd(1.55, 2.2, 3.99, -1.2);
         let result_up = _mm256_ceil_pd(a);
         let expected_up = _mm256_setr_pd(2., 3., 4., -1.);
@@ -3488,7 +3654,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_floor_ps() {
+    const unsafe fn test_mm256_floor_ps() {
         let a = _mm256_setr_ps(1.55, 2.2, 3.99, -1.2, 1.55, 2.2, 3.99, -1.2);
         let result_down = _mm256_floor_ps(a);
         let expected_down = _mm256_setr_ps(1., 2., 3., -2., 1., 2., 3., -2.);
@@ -3496,7 +3662,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_ceil_ps() {
+    const unsafe fn test_mm256_ceil_ps() {
         let a = _mm256_setr_ps(1.55, 2.2, 3.99, -1.2, 1.55, 2.2, 3.99, -1.2);
         let result_up = _mm256_ceil_ps(a);
         let expected_up = _mm256_setr_ps(2., 3., 4., -1., 2., 3., 4., -1.);
@@ -3520,7 +3686,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_div_ps() {
+    const unsafe fn test_mm256_div_ps() {
         let a = _mm256_setr_ps(4., 9., 16., 25., 4., 9., 16., 25.);
         let b = _mm256_setr_ps(4., 3., 2., 5., 8., 9., 64., 50.);
         let r = _mm256_div_ps(a, b);
@@ -3529,7 +3695,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_div_pd() {
+    const unsafe fn test_mm256_div_pd() {
         let a = _mm256_setr_pd(4., 9., 16., 25.);
         let b = _mm256_setr_pd(4., 3., 2., 5.);
         let r = _mm256_div_pd(a, b);
@@ -3538,7 +3704,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_blend_pd() {
+    const unsafe fn test_mm256_blend_pd() {
         let a = _mm256_setr_pd(4., 9., 16., 25.);
         let b = _mm256_setr_pd(4., 3., 2., 5.);
         let r = _mm256_blend_pd::<0x0>(a, b);
@@ -3550,7 +3716,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_blend_ps() {
+    const unsafe fn test_mm256_blend_ps() {
         let a = _mm256_setr_ps(1., 4., 5., 8., 9., 12., 13., 16.);
         let b = _mm256_setr_ps(2., 3., 6., 7., 10., 11., 14., 15.);
         let r = _mm256_blend_ps::<0x0>(a, b);
@@ -3562,7 +3728,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_blendv_pd() {
+    const unsafe fn test_mm256_blendv_pd() {
         let a = _mm256_setr_pd(4., 9., 16., 25.);
         let b = _mm256_setr_pd(4., 3., 2., 5.);
         let c = _mm256_setr_pd(0., 0., !0 as f64, !0 as f64);
@@ -3572,7 +3738,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_blendv_ps() {
+    const unsafe fn test_mm256_blendv_ps() {
         let a = _mm256_setr_ps(4., 9., 16., 25., 4., 9., 16., 25.);
         let b = _mm256_setr_ps(4., 3., 2., 5., 8., 9., 64., 50.);
         #[rustfmt::skip]
@@ -3594,7 +3760,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_hadd_pd() {
+    const unsafe fn test_mm256_hadd_pd() {
         let a = _mm256_setr_pd(4., 9., 16., 25.);
         let b = _mm256_setr_pd(4., 3., 2., 5.);
         let r = _mm256_hadd_pd(a, b);
@@ -3609,7 +3775,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_hadd_ps() {
+    const unsafe fn test_mm256_hadd_ps() {
         let a = _mm256_setr_ps(4., 9., 16., 25., 4., 9., 16., 25.);
         let b = _mm256_setr_ps(4., 3., 2., 5., 8., 9., 64., 50.);
         let r = _mm256_hadd_ps(a, b);
@@ -3624,7 +3790,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_hsub_pd() {
+    const unsafe fn test_mm256_hsub_pd() {
         let a = _mm256_setr_pd(4., 9., 16., 25.);
         let b = _mm256_setr_pd(4., 3., 2., 5.);
         let r = _mm256_hsub_pd(a, b);
@@ -3639,7 +3805,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_hsub_ps() {
+    const unsafe fn test_mm256_hsub_ps() {
         let a = _mm256_setr_ps(4., 9., 16., 25., 4., 9., 16., 25.);
         let b = _mm256_setr_ps(4., 3., 2., 5., 8., 9., 64., 50.);
         let r = _mm256_hsub_ps(a, b);
@@ -3654,7 +3820,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_xor_pd() {
+    const unsafe fn test_mm256_xor_pd() {
         let a = _mm256_setr_pd(4., 9., 16., 25.);
         let b = _mm256_set1_pd(0.);
         let r = _mm256_xor_pd(a, b);
@@ -3662,7 +3828,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_xor_ps() {
+    const unsafe fn test_mm256_xor_ps() {
         let a = _mm256_setr_ps(4., 9., 16., 25., 4., 9., 16., 25.);
         let b = _mm256_set1_ps(0.);
         let r = _mm256_xor_ps(a, b);
@@ -3728,7 +3894,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_cvtepi32_pd() {
+    const unsafe fn test_mm256_cvtepi32_pd() {
         let a = _mm_setr_epi32(4, 9, 16, 25);
         let r = _mm256_cvtepi32_pd(a);
         let e = _mm256_setr_pd(4., 9., 16., 25.);
@@ -3736,7 +3902,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_cvtepi32_ps() {
+    const unsafe fn test_mm256_cvtepi32_ps() {
         let a = _mm256_setr_epi32(4, 9, 16, 25, 4, 9, 16, 25);
         let r = _mm256_cvtepi32_ps(a);
         let e = _mm256_setr_ps(4., 9., 16., 25., 4., 9., 16., 25.);
@@ -3744,7 +3910,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_cvtpd_ps() {
+    const unsafe fn test_mm256_cvtpd_ps() {
         let a = _mm256_setr_pd(4., 9., 16., 25.);
         let r = _mm256_cvtpd_ps(a);
         let e = _mm_setr_ps(4., 9., 16., 25.);
@@ -3760,7 +3926,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_cvtps_pd() {
+    const unsafe fn test_mm256_cvtps_pd() {
         let a = _mm_setr_ps(4., 9., 16., 25.);
         let r = _mm256_cvtps_pd(a);
         let e = _mm256_setr_pd(4., 9., 16., 25.);
@@ -3768,7 +3934,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_cvtsd_f64() {
+    const unsafe fn test_mm256_cvtsd_f64() {
         let a = _mm256_setr_pd(1., 2., 3., 4.);
         let r = _mm256_cvtsd_f64(a);
         assert_eq!(r, 1.);
@@ -3799,7 +3965,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_extractf128_ps() {
+    const unsafe fn test_mm256_extractf128_ps() {
         let a = _mm256_setr_ps(4., 3., 2., 5., 8., 9., 64., 50.);
         let r = _mm256_extractf128_ps::<0>(a);
         let e = _mm_setr_ps(4., 3., 2., 5.);
@@ -3807,7 +3973,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_extractf128_pd() {
+    const unsafe fn test_mm256_extractf128_pd() {
         let a = _mm256_setr_pd(4., 3., 2., 5.);
         let r = _mm256_extractf128_pd::<0>(a);
         let e = _mm_setr_pd(4., 3.);
@@ -3815,7 +3981,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_extractf128_si256() {
+    const unsafe fn test_mm256_extractf128_si256() {
         let a = _mm256_setr_epi64x(4, 3, 2, 5);
         let r = _mm256_extractf128_si256::<0>(a);
         let e = _mm_setr_epi64x(4, 3);
@@ -3823,7 +3989,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_extract_epi32() {
+    const unsafe fn test_mm256_extract_epi32() {
         let a = _mm256_setr_epi32(-1, 1, 2, 3, 4, 5, 6, 7);
         let r1 = _mm256_extract_epi32::<0>(a);
         let r2 = _mm256_extract_epi32::<3>(a);
@@ -3832,7 +3998,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_cvtsi256_si32() {
+    const unsafe fn test_mm256_cvtsi256_si32() {
         let a = _mm256_setr_epi32(1, 2, 3, 4, 5, 6, 7, 8);
         let r = _mm256_cvtsi256_si32(a);
         assert_eq!(r, 1);
@@ -3869,7 +4035,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_permute_ps() {
+    const unsafe fn test_mm256_permute_ps() {
         let a = _mm256_setr_ps(4., 3., 2., 5., 8., 9., 64., 50.);
         let r = _mm256_permute_ps::<0x1b>(a);
         let e = _mm256_setr_ps(5., 2., 3., 4., 50., 64., 9., 8.);
@@ -3877,7 +4043,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm_permute_ps() {
+    const unsafe fn test_mm_permute_ps() {
         let a = _mm_setr_ps(4., 3., 2., 5.);
         let r = _mm_permute_ps::<0x1b>(a);
         let e = _mm_setr_ps(5., 2., 3., 4.);
@@ -3903,7 +4069,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_permute_pd() {
+    const unsafe fn test_mm256_permute_pd() {
         let a = _mm256_setr_pd(4., 3., 2., 5.);
         let r = _mm256_permute_pd::<5>(a);
         let e = _mm256_setr_pd(3., 4., 5., 2.);
@@ -3911,7 +4077,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm_permute_pd() {
+    const unsafe fn test_mm_permute_pd() {
         let a = _mm_setr_pd(4., 3.);
         let r = _mm_permute_pd::<1>(a);
         let e = _mm_setr_pd(3., 4.);
@@ -3919,7 +4085,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_permute2f128_ps() {
+    const unsafe fn test_mm256_permute2f128_ps() {
         let a = _mm256_setr_ps(11., 12., 13., 14., 15., 16., 17., 18.);
         let b = _mm256_setr_ps(21., 22., 23., 24., 25., 26., 27., 28.);
         let r = _mm256_permute2f128_ps::<0b0001_0011>(a, b);
@@ -3933,7 +4099,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_permute2f128_pd() {
+    const unsafe fn test_mm256_permute2f128_pd() {
         let a = _mm256_setr_pd(1., 2., 3., 4.);
         let b = _mm256_setr_pd(5., 6., 7., 8.);
         let r = _mm256_permute2f128_pd::<0b0011_0001>(a, b);
@@ -3947,7 +4113,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_permute2f128_si256() {
+    const unsafe fn test_mm256_permute2f128_si256() {
         let a = _mm256_setr_epi32(11, 12, 13, 14, 15, 16, 17, 18);
         let b = _mm256_setr_epi32(21, 22, 23, 24, 25, 26, 27, 28);
         let r = _mm256_permute2f128_si256::<0b0010_0000>(a, b);
@@ -3961,28 +4127,28 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_broadcast_ss() {
+    const unsafe fn test_mm256_broadcast_ss() {
         let r = _mm256_broadcast_ss(&3.);
         let e = _mm256_set1_ps(3.);
         assert_eq_m256(r, e);
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm_broadcast_ss() {
+    const unsafe fn test_mm_broadcast_ss() {
         let r = _mm_broadcast_ss(&3.);
         let e = _mm_set1_ps(3.);
         assert_eq_m128(r, e);
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_broadcast_sd() {
+    const unsafe fn test_mm256_broadcast_sd() {
         let r = _mm256_broadcast_sd(&3.);
         let e = _mm256_set1_pd(3.);
         assert_eq_m256d(r, e);
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_broadcast_ps() {
+    const unsafe fn test_mm256_broadcast_ps() {
         let a = _mm_setr_ps(4., 3., 2., 5.);
         let r = _mm256_broadcast_ps(&a);
         let e = _mm256_setr_ps(4., 3., 2., 5., 4., 3., 2., 5.);
@@ -3990,7 +4156,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_broadcast_pd() {
+    const unsafe fn test_mm256_broadcast_pd() {
         let a = _mm_setr_pd(4., 3.);
         let r = _mm256_broadcast_pd(&a);
         let e = _mm256_setr_pd(4., 3., 4., 3.);
@@ -3998,7 +4164,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_insertf128_ps() {
+    const unsafe fn test_mm256_insertf128_ps() {
         let a = _mm256_setr_ps(4., 3., 2., 5., 8., 9., 64., 50.);
         let b = _mm_setr_ps(4., 9., 16., 25.);
         let r = _mm256_insertf128_ps::<0>(a, b);
@@ -4007,7 +4173,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_insertf128_pd() {
+    const unsafe fn test_mm256_insertf128_pd() {
         let a = _mm256_setr_pd(1., 2., 3., 4.);
         let b = _mm_setr_pd(5., 6.);
         let r = _mm256_insertf128_pd::<0>(a, b);
@@ -4016,7 +4182,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_insertf128_si256() {
+    const unsafe fn test_mm256_insertf128_si256() {
         let a = _mm256_setr_epi64x(1, 2, 3, 4);
         let b = _mm_setr_epi64x(5, 6);
         let r = _mm256_insertf128_si256::<0>(a, b);
@@ -4025,7 +4191,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_insert_epi8() {
+    const unsafe fn test_mm256_insert_epi8() {
         #[rustfmt::skip]
         let a = _mm256_setr_epi8(
             1, 2, 3, 4, 5, 6, 7, 8,
@@ -4045,7 +4211,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_insert_epi16() {
+    const unsafe fn test_mm256_insert_epi16() {
         #[rustfmt::skip]
         let a = _mm256_setr_epi16(
             0, 1, 2, 3, 4, 5, 6, 7,
@@ -4061,7 +4227,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_insert_epi32() {
+    const unsafe fn test_mm256_insert_epi32() {
         let a = _mm256_setr_epi32(1, 2, 3, 4, 5, 6, 7, 8);
         let r = _mm256_insert_epi32::<7>(a, 0);
         let e = _mm256_setr_epi32(1, 2, 3, 4, 5, 6, 7, 0);
@@ -4069,7 +4235,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_load_pd() {
+    const unsafe fn test_mm256_load_pd() {
         let a = _mm256_setr_pd(1., 2., 3., 4.);
         let p = ptr::addr_of!(a) as *const f64;
         let r = _mm256_load_pd(p);
@@ -4078,7 +4244,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_store_pd() {
+    const unsafe fn test_mm256_store_pd() {
         let a = _mm256_setr_pd(1., 2., 3., 4.);
         let mut r = _mm256_undefined_pd();
         _mm256_store_pd(ptr::addr_of_mut!(r) as *mut f64, a);
@@ -4086,7 +4252,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_load_ps() {
+    const unsafe fn test_mm256_load_ps() {
         let a = _mm256_setr_ps(4., 3., 2., 5., 8., 9., 64., 50.);
         let p = ptr::addr_of!(a) as *const f32;
         let r = _mm256_load_ps(p);
@@ -4095,7 +4261,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_store_ps() {
+    const unsafe fn test_mm256_store_ps() {
         let a = _mm256_setr_ps(4., 3., 2., 5., 8., 9., 64., 50.);
         let mut r = _mm256_undefined_ps();
         _mm256_store_ps(ptr::addr_of_mut!(r) as *mut f32, a);
@@ -4103,7 +4269,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_loadu_pd() {
+    const unsafe fn test_mm256_loadu_pd() {
         let a = &[1.0f64, 2., 3., 4.];
         let p = a.as_ptr();
         let r = _mm256_loadu_pd(black_box(p));
@@ -4112,7 +4278,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_storeu_pd() {
+    const unsafe fn test_mm256_storeu_pd() {
         let a = _mm256_set1_pd(9.);
         let mut r = _mm256_undefined_pd();
         _mm256_storeu_pd(ptr::addr_of_mut!(r) as *mut f64, a);
@@ -4120,7 +4286,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_loadu_ps() {
+    const unsafe fn test_mm256_loadu_ps() {
         let a = &[4., 3., 2., 5., 8., 9., 64., 50.];
         let p = a.as_ptr();
         let r = _mm256_loadu_ps(black_box(p));
@@ -4129,7 +4295,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_storeu_ps() {
+    const unsafe fn test_mm256_storeu_ps() {
         let a = _mm256_set1_ps(9.);
         let mut r = _mm256_undefined_ps();
         _mm256_storeu_ps(ptr::addr_of_mut!(r) as *mut f32, a);
@@ -4137,7 +4303,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_load_si256() {
+    const unsafe fn test_mm256_load_si256() {
         let a = _mm256_setr_epi64x(1, 2, 3, 4);
         let p = ptr::addr_of!(a);
         let r = _mm256_load_si256(p);
@@ -4146,7 +4312,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_store_si256() {
+    const unsafe fn test_mm256_store_si256() {
         let a = _mm256_setr_epi64x(1, 2, 3, 4);
         let mut r = _mm256_undefined_si256();
         _mm256_store_si256(ptr::addr_of_mut!(r), a);
@@ -4154,7 +4320,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_loadu_si256() {
+    const unsafe fn test_mm256_loadu_si256() {
         let a = _mm256_setr_epi64x(1, 2, 3, 4);
         let p = ptr::addr_of!(a);
         let r = _mm256_loadu_si256(black_box(p));
@@ -4163,7 +4329,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_storeu_si256() {
+    const unsafe fn test_mm256_storeu_si256() {
         let a = _mm256_set1_epi8(9);
         let mut r = _mm256_undefined_si256();
         _mm256_storeu_si256(ptr::addr_of_mut!(r), a);
@@ -4171,7 +4337,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_maskload_pd() {
+    const unsafe fn test_mm256_maskload_pd() {
         let a = &[1.0f64, 2., 3., 4.];
         let p = a.as_ptr();
         let mask = _mm256_setr_epi64x(0, !0, 0, !0);
@@ -4181,7 +4347,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_maskstore_pd() {
+    const unsafe fn test_mm256_maskstore_pd() {
         let mut r = _mm256_set1_pd(0.);
         let mask = _mm256_setr_epi64x(0, !0, 0, !0);
         let a = _mm256_setr_pd(1., 2., 3., 4.);
@@ -4191,7 +4357,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm_maskload_pd() {
+    const unsafe fn test_mm_maskload_pd() {
         let a = &[1.0f64, 2.];
         let p = a.as_ptr();
         let mask = _mm_setr_epi64x(0, !0);
@@ -4201,7 +4367,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm_maskstore_pd() {
+    const unsafe fn test_mm_maskstore_pd() {
         let mut r = _mm_set1_pd(0.);
         let mask = _mm_setr_epi64x(0, !0);
         let a = _mm_setr_pd(1., 2.);
@@ -4211,7 +4377,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_maskload_ps() {
+    const unsafe fn test_mm256_maskload_ps() {
         let a = &[1.0f32, 2., 3., 4., 5., 6., 7., 8.];
         let p = a.as_ptr();
         let mask = _mm256_setr_epi32(0, !0, 0, !0, 0, !0, 0, !0);
@@ -4221,7 +4387,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_maskstore_ps() {
+    const unsafe fn test_mm256_maskstore_ps() {
         let mut r = _mm256_set1_ps(0.);
         let mask = _mm256_setr_epi32(0, !0, 0, !0, 0, !0, 0, !0);
         let a = _mm256_setr_ps(1., 2., 3., 4., 5., 6., 7., 8.);
@@ -4231,7 +4397,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm_maskload_ps() {
+    const unsafe fn test_mm_maskload_ps() {
         let a = &[1.0f32, 2., 3., 4.];
         let p = a.as_ptr();
         let mask = _mm_setr_epi32(0, !0, 0, !0);
@@ -4241,7 +4407,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm_maskstore_ps() {
+    const unsafe fn test_mm_maskstore_ps() {
         let mut r = _mm_set1_ps(0.);
         let mask = _mm_setr_epi32(0, !0, 0, !0);
         let a = _mm_setr_ps(1., 2., 3., 4.);
@@ -4251,7 +4417,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_movehdup_ps() {
+    const unsafe fn test_mm256_movehdup_ps() {
         let a = _mm256_setr_ps(1., 2., 3., 4., 5., 6., 7., 8.);
         let r = _mm256_movehdup_ps(a);
         let e = _mm256_setr_ps(2., 2., 4., 4., 6., 6., 8., 8.);
@@ -4259,7 +4425,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_moveldup_ps() {
+    const unsafe fn test_mm256_moveldup_ps() {
         let a = _mm256_setr_ps(1., 2., 3., 4., 5., 6., 7., 8.);
         let r = _mm256_moveldup_ps(a);
         let e = _mm256_setr_ps(1., 1., 3., 3., 5., 5., 7., 7.);
@@ -4267,7 +4433,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_movedup_pd() {
+    const unsafe fn test_mm256_movedup_pd() {
         let a = _mm256_setr_pd(1., 2., 3., 4.);
         let r = _mm256_movedup_pd(a);
         let e = _mm256_setr_pd(1., 1., 3., 3.);
@@ -4370,7 +4536,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_unpackhi_pd() {
+    const unsafe fn test_mm256_unpackhi_pd() {
         let a = _mm256_setr_pd(1., 2., 3., 4.);
         let b = _mm256_setr_pd(5., 6., 7., 8.);
         let r = _mm256_unpackhi_pd(a, b);
@@ -4379,7 +4545,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_unpackhi_ps() {
+    const unsafe fn test_mm256_unpackhi_ps() {
         let a = _mm256_setr_ps(1., 2., 3., 4., 5., 6., 7., 8.);
         let b = _mm256_setr_ps(9., 10., 11., 12., 13., 14., 15., 16.);
         let r = _mm256_unpackhi_ps(a, b);
@@ -4388,7 +4554,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_unpacklo_pd() {
+    const unsafe fn test_mm256_unpacklo_pd() {
         let a = _mm256_setr_pd(1., 2., 3., 4.);
         let b = _mm256_setr_pd(5., 6., 7., 8.);
         let r = _mm256_unpacklo_pd(a, b);
@@ -4397,7 +4563,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_unpacklo_ps() {
+    const unsafe fn test_mm256_unpacklo_ps() {
         let a = _mm256_setr_ps(1., 2., 3., 4., 5., 6., 7., 8.);
         let b = _mm256_setr_ps(9., 10., 11., 12., 13., 14., 15., 16.);
         let r = _mm256_unpacklo_ps(a, b);
@@ -4406,7 +4572,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_testz_si256() {
+    const unsafe fn test_mm256_testz_si256() {
         let a = _mm256_setr_epi64x(1, 2, 3, 4);
         let b = _mm256_setr_epi64x(5, 6, 7, 8);
         let r = _mm256_testz_si256(a, b);
@@ -4417,7 +4583,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_testc_si256() {
+    const unsafe fn test_mm256_testc_si256() {
         let a = _mm256_setr_epi64x(1, 2, 3, 4);
         let b = _mm256_setr_epi64x(5, 6, 7, 8);
         let r = _mm256_testc_si256(a, b);
@@ -4475,7 +4641,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm_testz_pd() {
+    const unsafe fn test_mm_testz_pd() {
         let a = _mm_setr_pd(1., 2.);
         let b = _mm_setr_pd(5., 6.);
         let r = _mm_testz_pd(a, b);
@@ -4486,7 +4652,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm_testc_pd() {
+    const unsafe fn test_mm_testc_pd() {
         let a = _mm_setr_pd(1., 2.);
         let b = _mm_setr_pd(5., 6.);
         let r = _mm_testc_pd(a, b);
@@ -4541,7 +4707,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm_testz_ps() {
+    const unsafe fn test_mm_testz_ps() {
         let a = _mm_set1_ps(1.);
         let r = _mm_testz_ps(a, a);
         assert_eq!(r, 1);
@@ -4551,7 +4717,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm_testc_ps() {
+    const unsafe fn test_mm_testc_ps() {
         let a = _mm_set1_ps(1.);
         let r = _mm_testc_ps(a, a);
         assert_eq!(r, 1);
@@ -4572,51 +4738,51 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_movemask_pd() {
+    const unsafe fn test_mm256_movemask_pd() {
         let a = _mm256_setr_pd(1., -2., 3., -4.);
         let r = _mm256_movemask_pd(a);
         assert_eq!(r, 0xA);
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_movemask_ps() {
+    const unsafe fn test_mm256_movemask_ps() {
         let a = _mm256_setr_ps(1., -2., 3., -4., 1., -2., 3., -4.);
         let r = _mm256_movemask_ps(a);
         assert_eq!(r, 0xAA);
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_setzero_pd() {
+    const unsafe fn test_mm256_setzero_pd() {
         let r = _mm256_setzero_pd();
         assert_eq_m256d(r, _mm256_set1_pd(0.));
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_setzero_ps() {
+    const unsafe fn test_mm256_setzero_ps() {
         let r = _mm256_setzero_ps();
         assert_eq_m256(r, _mm256_set1_ps(0.));
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_setzero_si256() {
+    const unsafe fn test_mm256_setzero_si256() {
         let r = _mm256_setzero_si256();
         assert_eq_m256i(r, _mm256_set1_epi8(0));
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_set_pd() {
+    const unsafe fn test_mm256_set_pd() {
         let r = _mm256_set_pd(1., 2., 3., 4.);
         assert_eq_m256d(r, _mm256_setr_pd(4., 3., 2., 1.));
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_set_ps() {
+    const unsafe fn test_mm256_set_ps() {
         let r = _mm256_set_ps(1., 2., 3., 4., 5., 6., 7., 8.);
         assert_eq_m256(r, _mm256_setr_ps(8., 7., 6., 5., 4., 3., 2., 1.));
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_set_epi8() {
+    const unsafe fn test_mm256_set_epi8() {
         #[rustfmt::skip]
         let r = _mm256_set_epi8(
             1, 2, 3, 4, 5, 6, 7, 8,
@@ -4635,7 +4801,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_set_epi16() {
+    const unsafe fn test_mm256_set_epi16() {
         #[rustfmt::skip]
         let r = _mm256_set_epi16(
             1, 2, 3, 4, 5, 6, 7, 8,
@@ -4650,31 +4816,31 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_set_epi32() {
+    const unsafe fn test_mm256_set_epi32() {
         let r = _mm256_set_epi32(1, 2, 3, 4, 5, 6, 7, 8);
         assert_eq_m256i(r, _mm256_setr_epi32(8, 7, 6, 5, 4, 3, 2, 1));
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_set_epi64x() {
+    const unsafe fn test_mm256_set_epi64x() {
         let r = _mm256_set_epi64x(1, 2, 3, 4);
         assert_eq_m256i(r, _mm256_setr_epi64x(4, 3, 2, 1));
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_setr_pd() {
+    const unsafe fn test_mm256_setr_pd() {
         let r = _mm256_setr_pd(1., 2., 3., 4.);
         assert_eq_m256d(r, _mm256_setr_pd(1., 2., 3., 4.));
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_setr_ps() {
+    const unsafe fn test_mm256_setr_ps() {
         let r = _mm256_setr_ps(1., 2., 3., 4., 5., 6., 7., 8.);
         assert_eq_m256(r, _mm256_setr_ps(1., 2., 3., 4., 5., 6., 7., 8.));
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_setr_epi8() {
+    const unsafe fn test_mm256_setr_epi8() {
         #[rustfmt::skip]
         let r = _mm256_setr_epi8(
             1, 2, 3, 4, 5, 6, 7, 8,
@@ -4694,7 +4860,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_setr_epi16() {
+    const unsafe fn test_mm256_setr_epi16() {
         #[rustfmt::skip]
         let r = _mm256_setr_epi16(
             1, 2, 3, 4, 5, 6, 7, 8,
@@ -4709,55 +4875,55 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_setr_epi32() {
+    const unsafe fn test_mm256_setr_epi32() {
         let r = _mm256_setr_epi32(1, 2, 3, 4, 5, 6, 7, 8);
         assert_eq_m256i(r, _mm256_setr_epi32(1, 2, 3, 4, 5, 6, 7, 8));
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_setr_epi64x() {
+    const unsafe fn test_mm256_setr_epi64x() {
         let r = _mm256_setr_epi64x(1, 2, 3, 4);
         assert_eq_m256i(r, _mm256_setr_epi64x(1, 2, 3, 4));
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_set1_pd() {
+    const unsafe fn test_mm256_set1_pd() {
         let r = _mm256_set1_pd(1.);
         assert_eq_m256d(r, _mm256_set1_pd(1.));
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_set1_ps() {
+    const unsafe fn test_mm256_set1_ps() {
         let r = _mm256_set1_ps(1.);
         assert_eq_m256(r, _mm256_set1_ps(1.));
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_set1_epi8() {
+    const unsafe fn test_mm256_set1_epi8() {
         let r = _mm256_set1_epi8(1);
         assert_eq_m256i(r, _mm256_set1_epi8(1));
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_set1_epi16() {
+    const unsafe fn test_mm256_set1_epi16() {
         let r = _mm256_set1_epi16(1);
         assert_eq_m256i(r, _mm256_set1_epi16(1));
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_set1_epi32() {
+    const unsafe fn test_mm256_set1_epi32() {
         let r = _mm256_set1_epi32(1);
         assert_eq_m256i(r, _mm256_set1_epi32(1));
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_set1_epi64x() {
+    const unsafe fn test_mm256_set1_epi64x() {
         let r = _mm256_set1_epi64x(1);
         assert_eq_m256i(r, _mm256_set1_epi64x(1));
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_castpd_ps() {
+    const unsafe fn test_mm256_castpd_ps() {
         let a = _mm256_setr_pd(1., 2., 3., 4.);
         let r = _mm256_castpd_ps(a);
         let e = _mm256_setr_ps(0., 1.875, 0., 2., 0., 2.125, 0., 2.25);
@@ -4765,7 +4931,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_castps_pd() {
+    const unsafe fn test_mm256_castps_pd() {
         let a = _mm256_setr_ps(0., 1.875, 0., 2., 0., 2.125, 0., 2.25);
         let r = _mm256_castps_pd(a);
         let e = _mm256_setr_pd(1., 2., 3., 4.);
@@ -4773,7 +4939,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_castps_si256() {
+    const unsafe fn test_mm256_castps_si256() {
         let a = _mm256_setr_ps(1., 2., 3., 4., 5., 6., 7., 8.);
         let r = _mm256_castps_si256(a);
         #[rustfmt::skip]
@@ -4787,7 +4953,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_castsi256_ps() {
+    const unsafe fn test_mm256_castsi256_ps() {
         #[rustfmt::skip]
         let a = _mm256_setr_epi8(
             0, 0, -128, 63, 0, 0, 0, 64,
@@ -4801,63 +4967,63 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_castpd_si256() {
+    const unsafe fn test_mm256_castpd_si256() {
         let a = _mm256_setr_pd(1., 2., 3., 4.);
         let r = _mm256_castpd_si256(a);
         assert_eq_m256d(transmute(r), a);
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_castsi256_pd() {
+    const unsafe fn test_mm256_castsi256_pd() {
         let a = _mm256_setr_epi64x(1, 2, 3, 4);
         let r = _mm256_castsi256_pd(a);
         assert_eq_m256d(r, transmute(a));
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_castps256_ps128() {
+    const unsafe fn test_mm256_castps256_ps128() {
         let a = _mm256_setr_ps(1., 2., 3., 4., 5., 6., 7., 8.);
         let r = _mm256_castps256_ps128(a);
         assert_eq_m128(r, _mm_setr_ps(1., 2., 3., 4.));
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_castpd256_pd128() {
+    const unsafe fn test_mm256_castpd256_pd128() {
         let a = _mm256_setr_pd(1., 2., 3., 4.);
         let r = _mm256_castpd256_pd128(a);
         assert_eq_m128d(r, _mm_setr_pd(1., 2.));
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_castsi256_si128() {
+    const unsafe fn test_mm256_castsi256_si128() {
         let a = _mm256_setr_epi64x(1, 2, 3, 4);
         let r = _mm256_castsi256_si128(a);
         assert_eq_m128i(r, _mm_setr_epi64x(1, 2));
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_castps128_ps256() {
+    const unsafe fn test_mm256_castps128_ps256() {
         let a = _mm_setr_ps(1., 2., 3., 4.);
         let r = _mm256_castps128_ps256(a);
         assert_eq_m128(_mm256_castps256_ps128(r), a);
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_castpd128_pd256() {
+    const unsafe fn test_mm256_castpd128_pd256() {
         let a = _mm_setr_pd(1., 2.);
         let r = _mm256_castpd128_pd256(a);
         assert_eq_m128d(_mm256_castpd256_pd128(r), a);
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_castsi128_si256() {
+    const unsafe fn test_mm256_castsi128_si256() {
         let a = _mm_setr_epi32(1, 2, 3, 4);
         let r = _mm256_castsi128_si256(a);
         assert_eq_m128i(_mm256_castsi256_si128(r), a);
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_zextps128_ps256() {
+    const unsafe fn test_mm256_zextps128_ps256() {
         let a = _mm_setr_ps(1., 2., 3., 4.);
         let r = _mm256_zextps128_ps256(a);
         let e = _mm256_setr_ps(1., 2., 3., 4., 0., 0., 0., 0.);
@@ -4865,7 +5031,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_zextsi128_si256() {
+    const unsafe fn test_mm256_zextsi128_si256() {
         let a = _mm_setr_epi64x(1, 2);
         let r = _mm256_zextsi128_si256(a);
         let e = _mm256_setr_epi64x(1, 2, 0, 0);
@@ -4873,7 +5039,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_zextpd128_pd256() {
+    const unsafe fn test_mm256_zextpd128_pd256() {
         let a = _mm_setr_pd(1., 2.);
         let r = _mm256_zextpd128_pd256(a);
         let e = _mm256_setr_pd(1., 2., 0., 0.);
@@ -4881,7 +5047,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_set_m128() {
+    const unsafe fn test_mm256_set_m128() {
         let hi = _mm_setr_ps(5., 6., 7., 8.);
         let lo = _mm_setr_ps(1., 2., 3., 4.);
         let r = _mm256_set_m128(hi, lo);
@@ -4890,7 +5056,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_set_m128d() {
+    const unsafe fn test_mm256_set_m128d() {
         let hi = _mm_setr_pd(3., 4.);
         let lo = _mm_setr_pd(1., 2.);
         let r = _mm256_set_m128d(hi, lo);
@@ -4899,7 +5065,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_set_m128i() {
+    const unsafe fn test_mm256_set_m128i() {
         #[rustfmt::skip]
         let hi = _mm_setr_epi8(
             17, 18, 19, 20,
@@ -4926,7 +5092,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_setr_m128() {
+    const unsafe fn test_mm256_setr_m128() {
         let lo = _mm_setr_ps(1., 2., 3., 4.);
         let hi = _mm_setr_ps(5., 6., 7., 8.);
         let r = _mm256_setr_m128(lo, hi);
@@ -4935,7 +5101,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_setr_m128d() {
+    const unsafe fn test_mm256_setr_m128d() {
         let lo = _mm_setr_pd(1., 2.);
         let hi = _mm_setr_pd(3., 4.);
         let r = _mm256_setr_m128d(lo, hi);
@@ -4944,7 +5110,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_setr_m128i() {
+    const unsafe fn test_mm256_setr_m128i() {
         #[rustfmt::skip]
         let lo = _mm_setr_epi8(
             1, 2, 3, 4,
@@ -4969,7 +5135,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_loadu2_m128() {
+    const unsafe fn test_mm256_loadu2_m128() {
         let hi = &[5., 6., 7., 8.];
         let hiaddr = hi.as_ptr();
         let lo = &[1., 2., 3., 4.];
@@ -4980,7 +5146,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_loadu2_m128d() {
+    const unsafe fn test_mm256_loadu2_m128d() {
         let hi = &[3., 4.];
         let hiaddr = hi.as_ptr();
         let lo = &[1., 2.];
@@ -4991,7 +5157,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_loadu2_m128i() {
+    const unsafe fn test_mm256_loadu2_m128i() {
         #[rustfmt::skip]
         let hi = _mm_setr_epi8(
             17, 18, 19, 20, 21, 22, 23, 24,
@@ -5014,7 +5180,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_storeu2_m128() {
+    const unsafe fn test_mm256_storeu2_m128() {
         let a = _mm256_setr_ps(1., 2., 3., 4., 5., 6., 7., 8.);
         let mut hi = _mm_undefined_ps();
         let mut lo = _mm_undefined_ps();
@@ -5028,7 +5194,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_storeu2_m128d() {
+    const unsafe fn test_mm256_storeu2_m128d() {
         let a = _mm256_setr_pd(1., 2., 3., 4.);
         let mut hi = _mm_undefined_pd();
         let mut lo = _mm_undefined_pd();
@@ -5042,7 +5208,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_storeu2_m128i() {
+    const unsafe fn test_mm256_storeu2_m128i() {
         #[rustfmt::skip]
         let a = _mm256_setr_epi8(
             1, 2, 3, 4, 5, 6, 7, 8,
@@ -5069,7 +5235,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    unsafe fn test_mm256_cvtss_f32() {
+    const unsafe fn test_mm256_cvtss_f32() {
         let a = _mm256_setr_ps(1., 2., 3., 4., 5., 6., 7., 8.);
         let r = _mm256_cvtss_f32(a);
         assert_eq!(r, 1.);

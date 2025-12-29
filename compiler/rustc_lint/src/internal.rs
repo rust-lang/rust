@@ -1,9 +1,10 @@
 //! Some lints that are only useful in the compiler or crates that use compiler internals, such as
 //! Clippy.
 
+use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::DefId;
-use rustc_hir::{Expr, ExprKind, HirId};
+use rustc_hir::{Expr, ExprKind, HirId, find_attr};
 use rustc_middle::ty::{self, GenericArgsRef, PredicatePolarity, Ty};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::hygiene::{ExpnKind, MacroKind};
@@ -90,7 +91,7 @@ impl<'tcx> LateLintPass<'tcx> for QueryStability {
                 ty::Instance::try_resolve(cx.tcx, cx.typing_env(), callee_def_id, generic_args)
         {
             let def_id = instance.def_id();
-            if cx.tcx.has_attr(def_id, sym::rustc_lint_query_instability) {
+            if find_attr!(cx.tcx.get_all_attrs(def_id), AttributeKind::RustcLintQueryInstability) {
                 cx.emit_span_lint(
                     POTENTIAL_QUERY_INSTABILITY,
                     span,
@@ -105,7 +106,10 @@ impl<'tcx> LateLintPass<'tcx> for QueryStability {
                 );
             }
 
-            if cx.tcx.has_attr(def_id, sym::rustc_lint_untracked_query_information) {
+            if find_attr!(
+                cx.tcx.get_all_attrs(def_id),
+                AttributeKind::RustcLintUntrackedQueryInformation
+            ) {
                 cx.emit_span_lint(
                     UNTRACKED_QUERY_INFORMATION,
                     span,
@@ -150,7 +154,10 @@ fn has_unstable_into_iter_predicate<'tcx>(
         };
         // Does the input type's `IntoIterator` implementation have the
         // `rustc_lint_query_instability` attribute on its `into_iter` method?
-        if cx.tcx.has_attr(instance.def_id(), sym::rustc_lint_query_instability) {
+        if find_attr!(
+            cx.tcx.get_all_attrs(instance.def_id()),
+            AttributeKind::RustcLintQueryInstability
+        ) {
             return true;
         }
     }
@@ -602,14 +609,14 @@ impl Diagnostics {
         else {
             return;
         };
-        let has_attr = cx.tcx.has_attr(inst.def_id(), sym::rustc_lint_diagnostics);
-        if !has_attr {
+
+        if !find_attr!(cx.tcx.get_all_attrs(inst.def_id()), AttributeKind::RustcLintDiagnostics) {
             return;
         };
 
         for (hir_id, _parent) in cx.tcx.hir_parent_iter(current_id) {
             if let Some(owner_did) = hir_id.as_owner()
-                && cx.tcx.has_attr(owner_did, sym::rustc_lint_diagnostics)
+                && find_attr!(cx.tcx.get_all_attrs(owner_did), AttributeKind::RustcLintDiagnostics)
             {
                 // The parent method is marked with `#[rustc_lint_diagnostics]`
                 return;
@@ -658,23 +665,18 @@ impl LateLintPass<'_> for BadOptAccess {
         let Some(adt_def) = cx.typeck_results().expr_ty(base).ty_adt_def() else { return };
         // Skip types without `#[rustc_lint_opt_ty]` - only so that the rest of the lint can be
         // avoided.
-        if !cx.tcx.has_attr(adt_def.did(), sym::rustc_lint_opt_ty) {
+        if !find_attr!(cx.tcx.get_all_attrs(adt_def.did()), AttributeKind::RustcLintOptTy) {
             return;
         }
 
         for field in adt_def.all_fields() {
             if field.name == target.name
-                && let Some(attr) =
-                    cx.tcx.get_attr(field.did, sym::rustc_lint_opt_deny_field_access)
-                && let Some(items) = attr.meta_item_list()
-                && let Some(item) = items.first()
-                && let Some(lit) = item.lit()
-                && let ast::LitKind::Str(val, _) = lit.kind
+                && let Some(lint_message) = find_attr!(cx.tcx.get_all_attrs(field.did), AttributeKind::RustcLintOptDenyFieldAccess { lint_message, } => lint_message)
             {
                 cx.emit_span_lint(
                     BAD_OPT_ACCESS,
                     expr.span,
-                    BadOptAccessDiag { msg: val.as_str() },
+                    BadOptAccessDiag { msg: lint_message.as_str() },
                 );
             }
         }

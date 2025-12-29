@@ -58,6 +58,13 @@ use crate::time::Duration;
 /// }
 /// ```
 ///
+/// # `SOCK_CLOEXEC`
+///
+/// On platforms that support it, we pass the close-on-exec flag to atomically create the socket and
+/// set it as CLOEXEC. On Linux, this was added in 2.6.27. See [`socket(2)`] for more information.
+///
+/// [`socket(2)`]: https://www.man7.org/linux/man-pages/man2/socket.2.html#:~:text=SOCK_CLOEXEC
+///
 /// # `SIGPIPE`
 ///
 /// Writes to the underlying socket in `SOCK_STREAM` mode are made with `MSG_NOSIGNAL` flag.

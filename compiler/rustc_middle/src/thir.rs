@@ -14,7 +14,7 @@ use std::ops::Index;
 use std::sync::Arc;
 
 use rustc_abi::{FieldIdx, Integer, Size, VariantIdx};
-use rustc_ast::{AsmMacro, InlineAsmOptions, InlineAsmTemplatePiece};
+use rustc_ast::{AsmMacro, InlineAsmOptions, InlineAsmTemplatePiece, Mutability};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{BindingMode, ByRef, HirId, MatchSource, RangeEnd};
@@ -811,11 +811,11 @@ pub enum PatKind<'tcx> {
     DerefPattern {
         subpattern: Box<Pat<'tcx>>,
         /// Whether the pattern scrutinee needs to be borrowed in order to call `Deref::deref` or
-        /// `DerefMut::deref_mut`, and if so, which. This is `ByRef::No` for deref patterns on
+        /// `DerefMut::deref_mut`, and if so, which. This is `DerefPatBorrowMode::Box` for deref patterns on
         /// boxes; they are lowered using a built-in deref rather than a method call, thus they
         /// don't borrow the scrutinee.
         #[type_visitable(ignore)]
-        borrow: ByRef,
+        borrow: DerefPatBorrowMode,
     },
 
     /// One of the following:
@@ -879,6 +879,12 @@ pub enum PatKind<'tcx> {
     Error(ErrorGuaranteed),
 }
 
+#[derive(Copy, Clone, Debug, HashStable)]
+pub enum DerefPatBorrowMode {
+    Borrow(Mutability),
+    Box,
+}
+
 /// A range pattern.
 /// The boundaries must be of the same type and that type must be numeric.
 #[derive(Clone, Debug, PartialEq, HashStable, TypeVisitable)]
@@ -922,7 +928,7 @@ impl<'tcx> PatRange<'tcx> {
         let lo_is_min = match self.lo {
             PatRangeBoundary::NegInfinity => true,
             PatRangeBoundary::Finite(value) => {
-                let lo = value.try_to_scalar_int().unwrap().to_bits(size) ^ bias;
+                let lo = value.to_leaf().to_bits(size) ^ bias;
                 lo <= min
             }
             PatRangeBoundary::PosInfinity => false,
@@ -931,7 +937,7 @@ impl<'tcx> PatRange<'tcx> {
             let hi_is_max = match self.hi {
                 PatRangeBoundary::NegInfinity => false,
                 PatRangeBoundary::Finite(value) => {
-                    let hi = value.try_to_scalar_int().unwrap().to_bits(size) ^ bias;
+                    let hi = value.to_leaf().to_bits(size) ^ bias;
                     hi > max || hi == max && self.end == RangeEnd::Included
                 }
                 PatRangeBoundary::PosInfinity => true,
@@ -1023,7 +1029,7 @@ impl<'tcx> PatRangeBoundary<'tcx> {
     }
     pub fn to_bits(self, ty: Ty<'tcx>, tcx: TyCtxt<'tcx>) -> u128 {
         match self {
-            Self::Finite(value) => value.try_to_scalar_int().unwrap().to_bits_unchecked(),
+            Self::Finite(value) => value.to_leaf().to_bits_unchecked(),
             Self::NegInfinity => {
                 // Unwrap is ok because the type is known to be numeric.
                 ty.numeric_min_and_max_as_bits(tcx).unwrap().0
@@ -1051,7 +1057,7 @@ impl<'tcx> PatRangeBoundary<'tcx> {
             // many ranges such as '\u{037A}'..='\u{037F}', and chars can be compared
             // in this way.
             (Finite(a), Finite(b)) if matches!(ty.kind(), ty::Int(_) | ty::Uint(_) | ty::Char) => {
-                if let (Some(a), Some(b)) = (a.try_to_scalar_int(), b.try_to_scalar_int()) {
+                if let (Some(a), Some(b)) = (a.try_to_leaf(), b.try_to_leaf()) {
                     let sz = ty.primitive_size(tcx);
                     let cmp = match ty.kind() {
                         ty::Uint(_) | ty::Char => a.to_uint(sz).cmp(&b.to_uint(sz)),

@@ -42,8 +42,8 @@ use crate::{
     lsp::{
         LspError, completion_item_hash,
         ext::{
-            InternalTestingFetchConfigOption, InternalTestingFetchConfigParams,
-            InternalTestingFetchConfigResponse,
+            GetFailedObligationsParams, InternalTestingFetchConfigOption,
+            InternalTestingFetchConfigParams, InternalTestingFetchConfigResponse,
         },
         from_proto, to_proto,
         utils::{all_edits_are_disjoint, invalid_params_error},
@@ -2573,6 +2573,18 @@ pub(crate) fn internal_testing_fetch_config(
             )
         }
     }))
+}
+
+pub(crate) fn get_failed_obligations(
+    snap: GlobalStateSnapshot,
+    params: GetFailedObligationsParams,
+) -> anyhow::Result<String> {
+    let _p = tracing::info_span!("get_failed_obligations").entered();
+    let file_id = try_default!(from_proto::file_id(&snap, &params.text_document.uri)?);
+    let line_index = snap.file_line_index(file_id)?;
+    let offset = from_proto::offset(&line_index, params.position)?;
+
+    Ok(snap.analysis.get_failed_obligations(offset, file_id)?)
 }
 
 /// Searches for the directory of a Rust crate given this crate's root file path.

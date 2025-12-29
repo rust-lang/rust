@@ -128,7 +128,10 @@ enum Fragment<'a> {
     #[default]
     Empty,
     /// token fragments are just copy-pasted into the output
-    Tokens(tt::TokenTreesView<'a, Span>),
+    Tokens {
+        tree: tt::TokenTreesView<'a, Span>,
+        origin: TokensOrigin,
+    },
     /// Expr ast fragments are surrounded with `()` on transcription to preserve precedence.
     /// Note that this impl is different from the one currently in `rustc` --
     /// `rustc` doesn't translate fragments into token trees at all.
@@ -156,10 +159,16 @@ impl Fragment<'_> {
     fn is_empty(&self) -> bool {
         match self {
             Fragment::Empty => true,
-            Fragment::Tokens(it) => it.len() == 0,
+            Fragment::Tokens { tree, .. } => tree.len() == 0,
             Fragment::Expr(it) => it.len() == 0,
             Fragment::Path(it) => it.len() == 0,
             Fragment::TokensOwned(it) => it.0.is_empty(),
         }
     }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum TokensOrigin {
+    Raw,
+    Ast,
 }

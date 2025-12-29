@@ -29,7 +29,8 @@ use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::{MissingLifetimeKind, PrimTy, TraitCandidate};
 use rustc_middle::middle::resolve_bound_vars::Set1;
 use rustc_middle::ty::{
-    AssocTag, DELEGATION_INHERIT_ATTRS_START, DelegationFnSig, DelegationFnSigAttrs, Visibility,
+    AssocTag, DELEGATION_INHERIT_ATTRS_START, DelegationAttrs, DelegationFnSig,
+    DelegationFnSigAttrs, DelegationInfo, Visibility,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::{CrateType, ResolveDocLinks};
@@ -2928,7 +2929,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     item.id,
                     LifetimeBinderKind::Function,
                     span,
-                    |this| this.resolve_delegation(delegation),
+                    |this| this.resolve_delegation(delegation, item.id, false, &item.attrs),
                 );
             }
 
@@ -3257,7 +3258,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                         item.id,
                         LifetimeBinderKind::Function,
                         delegation.path.segments.last().unwrap().ident.span,
-                        |this| this.resolve_delegation(delegation),
+                        |this| this.resolve_delegation(delegation, item.id, false, &item.attrs),
                     );
                 }
                 AssocItemKind::Type(box TyAlias { generics, .. }) => self
@@ -3386,7 +3387,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                                                 debug!("resolve_implementation with_self_rib_ns(ValueNS, ...)");
                                                 let mut seen_trait_items = Default::default();
                                                 for item in impl_items {
-                                                    this.resolve_impl_item(&**item, &mut seen_trait_items, trait_id);
+                                                    this.resolve_impl_item(&**item, &mut seen_trait_items, trait_id, of_trait.is_some());
                                                 }
                                             });
                                         });
@@ -3405,6 +3406,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         item: &'ast AssocItem,
         seen_trait_items: &mut FxHashMap<DefId, Span>,
         trait_id: Option<DefId>,
+        is_in_trait_impl: bool,
     ) {
         use crate::ResolutionError::*;
         self.resolve_doc_links(&item.attrs, MaybeExported::ImplItem(trait_id.ok_or(&item.vis)));
@@ -3550,7 +3552,9 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                             |i, s, c| MethodNotMemberOfTrait(i, s, c),
                         );
 
-                        this.resolve_delegation(delegation)
+                        // Here we don't use `trait_id`, as we can process unresolved trait, however
+                        // in this case we are still in a trait impl, https://github.com/rust-lang/rust/issues/150152
+                        this.resolve_delegation(delegation, item.id, is_in_trait_impl, &item.attrs);
                     },
                 );
             }
@@ -3699,17 +3703,34 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         })
     }
 
-    fn resolve_delegation(&mut self, delegation: &'ast Delegation) {
+    fn resolve_delegation(
+        &mut self,
+        delegation: &'ast Delegation,
+        item_id: NodeId,
+        is_in_trait_impl: bool,
+        attrs: &[Attribute],
+    ) {
         self.smart_resolve_path(
             delegation.id,
             &delegation.qself,
             &delegation.path,
             PathSource::Delegation,
         );
+
         if let Some(qself) = &delegation.qself {
             self.visit_ty(&qself.ty);
         }
+
         self.visit_path(&delegation.path);
+
+        self.r.delegation_infos.insert(
+            self.r.local_def_id(item_id),
+            DelegationInfo {
+                attrs: create_delegation_attrs(attrs),
+                resolution_node: if is_in_trait_impl { item_id } else { delegation.id },
+            },
+        );
+
         let Some(body) = &delegation.body else { return };
         self.with_rib(ValueNS, RibKind::FnOrCoroutine, |this| {
             let span = delegation.path.segments.last().unwrap().ident.span;
@@ -4294,7 +4315,6 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         );
     }
 
-    #[instrument(level = "debug", skip(self))]
     fn smart_resolve_path_fragment(
         &mut self,
         qself: &Option<Box<QSelf>>,
@@ -4867,12 +4887,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             constant, anon_const_kind
         );
 
-        let is_trivial_const_arg = if self.r.tcx.features().min_generic_const_args() {
-            matches!(constant.mgca_disambiguation, MgcaDisambiguation::Direct)
-        } else {
-            constant.value.is_potential_trivial_const_arg()
-        };
-
+        let is_trivial_const_arg = constant.value.is_potential_trivial_const_arg();
         self.resolve_anon_const_manual(is_trivial_const_arg, anon_const_kind, |this| {
             this.resolve_expr(&constant.value, None)
         })
@@ -4902,7 +4917,10 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             AnonConstKind::FieldDefaultValue => ConstantHasGenerics::Yes,
             AnonConstKind::InlineConst => ConstantHasGenerics::Yes,
             AnonConstKind::ConstArg(_) => {
-                if self.r.tcx.features().generic_const_exprs() || is_trivial_const_arg {
+                if self.r.tcx.features().generic_const_exprs()
+                    || self.r.tcx.features().min_generic_const_args()
+                    || is_trivial_const_arg
+                {
                     ConstantHasGenerics::Yes
                 } else {
                     ConstantHasGenerics::No(NoConstantGenericsReason::NonTrivialConstArg)
@@ -5324,39 +5342,43 @@ impl ItemInfoCollector<'_, '_, '_> {
         id: NodeId,
         attrs: &[Attribute],
     ) {
-        static NAMES_TO_FLAGS: &[(Symbol, DelegationFnSigAttrs)] = &[
-            (sym::target_feature, DelegationFnSigAttrs::TARGET_FEATURE),
-            (sym::must_use, DelegationFnSigAttrs::MUST_USE),
-        ];
+        self.r.delegation_fn_sigs.insert(
+            self.r.local_def_id(id),
+            DelegationFnSig {
+                header,
+                param_count: decl.inputs.len(),
+                has_self: decl.has_self(),
+                c_variadic: decl.c_variadic(),
+                attrs: create_delegation_attrs(attrs),
+            },
+        );
+    }
+}
 
-        let mut to_inherit_attrs = AttrVec::new();
-        let mut attrs_flags = DelegationFnSigAttrs::empty();
+fn create_delegation_attrs(attrs: &[Attribute]) -> DelegationAttrs {
+    static NAMES_TO_FLAGS: &[(Symbol, DelegationFnSigAttrs)] = &[
+        (sym::target_feature, DelegationFnSigAttrs::TARGET_FEATURE),
+        (sym::must_use, DelegationFnSigAttrs::MUST_USE),
+    ];
 
-        'attrs_loop: for attr in attrs {
-            for &(name, flag) in NAMES_TO_FLAGS {
-                if attr.has_name(name) {
-                    attrs_flags.set(flag, true);
+    let mut to_inherit_attrs = AttrVec::new();
+    let mut flags = DelegationFnSigAttrs::empty();
 
-                    if flag.bits() >= DELEGATION_INHERIT_ATTRS_START.bits() {
-                        to_inherit_attrs.push(attr.clone());
-                    }
+    'attrs_loop: for attr in attrs {
+        for &(name, flag) in NAMES_TO_FLAGS {
+            if attr.has_name(name) {
+                flags.set(flag, true);
 
-                    continue 'attrs_loop;
+                if flag.bits() >= DELEGATION_INHERIT_ATTRS_START.bits() {
+                    to_inherit_attrs.push(attr.clone());
                 }
+
+                continue 'attrs_loop;
             }
         }
-
-        let sig = DelegationFnSig {
-            header,
-            param_count: decl.inputs.len(),
-            has_self: decl.has_self(),
-            c_variadic: decl.c_variadic(),
-            attrs_flags,
-            to_inherit_attrs,
-        };
-
-        self.r.delegation_fn_sigs.insert(self.r.local_def_id(id), sig);
     }
+
+    DelegationAttrs { flags, to_inherit: to_inherit_attrs }
 }
 
 impl<'ast> Visitor<'ast> for ItemInfoCollector<'_, '_, '_> {

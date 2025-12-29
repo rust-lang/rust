@@ -202,6 +202,11 @@ pub(crate) fn prepare_conditions(config: &Config) -> PreparedConditions {
         config.with_std_debug_assertions,
         "when std is built with debug assertions",
     );
+    builder.cond(
+        "std-remap-debuginfo",
+        config.with_std_remap_debuginfo,
+        "when std is built with remapping of debuginfo",
+    );
 
     for &debugger in Debugger::STR_VARIANTS {
         builder.cond(

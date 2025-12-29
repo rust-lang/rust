@@ -431,9 +431,8 @@ where
             )
             .map(|mut res| {
                 res.docs = self.docs(db).map(Documentation::into_owned);
-                res.description = hir::attach_db(db, || {
-                    Some(self.display(db, self.krate(db).to_display_target(db)).to_string())
-                });
+                res.description =
+                    Some(self.display(db, self.krate(db).to_display_target(db)).to_string());
                 res.container_name = self.container_name(db);
                 res
             }),

@@ -61,7 +61,7 @@ use tracing::{debug, instrument};
 use typeck_root_ctxt::TypeckRootCtxt;
 
 use crate::check::check_fn;
-use crate::coercion::DynamicCoerceMany;
+use crate::coercion::CoerceMany;
 use crate::diverges::Diverges;
 use crate::expectation::Expectation;
 use crate::fn_ctxt::LoweredTy;
@@ -113,6 +113,18 @@ fn typeck_with_inspect<'tcx>(
     let typeck_root_def_id = tcx.typeck_root_def_id(def_id.to_def_id()).expect_local();
     if typeck_root_def_id != def_id {
         return tcx.typeck(typeck_root_def_id);
+    }
+
+    // We can't handle bodies containing generic parameters even though
+    // these generic parameters aren't part of its `generics_of` right now.
+    //
+    // See the FIXME on `check_anon_const_invalid_param_uses`.
+    if tcx.features().min_generic_const_args()
+        && let DefKind::AnonConst = tcx.def_kind(def_id)
+        && let ty::AnonConstKind::MCG = tcx.anon_const_kind(def_id)
+        && let Err(e) = tcx.check_anon_const_invalid_param_uses(def_id)
+    {
+        e.raise_fatal();
     }
 
     let id = tcx.local_def_id_to_hir_id(def_id);
@@ -349,7 +361,7 @@ pub struct BreakableCtxt<'tcx> {
 
     // this is `null` for loops where break with a value is illegal,
     // such as `while`, `for`, and `while let`
-    coerce: Option<DynamicCoerceMany<'tcx>>,
+    coerce: Option<CoerceMany<'tcx>>,
 }
 
 pub struct EnclosingBreakables<'tcx> {

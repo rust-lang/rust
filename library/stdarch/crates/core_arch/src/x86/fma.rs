@@ -14,8 +14,8 @@
 //! Wikipedia's [FMA][wiki_fma] page provides a quick overview of the
 //! instructions available.
 //!
-//! [intel64_ref]: http://www.intel.de/content/dam/www/public/us/en/documents/manuals/64-ia-32-architectures-software-developer-instruction-set-reference-manual-325383.pdf
-//! [amd64_ref]: http://support.amd.com/TechDocs/24594.pdf
+//! [intel64_ref]: https://www.intel.com/content/dam/www/public/us/en/documents/manuals/64-ia-32-architectures-software-developer-instruction-set-reference-manual-325383.pdf
+//! [amd64_ref]: https://docs.amd.com/v/u/en-US/24594_3.37
 //! [wiki_fma]: https://en.wikipedia.org/wiki/Fused_multiply-accumulate
 
 use crate::core_arch::x86::*;
@@ -33,7 +33,8 @@ use stdarch_test::assert_instr;
 #[target_feature(enable = "fma")]
 #[cfg_attr(test, assert_instr(vfmadd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm_fmadd_pd(a: __m128d, b: __m128d, c: __m128d) -> __m128d {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm_fmadd_pd(a: __m128d, b: __m128d, c: __m128d) -> __m128d {
     unsafe { simd_fma(a, b, c) }
 }
 
@@ -45,7 +46,8 @@ pub fn _mm_fmadd_pd(a: __m128d, b: __m128d, c: __m128d) -> __m128d {
 #[target_feature(enable = "fma")]
 #[cfg_attr(test, assert_instr(vfmadd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_fmadd_pd(a: __m256d, b: __m256d, c: __m256d) -> __m256d {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_fmadd_pd(a: __m256d, b: __m256d, c: __m256d) -> __m256d {
     unsafe { simd_fma(a, b, c) }
 }
 
@@ -57,7 +59,8 @@ pub fn _mm256_fmadd_pd(a: __m256d, b: __m256d, c: __m256d) -> __m256d {
 #[target_feature(enable = "fma")]
 #[cfg_attr(test, assert_instr(vfmadd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm_fmadd_ps(a: __m128, b: __m128, c: __m128) -> __m128 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm_fmadd_ps(a: __m128, b: __m128, c: __m128) -> __m128 {
     unsafe { simd_fma(a, b, c) }
 }
 
@@ -69,7 +72,8 @@ pub fn _mm_fmadd_ps(a: __m128, b: __m128, c: __m128) -> __m128 {
 #[target_feature(enable = "fma")]
 #[cfg_attr(test, assert_instr(vfmadd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_fmadd_ps(a: __m256, b: __m256, c: __m256) -> __m256 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_fmadd_ps(a: __m256, b: __m256, c: __m256) -> __m256 {
     unsafe { simd_fma(a, b, c) }
 }
 
@@ -83,7 +87,8 @@ pub fn _mm256_fmadd_ps(a: __m256, b: __m256, c: __m256) -> __m256 {
 #[target_feature(enable = "fma")]
 #[cfg_attr(test, assert_instr(vfmadd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm_fmadd_sd(a: __m128d, b: __m128d, c: __m128d) -> __m128d {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm_fmadd_sd(a: __m128d, b: __m128d, c: __m128d) -> __m128d {
     unsafe {
         simd_insert!(
             a,
@@ -103,7 +108,8 @@ pub fn _mm_fmadd_sd(a: __m128d, b: __m128d, c: __m128d) -> __m128d {
 #[target_feature(enable = "fma")]
 #[cfg_attr(test, assert_instr(vfmadd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm_fmadd_ss(a: __m128, b: __m128, c: __m128) -> __m128 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm_fmadd_ss(a: __m128, b: __m128, c: __m128) -> __m128 {
     unsafe {
         simd_insert!(
             a,
@@ -122,7 +128,8 @@ pub fn _mm_fmadd_ss(a: __m128, b: __m128, c: __m128) -> __m128 {
 #[target_feature(enable = "fma")]
 #[cfg_attr(test, assert_instr(vfmaddsub))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm_fmaddsub_pd(a: __m128d, b: __m128d, c: __m128d) -> __m128d {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm_fmaddsub_pd(a: __m128d, b: __m128d, c: __m128d) -> __m128d {
     unsafe {
         let add = simd_fma(a, b, c);
         let sub = simd_fma(a, b, simd_neg(c));
@@ -139,7 +146,8 @@ pub fn _mm_fmaddsub_pd(a: __m128d, b: __m128d, c: __m128d) -> __m128d {
 #[target_feature(enable = "fma")]
 #[cfg_attr(test, assert_instr(vfmaddsub))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_fmaddsub_pd(a: __m256d, b: __m256d, c: __m256d) -> __m256d {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_fmaddsub_pd(a: __m256d, b: __m256d, c: __m256d) -> __m256d {
     unsafe {
         let add = simd_fma(a, b, c);
         let sub = simd_fma(a, b, simd_neg(c));
@@ -156,7 +164,8 @@ pub fn _mm256_fmaddsub_pd(a: __m256d, b: __m256d, c: __m256d) -> __m256d {
 #[target_feature(enable = "fma")]
 #[cfg_attr(test, assert_instr(vfmaddsub))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm_fmaddsub_ps(a: __m128, b: __m128, c: __m128) -> __m128 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm_fmaddsub_ps(a: __m128, b: __m128, c: __m128) -> __m128 {
     unsafe {
         let add = simd_fma(a, b, c);
         let sub = simd_fma(a, b, simd_neg(c));
@@ -173,7 +182,8 @@ pub fn _mm_fmaddsub_ps(a: __m128, b: __m128, c: __m128) -> __m128 {
 #[target_feature(enable = "fma")]
 #[cfg_attr(test, assert_instr(vfmaddsub))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_fmaddsub_ps(a: __m256, b: __m256, c: __m256) -> __m256 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_fmaddsub_ps(a: __m256, b: __m256, c: __m256) -> __m256 {
     unsafe {
         let add = simd_fma(a, b, c);
         let sub = simd_fma(a, b, simd_neg(c));
@@ -189,7 +199,8 @@ pub fn _mm256_fmaddsub_ps(a: __m256, b: __m256, c: __m256) -> __m256 {
 #[target_feature(enable = "fma")]
 #[cfg_attr(test, assert_instr(vfmsub))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm_fmsub_pd(a: __m128d, b: __m128d, c: __m128d) -> __m128d {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm_fmsub_pd(a: __m128d, b: __m128d, c: __m128d) -> __m128d {
     unsafe { simd_fma(a, b, simd_neg(c)) }
 }
 
@@ -201,7 +212,8 @@ pub fn _mm_fmsub_pd(a: __m128d, b: __m128d, c: __m128d) -> __m128d {
 #[target_feature(enable = "fma")]
 #[cfg_attr(test, assert_instr(vfmsub))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_fmsub_pd(a: __m256d, b: __m256d, c: __m256d) -> __m256d {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_fmsub_pd(a: __m256d, b: __m256d, c: __m256d) -> __m256d {
     unsafe { simd_fma(a, b, simd_neg(c)) }
 }
 
@@ -213,7 +225,8 @@ pub fn _mm256_fmsub_pd(a: __m256d, b: __m256d, c: __m256d) -> __m256d {
 #[target_feature(enable = "fma")]
 #[cfg_attr(test, assert_instr(vfmsub213ps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm_fmsub_ps(a: __m128, b: __m128, c: __m128) -> __m128 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm_fmsub_ps(a: __m128, b: __m128, c: __m128) -> __m128 {
     unsafe { simd_fma(a, b, simd_neg(c)) }
 }
 
@@ -225,7 +238,8 @@ pub fn _mm_fmsub_ps(a: __m128, b: __m128, c: __m128) -> __m128 {
 #[target_feature(enable = "fma")]
 #[cfg_attr(test, assert_instr(vfmsub213ps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_fmsub_ps(a: __m256, b: __m256, c: __m256) -> __m256 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_fmsub_ps(a: __m256, b: __m256, c: __m256) -> __m256 {
     unsafe { simd_fma(a, b, simd_neg(c)) }
 }
 
@@ -239,7 +253,8 @@ pub fn _mm256_fmsub_ps(a: __m256, b: __m256, c: __m256) -> __m256 {
 #[target_feature(enable = "fma")]
 #[cfg_attr(test, assert_instr(vfmsub))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm_fmsub_sd(a: __m128d, b: __m128d, c: __m128d) -> __m128d {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm_fmsub_sd(a: __m128d, b: __m128d, c: __m128d) -> __m128d {
     unsafe {
         simd_insert!(
             a,
@@ -259,7 +274,8 @@ pub fn _mm_fmsub_sd(a: __m128d, b: __m128d, c: __m128d) -> __m128d {
 #[target_feature(enable = "fma")]
 #[cfg_attr(test, assert_instr(vfmsub))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm_fmsub_ss(a: __m128, b: __m128, c: __m128) -> __m128 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm_fmsub_ss(a: __m128, b: __m128, c: __m128) -> __m128 {
     unsafe {
         simd_insert!(
             a,
@@ -278,7 +294,8 @@ pub fn _mm_fmsub_ss(a: __m128, b: __m128, c: __m128) -> __m128 {
 #[target_feature(enable = "fma")]
 #[cfg_attr(test, assert_instr(vfmsubadd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm_fmsubadd_pd(a: __m128d, b: __m128d, c: __m128d) -> __m128d {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm_fmsubadd_pd(a: __m128d, b: __m128d, c: __m128d) -> __m128d {
     unsafe {
         let add = simd_fma(a, b, c);
         let sub = simd_fma(a, b, simd_neg(c));
@@ -295,7 +312,8 @@ pub fn _mm_fmsubadd_pd(a: __m128d, b: __m128d, c: __m128d) -> __m128d {
 #[target_feature(enable = "fma")]
 #[cfg_attr(test, assert_instr(vfmsubadd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_fmsubadd_pd(a: __m256d, b: __m256d, c: __m256d) -> __m256d {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_fmsubadd_pd(a: __m256d, b: __m256d, c: __m256d) -> __m256d {
     unsafe {
         let add = simd_fma(a, b, c);
         let sub = simd_fma(a, b, simd_neg(c));
@@ -312,7 +330,8 @@ pub fn _mm256_fmsubadd_pd(a: __m256d, b: __m256d, c: __m256d) -> __m256d {
 #[target_feature(enable = "fma")]
 #[cfg_attr(test, assert_instr(vfmsubadd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm_fmsubadd_ps(a: __m128, b: __m128, c: __m128) -> __m128 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm_fmsubadd_ps(a: __m128, b: __m128, c: __m128) -> __m128 {
     unsafe {
         let add = simd_fma(a, b, c);
         let sub = simd_fma(a, b, simd_neg(c));
@@ -329,7 +348,8 @@ pub fn _mm_fmsubadd_ps(a: __m128, b: __m128, c: __m128) -> __m128 {
 #[target_feature(enable = "fma")]
 #[cfg_attr(test, assert_instr(vfmsubadd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_fmsubadd_ps(a: __m256, b: __m256, c: __m256) -> __m256 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_fmsubadd_ps(a: __m256, b: __m256, c: __m256) -> __m256 {
     unsafe {
         let add = simd_fma(a, b, c);
         let sub = simd_fma(a, b, simd_neg(c));
@@ -345,7 +365,8 @@ pub fn _mm256_fmsubadd_ps(a: __m256, b: __m256, c: __m256) -> __m256 {
 #[target_feature(enable = "fma")]
 #[cfg_attr(test, assert_instr(vfnmadd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm_fnmadd_pd(a: __m128d, b: __m128d, c: __m128d) -> __m128d {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm_fnmadd_pd(a: __m128d, b: __m128d, c: __m128d) -> __m128d {
     unsafe { simd_fma(simd_neg(a), b, c) }
 }
 
@@ -357,7 +378,8 @@ pub fn _mm_fnmadd_pd(a: __m128d, b: __m128d, c: __m128d) -> __m128d {
 #[target_feature(enable = "fma")]
 #[cfg_attr(test, assert_instr(vfnmadd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_fnmadd_pd(a: __m256d, b: __m256d, c: __m256d) -> __m256d {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_fnmadd_pd(a: __m256d, b: __m256d, c: __m256d) -> __m256d {
     unsafe { simd_fma(simd_neg(a), b, c) }
 }
 
@@ -369,7 +391,8 @@ pub fn _mm256_fnmadd_pd(a: __m256d, b: __m256d, c: __m256d) -> __m256d {
 #[target_feature(enable = "fma")]
 #[cfg_attr(test, assert_instr(vfnmadd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm_fnmadd_ps(a: __m128, b: __m128, c: __m128) -> __m128 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm_fnmadd_ps(a: __m128, b: __m128, c: __m128) -> __m128 {
     unsafe { simd_fma(simd_neg(a), b, c) }
 }
 
@@ -381,7 +404,8 @@ pub fn _mm_fnmadd_ps(a: __m128, b: __m128, c: __m128) -> __m128 {
 #[target_feature(enable = "fma")]
 #[cfg_attr(test, assert_instr(vfnmadd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_fnmadd_ps(a: __m256, b: __m256, c: __m256) -> __m256 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_fnmadd_ps(a: __m256, b: __m256, c: __m256) -> __m256 {
     unsafe { simd_fma(simd_neg(a), b, c) }
 }
 
@@ -395,7 +419,8 @@ pub fn _mm256_fnmadd_ps(a: __m256, b: __m256, c: __m256) -> __m256 {
 #[target_feature(enable = "fma")]
 #[cfg_attr(test, assert_instr(vfnmadd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm_fnmadd_sd(a: __m128d, b: __m128d, c: __m128d) -> __m128d {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm_fnmadd_sd(a: __m128d, b: __m128d, c: __m128d) -> __m128d {
     unsafe {
         simd_insert!(
             a,
@@ -415,7 +440,8 @@ pub fn _mm_fnmadd_sd(a: __m128d, b: __m128d, c: __m128d) -> __m128d {
 #[target_feature(enable = "fma")]
 #[cfg_attr(test, assert_instr(vfnmadd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm_fnmadd_ss(a: __m128, b: __m128, c: __m128) -> __m128 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm_fnmadd_ss(a: __m128, b: __m128, c: __m128) -> __m128 {
     unsafe {
         simd_insert!(
             a,
@@ -434,7 +460,8 @@ pub fn _mm_fnmadd_ss(a: __m128, b: __m128, c: __m128) -> __m128 {
 #[target_feature(enable = "fma")]
 #[cfg_attr(test, assert_instr(vfnmsub))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm_fnmsub_pd(a: __m128d, b: __m128d, c: __m128d) -> __m128d {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm_fnmsub_pd(a: __m128d, b: __m128d, c: __m128d) -> __m128d {
     unsafe { simd_fma(simd_neg(a), b, simd_neg(c)) }
 }
 
@@ -447,7 +474,8 @@ pub fn _mm_fnmsub_pd(a: __m128d, b: __m128d, c: __m128d) -> __m128d {
 #[target_feature(enable = "fma")]
 #[cfg_attr(test, assert_instr(vfnmsub))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_fnmsub_pd(a: __m256d, b: __m256d, c: __m256d) -> __m256d {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_fnmsub_pd(a: __m256d, b: __m256d, c: __m256d) -> __m256d {
     unsafe { simd_fma(simd_neg(a), b, simd_neg(c)) }
 }
 
@@ -460,7 +488,8 @@ pub fn _mm256_fnmsub_pd(a: __m256d, b: __m256d, c: __m256d) -> __m256d {
 #[target_feature(enable = "fma")]
 #[cfg_attr(test, assert_instr(vfnmsub))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm_fnmsub_ps(a: __m128, b: __m128, c: __m128) -> __m128 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm_fnmsub_ps(a: __m128, b: __m128, c: __m128) -> __m128 {
     unsafe { simd_fma(simd_neg(a), b, simd_neg(c)) }
 }
 
@@ -473,7 +502,8 @@ pub fn _mm_fnmsub_ps(a: __m128, b: __m128, c: __m128) -> __m128 {
 #[target_feature(enable = "fma")]
 #[cfg_attr(test, assert_instr(vfnmsub))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_fnmsub_ps(a: __m256, b: __m256, c: __m256) -> __m256 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_fnmsub_ps(a: __m256, b: __m256, c: __m256) -> __m256 {
     unsafe { simd_fma(simd_neg(a), b, simd_neg(c)) }
 }
 
@@ -488,7 +518,8 @@ pub fn _mm256_fnmsub_ps(a: __m256, b: __m256, c: __m256) -> __m256 {
 #[target_feature(enable = "fma")]
 #[cfg_attr(test, assert_instr(vfnmsub))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm_fnmsub_sd(a: __m128d, b: __m128d, c: __m128d) -> __m128d {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm_fnmsub_sd(a: __m128d, b: __m128d, c: __m128d) -> __m128d {
     unsafe {
         simd_insert!(
             a,
@@ -509,7 +540,8 @@ pub fn _mm_fnmsub_sd(a: __m128d, b: __m128d, c: __m128d) -> __m128d {
 #[target_feature(enable = "fma")]
 #[cfg_attr(test, assert_instr(vfnmsub))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm_fnmsub_ss(a: __m128, b: __m128, c: __m128) -> __m128 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm_fnmsub_ss(a: __m128, b: __m128, c: __m128) -> __m128 {
     unsafe {
         simd_insert!(
             a,
@@ -521,13 +553,14 @@ pub fn _mm_fnmsub_ss(a: __m128, b: __m128, c: __m128) -> __m128 {
 
 #[cfg(test)]
 mod tests {
+    use crate::core_arch::assert_eq_const as assert_eq;
 
     use stdarch_test::simd_test;
 
     use crate::core_arch::x86::*;
 
     #[simd_test(enable = "fma")]
-    unsafe fn test_mm_fmadd_pd() {
+    const unsafe fn test_mm_fmadd_pd() {
         let a = _mm_setr_pd(1., 2.);
         let b = _mm_setr_pd(5., 3.);
         let c = _mm_setr_pd(4., 9.);
@@ -536,7 +569,7 @@ mod tests {
     }
 
     #[simd_test(enable = "fma")]
-    unsafe fn test_mm256_fmadd_pd() {
+    const unsafe fn test_mm256_fmadd_pd() {
         let a = _mm256_setr_pd(1., 2., 3., 4.);
         let b = _mm256_setr_pd(5., 3., 7., 2.);
         let c = _mm256_setr_pd(4., 9., 1., 7.);
@@ -545,7 +578,7 @@ mod tests {
     }
 
     #[simd_test(enable = "fma")]
-    unsafe fn test_mm_fmadd_ps() {
+    const unsafe fn test_mm_fmadd_ps() {
         let a = _mm_setr_ps(1., 2., 3., 4.);
         let b = _mm_setr_ps(5., 3., 7., 2.);
         let c = _mm_setr_ps(4., 9., 1., 7.);
@@ -554,7 +587,7 @@ mod tests {
     }
 
     #[simd_test(enable = "fma")]
-    unsafe fn test_mm256_fmadd_ps() {
+    const unsafe fn test_mm256_fmadd_ps() {
         let a = _mm256_setr_ps(1., 2., 3., 4., 0., 10., -1., -2.);
         let b = _mm256_setr_ps(5., 3., 7., 2., 4., -6., 0., 14.);
         let c = _mm256_setr_ps(4., 9., 1., 7., -5., 11., -2., -3.);
@@ -563,7 +596,7 @@ mod tests {
     }
 
     #[simd_test(enable = "fma")]
-    unsafe fn test_mm_fmadd_sd() {
+    const unsafe fn test_mm_fmadd_sd() {
         let a = _mm_setr_pd(1., 2.);
         let b = _mm_setr_pd(5., 3.);
         let c = _mm_setr_pd(4., 9.);
@@ -572,7 +605,7 @@ mod tests {
     }
 
     #[simd_test(enable = "fma")]
-    unsafe fn test_mm_fmadd_ss() {
+    const unsafe fn test_mm_fmadd_ss() {
         let a = _mm_setr_ps(1., 2., 3., 4.);
         let b = _mm_setr_ps(5., 3., 7., 2.);
         let c = _mm_setr_ps(4., 9., 1., 7.);
@@ -581,7 +614,7 @@ mod tests {
     }
 
     #[simd_test(enable = "fma")]
-    unsafe fn test_mm_fmaddsub_pd() {
+    const unsafe fn test_mm_fmaddsub_pd() {
         let a = _mm_setr_pd(1., 2.);
         let b = _mm_setr_pd(5., 3.);
         let c = _mm_setr_pd(4., 9.);
@@ -590,7 +623,7 @@ mod tests {
     }
 
     #[simd_test(enable = "fma")]
-    unsafe fn test_mm256_fmaddsub_pd() {
+    const unsafe fn test_mm256_fmaddsub_pd() {
         let a = _mm256_setr_pd(1., 2., 3., 4.);
         let b = _mm256_setr_pd(5., 3., 7., 2.);
         let c = _mm256_setr_pd(4., 9., 1., 7.);
@@ -599,7 +632,7 @@ mod tests {
     }
 
     #[simd_test(enable = "fma")]
-    unsafe fn test_mm_fmaddsub_ps() {
+    const unsafe fn test_mm_fmaddsub_ps() {
         let a = _mm_setr_ps(1., 2., 3., 4.);
         let b = _mm_setr_ps(5., 3., 7., 2.);
         let c = _mm_setr_ps(4., 9., 1., 7.);
@@ -608,7 +641,7 @@ mod tests {
     }
 
     #[simd_test(enable = "fma")]
-    unsafe fn test_mm256_fmaddsub_ps() {
+    const unsafe fn test_mm256_fmaddsub_ps() {
         let a = _mm256_setr_ps(1., 2., 3., 4., 0., 10., -1., -2.);
         let b = _mm256_setr_ps(5., 3., 7., 2., 4., -6., 0., 14.);
         let c = _mm256_setr_ps(4., 9., 1., 7., -5., 11., -2., -3.);
@@ -617,7 +650,7 @@ mod tests {
     }
 
     #[simd_test(enable = "fma")]
-    unsafe fn test_mm_fmsub_pd() {
+    const unsafe fn test_mm_fmsub_pd() {
         let a = _mm_setr_pd(1., 2.);
         let b = _mm_setr_pd(5., 3.);
         let c = _mm_setr_pd(4., 9.);
@@ -626,7 +659,7 @@ mod tests {
     }
 
     #[simd_test(enable = "fma")]
-    unsafe fn test_mm256_fmsub_pd() {
+    const unsafe fn test_mm256_fmsub_pd() {
         let a = _mm256_setr_pd(1., 2., 3., 4.);
         let b = _mm256_setr_pd(5., 3., 7., 2.);
         let c = _mm256_setr_pd(4., 9., 1., 7.);
@@ -635,7 +668,7 @@ mod tests {
     }
 
     #[simd_test(enable = "fma")]
-    unsafe fn test_mm_fmsub_ps() {
+    const unsafe fn test_mm_fmsub_ps() {
         let a = _mm_setr_ps(1., 2., 3., 4.);
         let b = _mm_setr_ps(5., 3., 7., 2.);
         let c = _mm_setr_ps(4., 9., 1., 7.);
@@ -644,7 +677,7 @@ mod tests {
     }
 
     #[simd_test(enable = "fma")]
-    unsafe fn test_mm256_fmsub_ps() {
+    const unsafe fn test_mm256_fmsub_ps() {
         let a = _mm256_setr_ps(1., 2., 3., 4., 0., 10., -1., -2.);
         let b = _mm256_setr_ps(5., 3., 7., 2., 4., -6., 0., 14.);
         let c = _mm256_setr_ps(4., 9., 1., 7., -5., 11., -2., -3.);
@@ -653,7 +686,7 @@ mod tests {
     }
 
     #[simd_test(enable = "fma")]
-    unsafe fn test_mm_fmsub_sd() {
+    const unsafe fn test_mm_fmsub_sd() {
         let a = _mm_setr_pd(1., 2.);
         let b = _mm_setr_pd(5., 3.);
         let c = _mm_setr_pd(4., 9.);
@@ -662,7 +695,7 @@ mod tests {
     }
 
     #[simd_test(enable = "fma")]
-    unsafe fn test_mm_fmsub_ss() {
+    const unsafe fn test_mm_fmsub_ss() {
         let a = _mm_setr_ps(1., 2., 3., 4.);
         let b = _mm_setr_ps(5., 3., 7., 2.);
         let c = _mm_setr_ps(4., 9., 1., 7.);
@@ -671,7 +704,7 @@ mod tests {
     }
 
     #[simd_test(enable = "fma")]
-    unsafe fn test_mm_fmsubadd_pd() {
+    const unsafe fn test_mm_fmsubadd_pd() {
         let a = _mm_setr_pd(1., 2.);
         let b = _mm_setr_pd(5., 3.);
         let c = _mm_setr_pd(4., 9.);
@@ -680,7 +713,7 @@ mod tests {
     }
 
     #[simd_test(enable = "fma")]
-    unsafe fn test_mm256_fmsubadd_pd() {
+    const unsafe fn test_mm256_fmsubadd_pd() {
         let a = _mm256_setr_pd(1., 2., 3., 4.);
         let b = _mm256_setr_pd(5., 3., 7., 2.);
         let c = _mm256_setr_pd(4., 9., 1., 7.);
@@ -689,7 +722,7 @@ mod tests {
     }
 
     #[simd_test(enable = "fma")]
-    unsafe fn test_mm_fmsubadd_ps() {
+    const unsafe fn test_mm_fmsubadd_ps() {
         let a = _mm_setr_ps(1., 2., 3., 4.);
         let b = _mm_setr_ps(5., 3., 7., 2.);
         let c = _mm_setr_ps(4., 9., 1., 7.);
@@ -698,7 +731,7 @@ mod tests {
     }
 
     #[simd_test(enable = "fma")]
-    unsafe fn test_mm256_fmsubadd_ps() {
+    const unsafe fn test_mm256_fmsubadd_ps() {
         let a = _mm256_setr_ps(1., 2., 3., 4., 0., 10., -1., -2.);
         let b = _mm256_setr_ps(5., 3., 7., 2., 4., -6., 0., 14.);
         let c = _mm256_setr_ps(4., 9., 1., 7., -5., 11., -2., -3.);
@@ -707,7 +740,7 @@ mod tests {
     }
 
     #[simd_test(enable = "fma")]
-    unsafe fn test_mm_fnmadd_pd() {
+    const unsafe fn test_mm_fnmadd_pd() {
         let a = _mm_setr_pd(1., 2.);
         let b = _mm_setr_pd(5., 3.);
         let c = _mm_setr_pd(4., 9.);
@@ -716,7 +749,7 @@ mod tests {
     }
 
     #[simd_test(enable = "fma")]
-    unsafe fn test_mm256_fnmadd_pd() {
+    const unsafe fn test_mm256_fnmadd_pd() {
         let a = _mm256_setr_pd(1., 2., 3., 4.);
         let b = _mm256_setr_pd(5., 3., 7., 2.);
         let c = _mm256_setr_pd(4., 9., 1., 7.);
@@ -725,7 +758,7 @@ mod tests {
     }
 
     #[simd_test(enable = "fma")]
-    unsafe fn test_mm_fnmadd_ps() {
+    const unsafe fn test_mm_fnmadd_ps() {
         let a = _mm_setr_ps(1., 2., 3., 4.);
         let b = _mm_setr_ps(5., 3., 7., 2.);
         let c = _mm_setr_ps(4., 9., 1., 7.);
@@ -734,7 +767,7 @@ mod tests {
     }
 
     #[simd_test(enable = "fma")]
-    unsafe fn test_mm256_fnmadd_ps() {
+    const unsafe fn test_mm256_fnmadd_ps() {
         let a = _mm256_setr_ps(1., 2., 3., 4., 0., 10., -1., -2.);
         let b = _mm256_setr_ps(5., 3., 7., 2., 4., -6., 0., 14.);
         let c = _mm256_setr_ps(4., 9., 1., 7., -5., 11., -2., -3.);
@@ -743,7 +776,7 @@ mod tests {
     }
 
     #[simd_test(enable = "fma")]
-    unsafe fn test_mm_fnmadd_sd() {
+    const unsafe fn test_mm_fnmadd_sd() {
         let a = _mm_setr_pd(1., 2.);
         let b = _mm_setr_pd(5., 3.);
         let c = _mm_setr_pd(4., 9.);
@@ -752,7 +785,7 @@ mod tests {
     }
 
     #[simd_test(enable = "fma")]
-    unsafe fn test_mm_fnmadd_ss() {
+    const unsafe fn test_mm_fnmadd_ss() {
         let a = _mm_setr_ps(1., 2., 3., 4.);
         let b = _mm_setr_ps(5., 3., 7., 2.);
         let c = _mm_setr_ps(4., 9., 1., 7.);
@@ -761,7 +794,7 @@ mod tests {
     }
 
     #[simd_test(enable = "fma")]
-    unsafe fn test_mm_fnmsub_pd() {
+    const unsafe fn test_mm_fnmsub_pd() {
         let a = _mm_setr_pd(1., 2.);
         let b = _mm_setr_pd(5., 3.);
         let c = _mm_setr_pd(4., 9.);
@@ -770,7 +803,7 @@ mod tests {
     }
 
     #[simd_test(enable = "fma")]
-    unsafe fn test_mm256_fnmsub_pd() {
+    const unsafe fn test_mm256_fnmsub_pd() {
         let a = _mm256_setr_pd(1., 2., 3., 4.);
         let b = _mm256_setr_pd(5., 3., 7., 2.);
         let c = _mm256_setr_pd(4., 9., 1., 7.);
@@ -779,7 +812,7 @@ mod tests {
     }
 
     #[simd_test(enable = "fma")]
-    unsafe fn test_mm_fnmsub_ps() {
+    const unsafe fn test_mm_fnmsub_ps() {
         let a = _mm_setr_ps(1., 2., 3., 4.);
         let b = _mm_setr_ps(5., 3., 7., 2.);
         let c = _mm_setr_ps(4., 9., 1., 7.);
@@ -788,7 +821,7 @@ mod tests {
     }
 
     #[simd_test(enable = "fma")]
-    unsafe fn test_mm256_fnmsub_ps() {
+    const unsafe fn test_mm256_fnmsub_ps() {
         let a = _mm256_setr_ps(1., 2., 3., 4., 0., 10., -1., -2.);
         let b = _mm256_setr_ps(5., 3., 7., 2., 4., -6., 0., 14.);
         let c = _mm256_setr_ps(4., 9., 1., 7., -5., 11., -2., -3.);
@@ -797,7 +830,7 @@ mod tests {
     }
 
     #[simd_test(enable = "fma")]
-    unsafe fn test_mm_fnmsub_sd() {
+    const unsafe fn test_mm_fnmsub_sd() {
         let a = _mm_setr_pd(1., 2.);
         let b = _mm_setr_pd(5., 3.);
         let c = _mm_setr_pd(4., 9.);
@@ -806,7 +839,7 @@ mod tests {
     }
 
     #[simd_test(enable = "fma")]
-    unsafe fn test_mm_fnmsub_ss() {
+    const unsafe fn test_mm_fnmsub_ss() {
         let a = _mm_setr_ps(1., 2., 3., 4.);
         let b = _mm_setr_ps(5., 3., 7., 2.);
         let c = _mm_setr_ps(4., 9., 1., 7.);

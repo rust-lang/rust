@@ -635,6 +635,17 @@ Default: `"client"`
 Controls file watching implementation.
 
 
+## rust-analyzer.gc.frequency {#gc.frequency}
+
+Default: `1000`
+
+This config controls the frequency in which rust-analyzer will perform its internal Garbage
+Collection. It is specified in revisions, roughly equivalent to number of changes. The default
+is 1000.
+
+Setting a smaller value may help limit peak memory usage at the expense of speed.
+
+
 ## rust-analyzer.gotoImplementations.filterAdjacentDerives {#gotoImplementations.filterAdjacentDerives}
 
 Default: `false`
@@ -1068,6 +1079,13 @@ Maximum length for inlay hints. Set to null to have an unlimited length.
 Default: `true`
 
 Show function parameter name inlay hints at the call site.
+
+
+## rust-analyzer.inlayHints.parameterHints.missingArguments.enable {#inlayHints.parameterHints.missingArguments.enable}
+
+Default: `false`
+
+Show parameter name inlay hints for missing arguments at the call site.
 
 
 ## rust-analyzer.inlayHints.rangeExclusiveHints.enable {#inlayHints.rangeExclusiveHints.enable}

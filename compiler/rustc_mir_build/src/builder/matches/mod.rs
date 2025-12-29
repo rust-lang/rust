@@ -11,10 +11,10 @@ use std::mem;
 use std::sync::Arc;
 
 use itertools::{Itertools, Position};
-use rustc_abi::{FIRST_VARIANT, FieldIdx, VariantIdx};
+use rustc_abi::{FIRST_VARIANT, VariantIdx};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_hir::{BindingMode, ByRef, LangItem, LetStmt, LocalSource, Node, Pinnedness};
+use rustc_hir::{BindingMode, ByRef, LangItem, LetStmt, LocalSource, Node};
 use rustc_middle::middle::region::{self, TempLifetime};
 use rustc_middle::mir::*;
 use rustc_middle::thir::{self, *};
@@ -920,10 +920,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 visit_subpat(self, subpattern, &user_tys.deref(), f);
             }
 
-            PatKind::DerefPattern { ref subpattern, borrow: ByRef::Yes(Pinnedness::Pinned, _) } => {
-                visit_subpat(self, subpattern, &user_tys.leaf(FieldIdx::ZERO).deref(), f);
-            }
-
             PatKind::DerefPattern { ref subpattern, .. } => {
                 visit_subpat(self, subpattern, &ProjectedUserTypesNode::None, f);
             }
@@ -1078,7 +1074,7 @@ struct Candidate<'tcx> {
     ///   (see [`Builder::test_remaining_match_pairs_after_or`]).
     ///
     /// Invariants:
-    /// - All or-patterns ([`TestCase::Or`]) have been sorted to the end.
+    /// - All or-patterns ([`TestableCase::Or`]) have been sorted to the end.
     match_pairs: Vec<MatchPairTree<'tcx>>,
 
     /// ...and if this is non-empty, one of these subcandidates also has to match...
@@ -1164,12 +1160,15 @@ impl<'tcx> Candidate<'tcx> {
 
     /// Restores the invariant that or-patterns must be sorted to the end.
     fn sort_match_pairs(&mut self) {
-        self.match_pairs.sort_by_key(|pair| matches!(pair.test_case, TestCase::Or { .. }));
+        self.match_pairs.sort_by_key(|pair| matches!(pair.testable_case, TestableCase::Or { .. }));
     }
 
     /// Returns whether the first match pair of this candidate is an or-pattern.
     fn starts_with_or_pattern(&self) -> bool {
-        matches!(&*self.match_pairs, [MatchPairTree { test_case: TestCase::Or { .. }, .. }, ..])
+        matches!(
+            &*self.match_pairs,
+            [MatchPairTree { testable_case: TestableCase::Or { .. }, .. }, ..]
+        )
     }
 
     /// Visit the leaf candidates (those with no subcandidates) contained in
@@ -1261,20 +1260,42 @@ struct Ascription<'tcx> {
 /// Instead they participate in or-pattern expansion, where they are transformed into
 /// subcandidates. See [`Builder::expand_and_match_or_candidates`].
 #[derive(Debug, Clone)]
-enum TestCase<'tcx> {
+enum TestableCase<'tcx> {
     Variant { adt_def: ty::AdtDef<'tcx>, variant_index: VariantIdx },
-    Constant { value: ty::Value<'tcx> },
+    Constant { value: ty::Value<'tcx>, kind: PatConstKind },
     Range(Arc<PatRange<'tcx>>),
-    Slice { len: usize, variable_length: bool },
+    Slice { len: u64, variable_length: bool },
     Deref { temp: Place<'tcx>, mutability: Mutability },
     Never,
     Or { pats: Box<[FlatPat<'tcx>]> },
 }
 
-impl<'tcx> TestCase<'tcx> {
+impl<'tcx> TestableCase<'tcx> {
     fn as_range(&self) -> Option<&PatRange<'tcx>> {
         if let Self::Range(v) = self { Some(v.as_ref()) } else { None }
     }
+}
+
+/// Sub-classification of [`TestableCase::Constant`], which helps to avoid
+/// some redundant ad-hoc checks when preparing and lowering tests.
+#[derive(Debug, Clone)]
+enum PatConstKind {
+    /// The primitive `bool` type, which is like an integer but simpler,
+    /// having only two values.
+    Bool,
+    /// Primitive unsigned/signed integer types, plus `char`.
+    /// These types interact nicely with `SwitchInt`.
+    IntOrChar,
+    /// Floating-point primitives, e.g. `f32`, `f64`.
+    /// These types don't support `SwitchInt` and require an equality test,
+    /// but can also interact with range pattern tests.
+    Float,
+    /// Any other constant-pattern is usually tested via some kind of equality
+    /// check. Types that might be encountered here include:
+    /// - `&str`
+    /// - raw pointers derived from integer values
+    /// - pattern types, e.g. `pattern_type!(u32 is 1..)`
+    Other,
 }
 
 /// Node in a tree of "match pairs", where each pair consists of a place to be
@@ -1289,12 +1310,12 @@ pub(crate) struct MatchPairTree<'tcx> {
     /// ---
     /// This can be `None` if it referred to a non-captured place in a closure.
     ///
-    /// Invariant: Can only be `None` when `test_case` is `Or`.
+    /// Invariant: Can only be `None` when `testable_case` is `Or`.
     /// Therefore this must be `Some(_)` after or-pattern expansion.
     place: Option<Place<'tcx>>,
 
     /// ... must pass this test...
-    test_case: TestCase<'tcx>,
+    testable_case: TestableCase<'tcx>,
 
     /// ... and these subpairs must match.
     ///
@@ -1317,7 +1338,7 @@ enum TestKind<'tcx> {
     /// Test what enum variant a value is.
     ///
     /// The subset of expected variants is not stored here; instead they are
-    /// extracted from the [`TestCase`]s of the candidates participating in the
+    /// extracted from the [`TestableCase`]s of the candidates participating in the
     /// test.
     Switch {
         /// The enum type being tested.
@@ -1327,7 +1348,7 @@ enum TestKind<'tcx> {
     /// Test what value an integer or `char` has.
     ///
     /// The test's target values are not stored here; instead they are extracted
-    /// from the [`TestCase`]s of the candidates participating in the test.
+    /// from the [`TestableCase`]s of the candidates participating in the test.
     SwitchInt,
 
     /// Test whether a `bool` is `true` or `false`.
@@ -1948,7 +1969,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         candidate: &mut Candidate<'tcx>,
         match_pair: MatchPairTree<'tcx>,
     ) {
-        let TestCase::Or { pats } = match_pair.test_case else { bug!() };
+        let TestableCase::Or { pats } = match_pair.testable_case else { bug!() };
         debug!("expanding or-pattern: candidate={:#?}\npats={:#?}", candidate, pats);
         candidate.or_span = Some(match_pair.pattern_span);
         candidate.subcandidates = pats
@@ -2116,7 +2137,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         debug_assert!(
             remaining_match_pairs
                 .iter()
-                .all(|match_pair| matches!(match_pair.test_case, TestCase::Or { .. }))
+                .all(|match_pair| matches!(match_pair.testable_case, TestableCase::Or { .. }))
         );
 
         // Visit each leaf candidate within this subtree, add a copy of the remaining
@@ -2936,7 +2957,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     bug!("malformed valtree for an enum")
                 };
 
-                let ValTreeKind::Leaf(actual_variant_idx) = ***actual_variant_idx else {
+                let ValTreeKind::Leaf(actual_variant_idx) = *actual_variant_idx.to_value().valtree
+                else {
                     bug!("malformed valtree for an enum")
                 };
 
@@ -2944,7 +2966,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
             Constructor::IntRange(int_range) => {
                 let size = pat.ty().primitive_size(self.tcx);
-                let actual_int = valtree.unwrap_leaf().to_bits(size);
+                let actual_int = valtree.to_leaf().to_bits(size);
                 let actual_int = if pat.ty().is_signed() {
                     MaybeInfiniteInt::new_finite_int(actual_int, size.bits())
                 } else {
@@ -2952,33 +2974,33 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 };
                 IntRange::from_singleton(actual_int).is_subrange(int_range)
             }
-            Constructor::Bool(pattern_value) => match valtree.unwrap_leaf().try_to_bool() {
+            Constructor::Bool(pattern_value) => match valtree.to_leaf().try_to_bool() {
                 Ok(actual_value) => *pattern_value == actual_value,
                 Err(()) => bug!("bool value with invalid bits"),
             },
             Constructor::F16Range(l, h, end) => {
-                let actual = valtree.unwrap_leaf().to_f16();
+                let actual = valtree.to_leaf().to_f16();
                 match end {
                     RangeEnd::Included => (*l..=*h).contains(&actual),
                     RangeEnd::Excluded => (*l..*h).contains(&actual),
                 }
             }
             Constructor::F32Range(l, h, end) => {
-                let actual = valtree.unwrap_leaf().to_f32();
+                let actual = valtree.to_leaf().to_f32();
                 match end {
                     RangeEnd::Included => (*l..=*h).contains(&actual),
                     RangeEnd::Excluded => (*l..*h).contains(&actual),
                 }
             }
             Constructor::F64Range(l, h, end) => {
-                let actual = valtree.unwrap_leaf().to_f64();
+                let actual = valtree.to_leaf().to_f64();
                 match end {
                     RangeEnd::Included => (*l..=*h).contains(&actual),
                     RangeEnd::Excluded => (*l..*h).contains(&actual),
                 }
             }
             Constructor::F128Range(l, h, end) => {
-                let actual = valtree.unwrap_leaf().to_f128();
+                let actual = valtree.to_leaf().to_f128();
                 match end {
                     RangeEnd::Included => (*l..=*h).contains(&actual),
                     RangeEnd::Excluded => (*l..*h).contains(&actual),

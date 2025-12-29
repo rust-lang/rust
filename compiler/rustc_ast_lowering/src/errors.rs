@@ -357,6 +357,8 @@ pub(crate) struct ArbitraryExpressionInPattern {
     pub span: Span,
     #[note(ast_lowering_pattern_from_macro_note)]
     pub pattern_from_macro_note: bool,
+    #[help(ast_lowering_const_block_in_pattern_help)]
+    pub const_block_in_pattern_help: bool,
 }
 
 #[derive(Diagnostic)]
@@ -472,6 +474,20 @@ pub(crate) struct UseConstGenericArg {
 #[derive(Diagnostic)]
 #[diag(ast_lowering_union_default_field_values)]
 pub(crate) struct UnionWithDefault {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(ast_lowering_delegation_unresolved_callee)]
+pub(crate) struct UnresolvedDelegationCallee {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(ast_lowering_delegation_cycle_in_signature_resolution)]
+pub(crate) struct CycleInDelegationSignatureResolution {
     #[primary_span]
     pub span: Span,
 }

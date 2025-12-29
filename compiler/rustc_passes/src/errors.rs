@@ -80,43 +80,9 @@ pub(crate) struct OuterCrateLevelAttrSuggestion {
 #[diag(passes_inner_crate_level_attr)]
 pub(crate) struct InnerCrateLevelAttr;
 
-#[derive(LintDiagnostic)]
-#[diag(passes_ignored_attr_with_macro)]
-pub(crate) struct IgnoredAttrWithMacro<'a> {
-    pub sym: &'a str,
-}
-
-#[derive(Diagnostic)]
-#[diag(passes_should_be_applied_to_fn)]
-pub(crate) struct AttrShouldBeAppliedToFn {
-    #[primary_span]
-    pub attr_span: Span,
-    #[label]
-    pub defn_span: Span,
-    pub on_crate: bool,
-}
-
 #[derive(Diagnostic)]
 #[diag(passes_non_exhaustive_with_default_field_values)]
 pub(crate) struct NonExhaustiveWithDefaultFieldValues {
-    #[primary_span]
-    pub attr_span: Span,
-    #[label]
-    pub defn_span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(passes_should_be_applied_to_trait)]
-pub(crate) struct AttrShouldBeAppliedToTrait {
-    #[primary_span]
-    pub attr_span: Span,
-    #[label]
-    pub defn_span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(passes_should_be_applied_to_static)]
-pub(crate) struct AttrShouldBeAppliedToStatic {
     #[primary_span]
     pub attr_span: Span,
     #[label]
@@ -255,15 +221,6 @@ pub(crate) struct Link {
 }
 
 #[derive(Diagnostic)]
-#[diag(passes_no_link)]
-pub(crate) struct NoLink {
-    #[primary_span]
-    pub attr_span: Span,
-    #[label]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(passes_rustc_legacy_const_generics_only)]
 pub(crate) struct RustcLegacyConstGenericsOnly {
     #[primary_span]
@@ -288,13 +245,6 @@ pub(crate) struct RustcLegacyConstGenericsIndexExceed {
     #[label]
     pub span: Span,
     pub arg_count: usize,
-}
-
-#[derive(Diagnostic)]
-#[diag(passes_rustc_legacy_const_generics_index_negative)]
-pub(crate) struct RustcLegacyConstGenericsIndexNegative {
-    #[primary_span]
-    pub invalid_args: Vec<Span>,
 }
 
 #[derive(Diagnostic)]
@@ -432,24 +382,6 @@ pub(crate) struct UnusedMultiple {
     #[note]
     pub other: Span,
     pub name: Symbol,
-}
-
-#[derive(Diagnostic)]
-#[diag(passes_rustc_lint_opt_ty)]
-pub(crate) struct RustcLintOptTy {
-    #[primary_span]
-    pub attr_span: Span,
-    #[label]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(passes_rustc_lint_opt_deny_field_access)]
-pub(crate) struct RustcLintOptDenyFieldAccess {
-    #[primary_span]
-    pub attr_span: Span,
-    #[label]
-    pub span: Span,
 }
 
 #[derive(Diagnostic)]
@@ -1381,4 +1313,50 @@ pub(crate) struct DuplicateEiiImpls {
 
     #[help]
     pub help: (),
+}
+
+#[derive(Diagnostic)]
+#[diag(passes_function_not_have_default_implementation)]
+pub(crate) struct FunctionNotHaveDefaultImplementation {
+    #[primary_span]
+    pub span: Span,
+    #[note]
+    pub note_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes_must_implement_not_function)]
+pub(crate) struct MustImplementNotFunction {
+    #[primary_span]
+    pub span: Span,
+    #[subdiagnostic]
+    pub span_note: MustImplementNotFunctionSpanNote,
+    #[subdiagnostic]
+    pub note: MustImplementNotFunctionNote,
+}
+
+#[derive(Subdiagnostic)]
+#[note(passes_must_implement_not_function_span_note)]
+pub(crate) struct MustImplementNotFunctionSpanNote {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Subdiagnostic)]
+#[note(passes_must_implement_not_function_note)]
+pub(crate) struct MustImplementNotFunctionNote {}
+
+#[derive(Diagnostic)]
+#[diag(passes_function_not_found_in_trait)]
+pub(crate) struct FunctionNotFoundInTrait {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes_functions_names_duplicated)]
+#[note]
+pub(crate) struct FunctionNamesDuplicated {
+    #[primary_span]
+    pub spans: Vec<Span>,
 }

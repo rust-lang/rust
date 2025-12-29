@@ -2490,7 +2490,7 @@ pub enum DefinedTy<'tcx> {
     /// in the context of its definition site. We also track the `def_id` of its
     /// definition site.
     ///
-    /// WARNING: As the `ty` in in the scope of the definition, not of the function
+    /// WARNING: As the `ty` is in the scope of the definition, not of the function
     /// using it, you must be very careful with how you use it. Using it in the wrong
     /// scope easily results in ICEs.
     Mir {
@@ -2719,7 +2719,6 @@ pub fn expr_use_ctxt<'tcx>(cx: &LateContext<'tcx>, e: &Expr<'tcx>) -> ExprUseCtx
             moved_before_use,
             same_ctxt,
         },
-        Some(ControlFlow::Break(_)) => unreachable!("type of node is ControlFlow<!>"),
         None => ExprUseCtxt {
             node: Node::Crate(cx.tcx.hir_root_module()),
             child_id: HirId::INVALID,

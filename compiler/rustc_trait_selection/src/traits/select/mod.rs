@@ -1654,7 +1654,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // share the same type as `self_ty`. This is because for truly rigid
             // projections, we will never be able to equate, e.g. `<T as Tr>::A`
             // with `<<T as Tr>::A as Tr>::A`.
-            let relevant_bounds = if matches!(alias_bound_kind, AliasBoundKind::NonSelfBounds) {
+            let relevant_bounds = if alias_bound_kind == AliasBoundKind::NonSelfBounds {
                 self.tcx().item_non_self_bounds(alias_ty.def_id)
             } else {
                 self.tcx().item_self_bounds(alias_ty.def_id)
@@ -2855,7 +2855,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         }
 
         // Register any outlives obligations from the trait here, cc #124336.
-        if matches!(tcx.def_kind(def_id), DefKind::Impl { of_trait: true }) {
+        if tcx.def_kind(def_id) == (DefKind::Impl { of_trait: true }) {
             for clause in tcx.impl_super_outlives(def_id).iter_instantiated(tcx, args) {
                 let clause = normalize_with_depth_to(
                     self,

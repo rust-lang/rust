@@ -117,7 +117,7 @@ pub fn check_incompatible_options_for_ci_llvm(
         enable_warnings,
         download_ci_llvm: _,
         build_config,
-        enzyme: _,
+        enzyme,
     } = ci_llvm_config;
 
     err!(current_llvm_config.optimize, optimize);
@@ -139,6 +139,7 @@ pub fn check_incompatible_options_for_ci_llvm(
     err!(current_llvm_config.clang, clang);
     err!(current_llvm_config.build_config, build_config);
     err!(current_llvm_config.plugins, plugins);
+    err!(current_llvm_config.enzyme, enzyme);
 
     warn!(current_llvm_config.enable_warnings, enable_warnings);
 

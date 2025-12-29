@@ -55,12 +55,6 @@ LL - #[must_not_suspend()]
 LL + #[must_not_suspend]
    |
 
-error: malformed `cfi_encoding` attribute input
-  --> $DIR/malformed-attrs.rs:140:1
-   |
-LL | #[cfi_encoding]
-   | ^^^^^^^^^^^^^^^ help: must be of the form: `#[cfi_encoding = "encoding"]`
-
 error: malformed `allow` attribute input
   --> $DIR/malformed-attrs.rs:184:1
    |
@@ -140,20 +134,6 @@ LL | #[forbid(lint1, lint2, ...)]
    |         +++++++++++++++++++
 LL | #[forbid(lint1, lint2, lint3, reason = "...")]
    |         +++++++++++++++++++++++++++++++++++++
-
-error: malformed `thread_local` attribute input
-  --> $DIR/malformed-attrs.rs:210:1
-   |
-LL | #[thread_local()]
-   | ^^^^^^^^^^^^^^^^^ help: must be of the form: `#[thread_local]`
-
-error: malformed `no_link` attribute input
-  --> $DIR/malformed-attrs.rs:214:1
-   |
-LL | #[no_link()]
-   | ^^^^^^^^^^^^ help: must be of the form: `#[no_link]`
-   |
-   = note: for more information, visit <https://doc.rust-lang.org/reference/items/extern-crates.html#the-no_link-attribute>
 
 error: the `#[proc_macro]` attribute is only usable with crates of the `proc-macro` crate type
   --> $DIR/malformed-attrs.rs:105:1
@@ -544,6 +524,15 @@ LL | #[rustc_layout_scalar_valid_range_end]
    | expected this to be a list
    | help: must be of the form: `#[rustc_layout_scalar_valid_range_end(end)]`
 
+error[E0539]: malformed `cfi_encoding` attribute input
+  --> $DIR/malformed-attrs.rs:140:1
+   |
+LL | #[cfi_encoding = ""]
+   | ^^^^^^^^^^^^^^^^^--^
+   | |                |
+   | |                string is not allowed to be empty
+   | help: must be of the form: `#[cfi_encoding = "encoding"]`
+
 error[E0565]: malformed `marker` attribute input
   --> $DIR/malformed-attrs.rs:161:1
    |
@@ -625,6 +614,24 @@ LL | #[non_exhaustive = 1]
    | |                |
    | |                didn't expect any arguments here
    | help: must be of the form: `#[non_exhaustive]`
+
+error[E0565]: malformed `thread_local` attribute input
+  --> $DIR/malformed-attrs.rs:210:1
+   |
+LL | #[thread_local()]
+   | ^^^^^^^^^^^^^^--^
+   | |             |
+   | |             didn't expect any arguments here
+   | help: must be of the form: `#[thread_local]`
+
+error[E0565]: malformed `no_link` attribute input
+  --> $DIR/malformed-attrs.rs:214:1
+   |
+LL | #[no_link()]
+   | ^^^^^^^^^--^
+   | |        |
+   | |        didn't expect any arguments here
+   | help: must be of the form: `#[no_link]`
 
 error[E0539]: malformed `macro_use` attribute input
   --> $DIR/malformed-attrs.rs:216:1
