@@ -517,7 +517,8 @@ fn match_loop_inner<'t>(
             }
             OpDelimited::Op(Op::Literal(lhs)) => {
                 if let Ok(rhs) = src.clone().expect_leaf() {
-                    if matches!(rhs, tt::Leaf::Literal(it) if it.symbol == lhs.symbol) {
+                    if matches!(&rhs, tt::Leaf::Literal(it) if it.text_and_suffix == lhs.text_and_suffix)
+                    {
                         item.dot.next();
                     } else {
                         res.add_err(ExpandError::new(
@@ -537,7 +538,7 @@ fn match_loop_inner<'t>(
             }
             OpDelimited::Op(Op::Ident(lhs)) => {
                 if let Ok(rhs) = src.clone().expect_leaf() {
-                    if matches!(rhs, tt::Leaf::Ident(it) if it.sym == lhs.sym) {
+                    if matches!(&rhs, tt::Leaf::Ident(it) if it.sym == lhs.sym) {
                         item.dot.next();
                     } else {
                         res.add_err(ExpandError::new(
@@ -701,7 +702,7 @@ fn match_loop<'t>(
             || !(bb_items.is_empty() || next_items.is_empty())
             || bb_items.len() > 1;
         if has_leftover_tokens {
-            res.unmatched_tts += src.remaining().flat_tokens().len();
+            res.unmatched_tts += src.remaining().len();
             res.add_err(ExpandError::new(span.open, ExpandErrorKind::LeftoverTokens));
 
             if let Some(error_recover_item) = error_recover_item {
@@ -953,8 +954,8 @@ fn expect_separator(iter: &mut TtIter<'_>, separator: &Separator) -> bool {
         },
         Separator::Literal(lhs) => match fork.expect_literal() {
             Ok(rhs) => match rhs {
-                tt::Leaf::Literal(rhs) => rhs.symbol == lhs.symbol,
-                tt::Leaf::Ident(rhs) => rhs.sym == lhs.symbol,
+                tt::Leaf::Literal(rhs) => rhs.text_and_suffix == lhs.text_and_suffix,
+                tt::Leaf::Ident(rhs) => rhs.sym == lhs.text_and_suffix,
                 tt::Leaf::Punct(_) => false,
             },
             Err(_) => false,
@@ -991,7 +992,7 @@ fn expect_tt(iter: &mut TtIter<'_>) -> Result<(), ()> {
     Ok(())
 }
 
-fn expect_lifetime<'a>(iter: &mut TtIter<'a>) -> Result<&'a tt::Ident, ()> {
+fn expect_lifetime<'a>(iter: &mut TtIter<'a>) -> Result<tt::Ident, ()> {
     let punct = iter.expect_single_punct()?;
     if punct.char != '\'' {
         return Err(());
@@ -1000,7 +1001,7 @@ fn expect_lifetime<'a>(iter: &mut TtIter<'a>) -> Result<&'a tt::Ident, ()> {
 }
 
 fn eat_char(iter: &mut TtIter<'_>, c: char) {
-    if matches!(iter.peek(), Some(TtElement::Leaf(tt::Leaf::Punct(tt::Punct { char, .. }))) if *char == c)
+    if matches!(iter.peek(), Some(TtElement::Leaf(tt::Leaf::Punct(tt::Punct { char, .. }))) if char == c)
     {
         iter.next().expect("already peeked");
     }

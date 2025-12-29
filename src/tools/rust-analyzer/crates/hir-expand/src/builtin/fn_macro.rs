@@ -1,5 +1,7 @@
 //! Builtin macro
 
+use std::borrow::Cow;
+
 use base_db::AnchoredPath;
 use cfg::CfgExpr;
 use either::Either;
@@ -13,7 +15,7 @@ use span::{Edition, FileId, Span};
 use stdx::format_to;
 use syntax::{
     format_smolstr,
-    unescape::{unescape_byte, unescape_char, unescape_str},
+    unescape::{unescape_byte, unescape_char},
 };
 use syntax_bridge::syntax_node_to_token_tree;
 
@@ -177,12 +179,7 @@ fn line_expand(
     // not incremental
     ExpandResult::ok(tt::TopSubtree::invisible_from_leaves(
         span,
-        [tt::Leaf::Literal(tt::Literal {
-            symbol: sym::INTEGER_0,
-            span,
-            kind: tt::LitKind::Integer,
-            suffix: Some(sym::u32),
-        })],
+        [tt::Leaf::Literal(tt::Literal::new("0", span, tt::LitKind::Integer, "u32"))],
     ))
 }
 
@@ -210,7 +207,7 @@ fn stringify_expand(
     tt: &tt::TopSubtree,
     span: Span,
 ) -> ExpandResult<tt::TopSubtree> {
-    let pretty = ::tt::pretty(tt.token_trees().flat_tokens());
+    let pretty = ::tt::pretty(tt.token_trees());
 
     let expanded = quote! {span =>
         #pretty
@@ -283,7 +280,7 @@ fn format_args_expand(
 ) -> ExpandResult<tt::TopSubtree> {
     let pound = mk_pound(span);
     let mut tt = tt.clone();
-    tt.top_subtree_delimiter_mut().kind = tt::DelimiterKind::Parenthesis;
+    tt.set_top_subtree_delimiter_kind(tt::DelimiterKind::Parenthesis);
     ExpandResult::ok(quote! {span =>
         builtin #pound format_args #tt
     })
@@ -297,14 +294,15 @@ fn format_args_nl_expand(
 ) -> ExpandResult<tt::TopSubtree> {
     let pound = mk_pound(span);
     let mut tt = tt.clone();
-    tt.top_subtree_delimiter_mut().kind = tt::DelimiterKind::Parenthesis;
-    if let Some(tt::TokenTree::Leaf(tt::Leaf::Literal(tt::Literal {
-        symbol: text,
-        kind: tt::LitKind::Str,
-        ..
-    }))) = tt.0.get_mut(1)
+    tt.set_top_subtree_delimiter_kind(tt::DelimiterKind::Parenthesis);
+    let lit = tt.as_token_trees().iter_flat_tokens().nth(1);
+    if let Some(tt::TokenTree::Leaf(tt::Leaf::Literal(
+        mut lit @ tt::Literal { kind: tt::LitKind::Str, .. },
+    ))) = lit
     {
-        *text = Symbol::intern(&format_smolstr!("{}\\n", text.as_str()));
+        let (text, suffix) = lit.text_and_suffix();
+        lit.text_and_suffix = Symbol::intern(&format_smolstr!("{text}\\n{suffix}"));
+        tt.set_token(1, lit.into());
     }
     ExpandResult::ok(quote! {span =>
         builtin #pound format_args #tt
@@ -318,7 +316,7 @@ fn asm_expand(
     span: Span,
 ) -> ExpandResult<tt::TopSubtree> {
     let mut tt = tt.clone();
-    tt.top_subtree_delimiter_mut().kind = tt::DelimiterKind::Parenthesis;
+    tt.set_top_subtree_delimiter_kind(tt::DelimiterKind::Parenthesis);
     let pound = mk_pound(span);
     let expanded = quote! {span =>
         builtin #pound asm #tt
@@ -333,7 +331,7 @@ fn global_asm_expand(
     span: Span,
 ) -> ExpandResult<tt::TopSubtree> {
     let mut tt = tt.clone();
-    tt.top_subtree_delimiter_mut().kind = tt::DelimiterKind::Parenthesis;
+    tt.set_top_subtree_delimiter_kind(tt::DelimiterKind::Parenthesis);
     let pound = mk_pound(span);
     let expanded = quote! {span =>
         builtin #pound global_asm #tt
@@ -348,7 +346,7 @@ fn naked_asm_expand(
     span: Span,
 ) -> ExpandResult<tt::TopSubtree> {
     let mut tt = tt.clone();
-    tt.top_subtree_delimiter_mut().kind = tt::DelimiterKind::Parenthesis;
+    tt.set_top_subtree_delimiter_kind(tt::DelimiterKind::Parenthesis);
     let pound = mk_pound(span);
     let expanded = quote! {span =>
         builtin #pound naked_asm #tt
@@ -478,11 +476,11 @@ fn unreachable_expand(
 
     // Pass the original arguments
     let mut subtree = tt.clone();
-    *subtree.top_subtree_delimiter_mut() = tt::Delimiter {
+    subtree.set_top_subtree_delimiter_kind(tt::DelimiterKind::Parenthesis);
+    subtree.set_top_subtree_delimiter_span(tt::DelimSpan {
         open: call_site_span,
         close: call_site_span,
-        kind: tt::DelimiterKind::Parenthesis,
-    };
+    });
 
     // Expand to a macro call `$crate::panic::panic_{edition}`
     let call = quote!(call_site_span =>#dollar_crate::panic::#mac! #subtree);
@@ -518,16 +516,14 @@ fn compile_error_expand(
     tt: &tt::TopSubtree,
     span: Span,
 ) -> ExpandResult<tt::TopSubtree> {
-    let err = match &*tt.0 {
-        [
-            _,
-            tt::TokenTree::Leaf(tt::Leaf::Literal(tt::Literal {
-                symbol: text,
-                span: _,
-                kind: tt::LitKind::Str | tt::LitKind::StrRaw(_),
-                suffix: _,
-            })),
-        ] => ExpandError::other(span, Box::from(unescape_symbol(text).as_str())),
+    let err = match tt.iter().collect_array() {
+        Some(
+            [
+                tt::TtElement::Leaf(tt::Leaf::Literal(
+                    lit @ tt::Literal { kind: tt::LitKind::Str | tt::LitKind::StrRaw(_), .. },
+                )),
+            ],
+        ) => ExpandError::other(span, Box::from(unescape_str(lit.text()))),
         _ => ExpandError::other(span, "`compile_error!` argument must be a string"),
     };
 
@@ -556,7 +552,7 @@ fn concat_expand(
         // to ensure the right parsing order, so skip the parentheses here. Ideally we'd
         // implement rustc's model. cc https://github.com/rust-lang/rust-analyzer/pull/10623
         if let TtElement::Subtree(subtree, subtree_iter) = &t
-            && let [tt::TokenTree::Leaf(tt)] = subtree_iter.remaining().flat_tokens()
+            && let Some([tt::TtElement::Leaf(tt)]) = subtree_iter.clone().collect_array()
             && subtree.delimiter.kind == tt::DelimiterKind::Parenthesis
         {
             t = TtElement::Leaf(tt);
@@ -568,20 +564,20 @@ fn concat_expand(
                 // as-is.
                 match it.kind {
                     tt::LitKind::Char => {
-                        if let Ok(c) = unescape_char(it.symbol.as_str()) {
+                        if let Ok(c) = unescape_char(it.text()) {
                             text.push(c);
                         }
                         record_span(it.span);
                     }
                     tt::LitKind::Integer | tt::LitKind::Float => {
-                        format_to!(text, "{}", it.symbol.as_str())
+                        format_to!(text, "{}", it.text())
                     }
                     tt::LitKind::Str => {
-                        text.push_str(unescape_symbol(&it.symbol).as_str());
+                        text.push_str(&unescape_str(it.text()));
                         record_span(it.span);
                     }
                     tt::LitKind::StrRaw(_) => {
-                        format_to!(text, "{}", it.symbol.as_str());
+                        format_to!(text, "{}", it.text());
                         record_span(it.span);
                     }
                     tt::LitKind::Byte
@@ -619,7 +615,7 @@ fn concat_expand(
                     TtElement::Leaf(tt::Leaf::Literal(it))
                         if matches!(it.kind, tt::LitKind::Integer | tt::LitKind::Float) =>
                     {
-                        format_to!(text, "-{}", it.symbol.as_str());
+                        format_to!(text, "-{}", it.text());
                         record_span(punct.span.cover(it.span));
                     }
                     _ => {
@@ -657,29 +653,25 @@ fn concat_bytes_expand(
     };
     for (i, t) in tt.iter().enumerate() {
         match t {
-            TtElement::Leaf(tt::Leaf::Literal(tt::Literal {
-                symbol: text,
-                span,
-                kind,
-                suffix: _,
-            })) => {
-                record_span(*span);
+            TtElement::Leaf(tt::Leaf::Literal(lit @ tt::Literal { span, kind, .. })) => {
+                let text = lit.text();
+                record_span(span);
                 match kind {
                     tt::LitKind::Byte => {
-                        if let Ok(b) = unescape_byte(text.as_str()) {
+                        if let Ok(b) = unescape_byte(text) {
                             bytes.extend(
                                 b.escape_ascii().filter_map(|it| char::from_u32(it as u32)),
                             );
                         }
                     }
                     tt::LitKind::ByteStr => {
-                        bytes.push_str(text.as_str());
+                        bytes.push_str(text);
                     }
                     tt::LitKind::ByteStrRaw(_) => {
-                        bytes.extend(text.as_str().escape_debug());
+                        bytes.extend(text.escape_debug());
                     }
                     _ => {
-                        err.get_or_insert(ExpandError::other(*span, "unexpected token"));
+                        err.get_or_insert(ExpandError::other(span, "unexpected token"));
                         break;
                     }
                 }
@@ -705,12 +697,7 @@ fn concat_bytes_expand(
     ExpandResult {
         value: tt::TopSubtree::invisible_from_leaves(
             span,
-            [tt::Leaf::Literal(tt::Literal {
-                symbol: Symbol::intern(&bytes),
-                span,
-                kind: tt::LitKind::ByteStr,
-                suffix: None,
-            })],
+            [tt::Leaf::Literal(tt::Literal::new_no_suffix(&bytes, span, tt::LitKind::ByteStr))],
         ),
         err,
     }
@@ -724,25 +711,19 @@ fn concat_bytes_expand_subtree(
 ) -> Result<(), ExpandError> {
     for (ti, tt) in tree_iter.enumerate() {
         match tt {
-            TtElement::Leaf(tt::Leaf::Literal(tt::Literal {
-                symbol: text,
-                span,
-                kind: tt::LitKind::Byte,
-                suffix: _,
-            })) => {
-                if let Ok(b) = unescape_byte(text.as_str()) {
+            TtElement::Leaf(tt::Leaf::Literal(
+                lit @ tt::Literal { span, kind: tt::LitKind::Byte, .. },
+            )) => {
+                if let Ok(b) = unescape_byte(lit.text()) {
                     bytes.extend(b.escape_ascii().filter_map(|it| char::from_u32(it as u32)));
                 }
-                record_span(*span);
+                record_span(span);
             }
-            TtElement::Leaf(tt::Leaf::Literal(tt::Literal {
-                symbol: text,
-                span,
-                kind: tt::LitKind::Integer,
-                suffix: _,
-            })) => {
-                record_span(*span);
-                if let Ok(b) = text.as_str().parse::<u8>() {
+            TtElement::Leaf(tt::Leaf::Literal(
+                lit @ tt::Literal { span, kind: tt::LitKind::Integer, .. },
+            )) => {
+                record_span(span);
+                if let Ok(b) = lit.text().parse::<u8>() {
                     bytes.extend(b.escape_ascii().filter_map(|it| char::from_u32(it as u32)));
                 }
             }
@@ -791,18 +772,16 @@ fn parse_string(tt: &tt::TopSubtree) -> Result<(Symbol, Span), ExpandError> {
         }
 
         match tt {
-            TtElement::Leaf(tt::Leaf::Literal(tt::Literal {
-                symbol: text,
+            TtElement::Leaf(tt::Leaf::Literal(lit @ tt::Literal {
                 span,
                 kind: tt::LitKind::Str,
-                suffix: _,
-            })) => Ok((unescape_symbol(text), *span)),
-            TtElement::Leaf(tt::Leaf::Literal(tt::Literal {
-                symbol: text,
+                ..
+            })) => Ok((Symbol::intern(&unescape_str(lit.text())), span)),
+            TtElement::Leaf(tt::Leaf::Literal(lit @ tt::Literal {
                 span,
                 kind: tt::LitKind::StrRaw(_),
-                suffix: _,
-            })) => Ok((text.clone(), *span)),
+                ..
+            })) => Ok((Symbol::intern(lit.text()), span)),
             TtElement::Leaf(l) => Err(*l.span()),
             TtElement::Subtree(tt, _) => Err(tt.delimiter.open.cover(tt.delimiter.close)),
         }
@@ -854,10 +833,10 @@ fn include_bytes_expand(
     let res = tt::TopSubtree::invisible_from_leaves(
         span,
         [tt::Leaf::Literal(tt::Literal {
-            symbol: Symbol::empty(),
+            text_and_suffix: Symbol::empty(),
             span,
             kind: tt::LitKind::ByteStrRaw(1),
-            suffix: None,
+            suffix_len: 0,
         })],
     );
     ExpandResult::ok(res)
@@ -978,17 +957,16 @@ fn quote_expand(
     )
 }
 
-fn unescape_symbol(s: &Symbol) -> Symbol {
-    if s.as_str().contains('\\') {
-        let s = s.as_str();
+fn unescape_str(s: &str) -> Cow<'_, str> {
+    if s.contains('\\') {
         let mut buf = String::with_capacity(s.len());
-        unescape_str(s, |_, c| {
+        syntax::unescape::unescape_str(s, |_, c| {
             if let Ok(c) = c {
                 buf.push(c)
             }
         });
-        Symbol::intern(&buf)
+        Cow::Owned(buf)
     } else {
-        s.clone()
+        Cow::Borrowed(s)
     }
 }

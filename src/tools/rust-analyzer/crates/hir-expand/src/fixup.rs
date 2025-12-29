@@ -15,7 +15,7 @@ use syntax::{
 };
 use syntax_bridge::DocCommentDesugarMode;
 use triomphe::Arc;
-use tt::Spacing;
+use tt::{Spacing, TransformTtAction, transform_tt};
 
 use crate::{
     span_map::SpanMapRef,
@@ -343,93 +343,29 @@ fn has_error_to_handle(node: &SyntaxNode) -> bool {
 pub(crate) fn reverse_fixups(tt: &mut TopSubtree, undo_info: &SyntaxFixupUndoInfo) {
     let Some(undo_info) = undo_info.original.as_deref() else { return };
     let undo_info = &**undo_info;
-    let delimiter = tt.top_subtree_delimiter_mut();
+    let top_subtree = tt.top_subtree();
+    let open_span = top_subtree.delimiter.open;
+    let close_span = top_subtree.delimiter.close;
     #[allow(deprecated)]
     if never!(
-        delimiter.close.anchor.ast_id == FIXUP_DUMMY_AST_ID
-            || delimiter.open.anchor.ast_id == FIXUP_DUMMY_AST_ID
+        close_span.anchor.ast_id == FIXUP_DUMMY_AST_ID
+            || open_span.anchor.ast_id == FIXUP_DUMMY_AST_ID
     ) {
         let span = |file_id| Span {
             range: TextRange::empty(TextSize::new(0)),
             anchor: SpanAnchor { file_id, ast_id: ROOT_ERASED_FILE_AST_ID },
             ctx: SyntaxContext::root(span::Edition::Edition2015),
         };
-        delimiter.open = span(delimiter.open.anchor.file_id);
-        delimiter.close = span(delimiter.close.anchor.file_id);
+        tt.set_top_subtree_delimiter_span(tt::DelimSpan {
+            open: span(open_span.anchor.file_id),
+            close: span(close_span.anchor.file_id),
+        });
     }
     reverse_fixups_(tt, undo_info);
 }
 
-#[derive(Debug)]
-enum TransformTtAction<'a> {
-    Keep,
-    ReplaceWith(tt::TokenTreesView<'a>),
-}
-
-impl TransformTtAction<'_> {
-    fn remove() -> Self {
-        Self::ReplaceWith(tt::TokenTreesView::new(&[]))
-    }
-}
-
-/// This function takes a token tree, and calls `callback` with each token tree in it.
-/// Then it does what the callback says: keeps the tt or replaces it with a (possibly empty)
-/// tts view.
-fn transform_tt<'a, 'b>(
-    tt: &'a mut Vec<tt::TokenTree>,
-    mut callback: impl FnMut(&mut tt::TokenTree) -> TransformTtAction<'b>,
-) {
-    // We need to keep a stack of the currently open subtrees, because we need to update
-    // them if we change the number of items in them.
-    let mut subtrees_stack = Vec::new();
-    let mut i = 0;
-    while i < tt.len() {
-        'pop_finished_subtrees: while let Some(&subtree_idx) = subtrees_stack.last() {
-            let tt::TokenTree::Subtree(subtree) = &tt[subtree_idx] else {
-                unreachable!("non-subtree on subtrees stack");
-            };
-            if i >= subtree_idx + 1 + subtree.usize_len() {
-                subtrees_stack.pop();
-            } else {
-                break 'pop_finished_subtrees;
-            }
-        }
-
-        let action = callback(&mut tt[i]);
-        match action {
-            TransformTtAction::Keep => {
-                // This cannot be shared with the replaced case, because then we may push the same subtree
-                // twice, and will update it twice which will lead to errors.
-                if let tt::TokenTree::Subtree(_) = &tt[i] {
-                    subtrees_stack.push(i);
-                }
-
-                i += 1;
-            }
-            TransformTtAction::ReplaceWith(replacement) => {
-                let old_len = 1 + match &tt[i] {
-                    tt::TokenTree::Leaf(_) => 0,
-                    tt::TokenTree::Subtree(subtree) => subtree.usize_len(),
-                };
-                let len_diff = replacement.len() as i64 - old_len as i64;
-                tt.splice(i..i + old_len, replacement.flat_tokens().iter().cloned());
-                // Skip the newly inserted replacement, we don't want to visit it.
-                i += replacement.len();
-
-                for &subtree_idx in &subtrees_stack {
-                    let tt::TokenTree::Subtree(subtree) = &mut tt[subtree_idx] else {
-                        unreachable!("non-subtree on subtrees stack");
-                    };
-                    subtree.len = (i64::from(subtree.len) + len_diff).try_into().unwrap();
-                }
-            }
-        }
-    }
-}
-
 fn reverse_fixups_(tt: &mut TopSubtree, undo_info: &[TopSubtree]) {
-    let mut tts = std::mem::take(&mut tt.0).into_vec();
-    transform_tt(&mut tts, |tt| match tt {
+    transform_tt(tt, |tt| match tt {
         tt::TokenTree::Leaf(leaf) => {
             let span = leaf.span();
             let is_real_leaf = span.anchor.ast_id != FIXUP_DUMMY_AST_ID;
@@ -459,7 +395,6 @@ fn reverse_fixups_(tt: &mut TopSubtree, undo_info: &[TopSubtree]) {
             TransformTtAction::Keep
         }
     });
-    tt.0 = tts.into_boxed_slice();
 }
 
 #[cfg(test)]
@@ -480,7 +415,7 @@ mod tests {
     // `TokenTree`s, see the last assertion in `check()`.
     fn check_leaf_eq(a: &tt::Leaf, b: &tt::Leaf) -> bool {
         match (a, b) {
-            (tt::Leaf::Literal(a), tt::Leaf::Literal(b)) => a.symbol == b.symbol,
+            (tt::Leaf::Literal(a), tt::Leaf::Literal(b)) => a.text_and_suffix == b.text_and_suffix,
             (tt::Leaf::Punct(a), tt::Leaf::Punct(b)) => a.char == b.char,
             (tt::Leaf::Ident(a), tt::Leaf::Ident(b)) => a.sym == b.sym,
             _ => false,
@@ -488,9 +423,9 @@ mod tests {
     }
 
     fn check_subtree_eq(a: &tt::TopSubtree, b: &tt::TopSubtree) -> bool {
-        let a = a.view().as_token_trees().flat_tokens();
-        let b = b.view().as_token_trees().flat_tokens();
-        a.len() == b.len() && std::iter::zip(a, b).all(|(a, b)| check_tt_eq(a, b))
+        let a = a.view().as_token_trees().iter_flat_tokens();
+        let b = b.view().as_token_trees().iter_flat_tokens();
+        a.len() == b.len() && std::iter::zip(a, b).all(|(a, b)| check_tt_eq(&a, &b))
     }
 
     fn check_tt_eq(a: &tt::TokenTree, b: &tt::TokenTree) -> bool {
@@ -545,7 +480,7 @@ mod tests {
 
         // the fixed-up tree should not contain braces as punct
         // FIXME: should probably instead check that it's a valid punctuation character
-        for x in tt.token_trees().flat_tokens() {
+        for x in tt.token_trees().iter_flat_tokens() {
             match x {
                 ::tt::TokenTree::Leaf(::tt::Leaf::Punct(punct)) => {
                     assert!(!matches!(punct.char, '{' | '}' | '(' | ')' | '[' | ']'))

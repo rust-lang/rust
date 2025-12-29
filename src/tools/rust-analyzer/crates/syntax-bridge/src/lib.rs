@@ -223,7 +223,7 @@ where
                 spacing: _,
             })) => {
                 let found_expected_delimiter =
-                    builder.expected_delimiters().enumerate().find(|(_, delim)| match delim.kind {
+                    builder.expected_delimiters().enumerate().find(|(_, delim)| match delim {
                         tt::DelimiterKind::Parenthesis => char == ')',
                         tt::DelimiterKind::Brace => char == '}',
                         tt::DelimiterKind::Bracket => char == ']',
@@ -257,13 +257,11 @@ where
                 }
                 kind if kind.is_punct() && kind != UNDERSCORE => {
                     let found_expected_delimiter =
-                        builder.expected_delimiters().enumerate().find(|(_, delim)| {
-                            match delim.kind {
-                                tt::DelimiterKind::Parenthesis => kind == T![')'],
-                                tt::DelimiterKind::Brace => kind == T!['}'],
-                                tt::DelimiterKind::Bracket => kind == T![']'],
-                                tt::DelimiterKind::Invisible => false,
-                            }
+                        builder.expected_delimiters().enumerate().find(|(_, delim)| match delim {
+                            tt::DelimiterKind::Parenthesis => kind == T![')'],
+                            tt::DelimiterKind::Brace => kind == T!['}'],
+                            tt::DelimiterKind::Bracket => kind == T![']'],
+                            tt::DelimiterKind::Invisible => false,
                         });
 
                     // Current token is a closing delimiter that we expect, fix up the closing span
@@ -444,7 +442,7 @@ fn convert_doc_comment(
             text = &text[0..text.len() - 2];
         }
         let (text, kind) = desugar_doc_comment_text(text, mode);
-        let lit = tt::Literal { symbol: text, span, kind, suffix: None };
+        let lit = tt::Literal { text_and_suffix: text, span, kind, suffix_len: 0 };
 
         tt::Leaf::from(lit)
     };
@@ -869,12 +867,9 @@ impl TtTreeSink<'_> {
     /// This occurs when a float literal is used as a field access.
     fn float_split(&mut self, has_pseudo_dot: bool) {
         let (text, span) = match self.cursor.token_tree() {
-            Some(tt::TokenTree::Leaf(tt::Leaf::Literal(tt::Literal {
-                symbol: text,
-                span,
-                kind: tt::LitKind::Float,
-                suffix: _,
-            }))) => (text.as_str(), *span),
+            Some(tt::TokenTree::Leaf(tt::Leaf::Literal(
+                lit @ tt::Literal { span, kind: tt::LitKind::Float, .. },
+            ))) => (lit.text(), *span),
             tt => unreachable!("{tt:?}"),
         };
         // FIXME: Span splitting
