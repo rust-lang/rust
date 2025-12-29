@@ -86,6 +86,10 @@ fn array_casts() {
 }
 
 // EMIT_MIR retag.box_to_raw_mut.SimplifyCfg-pre-optimizations.after.mir
+// CHECK-LABEL: fn box_to_raw_mut(
+// CHECK: bb0: {
+// CHECK-NEXT: Retag([fn entry] _1);
+// CHECK: Retag([raw] _0);
 fn box_to_raw_mut(x: &mut Box<i32>) -> *mut i32 {
     std::ptr::addr_of_mut!(**x)
 }
