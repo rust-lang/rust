@@ -325,6 +325,7 @@ fn build_gcc(metadata: &Meta, builder: &Builder<'_>, target_pair: GccTargetPair)
         .arg("--enable-checking=release")
         .arg("--disable-bootstrap")
         .arg("--disable-multilib")
+        .arg("--with-bugurl=https://github.com/rust-lang/gcc/")
         .arg(format!("--prefix={}", install_dir.display()));
 
     let cc = builder.build.cc(host).display().to_string();
