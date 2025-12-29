@@ -168,7 +168,7 @@ impl Drop for SpanMap {
                             // block on a receive
                             _ = receiver.recv();
                             // then drain the entire channel
-                            while let Ok(_) = receiver.try_recv() {}
+                            while receiver.try_recv().is_ok() {}
                             // and sleep for a bit
                             std::thread::sleep(std::time::Duration::from_millis(100));
                         }
