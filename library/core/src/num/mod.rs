@@ -2,6 +2,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+use crate::panic::const_assert;
 use crate::panic::const_panic;
 use crate::str::FromStr;
 use crate::ub_checks::assert_unsafe_precondition;
@@ -266,6 +267,28 @@ impl i8 {
         bound_condition = "",
     }
     midpoint_impl! { i8, i16, signed }
+
+    #[must_use = "method returns the clamped value and does not modify the original"]
+    #[stable(feature = "clamp", since = "1.50.0")]
+    #[rustc_const_stable(feature = "const_int_methods", since = "1.50.0")]
+    #[inline]
+    pub const fn clamp(self, min: Self, max: Self) -> Self {
+        const_assert!(
+            min <= max,
+            "min > max",
+            "min > max. min = {min:?}, max = {max:?}",
+            min: i8,
+            max: i8,
+        );
+
+        if self < min {
+            min
+        } else if self > max {
+            max
+        } else {
+            self
+        }
+    }
 }
 
 impl i16 {
@@ -290,6 +313,28 @@ impl i16 {
         bound_condition = "",
     }
     midpoint_impl! { i16, i32, signed }
+
+    #[must_use = "method returns the clamped value and does not modify the original"]
+    #[stable(feature = "clamp", since = "1.50.0")]
+    #[rustc_const_stable(feature = "const_int_methods", since = "1.50.0")]
+    #[inline]
+    pub const fn clamp(self, min: Self, max: Self) -> Self {
+        const_assert!(
+            min <= max,
+            "min > max",
+            "min > max. min = {min:?}, max = {max:?}",
+            min: i16,
+            max: i16,
+        );
+
+        if self < min {
+            min
+        } else if self > max {
+            max
+        } else {
+            self
+        }
+    }
 }
 
 impl i32 {
@@ -314,6 +359,28 @@ impl i32 {
         bound_condition = "",
     }
     midpoint_impl! { i32, i64, signed }
+
+    #[must_use = "method returns the clamped value and does not modify the original"]
+    #[stable(feature = "clamp", since = "1.50.0")]
+    #[rustc_const_stable(feature = "const_int_methods", since = "1.50.0")]
+    #[inline]
+    pub const fn clamp(self, min: Self, max: Self) -> Self {
+        const_assert!(
+            min <= max,
+            "min > max",
+            "min > max. min = {min:?}, max = {max:?}",
+            min: i32,
+            max: i32,
+        );
+
+        if self < min {
+            min
+        } else if self > max {
+            max
+        } else {
+            self
+        }
+    }
 }
 
 impl i64 {
@@ -338,6 +405,28 @@ impl i64 {
         bound_condition = "",
     }
     midpoint_impl! { i64, signed }
+
+    #[must_use = "method returns the clamped value and does not modify the original"]
+    #[stable(feature = "clamp", since = "1.50.0")]
+    #[rustc_const_stable(feature = "const_int_methods", since = "1.50.0")]
+    #[inline]
+    pub const fn clamp(self, min: Self, max: Self) -> Self {
+        const_assert!(
+            min <= max,
+            "min > max",
+            "min > max. min = {min:?}, max = {max:?}",
+            min: i64,
+            max: i64,
+        );
+
+        if self < min {
+            min
+        } else if self > max {
+            max
+        } else {
+            self
+        }
+    }
 }
 
 impl i128 {
@@ -364,6 +453,28 @@ impl i128 {
         bound_condition = "",
     }
     midpoint_impl! { i128, signed }
+
+    #[must_use = "method returns the clamped value and does not modify the original"]
+    #[stable(feature = "clamp", since = "1.50.0")]
+    #[rustc_const_stable(feature = "const_int_methods", since = "1.50.0")]
+    #[inline]
+    pub const fn clamp(self, min: Self, max: Self) -> Self {
+        const_assert!(
+            min <= max,
+            "min > max",
+            "min > max. min = {min:?}, max = {max:?}",
+            min: i128,
+            max: i128,
+        );
+
+        if self < min {
+            min
+        } else if self > max {
+            max
+        } else {
+            self
+        }
+    }
 }
 
 #[cfg(target_pointer_width = "16")]
@@ -389,6 +500,28 @@ impl isize {
         bound_condition = " on 16-bit targets",
     }
     midpoint_impl! { isize, i32, signed }
+
+    #[must_use = "method returns the clamped value and does not modify the original"]
+    #[stable(feature = "clamp", since = "1.50.0")]
+    #[rustc_const_stable(feature = "const_int_methods", since = "1.50.0")]
+    #[inline]
+    pub const fn clamp(self, min: Self, max: Self) -> Self {
+        const_assert!(
+            min <= max,
+            "min > max",
+            "min > max. min = {min:?}, max = {max:?}",
+            min: isize,
+            max: isize,
+        );
+
+        if self < min {
+            min
+        } else if self > max {
+            max
+        } else {
+            self
+        }
+    }
 }
 
 #[cfg(target_pointer_width = "32")]
@@ -414,6 +547,28 @@ impl isize {
         bound_condition = " on 32-bit targets",
     }
     midpoint_impl! { isize, i64, signed }
+
+    #[must_use = "method returns the clamped value and does not modify the original"]
+    #[stable(feature = "clamp", since = "1.50.0")]
+    #[rustc_const_stable(feature = "const_int_methods", since = "1.50.0")]
+    #[inline]
+    pub const fn clamp(self, min: Self, max: Self) -> Self {
+        const_assert!(
+            min <= max,
+            "min > max",
+            "min > max. min = {min:?}, max = {max:?}",
+            min: isize,
+            max: isize,
+        );
+
+        if self < min {
+            min
+        } else if self > max {
+            max
+        } else {
+            self
+        }
+    }
 }
 
 #[cfg(target_pointer_width = "64")]
@@ -439,6 +594,28 @@ impl isize {
         bound_condition = " on 64-bit targets",
     }
     midpoint_impl! { isize, signed }
+
+    #[must_use = "method returns the clamped value and does not modify the original"]
+    #[stable(feature = "clamp", since = "1.50.0")]
+    #[rustc_const_stable(feature = "const_int_methods", since = "1.50.0")]
+    #[inline]
+    pub const fn clamp(self, min: Self, max: Self) -> Self {
+        const_assert!(
+            min <= max,
+            "min > max",
+            "min > max. min = {min:?}, max = {max:?}",
+            min: isize,
+            max: isize,
+        );
+
+        if self < min {
+            min
+        } else if self > max {
+            max
+        } else {
+            self
+        }
+    }
 }
 
 /// If the bit selected by this mask is set, ascii is lower case.
@@ -1079,6 +1256,28 @@ impl u8 {
         // This is bit magic equivalent to: b < 128 || b >= 192
         (self as i8) >= -0x40
     }
+
+    #[must_use = "method returns the clamped value and does not modify the original"]
+    #[stable(feature = "clamp", since = "1.50.0")]
+    #[rustc_const_stable(feature = "const_int_methods", since = "1.50.0")]
+    #[inline]
+    pub const fn clamp(self, min: Self, max: Self) -> Self {
+        const_assert!(
+            min <= max,
+            "min > max",
+            "min > max. min = {min:?}, max = {max:?}",
+            min: u8,
+            max: u8,
+        );
+
+        if self < min {
+            min
+        } else if self > max {
+            max
+        } else {
+            self
+        }
+    }
 }
 
 impl u16 {
@@ -1129,6 +1328,28 @@ impl u16 {
     pub const fn is_utf16_surrogate(self) -> bool {
         matches!(self, 0xD800..=0xDFFF)
     }
+
+    #[must_use = "method returns the clamped value and does not modify the original"]
+    #[stable(feature = "clamp", since = "1.50.0")]
+    #[rustc_const_stable(feature = "const_int_methods", since = "1.50.0")]
+    #[inline]
+    pub const fn clamp(self, min: Self, max: Self) -> Self {
+        const_assert!(
+            min <= max,
+            "min > max",
+            "min > max. min = {min:?}, max = {max:?}",
+            min: u16,
+            max: u16,
+        );
+
+        if self < min {
+            min
+        } else if self > max {
+            max
+        } else {
+            self
+        }
+    }
 }
 
 impl u32 {
@@ -1155,6 +1376,28 @@ impl u32 {
         bound_condition = "",
     }
     midpoint_impl! { u32, u64, unsigned }
+
+    #[must_use = "method returns the clamped value and does not modify the original"]
+    #[stable(feature = "clamp", since = "1.50.0")]
+    #[rustc_const_stable(feature = "const_int_methods", since = "1.50.0")]
+    #[inline]
+    pub const fn clamp(self, min: Self, max: Self) -> Self {
+        const_assert!(
+            min <= max,
+            "min > max",
+            "min > max. min = {min:?}, max = {max:?}",
+            min: u32,
+            max: u32,
+        );
+
+        if self < min {
+            min
+        } else if self > max {
+            max
+        } else {
+            self
+        }
+    }
 }
 
 impl u64 {
@@ -1181,6 +1424,28 @@ impl u64 {
         bound_condition = "",
     }
     midpoint_impl! { u64, u128, unsigned }
+
+    #[must_use = "method returns the clamped value and does not modify the original value"]
+    #[stable(feature = "clamp", since = "1.50.0")]
+    #[rustc_const_stable(feature = "const_int_methods", since = "1.50.0")]
+    #[inline]
+    pub const fn clamp(self, min: Self, max: Self) -> Self {
+        const_assert!(
+            min <= max,
+            "min > max",
+            "min > max. min = {min:?}, max = {max:?}",
+            min: u64,
+            max: u64,
+        );
+
+        if self < min {
+            min
+        } else if self > max {
+            max
+        } else {
+            self
+        }
+    }
 }
 
 impl u128 {
@@ -1209,6 +1474,28 @@ impl u128 {
         bound_condition = "",
     }
     midpoint_impl! { u128, unsigned }
+
+    #[must_use = "method returns the clamped value and does not modify the original value"]
+    #[stable(feature = "clamp", since = "1.50.0")]
+    #[rustc_const_stable(feature = "const_int_methods", since = "1.50.0")]
+    #[inline]
+    pub const fn clamp(self, min: Self, max: Self) -> Self {
+        const_assert!(
+            min <= max,
+            "min > max",
+            "min > max. min = {min:?}, max = {max:?}",
+            min: u128,
+            max: u128,
+        );
+
+        if self < min {
+            min
+        } else if self > max {
+            max
+        } else {
+            self
+        }
+    }
 }
 
 #[cfg(target_pointer_width = "16")]
@@ -1236,6 +1523,28 @@ impl usize {
         bound_condition = " on 16-bit targets",
     }
     midpoint_impl! { usize, u32, unsigned }
+
+    #[must_use = "method returns the clamped value and does not modify the original value"]
+    #[stable(feature = "clamp", since = "1.50.0")]
+    #[rustc_const_stable(feature = "const_int_methods", since = "1.50.0")]
+    #[inline]
+    pub const fn clamp(self, min: Self, max: Self) -> Self {
+        const_assert!(
+            min <= max,
+            "min > max",
+            "min > max. min = {min:?}, max = {max:?}",
+            min: usize,
+            max: usize,
+        );
+
+        if self < min {
+            min
+        } else if self > max {
+            max
+        } else {
+            self
+        }
+    }
 }
 
 #[cfg(target_pointer_width = "32")]
@@ -1263,6 +1572,28 @@ impl usize {
         bound_condition = " on 32-bit targets",
     }
     midpoint_impl! { usize, u64, unsigned }
+
+    #[must_use = "method returns the clamped value and does not modify the original value"]
+    #[stable(feature = "clamp", since = "1.50.0")]
+    #[rustc_const_stable(feature = "const_int_methods", since = "1.50.0")]
+    #[inline]
+    pub const fn clamp(self, min: Self, max: Self) -> Self {
+        const_assert!(
+            min <= max,
+            "min > max",
+            "min > max. min = {min:?}, max = {max:?}",
+            min: usize,
+            max: usize,
+        );
+
+        if self < min {
+            min
+        } else if self > max {
+            max
+        } else {
+            self
+        }
+    }
 }
 
 #[cfg(target_pointer_width = "64")]
@@ -1290,6 +1621,28 @@ impl usize {
         bound_condition = " on 64-bit targets",
     }
     midpoint_impl! { usize, u128, unsigned }
+
+    #[must_use = "method returns the clamped value and does not modify the original value"]
+    #[stable(feature = "clamp", since = "1.50.0")]
+    #[rustc_const_stable(feature = "const_int_methods", since = "1.50.0")]
+    #[inline]
+    pub const fn clamp(self, min: Self, max: Self) -> Self {
+        const_assert!(
+            min <= max,
+            "min > max",
+            "min > max. min = {min:?}, max = {max:?}",
+            min: usize,
+            max: usize,
+        );
+
+        if self < min {
+            min
+        } else if self > max {
+            max
+        } else {
+            self
+        }
+    }
 }
 
 impl usize {
