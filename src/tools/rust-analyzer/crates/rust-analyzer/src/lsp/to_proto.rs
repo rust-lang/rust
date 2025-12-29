@@ -1595,7 +1595,7 @@ pub(crate) fn runnable(
                             environment,
                             cwd: cwd.into(),
                             program: program.to_string(),
-                            args: args.to_vec().into_iter().chain(executable_args).collect(),
+                            args: args.iter().cloned().chain(executable_args).collect(),
                         }),
                     }),
                     _ => None,

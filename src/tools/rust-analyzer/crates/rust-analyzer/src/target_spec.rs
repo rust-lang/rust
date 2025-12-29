@@ -239,7 +239,7 @@ impl CargoTargetSpec {
 
         let replace_placeholders = |arg| match &spec {
             Some(spec) if arg == "${package}" => spec.package.clone(),
-            Some(spec) if arg == "${target_arg}" => target_arg(spec.target_kind).to_string(),
+            Some(spec) if arg == "${target_arg}" => target_arg(spec.target_kind).to_owned(),
             Some(spec) if arg == "${target}" => spec.target.clone(),
             _ => arg,
         };
