@@ -306,7 +306,7 @@ fn remove_same_import<'ra>(d1: Decl<'ra>, d2: Decl<'ra>) -> (Decl<'ra>, Decl<'ra
         assert_eq!(d1.warn_ambiguity.get(), d2.warn_ambiguity.get());
         assert_eq!(d1.expansion, d2.expansion);
         assert_eq!(d1.span, d2.span);
-        assert_eq!(d1.vis, d2.vis);
+        assert_eq!(d1.vis(), d2.vis());
         remove_same_import(d1_next, d2_next)
     } else {
         (d1, d2)
@@ -318,12 +318,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     /// create the corresponding import declaration.
     pub(crate) fn new_import_decl(&self, decl: Decl<'ra>, import: Import<'ra>) -> Decl<'ra> {
         let import_vis = import.vis.to_def_id();
-        let vis = if decl.vis.is_at_least(import_vis, self.tcx)
+        let vis = if decl.vis().is_at_least(import_vis, self.tcx)
             || pub_use_of_private_extern_crate_hack(import, decl).is_some()
         {
             import_vis
         } else {
-            decl.vis
+            decl.vis()
         };
 
         if let ImportKind::Glob { ref max_vis, .. } = import.kind
@@ -338,7 +338,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             ambiguity: None,
             warn_ambiguity: CmCell::new(false),
             span: import.span,
-            vis,
+            vis: CmCell::new(vis),
             expansion: import.parent_scope.expansion,
         })
     }
@@ -362,9 +362,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         // - A glob decl is overwritten by an ambiguous glob decl.
         //   FIXME: avoid this by putting `DeclData::ambiguity` under a
         //   cell and updating it in place.
-        // - A glob decl is overwritten by a glob decl with larger visibility.
-        //   FIXME: avoid this by putting `DeclData::vis` under a cell
-        //   and updating it in place.
         // - A glob decl is overwritten by a glob decl re-fetching an
         //   overwritten decl from other module (the recursive case).
         // Here we are detecting all such re-fetches and overwrite old decls
@@ -383,9 +380,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             glob_decl
         } else if glob_decl.res() != old_glob_decl.res() {
             self.new_decl_with_ambiguity(old_glob_decl, glob_decl, warn_ambiguity)
-        } else if !old_glob_decl.vis.is_at_least(glob_decl.vis, self.tcx) {
+        } else if !old_glob_decl.vis().is_at_least(glob_decl.vis(), self.tcx) {
             // We are glob-importing the same item but with greater visibility.
-            glob_decl
+            old_glob_decl.vis.set_unchecked(glob_decl.vis());
+            old_glob_decl
         } else if glob_decl.is_ambiguity_recursive() {
             // Overwriting with an ambiguous glob import.
             glob_decl.warn_ambiguity.set_unchecked(true);
@@ -464,7 +462,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     ) -> Decl<'ra> {
         let ambiguity = Some(secondary_decl);
         let warn_ambiguity = CmCell::new(warn_ambiguity);
-        let data = DeclData { ambiguity, warn_ambiguity, ..*primary_decl };
+        let vis = primary_decl.vis.clone();
+        let data = DeclData { ambiguity, warn_ambiguity, vis, ..*primary_decl };
         self.arenas.alloc_decl(data)
     }
 
@@ -509,7 +508,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 Some(None) => import.parent_scope.module,
                 None => continue,
             };
-            if self.is_accessible_from(binding.vis, scope) {
+            if self.is_accessible_from(binding.vis(), scope) {
                 let import_decl = self.new_import_decl(binding, *import);
                 let _ = self.try_plant_decl_into_local_module(
                     import.parent_scope.module,
@@ -699,8 +698,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         && let Some(glob_import_id) = glob_import.id()
                         && let glob_import_def_id = self.local_def_id(glob_import_id)
                         && self.effective_visibilities.is_exported(glob_import_def_id)
-                        && glob_decl.vis.is_public()
-                        && !binding.vis.is_public()
+                        && glob_decl.vis().is_public()
+                        && !binding.vis().is_public()
                     {
                         let binding_id = match binding.kind {
                             DeclKind::Def(res) => {
@@ -1330,9 +1329,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 return;
             };
 
-            if !binding.vis.is_at_least(import.vis, this.tcx) {
+            if !binding.vis().is_at_least(import.vis, this.tcx) {
                 reexport_error = Some((ns, binding));
-                if let Visibility::Restricted(binding_def_id) = binding.vis
+                if let Visibility::Restricted(binding_def_id) = binding.vis()
                     && binding_def_id.is_top_level_module()
                 {
                     crate_private_reexport = true;
@@ -1535,7 +1534,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 Some(None) => import.parent_scope.module,
                 None => continue,
             };
-            if self.is_accessible_from(binding.vis, scope) {
+            if self.is_accessible_from(binding.vis(), scope) {
                 let import_decl = self.new_import_decl(binding, import);
                 let warn_ambiguity = self
                     .resolution(import.parent_scope.module, key)
@@ -1577,7 +1576,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 let child = |reexport_chain| ModChild {
                     ident: ident.0,
                     res,
-                    vis: binding.vis,
+                    vis: binding.vis(),
                     reexport_chain,
                 };
                 if let Some((ambig_binding1, ambig_binding2)) = binding.descent_to_ambiguity() {
@@ -1585,7 +1584,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     let second = ModChild {
                         ident: ident.0,
                         res: ambig_binding2.res().expect_non_local(),
-                        vis: ambig_binding2.vis,
+                        vis: ambig_binding2.vis(),
                         reexport_chain: ambig_binding2.reexport_chain(this),
                     };
                     ambig_children.push(AmbigModChild { main, second })

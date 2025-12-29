@@ -811,7 +811,7 @@ struct DeclData<'ra> {
     warn_ambiguity: CmCell<bool>,
     expansion: LocalExpnId,
     span: Span,
-    vis: Visibility<DefId>,
+    vis: CmCell<Visibility<DefId>>,
 }
 
 /// All name declarations are unique and allocated on a same arena,
@@ -923,6 +923,10 @@ struct AmbiguityError<'ra> {
 }
 
 impl<'ra> DeclData<'ra> {
+    fn vis(&self) -> Visibility<DefId> {
+        self.vis.get()
+    }
+
     fn res(&self) -> Res {
         match self.kind {
             DeclKind::Def(res) => res,
@@ -1344,7 +1348,7 @@ impl<'ra> ResolverArenas<'ra> {
             kind: DeclKind::Def(res),
             ambiguity: None,
             warn_ambiguity: CmCell::new(false),
-            vis,
+            vis: CmCell::new(vis),
             span,
             expansion,
         })

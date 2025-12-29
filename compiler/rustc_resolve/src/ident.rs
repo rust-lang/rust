@@ -1017,7 +1017,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
         // Items and single imports are not shadowable, if we have one, then it's determined.
         if let Some(binding) = binding {
-            let accessible = self.is_accessible_from(binding.vis, parent_scope.module);
+            let accessible = self.is_accessible_from(binding.vis(), parent_scope.module);
             return if accessible { Ok(binding) } else { Err(ControlFlow::Break(Determined)) };
         }
 
@@ -1103,7 +1103,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         // shadowing is enabled, see `macro_expanded_macro_export_errors`).
         if let Some(binding) = binding {
             return if binding.determined() || ns == MacroNS || shadowing == Shadowing::Restricted {
-                let accessible = self.is_accessible_from(binding.vis, parent_scope.module);
+                let accessible = self.is_accessible_from(binding.vis(), parent_scope.module);
                 if accessible { Ok(binding) } else { Err(ControlFlow::Break(Determined)) }
             } else {
                 Err(ControlFlow::Break(Undetermined))
@@ -1160,7 +1160,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             match result {
                 Err(Determined) => continue,
                 Ok(binding)
-                    if !self.is_accessible_from(binding.vis, glob_import.parent_scope.module) =>
+                    if !self.is_accessible_from(binding.vis(), glob_import.parent_scope.module) =>
                 {
                     continue;
                 }
@@ -1187,7 +1187,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             return Err(ControlFlow::Continue(Determined));
         };
 
-        if !self.is_accessible_from(binding.vis, parent_scope.module) {
+        if !self.is_accessible_from(binding.vis(), parent_scope.module) {
             if report_private {
                 self.privacy_errors.push(PrivacyError {
                     ident,
@@ -1304,7 +1304,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             ) {
                 Err(Determined) => continue,
                 Ok(binding)
-                    if !self.is_accessible_from(binding.vis, single_import.parent_scope.module) =>
+                    if !self
+                        .is_accessible_from(binding.vis(), single_import.parent_scope.module) =>
                 {
                     continue;
                 }

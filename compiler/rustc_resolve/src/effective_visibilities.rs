@@ -145,7 +145,7 @@ impl<'a, 'ra, 'tcx> EffectiveVisibilitiesVisitor<'a, 'ra, 'tcx> {
             if !is_ambiguity(decl, warn_ambiguity)
                 && let Some(def_id) = decl.res().opt_def_id().and_then(|id| id.as_local())
             {
-                self.update_def(def_id, decl.vis.expect_local(), parent_id);
+                self.update_def(def_id, decl.vis().expect_local(), parent_id);
             }
         }
     }
@@ -188,7 +188,7 @@ impl<'a, 'ra, 'tcx> EffectiveVisibilitiesVisitor<'a, 'ra, 'tcx> {
     }
 
     fn update_import(&mut self, decl: Decl<'ra>, parent_id: ParentId<'ra>) {
-        let nominal_vis = decl.vis.expect_local();
+        let nominal_vis = decl.vis().expect_local();
         let Some(cheap_private_vis) = self.may_update(nominal_vis, parent_id) else { return };
         let inherited_eff_vis = self.effective_vis_or_private(parent_id);
         let tcx = self.r.tcx;
