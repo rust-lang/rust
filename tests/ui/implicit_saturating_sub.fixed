@@ -252,3 +252,11 @@ fn arbitrary_expression() {
         0
     };
 }
+
+fn issue16307() {
+    let x: u8 = 100;
+    let y = 100_u8.saturating_sub(x);
+    //~^ implicit_saturating_sub
+
+    println!("{y}");
+}

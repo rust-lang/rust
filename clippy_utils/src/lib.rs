@@ -90,7 +90,7 @@ use std::sync::{Mutex, MutexGuard, OnceLock};
 use itertools::Itertools;
 use rustc_abi::Integer;
 use rustc_ast::ast::{self, LitKind, RangeLimits};
-use rustc_ast::join_path_syms;
+use rustc_ast::{LitIntType, join_path_syms};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexmap;
 use rustc_data_structures::packed::Pu128;
@@ -1382,6 +1382,17 @@ pub fn is_integer_literal(expr: &Expr<'_>, value: u128) -> bool {
     {
         return v == value;
     }
+    false
+}
+
+/// Checks whether the given expression is an untyped integer literal.
+pub fn is_integer_literal_untyped(expr: &Expr<'_>) -> bool {
+    if let ExprKind::Lit(spanned) = expr.kind
+        && let LitKind::Int(_, suffix) = spanned.node
+    {
+        return suffix == LitIntType::Unsuffixed;
+    }
+
     false
 }
 

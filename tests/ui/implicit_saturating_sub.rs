@@ -326,3 +326,11 @@ fn arbitrary_expression() {
         0
     };
 }
+
+fn issue16307() {
+    let x: u8 = 100;
+    let y = if x >= 100 { 0 } else { 100 - x };
+    //~^ implicit_saturating_sub
+
+    println!("{y}");
+}
