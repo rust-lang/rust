@@ -187,6 +187,10 @@ fn check_and_apply_linkage<'ll, 'tcx>(
         };
         llvm::set_linkage(g1, base::linkage_to_llvm(linkage));
 
+        // Normally this is done in `get_static_inner`, but when as we generate an internal global,
+        // it will apply the dso_local to the internal global instead, so do it here, too.
+        cx.assume_dso_local(g1, true);
+
         // Declare an internal global `extern_with_linkage_foo` which
         // is initialized with the address of `foo`. If `foo` is
         // discarded during linking (for example, if `foo` has weak
