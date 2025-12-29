@@ -10,7 +10,6 @@ use core::arch::x86_64 as x86;
 pub(crate) type BitMaskWord = u16;
 pub(crate) type NonZeroBitMaskWord = NonZeroU16;
 pub(crate) const BITMASK_STRIDE: usize = 1;
-pub(crate) const BITMASK_MASK: BitMaskWord = 0xffff;
 pub(crate) const BITMASK_ITER_MASK: BitMaskWord = !0;
 
 /// Abstraction over a group of control tags which can be scanned in
@@ -21,7 +20,7 @@ pub(crate) const BITMASK_ITER_MASK: BitMaskWord = !0;
 pub(crate) struct Group(x86::__m128i);
 
 // FIXME: https://github.com/rust-lang/rust-clippy/issues/3859
-#[allow(clippy::use_self)]
+#[expect(clippy::use_self)]
 impl Group {
     /// Number of bytes in the group.
     pub(crate) const WIDTH: usize = mem::size_of::<Self>();
@@ -31,7 +30,6 @@ impl Group {
     ///
     /// This is guaranteed to be aligned to the group size.
     #[inline]
-    #[allow(clippy::items_after_statements)]
     pub(crate) const fn static_empty() -> &'static [Tag; Group::WIDTH] {
         #[repr(C)]
         struct AlignedTags {
@@ -47,34 +45,33 @@ impl Group {
 
     /// Loads a group of tags starting at the given address.
     #[inline]
-    #[allow(clippy::cast_ptr_alignment)] // unaligned load
     pub(crate) unsafe fn load(ptr: *const Tag) -> Self {
-        Group(x86::_mm_loadu_si128(ptr.cast()))
+        unsafe { Group(x86::_mm_loadu_si128(ptr.cast())) }
     }
 
     /// Loads a group of tags starting at the given address, which must be
     /// aligned to `mem::align_of::<Group>()`.
     #[inline]
-    #[allow(clippy::cast_ptr_alignment)]
     pub(crate) unsafe fn load_aligned(ptr: *const Tag) -> Self {
         debug_assert_eq!(ptr.align_offset(mem::align_of::<Self>()), 0);
-        Group(x86::_mm_load_si128(ptr.cast()))
+        unsafe { Group(x86::_mm_load_si128(ptr.cast())) }
     }
 
     /// Stores the group of tags to the given address, which must be
     /// aligned to `mem::align_of::<Group>()`.
     #[inline]
-    #[allow(clippy::cast_ptr_alignment)]
     pub(crate) unsafe fn store_aligned(self, ptr: *mut Tag) {
         debug_assert_eq!(ptr.align_offset(mem::align_of::<Self>()), 0);
-        x86::_mm_store_si128(ptr.cast(), self.0);
+        unsafe {
+            x86::_mm_store_si128(ptr.cast(), self.0);
+        }
     }
 
     /// Returns a `BitMask` indicating all tags in the group which have
     /// the given value.
     #[inline]
     pub(crate) fn match_tag(self, tag: Tag) -> BitMask {
-        #[allow(
+        #[expect(
             clippy::cast_possible_wrap, // tag.0: Tag as i8
             // tag: i32 as u16
             //   note: _mm_movemask_epi8 returns a 16-bit mask in a i32, the
@@ -99,7 +96,7 @@ impl Group {
     /// `EMPTY` or `DELETED`.
     #[inline]
     pub(crate) fn match_empty_or_deleted(self) -> BitMask {
-        #[allow(
+        #[expect(
             // tag: i32 as u16
             //   note: _mm_movemask_epi8 returns a 16-bit mask in a i32, the
             //   upper 16-bits of the i32 are zeroed:
@@ -115,7 +112,7 @@ impl Group {
     /// Returns a `BitMask` indicating all tags in the group which are full.
     #[inline]
     pub(crate) fn match_full(&self) -> BitMask {
-        self.match_empty_or_deleted().invert()
+        BitMask(!self.match_empty_or_deleted().0)
     }
 
     /// Performs the following transformation on all tags in the group:
@@ -131,7 +128,7 @@ impl Group {
         //   let special = 0 > tag = 1111_1111 (true) or 0000_0000 (false)
         //   1111_1111 | 1000_0000 = 1111_1111
         //   0000_0000 | 1000_0000 = 1000_0000
-        #[allow(
+        #[expect(
             clippy::cast_possible_wrap, // tag: Tag::DELETED.0 as i8
         )]
         unsafe {

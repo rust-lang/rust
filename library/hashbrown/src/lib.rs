@@ -25,24 +25,9 @@
         strict_provenance_lints
     )
 )]
-#![cfg_attr(feature = "rustc-dep-of-std", feature(rustc_attrs))]
-#![allow(
-    clippy::doc_markdown,
-    clippy::module_name_repetitions,
-    clippy::must_use_candidate,
-    clippy::option_if_let_else,
-    clippy::redundant_else,
-    clippy::manual_map,
-    clippy::missing_safety_doc,
-    clippy::missing_errors_doc
-)]
-#![warn(missing_docs)]
-#![warn(rust_2018_idioms)]
 #![cfg_attr(feature = "nightly", warn(fuzzy_provenance_casts))]
-#![cfg_attr(
-    feature = "nightly",
-    allow(clippy::incompatible_msrv, internal_features)
-)]
+#![cfg_attr(feature = "rustc-dep-of-std", feature(rustc_attrs))]
+#![cfg_attr(feature = "nightly", expect(internal_features))]
 #![cfg_attr(
     all(feature = "nightly", target_arch = "loongarch64"),
     feature(stdarch_loongarch)

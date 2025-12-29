@@ -24,13 +24,16 @@ retry() {
     return $result
 }
 
-
 if retry rustup component add rustfmt ; then
     cargo fmt --all -- --check
 fi
 
 if retry rustup component add clippy ; then
-    cargo clippy --all --tests --features serde,rayon -- -D clippy::all
+    cargo clippy --all --tests --features serde,rayon -- -D warnings
+fi
+
+if command -v taplo ; then
+    taplo fmt --check --diff
 fi
 
 if command -v shellcheck ; then

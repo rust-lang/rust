@@ -521,7 +521,6 @@ impl<'a, K, V, S, A: Allocator> RawEntryBuilderMut<'a, K, V, S, A> {
     /// assert_eq!(map[&"a"], 100);
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
-    #[allow(clippy::wrong_self_convention)]
     pub fn from_key<Q>(self, k: &Q) -> RawEntryMut<'a, K, V, S, A>
     where
         S: BuildHasher,
@@ -554,7 +553,6 @@ impl<'a, K, V, S, A: Allocator> RawEntryBuilderMut<'a, K, V, S, A> {
     /// assert_eq!(map[&"a"], 100);
     /// ```
     #[inline]
-    #[allow(clippy::wrong_self_convention)]
     pub fn from_key_hashed_nocheck<Q>(self, hash: u64, k: &Q) -> RawEntryMut<'a, K, V, S, A>
     where
         Q: Equivalent<K> + ?Sized,
@@ -587,7 +585,6 @@ impl<'a, K, V, S, A: Allocator> RawEntryBuilderMut<'a, K, V, S, A> {
     /// assert_eq!(map[&"a"], 100);
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
-    #[allow(clippy::wrong_self_convention)]
     pub fn from_hash<F>(self, hash: u64, is_match: F) -> RawEntryMut<'a, K, V, S, A>
     where
         for<'b> F: FnMut(&'b K) -> bool,
@@ -627,7 +624,6 @@ impl<'a, K, V, S, A: Allocator> RawEntryBuilder<'a, K, V, S, A> {
     /// assert_eq!(map.raw_entry().from_key(&key), Some((&"a", &100)));
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
-    #[allow(clippy::wrong_self_convention)]
     pub fn from_key<Q>(self, k: &Q) -> Option<(&'a K, &'a V)>
     where
         S: BuildHasher,
@@ -658,7 +654,6 @@ impl<'a, K, V, S, A: Allocator> RawEntryBuilder<'a, K, V, S, A> {
     /// assert_eq!(map.raw_entry().from_key_hashed_nocheck(hash, &key), Some((&"a", &100)));
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
-    #[allow(clippy::wrong_self_convention)]
     pub fn from_key_hashed_nocheck<Q>(self, hash: u64, k: &Q) -> Option<(&'a K, &'a V)>
     where
         Q: Equivalent<K> + ?Sized,
@@ -698,7 +693,6 @@ impl<'a, K, V, S, A: Allocator> RawEntryBuilder<'a, K, V, S, A> {
     /// assert_eq!(map.raw_entry().from_hash(hash, |k| k == &key), Some((&"a", &100)));
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
-    #[allow(clippy::wrong_self_convention)]
     pub fn from_hash<F>(self, hash: u64, is_match: F) -> Option<(&'a K, &'a V)>
     where
         F: FnMut(&K) -> bool,
@@ -1359,7 +1353,6 @@ impl<'a, K, V, S, A: Allocator> RawVacantEntryMut<'a, K, V, S, A> {
     /// assert_eq!(map[&"c"], 300);
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
-    #[allow(clippy::shadow_unrelated)]
     pub fn insert_hashed_nocheck(self, hash: u64, key: K, value: V) -> (&'a mut K, &'a mut V)
     where
         K: Hash,

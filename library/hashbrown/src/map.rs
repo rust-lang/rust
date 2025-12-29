@@ -228,7 +228,7 @@ where
 /// Ensures that a single closure type across uses of this which, in turn prevents multiple
 /// instances of any functions like `RawTable::reserve` from being generated
 #[cfg_attr(feature = "inline-more", inline)]
-#[allow(dead_code)]
+#[cfg(feature = "raw-entry")]
 pub(crate) fn equivalent<Q, K>(k: &Q) -> impl Fn(&K) -> bool + '_
 where
     Q: Equivalent<K> + ?Sized,
@@ -236,20 +236,6 @@ where
     move |x| k.equivalent(x)
 }
 
-#[cfg(not(feature = "nightly"))]
-#[cfg_attr(feature = "inline-more", inline)]
-pub(crate) fn make_hash<Q, S>(hash_builder: &S, val: &Q) -> u64
-where
-    Q: Hash + ?Sized,
-    S: BuildHasher,
-{
-    use core::hash::Hasher;
-    let mut state = hash_builder.build_hasher();
-    val.hash(&mut state);
-    state.finish()
-}
-
-#[cfg(feature = "nightly")]
 #[cfg_attr(feature = "inline-more", inline)]
 pub(crate) fn make_hash<Q, S>(hash_builder: &S, val: &Q) -> u64
 where
@@ -1608,8 +1594,10 @@ where
     where
         Q: Hash + Equivalent<K> + ?Sized,
     {
-        self.get_disjoint_unchecked_mut_inner(ks)
-            .map(|res| res.map(|(_, v)| v))
+        unsafe {
+            self.get_disjoint_unchecked_mut_inner(ks)
+                .map(|res| res.map(|(_, v)| v))
+        }
     }
 
     /// Attempts to get mutable references to `N` values in the map at once, without validating that
@@ -1622,7 +1610,7 @@ where
     where
         Q: Hash + Equivalent<K> + ?Sized,
     {
-        self.get_disjoint_unchecked_mut(ks)
+        unsafe { self.get_disjoint_unchecked_mut(ks) }
     }
 
     /// Attempts to get mutable references to `N` values in the map at once, with immutable
@@ -1760,8 +1748,10 @@ where
     where
         Q: Hash + Equivalent<K> + ?Sized,
     {
-        self.get_disjoint_unchecked_mut_inner(ks)
-            .map(|res| res.map(|(k, v)| (&*k, v)))
+        unsafe {
+            self.get_disjoint_unchecked_mut_inner(ks)
+                .map(|res| res.map(|(k, v)| (&*k, v)))
+        }
     }
 
     /// Attempts to get mutable references to `N` values in the map at once, with immutable
@@ -1774,7 +1764,7 @@ where
     where
         Q: Hash + Equivalent<K> + ?Sized,
     {
-        self.get_disjoint_key_value_unchecked_mut(ks)
+        unsafe { self.get_disjoint_key_value_unchecked_mut(ks) }
     }
 
     fn get_disjoint_mut_inner<Q, const N: usize>(
@@ -1796,9 +1786,11 @@ where
     where
         Q: Hash + Equivalent<K> + ?Sized,
     {
-        let hashes = self.build_hashes_inner(ks);
-        self.table
-            .get_disjoint_unchecked_mut(hashes, |i, (k, _)| ks[i].equivalent(k))
+        unsafe {
+            let hashes = self.build_hashes_inner(ks);
+            self.table
+                .get_disjoint_unchecked_mut(hashes, |i, (k, _)| ks[i].equivalent(k))
+        }
     }
 
     fn build_hashes_inner<Q, const N: usize>(&self, ks: [&Q; N]) -> [u64; N]
@@ -2074,7 +2066,7 @@ where
         }
 
         self.iter()
-            .all(|(key, value)| other.get(key).map_or(false, |v| *value == *v))
+            .all(|(key, value)| other.get(key).is_some_and(|v| *value == *v))
     }
 }
 
@@ -4732,7 +4724,7 @@ where
         let reserve = if self.is_empty() {
             iter.size_hint().0
         } else {
-            (iter.size_hint().0 + 1) / 2
+            iter.size_hint().0.div_ceil(2)
         };
         self.reserve(reserve);
         iter.for_each(move |(k, v)| {
@@ -4756,7 +4748,7 @@ where
         let reserve = if self.is_empty() {
             additional
         } else {
-            (additional + 1) / 2
+            additional.div_ceil(2)
         };
         self.reserve(reserve);
     }
@@ -4887,7 +4879,7 @@ where
     }
 }
 
-#[allow(dead_code)]
+#[expect(dead_code)]
 fn assert_covariance() {
     fn map_key<'new>(v: HashMap<&'static str, u8>) -> HashMap<&'new str, u8> {
         v
@@ -4942,7 +4934,7 @@ mod test_map {
     use core::alloc::Layout;
     use core::ptr::NonNull;
     use core::sync::atomic::{AtomicI8, Ordering};
-    use rand::{rngs::SmallRng, Rng, SeedableRng};
+    use rand::{Rng, SeedableRng, rngs::SmallRng};
     use std::borrow::ToOwned;
     use std::cell::RefCell;
     use std::vec::Vec;
@@ -5009,7 +5001,6 @@ mod test_map {
         assert_eq!(m.len(), 1);
         assert!(m.insert(2, 4).is_none());
         assert_eq!(m.len(), 2);
-        #[allow(clippy::redundant_clone)]
         let m2 = m.clone();
         assert_eq!(*m2.get(&1).unwrap(), 2);
         assert_eq!(*m2.get(&2).unwrap(), 4);
@@ -5808,8 +5799,8 @@ mod test_map {
 
     #[test]
     fn test_entry_take_doesnt_corrupt() {
-        #![allow(deprecated)] //rand
-                              // Test for #19292
+        #![expect(deprecated)] //rand
+        // Test for #19292
         fn check(m: &HashMap<i32, ()>) {
             for k in m.keys() {
                 assert!(m.contains_key(k), "{k} is in keys() but not in the map?");
@@ -5844,8 +5835,8 @@ mod test_map {
 
     #[test]
     fn test_entry_ref_take_doesnt_corrupt() {
-        #![allow(deprecated)] //rand
-                              // Test for #19292
+        #![expect(deprecated)] //rand
+        // Test for #19292
         fn check(m: &HashMap<std::string::String, ()>) {
             for k in m.keys() {
                 assert!(m.contains_key(k), "{k} is in keys() but not in the map?");
@@ -5897,7 +5888,6 @@ mod test_map {
     }
 
     #[test]
-    #[allow(clippy::needless_borrow)]
     fn test_extend_ref_kv_tuple() {
         use std::ops::AddAssign;
         let mut a = HashMap::new();
@@ -6119,8 +6109,8 @@ mod test_map {
 
     #[test]
     fn test_replace_entry_with_doesnt_corrupt() {
-        #![allow(deprecated)] //rand
-                              // Test for #19292
+        #![expect(deprecated)] //rand
+        // Test for #19292
         fn check(m: &HashMap<i32, ()>) {
             for k in m.keys() {
                 assert!(m.contains_key(k), "{k} is in keys() but not in the map?");
@@ -6389,8 +6379,10 @@ mod test_map {
         }
 
         unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
-            let g = Global;
-            g.deallocate(ptr, layout)
+            unsafe {
+                let g = Global;
+                g.deallocate(ptr, layout)
+            }
         }
     }
 
@@ -6521,7 +6513,11 @@ mod test_map {
                     return Err(format!(
                         "Value is not equal to expected,\nvalue: `{:?}`,\nexpected: \
                         `CheckedCloneDrop {{ panic_in_clone: {}, panic_in_drop: {}, dropped: {}, data: {:?} }}`",
-                        value, panic_in_clone, panic_in_drop, false, fun(check_count)
+                        value,
+                        panic_in_clone,
+                        panic_in_drop,
+                        false,
+                        fun(check_count)
                     ));
                 }
                 check_count += 1;
@@ -6763,7 +6759,7 @@ mod test_map_with_mmap_allocations {
     use super::HashMap;
     use crate::raw::prev_pow2;
     use core::alloc::Layout;
-    use core::ptr::{null_mut, NonNull};
+    use core::ptr::{NonNull, null_mut};
 
     #[cfg(feature = "nightly")]
     use core::alloc::{AllocError, Allocator};
@@ -6844,10 +6840,12 @@ mod test_map_with_mmap_allocations {
         }
 
         unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
-            // If they allocated it with this layout, it must round correctly.
-            let size = self.fit_to_page_size(layout.size()).unwrap();
-            let _result = libc::munmap(ptr.as_ptr().cast(), size);
-            debug_assert_eq!(0, _result)
+            unsafe {
+                // If they allocated it with this layout, it must round correctly.
+                let size = self.fit_to_page_size(layout.size()).unwrap();
+                let _result = libc::munmap(ptr.as_ptr().cast(), size);
+                debug_assert_eq!(0, _result)
+            }
         }
     }
 

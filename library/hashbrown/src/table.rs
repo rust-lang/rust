@@ -1,12 +1,12 @@
 use core::{fmt, iter::FusedIterator, marker::PhantomData, ptr::NonNull};
 
 use crate::{
+    TryReserveError,
     control::Tag,
     raw::{
         Allocator, Bucket, FullBucketsIndices, Global, RawDrain, RawExtractIf, RawIntoIter,
         RawIter, RawIterHash, RawIterHashIndices, RawTable,
     },
-    TryReserveError,
 };
 
 /// Low-level hash table with explicit hashing.
@@ -512,7 +512,7 @@ where
     #[inline]
     pub unsafe fn get_bucket_entry_unchecked(&mut self, index: usize) -> OccupiedEntry<'_, T, A> {
         OccupiedEntry {
-            bucket: self.raw.bucket(index),
+            bucket: unsafe { self.raw.bucket(index) },
             table: self,
         }
     }
@@ -588,7 +588,7 @@ where
     /// ```
     #[inline]
     pub unsafe fn get_bucket_unchecked(&self, index: usize) -> &T {
-        self.raw.bucket(index).as_ref()
+        unsafe { self.raw.bucket(index).as_ref() }
     }
 
     /// Gets a mutable reference to an entry in the table at the given bucket index,
@@ -666,7 +666,7 @@ where
     /// ```
     #[inline]
     pub unsafe fn get_bucket_unchecked_mut(&mut self, index: usize) -> &mut T {
-        self.raw.bucket(index).as_mut()
+        unsafe { self.raw.bucket(index).as_mut() }
     }
 
     /// Inserts an element into the `HashTable` with the given hash value, but
@@ -1547,7 +1547,7 @@ where
         hashes: [u64; N],
         eq: impl FnMut(usize, &T) -> bool,
     ) -> [Option<&'_ mut T>; N] {
-        self.raw.get_disjoint_unchecked_mut(hashes, eq)
+        unsafe { self.raw.get_disjoint_unchecked_mut(hashes, eq) }
     }
 
     /// Attempts to get mutable references to `N` values in the map at once, without validating that
@@ -1558,7 +1558,7 @@ where
         hashes: [u64; N],
         eq: impl FnMut(usize, &T) -> bool,
     ) -> [Option<&'_ mut T>; N] {
-        self.raw.get_disjoint_unchecked_mut(hashes, eq)
+        unsafe { self.raw.get_disjoint_unchecked_mut(hashes, eq) }
     }
 
     /// Returns the total amount of memory allocated internally by the hash
@@ -2286,7 +2286,7 @@ where
     ///
     /// let mut table = HashTable::new();
     /// let hasher = DefaultHashBuilder::default();
-    /// let hasher = |(ref key, _): &_| hasher.hash_one(key);
+    /// let hasher = |(key, _): &_| hasher.hash_one(key);
     /// table.insert_unique(hasher(&("poneyland", 42)), ("poneyland", 42), hasher);
     ///
     /// let entry = match table.entry(hasher(&("poneyland", 42)), |entry| entry.0 == "poneyland", hasher) {
@@ -2711,7 +2711,7 @@ where
 ///         // the lifetime of its iterator, ensuring that it's always valid.
 ///         // Additionally, we match the mutability in `self.marker` to ensure
 ///         // the correct variance.
-///         let (ref key, ref mut val) = unsafe { self.inner.next()?.as_mut() };
+///         let &mut (ref key, ref mut val) = unsafe { self.inner.next()?.as_mut() };
 ///         Some((key, val))
 ///     }
 /// }

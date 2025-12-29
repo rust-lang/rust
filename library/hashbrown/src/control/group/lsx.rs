@@ -7,7 +7,6 @@ use core::arch::loongarch64::*;
 pub(crate) type BitMaskWord = u16;
 pub(crate) type NonZeroBitMaskWord = NonZeroU16;
 pub(crate) const BITMASK_STRIDE: usize = 1;
-pub(crate) const BITMASK_MASK: BitMaskWord = 0xffff;
 pub(crate) const BITMASK_ITER_MASK: BitMaskWord = !0;
 
 /// Abstraction over a group of control tags which can be scanned in
@@ -18,7 +17,7 @@ pub(crate) const BITMASK_ITER_MASK: BitMaskWord = !0;
 pub(crate) struct Group(m128i);
 
 // FIXME: https://github.com/rust-lang/rust-clippy/issues/3859
-#[allow(clippy::use_self)]
+#[expect(clippy::use_self)]
 impl Group {
     /// Number of bytes in the group.
     pub(crate) const WIDTH: usize = mem::size_of::<Self>();
@@ -28,7 +27,7 @@ impl Group {
     ///
     /// This is guaranteed to be aligned to the group size.
     #[inline]
-    #[allow(clippy::items_after_statements)]
+    #[expect(clippy::items_after_statements)]
     pub(crate) const fn static_empty() -> &'static [Tag; Group::WIDTH] {
         #[repr(C)]
         struct AlignedTags {
@@ -44,27 +43,29 @@ impl Group {
 
     /// Loads a group of tags starting at the given address.
     #[inline]
-    #[allow(clippy::cast_ptr_alignment)] // unaligned load
+    #[expect(clippy::cast_ptr_alignment)] // unaligned load
     pub(crate) unsafe fn load(ptr: *const Tag) -> Self {
-        Group(lsx_vld::<0>(ptr.cast()))
+        unsafe { Group(lsx_vld::<0>(ptr.cast())) }
     }
 
     /// Loads a group of tags starting at the given address, which must be
     /// aligned to `mem::align_of::<Group>()`.
     #[inline]
-    #[allow(clippy::cast_ptr_alignment)]
+    #[expect(clippy::cast_ptr_alignment)]
     pub(crate) unsafe fn load_aligned(ptr: *const Tag) -> Self {
         debug_assert_eq!(ptr.align_offset(mem::align_of::<Self>()), 0);
-        Group(lsx_vld::<0>(ptr.cast()))
+        unsafe { Group(lsx_vld::<0>(ptr.cast())) }
     }
 
     /// Stores the group of tags to the given address, which must be
     /// aligned to `mem::align_of::<Group>()`.
     #[inline]
-    #[allow(clippy::cast_ptr_alignment)]
+    #[expect(clippy::cast_ptr_alignment)]
     pub(crate) unsafe fn store_aligned(self, ptr: *mut Tag) {
         debug_assert_eq!(ptr.align_offset(mem::align_of::<Self>()), 0);
-        lsx_vst::<0>(self.0, ptr.cast());
+        unsafe {
+            lsx_vst::<0>(self.0, ptr.cast());
+        }
     }
 
     /// Returns a `BitMask` indicating all tags in the group which have

@@ -1,1 +1,1 @@
-doc-valid-idents = [ "CppCon", "SwissTable", "SipHash", "HashDoS" ]
+doc-valid-idents = ["CppCon", "SwissTable", "SipHash", "HashDoS"]

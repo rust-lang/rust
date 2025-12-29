@@ -6,8 +6,8 @@ use core::{fmt, mem};
 use map::make_hash;
 
 use super::map::{self, HashMap, Keys};
-use crate::raw::{Allocator, Global, RawExtractIf};
 use crate::DefaultHashBuilder;
+use crate::raw::{Allocator, Global, RawExtractIf};
 
 // Future Optimization (FIXME!)
 // =============================
@@ -1114,7 +1114,7 @@ where
     /// correctly, and would cause unsoundness as a result.
     #[cfg_attr(feature = "inline-more", inline)]
     pub unsafe fn insert_unique_unchecked(&mut self, value: T) -> &T {
-        self.map.insert_unique_unchecked(value, ()).0
+        unsafe { self.map.insert_unique_unchecked(value, ()).0 }
     }
 
     /// Adds a value to the set, replacing the existing value, if any, that is equal to the given
@@ -2530,7 +2530,7 @@ impl<'a, T, S, A: Allocator> VacantEntry<'a, T, S, A> {
     }
 }
 
-#[allow(dead_code)]
+#[expect(dead_code)]
 fn assert_covariance() {
     fn set<'new>(v: HashSet<&'static str>) -> HashSet<&'new str> {
         v
@@ -2568,7 +2568,7 @@ fn assert_covariance() {
 
 #[cfg(test)]
 mod test_set {
-    use super::{make_hash, Equivalent, HashSet};
+    use super::{Equivalent, HashSet, make_hash};
     use crate::DefaultHashBuilder;
     use std::vec::Vec;
 
@@ -2918,7 +2918,7 @@ mod test_set {
         use core::hash;
 
         #[derive(Debug)]
-        #[allow(dead_code)]
+        #[expect(dead_code)]
         struct Foo(&'static str, i32);
 
         impl PartialEq for Foo {
@@ -2947,7 +2947,6 @@ mod test_set {
     }
 
     #[test]
-    #[allow(clippy::needless_borrow)]
     fn test_extend_ref() {
         let mut a = HashSet::new();
         a.insert(1);

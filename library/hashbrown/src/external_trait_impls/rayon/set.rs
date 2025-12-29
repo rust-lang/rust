@@ -384,7 +384,7 @@ where
     // Reserve the entire length if the set is empty.
     // Otherwise reserve half the length (rounded up), so the set
     // will only resize twice in the worst case.
-    let reserve = if set.is_empty() { len } else { (len + 1) / 2 };
+    let reserve = if set.is_empty() { len } else { len.div_ceil(2) };
     set.reserve(reserve);
     for vec in list {
         set.extend(vec);

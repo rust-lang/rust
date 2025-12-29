@@ -9,8 +9,30 @@ readme = "README.md"
 keywords = ["hash", "no_std", "hashmap", "swisstable"]
 categories = ["data-structures", "no-std"]
 exclude = [".github", "/ci/*"]
-edition = "2021"
-rust-version = "1.65.0"
+edition = "2024"
+rust-version = "1.85.1"
+
+[lints.rust]
+missing_docs = "warn"
+unreachable_pub = "warn"
+unsafe_op_in_unsafe_fn = "warn"
+
+# rust_2018_idioms
+bare_trait_objects = "warn"
+elided_lifetimes_in_paths = "warn"
+ellipsis_inclusive_range_patterns = "warn"
+explicit_outlives_requirements = "warn"
+unused_extern_crates = "warn"
+
+[lints.clippy]
+doc_markdown = "allow"
+manual_map = "allow"
+missing_errors_doc = "allow"
+missing_safety_doc = "allow"
+module_name_repetitions = "allow"
+must_use_candidate = "allow"
+option_if_let_else = "allow"
+redundant_else = "allow"
 
 [dependencies]
 # For the default hasher
@@ -26,7 +48,7 @@ alloc = { version = "1.0.0", optional = true, package = "rustc-std-workspace-all
 
 # Support for allocators that use allocator-api2
 allocator-api2 = { version = "0.2.9", optional = true, default-features = false, features = [
-    "alloc",
+  "alloc",
 ] }
 
 # Equivalent trait which can be shared with other hash table implementations.
@@ -50,7 +72,13 @@ bumpalo = { version = "3.13.0", features = ["allocator-api2"] }
 libc = "0.2.155"
 
 [features]
-default = ["default-hasher", "inline-more", "allocator-api2", "equivalent", "raw-entry"]
+default = [
+  "default-hasher",
+  "inline-more",
+  "allocator-api2",
+  "equivalent",
+  "raw-entry",
+]
 
 # Enables use of nightly features. This is only guaranteed to work on the latest
 # version of nightly Rust.
@@ -60,12 +88,7 @@ nightly = ["foldhash?/nightly", "bumpalo/allocator_api"]
 rustc-internal-api = []
 
 # Internal feature used when building as part of the standard library.
-rustc-dep-of-std = [
-    "nightly",
-    "core",
-    "alloc",
-    "rustc-internal-api",
-]
+rustc-dep-of-std = ["nightly", "core", "alloc", "rustc-internal-api"]
 
 # Enables serde support.
 serde = ["dep:serde_core", "dep:serde"]

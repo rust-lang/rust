@@ -1,6 +1,6 @@
 #[cfg(test)]
 pub(crate) use self::inner::AllocError;
-pub(crate) use self::inner::{do_alloc, Allocator, Global};
+pub(crate) use self::inner::{Allocator, Global, do_alloc};
 
 // Nightly-case.
 // Use unstable `allocator_api` feature.
@@ -9,12 +9,11 @@ pub(crate) use self::inner::{do_alloc, Allocator, Global};
 #[cfg(feature = "nightly")]
 mod inner {
     #[cfg(test)]
-    pub use crate::alloc::alloc::AllocError;
+    pub(crate) use crate::alloc::alloc::AllocError;
     use crate::alloc::alloc::Layout;
     pub(crate) use crate::alloc::alloc::{Allocator, Global};
     use core::ptr::NonNull;
 
-    #[allow(clippy::map_err_ignore)]
     pub(crate) fn do_alloc<A: Allocator>(alloc: &A, layout: Layout) -> Result<NonNull<[u8]>, ()> {
         match alloc.allocate(layout) {
             Ok(ptr) => Ok(ptr),
@@ -33,11 +32,10 @@ mod inner {
 mod inner {
     use crate::alloc::alloc::Layout;
     #[cfg(test)]
-    pub use allocator_api2::alloc::AllocError;
+    pub(crate) use allocator_api2::alloc::AllocError;
     pub(crate) use allocator_api2::alloc::{Allocator, Global};
     use core::ptr::NonNull;
 
-    #[allow(clippy::map_err_ignore)]
     pub(crate) fn do_alloc<A: Allocator>(alloc: &A, layout: Layout) -> Result<NonNull<[u8]>, ()> {
         match alloc.allocate(layout) {
             Ok(ptr) => Ok(ptr),
@@ -56,10 +54,10 @@ mod inner {
 // or `nightly` without disturbing users that don't want to use it.
 #[cfg(not(any(feature = "nightly", feature = "allocator-api2")))]
 mod inner {
-    use crate::alloc::alloc::{alloc, dealloc, Layout};
+    use crate::alloc::alloc::{Layout, alloc, dealloc};
     use core::ptr::NonNull;
 
-    #[allow(clippy::missing_safety_doc)] // not exposed outside of this crate
+    #[expect(clippy::missing_safety_doc)] // not exposed outside of this crate
     pub unsafe trait Allocator {
         fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, ()>;
         unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout);
@@ -86,7 +84,9 @@ mod inner {
         }
         #[inline]
         unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
-            dealloc(ptr.as_ptr(), layout);
+            unsafe {
+                dealloc(ptr.as_ptr(), layout);
+            }
         }
     }
 

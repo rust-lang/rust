@@ -6,7 +6,6 @@ use core::num::NonZeroU64;
 pub(crate) type BitMaskWord = u64;
 pub(crate) type NonZeroBitMaskWord = NonZeroU64;
 pub(crate) const BITMASK_STRIDE: usize = 8;
-pub(crate) const BITMASK_MASK: BitMaskWord = !0;
 pub(crate) const BITMASK_ITER_MASK: BitMaskWord = 0x8080_8080_8080_8080;
 
 /// Abstraction over a group of control tags which can be scanned in
@@ -16,7 +15,7 @@ pub(crate) const BITMASK_ITER_MASK: BitMaskWord = 0x8080_8080_8080_8080;
 #[derive(Copy, Clone)]
 pub(crate) struct Group(neon::uint8x8_t);
 
-#[allow(clippy::use_self)]
+#[expect(clippy::use_self)]
 impl Group {
     /// Number of bytes in the group.
     pub(crate) const WIDTH: usize = mem::size_of::<Self>();
@@ -41,27 +40,29 @@ impl Group {
 
     /// Loads a group of tags starting at the given address.
     #[inline]
-    #[allow(clippy::cast_ptr_alignment)] // unaligned load
+    #[expect(clippy::cast_ptr_alignment)] // unaligned load
     pub(crate) unsafe fn load(ptr: *const Tag) -> Self {
-        Group(neon::vld1_u8(ptr.cast()))
+        unsafe { Group(neon::vld1_u8(ptr.cast())) }
     }
 
     /// Loads a group of tags starting at the given address, which must be
     /// aligned to `mem::align_of::<Group>()`.
     #[inline]
-    #[allow(clippy::cast_ptr_alignment)]
+    #[expect(clippy::cast_ptr_alignment)]
     pub(crate) unsafe fn load_aligned(ptr: *const Tag) -> Self {
         debug_assert_eq!(ptr.align_offset(mem::align_of::<Self>()), 0);
-        Group(neon::vld1_u8(ptr.cast()))
+        unsafe { Group(neon::vld1_u8(ptr.cast())) }
     }
 
     /// Stores the group of tags to the given address, which must be
     /// aligned to `mem::align_of::<Group>()`.
     #[inline]
-    #[allow(clippy::cast_ptr_alignment)]
+    #[expect(clippy::cast_ptr_alignment)]
     pub(crate) unsafe fn store_aligned(self, ptr: *mut Tag) {
         debug_assert_eq!(ptr.align_offset(mem::align_of::<Self>()), 0);
-        neon::vst1_u8(ptr.cast(), self.0);
+        unsafe {
+            neon::vst1_u8(ptr.cast(), self.0);
+        }
     }
 
     /// Returns a `BitMask` indicating all tags in the group which *may*
