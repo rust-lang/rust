@@ -989,6 +989,14 @@ impl NoArgsAttributeParser for RustcNonnullOptimizationGuaranteedParser {
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcNonnullOptimizationGuaranteed;
 }
 
+pub(crate) struct RustcPanicEntrypointParser;
+
+impl NoArgsAttributeParser for RustcPanicEntrypointParser {
+    const PATH: &[Symbol] = &[sym::rustc_panic_entrypoint];
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Fn)]);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcPanicEntrypoint;
+}
+
 pub(crate) struct RustcStrictCoherenceParser;
 
 impl NoArgsAttributeParser for RustcStrictCoherenceParser {

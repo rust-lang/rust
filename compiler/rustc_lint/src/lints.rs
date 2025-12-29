@@ -3014,3 +3014,7 @@ pub(crate) enum LossyProvenancePtr2IntSuggestion<'tcx> {
         cast_span: Span,
     },
 }
+
+#[derive(Diagnostic)]
+#[diag("this function could have the attribute #[rustc_panic_entrypoint]")]
+pub(crate) struct MissingPanicEntrypoint;
