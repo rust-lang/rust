@@ -2226,8 +2226,7 @@ pub(crate) fn compare_names(left: &str, right: &str) -> Ordering {
 
 pub(super) fn full_path(cx: &Context<'_>, item: &clean::Item) -> String {
     let mut s = join_path_syms(&cx.current);
-    s.push_str("::");
-    s.push_str(item.name.unwrap().as_str());
+    s.extend(["::", item.name.unwrap().as_str()]);
     s
 }
 
