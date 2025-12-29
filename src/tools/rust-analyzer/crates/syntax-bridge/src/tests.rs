@@ -30,7 +30,7 @@ fn check_punct_spacing(fixture: &str) {
         })
         .collect();
 
-    let mut cursor = Cursor::new(&subtree.0);
+    let mut cursor = Cursor::new(subtree.as_token_trees());
     while !cursor.eof() {
         while let Some(token_tree) = cursor.token_tree() {
             if let tt::TokenTree::Leaf(Leaf::Punct(Punct {

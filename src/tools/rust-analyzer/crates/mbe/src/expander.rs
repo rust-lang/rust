@@ -162,7 +162,7 @@ impl Fragment<'_> {
             Fragment::Tokens { tree, .. } => tree.len() == 0,
             Fragment::Expr(it) => it.len() == 0,
             Fragment::Path(it) => it.len() == 0,
-            Fragment::TokensOwned(it) => it.0.is_empty(),
+            Fragment::TokensOwned(_) => false, // A `TopSubtree` is never empty
         }
     }
 }

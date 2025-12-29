@@ -10,8 +10,8 @@ pub struct Cursor<'a> {
 }
 
 impl<'a> Cursor<'a> {
-    pub fn new(buffer: &'a [TokenTree]) -> Self {
-        Self { buffer, index: 0, subtrees_stack: Vec::new() }
+    pub fn new(buffer: TokenTreesView<'a>) -> Self {
+        Self { buffer: buffer.0, index: 0, subtrees_stack: Vec::new() }
     }
 
     /// Check whether it is eof

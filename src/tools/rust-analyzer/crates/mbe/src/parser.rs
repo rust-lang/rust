@@ -224,7 +224,7 @@ fn next_op(
                 None => {
                     return Ok(Op::Punct({
                         let mut res = ArrayVec::new();
-                        res.push(*p);
+                        res.push(p);
                         Box::new(res)
                     }));
                 }
@@ -268,7 +268,7 @@ fn next_op(
                         let id = ident.span;
                         Op::Var { name, kind, id }
                     }
-                    tt::Leaf::Literal(lit) if is_boolean_literal(lit) => {
+                    tt::Leaf::Literal(lit) if is_boolean_literal(&lit) => {
                         let kind = eat_fragment_kind(edition, src, mode)?;
                         let name = lit.symbol.clone();
                         let id = lit.span;
@@ -282,7 +282,7 @@ fn next_op(
                         }
                         Mode::Template => Op::Punct({
                             let mut res = ArrayVec::new();
-                            res.push(*punct);
+                            res.push(punct);
                             Box::new(res)
                         }),
                     },
@@ -400,7 +400,7 @@ fn parse_repeat(src: &mut TtIter<'_>) -> Result<(Option<Separator>, RepeatKind),
                     '?' => RepeatKind::ZeroOrOne,
                     _ => match &mut separator {
                         Separator::Puncts(puncts) if puncts.len() < 3 => {
-                            puncts.push(*punct);
+                            puncts.push(punct);
                             continue;
                         }
                         _ => return Err(ParseError::InvalidRepeat),

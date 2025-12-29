@@ -3,6 +3,7 @@
 
 use intern::{Symbol, sym};
 use span::{Edition, Span};
+use stdx::itertools::Itertools;
 use tt::{Delimiter, TopSubtreeBuilder, iter::TtElement};
 
 use super::TokensOrigin;
@@ -324,7 +325,7 @@ fn expand_subtree(
                                 }
                                 _ => (None, None),
                             };
-                            let value = match values {
+                            let value = match &values {
                                 (Some(TtElement::Leaf(tt::Leaf::Ident(ident))), None) => {
                                     ident.sym.as_str()
                                 }
@@ -412,15 +413,15 @@ fn expand_var(
                     // Check if this is a simple negative literal (MINUS + LITERAL)
                     // that should not be wrapped in parentheses
                     let is_negative_literal = matches!(
-                        sub.flat_tokens(),
-                        [
-                            tt::TokenTree::Leaf(tt::Leaf::Punct(tt::Punct { char: '-', .. })),
-                            tt::TokenTree::Leaf(tt::Leaf::Literal(_))
-                        ]
+                        sub.iter().collect_array(),
+                        Some([
+                            tt::TtElement::Leaf(tt::Leaf::Punct(tt::Punct { char: '-', .. })),
+                            tt::TtElement::Leaf(tt::Leaf::Literal(_))
+                        ])
                     );
 
                     let wrap_in_parens = !is_negative_literal
-                        && !matches!(sub.flat_tokens(), [tt::TokenTree::Leaf(_)])
+                        && !matches!(sub.iter().collect_array(), Some([tt::TtElement::Leaf(_)]))
                         && sub.try_into_subtree().is_none_or(|it| {
                             it.top_subtree().delimiter.kind == tt::DelimiterKind::Invisible
                         });
@@ -560,8 +561,8 @@ fn fix_up_and_push_path_tt(
             // argument list and thus needs `::` between it and `FnOnce`. However in
             // today's Rust this type of path *semantically* cannot appear as a
             // top-level expression-context path, so we can safely ignore it.
-            if let [tt::TokenTree::Leaf(tt::Leaf::Punct(tt::Punct { char: '<', .. }))] =
-                tt.flat_tokens()
+            if let Some([tt::TtElement::Leaf(tt::Leaf::Punct(tt::Punct { char: '<', .. }))]) =
+                tt.iter().collect_array()
             {
                 builder.extend([
                     tt::Leaf::Punct(tt::Punct {
@@ -577,7 +578,8 @@ fn fix_up_and_push_path_tt(
                 ]);
             }
         }
-        prev_was_ident = matches!(tt.flat_tokens(), [tt::TokenTree::Leaf(tt::Leaf::Ident(_))]);
+        prev_was_ident =
+            matches!(tt.iter().collect_array(), Some([tt::TtElement::Leaf(tt::Leaf::Ident(_))]));
         builder.extend_with_tt(tt);
     }
 }

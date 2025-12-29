@@ -54,7 +54,7 @@ fn benchmark_expand_macro_rules() {
             .map(|(id, tt)| {
                 let res = rules[&id].expand(&db, &tt, |_| (), MacroCallStyle::FnLike, DUMMY);
                 assert!(res.err.is_none());
-                res.value.0.0.len()
+                res.value.0.as_token_trees().len()
             })
             .sum()
     };

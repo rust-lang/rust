@@ -489,7 +489,7 @@ struct Writer<'a, 'span, S: SpanTransformer, W> {
 impl<'a, T: SpanTransformer<Span = span::Span>> Writer<'a, '_, T, tt::iter::TtIter<'a>> {
     fn write_subtree(&mut self, root: tt::SubtreeView<'a>) {
         let subtree = root.top_subtree();
-        self.enqueue(subtree, root.iter());
+        self.enqueue(&subtree, root.iter());
         while let Some((idx, len, subtree)) = self.work.pop_front() {
             self.subtree(idx, len, subtree);
         }
@@ -504,7 +504,7 @@ impl<'a, T: SpanTransformer<Span = span::Span>> Writer<'a, '_, T, tt::iter::TtIt
         for child in subtree {
             let idx_tag = match child {
                 tt::iter::TtElement::Subtree(subtree, subtree_iter) => {
-                    let idx = self.enqueue(subtree, subtree_iter);
+                    let idx = self.enqueue(&subtree, subtree_iter);
                     idx << 2
                 }
                 tt::iter::TtElement::Leaf(leaf) => match leaf {
@@ -513,8 +513,11 @@ impl<'a, T: SpanTransformer<Span = span::Span>> Writer<'a, '_, T, tt::iter::TtIt
                         let id = self.token_id_of(lit.span);
                         let (text, suffix) = if self.version >= EXTENDED_LEAF_DATA {
                             (
-                                self.intern(lit.symbol.as_str()),
-                                lit.suffix.as_ref().map(|s| self.intern(s.as_str())).unwrap_or(!0),
+                                self.intern_owned(lit.symbol.as_str().to_owned()),
+                                lit.suffix
+                                    .as_ref()
+                                    .map(|s| self.intern_owned(s.as_str().to_owned()))
+                                    .unwrap_or(!0),
                             )
                         } else {
                             (self.intern_owned(format!("{lit}")), !0)
@@ -549,11 +552,11 @@ impl<'a, T: SpanTransformer<Span = span::Span>> Writer<'a, '_, T, tt::iter::TtIt
                         let idx = self.ident.len() as u32;
                         let id = self.token_id_of(ident.span);
                         let text = if self.version >= EXTENDED_LEAF_DATA {
-                            self.intern(ident.sym.as_str())
+                            self.intern_owned(ident.sym.as_str().to_owned())
                         } else if ident.is_raw.yes() {
                             self.intern_owned(format!("r#{}", ident.sym.as_str(),))
                         } else {
-                            self.intern(ident.sym.as_str())
+                            self.intern_owned(ident.sym.as_str().to_owned())
                         };
                         self.ident.push(IdentRepr { id, text, is_raw: ident.is_raw.yes() });
                         (idx << 2) | 0b11
@@ -565,7 +568,7 @@ impl<'a, T: SpanTransformer<Span = span::Span>> Writer<'a, '_, T, tt::iter::TtIt
         }
     }
 
-    fn enqueue(&mut self, subtree: &'a tt::Subtree, contents: tt::iter::TtIter<'a>) -> u32 {
+    fn enqueue(&mut self, subtree: &tt::Subtree, contents: tt::iter::TtIter<'a>) -> u32 {
         let idx = self.subtree.len();
         let open = self.token_id_of(subtree.delimiter.open);
         let close = self.token_id_of(subtree.delimiter.close);
@@ -582,6 +585,7 @@ impl<'a, T: SpanTransformer, U> Writer<'a, '_, T, U> {
         T::token_id_of(self.span_data_table, span)
     }
 
+    #[cfg(feature = "sysroot-abi")]
     pub(crate) fn intern(&mut self, text: &'a str) -> u32 {
         let table = &mut self.text;
         *self.string_table.entry(text.into()).or_insert_with(|| {
@@ -840,7 +844,7 @@ impl<T: SpanTransformer<Span = span::Span>> Reader<'_, T> {
 
         let (delimiter, mut res) = res[0].take().unwrap();
         res.insert(0, tt::TokenTree::Subtree(tt::Subtree { delimiter, len: res.len() as u32 }));
-        tt::TopSubtree(res.into_boxed_slice())
+        tt::TopSubtree::from_serialized(res)
     }
 }
 

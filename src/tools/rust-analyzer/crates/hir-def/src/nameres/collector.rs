@@ -2466,8 +2466,8 @@ impl ModCollector<'_, '_> {
                 None => {
                     let explicit_name =
                         attrs.by_key(sym::rustc_builtin_macro).tt_values().next().and_then(|tt| {
-                            match tt.token_trees().flat_tokens().first() {
-                                Some(tt::TokenTree::Leaf(tt::Leaf::Ident(name))) => Some(name),
+                            match tt.token_trees().iter().next() {
+                                Some(tt::TtElement::Leaf(tt::Leaf::Ident(name))) => Some(name),
                                 _ => None,
                             }
                         });

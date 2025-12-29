@@ -163,7 +163,7 @@ impl ToTokenTree for crate::tt::SubtreeView<'_> {
 
 impl ToTokenTree for crate::tt::TopSubtree {
     fn to_tokens(self, _: Span, builder: &mut TopSubtreeBuilder) {
-        builder.extend_tt_dangerous(self.0);
+        builder.extend_with_tt(self.as_token_trees());
     }
 }
 
@@ -172,10 +172,9 @@ impl ToTokenTree for crate::tt::TtElement<'_> {
         match self {
             crate::tt::TtElement::Leaf(leaf) => builder.push(leaf.clone()),
             crate::tt::TtElement::Subtree(subtree, subtree_iter) => {
-                builder.extend_tt_dangerous(
-                    std::iter::once(crate::tt::TokenTree::Subtree(subtree.clone()))
-                        .chain(subtree_iter.remaining().flat_tokens().iter().cloned()),
-                );
+                builder.open(subtree.delimiter.kind, subtree.delimiter.open);
+                builder.extend_with_tt(subtree_iter.remaining());
+                builder.close(subtree.delimiter.close);
             }
         }
     }

@@ -197,17 +197,18 @@ fn next_cfg_expr(it: &mut tt::iter::TtIter<'_>) -> Option<CfgExpr> {
         Some(_) => return Some(CfgExpr::Invalid),
     };
 
-    let ret = match it.peek() {
+    let mut it_clone = it.clone();
+    let ret = match it_clone.next() {
         Some(TtElement::Leaf(tt::Leaf::Punct(punct)))
             // Don't consume on e.g. `=>`.
             if punct.char == '='
                 && (punct.spacing == tt::Spacing::Alone
-                    || it.remaining().flat_tokens().get(1).is_none_or(|peek2| {
-                        !matches!(peek2, tt::TokenTree::Leaf(tt::Leaf::Punct(_)))
+                    || it_clone.peek().is_none_or(|peek2| {
+                        !matches!(peek2, tt::TtElement::Leaf(tt::Leaf::Punct(_)))
                     })) =>
         {
-            match it.remaining().flat_tokens().get(1) {
-                Some(tt::TokenTree::Leaf(tt::Leaf::Literal(literal))) => {
+            match it_clone.next() {
+                Some(tt::TtElement::Leaf(tt::Leaf::Literal(literal))) => {
                     it.next();
                     it.next();
                     CfgAtom::KeyValue { key: name, value: literal.symbol.clone() }.into()

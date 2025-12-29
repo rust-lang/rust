@@ -223,7 +223,7 @@ where
                 spacing: _,
             })) => {
                 let found_expected_delimiter =
-                    builder.expected_delimiters().enumerate().find(|(_, delim)| match delim.kind {
+                    builder.expected_delimiters().enumerate().find(|(_, delim)| match delim {
                         tt::DelimiterKind::Parenthesis => char == ')',
                         tt::DelimiterKind::Brace => char == '}',
                         tt::DelimiterKind::Bracket => char == ']',
@@ -257,13 +257,11 @@ where
                 }
                 kind if kind.is_punct() && kind != UNDERSCORE => {
                     let found_expected_delimiter =
-                        builder.expected_delimiters().enumerate().find(|(_, delim)| {
-                            match delim.kind {
-                                tt::DelimiterKind::Parenthesis => kind == T![')'],
-                                tt::DelimiterKind::Brace => kind == T!['}'],
-                                tt::DelimiterKind::Bracket => kind == T![']'],
-                                tt::DelimiterKind::Invisible => false,
-                            }
+                        builder.expected_delimiters().enumerate().find(|(_, delim)| match delim {
+                            tt::DelimiterKind::Parenthesis => kind == T![')'],
+                            tt::DelimiterKind::Brace => kind == T!['}'],
+                            tt::DelimiterKind::Bracket => kind == T![']'],
+                            tt::DelimiterKind::Invisible => false,
                         });
 
                     // Current token is a closing delimiter that we expect, fix up the closing span
