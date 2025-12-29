@@ -606,4 +606,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Info,
         summary: "New option `gcc.libgccjit-libs-dir` to specify which libgccjit.so to use per target.",
     },
+    ChangeInfo {
+        change_id: 148671,
+        severity: ChangeSeverity::Info,
+        summary: "New option `llvm.offload-clang-dir` to allow building an in-tree llvm offload and openmp runtime with an external clang.",
+    },
 ];
