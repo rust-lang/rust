@@ -1,4 +1,3 @@
-// skip-filecheck
 //@ test-mir-pass: AddRetag
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 // ignore-tidy-linelength
@@ -12,9 +11,15 @@ struct Test(i32);
 // EMIT_MIR retag.{impl#0}-foo_shr.SimplifyCfg-pre-optimizations.after.mir
 impl Test {
     // Make sure we run the pass on a method, not just on bare functions.
+    // CHECK-LABEL: fn {{.*}}::foo(
+    // CHECK: Retag([fn entry] _2);
+    // CHECK: _0 = &mut (*_{{[0-9]+}});
     fn foo<'x>(&self, x: &'x mut i32) -> &'x mut i32 {
         x
     }
+    // CHECK-LABEL: fn {{.*}}::foo_shr(
+    // CHECK: Retag([fn entry] _2);
+    // CHECK: Retag(_0);
     fn foo_shr<'x>(&self, x: &'x i32) -> &'x i32 {
         x
     }
@@ -29,6 +34,8 @@ impl Drop for Test {
 // EMIT_MIR retag.main.SimplifyCfg-pre-optimizations.after.mir
 // EMIT_MIR retag.main-{closure#0}.SimplifyCfg-pre-optimizations.after.mir
 pub fn main() {
+    // CHECK-LABEL: fn main(
+    // CHECK: Retag(_{{[0-9]+}});
     let mut x = 0;
     {
         let v = Test(0).foo(&mut x); // just making sure we do not panic when there is a tuple struct ctor
