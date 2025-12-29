@@ -14,6 +14,7 @@ use rustc_middle::ty::layout::FnAbiOf;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_session::config::OutputFilenames;
 use rustc_span::Symbol;
+use rustc_target::spec::PanicStrategy;
 
 use crate::constant::ConstantCx;
 use crate::debuginfo::{FunctionDebugContext, TypeDebugContext};
@@ -383,6 +384,11 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
 
                 fx.bcx.switch_to_block(failure);
                 fx.bcx.ins().nop();
+
+                if fx.tcx.sess.panic_strategy() == PanicStrategy::ImmediateAbort {
+                    fx.bcx.ins().trap(TrapCode::user(1 /* unreachable */).unwrap());
+                    continue;
+                }
 
                 match &**msg {
                     AssertKind::BoundsCheck { len, index } => {
@@ -1052,6 +1058,10 @@ pub(crate) fn codegen_panic_nounwind<'tcx>(
     msg_str: &str,
     span: Span,
 ) {
+    if fx.tcx.sess.panic_strategy() == PanicStrategy::ImmediateAbort {
+        fx.bcx.ins().trap(TrapCode::user(1 /* unreachable */).unwrap());
+    }
+
     let msg_ptr = crate::constant::pointer_for_anonymous_str(fx, msg_str);
     let msg_len = fx.bcx.ins().iconst(fx.pointer_type, i64::try_from(msg_str.len()).unwrap());
     let args = [msg_ptr, msg_len];

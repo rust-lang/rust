@@ -614,6 +614,8 @@ lint_missing_gpu_kernel_export_name = function with the "gpu-kernel" ABI has a m
     .note = mangled names make it hard to find the kernel, this is usually not intended
     .help = use `unsafe(no_mangle)` or `unsafe(export_name = "<name>")`
 
+lint_missing_panic_entrypoint = "diverging functions should usually have #[inline] or #[rustc_panic_entrypoint]"
+
 lint_mixed_script_confusables =
     the usage of Script Group `{$set}` in this crate consists solely of mixed script confusables
     .includes_note = the usage includes {$includes}

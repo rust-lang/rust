@@ -167,6 +167,7 @@ declare_passes! {
     mod remove_unneeded_drops : RemoveUnneededDrops;
     mod remove_zsts : RemoveZsts;
     mod required_consts : RequiredConstsVisitor;
+    mod panic_entrypoints : PanicEntrypoints;
     mod post_analysis_normalize : PostAnalysisNormalize;
     mod sanity_check : SanityCheck;
     // This pass is public to allow external drivers to perform MIR cleanup
@@ -698,7 +699,7 @@ pub(crate) fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'
             &check_null::CheckNull,
             &check_enums::CheckEnums,
             // Before inlining: trim down MIR with passes to reduce inlining work.
-
+            &panic_entrypoints::PanicEntrypoints,
             // Has to be done before inlining, otherwise actual call will be almost always inlined.
             // Also simple, so can just do first.
             &lower_slice_len::LowerSliceLenCalls,

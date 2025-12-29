@@ -2133,9 +2133,8 @@ impl<T, A: Allocator> Vec<T, A> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn swap_remove(&mut self, index: usize) -> T {
-        #[cold]
-        #[cfg_attr(not(panic = "immediate-abort"), inline(never))]
-        #[optimize(size)]
+        #[track_caller]
+        #[rustc_panic_entrypoint]
         fn assert_failed(index: usize, len: usize) -> ! {
             panic!("swap_remove index (is {index}) should be < len (is {len})");
         }
@@ -2214,10 +2213,8 @@ impl<T, A: Allocator> Vec<T, A> {
     #[track_caller]
     #[must_use = "if you don't need a reference to the value, use `Vec::insert` instead"]
     pub fn insert_mut(&mut self, index: usize, element: T) -> &mut T {
-        #[cold]
-        #[cfg_attr(not(panic = "immediate-abort"), inline(never))]
         #[track_caller]
-        #[optimize(size)]
+        #[rustc_panic_entrypoint]
         fn assert_failed(index: usize, len: usize) -> ! {
             panic!("insertion index (is {index}) should be <= len (is {len})");
         }
@@ -2278,10 +2275,8 @@ impl<T, A: Allocator> Vec<T, A> {
     #[track_caller]
     #[rustc_confusables("delete", "take")]
     pub fn remove(&mut self, index: usize) -> T {
-        #[cold]
-        #[cfg_attr(not(panic = "immediate-abort"), inline(never))]
         #[track_caller]
-        #[optimize(size)]
+        #[rustc_panic_entrypoint]
         fn assert_failed(index: usize, len: usize) -> ! {
             panic!("removal index (is {index}) should be < len (is {len})");
         }
@@ -2991,10 +2986,8 @@ impl<T, A: Allocator> Vec<T, A> {
     where
         A: Clone,
     {
-        #[cold]
-        #[cfg_attr(not(panic = "immediate-abort"), inline(never))]
         #[track_caller]
-        #[optimize(size)]
+        #[rustc_panic_entrypoint]
         fn assert_failed(at: usize, len: usize) -> ! {
             panic!("`at` split index (is {at}) should be <= len (is {len})");
         }

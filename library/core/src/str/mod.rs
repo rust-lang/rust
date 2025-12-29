@@ -60,26 +60,21 @@ pub use traits::FromStr;
 #[unstable(feature = "str_internals", issue = "none")]
 pub use validations::{next_code_point, utf8_char_width};
 
-#[inline(never)]
-#[cold]
 #[track_caller]
 #[rustc_allow_const_fn_unstable(const_eval_select)]
-#[cfg(not(panic = "immediate-abort"))]
+#[rustc_panic_entrypoint]
 const fn slice_error_fail(s: &str, begin: usize, end: usize) -> ! {
     crate::intrinsics::const_eval_select((s, begin, end), slice_error_fail_ct, slice_error_fail_rt)
 }
 
-#[cfg(panic = "immediate-abort")]
-const fn slice_error_fail(s: &str, begin: usize, end: usize) -> ! {
-    slice_error_fail_ct(s, begin, end)
-}
-
 #[track_caller]
+#[inline]
 const fn slice_error_fail_ct(_: &str, _: usize, _: usize) -> ! {
     panic!("failed to slice string");
 }
 
 #[track_caller]
+#[inline]
 fn slice_error_fail_rt(s: &str, begin: usize, end: usize) -> ! {
     const MAX_DISPLAY_LENGTH: usize = 256;
     let trunc_len = s.floor_char_boundary(MAX_DISPLAY_LENGTH);

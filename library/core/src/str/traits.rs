@@ -76,9 +76,8 @@ where
     }
 }
 
-#[inline(never)]
-#[cold]
 #[track_caller]
+#[rustc_panic_entrypoint]
 const fn str_index_overflow_fail() -> ! {
     panic!("attempted to index str up to maximum usize");
 }
