@@ -1841,6 +1841,13 @@ extern "C" bool LLVMRustIsTargetIntrinsic(unsigned ID) {
   return Intrinsic::isTargetIntrinsic(ID);
 }
 
+extern "C" const char *LLVMRustIntrinsicGetBaseName(unsigned ID,
+                                                    size_t *NameLength) {
+  auto baseName = Intrinsic::getBaseName(ID);
+  *NameLength = baseName.size();
+  return baseName.data();
+}
+
 // Statically assert that the fixed metadata kind IDs declared in
 // `metadata_kind.rs` match the ones actually used by LLVM.
 #define FIXED_MD_KIND(VARIANT, VALUE)                                          \
