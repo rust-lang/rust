@@ -169,7 +169,7 @@ pub fn pre_configure_attrs(sess: &Session, attrs: &[Attribute]) -> ast::AttrVec 
         .collect()
 }
 
-pub(crate) fn attr_into_trace(mut attr: Attribute, trace_name: Symbol) -> Attribute {
+pub fn attr_into_trace(mut attr: Attribute, trace_name: Symbol) -> Attribute {
     match &mut attr.kind {
         AttrKind::Normal(normal) => {
             let NormalAttr { item, tokens } = &mut **normal;

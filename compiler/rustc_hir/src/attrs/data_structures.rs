@@ -1021,6 +1021,9 @@ pub enum AttributeKind {
     /// `#[unsafe(force_target_feature(enable = "...")]`.
     TargetFeature { features: ThinVec<(Symbol, Span)>, attr_span: Span, was_forced: bool },
 
+    /// Represents `#[<test_trace>]`
+    TestTrace,
+
     /// Represents `#[thread_local]`
     ThreadLocal,
 

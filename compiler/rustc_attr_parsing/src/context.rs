@@ -82,6 +82,7 @@ use crate::attributes::stability::{
     BodyStabilityParser, ConstStabilityIndirectParser, ConstStabilityParser, StabilityParser,
 };
 use crate::attributes::test_attrs::{IgnoreParser, ShouldPanicParser};
+use crate::attributes::trace::TestTraceParser;
 use crate::attributes::traits::{
     AllowIncoherentImplParser, CoinductiveParser, DenyExplicitImplParser,
     DoNotImplementViaObjectParser, FundamentalParser, MarkerParser, ParenSugarParser,
@@ -291,6 +292,7 @@ attribute_parsers!(
         Single<WithoutArgs<RustcShouldNotBeCalledOnConstItems>>,
         Single<WithoutArgs<SpecializationTraitParser>>,
         Single<WithoutArgs<StdInternalSymbolParser>>,
+        Single<WithoutArgs<TestTraceParser>>,
         Single<WithoutArgs<ThreadLocalParser>>,
         Single<WithoutArgs<TrackCallerParser>>,
         Single<WithoutArgs<TypeConstParser>>,

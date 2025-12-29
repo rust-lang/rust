@@ -655,7 +655,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
     }
 
     fn print_attribute_inline(&mut self, attr: &ast::Attribute, is_inline: bool) -> bool {
-        if attr.has_name(sym::cfg_trace) || attr.has_name(sym::cfg_attr_trace) {
+        if attr.has_any_name(&[sym::cfg_trace, sym::cfg_attr_trace, sym::test_trace]) {
             // It's not a valid identifier, so avoid printing it
             // to keep the printed code reasonably parse-able.
             return false;

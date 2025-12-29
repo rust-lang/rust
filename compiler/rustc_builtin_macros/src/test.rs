@@ -9,6 +9,7 @@ use rustc_ast_pretty::pprust;
 use rustc_attr_parsing::AttributeParser;
 use rustc_errors::{Applicability, Diag, Level};
 use rustc_expand::base::*;
+use rustc_expand::config::attr_into_trace;
 use rustc_hir::Attribute;
 use rustc_hir::attrs::AttributeKind;
 use rustc_span::{ErrorGuaranteed, Ident, RemapPathScopeComponents, Span, Symbol, sym};
@@ -113,7 +114,7 @@ pub(crate) fn expand_test_or_bench(
     item: Annotatable,
     is_bench: bool,
 ) -> Vec<Annotatable> {
-    let (item, is_stmt) = match item {
+    let (mut item, is_stmt) = match item {
         Annotatable::Item(i) => (i, false),
         Annotatable::Stmt(box ast::Stmt { kind: ast::StmtKind::Item(i), .. }) => (i, true),
         other => {
@@ -135,6 +136,14 @@ pub(crate) fn expand_test_or_bench(
     if !cx.ecfg.should_test {
         return vec![];
     }
+
+    // Add a trace to the originating test function, so that we can
+    // check if attributes that have `#[test]` or `#[bench]` as a requirement
+    // actually are annotated with said attributes
+    item.attrs.push(attr_into_trace(
+        cx.attr_word(sym::test_trace, cx.with_def_site_ctxt(attr_sp)),
+        sym::test_trace,
+    ));
 
     if let Some(attr) = attr::find_by_name(&item.attrs, sym::naked) {
         cx.dcx().emit_err(errors::NakedFunctionTestingAttribute {

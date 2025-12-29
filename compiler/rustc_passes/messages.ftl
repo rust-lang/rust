@@ -475,6 +475,9 @@ passes_sanitize_attribute_not_allowed =
     .no_body = function has no body
     .help = sanitize attribute can be applied to a function (with body), impl block, or module
 
+passes_should_panic_must_be_applied_to_test_or_bench = `#[should_panic]` should only be applied to functions annotated with `#[test]` or `#[bench]`
+    .warn = {-passes_previously_accepted}
+
 passes_trait_impl_const_stability_mismatch = const stability on the impl does not match the const stability on the trait
 passes_trait_impl_const_stability_mismatch_impl_stable = this impl is (implicitly) stable...
 passes_trait_impl_const_stability_mismatch_impl_unstable = this impl is unstable...

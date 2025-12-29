@@ -1140,6 +1140,10 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         cfg_attr_trace, Normal, template!(Word /* irrelevant */), DuplicatesOk,
         EncodeCrossCrate::No
     ),
+    ungated!(
+        test_trace, Normal, template!(Word), ErrorFollowing,
+        EncodeCrossCrate::No
+    ),
 
     // ==========================================================================
     // Internal attributes, Diagnostics related:

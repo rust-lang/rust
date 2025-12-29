@@ -23,7 +23,7 @@ LL | #[unsafe(test)]
    = note: extraneous unsafe is not allowed in attributes
 
 error: expected identifier, found keyword `unsafe`
-  --> $DIR/extraneous-unsafe-attributes.rs:30:19
+  --> $DIR/extraneous-unsafe-attributes.rs:33:19
    |
 LL |     let _a = cfg!(unsafe(foo));
    |                   ^^^^^^ expected identifier, found keyword
@@ -34,7 +34,7 @@ LL |     let _a = cfg!(r#unsafe(foo));
    |                   ++
 
 error[E0537]: invalid predicate `r#unsafe`
-  --> $DIR/extraneous-unsafe-attributes.rs:30:19
+  --> $DIR/extraneous-unsafe-attributes.rs:33:19
    |
 LL |     let _a = cfg!(unsafe(foo));
    |                   ^^^^^^^^^^^
@@ -56,7 +56,7 @@ LL | #[unsafe(should_panic(expected = "test"))]
    = note: extraneous unsafe is not allowed in attributes
 
 error: `macro_use` is not an unsafe attribute
-  --> $DIR/extraneous-unsafe-attributes.rs:18:3
+  --> $DIR/extraneous-unsafe-attributes.rs:21:3
    |
 LL | #[unsafe(macro_use)]
    |   ^^^^^^ this is not an unsafe attribute
@@ -64,7 +64,7 @@ LL | #[unsafe(macro_use)]
    = note: extraneous unsafe is not allowed in attributes
 
 error: `macro_export` is not an unsafe attribute
-  --> $DIR/extraneous-unsafe-attributes.rs:20:7
+  --> $DIR/extraneous-unsafe-attributes.rs:23:7
    |
 LL |     #[unsafe(macro_export)]
    |       ^^^^^^ this is not an unsafe attribute
@@ -72,13 +72,21 @@ LL |     #[unsafe(macro_export)]
    = note: extraneous unsafe is not allowed in attributes
 
 error: `used` is not an unsafe attribute
-  --> $DIR/extraneous-unsafe-attributes.rs:26:3
+  --> $DIR/extraneous-unsafe-attributes.rs:29:3
    |
 LL | #[unsafe(used)]
    |   ^^^^^^ this is not an unsafe attribute
    |
    = note: extraneous unsafe is not allowed in attributes
 
-error: aborting due to 10 previous errors
+warning: `#[should_panic]` should only be applied to functions annotated with `#[test]` or `#[bench]`
+  --> $DIR/extraneous-unsafe-attributes.rs:15:1
+   |
+LL | #[unsafe(should_panic(expected = "test"))]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+
+error: aborting due to 10 previous errors; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0537`.
