@@ -89,6 +89,7 @@
 #![allow(internal_features)]
 #![allow(unused_features)]
 #![deny(ffi_unwind_calls)]
+#![warn(rustc::missing_panic_entrypoint)]
 #![warn(unreachable_pub)]
 // Do not check link redundancy on bootstrapping phase
 #![allow(rustdoc::redundant_explicit_links)]

@@ -1256,6 +1256,15 @@ impl<S: Stage> SingleAttributeParser<S> for RustcDefPathParser {
     }
 }
 
+pub(crate) struct RustcPanicEntrypointParser;
+
+impl<S: Stage> NoArgsAttributeParser<S> for RustcPanicEntrypointParser {
+    const PATH: &[Symbol] = &[sym::rustc_panic_entrypoint];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Fn)]);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcPanicEntrypoint;
+}
+
 pub(crate) struct RustcStrictCoherenceParser;
 
 impl<S: Stage> NoArgsAttributeParser<S> for RustcStrictCoherenceParser {

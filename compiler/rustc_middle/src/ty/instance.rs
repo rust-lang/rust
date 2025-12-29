@@ -343,6 +343,10 @@ impl<'tcx> InstanceKind<'tcx> {
             | InstanceKind::VTableShim(..) => true,
         }
     }
+
+    pub fn is_panic_entrypoint(&self, tcx: TyCtxt<'_>) -> bool {
+        tcx.codegen_instance_attrs(*self).flags.contains(CodegenFnAttrFlags::PANIC_ENTRYPOINT)
+    }
 }
 
 fn type_length<'tcx>(item: impl TypeVisitable<TyCtxt<'tcx>>) -> usize {

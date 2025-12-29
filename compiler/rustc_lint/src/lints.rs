@@ -3973,3 +3973,7 @@ pub(crate) struct MalformedOnConstAttrLint {
 #[diag("`Eq::assert_receiver_is_total_eq` should never be implemented by hand")]
 #[note("this method was used to add checks to the `Eq` derive macro")]
 pub(crate) struct EqInternalMethodImplemented;
+
+#[derive(LintDiagnostic)]
+#[diag("this function could have the attribute #[rustc_panic_entrypoint]")]
+pub(crate) struct MissingPanicEntrypoint;
