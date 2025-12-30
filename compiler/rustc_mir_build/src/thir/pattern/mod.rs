@@ -21,7 +21,6 @@ use rustc_middle::ty::adjustment::{PatAdjust, PatAdjustment};
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::{self, CanonicalUserTypeAnnotation, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
-use rustc_span::def_id::DefId;
 use rustc_span::{ErrorGuaranteed, Span};
 use tracing::{debug, instrument};
 
@@ -131,9 +130,8 @@ impl<'tcx> PatCtxt<'tcx> {
     fn lower_pattern_range_endpoint(
         &mut self,
         expr: Option<&'tcx hir::PatExpr<'tcx>>,
-        // Out-parameters collecting extra data to be reapplied by the caller
+        // Out-parameter collecting extra data to be reapplied by the caller
         ascriptions: &mut Vec<Ascription<'tcx>>,
-        expanded_consts: &mut Vec<DefId>,
     ) -> Result<Option<PatRangeBoundary<'tcx>>, ErrorGuaranteed> {
         let Some(expr) = expr else { return Ok(None) };
 
@@ -148,8 +146,10 @@ impl<'tcx> PatCtxt<'tcx> {
                     ascriptions.push(ascription);
                     kind = subpattern.kind;
                 }
-                PatKind::ExpandedConstant { def_id, subpattern } => {
-                    expanded_consts.push(def_id);
+                PatKind::ExpandedConstant { def_id: _, subpattern } => {
+                    // Expanded-constant nodes are currently only needed by
+                    // diagnostics that don't apply to range patterns, so we
+                    // can just discard them here.
                     kind = subpattern.kind;
                 }
                 _ => break,
@@ -227,10 +227,7 @@ impl<'tcx> PatCtxt<'tcx> {
 
         // Collect extra data while lowering the endpoints, to be reapplied later.
         let mut ascriptions = vec![];
-        let mut expanded_consts = vec![];
-
-        let mut lower_endpoint =
-            |expr| self.lower_pattern_range_endpoint(expr, &mut ascriptions, &mut expanded_consts);
+        let mut lower_endpoint = |expr| self.lower_pattern_range_endpoint(expr, &mut ascriptions);
 
         let lo = lower_endpoint(lo_expr)?.unwrap_or(PatRangeBoundary::NegInfinity);
         let hi = lower_endpoint(hi_expr)?.unwrap_or(PatRangeBoundary::PosInfinity);
@@ -282,10 +279,11 @@ impl<'tcx> PatCtxt<'tcx> {
             let subpattern = Box::new(Pat { span, ty, kind });
             kind = PatKind::AscribeUserType { ascription, subpattern };
         }
-        for def_id in expanded_consts {
-            let subpattern = Box::new(Pat { span, ty, kind });
-            kind = PatKind::ExpandedConstant { def_id, subpattern };
-        }
+        // `PatKind::ExpandedConstant` wrappers from range endpoints used to
+        // also be preserved here, but that was only needed for unsafeck of
+        // inline `const { .. }` patterns, which were removed by
+        // <https://github.com/rust-lang/rust/pull/138492>.
+
         Ok(kind)
     }
 
