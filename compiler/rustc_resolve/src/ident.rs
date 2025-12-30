@@ -543,7 +543,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     ) {
                         Ok((Some(ext), _)) => {
                             if ext.helper_attrs.contains(&ident.name) {
-                                let binding = self.arenas.new_pub_res_binding(
+                                let binding = self.arenas.new_pub_def_decl(
                                     Res::NonMacroAttr(NonMacroAttrKind::DeriveHelperCompat),
                                     derive.span,
                                     LocalExpnId::ROOT,
@@ -559,8 +559,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 result
             }
             Scope::MacroRules(macro_rules_scope) => match macro_rules_scope.get() {
-                MacroRulesScope::Def(macro_rules_binding) if ident == macro_rules_binding.ident => {
-                    Ok(macro_rules_binding.binding)
+                MacroRulesScope::Def(macro_rules_def) if ident == macro_rules_def.ident => {
+                    Ok(macro_rules_def.decl)
                 }
                 MacroRulesScope::Invocation(_) => Err(Determinacy::Undetermined),
                 _ => Err(Determinacy::Determined),
@@ -671,7 +671,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     self.graph_root.unexpanded_invocations.borrow().is_empty(),
                 )),
             },
-            Scope::BuiltinAttrs => match self.builtin_attrs_bindings.get(&ident.name) {
+            Scope::BuiltinAttrs => match self.builtin_attr_decls.get(&ident.name) {
                 Some(binding) => Ok(*binding),
                 None => Err(Determinacy::Determined),
             },
@@ -689,7 +689,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     None => Err(Determinacy::Determined),
                 }
             }
-            Scope::ToolPrelude => match self.registered_tool_bindings.get(&ident) {
+            Scope::ToolPrelude => match self.registered_tool_decls.get(&ident) {
                 Some(binding) => Ok(*binding),
                 None => Err(Determinacy::Determined),
             },
@@ -713,7 +713,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
                 result
             }
-            Scope::BuiltinTypes => match self.builtin_types_bindings.get(&ident.name) {
+            Scope::BuiltinTypes => match self.builtin_type_decls.get(&ident.name) {
                 Some(binding) => {
                     if matches!(ident.name, sym::f16)
                         && !self.tcx.features().f16()
@@ -959,7 +959,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 if ns == TypeNS {
                     if ident.name == kw::Crate || ident.name == kw::DollarCrate {
                         let module = self.resolve_crate_root(ident);
-                        return Ok(module.self_binding.unwrap());
+                        return Ok(module.self_decl.unwrap());
                     } else if ident.name == kw::Super || ident.name == kw::SelfLower {
                         // FIXME: Implement these with renaming requirements so that e.g.
                         // `use super;` doesn't work, but `use super as name;` does.
@@ -1287,9 +1287,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 unreachable!();
             };
             if source != target {
-                if bindings.iter().all(|binding| binding.get().binding().is_none()) {
+                if bindings.iter().all(|binding| binding.get().decl().is_none()) {
                     return true;
-                } else if bindings[ns].get().binding().is_none() && binding.is_some() {
+                } else if bindings[ns].get().decl().is_none() && binding.is_some() {
                     return true;
                 }
             }

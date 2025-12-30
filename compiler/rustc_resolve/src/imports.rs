@@ -39,19 +39,20 @@ use crate::{
 
 type Res = def::Res<NodeId>;
 
-/// A [`Decl`] in the process of being resolved.
+/// A potential import declaration in the process of being planted into a module.
+/// Also used for lazily planting names from `--extern` flags to extern prelude.
 #[derive(Clone, Copy, Default, PartialEq)]
-pub(crate) enum PendingBinding<'ra> {
+pub(crate) enum PendingDecl<'ra> {
     Ready(Option<Decl<'ra>>),
     #[default]
     Pending,
 }
 
-impl<'ra> PendingBinding<'ra> {
-    pub(crate) fn binding(self) -> Option<Decl<'ra>> {
+impl<'ra> PendingDecl<'ra> {
+    pub(crate) fn decl(self) -> Option<Decl<'ra>> {
         match self {
-            PendingBinding::Ready(binding) => binding,
-            PendingBinding::Pending => None,
+            PendingDecl::Ready(decl) => decl,
+            PendingDecl::Pending => None,
         }
     }
 }
@@ -66,7 +67,7 @@ pub(crate) enum ImportKind<'ra> {
         /// It will directly use `source` when the format is `use prefix::source`.
         target: Ident,
         /// Bindings introduced by the import.
-        bindings: PerNS<CmCell<PendingBinding<'ra>>>,
+        bindings: PerNS<CmCell<PendingDecl<'ra>>>,
         /// `true` for `...::{self [as target]}` imports, `false` otherwise.
         type_ns_only: bool,
         /// Did this import result from a nested import? ie. `use foo::{bar, baz};`
@@ -116,7 +117,7 @@ impl<'ra> std::fmt::Debug for ImportKind<'ra> {
                 // Ignore the nested bindings to avoid an infinite loop while printing.
                 .field(
                     "bindings",
-                    &bindings.clone().map(|b| b.into_inner().binding().map(|_| format_args!(".."))),
+                    &bindings.clone().map(|b| b.into_inner().decl().map(|_| format_args!(".."))),
                 )
                 .field("type_ns_only", type_ns_only)
                 .field("nested", nested)
@@ -282,10 +283,10 @@ struct UnresolvedImportError {
 
 // Reexports of the form `pub use foo as bar;` where `foo` is `extern crate foo;`
 // are permitted for backward-compatibility under a deprecation lint.
-fn pub_use_of_private_extern_crate_hack(import: Import<'_>, binding: Decl<'_>) -> Option<NodeId> {
-    match (&import.kind, &binding.kind) {
-        (ImportKind::Single { .. }, DeclKind::Import { import: binding_import, .. })
-            if let ImportKind::ExternCrate { id, .. } = binding_import.kind
+fn pub_use_of_private_extern_crate_hack(import: Import<'_>, decl: Decl<'_>) -> Option<NodeId> {
+    match (&import.kind, &decl.kind) {
+        (ImportKind::Single { .. }, DeclKind::Import { import: decl_import, .. })
+            if let ImportKind::ExternCrate { id, .. } = decl_import.kind
                 && import.vis.is_public() =>
         {
             Some(id)
@@ -314,7 +315,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             max_vis.set_unchecked(Some(vis.expect_local()))
         }
 
-        self.arenas.alloc_name_binding(DeclData {
+        self.arenas.alloc_decl(DeclData {
             kind: DeclKind::Import { binding, import },
             ambiguity: None,
             warn_ambiguity: false,
@@ -335,7 +336,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     ) -> Result<(), Decl<'ra>> {
         let res = binding.res();
         self.check_reserved_macro_name(ident, res);
-        self.set_binding_parent_module(binding, module);
+        self.set_decl_parent_module(binding, module);
         // Even if underscore names cannot be looked up, we still need to add them to modules,
         // because they can be fetched by glob imports from those modules, and bring traits
         // into scope both directly and through glob imports.
@@ -364,7 +365,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             // they have the same resolution or not.
                             resolution.glob_binding = Some(glob_binding);
                         } else if res != old_glob_binding.res() {
-                            resolution.glob_binding = Some(this.new_ambiguity_binding(
+                            resolution.glob_binding = Some(this.new_decl_with_ambiguity(
                                 old_glob_binding,
                                 glob_binding,
                                 warn_ambiguity,
@@ -374,7 +375,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             resolution.glob_binding = Some(glob_binding);
                         } else if binding.is_ambiguity_recursive() {
                             resolution.glob_binding =
-                                Some(this.new_warn_ambiguity_binding(glob_binding));
+                                Some(this.new_decl_with_warn_ambiguity(glob_binding));
                         }
                     }
                     (old_glob @ true, false) | (old_glob @ false, true) => {
@@ -384,7 +385,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         if let Some(old_glob_binding) = resolution.glob_binding {
                             assert!(old_glob_binding.is_glob_import());
                             if glob_binding.res() != old_glob_binding.res() {
-                                resolution.glob_binding = Some(this.new_ambiguity_binding(
+                                resolution.glob_binding = Some(this.new_decl_with_ambiguity(
                                     old_glob_binding,
                                     glob_binding,
                                     false,
@@ -412,20 +413,20 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         })
     }
 
-    fn new_ambiguity_binding(
+    fn new_decl_with_ambiguity(
         &self,
-        primary_binding: Decl<'ra>,
-        secondary_binding: Decl<'ra>,
+        primary_decl: Decl<'ra>,
+        secondary_decl: Decl<'ra>,
         warn_ambiguity: bool,
     ) -> Decl<'ra> {
-        let ambiguity = Some(secondary_binding);
-        let data = DeclData { ambiguity, warn_ambiguity, ..*primary_binding };
-        self.arenas.alloc_name_binding(data)
+        let ambiguity = Some(secondary_decl);
+        let data = DeclData { ambiguity, warn_ambiguity, ..*primary_decl };
+        self.arenas.alloc_decl(data)
     }
 
-    fn new_warn_ambiguity_binding(&self, binding: Decl<'ra>) -> Decl<'ra> {
-        assert!(binding.is_ambiguity_recursive());
-        self.arenas.alloc_name_binding(DeclData { warn_ambiguity: true, ..*binding })
+    fn new_decl_with_warn_ambiguity(&self, decl: Decl<'ra>) -> Decl<'ra> {
+        assert!(decl.is_ambiguity_recursive());
+        self.arenas.alloc_decl(DeclData { warn_ambiguity: true, ..*decl })
     }
 
     // Use `f` to mutate the resolution of the name in the module.
@@ -488,16 +489,15 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     // or indeterminate resolution, also mark such failed imports as used to avoid duplicate diagnostics.
     fn import_dummy_binding(&mut self, import: Import<'ra>, is_indeterminate: bool) {
         if let ImportKind::Single { target, ref bindings, .. } = import.kind {
-            if !(is_indeterminate
-                || bindings.iter().all(|binding| binding.get().binding().is_none()))
+            if !(is_indeterminate || bindings.iter().all(|binding| binding.get().decl().is_none()))
             {
                 return; // Has resolution, do not create the dummy binding
             }
-            let dummy_binding = self.dummy_binding;
-            let dummy_binding = self.import(dummy_binding, import);
+            let dummy_decl = self.dummy_decl;
+            let dummy_decl = self.import(dummy_decl, import);
             self.per_ns(|this, ns| {
                 let module = import.parent_scope.module;
-                let _ = this.try_define_local(module, target, ns, dummy_binding, false);
+                let _ = this.try_define_local(module, target, ns, dummy_decl, false);
                 // Don't remove underscores from `single_imports`, they were never added.
                 if target.name != kw::Underscore {
                     let key = BindingKey::new(target, ns);
@@ -506,7 +506,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     })
                 }
             });
-            self.record_use(target, dummy_binding, Used::Other);
+            self.record_use(target, dummy_decl, Used::Other);
         } else if import.imported_module.get().is_none() {
             self.import_use_map.insert(import, Used::Other);
             if let Some(id) = import.id() {
@@ -577,7 +577,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             if let ImportKind::Single { source, ref bindings, .. } = import.kind
                 && source.name == kw::SelfLower
                 // Silence `unresolved import` error if E0429 is already emitted
-                && let PendingBinding::Ready(None) = bindings.value_ns.get()
+                && let PendingDecl::Ready(None) = bindings.value_ns.get()
             {
                 continue;
             }
@@ -851,7 +851,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let mut indeterminate_count = 0;
         self.per_ns_cm(|this, ns| {
             if !type_ns_only || ns == TypeNS {
-                if bindings[ns].get() != PendingBinding::Pending {
+                if bindings[ns].get() != PendingDecl::Pending {
                     return;
                 };
                 let binding_result = this.reborrow().maybe_resolve_ident_in_module(
@@ -883,7 +883,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             ns,
                             imported_binding,
                         );
-                        PendingBinding::Ready(Some(imported_binding))
+                        PendingDecl::Ready(Some(imported_binding))
                     }
                     Err(Determinacy::Determined) => {
                         // Don't remove underscores from `single_imports`, they were never added.
@@ -898,11 +898,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                 },
                             );
                         }
-                        PendingBinding::Ready(None)
+                        PendingDecl::Ready(None)
                     }
                     Err(Determinacy::Undetermined) => {
                         indeterminate_count += 1;
-                        PendingBinding::Pending
+                        PendingDecl::Pending
                     }
                 };
                 bindings[ns].set_unchecked(binding);
@@ -918,7 +918,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     /// consolidate multiple unresolved import errors into a single diagnostic.
     fn finalize_import(&mut self, import: Import<'ra>) -> Option<UnresolvedImportError> {
         let ignore_binding = match &import.kind {
-            ImportKind::Single { bindings, .. } => bindings[TypeNS].get().binding(),
+            ImportKind::Single { bindings, .. } => bindings[TypeNS].get().decl(),
             _ => None,
         };
         let ambiguity_errors_len =
@@ -1113,14 +1113,14 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     ns,
                     &import.parent_scope,
                     Some(Finalize { report_private: false, ..finalize }),
-                    bindings[ns].get().binding(),
+                    bindings[ns].get().decl(),
                     Some(import),
                 );
 
                 match binding {
                     Ok(binding) => {
                         // Consistency checks, analogous to `finalize_macro_resolutions`.
-                        let initial_res = bindings[ns].get().binding().map(|binding| {
+                        let initial_res = bindings[ns].get().decl().map(|binding| {
                             let initial_binding = binding.import_source();
                             all_ns_err = false;
                             if target.name == kw::Underscore
@@ -1287,7 +1287,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let mut any_successful_reexport = false;
         let mut crate_private_reexport = false;
         self.per_ns(|this, ns| {
-            let Some(binding) = bindings[ns].get().binding().map(|b| b.import_source()) else {
+            let Some(binding) = bindings[ns].get().decl().map(|b| b.import_source()) else {
                 return;
             };
 
@@ -1362,7 +1362,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             let mut full_path = import.module_path.clone();
             full_path.push(Segment::from_ident(ident));
             self.per_ns(|this, ns| {
-                if let Some(binding) = bindings[ns].get().binding().map(|b| b.import_source()) {
+                if let Some(binding) = bindings[ns].get().decl().map(|b| b.import_source()) {
                     this.lint_if_path_starts_with_module(finalize, &full_path, Some(binding));
                 }
             });
@@ -1372,7 +1372,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         // this may resolve to either a value or a type, but for documentation
         // purposes it's good enough to just favor one over the other.
         self.per_ns(|this, ns| {
-            if let Some(binding) = bindings[ns].get().binding().map(|b| b.import_source()) {
+            if let Some(binding) = bindings[ns].get().decl().map(|b| b.import_source()) {
                 this.import_res_map.entry(import_id).or_default()[ns] = Some(binding.res());
             }
         });
@@ -1410,7 +1410,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let mut is_redundant = true;
         let mut redundant_span = PerNS { value_ns: None, type_ns: None, macro_ns: None };
         self.per_ns(|this, ns| {
-            let binding = bindings[ns].get().binding().map(|b| b.import_source());
+            let binding = bindings[ns].get().decl().map(|b| b.import_source());
             if is_redundant && let Some(binding) = binding {
                 if binding.res() == Res::Err {
                     return;
@@ -1422,7 +1422,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     &import.parent_scope,
                     None,
                     false,
-                    bindings[ns].get().binding(),
+                    bindings[ns].get().decl(),
                     None,
                 ) {
                     Ok(other_binding) => {

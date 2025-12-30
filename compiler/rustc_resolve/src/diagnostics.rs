@@ -1196,7 +1196,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 }
                 Scope::MacroRules(macro_rules_scope) => {
                     if let MacroRulesScope::Def(macro_rules_binding) = macro_rules_scope.get() {
-                        let res = macro_rules_binding.binding.res();
+                        let res = macro_rules_binding.decl.res();
                         if filter_fn(res) {
                             suggestions.push(TypoSuggestion::typo_from_ident(
                                 macro_rules_binding.ident,
@@ -1969,7 +1969,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         true
     }
 
-    fn binding_description(&self, b: Decl<'_>, ident: Ident, scope: Scope<'_>) -> String {
+    fn decl_description(&self, b: Decl<'_>, ident: Ident, scope: Scope<'_>) -> String {
         let res = b.res();
         if b.span.is_dummy() || !self.tcx.sess.source_map().is_span_accessible(b.span) {
             let (built_in, from) = match scope {
@@ -2005,7 +2005,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 && self
                     .extern_prelude
                     .get(&Macros20NormalizedIdent::new(ident))
-                    .is_some_and(|entry| entry.item_binding.map(|(b, _)| b) == Some(b1))
+                    .is_some_and(|entry| entry.item_decl.map(|(b, _)| b) == Some(b1))
         };
         let (b1, b2, scope1, scope2, swapped) = if b2.span.is_dummy() && !b1.span.is_dummy() {
             // We have to print the span-less alternative first, otherwise formatting looks bad.
@@ -2015,7 +2015,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         };
 
         let could_refer_to = |b: Decl<'_>, scope: Scope<'ra>, also: &str| {
-            let what = self.binding_description(b, ident, scope);
+            let what = self.decl_description(b, ident, scope);
             let note_msg = format!("`{ident}` could{also} refer to {what}");
 
             let thing = b.res().descr();
@@ -2073,9 +2073,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
     /// If the binding refers to a tuple struct constructor with fields,
     /// returns the span of its fields.
-    fn ctor_fields_span(&self, binding: Decl<'_>) -> Option<Span> {
+    fn ctor_fields_span(&self, decl: Decl<'_>) -> Option<Span> {
         let DeclKind::Def(Res::Def(DefKind::Ctor(CtorOf::Struct, CtorKind::Fn), ctor_def_id)) =
-            binding.kind
+            decl.kind
         else {
             return None;
         };

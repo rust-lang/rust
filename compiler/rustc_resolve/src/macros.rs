@@ -49,7 +49,7 @@ type Res = def::Res<NodeId>;
 /// Not modularized, can shadow previous `macro_rules` bindings, etc.
 #[derive(Debug)]
 pub(crate) struct MacroRulesDecl<'ra> {
-    pub(crate) binding: Decl<'ra>,
+    pub(crate) decl: Decl<'ra>,
     /// `macro_rules` scope into which the `macro_rules` item was planted.
     pub(crate) parent_macro_rules_scope: MacroRulesScopeRef<'ra>,
     pub(crate) ident: Ident,
@@ -431,8 +431,7 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
             .iter()
             .map(|(_, ident)| {
                 let res = Res::NonMacroAttr(NonMacroAttrKind::DeriveHelper);
-                let binding = self.arenas.new_pub_res_binding(res, ident.span, expn_id);
-                (*ident, binding)
+                (*ident, self.arenas.new_pub_def_decl(res, ident.span, expn_id))
             })
             .collect();
         self.helper_attrs.insert(expn_id, helper_attrs);
@@ -1062,18 +1061,17 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
     fn prohibit_imported_non_macro_attrs(
         &self,
-        binding: Option<Decl<'ra>>,
+        decl: Option<Decl<'ra>>,
         res: Option<Res>,
         span: Span,
     ) {
         if let Some(Res::NonMacroAttr(kind)) = res {
-            if kind != NonMacroAttrKind::Tool && binding.is_none_or(|b| b.is_import()) {
-                let binding_span = binding.map(|binding| binding.span);
+            if kind != NonMacroAttrKind::Tool && decl.is_none_or(|b| b.is_import()) {
                 self.dcx().emit_err(errors::CannotUseThroughAnImport {
                     span,
                     article: kind.article(),
                     descr: kind.descr(),
-                    binding_span,
+                    binding_span: decl.map(|d| d.span),
                 });
             }
         }
@@ -1084,12 +1082,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         path: &ast::Path,
         parent_scope: &ParentScope<'ra>,
         invoc_in_mod_inert_attr: Option<(LocalDefId, NodeId)>,
-        binding: Option<Decl<'ra>>,
+        decl: Option<Decl<'ra>>,
     ) {
         if let Some((mod_def_id, node_id)) = invoc_in_mod_inert_attr
-            && let Some(binding) = binding
+            && let Some(decl) = decl
             // This is a `macro_rules` itself, not some import.
-            && let DeclKind::Def(res) = binding.kind
+            && let DeclKind::Def(res) = decl.kind
             && let Res::Def(DefKind::Macro(kinds), def_id) = res
             && kinds.contains(MacroKinds::BANG)
             // And the `macro_rules` is defined inside the attribute's module,

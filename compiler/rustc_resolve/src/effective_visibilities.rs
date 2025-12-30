@@ -42,8 +42,8 @@ impl Resolver<'_, '_> {
         self.get_nearest_non_block_module(def_id.to_def_id()).nearest_parent_mod().expect_local()
     }
 
-    fn private_vis_import(&self, binding: Decl<'_>) -> Visibility {
-        let DeclKind::Import { import, .. } = binding.kind else { unreachable!() };
+    fn private_vis_import(&self, decl: Decl<'_>) -> Visibility {
+        let DeclKind::Import { import, .. } = decl.kind else { unreachable!() };
         Visibility::Restricted(
             import
                 .id()
@@ -94,14 +94,14 @@ impl<'a, 'ra, 'tcx> EffectiveVisibilitiesVisitor<'a, 'ra, 'tcx> {
         // `EffectiveVisibilitiesVisitor` pass, because we have more detailed binding-based
         // information, but are used by later passes. Effective visibility of an import def id
         // is the maximum value among visibilities of bindings corresponding to that def id.
-        for (binding, eff_vis) in visitor.import_effective_visibilities.iter() {
-            let DeclKind::Import { import, .. } = binding.kind else { unreachable!() };
-            if !binding.is_ambiguity_recursive() {
+        for (decl, eff_vis) in visitor.import_effective_visibilities.iter() {
+            let DeclKind::Import { import, .. } = decl.kind else { unreachable!() };
+            if !decl.is_ambiguity_recursive() {
                 if let Some(node_id) = import.id() {
                     r.effective_visibilities.update_eff_vis(r.local_def_id(node_id), eff_vis, r.tcx)
                 }
-            } else if binding.ambiguity.is_some() && eff_vis.is_public_at_level(Level::Reexported) {
-                exported_ambiguities.insert(*binding);
+            } else if decl.ambiguity.is_some() && eff_vis.is_public_at_level(Level::Reexported) {
+                exported_ambiguities.insert(*decl);
             }
         }
 
@@ -188,15 +188,15 @@ impl<'a, 'ra, 'tcx> EffectiveVisibilitiesVisitor<'a, 'ra, 'tcx> {
         }
     }
 
-    fn update_import(&mut self, binding: Decl<'ra>, parent_id: ParentId<'ra>) {
-        let nominal_vis = binding.vis.expect_local();
+    fn update_import(&mut self, decl: Decl<'ra>, parent_id: ParentId<'ra>) {
+        let nominal_vis = decl.vis.expect_local();
         let Some(cheap_private_vis) = self.may_update(nominal_vis, parent_id) else { return };
         let inherited_eff_vis = self.effective_vis_or_private(parent_id);
         let tcx = self.r.tcx;
         self.changed |= self.import_effective_visibilities.update(
-            binding,
+            decl,
             Some(nominal_vis),
-            || cheap_private_vis.unwrap_or_else(|| self.r.private_vis_import(binding)),
+            || cheap_private_vis.unwrap_or_else(|| self.r.private_vis_import(decl)),
             inherited_eff_vis,
             parent_id.level(),
             tcx,
