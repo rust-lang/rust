@@ -1,12 +1,14 @@
 use std::cmp::Ordering;
 
 use rustc_data_structures::fx::FxIndexMap;
-use rustc_middle::mir::{BinOp, Place};
+use rustc_middle::mir::Place;
 use rustc_middle::span_bug;
 use tracing::debug;
 
 use crate::builder::Builder;
-use crate::builder::matches::{Candidate, PatConstKind, Test, TestBranch, TestKind, TestableCase};
+use crate::builder::matches::{
+    Candidate, PatConstKind, SliceLenOp, Test, TestBranch, TestKind, TestableCase,
+};
 
 /// Output of [`Builder::partition_candidates_into_buckets`].
 pub(crate) struct PartitionedCandidates<'tcx, 'b, 'c> {
@@ -212,66 +214,71 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 Some(if value { TestBranch::Success } else { TestBranch::Failure })
             }
 
+            // Determine how the proposed slice-length test interacts with the
+            // slice pattern we're currently looking at.
+            //
+            // Keep in mind the invariant that a case is not allowed to succeed
+            // on multiple arms of the same test. For example, even though the
+            // test `len == 4` logically implies `len >= 4` on its success arm,
+            // the case `len >= 4` could also succeed on the test's failure arm,
+            // so it can't be included in the success bucket or failure bucket.
             (
-                &TestKind::Len { len: test_len, op: BinOp::Eq },
-                &TestableCase::Slice { len, variable_length },
+                &TestKind::SliceLen { len: test_len, op: SliceLenOp::Equal },
+                &TestableCase::Slice { len: pat_len, op: pat_op },
             ) => {
-                match (test_len.cmp(&len), variable_length) {
-                    (Ordering::Equal, false) => {
-                        // on true, min_len = len = $actual_length,
-                        // on false, len != $actual_length
+                match (test_len.cmp(&pat_len), pat_op) {
+                    (Ordering::Equal, SliceLenOp::Equal) => {
+                        // E.g. test is `len == 4` and pattern is `len == 4`.
+                        // Pattern is fully matched on the success arm.
                         fully_matched = true;
                         Some(TestBranch::Success)
                     }
                     (Ordering::Less, _) => {
-                        // test_len < pat_len. If $actual_len = test_len,
-                        // then $actual_len < pat_len and we don't have
-                        // enough elements.
+                        // E.g. test is `len == 4` and pattern is `len == 5` or `len >= 5`.
+                        // Pattern can only succeed on the failure arm, but isn't fully matched.
                         fully_matched = false;
                         Some(TestBranch::Failure)
                     }
-                    (Ordering::Equal | Ordering::Greater, true) => {
-                        // This can match both if $actual_len = test_len >= pat_len,
-                        // and if $actual_len > test_len. We can't advance.
+                    (Ordering::Equal | Ordering::Greater, SliceLenOp::GreaterOrEqual) => {
+                        // E.g. test is `len == 4` and pattern is `len >= 4` or `len >= 3`.
+                        // Pattern could succeed on both arms, so it can't be bucketed.
                         fully_matched = false;
                         None
                     }
-                    (Ordering::Greater, false) => {
-                        // test_len != pat_len, so if $actual_len = test_len, then
-                        // $actual_len != pat_len.
+                    (Ordering::Greater, SliceLenOp::Equal) => {
+                        // E.g. test is `len == 4` and pattern is `len == 3`.
+                        // Pattern can only succeed on the failure arm, but isn't fully matched.
                         fully_matched = false;
                         Some(TestBranch::Failure)
                     }
                 }
             }
             (
-                &TestKind::Len { len: test_len, op: BinOp::Ge },
-                &TestableCase::Slice { len, variable_length },
+                &TestKind::SliceLen { len: test_len, op: SliceLenOp::GreaterOrEqual },
+                &TestableCase::Slice { len: pat_len, op: pat_op },
             ) => {
-                // the test is `$actual_len >= test_len`
-                match (test_len.cmp(&len), variable_length) {
-                    (Ordering::Equal, true) => {
-                        // $actual_len >= test_len = pat_len,
-                        // so we can match.
+                match (test_len.cmp(&pat_len), pat_op) {
+                    (Ordering::Equal, SliceLenOp::GreaterOrEqual) => {
+                        // E.g. test is `len >= 4` and pattern is `len >= 4`.
+                        // Pattern is fully matched on the success arm.
                         fully_matched = true;
                         Some(TestBranch::Success)
                     }
-                    (Ordering::Less, _) | (Ordering::Equal, false) => {
-                        // test_len <= pat_len. If $actual_len < test_len,
-                        // then it is also < pat_len, so the test passing is
-                        // necessary (but insufficient).
+                    (Ordering::Less, _) | (Ordering::Equal, SliceLenOp::Equal) => {
+                        // E.g. test is `len >= 4` and pattern is `len == 5` or `len >= 5` or `len == 4`.
+                        // Pattern can only succeed on the success arm, but isn't fully matched.
                         fully_matched = false;
                         Some(TestBranch::Success)
                     }
-                    (Ordering::Greater, false) => {
-                        // test_len > pat_len. If $actual_len >= test_len > pat_len,
-                        // then we know we won't have a match.
+                    (Ordering::Greater, SliceLenOp::Equal) => {
+                        // E.g. test is `len >= 4` and pattern is `len == 3`.
+                        // Pattern can only succeed on the failure arm, but isn't fully matched.
                         fully_matched = false;
                         Some(TestBranch::Failure)
                     }
-                    (Ordering::Greater, true) => {
-                        // test_len < pat_len, and is therefore less
-                        // strict. This can still go both ways.
+                    (Ordering::Greater, SliceLenOp::GreaterOrEqual) => {
+                        // E.g. test is `len >= 4` and pattern is `len >= 3`.
+                        // Pattern could succeed on both arms, so it can't be bucketed.
                         fully_matched = false;
                         None
                     }
@@ -338,7 +345,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 TestKind::Switch { .. }
                 | TestKind::SwitchInt { .. }
                 | TestKind::If
-                | TestKind::Len { .. }
+                | TestKind::SliceLen { .. }
                 | TestKind::Range { .. }
                 | TestKind::Eq { .. }
                 | TestKind::Deref { .. },
