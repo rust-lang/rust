@@ -9,5 +9,4 @@ pub fn main() {
     let _: ConstBytes<b"AAA"> = ConstBytes::<b"BBB">;
     //~^ ERROR mismatched types
     //~| ERROR mismatched types
-    //~| ERROR mismatched types
 }
