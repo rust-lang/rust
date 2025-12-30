@@ -1004,6 +1004,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             err_extend,
         );
 
+        if let Err(e) = self.lowerer().check_param_res_if_mcg_for_instantiate_value_path(res, span)
+        {
+            return (Ty::new_error(self.tcx, e), res);
+        }
+
         if let Res::Local(hid) = res {
             let ty = self.local_ty(span, hid);
             let ty = self.normalize(span, ty);

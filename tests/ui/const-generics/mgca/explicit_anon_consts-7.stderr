@@ -1,0 +1,8 @@
+error: generic parameters may not be used in const operations
+  --> $DIR/explicit_anon_consts-7.rs:8:25
+   |
+LL |     let a: [(); const { N }] = todo!();
+   |                         ^
+
+error: aborting due to 1 previous error
+
