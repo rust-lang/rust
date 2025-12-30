@@ -35,12 +35,10 @@
 //!
 //! Data flows like this:
 //! 1) during MIR typeck, record liveness data needed later: live region variances, as well as the
-//!    usual NLL liveness data (just computed on more locals). That's the [PoloniusLivenessContext].
-//! 2) once that is done, variance data is transferred, and the NLL region liveness is converted to
-//!    the polonius shape. That's the main [PoloniusContext].
-//! 3) during region inference, that data and the NLL outlives constraints are used to create the
+//!    usual NLL liveness data (just computed on more locals). That's the main [PoloniusContext].
+//! 2) during region inference, that data and the NLL outlives constraints are used to create the
 //!    localized outlives constraints, as described above. That's the [PoloniusDiagnosticsContext].
-//! 4) transfer this back to the main borrowck procedure: it handles computing errors and
+//! 3) transfer this back to the main borrowck procedure: it handles computing errors and
 //!    diagnostics, debugging and MIR dumping concerns.
 
 mod constraints;
@@ -66,9 +64,9 @@ use crate::{BorrowSet, RegionInferenceContext};
 pub(crate) type LiveLoans = SparseBitMatrix<PointIndex, BorrowIndex>;
 
 /// This struct holds the liveness data created during MIR typeck, and which will be used later in
-/// the process, to compute the polonius localized constraints.
+/// the process, to lazily compute the polonius localized constraints.
 #[derive(Default)]
-pub(crate) struct PoloniusLivenessContext {
+pub(crate) struct PoloniusContext {
     /// The expected edge direction per live region: the kind of directed edge we'll create as
     /// liveness constraints depends on the variance of types with respect to each contained region.
     live_region_variances: BTreeMap<RegionVid, ConstraintDirection>,
@@ -78,13 +76,6 @@ pub(crate) struct PoloniusLivenessContext {
     /// currently has more boring locals than NLLs so we record the latter to use in errors and
     /// diagnostics, to focus on the locals we consider relevant and match NLL diagnostics.
     pub(crate) boring_nll_locals: FxHashSet<Local>,
-}
-
-/// This struct holds the data needed to create the Polonius localized constraints. Its data is
-/// transferred and converted from the [PoloniusLivenessContext] at the end of MIR typeck.
-pub(crate) struct PoloniusContext {
-    /// The liveness data we recorded during MIR typeck.
-    liveness_context: PoloniusLivenessContext,
 }
 
 /// This struct holds the data needed by the borrowck error computation and diagnostics. Its data is
@@ -112,12 +103,6 @@ enum ConstraintDirection {
 }
 
 impl PoloniusContext {
-    pub(crate) fn create_from_liveness(
-        liveness_context: PoloniusLivenessContext,
-    ) -> PoloniusContext {
-        PoloniusContext { liveness_context }
-    }
-
     /// Computes live loans using the set of loans model for `-Zpolonius=next`.
     ///
     /// First, creates a constraint graph combining regions and CFG points, by:
@@ -134,8 +119,7 @@ impl PoloniusContext {
         body: &Body<'tcx>,
         borrow_set: &BorrowSet<'tcx>,
     ) -> PoloniusDiagnosticsContext {
-        let PoloniusLivenessContext { live_region_variances, boring_nll_locals } =
-            self.liveness_context;
+        let PoloniusContext { live_region_variances, boring_nll_locals } = self;
 
         let localized_outlives_constraints = LocalizedOutlivesConstraintSet::default();
 
