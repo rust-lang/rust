@@ -6,7 +6,7 @@ use rustc_errors::codes::*;
 use rustc_errors::{Applicability, ErrorGuaranteed, MultiSpan, struct_span_code_err};
 use rustc_hir::def::*;
 use rustc_hir::def_id::LocalDefId;
-use rustc_hir::{self as hir, BindingMode, ByRef, HirId, MatchSource};
+use rustc_hir::{self as hir, BindingMode, ByRef, HirId, LocalSource, MatchSource, Node};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::Level;
 use rustc_middle::bug;
@@ -62,7 +62,7 @@ pub(crate) fn check_match(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(), Err
 
     for param in thir.params.iter() {
         if let Some(box ref pattern) = param.pat {
-            visitor.check_binding_is_irrefutable(pattern, origin, None, None);
+            visitor.check_binding_is_irrefutable(pattern, origin, None, None, None);
         }
     }
     visitor.error
@@ -161,7 +161,7 @@ impl<'p, 'tcx> Visitor<'p, 'tcx> for MatchVisitor<'p, 'tcx> {
                 self.check_match(scrutinee, arms, MatchSource::Normal, span);
             }
             ExprKind::Let { box ref pat, expr } => {
-                self.check_let(pat, Some(expr), ex.span);
+                self.check_let(pat, Some(expr), ex.span, None);
             }
             ExprKind::LogicalOp { op: LogicalOp::And, .. }
                 if !matches!(self.let_source, LetSource::None) =>
@@ -188,7 +188,12 @@ impl<'p, 'tcx> Visitor<'p, 'tcx> for MatchVisitor<'p, 'tcx> {
                     let let_source =
                         if else_block.is_some() { LetSource::LetElse } else { LetSource::PlainLet };
                     this.with_let_source(let_source, |this| {
-                        this.check_let(pattern, initializer, span)
+                        // FIXME(#145548): We get hir_id from the lint_level, replace it if thir has a better way to get it.
+                        let hir_id = match lint_level {
+                            LintLevel::Explicit(hir_id) => Some(hir_id),
+                            _ => None,
+                        };
+                        this.check_let(pattern, initializer, span, hir_id)
                     });
                     visit::walk_stmt(this, stmt);
                 });
@@ -438,11 +443,17 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
     }
 
     #[instrument(level = "trace", skip(self))]
-    fn check_let(&mut self, pat: &'p Pat<'tcx>, scrutinee: Option<ExprId>, span: Span) {
+    fn check_let(
+        &mut self,
+        pat: &'p Pat<'tcx>,
+        scrutinee: Option<ExprId>,
+        span: Span,
+        hir_id: Option<HirId>,
+    ) {
         assert!(self.let_source != LetSource::None);
         let scrut = scrutinee.map(|id| &self.thir[id]);
         if let LetSource::PlainLet = self.let_source {
-            self.check_binding_is_irrefutable(pat, "local binding", scrut, Some(span))
+            self.check_binding_is_irrefutable(pat, "local binding", scrut, Some(span), hir_id)
         } else {
             let Ok(refutability) = self.is_let_irrefutable(pat, scrut) else { return };
             if matches!(refutability, Irrefutable) {
@@ -516,6 +527,7 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
                 self.check_binding_is_irrefutable(
                     &pat_field.pattern,
                     "`for` loop binding",
+                    None,
                     None,
                     None,
                 );
@@ -664,6 +676,7 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
         origin: &str,
         scrut: Option<&Expr<'tcx>>,
         sp: Option<Span>,
+        hir_id: Option<HirId>,
     ) {
         let pattern_ty = pat.ty;
 
@@ -714,6 +727,8 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
             && self.tcx.sess.source_map().is_span_accessible(span)
             && interpreted_as_const.is_none()
             && scrut.is_some()
+            // we only suggest `let else` when the pattern is not desugared from an assignment
+            && !self.is_from_destructing_assignment(hir_id)
         {
             let mut bindings = vec![];
             pat.each_binding(|name, _, _, _| bindings.push(name));
@@ -766,6 +781,19 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
             misc_suggestion,
             adt_defined_here,
         }));
+    }
+
+    /// Check if hir_id of LetStmt is desugared into a `let`, i.e., `LocalSource::AssignDesugar`
+    /// rather than a real `let` the user wrote. This helps suppress suggestions for `let` statements
+    /// when we're dealing with an assignment like `Some(x) = rhs`. See #145548.
+    fn is_from_destructing_assignment(&self, hir_id: Option<HirId>) -> bool {
+        if let Some(hir_id) = hir_id {
+            // pat_hir_id is the hir_id of the pattern in the `let` statement/expr.
+            if let Node::LetStmt(let_stmt) = self.tcx.hir_node(hir_id) {
+                return matches!(let_stmt.source, LocalSource::AssignDesugar(_));
+            }
+        }
+        false
     }
 }
 
