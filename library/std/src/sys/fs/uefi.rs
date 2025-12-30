@@ -160,7 +160,15 @@ impl Iterator for ReadDir {
     fn next(&mut self) -> Option<io::Result<DirEntry>> {
         match self.0.read_dir_entry() {
             Ok(None) => None,
-            Ok(Some(x)) => Some(Ok(DirEntry::from_uefi(x, self.0.path()))),
+            Ok(Some(x)) => {
+                let temp = DirEntry::from_uefi(x, self.0.path());
+                // Ignore "." and "..". This is how ReadDir behaves in Unix.
+                if temp.file_name == "." || temp.file_name == ".." {
+                    self.next()
+                } else {
+                    Some(Ok(temp))
+                }
+            }
             Err(e) => Some(Err(e)),
         }
     }
