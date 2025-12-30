@@ -331,6 +331,52 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         })
     }
 
+    fn is_noise_0_7_0(
+        &self,
+        glob_binding: NameBinding<'ra>,
+        old_glob_binding: NameBinding<'ra>,
+    ) -> bool {
+        let NameBindingKind::Import { import: i1, .. } = glob_binding.kind else { unreachable!() };
+        let NameBindingKind::Import { import: i2, .. } = old_glob_binding.kind else {
+            unreachable!()
+        };
+        let [seg1, seg2] = &i1.module_path[..] else { return false };
+        if seg1.ident.name != kw::SelfLower || seg2.ident.name.as_str() != "perlin_surflet" {
+            return false;
+        }
+        let [seg1, seg2] = &i2.module_path[..] else { return false };
+        if seg1.ident.name != kw::SelfLower || seg2.ident.name.as_str() != "perlin" {
+            return false;
+        }
+        let Some(def_id1) = glob_binding.res().opt_def_id() else { return false };
+        let Some(def_id2) = old_glob_binding.res().opt_def_id() else { return false };
+        self.def_path_str(def_id1).ends_with("noise_fns::generators::perlin_surflet::Perlin")
+            && self.def_path_str(def_id2).ends_with("noise_fns::generators::perlin::Perlin")
+    }
+
+    fn is_rustybuzz_0_4_0(
+        &self,
+        glob_binding: NameBinding<'ra>,
+        old_glob_binding: NameBinding<'ra>,
+    ) -> bool {
+        let NameBindingKind::Import { import: i1, .. } = glob_binding.kind else { unreachable!() };
+        let NameBindingKind::Import { import: i2, .. } = old_glob_binding.kind else {
+            unreachable!()
+        };
+        let [seg1, seg2] = &i1.module_path[..] else { return false };
+        if seg1.ident.name != kw::Super || seg2.ident.name.as_str() != "gsubgpos" {
+            return false;
+        }
+        let [seg1] = &i2.module_path[..] else { return false };
+        if seg1.ident.name != kw::Super {
+            return false;
+        }
+        let Some(def_id1) = glob_binding.res().opt_def_id() else { return false };
+        let Some(def_id2) = old_glob_binding.res().opt_def_id() else { return false };
+        self.def_path_str(def_id1).ends_with("tables::gsubgpos::Class")
+            && self.def_path_str(def_id2).ends_with("ggg::Class")
+    }
+
     fn select_glob_binding(
         &self,
         glob_binding: NameBinding<'ra>,
@@ -366,7 +412,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 AmbiguityKind::GlobVsGlob,
                 old_glob_binding,
                 glob_binding,
-                false,
+                self.is_noise_0_7_0(glob_binding, old_glob_binding)
+                    || self.is_rustybuzz_0_4_0(glob_binding, old_glob_binding),
             )
         } else if !old_glob_binding.vis.is_at_least(glob_binding.vis, self.tcx)
             || glob_binding.is_ambiguity_recursive()
