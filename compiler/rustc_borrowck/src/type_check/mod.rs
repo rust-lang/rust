@@ -170,13 +170,10 @@ pub(crate) fn type_check<'tcx>(
     liveness::generate(&mut typeck, &location_map, move_data);
 
     // We're done with typeck, we can finalize the polonius liveness context for region inference.
-    let polonius_context = typeck.polonius_liveness.take().map(|liveness_context| {
-        PoloniusContext::create_from_liveness(
-            liveness_context,
-            infcx.num_region_vars(),
-            typeck.constraints.liveness_constraints.points(),
-        )
-    });
+    let polonius_context = typeck
+        .polonius_liveness
+        .take()
+        .map(|liveness_context| PoloniusContext::create_from_liveness(liveness_context));
 
     // In case type check encountered an error region, we suppress unhelpful extra
     // errors in by clearing out all outlives bounds that we may end up checking.

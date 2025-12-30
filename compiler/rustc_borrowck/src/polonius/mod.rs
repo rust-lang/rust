@@ -53,7 +53,6 @@ use std::collections::BTreeMap;
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_index::bit_set::SparseBitMatrix;
-use rustc_index::interval::SparseIntervalMatrix;
 use rustc_middle::mir::{Body, Local};
 use rustc_middle::ty::RegionVid;
 use rustc_mir_dataflow::points::PointIndex;
@@ -86,10 +85,6 @@ pub(crate) struct PoloniusLivenessContext {
 pub(crate) struct PoloniusContext {
     /// The liveness data we recorded during MIR typeck.
     liveness_context: PoloniusLivenessContext,
-
-    /// The set of regions that are live at a given point in the CFG, used to create localized
-    /// outlives constraints between regions that are live at connected points in the CFG.
-    live_regions: SparseBitMatrix<PointIndex, RegionVid>,
 }
 
 /// This struct holds the data needed by the borrowck error computation and diagnostics. Its data is
@@ -117,24 +112,10 @@ enum ConstraintDirection {
 }
 
 impl PoloniusContext {
-    /// Unlike NLLs, in polonius we traverse the cfg to look for regions live across an edge, so we
-    /// need to transpose the "points where each region is live" matrix to a "live regions per point"
-    /// matrix.
-    // FIXME: avoid this conversion by always storing liveness data in this shape in the rest of
-    // borrowck.
     pub(crate) fn create_from_liveness(
         liveness_context: PoloniusLivenessContext,
-        num_regions: usize,
-        points_per_live_region: &SparseIntervalMatrix<RegionVid, PointIndex>,
     ) -> PoloniusContext {
-        let mut live_regions_per_point = SparseBitMatrix::new(num_regions);
-        for region in points_per_live_region.rows() {
-            for point in points_per_live_region.row(region).unwrap().iter() {
-                live_regions_per_point.insert(point, region);
-            }
-        }
-
-        PoloniusContext { live_regions: live_regions_per_point, liveness_context }
+        PoloniusContext { liveness_context }
     }
 
     /// Computes live loans using the set of loans model for `-Zpolonius=next`.
@@ -165,7 +146,6 @@ impl PoloniusContext {
             &body,
             regioncx.outlives_constraints(),
             regioncx.liveness_constraints(),
-            &self.live_regions,
             &live_region_variances,
             regioncx.universal_regions(),
             borrow_set,
