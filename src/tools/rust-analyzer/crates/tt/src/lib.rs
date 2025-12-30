@@ -129,7 +129,7 @@ impl Subtree {
     }
 }
 
-/// `dispatch_ref! {}`
+#[rust_analyzer::macro_style(braces)]
 macro_rules! dispatch_ref {
     (
         match $scrutinee:expr => $tt:ident => $body:expr
