@@ -20,9 +20,8 @@ use crate::late::{
 use crate::macros::{MacroRulesScope, sub_namespace_match};
 use crate::{
     AmbiguityError, AmbiguityKind, BindingKey, CmResolver, Decl, DeclKind, Determinacy, Finalize,
-    ImportKind, LexicalScopeBinding, Module, ModuleKind, ModuleOrUniformRoot, ParentScope,
-    PathResult, PrivacyError, Res, ResolutionError, Resolver, Scope, ScopeSet, Segment, Stage,
-    Used, errors,
+    ImportKind, LateDecl, Module, ModuleKind, ModuleOrUniformRoot, ParentScope, PathResult,
+    PrivacyError, Res, ResolutionError, Resolver, Scope, ScopeSet, Segment, Stage, Used, errors,
 };
 
 #[derive(Copy, Clone)]
@@ -307,7 +306,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         ribs: &[Rib<'ra>],
         ignore_binding: Option<Decl<'ra>>,
         diag_metadata: Option<&DiagMetadata<'_>>,
-    ) -> Option<LexicalScopeBinding<'ra>> {
+    ) -> Option<LateDecl<'ra>> {
         let orig_ident = ident;
         let (general_span, normalized_span) = if ident.name == kw::SelfUpper {
             // FIXME(jseyfried) improve `Self` hygiene
@@ -330,7 +329,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             let rib_ident = if rib.kind.contains_params() { normalized_ident } else { ident };
             if let Some((original_rib_ident_def, res)) = rib.bindings.get_key_value(&rib_ident) {
                 // The ident resolves to a type parameter or local variable.
-                return Some(LexicalScopeBinding::Res(self.validate_res_from_ribs(
+                return Some(LateDecl::RibDef(self.validate_res_from_ribs(
                     i,
                     rib_ident,
                     *res,
@@ -351,7 +350,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 )
             {
                 // The ident resolves to an item in a block.
-                return Some(LexicalScopeBinding::Item(binding));
+                return Some(LateDecl::Decl(binding));
             } else if let RibKind::Module(module) = rib.kind {
                 // Encountered a module item, abandon ribs and look into that module and preludes.
                 let parent_scope = &ParentScope { module, ..*parent_scope };
@@ -368,7 +367,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         None,
                     )
                     .ok()
-                    .map(LexicalScopeBinding::Item);
+                    .map(LateDecl::Decl);
             }
 
             if let RibKind::MacroDefinition(def) = rib.kind
@@ -1836,9 +1835,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     diag_metadata,
                 ) {
                     // we found a locally-imported or available item/module
-                    Some(LexicalScopeBinding::Item(binding)) => Ok(binding),
+                    Some(LateDecl::Decl(binding)) => Ok(binding),
                     // we found a local variable or type param
-                    Some(LexicalScopeBinding::Res(res)) => {
+                    Some(LateDecl::RibDef(res)) => {
                         record_segment_res(self.reborrow(), finalize, res, id);
                         return PathResult::NonModule(PartialRes::with_unresolved_segments(
                             res,

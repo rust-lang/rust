@@ -424,22 +424,21 @@ impl<'a> From<&'a ast::PathSegment> for Segment {
     }
 }
 
-/// An intermediate resolution result.
-///
-/// This refers to the thing referred by a name. The difference between `Res` and `Item` is that
-/// items are visible in their whole block, while `Res`es only from the place they are defined
-/// forward.
+/// Name declaration used during late resolution.
 #[derive(Debug, Copy, Clone)]
-enum LexicalScopeBinding<'ra> {
-    Item(Decl<'ra>),
-    Res(Res),
+enum LateDecl<'ra> {
+    /// A regular name declaration.
+    Decl(Decl<'ra>),
+    /// A name definition from a rib, e.g. a local variable.
+    /// Omits most of the data from regular `Decl` for performance reasons.
+    RibDef(Res),
 }
 
-impl<'ra> LexicalScopeBinding<'ra> {
+impl<'ra> LateDecl<'ra> {
     fn res(self) -> Res {
         match self {
-            LexicalScopeBinding::Item(binding) => binding.res(),
-            LexicalScopeBinding::Res(res) => res,
+            LateDecl::Decl(binding) => binding.res(),
+            LateDecl::RibDef(res) => res,
         }
     }
 }

@@ -45,10 +45,9 @@ use crate::imports::{Import, ImportKind};
 use crate::late::{DiagMetadata, PatternSource, Rib};
 use crate::{
     AmbiguityError, AmbiguityKind, BindingError, BindingKey, Decl, DeclKind, Finalize,
-    ForwardGenericParamBanReason, HasGenericParams, LexicalScopeBinding, MacroRulesScope, Module,
-    ModuleKind, ModuleOrUniformRoot, ParentScope, PathResult, PrivacyError, ResolutionError,
-    Resolver, Scope, ScopeSet, Segment, UseError, Used, VisResolutionError, errors as errs,
-    path_names_to_string,
+    ForwardGenericParamBanReason, HasGenericParams, LateDecl, MacroRulesScope, Module, ModuleKind,
+    ModuleOrUniformRoot, ParentScope, PathResult, PrivacyError, ResolutionError, Resolver, Scope,
+    ScopeSet, Segment, UseError, Used, VisResolutionError, errors as errs, path_names_to_string,
 };
 
 type Res = def::Res<ast::NodeId>;
@@ -2528,7 +2527,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         diag_metadata,
                     ) {
                         // we found a locally-imported or available item/module
-                        Some(LexicalScopeBinding::Item(binding)) => Some(binding),
+                        Some(LateDecl::Decl(binding)) => Some(binding),
                         _ => None,
                     }
                 } else {
@@ -2590,7 +2589,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 //                               // variable `Foo`.
                 // }
                 // ```
-                Some(LexicalScopeBinding::Res(Res::Local(id))) => {
+                Some(LateDecl::RibDef(Res::Local(id))) => {
                     Some(*self.pat_span_map.get(&id).unwrap())
                 }
                 // Name matches item from a local name binding
@@ -2604,7 +2603,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 //                               // binding `Foo`.
                 // }
                 // ```
-                Some(LexicalScopeBinding::Item(name_binding)) => Some(name_binding.span),
+                Some(LateDecl::Decl(name_binding)) => Some(name_binding.span),
                 _ => None,
             };
             let suggestion = match_span.map(|span| {
