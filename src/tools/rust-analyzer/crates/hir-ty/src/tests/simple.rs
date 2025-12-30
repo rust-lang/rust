@@ -1,5 +1,7 @@
 use expect_test::expect;
 
+use crate::tests::check_infer_with_mismatches;
+
 use super::{check, check_infer, check_no_mismatches, check_types};
 
 #[test]
@@ -3954,5 +3956,26 @@ fn bar() {
     foo([0; _]);
 }
     "#,
+    );
+}
+
+#[test]
+fn cannot_coerce_capturing_closure_to_fn_ptr() {
+    check_infer_with_mismatches(
+        r#"
+fn foo() {
+    let a = 1;
+    let _: fn() -> i32 = || a;
+}
+    "#,
+        expect![[r#"
+            9..58 '{     ...| a; }': ()
+            19..20 'a': i32
+            23..24 '1': i32
+            34..35 '_': fn() -> i32
+            51..55 '|| a': impl Fn() -> i32
+            54..55 'a': i32
+            51..55: expected fn() -> i32, got impl Fn() -> i32
+        "#]],
     );
 }
