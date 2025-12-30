@@ -1,7 +1,6 @@
 use super::REDUNDANT_PATTERN_MATCHING;
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::res::{MaybeDef, MaybeTypeckRes};
-use clippy_utils::source::walk_span_to_context;
 use clippy_utils::sugg::{Sugg, make_unop};
 use clippy_utils::ty::needs_ordered_drop;
 use clippy_utils::visitors::{any_temporaries_need_ordered_drop, for_each_expr_without_closures};
@@ -25,7 +24,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         ..
     }) = higher::WhileLet::hir(expr)
     {
-        find_method_sugg_for_if_let(cx, expr, let_pat, let_expr, "while", false);
+        find_method_sugg_for_if_let(cx, expr, let_pat, let_expr, "while", false, let_span);
         find_if_let_true(cx, let_pat, let_expr, let_span);
     }
 }
@@ -39,7 +38,7 @@ pub(super) fn check_if_let<'tcx>(
     let_span: Span,
 ) {
     find_if_let_true(cx, pat, scrutinee, let_span);
-    find_method_sugg_for_if_let(cx, expr, pat, scrutinee, "if", has_else);
+    find_method_sugg_for_if_let(cx, expr, pat, scrutinee, "if", has_else, let_span);
 }
 
 /// Looks for:
@@ -182,6 +181,7 @@ fn find_method_sugg_for_if_let<'tcx>(
     let_expr: &'tcx Expr<'_>,
     keyword: &'static str,
     has_else: bool,
+    let_span: Span,
 ) {
     // also look inside refs
     // if we have &None for example, peel it so we can detect "if let None = x"
@@ -240,14 +240,8 @@ fn find_method_sugg_for_if_let<'tcx>(
             let ctxt = expr.span.ctxt();
 
             // if/while let ... = ... { ... }
-            //                    ^^^
-            let Some(res_span) = walk_span_to_context(result_expr.span.source_callsite(), ctxt) else {
-                return;
-            };
-
-            // if/while let ... = ... { ... }
             // ^^^^^^^^^^^^^^^^^^^^^^
-            let span = expr_span.until(res_span.shrink_to_hi());
+            let span = expr_span.until(let_span.shrink_to_hi());
 
             let mut app = if needs_drop {
                 Applicability::MaybeIncorrect
