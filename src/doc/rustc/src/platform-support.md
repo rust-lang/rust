@@ -285,8 +285,8 @@ target | std | host | notes
 [`arm64e-apple-ios`](platform-support/arm64e-apple-ios.md) | ✓ | | ARM64e Apple iOS
 [`arm64e-apple-tvos`](platform-support/arm64e-apple-tvos.md)  | ✓ | | ARM64e Apple tvOS
 [`armeb-unknown-linux-gnueabi`](platform-support/armeb-unknown-linux-gnueabi.md) | ✓ | ? | Arm BE8 the default Arm big-endian architecture since [Armv6](https://developer.arm.com/documentation/101754/0616/armlink-Reference/armlink-Command-line-Options/--be8?lang=en).
-[`armebv7r-none-eabi`](platform-support/armebv7r-none-eabi.md) | * | Bare Armv7-R, Big Endian
-[`armebv7r-none-eabihf`](platform-support/armebv7r-none-eabi.md) | * | Bare Armv7-R, Big Endian, hardfloat
+[`armebv7r-none-eabi`](platform-support/armebv7r-none-eabi.md) | * |  | Bare Armv7-R, Big Endian
+[`armebv7r-none-eabihf`](platform-support/armebv7r-none-eabi.md) | * |  | Bare Armv7-R, Big Endian, hardfloat
 [`armv4t-none-eabi`](platform-support/armv4t-none-eabi.md) | * |  | Bare Armv4T
 `armv4t-unknown-linux-gnueabi` | ? |  | Armv4T Linux
 [`armv5te-none-eabi`](platform-support/armv5te-none-eabi.md) | * |  | Bare Armv5TE
@@ -423,7 +423,7 @@ target | std | host | notes
 [`thumbv8m.main-nuttx-eabihf`](platform-support/nuttx.md) | ✓ |  | ARMv8M Mainline with NuttX, hardfloat
 [`wasm64-unknown-unknown`](platform-support/wasm64-unknown-unknown.md) | ? |  | WebAssembly
 [`wasm32-wali-linux-musl`](platform-support/wasm32-wali-linux.md) | ? |  | WebAssembly with [WALI](https://github.com/arjunr2/WALI)
-[`wasm32-wasip3`](platform-support/wasm32-wasip3.md) | ✓ | WebAssembly with WASIp3
+[`wasm32-wasip3`](platform-support/wasm32-wasip3.md) | ✓ |  | WebAssembly with WASIp3
 [`x86_64-apple-tvos`](platform-support/apple-tvos.md) | ✓ |  | x86 64-bit tvOS
 [`x86_64-apple-watchos-sim`](platform-support/apple-watchos.md) | ✓ |  | x86 64-bit Apple WatchOS simulator
 [`x86_64-lynx-lynxos178`](platform-support/lynxos178.md) |   |  | x86_64 LynxOS-178
