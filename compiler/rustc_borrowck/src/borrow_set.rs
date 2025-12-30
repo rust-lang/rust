@@ -285,8 +285,9 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'tcx> {
 
                 // Consider the borrow not activated to start. When we find an activation, we'll update
                 // this field.
-                let (idx, _) =
-                    self.location_map.insert_full(location, borrow(TwoPhaseActivation::NotActivated));
+                let (idx, _) = self
+                    .location_map
+                    .insert_full(location, borrow(TwoPhaseActivation::NotActivated));
                 let idx = BorrowIndex::from(idx);
 
                 // Insert `temp` into the list of pending activations. From
