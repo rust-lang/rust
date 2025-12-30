@@ -7,14 +7,24 @@ LL |                         *b = 42;
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
-   = note: BACKTRACE on thread `unnamed-ID`:
-   = note: inside closure at tests/genmc/fail/data_race/atomic_ptr_alloc_race.rs:LL:CC
-   = note: inside `<std::boxed::Box<{closure@tests/genmc/fail/data_race/atomic_ptr_alloc_race.rs:LL:CC}> as std::ops::FnOnce<()>>::call_once` at RUSTLIB/alloc/src/boxed.rs:LL:CC
-note: inside `genmc::spawn_pthread_closure::thread_func::<{closure@tests/genmc/fail/data_race/atomic_ptr_alloc_race.rs:LL:CC}>`
+   = note: this is on thread `unnamed-ID`
+   = note: stack backtrace:
+           0: miri_start::{closure#1}
+               at tests/genmc/fail/data_race/atomic_ptr_alloc_race.rs:LL:CC
+           1: <std::boxed::Box<{closure@tests/genmc/fail/data_race/atomic_ptr_alloc_race.rs:LL:CC}> as std::ops::FnOnce<()>>::call_once
+               at RUSTLIB/alloc/src/boxed.rs:LL:CC
+           2: genmc::spawn_pthread_closure::thread_func
+               at tests/genmc/fail/data_race/../../../utils/genmc.rs:LL:CC
+note: the last function in that backtrace got called indirectly due to this code
   --> tests/genmc/fail/data_race/../../../utils/genmc.rs:LL:CC
    |
-LL |         f();
-   |         ^^^
+LL | /         libc::pthread_create(
+LL | |             &raw mut thread_id,
+LL | |             attr,
+LL | |             thread_func::<F>,
+LL | |             Box::into_raw(f) as *mut c_void,
+LL | |         )
+   | |_________^
 
 note: add `-Zmiri-genmc-print-genmc-output` to MIRIFLAGS to see the detailed GenMC error report
 
