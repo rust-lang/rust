@@ -139,18 +139,20 @@ impl PoloniusContext {
 
         let localized_outlives_constraints = LocalizedOutlivesConstraintSet::default();
 
-        // From the outlives constraints, liveness, and variances, we can compute reachability on
-        // the lazy localized constraint graph to trace the liveness of loans, for the next step in
-        // the chain (the NLL loan scope and active loans computations).
-        let live_loans = compute_loan_liveness(
-            &body,
-            regioncx.outlives_constraints(),
-            regioncx.liveness_constraints(),
-            &live_region_variances,
-            regioncx.universal_regions(),
-            borrow_set,
-        );
-        regioncx.record_live_loans(live_loans);
+        if borrow_set.len() > 0 {
+            // From the outlives constraints, liveness, and variances, we can compute reachability
+            // on the lazy localized constraint graph to trace the liveness of loans, for the next
+            // step in the chain (the NLL loan scope and active loans computations).
+            let live_loans = compute_loan_liveness(
+                &body,
+                regioncx.outlives_constraints(),
+                regioncx.liveness_constraints(),
+                &live_region_variances,
+                regioncx.universal_regions(),
+                borrow_set,
+            );
+            regioncx.record_live_loans(live_loans);
+        }
 
         PoloniusDiagnosticsContext { localized_outlives_constraints, boring_nll_locals }
     }
