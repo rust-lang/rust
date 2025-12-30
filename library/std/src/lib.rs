@@ -283,6 +283,7 @@
 #![feature(doc_masked)]
 #![feature(doc_notable_trait)]
 #![feature(dropck_eyepatch)]
+#![feature(extern_item_impls)]
 #![feature(f16)]
 #![feature(f128)]
 #![feature(ffi_const)]
@@ -760,3 +761,9 @@ mod sealed {
 #[cfg(test)]
 #[allow(dead_code)] // Not used in all configurations.
 pub(crate) mod test_helpers;
+
+#[unstable(feature = "extern_item_impls", issue = "125418")]
+#[eii]
+pub fn changed_with_eii() -> bool {
+    false
+}
