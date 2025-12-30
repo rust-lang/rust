@@ -16,21 +16,13 @@ help: <TAG> was later invalidated at offsets [0x0..0x4] by a write access
    |
 LL |     *our = 5;
    |     ^^^^^^^^
-note: error occurred inside `unknown_code_2`
-  --> tests/fail/both_borrows/mut_exclusive_violation1.rs:LL:CC
-   |
-LL | fn unknown_code_2() {
-   | ^^^^^^^^^^^^^^^^^^^
-note: which got called inside `demo_mut_advanced_unique`
-  --> tests/fail/both_borrows/mut_exclusive_violation1.rs:LL:CC
-   |
-LL |     unknown_code_2();
-   |     ^^^^^^^^^^^^^^^^
-note: which got called inside `main`
-  --> tests/fail/both_borrows/mut_exclusive_violation1.rs:LL:CC
-   |
-LL |     demo_mut_advanced_unique(&mut 0);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: stack backtrace:
+           0: unknown_code_2
+               at tests/fail/both_borrows/mut_exclusive_violation1.rs:LL:CC
+           1: demo_mut_advanced_unique
+               at tests/fail/both_borrows/mut_exclusive_violation1.rs:LL:CC
+           2: main
+               at tests/fail/both_borrows/mut_exclusive_violation1.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

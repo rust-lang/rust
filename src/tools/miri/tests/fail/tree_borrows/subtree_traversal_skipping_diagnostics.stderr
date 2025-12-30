@@ -18,16 +18,11 @@ help: the conflicting tag <TAG> was created here, in the initial state Frozen
    |
 LL |         let intermediary = &root;
    |                            ^^^^^
-note: error occurred inside `write_to_mut`
-  --> tests/fail/tree_borrows/subtree_traversal_skipping_diagnostics.rs:LL:CC
-   |
-LL | fn write_to_mut(m: &mut u8, other_ptr: *const u8) {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-note: which got called inside `main`
-  --> tests/fail/tree_borrows/subtree_traversal_skipping_diagnostics.rs:LL:CC
-   |
-LL |         write_to_mut(data, core::ptr::addr_of!(root));
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: stack backtrace:
+           0: write_to_mut
+               at tests/fail/tree_borrows/subtree_traversal_skipping_diagnostics.rs:LL:CC
+           1: main
+               at tests/fail/tree_borrows/subtree_traversal_skipping_diagnostics.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

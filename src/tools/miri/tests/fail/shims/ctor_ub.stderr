@@ -6,8 +6,7 @@ LL |     std::hint::unreachable_unchecked()
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
-   = note: this is inside `ctor`
-note: which got called indirectly due to this code
+note: the current function got called indirectly due to this code
   --> tests/fail/shims/ctor_ub.rs:LL:CC
    |
 LL |         static $ident: unsafe extern "C" fn() = $ctor;

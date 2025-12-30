@@ -16,16 +16,11 @@ help: ALLOC was deallocated here:
    |
 LL |     f(std::ptr::null());
    |     ^^^^^^^^^^^^^^^^^^^
-note: error occurred inside `g`
-  --> tests/fail/tail_calls/dangling-local-var.rs:LL:CC
-   |
-LL | fn g(x: *const i32) {
-   | ^^^^^^^^^^^^^^^^^^^
-note: which got called inside `main`
-  --> tests/fail/tail_calls/dangling-local-var.rs:LL:CC
-   |
-LL |     f(std::ptr::null());
-   |     ^^^^^^^^^^^^^^^^^^^
+   = note: stack backtrace:
+           0: g
+               at tests/fail/tail_calls/dangling-local-var.rs:LL:CC
+           1: main
+               at tests/fail/tail_calls/dangling-local-var.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

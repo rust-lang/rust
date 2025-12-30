@@ -7,16 +7,19 @@ LL |             self.lock.inner.unlock();
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
-   = note: this is on thread `unnamed-ID`, inside `<std::sync::MutexGuard<'_, u64> as std::ops::Drop>::drop`
-   = note: which got called inside `std::ptr::drop_in_place::<std::sync::MutexGuard<'_, u64>> - shim(Some(std::sync::MutexGuard<'_, u64>))` (at RUSTLIB/core/src/ptr/mod.rs:LL:CC)
-   = note: which got called inside `std::ptr::drop_in_place::<EvilSend<std::sync::MutexGuard<'_, u64>>> - shim(Some(EvilSend<std::sync::MutexGuard<'_, u64>>))` (at RUSTLIB/core/src/ptr/mod.rs:LL:CC)
-   = note: which got called inside `std::mem::drop::<EvilSend<std::sync::MutexGuard<'_, u64>>>` (at RUSTLIB/core/src/mem/mod.rs:LL:CC)
-note: which got called inside closure
-  --> tests/genmc/fail/shims/mutex_diff_thread_unlock.rs:LL:CC
-   |
-LL |         drop(guard);
-   |         ^^^^^^^^^^^
-note: which got called indirectly due to this code
+   = note: this is on thread `unnamed-ID`
+   = note: stack backtrace:
+           0: <std::sync::MutexGuard<'_, u64> as std::ops::Drop>::drop
+               at RUSTLIB/std/src/sync/poison/mutex.rs:LL:CC
+           1: std::ptr::drop_in_place))
+               at RUSTLIB/core/src/ptr/mod.rs:LL:CC
+           2: std::ptr::drop_in_place))
+               at RUSTLIB/core/src/ptr/mod.rs:LL:CC
+           3: std::mem::drop
+               at RUSTLIB/core/src/mem/mod.rs:LL:CC
+           4: miri_start::{closure#0}
+               at tests/genmc/fail/shims/mutex_diff_thread_unlock.rs:LL:CC
+note: the last function in that backtrace got called indirectly due to this code
   --> tests/genmc/fail/shims/mutex_diff_thread_unlock.rs:LL:CC
    |
 LL |       let handle = std::thread::spawn(move || {

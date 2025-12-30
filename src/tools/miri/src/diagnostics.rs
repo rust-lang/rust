@@ -576,11 +576,9 @@ fn report_msg<'tcx>(
     }
 
     // Show note and help messages.
-    let mut extra_span = false;
     for (span_data, note) in notes {
         if let Some(span_data) = span_data {
             err.span_note(span_data.span(), note);
-            extra_span = true;
         } else {
             err.note(note);
         }
@@ -588,60 +586,41 @@ fn report_msg<'tcx>(
     for (span_data, help) in helps {
         if let Some(span_data) = span_data {
             err.span_help(span_data.span(), help);
-            extra_span = true;
         } else {
             err.help(help);
         }
     }
+    // Only print thread name if there are multiple threads.
+    if let Some(thread) = thread
+        && machine.threads.get_total_thread_count() > 1
+    {
+        err.note(format!(
+            "this is on thread `{}`",
+            machine.threads.get_thread_display_name(thread)
+        ));
+    }
 
     // Add backtrace
-    if let Some((first, rest)) = stacktrace.split_first() {
-        // Start with the function and thread that contain the first span.
-        let mut fn_and_thread = String::new();
-        // Only print thread name if there are multiple threads.
-        if let Some(thread) = thread
-            && machine.threads.get_total_thread_count() > 1
-        {
-            write!(
-                fn_and_thread,
-                "on thread `{}`",
-                machine.threads.get_thread_display_name(thread)
-            )
-            .unwrap();
-        }
-        // Only print function name if we show a backtrace
-        if rest.len() > 0 || !origin_span.is_dummy() {
-            if !fn_and_thread.is_empty() {
-                fn_and_thread.push_str(", ");
-            }
-            write!(fn_and_thread, "{first}").unwrap();
-        }
-        if !fn_and_thread.is_empty() {
-            if extra_span && rest.len() > 0 {
-                // Print a `span_note` as otherwise the backtrace looks attached to the last
-                // `span_help`. We somewhat arbitrarily use the span of the surrounding function.
-                err.span_note(
-                    tcx.def_span(first.instance.def_id()),
-                    format!("{level} occurred {fn_and_thread}"),
-                );
-            } else {
-                err.note(format!("this is {fn_and_thread}"));
-            }
-        }
-        // Continue with where that function got called.
-        for frame_info in rest.iter() {
-            let is_local = machine.is_local(frame_info.instance);
-            // No span for non-local frames and the first frame (which is the error site).
-            if is_local {
-                err.span_note(frame_info.span, format!("which got called {frame_info}"));
-            } else {
-                let sm = tcx.sess.source_map();
+    if stacktrace.len() > 0 {
+        // Skip it if we'd only shpw the span we have already shown
+        if stacktrace.len() > 1 {
+            let sm = tcx.sess.source_map();
+            let mut out = format!("stack backtrace:");
+            for (idx, frame_info) in stacktrace.iter().enumerate() {
                 let span = sm.span_to_diagnostic_string(frame_info.span);
-                err.note(format!("which got called {frame_info} (at {span})"));
+                write!(out, "\n{idx}: {}", frame_info.instance).unwrap();
+                write!(out, "\n    at {span}").unwrap();
             }
+            err.note(out);
         }
+        // For TLS dtors and non-main threads, show the "origin"
         if !origin_span.is_dummy() {
-            err.span_note(origin_span, format!("which got called indirectly due to this code"));
+            let what = if stacktrace.len() > 1 {
+                "the last function in that backtrace"
+            } else {
+                "the current function"
+            };
+            err.span_note(origin_span, format!("{what} got called indirectly due to this code"));
         }
     } else if !span.is_dummy() {
         err.note(format!("this {level} occurred while pushing a call frame onto an empty stack"));

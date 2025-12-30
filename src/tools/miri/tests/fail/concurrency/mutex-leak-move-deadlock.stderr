@@ -4,11 +4,6 @@ error: the evaluated program deadlocked
 LL | $CODE
    | ^ thread got stuck here
    |
-note: which got called inside `main`
-  --> tests/fail/concurrency/mutex-leak-move-deadlock.rs:LL:CC
-   |
-LL | $CODE
-   | ^
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

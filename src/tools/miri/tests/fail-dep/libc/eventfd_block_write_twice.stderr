@@ -4,14 +4,16 @@ error: the evaluated program deadlocked
 LL |         let ret = unsafe { libc::pthread_join(id, ptr::null_mut()) };
    |                                                                  ^ thread got stuck here
    |
-   = note: this is on thread `main`, inside `std::sys::thread::PLATFORM::Thread::join`
-   = note: which got called inside `std::thread::lifecycle::JoinInner::<'_, ()>::join` (at RUSTLIB/std/src/thread/lifecycle.rs:LL:CC)
-   = note: which got called inside `std::thread::JoinHandle::<()>::join` (at RUSTLIB/std/src/thread/join_handle.rs:LL:CC)
-note: which got called inside `main`
-  --> tests/fail-dep/libc/eventfd_block_write_twice.rs:LL:CC
-   |
-LL |     thread2.join().unwrap();
-   |     ^^^^^^^^^^^^^^
+   = note: this is on thread `main`
+   = note: stack backtrace:
+           0: std::sys::thread::PLATFORM::Thread::join
+               at RUSTLIB/std/src/sys/thread/PLATFORM.rs:LL:CC
+           1: std::thread::lifecycle::JoinInner::join
+               at RUSTLIB/std/src/thread/lifecycle.rs:LL:CC
+           2: std::thread::JoinHandle::join
+               at RUSTLIB/std/src/thread/join_handle.rs:LL:CC
+           3: main
+               at tests/fail-dep/libc/eventfd_block_write_twice.rs:LL:CC
 
 error: the evaluated program deadlocked
   --> tests/fail-dep/libc/eventfd_block_write_twice.rs:LL:CC
@@ -19,8 +21,8 @@ error: the evaluated program deadlocked
 LL |             libc::write(fd, sized_8_data.as_ptr() as *const libc::c_void, 8).try_into().unwrap()
    |                                                                            ^ thread got stuck here
    |
-   = note: this is on thread `unnamed-ID`, inside closure
-note: which got called indirectly due to this code
+   = note: this is on thread `unnamed-ID`
+note: the current function got called indirectly due to this code
   --> tests/fail-dep/libc/eventfd_block_write_twice.rs:LL:CC
    |
 LL |       let thread2 = thread::spawn(move || {

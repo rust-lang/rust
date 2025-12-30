@@ -31,17 +31,13 @@ help: the accessed tag <TAG> later transitioned to Reserved (conflicted) due to 
 LL |         }
    |          ^
    = help: this transition corresponds to a temporary loss of write permissions until function exit
-note: error occurred on thread `unnamed-ID`, inside `retagx_retagy_retx_writey_rety::{closure#1}::as_mut`
-  --> tests/fail/tree_borrows/spurious_read.rs:LL:CC
-   |
-LL |         fn as_mut(y: &mut u8, b: (usize, Arc<Barrier>)) -> *mut u8 {
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-note: which got called inside closure
-  --> tests/fail/tree_borrows/spurious_read.rs:LL:CC
-   |
-LL |         let _y = as_mut(unsafe { &mut *ptr.0 }, b.clone());
-   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-note: which got called indirectly due to this code
+   = note: this is on thread `unnamed-ID`
+   = note: stack backtrace:
+           0: retagx_retagy_retx_writey_rety::{closure#1}::as_mut
+               at tests/fail/tree_borrows/spurious_read.rs:LL:CC
+           1: retagx_retagy_retx_writey_rety::{closure#1}
+               at tests/fail/tree_borrows/spurious_read.rs:LL:CC
+note: the last function in that backtrace got called indirectly due to this code
   --> tests/fail/tree_borrows/spurious_read.rs:LL:CC
    |
 LL |       let thread_y = thread::spawn(move || {
