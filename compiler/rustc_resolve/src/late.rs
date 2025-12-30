@@ -677,7 +677,7 @@ impl MaybeExported<'_> {
 /// Used for recording UnnecessaryQualification.
 #[derive(Debug)]
 pub(crate) struct UnnecessaryQualification<'ra> {
-    pub binding: LateDecl<'ra>,
+    pub decl: LateDecl<'ra>,
     pub node_id: NodeId,
     pub path_span: Span,
     pub removal_span: Span,
@@ -1489,7 +1489,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         ident: Ident,
         ns: Namespace,
         finalize: Option<Finalize>,
-        ignore_binding: Option<Decl<'ra>>,
+        ignore_decl: Option<Decl<'ra>>,
     ) -> Option<LateDecl<'ra>> {
         self.r.resolve_ident_in_lexical_scope(
             ident,
@@ -1497,7 +1497,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             &self.parent_scope,
             finalize,
             &self.ribs[ns],
-            ignore_binding,
+            ignore_decl,
             Some(&self.diag_metadata),
         )
     }
@@ -3630,9 +3630,9 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         };
         ident.span.normalize_to_macros_2_0_and_adjust(module.expansion);
         let key = BindingKey::new(ident, ns);
-        let mut binding = self.r.resolution(module, key).and_then(|r| r.best_binding());
-        debug!(?binding);
-        if binding.is_none() {
+        let mut decl = self.r.resolution(module, key).and_then(|r| r.best_decl());
+        debug!(?decl);
+        if decl.is_none() {
             // We could not find the trait item in the correct namespace.
             // Check the other namespace to report an error.
             let ns = match ns {
@@ -3641,8 +3641,8 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 _ => ns,
             };
             let key = BindingKey::new(ident, ns);
-            binding = self.r.resolution(module, key).and_then(|r| r.best_binding());
-            debug!(?binding);
+            decl = self.r.resolution(module, key).and_then(|r| r.best_decl());
+            debug!(?decl);
         }
 
         let feed_visibility = |this: &mut Self, def_id| {
@@ -3659,7 +3659,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             this.r.feed_visibility(this.r.feed(id), vis);
         };
 
-        let Some(binding) = binding else {
+        let Some(decl) = decl else {
             // We could not find the method: report an error.
             let candidate = self.find_similarly_named_assoc_item(ident.name, kind);
             let path = &self.current_trait_ref.as_ref().unwrap().1.path;
@@ -3669,7 +3669,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             return;
         };
 
-        let res = binding.res();
+        let res = decl.res();
         let Res::Def(def_kind, id_in_trait) = res else { bug!() };
         feed_visibility(self, id_in_trait);
 
@@ -3680,7 +3680,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     ResolutionError::TraitImplDuplicate {
                         name: ident,
                         old_span: *entry.get(),
-                        trait_item_span: binding.span,
+                        trait_item_span: decl.span,
                     },
                 );
                 return;
@@ -3720,7 +3720,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 kind,
                 code,
                 trait_path,
-                trait_item_span: binding.span,
+                trait_item_span: decl.span,
             },
         );
     }
@@ -5356,9 +5356,9 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             (res == binding.res()).then_some((seg, binding))
         });
 
-        if let Some((seg, binding)) = unqualified {
+        if let Some((seg, decl)) = unqualified {
             self.r.potentially_unnecessary_qualifications.push(UnnecessaryQualification {
-                binding,
+                decl,
                 node_id: finalize.node_id,
                 path_span: finalize.path_span,
                 removal_span: path[0].ident.span.until(seg.ident.span),

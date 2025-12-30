@@ -46,7 +46,7 @@ use crate::{
 type Res = def::Res<NodeId>;
 
 /// Name declaration produced by a `macro_rules` item definition.
-/// Not modularized, can shadow previous `macro_rules` bindings, etc.
+/// Not modularized, can shadow previous `macro_rules` definitions, etc.
 #[derive(Debug)]
 pub(crate) struct MacroRulesDecl<'ra> {
     pub(crate) decl: Decl<'ra>,

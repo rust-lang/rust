@@ -28,9 +28,9 @@ impl ParentId<'_> {
 pub(crate) struct EffectiveVisibilitiesVisitor<'a, 'ra, 'tcx> {
     r: &'a mut Resolver<'ra, 'tcx>,
     def_effective_visibilities: EffectiveVisibilities,
-    /// While walking import chains we need to track effective visibilities per-binding, and def id
+    /// While walking import chains we need to track effective visibilities per-decl, and def id
     /// keys in `Resolver::effective_visibilities` are not enough for that, because multiple
-    /// bindings can correspond to a single def id in imports. So we keep a separate table.
+    /// declarations can correspond to a single def id in imports. So we keep a separate table.
     import_effective_visibilities: EffectiveVisibilities<Decl<'ra>>,
     // It's possible to recalculate this at any point, but it's relatively expensive.
     current_private_vis: Visibility,
@@ -91,9 +91,9 @@ impl<'a, 'ra, 'tcx> EffectiveVisibilitiesVisitor<'a, 'ra, 'tcx> {
         let mut exported_ambiguities = FxHashSet::default();
 
         // Update visibilities for import def ids. These are not used during the
-        // `EffectiveVisibilitiesVisitor` pass, because we have more detailed binding-based
+        // `EffectiveVisibilitiesVisitor` pass, because we have more detailed declaration-based
         // information, but are used by later passes. Effective visibility of an import def id
-        // is the maximum value among visibilities of bindings corresponding to that def id.
+        // is the maximum value among visibilities of declarations corresponding to that def id.
         for (decl, eff_vis) in visitor.import_effective_visibilities.iter() {
             let DeclKind::Import { import, .. } = decl.kind else { unreachable!() };
             if !decl.is_ambiguity_recursive() {
@@ -110,12 +110,12 @@ impl<'a, 'ra, 'tcx> EffectiveVisibilitiesVisitor<'a, 'ra, 'tcx> {
         exported_ambiguities
     }
 
-    /// Update effective visibilities of bindings in the given module,
+    /// Update effective visibilities of name declarations in the given module,
     /// including their whole reexport chains.
     fn set_bindings_effective_visibilities(&mut self, module_id: LocalDefId) {
         let module = self.r.expect_module(module_id.to_def_id());
         for (_, name_resolution) in self.r.resolutions(module).borrow().iter() {
-            let Some(mut binding) = name_resolution.borrow().binding() else {
+            let Some(mut decl) = name_resolution.borrow().binding() else {
                 continue;
             };
             // Set the given effective visibility level to `Level::Direct` and
@@ -125,28 +125,27 @@ impl<'a, 'ra, 'tcx> EffectiveVisibilitiesVisitor<'a, 'ra, 'tcx> {
             // If the binding is ambiguous, put the root ambiguity binding and all reexports
             // leading to it into the table. They are used by the `ambiguous_glob_reexports`
             // lint. For all bindings added to the table this way `is_ambiguity` returns true.
-            let is_ambiguity =
-                |binding: Decl<'ra>, warn: bool| binding.ambiguity.is_some() && !warn;
+            let is_ambiguity = |decl: Decl<'ra>, warn: bool| decl.ambiguity.is_some() && !warn;
             let mut parent_id = ParentId::Def(module_id);
-            let mut warn_ambiguity = binding.warn_ambiguity;
-            while let DeclKind::Import { binding: nested_binding, .. } = binding.kind {
-                self.update_import(binding, parent_id);
+            let mut warn_ambiguity = decl.warn_ambiguity;
+            while let DeclKind::Import { binding: nested_binding, .. } = decl.kind {
+                self.update_import(decl, parent_id);
 
-                if is_ambiguity(binding, warn_ambiguity) {
+                if is_ambiguity(decl, warn_ambiguity) {
                     // Stop at the root ambiguity, further bindings in the chain should not
                     // be reexported because the root ambiguity blocks any access to them.
                     // (Those further bindings are most likely not ambiguities themselves.)
                     break;
                 }
 
-                parent_id = ParentId::Import(binding);
-                binding = nested_binding;
+                parent_id = ParentId::Import(decl);
+                decl = nested_binding;
                 warn_ambiguity |= nested_binding.warn_ambiguity;
             }
-            if !is_ambiguity(binding, warn_ambiguity)
-                && let Some(def_id) = binding.res().opt_def_id().and_then(|id| id.as_local())
+            if !is_ambiguity(decl, warn_ambiguity)
+                && let Some(def_id) = decl.res().opt_def_id().and_then(|id| id.as_local())
             {
-                self.update_def(def_id, binding.vis.expect_local(), parent_id);
+                self.update_def(def_id, decl.vis.expect_local(), parent_id);
             }
         }
     }

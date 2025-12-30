@@ -514,8 +514,8 @@ impl Resolver<'_, '_> {
         let mut check_redundant_imports = FxIndexSet::default();
         for module in &self.local_modules {
             for (_key, resolution) in self.resolutions(*module).borrow().iter() {
-                if let Some(binding) = resolution.borrow().best_binding()
-                    && let DeclKind::Import { import, .. } = binding.kind
+                if let Some(decl) = resolution.borrow().best_decl()
+                    && let DeclKind::Import { import, .. } = decl.kind
                     && let ImportKind::Single { id, .. } = import.kind
                 {
                     if let Some(unused_import) = unused_imports.get(&import.root_id)
@@ -542,8 +542,8 @@ impl Resolver<'_, '_> {
         // Deleting both unused imports and unnecessary segments of an item may result
         // in the item not being found.
         for unn_qua in &self.potentially_unnecessary_qualifications {
-            if let LateDecl::Decl(name_binding) = unn_qua.binding
-                && let DeclKind::Import { import, .. } = name_binding.kind
+            if let LateDecl::Decl(decl) = unn_qua.decl
+                && let DeclKind::Import { import, .. } = decl.kind
                 && (is_unused_import(import, &unused_imports)
                     || is_redundant_import(import, &redundant_imports))
             {

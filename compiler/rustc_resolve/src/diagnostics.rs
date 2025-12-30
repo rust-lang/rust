@@ -1195,13 +1195,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     // Never recommend deprecated helper attributes.
                 }
                 Scope::MacroRules(macro_rules_scope) => {
-                    if let MacroRulesScope::Def(macro_rules_binding) = macro_rules_scope.get() {
-                        let res = macro_rules_binding.decl.res();
+                    if let MacroRulesScope::Def(macro_rules_def) = macro_rules_scope.get() {
+                        let res = macro_rules_def.decl.res();
                         if filter_fn(res) {
-                            suggestions.push(TypoSuggestion::typo_from_ident(
-                                macro_rules_binding.ident,
-                                res,
-                            ))
+                            suggestions
+                                .push(TypoSuggestion::typo_from_ident(macro_rules_def.ident, res))
                         }
                     }
                 }
@@ -1581,9 +1579,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         |(key, name_resolution)| {
                             if key.ns == TypeNS
                                 && key.ident == ident
-                                && let Some(binding) = name_resolution.borrow().best_binding()
+                                && let Some(decl) = name_resolution.borrow().best_decl()
                             {
-                                match binding.res() {
+                                match decl.res() {
                                     // No disambiguation needed if the identically named item we
                                     // found in scope actually refers to the crate in question.
                                     Res::Def(_, def_id) => def_id != crate_def_id,
@@ -2087,7 +2085,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     fn report_privacy_error(&mut self, privacy_error: &PrivacyError<'ra>) {
         let PrivacyError {
             ident,
-            binding,
+            decl,
             outermost_res,
             parent_scope,
             single_nested,
@@ -2095,8 +2093,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             ref source,
         } = *privacy_error;
 
-        let res = binding.res();
-        let ctor_fields_span = self.ctor_fields_span(binding);
+        let res = decl.res();
+        let ctor_fields_span = self.ctor_fields_span(decl);
         let plain_descr = res.descr().to_string();
         let nonimport_descr =
             if ctor_fields_span.is_some() { plain_descr + " constructor" } else { plain_descr };
@@ -2104,7 +2102,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let get_descr = |b: Decl<'_>| if b.is_import() { &import_descr } else { &nonimport_descr };
 
         // Print the primary message.
-        let ident_descr = get_descr(binding);
+        let ident_descr = get_descr(decl);
         let mut err =
             self.dcx().create_err(errors::IsPrivate { span: ident.span, ident_descr, ident });
 
@@ -2204,8 +2202,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         }
 
         // Print the whole import chain to make it easier to see what happens.
-        let first_binding = binding;
-        let mut next_binding = Some(binding);
+        let first_binding = decl;
+        let mut next_binding = Some(decl);
         let mut next_ident = ident;
         let mut path = vec![];
         while let Some(binding) = next_binding {
@@ -2413,7 +2411,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         opt_ns: Option<Namespace>, // `None` indicates a module path in import
         parent_scope: &ParentScope<'ra>,
         ribs: Option<&PerNS<Vec<Rib<'ra>>>>,
-        ignore_binding: Option<Decl<'ra>>,
+        ignore_decl: Option<Decl<'ra>>,
         ignore_import: Option<Import<'ra>>,
         module: Option<ModuleOrUniformRoot<'ra>>,
         failed_segment_idx: usize,
@@ -2509,7 +2507,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             ns_to_try,
                             parent_scope,
                             None,
-                            ignore_binding,
+                            ignore_decl,
                             ignore_import,
                         )
                         .ok()
@@ -2523,7 +2521,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         parent_scope,
                         None,
                         &ribs[ns_to_try],
-                        ignore_binding,
+                        ignore_decl,
                         diag_metadata,
                     ) {
                         // we found a locally-imported or available item/module
@@ -2538,7 +2536,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             parent_scope,
                             None,
                             false,
-                            ignore_binding,
+                            ignore_decl,
                             ignore_import,
                         )
                         .ok()
@@ -2574,7 +2572,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     parent_scope,
                     None,
                     &ribs[ValueNS],
-                    ignore_binding,
+                    ignore_decl,
                     diag_metadata,
                 )
             } else {
@@ -2642,7 +2640,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 parent_scope,
                 None,
                 false,
-                ignore_binding,
+                ignore_decl,
                 ignore_import,
             ) {
                 let descr = binding.res().descr();

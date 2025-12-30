@@ -692,8 +692,8 @@ impl<'ra> Module<'ra> {
         mut f: impl FnMut(&R, Macros20NormalizedIdent, Namespace, Decl<'ra>),
     ) {
         for (key, name_resolution) in resolver.as_ref().resolutions(self).borrow().iter() {
-            if let Some(binding) = name_resolution.borrow().best_binding() {
-                f(resolver, key.ident, key.ns, binding);
+            if let Some(decl) = name_resolution.borrow().best_decl() {
+                f(resolver, key.ident, key.ns, decl);
             }
         }
     }
@@ -704,8 +704,8 @@ impl<'ra> Module<'ra> {
         mut f: impl FnMut(&mut R, Macros20NormalizedIdent, Namespace, Decl<'ra>),
     ) {
         for (key, name_resolution) in resolver.as_mut().resolutions(self).borrow().iter() {
-            if let Some(binding) = name_resolution.borrow().best_binding() {
-                f(resolver, key.ident, key.ns, binding);
+            if let Some(decl) = name_resolution.borrow().best_decl() {
+                f(resolver, key.ident, key.ns, decl);
             }
         }
     }
@@ -842,7 +842,7 @@ enum DeclKind<'ra> {
 }
 
 impl<'ra> DeclKind<'ra> {
-    /// Is this a name binding of an import?
+    /// Is this an import declaration?
     fn is_import(&self) -> bool {
         matches!(*self, DeclKind::Import { .. })
     }
@@ -851,7 +851,7 @@ impl<'ra> DeclKind<'ra> {
 #[derive(Debug)]
 struct PrivacyError<'ra> {
     ident: Ident,
-    binding: Decl<'ra>,
+    decl: Decl<'ra>,
     dedup_span: Span,
     outermost_res: Option<(Res, Ident)>,
     parent_scope: ParentScope<'ra>,
@@ -2047,15 +2047,15 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     fn record_use_inner(
         &mut self,
         ident: Ident,
-        used_binding: Decl<'ra>,
+        used_decl: Decl<'ra>,
         used: Used,
         warn_ambiguity: bool,
     ) {
-        if let Some(b2) = used_binding.ambiguity {
+        if let Some(b2) = used_decl.ambiguity {
             let ambiguity_error = AmbiguityError {
                 kind: AmbiguityKind::GlobVsGlob,
                 ident,
-                b1: used_binding,
+                b1: used_decl,
                 b2,
                 scope1: Scope::ModuleGlobs(self.empty_module, None),
                 scope2: Scope::ModuleGlobs(self.empty_module, None),
@@ -2066,7 +2066,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 self.ambiguity_errors.push(ambiguity_error);
             }
         }
-        if let DeclKind::Import { import, binding } = used_binding.kind {
+        if let DeclKind::Import { import, binding } = used_decl.kind {
             if let ImportKind::MacroUse { warn_private: true } = import.kind {
                 // Do not report the lint if the macro name resolves in stdlib prelude
                 // even without the problematic `macro_use` import.
@@ -2096,7 +2096,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             // but not introduce it, as used if they are accessed from lexical scope.
             if used == Used::Scope
                 && let Some(entry) = self.extern_prelude.get(&Macros20NormalizedIdent::new(ident))
-                && entry.item_decl == Some((used_binding, false))
+                && entry.item_decl == Some((used_decl, false))
             {
                 return;
             }
